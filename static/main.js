@@ -150,17 +150,21 @@ function updateCO2Level(state) {
             // Température de surface calculée par dichotomie (équilibre radiatif avec CO2 uniquement)
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
+            const temp_surface_c = temp_surface - 273.15;
             const delta_temp = temp_eff - temp_eff_0;
             // Forçage radiatif par rapport à 0 ppm (approximation)
             const flux_current = plotData.current.upward_flux[plotData.current.upward_flux.length - 1].reduce((a, b) => a + b, 0);
             const flux_0 = 239.05; // Flux solaire absorbé (référence sans effet de serre)
             const forcing = flux_current - flux_0;
             
+            // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
+            plotData.temp_surface_c = temp_surface_c;
+            
             updateDisplay({
                 state: currentState,
                 co2_ppm: plotData.co2_ppm,
                 temp_surface: temp_surface,
-                temp_surface_c: temp_surface - 273.15,
+                temp_surface_c: temp_surface_c,
                 temp_eff: temp_eff,
                 temp_eff_c: temp_eff - 273.15,
                 delta_temp: delta_temp,
@@ -252,7 +256,40 @@ function multiplyCO2() {
     }
 }
 
+// Variables pour gérer l'annulation des calculs en cours
+let currentCalculationPromise = null;
+let currentCalculationTimeouts = [];
+
+function cancelCurrentCalculation() {
+    // Annuler tous les timeouts en cours
+    currentCalculationTimeouts.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+    });
+    currentCalculationTimeouts = [];
+    
+    // Annuler aussi les timeouts stockés dans calculations.js
+    if (typeof window !== 'undefined' && window.calculationTimeouts) {
+        window.calculationTimeouts.forEach(timeoutId => {
+            clearTimeout(timeoutId);
+        });
+        window.calculationTimeouts = [];
+    }
+    
+    // Marquer la Promise comme annulée
+    if (currentCalculationPromise) {
+        currentCalculationPromise = null;
+    }
+    
+    // Marquer le calcul comme annulé dans calculations.js
+    if (typeof window !== 'undefined') {
+        window.cancelCalculation = true;
+    }
+}
+
 function updateCO2LevelDirect(co2_fraction) {
+    // Annuler tout calcul en cours avant de commencer un nouveau
+    cancelCurrentCalculation();
+    
     plotData.co2_ppm = co2_fraction * 1e6;
     
     document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
@@ -260,12 +297,30 @@ function updateCO2LevelDirect(co2_fraction) {
     // Activer l'affichage des étapes de dichotomie pour le calcul courant
     if (typeof window !== 'undefined') {
         window.showDichotomySteps = true;
+        window.cancelCalculation = false; // Réinitialiser le flag d'annulation
     }
     
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+        // Vérifier si le calcul a été annulé avant de commencer
+        if (window.cancelCalculation) {
+            return;
+        }
+        
         // Calculer le scénario courant (peut retourner une Promise)
         const result = window.simulateRadiativeTransfer(co2_fraction);
+        currentCalculationPromise = result;
+        
         const processResult = (data) => {
+            // Vérifier si le calcul a été annulé
+            if (window.cancelCalculation) {
+                return;
+            }
+            
+            // Retirer ce timeout de la liste
+            const index = currentCalculationTimeouts.indexOf(timeoutId);
+            if (index > -1) {
+                currentCalculationTimeouts.splice(index, 1);
+            }
             plotData.current = data;
             
             // Les scénarios de référence sont déjà calculés dans calculateInitialData
@@ -279,17 +334,21 @@ function updateCO2LevelDirect(co2_fraction) {
             // Température de surface calculée par dichotomie (équilibre radiatif avec CO2 uniquement)
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
+            const temp_surface_c = temp_surface - 273.15;
             const delta_temp = temp_eff - temp_eff_0;
             // Forçage radiatif par rapport à 0 ppm (approximation)
             const flux_current = plotData.current.upward_flux[plotData.current.upward_flux.length - 1].reduce((a, b) => a + b, 0);
             const flux_0 = 239.05; // Flux solaire absorbé (référence sans effet de serre)
             const forcing = flux_current - flux_0;
             
+            // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
+            plotData.temp_surface_c = temp_surface_c;
+            
             updateDisplay({
                 state: currentState,
                 co2_ppm: plotData.co2_ppm,
                 temp_surface: temp_surface,
-                temp_surface_c: temp_surface - 273.15,
+                temp_surface_c: temp_surface_c,
                 temp_eff: temp_eff,
                 temp_eff_c: temp_eff - 273.15,
                 delta_temp: delta_temp,
@@ -390,20 +449,57 @@ function updateLegend(data) {
             const item = document.createElement('div');
             item.className = 'legend-planck-item';
             
-            // Créer un élément SVG pour représenter le motif de trait
-            const svgPattern = typeof window.createDashPatternSVG === 'function'
-                ? window.createDashPatternSVG(dashPattern)
-                : '';
+            // Créer un canvas pour dessiner le pattern
+            const canvas = document.createElement('canvas');
+            canvas.width = 50;
+            canvas.height = 4;
+            canvas.style.verticalAlign = 'middle';
+            canvas.style.display = 'inline-block';
+            canvas.style.marginRight = '8px';
             
-            let label = `${T}K (${(T - 273.15).toFixed(0)}°C)`;
-            if (T === 255) {
-                label += ' - T° minimale';
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            
+            // Dessiner le pattern selon le type
+            const dashArray = typeof window.getDashArray === 'function' 
+                ? window.getDashArray(dashPattern) 
+                : '6,4';
+            
+            // Réinitialiser le contexte pour éviter les problèmes de rendu
+            ctx.save();
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            
+            if (dashArray !== 'none') {
+                const segments = dashArray.split(',').map(Number);
+                // Vérifier que les segments sont valides
+                if (segments.length > 0 && segments.every(s => !isNaN(s) && s > 0)) {
+                    ctx.setLineDash(segments);
+                } else {
+                    ctx.setLineDash([]);
+                }
+            } else {
+                ctx.setLineDash([]);
             }
             
-            item.innerHTML = `
-                <span class="legend-pattern">${svgPattern}</span>
-                <span class="legend-text">${label}</span>
-            `;
+            // S'assurer que le canvas est propre avant de dessiner
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.beginPath();
+            ctx.moveTo(2, canvas.height / 2);
+            ctx.lineTo(canvas.width - 2, canvas.height / 2);
+            ctx.stroke();
+            ctx.restore();
+            
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'legend-text';
+            labelSpan.textContent = `${T}K (${(T - 273.15).toFixed(0)}°C)`;
+            
+            item.appendChild(canvas);
+            item.appendChild(labelSpan);
             grid.appendChild(item);
         });
         
@@ -413,6 +509,25 @@ function updateLegend(data) {
                 window.MathJax.typesetPromise([grid]).catch((err) => console.log('MathJax error:', err));
             }, 100);
         }
+    }
+}
+
+// Fonction pour obtenir le style CSS de bordure selon le pattern
+function getDashStyleForPattern(pattern) {
+    switch(pattern) {
+        case 'dash':
+            return 'dashed';
+        case 'dot':
+            return 'dotted';
+        case 'dashdot':
+            return 'dashed'; // CSS ne supporte pas dashdot directement, on utilise dashed
+        case 'longdash':
+            return 'dashed';
+        case 'longdashdot':
+            return 'dashed';
+        case 'solid':
+        default:
+            return 'solid';
     }
 }
 

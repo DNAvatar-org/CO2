@@ -170,7 +170,7 @@ function waterVaporTransport(z) {
 // Fonction interne pour calculer le flux total sortant pour une T0 donnée
 function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const {
-        z_max = 80000,
+        z_max = 120000,
         delta_z = 50,
         lambda_min = 0.1e-6,
         lambda_max = 100e-6,
@@ -191,6 +191,8 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // Initialiser les tableaux
     const upward_flux = Array(z_range.length).fill(0).map(() => Array(lambda_range.length).fill(0));
     const optical_thickness = Array(z_range.length).fill(0).map(() => Array(lambda_range.length).fill(0));
+    const emitted_flux = Array(z_range.length).fill(0).map(() => Array(lambda_range.length).fill(0));
+    const absorbed_flux = Array(z_range.length).fill(0).map(() => Array(lambda_range.length).fill(0));
     
     // Condition limite : flux émis par la surface avec T0_test
     const earth_flux = lambda_range.map(lambda => 
@@ -227,20 +229,25 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             if (CO2_fraction === 0 && !h2o_enabled) {
                 // Pas d'absorption si CO2 = 0 et H2O désactivé
                 upward_flux[i][j] = flux_in[j];
+                emitted_flux[i][j] = 0;
+                absorbed_flux[i][j] = 0;
             } else {
                 // Transfert radiatif dans la couche :
                 // 1. Absorption : le CO2/H2O absorbe une partie du flux entrant
-                const absorbed_flux = Math.min(kappa * delta_z * flux_in[j], flux_in[j]);
+                const abs_flux = Math.min(kappa * delta_z * flux_in[j], flux_in[j]);
                 // 2. Émission : le CO2/H2O réémet à sa température (loi de Planck)
                 //    F_émis = τ × π × B_λ(T_couche) × Δλ
-                const emitted_flux = optical_thickness[i][j] * Math.PI * planckFunction(lambda, T) * delta_lambda;
+                const em_flux = optical_thickness[i][j] * Math.PI * planckFunction(lambda, T) * delta_lambda;
                 // 3. Flux sortant = flux entrant - absorption + émission
                 //    NOTE : Le "palier" observé dans les courbes correspond à F_émis
                 //    Quand l'absorption est totale (F_absorbé ≈ F_entrant),
                 //    alors F_sortant ≈ F_émis, ce qui crée un "palier" qui suit
                 //    la courbe de Planck à la température de la couche la plus froide
                 //    (généralement la tropopause ~216K)
-                upward_flux[i][j] = flux_in[j] - absorbed_flux + emitted_flux;
+                upward_flux[i][j] = flux_in[j] - abs_flux + em_flux;
+                // Stocker les valeurs pour la visualisation
+                emitted_flux[i][j] = em_flux;
+                absorbed_flux[i][j] = abs_flux;
             }
             
             flux_in[j] = upward_flux[i][j];
@@ -249,7 +256,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     
     // Calculer le flux total au sommet
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
-    return { total_flux, lambda_range, z_range, upward_flux, optical_thickness };
+    return { total_flux, lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux };
 }
 
 // Fonction helper pour afficher une courbe temporaire pendant la dichotomie
@@ -258,13 +265,23 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     
     // Créer un objet plotData temporaire pour l'affichage
     const temp_eff = Math.pow(result.total_flux / STEFAN_BOLTZMANN, 0.25);
+    // Calculer la température terrestre en °C à partir de T0_test (température au sol en K)
+    const temp_surface_c = T0_test - 273.15;
+    
     const tempPlotData = {
         lambda_range: result.lambda_range,
+        z_range: result.z_range,
         current: {
             upward_flux: result.upward_flux,
-            effective_temperature: temp_eff
+            effective_temperature: temp_eff,
+            emitted_flux: result.emitted_flux,
+            absorbed_flux: result.absorbed_flux,
+            earth_flux: result.earth_flux,
+            lambda_range: result.lambda_range, // Nécessaire pour updateSpectralVisualization
+            z_range: result.z_range // Nécessaire pour updateSpectralVisualization
         },
-        co2_ppm: CO2_fraction * 1e6
+        co2_ppm: CO2_fraction * 1e6,
+        temp_surface_c: temp_surface_c // Température intermédiaire pour mise à jour de la couleur en temps réel
     };
     
     // Mettre à jour le graphique
@@ -306,7 +323,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     current_T0_adjusted = null; // Réinitialiser
     
     const {
-        z_max = 80000,
+        z_max = 120000,
         delta_z = 50,
         lambda_min = 0.1e-6,
         lambda_max = 100e-6,
@@ -395,7 +412,15 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     if (typeof window !== 'undefined' && window.setTimeout) {
         // Mode asynchrone avec affichage progressif
         return new Promise((resolve) => {
+            let isCancelled = false;
+            const timeoutIds = [];
+            
             const performDichotomy = () => {
+                // Vérifier si annulé
+                if (window.cancelCalculation || isCancelled) {
+                    return;
+                }
+                
                 let T0_current = T0_initial;
                 let iter = 0;
                 let final_result = result;
@@ -404,9 +429,16 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                 const shouldDisplaySteps = typeof window !== 'undefined' && window.showDichotomySteps;
                 
                 const iterate = () => {
+                    // Vérifier si annulé avant chaque itération
+                    if (window.cancelCalculation || isCancelled) {
+                        return;
+                    }
+                    
                     if (iter >= max_iterations) {
                         // Maximum d'itérations atteint
-                        finalizeResults(final_result, T0_current, CO2_fraction, resolve);
+                        if (!isCancelled) {
+                            finalizeResults(final_result, T0_current, CO2_fraction, resolve);
+                        }
                         return;
                     }
                     
@@ -414,13 +446,15 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     const flux_diff = final_result.total_flux - SOLAR_FLUX_ABSORBED;
                     
                     // Afficher chaque étape de la dichotomie seulement si demandé
-                    if (shouldDisplaySteps) {
+                    if (shouldDisplaySteps && !isCancelled) {
                         displayDichotomyStep(CO2_fraction, T0_current, final_result, iter + 1, false);
                     }
                     
                     if (Math.abs(flux_diff) < tolerance) {
                         // Convergence atteinte
-                        finalizeResults(final_result, T0_current, CO2_fraction, resolve);
+                        if (!isCancelled) {
+                            finalizeResults(final_result, T0_current, CO2_fraction, resolve);
+                        }
                         return;
                     }
                     
@@ -436,17 +470,28 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     
                     iter++;
                     // Continuer avec un délai pour permettre la visualisation
-                    if (shouldDisplaySteps) {
-                        setTimeout(iterate, 50); // Délai pour visualiser chaque étape
-                    } else {
-                        setTimeout(iterate, 0); // Pas de délai si pas d'affichage (calculs de référence)
+                    if (shouldDisplaySteps && !isCancelled) {
+                        const timeoutId = setTimeout(iterate, 50); // Délai pour visualiser chaque étape
+                        timeoutIds.push(timeoutId);
+                    } else if (!isCancelled) {
+                        const timeoutId = setTimeout(iterate, 0); // Pas de délai si pas d'affichage (calculs de référence)
+                        timeoutIds.push(timeoutId);
                     }
                 };
                 
                 iterate();
             };
             
-            setTimeout(performDichotomy, 500); // Attendre 500ms après l'affichage initial
+            const initialTimeoutId = setTimeout(performDichotomy, 500); // Attendre 500ms après l'affichage initial
+            timeoutIds.push(initialTimeoutId);
+            
+            // Stocker les timeoutIds pour pouvoir les annuler
+            if (typeof window !== 'undefined') {
+                if (!window.calculationTimeouts) {
+                    window.calculationTimeouts = [];
+                }
+                window.calculationTimeouts.push(...timeoutIds);
+            }
         });
     } else {
         // Mode synchrone (si pas de setTimeout disponible) - pas d'affichage progressif
@@ -482,9 +527,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         current_T0_adjusted = T0;
         
         // Utiliser les résultats de la dernière itération
-        const { lambda_range, z_range, upward_flux, optical_thickness } = result;
+        const { lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux } = result;
         
-        return finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, optical_thickness, CO2_fraction);
+        return finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction);
     }
 }
 
@@ -494,7 +539,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     current_T0_adjusted = final_T0;
     
     // Utiliser les résultats de la dernière itération
-    const { lambda_range, z_range, upward_flux, optical_thickness } = final_result;
+    const { lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux } = final_result;
     
     // Note importante : Ce modèle ne prend en compte QUE le CO2
     // Les 15°C réels de la Terre incluent aussi :
@@ -521,6 +566,9 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         z_range: z_range,
         upward_flux: upward_flux,
         optical_thickness: optical_thickness,
+        emitted_flux: emitted_flux,
+        absorbed_flux: absorbed_flux,
+        earth_flux: earth_flux,
         total_flux: total_flux,
         effective_temperature: effective_temperature
     };
@@ -550,7 +598,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
 }
 
 // Fonction pour finaliser les résultats (mode synchrone)
-function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, optical_thickness, CO2_fraction) {
+function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction) {
     // Calculer le flux total au sommet de l'atmosphère
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
     console.log(`Flux total calculé: ${total_flux.toFixed(2)} W/m² pour ${(CO2_fraction * 1e6).toFixed(0)} ppm`);
@@ -566,6 +614,9 @@ function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, opt
         z_range: z_range,
         upward_flux: upward_flux,
         optical_thickness: optical_thickness,
+        emitted_flux: emitted_flux,
+        absorbed_flux: absorbed_flux,
+        earth_flux: earth_flux,
         total_flux: total_flux,
         effective_temperature: effective_temperature
     };

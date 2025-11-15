@@ -93,12 +93,15 @@ window.getDashArray = function(pattern) {
  * @returns {string} HTML du SVG
  */
 window.createDashPatternSVG = function(pattern) {
-    const width = 40;
-    const height = 3;
+    const width = 50;
+    const height = 4;
     const dashArray = window.getDashArray(pattern);
     
-    return `<svg width="${width}" height="${height}" style="vertical-align: middle; display: inline-block;">
-        <line x1="0" y1="${height/2}" x2="${width}" y2="${height/2}" stroke="black" stroke-width="1.5" ${dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : ''}/>
+    // Utiliser stroke-dasharray même pour solid (none) pour s'assurer que la ligne est visible
+    const dashAttr = dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : '';
+    
+    return `<svg width="${width}" height="${height}" style="vertical-align: middle; display: inline-block; overflow: visible;">
+        <line x1="2" y1="${height/2}" x2="${width-2}" y2="${height/2}" stroke="black" stroke-width="2.5" ${dashAttr}/>
     </svg>`;
 };
 

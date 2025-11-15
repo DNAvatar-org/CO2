@@ -5,6 +5,36 @@
 // Températures pour les courbes Planck de référence (en K)
 window.PLANCK_TEMPERATURES = [120, 180, 225, 255, 275, 300, 330];
 
+/**
+ * Convertit une température terrestre (°C) en couleur pour les courbes courantes
+ * @param {number} tempC - Température en °C
+ * @returns {string} Couleur (cyan, jaune, rouge, etc.)
+ */
+window.tempSurfaceToColor = function(tempC) {
+    if (tempC <= -20) {
+        return 'cyan';
+    } else if (tempC < 20) {
+        // Interpolation entre cyan (-20°C) et jaune (20°C)
+        const ratio = (tempC + 20) / 40; // 0 à -20°C, 1 à 20°C
+        // Cyan (0,255,255) vers Jaune (255,255,0)
+        const r = Math.round(ratio * 255);
+        const g = 255;
+        const b = Math.round((1 - ratio) * 255);
+        return `rgb(${r}, ${g}, ${b})`;
+    } else if (tempC < 30) {
+        // Interpolation entre jaune (20°C) et rouge (30°C)
+        const ratio = (tempC - 20) / 10; // 0 à 20°C, 1 à 30°C
+        // Jaune (255,255,0) vers Rouge (255,0,0)
+        const r = 255;
+        const g = Math.round((1 - ratio) * 255);
+        const b = 0;
+        return `rgb(${r}, ${g}, ${b})`;
+    } else {
+        // 30°C et plus = rouge
+        return 'red';
+    }
+};
+
 // Activer l'affichage des étapes de dichotomie par défaut
 if (typeof window !== 'undefined') {
     window.showDichotomySteps = true;
@@ -149,6 +179,8 @@ function initPlot() {
         yaxis: {
             title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
             range: [0, 40],
+            tickfont: { color: 'black', size: 12 },
+            titlefont: { color: 'black', size: 14 }, // Titre de l'axe Y en noir pour visibilité
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
             gridwidth: 1
@@ -157,8 +189,13 @@ function initPlot() {
             title: "Altitude (km)",
             overlaying: 'y',
             side: 'right',
-            range: [0, 80], // 0 km en bas, 80 km en haut
+            range: [0, 120], // 0 km en bas, 120 km en haut
             position: 1.0,
+            // Aligner les ticks avec l'axe Y principal
+            // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
+            // Utiliser le même espacement que yaxis (généralement 5 ou 10)
+            tickmode: 'linear',
+            dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
             tickfont: { color: 'black', size: 12 },
             titlefont: { color: 'black', size: 14 },
             showline: true,
@@ -370,11 +407,20 @@ window.updatePlot = function updatePlot(data) {
         // Utiliser la température effective calculée par les formules
         const T_current = data.current.effective_temperature;
         
-        // Courbe d'absorption (pleine) - calculée réellement par les formules
-        let color_current = 'red';
-        if (data.co2_ppm === 0) color_current = 'cyan';
-        else if (Math.abs(data.co2_ppm - 280) < 1) color_current = 'green';
-        else if (Math.abs(data.co2_ppm - 420) < 1) color_current = 'gray';
+        // Déterminer la couleur selon la température terrestre (T° Terrestre)
+        let color_current = 'red'; // Par défaut
+        // Récupérer temp_surface_c depuis data
+        const temp_surface_c = data.temp_surface_c;
+        
+        if (temp_surface_c !== undefined && typeof window.tempSurfaceToColor === 'function') {
+            // Utiliser la température terrestre en °C pour déterminer la couleur
+            color_current = window.tempSurfaceToColor(temp_surface_c);
+        } else {
+            // Fallback : utiliser l'ancienne logique basée sur le ppm
+            if (data.co2_ppm === 0) color_current = 'cyan';
+            else if (Math.abs(data.co2_ppm - 280) < 1) color_current = 'green';
+            else if (Math.abs(data.co2_ppm - 420) < 1) color_current = 'gray';
+        }
         
         const trace_absorption = createFluxTrace(data.current, data.co2_ppm, T_current, color_current, 
             `${data.co2_ppm.toFixed(0)} ppm (absorption)`);
@@ -383,7 +429,7 @@ window.updatePlot = function updatePlot(data) {
         
         // Courbe Planck correspondante (pointillée) à la température effective - petits points avec la même couleur que l'absorption
         const planck_current = createPlanckTrace(T_current, `Planck ${data.co2_ppm.toFixed(0)} ppm`, color_current, false, 'dot');
-        planck_current.line.width = 2; // Plus épaisse pour la courbe sélectionnée
+        planck_current.line.width = 0.5; // Très fine comme les autres courbes
         planck_current.line.color = color_current; // Même couleur que la courbe d'absorption
         traces.push(planck_current);
     }
@@ -392,7 +438,7 @@ window.updatePlot = function updatePlot(data) {
     // Cette trace est nécessaire car Plotly ne crée un axe que s'il est utilisé par au moins une trace
     traces.push({
         x: [0, 0], // Points invisibles à x=0
-        y: [0, 80], // De 0 à 80 km sur l'axe altitude
+        y: [0, 120], // De 0 à 120 km sur l'axe altitude
         type: 'scatter',
         mode: 'lines',
         name: 'Axe altitude',
@@ -404,12 +450,12 @@ window.updatePlot = function updatePlot(data) {
     
     // 4. Ajouter une ligne horizontale pour la tropopause (11 km)
     // Convertir 11 km en valeur de l'axe Y principal (0-40) pour l'aligner
-    // L'axe altitude va de 0 à 80 km (0 en bas, 80 en haut), aligné avec l'axe Y principal (0 en bas, 40 en haut)
-    // Donc 0 km altitude = 0 sur l'axe Y, 80 km = 40 sur l'axe Y
-    // 11 km = 40 * (11/80) = 5.5 sur l'axe Y
+    // L'axe altitude va de 0 à 120 km (0 en bas, 120 km en haut), aligné avec l'axe Y principal (0 en bas, 40 en haut)
+    // Donc 0 km altitude = 0 sur l'axe Y, 120 km = 40 sur l'axe Y
+    // 11 km = 40 * (11/120) = 3.67 sur l'axe Y
     const z_trop_km = 11; // Tropopause à 11 km
-    const z_max_km = 80; // Altitude max à 80 km
-    const y_trop = 40 * (z_trop_km / z_max_km); // Position sur l'axe Y (0-40), 0 km = 0, 80 km = 40
+    const z_max_km = 120; // Altitude max à 120 km
+    const y_trop = 40 * (z_trop_km / z_max_km); // Position sur l'axe Y (0-40), 0 km = 0, 120 km = 40
     
     traces.push({
         x: [0, 50], // De 0 à 50 μm
@@ -436,6 +482,8 @@ window.updatePlot = function updatePlot(data) {
         yaxis: { 
             range: [0, 40],
             title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
+            tickfont: { color: 'black', size: 12 },
+            titlefont: { color: 'black', size: 14 }, // Titre de l'axe Y en noir pour visibilité
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
             gridwidth: 1
@@ -444,13 +492,18 @@ window.updatePlot = function updatePlot(data) {
             title: "Altitude (km)",
             overlaying: 'y',
             side: 'right',
-            range: [80, 0], // Inversé : 80 km en haut (correspond à y=0), 0 km en bas (correspond à y=40)
+            range: [0, 120], // 0 km en bas, 120 km en haut (même orientation que yaxis)
             position: 1.0,
+            // Aligner les ticks avec l'axe Y principal
+            // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
+            // Utiliser le même espacement que yaxis (généralement 5 ou 10)
+            tickmode: 'linear',
+            dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
             tickfont: { color: 'black', size: 12 },
             titlefont: { color: 'black', size: 14 },
             showline: true,
-            linecolor: 'black',
-            linewidth: 3,
+            linecolor: 'rgba(0, 0, 0, 0.5)',
+            linewidth: 1,
             mirror: 'ticks',
             showgrid: false,
             zeroline: false,
@@ -464,8 +517,11 @@ window.updatePlot = function updatePlot(data) {
         title: "Altitude (km)",
         overlaying: 'y',
         side: 'right',
-        range: [0, 80], // 0 km en bas, 80 km en haut
+        range: [0, 120], // 0 km en bas, 120 km en haut
         position: 1.0,
+        // Aligner les ticks avec l'axe Y principal
+        tickmode: 'linear',
+        dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
         tickfont: { color: 'black', size: 12 },
         titlefont: { color: 'black', size: 14 },
         showline: true,
@@ -548,44 +604,47 @@ window.updatePlot = function updatePlot(data) {
 function wavelengthToColor(lambda_m, lambda_range_min, lambda_range_max) {
     const lambda_um = lambda_m * 1e6; // Convertir en μm
     
-    // Plage de l'axe X du graphique : 0 à 50 μm
-    const graph_min_um = 0;
-    const graph_max_um = 50;
-    
-    // Normaliser la position dans la plage du graphique
-    const normalized = Math.max(0, Math.min(1, (lambda_um - graph_min_um) / (graph_max_um - graph_min_um)));
-    
-    // Mapper sur un arc-en-ciel complet (hue de 0 à 1)
-    // 0 = rouge, 0.17 = jaune, 0.33 = vert, 0.5 = cyan, 0.67 = bleu, 0.83 = violet, 1 = rouge
-    const hue = (1 - normalized) * 0.83; // Inverser pour avoir rouge à gauche, violet à droite
-    const saturation = 1.0; // Saturation maximale
-    const lightness = 0.6; // Luminosité augmentée pour des couleurs plus vives
-    
-    // Convertir HSL en RGB
-    const c = (1 - Math.abs(2 * lightness - 1)) * saturation;
-    const x = c * (1 - Math.abs((hue * 6) % 2 - 1));
-    const m = lightness - c / 2;
+    // Séquence de couleurs mémorisée avec transitions smooth :
+    // 0-3 μm : Noir → transition smooth vers violet UV
+    // 3-20 μm : Transition directe du violet UV le plus possible jusqu'au rouge (sans passer par les autres couleurs)
+    // 20-45 μm : Transition smooth du rouge vers orange, puis orange vers jaune
+    // 45-50 μm : Jaune jusqu'à la fin (à droite)
     
     let r, g, b;
-    if (hue < 1/6) {
-        r = c; g = x; b = 0;
-    } else if (hue < 2/6) {
-        r = x; g = c; b = 0;
-    } else if (hue < 3/6) {
-        r = 0; g = c; b = x;
-    } else if (hue < 4/6) {
-        r = 0; g = x; b = c;
-    } else if (hue < 5/6) {
-        r = x; g = 0; b = c;
+    
+    if (lambda_um < 2.5) {
+        // 0-2.5 μm : Noir pur
+        r = 0;
+        g = 0;
+        b = 0;
+    } else if (lambda_um < 3.5) {
+        // 2.5-3.5 μm : Transition smooth noir → violet UV
+        const ratio = (lambda_um - 2.5) / (3.5 - 2.5); // 0 à 1
+        r = Math.round(ratio * 75); // 0 → 75
+        g = 0;
+        b = Math.round(ratio * 130); // 0 → 130
+    } else if (lambda_um <= 19) {
+        // 3.5-19 μm : Transition directe violet UV → rouge
+        const normalized = (lambda_um - 3.5) / (19 - 3.5); // 0 à 1
+        // Violet UV (75, 0, 130) → Rouge (255, 0, 0)
+        r = Math.round(75 + normalized * (255 - 75)); // 75 → 255
+        g = 0;
+        b = Math.round(130 - normalized * 130); // 130 → 0
+    } else if (lambda_um <= 45) {
+        // 19-45 μm : Transition smooth rouge → orange → jaune (se déroule tranquillement)
+        const normalized = (lambda_um - 19) / (45 - 19); // 0 à 1
+        // Rouge (255, 0, 0) → Orange (255, 128, 0) → Jaune (255, 255, 0)
+        r = 255; // Rouge reste à 255
+        g = Math.round(normalized * 255); // 0 → 255 (rouge → orange → jaune)
+        b = 0;
     } else {
-        r = c; g = 0; b = x;
+        // 45-50 μm : Jaune jusqu'à la fin (à droite)
+        r = 255;
+        g = 255;
+        b = 0;
     }
     
-    return [
-        Math.round((r + m) * 255),
-        Math.round((g + m) * 255),
-        Math.round((b + m) * 255)
-    ];
+    return [r, g, b];
 }
 
 // Fonction pour créer la visualisation spectrale
@@ -724,11 +783,35 @@ function drawSpectralVisualization(canvas, data) {
     const visualizationHeight = height - spectrumBarHeight;
     
     const upward_flux = data.upward_flux;
+    const earth_flux = data.earth_flux || null; // Courbe de Planck pure au sol
     const lambda_range = data.lambda_range;
     const z_range = data.z_range;
     
+    // LOGS DE DIAGNOSTIC
+    console.log('[SPECTRUM DEBUG] ========================================');
+    console.log('[SPECTRUM DEBUG] Canvas:', width, 'x', height, 'px');
+    console.log('[SPECTRUM DEBUG] Visualization height:', visualizationHeight, 'px');
+    console.log('[SPECTRUM DEBUG] Lambda range:', lambda_range ? `${(lambda_range[0] * 1e6).toFixed(2)} - ${(lambda_range[lambda_range.length - 1] * 1e6).toFixed(2)} μm (${lambda_range.length} points)` : 'NULL');
+    console.log('[SPECTRUM DEBUG] Z range:', z_range ? `${(z_range[0] / 1000).toFixed(2)} - ${(z_range[z_range.length - 1] / 1000).toFixed(2)} km (${z_range.length} layers)` : 'NULL');
+    console.log('[SPECTRUM DEBUG] Upward flux layers:', upward_flux ? upward_flux.length : 'NULL');
+    console.log('[SPECTRUM DEBUG] Emitted flux:', data.emitted_flux ? `${data.emitted_flux.length} layers` : 'NULL');
+    console.log('[SPECTRUM DEBUG] Absorbed flux:', data.absorbed_flux ? `${data.absorbed_flux.length} layers` : 'NULL');
+    console.log('[SPECTRUM DEBUG] Earth flux:', earth_flux ? `${earth_flux.length} points` : 'NULL');
+    
+    // Calculer la courbe d'absorption normalisée (flux au sommet de l'atmosphère)
+    // C'est la courbe verte qui filtre le spectre
+    let absorptionCurve = null;
+    if (upward_flux && upward_flux.length > 0) {
+        const topFlux = upward_flux[upward_flux.length - 1]; // Flux au sommet
+        // Normaliser entre 0 et 1 pour chaque longueur d'onde
+        const topFluxMax = Math.max(...topFlux);
+        if (topFluxMax > 0) {
+            absorptionCurve = topFlux.map(f => f / topFluxMax);
+        }
+    }
+    
     // Trouver les valeurs min/max pour normaliser l'alpha
-    // Utiliser les percentiles pour améliorer le contraste (ignorer les valeurs extrêmes)
+    // Utiliser upward_flux directement (comme avant - première version qui fonctionnait bien)
     const allFluxes = [];
     for (let i = 0; i < upward_flux.length; i++) {
         for (let j = 0; j < upward_flux[i].length; j++) {
@@ -744,20 +827,84 @@ function drawSpectralVisualization(canvas, data) {
     const maxFlux = allFluxes[p95Index] || allFluxes[allFluxes.length - 1] || 1;
     const fluxRange = maxFlux - minFlux;
     
+    console.log('[SPECTRUM DEBUG] Flux range:', minFlux.toFixed(4), '-', maxFlux.toFixed(4), '(range:', fluxRange.toFixed(4), ')');
+    
     // Plage de l'axe X du graphique : 0 à 50 μm
     const graph_min_um = 0;
     const graph_max_um = 50;
     
-    // Calculer les facteurs d'échantillonnage pour les couches
-    const layerStep = Math.max(1, Math.floor(upward_flux.length / visualizationHeight));
+    console.log('[SPECTRUM DEBUG] Graph X range:', graph_min_um, '-', graph_max_um, 'μm');
+    console.log('[SPECTRUM DEBUG] Effective width (X):', width - (charWidth * 2), 'px');
+    
+    // Calculer l'altitude max pour normaliser
+    const z_max = z_range.length > 0 ? z_range[z_range.length - 1] : 120000; // 120 km par défaut
+    const z_max_km = z_max / 1000; // En km
+    
+    // Mapper chaque pixel Y à une altitude spécifique (0 à z_max)
+    // Pour avoir une correspondance directe entre pixel Y et altitude
+    const altitudePerPixel = z_max / visualizationHeight; // Altitude en mètres par pixel
+    
+    // Constantes pour le calcul de la densité (approximation exponentielle)
+    const H = 8500; // Échelle de hauteur en mètres (environ 8.5 km)
+    const P0 = 101325; // Pression au niveau de la mer en Pa
     
     // Dessiner chaque pixel de la visualisation principale
     for (let y = 0; y < visualizationHeight; y++) {
-        // Une ligne sur layerStep couches
-        const layerIndex = Math.floor(y * layerStep);
-        if (layerIndex >= upward_flux.length) continue;
+        // Calculer l'altitude correspondant à ce pixel Y
+        // y=0 (en haut du canvas) → z=z_max (haute altitude)
+        // y=max (en bas du canvas) → z=0 (sol)
+        // Le spectre émis vient du sol, donc il doit être en bas visuellement
+        const z_target = (visualizationHeight - 1 - y) * altitudePerPixel; // Inverser Y pour avoir le sol en bas
         
-        const layerFlux = upward_flux[layerIndex];
+        // Trouver la couche la plus proche de cette altitude
+        let layerIndex = 0;
+        let minDiff = Infinity;
+        for (let i = 0; i < z_range.length; i++) {
+            const diff = Math.abs(z_range[i] - z_target);
+            if (diff < minDiff) {
+                minDiff = diff;
+                layerIndex = i;
+            }
+        }
+        
+        if (layerIndex >= upward_flux.length || layerIndex >= z_range.length) continue;
+        
+        const z = z_range[layerIndex]; // Altitude en mètres
+        
+        // Utiliser upward_flux directement (comme avant - première version qui fonctionnait bien)
+        // Au sol (z < 25m), utiliser earth_flux (courbe de Planck pure)
+        let layerFlux;
+        if (z < 25 && earth_flux) {
+            layerFlux = earth_flux;
+        } else {
+            // Utiliser upward_flux directement (flux montant réel)
+            layerFlux = upward_flux[layerIndex];
+        }
+        
+        // Calculer le facteur de densité relative (diminue exponentiellement avec l'altitude)
+        // Densité relative = exp(-z/H) où H est l'échelle de hauteur
+        // Normaliser pour avoir 1 au sol (z=0) et diminuer avec l'altitude
+        const densityFactor = Math.exp(-z / H);
+        
+        // À partir de 30 km, l'émission devient négligeable (densité très faible)
+        // Appliquer une décroissance plus rapide au-delà de 30 km
+        const z_km = z / 1000; // Altitude en km
+        let densityAlpha;
+        if (z_km >= 30) {
+            // Au-delà de 30 km : décroissance très rapide vers 0
+            // Utiliser une fonction qui tend rapidement vers 0
+            const excess = z_km - 30; // Excès au-delà de 30 km
+            const decayFactor = Math.exp(-excess / 2); // Décroissance rapide (échelle de 2 km)
+            densityAlpha = densityFactor * decayFactor * 0.1; // Multiplier par 0.1 pour réduire encore plus
+        } else {
+            // En dessous de 30 km : utiliser le facteur de densité normal
+            densityAlpha = densityFactor;
+        }
+        // Clamper entre 0 et 1.0
+        densityAlpha = Math.max(0, Math.min(1.0, densityAlpha));
+        
+        // LOG pour quelques positions X clés (première couche seulement)
+        let loggedX = false;
         
         for (let x = 0; x < width; x++) {
             // Mapper la position X du canvas à la longueur d'onde (0 à 50 μm)
@@ -781,7 +928,20 @@ function drawSpectralVisualization(canvas, data) {
             if (lambdaIndex >= lambda_range.length) continue;
             
             const lambda = lambda_range[lambdaIndex];
-            const flux = layerFlux[lambdaIndex];
+            let flux = layerFlux[lambdaIndex];
+            
+            // LOG pour quelques positions X clés (première couche seulement, une fois)
+            if (y === 0 && !loggedX && (x === 0 || x === Math.floor(width / 4) || x === Math.floor(width / 2) || x === Math.floor(3 * width / 4) || x === width - 1)) {
+                console.log(`[SPECTRUM DEBUG] X=${x}px -> normalizedX=${normalizedX.toFixed(4)} -> lambda=${lambda_um.toFixed(2)}μm -> lambdaIndex=${lambdaIndex} -> flux=${flux.toFixed(4)}`);
+                if (x === width - 1) loggedX = true;
+            }
+            
+            // TEMPORAIRE : Désactiver la multiplication par la courbe d'absorption pour diagnostiquer
+            // Multiplier par la courbe d'absorption normalisée pour filtrer le spectre
+            // Cela montre l'émission filtrée par l'absorption atmosphérique
+            // if (absorptionCurve && absorptionCurve[lambdaIndex] !== undefined) {
+            //     flux = flux * absorptionCurve[lambdaIndex];
+            // }
             
             // Normaliser le flux pour l'alpha (0 à 1) avec étirement du contraste
             let normalized = fluxRange > 0 ? (flux - minFlux) / fluxRange : 0.5;
@@ -792,33 +952,22 @@ function drawSpectralVisualization(canvas, data) {
             const gamma = 0.7; // Légèrement moins agressif
             const alphaRaw = Math.pow(normalized, gamma);
             // Alpha minimum de 0, maximum 1.0
-            const alpha = Math.max(0, Math.min(1.0, alphaRaw));
+            let alpha = Math.max(0, Math.min(1.0, alphaRaw));
+            
+            // Pour l'émission, réduire moins l'alpha avec la densité pour garder les couleurs visibles
+            // Appliquer un facteur moins agressif : garder au moins 50% de l'alpha même en haute altitude
+            alpha = alpha * (0.5 + 0.5 * densityAlpha);
             
             // Obtenir la couleur pour cette longueur d'onde (calée sur l'axe X du graphique)
             const [r, g, b] = wavelengthToColor(lambda, lambda_range[0], lambda_range[lambda_range.length - 1]);
             
-            // Dessiner le pixel avec alpha variable selon l'intensité du flux
+            // Dessiner le pixel avec alpha variable selon l'intensité du flux et la densité
             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
             ctx.fillRect(x, visualizationHeight - 1 - y, 1, 1); // Inverser Y pour avoir le sol en bas
         }
     }
     
-    // Dessiner la bande de spectre en bas (15px) avec alpha=1 pour toutes les couleurs
-    const spectrumBarY = visualizationHeight; // Commence après la visualisation principale
-    for (let x = 0; x < width; x++) {
-        // Mapper la position X à la longueur d'onde (0 à 50 μm)
-        // Compenser le décalage de charWidth de chaque côté
-        const effectiveWidth = width - (charWidth * 2);
-        const normalizedX = Math.max(0, Math.min(1, (x - charWidth) / effectiveWidth)); // 0 à 1
-        const lambda_um = graph_min_um + normalizedX * (graph_max_um - graph_min_um); // 0 à 50 μm
-        const lambda_m = lambda_um * 1e-6; // Convertir en mètres
-        
-        // Obtenir la couleur pour cette longueur d'onde (calée sur l'axe X du graphique)
-        const [r, g, b] = wavelengthToColor(lambda_m, lambda_range[0], lambda_range[lambda_range.length - 1]);
-        
-        // Dessiner la bande avec alpha=1 (opacité maximale)
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        ctx.fillRect(x, spectrumBarY, 1, spectrumBarHeight);
-    }
+    // Dessiner la barre de spectre en bas (utilise la fonction dédiée pour éviter la duplication)
+    drawSpectrumBarOnlyWithSize(width, height);
 }
 
