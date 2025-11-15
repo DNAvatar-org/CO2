@@ -49,14 +49,6 @@
             <div class="left-top">
                 <div class="title-container">
                     <h1>Butterfly Ball</h1>
-                    <div class="timeline-in-title">
-                        <span class="timeline-label">Temps:</span>
-                        <span class="timeline-value" id="timeline-display">0 ans</span>
-                        <span class="timeline-separator">|</span>
-                        <span class="timeline-label">Frame:</span>
-                        <span class="timeline-value" id="frame-display">0</span>
-                        <span class="timeline-note">(1 frame = 100 ans)</span>
-                    </div>
                 </div>
                 <div class="info-display">
                     <div class="info-unit-header">
@@ -102,15 +94,13 @@
                 </div>
                 <div class="button-container">
                     <div class="button-row">
+                        <button class="btn btn-volcano" id="btn-volcano" onclick="multiplyCO2()" title="×2 - Volcan">🌋</button>
                         <button class="btn btn-iceberg" id="btn-iceberg" onclick="setIceberg()" title="0 ppm - Iceberg">🧊</button>
                         <button class="btn btn-forest" id="btn-forest" onclick="setPreindustrial()" title="280 ppm - Pré-industriel">🌳</button>
                         <button class="btn btn-factory" id="btn-factory" onclick="setCurrent()" title="420 ppm - Actuel">🏭</button>
                     </div>
                     <div class="button-row">
                         <button class="btn btn-desert" id="btn-desert" onclick="divideCO2()" title="÷2 - Désert">🌵</button>
-                        <button class="btn btn-volcano" id="btn-volcano" onclick="multiplyCO2()" title="×2 - Volcan">🌋</button>
-                    </div>
-                    <div class="button-row">
                         <button class="btn btn-cloud" id="btn-cloud" onclick="toggleWaterVapor()" title="Activer/Désactiver vapeur d'eau">☁️</button>
                     </div>
                 </div>
@@ -223,6 +213,10 @@
         </div>
     </footer>
     
+    <script src="../static/patterns.js"></script>
+    <script src="../static/physics.js"></script>
+    <script src="../static/climate.js"></script>
+    <script src="../static/geology.js"></script>
     <script src="../static/calculations.js"></script>
     <script src="../static/plot.js"></script>
     <script src="../static/main.js"></script>

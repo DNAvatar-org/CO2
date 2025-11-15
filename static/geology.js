@@ -1,0 +1,106 @@
+// ============================================================================
+// File: geology.js - Époques géologiques et volcanisme
+// Desc: En français, dans l'architecture, je suis le module de géologie
+// Version 1.0.0
+// Copyright 2025 DNAvatar.org - Arnaud Maignan
+// Licensed under Apache License 2.0 with Commons Clause. 
+// See LICENSE_HEADER.txt for full terms.
+// Date: [January 2025]
+// Logs:
+//   - Initial creation: geological eras and volcanic activity
+// ============================================================================
+
+// Définition des époques géologiques avec facteur multiplicatif pour les volcans
+// Au début de la Terre, il y avait beaucoup plus de volcanisme
+const GEOLOGICAL_ERAS = [
+    { name: 'Hadéen', startYears: 4.6e9, endYears: 4.0e9, volcanoFactor: 10.0, co2PerVolcano: 500 }, // Début de la Terre : volcanisme intense
+    { name: 'Archéen', startYears: 4.0e9, endYears: 2.5e9, volcanoFactor: 5.0, co2PerVolcano: 300 },  // Volcanisme très actif
+    { name: 'Protérozoïque', startYears: 2.5e9, endYears: 541e6, volcanoFactor: 2.0, co2PerVolcano: 200 }, // Volcanisme modéré
+    { name: 'Phanérozoïque', startYears: 541e6, endYears: 0, volcanoFactor: 1.0, co2PerVolcano: 150 }  // Époque actuelle : volcanisme normal
+];
+
+// ============================================================================
+// CYCLE DE CROÛTE TERRESTRE MOLLE
+// ============================================================================
+// Pendant les premières centaines de millions d'années après la formation de la Terre,
+// la croûte était encore très chaude et molle, permettant un volcanisme extrêmement intense.
+// Ce facteur multiplie le nombre de volcans par clic (x10 ou x100).
+
+const CRUST_MOLTEN_START = 4.6e9;  // Début : formation de la Terre (4.6 Ga)
+const CRUST_MOLTEN_END = 3.5e9;    // Fin : croûte solidifiée (3.5 Ga)
+const CRUST_MOLTEN_FACTOR_MAX = 100; // Facteur maximum (x100) au tout début
+const CRUST_MOLTEN_FACTOR_MIN = 10;  // Facteur minimum (x10) à la fin de la période
+
+// Fonction pour calculer le facteur de croûte terrestre molle
+// Retourne un facteur multiplicatif pour le nombre de volcans (1.0 = pas d'effet, 100 = x100)
+function getMoltenCrustFactor(yearsAgo) {
+    // Si on est avant la période de croûte molle, pas d'effet
+    if (yearsAgo < CRUST_MOLTEN_END) {
+        return 1.0; // Pas de croûte molle
+    }
+    
+    // Si on est après le début de la Terre, facteur maximum
+    if (yearsAgo >= CRUST_MOLTEN_START) {
+        return CRUST_MOLTEN_FACTOR_MAX; // x100 au tout début
+    }
+    
+    // Interpolation linéaire entre le début (x100) et la fin (x10)
+    // Plus on s'éloigne du début, plus le facteur diminue
+    const progress = (yearsAgo - CRUST_MOLTEN_END) / (CRUST_MOLTEN_START - CRUST_MOLTEN_END);
+    const factor = CRUST_MOLTEN_FACTOR_MIN + (CRUST_MOLTEN_FACTOR_MAX - CRUST_MOLTEN_FACTOR_MIN) * (1 - progress);
+    
+    return factor;
+}
+
+// Fonction pour obtenir l'époque géologique et le facteur volcanique selon les années
+function getGeologicalEra(years) {
+    // years = années depuis maintenant (0 = maintenant, positif = passé)
+    // Si timelineFrame = 0, on est à "maintenant" (0 ans dans le passé)
+    // Si timelineFrame augmente, on remonte dans le temps (années dans le passé)
+    const yearsAgo = years; // Années dans le passé depuis maintenant
+    
+    // Parcourir les époques de la plus récente à la plus ancienne
+    for (const era of GEOLOGICAL_ERAS) {
+        // Les époques sont définies en années avant maintenant
+        // startYears = début de l'époque (plus ancien, ex: 4.6 Ga)
+        // endYears = fin de l'époque (plus récent, ex: 4.0 Ga)
+        // Si on est entre endYears et startYears, on est dans cette époque
+        if (yearsAgo >= era.endYears && yearsAgo < era.startYears) {
+            // Calculer le facteur de croûte terrestre molle
+            const moltenCrustFactor = getMoltenCrustFactor(yearsAgo);
+            
+            // Multiplier le facteur volcanique de l'époque par le facteur de croûte molle
+            return {
+                ...era,
+                volcanoFactor: era.volcanoFactor * moltenCrustFactor,
+                moltenCrustFactor: moltenCrustFactor // Exposer aussi le facteur pour debug
+            };
+        }
+    }
+    
+    // Si yearsAgo < 0 (futur) ou très récent, retourner l'époque actuelle
+    // Si yearsAgo >= 4.6e9 (avant la formation de la Terre), retourner l'Hadéen
+    if (yearsAgo < 0) {
+        return GEOLOGICAL_ERAS[GEOLOGICAL_ERAS.length - 1]; // Phanérozoïque (actuel)
+    }
+    if (yearsAgo >= GEOLOGICAL_ERAS[0].startYears) {
+        const era = GEOLOGICAL_ERAS[0]; // Hadéen (début de la Terre)
+        const moltenCrustFactor = getMoltenCrustFactor(yearsAgo);
+        return {
+            ...era,
+            volcanoFactor: era.volcanoFactor * moltenCrustFactor,
+            moltenCrustFactor: moltenCrustFactor
+        };
+    }
+    
+    // Par défaut, retourner l'époque actuelle (Phanérozoïque)
+    return GEOLOGICAL_ERAS[GEOLOGICAL_ERAS.length - 1];
+}
+
+// Exposer globalement
+if (typeof window !== 'undefined') {
+    window.GEOLOGICAL_ERAS = GEOLOGICAL_ERAS;
+    window.getGeologicalEra = getGeologicalEra;
+    window.getMoltenCrustFactor = getMoltenCrustFactor;
+}
+

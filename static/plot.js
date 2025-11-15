@@ -352,7 +352,7 @@ window.updatePlot = function updatePlot(data) {
     // Fonction helper pour créer une trace Planck
     function createPlanckTrace(T, label, color, showInLegend = false, dashPattern = 'dash') {
         const planck = data.lambda_range.map(l => {
-            const value = Math.PI * planckFunction(l, T) / 1e6;
+            const value = Math.PI * (window.planckFunction || function() { return 0; })(l, T) / 1e6;
             // Pour 255K, s'assurer que la valeur est visible même si faible
             if (T === 255 && value < 0.01) {
                 return 0.01; // Minimum visible

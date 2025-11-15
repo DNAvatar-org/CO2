@@ -24,6 +24,12 @@ if (typeof window !== 'undefined') {
     window.volcanoIceReduction = 0;
 }
 
+// ============================================================================
+// ÉPOQUES GÉOLOGIQUES ET FACTEUR VOLCANIQUE
+// ============================================================================
+// Les époques géologiques sont maintenant dans geology.js
+// Utiliser directement les fonctions globales exposées par ce module
+
 // Fonction pour désactiver tous les boutons
 function disableButtons() {
     calculationInProgress = true;
@@ -81,17 +87,21 @@ function enableButtons() {
             }
         }
     });
+    
+    // Remettre le timer à jour à la fin du processus de convergence
+    // pour que les tics automatiques reprennent immédiatement
+    timelineLastUpdate = performance.now();
 }
 
 // ============================================================================
 // HORLOGE / TIMELINE
 // ============================================================================
 let timelineFrame = 0; // Nombre de frames écoulées
-const YEARS_PER_FRAME = 100; // 1 frame = 100 ans (un doublement de CO2 prend ~100 ans)
+const YEARS_PER_FRAME = 10; // 1 frame = 10 ans (tic automatique toutes les secondes = +10 ans)
 // Note : Pour les sources industrielles ou volcaniques, on peut espérer un étalement dans le temps
-let timelineRunning = false; // État de l'horloge (désactivée par défaut - ne s'incrémente que lors des calculs/clics)
+let timelineRunning = true; // État de l'horloge (activée - tics automatiques de +10 ans/seconde)
 let timelineLastUpdate = performance.now();
-const TIMELINE_UPDATE_INTERVAL = 1000; // Mise à jour toutes les 1000ms (1 seconde = 100 ans) - UNIQUEMENT si timelineRunning = true
+const TIMELINE_UPDATE_INTERVAL = 1000; // Mise à jour toutes les 1000ms (1 seconde = 10 ans) - UNIQUEMENT si pas de calcul en cours
 
 function updateTimeline() {
     // Mettre à jour l'affichage (toujours, même si timelineRunning = false)
@@ -105,7 +115,7 @@ function updateTimeline() {
     const formattedYears = formatYears(years);
     
     if (timelineDisplay) {
-        timelineDisplay.textContent = `⏳ ${formattedYears}`;
+        timelineDisplay.innerHTML = `<span class="timeline-hourglass">⏳</span> ${formattedYears}`;
     }
     
     if (frameDisplay) {
@@ -114,29 +124,32 @@ function updateTimeline() {
     
     // Mettre à jour l'horloge dans l'en-tête d'info (prioritaire)
     if (infoTimeDisplay) {
-        infoTimeDisplay.textContent = `⏳ ${formattedYears}`;
+        infoTimeDisplay.innerHTML = `<span class="timeline-hourglass">⏳</span> ${formattedYears}`;
         infoTimeDisplay.style.display = 'inline-block';
         infoTimeDisplay.style.visibility = 'visible';
         infoTimeDisplay.style.opacity = '1';
     }
     
-    // Incrémenter automatiquement UNIQUEMENT si timelineRunning = true
-    if (timelineRunning) {
+    // Incrémenter automatiquement de +10 ans toutes les secondes UNIQUEMENT si pas de calcul en cours
+    // Si un calcul est en cours, on s'arrête, mais on reprend automatiquement après
+    if (timelineRunning && !calculationInProgress) {
         const currentTime = performance.now();
         const elapsed = currentTime - timelineLastUpdate;
         
-        // Incrémenter les frames selon l'intervalle
+        // Incrémenter les frames selon l'intervalle (1 seconde = 10 ans)
         if (elapsed >= TIMELINE_UPDATE_INTERVAL) {
             timelineFrame++;
             timelineLastUpdate = currentTime;
             const years = timelineFrame * YEARS_PER_FRAME;
             // Mettre à jour l'affichage immédiatement après l'incrémentation
             const formattedYears = formatYears(years);
-            if (timelineDisplay) timelineDisplay.textContent = `⏳ ${formattedYears}`;
+            if (timelineDisplay) timelineDisplay.innerHTML = `<span class="timeline-hourglass">⏳</span> ${formattedYears}`;
             if (frameDisplay) frameDisplay.textContent = timelineFrame.toString();
-            if (infoTimeDisplay) infoTimeDisplay.textContent = `⏳ ${formattedYears}`;
+            if (infoTimeDisplay) infoTimeDisplay.innerHTML = `<span class="timeline-hourglass">⏳</span> ${formattedYears}`;
         }
     }
+    // Si calculationInProgress = true, on ne fait rien (pas d'incrémentation, pas de mise à jour de timelineLastUpdate)
+    // pour que le tic reprenne immédiatement après la fin du calcul
     
     requestAnimationFrame(updateTimeline);
 }
@@ -181,7 +194,8 @@ function formatYears(years) {
     return result + ' ans';
 }
 
-// Fonction pour incrémenter le temps de 100 ans
+// Fonction pour incrémenter le temps de 10 ans (lors des clics sur boutons)
+// Note : Les tics automatiques ajoutent aussi +10 ans/seconde
 function incrementTimeline() {
     timelineFrame++;
     updateTimeline();
@@ -312,6 +326,10 @@ function updateCO2Level(state) {
     
     setTimeout(() => {
         // Calculer le scénario courant (peut retourner une Promise)
+        if (typeof window.simulateRadiativeTransfer !== 'function') {
+            console.error('[MAIN] simulateRadiativeTransfer n\'est pas disponible');
+            return;
+        }
         const result = window.simulateRadiativeTransfer(co2_fraction);
         const processResult = (data) => {
             plotData.current = data;
@@ -355,13 +373,11 @@ function updateCO2Level(state) {
             // Forçage total
             const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
             
-            // Calculer ΔT° à partir du forçage radiatif (calibration)
-            // ΔT° = différence par rapport à 255K (sans CO2)
-            // Sensibilité climatique calibrée pour correspondre aux observations
-            // Avec forçage -128.26 W/m² → ΔT° -56.11K, sensibilité = 0.44 K/(W/m²)
-            const CLIMATE_SENSITIVITY = 0.44; // K/(W/m²) - sensibilité climatique calibrée
-            // ΔT° calculé à partir du forçage (plus cohérent physiquement)
-            delta_temp = forcing_total * CLIMATE_SENSITIVITY;
+            // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)
+            // ΔT° = T° actuelle - T° référence (255K)
+            // C'est la différence directe de température, plus claire et compréhensible
+            const TEMP_REF_NO_CO2 = 255.0; // Température effective sans CO2 (référence)
+            delta_temp = temp_surface - TEMP_REF_NO_CO2;
             
             // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
             const TEMP_HABITABLE_OPTIMAL = 288; // 15°C
@@ -468,19 +484,30 @@ function divideCO2() {
 function multiplyCO2() {
     if (calculationInProgress) return; // Bloquer si calcul en cours
     
-    // ⚠️ MODIFICATION POUR GAMEPLAY : Un volcan ajoute une quantité fixe de CO2
-    // Au lieu de multiplier par 2, on ajoute l'équivalent d'un gros volcan
-    // Référence : Éruption du Pinatubo (1991) ≈ 20 Mt de SO2, mais CO2 aussi
-    // Pour un gros volcan : ~100-200 ppm de CO2 supplémentaire (approximation créative)
-    const VOLCAN_CO2_ADDITION = 150; // ppm de CO2 ajoutés par un gros volcan
+    // ⚠️ MODIFICATION POUR GAMEPLAY : Un volcan ajoute une quantité de CO2 selon l'époque géologique
+    // Au début de la Terre (Hadéen/Archéen), les volcans étaient beaucoup plus gros et nombreux
+    // Calculer l'époque actuelle selon le temps écoulé
+    const currentYears = timelineFrame * YEARS_PER_FRAME;
+    const era = (window.getGeologicalEra || function() { return { volcanoFactor: 1.0, co2PerVolcano: 150 }; })(currentYears);
+    
+    // CO2 par volcan selon l'époque (plus gros au début)
+    const CO2_PER_VOLCANO = era.co2PerVolcano; // ppm de CO2 par volcan
+    
+    // Facteur multiplicatif : au début de la Terre, un clic = plusieurs volcans
+    // Par exemple, à l'Hadéen, un clic = 10 volcans (facteur 10)
+    const volcanoCount = Math.floor(era.volcanoFactor); // Nombre de volcans équivalents
+    const VOLCAN_CO2_ADDITION = CO2_PER_VOLCANO * volcanoCount;
     
     const current_ppm = plotData.co2_ppm;
     const new_ppm = current_ppm + VOLCAN_CO2_ADDITION;
     const new_fraction = new_ppm * 1e-6;
     
-    // Effet volcanique : augmenter H2O de 1% et diminuer la glace de 1%
-    volcanoH2OBonus = Math.min(100, volcanoH2OBonus + 1); // Maximum 100%
-    volcanoIceReduction = Math.min(100, volcanoIceReduction + 1); // Maximum 100%
+    // Effet volcanique : augmenter H2O et diminuer la glace selon le nombre de volcans
+    // Si facteur = 10, on ajoute 10% au lieu de 1%
+    const h2oIncrement = Math.min(100, volcanoH2OBonus + era.volcanoFactor); // Maximum 100%
+    const iceIncrement = Math.min(100, volcanoIceReduction + era.volcanoFactor); // Maximum 100%
+    volcanoH2OBonus = h2oIncrement;
+    volcanoIceReduction = iceIncrement;
     
     // Exposer globalement pour les calculs
     if (typeof window !== 'undefined') {
@@ -557,6 +584,10 @@ function updateCO2LevelDirect(co2_fraction) {
         }
         
         // Calculer le scénario courant (peut retourner une Promise)
+        if (typeof window.simulateRadiativeTransfer !== 'function') {
+            console.error('[MAIN] simulateRadiativeTransfer n\'est pas disponible');
+            return;
+        }
         const result = window.simulateRadiativeTransfer(co2_fraction);
         currentCalculationPromise = result;
         
@@ -612,13 +643,11 @@ function updateCO2LevelDirect(co2_fraction) {
             // Forçage total
             const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
             
-            // Calculer ΔT° à partir du forçage radiatif (calibration)
-            // ΔT° = différence par rapport à 255K (sans CO2)
-            // Sensibilité climatique calibrée pour correspondre aux observations
-            // Avec forçage -128.26 W/m² → ΔT° -56.11K, sensibilité = 0.44 K/(W/m²)
-            const CLIMATE_SENSITIVITY = 0.44; // K/(W/m²) - sensibilité climatique calibrée
-            // ΔT° calculé à partir du forçage (plus cohérent physiquement)
-            delta_temp = forcing_total * CLIMATE_SENSITIVITY;
+            // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)
+            // ΔT° = T° actuelle - T° référence (255K)
+            // C'est la différence directe de température, plus claire et compréhensible
+            const TEMP_REF_NO_CO2 = 255.0; // Température effective sans CO2 (référence)
+            delta_temp = temp_surface - TEMP_REF_NO_CO2;
             
             // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
             const TEMP_HABITABLE_OPTIMAL = 288; // 15°C

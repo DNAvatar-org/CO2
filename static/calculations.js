@@ -2,23 +2,8 @@
 // CALCULS DE TRANSFERT RADIATIF EN JAVASCRIPT
 // ============================================================================
 
-// Constantes physiques
-// ✅ SCIENTIFIQUEMENT CERTAIN : Toutes ces constantes sont des valeurs mesurées et acceptées internationalement
-const PLANCK_H = 6.62607015e-34;      // Constante de Planck, J·s (CODATA 2018)
-const SPEED_OF_LIGHT = 2.998e8;       // Vitesse de la lumière, m/s (mesurée)
-const BOLTZMANN_KB = 1.380649e-23;    // Constante de Boltzmann, J/K (CODATA 2018)
-const STEFAN_BOLTZMANN = 5.670374419e-8; // Constante de Stefan-Boltzmann, W/(m²·K⁴) (dérivée des constantes fondamentales)
-
-// Constantes climatiques
-// ✅ SCIENTIFIQUEMENT CERTAIN : Valeur mesurée par satellites (variations ~1361-1366 W/m² selon cycle solaire)
-const SOLAR_CONSTANT = 1366;          // Constante solaire, W/m²
-// ✅ SCIENTIFIQUEMENT CERTAIN : Albedo terrestre moyen ~0.3 (30% réfléchi) - valeur acceptée par l'IPCC
-const ALBEDO_BASE = 0.3;               // Albédo de base terrestre (30% réfléchi)
-
-// Zone habitable pour la vie (températures en Kelvin)
-const TEMP_HABITABLE_MIN = 253;       // -20°C : limite inférieure pour la vie complexe
-const TEMP_HABITABLE_MAX = 323;       // 50°C : limite supérieure pour la vie complexe
-const TEMP_HABITABLE_OPTIMAL = 288;    // 15°C : température optimale pour la vie (référence)
+// Constantes physiques et climatiques sont maintenant dans physics.js et climate.js
+// Utiliser directement les constantes globales exposées par ces modules
 
 // Fonction pour calculer l'albedo dynamique basé sur la glace et les nuages
 // Modélisation créative inspirée de :
@@ -27,7 +12,7 @@ const TEMP_HABITABLE_OPTIMAL = 288;    // 15°C : température optimale pour la 
 // - Paramétrisation nuageuse simplifiée pour visualisation pédagogique
 function calculateAlbedo(T_surface_K, h2o_enabled) {
     const T_surface_C = T_surface_K - 273.15;
-    let albedo = ALBEDO_BASE;
+    let albedo = window.ALBEDO_BASE || 0.3;
     
     // Contribution de la glace (albedo augmente avec le froid)
     // Modélisation : transition progressive de l'albedo terrestre vers l'albedo glaciaire
@@ -55,6 +40,7 @@ function calculateAlbedo(T_surface_K, h2o_enabled) {
         ice_fraction = Math.max(0, ice_fraction - volcanoIceReduction);
         
         // Transition progressive : albedo = base + (glace - base) * fraction_glace
+        const ALBEDO_BASE = window.ALBEDO_BASE || 0.3;
         albedo = ALBEDO_BASE + (ice_albedo - ALBEDO_BASE) * ice_fraction;
     }
     
@@ -186,70 +172,14 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled) {
 // - Cette formule est utilisée dans tous les modèles climatiques (IPCC, GCM)
 function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled) {
     const albedo = calculateAlbedo(T_surface_K, h2o_enabled);
+    const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
     const flux_absorbed = SOLAR_CONSTANT * (1 - albedo) / 4; // Divisé par 4 car la surface de la sphère (4πr²) est 4 fois la section (πr²)
     console.log(`[FLUX SOLAIRE] T°=${T_surface_K.toFixed(1)}K, albedo=${(albedo*100).toFixed(1)}%, flux_absorbé=${flux_absorbed.toFixed(2)} W/m²`);
     return flux_absorbed;
 }
 
-// Fonction pour calculer le forçage radiatif du CO2
-// ✅ SCIENTIFIQUEMENT CERTAIN :
-// - La formule ΔF = 5.35 * ln(C/C₀) est la formule standard de Myhre et al. (1998)
-// - Cette formule est acceptée par l'IPCC et utilisée dans tous les modèles climatiques
-// - Le coefficient 5.35 W/m² est une valeur mesurée et validée expérimentalement
-// - La référence pré-industrielle de 280 ppm est une valeur paléoclimatique bien établie
-function calculateCO2Forcing(CO2_fraction) {
-    const CO2_ref = 280e-6; // Référence pré-industrielle (280 ppm) - ✅ scientifiquement accepté
-    if (CO2_fraction <= 0) return 0;
-    return 5.35 * Math.log(Math.max(CO2_fraction, CO2_ref) / CO2_ref); // W/m² (formule de Myhre et al. 1998)
-}
-
-// Fonction pour calculer le forçage radiatif de H2O (vapeur d'eau)
-// ⚠️ APPROXIMATION SIMPLIFIÉE POUR MODÉLISATION :
-// - Le forçage H2O réel est complexe et dépend de nombreux facteurs (humidité, altitude, température)
-// - En réalité, la vapeur d'eau contribue ~20-30 W/m² à l'effet de serre terrestre
-// - Les nuages ont un effet complexe : réchauffement (IR) vs refroidissement (albedo)
-// - Cette fonction est simplifiée pour le gameplay et évite l'emballement thermique
-// 
-// ✅ SCIENTIFIQUEMENT CERTAIN :
-// - La vapeur d'eau est le principal gaz à effet de serre (contribution ~60% de l'effet de serre total)
-// - Les nuages ont un effet net complexe qui dépend du type (cirrus vs stratus) et de l'altitude
-// - La rétroaction vapeur d'eau-température est une rétroaction positive bien documentée
-function calculateH2OForcing(h2o_enabled, cloud_coverage) {
-    if (!h2o_enabled) return 0;
-    // Forçage basé sur la couverture nuageuse et l'effet de serre de la vapeur d'eau
-    // Limiter la contribution des nuages pour éviter la rétroaction positive excessive
-    // Le forçage de base représente l'effet de serre de la vapeur d'eau elle-même
-    const base_forcing = 15; // Forçage de base de la vapeur d'eau (W/m²) - réduit pour éviter l'emballement
-    // Limiter la contribution des nuages : maximum 5 W/m² au lieu de 10
-    // Utiliser une fonction saturante pour limiter l'effet à haute couverture nuageuse
-    const cloud_forcing_max = 5; // Contribution maximale des nuages (W/m²)
-    const cloud_forcing = Math.min(cloud_forcing_max, cloud_coverage * cloud_forcing_max); // Saturation à 100% de couverture
-    return base_forcing + cloud_forcing; // W/m²
-}
-
-// Fonction pour calculer le forçage radiatif de l'albedo (négatif)
-// Un albedo plus élevé réduit le flux solaire absorbé
-// 
-// ⚠️ WARNING - MODIFICATION POUR GAMEPLAY ⚠️
-// L'effet d'albedo est divisé par 2 pour des raisons de gameplay.
-// Cette modification réduit l'impact scientifique réel de l'albedo sur le climat.
-// En réalité, le forçage radiatif de l'albedo suit la formule : ΔF = S_0/4 * (A_ref - A_actuel)
-// 
-// ✅ SCIENTIFIQUEMENT CERTAIN : 
-// - La formule de base ΔF = S_0/4 * (A_ref - A_actuel) est bien établie (IPCC, modèles climatiques)
-// - Un albedo plus élevé réduit effectivement le flux solaire absorbé (forçage négatif)
-// - La constante solaire S_0 ≈ 1366 W/m² est une valeur mesurée et acceptée
-// - La division par 4 vient de la géométrie sphérique (surface 4πr² vs section πr²)
-function calculateAlbedoForcing(albedo) {
-    const ALBEDO_REF = 0.3; // Albedo de référence (✅ scientifiquement accepté : ~0.3 pour la Terre)
-    // Forçage négatif : ΔF = S_0/4 * (A_ref - A_actuel)
-    // Si albedo augmente, le forçage devient plus négatif (moins d'absorption)
-    const forcing_scientific = SOLAR_CONSTANT / 4 * (ALBEDO_REF - albedo); // W/m² (négatif si albedo > 0.3)
-    
-    // ⚠️ MODIFICATION POUR GAMEPLAY : Diviser par 2 pour réduire l'impact
-    // Cette réduction n'est pas scientifiquement justifiée, mais nécessaire pour l'équilibrage du jeu
-    return forcing_scientific / 2;
-}
+// Les fonctions de forçage radiatif sont maintenant dans climate.js
+// Utiliser directement les fonctions globales exposées par ce module (window.calculateCO2Forcing, etc.)
 
 // Valeurs de référence
 const CO2_PREINDUSTRIAL = 280e-6;     // 280 ppm
@@ -273,15 +203,25 @@ if (typeof window !== 'undefined') {
 // FONCTION DE PLANCK
 // ============================================================================
 
-// ✅ SCIENTIFIQUEMENT CERTAIN :
-// - La loi de Planck B(λ,T) = (2hc²/λ⁵) / (exp(hc/λkT) - 1) est une loi fondamentale de la physique
-// - Dérivée par Max Planck en 1900, elle décrit le spectre d'émission d'un corps noir
-// - Cette formule est exacte et utilisée dans tous les modèles de transfert radiatif
-// - Les constantes utilisées (h, c, k) sont des constantes fondamentales mesurées avec précision
-function planckFunction(lambda, T) {
-    const term1 = (2 * PLANCK_H * SPEED_OF_LIGHT * SPEED_OF_LIGHT) / Math.pow(lambda, 5);
-    const term2 = Math.exp((PLANCK_H * SPEED_OF_LIGHT) / (lambda * BOLTZMANN_KB * T)) - 1;
-    return term1 / term2; // W/(m²·m·sr) - Intensité spectrale d'un corps noir
+// La fonction planckFunction est maintenant dans physics.js
+// Utiliser directement window.planckFunction pour éviter les conflits de nom
+function getPlanckFunction() {
+    if (typeof window !== 'undefined' && typeof window.planckFunction === 'function') {
+        return window.planckFunction;
+    }
+    // Fallback si physics.js n'est pas chargé
+    return function(lambda, T) {
+        const PLANCK_H = 6.62607015e-34;
+        const SPEED_OF_LIGHT = 2.998e8;
+        const BOLTZMANN_KB = 1.380649e-23;
+        const term1 = (2 * PLANCK_H * SPEED_OF_LIGHT * SPEED_OF_LIGHT) / Math.pow(lambda, 5);
+        const term2 = Math.exp((PLANCK_H * SPEED_OF_LIGHT) / (lambda * BOLTZMANN_KB * T)) - 1;
+        return term1 / term2;
+    };
+}
+// Fonction locale pour utiliser planckFunction sans conflit
+function localPlanckFunction(lambda, T) {
+    return getPlanckFunction()(lambda, T);
 }
 
 // ============================================================================
@@ -312,6 +252,7 @@ function temperature(z, CO2_fraction = null, T0_override = null) {
         const h2o_enabled_temp = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
             ? window.waterVaporEnabled 
             : waterVaporEnabled;
+        const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
         const T0_no_greenhouse = Math.pow(calculateSolarFluxAbsorbed(255, false) / STEFAN_BOLTZMANN, 0.25);
         
         if (co2_frac === 0 || co2_frac === null) {
@@ -337,6 +278,7 @@ function temperature(z, CO2_fraction = null, T0_override = null) {
 }
 
 function airNumberDensity(z, CO2_fraction = null, T0_override = null) {
+    const BOLTZMANN_KB = window.BOLTZMANN_KB || 1.380649e-23;
     return pressure(z) / (BOLTZMANN_KB * temperature(z, CO2_fraction, T0_override));
 }
 
@@ -442,7 +384,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     
     // Condition limite : flux émis par la surface avec T0_test
     const earth_flux = lambda_range.map(lambda => 
-        Math.PI * planckFunction(lambda, T0_test) * delta_lambda
+        Math.PI * localPlanckFunction(lambda, T0_test) * delta_lambda
     );
     
     // Debug: analyser l'émission dans la zone < 9 microns
@@ -497,7 +439,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
                 const abs_flux = Math.min(kappa * delta_z * flux_in[j], flux_in[j]);
                 // 2. Émission : le CO2/H2O réémet à sa température (loi de Planck)
                 //    F_émis = τ × π × B_λ(T_couche) × Δλ
-                const em_flux = optical_thickness[i][j] * Math.PI * planckFunction(lambda, T) * delta_lambda;
+                const em_flux = optical_thickness[i][j] * Math.PI * localPlanckFunction(lambda, T) * delta_lambda;
                 // 3. Flux sortant = flux entrant - absorption + émission
                 //    NOTE : Le "palier" observé dans les courbes correspond à F_émis
                 //    Quand l'absorption est totale (F_absorbé ≈ F_entrant),
@@ -536,6 +478,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     // - Cette loi décrit la température effective d'un corps noir en équilibre radiatif
     // - Dérivée de la loi de Planck, elle est exacte pour un corps noir
     // - La constante σ = 5.67×10⁻⁸ W/(m²·K⁴) est une constante fondamentale
+    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
     const temp_eff = Math.pow(result.total_flux / STEFAN_BOLTZMANN, 0.25);
     // Calculer la température terrestre en °C à partir de T0_test (température au sol en K)
     const temp_surface_c = T0_test - 273.15;
@@ -562,11 +505,11 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     // Forçage total
     const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
     
-    // Calculer ΔT° à partir du forçage radiatif (calibration)
-    // Sensibilité climatique calibrée pour correspondre aux observations
-    // Avec forçage -128.26 W/m² → ΔT° -56.11K, sensibilité = 0.44 K/(W/m²)
-    const CLIMATE_SENSITIVITY = 0.44; // K/(W/m²) - sensibilité climatique calibrée
-    const delta_temp = forcing_total * CLIMATE_SENSITIVITY;
+    // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)
+    // ΔT° = T° actuelle - T° référence (255K)
+    // C'est la différence directe de température, plus claire et compréhensible
+    const TEMP_REF_NO_CO2 = 255.0; // Température effective sans CO2 (référence)
+    const delta_temp = T0_test - TEMP_REF_NO_CO2;
     
     // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
     // ΔT° habitable = T° actuelle - T° optimale habitable
@@ -685,8 +628,11 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     }
     
     // Dichotomie pour trouver T0 qui donne flux_total = flux_solaire_absorbé
-    let T0_min = 200; // Borne inférieure (K)
-    let T0_max = h2o_enabled ? 400 : 350; // Borne supérieure plus élevée si H2O activé
+    // Réduire les pas initiaux en centrant les bornes autour de T0_initial
+    // Intervalle initial plus serré : ±50K autour de T0_initial (au lieu de 200-350K)
+    const INITIAL_RANGE = 50; // Intervalle initial autour de T0_initial (K)
+    let T0_min = Math.max(200, T0_initial - INITIAL_RANGE); // Borne inférieure, minimum 200K
+    let T0_max = Math.min(h2o_enabled ? 400 : 350, T0_initial + INITIAL_RANGE); // Borne supérieure, maximum selon H2O
     let T0 = T0_initial;
     const tolerance = 0.1; // Tolérance sur le flux (W/m²)
     const max_iterations = 20;
@@ -989,14 +935,13 @@ function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, opt
 // Exposer les fonctions globalement pour être accessibles depuis main.js
 if (typeof window !== 'undefined') {
     window.simulateRadiativeTransfer = simulateRadiativeTransfer;
-    window.calculateCO2Forcing = calculateCO2Forcing;
-    window.calculateH2OForcing = calculateH2OForcing;
-    window.calculateAlbedoForcing = calculateAlbedoForcing;
+    // Les fonctions de forçage sont maintenant dans climate.js, pas besoin de les exposer ici
+    console.log('[CALCULATIONS] simulateRadiativeTransfer exposé sur window');
 }
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        planckFunction,
+        planckFunction: getPlanckFunction(),
         temperature,
         simulateRadiativeTransfer,
         CO2_PREINDUSTRIAL,

@@ -378,9 +378,18 @@ h1 {
     opacity: 1 !important;
 }
 
+/* Agrandir le sablier ⏳ dans le temps */
+.timeline-hourglass {
+    font-size: 1.5em; /* 1.5x plus gros que le texte normal */
+    line-height: 1;
+    display: inline-block;
+    vertical-align: middle;
+}
+
 .info-unit-header .info-unit {
     text-align: right;
     font-style: italic;
+    color: #667eea; /* Bleu pour (W/m²) */
 }
 
 .info-separator {
