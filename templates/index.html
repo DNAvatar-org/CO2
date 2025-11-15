@@ -13,6 +13,29 @@
             },
             options: {
                 skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            },
+            startup: {
+                ready: () => {
+                    MathJax.startup.defaultReady();
+                    // Après le rendu MathJax, ajouter le code LaTeX sélectionnable sous chaque formule
+                    setTimeout(() => {
+                        document.querySelectorAll('.formula-item').forEach(item => {
+                            if (!item.querySelector('.latex-source')) {
+                                // Récupérer le code LaTeX original depuis le HTML
+                                const htmlContent = item.innerHTML;
+                                const latexMatch = htmlContent.match(/\$\$(.*?)\$\$/);
+                                if (latexMatch && latexMatch[1]) {
+                                    const latex = latexMatch[1].trim();
+                                    const source = document.createElement('div');
+                                    source.className = 'latex-source';
+                                    source.textContent = latex;
+                                    source.style.cssText = 'font-size: 9px; color: #666; margin-top: 4px; font-family: monospace; user-select: text; cursor: text; opacity: 0.7;';
+                                    item.appendChild(source);
+                                }
+                            }
+                        });
+                    }, 500); // Attendre que MathJax ait fini de rendre
+                }
             }
         };
     </script>
@@ -30,7 +53,13 @@
                 <div class="info-display">
                     <div class="info-row">
                         <span class="info-label">CO₂:</span>
+                        <span class="info-emoji" id="co2-emoji">🌵</span>
                         <span class="info-value" id="co2-ppm">0 ppm</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">H₂O:</span>
+                        <span class="info-emoji" id="h2o-emoji">☁️</span>
+                        <span class="info-value" id="h2o-status">Désactivé</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">T° Terrestre:</span>

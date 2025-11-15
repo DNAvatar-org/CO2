@@ -143,8 +143,7 @@ function initPlot() {
             range: [0, 50],
             tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
             titlefont: { color: 'white' }, // Titre de l'axe X en blanc
-            showgrid: true,
-            gridcolor: 'rgba(255, 255, 255, 0.5)', // Lignes verticales blanches à 50%
+            showgrid: false, // Pas de grille verticale
             gridwidth: 1
         },
         yaxis: {
@@ -158,14 +157,20 @@ function initPlot() {
             title: "Altitude (km)",
             overlaying: 'y',
             side: 'right',
-            range: [80, 0], // Inversé : 80 km en haut (correspond à y=0), 0 km en bas (correspond à y=40)
+            range: [0, 80], // 0 km en bas, 80 km en haut
             position: 1.0,
-            tickfont: { color: 'white' },
-            titlefont: { color: 'white' },
-            showgrid: false // Pas de grille pour l'axe secondaire
+            tickfont: { color: 'black', size: 12 },
+            titlefont: { color: 'black', size: 14 },
+            showline: true,
+            linecolor: 'rgba(0, 0, 0, 0.5)',
+            linewidth: 1,
+            mirror: 'ticks',
+            showgrid: false, // Pas de grille pour l'axe secondaire
+            zeroline: false,
+            visible: true
         },
         showlegend: false,
-        margin: { l: 50, r: 80, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe
+        margin: { l: 50, r: 100, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe (100px)
         plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
         paper_bgcolor: 'rgba(0,0,0,0)' // Fond du papier transparent
     };
@@ -309,7 +314,7 @@ window.updatePlot = function updatePlot(data) {
     }
     
     // Fonction helper pour créer une trace Planck
-    function createPlanckTrace(T, label, color, showInLegend = false) {
+    function createPlanckTrace(T, label, color, showInLegend = false, dashPattern = 'dash') {
         const planck = data.lambda_range.map(l => {
             const value = Math.PI * planckFunction(l, T) / 1e6;
             // Pour 255K, s'assurer que la valeur est visible même si faible
@@ -318,13 +323,15 @@ window.updatePlot = function updatePlot(data) {
             }
             return value;
         });
+        // Utiliser la couleur fournie (noir pour les références, couleur de l'absorption pour la courbe courante)
+        const lineColor = color || 'black';
         return {
             x: lambda_planck,
             y: planck,
             type: 'scatter',
             mode: 'lines',
             name: label,
-            line: { dash: 'dash', width: 1, color: color },
+            line: { dash: dashPattern, width: 1, color: lineColor },
             showlegend: showInLegend,
             hovertemplate: showInLegend ? label + '<extra></extra>' : '<extra></extra>'
         };
@@ -332,16 +339,28 @@ window.updatePlot = function updatePlot(data) {
     
     // 1. Afficher toutes les courbes Planck de référence
     if (window.PLANCK_TEMPERATURES) {
+        // Vérifier si getReferencePattern est disponible, sinon utiliser un fallback
+        const getPattern = typeof window.getReferencePattern === 'function' 
+            ? window.getReferencePattern 
+            : function(index) {
+                // Fallback : utiliser les 4 patterns disponibles directement
+                const fallbackPatterns = ['dash', 'longdash', 'dashdot', 'longdashdot'];
+                return fallbackPatterns[index % 4];
+            };
+        
+        const totalCount = window.PLANCK_TEMPERATURES.length;
         window.PLANCK_TEMPERATURES.forEach((T, index) => {
-            const normalized = index / (window.PLANCK_TEMPERATURES.length - 1);
-            const color = tempToColor(T);
             const label = `${T}K (${(T - 273.15).toFixed(0)}°C)`;
-            const planck = createPlanckTrace(T, label, color, false); // Pas de légende dans le graphique
-            // Augmenter l'épaisseur pour les températures basses (plus visibles)
-            if (T <= 180) {
-                planck.line.width = 1.5;
+            // Utiliser la fonction pour obtenir le pattern
+            const dashPattern = getPattern(index);
+            const planck = createPlanckTrace(T, label, 'black', false, dashPattern); // Toutes en noir avec différents motifs
+            // Utiliser la fonction générique pour obtenir l'épaisseur selon le nombre total de courbes
+            if (typeof window.getLineWidth === 'function') {
+                planck.line.width = window.getLineWidth(index, totalCount);
+            } else {
+                // Fallback : très fin pour les 4 premières, plus épais pour les suivantes
+                planck.line.width = index < 4 ? 0.5 : 1.5;
             }
-            // 255K : même style que les autres, seule la couleur change (vert forêt via tempToColor)
             traces.push(planck);
         });
     }
@@ -362,22 +381,35 @@ window.updatePlot = function updatePlot(data) {
         trace_absorption.showlegend = false; // Pas dans la légende
         traces.push(trace_absorption);
         
-        // Courbe Planck correspondante (pointillée) à la température effective - toujours en gris avec dots
-        const planck_current = createPlanckTrace(T_current, `Planck ${data.co2_ppm.toFixed(0)} ppm`, 'gray', false);
+        // Courbe Planck correspondante (pointillée) à la température effective - petits points avec la même couleur que l'absorption
+        const planck_current = createPlanckTrace(T_current, `Planck ${data.co2_ppm.toFixed(0)} ppm`, color_current, false, 'dot');
         planck_current.line.width = 2; // Plus épaisse pour la courbe sélectionnée
-        planck_current.line.dash = 'dot'; // Points au lieu de tirets
+        planck_current.line.color = color_current; // Même couleur que la courbe d'absorption
         traces.push(planck_current);
     }
     
-    // 3. Ajouter une ligne horizontale pour la tropopause (11 km)
+    // 3. Ajouter une trace invisible pour forcer la création de l'axe yaxis2 (altitude)
+    // Cette trace est nécessaire car Plotly ne crée un axe que s'il est utilisé par au moins une trace
+    traces.push({
+        x: [0, 0], // Points invisibles à x=0
+        y: [0, 80], // De 0 à 80 km sur l'axe altitude
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Axe altitude',
+        line: { color: 'rgba(0,0,0,0)', width: 0 }, // Invisible
+        showlegend: false,
+        hoverinfo: 'skip',
+        yaxis: 'y2' // Utiliser l'axe secondaire (altitude)
+    });
+    
+    // 4. Ajouter une ligne horizontale pour la tropopause (11 km)
     // Convertir 11 km en valeur de l'axe Y principal (0-40) pour l'aligner
-    // L'axe altitude va de 0 à 80 km, donc 11 km correspond à 11/80 = 0.1375 de la hauteur
-    // Sur l'axe Y principal (0-40), cela correspond à 40 * 0.1375 = 5.5
-    // Mais on veut l'aligner avec le haut (40), donc on inverse : 40 - (11/80 * 40) = 40 - 5.5 = 34.5
-    // En fait, on veut que 80 km (haut) corresponde à 40 (haut de l'axe Y)
+    // L'axe altitude va de 0 à 80 km (0 en bas, 80 en haut), aligné avec l'axe Y principal (0 en bas, 40 en haut)
+    // Donc 0 km altitude = 0 sur l'axe Y, 80 km = 40 sur l'axe Y
+    // 11 km = 40 * (11/80) = 5.5 sur l'axe Y
     const z_trop_km = 11; // Tropopause à 11 km
     const z_max_km = 80; // Altitude max à 80 km
-    const y_trop = 40 - (z_trop_km / z_max_km) * 40; // Position sur l'axe Y (0-40)
+    const y_trop = 40 * (z_trop_km / z_max_km); // Position sur l'axe Y (0-40), 0 km = 0, 80 km = 40
     
     traces.push({
         x: [0, 50], // De 0 à 50 μm
@@ -385,21 +417,20 @@ window.updatePlot = function updatePlot(data) {
         type: 'scatter',
         mode: 'lines',
         name: 'Tropopause (11 km)',
-        line: { color: 'rgba(255, 255, 255, 0.7)', width: 1, dash: 'dash' },
+        line: { color: 'rgba(0, 0, 0, 0.5)', width: 1, dash: 'dash' },
         showlegend: false,
         hovertemplate: 'Tropopause (11 km)<extra></extra>',
         yaxis: 'y' // Utiliser l'axe Y principal
     });
     
-    Plotly.react('plot-container', traces, {
-        margin: { l: 50, r: 80, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe altitude
+    const updateLayout = {
+        margin: { l: 50, r: 100, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe altitude (100px)
         xaxis: { 
             range: [0, 50],
             title: "Longueur d'onde (μm)",
             tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
             titlefont: { color: 'white' }, // Titre de l'axe X en blanc
-            showgrid: true,
-            gridcolor: 'rgba(255, 255, 255, 0.5)', // Lignes verticales blanches à 50%
+            showgrid: false, // Pas de grille verticale
             gridwidth: 1
         },
         yaxis: { 
@@ -415,13 +446,38 @@ window.updatePlot = function updatePlot(data) {
             side: 'right',
             range: [80, 0], // Inversé : 80 km en haut (correspond à y=0), 0 km en bas (correspond à y=40)
             position: 1.0,
-            tickfont: { color: 'white' },
-            titlefont: { color: 'white' },
-            showgrid: false // Pas de grille pour l'axe secondaire
+            tickfont: { color: 'black', size: 12 },
+            titlefont: { color: 'black', size: 14 },
+            showline: true,
+            linecolor: 'black',
+            linewidth: 3,
+            mirror: 'ticks',
+            showgrid: false,
+            zeroline: false,
+            visible: true
         },
         plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
         paper_bgcolor: 'rgba(0,0,0,0)' // Fond du papier transparent
-    }).then(() => {
+    };
+    
+    updateLayout.yaxis2 = {
+        title: "Altitude (km)",
+        overlaying: 'y',
+        side: 'right',
+        range: [0, 80], // 0 km en bas, 80 km en haut
+        position: 1.0,
+        tickfont: { color: 'black', size: 12 },
+        titlefont: { color: 'black', size: 14 },
+        showline: true,
+        linecolor: 'rgba(0, 0, 0, 0.5)',
+        linewidth: 1,
+        mirror: 'ticks',
+        showgrid: false,
+        zeroline: false,
+        visible: true
+    };
+    
+    Plotly.react('plot-container', traces, updateLayout).then(() => {
         // Observer le parent pour détecter quand Plotly modifie le DOM
         const plotContainer = document.getElementById('plot-container');
         const canvas = document.getElementById('spectral-visualization');

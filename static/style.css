@@ -206,7 +206,7 @@ h1 {
 
 .info-row {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
     margin-bottom: 10px;
     font-size: 14px;
 }
@@ -219,6 +219,26 @@ h1 {
 .info-value {
     color: #333;
     font-weight: 600;
+}
+
+.info-emoji {
+    font-size: 18px;
+    margin: 0 5px 0 0;
+    user-select: none;
+    order: 1; /* Après le label, avant la valeur */
+}
+
+.info-label {
+    color: #666;
+    font-weight: 500;
+    order: 0; /* Premier */
+}
+
+.info-value {
+    color: #333;
+    font-weight: 600;
+    order: 2; /* Dernier */
+    margin-left: auto; /* Pousse la valeur à droite */
 }
 
 .button-container {
@@ -354,6 +374,12 @@ h1 {
     border-left: none;
     border-right: none;
     flex-shrink: 0;
+}
+
+.legend-pattern {
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
 }
 
 .legend-color-solid {

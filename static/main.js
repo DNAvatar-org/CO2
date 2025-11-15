@@ -325,7 +325,30 @@ function updateCO2LevelDirect(co2_fraction) {
 
 function updateDisplay(data) {
     if (data && data.co2_ppm !== undefined) {
-        document.getElementById('co2-ppm').textContent = `${Math.round(data.co2_ppm)} ppm`;
+        const ppm = Math.round(data.co2_ppm);
+        document.getElementById('co2-ppm').textContent = `${ppm} ppm`;
+        
+        // Mettre à jour l'emoji selon le niveau de CO2
+        const emojiElement = document.getElementById('co2-emoji');
+        if (emojiElement) {
+            if (ppm === 0) {
+                emojiElement.textContent = '🧊'; // Iceberg pour 0 ppm
+            } else if (ppm < 200) {
+                emojiElement.textContent = '🌵'; // Cactus pour très bas
+            } else if (ppm < 350) {
+                emojiElement.textContent = '🌲'; // Arbre pour pré-industriel (~280 ppm)
+            } else if (ppm < 500) {
+                emojiElement.textContent = '🏭'; // Usine pour actuel (~420 ppm)
+            } else {
+                emojiElement.textContent = '🌋'; // Volcan pour très élevé
+            }
+        }
+    }
+    
+    // Mettre à jour le statut H2O
+    const h2oStatusElement = document.getElementById('h2o-status');
+    if (h2oStatusElement && typeof window.waterVaporEnabled !== 'undefined') {
+        h2oStatusElement.textContent = window.waterVaporEnabled ? 'Activé' : 'Désactivé';
     }
     if (data && data.temp_surface !== undefined && data.temp_surface > 0) {
         document.getElementById('temp-surface').textContent = `${data.temp_surface.toFixed(1)} K (${data.temp_surface_c.toFixed(1)} °C)`;
@@ -342,68 +365,47 @@ function updateDisplay(data) {
 }
 
 function updateLegend(data) {
-    // Créer la légende en grille 2 colonnes x 4 lignes
+    // Créer la légende avec les motifs de traits
     const grid = document.getElementById('legend-planck-grid');
-    if (grid && window.PLANCK_TEMPERATURES && typeof window.tempToColor === 'function') {
+    if (grid && window.PLANCK_TEMPERATURES) {
         grid.innerHTML = '';
         
-        // Configuration de la grille : 2 colonnes
+        // Configuration de la grille : 1 colonne (vertical)
         grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = '1fr 1fr';
-        grid.style.gap = '10px';
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.gap = '8px';
         
-        // Températures à afficher : 120, 180, 225, 255, 275, 300, 330 K
-        const temps_to_show = [120, 180, 225, 255, 275, 300, 330];
+        // Trier les températures par ordre croissant
+        const sortedTemps = [...window.PLANCK_TEMPERATURES].sort((a, b) => a - b);
         
-        // Afficher les 3 premières températures (120, 180, 225)
-        for (let i = 0; i < 3; i++) {
-            const T = temps_to_show[i];
-            const color = window.tempToColor(T);
+        // Créer un élément pour chaque température
+        sortedTemps.forEach((T, sortedIndex) => {
+            // Trouver l'index original pour obtenir le bon motif
+            const originalIndex = window.PLANCK_TEMPERATURES.indexOf(T);
+            // Utiliser la fonction commune pour obtenir le pattern
+            const dashPattern = typeof window.getReferencePattern === 'function' 
+                ? window.getReferencePattern(originalIndex) 
+                : 'dash'; // Fallback
+            
             const item = document.createElement('div');
             item.className = 'legend-planck-item';
+            
+            // Créer un élément SVG pour représenter le motif de trait
+            const svgPattern = typeof window.createDashPatternSVG === 'function'
+                ? window.createDashPatternSVG(dashPattern)
+                : '';
+            
+            let label = `${T}K (${(T - 273.15).toFixed(0)}°C)`;
+            if (T === 255) {
+                label += ' - T° minimale';
+            }
+            
             item.innerHTML = `
-                <span class="legend-color-dashed" style="border-color: ${color};"></span>
-                <span class="legend-text">${T}K (${(T - 273.15).toFixed(0)}°C)</span>
+                <span class="legend-pattern">${svgPattern}</span>
+                <span class="legend-text">${label}</span>
             `;
             grid.appendChild(item);
-        }
-        
-        // Afficher 255K avec note "T° minimale"
-        const T_255 = 255;
-        const color_255 = window.tempToColor(T_255);
-        const item_255 = document.createElement('div');
-        item_255.className = 'legend-planck-item';
-        item_255.innerHTML = `
-            <span class="legend-color-dashed" style="border-color: ${color_255};"></span>
-            <span class="legend-text">${T_255}K (${(T_255 - 273.15).toFixed(0)}°C) - T° minimale</span>
-        `;
-        grid.appendChild(item_255);
-        
-        // Afficher 275K (Or/jaune)
-        const T_275 = 275;
-        const color_275 = window.tempToColor(T_275);
-        const item_275 = document.createElement('div');
-        item_275.className = 'legend-planck-item';
-        item_275.innerHTML = `
-            <span class="legend-color-dashed" style="border-color: ${color_275};"></span>
-            <span class="legend-text">${T_275}K (${(T_275 - 273.15).toFixed(0)}°C)</span>
-        `;
-        grid.appendChild(item_275);
-        
-        // Afficher les 2 dernières températures (300, 330)
-        for (let i = 5; i < 7; i++) {
-            const T = temps_to_show[i];
-            const color = window.tempToColor(T);
-            const item = document.createElement('div');
-            item.className = 'legend-planck-item';
-            item.innerHTML = `
-                <span class="legend-color-dashed" style="border-color: ${color};"></span>
-                <span class="legend-text">${T}K (${(T - 273.15).toFixed(0)}°C)</span>
-            `;
-            grid.appendChild(item);
-        }
-        
-        // 280 et 420 ppm supprimés temporairement
+        });
         
         // Forcer le rendu MathJax après insertion
         if (window.MathJax && window.MathJax.typesetPromise) {
@@ -411,10 +413,10 @@ function updateLegend(data) {
                 window.MathJax.typesetPromise([grid]).catch((err) => console.log('MathJax error:', err));
             }, 100);
         }
-        
-        // La formule de Planck est maintenant dans left-bottom, pas besoin de la mettre ici
     }
 }
+
+// Les fonctions createDashPatternSVG et getDashArray sont maintenant dans patterns.js
 
 // Fonction pour activer/désactiver la vapeur d'eau
 function toggleWaterVapor() {
@@ -425,6 +427,13 @@ function toggleWaterVapor() {
     }
     
     window.waterVaporEnabled = !window.waterVaporEnabled;
+    
+    // Mettre à jour l'affichage H2O
+    const h2oStatusElement = document.getElementById('h2o-status');
+    if (h2oStatusElement) {
+        h2oStatusElement.textContent = window.waterVaporEnabled ? 'Activé' : 'Désactivé';
+    }
+    
     const btn = document.getElementById('btn-cloud');
     if (btn) {
         if (window.waterVaporEnabled) {
