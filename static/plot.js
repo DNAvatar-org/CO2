@@ -210,7 +210,7 @@ function initPlot() {
             visible: true
         },
         showlegend: false,
-        margin: { l: 50, r: 100, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe (100px)
+        margin: { l: 50, r: 100, t: 0, b: 0 }, // Marges réduites pour toucher les bords
         plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
         paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
         annotations: [
@@ -223,11 +223,7 @@ function initPlot() {
                 yref: 'y',
                 xanchor: 'left',
                 yanchor: 'middle',
-                font: { color: 'black', size: 11 },
-                bgcolor: 'rgba(255, 255, 255, 0.7)',
-                bordercolor: 'rgba(0, 0, 0, 0.5)',
-                borderwidth: 1,
-                borderpad: 3
+                font: { color: 'rgba(0, 0, 0, 0.5)', size: 11 } // Même couleur que le trait, pas de cadre
             }
         ]
     };
@@ -288,14 +284,14 @@ function resizeCanvasToPlot() {
             if (wrapper) {
                 const wrapperRect = wrapper.getBoundingClientRect();
                 const left = (targetRect.left - wrapperRect.left) - charWidth;
-                const top = targetRect.top - wrapperRect.top;
+                const top = targetRect.top - wrapperRect.top - 0; // Remonté pour toucher le bord
                 canvas.style.setProperty('left', left + 'px', 'important');
                 canvas.style.setProperty('top', top + 'px', 'important');
             } else {
                 // Fallback : position relative au plot-container
                 const plotRect = plotContainer.getBoundingClientRect();
                 const left = (targetRect.left - plotRect.left) - charWidth;
-                const top = targetRect.top - plotRect.top;
+                const top = targetRect.top - plotRect.top - 0; // Remonté pour toucher le bord
                 canvas.style.setProperty('left', left + 'px', 'important');
                 canvas.style.setProperty('top', top + 'px', 'important');
             }
@@ -507,7 +503,7 @@ window.updatePlot = function updatePlot(data) {
         type: 'scatter',
         mode: 'lines',
         name: 'Tropopause (11 km)',
-        line: { color: 'rgba(0, 0, 0, 0.5)', width: 1, dash: 'dash' },
+        line: { color: 'rgba(0, 0, 0, 0.5)', width: 1, dash: 'dot' }, // Points au lieu de tirets
         showlegend: false,
         hovertemplate: 'Tropopause (11 km)<extra></extra>',
         yaxis: 'y' // Utiliser l'axe Y principal
@@ -568,11 +564,7 @@ window.updatePlot = function updatePlot(data) {
                 yref: 'y',
                 xanchor: 'left',
                 yanchor: 'middle',
-                font: { color: 'black', size: 11 },
-                bgcolor: 'rgba(255, 255, 255, 0.7)',
-                bordercolor: 'rgba(0, 0, 0, 0.5)',
-                borderwidth: 1,
-                borderpad: 3
+                font: { color: 'rgba(0, 0, 0, 0.5)', size: 11 } // Même couleur que le trait, pas de cadre
             }
         ]
     };

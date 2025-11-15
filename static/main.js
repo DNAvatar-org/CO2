@@ -30,9 +30,11 @@ function updateTimeline() {
     // Mettre à jour l'affichage
     const timelineDisplay = document.getElementById('timeline-display');
     const frameDisplay = document.getElementById('frame-display');
+    const infoTimeDisplay = document.getElementById('info-time');
+    
+    const years = timelineFrame * YEARS_PER_FRAME;
     
     if (timelineDisplay) {
-        const years = timelineFrame * YEARS_PER_FRAME;
         timelineDisplay.textContent = `${years} ans`;
     }
     
@@ -40,7 +42,17 @@ function updateTimeline() {
         frameDisplay.textContent = timelineFrame.toString();
     }
     
+    if (infoTimeDisplay) {
+        infoTimeDisplay.textContent = `${years} ans`;
+    }
+    
     requestAnimationFrame(updateTimeline);
+}
+
+// Fonction pour incrémenter le temps de 100 ans
+function incrementTimeline() {
+    timelineFrame++;
+    updateTimeline();
 }
 
 // Démarrer l'horloge
@@ -253,14 +265,17 @@ function setIceberg() {
     // Forcer à 0 ppm
     currentState = 0;
     plotData.co2_ppm = 0;
+    incrementTimeline(); // +100 ans
     updateCO2Level(0); // 0 ppm
 }
 
 function setPreindustrial() {
+    incrementTimeline(); // +100 ans
     updateCO2Level(1); // 280 ppm
 }
 
 function setCurrent() {
+    incrementTimeline(); // +100 ans
     updateCO2Level(2); // 420 ppm
 }
 
@@ -269,6 +284,8 @@ function divideCO2() {
     const current_ppm = plotData.co2_ppm;
     const new_ppm = current_ppm / 2;
     const new_fraction = new_ppm * 1e-6;
+    
+    incrementTimeline(); // +100 ans
     
     // Trouver l'état correspondant ou créer un nouvel état
     if (new_ppm === 0) {
@@ -291,6 +308,8 @@ function multiplyCO2() {
     // Cas spécial : si on est à 0 ppm, ×2 donne 1 ppm (pas 0)
     const new_ppm = (current_ppm === 0) ? 1 : (current_ppm * 2);
     const new_fraction = new_ppm * 1e-6;
+    
+    incrementTimeline(); // +100 ans
     
     // Trouver l'état correspondant ou créer un nouvel état
     if (new_ppm === 0) {
@@ -452,10 +471,14 @@ function updateCO2LevelDirect(co2_fraction) {
     }, 100);
 }
 
-function updateDisplay(data) {
+// Exposer updateDisplay globalement pour être accessible depuis calculations.js
+window.updateDisplay = function updateDisplay(data) {
     if (data && data.co2_ppm !== undefined) {
         const ppm = Math.round(data.co2_ppm);
-        document.getElementById('co2-ppm').textContent = `${ppm} ppm`;
+        const co2NumberEl = document.getElementById('co2-number');
+        if (co2NumberEl) {
+            co2NumberEl.textContent = ppm.toString();
+        }
         
         // Mettre à jour l'emoji selon le niveau de CO2
         const emojiElement = document.getElementById('co2-emoji');
@@ -489,36 +512,88 @@ function updateDisplay(data) {
         }
     }
     if (data && data.temp_surface !== undefined && data.temp_surface > 0) {
-        document.getElementById('temp-surface').textContent = `${data.temp_surface.toFixed(1)} K (${data.temp_surface_c.toFixed(1)} °C)`;
+        const tempSurfaceNumberEl = document.getElementById('temp-surface-number');
+        if (tempSurfaceNumberEl) {
+            tempSurfaceNumberEl.textContent = `${data.temp_surface.toFixed(1)} (${data.temp_surface_c.toFixed(1)}°C)`;
+        }
+    } else {
+        const tempSurfaceNumberEl = document.getElementById('temp-surface-number');
+        if (tempSurfaceNumberEl) {
+            tempSurfaceNumberEl.textContent = '--';
+        }
     }
     if (data && data.temp_eff !== undefined && data.temp_eff > 0) {
-        document.getElementById('temp-eff').textContent = `${data.temp_eff.toFixed(1)} K (${data.temp_eff_c.toFixed(1)} °C)`;
+        const tempEffNumberEl = document.getElementById('temp-eff-number');
+        if (tempEffNumberEl) {
+            tempEffNumberEl.textContent = `${data.temp_eff.toFixed(1)} (${data.temp_eff_c.toFixed(1)}°C)`;
+        }
+    } else {
+        const tempEffNumberEl = document.getElementById('temp-eff-number');
+        if (tempEffNumberEl) {
+            tempEffNumberEl.textContent = '--';
+        }
     }
     if (data && data.delta_temp !== undefined) {
-        document.getElementById('delta-temp').textContent = `${data.delta_temp >= 0 ? '+' : ''}${data.delta_temp.toFixed(2)} K`;
+        const deltaTempNumberEl = document.getElementById('delta-temp-number');
+        if (deltaTempNumberEl) {
+            deltaTempNumberEl.textContent = `${data.delta_temp >= 0 ? '+' : ''}${data.delta_temp.toFixed(2)}`;
+        }
+    } else {
+        const deltaTempNumberEl = document.getElementById('delta-temp-number');
+        if (deltaTempNumberEl) {
+            deltaTempNumberEl.textContent = '--';
+        }
     }
-    // Mettre à jour les forçages séparés
+    // Mettre à jour les forçages séparés (sans unité, elle est en haut)
     // CO2 : toujours avec + (même si 0)
-    if (data && data.forcing_CO2 !== undefined) {
-        document.getElementById('forcing-co2').textContent = `+${data.forcing_CO2.toFixed(2)} W/m²`;
+    const forcingCO2El = document.getElementById('forcing-co2');
+    if (forcingCO2El) {
+        if (data && data.forcing_CO2 !== undefined) {
+            forcingCO2El.textContent = `+${data.forcing_CO2.toFixed(2)}`;
+        } else {
+            forcingCO2El.textContent = '--';
+        }
     }
     // H2O : toujours avec + (même si 0)
-    if (data && data.forcing_H2O !== undefined) {
-        document.getElementById('forcing-h2o').textContent = `+${data.forcing_H2O.toFixed(2)} W/m²`;
+    const forcingH2OEl = document.getElementById('forcing-h2o');
+    if (forcingH2OEl) {
+        if (data && data.forcing_H2O !== undefined) {
+            forcingH2OEl.textContent = `+${data.forcing_H2O.toFixed(2)}`;
+        } else {
+            forcingH2OEl.textContent = '--';
+        }
     }
     // Alb. : toujours avec - (effet négatif sur le flux)
-    if (data && data.forcing_Albedo !== undefined) {
-        document.getElementById('forcing-albedo').textContent = `-${Math.abs(data.forcing_Albedo).toFixed(2)} W/m²`;
+    const forcingAlbedoEl = document.getElementById('forcing-albedo');
+    if (forcingAlbedoEl) {
+        if (data && data.forcing_Albedo !== undefined) {
+            forcingAlbedoEl.textContent = `-${Math.abs(data.forcing_Albedo).toFixed(2)}`;
+        } else {
+            forcingAlbedoEl.textContent = '--';
+        }
     }
-    // Total : avec signe selon valeur
-    if (data && data.forcing !== undefined) {
-        document.getElementById('forcing-total').textContent = `${data.forcing >= 0 ? '+' : ''}${data.forcing.toFixed(2)} W/m²`;
+    // Total : avec signe selon valeur (sans unité, comme les autres)
+    const forcingTotalEl = document.getElementById('forcing-total');
+    if (forcingTotalEl) {
+        if (data && data.forcing !== undefined) {
+            forcingTotalEl.textContent = `${data.forcing >= 0 ? '+' : ''}${data.forcing.toFixed(2)}`;
+        } else {
+            forcingTotalEl.textContent = '--';
+        }
     }
     
     // Mettre à jour l'albedo
     if (data && data.albedo !== undefined) {
         const albedoPercent = (data.albedo * 100).toFixed(1);
-        document.getElementById('albedo-value').textContent = `${albedoPercent} %`;
+        const albedoNumberEl = document.getElementById('albedo-number');
+        if (albedoNumberEl) {
+            albedoNumberEl.textContent = albedoPercent;
+        }
+    } else {
+        const albedoNumberEl = document.getElementById('albedo-number');
+        if (albedoNumberEl) {
+            albedoNumberEl.textContent = '--';
+        }
     }
 }
 
@@ -546,8 +621,6 @@ function updateLegend(data) {
                 ? window.getReferencePattern(originalIndex) 
                 : 'dash'; // Fallback
             
-            // Debug: vérifier que le pattern correspond
-            console.log(`[LEGEND] T=${T}K, originalIndex=${originalIndex}, pattern=${dashPattern}`);
             
             const item = document.createElement('div');
             item.className = 'legend-planck-item';
@@ -578,7 +651,7 @@ function updateLegend(data) {
         // Forcer le rendu MathJax après insertion
         if (window.MathJax && window.MathJax.typesetPromise) {
             setTimeout(() => {
-                window.MathJax.typesetPromise([grid]).catch((err) => console.log('MathJax error:', err));
+                window.MathJax.typesetPromise([grid]).catch(() => {});
             }, 100);
         }
     }
@@ -609,7 +682,6 @@ function getDashStyleForPattern(pattern) {
 function toggleWaterVapor() {
     if (typeof window.waterVaporEnabled === 'undefined') {
         // Accéder directement à la variable globale si disponible
-        console.warn('waterVaporEnabled non disponible, utilisation de la valeur par défaut');
         return;
     }
     
@@ -636,7 +708,6 @@ function toggleWaterVapor() {
     }
     
     // Recalculer avec la nouvelle configuration
-    console.log(`Vapeur d'eau ${window.waterVaporEnabled ? 'activée' : 'désactivée'}`);
     
     // Vider le cache car les calculs changent avec H2O
     cache_280ppm = null;

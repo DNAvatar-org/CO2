@@ -382,6 +382,48 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     const temp_eff = Math.pow(result.total_flux / STEFAN_BOLTZMANN, 0.25);
     // Calculer la température terrestre en °C à partir de T0_test (température au sol en K)
     const temp_surface_c = T0_test - 273.15;
+    const temp_eff_0 = 255.0; // Température effective sans CO2 (référence)
+    const delta_temp = temp_eff - temp_eff_0;
+    
+    // Récupérer l'albedo et la couverture nuageuse depuis les résultats
+    const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
+        ? window.waterVaporEnabled
+        : false;
+    const albedo = result.albedo !== undefined ? result.albedo : calculateAlbedo(T0_test, h2o_enabled);
+    const cloud_coverage = result.cloud_coverage !== undefined ? result.cloud_coverage : calculateCloudCoverage(T0_test, h2o_enabled);
+    
+    // Calculer les forçages radiatifs séparés
+    const forcing_CO2 = typeof window.calculateCO2Forcing === 'function' 
+        ? window.calculateCO2Forcing(CO2_fraction) 
+        : 0;
+    const forcing_H2O = typeof window.calculateH2OForcing === 'function'
+        ? window.calculateH2OForcing(h2o_enabled, cloud_coverage || 0)
+        : 0;
+    const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
+        ? window.calculateAlbedoForcing(albedo)
+        : 0;
+    
+    // Forçage total
+    const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
+    
+    // Mettre à jour les informations à chaque étape
+    if (typeof window.updateDisplay === 'function') {
+        window.updateDisplay({
+            state: typeof window.currentState !== 'undefined' ? window.currentState : 0,
+            co2_ppm: CO2_fraction * 1e6,
+            temp_surface: T0_test,
+            temp_surface_c: temp_surface_c,
+            temp_eff: temp_eff,
+            temp_eff_c: temp_eff - 273.15,
+            delta_temp: delta_temp,
+            forcing: forcing_total,
+            forcing_CO2: forcing_CO2,
+            forcing_H2O: forcing_H2O,
+            forcing_Albedo: forcing_Albedo,
+            albedo: albedo,
+            cloud_coverage: cloud_coverage
+        });
+    }
     
     const tempPlotData = {
         lambda_range: result.lambda_range,
@@ -393,7 +435,9 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             absorbed_flux: result.absorbed_flux,
             earth_flux: result.earth_flux,
             lambda_range: result.lambda_range, // Nécessaire pour updateSpectralVisualization
-            z_range: result.z_range // Nécessaire pour updateSpectralVisualization
+            z_range: result.z_range, // Nécessaire pour updateSpectralVisualization
+            albedo: albedo,
+            cloud_coverage: cloud_coverage
         },
         co2_ppm: CO2_fraction * 1e6,
         temp_surface_c: temp_surface_c // Température intermédiaire pour mise à jour de la couleur en temps réel
@@ -587,6 +631,10 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     }
                     
                     iter++;
+                    // Incrémenter le temps à chaque itération de dichotomie
+                    if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
+                        window.incrementTimeline();
+                    }
                     // Continuer avec un délai pour permettre la visualisation
                     if (shouldDisplaySteps && !isCancelled) {
                         const timeoutId = setTimeout(iterate, 50); // Délai pour visualiser chaque étape
@@ -619,10 +667,12 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled);
             const flux_diff = result.total_flux - solar_flux_absorbed;
             
-            console.log(`[Dichotomie] Itération ${iteration + 1}: T0 = ${T0.toFixed(2)} K, flux = ${result.total_flux.toFixed(2)} W/m², diff = ${flux_diff.toFixed(2)} W/m²`);
+            // Incrémenter le temps à chaque itération de dichotomie
+            if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
+                window.incrementTimeline();
+            }
             
             if (Math.abs(flux_diff) < tolerance) {
-                console.log(`[Dichotomie] Convergence atteinte après ${iteration + 1} itérations`);
                 break;
             }
             
@@ -639,9 +689,6 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             iteration++;
         }
         
-        if (iteration >= max_iterations) {
-            console.log(`[Dichotomie] Maximum d'itérations atteint, utilisation de T0 = ${T0.toFixed(2)} K`);
-        }
         
         // Stocker la T0 ajustée
         current_T0_adjusted = T0;
@@ -739,14 +786,8 @@ function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, opt
     const albedo = calculateAlbedo(T0, h2o_enabled);
     const cloud_coverage = calculateCloudCoverage(T0, h2o_enabled);
     
-    console.log(`Flux total calculé: ${total_flux.toFixed(2)} W/m² pour ${(CO2_fraction * 1e6).toFixed(0)} ppm`);
-    console.log(`Albedo: ${(albedo * 100).toFixed(1)}% (glace: ${T0 < 273.15 ? 'oui' : 'non'}, nuages: ${h2o_enabled ? 'oui' : 'non'})`);
-    console.log(`Flux solaire absorbé attendu: ${solar_flux_absorbed.toFixed(2)} W/m²`);
-    console.log(`Différence: ${(total_flux - solar_flux_absorbed).toFixed(2)} W/m²`);
-    
     // Température effective (loi de Stefan-Boltzmann)
     const effective_temperature = Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);
-    console.log(`Température effective: ${effective_temperature.toFixed(2)} K (${(effective_temperature - 273.15).toFixed(2)} °C)`);
     
     return {
         lambda_range: lambda_range,

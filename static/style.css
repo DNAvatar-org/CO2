@@ -209,13 +209,17 @@ h1 {
 }
 
 .plot-container-wrapper {
-    padding: 12px;
+    padding: 0px 0px 0px 10px;
+    height: auto;
+    min-height: 600px;
+    position: relative;
+    overflow: visible;
     background: white;
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 0px;
 }
 
 
@@ -243,6 +247,7 @@ h1 {
 
 #plot-container {
     background: transparent !important;
+    position: relative !important; /* Pour permettre le positionnement absolu du titre */
 }
 
 /* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
@@ -302,11 +307,11 @@ h1 {
     opacity: 1 !important;
 }
 
-/* Titre - FORCER z-index: 60 en permanence */
+/* Titre - Positionné en haut, aligné à droite mais plus à gauche */
 .plot-overlay-title {
-    position: relative !important;
-    top: auto !important;
-    left: auto !important;
+    position: absolute !important;
+    top: 10px !important;
+    right: 50px !important; /* Plus à gauche qu'avant (10px) */
     transform: none !important;
     font-size: 14px;
     font-weight: 600;
@@ -314,8 +319,7 @@ h1 {
     background: rgba(255, 255, 255, 0.9);
     padding: 8px 15px;
     border-radius: 5px;
-    margin-bottom: 10px;
-    text-align: center;
+    text-align: right; /* Aligné à droite */
     z-index: 60 !important;
     pointer-events: none;
     visibility: visible !important;
@@ -353,6 +357,15 @@ h1 {
     gap: 15px;
 }
 
+.info-unit-header {
+    font-size: 11px;
+    color: #667eea;
+    text-align: right;
+    margin-bottom: 8px;
+    font-style: italic;
+    padding-right: 0;
+}
+
 .info-separator {
     height: 1px;
     background-color: #ccc;
@@ -369,36 +382,50 @@ h1 {
     align-items: center;
     margin-bottom: 10px;
     font-size: 14px;
+    gap: 8px;
 }
 
 .info-label {
     color: #666;
     font-weight: 500;
-}
-
-.info-value {
-    color: #333;
-    font-weight: 600;
+    order: 0; /* En premier */
 }
 
 .info-emoji {
     font-size: 18px;
     margin: 0 5px 0 0;
     user-select: none;
-    order: 1; /* Après le label, avant la valeur */
-}
-
-.info-label {
-    color: #666;
-    font-weight: 500;
-    order: 0; /* Premier */
+    order: 1; /* En second, après le label */
 }
 
 .info-value {
-    color: #333;
+    color: #000; /* Noir */
     font-weight: 600;
-    order: 2; /* Dernier */
-    margin-left: auto; /* Pousse la valeur à droite */
+    order: 2; /* En troisième, après l'emoji */
+    display: flex;
+    align-items: baseline;
+}
+
+.info-number {
+    color: #000; /* Noir */
+    font-weight: 600;
+}
+
+.info-unit {
+    color: #666; /* Gris pour les unités */
+    font-weight: 400;
+    margin-left: 2px;
+    min-width: 30px; /* Largeur fixe pour aligner les unités */
+    text-align: left;
+}
+
+/* Style commun pour tous les forçages (CO2, H2O, Alb., Total) */
+.info-forcing {
+    color: #667eea; /* Bleu */
+    font-weight: 600;
+    margin-left: auto; /* Aligné à droite */
+    font-size: 13px;
+    order: 3; /* En dernier, poussé à droite */
 }
 
 .button-container {
