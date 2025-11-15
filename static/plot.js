@@ -62,26 +62,224 @@ window.tempToColor = function tempToColor(temp, temp_min = 120, temp_max = 330) 
     return '#000000'; // Par défaut noir
 }
 
+// Fonction de debug pour vérifier les z-index
+window.debugZIndex = function() {
+    const canvas = document.getElementById('spectral-visualization');
+    const title = document.querySelector('.plot-overlay-title');
+    const plotContainer = document.getElementById('plot-container');
+    
+    if (canvas) {
+        const canvasStyle = window.getComputedStyle(canvas);
+        const canvasInline = canvas.style.zIndex;
+        const canvasRect = canvas.getBoundingClientRect();
+        console.log(`Canvas (#spectral-visualization):`);
+        console.log(`  - Inline style: ${canvasInline || 'non défini'}`);
+        console.log(`  - Computed: ${canvasStyle.zIndex}`);
+        console.log(`  - Position: ${canvasStyle.position}`);
+        console.log(`  - Display: ${canvasStyle.display}`);
+        console.log(`  - Visibility: ${canvasStyle.visibility}`);
+        console.log(`  - Opacity: ${canvasStyle.opacity}`);
+        console.log(`  - Width: ${canvas.width}px, Height: ${canvas.height}px`);
+        console.log(`  - BoundingRect: left=${canvasRect.left}, top=${canvasRect.top}, width=${canvasRect.width}, height=${canvasRect.height}`);
+        console.log(`  - Parent: ${canvas.parentElement ? canvas.parentElement.className || canvas.parentElement.id : 'aucun'}`);
+        console.log(`  - Next sibling: ${canvas.nextSibling ? (canvas.nextSibling.className || canvas.nextSibling.id || canvas.nextSibling.tagName) : 'aucun'}`);
+        console.log(`  - Canvas visible: ${canvasRect.width > 0 && canvasRect.height > 0 ? 'OUI' : 'NON'}`);
+    } else {
+        console.log('Canvas: NON TROUVÉ');
+    }
+    
+    if (title) {
+        const titleStyle = window.getComputedStyle(title);
+        console.log(`Titre (.plot-overlay-title):`);
+        console.log(`  - Computed z-index: ${titleStyle.zIndex}`);
+    }
+    
+    if (plotContainer) {
+        const plotStyle = window.getComputedStyle(plotContainer);
+        console.log(`Plot Container (#plot-container):`);
+        console.log(`  - Computed z-index: ${plotStyle.zIndex}`);
+    }
+    
+    // Vérifier les éléments Plotly
+    if (plotContainer) {
+        const plotlayers = plotContainer.querySelectorAll('.plotlayer, .cartesianlayer, .xaxislayer-above, .yaxislayer-above');
+        console.log(`Éléments Plotly (${plotlayers.length} trouvés):`);
+        plotlayers.forEach((el, i) => {
+            const style = window.getComputedStyle(el);
+            console.log(`  ${i+1}. ${el.className}: z-index=${style.zIndex}`);
+        });
+    }
+    console.log('===================');
+};
+
 // Initialiser le graphique
 function initPlot() {
+    // Créer le canvas AVANT Plotly pour qu'il soit en arrière-plan
+    const plotContainerWrapper = document.querySelector('.plot-container-wrapper');
+    if (plotContainerWrapper) {
+        let canvas = document.getElementById('spectral-visualization');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'spectral-visualization';
+            canvas.width = 333;
+            canvas.height = 400;
+            // Insérer AVANT plot-container pour qu'il soit en arrière-plan dans le DOM
+            const plotContainer = document.getElementById('plot-container');
+            if (plotContainer) {
+                plotContainerWrapper.insertBefore(canvas, plotContainer);
+            } else {
+                plotContainerWrapper.appendChild(canvas);
+            }
+            // Forcer le z-index immédiatement
+            canvas.style.setProperty('z-index', '1', 'important');
+            canvas.style.setProperty('position', 'absolute', 'important');
+            canvas.style.setProperty('pointer-events', 'none', 'important');
+        }
+    }
+    
     const layout = {
         xaxis: {
             title: "Longueur d'onde (μm)",
-            range: [0, 50]
+            range: [0, 50],
+            tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
+            titlefont: { color: 'white' }, // Titre de l'axe X en blanc
+            showgrid: true,
+            gridcolor: 'rgba(255, 255, 255, 0.5)', // Lignes verticales blanches à 50%
+            gridwidth: 1
         },
         yaxis: {
             title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
-            range: [0, 40]
+            range: [0, 40],
+            showgrid: true,
+            gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
+            gridwidth: 1
+        },
+        yaxis2: {
+            title: "Altitude (km)",
+            overlaying: 'y',
+            side: 'right',
+            range: [80, 0], // Inversé : 80 km en haut (correspond à y=0), 0 km en bas (correspond à y=40)
+            position: 1.0,
+            tickfont: { color: 'white' },
+            titlefont: { color: 'white' },
+            showgrid: false // Pas de grille pour l'axe secondaire
         },
         showlegend: false,
-        margin: { l: 50, r: 10, t: 0, b: 40 },
-        grid: { showgrid: true }
+        margin: { l: 50, r: 80, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe
+        plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
+        paper_bgcolor: 'rgba(0,0,0,0)' // Fond du papier transparent
     };
     
     Plotly.newPlot('plot-container', [], layout, {
         responsive: true,
         displayModeBar: false
+    }).then(() => {
+        // Calculer et définir la taille du canvas dès que Plotly est prêt
+        // La bande sera dessinée automatiquement dans resizeCanvasToPlot()
+        resizeCanvasToPlot();
     });
+}
+
+// Fonction pour redimensionner le canvas pour correspondre à la zone de plot Plotly
+function resizeCanvasToPlot() {
+    const canvas = document.getElementById('spectral-visualization');
+    const plotContainer = document.getElementById('plot-container');
+    if (!canvas || !plotContainer) return;
+    
+    // Attendre un peu que Plotly ait fini de rendre
+    setTimeout(() => {
+        // Trouver tous les éléments pertinents
+        const draglayer = plotContainer.querySelector('.nsewdrag.drag');
+        const xy = plotContainer.querySelector('.xy');
+        const draglayerCursor = plotContainer.querySelector('.draglayer.cursor-crosshair');
+        const wrapper = plotContainer.parentElement;
+        
+        // Utiliser l'élément le plus approprié
+        let targetElement = draglayer || xy || draglayerCursor;
+        if (targetElement) {
+            const targetRect = targetElement.getBoundingClientRect();
+            // Ajouter une largeur de caractère de chaque côté pour couvrir 0 et 50 complètement
+            const charWidth = 10; // Largeur approximative d'un caractère
+            const width = Math.floor(targetRect.width) + (charWidth * 2);
+            const height = Math.floor(targetRect.height) + 15; // +15px pour la bande de spectre
+            
+            // Positionner le canvas avec exactement la même position absolue que la zone de drag
+            if (wrapper) {
+                const wrapperRect = wrapper.getBoundingClientRect();
+                const left = (targetRect.left - wrapperRect.left) - charWidth;
+                const top = targetRect.top - wrapperRect.top;
+                canvas.style.setProperty('left', left + 'px', 'important');
+                canvas.style.setProperty('top', top + 'px', 'important');
+            } else {
+                // Fallback : position relative au plot-container
+                const plotRect = plotContainer.getBoundingClientRect();
+                const left = (targetRect.left - plotRect.left) - charWidth;
+                const top = targetRect.top - plotRect.top;
+                canvas.style.setProperty('left', left + 'px', 'important');
+                canvas.style.setProperty('top', top + 'px', 'important');
+            }
+            
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            canvas.width = width;
+            canvas.height = height;
+            canvas.style.setProperty('z-index', '1', 'important');
+            
+            // Redessiner la bande de spectre immédiatement après le resize
+            // Utiliser les dimensions calculées directement pour éviter tout délai
+            drawSpectrumBarOnlyWithSize(width, height);
+        } else {
+            // Fallback : réessayer après un délai
+            setTimeout(() => {
+                resizeCanvasToPlot();
+            }, 200);
+        }
+    }, 100);
+}
+
+// Fonction pour dessiner uniquement la bande de spectre de 15px (sans données)
+function drawSpectrumBarOnly() {
+    const canvas = document.getElementById('spectral-visualization');
+    if (!canvas) return;
+    drawSpectrumBarOnlyWithSize(canvas.width, canvas.height);
+}
+
+// Fonction pour dessiner la bande avec des dimensions spécifiques
+function drawSpectrumBarOnlyWithSize(width, height) {
+    const canvas = document.getElementById('spectral-visualization');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const spectrumBarHeight = 15; // Hauteur de la bande de spectre en bas
+    const charWidth = 10; // Largeur de caractère ajoutée de chaque côté
+    
+    // Nettoyer seulement la zone de la bande
+    const spectrumBarY = height - spectrumBarHeight;
+    ctx.clearRect(0, spectrumBarY, width, spectrumBarHeight);
+    
+    // Plage de l'axe X du graphique : 0 à 50 μm
+    const graph_min_um = 0;
+    const graph_max_um = 50;
+    
+    // Dessiner la bande de spectre en bas (15px) avec alpha=1 pour toutes les couleurs
+    for (let x = 0; x < width; x++) {
+        // Mapper la position X à la longueur d'onde (0 à 50 μm)
+        // Compenser le décalage de charWidth de chaque côté
+        const effectiveWidth = width - (charWidth * 2);
+        const normalizedX = Math.max(0, Math.min(1, (x - charWidth) / effectiveWidth)); // 0 à 1
+        const lambda_um = graph_min_um + normalizedX * (graph_max_um - graph_min_um); // 0 à 50 μm
+        const lambda_m = lambda_um * 1e-6; // Convertir en mètres
+        
+        // Obtenir la couleur pour cette longueur d'onde (calée sur l'axe X du graphique)
+        // Utiliser une plage par défaut si pas de données
+        const lambda_min = 0.1e-6; // 0.1 μm
+        const lambda_max = 100e-6; // 100 μm
+        const [r, g, b] = wavelengthToColor(lambda_m, lambda_min, lambda_max);
+        
+        // Dessiner la bande avec alpha=1 (opacité maximale)
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(x, spectrumBarY, 1, spectrumBarHeight);
+    }
 }
 
 // Mettre à jour le graphique
@@ -171,17 +369,100 @@ window.updatePlot = function updatePlot(data) {
         traces.push(planck_current);
     }
     
+    // 3. Ajouter une ligne horizontale pour la tropopause (11 km)
+    // Convertir 11 km en valeur de l'axe Y principal (0-40) pour l'aligner
+    // L'axe altitude va de 0 à 80 km, donc 11 km correspond à 11/80 = 0.1375 de la hauteur
+    // Sur l'axe Y principal (0-40), cela correspond à 40 * 0.1375 = 5.5
+    // Mais on veut l'aligner avec le haut (40), donc on inverse : 40 - (11/80 * 40) = 40 - 5.5 = 34.5
+    // En fait, on veut que 80 km (haut) corresponde à 40 (haut de l'axe Y)
+    const z_trop_km = 11; // Tropopause à 11 km
+    const z_max_km = 80; // Altitude max à 80 km
+    const y_trop = 40 - (z_trop_km / z_max_km) * 40; // Position sur l'axe Y (0-40)
+    
+    traces.push({
+        x: [0, 50], // De 0 à 50 μm
+        y: [y_trop, y_trop], // Ligne horizontale à la hauteur de la tropopause
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Tropopause (11 km)',
+        line: { color: 'rgba(255, 255, 255, 0.7)', width: 1, dash: 'dash' },
+        showlegend: false,
+        hovertemplate: 'Tropopause (11 km)<extra></extra>',
+        yaxis: 'y' // Utiliser l'axe Y principal
+    });
+    
     Plotly.react('plot-container', traces, {
-        margin: { l: 50, r: 10, t: 0, b: 40 },
+        margin: { l: 50, r: 80, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe altitude
         xaxis: { 
             range: [0, 50],
-            title: "Longueur d'onde (μm)"
+            title: "Longueur d'onde (μm)",
+            tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
+            titlefont: { color: 'white' }, // Titre de l'axe X en blanc
+            showgrid: true,
+            gridcolor: 'rgba(255, 255, 255, 0.5)', // Lignes verticales blanches à 50%
+            gridwidth: 1
         },
         yaxis: { 
             range: [0, 40],
-            title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)"
-        }
+            title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
+            showgrid: true,
+            gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
+            gridwidth: 1
+        },
+        yaxis2: {
+            title: "Altitude (km)",
+            overlaying: 'y',
+            side: 'right',
+            range: [80, 0], // Inversé : 80 km en haut (correspond à y=0), 0 km en bas (correspond à y=40)
+            position: 1.0,
+            tickfont: { color: 'white' },
+            titlefont: { color: 'white' },
+            showgrid: false // Pas de grille pour l'axe secondaire
+        },
+        plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
+        paper_bgcolor: 'rgba(0,0,0,0)' // Fond du papier transparent
     }).then(() => {
+        // Observer le parent pour détecter quand Plotly modifie le DOM
+        const plotContainer = document.getElementById('plot-container');
+        const canvas = document.getElementById('spectral-visualization');
+        const plotContainerWrapper = document.querySelector('.plot-container-wrapper');
+        
+        if (plotContainer && canvas && plotContainerWrapper && !plotContainer._plotlyObserver) {
+            let debounceTimer = null;
+            // Observer les modifications du DOM dans plot-container-wrapper
+            const plotlyObserver = new MutationObserver(() => {
+                // Debounce pour éviter les boucles infinies
+                if (debounceTimer) {
+                    clearTimeout(debounceTimer);
+                }
+                debounceTimer = setTimeout(() => {
+                    if (canvas && canvas.parentElement && plotContainerWrapper) {
+                        // S'assurer que le canvas est AVANT plot-container dans le DOM (ordre de rendu)
+                        if (canvas.nextSibling !== plotContainer && canvas.parentElement === plotContainerWrapper) {
+                            plotContainerWrapper.insertBefore(canvas, plotContainer);
+                        }
+                        
+                        // Forcer le z-index
+                        const currentZIndex = window.getComputedStyle(canvas).zIndex;
+                        if (currentZIndex !== '1' && currentZIndex !== 'auto') {
+                            canvas.style.setProperty('z-index', '1', 'important');
+                        }
+                    }
+                }, 50); // Debounce de 50ms
+            });
+            plotlyObserver.observe(plotContainerWrapper, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['style', 'class']
+            });
+            plotContainer._plotlyObserver = plotlyObserver;
+        }
+        
+        // Forcer immédiatement
+        if (canvas) {
+            canvas.style.setProperty('z-index', '1', 'important');
+        }
         // S'assurer que la visualisation spectrale reste visible après la mise à jour Plotly
         setTimeout(() => {
             const canvas = document.getElementById('spectral-visualization');
@@ -190,7 +471,7 @@ window.updatePlot = function updatePlot(data) {
                 canvas.style.setProperty('display', 'block', 'important');
                 canvas.style.setProperty('visibility', 'visible', 'important');
                 canvas.style.setProperty('opacity', '1', 'important');
-                canvas.style.setProperty('z-index', '10000', 'important');
+                canvas.style.setProperty('z-index', '1', 'important');
                 canvas.style.setProperty('position', 'absolute', 'important');
                 // Mettre à jour seulement si on a des données
                 if (data && data.current && typeof window.updateSpectralVisualization === 'function') {
@@ -222,7 +503,7 @@ function wavelengthToColor(lambda_m, lambda_range_min, lambda_range_max) {
     // 0 = rouge, 0.17 = jaune, 0.33 = vert, 0.5 = cyan, 0.67 = bleu, 0.83 = violet, 1 = rouge
     const hue = (1 - normalized) * 0.83; // Inverser pour avoir rouge à gauche, violet à droite
     const saturation = 1.0; // Saturation maximale
-    const lightness = 0.5; // Luminosité moyenne
+    const lightness = 0.6; // Luminosité augmentée pour des couleurs plus vives
     
     // Convertir HSL en RGB
     const c = (1 - Math.abs(2 * lightness - 1)) * saturation;
@@ -258,134 +539,114 @@ window.updateSpectralVisualization = function(data) {
         return;
     }
     
+    // Fonction pour forcer le z-index à 1 (au-dessus du fond mais en dessous des courbes)
+    const forceZIndex = (silent = false, source = 'unknown') => {
+        if (canvas && !canvas._forcingZIndex) {
+            canvas._forcingZIndex = true; // Éviter les appels récursifs
+            
+            // Désactiver temporairement l'observer pour éviter la boucle
+            if (canvas._zIndexObserver) {
+                canvas._zIndexObserver.disconnect();
+            }
+            
+            const oldZIndex = window.getComputedStyle(canvas).zIndex;
+            
+            // Forcer le z-index même si déjà à 1 (Plotly peut le changer très rapidement)
+            canvas.style.setProperty('z-index', '1', 'important');
+            canvas.style.zIndex = '1'; // Double application pour être sûr
+            
+            const newZIndex = window.getComputedStyle(canvas).zIndex;
+            
+            // Réactiver l'observer après un délai plus long pour laisser Plotly finir
+            if (canvas._zIndexObserver) {
+                setTimeout(() => {
+                    canvas._forcingZIndex = false; // Réinitialiser APRÈS la réactivation
+                    if (canvas && canvas._zIndexObserver) {
+                        canvas._zIndexObserver.observe(canvas, {
+                            attributes: true,
+                            attributeFilter: ['style'],
+                            attributeOldValue: false
+                        });
+                    }
+                }, 100); // Délai plus long
+            } else {
+                canvas._forcingZIndex = false;
+            }
+        }
+    };
+    
+    // Forcer le z-index à chaque frame si nécessaire (plus agressif)
+    let lastZIndexCheck = 0;
+    const forceZIndexOnFrame = () => {
+        if (canvas && !canvas._forcingZIndex) {
+            const currentZIndex = window.getComputedStyle(canvas).zIndex;
+            if (currentZIndex !== '1' && currentZIndex !== 'auto') {
+                forceZIndex(true); // Silent pour éviter le spam
+            }
+        }
+        requestAnimationFrame(forceZIndexOnFrame);
+    };
+    
+    // Observer les changements de style pour forcer le z-index à chaque modification
+    if (!canvas._zIndexObserver) {
+        const observer = new MutationObserver((mutations) => {
+            // Ignorer si on est en train de forcer nous-mêmes
+            if (canvas._forcingZIndex) {
+                return;
+            }
+            
+            // Ne forcer que si le style a vraiment changé
+            for (const mutation of mutations) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    // Attendre un peu pour voir si c'est Plotly qui modifie
+                    setTimeout(() => {
+                        if (!canvas._forcingZIndex) {
+                            const beforeZIndex = window.getComputedStyle(canvas).zIndex;
+                            // Ne corriger que si le z-index n'est pas déjà à 1
+                            if (beforeZIndex !== '1' && beforeZIndex !== 'auto') {
+                                forceZIndex(true, 'MutationObserver'); // Silent pour éviter le spam
+                            }
+                        }
+                    }, 20); // Petit délai pour distinguer nos modifications de celles de Plotly
+                    break;
+                }
+            }
+        });
+        observer.observe(canvas, {
+            attributes: true,
+            attributeFilter: ['style'],
+            attributeOldValue: false
+        });
+        canvas._zIndexObserver = observer;
+        
+        // Forcer aussi périodiquement mais moins souvent (2000ms) - backup
+        canvas._zIndexInterval = setInterval(() => {
+            const currentZIndex = window.getComputedStyle(canvas).zIndex;
+            if (currentZIndex !== '1' && currentZIndex !== 'auto') {
+                forceZIndex(true); // Silent pour éviter le spam
+            }
+        }, 2000);
+        
+        // Démarrer le forçage à chaque frame (plus agressif)
+        if (!canvas._zIndexFrameId) {
+            canvas._zIndexFrameId = requestAnimationFrame(forceZIndexOnFrame);
+        }
+    }
+    
     // Forcer la visibilité du canvas avec !important via setProperty
     canvas.style.setProperty('display', 'block', 'important');
     canvas.style.setProperty('visibility', 'visible', 'important');
     canvas.style.setProperty('opacity', '1', 'important');
-    canvas.style.setProperty('z-index', '10000', 'important');
+    canvas.style.setProperty('z-index', '1', 'important');
     canvas.style.setProperty('position', 'absolute', 'important');
     
-    // Calculer la taille pour correspondre à la zone de drag de Plotly (nsewdrag drag)
+    // Redimensionner le canvas si nécessaire
+    resizeCanvasToPlot();
+    
+    // Dessiner la visualisation avec les données
     const plotContainer = document.getElementById('plot-container');
     if (plotContainer) {
         setTimeout(() => {
-            // Trouver tous les éléments pertinents pour le debug
-            const draglayer = plotContainer.querySelector('.nsewdrag.drag');
-            const xy = plotContainer.querySelector('.xy');
-            const draglayerCursor = plotContainer.querySelector('.draglayer.cursor-crosshair');
-            const wrapper = plotContainer.parentElement;
-            
-            // Logs pour comprendre les positions
-            console.log('[DEBUG POSITION] === Éléments trouvés ===');
-            if (draglayer) {
-                const dragRect = draglayer.getBoundingClientRect();
-                console.log(`[DEBUG POSITION] .nsewdrag.drag: left=${dragRect.left}, top=${dragRect.top}, width=${dragRect.width}, height=${dragRect.height}`);
-            } else {
-                console.log('[DEBUG POSITION] .nsewdrag.drag: NON TROUVÉ');
-            }
-            
-            if (xy) {
-                const xyRect = xy.getBoundingClientRect();
-                console.log(`[DEBUG POSITION] .xy: left=${xyRect.left}, top=${xyRect.top}, width=${xyRect.width}, height=${xyRect.height}`);
-            } else {
-                console.log('[DEBUG POSITION] .xy: NON TROUVÉ');
-            }
-            
-            if (draglayerCursor) {
-                const dragCursorRect = draglayerCursor.getBoundingClientRect();
-                console.log(`[DEBUG POSITION] .draglayer.cursor-crosshair: left=${dragCursorRect.left}, top=${dragCursorRect.top}, width=${dragCursorRect.width}, height=${dragCursorRect.height}`);
-            } else {
-                console.log('[DEBUG POSITION] .draglayer.cursor-crosshair: NON TROUVÉ');
-            }
-            
-            const plotRect = plotContainer.getBoundingClientRect();
-            console.log(`[DEBUG POSITION] #plot-container: left=${plotRect.left}, top=${plotRect.top}, width=${plotRect.width}, height=${plotRect.height}`);
-            
-            if (wrapper) {
-                const wrapperRect = wrapper.getBoundingClientRect();
-                console.log(`[DEBUG POSITION] .plot-container-wrapper: left=${wrapperRect.left}, top=${wrapperRect.top}, width=${wrapperRect.width}, height=${wrapperRect.height}`);
-            }
-            
-            const canvasRect = canvas.getBoundingClientRect();
-            console.log(`[DEBUG POSITION] #spectral-visualization (avant): left=${canvasRect.left}, top=${canvasRect.top}, width=${canvasRect.width}, height=${canvasRect.height}`);
-            
-            // Utiliser l'élément le plus approprié
-            let targetElement = draglayer || xy || draglayerCursor;
-            if (targetElement) {
-                const targetRect = targetElement.getBoundingClientRect();
-                const width = Math.floor(targetRect.width);
-                const height = Math.floor(targetRect.height);
-                
-                console.log(`[DEBUG POSITION] Élément cible utilisé: ${targetElement.className || targetElement.tagName}`);
-                console.log(`[DEBUG POSITION] Taille cible: width=${width}, height=${height}`);
-                
-                // Positionner le canvas avec exactement la même position absolue que la zone de drag
-                // Le canvas est dans plot-container-wrapper, donc on doit calculer par rapport à son parent
-                if (wrapper) {
-                    const wrapperRect = wrapper.getBoundingClientRect();
-                    const left = targetRect.left - wrapperRect.left;
-                    const top = targetRect.top - wrapperRect.top;
-                    console.log(`[DEBUG POSITION] Calcul position: left=${left} (${targetRect.left} - ${wrapperRect.left}), top=${top} (${targetRect.top} - ${wrapperRect.top})`);
-                    // Utiliser setProperty avec !important pour forcer la position (le CSS a !important)
-                    canvas.style.setProperty('left', left + 'px', 'important');
-                    canvas.style.setProperty('top', top + 'px', 'important');
-                } else {
-                    // Fallback : position relative au plot-container
-                    const left = targetRect.left - plotRect.left;
-                    const top = targetRect.top - plotRect.top;
-                    console.log(`[DEBUG POSITION] Calcul position (fallback): left=${left}, top=${top}`);
-                    canvas.style.setProperty('left', left + 'px', 'important');
-                    canvas.style.setProperty('top', top + 'px', 'important');
-                }
-                canvas.style.width = width + 'px';
-                canvas.style.height = height + 'px';
-                canvas.width = width;
-                canvas.height = height;
-                
-                // Log position finale
-                setTimeout(() => {
-                    const finalRect = canvas.getBoundingClientRect();
-                    console.log(`[DEBUG POSITION] #spectral-visualization (après): left=${finalRect.left}, top=${finalRect.top}, width=${finalRect.width}, height=${finalRect.height}`);
-                    if (targetElement) {
-                        const targetRectFinal = targetElement.getBoundingClientRect();
-                        console.log(`[DEBUG POSITION] Différence: left=${finalRect.left - targetRectFinal.left}, top=${finalRect.top - targetRectFinal.top}`);
-                    }
-                }, 50);
-            } else {
-                // Fallback : attendre un peu plus que Plotly soit prêt
-                setTimeout(() => {
-                    const draglayerRetry = plotContainer.querySelector('.nsewdrag.drag');
-                    if (draglayerRetry) {
-                        const dragRect = draglayerRetry.getBoundingClientRect();
-                        const plotRect = plotContainer.getBoundingClientRect();
-                        const wrapper = plotContainer.parentElement;
-                        const width = Math.floor(dragRect.width);
-                        const height = Math.floor(dragRect.height);
-                        if (wrapper) {
-                            const wrapperRect = wrapper.getBoundingClientRect();
-                            canvas.style.setProperty('left', (dragRect.left - wrapperRect.left) + 'px', 'important');
-                            canvas.style.setProperty('top', (dragRect.top - wrapperRect.top) + 'px', 'important');
-                        } else {
-                            canvas.style.setProperty('left', (dragRect.left - plotRect.left) + 'px', 'important');
-                            canvas.style.setProperty('top', (dragRect.top - plotRect.top) + 'px', 'important');
-                        }
-                        canvas.style.width = width + 'px';
-                        canvas.style.height = height + 'px';
-                        canvas.width = width;
-                        canvas.height = height;
-                        drawSpectralVisualization(canvas, data);
-                    }
-                }, 200);
-                return;
-            }
-            
-            // Forcer à nouveau la visibilité après le redimensionnement
-            canvas.style.setProperty('display', 'block', 'important');
-            canvas.style.setProperty('visibility', 'visible', 'important');
-            canvas.style.setProperty('opacity', '1', 'important');
-            canvas.style.setProperty('z-index', '10000', 'important');
-            canvas.style.setProperty('position', 'absolute', 'important');
-            
             drawSpectralVisualization(canvas, data);
         }, 100);
     } else {
@@ -397,9 +658,14 @@ function drawSpectralVisualization(canvas, data) {
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
     const height = canvas.height;
+    const spectrumBarHeight = 15; // Hauteur de la bande de spectre en bas
+    const charWidth = 10; // Largeur de caractère ajoutée de chaque côté
     
     // Nettoyer le canvas
     ctx.clearRect(0, 0, width, height);
+    
+    // Zone de visualisation principale (hauteur - 15px pour la bande)
+    const visualizationHeight = height - spectrumBarHeight;
     
     const upward_flux = data.upward_flux;
     const lambda_range = data.lambda_range;
@@ -427,10 +693,10 @@ function drawSpectralVisualization(canvas, data) {
     const graph_max_um = 50;
     
     // Calculer les facteurs d'échantillonnage pour les couches
-    const layerStep = Math.max(1, Math.floor(upward_flux.length / height));
+    const layerStep = Math.max(1, Math.floor(upward_flux.length / visualizationHeight));
     
-    // Dessiner chaque pixel
-    for (let y = 0; y < height; y++) {
+    // Dessiner chaque pixel de la visualisation principale
+    for (let y = 0; y < visualizationHeight; y++) {
         // Une ligne sur layerStep couches
         const layerIndex = Math.floor(y * layerStep);
         if (layerIndex >= upward_flux.length) continue;
@@ -438,8 +704,10 @@ function drawSpectralVisualization(canvas, data) {
         const layerFlux = upward_flux[layerIndex];
         
         for (let x = 0; x < width; x++) {
-            // Mapper la position X du canvas directement à la longueur d'onde (0 à 50 μm)
-            const normalizedX = x / width; // 0 à 1
+            // Mapper la position X du canvas à la longueur d'onde (0 à 50 μm)
+            // Compenser le décalage de charWidth de chaque côté
+            const effectiveWidth = width - (charWidth * 2);
+            const normalizedX = Math.max(0, Math.min(1, (x - charWidth) / effectiveWidth)); // 0 à 1
             const lambda_um = graph_min_um + normalizedX * (graph_max_um - graph_min_um); // 0 à 50 μm
             const lambda_m = lambda_um * 1e-6; // Convertir en mètres
             
@@ -465,19 +733,36 @@ function drawSpectralVisualization(canvas, data) {
             normalized = Math.max(0, Math.min(1, normalized));
             
             // Appliquer une courbe gamma pour améliorer le contraste
-            // Mais avec un alpha minimum pour toujours voir les couleurs (même très atténuées)
             const gamma = 0.7; // Légèrement moins agressif
             const alphaRaw = Math.pow(normalized, gamma);
-            // Alpha minimum de 0.1 pour toujours voir les couleurs, maximum 1.0
-            const alpha = Math.max(0.1, Math.min(1.0, alphaRaw));
+            // Alpha minimum de 0, maximum 1.0
+            const alpha = Math.max(0, Math.min(1.0, alphaRaw));
             
             // Obtenir la couleur pour cette longueur d'onde (calée sur l'axe X du graphique)
             const [r, g, b] = wavelengthToColor(lambda, lambda_range[0], lambda_range[lambda_range.length - 1]);
             
             // Dessiner le pixel avec alpha variable selon l'intensité du flux
             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-            ctx.fillRect(x, height - 1 - y, 1, 1); // Inverser Y pour avoir le sol en bas
+            ctx.fillRect(x, visualizationHeight - 1 - y, 1, 1); // Inverser Y pour avoir le sol en bas
         }
+    }
+    
+    // Dessiner la bande de spectre en bas (15px) avec alpha=1 pour toutes les couleurs
+    const spectrumBarY = visualizationHeight; // Commence après la visualisation principale
+    for (let x = 0; x < width; x++) {
+        // Mapper la position X à la longueur d'onde (0 à 50 μm)
+        // Compenser le décalage de charWidth de chaque côté
+        const effectiveWidth = width - (charWidth * 2);
+        const normalizedX = Math.max(0, Math.min(1, (x - charWidth) / effectiveWidth)); // 0 à 1
+        const lambda_um = graph_min_um + normalizedX * (graph_max_um - graph_min_um); // 0 à 50 μm
+        const lambda_m = lambda_um * 1e-6; // Convertir en mètres
+        
+        // Obtenir la couleur pour cette longueur d'onde (calée sur l'axe X du graphique)
+        const [r, g, b] = wavelengthToColor(lambda_m, lambda_range[0], lambda_range[lambda_range.length - 1]);
+        
+        // Dessiner la bande avec alpha=1 (opacité maximale)
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(x, spectrumBarY, 1, spectrumBarHeight);
     }
 }
 

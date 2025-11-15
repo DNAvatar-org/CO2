@@ -70,32 +70,107 @@ h1 {
     gap: 10px;
 }
 
+
+/* Hiérarchie des z-index :
+   - Fond blanc : 0 (par défaut)
+   - Spectre : 1 (au-dessus du fond, en dessous du quadrillage)
+   - Quadrillage : 20
+   - Courbes : 40
+   - Axes : 50 et 51
+   - Titre : 60
+*/
+
+/* Quadrillage (grid) - fond transparent pour voir le canvas en arrière-plan */
+#plot-container .bglayer,
+#plot-container .gridlayer {
+    z-index: 20 !important;
+    background: transparent !important;
+}
+
+/* Fond de Plotly transparent */
+#plot-container .main-svg,
+#plot-container svg {
+    background: transparent !important;
+}
+
+#plot-container {
+    background: transparent !important;
+}
+
+/* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
+#spectral-visualization {
+    position: absolute !important;
+    border: none;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    z-index: 1 !important; /* Au-dessus du fond (0) mais en dessous du quadrillage (20) */
+    background: transparent;
+    pointer-events: none !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    /* Forcer le z-index même si Plotly essaie de le modifier */
+    isolation: isolate !important;
+}
+
+/* Empêcher Plotly de modifier le z-index du canvas */
+#spectral-visualization[style*="z-index"] {
+    z-index: 1 !important;
+}
+
+/* Courbes (tracés) */
+#plot-container .plotlayer,
+#plot-container .cartesianlayer,
+#plot-container .trace {
+    z-index: 40 !important;
+}
+
+/* Axes */
+#plot-container .xaxislayer-above,
+#plot-container .yaxislayer-above,
+#plot-container .xaxislayer-above text,
+#plot-container .yaxislayer-above text,
+#plot-container .xtitle,
+#plot-container .ytitle {
+    z-index: 50 !important;
+}
+
+#plot-container .xaxislayer-above {
+    z-index: 51 !important;
+}
+
+/* S'assurer que les titres des axes sont visibles */
+#plot-container .xtitle,
+#plot-container .ytitle,
+#plot-container .g-xtitle,
+#plot-container .g-ytitle,
+#plot-container [class*="xtitle"],
+#plot-container [class*="ytitle"],
+#plot-container .xaxis .axis-title,
+#plot-container .yaxis .axis-title {
+    z-index: 52 !important;
+    pointer-events: none;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Titre - FORCER z-index: 60 en permanence */
 .plot-overlay-title {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+    position: absolute !important;
+    top: 10px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
     font-size: 14px;
     font-weight: 600;
     color: #333;
     background: rgba(255, 255, 255, 0.9);
     padding: 5px 15px;
     border-radius: 5px;
-    z-index: 100;
+    z-index: 60 !important;
     pointer-events: none;
-}
-
-#spectral-visualization {
-    position: absolute !important;
-    border: none;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    z-index: 10000 !important;
-    background: transparent;
-    pointer-events: none;
-    display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
+    display: block !important;
 }
 
 .plot-title {
@@ -352,7 +427,7 @@ h1 {
     width: 100%;
     height: 600px;
     position: relative;
-    z-index: 1;
+    z-index: 2; /* Au-dessus du canvas (1) */
 }
 
 /* Ajuster le draglayer de Plotly pour supprimer l'espace blanc en haut */
@@ -511,6 +586,45 @@ h1 {
     margin-top: 15px;
     font-size: 12px;
     color: #999;
+}
+
+/* Footer avec crédits et copyrights */
+.credits-footer {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.credits-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 10px;
+    color: #999;
+    line-height: 1.4;
+}
+
+.credits-line {
+    font-weight: 300;
+    font-style: normal;
+}
+
+.credits-footer a {
+    color: #aaa;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.credits-footer a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.credits-footer strong {
+    color: #ccc;
+    font-weight: 500;
 }
 
 

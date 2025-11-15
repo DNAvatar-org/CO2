@@ -279,7 +279,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             canvas.style.setProperty('display', 'block', 'important');
             canvas.style.setProperty('visibility', 'visible', 'important');
             canvas.style.setProperty('opacity', '1', 'important');
-            canvas.style.setProperty('z-index', '10000', 'important');
+            canvas.style.setProperty('z-index', '0', 'important');
             canvas.style.setProperty('position', 'absolute', 'important');
         }
         if (typeof window.updateSpectralVisualization === 'function' && tempPlotData.current) {
@@ -372,7 +372,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     canvas.style.setProperty('display', 'block', 'important');
                     canvas.style.setProperty('visibility', 'visible', 'important');
                     canvas.style.setProperty('opacity', '1', 'important');
-                    canvas.style.setProperty('z-index', '10000', 'important');
+                    canvas.style.setProperty('z-index', '1', 'important');
                     canvas.style.setProperty('position', 'absolute', 'important');
                 }
             }, 100);
@@ -533,7 +533,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
                 canvas.style.setProperty('display', 'block', 'important');
                 canvas.style.setProperty('visibility', 'visible', 'important');
                 canvas.style.setProperty('opacity', '1', 'important');
-                canvas.style.setProperty('z-index', '10000', 'important');
+                canvas.style.setProperty('z-index', '1', 'important');
                 canvas.style.setProperty('position', 'absolute', 'important');
             }
             // Créer un objet avec les données nécessaires pour la visualisation
