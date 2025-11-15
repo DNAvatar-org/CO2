@@ -6,16 +6,121 @@ let fpsFrames = 0;
 let fpsLastTime = performance.now();
 
 // ============================================================================
+// GESTION DES BOUTONS (désactivation pendant les calculs)
+// ============================================================================
+let calculationInProgress = false; // État du calcul en cours
+
+// ============================================================================
+// SYSTÈME DE VOLCANS (effet sur H2O et glace)
+// ============================================================================
+// Variable globale pour suivre l'effet cumulatif des volcans
+// Chaque volcan augmente H2O de 1% et diminue la glace de 1%
+let volcanoH2OBonus = 0; // Bonus H2O en % (0 à 100)
+let volcanoIceReduction = 0; // Réduction de glace en % (0 à 100)
+
+// Exposer globalement pour les calculs
+if (typeof window !== 'undefined') {
+    window.volcanoH2OBonus = 0;
+    window.volcanoIceReduction = 0;
+}
+
+// Fonction pour désactiver tous les boutons
+function disableButtons() {
+    calculationInProgress = true;
+    const buttons = [
+        'btn-iceberg', 'btn-forest', 'btn-factory',
+        'btn-desert', 'btn-volcano', 'btn-cloud'
+    ];
+    buttons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.disabled = true;
+            // Pour le bouton cloud, préserver son style spécifique mais le griser quand même
+            if (btnId === 'btn-cloud') {
+                // Sauvegarder l'opacity actuelle pour la restaurer après
+                if (!btn.dataset.originalOpacity) {
+                    btn.dataset.originalOpacity = btn.style.opacity || '0.5';
+                }
+                btn.style.opacity = '0.3'; // Plus grisé que les autres pour indiquer la désactivation
+            } else {
+                btn.style.opacity = '0.5';
+            }
+            btn.style.cursor = 'not-allowed';
+        }
+    });
+}
+
+// Fonction pour réactiver tous les boutons
+function enableButtons() {
+    calculationInProgress = false;
+    const buttons = [
+        'btn-iceberg', 'btn-forest', 'btn-factory',
+        'btn-desert', 'btn-volcano', 'btn-cloud'
+    ];
+    buttons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.disabled = false;
+            btn.style.cursor = 'pointer';
+            // Pour le bouton cloud, restaurer son style spécifique (opacity et border)
+            if (btnId === 'btn-cloud') {
+                // Restaurer l'opacity originale sauvegardée, ou utiliser le style de toggleWaterVapor
+                if (btn.dataset.originalOpacity) {
+                    btn.style.opacity = btn.dataset.originalOpacity;
+                    delete btn.dataset.originalOpacity;
+                } else {
+                    // Si pas de sauvegarde, utiliser le style selon l'état de waterVaporEnabled
+                    if (typeof window.waterVaporEnabled !== 'undefined' && window.waterVaporEnabled) {
+                        btn.style.opacity = '1';
+                    } else {
+                        btn.style.opacity = '0.5';
+                    }
+                }
+            } else {
+                btn.style.opacity = '1';
+            }
+        }
+    });
+}
+
+// ============================================================================
 // HORLOGE / TIMELINE
 // ============================================================================
 let timelineFrame = 0; // Nombre de frames écoulées
 const YEARS_PER_FRAME = 100; // 1 frame = 100 ans (un doublement de CO2 prend ~100 ans)
 // Note : Pour les sources industrielles ou volcaniques, on peut espérer un étalement dans le temps
-let timelineRunning = true; // État de l'horloge (activée par défaut pour voir le temps défiler)
+let timelineRunning = false; // État de l'horloge (désactivée par défaut - ne s'incrémente que lors des calculs/clics)
 let timelineLastUpdate = performance.now();
-const TIMELINE_UPDATE_INTERVAL = 1000; // Mise à jour toutes les 1000ms (1 seconde = 100 ans)
+const TIMELINE_UPDATE_INTERVAL = 1000; // Mise à jour toutes les 1000ms (1 seconde = 100 ans) - UNIQUEMENT si timelineRunning = true
 
 function updateTimeline() {
+    // Mettre à jour l'affichage (toujours, même si timelineRunning = false)
+    const timelineDisplay = document.getElementById('timeline-display');
+    const frameDisplay = document.getElementById('frame-display');
+    const infoTimeDisplay = document.getElementById('info-time');
+    
+    const years = timelineFrame * YEARS_PER_FRAME;
+    
+    // Formater les années avec M (Mega) et M̅ (Milliard avec barre)
+    const formattedYears = formatYears(years);
+    
+    if (timelineDisplay) {
+        timelineDisplay.textContent = `⏳ ${formattedYears}`;
+    }
+    
+    if (frameDisplay) {
+        frameDisplay.textContent = timelineFrame.toString();
+    }
+    
+    // Mettre à jour l'horloge dans l'en-tête d'info (prioritaire)
+    if (infoTimeDisplay) {
+        infoTimeDisplay.textContent = `⏳ ${formattedYears}`;
+        infoTimeDisplay.style.display = 'inline-block';
+        infoTimeDisplay.style.visibility = 'visible';
+        infoTimeDisplay.style.opacity = '1';
+    }
+    
+    // Incrémenter automatiquement UNIQUEMENT si timelineRunning = true
     if (timelineRunning) {
         const currentTime = performance.now();
         const elapsed = currentTime - timelineLastUpdate;
@@ -24,29 +129,56 @@ function updateTimeline() {
         if (elapsed >= TIMELINE_UPDATE_INTERVAL) {
             timelineFrame++;
             timelineLastUpdate = currentTime;
+            const years = timelineFrame * YEARS_PER_FRAME;
+            // Mettre à jour l'affichage immédiatement après l'incrémentation
+            const formattedYears = formatYears(years);
+            if (timelineDisplay) timelineDisplay.textContent = `⏳ ${formattedYears}`;
+            if (frameDisplay) frameDisplay.textContent = timelineFrame.toString();
+            if (infoTimeDisplay) infoTimeDisplay.textContent = `⏳ ${formattedYears}`;
         }
     }
     
-    // Mettre à jour l'affichage
-    const timelineDisplay = document.getElementById('timeline-display');
-    const frameDisplay = document.getElementById('frame-display');
-    const infoTimeDisplay = document.getElementById('info-time');
-    
-    const years = timelineFrame * YEARS_PER_FRAME;
-    
-    if (timelineDisplay) {
-        timelineDisplay.textContent = `${years} ans`;
-    }
-    
-    if (frameDisplay) {
-        frameDisplay.textContent = timelineFrame.toString();
-    }
-    
-    if (infoTimeDisplay) {
-        infoTimeDisplay.textContent = `${years} ans`;
-    }
-    
     requestAnimationFrame(updateTimeline);
+}
+
+// Fonction pour formater les années avec M (Mega) et M̅ (Milliard)
+// Format : 0M0M8200 ans (exemple : 1 milliard 200 millions 50 mille ans)
+function formatYears(years) {
+    if (years === 0) return '0 ans';
+    
+    const MILLIARD = 1e9; // 1 milliard
+    const MEGA = 1e6;    // 1 million
+    const MILLE = 1e3;   // 1 mille
+    
+    let result = '';
+    let remaining = years;
+    
+    // Milliards (M̅ avec barre au-dessus)
+    if (remaining >= MILLIARD) {
+        const milliards = Math.floor(remaining / MILLIARD);
+        result += `${milliards}M̅`;
+        remaining = remaining % MILLIARD;
+    } else {
+        result += '0M̅';
+    }
+    
+    // Millions (M)
+    if (remaining >= MEGA) {
+        const millions = Math.floor(remaining / MEGA);
+        result += `${millions}M`;
+        remaining = remaining % MEGA;
+    } else {
+        result += '0M';
+    }
+    
+    // Milliers et unités
+    if (remaining > 0) {
+        result += remaining.toString();
+    } else if (result === '0M̅0M') {
+        result = '0';
+    }
+    
+    return result + ' ans';
 }
 
 // Fonction pour incrémenter le temps de 100 ans
@@ -63,6 +195,7 @@ if (typeof window !== 'undefined' && window.requestAnimationFrame) {
 function startTimeline() {
     timelineRunning = true;
     timelineLastUpdate = performance.now();
+    updateTimeline();
 }
 
 function pauseTimeline() {
@@ -230,6 +363,13 @@ function updateCO2Level(state) {
             // ΔT° calculé à partir du forçage (plus cohérent physiquement)
             delta_temp = forcing_total * CLIMATE_SENSITIVITY;
             
+            // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
+            const TEMP_HABITABLE_OPTIMAL = 288; // 15°C
+            const TEMP_HABITABLE_MIN = 253; // -20°C
+            const TEMP_HABITABLE_MAX = 323; // 50°C
+            const delta_temp_habitable = temp_surface - TEMP_HABITABLE_OPTIMAL;
+            const life_viable = temp_surface >= TEMP_HABITABLE_MIN && temp_surface <= TEMP_HABITABLE_MAX;
+            
             updateDisplay({
                 state: currentState,
                 co2_ppm: plotData.co2_ppm,
@@ -238,6 +378,8 @@ function updateCO2Level(state) {
                 temp_eff: temp_eff,
                 temp_eff_c: temp_eff - 273.15,
                 delta_temp: delta_temp,
+                delta_temp_habitable: delta_temp_habitable,
+                life_viable: life_viable,
                 forcing: forcing_total,
                 forcing_CO2: forcing_CO2,
                 forcing_H2O: forcing_H2O,
@@ -263,6 +405,7 @@ function updateCO2Level(state) {
                 }
             }, 200);
             document.getElementById('status').textContent = 'Prêt';
+            enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
         };
         
         if (result instanceof Promise) {
@@ -274,30 +417,38 @@ function updateCO2Level(state) {
 }
 
 function setIceberg() {
+    if (calculationInProgress) return; // Bloquer si calcul en cours
     // Forcer à 0 ppm
     currentState = 0;
     plotData.co2_ppm = 0;
     incrementTimeline(); // +100 ans
+    disableButtons(); // Désactiver les boutons
     updateCO2Level(0); // 0 ppm
 }
 
 function setPreindustrial() {
+    if (calculationInProgress) return; // Bloquer si calcul en cours
     incrementTimeline(); // +100 ans
+    disableButtons(); // Désactiver les boutons
     updateCO2Level(1); // 280 ppm
 }
 
 function setCurrent() {
+    if (calculationInProgress) return; // Bloquer si calcul en cours
     incrementTimeline(); // +100 ans
+    disableButtons(); // Désactiver les boutons
     updateCO2Level(2); // 420 ppm
 }
 
 function divideCO2() {
+    if (calculationInProgress) return; // Bloquer si calcul en cours
     // Diviser le CO2 actuel par 2
     const current_ppm = plotData.co2_ppm;
     const new_ppm = current_ppm / 2;
     const new_fraction = new_ppm * 1e-6;
     
     incrementTimeline(); // +100 ans
+    disableButtons(); // Désactiver les boutons
     
     // Trouver l'état correspondant ou créer un nouvel état
     if (new_ppm === 0) {
@@ -315,13 +466,30 @@ function divideCO2() {
 }
 
 function multiplyCO2() {
-    // Multiplier le CO2 actuel par 2
+    if (calculationInProgress) return; // Bloquer si calcul en cours
+    
+    // ⚠️ MODIFICATION POUR GAMEPLAY : Un volcan ajoute une quantité fixe de CO2
+    // Au lieu de multiplier par 2, on ajoute l'équivalent d'un gros volcan
+    // Référence : Éruption du Pinatubo (1991) ≈ 20 Mt de SO2, mais CO2 aussi
+    // Pour un gros volcan : ~100-200 ppm de CO2 supplémentaire (approximation créative)
+    const VOLCAN_CO2_ADDITION = 150; // ppm de CO2 ajoutés par un gros volcan
+    
     const current_ppm = plotData.co2_ppm;
-    // Cas spécial : si on est à 0 ppm, ×2 donne 1 ppm (pas 0)
-    const new_ppm = (current_ppm === 0) ? 1 : (current_ppm * 2);
+    const new_ppm = current_ppm + VOLCAN_CO2_ADDITION;
     const new_fraction = new_ppm * 1e-6;
     
+    // Effet volcanique : augmenter H2O de 1% et diminuer la glace de 1%
+    volcanoH2OBonus = Math.min(100, volcanoH2OBonus + 1); // Maximum 100%
+    volcanoIceReduction = Math.min(100, volcanoIceReduction + 1); // Maximum 100%
+    
+    // Exposer globalement pour les calculs
+    if (typeof window !== 'undefined') {
+        window.volcanoH2OBonus = volcanoH2OBonus;
+        window.volcanoIceReduction = volcanoIceReduction;
+    }
+    
     incrementTimeline(); // +100 ans
+    disableButtons(); // Désactiver les boutons
     
     // Trouver l'état correspondant ou créer un nouvel état
     if (new_ppm === 0) {
@@ -452,6 +620,13 @@ function updateCO2LevelDirect(co2_fraction) {
             // ΔT° calculé à partir du forçage (plus cohérent physiquement)
             delta_temp = forcing_total * CLIMATE_SENSITIVITY;
             
+            // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
+            const TEMP_HABITABLE_OPTIMAL = 288; // 15°C
+            const TEMP_HABITABLE_MIN = 253; // -20°C
+            const TEMP_HABITABLE_MAX = 323; // 50°C
+            const delta_temp_habitable = temp_surface - TEMP_HABITABLE_OPTIMAL;
+            const life_viable = temp_surface >= TEMP_HABITABLE_MIN && temp_surface <= TEMP_HABITABLE_MAX;
+            
             updateDisplay({
                 state: currentState,
                 co2_ppm: plotData.co2_ppm,
@@ -460,6 +635,8 @@ function updateCO2LevelDirect(co2_fraction) {
                 temp_eff: temp_eff,
                 temp_eff_c: temp_eff - 273.15,
                 delta_temp: delta_temp,
+                delta_temp_habitable: delta_temp_habitable,
+                life_viable: life_viable,
                 forcing: forcing_total,
                 forcing_CO2: forcing_CO2,
                 forcing_H2O: forcing_H2O,
@@ -485,6 +662,7 @@ function updateCO2LevelDirect(co2_fraction) {
                 }
             }, 200);
             document.getElementById('status').textContent = 'Prêt';
+            enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
         };
         
         if (result instanceof Promise) {
@@ -566,6 +744,33 @@ window.updateDisplay = function updateDisplay(data) {
         const deltaTempEl = document.getElementById('delta-temp');
         if (deltaTempEl) {
             deltaTempEl.textContent = '--';
+        }
+    }
+    
+    // Afficher ΔT° habitable et indicateur de viabilité
+    if (data && data.delta_temp_habitable !== undefined) {
+        const deltaTempHabitableEl = document.getElementById('delta-temp-habitable');
+        if (deltaTempHabitableEl) {
+            deltaTempHabitableEl.textContent = `${' '.repeat(5)}${data.delta_temp_habitable >= 0 ? '+' : ''}${data.delta_temp_habitable.toFixed(2)}K`;
+        }
+        
+        // Indicateur de viabilité
+        const lifeIndicatorEl = document.getElementById('life-indicator');
+        if (lifeIndicatorEl) {
+            if (data.life_viable) {
+                lifeIndicatorEl.textContent = '🌱'; // Vie possible
+            } else {
+                lifeIndicatorEl.textContent = '💀'; // Vie impossible
+            }
+        }
+    } else {
+        const deltaTempHabitableEl = document.getElementById('delta-temp-habitable');
+        if (deltaTempHabitableEl) {
+            deltaTempHabitableEl.textContent = '--';
+        }
+        const lifeIndicatorEl = document.getElementById('life-indicator');
+        if (lifeIndicatorEl) {
+            lifeIndicatorEl.textContent = '--';
         }
     }
     // Mettre à jour les forçages séparés (sans unité, elle est en haut)
@@ -704,12 +909,14 @@ function getDashStyleForPattern(pattern) {
 
 // Fonction pour activer/désactiver la vapeur d'eau
 function toggleWaterVapor() {
+    if (calculationInProgress) return; // Bloquer si calcul en cours
     if (typeof window.waterVaporEnabled === 'undefined') {
         // Accéder directement à la variable globale si disponible
         return;
     }
     
     window.waterVaporEnabled = !window.waterVaporEnabled;
+    disableButtons(); // Désactiver les boutons
     
     // Mettre à jour l'affichage H2O
     const h2oStatusElement = document.getElementById('h2o-status');
@@ -762,7 +969,19 @@ window.toggleReferencePanel = toggleReferencePanel;
 
 window.addEventListener('DOMContentLoaded', () => {
     calculateInitialData();
-    // Initialiser l'affichage de l'horloge
+    // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)
     resetTimeline();
+    
+    // S'assurer que l'horloge est visible dès le départ
+    setTimeout(() => {
+        const infoTimeDisplay = document.getElementById('info-time');
+        if (infoTimeDisplay) {
+            infoTimeDisplay.style.display = 'inline-block';
+            infoTimeDisplay.style.visibility = 'visible';
+            infoTimeDisplay.style.opacity = '1';
+            updateTimeline(); // Forcer une mise à jour immédiate (affichage seulement, pas d'incrémentation)
+        }
+        // NE PAS démarrer l'horloge automatiquement - elle s'incrémentera uniquement lors des calculs/clics
+    }, 100);
 });
 

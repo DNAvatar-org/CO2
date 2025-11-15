@@ -845,11 +845,12 @@ function drawSpectralVisualization(canvas, data) {
     }
     allFluxes.sort((a, b) => a - b);
     
-    // Utiliser les percentiles 5% et 95% pour éviter les valeurs extrêmes qui écrasent le contraste
-    const p5Index = Math.floor(allFluxes.length * 0.05);
-    const p95Index = Math.floor(allFluxes.length * 0.95);
-    const minFlux = allFluxes[p5Index] || allFluxes[0] || 0;
-    const maxFlux = allFluxes[p95Index] || allFluxes[allFluxes.length - 1] || 1;
+    // Utiliser les percentiles 1% et 99% pour mieux voir les faibles valeurs
+    // (réduire de 5% à 1% pour éviter d'écraser les faibles flux dans la zone < 9 μm)
+    const p1Index = Math.floor(allFluxes.length * 0.01);
+    const p99Index = Math.floor(allFluxes.length * 0.99);
+    const minFlux = allFluxes[p1Index] || allFluxes[0] || 0;
+    const maxFlux = allFluxes[p99Index] || allFluxes[allFluxes.length - 1] || 1;
     const fluxRange = maxFlux - minFlux;
     
     // Plage de l'axe X du graphique : 0 à 50 μm
@@ -957,18 +958,37 @@ function drawSpectralVisualization(canvas, data) {
             
             // Normaliser le flux pour l'alpha (0 à 1) avec étirement du contraste
             let normalized = fluxRange > 0 ? (flux - minFlux) / fluxRange : 0.5;
-            // Clamper entre 0 et 1
+            
+            // Si le flux est < minFlux (en dessous du percentile 1%), il sera négatif
+            // Dans ce cas, ne pas dessiner du tout pour éviter les barres grises
+            if (normalized < 0 || flux <= 0) {
+                // Flux en dessous du minimum ou nul : ne pas dessiner
+                continue; // Passer au pixel suivant sans dessiner
+            }
+            
+            // Clamper entre 0 et 1 (sécurité supplémentaire)
             normalized = Math.max(0, Math.min(1, normalized));
             
             // Appliquer une courbe gamma pour améliorer le contraste
-            const gamma = 0.7; // Légèrement moins agressif
+            const gamma = 0.6; // Réduire de 0.7 à 0.6 pour mieux voir les faibles valeurs
             const alphaRaw = Math.pow(normalized, gamma);
             // Alpha minimum de 0, maximum 1.0
             let alpha = Math.max(0, Math.min(1.0, alphaRaw));
             
             // Pour l'émission, réduire moins l'alpha avec la densité pour garder les couleurs visibles
             // Appliquer un facteur moins agressif : garder au moins 50% de l'alpha même en haute altitude
-            alpha = alpha * (0.5 + 0.5 * densityAlpha);
+            // S'assurer que densityAlpha est entre 0 et 1 pour éviter les alpha négatifs
+            const densityFactor = Math.max(0, Math.min(1, densityAlpha));
+            alpha = alpha * (0.5 + 0.5 * densityFactor);
+            
+            // Clamper l'alpha final entre 0 et 1 (sécurité absolue)
+            alpha = Math.max(0, Math.min(1.0, alpha));
+            
+            // Ne pas dessiner si alpha est trop faible (< 0.05) pour éviter les barres grises
+            // Augmenter le seuil pour éliminer complètement les pixels presque transparents
+            if (alpha < 0.05) {
+                continue; // Passer au pixel suivant sans dessiner
+            }
             
             // Obtenir la couleur pour cette longueur d'onde (calée sur l'axe X du graphique)
             const [r, g, b] = wavelengthToColor(lambda, lambda_range[0], lambda_range[lambda_range.length - 1]);

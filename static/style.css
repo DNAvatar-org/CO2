@@ -360,10 +360,27 @@ h1 {
 .info-unit-header {
     font-size: 11px;
     color: #667eea;
-    text-align: right;
     margin-bottom: 8px;
-    font-style: italic;
     padding-right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-time {
+    font-weight: bold;
+    color: #667eea;
+    font-size: 12px;
+    font-style: normal;
+    text-align: left;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.info-unit-header .info-unit {
+    text-align: right;
+    font-style: italic;
 }
 
 .info-separator {
