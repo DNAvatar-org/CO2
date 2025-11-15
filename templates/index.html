@@ -94,14 +94,17 @@
                 </div>
                 <div class="button-container">
                     <div class="button-row">
-                        <button class="btn btn-volcano" id="btn-volcano" onclick="multiplyCO2()" title="×2 - Volcan">🌋</button>
-                        <button class="btn btn-iceberg" id="btn-iceberg" onclick="setIceberg()" title="0 ppm - Iceberg">🧊</button>
-                        <button class="btn btn-forest" id="btn-forest" onclick="setPreindustrial()" title="280 ppm - Pré-industriel">🌳</button>
-                        <button class="btn btn-factory" id="btn-factory" onclick="setCurrent()" title="420 ppm - Actuel">🏭</button>
+                        <button class="btn btn-comet" id="btn-comet" onclick="addCometCO2()" title="+0.1 ppm - Comète/Météorite de glace">☄️</button>
+                        <button class="btn btn-volcano" id="btn-volcano" onclick="multiplyCO2()" title="Volcan">🌋</button>
+                        <button class="btn btn-cloud" id="btn-cloud" onclick="toggleWaterVapor()" title="Activer/Désactiver vapeur d'eau">☁️</button>
                     </div>
                     <div class="button-row">
+                        <button class="btn btn-iceberg" id="btn-iceberg" onclick="setIceberg()" title="0 ppm - Iceberg">🧊</button>
                         <button class="btn btn-desert" id="btn-desert" onclick="divideCO2()" title="÷2 - Désert">🌵</button>
-                        <button class="btn btn-cloud" id="btn-cloud" onclick="toggleWaterVapor()" title="Activer/Désactiver vapeur d'eau">☁️</button>
+                        <button class="btn btn-forest" id="btn-forest" onclick="setPreindustrial()" title="280 ppm - Pré-industriel">🌳</button>
+                    </div>
+                    <div class="button-row">
+                        <button class="btn btn-factory" id="btn-factory" onclick="setCurrent()" title="420 ppm - Actuel">🏭</button>
                     </div>
                 </div>
             </div>

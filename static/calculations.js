@@ -57,8 +57,6 @@ function calculateAlbedo(T_surface_K, h2o_enabled) {
         // Utiliser la fonction dédiée pour calculer la couverture nuageuse
         const cloud_fraction = calculateCloudCoverage(T_surface_K, h2o_enabled);
         
-        console.log(`[NUAGES] T°=${T_surface_K.toFixed(1)}K (${(T_surface_K-273.15).toFixed(1)}°C) → couverture=${(cloud_fraction*100).toFixed(1)}%`);
-        
         // Seuil minimum : ne pas appliquer l'albedo nuageux si la couverture est trop faible (< 5%)
         // Cela évite que 1% de nuages ait un impact drastique sur l'albedo
         if (cloud_fraction >= 0.05) {
@@ -70,9 +68,6 @@ function calculateAlbedo(T_surface_K, h2o_enabled) {
             // mais avec un effet plus doux pour les faibles couvertures
             const cloud_contribution = (cloud_albedo * cloud_fraction) / 2;
             albedo = albedo + cloud_contribution;
-            console.log(`[NUAGES] Contribution nuageuse appliquée: ${(cloud_contribution*100).toFixed(2)}% → albedo total=${(albedo*100).toFixed(1)}%`);
-        } else {
-            console.log(`[NUAGES] Couverture < 5%, pas de contribution nuageuse à l'albedo`);
         }
         // Si cloud_fraction < 5%, on n'ajoute pas de contribution nuageuse à l'albedo
     }
@@ -174,7 +169,6 @@ function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled) {
     const albedo = calculateAlbedo(T_surface_K, h2o_enabled);
     const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
     const flux_absorbed = SOLAR_CONSTANT * (1 - albedo) / 4; // Divisé par 4 car la surface de la sphère (4πr²) est 4 fois la section (πr²)
-    console.log(`[FLUX SOLAIRE] T°=${T_surface_K.toFixed(1)}K, albedo=${(albedo*100).toFixed(1)}%, flux_absorbé=${flux_absorbed.toFixed(2)} W/m²`);
     return flux_absorbed;
 }
 
@@ -391,7 +385,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const lambda_9um = 9e-6; // 9 microns en mètres
     const flux_below_9um = earth_flux.filter((flux, idx) => lambda_range[idx] < lambda_9um).reduce((sum, f) => sum + f, 0);
     const flux_total = earth_flux.reduce((sum, f) => sum + f, 0);
-    console.log(`[EMISSION < 9μm] T°=${T0_test.toFixed(1)}K, flux_total=${flux_total.toFixed(2)} W/m², flux_<9μm=${flux_below_9um.toFixed(2)} W/m² (${(flux_below_9um/flux_total*100).toFixed(1)}%)`);
     
     let flux_in = [...earth_flux];
     
@@ -418,9 +411,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             // Debug: analyser l'absorption H2O dans la zone < 9μm (une fois par itération, pour quelques longueurs d'onde clés)
             if (i === 0 && (j === 0 || j === Math.floor(lambda_range.length / 4) || j === Math.floor(lambda_range.length / 2))) {
                 const lambda_um = lambda * 1e6;
-                if (lambda_um < 9) {
-                    console.log(`[ABSORPTION < 9μm] λ=${lambda_um.toFixed(2)}μm, z=${(z/1000).toFixed(1)}km, kappa_CO2=${kappa_CO2.toExponential(2)}, kappa_H2O=${kappa_H2O.toExponential(2)}, kappa_total=${(kappa_CO2 + kappa_H2O).toExponential(2)}`);
-                }
             }
             
             // Coefficient d'absorption total (CO2 + H2O)
@@ -464,7 +454,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const lambda_9um_top = 9e-6;
     const top_flux_below_9um = top_flux.filter((flux, idx) => lambda_range[idx] < lambda_9um_top).reduce((sum, f) => sum + f, 0);
     const top_flux_total = top_flux.reduce((sum, f) => sum + f, 0);
-    console.log(`[FLUX SOMMET < 9μm] flux_total=${top_flux_total.toFixed(2)} W/m², flux_<9μm=${top_flux_below_9um.toFixed(2)} W/m² (${top_flux_total > 0 ? (top_flux_below_9um/top_flux_total*100).toFixed(1) : 0}%)`);
     
     return { total_flux, lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux };
 }
@@ -936,7 +925,6 @@ function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, opt
 if (typeof window !== 'undefined') {
     window.simulateRadiativeTransfer = simulateRadiativeTransfer;
     // Les fonctions de forçage sont maintenant dans climate.js, pas besoin de les exposer ici
-    console.log('[CALCULATIONS] simulateRadiativeTransfer exposé sur window');
 }
 
 if (typeof module !== 'undefined' && module.exports) {

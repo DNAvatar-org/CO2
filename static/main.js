@@ -30,11 +30,26 @@ if (typeof window !== 'undefined') {
 // Les époques géologiques sont maintenant dans geology.js
 // Utiliser directement les fonctions globales exposées par ce module
 
+// Fonction pour déterminer quels boutons sont disponibles selon l'époque géologique
+function getAvailableButtons(yearsAgo) {
+    const era = (window.getGeologicalEra || function() { return { name: 'Phanérozoïque' }; })(yearsAgo);
+    const available = {
+        'btn-comet': true, // Toujours disponible (comètes peuvent arriver à tout moment)
+        'btn-volcano': true, // Toujours disponible mais effet variable
+        'btn-cloud': true, // Toujours disponible
+        'btn-iceberg': yearsAgo < 2.5e9, // Disponible avant l'Archéen (glace possible)
+        'btn-desert': yearsAgo < 2.5e9, // Disponible avant l'Archéen
+        'btn-forest': yearsAgo < 541e6, // Disponible avant le Phanérozoïque (avant la vie complexe)
+        'btn-factory': yearsAgo < 541e6 // Disponible avant le Phanérozoïque
+    };
+    return available;
+}
+
 // Fonction pour désactiver tous les boutons
 function disableButtons() {
     calculationInProgress = true;
     const buttons = [
-        'btn-iceberg', 'btn-forest', 'btn-factory',
+        'btn-comet', 'btn-iceberg', 'btn-forest', 'btn-factory',
         'btn-desert', 'btn-volcano', 'btn-cloud'
     ];
     buttons.forEach(btnId => {
@@ -56,34 +71,45 @@ function disableButtons() {
     });
 }
 
-// Fonction pour réactiver tous les boutons
+// Fonction pour réactiver les boutons selon l'époque géologique
 function enableButtons() {
     calculationInProgress = false;
+    const currentYears = timelineFrame * YEARS_PER_FRAME;
+    const available = getAvailableButtons(currentYears);
+    
     const buttons = [
-        'btn-iceberg', 'btn-forest', 'btn-factory',
+        'btn-comet', 'btn-iceberg', 'btn-forest', 'btn-factory',
         'btn-desert', 'btn-volcano', 'btn-cloud'
     ];
     buttons.forEach(btnId => {
         const btn = document.getElementById(btnId);
         if (btn) {
-            btn.disabled = false;
-            btn.style.cursor = 'pointer';
-            // Pour le bouton cloud, restaurer son style spécifique (opacity et border)
-            if (btnId === 'btn-cloud') {
-                // Restaurer l'opacity originale sauvegardée, ou utiliser le style de toggleWaterVapor
-                if (btn.dataset.originalOpacity) {
-                    btn.style.opacity = btn.dataset.originalOpacity;
-                    delete btn.dataset.originalOpacity;
-                } else {
-                    // Si pas de sauvegarde, utiliser le style selon l'état de waterVaporEnabled
-                    if (typeof window.waterVaporEnabled !== 'undefined' && window.waterVaporEnabled) {
-                        btn.style.opacity = '1';
+            const isAvailable = available[btnId] !== false;
+            btn.disabled = !isAvailable;
+            
+            if (isAvailable) {
+                btn.style.cursor = 'pointer';
+                // Pour le bouton cloud, restaurer son style spécifique (opacity et border)
+                if (btnId === 'btn-cloud') {
+                    // Restaurer l'opacity originale sauvegardée, ou utiliser le style de toggleWaterVapor
+                    if (btn.dataset.originalOpacity) {
+                        btn.style.opacity = btn.dataset.originalOpacity;
+                        delete btn.dataset.originalOpacity;
                     } else {
-                        btn.style.opacity = '0.5';
+                        // Si pas de sauvegarde, utiliser le style selon l'état de waterVaporEnabled
+                        if (typeof window.waterVaporEnabled !== 'undefined' && window.waterVaporEnabled) {
+                            btn.style.opacity = '1';
+                        } else {
+                            btn.style.opacity = '0.5';
+                        }
                     }
+                } else {
+                    btn.style.opacity = '1';
                 }
             } else {
-                btn.style.opacity = '1';
+                // Bouton non disponible pour cette époque
+                btn.style.opacity = '0.3';
+                btn.style.cursor = 'not-allowed';
             }
         }
     });
@@ -327,7 +353,6 @@ function updateCO2Level(state) {
     setTimeout(() => {
         // Calculer le scénario courant (peut retourner une Promise)
         if (typeof window.simulateRadiativeTransfer !== 'function') {
-            console.error('[MAIN] simulateRadiativeTransfer n\'est pas disponible');
             return;
         }
         const result = window.simulateRadiativeTransfer(co2_fraction);
@@ -456,6 +481,33 @@ function setCurrent() {
     updateCO2Level(2); // 420 ppm
 }
 
+// Fonction pour ajouter du CO2 via une comète/météorite de glace
+function addCometCO2() {
+    if (calculationInProgress) return; // Bloquer si calcul en cours
+    
+    const COMET_CO2_ADDITION = 0.1; // +0.1 ppm par comète
+    const current_ppm = plotData.co2_ppm;
+    const new_ppm = current_ppm + COMET_CO2_ADDITION;
+    const new_fraction = new_ppm * 1e-6;
+    
+    incrementTimeline(); // +100 ans
+    disableButtons(); // Désactiver les boutons
+    
+    // Trouver l'état correspondant ou créer un nouvel état
+    if (new_ppm === 0) {
+        updateCO2Level(0);
+    } else if (Math.abs(new_ppm - 280) < 1) {
+        updateCO2Level(1);
+    } else if (Math.abs(new_ppm - 420) < 1) {
+        updateCO2Level(2);
+    } else {
+        // État personnalisé : calculer le state à partir de la fraction
+        plotData.co2_ppm = new_ppm;
+        currentState = 3; // Utiliser state 3 comme base pour les valeurs personnalisées
+        updateCO2LevelDirect(new_fraction);
+    }
+}
+
 function divideCO2() {
     if (calculationInProgress) return; // Bloquer si calcul en cours
     // Diviser le CO2 actuel par 2
@@ -491,7 +543,8 @@ function multiplyCO2() {
     const era = (window.getGeologicalEra || function() { return { volcanoFactor: 1.0, co2PerVolcano: 150 }; })(currentYears);
     
     // CO2 par volcan selon l'époque (plus gros au début)
-    const CO2_PER_VOLCANO = era.co2PerVolcano; // ppm de CO2 par volcan
+    // ⚠️ MODIFICATION : Réduire l'effet du volcan pour le gameplay
+    const CO2_PER_VOLCANO = era.co2PerVolcano * 0.1; // Réduire à 10% de l'effet original
     
     // Facteur multiplicatif : au début de la Terre, un clic = plusieurs volcans
     // Par exemple, à l'Hadéen, un clic = 10 volcans (facteur 10)
@@ -585,7 +638,6 @@ function updateCO2LevelDirect(co2_fraction) {
         
         // Calculer le scénario courant (peut retourner une Promise)
         if (typeof window.simulateRadiativeTransfer !== 'function') {
-            console.error('[MAIN] simulateRadiativeTransfer n\'est pas disponible');
             return;
         }
         const result = window.simulateRadiativeTransfer(co2_fraction);
@@ -1000,6 +1052,9 @@ window.addEventListener('DOMContentLoaded', () => {
     calculateInitialData();
     // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)
     resetTimeline();
+    
+    // Initialiser l'état des boutons selon l'époque géologique
+    enableButtons();
     
     // S'assurer que l'horloge est visible dès le départ
     setTimeout(() => {
