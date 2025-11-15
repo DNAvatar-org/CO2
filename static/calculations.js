@@ -72,23 +72,42 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled) {
     
     const T_surface_C = T_surface_K - 273.15;
     
-    // Couverture nuageuse proportionnelle à la température au sol
-    // Plus il fait chaud, plus il y a d'évaporation et donc de nuages
-    // Fonction croissante : à 0°C = 0.2, à 15°C = 0.5, à 30°C = 0.8
-    // Approximation linéaire entre 0°C et 30°C
-    const cloud_fraction_min = 0.2; // Couverture minimale à 0°C
-    const cloud_fraction_max = 0.8; // Couverture maximale à 30°C
-    const T_ref_min = 0; // Température de référence minimale (°C)
-    const T_ref_max = 30; // Température de référence maximale (°C)
+    // À très basse température (< -20°C), l'air est très sec, peu de nuages possibles
+    // Nuages blancs (cirrus, stratus) : nécessitent de la vapeur d'eau, peu probables à très basse température
+    // Nuages noirs (orageux) : encore moins probables à très basse température
+    // À des températures très froides, la couverture nuageuse doit être proche de 0
     
-    if (T_surface_C <= T_ref_min) {
-        return cloud_fraction_min;
-    } else if (T_surface_C >= T_ref_max) {
-        return cloud_fraction_max;
+    if (T_surface_C < -20) {
+        // Très froid : presque pas de nuages (air très sec)
+        // Fonction décroissante exponentielle : à -50°C = ~0%, à -20°C = ~5%
+        const T_cold = -20; // Seuil de froid
+        const cloud_at_cold = 0.05; // 5% à -20°C
+        const decay_rate = 0.1; // Taux de décroissance
+        const cloud_fraction = cloud_at_cold * Math.exp(decay_rate * (T_surface_C - T_cold));
+        return Math.max(0, cloud_fraction); // Minimum 0%
+    } else if (T_surface_C < 0) {
+        // Froid mais pas extrême : quelques nuages possibles (nuages blancs)
+        // Interpolation entre -20°C (5%) et 0°C (20%)
+        const cloud_at_0 = 0.2; // 20% à 0°C
+        const cloud_at_cold = 0.05; // 5% à -20°C
+        return cloud_at_cold + (cloud_at_0 - cloud_at_cold) * ((T_surface_C - (-20)) / 20);
     } else {
-        // Interpolation linéaire entre T_ref_min et T_ref_max
-        return cloud_fraction_min + (cloud_fraction_max - cloud_fraction_min) * 
-               ((T_surface_C - T_ref_min) / (T_ref_max - T_ref_min));
+        // Température positive : couverture nuageuse proportionnelle à la température
+        // Plus il fait chaud, plus il y a d'évaporation et donc de nuages
+        // Fonction croissante : à 0°C = 0.2, à 15°C = 0.5, à 30°C = 0.8
+        // LIMITATION : Réduire la sensibilité pour éviter l'emballement thermique
+        const cloud_fraction_min = 0.2; // Couverture minimale à 0°C
+        const cloud_fraction_max = 0.5; // Couverture maximale réduite (0.8 → 0.5) pour limiter la rétroaction
+        const T_ref_max = 30; // Température de référence maximale (°C)
+        
+        if (T_surface_C >= T_ref_max) {
+            return cloud_fraction_max;
+        } else {
+            // Interpolation linéaire entre 0°C et 30°C
+            // Limitation : couverture maximale réduite pour éviter l'emballement thermique
+            return cloud_fraction_min + (cloud_fraction_max - cloud_fraction_min) * 
+                        (T_surface_C / T_ref_max);
+        }
     }
 }
 
@@ -107,12 +126,17 @@ function calculateCO2Forcing(CO2_fraction) {
 
 // Fonction pour calculer le forçage radiatif de H2O (vapeur d'eau)
 // Approximation : effet de serre supplémentaire de ~20-30 W/m² quand H2O est activé
+// Note : Le forçage H2O est limité pour éviter l'emballement thermique (rétroaction positive)
 function calculateH2OForcing(h2o_enabled, cloud_coverage) {
     if (!h2o_enabled) return 0;
     // Forçage basé sur la couverture nuageuse et l'effet de serre de la vapeur d'eau
-    // Approximation : ~25 W/m² pour une couverture nuageuse complète
-    const base_forcing = 20; // Forçage de base de la vapeur d'eau (W/m²)
-    const cloud_forcing = cloud_coverage * 10; // Contribution des nuages (jusqu'à 10 W/m²)
+    // Limiter la contribution des nuages pour éviter la rétroaction positive excessive
+    // Le forçage de base représente l'effet de serre de la vapeur d'eau elle-même
+    const base_forcing = 15; // Forçage de base de la vapeur d'eau (W/m²) - réduit pour éviter l'emballement
+    // Limiter la contribution des nuages : maximum 5 W/m² au lieu de 10
+    // Utiliser une fonction saturante pour limiter l'effet à haute couverture nuageuse
+    const cloud_forcing_max = 5; // Contribution maximale des nuages (W/m²)
+    const cloud_forcing = Math.min(cloud_forcing_max, cloud_coverage * cloud_forcing_max); // Saturation à 100% de couverture
     return base_forcing + cloud_forcing; // W/m²
 }
 
@@ -382,8 +406,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     const temp_eff = Math.pow(result.total_flux / STEFAN_BOLTZMANN, 0.25);
     // Calculer la température terrestre en °C à partir de T0_test (température au sol en K)
     const temp_surface_c = T0_test - 273.15;
-    const temp_eff_0 = 255.0; // Température effective sans CO2 (référence)
-    const delta_temp = temp_eff - temp_eff_0;
+    const temp_eff_0 = 255.0; // Température effective sans CO2 (référence 255K)
     
     // Récupérer l'albedo et la couverture nuageuse depuis les résultats
     const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
@@ -405,6 +428,12 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     
     // Forçage total
     const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
+    
+    // Calculer ΔT° à partir du forçage radiatif (calibration)
+    // Sensibilité climatique calibrée pour correspondre aux observations
+    // Avec forçage -128.26 W/m² → ΔT° -56.11K, sensibilité = 0.44 K/(W/m²)
+    const CLIMATE_SENSITIVITY = 0.44; // K/(W/m²) - sensibilité climatique calibrée
+    const delta_temp = forcing_total * CLIMATE_SENSITIVITY;
     
     // Mettre à jour les informations à chaque étape
     if (typeof window.updateDisplay === 'function') {
@@ -508,8 +537,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         ? window.waterVaporEnabled 
         : waterVaporEnabled;
     if (h2o_enabled) {
-        // H2O ajoute environ 20-30 K d'effet de serre supplémentaire
-        T0_initial += 25; // Approximation
+        // H2O ajoute un effet de serre supplémentaire, mais limité pour éviter l'emballement
+        // Réduit de 25K à 15K pour limiter la rétroaction positive température → nuages → forçage
+        T0_initial += 15; // Approximation réduite
     }
     
     // Dichotomie pour trouver T0 qui donne flux_total = flux_solaire_absorbé

@@ -11,9 +11,9 @@ let fpsLastTime = performance.now();
 let timelineFrame = 0; // Nombre de frames écoulées
 const YEARS_PER_FRAME = 100; // 1 frame = 100 ans (un doublement de CO2 prend ~100 ans)
 // Note : Pour les sources industrielles ou volcaniques, on peut espérer un étalement dans le temps
-let timelineRunning = false; // État de l'horloge (en pause par défaut)
+let timelineRunning = true; // État de l'horloge (activée par défaut pour voir le temps défiler)
 let timelineLastUpdate = performance.now();
-const TIMELINE_UPDATE_INTERVAL = 100; // Mise à jour toutes les 100ms (peut être ajusté)
+const TIMELINE_UPDATE_INTERVAL = 1000; // Mise à jour toutes les 1000ms (1 seconde = 100 ans)
 
 function updateTimeline() {
     if (timelineRunning) {
@@ -195,7 +195,11 @@ function updateCO2Level(state) {
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
             const temp_surface_c = temp_surface - 273.15;
-            const delta_temp = temp_eff - temp_eff_0;
+            // Calculer ΔT° à partir du forçage radiatif (calibration)
+            // ΔT° = différence par rapport à 255K (sans CO2)
+            // On calcule d'abord les forçages, puis on calcule delta_temp
+            // (sera calculé après les forçages)
+            let delta_temp = 0; // Sera calculé après
             
             // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
             plotData.temp_surface_c = temp_surface_c;
@@ -217,6 +221,14 @@ function updateCO2Level(state) {
             
             // Forçage total
             const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
+            
+            // Calculer ΔT° à partir du forçage radiatif (calibration)
+            // ΔT° = différence par rapport à 255K (sans CO2)
+            // Sensibilité climatique calibrée pour correspondre aux observations
+            // Avec forçage -128.26 W/m² → ΔT° -56.11K, sensibilité = 0.44 K/(W/m²)
+            const CLIMATE_SENSITIVITY = 0.44; // K/(W/m²) - sensibilité climatique calibrée
+            // ΔT° calculé à partir du forçage (plus cohérent physiquement)
+            delta_temp = forcing_total * CLIMATE_SENSITIVITY;
             
             updateDisplay({
                 state: currentState,
@@ -405,7 +417,11 @@ function updateCO2LevelDirect(co2_fraction) {
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
             const temp_surface_c = temp_surface - 273.15;
-            const delta_temp = temp_eff - temp_eff_0;
+            // Calculer ΔT° à partir du forçage radiatif (calibration)
+            // ΔT° = différence par rapport à 255K (sans CO2)
+            // On calcule d'abord les forçages, puis on calcule delta_temp
+            // (sera calculé après les forçages)
+            let delta_temp = 0; // Sera calculé après
             
             // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
             plotData.temp_surface_c = temp_surface_c;
@@ -427,6 +443,14 @@ function updateCO2LevelDirect(co2_fraction) {
             
             // Forçage total
             const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
+            
+            // Calculer ΔT° à partir du forçage radiatif (calibration)
+            // ΔT° = différence par rapport à 255K (sans CO2)
+            // Sensibilité climatique calibrée pour correspondre aux observations
+            // Avec forçage -128.26 W/m² → ΔT° -56.11K, sensibilité = 0.44 K/(W/m²)
+            const CLIMATE_SENSITIVITY = 0.44; // K/(W/m²) - sensibilité climatique calibrée
+            // ΔT° calculé à partir du forçage (plus cohérent physiquement)
+            delta_temp = forcing_total * CLIMATE_SENSITIVITY;
             
             updateDisplay({
                 state: currentState,
@@ -512,36 +536,36 @@ window.updateDisplay = function updateDisplay(data) {
         }
     }
     if (data && data.temp_surface !== undefined && data.temp_surface > 0) {
-        const tempSurfaceNumberEl = document.getElementById('temp-surface-number');
-        if (tempSurfaceNumberEl) {
-            tempSurfaceNumberEl.textContent = `${data.temp_surface.toFixed(1)} (${data.temp_surface_c.toFixed(1)}°C)`;
+        const tempSurfaceEl = document.getElementById('temp-surface');
+        if (tempSurfaceEl) {
+            tempSurfaceEl.textContent = `${' '.repeat(5)}${data.temp_surface.toFixed(1)}K (${data.temp_surface_c >= 0 ? '+' : ''}${data.temp_surface_c.toFixed(1)}°C)`;
         }
     } else {
-        const tempSurfaceNumberEl = document.getElementById('temp-surface-number');
-        if (tempSurfaceNumberEl) {
-            tempSurfaceNumberEl.textContent = '--';
+        const tempSurfaceEl = document.getElementById('temp-surface');
+        if (tempSurfaceEl) {
+            tempSurfaceEl.textContent = '--';
         }
     }
     if (data && data.temp_eff !== undefined && data.temp_eff > 0) {
-        const tempEffNumberEl = document.getElementById('temp-eff-number');
-        if (tempEffNumberEl) {
-            tempEffNumberEl.textContent = `${data.temp_eff.toFixed(1)} (${data.temp_eff_c.toFixed(1)}°C)`;
+        const tempEffEl = document.getElementById('temp-eff');
+        if (tempEffEl) {
+            tempEffEl.textContent = `${' '.repeat(5)}${data.temp_eff.toFixed(1)}K (${data.temp_eff_c >= 0 ? '+' : ''}${data.temp_eff_c.toFixed(1)}°C)`;
         }
     } else {
-        const tempEffNumberEl = document.getElementById('temp-eff-number');
-        if (tempEffNumberEl) {
-            tempEffNumberEl.textContent = '--';
+        const tempEffEl = document.getElementById('temp-eff');
+        if (tempEffEl) {
+            tempEffEl.textContent = '--';
         }
     }
     if (data && data.delta_temp !== undefined) {
-        const deltaTempNumberEl = document.getElementById('delta-temp-number');
-        if (deltaTempNumberEl) {
-            deltaTempNumberEl.textContent = `${data.delta_temp >= 0 ? '+' : ''}${data.delta_temp.toFixed(2)}`;
+        const deltaTempEl = document.getElementById('delta-temp');
+        if (deltaTempEl) {
+            deltaTempEl.textContent = `${' '.repeat(5)}${data.delta_temp >= 0 ? '+' : ''}${data.delta_temp.toFixed(2)}K`;
         }
     } else {
-        const deltaTempNumberEl = document.getElementById('delta-temp-number');
-        if (deltaTempNumberEl) {
-            deltaTempNumberEl.textContent = '--';
+        const deltaTempEl = document.getElementById('delta-temp');
+        if (deltaTempEl) {
+            deltaTempEl.textContent = '--';
         }
     }
     // Mettre à jour les forçages séparés (sans unité, elle est en haut)

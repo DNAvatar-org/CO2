@@ -428,16 +428,11 @@
             document.getElementById('status').textContent = 'Calcul en cours...';
             
             try {
-                console.log('Calcul pré-industriel (280 ppm)...');
                 plotData.preindustrial = simulateRadiativeTransfer(CO2_PREINDUSTRIAL);
-                
-                console.log('Calcul actuel (420 ppm)...');
                 plotData.current_ref = simulateRadiativeTransfer(CO2_CURRENT);
-                
                 plotData.lambda_range = plotData.preindustrial.lambda_range;
                 updateCO2Level(currentExponent);
             } catch (error) {
-                console.error('Erreur:', error);
                 document.getElementById('status').textContent = 'Erreur de calcul';
             }
         }

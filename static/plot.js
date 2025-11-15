@@ -98,48 +98,7 @@ window.debugZIndex = function() {
     const title = document.querySelector('.plot-overlay-title');
     const plotContainer = document.getElementById('plot-container');
     
-    if (canvas) {
-        const canvasStyle = window.getComputedStyle(canvas);
-        const canvasInline = canvas.style.zIndex;
-        const canvasRect = canvas.getBoundingClientRect();
-        console.log(`Canvas (#spectral-visualization):`);
-        console.log(`  - Inline style: ${canvasInline || 'non défini'}`);
-        console.log(`  - Computed: ${canvasStyle.zIndex}`);
-        console.log(`  - Position: ${canvasStyle.position}`);
-        console.log(`  - Display: ${canvasStyle.display}`);
-        console.log(`  - Visibility: ${canvasStyle.visibility}`);
-        console.log(`  - Opacity: ${canvasStyle.opacity}`);
-        console.log(`  - Width: ${canvas.width}px, Height: ${canvas.height}px`);
-        console.log(`  - BoundingRect: left=${canvasRect.left}, top=${canvasRect.top}, width=${canvasRect.width}, height=${canvasRect.height}`);
-        console.log(`  - Parent: ${canvas.parentElement ? canvas.parentElement.className || canvas.parentElement.id : 'aucun'}`);
-        console.log(`  - Next sibling: ${canvas.nextSibling ? (canvas.nextSibling.className || canvas.nextSibling.id || canvas.nextSibling.tagName) : 'aucun'}`);
-        console.log(`  - Canvas visible: ${canvasRect.width > 0 && canvasRect.height > 0 ? 'OUI' : 'NON'}`);
-    } else {
-        console.log('Canvas: NON TROUVÉ');
-    }
-    
-    if (title) {
-        const titleStyle = window.getComputedStyle(title);
-        console.log(`Titre (.plot-overlay-title):`);
-        console.log(`  - Computed z-index: ${titleStyle.zIndex}`);
-    }
-    
-    if (plotContainer) {
-        const plotStyle = window.getComputedStyle(plotContainer);
-        console.log(`Plot Container (#plot-container):`);
-        console.log(`  - Computed z-index: ${plotStyle.zIndex}`);
-    }
-    
-    // Vérifier les éléments Plotly
-    if (plotContainer) {
-        const plotlayers = plotContainer.querySelectorAll('.plotlayer, .cartesianlayer, .xaxislayer-above, .yaxislayer-above');
-        console.log(`Éléments Plotly (${plotlayers.length} trouvés):`);
-        plotlayers.forEach((el, i) => {
-            const style = window.getComputedStyle(el);
-            console.log(`  ${i+1}. ${el.className}: z-index=${style.zIndex}`);
-        });
-    }
-    console.log('===================');
+    // Debug z-index désactivé
 };
 
 // Initialiser le graphique
@@ -864,17 +823,6 @@ function drawSpectralVisualization(canvas, data) {
     const lambda_range = data.lambda_range;
     const z_range = data.z_range;
     
-    // LOGS DE DIAGNOSTIC
-    console.log('[SPECTRUM DEBUG] ========================================');
-    console.log('[SPECTRUM DEBUG] Canvas:', width, 'x', height, 'px');
-    console.log('[SPECTRUM DEBUG] Visualization height:', visualizationHeight, 'px');
-    console.log('[SPECTRUM DEBUG] Lambda range:', lambda_range ? `${(lambda_range[0] * 1e6).toFixed(2)} - ${(lambda_range[lambda_range.length - 1] * 1e6).toFixed(2)} μm (${lambda_range.length} points)` : 'NULL');
-    console.log('[SPECTRUM DEBUG] Z range:', z_range ? `${(z_range[0] / 1000).toFixed(2)} - ${(z_range[z_range.length - 1] / 1000).toFixed(2)} km (${z_range.length} layers)` : 'NULL');
-    console.log('[SPECTRUM DEBUG] Upward flux layers:', upward_flux ? upward_flux.length : 'NULL');
-    console.log('[SPECTRUM DEBUG] Emitted flux:', data.emitted_flux ? `${data.emitted_flux.length} layers` : 'NULL');
-    console.log('[SPECTRUM DEBUG] Absorbed flux:', data.absorbed_flux ? `${data.absorbed_flux.length} layers` : 'NULL');
-    console.log('[SPECTRUM DEBUG] Earth flux:', earth_flux ? `${earth_flux.length} points` : 'NULL');
-    
     // Calculer la courbe d'absorption normalisée (flux au sommet de l'atmosphère)
     // C'est la courbe verte qui filtre le spectre
     let absorptionCurve = null;
@@ -904,14 +852,9 @@ function drawSpectralVisualization(canvas, data) {
     const maxFlux = allFluxes[p95Index] || allFluxes[allFluxes.length - 1] || 1;
     const fluxRange = maxFlux - minFlux;
     
-    console.log('[SPECTRUM DEBUG] Flux range:', minFlux.toFixed(4), '-', maxFlux.toFixed(4), '(range:', fluxRange.toFixed(4), ')');
-    
     // Plage de l'axe X du graphique : 0 à 50 μm
     const graph_min_um = 0;
     const graph_max_um = 50;
-    
-    console.log('[SPECTRUM DEBUG] Graph X range:', graph_min_um, '-', graph_max_um, 'μm');
-    console.log('[SPECTRUM DEBUG] Effective width (X):', width - (charWidth * 2), 'px');
     
     // Calculer l'altitude max pour normaliser
     const z_max = z_range.length > 0 ? z_range[z_range.length - 1] : 120000; // 120 km par défaut
@@ -980,9 +923,6 @@ function drawSpectralVisualization(canvas, data) {
         // Clamper entre 0 et 1.0
         densityAlpha = Math.max(0, Math.min(1.0, densityAlpha));
         
-        // LOG pour quelques positions X clés (première couche seulement)
-        let loggedX = false;
-        
         for (let x = 0; x < width; x++) {
             // Mapper la position X du canvas à la longueur d'onde (0 à 50 μm)
             // Compenser le décalage de charWidth de chaque côté
@@ -1007,11 +947,6 @@ function drawSpectralVisualization(canvas, data) {
             const lambda = lambda_range[lambdaIndex];
             let flux = layerFlux[lambdaIndex];
             
-            // LOG pour quelques positions X clés (première couche seulement, une fois)
-            if (y === 0 && !loggedX && (x === 0 || x === Math.floor(width / 4) || x === Math.floor(width / 2) || x === Math.floor(3 * width / 4) || x === width - 1)) {
-                console.log(`[SPECTRUM DEBUG] X=${x}px -> normalizedX=${normalizedX.toFixed(4)} -> lambda=${lambda_um.toFixed(2)}μm -> lambdaIndex=${lambdaIndex} -> flux=${flux.toFixed(4)}`);
-                if (x === width - 1) loggedX = true;
-            }
             
             // TEMPORAIRE : Désactiver la multiplication par la courbe d'absorption pour diagnostiquer
             // Multiplier par la courbe d'absorption normalisée pour filtrer le spectre

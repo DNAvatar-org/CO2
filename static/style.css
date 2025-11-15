@@ -307,11 +307,11 @@ h1 {
     opacity: 1 !important;
 }
 
-/* Titre - Positionné en haut, aligné à droite mais plus à gauche */
+/* Titre - Positionné en haut à droite du graphique */
 .plot-overlay-title {
     position: absolute !important;
     top: 10px !important;
-    right: 50px !important; /* Plus à gauche qu'avant (10px) */
+    right: 10px !important;
     transform: none !important;
     font-size: 14px;
     font-weight: 600;
@@ -319,7 +319,7 @@ h1 {
     background: rgba(255, 255, 255, 0.9);
     padding: 8px 15px;
     border-radius: 5px;
-    text-align: right; /* Aligné à droite */
+    text-align: left; /* Texte aligné à gauche dans la boîte */
     z-index: 60 !important;
     pointer-events: none;
     visibility: visible !important;
@@ -404,6 +404,7 @@ h1 {
     order: 2; /* En troisième, après l'emoji */
     display: flex;
     align-items: baseline;
+    white-space: pre; /* Préserver les espaces multiples */
 }
 
 .info-number {
