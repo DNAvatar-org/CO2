@@ -5,6 +5,64 @@ let fps = 0;
 let fpsFrames = 0;
 let fpsLastTime = performance.now();
 
+// ============================================================================
+// HORLOGE / TIMELINE
+// ============================================================================
+let timelineFrame = 0; // Nombre de frames écoulées
+const YEARS_PER_FRAME = 100; // 1 frame = 100 ans (un doublement de CO2 prend ~100 ans)
+// Note : Pour les sources industrielles ou volcaniques, on peut espérer un étalement dans le temps
+let timelineRunning = false; // État de l'horloge (en pause par défaut)
+let timelineLastUpdate = performance.now();
+const TIMELINE_UPDATE_INTERVAL = 100; // Mise à jour toutes les 100ms (peut être ajusté)
+
+function updateTimeline() {
+    if (timelineRunning) {
+        const currentTime = performance.now();
+        const elapsed = currentTime - timelineLastUpdate;
+        
+        // Incrémenter les frames selon l'intervalle
+        if (elapsed >= TIMELINE_UPDATE_INTERVAL) {
+            timelineFrame++;
+            timelineLastUpdate = currentTime;
+        }
+    }
+    
+    // Mettre à jour l'affichage
+    const timelineDisplay = document.getElementById('timeline-display');
+    const frameDisplay = document.getElementById('frame-display');
+    
+    if (timelineDisplay) {
+        const years = timelineFrame * YEARS_PER_FRAME;
+        timelineDisplay.textContent = `${years} ans`;
+    }
+    
+    if (frameDisplay) {
+        frameDisplay.textContent = timelineFrame.toString();
+    }
+    
+    requestAnimationFrame(updateTimeline);
+}
+
+// Démarrer l'horloge
+if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+    requestAnimationFrame(updateTimeline);
+}
+
+function startTimeline() {
+    timelineRunning = true;
+    timelineLastUpdate = performance.now();
+}
+
+function pauseTimeline() {
+    timelineRunning = false;
+}
+
+function resetTimeline() {
+    timelineFrame = 0;
+    timelineRunning = false;
+    updateTimeline();
+}
+
 function updateFPS() {
     fpsFrames++;
     const currentTime = performance.now();
@@ -75,47 +133,21 @@ function calculateInitialData() {
     };
     updatePlot(tempPlotData);
     
-    // Calculer tous les scénarios de référence en premier
-    document.getElementById('status').textContent = 'Calcul des scénarios de référence...';
+    // Ne pas calculer les scénarios de référence (280ppm et 420ppm)
+    // Commencer directement à 0 ppm par défaut sans calculer
     
-    // Désactiver l'affichage des étapes de dichotomie pour les calculs de référence
+    // Activer l'affichage des étapes de dichotomie pour les calculs interactifs
     if (typeof window !== 'undefined') {
-        window.showDichotomySteps = false; // Désactivé pour les calculs de référence
+        window.showDichotomySteps = true;
     }
     
-    setTimeout(() => {
-        // Calculer les scénarios de référence (peuvent retourner des Promises)
-        const handleResult = (result, cacheVar) => {
-            if (result instanceof Promise) {
-                return result.then(data => data);
-            }
-            return Promise.resolve(result);
-        };
-        
-        Promise.all([
-            handleResult(window.simulateRadiativeTransfer(280e-6)),
-            handleResult(window.simulateRadiativeTransfer(420e-6))
-        ]).then(([result280, result420]) => {
-            cache_280ppm = result280;
-            cache_420ppm = result420;
-        
-            // Stocker les données pour le graphique
-            plotData.flux_280ppm = cache_280ppm;
-            plotData.flux_420ppm = cache_420ppm;
-            
-            // Réactiver l'affichage des étapes de dichotomie pour les calculs interactifs
-            if (typeof window !== 'undefined') {
-                window.showDichotomySteps = true;
-            }
-            
-            // Afficher les courbes de référence
-            updateLegend(plotData);
-            updatePlot(plotData);
-            
-            // Calculer pour 420 ppm (scénario initial - usine)
-            updateCO2Level(2);
-        });
-    }, 100);
+    // Afficher les courbes de référence (Planck uniquement)
+    updateLegend(plotData);
+    updatePlot(plotData);
+    
+    // Initialiser à 0 ppm par défaut et calculer
+    plotData.co2_ppm = 0;
+    updateCO2Level(0); // 0 ppm - déclenche le calcul
 }
 
 function updateCO2Level(state) {
@@ -152,13 +184,27 @@ function updateCO2Level(state) {
             const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
             const temp_surface_c = temp_surface - 273.15;
             const delta_temp = temp_eff - temp_eff_0;
-            // Forçage radiatif par rapport à 0 ppm (approximation)
-            const flux_current = plotData.current.upward_flux[plotData.current.upward_flux.length - 1].reduce((a, b) => a + b, 0);
-            const flux_0 = 239.05; // Flux solaire absorbé (référence sans effet de serre)
-            const forcing = flux_current - flux_0;
             
             // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
             plotData.temp_surface_c = temp_surface_c;
+            
+            // Récupérer l'albedo et la couverture nuageuse depuis les résultats
+            const albedo = plotData.current.albedo !== undefined ? plotData.current.albedo : null;
+            const cloud_coverage = plotData.current.cloud_coverage !== undefined ? plotData.current.cloud_coverage : null;
+            
+            // Calculer les forçages radiatifs séparés
+            const forcing_CO2 = typeof window.calculateCO2Forcing === 'function' 
+                ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6) 
+                : 0;
+            const forcing_H2O = typeof window.calculateH2OForcing === 'function'
+                ? window.calculateH2OForcing(typeof window.waterVaporEnabled !== 'undefined' ? window.waterVaporEnabled : false, cloud_coverage || 0)
+                : 0;
+            const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
+                ? window.calculateAlbedoForcing(albedo)
+                : 0;
+            
+            // Forçage total
+            const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
             
             updateDisplay({
                 state: currentState,
@@ -168,7 +214,12 @@ function updateCO2Level(state) {
                 temp_eff: temp_eff,
                 temp_eff_c: temp_eff - 273.15,
                 delta_temp: delta_temp,
-                forcing: forcing
+                forcing: forcing_total,
+                forcing_CO2: forcing_CO2,
+                forcing_H2O: forcing_H2O,
+                forcing_Albedo: forcing_Albedo,
+                albedo: albedo,
+                cloud_coverage: cloud_coverage
             });
             
             updateLegend(plotData);
@@ -336,13 +387,27 @@ function updateCO2LevelDirect(co2_fraction) {
             const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
             const temp_surface_c = temp_surface - 273.15;
             const delta_temp = temp_eff - temp_eff_0;
-            // Forçage radiatif par rapport à 0 ppm (approximation)
-            const flux_current = plotData.current.upward_flux[plotData.current.upward_flux.length - 1].reduce((a, b) => a + b, 0);
-            const flux_0 = 239.05; // Flux solaire absorbé (référence sans effet de serre)
-            const forcing = flux_current - flux_0;
             
             // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
             plotData.temp_surface_c = temp_surface_c;
+            
+            // Récupérer l'albedo et la couverture nuageuse depuis les résultats
+            const albedo = plotData.current.albedo !== undefined ? plotData.current.albedo : null;
+            const cloud_coverage = plotData.current.cloud_coverage !== undefined ? plotData.current.cloud_coverage : null;
+            
+            // Calculer les forçages radiatifs séparés
+            const forcing_CO2 = typeof window.calculateCO2Forcing === 'function' 
+                ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6) 
+                : 0;
+            const forcing_H2O = typeof window.calculateH2OForcing === 'function'
+                ? window.calculateH2OForcing(typeof window.waterVaporEnabled !== 'undefined' ? window.waterVaporEnabled : false, cloud_coverage || 0)
+                : 0;
+            const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
+                ? window.calculateAlbedoForcing(albedo)
+                : 0;
+            
+            // Forçage total
+            const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
             
             updateDisplay({
                 state: currentState,
@@ -352,7 +417,12 @@ function updateCO2LevelDirect(co2_fraction) {
                 temp_eff: temp_eff,
                 temp_eff_c: temp_eff - 273.15,
                 delta_temp: delta_temp,
-                forcing: forcing
+                forcing: forcing_total,
+                forcing_CO2: forcing_CO2,
+                forcing_H2O: forcing_H2O,
+                forcing_Albedo: forcing_Albedo,
+                albedo: albedo,
+                cloud_coverage: cloud_coverage
             });
             
             updateLegend(plotData);
@@ -404,10 +474,19 @@ function updateDisplay(data) {
         }
     }
     
-    // Mettre à jour le statut H2O
+    // Mettre à jour le statut H2O avec le % de couverture nuageuse
     const h2oStatusElement = document.getElementById('h2o-status');
-    if (h2oStatusElement && typeof window.waterVaporEnabled !== 'undefined') {
-        h2oStatusElement.textContent = window.waterVaporEnabled ? 'Activé' : 'Désactivé';
+    if (h2oStatusElement) {
+        if (data && data.cloud_coverage !== undefined) {
+            // Afficher le % de couverture nuageuse (vue depuis le ciel)
+            const cloudPercent = (data.cloud_coverage * 100).toFixed(0);
+            h2oStatusElement.textContent = `${cloudPercent} %`;
+        } else if (typeof window.waterVaporEnabled !== 'undefined') {
+            // Si pas de données, afficher selon l'état H2O
+            h2oStatusElement.textContent = window.waterVaporEnabled ? '-- %' : '0 %';
+        } else {
+            h2oStatusElement.textContent = '0 %';
+        }
     }
     if (data && data.temp_surface !== undefined && data.temp_surface > 0) {
         document.getElementById('temp-surface').textContent = `${data.temp_surface.toFixed(1)} K (${data.temp_surface_c.toFixed(1)} °C)`;
@@ -418,8 +497,28 @@ function updateDisplay(data) {
     if (data && data.delta_temp !== undefined) {
         document.getElementById('delta-temp').textContent = `${data.delta_temp >= 0 ? '+' : ''}${data.delta_temp.toFixed(2)} K`;
     }
+    // Mettre à jour les forçages séparés
+    // CO2 : toujours avec + (même si 0)
+    if (data && data.forcing_CO2 !== undefined) {
+        document.getElementById('forcing-co2').textContent = `+${data.forcing_CO2.toFixed(2)} W/m²`;
+    }
+    // H2O : toujours avec + (même si 0)
+    if (data && data.forcing_H2O !== undefined) {
+        document.getElementById('forcing-h2o').textContent = `+${data.forcing_H2O.toFixed(2)} W/m²`;
+    }
+    // Alb. : toujours avec - (effet négatif sur le flux)
+    if (data && data.forcing_Albedo !== undefined) {
+        document.getElementById('forcing-albedo').textContent = `-${Math.abs(data.forcing_Albedo).toFixed(2)} W/m²`;
+    }
+    // Total : avec signe selon valeur
     if (data && data.forcing !== undefined) {
-        document.getElementById('forcing').textContent = `${data.forcing >= 0 ? '+' : ''}${data.forcing.toFixed(2)} W/m²`;
+        document.getElementById('forcing-total').textContent = `${data.forcing >= 0 ? '+' : ''}${data.forcing.toFixed(2)} W/m²`;
+    }
+    
+    // Mettre à jour l'albedo
+    if (data && data.albedo !== undefined) {
+        const albedoPercent = (data.albedo * 100).toFixed(1);
+        document.getElementById('albedo-value').textContent = `${albedoPercent} %`;
     }
 }
 
@@ -429,10 +528,10 @@ function updateLegend(data) {
     if (grid && window.PLANCK_TEMPERATURES) {
         grid.innerHTML = '';
         
-        // Configuration de la grille : 1 colonne (vertical)
+        // Configuration de la grille : 2 colonnes (4 éléments dans la première)
         grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = '1fr';
-        grid.style.gap = '8px';
+        grid.style.gridTemplateColumns = '1fr 1fr';
+        grid.style.gap = '8px 20px';
         
         // Trier les températures par ordre croissant
         const sortedTemps = [...window.PLANCK_TEMPERATURES].sort((a, b) => a - b);
@@ -441,64 +540,37 @@ function updateLegend(data) {
         sortedTemps.forEach((T, sortedIndex) => {
             // Trouver l'index original pour obtenir le bon motif
             const originalIndex = window.PLANCK_TEMPERATURES.indexOf(T);
-            // Utiliser la fonction commune pour obtenir le pattern
+            // Utiliser la fonction commune pour obtenir le pattern (même que dans plot.js)
+            // IMPORTANT: utiliser originalIndex pour correspondre avec plot.js
             const dashPattern = typeof window.getReferencePattern === 'function' 
                 ? window.getReferencePattern(originalIndex) 
                 : 'dash'; // Fallback
             
+            // Debug: vérifier que le pattern correspond
+            console.log(`[LEGEND] T=${T}K, originalIndex=${originalIndex}, pattern=${dashPattern}`);
+            
             const item = document.createElement('div');
             item.className = 'legend-planck-item';
             
-            // Créer un canvas pour dessiner le pattern
-            const canvas = document.createElement('canvas');
-            canvas.width = 50;
-            canvas.height = 4;
-            canvas.style.verticalAlign = 'middle';
-            canvas.style.display = 'inline-block';
-            canvas.style.marginRight = '8px';
+            // Utiliser SVG pour dessiner le pattern (plus fiable que canvas)
+            const patternSVG = typeof window.createDashPatternSVG === 'function'
+                ? window.createDashPatternSVG(dashPattern)
+                : `<svg width="50" height="4" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
+                    <line x1="2" y1="2" x2="48" y2="2" stroke="black" stroke-width="2.5"/>
+                   </svg>`;
             
-            const ctx = canvas.getContext('2d');
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2.5;
-            ctx.lineCap = 'round';
-            
-            // Dessiner le pattern selon le type
-            const dashArray = typeof window.getDashArray === 'function' 
-                ? window.getDashArray(dashPattern) 
-                : '6,4';
-            
-            // Réinitialiser le contexte pour éviter les problèmes de rendu
-            ctx.save();
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2.5;
-            ctx.lineCap = 'round';
-            
-            if (dashArray !== 'none') {
-                const segments = dashArray.split(',').map(Number);
-                // Vérifier que les segments sont valides
-                if (segments.length > 0 && segments.every(s => !isNaN(s) && s > 0)) {
-                    ctx.setLineDash(segments);
-                } else {
-                    ctx.setLineDash([]);
-                }
-            } else {
-                ctx.setLineDash([]);
-            }
-            
-            // S'assurer que le canvas est propre avant de dessiner
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.beginPath();
-            ctx.moveTo(2, canvas.height / 2);
-            ctx.lineTo(canvas.width - 2, canvas.height / 2);
-            ctx.stroke();
-            ctx.restore();
+            // Créer un conteneur pour le SVG
+            const patternContainer = document.createElement('div');
+            patternContainer.innerHTML = patternSVG;
+            patternContainer.style.display = 'inline-block';
+            patternContainer.style.marginRight = '8px';
+            patternContainer.style.verticalAlign = 'middle';
             
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
             labelSpan.textContent = `${T}K (${(T - 273.15).toFixed(0)}°C)`;
             
-            item.appendChild(canvas);
+            item.appendChild(patternContainer);
             item.appendChild(labelSpan);
             grid.appendChild(item);
         });
@@ -546,7 +618,8 @@ function toggleWaterVapor() {
     // Mettre à jour l'affichage H2O
     const h2oStatusElement = document.getElementById('h2o-status');
     if (h2oStatusElement) {
-        h2oStatusElement.textContent = window.waterVaporEnabled ? 'Activé' : 'Désactivé';
+        // Afficher 0% si désactivé, sinon sera mis à jour lors du calcul
+        h2oStatusElement.textContent = window.waterVaporEnabled ? '-- %' : '0 %';
     }
     
     const btn = document.getElementById('btn-cloud');
@@ -580,7 +653,21 @@ function toggleWaterVapor() {
     }
 }
 
+// Fonction pour rétracter/déployer le panneau de référence
+function toggleReferencePanel() {
+    const container = document.querySelector('.reference-container');
+    const icon = document.querySelector('.reference-toggle-icon');
+    if (container) {
+        container.classList.toggle('collapsed');
+    }
+}
+
+// Exposer la fonction globalement
+window.toggleReferencePanel = toggleReferencePanel;
+
 window.addEventListener('DOMContentLoaded', () => {
     calculateInitialData();
+    // Initialiser l'affichage de l'horloge
+    resetTimeline();
 });
 

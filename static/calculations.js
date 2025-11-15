@@ -10,9 +10,120 @@ const STEFAN_BOLTZMANN = 5.670374419e-8; // Constante de Stefan-Boltzmann, W/(m�
 
 // Constantes climatiques
 const SOLAR_CONSTANT = 1366;          // Constante solaire, W/m²
-const ALBEDO = 0.3;                    // Albédo terrestre (30% réfléchi)
-const SOLAR_FLUX_ABSORBED = SOLAR_CONSTANT * (1 - ALBEDO) / 4; // Flux solaire absorbé, W/m²
-// Divisé par 4 car la surface de la sphère (4πr²) est 4 fois la section (πr²)
+const ALBEDO_BASE = 0.3;               // Albédo de base terrestre (30% réfléchi)
+
+// Fonction pour calculer l'albedo dynamique basé sur la glace et les nuages
+// Modélisation créative inspirée de :
+// - "Ice-Albedo Feedback in Climate Models" (approximation simplifiée)
+// - Modèles de rétroaction glace-albedo (Budyko, 1969; Sellers, 1969)
+// - Paramétrisation nuageuse simplifiée pour visualisation pédagogique
+function calculateAlbedo(T_surface_K, h2o_enabled) {
+    const T_surface_C = T_surface_K - 273.15;
+    let albedo = ALBEDO_BASE;
+    
+    // Contribution de la glace (albedo augmente avec le froid)
+    // Modélisation : transition progressive de l'albedo terrestre vers l'albedo glaciaire
+    // Référence conceptuelle : rétroaction glace-albedo (modèles simplifiés de climat)
+    // Si température < 0°C, il y a de la glace
+    // À -2.2°C, on veut beaucoup de glace (fraction élevée)
+    if (T_surface_C < 0) {
+        // Albedo de la glace : ~0.6-0.9 selon l'épaisseur (valeur moyenne choisie pour visualisation)
+        // Note : Le blanc (glace) ne fait pas totalement miroir, il y a une rediffusion vers le bas
+        // Plus il fait froid, plus il y a de glace
+        // Utiliser une fonction qui monte rapidement : à -2.2°C, on veut ~70% de la surface du globe couverte de glace
+        const ice_albedo = 0.7; // Albedo moyen de la glace (approximation créative)
+        // Fonction exponentielle pour avoir beaucoup de glace dès -2.2°C
+        // À -2.2°C : fraction = 1 - exp(-2.2/3) ≈ 0.7 (70% de la surface du globe couverte de glace)
+        // À -10°C : fraction ≈ 0.97 (97% de la surface du globe couverte de glace)
+        const ice_fraction = Math.min(1, 1 - Math.exp(T_surface_C / 3)); // Fraction de surface couverte de glace (0 à 1)
+        // Transition progressive : albedo = base + (glace - base) * fraction_glace
+        albedo = ALBEDO_BASE + (ice_albedo - ALBEDO_BASE) * ice_fraction;
+    }
+    
+    // Contribution des nuages (H2O activé)
+    // Modélisation : ajout d'un albedo nuageux moyen lorsque H2O est activé
+    // Référence conceptuelle : paramétrisation nuageuse simplifiée (modèles climatiques simplifiés)
+    // Note : Les nuages noirs (épais, sombres) n'ont pas d'albedo significatif
+    // Note : Sur les nuages, la réflexion/absorption ne passe pas très bien dans les deux sens,
+    // mais ce ne sont pas les mêmes fréquences, donc pas les mêmes absorption/miroir/radiation
+    // Note : La couverture nuageuse est proportionnelle/croissante avec la température au sol
+    // (plus il fait chaud, plus il y a d'évaporation et donc de nuages)
+    // TODO : Justifier ce choix de modélisation (couverture nuageuse vs température, altitude, etc.)
+    if (h2o_enabled) {
+        // Albedo des nuages : ~0.3-0.6 selon la couverture nuageuse (valeur moyenne choisie)
+        const cloud_albedo = 0.4; // Albedo moyen des nuages (approximation créative)
+        
+        // Utiliser la fonction dédiée pour calculer la couverture nuageuse
+        const cloud_fraction = calculateCloudCoverage(T_surface_K, h2o_enabled);
+        
+        // Diviser par 2 car les nuages noirs ne réfléchissent pas (ou très peu)
+        albedo = albedo + (cloud_albedo * cloud_fraction) / 2;
+    }
+    
+    // Clamper entre 0.1 et 0.9 (valeurs physiques raisonnables pour la Terre)
+    return Math.max(0.1, Math.min(0.9, albedo));
+}
+
+// Fonction pour calculer la couverture nuageuse (fraction de surface couverte vue depuis le ciel)
+function calculateCloudCoverage(T_surface_K, h2o_enabled) {
+    if (!h2o_enabled) {
+        return 0; // Pas de nuages si H2O désactivé
+    }
+    
+    const T_surface_C = T_surface_K - 273.15;
+    
+    // Couverture nuageuse proportionnelle à la température au sol
+    // Plus il fait chaud, plus il y a d'évaporation et donc de nuages
+    // Fonction croissante : à 0°C = 0.2, à 15°C = 0.5, à 30°C = 0.8
+    // Approximation linéaire entre 0°C et 30°C
+    const cloud_fraction_min = 0.2; // Couverture minimale à 0°C
+    const cloud_fraction_max = 0.8; // Couverture maximale à 30°C
+    const T_ref_min = 0; // Température de référence minimale (°C)
+    const T_ref_max = 30; // Température de référence maximale (°C)
+    
+    if (T_surface_C <= T_ref_min) {
+        return cloud_fraction_min;
+    } else if (T_surface_C >= T_ref_max) {
+        return cloud_fraction_max;
+    } else {
+        // Interpolation linéaire entre T_ref_min et T_ref_max
+        return cloud_fraction_min + (cloud_fraction_max - cloud_fraction_min) * 
+               ((T_surface_C - T_ref_min) / (T_ref_max - T_ref_min));
+    }
+}
+
+// Fonction pour calculer le flux solaire absorbé avec albedo dynamique
+function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled) {
+    const albedo = calculateAlbedo(T_surface_K, h2o_enabled);
+    return SOLAR_CONSTANT * (1 - albedo) / 4; // Divisé par 4 car la surface de la sphère (4πr²) est 4 fois la section (πr²)
+}
+
+// Fonction pour calculer le forçage radiatif du CO2
+function calculateCO2Forcing(CO2_fraction) {
+    const CO2_ref = 280e-6; // Référence pré-industrielle (280 ppm)
+    if (CO2_fraction <= 0) return 0;
+    return 5.35 * Math.log(Math.max(CO2_fraction, CO2_ref) / CO2_ref); // W/m²
+}
+
+// Fonction pour calculer le forçage radiatif de H2O (vapeur d'eau)
+// Approximation : effet de serre supplémentaire de ~20-30 W/m² quand H2O est activé
+function calculateH2OForcing(h2o_enabled, cloud_coverage) {
+    if (!h2o_enabled) return 0;
+    // Forçage basé sur la couverture nuageuse et l'effet de serre de la vapeur d'eau
+    // Approximation : ~25 W/m² pour une couverture nuageuse complète
+    const base_forcing = 20; // Forçage de base de la vapeur d'eau (W/m²)
+    const cloud_forcing = cloud_coverage * 10; // Contribution des nuages (jusqu'à 10 W/m²)
+    return base_forcing + cloud_forcing; // W/m²
+}
+
+// Fonction pour calculer le forçage radiatif de l'albedo (négatif)
+// Un albedo plus élevé réduit le flux solaire absorbé
+function calculateAlbedoForcing(albedo) {
+    const ALBEDO_REF = 0.3; // Albedo de référence
+    // Forçage négatif : ΔF = S_0/4 * (A_ref - A_actuel)
+    // Si albedo augmente, le forçage devient plus négatif (moins d'absorption)
+    return SOLAR_CONSTANT / 4 * (ALBEDO_REF - albedo); // W/m² (négatif si albedo > 0.3)
+}
 
 // Valeurs de référence
 const CO2_PREINDUSTRIAL = 280e-6;     // 280 ppm
@@ -66,7 +177,11 @@ function temperature(z, CO2_fraction = null, T0_override = null) {
     } else {
         // Calculer T0 à partir des formules (valeur initiale)
         const co2_frac = CO2_fraction !== null ? CO2_fraction : current_CO2_fraction_for_temp;
-        const T0_no_greenhouse = Math.pow(SOLAR_FLUX_ABSORBED / STEFAN_BOLTZMANN, 0.25);
+        // Utiliser un albedo de base pour l'initialisation (sans glace ni nuages)
+        const h2o_enabled_temp = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
+            ? window.waterVaporEnabled 
+            : waterVaporEnabled;
+        const T0_no_greenhouse = Math.pow(calculateSolarFluxAbsorbed(255, false) / STEFAN_BOLTZMANN, 0.25);
         
         if (co2_frac === 0 || co2_frac === null) {
             T0 = T0_no_greenhouse;
@@ -330,8 +445,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         delta_lambda = 0.1e-6
     } = options;
     
-    // Calculer T0 initiale (approximation)
-    const T0_no_greenhouse = Math.pow(SOLAR_FLUX_ABSORBED / STEFAN_BOLTZMANN, 0.25);
+    // Calculer T0 initiale (approximation avec albedo de base)
+    // Utiliser un albedo de base pour l'initialisation (sans glace ni nuages)
+    const T0_no_greenhouse = Math.pow(calculateSolarFluxAbsorbed(255, false) / STEFAN_BOLTZMANN, 0.25);
     let T0_initial;
     if (CO2_fraction === 0) {
         T0_initial = T0_no_greenhouse;
@@ -443,7 +559,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     }
                     
                     final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
-                    const flux_diff = final_result.total_flux - SOLAR_FLUX_ABSORBED;
+                    // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
+                    const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0_current, h2o_enabled);
+                    const flux_diff = final_result.total_flux - solar_flux_absorbed;
                     
                     // Afficher chaque étape de la dichotomie seulement si demandé
                     if (shouldDisplaySteps && !isCancelled) {
@@ -497,7 +615,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         // Mode synchrone (si pas de setTimeout disponible) - pas d'affichage progressif
         while (iteration < max_iterations) {
             result = calculateFluxForT0(CO2_fraction, T0, options);
-            const flux_diff = result.total_flux - SOLAR_FLUX_ABSORBED;
+            // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
+            const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled);
+            const flux_diff = result.total_flux - solar_flux_absorbed;
             
             console.log(`[Dichotomie] Itération ${iteration + 1}: T0 = ${T0.toFixed(2)} K, flux = ${result.total_flux.toFixed(2)} W/m², diff = ${flux_diff.toFixed(2)} W/m²`);
             
@@ -561,6 +681,13 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     // Température effective (loi de Stefan-Boltzmann)
     const effective_temperature = Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);
     
+    // Calculer l'albedo dynamique et la couverture nuageuse
+    const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
+        ? window.waterVaporEnabled 
+        : waterVaporEnabled;
+    const albedo = calculateAlbedo(final_T0, h2o_enabled);
+    const cloud_coverage = calculateCloudCoverage(final_T0, h2o_enabled);
+    
     const final_result_obj = {
         lambda_range: lambda_range,
         z_range: z_range,
@@ -570,7 +697,9 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         absorbed_flux: absorbed_flux,
         earth_flux: earth_flux,
         total_flux: total_flux,
-        effective_temperature: effective_temperature
+        effective_temperature: effective_temperature,
+        albedo: albedo,
+        cloud_coverage: cloud_coverage
     };
     
     // Mettre à jour la visualisation spectrale avant de résoudre
@@ -601,9 +730,19 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
 function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction) {
     // Calculer le flux total au sommet de l'atmosphère
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
+    
+    // Récupérer h2o_enabled pour calculer l'albedo dynamique et la couverture nuageuse
+    const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
+        ? window.waterVaporEnabled 
+        : waterVaporEnabled;
+    const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled);
+    const albedo = calculateAlbedo(T0, h2o_enabled);
+    const cloud_coverage = calculateCloudCoverage(T0, h2o_enabled);
+    
     console.log(`Flux total calculé: ${total_flux.toFixed(2)} W/m² pour ${(CO2_fraction * 1e6).toFixed(0)} ppm`);
-    console.log(`Flux solaire absorbé attendu: ${SOLAR_FLUX_ABSORBED.toFixed(2)} W/m²`);
-    console.log(`Différence: ${(total_flux - SOLAR_FLUX_ABSORBED).toFixed(2)} W/m²`);
+    console.log(`Albedo: ${(albedo * 100).toFixed(1)}% (glace: ${T0 < 273.15 ? 'oui' : 'non'}, nuages: ${h2o_enabled ? 'oui' : 'non'})`);
+    console.log(`Flux solaire absorbé attendu: ${solar_flux_absorbed.toFixed(2)} W/m²`);
+    console.log(`Différence: ${(total_flux - solar_flux_absorbed).toFixed(2)} W/m²`);
     
     // Température effective (loi de Stefan-Boltzmann)
     const effective_temperature = Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);
@@ -618,7 +757,9 @@ function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, opt
         absorbed_flux: absorbed_flux,
         earth_flux: earth_flux,
         total_flux: total_flux,
-        effective_temperature: effective_temperature
+        effective_temperature: effective_temperature,
+        albedo: albedo,
+        cloud_coverage: cloud_coverage
     };
 }
 
@@ -626,9 +767,12 @@ function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, opt
 // EXPORT POUR UTILISATION
 // ============================================================================
 
-// Exposer la fonction globalement pour être accessible depuis main.js
+// Exposer les fonctions globalement pour être accessibles depuis main.js
 if (typeof window !== 'undefined') {
     window.simulateRadiativeTransfer = simulateRadiativeTransfer;
+    window.calculateCO2Forcing = calculateCO2Forcing;
+    window.calculateH2OForcing = calculateH2OForcing;
+    window.calculateAlbedoForcing = calculateAlbedoForcing;
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -171,6 +171,7 @@ function initPlot() {
         xaxis: {
             title: "Longueur d'onde (μm)",
             range: [0, 50],
+            fixedrange: true, // Désactiver le zoom
             tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
             titlefont: { color: 'white' }, // Titre de l'axe X en blanc
             showgrid: false, // Pas de grille verticale
@@ -179,6 +180,7 @@ function initPlot() {
         yaxis: {
             title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
             range: [0, 40],
+            fixedrange: true, // Désactiver le zoom
             tickfont: { color: 'black', size: 12 },
             titlefont: { color: 'black', size: 14 }, // Titre de l'axe Y en noir pour visibilité
             showgrid: true,
@@ -190,6 +192,7 @@ function initPlot() {
             overlaying: 'y',
             side: 'right',
             range: [0, 120], // 0 km en bas, 120 km en haut
+            fixedrange: true, // Désactiver le zoom
             position: 1.0,
             // Aligner les ticks avec l'axe Y principal
             // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
@@ -209,12 +212,32 @@ function initPlot() {
         showlegend: false,
         margin: { l: 50, r: 100, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe (100px)
         plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
-        paper_bgcolor: 'rgba(0,0,0,0)' // Fond du papier transparent
+        paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
+        annotations: [
+            {
+                x: 50, // À droite du graphique
+                y: 40 * (11 / 120), // Position de la tropopause (11 km)
+                text: 'Tropopause',
+                showarrow: false,
+                xref: 'x',
+                yref: 'y',
+                xanchor: 'left',
+                yanchor: 'middle',
+                font: { color: 'black', size: 11 },
+                bgcolor: 'rgba(255, 255, 255, 0.7)',
+                bordercolor: 'rgba(0, 0, 0, 0.5)',
+                borderwidth: 1,
+                borderpad: 3
+            }
+        ]
     };
     
     Plotly.newPlot('plot-container', [], layout, {
         responsive: true,
-        displayModeBar: false
+        displayModeBar: false,
+        scrollZoom: false,
+        doubleClick: false,
+        dragmode: false
     }).then(() => {
         // Calculer et définir la taille du canvas dès que Plotly est prêt
         // La bande sera dessinée automatiquement dans resizeCanvasToPlot()
@@ -223,6 +246,22 @@ function initPlot() {
 }
 
 // Fonction pour redimensionner le canvas pour correspondre à la zone de plot Plotly
+// Debounce pour éviter trop d'appels lors du resize
+let resizeTimeout = null;
+function debouncedResizeCanvas() {
+    if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+    }
+    resizeTimeout = setTimeout(() => {
+        resizeCanvasToPlot();
+        // Redessiner la visualisation spectrale si on a des données
+        const canvas = document.getElementById('spectral-visualization');
+        if (canvas && canvas._lastData) {
+            drawSpectralVisualization(canvas, canvas._lastData);
+        }
+    }, 150);
+}
+
 function resizeCanvasToPlot() {
     const canvas = document.getElementById('spectral-visualization');
     const plotContainer = document.getElementById('plot-container');
@@ -277,6 +316,11 @@ function resizeCanvasToPlot() {
             }, 200);
         }
     }, 100);
+}
+
+// Ajouter l'écouteur d'événement resize
+if (typeof window !== 'undefined') {
+    window.addEventListener('resize', debouncedResizeCanvas);
 }
 
 // Fonction pour dessiner uniquement la bande de spectre de 15px (sans données)
@@ -473,6 +517,7 @@ window.updatePlot = function updatePlot(data) {
         margin: { l: 50, r: 100, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe altitude (100px)
         xaxis: { 
             range: [0, 50],
+            fixedrange: true, // Désactiver le zoom
             title: "Longueur d'onde (μm)",
             tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
             titlefont: { color: 'white' }, // Titre de l'axe X en blanc
@@ -481,6 +526,7 @@ window.updatePlot = function updatePlot(data) {
         },
         yaxis: { 
             range: [0, 40],
+            fixedrange: true, // Désactiver le zoom
             title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
             tickfont: { color: 'black', size: 12 },
             titlefont: { color: 'black', size: 14 }, // Titre de l'axe Y en noir pour visibilité
@@ -493,6 +539,7 @@ window.updatePlot = function updatePlot(data) {
             overlaying: 'y',
             side: 'right',
             range: [0, 120], // 0 km en bas, 120 km en haut (même orientation que yaxis)
+            fixedrange: true, // Désactiver le zoom
             position: 1.0,
             // Aligner les ticks avec l'axe Y principal
             // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
@@ -510,7 +557,24 @@ window.updatePlot = function updatePlot(data) {
             visible: true
         },
         plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
-        paper_bgcolor: 'rgba(0,0,0,0)' // Fond du papier transparent
+        paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
+        annotations: [
+            {
+                x: 50, // À droite du graphique
+                y: 40 * (11 / 120), // Position de la tropopause (11 km)
+                text: 'Tropopause',
+                showarrow: false,
+                xref: 'x',
+                yref: 'y',
+                xanchor: 'left',
+                yanchor: 'middle',
+                font: { color: 'black', size: 11 },
+                bgcolor: 'rgba(255, 255, 255, 0.7)',
+                bordercolor: 'rgba(0, 0, 0, 0.5)',
+                borderwidth: 1,
+                borderpad: 3
+            }
+        ]
     };
     
     updateLayout.yaxis2 = {
@@ -518,6 +582,7 @@ window.updatePlot = function updatePlot(data) {
         overlaying: 'y',
         side: 'right',
         range: [0, 120], // 0 km en bas, 120 km en haut
+        fixedrange: true, // Désactiver le zoom
         position: 1.0,
         // Aligner les ticks avec l'axe Y principal
         tickmode: 'linear',
@@ -654,6 +719,9 @@ window.updateSpectralVisualization = function(data) {
         return;
     }
     
+    // Stocker les données pour pouvoir les redessiner lors du resize
+    canvas._lastData = data;
+    
     // Fonction pour forcer le z-index à 1 (au-dessus du fond mais en dessous des courbes)
     const forceZIndex = (silent = false, source = 'unknown') => {
         if (canvas && !canvas._forcingZIndex) {
@@ -771,8 +839,25 @@ window.updateSpectralVisualization = function(data) {
 
 function drawSpectralVisualization(canvas, data) {
     const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
+    
+    // Utiliser la taille réelle du canvas visible à l'écran (pas une taille fixe)
+    // Cela limite les calculs aux pixels réellement visibles
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.floor(rect.width) || canvas.width; // Taille visible à l'écran
+    const height = Math.floor(rect.height) || canvas.height; // Taille visible à l'écran
+    
+    // Ajuster la résolution du canvas pour correspondre à la taille visible
+    // Cela permet de régler la précision sur le rendu graphique
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    const displayWidth = width;
+    const displayHeight = height;
+    
+    // Ajuster la taille interne du canvas si nécessaire
+    if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
+    }
+    
     const spectrumBarHeight = 15; // Hauteur de la bande de spectre en bas
     const charWidth = 10; // Largeur de caractère ajoutée de chaque côté
     
