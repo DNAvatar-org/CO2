@@ -22,6 +22,7 @@ let volcanoIceReduction = 0; // Réduction de glace en % (0 à 100)
 if (typeof window !== 'undefined') {
     window.volcanoH2OBonus = 0;
     window.volcanoIceReduction = 0;
+    window.fps = 0; // Exposer le FPS pour l'optimisation de la visualisation spectrale
 }
 
 // ============================================================================
@@ -258,6 +259,11 @@ function updateFPS() {
         fpsFrames = 0;
         fpsLastTime = currentTime;
         
+        // Exposer le FPS globalement pour l'optimisation
+        if (typeof window !== 'undefined') {
+            window.fps = fps;
+        }
+        
         const fpsDisplay = document.getElementById('fps-display');
         if (fpsDisplay) {
             fpsDisplay.textContent = `FPS: ${fps}`;
@@ -486,9 +492,28 @@ function addCometCO2() {
     if (calculationInProgress) return; // Bloquer si calcul en cours
     
     const COMET_CO2_ADDITION = 0.1; // +0.1 ppm par comète
+    const COMET_H2O_ADDITION = 0.1; // +0.1% H2O par comète
     const current_ppm = plotData.co2_ppm;
     const new_ppm = current_ppm + COMET_CO2_ADDITION;
     const new_fraction = new_ppm * 1e-6;
+    
+    // Activer H2O si ce n'est pas déjà fait
+    if (typeof window.waterVaporEnabled === 'undefined' || !window.waterVaporEnabled) {
+        window.waterVaporEnabled = true;
+        waterVaporEnabled = true;
+        // Mettre à jour le bouton cloud
+        const btn = document.getElementById('btn-cloud');
+        if (btn) {
+            btn.style.opacity = '1';
+            btn.style.border = '2px solid #4CAF50';
+        }
+    }
+    
+    // Ajouter le bonus H2O pour les comètes (comme pour les volcans)
+    volcanoH2OBonus = Math.min(100, volcanoH2OBonus + COMET_H2O_ADDITION); // Maximum 100%
+    if (typeof window !== 'undefined') {
+        window.volcanoH2OBonus = volcanoH2OBonus;
+    }
     
     incrementTimeline(); // +100 ans
     disableButtons(); // Désactiver les boutons

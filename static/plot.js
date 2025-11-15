@@ -240,17 +240,18 @@ function resizeCanvasToPlot() {
             const height = Math.floor(targetRect.height) + 15; // +15px pour la bande de spectre
             
             // Positionner le canvas avec exactement la même position absolue que la zone de drag
+            // Pas de padding, donc alignement direct avec le graphique
             if (wrapper) {
                 const wrapperRect = wrapper.getBoundingClientRect();
                 const left = (targetRect.left - wrapperRect.left) - charWidth;
-                const top = targetRect.top - wrapperRect.top - 0; // Remonté pour toucher le bord
+                const top = targetRect.top - wrapperRect.top; // Aligné avec le graphique (pas de padding)
                 canvas.style.setProperty('left', left + 'px', 'important');
                 canvas.style.setProperty('top', top + 'px', 'important');
             } else {
                 // Fallback : position relative au plot-container
                 const plotRect = plotContainer.getBoundingClientRect();
                 const left = (targetRect.left - plotRect.left) - charWidth;
-                const top = targetRect.top - plotRect.top - 0; // Remonté pour toucher le bord
+                const top = targetRect.top - plotRect.top; // Aligné avec le graphique (pas de padding)
                 canvas.style.setProperty('left', left + 'px', 'important');
                 canvas.style.setProperty('top', top + 'px', 'important');
             }
@@ -665,6 +666,11 @@ function wavelengthToColor(lambda_m, lambda_range_min, lambda_range_max) {
 
 // Fonction pour créer la visualisation spectrale
 window.updateSpectralVisualization = function(data) {
+    // Ne pas actualiser pendant les calculs de dichotomie pour améliorer les performances
+    if (typeof window !== 'undefined' && window.calculationInProgress) {
+        return; // Ignorer les mises à jour pendant la dichotomie
+    }
+    
     const canvas = document.getElementById('spectral-visualization');
     if (!canvas || !data || !data.upward_flux || !data.lambda_range || !data.z_range) {
         return;
@@ -794,12 +800,42 @@ function drawSpectralVisualization(canvas, data) {
     // Utiliser la taille réelle du canvas visible à l'écran (pas une taille fixe)
     // Cela limite les calculs aux pixels réellement visibles
     const rect = canvas.getBoundingClientRect();
-    const width = Math.floor(rect.width) || canvas.width; // Taille visible à l'écran
-    const height = Math.floor(rect.height) || canvas.height; // Taille visible à l'écran
+    let width = Math.floor(rect.width) || canvas.width; // Taille visible à l'écran
+    let height = Math.floor(rect.height) || canvas.height; // Taille visible à l'écran
     
     // Ajuster la résolution du canvas pour correspondre à la taille visible
-    // Cela permet de régler la précision sur le rendu graphique
+    // Réduire la résolution si retina (devicePixelRatio > 1) pour améliorer les performances
     const devicePixelRatio = window.devicePixelRatio || 1;
+    
+    // Réduire drastiquement la résolution pendant la dichotomie (/4 des 2 dimensions = /16)
+    const isDichotomy = typeof window !== 'undefined' && window.calculationInProgress;
+    
+    // Adapter la précision en fonction du FPS
+    // FPS < 20 : très basse précision (factor 4)
+    // FPS 20-30 : basse précision (factor 3)
+    // FPS 30-45 : précision moyenne (factor 2)
+    // FPS 45-55 : bonne précision (factor 1.5)
+    // FPS > 55 : haute précision (factor 1 ou retina/2)
+    const currentFPS = typeof window !== 'undefined' && window.fps ? window.fps : 60;
+    let resolutionFactor;
+    if (isDichotomy) {
+        resolutionFactor = 4; // Pendant la dichotomie, toujours très basse résolution
+    } else if (currentFPS < 20) {
+        resolutionFactor = 4; // Très basse précision si FPS très bas
+    } else if (currentFPS < 30) {
+        resolutionFactor = 3; // Basse précision
+    } else if (currentFPS < 45) {
+        resolutionFactor = 2; // Précision moyenne
+    } else if (currentFPS < 55) {
+        resolutionFactor = devicePixelRatio > 1 ? 1.5 : 1.5; // Bonne précision
+    } else {
+        resolutionFactor = devicePixelRatio > 1 ? 2 : 1; // Haute précision (retina/2 ou 1)
+    }
+    
+    // Réduire la résolution pour améliorer les performances
+    width = Math.floor(width / resolutionFactor);
+    height = Math.floor(height / resolutionFactor);
+    
     const displayWidth = width;
     const displayHeight = height;
     
@@ -808,6 +844,10 @@ function drawSpectralVisualization(canvas, data) {
         canvas.width = displayWidth;
         canvas.height = displayHeight;
     }
+    
+    // Ajuster le style pour que le canvas s'affiche à la bonne taille (upscale si nécessaire)
+    canvas.style.width = (width * resolutionFactor) + 'px';
+    canvas.style.height = (height * resolutionFactor) + 'px';
     
     const spectrumBarHeight = 15; // Hauteur de la bande de spectre en bas
     const charWidth = 10; // Largeur de caractère ajoutée de chaque côté
@@ -870,7 +910,20 @@ function drawSpectralVisualization(canvas, data) {
     const P0 = 101325; // Pression au niveau de la mer en Pa
     
     // Dessiner chaque pixel de la visualisation principale
-    for (let y = 0; y < visualizationHeight; y++) {
+    // Adapter le pas en Y en fonction du FPS
+    // FPS < 30 : step 2, FPS 30-45 : step 1.5, FPS > 45 : step 1
+    let yStep = 1;
+    if (isDichotomy) {
+        yStep = 2; // Pendant la dichotomie, toujours sauter des pixels
+    } else if (currentFPS < 30) {
+        yStep = 2; // Sauter des pixels si FPS bas
+    } else if (currentFPS < 45) {
+        yStep = 2; // Pas de 2 pour éviter les problèmes de boucle (on dessinera 2 pixels de haut)
+    } else {
+        yStep = 1; // Tous les pixels si FPS bon
+    }
+    
+    for (let y = 0; y < visualizationHeight; y += yStep) {
         // Calculer l'altitude correspondant à ce pixel Y
         // y=0 (en haut du canvas) → z=z_max (haute altitude)
         // y=max (en bas du canvas) → z=0 (sol)
@@ -924,7 +977,20 @@ function drawSpectralVisualization(canvas, data) {
         // Clamper entre 0 et 1.0
         densityAlpha = Math.max(0, Math.min(1.0, densityAlpha));
         
-        for (let x = 0; x < width; x++) {
+        // Adapter le pas en X en fonction du FPS
+        // FPS < 30 : step 2, FPS 30-45 : step 2 (pour éviter les problèmes), FPS > 45 : step 1
+        let xStep = 1;
+        if (isDichotomy) {
+            xStep = 2; // Pendant la dichotomie, toujours sauter des pixels
+        } else if (currentFPS < 30) {
+            xStep = 2; // Sauter des pixels si FPS bas
+        } else if (currentFPS < 45) {
+            xStep = 2; // Pas de 2 pour éviter les problèmes de boucle (on dessinera 2 pixels de large)
+        } else {
+            xStep = 1; // Tous les pixels si FPS bon
+        }
+        
+        for (let x = 0; x < width; x += xStep) {
             // Mapper la position X du canvas à la longueur d'onde (0 à 50 μm)
             // Compenser le décalage de charWidth de chaque côté
             const effectiveWidth = width - (charWidth * 2);
@@ -995,7 +1061,10 @@ function drawSpectralVisualization(canvas, data) {
             
             // Dessiner le pixel avec alpha variable selon l'intensité du flux et la densité
             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-            ctx.fillRect(x, visualizationHeight - 1 - y, 1, 1); // Inverser Y pour avoir le sol en bas
+            // Dessiner un rectangle plus large si on saute des pixels (pour combler les trous)
+            const pixelWidth = xStep;
+            const pixelHeight = yStep;
+            ctx.fillRect(x, visualizationHeight - 1 - y, pixelWidth, pixelHeight); // Inverser Y pour avoir le sol en bas
         }
     }
     

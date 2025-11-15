@@ -19,6 +19,109 @@ const GEOLOGICAL_ERAS = [
     { name: 'Phanérozoïque', startYears: 541e6, endYears: 0, volcanoFactor: 1.0, co2PerVolcano: 150 }  // Époque actuelle : volcanisme normal
 ];
 
+// Définition des périodes géologiques détaillées avec conditions initiales et emojis
+// Basé sur epoquesGeologiques.txt
+const GEOLOGICAL_PERIODS = [
+    {
+        name: 'Hadéen',
+        startYears: 4.6e9,
+        endYears: 4.0e9,
+        emoji: '🌑', // Lune noire (rougeâtre comme Mars)
+        co2_ppm: 7000, // Beaucoup de CO₂ (jusqu'à 7000 ppm)
+        h2o_enabled: true, // Forte couverture nuageuse
+        cloud_coverage: 0.8, // 80% de couverture nuageuse
+        description: 'Atmosphère dense, peu d\'O₂, beaucoup de CO₂, températures élevées (>50°C)'
+    },
+    {
+        name: 'Archéen',
+        startYears: 4.0e9,
+        endYears: 2.5e9,
+        emoji: '🦠', // Microbe unicellulaire
+        co2_ppm: 5000, // Beaucoup de CO₂
+        h2o_enabled: true,
+        cloud_coverage: 0.7, // 70% de couverture nuageuse
+        description: 'Atmosphère dense, peu d\'O₂, beaucoup de CO₂, précipitations abondantes'
+    },
+    {
+        name: 'Protérozoïque',
+        startYears: 2.5e9,
+        endYears: 541e6,
+        emoji: '🌿', // Plantes primitives
+        co2_ppm: 2000, // Déclin progressif du CO₂
+        h2o_enabled: true,
+        cloud_coverage: 0.4, // 40% de couverture nuageuse
+        description: 'Déclin progressif du CO₂, apparition de glaciations'
+    },
+    {
+        name: 'Cryogénien',
+        startYears: 720e6,
+        endYears: 635e6,
+        emoji: '❄️', // Flocon de neige
+        co2_ppm: 1000, // CO₂ réduit pendant la boule de neige
+        h2o_enabled: true,
+        cloud_coverage: 0.3, // 30% de couverture nuageuse
+        description: 'Boule de neige - Terre entièrement glacée'
+    },
+    {
+        name: 'Mésozoïque',
+        startYears: 252e6,
+        endYears: 66e6,
+        emoji: '🦕', // Dinosaure sauropode
+        co2_ppm: 2500, // CO₂ élevé (2000-3000 ppm)
+        h2o_enabled: true,
+        cloud_coverage: 0.5, // 50% de couverture nuageuse
+        description: 'CO₂ élevé, périodes chaudes, peu de glaces'
+    },
+    {
+        name: 'Crétacé',
+        startYears: 145e6,
+        endYears: 66e6,
+        emoji: '🦴', // Os/fossile
+        co2_ppm: 3000, // CO₂ très élevé
+        h2o_enabled: true,
+        cloud_coverage: 0.5, // 50% de couverture nuageuse
+        description: 'Températures +6 à +8°C, CO₂ très élevé, peu de glace'
+    },
+    {
+        name: 'Cénozoïque',
+        startYears: 66e6,
+        endYears: 0,
+        emoji: '🦣', // Mammouth
+        co2_ppm: 280, // 280 ppm avant l'ère industrielle
+        h2o_enabled: true,
+        cloud_coverage: 0.4, // 40% de couverture nuageuse
+        description: 'Forte chute du CO₂, alternance glaces/interglaciaires'
+    }
+];
+
+// Fonction pour obtenir une période géologique par son nom
+function getGeologicalPeriodByName(periodName) {
+    return GEOLOGICAL_PERIODS.find(p => p.name === periodName);
+}
+
+// Fonction pour obtenir la période géologique selon les années
+function getGeologicalPeriod(yearsAgo) {
+    // Parcourir les périodes de la plus récente à la plus ancienne
+    for (const period of GEOLOGICAL_PERIODS) {
+        if (yearsAgo >= period.endYears && yearsAgo < period.startYears) {
+            return period;
+        }
+    }
+    
+    // Si yearsAgo < 0 (futur), retourner la période actuelle
+    if (yearsAgo < 0) {
+        return GEOLOGICAL_PERIODS[GEOLOGICAL_PERIODS.length - 1]; // Cénozoïque
+    }
+    
+    // Si yearsAgo >= 4.6e9, retourner l'Hadéen
+    if (yearsAgo >= GEOLOGICAL_PERIODS[0].startYears) {
+        return GEOLOGICAL_PERIODS[0]; // Hadéen
+    }
+    
+    // Par défaut, retourner la période actuelle
+    return GEOLOGICAL_PERIODS[GEOLOGICAL_PERIODS.length - 1];
+}
+
 // ============================================================================
 // CYCLE DE CROÛTE TERRESTRE MOLLE
 // ============================================================================
@@ -102,5 +205,8 @@ if (typeof window !== 'undefined') {
     window.GEOLOGICAL_ERAS = GEOLOGICAL_ERAS;
     window.getGeologicalEra = getGeologicalEra;
     window.getMoltenCrustFactor = getMoltenCrustFactor;
+    window.GEOLOGICAL_PERIODS = GEOLOGICAL_PERIODS;
+    window.getGeologicalPeriod = getGeologicalPeriod;
+    window.getGeologicalPeriodByName = getGeologicalPeriodByName;
 }
 

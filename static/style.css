@@ -209,7 +209,7 @@ h1 {
 }
 
 .plot-container-wrapper {
-    padding: 0px 0px 0px 10px;
+    padding: 0;
     height: auto;
     min-height: 600px;
     position: relative;
@@ -253,6 +253,8 @@ h1 {
 /* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
 #spectral-visualization {
     position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
     border: none;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
@@ -656,7 +658,7 @@ h1 {
 
 
 .plot-container-wrapper {
-    padding: 5px 10px 10px 10px;
+    padding: 0;
     height: auto;
     min-height: 600px;
     position: relative;
