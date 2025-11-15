@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radiative Forcing - Simulation Interactive</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+        }
+        
+        .control-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            height: fit-content;
+        }
+        
+        .plot-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 24px;
+        }
+        
+        .info-display {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .info-value {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .button-container {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-multiply {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+            color: white;
+        }
+        
+        .btn-divide {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        #plot-container {
+            width: 100%;
+            height: 600px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="control-panel">
+            <h1>Contrôle CO₂</h1>
+            
+            <div class="info-display">
+                <div class="info-row">
+                    <span class="info-label">CO₂:</span>
+                    <span class="info-value" id="co2-ppm">560 ppm</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Facteur:</span>
+                    <span class="info-value" id="factor">×2</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Temp. effective:</span>
+                    <span class="info-value" id="temp-eff">-- K</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">ΔT:</span>
+                    <span class="info-value" id="delta-temp">-- K</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Forçage:</span>
+                    <span class="info-value" id="forcing">-- W/m²</span>
+                </div>
+            </div>
+            
+            <div class="button-container">
+                <button class="btn btn-multiply" id="btn-multiply" onclick="multiplyCO2()">×2</button>
+                <button class="btn btn-divide" id="btn-divide" onclick="divideCO2()">÷2</button>
+            </div>
+            
+            <div class="status" id="status">Prêt</div>
+        </div>
+        
+        <div class="plot-panel">
+            <div id="plot-container">
+                <div class="loading">Chargement du graphique...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================================================
+        // CALCULS DE TRANSFERT RADIATIF EN JAVASCRIPT
+        // ============================================================================
+        
+        // Constantes physiques
+        const PLANCK_H = 6.62607015e-34;
+        const SPEED_OF_LIGHT = 2.998e8;
+        const BOLTZMANN_KB = 1.380649e-23;
+        const STEFAN_BOLTZMANN = 5.670374419e-8;
+        
+        // Valeurs de référence
+        const CO2_PREINDUSTRIAL = 280e-6;
+        const CO2_CURRENT = 420e-6;
+        
+        function planckFunction(lambda, T) {
+            const term1 = (2 * PLANCK_H * SPEED_OF_LIGHT * SPEED_OF_LIGHT) / Math.pow(lambda, 5);
+            const term2 = Math.exp((PLANCK_H * SPEED_OF_LIGHT) / (lambda * BOLTZMANN_KB * T)) - 1;
+            return term1 / term2;
+        }
+        
+        function pressure(z) {
+            const P0 = 101325;
+            const H = 8500;
+            return P0 * Math.exp(-z / H);
+        }
+        
+        function temperature(z) {
+            const T0 = 288.2;
+            const z_trop = 11000;
+            const Gamma = -0.0065;
+            const T_trop = T0 + Gamma * z_trop;
+            if (z < z_trop) {
+                return T0 + Gamma * z;
+            } else {
+                return T_trop;
+            }
+        }
+        
+        function airNumberDensity(z) {
+            return pressure(z) / (BOLTZMANN_KB * temperature(z));
+        }
+        
+        function crossSectionCO2(wavelength) {
+            const LAMBDA_0 = 15.0e-6;
+            const exponent = -22.5 - 24 * Math.abs((wavelength - LAMBDA_0) / LAMBDA_0);
+            return Math.pow(10, exponent);
+        }
+        
+        function simulateRadiativeTransfer(CO2_fraction, options = {}) {
+            const {
+                z_max = 80000,
+                delta_z = 10,
+                lambda_min = 0.1e-6,
+                lambda_max = 100e-6,
+                delta_lambda = 0.01e-6
+            } = options;
+            
+            const lambda_range = [];
+            for (let lambda = lambda_min; lambda < lambda_max; lambda += delta_lambda) {
+                lambda_range.push(lambda);
+            }
+            
+            const z_range = [];
+            for (let z = 0; z < z_max; z += delta_z) {
+                z_range.push(z);
+            }
+            
+            const upward_flux = Array(z_range.length).fill(0).map(() => Array(lambda_range.length).fill(0));
+            const optical_thickness = Array(z_range.length).fill(0).map(() => Array(lambda_range.length).fill(0));
+            
+            const earth_flux = lambda_range.map(lambda => 
+                Math.PI * planckFunction(lambda, temperature(0)) * delta_lambda
+            );
+            
+            let flux_in = [...earth_flux];
+            
+            for (let i = 0; i < z_range.length; i++) {
+                const z = z_range[i];
+                const T = temperature(z);
+                const n_CO2 = airNumberDensity(z) * CO2_fraction;
+                
+                for (let j = 0; j < lambda_range.length; j++) {
+                    const lambda = lambda_range[j];
+                    const kappa = crossSectionCO2(lambda) * n_CO2;
+                    optical_thickness[i][j] = kappa * delta_z;
+                    const absorbed_flux = Math.min(kappa * delta_z * flux_in[j], flux_in[j]);
+                    const emitted_flux = optical_thickness[i][j] * Math.PI * planckFunction(lambda, T) * delta_lambda;
+                    upward_flux[i][j] = flux_in[j] - absorbed_flux + emitted_flux;
+                    flux_in[j] = upward_flux[i][j];
+                }
+            }
+            
+            const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
+            const effective_temperature = Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);
+            
+            return {
+                lambda_range: lambda_range,
+                z_range: z_range,
+                upward_flux: upward_flux,
+                optical_thickness: optical_thickness,
+                total_flux: total_flux,
+                effective_temperature: effective_temperature
+            };
+        }
+        
+        // ============================================================================
+        // GESTION DU GRAPHIQUE
+        // ============================================================================
+        
+        function tempToColor(temp, temp_min = 200, temp_max = 320) {
+            const normalized = Math.max(0, Math.min(1, (temp - temp_min) / (temp_max - temp_min)));
+            let r, g, b;
+            if (normalized < 0.5) {
+                r = 0.0;
+                g = normalized * 2 * 0.6;
+                b = 0.4 + normalized * 2 * 0.6;
+            } else {
+                r = 0.0;
+                g = 0.6 + (normalized - 0.5) * 2 * 0.4;
+                b = 1.0 - (normalized - 0.5) * 2 * 0.4;
+            }
+            return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+        }
+        
+        function initPlot() {
+            const layout = {
+                title: 'Spectre de luminance au sommet de l\'atmosphère',
+                xaxis: { title: "Longueur d'onde (μm)", range: [0, 50] },
+                yaxis: { title: "Luminance spectrale (W/m²/μm/sr)", range: [0, 30] },
+                showlegend: true,
+                legend: { x: 1.02, y: 1, bgcolor: 'rgba(255,255,255,0.9)' },
+                margin: { l: 60, r: 100, t: 50, b: 50 }
+            };
+            Plotly.newPlot('plot-container', [], layout, {
+                responsive: true,
+                displayModeBar: false
+            });
+        }
+        
+        function updatePlot(data) {
+            const traces = [];
+            const T_surface = 288;
+            const T_tropopause = 216;
+            const lambda_planck = data.lambda_range.map(l => l * 1e6);
+            
+            traces.push({
+                x: lambda_planck,
+                y: data.lambda_range.map(l => Math.PI * planckFunction(l, T_surface) / 1e6),
+                type: 'scatter',
+                mode: 'lines',
+                name: `Planck ${T_surface}K`,
+                line: { dash: 'dash', width: 1.5, color: tempToColor(T_surface) }
+            });
+            
+            traces.push({
+                x: lambda_planck,
+                y: data.lambda_range.map(l => Math.PI * planckFunction(l, T_tropopause) / 1e6),
+                type: 'scatter',
+                mode: 'lines',
+                name: `Planck ${T_tropopause}K`,
+                line: { dash: 'dash', width: 1.5, color: tempToColor(T_tropopause) }
+            });
+            
+            if (data.preindustrial) {
+                const delta_lambda = data.lambda_range[1] - data.lambda_range[0];
+                const flux_preindustrial = data.preindustrial.upward_flux[data.preindustrial.upward_flux.length - 1]
+                    .map(f => f / delta_lambda / 1e6);
+                traces.push({
+                    x: lambda_planck,
+                    y: flux_preindustrial,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '280 ppm CO₂ (pré-industriel)',
+                    line: { color: 'green', width: 2 }
+                });
+            }
+            
+            if (data.current_ref) {
+                const delta_lambda = data.lambda_range[1] - data.lambda_range[0];
+                const flux_current_ref = data.current_ref.upward_flux[data.current_ref.upward_flux.length - 1]
+                    .map(f => f / delta_lambda / 1e6);
+                traces.push({
+                    x: lambda_planck,
+                    y: flux_current_ref,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '420 ppm CO₂ (actuel)',
+                    line: { color: 'gray', width: 1 }
+                });
+            }
+            
+            if (data.current) {
+                const delta_lambda = data.lambda_range[1] - data.lambda_range[0];
+                const flux_current = data.current.upward_flux[data.current.upward_flux.length - 1]
+                    .map(f => f / delta_lambda / 1e6);
+                traces.push({
+                    x: lambda_planck,
+                    y: flux_current,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `${data.co2_ppm.toFixed(0)} ppm CO₂`,
+                    line: { color: 'red', width: 2 }
+                });
+                
+                if (data.preindustrial) {
+                    const flux_preindustrial = data.preindustrial.upward_flux[data.preindustrial.upward_flux.length - 1]
+                        .map(f => f / delta_lambda / 1e6);
+                    traces.push({
+                        x: lambda_planck,
+                        y: flux_preindustrial,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Forçage radiatif',
+                        fill: 'tonexty',
+                        fillcolor: 'rgba(255, 255, 0, 0.3)',
+                        line: { width: 0 },
+                        showlegend: false
+                    });
+                }
+            }
+            
+            Plotly.react('plot-container', traces, {
+                xaxis: { range: [0, 50] },
+                yaxis: { range: [0, 30] }
+            });
+        }
+        
+        // ============================================================================
+        // LOGIQUE PRINCIPALE
+        // ============================================================================
+        
+        let currentExponent = 1;
+        let plotData = {
+            lambda_range: null,
+            preindustrial: null,
+            current_ref: null,
+            current: null,
+            co2_ppm: 560
+        };
+        
+        async function calculateInitialData() {
+            initPlot();
+            document.getElementById('status').textContent = 'Calcul en cours...';
+            
+            try {
+                console.log('Calcul pré-industriel (280 ppm)...');
+                plotData.preindustrial = simulateRadiativeTransfer(CO2_PREINDUSTRIAL);
+                
+                console.log('Calcul actuel (420 ppm)...');
+                plotData.current_ref = simulateRadiativeTransfer(CO2_CURRENT);
+                
+                plotData.lambda_range = plotData.preindustrial.lambda_range;
+                updateCO2Level(currentExponent);
+            } catch (error) {
+                console.error('Erreur:', error);
+                document.getElementById('status').textContent = 'Erreur de calcul';
+            }
+        }
+        
+        function updateCO2Level(exponent) {
+            currentExponent = exponent;
+            const co2_current = CO2_PREINDUSTRIAL * Math.pow(2, exponent);
+            plotData.co2_ppm = co2_current * 1e6;
+            
+            document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
+            
+            setTimeout(() => {
+                plotData.current = simulateRadiativeTransfer(co2_current);
+                
+                const temp_eff = plotData.current.effective_temperature;
+                const temp_eff_preindustrial = plotData.preindustrial.effective_temperature;
+                const delta_temp = temp_eff - temp_eff_preindustrial;
+                const delta_lambda = plotData.lambda_range[1] - plotData.lambda_range[0];
+                const forcing = plotData.current.upward_flux[plotData.current.upward_flux.length - 1].reduce((a, b) => a + b, 0) -
+                               plotData.preindustrial.upward_flux[plotData.preindustrial.upward_flux.length - 1].reduce((a, b) => a + b, 0);
+                
+                updateDisplay({
+                    exponent: currentExponent,
+                    co2_ppm: plotData.co2_ppm,
+                    factor: Math.pow(2, currentExponent),
+                    temp_eff: temp_eff,
+                    temp_eff_c: temp_eff - 273.15,
+                    delta_temp: delta_temp,
+                    forcing: forcing
+                });
+                
+                updatePlot(plotData);
+                document.getElementById('status').textContent = 'Prêt';
+            }, 100);
+        }
+        
+        function multiplyCO2() {
+            if (currentExponent >= 8) return;
+            currentExponent += 1;
+            updateCO2Level(currentExponent);
+        }
+        
+        function divideCO2() {
+            if (currentExponent <= 0) return;
+            currentExponent -= 1;
+            updateCO2Level(currentExponent);
+        }
+        
+        function updateDisplay(data) {
+            if (data && data.co2_ppm !== undefined) {
+                document.getElementById('co2-ppm').textContent = `${Math.round(data.co2_ppm)} ppm`;
+            }
+            if (data && data.factor !== undefined) {
+                document.getElementById('factor').textContent = `×${data.factor}`;
+            }
+            if (data && data.temp_eff !== undefined && data.temp_eff > 0) {
+                document.getElementById('temp-eff').textContent = `${data.temp_eff.toFixed(1)} K (${data.temp_eff_c.toFixed(1)} °C)`;
+            }
+            if (data && data.delta_temp !== undefined) {
+                document.getElementById('delta-temp').textContent = `${data.delta_temp >= 0 ? '+' : ''}${data.delta_temp.toFixed(2)} K`;
+            }
+            if (data && data.forcing !== undefined) {
+                document.getElementById('forcing').textContent = `${data.forcing >= 0 ? '+' : ''}${data.forcing.toFixed(2)} W/m²`;
+            }
+            if (data && data.exponent !== undefined) {
+                document.getElementById('btn-multiply').disabled = data.exponent >= 8;
+                document.getElementById('btn-divide').disabled = data.exponent <= 0;
+            }
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            calculateInitialData();
+        });
+    </script>
+</body>
+</html>
+
