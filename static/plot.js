@@ -3,7 +3,7 @@
 // ============================================================================
 
 // Températures pour les courbes Planck de référence (en K)
-window.PLANCK_TEMPERATURES = [120, 180, 225, 255, 275, 300, 330];
+window.PLANCK_TEMPERATURES = [180, 225, 255, 275, 300, 315];
 
 /**
  * Convertit une température terrestre (°C) en couleur pour les courbes courantes
@@ -42,16 +42,15 @@ if (typeof window !== 'undefined') {
 
 // Fonction de couleur basée sur la température (palette avec couleurs très distinctes)
 // Exposer globalement pour être accessible depuis main.js
-window.tempToColor = function tempToColor(temp, temp_min = 120, temp_max = 330) {
+window.tempToColor = function tempToColor(temp, temp_min = 180, temp_max = 315) {
     // Palette de couleurs très distinctes et contrastées
     const colorMap = {
-        120: '#0000FF',  // Bleu foncé
         180: '#00BFFF',  // Bleu ciel
         225: '#00FF7F',  // Vert printemps
         255: '#228B22',  // Vert forêt
         275: '#FFD700',  // Or
         300: '#FF6347',  // Tomate
-        330: '#DC143C'  // Rouge cramoisi
+        315: '#DC143C'  // Rouge cramoisi
     };
     
     // Si la température correspond exactement à une valeur dans la map, utiliser cette couleur
@@ -99,6 +98,60 @@ window.debugZIndex = function() {
     const plotContainer = document.getElementById('plot-container');
     
     // Debug z-index désactivé
+};
+
+// Fonction de debug pour inspecter la structure DOM de Plotly
+window.debugPlotlyStructure = function() {
+    const plotContainer = document.getElementById('plot-container');
+    if (!plotContainer) {
+        console.log('❌ plot-container non trouvé');
+        return;
+    }
+    
+    const draglayer = plotContainer.querySelector('.nsewdrag.drag');
+    const xy = plotContainer.querySelector('.xy');
+    const draglayerCursor = plotContainer.querySelector('.draglayer.cursor-crosshair');
+    let targetElement = draglayer || xy || draglayerCursor;
+    
+    if (!targetElement) {
+        console.log('❌ Aucun élément de positionnement trouvé');
+        return;
+    }
+    
+    const targetRect = targetElement.getBoundingClientRect();
+    const wrapper = plotContainer.parentElement;
+    
+    console.log('=== POSITIONNEMENT ===');
+    console.log('targetElement:', targetElement.tagName, targetElement.className);
+    console.log('targetRect:', {
+        left: Math.round(targetRect.left * 100) / 100,
+        top: Math.round(targetRect.top * 100) / 100,
+        width: Math.round(targetRect.width * 100) / 100,
+        height: Math.round(targetRect.height * 100) / 100
+    });
+    
+    if (wrapper) {
+        const wrapperRect = wrapper.getBoundingClientRect();
+        console.log('wrapper:', wrapper.tagName, wrapper.className);
+        console.log('wrapperRect:', {
+            left: Math.round(wrapperRect.left * 100) / 100,
+            top: Math.round(wrapperRect.top * 100) / 100,
+            width: Math.round(wrapperRect.width * 100) / 100,
+            height: Math.round(wrapperRect.height * 100) / 100
+        });
+        console.log('Calcul top:', Math.round((targetRect.top - wrapperRect.top - 1) * 100) / 100);
+    }
+    
+    const canvas = document.getElementById('spectral-visualization');
+    if (canvas) {
+        const canvasRect = canvas.getBoundingClientRect();
+        console.log('canvas position:', {
+            left: Math.round(canvasRect.left * 100) / 100,
+            top: Math.round(canvasRect.top * 100) / 100,
+            width: Math.round(canvasRect.width * 100) / 100,
+            height: Math.round(canvasRect.height * 100) / 100
+        });
+    }
 };
 
 // Initialiser le graphique
@@ -217,43 +270,55 @@ function debouncedResizeCanvas() {
     }, 150);
 }
 
+// Flag pour éviter les appels multiples simultanés
+let resizeCanvasInProgress = false;
+let resizeCanvasRetryCount = 0;
+const MAX_RETRY_COUNT = 5;
+
 function resizeCanvasToPlot() {
+    // Éviter les appels multiples simultanés
+    if (resizeCanvasInProgress) {
+        return;
+    }
+    
     const canvas = document.getElementById('spectral-visualization');
     const plotContainer = document.getElementById('plot-container');
     if (!canvas || !plotContainer) return;
     
+    resizeCanvasInProgress = true;
+    
     // Attendre un peu que Plotly ait fini de rendre
     setTimeout(() => {
-        // Trouver tous les éléments pertinents
-        const draglayer = plotContainer.querySelector('.nsewdrag.drag');
-        const xy = plotContainer.querySelector('.xy');
-        const draglayerCursor = plotContainer.querySelector('.draglayer.cursor-crosshair');
+        // Trouver spécifiquement ".nsewdrag.drag.cursor-pointer" pour calibrer le canvas
+        const targetElement = plotContainer.querySelector('.nsewdrag.drag.cursor-pointer');
         const wrapper = plotContainer.parentElement;
         
-        // Utiliser l'élément le plus approprié
-        let targetElement = draglayer || xy || draglayerCursor;
         if (targetElement) {
             const targetRect = targetElement.getBoundingClientRect();
-            // Ajouter une largeur de caractère de chaque côté pour couvrir 0 et 50 complètement
-            const charWidth = 10; // Largeur approximative d'un caractère
-            const width = Math.floor(targetRect.width) + (charWidth * 2);
-            const height = Math.floor(targetRect.height) + 15; // +15px pour la bande de spectre
+            const hBarre = 16; // Hauteur de la barre en bas (réduite de 18px à 16px pour corriger l'offset)
+            const paddingX = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
             
-            // Positionner le canvas avec exactement la même position absolue que la zone de drag
-            // Pas de padding, donc alignement direct avec le graphique
+            // Dimensions : même largeur + 5px de chaque côté, même hauteur + barre
+            const width = Math.round(targetRect.width) + (paddingX * 2);
+            const height = Math.round(targetRect.height) + hBarre;
+            
+            // Positionner le canvas : même Y, left - 5px pour être derrière le 0
             if (wrapper) {
                 const wrapperRect = wrapper.getBoundingClientRect();
-                const left = (targetRect.left - wrapperRect.left) - charWidth;
-                const top = targetRect.top - wrapperRect.top; // Aligné avec le graphique (pas de padding)
+                const left = Math.round((targetRect.left - wrapperRect.left) - paddingX);
+                const top = Math.round(targetRect.top - wrapperRect.top); // Même Y
+                
                 canvas.style.setProperty('left', left + 'px', 'important');
                 canvas.style.setProperty('top', top + 'px', 'important');
+                canvas.style.removeProperty('transform');
             } else {
-                // Fallback : position relative au plot-container
                 const plotRect = plotContainer.getBoundingClientRect();
-                const left = (targetRect.left - plotRect.left) - charWidth;
-                const top = targetRect.top - plotRect.top; // Aligné avec le graphique (pas de padding)
+                const left = Math.round((targetRect.left - plotRect.left) - paddingX);
+                const top = Math.round(targetRect.top - plotRect.top); // Même Y
+                
                 canvas.style.setProperty('left', left + 'px', 'important');
                 canvas.style.setProperty('top', top + 'px', 'important');
+                canvas.style.removeProperty('transform');
             }
             
             canvas.style.width = width + 'px';
@@ -264,12 +329,26 @@ function resizeCanvasToPlot() {
             
             // Redessiner la bande de spectre immédiatement après le resize
             // Utiliser les dimensions calculées directement pour éviter tout délai
-            drawSpectrumBarOnlyWithSize(width, height);
+            // Calculer le resolutionFactor pour la barre (par défaut 1 si pas de réduction)
+            const rect = canvas.getBoundingClientRect();
+            const displayHeight = Math.floor(rect.height) || height;
+            const resFactor = displayHeight / height;
+            drawSpectrumBarOnlyWithSize(width, height, resFactor);
+            
+            resizeCanvasInProgress = false;
+            resizeCanvasRetryCount = 0; // Réinitialiser le compteur en cas de succès
         } else {
-            // Fallback : réessayer après un délai
-            setTimeout(() => {
-                resizeCanvasToPlot();
-            }, 200);
+            // Fallback : réessayer après un délai (limité pour éviter les boucles infinies)
+            if (resizeCanvasRetryCount < MAX_RETRY_COUNT) {
+                resizeCanvasRetryCount++;
+                setTimeout(() => {
+                    resizeCanvasInProgress = false;
+                    resizeCanvasToPlot();
+                }, 200);
+            } else {
+                resizeCanvasInProgress = false;
+                resizeCanvasRetryCount = 0;
+            }
         }
     }, 100);
 }
@@ -283,17 +362,23 @@ if (typeof window !== 'undefined') {
 function drawSpectrumBarOnly() {
     const canvas = document.getElementById('spectral-visualization');
     if (!canvas) return;
-    drawSpectrumBarOnlyWithSize(canvas.width, canvas.height);
+    // Calculer le resolutionFactor pour la barre
+    const rect = canvas.getBoundingClientRect();
+    const displayHeight = Math.floor(rect.height) || canvas.height;
+    const resFactor = displayHeight / canvas.height;
+    drawSpectrumBarOnlyWithSize(canvas.width, canvas.height, resFactor);
 }
 
 // Fonction pour dessiner la bande avec des dimensions spécifiques
-function drawSpectrumBarOnlyWithSize(width, height) {
+function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
     const canvas = document.getElementById('spectral-visualization');
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    const spectrumBarHeight = 15; // Hauteur de la bande de spectre en bas
-    const charWidth = 10; // Largeur de caractère ajoutée de chaque côté
+    // La barre doit toujours faire 16px en pixels d'affichage (réduite de 18px à 16px)
+    // Ajuster la hauteur de la barre selon le facteur de résolution
+    const spectrumBarHeight = Math.max(1, Math.floor(16 / resolutionFactor)); // 16px d'affichage
+    const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
     
     // Nettoyer seulement la zone de la bande
     const spectrumBarY = height - spectrumBarHeight;
@@ -303,7 +388,7 @@ function drawSpectrumBarOnlyWithSize(width, height) {
     const graph_min_um = 0;
     const graph_max_um = 50;
     
-    // Dessiner la bande de spectre en bas (15px) avec alpha=1 pour toutes les couleurs
+    // Dessiner la bande de spectre en bas (18px d'affichage) avec alpha=1 pour toutes les couleurs
     for (let x = 0; x < width; x++) {
         // Mapper la position X à la longueur d'onde (0 à 50 μm)
         // Compenser le décalage de charWidth de chaque côté
@@ -448,12 +533,23 @@ window.updatePlot = function updatePlot(data) {
         yaxis: 'y2' // Utiliser l'axe secondaire (altitude)
     });
     
-    // 4. Ajouter une ligne horizontale pour la tropopause (11 km)
-    // Convertir 11 km en valeur de l'axe Y principal (0-40) pour l'aligner
-    // L'axe altitude va de 0 à 120 km (0 en bas, 120 km en haut), aligné avec l'axe Y principal (0 en bas, 40 en haut)
-    // Donc 0 km altitude = 0 sur l'axe Y, 120 km = 40 sur l'axe Y
-    // 11 km = 40 * (11/120) = 3.67 sur l'axe Y
-    const z_trop_km = 11; // Tropopause à 11 km
+    // 4. Ajouter une ligne horizontale pour la tropopause (calculée dynamiquement)
+    // Calculer la tropopause en fonction de T0 (température de surface)
+    let T0 = 288; // Valeur par défaut (15°C)
+    if (data.current && data.current.effective_temperature) {
+        // Utiliser la température effective comme approximation de T0
+        T0 = data.current.effective_temperature;
+    } else if (data.temp_surface_c !== undefined) {
+        // Convertir de °C en K
+        T0 = data.temp_surface_c + 273.15;
+    }
+    
+    // Calculer la tropopause dynamiquement
+    const z_trop_m = (typeof window.calculateTropopauseHeight === 'function') 
+        ? window.calculateTropopauseHeight(T0)
+        : 11000; // Fallback à 11 km si la fonction n'est pas disponible
+    const z_trop_km = z_trop_m / 1000; // Convertir en km
+    
     const z_max_km = 120; // Altitude max à 120 km
     const y_trop = 40 * (z_trop_km / z_max_km); // Position sur l'axe Y (0-40), 0 km = 0, 120 km = 40
     
@@ -462,10 +558,10 @@ window.updatePlot = function updatePlot(data) {
         y: [y_trop, y_trop], // Ligne horizontale à la hauteur de la tropopause
         type: 'scatter',
         mode: 'lines',
-        name: 'Tropopause (11 km)',
+        name: `Tropopause (${z_trop_km.toFixed(1)} km)`,
         line: { color: 'rgba(0, 0, 0, 0.5)', width: 1, dash: 'dot' }, // Points au lieu de tirets
         showlegend: false,
-        hovertemplate: 'Tropopause (11 km)<extra></extra>',
+        hovertemplate: `Tropopause (${z_trop_km.toFixed(1)} km)<extra></extra>`,
         yaxis: 'y' // Utiliser l'axe Y principal
     });
     
@@ -517,8 +613,8 @@ window.updatePlot = function updatePlot(data) {
         annotations: [
             {
                 x: 50, // À droite du graphique
-                y: 40 * (11 / 120), // Position de la tropopause (11 km)
-                text: 'Tropopause',
+                y: y_trop, // Position de la tropopause (calculée dynamiquement)
+                text: `Tropopause (${z_trop_km.toFixed(1)} km)`,
                 showarrow: false,
                 xref: 'x',
                 yref: 'y',
@@ -664,6 +760,43 @@ function wavelengthToColor(lambda_m, lambda_range_min, lambda_range_max) {
     return [r, g, b];
 }
 
+// Variable globale pour suivre l'état de convergence et la précision cible
+if (typeof window !== 'undefined') {
+    window.spectralPrecisionTarget = 'auto'; // 'auto', 'low', 'medium', 'high', 'max'
+    window.spectralConverged = false;
+}
+
+// Écouter l'événement de convergence pour ajuster la précision
+if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('calculationConverged', (event) => {
+        // Convergence atteinte : vérifier le FPS pour décider de la précision finale
+        const currentFPS = window.fps || 60;
+        if (currentFPS > 55) {
+            // FPS stable : cibler la précision maximale (pixel par pixel)
+            window.spectralConverged = true;
+            window.spectralPrecisionTarget = 'max';
+        } else if (currentFPS > 45) {
+            // FPS bon : précision haute
+            window.spectralConverged = true;
+            window.spectralPrecisionTarget = 'high';
+        } else {
+            // FPS moyen : précision moyenne
+            window.spectralConverged = true;
+            window.spectralPrecisionTarget = 'medium';
+        }
+        
+        // Redessiner avec la nouvelle précision si on a des données
+        const canvas = document.getElementById('spectral-visualization');
+        if (canvas && canvas._lastData) {
+            setTimeout(() => {
+                if (typeof window.updateSpectralVisualization === 'function') {
+                    window.updateSpectralVisualization(canvas._lastData);
+                }
+            }, 100);
+        }
+    });
+}
+
 // Fonction pour créer la visualisation spectrale
 window.updateSpectralVisualization = function(data) {
     // Ne pas actualiser pendant les calculs de dichotomie pour améliorer les performances
@@ -780,8 +913,8 @@ window.updateSpectralVisualization = function(data) {
     canvas.style.setProperty('z-index', '1', 'important');
     canvas.style.setProperty('position', 'absolute', 'important');
     
-    // Redimensionner le canvas si nécessaire
-    resizeCanvasToPlot();
+    // Ne pas appeler resizeCanvasToPlot ici - elle est déjà appelée au resize et à l'init
+    // Le canvas devrait déjà être dimensionné correctement
     
     // Dessiner la visualisation avec les données
     const plotContainer = document.getElementById('plot-container');
@@ -810,16 +943,24 @@ function drawSpectralVisualization(canvas, data) {
     // Réduire drastiquement la résolution pendant la dichotomie (/4 des 2 dimensions = /16)
     const isDichotomy = typeof window !== 'undefined' && window.calculationInProgress;
     
-    // Adapter la précision en fonction du FPS
-    // FPS < 20 : très basse précision (factor 4)
-    // FPS 20-30 : basse précision (factor 3)
-    // FPS 30-45 : précision moyenne (factor 2)
-    // FPS 45-55 : bonne précision (factor 1.5)
-    // FPS > 55 : haute précision (factor 1 ou retina/2)
+    // Adapter la précision en fonction du FPS et de l'état de convergence
+    // Le canvas écoute l'événement 'calculationConverged' pour savoir quand augmenter la précision
     const currentFPS = typeof window !== 'undefined' && window.fps ? window.fps : 60;
+    const isConverged = typeof window !== 'undefined' && window.spectralConverged;
+    const precisionTarget = typeof window !== 'undefined' && window.spectralPrecisionTarget ? window.spectralPrecisionTarget : 'auto';
+    
     let resolutionFactor;
     if (isDichotomy) {
         resolutionFactor = 4; // Pendant la dichotomie, toujours très basse résolution
+    } else if (isConverged && precisionTarget === 'max') {
+        // Convergence atteinte ET précision cible = max : précision maximale (pixel par pixel)
+        resolutionFactor = 1; // Précision maximale (1 pixel = 1 pixel), même sur retina
+    } else if (isConverged && precisionTarget === 'high') {
+        // Convergence atteinte ET précision cible = high : haute précision
+        resolutionFactor = devicePixelRatio > 1 ? 1.5 : 1;
+    } else if (isConverged && precisionTarget === 'medium') {
+        // Convergence atteinte ET précision cible = medium : précision moyenne
+        resolutionFactor = 2;
     } else if (currentFPS < 20) {
         resolutionFactor = 4; // Très basse précision si FPS très bas
     } else if (currentFPS < 30) {
@@ -849,14 +990,17 @@ function drawSpectralVisualization(canvas, data) {
     canvas.style.width = (width * resolutionFactor) + 'px';
     canvas.style.height = (height * resolutionFactor) + 'px';
     
-    const spectrumBarHeight = 15; // Hauteur de la bande de spectre en bas
-    const charWidth = 10; // Largeur de caractère ajoutée de chaque côté
+    // La barre doit toujours faire 16px en pixels d'affichage (réduite de 18px à 16px pour corriger l'offset de 2px)
+    // Ajuster la hauteur de la barre selon le facteur de résolution
+    const spectrumBarHeight = Math.max(1, Math.floor(16 / resolutionFactor)); // 16px d'affichage (au lieu de 18px)
+    const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
     
     // Nettoyer le canvas
     ctx.clearRect(0, 0, width, height);
     
-    // Zone de visualisation principale (hauteur - 15px pour la bande)
-    const visualizationHeight = height - spectrumBarHeight;
+    // Zone de visualisation principale (hauteur - barre pour la bande, sans padding en haut pour dessiner jusqu'en haut)
+    // Augmentée de 2px pour compenser la réduction de la barre (18px -> 16px)
+    const visualizationHeight = height - spectrumBarHeight + Math.max(1, Math.floor(2 / resolutionFactor));
     
     const upward_flux = data.upward_flux;
     const earth_flux = data.earth_flux || null; // Courbe de Planck pure au sol
@@ -910,11 +1054,17 @@ function drawSpectralVisualization(canvas, data) {
     const P0 = 101325; // Pression au niveau de la mer en Pa
     
     // Dessiner chaque pixel de la visualisation principale
-    // Adapter le pas en Y en fonction du FPS
-    // FPS < 30 : step 2, FPS 30-45 : step 1.5, FPS > 45 : step 1
+    // Adapter le pas en Y en fonction du FPS et de la convergence
+    // Le canvas écoute l'événement 'calculationConverged' pour savoir quand augmenter la précision
     let yStep = 1;
     if (isDichotomy) {
         yStep = 2; // Pendant la dichotomie, toujours sauter des pixels
+    } else if (isConverged && precisionTarget === 'max') {
+        yStep = 1; // Précision maximale : pixel par pixel
+    } else if (isConverged && precisionTarget === 'high') {
+        yStep = 1; // Haute précision : pixel par pixel
+    } else if (isConverged && precisionTarget === 'medium') {
+        yStep = 1; // Précision moyenne : pixel par pixel quand même
     } else if (currentFPS < 30) {
         yStep = 2; // Sauter des pixels si FPS bas
     } else if (currentFPS < 45) {
@@ -928,6 +1078,7 @@ function drawSpectralVisualization(canvas, data) {
         // y=0 (en haut du canvas) → z=z_max (haute altitude)
         // y=max (en bas du canvas) → z=0 (sol)
         // Le spectre émis vient du sol, donc il doit être en bas visuellement
+        // Ajouter topPadding pour décaler vers le bas
         const z_target = (visualizationHeight - 1 - y) * altitudePerPixel; // Inverser Y pour avoir le sol en bas
         
         // Trouver la couche la plus proche de cette altitude
@@ -977,11 +1128,17 @@ function drawSpectralVisualization(canvas, data) {
         // Clamper entre 0 et 1.0
         densityAlpha = Math.max(0, Math.min(1.0, densityAlpha));
         
-        // Adapter le pas en X en fonction du FPS
-        // FPS < 30 : step 2, FPS 30-45 : step 2 (pour éviter les problèmes), FPS > 45 : step 1
+        // Adapter le pas en X en fonction du FPS et de la convergence
+        // Le canvas écoute l'événement 'calculationConverged' pour savoir quand augmenter la précision
         let xStep = 1;
         if (isDichotomy) {
             xStep = 2; // Pendant la dichotomie, toujours sauter des pixels
+        } else if (isConverged && precisionTarget === 'max') {
+            xStep = 1; // Précision maximale : pixel par pixel
+        } else if (isConverged && precisionTarget === 'high') {
+            xStep = 1; // Haute précision : pixel par pixel
+        } else if (isConverged && precisionTarget === 'medium') {
+            xStep = 1; // Précision moyenne : pixel par pixel quand même
         } else if (currentFPS < 30) {
             xStep = 2; // Sauter des pixels si FPS bas
         } else if (currentFPS < 45) {
@@ -1062,6 +1219,7 @@ function drawSpectralVisualization(canvas, data) {
             // Dessiner le pixel avec alpha variable selon l'intensité du flux et la densité
             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
             // Dessiner un rectangle plus large si on saute des pixels (pour combler les trous)
+            // Dessiner directement sans padding pour aller jusqu'en haut
             const pixelWidth = xStep;
             const pixelHeight = yStep;
             ctx.fillRect(x, visualizationHeight - 1 - y, pixelWidth, pixelHeight); // Inverser Y pour avoir le sol en bas
@@ -1069,6 +1227,7 @@ function drawSpectralVisualization(canvas, data) {
     }
     
     // Dessiner la barre de spectre en bas (utilise la fonction dédiée pour éviter la duplication)
-    drawSpectrumBarOnlyWithSize(width, height);
+    // Passer le resolutionFactor pour que la barre reste à 18px d'affichage
+    drawSpectrumBarOnlyWithSize(width, height, resolutionFactor);
 }
 

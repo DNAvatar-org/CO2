@@ -228,9 +228,124 @@ function pressure(z) {
     return P0 * Math.exp(-z / H);
 }
 
-// Variable globale pour stocker la fraction CO2 actuelle et T0 ajustée
+// ============================================================================
+// OBJET D'ÉTAT CENTRALISÉ POUR LES CONCENTRATIONS ET ÉTATS
+// ============================================================================
+/**
+ * Objet centralisé pour gérer l'état de la simulation
+ * Contient toutes les concentrations et états actifs/inactifs
+ */
+const simulationState = {
+    // Concentrations (en fraction molaire)
+    co2_fraction: 0,              // Fraction molaire de CO₂ (0 à 1)
+    co2_ppm: 0,                   // CO₂ en ppm (parties par million)
+    
+    // États actifs/inactifs
+    h2o_enabled: false,            // Vapeur d'eau activée (true/false)
+    cloud_coverage: 0,             // Couverture nuageuse (0 à 1, 0% à 100%)
+    
+    // Température
+    T0: null,                      // Température de surface (K)
+    T0_adjusted: null,             // T0 ajustée par dichotomie (K)
+    
+    // Albedo
+    albedo: 0.3,                   // Albédo actuel (0 à 1)
+    
+    // Autres
+    ice_coverage: 0,               // Couverture de glace (0 à 1)
+    volcano_count: 0               // Nombre de volcans
+};
+
+// Variable globale pour stocker la fraction CO2 actuelle et T0 ajustée (pour compatibilité)
 let current_CO2_fraction_for_temp = null;
 let current_T0_adjusted = null; // T0 ajustée par dichotomie
+
+// ============================================================================
+// FONCTIONS DE CONVERSION PPM / % / FRACTION
+// ============================================================================
+/**
+ * Convertit les ppm en différentes unités
+ * @param {number} ppm - Valeur en ppm (parties par million)
+ * @returns {object} Objet avec différentes représentations
+ */
+function convertPPM(ppm) {
+    const fraction = ppm * 1e-6;           // Fraction molaire (0 à 1)
+    const percent = ppm * 0.0001;          // Pourcentage (%)
+    const ppb = ppm * 1000;                // Parties par milliard (ppb)
+    
+    // Formatage intelligent selon la valeur
+    let formatted = '';
+    if (ppm >= 1) {
+        formatted = `${ppm.toFixed(2)} ppm`;
+    } else if (ppm >= 0.001) {
+        formatted = `${(ppm * 1000).toFixed(3)} ppb`; // milli-ppm
+    } else if (ppm >= 0.000001) {
+        formatted = `${(ppm * 1e6).toFixed(3)} ppt`; // micro-ppm (parties par trillion)
+    } else {
+        formatted = `${fraction.toExponential(3)} (fraction)`;
+    }
+    
+    return {
+        ppm: ppm,
+        fraction: fraction,
+        percent: percent,
+        ppb: ppb,
+        formatted: formatted,
+        // Formatage détaillé
+        formattedPPM: `${ppm.toFixed(2)} ppm`,
+        formattedPercent: `${percent.toFixed(6)}%`,
+        formattedFraction: `${fraction.toExponential(3)}`
+    };
+}
+
+/**
+ * Convertit une fraction molaire en ppm
+ * @param {number} fraction - Fraction molaire (0 à 1)
+ * @returns {number} Valeur en ppm
+ */
+function fractionToPPM(fraction) {
+    return fraction * 1e6;
+}
+
+/**
+ * Convertit les ppm en pourcentage
+ * @param {number} ppm - Valeur en ppm
+ * @returns {number} Pourcentage (%)
+ */
+function ppmToPercent(ppm) {
+    return ppm * 0.0001; // 1 ppm = 0.0001%
+}
+
+// Exposer globalement
+if (typeof window !== 'undefined') {
+    window.simulationState = simulationState;
+    window.convertPPM = convertPPM;
+    window.fractionToPPM = fractionToPPM;
+    window.ppmToPercent = ppmToPercent;
+}
+
+/**
+ * Calcule la hauteur de la tropopause en fonction de la température de surface
+ * La tropopause dépend de T0 : plus T0 est élevé, plus la tropopause est haute
+ * Formule empirique : z_trop ≈ 11 km pour T0 = 288K, avec variation de ~0.1 km/K
+ * @param {number} T0 - Température de surface en Kelvin
+ * @returns {number} Hauteur de la tropopause en mètres
+ */
+function calculateTropopauseHeight(T0) {
+    // Tropopause standard : 11 km pour T0 = 288K (conditions terrestres moyennes)
+    // Variation : environ 0.1 km par Kelvin de différence
+    // Limites physiques : entre 8 km (pôles, très froid) et 17 km (tropiques, très chaud)
+    const z_trop_standard = 11000; // 11 km en mètres
+    const T0_standard = 288; // Température standard en K
+    const sensitivity = 100; // 0.1 km/K = 100 m/K
+    
+    let z_trop = z_trop_standard + (T0 - T0_standard) * sensitivity;
+    
+    // Limites physiques
+    z_trop = Math.max(8000, Math.min(17000, z_trop)); // Entre 8 et 17 km
+    
+    return z_trop;
+}
 
 function temperature(z, CO2_fraction = null, T0_override = null) {
     // Utiliser T0_override si fourni (pour la dichotomie), sinon utiliser la globale
@@ -260,7 +375,8 @@ function temperature(z, CO2_fraction = null, T0_override = null) {
         }
     }
     
-    const z_trop = 11000; // Hauteur de la tropopause, m
+    // Calculer la tropopause dynamiquement en fonction de T0
+    const z_trop = calculateTropopauseHeight(T0);
     const Gamma = -0.0065; // Gradient de température, K/m
     const T_trop = T0 + Gamma * z_trop;
     
@@ -269,6 +385,11 @@ function temperature(z, CO2_fraction = null, T0_override = null) {
     } else {
         return T_trop;
     }
+}
+
+// Exposer la fonction de calcul de tropopause globalement
+if (typeof window !== 'undefined') {
+    window.calculateTropopauseHeight = calculateTropopauseHeight;
 }
 
 function airNumberDensity(z, CO2_fraction = null, T0_override = null) {
@@ -292,9 +413,22 @@ function crossSectionCO2(wavelength) {
 
 // Profil de mixing ratio de vapeur d'eau (fraction molaire)
 // Formule simplifiée basée sur l'altitude uniquement (approximation)
+/**
+ * Calcule le ratio de mélange de la vapeur d'eau (fraction molaire)
+ * 
+ * ⚠️ IMPORTANT : Cette fonction calcule la VAPEUR D'EAU (gaz), pas les nuages ⚠️
+ * 
+ * La vapeur d'eau est l'eau sous forme gazeuse dans l'atmosphère.
+ * - Au niveau de la mer : ~1.5% de l'air est de la vapeur d'eau
+ * - Cette vapeur absorbe le rayonnement IR (effet de serre)
+ * - Les nuages sont calculés séparément via calculateCloudCoverage()
+ * 
+ * @param {number} z - Altitude en mètres
+ * @returns {number} Ratio de mélange (fraction molaire, 0 à 1)
+ */
 function waterVaporMixingRatio(z) {
-    const r0 = 0.015;  // Mixing ratio au niveau de la mer (~1.5%)
-    const H_H2O = 2500; // Échelle de hauteur de la vapeur d'eau (m)
+    const r0 = 0.015;  // Mixing ratio au niveau de la mer (~1.5% de l'air en vapeur d'eau)
+    const H_H2O = 2500; // Échelle de hauteur de la vapeur d'eau (m) - décroît avec l'altitude
     return r0 * Math.exp(-z / H_H2O);
 }
 
@@ -721,6 +855,16 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     
                     if (Math.abs(flux_diff) < tolerance) {
                         // Convergence atteinte
+                        // Déclencher un événement de convergence pour permettre l'augmentation de précision
+                        if (typeof window !== 'undefined') {
+                            window.calculationConverged = true;
+                            // Déclencher un événement personnalisé
+                            if (window.dispatchEvent) {
+                                window.dispatchEvent(new CustomEvent('calculationConverged', { 
+                                    detail: { T0: T0_current, iteration: iter + 1 } 
+                                }));
+                            }
+                        }
                         if (!isCancelled) {
                             finalizeResults(final_result, T0_current, CO2_fraction, resolve);
                         }
@@ -780,6 +924,16 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             }
             
             if (Math.abs(flux_diff) < tolerance) {
+                // Convergence atteinte
+                if (typeof window !== 'undefined') {
+                    window.calculationConverged = true;
+                    // Déclencher un événement personnalisé
+                    if (window.dispatchEvent) {
+                        window.dispatchEvent(new CustomEvent('calculationConverged', { 
+                            detail: { T0: T0, iteration: iteration } 
+                        }));
+                    }
+                }
                 break;
             }
             

@@ -130,7 +130,8 @@ h1 {
 }
 
 .title-container,
-.info-display,
+.controle-simulation,
+.timeline-display,
 .button-container,
 .legend-container,
 .reference-container {
@@ -197,7 +198,8 @@ h1 {
 
 .formulas-container,
 .definitions-container,
-.constants-container {
+.constants-container,
+.algorithms-container {
     padding: 12px;
     background: white;
     border-radius: 8px;
@@ -253,8 +255,7 @@ h1 {
 /* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
 #spectral-visualization {
     position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
+    /* top et left sont gérés par JavaScript pour un positionnement précis */
     border: none;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
@@ -347,8 +348,41 @@ h1 {
     margin: 0;
 }
 
-.info-display {
+.book-reference {
+    font-size: 11px;
+    color: #666;
+    font-style: italic;
+    margin-top: 5px;
+    text-align: center;
+}
+
+.book-reference a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.book-reference a:hover {
+    color: #5568d3;
+    text-decoration: underline;
+}
+
+.controle-simulation {
     border-left: 4px solid #667eea;
+}
+
+.timeline-display {
+    text-align: center;
+    padding: 12px;
+    border-left: 4px solid #667eea;
+}
+
+.timeline-display .info-time {
+    font-size: 16px;
+    font-weight: bold;
+    color: #667eea;
+    display: block;
 }
 
 .left-top,
@@ -367,6 +401,12 @@ h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.controle-simulation-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #667eea;
 }
 
 .info-time {
@@ -399,6 +439,21 @@ h1 {
     background-color: #ccc;
     margin: 8px 0;
     width: 100%;
+}
+
+/* Ligne de séparation avec "_______" alignée à droite */
+.info-separator-line {
+    display: block !important;
+    text-align: right;
+    margin-bottom: -5px;
+    margin-top: -11px;
+    line-height: 0;
+    /* height: auto; */
+    /* min-height: 0px; */
+}
+
+.info-separator-line .info-forcing {
+    margin-left: 0; /* Pas de margin-left auto car on est déjà aligné à droite */
 }
 
 .forcing-total-row {
@@ -821,6 +876,150 @@ h1 {
     font-weight: 500;
     color: #555;
     min-width: 140px;
+}
+
+/* ============================================================================
+   ALGORITHMES & CONVERGENCE
+   ============================================================================ */
+
+.algorithms-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.algorithm-section {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
+}
+
+.algorithm-subtitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.algorithm-params {
+    font-size: 11px;
+    color: #333;
+}
+
+.param-item {
+    margin-bottom: 10px;
+    padding: 6px;
+    background: white;
+    border-radius: 4px;
+}
+
+.param-list {
+    margin: 5px 0 0 20px;
+    padding: 0;
+    list-style-type: disc;
+}
+
+.param-list li {
+    margin: 3px 0;
+    color: #555;
+}
+
+.param-list code {
+    background: #e9ecef;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: #667eea;
+}
+
+.convergence-phases {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.phase-item {
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+    border-left: 3px solid #4ade80;
+}
+
+.phase-item strong {
+    color: #667eea;
+    font-size: 12px;
+}
+
+.phase-item ul {
+    margin: 5px 0 0 20px;
+    padding: 0;
+    list-style-type: disc;
+    font-size: 11px;
+    color: #555;
+}
+
+.phase-item ul ul {
+    list-style-type: circle;
+    margin-left: 15px;
+}
+
+.interactions-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.interaction-item {
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+    border-left: 3px solid #fbbf24;
+}
+
+.interaction-item strong {
+    color: #667eea;
+    font-size: 12px;
+}
+
+.interaction-item ul {
+    margin: 5px 0 0 20px;
+    padding: 0;
+    list-style-type: disc;
+    font-size: 11px;
+    color: #555;
+}
+
+.convergence-method {
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+    border-left: 3px solid #f87171;
+}
+
+.convergence-method p {
+    margin: 5px 0;
+    font-size: 11px;
+    color: #555;
+}
+
+.convergence-method strong {
+    color: #667eea;
+}
+
+.convergence-method ol {
+    margin: 10px 0 10px 20px;
+    padding: 0;
+    font-size: 11px;
+    color: #555;
+}
+
+.convergence-method ol ul {
+    margin: 5px 0 5px 20px;
+    list-style-type: disc;
 }
 
 .status {

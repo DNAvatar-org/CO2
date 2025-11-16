@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur de Température Terrestre - Butterfly Ball Style</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+    <style>
+        :root {
+            --bg: #0a1a2f;
+            --panel: #1a2b42;
+            --accent: #00d4ff;
+            --text: #e0f7ff;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --danger: #f87171;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+        }
+        .sidebar {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 20px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+        .main {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+        }
+        h1, h2, h3 {
+            color: var(--accent);
+            margin-bottom: 15px;
+        }
+        h1 { font-size: 1.8rem; text-align: center; }
+        h2 { font-size: 1.4rem; border-bottom: 1px solid var(--accent); padding-bottom: 8px; }
+        h3 { font-size: 1.2rem; }
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input[type="range"], input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--accent);
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--text);
+        }
+        input[type="checkbox"] {
+            transform: scale(1.3);
+            accent-color: var(--accent);
+        }
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .value-display {
+            text-align: right;
+            font-family: monospace;
+            color: var(--success);
+        }
+        button {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #00b8d4;
+            transform: translateY(-2px);
+        }
+        .chart-container {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 20px;
+            height: 500px;
+            position: relative;
+        }
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .card {
+            background: var(--panel);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid var(--accent);
+        }
+        .card h3 {
+            color: var(--warning);
+            margin-bottom: 8px;
+        }
+        .card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--success);
+        }
+        .card .unit {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        th {
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--accent);
+        }
+        .scenario-btn {
+            background: rgba(0, 212, 255, 0.2);
+            color: var(--accent);
+            margin: 5px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        .mermaid {
+            background: var(--panel);
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+        }
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🦋 Butterfly Ball - Simulateur de Température Terrestre</h1>
+    
+    <div class="container">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <h2>🎛️ Contrôles</h2>
+            
+            <div class="control-group">
+                <h3>🌞 Rayonnement Solaire</h3>
+                <div class="toggle-group">
+                    <input type="checkbox" id="on_solaire" checked>
+                    <label for="on_solaire">Activer</label>
+                </div>
+                <label for="solaire">Constante solaire (W/m²):</label>
+                <input type="range" id="solaire" min="800" max="1600" value="1361" step="1">
+                <div class="value-display"><span id="val_solaire">1361</span> W/m²</div>
+            </div>
+
+            <div class="control-group">
+                <h3>🌍 Albédo Planétaire</h3>
+                <div class="toggle-group">
+                    <input type="checkbox" id="on_albedo" checked>
+                    <label for="on_albedo">Activer</label>
+                </div>
+                <label for="albedo_base">Albédo de base:</label>
+                <input type="range" id="albedo_base" min="0" max="100" value="30" step="1">
+                <div class="value-display"><span id="val_albedo">30</span>%</div>
+                
+                <div class="toggle-group">
+                    <input type="checkbox" id="on_glace">
+                    <label for="on_glace">Glace (+alb.)</label>
+                </div>
+                <div class="toggle-group">
+                    <input type="checkbox" id="on_vegetation">
+                    <label for="on_vegetation">Végétation (-alb.)</label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>🌡️ Gaz à Effet de Serre</h3>
+                <div class="toggle-group">
+                    <input type="checkbox" id="on_gaz" checked>
+                    <label for="on_gaz">Activer</label>
+                </div>
+                
+                <label>CO₂ (ppm):</label>
+                <input type="range" id="co2" min="0" max="100000" value="420" step="10">
+                <div class="value-display"><span id="val_co2">420</span> ppm</div>
+                
+                <label>H₂O (% colonne):</label>
+                <input type="range" id="h2o" min="0" max="5" value="1" step="0.1">
+                <div class="value-display"><span id="val_h2o">1.0</span>%</div>
+                
+                <div class="toggle-group">
+                    <input type="checkbox" id="on_ch4">
+                    <label for="on_ch4">CH₄ (méthane)</label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>☁️ Nuages</h3>
+                <div class="toggle-group">
+                    <input type="checkbox" id="on_nuages">
+                    <label for="on_nuages">Activer</label>
+                </div>
+                <label for="couverture">Couverture (%):</label>
+                <input type="range" id="couverture" min="0" max="100" value="60" step="1">
+                <div class="value-display"><span id="val_couverture">60</span>%</div>
+                
+                <label for="epsilon">Noirceur IR (ε):</label>
+                <input type="range" id="epsilon" min="0" max="1" value="0.7" step="0.01">
+                <div class="value-display"><span id="val_epsilon">0.70</span></div>
+            </div>
+
+            <div class="control-group">
+                <h3>🔥 Noyau Terrestre</h3>
+                <div class="toggle-group">
+                    <input type="checkbox" id="on_noyau">
+                    <label for="on_noyau">Activer</label>
+                </div>
+                <label for="flux_geo">Flux géothermique (W/m²):</label>
+                <input type="range" id="flux_geo" min="0" max="1" value="0.09" step="0.01">
+                <div class="value-display"><span id="val_flux">0.09</span> W/m²</div>
+            </div>
+
+            <button id="run">🚀 Lancer la Simulation</button>
+
+            <div style="margin-top: 20px;">
+                <h3>📅 Scénarios Prédéfinis</h3>
+                <button class="scenario-btn" data-scenario="today">Aujourd'hui</button>
+                <button class="scenario-btn" data-scenario="snowball">Snowball</button>
+                <button class="scenario-btn" data-scenario="hadeen">Hadéen</button>
+                <button class="scenario-btn" data-scenario="venus">Vénus Runaway</button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main">
+            <div class="chart-container">
+                <canvas id="spectrumChart"></canvas>
+            </div>
+
+            <div class="results">
+                <div class="card">
+                    <h3>🌡️ T° Surface</h3>
+                    <div class="value" id="t_surface">--</div>
+                    <div class="unit">°C</div>
+                </div>
+                <div class="card">
+                    <h3>🌡️ T° Effective</h3>
+                    <div class="value" id="t_effective">--</div>
+                    <div class="unit">°C</div>
+                </div>
+                <div class="card">
+                    <h3>🔥 Énergie Absorbée</h3>
+                    <div class="value" id="energie_abs">--</div>
+                    <div class="unit">W/m²</div>
+                </div>
+                <div class="card">
+                    <h3>📤 Énergie Sortante</h3>
+                    <div class="value" id="energie_out">--</div>
+                    <div class="unit">W/m²</div>
+                </div>
+                <div class="card">
+                    <h3>🌡️ Effet de Serre</h3>
+                    <div class="value" id="effet_serre">--</div>
+                    <div class="unit">K</div>
+                </div>
+                <div class="card">
+                    <h3>💡 Albédo Final</h3>
+                    <div class="value" id="albedo_final">--</div>
+                    <div class="unit">%</div>
+                </div>
+            </div>
+
+            <div style="background: var(--panel); padding: 20px; border-radius: 12px;">
+                <h2>📊 Bilan Énergétique Détaillé</h2>
+                <table id="bilan_table">
+                    <thead>
+                        <tr>
+                            <th>Composant</th>
+                            <th>Valeur</th>
+                            <th>Unité</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rempli dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="background: var(--panel); padding: 20px; border-radius: 12px;">
+                <h2>📈 Flux Énergétique (Mermaid)</h2>
+                <div class="mermaid">
+                    graph TD
+                        A[Soleil<br>1361 W/m²] --> B[Rayonnement incident]
+                        B --> C{Albédo<br>30%}
+                        C -->|Réfléchi| D[Espace]
+                        C -->|Absorbé| E[Surface<br>Énergie = 240 W/m²]
+                        E --> F[Émission IR<br>σT⁴]
+                        F --> G{Gaz à effet de serre}
+                        G -->|Transmittance| H[Espace]
+                        G -->|Piégeage| I[Réémis ↓]
+                        I --> E
+                        J[Nuages] --> C
+                        J --> G
+                        K[Noyau] --> E
+                </div>
+            </div>
+
+            <div style="background: var(--panel); padding: 20px; border-radius: 12px; margin-top: 20px;">
+                <h2>📜 Ordre de Calcul & Interactions</h2>
+                <ol>
+                    <li><strong>Rayonnement solaire</strong> → Entrée d'énergie</li>
+                    <li><strong>Albédo global</strong> → Surface + nuages + glace</li>
+                    <li><strong>Émission surface</strong> → σT⁴</li>
+                    <li><strong>Absorption IR</strong> → CO₂, H₂O, CH₄ (HITRAN)</li>
+                    <li><strong>Nuages</strong> → Réflexion + piégeage</li>
+                    <li><strong>Convection</strong> → Profil T(z)</li>
+                    <li><strong>Noyau</strong> → Flux géothermique</li>
+                    <li><strong>Rétroactions</strong> → H₂O ↔ T°, Glace ↔ albédo</li>
+                </ol>
+                <h3>Interactions clés :</h3>
+                <ul>
+                    <li>H₂O ↔ T° (Clausius-Clapeyron)</li>
+                    <li>CO₂ ↔ Weathering (cycle long)</li>
+                    <li>Glace ↔ Albédo (instabilité Snowball)</li>
+                    <li>Nuages hauts → réchauffement / bas → refroidissement</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>🦋 Butterfly Ball Simulator | Créé avec ❤️ par @Zorba_LTF | Données physiques basées sur MODTRAN & HITRAN</p>
+        <p>Scénarios éducatifs • ON/OFF modulable • De l'Hadéen à aujourd'hui</p>
+    </div>
+
+    <script>
+        // === DONNÉES SPECTRALES (simplifiées) ===
+        const blackbody = (T, lambda) => {
+            const h = 6.626e-34, c = 3e8, k = 1.381e-23;
+            return (2 * h * c * c) / (lambda**5) / (Math.exp(h*c/(lambda*k*T)) - 1);
+        };
+
+        const wavelengths = [];
+        const bb_5800 = [], bb_288 = [], bb_255 = [];
+        for (let l = 0.1; l <= 50; l += 0.1) {
+            wavelengths.push(l);
+            bb_5800.push(blackbody(5800, l*1e-6) / 1e12);
+            bb_288.push(blackbody(288, l*1e-6) / 1e12);
+            bb_255.push(blackbody(255, l*1e-6) / 1e12);
+        }
+
+        // === CHART ===
+        const ctx = document.getElementById('spectrumChart').getContext('2d');
+        let chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: wavelengths,
+                datasets: [
+                    {
+                        label: 'Soleil (5800K)',
+                        data: bb_5800,
+                        borderColor: '#fbbf24',
+                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                        tension: 0.4,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Surface Terre (288K)',
+                        data: bb_288,
+                        borderColor: '#f87171',
+                        backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                        tension: 0.4,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'T° Effective (255K)',
+                        data: bb_255,
+                        borderColor: '#60a5fa',
+                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                        tension: 0.4,
+                        pointRadius: 0,
+                        borderDash: [5, 5]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Longueur d\'onde (μm)', color: '#e0f7ff' },
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(0, 212, 255, 0.1)' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Luminance spectrale (W/m²/sr/μm)', color: '#e0f7ff' },
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(0, 212, 255, 0.1)' }
+                    }
+                },
+                plugins: {
+                    title: { display: true, text: 'Courbes d\'émission du rayonnement d\'un corps noir', color: '#e0f7ff' },
+                    legend: { labels: { color: '#e0f7ff' } }
+                }
+            }
+        });
+
+        // === FONCTIONS DE CALCUL ===
+        const sigma = 5.67e-8;
+
+        function calculer() {
+            const S = parseFloat(document.getElementById('solaire').value);
+            const albedo_base = parseFloat(document.getElementById('albedo_base').value) / 100;
+            const on_glace = document.getElementById('on_glace').checked;
+            const on_veget = document.getElementById('on_vegetation').checked;
+            const on_nuages = document.getElementById('on_nuages').checked;
+            const couverture = parseFloat(document.getElementById('couverture').value) / 100;
+            const epsilon = parseFloat(document.getElementById('epsilon').value);
+            const co2 = parseFloat(document.getElementById('co2').value);
+            const h2o = parseFloat(document.getElementById('h2o').value);
+            const on_gaz = document.getElementById('on_gaz').checked;
+            const flux_geo = parseFloat(document.getElementById('flux_geo').value);
+            const on_noyau = document.getElementById('on_noyau').checked;
+
+            // Albédo
+            let albedo = albedo_base;
+            if (on_glace) albedo += 0.4;
+            if (on_veget) albedo -= 0.05;
+            if (on_nuages) albedo += 0.3 * couverture;
+            albedo = Math.max(0, Math.min(1, albedo));
+
+            // Énergie absorbée
+            let energie_abs = S / 4 * (1 - albedo);
+            if (on_noyau) energie_abs += flux_geo;
+
+            // Transmittance (simplifié)
+            let transmittance = 1;
+            if (on_gaz) {
+                const tau_co2 = Math.log(co2 / 280 + 1) * 0.15;
+                const tau_h2o = h2o * 8;
+                transmittance = Math.exp(-(tau_co2 + tau_h2o));
+            }
+            if (on_nuages) transmittance *= (1 - epsilon * couverture);
+
+            // Équilibre
+            const energie_out = energie_abs * transmittance;
+            const T_eff = Math.pow(energie_out / sigma, 0.25) - 273.15;
+            const T_surface = Math.pow(energie_abs / (sigma * transmittance), 0.25) - 273.15;
+            const effet_serre = T_surface - T_eff;
+
+            // Mise à jour UI
+            document.getElementById('t_surface').textContent = T_surface.toFixed(1);
+            document.getElementById('t_effective').textContent = T_eff.toFixed(1);
+            document.getElementById('energie_abs').textContent = energie_abs.toFixed(1);
+            document.getElementById('energie_out').textContent = energie_out.toFixed(1);
+            document.getElementById('effet_serre').textContent = effet_serre.toFixed(1);
+            document.getElementById('albedo_final').textContent = (albedo * 100).toFixed(1);
+
+            // Tableau bilan
+            const tbody = document.querySelector('#bilan_table tbody');
+            tbody.innerHTML = '';
+            const addRow = (nom, val, unit, status) => {
+                const row = `<tr>
+                    <td>${nom}</td>
+                    <td>${val}</td>
+                    <td>${unit}</td>
+                    <td><span style="color:${status}">${status === 'ON' ? '🟢' : '⚫'}</span> ${status}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            };
+            addRow('Solaire', S, 'W/m²', document.getElementById('on_solaire').checked ? 'ON' : 'OFF');
+            addRow('Albédo base', (albedo_base*100).toFixed(1), '%', 'ON');
+            addRow('Glace', on_glace ? '+40%' : '—', '', on_glace ? 'ON' : 'OFF');
+            addRow('Nuages', on_nuages ? `${(couverture*100).toFixed(0)}%` : '—', '', on_nuages ? 'ON' : 'OFF');
+            addRow('CO₂', co2, 'ppm', on_gaz ? 'ON' : 'OFF');
+            addRow('H₂O', h2o, '%', on_gaz ? 'ON' : 'OFF');
+            addRow('Noyau', flux_geo, 'W/m²', on_noyau ? 'ON' : 'OFF');
+        }
+
+        // === MISE À JOUR DES VALEURS ===
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            const output = document.getElementById('val_' + slider.id.split('_')[0].replace('albedo_b', 'albedo'));
+            if (output) {
+                output.textContent = slider.value;
+                slider.addEventListener('input', () => {
+                    output.textContent = slider.value;
+                });
+            }
+        });
+
+        // === SCÉNARIOS ===
+        document.querySelectorAll('.scenario-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const s = btn.dataset.scenario;
+                if (s === 'today') {
+                    setValues({solaire:1361, albedo_base:30, co2:420, h2o:1, couverture:60, epsilon:0.7, flux_geo:0.09});
+                    toggleAll(true); document.getElementById('on_noyau').checked = false;
+                } else if (s === 'snowball') {
+                    setValues({solaire:1361, albedo_base:70, co2:200, h2o:0.1, couverture:90});
+                    toggleAll(true); document.getElementById('on_glace').checked = true;
+                } else if (s === 'hadeen') {
+                    setValues({solaire:1000, albedo_base:15, co2:100000, h2o:3, flux_geo:0.3});
+                    toggleAll(true); document.getElementById('on_nuages').checked = false;
+                } else if (s === 'venus') {
+                    setValues({solaire:2610, albedo_base:75, co2:960000, h2o:0.1, epsilon:1});
+                    toggleAll(true);
+                }
+                calculer();
+            });
+        });
+
+        function setValues(obj) {
+            Object.keys(obj).forEach(k => {
+                const el = document.getElementById(k);
+                if (el) el.value = obj[k];
+                const val = document.getElementById('val_' + k.replace('albedo_b', 'albedo'));
+                if (val) val.textContent = obj[k];
+            });
+        }
+        function toggleAll(on) {
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = on);
+        }
+
+        // === ÉVÉNEMENTS ===
+        document.getElementById('run').addEventListener('click', calculer);
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('change', calculer);
+        });
+
+        // Init
+        calculer();
+    </script>
+
+    <!-- Mermaid -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+    </script>
+</body>
+</html>

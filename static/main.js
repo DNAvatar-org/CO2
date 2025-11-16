@@ -49,6 +49,12 @@ function getAvailableButtons(yearsAgo) {
 // Fonction pour désactiver tous les boutons
 function disableButtons() {
     calculationInProgress = true;
+    // Réinitialiser les flags de convergence
+    if (typeof window !== 'undefined') {
+        window.calculationConverged = false;
+        window.spectralConverged = false;
+        window.spectralPrecisionTarget = 'auto';
+    }
     const buttons = [
         'btn-comet', 'btn-iceberg', 'btn-forest', 'btn-factory',
         'btn-desert', 'btn-volcano', 'btn-cloud'
@@ -452,6 +458,13 @@ function updateCO2Level(state) {
                 }
             }, 200);
             document.getElementById('status').textContent = 'Prêt';
+            // Réinitialiser les flags de convergence après l'affichage final (après un délai pour laisser le temps à la précision max)
+            setTimeout(() => {
+                if (typeof window !== 'undefined') {
+                    window.spectralConverged = false;
+                    window.spectralPrecisionTarget = 'auto';
+                }
+            }, 2000); // Laisser 2 secondes pour la précision maximale
             enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
         };
         
@@ -768,6 +781,13 @@ function updateCO2LevelDirect(co2_fraction) {
                 }
             }, 200);
             document.getElementById('status').textContent = 'Prêt';
+            // Réinitialiser les flags de convergence après l'affichage final (après un délai pour laisser le temps à la précision max)
+            setTimeout(() => {
+                if (typeof window !== 'undefined') {
+                    window.spectralConverged = false;
+                    window.spectralPrecisionTarget = 'auto';
+                }
+            }, 2000); // Laisser 2 secondes pour la précision maximale
             enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
         };
         

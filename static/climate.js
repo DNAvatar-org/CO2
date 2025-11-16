@@ -35,21 +35,49 @@ function calculateCO2Forcing(CO2_fraction) {
 }
 
 // Fonction pour calculer le forçage radiatif de H2O (vapeur d'eau)
+// 
+// ⚠️ IMPORTANT : DISTINCTION ENTRE VAPEUR D'EAU ET NUAGES ⚠️
+// 
+// L'effet de serre de H2O comprend DEUX composantes distinctes :
+// 1. VAPEUR D'EAU (gaz dans l'atmosphère) :
+//    - Représentée par le ratio de mélange r_H2O(z) = r0 * exp(-z/H_H2O)
+//    - Au niveau de la mer : r0 ≈ 0.015 (1.5% de l'air en vapeur d'eau)
+//    - C'est la présence d'eau sous forme gazeuse dans l'atmosphère (%)
+//    - Cette vapeur absorbe le rayonnement IR (effet de serre)
+//    - Calculée dans calculations.js via waterVaporMixingRatio() et waterVaporNumberDensity()
+// 
+// 2. NUAGES (gouttelettes d'eau condensée) :
+//    - Représentée par cloud_coverage (0 à 1, 0% à 100% de couverture)
+//    - Effet complexe : réchauffement (IR) + refroidissement (albedo)
+//    - Calculée dans calculations.js via calculateCloudCoverage()
+//    - Les nuages se forment quand la vapeur d'eau se condense
+// 
 // ⚠️ APPROXIMATION SIMPLIFIÉE POUR MODÉLISATION :
 // - Le forçage H2O réel est complexe et dépend de nombreux facteurs (humidité, altitude, température)
 // - En réalité, la vapeur d'eau contribue ~20-30 W/m² à l'effet de serre terrestre
-// - Les nuages ont un effet complexe : réchauffement (IR) vs refroidissement (albedo)
+// - Les nuages ont un effet net complexe qui dépend du type (cirrus vs stratus) et de l'altitude
 // - Cette fonction est simplifiée pour le gameplay et évite l'emballement thermique
 // 
 // ✅ SCIENTIFIQUEMENT CERTAIN :
 // - La vapeur d'eau est le principal gaz à effet de serre (contribution ~60% de l'effet de serre total)
 // - Les nuages ont un effet net complexe qui dépend du type (cirrus vs stratus) et de l'altitude
 // - La rétroaction vapeur d'eau-température est une rétroaction positive bien documentée
+// 
+// @param {boolean} h2o_enabled - Si true, la vapeur d'eau est activée (présence d'eau dans l'atmosphère)
+// @param {number} cloud_coverage - Couverture nuageuse (0 à 1, 0% à 100%)
+// @returns {number} Forçage radiatif total H2O (W/m²) = vapeur + nuages
 function calculateH2OForcing(h2o_enabled, cloud_coverage) {
     if (!h2o_enabled) return 0;
-    const base_forcing = 15; // Forçage de base de la vapeur d'eau (W/m²) - réduit pour éviter l'emballement
+    // Forçage de base de la vapeur d'eau (présence d'eau gazeuse dans l'atmosphère)
+    // Cette valeur représente l'effet de serre de la vapeur d'eau (~1.5% au niveau de la mer)
+    const base_forcing = 15; // W/m² - réduit pour éviter l'emballement
+    
+    // Contribution supplémentaire des nuages (gouttelettes condensées)
+    // Les nuages ajoutent un forçage radiatif supplémentaire (effet IR > effet albedo dans ce modèle simplifié)
     const cloud_forcing_max = 5; // Contribution maximale des nuages (W/m²)
     const cloud_forcing = Math.min(cloud_forcing_max, cloud_coverage * cloud_forcing_max);
+    
+    // Forçage total = vapeur d'eau (gaz) + nuages (condensé)
     return base_forcing + cloud_forcing; // W/m²
 }
 
