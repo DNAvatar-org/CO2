@@ -11,6 +11,7 @@
             min-height: 800px;
             position: relative;
             overflow: visible;
+            border-left: none !important;
         }
         .flux-diagram {
             width: 100%;
@@ -82,9 +83,10 @@
         .flux-sphere {
             position: absolute;
             border-radius: 50%;
-            border: 1.5px dashed #28a745;
+            border: 2px dashed #ff9800;
             background: none;
             pointer-events: none;
+            z-index: 100;
         }
         .flux-arrow {
             position: absolute;
@@ -123,7 +125,7 @@
         //   - [1,0] = Entrée (haut)
         //   - [1,2] = Sortie (bas)
         //   - [0,1] ou [2,1] = Nom + infos (gauche ou droite selon proximité)
-        function createCell(x, y, radius, fillColor, strokeColor, logo, labels, labelInput = null) {
+        function createCell(x, y, radius, fillColor, strokeColor, logo, labels, labelInput = null, radiationOptions = null) {
             const container = document.getElementById('flux-diagram');
             
             // Cellule principale avec grille 3x3
@@ -231,6 +233,17 @@
             }
             
             container.appendChild(cell);
+            
+            // Créer les cercles de rayonnement si demandé
+            if (radiationOptions) {
+                const { numCircles = 8, maxRadius, openingAngle = 270 } = radiationOptions;
+                for (let i = 1; i <= numCircles; i++) {
+                    const progress = i / numCircles;
+                    const arcRadius = radius + (maxRadius - radius) * progress;
+                    createArc(x, y, arcRadius, 0.3 + (progress * 0.2), openingAngle);
+                }
+            }
+            
             return cell;
         }
         
@@ -347,6 +360,51 @@
             return sphere;
         }
         
+        // Fonction pour créer un arc de cercle (comme createSphere mais avec ouverture)
+        function createArc(cx, cy, r, opacity, openingAngle = 0) {
+            const container = document.getElementById('flux-diagram');
+            const arc = document.createElement('div');
+            arc.className = 'flux-sphere'; // Utilise la même classe que createSphere
+            
+            // Positionner comme createSphere
+            arc.style.left = (cx - r) + 'px';
+            arc.style.top = (cy - r) + 'px';
+            arc.style.width = (r * 2) + 'px';
+            arc.style.height = (r * 2) + 'px';
+            arc.style.border = '2px dashed #ff9800'; // Style directement dans le HTML
+            arc.style.opacity = opacity;
+            
+            // Calculer le clip-path pour masquer l'ouverture vers le bas
+            // openingAngle est l'angle d'ouverture (ex: 270° vers le bas)
+            // Si 270° sont ouverts en bas, alors l'arc visible de 90° doit être en haut
+            // En math: 0° = droite, 90° = haut, 180° = gauche, 270° = bas
+            // Pour que l'arc soit orienté vers le bas, on le centre en haut (90°)
+            const visibleAngle = 360 - openingAngle;
+            const startAngleMath = 90 - (visibleAngle / 2); // Arc centré en haut (90°) pour pointer vers le bas
+            
+            // Créer un clip-path polygon pour masquer l'ouverture
+            const clipPoints = [];
+            const centerX = r;
+            const centerY = r;
+            
+            // Point central
+            clipPoints.push(`${centerX}px ${centerY}px`);
+            
+            // Points autour du cercle pour créer le masque (arc visible en bas)
+            const numPoints = 32;
+            for (let i = 0; i <= numPoints; i++) {
+                const angle = (startAngleMath + (visibleAngle * i / numPoints)) * Math.PI / 180;
+                const x = centerX + r * Math.cos(angle);
+                const y = centerY + r * Math.sin(angle);
+                clipPoints.push(`${x}px ${y}px`);
+            }
+            
+            arc.style.clipPath = `polygon(${clipPoints.join(', ')})`;
+            
+            container.appendChild(arc);
+            return arc;
+        }
+        
         // Création des cellules (cercles plus petits, radius=40, flèches plus grandes)
         // Le soleil émet ~3.8×10²⁶ W dans toutes les directions (4π stéradians)
         // Surface sphère à 1 UA (distance Terre-Soleil) = 4π × (1.5×10¹¹ m)² ≈ 2.83×10²³ m²
@@ -355,19 +413,32 @@
         // 340.25 W/m² = 1361/4 (moyennisation géométrique : surface sphère 4πr² vs section πr²)
         const radius = 40; // Cercles plus petits
         const spacing = 180; // Espacement plus grand entre les cercles (flèches plus grandes)
-        const centerX = 150; // Centre horizontal du diagramme
+        const centerX = 130; // Centre horizontal du diagramme
         const arrowMarginTop = 10; // Marge en haut des flèches (pour éviter que le triangle déborde sur la grille)
         const arrowMarginBottom = 15; // Marge en bas des flèches (grande)
+        const smallSpacing = 140; // Espacement réduit entre Rayonnement et Albédo pour une flèche petite (mais dans le bon sens)
         
         createCell(centerX, 50, radius, '#ffc107', '#ff9800', '🌞', {
             name: 'Soleil',
             txt1: '3.8×10²⁶ W'
         });
+        // Calculer maxRadius pour les cercles de Geometrie (doivent aller jusqu'au centre d'Albédo)
+        const cellHeight = 110;
+        const cellHalfHeight = cellHeight / 2; // 55px
+        const geometrieY = 50 + spacing;
+        const albedoY = 50 + spacing + smallSpacing;
+        const maxRadius = albedoY - geometrieY; // Distance jusqu'au centre d'Albédo
+        
         createCell(centerX, 50 + spacing, radius, '#28a745', '#28a745', '🎱', {
             name: 'Geometrie',
             txt1: '340.25 W/m²'
-        }, '1361 W/m²');
-        createCell(centerX, 50 + spacing * 2, radius, '#667eea', '#667eea', '🪞', {
+        }, '1361 W/m²', {
+            numCircles: 8,
+            maxRadius: maxRadius,
+            openingAngle: 270
+        });
+        // Albédo très proche de Rayonnement pour une flèche très petite
+        createCell(centerX, 50 + spacing + smallSpacing, radius, '#667eea', '#667eea', '🪞', {
             name: 'Albédo',
             txt1: '70%'
         });
@@ -404,25 +475,23 @@
         
         // Dessiner des sphères concentriques (cercles en 2D) qui grandissent depuis le Soleil
         // Ces sphères illustrent comment l'énergie se dilue avec la distance
-        for (let i = 1; i <= 4; i++) {
-            const progress = i / 4; // 0.25, 0.5, 0.75, 1.0
+        for (let i = 1; i <= 8; i++) {
+            const progress = i / 8; // 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0
             const sphereRadius = radius + (distance * progress * 0.8); // Grandit progressivement
             createSphere(centerX, sunY, sphereRadius, 0.2 + (progress * 0.2));
         }
         
         // Flèches : partent du bas du tableau (grille) et arrivent en haut du suivant (marge 5px)
         // La cellule fait 110px de haut et est centrée, donc bas = y + 55px, haut = y - 55px
-        const cellHeight = 110;
-        const cellHalfHeight = cellHeight / 2; // 55px
         const arrows = [
             // Soleil -> Rayonnement : avec étiquette "1UA" (verticale)
             { x1: centerX, y1: 50 + cellHalfHeight, x2: centerX, y2: 50 + spacing - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop, label: { name: '1UA' } },
-            // Rayonnement -> Albédo (verticale)
-            { x1: centerX, y1: 50 + spacing + cellHalfHeight, x2: centerX, y2: 50 + spacing * 2 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
+            // Rayonnement -> Albédo (verticale, très petite)
+            { x1: centerX, y1: 50 + spacing + cellHalfHeight, x2: centerX, y2: 50 + spacing + smallSpacing - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
             // Albédo -> Espace (diagonale)
-            { x1: centerX, y1: 50 + spacing * 2 + cellHalfHeight, x2: centerX - 50, y2: 50 + spacing * 3 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
+            { x1: centerX, y1: 50 + spacing + smallSpacing + cellHalfHeight, x2: centerX - 50, y2: 50 + spacing * 3 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
             // Albédo -> Surface (diagonale)
-            { x1: centerX, y1: 50 + spacing * 2 + cellHalfHeight, x2: centerX + 50, y2: 50 + spacing * 3 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
+            { x1: centerX, y1: 50 + spacing + smallSpacing + cellHalfHeight, x2: centerX + 50, y2: 50 + spacing * 3 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
             // Surface -> Émission IR (verticale)
             { x1: centerX + 50, y1: 50 + spacing * 3 + cellHalfHeight, x2: centerX + 50, y2: 50 + spacing * 3.5 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
             // Émission IR -> Effet de Serre (verticale)
