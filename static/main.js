@@ -1060,6 +1060,72 @@ function getDashStyleForPattern(pattern) {
 // Les fonctions createDashPatternSVG et getDashArray sont maintenant dans patterns.js
 
 // Fonction pour activer/désactiver la vapeur d'eau
+// Fonction pour appliquer les conditions initiales d'une époque géologique
+function setEpoch(epochName) {
+    if (calculationInProgress) return; // Bloquer si calcul en cours
+    
+    // Récupérer les conditions de l'époque depuis geology.js
+    if (typeof window.getGeologicalPeriodByName !== 'function') {
+        console.error('getGeologicalPeriodByName non disponible');
+        return;
+    }
+    
+    const epoch = window.getGeologicalPeriodByName(epochName);
+    if (!epoch) {
+        console.error(`Époque "${epochName}" non trouvée`);
+        return;
+    }
+    
+    disableButtons(); // Désactiver les boutons
+    
+    // Mettre à jour la timeline pour correspondre à l'époque
+    // Utiliser le milieu de l'époque : (startYears + endYears) / 2
+    const middleYears = (epoch.startYears + epoch.endYears) / 2;
+    timelineFrame = Math.floor(middleYears / YEARS_PER_FRAME);
+    updateTimeline();
+    
+    // Appliquer les conditions initiales
+    // 1. CO2
+    const co2_fraction = epoch.co2_ppm * 1e-6;
+    plotData.co2_ppm = epoch.co2_ppm;
+    currentState = 3; // Utiliser state 3 comme base pour les valeurs personnalisées
+    
+    // 2. H2O
+    if (typeof window.waterVaporEnabled !== 'undefined') {
+        window.waterVaporEnabled = epoch.h2o_enabled !== false; // true par défaut si non spécifié
+    }
+    
+    // Mettre à jour l'affichage H2O
+    const h2oStatusElement = document.getElementById('h2o-status-synthese');
+    if (h2oStatusElement) {
+        h2oStatusElement.textContent = epoch.h2o_enabled !== false ? 'Activé' : 'Désactivé';
+    }
+    
+    const btn = document.getElementById('btn-cloud');
+    if (btn) {
+        if (epoch.h2o_enabled !== false) {
+            btn.style.opacity = '1';
+            btn.style.border = '2px solid #4CAF50';
+            btn.title = 'Vapeur d\'eau activée - Cliquer pour désactiver';
+        } else {
+            btn.style.opacity = '0.5';
+            btn.style.border = 'none';
+            btn.title = 'Vapeur d\'eau désactivée - Cliquer pour activer';
+        }
+    }
+    
+    // 3. Cloud coverage sera appliqué automatiquement dans les calculs via calculateCloudCoverage
+    // On peut stocker la valeur pour référence
+    if (epoch.cloud_coverage !== undefined) {
+        // Le cloud_coverage sera utilisé dans calculateCloudCoverage si nécessaire
+        // Pour l'instant, on le stocke dans plotData pour référence
+        plotData.epoch_cloud_coverage = epoch.cloud_coverage;
+    }
+    
+    // Lancer le calcul avec les nouvelles conditions
+    updateCO2LevelDirect(co2_fraction);
+}
+
 function toggleWaterVapor() {
     if (calculationInProgress) return; // Bloquer si calcul en cours
     if (typeof window.waterVaporEnabled === 'undefined') {
@@ -1116,8 +1182,9 @@ function toggleReferencePanel() {
     }
 }
 
-// Exposer la fonction globalement
+// Exposer les fonctions globalement
 window.toggleReferencePanel = toggleReferencePanel;
+window.setEpoch = setEpoch;
 
 window.addEventListener('DOMContentLoaded', () => {
     calculateInitialData();

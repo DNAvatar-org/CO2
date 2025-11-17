@@ -196,6 +196,7 @@ function initPlot() {
             title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
             range: [0, 40],
             fixedrange: true, // Désactiver le zoom
+            side: 'right', // SWAP : passer à droite
             tickfont: { color: 'black', size: 12 },
             titlefont: { color: 'black', size: 14 }, // Titre de l'axe Y en noir pour visibilité
             showgrid: true,
@@ -205,10 +206,10 @@ function initPlot() {
         yaxis2: {
             title: "Altitude (km)",
             overlaying: 'y',
-            side: 'right',
+            side: 'left', // SWAP : passer à gauche
             range: [0, 120], // 0 km en bas, 120 km en haut
             fixedrange: true, // Désactiver le zoom
-            position: 1.0,
+            position: 0, // Position à 0 (gauche)
             // Aligner les ticks avec l'axe Y principal
             // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
             // Utiliser le même espacement que yaxis (généralement 5 ou 10)
@@ -298,7 +299,7 @@ function resizeCanvasToPlot() {
         
         if (targetElement) {
             const targetRect = targetElement.getBoundingClientRect();
-            const hBarre = 16; // Hauteur de la barre en bas (réduite de 18px à 16px pour corriger l'offset)
+            const hBarre = 20; // Hauteur de la barre en bas (20px)
             const paddingX = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
             
             // Dimensions : même largeur + 5px de chaque côté, même hauteur + barre
@@ -378,9 +379,10 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    // La barre doit toujours faire 16px en pixels d'affichage (réduite de 18px à 16px)
-    // Ajuster la hauteur de la barre selon le facteur de résolution
-    const spectrumBarHeight = Math.max(1, Math.floor(16 / resolutionFactor)); // 16px d'affichage
+    // La barre doit toujours faire 20px en pixels d'affichage
+    // Le canvas interne est réduit, puis agrandi par CSS avec resolutionFactor
+    // Donc on doit diviser par resolutionFactor pour obtenir 20px d'affichage final
+    const spectrumBarHeight = Math.max(1, Math.floor(20 / resolutionFactor)); // 20px d'affichage
     const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
     
     // Nettoyer seulement la zone de la bande
@@ -391,11 +393,12 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
     const graph_min_um = 0;
     const graph_max_um = 50;
     
-    // Dessiner la bande de spectre en bas (18px d'affichage) avec alpha=1 pour toutes les couleurs
+    // Dessiner la bande de spectre en bas (20px d'affichage) avec alpha=1 pour toutes les couleurs
     for (let x = 0; x < width; x++) {
         // Mapper la position X à la longueur d'onde (0 à 50 μm)
         // Compenser le décalage de charWidth de chaque côté
         const effectiveWidth = width - (charWidth * 2);
+        // x=0 correspond à lambda_min (0 μm), x=width correspond à lambda_max (50 μm)
         const normalizedX = Math.max(0, Math.min(1, (x - charWidth) / effectiveWidth)); // 0 à 1
         const lambda_um = graph_min_um + normalizedX * (graph_max_um - graph_min_um); // 0 à 50 μm
         const lambda_m = lambda_um * 1e-6; // Convertir en mètres
@@ -563,19 +566,16 @@ window.updatePlot = function updatePlot(data) {
         : 11000; // Fallback à 11 km si la fonction n'est pas disponible
     const z_trop_km = z_trop_m / 1000; // Convertir en km
     
-    const z_max_km = 120; // Altitude max à 120 km
-    const y_trop = 40 * (z_trop_km / z_max_km); // Position sur l'axe Y (0-40), 0 km = 0, 120 km = 40
-    
     traces.push({
-        x: [0, 50], // De 0 à 50 μm
-        y: [y_trop, y_trop], // Ligne horizontale à la hauteur de la tropopause
+        x: [0, 2], // Limité à gauche, près de l'axe altitude (0 à 2 μm)
+        y: [z_trop_km, z_trop_km], // Ligne horizontale à la hauteur de la tropopause (en km, axe altitude 0-120)
         type: 'scatter',
         mode: 'lines',
         name: `Ligne de séparation (${z_trop_km.toFixed(1)} km)`,
         line: { color: 'rgba(0, 0, 0, 0.5)', width: 1, dash: 'dot' }, // Points au lieu de tirets
         showlegend: false,
         hovertemplate: `Ligne de séparation (${z_trop_km.toFixed(1)} km)<extra></extra>`,
-        yaxis: 'y' // Utiliser l'axe Y principal
+        yaxis: 'y2' // Utiliser l'axe altitude (gauche)
     });
     
     const updateLayout = {
@@ -596,6 +596,7 @@ window.updatePlot = function updatePlot(data) {
             range: [0, 40],
             fixedrange: true, // Désactiver le zoom
             title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
+            side: 'right', // SWAP : passer à droite
             tickfont: { color: 'black', size: 12 },
             titlefont: { color: 'black', size: 14 }, // Titre de l'axe Y en noir pour visibilité
             showgrid: true,
@@ -605,10 +606,10 @@ window.updatePlot = function updatePlot(data) {
         yaxis2: {
             title: "Altitude (km)",
             overlaying: 'y',
-            side: 'right',
+            side: 'left', // SWAP : passer à gauche
             range: [0, 120], // 0 km en bas, 120 km en haut (même orientation que yaxis)
             fixedrange: true, // Désactiver le zoom
-            position: 1.0,
+            position: 0, // Position à 0 (gauche)
             // Aligner les ticks avec l'axe Y principal
             // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
             // Utiliser le même espacement que yaxis (généralement 5 ou 10)
@@ -629,11 +630,11 @@ window.updatePlot = function updatePlot(data) {
         annotations: [
             {
                 x: 50, // À droite du graphique
-                y: y_trop, // Position de la tropopause (calculée dynamiquement)
+                y: z_trop_km, // Position de la tropopause (en km, axe altitude)
                 text: 'Stratosph.<br>8.0K<br>Troposph.',
                 showarrow: false,
                 xref: 'x',
-                yref: 'y',
+                yref: 'y2', // Utiliser l'axe altitude (gauche)
                 xanchor: 'left',
                 yanchor: 'middle',
                 font: { color: 'rgba(0, 0, 0, 0.5)', size: 11 } // Même couleur que le trait, pas de cadre
@@ -644,10 +645,10 @@ window.updatePlot = function updatePlot(data) {
     updateLayout.yaxis2 = {
         title: "Altitude (km)",
         overlaying: 'y',
-        side: 'right',
+        side: 'left', // SWAP : passer à gauche
         range: [0, 120], // 0 km en bas, 120 km en haut
         fixedrange: true, // Désactiver le zoom
-        position: 1.0,
+        position: 0, // Position à 0 (gauche)
         // Aligner les ticks avec l'axe Y principal
         tickmode: 'linear',
         dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
@@ -1006,16 +1007,17 @@ function drawSpectralVisualization(canvas, data) {
     canvas.style.width = (width * resolutionFactor) + 'px';
     canvas.style.height = (height * resolutionFactor) + 'px';
     
-    // La barre doit toujours faire 16px en pixels d'affichage (réduite de 18px à 16px pour corriger l'offset de 2px)
-    // Ajuster la hauteur de la barre selon le facteur de résolution
-    const spectrumBarHeight = Math.max(1, Math.floor(16 / resolutionFactor)); // 16px d'affichage (au lieu de 18px)
+    // La barre doit toujours faire 20px en pixels d'affichage
+    // Le canvas interne est réduit, puis agrandi par CSS avec resolutionFactor
+    // Donc on doit diviser par resolutionFactor pour obtenir 20px d'affichage final
+    const spectrumBarHeight = Math.max(1, Math.floor(20 / resolutionFactor)); // 20px d'affichage
     const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
     
     // Nettoyer le canvas
     ctx.clearRect(0, 0, width, height);
     
     // Zone de visualisation principale (hauteur - barre pour la bande, sans padding en haut pour dessiner jusqu'en haut)
-    // Augmentée de 2px pour compenser la réduction de la barre (18px -> 16px)
+    // La barre fait maintenant 20px
     const visualizationHeight = height - spectrumBarHeight + Math.max(1, Math.floor(2 / resolutionFactor));
     
     const upward_flux = data.upward_flux;
@@ -1091,11 +1093,8 @@ function drawSpectralVisualization(canvas, data) {
     
     for (let y = 0; y < visualizationHeight; y += yStep) {
         // Calculer l'altitude correspondant à ce pixel Y
-        // y=0 (en haut du canvas) → z=z_max (haute altitude)
-        // y=max (en bas du canvas) → z=0 (sol)
-        // Le spectre émis vient du sol, donc il doit être en bas visuellement
-        // Ajouter topPadding pour décaler vers le bas
-        const z_target = (visualizationHeight - 1 - y) * altitudePerPixel; // Inverser Y pour avoir le sol en bas
+        // y=0 (en haut) → z=0 (sol), y=max (en bas) → z=z_max (haute altitude)
+        const z_target = y * altitudePerPixel;
         
         // Trouver la couche la plus proche de cette altitude
         let layerIndex = 0;
@@ -1112,37 +1111,32 @@ function drawSpectralVisualization(canvas, data) {
         
         const z = z_range[layerIndex]; // Altitude en mètres
         
-        // Utiliser upward_flux directement (comme avant - première version qui fonctionnait bien)
-        // Au sol (z < 25m), utiliser earth_flux (courbe de Planck pure)
+        // CORRECTION : Inverser l'index pour corriger l'affichage
+        // Si la coupure apparaît à 112 km au lieu de 11 km, c'est que les données sont inversées
+        // y=0 (en haut) doit afficher z_max, y=max (en bas) doit afficher z=0
+        // Donc on inverse l'index : au lieu de layerIndex, utiliser l'index inversé
+        const reversedIndex = z_range.length - 1 - layerIndex;
+        const z_reversed = z_range[reversedIndex]; // Altitude correspondant à l'index inversé
+        
+        // Utiliser upward_flux avec l'index inversé
+        // Au sol (z_reversed < 25m), utiliser earth_flux (courbe de Planck pure)
         let layerFlux;
-        if (z < 25 && earth_flux) {
+        if (z_reversed < 25 && earth_flux) {
             layerFlux = earth_flux;
         } else {
-            // Utiliser upward_flux directement (flux montant réel)
-            layerFlux = upward_flux[layerIndex];
+            // Utiliser upward_flux avec index inversé pour corriger l'affichage
+            layerFlux = upward_flux[reversedIndex];
         }
         
         // Calculer le facteur de densité relative (diminue exponentiellement avec l'altitude)
         // Densité relative = exp(-z/H) où H est l'échelle de hauteur
         // Normaliser pour avoir 1 au sol (z=0) et diminuer avec l'altitude
-        const densityFactor = Math.exp(-z / H);
+        // Utiliser z_reversed pour le calcul de densité (altitude réelle de la couche affichée)
+        const densityFactor = Math.exp(-z_reversed / H);
         
-        // À partir de 30 km, l'émission devient négligeable (densité très faible)
-        // Appliquer une décroissance plus rapide au-delà de 30 km
-        const z_km = z / 1000; // Altitude en km
-        let densityAlpha;
-        if (z_km >= 30) {
-            // Au-delà de 30 km : décroissance très rapide vers 0
-            // Utiliser une fonction qui tend rapidement vers 0
-            const excess = z_km - 30; // Excès au-delà de 30 km
-            const decayFactor = Math.exp(-excess / 2); // Décroissance rapide (échelle de 2 km)
-            densityAlpha = densityFactor * decayFactor * 0.1; // Multiplier par 0.1 pour réduire encore plus
-        } else {
-            // En dessous de 30 km : utiliser le facteur de densité normal
-            densityAlpha = densityFactor;
-        }
-        // Clamper entre 0 et 1.0
-        densityAlpha = Math.max(0, Math.min(1.0, densityAlpha));
+        // Utiliser directement le facteur de densité sans transition brutale
+        // La décroissance exponentielle naturelle suffit
+        const densityAlpha = densityFactor;
         
         // Adapter le pas en X en fonction du FPS et de la convergence
         // Le canvas écoute l'événement 'calculationConverged' pour savoir quand augmenter la précision
@@ -1235,15 +1229,12 @@ function drawSpectralVisualization(canvas, data) {
             // Dessiner le pixel avec alpha variable selon l'intensité du flux et la densité
             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
             // Dessiner un rectangle plus large si on saute des pixels (pour combler les trous)
-            // Dessiner directement sans padding pour aller jusqu'en haut
-            const pixelWidth = xStep;
-            const pixelHeight = yStep;
-            ctx.fillRect(x, visualizationHeight - 1 - y, pixelWidth, pixelHeight); // Inverser Y pour avoir le sol en bas
+            ctx.fillRect(x, y, xStep, yStep);
         }
     }
     
     // Dessiner la barre de spectre en bas (utilise la fonction dédiée pour éviter la duplication)
-    // Passer le resolutionFactor pour que la barre reste à 18px d'affichage
+    // Passer le resolutionFactor pour que la barre reste à 20px d'affichage
     drawSpectrumBarOnlyWithSize(width, height, resolutionFactor);
 }
 
