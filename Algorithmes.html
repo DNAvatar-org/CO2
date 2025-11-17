@@ -136,6 +136,170 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Analyse de Performance -->
+        <div class="algorithms-container" style="margin-top: 40px;">
+            <div class="reference-section-title">Analyse de Performance</div>
+            <div class="algorithms-content" style="background: #f5f5f5; padding: 20px; border-radius: 10px; color: #333;">
+                <!-- Contenu intégré depuis ANALYSE_PERFORMANCE.html -->
+                <h2>Vue d'ensemble</h2>
+                <p>Le système de simulation radiatif utilise deux algorithmes principaux en cascade :</p>
+                <ol>
+                    <li><strong>Algorithme de convergence (dichotomie)</strong> : trouve la température de surface T₀ qui équilibre le flux radiatif</li>
+                    <li><strong>Algorithme de transfert radiatif</strong> : calcule le flux réémis à chaque couche atmosphérique avec tropopause</li>
+                </ol>
+                <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 30px 0;">
+                <h2>1. Algorithme de Convergence (Dichotomie)</h2>
+                <h3>Localisation</h3>
+                <ul>
+                    <li><strong>Fichier</strong> : <code>static/calculations.js</code></li>
+                    <li><strong>Fonction</strong> : <code>simulateRadiativeTransfer()</code></li>
+                    <li><strong>Boucle principale</strong> : mode synchrone et asynchrone</li>
+                </ul>
+                <h3>Description</h3>
+                <p>Méthode de dichotomie (bisection) pour trouver T₀ telle que :</p>
+                <pre style="background: #1e293b; color: #e2e8f0; padding: 15px; border-radius: 5px; overflow-x: auto;"><code>flux_total(T₀) = flux_solaire_absorbé(T₀)</code></pre>
+                <h3>Complexité temporelle</h3>
+                <p><strong>O(log₂(1/ε)) × O(transfert_radiatif)</strong></p>
+                <p>Où :</p>
+                <ul>
+                    <li><strong>ε</strong> = tolérance = 0.1 W/m²</li>
+                    <li><strong>O(transfert_radiatif)</strong> = complexité du calcul de flux (voir section 2)</li>
+                </ul>
+                <p><strong>En pratique</strong> :</p>
+                <ul>
+                    <li>Intervalle initial : ±50K autour de T₀_initial</li>
+                    <li><code>max_iterations = 20</code> (limite fixe)</li>
+                    <li><strong>Complexité réelle</strong> : <strong>O(1)</strong> car limité à 20 itérations maximum</li>
+                </ul>
+                <h3>Nombre d'itérations</h3>
+                <ul>
+                    <li><strong>Minimum</strong> : ~5-7 itérations (convergence rapide)</li>
+                    <li><strong>Maximum</strong> : 20 itérations (limite fixe)</li>
+                    <li><strong>Moyenne</strong> : ~10-12 itérations</li>
+                </ul>
+                <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 30px 0;">
+                <h2>2. Algorithme de Transfert Radiatif (Flux Réémis)</h2>
+                <h3>Localisation</h3>
+                <ul>
+                    <li><strong>Fichier</strong> : <code>static/calculations.js</code></li>
+                    <li><strong>Fonction</strong> : <code>calculateFluxForT0()</code></li>
+                    <li><strong>Boucle principale</strong> : double boucle imbriquée (z × λ)</li>
+                </ul>
+                <h3>Description</h3>
+                <p>Calcule le flux radiatif montant à travers toutes les couches atmosphériques pour chaque longueur d'onde.</p>
+                <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 10px 15px; margin: 15px 0;">
+                    <h3>✅ Optimisation implémentée : Tropopause</h3>
+                    <p><strong>✅ Optimisations implémentées</strong> :</p>
+                    <ol>
+                        <li>✅ Calculer <code>z_trop</code> et <code>T_trop</code> <strong>une seule fois</strong> au début de <code>calculateFluxForT0()</code></li>
+                        <li>✅ Séparer la boucle en deux parties : <code>i < i_trop</code> et <code>i >= i_trop</code></li>
+                        <li>✅ Précalculer les fonctions de Planck pour T_trop (une fois par λ, pas par z)</li>
+                        <li>✅ Précalculer les sections efficaces CO₂ et H₂O (une fois par λ, pas par couche)</li>
+                        <li><strong>Gain estimé</strong> : ~15-25% de réduction du temps de calcul</li>
+                    </ol>
+                </div>
+                <h3>Paramètres de grille (valeurs par défaut)</h3>
+                <table style="border-collapse: collapse; width: 100%; margin: 15px 0; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <tr>
+                        <th style="border: 1px solid #ddd; padding: 12px; background: #667eea; color: white;">Paramètre</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; background: #667eea; color: white;">Valeur</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; background: #667eea; color: white;">Description</th>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 12px;"><code>z_max</code></td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">120,000 m</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">Altitude maximale</td>
+                    </tr>
+                    <tr style="background: #f9fafb;">
+                        <td style="border: 1px solid #ddd; padding: 12px;"><code>delta_z</code></td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">50 m</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">Pas d'altitude</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 12px;"><code>lambda_min</code></td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">0.1 × 10⁻⁶ m</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">Longueur d'onde minimale</td>
+                    </tr>
+                    <tr style="background: #f9fafb;">
+                        <td style="border: 1px solid #ddd; padding: 12px;"><code>lambda_max</code></td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">100 × 10⁻⁶ m</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">Longueur d'onde maximale</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 12px;"><code>delta_lambda</code></td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">0.1 × 10⁻⁶ m</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">Pas de longueur d'onde</td>
+                    </tr>
+                </table>
+                <h3>Complexité temporelle</h3>
+                <p><strong>O(n_z × n_λ) = O(2,400 × 999,000) ≈ O(2.4 × 10⁹)</strong></p>
+                <p><strong>Opérations totales par itération</strong> :</p>
+                <pre style="background: #1e293b; color: #e2e8f0; padding: 15px; border-radius: 5px; overflow-x: auto;"><code>N_ops = 2.4 × 10⁹ × 7 ≈ 1.68 × 10¹⁰ opérations</code></pre>
+                <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 30px 0;">
+                <h2>3. Complexité Globale</h2>
+                <p><strong>Complexité pratique</strong> :</p>
+                <pre style="background: #1e293b; color: #e2e8f0; padding: 15px; border-radius: 5px; overflow-x: auto;"><code>O(12 × 2,400 × 999,000) ≈ O(2.88 × 10¹⁰)</code></pre>
+                <h3>Temps d'exécution estimé</h3>
+                <p><strong>Temps par calcul complet</strong> :</p>
+                <pre style="background: #1e293b; color: #e2e8f0; padding: 15px; border-radius: 5px; overflow-x: auto;"><code>T = (2.88 × 10¹⁰) / (10⁹) ≈ 28.8 secondes</code></pre>
+                <p><strong>En pratique</strong> : 15-30 secondes selon le matériel et les optimisations du navigateur.</p>
+                <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 30px 0;">
+                <h2>4. Impact sur le FPS</h2>
+                <h3>Optimisations actuelles</h3>
+                <ol>
+                    <li><strong>Mode asynchrone</strong> : utilisation de <code>setTimeout</code> pour découper le calcul</li>
+                    <li><strong>Affichage progressif</strong> : mise à jour de l'affichage pendant la convergence</li>
+                    <li><strong>Précision maximale forcée</strong> : toujours utiliser le spectre complet (fullSpectre: true)</li>
+                </ol>
+                <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 10px 15px; margin: 15px 0;">
+                    <h4>✅ Optimisations implémentées</h4>
+                    <ul>
+                        <li>✅ <strong>Calculer z_trop et T_trop une seule fois</strong> au début de <code>calculateFluxForT0()</code></li>
+                        <li>✅ <strong>Séparer la boucle</strong> : <code>for (i < i_trop)</code> et <code>for (i >= i_trop)</code></li>
+                        <li>✅ <strong>Précalculer B_λ(T_trop)</strong> pour toutes les λ (une fois, pas par couche)</li>
+                        <li>✅ <strong>Précalculer sections efficaces</strong> CO₂ et H₂O (une fois, pas par couche)</li>
+                        <li>✅ <strong>Précision maximale</strong> : fullSpectre forcé à true (pas de regroupement adaptatif)</li>
+                        <li><strong>Gain estimé</strong> : ~15-25% de réduction du temps de calcul</li>
+                    </ul>
+                </div>
+                <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 30px 0;">
+                <h2>5. Résumé</h2>
+                <table style="border-collapse: collapse; width: 100%; margin: 15px 0; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <tr>
+                        <th style="border: 1px solid #ddd; padding: 12px; background: #667eea; color: white;">Algorithme</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; background: #667eea; color: white;">Complexité</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; background: #667eea; color: white;">Points</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; background: #667eea; color: white;">Opérations/Itération</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; background: #667eea; color: white;">Itérations</th>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 12px;"><strong>Dichotomie</strong></td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">O(1)</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">-</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">Appel transfert radiatif</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">10-12 (moy)</td>
+                    </tr>
+                    <tr style="background: #f9fafb;">
+                        <td style="border: 1px solid #ddd; padding: 12px;"><strong>Transfert radiatif</strong></td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">O(n_z × n_λ)</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">2.4 × 10⁹</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">1.68 × 10¹⁰</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">1</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 12px;"><strong>Total</strong></td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">O(iter × n_z × n_λ)</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">2.4 × 10⁹</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">2.88 × 10¹⁰</td>
+                        <td style="border: 1px solid #ddd; padding: 12px;">10-12</td>
+                    </tr>
+                </table>
+                <p><strong>Temps estimé</strong> : 15-30 secondes par calcul complet (avec optimisations implémentées)</p>
+                <p><strong>Impact FPS</strong> : Blocage total si synchrone, nécessite mode asynchrone avec découpage.</p>
+                <p><strong>✅ Optimisations actives</strong> : Tropopause optimisée, sections efficaces précalculées, précision maximale forcée</p>
+            </div>
+        </div>
     </div>
 </body>
 </html>
