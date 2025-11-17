@@ -131,7 +131,6 @@ h1 {
 
 .title-container,
 .controle-simulation,
-.synthese,
 .timeline-display,
 .button-container,
 .legend-container,
@@ -141,6 +140,34 @@ h1 {
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+}
+
+.synthese-wrapper {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex: 0 1 auto;
+    align-items: flex-start;
+}
+
+.synthese_EdS,
+.synthese_Temp {
+    flex: 0 1 auto;
+    min-width: fit-content;
+    padding: 10px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+@media (max-width: 1200px) {
+    .synthese_EdS,
+    .synthese_Temp {
+        flex: 1 1 100%;
+        width: 100%;
+    }
 }
 
 .reference-toggle {
@@ -380,7 +407,7 @@ h1 {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 10px;
-    width: 100%;
+    width: fit-content;
     margin-top: 10px;
     padding-left: 10px;
 }
@@ -389,7 +416,8 @@ h1 {
     text-align: center;
     padding: 12px;
     /* border-left: 4px solid #667eea; */
-    width: fit-content;
+    flex: 0 1 auto;
+    height: fit-content;
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -567,7 +595,8 @@ h1 {
     gap: 15px;
     justify-content: center;
     align-items: center;
-    width: fit-content;
+    flex: 0 1 auto;
+    height: fit-content;
 }
 
 @media (max-width: 1200px) {
