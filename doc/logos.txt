@@ -1,26 +1,4 @@
 
-== Organigramme:
-🌞 Soleil
-🎱 Geometrie
-
-☁️ Nuages
-🪞 Albédo
-
-🌕 Noyau (pas terrible)
-
-
-🌍 Surface
-🔥 IR
-. effet de serre
- - 🌵 CO₂ (logo pas terrible)
- - 💧 Eau
- - ⛽ Méthane
- - 📛 Forçage
-
-Réémis 🔂 | 🔃 | 🔄
-🌀 Espace (pas terrible)
-==
-
 == Interface:
 🌡️ T°
 🎛️ Contrôles

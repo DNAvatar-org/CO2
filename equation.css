@@ -1,0 +1,160 @@
+/* File: equation.css - Styles pour les équations, définitions et constantes
+ * Desc: Styles spécifiques pour l'affichage des formules mathématiques, définitions et constantes
+ * Version 1.0.0
+ * Copyright 2025 DNAvatar.org - Arnaud Maignan
+ * Licensed under Apache License 2.0 with Commons Clause.
+ * See LICENSE_HEADER.txt for full terms.
+ * Date: [November 17, 2025] [10:45 UTC+1]
+ * Logs:
+ *   - Initial extraction from style.css
+ */
+
+.formulas-container,
+.definitions-container,
+.constants-container {
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.formulas-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.formulas-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 8px;
+}
+
+.formula-item {
+    font-size: 11px;
+    color: #333;
+    padding: 3px 6px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    text-align: center;
+    overflow-x: auto;
+    line-height: 1.3;
+}
+
+.formula-item .MathJax {
+    font-size: 13px !important;
+}
+
+.formula-separator {
+    grid-column: 1 / -1;
+    padding: 6px 0 4px 0;
+    text-align: center;
+    color: #999;
+    font-size: 11px;
+    letter-spacing: 3px;
+    margin: 4px 0;
+}
+
+.formula-category {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background: #f0f0f0;
+    border-radius: 6px;
+    border-left: 4px solid #667eea;
+    grid-column: span 1;
+    height: fit-content;
+    align-self: start;
+}
+
+.formula-category-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #ddd;
+}
+
+.definitions-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.definitions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 6px;
+    font-size: 10px;
+}
+
+.definition-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    color: #333;
+}
+
+.definition-symbol {
+    font-weight: 600;
+    color: #667eea;
+    min-width: 60px;
+    text-align: left;
+    font-size: 16px;
+}
+
+.definition-symbol .MathJax {
+    font-size: 16px !important;
+}
+
+.constants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 8px;
+    font-size: 10px;
+}
+
+.constant-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    color: #333;
+    border: 1px solid #e0e0e0;
+}
+
+.constant-symbol {
+    font-weight: 600;
+    color: #667eea;
+    min-width: 50px;
+    text-align: left;
+    font-size: 16px;
+}
+
+.constant-symbol .MathJax {
+    font-size: 16px !important;
+}
+
+.constant-name {
+    font-weight: 500;
+    color: #555;
+    min-width: 140px;
+}
+

@@ -40,7 +40,8 @@
         };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <link rel="stylesheet" href="./static/style.css">
+    <link rel="stylesheet" href="static/style.css">
+    <link rel="stylesheet" href="equation.css">
 </head>
 <body>
     <div class="fps-display" id="fps-display">FPS: --</div>
@@ -95,11 +96,6 @@
                         <span class="info-label">ΔT°:</span>
                         <span class="info-value" id="delta-temp">--</span>
                     </div>
-                    <div class="info-row">
-                        <span class="info-label">ΔT° hab.:</span>
-                        <span class="info-value" id="delta-temp-habitable">--</span>
-                        <span class="info-emoji" id="life-indicator">--</span>
-                    </div>
                 </div>
                 <div class="timeline-display">
                     <span class="info-time" id="info-time">0 ans</span>
@@ -122,45 +118,31 @@
             </div>
             
             <div class="left-mid">
-                <div class="legend-container" id="legend-container">
-                    <div class="legend-section">
-                        <div class="legend-title">Courbes d'émission du corps noir</div>
-                        <div class="legend-planck-grid" id="legend-planck-grid">
-                            <!-- Sera rempli dynamiquement -->
-                        </div>
-                    </div>
-                </div>
+                <!-- Légende déplacée dans le conteneur du graphique -->
             </div>
             
             <div class="left-bottom">
-                <div class="reference-container">
-                    <button class="reference-toggle" id="reference-toggle" onclick="toggleReferencePanel()">
-                        <span class="reference-toggle-text">Formules, Définitions et Constantes</span>
-                        <span class="reference-toggle-icon">▼</span>
-                    </button>
-                    <div class="reference-content" id="reference-content">
-                        <div class="formulas-container">
-                            <div class="reference-section-title">Formules</div>
-                            <div class="formulas-content">
-                                <div class="formula-item">$$B_{\lambda}(T) = \frac{2hc^2}{\lambda^5} \frac{1}{e^{hc/(\lambda k_B T)} - 1}$$</div>
-                                <div class="formula-item">$$F_{\text{solaire}} = S_0 \frac{1 - A}{4}$$</div>
-                                <div class="formula-item">$$F = \sigma T^4$$</div>
-                                <div class="formula-item">$$P(z) = P_0 e^{-z/H}$$</div>
-                                <div class="formula-item">$$n_{\text{air}}(z) = \frac{P(z)}{k_B T(z)}$$</div>
-                                <div class="formula-item">$$n_{\text{CO}_2}(z) = n_{\text{air}}(z) \times f_{\text{CO}_2}$$</div>
-                                <div class="formula-item">$$\kappa = \sigma_{\text{CO}_2}(\lambda) \times n_{\text{CO}_2} + \sigma_{\text{H}_2\text{O}}(\lambda) \times n_{\text{H}_2\text{O}}$$</div>
-                                <div class="formula-item">$$F_{\text{sortant}} = F_{\text{entrant}} - F_{\text{absorbé}} + F_{\text{émis}}$$</div>
-                                <div class="formula-item">$$F_{\text{absorbé}} = \kappa \Delta z \times F_{\text{entrant}}$$</div>
-                                <div class="formula-item">$$F_{\text{émis}} = \tau \times \pi B_{\lambda}(T) \Delta\lambda$$</div>
-                                <div class="formula-separator">________________________________</div>
-                                <div class="formula-item">$$T(z) = \begin{cases} T_0 + \Gamma z & \text{si } z < z_{\text{trop}} \\ T_{\text{trop}} & \text{si } z \geq z_{\text{trop}} \end{cases}$$</div>
-                                <div class="formula-item">$$T_0 = \left(\frac{F_{\text{solaire}}}{\sigma}\right)^{1/4} + \Delta T_{\text{effet de serre}}$$</div>
-                                <div class="formula-item">$$\Delta F = 5.35 \times \ln\left(\frac{f_{\text{CO}_2}}{f_{\text{CO}_2,\text{ref}}}\right)$$</div>
-                                <div class="formula-item">$$\Delta T = \lambda \times \Delta F$$</div>
-                                <div class="formula-item">$$\sigma_{\text{CO}_2}(\lambda) = 10^{-22.5 - 24 \left|\frac{\lambda - \lambda_0}{\lambda_0}\right|}$$</div>
-                                <div class="formula-item">$$r_{\text{H}_2\text{O}}(z) = r_0 e^{-z/H_{\text{H}_2\text{O}}}$$</div>
-                                <div class="formula-item">$$n_{\text{H}_2\text{O}}(z) = n_{\text{air}}(z) \times r_{\text{H}_2\text{O}}(z)$$</div>
-                                <div class="formula-item">$$\sigma_{\text{H}_2\text{O}}(\lambda) = \max\left(10^{-20 - 15\left|\frac{\lambda - \lambda_1}{\lambda_1}\right|}, 10^{-21 - 18\left|\frac{\lambda - \lambda_2}{\lambda_2}\right|}\right)$$</div>
+                <div class="formulas-container">
+                    <div class="formulas-content">
+                        <div class="formula-item">$$B_{\lambda}(T) = \frac{2hc^2}{\lambda^5} \frac{1}{e^{hc/(\lambda k_B T)} - 1}$$</div>
+                        <div class="formula-item">$$F_{\text{solaire}} = S_0 \frac{1 - A}{4}$$</div>
+                        <div class="formula-item">$$F = \sigma T^4$$</div>
+                        <div class="formula-item">$$P(z) = P_0 e^{-z/H}$$</div>
+                        <div class="formula-item">$$n_{\text{air}}(z) = \frac{P(z)}{k_B T(z)}$$</div>
+                        <div class="formula-item">$$n_{\text{CO}_2}(z) = n_{\text{air}}(z) \times f_{\text{CO}_2}$$</div>
+                        <div class="formula-item">$$\kappa = \sigma_{\text{CO}_2}(\lambda) \times n_{\text{CO}_2} + \sigma_{\text{H}_2\text{O}}(\lambda) \times n_{\text{H}_2\text{O}}$$</div>
+                        <div class="formula-item">$$F_{\text{sortant}} = F_{\text{entrant}} - F_{\text{absorbé}} + F_{\text{émis}}$$</div>
+                        <div class="formula-item">$$F_{\text{absorbé}} = \kappa \Delta z \times F_{\text{entrant}}$$</div>
+                        <div class="formula-item">$$F_{\text{émis}} = \tau \times \pi B_{\lambda}(T) \Delta\lambda$$</div>
+                        <div class="formula-separator">________________________________</div>
+                        <div class="formula-item">$$T(z) = \begin{cases} T_0 + \Gamma z & \text{si } z < z_{\text{trop}} \\ T_{\text{trop}} & \text{si } z \geq z_{\text{trop}} \end{cases}$$</div>
+                        <div class="formula-item">$$T_0 = \left(\frac{F_{\text{solaire}}}{\sigma}\right)^{1/4} + \Delta T_{\text{effet de serre}}$$</div>
+                        <div class="formula-item">$$\Delta F = 5.35 \times \ln\left(\frac{f_{\text{CO}_2}}{f_{\text{CO}_2,\text{ref}}}\right)$$</div>
+                        <div class="formula-item">$$\Delta T = \lambda \times \Delta F$$</div>
+                        <div class="formula-item">$$\sigma_{\text{CO}_2}(\lambda) = 10^{-22.5 - 24 \left|\frac{\lambda - \lambda_0}{\lambda_0}\right|}$$</div>
+                        <div class="formula-item">$$r_{\text{H}_2\text{O}}(z) = r_0 e^{-z/H_{\text{H}_2\text{O}}}$$</div>
+                        <div class="formula-item">$$n_{\text{H}_2\text{O}}(z) = n_{\text{air}}(z) \times r_{\text{H}_2\text{O}}(z)$$</div>
+                        <div class="formula-item">$$\sigma_{\text{H}_2\text{O}}(\lambda) = \max\left(10^{-20 - 15\left|\frac{\lambda - \lambda_1}{\lambda_1}\right|}, 10^{-21 - 18\left|\frac{\lambda - \lambda_2}{\lambda_2}\right|}\right)$$</div>
                                 <div class="formula-item">$$E = E_0 \exp\left(\frac{T_{\text{surface}} - T_{\text{ref}}}{20}\right)$$</div>
                                 <div class="formula-separator">________________________________</div>
                                 <div class="formula-item">$$z_{\text{trop}} = z_{\text{trop,ref}} + (T_0 - T_{\text{ref}}) \times \alpha$$</div>
@@ -171,25 +153,44 @@
                                 <div class="formula-item">$$A = A_{\text{base}} + A_{\text{glace}} + A_{\text{nuages}}$$</div>
                             </div>
                         </div>
-                        <div class="definitions-container">
-                            <div class="reference-section-title">Définitions</div>
-                            <div class="definitions-grid">
-                                <div class="definition-item"><span class="definition-symbol">\(\lambda\)</span> = longueur d'onde (m)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(B_{\lambda}(T)\)</span> = fonction de Planck (W·m⁻²·m⁻¹·sr⁻¹)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(z\)</span> = altitude (m)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(T(z)\)</span> = Température (K)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(T_{\text{trop}}\)</span> = température à la tropopause (K)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(P(z)\)</span> = Pression (Pa)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(n_{\text{air}}(z)\)</span> = densité de l'air (m⁻³)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(n_{\text{CO}_2}(z)\)</span> = densité de CO₂ (m⁻³)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(f_{\text{CO}_2}\)</span> = fraction molaire de CO₂</div>
-                                <div class="definition-item"><span class="definition-symbol">\(S_0\)</span> = constante solaire (W/m²)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(A\)</span> = albédo</div>
-                                <div class="definition-item"><span class="definition-symbol">\(F_{\text{solaire}}\)</span> = flux solaire absorbé (W/m²)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(\Delta F\)</span> = forçage radiatif (W/m²)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(\lambda\)</span> = sensibilité climatique (K/(W/m²))</div>
-                                <div class="definition-item"><span class="definition-symbol">\(\Delta T\)</span> = variation de température (K)</div>
-                                <div class="definition-item"><span class="definition-symbol">\(F_{\text{total}}\)</span> = flux total (W/m²)</div>
+            </div>
+            
+            <div class="status" id="status" style="display: none;"></div>
+        </div>
+        
+        <div class="right-panels">
+            <div class="plot-container-wrapper">
+                <div id="plot-container">
+                    <div class="plot-overlay-title">Courbes d'émission du rayonnement d'un corps (noir)</div>
+                    <div class="legend-container" id="legend-container">
+                        <div class="legend-section">
+                            <div class="legend-planck-grid" id="legend-planck-grid">
+                                <!-- Sera rempli dynamiquement -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="spectral-visualization" width="333" height="400"></canvas>
+            </div>
+            <div class="definitions-container">
+                <div class="definitions-title">Définitions</div>
+                <div class="definitions-grid">
+                    <div class="definition-item"><span class="definition-symbol">\(\lambda\)</span> = longueur d'onde (m)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(B_{\lambda}(T)\)</span> = fonction de Planck (W·m⁻²·m⁻¹·sr⁻¹)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(z\)</span> = altitude (m)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(T(z)\)</span> = Température (K)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(T_{\text{trop}}\)</span> = température à la tropopause (K)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(P(z)\)</span> = Pression (Pa)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(n_{\text{air}}(z)\)</span> = densité de l'air (m⁻³)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(n_{\text{CO}_2}(z)\)</span> = densité de CO₂ (m⁻³)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(f_{\text{CO}_2}\)</span> = fraction molaire de CO₂</div>
+                    <div class="definition-item"><span class="definition-symbol">\(S_0\)</span> = constante solaire (W/m²)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(A\)</span> = albédo</div>
+                    <div class="definition-item"><span class="definition-symbol">\(F_{\text{solaire}}\)</span> = flux solaire absorbé (W/m²)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(\Delta F\)</span> = forçage radiatif (W/m²)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(\lambda\)</span> = sensibilité climatique (K/(W/m²))</div>
+                    <div class="definition-item"><span class="definition-symbol">\(\Delta T\)</span> = variation de température (K)</div>
+                    <div class="definition-item"><span class="definition-symbol">\(F_{\text{total}}\)</span> = flux total (W/m²)</div>
                                 <div class="definition-item"><span class="definition-symbol">\(T_{\text{eff}}\)</span> = température effective (K)</div>
                                 <div class="definition-item"><span class="definition-symbol">\(z_{\text{trop}}\)</span> = hauteur de la tropopause (m)</div>
                                 <div class="definition-item"><span class="definition-symbol">\(r_{\text{H}_2\text{O}}(z)\)</span> = ratio de mélange vapeur d'eau (fraction molaire)</div>
@@ -200,21 +201,20 @@
                                 <div class="definition-item"><span class="definition-symbol">\(f_{\text{CO}_2}\)</span> = fraction molaire CO₂ (ppm = f × 10⁶)</div>
                             </div>
                         </div>
-                        <div class="constants-container">
-                            <div class="reference-section-title">Constantes</div>
-                            <div class="constants-grid">
-                                <div class="constant-item"><span class="constant-symbol">\(h\)</span> <span class="constant-name">Constante de Planck</span> = 6.626×10⁻³⁴ J·s</div>
-                                <div class="constant-item"><span class="constant-symbol">\(c\)</span> <span class="constant-name">Vitesse de la lumière</span> = 2.998×10⁸ m/s</div>
-                                <div class="constant-item"><span class="constant-symbol">\(k_B\)</span> <span class="constant-name">Constante de Boltzmann</span> = 1.381×10⁻²³ J/K</div>
-                                <div class="constant-item"><span class="constant-symbol">\(\sigma\)</span> <span class="constant-name">Stefan-Boltzmann</span> = 5.670×10⁻⁸ W/(m²·K⁴)</div>
-                                <div class="constant-item"><span class="constant-symbol">\(P_0\)</span> <span class="constant-name">Pression au niveau de la mer</span> = 101325 Pa</div>
-                                <div class="constant-item"><span class="constant-symbol">\(H\)</span> <span class="constant-name">Échelle de hauteur</span> = 8500 m</div>
-                                <div class="constant-item"><span class="constant-symbol">\(T_0\)</span> <span class="constant-name">T° Terrestre</span> = 288.2 K</div>
-                                <div class="constant-item"><span class="constant-symbol">\(\Gamma\)</span> <span class="constant-name">Gradient de température</span> = -0.0065 K/m</div>
-                                <div class="constant-item"><span class="constant-symbol">\(z_{\text{trop}}\)</span> <span class="constant-name">Hauteur tropopause</span> = 11000 m</div>
-                                <div class="constant-item"><span class="constant-symbol">\(\lambda_0\)</span> <span class="constant-name">Centre bande CO₂</span> = 15×10⁻⁶ m</div>
-                                <div class="constant-item"><span class="constant-symbol">\(S_0\)</span> <span class="constant-name">Constante solaire</span> = 1366 W/m²</div>
-                                <div class="constant-item"><span class="constant-symbol">\(A\)</span> <span class="constant-name">Albédo</span> = 0.3</div>
+            <div class="constants-container">
+                <div class="constants-grid">
+                    <div class="constant-item"><span class="constant-symbol">\(h\)</span> <span class="constant-name">Constante de Planck</span> = 6.626×10⁻³⁴ J·s</div>
+                    <div class="constant-item"><span class="constant-symbol">\(c\)</span> <span class="constant-name">Vitesse de la lumière</span> = 2.998×10⁸ m/s</div>
+                    <div class="constant-item"><span class="constant-symbol">\(k_B\)</span> <span class="constant-name">Constante de Boltzmann</span> = 1.381×10⁻²³ J/K</div>
+                    <div class="constant-item"><span class="constant-symbol">\(\sigma\)</span> <span class="constant-name">Stefan-Boltzmann</span> = 5.670×10⁻⁸ W/(m²·K⁴)</div>
+                    <div class="constant-item"><span class="constant-symbol">\(P_0\)</span> <span class="constant-name">Pression au niveau de la mer</span> = 101325 Pa</div>
+                    <div class="constant-item"><span class="constant-symbol">\(H\)</span> <span class="constant-name">Échelle de hauteur</span> = 8500 m</div>
+                    <div class="constant-item"><span class="constant-symbol">\(T_0\)</span> <span class="constant-name">T° Terrestre</span> = 288.2 K</div>
+                    <div class="constant-item"><span class="constant-symbol">\(\Gamma\)</span> <span class="constant-name">Gradient de température</span> = -0.0065 K/m</div>
+                    <div class="constant-item"><span class="constant-symbol">\(z_{\text{trop}}\)</span> <span class="constant-name">Hauteur tropopause</span> = 11000 m</div>
+                    <div class="constant-item"><span class="constant-symbol">\(\lambda_0\)</span> <span class="constant-name">Centre bande CO₂</span> = 15×10⁻⁶ m</div>
+                    <div class="constant-item"><span class="constant-symbol">\(S_0\)</span> <span class="constant-name">Constante solaire</span> = 1366 W/m²</div>
+                    <div class="constant-item"><span class="constant-symbol">\(A\)</span> <span class="constant-name">Albédo</span> = 0.3</div>
                                 <div class="constant-item"><span class="constant-symbol">\(\lambda\)</span> <span class="constant-name">Sensibilité climatique</span> = 0.8 K/(W/m²)</div>
                                 <div class="constant-item"><span class="constant-symbol">\(z_{\text{trop,ref}}\)</span> <span class="constant-name">Tropopause référence</span> = 11000 m</div>
                                 <div class="constant-item"><span class="constant-symbol">\(T_{\text{ref}}\)</span> <span class="constant-name">T° référence</span> = 288 K</div>
@@ -351,20 +351,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="status" id="status" style="display: none;"></div>
-        </div>
-        
-        <div class="right-panels">
-            <div class="plot-container-wrapper">
-                <div id="plot-container">
-                    <div class="plot-overlay-title">Courbes d'émission du rayonnement d'un corps (noir)</div>
-                </div>
-                <canvas id="spectral-visualization" width="333" height="400"></canvas>
-            </div>
         </div>
     </div>
     
@@ -385,13 +371,12 @@
         </div>
     </footer>
     
-    <script src="./static/patterns.js"></script>
-    <script src="./static/physics.js"></script>
-    <script src="./static/climate.js"></script>
-    <script src="./static/geology.js"></script>
-    <script src="./static/calculations.js"></script>
-    <script src="./static/plot.js"></script>
-    <script src="./static/main.js"></script>
+    <script src="static/patterns.js"></script>
+    <script src="static/physics.js"></script>
+    <script src="static/climate.js"></script>
+    <script src="static/geology.js"></script>
+    <script src="static/calculations.js"></script>
+    <script src="static/plot.js"></script>
+    <script src="static/main.js"></script>
 </body>
 </html>
-

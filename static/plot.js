@@ -229,7 +229,7 @@ function initPlot() {
             {
                 x: 50, // À droite du graphique
                 y: 40 * (11 / 120), // Position de la tropopause (11 km)
-                text: 'Tropopause',
+                text: 'Stratosphère 8.0K<br>Troposphère',
                 showarrow: false,
                 xref: 'x',
                 yref: 'y',
@@ -558,10 +558,10 @@ window.updatePlot = function updatePlot(data) {
         y: [y_trop, y_trop], // Ligne horizontale à la hauteur de la tropopause
         type: 'scatter',
         mode: 'lines',
-        name: `Tropopause (${z_trop_km.toFixed(1)} km)`,
+        name: `Ligne de séparation (${z_trop_km.toFixed(1)} km)`,
         line: { color: 'rgba(0, 0, 0, 0.5)', width: 1, dash: 'dot' }, // Points au lieu de tirets
         showlegend: false,
-        hovertemplate: `Tropopause (${z_trop_km.toFixed(1)} km)<extra></extra>`,
+        hovertemplate: `Ligne de séparation (${z_trop_km.toFixed(1)} km)<extra></extra>`,
         yaxis: 'y' // Utiliser l'axe Y principal
     });
     
@@ -614,7 +614,7 @@ window.updatePlot = function updatePlot(data) {
             {
                 x: 50, // À droite du graphique
                 y: y_trop, // Position de la tropopause (calculée dynamiquement)
-                text: `Tropopause (${z_trop_km.toFixed(1)} km)`,
+                text: 'Stratosphère 8.0K<br>Troposphère',
                 showarrow: false,
                 xref: 'x',
                 yref: 'y',

@@ -1,0 +1,134 @@
+/* File: organigramme.css - Styles pour le diagramme de flux énergétique */
+/* Desc: Feuille de style CSS pour l'organigramme de flux énergétique */
+/* Version 1.0.0 */
+/* Copyright 2025 DNAvatar.org - Arnaud Maignan */
+/* Licensed under Apache License 2.0 with Commons Clause. */
+/* See LICENSE_HEADER.txt for full terms. */
+/* Date: [June 08, 2025] [HH:MM UTC+1] */
+/* Logs: */
+/*   - Initial version: extraction des styles CSS depuis demo_flux_energetique_01.html */
+
+.controle-simulation {
+    padding: 0 !important;
+    min-height: 800px;
+    position: relative;
+    overflow: visible;
+    border-left: none !important;
+}
+.flux-diagram {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    min-height: 900px;
+    background: #0a0e27 url('../galaxie.png') center center / cover no-repeat; /* Fond bleu nuit avec image de l'univers */
+    border-radius: 12px; /* Bords arrondis */
+    box-shadow: none !important;
+    border: none !important;
+    outline: none !important;
+}
+.flux-cell {
+    position: absolute;
+    display: grid;
+    grid-template-columns: 100px 60px 100px;
+    grid-template-rows: 25px 65px 20px;
+    width: 260px;
+    height: 110px;
+    z-index: 20;
+}
+.flux-cellRect {
+    position: absolute;
+    display: grid;
+    grid-template-columns: 100px 60px 100px;
+    grid-template-rows: 25px 200px 20px;
+    width: 260px;
+    height: 245px;
+    z-index: 20;
+}
+.flux-circle-bg {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    border: 4px solid;
+    z-index: 1;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+.flux-circle-bg:hover {
+    transform: scale(1.3);
+}
+.flux-grid-item {
+    display: flex;
+    align-items: center;
+}
+.flux-grid-item-center {
+    justify-content: center;
+}
+.flux-grid-item-left {
+    justify-content: flex-end;
+}
+.flux-grid-item-right {
+    justify-content: flex-start;
+}
+.flux-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    border: 4px solid;
+    position: relative;
+    z-index: 2;
+}
+.flux-label {
+    padding: 0px 4px;
+    border-radius: 4px;
+    background: #0a0e27;
+    border: 1px solid #94a0d6;
+    font-size: 11px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Police plus lisible en petit */
+    /* font-weight: bold; */
+    white-space: nowrap;
+    text-align: center;
+    line-height: 1.5;
+    z-index: 200;
+}
+.flux-label-name {
+    color: #fff; /* Texte blanc sur fond bleu nuit */
+}
+.flux-label-blue {
+    color: #aab7f2;
+}
+.flux-sphere {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px dashed #ff9800;
+    background: none;
+    pointer-events: none;
+    z-index: 50; /* Entre les logos/cellules (20) et les étiquettes (200) */
+}
+.flux-arrow {
+    position: absolute;
+    background: #667eea;
+    z-index: 1;
+}
+.flux-rectangle {
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+}
+.flux-rectangle-factor {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
