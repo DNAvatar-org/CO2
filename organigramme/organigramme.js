@@ -167,11 +167,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 const label = document.createElement('div');
                 label.className = 'flux-label flux-label-blue';
                 label.innerHTML = top; // Utiliser innerHTML pour interpréter les balises <br>
-                if (top.includes('<br>')) {
-                    label.style.whiteSpace = 'normal';
-                    label.style.width = 'max-content';
-                    label.style.maxWidth = 'none';
-                }
                 gridItem.appendChild(label);
             }
             // [1,2] = Bottom (bas)
@@ -179,11 +174,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 const label = document.createElement('div');
                 label.className = 'flux-label flux-label-blue';
                 label.innerHTML = bottom; // Utiliser innerHTML pour interpréter les balises <br>
-                if (bottom.includes('<br>')) {
-                    label.style.whiteSpace = 'normal';
-                    label.style.width = 'max-content';
-                    label.style.maxWidth = 'none';
-                }
                 gridItem.appendChild(label);
             }
             // [0,1] = Left (gauche)
@@ -199,11 +189,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     const label = document.createElement('div');
                     label.className = 'flux-label flux-label-blue';
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
-                    if (text.includes('<br>')) {
-                        label.style.whiteSpace = 'normal';
-                        label.style.width = 'max-content';
-                        label.style.maxWidth = 'none';
-                    }
                     labelContainer.appendChild(label);
                 });
                 
@@ -222,11 +207,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     const label = document.createElement('div');
                     label.className = 'flux-label flux-label-blue';
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
-                    if (text.includes('<br>')) {
-                        label.style.whiteSpace = 'normal';
-                        label.style.width = 'max-content';
-                        label.style.maxWidth = 'none';
-                    }
                     labelContainer.appendChild(label);
                 });
                 

@@ -39,7 +39,7 @@ const nodes = [
     { id: 'espace1', x: centerX+110 , y: 25, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🛰', left: [], right: [], top: '', bottom: 'Observation', tooltip: 'Espace', radiation: null },
     { id: 'noyau', x: centerX-60 , y: 300, radius, fillColor: 'rgba(255, 69, 0, 0.5)', strokeColor: '#ff4500', logo: '🌋', left: ['Noyau'], right: [], top: 'Géothermie', bottom: '~5700 K', tooltip: 'Noyau', radiation: null },
     { id: 'surface', x: centerX + 90, y: 300, radius, fillColor: 'rgba(0, 0, 255, 0.2', strokeColor: '#111177', logo: '🌍', left: [], right: [], top: '', bottom: '', tooltip: 'Surface', radiation: null },
-    { id: 'effetSerre', x: centerX - 60, y: 500, radius, fillImage: '🌫', strokeColor: '', logo: '', left: [], right: [], top: 'Athmosphère', bottom: 'Effet de Serre', tooltip: 'Effet de Serre', radiation: null, rectangle: { width: 100, height: 200, factors: [
+    { id: 'effetSerre', x: centerX - 60, y: 500, radius, fillImage: '🌫', strokeColor: '', logo: '', left: [], right: [], top: 'Athmosphère<br>Effet de Serre', bottom: '', tooltip: 'Effet de Serre', radiation: null, rectangle: { width: 100, height: 200, factors: [
         { icon: '🌵', label: 'CO₂' },
         { icon: '💧', label: 'Eau' },
         { icon: '⛽', label: 'Méthane' }

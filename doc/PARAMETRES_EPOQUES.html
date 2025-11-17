@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paramètres des Époques Géologiques - À Valider</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            color: #1e3a8a;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #3b82f6;
+            margin-top: 30px;
+            border-bottom: 2px solid #93c5fd;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #2563eb;
+            margin-top: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        .param-required {
+            background: #fef3c7;
+        }
+        .param-optional {
+            background: #e0f2fe;
+        }
+        .epoch-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .emoji {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Paramètres des Époques Géologiques - À Valider</h1>
+    
+    <div class="info">
+        <p><strong>Objectif</strong> : Définir les conditions initiales pour chaque époque géologique afin de permettre à l'utilisateur de "sauter" directement à une époque avec les bons paramètres.</p>
+        <p><strong>Action requise</strong> : Valider cette liste de paramètres avant de rechercher les valeurs sur internet.</p>
+    </div>
+
+    <h2>Paramètres à définir pour chaque époque</h2>
+    
+    <table>
+        <tr>
+            <th>Paramètre</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Unité/Format</th>
+            <th>Obligatoire</th>
+        </tr>
+        <tr class="param-required">
+            <td><code>name</code></td>
+            <td>string</td>
+            <td>Nom de l'époque</td>
+            <td>ex: "Hadéen", "Archéen"</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>startYears</code></td>
+            <td>number</td>
+            <td>Début de l'époque (années avant maintenant)</td>
+            <td>ex: 4.6e9 (4.6 milliards d'années)</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>endYears</code></td>
+            <td>number</td>
+            <td>Fin de l'époque (années avant maintenant)</td>
+            <td>ex: 4.0e9</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>emoji</code></td>
+            <td>string</td>
+            <td>Emoji représentant l'époque</td>
+            <td>ex: "🌑", "🦠"</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>co2_ppm</code></td>
+            <td>number</td>
+            <td>Concentration de CO₂ dans l'atmosphère</td>
+            <td>ppm (parties par million)</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>h2o_enabled</code></td>
+            <td>boolean</td>
+            <td>Vapeur d'eau activée (présence d'océans/atmosphère avec H₂O)</td>
+            <td>true/false</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>cloud_coverage</code></td>
+            <td>number</td>
+            <td>Couverture nuageuse moyenne</td>
+            <td>0 à 1 (0% à 100%)</td>
+            <td>⚠️ Optionnel (calculé si absent)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>temperature_surface</code></td>
+            <td>number</td>
+            <td>Température de surface moyenne</td>
+            <td>Kelvin (K) ou Celsius (°C)</td>
+            <td>⚠️ Optionnel (calculé si absent)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>albedo</code></td>
+            <td>number</td>
+            <td>Albédo moyen de la planète</td>
+            <td>0 à 1 (0% à 100%)</td>
+            <td>⚠️ Optionnel (calculé si absent)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>volcanoFactor</code></td>
+            <td>number</td>
+            <td>Facteur multiplicatif pour l'activité volcanique</td>
+            <td>ex: 10.0 (10x plus actif)</td>
+            <td>⚠️ Optionnel (déjà dans GEOLOGICAL_ERAS)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>co2PerVolcano</code></td>
+            <td>number</td>
+            <td>CO₂ émis par volcan (équivalent)</td>
+            <td>ppm par volcan</td>
+            <td>⚠️ Optionnel (déjà dans GEOLOGICAL_ERAS)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>description</code></td>
+            <td>string</td>
+            <td>Description textuelle de l'époque</td>
+            <td>Texte libre</td>
+            <td>⚠️ Optionnel (pour documentation)</td>
+        </tr>
+    </table>
+
+    <div class="note">
+        <p><strong>Note</strong> : Les paramètres marqués comme "Optionnel" peuvent être calculés automatiquement par le système si non fournis, mais il est préférable de les définir pour plus de précision historique.</p>
+    </div>
+
+    <h2>Époques à définir</h2>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🌑</span> Hadéen (-4600 à -4000 Ma)</h3>
+        <p><strong>Paramètres à rechercher</strong> :</p>
+        <ul>
+            <li>CO₂ atmosphérique (ppm)</li>
+            <li>Présence d'océans (H₂O activé ?)</li>
+            <li>Couverture nuageuse</li>
+            <li>Température de surface moyenne</li>
+            <li>Albédo (atmosphère dense, peu de réflexion ?)</li>
+        </ul>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🦠</span> Archéen (-4000 à -2500 Ma)</h3>
+        <p><strong>Paramètres à rechercher</strong> :</p>
+        <ul>
+            <li>CO₂ atmosphérique (ppm)</li>
+            <li>Présence d'océans (H₂O activé ?)</li>
+            <li>Couverture nuageuse</li>
+            <li>Température de surface moyenne</li>
+            <li>Albédo</li>
+        </ul>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🌿</span> Protérozoïque (-2500 à -541 Ma)</h3>
+        <p><strong>Paramètres à rechercher</strong> :</p>
+        <ul>
+            <li>CO₂ atmosphérique (ppm) - déclin progressif</li>
+            <li>Présence d'océans (H₂O activé ?)</li>
+            <li>Couverture nuageuse</li>
+            <li>Température de surface moyenne</li>
+            <li>Albédo (apparition de glaciations)</li>
+        </ul>
+        <p><strong>Note</strong> : Période très longue, peut nécessiter des sous-périodes (Cryogénien, etc.)</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🦴</span> Paléozoïque (-541 à -252 Ma)</h3>
+        <p><strong>Paramètres à rechercher</strong> :</p>
+        <ul>
+            <li>CO₂ atmosphérique (ppm)</li>
+            <li>Présence d'océans (H₂O activé ?)</li>
+            <li>Couverture nuageuse</li>
+            <li>Température de surface moyenne</li>
+            <li>Albédo</li>
+        </ul>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🦕</span> Mésozoïque (-252 à -66 Ma)</h3>
+        <p><strong>Paramètres à rechercher</strong> :</p>
+        <ul>
+            <li>CO₂ atmosphérique (ppm) - élevé (2000-3000 ppm)</li>
+            <li>Présence d'océans (H₂O activé ?)</li>
+            <li>Couverture nuageuse</li>
+            <li>Température de surface moyenne (+6 à +8°C par rapport à aujourd'hui ?)</li>
+            <li>Albédo (peu de glaces)</li>
+        </ul>
+        <p><strong>Sous-périodes</strong> : Crétacé (-145 à -66 Ma) avec CO₂ très élevé</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🦣</span> Cénozoïque (-66 Ma à aujourd'hui)</h3>
+        <p><strong>Paramètres à rechercher</strong> :</p>
+        <ul>
+            <li>CO₂ atmosphérique (ppm) - 280 ppm avant industrie</li>
+            <li>Présence d'océans (H₂O activé ?)</li>
+            <li>Couverture nuageuse</li>
+            <li>Température de surface moyenne</li>
+            <li>Albédo (alternance glaces/interglaciaires)</li>
+        </ul>
+        <p><strong>Note</strong> : Période récente, données plus précises disponibles</p>
+    </div>
+
+    <h2>Sources de données recommandées</h2>
+    <ul>
+        <li><strong>CO₂ atmosphérique</strong> : 
+            <ul>
+                <li>Modèles paléoclimatiques (GEOCARB, COPSE, etc.)</li>
+                <li>Proxies géochimiques (isotopes, fossiles)</li>
+                <li>Articles scientifiques sur l'évolution du CO₂</li>
+            </ul>
+        </li>
+        <li><strong>Température</strong> :
+            <ul>
+                <li>Reconstructions paléoclimatiques</li>
+                <li>Proxies de température (isotopes O¹⁸, fossiles)</li>
+                <li>Modèles climatiques rétrospectifs</li>
+            </ul>
+        </li>
+        <li><strong>Albédo et nuages</strong> :
+            <ul>
+                <li>Modèles climatiques paléoclimatiques</li>
+                <li>Estimations basées sur la couverture glaciaire</li>
+                <li>Comparaisons avec exoplanètes similaires</li>
+            </ul>
+        </li>
+    </ul>
+
+    <div class="note">
+        <p><strong>⚠️ Difficulté</strong> : Les données pour les époques très anciennes (Hadéen, Archéen) sont rares et souvent basées sur des modèles théoriques plutôt que des mesures directes. Il faudra probablement faire des approximations raisonnables.</p>
+    </div>
+
+    <h2>Structure de données proposée</h2>
+    <pre><code>const EPOCH_INITIAL_CONDITIONS = [
+    {
+        name: 'Hadéen',
+        startYears: 4.6e9,
+        endYears: 4.0e9,
+        emoji: '🌑',
+        co2_ppm: 7000,  // À rechercher
+        h2o_enabled: true,  // À confirmer
+        cloud_coverage: 0.8,  // À rechercher
+        temperature_surface: 323,  // >50°C = 323K, à affiner
+        albedo: 0.25,  // À rechercher
+        description: '...'
+    },
+    // ... autres époques
+];</code></pre>
+
+    <div class="info">
+        <p><strong>Prochaine étape</strong> : Une fois cette liste validée, recherche approfondie sur internet pour chaque paramètre de chaque époque.</p>
+    </div>
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; font-size: 0.9em; color: #6b7280; font-style: italic;">
+        <p><em>Document généré le : 2025-01-XX</em><br>
+        <em>Version : 1.0.0</em><br>
+        <em>Auteur : DNAvatar.org - Arnaud Maignan</em></p>
+    </div>
+</body>
+</html>
+

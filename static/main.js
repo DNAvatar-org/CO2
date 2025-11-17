@@ -272,7 +272,33 @@ function updateFPS() {
         
         const fpsDisplay = document.getElementById('fps-display');
         if (fpsDisplay) {
-            fpsDisplay.textContent = `FPS: ${fps}`;
+            // Récupérer les états ON/OFF du rendu
+            const h2oEnabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
+                ? window.waterVaporEnabled 
+                : false;
+            const h2oStatus = h2oEnabled ? 'ON' : 'OFF';
+            
+            // Récupérer la précision actuelle
+            let precisionText = '1.0x';
+            if (typeof window !== 'undefined' && typeof getPrecisionFactorFromFPS === 'function') {
+                const precisionFactor = getPrecisionFactorFromFPS();
+                precisionText = precisionFactor.toFixed(2) + 'x';
+            } else if (typeof window !== 'undefined' && window.fps) {
+                // Calculer approximativement la précision selon le FPS
+                const currentFPS = window.fps;
+                if (currentFPS < 20) {
+                    precisionText = '0.5x';
+                } else if (currentFPS < 25) {
+                    precisionText = '0.75x';
+                } else if (currentFPS > 55) {
+                    precisionText = '2.0x';
+                } else {
+                    precisionText = '1.0x';
+                }
+            }
+            
+            // Afficher FPS, H2O, et précision
+            fpsDisplay.innerHTML = `FPS: ${fps}<br>H₂O: ${h2oStatus}<br>Précision: ${precisionText}`;
         }
     }
     

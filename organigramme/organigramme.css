@@ -21,10 +21,12 @@
     height: 100%;
     min-height: 630px;
     position: relative;
+    /*
     background: #0a0e27 url('../galaxie.png') center center / cover no-repeat; /* Fond bleu nuit avec image de l'univers */
+    background-color: rgba(170,183,242,0.15);
     border-radius: 12px; /* Bords arrondis */
     box-shadow: none !important;
-    border: none !important;
+    border: solid 1px #aab7f2 !important;
     outline: none !important;
 }
 .flux-cell {
@@ -110,7 +112,7 @@
     border: 2px dashed #ff9800;
     background: none;
     pointer-events: none;
-    z-index: 50; /* Entre les logos/cellules (20) et les étiquettes (200) */
+    z-index: 0; /* Sous les autres divs (cellules: 20, étiquettes: 200) */
 }
 .flux-arrow {
     position: absolute;

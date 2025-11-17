@@ -483,6 +483,34 @@ function waterVaporTransport(z) {
 // SIMULATION DU TRANSFERT RADIATIF
 // ============================================================================
 
+// ⚡ OPTIMISATION : Calculer le facteur de précision adaptatif selon le FPS
+function getPrecisionFactorFromFPS() {
+    const FPSalert = 25;  // Seuil d'alerte (FPS bas)
+    const FPSmin = 20;     // FPS minimum acceptable
+    const FPSmax = 55;     // FPS maximum (bonne performance)
+    
+    const currentFPS = (typeof window !== 'undefined' && window.fps) ? window.fps : 60;
+    
+    if (currentFPS < FPSmin) {
+        // FPS très bas : diviser la précision par 2 (réduire les points)
+        return 0.5;
+    } else if (currentFPS > FPSmax) {
+        // FPS excellent : multiplier la précision par 2 (augmenter les points)
+        return 2.0;
+    } else if (currentFPS < FPSalert) {
+        // FPS en alerte : légèrement réduire la précision
+        return 0.75;
+    }
+    
+    // FPS normal : précision standard
+    return 1.0;
+}
+
+// Exposer la fonction globalement pour l'affichage FPS
+if (typeof window !== 'undefined') {
+    window.getPrecisionFactorFromFPS = getPrecisionFactorFromFPS;
+}
+
 // Fonction interne pour calculer le flux total sortant pour une T0 donnée
 function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const {
@@ -490,17 +518,128 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         delta_z = 50,
         lambda_min = 0.1e-6,
         lambda_max = 100e-6,
-        delta_lambda = 0.1e-6
+        delta_lambda = 0.1e-6,
+        fullSpectre = false // ⚡ Si true, désactive les optimisations lambda (spectre complet)
     } = options;
     
-    // Créer les grilles
-    const lambda_range = [];
-    for (let lambda = lambda_min; lambda < lambda_max; lambda += delta_lambda) {
-        lambda_range.push(lambda);
+    // ⚡ OPTIMISATION : Ajuster la précision selon le FPS (sauf si fullSpectre)
+    let precisionFactor = 1.0;
+    if (!fullSpectre) {
+        precisionFactor = getPrecisionFactorFromFPS();
     }
     
+    // ⚡ LIMITE MINIMALE : Bloquer la précision à un minimum (équivalent à 2px)
+    // Si delta_lambda = 0.1e-6 m = 0.1 μm, et qu'on veut minimum 2px sur un graphique de 0-50 μm
+    // 2px sur 50 μm = 2/50 = 0.04 μm minimum
+    // Donc delta_lambda minimum = 0.04e-6 m
+    const delta_lambda_min = 0.04e-6; // Minimum 2px équivalent
+    const precisionFactor_max = delta_lambda / delta_lambda_min; // Facteur maximum de réduction
+    if (precisionFactor < 1.0 / precisionFactor_max) {
+        precisionFactor = 1.0 / precisionFactor_max; // Limiter la réduction
+    }
+    
+    // Ajuster delta_z et delta_lambda selon le FPS
+    // Note : delta_z sous tropopause reste constant (pas d'optimisation)
+    const adjusted_delta_lambda = delta_lambda / precisionFactor; // Si FPS bas, delta_lambda augmente (moins de points)
+    // S'assurer que adjusted_delta_lambda ne dépasse pas le minimum
+    const final_delta_lambda = Math.max(adjusted_delta_lambda, delta_lambda_min);
+    
+    // ⚡ OPTIMISATION : Créer les grilles avec précision adaptative
+    // Pour lambda : regrouper en plages de moyennes pour accélérer
+    // Pour z : précision fine sous tropopause, grossière au-dessus
+    
+    // Calculer la tropopause pour déterminer les zones de précision
+    const z_trop_precalc = calculateTropopauseHeight(T0_test);
+    
+    // Créer la grille lambda avec regroupement adaptatif (sauf si fullSpectre)
+    const lambda_range = [];
+    const lambda_weights = []; // Poids pour les moyennes pondérées
+    
+    if (fullSpectre) {
+        // ⚡ Dernière itération : spectre complet sans optimisation
+        for (let lambda = lambda_min; lambda <= lambda_max; lambda += delta_lambda) {
+            lambda_range.push(lambda);
+            lambda_weights.push(1.0); // Poids unitaire pour tous
+            // Arrêter si on dépasse lambda_max (pour éviter les erreurs d'arrondi)
+            if (lambda >= lambda_max) break;
+        }
+        // S'assurer que lambda_max est inclus
+        if (lambda_range.length === 0 || lambda_range[lambda_range.length - 1] < lambda_max) {
+            lambda_range.push(lambda_max);
+            lambda_weights.push(1.0);
+        }
+    } else {
+        // Optimisation : regroupement adaptatif avec ajustement FPS
+        // Zone critique : 10-20 μm (bande CO₂) - haute précision
+        const lambda_critical_min = 10e-6;
+        const lambda_critical_max = 20e-6;
+        const delta_lambda_critical = final_delta_lambda; // Précision ajustée selon FPS dans la bande CO₂ (avec limite min)
+        
+        // Zones non-critiques : précision réduite (moyennes sur plages)
+        // Si FPS bas, on augmente encore plus le regroupement, mais avec limite minimale
+        const delta_lambda_coarse_base = final_delta_lambda * (precisionFactor < 1.0 ? 20 : 10);
+        const delta_lambda_coarse = Math.max(delta_lambda_coarse_base, delta_lambda_min * 2); // Minimum 2x la limite (pour regroupement)
+        
+        for (let lambda = lambda_min; lambda < lambda_max; ) {
+            if (lambda >= lambda_critical_min && lambda < lambda_critical_max) {
+                // Zone critique (10-20 μm) : précision fine
+                lambda_range.push(lambda);
+                lambda_weights.push(1.0); // Poids unitaire
+                lambda += delta_lambda_critical;
+            } else {
+                // Zone non-critique : moyenne sur une plage
+                const lambda_start = lambda;
+                let lambda_end = lambda + delta_lambda_coarse;
+                
+                // Ne pas dépasser la zone critique si on est avant
+                if (lambda < lambda_critical_min && lambda_end > lambda_critical_min) {
+                    lambda_end = lambda_critical_min;
+                }
+                // Ne pas dépasser lambda_max
+                if (lambda_end > lambda_max) {
+                    lambda_end = lambda_max;
+                }
+                // Si on est après la zone critique, continuer normalement
+                if (lambda >= lambda_critical_max && lambda_end > lambda_critical_max) {
+                    // OK, on continue
+                }
+                
+                const lambda_mid = (lambda_start + lambda_end) / 2;
+                lambda_range.push(lambda_mid);
+                lambda_weights.push((lambda_end - lambda_start) / delta_lambda); // Poids = nombre de points regroupés
+                lambda = lambda_end;
+                
+                // Arrêter si on a atteint lambda_max
+                if (lambda >= lambda_max) {
+                    break;
+                }
+            }
+        }
+    }
+    
+    // Créer la grille z avec précision adaptative
+    // ⚠️ IMPORTANT : Sous tropopause, on garde la précision fine (pas d'optimisation)
+    // Au-dessus de la tropopause, on peut réduire la précision (densité ↓ exponentielle)
     const z_range = [];
-    for (let z = 0; z < z_max; z += delta_z) {
+    const delta_z_troposphere = delta_z; // Précision fine sous tropopause (50m) - PAS D'OPTIMISATION
+    // Au-dessus : ajuster selon FPS (si FPS bas, augmenter encore plus le pas)
+    const delta_z_stratosphere_base = delta_z * 5; // Base : 5x moins de points (250m)
+    const delta_z_stratosphere = precisionFactor < 1.0 
+        ? delta_z_stratosphere_base / precisionFactor  // Si FPS bas, encore plus gros (ex: 500m si FPS < 20)
+        : delta_z_stratosphere_base * precisionFactor; // Si FPS excellent, plus fin (ex: 125m si FPS > 55)
+    
+    // Sous tropopause : précision fine (delta_z constant = 50m)
+    for (let z = 0; z < z_trop_precalc; z += delta_z_troposphere) {
+        z_range.push(z);
+    }
+    
+    // S'assurer que la tropopause est incluse
+    if (z_range[z_range.length - 1] < z_trop_precalc) {
+        z_range.push(z_trop_precalc);
+    }
+    
+    // Au-dessus de la tropopause : précision grossière (delta_z * 5 = 250m)
+    for (let z = z_trop_precalc + delta_z_stratosphere; z < z_max; z += delta_z_stratosphere) {
         z_range.push(z);
     }
     
@@ -511,8 +650,9 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const absorbed_flux = Array(z_range.length).fill(0).map(() => Array(lambda_range.length).fill(0));
     
     // Condition limite : flux émis par la surface avec T0_test
-    const earth_flux = lambda_range.map(lambda => 
-        Math.PI * localPlanckFunction(lambda, T0_test) * delta_lambda
+    // ⚡ OPTIMISATION : Tenir compte des poids lambda pour les plages regroupées
+    const earth_flux = lambda_range.map((lambda, idx) => 
+        Math.PI * localPlanckFunction(lambda, T0_test) * delta_lambda * (lambda_weights[idx] || 1.0)
     );
     
     // Debug: analyser l'émission dans la zone < 9 microns
@@ -520,27 +660,56 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const flux_below_9um = earth_flux.filter((flux, idx) => lambda_range[idx] < lambda_9um).reduce((sum, f) => sum + f, 0);
     const flux_total = earth_flux.reduce((sum, f) => sum + f, 0);
     
+    // ⚡ OPTIMISATION : Calculer tropopause une seule fois
+    const z_trop = calculateTropopauseHeight(T0_test);
+    const Gamma = -0.0065; // Gradient de température, K/m
+    const T_trop = T0_test + Gamma * z_trop;
+    
+    // Trouver l'index de la tropopause dans z_range
+    let i_trop = z_range.length; // Par défaut, pas de tropopause (tout avant)
+    for (let i = 0; i < z_range.length; i++) {
+        if (z_range[i] >= z_trop) {
+            i_trop = i;
+            break;
+        }
+    }
+    
+    // ⚡ OPTIMISATION : Précalculer B_λ(T_trop) pour toutes les λ (après tropopause)
+    const planck_trop = lambda_range.map(lambda => 
+        localPlanckFunction(lambda, T_trop)
+    );
+    
+    // ⚡ OPTIMISATION : Précalculer les sections efficaces (dépendent uniquement de λ)
+    const cross_section_CO2 = lambda_range.map(lambda => crossSectionCO2(lambda));
+    const cross_section_H2O = lambda_range.map(lambda => crossSectionH2O(lambda));
+    
+    const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
+        ? window.waterVaporEnabled 
+        : waterVaporEnabled;
+    
     let flux_in = [...earth_flux];
     
-    // Parcourir chaque couche d'altitude
-    for (let i = 0; i < z_range.length; i++) {
+    // ⚡ OPTIMISATION : Boucle avant tropopause (T varie avec z)
+    for (let i = 0; i < i_trop; i++) {
         const z = z_range[i];
-        const T = temperature(z, CO2_fraction, T0_test);
+        const T = T0_test + Gamma * z; // Calcul direct, sans appel à temperature()
         const n_CO2 = airNumberDensity(z, CO2_fraction, T0_test) * CO2_fraction;
+        
+        // ⚠️ IMPORTANT : Sous tropopause, on garde delta_z constant = 50m (PAS D'OPTIMISATION)
+        // On utilise directement delta_z_troposphere, pas de calcul de delta_z_real
+        const delta_z_real = delta_z_troposphere;
         
         // Calculer pour chaque longueur d'onde
         for (let j = 0; j < lambda_range.length; j++) {
             const lambda = lambda_range[j];
             
+            // ⚡ OPTIMISATION : Utiliser les sections efficaces précalculées
             // Absorption CO2
-            const kappa_CO2 = crossSectionCO2(lambda) * n_CO2;
+            const kappa_CO2 = cross_section_CO2[j] * n_CO2;
             
             // Absorption H2O (si activé)
             const n_H2O = waterVaporNumberDensity(z, CO2_fraction, T0_test);
-            const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
-                ? window.waterVaporEnabled 
-                : waterVaporEnabled;
-            const kappa_H2O = h2o_enabled ? crossSectionH2O(lambda) * n_H2O : 0;
+            const kappa_H2O = h2o_enabled ? cross_section_H2O[j] * n_H2O : 0;
             
             // Debug: analyser l'absorption H2O dans la zone < 9μm (une fois par itération, pour quelques longueurs d'onde clés)
             if (i === 0 && (j === 0 || j === Math.floor(lambda_range.length / 4) || j === Math.floor(lambda_range.length / 2))) {
@@ -550,7 +719,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             // Coefficient d'absorption total (CO2 + H2O)
             const kappa = kappa_CO2 + kappa_H2O;
             
-            optical_thickness[i][j] = kappa * delta_z;
+            optical_thickness[i][j] = kappa * delta_z_real;
             
             if (CO2_fraction === 0 && !h2o_enabled) {
                 // Pas d'absorption si CO2 = 0 et H2O désactivé
@@ -560,10 +729,59 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             } else {
                 // Transfert radiatif dans la couche :
                 // 1. Absorption : le CO2/H2O absorbe une partie du flux entrant
-                const abs_flux = Math.min(kappa * delta_z * flux_in[j], flux_in[j]);
+                const abs_flux = Math.min(kappa * delta_z_real * flux_in[j], flux_in[j]);
                 // 2. Émission : le CO2/H2O réémet à sa température (loi de Planck)
-                //    F_émis = τ × π × B_λ(T_couche) × Δλ
-                const em_flux = optical_thickness[i][j] * Math.PI * localPlanckFunction(lambda, T) * delta_lambda;
+                //    F_émis = τ × π × B_λ(T_couche) × Δλ × poids
+                const em_flux = optical_thickness[i][j] * Math.PI * localPlanckFunction(lambda, T) * delta_lambda * (lambda_weights[j] || 1.0);
+                // 3. Flux sortant = flux entrant - absorption + émission
+                upward_flux[i][j] = flux_in[j] - abs_flux + em_flux;
+                // Stocker les valeurs pour la visualisation
+                emitted_flux[i][j] = em_flux;
+                absorbed_flux[i][j] = abs_flux;
+            }
+            
+            flux_in[j] = upward_flux[i][j];
+        }
+    }
+    
+    // ⚡ OPTIMISATION : Boucle après tropopause (T constante = T_trop, B_λ précalculé)
+    for (let i = i_trop; i < z_range.length; i++) {
+        const z = z_range[i];
+        const n_CO2 = airNumberDensity(z, CO2_fraction, T0_test) * CO2_fraction;
+        
+        // ⚡ OPTIMISATION : Calculer delta_z réel pour cette couche (précision grossière au-dessus)
+        const delta_z_real = i > i_trop ? z - z_range[i - 1] : delta_z_stratosphere;
+        
+        // Calculer pour chaque longueur d'onde
+        for (let j = 0; j < lambda_range.length; j++) {
+            const lambda = lambda_range[j];
+            
+            // ⚡ OPTIMISATION : Utiliser les sections efficaces précalculées
+            // Absorption CO2
+            const kappa_CO2 = cross_section_CO2[j] * n_CO2;
+            
+            // Absorption H2O (si activé)
+            const n_H2O = waterVaporNumberDensity(z, CO2_fraction, T0_test);
+            const kappa_H2O = h2o_enabled ? cross_section_H2O[j] * n_H2O : 0;
+            
+            // Coefficient d'absorption total (CO2 + H2O)
+            const kappa = kappa_CO2 + kappa_H2O;
+            
+            optical_thickness[i][j] = kappa * delta_z_real;
+            
+            if (CO2_fraction === 0 && !h2o_enabled) {
+                // Pas d'absorption si CO2 = 0 et H2O désactivé
+                upward_flux[i][j] = flux_in[j];
+                emitted_flux[i][j] = 0;
+                absorbed_flux[i][j] = 0;
+            } else {
+                // Transfert radiatif dans la couche :
+                // 1. Absorption : le CO2/H2O absorbe une partie du flux entrant
+                const abs_flux = Math.min(kappa * delta_z_real * flux_in[j], flux_in[j]);
+                // 2. Émission : le CO2/H2O réémet à sa température (loi de Planck)
+                //    ⚡ OPTIMISATION : Utiliser B_λ(T_trop) précalculé au lieu de recalculer
+                //    F_émis = τ × π × B_λ(T_trop) × Δλ × poids
+                const em_flux = optical_thickness[i][j] * Math.PI * planck_trop[j] * delta_lambda * (lambda_weights[j] || 1.0);
                 // 3. Flux sortant = flux entrant - absorption + émission
                 //    NOTE : Le "palier" observé dans les courbes correspond à F_émis
                 //    Quand l'absorption est totale (F_absorbé ≈ F_entrant),
@@ -589,7 +807,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const top_flux_below_9um = top_flux.filter((flux, idx) => lambda_range[idx] < lambda_9um_top).reduce((sum, f) => sum + f, 0);
     const top_flux_total = top_flux.reduce((sum, f) => sum + f, 0);
     
-    return { total_flux, lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux };
+    return { total_flux, lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux };
 }
 
 // Fonction helper pour afficher une courbe temporaire pendant la dichotomie
@@ -664,6 +882,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     
     const tempPlotData = {
         lambda_range: result.lambda_range,
+        lambda_weights: result.lambda_weights, // ⚡ Nécessaire pour normalisation correcte du flux
         z_range: result.z_range,
         current: {
             upward_flux: result.upward_flux,
@@ -672,6 +891,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             absorbed_flux: result.absorbed_flux,
             earth_flux: result.earth_flux,
             lambda_range: result.lambda_range, // Nécessaire pour updateSpectralVisualization
+            lambda_weights: result.lambda_weights, // ⚡ Nécessaire pour updateSpectralVisualization
             z_range: result.z_range, // Nécessaire pour updateSpectralVisualization
             albedo: albedo,
             cloud_coverage: cloud_coverage
@@ -854,7 +1074,10 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     }
                     
                     if (Math.abs(flux_diff) < tolerance) {
-                        // Convergence atteinte
+                        // Convergence atteinte : recalculer avec spectre complet pour précision finale
+                        const final_options = { ...options, fullSpectre: true };
+                        final_result = calculateFluxForT0(CO2_fraction, T0_current, final_options);
+                        
                         // Déclencher un événement de convergence pour permettre l'augmentation de précision
                         if (typeof window !== 'undefined') {
                             window.calculationConverged = true;
@@ -924,7 +1147,10 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             }
             
             if (Math.abs(flux_diff) < tolerance) {
-                // Convergence atteinte
+                // Convergence atteinte : recalculer avec spectre complet pour précision finale
+                const final_options = { ...options, fullSpectre: true };
+                result = calculateFluxForT0(CO2_fraction, T0, final_options);
+                
                 if (typeof window !== 'undefined') {
                     window.calculationConverged = true;
                     // Déclencher un événement personnalisé
@@ -955,9 +1181,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         current_T0_adjusted = T0;
         
         // Utiliser les résultats de la dernière itération
-        const { lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux } = result;
+        const { lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux } = result;
         
-        return finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction);
+        return finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction);
     }
 }
 
@@ -967,7 +1193,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     current_T0_adjusted = final_T0;
     
     // Utiliser les résultats de la dernière itération
-    const { lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux } = final_result;
+    const { lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux } = final_result;
     
     // Note importante : Ce modèle ne prend en compte QUE le CO2
     // Les 15°C réels de la Terre incluent aussi :
@@ -1001,6 +1227,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     
     const final_result_obj = {
         lambda_range: lambda_range,
+        lambda_weights: lambda_weights, // ⚡ Nécessaire pour normalisation correcte dans plot.js
         z_range: z_range,
         upward_flux: upward_flux,
         optical_thickness: optical_thickness,
@@ -1038,7 +1265,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
 }
 
 // Fonction pour finaliser les résultats (mode synchrone)
-function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction) {
+function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction) {
     // Calculer le flux total au sommet de l'atmosphère
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
     
@@ -1058,6 +1285,7 @@ function finalizeResultsSync(result, T0, lambda_range, z_range, upward_flux, opt
     
     return {
         lambda_range: lambda_range,
+        lambda_weights: lambda_weights, // ⚡ Nécessaire pour normalisation correcte dans plot.js
         z_range: z_range,
         upward_flux: upward_flux,
         optical_thickness: optical_thickness,
