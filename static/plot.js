@@ -181,11 +181,14 @@ function initPlot() {
     
     const layout = {
         xaxis: {
-            title: "Longueur d'onde (μm)",
+            title: {
+                text: "Longueur d'onde (μm)",
+                standoff: 15 // Espacement entre le titre et l'axe
+            },
             range: [0, 50],
             fixedrange: true, // Désactiver le zoom
             tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
-            titlefont: { color: 'white' }, // Titre de l'axe X en blanc
+            titlefont: { color: 'black' }, // Titre de l'axe X en noir
             showgrid: false, // Pas de grille verticale
             gridwidth: 1
         },
@@ -222,7 +225,7 @@ function initPlot() {
             visible: true
         },
         showlegend: false,
-        margin: { l: 50, r: 100, t: 0, b: 0 }, // Marges réduites pour toucher les bords
+        margin: { l: 50, r: 100, t: 0, b: 50 }, // Marge du bas augmentée pour faire respirer le titre
         plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
         paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
         annotations: [
@@ -381,7 +384,7 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
     const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
     
     // Nettoyer seulement la zone de la bande
-    const spectrumBarY = height - spectrumBarHeight;
+    const spectrumBarY = height - spectrumBarHeight + 0.5; // +1px pour corriger le décalage vers le haut
     ctx.clearRect(0, spectrumBarY, width, spectrumBarHeight);
     
     // Plage de l'axe X du graphique : 0 à 50 μm
@@ -566,13 +569,16 @@ window.updatePlot = function updatePlot(data) {
     });
     
     const updateLayout = {
-        margin: { l: 50, r: 100, t: 0, b: 40 }, // Augmenter la marge droite pour l'axe altitude (100px)
+        margin: { l: 50, r: 100, t: 0, b: 50 }, // Marge du bas augmentée pour faire respirer le titre
         xaxis: { 
             range: [0, 50],
             fixedrange: true, // Désactiver le zoom
-            title: "Longueur d'onde (μm)",
+            title: {
+                text: "Longueur d'onde (μm)",
+                standoff: 15 // Espacement entre le titre et l'axe
+            },
             tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
-            titlefont: { color: 'white' }, // Titre de l'axe X en blanc
+            titlefont: { color: 'black' }, // Titre de l'axe X en noir
             showgrid: false, // Pas de grille verticale
             gridwidth: 1
         },

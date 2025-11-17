@@ -131,6 +131,7 @@ h1 {
 
 .title-container,
 .controle-simulation,
+.synthese,
 .timeline-display,
 .button-container,
 .legend-container,
@@ -208,7 +209,7 @@ h1 {
 }
 
 .plot-container-wrapper {
-    padding: 0;
+    padding: 0 0 0 10px;
     height: auto;
     min-height: 600px;
     position: relative;
@@ -307,6 +308,14 @@ h1 {
     opacity: 1 !important;
 }
 
+/* Marge en bas pour le titre de l'axe X */
+#plot-container .xtitle,
+#plot-container .g-xtitle,
+#plot-container [class*="xtitle"],
+#plot-container .xaxis .axis-title {
+    margin-bottom: 30px !important;
+}
+
 /* Titre - Positionné en haut à droite du graphique */
 .plot-overlay-title {
     position: absolute !important;
@@ -365,21 +374,63 @@ h1 {
     text-decoration: underline;
 }
 
-.controle-simulation {
-    border-left: 4px solid #667eea;
+
+.timeline-buttons-wrapper {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+    padding-left: 10px;
 }
 
 .timeline-display {
     text-align: center;
     padding: 12px;
-    border-left: 4px solid #667eea;
+    /* border-left: 4px solid #667eea; */
+    width: fit-content;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+}
+
+@media (max-width: 1200px) {
+    .timeline-display {
+        width: 100%;
+    }
 }
 
 .timeline-display .info-time {
     font-size: 16px;
     font-weight: bold;
     color: #667eea;
-    display: block;
+    display: inline-block;
+}
+
+.epochs-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+.epoch-btn {
+    font-size: 20px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    transition: transform 0.2s;
+}
+
+.epoch-btn:hover {
+    transform: scale(1.2);
 }
 
 .left-top,
@@ -511,9 +562,18 @@ h1 {
 
 .button-container {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
     align-items: center;
+    width: fit-content;
+}
+
+@media (max-width: 1200px) {
+    .button-container {
+        width: 100%;
+    }
 }
 
 .button-row {
@@ -728,7 +788,8 @@ h1 {
 
 #plot-container {
     width: 100%;
-    height: 600px;
+    height: 620px;
+    margin-left: 20px;
     position: relative;
     z-index: 2; /* Au-dessus du canvas (1) */
 }

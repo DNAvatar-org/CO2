@@ -803,13 +803,13 @@ function updateCO2LevelDirect(co2_fraction) {
 window.updateDisplay = function updateDisplay(data) {
     if (data && data.co2_ppm !== undefined) {
         const ppm = Math.round(data.co2_ppm);
-        const co2NumberEl = document.getElementById('co2-number');
+        const co2NumberEl = document.getElementById('co2-number-synthese');
         if (co2NumberEl) {
             co2NumberEl.textContent = ppm.toString();
         }
         
         // Mettre à jour l'emoji selon le niveau de CO2
-        const emojiElement = document.getElementById('co2-emoji');
+        const emojiElement = document.getElementById('co2-emoji-synthese');
         if (emojiElement) {
             if (ppm === 0) {
                 emojiElement.textContent = '🧊'; // Iceberg pour 0 ppm
@@ -826,7 +826,7 @@ window.updateDisplay = function updateDisplay(data) {
     }
     
     // Mettre à jour le statut H2O avec le % de couverture nuageuse
-    const h2oStatusElement = document.getElementById('h2o-status');
+    const h2oStatusElement = document.getElementById('h2o-status-synthese');
     if (h2oStatusElement) {
         if (data && data.cloud_coverage !== undefined) {
             // Afficher le % de couverture nuageuse (vue depuis le ciel)
@@ -840,34 +840,34 @@ window.updateDisplay = function updateDisplay(data) {
         }
     }
     if (data && data.temp_surface !== undefined && data.temp_surface > 0) {
-        const tempSurfaceEl = document.getElementById('temp-surface');
+        const tempSurfaceEl = document.getElementById('temp-surface-synthese');
         if (tempSurfaceEl) {
             tempSurfaceEl.textContent = `${' '.repeat(5)}${data.temp_surface.toFixed(1)}K (${data.temp_surface_c >= 0 ? '+' : ''}${data.temp_surface_c.toFixed(1)}°C)`;
         }
     } else {
-        const tempSurfaceEl = document.getElementById('temp-surface');
+        const tempSurfaceEl = document.getElementById('temp-surface-synthese');
         if (tempSurfaceEl) {
             tempSurfaceEl.textContent = '--';
         }
     }
     if (data && data.temp_eff !== undefined && data.temp_eff > 0) {
-        const tempEffEl = document.getElementById('temp-eff');
+        const tempEffEl = document.getElementById('temp-eff-synthese');
         if (tempEffEl) {
             tempEffEl.textContent = `${' '.repeat(5)}${data.temp_eff.toFixed(1)}K (${data.temp_eff_c >= 0 ? '+' : ''}${data.temp_eff_c.toFixed(1)}°C)`;
         }
     } else {
-        const tempEffEl = document.getElementById('temp-eff');
+        const tempEffEl = document.getElementById('temp-eff-synthese');
         if (tempEffEl) {
             tempEffEl.textContent = '--';
         }
     }
     if (data && data.delta_temp !== undefined) {
-        const deltaTempEl = document.getElementById('delta-temp');
+        const deltaTempEl = document.getElementById('delta-temp-synthese');
         if (deltaTempEl) {
             deltaTempEl.textContent = `${' '.repeat(5)}${data.delta_temp >= 0 ? '+' : ''}${data.delta_temp.toFixed(2)}K`;
         }
     } else {
-        const deltaTempEl = document.getElementById('delta-temp');
+        const deltaTempEl = document.getElementById('delta-temp-synthese');
         if (deltaTempEl) {
             deltaTempEl.textContent = '--';
         }
@@ -901,7 +901,7 @@ window.updateDisplay = function updateDisplay(data) {
     }
     // Mettre à jour les forçages séparés (sans unité, elle est en haut)
     // CO2 : toujours avec + (même si 0)
-    const forcingCO2El = document.getElementById('forcing-co2');
+    const forcingCO2El = document.getElementById('forcing-co2-synthese');
     if (forcingCO2El) {
         if (data && data.forcing_CO2 !== undefined) {
             forcingCO2El.textContent = `+${data.forcing_CO2.toFixed(2)}`;
@@ -910,7 +910,7 @@ window.updateDisplay = function updateDisplay(data) {
         }
     }
     // H2O : toujours avec + (même si 0)
-    const forcingH2OEl = document.getElementById('forcing-h2o');
+    const forcingH2OEl = document.getElementById('forcing-h2o-synthese');
     if (forcingH2OEl) {
         if (data && data.forcing_H2O !== undefined) {
             forcingH2OEl.textContent = `+${data.forcing_H2O.toFixed(2)}`;
@@ -919,7 +919,7 @@ window.updateDisplay = function updateDisplay(data) {
         }
     }
     // Alb. : toujours avec - (effet négatif sur le flux)
-    const forcingAlbedoEl = document.getElementById('forcing-albedo');
+    const forcingAlbedoEl = document.getElementById('forcing-albedo-synthese');
     if (forcingAlbedoEl) {
         if (data && data.forcing_Albedo !== undefined) {
             forcingAlbedoEl.textContent = `-${Math.abs(data.forcing_Albedo).toFixed(2)}`;
@@ -928,7 +928,7 @@ window.updateDisplay = function updateDisplay(data) {
         }
     }
     // Total : avec signe selon valeur (sans unité, comme les autres)
-    const forcingTotalEl = document.getElementById('forcing-total');
+    const forcingTotalEl = document.getElementById('forcing-total-synthese');
     if (forcingTotalEl) {
         if (data && data.forcing !== undefined) {
             forcingTotalEl.textContent = `${data.forcing >= 0 ? '+' : ''}${data.forcing.toFixed(2)}`;
@@ -940,12 +940,12 @@ window.updateDisplay = function updateDisplay(data) {
     // Mettre à jour l'albedo
     if (data && data.albedo !== undefined) {
         const albedoPercent = (data.albedo * 100).toFixed(1);
-        const albedoNumberEl = document.getElementById('albedo-number');
+        const albedoNumberEl = document.getElementById('albedo-number-synthese');
         if (albedoNumberEl) {
             albedoNumberEl.textContent = albedoPercent;
         }
     } else {
-        const albedoNumberEl = document.getElementById('albedo-number');
+        const albedoNumberEl = document.getElementById('albedo-number-synthese');
         if (albedoNumberEl) {
             albedoNumberEl.textContent = '--';
         }
@@ -1045,7 +1045,7 @@ function toggleWaterVapor() {
     disableButtons(); // Désactiver les boutons
     
     // Mettre à jour l'affichage H2O
-    const h2oStatusElement = document.getElementById('h2o-status');
+    const h2oStatusElement = document.getElementById('h2o-status-synthese');
     if (h2oStatusElement) {
         // Afficher 0% si désactivé, sinon sera mis à jour lors du calcul
         h2oStatusElement.textContent = window.waterVaporEnabled ? '-- %' : '0 %';

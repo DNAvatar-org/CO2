@@ -41,6 +41,7 @@
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <link rel="stylesheet" href="static/style.css">
+    <link rel="stylesheet" href="organigramme/organigramme.css">
 </head>
 <body>
     <div class="fps-display" id="fps-display">FPS: --</div>
@@ -53,27 +54,30 @@
                     <p class="book-reference"><a href="Algorithmes.html" target="_blank">⚙️ Algorithmes & Convergence</a></p>
                 </div>
                 <div class="controle-simulation">
+                    <div class="flux-diagram" id="flux-diagram"></div>
+                </div>
+                <div class="synthese">
                     <div class="info-unit-header">
-                        <span class="controle-simulation-title">Contrôle Simulation</span>
+                        <span class="controle-simulation-title">Synthèse</span>
                         <span class="info-unit">(W/m²)</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">CO₂:</span>
-                        <span class="info-emoji" id="co2-emoji">🌵</span>
-                        <span class="info-value"><span class="info-number" id="co2-number">0</span><span class="info-unit"> ppm</span></span>
-                        <span class="info-forcing" id="forcing-co2">--</span>
+                        <span class="info-emoji" id="co2-emoji-synthese">🌵</span>
+                        <span class="info-value"><span class="info-number" id="co2-number-synthese">0</span><span class="info-unit"> ppm</span></span>
+                        <span class="info-forcing" id="forcing-co2-synthese">--</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">H₂O:</span>
-                        <span class="info-emoji" id="h2o-emoji">☁️</span>
-                        <span class="info-value" id="h2o-status">Désactivé</span>
-                        <span class="info-forcing" id="forcing-h2o">--</span>
+                        <span class="info-emoji" id="h2o-emoji-synthese">☁️</span>
+                        <span class="info-value" id="h2o-status-synthese">Désactivé</span>
+                        <span class="info-forcing" id="forcing-h2o-synthese">--</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Alb.:</span>
                         <span class="info-emoji">🪞</span>
-                        <span class="info-value"><span class="info-number" id="albedo-number">--</span><span class="info-unit"> %</span></span>
-                        <span class="info-forcing" id="forcing-albedo">--</span>
+                        <span class="info-value"><span class="info-number" id="albedo-number-synthese">--</span><span class="info-unit"> %</span></span>
+                        <span class="info-forcing" id="forcing-albedo-synthese">--</span>
                     </div>
                     <div class="info-row info-separator-line">
                         <span class="info-forcing">_______</span>
@@ -81,38 +85,20 @@
                     <div class="info-row forcing-total-row">
                         <span class="info-label">Forç:</span>
                         <span class="info-emoji">📛</span>
-                        <span class="info-forcing" id="forcing-total">--</span>
+                        <span class="info-forcing" id="forcing-total-synthese">--</span>
                     </div>
                     <div class="info-separator"></div>
                     <div class="info-row">
                         <span class="info-label">T° Ter.:</span>
-                        <span class="info-value" id="temp-surface">--</span>
+                        <span class="info-value" id="temp-surface-synthese">--</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">T° Alt.:</span>
-                        <span class="info-value" id="temp-eff">--</span>
+                        <span class="info-value" id="temp-eff-synthese">--</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">ΔT°:</span>
-                        <span class="info-value" id="delta-temp">--</span>
-                    </div>
-                </div>
-                <div class="timeline-display">
-                    <span class="info-time" id="info-time">0 ans</span>
-                </div>
-                <div class="button-container">
-                    <div class="button-row">
-                        <button class="btn btn-comet" id="btn-comet" onclick="addCometCO2()" title="+0.1 ppm - Comète/Météorite de glace">☄️</button>
-                        <button class="btn btn-volcano" id="btn-volcano" onclick="multiplyCO2()" title="Volcan">🌋</button>
-                        <button class="btn btn-cloud" id="btn-cloud" onclick="toggleWaterVapor()" title="Activer/Désactiver vapeur d'eau">☁️</button>
-                    </div>
-                    <div class="button-row">
-                        <button class="btn btn-iceberg" id="btn-iceberg" onclick="setIceberg()" title="0 ppm - Iceberg">🧊</button>
-                        <button class="btn btn-desert" id="btn-desert" onclick="divideCO2()" title="÷2 - Désert">🌵</button>
-                        <button class="btn btn-forest" id="btn-forest" onclick="setPreindustrial()" title="280 ppm - Pré-industriel">🌳</button>
-                    </div>
-                    <div class="button-row">
-                        <button class="btn btn-factory" id="btn-factory" onclick="setCurrent()" title="420 ppm - Actuel">🏭</button>
+                        <span class="info-value" id="delta-temp-synthese">--</span>
                     </div>
                 </div>
             </div>
@@ -142,6 +128,28 @@
                 </div>
                 <canvas id="spectral-visualization" width="333" height="400"></canvas>
             </div>
+            <div class="timeline-buttons-wrapper">
+                <div class="timeline-display">
+                    <span class="info-time" id="info-time">0 ans</span>
+                    <div class="epochs-container">
+                        <button class="epoch-btn">🌑 <!-- Hadéen --></button>
+                        <button class="epoch-btn">🦠 <!-- Archéen --></button>
+                        <button class="epoch-btn">🌿 <!-- Protérozoïque --></button>
+                        <button class="epoch-btn">🦕 <!-- Mésozoïque --></button>
+                        <button class="epoch-btn">🦴 <!-- Paléozoïque --></button>
+                        <button class="epoch-btn">🦣 <!-- Cénozoïque --></button>
+                    </div>
+                </div>
+                <div class="button-container">
+                <button class="btn btn-comet" id="btn-comet" onclick="addCometCO2()" title="+0.1 ppm - Comète/Météorite de glace">☄️</button>
+                <button class="btn btn-volcano" id="btn-volcano" onclick="multiplyCO2()" title="Volcan">🌋</button>
+                <button class="btn btn-cloud" id="btn-cloud" onclick="toggleWaterVapor()" title="Activer/Désactiver vapeur d'eau">☁️</button>
+                <button class="btn btn-iceberg" id="btn-iceberg" onclick="setIceberg()" title="0 ppm - Iceberg">🧊</button>
+                <button class="btn btn-desert" id="btn-desert" onclick="divideCO2()" title="÷2 - Désert">🌵</button>
+                <button class="btn btn-forest" id="btn-forest" onclick="setPreindustrial()" title="280 ppm - Pré-industriel">🌳</button>
+                <button class="btn btn-factory" id="btn-factory" onclick="setCurrent()" title="420 ppm - Actuel">🏭</button>
+                </div>
+            </div>
             <!-- Définitions et constantes déplacées vers equation.html -->
             <!-- Algorithmes & Convergence déplacés vers Algorithmes.html -->
         </div>
@@ -164,6 +172,8 @@
         </div>
     </footer>
     
+    <script src="organigramme/configOrganigramme.js"></script>
+    <script src="organigramme/organigramme.js"></script>
     <script src="static/patterns.js"></script>
     <script src="static/physics.js"></script>
     <script src="static/climate.js"></script>
