@@ -229,7 +229,7 @@ function initPlot() {
             {
                 x: 50, // À droite du graphique
                 y: 40 * (11 / 120), // Position de la tropopause (11 km)
-                text: 'Stratosphère 8.0K<br>Troposphère',
+                text: 'Stratosph.<br>8.0K<br>Troposph.',
                 showarrow: false,
                 xref: 'x',
                 yref: 'y',
@@ -614,7 +614,7 @@ window.updatePlot = function updatePlot(data) {
             {
                 x: 50, // À droite du graphique
                 y: y_trop, // Position de la tropopause (calculée dynamiquement)
-                text: 'Stratosphère 8.0K<br>Troposphère',
+                text: 'Stratosph.<br>8.0K<br>Troposph.',
                 showarrow: false,
                 xref: 'x',
                 yref: 'y',

@@ -101,59 +101,71 @@
     <div class="formulas-container">
         <div class="definitions-title">Équations</div>
         <div class="formulas-content">
-            <!-- 🌞 Soleil -->
-            <div class="formula-category">
-                <div class="formula-category-title">🌞 Soleil</div>
-                <div class="formula-item">$$B_{\lambda}(T) = \frac{2hc^2}{\lambda^5} \frac{1}{e^{hc/(\lambda k_B T)} - 1}$$</div>
+            <!-- Colonne 1 : Soleil, Géométrie, Albédo -->
+            <div class="formula-column formula-column-narrow">
+                <div class="formula-category">
+                    <div class="formula-category-title">🌞 Soleil</div>
+                    <div class="formula-item">$$B_{\lambda}(T) = \frac{2hc^2}{\lambda^5} \frac{1}{e^{hc/(\lambda k_B T)} - 1}$$</div>
+                </div>
+                
+                <div class="formula-category">
+                    <div class="formula-category-title">🎱 Géométrie</div>
+                    <div class="formula-item">$$F_{\text{solaire}} = S_0 \frac{1 - A}{4}$$</div>
+                </div>
+                
+                <div class="formula-category">
+                    <div class="formula-category-title">🪞 Albédo</div>
+                    <div class="formula-item">$$A = A_{\text{base}} + A_{\text{glace}} + A_{\text{nuages}}$$</div>
+                </div>
             </div>
             
-            <!-- 🎱 Géométrie -->
-            <div class="formula-category">
-                <div class="formula-category-title">🎱 Géométrie</div>
-                <div class="formula-item">$$F_{\text{solaire}} = S_0 \frac{1 - A}{4}$$</div>
+            <!-- Colonne 2 : Surface (2 sous-colonnes) -->
+            <div class="formula-column formula-column-wide">
+                <div class="formula-category">
+                    <div class="formula-category-title">🌍 Surface</div>
+                    <div class="formula-category-content">
+                        <div class="formula-subcolumn">
+                            <div class="formula-item">$$T(z) = \begin{cases} T_0 + \Gamma z & \text{si } z < z_{\text{trop}} \\ T_{\text{trop}} & \text{si } z \geq z_{\text{trop}} \end{cases}$$</div>
+                            <div class="formula-item">$$T_0 = \left(\frac{F_{\text{solaire}}}{\sigma}\right)^{1/4} + \Delta T_{\text{effet de serre}}$$</div>
+                            <div class="formula-item">$$P(z) = P_0 e^{-z/H}$$</div>
+                            <div class="formula-item">$$n_{\text{air}}(z) = \frac{P(z)}{k_B T(z)}$$</div>
+                            <div class="formula-item">$$n_{\text{CO}_2}(z) = n_{\text{air}}(z) \times f_{\text{CO}_2}$$</div>
+                            <div class="formula-item">$$n_{\text{H}_2\text{O}}(z) = n_{\text{air}}(z) \times r_{\text{H}_2\text{O}}(z)$$</div>
+                        </div>
+                        <div class="formula-subcolumn">
+                            <div class="formula-item">$$\sigma_{\text{CO}_2}(\lambda) = 10^{-22.5 - 24 \left|\frac{\lambda - \lambda_0}{\lambda_0}\right|}$$</div>
+                            <div class="formula-item">$$\sigma_{\text{H}_2\text{O}}(\lambda) = \max\left(10^{-20 - 15\left|\frac{\lambda - \lambda_1}{\lambda_1}\right|}, 10^{-21 - 18\left|\frac{\lambda - \lambda_2}{\lambda_2}\right|}\right)$$</div>
+                            <div class="formula-item">$$\kappa = \sigma_{\text{CO}_2}(\lambda) \times n_{\text{CO}_2} + \sigma_{\text{H}_2\text{O}}(\lambda) \times n_{\text{H}_2\text{O}}$$</div>
+                            <div class="formula-item">$$F_{\text{sortant}} = F_{\text{entrant}} - F_{\text{absorbé}} + F_{\text{émis}}$$</div>
+                            <div class="formula-item">$$F_{\text{absorbé}} = \kappa \Delta z \times F_{\text{entrant}}$$</div>
+                            <div class="formula-item">$$F_{\text{émis}} = \tau \times \pi B_{\lambda}(T) \Delta\lambda$$</div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
-            <!-- 🪞 Albédo -->
-            <div class="formula-category">
-                <div class="formula-category-title">🪞 Albédo</div>
-                <div class="formula-item">$$A = A_{\text{base}} + A_{\text{glace}} + A_{\text{nuages}}$$</div>
+            <!-- Colonne 3 : Effet de Serre -->
+            <div class="formula-column formula-column-narrow">
+                <div class="formula-category">
+                    <div class="formula-category-title">🌫 Effet de Serre</div>
+                    <div class="formula-item">$$\Delta F = 5.35 \times \ln\left(\frac{f_{\text{CO}_2}}{f_{\text{CO}_2,\text{ref}}}\right)$$</div>
+                    <div class="formula-item">$$\Delta T = \lambda \times \Delta F$$</div>
+                    <div class="formula-item">$$r_{\text{H}_2\text{O}}(z) = r_0 e^{-z/H_{\text{H}_2\text{O}}}$$</div>
+                    <div class="formula-item">$$F_{\text{H}_2\text{O}} = F_{\text{vapeur}} + F_{\text{nuages}}$$</div>
+                    <div class="formula-item">$$F_{\text{vapeur}} = F_{\text{base}}$$</div>
+                    <div class="formula-item">$$F_{\text{nuages}} = C_{\text{max}} \times \text{couverture}$$</div>
+                    <div class="formula-item">$$z_{\text{trop}} = z_{\text{trop,ref}} + (T_0 - T_{\text{ref}}) \times \alpha$$</div>
+                    <div class="formula-item">$$T_{\text{trop}} = T_0 + \Gamma \times z_{\text{trop}}$$</div>
+                </div>
             </div>
             
-            <!-- 🌍 Surface -->
-            <div class="formula-category">
-                <div class="formula-category-title">🌍 Surface</div>
-                <div class="formula-item">$$T(z) = \begin{cases} T_0 + \Gamma z & \text{si } z < z_{\text{trop}} \\ T_{\text{trop}} & \text{si } z \geq z_{\text{trop}} \end{cases}$$</div>
-                <div class="formula-item">$$T_0 = \left(\frac{F_{\text{solaire}}}{\sigma}\right)^{1/4} + \Delta T_{\text{effet de serre}}$$</div>
-                <div class="formula-item">$$P(z) = P_0 e^{-z/H}$$</div>
-                <div class="formula-item">$$n_{\text{air}}(z) = \frac{P(z)}{k_B T(z)}$$</div>
-                <div class="formula-item">$$n_{\text{CO}_2}(z) = n_{\text{air}}(z) \times f_{\text{CO}_2}$$</div>
-                <div class="formula-item">$$n_{\text{H}_2\text{O}}(z) = n_{\text{air}}(z) \times r_{\text{H}_2\text{O}}(z)$$</div>
-                <div class="formula-item">$$\sigma_{\text{CO}_2}(\lambda) = 10^{-22.5 - 24 \left|\frac{\lambda - \lambda_0}{\lambda_0}\right|}$$</div>
-                <div class="formula-item">$$\sigma_{\text{H}_2\text{O}}(\lambda) = \max\left(10^{-20 - 15\left|\frac{\lambda - \lambda_1}{\lambda_1}\right|}, 10^{-21 - 18\left|\frac{\lambda - \lambda_2}{\lambda_2}\right|}\right)$$</div>
-                <div class="formula-item">$$\kappa = \sigma_{\text{CO}_2}(\lambda) \times n_{\text{CO}_2} + \sigma_{\text{H}_2\text{O}}(\lambda) \times n_{\text{H}_2\text{O}}$$</div>
-                <div class="formula-item">$$F_{\text{sortant}} = F_{\text{entrant}} - F_{\text{absorbé}} + F_{\text{émis}}$$</div>
-                <div class="formula-item">$$F_{\text{absorbé}} = \kappa \Delta z \times F_{\text{entrant}}$$</div>
-                <div class="formula-item">$$F_{\text{émis}} = \tau \times \pi B_{\lambda}(T) \Delta\lambda$$</div>
-            </div>
-            
-            <!-- 🌫 Effet de Serre -->
-            <div class="formula-category">
-                <div class="formula-category-title">🌫 Effet de Serre</div>
-                <div class="formula-item">$$\Delta F = 5.35 \times \ln\left(\frac{f_{\text{CO}_2}}{f_{\text{CO}_2,\text{ref}}}\right)$$</div>
-                <div class="formula-item">$$\Delta T = \lambda \times \Delta F$$</div>
-                <div class="formula-item">$$r_{\text{H}_2\text{O}}(z) = r_0 e^{-z/H_{\text{H}_2\text{O}}}$$</div>
-                <div class="formula-item">$$F_{\text{H}_2\text{O}} = F_{\text{vapeur}} + F_{\text{nuages}}$$</div>
-                <div class="formula-item">$$F_{\text{vapeur}} = F_{\text{base}}$$</div>
-                <div class="formula-item">$$F_{\text{nuages}} = C_{\text{max}} \times \text{couverture}$$</div>
-                <div class="formula-item">$$z_{\text{trop}} = z_{\text{trop,ref}} + (T_0 - T_{\text{ref}}) \times \alpha$$</div>
-                <div class="formula-item">$$T_{\text{trop}} = T_0 + \Gamma \times z_{\text{trop}}$$</div>
-            </div>
-            
-            <!-- 🔂 Réémis -->
-            <div class="formula-category">
-                <div class="formula-category-title">🔂 Réémis</div>
-                <div class="formula-item">$$F = \sigma T^4$$</div>
-                <div class="formula-item">$$E = E_0 \exp\left(\frac{T_{\text{surface}} - T_{\text{ref}}}{20}\right)$$</div>
+            <!-- Colonne 4 : Réémis -->
+            <div class="formula-column formula-column-narrow">
+                <div class="formula-category">
+                    <div class="formula-category-title">🔂 Réémis</div>
+                    <div class="formula-item">$$F = \sigma T^4$$</div>
+                    <div class="formula-item">$$E = E_0 \exp\left(\frac{T_{\text{surface}} - T_{\text{ref}}}{20}\right)$$</div>
+                </div>
             </div>
         </div>
     </div>

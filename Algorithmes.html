@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithmes & Convergence - World System</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="algorithms-container">
+            <div class="reference-section-title">Algorithmes & Convergence</div>
+            <div class="algorithms-content">
+                <div class="algorithm-section">
+                    <h4 class="algorithm-subtitle">Paramètres d'entrée (main.js)</h4>
+                    <div class="algorithm-params">
+                        <div class="param-item"><strong>plotData</strong> : Objet principal de données</div>
+                        <ul class="param-list">
+                            <li><code>lambda_range</code> : Plage de longueurs d'onde (0.1 à 100 μm, pas 0.1 μm)</li>
+                            <li><code>current</code> : Résultats du calcul courant (flux, températures, albedo, etc.)</li>
+                            <li><code>co2_ppm</code> : Concentration CO₂ en ppm (parties par million)</li>
+                        </ul>
+                        <div class="param-item"><strong>CO2_STATES</strong> : États prédéfinis</div>
+                        <ul class="param-list">
+                            <li><code>0</code> : 0 ppm (iceberg)</li>
+                            <li><code>1</code> : 280 ppm (pré-industriel, forêt)</li>
+                            <li><code>2</code> : 420 ppm (actuel, usine) - DÉFAUT</li>
+                            <li><code>3</code> : 560 ppm (×2, volcan)</li>
+                            <li><code>3+</code> : Multiplicateurs exponentiels (CO2_STATES[3] × 2^(state-3))</li>
+                        </ul>
+                        <div class="param-item"><strong>Options de simulation</strong></div>
+                        <ul class="param-list">
+                            <li><code>z_max</code> : Altitude maximale (défaut: 120000 m = 120 km)</li>
+                            <li><code>delta_z</code> : Pas d'altitude (défaut: 50 m)</li>
+                            <li><code>lambda_min</code> : Longueur d'onde min (défaut: 0.1×10⁻⁶ m)</li>
+                            <li><code>lambda_max</code> : Longueur d'onde max (défaut: 100×10⁻⁶ m)</li>
+                            <li><code>delta_lambda</code> : Pas de longueur d'onde (défaut: 0.1×10⁻⁶ m)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="algorithm-section">
+                    <h4 class="algorithm-subtitle">Phases de Convergence Récursive</h4>
+                    <div class="convergence-phases">
+                        <div class="phase-item">
+                            <strong>Phase 1 : Initialisation</strong>
+                            <ul>
+                                <li>Calcul de T₀ initiale (approximation avec albedo de base)</li>
+                                <li>Estimation du forçage CO₂ : ΔF = 5.35 × ln(CO₂/CO₂_ref)</li>
+                                <li>Ajustement si H₂O activé : T₀ += 15K (approximation réduite)</li>
+                                <li>Définition de l'intervalle de dichotomie : T₀ ± 50K</li>
+                            </ul>
+                        </div>
+                        <div class="phase-item">
+                            <strong>Phase 2 : Dichotomie (sous-phases)</strong>
+                            <ul>
+                                <li><strong>2.1 - Calcul initial</strong> : calculateFluxForT0(T₀_initial)</li>
+                                <li><strong>2.2 - Affichage initial</strong> : displayDichotomyStep(iteration=0, isInitial=true)</li>
+                                <li><strong>2.3 - Itération récursive</strong> :</li>
+                                <ul>
+                                    <li>Calcul du flux pour T₀_test</li>
+                                    <li>Comparaison : |flux_total - flux_solaire_absorbé| < tolérance (0.1 W/m²)</li>
+                                    <li>Si non convergé : ajustement T₀ (dichotomie classique)</li>
+                                    <li>Affichage progressif : displayDichotomyStep(iteration=i)</li>
+                                </ul>
+                                <li><strong>2.4 - Convergence</strong> : Arrêt si |différence| < 0.1 W/m² ou max_iterations (20)</li>
+                            </ul>
+                        </div>
+                        <div class="phase-item">
+                            <strong>Phase 3 : Finalisation</strong>
+                            <ul>
+                                <li>Calcul des forçages radiatifs (CO₂, H₂O, Albedo)</li>
+                                <li>Mise à jour de l'albedo dynamique (glace, nuages)</li>
+                                <li>Mise à jour de la couverture nuageuse</li>
+                                <li>Mise à jour de l'affichage (graphiques, visualisation spectrale)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="algorithm-section">
+                    <h4 class="algorithm-subtitle">Interactions & Rétroactions</h4>
+                    <div class="interactions-content">
+                        <div class="interaction-item">
+                            <strong>H₂O ↔ T° (Rétroaction positive)</strong>
+                            <ul>
+                                <li>Température ↑ → Évaporation ↑ → Vapeur d'eau ↑ → Effet de serre ↑ → T° ↑</li>
+                                <li>Modélisée via : waterVaporMixingRatio(z) = r₀ × exp(-z/H_H₂O)</li>
+                                <li>Limite : T₀_initial += 15K (réduit pour éviter l'emballement)</li>
+                            </ul>
+                        </div>
+                        <div class="interaction-item">
+                            <strong>Glace ↔ Albédo (Rétroaction positive)</strong>
+                            <ul>
+                                <li>Température ↓ → Glace ↑ → Albédo ↑ → Absorption solaire ↓ → T° ↓</li>
+                                <li>Modélisée via : calculateAlbedo(T_surface, h2o_enabled)</li>
+                                <li>Transition progressive : albedo_base → albedo_glace (~0.6-0.9)</li>
+                            </ul>
+                        </div>
+                        <div class="interaction-item">
+                            <strong>Nuages (Effet complexe)</strong>
+                            <ul>
+                                <li>Réchauffement IR : Nuages → Absorption IR → Réémission vers le sol</li>
+                                <li>Refroidissement albédo : Nuages → Réflexion solaire → Moins d'absorption</li>
+                                <li>Modélisée via : calculateCloudCoverage(T_surface, h2o_enabled)</li>
+                                <li>Effet net : dépend de la température et du type de nuages</li>
+                            </ul>
+                        </div>
+                        <div class="interaction-item">
+                            <strong>CO₂ ↔ Weathering (Cycle long)</strong>
+                            <ul>
+                                <li>CO₂ ↑ → Température ↑ → Weathering ↑ → CO₂ ↓ (rétroaction négative)</li>
+                                <li>Non modélisé dans cette version (cycle trop long pour la simulation)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="algorithm-section">
+                    <h4 class="algorithm-subtitle">Méthode de Convergence</h4>
+                    <div class="convergence-method">
+                        <p><strong>Dichotomie (Bisection Method)</strong></p>
+                        <ol>
+                            <li><strong>Intervalle initial</strong> : [T₀_min, T₀_max] = [T₀_initial - 50K, T₀_initial + 50K]</li>
+                            <li><strong>Test de convergence</strong> : |flux_total - flux_solaire_absorbé| < 0.1 W/m²</li>
+                            <li><strong>Itération</strong> :
+                                <ul>
+                                    <li>T₀_test = (T₀_min + T₀_max) / 2</li>
+                                    <li>Calculer flux_total pour T₀_test</li>
+                                    <li>Si flux_total > flux_solaire : T₀ trop élevée → T₀_max = T₀_test</li>
+                                    <li>Si flux_total < flux_solaire : T₀ trop basse → T₀_min = T₀_test</li>
+                                </ul>
+                            </li>
+                            <li><strong>Arrêt</strong> : Convergence atteinte OU max_iterations = 20</li>
+                        </ol>
+                        <p><strong>Équation d'équilibre</strong> : flux_total(T₀) = flux_solaire_absorbé(T₀)</p>
+                        <p>Où flux_total inclut : émission IR, absorption CO₂/H₂O, rétroactions albedo/nuages</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
