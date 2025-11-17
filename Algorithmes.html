@@ -7,11 +7,9 @@
     <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="algorithms-container">
-            <div class="reference-section-title">Algorithmes & Convergence</div>
-            <div class="algorithms-content">
-                <div class="algorithm-section">
+    <div class="container" style="display: block; grid-template-columns: none; gap: 0;">
+        <div class="algorithms-sections-wrapper" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 15px; width: 100%; margin-top: 10px;">
+                <div class="algorithm-section" style="width: fit-content;">
                     <h4 class="algorithm-subtitle">Paramètres d'entrée (main.js)</h4>
                     <div class="algorithm-params">
                         <div class="param-item"><strong>plotData</strong> : Objet principal de données</div>
@@ -38,7 +36,7 @@
                         </ul>
                     </div>
                 </div>
-                <div class="algorithm-section">
+                <div class="algorithm-section" style="width: fit-content;">
                     <h4 class="algorithm-subtitle">Phases de Convergence Récursive</h4>
                     <div class="convergence-phases">
                         <div class="phase-item">
@@ -76,7 +74,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="algorithm-section">
+                <div class="algorithm-section" style="width: fit-content;">
                     <h4 class="algorithm-subtitle">Interactions & Rétroactions</h4>
                     <div class="interactions-content">
                         <div class="interaction-item">
@@ -113,7 +111,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="algorithm-section">
+                <div class="algorithm-section" style="width: fit-content;">
                     <h4 class="algorithm-subtitle">Méthode de Convergence</h4>
                     <div class="convergence-method">
                         <p><strong>Dichotomie (Bisection Method)</strong></p>
@@ -134,13 +132,10 @@
                         <p>Où flux_total inclut : émission IR, absorption CO₂/H₂O, rétroactions albedo/nuages</p>
                     </div>
                 </div>
-            </div>
         </div>
         
         <!-- Analyse de Performance -->
-        <div class="algorithms-container" style="margin-top: 40px;">
-            <div class="reference-section-title">Analyse de Performance</div>
-            <div class="algorithms-content" style="background: #f5f5f5; padding: 20px; border-radius: 10px; color: #333;">
+        <div class="algorithms-content" style="background: #f5f5f5; padding: 20px; border-radius: 10px; color: #333;">
                 <!-- Contenu intégré depuis ANALYSE_PERFORMANCE.html -->
                 <h2>Vue d'ensemble</h2>
                 <p>Le système de simulation radiatif utilise deux algorithmes principaux en cascade :</p>
