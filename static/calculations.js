@@ -522,27 +522,15 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         fullSpectre = false // ⚡ Si true, désactive les optimisations lambda (spectre complet)
     } = options;
     
-    // ⚡ OPTIMISATION : Ajuster la précision selon le FPS (sauf si fullSpectre)
-    let precisionFactor = 1.0;
-    if (!fullSpectre) {
-        precisionFactor = getPrecisionFactorFromFPS();
-    }
+    // ⚡ PRÉCISION MAXIMALE : Toujours utiliser la précision maximale (pas d'adaptation FPS)
+    // Désactivation de la précision adaptative pour garantir la meilleure qualité
+    // ⚡ FORCER fullSpectre à true pour désactiver le regroupement adaptatif
+    const forceFullSpectre = true; // Toujours utiliser le spectre complet (pas de regroupement)
+    const precisionFactor = 1.0; // Toujours précision maximale
     
-    // ⚡ LIMITE MINIMALE : Bloquer la précision à un minimum (équivalent à 2px)
-    // Si delta_lambda = 0.1e-6 m = 0.1 μm, et qu'on veut minimum 2px sur un graphique de 0-50 μm
-    // 2px sur 50 μm = 2/50 = 0.04 μm minimum
-    // Donc delta_lambda minimum = 0.04e-6 m
-    const delta_lambda_min = 0.04e-6; // Minimum 2px équivalent
-    const precisionFactor_max = delta_lambda / delta_lambda_min; // Facteur maximum de réduction
-    if (precisionFactor < 1.0 / precisionFactor_max) {
-        precisionFactor = 1.0 / precisionFactor_max; // Limiter la réduction
-    }
-    
-    // Ajuster delta_z et delta_lambda selon le FPS
+    // Ajuster delta_z et delta_lambda (toujours à la valeur de base, pas de réduction)
     // Note : delta_z sous tropopause reste constant (pas d'optimisation)
-    const adjusted_delta_lambda = delta_lambda / precisionFactor; // Si FPS bas, delta_lambda augmente (moins de points)
-    // S'assurer que adjusted_delta_lambda ne dépasse pas le minimum
-    const final_delta_lambda = Math.max(adjusted_delta_lambda, delta_lambda_min);
+    const final_delta_lambda = delta_lambda; // Toujours utiliser delta_lambda de base (précision maximale)
     
     // ⚡ OPTIMISATION : Créer les grilles avec précision adaptative
     // Pour lambda : regrouper en plages de moyennes pour accélérer
@@ -555,7 +543,10 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const lambda_range = [];
     const lambda_weights = []; // Poids pour les moyennes pondérées
     
-    if (fullSpectre) {
+    // ⚡ FORCER fullSpectre pour précision maximale (pas de regroupement)
+    const useFullSpectre = fullSpectre || forceFullSpectre;
+    
+    if (useFullSpectre) {
         // ⚡ Dernière itération : spectre complet sans optimisation
         for (let lambda = lambda_min; lambda <= lambda_max; lambda += delta_lambda) {
             lambda_range.push(lambda);
@@ -569,16 +560,14 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             lambda_weights.push(1.0);
         }
     } else {
-        // Optimisation : regroupement adaptatif avec ajustement FPS
+        // Optimisation : regroupement adaptatif (sans ajustement FPS, précision maximale)
         // Zone critique : 10-20 μm (bande CO₂) - haute précision
         const lambda_critical_min = 10e-6;
         const lambda_critical_max = 20e-6;
-        const delta_lambda_critical = final_delta_lambda; // Précision ajustée selon FPS dans la bande CO₂ (avec limite min)
+        const delta_lambda_critical = final_delta_lambda; // Précision maximale dans la bande CO₂
         
-        // Zones non-critiques : précision réduite (moyennes sur plages)
-        // Si FPS bas, on augmente encore plus le regroupement, mais avec limite minimale
-        const delta_lambda_coarse_base = final_delta_lambda * (precisionFactor < 1.0 ? 20 : 10);
-        const delta_lambda_coarse = Math.max(delta_lambda_coarse_base, delta_lambda_min * 2); // Minimum 2x la limite (pour regroupement)
+        // Zones non-critiques : précision réduite (moyennes sur plages) mais avec précision maximale
+        const delta_lambda_coarse = final_delta_lambda * 10; // Regroupement fixe (10x) pour zones non-critiques
         
         for (let lambda = lambda_min; lambda < lambda_max; ) {
             if (lambda >= lambda_critical_min && lambda < lambda_critical_max) {
@@ -622,11 +611,8 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // Au-dessus de la tropopause, on peut réduire la précision (densité ↓ exponentielle)
     const z_range = [];
     const delta_z_troposphere = delta_z; // Précision fine sous tropopause (50m) - PAS D'OPTIMISATION
-    // Au-dessus : ajuster selon FPS (si FPS bas, augmenter encore plus le pas)
-    const delta_z_stratosphere_base = delta_z * 5; // Base : 5x moins de points (250m)
-    const delta_z_stratosphere = precisionFactor < 1.0 
-        ? delta_z_stratosphere_base / precisionFactor  // Si FPS bas, encore plus gros (ex: 500m si FPS < 20)
-        : delta_z_stratosphere_base * precisionFactor; // Si FPS excellent, plus fin (ex: 125m si FPS > 55)
+    // Au-dessus : toujours utiliser la précision de base (pas d'adaptation FPS)
+    const delta_z_stratosphere = delta_z * 5; // Base : 5x moins de points (250m) - précision fixe
     
     // Sous tropopause : précision fine (delta_z constant = 50m)
     for (let z = 0; z < z_trop_precalc; z += delta_z_troposphere) {

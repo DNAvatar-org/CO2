@@ -421,39 +421,20 @@ window.updatePlot = function updatePlot(data) {
     
     const lambda_planck = data.lambda_range.map(l => l * 1e6); // Convertir en μm
     // ⚡ CORRECTION : Utiliser lambda_weights si disponible pour normalisation correcte
-    // Le flux est calculé avec regroupement adaptatif, donc chaque point représente une plage de largeur delta_lambda * lambda_weights[j]
-    const delta_lambda_base = 0.1e-6; // Pas de base utilisé dans les calculs
+    // Le flux est calculé avec delta_lambda = 0.1e-6 dans calculations.js
+    // Chaque point représente une plage de largeur delta_lambda * lambda_weights[j]
+    const delta_lambda_base = 0.1e-6; // Pas de base utilisé dans les calculs (toujours 0.1e-6)
     const lambda_weights = data.lambda_weights || data.lambda_range.map(() => 1.0); // Par défaut, poids unitaire si non fourni
-    
-    // ⚡ CORRECTION : Calculer le delta_lambda réel à partir du lambda_range
-    // Si tous les poids sont 1.0 (fullSpectre), utiliser l'espacement réel entre les points
-    let delta_lambda_effective = delta_lambda_base;
-    if (data.lambda_range.length > 1) {
-        // Si tous les poids sont 1.0, c'est fullSpectre, utiliser l'espacement réel
-        const allWeightsOne = lambda_weights.every(w => Math.abs(w - 1.0) < 1e-6);
-        if (allWeightsOne) {
-            // Calculer l'espacement moyen réel
-            const spacings = [];
-            for (let i = 1; i < Math.min(10, data.lambda_range.length); i++) {
-                spacings.push(data.lambda_range[i] - data.lambda_range[i-1]);
-            }
-            if (spacings.length > 0) {
-                delta_lambda_effective = spacings.reduce((a, b) => a + b, 0) / spacings.length;
-            }
-        }
-    }
     
     // Fonction helper pour créer une trace de flux observé (absorption)
     function createFluxTrace(flux_data, co2_ppm, temp_eff, color, label) {
         // ⚡ CORRECTION : Normaliser avec la largeur effective de chaque point
-        // Si fullSpectre (tous poids = 1.0), utiliser delta_lambda_effective
-        // Sinon, utiliser delta_lambda_base * lambda_weights[j]
+        // Le flux calculé utilise delta_lambda * lambda_weights[j] dans calculations.js
+        // Donc on doit diviser par la même valeur pour obtenir W/m²/μm
         const flux = flux_data.upward_flux[flux_data.upward_flux.length - 1]
             .map((f, idx) => {
-                const allWeightsOne = lambda_weights.every(w => Math.abs(w - 1.0) < 1e-6);
-                const effective_delta_lambda = allWeightsOne 
-                    ? delta_lambda_effective 
-                    : delta_lambda_base * (lambda_weights[idx] || 1.0);
+                // Largeur effective = delta_lambda_base * lambda_weights[j]
+                const effective_delta_lambda = delta_lambda_base * (lambda_weights[idx] || 1.0);
                 return f / effective_delta_lambda / 1e6; // Convertir en W/m²/μm
             });
         return {
