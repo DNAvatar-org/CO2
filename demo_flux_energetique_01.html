@@ -18,6 +18,11 @@
             height: 100%;
             position: relative;
             min-height: 900px;
+            background: #0a0e27; /* Bleu nuit */
+            border-radius: 12px; /* Bords arrondis */
+            box-shadow: none !important;
+            border: none !important;
+            outline: none !important;
         }
         .flux-cell {
             position: absolute;
@@ -26,6 +31,16 @@
             grid-template-rows: 25px 65px 20px;
             width: 260px;
             height: 110px;
+            z-index: 20;
+        }
+        .flux-cellRect {
+            position: absolute;
+            display: grid;
+            grid-template-columns: 100px 60px 100px;
+            grid-template-rows: 25px 200px 20px;
+            width: 260px;
+            height: 245px;
+            z-index: 20;
         }
         .flux-circle-bg {
             position: absolute;
@@ -36,6 +51,11 @@
             font-size: 56px;
             border: 4px solid;
             z-index: 1;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .flux-circle-bg:hover {
+            transform: scale(1.3);
         }
         .flux-grid-item {
             display: flex;
@@ -72,7 +92,7 @@
             white-space: nowrap;
             text-align: center;
             line-height: 1.5;
-            z-index: 10;
+            z-index: 200; /* Au-dessus de tout */
         }
         .flux-label-name {
             color: #000;
@@ -86,12 +106,27 @@
             border: 2px dashed #ff9800;
             background: none;
             pointer-events: none;
-            z-index: 100;
+            z-index: 50; /* Entre les logos/cellules (20) et les étiquettes (200) */
         }
         .flux-arrow {
             position: absolute;
             background: #667eea;
             z-index: 1;
+        }
+        .flux-rectangle {
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+        }
+        .flux-rectangle-factor {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -125,13 +160,83 @@
         //   - [1,0] = Entrée (haut)
         //   - [1,2] = Sortie (bas)
         //   - [0,1] ou [2,1] = Nom + infos (gauche ou droite selon proximité)
-        function createCell(x, y, radius, fillColor, strokeColor, logo, labels, labelInput = null, radiationOptions = null) {
+        function createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage = null) {
+            // Le rectangle est positionné dans la zone centrale de la grille (comme le cercle)
+            // Centre de la colonne centrale = 130px, centre de la ligne centrale = variable selon hauteur
+            const rect = document.createElement('div');
+            rect.className = 'flux-rectangle';
+            rect.style.width = width + 'px';
+            rect.style.height = height + 'px';
+            // Positionner dans la zone centrale de la grille (col 1, row 1)
+            // Le rectangle doit frôler "Equilibre" en bas, donc le placer plus bas dans la zone centrale
+            rect.style.left = '130px'; // Centre de la colonne centrale
+            // Positionner le rectangle pour que son bas frôle "Equilibre" (txt1 en bas de la grille)
+            // La zone centrale fait 200px, on place le rectangle pour qu'il descende jusqu'en bas
+            rect.style.top = 'calc(25px + 200px - ' + (height / 2) + 'px)'; // Positionné pour frôler le bas
+            rect.style.transform = 'translate(-50%, -50%)';
+            
+            // Gérer fillImage (logo remplissant l'espace) ou fillColor
+            if (fillImage) {
+                // Utiliser un logo qui remplit l'espace directement dans le div
+                rect.style.backgroundColor = fillColor || 'transparent';
+                rect.style.position = 'relative';
+                rect.style.overflow = 'hidden';
+                
+                // Créer un élément pour le logo qui remplit tout l'espace
+                const logoBg = document.createElement('div');
+                logoBg.style.position = 'absolute';
+                logoBg.style.top = '0';
+                logoBg.style.left = '0';
+                logoBg.style.width = '100%';
+                logoBg.style.height = '100%';
+                logoBg.style.display = 'flex';
+                logoBg.style.alignItems = 'center';
+                logoBg.style.justifyContent = 'center';
+                logoBg.style.zIndex = '0';
+                // Utiliser la plus grande dimension pour calculer une taille qui remplit vraiment l'espace
+                const maxDimension = Math.max(width, height);
+                const fontSize = maxDimension * 1.5; // Assez grand pour remplir tout l'espace
+                logoBg.style.fontSize = fontSize + 'px';
+                logoBg.style.lineHeight = '1';
+                logoBg.textContent = fillImage;
+                rect.appendChild(logoBg);
+            } else {
+                // Couleur unie
+                rect.style.backgroundColor = fillColor;
+            }
+            
+            // Ne pas mettre de bordure si strokeColor est vide
+            if (strokeColor && strokeColor.trim() !== '') {
+                rect.style.borderColor = strokeColor;
+                rect.style.borderWidth = '4px';
+                rect.style.borderStyle = 'solid';
+            } else {
+                rect.style.border = 'none';
+            }
+            rect.style.position = 'absolute';
+            rect.style.zIndex = 1; // Même z-index que le cercle
+            
+            factors.forEach(factor => {
+                const factorDiv = document.createElement('div');
+                factorDiv.className = 'flux-rectangle-factor';
+                factorDiv.innerHTML = `<span>${factor.icon}</span><span>${factor.label}</span>`;
+                factorDiv.style.position = 'relative';
+                factorDiv.style.zIndex = '1'; // Au-dessus du logo
+                rect.appendChild(factorDiv);
+            });
+            
+            cell.appendChild(rect);
+            return rect;
+        }
+        
+        function createCell(x, y, radius, fillColor, strokeColor, logo, labels, labelInput = null, radiationOptions = null, rectangleOptions = null, fillImage = null) {
             const container = document.getElementById('flux-diagram');
             
             // Cellule principale avec grille 3x3
             // Le cercle est en arrière-plan, la grille par-dessus pour que les textes se superposent
             const cell = document.createElement('div');
-            cell.className = 'flux-cell';
+            // Utiliser flux-cellRect si rectangle présent pour avoir une hauteur plus grande
+            cell.className = rectangleOptions ? 'flux-cellRect' : 'flux-cell';
             // Positionner le coin supérieur gauche de la grille, puis utiliser transform pour centrer précisément
             cell.style.left = x + 'px';
             cell.style.top = y + 'px';
@@ -149,10 +254,36 @@
             circleBg.style.left = '130px'; // Centre de la colonne centrale
             circleBg.style.top = '55px'; // Centre de la ligne centrale (110px / 2)
             circleBg.style.transform = 'translate(-50%, -50%)'; // Centre le cercle sur (130, 55)
-            circleBg.style.backgroundColor = fillColor;
-            circleBg.style.borderColor = strokeColor;
-            circleBg.textContent = logo;
-            cell.appendChild(circleBg);
+            // Ne pas créer le cercle si un rectangle est présent
+            if (!rectangleOptions) {
+                circleBg.style.backgroundColor = fillColor;
+                // Ne pas mettre de bordure si strokeColor est vide
+                if (!strokeColor || strokeColor.trim() === '') {
+                    circleBg.style.border = 'none';
+                } else {
+                    circleBg.style.borderColor = strokeColor;
+                    circleBg.style.borderWidth = '4px';
+                    circleBg.style.borderStyle = 'solid';
+                }
+                circleBg.textContent = logo;
+                
+                // Gestionnaire de clic pour copier le logo dans le presse-papier
+                circleBg.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(logo).then(() => {
+                        // Feedback visuel temporaire (agrandissement)
+                        const originalTransform = circleBg.style.transform;
+                        circleBg.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                        setTimeout(() => {
+                            circleBg.style.transform = originalTransform;
+                        }, 200);
+                    }).catch(err => {
+                        console.error('Erreur lors de la copie:', err);
+                    });
+                });
+                
+                cell.appendChild(circleBg);
+            }
             
             // Organisation des étiquettes
             let labelObj = {};
@@ -237,11 +368,21 @@
             // Créer les cercles de rayonnement si demandé
             if (radiationOptions) {
                 const { numCircles = 8, maxRadius, openingAngle = 270 } = radiationOptions;
-                for (let i = 1; i <= numCircles; i++) {
-                    const progress = i / numCircles;
-                    const arcRadius = radius + (maxRadius - radius) * progress;
-                    createArc(x, y, arcRadius, 0.3 + (progress * 0.2), openingAngle);
+                // Vérifier que maxRadius est défini
+                if (maxRadius !== null && maxRadius !== undefined) {
+                    for (let i = 1; i <= numCircles; i++) {
+                        const progress = i / numCircles;
+                        const arcRadius = radius + (maxRadius - radius) * progress;
+                        createArc(x, y, arcRadius, 0.3 + (progress * 0.2), openingAngle);
+                    }
                 }
+            }
+            
+            // Créer le rectangle avec les facteurs si demandé
+            if (rectangleOptions) {
+                const { width, height, factors } = rectangleOptions;
+                // Utiliser fillImage depuis le nœud racine (passé en paramètre)
+                createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage);
             }
             
             return cell;
@@ -255,7 +396,7 @@
             labelContainer.style.left = x + 'px';
             labelContainer.style.top = y + 'px';
             labelContainer.style.transform = 'translate(-50%, -50%)';
-            labelContainer.style.zIndex = '10';
+            labelContainer.style.zIndex = '200'; // Au-dessus de tout
             
             let labelObj = {};
             if (Array.isArray(labels)) {
@@ -270,7 +411,7 @@
                 labelObj = labels;
             }
             
-            const createLabel = (text, offsetX, offsetY, isName = false) => {
+            const createLabel = (text, offsetX, offsetY, isName = false, size = null) => {
                 if (!text) return;
                 const label = document.createElement('div');
                 label.className = 'flux-label ' + (isName ? 'flux-label-name' : 'flux-label-blue');
@@ -279,22 +420,35 @@
                 label.style.left = offsetX + 'px';
                 label.style.top = offsetY + 'px';
                 label.style.transform = 'translate(-50%, -50%)';
+                // Si size est 'bigger', agrandir le texte 2 fois et retirer border/fond
+                if (size === 'bigger') {
+                    // Taille de base : 16px (taille par défaut du navigateur)
+                    // Multiplier par 2 pour obtenir 32px
+                    label.style.fontSize = '32px';
+                    // Retirer border et fond
+                    label.style.background = 'transparent';
+                    label.style.border = 'none';
+                    label.style.padding = '0';
+                }
                 labelContainer.appendChild(label);
             };
             
+            // Récupérer la taille depuis labelObj.size
+            const labelSize = labelObj.size || null;
+            
             // txt2 (au-dessus)
             if (labelObj.txt2) {
-                createLabel(labelObj.txt2, 0, -25, false);
+                createLabel(labelObj.txt2, 0, -25, false, labelSize);
             }
             
             // Nom (au centre)
             if (labelObj.name) {
-                createLabel(labelObj.name, 0, 0, true);
+                createLabel(labelObj.name, 0, 0, true, labelSize);
             }
             
             // txt1 (en dessous)
             if (labelObj.txt1) {
-                createLabel(labelObj.txt1, 0, 25, false);
+                createLabel(labelObj.txt1, 0, 25, false, labelSize);
             }
             
             // txt3 (à gauche) et txt4 (à droite)
@@ -409,124 +563,423 @@
         // Le soleil émet ~3.8×10²⁶ W dans toutes les directions (4π stéradians)
         // Surface sphère à 1 UA (distance Terre-Soleil) = 4π × (1.5×10¹¹ m)² ≈ 2.83×10²³ m²
         // (PAS la surface de la Terre qui est ~5.1×10¹⁴ m², mais la sphère sur laquelle l'énergie se répartit)
-        // 3.8×10²⁶ W / 2.83×10²³ m² ≈ 1361 W/m² (constante solaire)
-        // 340.25 W/m² = 1361/4 (moyennisation géométrique : surface sphère 4πr² vs section πr²)
+        // 3.8×10²⁶ W / 2.83×10²³ m² ≈ 1361 W/m² (constante solaire sur surface perpendiculaire au rayonnement)
+        // 340.25 W/m² = 1361/4 (moyennisation sur toute la surface terrestre)
+        // Explication : La Terre est une sphère. Vu du Soleil, seule la face éclairée est visible (disque de rayon R, surface = πR²)
+        // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
+        // Configuration de base
         const radius = 40; // Cercles plus petits
-        const spacing = 180; // Espacement plus grand entre les cercles (flèches plus grandes)
         const centerX = 130; // Centre horizontal du diagramme
-        const arrowMarginTop = 10; // Marge en haut des flèches (pour éviter que le triangle déborde sur la grille)
-        const arrowMarginBottom = 15; // Marge en bas des flèches (grande)
-        const smallSpacing = 140; // Espacement réduit entre Rayonnement et Albédo pour une flèche petite (mais dans le bon sens)
-        
-        createCell(centerX, 50, radius, '#ffc107', '#ff9800', '🌞', {
-            name: 'Soleil',
-            txt1: '3.8×10²⁶ W'
-        });
-        // Calculer maxRadius pour les cercles de Geometrie (doivent aller jusqu'au centre d'Albédo)
+        const arrowMarginTop = 10; // Marge en haut des flèches
+        const arrowMarginBottom = 15; // Marge en bas des flèches
         const cellHeight = 110;
         const cellHalfHeight = cellHeight / 2; // 55px
-        const geometrieY = 50 + spacing;
-        const albedoY = 50 + spacing + smallSpacing;
-        const maxRadius = albedoY - geometrieY; // Distance jusqu'au centre d'Albédo
         
-        createCell(centerX, 50 + spacing, radius, '#28a745', '#28a745', '🎱', {
-            name: 'Geometrie',
-            txt1: '340.25 W/m²'
-        }, '1361 W/m²', {
-            numCircles: 8,
-            maxRadius: maxRadius,
-            openingAngle: 270
-        });
-        // Albédo très proche de Rayonnement pour une flèche très petite
-        createCell(centerX, 50 + spacing + smallSpacing, radius, '#667eea', '#667eea', '🪞', {
-            name: 'Albédo',
-            txt1: '70%'
-        });
-        createCell(centerX - 50, 50 + spacing * 3, radius, '#6c757d', '#6c757d', '🌀', {
-            name: 'Espace',
-            txt1: '238.18 W/m²'
-        });
-        createCell(centerX + 50, 50 + spacing * 3, radius, '#dc3545', '#dc3545', '🌍', {
-            name: 'Surface',
-            txt1: '102.08 W/m²'
-        });
-        createCell(centerX + 50, 50 + spacing * 3.5, radius, '#dc3545', '#dc3545', '🔥', {
-            name: 'Émission IR',
-            txt1: 'σT⁴'
-        });
-        createCell(centerX + 50, 50 + spacing * 4, radius, '#667eea', '#667eea', '🌵', {
-            name: 'Effet de Serre',
-            txt1: 'CO₂ 0ppm + H₂O 0%'
-        });
-        createCell(centerX, 50 + spacing * 4.5, radius, '#6c757d', '#6c757d', '🌀', {
-            name: 'Espace',
-            txt1: '102.08 W/m²'
-        });
-        createCell(centerX + 100, 50 + spacing * 4.5, radius, '#28a745', '#28a745', '🔂', {
-            name: 'Réémis vers Surface',
-            txt1: '0.00 W/m²'
-        });
+        // 4 tailles d'espacement pour les flèches
+        const spacingSizes = {
+            short: 10,    // Court (par défaut, pas de label)
+            medium: 45,   // Moyen (si label présent)
+            long: 100,     // Long
+            extraLong: 120 // Très long
+        };
         
-        // Sphères concentriques entre Soleil et Rayonnement Incident (visualisation de la dilution)
-        // Le soleil émet dans toutes les directions (4π stéradians), l'énergie se dilue sur une sphère qui grandit (loi 1/r²)
-        const sunY = 50;
-        const incidentY = 50 + spacing;
-        const distance = incidentY - sunY;
-        
-        // Dessiner des sphères concentriques (cercles en 2D) qui grandissent depuis le Soleil
-        // Ces sphères illustrent comment l'énergie se dilue avec la distance
-        for (let i = 1; i <= 8; i++) {
-            const progress = i / 8; // 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0
-            const sphereRadius = radius + (distance * progress * 0.8); // Grandit progressivement
-            createSphere(centerX, sunY, sphereRadius, 0.2 + (progress * 0.2));
-        }
-        
-        // Flèches : partent du bas du tableau (grille) et arrivent en haut du suivant (marge 5px)
-        // La cellule fait 110px de haut et est centrée, donc bas = y + 55px, haut = y - 55px
-        const arrows = [
-            // Soleil -> Rayonnement : avec étiquette "1UA" (verticale)
-            { x1: centerX, y1: 50 + cellHalfHeight, x2: centerX, y2: 50 + spacing - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop, label: { name: '1UA' } },
-            // Rayonnement -> Albédo (verticale, très petite)
-            { x1: centerX, y1: 50 + spacing + cellHalfHeight, x2: centerX, y2: 50 + spacing + smallSpacing - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
-            // Albédo -> Espace (diagonale)
-            { x1: centerX, y1: 50 + spacing + smallSpacing + cellHalfHeight, x2: centerX - 50, y2: 50 + spacing * 3 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
-            // Albédo -> Surface (diagonale)
-            { x1: centerX, y1: 50 + spacing + smallSpacing + cellHalfHeight, x2: centerX + 50, y2: 50 + spacing * 3 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
-            // Surface -> Émission IR (verticale)
-            { x1: centerX + 50, y1: 50 + spacing * 3 + cellHalfHeight, x2: centerX + 50, y2: 50 + spacing * 3.5 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
-            // Émission IR -> Effet de Serre (verticale)
-            { x1: centerX + 50, y1: 50 + spacing * 3.5 + cellHalfHeight, x2: centerX + 50, y2: 50 + spacing * 4 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
-            // Effet de Serre -> Espace (diagonale)
-            { x1: centerX + 50, y1: 50 + spacing * 4 + cellHalfHeight, x2: centerX, y2: 50 + spacing * 4.5 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
-            // Effet de Serre -> Réémis (diagonale)
-            { x1: centerX + 50, y1: 50 + spacing * 4 + cellHalfHeight, x2: centerX + 100, y2: 50 + spacing * 4.5 - cellHalfHeight, marginStart: 0, marginEnd: arrowMarginTop },
-            // Réémis -> Surface (diagonale vers le haut, arrive en bas de Surface)
-            { x1: centerX + 100, y1: 50 + spacing * 4.5 + cellHalfHeight, x2: centerX + 50, y2: 50 + spacing * 3 + cellHalfHeight, marginStart: 0, marginEnd: arrowMarginBottom }
+        // Définition du graphe : nœuds (cellules)
+        const nodes = [
+            { id: 'soleil', x: centerX-70, y: 60, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: '#ffee55', logo: '🌞', labels: { name: 'Soleil', txt1: '6.24×10⁷ W/m²' }, labelInput: '3.8×10²⁶ W', radiation: { numCircles: 8, maxRadius: null, openingAngle: 0 } },
+            { id: 'geometrie', x: centerX-70, y: 200, radius, fillColor: 'rgba(255, 255, 0, 0.1)', strokeColor: '#555500', logo: '🎱', labels: { name: '', txt1: '' }, labelInput: '1361 W/m²', radiation: { numCircles: 8, maxRadius: null, openingAngle: 270 } },
+            { id: 'albedo', x: centerX-70, y: 320, radius, fillColor: 'rgba(255, 255, 255, 0.05)', strokeColor: '#333333', logo: '🪞', labels: { name: 'Albédo', txt1: '⛅50% + ❄️20%' }, labelInput: '340.25 W/m²', radiation: null },
+            { id: 'espace1', x: centerX + 80, y: 180, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '#000000', logo: '🌌', labels: { name: '', txt1: '' }, labelInput: '238.18 W/m²', radiation: null },
+            { id: 'noyau', x: centerX + 80, y: 300, radius, fillColor: 'rgba(255, 69, 0, 0.5)', strokeColor: '#ff4500', logo: '🔥', labels: { name: 'Noyau', txt1: '0.087 W/m²' }, labelInput: '~5700 K', radiation: null },
+            { id: 'surface', x: centerX + 80, y: 435, radius, fillColor: 'rgba(0, 0, 255, 0.2', strokeColor: '#111177', logo: '🌍', labels: { name: '', txt1: '102.08 W/m²' }, labelInput: '102.08 W/m²', radiation: null },
+            { id: 'effetSerre', x: centerX - 60, y: 610, radius, fillImage: '🌫', strokeColor: '', logo: '', labels: { name: '', txt1: 'Effet de Serre' }, labelInput: 'Athmosphère', radiation: null, rectangle: { width: 100, height: 200, factors: [
+                { icon: '🌵', label: 'CO₂' },
+                { icon: '💧', label: 'Eau' },
+                { icon: '⛽', label: 'Méthane' }
+            ]} },
+            { id: 'espace2', x: centerX + 100, y: 730, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '#000033', logo: '🌌', labels: { name: '', txt1: '' }, labelInput: '102.08 W/m²', radiation: null },
+            { id: 'reemis', x: centerX + 80, y: 580, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '#000033', logo: '🔂', labels: { name: '', txt1: '0.00 W/m²' }, labelInput: 'Forçage Radiatif', radiation: null }
         ];
         
-        arrows.forEach(arrow => {
-            // Calculer la direction de la flèche
-            const dx = arrow.x2 - arrow.x1;
-            const dy = arrow.y2 - arrow.y1;
-            const length = Math.sqrt(dx * dx + dy * dy);
-            const unitX = dx / length;
-            const unitY = dy / length;
+        // Définition du graphe : arcs (flèches)
+        const arcs = [
+            { from: 'soleil', to: 'geometrie', label: { name: '1UA' } },
+            { from: 'geometrie', to: 'albedo' },
+            { from: 'albedo', to: 'espace1' },
+            { from: 'albedo', to: 'surface' },
+            { from: 'noyau', to: 'surface', label: { name: 'Géothermie', txt1: '' } }, 
+            { from: 'surface', to: 'effetSerre', label: { name: 'IR', txt1: 'σT⁴' } },
+            { from: 'effetSerre', to: 'espace2', label: { name: '', txt1: '🛰', size: 'bigger' } },
+            { from: 'effetSerre', to: 'reemis' },
+            { from: 'reemis', to: 'surface', arriveAtBottom: true, label: { name: '📛', txt1: '' } }
+        ];
+        
+        // Fonction pour calculer les positions Y automatiquement
+        function calculatePositions() {
+            const nodeMap = {};
+            nodes.forEach(node => nodeMap[node.id] = node);
             
-            // Déplacer les points le long de la direction par la marge
-            const x1 = arrow.x1 + unitX * arrow.marginStart;
-            const y1 = arrow.y1 + unitY * arrow.marginStart;
-            const x2 = arrow.x2 - unitX * arrow.marginEnd;
-            const y2 = arrow.y2 - unitY * arrow.marginEnd;
+            // Séparer les arcs normaux et les arcs avec arriveAtBottom
+            const normalArcs = arcs.filter(arc => !arc.arriveAtBottom);
+            const bottomArcs = arcs.filter(arc => arc.arriveAtBottom);
             
-            createArrow(x1, y1, x2, y2);
-            
-            // Ajouter l'étiquette de flèche si présente
-            if (arrow.label) {
-                const midX = (x1 + x2) / 2;
-                const midY = (y1 + y2) / 2;
-                createArrowLabel(midX, midY, arrow.label);
+            // Fonction récursive pour calculer les positions (sans les cycles bottomArcs)
+            function calculateY(nodeId, visited = new Set(), ignoreBottomArcs = true) {
+                if (visited.has(nodeId)) {
+                    return nodeMap[nodeId].y || 50;
+                }
+                visited.add(nodeId);
+                
+                const node = nodeMap[nodeId];
+                if (node.y !== null && ignoreBottomArcs) return node.y;
+                
+                // Trouver tous les arcs entrants normaux
+                const incomingArcs = (ignoreBottomArcs ? normalArcs : arcs).filter(arc => arc.to === nodeId);
+                let maxY = node.y || 50;
+                
+                if (incomingArcs.length > 0) {
+                    incomingArcs.forEach(arc => {
+                        const sourceY = calculateY(arc.from, new Set(visited), ignoreBottomArcs);
+                        const arcSpacing = arc.label ? spacingSizes.medium : spacingSizes.short;
+                        // Bas de la source + espacement + haut de destination = centre destination
+                        const newY = sourceY + cellHalfHeight + arcSpacing + cellHalfHeight;
+                        if (newY > maxY) maxY = newY;
+                    });
+                }
+                
+                if (ignoreBottomArcs || node.y === null) {
+                    node.y = maxY;
+                }
+                return maxY;
             }
+            
+            // Calculer toutes les positions normales d'abord
+            nodes.forEach(node => {
+                if (node.y === null) {
+                    calculateY(node.id, new Set(), true);
+                }
+            });
+            
+            // Ensuite, traiter les arcs avec arriveAtBottom (positionner la source en dessous de la destination)
+            bottomArcs.forEach(arc => {
+                const destNode = nodeMap[arc.to];
+                const sourceNode = nodeMap[arc.from];
+                if (destNode && sourceNode && destNode.y !== null) {
+                    const arcSpacing = arc.label ? spacingSizes.medium : spacingSizes.short;
+                    // Source doit être en dessous de destination : bas de destination + espacement + haut de source = centre source
+                    const newSourceY = destNode.y + cellHalfHeight + arcSpacing + cellHalfHeight;
+                    if (sourceNode.y === null || newSourceY > sourceNode.y) {
+                        sourceNode.y = newSourceY;
+                    }
+                }
+            });
+        }
+        
+        // Calculer les positions
+        calculatePositions();
+        
+        // Créer les cellules
+        const createdCells = {};
+        nodes.forEach(node => {
+            // Calculer maxRadius si nécessaire
+            let radiationOptions = node.radiation;
+            if (radiationOptions && radiationOptions.maxRadius === null) {
+                if (node.id === 'geometrie') {
+                    const albedoNode = nodes.find(n => n.id === 'albedo');
+                    radiationOptions.maxRadius = albedoNode.y - node.y;
+                } else if (node.id === 'soleil') {
+                    // Pour le soleil, calculer jusqu'à geometrie
+                    const geometrieNode = nodes.find(n => n.id === 'geometrie');
+                    radiationOptions.maxRadius = geometrieNode.y - node.y;
+                }
+            }
+            
+            createdCells[node.id] = createCell(
+                node.x, 
+                node.y, 
+                node.radius, 
+                node.fillColor, 
+                node.strokeColor, 
+                node.logo, 
+                node.labels, 
+                node.labelInput,
+                radiationOptions,
+                node.rectangle || null,
+                node.fillImage || null
+            );
         });
+        
+        // Fonction pour générer automatiquement les flèches à partir du graphe
+        function generateArrows() {
+            arcs.forEach(arc => {
+                const idDep = nodes.find(n => n.id === arc.from);
+                const idDest = nodes.find(n => n.id === arc.to);
+                
+                if (!idDep || !idDest) return;
+                
+                // Vecteur depuis le centre du départ vers le centre de la destination
+                const Vect = {
+                    x: idDest.x - idDep.x,
+                    y: idDest.y - idDep.y
+                };
+                
+                // Angle en radians puis en degrés
+                const angleRad = Math.atan2(Vect.y, Vect.x);
+                const angleDeg = angleRad * 180 / Math.PI;
+                
+                // Point de départ (x1, y1) : sur le bord du cercle ou rectangle source
+                let x1, y1;
+                if (idDep.rectangle) {
+                    // Rectangle : calculer l'intersection avec le bord selon l'angle
+                    const { width, height } = idDep.rectangle;
+                    const halfWidth = width / 2;
+                    const halfHeight = height / 2;
+                    
+                    // Calculer l'intersection de la ligne depuis le centre vers la destination avec le bord du rectangle
+                    // Utiliser la méthode de ligne paramétrique
+                    const tValues = [];
+                    // Bord droit : x = idDep.x + halfWidth
+                    if (Math.abs(Vect.x) > 0.001) {
+                        const t = (halfWidth) / Vect.x;
+                        const y = Vect.y * t;
+                        if (Math.abs(y) <= halfHeight) tValues.push({ t, side: 'right', x: idDep.x + halfWidth, y: idDep.y + y });
+                    }
+                    // Bord gauche : x = idDep.x - halfWidth
+                    if (Math.abs(Vect.x) > 0.001) {
+                        const t = (-halfWidth) / Vect.x;
+                        const y = Vect.y * t;
+                        if (Math.abs(y) <= halfHeight) tValues.push({ t, side: 'left', x: idDep.x - halfWidth, y: idDep.y + y });
+                    }
+                    // Bord haut : y = idDep.y - halfHeight
+                    if (Math.abs(Vect.y) > 0.001) {
+                        const t = (-halfHeight) / Vect.y;
+                        const x = Vect.x * t;
+                        if (Math.abs(x) <= halfWidth) tValues.push({ t, side: 'top', x: idDep.x + x, y: idDep.y - halfHeight });
+                    }
+                    // Bord bas : y = idDep.y + halfHeight
+                    if (Math.abs(Vect.y) > 0.001) {
+                        const t = (halfHeight) / Vect.y;
+                        const x = Vect.x * t;
+                        if (Math.abs(x) <= halfWidth) tValues.push({ t, side: 'bottom', x: idDep.x + x, y: idDep.y + halfHeight });
+                    }
+                    
+                    // Prendre le point avec le plus petit t positif (le plus proche dans la direction)
+                    const validT = tValues.filter(tv => tv.t > 0);
+                    if (validT.length > 0) {
+                        const closest = validT.reduce((min, tv) => tv.t < min.t ? tv : min);
+                        x1 = closest.x;
+                        y1 = closest.y;
+                    } else {
+                        // Fallback : utiliser le centre
+                        x1 = idDep.x;
+                        y1 = idDep.y;
+                    }
+                } else {
+                    // Cercle : point sur le bord selon l'angle
+                    x1 = idDep.x + radius * Math.cos(angleRad);
+                    y1 = idDep.y + radius * Math.sin(angleRad);
+                }
+                
+                // Point d'arrivée (x2, y2) : selon l'angle et la présence d'étiquettes
+                let x2, y2;
+                
+                // Déterminer la direction selon l'angle
+                // Math.atan2 retourne un angle entre -180° et 180°
+                // Utiliser la composante Y du vecteur pour déterminer la direction verticale (plus fiable)
+                const isGoingUp = Vect.y < 0; // Vect.y négatif = vers le haut
+                const isGoingDown = Vect.y > 0; // Vect.y positif = vers le bas
+                // Vérifier si l'angle est assez vertical pour appliquer la logique des étiquettes
+                // Angle absolu entre 45° et 135° = assez vertical (pas trop horizontal)
+                const absAngle = Math.abs(angleDeg);
+                const isVerticalEnough = absAngle > 45 && absAngle < 135;
+                
+                // Vérifier si la destination a des étiquettes
+                const hasLabelInput = idDest.labelInput && idDest.labelInput.trim() !== '';
+                const hasLabelBottom = idDest.labels && idDest.labels.txt1 && idDest.labels.txt1.trim() !== '';
+                
+                if (isGoingUp && isVerticalEnough) {
+                    // Flèche vers le haut (assez verticale)
+                    if (hasLabelBottom) {
+                        // Arriver au bas de la grille (où se trouve txt1)
+                        const gridY = idDest.y + cellHalfHeight;
+                        // Calculer l'intersection depuis (x1, y1) vers le centre, avec y = gridY
+                        if (Math.abs(Vect.y) > 0.001) {
+                            const t = (gridY - y1) / Vect.y;
+                            x2 = x1 + Vect.x * t;
+                            y2 = gridY;
+                        } else {
+                            x2 = x1;
+                            y2 = gridY;
+                        }
+                    } else {
+                        // Arriver au bord du fond dessiné (cercle ou rectangle)
+                        if (idDest.rectangle) {
+                            const { width, height } = idDest.rectangle;
+                            const halfWidth = width / 2;
+                            const halfHeight = height / 2;
+                            // Intersection avec le bord bas du rectangle
+                            const bottomY = idDest.y + halfHeight;
+                            if (Math.abs(Vect.y) > 0.001) {
+                                const t = (bottomY - y1) / Vect.y;
+                                const x = x1 + Vect.x * t;
+                                if (Math.abs(x - idDest.x) <= halfWidth) {
+                                    x2 = x;
+                                    y2 = bottomY;
+                                } else {
+                                    // Intersection avec un bord latéral
+                                    if (x > idDest.x) {
+                                        x2 = idDest.x + halfWidth;
+                                        y2 = idDest.y + (halfWidth - Vect.x * (x1 - idDest.x) / Vect.x) * (Vect.y / Vect.x);
+                                    } else {
+                                        x2 = idDest.x - halfWidth;
+                                        y2 = idDest.y + (-halfWidth - Vect.x * (x1 - idDest.x) / Vect.x) * (Vect.y / Vect.x);
+                                    }
+                                }
+                            } else {
+                                x2 = x1;
+                                y2 = bottomY;
+                            }
+                        } else {
+                            // Cercle : intersection avec le bord bas
+                            const bottomY = idDest.y + radius;
+                            if (Math.abs(Vect.y) > 0.001) {
+                                const t = (bottomY - y1) / Vect.y;
+                                x2 = x1 + Vect.x * t;
+                                y2 = bottomY;
+                            } else {
+                                x2 = idDest.x;
+                                y2 = bottomY;
+                            }
+                        }
+                    }
+                } else if (isGoingDown && isVerticalEnough) {
+                    // Flèche vers le bas (assez verticale)
+                    if (hasLabelInput) {
+                        // Arriver au haut de la grille (où se trouve labelInput)
+                        const gridY = idDest.y - cellHalfHeight;
+                        // Calculer l'intersection depuis (x1, y1) vers le centre, avec y = gridY
+                        if (Math.abs(Vect.y) > 0.001) {
+                            const t = (gridY - y1) / Vect.y;
+                            x2 = x1 + Vect.x * t;
+                            y2 = gridY;
+                        } else {
+                            x2 = x1;
+                            y2 = gridY;
+                        }
+                    } else {
+                        // Arriver au bord du fond dessiné (cercle ou rectangle)
+                        if (idDest.rectangle) {
+                            const { width, height } = idDest.rectangle;
+                            const halfWidth = width / 2;
+                            const halfHeight = height / 2;
+                            // Intersection avec le bord haut du rectangle
+                            const topY = idDest.y - halfHeight;
+                            if (Math.abs(Vect.y) > 0.001) {
+                                const t = (topY - y1) / Vect.y;
+                                const x = x1 + Vect.x * t;
+                                if (Math.abs(x - idDest.x) <= halfWidth) {
+                                    x2 = x;
+                                    y2 = topY;
+                                } else {
+                                    // Intersection avec un bord latéral
+                                    if (x > idDest.x) {
+                                        x2 = idDest.x + halfWidth;
+                                        y2 = idDest.y - halfHeight;
+                                    } else {
+                                        x2 = idDest.x - halfWidth;
+                                        y2 = idDest.y - halfHeight;
+                                    }
+                                }
+                            } else {
+                                x2 = x1;
+                                y2 = topY;
+                            }
+                        } else {
+                            // Cercle : intersection avec le bord selon l'angle inverse
+                            const reverseAngle = angleRad + Math.PI;
+                            x2 = idDest.x + radius * Math.cos(reverseAngle);
+                            y2 = idDest.y + radius * Math.sin(reverseAngle);
+                        }
+                    }
+                } else {
+                    // Flèche horizontale ou autre : arriver au bord du fond dessiné
+                    if (idDest.rectangle) {
+                        const { width, height } = idDest.rectangle;
+                        const halfWidth = width / 2;
+                        const halfHeight = height / 2;
+                        // Calculer l'intersection avec le rectangle
+                        const tValues = [];
+                        // Bord droit
+                        if (Math.abs(Vect.x) > 0.001) {
+                            const t = (halfWidth - (x1 - idDest.x)) / Vect.x;
+                            const y = y1 + Vect.y * t - idDest.y;
+                            if (Math.abs(y) <= halfHeight && t > 0) tValues.push({ t, x: idDest.x + halfWidth, y: idDest.y + y });
+                        }
+                        // Bord gauche
+                        if (Math.abs(Vect.x) > 0.001) {
+                            const t = (-halfWidth - (x1 - idDest.x)) / Vect.x;
+                            const y = y1 + Vect.y * t - idDest.y;
+                            if (Math.abs(y) <= halfHeight && t > 0) tValues.push({ t, x: idDest.x - halfWidth, y: idDest.y + y });
+                        }
+                        // Bord haut
+                        if (Math.abs(Vect.y) > 0.001) {
+                            const t = (-halfHeight - (y1 - idDest.y)) / Vect.y;
+                            const x = x1 + Vect.x * t - idDest.x;
+                            if (Math.abs(x) <= halfWidth && t > 0) tValues.push({ t, x: idDest.x + x, y: idDest.y - halfHeight });
+                        }
+                        // Bord bas
+                        if (Math.abs(Vect.y) > 0.001) {
+                            const t = (halfHeight - (y1 - idDest.y)) / Vect.y;
+                            const x = x1 + Vect.x * t - idDest.x;
+                            if (Math.abs(x) <= halfWidth && t > 0) tValues.push({ t, x: idDest.x + x, y: idDest.y + halfHeight });
+                        }
+                        
+                        if (tValues.length > 0) {
+                            const closest = tValues.reduce((min, tv) => tv.t < min.t ? tv : min);
+                            x2 = closest.x;
+                            y2 = closest.y;
+                        } else {
+                            // Fallback
+                            const reverseAngle = angleRad + Math.PI;
+                            x2 = idDest.x + halfWidth * Math.cos(reverseAngle);
+                            y2 = idDest.y + halfHeight * Math.sin(reverseAngle);
+                        }
+                    } else {
+                        // Cercle : intersection avec le bord selon l'angle inverse
+                        const reverseAngle = angleRad + Math.PI;
+                        x2 = idDest.x + radius * Math.cos(reverseAngle);
+                        y2 = idDest.y + radius * Math.sin(reverseAngle);
+                    }
+                }
+                
+                // Recalculer la distance réelle entre les points de départ et d'arrivée
+                const realDx = x2 - x1;
+                const realDy = y2 - y1;
+                const realLength = Math.sqrt(realDx * realDx + realDy * realDy);
+                
+                // Vecteur unitaire pour les marges (basé sur la distance réelle)
+                const unitX = realLength > 0.001 ? realDx / realLength : 0;
+                const unitY = realLength > 0.001 ? realDy / realLength : 0;
+                
+                // Déplacer les points le long de la direction par la marge
+                const marginEnd = arc.arriveAtBottom ? arrowMarginBottom : arrowMarginTop;
+                const finalX1 = x1 + unitX * 0;
+                const finalY1 = y1 + unitY * 0;
+                const finalX2 = x2 - unitX * marginEnd;
+                const finalY2 = y2 - unitY * marginEnd;
+                
+                createArrow(finalX1, finalY1, finalX2, finalY2);
+                
+                // Ajouter l'étiquette de flèche si présente
+                if (arc.label) {
+                    const midX = (finalX1 + finalX2) / 2;
+                    const midY = (finalY1 + finalY2) / 2;
+                    createArrowLabel(midX, midY, arc.label);
+                }
+            });
+        }
+        
+        // Générer automatiquement les flèches
+        generateArrows();
     </script>
 </body>
 </html>

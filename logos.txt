@@ -1,7 +1,7 @@
 
 == Organigramme:
 🌞 Soleil
-💫 Milankovich 
+🎱 Geometrie
 
 ☁️ Nuages
 🪞 Albédo
@@ -52,7 +52,7 @@ Réémis 🔂 | 🔃 | 🔄
 💥🧿🌈
 🌤🌥🌦🌧🌨🌩
 🌬🌞☀️🌊🎱
-🕰🌟⏳🕶🕳
+🕰🌟⏳🕶🕳🏐
 
 🧲 Magnetisme
 🌳 Forêt
