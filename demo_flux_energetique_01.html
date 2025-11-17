@@ -18,7 +18,7 @@
             height: 100%;
             position: relative;
             min-height: 900px;
-            background: #0a0e27; /* Bleu nuit */
+            background: #0a0e27 url('galaxie.png') center center / cover no-repeat; /* Fond bleu nuit avec image de l'univers */
             border-radius: 12px; /* Bords arrondis */
             box-shadow: none !important;
             border: none !important;
@@ -85,20 +85,21 @@
         .flux-label {
             padding: 0px 4px;
             border-radius: 4px;
-            background: white;
-            border: 1px solid #ddd;
+            background: #0a0e27;
+            border: 1px solid #94a0d6;
             font-size: 11px;
-            font-weight: bold;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Police plus lisible en petit */
+            /* font-weight: bold; */
             white-space: nowrap;
             text-align: center;
             line-height: 1.5;
-            z-index: 200; /* Au-dessus de tout */
+            z-index: 200;
         }
         .flux-label-name {
-            color: #000;
+            color: #fff; /* Texte blanc sur fond bleu nuit */
         }
         .flux-label-blue {
-            color: #667eea;
+            color: #aab7f2;
         }
         .flux-sphere {
             position: absolute;
@@ -229,7 +230,7 @@
             return rect;
         }
         
-        function createCell(x, y, radius, fillColor, strokeColor, logo, labels, labelInput = null, radiationOptions = null, rectangleOptions = null, fillImage = null) {
+        function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = null, bottom = null, tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null) {
             const container = document.getElementById('flux-diagram');
             
             // Cellule principale avec grille 3x3
@@ -250,22 +251,24 @@
             const circleSize = radius * 2;
             circleBg.style.width = circleSize + 'px';
             circleBg.style.height = circleSize + 'px';
-            // Positionner le cercle au centre de la grille (130px, 55px), puis centrer avec transform
+            // Positionner le cercle au centre de la grille
+            // Centre horizontal : 130px (centre de la colonne centrale)
+            // Centre vertical : 55px (centre de la cellule = 110px / 2)
             circleBg.style.left = '130px'; // Centre de la colonne centrale
-            circleBg.style.top = '55px'; // Centre de la ligne centrale (110px / 2)
+            circleBg.style.top = '55px'; // Centre de la cellule (110px / 2)
             circleBg.style.transform = 'translate(-50%, -50%)'; // Centre le cercle sur (130, 55)
             // Ne pas créer le cercle si un rectangle est présent
             if (!rectangleOptions) {
-                circleBg.style.backgroundColor = fillColor;
+            circleBg.style.backgroundColor = fillColor;
                 // Ne pas mettre de bordure si strokeColor est vide
                 if (!strokeColor || strokeColor.trim() === '') {
                     circleBg.style.border = 'none';
                 } else {
-                    circleBg.style.borderColor = strokeColor;
+            circleBg.style.borderColor = strokeColor;
                     circleBg.style.borderWidth = '4px';
                     circleBg.style.borderStyle = 'solid';
                 }
-                circleBg.textContent = logo;
+            circleBg.textContent = logo;
                 
                 // Gestionnaire de clic pour copier le logo dans le presse-papier
                 circleBg.addEventListener('click', (e) => {
@@ -282,21 +285,12 @@
                     });
                 });
                 
-                cell.appendChild(circleBg);
+            cell.appendChild(circleBg);
             }
             
-            // Organisation des étiquettes
-            let labelObj = {};
-            if (Array.isArray(labels)) {
-                labelObj = {
-                    name: labels[0] || '',
-                    txt1: labels[1] || null,
-                    txt2: labels[2] || null,
-                    txt3: labels[3] || null,
-                    txt4: labels[4] || null
-                };
-            } else {
-                labelObj = labels;
+            // Ajouter tooltip sur la cellule si présent
+            if (tooltip) {
+                cell.title = tooltip;
             }
             
             // Créer les 9 cases de la grille (par-dessus le cercle)
@@ -319,39 +313,71 @@
                     
                     // [1,1] = Vide (le logo est dans le cercle en arrière-plan)
                     // Les autres cases contiennent les étiquettes
-                    // [1,0] = Entrée en haut
-                    if (col === 1 && row === 0 && labelInput) {
+                    // [1,0] = Top (haut)
+                    if (col === 1 && row === 0 && top) {
                         const label = document.createElement('div');
                         label.className = 'flux-label flux-label-blue';
-                        label.textContent = labelInput;
+                        label.innerHTML = top; // Utiliser innerHTML pour interpréter les balises <br>
+                        if (top.includes('<br>')) {
+                            label.style.whiteSpace = 'normal';
+                            label.style.width = 'max-content';
+                            label.style.maxWidth = 'none';
+                        }
                         gridItem.appendChild(label);
                     }
-                    // [1,2] = Sortie en bas
-                    if (col === 1 && row === 2 && labelObj.txt1) {
+                    // [1,2] = Bottom (bas)
+                    if (col === 1 && row === 2 && bottom) {
                         const label = document.createElement('div');
                         label.className = 'flux-label flux-label-blue';
-                        label.textContent = labelObj.txt1;
+                        label.innerHTML = bottom; // Utiliser innerHTML pour interpréter les balises <br>
+                        if (bottom.includes('<br>')) {
+                            label.style.whiteSpace = 'normal';
+                            label.style.width = 'max-content';
+                            label.style.maxWidth = 'none';
+                        }
                         gridItem.appendChild(label);
                     }
-                    // [2,1] = Nom + infos (toujours à droite)
-                    if (col === 2 && row === 1) {
-                        const sideLabels = [];
-                        if (labelObj.name) sideLabels.push({ text: labelObj.name, isName: true });
-                        if (labelObj.txt2) sideLabels.push({ text: labelObj.txt2, isName: false });
-                        if (labelObj.txt3) sideLabels.push({ text: labelObj.txt3, isName: false });
-                        if (labelObj.txt4) sideLabels.push({ text: labelObj.txt4, isName: false });
-                        
-                        // Créer un conteneur pour empiler les étiquettes verticalement
+                    // [0,1] = Left (gauche)
+                    if (col === 0 && row === 1 && left && left.length > 0) {
                         const labelContainer = document.createElement('div');
                         labelContainer.style.display = 'flex';
                         labelContainer.style.flexDirection = 'column';
                         labelContainer.style.gap = '4px';
-                        labelContainer.style.alignItems = 'flex-start'; // Toujours à droite (col === 2)
+                        labelContainer.style.alignItems = 'flex-end'; // À gauche (col === 0)
+                        labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
                         
-                        sideLabels.forEach(item => {
+                        left.forEach(text => {
                             const label = document.createElement('div');
-                            label.className = 'flux-label ' + (item.isName ? 'flux-label-name' : 'flux-label-blue');
-                            label.textContent = item.text;
+                            label.className = 'flux-label flux-label-blue';
+                            label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+                            if (text.includes('<br>')) {
+                                label.style.whiteSpace = 'normal';
+                                label.style.width = 'max-content';
+                                label.style.maxWidth = 'none';
+                            }
+                            labelContainer.appendChild(label);
+                        });
+                        
+                        gridItem.appendChild(labelContainer);
+                    }
+                    // [2,1] = Right (droite)
+                    if (col === 2 && row === 1 && right && right.length > 0) {
+                        const labelContainer = document.createElement('div');
+                        labelContainer.style.display = 'flex';
+                        labelContainer.style.flexDirection = 'column';
+                        labelContainer.style.gap = '4px';
+                        labelContainer.style.alignItems = 'flex-start'; // À droite (col === 2)
+                        labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
+                        
+                        right.forEach(text => {
+                            const label = document.createElement('div');
+                            label.className = 'flux-label flux-label-blue';
+                            label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+                            if (text.includes('<br>')) {
+                                label.style.whiteSpace = 'normal';
+                                label.style.width = 'max-content';
+                                label.style.maxWidth = 'none';
+                            }
                             labelContainer.appendChild(label);
                         });
                         
@@ -414,12 +440,18 @@
             const createLabel = (text, offsetX, offsetY, isName = false, size = null) => {
                 if (!text) return;
                 const label = document.createElement('div');
-                label.className = 'flux-label ' + (isName ? 'flux-label-name' : 'flux-label-blue');
-                label.textContent = text;
+                label.className = 'flux-label flux-label-blue'; // Tous les textes des flèches en bleu
+                label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                 label.style.position = 'absolute';
                 label.style.left = offsetX + 'px';
                 label.style.top = offsetY + 'px';
                 label.style.transform = 'translate(-50%, -50%)';
+                // Si le texte contient <br>, permettre les retours à la ligne mais pas le wrapping automatique
+                if (text.includes('<br>')) {
+                    label.style.whiteSpace = 'normal';
+                    label.style.width = 'max-content'; // Largeur selon le contenu, pas de wrapping
+                    label.style.maxWidth = 'none'; // Pas de limite de largeur
+                }
                 // Si size est 'bigger', agrandir le texte 2 fois et retirer border/fond
                 if (size === 'bigger') {
                     // Taille de base : 16px (taille par défaut du navigateur)
@@ -474,6 +506,7 @@
             const length = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx) * 180 / Math.PI;
             
+            arrow.style.position = 'absolute';
             arrow.style.left = x1 + 'px';
             arrow.style.top = y1 + 'px';
             arrow.style.width = length + 'px';
@@ -482,7 +515,6 @@
             arrow.style.transform = `rotate(${angle}deg)`;
             
             // Pointe de flèche à la fin de la flèche (point d'arrivée)
-            arrow.style.position = 'relative';
             const arrowhead = document.createElement('div');
             arrowhead.style.position = 'absolute';
             arrowhead.style.right = '-8px';
@@ -585,32 +617,34 @@
         
         // Définition du graphe : nœuds (cellules)
         const nodes = [
-            { id: 'soleil', x: centerX-70, y: 60, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: '#ffee55', logo: '🌞', labels: { name: 'Soleil', txt1: '6.24×10⁷ W/m²' }, labelInput: '3.8×10²⁶ W', radiation: { numCircles: 8, maxRadius: null, openingAngle: 0 } },
-            { id: 'geometrie', x: centerX-70, y: 200, radius, fillColor: 'rgba(255, 255, 0, 0.1)', strokeColor: '#555500', logo: '🎱', labels: { name: '', txt1: '' }, labelInput: '1361 W/m²', radiation: { numCircles: 8, maxRadius: null, openingAngle: 270 } },
-            { id: 'albedo', x: centerX-70, y: 320, radius, fillColor: 'rgba(255, 255, 255, 0.05)', strokeColor: '#333333', logo: '🪞', labels: { name: 'Albédo', txt1: '⛅50% + ❄️20%' }, labelInput: '340.25 W/m²', radiation: null },
-            { id: 'espace1', x: centerX + 80, y: 180, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '#000000', logo: '🌌', labels: { name: '', txt1: '' }, labelInput: '238.18 W/m²', radiation: null },
-            { id: 'noyau', x: centerX + 80, y: 300, radius, fillColor: 'rgba(255, 69, 0, 0.5)', strokeColor: '#ff4500', logo: '🔥', labels: { name: 'Noyau', txt1: '0.087 W/m²' }, labelInput: '~5700 K', radiation: null },
-            { id: 'surface', x: centerX + 80, y: 435, radius, fillColor: 'rgba(0, 0, 255, 0.2', strokeColor: '#111177', logo: '🌍', labels: { name: '', txt1: '102.08 W/m²' }, labelInput: '102.08 W/m²', radiation: null },
-            { id: 'effetSerre', x: centerX - 60, y: 610, radius, fillImage: '🌫', strokeColor: '', logo: '', labels: { name: '', txt1: 'Effet de Serre' }, labelInput: 'Athmosphère', radiation: null, rectangle: { width: 100, height: 200, factors: [
+            { id: 'soleil', x: centerX-70, y: 60, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: '#ffee55', logo: '🌞', left: [], right: [], top: '3.8×10²⁶ W', bottom: '6.24×10⁷ W/m²', tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: null, openingAngle: 0 } },
+            { id: 'geometrie', x: centerX-70, y: 200, radius, fillColor: 'rgba(255, 255, 0, 0.1)', strokeColor: '#555500', logo: '🎱', left: ["1361<br>W/m²"], right: [], top: '', bottom: '', tooltip: 'Geometrie' },
+            //radiation: { numCircles: 8, maxRadius: null, openingAngle: 270 }
+            { id: 'albedo', x: centerX+80, y: 160, radius, fillColor: 'rgba(255, 255, 255, 0.05)', strokeColor: '#333333', logo: '🪞', left: [], right: ["Albédo"], top: '', bottom: '⛅50% + ❄️20%', tooltip: 'Albédo', radiation: null },
+            // 🌌
+            { id: 'espace1', x: centerX+100 , y: 40, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🛰', left: [], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null },
+            { id: 'noyau', x: centerX-80 , y: 300, radius, fillColor: 'rgba(255, 69, 0, 0.5)', strokeColor: '#ff4500', logo: '🌋', left: [], right: [], top: 'Noyau', bottom: '~5700 K', tooltip: 'Noyau', radiation: null },
+            { id: 'surface', x: centerX + 90, y: 300, radius, fillColor: 'rgba(0, 0, 255, 0.2', strokeColor: '#111177', logo: '🌍', left: [], right: [], top: '', bottom: '102.08 W/m²', tooltip: 'Surface', radiation: null },
+            { id: 'effetSerre', x: centerX - 60, y: 500, radius, fillImage: '🌫', strokeColor: '', logo: '', left: [], right: [], top: 'Athmosphère', bottom: 'Effet de Serre', tooltip: 'Effet de Serre', radiation: null, rectangle: { width: 100, height: 200, factors: [
                 { icon: '🌵', label: 'CO₂' },
                 { icon: '💧', label: 'Eau' },
                 { icon: '⛽', label: 'Méthane' }
             ]} },
-            { id: 'espace2', x: centerX + 100, y: 730, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '#000033', logo: '🌌', labels: { name: '', txt1: '' }, labelInput: '102.08 W/m²', radiation: null },
-            { id: 'reemis', x: centerX + 80, y: 580, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '#000033', logo: '🔂', labels: { name: '', txt1: '0.00 W/m²' }, labelInput: 'Forçage Radiatif', radiation: null }
+            { id: 'espace2', x: centerX + 100, y: 600, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🛰', left: [], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null },
+            { id: 'reemis', x: centerX + 90, y: 480, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🔂', left: [], right: [], top: 'Forçage Radiatif', bottom: '0.00 W/m²', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: null, openingAngle: 270 } }
         ];
         
         // Définition du graphe : arcs (flèches)
         const arcs = [
-            { from: 'soleil', to: 'geometrie', label: { name: '1UA' } },
-            { from: 'geometrie', to: 'albedo' },
-            { from: 'albedo', to: 'espace1' },
-            { from: 'albedo', to: 'surface' },
-            { from: 'noyau', to: 'surface', label: { name: 'Géothermie', txt1: '' } }, 
+            { from: 'soleil', to: 'geometrie', label: { name: '1UA', txt1: '' } },
+            { from: 'geometrie', to: 'albedo', label: { name: '340.25<br>W/m²' } },
+            { from: 'albedo', to: 'espace1', label: { name: '238.18 W/m²', txt1: '' } },
+            { from: 'albedo', to: 'surface', label: { name: '', txt1: '102.08 W/m²' } },
+            { from: 'noyau', to: 'surface', label: { name: 'Géothermie<br>0.087 W/m²', txt1: '' } }, 
             { from: 'surface', to: 'effetSerre', label: { name: 'IR', txt1: 'σT⁴' } },
-            { from: 'effetSerre', to: 'espace2', label: { name: '', txt1: '🛰', size: 'bigger' } },
+            { from: 'effetSerre', to: 'espace2', label: { name: '102.08<br>W/m²', txt1: ''} },
             { from: 'effetSerre', to: 'reemis' },
-            { from: 'reemis', to: 'surface', arriveAtBottom: true, label: { name: '📛', txt1: '' } }
+            { from: 'reemis', to: 'surface', arriveAtBottom: true, label: { name: '📛', txt1: '', size: 'bigger' } }
         ];
         
         // Fonction pour calculer les positions Y automatiquement
@@ -685,11 +719,21 @@
             if (radiationOptions && radiationOptions.maxRadius === null) {
                 if (node.id === 'geometrie') {
                     const albedoNode = nodes.find(n => n.id === 'albedo');
-                    radiationOptions.maxRadius = albedoNode.y - node.y;
+                    if (albedoNode) {
+                        // Calculer la vraie distance euclidienne entre les centres
+                        const dx = albedoNode.x - node.x;
+                        const dy = albedoNode.y - node.y;
+                        radiationOptions.maxRadius = Math.sqrt(dx * dx + dy * dy);
+                    }
                 } else if (node.id === 'soleil') {
                     // Pour le soleil, calculer jusqu'à geometrie
                     const geometrieNode = nodes.find(n => n.id === 'geometrie');
-                    radiationOptions.maxRadius = geometrieNode.y - node.y;
+                    if (geometrieNode) {
+                        // Calculer la vraie distance euclidienne entre les centres
+                        const dx = geometrieNode.x - node.x;
+                        const dy = geometrieNode.y - node.y;
+                        radiationOptions.maxRadius = Math.sqrt(dx * dx + dy * dy);
+                    }
                 }
             }
             
@@ -700,8 +744,11 @@
                 node.fillColor, 
                 node.strokeColor, 
                 node.logo, 
-                node.labels, 
-                node.labelInput,
+                node.left || [],
+                node.right || [],
+                node.top || null,
+                node.bottom || null,
+                node.tooltip || null,
                 radiationOptions,
                 node.rectangle || null,
                 node.fillImage || null
@@ -710,11 +757,43 @@
         
         // Fonction pour générer automatiquement les flèches à partir du graphe
         function generateArrows() {
+            // DEBUG : Flags pour contrôler l'affichage et les logs
+            const DEBUG_MODE = true; // Activer le mode debug
+            const DEBUG_SHOW_ARROWS = {
+                'noyau->surface': true,  // Flèche géothermie
+                'reemis->surface': true, // Flèche forçage radiatif
+                'soleil->geometrie': true,
+                'geometrie->albedo': true,
+                'albedo->espace1': true,
+                'albedo->surface': true,
+                'surface->effetSerre': true,
+                'effetSerre->espace2': true,
+                'effetSerre->reemis': true
+            };
+            const DEBUG_LOG_ARROWS = {
+                'noyau->surface': true,  // Logger cette flèche pour debug décalage
+                'reemis->surface': false,
+                'soleil->geometrie': false,
+                'geometrie->albedo': false,
+                'albedo->espace1': false,
+                'albedo->surface': false,
+                'surface->effetSerre': false,
+                'effetSerre->espace2': false,
+                'effetSerre->reemis': false
+            };
+            
             arcs.forEach(arc => {
                 const idDep = nodes.find(n => n.id === arc.from);
                 const idDest = nodes.find(n => n.id === arc.to);
                 
                 if (!idDep || !idDest) return;
+                
+                // Vérifier si on doit afficher cette flèche
+                const arcKey = arc.from + '->' + arc.to;
+                const shouldShow = DEBUG_MODE ? (DEBUG_SHOW_ARROWS[arcKey] !== false) : true;
+                const shouldLog = DEBUG_MODE && DEBUG_LOG_ARROWS[arcKey];
+                
+                if (!shouldShow) return; // Ne pas créer cette flèche
                 
                 // Vecteur depuis le centre du départ vers le centre de la destination
                 const Vect = {
@@ -725,6 +804,14 @@
                 // Angle en radians puis en degrés
                 const angleRad = Math.atan2(Vect.y, Vect.x);
                 const angleDeg = angleRad * 180 / Math.PI;
+                
+                if (shouldLog) {
+                    console.log('=== DEBUG FLECHE', arcKey, '===');
+                    console.log('idDep:', idDep.id, 'pos:', idDep.x, idDep.y);
+                    console.log('idDest:', idDest.id, 'pos:', idDest.x, idDest.y);
+                    console.log('Vect:', Vect);
+                    console.log('angleDeg:', angleDeg);
+                }
                 
                 // Point de départ (x1, y1) : sur le bord du cercle ou rectangle source
                 let x1, y1;
@@ -793,31 +880,54 @@
                 const isVerticalEnough = absAngle > 45 && absAngle < 135;
                 
                 // Vérifier si la destination a des étiquettes
-                const hasLabelInput = idDest.labelInput && idDest.labelInput.trim() !== '';
-                const hasLabelBottom = idDest.labels && idDest.labels.txt1 && idDest.labels.txt1.trim() !== '';
+                const hasTop = idDest.top && idDest.top.trim() !== '';
+                const hasBottom = idDest.bottom && idDest.bottom.trim() !== '';
+                
+                if (shouldLog) {
+                    console.log('isGoingUp:', isGoingUp, 'isGoingDown:', isGoingDown);
+                    console.log('isVerticalEnough:', isVerticalEnough, 'absAngle:', absAngle);
+                    console.log('hasTop:', hasTop, 'hasBottom:', hasBottom);
+                    console.log('cellHalfHeight:', cellHalfHeight);
+                    console.log('x1, y1:', x1, y1);
+                }
                 
                 if (isGoingUp && isVerticalEnough) {
                     // Flèche vers le haut (assez verticale)
-                    if (hasLabelBottom) {
+                    if (hasBottom) {
                         // Arriver au bas de la grille (où se trouve txt1)
                         const gridY = idDest.y + cellHalfHeight;
+                        if (shouldLog) {
+                            console.log('CAS: isGoingUp && hasBottom');
+                            console.log('gridY calculé:', gridY, '(idDest.y:', idDest.y, '+ cellHalfHeight:', cellHalfHeight, ')');
+                        }
                         // Calculer l'intersection depuis (x1, y1) vers le centre, avec y = gridY
                         if (Math.abs(Vect.y) > 0.001) {
                             const t = (gridY - y1) / Vect.y;
                             x2 = x1 + Vect.x * t;
                             y2 = gridY;
+                            if (shouldLog) {
+                                console.log('t calculé:', t, '(gridY:', gridY, '- y1:', y1, ') / Vect.y:', Vect.y);
+                                console.log('x2, y2 calculés:', x2, y2);
+                            }
                         } else {
                             x2 = x1;
                             y2 = gridY;
+                            if (shouldLog) console.log('Vect.y trop petit, x2=x1, y2=gridY:', x2, y2);
                         }
                     } else {
                         // Arriver au bord du fond dessiné (cercle ou rectangle)
+                        if (shouldLog) {
+                            console.log('CAS: isGoingUp && !hasBottom');
+                        }
                         if (idDest.rectangle) {
                             const { width, height } = idDest.rectangle;
                             const halfWidth = width / 2;
                             const halfHeight = height / 2;
                             // Intersection avec le bord bas du rectangle
                             const bottomY = idDest.y + halfHeight;
+                            if (shouldLog) {
+                                console.log('Rectangle: bottomY:', bottomY);
+                            }
                             if (Math.abs(Vect.y) > 0.001) {
                                 const t = (bottomY - y1) / Vect.y;
                                 const x = x1 + Vect.x * t;
@@ -853,8 +963,8 @@
                     }
                 } else if (isGoingDown && isVerticalEnough) {
                     // Flèche vers le bas (assez verticale)
-                    if (hasLabelInput) {
-                        // Arriver au haut de la grille (où se trouve labelInput)
+                    if (hasTop) {
+                        // Arriver au haut de la grille (où se trouve top)
                         const gridY = idDest.y - cellHalfHeight;
                         // Calculer l'intersection depuis (x1, y1) vers le centre, avec y = gridY
                         if (Math.abs(Vect.y) > 0.001) {
@@ -944,10 +1054,28 @@
                             y2 = idDest.y + halfHeight * Math.sin(reverseAngle);
                         }
                     } else {
-                        // Cercle : intersection avec le bord selon l'angle inverse
-                        const reverseAngle = angleRad + Math.PI;
-                        x2 = idDest.x + radius * Math.cos(reverseAngle);
-                        y2 = idDest.y + radius * Math.sin(reverseAngle);
+                        // Flèche horizontale ou autre : pour les flèches horizontales, arriver au centre
+                        const isHorizontal = absAngle < 45 || absAngle > 135;
+                        if (isHorizontal && !idDest.rectangle) {
+                            // Arriver au centre du cercle pour les flèches horizontales
+                            x2 = idDest.x;
+                            y2 = idDest.y;
+                            if (shouldLog) {
+                                console.log('CAS: else (flèche horizontale, arriver au centre)');
+                                console.log('absAngle:', absAngle, 'isHorizontal:', isHorizontal);
+                                console.log('x2, y2 calculés (centre):', x2, y2, 'idDest.x, idDest.y:', idDest.x, idDest.y);
+                            }
+                        } else {
+                            // Cercle : intersection avec le bord selon l'angle inverse
+                            const reverseAngle = angleRad + Math.PI;
+                            x2 = idDest.x + radius * Math.cos(reverseAngle);
+                            y2 = idDest.y + radius * Math.sin(reverseAngle);
+                            if (shouldLog) {
+                                console.log('CAS: else (ni isGoingUp ni isGoingDown, ou pas assez vertical)');
+                                console.log('absAngle:', absAngle, 'isHorizontal:', isHorizontal);
+                                console.log('x2, y2 calculés (bord cercle):', x2, y2);
+                            }
+                        }
                     }
                 }
                 
@@ -956,18 +1084,133 @@
                 const realDy = y2 - y1;
                 const realLength = Math.sqrt(realDx * realDx + realDy * realDy);
                 
+                // Vérifier si on arrive au centre (pour les flèches horizontales notamment)
+                const arrivesAtCenter = (x2 === idDest.x && y2 === idDest.y && !idDest.rectangle);
+                
                 // Vecteur unitaire pour les marges (basé sur la distance réelle)
                 const unitX = realLength > 0.001 ? realDx / realLength : 0;
                 const unitY = realLength > 0.001 ? realDy / realLength : 0;
                 
                 // Déplacer les points le long de la direction par la marge
-                const marginEnd = arc.arriveAtBottom ? arrowMarginBottom : arrowMarginTop;
+                // Pour raccourcir la flèche, on doit déplacer le point d'arrivée dans la direction opposée au vecteur
+                // Utiliser 5% de la longueur au lieu d'une valeur fixe
+                // MAIS : ne pas appliquer de marge si on arrive au centre du logo
+                const marginPercent = 0.05; // 5%
+                const marginEnd = arrivesAtCenter ? 0 : realLength * marginPercent;
                 const finalX1 = x1 + unitX * 0;
                 const finalY1 = y1 + unitY * 0;
-                const finalX2 = x2 - unitX * marginEnd;
-                const finalY2 = y2 - unitY * marginEnd;
+                // Pour une flèche montante (unitY < 0), on doit soustraire la marge (y2 devient plus petit = plus bas)
+                // Pour une flèche descendante (unitY > 0), on doit aussi soustraire la marge (y2 devient plus petit = plus bas)
+                // Donc dans tous les cas : y2 - |margin| dans la direction du vecteur = y2 + unitY * marginEnd
+                const finalX2 = x2 + unitX * marginEnd;
+                const finalY2 = y2 + unitY * marginEnd;
                 
-                createArrow(finalX1, finalY1, finalX2, finalY2);
+                if (shouldLog) {
+                    console.log('=== VALEURS FINALES ===');
+                    console.log('x2, y2 avant marges:', x2, y2);
+                    console.log('arrivesAtCenter:', arrivesAtCenter);
+                    console.log('realDx, realDy:', realDx, realDy);
+                    console.log('realLength:', realLength);
+                    console.log('unitX, unitY:', unitX, unitY);
+                    console.log('marginPercent:', marginPercent * 100 + '%');
+                    console.log('marginEnd calculé:', marginEnd, arrivesAtCenter ? '(pas de marge, arrive au centre)' : '(5% de ' + realLength + ')');
+                    console.log('finalX1, finalY1:', finalX1, finalY1);
+                    console.log('finalX2, finalY2:', finalX2, finalY2);
+                    console.log('idDest.y:', idDest.y, 'cellHalfHeight:', cellHalfHeight, 'idDest.y + cellHalfHeight:', idDest.y + cellHalfHeight);
+                    console.log('CERCLE: idDest.x, idDest.y = centre cellule, cercle à top:55px dans grille de 110px');
+                    
+                    // Vérifier le positionnement réel du cercle et des étiquettes dans le DOM
+                    const destCell = createdCells[idDest.id];
+                    if (destCell) {
+                        const circle = destCell.querySelector('.flux-circle-bg');
+                        if (circle) {
+                            const rect = circle.getBoundingClientRect();
+                            const cellRect = destCell.getBoundingClientRect();
+                            const containerRect = document.getElementById('flux-diagram').getBoundingClientRect();
+                            console.log('=== POSITIONNEMENT RÉEL DOM ===');
+                            console.log('Container rect:', containerRect.left, containerRect.top);
+                            console.log('Cellule rect:', cellRect.left, cellRect.top, cellRect.width, cellRect.height);
+                            console.log('Cercle rect:', rect.left, rect.top, rect.width, rect.height);
+                            console.log('Centre cellule (calculé):', cellRect.left + cellRect.width/2, cellRect.top + cellRect.height/2);
+                            console.log('Centre cercle (calculé):', rect.left + rect.width/2, rect.top + rect.height/2);
+                            console.log('Différence Y cercle-cellule:', (rect.top + rect.height/2) - (cellRect.top + cellRect.height/2));
+                            // Position relative au container
+                            const cellCenterYRel = (cellRect.top + cellRect.height/2) - containerRect.top;
+                            const circleCenterYRel = (rect.top + rect.height/2) - containerRect.top;
+                            console.log('idDest.y (attendu):', idDest.y);
+                            console.log('Centre cellule Y (relatif container):', cellCenterYRel);
+                            console.log('Centre cercle Y (relatif container):', circleCenterYRel);
+                            console.log('Différence idDest.y - centre cercle:', idDest.y - circleCenterYRel);
+                            
+                            // Vérifier les étiquettes left et right en utilisant les classes CSS
+                            const leftGridItem = destCell.querySelector('.flux-grid-item-left');
+                            const rightGridItem = destCell.querySelector('.flux-grid-item-right');
+                            let leftLabel = null, rightLabel = null;
+                            if (leftGridItem) {
+                                const label = leftGridItem.querySelector('.flux-label');
+                                if (label) leftLabel = label;
+                            }
+                            if (rightGridItem) {
+                                const label = rightGridItem.querySelector('.flux-label');
+                                if (label) rightLabel = label;
+                            }
+                            if (leftLabel || rightLabel) {
+                                console.log('Étiquettes trouvées - left:', !!leftLabel, 'right:', !!rightLabel);
+                                if (leftLabel) {
+                                    const leftRect = leftLabel.getBoundingClientRect();
+                                    console.log('Étiquette left rect:', leftRect.top, leftRect.height);
+                                    console.log('Centre étiquette left:', leftRect.top + leftRect.height/2);
+                                    console.log('Différence Y étiquette left - cellule:', (leftRect.top + leftRect.height/2) - (cellRect.top + cellRect.height/2));
+                                }
+                                if (rightLabel) {
+                                    const rightRect = rightLabel.getBoundingClientRect();
+                                    console.log('Étiquette right rect:', rightRect.top, rightRect.height);
+                                    console.log('Centre étiquette right:', rightRect.top + rightRect.height/2);
+                                    console.log('Différence Y étiquette right - cellule:', (rightRect.top + rightRect.height/2) - (cellRect.top + cellRect.height/2));
+                                }
+                            }
+                        }
+                    }
+                    
+                    console.log('================================');
+                }
+                
+                const arrow = createArrow(finalX1, finalY1, finalX2, finalY2);
+                
+                // Vérifier le positionnement réel de la flèche dans le DOM
+                if (shouldLog && arrow) {
+                    setTimeout(() => {
+                        const arrowRect = arrow.getBoundingClientRect();
+                        const containerRect = document.getElementById('flux-diagram').getBoundingClientRect();
+                        const destCell = createdCells[idDest.id];
+                        if (destCell) {
+                            const cellRect = destCell.getBoundingClientRect();
+                            const circle = destCell.querySelector('.flux-circle-bg');
+                            if (circle) {
+                                const circleRect = circle.getBoundingClientRect();
+                                console.log('=== POSITIONNEMENT FLECHE DOM ===');
+                                console.log('Container rect:', containerRect.left, containerRect.top);
+                                console.log('Flèche style.left, top:', arrow.style.left, arrow.style.top);
+                                console.log('Flèche rect:', arrowRect.left, arrowRect.top, arrowRect.width, arrowRect.height);
+                                console.log('Point final calculé (finalX2, finalY2):', finalX2, finalY2);
+                                // Position relative au container
+                                const arrowX1Rel = arrowRect.left - containerRect.left;
+                                const arrowY1Rel = arrowRect.top - containerRect.top;
+                                console.log('Point départ flèche (relatif container):', arrowX1Rel, arrowY1Rel, 'attendu:', finalX1, finalY1);
+                                // Calculer la position réelle du point d'arrivée de la flèche
+                                const angleRad = Math.atan2(finalY2 - finalY1, finalX2 - finalX1);
+                                const arrowEndX = arrowX1Rel + arrowRect.width * Math.cos(angleRad);
+                                const arrowEndY = arrowY1Rel + arrowRect.width * Math.sin(angleRad);
+                                console.log('Point d\'arrivée réel flèche (relatif container):', arrowEndX, arrowEndY, 'attendu:', finalX2, finalY2);
+                                console.log('Différence X, Y:', arrowEndX - finalX2, arrowEndY - finalY2);
+                                console.log('Centre cercle (DOM):', circleRect.left + circleRect.width/2, circleRect.top + circleRect.height/2);
+                                const circleCenterYRel = (circleRect.top + circleRect.height/2) - containerRect.top;
+                                console.log('Centre cercle (relatif container):', circleRect.left + circleRect.width/2 - containerRect.left, circleCenterYRel);
+                                console.log('Différence Y flèche-cercle:', arrowEndY - circleCenterYRel);
+                            }
+                        }
+                    }, 100);
+                }
                 
                 // Ajouter l'étiquette de flèche si présente
                 if (arc.label) {
