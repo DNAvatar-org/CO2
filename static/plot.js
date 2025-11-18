@@ -281,7 +281,7 @@ function initPlot() {
                 standoff: 50 // Encore plus bas
             },
             titlefont: { color: 'black' }, // Même taille que les autres axes
-            range: [0, 50],
+            range: [3, 50], // Commence à 3μm au lieu de 0
             fixedrange: true,
             tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
             showgrid: false,
@@ -684,7 +684,7 @@ window.updatePlot = function updatePlot(data) {
     const updateLayout = {
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
         xaxis: { 
-            range: [0, 50],
+            range: [3, 50], // Commence à 3μm au lieu de 0
             fixedrange: true,
             title: {
                 text: "Longueur d'onde (μm)",

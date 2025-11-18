@@ -887,10 +887,10 @@ window.updateDisplay = function updateDisplay(data) {
             h2oStatusElement.textContent = '0 %';
         }
     }
-    if (data && data.temp_surface !== undefined && data.temp_surface > 0) {
+    if (data && data.temp_surface_c !== undefined) {
         const tempSurfaceEl = document.getElementById('temp-surface-synthese');
         if (tempSurfaceEl) {
-            tempSurfaceEl.textContent = `${' '.repeat(5)}${data.temp_surface.toFixed(1)}K (${data.temp_surface_c >= 0 ? '+' : ''}${data.temp_surface_c.toFixed(1)}°C)`;
+            tempSurfaceEl.textContent = `${data.temp_surface_c.toFixed(1)}`;
         }
     } else {
         const tempSurfaceEl = document.getElementById('temp-surface-synthese');

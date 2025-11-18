@@ -17,9 +17,9 @@
     border-left: none !important;
 }
 .flux-diagram {
-    width: 320px;
-    height: 630px;
-    min-height: 630px;
+    width: 328px;
+    height: 640px;
+    min-height: 640px;
     position: relative;
     background-color: rgba(170, 183, 242, 0.15);
     border-radius: 12px;

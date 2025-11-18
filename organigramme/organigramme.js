@@ -79,7 +79,7 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
 }
 
 // Fonction pour créer une cellule avec un tableau 3x3
-function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = null, bottom = null, tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null) {
+function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = null, bottom = null, tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null) {
     const container = document.getElementById('flux-diagram');
     
     // Cellule principale avec grille 3x3
@@ -87,13 +87,26 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     const cell = document.createElement('div');
     // Utiliser flux-cellRect si rectangle présent pour avoir une hauteur plus grande
     cell.className = rectangleOptions ? 'flux-cellRect' : 'flux-cell';
+    
+    // Ajouter un ID si fourni
+    if (nodeId) {
+        cell.id = 'cell-' + nodeId;
+    }
+    
+    // Si pas de cercle (strokeColor vide), réduire la hauteur de la ligne centrale pour rapprocher les étiquettes
+    const hasCircle = strokeColor && strokeColor.trim() !== '';
+    if (!hasCircle && !rectangleOptions) {
+        cell.style.gridTemplateRows = '25px 50px 20px'; // Réduire ligne centrale de 60px à 50px
+    }
+    
     // Positionner le coin supérieur gauche de la grille, puis utiliser transform pour centrer précisément
     cell.style.left = x + 'px';
     cell.style.top = y + 'px';
     cell.style.transform = 'translate(-50%, -50%)'; // Centre la grille sur (x, y), donc le centre de [1,1] est à (x, y)
     
     // Cercle en arrière-plan (derrière le tableau)
-    // Le centre de la case centrale [1,1] est à (130px, 55px) dans la grille
+    // Le centre de la case centrale [1,1] est à (130px, 55px) dans la grille par défaut (25 + 60/2)
+    // Si grille réduite (pas de cercle, ligne centrale 50px), centre à (130px, 50px) (25 + 50/2)
     // Avec transform: translate(-50%, -50%) sur la grille, ce centre sera à (x, y)
     const circleBg = document.createElement('div');
     circleBg.className = 'flux-circle-bg';
@@ -101,11 +114,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     circleBg.style.width = circleSize + 'px';
     circleBg.style.height = circleSize + 'px';
     // Positionner le cercle au centre de la grille
-    // Centre horizontal : 130px (centre de la colonne centrale)
-    // Centre vertical : 55px (centre de la cellule = 110px / 2)
+    // Centre horizontal : 130px (toujours au centre des colonnes)
+    // Centre vertical : 55px (grille normale 25+60/2) ou 50px (grille réduite 25+50/2)
+    const centerY = hasCircle ? '55px' : '50px'; // Ajuster verticalement si grille réduite
     circleBg.style.left = '130px'; // Centre de la colonne centrale
-    circleBg.style.top = '55px'; // Centre de la cellule (110px / 2)
-    circleBg.style.transform = 'translate(-50%, -50%)'; // Centre le cercle sur (130, 55)
+    circleBg.style.top = centerY; // Centre de la ligne centrale
+    circleBg.style.transform = 'translate(-50%, -50%)'; // Centre le cercle sur (130, centerY)
     // Ne pas créer le cercle si un rectangle est présent
     if (!rectangleOptions) {
         circleBg.style.backgroundColor = fillColor;
@@ -911,7 +925,8 @@ nodes.forEach(node => {
         node.tooltip || null,
         radiationOptions,
         node.rectangle || null,
-        node.fillImage || null
+        node.fillImage || null,
+        node.id // Passer l'ID du noeud pour créer l'ID de la cellule
     );
 });
 

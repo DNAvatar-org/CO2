@@ -50,54 +50,59 @@
         leftColumn.innerHTML = '';
         rightColumn.innerHTML = '';
         
-        // LEFT COLUMN
-        // 1. title-container (toujours)
-        if (divs['title-container']) {
-            leftColumn.appendChild(divs['title-container']);
+    // LEFT COLUMN
+    // 1. title-container (toujours)
+    if (divs['title-container']) {
+        leftColumn.appendChild(divs['title-container']);
+    }
+    
+    // 2. (screenWidth>400)?flux-diagram:plot-container-wrapper
+    if (screenWidth > 400) {
+        if (divs['flux-diagram']) {
+            leftColumn.appendChild(divs['flux-diagram']);
         }
-        
-        // 2. (screenWidth>400)?flux-diagram:plot-container-wrapper
-        if (screenWidth > 400) {
-            if (divs['flux-diagram']) {
-                leftColumn.appendChild(divs['flux-diagram']);
-            }
-        } else {
-            if (divs['plot-container-wrapper']) {
-                leftColumn.appendChild(divs['plot-container-wrapper']);
-            }
+    } else {
+        if (divs['plot-container-wrapper']) {
+            leftColumn.appendChild(divs['plot-container-wrapper']);
         }
+    }
+    
+    // 3. Wrapper pour button-container + synthese_Temp (à droite de flux-diagram)
+    if (divs['button-container'] || divs['synthese_Temp']) {
+        const buttonsWrapper = document.createElement('div');
+        buttonsWrapper.className = 'buttons-temp-wrapper';
         
-        // 3. synthese_Temp
-        if (divs['synthese_Temp']) {
-            leftColumn.appendChild(divs['synthese_Temp']);
-        }
-        
-        // RIGHT COLUMN
-        // 1. (screenWidth>400)?plot-container-wrapper:flux-diagram
-        if (screenWidth > 400) {
-            if (divs['plot-container-wrapper']) {
-                rightColumn.appendChild(divs['plot-container-wrapper']);
-            }
-        } else {
-            if (divs['flux-diagram']) {
-                rightColumn.appendChild(divs['flux-diagram']);
-            }
-        }
-        
-        // 2. timeline-display
-        if (divs['timeline-display']) {
-            rightColumn.appendChild(divs['timeline-display']);
-        }
-        
-        // 3. button-container
         if (divs['button-container']) {
-            rightColumn.appendChild(divs['button-container']);
+            buttonsWrapper.appendChild(divs['button-container']);
+        }
+        if (divs['synthese_Temp']) {
+            buttonsWrapper.appendChild(divs['synthese_Temp']);
         }
         
-        // 4. synthese_EdS
-        if (divs['synthese_EdS']) {
-            rightColumn.appendChild(divs['synthese_EdS']);
+        leftColumn.appendChild(buttonsWrapper);
+    }
+    
+    // RIGHT COLUMN
+    // 1. (screenWidth>400)?plot-container-wrapper:flux-diagram
+    if (screenWidth > 400) {
+        if (divs['plot-container-wrapper']) {
+            rightColumn.appendChild(divs['plot-container-wrapper']);
         }
+    } else {
+        if (divs['flux-diagram']) {
+            rightColumn.appendChild(divs['flux-diagram']);
+        }
+    }
+    
+    // 2. timeline-display
+    if (divs['timeline-display']) {
+        rightColumn.appendChild(divs['timeline-display']);
+    }
+    
+    // 3. synthese_EdS
+    if (divs['synthese_EdS']) {
+        rightColumn.appendChild(divs['synthese_EdS']);
+    }
     }
     
     // Réorganiser au chargement
