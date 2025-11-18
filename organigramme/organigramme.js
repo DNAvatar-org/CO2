@@ -239,10 +239,26 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         const { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800' } = radiationOptions;
         // Vérifier que maxRadius est défini
         if (maxRadius !== null && maxRadius !== undefined) {
+            // Créer un groupe pour ces radiations avec la couleur définie
+            const radiationGroup = document.createElement('div');
+            radiationGroup.className = 'flux-radiation-group';
+            radiationGroup.style.color = color; // Les .flux-sphere hériteront via currentColor
+            
+            const mainContainer = document.getElementById('flux-diagram');
+            let container = mainContainer.querySelector('.flux-radiation-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'flux-radiation-container';
+                mainContainer.appendChild(container);
+            }
+            container.appendChild(radiationGroup);
+            
             for (let i = 1; i <= numCircles; i++) {
                 const progress = i / numCircles;
                 const arcRadius = radius + (maxRadius - radius) * progress;
-                createArc(x, y, arcRadius, 0.3 + (progress * 0.2), openingAngle, rotation, color);
+                const arc = createArc(x, y, arcRadius, 0.3 + (progress * 0.2), openingAngle, rotation, radiationGroup);
+                // Forcer la bordure complète en inline style pour garantir la couleur
+                arc.style.border = '2px dashed ' + color;
             }
         }
     }
@@ -402,22 +418,40 @@ function createArrow(x1, y1, x2, y2) {
 }
 
 // Fonction pour créer une sphère concentrique
-function createSphere(cx, cy, r, opacity) {
-    const container = document.getElementById('flux-diagram');
+function createSphere(cx, cy, r, opacity, container = null) {
+    if (!container) {
+        const mainContainer = document.getElementById('flux-diagram');
+        container = mainContainer.querySelector('.flux-radiation-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'flux-radiation-container';
+            mainContainer.appendChild(container);
+        }
+    }
     const sphere = document.createElement('div');
     sphere.className = 'flux-sphere';
     sphere.style.left = (cx - r) + 'px';
     sphere.style.top = (cy - r) + 'px';
     sphere.style.width = (r * 2) + 'px';
     sphere.style.height = (r * 2) + 'px';
+    // Pas besoin de border ici, défini en CSS avec currentColor
     sphere.style.opacity = opacity;
     container.appendChild(sphere);
     return sphere;
 }
 
 // Fonction pour créer un arc de cercle (comme createSphere mais avec ouverture)
-function createArc(cx, cy, r, opacity, openingAngle = 0, rotation = 270, color = '#ff9800') {
-    const container = document.getElementById('flux-diagram');
+// Le paramètre container peut être un élément DOM ou undefined (cherchera le container par défaut)
+function createArc(cx, cy, r, opacity, openingAngle = 0, rotation = 270, container = null) {
+    if (!container) {
+        const mainContainer = document.getElementById('flux-diagram');
+        container = mainContainer.querySelector('.flux-radiation-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'flux-radiation-container';
+            mainContainer.appendChild(container);
+        }
+    }
     const arc = document.createElement('div');
     arc.className = 'flux-sphere'; // Utilise la même classe que createSphere
     
@@ -426,7 +460,7 @@ function createArc(cx, cy, r, opacity, openingAngle = 0, rotation = 270, color =
     arc.style.top = (cy - r) + 'px';
     arc.style.width = (r * 2) + 'px';
     arc.style.height = (r * 2) + 'px';
-    arc.style.border = `2px dashed ${color}`; // Style directement dans le HTML, couleur personnalisable
+    // Pas besoin de border ici, défini en CSS avec currentColor
     arc.style.opacity = opacity;
     
     // Calculer le clip-path pour masquer l'ouverture

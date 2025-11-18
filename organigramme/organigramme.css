@@ -104,13 +104,34 @@
 .flux-label-blue {
     color: #aab7f2;
 }
+/* Container pour regrouper toutes les radiations (flux-sphere) */
+.flux-radiation-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0; /* Sous les cellules */
+    pointer-events: none;
+    color: #ff9800; /* Couleur par défaut si non définie */
+}
+
+/* Container pour un groupe de radiations avec une couleur spécifique */
+.flux-radiation-group {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
 .flux-sphere {
     position: absolute;
     border-radius: 50%;
-    border: 2px dashed #ff9800;
+    border: 2px dashed currentColor; /* Hérite de la couleur du container parent */
     background: none;
     pointer-events: none;
-    z-index: 0; /* Sous les autres divs (cellules: 20, étiquettes: 200) */
 }
 .flux-arrow {
     position: absolute;

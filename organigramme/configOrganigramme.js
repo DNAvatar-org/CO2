@@ -34,7 +34,7 @@ const spacingSizes = {
 // Explication : La Terre est une sphère. Vu du Soleil, seule la face éclairée est visible (disque de rayon R, surface = πR²)
 // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
 const nodes = [
-    { id: 'soleil', x: centerX-70, y: centerY+60, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: '#ffee55', logo: '🌞', left: [], right: [], top: '3.8×10²⁶ W', bottom: '6.24×10⁷ W/m²', tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: null, openingAngle: 0, color: '#FFAA00' } },
+    { id: 'soleil', x: centerX-70, y: centerY+60, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: '#ffee55', logo: '🌞', left: [], right: [], top: '3.8×10²⁶ W', bottom: '6.24×10⁷ W/m²', tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 140, openingAngle: 0, color: '#FFFF00' } },
     { id: 'geometrie', x: centerX-70, y: centerY+200, radius, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: '', logo: '🎱', left: ["1361<br>W/m²"], right: [], top: '', bottom: 'Geometrie', tooltip: 'Geometrie' },
     { id: 'albedo', x: centerX+80, y: centerY+160, radius, fillColor: 'rgba(255, 255, 255, 0.5)', strokeColor: '#ffffff', logo: '🏐', left: [], right: ["Albédo"], top: '', bottom: '⛅50% + ❄️20%', tooltip: 'Albédo', radiation: null },
     { id: 'espace1', x: centerX+110 , y: centerY+25, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🛰', left: [], right: [], top: '', bottom: 'Observation', tooltip: 'Espace', radiation: null },

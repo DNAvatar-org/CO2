@@ -29,21 +29,23 @@
             return;
         }
         
-        // Styliser synthese_EdS pour qu'elle s'intègre bien dans le rectangle
-        syntheseEds.style.position = 'relative';
-        syntheseEds.style.zIndex = '2'; // Au-dessus du logo de fond
-        syntheseEds.style.padding = '8px';
-        syntheseEds.style.background = 'rgba(255, 255, 255, 0.9)';
-        syntheseEds.style.borderRadius = '8px';
-        syntheseEds.style.fontSize = '10px';
-        syntheseEds.style.width = 'calc(100% - 16px)';
-        syntheseEds.style.maxWidth = '100%';
-        syntheseEds.style.boxShadow = 'none';
+        // Supprimer uniquement les anciennes div factors (garder le fond fillImage)
+        const factors = rectangle.querySelectorAll('.flux-rectangle-factor');
+        factors.forEach(factor => factor.remove());
         
-        // Déplacer synthese_EdS dans le rectangle
-        rectangle.appendChild(syntheseEds);
+        // Extraire le contenu de synthese_EdS et l'ajouter directement au rectangle
+        while (syntheseEds.firstChild) {
+            const child = syntheseEds.firstChild;
+            // Assurer que chaque élément est au-dessus du fond (z-index: 0)
+            if (child.nodeType === 1) { // Element node
+                child.style.position = 'relative';
+                child.style.zIndex = '10';
+            }
+            rectangle.appendChild(child);
+        }
         
-        console.log('Synthèse EdS intégrée dans le rectangle Effet de Serre');
+        // Supprimer la div synthese_EdS maintenant vide
+        syntheseEds.remove();
     }
     
     // Attendre que le DOM et l'organigramme soient chargés
