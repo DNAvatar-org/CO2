@@ -36,8 +36,8 @@ const spacingSizes = {
 const nodes = [
     { id: 'soleil', x: centerX-70, y: centerY+60, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: '#ffee55', logo: '🌞', left: [], right: [], top: '3.8×10²⁶ W', bottom: '6.24×10⁷ W/m²', tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 140, openingAngle: 0, color: '#FFFF00' } },
     { id: 'geometrie', x: centerX-70, y: centerY+200, radius, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: '', logo: '🎱', left: ["1361<br>W/m²"], right: [], top: '', bottom: 'Geometrie', tooltip: 'Geometrie' },
-    { id: 'albedo', x: centerX+80, y: centerY+160, radius, fillColor: 'rgba(255, 255, 255, 0.5)', strokeColor: '#ffffff', logo: '🏐', left: [], right: ["Albédo"], top: '', bottom: '⛅50% + ❄️20%', tooltip: 'Albédo', radiation: null },
-    { id: 'espace1', x: centerX+110 , y: centerY+25, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🛰', left: [], right: [], top: '', bottom: 'Observation', tooltip: 'Espace', radiation: null },
+    { id: 'albedo', x: centerX+80, y: centerY+160, radius, fillColor: 'rgba(255, 255, 255, 0.5)', strokeColor: '#ffffff', logo: '🏐', left: [], right: ["Albédo"], top: '', bottom: '⛅50% + ❄️20%', tooltip: 'Albédo', radiation: { numCircles: 8, maxRadius: 146, openingAngle: 310, rotation: 292, color: '#ffffff' } },
+    { id: 'espace1', x: centerX+135 , y: centerY+25, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🛰', left: [], right: [], top: '', bottom: 'Observation', tooltip: 'Espace', radiation: null },
     { id: 'noyau', x: centerX-60 , y: centerY+305, radius, fillColor: 'rgba(255, 69, 0, 0.5)', strokeColor: '#ff4500', logo: '🌋', left: ['Noyau'], right: [], top: 'Géothermie', bottom: '~5700 K', tooltip: 'Noyau', radiation: null },
     { id: 'surface', x: centerX + 90, y: centerY+305, radius, fillColor: 'rgba(0, 150, 255, 0.5', strokeColor: '#00aaff', logo: '🌍', left: [], right: [], top: '', bottom: '', tooltip: 'Surface', radiation: null },
     { id: 'effetSerre', x: centerX - 70, y: centerY+500, radius, fillImage: '🌫', strokeColor: '', logo: '', left: [], right: [], top: 'Athmosphère<br>Effet de Serre', bottom: '', tooltip: 'Effet de Serre', radiation: null, rectangle: { width: 130, height: 200, factors: [
@@ -45,8 +45,8 @@ const nodes = [
         { icon: '💧', label: 'Eau' },
         { icon: '⛽', label: 'Méthane' }
     ]} },
-    { id: 'espace2', x: centerX + 100, y: centerY+600, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🛰', left: [], right: [], top: 'Observation', bottom: '', tooltip: 'Espace', radiation: null },
-    { id: 'reemis', x: centerX + 90, y: centerY+480, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🔂', left: [], right: ['Forçage<br>Radiatif'], top: '', bottom: '0.00 W/m²', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: null, openingAngle: 270 } }
+    { id: 'espace2', x: centerX + 135, y: centerY+600, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🛰', left: [], right: [], top: 'Observation', bottom: '', tooltip: 'Espace', radiation: null },
+    { id: 'reemis', x: centerX + 90, y: centerY+480, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🔂', left: [], right: ['Forçage<br>Radiatif'], top: '', bottom: '0.00 W/m²', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: null, openingAngle: 310 } }
 ];
 
 // Définition du graphe : arcs (flèches)
