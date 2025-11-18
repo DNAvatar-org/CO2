@@ -12,21 +12,14 @@ body {
     position: relative;
 }
 
-.fps-display {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    padding: 8px 12px;
-    border-radius: 5px;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    z-index: 1000;
-    pointer-events: none;
-    line-height: 1.4;
-    min-width: 120px;
+/* Media query : si width < 340, supprimer la marge de la page */
+@media (max-width: 339px) {
+    body {
+        padding: 0;
+    }
 }
+
+/* Styles FPS déplacés dans static/FPS/FPS.css */
 
 .timeline-display-container {
     position: fixed;
@@ -71,20 +64,37 @@ body {
 .container {
     /* max-width: 1400px; */
     margin: 0 auto;
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    gap: 20px;
+    display: flex; /* Flexbox pour répartir les colonnes */
+    flex-direction: row;
+    gap: 15px; /* Espacement entre les colonnes */
+    width: 100%; /* Prendre toute la largeur disponible */
 }
 
-.left-panels,
-.right-panels {
+.left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Espacement entre les divs dans chaque colonne */
+    max-width: 320px;
+    flex: 0 0 auto; /* Ne pas grandir, ne pas rétrécir, taille automatique */
+    min-width: 0; /* Permettre la réduction en dessous de la taille du contenu */
+}
+
+.right-column {
+    display: flex;
+    flex-direction: row; /* Direction horizontale pour permettre le wrap */
+    flex-wrap: wrap; /* Permettre le retour à la ligne */
+    gap: 15px; /* Espacement entre les divs dans chaque colonne */
+    flex: 1 1 auto; /* Prendre tout l'espace disponible restant, peut grandir et rétrécir */
+    min-width: 0; /* Permettre la réduction en dessous de la taille du contenu */
+    width: 100%; /* Forcer la largeur à 100% de l'espace disponible */
+}
+
+.left-panels {
     background: transparent;
     border-radius: 20px;
     padding: 0px;
     box-shadow: none;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    display: block; /* Pas de flex colonnes, divs indépendantes */
 }
 
 h1 {
@@ -140,32 +150,28 @@ h1 {
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+    max-width: 320px;
 }
 
 .synthese-wrapper {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 10px;
-    flex: 0 1 auto;
-    align-items: flex-start;
+    display: block; /* Divs indépendantes, pas de flex */
 }
 
 .synthese_EdS,
 .synthese_Temp {
-    flex: 0 1 auto;
+    display: block; /* Divs indépendantes */
     min-width: fit-content;
     padding: 10px;
     background: white;
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+    max-width: 230px;
 }
 
 @media (max-width: 1200px) {
     .synthese_EdS,
     .synthese_Temp {
-        flex: 1 1 100%;
         width: 100%;
     }
 }
@@ -236,7 +242,7 @@ h1 {
 }
 
 .plot-container-wrapper {
-    padding: 0 0 0 10px;
+    padding: 0; /* Pas de padding pour éviter le bord blanc */
     height: auto;
     min-height: 600px;
     position: relative;
@@ -247,7 +253,19 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 0px;
+    width: 100%; /* Prendre toute la largeur disponible */
+    flex: 1 1 100%; /* Prendre toute la largeur dans le flex wrap */
+    min-width: 100%; /* Forcer à prendre au moins toute la largeur */
 }
+
+/* Media query : si width >= 640, plot-container-wrapper a une taille réduite */
+/* Désactivé : la taille est gérée par le layout automatique */
+/* @media (min-width: 640px) {
+    .plot-container-wrapper {
+        width: 320px;
+        max-width: 320px;
+    }
+} */
 
 
 /* Hiérarchie des z-index :
@@ -306,6 +324,23 @@ h1 {
     z-index: 40 !important;
 }
 
+/* Masquer UNIQUEMENT la ligne horizontale de l'axe x */
+#plot-container g.xaxis path,
+#plot-container .xaxislayer-below path {
+    stroke: transparent !important;
+    fill: transparent !important;
+    opacity: 0 !important;
+}
+
+/* Garder les labels ET les ticks de l'axe x visibles */
+#plot-container .xaxis text,
+#plot-container .xtitle,
+#plot-container g.xaxis text {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
 /* Axes */
 #plot-container .xaxislayer-above,
 #plot-container .yaxislayer-above,
@@ -355,6 +390,7 @@ h1 {
     background: rgba(255, 255, 255, 0.9);
     padding: 8px 15px;
     border-radius: 5px;
+    border-left: 4px solid #667eea; /* Contour bleu comme flux-diagram */
     text-align: left; /* Texte aligné à gauche dans la boîte */
     z-index: 60 !important;
     pointer-events: none;
@@ -376,7 +412,9 @@ h1 {
 .title-container {
     text-align: center;
     position: relative;
-    z-index: 1000;
+    z-index: 10;
+    width: 320px;
+    height: 100px;
 }
 
 .title-container h1 {
@@ -407,13 +445,7 @@ h1 {
 
 
 .timeline-buttons-wrapper {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 10px;
-    width: fit-content;
-    margin-top: 10px;
-    padding-left: 10px;
+    display: block; /* Divs indépendantes, pas de flex */
 }
 
 .timeline-display {
@@ -700,6 +732,10 @@ h1 {
     position: absolute !important;
     top: 50px !important;
     right: 100px !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    padding: 8px 15px !important;
+    border-radius: 5px !important;
+    border-left: 4px solid #667eea !important; /* Contour bleu comme flux-diagram */
 }
 
 .legend-section {
@@ -811,18 +847,11 @@ h1 {
 }
 
 
-.plot-container-wrapper {
-    padding: 0;
-    height: auto;
-    min-height: 600px;
-    position: relative;
-    overflow: visible;
-}
 
 #plot-container {
     width: 100%;
     height: 620px;
-    margin-left: 20px;
+    margin-left: 0; /* Suppression du margin-left pour que le texte Stratosph. soit visible */
     position: relative;
     z-index: 2; /* Au-dessus du canvas (1) */
 }

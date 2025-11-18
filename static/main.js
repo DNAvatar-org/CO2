@@ -4,6 +4,7 @@
 let fps = 0;
 let fpsFrames = 0;
 let fpsLastTime = performance.now();
+let fpsTimerActive = true; // État du timer d'une seconde
 
 // ============================================================================
 // GESTION DES BOUTONS (désactivation pendant les calculs)
@@ -23,6 +24,7 @@ if (typeof window !== 'undefined') {
     window.volcanoH2OBonus = 0;
     window.volcanoIceReduction = 0;
     window.fps = 0; // Exposer le FPS pour l'optimisation de la visualisation spectrale
+    window.methaneEnabled = true; // CH4 activé par défaut
 }
 
 // ============================================================================
@@ -256,6 +258,12 @@ function resetTimeline() {
 }
 
 function updateFPS() {
+    // Vérifier si le timer est désactivé (système de ping actif)
+    if (!fpsTimerActive) {
+        // Le timer est désactivé, ne pas continuer
+        return;
+    }
+    
     fpsFrames++;
     const currentTime = performance.now();
     const elapsed = currentTime - fpsLastTime;
@@ -270,39 +278,42 @@ function updateFPS() {
             window.fps = fps;
         }
         
-        const fpsDisplay = document.getElementById('fps-display');
-        if (fpsDisplay) {
-            // Récupérer les états ON/OFF du rendu
-            const h2oEnabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
-                ? window.waterVaporEnabled 
-                : false;
-            const h2oStatus = h2oEnabled ? 'ON' : 'OFF';
-            
+        // Mettre à jour le graphique FPS
+        if (typeof window !== 'undefined' && typeof window.updateFPSDisplay === 'function') {
             // Récupérer la précision actuelle
-            let precisionText = '1.0x';
+            let precisionFactor = 1.0;
             if (typeof window !== 'undefined' && typeof getPrecisionFactorFromFPS === 'function') {
-                const precisionFactor = getPrecisionFactorFromFPS();
-                precisionText = precisionFactor.toFixed(2) + 'x';
+                precisionFactor = getPrecisionFactorFromFPS();
             } else if (typeof window !== 'undefined' && window.fps) {
                 // Calculer approximativement la précision selon le FPS
                 const currentFPS = window.fps;
                 if (currentFPS < 20) {
-                    precisionText = '0.5x';
+                    precisionFactor = 0.5;
                 } else if (currentFPS < 25) {
-                    precisionText = '0.75x';
+                    precisionFactor = 0.75;
                 } else if (currentFPS > 55) {
-                    precisionText = '2.0x';
+                    precisionFactor = 2.0;
                 } else {
-                    precisionText = '1.0x';
+                    precisionFactor = 1.0;
                 }
             }
             
-            // Afficher FPS, H2O, et précision
-            fpsDisplay.innerHTML = `FPS: ${fps}<br>H₂O: ${h2oStatus}<br>Précision: ${precisionText}`;
+            window.updateFPSDisplay(fps, precisionFactor);
         }
     }
     
     requestAnimationFrame(updateFPS);
+}
+
+// Exposer fpsTimerActive et updateFPS globalement pour que FPS.js puisse les contrôler
+if (typeof window !== 'undefined') {
+    // Créer un objet pour permettre la modification
+    Object.defineProperty(window, 'fpsTimerActive', {
+        get: () => fpsTimerActive,
+        set: (value) => { fpsTimerActive = value; },
+        configurable: true
+    });
+    window.updateFPS = updateFPS; // Exposer updateFPS pour pouvoir le relancer
 }
 
 // Démarrer le compteur FPS dès que possible
@@ -319,7 +330,8 @@ let currentState = 2; // Commence à 420 ppm (usine) par défaut
 let plotData = {
     lambda_range: null,
     current: null,
-    co2_ppm: 0
+    co2_ppm: 0,
+    ch4_ppm: 0 // Concentration de CH4 en ppm (initialisée à 0)
 };
 
 // Valeurs de référence pour les boutons
@@ -393,7 +405,12 @@ function updateCO2Level(state) {
         if (typeof window.simulateRadiativeTransfer !== 'function') {
             return;
         }
-        const result = window.simulateRadiativeTransfer(co2_fraction);
+        // Récupérer CH4_fraction depuis plotData (défini par setEpoch ou par défaut 0)
+        const ch4_ppm = plotData.ch4_ppm || 0;
+        const ch4_fraction = ch4_ppm * 1e-6;
+        const result = window.simulateRadiativeTransfer(co2_fraction, {
+            CH4_fraction: ch4_fraction
+        });
         const processResult = (data) => {
             plotData.current = data;
             
@@ -704,7 +721,12 @@ function updateCO2LevelDirect(co2_fraction) {
         if (typeof window.simulateRadiativeTransfer !== 'function') {
             return;
         }
-        const result = window.simulateRadiativeTransfer(co2_fraction);
+        // Récupérer CH4_fraction depuis plotData (défini par setEpoch ou par défaut 0)
+        const ch4_ppm = plotData.ch4_ppm || 0;
+        const ch4_fraction = ch4_ppm * 1e-6;
+        const result = window.simulateRadiativeTransfer(co2_fraction, {
+            CH4_fraction: ch4_fraction
+        });
         currentCalculationPromise = result;
         
         const processResult = (data) => {
@@ -991,6 +1013,7 @@ function updateLegend(data) {
         
         // Trier les températures par ordre croissant
         const sortedTemps = [...window.PLANCK_TEMPERATURES].sort((a, b) => a - b);
+        const totalCount = window.PLANCK_TEMPERATURES.length;
         
         // Créer un élément pour chaque température
         sortedTemps.forEach((T, sortedIndex) => {
@@ -1007,8 +1030,9 @@ function updateLegend(data) {
             item.className = 'legend-planck-item';
             
             // Utiliser SVG pour dessiner le pattern (plus fiable que canvas)
+            // Passer l'index original et le totalCount pour calculer le stroke-width correct
             const patternSVG = typeof window.createDashPatternSVG === 'function'
-                ? window.createDashPatternSVG(dashPattern)
+                ? window.createDashPatternSVG(dashPattern, originalIndex, totalCount)
                 : `<svg width="50" height="4" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
                     <line x1="2" y1="2" x2="48" y2="2" stroke="black" stroke-width="2.5"/>
                    </svg>`;
@@ -1114,7 +1138,22 @@ function setEpoch(epochName) {
         }
     }
     
-    // 3. Cloud coverage sera appliqué automatiquement dans les calculs via calculateCloudCoverage
+    // 3. CH4 (méthane)
+    if (epoch.ch4_ppm !== undefined) {
+        plotData.ch4_ppm = epoch.ch4_ppm;
+        // Activer CH4 si la concentration est > 0
+        if (typeof window.methaneEnabled !== 'undefined') {
+            window.methaneEnabled = epoch.ch4_ppm > 0;
+        }
+    } else {
+        // Par défaut, désactiver CH4 si non spécifié
+        plotData.ch4_ppm = 0;
+        if (typeof window.methaneEnabled !== 'undefined') {
+            window.methaneEnabled = false;
+        }
+    }
+    
+    // 4. Cloud coverage sera appliqué automatiquement dans les calculs via calculateCloudCoverage
     // On peut stocker la valeur pour référence
     if (epoch.cloud_coverage !== undefined) {
         // Le cloud_coverage sera utilisé dans calculateCloudCoverage si nécessaire

@@ -1,13 +1,15 @@
 // File: patterns.js - Gestion des patterns de traits pour les courbes
 // Desc: Définit l'ordre complet des patterns et les fonctions associées
-// Version 1.0.0
+// Version 1.1.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: [January 2025]
+// Logs:
+//   - v1.1.0: Changed pattern order to dash, dashdot, longdash, longdashdot; simplified stroke-width cycling
 
-// Ordre complet des patterns : dot (0, réservé), dash (1), longdash (2), dashdot (3), longdashdot (4), solid (5, réservé)
-window.DASH_PATTERNS = ['dot', 'dash', 'longdash', 'dashdot', 'longdashdot', 'solid'];
+// Ordre complet des patterns : dot (0, réservé), dash (1), dashdot (2), longdash (3), longdashdot (4), solid (5, réservé)
+window.DASH_PATTERNS = ['dot', 'dash', 'dashdot', 'longdash', 'longdashdot', 'solid'];
 
 // Index réservés
 window.DASH_PATTERN_DOT_INDEX = 0;    // Réservé pour la courbe courante
@@ -36,6 +38,7 @@ window.getReferencePattern = function(index) {
 
 /**
  * Obtient l'épaisseur de ligne pour une courbe selon son index et le nombre total de courbes
+ * Cycle en augmentant le stroke-width à chaque cycle (4 courbes par cycle)
  * @param {number} index - Index de la température dans PLANCK_TEMPERATURES
  * @param {number} totalCount - Nombre total de courbes
  * @returns {number} L'épaisseur de la ligne
@@ -47,21 +50,8 @@ window.getLineWidth = function(index, totalCount) {
     // Calculer dans quel cycle on se trouve (chaque cycle = 4 courbes avec les 4 patterns)
     const cycle = Math.floor(index / refCount);
     
-    // Si on a plus de 8 courbes (2 cycles), augmenter l'épaisseur progressivement
-    if (totalCount > 8) {
-        // Cycles 0-1 (0-7 courbes) : très fin à moyen
-        if (cycle <= 1) {
-            return cycle === 0 ? 0.5 : 1.0;
-        }
-        // Cycles 2+ (8+ courbes) : épais
-        return 1.5 + (cycle - 2) * 0.5; // 1.5, 2.0, 2.5, etc.
-    } else if (totalCount > 4) {
-        // Entre 4 et 8 courbes : très fin pour les 4 premières, moyen pour les suivantes
-        return cycle === 0 ? 0.5 : 1.0;
-    } else {
-        // 4 courbes ou moins : toutes très fines
-        return 0.5;
-    }
+    // Augmenter l'épaisseur à chaque cycle : 0.5, 1.0, 1.5, 2.0, 2.5, etc.
+    return 0.5 + (cycle * 0.5);
 };
 
 /**
@@ -90,18 +80,29 @@ window.getDashArray = function(pattern) {
 /**
  * Crée un SVG représentant le motif de trait pour la légende
  * @param {string} pattern - Nom du pattern
+ * @param {number} index - Index de la courbe (pour calculer le stroke-width)
+ * @param {number} totalCount - Nombre total de courbes
  * @returns {string} HTML du SVG
  */
-window.createDashPatternSVG = function(pattern) {
+window.createDashPatternSVG = function(pattern, index = 0, totalCount = 1) {
     const width = 50;
     const height = 4;
     const dashArray = window.getDashArray(pattern);
+    
+    // Calculer le stroke-width en fonction de l'index (cycle)
+    // Multiplier par un facteur pour que ce soit visible dans la légende (échelle plus grande)
+    const baseWidth = typeof window.getLineWidth === 'function' 
+        ? window.getLineWidth(index, totalCount) 
+        : 0.5;
+    
+    // Facteur multiplicateur pour la légende (rendre les différences plus visibles)
+    const strokeWidth = baseWidth * 3; // 0.5 → 1.5px, 1.0 → 3.0px, 1.5 → 4.5px, etc.
     
     // Utiliser stroke-dasharray même pour solid (none) pour s'assurer que la ligne est visible
     const dashAttr = dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : '';
     
     return `<svg width="${width}" height="${height}" style="vertical-align: middle; display: inline-block; overflow: visible;">
-        <line x1="2" y1="${height/2}" x2="${width-2}" y2="${height/2}" stroke="black" stroke-width="2.5" ${dashAttr}/>
+        <line x1="2" y1="${height/2}" x2="${width-2}" y2="${height/2}" stroke="black" stroke-width="${strokeWidth}" ${dashAttr}/>
     </svg>`;
 };
 

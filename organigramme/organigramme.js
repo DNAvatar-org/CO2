@@ -222,13 +222,13 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     
     // Créer les cercles de rayonnement si demandé
     if (radiationOptions) {
-        const { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270 } = radiationOptions;
+        const { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800' } = radiationOptions;
         // Vérifier que maxRadius est défini
         if (maxRadius !== null && maxRadius !== undefined) {
             for (let i = 1; i <= numCircles; i++) {
                 const progress = i / numCircles;
                 const arcRadius = radius + (maxRadius - radius) * progress;
-                createArc(x, y, arcRadius, 0.3 + (progress * 0.2), openingAngle, rotation);
+                createArc(x, y, arcRadius, 0.3 + (progress * 0.2), openingAngle, rotation, color);
             }
         }
     }
@@ -402,7 +402,7 @@ function createSphere(cx, cy, r, opacity) {
 }
 
 // Fonction pour créer un arc de cercle (comme createSphere mais avec ouverture)
-function createArc(cx, cy, r, opacity, openingAngle = 0, rotation = 270) {
+function createArc(cx, cy, r, opacity, openingAngle = 0, rotation = 270, color = '#ff9800') {
     const container = document.getElementById('flux-diagram');
     const arc = document.createElement('div');
     arc.className = 'flux-sphere'; // Utilise la même classe que createSphere
@@ -412,7 +412,7 @@ function createArc(cx, cy, r, opacity, openingAngle = 0, rotation = 270) {
     arc.style.top = (cy - r) + 'px';
     arc.style.width = (r * 2) + 'px';
     arc.style.height = (r * 2) + 'px';
-    arc.style.border = '2px dashed #ff9800'; // Style directement dans le HTML
+    arc.style.border = `2px dashed ${color}`; // Style directement dans le HTML, couleur personnalisable
     arc.style.opacity = opacity;
     
     // Calculer le clip-path pour masquer l'ouverture

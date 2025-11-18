@@ -28,6 +28,7 @@ const GEOLOGICAL_PERIODS = [
         endYears: 4.0e9,
         emoji: '🌑', // Lune noire (rougeâtre comme Mars)
         co2_ppm: 7000, // Beaucoup de CO₂ (jusqu'à 7000 ppm)
+        ch4_ppm: 100, // Très élevé (atmosphère réductrice, pas d'O₂ pour oxyder)
         h2o_enabled: true, // Forte couverture nuageuse
         cloud_coverage: 0.8, // 80% de couverture nuageuse
         description: 'Atmosphère dense, peu d\'O₂, beaucoup de CO₂, températures élevées (>50°C)'
@@ -38,6 +39,7 @@ const GEOLOGICAL_PERIODS = [
         endYears: 2.5e9,
         emoji: '🦠', // Microbe unicellulaire
         co2_ppm: 5000, // Beaucoup de CO₂
+        ch4_ppm: 80, // Très élevé (méthanogènes, atmosphère réductrice)
         h2o_enabled: true,
         cloud_coverage: 0.7, // 70% de couverture nuageuse
         description: 'Atmosphère dense, peu d\'O₂, beaucoup de CO₂, précipitations abondantes'
@@ -48,6 +50,7 @@ const GEOLOGICAL_PERIODS = [
         endYears: 541e6,
         emoji: '🌿', // Plantes primitives
         co2_ppm: 2000, // Déclin progressif du CO₂
+        ch4_ppm: 25, // Élevé mais en déclin (apparition d'O₂)
         h2o_enabled: true,
         cloud_coverage: 0.4, // 40% de couverture nuageuse
         description: 'Déclin progressif du CO₂, apparition de glaciations'
@@ -58,6 +61,7 @@ const GEOLOGICAL_PERIODS = [
         endYears: 635e6,
         emoji: '❄️', // Flocon de neige
         co2_ppm: 1000, // CO₂ réduit pendant la boule de neige
+        ch4_ppm: 15, // Réduit (conditions glaciaires)
         h2o_enabled: true,
         cloud_coverage: 0.3, // 30% de couverture nuageuse
         description: 'Boule de neige - Terre entièrement glacée'
@@ -68,6 +72,7 @@ const GEOLOGICAL_PERIODS = [
         endYears: 66e6,
         emoji: '🦕', // Dinosaure sauropode
         co2_ppm: 2500, // CO₂ élevé (2000-3000 ppm)
+        ch4_ppm: 8, // Modéré (atmosphère oxydante)
         h2o_enabled: true,
         cloud_coverage: 0.5, // 50% de couverture nuageuse
         description: 'CO₂ élevé, périodes chaudes, peu de glaces'
@@ -78,6 +83,7 @@ const GEOLOGICAL_PERIODS = [
         endYears: 66e6,
         emoji: '🦴', // Os/fossile
         co2_ppm: 3000, // CO₂ très élevé
+        ch4_ppm: 10, // Modéré-élevé (conditions chaudes)
         h2o_enabled: true,
         cloud_coverage: 0.5, // 50% de couverture nuageuse
         description: 'Températures +6 à +8°C, CO₂ très élevé, peu de glace'
@@ -88,6 +94,7 @@ const GEOLOGICAL_PERIODS = [
         endYears: 0,
         emoji: '🦣', // Mammouth
         co2_ppm: 280, // 280 ppm avant l'ère industrielle
+        ch4_ppm: 0.7, // Pré-industriel (0.7 ppm, actuel ~1.8 ppm)
         h2o_enabled: true,
         cloud_coverage: 0.4, // 40% de couverture nuageuse
         description: 'Forte chute du CO₂, alternance glaces/interglaciaires'

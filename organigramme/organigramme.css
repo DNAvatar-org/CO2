@@ -17,14 +17,12 @@
     border-left: none !important;
 }
 .flux-diagram {
-    width: 100%;
-    height: 100%;
+    width: 320px;
+    height: 630px;
     min-height: 630px;
     position: relative;
-    /*
-    background: #0a0e27 url('../galaxie.png') center center / cover no-repeat; /* Fond bleu nuit avec image de l'univers */
-    background-color: rgba(170,183,242,0.15);
-    border-radius: 12px; /* Bords arrondis */
+    background-color: rgba(170, 183, 242, 0.15);
+    border-radius: 12px;
     box-shadow: none !important;
     border: solid 1px #aab7f2 !important;
     outline: none !important;

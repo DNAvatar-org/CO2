@@ -2,6 +2,9 @@
 // GESTION DU GRAPHIQUE AVEC PLOTLY.JS
 // ============================================================================
 
+// Marges du graphique Plotly (communes à initPlot et updatePlot)
+const PLOT_MARGINS = { l: 80, r: 70, t: 0, b: 50 }; // b augmenté pour descendre "Longueur d'onde"
+
 // Températures pour les courbes Planck de référence (en K)
 window.PLANCK_TEMPERATURES = [180, 225, 255, 275, 300, 315];
 
@@ -154,6 +157,98 @@ window.debugPlotlyStructure = function() {
     }
 };
 
+// Fonction pour masquer la ligne de l'axe x (trait noir horizontal de 0 à 50μm)
+// IMPORTANT : Masquer UNIQUEMENT la ligne horizontale, PAS les labels (légende)
+function hideXAxisLine() {
+    const plotContainer = document.getElementById('plot-container');
+    if (!plotContainer) return;
+    
+    // Chercher spécifiquement les éléments path de l'axe x (la ligne horizontale)
+    // Ne PAS toucher aux éléments text (les labels)
+    const xAxisGroups = plotContainer.querySelectorAll('g.xaxis, g.xaxislayer-above, g.xaxislayer-below');
+    
+    xAxisGroups.forEach(group => {
+        // Chercher tous les path dans le groupe (ce sont les lignes de l'axe)
+        const paths = group.querySelectorAll('path');
+        paths.forEach(path => {
+            // Vérifier si c'est bien un path horizontal (ligne d'axe, pas un tick)
+            const d = path.getAttribute('d');
+            // Les lignes horizontales ont généralement des commandes M (move) et H (horizontal) ou L avec y constant
+            if (d && (d.includes('H') || d.match(/M[\d\.,]+,[\d\.,]+L[\d\.,]+,[\d\.,]+/))) {
+                // C'est probablement la ligne de l'axe horizontal
+                path.style.display = 'none';
+                path.style.visibility = 'hidden';
+                path.style.stroke = 'none';
+                path.style.opacity = '0';
+                path.setAttribute('display', 'none');
+                path.setAttribute('stroke', 'none');
+                path.setAttribute('opacity', '0');
+            }
+        });
+        
+        // Chercher aussi les lignes horizontales (line elements)
+        const lines = group.querySelectorAll('line');
+        lines.forEach(line => {
+            const y1 = line.getAttribute('y1');
+            const y2 = line.getAttribute('y2');
+            // Si y1 == y2, c'est une ligne horizontale (probablement l'axe)
+            if (y1 === y2) {
+                line.style.display = 'none';
+                line.style.visibility = 'hidden';
+                line.style.stroke = 'none';
+                line.style.opacity = '0';
+                line.setAttribute('display', 'none');
+                line.setAttribute('stroke', 'none');
+                line.setAttribute('opacity', '0');
+            }
+        });
+    });
+    
+    // Chercher aussi directement les path dans .crisp (parfois Plotly met la ligne là)
+    const crispPaths = plotContainer.querySelectorAll('.crisp path, path.crisp');
+    crispPaths.forEach(path => {
+        const d = path.getAttribute('d');
+        if (d && d.includes('M0')) {
+            // Si le path commence par M0, c'est probablement l'axe
+            path.style.display = 'none';
+            path.setAttribute('display', 'none');
+        }
+    });
+    
+    // Chercher TOUS les path dans les couches d'axes (plus agressif)
+    const allAxisPaths = plotContainer.querySelectorAll('svg path, path.domain, .gridlayer + g path, .zerolinelayer path');
+    allAxisPaths.forEach(path => {
+        const d = path.getAttribute('d');
+        const parent = path.parentElement;
+        // Si le parent est un groupe xaxis ou si c'est un path.domain, le masquer
+        if (parent && (parent.classList.contains('xaxis') || parent.tagName === 'g')) {
+            const parentClass = parent.getAttribute('class') || '';
+            if (parentClass.includes('xaxis')) {
+                path.style.display = 'none';
+                path.style.stroke = 'none';
+                path.style.strokeWidth = '0';
+                path.setAttribute('display', 'none');
+                path.setAttribute('stroke', 'none');
+            }
+        }
+        // Si c'est un path.domain, le masquer aussi
+        if (path.classList.contains('domain')) {
+            path.style.display = 'none';
+            path.setAttribute('display', 'none');
+        }
+    });
+    
+    // Observer les changements du DOM pour réappliquer le masquage si Plotly redessine
+    if (!plotContainer._xAxisObserver) {
+        const observer = new MutationObserver(() => {
+            // Réappliquer le masquage après un court délai
+            setTimeout(hideXAxisLine, 50);
+        });
+        observer.observe(plotContainer, { childList: true, subtree: true });
+        plotContainer._xAxisObserver = observer;
+    }
+}
+
 // Initialiser le graphique
 function initPlot() {
     // Créer le canvas AVANT Plotly pour qu'il soit en arrière-plan
@@ -183,14 +278,19 @@ function initPlot() {
         xaxis: {
             title: {
                 text: "Longueur d'onde (μm)",
-                standoff: 15 // Espacement entre le titre et l'axe
+                standoff: 50 // Encore plus bas
             },
+            titlefont: { color: 'black' }, // Même taille que les autres axes
             range: [0, 50],
-            fixedrange: true, // Désactiver le zoom
+            fixedrange: true,
             tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
-            titlefont: { color: 'black' }, // Titre de l'axe X en noir
-            showgrid: false, // Pas de grille verticale
-            gridwidth: 1
+            showgrid: false,
+            showline: false, // Pas de ligne d'axe
+            zeroline: false,
+            showticklabels: true, // Garder les valeurs 0, 10, 20, etc.
+            ticks: 'outside', // Garder les ticks mais à l'extérieur
+            ticklen: 0, // Longueur des ticks à 0 pour les cacher
+            tickwidth: 0 // Épaisseur des ticks à 0
         },
         yaxis: {
             title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
@@ -226,18 +326,18 @@ function initPlot() {
             visible: true
         },
         showlegend: false,
-        margin: { l: 50, r: 100, t: 0, b: 50 }, // Marge du bas augmentée pour faire respirer le titre
+        margin: PLOT_MARGINS, // Marges du graphique (variable commune)
         plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
         paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
         annotations: [
             {
-                x: 50, // À droite du graphique
-                y: 40 * (11 / 120), // Position de la tropopause (11 km)
+                x: -0.01, // Juste à gauche de l'axe, touchant l'axe vertical (en coordonnées paper)
+                y: 11, // Position de la tropopause (11 km sur l'axe altitude)
                 text: 'Stratosph.<br>8.0K<br>Troposph.',
                 showarrow: false,
-                xref: 'x',
-                yref: 'y',
-                xanchor: 'left',
+                xref: 'paper', // Coordonnées relatives au graphique
+                yref: 'y2', // Utiliser l'axe altitude (gauche)
+                xanchor: 'right', // Aligné à droite du texte (donc à gauche de l'axe, séparé des pointillés)
                 yanchor: 'middle',
                 font: { color: 'rgba(0, 0, 0, 0.5)', size: 11 } // Même couleur que le trait, pas de cadre
             }
@@ -254,6 +354,9 @@ function initPlot() {
         // Calculer et définir la taille du canvas dès que Plotly est prêt
         // La bande sera dessinée automatiquement dans resizeCanvasToPlot()
         resizeCanvasToPlot();
+        
+        // Masquer la ligne de l'axe x (trait noir de 0 à 50μm)
+        hideXAxisLine();
     });
 }
 
@@ -481,8 +584,8 @@ window.updatePlot = function updatePlot(data) {
         const getPattern = typeof window.getReferencePattern === 'function' 
             ? window.getReferencePattern 
             : function(index) {
-                // Fallback : utiliser les 4 patterns disponibles directement
-                const fallbackPatterns = ['dash', 'longdash', 'dashdot', 'longdashdot'];
+                // Fallback : utiliser les 4 patterns disponibles directement (ordre : dash, dashdot, longdash, longdashdot)
+                const fallbackPatterns = ['dash', 'dashdot', 'longdash', 'longdashdot'];
                 return fallbackPatterns[index % 4];
             };
         
@@ -567,7 +670,7 @@ window.updatePlot = function updatePlot(data) {
     const z_trop_km = z_trop_m / 1000; // Convertir en km
     
     traces.push({
-        x: [0, 2], // Limité à gauche, près de l'axe altitude (0 à 2 μm)
+        x: [0, 50], // Ligne horizontale sur toute la largeur du graphique
         y: [z_trop_km, z_trop_km], // Ligne horizontale à la hauteur de la tropopause (en km, axe altitude 0-120)
         type: 'scatter',
         mode: 'lines',
@@ -579,18 +682,23 @@ window.updatePlot = function updatePlot(data) {
     });
     
     const updateLayout = {
-        margin: { l: 50, r: 100, t: 0, b: 50 }, // Marge du bas augmentée pour faire respirer le titre
+        margin: PLOT_MARGINS, // Marges du graphique (variable commune)
         xaxis: { 
             range: [0, 50],
-            fixedrange: true, // Désactiver le zoom
+            fixedrange: true,
             title: {
                 text: "Longueur d'onde (μm)",
-                standoff: 15 // Espacement entre le titre et l'axe
+                standoff: 50 // Encore plus bas
             },
-            tickfont: { color: 'white' }, // Valeurs de l'axe X en blanc
-            titlefont: { color: 'black' }, // Titre de l'axe X en noir
-            showgrid: false, // Pas de grille verticale
-            gridwidth: 1
+            titlefont: { color: 'black' }, // Même taille que les autres axes
+            tickfont: { color: 'white' },
+            showgrid: false,
+            showline: false, // Pas de ligne d'axe
+            zeroline: false,
+            showticklabels: true, // Garder les valeurs 0, 10, 20, etc.
+            ticks: 'outside', // Garder les ticks mais à l'extérieur
+            ticklen: 0, // Longueur des ticks à 0 pour les cacher
+            tickwidth: 0 // Épaisseur des ticks à 0
         },
         yaxis: { 
             range: [0, 40],
@@ -601,7 +709,11 @@ window.updatePlot = function updatePlot(data) {
             titlefont: { color: 'black', size: 14 }, // Titre de l'axe Y en noir pour visibilité
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
-            gridwidth: 1
+            gridwidth: 1,
+            showline: true, // Afficher le trait vertical de l'axe
+            linecolor: 'rgba(0, 0, 0, 0.5)',
+            linewidth: 1,
+            mirror: 'ticks'
         },
         yaxis2: {
             title: "Altitude (km)",
@@ -629,13 +741,13 @@ window.updatePlot = function updatePlot(data) {
         paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
         annotations: [
             {
-                x: 50, // À droite du graphique
+                x: -0.01, // Juste à gauche de l'axe, touchant l'axe vertical (en coordonnées paper)
                 y: z_trop_km, // Position de la tropopause (en km, axe altitude)
                 text: 'Stratosph.<br>8.0K<br>Troposph.',
                 showarrow: false,
-                xref: 'x',
+                xref: 'paper', // Coordonnées relatives au graphique
                 yref: 'y2', // Utiliser l'axe altitude (gauche)
-                xanchor: 'left',
+                xanchor: 'right', // Aligné à droite du texte (donc à gauche de l'axe, séparé des pointillés)
                 yanchor: 'middle',
                 font: { color: 'rgba(0, 0, 0, 0.5)', size: 11 } // Même couleur que le trait, pas de cadre
             }
@@ -664,6 +776,9 @@ window.updatePlot = function updatePlot(data) {
     };
     
     Plotly.react('plot-container', traces, updateLayout).then(() => {
+        // Masquer la ligne de l'axe x (trait noir de 0 à 50μm)
+        hideXAxisLine();
+        
         // Observer le parent pour détecter quand Plotly modifie le DOM
         const plotContainer = document.getElementById('plot-container');
         const canvas = document.getElementById('spectral-visualization');

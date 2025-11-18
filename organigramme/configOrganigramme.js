@@ -33,12 +33,12 @@ const spacingSizes = {
 // Explication : La Terre est une sphère. Vu du Soleil, seule la face éclairée est visible (disque de rayon R, surface = πR²)
 // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
 const nodes = [
-    { id: 'soleil', x: centerX-70, y: 60, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: '#ffee55', logo: '🌞', left: [], right: [], top: '3.8×10²⁶ W', bottom: '6.24×10⁷ W/m²', tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: null, openingAngle: 0 } },
+    { id: 'soleil', x: centerX-70, y: 60, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: '#ffee55', logo: '🌞', left: [], right: [], top: '3.8×10²⁶ W', bottom: '6.24×10⁷ W/m²', tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: null, openingAngle: 0, color: '#FFAA00' } },
     { id: 'geometrie', x: centerX-70, y: 200, radius, fillColor: 'rgba(255, 255, 0, 0.1)', strokeColor: '#555500', logo: '🎱', left: ["1361<br>W/m²"], right: [], top: '', bottom: '', tooltip: 'Geometrie' },
-    { id: 'albedo', x: centerX+80, y: 160, radius, fillColor: 'rgba(255, 255, 255, 0.05)', strokeColor: '#333333', logo: '🪞', left: [], right: ["Albédo"], top: '', bottom: '⛅50% + ❄️20%', tooltip: 'Albédo', radiation: null },
+    { id: 'albedo', x: centerX+80, y: 160, radius, fillColor: 'rgba(255, 255, 255, 0.5)', strokeColor: '#ffffff', logo: '🏐', left: [], right: ["Albédo"], top: '', bottom: '⛅50% + ❄️20%', tooltip: 'Albédo', radiation: null },
     { id: 'espace1', x: centerX+110 , y: 25, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', logo: '🛰', left: [], right: [], top: '', bottom: 'Observation', tooltip: 'Espace', radiation: null },
     { id: 'noyau', x: centerX-60 , y: 300, radius, fillColor: 'rgba(255, 69, 0, 0.5)', strokeColor: '#ff4500', logo: '🌋', left: ['Noyau'], right: [], top: 'Géothermie', bottom: '~5700 K', tooltip: 'Noyau', radiation: null },
-    { id: 'surface', x: centerX + 90, y: 300, radius, fillColor: 'rgba(0, 0, 255, 0.2', strokeColor: '#111177', logo: '🌍', left: [], right: [], top: '', bottom: '', tooltip: 'Surface', radiation: null },
+    { id: 'surface', x: centerX + 90, y: 300, radius, fillColor: 'rgba(0, 150, 255, 0.5', strokeColor: '#00aaff', logo: '🌍', left: [], right: [], top: '', bottom: '', tooltip: 'Surface', radiation: null },
     { id: 'effetSerre', x: centerX - 60, y: 500, radius, fillImage: '🌫', strokeColor: '', logo: '', left: [], right: [], top: 'Athmosphère<br>Effet de Serre', bottom: '', tooltip: 'Effet de Serre', radiation: null, rectangle: { width: 100, height: 200, factors: [
         { icon: '🌵', label: 'CO₂' },
         { icon: '💧', label: 'Eau' },

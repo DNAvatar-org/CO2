@@ -461,6 +461,42 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null) {
     return n_air * mixing_ratio;
 }
 
+// ============================================================================
+// MÉTHANE (CH4)
+// ============================================================================
+
+// Section efficace d'absorption CH4 (approximation)
+// CH4 absorbe principalement autour de 7.7 μm (bande ν4) et 3.3 μm (bande ν3)
+function crossSectionCH4(wavelength) {
+    // Bande principale autour de 7.7 μm (ν4)
+    const LAMBDA_1 = 7.7e-6;
+    // Bande secondaire autour de 3.3 μm (ν3)
+    const LAMBDA_2 = 3.3e-6;
+    
+    // Absorption dans les deux bandes
+    // CH4 a une section efficace similaire à H2O mais centrée sur 7.7 μm
+    const sigma1 = Math.pow(10, -20 - 16 * Math.abs((wavelength - LAMBDA_1) / LAMBDA_1));
+    const sigma2 = Math.pow(10, -21 - 17 * Math.abs((wavelength - LAMBDA_2) / LAMBDA_2));
+    
+    // Prendre le maximum (les bandes peuvent se chevaucher)
+    return Math.max(sigma1, sigma2);
+}
+
+// Densité numérique de CH4
+// CH4 est un gaz bien mélangé dans l'atmosphère (comme CO2), pas de profil vertical complexe
+function methaneNumberDensity(z, CH4_fraction = null, CO2_fraction = null, T0_override = null) {
+    // Vérifier si CH4 est activé (via variable globale ou window)
+    const enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined) 
+        ? window.methaneEnabled 
+        : (typeof methaneEnabled !== 'undefined' ? methaneEnabled : false);
+    if (!enabled || !CH4_fraction) return 0;
+    
+    // CH4 est bien mélangé, donc la fraction est constante avec l'altitude
+    // (contrairement à H2O qui décroît avec l'altitude)
+    const n_air = airNumberDensity(z, CO2_fraction, T0_override);
+    return n_air * CH4_fraction;
+}
+
 // Évaporation/précipitation (formule simplifiée)
 // Taux d'évaporation approximatif en fonction de la température de surface
 function evaporationRate(T_surface) {
@@ -519,14 +555,22 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         lambda_min = 0.1e-6,
         lambda_max = 100e-6,
         delta_lambda = 0.1e-6,
-        fullSpectre = false // ⚡ Si true, désactive les optimisations lambda (spectre complet)
+        fullSpectre = false, // ⚡ Si true, désactive les optimisations lambda (spectre complet)
+        CH4_fraction = null // Fraction molaire de CH4 (optionnel)
     } = options;
     
-    // ⚡ PRÉCISION MAXIMALE : Toujours utiliser la précision maximale (pas d'adaptation FPS)
-    // Désactivation de la précision adaptative pour garantir la meilleure qualité
-    // ⚡ FORCER fullSpectre à true pour désactiver le regroupement adaptatif
-    const forceFullSpectre = true; // Toujours utiliser le spectre complet (pas de regroupement)
-    const precisionFactor = 1.0; // Toujours précision maximale
+    // ⚡ PRÉCISION ADAPTATIVE : Utiliser la précision selon le FPS
+    // ⚡ FORCER fullSpectre à true pour désactiver le regroupement adaptatif lambda
+    const forceFullSpectre = true; // Toujours utiliser le spectre complet (pas de regroupement lambda)
+    
+    // Récupérer le facteur de précision depuis le FPS
+    // precisionFactor < 1.0 : réduire la précision (augmenter delta_z_stratosphere) pour aller plus vite
+    // precisionFactor = 1.0 : précision standard
+    // precisionFactor > 1.0 : augmenter la précision (réduire delta_z_stratosphere) pour plus de détails
+    let precisionFactor = 1.0;
+    if (typeof window !== 'undefined' && typeof getPrecisionFactorFromFPS === 'function') {
+        precisionFactor = getPrecisionFactorFromFPS();
+    }
     
     // Ajuster delta_z et delta_lambda (toujours à la valeur de base, pas de réduction)
     // Note : delta_z sous tropopause reste constant (pas d'optimisation)
@@ -611,8 +655,17 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // Au-dessus de la tropopause, on peut réduire la précision (densité ↓ exponentielle)
     const z_range = [];
     const delta_z_troposphere = delta_z; // Précision fine sous tropopause (50m) - PAS D'OPTIMISATION
-    // Au-dessus : toujours utiliser la précision de base (pas d'adaptation FPS)
-    const delta_z_stratosphere = delta_z * 5; // Base : 5x moins de points (250m) - précision fixe
+    
+    // Au-dessus de la tropopause : précision adaptative selon precisionFactor
+    // precisionFactor < 1.0 → delta_z_stratosphere plus grand (moins de points, plus rapide)
+    // precisionFactor = 1.0 → delta_z_stratosphere standard (250m)
+    // precisionFactor > 1.0 → delta_z_stratosphere plus petit (plus de points, plus précis)
+    // Formule : delta_z_stratosphere = (delta_z * 5) / precisionFactor
+    // Exemples :
+    //   - precisionFactor = 0.5 → delta_z_stratosphere = delta_z * 10 (500m, moins précis, plus rapide)
+    //   - precisionFactor = 1.0 → delta_z_stratosphere = delta_z * 5 (250m, standard)
+    //   - precisionFactor = 2.0 → delta_z_stratosphere = delta_z * 2.5 (125m, plus précis, plus lent)
+    const delta_z_stratosphere = (delta_z * 5) / precisionFactor;
     
     // Sous tropopause : précision fine (delta_z constant = 50m)
     for (let z = 0; z < z_trop_precalc; z += delta_z_troposphere) {
@@ -668,10 +721,15 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // ⚡ OPTIMISATION : Précalculer les sections efficaces (dépendent uniquement de λ)
     const cross_section_CO2 = lambda_range.map(lambda => crossSectionCO2(lambda));
     const cross_section_H2O = lambda_range.map(lambda => crossSectionH2O(lambda));
+    const cross_section_CH4 = lambda_range.map(lambda => crossSectionCH4(lambda));
     
     const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
         ? window.waterVaporEnabled 
         : waterVaporEnabled;
+    
+    const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined) 
+        ? window.methaneEnabled 
+        : (typeof methaneEnabled !== 'undefined' ? methaneEnabled : false);
     
     let flux_in = [...earth_flux];
     
@@ -697,18 +755,22 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             const n_H2O = waterVaporNumberDensity(z, CO2_fraction, T0_test);
             const kappa_H2O = h2o_enabled ? cross_section_H2O[j] * n_H2O : 0;
             
+            // Absorption CH4 (si activé)
+            const n_CH4 = methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test);
+            const kappa_CH4 = (ch4_enabled && CH4_fraction) ? cross_section_CH4[j] * n_CH4 : 0;
+            
             // Debug: analyser l'absorption H2O dans la zone < 9μm (une fois par itération, pour quelques longueurs d'onde clés)
             if (i === 0 && (j === 0 || j === Math.floor(lambda_range.length / 4) || j === Math.floor(lambda_range.length / 2))) {
                 const lambda_um = lambda * 1e6;
             }
             
-            // Coefficient d'absorption total (CO2 + H2O)
-            const kappa = kappa_CO2 + kappa_H2O;
+            // Coefficient d'absorption total (CO2 + H2O + CH4)
+            const kappa = kappa_CO2 + kappa_H2O + kappa_CH4;
             
             optical_thickness[i][j] = kappa * delta_z_real;
             
-            if (CO2_fraction === 0 && !h2o_enabled) {
-                // Pas d'absorption si CO2 = 0 et H2O désactivé
+            if (CO2_fraction === 0 && !h2o_enabled && (!ch4_enabled || !CH4_fraction)) {
+                // Pas d'absorption si CO2 = 0, H2O désactivé et CH4 désactivé ou absent
                 upward_flux[i][j] = flux_in[j];
                 emitted_flux[i][j] = 0;
                 absorbed_flux[i][j] = 0;
@@ -750,13 +812,17 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             const n_H2O = waterVaporNumberDensity(z, CO2_fraction, T0_test);
             const kappa_H2O = h2o_enabled ? cross_section_H2O[j] * n_H2O : 0;
             
-            // Coefficient d'absorption total (CO2 + H2O)
-            const kappa = kappa_CO2 + kappa_H2O;
+            // Absorption CH4 (si activé)
+            const n_CH4 = methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test);
+            const kappa_CH4 = (ch4_enabled && CH4_fraction) ? cross_section_CH4[j] * n_CH4 : 0;
+            
+            // Coefficient d'absorption total (CO2 + H2O + CH4)
+            const kappa = kappa_CO2 + kappa_H2O + kappa_CH4;
             
             optical_thickness[i][j] = kappa * delta_z_real;
             
-            if (CO2_fraction === 0 && !h2o_enabled) {
-                // Pas d'absorption si CO2 = 0 et H2O désactivé
+            if (CO2_fraction === 0 && !h2o_enabled && (!ch4_enabled || !CH4_fraction)) {
+                // Pas d'absorption si CO2 = 0, H2O désactivé et CH4 désactivé ou absent
                 upward_flux[i][j] = flux_in[j];
                 emitted_flux[i][j] = 0;
                 absorbed_flux[i][j] = 0;
@@ -929,7 +995,8 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         delta_z = 50,
         lambda_min = 0.1e-6,
         lambda_max = 100e-6,
-        delta_lambda = 0.1e-6
+        delta_lambda = 0.1e-6,
+        CH4_fraction = null // Fraction molaire de CH4 (optionnel)
     } = options;
     
     // Calculer T0 initiale (approximation avec albedo de base)
