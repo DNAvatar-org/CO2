@@ -37,11 +37,11 @@ const spacingSizes = {
 const nodes = [
     { id: 'soleil', logo: '🌞', x: centerX-115, y: centerY-265, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: ['6.24×10⁷<br>W/m²'], top: '', bottom: '3.8×10²⁶ W', tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, logoScale: 1.0 },
 
-    { id: 'geometrie', logo: '🎱', x: centerX+95, y: centerY-265, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: '#000000', left: ['1361<br>W/m²'], right: [], top: '', bottom: 'Geometrie', tooltip: 'Geometrie', radiation: null, zIndex: 10, logoScale: 0.9, logoOffsetY: 1 },//{ numCircles: 8, maxRadius: 200, openingAngle: 315, rotation: 105, color: 'white' }
+    { id: 'geometrie', logo: '🎱', x: centerX+95, y: centerY-265, radius: 10, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', left: ['1361<br>W/m²'], right: [], top: '', bottom: 'Geometrie', tooltip: 'Geometrie', radiation: null, zIndex: 10, logoScale: 2.0, logoOffsetY: 0 },//{ numCircles: 8, maxRadius: 200, openingAngle: 315, rotation: 105, color: 'white' }
 
-    { id: 'espace1', logo: '🛰', x: centerX+170, y: centerY-300, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null },
+    { id: 'espace1', logo: '🛰', x: centerX+170, y: centerY-280, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null },
 
-    { id: 'albedo', logo: '🏐', x: centerX, y: earthCenterY, radius: 160, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', left: [], right: [], top: 'Albédo: ⛅50% + ❄️20%', bottom: '', tooltip: 'Albédo', radiation: { numCircles: 5, maxRadius: 250, openingAngle: 340, rotation: 295, color: 'white' }, zIndex: 10, logoScale: 0.1 },
+    { id: 'albedo', logo: '🏐', x: centerX, y: earthCenterY, radius: 160, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', left: [], right: [], top: 'Albédo: ⛅50% + ❄️20%', bottom: '', tooltip: 'Albédo', radiation: { numCircles: 8, maxRadius: 300, openingAngle: 340, rotation: 297, color: 'white' }, zIndex: 10, logoScale: 0.1 },
 
     { id: 'noyau', logo: '🌋', x: centerX-2, y: earthCenterY-1, radius: 30, fillColor: 'rgba(255, 69, 0, 0.5)', strokeColor: '#ff4500', left: [], right: [], top: 'Géothermie', bottom: '~5700 K', tooltip: 'Noyau', radiation: null, zIndex: 20, logoScale: 0.9 },
 
@@ -55,16 +55,16 @@ const nodes = [
 
     { id: 'espace2', logo: '🛰', x: centerX + 135, y: centerY+600, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: 'Observation', bottom: '', tooltip: 'Espace', radiation: null },
 
-    { id: 'reemis', logo: '📛', x: centerX + 90, y: earthCenterY+140, radius: 30, logoScale: 0.5, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: '', strokeSize: 1, left: [], right: ['Forçage<br>Radiatif'], top: '', bottom: '0.00 W/m²', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 100, openingAngle: 310 } }
+    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX + 90, y: earthCenterY+140, radius: 30, logoScale: 0.5, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: '', strokeSize: 1, left: [], right: ['Forçage<br>Radiatif'], top: '', bottom: '0.00 W/m²', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 100, openingAngle: 310 } }
 ];
 
 // Définition du graphe : arcs (flèches)
 const arcs = [
-    { from: 'soleil', to: 'geometrie', color: 'yellow', label: { name: '', txt1: '1UA', txt2: '' } },
-    { from: 'geometrie', to: 'albedo', color: 'yellow', label: { name: '340.25<br>W/m²', txt1: '' } },
+    { from: 'soleil', to: 'geometrie', label: { name: '', txt1: '1UA', txt2: '' } },
+    { from: 'geometrie', to: 'albedo', label: { name: '340.25<br>W/m²', txt1: '' } },
     { from: 'albedo', to: 'espace1', label: { name: '', txt1: '', txt2: '238.18 W/m²' } },
     //{ from: 'albedo', to: 'surface', label: { name: '', txt1: '' } },
-    { from: 'noyau', to: 'surface', color: 'red', label: { name: '', txt2: '0.087<br>W/m²' } }, 
+    { from: 'noyau', to: 'surface', label: { name: '', txt2: '0.087<br>W/m²' } }, 
     { from: 'surface', to: 'effetSerre', label: { name: 'IR<br>σT⁴', txt1: '' } },
     { from: 'effetSerre', to: 'espace2', label: { name: 'Y102.08<br>W/m²', txt1: ''} },
     { from: 'effetSerre', to: 'reemis' },

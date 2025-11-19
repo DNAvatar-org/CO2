@@ -96,7 +96,7 @@
     white-space: nowrap;
     text-align: center;
     line-height: 1.2; /* Interligne réduit pour textes multi-lignes */
-    z-index: 300; /* Au-dessus de tout (flèches et cellules) */
+    z-index: 1000 !important; /* TOUJOURS au-dessus de tout (flèches z-index max ~26) */
 }
 .flux-label-name {
     color: #fff; /* Texte blanc sur fond bleu nuit */
@@ -111,7 +111,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 0; /* Sous les cellules */
+    /* Pas de z-index ici : chaque radiationGroup gère son propre z-index */
     pointer-events: none;
     color: #ff9800; /* Couleur par défaut si non définie */
 }
@@ -123,6 +123,7 @@
     left: 0;
     width: 100%;
     height: 100%;
+    z-index: 1; /* Par défaut, sous les cellules (z-index 10+) */
     pointer-events: none;
 }
 

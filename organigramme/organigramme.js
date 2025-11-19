@@ -173,6 +173,10 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     const circleSize = radius * 2;
     circleBg.style.width = circleSize + 'px';
     circleBg.style.height = circleSize + 'px';
+    // Appliquer le même z-index que la cellule pour que le cercle soit au même niveau
+    if (zIndex !== null && zIndex !== undefined) {
+        circleBg.style.zIndex = zIndex;
+    }
     // Positionner le cercle au centre de la grille
     // Centre horizontal : 100px (col gauche) + (centralCellSize / 2)
     // Centre vertical : 25px (top) + (centralCellSize / 2)
@@ -245,7 +249,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             gridItem.style.gridColumn = col + 1;
             gridItem.style.gridRow = row + 1;
             gridItem.style.position = 'relative';
-            gridItem.style.zIndex = 300; // Étiquettes toujours au-dessus de tout
+            gridItem.style.zIndex = 1000; // Étiquettes TOUJOURS au-dessus de tout (flèches max ~26)
             
             // [1,1] = Vide (le logo est dans le cercle en arrière-plan)
             // Les autres cases contiennent les étiquettes
@@ -258,6 +262,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 label.style.position = 'absolute';
                 label.style.left = '50%';
                 label.style.transform = 'translateX(-50%)';
+                label.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches (z-index max ~26)
                 gridItem.appendChild(label);
             }
             // [1,2] = Bottom (bas)
@@ -269,6 +274,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 label.style.position = 'absolute';
                 label.style.left = '50%';
                 label.style.transform = 'translateX(-50%)';
+                label.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches (z-index max ~26)
                 gridItem.appendChild(label);
             }
             // [0,1] = Left (gauche)
@@ -279,11 +285,15 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 labelContainer.style.gap = '4px';
                 labelContainer.style.alignItems = 'flex-end'; // À gauche (col === 0)
                 labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
+                labelContainer.style.position = 'relative'; // Créer un stacking context
+                labelContainer.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches
                 
                 left.forEach(text => {
                     const label = document.createElement('div');
                     label.className = 'flux-label flux-label-blue';
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+                    label.style.position = 'relative'; // Créer un stacking context
+                    label.style.zIndex = '1001'; // Encore plus haut que le container
                     labelContainer.appendChild(label);
                 });
                 
@@ -297,11 +307,15 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 labelContainer.style.gap = '4px';
                 labelContainer.style.alignItems = 'flex-start'; // À droite (col === 2)
                 labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
+                labelContainer.style.position = 'relative'; // Créer un stacking context
+                labelContainer.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches
                 
                 right.forEach(text => {
                     const label = document.createElement('div');
                     label.className = 'flux-label flux-label-blue';
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+                    label.style.position = 'relative'; // Créer un stacking context
+                    label.style.zIndex = '1001'; // Encore plus haut que le container
                     labelContainer.appendChild(label);
                 });
                 
@@ -324,6 +338,10 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             const radiationGroup = document.createElement('div');
             radiationGroup.className = 'flux-radiation-group';
             radiationGroup.style.color = color; // Les .flux-sphere hériteront via currentColor
+            // Hériter du z-index du nœud pour que les radiations soient au même niveau
+            if (zIndex !== null && zIndex !== undefined) {
+                radiationGroup.style.zIndex = zIndex;
+            }
             
             const mainContainer = document.getElementById('flux-diagram');
             let container = mainContainer.querySelector('.flux-radiation-container');
@@ -382,7 +400,7 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
         label.style.left = posX + 'px';
         label.style.top = posY + 'px';
         label.style.transform = 'translate(-50%, -50%)';
-        label.style.zIndex = '300'; // Au-dessus des flèches (z-index 1-20) ET des cellules (z-index jusqu'à 20)
+        label.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches (z-index max ~26)
         // Si le texte contient <br>, permettre les retours à la ligne mais pas le wrapping automatique
         if (text.includes('<br>')) {
             label.style.whiteSpace = 'normal';
@@ -727,8 +745,10 @@ function generateArrows() {
         const isVerticalEnough = absAngle > 45 && absAngle < 135;
         
         // Vérifier si la destination a des étiquettes
-        const hasTop = idDest.top && idDest.top.trim() !== '';
-        const hasBottom = idDest.bottom && idDest.bottom.trim() !== '';
+        // Si arriveAtBottom est true, ignorer les étiquettes et arriver directement au cercle
+        const forceCircle = arc.arriveAtBottom === true;
+        const hasTop = !forceCircle && idDest.top && idDest.top.trim() !== '';
+        const hasBottom = !forceCircle && idDest.bottom && idDest.bottom.trim() !== '';
         
         // Calculer la demi-hauteur de la grille pour ce nœud (basée sur le CERCLE uniquement, pas le logo)
         const destRadius = idDest.radius || radius;
@@ -952,9 +972,24 @@ function generateArrows() {
         const finalX2 = x2 - realUnitX * marginEnd;
         const finalY2 = y2 - realUnitY * marginEnd;
         
-        // Les flèches héritent du z-index du nœud source
-        const arrowZIndex = idDep.zIndex || 1;
-        const arrowColor = arc.color || '#667eea'; // Couleur par défaut bleu
+        // Les flèches sont toujours juste en dessous de la grid de départ (donc en dessous des étiquettes)
+        const sourceZIndex = idDep.zIndex || 1;
+        // Flèche juste en dessous de la grid de départ (sourceZIndex - 1)
+        // Minimum 1 pour éviter z-index 0 ou négatif
+        const arrowZIndex = Math.max(1, sourceZIndex - 1);
+        // Couleur : arc.color > strokeColor du cercle de départ > bleu standard
+        const arrowColor = arc.color || (idDep.strokeColor && idDep.strokeColor.trim() !== '' ? idDep.strokeColor : '#667eea');
+        
+        // Log spécifique pour la flèche reemis → surface
+        if (arc.from === 'reemis' && arc.to === 'surface') {
+            console.log(`🔍 [reemis → surface] Centres: (${idDep.x}, ${idDep.y}) → (${idDest.x}, ${idDest.y})`);
+            console.log(`🔍 [reemis → surface] Vect=(${Vect.x}, ${Vect.y}), length=${length.toFixed(2)}px`);
+            console.log(`🔍 [reemis → surface] isGoingUp=${isGoingUp}, hasTop=${hasTop}, forceCircle=${forceCircle}`);
+            console.log(`🔍 [reemis → surface] Point départ: (${x1.toFixed(1)}, ${y1.toFixed(1)})`);
+            console.log(`🔍 [reemis → surface] Point arrivée: (${x2.toFixed(1)}, ${y2.toFixed(1)})`);
+            console.log(`🔍 [reemis → surface] Points finaux: (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}) → (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
+            console.log(`🔍 [reemis → surface] Longueur finale: ${Math.sqrt((finalX2-finalX1)**2 + (finalY2-finalY1)**2).toFixed(2)}px`);
+        }
         
         const arrow = createArrow(finalX1, finalY1, finalX2, finalY2, arrowZIndex, arrowColor);
         
