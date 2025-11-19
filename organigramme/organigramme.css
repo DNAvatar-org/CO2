@@ -155,3 +155,30 @@
     font-size: 14px;
 }
 
+/* Container pour les étiquettes top/bottom */
+.flux-label-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+}
+
+/* Alignement centré par défaut */
+.flux-label-container-center {
+    justify-content: center !important;
+}
+
+/* Alignement en bas pour entourer le trait du cercle (2 éléments) - pour top */
+.flux-label-container-bottom {
+    justify-content: flex-end !important;
+}
+
+/* Alignement en haut pour entourer le trait du cercle (2 éléments) - pour bottom */
+.flux-label-container-top {
+    justify-content: flex-start !important;
+}
+

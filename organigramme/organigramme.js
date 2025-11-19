@@ -79,7 +79,7 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
 }
 
 // Fonction pour créer une cellule avec un tableau 3x3
-function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = null, bottom = null, tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4) {
+function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4) {
     const container = document.getElementById('flux-diagram');
     
     // Cellule principale avec grille 3x3
@@ -254,28 +254,38 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             // [1,1] = Vide (le logo est dans le cercle en arrière-plan)
             // Les autres cases contiennent les étiquettes
             // [1,0] = Top (haut)
-            if (col === 1 && row === 0 && top) {
-                const label = document.createElement('div');
-                label.className = 'flux-label flux-label-blue';
-                label.innerHTML = top; // Utiliser innerHTML pour interpréter les balises <br>
-                // Position absolute pour ne pas impacter la largeur de la colonne
-                label.style.position = 'absolute';
-                label.style.left = '50%';
-                label.style.transform = 'translateX(-50%)';
-                label.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches (z-index max ~26)
-                gridItem.appendChild(label);
+            if (col === 1 && row === 0 && top && top.length > 0) {
+                const labelContainer = document.createElement('div');
+                // Si 2 éléments, aligner en bas pour entourer le trait du cercle, sinon centrer
+                labelContainer.className = 'flux-label-container ' + (top.length === 2 ? 'flux-label-container-bottom' : 'flux-label-container-center');
+                
+                top.forEach(text => {
+                    const label = document.createElement('div');
+                    label.className = 'flux-label flux-label-blue';
+                    label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+                    label.style.position = 'relative'; // Créer un stacking context
+                    label.style.zIndex = '1001'; // Encore plus haut que le container
+                    labelContainer.appendChild(label);
+                });
+                
+                gridItem.appendChild(labelContainer);
             }
             // [1,2] = Bottom (bas)
-            if (col === 1 && row === 2 && bottom) {
-                const label = document.createElement('div');
-                label.className = 'flux-label flux-label-blue';
-                label.innerHTML = bottom; // Utiliser innerHTML pour interpréter les balises <br>
-                // Position absolute pour ne pas impacter la largeur de la colonne
-                label.style.position = 'absolute';
-                label.style.left = '50%';
-                label.style.transform = 'translateX(-50%)';
-                label.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches (z-index max ~26)
-                gridItem.appendChild(label);
+            if (col === 1 && row === 2 && bottom && bottom.length > 0) {
+                const labelContainer = document.createElement('div');
+                // Si 2 éléments, aligner en haut pour entourer le trait du cercle, sinon centrer
+                labelContainer.className = 'flux-label-container ' + (bottom.length === 2 ? 'flux-label-container-top' : 'flux-label-container-center');
+                
+                bottom.forEach(text => {
+                    const label = document.createElement('div');
+                    label.className = 'flux-label flux-label-blue';
+                    label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+                    label.style.position = 'relative'; // Créer un stacking context
+                    label.style.zIndex = '1001'; // Encore plus haut que le container
+                    labelContainer.appendChild(label);
+                });
+                
+                gridItem.appendChild(labelContainer);
             }
             // [0,1] = Left (gauche)
             if (col === 0 && row === 1 && left && left.length > 0) {
@@ -334,6 +344,10 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         const { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800' } = radiationOptions;
         // Vérifier que maxRadius est défini
         if (maxRadius !== null && maxRadius !== undefined) {
+            // Log pour déboguer
+            if (nodeId === 'albedo') {
+                console.log(`🌐 [${nodeId}] Création radiations: maxRadius=${maxRadius}, openingAngle=${openingAngle}, rotation=${rotation}, color=${color}`);
+            }
             // Créer un groupe pour ces radiations avec la couleur définie
             const radiationGroup = document.createElement('div');
             radiationGroup.className = 'flux-radiation-group';
@@ -747,8 +761,8 @@ function generateArrows() {
         // Vérifier si la destination a des étiquettes
         // Si arriveAtBottom est true, ignorer les étiquettes et arriver directement au cercle
         const forceCircle = arc.arriveAtBottom === true;
-        const hasTop = !forceCircle && idDest.top && idDest.top.trim() !== '';
-        const hasBottom = !forceCircle && idDest.bottom && idDest.bottom.trim() !== '';
+        const hasTop = !forceCircle && idDest.top && Array.isArray(idDest.top) && idDest.top.length > 0;
+        const hasBottom = !forceCircle && idDest.bottom && Array.isArray(idDest.bottom) && idDest.bottom.length > 0;
         
         // Calculer la demi-hauteur de la grille pour ce nœud (basée sur le CERCLE uniquement, pas le logo)
         const destRadius = idDest.radius || radius;
@@ -760,8 +774,30 @@ function generateArrows() {
         const destLogoScale = idDest.logoScale || 1.4;
         const destLogoRadius = destRadius * destLogoScale * 0.5; // Approximation du "rayon" du logo
         // Pour les étiquettes, utiliser uniquement la taille du cercle (le logo peut dépasser)
-        const destCentralCellSize = destCircleDiameter > 0 ? destCircleDiameter : 50;
+        // Mais utiliser la taille réelle de la grille si disponible depuis le DOM
+        let destCentralCellSize = destCircleDiameter > 0 ? destCircleDiameter : 50;
+        // Essayer de lire la taille réelle de la grille depuis le DOM
+        const destCellElement = document.getElementById('cell-' + idDest.id);
+        if (destCellElement) {
+            const computedStyle = window.getComputedStyle(destCellElement);
+            const gridTemplateRows = computedStyle.gridTemplateRows;
+            if (gridTemplateRows && gridTemplateRows !== 'none') {
+                const rows = gridTemplateRows.split(' ');
+                if (rows.length >= 2) {
+                    const centralRowHeight = parseFloat(rows[1]);
+                    if (!isNaN(centralRowHeight)) {
+                        destCentralCellSize = centralRowHeight;
+                    }
+                }
+            }
+        }
         const destCellHalfHeight = (25 + destCentralCellSize + 20) / 2; // Hauteur totale / 2
+        
+        // Calculer le rayon source pour les cercles concentriques
+        const sourceRadius = idDep.radius || radius;
+        const sourceStrokeSize = idDep.strokeSize || 4;
+        const sourceHasCircle = idDep.strokeColor && idDep.strokeColor.trim() !== '';
+        const sourceRadiusOuter = sourceHasCircle ? (sourceRadius + (sourceStrokeSize / 2)) : 0;
         
         // Détecter si les cercles sont concentriques (centres très proches)
         // Si concentriques : ne pas inverser le vecteur (aller dans le sens du vecteur)
@@ -769,16 +805,29 @@ function generateArrows() {
         const isConcentric = length < 10; // Distance entre centres < 10px = concentriques
         const sign = isConcentric ? 1 : -1; // Concentriques: pas d'inversion, Normaux: inversion
         
+        // Pour les cercles concentriques, calculer la longueur avec abs(delta rayon)
+        const deltaRadius = isConcentric ? Math.abs(destRadius - sourceRadius) : null;
+        
         
         if (isGoingUp && isVerticalEnough) {
             // Flèche vers le haut (assez verticale)
-            if (hasBottom) {
+            // Pour les cercles concentriques, utiliser le calcul avec deltaRadius (prioritaire)
+            if (isConcentric && deltaRadius !== null && destHasCircle && !idDest.rectangle) {
+                // Cercles concentriques : utiliser abs(delta rayon) comme longueur depuis le point de départ
+                x2 = x1 + deltaRadius * unitX;
+                y2 = y1 + deltaRadius * unitY;
+            } else if (hasBottom) {
                 // Arriver au bas de la grille (où se trouve txt1)
                 const gridY = idDest.y + destCellHalfHeight;
-                // Calculer l'intersection depuis (x1, y1) vers le centre, avec y = gridY
-                if (Math.abs(Vect.y) > 0.001) {
-                    const t = (gridY - y1) / Vect.y;
-                    x2 = x1 + Vect.x * t;
+                // Calculer l'intersection depuis (x1, y1) vers le centre de destination, avec y = gridY
+                // Utiliser le vecteur depuis (x1, y1) vers (idDest.x, idDest.y)
+                const vecFromStart = {
+                    x: idDest.x - x1,
+                    y: idDest.y - y1
+                };
+                if (Math.abs(vecFromStart.y) > 0.001) {
+                    const t = (gridY - y1) / vecFromStart.y;
+                    x2 = x1 + vecFromStart.x * t;
                     y2 = gridY;
                 } else {
                     x2 = x1;
@@ -835,13 +884,23 @@ function generateArrows() {
             }
         } else if (isGoingDown && isVerticalEnough) {
             // Flèche vers le bas (assez verticale)
-            if (hasTop) {
+            // Pour les cercles concentriques, utiliser le calcul avec deltaRadius (prioritaire)
+            if (isConcentric && deltaRadius !== null && destHasCircle && !idDest.rectangle) {
+                // Cercles concentriques : utiliser abs(delta rayon) comme longueur depuis le point de départ
+                x2 = x1 + deltaRadius * unitX;
+                y2 = y1 + deltaRadius * unitY;
+            } else if (hasTop) {
                 // Arriver au haut de la grille (où se trouve top)
                 const gridY = idDest.y - destCellHalfHeight;
-                // Calculer l'intersection depuis (x1, y1) vers le centre, avec y = gridY
-                if (Math.abs(Vect.y) > 0.001) {
-                    const t = (gridY - y1) / Vect.y;
-                    x2 = x1 + Vect.x * t;
+                // Calculer l'intersection depuis (x1, y1) vers le centre de destination, avec y = gridY
+                // Utiliser le vecteur depuis (x1, y1) vers (idDest.x, idDest.y)
+                const vecFromStart = {
+                    x: idDest.x - x1,
+                    y: idDest.y - y1
+                };
+                if (Math.abs(vecFromStart.y) > 0.001) {
+                    const t = (gridY - y1) / vecFromStart.y;
+                    x2 = x1 + vecFromStart.x * t;
                     y2 = gridY;
                 } else {
                     x2 = x1;
@@ -883,9 +942,16 @@ function generateArrows() {
                         x2 = idDest.x + sign * destLogoRadius * unitX;
                         y2 = idDest.y + sign * destLogoRadius * unitY;
                     } else {
-                        // Cercle : sign = -1 pour inverser (bord proche), sign = 1 pour concentriques
-                        x2 = idDest.x + sign * destRadiusOuter * unitX;
-                        y2 = idDest.y + sign * destRadiusOuter * unitY;
+                        // Cercle
+                        if (isConcentric && deltaRadius !== null) {
+                            // Cercles concentriques : utiliser abs(delta rayon) comme longueur depuis le point de départ
+                            x2 = x1 + deltaRadius * unitX;
+                            y2 = y1 + deltaRadius * unitY;
+                        } else {
+                            // Cercles normaux : sign = -1 pour inverser (bord proche)
+                            x2 = idDest.x + sign * destRadiusOuter * unitX;
+                            y2 = idDest.y + sign * destRadiusOuter * unitY;
+                        }
                     }
                 }
             }
@@ -939,9 +1005,16 @@ function generateArrows() {
                     x2 = idDest.x + sign * destLogoRadius * unitX;
                     y2 = idDest.y + sign * destLogoRadius * unitY;
                 } else {
-                    // Cercle visible : sign = -1 pour inverser (bord proche), sign = 1 pour concentriques
-                    x2 = idDest.x + sign * destRadiusOuter * unitX;
-                    y2 = idDest.y + sign * destRadiusOuter * unitY;
+                    // Cercle visible
+                    if (isConcentric && deltaRadius !== null) {
+                        // Cercles concentriques : utiliser abs(delta rayon) comme longueur depuis le point de départ
+                        x2 = x1 + deltaRadius * unitX;
+                        y2 = y1 + deltaRadius * unitY;
+                    } else {
+                        // Cercles normaux : sign = -1 pour inverser (bord proche)
+                        x2 = idDest.x + sign * destRadiusOuter * unitX;
+                        y2 = idDest.y + sign * destRadiusOuter * unitY;
+                    }
                 }
             }
         }
@@ -991,6 +1064,48 @@ function generateArrows() {
             console.log(`🔍 [reemis → surface] Longueur finale: ${Math.sqrt((finalX2-finalX1)**2 + (finalY2-finalY1)**2).toFixed(2)}px`);
         }
         
+        // Log spécifique pour la flèche noyau → surface
+        if (arc.from === 'noyau' && arc.to === 'surface') {
+            console.log(`🔍 [noyau → surface] Centres: (${idDep.x}, ${idDep.y}) → (${idDest.x}, ${idDest.y})`);
+            console.log(`🔍 [noyau → surface] Vect=(${Vect.x}, ${Vect.y}), length=${length.toFixed(2)}px`);
+            console.log(`🔍 [noyau → surface] sourceRadius=${sourceRadius}, sourceRadiusOuter=${sourceRadiusOuter}`);
+            console.log(`🔍 [noyau → surface] destRadius=${destRadius}, destRadiusOuter=${destRadiusOuter}`);
+            console.log(`🔍 [noyau → surface] isConcentric=${isConcentric}, sign=${sign}, deltaRadius=${deltaRadius !== null ? deltaRadius.toFixed(1) : 'N/A'}`);
+            console.log(`🔍 [noyau → surface] unitX=${unitX.toFixed(4)}, unitY=${unitY.toFixed(4)}`);
+            console.log(`🔍 [noyau → surface] hasTop=${hasTop}, hasBottom=${hasBottom}, forceCircle=${forceCircle}`);
+            console.log(`🔍 [noyau → surface] Point départ: (${x1.toFixed(1)}, ${y1.toFixed(1)})`);
+            console.log(`🔍 [noyau → surface] Point arrivée: (${x2.toFixed(1)}, ${y2.toFixed(1)})`);
+            if (isConcentric && deltaRadius !== null) {
+                console.log(`🔍 [noyau → surface] Calcul concentrique: x2 = ${x1.toFixed(1)} + ${deltaRadius.toFixed(1)} * ${unitX.toFixed(4)} = ${(x1 + deltaRadius * unitX).toFixed(1)}`);
+                console.log(`🔍 [noyau → surface] Calcul concentrique: y2 = ${y1.toFixed(1)} + ${deltaRadius.toFixed(1)} * ${unitY.toFixed(4)} = ${(y1 + deltaRadius * unitY).toFixed(1)}`);
+            }
+            console.log(`🔍 [noyau → surface] Points finaux: (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}) → (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
+        }
+        
+        // Log spécifique pour la flèche surface → albedo
+        if (arc.from === 'surface' && arc.to === 'albedo') {
+            console.log(`🔍 [surface → albedo] Centres: (${idDep.x}, ${idDep.y}) → (${idDest.x}, ${idDest.y})`);
+            console.log(`🔍 [surface → albedo] Vect=(${Vect.x}, ${Vect.y}), length=${length.toFixed(2)}px`);
+            console.log(`🔍 [surface → albedo] sourceRadius=${sourceRadius}, sourceRadiusOuter=${sourceRadiusOuter}`);
+            console.log(`🔍 [surface → albedo] destRadius=${destRadius}, destRadiusOuter=${destRadiusOuter}`);
+            console.log(`🔍 [surface → albedo] destCircleDiameter=${destCircleDiameter}, destCentralCellSize=${destCentralCellSize}`);
+            console.log(`🔍 [surface → albedo] unitX=${unitX.toFixed(4)}, unitY=${unitY.toFixed(4)}`);
+            console.log(`🔍 [surface → albedo] angleRad=${angleRad.toFixed(4)} rad, angleDeg=${angleDeg.toFixed(2)}°`);
+            console.log(`🔍 [surface → albedo] absAngle=${Math.abs(angleDeg).toFixed(2)}°`);
+            console.log(`🔍 [surface → albedo] isGoingUp=${isGoingUp}, isGoingDown=${isGoingDown}, isVerticalEnough=${isVerticalEnough}`);
+            console.log(`🔍 [surface → albedo] hasTop=${hasTop}, hasBottom=${hasBottom}, forceCircle=${forceCircle}`);
+            console.log(`🔍 [surface → albedo] destCellHalfHeight=${destCellHalfHeight.toFixed(1)}, gridY=${hasTop ? (idDest.y - destCellHalfHeight).toFixed(1) : 'N/A'}`);
+            console.log(`🔍 [surface → albedo] Point départ: (${x1.toFixed(1)}, ${y1.toFixed(1)})`);
+            console.log(`🔍 [surface → albedo] Point arrivée: (${x2.toFixed(1)}, ${y2.toFixed(1)})`);
+            if (hasTop) {
+                const vecFromStart = { x: idDest.x - x1, y: idDest.y - y1 };
+                const gridY = idDest.y - destCellHalfHeight;
+                const t = Math.abs(vecFromStart.y) > 0.001 ? (gridY - y1) / vecFromStart.y : 0;
+                console.log(`🔍 [surface → albedo] Calcul intersection: vecFromStart=(${vecFromStart.x.toFixed(2)}, ${vecFromStart.y.toFixed(2)}), t=${t.toFixed(4)}, x2_calc=${(x1 + vecFromStart.x * t).toFixed(1)}, y2_calc=${gridY.toFixed(1)}`);
+            }
+            console.log(`🔍 [surface → albedo] Points finaux: (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}) → (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
+        }
+        
         const arrow = createArrow(finalX1, finalY1, finalX2, finalY2, arrowZIndex, arrowColor);
         
         
@@ -1006,8 +1121,8 @@ function generateArrows() {
             // Vérifier si le nœud de départ a des étiquettes qui pourraient masquer la flèche
             const hasLeftLabels = idDep.left && idDep.left.length > 0;
             const hasRightLabels = idDep.right && idDep.right.length > 0;
-            const hasTopLabel = idDep.top && idDep.top.trim() !== '';
-            const hasBottomLabel = idDep.bottom && idDep.bottom.trim() !== '';
+            const hasTopLabel = idDep.top && Array.isArray(idDep.top) && idDep.top.length > 0;
+            const hasBottomLabel = idDep.bottom && Array.isArray(idDep.bottom) && idDep.bottom.length > 0;
             
             if (hasLeftLabels || hasRightLabels || hasTopLabel || hasBottomLabel) {
                 // Estimer la taille approximative d'une étiquette (largeur/hauteur moyenne)
@@ -1064,6 +1179,84 @@ const createdCells = {};
 nodes.forEach(node => {
     // Calculer maxRadius si nécessaire
     let radiationOptions = node.radiation;
+    
+    // Si rotation n'est pas défini, calculer l'angle depuis les flèches sortantes
+    if (radiationOptions && radiationOptions.rotation === undefined) {
+        // Trouver tous les arcs qui partent de ce nœud
+        const outgoingArcs = arcs.filter(arc => arc.from === node.id);
+        if (outgoingArcs.length > 0) {
+            // Calculer les angles de toutes les flèches sortantes
+            const angles = [];
+            outgoingArcs.forEach(arc => {
+                const destNode = nodes.find(n => n.id === arc.to);
+                if (destNode) {
+                    const dx = destNode.x - node.x;
+                    const dy = destNode.y - node.y;
+                    // Calculer l'angle en degrés (0° = droite, 90° = bas, sens anti-horaire/trigo)
+                    // rotation utilise le même système : 0° = droite, 90° = haut, 180° = gauche, 270° = bas
+                    const angleRad = Math.atan2(dy, dx);
+                    let angleDeg = angleRad * 180 / Math.PI;
+                    // Normaliser entre 0 et 360
+                    if (angleDeg < 0) angleDeg += 360;
+                    angles.push(angleDeg);
+                }
+            });
+            
+            if (angles.length > 0) {
+                if (angles.length === 1) {
+                    // Une seule flèche : utiliser son angle
+                    radiationOptions.rotation = angles[0];
+                    // Si openingAngle n'est pas défini, utiliser une ouverture par défaut (ex: 60°)
+                    if (radiationOptions.openingAngle === undefined) {
+                        radiationOptions.openingAngle = 300; // 360 - 60 = 300, donc arc visible de 60°
+                    }
+                } else {
+                    // Plusieurs flèches : calculer l'angle moyen
+                    // Trier les angles pour gérer le cas où ils passent par 0/360
+                    angles.sort((a, b) => a - b);
+                    
+                    // Vérifier si les angles sont répartis autour de 0/360
+                    const maxGap = Math.max(...angles.map((a, i) => {
+                        const next = angles[(i + 1) % angles.length];
+                        const gap = (next - a + 360) % 360;
+                        return gap;
+                    }));
+                    
+                    if (maxGap > 180) {
+                        // Les angles sont répartis autour de 0/360, ajuster
+                        const adjustedAngles = angles.map(a => a < 180 ? a + 360 : a);
+                        const avgAngle = adjustedAngles.reduce((sum, a) => sum + a, 0) / adjustedAngles.length;
+                        radiationOptions.rotation = avgAngle % 360;
+                    } else {
+                        // Angles normaux, moyenne simple
+                        const avgAngle = angles.reduce((sum, a) => sum + a, 0) / angles.length;
+                        radiationOptions.rotation = avgAngle;
+                    }
+                    
+                    // Si openingAngle n'est pas défini ou est très large (>= 270), ajuster pour couvrir toutes les directions
+                    if (radiationOptions.openingAngle === undefined || radiationOptions.openingAngle >= 270) {
+                        const minAngle = Math.min(...angles);
+                        const maxAngle = Math.max(...angles);
+                        // Calculer l'écart entre les angles (en tenant compte du passage par 0/360)
+                        let angleSpan = maxAngle - minAngle;
+                        if (angleSpan > 180) {
+                            angleSpan = 360 - angleSpan;
+                        }
+                        // Ajouter une marge de 20° de chaque côté pour bien couvrir les deux directions
+                        const calculatedOpening = Math.min(angleSpan + 40, 360);
+                        // Toujours ajuster si l'ouverture est très large ou non définie
+                        radiationOptions.openingAngle = calculatedOpening;
+                    }
+                }
+                
+                // Log pour vérifier le calcul
+                if (node.id === 'albedo' || node.id === 'reemis' || node.id === 'noyau') {
+                    console.log(`🌐 [${node.id}] Calcul rotation depuis ${angles.length} flèche(s) sortante(s): angles=[${angles.map(a => a.toFixed(1)).join(', ')}]°, rotation=${radiationOptions.rotation.toFixed(1)}°, opening=${radiationOptions.openingAngle.toFixed(1)}°`);
+                }
+            }
+        }
+    }
+    
     if (radiationOptions && radiationOptions.maxRadius === null) {
         if (node.id === 'geometrie') {
             const albedoNode = nodes.find(n => n.id === 'albedo');
@@ -1103,8 +1296,8 @@ nodes.forEach(node => {
         node.logo, 
         node.left || [],
         node.right || [],
-        node.top || null,
-        node.bottom || null,
+        Array.isArray(node.top) ? node.top : (node.top ? [node.top] : []),
+        Array.isArray(node.bottom) ? node.bottom : (node.bottom ? [node.bottom] : []),
         node.tooltip || null,
         radiationOptions,
         node.rectangle || null,
