@@ -599,6 +599,60 @@ h1 {
     gap: 8px;
 }
 
+.info-row-vertical {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+.info-vertical-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.0; /* Interligne minimal */
+    gap: 0; /* Pas d'espace entre les éléments */
+}
+
+.info-vertical-stack > * {
+    line-height: 1.0;
+    margin: 0;
+    padding: 0;
+}
+
+.info-logo-name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    line-height: 1.0;
+}
+
+.info-logo-name-reverse {
+    flex-direction: row-reverse;
+}
+
+.info-row-co2 .info-vertical-stack {
+    transform: translateX(25px);
+}
+
+.info-row-ch4 .info-vertical-stack {
+    transform: translateX(25px);
+}
+
+.info-row-h2o .info-vertical-stack {
+    /* Tout centré par défaut */
+}
+
+.info-vertical-stack .info-label,
+.info-vertical-stack .info-value,
+.info-vertical-stack .info-forcing,
+.info-vertical-stack .info-number,
+.info-vertical-stack .info-unit {
+    color: #aab7f2; /* Bleu standard */
+}
+
 .info-label {
     color: #666;
     font-weight: 500;
