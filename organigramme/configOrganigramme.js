@@ -11,7 +11,7 @@
 // Configuration de base
 const radius = 40; // Cercles plus petits (par défaut)
 const centerX = 163; // Centre horizontal du diagramme (328px / 2)
-const centerY = 270; // Centre vertical du diagramme (640px / 2)
+const centerY = 240; // Centre vertical du diagramme (640px / 2)
 const earthCenterY = centerY+80; // Centre vertical de la Terre et éléments concentriques
 const arrowMarginTop = 10; // Marge en haut des flèches
 const arrowMarginBottom = 15; // Marge en bas des flèches
@@ -35,22 +35,22 @@ const spacingSizes = {
 // Explication : La Terre est une sphère. Vu du Soleil, seule la face éclairée est visible (disque de rayon R, surface = πR²)
 // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
 const nodes = [
-    { id: 'soleil', logo: '🌞', x: centerX-115, y: centerY-215, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: ['6.24×10⁷<br>W/m²'], top: '', bottom: '3.8×10²⁶ W', tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, logoScale: 1.0, logoOffsetY: 1 },
+    { id: 'soleil', logo: '🌞', x: centerX-115, y: centerY-185, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: ['6.24×10⁷<br>W/m²'], top: '', bottom: '3.8×10²⁶ W', tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, logoScale: 1.0, logoOffsetY: 1 },
 
-    { id: 'geometrie', logo: '🎱', x: centerX+95, y: centerY-215, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 1, left: ['1361<br>W/m²'], right: [], top: 'Geometrie', bottom: '', tooltip: 'Geometrie', radiation: null, zIndex: 11, logoScale: 1.1, logoOffsetY: 2 },//{ numCircles: 8, maxRadius: 200, openingAngle: 315, rotation: 105, color: 'white' }
+    { id: 'geometrie', logo: '🎱', x: centerX+45, y: centerY-145, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: [], top: '1361<br>W/m²', bottom: '', tooltip: 'Geometrie', radiation: null, zIndex: 11, logoScale: 1.1, logoOffsetY: 2 },//{ numCircles: 8, maxRadius: 200, openingAngle: 315, rotation: 105, color: 'white' }
 
-    { id: 'espace1', logo: '', x: centerX+60, y: centerY-200, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null },
+    { id: 'espace1', logo: '', x: centerX+130, y: centerY-200, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null },
 
-    { id: 'albedo', logo: '🏐', x: centerX, y: earthCenterY+2, radius: 160, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: ['102.08 W/m²'], tooltip: 'Albédo', radiation: { numCircles: 8, maxRadius: 250, openingAngle: 340, color: 'white' }, zIndex: 10, logoScale: 0.1 },
+    { id: 'albedo', logo: '🏐', x: centerX, y: earthCenterY+2, radius: 160, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: ['102.08 W/m²'], tooltip: 'Albédo', radiation: { numCircles: 8, maxRadius: 250, openingAngle: 345, color: 'white', rotation: 295 }, zIndex: 10, logoScale: 0.1 },
 
     { id: 'noyau', logo: '🌋', x: centerX-2, y: earthCenterY-1, radius: 30, fillColor: 'rgba(255, 69, 0, 0.5)', strokeSize: 1, strokeColor: '#ff5500', left: [], right: [], top: ['Géothermie'], bottom: '~5700 K', tooltip: 'Noyau', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 0 } , zIndex: 20, logoScale: 0.9 },
 
     { id: 'surface', logo: '🌍', x: centerX, y: earthCenterY, radius: 100, fillColor: 'rgba(0, 200, 255, 0.3)', strokeColor: '#00eeff', strokeSize: 1, left: [], right: [], top: '', bottom: '', tooltip: 'Surface', radiation: null, zIndex: 15, logoScale: 0.95, logoOffsetY: 5 },
     
     { id: 'effetSerre', logo: '', x: centerX - 125, y: earthCenterY, radius, fillImage: '', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Effet de Serre', radiation: null, rectangle: { width: 130, height: 200, factors: [//Athmosphère<br>Effet de Serre
-        { icon: '🌵', label: 'CO₂' },
-        { icon: '💧', label: 'Eau' },
-        { icon: '⛽', label: 'Méthane' }
+        { icon: '🌵', label: 'CO₂', formula: 'CO₂' },
+        { icon: '💧', label: 'H₂O', formula: 'H₂O', align: 'center' },
+        { icon: '⛽', label: 'CH₄', formula: 'CH₄' }
     ]} },
 
     { id: 'espace2', logo: '🛰', x: centerX, y: centerY+330, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: 'Observation', bottom: '', tooltip: 'Espace', radiation: null },
@@ -61,8 +61,8 @@ const nodes = [
 // Définition du graphe : arcs (flèches)
 const arcs = [
     { from: 'soleil', to: 'geometrie', label: { name: '', txt1: '1UA', txt2: '' } },
-    { from: 'geometrie', to: 'albedo', label: { name: '', txt1: '340.25<br>W/m²' } },
-    { from: 'geometrie', to: 'surface', label: { name: '', txt2: 'Albédo: ⛅50% + ❄️20%' } },
+    { from: 'geometrie', to: 'albedo', label: { name: '340.25<br>W/m²', txt1: '' } },
+    { from: 'geometrie', to: 'surface', label: { name: 'Albédo: ⛅50% + ❄️20%', txt2: '' } },
     { from: 'albedo', to: 'espace1', label: { name: '238.18<br>W/m²', txt1: '', txt2: '' } },
     { from: 'noyau', to: 'surface', label: { name: '0.087<br>W/m²', txt2: '' } }, 
     { from: 'surface', to: 'albedo', label: { name: '', txt1: '102.08<br>W/m²' }, color: 'red' }, 

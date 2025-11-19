@@ -65,14 +65,8 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
     rect.style.position = 'absolute';
     rect.style.zIndex = 1; // Même z-index que le cercle
     
-    factors.forEach(factor => {
-        const factorDiv = document.createElement('div');
-        factorDiv.className = 'flux-rectangle-factor';
-        factorDiv.innerHTML = `<span>${factor.icon}</span><span>${factor.label}</span>`;
-        factorDiv.style.position = 'relative';
-        factorDiv.style.zIndex = '1'; // Au-dessus du logo
-        rect.appendChild(factorDiv);
-    });
+    // Les facteurs sont créés par integrateEds.js qui remplace le contenu du rectangle
+    // Code mort supprimé - les facteurs viennent de .synthese_EdS dans index.html
     
     cell.appendChild(rect);
     return rect;
