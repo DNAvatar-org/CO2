@@ -51,7 +51,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 56px;
+    /* font-size définie dynamiquement en JS selon le radius */
     border: 4px solid;
     z-index: 1;
     cursor: pointer;
@@ -88,7 +88,7 @@
 .flux-label {
     padding: 0px 4px;
     border-radius: 4px;
-    background: #0a0e27;
+    background: rgba(10, 14, 39, 0.7);
     border: 1px solid #94a0d6;
     font-size: 11px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Police plus lisible en petit */

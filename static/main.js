@@ -28,6 +28,57 @@ if (typeof window !== 'undefined') {
 }
 
 // ============================================================================
+// UNITÉ DE TEMPÉRATURE (cycle °C → °F → K)
+// ============================================================================
+let temperatureUnit = 'C'; // 'C', 'F', ou 'K'
+let currentTempCelsius = null; // Stocker la température en Celsius
+
+function convertTemperature(tempC, unit) {
+    if (tempC === null || tempC === undefined) return null;
+    switch(unit) {
+        case 'C':
+            return tempC;
+        case 'F':
+            return tempC * 9/5 + 32;
+        case 'K':
+            return tempC + 273.15;
+        default:
+            return tempC;
+    }
+}
+
+function getTemperatureUnitSymbol(unit) {
+    switch(unit) {
+        case 'C': return '°C';
+        case 'F': return '°F';
+        case 'K': return 'K'; // Kelvin sans le symbole °
+        default: return '°C';
+    }
+}
+
+function cycleTemperatureUnit() {
+    const units = ['C', 'F', 'K'];
+    const currentIndex = units.indexOf(temperatureUnit);
+    temperatureUnit = units[(currentIndex + 1) % units.length];
+    // Mettre à jour l'affichage avec la nouvelle unité
+    if (currentTempCelsius !== null) {
+        updateTemperatureDisplay();
+    }
+}
+
+function updateTemperatureDisplay() {
+    const tempSurfaceEl = document.getElementById('temp-surface-synthese');
+    const tempUnitEl = document.getElementById('temp-unit-synthese');
+    if (tempSurfaceEl && currentTempCelsius !== null) {
+        const convertedTemp = convertTemperature(currentTempCelsius, temperatureUnit);
+        tempSurfaceEl.textContent = convertedTemp.toFixed(1);
+    }
+    if (tempUnitEl) {
+        tempUnitEl.textContent = getTemperatureUnitSymbol(temperatureUnit);
+    }
+}
+
+// ============================================================================
 // ÉPOQUES GÉOLOGIQUES ET FACTEUR VOLCANIQUE
 // ============================================================================
 // Les époques géologiques sont maintenant dans geology.js
@@ -888,11 +939,10 @@ window.updateDisplay = function updateDisplay(data) {
         }
     }
     if (data && data.temp_surface_c !== undefined) {
-        const tempSurfaceEl = document.getElementById('temp-surface-synthese');
-        if (tempSurfaceEl) {
-            tempSurfaceEl.textContent = `${data.temp_surface_c.toFixed(1)}`;
-        }
+        currentTempCelsius = data.temp_surface_c;
+        updateTemperatureDisplay();
     } else {
+        currentTempCelsius = null;
         const tempSurfaceEl = document.getElementById('temp-surface-synthese');
         if (tempSurfaceEl) {
             tempSurfaceEl.textContent = '--';
@@ -1232,6 +1282,13 @@ window.addEventListener('DOMContentLoaded', () => {
     
     // Initialiser l'état des boutons selon l'époque géologique
     enableButtons();
+    
+    // Ajouter un gestionnaire de clic sur la température pour cycler les unités
+    const syntheseTempEl = document.querySelector('.synthese_Temp');
+    if (syntheseTempEl) {
+        syntheseTempEl.style.cursor = 'pointer';
+        syntheseTempEl.addEventListener('click', cycleTemperatureUnit);
+    }
     
     // S'assurer que l'horloge est visible dès le départ
     setTimeout(() => {

@@ -9,7 +9,7 @@
 //   - Initial version: extraction du code de génération du diagramme depuis demo_flux_energetique_01.html
 
 // Fonction pour créer un rectangle avec des facteurs
-function createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage = null) {
+function createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage = null, strokeSize = 4) {
     // Le rectangle est positionné dans la zone centrale de la grille (comme le cercle)
     // Centre de la colonne centrale = 130px, centre de la ligne centrale = variable selon hauteur
     const rect = document.createElement('div');
@@ -57,7 +57,7 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
     // Ne pas mettre de bordure si strokeColor est vide
     if (strokeColor && strokeColor.trim() !== '') {
         rect.style.borderColor = strokeColor;
-        rect.style.borderWidth = '4px';
+        rect.style.borderWidth = strokeSize + 'px';
         rect.style.borderStyle = 'solid';
     } else {
         rect.style.border = 'none';
@@ -79,7 +79,7 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
 }
 
 // Fonction pour créer une cellule avec un tableau 3x3
-function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = null, bottom = null, tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null) {
+function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = null, bottom = null, tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4) {
     const container = document.getElementById('flux-diagram');
     
     // Cellule principale avec grille 3x3
@@ -93,10 +93,22 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         cell.id = 'cell-' + nodeId;
     }
     
-    // Si pas de cercle (strokeColor vide), réduire la hauteur de la ligne centrale pour rapprocher les étiquettes
+    // Appliquer le z-index personnalisé si fourni
+    if (zIndex !== null && zIndex !== undefined) {
+        cell.style.zIndex = zIndex;
+    }
+    
+    // Adapter la grille à la taille du cercle OU du logo (le plus grand)
     const hasCircle = strokeColor && strokeColor.trim() !== '';
-    if (!hasCircle && !rectangleOptions) {
-        cell.style.gridTemplateRows = '25px 50px 20px'; // Réduire ligne centrale de 60px à 50px
+    if (!rectangleOptions) {
+        // Case centrale = max(diamètre du cercle, taille du logo) pour que les étiquettes se placent correctement
+        const circleDiameter = hasCircle ? (radius * 2) : 0;
+        const logoSize = radius * logoScale; // fontSize du logo
+        const centralCellSize = Math.max(circleDiameter, logoSize, 50); // Minimum 50px
+        cell.style.gridTemplateRows = `25px ${centralCellSize}px 20px`;
+        // Ajuster la hauteur totale de la cellule
+        const totalHeight = 25 + centralCellSize + 20;
+        cell.style.height = totalHeight + 'px';
     }
     
     // Positionner le coin supérieur gauche de la grille, puis utiliser transform pour centrer précisément
@@ -105,8 +117,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     cell.style.transform = 'translate(-50%, -50%)'; // Centre la grille sur (x, y), donc le centre de [1,1] est à (x, y)
     
     // Cercle en arrière-plan (derrière le tableau)
-    // Le centre de la case centrale [1,1] est à (130px, 55px) dans la grille par défaut (25 + 60/2)
-    // Si grille réduite (pas de cercle, ligne centrale 50px), centre à (130px, 50px) (25 + 50/2)
+    // Le centre de la case centrale [1,1] doit être au centre de la grille dynamique
     // Avec transform: translate(-50%, -50%) sur la grille, ce centre sera à (x, y)
     const circleBg = document.createElement('div');
     circleBg.className = 'flux-circle-bg';
@@ -115,10 +126,13 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     circleBg.style.height = circleSize + 'px';
     // Positionner le cercle au centre de la grille
     // Centre horizontal : 130px (toujours au centre des colonnes)
-    // Centre vertical : 55px (grille normale 25+60/2) ou 50px (grille réduite 25+50/2)
-    const centerY = hasCircle ? '55px' : '50px'; // Ajuster verticalement si grille réduite
+    // Centre vertical : 25px (top) + (centralCellSize / 2)
+    const circleDiameter = hasCircle ? (radius * 2) : 0;
+    const logoSize = radius * logoScale;
+    const centralCellSize = Math.max(circleDiameter, logoSize, 50);
+    const centerY = 25 + (centralCellSize / 2); // Centre exact de la case centrale
     circleBg.style.left = '130px'; // Centre de la colonne centrale
-    circleBg.style.top = centerY; // Centre de la ligne centrale
+    circleBg.style.top = centerY + 'px'; // Centre de la ligne centrale (CERCLE sans offset)
     circleBg.style.transform = 'translate(-50%, -50%)'; // Centre le cercle sur (130, centerY)
     // Ne pas créer le cercle si un rectangle est présent
     if (!rectangleOptions) {
@@ -128,10 +142,21 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             circleBg.style.border = 'none';
         } else {
             circleBg.style.borderColor = strokeColor;
-            circleBg.style.borderWidth = '4px';
+            circleBg.style.borderWidth = strokeSize + 'px';
             circleBg.style.borderStyle = 'solid';
         }
-        circleBg.textContent = logo;
+        // Wrapper le logo dans un span pour appliquer l'offset sans bouger le cercle
+        const logoSpan = document.createElement('span');
+        logoSpan.textContent = logo;
+        logoSpan.style.display = 'inline-block';
+        if (logoOffsetY !== 0) {
+            // L'offset doit être proportionnel au scale du logo
+            const scaledOffsetY = logoOffsetY * logoScale;
+            logoSpan.style.transform = `translateY(${scaledOffsetY}px)`;
+        }
+        circleBg.appendChild(logoSpan);
+        // Taille du logo proportionnelle au radius avec scale personnalisable
+        circleBg.style.fontSize = (radius * logoScale) + 'px';
         
         // Gestionnaire de clic pour copier le logo dans le presse-papier
         circleBg.addEventListener('click', (e) => {
@@ -267,20 +292,17 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     if (rectangleOptions) {
         const { width, height, factors } = rectangleOptions;
         // Utiliser fillImage depuis le nœud racine (passé en paramètre)
-        createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage);
+        createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage, strokeSize);
     }
     
     return cell;
 }
 
 // Fonction pour créer une étiquette de flèche avec des divs
-function createArrowLabel(x, y, labels) {
+// x1, y1 : début de la flèche (partie visible)
+// x2, y2 : fin de la flèche (partie visible)
+function createArrowLabel(x1, y1, x2, y2, labels) {
     const container = document.getElementById('flux-diagram');
-    const labelContainer = document.createElement('div');
-    labelContainer.style.position = 'absolute';
-    labelContainer.style.left = x + 'px';
-    labelContainer.style.top = y + 'px';
-    labelContainer.style.zIndex = '200'; // Au-dessus de tout
     
     let labelObj = {};
     if (Array.isArray(labels)) {
@@ -295,15 +317,16 @@ function createArrowLabel(x, y, labels) {
         labelObj = labels;
     }
     
-    const createLabel = (text, offsetX, offsetY, isName = false, size = null) => {
+    const createLabel = (text, posX, posY, isName = false, size = null) => {
         if (!text) return;
         const label = document.createElement('div');
         label.className = 'flux-label flux-label-blue'; // Tous les textes des flèches en bleu
         label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
         label.style.position = 'absolute';
-        label.style.left = offsetX + 'px';
-        label.style.top = offsetY + 'px';
+        label.style.left = posX + 'px';
+        label.style.top = posY + 'px';
         label.style.transform = 'translate(-50%, -50%)';
+        label.style.zIndex = '200';
         // Si le texte contient <br>, permettre les retours à la ligne mais pas le wrapping automatique
         if (text.includes('<br>')) {
             label.style.whiteSpace = 'normal';
@@ -320,68 +343,46 @@ function createArrowLabel(x, y, labels) {
             label.style.border = 'none';
             label.style.padding = '0';
         }
-        labelContainer.appendChild(label);
+        container.appendChild(label);
     };
     
     // Récupérer la taille depuis labelObj.size
     const labelSize = labelObj.size || null;
     
-    // txt2 (au-dessus)
-    if (labelObj.txt2) {
-        createLabel(labelObj.txt2, 0, -25, false, labelSize);
-    }
-    
-    // Nom (au centre)
-    if (labelObj.name) {
-        createLabel(labelObj.name, 0, 0, true, labelSize);
-    }
-    
-    // txt1 (en dessous par défaut, ou au-dessus si relatif: 'top')
+    // txt1 : au début de la flèche (15% du chemin)
     if (labelObj.txt1) {
-        const txt1OffsetY = labelObj.relatif === 'top' ? -25 : 25;
-        createLabel(labelObj.txt1, 0, txt1OffsetY, false, labelSize);
+        const pos1X = x1 + (x2 - x1) * 0.15;
+        const pos1Y = y1 + (y2 - y1) * 0.15;
+        createLabel(labelObj.txt1, pos1X, pos1Y, false, labelSize);
     }
     
-    // txt3 (à gauche) et txt4 (à droite)
+    // name : au milieu de la flèche (50%)
+    if (labelObj.name) {
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        createLabel(labelObj.name, midX, midY, true, labelSize);
+    }
+    
+    // txt2 : entre le milieu et la fin (75% du chemin)
+    if (labelObj.txt2) {
+        const pos2X = x1 + (x2 - x1) * 0.75;
+        const pos2Y = y1 + (y2 - y1) * 0.75;
+        createLabel(labelObj.txt2, pos2X, pos2Y, false, labelSize);
+    }
+    
+    // txt3 (à gauche) et txt4 (à droite) - relatifs au milieu
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
     if (labelObj.txt3) {
-        createLabel(labelObj.txt3, -60, 0, false);
+        createLabel(labelObj.txt3, midX - 60, midY, false);
     }
     if (labelObj.txt4) {
-        createLabel(labelObj.txt4, 60, 0, false);
+        createLabel(labelObj.txt4, midX + 60, midY, false);
     }
-    
-    container.appendChild(labelContainer);
-    
-    // Calculer le centre visuel en fonction des labels présents
-    // Les labels sont centrés avec transform: translate(-50%, -50%)
-    // Leur centre est donc exactement à leur position offsetY
-    let centerY = 0;
-    let count = 0;
-    
-    if (labelObj.txt2) { centerY += -25; count++; }
-    if (labelObj.name) { 
-        centerY += 0; // Le centre du label name est toujours à offsetY = 0
-        count++; 
-    }
-    if (labelObj.txt1) {
-        const txt1OffsetY = labelObj.relatif === 'top' ? -25 : 25;
-        centerY += txt1OffsetY;
-        count++;
-    }
-    
-    // Centre visuel moyen (simple moyenne des positions)
-    const centerOffsetY = count > 0 ? centerY / count : 0;
-    
-    // Positionner le labelContainer pour que son centre visuel soit à (x, y)
-    labelContainer.style.left = x + 'px';
-    labelContainer.style.top = (y + centerOffsetY) + 'px';
-    labelContainer.style.transform = 'translate(-50%, -50%)';
-    
-    return labelContainer;
 }
 
 // Fonction pour créer une flèche avec des divs
-function createArrow(x1, y1, x2, y2) {
+function createArrow(x1, y1, x2, y2, zIndex = 1, color = '#667eea') {
     const container = document.getElementById('flux-diagram');
     const arrow = document.createElement('div');
     arrow.className = 'flux-arrow';
@@ -392,12 +393,14 @@ function createArrow(x1, y1, x2, y2) {
     const angle = Math.atan2(dy, dx) * 180 / Math.PI;
     
     arrow.style.position = 'absolute';
+    arrow.style.zIndex = zIndex; // Flèches en dessous des étiquettes (z-index 200)
     arrow.style.left = x1 + 'px';
     arrow.style.top = y1 + 'px';
     arrow.style.width = length + 'px';
     arrow.style.height = '3px';
     arrow.style.transformOrigin = '0 50%';
     arrow.style.transform = `rotate(${angle}deg)`;
+    arrow.style.background = color; // Couleur personnalisable
     
     // Pointe de flèche à la fin de la flèche (point d'arrivée)
     const arrowhead = document.createElement('div');
@@ -408,7 +411,7 @@ function createArrow(x1, y1, x2, y2) {
     arrowhead.style.width = '0';
     arrowhead.style.height = '0';
     // La pointe pointe vers la droite par défaut, elle sera tournée avec la flèche
-    arrowhead.style.borderLeft = '8px solid #667eea';
+    arrowhead.style.borderLeft = `8px solid ${color}`; // Couleur personnalisable
     arrowhead.style.borderTop = '5px solid transparent';
     arrowhead.style.borderBottom = '5px solid transparent';
     arrow.appendChild(arrowhead);
@@ -573,9 +576,27 @@ function generateArrows() {
             y: idDest.y - idDep.y
         };
         
-        // Angle en radians puis en degrés
+        // Normaliser le vecteur
+        const length = Math.sqrt(Vect.x * Vect.x + Vect.y * Vect.y);
+        
+        // Calculer le vecteur unitaire avec atan2 (toujours)
+        if (length < 0.1) {
+            // Si les centres sont vraiment au même point (< 0.1px), erreur
+            console.error(`❌ ERREUR: Flèche ${arc.from} → ${arc.to} : centres identiques (distance=${length.toFixed(3)}px)!`);
+            return; // Ne pas créer de flèche
+        }
+        
+        // Utiliser le vecteur entre les centres pour calculer l'angle
+        const unitX = Vect.x / length;
+        const unitY = Vect.y / length;
+        
+        // Angle en radians puis en degrés (pour détection de direction uniquement)
         const angleRad = Math.atan2(Vect.y, Vect.x);
         const angleDeg = angleRad * 180 / Math.PI;
+        
+        console.log(`🔵 [${arc.from} → ${arc.to}] Centres: dep=(${idDep.x}, ${idDep.y}), dest=(${idDest.x}, ${idDest.y})`);
+        console.log(`🔵 [${arc.from} → ${arc.to}] Vect=(${Vect.x.toFixed(2)}, ${Vect.y.toFixed(2)}), length=${length.toFixed(2)}px`);
+        console.log(`🔵 [${arc.from} → ${arc.to}] UnitVect=(${unitX.toFixed(3)}, ${unitY.toFixed(3)}), angle=${angleDeg.toFixed(1)}°`);
         
         // Point de départ (x1, y1) : sur le bord du cercle ou rectangle source
         let x1, y1;
@@ -625,10 +646,22 @@ function generateArrows() {
                 y1 = idDep.y;
             }
         } else {
-            // Cercle : point sur le bord selon l'angle
-            x1 = idDep.x + radius * Math.cos(angleRad);
-            y1 = idDep.y + radius * Math.sin(angleRad);
+            // Cercle : point sur le bord selon le vecteur normalisé (utiliser le radius + bordure du nœud source)
+            // Si pas de strokeColor, partir du centre (pas de cercle visible)
+            if (idDep.strokeColor && idDep.strokeColor.trim() !== '') {
+                const sourceRadius = idDep.radius || radius;
+                const sourceStrokeSize = idDep.strokeSize || 4;
+                const sourceRadiusOuter = sourceRadius + (sourceStrokeSize / 2);
+                x1 = idDep.x + sourceRadiusOuter * unitX;
+                y1 = idDep.y + sourceRadiusOuter * unitY;
+            } else {
+                // Pas de cercle visible, partir du centre du logo
+                x1 = idDep.x;
+                y1 = idDep.y;
+            }
         }
+        
+        console.log(`🟢 [${arc.from} → ${arc.to}] Point départ (x1,y1)=(${x1.toFixed(1)}, ${y1.toFixed(1)}), radius_source=${idDep.radius || radius}`);
         
         // Point d'arrivée (x2, y2) : selon l'angle et la présence d'étiquettes
         let x2, y2;
@@ -647,12 +680,33 @@ function generateArrows() {
         const hasTop = idDest.top && idDest.top.trim() !== '';
         const hasBottom = idDest.bottom && idDest.bottom.trim() !== '';
         
+        // Calculer la demi-hauteur de la grille pour ce nœud (basée sur le CERCLE uniquement, pas le logo)
+        const destRadius = idDest.radius || radius;
+        const destStrokeSize = idDest.strokeSize || 4;
+        const destRadiusOuter = destRadius + (destStrokeSize / 2); // Radius jusqu'au bord extérieur de la bordure
+        const destHasCircle = idDest.strokeColor && idDest.strokeColor.trim() !== '';
+        const destCircleDiameter = destHasCircle ? (destRadius * 2) : 0;
+        // Pour les nœuds sans cercle, calculer la taille approximative du logo
+        const destLogoScale = idDest.logoScale || 1.4;
+        const destLogoRadius = destRadius * destLogoScale * 0.5; // Approximation du "rayon" du logo
+        // Pour les étiquettes, utiliser uniquement la taille du cercle (le logo peut dépasser)
+        const destCentralCellSize = destCircleDiameter > 0 ? destCircleDiameter : 50;
+        const destCellHalfHeight = (25 + destCentralCellSize + 20) / 2; // Hauteur totale / 2
+        
+        // Détecter si les cercles sont concentriques (centres très proches)
+        // Si concentriques : ne pas inverser le vecteur (aller dans le sens du vecteur)
+        // Si normaux : inverser le vecteur (arriver au bord proche)
+        const isConcentric = length < 10; // Distance entre centres < 10px = concentriques
+        const sign = isConcentric ? 1 : -1; // Concentriques: pas d'inversion, Normaux: inversion
+        
+        console.log(`🟣 [${arc.from} → ${arc.to}] ${isConcentric ? 'CONCENTRIQUES' : 'NORMAUX'} (dist=${length.toFixed(1)}px) → sign=${sign}`);
+        
         
         if (isGoingUp && isVerticalEnough) {
             // Flèche vers le haut (assez verticale)
             if (hasBottom) {
                 // Arriver au bas de la grille (où se trouve txt1)
-                const gridY = idDest.y + cellHalfHeight;
+                const gridY = idDest.y + destCellHalfHeight;
                 // Calculer l'intersection depuis (x1, y1) vers le centre, avec y = gridY
                 if (Math.abs(Vect.y) > 0.001) {
                     const t = (gridY - y1) / Vect.y;
@@ -691,15 +745,23 @@ function generateArrows() {
                         y2 = bottomY;
                     }
                 } else {
-                    // Cercle : intersection avec le bord bas
-                    const bottomY = idDest.y + radius;
-                    if (Math.abs(Vect.y) > 0.001) {
-                        const t = (bottomY - y1) / Vect.y;
-                        x2 = x1 + Vect.x * t;
-                        y2 = bottomY;
+                    // Pas d'étiquette : arriver au bord du cercle OU à la surface du logo
+                    if (!destHasCircle) {
+                        // Pas de cercle visible : arriver à la surface du logo (pas au centre)
+                        // sign = -1 pour inverser (bord proche), sign = 1 pour concentriques
+                        x2 = idDest.x + sign * destLogoRadius * unitX;
+                        y2 = idDest.y + sign * destLogoRadius * unitY;
                     } else {
-                        x2 = idDest.x;
-                        y2 = bottomY;
+                        // Cercle : intersection avec le bord bas (utiliser le radius + bordure)
+                        const bottomY = idDest.y + destRadiusOuter;
+                        if (Math.abs(Vect.y) > 0.001) {
+                            const t = (bottomY - y1) / Vect.y;
+                            x2 = x1 + Vect.x * t;
+                            y2 = bottomY;
+                        } else {
+                            x2 = idDest.x;
+                            y2 = bottomY;
+                        }
                     }
                 }
             }
@@ -707,7 +769,7 @@ function generateArrows() {
             // Flèche vers le bas (assez verticale)
             if (hasTop) {
                 // Arriver au haut de la grille (où se trouve top)
-                const gridY = idDest.y - cellHalfHeight;
+                const gridY = idDest.y - destCellHalfHeight;
                 // Calculer l'intersection depuis (x1, y1) vers le centre, avec y = gridY
                 if (Math.abs(Vect.y) > 0.001) {
                     const t = (gridY - y1) / Vect.y;
@@ -746,10 +808,17 @@ function generateArrows() {
                         y2 = topY;
                     }
                 } else {
-                    // Cercle : intersection avec le bord selon l'angle inverse
-                    const reverseAngle = angleRad + Math.PI;
-                    x2 = idDest.x + radius * Math.cos(reverseAngle);
-                    y2 = idDest.y + radius * Math.sin(reverseAngle);
+                    // Pas d'étiquette : arriver au bord du cercle OU à la surface du logo
+                    if (!destHasCircle) {
+                        // Pas de cercle visible : arriver à la surface du logo (pas au centre)
+                        // sign = -1 pour inverser (bord proche), sign = 1 pour concentriques
+                        x2 = idDest.x + sign * destLogoRadius * unitX;
+                        y2 = idDest.y + sign * destLogoRadius * unitY;
+                    } else {
+                        // Cercle : sign = -1 pour inverser (bord proche), sign = 1 pour concentriques
+                        x2 = idDest.x + sign * destRadiusOuter * unitX;
+                        y2 = idDest.y + sign * destRadiusOuter * unitY;
+                    }
                 }
             }
         } else {
@@ -790,40 +859,40 @@ function generateArrows() {
                     x2 = closest.x;
                     y2 = closest.y;
                 } else {
-                    // Fallback
-                    const reverseAngle = angleRad + Math.PI;
-                    x2 = idDest.x + halfWidth * Math.cos(reverseAngle);
-                    y2 = idDest.y + halfHeight * Math.sin(reverseAngle);
+                    // Fallback : utiliser le vecteur inversé avec les dimensions du rectangle
+                    x2 = idDest.x - halfWidth * unitX;
+                    y2 = idDest.y - halfHeight * unitY;
                 }
             } else {
-                // Flèche horizontale ou autre : arriver au bord du cercle
-                const isHorizontal = absAngle < 45 || absAngle > 135;
-                if (isHorizontal && !idDest.rectangle) {
-                    // Arriver au bord du cercle pour les flèches horizontales
-                    // Calculer l'intersection avec le bord selon l'angle inverse
-                    const reverseAngle = angleRad + Math.PI;
-                    x2 = idDest.x + radius * Math.cos(reverseAngle);
-                    y2 = idDest.y + radius * Math.sin(reverseAngle);
+                // Flèche horizontale ou autre : arriver au bord du cercle OU à la surface du logo
+                if (!destHasCircle) {
+                    // Pas de cercle visible : arriver à la surface du logo (pas au centre)
+                    // sign = -1 pour inverser (bord proche), sign = 1 pour concentriques
+                    x2 = idDest.x + sign * destLogoRadius * unitX;
+                    y2 = idDest.y + sign * destLogoRadius * unitY;
                 } else {
-                    // Cercle : intersection avec le bord selon l'angle inverse
-                    const reverseAngle = angleRad + Math.PI;
-                    x2 = idDest.x + radius * Math.cos(reverseAngle);
-                    y2 = idDest.y + radius * Math.sin(reverseAngle);
+                    // Cercle visible : sign = -1 pour inverser (bord proche), sign = 1 pour concentriques
+                    x2 = idDest.x + sign * destRadiusOuter * unitX;
+                    y2 = idDest.y + sign * destRadiusOuter * unitY;
                 }
             }
         }
+        
+        console.log(`🟡 [${arc.from} → ${arc.to}] Point arrivée (x2,y2)=(${x2.toFixed(1)}, ${y2.toFixed(1)}), radius_dest=${destRadius}`);
         
         // Recalculer la distance réelle entre les points de départ et d'arrivée
         const realDx = x2 - x1;
         const realDy = y2 - y1;
         const realLength = Math.sqrt(realDx * realDx + realDy * realDy);
         
+        console.log(`🟠 [${arc.from} → ${arc.to}] Distance bord-à-bord: realLength=${realLength.toFixed(1)}px`);
+        
         // Vérifier si on arrive au centre (plus utilisé maintenant, toutes les flèches arrivent au bord)
         const arrivesAtCenter = false; // Plus utilisé, toutes les flèches arrivent au bord avec marge
         
         // Vecteur unitaire pour les marges (basé sur la distance réelle)
-        const unitX = realLength > 0.001 ? realDx / realLength : 0;
-        const unitY = realLength > 0.001 ? realDy / realLength : 0;
+        const realUnitX = realLength > 0.001 ? realDx / realLength : 0;
+        const realUnitY = realLength > 0.001 ? realDy / realLength : 0;
         
         // Déplacer les points le long de la direction par la marge
         // Pour raccourcir la flèche, on doit déplacer le point d'arrivée dans la direction opposée au vecteur
@@ -832,15 +901,24 @@ function generateArrows() {
         // Pour les rectangles, utiliser une marge plus grande car ils sont plus grands
         const marginPixels = idDest.rectangle ? 20 : 8; // Marge plus grande pour les rectangles
         const marginEnd = arrivesAtCenter ? 0 : marginPixels;
-        const finalX1 = x1 + unitX * 0;
-        const finalY1 = y1 + unitY * 0;
+        const finalX1 = x1 + realUnitX * 0;
+        const finalY1 = y1 + realUnitY * 0;
         // Pour reculer depuis le bord du cercle, on doit aller dans la direction opposée au vecteur
-        // Donc on soustrait la marge : x2 - unitX * marginEnd (car unitX pointe vers le cercle)
-        const finalX2 = x2 - unitX * marginEnd;
-        const finalY2 = y2 - unitY * marginEnd;
+        // Donc on soustrait la marge : x2 - realUnitX * marginEnd (car realUnitX pointe vers le cercle)
+        const finalX2 = x2 - realUnitX * marginEnd;
+        const finalY2 = y2 - realUnitY * marginEnd;
         
+        const finalLength = Math.sqrt((finalX2 - finalX1) ** 2 + (finalY2 - finalY1) ** 2);
         
-        const arrow = createArrow(finalX1, finalY1, finalX2, finalY2);
+        // Les flèches héritent du z-index du nœud source
+        const arrowZIndex = idDep.zIndex || 1;
+        const arrowColor = arc.color || '#667eea'; // Couleur par défaut bleu
+        
+        console.log(`🔴 [${arc.from} → ${arc.to}] Points finaux (avec marge ${marginEnd}px): (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}) → (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
+        console.log(`🔴 [${arc.from} → ${arc.to}] Longueur finale visible: ${finalLength.toFixed(1)}px, couleur: ${arrowColor}, z-index: ${arrowZIndex}`);
+        console.log('---');
+        
+        const arrow = createArrow(finalX1, finalY1, finalX2, finalY2, arrowZIndex, arrowColor);
         
         
         // Ajouter l'étiquette de flèche si présente
@@ -898,10 +976,8 @@ function generateArrows() {
                 }
             }
             
-            // Calculer le milieu de la partie visible
-            const midX = (visibleX1 + visibleX2) / 2;
-            const midY = (visibleY1 + visibleY2) / 2;
-            createArrowLabel(midX, midY, arc.label);
+            // Créer les labels le long de la partie visible de la flèche
+            createArrowLabel(visibleX1, visibleY1, visibleX2, visibleY2, arc.label);
         }
     });
 }
@@ -960,7 +1036,11 @@ nodes.forEach(node => {
         radiationOptions,
         node.rectangle || null,
         node.fillImage || null,
-        node.id // Passer l'ID du noeud pour créer l'ID de la cellule
+        node.id, // Passer l'ID du noeud pour créer l'ID de la cellule
+        node.zIndex || null, // Passer le z-index personnalisé
+        node.logoScale || 1.4, // Passer le scale du logo (défaut 1.4)
+        node.logoOffsetY || 0, // Passer l'offset vertical du logo (défaut 0)
+        node.strokeSize || 4 // Passer l'épaisseur de la bordure (défaut 4px)
     );
 });
 
