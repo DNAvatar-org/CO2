@@ -95,8 +95,8 @@
     /* font-weight: bold; */
     white-space: nowrap;
     text-align: center;
-    line-height: 1.5;
-    z-index: 200;
+    line-height: 1.2; /* Interligne réduit pour textes multi-lignes */
+    z-index: 300; /* Au-dessus de tout (flèches et cellules) */
 }
 .flux-label-name {
     color: #fff; /* Texte blanc sur fond bleu nuit */

@@ -88,6 +88,9 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     // Utiliser flux-cellRect si rectangle présent pour avoir une hauteur plus grande
     cell.className = rectangleOptions ? 'flux-cellRect' : 'flux-cell';
     
+    // Permettre aux étiquettes de déborder sans impacter le centrage du logo
+    cell.style.overflow = 'visible';
+    
     // Ajouter un ID si fourni
     if (nodeId) {
         cell.id = 'cell-' + nodeId;
@@ -100,21 +103,67 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     
     // Adapter la grille à la taille du cercle OU du logo (le plus grand)
     const hasCircle = strokeColor && strokeColor.trim() !== '';
+    // Calcul initial pour les dimensions par défaut
+    const circleDiameterInit = hasCircle ? (radius * 2) : 0;
+    let centralCellSize = hasCircle ? circleDiameterInit : (radius * logoScale);
+    let totalHeight = 25 + centralCellSize + 20;
+    let totalWidth = 100 + centralCellSize + 100;
+    
     if (!rectangleOptions) {
-        // Case centrale = max(diamètre du cercle, taille du logo) pour que les étiquettes se placent correctement
+        // Case centrale = max(diamètre du cercle, taille du logo) - s'adapte à la vraie taille
         const circleDiameter = hasCircle ? (radius * 2) : 0;
-        const logoSize = radius * logoScale; // fontSize du logo
-        const centralCellSize = Math.max(circleDiameter, logoSize, 50); // Minimum 50px
+        // Si cercle visible : logoScale est relatif au diamètre, sinon relatif au radius
+        const logoSize = hasCircle ? (circleDiameter * logoScale) : (radius * logoScale);
+        centralCellSize = Math.max(circleDiameter, logoSize); // Pas de minimum, s'adapte à la taille réelle
+        
+        // Adapter la grille en hauteur ET en largeur au contenu central
         cell.style.gridTemplateRows = `25px ${centralCellSize}px 20px`;
-        // Ajuster la hauteur totale de la cellule
-        const totalHeight = 25 + centralCellSize + 20;
+        cell.style.gridTemplateColumns = `100px ${centralCellSize}px 100px`; // Colonne centrale = taille du logo/cercle
+        
+        // Ajuster les dimensions de la cellule
+        totalHeight = 25 + centralCellSize + 20;
+        totalWidth = 100 + centralCellSize + 100;
         cell.style.height = totalHeight + 'px';
+        cell.style.width = totalWidth + 'px';
+        
+        if (nodeId === 'reemis' || nodeId === 'surface') {
+            console.log(`📦 [${nodeId}] radius=${radius}, logoScale=${logoScale}, circleDiameter=${circleDiameter}, logoSize=${logoSize.toFixed(1)}`);
+            console.log(`📦 [${nodeId}] centralCellSize=${centralCellSize}, totalHeight=${totalHeight}, totalWidth=${totalWidth}`);
+            console.log(`📦 [${nodeId}] grid: 25px + ${centralCellSize}px + 20px (H) × 100px + ${centralCellSize}px + 100px (W)`);
+        }
     }
     
     // Positionner le coin supérieur gauche de la grille, puis utiliser transform pour centrer précisément
+    // Compensation pour la structure asymétrique de la grille (25px top vs 20px bottom)
+    // Le décalage vertical est : (25 - 20) / 2 = 2.5px
+    const verticalOffset = 2.5; // Décalage pour compenser l'asymétrie de la grille
+    
+    // Position du centre de la cellule sans offset : y + totalHeight/2
+    const cellCenterY = y;
+    // Position du centre du logo dans la cellule : 25 + centralCellSize/2
+    const logoCenterInCell = 25 + centralCellSize / 2;
+    // Écart entre centre cellule et centre logo : logoCenterInCell - totalHeight/2
+    const naturalOffset = logoCenterInCell - totalHeight / 2;
+    
+    if (nodeId === 'reemis' || nodeId === 'surface') {
+        console.log(`📍 [${nodeId}] Position: x=${x}, y=${y}, logoOffsetY=${logoOffsetY}`);
+        console.log(`📍 [${nodeId}] verticalOffset=${verticalOffset}, naturalOffset=${naturalOffset.toFixed(1)}`);
+        console.log(`📍 [${nodeId}] Centre cellule à: ${totalHeight/2}px, Centre logo à: ${logoCenterInCell}px → décalage: ${naturalOffset.toFixed(1)}px`);
+    }
+    
+    // Le verticalOffset compense l'asymétrie de la grille (top 25px vs bottom 20px)
+    // logoOffsetY sera appliqué séparément au logo lui-même (ligne 200)
+    const totalVerticalOffset = verticalOffset;
+    
     cell.style.left = x + 'px';
     cell.style.top = y + 'px';
-    cell.style.transform = 'translate(-50%, -50%)'; // Centre la grille sur (x, y), donc le centre de [1,1] est à (x, y)
+    cell.style.transform = `translate(-50%, calc(-50% - ${totalVerticalOffset}px))`; // Centre le LOGO (pas la cellule) sur (x, y)
+    
+    if (nodeId === 'reemis' || nodeId === 'surface') {
+        console.log(`📍 [${nodeId}] totalVerticalOffset = ${totalVerticalOffset}px (sans logoOffsetY)`);
+        console.log(`📍 [${nodeId}] logoOffsetY = ${logoOffsetY} sera appliqué au logo (×${logoScale} = ${(logoOffsetY * logoScale).toFixed(2)}px)`);
+        console.log(`📍 [${nodeId}] Transform: translate(-50%, calc(-50% - ${totalVerticalOffset}px))`);
+    }
     
     // Cercle en arrière-plan (derrière le tableau)
     // Le centre de la case centrale [1,1] doit être au centre de la grille dynamique
@@ -125,15 +174,13 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     circleBg.style.width = circleSize + 'px';
     circleBg.style.height = circleSize + 'px';
     // Positionner le cercle au centre de la grille
-    // Centre horizontal : 130px (toujours au centre des colonnes)
+    // Centre horizontal : 100px (col gauche) + (centralCellSize / 2)
     // Centre vertical : 25px (top) + (centralCellSize / 2)
-    const circleDiameter = hasCircle ? (radius * 2) : 0;
-    const logoSize = radius * logoScale;
-    const centralCellSize = Math.max(circleDiameter, logoSize, 50);
+    const centerX = 100 + (centralCellSize / 2); // Centre exact de la colonne centrale
     const centerY = 25 + (centralCellSize / 2); // Centre exact de la case centrale
-    circleBg.style.left = '130px'; // Centre de la colonne centrale
+    circleBg.style.left = centerX + 'px'; // Centre de la colonne centrale (dynamique)
     circleBg.style.top = centerY + 'px'; // Centre de la ligne centrale (CERCLE sans offset)
-    circleBg.style.transform = 'translate(-50%, -50%)'; // Centre le cercle sur (130, centerY)
+    circleBg.style.transform = 'translate(-50%, -50%)'; // Centre le cercle sur (centerX, centerY)
     // Ne pas créer le cercle si un rectangle est présent
     if (!rectangleOptions) {
         circleBg.style.backgroundColor = fillColor;
@@ -149,14 +196,15 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         const logoSpan = document.createElement('span');
         logoSpan.textContent = logo;
         logoSpan.style.display = 'inline-block';
+        // Appliquer logoOffsetY au logo lui-même, scalé proportionnellement
         if (logoOffsetY !== 0) {
-            // L'offset doit être proportionnel au scale du logo
-            const scaledOffsetY = logoOffsetY * logoScale;
-            logoSpan.style.transform = `translateY(${scaledOffsetY}px)`;
+            const scaledLogoOffsetY = logoOffsetY * logoScale;
+            logoSpan.style.transform = `translateY(${scaledLogoOffsetY}px)`;
         }
         circleBg.appendChild(logoSpan);
-        // Taille du logo proportionnelle au radius avec scale personnalisable
-        circleBg.style.fontSize = (radius * logoScale) + 'px';
+        // Taille du logo : si cercle visible, relatif au diamètre; sinon relatif au radius
+        const logoFontSize = hasCircle ? (radius * 2 * logoScale) : (radius * logoScale);
+        circleBg.style.fontSize = logoFontSize + 'px';
         
         // Gestionnaire de clic pour copier le logo dans le presse-papier
         circleBg.addEventListener('click', (e) => {
@@ -197,7 +245,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             gridItem.style.gridColumn = col + 1;
             gridItem.style.gridRow = row + 1;
             gridItem.style.position = 'relative';
-            gridItem.style.zIndex = 2; // Au-dessus du cercle
+            gridItem.style.zIndex = 300; // Étiquettes toujours au-dessus de tout
             
             // [1,1] = Vide (le logo est dans le cercle en arrière-plan)
             // Les autres cases contiennent les étiquettes
@@ -206,6 +254,10 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 const label = document.createElement('div');
                 label.className = 'flux-label flux-label-blue';
                 label.innerHTML = top; // Utiliser innerHTML pour interpréter les balises <br>
+                // Position absolute pour ne pas impacter la largeur de la colonne
+                label.style.position = 'absolute';
+                label.style.left = '50%';
+                label.style.transform = 'translateX(-50%)';
                 gridItem.appendChild(label);
             }
             // [1,2] = Bottom (bas)
@@ -213,6 +265,10 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 const label = document.createElement('div');
                 label.className = 'flux-label flux-label-blue';
                 label.innerHTML = bottom; // Utiliser innerHTML pour interpréter les balises <br>
+                // Position absolute pour ne pas impacter la largeur de la colonne
+                label.style.position = 'absolute';
+                label.style.left = '50%';
+                label.style.transform = 'translateX(-50%)';
                 gridItem.appendChild(label);
             }
             // [0,1] = Left (gauche)
@@ -326,7 +382,7 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
         label.style.left = posX + 'px';
         label.style.top = posY + 'px';
         label.style.transform = 'translate(-50%, -50%)';
-        label.style.zIndex = '200';
+        label.style.zIndex = '300'; // Au-dessus des flèches (z-index 1-20) ET des cellules (z-index jusqu'à 20)
         // Si le texte contient <br>, permettre les retours à la ligne mais pas le wrapping automatique
         if (text.includes('<br>')) {
             label.style.whiteSpace = 'normal';
@@ -552,10 +608,11 @@ function calculatePositions() {
         const destNode = nodeMap[arc.to];
         const sourceNode = nodeMap[arc.from];
         if (destNode && sourceNode && destNode.y !== null) {
-            const arcSpacing = arc.label ? spacingSizes.medium : spacingSizes.short;
-            // Source doit être en dessous de destination : bas de destination + espacement + haut de source = centre source
-            const newSourceY = destNode.y + cellHalfHeight + arcSpacing + cellHalfHeight;
-            if (sourceNode.y === null || newSourceY > sourceNode.y) {
+            // Ne recalculer que si la source n'a pas déjà une position définie
+            if (sourceNode.y === null) {
+                const arcSpacing = arc.label ? spacingSizes.medium : spacingSizes.short;
+                // Source doit être en dessous de destination : bas de destination + espacement + haut de source = centre source
+                const newSourceY = destNode.y + cellHalfHeight + arcSpacing + cellHalfHeight;
                 sourceNode.y = newSourceY;
             }
         }
@@ -581,9 +638,8 @@ function generateArrows() {
         
         // Calculer le vecteur unitaire avec atan2 (toujours)
         if (length < 0.1) {
-            // Si les centres sont vraiment au même point (< 0.1px), erreur
-            console.error(`❌ ERREUR: Flèche ${arc.from} → ${arc.to} : centres identiques (distance=${length.toFixed(3)}px)!`);
-            return; // Ne pas créer de flèche
+            // Si les centres sont vraiment au même point (< 0.1px), ne pas créer de flèche
+            return;
         }
         
         // Utiliser le vecteur entre les centres pour calculer l'angle
@@ -593,10 +649,6 @@ function generateArrows() {
         // Angle en radians puis en degrés (pour détection de direction uniquement)
         const angleRad = Math.atan2(Vect.y, Vect.x);
         const angleDeg = angleRad * 180 / Math.PI;
-        
-        console.log(`🔵 [${arc.from} → ${arc.to}] Centres: dep=(${idDep.x}, ${idDep.y}), dest=(${idDest.x}, ${idDest.y})`);
-        console.log(`🔵 [${arc.from} → ${arc.to}] Vect=(${Vect.x.toFixed(2)}, ${Vect.y.toFixed(2)}), length=${length.toFixed(2)}px`);
-        console.log(`🔵 [${arc.from} → ${arc.to}] UnitVect=(${unitX.toFixed(3)}, ${unitY.toFixed(3)}), angle=${angleDeg.toFixed(1)}°`);
         
         // Point de départ (x1, y1) : sur le bord du cercle ou rectangle source
         let x1, y1;
@@ -661,8 +713,6 @@ function generateArrows() {
             }
         }
         
-        console.log(`🟢 [${arc.from} → ${arc.to}] Point départ (x1,y1)=(${x1.toFixed(1)}, ${y1.toFixed(1)}), radius_source=${idDep.radius || radius}`);
-        
         // Point d'arrivée (x2, y2) : selon l'angle et la présence d'étiquettes
         let x2, y2;
         
@@ -698,8 +748,6 @@ function generateArrows() {
         // Si normaux : inverser le vecteur (arriver au bord proche)
         const isConcentric = length < 10; // Distance entre centres < 10px = concentriques
         const sign = isConcentric ? 1 : -1; // Concentriques: pas d'inversion, Normaux: inversion
-        
-        console.log(`🟣 [${arc.from} → ${arc.to}] ${isConcentric ? 'CONCENTRIQUES' : 'NORMAUX'} (dist=${length.toFixed(1)}px) → sign=${sign}`);
         
         
         if (isGoingUp && isVerticalEnough) {
@@ -878,14 +926,10 @@ function generateArrows() {
             }
         }
         
-        console.log(`🟡 [${arc.from} → ${arc.to}] Point arrivée (x2,y2)=(${x2.toFixed(1)}, ${y2.toFixed(1)}), radius_dest=${destRadius}`);
-        
         // Recalculer la distance réelle entre les points de départ et d'arrivée
         const realDx = x2 - x1;
         const realDy = y2 - y1;
         const realLength = Math.sqrt(realDx * realDx + realDy * realDy);
-        
-        console.log(`🟠 [${arc.from} → ${arc.to}] Distance bord-à-bord: realLength=${realLength.toFixed(1)}px`);
         
         // Vérifier si on arrive au centre (plus utilisé maintenant, toutes les flèches arrivent au bord)
         const arrivesAtCenter = false; // Plus utilisé, toutes les flèches arrivent au bord avec marge
@@ -908,15 +952,9 @@ function generateArrows() {
         const finalX2 = x2 - realUnitX * marginEnd;
         const finalY2 = y2 - realUnitY * marginEnd;
         
-        const finalLength = Math.sqrt((finalX2 - finalX1) ** 2 + (finalY2 - finalY1) ** 2);
-        
         // Les flèches héritent du z-index du nœud source
         const arrowZIndex = idDep.zIndex || 1;
         const arrowColor = arc.color || '#667eea'; // Couleur par défaut bleu
-        
-        console.log(`🔴 [${arc.from} → ${arc.to}] Points finaux (avec marge ${marginEnd}px): (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}) → (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
-        console.log(`🔴 [${arc.from} → ${arc.to}] Longueur finale visible: ${finalLength.toFixed(1)}px, couleur: ${arrowColor}, z-index: ${arrowZIndex}`);
-        console.log('---');
         
         const arrow = createArrow(finalX1, finalY1, finalX2, finalY2, arrowZIndex, arrowColor);
         

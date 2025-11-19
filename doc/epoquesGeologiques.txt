@@ -1,18 +1,67 @@
-🌋Hadéen	-4600 à -4000 
-🌋🧊Archéen	-4000 à -2500 
-🐚Archéen -3800 à -3500 Ma
-Hadéen/Archéen: Atmosphère dense, peu d’O₂, beaucoup de CO₂ (jusqu’à 7000 ppm). Températures élevées (>50°C) et probablement forte couverture nuageuse, précipitations abondantes au refroidissement.
+═══════════════════════════════════════════════════════════════════════════════
+ÉPOQUES GÉOLOGIQUES - Dates de séparation des périodes
+═══════════════════════════════════════════════════════════════════════════════
 
-🧊Protérozoïque	-2500 à -541 boulle de neige
-Protérozoïque: Déclin progressif du CO₂. Apparition de glaciations, diminution de la température moyenne.
+📅 -4600 Ma ─────────────────────────────────────────────────────────────────
+🌑 HADÉEN (-4600 à -4000 Ma)
+   Atmosphère dense, peu d'O₂, beaucoup de CO₂ (jusqu'à 7000 ppm)
+   Températures élevées (>50°C), forte couverture nuageuse
+   Précipitations abondantes au refroidissement
 
-🧊Cryogénien -720 à -635 Ma
+📅 -4000 Ma ─────────────────────────────────────────────────────────────────
+🦠 ARCHÉEN (-4000 à -2500 Ma)
+   🐚 Premières formes de vie : -3800 à -3500 Ma
+   Atmosphère dense, peu d'O₂, beaucoup de CO₂ (~5000 ppm)
+   Précipitations abondantes, températures élevées
 
-🌋fin Paléozoïque/début Mésozoïque
-Paléozoïque/Mésozoïque: CO₂ élevé (2000-3000 ppm), périodes chaudes, peu de glaces, précipitations régulières.
+📅 -2500 Ma ─────────────────────────────────────────────────────────────────
+🌿 PROTÉROZOÏQUE (-2500 à -541 Ma)
+   Déclin progressif du CO₂ (~2000 ppm)
+   Apparition de glaciations, diminution de la température moyenne
+   
+   🧊 Cryogénien (-720 à -635 Ma) : "Boule de neige"
+      Terre entièrement glacée
 
-Crétacé de -145Ma à -66Ma
-Températures plus chaudes que l’actuel de +6 à +8°C, CO₂ très élevé, peu de glace.
+📅 -541 Ma ──────────────────────────────────────────────────────────────────
+PHANÉROZOÏQUE (-541 Ma à aujourd'hui)
 
-Cénozoïque récent/Quaternaire 2.58Ma
-Forte chute du CO₂ (environ 280 ppm avant l’ère industrielle), alternance glaces/interglaciaires, températures semblables à aujourd’hui lors des périodes chaudes, précipitations variables.
+  📅 -541 Ma ────────────────────────────────────────────────────────────────
+  🐚 PALÉOZOÏQUE (-541 à -252 Ma)
+     CO₂ variable, apparition de la vie complexe
+  
+  📅 -252 Ma ────────────────────────────────────────────────────────────────
+  🦕 MÉSOZOÏQUE (-252 à -66 Ma)
+     CO₂ élevé (2000-3000 ppm), périodes chaudes, peu de glaces
+     Précipitations régulières
+     
+     🦴 Crétacé (-145 à -66 Ma)
+        Températures plus chaudes que l'actuel de +6 à +8°C
+        CO₂ très élevé (~3000 ppm), peu de glace
+  
+  📅 -66 Ma ─────────────────────────────────────────────────────────────────
+  🦣 CÉNOZOÏQUE (-66 Ma à aujourd'hui)
+     Forte chute du CO₂ (environ 280 ppm avant l'ère industrielle)
+     Alternance glaces/interglaciaires
+     Températures semblables à aujourd'hui lors des périodes chaudes
+     Précipitations variables
+     
+     📅 -2.58 Ma ──────────────────────────────────────────────────────────
+     ❄️ Quaternaire (-2.58 Ma à aujourd'hui)
+        Glaciations cycliques, CO₂ pré-industriel ~280 ppm
+        CO₂ actuel (2025) : ~420 ppm
+
+═══════════════════════════════════════════════════════════════════════════════
+DATES CLÉS DE SÉPARATION
+═══════════════════════════════════════════════════════════════════════════════
+-4600 Ma : Formation de la Terre (début Hadéen)
+-4000 Ma : Hadéen → Archéen
+-2500 Ma : Archéen → Protérozoïque
+ -720 Ma : Début Cryogénien (boule de neige)
+ -635 Ma : Fin Cryogénien
+ -541 Ma : Protérozoïque → Phanérozoïque (début Paléozoïque)
+ -252 Ma : Paléozoïque → Mésozoïque
+ -145 Ma : Début Crétacé
+  -66 Ma : Mésozoïque → Cénozoïque (extinction dinosaures)
+-2.58 Ma : Début Quaternaire (glaciations récentes)
+       0 : Aujourd'hui (ère industrielle)
+═══════════════════════════════════════════════════════════════════════════════
