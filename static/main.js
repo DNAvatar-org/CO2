@@ -908,7 +908,7 @@ window.updateDisplay = function updateDisplay(data) {
         }
         
         // Mettre à jour l'emoji selon le niveau de CO2
-        const emojiElement = document.getElementById('co2-emoji-synthese');
+        const emojiElement = document.getElementById('btn-co2-synthese');
         if (emojiElement) {
             if (ppm === 0) {
                 emojiElement.textContent = '🧊'; // Iceberg pour 0 ppm

@@ -1,7 +1,7 @@
 // File: organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
 // Version 1.0.0
-// Copyright 2025 DNAvatar.org - Arnaud Maignan
+// © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
@@ -339,7 +339,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         // Vérifier que maxRadius est défini
         if (maxRadius !== null && maxRadius !== undefined) {
             // Log pour déboguer
-            if (nodeId === 'albedo') {
+            if (nodeId === 'albedo' || nodeId === 'surface') {
                 console.log(`🌐 [${nodeId}] Création radiations: maxRadius=${maxRadius}, openingAngle=${openingAngle}, rotation=${rotation}, color=${color}`);
             }
             // Créer un groupe pour ces radiations avec la couleur définie
@@ -588,27 +588,23 @@ function calculatePositions() {
     const nodeMap = {};
     nodes.forEach(node => nodeMap[node.id] = node);
     
-    // Séparer les arcs normaux et les arcs avec arriveAtBottom
-    const normalArcs = arcs.filter(arc => !arc.arriveAtBottom);
-    const bottomArcs = arcs.filter(arc => arc.arriveAtBottom);
-    
-    // Fonction récursive pour calculer les positions (sans les cycles bottomArcs)
-    function calculateY(nodeId, visited = new Set(), ignoreBottomArcs = true) {
+    // Fonction récursive pour calculer les positions
+    function calculateY(nodeId, visited = new Set()) {
         if (visited.has(nodeId)) {
             return nodeMap[nodeId].y || 50;
         }
         visited.add(nodeId);
         
         const node = nodeMap[nodeId];
-        if (node.y !== null && ignoreBottomArcs) return node.y;
+        if (node.y !== null) return node.y;
         
-        // Trouver tous les arcs entrants normaux
-        const incomingArcs = (ignoreBottomArcs ? normalArcs : arcs).filter(arc => arc.to === nodeId);
+        // Trouver tous les arcs entrants
+        const incomingArcs = arcs.filter(arc => arc.to === nodeId);
         let maxY = node.y || 50;
         
         if (incomingArcs.length > 0) {
             incomingArcs.forEach(arc => {
-                const sourceY = calculateY(arc.from, new Set(visited), ignoreBottomArcs);
+                const sourceY = calculateY(arc.from, new Set(visited));
                 const arcSpacing = arc.label ? spacingSizes.medium : spacingSizes.short;
                 // Bas de la source + espacement + haut de destination = centre destination
                 const newY = sourceY + cellHalfHeight + arcSpacing + cellHalfHeight;
@@ -616,31 +612,14 @@ function calculatePositions() {
             });
         }
         
-        if (ignoreBottomArcs || node.y === null) {
-            node.y = maxY;
-        }
+        node.y = maxY;
         return maxY;
     }
     
-    // Calculer toutes les positions normales d'abord
+    // Calculer toutes les positions
     nodes.forEach(node => {
         if (node.y === null) {
-            calculateY(node.id, new Set(), true);
-        }
-    });
-    
-    // Ensuite, traiter les arcs avec arriveAtBottom (positionner la source en dessous de la destination)
-    bottomArcs.forEach(arc => {
-        const destNode = nodeMap[arc.to];
-        const sourceNode = nodeMap[arc.from];
-        if (destNode && sourceNode && destNode.y !== null) {
-            // Ne recalculer que si la source n'a pas déjà une position définie
-            if (sourceNode.y === null) {
-                const arcSpacing = arc.label ? spacingSizes.medium : spacingSizes.short;
-                // Source doit être en dessous de destination : bas de destination + espacement + haut de source = centre source
-                const newSourceY = destNode.y + cellHalfHeight + arcSpacing + cellHalfHeight;
-                sourceNode.y = newSourceY;
-            }
+            calculateY(node.id, new Set());
         }
     });
 }
@@ -753,10 +732,8 @@ function generateArrows() {
         const isVerticalEnough = absAngle > 45 && absAngle < 135;
         
         // Vérifier si la destination a des étiquettes
-        // Si arriveAtBottom est true, ignorer les étiquettes et arriver directement au cercle
-        const forceCircle = arc.arriveAtBottom === true;
-        const hasTop = !forceCircle && idDest.top && Array.isArray(idDest.top) && idDest.top.length > 0;
-        const hasBottom = !forceCircle && idDest.bottom && Array.isArray(idDest.bottom) && idDest.bottom.length > 0;
+        const hasTop = idDest.top && Array.isArray(idDest.top) && idDest.top.length > 0;
+        const hasBottom = idDest.bottom && Array.isArray(idDest.bottom) && idDest.bottom.length > 0;
         
         // Calculer la demi-hauteur de la grille pour ce nœud (basée sur le CERCLE uniquement, pas le logo)
         const destRadius = idDest.radius || radius;
@@ -1051,7 +1028,7 @@ function generateArrows() {
         if (arc.from === 'reemis' && arc.to === 'surface') {
             console.log(`🔍 [reemis → surface] Centres: (${idDep.x}, ${idDep.y}) → (${idDest.x}, ${idDest.y})`);
             console.log(`🔍 [reemis → surface] Vect=(${Vect.x}, ${Vect.y}), length=${length.toFixed(2)}px`);
-            console.log(`🔍 [reemis → surface] isGoingUp=${isGoingUp}, hasTop=${hasTop}, forceCircle=${forceCircle}`);
+            console.log(`🔍 [reemis → surface] isGoingUp=${isGoingUp}, hasTop=${hasTop}`);
             console.log(`🔍 [reemis → surface] Point départ: (${x1.toFixed(1)}, ${y1.toFixed(1)})`);
             console.log(`🔍 [reemis → surface] Point arrivée: (${x2.toFixed(1)}, ${y2.toFixed(1)})`);
             console.log(`🔍 [reemis → surface] Points finaux: (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}) → (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
@@ -1066,7 +1043,7 @@ function generateArrows() {
             console.log(`🔍 [noyau → surface] destRadius=${destRadius}, destRadiusOuter=${destRadiusOuter}`);
             console.log(`🔍 [noyau → surface] isConcentric=${isConcentric}, sign=${sign}, deltaRadius=${deltaRadius !== null ? deltaRadius.toFixed(1) : 'N/A'}`);
             console.log(`🔍 [noyau → surface] unitX=${unitX.toFixed(4)}, unitY=${unitY.toFixed(4)}`);
-            console.log(`🔍 [noyau → surface] hasTop=${hasTop}, hasBottom=${hasBottom}, forceCircle=${forceCircle}`);
+            console.log(`🔍 [noyau → surface] hasTop=${hasTop}, hasBottom=${hasBottom}`);
             console.log(`🔍 [noyau → surface] Point départ: (${x1.toFixed(1)}, ${y1.toFixed(1)})`);
             console.log(`🔍 [noyau → surface] Point arrivée: (${x2.toFixed(1)}, ${y2.toFixed(1)})`);
             if (isConcentric && deltaRadius !== null) {
@@ -1087,7 +1064,7 @@ function generateArrows() {
             console.log(`🔍 [surface → albedo] angleRad=${angleRad.toFixed(4)} rad, angleDeg=${angleDeg.toFixed(2)}°`);
             console.log(`🔍 [surface → albedo] absAngle=${Math.abs(angleDeg).toFixed(2)}°`);
             console.log(`🔍 [surface → albedo] isGoingUp=${isGoingUp}, isGoingDown=${isGoingDown}, isVerticalEnough=${isVerticalEnough}`);
-            console.log(`🔍 [surface → albedo] hasTop=${hasTop}, hasBottom=${hasBottom}, forceCircle=${forceCircle}`);
+            console.log(`🔍 [surface → albedo] hasTop=${hasTop}, hasBottom=${hasBottom}`);
             console.log(`🔍 [surface → albedo] destCellHalfHeight=${destCellHalfHeight.toFixed(1)}, gridY=${hasTop ? (idDest.y - destCellHalfHeight).toFixed(1) : 'N/A'}`);
             console.log(`🔍 [surface → albedo] Point départ: (${x1.toFixed(1)}, ${y1.toFixed(1)})`);
             console.log(`🔍 [surface → albedo] Point arrivée: (${x2.toFixed(1)}, ${y2.toFixed(1)})`);
@@ -1244,7 +1221,7 @@ nodes.forEach(node => {
                 }
                 
                 // Log pour vérifier le calcul
-                if (node.id === 'albedo' || node.id === 'reemis' || node.id === 'noyau') {
+                if (node.id === 'albedo' || node.id === 'reemis' || node.id === 'noyau' || node.id === 'surface') {
                     console.log(`🌐 [${node.id}] Calcul rotation depuis ${angles.length} flèche(s) sortante(s): angles=[${angles.map(a => a.toFixed(1)).join(', ')}]°, rotation=${radiationOptions.rotation.toFixed(1)}°, opening=${radiationOptions.openingAngle.toFixed(1)}°`);
                 }
             }
@@ -1306,4 +1283,119 @@ nodes.forEach(node => {
 
 // Générer automatiquement les flèches
 generateArrows();
+
+/**
+ * Calcule la position pour un texte justifié à gauche, aligné sur le bord gauche du cercle albedo
+ * @param {string} nodeId - ID du nœud (par défaut 'albedo')
+ * @param {number} offsetX - Décalage horizontal supplémentaire (par défaut 0)
+ * @param {number} offsetY - Décalage vertical (par défaut 0, aligné sur le centre)
+ * @returns {Object} {x, y} - Coordonnées pour positionner le texte
+ */
+function calculateTextPositionLeftOfCircle(nodeId = 'albedo', offsetX = 0, offsetY = 0) {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) {
+        console.warn(`[calculateTextPositionLeftOfCircle] Nœud ${nodeId} non trouvé`);
+        return { x: 0, y: 0 };
+    }
+    
+    const radius = node.radius || 40;
+    const strokeSize = node.strokeSize || 4;
+    const radiusOuter = radius + (strokeSize / 2); // Rayon jusqu'au bord extérieur
+    
+    // Position X : bord gauche du cercle (centre - rayon extérieur)
+    const x = node.x - radiusOuter + offsetX;
+    
+    // Position Y : centre du cercle (ajustable avec offsetY)
+    const y = node.y + offsetY;
+    
+    return { x, y };
+}
+
+/**
+ * Calcule la position pour un bouton placé sur le bord d'un cercle
+ * @param {string} nodeId - ID du nœud (par défaut 'albedo')
+ * @param {number} angleDeg - Angle en degrés (0° = droite, 90° = bas, sens anti-horaire)
+ * @param {number} offsetRadius - Décalage supplémentaire depuis le bord du cercle (par défaut 0)
+ * @returns {Object} {x, y} - Coordonnées pour positionner le bouton (centre du bouton)
+ */
+function poseBoutonSurCercle(nodeId = 'albedo', angleDeg = 0, offsetRadius = 0) {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) {
+        console.warn(`[poseBoutonSurCercle] Nœud ${nodeId} non trouvé`);
+        return { x: 0, y: 0 };
+    }
+    
+    const radius = node.radius || 40;
+    const strokeSize = node.strokeSize || 4;
+    const radiusOuter = radius + (strokeSize / 2); // Rayon jusqu'au bord extérieur
+    const totalRadius = radiusOuter + offsetRadius; // Rayon total avec décalage
+    
+    // Convertir l'angle en radians
+    const angleRad = (angleDeg * Math.PI) / 180;
+    
+    // Calculer la position sur le cercle
+    // 0° = droite (cos=1, sin=0)
+    // 90° = bas (cos=0, sin=1)
+    const x = node.x + totalRadius * Math.cos(angleRad);
+    const y = node.y + totalRadius * Math.sin(angleRad);
+    
+    return { x, y };
+}
+
+// Positionner les 6 boutons autour du cercle albedo
+function positionnerBoutonsSurCercleAlbedo() {
+    // Liste des boutons avec leurs IDs et angles (en degrés)
+    // Répartis tous les 60° autour du cercle (360/6 = 60°)
+    const boutons = [
+        { id: 'btn-albedo', angle: 0 },      // Droite
+        { id: 'btn-noyau', angle: 60 },      // 60°
+        { id: 'btn-comet', angle: 120 },     // 120°
+        { id: 'btn-co2', angle: 180 },       // Gauche
+        { id: 'btn-h2o', angle: 240 },       // 240°
+        { id: 'btn-methane', angle: 300 }    // 300°
+    ];
+    
+    const offsetRadius = 30; // Décalage depuis le bord du cercle (pour éviter le chevauchement)
+    const fluxDiagram = document.getElementById('flux-diagram');
+    
+    if (!fluxDiagram) {
+        console.warn('[positionnerBoutonsSurCercleAlbedo] flux-diagram non trouvé');
+        return;
+    }
+    
+    boutons.forEach(({ id, angle }) => {
+        const bouton = document.getElementById(id);
+        if (!bouton) {
+            console.warn(`[positionnerBoutonsSurCercleAlbedo] Bouton ${id} non trouvé`);
+            return;
+        }
+        
+        // Calculer la position sur le cercle
+        const pos = poseBoutonSurCercle('albedo', angle, offsetRadius);
+        
+        // Positionner le bouton en absolu par rapport au flux-diagram
+        bouton.style.position = 'absolute';
+        bouton.style.left = `${pos.x}px`;
+        bouton.style.top = `${pos.y}px`;
+        bouton.style.transform = 'translate(-50%, -50%)'; // Centrer le bouton sur la position
+        bouton.style.zIndex = '1000';
+        
+        // Déplacer le bouton dans le flux-diagram si nécessaire
+        if (bouton.parentElement !== fluxDiagram) {
+            fluxDiagram.appendChild(bouton);
+        }
+    });
+}
+
+// Appeler la fonction après la génération du diagramme
+if (typeof window !== 'undefined') {
+    // Attendre que le DOM soit prêt
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(positionnerBoutonsSurCercleAlbedo, 100);
+        });
+    } else {
+        setTimeout(positionnerBoutonsSurCercleAlbedo, 100);
+    }
+}
 

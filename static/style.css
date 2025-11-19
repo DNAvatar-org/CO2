@@ -633,6 +633,15 @@ h1 {
     flex-direction: row-reverse;
 }
 
+/* Pour CO2 avec row-reverse, inverser les order pour que emoji soit avant label visuellement */
+.info-logo-name-reverse .info-label {
+    order: 0; /* En premier visuellement (mais inversé par row-reverse) */
+}
+
+.info-logo-name-reverse .info-emoji {
+    order: 1; /* En second visuellement (mais inversé par row-reverse) */
+}
+
 .info-row-co2 .info-vertical-stack {
     transform: translateX(25px);
 }
@@ -656,14 +665,30 @@ h1 {
 .info-label {
     color: #666;
     font-weight: 500;
-    order: 0; /* En premier */
+    order: 1; /* En second, après l'emoji */
 }
 
 .info-emoji {
     font-size: 18px;
     margin: 0 5px 0 0;
     user-select: none;
-    order: 1; /* En second, après le label */
+    order: 0; /* En premier, avant le label */
+}
+
+/* Boutons remplaçant les emojis dans le rectangle Effet de Serre */
+.info-emoji-btn {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 18px !important;
+    margin: 0 5px 0 0 !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    order: 0; /* En premier, avant le label */
+}
+
+.info-logo-name-reverse .info-emoji-btn {
+    order: 1; /* En second visuellement (mais inversé par row-reverse) */
 }
 
 .info-value {

@@ -1,7 +1,7 @@
 /* File: organigramme.css - Styles pour le diagramme de flux énergétique */
 /* Desc: Feuille de style CSS pour l'organigramme de flux énergétique */
 /* Version 1.0.0 */
-/* Copyright 2025 DNAvatar.org - Arnaud Maignan */
+/* © 2025 DNAvatar.org - Arnaud Maignan */
 /* Licensed under Apache License 2.0 with Commons Clause. */
 /* See LICENSE_HEADER.txt for full terms. */
 /* Date: [June 08, 2025] [HH:MM UTC+1] */
@@ -16,6 +16,12 @@
     overflow: visible;
     border-left: none !important;
 }
+.flux-diagram-wrapper {
+    position: relative;
+    width: fit-content;
+    height: fit-content;
+}
+
 .flux-diagram {
     width: 328px;
     height: 640px;

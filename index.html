@@ -60,7 +60,9 @@
             <p class="book-reference"><a href="Algorithmes.html" target="_blank">⚙️ Algorithmes & Convergence</a></p>
         </div>
         
-        <div class="flux-diagram" id="flux-diagram"></div>
+        <div class="flux-diagram-wrapper">
+            <div class="flux-diagram" id="flux-diagram"></div>
+        </div>
         
         <div class="plot-container-wrapper">
             <div id="plot-container">
@@ -88,15 +90,14 @@
             </div>
         </div>
         
-        <div class="button-container">
-            <button class="btn btn-albedo" id="btn-albedo" title="Albédo">🏐</button>
-            <button class="btn btn-noyau" id="btn-noyau" title="Noyau">🌋</button>
-            <button class="btn btn-eds" id="btn-eds" title="Effet de Serre">📛</button>
-            <button class="btn btn-co2" id="btn-co2" title="CO2">🌵</button>
-            <button class="btn btn-h2o" id="btn-h2o" onclick="toggleWaterVapor()" title="H2O - Activer/Désactiver vapeur d'eau">💧</button>
-            <button class="btn btn-methane" id="btn-methane" title="Méthane">⛽</button>
-            <button class="btn btn-comet" id="btn-comet" onclick="addCometCO2()" title="Comète - +0.1 ppm">☄️</button>
-        </div>
+        <!-- Les boutons seront positionnés autour du cercle albedo par positionnerBoutonsSurCercleAlbedo() -->
+        <button class="btn btn-eds" id="btn-eds" title="Effet de Serre">📛</button>
+        <button class="btn btn-albedo" id="btn-albedo" title="Albédo">🏐</button>
+        <button class="btn btn-noyau" id="btn-noyau" title="Noyau">🌋</button>
+        <button class="btn btn-comet" id="btn-comet" onclick="addCometCO2()" title="Comète - +0.1 ppm">☄️</button>
+        <button class="btn btn-co2" id="btn-co2" title="CO2">🌵</button>
+        <button class="btn btn-h2o" id="btn-h2o" onclick="toggleWaterVapor()" title="H2O - Activer/Désactiver vapeur d'eau">💧</button>
+        <button class="btn btn-methane" id="btn-methane" title="Méthane">⛽</button>
         
         <div class="synthese_EdS">
             <div class="info-unit-header">
@@ -106,8 +107,8 @@
             <div class="info-row info-row-vertical info-row-co2">
                 <div class="info-vertical-stack">
                     <div class="info-logo-name info-logo-name-reverse">
-                        <span class="info-emoji" id="co2-emoji-synthese">🌵</span>
                         <span class="info-label">CO₂</span>
+                        <button class="btn btn-co2 info-emoji-btn" id="btn-co2-synthese" title="CO2">🌵</button>
                     </div>
                     <span class="info-value"><span class="info-number" id="co2-number-synthese">0</span><span class="info-unit">%</span></span>
                     <span class="info-forcing" id="forcing-co2-synthese">W/m²</span>
@@ -116,7 +117,7 @@
             <div class="info-row info-row-vertical info-row-h2o">
                 <div class="info-vertical-stack">
                     <div class="info-logo-name">
-                        <span class="info-emoji" id="h2o-emoji-synthese">💧</span>
+                        <button class="btn btn-h2o info-emoji-btn" id="btn-h2o-synthese" onclick="toggleWaterVapor()" title="H2O - Activer/Désactiver vapeur d'eau">💧</button>
                         <span class="info-label">H₂O</span>
                     </div>
                     <span class="info-value" id="h2o-status-synthese">%</span>
@@ -126,7 +127,7 @@
             <div class="info-row info-row-vertical info-row-ch4">
                 <div class="info-vertical-stack">
                     <div class="info-logo-name">
-                        <span class="info-emoji">⛽</span>
+                        <button class="btn btn-methane info-emoji-btn" id="btn-methane-synthese" title="Méthane">⛽</button>
                         <span class="info-label">CH₄</span>
                     </div>
                     <span class="info-value"><span class="info-number" id="methane-number-synthese">--</span><span class="info-unit">%</span></span>
@@ -164,7 +165,7 @@
                 <a href="https://github.com/scienceetonnante/RadiativeForcing" target="_blank" rel="noopener noreferrer">GitHub: RadiativeForcing</a>
             </div>
             <div class="credits-line">
-                Copyright 2025 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> - Arnaud Maignan | 
+                © 2025 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> - Arnaud Maignan | 
                 Licensed under Apache License 2.0 with Commons Clause
             </div>
         </div>

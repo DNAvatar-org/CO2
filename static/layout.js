@@ -1,7 +1,7 @@
 // File: layout.js - Gestion automatique du layout en deux colonnes
 // Desc: Réorganise les divs dans left-column et right-column selon la largeur d'écran
 // Version 1.0.0
-// Copyright 2025 DNAvatar.org - Arnaud Maignan
+// © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
@@ -14,10 +14,9 @@
     // Ordre des divs
     const order = [
         'title-container',
-        'flux-diagram',
+        'flux-diagram-wrapper',
         'plot-container-wrapper',
         'timeline-display',
-        'button-container',
         'synthese_EdS',
         'synthese_Temp'
     ];
@@ -56,10 +55,10 @@
         leftColumn.appendChild(divs['title-container']);
     }
     
-    // 2. (screenWidth>400)?flux-diagram:plot-container-wrapper
+    // 2. (screenWidth>400)?flux-diagram-wrapper:plot-container-wrapper
     if (screenWidth > 400) {
-        if (divs['flux-diagram']) {
-            leftColumn.appendChild(divs['flux-diagram']);
+        if (divs['flux-diagram-wrapper']) {
+            leftColumn.appendChild(divs['flux-diagram-wrapper']);
         }
     } else {
         if (divs['plot-container-wrapper']) {
@@ -67,30 +66,20 @@
         }
     }
     
-    // 3. Wrapper pour button-container + synthese_Temp (à droite de flux-diagram)
-    if (divs['button-container'] || divs['synthese_Temp']) {
-        const buttonsWrapper = document.createElement('div');
-        buttonsWrapper.className = 'buttons-temp-wrapper';
-        
-        if (divs['button-container']) {
-            buttonsWrapper.appendChild(divs['button-container']);
-        }
-        if (divs['synthese_Temp']) {
-            buttonsWrapper.appendChild(divs['synthese_Temp']);
-        }
-        
-        leftColumn.appendChild(buttonsWrapper);
+    // 3. synthese_Temp (à droite de flux-diagram)
+    if (divs['synthese_Temp']) {
+        leftColumn.appendChild(divs['synthese_Temp']);
     }
     
     // RIGHT COLUMN
-    // 1. (screenWidth>400)?plot-container-wrapper:flux-diagram
+    // 1. (screenWidth>400)?plot-container-wrapper:flux-diagram-wrapper
     if (screenWidth > 400) {
         if (divs['plot-container-wrapper']) {
             rightColumn.appendChild(divs['plot-container-wrapper']);
         }
     } else {
-        if (divs['flux-diagram']) {
-            rightColumn.appendChild(divs['flux-diagram']);
+        if (divs['flux-diagram-wrapper']) {
+            rightColumn.appendChild(divs['flux-diagram-wrapper']);
         }
     }
     
