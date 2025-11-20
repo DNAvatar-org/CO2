@@ -25,7 +25,6 @@
 .flux-diagram {
     width: 350px;
     height: 540px;
-    /* min-height: 540px; */
     position: relative;
     background-color: rgba(170, 183, 242, 0.15);
     border-radius: 10px;
@@ -104,21 +103,16 @@
     padding: 0px 4px;
     border-radius: 4px;
     background: rgba(10, 14, 39, 0.7);
-    border: 1px solid #94a0d6;
+    border: 1px solid var(--base-color); /* Couleur par défaut (vert) */
     font-size: 11px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Police plus lisible en petit */
+    /*font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Police plus lisible en petit */
     /* font-weight: bold; */
     white-space: nowrap;
     text-align: center;
     line-height: 1.2; /* Interligne réduit pour textes multi-lignes */
     z-index: 1000 !important; /* TOUJOURS au-dessus de tout (flèches z-index max ~26) */
 }
-.flux-label-name {
-    color: #fff; /* Texte blanc sur fond bleu nuit */
-}
-.flux-label-blue {
-    color: #aab7f2;
-}
+
 /* Container pour regrouper toutes les radiations (flux-sphere) */
 .flux-radiation-container {
     position: absolute;

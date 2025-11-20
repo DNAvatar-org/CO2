@@ -1133,6 +1133,18 @@ function getDashStyleForPattern(pattern) {
 function setEpoch(epochName) {
     if (calculationInProgress) return; // Bloquer si calcul en cours
     
+    // Gérer la sélection unique (boutons radio)
+    const allEpochButtons = document.querySelectorAll('.epoch-btn');
+    allEpochButtons.forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    
+    // Sélectionner le bouton cliqué
+    const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochName}"]`);
+    if (clickedButton) {
+        clickedButton.classList.add('selected');
+    }
+    
     // Récupérer les conditions de l'époque depuis geology.js
     if (typeof window.getGeologicalPeriodByName !== 'function') {
         return;
@@ -1285,6 +1297,12 @@ window.addEventListener('DOMContentLoaded', () => {
     calculateInitialData();
     // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)
     resetTimeline();
+    
+    // Sélectionner "Corps noir" par défaut
+    const corpsNoirButton = document.querySelector('.epoch-btn[data-epoch="Corps noir"]');
+    if (corpsNoirButton) {
+        corpsNoirButton.classList.add('selected');
+    }
     
     // Initialiser l'état des boutons selon l'époque géologique
     enableButtons();

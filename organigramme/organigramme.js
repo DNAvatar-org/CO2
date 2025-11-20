@@ -245,7 +245,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 
                 top.forEach(text => {
                     const label = document.createElement('div');
-                    label.className = 'flux-label flux-label-blue';
+                    label.className = 'flux-label';
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = '1001'; // Encore plus haut que le container
@@ -262,7 +262,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 
                 bottom.forEach(text => {
                     const label = document.createElement('div');
-                    label.className = 'flux-label flux-label-blue';
+                    label.className = 'flux-label';
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = '1001'; // Encore plus haut que le container
@@ -284,7 +284,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 
                 left.forEach(text => {
                     const label = document.createElement('div');
-                    label.className = 'flux-label flux-label-blue';
+                    label.className = 'flux-label';
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = '1001'; // Encore plus haut que le container
@@ -306,7 +306,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 
                 right.forEach(text => {
                     const label = document.createElement('div');
-                    label.className = 'flux-label flux-label-blue';
+                    label.className = 'flux-label';
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = '1001'; // Encore plus haut que le container
@@ -391,7 +391,7 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
     const createLabel = (text, posX, posY, isName = false, size = null) => {
         if (!text) return;
         const label = document.createElement('div');
-        label.className = 'flux-label flux-label-blue'; // Tous les textes des flèches en bleu
+        label.className = 'flux-label'; // Tous les textes des flèches
         label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
         label.style.position = 'absolute';
         label.style.left = posX + 'px';

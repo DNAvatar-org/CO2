@@ -35,9 +35,9 @@ const spacingSizes = {
 // Explication : La Terre est une sphère. Vu du Soleil, seule la face éclairée est visible (disque de rayon R, surface = πR²)
 // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
 const nodes = [
-    { id: 'soleil', logo: '🌞', x: centerX-120, y: centerY-135, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: [], top: ['3.8×10²⁶ W'], bottom: ['6.24×10⁷ W/m²'], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, logoScale: 1.0, logoOffsetY: 1 },
+    { id: 'soleil', logo: '🌞', x: centerX-170, y: centerY-185, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: ['62.4<br>MW/m²','3.8×10<sup>26</sup> W'], top: [], bottom: [], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, logoScale: 1.0, logoOffsetY: 1 },
 
-    { id: 'geometrie', logo: '🎱', x: centerX+45, y: centerY-145, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: ['1361 W/m²'], top: [], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 11, logoScale: 1.1, logoOffsetY: 2 },//{ numCircles: 8, maxRadius: 200, openingAngle: 315, rotation: 105, color: 'white' }
+    { id: 'geometrie', logo: '🎱', x: centerX+25, y: centerY-175, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: ['1361 W/m²'], top: [], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 11, logoScale: 1.1, logoOffsetY: 2 },//{ numCircles: 8, maxRadius: 200, openingAngle: 315, rotation: 105, color: 'white' }
 
     { id: 'espace1', logo: '', x: centerX+130, y: centerY-200, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null },
 
