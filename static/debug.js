@@ -57,6 +57,52 @@
 
         debugContainer.appendChild(blurBtn);
 
+        // Bouton pour changer la police globale
+        const fontBtn = document.createElement('button');
+        
+        // Liste des polices disponibles
+        const fonts = ['04B_03', 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana'];
+        // Trouver l'index de la police actuelle (synchroniser avec window.globalFontFamily)
+        const currentFont = window.globalFontFamily || '04B_03';
+        let currentFontIndex = fonts.indexOf(currentFont);
+        if (currentFontIndex === -1) currentFontIndex = 0; // Fallback si non trouvé
+        
+        // Initialiser le texte du bouton avec la police actuelle
+        fontBtn.textContent = `Font: ${currentFont}`;
+        fontBtn.style.cssText = btnStyle;
+        
+        fontBtn.onclick = function () {
+            // Passer à la police suivante
+            currentFontIndex = (currentFontIndex + 1) % fonts.length;
+            const newFont = fonts[currentFontIndex];
+            
+            // Mettre à jour la police globale
+            if (typeof window !== 'undefined') {
+                window.globalFontFamily = newFont;
+            }
+            
+            // Appliquer au body avec fallbacks pour '04B_03'
+            if (newFont === '04B_03') {
+                document.body.style.fontFamily = "'04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif";
+            } else {
+                document.body.style.fontFamily = `'${newFont}', 'Tahoma', 'Roboto', 'Verdana', sans-serif`;
+            }
+            
+            // Mettre à jour le texte du bouton
+            fontBtn.textContent = `Font: ${newFont}`;
+            
+            // Mettre à jour Plotly via updatePlot (qui utilise getPlotlyFont avec window.globalFontFamily)
+            if (typeof window.updatePlot === 'function') {
+                const plotData = typeof window.plotData !== 'undefined' ? window.plotData : null;
+                if (plotData) {
+                    // Forcer la mise à jour immédiate
+                    window.updatePlot(plotData);
+                }
+            }
+        };
+        
+        debugContainer.appendChild(fontBtn);
+
         container.appendChild(debugContainer);
     }
 

@@ -15,8 +15,15 @@
 // ============================================================================
 
 // Marges du graphique Plotly (communes à initPlot et updatePlot)
-const PLOT_MARGINS = { l: 75, r: 50, t: 0, b: 50 }; // Marges ajustées pour éviter le débordement
+// va avec .plot-container-wrapper { padding: 0; !!! Important ne pas changer !!!
+const PLOT_MARGINS = { l: 70, r: 70, t: 0, b: 75 }; // Marges ajustées pour éviter le débordement
 // Note: Ces marges sont utilisées par Plotly pour positionner le graphique dans le conteneur
+
+// Couleur de la tropopause (bleu vif) - utilisée pour la ligne et l'annotation
+const ColorTropo = '#87CEEB'; // Bleu clair (sky blue)
+
+// Police globale - peut être changée via le bouton de debug
+window.globalFontFamily = '04B_03'; // Police par défaut
 
 // Fonction pour obtenir la couleur par défaut du body (vert)
 function getDefaultTextColor() {
@@ -267,9 +274,9 @@ function initPlot() {
             title: {
                 text: "Longueur d'onde (μm)",
                 standoff: 50, // Encore plus bas
-                font: { color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
+                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
             },
-            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             range: [0, 50], // Commence à 0
             fixedrange: true,
             // Valeurs de l'axe X sans couleur imposée (hérite du body)
@@ -284,13 +291,13 @@ function initPlot() {
         yaxis: {
             title: {
                 text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
-                font: { color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
+                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
             },
             range: [0, 40],
             fixedrange: true, // Désactiver le zoom
-            side: 'right', // SWAP : passer à droite
-            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
-            titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            side: 'left', // Luminance à gauche
+            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
             gridwidth: 1
@@ -298,21 +305,21 @@ function initPlot() {
         yaxis2: {
             title: {
                 text: "Altitude (km)",
-                font: { color: getDefaultTextColor(), size: 14 }, // color: '#667eea' (bleu) en réserve
+                font: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
                 standoff: 10
             },
             overlaying: 'y',
-            side: 'left', // SWAP : passer à gauche
+            side: 'right', // Altitude à droite
             range: [0, 120], // 0 km en bas, 120 km en haut
             fixedrange: true, // Désactiver le zoom
-            position: 0, // Position à 0 (gauche)
+            position: 1, // Position à 1 (droite)
             // Aligner les ticks avec l'axe Y principal
             // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
             // Utiliser le même espacement que yaxis (généralement 5 ou 10)
             tickmode: 'linear',
             dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
-            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
-            titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showticklabels: true,
             showline: true,
             linecolor: 'rgba(0, 0, 0, 0.5)',
@@ -328,15 +335,16 @@ function initPlot() {
         paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
         annotations: [
             {
-                x: -0.01, // Juste à gauche de l'axe, touchant l'axe vertical (en coordonnées paper)
+                x: 1.01, // Juste à droite de l'axe, touchant l'axe vertical (en coordonnées paper)
                 y: 11, // Position de la tropopause (11 km sur l'axe altitude)
-                text: 'Stratosph.<br>8.0K<br>Troposph.',
+                text: 'Stratosphère<br>8.0K<br>Troposphère',
                 showarrow: false,
                 xref: 'paper', // Coordonnées relatives au graphique
-                yref: 'y2', // Utiliser l'axe altitude (gauche)
-                xanchor: 'right', // Aligné à droite du texte (donc à gauche de l'axe, séparé des pointillés)
+                yref: 'y2', // Utiliser l'axe altitude (droite)
+                xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
                 yanchor: 'middle',
-                font: { size: 11, color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
+                align: 'left', // Justifié à gauche
+                font: getPlotlyFont(9, ColorTropo) // Même couleur que la ligne de tropopause
             },
             {
                 x: 0.02, // En bas à gauche du graphique
@@ -347,7 +355,7 @@ function initPlot() {
                 yref: 'paper',
                 xanchor: 'left',
                 yanchor: 'bottom',
-                font: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+                font: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
                 bgcolor: 'rgba(0, 0, 0, 0.5)',
                 bordercolor: 'rgba(255, 255, 255, 0.3)',
                 borderwidth: 1,
@@ -542,6 +550,30 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
         ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
         ctx.fillRect(x, spectrumBarY, 1, spectrumBarHeight);
     }
+    
+}
+
+// Fonction helper pour obtenir la famille de police par défaut
+function getDefaultFontFamily() {
+    // Utiliser la police globale si définie, sinon fallback
+    if (typeof window !== 'undefined' && window.globalFontFamily) {
+        const font = window.globalFontFamily;
+        // Pour '04B_03', ajouter les fallbacks car c'est une font custom
+        if (font === '04B_03') {
+            return "'04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif";
+        }
+        return font;
+    }
+    return "'Tahoma', 'Roboto', 'Verdana', sans-serif";
+}
+
+// Fonction helper pour obtenir la configuration de font complète pour Plotly
+function getPlotlyFont(size, color) {
+    return {
+        family: getDefaultFontFamily(),
+        size: size,
+        color: color || getDefaultTextColor()
+    };
 }
 
 // Mettre à jour le graphique
@@ -569,6 +601,17 @@ window.updatePlot = function updatePlot(data) {
                 const effective_delta_lambda = delta_lambda_base * (lambda_weights[idx] || 1.0);
                 return f / effective_delta_lambda / 1e6; // Convertir en W/m²/μm
             });
+        // Tooltip : "Courbe d'équilibre d'émission de la terre" pour 0 ppm, sinon avec température
+        let hoverText;
+        if (co2_ppm === 0) {
+            hoverText = "Courbe d'équilibre d'émission de la terre";
+        } else if (temp_eff) {
+            const tempC = (temp_eff - 273.15).toFixed(1);
+            hoverText = `Courbe d'équilibre d'émission de la terre (${temp_eff.toFixed(1)} K, ${tempC}°C)`;
+        } else {
+            hoverText = "Courbe d'équilibre d'émission de la terre";
+        }
+        
         return {
             x: lambda_planck,
             y: flux,
@@ -576,7 +619,7 @@ window.updatePlot = function updatePlot(data) {
             mode: 'lines',
             name: label,
             line: { color: color, width: 2 },
-            hovertemplate: label + '<extra></extra>'
+            hovertemplate: hoverText + '<extra></extra>'
         };
     }
 
@@ -592,6 +635,11 @@ window.updatePlot = function updatePlot(data) {
         });
         // Utiliser la couleur fournie (noir pour les références, couleur de l'absorption pour la courbe courante)
         const lineColor = color || 'black';
+        
+        // Tooltip : "Courbe d'émission du corps noir" avec température (le corps noir est par définition à l'équilibre)
+        const tempC = (T - 273.15).toFixed(1);
+        const hoverText = `Courbe d'émission du corps noir à ${T.toFixed(1)} K (${tempC}°C)`;
+        
         return {
             x: lambda_planck,
             y: planck,
@@ -600,7 +648,7 @@ window.updatePlot = function updatePlot(data) {
             name: label,
             line: { dash: dashPattern, width: 1, color: lineColor },
             showlegend: showInLegend,
-            hovertemplate: showInLegend ? label + '<extra></extra>' : '<extra></extra>'
+            hovertemplate: hoverText + '<extra></extra>'
         };
     }
 
@@ -703,7 +751,7 @@ window.updatePlot = function updatePlot(data) {
         type: 'scatter',
         mode: 'lines',
         name: `Ligne de séparation (${z_trop_km.toFixed(1)} km)`,
-        line: { color: '#87CEEB', width: 1, dash: 'dot' }, // Bleu clair (sky blue)
+        line: { color: ColorTropo, width: 1, dash: 'dot' }, // Même couleur que l'annotation
         showlegend: false,
         hovertemplate: `Ligne de séparation (${z_trop_km.toFixed(1)} km)<extra></extra>`,
         yaxis: 'y2' // Utiliser l'axe altitude (gauche)
@@ -717,9 +765,9 @@ window.updatePlot = function updatePlot(data) {
             title: {
                 text: "Longueur d'onde (μm)",
                 standoff: 50, // Encore plus bas
-                font: { color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
+                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
             },
-            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showgrid: false,
             showline: false, // Pas de ligne d'axe
             zeroline: false,
@@ -733,11 +781,11 @@ window.updatePlot = function updatePlot(data) {
             fixedrange: true, // Désactiver le zoom
             title: {
                 text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
-                font: { color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
+                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
             },
-            side: 'right', // SWAP : passer à droite
-            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
-            titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            side: 'left', // Luminance à gauche
+            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
             gridwidth: 1,
@@ -749,20 +797,20 @@ window.updatePlot = function updatePlot(data) {
         yaxis2: {
             title: {
                 text: "Altitude (km)",
-                font: { color: getDefaultTextColor() }
+                font: getPlotlyFont(14, getDefaultTextColor())
             },
             overlaying: 'y',
-            side: 'left', // SWAP : passer à gauche
+            side: 'right', // Altitude à droite
             range: [0, 120], // 0 km en bas, 120 km en haut (même orientation que yaxis)
             fixedrange: true, // Désactiver le zoom
-            position: 0, // Position à 0 (gauche)
+            position: 1, // Position à 1 (droite)
             // Aligner les ticks avec l'axe Y principal
             // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
             // Utiliser le même espacement que yaxis (généralement 5 ou 10)
             tickmode: 'linear',
             dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
-            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
-            titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showline: true,
             linecolor: 'rgba(0, 0, 0, 0.5)',
             linewidth: 1,
@@ -775,15 +823,16 @@ window.updatePlot = function updatePlot(data) {
         paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
         annotations: [
             {
-                x: -0.01, // Juste à gauche de l'axe, touchant l'axe vertical (en coordonnées paper)
+                x: 1.01, // Juste à droite de l'axe, touchant l'axe vertical (en coordonnées paper)
                 y: z_trop_km, // Position de la tropopause (en km, axe altitude)
-                text: 'Stratosph.<br>8.0K<br>Troposph.',
+                text: 'Stratosphère<br>8.0K<br>Troposphère',
                 showarrow: false,
                 xref: 'paper', // Coordonnées relatives au graphique
-                yref: 'y2', // Utiliser l'axe altitude (gauche)
-                xanchor: 'right', // Aligné à droite du texte (donc à gauche de l'axe, séparé des pointillés)
+                yref: 'y2', // Utiliser l'axe altitude (droite)
+                xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
                 yanchor: 'middle',
-                font: { size: 11, color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
+                align: 'left', // Justifié à gauche
+                font: getPlotlyFont(9, ColorTropo) // Même couleur que la ligne de tropopause
             },
         ]
     };
@@ -815,22 +864,39 @@ window.updatePlot = function updatePlot(data) {
             plotContainer.appendChild(tempDisplay);
         }
     }
+    
+    // Afficher le texte "via lunettes infrarouge" en bas à droite, au-dessus de la bande spectrale
+    const plotContainerWrapper = document.querySelector('.plot-container-wrapper');
+    if (plotContainerWrapper) {
+        // Supprimer l'ancien affichage s'il existe
+        const oldInfraText = plotContainerWrapper.querySelector('.infra-note');
+        if (oldInfraText) {
+            oldInfraText.remove();
+        }
+        
+        // Créer un nouvel élément pour afficher le texte
+        const infraText = document.createElement('div');
+        infraText.className = 'infra-note';
+        infraText.textContent = 'via lunettes infrarouge logarithmique';
+        
+        plotContainerWrapper.appendChild(infraText);
+    }
 
     updateLayout.yaxis2 = {
         title: {
             text: "Altitude (km)",
-            font: { color: getDefaultTextColor(), size: 14 } // color: '#667eea' (bleu) en réserve
+            font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
         },
         overlaying: 'y',
-        side: 'left', // SWAP : passer à gauche
+        side: 'right', // Altitude à droite
         range: [0, 120], // 0 km en bas, 120 km en haut
         fixedrange: true, // Désactiver le zoom
-        position: 0, // Position à 0 (gauche)
+        position: 1, // Position à 1 (droite)
         // Aligner les ticks avec l'axe Y principal
         tickmode: 'linear',
         dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
-        tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
-        titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+        tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+        titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
         showline: true,
         linecolor: 'rgba(0, 0, 0, 0.5)',
         linewidth: 1,
@@ -1489,5 +1555,6 @@ function drawSpectralVisualization(canvas, data) {
     // Dessiner la barre de spectre en bas (utilise la fonction dédiée pour éviter la duplication)
     // Passer le resolutionFactor pour que la barre reste à 20px d'affichage
     drawSpectrumBarOnlyWithSize(width, height, resolutionFactor);
+    
 }
 

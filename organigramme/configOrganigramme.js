@@ -53,7 +53,7 @@ const nodes = [
         { icon: '⛽', label: 'CH₄', formula: 'CH₄' }
     ]} },
 
-    { id: 'espace2', logo: '🛰', x: centerX+80, y: centerY+300, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: 'Observation', bottom: '', tooltip: 'Espace', radiation: null },
+    { id: 'espace2', logo: '🛰', x: centerX+80, y: centerY+300, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: ['Observation'], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null },
 
     { id: 'reemis', logo: '📛', zIndex: 25, x: centerX - 45, y: earthCenterY+140, radius: 10, logoScale: 1.0, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'red', strokeSize: 1, left: ['Forçage<br>Radiatif'], right: ['0.00<br>W/m²'], top: '', bottom: '', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } }
 ];

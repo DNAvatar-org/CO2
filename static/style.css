@@ -1,3 +1,10 @@
+@font-face {
+    font-family: '04B_03';
+    src: url('../04B_03__.TTF') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -10,7 +17,7 @@
 }
 
 body {
-    font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     background: url('../fond.png') center center / cover no-repeat fixed;
     min-height: 100vh;
     padding: 20px;
@@ -159,7 +166,7 @@ h1 {
     margin-bottom: 8px;
     text-align: center;
     font-size: 24px;
-    color: white;
+    /* font-family: 'Verdana', sans-serif; */
 }
 
 
@@ -312,8 +319,8 @@ h1 {
 }
 
 .plot-container-wrapper {
-    /* padding: 0; */
-    padding-bottom: 15px;
+    padding: 0;
+    /* padding-bottom: 15px !important; */
     height: 540px;
     /* Même hauteur que #plot-container */
     position: relative;
@@ -375,6 +382,20 @@ h1 {
     /* Pas de cadre, pas de background */
     /* Lignes serrées */
     /* color: #87CEEB (cyan) en réserve - hérite du body (vert) */
+}
+
+/* Note sur l'échelle logarithmique - à gauche, très proche de la bande spectrale */
+/* Position basée sur PLOT_MARGINS = { l: 70, r: 70, t: 0, b: 75 } */
+.infra-note {
+    position: absolute;
+    bottom: 20px; /* Très proche de la bande spectrale (20px de hauteur) */
+    left: 70px; /* Aligné sur la marge gauche du graphique (PLOT_MARGINS.l) */
+    font-size: 10px;
+    font-family: '04B_03', monospace; /* Utiliser la nouvelle font */
+    z-index: 100;
+    pointer-events: none;
+    text-align: left;
+    /* Hérite de la couleur par défaut (vert) */
 }
 
 /* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
