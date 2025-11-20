@@ -4,7 +4,7 @@
 // Version 1.0.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
-// See LICENSE_HEADER.txt for full terms.
+// See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
 //   - Initial creation: physics constants and Planck/Stefan-Boltzmann functions

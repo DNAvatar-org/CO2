@@ -4,15 +4,41 @@
     box-sizing: border-box;
 }
 
+:root {
+    /* Variable pour la couleur de base - s'adapte automatiquement si changée */
+    --base-color: green;
+}
+
 body {
     font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     background: url('../fond.png') center center / cover no-repeat fixed;
     min-height: 100vh;
     padding: 20px;
-    color: green;
+    color: var(--base-color);
     position: relative;
     display: flex;
     flex-direction: column;
+}
+
+/* Liens : éclaircir pour non visité, foncer pour visité */
+a:link {
+    color: color-mix(in srgb, var(--base-color) 50%, white 50%);
+    /* Éclaircir le vert de 50% (ajout de blanc) pour les liens non visités */
+}
+
+a:visited {
+    color: color-mix(in srgb, var(--base-color) 70%, black 30%);
+    /* Foncer le vert de 30% pour les liens visités */
+}
+
+a:hover {
+    color: var(--base-color);
+    /* Retour à la couleur de base au survol */
+}
+
+a:active {
+    color: color-mix(in srgb, var(--base-color) 50%, black 50%);
+    /* Encore plus foncé au clic */
 }
 
 /* Media query : si width < 340, supprimer la marge de la page */
@@ -339,6 +365,7 @@ h1 {
     line-height: 1.0;
     /* Pas de cadre, pas de background */
     /* Lignes serrées */
+    /* color: #87CEEB (cyan) en réserve - hérite du body (vert) */
 }
 
 /* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
@@ -444,6 +471,7 @@ h1 {
     display: block !important;
     white-space: nowrap !important;
     /* Titre sur une seule ligne */
+    /* color: #667eea (bleu) en réserve - hérite du body (vert) */
 }
 
 .plot-title {
@@ -954,6 +982,7 @@ h1 {
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    /* color: #667eea (bleu) en réserve - hérite du body (vert) */
 }
 
 .legend-planck-grid {
@@ -1000,6 +1029,7 @@ h1 {
 
 .legend-text {
     font-weight: 500;
+    /* color: #667eea (bleu) en réserve - hérite du body (vert) */
 }
 
 .legend-formula-container {
@@ -1011,6 +1041,7 @@ h1 {
 .legend-formula {
     font-size: 10px;
     text-align: center;
+    /* color: #667eea (bleu) en réserve - hérite du body (vert) */
 }
 
 .legend-item {
@@ -1033,6 +1064,7 @@ h1 {
 
 .legend-text {
     font-weight: 500;
+    /* color: #667eea (bleu) en réserve - hérite du body (vert) */
 }
 
 .legends-container {
@@ -1347,7 +1379,8 @@ body.no-blur .flux-sphere {
 
 /* Mode Dark - Couleur de texte par défaut vert sur fond noir */
 body.mode-dark {
-    color: #00ff00 !important;
+    --base-color: #00ff00; /* Mettre à jour la variable pour le mode dark */
+    color: var(--base-color) !important;
     /* Garder l'image de fond */
     background: url('../fond.png') center center / cover no-repeat fixed !important;
 }

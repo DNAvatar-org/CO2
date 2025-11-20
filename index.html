@@ -5,6 +5,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bilan Radiatif Terrestre</title>
+    <script>
+        // Variable globale pour la langue
+        window.lang = 'fr';
+        
+        // Fonction pour obtenir le lien de licence selon la langue
+        window.getLicenseURL = function() {
+            // Toujours utiliser le lien officiel pour l'instant
+            // TODO: Quand LICENSE_HEADER.txt sera traduit en français, utiliser:
+            // if (window.lang === 'fr') return 'LICENSE_HEADER.txt';
+            return 'https://commonsclause.com/';
+        };
+        
+        // Mettre à jour le lien de licence dans le footer
+        document.addEventListener('DOMContentLoaded', function() {
+            const licenseLink = document.getElementById('license-link');
+            if (licenseLink && typeof window.getLicenseURL === 'function') {
+                licenseLink.href = window.getLicenseURL();
+            }
+        });
+    </script>
     <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
     <script>
         window.MathJax = {
@@ -68,7 +88,8 @@
                     style="position: absolute; font-size: 56px; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0;">
                     🌡️</div>
                 <div
-                    style="position: relative; z-index: 1; font-size: 16px; font-weight: bold; color: #000; text-shadow: 0 0 3px white, 0 0 3px white; word-wrap: break-word; text-align: center; line-height: 1.1;">
+                    style="position: relative; z-index: 1; font-size: 16px; font-weight: bold; text-shadow: 0 0 3px white, 0 0 3px white; word-wrap: break-word; text-align: center; line-height: 1.1;">
+                    <!-- color: #000 (noir) en réserve -->
                     <span id="temp-surface-synthese">--</span><br><span id="temp-unit-synthese"
                         style="font-size: 18px;">°C</span>
                 </div>
@@ -199,8 +220,8 @@
     <footer class="credits-footer">
         <div class="credits-content">
             <div class="credits-line" style="margin-bottom: 10px; font-size: 11px;">
-                <a href="#equations-section">📐 Équations, Définitions et Constantes</a> |
-                <a href="#algorithms-section">⚙️ Algorithmes & Convergence</a>
+                <a href="equation.html">📐 Équations, Définitions et Constantes</a> |
+                <a href="Algorithmes.html">⚙️ Algorithmes & Convergence</a>
             </div>
             <div class="credits-line">
                 Inspiration: <a href="https://sciencetonnante.wordpress.com/" target="_blank"
@@ -213,7 +234,7 @@
             <div class="credits-line">
                 © 2025 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> -
                 Arnaud Maignan |
-                Licensed under Apache License 2.0 with Commons Clause
+                Licensed under <a href="https://commonsclause.com/" target="_blank" rel="noopener noreferrer" id="license-link">Apache License 2.0 with Commons Clause</a>
             </div>
         </div>
     </footer>

@@ -1,4 +1,16 @@
 // ============================================================================
+// File: calculations.js - Calculs de transfert radiatif
+// Desc: En français, dans l'architecture, je suis le module de calculs radiatifs
+// Version 1.0.0
+// Copyright 2025 DNAvatar.org - Arnaud Maignan
+// Licensed under Apache License 2.0 with Commons Clause.
+// See https://commonsclause.com/ for full terms.
+// Date: [January 2025]
+// Logs:
+//   - Initial creation: calculs de transfert radiatif en JavaScript
+// ============================================================================
+
+// ============================================================================
 // CALCULS DE TRANSFERT RADIATIF EN JAVASCRIPT
 // ============================================================================
 

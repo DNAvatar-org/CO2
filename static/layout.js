@@ -3,7 +3,7 @@
 // Version 1.0.2
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
-// See LICENSE_HEADER.txt for full terms.
+// See https://commonsclause.com/ for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
 //   - Initial version: système de layout automatique avec deux colonnes

@@ -1,4 +1,16 @@
 // ============================================================================
+// File: plot.js - Gestion du graphique avec Plotly.js
+// Desc: En français, dans l'architecture, je suis le module de visualisation graphique
+// Version 1.0.0
+// Copyright 2025 DNAvatar.org - Arnaud Maignan
+// Licensed under Apache License 2.0 with Commons Clause.
+// See https://commonsclause.com/ for full terms.
+// Date: [January 2025]
+// Logs:
+//   - Initial creation: graphique Plotly avec visualisation spectrale
+// ============================================================================
+
+// ============================================================================
 // GESTION DU GRAPHIQUE AVEC PLOTLY.JS
 // ============================================================================
 
@@ -254,9 +266,10 @@ function initPlot() {
         xaxis: {
             title: {
                 text: "Longueur d'onde (μm)",
-                standoff: 50 // Encore plus bas
+                standoff: 50, // Encore plus bas
+                font: { color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
             },
-            // Titre sans couleur imposée (hérite du body)
+            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
             range: [0, 50], // Commence à 0
             fixedrange: true,
             // Valeurs de l'axe X sans couleur imposée (hérite du body)
@@ -269,18 +282,25 @@ function initPlot() {
             tickwidth: 0 // Épaisseur des ticks à 0
         },
         yaxis: {
-            title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
+            title: {
+                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
+                font: { color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
+            },
             range: [0, 40],
             fixedrange: true, // Désactiver le zoom
             side: 'right', // SWAP : passer à droite
-            tickfont: { size: 12 }, // Sans couleur imposée (hérite du body)
-            titlefont: { size: 14 }, // Sans couleur imposée (hérite du body)
+            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
             gridwidth: 1
         },
         yaxis2: {
-            title: "Altitude (km)",
+            title: {
+                text: "Altitude (km)",
+                font: { color: getDefaultTextColor(), size: 14 }, // color: '#667eea' (bleu) en réserve
+                standoff: 10
+            },
             overlaying: 'y',
             side: 'left', // SWAP : passer à gauche
             range: [0, 120], // 0 km en bas, 120 km en haut
@@ -291,8 +311,9 @@ function initPlot() {
             // Utiliser le même espacement que yaxis (généralement 5 ou 10)
             tickmode: 'linear',
             dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
-            tickfont: { size: 12 }, // Sans couleur imposée (hérite du body)
-            titlefont: { size: 14 }, // Sans couleur imposée (hérite du body)
+            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            showticklabels: true,
             showline: true,
             linecolor: 'rgba(0, 0, 0, 0.5)',
             linewidth: 1,
@@ -315,7 +336,7 @@ function initPlot() {
                 yref: 'y2', // Utiliser l'axe altitude (gauche)
                 xanchor: 'right', // Aligné à droite du texte (donc à gauche de l'axe, séparé des pointillés)
                 yanchor: 'middle',
-                font: { size: 11 } // Sans couleur imposée (hérite du body)
+                font: { size: 11, color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
             },
             {
                 x: 0.02, // En bas à gauche du graphique
@@ -326,7 +347,7 @@ function initPlot() {
                 yref: 'paper',
                 xanchor: 'left',
                 yanchor: 'bottom',
-                font: { size: 12 }, // Sans couleur imposée (hérite du body)
+                font: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
                 bgcolor: 'rgba(0, 0, 0, 0.5)',
                 bordercolor: 'rgba(255, 255, 255, 0.3)',
                 borderwidth: 1,
@@ -695,10 +716,10 @@ window.updatePlot = function updatePlot(data) {
             fixedrange: true,
             title: {
                 text: "Longueur d'onde (μm)",
-                standoff: 50 // Encore plus bas
+                standoff: 50, // Encore plus bas
+                font: { color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
             },
-            // Titre sans couleur imposée (hérite du body)
-            // Valeurs de l'axe X sans couleur imposée (hérite du body)
+            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
             showgrid: false,
             showline: false, // Pas de ligne d'axe
             zeroline: false,
@@ -710,10 +731,13 @@ window.updatePlot = function updatePlot(data) {
         yaxis: {
             range: [0, 40],
             fixedrange: true, // Désactiver le zoom
-            title: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
+            title: {
+                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
+                font: { color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
+            },
             side: 'right', // SWAP : passer à droite
-            tickfont: { size: 12 }, // Sans couleur imposée (hérite du body)
-            titlefont: { size: 14 }, // Sans couleur imposée (hérite du body)
+            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
             gridwidth: 1,
@@ -723,7 +747,10 @@ window.updatePlot = function updatePlot(data) {
             mirror: 'ticks'
         },
         yaxis2: {
-            title: "Altitude (km)",
+            title: {
+                text: "Altitude (km)",
+                font: { color: getDefaultTextColor() }
+            },
             overlaying: 'y',
             side: 'left', // SWAP : passer à gauche
             range: [0, 120], // 0 km en bas, 120 km en haut (même orientation que yaxis)
@@ -734,8 +761,8 @@ window.updatePlot = function updatePlot(data) {
             // Utiliser le même espacement que yaxis (généralement 5 ou 10)
             tickmode: 'linear',
             dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
-            tickfont: { size: 12 }, // Sans couleur imposée (hérite du body)
-            titlefont: { size: 14 }, // Sans couleur imposée (hérite du body)
+            tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+            titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
             showline: true,
             linecolor: 'rgba(0, 0, 0, 0.5)',
             linewidth: 1,
@@ -756,7 +783,7 @@ window.updatePlot = function updatePlot(data) {
                 yref: 'y2', // Utiliser l'axe altitude (gauche)
                 xanchor: 'right', // Aligné à droite du texte (donc à gauche de l'axe, séparé des pointillés)
                 yanchor: 'middle',
-                font: { size: 11 } // Sans couleur imposée (hérite du body)
+                font: { size: 11, color: getDefaultTextColor() } // color: '#667eea' (bleu) en réserve
             },
         ]
     };
@@ -790,7 +817,10 @@ window.updatePlot = function updatePlot(data) {
     }
 
     updateLayout.yaxis2 = {
-        title: "Altitude (km)",
+        title: {
+            text: "Altitude (km)",
+            font: { color: getDefaultTextColor(), size: 14 } // color: '#667eea' (bleu) en réserve
+        },
         overlaying: 'y',
         side: 'left', // SWAP : passer à gauche
         range: [0, 120], // 0 km en bas, 120 km en haut
@@ -799,8 +829,8 @@ window.updatePlot = function updatePlot(data) {
         // Aligner les ticks avec l'axe Y principal
         tickmode: 'linear',
         dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
-        tickfont: { size: 12 }, // Sans couleur imposée (hérite du body)
-        titlefont: { size: 14 }, // Sans couleur imposée (hérite du body)
+        tickfont: { size: 12, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
+        titlefont: { size: 14, color: getDefaultTextColor() }, // color: '#667eea' (bleu) en réserve
         showline: true,
         linecolor: 'rgba(0, 0, 0, 0.5)',
         linewidth: 1,

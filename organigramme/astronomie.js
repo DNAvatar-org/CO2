@@ -2,8 +2,8 @@
 // Desc: Calcul des paramètres astronomiques (excentricité, obliquité, précession) pour l'effet Milankovitch
 // Version 1.0.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
-// Licensed under Apache License 2.0 with Commons Clause. 
-// See LICENSE_HEADER.txt for full terms.
+// Licensed under Apache License 2.0 with Commons Clause.
+// See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
 //   - Initial version: implémentation des cycles de Milankovitch basés sur la date de création de la Terre

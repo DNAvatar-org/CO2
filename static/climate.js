@@ -3,8 +3,8 @@
 // Desc: En français, dans l'architecture, je suis le module de climatologie
 // Version 1.0.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
-// Licensed under Apache License 2.0 with Commons Clause. 
-// See LICENSE_HEADER.txt for full terms.
+// Licensed under Apache License 2.0 with Commons Clause.
+// See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
 //   - Initial creation: radiative forcings, climate sensitivity, albedo

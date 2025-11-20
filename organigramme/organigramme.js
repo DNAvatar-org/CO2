@@ -2,8 +2,8 @@
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
 // Version 1.0.0
 // © 2025 DNAvatar.org - Arnaud Maignan
-// Licensed under Apache License 2.0 with Commons Clause. 
-// See LICENSE_HEADER.txt for full terms.
+// Licensed under Apache License 2.0 with Commons Clause.
+// See https://commonsclause.com/ for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
 //   - Initial version: extraction du code de génération du diagramme depuis demo_flux_energetique_01.html

@@ -1,4 +1,16 @@
 // ============================================================================
+// File: main.js - Logique principale de la simulation
+// Desc: En français, dans l'architecture, je suis le module principal de simulation
+// Version 1.0.0
+// Copyright 2025 DNAvatar.org - Arnaud Maignan
+// Licensed under Apache License 2.0 with Commons Clause.
+// See https://commonsclause.com/ for full terms.
+// Date: [January 2025]
+// Logs:
+//   - Initial creation: simulation du bilan radiatif terrestre
+// ============================================================================
+
+// ============================================================================
 // COMPTEUR FPS
 // ============================================================================
 let fps = 0;

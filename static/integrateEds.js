@@ -3,7 +3,7 @@
 // Version 1.0.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
-// See LICENSE_HEADER.txt for full terms.
+// See https://commonsclause.com/ for full terms.
 // Date: [November 18, 2025] [HH:MM UTC+1]
 // Logs:
 //   - Initial version: intégration de synthese_EdS dans l'organigramme
