@@ -73,8 +73,9 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
 }
 
 // Fonction pour créer une cellule avec un tableau 3x3
-function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4) {
-    const container = document.getElementById('flux-diagram');
+function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4, targetContainer = null) {
+    // Utiliser le container fourni ou le flux-diagram par défaut
+    const container = targetContainer || document.getElementById('flux-diagram');
     
     // Cellule principale avec grille 3x3
     // Le cercle est en arrière-plan, la grille par-dessus pour que les textes se superposent
@@ -90,10 +91,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         cell.id = 'cell-' + nodeId;
     }
     
-    // Appliquer le z-index personnalisé si fourni
-    if (zIndex !== null && zIndex !== undefined) {
-        cell.style.zIndex = zIndex;
-    }
+    // Z-index géré par CSS via les sélecteurs #cell-{nodeId}
+    // Les z-index inline sont désactivés pour éviter les conflits avec le CSS
     
     // Adapter la grille à la taille du cercle OU du logo (le plus grand)
     const hasCircle = strokeColor && strokeColor.trim() !== '';
@@ -154,10 +153,9 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     const circleSize = radius * 2;
     circleBg.style.width = circleSize + 'px';
     circleBg.style.height = circleSize + 'px';
-    // Appliquer le même z-index que la cellule pour que le cercle soit au même niveau
-    if (zIndex !== null && zIndex !== undefined) {
-        circleBg.style.zIndex = zIndex;
-    }
+    // Z-index du cercle géré par CSS via les sélecteurs #cell-{nodeId} .flux-circle-bg
+    // Pour albedo, le cercle doit être au-dessus des radiations (z-index 9)
+    // Les z-index inline sont désactivés pour éviter les conflits avec le CSS
     // Positionner le cercle au centre de la grille
     // Centre horizontal : 100px (col gauche) + (centralCellSize / 2)
     // Centre vertical : 25px (top) + (centralCellSize / 2)
@@ -321,43 +319,11 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         }
     }
     
-    container.appendChild(cell);
+    // Les radiations seront créées après toutes les cellules (étape 8)
+    // Pas de création de radiations ici
     
-    // Créer les cercles de rayonnement si demandé
-    if (radiationOptions) {
-        const { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800', strokeSize = 2 } = radiationOptions;
-        // Vérifier que maxRadius est défini
-        if (maxRadius !== null && maxRadius !== undefined) {
-            // Log pour déboguer
-            if (nodeId === 'albedo' || nodeId === 'surface') {
-            }
-            // Créer un groupe pour ces radiations avec la couleur définie
-            const radiationGroup = document.createElement('div');
-            radiationGroup.className = 'flux-radiation-group';
-            radiationGroup.style.color = color; // Les .flux-sphere hériteront via currentColor
-            // Hériter du z-index du nœud pour que les radiations soient au même niveau
-            if (zIndex !== null && zIndex !== undefined) {
-                radiationGroup.style.zIndex = zIndex;
-            }
-            
-            const mainContainer = document.getElementById('flux-diagram');
-            let container = mainContainer.querySelector('.flux-radiation-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.className = 'flux-radiation-container';
-                mainContainer.appendChild(container);
-            }
-            container.appendChild(radiationGroup);
-            
-            for (let i = 1; i <= numCircles; i++) {
-                const progress = i / numCircles;
-                const arcRadius = radius + (maxRadius - radius) * progress;
-                const arc = createArc(x, y, arcRadius, 0.3 + (progress * 0.2), openingAngle, rotation, radiationGroup);
-                // Forcer la bordure complète en inline style pour garantir la couleur et l'épaisseur
-                arc.style.border = `${strokeSize}px dashed ${color}`;
-            }
-        }
-    }
+    // Ajouter la cellule au container
+    container.appendChild(cell);
     
     // Créer le rectangle avec les facteurs si demandé
     if (rectangleOptions) {
@@ -1082,9 +1048,22 @@ function generateArrows() {
 // Calculer les positions
 calculatePositions();
 
-// Créer les cellules
+// Ordre spécifique des cellules dans le DOM (du plus bas au plus haut)
+const cellOrder = ['soleil', 'geometrie', 'albedo', 'espace1', 'surface', 'noyau', 'espace2', 'reemis'];
+// effetSerre n'est plus dans l'ordre car c'est un rectangle, pas une cellule circulaire
+
+// Créer les cellules dans l'ordre spécifié
 const createdCells = {};
-nodes.forEach(node => {
+const mainContainer = document.getElementById('flux-diagram');
+
+// Étape 1-7 : Créer les cellules dans l'ordre spécifié
+cellOrder.forEach(nodeId => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
+    // Ignorer effetSerre car c'est un rectangle, pas une cellule circulaire
+    if (nodeId === 'effetSerre') return;
+    
     // Calculer maxRadius si nécessaire
     let radiationOptions = node.radiation;
     
@@ -1203,7 +1182,7 @@ nodes.forEach(node => {
         Array.isArray(node.top) ? node.top : (node.top ? [node.top] : []),
         Array.isArray(node.bottom) ? node.bottom : (node.bottom ? [node.bottom] : []),
         node.tooltip || null,
-        radiationOptions,
+        null, // Pas de radiations ici, on les créera après (étape 8)
         node.rectangle || null,
         node.fillImage || null,
         node.id, // Passer l'ID du noeud pour créer l'ID de la cellule
@@ -1214,8 +1193,230 @@ nodes.forEach(node => {
     );
 });
 
-// Générer automatiquement les flèches
+// Étape 8 : Créer le container des radiations et toutes les radiations
+const radiationContainer = document.createElement('div');
+radiationContainer.className = 'flux-radiation-container';
+mainContainer.appendChild(radiationContainer);
+
+// Créer toutes les radiations dans l'ordre des cellules
+cellOrder.forEach(nodeId => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node || !node.radiation) return;
+    
+    const radiationOptions = node.radiation;
+    const { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800', strokeSize = 2 } = radiationOptions;
+    
+    if (maxRadius !== null && maxRadius !== undefined) {
+        const radiationGroup = document.createElement('div');
+        radiationGroup.className = 'flux-radiation-group';
+        radiationGroup.style.color = color;
+        radiationGroup.setAttribute('data-node', nodeId);
+        
+        radiationContainer.appendChild(radiationGroup);
+        
+        for (let i = 1; i <= numCircles; i++) {
+            const progress = i / numCircles;
+            const arcRadius = node.radius + (maxRadius - node.radius) * progress;
+            const arc = createArc(node.x, node.y, arcRadius, 0.3 + (progress * 0.2), openingAngle, rotation, radiationGroup);
+            arc.style.border = `${strokeSize}px dashed ${color}`;
+        }
+    }
+});
+
+// Étape 9 : Générer automatiquement les flèches
 generateArrows();
+
+// Étape 10 : Créer les boutons comme des cellules (après les flèches, donc au-dessus)
+function createButtonCells() {
+    const fluxDiagram = document.getElementById('flux-diagram');
+    if (!fluxDiagram) return;
+    
+    // Configuration des boutons importée depuis configOrganigramme.js
+    // buttonConfigs est défini dans configOrganigramme.js
+    
+    // Trouver le nœud surface (centre de référence)
+    const surfaceNode = nodes.find(n => n.id === 'surface');
+    if (!surfaceNode) return;
+    
+    const offsetRadius = -30; // Position à l'intérieur du cercle de référence
+    
+    // Trouver le nœud albedo pour sa taille
+    const albedoNode = nodes.find(n => n.id === 'albedo');
+    if (!albedoNode) return;
+    
+    // Créer un container pour les boutons (div parente)
+    // Centré sur surfaceNode.x, surfaceNode.y (centre de la terre) et de la taille du cercle albedo
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'flux-buttons-container';
+    buttonsContainer.id = 'flux-buttons-container'; // ID pour identification
+    buttonsContainer.style.position = 'absolute';
+    const albedoDiameter = (albedoNode.radius + (albedoNode.strokeSize || 1) / 2) * 2;
+    buttonsContainer.style.width = `${albedoDiameter}px`;
+    buttonsContainer.style.height = `${albedoDiameter}px`;
+    // Centrer le container sur le centre de la terre (surfaceNode)
+    buttonsContainer.style.left = `${surfaceNode.x}px`;
+    buttonsContainer.style.top = `${surfaceNode.y}px`;
+    buttonsContainer.style.transform = 'translate(-50%, -50%)'; // Centrer le container
+    buttonsContainer.style.pointerEvents = 'none'; // Ne pas bloquer les clics, mais les enfants peuvent
+    // TEMPORAIRE : Ajouter un contour pour visualiser le container
+    buttonsContainer.style.border = '2px solid rgba(255, 0, 0, 0.5)'; // Contour rouge semi-transparent
+    buttonsContainer.style.backgroundColor = 'rgba(255, 0, 0, 0.1)'; // Fond rouge très transparent
+    fluxDiagram.appendChild(buttonsContainer);
+    
+    console.log('=== DEBUG CONTAINER ===');
+    console.log('Container centré sur surfaceNode:', surfaceNode.x, surfaceNode.y);
+    console.log('albedoNode:', albedoNode);
+    console.log('albedoDiameter:', albedoDiameter);
+    console.log('Container coin supérieur gauche (calculé):', surfaceNode.x - albedoDiameter / 2, surfaceNode.y - albedoDiameter / 2);
+    console.log('Container coin inférieur droit (calculé):', surfaceNode.x + albedoDiameter / 2, surfaceNode.y + albedoDiameter / 2);
+    console.log('Container center (devrait être surfaceNode):', surfaceNode.x, surfaceNode.y);
+    
+    // Vérifier la position réelle après appendChild
+    setTimeout(() => {
+        const rect = buttonsContainer.getBoundingClientRect();
+        const fluxRect = fluxDiagram.getBoundingClientRect();
+        console.log('Container getBoundingClientRect():', rect);
+        console.log('Container position relative au flux-diagram:', rect.left - fluxRect.left, rect.top - fluxRect.top);
+        console.log('Container center réel:', rect.left - fluxRect.left + rect.width / 2, rect.top - fluxRect.top + rect.height / 2);
+    }, 100);
+    
+    // Dessiner le cercle de référence pour visualiser la position des boutons
+    // Le cercle est centré dans le container (qui est lui-même centré sur surfaceNode)
+    const referenceCircle = document.createElement('div');
+    const radiusOuter = surfaceNode.radius + (surfaceNode.strokeSize || 4) / 2;
+    // Utiliser le rayon initial (avant l'incrément cumulatif)
+    const totalRadius = radiusOuter + offsetRadius;
+    referenceCircle.style.position = 'absolute';
+    // Position relative au container (qui est centré sur surfaceNode)
+    // Le cercle est centré au centre du container (50%, 50%)
+    referenceCircle.style.left = '50%';
+    referenceCircle.style.top = '50%';
+    referenceCircle.style.width = `${totalRadius * 2}px`;
+    referenceCircle.style.height = `${totalRadius * 2}px`;
+    referenceCircle.style.border = '2px dashed rgba(0, 255, 0, 0.8)'; // Cercle vert en pointillés, bien visible
+    referenceCircle.style.borderRadius = '50%';
+    referenceCircle.style.transform = 'translate(-50%, -50%)'; // Centrer le cercle
+    referenceCircle.style.pointerEvents = 'none'; // Ne pas bloquer les clics
+    referenceCircle.style.zIndex = '1'; // Au-dessus des cellules mais en dessous des boutons
+    referenceCircle.className = 'flux-button-reference-circle';
+    referenceCircle.id = 'flux-button-reference-circle'; // ID pour identification
+    buttonsContainer.appendChild(referenceCircle);
+    
+    // Utiliser un offsetRadius fixe pour tous les boutons (même cercle)
+    // radiusOuter est déjà calculé ci-dessus pour le cercle de référence
+    // Calculer le rayon total une seule fois pour tous les boutons
+    const surfaceRadiusOuter = surfaceNode.radius + (surfaceNode.strokeSize || 4) / 2;
+    const fixedTotalRadius = surfaceRadiusOuter + offsetRadius; // Rayon total fixe pour tous
+    
+    console.log('=== DEBUG BOUTONS ===');
+    console.log('surfaceNode:', surfaceNode);
+    console.log('surfaceRadiusOuter:', surfaceRadiusOuter);
+    console.log('offsetRadius:', offsetRadius);
+    console.log('fixedTotalRadius:', fixedTotalRadius);
+    console.log('centerX:', centerX, 'centerY:', centerY);
+    
+    // TEMPORAIRE : Placer les 4 logos aux 4 coins de la div pour tester
+    const corners = [
+        { x: 0, y: 0, name: 'coin supérieur gauche' },
+        { x: albedoDiameter, y: 0, name: 'coin supérieur droit' },
+        { x: 0, y: albedoDiameter, name: 'coin inférieur gauche' },
+        { x: albedoDiameter, y: albedoDiameter, name: 'coin inférieur droit' }
+    ];
+    
+    buttonConfigs.forEach((config, index) => {
+        // TEMPORAIRE : Utiliser les coins au lieu du cercle
+        const corner = corners[index];
+        const relativeX = corner.x;
+        const relativeY = corner.y;
+        
+        console.log(`Bouton ${index} (${config.id}): ${corner.name}`);
+        console.log(`  → pos relative=(${relativeX.toFixed(2)}, ${relativeY.toFixed(2)})`);
+        console.log(`  → container center (surfaceNode): (${surfaceNode.x}, ${surfaceNode.y})`);
+        console.log(`  → container size: ${albedoDiameter}px x ${albedoDiameter}px`);
+        
+        // Code original commenté pour référence (sera réactivé après test)
+        /*
+        // Calculer la position sur le cercle
+        // Utiliser 'surface' (terre) comme centre de référence au lieu de 'albedo'
+        // Tous les boutons utilisent le même rayon total (même cercle)
+        // Passer directement le rayon total pour garantir qu'il soit identique pour tous
+        const pos = poseBoutonSurCercle('surface', config.angle, 0, fixedTotalRadius);
+        
+        // Convertir la position absolue en position relative au container
+        // Le container est centré sur surfaceNode.x, surfaceNode.y et a une taille de albedoDiameter
+        // Le container a son coin supérieur gauche à (surfaceNode.x - albedoDiameter/2, surfaceNode.y - albedoDiameter/2)
+        const containerTopLeftX = surfaceNode.x - albedoDiameter / 2;
+        const containerTopLeftY = surfaceNode.y - albedoDiameter / 2;
+        const relativeX = pos.x - containerTopLeftX;
+        const relativeY = pos.y - containerTopLeftY;
+        
+        // Vérifier la distance depuis le centre du container (qui est maintenant surfaceNode)
+        const distanceFromContainerCenter = Math.sqrt((pos.x - surfaceNode.x) ** 2 + (pos.y - surfaceNode.y) ** 2);
+        
+        console.log(`Bouton ${index} (${config.id}): angle=${config.angle}°`);
+        console.log(`  → pos absolue=(${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`);
+        console.log(`  → container topLeft=(${containerTopLeftX.toFixed(2)}, ${containerTopLeftY.toFixed(2)})`);
+        console.log(`  → pos relative=(${relativeX.toFixed(2)}, ${relativeY.toFixed(2)})`);
+        console.log(`  → distance depuis container center (${surfaceNode.x}, ${surfaceNode.y}) = ${distanceFromContainerCenter.toFixed(2)}px (devrait être ${fixedTotalRadius.toFixed(2)})`);
+        console.log(`  → rayon utilisé dans poseBoutonSurCercle = ${fixedTotalRadius}`);
+        */
+        
+        // Créer une cellule pour le bouton (petite taille, juste pour le logo)
+        // Pas de labels pour l'instant pour éviter les champs qui se baladent
+        // Utiliser des positions relatives au container (0,0 = coin supérieur gauche du container)
+        // Passer buttonsContainer comme targetContainer pour l'ajouter directement au bon endroit
+        // Pour les boutons, on veut que le logo soit exactement centré sur la position
+        // Pas de labels, donc pas de verticalOffset
+        const buttonCell = createCell(
+            relativeX, // Position relative au container
+            relativeY, // Position relative au container
+            25, // Petit radius pour le bouton
+            'rgba(0, 0, 0, 0)', // Fond transparent
+            '', // Pas de bordure
+            config.logo,
+            [], // Pas de labels left
+            [], // Pas de labels right (à ajouter plus tard)
+            [], // Pas de labels top
+            [], // Pas de labels bottom
+            null, // Pas de tooltip
+            null, // Pas de radiation
+            null, // Pas de rectangle
+            null, // Pas d'image
+            'cell-' + config.id, // ID de la cellule avec préfixe
+            null, // Pas de z-index spécifique
+            1.0, // Logo scale
+            0, // Pas d'offset Y (logoOffsetY = 0)
+            0, // Pas de stroke
+            buttonsContainer // Container cible : buttonsContainer au lieu de flux-diagram
+        );
+        
+        // Vérifier le style appliqué à la cellule
+        console.log(`  → buttonCell.style.left=${buttonCell.style.left}, buttonCell.style.top=${buttonCell.style.top}`);
+        console.log(`  → buttonCell.style.transform=${buttonCell.style.transform}`);
+        
+        // Ajouter un gestionnaire de clic sur la cellule
+        buttonCell.addEventListener('click', function() {
+            // Déclencher le clic sur le bouton HTML original s'il existe
+            const originalButton = document.getElementById(config.id);
+            if (originalButton) {
+                originalButton.click();
+            }
+        });
+        
+        // Ajouter la classe pour le style des boutons
+        buttonCell.classList.add('flux-button-cell');
+        // Réactiver les pointer-events sur le bouton
+        buttonCell.style.pointerEvents = 'auto';
+        
+        // Cacher le bouton HTML original s'il existe
+        const originalButton = document.getElementById(config.id);
+        if (originalButton) {
+            originalButton.style.display = 'none';
+        }
+    });
+}
+
+createButtonCells();
 
 /**
  * Calcule la position pour un texte justifié à gauche, aligné sur le bord gauche du cercle albedo
@@ -1245,21 +1446,30 @@ function calculateTextPositionLeftOfCircle(nodeId = 'albedo', offsetX = 0, offse
 
 /**
  * Calcule la position pour un bouton placé sur le bord d'un cercle
- * @param {string} nodeId - ID du nœud (par défaut 'albedo')
+ * @param {string} nodeId - ID du nœud (par défaut 'surface')
  * @param {number} angleDeg - Angle en degrés (0° = droite, 90° = bas, sens anti-horaire)
  * @param {number} offsetRadius - Décalage supplémentaire depuis le bord du cercle (par défaut 0)
+ * @param {number} totalRadiusOverride - Rayon total à utiliser directement (optionnel, ignore offsetRadius si fourni)
  * @returns {Object} {x, y} - Coordonnées pour positionner le bouton (centre du bouton)
  */
-function poseBoutonSurCercle(nodeId = 'albedo', angleDeg = 0, offsetRadius = 0) {
+function poseBoutonSurCercle(nodeId = 'surface', angleDeg = 0, offsetRadius = 0, totalRadiusOverride = null) {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) {
+        console.warn(`poseBoutonSurCercle: node ${nodeId} not found`);
         return { x: 0, y: 0 };
     }
     
-    const radius = node.radius || 40;
-    const strokeSize = node.strokeSize || 4;
-    const radiusOuter = radius + (strokeSize / 2); // Rayon jusqu'au bord extérieur
-    const totalRadius = radiusOuter + offsetRadius; // Rayon total avec décalage
+    // Si totalRadiusOverride est fourni, l'utiliser directement (pour garantir le même rayon pour tous)
+    const totalRadius = totalRadiusOverride !== null ? totalRadiusOverride : (() => {
+        const radius = node.radius || 40;
+        const strokeSize = node.strokeSize || 4;
+        const radiusOuter = radius + (strokeSize / 2); // Rayon jusqu'au bord extérieur
+        const calculated = radiusOuter + offsetRadius; // Rayon total avec décalage
+        console.log(`poseBoutonSurCercle: nodeId=${nodeId}, radius=${radius}, strokeSize=${strokeSize}, radiusOuter=${radiusOuter}, offsetRadius=${offsetRadius}, calculated=${calculated}`);
+        return calculated;
+    })();
+    
+    console.log(`poseBoutonSurCercle: nodeId=${nodeId}, angleDeg=${angleDeg}, offsetRadius=${offsetRadius}, totalRadiusOverride=${totalRadiusOverride}, totalRadius=${totalRadius}, node.x=${node.x}, node.y=${node.y}`);
     
     // Convertir l'angle en radians
     const angleRad = (angleDeg * Math.PI) / 180;
@@ -1269,6 +1479,8 @@ function poseBoutonSurCercle(nodeId = 'albedo', angleDeg = 0, offsetRadius = 0) 
     // 90° = bas (cos=0, sin=1)
     const x = node.x + totalRadius * Math.cos(angleRad);
     const y = node.y + totalRadius * Math.sin(angleRad);
+    
+    console.log(`poseBoutonSurCercle: angleRad=${angleRad}, cos=${Math.cos(angleRad)}, sin=${Math.sin(angleRad)}, final pos=(${x}, ${y})`);
     
     return { x, y };
 }
@@ -1314,24 +1526,19 @@ function positionnerBoutonsSurCercleAlbedo() {
         bouton.style.left = `${pos.x}px`;
         bouton.style.top = `${pos.y}px`;
         bouton.style.transform = 'translate(-50%, -50%)'; // Centrer le bouton sur la position
-        bouton.style.zIndex = '1000';
+        // Pas de z-index : l'ordre DOM suffit (boutons ajoutés en dernier)
         
         // Déplacer le bouton dans le flux-diagram si nécessaire
-        if (bouton.parentElement !== fluxDiagram) {
-            fluxDiagram.appendChild(bouton);
+        // Si le bouton est déjà dans le DOM, le retirer d'abord pour le réinsérer à la fin
+        if (bouton.parentElement) {
+            bouton.parentElement.removeChild(bouton);
         }
+        // Ajouter le bouton à la fin du flux-diagram (sera au-dessus de tout)
+        fluxDiagram.appendChild(bouton);
     });
 }
 
-// Appeler la fonction après la génération du diagramme
-if (typeof window !== 'undefined') {
-    // Attendre que le DOM soit prêt
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(positionnerBoutonsSurCercleAlbedo, 100);
-        });
-    } else {
-        setTimeout(positionnerBoutonsSurCercleAlbedo, 100);
-    }
-}
+// La fonction positionnerBoutonsSurCercleAlbedo() est maintenant appelée directement
+// après generateArrows() dans le code d'initialisation (étape 10)
+// Plus besoin de setTimeout ou DOMContentLoaded
 

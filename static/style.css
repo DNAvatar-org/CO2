@@ -12,12 +12,6 @@
     font-style: normal;
 }
 
-/* Correction globale pour ProggyDotted : alignement vertical (décaler vers le bas) - uniquement flux */
-.flux-diagram * {
-    display: inline-block;
-    transform: translateY(3px);
-}
-
 * {
     margin: 0;
     padding: 0;
@@ -214,15 +208,6 @@ h1 {
     padding: 10px;
     background: rgba(255, 255, 255, 0.2);
     border-radius: 10px;
-    border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.4);
-    border-left: 1px solid rgba(255, 255, 255, 0.4);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.6);
-    border-right: 1px solid rgba(0, 0, 0, 0.6);
-    box-shadow: 
-        0 1px 2px rgba(0, 0, 0, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
     overflow: hidden;
 }
 
@@ -582,8 +567,7 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    margin-top: 10px;
+    margin-top: 17px;
 }
 
 .timeline-first-line {
@@ -690,6 +674,63 @@ h1 {
 .epoch-btn.selected:hover {
     /* Si sélectionné : swap vers noir et blanc, contour reste vert */
     filter: grayscale(100%);
+}
+
+/* Boutons du flux : même style que les boutons radio mais pour checkboxes */
+.flux-diagram .btn {
+    font-size: 24px;
+    background: none !important; /* Pas de fond */
+    border: none !important; /* Pas de border */
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 5px;
+    transition: filter 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    position: relative;
+    /* Par défaut : noir et blanc avec contour blanc autour du logo */
+    filter: grayscale(100%);
+    /* Contour blanc autour du logo (emoji) - ne change pas au rollover */
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5);
+}
+
+/* Bouton du flux activé (checked) : couleur avec contour vert */
+.flux-diagram .btn.checked {
+    filter: grayscale(0%); /* Couleur normale */
+    /* Contour vert autour du logo - ne change pas au rollover */
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3);
+}
+
+/* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
+.flux-diagram .btn:hover {
+    /* Si non activé : swap vers couleur, contour reste blanc */
+    filter: grayscale(0%);
+}
+
+.flux-diagram .btn.checked:hover {
+    /* Si activé : swap vers noir et blanc, contour reste vert */
+    filter: grayscale(100%);
+}
+
+/* Boutons désactivés (en époque Corps noir) */
+.flux-diagram .btn.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(100%);
+    text-shadow: 0 0 2px rgba(128, 128, 128, 0.5),
+                 0 0 4px rgba(128, 128, 128, 0.3);
+}
+
+.flux-diagram .btn.disabled:hover {
+    filter: grayscale(100%); /* Pas de changement au rollover si désactivé */
 }
 
 .epoch-date {
@@ -1447,9 +1488,12 @@ body.mode-dark .button-container,
 body.mode-dark .reference-container,
 body.mode-dark .flux-diagram {
     background: rgba(0, 0, 0, 0.2) !important;
-    border: none !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
-    border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Mode Dark - Bordures relief pour divGlass */
+body.mode-dark .divGlass {
+    border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
     border-bottom: 1px solid rgb(0, 0, 0) !important;
     border-right: 1px solid rgb(0, 0, 0) !important;
     box-shadow: 
@@ -1469,8 +1513,8 @@ body.mode-dark .legend-container,
 body.mode-dark .plot-overlay-title {
     background: rgba(0, 0, 0, 0.2) !important;
     border: none !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
-    border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
     border-bottom: 1px solid rgb(0, 0, 0) !important;
     border-right: 1px solid rgb(0, 0, 0) !important;
     box-shadow: 

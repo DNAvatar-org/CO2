@@ -70,3 +70,49 @@ const arcs = [
     { from: 'reemis', to: 'surface', label: { name: '', size: '', txt1: '', relatif:'bottom' } }
 ];
 
+// Configuration des boutons autour du cercle albedo
+// Positionnés de haut en bas à gauche et à droite
+// À gauche : ordre d'importance pour le réchauffement (plus important en haut)
+const buttonConfigs = [
+    { 
+        id: 'btn-co2', 
+        angle: -135,       // Haut-gauche (CO2 = le plus important)
+        logo: '🌵', 
+        title: 'CO₂',
+        left: [], 
+        right: [], // Labels à ajouter plus tard (% et W/m²)
+        top: [], 
+        bottom: []
+    },
+    { 
+        id: 'btn-methane', 
+        angle: -160,       // Gauche (milieu) (CH4 = deuxième)
+        logo: '⛽', 
+        title: 'CH₄',
+        left: [], 
+        right: [], // Labels à ajouter plus tard (% et W/m²)
+        top: [], 
+        bottom: []
+    },
+    { 
+        id: 'btn-h2o', 
+        angle: 225,       // Bas-gauche (H2O = troisième)
+        logo: '💧', 
+        title: 'H₂O',
+        left: [], 
+        right: [], // Labels à ajouter plus tard (% et W/m²)
+        top: [], 
+        bottom: []
+    },
+    { 
+        id: 'btn-albedo', 
+        angle: 315,       // Haut-droite
+        logo: '🏐', 
+        title: 'Albédo',
+        left: [], 
+        right: [], // Labels à ajouter plus tard (% et W/m²)
+        top: [], 
+        bottom: []
+    }
+];
+

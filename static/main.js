@@ -1209,25 +1209,64 @@ function setEpoch(epochName) {
     updateTimeline();
     
     // Appliquer les conditions initiales
+    // En époque "Corps noir", tout est désactivé
+    const isCorpsNoir = epoch.name === 'Corps noir';
+    
     // 1. CO2
     const co2_fraction = epoch.co2_ppm * 1e-6;
     plotData.co2_ppm = epoch.co2_ppm;
     currentState = 3; // Utiliser state 3 comme base pour les valeurs personnalisées
     
+    // Mettre à jour le bouton CO2
+    const btnCo2 = document.getElementById('btn-co2');
+    if (btnCo2) {
+        if (isCorpsNoir) {
+            btnCo2.classList.remove('checked');
+            btnCo2.classList.add('disabled');
+            btnCo2.disabled = true;
+        } else {
+            btnCo2.classList.remove('disabled');
+            btnCo2.disabled = false;
+            if (epoch.co2_ppm > 0) {
+                btnCo2.classList.add('checked');
+            } else {
+                btnCo2.classList.remove('checked');
+            }
+        }
+    }
+    
     // 2. H2O
     if (typeof window.waterVaporEnabled !== 'undefined') {
-        window.waterVaporEnabled = epoch.h2o_enabled !== false; // true par défaut si non spécifié
+        window.waterVaporEnabled = !isCorpsNoir && (epoch.h2o_enabled !== false); // true par défaut si non spécifié
     }
     
     // Mettre à jour l'affichage H2O
     const h2oStatusElement = document.getElementById('h2o-status-synthese');
     if (h2oStatusElement) {
-        h2oStatusElement.textContent = epoch.h2o_enabled !== false ? 'Activé' : 'Désactivé';
+        h2oStatusElement.textContent = (!isCorpsNoir && epoch.h2o_enabled !== false) ? 'Activé' : 'Désactivé';
+    }
+    
+    // Mettre à jour le bouton H2O
+    const btnH2O = document.getElementById('btn-h2o');
+    if (btnH2O) {
+        if (isCorpsNoir) {
+            btnH2O.classList.remove('checked');
+            btnH2O.classList.add('disabled');
+            btnH2O.disabled = true;
+        } else {
+            btnH2O.classList.remove('disabled');
+            btnH2O.disabled = false;
+            if (epoch.h2o_enabled !== false) {
+                btnH2O.classList.add('checked');
+            } else {
+                btnH2O.classList.remove('checked');
+            }
+        }
     }
     
     const btn = document.getElementById('btn-cloud');
     if (btn) {
-        if (epoch.h2o_enabled !== false) {
+        if (!isCorpsNoir && epoch.h2o_enabled !== false) {
             btn.style.opacity = '1';
             btn.style.border = '2px solid #4CAF50';
             btn.title = 'Vapeur d\'eau activée - Cliquer pour désactiver';
@@ -1240,16 +1279,49 @@ function setEpoch(epochName) {
     
     // 3. CH4 (méthane)
     if (epoch.ch4_ppm !== undefined) {
-        plotData.ch4_ppm = epoch.ch4_ppm;
+        plotData.ch4_ppm = isCorpsNoir ? 0 : epoch.ch4_ppm;
         // Activer CH4 si la concentration est > 0
         if (typeof window.methaneEnabled !== 'undefined') {
-            window.methaneEnabled = epoch.ch4_ppm > 0;
+            window.methaneEnabled = !isCorpsNoir && (epoch.ch4_ppm > 0);
         }
     } else {
         // Par défaut, désactiver CH4 si non spécifié
         plotData.ch4_ppm = 0;
         if (typeof window.methaneEnabled !== 'undefined') {
             window.methaneEnabled = false;
+        }
+    }
+    
+    // Mettre à jour le bouton CH4
+    const btnMethane = document.getElementById('btn-methane');
+    if (btnMethane) {
+        if (isCorpsNoir) {
+            btnMethane.classList.remove('checked');
+            btnMethane.classList.add('disabled');
+            btnMethane.disabled = true;
+        } else {
+            btnMethane.classList.remove('disabled');
+            btnMethane.disabled = false;
+            if (epoch.ch4_ppm > 0) {
+                btnMethane.classList.add('checked');
+            } else {
+                btnMethane.classList.remove('checked');
+            }
+        }
+    }
+    
+    // 4. Albedo (toujours disponible sauf en Corps noir)
+    const btnAlbedo = document.getElementById('btn-albedo');
+    if (btnAlbedo) {
+        if (isCorpsNoir) {
+            btnAlbedo.classList.remove('checked');
+            btnAlbedo.classList.add('disabled');
+            btnAlbedo.disabled = true;
+        } else {
+            btnAlbedo.classList.remove('disabled');
+            btnAlbedo.disabled = false;
+            // Albedo est généralement activé par défaut
+            btnAlbedo.classList.add('checked');
         }
     }
     
@@ -1268,12 +1340,29 @@ function setEpoch(epochName) {
 
 function toggleWaterVapor() {
     if (calculationInProgress) return; // Bloquer si calcul en cours
+    
+    // Vérifier si on est en époque Corps noir (tout désactivé)
+    const btnH2O = document.getElementById('btn-h2o');
+    if (btnH2O && btnH2O.classList.contains('disabled')) {
+        return; // Ne rien faire si désactivé
+    }
+    
     if (typeof window.waterVaporEnabled === 'undefined') {
         // Accéder directement à la variable globale si disponible
         return;
     }
     
     window.waterVaporEnabled = !window.waterVaporEnabled;
+    
+    // Mettre à jour la classe checked
+    if (btnH2O) {
+        if (window.waterVaporEnabled) {
+            btnH2O.classList.add('checked');
+        } else {
+            btnH2O.classList.remove('checked');
+        }
+    }
+    
     disableButtons(); // Désactiver les boutons
     
     // Mettre à jour l'affichage H2O
@@ -1350,6 +1439,17 @@ window.addEventListener('DOMContentLoaded', () => {
     if (epochNameDisplay) {
         epochNameDisplay.textContent = 'État initial';
     }
+    
+    // Initialiser les boutons du flux en époque Corps noir (tout désactivé)
+    const fluxButtons = ['btn-co2', 'btn-methane', 'btn-h2o', 'btn-albedo'];
+    fluxButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.classList.remove('checked');
+            btn.classList.add('disabled');
+            btn.disabled = true;
+        }
+    });
     
     // Initialiser l'état des boutons selon l'époque géologique
     enableButtons();
