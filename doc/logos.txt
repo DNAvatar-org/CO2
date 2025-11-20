@@ -1,13 +1,12 @@
 
 == Boutons Thermodynamique
 🏐 Albédo
-🌋 Noyau
-📛 EDS
+🌋 Volcan
+☄️ Comète
+
 🌵 CO2
 💧 H2O
 ⛽ Méthane
-
-☄️ Comète
 ==
 
 == Diagramme
@@ -16,7 +15,7 @@
 🏐 Albédo
 🛰 Espace
 🌍 Surface
-🌋 Noyau
+🌕 Noyau
 🌫 Athmosphere
 🌵 CO2
 💧 H2O
@@ -33,7 +32,7 @@
 ==
 
 == Temps:
-🕰 Date depuis creation terre, en années
+📅 Date depuis creation terre, en années
 🌑 Hadéen
 🦠 Archéen
 🌿 Protérozoïque

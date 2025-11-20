@@ -56,17 +56,21 @@
         <!-- Divs à réorganiser automatiquement par layout.js -->
         <div class="title-container">
             <h1>World System</h1>
-            <p class="book-reference"><a href="equation.html" target="_blank">📐 Équations, Définitions et Constantes</a></p>
-            <p class="book-reference"><a href="Algorithmes.html" target="_blank">⚙️ Algorithmes & Convergence</a></p>
         </div>
         
         <div class="flux-diagram-wrapper">
             <div class="flux-diagram" id="flux-diagram"></div>
+            <div class="synthese_Temp">
+                <div style="position: absolute; font-size: 56px; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0;">🌡️</div>
+                <div style="position: relative; z-index: 1; font-size: 16px; font-weight: bold; color: #000; text-shadow: 0 0 3px white, 0 0 3px white; word-wrap: break-word; text-align: center; line-height: 1.1;">
+                    <span id="temp-surface-synthese">--</span><br><span id="temp-unit-synthese" style="font-size: 18px;">°C</span>
+                </div>
+            </div>
         </div>
         
         <div class="plot-container-wrapper">
             <div id="plot-container">
-                <div class="plot-overlay-title">Courbes d'émission du rayonnement d'un corps (noir)</div>
+                <div class="plot-overlay-title">Courbes d'émission<br>du rayonnement d'un corps (noir)</div>
                 <div class="legend-container" id="legend-container">
                     <div class="legend-section">
                         <div class="legend-planck-grid" id="legend-planck-grid">
@@ -79,25 +83,57 @@
         </div>
         
         <div class="timeline-display">
-            <span class="info-time" id="info-time">0 ans</span>
-            <div class="epochs-container">
-                <button class="epoch-btn" onclick="setEpoch('Hadéen')" title="Hadéen (-4600 à -4000 Ma)">🌑 <!-- Hadéen --></button>
-                <button class="epoch-btn" onclick="setEpoch('Archéen')" title="Archéen (-4000 à -2500 Ma)">🦠 <!-- Archéen --></button>
-                <button class="epoch-btn" onclick="setEpoch('Protérozoïque')" title="Protérozoïque (-2500 à -541 Ma)">🌿 <!-- Protérozoïque --></button>
-                <button class="epoch-btn" onclick="setEpoch('Mésozoïque')" title="Mésozoïque (-252 à -66 Ma)">🦕 <!-- Mésozoïque --></button>
-                <button class="epoch-btn" onclick="setEpoch('Crétacé')" title="Crétacé (-145 à -66 Ma)">🦴 <!-- Paléozoïque/Crétacé --></button>
-                <button class="epoch-btn" onclick="setEpoch('Cénozoïque')" title="Cénozoïque (-66 Ma à aujourd'hui)">🦣 <!-- Cénozoïque --></button>
+            <span class="timeline-hourglass">📅</span>
+            <span class="epoch-start-time">-4600 Ma</span>
+            <div class="timeline-frise">
+                <div class="epochs-container">
+                    <div class="epoch-separator-item">
+                        <span class="epoch-separator">|</span>
+                        <span class="epoch-date">-4600 Ma</span>
+                    </div>
+                    <button class="epoch-btn" onclick="setEpoch('Hadéen')" title="Hadéen (-4600 à -4000 Ma)">🌑</button>
+                    <div class="epoch-separator-item">
+                        <span class="epoch-separator">|</span>
+                        <span class="epoch-date">-4000 Ma</span>
+                    </div>
+                    <button class="epoch-btn" onclick="setEpoch('Archéen')" title="Archéen (-4000 à -2500 Ma)">🦠</button>
+                    <div class="epoch-separator-item">
+                        <span class="epoch-separator">|</span>
+                        <span class="epoch-date">-2500 Ma</span>
+                    </div>
+                    <button class="epoch-btn" onclick="setEpoch('Protérozoïque')" title="Protérozoïque (-2500 à -541 Ma)">🌿</button>
+                    <div class="epoch-separator-item">
+                        <span class="epoch-separator">|</span>
+                        <span class="epoch-date">-397 Ma</span>
+                    </div>
+                    <button class="epoch-btn" onclick="setEpoch('Mésozoïque')" title="Mésozoïque (-252 à -66 Ma)">🦕</button>
+                    <div class="epoch-separator-item">
+                        <span class="epoch-separator">|</span>
+                        <span class="epoch-date">-199 Ma</span>
+                    </div>
+                    <button class="epoch-btn" onclick="setEpoch('Crétacé')" title="Crétacé (-145 à -66 Ma)">🦴</button>
+                    <div class="epoch-separator-item">
+                        <span class="epoch-separator">|</span>
+                        <span class="epoch-date">-66 Ma</span>
+                    </div>
+                    <button class="epoch-btn" onclick="setEpoch('Cénozoïque')" title="Cénozoïque (-66 Ma à aujourd'hui)">🦣</button>
+                    <div class="epoch-separator-item">
+                        <span class="epoch-separator">|</span>
+                        <span class="epoch-date">aujourd'hui</span>
+                    </div>
+                    <button class="epoch-btn" onclick="setEpoch('Aujourd\'hui')" title="État d'aujourd'hui">🌈</button>
+                </div>
             </div>
+            <span class="info-time" id="info-time">+90 ans</span>
         </div>
         
         <!-- Les boutons seront positionnés autour du cercle albedo par positionnerBoutonsSurCercleAlbedo() -->
-        <button class="btn btn-eds" id="btn-eds" title="Effet de Serre">📛</button>
         <button class="btn btn-albedo" id="btn-albedo" title="Albédo">🏐</button>
-        <button class="btn btn-noyau" id="btn-noyau" title="Noyau">🌋</button>
+        <button class="btn btn-noyau" id="btn-noyau" onclick="multiplyCO2()" title="Noyau (Volcan)">🌋</button>
         <button class="btn btn-comet" id="btn-comet" onclick="addCometCO2()" title="Comète - +0.1 ppm">☄️</button>
-        <button class="btn btn-co2" id="btn-co2" title="CO2">🌵</button>
-        <button class="btn btn-h2o" id="btn-h2o" onclick="toggleWaterVapor()" title="H2O - Activer/Désactiver vapeur d'eau">💧</button>
-        <button class="btn btn-methane" id="btn-methane" title="Méthane">⛽</button>
+        <button class="btn btn-co2" id="btn-co2" title="CO₂">🌵</button>
+        <button class="btn btn-h2o" id="btn-h2o" onclick="toggleWaterVapor()" title="H₂O - Activer/Désactiver vapeur d'eau">💧</button>
+        <button class="btn btn-methane" id="btn-methane" title="CH₄">⛽</button>
         
         <div class="synthese_EdS">
             <div class="info-unit-header">
@@ -106,30 +142,18 @@
             </div>
             <div class="info-row info-row-vertical info-row-co2">
                 <div class="info-vertical-stack">
-                    <div class="info-logo-name info-logo-name-reverse">
-                        <span class="info-label">CO₂</span>
-                        <button class="btn btn-co2 info-emoji-btn" id="btn-co2-synthese" title="CO2">🌵</button>
-                    </div>
                     <span class="info-value"><span class="info-number" id="co2-number-synthese">0</span><span class="info-unit">%</span></span>
                     <span class="info-forcing" id="forcing-co2-synthese">W/m²</span>
                 </div>
             </div>
             <div class="info-row info-row-vertical info-row-h2o">
                 <div class="info-vertical-stack">
-                    <div class="info-logo-name">
-                        <button class="btn btn-h2o info-emoji-btn" id="btn-h2o-synthese" onclick="toggleWaterVapor()" title="H2O - Activer/Désactiver vapeur d'eau">💧</button>
-                        <span class="info-label">H₂O</span>
-                    </div>
                     <span class="info-value" id="h2o-status-synthese">%</span>
                     <span class="info-forcing" id="forcing-h2o-synthese">W/m²</span>
                 </div>
             </div>
             <div class="info-row info-row-vertical info-row-ch4">
                 <div class="info-vertical-stack">
-                    <div class="info-logo-name">
-                        <button class="btn btn-methane info-emoji-btn" id="btn-methane-synthese" title="Méthane">⛽</button>
-                        <span class="info-label">CH₄</span>
-                    </div>
                     <span class="info-value"><span class="info-number" id="methane-number-synthese">--</span><span class="info-unit">%</span></span>
                     <span class="info-forcing" id="forcing-methane-synthese">W/m²</span>
                 </div>
@@ -144,18 +168,16 @@
             </div>
         </div>
         
-        <div class="synthese_Temp">
-            <div style="position: absolute; font-size: 56px; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0;">🌡️</div>
-            <div style="position: relative; z-index: 1; font-size: 16px; font-weight: bold; color: #000; text-shadow: 0 0 3px white, 0 0 3px white; word-wrap: break-word; text-align: center; line-height: 1.1;">
-                <span id="temp-surface-synthese">--</span><br><span id="temp-unit-synthese" style="font-size: 18px;">°C</span>
-            </div>
-        </div>
-        
         <div class="status" id="status" style="display: none;"></div>
     </div>
     
-    <!-- Définitions et constantes déplacées vers equation.html -->
-    <!-- Algorithmes & Convergence déplacés vers Algorithmes.html -->
+    <!-- Informations en bas au-dessus du footer -->
+    <div class="bottom-info">
+        <p class="book-reference">
+            <a href="equation.html" target="_blank">📐 Équations, Définitions et Constantes</a> | 
+            <a href="Algorithmes.html" target="_blank">⚙️ Algorithmes & Convergence</a>
+        </p>
+    </div>
     
     <footer class="credits-footer">
         <div class="credits-content">

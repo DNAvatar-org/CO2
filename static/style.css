@@ -76,14 +76,14 @@ body {
 
 .left-column {
     display: flex;
-    flex-direction: row; /* Disposition horizontale pour mettre button-container à droite de flux */
-    flex-wrap: wrap; /* Permet le retour à la ligne si nécessaire */
-    align-content: flex-start; /* Aligner le contenu en haut */
-    gap: 15px; /* Espacement entre les divs */
-    width: 415px; /* Augmenté pour accueillir flux-diagram (328px) + gap (15px) + button-container (~320px) */
-    flex: 0 0 auto; /* Ne pas grandir, ne pas rétrécir, taille automatique */
-    min-width: 0; /* Permettre la réduction en dessous de la taille du contenu */
-    height: 640px; /* Hauteur fixe alignée avec plot-container-wrapper */
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 15px;
+    width: 350px;
+    flex: 0 0 auto;
+    min-width: 0;
+    height: 540px;
 }
 
 .right-column {
@@ -95,7 +95,7 @@ body {
     flex: 1 1 auto; /* Prendre tout l'espace disponible restant, peut grandir et rétrécir */
     min-width: 0; /* Permettre la réduction en dessous de la taille du contenu */
     width: 100%; /* Forcer la largeur à 100% de l'espace disponible */
-    height: 640px; /* Hauteur fixe synchronisée avec .left-column */
+    height: 540px; /* Hauteur fixe synchronisée avec .left-column */
 }
 
 .left-panels {
@@ -174,16 +174,19 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
     min-width: 70px;
     min-height: 65px;
     padding: 10px;
-    background: white;
+    /* background: white; */
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     max-width: 65px;
     max-height: 65px;
+    z-index: 1000;
 }
 
 @media (max-width: 1200px) {
@@ -261,7 +264,7 @@ h1 {
 .plot-container-wrapper {
     /* padding: 0; */
     padding-bottom: 15px;
-    height: fit-content;
+    height: 540px; /* Même hauteur que #plot-container */
     position: relative;
     overflow: visible;
     background: white;
@@ -308,7 +311,7 @@ h1 {
 }
 
 #plot-container {
-    height: 560px;
+    height: 540px;
     background: transparent !important;
     position: relative !important; /* Pour permettre le positionnement absolu du titre */
 }
@@ -409,7 +412,7 @@ h1 {
     padding: 8px 15px;
     border-radius: 5px;
     border-left: 4px solid #667eea; /* Contour bleu comme flux-diagram */
-    text-align: left; /* Texte aligné à gauche dans la boîte */
+    text-align: right;
     z-index: 60 !important;
     pointer-events: none;
     visibility: visible !important;
@@ -431,8 +434,8 @@ h1 {
     text-align: center;
     position: relative;
     z-index: 10;
-    width: 415px;
-    height: 100px;
+    width: 350px;
+    height: 55px;
 }
 
 .title-container h1 {
@@ -468,17 +471,26 @@ h1 {
 
 .timeline-display {
     text-align: center;
-    height: 65px;
     padding: 12px;
-    /* border-left: 4px solid #667eea; */
     flex: 0 1 auto;
-    height: fit-content;
+    height: 55px;
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
-    gap: 15px;
+    gap: 10px;
     justify-content: center;
     align-items: center;
+    white-space: nowrap;
+}
+
+.epoch-start-time {
+    font-size: 16px;
+    font-weight: bold;
+    color: #667eea;
+    display: inline-block;
+}
+
+.timeline-frise {
+    display: inline-block;
 }
 
 @media (max-width: 1200px) {
@@ -498,22 +510,57 @@ h1 {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 4px;
     justify-content: center;
+    align-items: flex-end;
+    position: relative;
+    padding: 10px 0;
+}
+
+.epoch-separator-item {
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    gap: 2px;
+    position: relative;
+}
+
+.epoch-separator-item .epoch-date {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
 }
 
 .epoch-btn {
-    font-size: 20px;
+    font-size: 24px;
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 5px;
+    padding: 2px;
     transition: transform 0.2s;
+    display: block;
+    line-height: 1;
 }
 
 .epoch-btn:hover {
     transform: scale(1.2);
+}
+
+.epoch-date {
+    font-size: 8px;
+    color: #666;
+    text-align: center;
+    white-space: nowrap;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.epoch-separator {
+    font-size: 12px;
+    color: #999;
+    line-height: 1;
 }
 
 .left-top,
@@ -642,16 +689,23 @@ h1 {
     order: 1; /* En second visuellement (mais inversé par row-reverse) */
 }
 
-.info-row-co2 .info-vertical-stack {
-    transform: translateX(25px);
-}
-
-.info-row-ch4 .info-vertical-stack {
-    transform: translateX(25px);
-}
-
+/* Alignement optimisé pour les valeurs % et W/m² seulement */
+/* CO2 et H2O : les 2 champs à droite */
+.info-row-co2 .info-vertical-stack,
 .info-row-h2o .info-vertical-stack {
-    /* Tout centré par défaut */
+    display: flex;
+    flex-direction: row; /* Horizontal pour mettre les 2 champs côte à côte */
+    align-items: center;
+    justify-content: flex-end; /* Aligner à droite */
+    gap: 8px;
+}
+
+/* CH4 : un champ au-dessus, l'autre en dessous */
+.info-row-ch4 .info-vertical-stack {
+    display: flex;
+    flex-direction: column; /* Vertical */
+    align-items: center;
+    gap: 2px;
 }
 
 .info-vertical-stack .info-label,
@@ -694,10 +748,11 @@ h1 {
 .info-value {
     color: #000; /* Noir */
     font-weight: 600;
-    order: 2; /* En troisième, après l'emoji */
     display: flex;
     align-items: baseline;
     white-space: pre; /* Préserver les espaces multiples */
+    font-size: 14px; /* Réduire la taille pour mieux rentrer dans la bande */
+    line-height: 1.2;
 }
 
 .info-number {
@@ -717,9 +772,8 @@ h1 {
 .info-forcing {
     color: #667eea; /* Bleu */
     font-weight: 600;
-    margin-left: auto; /* Aligné à droite */
-    font-size: 13px;
-    order: 3; /* En dernier, poussé à droite */
+    font-size: 12px; /* Réduire la taille pour mieux rentrer dans la bande */
+    line-height: 1.2;
 }
 
 /* Wrapper pour grouper button-container et synthese_Temp ensemble */
@@ -839,7 +893,7 @@ h1 {
     width: fit-content !important;
     max-width: fit-content !important;
     position: absolute !important;
-    top: 50px !important;
+    top: 70px !important; /* Descendu d'une ligne (~20px) depuis 50px */
     right: 100px !important;
     background: rgba(255, 255, 255, 0.9) !important;
     padding: 8px 15px !important;
@@ -963,6 +1017,7 @@ h1 {
     margin-left: 0; /* Suppression du margin-left pour que le texte Stratosph. soit visible */
     position: relative;
     z-index: 2; /* Au-dessus du canvas (1) */
+    max-height: 560px;
 }
 
 /* Ajuster le draglayer de Plotly pour supprimer l'espace blanc en haut */
@@ -1155,6 +1210,20 @@ h1 {
 }
 
 /* Footer avec crédits et copyrights */
+/* Section d'informations en bas au-dessus du footer */
+.bottom-info {
+    text-align: center;
+    padding: 15px 20px;
+    margin: 20px auto;
+    max-width: 1200px;
+}
+
+.bottom-info .book-reference {
+    margin: 5px 0;
+    font-size: 12px;
+}
+
+
 .credits-footer {
     margin-top: auto; /* Pousser le footer en bas */
     padding: 10px 20px;

@@ -4,6 +4,7 @@
 
 // Marges du graphique Plotly (communes à initPlot et updatePlot)
 const PLOT_MARGINS = { l: 80, r: 70, t: 0, b: 50 }; // b augmenté pour descendre "Longueur d'onde"
+// Note: Ces marges sont utilisées par Plotly pour positionner le graphique dans le conteneur
 
 // Températures pour les courbes Planck de référence (en K)
 window.PLANCK_TEMPERATURES = [180, 225, 255, 275, 300, 315];
@@ -351,6 +352,9 @@ function initPlot() {
         doubleClick: false,
         dragmode: false
     }).then(() => {
+        // Redimensionner le graphique Plotly à la bonne taille
+        Plotly.Plots.resize('plot-container');
+        
         // Calculer et définir la taille du canvas dès que Plotly est prêt
         // La bande sera dessinée automatiquement dans resizeCanvasToPlot()
         resizeCanvasToPlot();
@@ -1342,9 +1346,13 @@ function drawSpectralVisualization(canvas, data) {
             const [r, g, b] = wavelengthToColor(lambda, lambda_range[0], lambda_range[lambda_range.length - 1]);
             
             // Dessiner le pixel avec alpha variable selon l'intensité du flux et la densité
+            // Utiliser le mode de fusion 'screen' ou 'lighter' pour un effet lumineux sur fond sombre
+            ctx.globalCompositeOperation = 'screen';
             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
             // Dessiner un rectangle plus large si on saute des pixels (pour combler les trous)
             ctx.fillRect(x, y, xStep, yStep);
+            // Rétablir le mode par défaut pour la suite
+            ctx.globalCompositeOperation = 'source-over';
         }
     }
     

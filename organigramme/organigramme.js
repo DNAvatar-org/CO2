@@ -335,12 +335,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     
     // Créer les cercles de rayonnement si demandé
     if (radiationOptions) {
-        const { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800' } = radiationOptions;
+        const { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800', strokeSize = 2 } = radiationOptions;
         // Vérifier que maxRadius est défini
         if (maxRadius !== null && maxRadius !== undefined) {
             // Log pour déboguer
             if (nodeId === 'albedo' || nodeId === 'surface') {
-                console.log(`🌐 [${nodeId}] Création radiations: maxRadius=${maxRadius}, openingAngle=${openingAngle}, rotation=${rotation}, color=${color}`);
+                console.log(`🌐 [${nodeId}] Création radiations: maxRadius=${maxRadius}, openingAngle=${openingAngle}, rotation=${rotation}, color=${color}, strokeSize=${strokeSize}`);
             }
             // Créer un groupe pour ces radiations avec la couleur définie
             const radiationGroup = document.createElement('div');
@@ -364,8 +364,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 const progress = i / numCircles;
                 const arcRadius = radius + (maxRadius - radius) * progress;
                 const arc = createArc(x, y, arcRadius, 0.3 + (progress * 0.2), openingAngle, rotation, radiationGroup);
-                // Forcer la bordure complète en inline style pour garantir la couleur
-                arc.style.border = '2px dashed ' + color;
+                // Forcer la bordure complète en inline style pour garantir la couleur et l'épaisseur
+                arc.style.border = `${strokeSize}px dashed ${color}`;
             }
         }
     }
@@ -1343,19 +1343,27 @@ function poseBoutonSurCercle(nodeId = 'albedo', angleDeg = 0, offsetRadius = 0) 
 }
 
 // Positionner les 6 boutons autour du cercle albedo
+// De haut en bas :
+// - À gauche (180°) : H2O, CH4, CO2
+// - À droite (0°) : albedo, noyau, comete
 function positionnerBoutonsSurCercleAlbedo() {
     // Liste des boutons avec leurs IDs et angles (en degrés)
-    // Répartis tous les 60° autour du cercle (360/6 = 60°)
+    // Positionnés de haut en bas à gauche et à droite
+    // À gauche : ordre d'importance pour le réchauffement (plus important en haut)
     const boutons = [
-        { id: 'btn-albedo', angle: 0 },      // Droite
-        { id: 'btn-noyau', angle: 60 },      // 60°
-        { id: 'btn-comet', angle: 120 },     // 120°
-        { id: 'btn-co2', angle: 180 },       // Gauche
-        { id: 'btn-h2o', angle: 240 },       // 240°
-        { id: 'btn-methane', angle: 300 }    // 300°
+        // À gauche (180°) : de haut en bas, du plus important au moins important
+        { id: 'btn-co2', angle: 135 },       // Haut-gauche (CO2 = le plus important)
+        { id: 'btn-methane', angle: 180 },   // Gauche (milieu) (CH4 = deuxième)
+        { id: 'btn-h2o', angle: 225 },       // Bas-gauche (H2O = troisième)
+        // À droite (0°) : de haut en bas
+        { id: 'btn-albedo', angle: 315 },    // Haut-droite
+        { id: 'btn-noyau', angle: 0 },       // Droite (milieu)
+        { id: 'btn-comet', angle: 45 }       // Bas-droite
     ];
     
-    const offsetRadius = 30; // Décalage depuis le bord du cercle (pour éviter le chevauchement)
+    // Décalage négatif pour positionner les boutons à l'intérieur du cercle, touchant le bord
+    // Le radius du bouton est ~25px (50px/2), on veut qu'il soit 5px plus à l'intérieur
+    const offsetRadius = -30; // Négatif = à l'intérieur du cercle (5px de plus que -25)
     const fluxDiagram = document.getElementById('flux-diagram');
     
     if (!fluxDiagram) {

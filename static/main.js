@@ -201,7 +201,7 @@ function updateTimeline() {
     const formattedYears = formatYears(years);
     
     if (timelineDisplay) {
-        timelineDisplay.innerHTML = `<span class="timeline-hourglass">⏳</span> ${formattedYears}`;
+        timelineDisplay.innerHTML = `<span class="timeline-hourglass">📅</span> ${formattedYears}`;
     }
     
     if (frameDisplay) {
@@ -210,7 +210,7 @@ function updateTimeline() {
     
     // Mettre à jour l'horloge dans l'en-tête d'info (prioritaire)
     if (infoTimeDisplay) {
-        infoTimeDisplay.innerHTML = `<span class="timeline-hourglass">⏳</span> ${formattedYears}`;
+        infoTimeDisplay.textContent = '+' + formattedYears;
         infoTimeDisplay.style.display = 'inline-block';
         infoTimeDisplay.style.visibility = 'visible';
         infoTimeDisplay.style.opacity = '1';
@@ -229,9 +229,9 @@ function updateTimeline() {
             const years = timelineFrame * YEARS_PER_FRAME;
             // Mettre à jour l'affichage immédiatement après l'incrémentation
             const formattedYears = formatYears(years);
-            if (timelineDisplay) timelineDisplay.innerHTML = `<span class="timeline-hourglass">⏳</span> ${formattedYears}`;
+            if (timelineDisplay) timelineDisplay.innerHTML = `<span class="timeline-hourglass">📅</span> ${formattedYears}`;
             if (frameDisplay) frameDisplay.textContent = timelineFrame.toString();
-            if (infoTimeDisplay) infoTimeDisplay.innerHTML = `<span class="timeline-hourglass">⏳</span> ${formattedYears}`;
+            if (infoTimeDisplay) infoTimeDisplay.textContent = '+' + formattedYears;
         }
     }
     // Si calculationInProgress = true, on ne fait rien (pas d'incrémentation, pas de mise à jour de timelineLastUpdate)
@@ -257,8 +257,6 @@ function formatYears(years) {
         const milliards = Math.floor(remaining / MILLIARD);
         result += `${milliards}M̅`;
         remaining = remaining % MILLIARD;
-    } else {
-        result += '0M̅';
     }
     
     // Millions (M)
@@ -266,14 +264,12 @@ function formatYears(years) {
         const millions = Math.floor(remaining / MEGA);
         result += `${millions}M`;
         remaining = remaining % MEGA;
-    } else {
-        result += '0M';
     }
     
     // Milliers et unités
     if (remaining > 0) {
         result += remaining.toString();
-    } else if (result === '0M̅0M') {
+    } else if (result === '') {
         result = '0';
     }
     
@@ -907,21 +903,8 @@ window.updateDisplay = function updateDisplay(data) {
             co2NumberEl.textContent = ppm.toString();
         }
         
-        // Mettre à jour l'emoji selon le niveau de CO2
-        const emojiElement = document.getElementById('btn-co2-synthese');
-        if (emojiElement) {
-            if (ppm === 0) {
-                emojiElement.textContent = '🧊'; // Iceberg pour 0 ppm
-            } else if (ppm < 200) {
-                emojiElement.textContent = '🌵'; // Cactus pour très bas
-            } else if (ppm < 350) {
-                emojiElement.textContent = '🌲'; // Arbre pour pré-industriel (~280 ppm)
-            } else if (ppm < 500) {
-                emojiElement.textContent = '🏭'; // Usine pour actuel (~420 ppm)
-            } else {
-                emojiElement.textContent = '🌋'; // Volcan pour très élevé
-            }
-        }
+        // L'emoji est maintenant dans le bouton principal btn-co2 autour du cercle albedo
+        // Plus besoin de mettre à jour btn-co2-synthese car il n'existe plus
     }
     
     // Mettre à jour le statut H2O avec le % de couverture nuageuse

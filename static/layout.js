@@ -17,8 +17,7 @@
         'flux-diagram-wrapper',
         'plot-container-wrapper',
         'timeline-display',
-        'synthese_EdS',
-        'synthese_Temp'
+        'synthese_EdS'
     ];
     
     // Fonction pour réorganiser les divs selon la largeur d'écran
@@ -66,10 +65,6 @@
         }
     }
     
-    // 3. synthese_Temp (à droite de flux-diagram)
-    if (divs['synthese_Temp']) {
-        leftColumn.appendChild(divs['synthese_Temp']);
-    }
     
     // RIGHT COLUMN
     // 1. (screenWidth>400)?plot-container-wrapper:flux-diagram-wrapper
