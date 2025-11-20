@@ -5,6 +5,19 @@
     font-style: normal;
 }
 
+@font-face {
+    font-family: 'ProggyDotted';
+    src: url('../ProggyDotted Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Correction globale pour ProggyDotted : alignement vertical (décaler vers le bas) - uniquement flux */
+.flux-diagram * {
+    display: inline-block;
+    transform: translateY(3px);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -17,7 +30,7 @@
 }
 
 body {
-    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;
     background: url('../fond.png') center center / cover no-repeat fixed;
     min-height: 100vh;
     padding: 20px;
@@ -125,11 +138,8 @@ sup {
     align-content: flex-start;
     gap: 15px;
     width: 350px;
+    height: 630px;
     flex: 0 0 auto;
-    min-width: 0;
-    min-height: 540px;
-    /* Allow expansion */
-    height: auto;
 }
 
 .right-column {
@@ -141,16 +151,9 @@ sup {
     align-content: flex-start;
     /* Aligner le contenu en haut */
     gap: 15px;
-    /* Espacement entre les divs dans chaque colonne */
     flex: 1 1 auto;
-    /* Prendre tout l'espace disponible restant, peut grandir et rétrécir */
-    min-width: 0;
-    /* Permettre la réduction en dessous de la taille du contenu */
     width: 100%;
-    /* Forcer la largeur à 100% de l'espace disponible */
-    min-height: 540px;
-    /* Allow expansion */
-    height: auto;
+    height: 630px;
 }
 
 .left-panels {
@@ -205,17 +208,27 @@ h1 {
 .title-container,
 .timeline-display,
 .button-container,
-.legend-container,
 .reference-container,
 .plot-container-wrapper,
-.flux-diagram,
-.synthese_Temp {
+.flux-diagram {
     padding: 10px;
-    background: white;
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    border-left: 1px solid rgba(255, 255, 255, 0.4);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+    border-right: 1px solid rgba(0, 0, 0, 0.6);
+    box-shadow: 
+        0 1px 2px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
     overflow: hidden;
+}
+
+/* Police spécifique pour flux-diagram */
+.flux-diagram {
+    font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
 
 .synthese-wrapper {
@@ -231,19 +244,15 @@ h1 {
 .synthese_Temp {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    gap: 8px;
     position: absolute;
-    bottom: 10px;
+    bottom: 0;
     left: 10px;
-    min-width: 70px;
-    min-height: 65px;
-    padding: 10px;
-    /* background: white; */
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    max-width: 65px;
-    max-height: 65px;
+    padding: 5px 10px;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
     z-index: 1000;
 }
 
@@ -331,6 +340,7 @@ h1 {
     width: 100%;
     flex: 1 1 100%;
     min-width: 100%;
+    font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
 
 /* Media query : si width >= 640, plot-container-wrapper a une taille réduite */
@@ -388,13 +398,14 @@ h1 {
 /* Position basée sur PLOT_MARGINS = { l: 70, r: 70, t: 0, b: 75 } */
 .infra-note {
     position: absolute;
-    bottom: 20px; /* Très proche de la bande spectrale (20px de hauteur) */
-    left: 70px; /* Aligné sur la marge gauche du graphique (PLOT_MARGINS.l) */
-    font-size: 10px;
-    font-family: '04B_03', monospace; /* Utiliser la nouvelle font */
+    bottom: 45px;
+    left: 85px;
+    font-size: 8px;
+    font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     z-index: 100;
     pointer-events: none;
     text-align: left;
+    line-height: 1;
     /* Hérite de la couleur par défaut (vert) */
 }
 
@@ -486,11 +497,10 @@ h1 {
 .plot-overlay-title {
     position: absolute !important;
     top: 10px !important;
-    right: 100px !important;
+    right: 80px !important;
     transform: none !important;
     font-size: 14px;
     font-weight: 600;
-    background: rgba(255, 255, 255, 0.9);
     padding: 8px 15px;
     border-radius: 5px;
     text-align: right;
@@ -519,6 +529,7 @@ h1 {
     width: 350px;
     height: 70px;
     padding-bottom: 4px;
+    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
 
 .title-container h1 {
@@ -530,7 +541,6 @@ h1 {
 .title-subtitle {
     font-size: 10px;
     margin: 2px 0 0 0;
-    font-style: italic;
     font-weight: normal;
     line-height: 1.2;
 }
@@ -563,6 +573,7 @@ h1 {
     height: 70px;
     display: flex;
     gap: 25px;
+    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     align-items: center;
     white-space: nowrap;
 }
@@ -571,12 +582,27 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 4px;
     margin-top: 10px;
+}
+
+.timeline-first-line {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
 }
 
 .epoch-start-time {
     font-size: 14px;
     display: inline-block;
+}
+
+.epoch-name {
+    font-size: 14px;
+    display: inline-block;
+    margin-left: 8px;
+    font-weight: bold;
 }
 
 .timeline-frise {
@@ -1000,12 +1026,12 @@ h1 {
 
 .legend-container {
     width: fit-content !important;
-    max-width: fit-content !important;
+    /* max-width: fit-content !important; */
+    max-width: 260px;
     position: absolute !important;
     top: 70px !important;
     /* Descendu d'une ligne (~20px) depuis 50px */
-    right: 100px !important;
-    background: rgba(255, 255, 255, 0.9) !important;
+    right: 80px !important;
     padding: 8px 15px !important;
     border-radius: 5px !important;
     text-align: right !important;
@@ -1330,6 +1356,7 @@ h1 {
     background: rgba(255, 255, 255, 0.05);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     text-align: center;
+    font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
 
 .credits-content {
@@ -1391,21 +1418,6 @@ h1 {
     filter: drop-shadow(0 0 2px currentColor);
 }
 
-/* Titre du graphique spectral */
-.plot-overlay-title {
-    background: rgba(0, 0, 0, 0.9) !important;
-    /* Fond sombre semi-transparent */
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    border-left: 4px solid #667eea !important;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5) !important;
-    backdrop-filter: blur(5px);
-}
-
-/* Légende du graphique spectral */
-.legend-container {
-    background: rgba(0, 0, 0, 0.9) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
 /* ==========================================================================
    Debug Interface & Modes
    ========================================================================== */
@@ -1432,17 +1444,39 @@ body.mode-dark .plot-container-wrapper,
 body.mode-dark .title-container,
 body.mode-dark .timeline-display,
 body.mode-dark .button-container,
-body.mode-dark .legend-container,
 body.mode-dark .reference-container,
-body.mode-dark .flux-diagram,
-body.mode-dark .synthese_Temp {
-    background: rgba(20, 20, 30, 0.9) !important;
-    border: 1px solid rgba(128, 128, 128, 0.3) !important;
+body.mode-dark .flux-diagram {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-bottom: 1px solid rgb(0, 0, 0) !important;
+    border-right: 1px solid rgb(0, 0, 0) !important;
+    box-shadow: 
+        0 1px 2px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Mode Dark - Légendes */
+body.mode-dark .synthese_Temp {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Mode Dark - Légendes 
 body.mode-dark .legend-container,
 body.mode-dark .plot-overlay-title {
-    background: rgba(20, 20, 30, 0.9) !important;
-    border: 1px solid rgba(128, 128, 128, 0.3) !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-bottom: 1px solid rgb(0, 0, 0) !important;
+    border-right: 1px solid rgb(0, 0, 0) !important;
+    box-shadow: 
+        0 1px 2px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2) !important;
 }
+*/
+

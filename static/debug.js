@@ -81,21 +81,40 @@
                 window.globalFontFamily = newFont;
             }
             
-            // Appliquer au body avec fallbacks pour '04B_03'
-            if (newFont === '04B_03') {
-                document.body.style.fontFamily = "'04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif";
-            } else {
-                document.body.style.fontFamily = `'${newFont}', 'Tahoma', 'Roboto', 'Verdana', sans-serif`;
-            }
+            // Appliquer au body avec fallbacks pour toutes les polices
+            const fontFamily = `'${newFont}', 'Tahoma', 'Roboto', 'Verdana', sans-serif`;
+            document.body.style.fontFamily = fontFamily;
             
             // Mettre à jour le texte du bouton
             fontBtn.textContent = `Font: ${newFont}`;
+            
+            // Forcer Plotly à mettre à jour les fonts via relayout AVANT updatePlot
+            if (typeof window.Plotly !== 'undefined') {
+                const plotContainer = document.getElementById('plot-container');
+                if (plotContainer) {
+                    // Obtenir la font complète avec fallbacks
+                    const fontFamily = `'${newFont}', 'Tahoma', 'Roboto', 'Verdana', sans-serif`;
+                    // Mettre à jour toutes les fonts dans le layout
+                    const fontUpdate = {
+                        'xaxis.titlefont.family': fontFamily,
+                        'xaxis.tickfont.family': fontFamily,
+                        'yaxis.titlefont.family': fontFamily,
+                        'yaxis.tickfont.family': fontFamily,
+                        'yaxis2.titlefont.family': fontFamily,
+                        'yaxis2.tickfont.family': fontFamily,
+                        'annotations[0].font.family': fontFamily,
+                        'annotations[1].font.family': fontFamily
+                    };
+                    // Mettre à jour les fonts
+                    Plotly.relayout('plot-container', fontUpdate);
+                }
+            }
             
             // Mettre à jour Plotly via updatePlot (qui utilise getPlotlyFont avec window.globalFontFamily)
             if (typeof window.updatePlot === 'function') {
                 const plotData = typeof window.plotData !== 'undefined' ? window.plotData : null;
                 if (plotData) {
-                    // Forcer la mise à jour immédiate
+                    // Forcer la mise à jour immédiate (qui va aussi mettre à jour les fonts via getPlotlyFont)
                     window.updatePlot(plotData);
                 }
             }

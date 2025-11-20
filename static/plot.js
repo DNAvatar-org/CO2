@@ -16,14 +16,14 @@
 
 // Marges du graphique Plotly (communes à initPlot et updatePlot)
 // va avec .plot-container-wrapper { padding: 0; !!! Important ne pas changer !!!
-const PLOT_MARGINS = { l: 70, r: 70, t: 0, b: 75 }; // Marges ajustées pour éviter le débordement
+const PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }; // Marges ajustées pour éviter le débordement
 // Note: Ces marges sont utilisées par Plotly pour positionner le graphique dans le conteneur
 
 // Couleur de la tropopause (bleu vif) - utilisée pour la ligne et l'annotation
 const ColorTropo = '#87CEEB'; // Bleu clair (sky blue)
 
 // Police globale - peut être changée via le bouton de debug
-window.globalFontFamily = '04B_03'; // Police par défaut
+window.globalFontFamily = 'ProggyDotted'; // Police par défaut pour le graphique
 
 // Fonction pour obtenir la couleur par défaut du body (vert)
 function getDefaultTextColor() {
@@ -273,7 +273,7 @@ function initPlot() {
         xaxis: {
             title: {
                 text: "Longueur d'onde (μm)",
-                standoff: 50, // Encore plus bas
+                standoff: 20, // Remonté pour être plus proche de l'axe
                 font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
             },
             tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
@@ -558,11 +558,8 @@ function getDefaultFontFamily() {
     // Utiliser la police globale si définie, sinon fallback
     if (typeof window !== 'undefined' && window.globalFontFamily) {
         const font = window.globalFontFamily;
-        // Pour '04B_03', ajouter les fallbacks car c'est une font custom
-        if (font === '04B_03') {
-            return "'04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif";
-        }
-        return font;
+        // Toujours ajouter les fallbacks pour toutes les polices
+        return `'${font}', 'Tahoma', 'Roboto', 'Verdana', sans-serif`;
     }
     return "'Tahoma', 'Roboto', 'Verdana', sans-serif";
 }
@@ -764,7 +761,7 @@ window.updatePlot = function updatePlot(data) {
             fixedrange: true,
             title: {
                 text: "Longueur d'onde (μm)",
-                standoff: 50, // Encore plus bas
+                standoff: 20, // Remonté pour être plus proche de l'axe
                 font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
             },
             tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve

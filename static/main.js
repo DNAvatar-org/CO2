@@ -200,6 +200,7 @@ const YEARS_PER_FRAME = 10; // 1 frame = 10 ans (tic automatique toutes les seco
 let timelineRunning = true; // État de l'horloge (activée - tics automatiques de +10 ans/seconde)
 let timelineLastUpdate = performance.now();
 const TIMELINE_UPDATE_INTERVAL = 1000; // Mise à jour toutes les 1000ms (1 seconde = 10 ans) - UNIQUEMENT si pas de calcul en cours
+let currentEpochStartYears = null; // Stocker le début de l'époque actuelle pour calculer le delta
 
 function updateTimeline() {
     // Mettre à jour l'affichage (toujours, même si timelineRunning = false)
@@ -221,8 +222,17 @@ function updateTimeline() {
     }
     
     // Mettre à jour l'horloge dans l'en-tête d'info (prioritaire)
-    if (infoTimeDisplay) {
-        infoTimeDisplay.textContent = '+' + formattedYears;
+    // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
+    if (infoTimeDisplay && currentEpochStartYears !== null) {
+        // Calculer le delta depuis le début de l'époque
+        const deltaYears = years - currentEpochStartYears;
+        // Toujours afficher en dizaines d'années (jamais millions/milliards)
+        const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
+        if (deltaInTens > 0) {
+            infoTimeDisplay.textContent = `+${deltaInTens} ans`;
+        } else {
+            infoTimeDisplay.textContent = '+0 ans';
+        }
         infoTimeDisplay.style.display = 'inline-block';
         infoTimeDisplay.style.visibility = 'visible';
         infoTimeDisplay.style.opacity = '1';
@@ -243,7 +253,16 @@ function updateTimeline() {
             const formattedYears = formatYears(years);
             if (timelineDisplay) timelineDisplay.innerHTML = `<span class="timeline-hourglass">📅</span> ${formattedYears}`;
             if (frameDisplay) frameDisplay.textContent = timelineFrame.toString();
-            if (infoTimeDisplay) infoTimeDisplay.textContent = '+' + formattedYears;
+            // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
+            if (infoTimeDisplay && currentEpochStartYears !== null) {
+                const deltaYears = years - currentEpochStartYears;
+                const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
+                if (deltaInTens > 0) {
+                    infoTimeDisplay.textContent = `+${deltaInTens} ans`;
+                } else {
+                    infoTimeDisplay.textContent = '+0 ans';
+                }
+            }
         }
     }
     // Si calculationInProgress = true, on ne fait rien (pas d'incrémentation, pas de mise à jour de timelineLastUpdate)
@@ -1160,6 +1179,9 @@ function setEpoch(epochName) {
     // Mettre à jour la timeline pour correspondre au début de l'époque
     timelineFrame = Math.floor(epoch.startYears / YEARS_PER_FRAME);
     
+    // Stocker le début de l'époque pour calculer le delta
+    currentEpochStartYears = epoch.startYears;
+    
     // Mettre à jour la date de début affichée
     const epochStartTimeDisplay = document.querySelector('.epoch-start-time');
     if (epochStartTimeDisplay) {
@@ -1167,7 +1189,18 @@ function setEpoch(epochName) {
         epochStartTimeDisplay.textContent = formattedYears;
     }
     
-    // Cacher "+90 ans" quand on clique sur une époque
+    // Afficher le nom de l'époque
+    const epochNameDisplay = document.getElementById('epoch-name');
+    if (epochNameDisplay) {
+        // Pour "Corps noir", utiliser un nom plus descriptif
+        let displayName = epoch.name;
+        if (epoch.name === 'Corps noir') {
+            displayName = 'État initial';
+        }
+        epochNameDisplay.textContent = displayName;
+    }
+    
+    // Cacher "+90 ans" quand on clique sur une époque (sera réaffiché lors de l'incrémentation)
     const infoTimeDisplay = document.getElementById('info-time');
     if (infoTimeDisplay) {
         infoTimeDisplay.style.display = 'none';
@@ -1302,6 +1335,20 @@ window.addEventListener('DOMContentLoaded', () => {
     const corpsNoirButton = document.querySelector('.epoch-btn[data-epoch="Corps noir"]');
     if (corpsNoirButton) {
         corpsNoirButton.classList.add('selected');
+    }
+    
+    // Initialiser l'époque par défaut (Corps noir)
+    if (typeof window.getGeologicalPeriodByName === 'function') {
+        const defaultEpoch = window.getGeologicalPeriodByName('Corps noir');
+        if (defaultEpoch) {
+            currentEpochStartYears = defaultEpoch.startYears;
+        }
+    }
+    
+    // Initialiser le nom de l'époque au chargement
+    const epochNameDisplay = document.getElementById('epoch-name');
+    if (epochNameDisplay) {
+        epochNameDisplay.textContent = 'État initial';
     }
     
     // Initialiser l'état des boutons selon l'époque géologique
