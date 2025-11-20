@@ -5,10 +5,11 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     background: url('../fond.png') center center / cover no-repeat fixed;
     min-height: 100vh;
     padding: 20px;
+    color: green;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -27,8 +28,7 @@ body {
     position: fixed;
     top: 20px;
     left: 20px;
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
     padding: 12px 16px;
     border-radius: 5px;
     font-family: 'Courier New', monospace;
@@ -48,30 +48,32 @@ body {
 
 .timeline-label {
     font-weight: bold;
-    color: #87ceeb;
 }
 
 .timeline-value {
-    color: #fff;
     font-weight: bold;
     min-width: 60px;
 }
 
 .timeline-note {
     font-size: 11px;
-    color: #aaa;
     font-style: italic;
 }
 
 .container {
     /* max-width: 1400px; */
     margin: 0 auto;
-    display: flex; /* Flexbox pour répartir les colonnes */
+    display: flex;
+    /* Flexbox pour répartir les colonnes */
     flex-direction: row;
-    align-items: stretch; /* Étirer les colonnes pour avoir la même hauteur */
-    gap: 15px; /* Espacement entre les colonnes */
-    width: 100%; /* Prendre toute la largeur disponible */
-    flex: 1; /* Prendre tout l'espace disponible pour pousser le footer en bas */
+    align-items: stretch;
+    /* Étirer les colonnes pour avoir la même hauteur */
+    gap: 15px;
+    /* Espacement entre les colonnes */
+    width: 100%;
+    /* Prendre toute la largeur disponible */
+    flex: 1;
+    /* Prendre tout l'espace disponible pour pousser le footer en bas */
 }
 
 .left-column {
@@ -83,19 +85,30 @@ body {
     width: 350px;
     flex: 0 0 auto;
     min-width: 0;
-    height: 540px;
+    min-height: 540px;
+    /* Allow expansion */
+    height: auto;
 }
 
 .right-column {
     display: flex;
-    flex-direction: row; /* Direction horizontale pour permettre le wrap */
-    flex-wrap: wrap; /* Permettre le retour à la ligne */
-    align-content: flex-start; /* Aligner le contenu en haut */
-    gap: 15px; /* Espacement entre les divs dans chaque colonne */
-    flex: 1 1 auto; /* Prendre tout l'espace disponible restant, peut grandir et rétrécir */
-    min-width: 0; /* Permettre la réduction en dessous de la taille du contenu */
-    width: 100%; /* Forcer la largeur à 100% de l'espace disponible */
-    height: 540px; /* Hauteur fixe synchronisée avec .left-column */
+    flex-direction: row;
+    /* Direction horizontale pour permettre le wrap */
+    flex-wrap: wrap;
+    /* Permettre le retour à la ligne */
+    align-content: flex-start;
+    /* Aligner le contenu en haut */
+    gap: 15px;
+    /* Espacement entre les divs dans chaque colonne */
+    flex: 1 1 auto;
+    /* Prendre tout l'espace disponible restant, peut grandir et rétrécir */
+    min-width: 0;
+    /* Permettre la réduction en dessous de la taille du contenu */
+    width: 100%;
+    /* Forcer la largeur à 100% de l'espace disponible */
+    min-height: 540px;
+    /* Allow expansion */
+    height: auto;
 }
 
 .left-panels {
@@ -103,22 +116,23 @@ body {
     border-radius: 20px;
     padding: 0px;
     box-shadow: none;
-    display: block; /* Pas de flex colonnes, divs indépendantes */
+    display: block;
+    /* Pas de flex colonnes, divs indépendantes */
 }
 
 h1 {
-    color: #333;
     margin-bottom: 8px;
     text-align: center;
     font-size: 24px;
+    color: white;
 }
+
 
 .timeline-in-title {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #666;
     margin-top: 8px;
     flex-wrap: wrap;
     justify-content: center;
@@ -126,48 +140,50 @@ h1 {
 
 .timeline-in-title .timeline-label {
     font-weight: bold;
-    color: #667eea;
     font-size: 12px;
 }
 
 .timeline-in-title .timeline-value {
-    color: #333;
     font-weight: bold;
     min-width: 50px;
     font-size: 13px;
 }
 
 .timeline-in-title .timeline-separator {
-    color: #999;
     margin: 0 4px;
 }
 
 .timeline-in-title .timeline-note {
     font-size: 10px;
-    color: #999;
     font-style: italic;
     margin-left: 4px;
 }
 
+/* Classe commune pour toutes les divs principales */
 .title-container,
 .timeline-display,
 .button-container,
 .legend-container,
-.reference-container {
+.reference-container,
+.plot-container-wrapper,
+.flux-diagram,
+.synthese_Temp {
     padding: 10px;
     background: white;
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    /* max-width: 320px; */
 }
 
 .synthese-wrapper {
-    display: block; /* Divs indépendantes, pas de flex */
+    display: block;
+    /* Divs indépendantes, pas de flex */
 }
 
 .synthese_EdS {
-    display: none; /* Cachée car intégrée dans l'organigramme */
+    display: none;
+    /* Cachée car intégrée dans l'organigramme */
 }
 
 .synthese_Temp {
@@ -190,6 +206,7 @@ h1 {
 }
 
 @media (max-width: 1200px) {
+
     .synthese_EdS,
     .synthese_Temp {
         width: 100%;
@@ -200,7 +217,6 @@ h1 {
     width: 100%;
     padding: 12px 16px;
     background: #667eea;
-    color: white;
     border: none;
     border-radius: 10px 10px 0 0;
     cursor: pointer;
@@ -241,7 +257,6 @@ h1 {
 .reference-section-title {
     font-size: 16px;
     font-weight: bold;
-    color: #667eea;
     margin-bottom: 12px;
     margin-top: 20px;
 }
@@ -254,7 +269,7 @@ h1 {
     padding: 12px;
     background: white;
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -264,12 +279,10 @@ h1 {
 .plot-container-wrapper {
     /* padding: 0; */
     padding-bottom: 15px;
-    height: 540px; /* Même hauteur que #plot-container */
+    height: 540px;
+    /* Même hauteur que #plot-container */
     position: relative;
     overflow: visible;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     gap: 0px;
@@ -313,7 +326,19 @@ h1 {
 #plot-container {
     height: 540px;
     background: transparent !important;
-    position: relative !important; /* Pour permettre le positionnement absolu du titre */
+    position: relative !important;
+    /* Pour permettre le positionnement absolu du titre */
+}
+
+.temp-display-cyan {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    font-size: 12px;
+    z-index: 100;
+    line-height: 1.0;
+    /* Pas de cadre, pas de background */
+    /* Lignes serrées */
 }
 
 /* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
@@ -323,7 +348,8 @@ h1 {
     border: none;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
-    z-index: 1 !important; /* Au-dessus du fond (0) mais en dessous du quadrillage (20) */
+    z-index: 1 !important;
+    /* Au-dessus du fond (0) mais en dessous du quadrillage (20) */
     background: transparent;
     pointer-events: none !important;
     display: block !important;
@@ -407,24 +433,22 @@ h1 {
     transform: none !important;
     font-size: 14px;
     font-weight: 600;
-    color: #333;
     background: rgba(255, 255, 255, 0.9);
     padding: 8px 15px;
     border-radius: 5px;
-    border-left: 4px solid #667eea; /* Contour bleu comme flux-diagram */
     text-align: right;
     z-index: 60 !important;
     pointer-events: none;
     visibility: visible !important;
     opacity: 1 !important;
     display: block !important;
-    white-space: nowrap !important; /* Titre sur une seule ligne */
+    white-space: nowrap !important;
+    /* Titre sur une seule ligne */
 }
 
 .plot-title {
     font-size: 14px;
     font-weight: 600;
-    color: #333;
     text-align: center;
     margin-bottom: 10px;
     padding: 8px 0;
@@ -435,7 +459,8 @@ h1 {
     position: relative;
     z-index: 10;
     width: 350px;
-    height: 55px;
+    height: 70px;
+    padding-bottom: 4px;
 }
 
 .title-container h1 {
@@ -444,48 +469,55 @@ h1 {
     z-index: 1000;
 }
 
+.title-subtitle {
+    font-size: 10px;
+    margin: 2px 0 0 0;
+    font-style: italic;
+    font-weight: normal;
+    line-height: 1.2;
+}
+
 .book-reference {
     font-size: 11px;
-    color: #666;
     font-style: italic;
     margin-top: 5px;
     text-align: center;
 }
 
 .book-reference a {
-    color: #667eea;
     text-decoration: none;
     font-weight: 500;
-    transition: color 0.2s;
 }
 
 .book-reference a:hover {
-    color: #5568d3;
     text-decoration: underline;
 }
 
 
 .timeline-buttons-wrapper {
-    display: block; /* Divs indépendantes, pas de flex */
+    display: block;
+    /* Divs indépendantes, pas de flex */
 }
 
 .timeline-display {
     text-align: center;
-    padding: 12px;
-    flex: 0 1 auto;
-    height: 55px;
+    padding-top: 2px;
+    height: 70px;
     display: flex;
-    flex-direction: row;
-    gap: 10px;
-    justify-content: center;
+    gap: 25px;
     align-items: center;
     white-space: nowrap;
 }
 
+.timeline-start-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 10px;
+}
+
 .epoch-start-time {
-    font-size: 16px;
-    font-weight: bold;
-    color: #667eea;
+    font-size: 14px;
     display: inline-block;
 }
 
@@ -502,7 +534,6 @@ h1 {
 .timeline-display .info-time {
     font-size: 16px;
     font-weight: bold;
-    color: #667eea;
     display: inline-block;
 }
 
@@ -536,21 +567,36 @@ h1 {
 .epoch-btn {
     font-size: 24px;
     background: transparent;
-    border: none;
+    border: 2px solid #667eea;
+    /* Cerclage uniforme */
+    border-radius: 50%;
+    /* Rond */
     cursor: pointer;
-    padding: 2px;
-    transition: transform 0.2s;
-    display: block;
-    line-height: 1;
+    padding: 5px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    /* Couleur de l'icône */
 }
 
 .epoch-btn:hover {
-    transform: scale(1.2);
+    transform: scale(1.1);
+    background: rgba(102, 126, 234, 0.1);
+    /* Léger fond au survol */
+    box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+    /* Lueur au survol */
+}
+
+.epoch-btn.active {
+    background: #667eea;
+    box-shadow: 0 0 15px rgba(102, 126, 234, 0.8);
 }
 
 .epoch-date {
     font-size: 8px;
-    color: #666;
     text-align: center;
     white-space: nowrap;
     font-weight: 500;
@@ -559,8 +605,8 @@ h1 {
 
 .epoch-separator {
     font-size: 12px;
-    color: #999;
     line-height: 1;
+    transform: translateY(-5px);
 }
 
 .left-top,
@@ -573,7 +619,6 @@ h1 {
 
 .info-unit-header {
     font-size: 11px;
-    color: #667eea;
     margin-bottom: 8px;
     padding-right: 0;
     display: flex;
@@ -584,12 +629,10 @@ h1 {
 .controle-simulation-title {
     font-size: 14px;
     font-weight: bold;
-    color: #667eea;
 }
 
 .info-time {
     font-weight: bold;
-    color: #667eea;
     font-size: 12px;
     font-style: normal;
     text-align: left;
@@ -600,7 +643,8 @@ h1 {
 
 /* Agrandir le sablier ⏳ dans le temps */
 .timeline-hourglass {
-    font-size: 1.5em; /* 1.5x plus gros que le texte normal */
+    font-size: 1.5em;
+    /* 1.5x plus gros que le texte normal */
     line-height: 1;
     display: inline-block;
     vertical-align: middle;
@@ -609,12 +653,12 @@ h1 {
 .info-unit-header .info-unit {
     text-align: right;
     font-style: italic;
-    color: #667eea; /* Bleu pour (W/m²) */
+    /* Bleu pour (W/m²) */
 }
 
 .info-separator {
     height: 1px;
-    background-color: #ccc;
+    background-color: rgba(128, 128, 128, 0.5);
     margin: 8px 0;
     width: 100%;
 }
@@ -631,7 +675,8 @@ h1 {
 }
 
 .info-separator-line .info-forcing {
-    margin-left: 0; /* Pas de margin-left auto car on est déjà aligné à droite */
+    margin-left: 0;
+    /* Pas de margin-left auto car on est déjà aligné à droite */
 }
 
 .forcing-total-row {
@@ -658,11 +703,13 @@ h1 {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    line-height: 1.0; /* Interligne minimal */
-    gap: 0; /* Pas d'espace entre les éléments */
+    line-height: 1.0;
+    /* Interligne minimal */
+    gap: 0;
+    /* Pas d'espace entre les éléments */
 }
 
-.info-vertical-stack > * {
+.info-vertical-stack>* {
     line-height: 1.0;
     margin: 0;
     padding: 0;
@@ -682,11 +729,13 @@ h1 {
 
 /* Pour CO2 avec row-reverse, inverser les order pour que emoji soit avant label visuellement */
 .info-logo-name-reverse .info-label {
-    order: 0; /* En premier visuellement (mais inversé par row-reverse) */
+    order: 0;
+    /* En premier visuellement (mais inversé par row-reverse) */
 }
 
 .info-logo-name-reverse .info-emoji {
-    order: 1; /* En second visuellement (mais inversé par row-reverse) */
+    order: 1;
+    /* En second visuellement (mais inversé par row-reverse) */
 }
 
 /* Alignement optimisé pour les valeurs % et W/m² seulement */
@@ -694,39 +743,37 @@ h1 {
 .info-row-co2 .info-vertical-stack,
 .info-row-h2o .info-vertical-stack {
     display: flex;
-    flex-direction: row; /* Horizontal pour mettre les 2 champs côte à côte */
+    flex-direction: row;
+    /* Horizontal pour mettre les 2 champs côte à côte */
     align-items: center;
-    justify-content: flex-end; /* Aligner à droite */
+    justify-content: flex-end;
+    /* Aligner à droite */
     gap: 8px;
 }
 
 /* CH4 : un champ au-dessus, l'autre en dessous */
 .info-row-ch4 .info-vertical-stack {
     display: flex;
-    flex-direction: column; /* Vertical */
+    flex-direction: column;
+    /* Vertical */
     align-items: center;
     gap: 2px;
 }
 
-.info-vertical-stack .info-label,
-.info-vertical-stack .info-value,
-.info-vertical-stack .info-forcing,
-.info-vertical-stack .info-number,
-.info-vertical-stack .info-unit {
-    color: #aab7f2; /* Bleu standard */
-}
+/* .info-vertical-stack .info-label, .info-vertical-stack .info-value, etc. héritent maintenant du body */
 
 .info-label {
-    color: #666;
     font-weight: 500;
-    order: 1; /* En second, après l'emoji */
+    order: 1;
+    /* En second, après l'emoji */
 }
 
 .info-emoji {
     font-size: 18px;
     margin: 0 5px 0 0;
     user-select: none;
-    order: 0; /* En premier, avant le label */
+    order: 0;
+    /* En premier, avant le label */
 }
 
 /* Boutons remplaçant les emojis dans le rectangle Effet de Serre */
@@ -738,41 +785,43 @@ h1 {
     padding: 0 !important;
     border-radius: 50% !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-    order: 0; /* En premier, avant le label */
+    order: 0;
+    /* En premier, avant le label */
 }
 
 .info-logo-name-reverse .info-emoji-btn {
-    order: 1; /* En second visuellement (mais inversé par row-reverse) */
+    order: 1;
+    /* En second visuellement (mais inversé par row-reverse) */
 }
 
 .info-value {
-    color: #000; /* Noir */
     font-weight: 600;
     display: flex;
     align-items: baseline;
-    white-space: pre; /* Préserver les espaces multiples */
-    font-size: 14px; /* Réduire la taille pour mieux rentrer dans la bande */
+    white-space: pre;
+    /* Préserver les espaces multiples */
+    font-size: 14px;
+    /* Réduire la taille pour mieux rentrer dans la bande */
     line-height: 1.2;
 }
 
 .info-number {
-    color: #000; /* Noir */
     font-weight: 600;
 }
 
 .info-unit {
-    color: #666; /* Gris pour les unités */
     font-weight: 400;
     margin-left: 2px;
-    min-width: 30px; /* Largeur fixe pour aligner les unités */
+    min-width: 30px;
+    /* Largeur fixe pour aligner les unités */
     text-align: left;
 }
 
 /* Style commun pour tous les forçages (CO2, H2O, Alb., Total) */
 .info-forcing {
-    color: #667eea; /* Bleu */
     font-weight: 600;
-    font-size: 12px; /* Réduire la taille pour mieux rentrer dans la bande */
+    font-size: 12px;
+    /* Réduire la taille pour mieux rentrer dans la bande */
     line-height: 1.2;
 }
 
@@ -789,7 +838,8 @@ h1 {
 .button-container {
     width: fit-content;
     display: flex;
-    flex-direction: column; /* En vertical */
+    flex-direction: column;
+    /* En vertical */
     flex-wrap: wrap;
     gap: 15px;
     justify-content: center;
@@ -798,11 +848,6 @@ h1 {
     height: fit-content;
 }
 
-@media (max-width: 1200px) {
-    .button-container {
-        /* width: 100%; */
-    }
-}
 
 .button-row {
     display: flex;
@@ -815,7 +860,8 @@ h1 {
     height: 50px;
     border-radius: 50%;
     border: none;
-    font-size: 28px; /* Emojis plus gros */
+    font-size: 28px;
+    /* Emojis plus gros */
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -837,47 +883,39 @@ h1 {
 
 .btn-multiply {
     background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-    color: white;
 }
 
 .btn-divide {
     background: linear-gradient(135deg, #4ecdc4, #44a08d);
-    color: white;
 }
 
 .btn-iceberg {
     background: linear-gradient(135deg, #b0e0e6, #87ceeb);
-    color: white;
     font-size: 24px;
 }
 
 .btn-desert {
     background: linear-gradient(135deg, #f4a460, #d2691e);
-    color: white;
     font-size: 24px;
 }
 
 .btn-forest {
     background: linear-gradient(135deg, #228b22, #006400);
-    color: white;
     font-size: 24px;
 }
 
 .btn-factory {
     background: linear-gradient(135deg, #696969, #2f2f2f);
-    color: white;
     font-size: 24px;
 }
 
 .btn-volcano {
     background: linear-gradient(135deg, #ff4500, #8b0000);
-    color: white;
     font-size: 24px;
 }
 
 .btn-cloud {
     background: linear-gradient(135deg, #c0c0c0, #a0a0a0);
-    color: white;
     font-size: 24px;
     opacity: 0.5;
     border: 1px solid #ccc;
@@ -893,12 +931,12 @@ h1 {
     width: fit-content !important;
     max-width: fit-content !important;
     position: absolute !important;
-    top: 70px !important; /* Descendu d'une ligne (~20px) depuis 50px */
+    top: 70px !important;
+    /* Descendu d'une ligne (~20px) depuis 50px */
     right: 100px !important;
     background: rgba(255, 255, 255, 0.9) !important;
     padding: 8px 15px !important;
     border-radius: 5px !important;
-    border-left: 4px solid #667eea !important; /* Contour bleu comme flux-diagram */
 }
 
 .legend-section {
@@ -913,7 +951,6 @@ h1 {
 .legend-title {
     font-size: 10px;
     font-weight: 600;
-    color: #666;
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -962,7 +999,6 @@ h1 {
 }
 
 .legend-text {
-    color: #333;
     font-weight: 500;
 }
 
@@ -974,7 +1010,6 @@ h1 {
 
 .legend-formula {
     font-size: 10px;
-    color: #666;
     text-align: center;
 }
 
@@ -997,7 +1032,6 @@ h1 {
 }
 
 .legend-text {
-    color: #333;
     font-weight: 500;
 }
 
@@ -1014,9 +1048,11 @@ h1 {
 #plot-container {
     width: 100%;
     /* height: 620px; */
-    margin-left: 0; /* Suppression du margin-left pour que le texte Stratosph. soit visible */
+    margin-left: 0;
+    /* Suppression du margin-left pour que le texte Stratosph. soit visible */
     position: relative;
-    z-index: 2; /* Au-dessus du canvas (1) */
+    z-index: 2;
+    /* Au-dessus du canvas (1) */
     max-height: 560px;
 }
 
@@ -1045,7 +1081,6 @@ h1 {
 
 .legend-formula-item {
     font-size: 10px;
-    color: #333;
     padding: 4px 6px;
     background: white;
     border-radius: 4px;
@@ -1078,7 +1113,6 @@ h1 {
 .algorithm-subtitle {
     font-size: 13px;
     font-weight: 600;
-    color: #667eea;
     margin-bottom: 10px;
     padding-bottom: 5px;
     border-bottom: 1px solid #e0e0e0;
@@ -1086,7 +1120,6 @@ h1 {
 
 .algorithm-params {
     font-size: 11px;
-    color: #333;
 }
 
 .param-item {
@@ -1104,16 +1137,13 @@ h1 {
 
 .param-list li {
     margin: 3px 0;
-    color: #555;
 }
 
 .param-list code {
     background: #e9ecef;
     padding: 2px 4px;
     border-radius: 3px;
-    font-family: 'Courier New', monospace;
     font-size: 10px;
-    color: #667eea;
 }
 
 .convergence-phases {
@@ -1130,7 +1160,6 @@ h1 {
 }
 
 .phase-item strong {
-    color: #667eea;
     font-size: 12px;
 }
 
@@ -1139,7 +1168,6 @@ h1 {
     padding: 0;
     list-style-type: disc;
     font-size: 11px;
-    color: #555;
 }
 
 .phase-item ul ul {
@@ -1161,7 +1189,6 @@ h1 {
 }
 
 .interaction-item strong {
-    color: #667eea;
     font-size: 12px;
 }
 
@@ -1170,7 +1197,6 @@ h1 {
     padding: 0;
     list-style-type: disc;
     font-size: 11px;
-    color: #555;
 }
 
 .convergence-method {
@@ -1183,18 +1209,14 @@ h1 {
 .convergence-method p {
     margin: 5px 0;
     font-size: 11px;
-    color: #555;
 }
 
-.convergence-method strong {
-    color: #667eea;
-}
+/* .convergence-method strong hérite maintenant du body */
 
 .convergence-method ol {
     margin: 10px 0 10px 20px;
     padding: 0;
     font-size: 11px;
-    color: #555;
 }
 
 .convergence-method ol ul {
@@ -1206,16 +1228,15 @@ h1 {
     text-align: center;
     margin-top: 15px;
     font-size: 12px;
-    color: #999;
 }
 
 /* Footer avec crédits et copyrights */
 /* Section d'informations en bas au-dessus du footer */
 .bottom-info {
     text-align: center;
-    padding: 15px 20px;
-    margin: 20px auto;
-    max-width: 1200px;
+    /* padding: 15px 20px; */
+    margin: 5px auto 2px auto;
+    /* max-width: 1200px; */
 }
 
 .bottom-info .book-reference {
@@ -1225,7 +1246,8 @@ h1 {
 
 
 .credits-footer {
-    margin-top: auto; /* Pousser le footer en bas */
+    margin-top: auto;
+    /* Pousser le footer en bas */
     padding: 10px 20px;
     background: rgba(255, 255, 255, 0.05);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -1237,7 +1259,6 @@ h1 {
     flex-direction: column;
     gap: 4px;
     font-size: 10px;
-    color: #999;
     line-height: 1.4;
 }
 
@@ -1247,20 +1268,107 @@ h1 {
 }
 
 .credits-footer a {
-    color: #aaa;
     text-decoration: none;
     transition: color 0.2s;
 }
 
 .credits-footer a:hover {
-    color: #fff;
     text-decoration: underline;
 }
 
 .credits-footer strong {
-    color: #ccc;
     font-weight: 500;
 }
 
 
 
+
+/* ==========================================================================
+   Space Theme Improvements - Flux Diagram Glow Effects
+   ========================================================================== */
+
+/* Flèches lumineuses */
+.flux-arrow {
+    filter: drop-shadow(0 0 3px currentColor);
+}
+
+/* Pointe de flèche lumineuse */
+.flux-arrow>div {
+    filter: drop-shadow(0 0 2px currentColor);
+}
+
+/* Étiquettes lumineuses sur fond sombre */
+.flux-label-blue {
+    /* Bleu ciel plus lumineux */
+    text-shadow: 0 0 5px rgba(135, 206, 235, 0.8), 0 0 10px rgba(135, 206, 235, 0.5) !important;
+    font-weight: bold;
+}
+
+/* Cercles de fond avec lueur */
+.flux-circle-bg {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(2px);
+    /* Léger flou pour l'effet verre */
+}
+
+/* Radiations (sphères concentriques) lumineuses */
+.flux-sphere {
+    box-shadow: 0 0 5px currentColor;
+    filter: drop-shadow(0 0 2px currentColor);
+}
+
+/* Titre du graphique spectral */
+.plot-overlay-title {
+    background: rgba(0, 0, 0, 0.9) !important;
+    /* Fond sombre semi-transparent */
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-left: 4px solid #667eea !important;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(5px);
+}
+
+/* Légende du graphique spectral */
+.legend-container {
+    background: rgba(0, 0, 0, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+/* ==========================================================================
+   Debug Interface & Modes
+   ========================================================================== */
+
+/* No Blur Mode */
+body.no-blur .flux-label-blue,
+body.no-blur .flux-arrow,
+body.no-blur .flux-sphere {
+    text-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+}
+
+/* Mode Dark - Couleur de texte par défaut vert sur fond noir */
+body.mode-dark {
+    color: #00ff00 !important;
+    /* Garder l'image de fond */
+    background: url('../fond.png') center center / cover no-repeat fixed !important;
+}
+
+
+/* Mode Dark - Fond sombre pour toutes les divs principales */
+body.mode-dark .plot-container-wrapper,
+body.mode-dark .title-container,
+body.mode-dark .timeline-display,
+body.mode-dark .button-container,
+body.mode-dark .legend-container,
+body.mode-dark .reference-container,
+body.mode-dark .flux-diagram,
+body.mode-dark .synthese_Temp {
+    background: rgba(20, 20, 30, 0.9) !important;
+    border: 1px solid rgba(128, 128, 128, 0.3) !important;
+}
+
+/* Mode Dark - Légendes */
+body.mode-dark .legend-container,
+body.mode-dark .plot-overlay-title {
+    background: rgba(20, 20, 30, 0.9) !important;
+    border: 1px solid rgba(128, 128, 128, 0.3) !important;
+}

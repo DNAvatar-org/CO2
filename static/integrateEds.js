@@ -16,7 +16,6 @@
         const syntheseEds = document.querySelector('.synthese_EdS');
         
         if (!edsCell || !syntheseEds) {
-            console.warn('cell-effetSerre ou synthese_EdS non trouvé, réessayer...');
             setTimeout(integrateSyntheseEds, 100);
             return;
         }
@@ -25,7 +24,6 @@
         const rectangle = edsCell.querySelector('.flux-rectangle');
         
         if (!rectangle) {
-            console.warn('flux-rectangle non trouvé dans cell-effetSerre');
             return;
         }
         

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>World System</title>
+    <title>Bilan Radiatif Terrestre</title>
     <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
     <script>
         window.MathJax = {
@@ -44,7 +45,8 @@
     <link rel="stylesheet" href="static/FPS/FPS.css">
     <link rel="stylesheet" href="organigramme/organigramme.css">
 </head>
-<body>
+
+<body class="mode-dark no-blur">
     <div class="fps-display collapsed" id="fps-display">
         <button class="fps-toggle" id="fps-toggle" title="Réduire/Agrandir"></button>
         <div id="fps-chart"></div>
@@ -52,22 +54,32 @@
     <div class="container">
         <div class="left-column" id="left-column"></div>
         <div class="right-column" id="right-column"></div>
-        
+
         <!-- Divs à réorganiser automatiquement par layout.js -->
         <div class="title-container">
-            <h1>World System</h1>
+            <h1>Bilan Radiatif Terrestre</h1>
+            <p class="title-subtitle">Base de la météorologie<br>Comprendre les incidences de chaque facteur</p>
         </div>
-        
+
         <div class="flux-diagram-wrapper">
             <div class="flux-diagram" id="flux-diagram"></div>
             <div class="synthese_Temp">
-                <div style="position: absolute; font-size: 56px; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0;">🌡️</div>
-                <div style="position: relative; z-index: 1; font-size: 16px; font-weight: bold; color: #000; text-shadow: 0 0 3px white, 0 0 3px white; word-wrap: break-word; text-align: center; line-height: 1.1;">
-                    <span id="temp-surface-synthese">--</span><br><span id="temp-unit-synthese" style="font-size: 18px;">°C</span>
+                <div
+                    style="position: absolute; font-size: 56px; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0;">
+                    🌡️</div>
+                <div
+                    style="position: relative; z-index: 1; font-size: 16px; font-weight: bold; color: #000; text-shadow: 0 0 3px white, 0 0 3px white; word-wrap: break-word; text-align: center; line-height: 1.1;">
+                    <span id="temp-surface-synthese">--</span><br><span id="temp-unit-synthese"
+                        style="font-size: 18px;">°C</span>
                 </div>
             </div>
+            <!-- Boutons Volcan et Météorite en dessous du flux -->
+            <div class="buttons-below-flux">
+                <button class="btn btn-noyau" id="btn-noyau" onclick="multiplyCO2()" title="Noyau (Volcan)">🌋</button>
+                <button class="btn btn-comet" id="btn-comet" onclick="addCometCO2()" title="Comète - +0.1 ppm">☄️</button>
+            </div>
         </div>
-        
+
         <div class="plot-container-wrapper">
             <div id="plot-container">
                 <div class="plot-overlay-title">Courbes d'émission<br>du rayonnement d'un corps (noir)</div>
@@ -81,32 +93,39 @@
             </div>
             <canvas id="spectral-visualization" width="333" height="400"></canvas>
         </div>
-        
+
         <div class="timeline-display">
-            <span class="timeline-hourglass">📅</span>
-            <span class="epoch-start-time">-4600 Ma</span>
+            <div class="timeline-start-wrapper">
+                <span class="timeline-hourglass">📅</span>
+                <span class="epoch-start-time">Avant -4600 Ma</span>
+                <span class="info-time" id="info-time">+90 ans</span>
+            </div>
             <div class="timeline-frise">
                 <div class="epochs-container">
+                    <button class="epoch-btn" onclick="setEpoch('Corps noir')" title="Corps noir - État initial (206.1K), avant formation de la Terre, pas de noyau différencié, pas d'atmosphère">⚫</button>
                     <div class="epoch-separator-item">
                         <span class="epoch-separator">|</span>
                         <span class="epoch-date">-4600 Ma</span>
                     </div>
-                    <button class="epoch-btn" onclick="setEpoch('Hadéen')" title="Hadéen (-4600 à -4000 Ma)">🌑</button>
+                    <button class="epoch-btn" onclick="setEpoch('Hadéen')" title="Hadéen (-4600 à -4000 Ma)">🌕</button>
                     <div class="epoch-separator-item">
                         <span class="epoch-separator">|</span>
                         <span class="epoch-date">-4000 Ma</span>
                     </div>
-                    <button class="epoch-btn" onclick="setEpoch('Archéen')" title="Archéen (-4000 à -2500 Ma)">🦠</button>
+                    <button class="epoch-btn" onclick="setEpoch('Archéen')"
+                        title="Archéen (-4000 à -2500 Ma)">🦠</button>
                     <div class="epoch-separator-item">
                         <span class="epoch-separator">|</span>
                         <span class="epoch-date">-2500 Ma</span>
                     </div>
-                    <button class="epoch-btn" onclick="setEpoch('Protérozoïque')" title="Protérozoïque (-2500 à -541 Ma)">🌿</button>
+                    <button class="epoch-btn" onclick="setEpoch('Protérozoïque')"
+                        title="Protérozoïque (-2500 à -541 Ma)">🌿</button>
                     <div class="epoch-separator-item">
                         <span class="epoch-separator">|</span>
                         <span class="epoch-date">-397 Ma</span>
                     </div>
-                    <button class="epoch-btn" onclick="setEpoch('Mésozoïque')" title="Mésozoïque (-252 à -66 Ma)">🦕</button>
+                    <button class="epoch-btn" onclick="setEpoch('Mésozoïque')"
+                        title="Mésozoïque (-252 à -66 Ma)">🦕</button>
                     <div class="epoch-separator-item">
                         <span class="epoch-separator">|</span>
                         <span class="epoch-date">-199 Ma</span>
@@ -116,7 +135,8 @@
                         <span class="epoch-separator">|</span>
                         <span class="epoch-date">-66 Ma</span>
                     </div>
-                    <button class="epoch-btn" onclick="setEpoch('Cénozoïque')" title="Cénozoïque (-66 Ma à aujourd'hui)">🦣</button>
+                    <button class="epoch-btn" onclick="setEpoch('Cénozoïque')"
+                        title="Cénozoïque (-66 Ma à aujourd'hui)">🦣</button>
                     <div class="epoch-separator-item">
                         <span class="epoch-separator">|</span>
                         <span class="epoch-date">aujourd'hui</span>
@@ -124,17 +144,15 @@
                     <button class="epoch-btn" onclick="setEpoch('Aujourd\'hui')" title="État d'aujourd'hui">🌈</button>
                 </div>
             </div>
-            <span class="info-time" id="info-time">+90 ans</span>
         </div>
-        
+
         <!-- Les boutons seront positionnés autour du cercle albedo par positionnerBoutonsSurCercleAlbedo() -->
         <button class="btn btn-albedo" id="btn-albedo" title="Albédo">🏐</button>
-        <button class="btn btn-noyau" id="btn-noyau" onclick="multiplyCO2()" title="Noyau (Volcan)">🌋</button>
-        <button class="btn btn-comet" id="btn-comet" onclick="addCometCO2()" title="Comète - +0.1 ppm">☄️</button>
         <button class="btn btn-co2" id="btn-co2" title="CO₂">🌵</button>
-        <button class="btn btn-h2o" id="btn-h2o" onclick="toggleWaterVapor()" title="H₂O - Activer/Désactiver vapeur d'eau">💧</button>
+        <button class="btn btn-h2o" id="btn-h2o" onclick="toggleWaterVapor()"
+            title="H₂O - Activer/Désactiver vapeur d'eau">💧</button>
         <button class="btn btn-methane" id="btn-methane" title="CH₄">⛽</button>
-        
+
         <div class="synthese_EdS">
             <div class="info-unit-header">
                 <span class="controle-simulation-title"></span>
@@ -142,7 +160,8 @@
             </div>
             <div class="info-row info-row-vertical info-row-co2">
                 <div class="info-vertical-stack">
-                    <span class="info-value"><span class="info-number" id="co2-number-synthese">0</span><span class="info-unit">%</span></span>
+                    <span class="info-value"><span class="info-number" id="co2-number-synthese">0</span><span
+                            class="info-unit">%</span></span>
                     <span class="info-forcing" id="forcing-co2-synthese">W/m²</span>
                 </div>
             </div>
@@ -154,7 +173,8 @@
             </div>
             <div class="info-row info-row-vertical info-row-ch4">
                 <div class="info-vertical-stack">
-                    <span class="info-value"><span class="info-number" id="methane-number-synthese">--</span><span class="info-unit">%</span></span>
+                    <span class="info-value"><span class="info-number" id="methane-number-synthese">--</span><span
+                            class="info-unit">%</span></span>
                     <span class="info-forcing" id="forcing-methane-synthese">W/m²</span>
                 </div>
             </div>
@@ -167,32 +187,37 @@
                 <span class="info-forcing" id="forcing-total-synthese">--</span>
             </div>
         </div>
-        
+
         <div class="status" id="status" style="display: none;"></div>
     </div>
-    
-    <!-- Informations en bas au-dessus du footer -->
+
+    <!-- Zone pour les boutons de debug (sera remplie par debug.js) -->
     <div class="bottom-info">
-        <p class="book-reference">
-            <a href="equation.html" target="_blank">📐 Équations, Définitions et Constantes</a> | 
-            <a href="Algorithmes.html" target="_blank">⚙️ Algorithmes & Convergence</a>
-        </p>
+        <!-- Les liens ont été déplacés dans le footer -->
     </div>
-    
+
     <footer class="credits-footer">
         <div class="credits-content">
-            <div class="credits-line">
-                Inspiration: <a href="https://sciencetonnante.wordpress.com/" target="_blank" rel="noopener noreferrer">Science étonnante</a> | 
-                <a href="https://www.youtube.com/watch?v=ewc8FBtEKPs" target="_blank" rel="noopener noreferrer">Vidéo YouTube</a> | 
-                <a href="https://github.com/scienceetonnante/RadiativeForcing" target="_blank" rel="noopener noreferrer">GitHub: RadiativeForcing</a>
+            <div class="credits-line" style="margin-bottom: 10px; font-size: 11px;">
+                <a href="#equations-section">📐 Équations, Définitions et Constantes</a> |
+                <a href="#algorithms-section">⚙️ Algorithmes & Convergence</a>
             </div>
             <div class="credits-line">
-                © 2025 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> - Arnaud Maignan | 
+                Inspiration: <a href="https://sciencetonnante.wordpress.com/" target="_blank"
+                    rel="noopener noreferrer">Science étonnante</a> |
+                <a href="https://www.youtube.com/watch?v=ewc8FBtEKPs" target="_blank" rel="noopener noreferrer">Vidéo
+                    YouTube</a> |
+                <a href="https://github.com/scienceetonnante/RadiativeForcing" target="_blank"
+                    rel="noopener noreferrer">GitHub: RadiativeForcing</a>
+            </div>
+            <div class="credits-line">
+                © 2025 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> -
+                Arnaud Maignan |
                 Licensed under Apache License 2.0 with Commons Clause
             </div>
         </div>
     </footer>
-    
+
     <script src="organigramme/configOrganigramme.js"></script>
     <script src="organigramme/organigramme.js"></script>
     <script src="static/patterns.js"></script>
@@ -204,6 +229,8 @@
     <script src="static/plot.js"></script>
     <script src="static/layout.js"></script>
     <script src="static/integrateEds.js"></script>
+    <script src="static/debug.js"></script>
     <script src="static/main.js"></script>
 </body>
+
 </html>

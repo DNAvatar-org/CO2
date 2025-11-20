@@ -13,6 +13,7 @@
 // Définition des époques géologiques avec facteur multiplicatif pour les volcans
 // Au début de la Terre, il y avait beaucoup plus de volcanisme
 const GEOLOGICAL_ERAS = [
+    { name: 'Corps noir', startYears: 5.0e9, endYears: 4.6e9, volcanoFactor: 0.0, co2PerVolcano: 0 }, // Avant formation de la Terre, pas de différenciation, pas de volcans
     { name: 'Hadéen', startYears: 4.6e9, endYears: 4.0e9, volcanoFactor: 10.0, co2PerVolcano: 500 }, // Début de la Terre : volcanisme intense
     { name: 'Archéen', startYears: 4.0e9, endYears: 2.5e9, volcanoFactor: 5.0, co2PerVolcano: 300 },  // Volcanisme très actif
     { name: 'Protérozoïque', startYears: 2.5e9, endYears: 541e6, volcanoFactor: 2.0, co2PerVolcano: 200 }, // Volcanisme modéré
@@ -23,10 +24,21 @@ const GEOLOGICAL_ERAS = [
 // Basé sur epoquesGeologiques.txt
 const GEOLOGICAL_PERIODS = [
     {
+        name: 'Corps noir',
+        startYears: 5.0e9, // Avant la formation de la Terre (date inconnue exacte)
+        endYears: 4.6e9, // Formation de la Terre
+        emoji: '⚫', // Corps noir
+        co2_ppm: 0, // Pas d'atmosphère
+        ch4_ppm: 0, // Pas d'atmosphère
+        h2o_enabled: false, // Pas d'atmosphère, pas de vapeur d'eau
+        cloud_coverage: 0, // Pas de nuages
+        description: 'État initial : corps noir pur, avant formation de la Terre, pas de noyau différencié, pas d\'atmosphère, température ~206.1K'
+    },
+    {
         name: 'Hadéen',
-        startYears: 4.6e9,
+        startYears: 4.55e9, // Après la différenciation du noyau
         endYears: 4.0e9,
-        emoji: '🌑', // Lune noire (rougeâtre comme Mars)
+        emoji: '🌕', // Lune pleine (surface chaude et brillante)
         co2_ppm: 7000, // Beaucoup de CO₂ (jusqu'à 7000 ppm)
         ch4_ppm: 100, // Très élevé (atmosphère réductrice, pas d'O₂ pour oxyder)
         h2o_enabled: true, // Forte couverture nuageuse
@@ -120,9 +132,10 @@ function getGeologicalPeriod(yearsAgo) {
         return GEOLOGICAL_PERIODS[GEOLOGICAL_PERIODS.length - 1]; // Cénozoïque
     }
     
-    // Si yearsAgo >= 4.6e9, retourner l'Hadéen
-    if (yearsAgo >= GEOLOGICAL_PERIODS[0].startYears) {
-        return GEOLOGICAL_PERIODS[0]; // Hadéen
+    // Si yearsAgo >= 5.0e9, retourner Corps noir (avant formation de la Terre)
+    // Si yearsAgo >= 4.6e9, retourner Corps noir (jusqu'à formation de la Terre)
+    if (yearsAgo >= GEOLOGICAL_PERIODS[0].endYears) {
+        return GEOLOGICAL_PERIODS[0]; // Corps noir
     }
     
     // Par défaut, retourner la période actuelle
@@ -189,17 +202,17 @@ function getGeologicalEra(years) {
     }
     
     // Si yearsAgo < 0 (futur) ou très récent, retourner l'époque actuelle
-    // Si yearsAgo >= 4.6e9 (avant la formation de la Terre), retourner l'Hadéen
+    // Si yearsAgo >= 5.0e9 (avant la formation de la Terre), retourner Corps noir
     if (yearsAgo < 0) {
         return GEOLOGICAL_ERAS[GEOLOGICAL_ERAS.length - 1]; // Phanérozoïque (actuel)
     }
     if (yearsAgo >= GEOLOGICAL_ERAS[0].startYears) {
-        const era = GEOLOGICAL_ERAS[0]; // Hadéen (début de la Terre)
-        const moltenCrustFactor = getMoltenCrustFactor(yearsAgo);
+        const era = GEOLOGICAL_ERAS[0]; // Corps noir (avant formation de la Terre, pas de différenciation)
+        // Pas de facteur de croûte molle pour Corps noir (pas de volcans)
         return {
             ...era,
-            volcanoFactor: era.volcanoFactor * moltenCrustFactor,
-            moltenCrustFactor: moltenCrustFactor
+            volcanoFactor: 0.0, // Pas de volcans
+            moltenCrustFactor: 1.0
         };
     }
     

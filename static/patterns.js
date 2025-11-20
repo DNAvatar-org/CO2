@@ -102,7 +102,7 @@ window.createDashPatternSVG = function(pattern, index = 0, totalCount = 1) {
     const dashAttr = dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : '';
     
     return `<svg width="${width}" height="${height}" style="vertical-align: middle; display: inline-block; overflow: visible;">
-        <line x1="2" y1="${height/2}" x2="${width-2}" y2="${height/2}" stroke="black" stroke-width="${strokeWidth}" ${dashAttr}/>
+        <line x1="2" y1="${height/2}" x2="${width-2}" y2="${height/2}" stroke="white" stroke-width="${strokeWidth}" ${dashAttr}/>
     </svg>`;
 };
 

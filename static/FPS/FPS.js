@@ -45,13 +45,11 @@ let timerId = null; // ID du timer pour pouvoir l'arrêter
 function initFPSChart() {
     const chartDiv = document.getElementById('fps-chart');
     if (!chartDiv) {
-        console.warn('fps-chart div non trouvé');
         return;
     }
     
     // Vérifier si le graphique est déjà initialisé (vérifier si Plotly a créé des éléments)
     if (chartDiv.querySelector('.plotly')) {
-        console.log('Graphique FPS déjà initialisé');
         // Redimensionner au cas où
         Plotly.Plots.resize('fps-chart');
         return;

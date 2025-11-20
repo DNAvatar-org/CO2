@@ -120,11 +120,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         cell.style.height = totalHeight + 'px';
         cell.style.width = totalWidth + 'px';
         
-        if (nodeId === 'reemis' || nodeId === 'surface') {
-            console.log(`📦 [${nodeId}] radius=${radius}, logoScale=${logoScale}, circleDiameter=${circleDiameter}, logoSize=${logoSize.toFixed(1)}`);
-            console.log(`📦 [${nodeId}] centralCellSize=${centralCellSize}, totalHeight=${totalHeight}, totalWidth=${totalWidth}`);
-            console.log(`📦 [${nodeId}] grid: 25px + ${centralCellSize}px + 20px (H) × 100px + ${centralCellSize}px + 100px (W)`);
-        }
     }
     
     // Positionner le coin supérieur gauche de la grille, puis utiliser transform pour centrer précisément
@@ -139,11 +134,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     // Écart entre centre cellule et centre logo : logoCenterInCell - totalHeight/2
     const naturalOffset = logoCenterInCell - totalHeight / 2;
     
-    if (nodeId === 'reemis' || nodeId === 'surface') {
-        console.log(`📍 [${nodeId}] Position: x=${x}, y=${y}, logoOffsetY=${logoOffsetY}`);
-        console.log(`📍 [${nodeId}] verticalOffset=${verticalOffset}, naturalOffset=${naturalOffset.toFixed(1)}`);
-        console.log(`📍 [${nodeId}] Centre cellule à: ${totalHeight/2}px, Centre logo à: ${logoCenterInCell}px → décalage: ${naturalOffset.toFixed(1)}px`);
-    }
     
     // Le verticalOffset compense l'asymétrie de la grille (top 25px vs bottom 20px)
     // logoOffsetY sera appliqué séparément au logo lui-même (ligne 200)
@@ -154,9 +144,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     cell.style.transform = `translate(-50%, calc(-50% - ${totalVerticalOffset}px))`; // Centre le LOGO (pas la cellule) sur (x, y)
     
     if (nodeId === 'reemis' || nodeId === 'surface') {
-        console.log(`📍 [${nodeId}] totalVerticalOffset = ${totalVerticalOffset}px (sans logoOffsetY)`);
-        console.log(`📍 [${nodeId}] logoOffsetY = ${logoOffsetY} sera appliqué au logo (×${logoScale} = ${(logoOffsetY * logoScale).toFixed(2)}px)`);
-        console.log(`📍 [${nodeId}] Transform: translate(-50%, calc(-50% - ${totalVerticalOffset}px))`);
     }
     
     // Cercle en arrière-plan (derrière le tableau)
@@ -181,6 +168,10 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     circleBg.style.transform = 'translate(-50%, -50%)'; // Centre le cercle sur (centerX, centerY)
     // Ne pas créer le cercle si un rectangle est présent
     if (!rectangleOptions) {
+        // Ajouter une classe spéciale pour les nœuds espace (effet de trou)
+        if (nodeId && (nodeId === 'espace1' || nodeId === 'espace2')) {
+            circleBg.classList.add('flux-space-hole');
+        }
         circleBg.style.backgroundColor = fillColor;
         // Ne pas mettre de bordure si strokeColor est vide
         if (!strokeColor || strokeColor.trim() === '') {
@@ -215,7 +206,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     circleBg.style.transform = originalTransform;
                 }, 200);
             }).catch(err => {
-                console.error('Erreur lors de la copie:', err);
             });
         });
         
@@ -340,7 +330,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         if (maxRadius !== null && maxRadius !== undefined) {
             // Log pour déboguer
             if (nodeId === 'albedo' || nodeId === 'surface') {
-                console.log(`🌐 [${nodeId}] Création radiations: maxRadius=${maxRadius}, openingAngle=${openingAngle}, rotation=${rotation}, color=${color}, strokeSize=${strokeSize}`);
             }
             // Créer un groupe pour ces radiations avec la couleur définie
             const radiationGroup = document.createElement('div');
@@ -1024,58 +1013,6 @@ function generateArrows() {
         // Couleur : arc.color > strokeColor du cercle de départ > bleu standard
         const arrowColor = arc.color || (idDep.strokeColor && idDep.strokeColor.trim() !== '' ? idDep.strokeColor : '#667eea');
         
-        // Log spécifique pour la flèche reemis → surface
-        if (arc.from === 'reemis' && arc.to === 'surface') {
-            console.log(`🔍 [reemis → surface] Centres: (${idDep.x}, ${idDep.y}) → (${idDest.x}, ${idDest.y})`);
-            console.log(`🔍 [reemis → surface] Vect=(${Vect.x}, ${Vect.y}), length=${length.toFixed(2)}px`);
-            console.log(`🔍 [reemis → surface] isGoingUp=${isGoingUp}, hasTop=${hasTop}`);
-            console.log(`🔍 [reemis → surface] Point départ: (${x1.toFixed(1)}, ${y1.toFixed(1)})`);
-            console.log(`🔍 [reemis → surface] Point arrivée: (${x2.toFixed(1)}, ${y2.toFixed(1)})`);
-            console.log(`🔍 [reemis → surface] Points finaux: (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}) → (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
-            console.log(`🔍 [reemis → surface] Longueur finale: ${Math.sqrt((finalX2-finalX1)**2 + (finalY2-finalY1)**2).toFixed(2)}px`);
-        }
-        
-        // Log spécifique pour la flèche noyau → surface
-        if (arc.from === 'noyau' && arc.to === 'surface') {
-            console.log(`🔍 [noyau → surface] Centres: (${idDep.x}, ${idDep.y}) → (${idDest.x}, ${idDest.y})`);
-            console.log(`🔍 [noyau → surface] Vect=(${Vect.x}, ${Vect.y}), length=${length.toFixed(2)}px`);
-            console.log(`🔍 [noyau → surface] sourceRadius=${sourceRadius}, sourceRadiusOuter=${sourceRadiusOuter}`);
-            console.log(`🔍 [noyau → surface] destRadius=${destRadius}, destRadiusOuter=${destRadiusOuter}`);
-            console.log(`🔍 [noyau → surface] isConcentric=${isConcentric}, sign=${sign}, deltaRadius=${deltaRadius !== null ? deltaRadius.toFixed(1) : 'N/A'}`);
-            console.log(`🔍 [noyau → surface] unitX=${unitX.toFixed(4)}, unitY=${unitY.toFixed(4)}`);
-            console.log(`🔍 [noyau → surface] hasTop=${hasTop}, hasBottom=${hasBottom}`);
-            console.log(`🔍 [noyau → surface] Point départ: (${x1.toFixed(1)}, ${y1.toFixed(1)})`);
-            console.log(`🔍 [noyau → surface] Point arrivée: (${x2.toFixed(1)}, ${y2.toFixed(1)})`);
-            if (isConcentric && deltaRadius !== null) {
-                console.log(`🔍 [noyau → surface] Calcul concentrique: x2 = ${x1.toFixed(1)} + ${deltaRadius.toFixed(1)} * ${unitX.toFixed(4)} = ${(x1 + deltaRadius * unitX).toFixed(1)}`);
-                console.log(`🔍 [noyau → surface] Calcul concentrique: y2 = ${y1.toFixed(1)} + ${deltaRadius.toFixed(1)} * ${unitY.toFixed(4)} = ${(y1 + deltaRadius * unitY).toFixed(1)}`);
-            }
-            console.log(`🔍 [noyau → surface] Points finaux: (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}) → (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
-        }
-        
-        // Log spécifique pour la flèche surface → albedo
-        if (arc.from === 'surface' && arc.to === 'albedo') {
-            console.log(`🔍 [surface → albedo] Centres: (${idDep.x}, ${idDep.y}) → (${idDest.x}, ${idDest.y})`);
-            console.log(`🔍 [surface → albedo] Vect=(${Vect.x}, ${Vect.y}), length=${length.toFixed(2)}px`);
-            console.log(`🔍 [surface → albedo] sourceRadius=${sourceRadius}, sourceRadiusOuter=${sourceRadiusOuter}`);
-            console.log(`🔍 [surface → albedo] destRadius=${destRadius}, destRadiusOuter=${destRadiusOuter}`);
-            console.log(`🔍 [surface → albedo] destCircleDiameter=${destCircleDiameter}, destCentralCellSize=${destCentralCellSize}`);
-            console.log(`🔍 [surface → albedo] unitX=${unitX.toFixed(4)}, unitY=${unitY.toFixed(4)}`);
-            console.log(`🔍 [surface → albedo] angleRad=${angleRad.toFixed(4)} rad, angleDeg=${angleDeg.toFixed(2)}°`);
-            console.log(`🔍 [surface → albedo] absAngle=${Math.abs(angleDeg).toFixed(2)}°`);
-            console.log(`🔍 [surface → albedo] isGoingUp=${isGoingUp}, isGoingDown=${isGoingDown}, isVerticalEnough=${isVerticalEnough}`);
-            console.log(`🔍 [surface → albedo] hasTop=${hasTop}, hasBottom=${hasBottom}`);
-            console.log(`🔍 [surface → albedo] destCellHalfHeight=${destCellHalfHeight.toFixed(1)}, gridY=${hasTop ? (idDest.y - destCellHalfHeight).toFixed(1) : 'N/A'}`);
-            console.log(`🔍 [surface → albedo] Point départ: (${x1.toFixed(1)}, ${y1.toFixed(1)})`);
-            console.log(`🔍 [surface → albedo] Point arrivée: (${x2.toFixed(1)}, ${y2.toFixed(1)})`);
-            if (hasTop) {
-                const vecFromStart = { x: idDest.x - x1, y: idDest.y - y1 };
-                const gridY = idDest.y - destCellHalfHeight;
-                const t = Math.abs(vecFromStart.y) > 0.001 ? (gridY - y1) / vecFromStart.y : 0;
-                console.log(`🔍 [surface → albedo] Calcul intersection: vecFromStart=(${vecFromStart.x.toFixed(2)}, ${vecFromStart.y.toFixed(2)}), t=${t.toFixed(4)}, x2_calc=${(x1 + vecFromStart.x * t).toFixed(1)}, y2_calc=${gridY.toFixed(1)}`);
-            }
-            console.log(`🔍 [surface → albedo] Points finaux: (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}) → (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
-        }
         
         const arrow = createArrow(finalX1, finalY1, finalX2, finalY2, arrowZIndex, arrowColor);
         
@@ -1220,10 +1157,6 @@ nodes.forEach(node => {
                     }
                 }
                 
-                // Log pour vérifier le calcul
-                if (node.id === 'albedo' || node.id === 'reemis' || node.id === 'noyau' || node.id === 'surface') {
-                    console.log(`🌐 [${node.id}] Calcul rotation depuis ${angles.length} flèche(s) sortante(s): angles=[${angles.map(a => a.toFixed(1)).join(', ')}]°, rotation=${radiationOptions.rotation.toFixed(1)}°, opening=${radiationOptions.openingAngle.toFixed(1)}°`);
-                }
             }
         }
     }
@@ -1294,7 +1227,6 @@ generateArrows();
 function calculateTextPositionLeftOfCircle(nodeId = 'albedo', offsetX = 0, offsetY = 0) {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) {
-        console.warn(`[calculateTextPositionLeftOfCircle] Nœud ${nodeId} non trouvé`);
         return { x: 0, y: 0 };
     }
     
@@ -1321,7 +1253,6 @@ function calculateTextPositionLeftOfCircle(nodeId = 'albedo', offsetX = 0, offse
 function poseBoutonSurCercle(nodeId = 'albedo', angleDeg = 0, offsetRadius = 0) {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) {
-        console.warn(`[poseBoutonSurCercle] Nœud ${nodeId} non trouvé`);
         return { x: 0, y: 0 };
     }
     
@@ -1356,9 +1287,8 @@ function positionnerBoutonsSurCercleAlbedo() {
         { id: 'btn-methane', angle: 180 },   // Gauche (milieu) (CH4 = deuxième)
         { id: 'btn-h2o', angle: 225 },       // Bas-gauche (H2O = troisième)
         // À droite (0°) : de haut en bas
-        { id: 'btn-albedo', angle: 315 },    // Haut-droite
-        { id: 'btn-noyau', angle: 0 },       // Droite (milieu)
-        { id: 'btn-comet', angle: 45 }       // Bas-droite
+        { id: 'btn-albedo', angle: 315 }     // Haut-droite
+        // btn-noyau et btn-comet sont maintenant en dessous du flux
     ];
     
     // Décalage négatif pour positionner les boutons à l'intérieur du cercle, touchant le bord
@@ -1367,14 +1297,12 @@ function positionnerBoutonsSurCercleAlbedo() {
     const fluxDiagram = document.getElementById('flux-diagram');
     
     if (!fluxDiagram) {
-        console.warn('[positionnerBoutonsSurCercleAlbedo] flux-diagram non trouvé');
         return;
     }
     
     boutons.forEach(({ id, angle }) => {
         const bouton = document.getElementById(id);
         if (!bouton) {
-            console.warn(`[positionnerBoutonsSurCercleAlbedo] Bouton ${id} non trouvé`);
             return;
         }
         

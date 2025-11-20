@@ -1,12 +1,13 @@
 // File: layout.js - Gestion automatique du layout en deux colonnes
 // Desc: Réorganise les divs dans left-column et right-column selon la largeur d'écran
-// Version 1.0.0
+// Version 1.0.2
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
 //   - Initial version: système de layout automatique avec deux colonnes
+//   - Moved timeline-display to top of right column for visibility
 
 (function() {
     'use strict';
@@ -16,8 +17,8 @@
         'title-container',
         'flux-diagram-wrapper',
         'plot-container-wrapper',
-        'timeline-display',
-        'synthese_EdS'
+        'timeline-display'
+        // synthese_EdS est intégrée dans l'organigramme par integrateEds.js, donc pas besoin de la positionner
     ];
     
     // Fonction pour réorganiser les divs selon la largeur d'écran
@@ -27,7 +28,6 @@
         const rightColumn = document.getElementById('right-column');
         
         if (!leftColumn || !rightColumn) {
-            console.error('left-column ou right-column non trouvé');
             return;
         }
         
@@ -39,8 +39,6 @@
             const element = document.querySelector('.' + className);
             if (element) {
                 divs[className] = element;
-            } else {
-                console.warn('Div non trouvée:', className);
             }
         });
         
@@ -67,7 +65,12 @@
     
     
     // RIGHT COLUMN
-    // 1. (screenWidth>400)?plot-container-wrapper:flux-diagram-wrapper
+    // 1. timeline-display (en haut pour visibilité)
+    if (divs['timeline-display']) {
+        rightColumn.appendChild(divs['timeline-display']);
+    }
+    
+    // 2. (screenWidth>400)?plot-container-wrapper:flux-diagram-wrapper
     if (screenWidth > 400) {
         if (divs['plot-container-wrapper']) {
             rightColumn.appendChild(divs['plot-container-wrapper']);
@@ -78,15 +81,7 @@
         }
     }
     
-    // 2. timeline-display
-    if (divs['timeline-display']) {
-        rightColumn.appendChild(divs['timeline-display']);
-    }
-    
-    // 3. synthese_EdS
-    if (divs['synthese_EdS']) {
-        rightColumn.appendChild(divs['synthese_EdS']);
-    }
+    // synthese_EdS est intégrée dans l'organigramme par integrateEds.js, donc pas besoin de la positionner
     }
     
     // Réorganiser au chargement

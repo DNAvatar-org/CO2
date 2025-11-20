@@ -86,10 +86,10 @@ function updateTemperatureDisplay() {
 
 // Fonction pour déterminer quels boutons sont disponibles selon l'époque géologique
 function getAvailableButtons(yearsAgo) {
-    const era = (window.getGeologicalEra || function() { return { name: 'Phanérozoïque' }; })(yearsAgo);
+    const era = (window.getGeologicalEra || function() { return { name: 'Phanérozoïque', volcanoFactor: 1.0 }; })(yearsAgo);
     const available = {
         'btn-comet': true, // Toujours disponible (comètes peuvent arriver à tout moment)
-        'btn-volcano': true, // Toujours disponible mais effet variable
+        'btn-volcano': era.volcanoFactor > 0, // Disponible seulement si volcans existent (pas pour Corps noir)
         'btn-cloud': true, // Toujours disponible
         'btn-iceberg': yearsAgo < 2.5e9, // Disponible avant l'Archéen (glace possible)
         'btn-desert': yearsAgo < 2.5e9, // Disponible avant l'Archéen
@@ -1067,7 +1067,7 @@ function updateLegend(data) {
             const patternSVG = typeof window.createDashPatternSVG === 'function'
                 ? window.createDashPatternSVG(dashPattern, originalIndex, totalCount)
                 : `<svg width="50" height="4" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
-                    <line x1="2" y1="2" x2="48" y2="2" stroke="black" stroke-width="2.5"/>
+                    <line x1="2" y1="2" x2="48" y2="2" stroke="white" stroke-width="2.5"/>
                    </svg>`;
             
             // Créer un conteneur pour le SVG
@@ -1123,22 +1123,32 @@ function setEpoch(epochName) {
     
     // Récupérer les conditions de l'époque depuis geology.js
     if (typeof window.getGeologicalPeriodByName !== 'function') {
-        console.error('getGeologicalPeriodByName non disponible');
         return;
     }
     
     const epoch = window.getGeologicalPeriodByName(epochName);
     if (!epoch) {
-        console.error(`Époque "${epochName}" non trouvée`);
         return;
     }
     
     disableButtons(); // Désactiver les boutons
     
-    // Mettre à jour la timeline pour correspondre à l'époque
-    // Utiliser le milieu de l'époque : (startYears + endYears) / 2
-    const middleYears = (epoch.startYears + epoch.endYears) / 2;
-    timelineFrame = Math.floor(middleYears / YEARS_PER_FRAME);
+    // Mettre à jour la timeline pour correspondre au début de l'époque
+    timelineFrame = Math.floor(epoch.startYears / YEARS_PER_FRAME);
+    
+    // Mettre à jour la date de début affichée
+    const epochStartTimeDisplay = document.querySelector('.epoch-start-time');
+    if (epochStartTimeDisplay) {
+        const formattedYears = formatYears(epoch.startYears);
+        epochStartTimeDisplay.textContent = formattedYears;
+    }
+    
+    // Cacher "+90 ans" quand on clique sur une époque
+    const infoTimeDisplay = document.getElementById('info-time');
+    if (infoTimeDisplay) {
+        infoTimeDisplay.style.display = 'none';
+    }
+    
     updateTimeline();
     
     // Appliquer les conditions initiales
@@ -1197,6 +1207,7 @@ function setEpoch(epochName) {
     // Lancer le calcul avec les nouvelles conditions
     updateCO2LevelDirect(co2_fraction);
 }
+
 
 function toggleWaterVapor() {
     if (calculationInProgress) return; // Bloquer si calcul en cours
