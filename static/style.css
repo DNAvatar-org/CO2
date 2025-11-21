@@ -323,12 +323,12 @@ h1 {
 
 .temp-display-cyan {
     position: absolute;
-    bottom: 83px;
-    left: 44px;
+    top: 233px;
+    right: 95px;
     font-size: 12px;
     z-index: 100;
     line-height: 1.0;
-    color: cyan; 
+    color: cyan;
 }
 
 /* Note sur l'échelle logarithmique - à gauche, très proche de la bande spectrale */
@@ -995,6 +995,7 @@ h1 {
     grid-template-columns: 1fr 1fr;
     width: fit-content;
     overflow-x: visible;
+    gap: 0px 33px;
 }
 
 .legend-planck-item {

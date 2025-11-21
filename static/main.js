@@ -79,17 +79,20 @@ function cycleTemperatureUnit() {
 }
 
 // Fonction pour calculer la couleur du contour selon la température
-// Couleurs alignées sur le spectre visible : Violet → Bleu → Blanc → Vert → Jaune → Rouge
+// Utilise des if simples avec interpolation linéaire entre les points de référence
+// Points : Noir(-273°C/0K), Violet(-70°C), Bleu(-40°C), Blanc(-10°C), Blanc(0°C), Vert(15°C), Jaune(20°C), Rouge(30°C)
+// Transition alpha du violet vers le noir pour les températures très froides
 function getTemperatureGlowColor(tempC) {
     // Points de référence : [température, couleur RGB]
     const colorPoints = [
-        [-70, { r: 128, g: 0, b: 255 }],    // Violet à -70°C
-        [-40, { r: 0, g: 0, b: 255 }],      // Bleu à -40°C
-        [-10, { r: 255, g: 255, b: 255 }],  // Blanc à -10°C (remplace cyan)
-        [0, { r: 255, g: 255, b: 255 }],    // Blanc à 0°C
-        [15, { r: 0, g: 255, b: 0 }],       // Vert à 15°C
-        [20, { r: 255, g: 255, b: 0 }],     // Jaune à 20°C
-        [30, { r: 255, g: 0, b: 0 }]        // Rouge à 30°C
+        [-273, { r: 0, g: 0, b: 0 }],       // Noir à -273°C (0K, zéro absolu)
+        [-70, { r: 128, g: 0, b: 255 }],   // Violet à -70°C
+        [-40, { r: 0, g: 0, b: 255 }],     // Bleu à -40°C
+        [-10, { r: 255, g: 255, b: 255 }], // Blanc à -10°C
+        [0, { r: 255, g: 255, b: 255 }],   // Blanc à 0°C
+        [15, { r: 0, g: 255, b: 0 }],      // Vert à 15°C
+        [20, { r: 255, g: 255, b: 0 }],    // Jaune à 20°C
+        [30, { r: 255, g: 0, b: 0 }]       // Rouge à 30°C
     ];
     
     // Si en dehors de la plage, utiliser les couleurs extrêmes
@@ -114,6 +117,19 @@ function getTemperatureGlowColor(tempC) {
             const r = Math.round(color1.r + (color2.r - color1.r) * ratio);
             const g = Math.round(color1.g + (color2.g - color1.g) * ratio);
             const b = Math.round(color1.b + (color2.b - color1.b) * ratio);
+            
+            // Transition alpha du violet vers le noir pour les températures très froides
+            // Entre -273°C et -70°C : alpha diminue progressivement
+            let alpha = 1.0;
+            if (tempC < -70) {
+                // Entre -273°C et -70°C : alpha de 0 à 1
+                const alphaRatio = (tempC - (-273)) / (-70 - (-273));
+                alpha = Math.max(0, Math.min(1, alphaRatio));
+            }
+            
+            if (alpha < 1.0) {
+                return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})`;
+            }
             return `rgb(${r}, ${g}, ${b})`;
         }
     }
@@ -1131,10 +1147,7 @@ function updateLegend(data) {
     if (grid && window.PLANCK_TEMPERATURES) {
         grid.innerHTML = '';
         
-        // Configuration de la grille : 2 colonnes (4 éléments dans la première)
-        grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = '1fr 1fr';
-        grid.style.gap = '0px 20px'; // 0px entre les lignes, 20px entre les colonnes
+        // Configuration de la grille : déjà définie dans le CSS
         
         // Trier les températures par ordre croissant
         const sortedTemps = [...window.PLANCK_TEMPERATURES].sort((a, b) => a - b);
@@ -1215,10 +1228,11 @@ function updateLegend(data) {
             
             patternContainer.appendChild(svgContainer);
             
-            // K à côté (normal)
+            // K à côté (normal) - toujours afficher .0K même si entier
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
-            labelSpan.textContent = `${T}K`;
+            labelSpan.style.color = 'cyan';
+            labelSpan.textContent = `${T.toFixed(1)}K`;
             
             item.appendChild(patternContainer);
             item.appendChild(labelSpan);
@@ -1315,7 +1329,7 @@ function updateLegend(data) {
             
             patternContainer.appendChild(svgContainer);
             
-            // K à côté (normal)
+            // K à côté (normal) - toujours afficher .0K même si entier
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
             labelSpan.style.color = 'cyan';

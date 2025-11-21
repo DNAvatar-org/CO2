@@ -1091,9 +1091,45 @@ function wavelengthToColorReal(lambda_m, lambda_range_min, lambda_range_max) {
     return Hz2RGB(freq_10_14);
 }
 
-// Fonction principale : utilise uniquement les vraies longueurs d'onde
+// Variable globale pour choisir l'algorithme de conversion couleur
+// true = algorithme log (wavelengthToColorReal), false = algorithme if (wavelengthToRGB)
+window.useLogColorAlgorithm = true;
+
+// Fonction principale : utilise l'algorithme sélectionné
 function wavelengthToColor(lambda_m, lambda_range_min, lambda_range_max) {
-    return wavelengthToColorReal(lambda_m, lambda_range_min, lambda_range_max);
+    if (window.useLogColorAlgorithm) {
+        // Algorithme log (mon graph) : conversion logarithmique complète
+        return wavelengthToColorReal(lambda_m, lambda_range_min, lambda_range_max);
+    } else {
+        // Algorithme if (ton graph) : if pour le visible, log pour l'IR, noir pour l'UV
+        const lambda_um = lambda_m * 1e6;
+        const lambda_nm = lambda_m * 1e9;
+        
+        // Avant l'UV (< 380 nm) : toujours noir
+        if (lambda_nm < 380) {
+            return [0, 0, 0];
+        }
+        
+        // Si dans le spectre visible (380-789 nm), utiliser les if
+        if (lambda_nm >= 380 && lambda_nm <= 789) {
+            const [r, g, b] = wavelengthToRGB(lambda_nm);
+            // S'assurer qu'il n'y a pas de valeurs négatives
+            return [Math.max(0, r), Math.max(0, g), Math.max(0, b)];
+        }
+        
+        // Pour l'IR (lambda_nm > 789), utiliser la conversion log
+        // mais condensée : log_lambda = log10(lambda_um), hz = 1598.5 / (log_lambda + 2.026)
+        if (lambda_um <= 1) {
+            return [0, 0, 0]; // Point singulier : invisible
+        }
+        
+        const log_lambda = Math.log10(lambda_um);
+        const effacement_debut = 30;
+        const hz = 1598.5 / (log_lambda + 2.026);
+        const freq_10_14 = (hz - effacement_debut) / 100;
+        
+        return Hz2RGB(freq_10_14);
+    }
 }
 
 // Variable globale pour suivre l'état de convergence et la précision cible
