@@ -204,50 +204,6 @@ h1 {
 .button-container,
 .reference-container,
 .plot-container-wrapper,
-.flux-diagram {
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-/* Police spécifique pour flux-diagram */
-.flux-diagram {
-    font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
-}
-
-.synthese-wrapper {
-    display: block;
-    /* Divs indépendantes, pas de flex */
-}
-
-.synthese_EdS {
-    display: none;
-    /* Cachée car intégrée dans l'organigramme */
-}
-
-.synthese_Temp {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-    position: absolute;
-    bottom: 0;
-    left: 10px;
-    padding: 5px 10px;
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
-    z-index: 1000;
-}
-
-@media (max-width: 1200px) {
-
-    .synthese_EdS,
-    .synthese_Temp {
-        width: 100%;
-    }
-}
 
 .reference-toggle {
     width: 100%;
@@ -670,61 +626,6 @@ h1 {
 }
 
 /* Boutons du flux : même style que les boutons radio mais pour checkboxes */
-.flux-diagram .btn {
-    font-size: 24px;
-    background: none !important; /* Pas de fond */
-    border: none !important; /* Pas de border */
-    border-radius: 50%;
-    cursor: pointer;
-    padding: 5px;
-    transition: filter 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    position: relative;
-    /* Par défaut : noir et blanc avec contour blanc autour du logo */
-    filter: grayscale(100%);
-    /* Contour blanc autour du logo (emoji) - ne change pas au rollover */
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                 0 0 4px rgba(255, 255, 255, 0.7),
-                 0 0 6px rgba(255, 255, 255, 0.5);
-}
-
-/* Bouton du flux activé (checked) : couleur avec contour vert */
-.flux-diagram .btn.checked {
-    filter: grayscale(0%); /* Couleur normale */
-    /* Contour vert autour du logo - ne change pas au rollover */
-    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-                 0 0 4px rgba(0, 255, 0, 0.7),
-                 0 0 6px rgba(0, 255, 0, 0.5),
-                 0 0 8px rgba(0, 255, 0, 0.3);
-}
-
-/* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
-.flux-diagram .btn:hover {
-    /* Si non activé : swap vers couleur, contour reste blanc */
-    filter: grayscale(0%);
-}
-
-.flux-diagram .btn.checked:hover {
-    /* Si activé : swap vers noir et blanc, contour reste vert */
-    filter: grayscale(100%);
-}
-
-/* Boutons désactivés (en époque Corps noir) */
-.flux-diagram .btn.disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-    filter: grayscale(100%);
-    text-shadow: 0 0 2px rgba(128, 128, 128, 0.5),
-                 0 0 4px rgba(128, 128, 128, 0.3);
-}
-
-.flux-diagram .btn.disabled:hover {
-    filter: grayscale(100%); /* Pas de changement au rollover si désactivé */
-}
 
 .epoch-date {
     font-size: 8px;
@@ -757,10 +658,6 @@ h1 {
     align-items: center;
 }
 
-.controle-simulation-title {
-    font-size: 14px;
-    font-weight: bold;
-}
 
 .info-time {
     font-weight: bold;
@@ -1468,42 +1365,11 @@ h1 {
    ========================================================================== */
 
 /* Flèches lumineuses */
-.flux-arrow {
-    filter: drop-shadow(0 0 3px currentColor);
-}
-
-/* Pointe de flèche lumineuse */
-.flux-arrow>div {
-    filter: drop-shadow(0 0 2px currentColor);
-}
-
-/* Étiquettes lumineuses sur fond sombre */
-/* .flux-label-blue supprimé - utiliser .flux-label avec couleur par défaut */
-
-/* Cercles de fond avec lueur */
-.flux-circle-bg {
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(2px);
-    /* Léger flou pour l'effet verre */
-}
-
-/* Radiations (sphères concentriques) lumineuses */
-.flux-sphere {
-    box-shadow: 0 0 5px currentColor;
-    filter: drop-shadow(0 0 2px currentColor);
-}
 
 /* ==========================================================================
    Debug Interface & Modes
    ========================================================================== */
 
-/* No Blur Mode */
-body.no-blur .flux-arrow,
-body.no-blur .flux-sphere {
-    text-shadow: none !important;
-    filter: none !important;
-    backdrop-filter: none !important;
-}
 
 /* Mode Dark - Couleur de texte par défaut vert sur fond noir */
 body.mode-dark {
@@ -1520,9 +1386,6 @@ body.mode-dark .title-container,
 body.mode-dark .timeline-display,
 body.mode-dark .button-container,
 body.mode-dark .reference-container,
-body.mode-dark .flux-diagram {
-    background: rgba(0, 0, 0, 0.2) !important;
-}
 
 /* Mode Dark - Bordures relief pour divGlass */
 body.mode-dark .divGlass {
@@ -1538,11 +1401,6 @@ body.mode-dark .divGlass {
     background: #FFFFFF10 !important;
 }
 
-body.mode-dark .synthese_Temp {
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
-}
 
 /* Mode Dark - Légendes 
 body.mode-dark .legend-container,

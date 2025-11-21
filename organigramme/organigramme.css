@@ -62,6 +62,10 @@
     /* Pas de z-index : l'ordre DOM détermine la superposition */
     cursor: pointer;
     transition: transform 0.2s ease;
+    /* Effets visuels supplémentaires */
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(2px);
+    /* Léger flou pour l'effet verre */
 }
 
 /* Effet de trou transparent pour les nœuds espace */
@@ -144,11 +148,20 @@
     background: none;
     pointer-events: none;
     aspect-ratio: 1 / 1; /* Forcer un ratio 1:1 pour maintenir les cercles parfaits */
+    /* Effets visuels supplémentaires */
+    box-shadow: 0 0 5px currentColor;
+    filter: drop-shadow(0 0 2px currentColor);
 }
 .flux-arrow {
     position: absolute;
     background: #667eea;
     z-index: 1;
+    filter: drop-shadow(0 0 3px currentColor);
+}
+
+/* Pointe de flèche lumineuse */
+.flux-arrow>div {
+    filter: drop-shadow(0 0 2px currentColor);
 }
 .flux-rectangle {
     border-radius: 8px;
@@ -196,18 +209,12 @@
 /* Style pour les cellules de boutons */
 .flux-button-cell {
     cursor: pointer;
-    /* Appliquer le style des boutons radio (même que .epoch-btn) */
-    font-size: 24px;
-    background: none !important;
-    border: none !important;
-    border-radius: 50%;
+    /* Ne pas modifier display: grid de la cellule, garder la structure de grille */
+}
+
+/* Appliquer les styles visuels au cercle de fond des boutons */
+.flux-button-cell .flux-circle-bg {
     transition: filter 0.3s ease, text-shadow 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 50px;
-    height: 50px;
-    position: relative;
     /* Par défaut : noir et blanc avec contour blanc */
     filter: grayscale(100%);
     text-shadow: 0 0 2px rgba(255, 255, 255, 0.8), 
@@ -215,11 +222,11 @@
                  0 0 6px rgba(255, 255, 255, 0.4);
 }
 
-.flux-button-cell:hover {
+.flux-button-cell:hover .flux-circle-bg {
     filter: grayscale(0%);
 }
 
-.flux-button-cell.checked {
+.flux-button-cell.checked .flux-circle-bg {
     filter: grayscale(0%);
     text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
                  0 0 4px rgba(0, 255, 0, 0.7),
@@ -227,7 +234,7 @@
                  0 0 8px rgba(0, 255, 0, 0.3);
 }
 
-.flux-button-cell.checked:hover {
+.flux-button-cell.checked:hover .flux-circle-bg {
     filter: grayscale(100%);
 }
 
@@ -236,5 +243,129 @@
     position: absolute;
     pointer-events: none;
     /* Styles définis inline dans le JS */
+}
+
+/* ==========================================================================
+   Styles supplémentaires pour flux-diagram (depuis style.css)
+   ========================================================================== */
+
+.flux-diagram {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.synthese-wrapper {
+    display: block;
+    /* Divs indépendantes, pas de flex */
+}
+
+.synthese_EdS {
+    display: none;
+    /* Cachée car intégrée dans l'organigramme */
+}
+
+.synthese_Temp {
+    display: flex;
+    align-items: center;
+    font-family: 'ProggyDotted';
+    justify-content: flex-start;
+    gap: 8px;
+    width: 120px;
+    position: absolute;
+    bottom: 0;
+    left: 10px;
+    padding: 5px 10px;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    z-index: 1000;
+}
+
+.controle-simulation-title {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Boutons dans le flux-diagram */
+.flux-diagram .btn {
+    font-size: 24px;
+    background: none !important; /* Pas de fond */
+    border: none !important; /* Pas de border */
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 5px;
+    transition: filter 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    position: relative;
+    /* Par défaut : noir et blanc avec contour blanc autour du logo */
+    filter: grayscale(100%);
+    /* Contour blanc autour du logo (emoji) - ne change pas au rollover */
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5);
+}
+
+/* Bouton du flux activé (checked) : couleur avec contour vert */
+.flux-diagram .btn.checked {
+    filter: grayscale(0%); /* Couleur normale */
+    /* Contour vert autour du logo - ne change pas au rollover */
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3);
+}
+
+/* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
+.flux-diagram .btn:hover {
+    /* Si non activé : swap vers couleur, contour reste blanc */
+    filter: grayscale(0%);
+}
+
+.flux-diagram .btn.checked:hover {
+    /* Si activé : swap vers noir et blanc, contour reste vert */
+    filter: grayscale(100%);
+}
+
+/* Boutons désactivés (en époque Corps noir) */
+.flux-diagram .btn.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(100%);
+    text-shadow: 0 0 2px rgba(128, 128, 128, 0.5),
+                 0 0 4px rgba(128, 128, 128, 0.3);
+}
+
+.flux-diagram .btn.disabled:hover {
+    filter: grayscale(100%); /* Pas de changement au rollover si désactivé */
+}
+
+
+/* ==========================================================================
+   Modes et états spéciaux
+   ========================================================================== */
+
+/* No Blur Mode */
+body.no-blur .flux-arrow,
+body.no-blur .flux-sphere {
+    text-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+}
+
+/* Mode Dark */
+body.mode-dark .flux-diagram {
+    background: rgba(0, 0, 0, 0.2) !important;
+}
+
+body.mode-dark .synthese_Temp {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 

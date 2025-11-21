@@ -18,6 +18,9 @@ const arrowMarginBottom = 15; // Marge en bas des flèches
 const cellHeight = 110;
 const cellHalfHeight = cellHeight / 2; // 55px
 
+const radiusTerre = 100;
+const radiusAtmosphere = 160;
+const circleMiddleRadius=(radiusTerre+radiusAtmosphere)/2;
 // 4 tailles d'espacement pour les flèches
 const spacingSizes = {
     short: 10,    // Court (par défaut, pas de label)
@@ -41,11 +44,11 @@ const nodes = [
 
     { id: 'espace1', logo: '', x: centerX+130, y: centerY-200, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null },
 
-    { id: 'albedo', logo: '🏐', x: centerX+0.75, y: earthCenterY+2, radius: 160, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: 'Albédo', radiation: { numCircles: 8, maxRadius: 250, openingAngle: 345, color: 'white', rotation: 295 }, zIndex: 10, logoScale: 0.1 },
+    { id: 'albedo', logo: '🏐', x: centerX+0.75, y: earthCenterY+2, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: 'Albédo', radiation: { numCircles: 8, maxRadius: 250, openingAngle: 345, color: 'white', rotation: 295 }, zIndex: 10, logoScale: 0.1 },
 
     { id: 'noyau', logo: '🌕', x: centerX-2, y: earthCenterY-1, radius: 30, fillColor: 'rgba(255, 69, 0, 0.5)', strokeSize: 7, strokeColor: '#ff5500', left: [], right: [], top: ['Géothermie'], bottom: '~5700 K', tooltip: 'Noyau', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 0 } , zIndex: 20, logoScale: 0.8 },
 
-    { id: 'surface', logo: '🌍', x: centerX, y: earthCenterY, radius: 100, fillColor: 'rgba(0, 200, 255, 0.3)', strokeColor: '#00eeff', strokeSize: 1, left: [], right: [], top: '', bottom: '', tooltip: 'Surface', radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' }, zIndex: 15, logoScale: 0.95, logoOffsetY: 5 },
+    { id: 'surface', logo: '🌍', x: centerX, y: earthCenterY, radius: radiusTerre, fillColor: 'rgba(0, 200, 255, 0.3)', strokeColor: '#00eeff', strokeSize: 1, left: [], right: [], top: '', bottom: '', tooltip: 'Surface', radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' }, zIndex: 15, logoScale: 0.95, logoOffsetY: 5 },
     
     { id: 'effetSerre', logo: '', x: centerX - 125, y: earthCenterY, radius, fillImage: '', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Effet de Serre', radiation: null, rectangle: { width: 130, height: 200, factors: [//Athmosphère<br>Effet de Serre
         { icon: '🌵', label: 'CO₂', formula: 'CO₂' },
@@ -55,7 +58,17 @@ const nodes = [
 
     { id: 'espace2', logo: '🛰', x: centerX+80, y: centerY+300, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: ['Observation'], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null },
 
-    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX - 45, y: earthCenterY+140, radius: 10, logoScale: 1.0, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'red', strokeSize: 1, left: ['Forçage<br>Radiatif'], right: ['0.00<br>W/m²'], top: '', bottom: '', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } }
+    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX - 45, y: earthCenterY+140, radius: 10, logoScale: 1.0, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'red', strokeSize: 1, left: ['Forçage<br>Radiatif'], right: ['0.00<br>W/m²'], top: '', bottom: '', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
+    
+    // Boutons
+    //+circleMiddleRadius*Math.cos(135*Math.PI/180)
+    //+circleMiddleRadius*Math.sin(135*Math.PI/180)
+    //style: 'button',
+
+    { id: 'co2', style: 'button', logo: '🌵', x: centerX-circleMiddleRadius*0.7, y: earthCenterY-circleMiddleRadius*0.7, radius: 25, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'CO₂', radiation: { numCircles: 4, maxRadius: 75, openingAngle: 350 }, zIndex: 20, logoScale: 0.8 },
+    { id: 'methane', style: 'button', logo: '⛽', x: centerX-circleMiddleRadius*0.7, y: earthCenterY+circleMiddleRadius*0.7, radius: 25, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'CH₄', radiation: { numCircles: 4, maxRadius: 75, openingAngle: 350 }, zIndex: 20, logoScale: 0.8 },
+    { id: 'h2o', style: 'button', logo: '💧', x: centerX-circleMiddleRadius, y: earthCenterY, radius: 25, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'H₂O', radiation: { numCircles: 4, maxRadius: 75, openingAngle: 350 }, zIndex: 20, logoScale: 0.8 },
+    { id: 'albedo-btn', style: 'button', logo: '🏐', x: centerX+circleMiddleRadius, y: earthCenterY, radius: 25, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'Albédo', radiation: { numCircles: 4, maxRadius: 75, openingAngle: 350 }, zIndex: 20, logoScale: 0.8 }
 ];
 
 // Définition du graphe : arcs (flèches)
@@ -69,50 +82,3 @@ const arcs = [
     { from: 'albedo', to: 'espace2', label: { name: '', txt1: ''}, color: '#ff5500' },
     { from: 'reemis', to: 'surface', label: { name: '', size: '', txt1: '', relatif:'bottom' } }
 ];
-
-// Configuration des boutons autour du cercle albedo
-// Positionnés de haut en bas à gauche et à droite
-// À gauche : ordre d'importance pour le réchauffement (plus important en haut)
-const buttonConfigs = [
-    { 
-        id: 'btn-co2', 
-        angle: -135,       // Haut-gauche (CO2 = le plus important)
-        logo: '🌵', 
-        title: 'CO₂',
-        left: [], 
-        right: [], // Labels à ajouter plus tard (% et W/m²)
-        top: [], 
-        bottom: []
-    },
-    { 
-        id: 'btn-methane', 
-        angle: -160,       // Gauche (milieu) (CH4 = deuxième)
-        logo: '⛽', 
-        title: 'CH₄',
-        left: [], 
-        right: [], // Labels à ajouter plus tard (% et W/m²)
-        top: [], 
-        bottom: []
-    },
-    { 
-        id: 'btn-h2o', 
-        angle: 225,       // Bas-gauche (H2O = troisième)
-        logo: '💧', 
-        title: 'H₂O',
-        left: [], 
-        right: [], // Labels à ajouter plus tard (% et W/m²)
-        top: [], 
-        bottom: []
-    },
-    { 
-        id: 'btn-albedo', 
-        angle: 315,       // Haut-droite
-        logo: '🏐', 
-        title: 'Albédo',
-        left: [], 
-        right: [], // Labels à ajouter plus tard (% et W/m²)
-        top: [], 
-        bottom: []
-    }
-];
-
