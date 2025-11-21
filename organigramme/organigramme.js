@@ -1,12 +1,96 @@
 // File: organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.0
+// Version 1.0.1
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
 //   - Initial version: extraction du code de génération du diagramme depuis demo_flux_energetique_01.html
+//   - Added custom tooltip system with 0.5s delay
+
+// Fonction pour ajouter un tooltip personnalisé avec délai de 0.5s
+function addCustomTooltip(element, text) {
+    if (!text || text.trim() === '') return; // Ne pas créer de tooltip si le texte est vide
+    
+    let tooltipTimeout = null;
+    let tooltipElement = null;
+    
+    // Créer l'élément tooltip
+    const createTooltip = () => {
+        if (tooltipElement) return; // Déjà créé
+        
+        tooltipElement = document.createElement('div');
+        tooltipElement.className = 'flux-custom-tooltip';
+        tooltipElement.innerHTML = text; // Utiliser innerHTML pour supporter les balises HTML comme <br>
+        document.body.appendChild(tooltipElement);
+    };
+    
+    // Afficher le tooltip
+    const showTooltip = (e) => {
+        // Annuler le timeout précédent si présent
+        if (tooltipTimeout) {
+            clearTimeout(tooltipTimeout);
+            tooltipTimeout = null;
+        }
+        
+        // Délai de 0.5s avant d'afficher
+        tooltipTimeout = setTimeout(() => {
+            if (!tooltipElement) {
+                createTooltip();
+            }
+            
+            // Positionner le tooltip
+            const rect = element.getBoundingClientRect();
+            const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+            const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+            
+            tooltipElement.style.left = (rect.left + rect.width / 2 + scrollX) + 'px';
+            tooltipElement.style.top = (rect.top - 10 + scrollY) + 'px';
+            tooltipElement.style.transform = 'translate(-50%, -100%)';
+            tooltipElement.style.opacity = '1';
+            tooltipElement.style.visibility = 'visible';
+        }, 500); // 0.5 secondes
+    };
+    
+    // Cacher le tooltip
+    const hideTooltip = () => {
+        if (tooltipTimeout) {
+            clearTimeout(tooltipTimeout);
+            tooltipTimeout = null;
+        }
+        if (tooltipElement) {
+            tooltipElement.style.opacity = '0';
+            tooltipElement.style.visibility = 'hidden';
+        }
+    };
+    
+    // Supprimer le tooltip du DOM
+    const removeTooltip = () => {
+        if (tooltipElement && tooltipElement.parentNode) {
+            tooltipElement.parentNode.removeChild(tooltipElement);
+            tooltipElement = null;
+        }
+    };
+    
+    // Ajouter les événements
+    element.addEventListener('mouseenter', showTooltip);
+    element.addEventListener('mouseleave', () => {
+        hideTooltip();
+        // Supprimer après l'animation de fade-out
+        setTimeout(removeTooltip, 200);
+    });
+    element.addEventListener('mousemove', (e) => {
+        if (tooltipElement && tooltipElement.style.visibility === 'visible') {
+            const rect = element.getBoundingClientRect();
+            const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+            const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+            
+            tooltipElement.style.left = (rect.left + rect.width / 2 + scrollX) + 'px';
+            tooltipElement.style.top = (rect.top - 10 + scrollY) + 'px';
+        }
+    });
+}
 
 // Fonction pour créer un rectangle avec des facteurs
 function createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage = null, strokeSize = 4) {
@@ -48,6 +132,8 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
         logoBg.style.fontSize = fontSize + 'px';
         logoBg.style.lineHeight = '1';
         logoBg.textContent = fillImage;
+        // Appliquer la police personnalisée CO2CustomIcons aux logos
+        logoBg.style.fontFamily = "'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
         rect.appendChild(logoBg);
     } else {
         // Couleur unie
@@ -70,6 +156,130 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
     
     cell.appendChild(rect);
     return rect;
+}
+
+// Fonction helper pour extraire le texte d'un label (string ou objet { text, dataId })
+function getLabelText(label) {
+    if (!label) return '';
+    if (typeof label === 'string') return label;
+    if (typeof label === 'object' && label.text) return label.text;
+    return String(label);
+}
+
+// Fonction helper pour obtenir le dataId d'un label (si c'est un objet)
+function getLabelDataId(label) {
+    if (!label || typeof label !== 'object') return null;
+    return label.dataId || null;
+}
+
+// Fonction helper pour déterminer si une étiquette doit être grise
+// (valeur à 0 ou bouton inactif)
+function shouldLabelBeGray(text, nodeId, cell = null) {
+    if (!text) return false;
+    // Extraire le texte si c'est un objet
+    const textStr = getLabelText(text);
+    
+    // Cas spécial : label albedo (contient "Albédo:" et des emojis ⛅ et ❄️)
+    if (textStr.includes('Albédo:') && (textStr.includes('⛅') || textStr.includes('❄️'))) {
+        // Extraire les valeurs de nuages et glace
+        const cloudMatch = textStr.match(/⛅(\d+)%/);
+        const iceMatch = textStr.match(/❄️(\d+)%/);
+        
+        const cloudPercent = cloudMatch ? parseInt(cloudMatch[1]) : 0;
+        const icePercent = iceMatch ? parseInt(iceMatch[1]) : 0;
+        
+        // Si les deux valeurs sont à 0%, mettre en gris
+        if (cloudPercent === 0 && icePercent === 0) {
+            return true;
+        }
+        
+        // Si le bouton albedo est désactivé (pas de classe checked), mettre en gris
+        const albedoButton = document.getElementById('albedo-btn');
+        if (albedoButton && !albedoButton.classList.contains('checked')) {
+            return true;
+        }
+        
+        // Vérifier aussi la cellule créée
+        const albedoCell = createdCells['albedo-btn'];
+        if (albedoCell && !albedoCell.classList.contains('checked')) {
+            return true;
+        }
+    }
+    
+    // Vérifier si le texte contient W/m², W/m2 ou %
+    const hasWattPerM2 = textStr.includes('W/m²') || textStr.includes('W/m2');
+    const hasPercent = textStr.includes('%');
+    
+    if (!hasWattPerM2 && !hasPercent) return false;
+    
+    // Extraire la valeur numérique (peut être "0", "0.00", "0.0", etc.)
+    // Supprimer les balises HTML et extraire les nombres
+    const textWithoutHTML = textStr.replace(/<[^>]*>/g, '').trim();
+    // Chercher un nombre (peut être négatif, avec décimales)
+    // Pattern amélioré pour capturer "0.00", "0.0", "0", etc.
+    const numberMatch = textWithoutHTML.match(/(-?\d+\.?\d*)/);
+    if (numberMatch) {
+        const value = parseFloat(numberMatch[1]);
+        // Si la valeur est 0 (ou très proche de 0), mettre en gris
+        if (Math.abs(value) < 0.001) {
+            return true;
+        }
+    }
+    
+    // Vérifier si c'est un bouton inactif
+    if (nodeId) {
+        const node = nodes.find(n => n.id === nodeId);
+        if (node && node.type === 'button') {
+            // Vérifier si la cellule a la classe 'checked' (bouton actif)
+            if (cell) {
+                if (!cell.classList.contains('checked')) {
+                    return true; // Bouton inactif
+                }
+            } else {
+                // Si pas de cellule, chercher la cellule créée ou le bouton HTML
+                const createdCell = createdCells[nodeId];
+                if (createdCell) {
+                    if (!createdCell.classList.contains('checked')) {
+                        return true; // Bouton inactif
+                    }
+                } else {
+                    // Vérifier le bouton HTML original
+                    const originalButton = document.getElementById(nodeId);
+                    if (originalButton && !originalButton.classList.contains('checked')) {
+                        return true; // Bouton inactif
+                    }
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+
+// Fonction pour mettre à jour les classes CSS d'un label après modification dynamique
+function updateLabelClasses(label, nodeId = null) {
+    if (!label) return;
+    
+    const text = label.innerHTML || label.textContent || '';
+    
+    // Retirer les classes existantes
+    label.classList.remove('watt-per-m2', 'zero-value');
+    
+    // Si le texte contient W/m² ou W/m2
+    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+        if (shouldLabelBeGray(text, nodeId, null)) {
+            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
+            label.classList.add('zero-value');
+        } else {
+            // Valeur non nulle : ajouter watt-per-m2 pour le rouge
+            label.classList.add('watt-per-m2');
+        }
+    }
+    
+    // Si le texte contient % et valeur 0 ou bouton inactif
+    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
+        label.classList.add('zero-value');
+    }
 }
 
 // Fonction pour créer une cellule avec un tableau 3x3
@@ -201,6 +411,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         const logoSpan = document.createElement('span');
         logoSpan.textContent = logo;
         logoSpan.style.display = 'inline-block';
+        // Appliquer la police personnalisée CO2CustomIcons aux logos
+        logoSpan.style.fontFamily = "'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
         // Appliquer logoOffsetY au logo lui-même, scalé proportionnellement
         if (logoOffsetY !== 0) {
             const scaledLogoOffsetY = logoOffsetY * logoScale;
@@ -226,12 +438,17 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             });
         });
         
+        // Ajouter tooltip personnalisé sur le cercle/logo si présent (au lieu de la cellule entière)
+        if (tooltip) {
+            addCustomTooltip(circleBg, tooltip);
+        }
+        
         cell.appendChild(circleBg);
-    }
-    
-    // Ajouter tooltip sur la cellule si présent
-    if (tooltip) {
-        cell.title = tooltip;
+    } else {
+        // Si pas de cercle, ajouter tooltip personnalisé sur la cellule (fallback)
+        if (tooltip) {
+            addCustomTooltip(cell, tooltip);
+        }
     }
     
     // Créer les 9 cases de la grille (par-dessus le cercle)
@@ -250,7 +467,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             gridItem.style.gridColumn = col + 1;
             gridItem.style.gridRow = row + 1;
             gridItem.style.position = 'relative';
-            gridItem.style.zIndex = 1000; // Étiquettes TOUJOURS au-dessus de tout (flèches max ~26)
+            gridItem.style.zIndex = 10000; // Étiquettes TOUJOURS au-dessus de tout (flèches max ~26)
             
             // [1,1] = Vide (le logo est dans le cercle en arrière-plan)
             // Les autres cases contiennent les étiquettes
@@ -260,9 +477,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 // Si 2 éléments, aligner en bas pour entourer le trait du cercle, sinon centrer
                 labelContainer.className = 'flux-label-container ' + (top.length === 2 ? 'flux-label-container-bottom' : 'flux-label-container-center');
                 
-                top.forEach(text => {
+                top.forEach(labelData => {
+                    const text = getLabelText(labelData);
+                    const dataId = getLabelDataId(labelData);
                     const label = document.createElement('div');
                     label.className = 'flux-label';
+                    if (dataId) label.setAttribute('data-id', dataId);
                     // Si c'est un bouton, ajouter la classe buttonData
                     if (nodeId) {
                         const node = nodes.find(n => n.id === nodeId);
@@ -270,9 +490,22 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                             label.classList.add('buttonData');
                         }
                     }
+                    // Si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0 ou bouton inactif)
+                    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+                        if (shouldLabelBeGray(text, nodeId, null)) {
+                            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
+                            label.classList.add('zero-value');
+                        } else {
+                            label.classList.add('watt-per-m2');
+                        }
+                    }
+                    // Si le texte contient % et valeur 0 ou bouton inactif, s'assurer qu'il est gris
+                    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
+                        label.classList.add('zero-value');
+                    }
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
-                    label.style.zIndex = '1001'; // Encore plus haut que le container
+                    label.style.zIndex = '10001'; // Encore plus haut que le container
                     labelContainer.appendChild(label);
                 });
                 
@@ -284,9 +517,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 // Si 2 éléments, aligner en haut pour entourer le trait du cercle, sinon centrer
                 labelContainer.className = 'flux-label-container ' + (bottom.length === 2 ? 'flux-label-container-top' : 'flux-label-container-center');
                 
-                bottom.forEach(text => {
+                bottom.forEach(labelData => {
+                    const text = getLabelText(labelData);
+                    const dataId = getLabelDataId(labelData);
                     const label = document.createElement('div');
                     label.className = 'flux-label';
+                    if (dataId) label.setAttribute('data-id', dataId);
                     // Si c'est un bouton, ajouter la classe buttonData
                     if (nodeId) {
                         const node = nodes.find(n => n.id === nodeId);
@@ -294,9 +530,22 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                             label.classList.add('buttonData');
                         }
                     }
+                    // Si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0 ou bouton inactif)
+                    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+                        if (shouldLabelBeGray(text, nodeId, null)) {
+                            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
+                            label.classList.add('zero-value');
+                        } else {
+                            label.classList.add('watt-per-m2');
+                        }
+                    }
+                    // Si le texte contient % et valeur 0 ou bouton inactif, s'assurer qu'il est gris
+                    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
+                        label.classList.add('zero-value');
+                    }
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
-                    label.style.zIndex = '1001'; // Encore plus haut que le container
+                    label.style.zIndex = '10001'; // Encore plus haut que le container
                     labelContainer.appendChild(label);
                 });
                 
@@ -311,11 +560,14 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 labelContainer.style.alignItems = 'flex-end'; // À gauche (col === 0)
                 labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
                 labelContainer.style.position = 'relative'; // Créer un stacking context
-                labelContainer.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches
+                labelContainer.style.zIndex = '10000'; // TOUJOURS au-dessus des flèches
                 
-                left.forEach(text => {
+                left.forEach(labelData => {
+                    const text = getLabelText(labelData);
+                    const dataId = getLabelDataId(labelData);
                     const label = document.createElement('div');
                     label.className = 'flux-label';
+                    if (dataId) label.setAttribute('data-id', dataId);
                     // Si c'est un bouton, ajouter la classe buttonData
                     if (nodeId) {
                         const node = nodes.find(n => n.id === nodeId);
@@ -323,9 +575,22 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                             label.classList.add('buttonData');
                         }
                     }
+                    // Si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0 ou bouton inactif)
+                    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+                        if (shouldLabelBeGray(text, nodeId, null)) {
+                            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
+                            label.classList.add('zero-value');
+                        } else {
+                            label.classList.add('watt-per-m2');
+                        }
+                    }
+                    // Si le texte contient % et valeur 0 ou bouton inactif, s'assurer qu'il est gris
+                    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
+                        label.classList.add('zero-value');
+                    }
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
-                    label.style.zIndex = '1001'; // Encore plus haut que le container
+                    label.style.zIndex = '10001'; // Encore plus haut que le container
                     labelContainer.appendChild(label);
                 });
                 
@@ -340,11 +605,14 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 labelContainer.style.alignItems = 'flex-start'; // À droite (col === 2)
                 labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
                 labelContainer.style.position = 'relative'; // Créer un stacking context
-                labelContainer.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches
+                labelContainer.style.zIndex = '10000'; // TOUJOURS au-dessus des flèches
                 
-                right.forEach(text => {
+                right.forEach(labelData => {
+                    const text = getLabelText(labelData);
+                    const dataId = getLabelDataId(labelData);
                     const label = document.createElement('div');
                     label.className = 'flux-label';
+                    if (dataId) label.setAttribute('data-id', dataId);
                     // Si c'est un bouton, ajouter la classe buttonData
                     if (nodeId) {
                         const node = nodes.find(n => n.id === nodeId);
@@ -352,9 +620,22 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                             label.classList.add('buttonData');
                         }
                     }
+                    // Si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0 ou bouton inactif)
+                    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+                        if (shouldLabelBeGray(text, nodeId, null)) {
+                            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
+                            label.classList.add('zero-value');
+                        } else {
+                            label.classList.add('watt-per-m2');
+                        }
+                    }
+                    // Si le texte contient % et valeur 0 ou bouton inactif, s'assurer qu'il est gris
+                    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
+                        label.classList.add('zero-value');
+                    }
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
-                    label.style.zIndex = '1001'; // Encore plus haut que le container
+                    label.style.zIndex = '10001'; // Encore plus haut que le container
                     labelContainer.appendChild(label);
                 });
                 
@@ -403,16 +684,38 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
     
     const labelPositions = [];
     
-    const createLabel = (text, posX, posY, isName = false, size = null, labelType = '') => {
-        if (!text) return null;
+    const createLabel = (labelData, posX, posY, isName = false, size = null, labelType = '') => {
+        if (!labelData) return null;
+        const text = getLabelText(labelData);
+        const dataId = getLabelDataId(labelData);
         const label = document.createElement('div');
         label.className = 'flux-label'; // Tous les textes des flèches
+        if (dataId) label.setAttribute('data-id', dataId);
+        // Cas spécial : label albedo (contient "Albédo:" et des emojis)
+        if (text && text.includes('Albédo:') && (text.includes('⛅') || text.includes('❄️'))) {
+            if (shouldLabelBeGray(text, null, null)) {
+                label.classList.add('zero-value');
+            }
+        }
+        // Si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0)
+        if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+            if (shouldLabelBeGray(text, null, null)) {
+                // Valeur à 0 : ajouter zero-value pour forcer le gris
+                label.classList.add('zero-value');
+            } else {
+                label.classList.add('watt-per-m2');
+            }
+        }
+        // Si le texte contient % et valeur 0, s'assurer qu'il est gris
+        if (text && text.includes('%') && shouldLabelBeGray(text, null, null)) {
+            label.classList.add('zero-value');
+        }
         label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
         label.style.position = 'absolute';
         label.style.left = posX + 'px';
         label.style.top = posY + 'px';
         label.style.transform = 'translate(-50%, -50%)';
-        label.style.zIndex = '1000'; // TOUJOURS au-dessus des flèches (z-index max ~26)
+        label.style.zIndex = '10000'; // TOUJOURS au-dessus des flèches (z-index max ~26)
         // Si le texte contient <br>, permettre les retours à la ligne mais pas le wrapping automatique
         if (text.includes('<br>')) {
             label.style.whiteSpace = 'normal';
@@ -454,9 +757,23 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
     }
     
     // txt2 : entre le milieu et la fin (75% du chemin)
+    // Si name est vide et txt1 est aussi vide, placer txt2 au milieu (50%) au lieu de 75%
     if (labelObj.txt2) {
-        const pos2X = x1 + (x2 - x1) * 0.75;
-        const pos2Y = y1 + (y2 - y1) * 0.75;
+        const nameText = getLabelText(labelObj.name || '');
+        const txt1Text = getLabelText(labelObj.txt1 || '');
+        const hasName = nameText && nameText.trim() !== '';
+        const hasTxt1 = txt1Text && txt1Text.trim() !== '';
+        
+        let pos2X, pos2Y;
+        if (!hasName && !hasTxt1) {
+            // Si name et txt1 sont vides, placer txt2 au milieu
+            pos2X = (x1 + x2) / 2;
+            pos2Y = (y1 + y2) / 2;
+        } else {
+            // Sinon, positionner à 75% comme d'habitude
+            pos2X = x1 + (x2 - x1) * 0.75;
+            pos2Y = y1 + (y2 - y1) * 0.75;
+        }
         createLabel(labelObj.txt2, pos2X, pos2Y, false, labelSize, 'txt2');
     }
     
@@ -1078,8 +1395,12 @@ function generateArrows() {
                     hiddenDistance = labelWidth;
                 }
                 // Si la flèche part vers la droite et qu'il y a des étiquettes à droite
+                // MAIS : pour soleil->geometrie, la flèche part vers la droite mais les étiquettes sont à droite,
+                // donc elles ne masquent pas le début de la flèche (la flèche part du bord gauche du soleil)
                 else if (arrowUnitX > 0.5 && hasRightLabels) {
-                    hiddenDistance = labelWidth;
+                    // Ne pas ajuster si la flèche part vers la droite : les étiquettes à droite ne masquent pas le début
+                    // (elles sont après le point de départ)
+                    hiddenDistance = 0;
                 }
                 // Si la flèche part vers le haut et qu'il y a une étiquette en haut
                 else if (arrowUnitY < -0.5 && hasTopLabel) {
@@ -1280,8 +1601,8 @@ cellOrder.forEach(nodeId => {
         node.logo, 
         node.left || [],
         node.right || [],
-        Array.isArray(node.top) ? node.top : (node.top ? [node.top] : []),
-        Array.isArray(node.bottom) ? node.bottom : (node.bottom ? [node.bottom] : []),
+        Array.isArray(node.top) ? node.top : (node.top && node.top !== '' ? [node.top] : []),
+        Array.isArray(node.bottom) ? node.bottom : (node.bottom && node.bottom !== '' ? [node.bottom] : []),
         node.tooltip || null,
         null, // Pas de radiations ici, on les créera après (étape 8)
         node.rectangle || null,
@@ -1389,8 +1710,8 @@ nodes.forEach(node => {
         node.logo, 
         node.left || [],
         node.right || [],
-        Array.isArray(node.top) ? node.top : (node.top ? [node.top] : []),
-        Array.isArray(node.bottom) ? node.bottom : (node.bottom ? [node.bottom] : []),
+        Array.isArray(node.top) ? node.top : (node.top && node.top !== '' ? [node.top] : []),
+        Array.isArray(node.bottom) ? node.bottom : (node.bottom && node.bottom !== '' ? [node.bottom] : []),
         node.tooltip || null,
         null, // Pas de radiations ici, on les créera après (étape 8)
         node.rectangle || null,
@@ -1577,4 +1898,292 @@ function positionnerBoutonsSurCercleAlbedo() {
 // La fonction positionnerBoutonsSurCercleAlbedo() est maintenant appelée directement
 // après generateArrows() dans le code d'initialisation (étape 10)
 // Plus besoin de setTimeout ou DOMContentLoaded
+
+// Fonction pour générer la timeline depuis la configuration
+function generateTimelineFromConfig() {
+    if (typeof timeline === 'undefined' || !Array.isArray(timeline)) {
+        console.warn('Timeline config not found, using default HTML');
+        return;
+    }
+    
+    const epochsContainer = document.querySelector('.epochs-container');
+    if (!epochsContainer) {
+        console.warn('Timeline container not found');
+        return;
+    }
+    
+    // Vider le conteneur
+    epochsContainer.innerHTML = '';
+    
+    // Générer les éléments depuis la config
+    timeline.forEach(item => {
+        if (item.type === 'epoch') {
+            // Créer un bouton d'époque
+            const button = document.createElement('button');
+            button.className = 'epoch-btn';
+            button.setAttribute('data-epoch', item.name);
+            button.setAttribute('onclick', `setEpoch('${item.name.replace(/'/g, "\\'")}')`);
+            // Ne pas utiliser title natif, utiliser addCustomTooltip à la place
+            button.textContent = item.logo;
+            // Appliquer la police personnalisée CO2CustomIcons aux logos
+            button.style.fontFamily = "'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+            epochsContainer.appendChild(button);
+            
+            // Ajouter le tooltip personnalisé avec délai de 0.5s
+            if (item.title && item.title.trim() !== '') {
+                addCustomTooltip(button, item.title);
+            }
+        } else if (item.type === 'separator') {
+            // Créer un séparateur
+            const separatorItem = document.createElement('div');
+            separatorItem.className = 'epoch-separator-item';
+            
+            const separator = document.createElement('span');
+            separator.className = 'epoch-separator';
+            separator.textContent = '|';
+            
+            const date = document.createElement('span');
+            date.className = 'epoch-date';
+            date.textContent = item.date;
+            
+            separatorItem.appendChild(separator);
+            separatorItem.appendChild(date);
+            epochsContainer.appendChild(separatorItem);
+        }
+    });
+}
+
+// Fonction pour mettre à jour les labels du flux avec les valeurs calculées
+// Appelée pendant le déroulement de l'algorithme (dichotomie)
+function updateFluxLabels(data) {
+    if (!data) return;
+    
+    // Récupérer les valeurs calculées (avec vérifications pour null/undefined)
+    const T0 = (data.T0 !== null && data.T0 !== undefined) ? data.T0 : (data.temp_surface !== null && data.temp_surface !== undefined ? data.temp_surface : 0);
+    const total_flux = (data.total_flux !== null && data.total_flux !== undefined) ? data.total_flux : 0;
+    let albedo = (data.albedo !== null && data.albedo !== undefined) ? data.albedo : 0;
+    const cloud_coverage = (data.cloud_coverage !== null && data.cloud_coverage !== undefined) ? data.cloud_coverage : 0;
+    const co2_ppm = (data.co2_ppm !== null && data.co2_ppm !== undefined) ? data.co2_ppm : 0;
+    const ch4_ppm = (data.ch4_ppm !== null && data.ch4_ppm !== undefined) ? data.ch4_ppm : 0;
+    const h2o_enabled = typeof window !== 'undefined' && window.waterVaporEnabled;
+    
+    // S'assurer que toutes les valeurs numériques sont bien des nombres
+    const T0_num = Number(T0) || 0;
+    const total_flux_num = Number(total_flux) || 0;
+    let albedo_num = Number(albedo) || 0;
+    let cloud_coverage_num = Number(cloud_coverage) || 0;
+    const co2_ppm_num = Number(co2_ppm) || 0;
+    const ch4_ppm_num = Number(ch4_ppm) || 0;
+    
+    // Constantes
+    const SOLAR_CONSTANT = (typeof window !== 'undefined' && window.SOLAR_CONSTANT) || 1366;
+    const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
+    const GEOTHERMIE_FLUX = 0.087; // W/m² (fixe)
+    
+    // Détecter si on est en mode "corps noir" (T0 très basse, < 10K)
+    const isCorpsNoir = T0_num < 10;
+    
+    // En mode "corps noir", forcer l'albedo à 0 (pas d'atmosphère, pas d'eau, pas de glace)
+    if (isCorpsNoir) {
+        albedo_num = 0;
+        // Forcer aussi cloud_coverage à 0 en mode corps noir
+        cloud_coverage_num = 0;
+    }
+    
+    // Calculer les valeurs dynamiques
+    const solar_flux_absorbed = typeof window !== 'undefined' && typeof window.calculateSolarFluxAbsorbed === 'function'
+        ? window.calculateSolarFluxAbsorbed(T0_num, h2o_enabled)
+        : SOLAR_FLUX_AVERAGE * (1 - albedo_num);
+    
+    const flux_reflected = SOLAR_FLUX_AVERAGE * albedo_num;
+    
+    // Calculer la couverture de glace (même logique que calculateAlbedo)
+    // En mode "corps noir" (T0 < 10K), pas d'albedo : pas de nuages, pas de glace
+    let ice_coverage = 0;
+    let cloud_percent = 0;
+    
+    if (isCorpsNoir) {
+        // Corps noir : pas d'albedo (pas d'atmosphère, pas d'eau)
+        ice_coverage = 0;
+        cloud_percent = 0;
+    } else {
+        const T_surface_C = T0_num - 273.15;
+        const volcanoIceReduction = (typeof window !== 'undefined' && window.volcanoIceReduction !== undefined)
+            ? window.volcanoIceReduction / 100
+            : 0; // Réduction en fraction (0 à 1)
+        
+        // Calculer la glace seulement si température < 0°C ET pas en mode corps noir
+        // Limiter à des températures raisonnables (pas en dessous de -100°C pour éviter les valeurs extrêmes)
+        if (T_surface_C < 0 && T_surface_C > -100) {
+            // Même formule que dans calculateAlbedo
+            // À -2.2°C : fraction ≈ 0.7 (70%)
+            // À -10°C : fraction ≈ 0.97 (97%)
+            // À -50°C : fraction ≈ 1 (100%)
+            ice_coverage = Math.min(1, 1 - Math.exp(T_surface_C / 3));
+            // Réduire selon l'effet volcanique
+            ice_coverage = Math.max(0, ice_coverage - volcanoIceReduction);
+        } else if (T_surface_C <= -100) {
+            // Température extrêmement basse (proche du zéro absolu) : pas de glace
+            // À ces températures, l'eau n'existe plus sous forme de glace (sublimation)
+            // EN MODE CORPS NOIR : forcer à 0 car pas d'eau ni d'atmosphère
+            ice_coverage = 0;
+        }
+        
+        // Nuages : utiliser la valeur calculée (déjà à 0 si H2O désactivé ou très froid)
+        cloud_percent = Math.round(cloud_coverage_num * 100);
+    }
+    const ice_percent = Math.round(ice_coverage * 100);
+    
+    // Forçages radiatifs
+    const forcing_CO2 = typeof window !== 'undefined' && typeof window.calculateCO2Forcing === 'function'
+        ? window.calculateCO2Forcing(co2_ppm_num * 1e-6)
+        : 0;
+    const forcing_H2O = typeof window !== 'undefined' && typeof window.calculateH2OForcing === 'function'
+        ? window.calculateH2OForcing(h2o_enabled, cloud_coverage_num)
+        : 0;
+    const forcing_Albedo = typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
+        ? window.calculateAlbedoForcing(albedo_num)
+        : 0;
+    const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
+    
+    // Fonction helper pour mettre à jour un label par dataId
+    const updateLabel = (dataId, value, format = 'auto') => {
+        const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
+        labels.forEach(label => {
+            let formattedValue = value;
+            
+            // Si c'est déjà une string, l'utiliser directement (pour '--', '0', etc.)
+            if (typeof value === 'string') {
+                if (format === 'text') {
+                    formattedValue = value;
+                } else if (format === 'watt' || format === 'watt_simple') {
+                    // Si c'est une string avec W/m², l'utiliser directement
+                    formattedValue = value.includes('W/m²') || value.includes('W/m2') ? value : value + (format === 'watt' ? '<br>W/m²' : ' W/m²');
+                } else if (format === 'percent' || format === 'percent_simple') {
+                    // Si c'est une string avec %, l'utiliser directement
+                    formattedValue = value.includes('%') ? value : value + '%';
+                } else {
+                    formattedValue = value;
+                }
+            } else if (typeof value === 'number') {
+                // C'est un nombre, formater selon le format demandé
+                if (format === 'watt') {
+                    formattedValue = value.toFixed(2) + '<br>W/m²';
+                } else if (format === 'percent') {
+                    formattedValue = value.toFixed(0) + '%';
+                } else if (format === 'watt_simple') {
+                    formattedValue = value.toFixed(2) + ' W/m²';
+                } else if (format === 'percent_simple') {
+                    formattedValue = value.toFixed(0) + '%';
+                } else {
+                    formattedValue = value.toFixed(2);
+                }
+            } else {
+                // Autre type, convertir en string
+                formattedValue = String(value);
+            }
+            
+            label.innerHTML = formattedValue;
+            
+            // Mettre à jour les classes CSS selon la valeur
+            if (format.includes('watt')) {
+                const numValue = typeof value === 'number' ? value : parseFloat(value);
+                if (!isNaN(numValue) && Math.abs(numValue) < 0.001) {
+                    label.classList.add('zero-value');
+                } else {
+                    label.classList.remove('zero-value');
+                }
+            }
+        });
+    };
+    
+    // Mettre à jour les labels des nœuds
+    // Géométrie -> Albedo : flux solaire moyen
+    updateLabel('solar_flux_average', SOLAR_FLUX_AVERAGE, 'watt');
+    
+    // Géométrie -> Surface : breakdown albedo
+    // S'assurer que les valeurs sont bien à 0 en mode corps noir
+    const final_cloud_percent = isCorpsNoir ? 0 : cloud_percent;
+    const final_ice_percent = isCorpsNoir ? 0 : ice_percent;
+    const albedoBreakdown = `Albédo: ⛅${final_cloud_percent}% + ❄️${final_ice_percent}%`;
+    updateLabel('albedo_breakdown', albedoBreakdown, 'text');
+    updateLabel('flux_reflected', flux_reflected, 'watt_simple');
+    
+    // Albedo -> Espace1 : flux total au sommet
+    updateLabel('total_flux_top', total_flux_num, 'watt');
+    
+    // Noyau -> Surface : géothermie (0 si corps noir)
+    const geothermie_value = isCorpsNoir ? 0 : GEOTHERMIE_FLUX;
+    updateLabel('geothermie_flux', geothermie_value, 'watt');
+    
+    // Mettre à jour le label du noyau pour qu'il soit gris si corps noir
+    const noyauLabels = document.querySelectorAll('#cell-noyau .flux-label[data-id="geothermie_flux"]');
+    noyauLabels.forEach(label => {
+        if (isCorpsNoir) {
+            label.classList.add('zero-value');
+        } else {
+            label.classList.remove('zero-value');
+        }
+    });
+    
+    // Cacher le logo du noyau en mode corps noir (pas de noyau différencié)
+    const noyauCell = document.querySelector('#cell-noyau');
+    if (noyauCell) {
+        const noyauLogo = noyauCell.querySelector('.flux-circle-bg span');
+        if (noyauLogo) {
+            if (isCorpsNoir) {
+                noyauLogo.style.opacity = '0';
+                noyauLogo.style.visibility = 'hidden';
+            } else {
+                noyauLogo.style.opacity = '1';
+                noyauLogo.style.visibility = 'visible';
+            }
+        }
+    }
+    
+    // Surface -> Albedo : flux émis par la surface (approximation avec Stefan-Boltzmann)
+    const STEFAN_BOLTZMANN = 5.670374419e-8;
+    const flux_emission_surface = isCorpsNoir ? 0 : STEFAN_BOLTZMANN * Math.pow(T0_num, 4);
+    updateLabel('flux_emission_surface', flux_emission_surface, 'watt');
+    
+    // Réémis : forçage radiatif total
+    updateLabel('forcing_total', forcing_total, 'watt');
+    
+    // Boutons
+    // CO2
+    const co2_percent = co2_ppm_num > 0 ? (co2_ppm_num / 10000).toFixed(1) : '0';
+    updateLabel('co2_percent', co2_percent, 'percent_simple');
+    updateLabel('co2_forcing', forcing_CO2, 'watt_simple');
+    
+    // CH4
+    const ch4_percent = ch4_ppm_num > 0 ? (ch4_ppm_num / 10000).toFixed(1) : '0';
+    updateLabel('ch4_percent', ch4_percent, 'percent_simple');
+    // TODO: calculer forcing_CH4 si fonction disponible
+    updateLabel('ch4_forcing', 0, 'watt_simple');
+    
+    // H2O
+    // TODO: calculer h2o_percent depuis vapeur d'eau
+    const h2o_percent = h2o_enabled ? '--' : '0';
+    updateLabel('h2o_percent', h2o_percent, 'percent_simple');
+    updateLabel('h2o_forcing', forcing_H2O, 'watt_simple');
+    
+    // Albédo
+    const albedo_percent_value = albedo_num * 100;
+    updateLabel('albedo_percent', albedo_percent_value, 'percent_simple');
+    updateLabel('albedo_forcing', forcing_Albedo, 'watt_simple');
+}
+
+// Exposer les fonctions globalement
+if (typeof window !== 'undefined') {
+    window.updateFluxLabels = updateFluxLabels;
+    window.generateTimelineFromConfig = generateTimelineFromConfig;
+    
+    // Générer la timeline depuis la config au chargement
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', generateTimelineFromConfig);
+    } else {
+        // DOM déjà chargé, appeler directement
+        generateTimelineFromConfig();
+    }
+}
 

@@ -207,9 +207,6 @@ SetTTFName(0x409, 2, "Regular")
 SetTTFName(0x409, 4, "CO2 Custom Icons Regular")
 SetTTFName(0x409, 6, "CO2CustomIcons-Regular")
 
-# Définir les unités (1000 units = 1 em)
-SetEm(1000)
-
 # Pour chaque emoji, créer un glyphe dans la plage PUA
 """
     
@@ -221,10 +218,9 @@ SetEm(1000)
         
         script_content += f"""
 # Emoji: {original_emoji} -> {pua_hex} ({name})
+NewGlyph({pua_code})
 Select({pua_code})
-CreateGlyph()
 GlyphInfo("Unicode", {pua_code})
-GlyphInfo("Name", "{name}")
 # Note: Il faudra importer manuellement le glyphe SVG pour {original_emoji}
 # ou utiliser Select({pua_code}) puis Paste() après avoir copié l'emoji depuis une autre police
 """

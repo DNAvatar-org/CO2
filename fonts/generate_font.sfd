@@ -12,274 +12,231 @@ SetTTFName(0x409, 2, "Regular")
 SetTTFName(0x409, 4, "CO2 Custom Icons Regular")
 SetTTFName(0x409, 6, "CO2CustomIcons-Regular")
 
-# Définir les unités (1000 units = 1 em)
-SetEm(1000)
-
 # Pour chaque emoji, créer un glyphe dans la plage PUA
 
 # Emoji: 🏐 -> U+E000 (alb)
+NewGlyph(57344)
 Select(57344)
-CreateGlyph()
 GlyphInfo("Unicode", 57344)
-GlyphInfo("Name", "alb")
 # Note: Il faudra importer manuellement le glyphe SVG pour 🏐
 # ou utiliser Select(57344) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌋 -> U+E001 (volcan)
+# Emoji: 🌱 -> U+E001 (co2)
+NewGlyph(57345)
 Select(57345)
-CreateGlyph()
 GlyphInfo("Unicode", 57345)
-GlyphInfo("Name", "volcan")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌋
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌱
 # ou utiliser Select(57345) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌵 -> U+E002 (co2)
+# Emoji: 💧 -> U+E002 (h2o)
+NewGlyph(57346)
 Select(57346)
-CreateGlyph()
 GlyphInfo("Unicode", 57346)
-GlyphInfo("Name", "co2")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌵
+# Note: Il faudra importer manuellement le glyphe SVG pour 💧
 # ou utiliser Select(57346) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 💧 -> U+E003 (h2o)
+# Emoji: ⛽ -> U+E003 (m)
+NewGlyph(57347)
 Select(57347)
-CreateGlyph()
 GlyphInfo("Unicode", 57347)
-GlyphInfo("Name", "h2o")
-# Note: Il faudra importer manuellement le glyphe SVG pour 💧
+# Note: Il faudra importer manuellement le glyphe SVG pour ⛽
 # ou utiliser Select(57347) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: ⛽ -> U+E004 (m)
+# Emoji: 🌞 -> U+E004 (soleil)
+NewGlyph(57348)
 Select(57348)
-CreateGlyph()
 GlyphInfo("Unicode", 57348)
-GlyphInfo("Name", "m")
-# Note: Il faudra importer manuellement le glyphe SVG pour ⛽
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌞
 # ou utiliser Select(57348) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌞 -> U+E005 (soleil)
+# Emoji: 🎱 -> U+E005 (g)
+NewGlyph(57349)
 Select(57349)
-CreateGlyph()
 GlyphInfo("Unicode", 57349)
-GlyphInfo("Name", "soleil")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌞
+# Note: Il faudra importer manuellement le glyphe SVG pour 🎱
 # ou utiliser Select(57349) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🎱 -> U+E006 (g)
+# Emoji: 🛰 -> U+E006 (espace)
+NewGlyph(57350)
 Select(57350)
-CreateGlyph()
 GlyphInfo("Unicode", 57350)
-GlyphInfo("Name", "g")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🎱
+# Note: Il faudra importer manuellement le glyphe SVG pour 🛰
 # ou utiliser Select(57350) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🛰 -> U+E007 (espace)
+# Emoji: 🌍 -> U+E007 (surface)
+NewGlyph(57351)
 Select(57351)
-CreateGlyph()
 GlyphInfo("Unicode", 57351)
-GlyphInfo("Name", "espace")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🛰
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌍
 # ou utiliser Select(57351) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌍 -> U+E008 (surface)
+# Emoji: 🌕 -> U+E008 (noyau)
+NewGlyph(57352)
 Select(57352)
-CreateGlyph()
 GlyphInfo("Unicode", 57352)
-GlyphInfo("Name", "surface")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌍
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌕
 # ou utiliser Select(57352) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌕 -> U+E009 (noyau)
+# Emoji: 🌫 -> U+E009 (athmosphere)
+NewGlyph(57353)
 Select(57353)
-CreateGlyph()
 GlyphInfo("Unicode", 57353)
-GlyphInfo("Name", "noyau")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌕
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌫
 # ou utiliser Select(57353) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌫 -> U+E00A (athmosphere)
+# Emoji: 📛 -> U+E00A (for)
+NewGlyph(57354)
 Select(57354)
-CreateGlyph()
 GlyphInfo("Unicode", 57354)
-GlyphInfo("Name", "athmosphere")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌫
+# Note: Il faudra importer manuellement le glyphe SVG pour 📛
 # ou utiliser Select(57354) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🔂 -> U+E00B (r)
+# Emoji: 🎚 -> U+E00B (jauges)
+NewGlyph(57355)
 Select(57355)
-CreateGlyph()
 GlyphInfo("Unicode", 57355)
-GlyphInfo("Name", "r")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🔂
+# Note: Il faudra importer manuellement le glyphe SVG pour 🎚
 # ou utiliser Select(57355) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 📛 -> U+E00C (for)
+# Emoji: 🔘 -> U+E00C (boutons)
+NewGlyph(57356)
 Select(57356)
-CreateGlyph()
 GlyphInfo("Unicode", 57356)
-GlyphInfo("Name", "for")
-# Note: Il faudra importer manuellement le glyphe SVG pour 📛
+# Note: Il faudra importer manuellement le glyphe SVG pour 🔘
 # ou utiliser Select(57356) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🎚 -> U+E00D (jauges)
+# Emoji: 🌋 -> U+E00D (volcan)
+NewGlyph(57357)
 Select(57357)
-CreateGlyph()
 GlyphInfo("Unicode", 57357)
-GlyphInfo("Name", "jauges")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🎚
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌋
 # ou utiliser Select(57357) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🔘 -> U+E00E (boutons)
+# Emoji: 📅 -> U+E00E (date_depuis_creation_terre)
+NewGlyph(57358)
 Select(57358)
-CreateGlyph()
 GlyphInfo("Unicode", 57358)
-GlyphInfo("Name", "boutons")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🔘
+# Note: Il faudra importer manuellement le glyphe SVG pour 📅
 # ou utiliser Select(57358) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 📅 -> U+E00F (date_depuis_creation_terre)
+# Emoji: 🌑 -> U+E00F (corps_noir)
+NewGlyph(57359)
 Select(57359)
-CreateGlyph()
 GlyphInfo("Unicode", 57359)
-GlyphInfo("Name", "date_depuis_creation_terre")
-# Note: Il faudra importer manuellement le glyphe SVG pour 📅
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌑
 # ou utiliser Select(57359) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: ⚫ -> U+E010 (corps_noir)
+# Emoji: 🦠 -> U+E010 (arch)
+NewGlyph(57360)
 Select(57360)
-CreateGlyph()
 GlyphInfo("Unicode", 57360)
-GlyphInfo("Name", "corps_noir")
-# Note: Il faudra importer manuellement le glyphe SVG pour ⚫
+# Note: Il faudra importer manuellement le glyphe SVG pour 🦠
 # ou utiliser Select(57360) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🦠 -> U+E011 (arch)
+# Emoji: 🌿 -> U+E011 (prot)
+NewGlyph(57361)
 Select(57361)
-CreateGlyph()
 GlyphInfo("Unicode", 57361)
-GlyphInfo("Name", "arch")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🦠
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌿
 # ou utiliser Select(57361) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌿 -> U+E012 (prot)
+# Emoji: 🦕 -> U+E012 (m)
+NewGlyph(57362)
 Select(57362)
-CreateGlyph()
 GlyphInfo("Unicode", 57362)
-GlyphInfo("Name", "prot")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌿
+# Note: Il faudra importer manuellement le glyphe SVG pour 🦕
 # ou utiliser Select(57362) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🦕 -> U+E013 (m)
+# Emoji: 🦴 -> U+E013 (cr)
+NewGlyph(57363)
 Select(57363)
-CreateGlyph()
 GlyphInfo("Unicode", 57363)
-GlyphInfo("Name", "m")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🦕
+# Note: Il faudra importer manuellement le glyphe SVG pour 🦴
 # ou utiliser Select(57363) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🦴 -> U+E014 (cr)
+# Emoji: 🦣 -> U+E014 (c)
+NewGlyph(57364)
 Select(57364)
-CreateGlyph()
 GlyphInfo("Unicode", 57364)
-GlyphInfo("Name", "cr")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🦴
+# Note: Il faudra importer manuellement le glyphe SVG pour 🦣
 # ou utiliser Select(57364) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🦣 -> U+E015 (c)
+# Emoji: 🌪 -> U+E015 (vent)
+NewGlyph(57365)
 Select(57365)
-CreateGlyph()
 GlyphInfo("Unicode", 57365)
-GlyphInfo("Name", "c")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🦣
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌪
 # ou utiliser Select(57365) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌪 -> U+E016 (vent)
+# Emoji: 🕶🕳🏐 -> U+E016 ()
+NewGlyph(57366)
 Select(57366)
-CreateGlyph()
 GlyphInfo("Unicode", 57366)
-GlyphInfo("Name", "vent")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌪
+# Note: Il faudra importer manuellement le glyphe SVG pour 🕶🕳🏐
 # ou utiliser Select(57366) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌱 -> U+E017 (v)
+# Emoji: 🧲 -> U+E017 (magnetisme)
+NewGlyph(57367)
 Select(57367)
-CreateGlyph()
 GlyphInfo("Unicode", 57367)
-GlyphInfo("Name", "v")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌱
+# Note: Il faudra importer manuellement le glyphe SVG pour 🧲
 # ou utiliser Select(57367) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🕶🕳🏐 -> U+E018 ()
+# Emoji: 🌳 -> U+E018 (for)
+NewGlyph(57368)
 Select(57368)
-CreateGlyph()
 GlyphInfo("Unicode", 57368)
-GlyphInfo("Name", "")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🕶🕳🏐
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌳
 # ou utiliser Select(57368) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🧲 -> U+E019 (magnetisme)
+# Emoji: 🏭 -> U+E019 (usine)
+NewGlyph(57369)
 Select(57369)
-CreateGlyph()
 GlyphInfo("Unicode", 57369)
-GlyphInfo("Name", "magnetisme")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🧲
+# Note: Il faudra importer manuellement le glyphe SVG pour 🏭
 # ou utiliser Select(57369) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌳 -> U+E01A (for)
+# Emoji: 🌲 -> U+E01A (arbre)
+NewGlyph(57370)
 Select(57370)
-CreateGlyph()
 GlyphInfo("Unicode", 57370)
-GlyphInfo("Name", "for")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌳
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌲
 # ou utiliser Select(57370) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🏭 -> U+E01B (usine)
+# Emoji: 📡 -> U+E01B (rayonnement)
+NewGlyph(57371)
 Select(57371)
-CreateGlyph()
 GlyphInfo("Unicode", 57371)
-GlyphInfo("Name", "usine")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🏭
+# Note: Il faudra importer manuellement le glyphe SVG pour 📡
 # ou utiliser Select(57371) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌲 -> U+E01C (arbre)
+# Emoji: 🦎 -> U+E01C (reptile_tout)
+NewGlyph(57372)
 Select(57372)
-CreateGlyph()
 GlyphInfo("Unicode", 57372)
-GlyphInfo("Name", "arbre")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌲
+# Note: Il faudra importer manuellement le glyphe SVG pour 🦎
 # ou utiliser Select(57372) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 📡 -> U+E01D (rayonnement)
+# Emoji: ⚫ -> U+E01D (corps_noir)
+NewGlyph(57373)
 Select(57373)
-CreateGlyph()
 GlyphInfo("Unicode", 57373)
-GlyphInfo("Name", "rayonnement")
-# Note: Il faudra importer manuellement le glyphe SVG pour 📡
+# Note: Il faudra importer manuellement le glyphe SVG pour ⚫
 # ou utiliser Select(57373) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🦎 -> U+E01E (reptile_tout)
+# Emoji: ❄️ -> U+E01E (cryog_nien)
+NewGlyph(57374)
 Select(57374)
-CreateGlyph()
 GlyphInfo("Unicode", 57374)
-GlyphInfo("Name", "reptile_tout")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🦎
+# Note: Il faudra importer manuellement le glyphe SVG pour ❄️
 # ou utiliser Select(57374) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: ❄️ -> U+E01F (cryog_nien)
+# Emoji: ☕🍺 -> U+E01F (offrez_moi_un_caf_ou_une_bi_re)
+NewGlyph(57375)
 Select(57375)
-CreateGlyph()
 GlyphInfo("Unicode", 57375)
-GlyphInfo("Name", "cryog_nien")
-# Note: Il faudra importer manuellement le glyphe SVG pour ❄️
+# Note: Il faudra importer manuellement le glyphe SVG pour ☕🍺
 # ou utiliser Select(57375) puis Paste() après avoir copié l'emoji depuis une autre police
-
-# Emoji: 🌈 -> U+E020 (tat_d_aujourd_hui)
-Select(57376)
-CreateGlyph()
-GlyphInfo("Unicode", 57376)
-GlyphInfo("Name", "tat_d_aujourd_hui")
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌈
-# ou utiliser Select(57376) puis Paste() après avoir copié l'emoji depuis une autre police
 
 # Générer la police TTF
 Generate("CO2CustomIcons.ttf")

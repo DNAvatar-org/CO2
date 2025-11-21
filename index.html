@@ -9,6 +9,13 @@
         // Variable globale pour la langue
         window.lang = 'fr';
         
+        // Fonction pour obtenir l'URL Tipeee selon la langue
+        window.getTipeeeURL = function() {
+            return window.lang === 'fr' 
+                ? 'https://fr.tipeee.com/dnavatar/' 
+                : 'https://en.tipeee.com/dnavatar/';
+        };
+        
         // Fonction pour obtenir le lien de licence selon la langue
         window.getLicenseURL = function() {
             // Toujours utiliser le lien officiel pour l'instant
@@ -64,6 +71,7 @@
     <link rel="stylesheet" href="static/style.css">
     <link rel="stylesheet" href="static/FPS/FPS.css">
     <link rel="stylesheet" href="organigramme/organigramme.css">
+    <link rel="stylesheet" href="fonts/CO2CustomIcons.css">
 </head>
 
 <body class="mode-dark no-blur">
@@ -129,46 +137,7 @@
             </div>
             <div class="timeline-frise">
                 <div class="epochs-container">
-                    <button class="epoch-btn" data-epoch="Corps noir" onclick="setEpoch('Corps noir')" title="Corps noir - État initial (206.1K), avant formation de la Terre, pas de noyau différencié, pas d'atmosphère">⚫</button>
-                    <div class="epoch-separator-item">
-                        <span class="epoch-separator">|</span>
-                        <span class="epoch-date">-4500 Ma</span>
-                    </div>
-                    <button class="epoch-btn" data-epoch="Hadéen" onclick="setEpoch('Hadéen')" title="Hadéen (-4500 à -4000 Ma)">🌕</button>
-                    <div class="epoch-separator-item">
-                        <span class="epoch-separator">|</span>
-                        <span class="epoch-date">-4000 Ma</span>
-                    </div>
-                    <button class="epoch-btn" data-epoch="Archéen" onclick="setEpoch('Archéen')"
-                        title="Archéen (-4000 à -2500 Ma)">🦠</button>
-                    <div class="epoch-separator-item">
-                        <span class="epoch-separator">|</span>
-                        <span class="epoch-date">-2500 Ma</span>
-                    </div>
-                    <button class="epoch-btn" data-epoch="Protérozoïque" onclick="setEpoch('Protérozoïque')"
-                        title="Protérozoïque (-2500 à -541 Ma)">🌿</button>
-                    <div class="epoch-separator-item">
-                        <span class="epoch-separator">|</span>
-                        <span class="epoch-date">-397 Ma</span>
-                    </div>
-                    <button class="epoch-btn" data-epoch="Mésozoïque" onclick="setEpoch('Mésozoïque')"
-                        title="Mésozoïque (-252 à -66 Ma)">🦕</button>
-                    <div class="epoch-separator-item">
-                        <span class="epoch-separator">|</span>
-                        <span class="epoch-date">-199 Ma</span>
-                    </div>
-                    <button class="epoch-btn" data-epoch="Crétacé" onclick="setEpoch('Crétacé')" title="Crétacé (-145 à -66 Ma)">🦴</button>
-                    <div class="epoch-separator-item">
-                        <span class="epoch-separator">|</span>
-                        <span class="epoch-date">-66 Ma</span>
-                    </div>
-                    <button class="epoch-btn" data-epoch="Cénozoïque" onclick="setEpoch('Cénozoïque')"
-                        title="Cénozoïque (-66 Ma à aujourd'hui)">🦣</button>
-                    <div class="epoch-separator-item">
-                        <span class="epoch-separator">|</span>
-                        <span class="epoch-date">aujourd'hui</span>
-                    </div>
-                    <button class="epoch-btn" data-epoch="Aujourd'hui" onclick="setEpoch('Aujourd\'hui')" title="État d'aujourd'hui">🌈</button>
+                    <!-- Timeline générée dynamiquement depuis configOrganigramme.js -->
                 </div>
             </div>
         </div>
@@ -233,7 +202,10 @@
             </div>
             <div class="credits-line">
                 © 2025 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> -
-                Arnaud Maignan |
+                <button class="btn tipeee-btn" id="tipeee-donation" onclick="window.open(window.getTipeeeURL(), '_blank', 'noopener,noreferrer')" title="Offrez moi un café ou une bière">☕🍺</button>
+            </div>
+            <div class="credits-line">
+                <a href="https://github.com/DNAvatar-org/CO2" target="_blank" rel="noopener noreferrer">GitHub : CO2</a> |
                 Licensed under <a href="https://commonsclause.com/" target="_blank" rel="noopener noreferrer" id="license-link">Apache License 2.0 with Commons Clause</a>
             </div>
         </div>
@@ -252,6 +224,52 @@
     <script src="static/integrateEds.js"></script>
     <script src="static/debug.js"></script>
     <script src="static/main.js"></script>
+    <script>
+        // Système de rollover avec délai de 0.5s pour les boutons Tipeee
+        // Utilise la même méthode que addCustomTooltip (pas de délai au premier rollover si déjà hover)
+        (function() {
+            // Attendre que le DOM soit chargé
+            function initTipeeeRollover() {
+                const tipeeeButtons = document.querySelectorAll('.tipeee-btn');
+                if (tipeeeButtons.length === 0) {
+                    // Réessayer si les boutons ne sont pas encore là
+                    setTimeout(initTipeeeRollover, 100);
+                    return;
+                }
+                
+                tipeeeButtons.forEach(button => {
+                    let hoverTimeout = null;
+                    let isHovered = false;
+                    
+                    button.addEventListener('mouseenter', function() {
+                        isHovered = true;
+                        // Délai de 0.5s avant d'activer le rollover (même au premier rollover)
+                        hoverTimeout = setTimeout(() => {
+                            if (isHovered) {
+                                button.classList.add('hover-active');
+                            }
+                        }, 500); // 0.5 secondes
+                    });
+                    
+                    button.addEventListener('mouseleave', function() {
+                        isHovered = false;
+                        if (hoverTimeout) {
+                            clearTimeout(hoverTimeout);
+                            hoverTimeout = null;
+                        }
+                        button.classList.remove('hover-active');
+                    });
+                });
+            }
+            
+            // Initialiser dès que possible
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initTipeeeRollover);
+            } else {
+                initTipeeeRollover();
+            }
+        })();
+    </script>
 </body>
 
 </html>

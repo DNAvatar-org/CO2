@@ -12,9 +12,6 @@ SetTTFName(0x409, 2, "Regular")
 SetTTFName(0x409, 4, "CO2 Custom Icons Regular")
 SetTTFName(0x409, 6, "CO2CustomIcons-Regular")
 
-# Définir les unités (1000 units = 1 em)
-SetEm(1000)
-
 # Liste des polices système à essayer
 sourceFonts = {
     "/System/Library/Fonts/Apple Color Emoji.ttc",

@@ -1,12 +1,13 @@
 /* File: organigramme.css - Styles pour le diagramme de flux énergétique */
 /* Desc: Feuille de style CSS pour l'organigramme de flux énergétique */
-/* Version 1.0.0 */
+/* Version 1.0.1 */
 /* © 2025 DNAvatar.org - Arnaud Maignan */
 /* Licensed under Apache License 2.0 with Commons Clause. */
 /* See LICENSE_HEADER.txt for full terms. */
 /* Date: [June 08, 2025] [HH:MM UTC+1] */
 /* Logs: */
 /*   - Initial version: extraction des styles CSS depuis demo_flux_energetique_01.html */
+/*   - Added custom tooltip styles with 0.5s delay */
 
 .controle-simulation {
     padding: 0 !important;
@@ -23,7 +24,7 @@
 }
 
 .flux-diagram {
-    width: 350px;
+    width: 370px;
     height: 540px;
     position: relative;
     background-color: rgba(170, 183, 242, 0.15);
@@ -115,13 +116,25 @@
     white-space: nowrap;
     text-align: center;
     line-height: 1.2; /* Interligne réduit pour textes multi-lignes */
-    z-index: 1000 !important; /* TOUJOURS au-dessus de tout (flèches z-index max ~26) */
+    z-index: 10000 !important; /* TOUJOURS au-dessus des flèches (z-index max ~26) */
 }
 
 /* Labels des boutons en gris */
 .flux-label.buttonData {
     color: #888;
     border-color: #888;
+}
+
+/* Couleur pour les étiquettes contenant W/m² */
+.flux-label.watt-per-m2 {
+    color: rgb(255, 145, 0);
+    border-color: rgb(255, 208, 0);
+}
+
+/* Étiquettes à valeur 0 (W/m² ou %) en gris */
+.flux-label.zero-value {
+    color: #888 !important;
+    border-color: #888 !important;
 }
 
 /* Container pour regrouper toutes les radiations (flux-sphere) */
@@ -194,7 +207,7 @@
     position: relative;
     width: 100%;
     height: 100%;
-    z-index: 1000;
+    z-index: 10000;
 }
 
 /* Alignement centré par défaut */
@@ -285,7 +298,7 @@
     gap: 8px;
     width: 130px;
     position: absolute;
-    bottom: 35px;
+    bottom: 10px;
     left: 10px;
     padding: 5px 10px;
     z-index: 1000;
@@ -294,6 +307,16 @@
 .synthese_Temp .thermometer-icon {
     transition: filter 0.3s ease, text-shadow 0.3s ease;
     display: inline-block;
+    /* Filtre pour changer uniquement la couleur rouge du thermomètre */
+    /* Utilise hue-rotate pour changer la teinte du rouge vers une autre couleur */
+    /* Exemples de valeurs : 0deg = rouge, 120deg = vert, 180deg = cyan, 240deg = bleu, 300deg = magenta */
+    /* Pour changer en bleu : hue-rotate(240deg) */
+    /* Pour changer en vert : hue-rotate(120deg) */
+    /* Pour changer en cyan : hue-rotate(180deg) */
+    /* Pour changer en jaune : hue-rotate(60deg) */
+    /* Pour changer en violet : hue-rotate(300deg) */
+    /* Décommentez et ajustez la valeur selon la couleur souhaitée : */
+    /* filter: hue-rotate(240deg); */
 }
 
 .controle-simulation-title {
@@ -304,6 +327,7 @@
 /* Boutons dans le flux-diagram */
 .flux-diagram .btn {
     font-size: 24px;
+    font-family: 'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
     background: none !important; /* Pas de fond */
     border: none !important; /* Pas de border */
     border-radius: 50%;
@@ -374,6 +398,27 @@ body.no-blur .flux-sphere {
 /* Mode Dark */
 body.mode-dark .flux-diagram {
     background: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Tooltip personnalisé avec délai de 0.5s */
+.flux-custom-tooltip {
+    position: fixed;
+    background: rgba(10, 14, 39, 0.95);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 99999 !important; /* Z-index très élevé pour être au-dessus de tout */
+    white-space: normal; /* Permettre les retours à la ligne pour les <br> */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 200px; /* Limiter la largeur pour les textes longs */
+    text-align: center;
+    line-height: 1.4;
 }
 
 

@@ -1,0 +1,224 @@
+# FontForge script - Version simple
+# Pour créer la police: fontforge -script generate_font_simple.sfd
+
+New()
+
+SetFontNames("CO2CustomIcons", "CO2 Custom Icons", "Regular", "Regular", "DNAvatar.org", "2025")
+SetTTFName(0x409, 1, "CO2 Custom Icons")
+SetTTFName(0x409, 2, "Regular")
+SetTTFName(0x409, 4, "CO2 Custom Icons Regular")
+SetTTFName(0x409, 6, "CO2CustomIcons-Regular")
+
+# Créer les glyphes pour chaque emoji dans la plage PUA
+# U+E000 à U+E024 (37 glyphes)
+
+# Emoji: 🏐 -> U+E000 (alb)
+NewGlyph()
+Select(0xE000)
+GlyphInfo("Unicode", 0xE000)
+GlyphInfo("Name", "alb")
+
+# Emoji: 🌱 -> U+E001 (co2)
+Select(0xE001)
+NewGlyph()
+GlyphInfo("Unicode", 0xE001)
+GlyphInfo("Name", "co2")
+
+# Emoji: 💧 -> U+E002 (h2o)
+Select(0xE002)
+NewGlyph()
+GlyphInfo("Unicode", 0xE002)
+GlyphInfo("Name", "h2o")
+
+# Emoji: ⛽ -> U+E003 (m)
+Select(0xE003)
+NewGlyph()
+GlyphInfo("Unicode", 0xE003)
+GlyphInfo("Name", "m")
+
+# Emoji: 🌞 -> U+E004 (soleil)
+Select(0xE004)
+NewGlyph()
+GlyphInfo("Unicode", 0xE004)
+GlyphInfo("Name", "soleil")
+
+# Emoji: 🎱 -> U+E005 (g)
+Select(0xE005)
+NewGlyph()
+GlyphInfo("Unicode", 0xE005)
+GlyphInfo("Name", "g")
+
+# Emoji: 🛰 -> U+E006 (espace)
+Select(0xE006)
+NewGlyph()
+GlyphInfo("Unicode", 0xE006)
+GlyphInfo("Name", "espace")
+
+# Emoji: 🌍 -> U+E007 (surface)
+Select(0xE007)
+NewGlyph()
+GlyphInfo("Unicode", 0xE007)
+GlyphInfo("Name", "surface")
+
+# Emoji: 🌕 -> U+E008 (noyau)
+Select(0xE008)
+NewGlyph()
+GlyphInfo("Unicode", 0xE008)
+GlyphInfo("Name", "noyau")
+
+# Emoji: 🌫 -> U+E009 (athmosphere)
+Select(0xE009)
+NewGlyph()
+GlyphInfo("Unicode", 0xE009)
+GlyphInfo("Name", "athmosphere")
+
+# Emoji: 📛 -> U+E00A (for)
+Select(0xE00A)
+NewGlyph()
+GlyphInfo("Unicode", 0xE00A)
+GlyphInfo("Name", "for")
+
+# Emoji: 🎚 -> U+E00B (jauges)
+Select(0xE00B)
+NewGlyph()
+GlyphInfo("Unicode", 0xE00B)
+GlyphInfo("Name", "jauges")
+
+# Emoji: 🔘 -> U+E00C (boutons)
+Select(0xE00C)
+NewGlyph()
+GlyphInfo("Unicode", 0xE00C)
+GlyphInfo("Name", "boutons")
+
+# Emoji: 📅 -> U+E00D (date_depuis_creation_terre)
+Select(0xE00D)
+NewGlyph()
+GlyphInfo("Unicode", 0xE00D)
+GlyphInfo("Name", "date_depuis_creation_terre")
+
+# Emoji: ⚫ -> U+E00E (corps_noir)
+Select(0xE00E)
+NewGlyph()
+GlyphInfo("Unicode", 0xE00E)
+GlyphInfo("Name", "corps_noir")
+
+# Emoji: 🦠 -> U+E00F (arch)
+Select(0xE00F)
+NewGlyph()
+GlyphInfo("Unicode", 0xE00F)
+GlyphInfo("Name", "arch")
+
+# Emoji: 🌿 -> U+E010 (prot)
+Select(0xE010)
+NewGlyph()
+GlyphInfo("Unicode", 0xE010)
+GlyphInfo("Name", "prot")
+
+# Emoji: 🦕 -> U+E011 (m)
+Select(0xE011)
+NewGlyph()
+GlyphInfo("Unicode", 0xE011)
+GlyphInfo("Name", "m")
+
+# Emoji: 🦴 -> U+E012 (cr)
+Select(0xE012)
+NewGlyph()
+GlyphInfo("Unicode", 0xE012)
+GlyphInfo("Name", "cr")
+
+# Emoji: 🦣 -> U+E013 (c)
+Select(0xE013)
+NewGlyph()
+GlyphInfo("Unicode", 0xE013)
+GlyphInfo("Name", "c")
+
+# Emoji: 🌪 -> U+E014 (vent)
+Select(0xE014)
+NewGlyph()
+GlyphInfo("Unicode", 0xE014)
+GlyphInfo("Name", "vent")
+
+# Emoji: 🌱 -> U+E015 (v)
+Select(0xE015)
+NewGlyph()
+GlyphInfo("Unicode", 0xE015)
+GlyphInfo("Name", "v")
+
+# Emoji: 🧲 -> U+E016 (magnetisme)
+Select(0xE016)
+NewGlyph()
+GlyphInfo("Unicode", 0xE016)
+GlyphInfo("Name", "magnetisme")
+
+# Emoji: 🌳 -> U+E017 (for)
+Select(0xE017)
+NewGlyph()
+GlyphInfo("Unicode", 0xE017)
+GlyphInfo("Name", "for")
+
+# Emoji: 🏭 -> U+E018 (usine)
+Select(0xE018)
+NewGlyph()
+GlyphInfo("Unicode", 0xE018)
+GlyphInfo("Name", "usine")
+
+# Emoji: 🌲 -> U+E019 (arbre)
+Select(0xE019)
+NewGlyph()
+GlyphInfo("Unicode", 0xE019)
+GlyphInfo("Name", "arbre")
+
+# Emoji: 📡 -> U+E01A (rayonnement)
+Select(0xE01A)
+NewGlyph()
+GlyphInfo("Unicode", 0xE01A)
+GlyphInfo("Name", "rayonnement")
+
+# Emoji: 🦎 -> U+E01B (reptile_tout)
+Select(0xE01B)
+NewGlyph()
+GlyphInfo("Unicode", 0xE01B)
+GlyphInfo("Name", "reptile_tout")
+
+# Emoji: ❄️ -> U+E01C (cryog_nien)
+Select(0xE01C)
+NewGlyph()
+GlyphInfo("Unicode", 0xE01C)
+GlyphInfo("Name", "cryog_nien")
+
+# Emoji: 🌈 -> U+E01D (tat_d_aujourd_hui)
+Select(0xE01D)
+NewGlyph()
+GlyphInfo("Unicode", 0xE01D)
+GlyphInfo("Name", "tat_d_aujourd_hui")
+
+# Emoji: 🌑 -> U+E01E (corps_noir_lune)
+Select(0xE01E)
+NewGlyph()
+GlyphInfo("Unicode", 0xE01E)
+GlyphInfo("Name", "corps_noir_lune")
+
+# Emoji: ⛅ -> U+E01F (nuage)
+Select(0xE01F)
+NewGlyph()
+GlyphInfo("Unicode", 0xE01F)
+GlyphInfo("Name", "nuage")
+
+# Emoji: ☕ -> U+E020 (cafe)
+Select(0xE020)
+NewGlyph()
+GlyphInfo("Unicode", 0xE020)
+GlyphInfo("Name", "cafe")
+
+# Emoji: 🍺 -> U+E021 (biere)
+Select(0xE021)
+NewGlyph()
+GlyphInfo("Unicode", 0xE021)
+GlyphInfo("Name", "biere")
+
+# Générer la police TTF
+Generate("CO2CustomIcons.ttf")
+Save("CO2CustomIcons.sfd")
+
+Print("✅ Police générée: CO2CustomIcons.ttf")
+

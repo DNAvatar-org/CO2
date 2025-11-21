@@ -560,7 +560,35 @@ if (typeof window !== 'undefined') {
 }
 
 // Fonction interne pour calculer le flux total sortant pour une T0 donnée
+// Fonction de logging centralisée pour les phases de calcul
+function logCalculationPhase(phase, data) {
+    if (typeof window === 'undefined' || !window.console) return;
+    
+    // Récupérer les états actifs/inactifs
+    const h2o_enabled = (typeof window.waterVaporEnabled !== 'undefined') ? window.waterVaporEnabled : false;
+    const ch4_enabled = (typeof window.methaneEnabled !== 'undefined') ? window.methaneEnabled : false;
+    const co2_active = (data && data.CO2_fraction !== undefined && data.CO2_fraction > 0) || 
+                       (typeof window !== 'undefined' && window.plotData && window.plotData.co2_ppm > 0);
+    const albedo_active = (data && data.albedo !== undefined && data.albedo > 0);
+    
+    const states = {
+        CO2: co2_active ? 'ON' : 'OFF',
+        H2O: h2o_enabled ? 'ON' : 'OFF',
+        CH4: ch4_enabled ? 'ON' : 'OFF',
+        Albedo: albedo_active ? 'ON' : 'OFF'
+    };
+    
+    console.log(`[PHASE: ${phase}] États: CO2=${states.CO2}, H2O=${states.H2O}, CH4=${states.CH4}, Albedo=${states.Albedo}`, data || '');
+}
+
+// Exposer globalement pour utilisation dans main.js
+if (typeof window !== 'undefined') {
+    window.logCalculationPhase = logCalculationPhase;
+}
+
 function calculateFluxForT0(CO2_fraction, T0_test, options) {
+    logCalculationPhase('1. Initialisation', { CO2_fraction, T0_test, options });
+    
     const {
         z_max = 120000,
         delta_z = 50,
@@ -700,11 +728,22 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(lambda_range.length).fill(0));
     const absorbed_flux = Array(z_range.length).fill(0).map(() => Array(lambda_range.length).fill(0));
     
+    logCalculationPhase('2. Grilles créées', { 
+        lambda_points: lambda_range.length, 
+        z_points: z_range.length,
+        z_trop: z_trop_precalc 
+    });
+    
     // Condition limite : flux émis par la surface avec T0_test
     // ⚡ OPTIMISATION : Tenir compte des poids lambda pour les plages regroupées
     const earth_flux = lambda_range.map((lambda, idx) => 
         Math.PI * localPlanckFunction(lambda, T0_test) * delta_lambda * (lambda_weights[idx] || 1.0)
     );
+    
+    logCalculationPhase('3. Flux terrestre calculé', { 
+        total_earth_flux: earth_flux.reduce((sum, f) => sum + f, 0),
+        flux_below_9um: earth_flux.filter((flux, idx) => lambda_range[idx] < 9e-6).reduce((sum, f) => sum + f, 0)
+    });
     
     // Debug: analyser l'émission dans la zone < 9 microns
     const lambda_9um = 9e-6; // 9 microns en mètres
@@ -742,6 +781,12 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined) 
         ? window.methaneEnabled 
         : (typeof methaneEnabled !== 'undefined' ? methaneEnabled : false);
+    
+    logCalculationPhase('4. Sections efficaces précalculées', { 
+        CO2: CO2_fraction > 0 ? 'ON' : 'OFF',
+        H2O: h2o_enabled ? 'ON' : 'OFF',
+        CH4: (ch4_enabled && CH4_fraction) ? 'ON' : 'OFF'
+    });
     
     let flux_in = [...earth_flux];
     
@@ -862,8 +907,18 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         }
     }
     
+    logCalculationPhase('5. Transfert radiatif terminé', { 
+        layers_processed: z_range.length,
+        i_trop: i_trop
+    });
+    
     // Calculer le flux total au sommet
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
+    
+    logCalculationPhase('6. Flux total calculé', { 
+        total_flux: total_flux.toFixed(2),
+        T0_test: T0_test.toFixed(2)
+    });
     
     // Debug: analyser le flux < 9μm au sommet de l'atmosphère
     const top_flux = upward_flux[upward_flux.length - 1];
@@ -875,7 +930,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 }
 
 // Fonction helper pour afficher une courbe temporaire pendant la dichotomie
-function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitial = false) {
+function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitial = false, options = {}) {
     if (typeof window === 'undefined') return;
     
     // Créer un objet plotData temporaire pour l'affichage
@@ -944,6 +999,20 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
         });
     }
     
+    // Mettre à jour les labels du flux pendant le calcul
+    if (typeof window !== 'undefined' && typeof window.updateFluxLabels === 'function') {
+        const ch4_ppm = (options && options.CH4_fraction) ? options.CH4_fraction * 1e6 : 0;
+        window.updateFluxLabels({
+            T0: T0_test,
+            temp_surface: T0_test,
+            total_flux: result.total_flux,
+            albedo: albedo,
+            cloud_coverage: cloud_coverage,
+            co2_ppm: CO2_fraction * 1e6,
+            ch4_ppm: ch4_ppm
+        });
+    }
+    
     const tempPlotData = {
         lambda_range: result.lambda_range,
         lambda_weights: result.lambda_weights, // ⚡ Nécessaire pour normalisation correcte du flux
@@ -998,6 +1067,8 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
 }
 
 function simulateRadiativeTransfer(CO2_fraction, options = {}) {
+    logCalculationPhase('SIMULATION START', { CO2_fraction, options });
+    
     // Définir la fraction CO2 globale
     current_CO2_fraction_for_temp = CO2_fraction;
     current_T0_adjusted = null; // Réinitialiser
@@ -1024,6 +1095,11 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         const delta_T_greenhouse = climate_sensitivity * forcing_CO2;
         T0_initial = T0_no_greenhouse + delta_T_greenhouse;
     }
+    
+    logCalculationPhase('DICHOTOMIE START', { 
+        T0_initial: T0_initial.toFixed(2),
+        T0_no_greenhouse: T0_no_greenhouse.toFixed(2)
+    });
     
     // Si H2O est activé, ajuster T0_initial (H2O ajoute un effet de serre important)
     const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
@@ -1089,7 +1165,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     
     // Afficher la courbe initiale (avant dichotomie) seulement si demandé
     if (shouldDisplaySteps) {
-        displayDichotomyStep(CO2_fraction, T0_initial, result, 0, true);
+        displayDichotomyStep(CO2_fraction, T0_initial, result, 0, true, options);
     }
     
     // Dichotomie avec affichage progressif
@@ -1133,12 +1209,47 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0_current, h2o_enabled);
                     const flux_diff = final_result.total_flux - solar_flux_absorbed;
                     
+                    logCalculationPhase(`DICHOTOMIE ITER ${iter + 1}`, { 
+                        T0_current: T0_current.toFixed(2),
+                        total_flux: final_result.total_flux.toFixed(2),
+                        solar_flux_absorbed: solar_flux_absorbed.toFixed(2),
+                        flux_diff: flux_diff.toFixed(2)
+                    });
+                    
                     // Afficher chaque étape de la dichotomie seulement si demandé
                     if (shouldDisplaySteps && !isCancelled) {
-                        displayDichotomyStep(CO2_fraction, T0_current, final_result, iter + 1, false);
+                        displayDichotomyStep(CO2_fraction, T0_current, final_result, iter + 1, false, options);
+                    }
+                    
+                    // Mettre à jour les labels du flux pendant le calcul
+                    if (typeof window !== 'undefined' && typeof window.updateFluxLabels === 'function') {
+                        const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
+                            ? window.waterVaporEnabled 
+                            : waterVaporEnabled;
+                        const albedo = calculateAlbedo(T0_current, h2o_enabled);
+                        const cloud_coverage = calculateCloudCoverage(T0_current, h2o_enabled);
+                        const co2_ppm = CO2_fraction * 1e6;
+                        const ch4_ppm = (options && options.CH4_fraction) ? options.CH4_fraction * 1e6 : 0;
+                        
+                        // Mettre à jour les labels avec les valeurs actuelles
+                        window.updateFluxLabels({
+                            T0: T0_current,
+                            temp_surface: T0_current,
+                            total_flux: final_result.total_flux,
+                            albedo: albedo,
+                            cloud_coverage: cloud_coverage,
+                            co2_ppm: co2_ppm,
+                            ch4_ppm: ch4_ppm
+                        });
                     }
                     
                     if (Math.abs(flux_diff) < tolerance) {
+                        logCalculationPhase('DICHOTOMIE CONVERGENCE', { 
+                            iteration: iter + 1,
+                            T0_final: T0_current.toFixed(2),
+                            flux_diff: flux_diff.toFixed(4)
+                        });
+                        
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
                         const final_options = { ...options, fullSpectre: true };
                         final_result = calculateFluxForT0(CO2_fraction, T0_current, final_options);

@@ -1,10 +1,8 @@
 
 == Boutons Thermodynamique
 🏐 Albédo
-🌋 Volcan
-☄️ Comète
 
-🌵 CO2
+🌱 CO2
 💧 H2O
 ⛽ Méthane
 ==
@@ -17,10 +15,10 @@
 🌍 Surface
 🌕 Noyau
 🌫 Athmosphere
-🌵 CO2
+🌱 CO2
 💧 H2O
 ⛽ Méthane
-🔂 Réemis
+ Réemis
 📛 Forçage Radiatif
 ==
 
@@ -29,11 +27,13 @@
 🎛️ Contrôles
 🎚 Jauges
 🔘 Boutons
+🌋 Volcan
+☄️ Comète
 ==
 
 == Temps:
 📅 Date depuis creation terre, en années
-⚫ Corps noir [-5000 à -4500 Ma]
+🌑 Corps noir [-5000 à -4500 Ma]
 🌕 Hadéen [-4500 à -4000 Ma]
 🦠 Archéen [-4000 à -2500 Ma]
 🌿 Protérozoïque [-2500 à -541 Ma]

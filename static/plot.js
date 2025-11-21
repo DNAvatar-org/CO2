@@ -1446,6 +1446,9 @@ function drawSpectralVisualization(canvas, data) {
         yStep = 1; // Tous les pixels si FPS bon
     }
 
+    // Cache des couleurs par x (la couleur ne dépend que de x, pas de y)
+    const colorCache = new Map();
+
     for (let y = 0; y < visualizationHeight; y += yStep) {
         // Calculer l'altitude correspondant à ce pixel Y
         // y=0 (en haut) → z=0 (sol), y=max (en bas) → z=z_max (haute altitude)
@@ -1579,7 +1582,15 @@ function drawSpectralVisualization(canvas, data) {
             }
 
             // Obtenir la couleur pour cette longueur d'onde (calée sur l'axe X du graphique)
-            const [r, g, b] = wavelengthToColor(lambda, lambda_range[0], lambda_range[lambda_range.length - 1]);
+            // Utiliser le cache : la couleur ne dépend que de lambdaIndex (lambda), pas de y
+            let colorRGB;
+            if (colorCache.has(lambdaIndex)) {
+                colorRGB = colorCache.get(lambdaIndex);
+            } else {
+                colorRGB = wavelengthToColor(lambda, lambda_range[0], lambda_range[lambda_range.length - 1]);
+                colorCache.set(lambdaIndex, colorRGB);
+            }
+            const [r, g, b] = colorRGB;
 
             // Dessiner le pixel avec alpha variable selon l'intensité du flux et la densité
             // Utiliser le mode de fusion 'screen' ou 'lighter' pour un effet lumineux sur fond sombre

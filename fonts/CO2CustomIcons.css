@@ -17,194 +17,188 @@
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-volcan::before {
+.icon-co2::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-co2::before {
+.icon-h2o::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-h2o::before {
+.icon-m::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-m::before {
+.icon-soleil::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-soleil::before {
+.icon-g::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-g::before {
+.icon-espace::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-espace::before {
+.icon-surface::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-surface::before {
+.icon-noyau::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-noyau::before {
+.icon-athmosphere::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-athmosphere::before {
+.icon-for::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-r::before {
+.icon-jauges::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-for::before {
+.icon-boutons::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-jauges::before {
+.icon-volcan::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-boutons::before {
+.icon-date_depuis_creation_terre::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-date_depuis_creation_terre::before {
+.icon-corps_noir::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-corps_noir::before {
+.icon-arch::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-arch::before {
+.icon-prot::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-prot::before {
+.icon-m::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-m::before {
+.icon-cr::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-cr::before {
+.icon-c::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-c::before {
+.icon-vent::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-vent::before {
+.icon-::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-v::before {
+.icon-magnetisme::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-::before {
+.icon-for::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-magnetisme::before {
+.icon-usine::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-for::before {
+.icon-arbre::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-usine::before {
+.icon-rayonnement::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-arbre::before {
+.icon-reptile_tout::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-rayonnement::before {
+.icon-corps_noir::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-reptile_tout::before {
+.icon-cryog_nien::before {
     font-family: 'CO2CustomIcons';
     content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }
 
-.icon-cryog_nien::before {
+.icon-offrez_moi_un_caf_ou_une_bi_re::before {
     font-family: 'CO2CustomIcons';
     content: '';
-    /* Fallback vers l'emoji original si la police n'est pas chargée */
-}
-
-.icon-tat_d_aujourd_hui::before {
-    font-family: 'CO2CustomIcons';
-    content: '';
     /* Fallback vers l'emoji original si la police n'est pas chargée */
 }

@@ -148,16 +148,90 @@ function updateTemperatureDisplay() {
         const convertedTemp = convertTemperature(currentTempCelsius, temperatureUnit);
         tempSurfaceEl.textContent = convertedTemp.toFixed(1);
         
-        // Mettre à jour la couleur du contour sur le logo thermomètre selon la température
+        // Mettre à jour la couleur du contenu du thermomètre selon la température
         if (thermometerIcon) {
             const glowColor = getTemperatureGlowColor(currentTempCelsius);
-            console.log(`Température: ${currentTempCelsius}°C, Couleur: ${glowColor}`);
-            thermometerIcon.style.setProperty('filter', `drop-shadow(0 0 8px ${glowColor}) drop-shadow(0 0 16px ${glowColor})`, 'important');
-            thermometerIcon.style.setProperty('text-shadow', `0 0 10px ${glowColor}, 0 0 20px ${glowColor}`, 'important');
+            
+            // Calculer la couleur du pic d'émission du corps noir (loi de Wien) avec symétrie à 7 μm
+            const tempK = currentTempCelsius + 273.15;
+            const wienConstant = 2898; // Constante de Wien en μm·K
+            const lambda_um = wienConstant / tempK;
+            
+            // Symétrie à 7 μm : λ_sym = 14 - λ
+            // On veut toujours un résultat > 7 μm (vert..cyan..bleu..violet, jamais rouge)
+            let lambda_sym_um = 14 - lambda_um;
+            
+            // Si le résultat est < 7 μm, le refléter à nouveau pour rester > 7 μm
+            // Exemple : si λ = 10 μm → λ_sym = 4 μm → refléter → 10 μm
+            // Mais on veut > 7 μm, donc si λ_sym < 7, alors λ_sym = 7 + (7 - λ_sym) = 14 - λ_sym
+            // Mais 14 - λ_sym = 14 - (14 - λ) = λ, donc on revient à l'original...
+            // En fait, si λ > 7, alors λ_sym = 14 - λ < 7, et on veut > 7
+            // Solution : si λ_sym < 7, alors utiliser λ directement (déjà > 7)
+            if (lambda_sym_um < 7) {
+                // Si la symétrie donne < 7 μm, utiliser la valeur originale si elle est > 7
+                // Sinon, refléter à nouveau
+                if (lambda_um > 7) {
+                    lambda_sym_um = lambda_um; // Utiliser l'original si > 7
+                } else {
+                    // Si λ < 7 et λ_sym < 7, refléter à nouveau
+                    lambda_sym_um = 7 + (7 - lambda_sym_um);
+                }
+            }
+            
+            // S'assurer que le résultat est toujours > 7 μm
+            if (lambda_sym_um <= 7) {
+                lambda_sym_um = 7.1; // Minimum juste au-dessus de 7 μm
+            }
+            
+            const lambda_sym_m = lambda_sym_um * 1e-6;
+            const lambda_sym_um_calc = lambda_sym_um;
+            const lambda_sym_nm = lambda_sym_um_calc * 1000;
+            
+            // Utiliser l'algorithme "if" (wavelengthToRGB) pour convertir en couleur
+            let bodyColor = null;
+            if (typeof wavelengthToRGB === 'function') {
+                // Algorithme "if" : if pour le visible, log pour l'IR, noir pour l'UV
+                // Avant l'UV (< 380 nm) : toujours noir
+                if (lambda_sym_nm < 380) {
+                    bodyColor = { r: 0, g: 0, b: 0 };
+                } else if (lambda_sym_nm >= 380 && lambda_sym_nm <= 789) {
+                    // Si dans le spectre visible (380-789 nm), utiliser les if
+                    const [r, g, b] = wavelengthToRGB(lambda_sym_nm);
+                    bodyColor = { r: Math.max(0, r), g: Math.max(0, g), b: Math.max(0, b) };
+                } else {
+                    // Pour l'IR (lambda_nm > 789), utiliser la conversion log condensée
+                    if (lambda_sym_um_calc <= 1) {
+                        bodyColor = { r: 0, g: 0, b: 0 }; // Point singulier : invisible
+                    } else {
+                        const log_lambda = Math.log10(lambda_sym_um_calc);
+                        const effacement_debut = 30;
+                        const hz = 1598.5 / (log_lambda + 2.026);
+                        const freq_10_14 = (hz - effacement_debut) / 100;
+                        if (typeof Hz2RGB === 'function') {
+                            const [r, g, b] = Hz2RGB(freq_10_14);
+                            bodyColor = { r, g, b };
+                        }
+                    }
+                }
+            }
+            
+            if (bodyColor) {
+                // Appliquer la couleur directement au contenu du thermomètre (sans halo)
+                const colorStr = `rgb(${Math.round(bodyColor.r)}, ${Math.round(bodyColor.g)}, ${Math.round(bodyColor.b)})`;
+                thermometerIcon.style.setProperty('color', colorStr, 'important');
+                thermometerIcon.style.setProperty('filter', '', 'important');
+                thermometerIcon.style.setProperty('text-shadow', '', 'important');
+            } else {
+                // Fallback si pas de fonction disponible : utiliser la couleur du glow
+                thermometerIcon.style.setProperty('color', glowColor, 'important');
+                thermometerIcon.style.setProperty('filter', '', 'important');
+                thermometerIcon.style.setProperty('text-shadow', '', 'important');
+            }
         }
     } else {
-        // Si pas de température, enlever le glow
+        // Si pas de température, enlever la couleur
         if (thermometerIcon) {
+            thermometerIcon.style.setProperty('color', '', 'important');
             thermometerIcon.style.setProperty('filter', '', 'important');
             thermometerIcon.style.setProperty('text-shadow', '', 'important');
         }
@@ -895,6 +969,38 @@ function updateCO2LevelDirect(co2_fraction) {
             if (index > -1) {
                 currentCalculationTimeouts.splice(index, 1);
             }
+            
+            // Logger les résultats finaux avec les états
+            if (typeof window.logCalculationPhase === 'function') {
+                window.logCalculationPhase('CALCULATION COMPLETE', {
+                    T0: data.T0 ? data.T0.toFixed(2) : 'N/A',
+                    temp_surface_c: data.temp_surface_c ? data.temp_surface_c.toFixed(2) : 'N/A',
+                    total_flux: data.total_flux ? data.total_flux.toFixed(2) : 'N/A',
+                    albedo: data.albedo ? data.albedo.toFixed(3) : 'N/A',
+                    cloud_coverage: data.cloud_coverage ? (data.cloud_coverage * 100).toFixed(1) + '%' : 'N/A'
+                });
+            }
+            
+            // Gérer la géothermie selon la température finale
+            // Off (gris) seulement si 0K (corps noir), sinon on
+            const btnNoyau = document.getElementById('btn-noyau');
+            if (btnNoyau && data.T0 !== undefined) {
+                const tempK = data.T0;
+                if (tempK === 0 || tempK < 1) {
+                    // 0K = corps noir : géothermie off (gris)
+                    btnNoyau.classList.add('disabled');
+                    btnNoyau.disabled = true;
+                    btnNoyau.style.opacity = '0.3';
+                    btnNoyau.style.filter = 'grayscale(100%)';
+                } else {
+                    // Température > 0K : géothermie on (actif)
+                    btnNoyau.classList.remove('disabled');
+                    btnNoyau.disabled = false;
+                    btnNoyau.style.opacity = '1';
+                    btnNoyau.style.filter = 'grayscale(0%)';
+                }
+            }
+            
             plotData.current = data;
             
             // Les scénarios de référence sont déjà calculés dans calculateInitialData
@@ -1231,7 +1337,7 @@ function updateLegend(data) {
             // K à côté (normal) - toujours afficher .0K même si entier
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
-            labelSpan.style.color = 'cyan';
+            // Couleur gérée par CSS (.legend-section * { color: white !important; })
             labelSpan.textContent = `${T.toFixed(1)}K`;
             
             item.appendChild(patternContainer);
@@ -1448,8 +1554,27 @@ function setEpoch(epochName) {
     updateTimeline();
     
     // Appliquer les conditions initiales
-    // En époque "Corps noir", tout est désactivé
+    // En époque "Corps noir", tout est désactivé (température ~206.1K, pas de noyau différencié)
     const isCorpsNoir = epoch.name === 'Corps noir';
+    const tempK = isCorpsNoir ? 0 : null; // 0K = corps noir (pas de noyau différencié)
+    
+    // Gérer la géothermie (noyau) : off (gris) seulement si 0K (corps noir), sinon on
+    const btnNoyau = document.getElementById('btn-noyau');
+    if (btnNoyau) {
+        if (isCorpsNoir || tempK === 0) {
+            // Corps noir : géothermie off (gris)
+            btnNoyau.classList.add('disabled');
+            btnNoyau.disabled = true;
+            btnNoyau.style.opacity = '0.3';
+            btnNoyau.style.filter = 'grayscale(100%)';
+        } else {
+            // Autres époques : géothermie on (actif)
+            btnNoyau.classList.remove('disabled');
+            btnNoyau.disabled = false;
+            btnNoyau.style.opacity = '1';
+            btnNoyau.style.filter = 'grayscale(0%)';
+        }
+    }
     
     // 1. CO2
     const co2_fraction = epoch.co2_ppm * 1e-6;
