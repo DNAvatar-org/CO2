@@ -263,6 +263,13 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 top.forEach(text => {
                     const label = document.createElement('div');
                     label.className = 'flux-label';
+                    // Si c'est un bouton, ajouter la classe buttonData
+                    if (nodeId) {
+                        const node = nodes.find(n => n.id === nodeId);
+                        if (node && node.type === 'button') {
+                            label.classList.add('buttonData');
+                        }
+                    }
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = '1001'; // Encore plus haut que le container
@@ -280,6 +287,13 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 bottom.forEach(text => {
                     const label = document.createElement('div');
                     label.className = 'flux-label';
+                    // Si c'est un bouton, ajouter la classe buttonData
+                    if (nodeId) {
+                        const node = nodes.find(n => n.id === nodeId);
+                        if (node && node.type === 'button') {
+                            label.classList.add('buttonData');
+                        }
+                    }
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = '1001'; // Encore plus haut que le container
@@ -302,6 +316,13 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 left.forEach(text => {
                     const label = document.createElement('div');
                     label.className = 'flux-label';
+                    // Si c'est un bouton, ajouter la classe buttonData
+                    if (nodeId) {
+                        const node = nodes.find(n => n.id === nodeId);
+                        if (node && node.type === 'button') {
+                            label.classList.add('buttonData');
+                        }
+                    }
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = '1001'; // Encore plus haut que le container
@@ -324,6 +345,13 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 right.forEach(text => {
                     const label = document.createElement('div');
                     label.className = 'flux-label';
+                    // Si c'est un bouton, ajouter la classe buttonData
+                    if (nodeId) {
+                        const node = nodes.find(n => n.id === nodeId);
+                        if (node && node.type === 'button') {
+                            label.classList.add('buttonData');
+                        }
+                    }
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = '1001'; // Encore plus haut que le container
@@ -1189,6 +1217,18 @@ cellOrder.forEach(nodeId => {
         }
     }
     
+    // Si c'est un bouton, forcer radius, fillColor, zIndex, logoScale et strokeColor
+    if (node.type === 'button') {
+        console.log('forçage radius, fillColor, zIndex et logoScale pour le bouton', node.id);
+        node.radius = 55;
+        if (node.fillColor === undefined) {
+            node.fillColor = 'rgba(255, 0, 0, 0)';
+        }
+        node.strokeColor = ''; // Pas de bordure pour les boutons
+        node.zIndex = 100;
+        node.logoScale = 0.5;
+    }
+    
     const cell = createCell(
         node.x, 
         node.y, 
@@ -1214,7 +1254,7 @@ cellOrder.forEach(nodeId => {
     createdCells[node.id] = cell;
     
     // Si c'est un bouton, ajouter la classe CSS et l'événement de clic
-    if (node.style === 'button') {
+    if (node.type === 'button') {
         cell.classList.add('flux-button-cell');
         cell.style.pointerEvents = 'auto';
         
@@ -1242,6 +1282,18 @@ nodes.forEach(node => {
     
     // Ignorer effetSerre car c'est un rectangle, pas une cellule circulaire
     if (node.id === 'effetSerre') return;
+    
+    // Si c'est un bouton, forcer radius, fillColor, zIndex, logoScale et strokeColor
+    if (node.type === 'button') {
+        console.log('forçage radius, fillColor, zIndex et logoScale pour le bouton', node.id);
+        node.radius = 55;
+        if (node.fillColor === undefined) {
+            node.fillColor = 'rgba(255, 0, 0, 0)';
+        }
+        node.strokeColor = ''; // Pas de bordure pour les boutons
+        node.zIndex = 100;
+        node.logoScale = 0.5;
+    }
     
     // Calculer maxRadius si nécessaire (même logique que pour cellOrder)
     let radiationOptions = node.radiation;
@@ -1312,7 +1364,7 @@ nodes.forEach(node => {
     createdCells[node.id] = cell;
     
     // Si c'est un bouton, ajouter la classe CSS et l'événement de clic
-    if (node.style === 'button') {
+    if (node.type === 'button') {
         cell.classList.add('flux-button-cell');
         cell.style.pointerEvents = 'auto';
         

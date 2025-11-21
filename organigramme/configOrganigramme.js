@@ -63,12 +63,12 @@ const nodes = [
     // Boutons
     //+circleMiddleRadius*Math.cos(135*Math.PI/180)
     //+circleMiddleRadius*Math.sin(135*Math.PI/180)
-    //style: 'button',
+    //type: 'button',
 
-    { id: 'co2', style: 'button', logo: '🌵', x: centerX-circleMiddleRadius*0.7, y: earthCenterY-circleMiddleRadius*0.7, radius: 25, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'CO₂', radiation: { numCircles: 4, maxRadius: 75, openingAngle: 350 }, zIndex: 20, logoScale: 0.8 },
-    { id: 'methane', style: 'button', logo: '⛽', x: centerX-circleMiddleRadius*0.7, y: earthCenterY+circleMiddleRadius*0.7, radius: 25, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'CH₄', radiation: { numCircles: 4, maxRadius: 75, openingAngle: 350 }, zIndex: 20, logoScale: 0.8 },
-    { id: 'h2o', style: 'button', logo: '💧', x: centerX-circleMiddleRadius, y: earthCenterY, radius: 25, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'H₂O', radiation: { numCircles: 4, maxRadius: 75, openingAngle: 350 }, zIndex: 20, logoScale: 0.8 },
-    { id: 'albedo-btn', style: 'button', logo: '🏐', x: centerX+circleMiddleRadius, y: earthCenterY, radius: 25, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'Albédo', radiation: { numCircles: 4, maxRadius: 75, openingAngle: 350 }, zIndex: 20, logoScale: 0.8 }
+    { id: 'co2', type: 'button', logo: '🌱', x: centerX-circleMiddleRadius*0.7, y: earthCenterY-circleMiddleRadius*0.7, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'CO₂'},
+    { id: 'methane', type: 'button', logo: '⛽', x: centerX-circleMiddleRadius*0.7, y: earthCenterY+circleMiddleRadius*0.7, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'CH₄'},
+    { id: 'h2o', type: 'button', logo: '💧', x: centerX-circleMiddleRadius, y: earthCenterY, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'H₂O' },
+    { id: 'albedo-btn', type: 'button', logo: '🏐', x: centerX+circleMiddleRadius, y: earthCenterY, left: [], right: [], top: '0 W/m²', bottom: '0%', tooltip: 'Albédo' }
 ];
 
 // Définition du graphe : arcs (flèches)

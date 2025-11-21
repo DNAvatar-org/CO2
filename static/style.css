@@ -513,7 +513,7 @@ h1 {
     font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     align-items: center;
     white-space: nowrap;
-    max-width: 1000px;
+    width: 1000px;
 }
 
 .timeline-start-wrapper {

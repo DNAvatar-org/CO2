@@ -118,6 +118,12 @@
     z-index: 1000 !important; /* TOUJOURS au-dessus de tout (flèches z-index max ~26) */
 }
 
+/* Labels des boutons en gris */
+.flux-label.buttonData {
+    color: #888;
+    border-color: #888;
+}
+
 /* Container pour regrouper toutes les radiations (flux-sphere) */
 .flux-radiation-container {
     position: absolute;
@@ -220,6 +226,11 @@
     text-shadow: 0 0 2px rgba(255, 255, 255, 0.8), 
                  0 0 4px rgba(255, 255, 255, 0.6),
                  0 0 6px rgba(255, 255, 255, 0.4);
+    /* Désactiver les effets visuels du cercle pour les boutons */
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    border: none !important;
+    background: transparent !important;
 }
 
 .flux-button-cell:hover .flux-circle-bg {
