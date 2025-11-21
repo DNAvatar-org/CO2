@@ -198,11 +198,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             e.stopPropagation();
             navigator.clipboard.writeText(logo).then(() => {
                 // Feedback visuel temporaire (agrandissement)
-                const originalTransform = circleBg.style.transform;
-                circleBg.style.transform = 'translate(-50%, -50%) scale(1.5)';
-                setTimeout(() => {
-                    circleBg.style.transform = originalTransform;
-                }, 200);
+                // Animation supprimée pour éviter setTimeout - utiliser CSS transition si nécessaire
+                // const originalTransform = circleBg.style.transform;
+                // circleBg.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                // setTimeout(() => {
+                //     circleBg.style.transform = originalTransform;
+                // }, 200);
             }).catch(err => {
             });
         });
@@ -1271,21 +1272,24 @@ function createButtonCells() {
     console.log('Container coin inférieur droit (calculé):', surfaceNode.x + albedoDiameter / 2, surfaceNode.y + albedoDiameter / 2);
     console.log('Container center (devrait être surfaceNode):', surfaceNode.x, surfaceNode.y);
     
-    // Vérifier la position réelle après appendChild
-    setTimeout(() => {
-        const rect = buttonsContainer.getBoundingClientRect();
-        const fluxRect = fluxDiagram.getBoundingClientRect();
-        console.log('Container getBoundingClientRect():', rect);
-        console.log('Container position relative au flux-diagram:', rect.left - fluxRect.left, rect.top - fluxRect.top);
-        console.log('Container center réel:', rect.left - fluxRect.left + rect.width / 2, rect.top - fluxRect.top + rect.height / 2);
-    }, 100);
+    // Vérifier la position réelle après appendChild (synchrone)
+    // Force un reflow pour obtenir les dimensions réelles
+    void buttonsContainer.offsetHeight; // Force reflow
+    const rect = buttonsContainer.getBoundingClientRect();
+    const fluxRect = fluxDiagram.getBoundingClientRect();
+    console.log('Container getBoundingClientRect():', rect);
+    console.log('Container position relative au flux-diagram:', rect.left - fluxRect.left, rect.top - fluxRect.top);
+    console.log('Container center réel:', rect.left - fluxRect.left + rect.width / 2, rect.top - fluxRect.top + rect.height / 2);
     
     // Dessiner le cercle de référence pour visualiser la position des boutons
     // Le cercle est centré dans le container (qui est lui-même centré sur surfaceNode)
     const referenceCircle = document.createElement('div');
-    const radiusOuter = surfaceNode.radius + (surfaceNode.strokeSize || 4) / 2;
-    // Utiliser le rayon initial (avant l'incrément cumulatif)
-    const totalRadius = radiusOuter + offsetRadius;
+    // Rayon blanc (surface) = rayon extérieur de la surface
+    const radiusSurfaceOuter = surfaceNode.radius + (surfaceNode.strokeSize || 4) / 2;
+    // Rayon cyan (albedo) = rayon extérieur de l'albedo
+    const radiusAlbedoOuter = albedoNode.radius + (albedoNode.strokeSize || 1) / 2;
+    // Rayon vert (cercle de référence) = moyenne du rayon cyan et du rayon blanc
+    const totalRadius = (radiusSurfaceOuter + radiusAlbedoOuter) / 2;
     referenceCircle.style.position = 'absolute';
     // Position relative au container (qui est centré sur surfaceNode)
     // Le cercle est centré au centre du container (50%, 50%)
@@ -1302,42 +1306,21 @@ function createButtonCells() {
     referenceCircle.id = 'flux-button-reference-circle'; // ID pour identification
     buttonsContainer.appendChild(referenceCircle);
     
-    // Utiliser un offsetRadius fixe pour tous les boutons (même cercle)
-    // radiusOuter est déjà calculé ci-dessus pour le cercle de référence
-    // Calculer le rayon total une seule fois pour tous les boutons
-    const surfaceRadiusOuter = surfaceNode.radius + (surfaceNode.strokeSize || 4) / 2;
-    const fixedTotalRadius = surfaceRadiusOuter + offsetRadius; // Rayon total fixe pour tous
+    // Utiliser le même rayon que le cercle de référence (moyenne des rayons cyan et blanc)
+    // Pas besoin d'offsetRadius car on utilise directement la moyenne
+    const fixedTotalRadius = totalRadius; // Rayon total fixe pour tous (moyenne des rayons)
     
     console.log('=== DEBUG BOUTONS ===');
     console.log('surfaceNode:', surfaceNode);
-    console.log('surfaceRadiusOuter:', surfaceRadiusOuter);
-    console.log('offsetRadius:', offsetRadius);
+    console.log('radiusSurfaceOuter:', radiusSurfaceOuter);
+    console.log('radiusAlbedoOuter:', radiusAlbedoOuter);
+    console.log('totalRadius (moyenne):', totalRadius);
     console.log('fixedTotalRadius:', fixedTotalRadius);
-    console.log('centerX:', centerX, 'centerY:', centerY);
-    
-    // TEMPORAIRE : Placer les 4 logos aux 4 coins de la div pour tester
-    const corners = [
-        { x: 0, y: 0, name: 'coin supérieur gauche' },
-        { x: albedoDiameter, y: 0, name: 'coin supérieur droit' },
-        { x: 0, y: albedoDiameter, name: 'coin inférieur gauche' },
-        { x: albedoDiameter, y: albedoDiameter, name: 'coin inférieur droit' }
-    ];
+    console.log('surfaceNode center:', surfaceNode.x, surfaceNode.y);
     
     buttonConfigs.forEach((config, index) => {
-        // TEMPORAIRE : Utiliser les coins au lieu du cercle
-        const corner = corners[index];
-        const relativeX = corner.x;
-        const relativeY = corner.y;
-        
-        console.log(`Bouton ${index} (${config.id}): ${corner.name}`);
-        console.log(`  → pos relative=(${relativeX.toFixed(2)}, ${relativeY.toFixed(2)})`);
-        console.log(`  → container center (surfaceNode): (${surfaceNode.x}, ${surfaceNode.y})`);
-        console.log(`  → container size: ${albedoDiameter}px x ${albedoDiameter}px`);
-        
-        // Code original commenté pour référence (sera réactivé après test)
-        /*
         // Calculer la position sur le cercle
-        // Utiliser 'surface' (terre) comme centre de référence au lieu de 'albedo'
+        // Utiliser 'surface' (terre) comme centre de référence
         // Tous les boutons utilisent le même rayon total (même cercle)
         // Passer directement le rayon total pour garantir qu'il soit identique pour tous
         const pos = poseBoutonSurCercle('surface', config.angle, 0, fixedTotalRadius);
@@ -1351,15 +1334,14 @@ function createButtonCells() {
         const relativeY = pos.y - containerTopLeftY;
         
         // Vérifier la distance depuis le centre du container (qui est maintenant surfaceNode)
-        const distanceFromContainerCenter = Math.sqrt((pos.x - surfaceNode.x) ** 2 + (pos.y - surfaceNode.y) ** 2);
+        const distanceFromCenterCalculated = Math.sqrt((pos.x - surfaceNode.x) ** 2 + (pos.y - surfaceNode.y) ** 2);
         
         console.log(`Bouton ${index} (${config.id}): angle=${config.angle}°`);
         console.log(`  → pos absolue=(${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`);
         console.log(`  → container topLeft=(${containerTopLeftX.toFixed(2)}, ${containerTopLeftY.toFixed(2)})`);
         console.log(`  → pos relative=(${relativeX.toFixed(2)}, ${relativeY.toFixed(2)})`);
-        console.log(`  → distance depuis container center (${surfaceNode.x}, ${surfaceNode.y}) = ${distanceFromContainerCenter.toFixed(2)}px (devrait être ${fixedTotalRadius.toFixed(2)})`);
+        console.log(`  → distance depuis container center (${surfaceNode.x}, ${surfaceNode.y}) = ${distanceFromCenterCalculated.toFixed(2)}px (devrait être ${fixedTotalRadius.toFixed(2)})`);
         console.log(`  → rayon utilisé dans poseBoutonSurCercle = ${fixedTotalRadius}`);
-        */
         
         // Créer une cellule pour le bouton (petite taille, juste pour le logo)
         // Pas de labels pour l'instant pour éviter les champs qui se baladent
@@ -1367,8 +1349,10 @@ function createButtonCells() {
         // Passer buttonsContainer comme targetContainer pour l'ajouter directement au bon endroit
         // Pour les boutons, on veut que le logo soit exactement centré sur la position
         // Pas de labels, donc pas de verticalOffset
+        // IMPORTANT: createCell applique translate(-50%, -50%) pour centrer le logo
+        // Donc on passe directement la position relative où on veut que le logo soit centré
         const buttonCell = createCell(
-            relativeX, // Position relative au container
+            relativeX, // Position relative au container (createCell va centrer le logo ici)
             relativeY, // Position relative au container
             25, // Petit radius pour le bouton
             'rgba(0, 0, 0, 0)', // Fond transparent
@@ -1389,6 +1373,29 @@ function createButtonCells() {
             0, // Pas de stroke
             buttonsContainer // Container cible : buttonsContainer au lieu de flux-diagram
         );
+        
+        // Vérifier la position finale après création (synchrone)
+        // Force un reflow pour obtenir les dimensions réelles
+        void buttonCell.offsetHeight; // Force reflow
+        const cellRect = buttonCell.getBoundingClientRect();
+        const fluxDiagramRect = document.getElementById('flux-diagram').getBoundingClientRect();
+        
+        // Position du centre de la cellule relative au flux-diagram
+        const cellCenterX = cellRect.left + cellRect.width / 2 - fluxDiagramRect.left;
+        const cellCenterY = cellRect.top + cellRect.height / 2 - fluxDiagramRect.top;
+        
+        // Le centre du container (surfaceNode) dans le flux-diagram
+        const containerCenterX = surfaceNode.x;
+        const containerCenterY = surfaceNode.y;
+        
+        // Distance depuis le centre du container (surfaceNode)
+        const distanceFromContainerCenter = Math.sqrt(
+            (cellCenterX - containerCenterX) ** 2 + 
+            (cellCenterY - containerCenterY) ** 2
+        );
+        console.log(`  → Après création: cellCenter absolu=(${cellCenterX.toFixed(2)}, ${cellCenterY.toFixed(2)})`);
+        console.log(`  → containerCenter (surfaceNode)=(${containerCenterX.toFixed(2)}, ${containerCenterY.toFixed(2)})`);
+        console.log(`  → distance finale=${distanceFromContainerCenter.toFixed(2)}px (devrait être ${fixedTotalRadius.toFixed(2)})`);
         
         // Vérifier le style appliqué à la cellule
         console.log(`  → buttonCell.style.left=${buttonCell.style.left}, buttonCell.style.top=${buttonCell.style.top}`);
@@ -1472,13 +1479,14 @@ function poseBoutonSurCercle(nodeId = 'surface', angleDeg = 0, offsetRadius = 0,
     console.log(`poseBoutonSurCercle: nodeId=${nodeId}, angleDeg=${angleDeg}, offsetRadius=${offsetRadius}, totalRadiusOverride=${totalRadiusOverride}, totalRadius=${totalRadius}, node.x=${node.x}, node.y=${node.y}`);
     
     // Convertir l'angle en radians
+    // Convention: 0° = droite, 90° = bas, 180° = gauche, 270° = haut
+    // En CSS, Y augmente vers le bas (inverse des mathématiques)
+    // Pour convertir un angle mathématique (Y vers le haut) en angle CSS (Y vers le bas):
+    // angleCSS = -angleMath (ou angleMath = -angleCSS)
+    // Donc: x = cos(angleMath), y = -sin(angleMath) pour CSS
     const angleRad = (angleDeg * Math.PI) / 180;
-    
-    // Calculer la position sur le cercle
-    // 0° = droite (cos=1, sin=0)
-    // 90° = bas (cos=0, sin=1)
     const x = node.x + totalRadius * Math.cos(angleRad);
-    const y = node.y + totalRadius * Math.sin(angleRad);
+    const y = node.y - totalRadius * Math.sin(angleRad); // Inverser sin pour CSS (Y vers le bas)
     
     console.log(`poseBoutonSurCercle: angleRad=${angleRad}, cos=${Math.cos(angleRad)}, sin=${Math.sin(angleRad)}, final pos=(${x}, ${y})`);
     

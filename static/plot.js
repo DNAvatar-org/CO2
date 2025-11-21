@@ -20,7 +20,14 @@ const PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }; // Marges ajustées pour év
 // Note: Ces marges sont utilisées par Plotly pour positionner le graphique dans le conteneur
 
 // Couleur de la tropopause (bleu vif) - utilisée pour la ligne et l'annotation
-const ColorTropo = '#87CEEB'; // Bleu clair (sky blue)
+const ColorTropo = '#7799FF'; 
+
+// Configuration de l'annotation Stratosphère/Troposphère
+const STRATOSPHERE_ANNOTATION_X = 1.0; // Position X en coordonnées paper (1.0 = bord droit de l'axe)
+const STRATOSPHERE_ANNOTATION_COLOR = ColorTropo; // Couleur de l'annotation (par défaut = ColorTropo)
+
+// Couleur du fond du graphique (zone où sont dessinées les courbes)
+const PLOT_BACKGROUND_COLOR = 'rgba(255, 255, 255, 0)'; // Fond blanc opaque (100% alpha)
 
 // Police globale - peut être changée via le bouton de debug
 window.globalFontFamily = 'ProggyDotted'; // Police par défaut pour le graphique
@@ -331,11 +338,11 @@ function initPlot() {
         },
         showlegend: false,
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
-        plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
-        paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
+        plot_bgcolor: PLOT_BACKGROUND_COLOR, // Fond de la zone de dessin (configurable)
+        paper_bgcolor: PLOT_BACKGROUND_COLOR, // Fond du papier (configurable)
         annotations: [
             {
-                x: 1.01, // Juste à droite de l'axe, touchant l'axe vertical (en coordonnées paper)
+                x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
                 y: 11, // Position de la tropopause (11 km sur l'axe altitude)
                 text: 'Stratosphère<br>8.0K<br>Troposphère',
                 showarrow: false,
@@ -344,7 +351,7 @@ function initPlot() {
                 xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
                 yanchor: 'middle',
                 align: 'left', // Justifié à gauche
-                font: getPlotlyFont(9, ColorTropo) // Même couleur que la ligne de tropopause
+                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR) // Couleur configurable
             },
             {
                 x: 0.02, // En bas à gauche du graphique
@@ -665,7 +672,7 @@ window.updatePlot = function updatePlot(data) {
             const label = `${T}K (${(T - 273.15).toFixed(0)}°C)`;
             // Utiliser la fonction pour obtenir le pattern
             const dashPattern = getPattern(index);
-            const planck = createPlanckTrace(T, label, '#cccccc', false, dashPattern); // Toutes en gris clair avec différents motifs
+            const planck = createPlanckTrace(T, label, 'white', false, dashPattern); // Blanc
             // Utiliser la fonction générique pour obtenir l'épaisseur selon le nombre total de courbes
             if (typeof window.getLineWidth === 'function') {
                 planck.line.width = window.getLineWidth(index, totalCount);
@@ -704,9 +711,9 @@ window.updatePlot = function updatePlot(data) {
         trace_absorption.showlegend = false; // Pas dans la légende
         traces.push(trace_absorption);
 
-        // Courbe Planck correspondante (pointillée) à la température effective - petits points avec la même couleur que l'absorption
+        // Courbe Planck correspondante (pointillée) à la température effective - en gras avec des points, même couleur que l'absorption
         const planck_current = createPlanckTrace(T_current, `Planck ${data.co2_ppm.toFixed(0)} ppm`, color_current, false, 'dot');
-        planck_current.line.width = 0.5; // Très fine comme les autres courbes
+        planck_current.line.width = 2; // En gras comme la courbe d'absorption
         planck_current.line.color = color_current; // Même couleur que la courbe d'absorption
         traces.push(planck_current);
     }
@@ -816,11 +823,11 @@ window.updatePlot = function updatePlot(data) {
             zeroline: false,
             visible: true
         },
-        plot_bgcolor: 'rgba(0,0,0,0)', // Fond transparent
-        paper_bgcolor: 'rgba(0,0,0,0)', // Fond du papier transparent
+        plot_bgcolor: PLOT_BACKGROUND_COLOR, // Fond de la zone de dessin (configurable)
+        paper_bgcolor: PLOT_BACKGROUND_COLOR, // Fond du papier (configurable)
         annotations: [
             {
-                x: 1.01, // Juste à droite de l'axe, touchant l'axe vertical (en coordonnées paper)
+                x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
                 y: z_trop_km, // Position de la tropopause (en km, axe altitude)
                 text: 'Stratosphère<br>8.0K<br>Troposphère',
                 showarrow: false,
@@ -829,7 +836,7 @@ window.updatePlot = function updatePlot(data) {
                 xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
                 yanchor: 'middle',
                 align: 'left', // Justifié à gauche
-                font: getPlotlyFont(9, ColorTropo) // Même couleur que la ligne de tropopause
+                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR) // Couleur configurable
             },
         ]
     };

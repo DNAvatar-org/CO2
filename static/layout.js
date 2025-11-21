@@ -26,9 +26,25 @@
         const screenWidth = window.innerWidth;
         const leftColumn = document.getElementById('left-column');
         const rightColumn = document.getElementById('right-column');
+        const container = document.querySelector('.container');
         
-        if (!leftColumn || !rightColumn) {
+        if (!leftColumn || !rightColumn || !container) {
             return;
+        }
+        
+        // Si widthScreen < 1000, passer la colonne right sous la colonne left
+        if (screenWidth < 1000) {
+            // Changer la direction du container en colonne
+            container.style.flexDirection = 'column';
+            // La colonne right reste à 999px de large
+            rightColumn.style.width = '999px';
+            rightColumn.style.maxWidth = '999px';
+        } else {
+            // Direction normale en ligne
+            container.style.flexDirection = 'row';
+            // Réinitialiser la largeur de right-column
+            rightColumn.style.width = '';
+            rightColumn.style.maxWidth = '';
         }
         
         // Récupérer toutes les divs AVANT de vider les colonnes
@@ -46,42 +62,29 @@
         leftColumn.innerHTML = '';
         rightColumn.innerHTML = '';
         
-    // LEFT COLUMN
-    // 1. title-container (toujours)
-    if (divs['title-container']) {
-        leftColumn.appendChild(divs['title-container']);
-    }
-    
-    // 2. (screenWidth>400)?flux-diagram-wrapper:plot-container-wrapper
-    if (screenWidth > 400) {
+        // LEFT COLUMN
+        // 1. title-container (toujours)
+        if (divs['title-container']) {
+            leftColumn.appendChild(divs['title-container']);
+        }
+        
+        // 2. flux-diagram-wrapper (toujours dans left)
         if (divs['flux-diagram-wrapper']) {
             leftColumn.appendChild(divs['flux-diagram-wrapper']);
         }
-    } else {
-        if (divs['plot-container-wrapper']) {
-            leftColumn.appendChild(divs['plot-container-wrapper']);
+        
+        // RIGHT COLUMN
+        // 1. timeline-display (en haut pour visibilité)
+        if (divs['timeline-display']) {
+            rightColumn.appendChild(divs['timeline-display']);
         }
-    }
-    
-    
-    // RIGHT COLUMN
-    // 1. timeline-display (en haut pour visibilité)
-    if (divs['timeline-display']) {
-        rightColumn.appendChild(divs['timeline-display']);
-    }
-    
-    // 2. (screenWidth>400)?plot-container-wrapper:flux-diagram-wrapper
-    if (screenWidth > 400) {
+        
+        // 2. plot-container-wrapper (toujours dans right)
         if (divs['plot-container-wrapper']) {
             rightColumn.appendChild(divs['plot-container-wrapper']);
         }
-    } else {
-        if (divs['flux-diagram-wrapper']) {
-            rightColumn.appendChild(divs['flux-diagram-wrapper']);
-        }
-    }
-    
-    // synthese_EdS est intégrée dans l'organigramme par integrateEds.js, donc pas besoin de la positionner
+        
+        // synthese_EdS est intégrée dans l'organigramme par integrateEds.js, donc pas besoin de la positionner
     }
     
     // Réorganiser au chargement
@@ -94,8 +97,8 @@
         if (leftColumn && rightColumn && titleContainer) {
             reorganizeLayout();
         } else {
-            // Réessayer après un court délai si les éléments ne sont pas encore là
-            setTimeout(initLayout, 50);
+            // Réessayer au prochain frame si les éléments ne sont pas encore là (synchrone via requestAnimationFrame)
+            requestAnimationFrame(initLayout);
         }
     }
     
@@ -103,8 +106,12 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initLayout);
     } else {
-        // DOM déjà chargé, attendre un peu pour que les autres scripts s'exécutent
-        setTimeout(initLayout, 50);
+        // DOM déjà chargé, essayer directement, sinon au prochain frame
+        if (document.getElementById('left-column') && document.getElementById('right-column') && document.querySelector('.title-container')) {
+            initLayout();
+        } else {
+            requestAnimationFrame(initLayout);
+        }
     }
     
     // Réorganiser au redimensionnement (avec debounce)

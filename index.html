@@ -106,6 +106,13 @@
                             <!-- Sera rempli dynamiquement -->
                         </div>
                     </div>
+                    <div class="legend-equilibre">
+                        <div id="legend-equilibre-curves" style="margin-bottom: 8px;"></div>
+                        Puissance dissipée :<br>
+                        ∫<sub><span class="legend-line-dotted"></span></sub> == ∫<sub><span class="legend-line-solid"></span></sub><br>
+                        soit W/m² = σ·T⁴<br>
+                        <span style="font-size: 0.9em; opacity: 0.9;">[Unité] ∫(W/m²/μm)·d(μm) = W/m²</span>
+                    </div>
                 </div>
             </div>
             <canvas id="spectral-visualization" width="333" height="400"></canvas>
@@ -117,7 +124,7 @@
                     <span class="timeline-hourglass">📅</span>
                     <span class="epoch-name" id="epoch-name"></span>
                 </div>
-                <span class="epoch-start-time">Avant -4600 Ma</span>
+                <span class="epoch-start-time">Avant -4500 Ma</span>
                 <span class="info-time" id="info-time">+90 ans</span>
             </div>
             <div class="timeline-frise">
@@ -125,9 +132,9 @@
                     <button class="epoch-btn" data-epoch="Corps noir" onclick="setEpoch('Corps noir')" title="Corps noir - État initial (206.1K), avant formation de la Terre, pas de noyau différencié, pas d'atmosphère">⚫</button>
                     <div class="epoch-separator-item">
                         <span class="epoch-separator">|</span>
-                        <span class="epoch-date">-4600 Ma</span>
+                        <span class="epoch-date">-4500 Ma</span>
                     </div>
-                    <button class="epoch-btn" data-epoch="Hadéen" onclick="setEpoch('Hadéen')" title="Hadéen (-4600 à -4000 Ma)">🌕</button>
+                    <button class="epoch-btn" data-epoch="Hadéen" onclick="setEpoch('Hadéen')" title="Hadéen (-4500 à -4000 Ma)">🌕</button>
                     <div class="epoch-separator-item">
                         <span class="epoch-separator">|</span>
                         <span class="epoch-date">-4000 Ma</span>

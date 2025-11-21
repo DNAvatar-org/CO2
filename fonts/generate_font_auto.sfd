@@ -1,0 +1,685 @@
+# FontForge script généré automatiquement - Version automatique
+# File: generate_font_auto.sfd
+# Pour créer la police: fontforge -script scripts/generate_font_auto.sfd
+
+# Créer une nouvelle police
+New()
+
+# Définir les métadonnées
+SetFontNames("CO2CustomIcons", "CO2 Custom Icons", "Regular", "Regular", "DNAvatar.org", "2025")
+SetTTFName(0x409, 1, "CO2 Custom Icons")
+SetTTFName(0x409, 2, "Regular")
+SetTTFName(0x409, 4, "CO2 Custom Icons Regular")
+SetTTFName(0x409, 6, "CO2CustomIcons-Regular")
+
+# Définir les unités (1000 units = 1 em)
+SetEm(1000)
+
+# Liste des polices système à essayer
+sourceFonts = {
+    "/System/Library/Fonts/Apple Color Emoji.ttc",
+    "/System/Library/Fonts/Supplemental/Apple Color Emoji.ttc",
+    "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
+    "/usr/share/fonts/truetype/noto/Noto Emoji.ttf"
+}
+
+# Fonction pour trouver une police source
+function FindSourceFont()
+    local font
+    local i, path
+    for i, path in ipairs(sourceFonts) do
+        font = Open(path)
+        if font then
+            return font, path
+        end
+    end
+    return nil, nil
+end
+
+# Ouvrir une police source
+sourceFont, sourcePath = FindSourceFont()
+if not sourceFont then
+    Print("⚠️  Aucune police système avec emojis trouvée.")
+    Print("   Les glyphes seront vides - vous devrez les remplir manuellement.")
+else
+    Print("✅ Police source trouvée: " .. sourcePath)
+end
+
+# Créer les glyphes et copier depuis la source
+
+# Emoji: 🏐 -> U+E000 (alb)
+Select(57344)
+CreateGlyph()
+GlyphInfo("Unicode", 57344)
+GlyphInfo("Name", "alb")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127952)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57344)
+        Paste()
+        Print("✅ Copié 🏐 (alb) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F3D0 non trouvé dans la source pour 🏐")
+    end
+end
+
+# Emoji: 🌋 -> U+E001 (volcan)
+Select(57345)
+CreateGlyph()
+GlyphInfo("Unicode", 57345)
+GlyphInfo("Name", "volcan")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127755)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57345)
+        Paste()
+        Print("✅ Copié 🌋 (volcan) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F30B non trouvé dans la source pour 🌋")
+    end
+end
+
+# Emoji: 🌵 -> U+E002 (co2)
+Select(57346)
+CreateGlyph()
+GlyphInfo("Unicode", 57346)
+GlyphInfo("Name", "co2")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127797)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57346)
+        Paste()
+        Print("✅ Copié 🌵 (co2) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F335 non trouvé dans la source pour 🌵")
+    end
+end
+
+# Emoji: 💧 -> U+E003 (h2o)
+Select(57347)
+CreateGlyph()
+GlyphInfo("Unicode", 57347)
+GlyphInfo("Name", "h2o")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(128167)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57347)
+        Paste()
+        Print("✅ Copié 💧 (h2o) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F4A7 non trouvé dans la source pour 💧")
+    end
+end
+
+# Emoji: ⛽ -> U+E004 (m)
+Select(57348)
+CreateGlyph()
+GlyphInfo("Unicode", 57348)
+GlyphInfo("Name", "m")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(9981)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57348)
+        Paste()
+        Print("✅ Copié ⛽ (m) depuis la source")
+    else
+        Print("⚠️  Glyphe 26FD non trouvé dans la source pour ⛽")
+    end
+end
+
+# Emoji: 🌞 -> U+E005 (soleil)
+Select(57349)
+CreateGlyph()
+GlyphInfo("Unicode", 57349)
+GlyphInfo("Name", "soleil")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127774)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57349)
+        Paste()
+        Print("✅ Copié 🌞 (soleil) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F31E non trouvé dans la source pour 🌞")
+    end
+end
+
+# Emoji: 🎱 -> U+E006 (g)
+Select(57350)
+CreateGlyph()
+GlyphInfo("Unicode", 57350)
+GlyphInfo("Name", "g")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127921)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57350)
+        Paste()
+        Print("✅ Copié 🎱 (g) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F3B1 non trouvé dans la source pour 🎱")
+    end
+end
+
+# Emoji: 🛰 -> U+E007 (espace)
+Select(57351)
+CreateGlyph()
+GlyphInfo("Unicode", 57351)
+GlyphInfo("Name", "espace")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(128752)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57351)
+        Paste()
+        Print("✅ Copié 🛰 (espace) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F6F0 non trouvé dans la source pour 🛰")
+    end
+end
+
+# Emoji: 🌍 -> U+E008 (surface)
+Select(57352)
+CreateGlyph()
+GlyphInfo("Unicode", 57352)
+GlyphInfo("Name", "surface")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127757)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57352)
+        Paste()
+        Print("✅ Copié 🌍 (surface) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F30D non trouvé dans la source pour 🌍")
+    end
+end
+
+# Emoji: 🌕 -> U+E009 (noyau)
+Select(57353)
+CreateGlyph()
+GlyphInfo("Unicode", 57353)
+GlyphInfo("Name", "noyau")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127765)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57353)
+        Paste()
+        Print("✅ Copié 🌕 (noyau) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F315 non trouvé dans la source pour 🌕")
+    end
+end
+
+# Emoji: 🌫 -> U+E00A (athmosphere)
+Select(57354)
+CreateGlyph()
+GlyphInfo("Unicode", 57354)
+GlyphInfo("Name", "athmosphere")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127787)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57354)
+        Paste()
+        Print("✅ Copié 🌫 (athmosphere) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F32B non trouvé dans la source pour 🌫")
+    end
+end
+
+# Emoji: 🔂 -> U+E00B (r)
+Select(57355)
+CreateGlyph()
+GlyphInfo("Unicode", 57355)
+GlyphInfo("Name", "r")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(128258)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57355)
+        Paste()
+        Print("✅ Copié 🔂 (r) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F502 non trouvé dans la source pour 🔂")
+    end
+end
+
+# Emoji: 📛 -> U+E00C (for)
+Select(57356)
+CreateGlyph()
+GlyphInfo("Unicode", 57356)
+GlyphInfo("Name", "for")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(128219)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57356)
+        Paste()
+        Print("✅ Copié 📛 (for) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F4DB non trouvé dans la source pour 📛")
+    end
+end
+
+# Emoji: 🎚 -> U+E00D (jauges)
+Select(57357)
+CreateGlyph()
+GlyphInfo("Unicode", 57357)
+GlyphInfo("Name", "jauges")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127898)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57357)
+        Paste()
+        Print("✅ Copié 🎚 (jauges) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F39A non trouvé dans la source pour 🎚")
+    end
+end
+
+# Emoji: 🔘 -> U+E00E (boutons)
+Select(57358)
+CreateGlyph()
+GlyphInfo("Unicode", 57358)
+GlyphInfo("Name", "boutons")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(128280)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57358)
+        Paste()
+        Print("✅ Copié 🔘 (boutons) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F518 non trouvé dans la source pour 🔘")
+    end
+end
+
+# Emoji: 📅 -> U+E00F (date_depuis_creation_terre)
+Select(57359)
+CreateGlyph()
+GlyphInfo("Unicode", 57359)
+GlyphInfo("Name", "date_depuis_creation_terre")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(128197)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57359)
+        Paste()
+        Print("✅ Copié 📅 (date_depuis_creation_terre) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F4C5 non trouvé dans la source pour 📅")
+    end
+end
+
+# Emoji: ⚫ -> U+E010 (corps_noir)
+Select(57360)
+CreateGlyph()
+GlyphInfo("Unicode", 57360)
+GlyphInfo("Name", "corps_noir")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(9899)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57360)
+        Paste()
+        Print("✅ Copié ⚫ (corps_noir) depuis la source")
+    else
+        Print("⚠️  Glyphe 26AB non trouvé dans la source pour ⚫")
+    end
+end
+
+# Emoji: 🦠 -> U+E011 (arch)
+Select(57361)
+CreateGlyph()
+GlyphInfo("Unicode", 57361)
+GlyphInfo("Name", "arch")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(129440)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57361)
+        Paste()
+        Print("✅ Copié 🦠 (arch) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F9A0 non trouvé dans la source pour 🦠")
+    end
+end
+
+# Emoji: 🌿 -> U+E012 (prot)
+Select(57362)
+CreateGlyph()
+GlyphInfo("Unicode", 57362)
+GlyphInfo("Name", "prot")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127807)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57362)
+        Paste()
+        Print("✅ Copié 🌿 (prot) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F33F non trouvé dans la source pour 🌿")
+    end
+end
+
+# Emoji: 🦕 -> U+E013 (m)
+Select(57363)
+CreateGlyph()
+GlyphInfo("Unicode", 57363)
+GlyphInfo("Name", "m")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(129429)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57363)
+        Paste()
+        Print("✅ Copié 🦕 (m) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F995 non trouvé dans la source pour 🦕")
+    end
+end
+
+# Emoji: 🦴 -> U+E014 (cr)
+Select(57364)
+CreateGlyph()
+GlyphInfo("Unicode", 57364)
+GlyphInfo("Name", "cr")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(129460)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57364)
+        Paste()
+        Print("✅ Copié 🦴 (cr) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F9B4 non trouvé dans la source pour 🦴")
+    end
+end
+
+# Emoji: 🦣 -> U+E015 (c)
+Select(57365)
+CreateGlyph()
+GlyphInfo("Unicode", 57365)
+GlyphInfo("Name", "c")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(129443)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57365)
+        Paste()
+        Print("✅ Copié 🦣 (c) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F9A3 non trouvé dans la source pour 🦣")
+    end
+end
+
+# Emoji: 🌪 -> U+E016 (vent)
+Select(57366)
+CreateGlyph()
+GlyphInfo("Unicode", 57366)
+GlyphInfo("Name", "vent")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127786)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57366)
+        Paste()
+        Print("✅ Copié 🌪 (vent) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F32A non trouvé dans la source pour 🌪")
+    end
+end
+
+# Emoji: 🌱 -> U+E017 (v)
+Select(57367)
+CreateGlyph()
+GlyphInfo("Unicode", 57367)
+GlyphInfo("Name", "v")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127793)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57367)
+        Paste()
+        Print("✅ Copié 🌱 (v) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F331 non trouvé dans la source pour 🌱")
+    end
+end
+
+# Emoji: 🕶🕳🏐 -> U+E018 ()
+Select(57368)
+CreateGlyph()
+GlyphInfo("Unicode", 57368)
+GlyphInfo("Name", "")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(128374)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57368)
+        Paste()
+        Print("✅ Copié 🕶🕳🏐 () depuis la source")
+    else
+        Print("⚠️  Glyphe 1F576 non trouvé dans la source pour 🕶🕳🏐")
+    end
+end
+
+# Emoji: 🧲 -> U+E019 (magnetisme)
+Select(57369)
+CreateGlyph()
+GlyphInfo("Unicode", 57369)
+GlyphInfo("Name", "magnetisme")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(129522)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57369)
+        Paste()
+        Print("✅ Copié 🧲 (magnetisme) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F9F2 non trouvé dans la source pour 🧲")
+    end
+end
+
+# Emoji: 🌳 -> U+E01A (for)
+Select(57370)
+CreateGlyph()
+GlyphInfo("Unicode", 57370)
+GlyphInfo("Name", "for")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127795)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57370)
+        Paste()
+        Print("✅ Copié 🌳 (for) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F333 non trouvé dans la source pour 🌳")
+    end
+end
+
+# Emoji: 🏭 -> U+E01B (usine)
+Select(57371)
+CreateGlyph()
+GlyphInfo("Unicode", 57371)
+GlyphInfo("Name", "usine")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127981)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57371)
+        Paste()
+        Print("✅ Copié 🏭 (usine) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F3ED non trouvé dans la source pour 🏭")
+    end
+end
+
+# Emoji: 🌲 -> U+E01C (arbre)
+Select(57372)
+CreateGlyph()
+GlyphInfo("Unicode", 57372)
+GlyphInfo("Name", "arbre")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127794)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57372)
+        Paste()
+        Print("✅ Copié 🌲 (arbre) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F332 non trouvé dans la source pour 🌲")
+    end
+end
+
+# Emoji: 📡 -> U+E01D (rayonnement)
+Select(57373)
+CreateGlyph()
+GlyphInfo("Unicode", 57373)
+GlyphInfo("Name", "rayonnement")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(128225)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57373)
+        Paste()
+        Print("✅ Copié 📡 (rayonnement) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F4E1 non trouvé dans la source pour 📡")
+    end
+end
+
+# Emoji: 🦎 -> U+E01E (reptile_tout)
+Select(57374)
+CreateGlyph()
+GlyphInfo("Unicode", 57374)
+GlyphInfo("Name", "reptile_tout")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(129422)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57374)
+        Paste()
+        Print("✅ Copié 🦎 (reptile_tout) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F98E non trouvé dans la source pour 🦎")
+    end
+end
+
+# Emoji: ❄️ -> U+E01F (cryog_nien)
+Select(57375)
+CreateGlyph()
+GlyphInfo("Unicode", 57375)
+GlyphInfo("Name", "cryog_nien")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(10052)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57375)
+        Paste()
+        Print("✅ Copié ❄️ (cryog_nien) depuis la source")
+    else
+        Print("⚠️  Glyphe 2744 non trouvé dans la source pour ❄️")
+    end
+end
+
+# Emoji: 🌈 -> U+E020 (tat_d_aujourd_hui)
+Select(57376)
+CreateGlyph()
+GlyphInfo("Unicode", 57376)
+GlyphInfo("Name", "tat_d_aujourd_hui")
+
+# Essayer de copier depuis la police source
+if sourceFont then
+    Select(127752)
+    if GlyphInfo("Selected") then
+        Copy()
+        Select(57376)
+        Paste()
+        Print("✅ Copié 🌈 (tat_d_aujourd_hui) depuis la source")
+    else
+        Print("⚠️  Glyphe 1F308 non trouvé dans la source pour 🌈")
+    end
+end
+
+# Fermer la police source si ouverte
+if sourceFont then
+    Close(sourceFont)
+end
+
+# Générer la police TTF
+Generate("CO2CustomIcons.ttf")
+Save("CO2CustomIcons.sfd")
+Print("✅ Police générée: CO2CustomIcons.ttf")

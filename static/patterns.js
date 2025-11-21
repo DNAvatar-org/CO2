@@ -86,7 +86,7 @@ window.getDashArray = function(pattern) {
  */
 window.createDashPatternSVG = function(pattern, index = 0, totalCount = 1) {
     const width = 50;
-    const height = 4;
+    const height = 5;
     const dashArray = window.getDashArray(pattern);
     
     // Calculer le stroke-width en fonction de l'index (cycle)
@@ -96,7 +96,8 @@ window.createDashPatternSVG = function(pattern, index = 0, totalCount = 1) {
         : 0.5;
     
     // Facteur multiplicateur pour la légende (rendre les différences plus visibles)
-    const strokeWidth = baseWidth * 3; // 0.5 → 1.5px, 1.0 → 3.0px, 1.5 → 4.5px, etc.
+    // Réduit pour rendre les traits plus fins
+    const strokeWidth = baseWidth * 1.5; // 0.5 → 0.75px, 1.0 → 1.5px, 1.5 → 2.25px, etc.
     
     // Utiliser stroke-dasharray même pour solid (none) pour s'assurer que la ligne est visible
     const dashAttr = dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : '';

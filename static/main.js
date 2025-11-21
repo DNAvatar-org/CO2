@@ -1073,7 +1073,7 @@ function updateLegend(data) {
         // Configuration de la grille : 2 colonnes (4 éléments dans la première)
         grid.style.display = 'grid';
         grid.style.gridTemplateColumns = '1fr 1fr';
-        grid.style.gap = '8px 20px';
+        grid.style.gap = '0px 20px'; // 0px entre les lignes, 20px entre les colonnes
         
         // Trier les températures par ordre croissant
         const sortedTemps = [...window.PLANCK_TEMPERATURES].sort((a, b) => a - b);
@@ -1097,20 +1097,67 @@ function updateLegend(data) {
             // Passer l'index original et le totalCount pour calculer le stroke-width correct
             const patternSVG = typeof window.createDashPatternSVG === 'function'
                 ? window.createDashPatternSVG(dashPattern, originalIndex, totalCount)
-                : `<svg width="50" height="4" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
-                    <line x1="2" y1="2" x2="48" y2="2" stroke="white" stroke-width="2.5"/>
+                : `<svg width="50" height="5" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
+                    <line x1="2" y1="2.5" x2="48" y2="2.5" stroke="white" stroke-width="1"/>
                    </svg>`;
             
-            // Créer un conteneur pour le SVG
+            // Créer un conteneur pour le SVG avec les températures au-dessus et en-dessous
             const patternContainer = document.createElement('div');
-            patternContainer.innerHTML = patternSVG;
             patternContainer.style.display = 'inline-block';
+            patternContainer.style.position = 'relative';
+            patternContainer.style.width = '50px';
+            patternContainer.style.height = '5px';
             patternContainer.style.marginRight = '8px';
             patternContainer.style.verticalAlign = 'middle';
             
+            // SVG du trait (centré dans le conteneur de 5px)
+            const svgContainer = document.createElement('div');
+            svgContainer.innerHTML = patternSVG;
+            svgContainer.style.position = 'absolute';
+            svgContainer.style.top = '50%';
+            svgContainer.style.left = '0px';
+            svgContainer.style.transform = 'translateY(-35%)';
+            
+            // Déterminer quelle unité afficher selon la langue
+            const lang = (typeof window !== 'undefined' && window.lang) ? window.lang : 'fr';
+            const showCelsius = lang === 'fr';
+            const showFahrenheit = lang === 'en';
+            
+            // °C au-dessus du trait (si français)
+            if (showCelsius) {
+                const tempCAbove = document.createElement('span');
+                tempCAbove.style.position = 'absolute';
+                tempCAbove.style.top = '-4px';
+                tempCAbove.style.right = '0%';
+                tempCAbove.style.fontSize = '0.8em';
+                tempCAbove.style.lineHeight = '1';
+                tempCAbove.style.textAlign = 'right';
+                tempCAbove.style.whiteSpace = 'nowrap';
+                tempCAbove.textContent = `${(T - 273.15).toFixed(0)}°C`;
+                patternContainer.appendChild(tempCAbove);
+            }
+            
+            // °F en-dessous du trait (si anglais)
+            if (showFahrenheit) {
+                const tempFBelow = document.createElement('span');
+                tempFBelow.style.position = 'absolute';
+                tempFBelow.style.bottom = '-8px';
+                tempFBelow.style.right = '0%';
+                tempFBelow.style.fontSize = '0.8em';
+                tempFBelow.style.lineHeight = '1';
+                tempFBelow.style.textAlign = 'right';
+                tempFBelow.style.whiteSpace = 'nowrap';
+                const tempF = ((T - 273.15) * 9/5 + 32).toFixed(0);
+                tempFBelow.textContent = `${tempF}°F`;
+                patternContainer.appendChild(tempFBelow);
+            }
+            
+            patternContainer.appendChild(svgContainer);
+            
+            // K à côté (normal)
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
-            labelSpan.textContent = `${T}K (${(T - 273.15).toFixed(0)}°C)`;
+            labelSpan.textContent = `${T}K`;
             
             item.appendChild(patternContainer);
             item.appendChild(labelSpan);
@@ -1123,6 +1170,100 @@ function updateLegend(data) {
                 window.MathJax.typesetPromise([grid]).catch(() => {});
             }, 100);
         }
+    }
+    
+    // Ajouter les légendes pour les courbes d'équilibre (corps noir pointillé et courbe réelle pleine)
+    const equilibreCurvesContainer = document.getElementById('legend-equilibre-curves');
+    if (equilibreCurvesContainer && data && data.current && data.current.effective_temperature) {
+        equilibreCurvesContainer.innerHTML = '';
+        
+        const T = data.current.effective_temperature;
+        const tempC = (T - 273.15).toFixed(0);
+        const tempF = ((T - 273.15) * 9/5 + 32).toFixed(0);
+        
+        // Créer deux éléments de légende : un pour le corps noir (pointillé 'dot') et un pour la courbe réelle (pleine 'solid')
+        const patterns = [
+            { name: 'dot', label: 'Corps noir' },
+            { name: 'solid', label: 'Courbe réelle' }
+        ];
+        
+        patterns.forEach((patternInfo) => {
+            const item = document.createElement('div');
+            item.className = 'legend-equilibre-item';
+            
+            // Créer le SVG avec le pattern approprié (cyan pour la légende d'équilibre)
+            const dashArray = typeof window.getDashArray === 'function' 
+                ? window.getDashArray(patternInfo.name)
+                : (patternInfo.name === 'dot' ? '1,3' : 'none');
+            const dashAttr = dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : '';
+            const patternSVG = `<svg width="50" height="5" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
+                <line x1="2" y1="2.5" x2="48" y2="2.5" stroke="cyan" stroke-width="2" ${dashAttr}/>
+            </svg>`;
+            
+            // Créer un conteneur pour le SVG avec les températures au-dessus et en-dessous
+            const patternContainer = document.createElement('div');
+            patternContainer.style.display = 'inline-block';
+            patternContainer.style.position = 'relative';
+            patternContainer.style.width = '50px';
+            patternContainer.style.height = '5px';
+            patternContainer.style.marginRight = '8px';
+            patternContainer.style.verticalAlign = 'middle';
+            
+            // SVG du trait (centré dans le conteneur de 5px)
+            const svgContainer = document.createElement('div');
+            svgContainer.innerHTML = patternSVG;
+            svgContainer.style.position = 'absolute';
+            svgContainer.style.top = '50%';
+            svgContainer.style.left = '0px';
+            svgContainer.style.transform = 'translateY(-35%)';
+            
+            // Déterminer quelle unité afficher selon la langue
+            const lang = (typeof window !== 'undefined' && window.lang) ? window.lang : 'fr';
+            const showCelsius = lang === 'fr';
+            const showFahrenheit = lang === 'en';
+            
+            // °C au-dessus du trait (si français)
+            if (showCelsius) {
+                const tempCAbove = document.createElement('span');
+                tempCAbove.style.position = 'absolute';
+                tempCAbove.style.top = '-4px';
+                tempCAbove.style.right = '0%';
+                tempCAbove.style.fontSize = '0.8em';
+                tempCAbove.style.lineHeight = '1';
+                tempCAbove.style.textAlign = 'right';
+                tempCAbove.style.whiteSpace = 'nowrap';
+                tempCAbove.style.color = 'cyan';
+                tempCAbove.textContent = `${tempC}°C`;
+                patternContainer.appendChild(tempCAbove);
+            }
+            
+            // °F en-dessous du trait (si anglais)
+            if (showFahrenheit) {
+                const tempFBelow = document.createElement('span');
+                tempFBelow.style.position = 'absolute';
+                tempFBelow.style.bottom = '-8px';
+                tempFBelow.style.right = '0%';
+                tempFBelow.style.fontSize = '0.8em';
+                tempFBelow.style.lineHeight = '1';
+                tempFBelow.style.textAlign = 'right';
+                tempFBelow.style.whiteSpace = 'nowrap';
+                tempFBelow.style.color = 'cyan';
+                tempFBelow.textContent = `${tempF}°F`;
+                patternContainer.appendChild(tempFBelow);
+            }
+            
+            patternContainer.appendChild(svgContainer);
+            
+            // K à côté (normal)
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'legend-text';
+            labelSpan.style.color = 'cyan';
+            labelSpan.textContent = `${T.toFixed(1)}K`;
+            
+            item.appendChild(patternContainer);
+            item.appendChild(labelSpan);
+            equilibreCurvesContainer.appendChild(item);
+        });
     }
 }
 

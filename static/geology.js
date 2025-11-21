@@ -13,11 +13,59 @@
 // Définition des époques géologiques avec facteur multiplicatif pour les volcans
 // Au début de la Terre, il y avait beaucoup plus de volcanisme
 const GEOLOGICAL_ERAS = [
-    { name: 'Corps noir', startYears: 5.0e9, endYears: 4.6e9, volcanoFactor: 0.0, co2PerVolcano: 0 }, // Avant formation de la Terre, pas de différenciation, pas de volcans
-    { name: 'Hadéen', startYears: 4.6e9, endYears: 4.0e9, volcanoFactor: 10.0, co2PerVolcano: 500 }, // Début de la Terre : volcanisme intense
+    { name: 'Corps noir', startYears: 5.0e9, endYears: 4.5e9, volcanoFactor: 0.0, co2PerVolcano: 0 }, // Avant formation de la Lune (4,5 Ga), pas de différenciation, pas de volcans
+    { name: 'Hadéen', startYears: 4.5e9, endYears: 4.0e9, volcanoFactor: 10.0, co2PerVolcano: 500 }, // Après formation de la Lune : volcanisme intense
     { name: 'Archéen', startYears: 4.0e9, endYears: 2.5e9, volcanoFactor: 5.0, co2PerVolcano: 300 },  // Volcanisme très actif
     { name: 'Protérozoïque', startYears: 2.5e9, endYears: 541e6, volcanoFactor: 2.0, co2PerVolcano: 200 }, // Volcanisme modéré
     { name: 'Phanérozoïque', startYears: 541e6, endYears: 0, volcanoFactor: 1.0, co2PerVolcano: 150 }  // Époque actuelle : volcanisme normal
+];
+
+// Événements géologiques majeurs qui séparent les époques
+const GEOLOGICAL_EVENTS = [
+    {
+        name: 'Formation de la Lune',
+        dateYears: 4.5e9, // 4,5 milliards d'années
+        description: 'Impact géant avec Théia : différenciation du noyau, réchauffement du noyau, création du champ magnétique terrestre',
+        effects: {
+            coreDifferentiation: true, // Noyau différencié (fer-nickel)
+            magneticField: true, // Champ magnétique créé
+            coreHeating: true, // Réchauffement du noyau par l\'impact
+            volcanismEnabled: true // Volcanisme possible après différenciation
+        }
+    },
+    {
+        name: 'Solidification de la croûte',
+        dateYears: 3.5e9, // 3,5 milliards d'années
+        description: 'Croûte terrestre suffisamment solidifiée, fin de la période de croûte molle',
+        effects: {
+            crustSolidified: true // Croûte solide
+        }
+    },
+    {
+        name: 'Grande Oxydation',
+        dateYears: 2.5e9, // 2,5 milliards d'années
+        description: 'Apparition de l\'oxygène dans l\'atmosphère, déclin du méthane',
+        effects: {
+            oxygenAtmosphere: true, // Oxygène dans l\'atmosphère
+            methaneDecline: true // Déclin du méthane
+        }
+    },
+    {
+        name: 'Explosion cambrienne',
+        dateYears: 541e6, // 541 millions d\'années
+        description: 'Apparition de la vie complexe, diversification rapide',
+        effects: {
+            complexLife: true // Vie complexe
+        }
+    },
+    {
+        name: 'Extinction Crétacé-Paléogène',
+        dateYears: 66e6, // 66 millions d\'années
+        description: 'Impact d\'astéroïde, extinction des dinosaures',
+        effects: {
+            massExtinction: true // Extinction massive
+        }
+    }
 ];
 
 // Définition des périodes géologiques détaillées avec conditions initiales et emojis
@@ -26,17 +74,17 @@ const GEOLOGICAL_PERIODS = [
     {
         name: 'Corps noir',
         startYears: 5.0e9, // Avant la formation de la Terre (date inconnue exacte)
-        endYears: 4.6e9, // Formation de la Terre
+        endYears: 4.5e9, // Formation de la Lune (impact géant)
         emoji: '⚫', // Corps noir
         co2_ppm: 0, // Pas d'atmosphère
         ch4_ppm: 0, // Pas d'atmosphère
         h2o_enabled: false, // Pas d'atmosphère, pas de vapeur d'eau
         cloud_coverage: 0, // Pas de nuages
-        description: 'État initial : corps noir pur, avant formation de la Terre, pas de noyau différencié, pas d\'atmosphère, température ~206.1K'
+        description: 'État initial : corps noir pur, avant formation de la Lune (4,5 Ga), pas de noyau différencié, pas d\'atmosphère, température ~206.1K'
     },
     {
         name: 'Hadéen',
-        startYears: 4.55e9, // Après la différenciation du noyau
+        startYears: 4.5e9, // Après la formation de la Lune (impact géant)
         endYears: 4.0e9,
         emoji: '🌕', // Lune pleine (surface chaude et brillante)
         co2_ppm: 7000, // Beaucoup de CO₂ (jusqu'à 7000 ppm)
@@ -220,6 +268,30 @@ function getGeologicalEra(years) {
     return GEOLOGICAL_ERAS[GEOLOGICAL_ERAS.length - 1];
 }
 
+// Fonction pour obtenir l'événement géologique le plus proche d'une date
+function getGeologicalEvent(yearsAgo) {
+    // Trouver l'événement le plus proche (dans le passé)
+    let closestEvent = null;
+    let minDiff = Infinity;
+    
+    for (const event of GEOLOGICAL_EVENTS) {
+        const diff = Math.abs(yearsAgo - event.dateYears);
+        if (diff < minDiff && yearsAgo >= event.dateYears) {
+            minDiff = diff;
+            closestEvent = event;
+        }
+    }
+    
+    return closestEvent;
+}
+
+// Fonction pour obtenir tous les événements entre deux dates
+function getGeologicalEventsBetween(startYears, endYears) {
+    return GEOLOGICAL_EVENTS.filter(event => 
+        event.dateYears >= endYears && event.dateYears < startYears
+    );
+}
+
 // Exposer globalement
 if (typeof window !== 'undefined') {
     window.GEOLOGICAL_ERAS = GEOLOGICAL_ERAS;
@@ -228,5 +300,8 @@ if (typeof window !== 'undefined') {
     window.GEOLOGICAL_PERIODS = GEOLOGICAL_PERIODS;
     window.getGeologicalPeriod = getGeologicalPeriod;
     window.getGeologicalPeriodByName = getGeologicalPeriodByName;
+    window.GEOLOGICAL_EVENTS = GEOLOGICAL_EVENTS;
+    window.getGeologicalEvent = getGeologicalEvent;
+    window.getGeologicalEventsBetween = getGeologicalEventsBetween;
 }
 
