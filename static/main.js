@@ -1265,6 +1265,29 @@ function updateLegend(data) {
             equilibreCurvesContainer.appendChild(item);
         });
     }
+    
+    // Remplacer les spans CSS par des SVG pour harmoniser les pointillés dans l'intégrale
+    const dottedSpan = document.querySelector('.legend-line-dotted');
+    const solidSpan = document.querySelector('.legend-line-solid');
+    
+    if (dottedSpan) {
+        // Créer un SVG avec le même pattern que la légende (dot avec stroke-dasharray="1,3")
+        const dashArray = typeof window.getDashArray === 'function' ? window.getDashArray('dot') : '1,3';
+        dottedSpan.innerHTML = `<svg width="30" height="2" style="vertical-align: middle; display: inline-block;">
+            <line x1="0" y1="1" x2="30" y2="1" stroke="cyan" stroke-width="2" stroke-dasharray="${dashArray}"/>
+        </svg>`;
+        // Supprimer le style CSS border qui n'est plus nécessaire
+        dottedSpan.style.border = 'none';
+    }
+    
+    if (solidSpan) {
+        // Créer un SVG avec une ligne pleine
+        solidSpan.innerHTML = `<svg width="30" height="2" style="vertical-align: middle; display: inline-block;">
+            <line x1="0" y1="1" x2="30" y2="1" stroke="cyan" stroke-width="2"/>
+        </svg>`;
+        // Supprimer le style CSS border qui n'est plus nécessaire
+        solidSpan.style.border = 'none';
+    }
 }
 
 // Fonction pour obtenir le style CSS de bordure selon le pattern

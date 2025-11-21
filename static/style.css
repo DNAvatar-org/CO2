@@ -1125,7 +1125,7 @@ h1 {
     display: inline-block;
     width: 30px;
     height: 2px;
-    border-top: 2px dashed cyan;
+    border-top: 2px dotted cyan;
     vertical-align: middle;
     margin: 0 2px;
 }
