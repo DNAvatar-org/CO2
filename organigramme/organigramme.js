@@ -401,8 +401,10 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
         labelObj = labels;
     }
     
-    const createLabel = (text, posX, posY, isName = false, size = null) => {
-        if (!text) return;
+    const labelPositions = [];
+    
+    const createLabel = (text, posX, posY, isName = false, size = null, labelType = '') => {
+        if (!text) return null;
         const label = document.createElement('div');
         label.className = 'flux-label'; // Tous les textes des flèches
         label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -428,6 +430,10 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
             label.style.padding = '0';
         }
         container.appendChild(label);
+        
+        // Stocker la position pour les logs
+        labelPositions.push({ type: labelType, text: text, x: posX, y: posY });
+        return label;
     };
     
     // Récupérer la taille depuis labelObj.size
@@ -437,32 +443,34 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
     if (labelObj.txt1) {
         const pos1X = x1 + (x2 - x1) * 0.15;
         const pos1Y = y1 + (y2 - y1) * 0.15;
-        createLabel(labelObj.txt1, pos1X, pos1Y, false, labelSize);
+        createLabel(labelObj.txt1, pos1X, pos1Y, false, labelSize, 'txt1');
     }
     
     // name : au milieu de la flèche (50%)
     if (labelObj.name) {
         const midX = (x1 + x2) / 2;
         const midY = (y1 + y2) / 2;
-        createLabel(labelObj.name, midX, midY, true, labelSize);
+        createLabel(labelObj.name, midX, midY, true, labelSize, 'name');
     }
     
     // txt2 : entre le milieu et la fin (75% du chemin)
     if (labelObj.txt2) {
         const pos2X = x1 + (x2 - x1) * 0.75;
         const pos2Y = y1 + (y2 - y1) * 0.75;
-        createLabel(labelObj.txt2, pos2X, pos2Y, false, labelSize);
+        createLabel(labelObj.txt2, pos2X, pos2Y, false, labelSize, 'txt2');
     }
     
     // txt3 (à gauche) et txt4 (à droite) - relatifs au milieu
     const midX = (x1 + x2) / 2;
     const midY = (y1 + y2) / 2;
     if (labelObj.txt3) {
-        createLabel(labelObj.txt3, midX - 60, midY, false);
+        createLabel(labelObj.txt3, midX - 60, midY, false, null, 'txt3');
     }
     if (labelObj.txt4) {
-        createLabel(labelObj.txt4, midX + 60, midY, false);
+        createLabel(labelObj.txt4, midX + 60, midY, false, null, 'txt4');
     }
+    
+    return labelPositions;
 }
 
 // Fonction pour créer une flèche avec des divs
@@ -1029,6 +1037,10 @@ function generateArrows() {
         
         const arrow = createArrow(finalX1, finalY1, finalX2, finalY2, arrowZIndex, arrowColor);
         
+        // Log des coordonnées de la flèche
+        console.log(`=== FLÈCHE ${arc.from} → ${arc.to} ===`);
+        console.log(`Coordonnées flèche: début (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}), fin (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
+        console.log(`Distance: ${Math.sqrt((finalX2 - finalX1) ** 2 + (finalY2 - finalY1) ** 2).toFixed(1)}px`);
         
         // Ajouter l'étiquette de flèche si présente
         if (arc.label) {
@@ -1086,7 +1098,38 @@ function generateArrows() {
             }
             
             // Créer les labels le long de la partie visible de la flèche
-            createArrowLabel(visibleX1, visibleY1, visibleX2, visibleY2, arc.label);
+            const labelPositions = createArrowLabel(visibleX1, visibleY1, visibleX2, visibleY2, arc.label);
+            
+            // Log des coordonnées des étiquettes et comparaison avec attendu
+            console.log(`Coordonnées visibles: début (${visibleX1.toFixed(1)}, ${visibleY1.toFixed(1)}), fin (${visibleX2.toFixed(1)}, ${visibleY2.toFixed(1)})`);
+            const visibleLength = Math.sqrt((visibleX2 - visibleX1) ** 2 + (visibleY2 - visibleY1) ** 2);
+            const expectedMidX = (visibleX1 + visibleX2) / 2;
+            const expectedMidY = (visibleY1 + visibleY2) / 2;
+            
+            labelPositions.forEach(pos => {
+                let expected = '';
+                if (pos.type === 'name') {
+                    const actualMidX = pos.x;
+                    const actualMidY = pos.y;
+                    const diffX = Math.abs(actualMidX - expectedMidX);
+                    const diffY = Math.abs(actualMidY - expectedMidY);
+                    expected = `Attendu: milieu (${expectedMidX.toFixed(1)}, ${expectedMidY.toFixed(1)}), écart: (${diffX.toFixed(1)}, ${diffY.toFixed(1)})`;
+                } else if (pos.type === 'txt1') {
+                    const expectedX = visibleX1 + (visibleX2 - visibleX1) * 0.15;
+                    const expectedY = visibleY1 + (visibleY2 - visibleY1) * 0.15;
+                    const diffX = Math.abs(pos.x - expectedX);
+                    const diffY = Math.abs(pos.y - expectedY);
+                    expected = `Attendu: 15% (${expectedX.toFixed(1)}, ${expectedY.toFixed(1)}), écart: (${diffX.toFixed(1)}, ${diffY.toFixed(1)})`;
+                } else if (pos.type === 'txt2') {
+                    const expectedX = visibleX1 + (visibleX2 - visibleX1) * 0.75;
+                    const expectedY = visibleY1 + (visibleY2 - visibleY1) * 0.75;
+                    const diffX = Math.abs(pos.x - expectedX);
+                    const diffY = Math.abs(pos.y - expectedY);
+                    expected = `Attendu: 75% (${expectedX.toFixed(1)}, ${expectedY.toFixed(1)}), écart: (${diffX.toFixed(1)}, ${diffY.toFixed(1)})`;
+                }
+                console.log(`  ${pos.type} "${pos.text}": (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) ${expected}`);
+            });
+            console.log('');
         }
     });
 }
@@ -1219,7 +1262,6 @@ cellOrder.forEach(nodeId => {
     
     // Si c'est un bouton, forcer radius, fillColor, zIndex, logoScale et strokeColor
     if (node.type === 'button') {
-        console.log('forçage radius, fillColor, zIndex et logoScale pour le bouton', node.id);
         node.radius = 55;
         if (node.fillColor === undefined) {
             node.fillColor = 'rgba(255, 0, 0, 0)';
@@ -1285,7 +1327,6 @@ nodes.forEach(node => {
     
     // Si c'est un bouton, forcer radius, fillColor, zIndex, logoScale et strokeColor
     if (node.type === 'button') {
-        console.log('forçage radius, fillColor, zIndex et logoScale pour le bouton', node.id);
         node.radius = 55;
         if (node.fillColor === undefined) {
             node.fillColor = 'rgba(255, 0, 0, 0)';

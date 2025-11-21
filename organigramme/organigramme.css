@@ -283,15 +283,17 @@
     font-family: 'ProggyDotted';
     justify-content: flex-start;
     gap: 8px;
-    width: 120px;
+    width: 130px;
     position: absolute;
-    bottom: 0;
+    bottom: 35px;
     left: 10px;
     padding: 5px 10px;
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
     z-index: 1000;
+}
+
+.synthese_Temp .thermometer-icon {
+    transition: filter 0.3s ease, text-shadow 0.3s ease;
+    display: inline-block;
 }
 
 .controle-simulation-title {
@@ -374,9 +376,4 @@ body.mode-dark .flux-diagram {
     background: rgba(0, 0, 0, 0.2) !important;
 }
 
-body.mode-dark .synthese_Temp {
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
-}
 

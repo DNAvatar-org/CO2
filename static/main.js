@@ -78,12 +78,73 @@ function cycleTemperatureUnit() {
     }
 }
 
+// Fonction pour calculer la couleur du contour selon la température
+// Couleurs alignées sur le spectre visible : Violet → Bleu → Blanc → Vert → Jaune → Rouge
+function getTemperatureGlowColor(tempC) {
+    // Points de référence : [température, couleur RGB]
+    const colorPoints = [
+        [-70, { r: 128, g: 0, b: 255 }],    // Violet à -70°C
+        [-40, { r: 0, g: 0, b: 255 }],      // Bleu à -40°C
+        [-10, { r: 255, g: 255, b: 255 }],  // Blanc à -10°C (remplace cyan)
+        [0, { r: 255, g: 255, b: 255 }],    // Blanc à 0°C
+        [15, { r: 0, g: 255, b: 0 }],       // Vert à 15°C
+        [20, { r: 255, g: 255, b: 0 }],     // Jaune à 20°C
+        [30, { r: 255, g: 0, b: 0 }]        // Rouge à 30°C
+    ];
+    
+    // Si en dehors de la plage, utiliser les couleurs extrêmes
+    if (tempC <= colorPoints[0][0]) {
+        return `rgb(${colorPoints[0][1].r}, ${colorPoints[0][1].g}, ${colorPoints[0][1].b})`;
+    }
+    if (tempC >= colorPoints[colorPoints.length - 1][0]) {
+        const last = colorPoints[colorPoints.length - 1][1];
+        return `rgb(${last.r}, ${last.g}, ${last.b})`;
+    }
+    
+    // Trouver les deux points entre lesquels interpoler
+    for (let i = 0; i < colorPoints.length - 1; i++) {
+        const temp1 = colorPoints[i][0];
+        const temp2 = colorPoints[i + 1][0];
+        const color1 = colorPoints[i][1];
+        const color2 = colorPoints[i + 1][1];
+        
+        if (tempC >= temp1 && tempC <= temp2) {
+            // Interpolation linéaire
+            const ratio = (tempC - temp1) / (temp2 - temp1);
+            const r = Math.round(color1.r + (color2.r - color1.r) * ratio);
+            const g = Math.round(color1.g + (color2.g - color1.g) * ratio);
+            const b = Math.round(color1.b + (color2.b - color1.b) * ratio);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+    }
+    
+    // Par défaut (ne devrait pas arriver)
+    return 'rgb(255, 255, 255)';
+}
+
 function updateTemperatureDisplay() {
     const tempSurfaceEl = document.getElementById('temp-surface-synthese');
     const tempUnitEl = document.getElementById('temp-unit-synthese');
+    const syntheseTempEl = document.querySelector('.synthese_Temp');
+    const thermometerIcon = syntheseTempEl ? syntheseTempEl.querySelector('.thermometer-icon') : null;
+    
     if (tempSurfaceEl && currentTempCelsius !== null) {
         const convertedTemp = convertTemperature(currentTempCelsius, temperatureUnit);
         tempSurfaceEl.textContent = convertedTemp.toFixed(1);
+        
+        // Mettre à jour la couleur du contour sur le logo thermomètre selon la température
+        if (thermometerIcon) {
+            const glowColor = getTemperatureGlowColor(currentTempCelsius);
+            console.log(`Température: ${currentTempCelsius}°C, Couleur: ${glowColor}`);
+            thermometerIcon.style.setProperty('filter', `drop-shadow(0 0 8px ${glowColor}) drop-shadow(0 0 16px ${glowColor})`, 'important');
+            thermometerIcon.style.setProperty('text-shadow', `0 0 10px ${glowColor}, 0 0 20px ${glowColor}`, 'important');
+        }
+    } else {
+        // Si pas de température, enlever le glow
+        if (thermometerIcon) {
+            thermometerIcon.style.setProperty('filter', '', 'important');
+            thermometerIcon.style.setProperty('text-shadow', '', 'important');
+        }
     }
     if (tempUnitEl) {
         tempUnitEl.textContent = getTemperatureUnitSymbol(temperatureUnit);
