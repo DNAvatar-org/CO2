@@ -142,6 +142,18 @@
     border-color: #888 !important;
 }
 
+/* Couleur verte pour les étiquettes CO2 actives */
+.flux-label.co2-label {
+    color: rgb(0, 200, 0);
+    border-color: rgb(0, 255, 0);
+}
+
+/* Couleur bleu clair pour les étiquettes avec % actives */
+.flux-label.percent-label {
+    color: rgb(135, 206, 250);
+    border-color: rgb(173, 216, 230);
+}
+
 /* Container pour regrouper toutes les radiations (flux-sphere) */
 .flux-radiation-container {
     position: absolute;
@@ -231,31 +243,92 @@
 }
 
 /* Style pour les cellules de boutons */
+/* Ne pas modifier display: grid de la cellule, garder la structure de grille */
+/* Désactiver les pointer-events sur la cellule entière pour limiter la zone de détection */
 .flux-button-cell {
-    cursor: pointer;
-    /* Ne pas modifier display: grid de la cellule, garder la structure de grille */
+    pointer-events: none;
 }
 
-/* Appliquer les styles visuels au cercle de fond des boutons */
+/* Désactiver les pointer-events sur les grid-items des boutons pour qu'ils ne bloquent pas le hover */
+.flux-button-cell .flux-grid-item {
+    pointer-events: none;
+}
+
+/* Désactiver les pointer-events sur les étiquettes des boutons pour qu'elles ne bloquent pas le hover */
+.flux-button-cell .flux-label,
+.flux-button-cell .flux-label-container {
+    pointer-events: none;
+}
+
+/* Réactiver les pointer-events uniquement sur le cercle */
 .flux-button-cell .flux-circle-bg {
-    transition: filter 0.3s ease, text-shadow 0.3s ease;
-    /* Par défaut : noir et blanc avec contour blanc */
-    filter: grayscale(100%);
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.8), 
-                 0 0 4px rgba(255, 255, 255, 0.6),
-                 0 0 6px rgba(255, 255, 255, 0.4);
+    pointer-events: auto;
+    transition: filter 0.3s ease;
     /* Désactiver les effets visuels du cercle pour les boutons */
     box-shadow: none !important;
     backdrop-filter: none !important;
     border: none !important;
     background: transparent !important;
+    /* Par défaut : gris (identique à epoch-btn) */
+    filter: grayscale(100%);
+    /* Contour blanc autour du logo (emoji) - ne change pas au rollover */
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5);
+    /* Curseur pointer uniquement sur le cercle */
+    cursor: pointer !important;
+    /* Limiter la zone cliquable à la taille exacte du cercle */
+    border-radius: 50%;
+    /* S'assurer que la zone cliquable ne dépasse pas */
+    overflow: hidden;
+    /* Forcer la taille à être exactement celle définie */
+    box-sizing: border-box;
+    /* S'assurer que le cercle est positionné de manière absolue */
+    position: absolute;
+    /* Limiter la zone cliquable aux enfants aussi */
+    isolation: isolate;
 }
 
-.flux-button-cell:hover .flux-circle-bg {
+/* Désactiver les pointer-events sur les enfants du cercle pour limiter la zone */
+.flux-button-cell .flux-circle-bg > * {
+    pointer-events: none;
+}
+
+/* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas (identique à epoch-btn:hover) */
+/* Le hover fonctionne directement sur le cercle grâce à pointer-events */
+.flux-button-cell .flux-circle-bg:hover {
+    /* Si non sélectionné : swap vers couleur, contour reste blanc */
     filter: grayscale(0%);
 }
 
+/* Rollover spécifique pour unselected : forcer la couleur */
+.flux-button-cell.unselected .flux-circle-bg:hover {
+    /* Si non sélectionné : swap vers couleur, contour reste blanc */
+    filter: grayscale(0%) !important;
+}
+
+/* Bouton checked : couleur avec contour vert (identique à epoch-btn.selected) */
 .flux-button-cell.checked .flux-circle-bg {
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important; /* Couleur normale avec blur vert */
+    /* Contour vert autour du logo - ne change pas au rollover */
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
+}
+
+/* Rollover sur checked : swap vers noir et blanc, contour reste vert (identique à epoch-btn.selected:hover) */
+.flux-button-cell.checked .flux-circle-bg:hover {
+    /* Si sélectionné : swap vers noir et blanc, contour reste vert */
+    filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
+}
+
+/* État selected : inverse les couleurs (comme epoch-btn.selected) */
+.flux-button-cell.selected .flux-circle-bg {
     filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
     text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
                  0 0 4px rgba(0, 255, 0, 0.7),
@@ -263,8 +336,21 @@
                  0 0 8px rgba(0, 255, 0, 0.3) !important;
 }
 
-.flux-button-cell.checked:hover .flux-circle-bg {
+/* Rollover sur selected : swap vers noir et blanc, contour reste vert */
+.flux-button-cell.selected .flux-circle-bg:hover {
+    filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
+}
+
+/* État unselected : gris (par défaut) */
+.flux-button-cell.unselected .flux-circle-bg {
     filter: grayscale(100%);
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5);
 }
 
 /* Cercle de référence pour visualiser la position des boutons */

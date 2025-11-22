@@ -1,6 +1,6 @@
 // File: organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.1
+// Version 1.0.2
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -8,6 +8,15 @@
 // Logs:
 //   - Initial version: extraction du code de génération du diagramme depuis demo_flux_energetique_01.html
 //   - Added custom tooltip system with 0.5s delay
+//   - Added selected/unselected state management for flux buttons and label colors
+
+// Variables globales pour l'état des boutons
+if (typeof window !== 'undefined') {
+    window.useCO2 = false;
+    window.useCH4 = false;
+    window.useH2O = false;
+    window.useAlbedo = false;
+}
 
 // Fonction pour ajouter un tooltip personnalisé avec délai de 0.5s
 function addCustomTooltip(element, text) {
@@ -502,19 +511,59 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         const logoFontSize = hasCircle ? (radius * 2 * logoScale) : (radius * logoScale);
         circleBg.style.fontSize = logoFontSize + 'px';
 
-        // Gestionnaire de clic pour copier le logo dans le presse-papier
+        // Gestionnaire de clic pour copier le logo ou déclencher le bouton
         circleBg.addEventListener('click', (e) => {
             e.stopPropagation();
-            navigator.clipboard.writeText(logo).then(() => {
-                // Feedback visuel temporaire (agrandissement)
-                // Animation supprimée pour éviter setTimeout - utiliser CSS transition si nécessaire
-                // const originalTransform = circleBg.style.transform;
-                // circleBg.style.transform = 'translate(-50%, -50%) scale(1.5)';
-                // setTimeout(() => {
-                //     circleBg.style.transform = originalTransform;
-                // }, 200);
-            }).catch(err => {
-            });
+            
+            // Vérifier si c'est un bouton (cellule parente a la classe flux-button-cell)
+            const parentCell = circleBg.closest('.flux-button-cell');
+            if (parentCell) {
+                // C'est un bouton : toggle la classe checked directement sur la cellule
+                const isChecked = parentCell.classList.contains('checked');
+                if (isChecked) {
+                    parentCell.classList.remove('checked');
+                } else {
+                    parentCell.classList.add('checked');
+                }
+                
+                // Mettre à jour les variables globales et les couleurs
+                const cellId = parentCell.id;
+                let varName = null;
+                if (cellId === 'cell-co2') varName = 'useCO2';
+                else if (cellId === 'cell-methane') varName = 'useCH4';
+                else if (cellId === 'cell-h2o') varName = 'useH2O';
+                else if (cellId === 'cell-albedo-btn') varName = 'useAlbedo';
+                
+                if (varName && typeof window !== 'undefined') {
+                    window[varName] = !isChecked;
+                }
+                
+                // Mettre à jour la classe selected
+                if (!isChecked) {
+                    parentCell.classList.add('selected');
+                    parentCell.classList.remove('unselected');
+                } else {
+                    parentCell.classList.remove('selected');
+                    parentCell.classList.add('unselected');
+                }
+                
+                // Mettre à jour les couleurs des étiquettes
+                if (typeof window.updateFluxLabels === 'function') {
+                    window.updateFluxLabels(window.plotData || {});
+                }
+            } else {
+                // Ce n'est pas un bouton : copier le logo (comportement original)
+                navigator.clipboard.writeText(logo).then(() => {
+                    // Feedback visuel temporaire (agrandissement)
+                    // Animation supprimée pour éviter setTimeout - utiliser CSS transition si nécessaire
+                    // const originalTransform = circleBg.style.transform;
+                    // circleBg.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                    // setTimeout(() => {
+                    //     circleBg.style.transform = originalTransform;
+                    // }, 200);
+                }).catch(err => {
+                });
+            }
         });
 
         // Ajouter tooltip personnalisé sur le cercle/logo si présent (au lieu de la cellule entière)
@@ -1063,9 +1112,12 @@ function getNodeProperty(node, property, defaultValue = null) {
         
         if (epochConfig && epochConfig.hasOwnProperty(property)) {
             return epochConfig[property];
-        } else if (node.epoch.length > 0 && node.epoch[0].hasOwnProperty(property)) {
-            // Fallback : première époque
-            return node.epoch[0][property];
+        } else if (node.epoch.length > 0) {
+            // Fallback : dernière époque du tableau (permet d'alléger les répétitions)
+            const lastEpoch = node.epoch[node.epoch.length - 1];
+            if (lastEpoch && lastEpoch.hasOwnProperty(property)) {
+                return lastEpoch[property];
+            }
         }
     }
     
@@ -1075,6 +1127,21 @@ function getNodeProperty(node, property, defaultValue = null) {
 
 // Fonction pour générer automatiquement les flèches à partir du graphe
 function generateArrows() {
+    // Supprimer les anciennes flèches et étiquettes avant de les recréer
+    const container = document.getElementById('flux-diagram');
+    if (container) {
+        const oldArrows = container.querySelectorAll('.flux-arrow');
+        oldArrows.forEach(arrow => arrow.remove());
+        // Supprimer aussi les étiquettes des flèches (elles sont créées avec createArrowLabel)
+        const oldLabels = container.querySelectorAll('.flux-label');
+        oldLabels.forEach(label => {
+            // Ne supprimer que les étiquettes des flèches, pas celles des cellules
+            if (!label.closest('.flux-grid-item')) {
+                label.remove();
+            }
+        });
+    }
+    
     arcs.forEach(arc => {
         const idDep = nodes.find(n => n.id === arc.from);
         const idDest = nodes.find(n => n.id === arc.to);
@@ -1739,15 +1806,16 @@ cellOrder.forEach(nodeId => {
                 strokeColor: epochConfig.strokeColor,
                 strokeSize: epochConfig.strokeSize
             };
-        } else {
-            // Fallback : utiliser la première époque si aucune correspondance
+        } else if (node.epoch.length > 0) {
+            // Fallback : utiliser la dernière époque du tableau (permet d'alléger les répétitions)
+            const lastEpoch = node.epoch[node.epoch.length - 1];
             nodeConfig = {
                 ...node,
-                logo: node.epoch[0].logo,
-                radius: node.epoch[0].radius,
-                fillColor: node.epoch[0].fillColor,
-                strokeColor: node.epoch[0].strokeColor,
-                strokeSize: node.epoch[0].strokeSize
+                logo: lastEpoch.logo || node.epoch[0].logo,
+                radius: lastEpoch.radius || node.epoch[0].radius,
+                fillColor: lastEpoch.fillColor || node.epoch[0].fillColor,
+                strokeColor: lastEpoch.strokeColor || node.epoch[0].strokeColor,
+                strokeSize: lastEpoch.strokeSize || node.epoch[0].strokeSize
             };
         }
     }
@@ -1776,19 +1844,12 @@ cellOrder.forEach(nodeId => {
 
     createdCells[node.id] = cell;
 
-    // If it's a button, add the CSS class and click event
+    // If it's a button, add the CSS class
+    // Le gestionnaire de clic est déjà attaché au circleBg dans createCell
+    // Il détecte automatiquement si c'est un bouton via la classe flux-button-cell
     if (node.type === 'button') {
         cell.classList.add('flux-button-cell');
         cell.style.pointerEvents = 'auto';
-
-        // Add a click handler to the cell
-        cell.addEventListener('click', function () {
-            // Trigger the click on the original HTML button if it exists
-            const originalButton = document.getElementById(node.id);
-            if (originalButton) {
-                originalButton.click();
-            }
-        });
 
         // Hide the original HTML button if it exists
         const originalButton = document.getElementById(node.id);
@@ -1931,14 +1992,21 @@ cellOrder.forEach(nodeId => {
     // Si le node 'noyau' a un tableau radiation (configuration par époque)
     if (nodeId === 'noyau' && Array.isArray(node.radiation)) {
         const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
-        const epochRadiation = node.radiation.find(r => r.epochName === currentEpochName);
+        let epochRadiation = node.radiation.find(r => r.epochName === currentEpochName);
+        // Si l'époque n'est pas trouvée, utiliser la dernière du tableau (permet d'alléger les répétitions)
+        if (!epochRadiation && node.radiation.length > 0) {
+            epochRadiation = node.radiation[node.radiation.length - 1];
+        }
         
         if (epochRadiation) {
             // Utiliser la configuration de l'époque courante
             radiationOptions = epochRadiation;
+        } else if (node.radiation.length > 0) {
+            // Fallback : utiliser la dernière époque du tableau (permet d'alléger les répétitions)
+            radiationOptions = node.radiation[node.radiation.length - 1];
         } else {
-            // Fallback : utiliser la première époque si aucune correspondance
-            radiationOptions = node.radiation[0] || {
+            // Fallback ultime si le tableau est vide
+            radiationOptions = {
                 numCircles: 0,
                 maxRadius: 0,
                 strokeSize: 0,
@@ -1970,6 +2038,9 @@ cellOrder.forEach(nodeId => {
 
 // Étape 9 : Générer automatiquement les flèches
 generateArrows();
+
+// Exposer generateArrows globalement pour pouvoir le rappeler lors du changement d'époque
+window.generateArrows = generateArrows;
 
 
 /**
@@ -2187,10 +2258,27 @@ function updateFluxLabels(data) {
     const T0 = (data.T0 !== null && data.T0 !== undefined) ? data.T0 : (data.temp_surface !== null && data.temp_surface !== undefined ? data.temp_surface : 0);
     const total_flux = (data.total_flux !== null && data.total_flux !== undefined) ? data.total_flux : 0;
     let albedo = (data.albedo !== null && data.albedo !== undefined) ? data.albedo : 0;
+    // Récupérer les valeurs depuis plotData (valeurs d'époque) si disponibles, sinon depuis data
     const cloud_coverage = (data.cloud_coverage !== null && data.cloud_coverage !== undefined) ? data.cloud_coverage : 0;
-    const co2_ppm = (data.co2_ppm !== null && data.co2_ppm !== undefined) ? data.co2_ppm : 0;
-    const ch4_ppm = (data.ch4_ppm !== null && data.ch4_ppm !== undefined) ? data.ch4_ppm : 0;
+    // Utiliser plotData pour les valeurs d'époque (CO2, CH4, H2O)
+    const plotData_co2 = (typeof window !== 'undefined' && window.plotData && window.plotData.co2_ppm !== undefined) ? window.plotData.co2_ppm : 0;
+    const plotData_ch4 = (typeof window !== 'undefined' && window.plotData && window.plotData.ch4_ppm !== undefined) ? window.plotData.ch4_ppm : 0;
+    const co2_ppm = (data.co2_ppm !== null && data.co2_ppm !== undefined) ? data.co2_ppm : plotData_co2;
+    const ch4_ppm = (data.ch4_ppm !== null && data.ch4_ppm !== undefined) ? data.ch4_ppm : plotData_ch4;
+    // H2O : vérifier l'état du bouton (on/off)
     const h2o_enabled = typeof window !== 'undefined' && window.waterVaporEnabled;
+    // Vérifier l'état de tous les boutons (on/off) une seule fois
+    const btnCO2 = document.getElementById('btn-co2');
+    const btnCH4 = document.getElementById('btn-methane');
+    const btnH2O = document.getElementById('btn-h2o');
+    const btnAlbedo = document.getElementById('btn-albedo');
+    
+    const co2_button_checked = btnCO2 && !btnCO2.classList.contains('disabled') && btnCO2.classList.contains('checked');
+    const ch4_button_checked = btnCH4 && !btnCH4.classList.contains('disabled') && btnCH4.classList.contains('checked');
+    const h2o_button_checked = btnH2O && !btnH2O.classList.contains('disabled') && btnH2O.classList.contains('checked');
+    const albedo_button_checked = btnAlbedo && !btnAlbedo.classList.contains('disabled') && btnAlbedo.classList.contains('checked');
+    
+    const h2o_final_enabled = h2o_enabled && h2o_button_checked;
 
     // S'assurer que toutes les valeurs numériques sont bien des nombres
     const T0_num = Number(T0) || 0;
@@ -2266,14 +2354,16 @@ function updateFluxLabels(data) {
     const ice_percent = Math.round(ice_coverage * 100);
 
     // Forçages radiatifs
-    const forcing_CO2 = typeof window !== 'undefined' && typeof window.calculateCO2Forcing === 'function'
+    // Utiliser les états des boutons déjà calculés pour déterminer si les forçages sont actifs
+    const forcing_CO2 = (co2_button_checked && co2_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCO2Forcing === 'function'
         ? window.calculateCO2Forcing(co2_ppm_num * 1e-6)
         : 0;
-    const forcing_H2O = typeof window !== 'undefined' && typeof window.calculateH2OForcing === 'function'
-        ? window.calculateH2OForcing(h2o_enabled, cloud_coverage_num)
+    const forcing_H2O = (h2o_button_checked && h2o_final_enabled) && typeof window !== 'undefined' && typeof window.calculateH2OForcing === 'function'
+        ? window.calculateH2OForcing(h2o_final_enabled, cloud_coverage_num)
         : 0;
     // En mode corps noir, forcer le forçage albédo à 0
-    const forcing_Albedo = isCorpsNoir ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
+    // Le forçage albédo est actif seulement si le bouton est checked
+    const forcing_Albedo = (isCorpsNoir || !albedo_button_checked) ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
         ? window.calculateAlbedoForcing(albedo_num)
         : 0);
     const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
@@ -2317,24 +2407,60 @@ function updateFluxLabels(data) {
 
             label.innerHTML = formattedValue;
 
-            // Mettre à jour les classes CSS selon la valeur
-            // D'abord vérifier " W " ou " K " (rouge)
-            if (formattedValue.includes(' W ') || formattedValue.includes(' K ')) {
-                label.classList.add('watt-or-kelvin');
-                label.classList.remove('watt-per-m2', 'zero-value');
+            // Réinitialiser toutes les classes de couleur
+            label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value', 'co2-label', 'percent-label');
+
+            // Vérifier l'état des boutons pour déterminer les couleurs
+            const useCO2 = typeof window !== 'undefined' ? window.useCO2 : false;
+            const useCH4 = typeof window !== 'undefined' ? window.useCH4 : false;
+            const useH2O = typeof window !== 'undefined' ? window.useH2O : false;
+            const useAlbedo = typeof window !== 'undefined' ? window.useAlbedo : false;
+
+            // Déterminer si le label est actif selon son dataId
+            let isActive = false;
+            if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
+                isActive = useCO2;
+            } else if (dataId === 'ch4_percent' || dataId === 'ch4_forcing') {
+                isActive = useCH4;
+            } else if (dataId === 'h2o_percent' || dataId === 'h2o_forcing') {
+                isActive = useH2O;
+            } else if (dataId === 'albedo_percent' || dataId === 'albedo_forcing') {
+                isActive = useAlbedo;
             }
-            // Sinon, vérifier W/m² (orange)
-            else if (format.includes('watt') || formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
-                const numValue = typeof value === 'number' ? value : parseFloat(value);
-                if (!isNaN(numValue) && Math.abs(numValue) < 0.001) {
-                    label.classList.add('zero-value');
-                    label.classList.remove('watt-per-m2', 'watt-or-kelvin');
-                } else {
-                    label.classList.remove('zero-value', 'watt-or-kelvin');
-                    // Ajouter la classe watt-per-m2 pour les valeurs W/m² non nulles
-                    if (formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
-                        label.classList.add('watt-per-m2');
+
+            // Si inactif, appliquer la classe zero-value (gris)
+            if (!isActive && (dataId.includes('co2') || dataId.includes('ch4') || dataId.includes('h2o') || dataId.includes('albedo'))) {
+                label.classList.add('zero-value');
+            } else {
+                // Label actif : appliquer les couleurs selon le type
+                // D'abord vérifier " W " ou " K " (rouge)
+                if (formattedValue.includes(' W ') || formattedValue.includes(' K ')) {
+                    label.classList.add('watt-or-kelvin');
+                }
+                // Sinon, vérifier W/m² (orange)
+                else if (format.includes('watt') || formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
+                    const numValue = typeof value === 'number' ? value : parseFloat(value);
+                    if (!isNaN(numValue) && Math.abs(numValue) < 0.001) {
+                        label.classList.add('zero-value');
+                    } else {
+                        // Ajouter la classe watt-per-m2 pour les valeurs W/m² non nulles
+                        if (formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
+                            label.classList.add('watt-per-m2');
+                        }
                     }
+                }
+                // Sinon, vérifier % (bleu clair)
+                else if (format.includes('percent') || formattedValue.includes('%')) {
+                    const numValue = typeof value === 'number' ? value : parseFloat(value);
+                    if (!isNaN(numValue) && Math.abs(numValue) < 0.001) {
+                        label.classList.add('zero-value');
+                    } else {
+                        label.classList.add('percent-label');
+                    }
+                }
+                // Labels CO2 spécifiques (vert)
+                if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
+                    label.classList.add('co2-label');
                 }
             }
         });
@@ -2486,28 +2612,89 @@ function updateFluxLabels(data) {
     const co2_percent = co2_ppm_num > 0 ? (co2_ppm_num / 10000).toFixed(1) : '0';
     updateLabel('co2_percent', co2_percent, 'percent_simple');
     updateLabel('co2_forcing', forcing_CO2, 'watt_simple');
+    
+    // Forcer le bouton CO2 en off/gris si la valeur est à 0%
+    if (btnCO2 && !btnCO2.classList.contains('disabled')) {
+        if (co2_ppm_num === 0 || parseFloat(co2_percent) === 0) {
+            btnCO2.classList.remove('checked');
+        }
+    }
 
     // CH4
     const ch4_percent = ch4_ppm_num > 0 ? (ch4_ppm_num / 10000).toFixed(1) : '0';
     updateLabel('ch4_percent', ch4_percent, 'percent_simple');
     // TODO: calculer forcing_CH4 si fonction disponible
     updateLabel('ch4_forcing', 0, 'watt_simple');
+    
+    // Forcer le bouton CH4 en off/gris si la valeur est à 0%
+    if (btnCH4 && !btnCH4.classList.contains('disabled')) {
+        if (ch4_ppm_num === 0 || parseFloat(ch4_percent) === 0) {
+            btnCH4.classList.remove('checked');
+        }
+    }
 
-    // H2O
-    // TODO: calculer h2o_percent depuis vapeur d'eau
-    const h2o_percent = h2o_enabled ? '--' : '0';
+    // H2O : utiliser l'état du bouton (on/off) déjà calculé
+    const h2o_percent = (h2o_enabled && h2o_button_checked) ? '--' : '0';
+    // Le forçage H2O doit être calculé seulement si le bouton est activé
+    const forcing_H2O_final = (h2o_enabled && h2o_button_checked) ? forcing_H2O : 0;
     updateLabel('h2o_percent', h2o_percent, 'percent_simple');
-    updateLabel('h2o_forcing', forcing_H2O, 'watt_simple');
+    updateLabel('h2o_forcing', forcing_H2O_final, 'watt_simple');
 
     // Albédo
     const albedo_percent_value = albedo_num * 100;
     updateLabel('albedo_percent', albedo_percent_value, 'percent_simple');
     updateLabel('albedo_forcing', forcing_Albedo, 'watt_simple');
+    
+    // Forcer le bouton albedo en off/gris si la valeur est à 0%
+    // Utiliser la variable btnAlbedo déjà déclarée plus haut
+    if (btnAlbedo && !btnAlbedo.classList.contains('disabled')) {
+        if (albedo_percent_value === 0 || Math.abs(albedo_percent_value) < 0.01) {
+            btnAlbedo.classList.remove('checked');
+        }
+        // Si la valeur n'est pas 0, on ne force pas l'activation
+        // L'utilisateur contrôle l'état du bouton
+    }
 }
 
 // Exposer les fonctions globalement
 if (typeof window !== 'undefined') {
     window.updateFluxLabels = updateFluxLabels;
+    
+    // Initialiser les variables globales selon l'état initial des boutons
+    const btnCO2 = document.getElementById('btn-co2');
+    const btnCH4 = document.getElementById('btn-methane');
+    const btnH2O = document.getElementById('btn-h2o');
+    const btnAlbedo = document.getElementById('btn-albedo');
+    
+    if (typeof window !== 'undefined') {
+        window.useCO2 = btnCO2 && btnCO2.classList.contains('checked');
+        window.useCH4 = btnCH4 && btnCH4.classList.contains('checked');
+        window.useH2O = btnH2O && btnH2O.classList.contains('checked');
+        window.useAlbedo = btnAlbedo && btnAlbedo.classList.contains('checked');
+        
+        // Initialiser les classes selected/unselected sur les cellules
+        const buttonMap = [
+            { id: 'btn-co2', varName: 'useCO2', cellId: 'cell-co2' },
+            { id: 'btn-methane', varName: 'useCH4', cellId: 'cell-methane' },
+            { id: 'btn-h2o', varName: 'useH2O', cellId: 'cell-h2o' },
+            { id: 'btn-albedo', varName: 'useAlbedo', cellId: 'cell-albedo-btn' }
+        ];
+        
+        buttonMap.forEach(({ id, varName, cellId }) => {
+            const button = document.getElementById(id);
+            const cell = document.getElementById(cellId);
+            if (button && cell) {
+                const isChecked = button.classList.contains('checked');
+                if (isChecked) {
+                    cell.classList.add('selected');
+                    cell.classList.remove('unselected');
+                } else {
+                    cell.classList.remove('selected');
+                    cell.classList.add('unselected');
+                }
+            }
+        });
+    }
     window.generateTimelineFromConfig = generateTimelineFromConfig;
 
     // Générer la timeline depuis la config au chargement
@@ -2526,7 +2713,12 @@ function recreateNoyauRadiation() {
 
     // Trouver la configuration de l'époque courante
     const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
-    const epochRadiation = noyauNode.radiation.find(r => r.epochName === currentEpochName);
+    let epochRadiation = noyauNode.radiation.find(r => r.epochName === currentEpochName);
+    
+    // Si l'époque n'est pas trouvée, utiliser la dernière du tableau (permet d'alléger les répétitions)
+    if (!epochRadiation && noyauNode.radiation.length > 0) {
+        epochRadiation = noyauNode.radiation[noyauNode.radiation.length - 1];
+    }
     
     if (!epochRadiation) return;
 
@@ -2565,6 +2757,98 @@ function recreateNoyauRadiation() {
     }
 }
 
+// Fonction pour recréer les radiations de la terre
+function recreateTerreRadiation() {
+    const terreNode = nodes.find(n => n.id === 'terre');
+    if (!terreNode || !terreNode.radiation) return;
+
+    // Supprimer l'ancien groupe de radiations de la terre
+    const oldRadiationGroup = document.querySelector('.flux-radiation-group[data-node="terre"]');
+    if (oldRadiationGroup) {
+        oldRadiationGroup.remove();
+    }
+
+    // Récupérer les options de radiation (peut être un objet simple ou un tableau)
+    let radiationOptions = terreNode.radiation;
+    
+    // Si c'est un tableau (par époque), trouver la bonne configuration
+    if (Array.isArray(radiationOptions)) {
+        const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
+        let epochRadiation = radiationOptions.find(r => r.epochName === currentEpochName);
+        if (!epochRadiation && radiationOptions.length > 0) {
+            epochRadiation = radiationOptions[radiationOptions.length - 1];
+        }
+        if (epochRadiation) {
+            radiationOptions = epochRadiation;
+        } else {
+            return; // Pas de radiation pour cette époque
+        }
+    }
+
+    const { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800', strokeSize = 2 } = radiationOptions;
+
+    if (!maxRadius || maxRadius <= 0) return;
+
+    // Créer le nouveau groupe de radiations
+    const radiationContainer = document.querySelector('.flux-radiation-container');
+    if (!radiationContainer) return;
+
+    const radiationGroup = document.createElement('div');
+    radiationGroup.className = 'flux-radiation-group';
+    radiationGroup.style.color = color;
+    radiationGroup.setAttribute('data-node', 'terre');
+
+    radiationContainer.appendChild(radiationGroup);
+
+    // Utiliser getNodeProperty pour récupérer le radius (gère le cas spécial 'terre' avec epoch)
+    const terreRadius = getNodeProperty(terreNode, 'radius', 50);
+    const terreX = terreNode.x;
+    const terreY = terreNode.y;
+
+    for (let i = 1; i <= numCircles; i++) {
+        const progress = i / numCircles;
+        const arcRadius = terreRadius + (maxRadius - terreRadius) * progress;
+        const arc = createArc(terreX, terreY, arcRadius, 0.3 + (progress * 0.2), openingAngle, rotation, radiationGroup);
+        arc.style.border = `${strokeSize}px dashed ${color}`;
+    }
+}
+
+// Fonction pour initialiser les event listeners sur les boutons du flux
+function initFluxButtonListeners() {
+    // Mapping des cellules vers leurs variables globales
+    // Les boutons sont des cellules du diagramme, pas des boutons HTML
+    const buttonMap = [
+        { cellId: 'cell-co2', varName: 'useCO2', nodeId: 'co2' },
+        { cellId: 'cell-methane', varName: 'useCH4', nodeId: 'methane' },
+        { cellId: 'cell-h2o', varName: 'useH2O', nodeId: 'h2o' },
+        { cellId: 'cell-albedo-btn', varName: 'useAlbedo', nodeId: 'albedo-btn' }
+    ];
+
+    buttonMap.forEach(({ cellId, varName, nodeId }) => {
+        const cell = document.getElementById(cellId);
+        const circleBg = cell ? cell.querySelector('.flux-circle-bg') : null;
+        
+        if (cell && circleBg) {
+            // Initialiser l'état selected/unselected selon l'état checked
+            const isChecked = cell.classList.contains('checked');
+            if (isChecked) {
+                cell.classList.add('selected');
+                cell.classList.remove('unselected');
+            } else {
+                cell.classList.remove('selected');
+                cell.classList.add('unselected');
+            }
+            
+            // Initialiser la variable globale
+            if (typeof window !== 'undefined') {
+                window[varName] = isChecked;
+            }
+        }
+    });
+}
+
 // Exposer createCell globalement pour accès depuis main.js
 window.createCell = createCell;
 window.recreateNoyauRadiation = recreateNoyauRadiation;
+window.recreateTerreRadiation = recreateTerreRadiation;
+window.initFluxButtonListeners = initFluxButtonListeners;

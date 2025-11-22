@@ -900,8 +900,8 @@ window.updatePlot = function updatePlot(data) {
                 const charWidthCanvas = 5;
                 const effectiveWidth = canvasWidth - (charWidthCanvas * 2);
                 
-                // Plage de longueurs d'onde pour le texte : 0.5 μm à 20 μm (rouge vif)
-                const text_min_um = 0.5;   // Début visible
+                // Plage de longueurs d'onde pour le texte : 1 μm à 20 μm (rouge vif)
+                const text_min_um = 1.0;   // Début à 1 micromètre (chaleur)
                 const text_max_um = 20;    // Rouge vif (20 micromètres)
                 
                 // Calculer les positions X correspondantes sur le canvas

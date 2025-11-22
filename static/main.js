@@ -422,40 +422,37 @@ function updateTimeline() {
     requestAnimationFrame(updateTimeline);
 }
 
-// Fonction pour formater les années avec M (Mega) et M̅ (Milliard)
-// Format : 0M0M8200 ans (exemple : 1 milliard 200 millions 50 mille ans)
+// Fonction pour formater les années avec Ma (millions d'années)
+// Format : -4500 Ma (exemple : -4500 millions d'années)
+// Les valeurs positives sont considérées comme des dates dans le passé (affichées avec "-")
 function formatYears(years) {
     if (years === 0) return '0 ans';
 
-    const MILLIARD = 1e9; // 1 milliard
     const MEGA = 1e6;    // 1 million
-    const MILLE = 1e3;   // 1 mille
 
-    let result = '';
-    let remaining = years;
-
-    // Milliards (M̅ avec barre au-dessus)
-    if (remaining >= MILLIARD) {
-        const milliards = Math.floor(remaining / MILLIARD);
-        result += `${milliards}M̅`;
-        remaining = remaining % MILLIARD;
+    // Les valeurs positives représentent des dates dans le passé, donc on les affiche avec "-"
+    // Les valeurs négatives sont déjà dans le bon format (futur, rare)
+    const isPast = years > 0; // Dates positives = passé
+    const yearsAbs = Math.abs(years);
+    
+    // Convertir en millions d'années
+    const millions = yearsAbs / MEGA;
+    
+    // Formater avec 0 décimales si entier, sinon avec décimales
+    let result;
+    if (millions % 1 === 0) {
+        result = millions.toString();
+    } else {
+        // Afficher avec décimales si nécessaire (max 1 décimale)
+        result = millions.toFixed(1).replace(/\.?0+$/, ''); // Enlever les zéros inutiles
     }
 
-    // Millions (M)
-    if (remaining >= MEGA) {
-        const millions = Math.floor(remaining / MEGA);
-        result += `${millions}M`;
-        remaining = remaining % MEGA;
+    // Ajouter le signe "-" si c'est dans le passé (years > 0)
+    if (isPast) {
+        result = '-' + result;
     }
 
-    // Milliers et unités
-    if (remaining > 0) {
-        result += remaining.toString();
-    } else if (result === '') {
-        result = '0';
-    }
-
-    return result + ' ans';
+    return result + ' Ma';
 }
 
 // Fonction pour incrémenter le temps de 10 ans (lors des clics sur boutons)
@@ -1568,6 +1565,16 @@ function setEpoch(epochName) {
         window.recreateNoyauRadiation();
     }
 
+    // Recréer les radiations de la terre (car le rayon peut avoir changé)
+    if (typeof window.recreateTerreRadiation === 'function') {
+        window.recreateTerreRadiation();
+    }
+
+    // Recalculer les positions des flèches et étiquettes car le rayon de la terre a changé
+    if (typeof window.generateArrows === 'function') {
+        window.generateArrows();
+    }
+
     disableButtons(); // Désactiver les boutons
 
     // Mettre à jour la timeline pour correspondre au début de l'époque
@@ -1633,18 +1640,20 @@ function setEpoch(epochName) {
     // Mettre à jour le bouton CO2
     const btnCo2 = document.getElementById('btn-co2');
     if (btnCo2) {
-        if (isCorpsNoir) {
+        if (isCorpsNoir || epoch.co2_ppm === 0) {
+            // Forcer en off/gris si 0% ou Corps noir
             btnCo2.classList.remove('checked');
-            btnCo2.classList.add('disabled');
-            btnCo2.disabled = true;
+            if (isCorpsNoir) {
+                btnCo2.classList.add('disabled');
+                btnCo2.disabled = true;
+            } else {
+                btnCo2.classList.remove('disabled');
+                btnCo2.disabled = false;
+            }
         } else {
             btnCo2.classList.remove('disabled');
             btnCo2.disabled = false;
-            if (epoch.co2_ppm > 0) {
-                btnCo2.classList.add('checked');
-            } else {
-                btnCo2.classList.remove('checked');
-            }
+            btnCo2.classList.add('checked');
         }
     }
 
@@ -1662,18 +1671,20 @@ function setEpoch(epochName) {
     // Mettre à jour le bouton H2O
     const btnH2O = document.getElementById('btn-h2o');
     if (btnH2O) {
-        if (isCorpsNoir) {
+        if (isCorpsNoir || epoch.h2o_enabled === false) {
+            // Forcer en off/gris si désactivé ou Corps noir
             btnH2O.classList.remove('checked');
-            btnH2O.classList.add('disabled');
-            btnH2O.disabled = true;
+            if (isCorpsNoir) {
+                btnH2O.classList.add('disabled');
+                btnH2O.disabled = true;
+            } else {
+                btnH2O.classList.remove('disabled');
+                btnH2O.disabled = false;
+            }
         } else {
             btnH2O.classList.remove('disabled');
             btnH2O.disabled = false;
-            if (epoch.h2o_enabled !== false) {
-                btnH2O.classList.add('checked');
-            } else {
-                btnH2O.classList.remove('checked');
-            }
+            btnH2O.classList.add('checked');
         }
     }
 
@@ -1708,18 +1719,20 @@ function setEpoch(epochName) {
     // Mettre à jour le bouton CH4
     const btnMethane = document.getElementById('btn-methane');
     if (btnMethane) {
-        if (isCorpsNoir) {
+        if (isCorpsNoir || !epoch.ch4_ppm || epoch.ch4_ppm === 0) {
+            // Forcer en off/gris si 0% ou Corps noir
             btnMethane.classList.remove('checked');
-            btnMethane.classList.add('disabled');
-            btnMethane.disabled = true;
+            if (isCorpsNoir) {
+                btnMethane.classList.add('disabled');
+                btnMethane.disabled = true;
+            } else {
+                btnMethane.classList.remove('disabled');
+                btnMethane.disabled = false;
+            }
         } else {
             btnMethane.classList.remove('disabled');
             btnMethane.disabled = false;
-            if (epoch.ch4_ppm > 0) {
-                btnMethane.classList.add('checked');
-            } else {
-                btnMethane.classList.remove('checked');
-            }
+            btnMethane.classList.add('checked');
         }
     }
 
@@ -1869,6 +1882,14 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Initialiser l'état des boutons selon l'époque géologique
     enableButtons();
+
+    // Initialiser les event listeners sur les boutons du flux
+    if (typeof window.initFluxButtonListeners === 'function') {
+        // Attendre un peu pour que les boutons soient créés
+        setTimeout(() => {
+            window.initFluxButtonListeners();
+        }, 100);
+    }
 
     // Ajouter un gestionnaire de clic sur la température pour cycler les unités
     const syntheseTempEl = document.querySelector('.synthese_Temp');

@@ -96,7 +96,7 @@ const nodes = [
 
     { id: 'geometrie', logo: '🎱', x: centerX + 65, y: centerY - 155, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 1, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: [], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 13, logoScale: 1.1, logoOffsetY: 2 },
 
-    { id: 'espace1', logo: '🛰', x: centerX + 150, y: centerY - 170, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null, zIndex: 14 },
+    { id: 'espace1', logo: '🛰', logoScale: 0.5, x: centerX + 150, y: centerY - 170, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null, zIndex: 14 },
 
     { id: 'albedo', logo: '🪞', x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
 
@@ -135,8 +135,8 @@ const nodes = [
             },
             {
                 epochName: 'Archéen',
-                numCircles: 5,
-                maxRadius: 80,
+                numCircles: 6,
+                maxRadius: 70,
                 strokeSize: 2,
                 openingAngle: 0,
                 rotation: 0,
@@ -144,45 +144,18 @@ const nodes = [
             },
             {
                 epochName: 'Protérozoïque',
-                numCircles: 8,
-                maxRadius: 90,
-                strokeSize: 3,
+                numCircles: 3,
+                maxRadius: 70,
+                strokeSize: 2,
                 openingAngle: 0,
                 rotation: 0,
                 color: '#ff9800'
             },
             {
                 epochName: 'Mésozoïque',
-                numCircles: 6,
-                maxRadius: 90,
+                numCircles: 2,
+                maxRadius: 50,
                 strokeSize: 2,
-                openingAngle: 0,
-                rotation: 0,
-                color: '#ff9800'
-            },
-            {
-                epochName: 'Crétacé',
-                numCircles: 5,
-                maxRadius: 90,
-                strokeSize: 2,
-                openingAngle: 0,
-                rotation: 0,
-                color: '#ff9800'
-            },
-            {
-                epochName: 'Cénozoïque',
-                numCircles: 4,
-                maxRadius: 90,
-                strokeSize: 2,
-                openingAngle: 0,
-                rotation: 0,
-                color: '#ff9800'
-            },
-            {
-                epochName: 'Aujourd\'hui',
-                numCircles: 3,
-                maxRadius: 90,
-                strokeSize: 1,
                 openingAngle: 0,
                 rotation: 0,
                 color: '#ff9800'
@@ -201,7 +174,7 @@ const nodes = [
             {
                 epochName: 'Corps noir',
                 logo: 'fonts/pics/corps_noir.png',
-                radius: radiusTerre,
+                radius: radiusTerre*0.8,
                 fillColor: 'rgba(0, 0, 0, 0.3)',
                 strokeColor: '#000000',
                 strokeSize: 1
@@ -209,7 +182,7 @@ const nodes = [
             {
                 epochName: 'Hadéen',
                 logo: 'fonts/pics/hadeen.png',
-                radius: radiusTerre,
+                radius: radiusTerre*1.1,
                 fillColor: 'rgba(255, 69, 0, 0.3)',
                 strokeColor: '#ff4500',
                 strokeSize: 1
@@ -218,16 +191,16 @@ const nodes = [
                 epochName: 'Archéen',
                 logo: 'fonts/pics/archeen.png',
                 radius: radiusTerre,
-                fillColor: 'rgba(0, 100, 200, 0.3)',
-                strokeColor: '#0064c8',
+                fillColor: 'rgba(255, 140, 0, 0.3)', // Orange/jaune : début de l'oxygène mais encore réductrice
+                strokeColor: '#ff8c00',
                 strokeSize: 1
             },
             {
                 epochName: 'Protérozoïque',
                 logo: '🌍',
                 radius: radiusTerre,
-                fillColor: 'rgba(0, 200, 100, 0.3)',
-                strokeColor: '#00c864',
+                fillColor: 'rgba(0, 191, 255, 0.3)', // Cyan/bleu clair : Grande Oxydation, apparition de l'oxygène
+                strokeColor: '#00bfff',
                 strokeSize: 1
             },
             {
@@ -274,7 +247,7 @@ const nodes = [
         logoOffsetY: 7
     },
 
-    { id: 'espace2', logo: '🛰', x: centerX + 150, y: centerY + 310, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
+    { id: 'espace2', logo: '🛰', logoScale: 0.5, x: centerX + 150, y: centerY + 310, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
 
     { id: 'reemis', logo: '📛', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Forçage<br>Radiatif', dataId: 'forcing_label' }, tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
 

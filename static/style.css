@@ -203,7 +203,20 @@ h1 {
 .timeline-display,
 .button-container,
 .reference-container,
-.plot-container-wrapper,
+.plot-container-wrapper {
+    width: 100%;
+    padding: 12px 16px;
+    background: #667eea;
+    border: none;
+    border-radius: 10px 10px 0 0;
+    /* Pas de cursor pointer ici - seulement sur les boutons et le graphique */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background 0.3s;
+}
 
 .reference-toggle {
     width: 100%;
@@ -211,7 +224,7 @@ h1 {
     background: #667eea;
     border: none;
     border-radius: 10px 10px 0 0;
-    cursor: pointer;
+    cursor: pointer; /* Curseur pointer uniquement pour le toggle */
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -591,12 +604,9 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
+    cursor: pointer !important; /* Curseur main au survol */
     padding: 5px;
     transition: filter 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     width: 40px;
     height: 40px;
     position: relative;
@@ -622,6 +632,7 @@ h1 {
 .epoch-btn:hover {
     /* Si non sélectionné : swap vers couleur, contour reste blanc */
     filter: grayscale(0%);
+    cursor: pointer !important; /* Curseur main au survol */
 }
 
 .epoch-btn.selected:hover {
@@ -631,6 +642,7 @@ h1 {
                  0 0 4px rgba(0, 255, 0, 0.7),
                  0 0 6px rgba(0, 255, 0, 0.5),
                  0 0 8px rgba(0, 255, 0, 0.3) !important;
+    cursor: pointer !important; /* Curseur main au survol */
 }
 
 /* Boutons du flux : même style que les boutons radio mais pour checkboxes */
@@ -1138,6 +1150,13 @@ h1 {
 
 
 
+/* Curseur pointer uniquement sur le graphique Plotly (pas sur la div conteneur) */
+#plot-container .plotly,
+#plot-container .js-plotly-plot,
+#plot-container svg {
+    cursor: pointer;
+}
+
 #plot-container {
     width: 100%;
     /* height: 620px; */
@@ -1147,6 +1166,7 @@ h1 {
     z-index: 2;
     /* Au-dessus du canvas (1) */
     max-height: 560px;
+    /* Pas de cursor pointer sur le conteneur, seulement sur le graphique */
 }
 
 /* Ajuster le draglayer de Plotly pour supprimer l'espace blanc en haut */
