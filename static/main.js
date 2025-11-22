@@ -1522,6 +1522,47 @@ function setEpoch(epochName) {
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
 
+    // Mettre à jour le logo de la Terre avec l'image de l'époque
+    // Modifier la configuration du noeud terre et recréer la cellule
+    const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
+    if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
+        // Trouver la configuration de l'époque courante
+        const epochConfig = terreNode.epoch.find(e => e.epochName === epochName);
+        
+        if (epochConfig) {
+            // Recréer la cellule terre avec la configuration de l'époque
+            const oldCell = document.getElementById('cell-terre');
+            if (oldCell && typeof window.createCell === 'function') {
+                const parent = oldCell.parentElement;
+                oldCell.remove();
+
+                const newCell = window.createCell(
+                    terreNode.x,
+                    terreNode.y,
+                    epochConfig.radius,
+                    epochConfig.fillColor,
+                    epochConfig.strokeColor,
+                    epochConfig.logo,
+                    terreNode.left,
+                    terreNode.right,
+                    terreNode.top,
+                    terreNode.bottom,
+                    terreNode.tooltip,
+                    terreNode.radiation,
+                    null, // rectangleOptions
+                    null, // fillImage
+                    terreNode.id,
+                    terreNode.zIndex,
+                    terreNode.logoScale,
+                    terreNode.logoOffsetY,
+                    epochConfig.strokeSize
+                );
+
+                parent.appendChild(newCell);
+            }
+        }
+    }
+
     disableButtons(); // Désactiver les boutons
 
     // Mettre à jour la timeline pour correspondre au début de l'époque
