@@ -348,7 +348,9 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     cell.style.zIndex = zIndex !== null ? zIndex : Z_LAYERS.NODE;
 
     // Adapter la grille à la taille du cercle OU du logo (le plus grand)
-    const hasCircle = strokeColor && strokeColor.trim() !== '';
+    // Le cercle est toujours créé (même invisible) pour que les étiquettes s'éloignent correctement
+    const hasCircle = true; // Toujours créer le cercle
+    const hasVisibleBorder = strokeColor && strokeColor.trim() !== '';
     // Calcul initial pour les dimensions par défaut
     const circleDiameterInit = hasCircle ? (radius * 2) : 0;
     let centralCellSize = hasCircle ? circleDiameterInit : (radius * logoScale);
@@ -440,13 +442,24 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             circleBg.classList.add('flux-space-hole');
         }
         circleBg.style.backgroundColor = fillColor;
-        // Ne pas mettre de bordure si strokeColor est vide
+        // Toujours créer le cercle, mais rendre la bordure invisible si strokeColor est vide ou transparent
+        // Le cercle est nécessaire pour que les étiquettes s'éloignent correctement du logo
         if (!strokeColor || strokeColor.trim() === '') {
             circleBg.style.border = 'none';
         } else {
-            circleBg.style.borderColor = strokeColor;
-            circleBg.style.borderWidth = strokeSize + 'px';
-            circleBg.style.borderStyle = 'solid';
+            // Vérifier si la couleur est transparente (alpha = 0)
+            const isTransparent = strokeColor.includes('rgba') && strokeColor.includes(', 0)') || 
+                                  strokeColor.includes('rgba') && strokeColor.includes(', 0 )');
+            if (isTransparent) {
+                // Bordure transparente mais présente pour l'espacement
+                circleBg.style.borderColor = strokeColor;
+                circleBg.style.borderWidth = strokeSize + 'px';
+                circleBg.style.borderStyle = 'solid';
+            } else {
+                circleBg.style.borderColor = strokeColor;
+                circleBg.style.borderWidth = strokeSize + 'px';
+                circleBg.style.borderStyle = 'solid';
+            }
         }
         // Wrapper le logo dans un span pour appliquer l'offset sans bouger le cercle
         const logoSpan = document.createElement('span');
@@ -1690,15 +1703,23 @@ cellOrder.forEach(nodeId => {
         }
     }
 
-    // If it's a button, force radius, fillColor, zIndex, logoScale and strokeColor
+    // If it's a button, set defaults only if not already defined
     if (node.type === 'button') {
-        node.radius = 55;
+        if (node.radius === undefined) {
+            node.radius = 55;
+        }
         if (node.fillColor === undefined) {
             node.fillColor = 'rgba(255, 0, 0, 0)';
         }
-        node.strokeColor = ''; // No border for buttons
-        node.zIndex = Z_LAYERS.BUTTON;
-        node.logoScale = 0.5;
+        if (node.strokeColor === undefined) {
+            node.strokeColor = 'rgba(0, 0, 0, 0)'; // Transparent border by default (circle still created)
+        }
+        if (node.zIndex === undefined) {
+            node.zIndex = Z_LAYERS.BUTTON;
+        }
+        if (node.logoScale === undefined) {
+            node.logoScale = 0.5;
+        }
     }
 
     // Gérer le cas spécial du node 'terre' avec tableau epoch
@@ -1785,15 +1806,23 @@ nodes.forEach(node => {
     // Ignore effetSerre because it's a rectangle, not a circular cell
     if (node.id === 'effetSerre') return;
 
-    // If it's a button, force radius, fillColor, zIndex, logoScale and strokeColor
+    // If it's a button, set defaults only if not already defined
     if (node.type === 'button') {
-        node.radius = 55;
+        if (node.radius === undefined) {
+            node.radius = 55;
+        }
         if (node.fillColor === undefined) {
             node.fillColor = 'rgba(255, 0, 0, 0)';
         }
-        node.strokeColor = ''; // No border for buttons
-        node.zIndex = Z_LAYERS.BUTTON;
-        node.logoScale = 0.5;
+        if (node.strokeColor === undefined) {
+            node.strokeColor = 'rgba(0, 0, 0, 0)'; // Transparent border by default (circle still created)
+        }
+        if (node.zIndex === undefined) {
+            node.zIndex = Z_LAYERS.BUTTON;
+        }
+        if (node.logoScale === undefined) {
+            node.logoScale = 0.5;
+        }
     }
 
     // Calculate maxRadius if necessary (same logic as for cellOrder)

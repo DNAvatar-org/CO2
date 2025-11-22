@@ -83,19 +83,6 @@ const ARROW_Z_INDEX = {
 };
 
 // Configuration du rayonnement dynamique du noyau
-const coreRadiationConfig = {
-    referenceFlux: 0.087,      // W/m² - Flux géothermique actuel (référence)
-    baseMaxRadius: 35,         // px - Rayon absolu depuis le centre pour le flux actuel
-    logScale: 29,              // Facteur d'échelle: Hadéen atteint 100px (rayon de la Terre)
-    minCircles: 4,             // Nombre minimal de cercles
-    maxCircles: 12,            // Nombre maximal de cercles
-    minStrokeSize: 1,          // px - Épaisseur minimale des traits
-    maxStrokeSize: 4,          // px - Épaisseur maximale des traits
-    defaultCircles: 8,         // Nombre de cercles par défaut
-    defaultStrokeSize: 2       // Épaisseur par défaut
-};
-
-
 // Définition du graphe : nœuds (cellules)
 // Le soleil émet ~3.8×10²⁶ W dans toutes les directions (4π stéradians)
 // Surface sphère à 1 UA (distance Terre-Soleil) = 4π × (1.5×10¹¹ m)² ≈ 2.83×10²³ m²
@@ -113,7 +100,98 @@ const nodes = [
 
     { id: 'albedo', logo: '🪞', x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
 
-    { id: 'noyau', logo: '🌕', x: centerX - 2, y: earthCenterY - 1, radius: 30, fillColor: 'rgba(255, 69, 0, 0)', strokeSize: 7, strokeColor: '#ff5500', left: [], right: [], top: [], bottom: [{ text: '~5700 K ', dataId: 'core_temperature' }], tooltip: 'Noyau - Géothermie', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 0 }, zIndex: 20, logoScale: 0.8 },
+    { 
+        id: 'noyau', 
+        logo: '🌕', 
+        x: centerX - 0.2, 
+        y: earthCenterY - 0.1, 
+        radius: 30, 
+        fillColor: 'rgba(255, 69, 0, 0)', 
+        strokeSize: 1, 
+        strokeColor: '#ff5500', 
+        left: [], 
+        right: [], 
+        top: [], 
+        bottom: [{ text: '~5700 K ', dataId: 'core_temperature' }], 
+        tooltip: 'Noyau - Géothermie', 
+        radiation: [
+            {
+                epochName: 'Corps noir',
+                numCircles: 0,
+                maxRadius: 0,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Hadéen',
+                numCircles: 6,
+                maxRadius: 100,
+                strokeSize: 3,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Archéen',
+                numCircles: 5,
+                maxRadius: 80,
+                strokeSize: 2,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Protérozoïque',
+                numCircles: 8,
+                maxRadius: 90,
+                strokeSize: 3,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Mésozoïque',
+                numCircles: 6,
+                maxRadius: 90,
+                strokeSize: 2,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Crétacé',
+                numCircles: 5,
+                maxRadius: 90,
+                strokeSize: 2,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Cénozoïque',
+                numCircles: 4,
+                maxRadius: 90,
+                strokeSize: 2,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Aujourd\'hui',
+                numCircles: 3,
+                maxRadius: 90,
+                strokeSize: 1,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            }
+        ],
+        zIndex: 20, 
+        logoScale: 0.8,
+        logoOffsetY: 2
+    },
 
     { 
         id: 'terre', 
@@ -193,22 +271,25 @@ const nodes = [
         radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' }, 
         zIndex: 15, 
         logoScale: 0.95, 
-        logoOffsetY: 5 
+        logoOffsetY: 7
     },
 
     { id: 'espace2', logo: '🛰', x: centerX + 150, y: centerY + 310, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
 
-    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [{ text: 'Forçage<br>Radiatif', dataId: 'forcing_label' }], right: '', top: '', bottom: '', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
+    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Forçage<br>Radiatif', dataId: 'forcing_label' }, tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
 
     // Boutons
     //+circleMiddleRadius*Math.cos(135*Math.PI/180)
     //+circleMiddleRadius*Math.sin(135*Math.PI/180)
     //type: 'button',
 
-    { id: 'co2', type: 'button', logo: '🌱', x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 10, logoScale: 1.0, zIndex: 200 },
-    { id: 'methane', type: 'button', logo: '⛽', x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'ch4_percent' }, { text: '0 W/m²', dataId: 'ch4_forcing' }], right: [], top: '', bottom: '', tooltip: 'CH₄', zIndex: 200 },
-    { id: 'h2o', type: 'button', logo: '💧', x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing' }], tooltip: 'H₂O', zIndex: 200 },
-    { id: 'albedo-btn', type: 'button', logo: '🪞', x: centerX + circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0 W/m²', dataId: 'forcing_total' }], bottom: [{ text: '0%', dataId: 'forcing_percent' }], tooltip: 'Albédo', zIndex: 200 }
+    { id: 'co2', type: 'button', logo: '🌱', logoOffsetY: -10, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing' }], right: [], top: 'CO₂', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+
+    { id: 'methane', type: 'button', logo: '⛽', x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'ch4_percent' }, { text: '0 W/m²', dataId: 'ch4_forcing' }], right: [], top: '', bottom: 'CH₄', tooltip: 'CH₄', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+
+    { id: 'h2o', type: 'button', logo: '💧', x: centerX - circleMiddleRadius, y: earthCenterY, left: ['H₂O'], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+
+    { id: 'albedo-btn', type: 'button', logo: '🪞', logoOffsetY: 5, x: centerX + circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0 W/m²', dataId: 'forcing_total' }], bottom: [{ text: '0%', dataId: 'forcing_percent' }], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
 ];
 
 // Définition du graphe : arcs (flèches)
