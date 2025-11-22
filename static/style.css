@@ -606,16 +606,14 @@ h1 {
     justify-content: center;
     cursor: pointer !important; /* Curseur main au survol */
     padding: 5px;
-    transition: filter 0.3s ease;
+    transition: filter 0.3s ease, text-shadow 0.3s ease;
     width: 40px;
     height: 40px;
     position: relative;
-    /* Par défaut : noir et blanc avec contour blanc autour du logo */
+    /* Par défaut : noir et blanc sans glow (glow uniquement pour selected) */
     filter: grayscale(100%);
-    /* Contour blanc autour du logo (emoji) - ne change pas au rollover */
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                 0 0 4px rgba(255, 255, 255, 0.7),
-                 0 0 6px rgba(255, 255, 255, 0.5);
+    /* Pas de text-shadow par défaut pour les boutons non sélectionnés */
+    text-shadow: none;
 }
 
 /* Bouton sélectionné : couleur avec contour vert autour du logo */
@@ -630,9 +628,20 @@ h1 {
 
 /* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
 .epoch-btn:hover {
-    /* Si non sélectionné : swap vers couleur, contour reste blanc */
+    /* Si non sélectionné : swap vers couleur, contour blanc au rollover */
     filter: grayscale(0%);
+    /* Glow blanc au rollover pour les boutons non sélectionnés */
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5);
     cursor: pointer !important; /* Curseur main au survol */
+}
+
+/* Rollover spécifique pour les boutons non sélectionnés : forcer le glow blanc */
+.epoch-btn:not(.selected):hover {
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5) !important;
 }
 
 .epoch-btn.selected:hover {
@@ -1387,6 +1396,10 @@ h1 {
 .credits-footer a {
     text-decoration: none;
     transition: color 0.2s;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
 }
 
 .credits-footer a:hover {

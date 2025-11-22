@@ -1,0 +1,120 @@
+/* File: ergo_button.css - Système de boutons ergonomiques réutilisables
+ * Desc: Styles CSS pour des boutons circulaires avec états checked/selected/unselected
+ * Version 1.0.0
+ * Copyright 2025 DNAvatar.org - Arnaud Maignan
+ * Licensed under Apache License 2.0 with Commons Clause.
+ * See LICENSE_HEADER.txt for full terms.
+ * Date: [June 08, 2025] [HH:MM UTC+1]
+ * Logs:
+ *   - Initial version: extraction du système de boutons du diagramme de flux
+ */
+
+/* ==========================================================================
+   Conteneur du bouton
+   ========================================================================== */
+
+.ergo-button-cell {
+    pointer-events: none;
+}
+
+/* Désactiver les pointer-events sur les éléments enfants pour qu'ils ne bloquent pas le hover */
+.ergo-button-cell > *:not(.ergo-button-circle) {
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   Cercle cliquable du bouton
+   ========================================================================== */
+
+.ergo-button-cell .ergo-button-circle {
+    pointer-events: auto;
+    transition: filter 0.3s ease, text-shadow 0.3s ease;
+    /* Désactiver les effets visuels du cercle pour les boutons */
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    border: none !important;
+    background: transparent !important;
+    /* Par défaut : gris */
+    filter: grayscale(100%);
+    /* Contour blanc autour du logo (emoji) - ne change pas au rollover */
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5);
+    /* Curseur pointer uniquement sur le cercle */
+    cursor: pointer !important;
+    /* Limiter la zone cliquable à la taille exacte du cercle */
+    border-radius: 50%;
+    /* S'assurer que la zone cliquable ne dépasse pas */
+    overflow: hidden;
+    /* Forcer la taille à être exactement celle définie */
+    box-sizing: border-box;
+    /* S'assurer que le cercle est positionné de manière absolue */
+    position: absolute;
+    /* Limiter la zone cliquable aux enfants aussi */
+    isolation: isolate;
+}
+
+/* Désactiver les pointer-events sur les enfants du cercle pour limiter la zone */
+.ergo-button-cell .ergo-button-circle > * {
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   États et interactions
+   ========================================================================== */
+
+/* Rollover par défaut : swap vers couleur, contour reste blanc */
+.ergo-button-cell .ergo-button-circle:hover {
+    filter: grayscale(0%);
+}
+
+/* État unselected : gris (par défaut) */
+.ergo-button-cell.unselected .ergo-button-circle {
+    filter: grayscale(100%);
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5);
+}
+
+/* Rollover spécifique pour unselected : forcer la couleur */
+.ergo-button-cell.unselected .ergo-button-circle:hover {
+    filter: grayscale(0%) !important;
+}
+
+/* Bouton checked : couleur avec contour vert */
+.ergo-button-cell.checked .ergo-button-circle {
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    /* Contour vert autour du logo - ne change pas au rollover */
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
+}
+
+/* Rollover sur checked : swap vers noir et blanc, contour reste vert */
+.ergo-button-cell.checked .ergo-button-circle:hover {
+    filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
+}
+
+/* État selected : couleur avec contour vert (identique à checked) */
+.ergo-button-cell.selected .ergo-button-circle {
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
+}
+
+/* Rollover sur selected : swap vers noir et blanc, contour reste vert */
+.ergo-button-cell.selected .ergo-button-circle:hover {
+    filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
+}
+

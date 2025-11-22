@@ -2307,6 +2307,15 @@ function updateFluxLabels(data) {
             ? window.volcanoIceReduction / 100
             : 0; // Réduction en fraction (0 à 1)
 
+        // Récupérer le flux géothermique depuis l'époque courante
+        let geo_flux = 0.087; // Valeur par défaut (moderne)
+        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            }
+        }
+
         // Calculer la glace seulement si température < 0°C ET pas en mode corps noir
         // Limiter à des températures raisonnables (pas en dessous de -100°C pour éviter les valeurs extrêmes)
         if (T_surface_C < 0 && T_surface_C > -100) {
@@ -2317,6 +2326,16 @@ function updateFluxLabels(data) {
             ice_coverage = Math.min(1, 1 - Math.exp(T_surface_C / 3));
             // Réduire selon l'effet volcanique
             ice_coverage = Math.max(0, ice_coverage - volcanoIceReduction);
+            // ⚠️ NOUVEAU : Réduire la glace selon le flux géothermique
+            // Le flux géothermique réchauffe la surface et fait fondre la glace
+            // 15 W/m² est énorme et devrait empêcher la formation de glace
+            // Formule : réduction proportionnelle au flux géothermique
+            // À 0 W/m² : pas de réduction
+            // À 15 W/m² : réduction maximale (fonte complète de la glace)
+            // Utiliser une fonction qui réduit la glace progressivement avec le flux
+            // Seuil : au-delà de 10 W/m², la glace fond complètement
+            const geo_flux_reduction = Math.min(1, geo_flux / 10); // Réduction de 0 à 1 selon le flux (seuil à 10 W/m²)
+            ice_coverage = Math.max(0, ice_coverage * (1 - geo_flux_reduction));
         } else if (T_surface_C <= -100) {
             // Température extrêmement basse (proche du zéro absolu) : pas de glace
             // À ces températures, l'eau n'existe plus sous forme de glace (sublimation)
