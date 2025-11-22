@@ -73,91 +73,120 @@ const GEOLOGICAL_EVENTS = [
 const GEOLOGICAL_PERIODS = [
     {
         name: 'Corps noir',
-        startYears: 5.0e9, // Avant la formation de la Terre (date inconnue exacte)
-        endYears: 4.5e9, // Formation de la Lune (impact géant)
-        emoji: '⚫', // Corps noir
-        co2_ppm: 0, // Pas d'atmosphère
-        ch4_ppm: 0, // Pas d'atmosphère
-        h2o_enabled: false, // Pas d'atmosphère, pas de vapeur d'eau
-        cloud_coverage: 0, // Pas de nuages
+        startYears: 5.0e9,
+        endYears: 4.5e9,
+        emoji: '⚫',
+        co2_ppm: 0,
+        ch4_ppm: 0,
+        h2o_enabled: false,
+        cloud_coverage: 0,
+        core_temperature_k: null,
+        geothermal_flux: 0,
         description: 'État initial : corps noir pur, avant formation de la Lune (4,5 Ga), pas de noyau différencié, pas d\'atmosphère, température ~206.1K'
     },
     {
         name: 'Hadéen',
-        startYears: 4.5e9, // Après la formation de la Lune (impact géant)
+        startYears: 4.5e9,
         endYears: 4.0e9,
-        emoji: '🌕', // Lune pleine (surface chaude et brillante)
-        co2_ppm: 7000, // Beaucoup de CO₂ (jusqu'à 7000 ppm)
-        ch4_ppm: 100, // Très élevé (atmosphère réductrice, pas d'O₂ pour oxyder)
-        h2o_enabled: true, // Forte couverture nuageuse
-        cloud_coverage: 0.8, // 80% de couverture nuageuse
+        emoji: '🌕',
+        co2_ppm: 7000,
+        ch4_ppm: 100,
+        h2o_enabled: true,
+        cloud_coverage: 0.8,
+        core_temperature_k: 6000,
+        geothermal_flux: 15,
         description: 'Atmosphère dense, peu d\'O₂, beaucoup de CO₂, températures élevées (>50°C)'
     },
     {
         name: 'Archéen',
         startYears: 4.0e9,
         endYears: 2.5e9,
-        emoji: '🦠', // Microbe unicellulaire
-        co2_ppm: 5000, // Beaucoup de CO₂
-        ch4_ppm: 80, // Très élevé (méthanogènes, atmosphère réductrice)
+        emoji: '🦠',
+        co2_ppm: 5000,
+        ch4_ppm: 80,
         h2o_enabled: true,
-        cloud_coverage: 0.7, // 70% de couverture nuageuse
+        cloud_coverage: 0.7,
+        core_temperature_k: 5900,
+        geothermal_flux: 0.3,
         description: 'Atmosphère dense, peu d\'O₂, beaucoup de CO₂, précipitations abondantes'
     },
     {
         name: 'Protérozoïque',
         startYears: 2.5e9,
         endYears: 541e6,
-        emoji: '🌿', // Plantes primitives
-        co2_ppm: 2000, // Déclin progressif du CO₂
-        ch4_ppm: 25, // Élevé mais en déclin (apparition d'O₂)
+        emoji: '🌿',
+        co2_ppm: 2000,
+        ch4_ppm: 25,
         h2o_enabled: true,
-        cloud_coverage: 0.4, // 40% de couverture nuageuse
+        cloud_coverage: 0.4,
+        core_temperature_k: 5850,
+        geothermal_flux: 0.15,
         description: 'Déclin progressif du CO₂, apparition de glaciations'
     },
     {
         name: 'Cryogénien',
         startYears: 720e6,
         endYears: 635e6,
-        emoji: '❄️', // Flocon de neige
-        co2_ppm: 1000, // CO₂ réduit pendant la boule de neige
-        ch4_ppm: 15, // Réduit (conditions glaciaires)
+        emoji: '❄️',
+        co2_ppm: 1000,
+        ch4_ppm: 15,
         h2o_enabled: true,
-        cloud_coverage: 0.3, // 30% de couverture nuageuse
+        cloud_coverage: 0.3,
+        core_temperature_k: 5800,
+        geothermal_flux: 0.12,
         description: 'Boule de neige - Terre entièrement glacée'
     },
     {
         name: 'Mésozoïque',
         startYears: 252e6,
         endYears: 66e6,
-        emoji: '🦕', // Dinosaure sauropode
-        co2_ppm: 2500, // CO₂ élevé (2000-3000 ppm)
-        ch4_ppm: 8, // Modéré (atmosphère oxydante)
+        emoji: '🦕',
+        co2_ppm: 2500,
+        ch4_ppm: 8,
         h2o_enabled: true,
-        cloud_coverage: 0.5, // 50% de couverture nuageuse
+        cloud_coverage: 0.5,
+        core_temperature_k: 5750,
+        geothermal_flux: 0.10,
         description: 'CO₂ élevé, périodes chaudes, peu de glaces'
     },
     {
         name: 'Crétacé',
         startYears: 145e6,
         endYears: 66e6,
-        emoji: '🦴', // Os/fossile
-        co2_ppm: 3000, // CO₂ très élevé
-        ch4_ppm: 10, // Modéré-élevé (conditions chaudes)
+        emoji: '🦴',
+        co2_ppm: 3000,
+        ch4_ppm: 10,
         h2o_enabled: true,
-        cloud_coverage: 0.5, // 50% de couverture nuageuse
+        cloud_coverage: 0.5,
+        core_temperature_k: 5740,
+        geothermal_flux: 0.095,
         description: 'Températures +6 à +8°C, CO₂ très élevé, peu de glace'
     },
     {
         name: 'Cénozoïque',
         startYears: 66e6,
         endYears: 0,
-        emoji: '🦣', // Mammouth
-        co2_ppm: 280, // 280 ppm avant l'ère industrielle
-        ch4_ppm: 0.7, // Pré-industriel (0.7 ppm, actuel ~1.8 ppm)
+        emoji: '🦣',
+        co2_ppm: 280,
+        ch4_ppm: 0.7,
         h2o_enabled: true,
-        cloud_coverage: 0.4, // 40% de couverture nuageuse
+        cloud_coverage: 0.4,
+        core_temperature_k: 5700,
+        geothermal_flux: 0.087,
         description: 'Forte chute du CO₂, alternance glaces/interglaciaires'
+    },
+    {
+        name: 'Aujourd\'hui',
+        startYears: 0,
+        endYears: -1,
+        emoji: '🌈',
+        co2_ppm: 420,
+        ch4_ppm: 1.9,
+        h2o_enabled: true,
+        cloud_coverage: 0.4,
+        core_temperature_k: 5700,
+        geothermal_flux: 0.087,
+        description: 'État actuel de la Terre (2024)'
     }
 ];
 
@@ -174,18 +203,18 @@ function getGeologicalPeriod(yearsAgo) {
             return period;
         }
     }
-    
+
     // Si yearsAgo < 0 (futur), retourner la période actuelle
     if (yearsAgo < 0) {
         return GEOLOGICAL_PERIODS[GEOLOGICAL_PERIODS.length - 1]; // Cénozoïque
     }
-    
+
     // Si yearsAgo >= 5.0e9, retourner Corps noir (avant formation de la Terre)
     // Si yearsAgo >= 4.6e9, retourner Corps noir (jusqu'à formation de la Terre)
     if (yearsAgo >= GEOLOGICAL_PERIODS[0].endYears) {
         return GEOLOGICAL_PERIODS[0]; // Corps noir
     }
-    
+
     // Par défaut, retourner la période actuelle
     return GEOLOGICAL_PERIODS[GEOLOGICAL_PERIODS.length - 1];
 }
@@ -209,17 +238,17 @@ function getMoltenCrustFactor(yearsAgo) {
     if (yearsAgo < CRUST_MOLTEN_END) {
         return 1.0; // Pas de croûte molle
     }
-    
+
     // Si on est après le début de la Terre, facteur maximum
     if (yearsAgo >= CRUST_MOLTEN_START) {
         return CRUST_MOLTEN_FACTOR_MAX; // x100 au tout début
     }
-    
+
     // Interpolation linéaire entre le début (x100) et la fin (x10)
     // Plus on s'éloigne du début, plus le facteur diminue
     const progress = (yearsAgo - CRUST_MOLTEN_END) / (CRUST_MOLTEN_START - CRUST_MOLTEN_END);
     const factor = CRUST_MOLTEN_FACTOR_MIN + (CRUST_MOLTEN_FACTOR_MAX - CRUST_MOLTEN_FACTOR_MIN) * (1 - progress);
-    
+
     return factor;
 }
 
@@ -229,7 +258,7 @@ function getGeologicalEra(years) {
     // Si timelineFrame = 0, on est à "maintenant" (0 ans dans le passé)
     // Si timelineFrame augmente, on remonte dans le temps (années dans le passé)
     const yearsAgo = years; // Années dans le passé depuis maintenant
-    
+
     // Parcourir les époques de la plus récente à la plus ancienne
     for (const era of GEOLOGICAL_ERAS) {
         // Les époques sont définies en années avant maintenant
@@ -239,7 +268,7 @@ function getGeologicalEra(years) {
         if (yearsAgo >= era.endYears && yearsAgo < era.startYears) {
             // Calculer le facteur de croûte terrestre molle
             const moltenCrustFactor = getMoltenCrustFactor(yearsAgo);
-            
+
             // Multiplier le facteur volcanique de l'époque par le facteur de croûte molle
             return {
                 ...era,
@@ -248,7 +277,7 @@ function getGeologicalEra(years) {
             };
         }
     }
-    
+
     // Si yearsAgo < 0 (futur) ou très récent, retourner l'époque actuelle
     // Si yearsAgo >= 5.0e9 (avant la formation de la Terre), retourner Corps noir
     if (yearsAgo < 0) {
@@ -263,7 +292,7 @@ function getGeologicalEra(years) {
             moltenCrustFactor: 1.0
         };
     }
-    
+
     // Par défaut, retourner l'époque actuelle (Phanérozoïque)
     return GEOLOGICAL_ERAS[GEOLOGICAL_ERAS.length - 1];
 }
@@ -273,7 +302,7 @@ function getGeologicalEvent(yearsAgo) {
     // Trouver l'événement le plus proche (dans le passé)
     let closestEvent = null;
     let minDiff = Infinity;
-    
+
     for (const event of GEOLOGICAL_EVENTS) {
         const diff = Math.abs(yearsAgo - event.dateYears);
         if (diff < minDiff && yearsAgo >= event.dateYears) {
@@ -281,13 +310,13 @@ function getGeologicalEvent(yearsAgo) {
             closestEvent = event;
         }
     }
-    
+
     return closestEvent;
 }
 
 // Fonction pour obtenir tous les événements entre deux dates
 function getGeologicalEventsBetween(startYears, endYears) {
-    return GEOLOGICAL_EVENTS.filter(event => 
+    return GEOLOGICAL_EVENTS.filter(event =>
         event.dateYears >= endYears && event.dateYears < startYears
     );
 }

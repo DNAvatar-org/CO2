@@ -607,12 +607,12 @@ h1 {
 
 /* Bouton sélectionné : couleur avec contour vert autour du logo */
 .epoch-btn.selected {
-    filter: grayscale(0%); /* Couleur normale */
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important; /* Couleur normale avec blur vert */
     /* Contour vert autour du logo - ne change pas au rollover */
     text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
                  0 0 4px rgba(0, 255, 0, 0.7),
                  0 0 6px rgba(0, 255, 0, 0.5),
-                 0 0 8px rgba(0, 255, 0, 0.3);
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
 }
 
 /* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
@@ -623,7 +623,11 @@ h1 {
 
 .epoch-btn.selected:hover {
     /* Si sélectionné : swap vers noir et blanc, contour reste vert */
-    filter: grayscale(100%);
+    filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                 0 0 4px rgba(0, 255, 0, 0.7),
+                 0 0 6px rgba(0, 255, 0, 0.5),
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
 }
 
 /* Boutons du flux : même style que les boutons radio mais pour checkboxes */
@@ -1351,6 +1355,10 @@ h1 {
 .credits-line {
     font-weight: 300;
     font-style: normal;
+}
+
+.credits-line:has(a[href*="dnavatar.org"]) {
+    font-size: 14px;
 }
 
 .credits-footer a {

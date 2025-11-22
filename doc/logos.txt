@@ -10,7 +10,7 @@
 == Diagramme
 🌞 Soleil
 🎱 Géometrie
-🏐 Albédo
+🪞 Albédo
 🛰 Espace
 🌍 Surface
 🌕 Noyau

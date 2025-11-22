@@ -27,7 +27,6 @@
     width: 370px;
     height: 540px;
     position: relative;
-    background-color: rgba(170, 183, 242, 0.15);
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -129,6 +128,12 @@
 .flux-label.watt-per-m2 {
     color: rgb(255, 145, 0);
     border-color: rgb(255, 208, 0);
+}
+
+/* Couleur pour les étiquettes contenant " W " ou " K " (rouge) */
+.flux-label.watt-or-kelvin {
+    color: rgb(255, 0, 0);
+    border-color: rgb(255, 100, 100);
 }
 
 /* Étiquettes à valeur 0 (W/m² ou %) en gris */
@@ -251,11 +256,11 @@
 }
 
 .flux-button-cell.checked .flux-circle-bg {
-    filter: grayscale(0%);
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
     text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
                  0 0 4px rgba(0, 255, 0, 0.7),
                  0 0 6px rgba(0, 255, 0, 0.5),
-                 0 0 8px rgba(0, 255, 0, 0.3);
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
 }
 
 .flux-button-cell.checked:hover .flux-circle-bg {
@@ -350,12 +355,12 @@
 
 /* Bouton du flux activé (checked) : couleur avec contour vert */
 .flux-diagram .btn.checked {
-    filter: grayscale(0%); /* Couleur normale */
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important; /* Couleur normale avec blur vert */
     /* Contour vert autour du logo - ne change pas au rollover */
     text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
                  0 0 4px rgba(0, 255, 0, 0.7),
                  0 0 6px rgba(0, 255, 0, 0.5),
-                 0 0 8px rgba(0, 255, 0, 0.3);
+                 0 0 8px rgba(0, 255, 0, 0.3) !important;
 }
 
 /* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
@@ -395,19 +400,16 @@ body.no-blur .flux-sphere {
     backdrop-filter: none !important;
 }
 
-/* Mode Dark */
-body.mode-dark .flux-diagram {
-    background: rgba(0, 0, 0, 0.2) !important;
-}
-
 /* Tooltip personnalisé avec délai de 0.5s */
 .flux-custom-tooltip {
     position: fixed;
     background: rgba(10, 14, 39, 0.95);
     color: #fff;
-    padding: 6px 10px;
-    border-radius: 4px;
+    padding: 8px 12px;
+    border-radius: 6px;
     font-size: 12px;
+    font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    font-weight: normal;
     pointer-events: none;
     z-index: 99999 !important; /* Z-index très élevé pour être au-dessus de tout */
     white-space: normal; /* Permettre les retours à la ligne pour les <br> */
@@ -416,9 +418,10 @@ body.mode-dark .flux-diagram {
     transition: opacity 0.2s ease, visibility 0.2s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    max-width: 200px; /* Limiter la largeur pour les textes longs */
-    text-align: center;
-    line-height: 1.4;
+    max-width: 250px; /* Limiter la largeur pour les textes longs */
+    text-align: left;
+    line-height: 1.5;
+    word-wrap: break-word;
 }
 
 

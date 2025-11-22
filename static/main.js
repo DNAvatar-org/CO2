@@ -47,11 +47,11 @@ let currentTempCelsius = null; // Stocker la température en Celsius
 
 function convertTemperature(tempC, unit) {
     if (tempC === null || tempC === undefined) return null;
-    switch(unit) {
+    switch (unit) {
         case 'C':
             return tempC;
         case 'F':
-            return tempC * 9/5 + 32;
+            return tempC * 9 / 5 + 32;
         case 'K':
             return tempC + 273.15;
         default:
@@ -60,7 +60,7 @@ function convertTemperature(tempC, unit) {
 }
 
 function getTemperatureUnitSymbol(unit) {
-    switch(unit) {
+    switch (unit) {
         case 'C': return '°C';
         case 'F': return '°F';
         case 'K': return 'K'; // Kelvin sans le symbole °
@@ -94,7 +94,7 @@ function getTemperatureGlowColor(tempC) {
         [20, { r: 255, g: 255, b: 0 }],    // Jaune à 20°C
         [30, { r: 255, g: 0, b: 0 }]       // Rouge à 30°C
     ];
-    
+
     // Si en dehors de la plage, utiliser les couleurs extrêmes
     if (tempC <= colorPoints[0][0]) {
         return `rgb(${colorPoints[0][1].r}, ${colorPoints[0][1].g}, ${colorPoints[0][1].b})`;
@@ -103,21 +103,21 @@ function getTemperatureGlowColor(tempC) {
         const last = colorPoints[colorPoints.length - 1][1];
         return `rgb(${last.r}, ${last.g}, ${last.b})`;
     }
-    
+
     // Trouver les deux points entre lesquels interpoler
     for (let i = 0; i < colorPoints.length - 1; i++) {
         const temp1 = colorPoints[i][0];
         const temp2 = colorPoints[i + 1][0];
         const color1 = colorPoints[i][1];
         const color2 = colorPoints[i + 1][1];
-        
+
         if (tempC >= temp1 && tempC <= temp2) {
             // Interpolation linéaire
             const ratio = (tempC - temp1) / (temp2 - temp1);
             const r = Math.round(color1.r + (color2.r - color1.r) * ratio);
             const g = Math.round(color1.g + (color2.g - color1.g) * ratio);
             const b = Math.round(color1.b + (color2.b - color1.b) * ratio);
-            
+
             // Transition alpha du violet vers le noir pour les températures très froides
             // Entre -273°C et -70°C : alpha diminue progressivement
             let alpha = 1.0;
@@ -126,14 +126,14 @@ function getTemperatureGlowColor(tempC) {
                 const alphaRatio = (tempC - (-273)) / (-70 - (-273));
                 alpha = Math.max(0, Math.min(1, alphaRatio));
             }
-            
+
             if (alpha < 1.0) {
                 return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})`;
             }
             return `rgb(${r}, ${g}, ${b})`;
         }
     }
-    
+
     // Par défaut (ne devrait pas arriver)
     return 'rgb(255, 255, 255)';
 }
@@ -143,24 +143,24 @@ function updateTemperatureDisplay() {
     const tempUnitEl = document.getElementById('temp-unit-synthese');
     const syntheseTempEl = document.querySelector('.synthese_Temp');
     const thermometerIcon = syntheseTempEl ? syntheseTempEl.querySelector('.thermometer-icon') : null;
-    
+
     if (tempSurfaceEl && currentTempCelsius !== null) {
         const convertedTemp = convertTemperature(currentTempCelsius, temperatureUnit);
         tempSurfaceEl.textContent = convertedTemp.toFixed(1);
-        
+
         // Mettre à jour la couleur du contenu du thermomètre selon la température
         if (thermometerIcon) {
             const glowColor = getTemperatureGlowColor(currentTempCelsius);
-            
+
             // Calculer la couleur du pic d'émission du corps noir (loi de Wien) avec symétrie à 7 μm
             const tempK = currentTempCelsius + 273.15;
             const wienConstant = 2898; // Constante de Wien en μm·K
             const lambda_um = wienConstant / tempK;
-            
+
             // Symétrie à 7 μm : λ_sym = 14 - λ
             // On veut toujours un résultat > 7 μm (vert..cyan..bleu..violet, jamais rouge)
             let lambda_sym_um = 14 - lambda_um;
-            
+
             // Si le résultat est < 7 μm, le refléter à nouveau pour rester > 7 μm
             // Exemple : si λ = 10 μm → λ_sym = 4 μm → refléter → 10 μm
             // Mais on veut > 7 μm, donc si λ_sym < 7, alors λ_sym = 7 + (7 - λ_sym) = 14 - λ_sym
@@ -177,16 +177,16 @@ function updateTemperatureDisplay() {
                     lambda_sym_um = 7 + (7 - lambda_sym_um);
                 }
             }
-            
+
             // S'assurer que le résultat est toujours > 7 μm
             if (lambda_sym_um <= 7) {
                 lambda_sym_um = 7.1; // Minimum juste au-dessus de 7 μm
             }
-            
+
             const lambda_sym_m = lambda_sym_um * 1e-6;
             const lambda_sym_um_calc = lambda_sym_um;
             const lambda_sym_nm = lambda_sym_um_calc * 1000;
-            
+
             // Utiliser l'algorithme "if" (wavelengthToRGB) pour convertir en couleur
             let bodyColor = null;
             if (typeof wavelengthToRGB === 'function') {
@@ -214,7 +214,7 @@ function updateTemperatureDisplay() {
                     }
                 }
             }
-            
+
             if (bodyColor) {
                 // Appliquer la couleur directement au contenu du thermomètre (sans halo)
                 const colorStr = `rgb(${Math.round(bodyColor.r)}, ${Math.round(bodyColor.g)}, ${Math.round(bodyColor.b)})`;
@@ -249,7 +249,7 @@ function updateTemperatureDisplay() {
 
 // Fonction pour déterminer quels boutons sont disponibles selon l'époque géologique
 function getAvailableButtons(yearsAgo) {
-    const era = (window.getGeologicalEra || function() { return { name: 'Phanérozoïque', volcanoFactor: 1.0 }; })(yearsAgo);
+    const era = (window.getGeologicalEra || function () { return { name: 'Phanérozoïque', volcanoFactor: 1.0 }; })(yearsAgo);
     const available = {
         'btn-comet': true, // Toujours disponible (comètes peuvent arriver à tout moment)
         'btn-volcano': era.volcanoFactor > 0, // Disponible seulement si volcans existent (pas pour Corps noir)
@@ -299,7 +299,7 @@ function enableButtons() {
     calculationInProgress = false;
     const currentYears = timelineFrame * YEARS_PER_FRAME;
     const available = getAvailableButtons(currentYears);
-    
+
     const buttons = [
         'btn-comet', 'btn-iceberg', 'btn-forest', 'btn-factory',
         'btn-desert', 'btn-volcano', 'btn-cloud'
@@ -309,7 +309,7 @@ function enableButtons() {
         if (btn) {
             const isAvailable = available[btnId] !== false;
             btn.disabled = !isAvailable;
-            
+
             if (isAvailable) {
                 btn.style.cursor = 'pointer';
                 // Pour le bouton cloud, restaurer son style spécifique (opacity et border)
@@ -336,7 +336,7 @@ function enableButtons() {
             }
         }
     });
-    
+
     // Remettre le timer à jour à la fin du processus de convergence
     // pour que les tics automatiques reprennent immédiatement
     timelineLastUpdate = performance.now();
@@ -358,20 +358,20 @@ function updateTimeline() {
     const timelineDisplay = document.getElementById('timeline-display');
     const frameDisplay = document.getElementById('frame-display');
     const infoTimeDisplay = document.getElementById('info-time');
-    
+
     const years = timelineFrame * YEARS_PER_FRAME;
-    
+
     // Formater les années avec M (Mega) et M̅ (Milliard avec barre)
     const formattedYears = formatYears(years);
-    
+
     if (timelineDisplay) {
         timelineDisplay.innerHTML = `<span class="timeline-hourglass">📅</span> ${formattedYears}`;
     }
-    
+
     if (frameDisplay) {
         frameDisplay.textContent = timelineFrame.toString();
     }
-    
+
     // Mettre à jour l'horloge dans l'en-tête d'info (prioritaire)
     // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
     if (infoTimeDisplay && currentEpochStartYears !== null) {
@@ -388,13 +388,13 @@ function updateTimeline() {
         infoTimeDisplay.style.visibility = 'visible';
         infoTimeDisplay.style.opacity = '1';
     }
-    
+
     // Incrémenter automatiquement de +10 ans toutes les secondes UNIQUEMENT si pas de calcul en cours
     // Si un calcul est en cours, on s'arrête, mais on reprend automatiquement après
     if (timelineRunning && !calculationInProgress) {
         const currentTime = performance.now();
         const elapsed = currentTime - timelineLastUpdate;
-        
+
         // Incrémenter les frames selon l'intervalle (1 seconde = 10 ans)
         if (elapsed >= TIMELINE_UPDATE_INTERVAL) {
             timelineFrame++;
@@ -418,7 +418,7 @@ function updateTimeline() {
     }
     // Si calculationInProgress = true, on ne fait rien (pas d'incrémentation, pas de mise à jour de timelineLastUpdate)
     // pour que le tic reprenne immédiatement après la fin du calcul
-    
+
     requestAnimationFrame(updateTimeline);
 }
 
@@ -426,35 +426,35 @@ function updateTimeline() {
 // Format : 0M0M8200 ans (exemple : 1 milliard 200 millions 50 mille ans)
 function formatYears(years) {
     if (years === 0) return '0 ans';
-    
+
     const MILLIARD = 1e9; // 1 milliard
     const MEGA = 1e6;    // 1 million
     const MILLE = 1e3;   // 1 mille
-    
+
     let result = '';
     let remaining = years;
-    
+
     // Milliards (M̅ avec barre au-dessus)
     if (remaining >= MILLIARD) {
         const milliards = Math.floor(remaining / MILLIARD);
         result += `${milliards}M̅`;
         remaining = remaining % MILLIARD;
     }
-    
+
     // Millions (M)
     if (remaining >= MEGA) {
         const millions = Math.floor(remaining / MEGA);
         result += `${millions}M`;
         remaining = remaining % MEGA;
     }
-    
+
     // Milliers et unités
     if (remaining > 0) {
         result += remaining.toString();
     } else if (result === '') {
         result = '0';
     }
-    
+
     return result + ' ans';
 }
 
@@ -492,21 +492,21 @@ function updateFPS() {
         // Le timer est désactivé, ne pas continuer
         return;
     }
-    
+
     fpsFrames++;
     const currentTime = performance.now();
     const elapsed = currentTime - fpsLastTime;
-    
+
     if (elapsed >= 1000) {
         fps = Math.round((fpsFrames * 1000) / elapsed);
         fpsFrames = 0;
         fpsLastTime = currentTime;
-        
+
         // Exposer le FPS globalement pour l'optimisation
         if (typeof window !== 'undefined') {
             window.fps = fps;
         }
-        
+
         // Mettre à jour le graphique FPS
         if (typeof window !== 'undefined' && typeof window.updateFPSDisplay === 'function') {
             // Récupérer la précision actuelle
@@ -526,11 +526,11 @@ function updateFPS() {
                     precisionFactor = 1.0;
                 }
             }
-            
+
             window.updateFPSDisplay(fps, precisionFactor);
         }
     }
-    
+
     requestAnimationFrame(updateFPS);
 }
 
@@ -579,7 +579,7 @@ let cache_420ppm = null;
 function calculateInitialData() {
     initPlot();
     document.getElementById('status').textContent = 'Initialisation...';
-    
+
     // Créer une grille lambda pour les courbes Planck
     const lambda_min = 0.1e-6;
     const lambda_max = 100e-6;
@@ -588,7 +588,7 @@ function calculateInitialData() {
     for (let lambda = lambda_min; lambda < lambda_max; lambda += delta_lambda) {
         plotData.lambda_range.push(lambda);
     }
-    
+
     // Afficher les courbes Planck de référence avant les calculs
     const tempPlotData = {
         lambda_range: plotData.lambda_range,
@@ -596,19 +596,19 @@ function calculateInitialData() {
         co2_ppm: 0
     };
     updatePlot(tempPlotData);
-    
+
     // Ne pas calculer les scénarios de référence (280ppm et 420ppm)
     // Commencer directement à 0 ppm par défaut sans calculer
-    
+
     // Activer l'affichage des étapes de dichotomie pour les calculs interactifs
     if (typeof window !== 'undefined') {
         window.showDichotomySteps = true;
     }
-    
+
     // Afficher les courbes de référence (Planck uniquement)
     updateLegend(plotData);
     updatePlot(plotData);
-    
+
     // Initialiser à 0 ppm par défaut et calculer
     plotData.co2_ppm = 0;
     updateCO2Level(0); // 0 ppm - déclenche le calcul
@@ -626,9 +626,9 @@ function updateCO2Level(state) {
         co2_fraction = CO2_STATES[3] * Math.pow(2, state - 3);
     }
     plotData.co2_ppm = co2_fraction * 1e6;
-    
+
     document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
-    
+
     setTimeout(() => {
         // Calculer le scénario courant (peut retourner une Promise)
         if (typeof window.simulateRadiativeTransfer !== 'function') {
@@ -642,12 +642,12 @@ function updateCO2Level(state) {
         });
         const processResult = (data) => {
             plotData.current = data;
-            
+
             // Les scénarios de référence sont déjà calculés dans calculateInitialData
             // Juste s'assurer qu'ils sont stockés
             if (cache_280ppm) plotData.flux_280ppm = cache_280ppm;
             if (cache_420ppm) plotData.flux_420ppm = cache_420ppm;
-            
+
             const temp_eff = plotData.current.effective_temperature;
             // Température effective sans effet de serre (référence) ~255K
             const temp_eff_0 = 255.0; // Température effective sans CO2 (approximation)
@@ -660,17 +660,17 @@ function updateCO2Level(state) {
             // On calcule d'abord les forçages, puis on calcule delta_temp
             // (sera calculé après les forçages)
             let delta_temp = 0; // Sera calculé après
-            
+
             // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
             plotData.temp_surface_c = temp_surface_c;
-            
+
             // Récupérer l'albedo et la couverture nuageuse depuis les résultats
             const albedo = plotData.current.albedo !== undefined ? plotData.current.albedo : null;
             const cloud_coverage = plotData.current.cloud_coverage !== undefined ? plotData.current.cloud_coverage : null;
-            
+
             // Calculer les forçages radiatifs séparés
-            const forcing_CO2 = typeof window.calculateCO2Forcing === 'function' 
-                ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6) 
+            const forcing_CO2 = typeof window.calculateCO2Forcing === 'function'
+                ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6)
                 : 0;
             const forcing_H2O = typeof window.calculateH2OForcing === 'function'
                 ? window.calculateH2OForcing(typeof window.waterVaporEnabled !== 'undefined' ? window.waterVaporEnabled : false, cloud_coverage || 0)
@@ -678,23 +678,23 @@ function updateCO2Level(state) {
             const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
                 ? window.calculateAlbedoForcing(albedo)
                 : 0;
-            
+
             // Forçage total
             const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
-            
+
             // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)
             // ΔT° = T° actuelle - T° référence (255K)
             // C'est la différence directe de température, plus claire et compréhensible
             const TEMP_REF_NO_CO2 = 255.0; // Température effective sans CO2 (référence)
             delta_temp = temp_surface - TEMP_REF_NO_CO2;
-            
+
             // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
             const TEMP_HABITABLE_OPTIMAL = 288; // 15°C
             const TEMP_HABITABLE_MIN = 253; // -20°C
             const TEMP_HABITABLE_MAX = 323; // 50°C
             const delta_temp_habitable = temp_surface - TEMP_HABITABLE_OPTIMAL;
             const life_viable = temp_surface >= TEMP_HABITABLE_MIN && temp_surface <= TEMP_HABITABLE_MAX;
-            
+
             updateDisplay({
                 state: currentState,
                 co2_ppm: plotData.co2_ppm,
@@ -712,7 +712,7 @@ function updateCO2Level(state) {
                 albedo: albedo,
                 cloud_coverage: cloud_coverage
             });
-            
+
             updateLegend(plotData);
             updatePlot(plotData);
             // Mettre à jour la visualisation spectrale après un délai pour s'assurer que Plotly a fini
@@ -739,7 +739,7 @@ function updateCO2Level(state) {
             }, 2000); // Laisser 2 secondes pour la précision maximale
             enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
         };
-        
+
         if (result instanceof Promise) {
             result.then(processResult);
         } else {
@@ -775,13 +775,13 @@ function setCurrent() {
 // Fonction pour ajouter du CO2 via une comète/météorite de glace
 function addCometCO2() {
     if (calculationInProgress) return; // Bloquer si calcul en cours
-    
+
     const COMET_CO2_ADDITION = 0.1; // +0.1 ppm par comète
     const COMET_H2O_ADDITION = 0.1; // +0.1% H2O par comète
     const current_ppm = plotData.co2_ppm;
     const new_ppm = current_ppm + COMET_CO2_ADDITION;
     const new_fraction = new_ppm * 1e-6;
-    
+
     // Activer H2O si ce n'est pas déjà fait
     if (typeof window.waterVaporEnabled === 'undefined' || !window.waterVaporEnabled) {
         window.waterVaporEnabled = true;
@@ -793,16 +793,16 @@ function addCometCO2() {
             btn.style.border = '2px solid #4CAF50';
         }
     }
-    
+
     // Ajouter le bonus H2O pour les comètes (comme pour les volcans)
     volcanoH2OBonus = Math.min(100, volcanoH2OBonus + COMET_H2O_ADDITION); // Maximum 100%
     if (typeof window !== 'undefined') {
         window.volcanoH2OBonus = volcanoH2OBonus;
     }
-    
+
     incrementTimeline(); // +100 ans
     disableButtons(); // Désactiver les boutons
-    
+
     // Trouver l'état correspondant ou créer un nouvel état
     if (new_ppm === 0) {
         updateCO2Level(0);
@@ -824,10 +824,10 @@ function divideCO2() {
     const current_ppm = plotData.co2_ppm;
     const new_ppm = current_ppm / 2;
     const new_fraction = new_ppm * 1e-6;
-    
+
     incrementTimeline(); // +100 ans
     disableButtons(); // Désactiver les boutons
-    
+
     // Trouver l'état correspondant ou créer un nouvel état
     if (new_ppm === 0) {
         updateCO2Level(0);
@@ -845,42 +845,42 @@ function divideCO2() {
 
 function multiplyCO2() {
     if (calculationInProgress) return; // Bloquer si calcul en cours
-    
+
     // ⚠️ MODIFICATION POUR GAMEPLAY : Un volcan ajoute une quantité de CO2 selon l'époque géologique
     // Au début de la Terre (Hadéen/Archéen), les volcans étaient beaucoup plus gros et nombreux
     // Calculer l'époque actuelle selon le temps écoulé
     const currentYears = timelineFrame * YEARS_PER_FRAME;
-    const era = (window.getGeologicalEra || function() { return { volcanoFactor: 1.0, co2PerVolcano: 150 }; })(currentYears);
-    
+    const era = (window.getGeologicalEra || function () { return { volcanoFactor: 1.0, co2PerVolcano: 150 }; })(currentYears);
+
     // CO2 par volcan selon l'époque (plus gros au début)
     // ⚠️ MODIFICATION : Réduire l'effet du volcan pour le gameplay
     const CO2_PER_VOLCANO = era.co2PerVolcano * 0.1; // Réduire à 10% de l'effet original
-    
+
     // Facteur multiplicatif : au début de la Terre, un clic = plusieurs volcans
     // Par exemple, à l'Hadéen, un clic = 10 volcans (facteur 10)
     const volcanoCount = Math.floor(era.volcanoFactor); // Nombre de volcans équivalents
     const VOLCAN_CO2_ADDITION = CO2_PER_VOLCANO * volcanoCount;
-    
+
     const current_ppm = plotData.co2_ppm;
     const new_ppm = current_ppm + VOLCAN_CO2_ADDITION;
     const new_fraction = new_ppm * 1e-6;
-    
+
     // Effet volcanique : augmenter H2O et diminuer la glace selon le nombre de volcans
     // Si facteur = 10, on ajoute 10% au lieu de 1%
     const h2oIncrement = Math.min(100, volcanoH2OBonus + era.volcanoFactor); // Maximum 100%
     const iceIncrement = Math.min(100, volcanoIceReduction + era.volcanoFactor); // Maximum 100%
     volcanoH2OBonus = h2oIncrement;
     volcanoIceReduction = iceIncrement;
-    
+
     // Exposer globalement pour les calculs
     if (typeof window !== 'undefined') {
         window.volcanoH2OBonus = volcanoH2OBonus;
         window.volcanoIceReduction = volcanoIceReduction;
     }
-    
+
     incrementTimeline(); // +100 ans
     disableButtons(); // Désactiver les boutons
-    
+
     // Trouver l'état correspondant ou créer un nouvel état
     if (new_ppm === 0) {
         updateCO2Level(0);
@@ -906,7 +906,7 @@ function cancelCurrentCalculation() {
         clearTimeout(timeoutId);
     });
     currentCalculationTimeouts = [];
-    
+
     // Annuler aussi les timeouts stockés dans calculations.js
     if (typeof window !== 'undefined' && window.calculationTimeouts) {
         window.calculationTimeouts.forEach(timeoutId => {
@@ -914,12 +914,12 @@ function cancelCurrentCalculation() {
         });
         window.calculationTimeouts = [];
     }
-    
+
     // Marquer la Promise comme annulée
     if (currentCalculationPromise) {
         currentCalculationPromise = null;
     }
-    
+
     // Marquer le calcul comme annulé dans calculations.js
     if (typeof window !== 'undefined') {
         window.cancelCalculation = true;
@@ -929,23 +929,23 @@ function cancelCurrentCalculation() {
 function updateCO2LevelDirect(co2_fraction) {
     // Annuler tout calcul en cours avant de commencer un nouveau
     cancelCurrentCalculation();
-    
+
     plotData.co2_ppm = co2_fraction * 1e6;
-    
+
     document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
-    
+
     // Activer l'affichage des étapes de dichotomie pour le calcul courant
     if (typeof window !== 'undefined') {
         window.showDichotomySteps = true;
         window.cancelCalculation = false; // Réinitialiser le flag d'annulation
     }
-    
+
     const timeoutId = setTimeout(() => {
         // Vérifier si le calcul a été annulé avant de commencer
         if (window.cancelCalculation) {
             return;
         }
-        
+
         // Calculer le scénario courant (peut retourner une Promise)
         if (typeof window.simulateRadiativeTransfer !== 'function') {
             return;
@@ -957,19 +957,19 @@ function updateCO2LevelDirect(co2_fraction) {
             CH4_fraction: ch4_fraction
         });
         currentCalculationPromise = result;
-        
+
         const processResult = (data) => {
             // Vérifier si le calcul a été annulé
             if (window.cancelCalculation) {
                 return;
             }
-            
+
             // Retirer ce timeout de la liste
             const index = currentCalculationTimeouts.indexOf(timeoutId);
             if (index > -1) {
                 currentCalculationTimeouts.splice(index, 1);
             }
-            
+
             // Logger les résultats finaux avec les états
             if (typeof window.logCalculationPhase === 'function') {
                 window.logCalculationPhase('CALCULATION COMPLETE', {
@@ -980,7 +980,7 @@ function updateCO2LevelDirect(co2_fraction) {
                     cloud_coverage: data.cloud_coverage ? (data.cloud_coverage * 100).toFixed(1) + '%' : 'N/A'
                 });
             }
-            
+
             // Gérer la géothermie selon la température finale
             // Off (gris) seulement si 0K (corps noir), sinon on
             const btnNoyau = document.getElementById('btn-noyau');
@@ -1000,14 +1000,14 @@ function updateCO2LevelDirect(co2_fraction) {
                     btnNoyau.style.filter = 'grayscale(0%)';
                 }
             }
-            
+
             plotData.current = data;
-            
+
             // Les scénarios de référence sont déjà calculés dans calculateInitialData
             // Juste s'assurer qu'ils sont stockés
             if (cache_280ppm) plotData.flux_280ppm = cache_280ppm;
             if (cache_420ppm) plotData.flux_420ppm = cache_420ppm;
-            
+
             const temp_eff = plotData.current.effective_temperature;
             // Température effective sans effet de serre (référence) ~255K
             const temp_eff_0 = 255.0; // Température effective sans CO2 (approximation)
@@ -1020,17 +1020,17 @@ function updateCO2LevelDirect(co2_fraction) {
             // On calcule d'abord les forçages, puis on calcule delta_temp
             // (sera calculé après les forçages)
             let delta_temp = 0; // Sera calculé après
-            
+
             // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
             plotData.temp_surface_c = temp_surface_c;
-            
+
             // Récupérer l'albedo et la couverture nuageuse depuis les résultats
             const albedo = plotData.current.albedo !== undefined ? plotData.current.albedo : null;
             const cloud_coverage = plotData.current.cloud_coverage !== undefined ? plotData.current.cloud_coverage : null;
-            
+
             // Calculer les forçages radiatifs séparés
-            const forcing_CO2 = typeof window.calculateCO2Forcing === 'function' 
-                ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6) 
+            const forcing_CO2 = typeof window.calculateCO2Forcing === 'function'
+                ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6)
                 : 0;
             const forcing_H2O = typeof window.calculateH2OForcing === 'function'
                 ? window.calculateH2OForcing(typeof window.waterVaporEnabled !== 'undefined' ? window.waterVaporEnabled : false, cloud_coverage || 0)
@@ -1038,23 +1038,23 @@ function updateCO2LevelDirect(co2_fraction) {
             const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
                 ? window.calculateAlbedoForcing(albedo)
                 : 0;
-            
+
             // Forçage total
             const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
-            
+
             // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)
             // ΔT° = T° actuelle - T° référence (255K)
             // C'est la différence directe de température, plus claire et compréhensible
             const TEMP_REF_NO_CO2 = 255.0; // Température effective sans CO2 (référence)
             delta_temp = temp_surface - TEMP_REF_NO_CO2;
-            
+
             // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
             const TEMP_HABITABLE_OPTIMAL = 288; // 15°C
             const TEMP_HABITABLE_MIN = 253; // -20°C
             const TEMP_HABITABLE_MAX = 323; // 50°C
             const delta_temp_habitable = temp_surface - TEMP_HABITABLE_OPTIMAL;
             const life_viable = temp_surface >= TEMP_HABITABLE_MIN && temp_surface <= TEMP_HABITABLE_MAX;
-            
+
             updateDisplay({
                 state: currentState,
                 co2_ppm: plotData.co2_ppm,
@@ -1072,7 +1072,7 @@ function updateCO2LevelDirect(co2_fraction) {
                 albedo: albedo,
                 cloud_coverage: cloud_coverage
             });
-            
+
             updateLegend(plotData);
             updatePlot(plotData);
             // Mettre à jour la visualisation spectrale après un délai pour s'assurer que Plotly a fini
@@ -1099,7 +1099,7 @@ function updateCO2LevelDirect(co2_fraction) {
             }, 2000); // Laisser 2 secondes pour la précision maximale
             enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
         };
-        
+
         if (result instanceof Promise) {
             result.then(processResult);
         } else {
@@ -1116,11 +1116,11 @@ window.updateDisplay = function updateDisplay(data) {
         if (co2NumberEl) {
             co2NumberEl.textContent = ppm.toString();
         }
-        
+
         // L'emoji est maintenant dans le bouton principal btn-co2 autour du cercle albedo
         // Plus besoin de mettre à jour btn-co2-synthese car il n'existe plus
     }
-    
+
     // Mettre à jour le statut H2O avec le % de couverture nuageuse
     const h2oStatusElement = document.getElementById('h2o-status-synthese');
     if (h2oStatusElement) {
@@ -1167,14 +1167,14 @@ window.updateDisplay = function updateDisplay(data) {
             deltaTempEl.textContent = '--';
         }
     }
-    
+
     // Afficher ΔT° habitable et indicateur de viabilité
     if (data && data.delta_temp_habitable !== undefined) {
         const deltaTempHabitableEl = document.getElementById('delta-temp-habitable');
         if (deltaTempHabitableEl) {
             deltaTempHabitableEl.textContent = `${' '.repeat(5)}${data.delta_temp_habitable >= 0 ? '+' : ''}${data.delta_temp_habitable.toFixed(2)}K`;
         }
-        
+
         // Indicateur de viabilité
         const lifeIndicatorEl = document.getElementById('life-indicator');
         if (lifeIndicatorEl) {
@@ -1231,7 +1231,7 @@ window.updateDisplay = function updateDisplay(data) {
             forcingTotalEl.textContent = '--';
         }
     }
-    
+
     // Mettre à jour l'albedo
     if (data && data.albedo !== undefined) {
         const albedoPercent = (data.albedo * 100).toFixed(1);
@@ -1252,27 +1252,27 @@ function updateLegend(data) {
     const grid = document.getElementById('legend-planck-grid');
     if (grid && window.PLANCK_TEMPERATURES) {
         grid.innerHTML = '';
-        
+
         // Configuration de la grille : déjà définie dans le CSS
-        
+
         // Trier les températures par ordre croissant
         const sortedTemps = [...window.PLANCK_TEMPERATURES].sort((a, b) => a - b);
         const totalCount = window.PLANCK_TEMPERATURES.length;
-        
+
         // Créer un élément pour chaque température
         sortedTemps.forEach((T, sortedIndex) => {
             // Trouver l'index original pour obtenir le bon motif
             const originalIndex = window.PLANCK_TEMPERATURES.indexOf(T);
             // Utiliser la fonction commune pour obtenir le pattern (même que dans plot.js)
             // IMPORTANT: utiliser originalIndex pour correspondre avec plot.js
-            const dashPattern = typeof window.getReferencePattern === 'function' 
-                ? window.getReferencePattern(originalIndex) 
+            const dashPattern = typeof window.getReferencePattern === 'function'
+                ? window.getReferencePattern(originalIndex)
                 : 'dash'; // Fallback
-            
-            
+
+
             const item = document.createElement('div');
             item.className = 'legend-planck-item';
-            
+
             // Utiliser SVG pour dessiner le pattern (plus fiable que canvas)
             // Passer l'index original et le totalCount pour calculer le stroke-width correct
             const patternSVG = typeof window.createDashPatternSVG === 'function'
@@ -1280,7 +1280,7 @@ function updateLegend(data) {
                 : `<svg width="50" height="5" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
                     <line x1="2" y1="2.5" x2="48" y2="2.5" stroke="white" stroke-width="1"/>
                    </svg>`;
-            
+
             // Créer un conteneur pour le SVG avec les températures au-dessus et en-dessous
             const patternContainer = document.createElement('div');
             patternContainer.style.display = 'inline-block';
@@ -1289,7 +1289,7 @@ function updateLegend(data) {
             patternContainer.style.height = '5px';
             patternContainer.style.marginRight = '8px';
             patternContainer.style.verticalAlign = 'middle';
-            
+
             // SVG du trait (centré dans le conteneur de 5px)
             const svgContainer = document.createElement('div');
             svgContainer.innerHTML = patternSVG;
@@ -1297,12 +1297,12 @@ function updateLegend(data) {
             svgContainer.style.top = '50%';
             svgContainer.style.left = '0px';
             svgContainer.style.transform = 'translateY(-35%)';
-            
+
             // Déterminer quelle unité afficher selon la langue
             const lang = (typeof window !== 'undefined' && window.lang) ? window.lang : 'fr';
             const showCelsius = lang === 'fr';
             const showFahrenheit = lang === 'en';
-            
+
             // °C au-dessus du trait (si français)
             if (showCelsius) {
                 const tempCAbove = document.createElement('span');
@@ -1316,7 +1316,7 @@ function updateLegend(data) {
                 tempCAbove.textContent = `${(T - 273.15).toFixed(0)}°C`;
                 patternContainer.appendChild(tempCAbove);
             }
-            
+
             // °F en-dessous du trait (si anglais)
             if (showFahrenheit) {
                 const tempFBelow = document.createElement('span');
@@ -1327,60 +1327,60 @@ function updateLegend(data) {
                 tempFBelow.style.lineHeight = '1';
                 tempFBelow.style.textAlign = 'right';
                 tempFBelow.style.whiteSpace = 'nowrap';
-                const tempF = ((T - 273.15) * 9/5 + 32).toFixed(0);
+                const tempF = ((T - 273.15) * 9 / 5 + 32).toFixed(0);
                 tempFBelow.textContent = `${tempF}°F`;
                 patternContainer.appendChild(tempFBelow);
             }
-            
+
             patternContainer.appendChild(svgContainer);
-            
+
             // K à côté (normal) - toujours afficher .0K même si entier
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
             // Couleur gérée par CSS (.legend-section * { color: white !important; })
             labelSpan.textContent = `${T.toFixed(1)}K`;
-            
+
             item.appendChild(patternContainer);
             item.appendChild(labelSpan);
             grid.appendChild(item);
         });
-        
+
         // Forcer le rendu MathJax après insertion
         if (window.MathJax && window.MathJax.typesetPromise) {
             setTimeout(() => {
-                window.MathJax.typesetPromise([grid]).catch(() => {});
+                window.MathJax.typesetPromise([grid]).catch(() => { });
             }, 100);
         }
     }
-    
+
     // Ajouter les légendes pour les courbes d'équilibre (corps noir pointillé et courbe réelle pleine)
     const equilibreCurvesContainer = document.getElementById('legend-equilibre-curves');
     if (equilibreCurvesContainer && data && data.current && data.current.effective_temperature) {
         equilibreCurvesContainer.innerHTML = '';
-        
+
         const T = data.current.effective_temperature;
         const tempC = (T - 273.15).toFixed(0);
-        const tempF = ((T - 273.15) * 9/5 + 32).toFixed(0);
-        
+        const tempF = ((T - 273.15) * 9 / 5 + 32).toFixed(0);
+
         // Créer deux éléments de légende : un pour le corps noir (pointillé 'dot') et un pour la courbe réelle (pleine 'solid')
         const patterns = [
             { name: 'dot', label: 'Corps noir' },
             { name: 'solid', label: 'Courbe réelle' }
         ];
-        
+
         patterns.forEach((patternInfo) => {
             const item = document.createElement('div');
             item.className = 'legend-equilibre-item';
-            
+
             // Créer le SVG avec le pattern approprié (cyan pour la légende d'équilibre)
-            const dashArray = typeof window.getDashArray === 'function' 
+            const dashArray = typeof window.getDashArray === 'function'
                 ? window.getDashArray(patternInfo.name)
                 : (patternInfo.name === 'dot' ? '1,3' : 'none');
             const dashAttr = dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : '';
             const patternSVG = `<svg width="50" height="5" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
                 <line x1="2" y1="2.5" x2="48" y2="2.5" stroke="cyan" stroke-width="2" ${dashAttr}/>
             </svg>`;
-            
+
             // Créer un conteneur pour le SVG avec les températures au-dessus et en-dessous
             const patternContainer = document.createElement('div');
             patternContainer.style.display = 'inline-block';
@@ -1389,7 +1389,7 @@ function updateLegend(data) {
             patternContainer.style.height = '5px';
             patternContainer.style.marginRight = '8px';
             patternContainer.style.verticalAlign = 'middle';
-            
+
             // SVG du trait (centré dans le conteneur de 5px)
             const svgContainer = document.createElement('div');
             svgContainer.innerHTML = patternSVG;
@@ -1397,12 +1397,12 @@ function updateLegend(data) {
             svgContainer.style.top = '50%';
             svgContainer.style.left = '0px';
             svgContainer.style.transform = 'translateY(-35%)';
-            
+
             // Déterminer quelle unité afficher selon la langue
             const lang = (typeof window !== 'undefined' && window.lang) ? window.lang : 'fr';
             const showCelsius = lang === 'fr';
             const showFahrenheit = lang === 'en';
-            
+
             // °C au-dessus du trait (si français)
             if (showCelsius) {
                 const tempCAbove = document.createElement('span');
@@ -1417,7 +1417,7 @@ function updateLegend(data) {
                 tempCAbove.textContent = `${tempC}°C`;
                 patternContainer.appendChild(tempCAbove);
             }
-            
+
             // °F en-dessous du trait (si anglais)
             if (showFahrenheit) {
                 const tempFBelow = document.createElement('span');
@@ -1432,25 +1432,25 @@ function updateLegend(data) {
                 tempFBelow.textContent = `${tempF}°F`;
                 patternContainer.appendChild(tempFBelow);
             }
-            
+
             patternContainer.appendChild(svgContainer);
-            
+
             // K à côté (normal) - toujours afficher .0K même si entier
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
             labelSpan.style.color = 'cyan';
             labelSpan.textContent = `${T.toFixed(1)}K`;
-            
+
             item.appendChild(patternContainer);
             item.appendChild(labelSpan);
             equilibreCurvesContainer.appendChild(item);
         });
     }
-    
+
     // Remplacer les spans CSS par des SVG pour harmoniser les pointillés dans l'intégrale
     const dottedSpan = document.querySelector('.legend-line-dotted');
     const solidSpan = document.querySelector('.legend-line-solid');
-    
+
     if (dottedSpan) {
         // Créer un SVG avec le même pattern que la légende (dot avec stroke-dasharray="1,3")
         const dashArray = typeof window.getDashArray === 'function' ? window.getDashArray('dot') : '1,3';
@@ -1460,7 +1460,7 @@ function updateLegend(data) {
         // Supprimer le style CSS border qui n'est plus nécessaire
         dottedSpan.style.border = 'none';
     }
-    
+
     if (solidSpan) {
         // Créer un SVG avec une ligne pleine
         solidSpan.innerHTML = `<svg width="30" height="2" style="vertical-align: middle; display: inline-block;">
@@ -1473,7 +1473,7 @@ function updateLegend(data) {
 
 // Fonction pour obtenir le style CSS de bordure selon le pattern
 function getDashStyleForPattern(pattern) {
-    switch(pattern) {
+    switch (pattern) {
         case 'dash':
             return 'dashed';
         case 'dot':
@@ -1496,44 +1496,47 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
     if (calculationInProgress) return; // Bloquer si calcul en cours
-    
+
     // Gérer la sélection unique (boutons radio)
     const allEpochButtons = document.querySelectorAll('.epoch-btn');
     allEpochButtons.forEach(btn => {
         btn.classList.remove('selected');
     });
-    
+
     // Sélectionner le bouton cliqué
     const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochName}"]`);
     if (clickedButton) {
         clickedButton.classList.add('selected');
     }
-    
+
     // Récupérer les conditions de l'époque depuis geology.js
     if (typeof window.getGeologicalPeriodByName !== 'function') {
         return;
     }
-    
+
     const epoch = window.getGeologicalPeriodByName(epochName);
     if (!epoch) {
         return;
     }
-    
+
+    // Stocker le nom de l'époque globalement pour updateFluxLabels
+    window.currentEpochName = epochName;
+
     disableButtons(); // Désactiver les boutons
-    
+
     // Mettre à jour la timeline pour correspondre au début de l'époque
     timelineFrame = Math.floor(epoch.startYears / YEARS_PER_FRAME);
-    
+
     // Stocker le début de l'époque pour calculer le delta
     currentEpochStartYears = epoch.startYears;
-    
+
     // Mettre à jour la date de début affichée
     const epochStartTimeDisplay = document.querySelector('.epoch-start-time');
     if (epochStartTimeDisplay) {
         const formattedYears = formatYears(epoch.startYears);
         epochStartTimeDisplay.textContent = formattedYears;
     }
-    
+
     // Afficher le nom de l'époque
     const epochNameDisplay = document.getElementById('epoch-name');
     if (epochNameDisplay) {
@@ -1544,20 +1547,20 @@ function setEpoch(epochName) {
         }
         epochNameDisplay.textContent = displayName;
     }
-    
+
     // Cacher "+90 ans" quand on clique sur une époque (sera réaffiché lors de l'incrémentation)
     const infoTimeDisplay = document.getElementById('info-time');
     if (infoTimeDisplay) {
         infoTimeDisplay.style.display = 'none';
     }
-    
+
     updateTimeline();
-    
+
     // Appliquer les conditions initiales
     // En époque "Corps noir", tout est désactivé (température ~206.1K, pas de noyau différencié)
     const isCorpsNoir = epoch.name === 'Corps noir';
     const tempK = isCorpsNoir ? 0 : null; // 0K = corps noir (pas de noyau différencié)
-    
+
     // Gérer la géothermie (noyau) : off (gris) seulement si 0K (corps noir), sinon on
     const btnNoyau = document.getElementById('btn-noyau');
     if (btnNoyau) {
@@ -1575,12 +1578,12 @@ function setEpoch(epochName) {
             btnNoyau.style.filter = 'grayscale(0%)';
         }
     }
-    
+
     // 1. CO2
     const co2_fraction = epoch.co2_ppm * 1e-6;
     plotData.co2_ppm = epoch.co2_ppm;
     currentState = 3; // Utiliser state 3 comme base pour les valeurs personnalisées
-    
+
     // Mettre à jour le bouton CO2
     const btnCo2 = document.getElementById('btn-co2');
     if (btnCo2) {
@@ -1598,18 +1601,18 @@ function setEpoch(epochName) {
             }
         }
     }
-    
+
     // 2. H2O
     if (typeof window.waterVaporEnabled !== 'undefined') {
         window.waterVaporEnabled = !isCorpsNoir && (epoch.h2o_enabled !== false); // true par défaut si non spécifié
     }
-    
+
     // Mettre à jour l'affichage H2O
     const h2oStatusElement = document.getElementById('h2o-status-synthese');
     if (h2oStatusElement) {
         h2oStatusElement.textContent = (!isCorpsNoir && epoch.h2o_enabled !== false) ? 'Activé' : 'Désactivé';
     }
-    
+
     // Mettre à jour le bouton H2O
     const btnH2O = document.getElementById('btn-h2o');
     if (btnH2O) {
@@ -1627,7 +1630,7 @@ function setEpoch(epochName) {
             }
         }
     }
-    
+
     const btn = document.getElementById('btn-cloud');
     if (btn) {
         if (!isCorpsNoir && epoch.h2o_enabled !== false) {
@@ -1640,7 +1643,7 @@ function setEpoch(epochName) {
             btn.title = 'Vapeur d\'eau désactivée - Cliquer pour activer';
         }
     }
-    
+
     // 3. CH4 (méthane)
     if (epoch.ch4_ppm !== undefined) {
         plotData.ch4_ppm = isCorpsNoir ? 0 : epoch.ch4_ppm;
@@ -1655,7 +1658,7 @@ function setEpoch(epochName) {
             window.methaneEnabled = false;
         }
     }
-    
+
     // Mettre à jour le bouton CH4
     const btnMethane = document.getElementById('btn-methane');
     if (btnMethane) {
@@ -1673,7 +1676,7 @@ function setEpoch(epochName) {
             }
         }
     }
-    
+
     // 4. Albedo (toujours disponible sauf en Corps noir)
     const btnAlbedo = document.getElementById('btn-albedo');
     if (btnAlbedo) {
@@ -1688,7 +1691,7 @@ function setEpoch(epochName) {
             btnAlbedo.classList.add('checked');
         }
     }
-    
+
     // 4. Cloud coverage sera appliqué automatiquement dans les calculs via calculateCloudCoverage
     // On peut stocker la valeur pour référence
     if (epoch.cloud_coverage !== undefined) {
@@ -1696,7 +1699,7 @@ function setEpoch(epochName) {
         // Pour l'instant, on le stocke dans plotData pour référence
         plotData.epoch_cloud_coverage = epoch.cloud_coverage;
     }
-    
+
     // Lancer le calcul avec les nouvelles conditions
     updateCO2LevelDirect(co2_fraction);
 }
@@ -1704,20 +1707,20 @@ function setEpoch(epochName) {
 
 function toggleWaterVapor() {
     if (calculationInProgress) return; // Bloquer si calcul en cours
-    
+
     // Vérifier si on est en époque Corps noir (tout désactivé)
     const btnH2O = document.getElementById('btn-h2o');
     if (btnH2O && btnH2O.classList.contains('disabled')) {
         return; // Ne rien faire si désactivé
     }
-    
+
     if (typeof window.waterVaporEnabled === 'undefined') {
         // Accéder directement à la variable globale si disponible
         return;
     }
-    
+
     window.waterVaporEnabled = !window.waterVaporEnabled;
-    
+
     // Mettre à jour la classe checked
     if (btnH2O) {
         if (window.waterVaporEnabled) {
@@ -1726,16 +1729,16 @@ function toggleWaterVapor() {
             btnH2O.classList.remove('checked');
         }
     }
-    
+
     disableButtons(); // Désactiver les boutons
-    
+
     // Mettre à jour l'affichage H2O
     const h2oStatusElement = document.getElementById('h2o-status-synthese');
     if (h2oStatusElement) {
         // Afficher 0% si désactivé, sinon sera mis à jour lors du calcul
         h2oStatusElement.textContent = window.waterVaporEnabled ? '-- %' : '0 %';
     }
-    
+
     const btn = document.getElementById('btn-cloud');
     if (btn) {
         if (window.waterVaporEnabled) {
@@ -1748,14 +1751,14 @@ function toggleWaterVapor() {
             btn.title = 'Activer/Désactiver vapeur d\'eau';
         }
     }
-    
+
     // Recalculer avec la nouvelle configuration
-    
+
     // Vider le cache car les calculs changent avec H2O
     cache_280ppm = null;
     cache_420ppm = null;
     plotData.current = null;
-    
+
     // Recalculer les données actuelles
     if (plotData.co2_ppm !== undefined && plotData.co2_ppm !== null) {
         const current_ppm = plotData.co2_ppm;
@@ -1783,13 +1786,16 @@ window.addEventListener('DOMContentLoaded', () => {
     calculateInitialData();
     // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)
     resetTimeline();
-    
+
     // Sélectionner "Corps noir" par défaut
     const corpsNoirButton = document.querySelector('.epoch-btn[data-epoch="Corps noir"]');
     if (corpsNoirButton) {
         corpsNoirButton.classList.add('selected');
     }
-    
+
+    // Initialiser l'époque globale par défaut
+    window.currentEpochName = 'Corps noir';
+
     // Initialiser l'époque par défaut (Corps noir)
     if (typeof window.getGeologicalPeriodByName === 'function') {
         const defaultEpoch = window.getGeologicalPeriodByName('Corps noir');
@@ -1797,13 +1803,13 @@ window.addEventListener('DOMContentLoaded', () => {
             currentEpochStartYears = defaultEpoch.startYears;
         }
     }
-    
+
     // Initialiser le nom de l'époque au chargement
     const epochNameDisplay = document.getElementById('epoch-name');
     if (epochNameDisplay) {
         epochNameDisplay.textContent = 'État initial';
     }
-    
+
     // Initialiser les boutons du flux en époque Corps noir (tout désactivé)
     const fluxButtons = ['btn-co2', 'btn-methane', 'btn-h2o', 'btn-albedo'];
     fluxButtons.forEach(btnId => {
@@ -1814,17 +1820,17 @@ window.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
         }
     });
-    
+
     // Initialiser l'état des boutons selon l'époque géologique
     enableButtons();
-    
+
     // Ajouter un gestionnaire de clic sur la température pour cycler les unités
     const syntheseTempEl = document.querySelector('.synthese_Temp');
     if (syntheseTempEl) {
         syntheseTempEl.style.cursor = 'pointer';
         syntheseTempEl.addEventListener('click', cycleTemperatureUnit);
     }
-    
+
     // S'assurer que l'horloge est visible dès le départ
     setTimeout(() => {
         const infoTimeDisplay = document.getElementById('info-time');

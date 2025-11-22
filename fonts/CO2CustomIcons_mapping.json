@@ -4,7 +4,7 @@
   "mapping": {
     "🏐": {
       "pua": "U+E000",
-      "pua_char": "",
+      "pua_char": "󠀀",
       "name": "alb",
       "original_unicode": [
         "U+1F3D0"
@@ -12,7 +12,7 @@
     },
     "🌱": {
       "pua": "U+E001",
-      "pua_char": "",
+      "pua_char": "󠀁",
       "name": "co2",
       "original_unicode": [
         "U+1F331"
@@ -20,7 +20,7 @@
     },
     "💧": {
       "pua": "U+E002",
-      "pua_char": "",
+      "pua_char": "󠀂",
       "name": "h2o",
       "original_unicode": [
         "U+1F4A7"
@@ -28,7 +28,7 @@
     },
     "⛽": {
       "pua": "U+E003",
-      "pua_char": "",
+      "pua_char": "󠀃",
       "name": "m",
       "original_unicode": [
         "U+26FD"
@@ -36,7 +36,7 @@
     },
     "🌞": {
       "pua": "U+E004",
-      "pua_char": "",
+      "pua_char": "󠀄",
       "name": "soleil",
       "original_unicode": [
         "U+1F31E"
@@ -44,7 +44,7 @@
     },
     "🎱": {
       "pua": "U+E005",
-      "pua_char": "",
+      "pua_char": "󠀅",
       "name": "g",
       "original_unicode": [
         "U+1F3B1"
@@ -52,7 +52,7 @@
     },
     "🛰": {
       "pua": "U+E006",
-      "pua_char": "",
+      "pua_char": "󠀆",
       "name": "espace",
       "original_unicode": [
         "U+1F6F0"
@@ -60,7 +60,7 @@
     },
     "🌍": {
       "pua": "U+E007",
-      "pua_char": "",
+      "pua_char": "󠀇",
       "name": "surface",
       "original_unicode": [
         "U+1F30D"
@@ -68,7 +68,7 @@
     },
     "🌕": {
       "pua": "U+E008",
-      "pua_char": "",
+      "pua_char": "󠀈",
       "name": "noyau",
       "original_unicode": [
         "U+1F315"
@@ -76,7 +76,7 @@
     },
     "🌫": {
       "pua": "U+E009",
-      "pua_char": "",
+      "pua_char": "󠀉",
       "name": "athmosphere",
       "original_unicode": [
         "U+1F32B"
@@ -84,7 +84,7 @@
     },
     "📛": {
       "pua": "U+E00A",
-      "pua_char": "",
+      "pua_char": "󠀊",
       "name": "for",
       "original_unicode": [
         "U+1F4DB"
@@ -92,7 +92,7 @@
     },
     "🎚": {
       "pua": "U+E00B",
-      "pua_char": "",
+      "pua_char": "󠀋",
       "name": "jauges",
       "original_unicode": [
         "U+1F39A"
@@ -100,7 +100,7 @@
     },
     "🔘": {
       "pua": "U+E00C",
-      "pua_char": "",
+      "pua_char": "󠀌",
       "name": "boutons",
       "original_unicode": [
         "U+1F518"
@@ -108,7 +108,7 @@
     },
     "🌋": {
       "pua": "U+E00D",
-      "pua_char": "",
+      "pua_char": "󠀍",
       "name": "volcan",
       "original_unicode": [
         "U+1F30B"
@@ -116,7 +116,7 @@
     },
     "📅": {
       "pua": "U+E00E",
-      "pua_char": "",
+      "pua_char": "󠀎",
       "name": "date_depuis_creation_terre",
       "original_unicode": [
         "U+1F4C5"
@@ -124,7 +124,7 @@
     },
     "🌑": {
       "pua": "U+E00F",
-      "pua_char": "",
+      "pua_char": "󠀏",
       "name": "corps_noir",
       "original_unicode": [
         "U+1F311"
@@ -132,7 +132,7 @@
     },
     "🦠": {
       "pua": "U+E010",
-      "pua_char": "",
+      "pua_char": "󠀐",
       "name": "arch",
       "original_unicode": [
         "U+1F9A0"
@@ -140,7 +140,7 @@
     },
     "🌿": {
       "pua": "U+E011",
-      "pua_char": "",
+      "pua_char": "󠀑",
       "name": "prot",
       "original_unicode": [
         "U+1F33F"
@@ -148,7 +148,7 @@
     },
     "🦕": {
       "pua": "U+E012",
-      "pua_char": "",
+      "pua_char": "󠀒",
       "name": "m",
       "original_unicode": [
         "U+1F995"
@@ -156,7 +156,7 @@
     },
     "🦴": {
       "pua": "U+E013",
-      "pua_char": "",
+      "pua_char": "󠀓",
       "name": "cr",
       "original_unicode": [
         "U+1F9B4"
@@ -164,7 +164,7 @@
     },
     "🦣": {
       "pua": "U+E014",
-      "pua_char": "",
+      "pua_char": "󠀔",
       "name": "c",
       "original_unicode": [
         "U+1F9A3"
@@ -172,7 +172,7 @@
     },
     "🌪": {
       "pua": "U+E015",
-      "pua_char": "",
+      "pua_char": "󠀕",
       "name": "vent",
       "original_unicode": [
         "U+1F32A"
@@ -180,7 +180,7 @@
     },
     "🕶🕳🏐": {
       "pua": "U+E016",
-      "pua_char": "",
+      "pua_char": "󠀖",
       "name": "",
       "original_unicode": [
         "U+1F576",
@@ -190,7 +190,7 @@
     },
     "🧲": {
       "pua": "U+E017",
-      "pua_char": "",
+      "pua_char": "󠀗",
       "name": "magnetisme",
       "original_unicode": [
         "U+1F9F2"
@@ -198,7 +198,7 @@
     },
     "🌳": {
       "pua": "U+E018",
-      "pua_char": "",
+      "pua_char": "󠀘",
       "name": "for",
       "original_unicode": [
         "U+1F333"
@@ -206,7 +206,7 @@
     },
     "🏭": {
       "pua": "U+E019",
-      "pua_char": "",
+      "pua_char": "󠀙",
       "name": "usine",
       "original_unicode": [
         "U+1F3ED"
@@ -214,7 +214,7 @@
     },
     "🌲": {
       "pua": "U+E01A",
-      "pua_char": "",
+      "pua_char": "󠀚",
       "name": "arbre",
       "original_unicode": [
         "U+1F332"
@@ -222,7 +222,7 @@
     },
     "📡": {
       "pua": "U+E01B",
-      "pua_char": "",
+      "pua_char": "󠀛",
       "name": "rayonnement",
       "original_unicode": [
         "U+1F4E1"
@@ -230,7 +230,7 @@
     },
     "🦎": {
       "pua": "U+E01C",
-      "pua_char": "",
+      "pua_char": "󠀜",
       "name": "reptile_tout",
       "original_unicode": [
         "U+1F98E"
@@ -238,7 +238,7 @@
     },
     "⚫": {
       "pua": "U+E01D",
-      "pua_char": "",
+      "pua_char": "󠀝",
       "name": "corps_noir",
       "original_unicode": [
         "U+26AB"
@@ -246,20 +246,35 @@
     },
     "❄️": {
       "pua": "U+E01E",
-      "pua_char": "",
+      "pua_char": "󠀞",
       "name": "cryog_nien",
       "original_unicode": [
         "U+2744",
         "U+FE0F"
       ]
     },
-    "☕🍺": {
+    "☕": {
       "pua": "U+E01F",
-      "pua_char": "",
-      "name": "offrez_moi_un_caf_ou_une_bi_re",
+      "pua_char": "󠀟",
+      "name": "cafe",
       "original_unicode": [
-        "U+2615",
-        "U+1F37A"
+        "U+2615"
+      ]
+    },
+    "🌎": {
+      "pua": "U+E020",
+      "pua_char": "󠀠",
+      "name": "terre_hadeen",
+      "original_unicode": [
+        "U+1F30E"
+      ]
+    },
+    "🌏": {
+      "pua": "U+E021",
+      "pua_char": "󠀡",
+      "name": "terre_archeen",
+      "original_unicode": [
+        "U+1F30F"
       ]
     }
   }
