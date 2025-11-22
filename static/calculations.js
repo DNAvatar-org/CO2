@@ -22,7 +22,7 @@
 // - "Ice-Albedo Feedback in Climate Models" (approximation simplifiée)
 // - Modèles de rétroaction glace-albedo (Budyko, 1969; Sellers, 1969)
 // - Paramétrisation nuageuse simplifiée pour visualisation pédagogique
-function calculateAlbedo(T_surface_K, h2o_enabled) {
+function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     const T_surface_C = T_surface_K - 273.15;
     let albedo = window.ALBEDO_BASE || 0.3;
 
@@ -35,6 +35,21 @@ function calculateAlbedo(T_surface_K, h2o_enabled) {
     const volcanoIceReduction = (typeof window !== 'undefined' && window.volcanoIceReduction !== undefined)
         ? window.volcanoIceReduction / 100
         : 0; // Réduction en fraction (0 à 1)
+
+    // Récupérer le flux géothermique (si non fourni, essayer de le récupérer depuis l'époque courante)
+    let geo_flux = geothermal_flux;
+    if (geo_flux === null || geo_flux === undefined) {
+        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            }
+        }
+        // Valeur par défaut si toujours null
+        if (geo_flux === null || geo_flux === undefined) {
+            geo_flux = 0.087; // Valeur moderne par défaut (W/m²)
+        }
+    }
 
     if (T_surface_C < 0) {
         // Albedo de la glace : ~0.6-0.9 selon l'épaisseur (valeur moyenne choisie pour visualisation)
@@ -50,6 +65,17 @@ function calculateAlbedo(T_surface_K, h2o_enabled) {
         // ⚠️ MODIFICATION POUR GAMEPLAY : Réduire la glace selon l'effet volcanique
         // Les volcans réchauffent et font fondre la glace
         ice_fraction = Math.max(0, ice_fraction - volcanoIceReduction);
+
+        // ⚠️ NOUVEAU : Réduire la glace selon le flux géothermique
+        // Le flux géothermique réchauffe la surface et fait fondre la glace
+        // 15 W/m² est énorme et devrait empêcher la formation de glace
+        // Formule : réduction proportionnelle au flux géothermique
+        // À 0 W/m² : pas de réduction
+        // À 15 W/m² : réduction maximale (fonte complète de la glace)
+        // Utiliser une fonction qui réduit la glace progressivement avec le flux
+        // Seuil : au-delà de 10 W/m², la glace fond complètement
+        const geo_flux_reduction = Math.min(1, geo_flux / 10); // Réduction de 0 à 1 selon le flux (seuil à 10 W/m²)
+        ice_fraction = Math.max(0, ice_fraction * (1 - geo_flux_reduction));
 
         // Transition progressive : albedo = base + (glace - base) * fraction_glace
         const ALBEDO_BASE = window.ALBEDO_BASE || 0.3;
@@ -177,8 +203,8 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled) {
 // - La formule F = S_0 * (1 - A) / 4 est la base de l'équilibre radiatif terrestre
 // - La division par 4 vient de la géométrie sphérique : surface 4πr² vs section πr² (facteur 4)
 // - Cette formule est utilisée dans tous les modèles climatiques (IPCC, GCM)
-function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled) {
-    const albedo = calculateAlbedo(T_surface_K, h2o_enabled);
+function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled, geothermal_flux = null) {
+    const albedo = calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux);
     const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
     const flux_absorbed = SOLAR_CONSTANT * (1 - albedo) / 4; // Divisé par 4 car la surface de la sphère (4πr²) est 4 fois la section (πr²)
     return flux_absorbed;
@@ -948,7 +974,15 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
         ? window.waterVaporEnabled
         : false;
-    const albedo = result.albedo !== undefined ? result.albedo : calculateAlbedo(T0_test, h2o_enabled);
+    // Récupérer le flux géothermique depuis l'époque courante
+    let geo_flux = null;
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+            geo_flux = currentEpoch.geothermal_flux;
+        }
+    }
+    const albedo = result.albedo !== undefined ? result.albedo : calculateAlbedo(T0_test, h2o_enabled, geo_flux);
     const cloud_coverage = result.cloud_coverage !== undefined ? result.cloud_coverage : calculateCloudCoverage(T0_test, h2o_enabled);
 
     // Calculer les forçages radiatifs séparés
@@ -1206,7 +1240,15 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
 
                     final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
                     // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
-                    const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0_current, h2o_enabled);
+                    // Récupérer le flux géothermique depuis l'époque courante
+                    let geo_flux = null;
+                    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                        if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+                            geo_flux = currentEpoch.geothermal_flux;
+                        }
+                    }
+                    const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0_current, h2o_enabled, geo_flux);
                     const flux_diff = final_result.total_flux - solar_flux_absorbed;
 
                     logCalculationPhase(`DICHOTOMIE ITER ${iter + 1}`, {
@@ -1226,7 +1268,15 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
                             ? window.waterVaporEnabled
                             : waterVaporEnabled;
-                        const albedo = calculateAlbedo(T0_current, h2o_enabled);
+                        // Récupérer le flux géothermique depuis l'époque courante
+                        let geo_flux = null;
+                        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                            if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+                                geo_flux = currentEpoch.geothermal_flux;
+                            }
+                        }
+                        const albedo = calculateAlbedo(T0_current, h2o_enabled, geo_flux);
                         const cloud_coverage = calculateCloudCoverage(T0_current, h2o_enabled);
                         const co2_ppm = CO2_fraction * 1e6;
                         const ch4_ppm = (options && options.CH4_fraction) ? options.CH4_fraction * 1e6 : 0;
@@ -1314,7 +1364,15 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         while (iteration < max_iterations) {
             result = calculateFluxForT0(CO2_fraction, T0, options);
             // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
-            const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled);
+            // Récupérer le flux géothermique depuis l'époque courante
+            let geo_flux = null;
+            if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+                    geo_flux = currentEpoch.geothermal_flux;
+                }
+            }
+            const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
             const flux_diff = result.total_flux - solar_flux_absorbed;
 
             // Incrémenter le temps à chaque itération de dichotomie
@@ -1398,7 +1456,15 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
         ? window.waterVaporEnabled
         : waterVaporEnabled;
-    const albedo = calculateAlbedo(final_T0, h2o_enabled);
+    // Récupérer le flux géothermique depuis l'époque courante
+    let geo_flux = null;
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+            geo_flux = currentEpoch.geothermal_flux;
+        }
+    }
+    const albedo = calculateAlbedo(final_T0, h2o_enabled, geo_flux);
     const cloud_coverage = calculateCloudCoverage(final_T0, h2o_enabled);
 
     const final_result_obj = {
@@ -1449,8 +1515,16 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
         ? window.waterVaporEnabled
         : waterVaporEnabled;
-    const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled);
-    const albedo = calculateAlbedo(T0, h2o_enabled);
+    // Récupérer le flux géothermique depuis l'époque courante
+    let geo_flux = null;
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+            geo_flux = currentEpoch.geothermal_flux;
+        }
+    }
+    const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
+    const albedo = calculateAlbedo(T0, h2o_enabled, geo_flux);
     const cloud_coverage = calculateCloudCoverage(T0, h2o_enabled);
 
     // ✅ SCIENTIFIQUEMENT CERTAIN : Température effective (loi de Stefan-Boltzmann)
