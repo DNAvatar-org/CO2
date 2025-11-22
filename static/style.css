@@ -597,7 +597,7 @@ h1 {
 /* Boutons de la frise chronologique - Style unique pour tous */
 .epoch-btn {
     font-size: 24px;
-    font-family: 'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
     background: none !important; /* Pas de fond */
     border: none !important; /* Pas de border */
     border-radius: 50%;
@@ -1406,7 +1406,7 @@ h1 {
     border: none;
     font-size: 24px;
     font-weight: bold;
-    font-family: 'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
     cursor: pointer;
     transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);

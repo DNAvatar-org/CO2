@@ -179,8 +179,8 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
         logoBg.style.fontSize = fontSize + 'px';
         logoBg.style.lineHeight = '1';
         logoBg.textContent = fillImage;
-        // Appliquer la police personnalisée CO2CustomIcons aux logos
-        logoBg.style.fontFamily = "'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+        // Appliquer les polices emoji standard aux logos
+        logoBg.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
         rect.appendChild(logoBg);
     } else {
         // Couleur unie
@@ -496,8 +496,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         } else {
             // Sinon c'est un emoji/texte
             logoSpan.textContent = logo;
-            // Appliquer la police personnalisée CO2CustomIcons aux logos
-            logoSpan.style.fontFamily = "'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+            // Appliquer les polices emoji standard aux logos
+            logoSpan.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
         }
 
         // Appliquer logoOffsetY uniquement aux emojis (pas aux images PNG/SVG)
@@ -2219,8 +2219,8 @@ function generateTimelineFromConfig() {
             } else {
                 // Sinon c'est un emoji/texte
                 button.textContent = item.logo;
-                // Appliquer la police personnalisée CO2CustomIcons aux logos
-                button.style.fontFamily = "'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+                // Appliquer les polices emoji standard aux logos
+                button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
             }
 
             epochsContainer.appendChild(button);
