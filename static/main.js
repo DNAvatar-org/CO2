@@ -1563,6 +1563,11 @@ function setEpoch(epochName) {
         }
     }
 
+    // Mettre à jour les radiations du noyau selon l'époque
+    if (typeof window.recreateNoyauRadiation === 'function') {
+        window.recreateNoyauRadiation();
+    }
+
     disableButtons(); // Désactiver les boutons
 
     // Mettre à jour la timeline pour correspondre au début de l'époque

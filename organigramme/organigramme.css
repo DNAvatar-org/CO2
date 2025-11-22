@@ -180,12 +180,12 @@
     position: absolute;
     background: #667eea;
     z-index: 1;
-    filter: drop-shadow(0 0 3px currentColor);
+    filter: drop-shadow(0 0 3px #667eea);
 }
 
 /* Pointe de flèche lumineuse */
 .flux-arrow>div {
-    filter: drop-shadow(0 0 2px currentColor);
+    filter: drop-shadow(0 0 2px #667eea);
 }
 .flux-rectangle {
     border-radius: 8px;
