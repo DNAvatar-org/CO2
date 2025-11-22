@@ -1590,7 +1590,7 @@ function setEpoch(epochName) {
         epochStartTimeDisplay.textContent = formattedYears;
     }
 
-    // Afficher le nom de l'époque
+    // Afficher le nom de l'époque dans la timeline
     const epochNameDisplay = document.getElementById('epoch-name');
     if (epochNameDisplay) {
         // Pour "Corps noir", utiliser un nom plus descriptif
@@ -1599,6 +1599,23 @@ function setEpoch(epochName) {
             displayName = 'État initial';
         }
         epochNameDisplay.textContent = displayName;
+    }
+
+    // Afficher le nom de l'époque dans la div de température
+    const epochNameTempDisplay = document.getElementById('epoch-name-temp');
+    if (epochNameTempDisplay) {
+        // Récupérer le nom depuis la timeline de configOrganigramme
+        let displayName = epoch.name;
+        if (window.configOrganigramme && window.configOrganigramme.timeline) {
+            // Chercher l'epoch dans la timeline par nom (plus fiable que par id)
+            const timelineEpoch = window.configOrganigramme.timeline.find(item => 
+                item.type === 'epoch' && item.name === epochName
+            );
+            if (timelineEpoch) {
+                displayName = timelineEpoch.name;
+            }
+        }
+        epochNameTempDisplay.textContent = displayName;
     }
 
     // Cacher "+90 ans" quand on clique sur une époque (sera réaffiché lors de l'incrémentation)
@@ -1863,6 +1880,22 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Initialiser le nom de l'époque dans la div de température
+    const epochNameTempDisplay = document.getElementById('epoch-name-temp');
+    if (epochNameTempDisplay) {
+        // Récupérer le nom depuis la timeline de configOrganigramme
+        let displayName = 'Corps noir';
+        if (window.configOrganigramme && window.configOrganigramme.timeline) {
+            const timelineEpoch = window.configOrganigramme.timeline.find(item => 
+                item.type === 'epoch' && item.id === 'corps-noir'
+            );
+            if (timelineEpoch) {
+                displayName = timelineEpoch.name;
+            }
+        }
+        epochNameTempDisplay.textContent = displayName;
+    }
+
     // Initialiser le nom de l'époque au chargement
     const epochNameDisplay = document.getElementById('epoch-name');
     if (epochNameDisplay) {
@@ -1889,6 +1922,11 @@ window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             window.initFluxButtonListeners();
         }, 100);
+    }
+
+    // Créer les radiations de la terre (doit être fait après l'initialisation car le radius dépend de l'époque)
+    if (typeof window.recreateTerreRadiation === 'function') {
+        window.recreateTerreRadiation();
     }
 
     // Ajouter un gestionnaire de clic sur la température pour cycler les unités

@@ -10,12 +10,12 @@
 //   - Added custom tooltip system with 0.5s delay
 //   - Added selected/unselected state management for flux buttons and label colors
 
-// Variables globales pour l'état des boutons
+// Variables globales pour l'état des boutons (sélectionnés par défaut)
 if (typeof window !== 'undefined') {
-    window.useCO2 = false;
-    window.useCH4 = false;
-    window.useH2O = false;
-    window.useAlbedo = false;
+    window.useCO2 = true;
+    window.useCH4 = true;
+    window.useH2O = true;
+    window.useAlbedo = true;
 }
 
 // Fonction pour ajouter un tooltip personnalisé avec délai de 0.5s
@@ -318,19 +318,10 @@ function updateLabelClasses(label, nodeId = null) {
     }
     // Sinon, si le texte contient W/m² ou W/m2, appliquer la classe orange
     else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
-        if (shouldLabelBeGray(text, nodeId, null)) {
-            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
-            label.classList.add('zero-value');
-        } else {
-            // Valeur non nulle : ajouter watt-per-m2 pour l'orange
-            label.classList.add('watt-per-m2');
-        }
+        // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
+        label.classList.add('watt-per-m2');
     }
-
-    // Si le texte contient % et valeur 0 ou bouton inactif
-    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
-        label.classList.add('zero-value');
-    }
+    // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
 }
 
 // Fonction pour créer une cellule avec un tableau 3x3
@@ -622,19 +613,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     if (text && (text.includes(' W ') || text.includes(' K '))) {
                         label.classList.add('watt-or-kelvin');
                     }
-                    // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0 ou bouton inactif)
+                    // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
                     else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
-                        if (shouldLabelBeGray(text, nodeId, null)) {
-                            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
-                            label.classList.add('zero-value');
-                        } else {
-                            label.classList.add('watt-per-m2');
-                        }
+                        // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
+                        label.classList.add('watt-per-m2');
                     }
-                    // Si le texte contient % et valeur 0 ou bouton inactif, s'assurer qu'il est gris
-                    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
-                        label.classList.add('zero-value');
-                    }
+                    // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
@@ -666,19 +650,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     if (text && (text.includes(' W ') || text.includes(' K '))) {
                         label.classList.add('watt-or-kelvin');
                     }
-                    // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0 ou bouton inactif)
+                    // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
                     else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
-                        if (shouldLabelBeGray(text, nodeId, null)) {
-                            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
-                            label.classList.add('zero-value');
-                        } else {
-                            label.classList.add('watt-per-m2');
-                        }
+                        // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
+                        label.classList.add('watt-per-m2');
                     }
-                    // Si le texte contient % et valeur 0 ou bouton inactif, s'assurer qu'il est gris
-                    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
-                        label.classList.add('zero-value');
-                    }
+                    // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
@@ -715,19 +692,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     if (text && (text.includes(' W ') || text.includes(' K '))) {
                         label.classList.add('watt-or-kelvin');
                     }
-                    // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0 ou bouton inactif)
+                    // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
                     else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
-                        if (shouldLabelBeGray(text, nodeId, null)) {
-                            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
-                            label.classList.add('zero-value');
-                        } else {
-                            label.classList.add('watt-per-m2');
-                        }
+                        // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
+                        label.classList.add('watt-per-m2');
                     }
-                    // Si le texte contient % et valeur 0 ou bouton inactif, s'assurer qu'il est gris
-                    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
-                        label.classList.add('zero-value');
-                    }
+                    // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
@@ -764,19 +734,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     if (text && (text.includes(' W ') || text.includes(' K '))) {
                         label.classList.add('watt-or-kelvin');
                     }
-                    // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0 ou bouton inactif)
+                    // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
                     else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
-                        if (shouldLabelBeGray(text, nodeId, null)) {
-                            // Valeur à 0 ou bouton inactif : ajouter zero-value pour forcer le gris
-                            label.classList.add('zero-value');
-                        } else {
-                            label.classList.add('watt-per-m2');
-                        }
+                        // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
+                        label.classList.add('watt-per-m2');
                     }
-                    // Si le texte contient % et valeur 0 ou bouton inactif, s'assurer qu'il est gris
-                    if (text && text.includes('%') && shouldLabelBeGray(text, nodeId, null)) {
-                        label.classList.add('zero-value');
-                    }
+                    // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
@@ -1220,19 +1183,16 @@ function generateArrows() {
             }
         } else {
             // Cercle : point sur le bord selon le vecteur normalisé (utiliser le radius + bordure du nœud source)
-            // Si pas de strokeColor, partir du centre (pas de cercle visible)
+            // Utiliser le radius même si strokeColor est vide (cercle transparent)
+            const sourceRadius = getNodeProperty(idDep, 'radius', radius);
+            const sourceStrokeSize = getNodeProperty(idDep, 'strokeSize', 4);
             const depStrokeColor = getNodeProperty(idDep, 'strokeColor', '');
-            if (depStrokeColor && depStrokeColor.trim() !== '') {
-                const sourceRadius = getNodeProperty(idDep, 'radius', radius);
-                const sourceStrokeSize = getNodeProperty(idDep, 'strokeSize', 4);
-                const sourceRadiusOuter = sourceRadius + (sourceStrokeSize / 2);
-                x1 = idDep.x + sourceRadiusOuter * unitX;
-                y1 = idDep.y + sourceRadiusOuter * unitY;
-            } else {
-                // Pas de cercle visible, partir du centre du logo
-                x1 = idDep.x;
-                y1 = idDep.y;
-            }
+            // Si strokeColor est défini, utiliser strokeSize, sinon utiliser juste le radius
+            const sourceRadiusOuter = (depStrokeColor && depStrokeColor.trim() !== '') 
+                ? sourceRadius + (sourceStrokeSize / 2)
+                : sourceRadius;
+            x1 = idDep.x + sourceRadiusOuter * unitX;
+            y1 = idDep.y + sourceRadiusOuter * unitY;
         }
 
         // Point d'arrivée (x2, y2) : selon l'angle et la présence d'étiquettes
@@ -1255,9 +1215,14 @@ function generateArrows() {
         // Calculer la demi-hauteur de la grille pour ce nœud (basée sur le CERCLE uniquement, pas le logo)
         const destRadius = getNodeProperty(idDest, 'radius', radius);
         const destStrokeSize = getNodeProperty(idDest, 'strokeSize', 4);
-        const destRadiusOuter = destRadius + (destStrokeSize / 2); // Radius jusqu'au bord extérieur de la bordure
         const destStrokeColor = getNodeProperty(idDest, 'strokeColor', '');
-        const destHasCircle = destStrokeColor && destStrokeColor.trim() !== '';
+        // Un nœud a un cercle si strokeColor est défini ET non vide, OU si radius est défini (même sans strokeColor visible)
+        // Les nœuds espace ont un radius mais strokeColor vide, ils ont quand même un cercle (transparent)
+        const destHasCircle = (destStrokeColor && destStrokeColor.trim() !== '') || (destRadius && destRadius > 0);
+        // Calculer le radius extérieur : si strokeColor existe, ajouter strokeSize/2, sinon utiliser juste le radius
+        const destRadiusOuter = (destStrokeColor && destStrokeColor.trim() !== '')
+            ? destRadius + (destStrokeSize / 2)
+            : destRadius;
         const destCircleDiameter = destHasCircle ? (destRadius * 2) : 0;
         // Pour les nœuds sans cercle, calculer la taille approximative du logo
         const destLogoScale = idDest.logoScale || 1.4;
@@ -1286,8 +1251,11 @@ function generateArrows() {
         const sourceRadius = getNodeProperty(idDep, 'radius', radius);
         const sourceStrokeSize = getNodeProperty(idDep, 'strokeSize', 4);
         const depStrokeColor = getNodeProperty(idDep, 'strokeColor', '');
-        const sourceHasCircle = depStrokeColor && depStrokeColor.trim() !== '';
-        const sourceRadiusOuter = sourceHasCircle ? (sourceRadius + (sourceStrokeSize / 2)) : 0;
+        // Un nœud a un cercle si strokeColor est défini ET non vide, OU si radius est défini (même sans strokeColor visible)
+        const sourceHasCircle = (depStrokeColor && depStrokeColor.trim() !== '') || (sourceRadius && sourceRadius > 0);
+        const sourceRadiusOuter = sourceHasCircle 
+            ? ((depStrokeColor && depStrokeColor.trim() !== '') ? (sourceRadius + (sourceStrokeSize / 2)) : sourceRadius)
+            : 0;
 
         // Détecter si les cercles sont concentriques (centres très proches)
         // Si concentriques : ne pas inverser le vecteur (aller dans le sens du vecteur)
@@ -1849,6 +1817,8 @@ cellOrder.forEach(nodeId => {
     // Il détecte automatiquement si c'est un bouton via la classe flux-button-cell
     if (node.type === 'button') {
         cell.classList.add('flux-button-cell');
+        // Ajouter la classe checked par défaut pour que les boutons soient sélectionnés
+        cell.classList.add('checked');
         cell.style.pointerEvents = 'auto';
 
         // Hide the original HTML button if it exists
@@ -1957,6 +1927,8 @@ nodes.forEach(node => {
     // If it's a button, add the CSS class and click event
     if (node.type === 'button') {
         cell.classList.add('flux-button-cell');
+        // Ajouter la classe checked par défaut pour que les boutons soient sélectionnés
+        cell.classList.add('checked');
         cell.style.pointerEvents = 'auto';
 
         // Add a click handler to the cell
@@ -1985,6 +1957,10 @@ mainContainer.appendChild(radiationContainer);
 cellOrder.forEach(nodeId => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node || !node.radiation) return;
+    
+    // Sauter la terre : ses radiations seront créées via recreateTerreRadiation() 
+    // car elle a un radius qui dépend de l'époque
+    if (nodeId === 'terre') return;
 
     // Gérer le cas spécial du node 'noyau' avec tableau radiation par époque
     let radiationOptions = node.radiation;
@@ -2410,59 +2386,62 @@ function updateFluxLabels(data) {
             // Réinitialiser toutes les classes de couleur
             label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value', 'co2-label', 'percent-label');
 
-            // Vérifier l'état des boutons pour déterminer les couleurs
-            const useCO2 = typeof window !== 'undefined' ? window.useCO2 : false;
-            const useCH4 = typeof window !== 'undefined' ? window.useCH4 : false;
-            const useH2O = typeof window !== 'undefined' ? window.useH2O : false;
-            const useAlbedo = typeof window !== 'undefined' ? window.useAlbedo : false;
+            // Vérifier si le label est lié à un bouton
+            // Note: forcing_total et forcing_percent sont sur le bouton albedo, mais forcing_total est aussi sur la flèche reemis->terre
+            // On doit vérifier si c'est le label du bouton albedo ou celui de la flèche
+            const isButtonLabel = dataId === 'co2_percent' || dataId === 'co2_forcing' ||
+                                  dataId === 'ch4_percent' || dataId === 'ch4_forcing' ||
+                                  dataId === 'h2o_percent' || dataId === 'h2o_forcing' ||
+                                  dataId === 'albedo_percent' || dataId === 'albedo_forcing' ||
+                                  dataId === 'forcing_percent';
 
-            // Déterminer si le label est actif selon son dataId
-            let isActive = false;
-            if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
-                isActive = useCO2;
-            } else if (dataId === 'ch4_percent' || dataId === 'ch4_forcing') {
-                isActive = useCH4;
-            } else if (dataId === 'h2o_percent' || dataId === 'h2o_forcing') {
-                isActive = useH2O;
-            } else if (dataId === 'albedo_percent' || dataId === 'albedo_forcing') {
-                isActive = useAlbedo;
+            // Vérifier si forcing_total est sur le bouton albedo (pas sur la flèche)
+            // Le label du bouton albedo est dans la cellule cell-albedo-btn
+            // Vérifier si le label est dans la cellule du bouton albedo
+            const isAlbedoButtonLabel = dataId === 'forcing_total' && 
+                                        (label.closest('#cell-albedo-btn') !== null);
+
+            // Si c'est un label lié à un bouton, vérifier si le bouton est actif
+            let shouldApplyColors = true;
+            if (isButtonLabel || isAlbedoButtonLabel) {
+                const useCO2 = typeof window !== 'undefined' ? window.useCO2 : false;
+                const useCH4 = typeof window !== 'undefined' ? window.useCH4 : false;
+                const useH2O = typeof window !== 'undefined' ? window.useH2O : false;
+                const useAlbedo = typeof window !== 'undefined' ? window.useAlbedo : false;
+
+                let isActive = false;
+                if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
+                    isActive = useCO2;
+                } else if (dataId === 'ch4_percent' || dataId === 'ch4_forcing') {
+                    isActive = useCH4;
+                } else if (dataId === 'h2o_percent' || dataId === 'h2o_forcing') {
+                    isActive = useH2O;
+                } else if (dataId === 'albedo_percent' || dataId === 'albedo_forcing' || dataId === 'forcing_percent' || isAlbedoButtonLabel) {
+                    isActive = useAlbedo;
+                }
+                shouldApplyColors = isActive;
             }
 
-            // Si inactif, appliquer la classe zero-value (gris)
-            if (!isActive && (dataId.includes('co2') || dataId.includes('ch4') || dataId.includes('h2o') || dataId.includes('albedo'))) {
-                label.classList.add('zero-value');
-            } else {
-                // Label actif : appliquer les couleurs selon le type
+            // Appliquer les couleurs selon l'algorithme existant : W/m² en orange, % en bleu, le reste en défaut (vert)
+            if (shouldApplyColors) {
                 // D'abord vérifier " W " ou " K " (rouge)
                 if (formattedValue.includes(' W ') || formattedValue.includes(' K ')) {
                     label.classList.add('watt-or-kelvin');
                 }
                 // Sinon, vérifier W/m² (orange)
-                else if (format.includes('watt') || formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
-                    const numValue = typeof value === 'number' ? value : parseFloat(value);
-                    if (!isNaN(numValue) && Math.abs(numValue) < 0.001) {
-                        label.classList.add('zero-value');
-                    } else {
-                        // Ajouter la classe watt-per-m2 pour les valeurs W/m² non nulles
-                        if (formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
-                            label.classList.add('watt-per-m2');
-                        }
-                    }
+                else if (formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
+                    label.classList.add('watt-per-m2');
                 }
                 // Sinon, vérifier % (bleu clair)
-                else if (format.includes('percent') || formattedValue.includes('%')) {
-                    const numValue = typeof value === 'number' ? value : parseFloat(value);
-                    if (!isNaN(numValue) && Math.abs(numValue) < 0.001) {
-                        label.classList.add('zero-value');
-                    } else {
-                        label.classList.add('percent-label');
-                    }
+                else if (formattedValue.includes('%')) {
+                    label.classList.add('percent-label');
                 }
-                // Labels CO2 spécifiques (vert)
-                if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
+                // Sinon, couleur par défaut (vert pour CO2)
+                else if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
                     label.classList.add('co2-label');
                 }
             }
+            // Si label de bouton inactif, ne pas appliquer de couleur spéciale (couleur par défaut)
         });
     };
 
@@ -2644,6 +2623,9 @@ function updateFluxLabels(data) {
     const albedo_percent_value = albedo_num * 100;
     updateLabel('albedo_percent', albedo_percent_value, 'percent_simple');
     updateLabel('albedo_forcing', forcing_Albedo, 'watt_simple');
+    // Les labels du bouton albedo utilisent forcing_total et forcing_percent
+    // forcing_percent : pourcentage du forçage total (peut être calculé comme albedo_percent ou autre)
+    updateLabel('forcing_percent', albedo_percent_value, 'percent_simple');
     
     // Forcer le bouton albedo en off/gris si la valeur est à 0%
     // Utiliser la variable btnAlbedo déjà déclarée plus haut
