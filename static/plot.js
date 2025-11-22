@@ -893,16 +893,35 @@ window.updatePlot = function updatePlot(data) {
                 const textLeft = 85; // Position left du texte selon le CSS
 
                 window.infraTextColors = [];
+                // Le texte doit aller du violet (0.38 μm) au rouge vif (20 μm)
+                // Le "v" de "via" commence sur le violet, la fin du texte finit à 20 μm
+                const graph_min_um = 0;
+                const graph_max_um = 50;
+                const charWidthCanvas = 5;
+                const effectiveWidth = canvasWidth - (charWidthCanvas * 2);
+                
+                // Plage de longueurs d'onde pour le texte : 0.5 μm à 20 μm (rouge vif)
+                const text_min_um = 0.5;   // Début visible
+                const text_max_um = 20;    // Rouge vif (20 micromètres)
+                
+                // Calculer les positions X correspondantes sur le canvas
+                const text_min_normalizedX = text_min_um / graph_max_um;
+                const text_max_normalizedX = text_max_um / graph_max_um;
+                const text_min_X = charWidthCanvas + text_min_normalizedX * effectiveWidth;
+                const text_max_X = charWidthCanvas + text_max_normalizedX * effectiveWidth;
+                
+                // Longueur totale du texte en pixels
+                const textLengthPx = text.length * charWidth;
+                // Position de départ pour que le premier caractère soit à text_min_X
+                const adjustedTextLeft = text_min_X;
+                
                 for (let i = 0; i < text.length; i++) {
-                    const charX = textLeft + (i * charWidth);
-
-                    // Mapper la position X à la longueur d'onde (0 à 50 μm)
-                    const graph_min_um = 0;
-                    const graph_max_um = 50;
-                    const charWidthCanvas = 5;
-                    const effectiveWidth = canvasWidth - (charWidthCanvas * 2);
-                    const normalizedX = Math.max(0, Math.min(1, (charX - charWidthCanvas) / effectiveWidth));
-                    const lambda_um = graph_min_um + normalizedX * (graph_max_um - graph_min_um);
+                    // Position X du caractère dans le texte (0 à textLengthPx)
+                    const charPositionInText = i * charWidth;
+                    // Normaliser entre 0 et 1 dans la plage du texte
+                    const normalizedInText = charPositionInText / textLengthPx;
+                    // Mapper à la plage de longueurs d'onde (0.38 μm à 20 μm)
+                    const lambda_um = text_min_um + normalizedInText * (text_max_um - text_min_um);
                     const lambda_m = lambda_um * 1e-6;
 
                     // Obtenir la couleur pour cette longueur d'onde

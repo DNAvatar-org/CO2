@@ -450,19 +450,26 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         }
         // Wrapper le logo dans un span pour appliquer l'offset sans bouger le cercle
         const logoSpan = document.createElement('span');
-        logoSpan.style.display = 'inline-block';
+        logoSpan.style.display = 'flex';
+        logoSpan.style.alignItems = 'center';
+        logoSpan.style.justifyContent = 'center';
+        logoSpan.style.width = '100%';
+        logoSpan.style.height = '100%';
         logoSpan.style.zIndex = Z_NODE_INTERNAL.LOGO;
 
+        // Vérifier si c'est une image (PNG, SVG) ou un emoji
+        const isImage = logo && (logo.endsWith('.svg') || logo.endsWith('.png'));
+
         // Si le logo est un fichier image (SVG, PNG, etc.)
-        if (logo && (logo.endsWith('.svg') || logo.endsWith('.png'))) {
+        if (isImage) {
             const img = document.createElement('img');
             img.src = logo;
             img.alt = nodeId || 'logo';
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
+            img.style.objectPosition = 'center';
             img.style.display = 'block';
-            img.style.margin = '0 auto';
             logoSpan.appendChild(img);
         } else {
             // Sinon c'est un emoji/texte
@@ -471,8 +478,9 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             logoSpan.style.fontFamily = "'CO2CustomIcons', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
         }
 
-        // Appliquer logoOffsetY au logo lui-même, scalé proportionnellement
-        if (logoOffsetY !== 0) {
+        // Appliquer logoOffsetY uniquement aux emojis (pas aux images PNG/SVG)
+        // Le patch pour descendre les emojis ne doit pas s'appliquer aux images
+        if (logoOffsetY !== 0 && !isImage) {
             const scaledLogoOffsetY = logoOffsetY * logoScale;
             logoSpan.style.transform = `translateY(${scaledLogoOffsetY}px)`;
         }
@@ -1031,6 +1039,27 @@ function calculatePositions() {
     });
 }
 
+// Fonction helper pour récupérer les propriétés d'un node (gère le cas spécial 'terre' avec tableau epoch)
+function getNodeProperty(node, property, defaultValue = null) {
+    if (!node) return defaultValue;
+    
+    // Cas spécial pour le node 'terre' avec tableau epoch
+    if (node.id === 'terre' && node.epoch && Array.isArray(node.epoch)) {
+        const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
+        const epochConfig = node.epoch.find(e => e.epochName === currentEpochName);
+        
+        if (epochConfig && epochConfig.hasOwnProperty(property)) {
+            return epochConfig[property];
+        } else if (node.epoch.length > 0 && node.epoch[0].hasOwnProperty(property)) {
+            // Fallback : première époque
+            return node.epoch[0][property];
+        }
+    }
+    
+    // Propriété directe du node
+    return node.hasOwnProperty(property) ? node[property] : defaultValue;
+}
+
 // Fonction pour générer automatiquement les flèches à partir du graphe
 function generateArrows() {
     arcs.forEach(arc => {
@@ -1112,9 +1141,10 @@ function generateArrows() {
         } else {
             // Cercle : point sur le bord selon le vecteur normalisé (utiliser le radius + bordure du nœud source)
             // Si pas de strokeColor, partir du centre (pas de cercle visible)
-            if (idDep.strokeColor && idDep.strokeColor.trim() !== '') {
-                const sourceRadius = idDep.radius || radius;
-                const sourceStrokeSize = idDep.strokeSize || 4;
+            const depStrokeColor = getNodeProperty(idDep, 'strokeColor', '');
+            if (depStrokeColor && depStrokeColor.trim() !== '') {
+                const sourceRadius = getNodeProperty(idDep, 'radius', radius);
+                const sourceStrokeSize = getNodeProperty(idDep, 'strokeSize', 4);
                 const sourceRadiusOuter = sourceRadius + (sourceStrokeSize / 2);
                 x1 = idDep.x + sourceRadiusOuter * unitX;
                 y1 = idDep.y + sourceRadiusOuter * unitY;
@@ -1143,10 +1173,11 @@ function generateArrows() {
         const hasBottom = idDest.bottom && Array.isArray(idDest.bottom) && idDest.bottom.length > 0;
 
         // Calculer la demi-hauteur de la grille pour ce nœud (basée sur le CERCLE uniquement, pas le logo)
-        const destRadius = idDest.radius || radius;
-        const destStrokeSize = idDest.strokeSize || 4;
+        const destRadius = getNodeProperty(idDest, 'radius', radius);
+        const destStrokeSize = getNodeProperty(idDest, 'strokeSize', 4);
         const destRadiusOuter = destRadius + (destStrokeSize / 2); // Radius jusqu'au bord extérieur de la bordure
-        const destHasCircle = idDest.strokeColor && idDest.strokeColor.trim() !== '';
+        const destStrokeColor = getNodeProperty(idDest, 'strokeColor', '');
+        const destHasCircle = destStrokeColor && destStrokeColor.trim() !== '';
         const destCircleDiameter = destHasCircle ? (destRadius * 2) : 0;
         // Pour les nœuds sans cercle, calculer la taille approximative du logo
         const destLogoScale = idDest.logoScale || 1.4;
@@ -1172,9 +1203,10 @@ function generateArrows() {
         const destCellHalfHeight = (25 + destCentralCellSize + 20) / 2; // Hauteur totale / 2
 
         // Calculer le rayon source pour les cercles concentriques
-        const sourceRadius = idDep.radius || radius;
-        const sourceStrokeSize = idDep.strokeSize || 4;
-        const sourceHasCircle = idDep.strokeColor && idDep.strokeColor.trim() !== '';
+        const sourceRadius = getNodeProperty(idDep, 'radius', radius);
+        const sourceStrokeSize = getNodeProperty(idDep, 'strokeSize', 4);
+        const depStrokeColor = getNodeProperty(idDep, 'strokeColor', '');
+        const sourceHasCircle = depStrokeColor && depStrokeColor.trim() !== '';
         const sourceRadiusOuter = sourceHasCircle ? (sourceRadius + (sourceStrokeSize / 2)) : 0;
 
         // Détecter si les cercles sont concentriques (centres très proches)
@@ -1864,58 +1896,31 @@ cellOrder.forEach(nodeId => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node || !node.radiation) return;
 
+    // Gérer le cas spécial du node 'noyau' avec tableau radiation par époque
     let radiationOptions = node.radiation;
-    let { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800', strokeSize = 2 } = radiationOptions;
-
-    // Calcul dynamique du maxRadius pour le noyau selon le flux géothermique
-    if (nodeId === 'noyau') {
-        // Récupérer la configuration depuis configOrganigramme.js
-        const config = coreRadiationConfig || {
-            referenceFlux: 0.087,
-            baseMaxRadius: 35,
-            logScale: 29,
-            minCircles: 4,
-            maxCircles: 12,
-            minStrokeSize: 1,
-            maxStrokeSize: 4,
-            defaultCircles: 8,
-            defaultStrokeSize: 2
-        };
-
-        // Récupérer le flux géothermique de l'époque
-        let currentFlux = config.referenceFlux;
-        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-            if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
-                currentFlux = currentEpoch.geothermal_flux;
-            }
-        }
-
-        // Échelle logarithmique pour l'intensité (épaisseur et nombre de cercles)
-        // maxRadius fixe = 90px (bord de la Terre) pour toutes les époques
-        if (currentFlux === 0) {
-            maxRadius = 0;
-            numCircles = 0;
-            strokeSize = 0;
+    
+    // Si le node 'noyau' a un tableau radiation (configuration par époque)
+    if (nodeId === 'noyau' && Array.isArray(node.radiation)) {
+        const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
+        const epochRadiation = node.radiation.find(r => r.epochName === currentEpochName);
+        
+        if (epochRadiation) {
+            // Utiliser la configuration de l'époque courante
+            radiationOptions = epochRadiation;
         } else {
-            // Toutes les radiations vont jusqu'au bord de la Terre
-            maxRadius = 90; // Rayon de la Terre (corrigé)
-
-            // Calculer l'intensité relative (échelle log)
-            const ratio = currentFlux / config.referenceFlux;
-            const logValue = Math.log10(ratio);
-
-            // Nombre de cercles: très peu pour aujourd'hui (2-3), beaucoup pour Hadéen (10-12)
-            // logValue: 0 (aujourd'hui) → 3 cercles, 2.24 (Hadéen) → 12 cercles
-            // Formule linéaire simple: 3 + 4*logValue
-            const calculatedCircles = 3 + Math.round(4 * logValue);
-            numCircles = Math.max(2, Math.min(12, calculatedCircles));
-
-            // Épaisseur: fine pour aujourd'hui (1px), épaisse pour Hadéen (4-5px)
-            strokeSize = Math.max(1, Math.min(5,
-                Math.round(1.5 + 1.5 * logValue)));
+            // Fallback : utiliser la première époque si aucune correspondance
+            radiationOptions = node.radiation[0] || {
+                numCircles: 0,
+                maxRadius: 0,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            };
         }
     }
+    
+    let { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800', strokeSize = 2 } = radiationOptions;
 
     if (maxRadius !== null && maxRadius !== undefined && maxRadius > 0) {
         const radiationGroup = document.createElement('div');
@@ -2413,10 +2418,13 @@ function updateFluxLabels(data) {
         // Griser le cercle du noyau en mode corps noir
         const noyauCircle = noyauCell.querySelector('.flux-circle-bg');
         if (noyauCircle) {
+            const noyauNode = nodes.find(n => n.id === 'noyau');
             if (isCorpsNoir) {
                 noyauCircle.style.borderColor = '#666'; // Gris
             } else {
-                noyauCircle.style.borderColor = ''; // Réinitialiser (utilise strokeColor du config)
+                // Réappliquer la couleur depuis la configuration
+                const strokeColor = noyauNode ? (noyauNode.strokeColor || '#ff5500') : '#ff5500';
+                noyauCircle.style.borderColor = strokeColor;
             }
         }
     }
@@ -2482,5 +2490,52 @@ if (typeof window !== 'undefined') {
     }
 }
 
+// Fonction pour recréer les radiations du noyau selon l'époque courante
+function recreateNoyauRadiation() {
+    const noyauNode = nodes.find(n => n.id === 'noyau');
+    if (!noyauNode || !Array.isArray(noyauNode.radiation)) return;
+
+    // Trouver la configuration de l'époque courante
+    const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
+    const epochRadiation = noyauNode.radiation.find(r => r.epochName === currentEpochName);
+    
+    if (!epochRadiation) return;
+
+    // Supprimer l'ancien groupe de radiations
+    const oldRadiationGroup = document.querySelector('.flux-radiation-group[data-node="noyau"]');
+    if (oldRadiationGroup) {
+        oldRadiationGroup.remove();
+    }
+
+    // Si numCircles = 0, ne pas créer de radiations
+    if (epochRadiation.numCircles === 0 || epochRadiation.maxRadius === 0) {
+        return;
+    }
+
+    // Créer le nouveau groupe de radiations
+    const radiationContainer = document.querySelector('.flux-radiation-container');
+    if (!radiationContainer) return;
+
+    const radiationGroup = document.createElement('div');
+    radiationGroup.className = 'flux-radiation-group';
+    radiationGroup.style.color = epochRadiation.color || '#ff9800';
+    radiationGroup.setAttribute('data-node', 'noyau');
+
+    radiationContainer.appendChild(radiationGroup);
+
+    // Créer les cercles de radiation
+    const { numCircles, maxRadius, openingAngle = 0, rotation = 0, color = '#ff9800', strokeSize = 2 } = epochRadiation;
+    // Utiliser getNodeProperty pour récupérer le radius (gère le cas spécial 'terre' avec epoch)
+    const noyauRadius = noyauNode.radius || 30;
+
+    for (let i = 1; i <= numCircles; i++) {
+        const progress = i / numCircles;
+        const arcRadius = noyauRadius + (maxRadius - noyauRadius) * progress;
+        const arc = createArc(noyauNode.x, noyauNode.y, arcRadius, 0.3 + (progress * 0.2), openingAngle, rotation, radiationGroup);
+        arc.style.border = `${strokeSize}px dashed ${color}`;
+    }
+}
+
 // Exposer createCell globalement pour accès depuis main.js
 window.createCell = createCell;
+window.recreateNoyauRadiation = recreateNoyauRadiation;
