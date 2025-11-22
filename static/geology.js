@@ -82,6 +82,13 @@ const GEOLOGICAL_PERIODS = [
         cloud_coverage: 0,
         core_temperature_k: null,
         geothermal_flux: 0,
+        albedo_base: 0.0, // Corps noir pur : aucune réflexion
+        // Composantes d'albedo (en % de couverture)
+        ocean_albedo: 0.08, ocean_coverage: 0,      // Océans : 0.05-0.10
+        forest_albedo: 0.12, forest_coverage: 0,    // Forêts : 0.05-0.20
+        desert_albedo: 0.30, desert_coverage: 0,    // Déserts : ~0.30
+        ice_albedo: 0.70, ice_coverage: 0,          // Glace : 0.40-0.90
+        cloud_albedo: 0.40,                        // Nuages : 0.30-0.95 (déjà dans cloud_coverage)
         description: 'État initial : corps noir pur, avant formation de la Lune (4,5 Ga), pas de noyau différencié, pas d\'atmosphère, température ~206.1K'
     },
     {
@@ -91,10 +98,18 @@ const GEOLOGICAL_PERIODS = [
         emoji: '🌕',
         co2_ppm: 7000,
         ch4_ppm: 100,
-        h2o_enabled: true,
-        cloud_coverage: 0.8,
+        h2o_enabled: false, // Pas d'eau dans l'atmosphère selon données scientifiques
+        cloud_coverage: 0,   // Pas de nuages sans eau
         core_temperature_k: 6000,
         geothermal_flux: 15,
+        albedo_base: 0.05, // Magma en fusion : albedo très faible (similaire à lave actuelle ~0.04-0.05)
+        // Composantes d'albedo (en fraction 0-1 pour couverture, albedo en 0-1)
+        ocean_albedo: 0.08, ocean_coverage: 0,      // Pas d'océans (magma)
+        forest_albedo: 0.12, forest_coverage: 0,    // Pas de forêts
+        desert_albedo: 0.30, desert_coverage: 0,     // Pas de déserts (magma)
+        ice_albedo: 0.70, ice_coverage: 0,           // Pas de glace (températures élevées)
+        cloud_albedo: 0.40,                          // Nuages : 0.30-0.95 (déjà dans cloud_coverage)
+        magma_albedo: 0.05, magma_coverage: 1.0,     // Magma en fusion : ~0.04-0.05, 100% de couverture
         description: 'Atmosphère dense, peu d\'O₂, beaucoup de CO₂, températures élevées (>50°C)'
     },
     {
@@ -108,6 +123,13 @@ const GEOLOGICAL_PERIODS = [
         cloud_coverage: 0.7,
         core_temperature_k: 5900,
         geothermal_flux: 0.3,
+        albedo_base: 0.12, // Premiers océans, peu de continents : albedo faible mais supérieur à Hadéen
+        // Composantes d'albedo (en fraction 0-1 pour couverture, albedo en 0-1)
+        ocean_albedo: 0.08, ocean_coverage: 0.80,    // Premiers océans
+        forest_albedo: 0.12, forest_coverage: 0,     // Pas de forêts
+        desert_albedo: 0.30, desert_coverage: 0.05,  // Peu de continents
+        ice_albedo: 0.70, ice_coverage: 0,           // Pas de glace
+        cloud_albedo: 0.40,                          // Nuages : 0.30-0.95 (déjà dans cloud_coverage)
         description: 'Atmosphère dense, peu d\'O₂, beaucoup de CO₂, précipitations abondantes'
     },
     {
@@ -121,6 +143,13 @@ const GEOLOGICAL_PERIODS = [
         cloud_coverage: 0.4,
         core_temperature_k: 5850,
         geothermal_flux: 0.15,
+        albedo_base: 0.20, // Plus de continents, début de végétation : albedo intermédiaire
+        // Composantes d'albedo (en fraction 0-1 pour couverture, albedo en 0-1)
+        ocean_albedo: 0.08, ocean_coverage: 0.70,     // Océans
+        forest_albedo: 0.12, forest_coverage: 0.05,  // Début de végétation
+        desert_albedo: 0.30, desert_coverage: 0.15,   // Plus de continents
+        ice_albedo: 0.70, ice_coverage: 0,            // Glace calculée dynamiquement
+        cloud_albedo: 0.40,                           // Nuages : 0.30-0.95 (déjà dans cloud_coverage)
         description: 'Déclin progressif du CO₂, apparition de glaciations'
     },
     {
@@ -134,6 +163,13 @@ const GEOLOGICAL_PERIODS = [
         cloud_coverage: 0.3,
         core_temperature_k: 5800,
         geothermal_flux: 0.12,
+        albedo_base: 0.25, // Terre glacée : albedo élevé (la glace sera ajoutée par calculateAlbedo)
+        // Composantes d'albedo (en fraction 0-1 pour couverture, albedo en 0-1)
+        ocean_albedo: 0.08, ocean_coverage: 0,       // Océans gelés
+        forest_albedo: 0.12, forest_coverage: 0,     // Pas de forêts
+        desert_albedo: 0.30, desert_coverage: 0,     // Pas de déserts
+        ice_albedo: 0.70, ice_coverage: 1.0,         // Terre entièrement glacée
+        cloud_albedo: 0.40,                          // Nuages : 0.30-0.95 (déjà dans cloud_coverage)
         description: 'Boule de neige - Terre entièrement glacée'
     },
     {
@@ -147,6 +183,13 @@ const GEOLOGICAL_PERIODS = [
         cloud_coverage: 0.5,
         core_temperature_k: 5750,
         geothermal_flux: 0.10,
+        albedo_base: 0.28, // Végétation abondante, océans : proche de la valeur moderne
+        // Composantes d'albedo (en fraction 0-1 pour couverture, albedo en 0-1)
+        ocean_albedo: 0.08, ocean_coverage: 0.70,     // Océans
+        forest_albedo: 0.12, forest_coverage: 0.20,    // Végétation abondante
+        desert_albedo: 0.30, desert_coverage: 0.10,   // Quelques déserts
+        ice_albedo: 0.70, ice_coverage: 0,            // Peu de glace
+        cloud_albedo: 0.40,                           // Nuages : 0.30-0.95 (déjà dans cloud_coverage)
         description: 'CO₂ élevé, périodes chaudes, peu de glaces'
     },
     {
@@ -160,6 +203,13 @@ const GEOLOGICAL_PERIODS = [
         cloud_coverage: 0.5,
         core_temperature_k: 5740,
         geothermal_flux: 0.095,
+        albedo_base: 0.28, // Similaire au Mésozoïque : végétation, océans
+        // Composantes d'albedo (en fraction 0-1 pour couverture, albedo en 0-1)
+        ocean_albedo: 0.08, ocean_coverage: 0.70,     // Océans
+        forest_albedo: 0.12, forest_coverage: 0.20,   // Végétation
+        desert_albedo: 0.30, desert_coverage: 0.10,   // Quelques déserts
+        ice_albedo: 0.70, ice_coverage: 0,            // Peu de glace
+        cloud_albedo: 0.40,                           // Nuages : 0.30-0.95 (déjà dans cloud_coverage)
         description: 'Températures +6 à +8°C, CO₂ très élevé, peu de glace'
     },
     {
@@ -173,6 +223,13 @@ const GEOLOGICAL_PERIODS = [
         cloud_coverage: 0.4,
         core_temperature_k: 5700,
         geothermal_flux: 0.087,
+        albedo_base: 0.30, // Valeur moderne : océans, continents, végétation
+        // Composantes d'albedo (en fraction 0-1 pour couverture, albedo en 0-1)
+        ocean_albedo: 0.08, ocean_coverage: 0.70,     // Océans
+        forest_albedo: 0.12, forest_coverage: 0.15,   // Forêts
+        desert_albedo: 0.30, desert_coverage: 0.10,   // Déserts
+        ice_albedo: 0.70, ice_coverage: 0.05,          // Glace (calculée dynamiquement)
+        cloud_albedo: 0.40,                            // Nuages : 0.30-0.95 (déjà dans cloud_coverage)
         description: 'Forte chute du CO₂, alternance glaces/interglaciaires'
     },
     {
@@ -186,6 +243,13 @@ const GEOLOGICAL_PERIODS = [
         cloud_coverage: 0.4,
         core_temperature_k: 5700,
         geothermal_flux: 0.087,
+        albedo_base: 0.30, // Valeur moderne mesurée par satellites (IPCC)
+        // Composantes d'albedo (en fraction 0-1 pour couverture, albedo en 0-1) - valeurs modernes
+        ocean_albedo: 0.08, ocean_coverage: 0.70,     // Océans : 0.05-0.10
+        forest_albedo: 0.12, forest_coverage: 0.15,   // Forêts : 0.05-0.20
+        desert_albedo: 0.30, desert_coverage: 0.10,   // Déserts : ~0.30
+        ice_albedo: 0.70, ice_coverage: 0.05,          // Glace : 0.40-0.90 (calculée dynamiquement)
+        cloud_albedo: 0.40,                            // Nuages : 0.30-0.95 (déjà dans cloud_coverage)
         description: 'État actuel de la Terre (2024)'
     }
 ];

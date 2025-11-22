@@ -116,6 +116,16 @@
     text-align: center;
     line-height: 1.2; /* Interligne réduit pour textes multi-lignes */
     z-index: 10000 !important; /* TOUJOURS au-dessus des flèches (z-index max ~26) */
+    overflow: visible; /* Permettre au contenu de dépasser si nécessaire */
+    max-width: none; /* Pas de limite de largeur par défaut */
+}
+
+/* Exception pour les labels avec <br> (multi-lignes) */
+.flux-label:has(br) {
+    white-space: normal;
+    overflow: visible;
+    max-width: none;
+    width: max-content;
 }
 
 /* Labels des boutons en gris */
@@ -150,6 +160,12 @@
 
 /* Couleur bleu clair pour les étiquettes avec % actives */
 .flux-label.percent-label {
+    color: rgb(135, 206, 250);
+    border-color: rgb(173, 216, 230);
+}
+
+/* Couleur bleu clair pour les étiquettes avec ppm (comme les %) */
+.flux-label.ppm-label {
     color: rgb(135, 206, 250);
     border-color: rgb(173, 216, 230);
 }

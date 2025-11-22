@@ -13,8 +13,6 @@
 // Constantes climatiques
 // ✅ SCIENTIFIQUEMENT CERTAIN : Valeur mesurée par satellites (variations ~1361-1366 W/m² selon cycle solaire)
 const SOLAR_CONSTANT = 1366;          // Constante solaire, W/m²
-// ✅ SCIENTIFIQUEMENT CERTAIN : Albedo terrestre moyen ~0.3 (30% réfléchi) - valeur acceptée par l'IPCC
-const ALBEDO_BASE = 0.3;               // Albédo de base terrestre (30% réfléchi)
 
 // Zone habitable pour la vie (températures en Kelvin)
 const TEMP_HABITABLE_MIN = 253;       // -20°C : limite inférieure pour la vie complexe
@@ -32,6 +30,24 @@ function calculateCO2Forcing(CO2_fraction) {
     const CO2_ref = 280e-6; // Référence pré-industrielle (280 ppm) - ✅ scientifiquement accepté
     if (CO2_fraction <= 0) return 0;
     return 5.35 * Math.log(Math.max(CO2_fraction, CO2_ref) / CO2_ref); // W/m² (formule de Myhre et al. 1998)
+}
+
+// Fonction pour calculer le forçage radiatif du CH4 (méthane)
+// ✅ SCIENTIFIQUEMENT CERTAIN :
+// - La formule ΔF = 0.036 * (√M - √M₀) est la formule standard pour le CH4 (Myhre et al. 1998)
+// - Cette formule est acceptée par l'IPCC et utilisée dans tous les modèles climatiques
+// - Le coefficient 0.036 W/m²/(ppb)¹/² est une valeur mesurée et validée expérimentalement
+// - La référence pré-industrielle de 700 ppb (0.7 ppm) est une valeur paléoclimatique bien établie
+// - Bande d'absorption principale : ~7.7 μm, avec un pic important à ~23 μm (1300 cm⁻¹)
+// - Note : Le CH4 a un pouvoir de réchauffement global (PRG) ~25-30x supérieur au CO2 sur 100 ans
+function calculateCH4Forcing(CH4_fraction) {
+    const CH4_ref = 0.7e-6; // Référence pré-industrielle (0.7 ppm = 700 ppb) - ✅ scientifiquement accepté
+    if (CH4_fraction <= 0) return 0;
+    // Formule : ΔF = 0.036 * (√M - √M₀) où M est la concentration en ppb
+    // Convertir ppm en ppb : 1 ppm = 1000 ppb
+    const CH4_ppb = CH4_fraction * 1e6; // ppm → ppb
+    const CH4_ref_ppb = CH4_ref * 1e6; // ppm → ppb
+    return 0.036 * (Math.sqrt(Math.max(CH4_ppb, CH4_ref_ppb)) - Math.sqrt(CH4_ref_ppb)); // W/m²
 }
 
 // Fonction pour calculer le forçage radiatif de H2O (vapeur d'eau)
@@ -81,33 +97,24 @@ function calculateH2OForcing(h2o_enabled, cloud_coverage) {
     return base_forcing + cloud_forcing; // W/m²
 }
 
-// Fonction pour calculer le forçage radiatif de l'albedo (négatif)
-// ⚠️ WARNING - MODIFICATION POUR GAMEPLAY ⚠️
-// L'effet d'albedo est divisé par 2 pour des raisons de gameplay.
-// Cette modification réduit l'impact scientifique réel de l'albedo sur le climat.
-// En réalité, le forçage radiatif de l'albedo suit la formule : ΔF = S_0/4 * (A_ref - A_actuel)
-// 
-// ✅ SCIENTIFIQUEMENT CERTAIN : 
-// - La formule de base ΔF = S_0/4 * (A_ref - A_actuel) est bien établie (IPCC, modèles climatiques)
-// - Un albedo plus élevé réduit effectivement le flux solaire absorbé (forçage négatif)
-// - La constante solaire S_0 ≈ 1366 W/m² est une valeur mesurée et acceptée
-// - La division par 4 vient de la géométrie sphérique (surface 4πr² vs section πr²)
+// Fonction pour calculer le forçage radiatif de l'albedo
+// L'albedo est déjà pris en compte dans le calcul du flux solaire absorbé
+// Il n'y a donc pas de forçage albedo séparé à calculer
+// Le forçage albedo est toujours 0 car l'albedo est déjà intégré dans les calculs
 function calculateAlbedoForcing(albedo) {
-    const ALBEDO_REF = 0.3; // Albedo de référence (✅ scientifiquement accepté : ~0.3 pour la Terre)
-    const forcing_scientific = SOLAR_CONSTANT / 4 * (ALBEDO_REF - albedo); // W/m² (négatif si albedo > 0.3)
-    // ⚠️ MODIFICATION POUR GAMEPLAY : Diviser par 2 pour réduire l'impact
-    return forcing_scientific / 2;
+    // Pas de forçage albedo séparé : l'albedo est déjà pris en compte dans le flux solaire absorbé
+    return 0;
 }
 
 // Exposer globalement
 if (typeof window !== 'undefined') {
     window.SOLAR_CONSTANT = SOLAR_CONSTANT;
-    window.ALBEDO_BASE = ALBEDO_BASE;
     window.TEMP_HABITABLE_MIN = TEMP_HABITABLE_MIN;
     window.TEMP_HABITABLE_MAX = TEMP_HABITABLE_MAX;
     window.TEMP_HABITABLE_OPTIMAL = TEMP_HABITABLE_OPTIMAL;
     window.TEMP_REF_NO_CO2 = TEMP_REF_NO_CO2;
     window.calculateCO2Forcing = calculateCO2Forcing;
+    window.calculateCH4Forcing = calculateCH4Forcing;
     window.calculateH2OForcing = calculateH2OForcing;
     window.calculateAlbedoForcing = calculateAlbedoForcing;
 }

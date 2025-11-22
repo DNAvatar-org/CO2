@@ -9,6 +9,23 @@
 //   - Initial version: extraction des données de configuration depuis organigramme.js
 //   - Added dataId mapping for dynamic label updates
 
+// ============================================================================
+// RÉFÉRENCE UNIQUE DES LOGOS
+// ============================================================================
+// Source unique de référence pour tous les logos utilisés dans l'application
+// Utilisé à la fois dans le flux (organigramme) et dans le graphique (plot)
+const LOGOS = {
+    CO2: '🏭',      // CO2 : usine (émissions industrielles)
+    CH4: '⛽',       // CH4 : pompe à essence (combustibles fossiles, pets de vache)
+    H2O: '💧',      // H2O : goutte d'eau
+    ALBEDO: '🪞'    // Albédo : miroir
+};
+
+// Exposer globalement pour utilisation dans plot.js
+if (typeof window !== 'undefined') {
+    window.LOGOS = LOGOS;
+}
+
 // Configuration de base
 const radius = 40; // Cercles plus petits (par défaut)
 const centerX = 185; // Centre horizontal du diagramme (328px / 2)
@@ -98,7 +115,7 @@ const nodes = [
 
     { id: 'espace1', logo: '🛰', logoScale: 0.5, x: centerX + 150, y: centerY - 170, radius: 50, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null, zIndex: 14 },
 
-    { id: 'albedo', logo: '🪞', x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
+    { id: 'albedo', logo: LOGOS.ALBEDO, x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
 
     { 
         id: 'noyau', 
@@ -256,20 +273,20 @@ const nodes = [
     //+circleMiddleRadius*Math.sin(135*Math.PI/180)
     //type: 'button',
 
-    { id: 'co2', type: 'button', logo: '🌱', logoOffsetY: -10, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+    { id: 'co2', type: 'button', logo: LOGOS.CO2, logoOffsetY: 0, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'methane', type: 'button', logo: 'fonts/pics/ch4.png', x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'ch4_percent' }, { text: '0 W/m²', dataId: 'ch4_forcing' }], right: [], top: '', bottom: '', tooltip: 'CH₄', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+    { id: 'methane', type: 'button', logo: LOGOS.CH4, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'ch4_percent' }, { text: '0 W/m²', dataId: 'ch4_forcing' }], right: [], top: '', bottom: '', tooltip: 'CH₄', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'h2o', type: 'button', logo: '💧', x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+    { id: 'h2o', type: 'button', logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'albedo-btn', type: 'button', logo: '🪞', logoOffsetY: 5, x: centerX + circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0 W/m²', dataId: 'forcing_total' }], bottom: [{ text: '0%', dataId: 'forcing_percent' }], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
+    { id: 'albedo-btn', type: 'button', logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius*0.6, y: earthCenterY-circleMiddleRadius*0.85, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents'}], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
 ];
 
 // Définition du graphe : arcs (flèches)
 // Les labels peuvent être des strings (statiques) ou des objets avec { text, dataId } (dynamiques)
 const arcs = [
     { from: 'soleil', to: 'geometrie', zIndex: 10, label: { name: { text: '1UA', dataId: 'distance_1ua' }, txtD: '', txtF: '' } },
-    { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_average_wm' }, txtF: { text: 'Albédo: ⛅50% + ❄️20%', dataId: 'albedo_percents' } } },
+    { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_average_wm' }, txtF: { text: '0%', dataId: 'passing_albedo_percent' } } },
     { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: { text: '0.0 W/m²', dataId: 'solar_flux_absorbed_wm' } } },
     { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' } },
     { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0.0<br>W/m²', dataId: 'core_flux_wm' }, txtF: '' } },

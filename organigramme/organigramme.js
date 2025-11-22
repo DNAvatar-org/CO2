@@ -743,6 +743,15 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
+                    
+                    // Si le texte contient <br>, permettre les retours à la ligne et éviter la coupure
+                    if (text && text.includes('<br>')) {
+                        label.style.whiteSpace = 'normal';
+                        label.style.overflow = 'visible';
+                        label.style.maxWidth = 'none';
+                        label.style.width = 'max-content';
+                    }
+                    
                     labelContainer.appendChild(label);
                 });
 
@@ -1512,9 +1521,10 @@ function generateArrows() {
         const arrow = createArrow(finalX1, finalY1, finalX2, finalY2, arrowZIndex, arrowColor);
 
         // Log des coordonnées de la flèche
-        console.log(`=== FLÈCHE ${arc.from} → ${arc.to} ===`);
-        console.log(`Coordonnées flèche: début (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}), fin (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
-        console.log(`Distance: ${Math.sqrt((finalX2 - finalX1) ** 2 + (finalY2 - finalY1) ** 2).toFixed(1)}px`);
+        // Logs de debug des flèches désactivés
+        // console.log(`=== FLÈCHE ${arc.from} → ${arc.to} ===`);
+        // console.log(`Coordonnées flèche: début (${finalX1.toFixed(1)}, ${finalY1.toFixed(1)}), fin (${finalX2.toFixed(1)}, ${finalY2.toFixed(1)})`);
+        // console.log(`Distance: ${Math.sqrt((finalX2 - finalX1) ** 2 + (finalY2 - finalY1) ** 2).toFixed(1)}px`);
 
         // Ajouter l'étiquette de flèche si présente
         if (arc.label) {
@@ -1579,7 +1589,7 @@ function generateArrows() {
             const labelPositions = createArrowLabel(visibleX1, visibleY1, visibleX2, visibleY2, arc.label);
 
             // Log des coordonnées des étiquettes et comparaison avec attendu
-            console.log(`Coordonnées visibles: début (${visibleX1.toFixed(1)}, ${visibleY1.toFixed(1)}), fin (${visibleX2.toFixed(1)}, ${visibleY2.toFixed(1)})`);
+            // console.log(`Coordonnées visibles: début (${visibleX1.toFixed(1)}, ${visibleY1.toFixed(1)}), fin (${visibleX2.toFixed(1)}, ${visibleY2.toFixed(1)})`);
             const visibleLength = Math.sqrt((visibleX2 - visibleX1) ** 2 + (visibleY2 - visibleY1) ** 2);
             const expectedMidX = (visibleX1 + visibleX2) / 2;
             const expectedMidY = (visibleY1 + visibleY2) / 2;
@@ -1605,9 +1615,9 @@ function generateArrows() {
                     const diffY = Math.abs(pos.y - expectedY);
                     expected = `Attendu: 75% (${expectedX.toFixed(1)}, ${expectedY.toFixed(1)}), écart: (${diffX.toFixed(1)}, ${diffY.toFixed(1)})`;
                 }
-                console.log(`  ${pos.type} "${pos.text}": (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) ${expected}`);
+                // console.log(`  ${pos.type} "${pos.text}": (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) ${expected}`);
             });
-            console.log('');
+            // console.log('');
         }
     });
 }
@@ -2243,16 +2253,22 @@ function updateFluxLabels(data) {
     const ch4_ppm = (data.ch4_ppm !== null && data.ch4_ppm !== undefined) ? data.ch4_ppm : plotData_ch4;
     // H2O : vérifier l'état du bouton (on/off)
     const h2o_enabled = typeof window !== 'undefined' && window.waterVaporEnabled;
-    // Vérifier l'état de tous les boutons (on/off) une seule fois
-    const btnCO2 = document.getElementById('btn-co2');
-    const btnCH4 = document.getElementById('btn-methane');
-    const btnH2O = document.getElementById('btn-h2o');
-    const btnAlbedo = document.getElementById('btn-albedo');
+    // Vérifier l'état de tous les boutons (on/off) via les cellules du flux (pas les boutons HTML)
+    // Les boutons du flux sont des cellules avec la classe 'flux-button-cell'
+    const cellCO2 = document.getElementById('cell-co2');
+    const cellCH4 = document.getElementById('cell-methane');
+    const cellH2O = document.getElementById('cell-h2o');
+    const cellAlbedo = document.getElementById('cell-albedo-btn');
     
-    const co2_button_checked = btnCO2 && !btnCO2.classList.contains('disabled') && btnCO2.classList.contains('checked');
-    const ch4_button_checked = btnCH4 && !btnCH4.classList.contains('disabled') && btnCH4.classList.contains('checked');
-    const h2o_button_checked = btnH2O && !btnH2O.classList.contains('disabled') && btnH2O.classList.contains('checked');
-    const albedo_button_checked = btnAlbedo && !btnAlbedo.classList.contains('disabled') && btnAlbedo.classList.contains('checked');
+    // Vérifier l'état via les cellules ET les variables globales (fallback)
+    const co2_button_checked = (cellCO2 && cellCO2.classList.contains('checked')) || 
+                                (typeof window !== 'undefined' && window.useCO2 === true);
+    const ch4_button_checked = (cellCH4 && cellCH4.classList.contains('checked')) || 
+                                (typeof window !== 'undefined' && window.useCH4 === true);
+    const h2o_button_checked = (cellH2O && cellH2O.classList.contains('checked')) || 
+                                (typeof window !== 'undefined' && window.useH2O === true);
+    const albedo_button_checked = (cellAlbedo && cellAlbedo.classList.contains('checked')) || 
+                                   (typeof window !== 'undefined' && window.useAlbedo === true);
     
     const h2o_final_enabled = h2o_enabled && h2o_button_checked;
 
@@ -2281,16 +2297,51 @@ function updateFluxLabels(data) {
     }
 
     // Calculer les valeurs dynamiques
+    // Utiliser data.albedo qui vient de la simulation (calculé avec tous les paramètres corrects)
+    // Seulement recalculer si data.albedo n'est pas défini ou si on est en mode corps noir
+    console.log(`[updateFluxLabels] Albedo initial: data.albedo=${albedo}, albedo_num=${albedo_num}, isCorpsNoir=${isCorpsNoir}`);
+    
+    if (isCorpsNoir) {
+        albedo_num = 0; // Corps noir : pas d'albedo
+        console.log(`[updateFluxLabels] Mode corps noir: albedo_num=0`);
+    } else if (albedo_num === 0 || albedo === null || albedo === undefined) {
+        // Si albedo_num est 0 ou data.albedo n'est pas défini, recalculer avec le flux géothermique
+        let geo_flux = null;
+        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            }
+        }
+        if (typeof window !== 'undefined' && typeof window.calculateAlbedo === 'function') {
+            albedo_num = window.calculateAlbedo(T0_num, h2o_enabled, geo_flux);
+            console.log(`[updateFluxLabels] Albedo recalculé: ${albedo_num.toFixed(3)} (T0=${T0_num.toFixed(2)}K, h2o=${h2o_enabled}, geo_flux=${geo_flux})`);
+        }
+    } else {
+        console.log(`[updateFluxLabels] Utilisation de data.albedo: ${albedo_num.toFixed(3)}`);
+    }
+    // Sinon, utiliser data.albedo qui vient de la simulation (déjà calculé avec tous les paramètres)
+    
     let solar_flux_absorbed;
     if (isCorpsNoir) {
         solar_flux_absorbed = SOLAR_FLUX_AVERAGE;
     } else {
+        // Récupérer le flux géothermique pour calculateSolarFluxAbsorbed
+        let geo_flux = null;
+        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            }
+        }
         solar_flux_absorbed = typeof window !== 'undefined' && typeof window.calculateSolarFluxAbsorbed === 'function'
-            ? window.calculateSolarFluxAbsorbed(T0_num, h2o_enabled)
+            ? window.calculateSolarFluxAbsorbed(T0_num, h2o_enabled, geo_flux)
             : SOLAR_FLUX_AVERAGE * (1 - albedo_num);
     }
 
+    // Calculer le flux réfléchi avec l'albedo (venant de data.albedo ou recalculé)
     const flux_reflected = SOLAR_FLUX_AVERAGE * albedo_num;
+    console.log(`[updateFluxLabels] Flux réfléchi: ${SOLAR_FLUX_AVERAGE.toFixed(2)} * ${albedo_num.toFixed(3)} = ${flux_reflected.toFixed(2)} W/m²`);
 
     // Calculer la couverture de glace (même logique que calculateAlbedo)
     // En mode "corps noir" (T0 < 10K), pas d'albedo : pas de nuages, pas de glace
@@ -2353,6 +2404,10 @@ function updateFluxLabels(data) {
     const forcing_CO2 = (co2_button_checked && co2_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCO2Forcing === 'function'
         ? window.calculateCO2Forcing(co2_ppm_num * 1e-6)
         : 0;
+    // CH4 : calculer le forçage radiatif (bande d'absorption à ~7.7 μm et pic à ~23 μm)
+    const forcing_CH4 = (ch4_button_checked && ch4_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCH4Forcing === 'function'
+        ? window.calculateCH4Forcing(ch4_ppm_num * 1e-6)
+        : 0;
     const forcing_H2O = (h2o_button_checked && h2o_final_enabled) && typeof window !== 'undefined' && typeof window.calculateH2OForcing === 'function'
         ? window.calculateH2OForcing(h2o_final_enabled, cloud_coverage_num)
         : 0;
@@ -2361,7 +2416,7 @@ function updateFluxLabels(data) {
     const forcing_Albedo = (isCorpsNoir || !albedo_button_checked) ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
         ? window.calculateAlbedoForcing(albedo_num)
         : 0);
-    const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
+    const forcing_total = forcing_CO2 + forcing_CH4 + forcing_H2O + forcing_Albedo;
 
     // Fonction helper pour mettre à jour un label par dataId
     const updateLabel = (dataId, value, format = 'auto') => {
@@ -2379,6 +2434,9 @@ function updateFluxLabels(data) {
                 } else if (format === 'percent' || format === 'percent_simple') {
                     // Si c'est une string avec %, l'utiliser directement
                     formattedValue = value.includes('%') ? value : value + '%';
+                } else if (format === 'ppm' || format === 'ppm_simple') {
+                    // Si c'est une string avec ppm, l'utiliser directement
+                    formattedValue = value.includes('ppm') ? value : value + ' ppm';
                 } else {
                     formattedValue = value;
                 }
@@ -2392,6 +2450,8 @@ function updateFluxLabels(data) {
                     formattedValue = value.toFixed(2) + ' W/m²';
                 } else if (format === 'percent_simple') {
                     formattedValue = value.toFixed(0) + '%';
+                } else if (format === 'ppm' || format === 'ppm_simple') {
+                    formattedValue = value.toFixed(0) + ' ppm';
                 } else {
                     formattedValue = value.toFixed(2);
                 }
@@ -2403,16 +2463,15 @@ function updateFluxLabels(data) {
             label.innerHTML = formattedValue;
 
             // Réinitialiser toutes les classes de couleur
-            label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value', 'co2-label', 'percent-label');
+            label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value', 'co2-label', 'percent-label', 'ppm-label');
 
             // Vérifier si le label est lié à un bouton
-            // Note: forcing_total et forcing_percent sont sur le bouton albedo, mais forcing_total est aussi sur la flèche reemis->terre
+            // Note: forcing_total et albedo_percent sont sur le bouton albedo, mais forcing_total est aussi sur la flèche reemis->terre
             // On doit vérifier si c'est le label du bouton albedo ou celui de la flèche
             const isButtonLabel = dataId === 'co2_percent' || dataId === 'co2_forcing' ||
                                   dataId === 'ch4_percent' || dataId === 'ch4_forcing' ||
                                   dataId === 'h2o_percent' || dataId === 'h2o_forcing' ||
-                                  dataId === 'albedo_percent' || dataId === 'albedo_forcing' ||
-                                  dataId === 'forcing_percent';
+                                  dataId === 'albedo_percent' || dataId === 'albedo_forcing';
 
             // Vérifier si forcing_total est sur le bouton albedo (pas sur la flèche)
             // Le label du bouton albedo est dans la cellule cell-albedo-btn
@@ -2435,7 +2494,7 @@ function updateFluxLabels(data) {
                     isActive = useCH4;
                 } else if (dataId === 'h2o_percent' || dataId === 'h2o_forcing') {
                     isActive = useH2O;
-                } else if (dataId === 'albedo_percent' || dataId === 'albedo_forcing' || dataId === 'forcing_percent' || isAlbedoButtonLabel) {
+                } else if (dataId === 'albedo_percent' || dataId === 'albedo_forcing' || isAlbedoButtonLabel) {
                     isActive = useAlbedo;
                 }
                 shouldApplyColors = isActive;
@@ -2455,6 +2514,10 @@ function updateFluxLabels(data) {
                 else if (formattedValue.includes('%')) {
                     label.classList.add('percent-label');
                 }
+                // Sinon, vérifier ppm (bleu clair, comme les %)
+                else if (formattedValue.includes('ppm')) {
+                    label.classList.add('ppm-label');
+                }
                 // Sinon, couleur par défaut (vert pour CO2)
                 else if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
                     label.classList.add('co2-label');
@@ -2468,11 +2531,94 @@ function updateFluxLabels(data) {
     // Géométrie -> Albedo : flux solaire moyen
     updateLabel('solar_flux_average_wm', SOLAR_FLUX_AVERAGE, 'watt');
 
-    // Géométrie -> Surface : breakdown albedo
-    // S'assurer que les valeurs sont bien à 0 en mode corps noir
-    const final_cloud_percent = isCorpsNoir ? 0 : cloud_percent;
-    const final_ice_percent = isCorpsNoir ? 0 : ice_percent;
-    const albedoBreakdown = `Albédo: ⛅${final_cloud_percent}% + ❄️${final_ice_percent}%`;
+    // Géométrie -> Surface : breakdown albedo détaillé
+    // Récupérer les valeurs de l'époque courante
+    // Toujours afficher le magma (volcans) même si couverture à 0%
+    // Classer par ordre décroissant de pondération (couverture × albedo)
+    let albedoBreakdown = '';
+    
+    // Fonction helper pour créer et trier les composantes
+    const createAlbedoComponents = (components) => {
+        // Calculer la pondération pour chaque composante (couverture × albedo)
+        components.forEach(comp => {
+            comp.weight = (comp.coverage / 100) * parseFloat(comp.albedo);
+        });
+        // Trier par ordre décroissant de pondération
+        components.sort((a, b) => b.weight - a.weight);
+        // Construire la chaîne HTML
+        return components.map(comp => `${comp.emoji}${comp.coverage}% x${comp.albedo}`).join('<br>');
+    };
+    
+    if (isCorpsNoir) {
+        // Corps noir : tout à 0
+        const components = [
+            { emoji: '🌋', coverage: 0, albedo: '0.05' },
+            { emoji: '🌊', coverage: 0, albedo: '0.08' },
+            { emoji: '🌳', coverage: 0, albedo: '0.12' },
+            { emoji: '🏜️', coverage: 0, albedo: '0.30' },
+            { emoji: '🧊', coverage: 0, albedo: '0.70' },
+            { emoji: '⛅', coverage: 0, albedo: '0.40' }
+        ];
+        albedoBreakdown = createAlbedoComponents(components);
+    } else if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch) {
+            // Récupérer les valeurs de couverture de l'époque
+            const magma_cov = Math.round((currentEpoch.magma_coverage || 0) * 100);
+            const ocean_cov = Math.round((currentEpoch.ocean_coverage || 0) * 100);
+            const forest_cov = Math.round((currentEpoch.forest_coverage || 0) * 100);
+            const desert_cov = Math.round((currentEpoch.desert_coverage || 0) * 100);
+            // Pour la glace, utiliser la valeur calculée dynamiquement (ice_coverage)
+            const ice_cov = Math.round(ice_coverage * 100);
+            // Pour les nuages, utiliser la valeur calculée dynamiquement (cloud_percent)
+            const cloud_cov = cloud_percent;
+            
+            // Récupérer les albedos de chaque composante
+            const magma_alb = (currentEpoch.magma_albedo || 0.05).toFixed(2);
+            const ocean_alb = (currentEpoch.ocean_albedo || 0.08).toFixed(2);
+            const forest_alb = (currentEpoch.forest_albedo || 0.12).toFixed(2);
+            const desert_alb = (currentEpoch.desert_albedo || 0.30).toFixed(2);
+            const ice_alb = (currentEpoch.ice_albedo || 0.70).toFixed(2);
+            const cloud_alb = (currentEpoch.cloud_albedo || 0.40).toFixed(2);
+            
+            // Créer le tableau des composantes avec leurs valeurs
+            const components = [
+                { emoji: '🌋', coverage: magma_cov, albedo: magma_alb },
+                { emoji: '🌊', coverage: ocean_cov, albedo: ocean_alb },
+                { emoji: '🌳', coverage: forest_cov, albedo: forest_alb },
+                { emoji: '🏜️', coverage: desert_cov, albedo: desert_alb },
+                { emoji: '🧊', coverage: ice_cov, albedo: ice_alb },
+                { emoji: '⛅', coverage: cloud_cov, albedo: cloud_alb }
+            ];
+            albedoBreakdown = createAlbedoComponents(components);
+        } else {
+            // Fallback si époque non trouvée
+            const final_cloud_percent = cloud_percent;
+            const final_ice_percent = Math.round(ice_coverage * 100);
+            const components = [
+                { emoji: '🌋', coverage: 0, albedo: '0.05' },
+                { emoji: '🌊', coverage: 0, albedo: '0.08' },
+                { emoji: '🌳', coverage: 0, albedo: '0.12' },
+                { emoji: '🏜️', coverage: 0, albedo: '0.30' },
+                { emoji: '🧊', coverage: final_ice_percent, albedo: '0.70' },
+                { emoji: '⛅', coverage: final_cloud_percent, albedo: '0.40' }
+            ];
+            albedoBreakdown = createAlbedoComponents(components);
+        }
+    } else {
+        // Fallback si pas d'époque
+        const final_cloud_percent = cloud_percent;
+        const final_ice_percent = Math.round(ice_coverage * 100);
+        const components = [
+            { emoji: '🌋', coverage: 0, albedo: '0.05' },
+            { emoji: '🌊', coverage: 0, albedo: '0.08' },
+            { emoji: '🌳', coverage: 0, albedo: '0.12' },
+            { emoji: '🏜️', coverage: 0, albedo: '0.30' },
+            { emoji: '🧊', coverage: final_ice_percent, albedo: '0.70' },
+            { emoji: '⛅', coverage: final_cloud_percent, albedo: '0.40' }
+        ];
+        albedoBreakdown = createAlbedoComponents(components);
+    }
     updateLabel('albedo_percents', albedoBreakdown, 'text');
     // Flux qui passe (solar_flux_average - flux_reflected = flux qui arrive à la surface)
     // En mode corps-noir : albedo = 0, donc tout passe (340.25 W/m²)
@@ -2606,35 +2752,30 @@ function updateFluxLabels(data) {
     updateLabel('forcing_total', forcing_total, 'watt');
 
     // Boutons
-    // CO2
-    const co2_percent = co2_ppm_num > 0 ? (co2_ppm_num / 10000).toFixed(1) : '0';
-    updateLabel('co2_percent', co2_percent, 'percent_simple');
+    // CO2 - afficher directement en ppm (pas de conversion en %)
+    const co2_ppm_display = co2_ppm_num > 0 ? co2_ppm_num.toFixed(0) : '0';
+    updateLabel('co2_percent', co2_ppm_display, 'ppm_simple');
     updateLabel('co2_forcing', forcing_CO2, 'watt_simple');
     
-    // Forcer le bouton CO2 en off/gris si la valeur est à 0%
-    if (btnCO2 && !btnCO2.classList.contains('disabled')) {
-        if (co2_ppm_num === 0 || parseFloat(co2_percent) === 0) {
-            btnCO2.classList.remove('checked');
-        }
-    }
+    // Ne plus forcer automatiquement le bouton CO2 en off/gris
+    // L'utilisateur contrôle l'état du bouton manuellement
 
-    // CH4
-    const ch4_percent = ch4_ppm_num > 0 ? (ch4_ppm_num / 10000).toFixed(1) : '0';
-    updateLabel('ch4_percent', ch4_percent, 'percent_simple');
-    // TODO: calculer forcing_CH4 si fonction disponible
-    updateLabel('ch4_forcing', 0, 'watt_simple');
+    // CH4 - afficher directement en ppm (pas de conversion en %)
+    const ch4_ppm_display = ch4_ppm_num > 0 ? ch4_ppm_num.toFixed(0) : '0';
+    updateLabel('ch4_percent', ch4_ppm_display, 'ppm_simple');
+    // Utiliser directement forcing_CH4 qui est déjà calculé avec les bonnes conditions
+    updateLabel('ch4_forcing', forcing_CH4, 'watt_simple');
     
-    // Forcer le bouton CH4 en off/gris si la valeur est à 0%
-    if (btnCH4 && !btnCH4.classList.contains('disabled')) {
-        if (ch4_ppm_num === 0 || parseFloat(ch4_percent) === 0) {
-            btnCH4.classList.remove('checked');
-        }
-    }
+    // Ne plus forcer automatiquement le bouton CH4 en off/gris
+    // L'utilisateur contrôle l'état du bouton manuellement
 
     // H2O : utiliser l'état du bouton (on/off) déjà calculé
+    // "--" seulement si h2o_enabled est true ET le bouton est activé
+    // "0%" si h2o_enabled est false (pas d'eau dans l'atmosphère pour cette époque)
     const h2o_percent = (h2o_enabled && h2o_button_checked) ? '--' : '0';
-    // Le forçage H2O doit être calculé seulement si le bouton est activé
-    const forcing_H2O_final = (h2o_enabled && h2o_button_checked) ? forcing_H2O : 0;
+    // Le forçage H2O doit être 0 si h2o_enabled est false (pas d'eau dans l'atmosphère)
+    // Utiliser directement forcing_H2O qui est déjà calculé avec les bonnes conditions
+    const forcing_H2O_final = h2o_enabled ? forcing_H2O : 0;
     updateLabel('h2o_percent', h2o_percent, 'percent_simple');
     updateLabel('h2o_forcing', forcing_H2O_final, 'watt_simple');
 
@@ -2642,56 +2783,57 @@ function updateFluxLabels(data) {
     const albedo_percent_value = albedo_num * 100;
     updateLabel('albedo_percent', albedo_percent_value, 'percent_simple');
     updateLabel('albedo_forcing', forcing_Albedo, 'watt_simple');
-    // Les labels du bouton albedo utilisent forcing_total et forcing_percent
-    // forcing_percent : pourcentage du forçage total (peut être calculé comme albedo_percent ou autre)
-    updateLabel('forcing_percent', albedo_percent_value, 'percent_simple');
+    // Les labels du bouton albedo utilisent forcing_total et albedo_percent
+    // albedo_percent : pourcentage total d'albedo (somme des %), pas le détail
+    updateLabel('albedo_percent', albedo_percent_value, 'percent_simple');
     
-    // Forcer le bouton albedo en off/gris si la valeur est à 0%
-    // Utiliser la variable btnAlbedo déjà déclarée plus haut
-    if (btnAlbedo && !btnAlbedo.classList.contains('disabled')) {
-        if (albedo_percent_value === 0 || Math.abs(albedo_percent_value) < 0.01) {
-            btnAlbedo.classList.remove('checked');
-        }
-        // Si la valeur n'est pas 0, on ne force pas l'activation
-        // L'utilisateur contrôle l'état du bouton
-    }
+    // passing_albedo_percent : pourcentage qui passe (1 - albedo_percent)
+    // Sur la flèche geometrie -> albedo
+    const passing_albedo_percent = (1 - albedo_num) * 100;
+    updateLabel('passing_albedo_percent', passing_albedo_percent, 'percent_simple');
+    
+    // Ne plus forcer automatiquement le bouton albedo en off/gris
+    // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%
 }
 
 // Exposer les fonctions globalement
 if (typeof window !== 'undefined') {
     window.updateFluxLabels = updateFluxLabels;
     
-    // Initialiser les variables globales selon l'état initial des boutons
-    const btnCO2 = document.getElementById('btn-co2');
-    const btnCH4 = document.getElementById('btn-methane');
-    const btnH2O = document.getElementById('btn-h2o');
-    const btnAlbedo = document.getElementById('btn-albedo');
+    // Initialiser les variables globales selon l'état initial des cellules (boutons du flux)
+    // Les boutons du flux sont des cellules, pas des boutons HTML
+    const cellCO2_init = document.getElementById('cell-co2');
+    const cellCH4_init = document.getElementById('cell-methane');
+    const cellH2O_init = document.getElementById('cell-h2o');
+    const cellAlbedo_init = document.getElementById('cell-albedo-btn');
     
     if (typeof window !== 'undefined') {
-        window.useCO2 = btnCO2 && btnCO2.classList.contains('checked');
-        window.useCH4 = btnCH4 && btnCH4.classList.contains('checked');
-        window.useH2O = btnH2O && btnH2O.classList.contains('checked');
-        window.useAlbedo = btnAlbedo && btnAlbedo.classList.contains('checked');
+        // Les boutons sont activés par défaut (voir createCell ligne 1822)
+        window.useCO2 = cellCO2_init ? cellCO2_init.classList.contains('checked') : true;
+        window.useCH4 = cellCH4_init ? cellCH4_init.classList.contains('checked') : true;
+        window.useH2O = cellH2O_init ? cellH2O_init.classList.contains('checked') : true;
+        window.useAlbedo = cellAlbedo_init ? cellAlbedo_init.classList.contains('checked') : true;
         
         // Initialiser les classes selected/unselected sur les cellules
         const buttonMap = [
-            { id: 'btn-co2', varName: 'useCO2', cellId: 'cell-co2' },
-            { id: 'btn-methane', varName: 'useCH4', cellId: 'cell-methane' },
-            { id: 'btn-h2o', varName: 'useH2O', cellId: 'cell-h2o' },
-            { id: 'btn-albedo', varName: 'useAlbedo', cellId: 'cell-albedo-btn' }
+            { cellId: 'cell-co2', varName: 'useCO2' },
+            { cellId: 'cell-methane', varName: 'useCH4' },
+            { cellId: 'cell-h2o', varName: 'useH2O' },
+            { cellId: 'cell-albedo-btn', varName: 'useAlbedo' }
         ];
         
-        buttonMap.forEach(({ id, varName, cellId }) => {
-            const button = document.getElementById(id);
+        buttonMap.forEach(({ cellId, varName }) => {
             const cell = document.getElementById(cellId);
-            if (button && cell) {
-                const isChecked = button.classList.contains('checked');
+            if (cell) {
+                const isChecked = cell.classList.contains('checked');
                 if (isChecked) {
                     cell.classList.add('selected');
                     cell.classList.remove('unselected');
+                    window[varName] = true;
                 } else {
                     cell.classList.remove('selected');
                     cell.classList.add('unselected');
+                    window[varName] = false;
                 }
             }
         });

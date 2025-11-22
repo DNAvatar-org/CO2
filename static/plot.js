@@ -476,6 +476,12 @@ function resizeCanvasToPlot(callback) {
             const resFactor = displayHeight / height;
             drawSpectrumBarOnlyWithSize(width, height, resFactor);
 
+            // Replacer les logos EDS (indicateurs de bandes d'absorption) après le resize
+            // Attendre un peu que Plotly ait fini de redimensionner
+            setTimeout(() => {
+                drawAbsorptionBandIndicators();
+            }, 50);
+
             resizeCanvasInProgress = false;
             resizeCanvasRetryCount = 0; // Réinitialiser le compteur en cas de succès
 
@@ -582,6 +588,117 @@ function getPlotlyFont(size, color) {
 
 // Mettre à jour le graphique
 // Exposer globalement pour être accessible depuis calculations.js
+// Fonction pour dessiner les indicateurs de bandes d'absorption sur le spectre
+// CO2 : ~15 μm (principale), pic à ~11 μm
+// CH4 : ~7.7 μm (principale), pic à ~23 μm
+// H2O : ~6.3 μm (principale), nombreuses bandes entre 5–8 μm
+function drawAbsorptionBandIndicators() {
+    const plotContainerWrapper2 = document.querySelector('.plot-container-wrapper');
+    if (!plotContainerWrapper2) return;
+    
+    // Supprimer les anciens indicateurs s'ils existent
+    const oldIndicators = plotContainerWrapper2.querySelectorAll('.absorption-band-indicator');
+    oldIndicators.forEach(ind => ind.remove());
+
+    const canvas = document.getElementById('spectral-visualization');
+    const plotContainer = document.getElementById('plot-container');
+    if (!canvas || !plotContainer || typeof Plotly === 'undefined') return;
+    
+    // Utiliser Plotly pour convertir les coordonnées de données en pixels
+    // Cela garantit que les logos sont alignés avec les bonnes graduations
+    const graph_max_um = 50;
+    const graph_min_um = 0;
+    // La bande spectrale est à bottom: 45px et fait 20px de hauteur
+    // Le centre vertical de la bande est à bottom: 35px (45 - 10)
+    const spectrumBarBottom = 45; // Position bottom de la bande spectrale
+    const spectrumBarHeight = 20; // Hauteur de la bande spectrale
+    const spectrumBarCenter = spectrumBarBottom - (spectrumBarHeight / 2); // Centre vertical de la bande
+    
+    // Récupérer les dimensions du graphique Plotly
+    const plotRect = plotContainer.getBoundingClientRect();
+    const wrapperRect = plotContainerWrapper2.getBoundingClientRect();
+    
+    // Utiliser Plotly pour obtenir la position X réelle d'une valeur de données
+    // La fonction getBoundingClientRect() nous donne la position du conteneur
+    // Plotly a des marges : PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }
+    const PLOT_MARGINS_LOCAL = { l: 70, r: 75, t: 0, b: 75 };
+    
+    // Fonction helper pour calculer la position X d'une longueur d'onde
+    // Utiliser la même logique que Plotly pour mapper les données aux pixels
+    const getXPosition = (lambda_um) => {
+        // Normaliser la valeur entre 0 et 1 dans la plage [0, 50]
+        const normalizedX = (lambda_um - graph_min_um) / (graph_max_um - graph_min_um);
+        
+        // Largeur du graphique Plotly (sans les marges)
+        const plotWidth = plotRect.width - PLOT_MARGINS_LOCAL.l - PLOT_MARGINS_LOCAL.r;
+        
+        // Position X dans le graphique Plotly (depuis la marge gauche)
+        const xInPlot = normalizedX * plotWidth;
+        
+        // Position X relative au wrapper (marge gauche + position dans le graphique)
+        const plotLeft = plotRect.left - wrapperRect.left;
+        return plotLeft + PLOT_MARGINS_LOCAL.l + xInPlot;
+    };
+
+    // Indicateurs de bandes d'absorption
+    // Utiliser la référence unique des logos depuis configOrganigramme.js
+    const LOGOS = typeof window !== 'undefined' && window.LOGOS ? window.LOGOS : {
+        CO2: '🏭',
+        CH4: '⛽',
+        H2O: '💧',
+        ALBEDO: '🪞'
+    };
+    
+    // CO2 : ~15 μm (principale), pic à ~11 μm
+    // CH4 : ~7.7 μm (principale), pic à ~23 μm
+    // H2O : ~6.3 μm (principale), nombreuses bandes entre 5–8 μm
+    const absorptionBands = [
+        { lambda: 6.3, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },  // H2O : ~6.3 μm (principale)
+        { lambda: 7.7, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' },  // CH4 : ~7.7 μm (principale)
+        { lambda: 11, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },  // CO2 : pic à ~11 μm
+        { lambda: 15, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },  // CO2 : ~15 μm (principale)
+        { lambda: 23, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' }   // CH4 : pic à ~23 μm
+    ];
+
+    absorptionBands.forEach(band => {
+        const xPos = getXPosition(band.lambda);
+        
+        // Créer un indicateur
+        const indicator = document.createElement('div');
+        indicator.className = 'absorption-band-indicator';
+        indicator.style.position = 'absolute';
+        indicator.style.left = `${xPos}px`;
+        // Centrer verticalement sur la bande spectrale
+        // Positionner le bottom au centre de la bande, puis utiliser transform pour centrer le logo
+        indicator.style.bottom = `${spectrumBarCenter}px`; // Positionner au centre de la bande
+        indicator.style.transform = 'translateY(-188%)'; // Déplacer vers le haut pour monter l'alignement
+        indicator.style.fontSize = '10px';
+        indicator.style.zIndex = '101';
+        indicator.style.pointerEvents = 'none';
+        indicator.style.display = 'flex';
+        indicator.style.alignItems = 'center';
+        indicator.style.justifyContent = 'center';
+        indicator.style.color = band.color;
+        indicator.style.textShadow = '0 0 2px rgba(0, 0, 0, 0.8)';
+        // Forcer la même hauteur pour tous les conteneurs
+        indicator.style.height = '12px';
+        indicator.style.lineHeight = '12px';
+        
+        // Utiliser le PNG pour CH4, emoji pour les autres
+        // Pas de label, juste le logo
+        // Forcer l'alignement vertical identique pour tous les logos
+        if (band.logoImg) {
+            indicator.innerHTML = `<img src="${band.logoImg}" style="width: 12px; height: 12px; display: block; margin: 0 auto; object-fit: contain; vertical-align: middle;" alt="${band.label}">`;
+        } else {
+            // Pour les emojis, forcer la même hauteur et alignement
+            indicator.style.fontSize = '12px';
+            indicator.innerHTML = `${band.logo}`;
+        }
+        
+        plotContainerWrapper2.appendChild(indicator);
+    });
+}
+
 window.updatePlot = function updatePlot(data) {
     const traces = [];
 
@@ -900,8 +1017,10 @@ window.updatePlot = function updatePlot(data) {
                 const charWidthCanvas = 5;
                 const effectiveWidth = canvasWidth - (charWidthCanvas * 2);
                 
-                // Plage de longueurs d'onde pour le texte : 1 μm à 20 μm (rouge vif)
-                const text_min_um = 1.0;   // Début à 1 micromètre (chaleur)
+                // Plage de longueurs d'onde pour le texte : 1.2 μm à 20 μm (rouge vif)
+                // Commencer à 1.2 μm pour que le "v" et le "i" soient sur le bleu vif (visible)
+                // (1 μm minimum pour wavelengthToColorReal, 1.2 μm pour avoir une couleur bleue visible)
+                const text_min_um = 1.2;   // Début à 1.2 micromètres (bleu vif visible)
                 const text_max_um = 20;    // Rouge vif (20 micromètres)
                 
                 // Calculer les positions X correspondantes sur le canvas
@@ -948,6 +1067,9 @@ window.updatePlot = function updatePlot(data) {
 
         plotContainerWrapper.appendChild(infraText);
     }
+
+    // Ajouter les indicateurs de bandes d'absorption sur le spectre
+    drawAbsorptionBandIndicators();
 
     updateLayout.yaxis2 = {
         title: {
