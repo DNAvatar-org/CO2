@@ -343,7 +343,7 @@ h1 {
     pointer-events: none;
     text-align: left;
     line-height: 1;
-    /* Hérite de la couleur par défaut (vert) */
+    color: white; /* Changé en blanc */
 }
 
 /* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
@@ -588,6 +588,9 @@ h1 {
     background: none !important; /* Pas de fond */
     border: none !important; /* Pas de border */
     border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     padding: 5px;
     transition: filter 0.3s ease;

@@ -45,6 +45,43 @@ const Z_NODE_INTERNAL = {
     LABEL: 20
 };
 
+// Constantes de positionnement des étiquettes sur les flèches
+const LABEL_POSITIONS = {
+    txtD: 0.2,      // 5% - Début de la flèche
+    txtF: 0.93,      // 93% - Fin de la flèche
+    txtF_albedo: 1.15 // 115% - Exception pour albedo (petite flèche jaune)
+};
+
+// Z-index spécifiques pour chaque nœud
+const NODE_Z_INDEX = {
+    SOLEIL: 12,        // Soleil (derrière geometrie)
+    GEOMETRIE: 13,     // Géométrie (petit nœud)
+    ESPACE1: 14,       // Satellite espace1
+    ALBEDO: 10,        // Albédo (derrière la Terre)
+    NOYAU: 20,         // Noyau (au centre de la Terre)
+    SURFACE: 15,       // Terre/Surface
+    ESPACE2: 14,       // Satellite espace2
+    REEMIS: 25,        // Réémis (devant tout)
+    // Boutons
+    CO2: 200,
+    METHANE: 200,
+    H2O: 200,
+    ALBEDO_BTN: 200
+};
+
+// Z-index spécifiques pour les flèches (pour gérer les cas où elles doivent passer devant/derrière des nœuds)
+const ARROW_Z_INDEX = {
+    DEFAULT: 10,           // Flèches normales (derrière les nœuds)
+    SOLEIL_GEOMETRIE: 10,  // Soleil -> Géométrie
+    GEOMETRIE_ALBEDO: 10,  // Géométrie -> Albédo (jaune)
+    GEOMETRIE_SURFACE: 10, // Géométrie -> Surface (jaune)
+    ALBEDO_ESPACE1: 10,    // Albédo -> Espace1 (réfléchi)
+    NOYAU_SURFACE: 22,     // Noyau -> Surface (devant la Terre, z-index 15)
+    SURFACE_ALBEDO: 22,    // Surface -> Albédo (rouge, devant la Terre)
+    ALBEDO_ESPACE2: 22,    // Albédo -> Espace2 (orange, devant la Terre)
+    REEMIS_SURFACE: 26     // Réémis -> Surface (rouge, devant tout)
+};
+
 // Configuration du rayonnement dynamique du noyau
 const coreRadiationConfig = {
     referenceFlux: 0.087,      // W/m² - Flux géothermique actuel (référence)
@@ -68,44 +105,123 @@ const coreRadiationConfig = {
 // Explication : La Terre est une sphère. Vu du Soleil, seule la face éclairée est visible (disque de rayon R, surface = πR²)
 // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
 const nodes = [
-    { id: 'soleil', logo: '🌞', x: centerX - 140, y: centerY - 155, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [{ text: '3.8×10<sup>26</sup> W ', dataId: 'solar_power_total' }], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, logoScale: 1.0, logoOffsetY: 1 },
+    { id: 'soleil', logo: '🌞', x: centerX - 140, y: centerY - 155, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [{ text: '3.8×10<sup>26</sup> W ', dataId: 'solar_power_total' }], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, zIndex: 12, logoScale: 1.0, logoOffsetY: 1 },
 
-    { id: 'geometrie', logo: '🎱', x: centerX + 65, y: centerY - 155, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 1, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: [], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 11, logoScale: 1.1, logoOffsetY: 2 },
+    { id: 'geometrie', logo: '🎱', x: centerX + 65, y: centerY - 155, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 1, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: [], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 13, logoScale: 1.1, logoOffsetY: 2 },
 
-    { id: 'espace1', logo: '', x: centerX + 150, y: centerY - 200, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null },
+    { id: 'espace1', logo: '🛰', x: centerX + 150, y: centerY - 170, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null, zIndex: 14 },
 
-    { id: 'albedo', logo: '🪞', x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 250, openingAngle: 345, color: 'white', rotation: 297 }, zIndex: 10, logoScale: 0.1 },
+    { id: 'albedo', logo: '🪞', x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
 
     { id: 'noyau', logo: '🌕', x: centerX - 2, y: earthCenterY - 1, radius: 30, fillColor: 'rgba(255, 69, 0, 0)', strokeSize: 7, strokeColor: '#ff5500', left: [], right: [], top: [], bottom: [{ text: '~5700 K ', dataId: 'core_temperature' }], tooltip: 'Noyau - Géothermie', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 0 }, zIndex: 20, logoScale: 0.8 },
 
-    { id: 'surface', logo: '🌍', x: centerX, y: earthCenterY, radius: radiusTerre, fillColor: 'rgba(0, 200, 255, 0.3)', strokeColor: '#00eeff', strokeSize: 1, left: [], right: [], top: '', bottom: '', tooltip: 'Terre', radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' }, zIndex: 15, logoScale: 0.95, logoOffsetY: 5 },
+    { 
+        id: 'terre', 
+        x: centerX, 
+        y: earthCenterY, 
+        epoch: [
+            {
+                epochName: 'Corps noir',
+                logo: 'fonts/pics/corps_noir.png',
+                radius: radiusTerre,
+                fillColor: 'rgba(0, 0, 0, 0.3)',
+                strokeColor: '#000000',
+                strokeSize: 1
+            },
+            {
+                epochName: 'Hadéen',
+                logo: 'fonts/pics/hadeen.png',
+                radius: radiusTerre,
+                fillColor: 'rgba(255, 69, 0, 0.3)',
+                strokeColor: '#ff4500',
+                strokeSize: 1
+            },
+            {
+                epochName: 'Archéen',
+                logo: 'fonts/pics/archeen.png',
+                radius: radiusTerre,
+                fillColor: 'rgba(0, 100, 200, 0.3)',
+                strokeColor: '#0064c8',
+                strokeSize: 1
+            },
+            {
+                epochName: 'Protérozoïque',
+                logo: '🌍',
+                radius: radiusTerre,
+                fillColor: 'rgba(0, 200, 100, 0.3)',
+                strokeColor: '#00c864',
+                strokeSize: 1
+            },
+            {
+                epochName: 'Mésozoïque',
+                logo: '🌎',
+                radius: radiusTerre,
+                fillColor: 'rgba(0, 200, 255, 0.3)',
+                strokeColor: '#00c8ff',
+                strokeSize: 1
+            },
+            {
+                epochName: 'Crétacé',
+                logo: '🌏',
+                radius: radiusTerre,
+                fillColor: 'rgba(0, 200, 255, 0.3)',
+                strokeColor: '#00c8ff',
+                strokeSize: 1
+            },
+            {
+                epochName: 'Cénozoïque',
+                logo: '🌍',
+                radius: radiusTerre,
+                fillColor: 'rgba(0, 200, 255, 0.3)',
+                strokeColor: '#00c8ff',
+                strokeSize: 1
+            },
+            {
+                epochName: 'Aujourd\'hui',
+                logo: '🌏',
+                radius: radiusTerre,
+                fillColor: 'rgba(0, 200, 255, 0.3)',
+                strokeColor: '#00eeff',
+                strokeSize: 1
+            }
+        ],
+        left: [], 
+        right: [], 
+        top: '', 
+        bottom: '', 
+        tooltip: 'Terre', 
+        radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' }, 
+        zIndex: 15, 
+        logoScale: 0.95, 
+        logoOffsetY: 5 
+    },
 
-    { id: 'espace2', logo: '🛰', x: centerX + 140, y: centerY + 300, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null },
+    { id: 'espace2', logo: '🛰', x: centerX + 150, y: centerY + 310, radius, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
 
-    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX - 45, y: earthCenterY + 140, radius: 10, logoScale: 1.0, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'red', strokeSize: 1, left: [{ text: 'Forçage<br>Radiatif', dataId: 'forcing_label' }], right: [{ text: '0.00<br>W/m²', dataId: 'forcing_total' }], top: '', bottom: '', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
+    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [{ text: 'Forçage<br>Radiatif', dataId: 'forcing_label' }], right: '', top: '', bottom: '', tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
 
     // Boutons
     //+circleMiddleRadius*Math.cos(135*Math.PI/180)
     //+circleMiddleRadius*Math.sin(135*Math.PI/180)
     //type: 'button',
 
-    { id: 'co2', type: 'button', logo: '🌱', x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 10, logoScale: 1.0 },
-    { id: 'methane', type: 'button', logo: '⛽', x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'ch4_percent' }, { text: '0 W/m²', dataId: 'ch4_forcing' }], right: [], top: '', bottom: '', tooltip: 'CH₄' },
-    { id: 'h2o', type: 'button', logo: '💧', x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing' }], tooltip: 'H₂O' },
-    { id: 'albedo-btn', type: 'button', logo: '🪞', x: centerX + circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0 W/m²', dataId: 'forcing_total' }], bottom: [{ text: '0%', dataId: 'forcing_percent' }], tooltip: 'Albédo' }
+    { id: 'co2', type: 'button', logo: '🌱', x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 10, logoScale: 1.0, zIndex: 200 },
+    { id: 'methane', type: 'button', logo: '⛽', x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0%', dataId: 'ch4_percent' }, { text: '0 W/m²', dataId: 'ch4_forcing' }], right: [], top: '', bottom: '', tooltip: 'CH₄', zIndex: 200 },
+    { id: 'h2o', type: 'button', logo: '💧', x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing' }], tooltip: 'H₂O', zIndex: 200 },
+    { id: 'albedo-btn', type: 'button', logo: '🪞', x: centerX + circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0 W/m²', dataId: 'forcing_total' }], bottom: [{ text: '0%', dataId: 'forcing_percent' }], tooltip: 'Albédo', zIndex: 200 }
 ];
 
 // Définition du graphe : arcs (flèches)
 // Les labels peuvent être des strings (statiques) ou des objets avec { text, dataId } (dynamiques)
 const arcs = [
-    { from: 'soleil', to: 'geometrie', label: { name: { text: '1UA', dataId: 'distance_1ua' }, txtD: '', txtF: '' } },
-    { from: 'geometrie', to: 'albedo', label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_average_wm' }, txtF: { text: 'Albédo: ⛅50% + ❄️20%', dataId: 'albedo_percents' } } },
-    { from: 'geometrie', to: 'surface', label: { name: '', txtF: { text: '0.0 W/m²', dataId: 'solar_flux_absorbed_wm' } } },
-    { from: 'albedo', to: 'espace1', label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' } },
-    { from: 'noyau', to: 'surface', label: { name: { text: '0.0<br>W/m²', dataId: 'core_flux_wm' }, txtF: '' } },
-    { from: 'surface', to: 'albedo', label: { name: '', txtD: { text: '0.0<br>W/m²', dataId: 'solar_flux_absorbed_wm' } }, color: 'red' },//tout doit etre retourné
-    { from: 'albedo', to: 'espace2', label: { name: '', txtD: '' }, color: '#ff5500' },
-    { from: 'reemis', to: 'surface', label: { name: '', size: '', txtD: '', relatif: 'bottom' } }
+    { from: 'soleil', to: 'geometrie', zIndex: 10, label: { name: { text: '1UA', dataId: 'distance_1ua' }, txtD: '', txtF: '' } },
+    { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_average_wm' }, txtF: { text: 'Albédo: ⛅50% + ❄️20%', dataId: 'albedo_percents' } } },
+    { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: { text: '0.0 W/m²', dataId: 'solar_flux_absorbed_wm' } } },
+    { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' } },
+    { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0.0<br>W/m²', dataId: 'core_flux_wm' }, txtF: '' } },
+    { from: 'terre', to: 'albedo', zIndex: 22, label: { name: '', txtD: { text: '0.0<br>W/m²', dataId: 'solar_flux_absorbed_wm' } }, color: 'red' },//tout doit etre retourné
+    { from: 'albedo', to: 'espace2', zIndex: 22, label: { name: '', txtD: { text: '0.0<br>W/m²', dataId: 'flux_ejected_wm' } }, color: '#ff5500' },
+    { from: 'reemis', to: 'terre', zIndex: 26, label: { name: { text: '0.0<br>W/m²', dataId: 'forcing_total' }, txtD: '' }, color: '#ff0000' },
 ];
 
 // Définition de la chronologie (timeline)
@@ -115,7 +231,7 @@ const timeline = [
         type: 'epoch',
         id: 'corps-noir',
         name: 'Corps noir',
-        logo: 'assets/icons/corps_noir.svg',
+        logo: 'fonts/pics/corps_noir.png',
         title: 'Corps noir - État initial (206.1K), avant formation de la Terre, pas de noyau différencié, pas d\'atmosphère'
     },
     {
@@ -126,7 +242,7 @@ const timeline = [
         type: 'epoch',
         id: 'hadeen',
         name: 'Hadéen',
-        logo: 'assets/icons/hadeen.svg',
+        logo: 'fonts/pics/hadeen.png',
         title: 'Hadéen (-4500 à -4000 Ma)'
     },
     {
@@ -137,7 +253,7 @@ const timeline = [
         type: 'epoch',
         id: 'archeen',
         name: 'Archéen',
-        logo: 'assets/icons/archeen.svg',
+        logo: 'fonts/pics/archeen.png',
         title: 'Archéen (-4000 à -2500 Ma)'
     },
     {
@@ -196,3 +312,6 @@ const timeline = [
         title: 'État d\'aujourd\'hui'
     }
 ];
+
+// Exposer la configuration globalement pour accès depuis main.js
+window.configOrganigramme = { nodes, arcs, timeline };

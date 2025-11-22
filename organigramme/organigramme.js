@@ -413,9 +413,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         cell.style.transform = 'translate(-50%, -50%)'; // Centre exactement sur (x, y) sans décalage
     }
 
-    if (nodeId === 'reemis' || nodeId === 'surface') {
-    }
-
     // Cercle en arrière-plan (derrière le tableau)
     // Le centre de la case centrale [1,1] doit être au centre de la grille dynamique
     // Avec transform: translate(-50%, -50%) sur la grille, ce centre sera à (x, y)
@@ -464,6 +461,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
+            img.style.display = 'block';
+            img.style.margin = '0 auto';
             logoSpan.appendChild(img);
         } else {
             // Sinon c'est un emoji/texte
@@ -792,9 +791,9 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
         label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
         label.style.position = 'absolute';
         label.style.left = posX + 'px';
-        // Décalage vertical pour placer l'étiquette au-dessus de la flèche
-        // Sauf pour le 'name' (milieu) qui doit être centré sur la flèche
-        const labelOffset = isName ? 0 : 15;
+        // Décalage vertical : 0 pour tout le monde (centré sur la flèche)
+        // L'utilisateur a clarifié que "au dessus" concernait le Z-index
+        const labelOffset = 0;
         label.style.top = (posY - labelOffset) + 'px';
         label.style.transform = 'translate(-50%, -50%)';
         // Z-index: au-dessus des flèches
@@ -825,10 +824,10 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
     // Récupérer la taille depuis labelObj.size
     const labelSize = labelObj.size || null;
 
-    // txtD : au début de la flèche (0% du chemin)
+    // txtD : au début de la flèche (LABEL_POSITIONS.txtD)
     if (labelObj.txtD) {
-        const pos1X = x1 + (x2 - x1) * 0.0;
-        const pos1Y = y1 + (y2 - y1) * 0.0;
+        const pos1X = x1 + (x2 - x1) * LABEL_POSITIONS.txtD;
+        const pos1Y = y1 + (y2 - y1) * LABEL_POSITIONS.txtD;
         createLabel(labelObj.txtD, pos1X, pos1Y, false, labelSize, 'txtD');
     }
 
@@ -840,24 +839,19 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
     }
 
     // txtF : à la fin de la flèche (90% du chemin)
-    // Si name est vide et txtD est aussi vide, placer txtF au milieu (50%) au lieu de 90%
     if (labelObj.txtF) {
-        const nameText = getLabelText(labelObj.name || '');
-        const txtDText = getLabelText(labelObj.txtD || '');
-        const hasName = nameText && nameText.trim() !== '';
-        const hasTxtD = txtDText && txtDText.trim() !== '';
+        // Positionner à LABEL_POSITIONS.txtF (juste avant le bout de la flèche)
+        // Note: x2, y2 sont déjà ajustés avec la marge dans createArrow
+        let percent = LABEL_POSITIONS.txtF;
 
-        let pos2X, pos2Y;
-        if (!hasName && !hasTxtD) {
-            // Si name et txtD sont vides, placer txtF au milieu
-            pos2X = (x1 + x2) / 2;
-            pos2Y = (y1 + y2) / 2;
-        } else {
-            // Sinon, positionner à 105% (un peu après le bout de la flèche pour être bien "au bout")
-            // Note: x2, y2 sont déjà ajustés avec la marge dans createArrow
-            pos2X = x1 + (x2 - x1) * 1.05;
-            pos2Y = y1 + (y2 - y1) * 1.05;
+        // Exception pour 'albedo_percents' (petite flèche jaune)
+        // L'utilisateur signale que le milieu n'est pas sur le chapeau
+        if (labelObj.txtF.dataId === 'albedo_percents') {
+            percent = LABEL_POSITIONS.txtF_albedo; // Pousser encore plus loin pour celle-ci
         }
+
+        const pos2X = x1 + (x2 - x1) * percent;
+        const pos2Y = y1 + (y2 - y1) * percent;
         createLabel(labelObj.txtF, pos2X, pos2Y, false, labelSize, 'txtF');
     }
 
@@ -1429,8 +1423,8 @@ function generateArrows() {
         const finalX2 = x2 - realUnitX * marginEnd;
         const finalY2 = y2 - realUnitY * marginEnd;
 
-        // Les flèches sont toujours juste en dessous de la grid de départ (donc en dessous des étiquettes)
-        const arrowZIndex = Z_LAYERS.ARROW;
+        // Les flèches utilisent le z-index de l'arc si défini, sinon Z_LAYERS.ARROW par défaut
+        const arrowZIndex = arc.zIndex !== undefined ? arc.zIndex : Z_LAYERS.ARROW;
         // Couleur : arc.color > strokeColor du cercle de départ > bleu standard
         const arrowColor = arc.color || (idDep.strokeColor && idDep.strokeColor.trim() !== '' ? idDep.strokeColor : '#667eea');
 
@@ -1543,7 +1537,7 @@ function generateArrows() {
 calculatePositions();
 
 // Ordre spécifique des cellules dans le DOM (du plus bas au plus haut)
-const cellOrder = ['soleil', 'geometrie', 'albedo', 'espace1', 'surface', 'noyau', 'espace2', 'reemis'];
+const cellOrder = ['soleil', 'geometrie', 'albedo', 'espace1', 'terre', 'noyau', 'espace2', 'reemis'];
 // effetSerre n'est plus dans l'ordre car c'est un rectangle, pas une cellule circulaire
 
 // Créer les cellules dans l'ordre spécifié
@@ -1675,26 +1669,56 @@ cellOrder.forEach(nodeId => {
         node.logoScale = 0.5;
     }
 
+    // Gérer le cas spécial du node 'terre' avec tableau epoch
+    let nodeConfig = node;
+    if (node.id === 'terre' && node.epoch && Array.isArray(node.epoch)) {
+        // Trouver la configuration de l'époque courante
+        const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
+        const epochConfig = node.epoch.find(e => e.epochName === currentEpochName);
+        
+        if (epochConfig) {
+            // Créer une configuration fusionnée avec les propriétés de l'époque
+            nodeConfig = {
+                ...node,
+                logo: epochConfig.logo,
+                radius: epochConfig.radius,
+                fillColor: epochConfig.fillColor,
+                strokeColor: epochConfig.strokeColor,
+                strokeSize: epochConfig.strokeSize
+            };
+        } else {
+            // Fallback : utiliser la première époque si aucune correspondance
+            nodeConfig = {
+                ...node,
+                logo: node.epoch[0].logo,
+                radius: node.epoch[0].radius,
+                fillColor: node.epoch[0].fillColor,
+                strokeColor: node.epoch[0].strokeColor,
+                strokeSize: node.epoch[0].strokeSize
+            };
+        }
+    }
+
     const cell = createCell(
-        node.x,
-        node.y,
-        node.radius,
-        node.fillColor,
-        node.strokeColor,
-        node.logo,
-        node.left || [],
-        node.right || [],
-        Array.isArray(node.top) ? node.top : (node.top && node.top !== '' ? [node.top] : []),
-        Array.isArray(node.bottom) ? node.bottom : (node.bottom && node.bottom !== '' ? [node.bottom] : []),
-        node.tooltip || null,
+        nodeConfig.x,
+        nodeConfig.y,
+        nodeConfig.radius,
+        nodeConfig.fillColor,
+        nodeConfig.strokeColor,
+        nodeConfig.logo,
+        nodeConfig.left || [],
+        nodeConfig.right || [],
+        Array.isArray(nodeConfig.top) ? nodeConfig.top : (nodeConfig.top && nodeConfig.top !== '' ? [nodeConfig.top] : []),
+        Array.isArray(nodeConfig.bottom) ? nodeConfig.bottom : (nodeConfig.bottom && nodeConfig.bottom !== '' ? [nodeConfig.bottom] : []),
+        nodeConfig.tooltip || null,
         null, // No radiations here, we'll create them later (step 8)
-        node.rectangle || null,
-        node.fillImage || null,
-        node.id, // Pass the node ID to create the cell ID
-        node.zIndex || null, // Pass the custom z-index
-        node.logoScale || 1.4, // Pass the logo scale (default 1.4)
-        node.logoOffsetY || 0, // Pass the vertical logo offset (default 0)
-        node.strokeSize || 4 // Pass the border thickness (default 4px)
+        nodeConfig.rectangle || null,
+        nodeConfig.fillImage || null,
+        nodeConfig.id, // Pass the node ID to create the cell ID
+        nodeConfig.zIndex || null, // Pass the custom z-index
+        nodeConfig.logoScale || 1.4, // Pass the logo scale (default 1.4)
+        nodeConfig.logoOffsetY || 0, // Pass the vertical logo offset (default 0)
+        nodeConfig.strokeSize || 4 // Pass the border thickness (default 4px)
     );
 
     createdCells[node.id] = cell;
@@ -2082,6 +2106,9 @@ function generateTimelineFromConfig() {
                 img.alt = item.name;
                 img.style.width = '24px';
                 img.style.height = '24px';
+                img.style.objectFit = 'contain';
+                img.style.display = 'block';
+                img.style.margin = '0 auto';
                 img.style.pointerEvents = 'none'; // Pour que le clic passe au bouton
                 button.appendChild(img);
             } else {
@@ -2297,6 +2324,11 @@ function updateFluxLabels(data) {
     // Albedo -> Espace1 : flux total au sommet
     updateLabel('solar_flux_reflected_wm', flux_reflected, 'watt');
 
+    // Albedo -> Espace2 : flux éjecté (absorbé - forçage)
+    // flux_ejected_wm = solar_flux_absorbed_wm - forcing_total
+    const flux_ejected = solar_flux_absorbed - forcing_total;
+    updateLabel('flux_ejected_wm', flux_ejected, 'watt');
+
 
     // Noyau -> Surface : géothermie (flux dynamique selon l'époque)
     // Récupérer le flux géothermique de l'époque courante
@@ -2390,7 +2422,7 @@ function updateFluxLabels(data) {
     }
 
     // Griser la flèche noyau → surface en mode corps noir
-    const noyauArrow = document.querySelector('[data-from="noyau"][data-to="surface"]');
+    const noyauArrow = document.querySelector('[data-from="noyau"][data-to="terre"]');
     if (noyauArrow) {
         if (isCorpsNoir) {
             noyauArrow.style.backgroundColor = '#666'; // Gris
@@ -2450,3 +2482,5 @@ if (typeof window !== 'undefined') {
     }
 }
 
+// Exposer createCell globalement pour accès depuis main.js
+window.createCell = createCell;

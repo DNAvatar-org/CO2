@@ -20,7 +20,7 @@ const PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }; // Marges ajustées pour év
 // Note: Ces marges sont utilisées par Plotly pour positionner le graphique dans le conteneur
 
 // Couleur de la tropopause (bleu vif) - utilisée pour la ligne et l'annotation
-const ColorTropo = '#7799FF'; 
+const ColorTropo = '#7799FF';
 
 // Configuration de l'annotation Stratosphère/Troposphère
 const STRATOSPHERE_ANNOTATION_X = 1.0; // Position X en coordonnées paper (1.0 = bord droit de l'axe)
@@ -534,7 +534,7 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
     // Plage de l'axe X du graphique : 0 à 50 μm
     const graph_min_um = 0;
     const graph_max_um = 50;
-    
+
     // Calculer effectiveWidth une seule fois
     const effectiveWidth = width - (charWidth * 2);
 
@@ -557,7 +557,7 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
         ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
         ctx.fillRect(x, spectrumBarY, 1, spectrumBarHeight);
     }
-    
+
 }
 
 // Fonction helper pour obtenir la famille de police par défaut
@@ -615,7 +615,7 @@ window.updatePlot = function updatePlot(data) {
         } else {
             hoverText = "Courbe d'équilibre d'émission de la terre";
         }
-        
+
         return {
             x: lambda_planck,
             y: flux,
@@ -639,11 +639,11 @@ window.updatePlot = function updatePlot(data) {
         });
         // Utiliser la couleur fournie (noir pour les références, couleur de l'absorption pour la courbe courante)
         const lineColor = color || 'black';
-        
+
         // Tooltip : "Courbe d'émission du corps noir" avec température (le corps noir est par définition à l'équilibre)
         const tempC = (T - 273.15).toFixed(1);
         const hoverText = `Courbe d'émission du corps noir à ${T.toFixed(1)} K (${tempC}°C)`;
-        
+
         return {
             x: lambda_planck,
             y: planck,
@@ -850,25 +850,25 @@ window.updatePlot = function updatePlot(data) {
             if (oldTempDisplay) {
                 oldTempDisplay.remove();
             }
-            
+
             // Créer un nouvel élément pour afficher la température
             const tempDisplay = document.createElement('div');
             tempDisplay.className = 'temp-display-cyan';
-            
+
             // Calculer les températures
             const tempK = T_current_display.toFixed(1);
             const tempC = (T_current_display - 273.15).toFixed(1);
-            const tempF = ((T_current_display - 273.15) * 9/5 + 32).toFixed(1);
-            
+            const tempF = ((T_current_display - 273.15) * 9 / 5 + 32).toFixed(1);
+
             // Créer le contenu sur 3 lignes
             tempDisplay.innerHTML = `${tempK} K<br>${tempC}°C<br>${tempF}°F`;
-            
+
             // Pas de couleur imposée, hérite du body (vert par défaut)
-            
+
             plotContainer.appendChild(tempDisplay);
         }
     }
-    
+
     // Afficher le texte "via lunettes infrarouge" en bas à droite, au-dessus de la bande spectrale
     const plotContainerWrapper = document.querySelector('.plot-container-wrapper');
     if (plotContainerWrapper) {
@@ -877,12 +877,56 @@ window.updatePlot = function updatePlot(data) {
         if (oldInfraText) {
             oldInfraText.remove();
         }
-        
+
         // Créer un nouvel élément pour afficher le texte
         const infraText = document.createElement('div');
         infraText.className = 'infra-note';
-        infraText.textContent = 'via lunettes infrarouge logarithmique';
-        
+        const text = 'via lunettes infrarouge logarithmique';
+
+        // Utiliser les couleurs précalculées si disponibles, sinon calculer maintenant
+        if (!window.infraTextColors) {
+            // Première fois : calculer et stocker les couleurs
+            const canvas = document.getElementById('spectral-visualization');
+            if (canvas) {
+                const canvasWidth = canvas.width;
+                const charWidth = 5; // Largeur approximative d'un caractère en pixels (police monospace)
+                const textLeft = 85; // Position left du texte selon le CSS
+
+                window.infraTextColors = [];
+                for (let i = 0; i < text.length; i++) {
+                    const charX = textLeft + (i * charWidth);
+
+                    // Mapper la position X à la longueur d'onde (0 à 50 μm)
+                    const graph_min_um = 0;
+                    const graph_max_um = 50;
+                    const charWidthCanvas = 5;
+                    const effectiveWidth = canvasWidth - (charWidthCanvas * 2);
+                    const normalizedX = Math.max(0, Math.min(1, (charX - charWidthCanvas) / effectiveWidth));
+                    const lambda_um = graph_min_um + normalizedX * (graph_max_um - graph_min_um);
+                    const lambda_m = lambda_um * 1e-6;
+
+                    // Obtenir la couleur pour cette longueur d'onde
+                    const lambda_min = 0.1e-6;
+                    const lambda_max = 100e-6;
+                    const [r, g, b] = wavelengthToColor(lambda_m, lambda_min, lambda_max);
+
+                    window.infraTextColors.push(`rgb(${r}, ${g}, ${b})`);
+                }
+            }
+        }
+
+        // Appliquer les couleurs précalculées
+        if (window.infraTextColors && window.infraTextColors.length === text.length) {
+            let html = '';
+            for (let i = 0; i < text.length; i++) {
+                html += `<span style="color: ${window.infraTextColors[i]};">${text[i]}</span>`;
+            }
+            infraText.innerHTML = html;
+        } else {
+            // Fallback si pas de couleurs précalculées
+            infraText.textContent = text;
+        }
+
         plotContainerWrapper.appendChild(infraText);
     }
 
@@ -986,19 +1030,19 @@ function wavelengthToRGB(lambda_nm) {
     let r, g, b;
     let attenuation;
 
-    const lmin=380;
-    const lviolet=440;
-    const lblue=490;
-    const lcyan=510;
-    const lgreen=580;
-    const lorange=645;
-    const lred=789;
-    const effacement_fin=20;
+    const lmin = 380;
+    const lviolet = 440;
+    const lblue = 490;
+    const lcyan = 510;
+    const lgreen = 580;
+    const lorange = 645;
+    const lred = 789;
+    const effacement_fin = 20;
 
     if (lambda_nm >= lmin && lambda_nm < lviolet) {
         // Violet (380-440 nm)
         attenuation = 0.3 + 0.7 * (lambda_nm - lmin) / (lviolet - lmin);
-        attenuation = Math.max(0,Math.min(1,(lviolet - lambda_nm) / (lviolet - lmin)));
+        attenuation = Math.max(0, Math.min(1, (lviolet - lambda_nm) / (lviolet - lmin)));
         r = ((-(lambda_nm - lviolet) / (lviolet - lmin)) * attenuation) * 255;
         g = 0;
         b = 255 * attenuation;
@@ -1023,7 +1067,7 @@ function wavelengthToRGB(lambda_nm) {
         g = (-(lambda_nm - lorange) / (lorange - lgreen)) * 255;
         b = 0;
     } else if (lambda_nm >= lorange && lambda_nm <= lred) {
-        attenuation = Math.max(0,Math.min(1,(lred - effacement_fin - lambda_nm) / (lred - effacement_fin - lorange)));
+        attenuation = Math.max(0, Math.min(1, (lred - effacement_fin - lambda_nm) / (lred - effacement_fin - lorange)));
         r = 255 * attenuation;
         g = 0;
         b = 0;
@@ -1034,9 +1078,9 @@ function wavelengthToRGB(lambda_nm) {
         b = 0;
     }
 
-    return [Math.round(Math.max(0, Math.min(255, r))), 
-            Math.round(Math.max(0, Math.min(255, g))), 
-            Math.round(Math.max(0, Math.min(255, b)))];
+    return [Math.round(Math.max(0, Math.min(255, r))),
+    Math.round(Math.max(0, Math.min(255, g))),
+    Math.round(Math.max(0, Math.min(255, b)))];
 }
 
 
@@ -1050,17 +1094,17 @@ function Hz2RGB(freq_10_14) {
     if (freq_10_14 > 7.89) {
         return [0, 0, 0]; // Invisible (UV ou IR)
     }
-    
+
     // Convertir la fréquence en longueur d'onde : λ = c / ν
     // c = 3×10^8 m/s, ν = freq_10_14 × 10^14 Hz
     // λ (nm) = (3×10^8) / (freq_10_14 × 10^14) × 10^9 = 3000 / freq_10_14
     const lambda_nm = 3000 / freq_10_14;
     // 3000/4.29=699.3006993006993
     // 3000/7.89=379.9746514575412
-    
+
     // Clamper entre 380 et 700 nm
     //const lambda_nm_clamped = Math.max(380, Math.min(700, lambda_nm));
-    
+
     // Convertir en RGB selon le spectre visible
     return wavelengthToRGB(lambda_nm);
 }
@@ -1073,21 +1117,21 @@ function wavelengthToColorReal(lambda_m, lambda_range_min, lambda_range_max) {
     if (lambda_um <= 1) {
         return [0, 0, 0]; // Point singulier : invisible
     }
-    
-    
+
+
     // lambda_um= 1 -> 5 -> 10 -> 50
     const log_lambda = Math.log10(lambda_um);
     // log_lambda= 0 -> 0.7 -> 1 -> 1.7
-    const effacement_debut=30;
-    const hz = 1598.5 / (log_lambda+2.026);
+    const effacement_debut = 30;
+    const hz = 1598.5 / (log_lambda + 2.026);
     // hz= 789 -> ... -> ... -> 429 (en THz)
     // vis.789        ->        429 THz Delta=360
     // vis.380        ->        700 nm Delta=320
-    
+
     // Conversion THz → unités de 10^14 Hz
     // 789 THz = 789 × 10^12 Hz = 7.89 × 10^14 Hz
-    const freq_10_14 = (hz-effacement_debut) / 100;
-    
+    const freq_10_14 = (hz - effacement_debut) / 100;
+
     return Hz2RGB(freq_10_14);
 }
 
@@ -1104,30 +1148,30 @@ function wavelengthToColor(lambda_m, lambda_range_min, lambda_range_max) {
         // Algorithme if (ton graph) : if pour le visible, log pour l'IR, noir pour l'UV
         const lambda_um = lambda_m * 1e6;
         const lambda_nm = lambda_m * 1e9;
-        
+
         // Avant l'UV (< 380 nm) : toujours noir
         if (lambda_nm < 380) {
             return [0, 0, 0];
         }
-        
+
         // Si dans le spectre visible (380-789 nm), utiliser les if
         if (lambda_nm >= 380 && lambda_nm <= 789) {
             const [r, g, b] = wavelengthToRGB(lambda_nm);
             // S'assurer qu'il n'y a pas de valeurs négatives
             return [Math.max(0, r), Math.max(0, g), Math.max(0, b)];
         }
-        
+
         // Pour l'IR (lambda_nm > 789), utiliser la conversion log
         // mais condensée : log_lambda = log10(lambda_um), hz = 1598.5 / (log_lambda + 2.026)
         if (lambda_um <= 1) {
             return [0, 0, 0]; // Point singulier : invisible
         }
-        
+
         const log_lambda = Math.log10(lambda_um);
         const effacement_debut = 30;
         const hz = 1598.5 / (log_lambda + 2.026);
         const freq_10_14 = (hz - effacement_debut) / 100;
-        
+
         return Hz2RGB(freq_10_14);
     }
 }
@@ -1606,6 +1650,6 @@ function drawSpectralVisualization(canvas, data) {
     // Dessiner la barre de spectre en bas (utilise la fonction dédiée pour éviter la duplication)
     // Passer le resolutionFactor pour que la barre reste à 20px d'affichage
     drawSpectrumBarOnlyWithSize(width, height, resolutionFactor);
-    
+
 }
 
