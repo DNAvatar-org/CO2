@@ -722,7 +722,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     const label = document.createElement('div');
                     label.className = 'flux-label';
                     if (dataId) label.setAttribute('data-id', dataId);
-                    
+
                     // Patch spécifique pour albedo_percents : margin-top pour aligner en haut du logo
                     if (dataId === 'albedo_percents') {
                         label.style.marginTop = '115px';
@@ -2241,8 +2241,13 @@ function generateTimelineFromConfig() {
 
 // Fonction pour mettre à jour les labels du flux avec les valeurs calculées
 // Appelée pendant le déroulement de l'algorithme (dichotomie)
-function updateFluxLabels(data) {
+window.updateFluxLabels = function (data) {
     if (!data) return;
+
+    // Déléguer la mise à jour des flux d'entrée (Soleil, Noyau) au FluxManager
+    if (window.FluxManager && window.currentEpochName) {
+        window.FluxManager.updateAllFluxes(window.currentEpochName);
+    }
 
     // Récupérer les valeurs calculées (avec vérifications pour null/undefined)
     const T0 = (data.T0 !== null && data.T0 !== undefined) ? data.T0 : (data.temp_surface !== null && data.temp_surface !== undefined ? data.temp_surface : 0);
@@ -2284,10 +2289,12 @@ function updateFluxLabels(data) {
     const co2_ppm_num = Number(co2_ppm) || 0;
     const ch4_ppm_num = Number(ch4_ppm) || 0;
 
-    // Constantes
-    const SOLAR_CONSTANT = (typeof window !== 'undefined' && window.SOLAR_CONSTANT) || 1366;
+    // Récupérer les constantes mises à jour par FluxManager pour les calculs locaux si besoin
+    const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1361;
+    const GEOTHERMIE_FLUX = window.GEOTHERMAL_FLUX || 0.087;
+
+    // Pour les calculs de moyenne (si utilisés plus bas)
     const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
-    const GEOTHERMIE_FLUX = 0.087; // W/m² (fixe)
 
     // Détecter le mode "Corps noir" : utiliser le nom de l'époque stocké globalement
     // En mode Corps noir, on désactive tous les éléments atmosphériques

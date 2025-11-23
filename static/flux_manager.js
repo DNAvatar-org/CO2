@@ -1,0 +1,131 @@
+// ============================================================================
+// File: flux_manager.js
+// Desc: Gestion centralisée des flux (valeurs et affichage)
+// ============================================================================
+
+(function (global) {
+    const FluxManager = {
+        // Constantes de référence
+        SOLAR_CONSTANT_REF: 1361, // W/m² (valeur actuelle)
+        SOLAR_SURFACE_AREA: 6.09e18, // m²
+        SOLAR_POWER_REF: 3.828e26, // W
+
+        /**
+         * Met à jour l'intensité solaire et les affichages associés
+         * @param {number} intensity - Facteur d'intensité (ex: 1.0 pour aujourd'hui, 0.7 pour Hadéen)
+         */
+        setSolarIntensity: function (intensity) {
+            if (typeof intensity !== 'number') {
+                console.warn('[FluxManager] Solar intensity is not a number:', intensity);
+                return;
+            }
+
+            // 1. Mise à jour de la variable globale pour les calculs physiques (calculations.js)
+            const solarConstant = this.SOLAR_CONSTANT_REF * intensity;
+            if (typeof window !== 'undefined') {
+                window.SOLAR_CONSTANT = solarConstant;
+            }
+
+            // 2. Calculs dérivés pour l'affichage
+            const solarPowerTotal = this.SOLAR_POWER_REF * intensity;
+            const solarSurfaceFluxMW = (solarPowerTotal / this.SOLAR_SURFACE_AREA) / 1e6; // MW/m²
+
+            // 3. Mise à jour du DOM (Flux Diagram)
+            this._updateLabel('solar_surface_mw', `${solarSurfaceFluxMW.toFixed(1)}<br>MW/m²`);
+            this._updateLabel('solar_power_total', `${(solarPowerTotal / 1e26).toFixed(1)}×10<sup>26</sup> W`);
+            this._updateLabel('solar_1UA_mw', `${solarConstant.toFixed(0)}<br>W/m²`);
+
+            console.log(`[FluxManager] Solar updated: intensity=${intensity}, constant=${solarConstant.toFixed(0)} W/m²`);
+        },
+
+        /**
+         * Met à jour le flux géothermique et son affichage
+         * @param {number} flux - Flux en W/m²
+         */
+        setGeothermalFlux: function (flux) {
+            if (typeof flux !== 'number') {
+                console.warn('[FluxManager] Geothermal flux is not a number:', flux);
+                return;
+            }
+
+            // Note: calculations.js lit souvent directement depuis l'époque, 
+            // mais on pourrait aussi stocker ça globalement si besoin.
+            if (typeof window !== 'undefined') {
+                window.GEOTHERMAL_FLUX = flux;
+            }
+
+            // Affichage : gestion fine des décimales
+            // Si flux < 0.1 (ex: 0.087), on veut 3 décimales (0.087)
+            // Si flux >= 0.1 (ex: 15), on veut 1 décimale (15.0)
+            // Si flux == 0, on veut 0.0
+            const decimals = flux < 0.1 && flux > 0 ? 3 : 1;
+            this._updateLabel('core_flux_wm', `${flux.toFixed(decimals)}<br>W/m²`);
+        },
+
+        /**
+         * Met à jour la température du noyau et son affichage
+         * @param {number} tempK - Température en Kelvin
+         */
+        setCoreTemperature: function (tempK) {
+            if (typeof tempK !== 'number') {
+                // Peut être null ou undefined pour "Corps noir"
+                if (tempK === 0 || tempK === null) {
+                    this._updateLabel('core_temperature', `~0 K`);
+                    return;
+                }
+                console.warn('[FluxManager] Core temperature is not a number:', tempK);
+                return;
+            }
+
+            this._updateLabel('core_temperature', `~${tempK} K`);
+        },
+
+        /**
+         * Met à jour tous les flux en fonction d'une époque donnée
+         * @param {string} epochName - Nom ou ID de l'époque
+         */
+        updateAllFluxes: function (epochName) {
+            if (typeof window.getGeologicalPeriodByName !== 'function') {
+                console.error('[FluxManager] getGeologicalPeriodByName not found');
+                return;
+            }
+
+            const epoch = window.getGeologicalPeriodByName(epochName);
+            if (!epoch) {
+                console.error('[FluxManager] Epoch not found:', epochName);
+                return;
+            }
+
+            // Valeurs par défaut si non définies
+            const solarIntensity = typeof epoch.solar_intensity === 'number' ? epoch.solar_intensity : 1.0;
+            const geothermalFlux = typeof epoch.geothermal_flux === 'number' ? epoch.geothermal_flux : 0.087;
+
+            // Gestion de la température du noyau (compatibilité k/sans k)
+            let coreTemp = 4000;
+            if (typeof epoch.core_temperature_k === 'number') coreTemp = epoch.core_temperature_k;
+            else if (typeof epoch.core_temperature === 'number') coreTemp = epoch.core_temperature;
+
+            // Appliquer les mises à jour
+            this.setSolarIntensity(solarIntensity);
+            this.setGeothermalFlux(geothermalFlux);
+            this.setCoreTemperature(coreTemp);
+        },
+
+        /**
+         * Helper privé pour mettre à jour le HTML d'un élément par data-id
+         */
+        _updateLabel: function (dataId, htmlContent) {
+            const element = document.querySelector(`[data-id="${dataId}"]`);
+            if (element) {
+                element.innerHTML = htmlContent;
+            } else {
+                // Debug léger, ne pas spammer si l'élément n'est pas encore créé
+                // console.debug(`[FluxManager] Element with data-id="${dataId}" not found`);
+            }
+        }
+    };
+
+    // Exposer globalement
+    global.FluxManager = FluxManager;
+
+})(typeof window !== 'undefined' ? window : this);

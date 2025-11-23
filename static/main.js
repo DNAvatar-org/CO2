@@ -434,10 +434,10 @@ function formatYears(years) {
     // Les valeurs négatives sont déjà dans le bon format (futur, rare)
     const isPast = years > 0; // Dates positives = passé
     const yearsAbs = Math.abs(years);
-    
+
     // Convertir en millions d'années
     const millions = yearsAbs / MEGA;
-    
+
     // Formater avec 0 décimales si entier, sinon avec décimales
     let result;
     if (millions % 1 === 0) {
@@ -658,7 +658,8 @@ function updateCO2Level(state) {
             // (sera calculé après les forçages)
             let delta_temp = 0; // Sera calculé après
 
-            // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
+            // Ajouter temp_surface et temp_surface_c à plotData pour que updatePlot puisse les utiliser
+            plotData.temp_surface = temp_surface; // Température de surface en K (cohérence avec courbes)
             plotData.temp_surface_c = temp_surface_c;
 
             // Récupérer l'albedo et la couverture nuageuse depuis les résultats
@@ -1018,7 +1019,8 @@ function updateCO2LevelDirect(co2_fraction) {
             // (sera calculé après les forçages)
             let delta_temp = 0; // Sera calculé après
 
-            // Ajouter temp_surface_c à plotData pour que updatePlot puisse l'utiliser
+            // Ajouter temp_surface et temp_surface_c à plotData pour que updatePlot puisse les utiliser
+            plotData.temp_surface = temp_surface; // Température de surface en K (cohérence avec courbes)
             plotData.temp_surface_c = temp_surface_c;
 
             // Récupérer l'albedo et la couverture nuageuse depuis les résultats
@@ -1525,7 +1527,7 @@ function setEpoch(epochName) {
     if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
         // Trouver la configuration de l'époque courante
         const epochConfig = terreNode.epoch.find(e => e.epochName === epochName);
-        
+
         if (epochConfig) {
             // Recréer la cellule terre avec la configuration de l'époque
             const oldCell = document.getElementById('cell-terre');
@@ -1608,7 +1610,7 @@ function setEpoch(epochName) {
         let displayName = epoch.name;
         if (window.configOrganigramme && window.configOrganigramme.timeline) {
             // Chercher l'epoch dans la timeline par nom (plus fiable que par id)
-            const timelineEpoch = window.configOrganigramme.timeline.find(item => 
+            const timelineEpoch = window.configOrganigramme.timeline.find(item =>
                 item.type === 'epoch' && item.name === epochName
             );
             if (timelineEpoch) {
@@ -1625,6 +1627,11 @@ function setEpoch(epochName) {
     }
 
     updateTimeline();
+
+    // Forcer la mise à jour des labels de flux (Soleil, Noyau, etc.) avec les paramètres de la nouvelle époque
+    if (typeof window.updateFluxLabels === 'function') {
+        window.updateFluxLabels(window.plotData || {});
+    }
 
     // Appliquer les conditions initiales
     // En époque "Corps noir", tout est désactivé (température ~206.1K, pas de noyau différencié)
@@ -1886,7 +1893,7 @@ window.addEventListener('DOMContentLoaded', () => {
         // Récupérer le nom depuis la timeline de configOrganigramme
         let displayName = 'Corps noir';
         if (window.configOrganigramme && window.configOrganigramme.timeline) {
-            const timelineEpoch = window.configOrganigramme.timeline.find(item => 
+            const timelineEpoch = window.configOrganigramme.timeline.find(item =>
                 item.type === 'epoch' && item.id === 'corps-noir'
             );
             if (timelineEpoch) {

@@ -344,6 +344,16 @@ h1 {
     color: cyan;
 }
 
+.temp-display-red {
+    position: absolute;
+    top: 200px;
+    right: 95px;
+    font-size: 12px;
+    z-index: 100;
+    line-height: 1.0;
+    /* La couleur sera définie dynamiquement par JavaScript (color_current) */
+}
+
 /* Note sur l'échelle logarithmique - à gauche, très proche de la bande spectrale */
 /* Position basée sur PLOT_MARGINS = { l: 70, r: 70, t: 0, b: 75 } */
 .infra-note {

@@ -308,8 +308,23 @@ const timeline = [
         type: 'epoch',
         id: 'corps-noir',
         name: 'Corps noir',
+        date: '-4550 Ma',
+        startYears: 5.0e9,
+        endYears: 4.5e9,
+        temp: '1200°C',
         logo: 'fonts/pics/corps_noir.png',
-        title: 'Corps noir - État initial (206.1K), avant formation de la Terre, pas de noyau différencié, pas d\'atmosphère'
+        title: 'Corps noir - État initial (206.1K), avant formation de la Terre',
+        solar_intensity: 0.70,
+        geothermal_flux: 0.0, // Pas de flux géothermique (corps froid)
+        core_temperature: 0, // Pas de noyau
+        // Simulation parameters
+        co2_ppm: 0,
+        ch4_ppm: 0,
+        h2o_enabled: false,
+        cloud_coverage: 0,
+        albedo_base: 0.0,
+        ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0,
+        volcanoFactor: 0.0
     },
     {
         type: 'separator',
@@ -319,8 +334,24 @@ const timeline = [
         type: 'epoch',
         id: 'hadeen',
         name: 'Hadéen',
+        date: '-4500 Ma',
+        startYears: 4.5e9,
+        endYears: 4.0e9,
+        temp: '46.0°C',
         logo: 'fonts/pics/hadeen.png',
-        title: 'Hadéen (-4500 à -4000 Ma)'
+        title: 'Hadéen (-4500 à -4000 Ma)',
+        solar_intensity: 0.75,
+        geothermal_flux: 15.0,
+        core_temperature: 5800,
+        // Simulation parameters
+        co2_ppm: 7000,
+        ch4_ppm: 100,
+        h2o_enabled: false,
+        cloud_coverage: 0,
+        albedo_base: 0.05,
+        ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0,
+        magma_coverage: 1.0, // Spécifique Hadéen
+        volcanoFactor: 10.0
     },
     {
         type: 'separator',
@@ -330,8 +361,23 @@ const timeline = [
         type: 'epoch',
         id: 'archeen',
         name: 'Archéen',
+        date: '-4000 Ma',
+        startYears: 4.0e9,
+        endYears: 2.5e9,
+        temp: '38.0°C',
         logo: 'fonts/pics/archeen.png',
-        title: 'Archéen (-4000 à -2500 Ma)'
+        title: 'Archéen (-4000 à -2500 Ma)',
+        solar_intensity: 0.80,
+        geothermal_flux: 0.5,
+        core_temperature: 5500,
+        // Simulation parameters
+        co2_ppm: 5000,
+        ch4_ppm: 80,
+        h2o_enabled: true,
+        cloud_coverage: 0.7,
+        albedo_base: 0.12,
+        ocean_coverage: 0.80, forest_coverage: 0, desert_coverage: 0.05, ice_coverage: 0,
+        volcanoFactor: 5.0
     },
     {
         type: 'separator',
@@ -341,8 +387,23 @@ const timeline = [
         type: 'epoch',
         id: 'proterozoique',
         name: 'Protérozoïque',
-        logo: '🌿',
-        title: 'Protérozoïque (-2500 à -541 Ma)'
+        date: '-2500 Ma',
+        startYears: 2.5e9,
+        endYears: 541e6,
+        temp: '12.0°C',
+        logo: '🦠',
+        title: 'Protérozoïque (-2500 à -541 Ma)',
+        solar_intensity: 0.90,
+        geothermal_flux: 0.2,
+        core_temperature: 5000,
+        // Simulation parameters
+        co2_ppm: 2000,
+        ch4_ppm: 25,
+        h2o_enabled: true,
+        cloud_coverage: 0.4,
+        albedo_base: 0.20,
+        ocean_coverage: 0.70, forest_coverage: 0.05, desert_coverage: 0.15, ice_coverage: 0,
+        volcanoFactor: 2.0
     },
     {
         type: 'separator',
@@ -352,19 +413,49 @@ const timeline = [
         type: 'epoch',
         id: 'mesozoique',
         name: 'Mésozoïque',
+        date: '-250 Ma',
+        startYears: 252e6,
+        endYears: 66e6,
+        temp: '25.0°C',
         logo: '🦕',
-        title: 'Mésozoïque (-252 à -66 Ma)'
+        title: 'Mésozoïque (-252 à -66 Ma)',
+        solar_intensity: 0.98,
+        geothermal_flux: 0.1,
+        core_temperature: 4500,
+        // Simulation parameters
+        co2_ppm: 2500,
+        ch4_ppm: 8,
+        h2o_enabled: true,
+        cloud_coverage: 0.5,
+        albedo_base: 0.28,
+        ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0,
+        volcanoFactor: 1.0
     },
     {
         type: 'separator',
-        date: '-199 Ma'
+        date: '-145 Ma'
     },
     {
         type: 'epoch',
         id: 'cretace',
         name: 'Crétacé',
+        date: '-145 Ma',
+        startYears: 145e6,
+        endYears: 66e6,
+        temp: '28.0°C',
         logo: '🦴',
-        title: 'Crétacé (-145 à -66 Ma)'
+        title: 'Crétacé (-145 à -66 Ma)',
+        solar_intensity: 0.99,
+        geothermal_flux: 0.095,
+        core_temperature: 4300,
+        // Simulation parameters
+        co2_ppm: 3000,
+        ch4_ppm: 10,
+        h2o_enabled: true,
+        cloud_coverage: 0.5,
+        albedo_base: 0.28,
+        ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0,
+        volcanoFactor: 1.0
     },
     {
         type: 'separator',
@@ -374,8 +465,23 @@ const timeline = [
         type: 'epoch',
         id: 'cenozoique',
         name: 'Cénozoïque',
+        date: '-66 Ma',
+        startYears: 66e6,
+        endYears: 0,
+        temp: '18.0°C',
         logo: '🦣',
-        title: 'Cénozoïque (-66 Ma à aujourd\'hui)'
+        title: 'Cénozoïque (-66 Ma à aujourd\'hui)',
+        solar_intensity: 0.995,
+        geothermal_flux: 0.09,
+        core_temperature: 4100,
+        // Simulation parameters
+        co2_ppm: 280,
+        ch4_ppm: 0.7,
+        h2o_enabled: true,
+        cloud_coverage: 0.4,
+        albedo_base: 0.30,
+        ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05,
+        volcanoFactor: 1.0
     },
     {
         type: 'separator',
@@ -385,8 +491,23 @@ const timeline = [
         type: 'epoch',
         id: 'aujourdhui',
         name: 'Aujourd\'hui',
-        logo: '🌈',
-        title: 'État d\'aujourd\'hui'
+        date: '0',
+        startYears: 0,
+        endYears: -1,
+        temp: '15.0°C',
+        logo: '🐘',
+        title: 'Aujourd\'hui',
+        solar_intensity: 1.00,
+        geothermal_flux: 0.087,
+        core_temperature: 4000,
+        // Simulation parameters
+        co2_ppm: 420,
+        ch4_ppm: 1.9,
+        h2o_enabled: true,
+        cloud_coverage: 0.4,
+        albedo_base: 0.30,
+        ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05,
+        volcanoFactor: 1.0
     }
 ];
 

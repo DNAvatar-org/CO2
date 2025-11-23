@@ -595,7 +595,7 @@ function getPlotlyFont(size, color) {
 function drawAbsorptionBandIndicators() {
     const plotContainerWrapper2 = document.querySelector('.plot-container-wrapper');
     if (!plotContainerWrapper2) return;
-    
+
     // Supprimer les anciens indicateurs s'ils existent
     const oldIndicators = plotContainerWrapper2.querySelectorAll('.absorption-band-indicator');
     oldIndicators.forEach(ind => ind.remove());
@@ -603,7 +603,7 @@ function drawAbsorptionBandIndicators() {
     const canvas = document.getElementById('spectral-visualization');
     const plotContainer = document.getElementById('plot-container');
     if (!canvas || !plotContainer || typeof Plotly === 'undefined') return;
-    
+
     // Utiliser Plotly pour convertir les coordonnées de données en pixels
     // Cela garantit que les logos sont alignés avec les bonnes graduations
     const graph_max_um = 50;
@@ -613,28 +613,28 @@ function drawAbsorptionBandIndicators() {
     const spectrumBarBottom = 45; // Position bottom de la bande spectrale
     const spectrumBarHeight = 20; // Hauteur de la bande spectrale
     const spectrumBarCenter = spectrumBarBottom - (spectrumBarHeight / 2); // Centre vertical de la bande
-    
+
     // Récupérer les dimensions du graphique Plotly
     const plotRect = plotContainer.getBoundingClientRect();
     const wrapperRect = plotContainerWrapper2.getBoundingClientRect();
-    
+
     // Utiliser Plotly pour obtenir la position X réelle d'une valeur de données
     // La fonction getBoundingClientRect() nous donne la position du conteneur
     // Plotly a des marges : PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }
     const PLOT_MARGINS_LOCAL = { l: 70, r: 75, t: 0, b: 75 };
-    
+
     // Fonction helper pour calculer la position X d'une longueur d'onde
     // Utiliser la même logique que Plotly pour mapper les données aux pixels
     const getXPosition = (lambda_um) => {
         // Normaliser la valeur entre 0 et 1 dans la plage [0, 50]
         const normalizedX = (lambda_um - graph_min_um) / (graph_max_um - graph_min_um);
-        
+
         // Largeur du graphique Plotly (sans les marges)
         const plotWidth = plotRect.width - PLOT_MARGINS_LOCAL.l - PLOT_MARGINS_LOCAL.r;
-        
+
         // Position X dans le graphique Plotly (depuis la marge gauche)
         const xInPlot = normalizedX * plotWidth;
-        
+
         // Position X relative au wrapper (marge gauche + position dans le graphique)
         const plotLeft = plotRect.left - wrapperRect.left;
         return plotLeft + PLOT_MARGINS_LOCAL.l + xInPlot;
@@ -648,7 +648,7 @@ function drawAbsorptionBandIndicators() {
         H2O: '💧',
         ALBEDO: '🪞'
     };
-    
+
     // CO2 : ~15 μm (principale), pic à ~11 μm
     // CH4 : ~7.7 μm (principale), pic à ~23 μm
     // H2O : ~6.3 μm (principale), nombreuses bandes entre 5–8 μm
@@ -662,7 +662,7 @@ function drawAbsorptionBandIndicators() {
 
     absorptionBands.forEach(band => {
         const xPos = getXPosition(band.lambda);
-        
+
         // Créer un indicateur
         const indicator = document.createElement('div');
         indicator.className = 'absorption-band-indicator';
@@ -683,7 +683,7 @@ function drawAbsorptionBandIndicators() {
         // Forcer la même hauteur pour tous les conteneurs
         indicator.style.height = '12px';
         indicator.style.lineHeight = '12px';
-        
+
         // Utiliser le PNG pour CH4, emoji pour les autres
         // Pas de label, juste le logo
         // Forcer l'alignement vertical identique pour tous les logos
@@ -694,7 +694,7 @@ function drawAbsorptionBandIndicators() {
             indicator.style.fontSize = '12px';
             indicator.innerHTML = `${band.logo}`;
         }
-        
+
         plotContainerWrapper2.appendChild(indicator);
     });
 }
@@ -802,17 +802,27 @@ window.updatePlot = function updatePlot(data) {
     }
 
     // 2. Afficher les 2 courbes pour le ppm sélectionné (absorption + Planck)
-    let T_current_display = null; // Pour l'affichage de la température
+    let T_current_display = null; // Pour l'affichage de la température de surface (rouge)
+    let T_effective_display = null; // Pour l'affichage de la température effective (cyan)
     let color_current = 'red'; // Par défaut, pour la légende de température
     if (data.current) {
         // Récupérer temp_surface_c depuis data pour l'affichage (cohérence avec le flux)
         const temp_surface_c = data.temp_surface_c;
-        
-        // Utiliser la température effective pour la courbe Planck, mais temp_surface pour l'affichage
-        const T_current = data.current.effective_temperature;
-        // Pour l'affichage dans le graphique, utiliser temp_surface_c (cohérence avec le flux)
-        // Convertir temp_surface_c en Kelvin pour l'affichage
-        T_current_display = temp_surface_c !== undefined ? temp_surface_c + 273.15 : T_current;
+
+        // Utiliser temp_surface (T0) pour les courbes ET l'affichage (cohérence totale)
+        // temp_surface est la température réelle au sol (T0_test), calculée par dichotomie pour équilibrer le bilan énergétique
+        // effective_temperature est la température du corps noir équivalent qui émettrait le même flux total vers l'espace
+        // La différence vient de l'effet de serre : le flux émis vers l'espace vient de différentes altitudes (plus froid en altitude)
+        // Dans une atmosphère avec effet de serre, la surface est plus chaude que la température effective
+        // Récupérer temp_surface depuis data (T0_test en K) ou calculer depuis temp_surface_c
+        const T_surface = (data.temp_surface !== undefined) ? data.temp_surface :
+            (temp_surface_c !== undefined ? temp_surface_c + 273.15 : data.current.effective_temperature);
+        const T_current = T_surface; // Utiliser la température de surface pour les courbes (cohérence avec affichage)
+        // Pour l'affichage dans le graphique, utiliser la même température que les courbes (cohérence totale)
+        T_current_display = T_current;
+
+        // Récupérer la température effective pour l'affichage cyan (bas de la courbe d'émission)
+        T_effective_display = data.current.effective_temperature;
 
         // Déterminer la couleur selon la température terrestre (T° Terrestre)
 
@@ -831,10 +841,18 @@ window.updatePlot = function updatePlot(data) {
         trace_absorption.showlegend = false; // Pas dans la légende
         traces.push(trace_absorption);
 
-        // Courbe Planck correspondante (pointillée) à la température effective - en gras avec des points, même couleur que l'absorption
-        const planck_current = createPlanckTrace(T_current, `Planck ${data.co2_ppm.toFixed(0)} ppm`, color_current, false, 'dot');
-        planck_current.line.width = 2; // En gras comme la courbe d'absorption
-        planck_current.line.color = color_current; // Même couleur que la courbe d'absorption
+        // Courbe Planck correspondante (pointillée) à la température effective - en gras avec des points
+        // C'est la courbe "plancher" thermodynamique (conservation de l'énergie)
+        // Elle doit être de la couleur de T_effective (Cyan pour -1.8°C)
+        let color_effective = 'cyan'; // Par défaut
+        const temp_effective_c = T_effective_display - 273.15;
+        if (typeof window.tempSurfaceToColor === 'function') {
+            color_effective = window.tempSurfaceToColor(temp_effective_c);
+        }
+
+        const planck_current = createPlanckTrace(T_effective_display, `Planck effective ${data.co2_ppm.toFixed(0)} ppm`, color_effective, false, 'dot');
+        planck_current.line.width = 2; // En gras
+        planck_current.line.color = color_effective; // Cyan (ou couleur de T_effective)
         traces.push(planck_current);
     }
 
@@ -961,8 +979,10 @@ window.updatePlot = function updatePlot(data) {
         ]
     };
 
-    // Afficher la température hors du graphique, en bas à gauche de la div
-    if (T_current_display) {
+    // Afficher uniquement la température effective (cyan) - bas de la courbe d'émission
+    // La température de surface est déjà affichée dans le flux diagram (synthese_Temp)
+    // Donc on n'affiche que la température effective ici
+    if (T_effective_display) {
         const plotContainer = document.getElementById('plot-container');
         if (plotContainer) {
             // Supprimer l'ancien affichage s'il existe
@@ -971,22 +991,24 @@ window.updatePlot = function updatePlot(data) {
                 oldTempDisplay.remove();
             }
 
-            // Créer un nouvel élément pour afficher la température
+            // Créer un nouvel élément pour afficher la température effective
             const tempDisplay = document.createElement('div');
             tempDisplay.className = 'temp-display-cyan';
 
             // Calculer les températures
-            const tempK = T_current_display.toFixed(1);
-            const tempC = (T_current_display - 273.15).toFixed(1);
-            const tempF = ((T_current_display - 273.15) * 9 / 5 + 32).toFixed(1);
+            const tempK = T_effective_display.toFixed(1);
+            const tempC = (T_effective_display - 273.15).toFixed(1);
+            const tempF = ((T_effective_display - 273.15) * 9 / 5 + 32).toFixed(1);
 
             // Créer le contenu sur 3 lignes
             tempDisplay.innerHTML = `${tempK} K<br>${tempC}°C<br>${tempF}°F`;
 
-            // Appliquer la couleur de la courbe d'émission de la Terre (color_current)
-            if (typeof color_current !== 'undefined') {
-                tempDisplay.style.color = color_current;
+            // Utiliser la couleur de la température effective (cyan ou calculée)
+            let color_effective = 'cyan';
+            if (typeof window.tempSurfaceToColor === 'function') {
+                color_effective = window.tempSurfaceToColor(T_effective_display - 273.15);
             }
+            tempDisplay.style.color = color_effective;
 
             plotContainer.appendChild(tempDisplay);
         }
@@ -1022,24 +1044,24 @@ window.updatePlot = function updatePlot(data) {
                 const graph_max_um = 50;
                 const charWidthCanvas = 5;
                 const effectiveWidth = canvasWidth - (charWidthCanvas * 2);
-                
+
                 // Plage de longueurs d'onde pour le texte : 2.0 μm à 20 μm (rouge vif)
                 // Commencer à 2.0 μm pour que le "v" soit sur le bleu vif (visible, pas violet)
                 // (1 μm minimum pour wavelengthToColorReal, 2.0 μm pour avoir une couleur bleue claire visible)
                 const text_min_um = 2.0;   // Début à 2.0 micromètres (bleu vif visible)
                 const text_max_um = 20;    // Rouge vif (20 micromètres)
-                
+
                 // Calculer les positions X correspondantes sur le canvas
                 const text_min_normalizedX = text_min_um / graph_max_um;
                 const text_max_normalizedX = text_max_um / graph_max_um;
                 const text_min_X = charWidthCanvas + text_min_normalizedX * effectiveWidth;
                 const text_max_X = charWidthCanvas + text_max_normalizedX * effectiveWidth;
-                
+
                 // Longueur totale du texte en pixels
                 const textLengthPx = text.length * charWidth;
                 // Position de départ pour que le premier caractère soit à text_min_X
                 const adjustedTextLeft = text_min_X;
-                
+
                 for (let i = 0; i < text.length; i++) {
                     // Position X du caractère dans le texte (0 à textLengthPx)
                     const charPositionInText = i * charWidth;

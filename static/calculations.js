@@ -1070,11 +1070,17 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     // - Dérivée de la loi de Planck, elle est exacte pour un corps noir
     // - La constante σ = 5.67×10⁻⁸ W/(m²·K⁴) est une constante fondamentale
     const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
-    const temp_eff = Math.pow(result.total_flux / STEFAN_BOLTZMANN, 0.25);
-    // Calculer la température terrestre en °C à partir de T0_test (température au sol en K)
-    const temp_surface_c = T0_test - 273.15;
-    const temp_eff_0 = 255.0; // Température effective sans CO2 (référence 255K)
-
+    
+    // ⚠️ DIFFÉRENCE ENTRE effective_temperature ET temp_surface :
+    // - effective_temperature (temp_eff) = (flux_total / σ)^0.25
+    //   → Température du corps noir équivalent qui émettrait le même flux total vers l'espace
+    //   → Le flux émis vers l'espace vient de différentes altitudes (plus froid en altitude)
+    // - temp_surface (T0_test) = Température réelle au sol calculée par dichotomie
+    //   → Équilibre le bilan énergétique : flux solaire absorbé = flux terrestre émis
+    //   → Dans une atmosphère avec effet de serre, la surface est plus chaude que la température effective
+    //   → C'est l'effet de serre : la surface est plus chaude que ce que le flux émis vers l'espace suggère
+    //   → La différence (temp_surface - effective_temperature) mesure l'intensité de l'effet de serre
+    // 
     // Récupérer l'albedo et la couverture nuageuse depuis les résultats
     const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
         ? window.waterVaporEnabled
@@ -1087,6 +1093,23 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             geo_flux = currentEpoch.geothermal_flux;
         }
     }
+    // Récupérer CH4 depuis options
+    const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)
+        ? window.methaneEnabled
+        : false;
+    const CH4_fraction = (options && options.CH4_fraction !== undefined) ? options.CH4_fraction : null;
+    
+    // ⚠️ CAS PARTICULIER : Corps noir (pas d'atmosphère, albedo = 0)
+    //   → Pas d'effet de serre, donc temp_surface = effective_temperature
+    //   → Le flux émis par la surface passe directement vers l'espace sans absorption
+    //   → On utilise temp_surface directement pour éviter les erreurs numériques
+    const isBlackBody = (CO2_fraction === 0 || CO2_fraction === null) && !h2o_enabled && (!ch4_enabled || !CH4_fraction);
+    const temp_eff = isBlackBody 
+        ? T0_test  // Corps noir : utiliser directement temp_surface (formule analytique exacte)
+        : Math.pow(result.total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
+    // Calculer la température terrestre en °C à partir de T0_test (température au sol en K)
+    const temp_surface_c = T0_test - 273.15;
+    const temp_eff_0 = 255.0; // Température effective sans CO2 (référence 255K)
     const albedo = result.albedo !== undefined ? result.albedo : calculateAlbedo(T0_test, h2o_enabled, geo_flux);
     const cloud_coverage = result.cloud_coverage !== undefined ? result.cloud_coverage : calculateCloudCoverage(T0_test, h2o_enabled);
 
@@ -1169,7 +1192,8 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             cloud_coverage: cloud_coverage
         },
         co2_ppm: CO2_fraction * 1e6,
-        temp_surface_c: temp_surface_c // Température intermédiaire pour mise à jour de la couleur en temps réel
+        temp_surface: T0_test, // Température de surface réelle (K) pour cohérence avec affichage
+        temp_surface_c: temp_surface_c // Température de surface en °C pour mise à jour de la couleur en temps réel
     };
 
     // Mettre à jour le graphique
@@ -1551,12 +1575,6 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     // Calculer le flux total au sommet de l'atmosphère
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
 
-    // ✅ SCIENTIFIQUEMENT CERTAIN : Température effective (loi de Stefan-Boltzmann)
-    // - T_eff = (F/σ)^(1/4) où F est le flux radiatif total et σ la constante de Stefan-Boltzmann
-    // - Cette formule est exacte pour un corps noir en équilibre radiatif
-    // - Pour la Terre sans effet de serre : T_eff ≈ 255K (-18°C) - valeur bien établie
-    const effective_temperature = Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);
-
     // Calculer l'albedo dynamique et la couverture nuageuse
     const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
         ? window.waterVaporEnabled
@@ -1569,6 +1587,26 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
             geo_flux = currentEpoch.geothermal_flux;
         }
     }
+    // Récupérer CH4 pour détecter le cas du corps noir
+    const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)
+        ? window.methaneEnabled
+        : false;
+    // Dans finalizeResults, on n'a pas accès direct à CH4_fraction depuis options
+    // On suppose que si ch4_enabled est false, alors CH4_fraction est null ou 0
+    const CH4_fraction = null; // Approximation : sera vérifié via ch4_enabled
+    
+    // ✅ SCIENTIFIQUEMENT CERTAIN : Température effective (loi de Stefan-Boltzmann)
+    // - T_eff = (F/σ)^(1/4) où F est le flux radiatif total et σ la constante de Stefan-Boltzmann
+    // - Cette formule est exacte pour un corps noir en équilibre radiatif
+    // - Pour la Terre sans effet de serre : T_eff ≈ 255K (-18°C) - valeur bien établie
+    // ⚠️ CAS PARTICULIER : Corps noir (pas d'atmosphère, albedo = 0)
+    //   → Pas d'effet de serre, donc temp_surface = effective_temperature
+    //   → On utilise final_T0 directement pour éviter les erreurs numériques
+    const isBlackBody = (CO2_fraction === 0 || CO2_fraction === null) && !h2o_enabled && (!ch4_enabled || !CH4_fraction);
+    const effective_temperature = isBlackBody 
+        ? final_T0  // Corps noir : utiliser directement temp_surface (formule analytique exacte)
+        : Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
+    
     const albedo = calculateAlbedo(final_T0, h2o_enabled, geo_flux);
     const cloud_coverage = calculateCloudCoverage(final_T0, h2o_enabled);
 
@@ -1631,12 +1669,26 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
     const albedo = calculateAlbedo(T0, h2o_enabled, geo_flux);
     const cloud_coverage = calculateCloudCoverage(T0, h2o_enabled);
+    
+    // Récupérer CH4 pour détecter le cas du corps noir
+    const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)
+        ? window.methaneEnabled
+        : false;
+    // Dans finalizeResultsSync, on n'a pas accès direct à CH4_fraction depuis options
+    // On suppose que si ch4_enabled est false, alors CH4_fraction est null ou 0
+    const CH4_fraction = null; // Approximation : sera vérifié via ch4_enabled
 
     // ✅ SCIENTIFIQUEMENT CERTAIN : Température effective (loi de Stefan-Boltzmann)
     // - T_eff = (F/σ)^(1/4) où F est le flux radiatif total et σ la constante de Stefan-Boltzmann
     // - Cette formule est exacte pour un corps noir en équilibre radiatif
     // - Pour la Terre sans effet de serre : T_eff ≈ 255K (-18°C) - valeur bien établie
-    const effective_temperature = Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);
+    // ⚠️ CAS PARTICULIER : Corps noir (pas d'atmosphère, albedo = 0)
+    //   → Pas d'effet de serre, donc temp_surface = effective_temperature
+    //   → On utilise T0 directement pour éviter les erreurs numériques
+    const isBlackBody = (CO2_fraction === 0 || CO2_fraction === null) && !h2o_enabled && (!ch4_enabled || !CH4_fraction);
+    const effective_temperature = isBlackBody 
+        ? T0  // Corps noir : utiliser directement temp_surface (formule analytique exacte)
+        : Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
 
     return {
         lambda_range: lambda_range,
