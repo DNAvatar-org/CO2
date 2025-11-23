@@ -1478,7 +1478,6 @@ function updateLegend(data) {
         }
     }
 }
-}
 
 // Fonction pour obtenir le style CSS de bordure selon le pattern
 function getDashStyleForPattern(pattern) {
