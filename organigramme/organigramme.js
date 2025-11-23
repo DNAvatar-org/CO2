@@ -711,7 +711,6 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 const labelContainer = document.createElement('div');
                 labelContainer.style.display = 'flex';
                 labelContainer.style.flexDirection = 'column';
-                labelContainer.style.marginTop = '115px';
                 labelContainer.style.alignItems = 'flex-start'; // À droite (col === 2)
                 labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
                 labelContainer.style.position = 'relative'; // Créer un stacking context
@@ -723,6 +722,11 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     const label = document.createElement('div');
                     label.className = 'flux-label';
                     if (dataId) label.setAttribute('data-id', dataId);
+                    
+                    // Patch spécifique pour albedo_percents : margin-top pour aligner en haut du logo
+                    if (dataId === 'albedo_percents') {
+                        label.style.marginTop = '115px';
+                    }
                     // Si c'est un bouton, ajouter la classe buttonData
                     if (nodeId) {
                         const node = nodes.find(n => n.id === nodeId);
@@ -2547,8 +2551,8 @@ function updateFluxLabels(data) {
         components.sort((a, b) => b.weight - a.weight);
         // Construire la chaîne HTML
         return components.map(comp => {
-            // Arrondir le pourcentage à un entier
-            const coverage_int = Math.round(comp.coverage);
+            // Arrondir le pourcentage à un entier et limiter à 99% maximum
+            const coverage_int = Math.min(99, Math.round(comp.coverage));
             // Si c'est un chemin d'image (contient .png, .jpg, etc.), utiliser une balise <img>
             const isImage = comp.emoji && (comp.emoji.includes('.png') || comp.emoji.includes('.jpg') || comp.emoji.includes('.svg'));
             if (isImage) {

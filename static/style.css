@@ -349,7 +349,7 @@ h1 {
 .infra-note {
     position: absolute;
     bottom: 45px;
-    left: 85px;
+    left: 90px;
     font-size: 8px;
     font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     z-index: 100;
@@ -357,6 +357,9 @@ h1 {
     text-align: left;
     line-height: 1;
     color: white; /* Changé en blanc */
+    /* background: rgba(255, 255, 255, 0); /* Fond blanc transparent */
+    padding: 2px 4px; /* Petit padding pour que le fond entoure le texte */
+    border-radius: 2px; /* Coins légèrement arrondis */
 }
 
 /* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */

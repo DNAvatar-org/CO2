@@ -803,15 +803,18 @@ window.updatePlot = function updatePlot(data) {
 
     // 2. Afficher les 2 courbes pour le ppm sélectionné (absorption + Planck)
     let T_current_display = null; // Pour l'affichage de la température
+    let color_current = 'red'; // Par défaut, pour la légende de température
     if (data.current) {
-        // Utiliser la température effective calculée par les formules
+        // Récupérer temp_surface_c depuis data pour l'affichage (cohérence avec le flux)
+        const temp_surface_c = data.temp_surface_c;
+        
+        // Utiliser la température effective pour la courbe Planck, mais temp_surface pour l'affichage
         const T_current = data.current.effective_temperature;
-        T_current_display = T_current; // Stocker pour l'annotation
+        // Pour l'affichage dans le graphique, utiliser temp_surface_c (cohérence avec le flux)
+        // Convertir temp_surface_c en Kelvin pour l'affichage
+        T_current_display = temp_surface_c !== undefined ? temp_surface_c + 273.15 : T_current;
 
         // Déterminer la couleur selon la température terrestre (T° Terrestre)
-        let color_current = 'red'; // Par défaut
-        // Récupérer temp_surface_c depuis data
-        const temp_surface_c = data.temp_surface_c;
 
         if (temp_surface_c !== undefined && typeof window.tempSurfaceToColor === 'function') {
             // Utiliser la température terrestre en °C pour déterminer la couleur
@@ -980,7 +983,10 @@ window.updatePlot = function updatePlot(data) {
             // Créer le contenu sur 3 lignes
             tempDisplay.innerHTML = `${tempK} K<br>${tempC}°C<br>${tempF}°F`;
 
-            // Pas de couleur imposée, hérite du body (vert par défaut)
+            // Appliquer la couleur de la courbe d'émission de la Terre (color_current)
+            if (typeof color_current !== 'undefined') {
+                tempDisplay.style.color = color_current;
+            }
 
             plotContainer.appendChild(tempDisplay);
         }
@@ -1017,10 +1023,10 @@ window.updatePlot = function updatePlot(data) {
                 const charWidthCanvas = 5;
                 const effectiveWidth = canvasWidth - (charWidthCanvas * 2);
                 
-                // Plage de longueurs d'onde pour le texte : 1.2 μm à 20 μm (rouge vif)
-                // Commencer à 1.2 μm pour que le "v" et le "i" soient sur le bleu vif (visible)
-                // (1 μm minimum pour wavelengthToColorReal, 1.2 μm pour avoir une couleur bleue visible)
-                const text_min_um = 1.2;   // Début à 1.2 micromètres (bleu vif visible)
+                // Plage de longueurs d'onde pour le texte : 2.0 μm à 20 μm (rouge vif)
+                // Commencer à 2.0 μm pour que le "v" soit sur le bleu vif (visible, pas violet)
+                // (1 μm minimum pour wavelengthToColorReal, 2.0 μm pour avoir une couleur bleue claire visible)
+                const text_min_um = 2.0;   // Début à 2.0 micromètres (bleu vif visible)
                 const text_max_um = 20;    // Rouge vif (20 micromètres)
                 
                 // Calculer les positions X correspondantes sur le canvas
