@@ -670,15 +670,27 @@ function updateCO2Level(state) {
             const forcing_CO2 = typeof window.calculateCO2Forcing === 'function'
                 ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6)
                 : 0;
-            const forcing_H2O = typeof window.calculateH2OForcing === 'function'
-                ? window.calculateH2OForcing(typeof window.waterVaporEnabled !== 'undefined' ? window.waterVaporEnabled : false, cloud_coverage || 0)
+            
+            // Calculer le forcing H2O avec la nouvelle fonction calculateH2OParameters
+            let forcing_H2O = 0;
+            let h2o_vapor_percent = 0;
+            if (typeof window.waterVaporEnabled !== 'undefined' && window.waterVaporEnabled && typeof window.calculateH2OParameters === 'function') {
+                h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
+                const h2o_params = window.calculateH2OParameters(temp_surface, h2o_vapor_percent, cloud_coverage);
+                forcing_H2O = h2o_params.greenhouse_forcing;
+            }
+            
+            // Calculer le forcing CH4
+            const forcing_CH4 = (typeof window.methaneEnabled !== 'undefined' && window.methaneEnabled && plotData.ch4_ppm > 0 && typeof window.calculateCH4Forcing === 'function')
+                ? window.calculateCH4Forcing(plotData.ch4_ppm * 1e-6)
                 : 0;
+            
             const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
                 ? window.calculateAlbedoForcing(albedo)
                 : 0;
 
             // Forçage total
-            const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
+            const forcing_total = forcing_CO2 + forcing_H2O + forcing_CH4 + forcing_Albedo;
 
             // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)
             // ΔT° = T° actuelle - T° référence (255K)
@@ -696,6 +708,7 @@ function updateCO2Level(state) {
             updateDisplay({
                 state: currentState,
                 co2_ppm: plotData.co2_ppm,
+                ch4_ppm: plotData.ch4_ppm,
                 temp_surface: temp_surface,
                 temp_surface_c: temp_surface_c,
                 temp_eff: temp_eff,
@@ -706,9 +719,11 @@ function updateCO2Level(state) {
                 forcing: forcing_total,
                 forcing_CO2: forcing_CO2,
                 forcing_H2O: forcing_H2O,
+                forcing_CH4: forcing_CH4,
                 forcing_Albedo: forcing_Albedo,
                 albedo: albedo,
-                cloud_coverage: cloud_coverage
+                cloud_coverage: cloud_coverage,
+                h2o_vapor_percent: h2o_vapor_percent
             });
 
             updateLegend(plotData);
@@ -1031,15 +1046,27 @@ function updateCO2LevelDirect(co2_fraction) {
             const forcing_CO2 = typeof window.calculateCO2Forcing === 'function'
                 ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6)
                 : 0;
-            const forcing_H2O = typeof window.calculateH2OForcing === 'function'
-                ? window.calculateH2OForcing(typeof window.waterVaporEnabled !== 'undefined' ? window.waterVaporEnabled : false, cloud_coverage || 0)
+            
+            // Calculer le forcing H2O avec la nouvelle fonction calculateH2OParameters
+            let forcing_H2O = 0;
+            let h2o_vapor_percent = 0;
+            if (typeof window.waterVaporEnabled !== 'undefined' && window.waterVaporEnabled && typeof window.calculateH2OParameters === 'function') {
+                h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
+                const h2o_params = window.calculateH2OParameters(temp_surface, h2o_vapor_percent, cloud_coverage);
+                forcing_H2O = h2o_params.greenhouse_forcing;
+            }
+            
+            // Calculer le forcing CH4
+            const forcing_CH4 = (typeof window.methaneEnabled !== 'undefined' && window.methaneEnabled && plotData.ch4_ppm > 0 && typeof window.calculateCH4Forcing === 'function')
+                ? window.calculateCH4Forcing(plotData.ch4_ppm * 1e-6)
                 : 0;
+            
             const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
                 ? window.calculateAlbedoForcing(albedo)
                 : 0;
 
             // Forçage total
-            const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
+            const forcing_total = forcing_CO2 + forcing_H2O + forcing_CH4 + forcing_Albedo;
 
             // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)
             // ΔT° = T° actuelle - T° référence (255K)
@@ -1057,6 +1084,7 @@ function updateCO2LevelDirect(co2_fraction) {
             updateDisplay({
                 state: currentState,
                 co2_ppm: plotData.co2_ppm,
+                ch4_ppm: plotData.ch4_ppm,
                 temp_surface: temp_surface,
                 temp_surface_c: temp_surface_c,
                 temp_eff: temp_eff,
@@ -1067,9 +1095,11 @@ function updateCO2LevelDirect(co2_fraction) {
                 forcing: forcing_total,
                 forcing_CO2: forcing_CO2,
                 forcing_H2O: forcing_H2O,
+                forcing_CH4: forcing_CH4,
                 forcing_Albedo: forcing_Albedo,
                 albedo: albedo,
-                cloud_coverage: cloud_coverage
+                cloud_coverage: cloud_coverage,
+                h2o_vapor_percent: h2o_vapor_percent
             });
 
             updateLegend(plotData);
@@ -1261,20 +1291,121 @@ window.updateDisplay = function updateDisplay(data) {
 
     // === DEBUG: Afficher toutes les valeurs du flux diagram ===
     if (data) {
+        // Récupérer l'époque et la date
+        let epochName = '--';
+        let epochDate = '--';
+        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch) {
+                epochName = currentEpoch.name || window.currentEpochName;
+                // Formater la date depuis startYears
+                if (currentEpoch.startYears !== undefined) {
+                    const years = currentEpoch.startYears;
+                    epochDate = formatYears(years);
+                } else if (window.configOrganigramme && window.configOrganigramme.timeline) {
+                    const timelineEpoch = window.configOrganigramme.timeline.find(item =>
+                        item.type === 'epoch' && (item.id === window.currentEpochName || item.name === window.currentEpochName)
+                    );
+                    if (timelineEpoch && timelineEpoch.date) {
+                        epochDate = timelineEpoch.date;
+                    }
+                }
+            }
+        }
+        
         console.log('=== FLUX DIAGRAM VALUES ===');
+        console.log('Époque:', epochName);
+        console.log('Date:', epochDate);
         console.log('CO2:', data.co2_ppm !== undefined ? `${Math.round(data.co2_ppm)} ppm` : '--');
-        console.log('H2O:', data.cloud_coverage !== undefined ? `${(data.cloud_coverage * 100).toFixed(0)}%` : '--');
+        console.log('H2O Vapeur:', data.h2o_vapor_percent !== undefined ? `${data.h2o_vapor_percent.toFixed(1)}%` : '--');
         console.log('CH4:', data.ch4_ppm !== undefined ? `${Math.round(data.ch4_ppm)} ppm` : '--');
-        console.log('Albedo:', data.albedo !== undefined ? `${(data.albedo * 100).toFixed(1)}%` : '--');
         console.log('---');
         console.log('Forcing CO2:', data.forcing_CO2 !== undefined ? `${data.forcing_CO2.toFixed(2)} W/m²` : '--');
         console.log('Forcing H2O:', data.forcing_H2O !== undefined ? `${data.forcing_H2O.toFixed(2)} W/m²` : '--');
         console.log('Forcing CH4:', data.forcing_CH4 !== undefined ? `${data.forcing_CH4.toFixed(2)} W/m²` : '--');
-        console.log('Forcing Albedo:', data.forcing_Albedo !== undefined ? `${data.forcing_Albedo.toFixed(2)} W/m²` : '--');
         console.log('Forcing Total:', data.forcing !== undefined ? `${data.forcing.toFixed(2)} W/m²` : '--');
         console.log('---');
+        
+        // Section Albedo avec détails
+        console.log('Albedo:', data.albedo !== undefined ? `${(data.albedo * 100).toFixed(1)}%` : '--');
+        
+        // Récupérer les données d'albedo détaillées depuis l'époque courante
+        let albedoComponents = [];
+        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch) {
+                const cloud_cov = data.cloud_coverage !== undefined ? Math.round(data.cloud_coverage * 100) : 0;
+                const magma_cov = Math.round((currentEpoch.magma_coverage || 0) * 100);
+                const ocean_cov = Math.round((currentEpoch.ocean_coverage || 0) * 100);
+                const forest_cov = Math.round((currentEpoch.forest_coverage || 0) * 100);
+                const desert_cov = Math.round((currentEpoch.desert_coverage || 0) * 100);
+                
+                // Calculer la couverture de glace (similaire à organigramme.js)
+                // IMPORTANT : Pas de glace si pas d'eau (corps noir = sec)
+                let ice_cov = 0;
+                const isCorpsNoir = window.currentEpochName === 'Corps noir';
+                const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
+                    ? window.waterVaporEnabled 
+                    : (currentEpoch.h2o_enabled !== false);
+                
+                // Pas de glace si pas d'eau (corps noir ou H2O désactivé)
+                if (!isCorpsNoir && h2o_enabled && data.temp_surface !== undefined) {
+                    const T_surface_C = data.temp_surface - 273.15;
+                    if (T_surface_C < 0 && T_surface_C > -100) {
+                        let ice_coverage = Math.min(1, 1 - Math.exp(T_surface_C / 3));
+                        
+                        // Réduire selon l'effet volcanique
+                        const volcanoIceReduction = (typeof window !== 'undefined' && window.volcanoIceReduction !== undefined)
+                            ? window.volcanoIceReduction / 100 : 0;
+                        ice_coverage = Math.max(0, ice_coverage - volcanoIceReduction);
+                        
+                        // Réduire selon le flux géothermique
+                        const geo_flux = currentEpoch.geothermal_flux || 0.087;
+                        const geo_flux_reduction = Math.min(1, geo_flux / 10);
+                        ice_coverage = Math.max(0, ice_coverage * (1 - geo_flux_reduction));
+                        
+                        ice_cov = Math.round(ice_coverage * 100);
+                    }
+                }
+                
+                const cloud_alb = (currentEpoch.cloud_albedo || 0.40).toFixed(2);
+                const magma_alb = (currentEpoch.magma_albedo || 0.05).toFixed(2);
+                const ocean_alb = (currentEpoch.ocean_albedo || 0.08).toFixed(2);
+                const forest_alb = (currentEpoch.forest_albedo || 0.12).toFixed(2);
+                const desert_alb = (currentEpoch.desert_albedo || 0.30).toFixed(2);
+                const ice_alb = (currentEpoch.ice_albedo || 0.70).toFixed(2);
+                
+                const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
+                albedoComponents = [
+                    { emoji: LOGOS.CLOUD || '⛅', coverage: cloud_cov, albedo: cloud_alb },
+                    { emoji: LOGOS.VOLCANO || '🌋', coverage: magma_cov, albedo: magma_alb },
+                    { emoji: LOGOS.OCEAN || '🌊', coverage: ocean_cov, albedo: ocean_alb },
+                    { emoji: LOGOS.FOREST || '🌳', coverage: forest_cov, albedo: forest_alb },
+                    { emoji: 'desert', coverage: desert_cov, albedo: desert_alb },
+                    { emoji: LOGOS.ICE || '🧊', coverage: ice_cov, albedo: ice_alb }
+                ];
+            }
+        }
+        
+        // Afficher les composantes d'albedo
+        if (albedoComponents.length > 0) {
+            albedoComponents.forEach(comp => {
+                console.log(`${comp.emoji} ${comp.coverage}% x${comp.albedo}`);
+            });
+        } else {
+            // Fallback si pas d'époque
+            const cloud_cov = data.cloud_coverage !== undefined ? Math.round(data.cloud_coverage * 100) : 0;
+            console.log(`⛅ ${cloud_cov}% x0.40`);
+            console.log('🌋 0% x0.05');
+            console.log('🌊 0% x0.08');
+            console.log('🌳 0% x0.12');
+            console.log('desert 0% x0.30');
+            console.log('🧊 0% x0.70');
+        }
+        
+        console.log('---');
         console.log('Temp Surface:', data.temp_surface !== undefined ? `${(data.temp_surface - 273.15).toFixed(1)}°C (${data.temp_surface.toFixed(1)}K)` : '--');
-        console.log('Temp Effective:', data.current?.effective_temperature !== undefined ? `${(data.current.effective_temperature - 273.15).toFixed(1)}°C (${data.current.effective_temperature.toFixed(1)}K)` : '--');
+        console.log('Temp Effective:', data.temp_eff !== undefined ? `${(data.temp_eff - 273.15).toFixed(1)}°C (${data.temp_eff.toFixed(1)}K)` : '--');
         console.log('===========================');
     }
 }
@@ -1628,7 +1759,7 @@ function setEpoch(epochName) {
     currentEpochStartYears = epoch.startYears;
 
     // Mettre à jour la date de début affichée
-    const epochStartTimeDisplay = document.querySelector('.epoch-start-time');
+    const epochStartTimeDisplay = document.getElementById('epoch-start-time');
     if (epochStartTimeDisplay) {
         const formattedYears = formatYears(epoch.startYears);
         epochStartTimeDisplay.textContent = formattedYears;
@@ -1913,6 +2044,15 @@ window.addEventListener('DOMContentLoaded', () => {
     calculateInitialData();
     // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)
     resetTimeline();
+
+    // Gestionnaire pour la zone horloge (étapes)
+    const horlogeSection = document.querySelector('.timeline-horloge-section');
+    if (horlogeSection) {
+        horlogeSection.addEventListener('click', () => {
+            // TODO: Implémenter la logique des étapes (météorites, etc.)
+            console.log('Zone horloge cliquée');
+        });
+    }
 
     // Sélectionner "Corps noir" par défaut
     const corpsNoirButton = document.querySelector('.epoch-btn[data-epoch="Corps noir"]');

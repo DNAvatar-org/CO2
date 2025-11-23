@@ -79,7 +79,10 @@
         <div id="fps-chart"></div>
     </div>
     <div class="container">
-        <div class="left-column" id="left-column"></div>
+        <div class="left-column" id="left-column">
+            <div class="left-left" id="left-left"></div>
+            <div class="left-timeline" id="left-timeline"></div>
+        </div>
         <div class="right-column" id="right-column"></div>
 
         <!-- Divs à réorganiser automatiquement par layout.js -->
@@ -102,12 +105,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            <!-- Boutons Volcan et Météorite en dessous du flux -->
-            <div class="buttons-below-flux">
-                <button class="btn btn-noyau" id="btn-noyau" onclick="multiplyCO2()" title="Noyau (Volcan)">🌋</button>
-                <button class="btn btn-comet" id="btn-comet" onclick="addCometCO2()"
-                    title="Comète - +0.1 ppm">☄️</button>
             </div>
         </div>
 
@@ -134,16 +131,26 @@
         </div>
 
         <div class="timeline-display divGlass">
-            <div class="timeline-start-wrapper">
-                <div class="timeline-first-line">
-                    <span class="timeline-hourglass">📅</span>
-                    <span class="epoch-name" id="epoch-name"></span>
-                </div>
-                <span class="epoch-start-time">Avant -4500 Ma</span>
+            <!-- 1. Date -->
+            <div class="timeline-date-section">
+                <span class="timeline-hourglass">📅</span>
+                <span class="epoch-start-time" id="epoch-start-time">-5000 Ma</span>
                 <span class="info-time" id="info-time">+90 ans</span>
             </div>
-            <div class="timeline-frise">
-                <div class="epochs-container">
+            
+            <!-- 2. Zone horloge horizontale avec traits de relief -->
+            <div class="timeline-horloge-section">
+                <div class="timeline-horloge-content">
+                    <span class="horloge-icon">🕰</span>
+                    <div class="timeline-events-logos" id="timeline-events-logos">
+                        <!-- Logos d'événements (météorites, etc.) -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 3. Frise verticale -->
+            <div class="timeline-frise-vertical">
+                <div class="epochs-container-vertical">
                     <!-- Timeline générée dynamiquement depuis configOrganigramme.js -->
                 </div>
             </div>
@@ -286,4 +293,5 @@
     </script>
 </body>
 
+</html>
 </html>

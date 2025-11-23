@@ -2175,7 +2175,8 @@ function generateTimelineFromConfig() {
         return;
     }
 
-    const epochsContainer = document.querySelector('.epochs-container');
+    // Utiliser le nouveau conteneur vertical, avec fallback sur l'ancien
+    const epochsContainer = document.querySelector('.epochs-container-vertical') || document.querySelector('.epochs-container');
     if (!epochsContainer) {
         console.warn('Timeline container not found');
         return;
@@ -2220,21 +2221,16 @@ function generateTimelineFromConfig() {
                 addCustomTooltip(button, item.title);
             }
         } else if (item.type === 'separator') {
-            // Créer un séparateur
-            const separatorItem = document.createElement('div');
-            separatorItem.className = 'epoch-separator-item';
-
-            const separator = document.createElement('span');
-            separator.className = 'epoch-separator';
-            separator.textContent = '|';
-
+            // Afficher la date entre les logos (sans le "|")
+            const dateItem = document.createElement('div');
+            dateItem.className = 'epoch-date-item';
+            
             const date = document.createElement('span');
             date.className = 'epoch-date';
             date.textContent = item.date;
-
-            separatorItem.appendChild(separator);
-            separatorItem.appendChild(date);
-            epochsContainer.appendChild(separatorItem);
+            
+            dateItem.appendChild(date);
+            epochsContainer.appendChild(dateItem);
         }
     });
 }

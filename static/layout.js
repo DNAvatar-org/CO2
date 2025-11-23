@@ -58,28 +58,35 @@
             }
         });
         
-        // Vider les colonnes APRÈS avoir récupéré les références
-        leftColumn.innerHTML = '';
-        rightColumn.innerHTML = '';
+        // Récupérer les sous-colonnes de left
+        const leftLeft = document.getElementById('left-left');
+        const leftTimeline = document.getElementById('left-timeline');
         
-        // LEFT COLUMN
-        // 1. title-container (toujours)
-        if (divs['title-container']) {
-            leftColumn.appendChild(divs['title-container']);
+        if (!leftLeft || !leftTimeline) {
+            return;
         }
         
-        // 2. flux-diagram-wrapper (toujours dans left)
+        // Vider les colonnes APRÈS avoir récupéré les références
+        leftLeft.innerHTML = '';
+        leftTimeline.innerHTML = '';
+        rightColumn.innerHTML = '';
+        
+        // LEFT COLUMN - Structure en 2 colonnes
+        // leftLeft : title et flux
+        if (divs['title-container']) {
+            leftLeft.appendChild(divs['title-container']);
+        }
         if (divs['flux-diagram-wrapper']) {
-            leftColumn.appendChild(divs['flux-diagram-wrapper']);
+            leftLeft.appendChild(divs['flux-diagram-wrapper']);
+        }
+        
+        // leftTimeline : timeline
+        if (divs['timeline-display']) {
+            leftTimeline.appendChild(divs['timeline-display']);
         }
         
         // RIGHT COLUMN
-        // 1. timeline-display (en haut pour visibilité)
-        if (divs['timeline-display']) {
-            rightColumn.appendChild(divs['timeline-display']);
-        }
-        
-        // 2. plot-container-wrapper (toujours dans right)
+        // plot-container-wrapper (seul dans right)
         if (divs['plot-container-wrapper']) {
             rightColumn.appendChild(divs['plot-container-wrapper']);
         }
@@ -92,9 +99,11 @@
         // Vérifier que les éléments existent avant de réorganiser
         const leftColumn = document.getElementById('left-column');
         const rightColumn = document.getElementById('right-column');
+        const leftLeft = document.getElementById('left-left');
+        const leftTimeline = document.getElementById('left-timeline');
         const titleContainer = document.querySelector('.title-container');
         
-        if (leftColumn && rightColumn && titleContainer) {
+        if (leftColumn && rightColumn && leftLeft && leftTimeline && titleContainer) {
             reorganizeLayout();
         } else {
             // Réessayer au prochain frame si les éléments ne sont pas encore là (synchrone via requestAnimationFrame)
@@ -107,7 +116,9 @@
         document.addEventListener('DOMContentLoaded', initLayout);
     } else {
         // DOM déjà chargé, essayer directement, sinon au prochain frame
-        if (document.getElementById('left-column') && document.getElementById('right-column') && document.querySelector('.title-container')) {
+        if (document.getElementById('left-column') && document.getElementById('right-column') && 
+            document.getElementById('left-left') && document.getElementById('left-timeline') && 
+            document.querySelector('.title-container')) {
             initLayout();
         } else {
             requestAnimationFrame(initLayout);
