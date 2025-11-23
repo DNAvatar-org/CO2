@@ -18,7 +18,13 @@ const LOGOS = {
     CO2: '🏭',      // CO2 : usine (émissions industrielles)
     CH4: '⛽',       // CH4 : pompe à essence (combustibles fossiles, pets de vache)
     H2O: '💧',      // H2O : goutte d'eau
-    ALBEDO: '🪞'    // Albédo : miroir
+    ALBEDO: '🪞',   // Albédo : miroir
+    DESERT: 'fonts/pics/desert.png',   // Désert : dunes de sable (utilisé dans albedo breakdown)
+    VOLCANO: '🌋',  // Volcan : magma (utilisé dans albedo breakdown)
+    OCEAN: '🌊',    // Océan : vagues (utilisé dans albedo breakdown)
+    FOREST: '🌳',   // Forêt : arbre (utilisé dans albedo breakdown)
+    ICE: '🧊',      // Glace : glaçon (utilisé dans albedo breakdown)
+    CLOUD: '⛅'     // Nuages : nuage avec soleil (utilisé dans albedo breakdown)
 };
 
 // Exposer globalement pour utilisation dans plot.js
@@ -117,20 +123,20 @@ const nodes = [
 
     { id: 'albedo', logo: LOGOS.ALBEDO, x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
 
-    { 
-        id: 'noyau', 
-        logo: '🌕', 
-        x: centerX - 0.2, 
-        y: earthCenterY - 0.1, 
-        radius: 30, 
-        fillColor: 'rgba(255, 69, 0, 0)', 
-        strokeSize: 1, 
-        strokeColor: '#ff5500', 
-        left: [], 
-        right: [], 
-        top: [], 
-        bottom: [{ text: '~5700 K ', dataId: 'core_temperature' }], 
-        tooltip: 'Noyau - Géothermie', 
+    {
+        id: 'noyau',
+        logo: '🌕',
+        x: centerX - 0.2,
+        y: earthCenterY - 0.1,
+        radius: 30,
+        fillColor: 'rgba(255, 69, 0, 0)',
+        strokeSize: 1,
+        strokeColor: '#ff5500',
+        left: [],
+        right: [],
+        top: [],
+        bottom: [{ text: '~5700 K ', dataId: 'core_temperature' }],
+        tooltip: 'Noyau - Géothermie',
         radiation: [
             {
                 epochName: 'Corps noir',
@@ -178,20 +184,20 @@ const nodes = [
                 color: '#ff9800'
             }
         ],
-        zIndex: 20, 
+        zIndex: 20,
         logoScale: 0.8,
         logoOffsetY: 2
     },
 
-    { 
-        id: 'terre', 
-        x: centerX, 
-        y: earthCenterY, 
+    {
+        id: 'terre',
+        x: centerX,
+        y: earthCenterY,
         epoch: [
             {
                 epochName: 'Corps noir',
                 logo: 'fonts/pics/corps_noir.png',
-                radius: radiusTerre*0.8,
+                radius: radiusTerre * 0.8,
                 fillColor: 'rgba(0, 0, 0, 0.3)',
                 strokeColor: '#000000',
                 strokeSize: 1
@@ -199,7 +205,7 @@ const nodes = [
             {
                 epochName: 'Hadéen',
                 logo: 'fonts/pics/hadeen.png',
-                radius: radiusTerre*1.1,
+                radius: radiusTerre * 1.1,
                 fillColor: 'rgba(255, 69, 0, 0.3)',
                 strokeColor: '#ff4500',
                 strokeSize: 1
@@ -253,14 +259,14 @@ const nodes = [
                 strokeSize: 1
             }
         ],
-        left: [], 
-        right: [], 
-        top: '', 
-        bottom: '', 
-        tooltip: 'Terre', 
-        radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' }, 
-        zIndex: 15, 
-        logoScale: 0.95, 
+        left: [],
+        right: [],
+        top: '',
+        bottom: '',
+        tooltip: 'Terre',
+        radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' },
+        zIndex: 15,
+        logoScale: 0.95,
         logoOffsetY: 7
     },
 
@@ -279,7 +285,7 @@ const nodes = [
 
     { id: 'h2o', type: 'button', logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'albedo-btn', type: 'button', logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius*0.6, y: earthCenterY-circleMiddleRadius*0.85, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents'}], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
+    { id: 'albedo-btn', type: 'button', logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.6, y: earthCenterY - circleMiddleRadius * 0.85, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
 ];
 
 // Définition du graphe : arcs (flèches)

@@ -128,6 +128,12 @@
     width: max-content;
 }
 
+/* Label albedo_percents : line-height spécifique et alignement en haut */
+.flux-label[data-id="albedo_percents"] {
+    line-height: 20px;
+    align-self: flex-start; /* Aligner en haut du conteneur flex */
+}
+
 /* Labels des boutons en gris */
 .flux-label.buttonData {
     color: #888;

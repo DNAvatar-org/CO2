@@ -448,8 +448,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             circleBg.style.border = 'none';
         } else {
             // Vérifier si la couleur est transparente (alpha = 0)
-            const isTransparent = strokeColor.includes('rgba') && strokeColor.includes(', 0)') || 
-                                  strokeColor.includes('rgba') && strokeColor.includes(', 0 )');
+            const isTransparent = strokeColor.includes('rgba') && strokeColor.includes(', 0)') ||
+                strokeColor.includes('rgba') && strokeColor.includes(', 0 )');
             if (isTransparent) {
                 // Bordure transparente mais présente pour l'espacement
                 circleBg.style.borderColor = strokeColor;
@@ -505,7 +505,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         // Gestionnaire de clic pour copier le logo ou déclencher le bouton
         circleBg.addEventListener('click', (e) => {
             e.stopPropagation();
-            
+
             // Vérifier si c'est un bouton (cellule parente a la classe flux-button-cell)
             const parentCell = circleBg.closest('.flux-button-cell');
             if (parentCell) {
@@ -516,7 +516,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 } else {
                     parentCell.classList.add('checked');
                 }
-                
+
                 // Mettre à jour les variables globales et les couleurs
                 const cellId = parentCell.id;
                 let varName = null;
@@ -524,11 +524,11 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 else if (cellId === 'cell-methane') varName = 'useCH4';
                 else if (cellId === 'cell-h2o') varName = 'useH2O';
                 else if (cellId === 'cell-albedo-btn') varName = 'useAlbedo';
-                
+
                 if (varName && typeof window !== 'undefined') {
                     window[varName] = !isChecked;
                 }
-                
+
                 // Mettre à jour la classe selected
                 if (!isChecked) {
                     parentCell.classList.add('selected');
@@ -537,7 +537,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     parentCell.classList.remove('selected');
                     parentCell.classList.add('unselected');
                 }
-                
+
                 // Mettre à jour les couleurs des étiquettes
                 if (typeof window.updateFluxLabels === 'function') {
                     window.updateFluxLabels(window.plotData || {});
@@ -711,7 +711,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 const labelContainer = document.createElement('div');
                 labelContainer.style.display = 'flex';
                 labelContainer.style.flexDirection = 'column';
-                labelContainer.style.gap = '4px';
+                labelContainer.style.marginTop = '115px';
                 labelContainer.style.alignItems = 'flex-start'; // À droite (col === 2)
                 labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
                 labelContainer.style.position = 'relative'; // Créer un stacking context
@@ -743,7 +743,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
                     label.style.position = 'relative'; // Créer un stacking context
                     label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
-                    
+
                     // Si le texte contient <br>, permettre les retours à la ligne et éviter la coupure
                     if (text && text.includes('<br>')) {
                         label.style.whiteSpace = 'normal';
@@ -751,7 +751,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                         label.style.maxWidth = 'none';
                         label.style.width = 'max-content';
                     }
-                    
+
                     labelContainer.appendChild(label);
                 });
 
@@ -1076,12 +1076,12 @@ function calculatePositions() {
 // Fonction helper pour récupérer les propriétés d'un node (gère le cas spécial 'terre' avec tableau epoch)
 function getNodeProperty(node, property, defaultValue = null) {
     if (!node) return defaultValue;
-    
+
     // Cas spécial pour le node 'terre' avec tableau epoch
     if (node.id === 'terre' && node.epoch && Array.isArray(node.epoch)) {
         const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
         const epochConfig = node.epoch.find(e => e.epochName === currentEpochName);
-        
+
         if (epochConfig && epochConfig.hasOwnProperty(property)) {
             return epochConfig[property];
         } else if (node.epoch.length > 0) {
@@ -1092,7 +1092,7 @@ function getNodeProperty(node, property, defaultValue = null) {
             }
         }
     }
-    
+
     // Propriété directe du node
     return node.hasOwnProperty(property) ? node[property] : defaultValue;
 }
@@ -1113,7 +1113,7 @@ function generateArrows() {
             }
         });
     }
-    
+
     arcs.forEach(arc => {
         const idDep = nodes.find(n => n.id === arc.from);
         const idDest = nodes.find(n => n.id === arc.to);
@@ -1197,7 +1197,7 @@ function generateArrows() {
             const sourceStrokeSize = getNodeProperty(idDep, 'strokeSize', 4);
             const depStrokeColor = getNodeProperty(idDep, 'strokeColor', '');
             // Si strokeColor est défini, utiliser strokeSize, sinon utiliser juste le radius
-            const sourceRadiusOuter = (depStrokeColor && depStrokeColor.trim() !== '') 
+            const sourceRadiusOuter = (depStrokeColor && depStrokeColor.trim() !== '')
                 ? sourceRadius + (sourceStrokeSize / 2)
                 : sourceRadius;
             x1 = idDep.x + sourceRadiusOuter * unitX;
@@ -1262,7 +1262,7 @@ function generateArrows() {
         const depStrokeColor = getNodeProperty(idDep, 'strokeColor', '');
         // Un nœud a un cercle si strokeColor est défini ET non vide, OU si radius est défini (même sans strokeColor visible)
         const sourceHasCircle = (depStrokeColor && depStrokeColor.trim() !== '') || (sourceRadius && sourceRadius > 0);
-        const sourceRadiusOuter = sourceHasCircle 
+        const sourceRadiusOuter = sourceHasCircle
             ? ((depStrokeColor && depStrokeColor.trim() !== '') ? (sourceRadius + (sourceStrokeSize / 2)) : sourceRadius)
             : 0;
 
@@ -1773,7 +1773,7 @@ cellOrder.forEach(nodeId => {
         // Trouver la configuration de l'époque courante
         const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
         const epochConfig = node.epoch.find(e => e.epochName === currentEpochName);
-        
+
         if (epochConfig) {
             // Créer une configuration fusionnée avec les propriétés de l'époque
             nodeConfig = {
@@ -1967,14 +1967,14 @@ mainContainer.appendChild(radiationContainer);
 cellOrder.forEach(nodeId => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node || !node.radiation) return;
-    
+
     // Sauter la terre : ses radiations seront créées via recreateTerreRadiation() 
     // car elle a un radius qui dépend de l'époque
     if (nodeId === 'terre') return;
 
     // Gérer le cas spécial du node 'noyau' avec tableau radiation par époque
     let radiationOptions = node.radiation;
-    
+
     // Si le node 'noyau' a un tableau radiation (configuration par époque)
     if (nodeId === 'noyau' && Array.isArray(node.radiation)) {
         const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
@@ -1983,7 +1983,7 @@ cellOrder.forEach(nodeId => {
         if (!epochRadiation && node.radiation.length > 0) {
             epochRadiation = node.radiation[node.radiation.length - 1];
         }
-        
+
         if (epochRadiation) {
             // Utiliser la configuration de l'époque courante
             radiationOptions = epochRadiation;
@@ -2002,7 +2002,7 @@ cellOrder.forEach(nodeId => {
             };
         }
     }
-    
+
     let { numCircles = 8, maxRadius, openingAngle = 270, rotation = 270, color = '#ff9800', strokeSize = 2 } = radiationOptions;
 
     if (maxRadius !== null && maxRadius !== undefined && maxRadius > 0) {
@@ -2259,17 +2259,17 @@ function updateFluxLabels(data) {
     const cellCH4 = document.getElementById('cell-methane');
     const cellH2O = document.getElementById('cell-h2o');
     const cellAlbedo = document.getElementById('cell-albedo-btn');
-    
+
     // Vérifier l'état via les cellules ET les variables globales (fallback)
-    const co2_button_checked = (cellCO2 && cellCO2.classList.contains('checked')) || 
-                                (typeof window !== 'undefined' && window.useCO2 === true);
-    const ch4_button_checked = (cellCH4 && cellCH4.classList.contains('checked')) || 
-                                (typeof window !== 'undefined' && window.useCH4 === true);
-    const h2o_button_checked = (cellH2O && cellH2O.classList.contains('checked')) || 
-                                (typeof window !== 'undefined' && window.useH2O === true);
-    const albedo_button_checked = (cellAlbedo && cellAlbedo.classList.contains('checked')) || 
-                                   (typeof window !== 'undefined' && window.useAlbedo === true);
-    
+    const co2_button_checked = (cellCO2 && cellCO2.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useCO2 === true);
+    const ch4_button_checked = (cellCH4 && cellCH4.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useCH4 === true);
+    const h2o_button_checked = (cellH2O && cellH2O.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useH2O === true);
+    const albedo_button_checked = (cellAlbedo && cellAlbedo.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useAlbedo === true);
+
     const h2o_final_enabled = h2o_enabled && h2o_button_checked;
 
     // S'assurer que toutes les valeurs numériques sont bien des nombres
@@ -2300,7 +2300,7 @@ function updateFluxLabels(data) {
     // Utiliser data.albedo qui vient de la simulation (calculé avec tous les paramètres corrects)
     // Seulement recalculer si data.albedo n'est pas défini ou si on est en mode corps noir
     console.log(`[updateFluxLabels] Albedo initial: data.albedo=${albedo}, albedo_num=${albedo_num}, isCorpsNoir=${isCorpsNoir}`);
-    
+
     if (isCorpsNoir) {
         albedo_num = 0; // Corps noir : pas d'albedo
         console.log(`[updateFluxLabels] Mode corps noir: albedo_num=0`);
@@ -2321,7 +2321,7 @@ function updateFluxLabels(data) {
         console.log(`[updateFluxLabels] Utilisation de data.albedo: ${albedo_num.toFixed(3)}`);
     }
     // Sinon, utiliser data.albedo qui vient de la simulation (déjà calculé avec tous les paramètres)
-    
+
     let solar_flux_absorbed;
     if (isCorpsNoir) {
         solar_flux_absorbed = SOLAR_FLUX_AVERAGE;
@@ -2469,15 +2469,15 @@ function updateFluxLabels(data) {
             // Note: forcing_total et albedo_percent sont sur le bouton albedo, mais forcing_total est aussi sur la flèche reemis->terre
             // On doit vérifier si c'est le label du bouton albedo ou celui de la flèche
             const isButtonLabel = dataId === 'co2_percent' || dataId === 'co2_forcing' ||
-                                  dataId === 'ch4_percent' || dataId === 'ch4_forcing' ||
-                                  dataId === 'h2o_percent' || dataId === 'h2o_forcing' ||
-                                  dataId === 'albedo_percent' || dataId === 'albedo_forcing';
+                dataId === 'ch4_percent' || dataId === 'ch4_forcing' ||
+                dataId === 'h2o_percent' || dataId === 'h2o_forcing' ||
+                dataId === 'albedo_percent' || dataId === 'albedo_forcing';
 
             // Vérifier si forcing_total est sur le bouton albedo (pas sur la flèche)
             // Le label du bouton albedo est dans la cellule cell-albedo-btn
             // Vérifier si le label est dans la cellule du bouton albedo
-            const isAlbedoButtonLabel = dataId === 'forcing_total' && 
-                                        (label.closest('#cell-albedo-btn') !== null);
+            const isAlbedoButtonLabel = dataId === 'forcing_total' &&
+                (label.closest('#cell-albedo-btn') !== null);
 
             // Si c'est un label lié à un bouton, vérifier si le bouton est actif
             let shouldApplyColors = true;
@@ -2536,7 +2536,7 @@ function updateFluxLabels(data) {
     // Toujours afficher le magma (volcans) même si couverture à 0%
     // Classer par ordre décroissant de pondération (couverture × albedo)
     let albedoBreakdown = '';
-    
+
     // Fonction helper pour créer et trier les composantes
     const createAlbedoComponents = (components) => {
         // Calculer la pondération pour chaque composante (couverture × albedo)
@@ -2546,18 +2546,28 @@ function updateFluxLabels(data) {
         // Trier par ordre décroissant de pondération
         components.sort((a, b) => b.weight - a.weight);
         // Construire la chaîne HTML
-        return components.map(comp => `${comp.emoji}${comp.coverage}% x${comp.albedo}`).join('<br>');
+        return components.map(comp => {
+            // Arrondir le pourcentage à un entier
+            const coverage_int = Math.round(comp.coverage);
+            // Si c'est un chemin d'image (contient .png, .jpg, etc.), utiliser une balise <img>
+            const isImage = comp.emoji && (comp.emoji.includes('.png') || comp.emoji.includes('.jpg') || comp.emoji.includes('.svg'));
+            if (isImage) {
+                return `<img src="${comp.emoji}" style="width: 1.8em; height: 1.8em; vertical-align: middle; display: inline-block;" alt="desert"> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span>`;
+            } else {
+                return `<span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span>`;
+            }
+        }).join('<br>');
     };
-    
+
     if (isCorpsNoir) {
         // Corps noir : tout à 0
         const components = [
-            { emoji: '🌋', coverage: 0, albedo: '0.05' },
-            { emoji: '🌊', coverage: 0, albedo: '0.08' },
-            { emoji: '🌳', coverage: 0, albedo: '0.12' },
-            { emoji: '🏜️', coverage: 0, albedo: '0.30' },
-            { emoji: '🧊', coverage: 0, albedo: '0.70' },
-            { emoji: '⛅', coverage: 0, albedo: '0.40' }
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: '0.05' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: '0.08' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: '0.12' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: '0.30' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: 0, albedo: '0.70' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: 0, albedo: '0.40' }
         ];
         albedoBreakdown = createAlbedoComponents(components);
     } else if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
@@ -2571,8 +2581,9 @@ function updateFluxLabels(data) {
             // Pour la glace, utiliser la valeur calculée dynamiquement (ice_coverage)
             const ice_cov = Math.round(ice_coverage * 100);
             // Pour les nuages, utiliser la valeur calculée dynamiquement (cloud_percent)
-            const cloud_cov = cloud_percent;
-            
+            // Arrondir à un entier
+            const cloud_cov = Math.round(cloud_percent);
+
             // Récupérer les albedos de chaque composante
             const magma_alb = (currentEpoch.magma_albedo || 0.05).toFixed(2);
             const ocean_alb = (currentEpoch.ocean_albedo || 0.08).toFixed(2);
@@ -2580,42 +2591,42 @@ function updateFluxLabels(data) {
             const desert_alb = (currentEpoch.desert_albedo || 0.30).toFixed(2);
             const ice_alb = (currentEpoch.ice_albedo || 0.70).toFixed(2);
             const cloud_alb = (currentEpoch.cloud_albedo || 0.40).toFixed(2);
-            
+
             // Créer le tableau des composantes avec leurs valeurs
             const components = [
-                { emoji: '🌋', coverage: magma_cov, albedo: magma_alb },
-                { emoji: '🌊', coverage: ocean_cov, albedo: ocean_alb },
-                { emoji: '🌳', coverage: forest_cov, albedo: forest_alb },
-                { emoji: '🏜️', coverage: desert_cov, albedo: desert_alb },
-                { emoji: '🧊', coverage: ice_cov, albedo: ice_alb },
-                { emoji: '⛅', coverage: cloud_cov, albedo: cloud_alb }
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: magma_cov, albedo: magma_alb },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: ocean_cov, albedo: ocean_alb },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: forest_cov, albedo: forest_alb },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: desert_cov, albedo: desert_alb },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: ice_cov, albedo: ice_alb },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: cloud_cov, albedo: cloud_alb }
             ];
             albedoBreakdown = createAlbedoComponents(components);
         } else {
             // Fallback si époque non trouvée
-            const final_cloud_percent = cloud_percent;
+            const final_cloud_percent = Math.round(cloud_percent);
             const final_ice_percent = Math.round(ice_coverage * 100);
             const components = [
-                { emoji: '🌋', coverage: 0, albedo: '0.05' },
-                { emoji: '🌊', coverage: 0, albedo: '0.08' },
-                { emoji: '🌳', coverage: 0, albedo: '0.12' },
-                { emoji: '🏜️', coverage: 0, albedo: '0.30' },
-                { emoji: '🧊', coverage: final_ice_percent, albedo: '0.70' },
-                { emoji: '⛅', coverage: final_cloud_percent, albedo: '0.40' }
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: '0.05' },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: '0.08' },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: '0.12' },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: '0.30' },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: '0.70' },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: '0.40' }
             ];
             albedoBreakdown = createAlbedoComponents(components);
         }
     } else {
         // Fallback si pas d'époque
-        const final_cloud_percent = cloud_percent;
+        const final_cloud_percent = Math.round(cloud_percent);
         const final_ice_percent = Math.round(ice_coverage * 100);
         const components = [
-            { emoji: '🌋', coverage: 0, albedo: '0.05' },
-            { emoji: '🌊', coverage: 0, albedo: '0.08' },
-            { emoji: '🌳', coverage: 0, albedo: '0.12' },
-            { emoji: '🏜️', coverage: 0, albedo: '0.30' },
-            { emoji: '🧊', coverage: final_ice_percent, albedo: '0.70' },
-            { emoji: '⛅', coverage: final_cloud_percent, albedo: '0.40' }
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: '0.05' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: '0.08' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: '0.12' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: '0.30' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: '0.70' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: '0.40' }
         ];
         albedoBreakdown = createAlbedoComponents(components);
     }
@@ -2756,7 +2767,7 @@ function updateFluxLabels(data) {
     const co2_ppm_display = co2_ppm_num > 0 ? co2_ppm_num.toFixed(0) : '0';
     updateLabel('co2_percent', co2_ppm_display, 'ppm_simple');
     updateLabel('co2_forcing', forcing_CO2, 'watt_simple');
-    
+
     // Ne plus forcer automatiquement le bouton CO2 en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement
 
@@ -2765,7 +2776,7 @@ function updateFluxLabels(data) {
     updateLabel('ch4_percent', ch4_ppm_display, 'ppm_simple');
     // Utiliser directement forcing_CH4 qui est déjà calculé avec les bonnes conditions
     updateLabel('ch4_forcing', forcing_CH4, 'watt_simple');
-    
+
     // Ne plus forcer automatiquement le bouton CH4 en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement
 
@@ -2786,12 +2797,12 @@ function updateFluxLabels(data) {
     // Les labels du bouton albedo utilisent forcing_total et albedo_percent
     // albedo_percent : pourcentage total d'albedo (somme des %), pas le détail
     updateLabel('albedo_percent', albedo_percent_value, 'percent_simple');
-    
+
     // passing_albedo_percent : pourcentage qui passe (1 - albedo_percent)
     // Sur la flèche geometrie -> albedo
     const passing_albedo_percent = (1 - albedo_num) * 100;
     updateLabel('passing_albedo_percent', passing_albedo_percent, 'percent_simple');
-    
+
     // Ne plus forcer automatiquement le bouton albedo en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%
 }
@@ -2799,21 +2810,21 @@ function updateFluxLabels(data) {
 // Exposer les fonctions globalement
 if (typeof window !== 'undefined') {
     window.updateFluxLabels = updateFluxLabels;
-    
+
     // Initialiser les variables globales selon l'état initial des cellules (boutons du flux)
     // Les boutons du flux sont des cellules, pas des boutons HTML
     const cellCO2_init = document.getElementById('cell-co2');
     const cellCH4_init = document.getElementById('cell-methane');
     const cellH2O_init = document.getElementById('cell-h2o');
     const cellAlbedo_init = document.getElementById('cell-albedo-btn');
-    
+
     if (typeof window !== 'undefined') {
         // Les boutons sont activés par défaut (voir createCell ligne 1822)
         window.useCO2 = cellCO2_init ? cellCO2_init.classList.contains('checked') : true;
         window.useCH4 = cellCH4_init ? cellCH4_init.classList.contains('checked') : true;
         window.useH2O = cellH2O_init ? cellH2O_init.classList.contains('checked') : true;
         window.useAlbedo = cellAlbedo_init ? cellAlbedo_init.classList.contains('checked') : true;
-        
+
         // Initialiser les classes selected/unselected sur les cellules
         const buttonMap = [
             { cellId: 'cell-co2', varName: 'useCO2' },
@@ -2821,7 +2832,7 @@ if (typeof window !== 'undefined') {
             { cellId: 'cell-h2o', varName: 'useH2O' },
             { cellId: 'cell-albedo-btn', varName: 'useAlbedo' }
         ];
-        
+
         buttonMap.forEach(({ cellId, varName }) => {
             const cell = document.getElementById(cellId);
             if (cell) {
@@ -2857,12 +2868,12 @@ function recreateNoyauRadiation() {
     // Trouver la configuration de l'époque courante
     const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
     let epochRadiation = noyauNode.radiation.find(r => r.epochName === currentEpochName);
-    
+
     // Si l'époque n'est pas trouvée, utiliser la dernière du tableau (permet d'alléger les répétitions)
     if (!epochRadiation && noyauNode.radiation.length > 0) {
         epochRadiation = noyauNode.radiation[noyauNode.radiation.length - 1];
     }
-    
+
     if (!epochRadiation) return;
 
     // Supprimer l'ancien groupe de radiations
@@ -2913,7 +2924,7 @@ function recreateTerreRadiation() {
 
     // Récupérer les options de radiation (peut être un objet simple ou un tableau)
     let radiationOptions = terreNode.radiation;
-    
+
     // Si c'est un tableau (par époque), trouver la bonne configuration
     if (Array.isArray(radiationOptions)) {
         const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
@@ -2970,7 +2981,7 @@ function initFluxButtonListeners() {
     buttonMap.forEach(({ cellId, varName, nodeId }) => {
         const cell = document.getElementById(cellId);
         const circleBg = cell ? cell.querySelector('.flux-circle-bg') : null;
-        
+
         if (cell && circleBg) {
             // Initialiser l'état selected/unselected selon l'état checked
             const isChecked = cell.classList.contains('checked');
@@ -2981,7 +2992,7 @@ function initFluxButtonListeners() {
                 cell.classList.remove('selected');
                 cell.classList.add('unselected');
             }
-            
+
             // Initialiser la variable globale
             if (typeof window !== 'undefined') {
                 window[varName] = isChecked;
