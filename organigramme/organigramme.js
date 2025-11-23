@@ -2778,9 +2778,16 @@ window.updateFluxLabels = function (data) {
     updateLabel('forcing_total', forcing_total, 'watt');
 
     // Boutons
-    // CO2 - afficher directement en ppm (pas de conversion en %)
-    const co2_ppm_display = co2_ppm_num > 0 ? co2_ppm_num.toFixed(0) : '0';
-    updateLabel('co2_percent', co2_ppm_display, 'ppm_simple');
+    // CO2 - afficher en % si > 10000 ppm, sinon en ppm
+    let co2_ppm_display, co2_format;
+    if (co2_ppm_num > 10000) {
+        co2_ppm_display = (co2_ppm_num / 10000).toFixed(1);
+        co2_format = 'percent';
+    } else {
+        co2_ppm_display = co2_ppm_num > 0 ? co2_ppm_num.toFixed(0) : '0';
+        co2_format = 'ppm_simple';
+    }
+    updateLabel('co2_percent', co2_ppm_display, co2_format);
     updateLabel('co2_forcing', forcing_CO2, 'watt_simple');
 
     // Ne plus forcer automatiquement le bouton CO2 en off/gris
