@@ -321,6 +321,7 @@ const timeline = [
         co2_ppm: 0,
         ch4_ppm: 0,
         h2o_enabled: false,
+        h2o_vapor_percent: 0.0, // Pas d'atmosphère
         cloud_coverage: 0,
         albedo_base: 0.0,
         ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0,
@@ -347,7 +348,8 @@ const timeline = [
         co2_ppm: 100000, // 10% CO2 pour simuler l'atmosphère dense primitive
         ch4_ppm: 1000,   // Méthane élevé
         h2o_enabled: true, // Vapeur d'eau massive
-        cloud_coverage: 0,
+        h2o_vapor_percent: 5.0, // 5% de vapeur d'eau dans l'atmosphère (effet de serre)
+        cloud_coverage: 0.1, // 10% de nuages (peu de condensation à haute température)
         albedo_base: 0.05,
         ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0,
         magma_coverage: 1.0, // Spécifique Hadéen
@@ -374,7 +376,8 @@ const timeline = [
         co2_ppm: 5000,
         ch4_ppm: 80,
         h2o_enabled: true,
-        cloud_coverage: 0.7,
+        h2o_vapor_percent: 1.5, // Atmosphère stabilisée
+        cloud_coverage: 0.6,
         albedo_base: 0.12,
         ocean_coverage: 0.80, forest_coverage: 0, desert_coverage: 0.05, ice_coverage: 0,
         volcanoFactor: 5.0
@@ -400,7 +403,8 @@ const timeline = [
         co2_ppm: 2000,
         ch4_ppm: 25,
         h2o_enabled: true,
-        cloud_coverage: 0.4,
+        h2o_vapor_percent: 1.0, // Climat tempéré
+        cloud_coverage: 0.6,
         albedo_base: 0.20,
         ocean_coverage: 0.70, forest_coverage: 0.05, desert_coverage: 0.15, ice_coverage: 0,
         volcanoFactor: 2.0
@@ -426,7 +430,8 @@ const timeline = [
         co2_ppm: 2500,
         ch4_ppm: 8,
         h2o_enabled: true,
-        cloud_coverage: 0.5,
+        h2o_vapor_percent: 1.2, // Climat chaud (dinosaures)
+        cloud_coverage: 0.6,
         albedo_base: 0.28,
         ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0,
         volcanoFactor: 1.0
@@ -452,7 +457,8 @@ const timeline = [
         co2_ppm: 3000,
         ch4_ppm: 10,
         h2o_enabled: true,
-        cloud_coverage: 0.5,
+        h2o_vapor_percent: 0.8, // Refroidissement
+        cloud_coverage: 0.6,
         albedo_base: 0.28,
         ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0,
         volcanoFactor: 1.0
@@ -478,6 +484,7 @@ const timeline = [
         co2_ppm: 280,
         ch4_ppm: 0.7,
         h2o_enabled: true,
+        h2o_vapor_percent: 0.6, // Climat glaciaire/interglaciaire
         cloud_coverage: 0.4,
         albedo_base: 0.30,
         ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05,
@@ -504,6 +511,7 @@ const timeline = [
         co2_ppm: 420,
         ch4_ppm: 1.9,
         h2o_enabled: true,
+        h2o_vapor_percent: 0.4, // Valeur moderne (référence: ~0.4% en volume)
         cloud_coverage: 0.4,
         albedo_base: 0.30,
         ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05,
