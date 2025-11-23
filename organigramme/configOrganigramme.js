@@ -339,14 +339,14 @@ const timeline = [
         endYears: 4.0e9,
         temp: '46.0°C',
         logo: 'fonts/pics/hadeen.png',
-        title: 'Hadéen (-4500 à -4000 Ma)',
+        title: 'Hadéen - Terre en formation, océan de magma (Atmosphère dense)',
         solar_intensity: 0.75,
-        geothermal_flux: 15.0,
-        core_temperature: 5800,
+        geothermal_flux: 20.0, // Flux élevé (littérature: 10-20 W/m² pour magma ocean)
+        core_temperature: 6000,
         // Simulation parameters
-        co2_ppm: 7000,
-        ch4_ppm: 100,
-        h2o_enabled: false,
+        co2_ppm: 100000, // 10% CO2 pour simuler l'atmosphère dense primitive
+        ch4_ppm: 1000,   // Méthane élevé
+        h2o_enabled: true, // Vapeur d'eau massive
         cloud_coverage: 0,
         albedo_base: 0.05,
         ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0,

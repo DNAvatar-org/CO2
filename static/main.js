@@ -1361,6 +1361,15 @@ function updateLegend(data) {
         const tempC = (T - 273.15).toFixed(0);
         const tempF = ((T - 273.15) * 9 / 5 + 32).toFixed(0);
 
+        // Calculer la couleur dynamique basée sur la température de surface (pour harmoniser avec le plot)
+        let dynamicColor = 'cyan';
+        if (data.current && typeof data.current.temp_surface === 'number') {
+            const tempSurfaceC = data.current.temp_surface - 273.15;
+            if (typeof window.tempSurfaceToColor === 'function') {
+                dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
+            }
+        }
+
         // Créer deux éléments de légende : un pour le corps noir (pointillé 'dot') et un pour la courbe réelle (pleine 'solid')
         const patterns = [
             { name: 'dot', label: 'Corps noir' },
@@ -1371,13 +1380,13 @@ function updateLegend(data) {
             const item = document.createElement('div');
             item.className = 'legend-equilibre-item';
 
-            // Créer le SVG avec le pattern approprié (cyan pour la légende d'équilibre)
+            // Créer le SVG avec le pattern approprié (couleur dynamique)
             const dashArray = typeof window.getDashArray === 'function'
                 ? window.getDashArray(patternInfo.name)
                 : (patternInfo.name === 'dot' ? '1,3' : 'none');
             const dashAttr = dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : '';
             const patternSVG = `<svg width="50" height="5" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
-                <line x1="2" y1="2.5" x2="48" y2="2.5" stroke="cyan" stroke-width="2" ${dashAttr}/>
+                <line x1="2" y1="2.5" x2="48" y2="2.5" stroke="${dynamicColor}" stroke-width="2" ${dashAttr}/>
             </svg>`;
 
             // Créer un conteneur pour le SVG avec les températures au-dessus et en-dessous
@@ -1412,7 +1421,7 @@ function updateLegend(data) {
                 tempCAbove.style.lineHeight = '1';
                 tempCAbove.style.textAlign = 'right';
                 tempCAbove.style.whiteSpace = 'nowrap';
-                tempCAbove.style.color = 'cyan';
+                tempCAbove.style.color = dynamicColor;
                 tempCAbove.textContent = `${tempC}°C`;
                 patternContainer.appendChild(tempCAbove);
             }
@@ -1427,7 +1436,7 @@ function updateLegend(data) {
                 tempFBelow.style.lineHeight = '1';
                 tempFBelow.style.textAlign = 'right';
                 tempFBelow.style.whiteSpace = 'nowrap';
-                tempFBelow.style.color = 'cyan';
+                tempFBelow.style.color = dynamicColor;
                 tempFBelow.textContent = `${tempF}°F`;
                 patternContainer.appendChild(tempFBelow);
             }
@@ -1437,522 +1446,521 @@ function updateLegend(data) {
             // K à côté (normal) - toujours afficher .0K même si entier
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
-            labelSpan.style.color = 'cyan';
+            labelSpan.style.color = dynamicColor;
             labelSpan.textContent = `${T.toFixed(1)}K`;
 
             item.appendChild(patternContainer);
             item.appendChild(labelSpan);
             equilibreCurvesContainer.appendChild(item);
         });
+
+        // Remplacer les spans CSS par des SVG pour harmoniser les pointillés dans l'intégrale
+        const dottedSpan = document.querySelector('.legend-line-dotted');
+        const solidSpan = document.querySelector('.legend-line-solid');
+
+        if (dottedSpan) {
+            // Créer un SVG avec le même pattern que la légende (dot avec stroke-dasharray="1,3")
+            const dashArray = typeof window.getDashArray === 'function' ? window.getDashArray('dot') : '1,3';
+            dottedSpan.innerHTML = `<svg width="30" height="2" style="vertical-align: middle; display: inline-block;">
+                <line x1="0" y1="1" x2="30" y2="1" stroke="${dynamicColor}" stroke-width="2" stroke-dasharray="${dashArray}"/>
+            </svg>`;
+            // Supprimer le style CSS border qui n'est plus nécessaire
+            dottedSpan.style.border = 'none';
+        }
+
+        if (solidSpan) {
+            // Créer un SVG avec une ligne pleine
+            solidSpan.innerHTML = `<svg width="30" height="2" style="vertical-align: middle; display: inline-block;">
+                <line x1="0" y1="1" x2="30" y2="1" stroke="${dynamicColor}" stroke-width="2"/>
+            </svg>`;
+            // Supprimer le style CSS border qui n'est plus nécessaire
+            solidSpan.style.border = 'none';
+        }
     }
 
-    // Remplacer les spans CSS par des SVG pour harmoniser les pointillés dans l'intégrale
-    const dottedSpan = document.querySelector('.legend-line-dotted');
-    const solidSpan = document.querySelector('.legend-line-solid');
-
-    if (dottedSpan) {
-        // Créer un SVG avec le même pattern que la légende (dot avec stroke-dasharray="1,3")
-        const dashArray = typeof window.getDashArray === 'function' ? window.getDashArray('dot') : '1,3';
-        dottedSpan.innerHTML = `<svg width="30" height="2" style="vertical-align: middle; display: inline-block;">
-            <line x1="0" y1="1" x2="30" y2="1" stroke="cyan" stroke-width="2" stroke-dasharray="${dashArray}"/>
-        </svg>`;
-        // Supprimer le style CSS border qui n'est plus nécessaire
-        dottedSpan.style.border = 'none';
+    // Fonction pour obtenir le style CSS de bordure selon le pattern
+    function getDashStyleForPattern(pattern) {
+        switch (pattern) {
+            case 'dash':
+                return 'dashed';
+            case 'dot':
+                return 'dotted';
+            case 'dashdot':
+                return 'dashed'; // CSS ne supporte pas dashdot directement, on utilise dashed
+            case 'longdash':
+                return 'dashed';
+            case 'longdashdot':
+                return 'dashed';
+            case 'solid':
+            default:
+                return 'solid';
+        }
     }
 
-    if (solidSpan) {
-        // Créer un SVG avec une ligne pleine
-        solidSpan.innerHTML = `<svg width="30" height="2" style="vertical-align: middle; display: inline-block;">
-            <line x1="0" y1="1" x2="30" y2="1" stroke="cyan" stroke-width="2"/>
-        </svg>`;
-        // Supprimer le style CSS border qui n'est plus nécessaire
-        solidSpan.style.border = 'none';
-    }
-}
+    // Les fonctions createDashPatternSVG et getDashArray sont maintenant dans patterns.js
 
-// Fonction pour obtenir le style CSS de bordure selon le pattern
-function getDashStyleForPattern(pattern) {
-    switch (pattern) {
-        case 'dash':
-            return 'dashed';
-        case 'dot':
-            return 'dotted';
-        case 'dashdot':
-            return 'dashed'; // CSS ne supporte pas dashdot directement, on utilise dashed
-        case 'longdash':
-            return 'dashed';
-        case 'longdashdot':
-            return 'dashed';
-        case 'solid':
-        default:
-            return 'solid';
-    }
-}
+    // Fonction pour activer/désactiver la vapeur d'eau
+    // Fonction pour appliquer les conditions initiales d'une époque géologique
+    function setEpoch(epochName) {
+        if (calculationInProgress) return; // Bloquer si calcul en cours
 
-// Les fonctions createDashPatternSVG et getDashArray sont maintenant dans patterns.js
+        // Gérer la sélection unique (boutons radio)
+        const allEpochButtons = document.querySelectorAll('.epoch-btn');
+        allEpochButtons.forEach(btn => {
+            btn.classList.remove('selected');
+        });
 
-// Fonction pour activer/désactiver la vapeur d'eau
-// Fonction pour appliquer les conditions initiales d'une époque géologique
-function setEpoch(epochName) {
-    if (calculationInProgress) return; // Bloquer si calcul en cours
+        // Sélectionner le bouton cliqué
+        const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochName}"]`);
+        if (clickedButton) {
+            clickedButton.classList.add('selected');
+        }
 
-    // Gérer la sélection unique (boutons radio)
-    const allEpochButtons = document.querySelectorAll('.epoch-btn');
-    allEpochButtons.forEach(btn => {
-        btn.classList.remove('selected');
-    });
+        // Récupérer les conditions de l'époque depuis geology.js
+        if (typeof window.getGeologicalPeriodByName !== 'function') {
+            return;
+        }
 
-    // Sélectionner le bouton cliqué
-    const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochName}"]`);
-    if (clickedButton) {
-        clickedButton.classList.add('selected');
-    }
+        const epoch = window.getGeologicalPeriodByName(epochName);
+        if (!epoch) {
+            return;
+        }
 
-    // Récupérer les conditions de l'époque depuis geology.js
-    if (typeof window.getGeologicalPeriodByName !== 'function') {
-        return;
-    }
+        // Stocker le nom de l'époque globalement pour updateFluxLabels
+        window.currentEpochName = epochName;
 
-    const epoch = window.getGeologicalPeriodByName(epochName);
-    if (!epoch) {
-        return;
-    }
+        // Mettre à jour le logo de la Terre avec l'image de l'époque
+        // Modifier la configuration du noeud terre et recréer la cellule
+        const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
+        if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
+            // Trouver la configuration de l'époque courante
+            const epochConfig = terreNode.epoch.find(e => e.epochName === epochName);
 
-    // Stocker le nom de l'époque globalement pour updateFluxLabels
-    window.currentEpochName = epochName;
+            if (epochConfig) {
+                // Recréer la cellule terre avec la configuration de l'époque
+                const oldCell = document.getElementById('cell-terre');
+                if (oldCell && typeof window.createCell === 'function') {
+                    const parent = oldCell.parentElement;
+                    oldCell.remove();
 
-    // Mettre à jour le logo de la Terre avec l'image de l'époque
-    // Modifier la configuration du noeud terre et recréer la cellule
-    const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
-    if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
-        // Trouver la configuration de l'époque courante
-        const epochConfig = terreNode.epoch.find(e => e.epochName === epochName);
+                    const newCell = window.createCell(
+                        terreNode.x,
+                        terreNode.y,
+                        epochConfig.radius,
+                        epochConfig.fillColor,
+                        epochConfig.strokeColor,
+                        epochConfig.logo,
+                        terreNode.left,
+                        terreNode.right,
+                        terreNode.top,
+                        terreNode.bottom,
+                        terreNode.tooltip,
+                        terreNode.radiation,
+                        null, // rectangleOptions
+                        null, // fillImage
+                        terreNode.id,
+                        terreNode.zIndex,
+                        terreNode.logoScale,
+                        terreNode.logoOffsetY,
+                        epochConfig.strokeSize
+                    );
 
-        if (epochConfig) {
-            // Recréer la cellule terre avec la configuration de l'époque
-            const oldCell = document.getElementById('cell-terre');
-            if (oldCell && typeof window.createCell === 'function') {
-                const parent = oldCell.parentElement;
-                oldCell.remove();
+                    parent.appendChild(newCell);
+                }
+            }
+        }
 
-                const newCell = window.createCell(
-                    terreNode.x,
-                    terreNode.y,
-                    epochConfig.radius,
-                    epochConfig.fillColor,
-                    epochConfig.strokeColor,
-                    epochConfig.logo,
-                    terreNode.left,
-                    terreNode.right,
-                    terreNode.top,
-                    terreNode.bottom,
-                    terreNode.tooltip,
-                    terreNode.radiation,
-                    null, // rectangleOptions
-                    null, // fillImage
-                    terreNode.id,
-                    terreNode.zIndex,
-                    terreNode.logoScale,
-                    terreNode.logoOffsetY,
-                    epochConfig.strokeSize
+        // Mettre à jour les radiations du noyau selon l'époque
+        if (typeof window.recreateNoyauRadiation === 'function') {
+            window.recreateNoyauRadiation();
+        }
+
+        // Recréer les radiations de la terre (car le rayon peut avoir changé)
+        if (typeof window.recreateTerreRadiation === 'function') {
+            window.recreateTerreRadiation();
+        }
+
+        // Recalculer les positions des flèches et étiquettes car le rayon de la terre a changé
+        if (typeof window.generateArrows === 'function') {
+            window.generateArrows();
+        }
+
+        disableButtons(); // Désactiver les boutons
+
+        // Mettre à jour la timeline pour correspondre au début de l'époque
+        timelineFrame = Math.floor(epoch.startYears / YEARS_PER_FRAME);
+
+        // Stocker le début de l'époque pour calculer le delta
+        currentEpochStartYears = epoch.startYears;
+
+        // Mettre à jour la date de début affichée
+        const epochStartTimeDisplay = document.querySelector('.epoch-start-time');
+        if (epochStartTimeDisplay) {
+            const formattedYears = formatYears(epoch.startYears);
+            epochStartTimeDisplay.textContent = formattedYears;
+        }
+
+        // Afficher le nom de l'époque dans la timeline
+        const epochNameDisplay = document.getElementById('epoch-name');
+        if (epochNameDisplay) {
+            // Pour "Corps noir", utiliser un nom plus descriptif
+            let displayName = epoch.name;
+            if (epoch.name === 'Corps noir') {
+                displayName = 'État initial';
+            }
+            epochNameDisplay.textContent = displayName;
+        }
+
+        // Afficher le nom de l'époque dans la div de température
+        const epochNameTempDisplay = document.getElementById('epoch-name-temp');
+        if (epochNameTempDisplay) {
+            // Récupérer le nom depuis la timeline de configOrganigramme
+            let displayName = epoch.name;
+            if (window.configOrganigramme && window.configOrganigramme.timeline) {
+                // Chercher l'epoch dans la timeline par nom (plus fiable que par id)
+                const timelineEpoch = window.configOrganigramme.timeline.find(item =>
+                    item.type === 'epoch' && item.name === epochName
                 );
+                if (timelineEpoch) {
+                    displayName = timelineEpoch.name;
+                }
+            }
+            epochNameTempDisplay.textContent = displayName;
+        }
 
-                parent.appendChild(newCell);
+        // Cacher "+90 ans" quand on clique sur une époque (sera réaffiché lors de l'incrémentation)
+        const infoTimeDisplay = document.getElementById('info-time');
+        if (infoTimeDisplay) {
+            infoTimeDisplay.style.display = 'none';
+        }
+
+        updateTimeline();
+
+        // Forcer la mise à jour des labels de flux (Soleil, Noyau, etc.) avec les paramètres de la nouvelle époque
+        if (typeof window.updateFluxLabels === 'function') {
+            window.updateFluxLabels(window.plotData || {});
+        }
+
+        // Appliquer les conditions initiales
+        // En époque "Corps noir", tout est désactivé (température ~206.1K, pas de noyau différencié)
+        const isCorpsNoir = epoch.name === 'Corps noir';
+        const tempK = isCorpsNoir ? 0 : null; // 0K = corps noir (pas de noyau différencié)
+
+        // Gérer la géothermie (noyau) : off (gris) seulement si 0K (corps noir), sinon on
+        const btnNoyau = document.getElementById('btn-noyau');
+        if (btnNoyau) {
+            if (isCorpsNoir || tempK === 0) {
+                // Corps noir : géothermie off (gris)
+                btnNoyau.classList.add('disabled');
+                btnNoyau.disabled = true;
+                btnNoyau.style.opacity = '0.3';
+                btnNoyau.style.filter = 'grayscale(100%)';
+            } else {
+                // Autres époques : géothermie on (actif)
+                btnNoyau.classList.remove('disabled');
+                btnNoyau.disabled = false;
+                btnNoyau.style.opacity = '1';
+                btnNoyau.style.filter = 'grayscale(0%)';
             }
         }
-    }
 
-    // Mettre à jour les radiations du noyau selon l'époque
-    if (typeof window.recreateNoyauRadiation === 'function') {
-        window.recreateNoyauRadiation();
-    }
+        // 1. CO2
+        const co2_fraction = epoch.co2_ppm * 1e-6;
+        plotData.co2_ppm = epoch.co2_ppm;
+        currentState = 3; // Utiliser state 3 comme base pour les valeurs personnalisées
 
-    // Recréer les radiations de la terre (car le rayon peut avoir changé)
-    if (typeof window.recreateTerreRadiation === 'function') {
-        window.recreateTerreRadiation();
-    }
-
-    // Recalculer les positions des flèches et étiquettes car le rayon de la terre a changé
-    if (typeof window.generateArrows === 'function') {
-        window.generateArrows();
-    }
-
-    disableButtons(); // Désactiver les boutons
-
-    // Mettre à jour la timeline pour correspondre au début de l'époque
-    timelineFrame = Math.floor(epoch.startYears / YEARS_PER_FRAME);
-
-    // Stocker le début de l'époque pour calculer le delta
-    currentEpochStartYears = epoch.startYears;
-
-    // Mettre à jour la date de début affichée
-    const epochStartTimeDisplay = document.querySelector('.epoch-start-time');
-    if (epochStartTimeDisplay) {
-        const formattedYears = formatYears(epoch.startYears);
-        epochStartTimeDisplay.textContent = formattedYears;
-    }
-
-    // Afficher le nom de l'époque dans la timeline
-    const epochNameDisplay = document.getElementById('epoch-name');
-    if (epochNameDisplay) {
-        // Pour "Corps noir", utiliser un nom plus descriptif
-        let displayName = epoch.name;
-        if (epoch.name === 'Corps noir') {
-            displayName = 'État initial';
-        }
-        epochNameDisplay.textContent = displayName;
-    }
-
-    // Afficher le nom de l'époque dans la div de température
-    const epochNameTempDisplay = document.getElementById('epoch-name-temp');
-    if (epochNameTempDisplay) {
-        // Récupérer le nom depuis la timeline de configOrganigramme
-        let displayName = epoch.name;
-        if (window.configOrganigramme && window.configOrganigramme.timeline) {
-            // Chercher l'epoch dans la timeline par nom (plus fiable que par id)
-            const timelineEpoch = window.configOrganigramme.timeline.find(item =>
-                item.type === 'epoch' && item.name === epochName
-            );
-            if (timelineEpoch) {
-                displayName = timelineEpoch.name;
-            }
-        }
-        epochNameTempDisplay.textContent = displayName;
-    }
-
-    // Cacher "+90 ans" quand on clique sur une époque (sera réaffiché lors de l'incrémentation)
-    const infoTimeDisplay = document.getElementById('info-time');
-    if (infoTimeDisplay) {
-        infoTimeDisplay.style.display = 'none';
-    }
-
-    updateTimeline();
-
-    // Forcer la mise à jour des labels de flux (Soleil, Noyau, etc.) avec les paramètres de la nouvelle époque
-    if (typeof window.updateFluxLabels === 'function') {
-        window.updateFluxLabels(window.plotData || {});
-    }
-
-    // Appliquer les conditions initiales
-    // En époque "Corps noir", tout est désactivé (température ~206.1K, pas de noyau différencié)
-    const isCorpsNoir = epoch.name === 'Corps noir';
-    const tempK = isCorpsNoir ? 0 : null; // 0K = corps noir (pas de noyau différencié)
-
-    // Gérer la géothermie (noyau) : off (gris) seulement si 0K (corps noir), sinon on
-    const btnNoyau = document.getElementById('btn-noyau');
-    if (btnNoyau) {
-        if (isCorpsNoir || tempK === 0) {
-            // Corps noir : géothermie off (gris)
-            btnNoyau.classList.add('disabled');
-            btnNoyau.disabled = true;
-            btnNoyau.style.opacity = '0.3';
-            btnNoyau.style.filter = 'grayscale(100%)';
-        } else {
-            // Autres époques : géothermie on (actif)
-            btnNoyau.classList.remove('disabled');
-            btnNoyau.disabled = false;
-            btnNoyau.style.opacity = '1';
-            btnNoyau.style.filter = 'grayscale(0%)';
-        }
-    }
-
-    // 1. CO2
-    const co2_fraction = epoch.co2_ppm * 1e-6;
-    plotData.co2_ppm = epoch.co2_ppm;
-    currentState = 3; // Utiliser state 3 comme base pour les valeurs personnalisées
-
-    // Mettre à jour le bouton CO2
-    const btnCo2 = document.getElementById('btn-co2');
-    if (btnCo2) {
-        if (isCorpsNoir || epoch.co2_ppm === 0) {
-            // Forcer en off/gris si 0% ou Corps noir
-            btnCo2.classList.remove('checked');
-            if (isCorpsNoir) {
-                btnCo2.classList.add('disabled');
-                btnCo2.disabled = true;
+        // Mettre à jour le bouton CO2
+        const btnCo2 = document.getElementById('btn-co2');
+        if (btnCo2) {
+            if (isCorpsNoir || epoch.co2_ppm === 0) {
+                // Forcer en off/gris si 0% ou Corps noir
+                btnCo2.classList.remove('checked');
+                if (isCorpsNoir) {
+                    btnCo2.classList.add('disabled');
+                    btnCo2.disabled = true;
+                } else {
+                    btnCo2.classList.remove('disabled');
+                    btnCo2.disabled = false;
+                }
             } else {
                 btnCo2.classList.remove('disabled');
                 btnCo2.disabled = false;
+                btnCo2.classList.add('checked');
             }
-        } else {
-            btnCo2.classList.remove('disabled');
-            btnCo2.disabled = false;
-            btnCo2.classList.add('checked');
         }
-    }
 
-    // 2. H2O
-    if (typeof window.waterVaporEnabled !== 'undefined') {
-        window.waterVaporEnabled = !isCorpsNoir && (epoch.h2o_enabled !== false); // true par défaut si non spécifié
-    }
+        // 2. H2O
+        if (typeof window.waterVaporEnabled !== 'undefined') {
+            window.waterVaporEnabled = !isCorpsNoir && (epoch.h2o_enabled !== false); // true par défaut si non spécifié
+        }
 
-    // Mettre à jour l'affichage H2O
-    const h2oStatusElement = document.getElementById('h2o-status-synthese');
-    if (h2oStatusElement) {
-        h2oStatusElement.textContent = (!isCorpsNoir && epoch.h2o_enabled !== false) ? 'Activé' : 'Désactivé';
-    }
+        // Mettre à jour l'affichage H2O
+        const h2oStatusElement = document.getElementById('h2o-status-synthese');
+        if (h2oStatusElement) {
+            h2oStatusElement.textContent = (!isCorpsNoir && epoch.h2o_enabled !== false) ? 'Activé' : 'Désactivé';
+        }
 
-    // Mettre à jour le bouton H2O
-    const btnH2O = document.getElementById('btn-h2o');
-    if (btnH2O) {
-        if (isCorpsNoir || epoch.h2o_enabled === false) {
-            // Forcer en off/gris si désactivé ou Corps noir
-            btnH2O.classList.remove('checked');
-            if (isCorpsNoir) {
-                btnH2O.classList.add('disabled');
-                btnH2O.disabled = true;
+        // Mettre à jour le bouton H2O
+        const btnH2O = document.getElementById('btn-h2o');
+        if (btnH2O) {
+            if (isCorpsNoir || epoch.h2o_enabled === false) {
+                // Forcer en off/gris si désactivé ou Corps noir
+                btnH2O.classList.remove('checked');
+                if (isCorpsNoir) {
+                    btnH2O.classList.add('disabled');
+                    btnH2O.disabled = true;
+                } else {
+                    btnH2O.classList.remove('disabled');
+                    btnH2O.disabled = false;
+                }
             } else {
                 btnH2O.classList.remove('disabled');
                 btnH2O.disabled = false;
+                btnH2O.classList.add('checked');
+            }
+        }
+
+        const btn = document.getElementById('btn-cloud');
+        if (btn) {
+            if (!isCorpsNoir && epoch.h2o_enabled !== false) {
+                btn.style.opacity = '1';
+                btn.style.border = '2px solid #4CAF50';
+                btn.title = 'Vapeur d\'eau activée - Cliquer pour désactiver';
+            } else {
+                btn.style.opacity = '0.5';
+                btn.style.border = 'none';
+                btn.title = 'Vapeur d\'eau désactivée - Cliquer pour activer';
+            }
+        }
+
+        // 3. CH4 (méthane)
+        if (epoch.ch4_ppm !== undefined) {
+            plotData.ch4_ppm = isCorpsNoir ? 0 : epoch.ch4_ppm;
+            // Activer CH4 si la concentration est > 0
+            if (typeof window.methaneEnabled !== 'undefined') {
+                window.methaneEnabled = !isCorpsNoir && (epoch.ch4_ppm > 0);
             }
         } else {
-            btnH2O.classList.remove('disabled');
-            btnH2O.disabled = false;
-            btnH2O.classList.add('checked');
+            // Par défaut, désactiver CH4 si non spécifié
+            plotData.ch4_ppm = 0;
+            if (typeof window.methaneEnabled !== 'undefined') {
+                window.methaneEnabled = false;
+            }
         }
-    }
 
-    const btn = document.getElementById('btn-cloud');
-    if (btn) {
-        if (!isCorpsNoir && epoch.h2o_enabled !== false) {
-            btn.style.opacity = '1';
-            btn.style.border = '2px solid #4CAF50';
-            btn.title = 'Vapeur d\'eau activée - Cliquer pour désactiver';
-        } else {
-            btn.style.opacity = '0.5';
-            btn.style.border = 'none';
-            btn.title = 'Vapeur d\'eau désactivée - Cliquer pour activer';
-        }
-    }
-
-    // 3. CH4 (méthane)
-    if (epoch.ch4_ppm !== undefined) {
-        plotData.ch4_ppm = isCorpsNoir ? 0 : epoch.ch4_ppm;
-        // Activer CH4 si la concentration est > 0
-        if (typeof window.methaneEnabled !== 'undefined') {
-            window.methaneEnabled = !isCorpsNoir && (epoch.ch4_ppm > 0);
-        }
-    } else {
-        // Par défaut, désactiver CH4 si non spécifié
-        plotData.ch4_ppm = 0;
-        if (typeof window.methaneEnabled !== 'undefined') {
-            window.methaneEnabled = false;
-        }
-    }
-
-    // Mettre à jour le bouton CH4
-    const btnMethane = document.getElementById('btn-methane');
-    if (btnMethane) {
-        if (isCorpsNoir || !epoch.ch4_ppm || epoch.ch4_ppm === 0) {
-            // Forcer en off/gris si 0% ou Corps noir
-            btnMethane.classList.remove('checked');
-            if (isCorpsNoir) {
-                btnMethane.classList.add('disabled');
-                btnMethane.disabled = true;
+        // Mettre à jour le bouton CH4
+        const btnMethane = document.getElementById('btn-methane');
+        if (btnMethane) {
+            if (isCorpsNoir || !epoch.ch4_ppm || epoch.ch4_ppm === 0) {
+                // Forcer en off/gris si 0% ou Corps noir
+                btnMethane.classList.remove('checked');
+                if (isCorpsNoir) {
+                    btnMethane.classList.add('disabled');
+                    btnMethane.disabled = true;
+                } else {
+                    btnMethane.classList.remove('disabled');
+                    btnMethane.disabled = false;
+                }
             } else {
                 btnMethane.classList.remove('disabled');
                 btnMethane.disabled = false;
-            }
-        } else {
-            btnMethane.classList.remove('disabled');
-            btnMethane.disabled = false;
-            btnMethane.classList.add('checked');
-        }
-    }
-
-    // 4. Albedo (toujours disponible sauf en Corps noir)
-    const btnAlbedo = document.getElementById('btn-albedo');
-    if (btnAlbedo) {
-        if (isCorpsNoir) {
-            btnAlbedo.classList.remove('checked');
-            btnAlbedo.classList.add('disabled');
-            btnAlbedo.disabled = true;
-        } else {
-            btnAlbedo.classList.remove('disabled');
-            btnAlbedo.disabled = false;
-            // Albedo est généralement activé par défaut
-            btnAlbedo.classList.add('checked');
-        }
-    }
-
-    // 4. Cloud coverage sera appliqué automatiquement dans les calculs via calculateCloudCoverage
-    // On peut stocker la valeur pour référence
-    if (epoch.cloud_coverage !== undefined) {
-        // Le cloud_coverage sera utilisé dans calculateCloudCoverage si nécessaire
-        // Pour l'instant, on le stocke dans plotData pour référence
-        plotData.epoch_cloud_coverage = epoch.cloud_coverage;
-    }
-
-    // Lancer le calcul avec les nouvelles conditions
-    updateCO2LevelDirect(co2_fraction);
-}
-
-
-function toggleWaterVapor() {
-    if (calculationInProgress) return; // Bloquer si calcul en cours
-
-    // Vérifier si on est en époque Corps noir (tout désactivé)
-    const btnH2O = document.getElementById('btn-h2o');
-    if (btnH2O && btnH2O.classList.contains('disabled')) {
-        return; // Ne rien faire si désactivé
-    }
-
-    if (typeof window.waterVaporEnabled === 'undefined') {
-        // Accéder directement à la variable globale si disponible
-        return;
-    }
-
-    window.waterVaporEnabled = !window.waterVaporEnabled;
-
-    // Mettre à jour la classe checked
-    if (btnH2O) {
-        if (window.waterVaporEnabled) {
-            btnH2O.classList.add('checked');
-        } else {
-            btnH2O.classList.remove('checked');
-        }
-    }
-
-    disableButtons(); // Désactiver les boutons
-
-    // Mettre à jour l'affichage H2O
-    const h2oStatusElement = document.getElementById('h2o-status-synthese');
-    if (h2oStatusElement) {
-        // Afficher 0% si désactivé, sinon sera mis à jour lors du calcul
-        h2oStatusElement.textContent = window.waterVaporEnabled ? '-- %' : '0 %';
-    }
-
-    const btn = document.getElementById('btn-cloud');
-    if (btn) {
-        if (window.waterVaporEnabled) {
-            btn.style.opacity = '1';
-            btn.style.border = '2px solid #4CAF50';
-            btn.title = 'Vapeur d\'eau activée - Cliquer pour désactiver';
-        } else {
-            btn.style.opacity = '0.5';
-            btn.style.border = '1px solid #ccc';
-            btn.title = 'Activer/Désactiver vapeur d\'eau';
-        }
-    }
-
-    // Recalculer avec la nouvelle configuration
-
-    // Vider le cache car les calculs changent avec H2O
-    cache_280ppm = null;
-    cache_420ppm = null;
-    plotData.current = null;
-
-    // Recalculer les données actuelles
-    if (plotData.co2_ppm !== undefined && plotData.co2_ppm !== null) {
-        const current_ppm = plotData.co2_ppm;
-        updateCO2LevelDirect(current_ppm * 1e-6);
-    } else {
-        // Recalculer depuis l'état actuel
-        updateCO2Level(currentState);
-    }
-}
-
-// Fonction pour rétracter/déployer le panneau de référence
-function toggleReferencePanel() {
-    const container = document.querySelector('.reference-container');
-    const icon = document.querySelector('.reference-toggle-icon');
-    if (container) {
-        container.classList.toggle('collapsed');
-    }
-}
-
-// Exposer les fonctions globalement
-window.toggleReferencePanel = toggleReferencePanel;
-window.setEpoch = setEpoch;
-
-window.addEventListener('DOMContentLoaded', () => {
-    calculateInitialData();
-    // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)
-    resetTimeline();
-
-    // Sélectionner "Corps noir" par défaut
-    const corpsNoirButton = document.querySelector('.epoch-btn[data-epoch="Corps noir"]');
-    if (corpsNoirButton) {
-        corpsNoirButton.classList.add('selected');
-    }
-
-    // Initialiser l'époque globale par défaut
-    window.currentEpochName = 'Corps noir';
-
-    // Initialiser l'époque par défaut (Corps noir)
-    if (typeof window.getGeologicalPeriodByName === 'function') {
-        const defaultEpoch = window.getGeologicalPeriodByName('Corps noir');
-        if (defaultEpoch) {
-            currentEpochStartYears = defaultEpoch.startYears;
-        }
-    }
-
-    // Initialiser le nom de l'époque dans la div de température
-    const epochNameTempDisplay = document.getElementById('epoch-name-temp');
-    if (epochNameTempDisplay) {
-        // Récupérer le nom depuis la timeline de configOrganigramme
-        let displayName = 'Corps noir';
-        if (window.configOrganigramme && window.configOrganigramme.timeline) {
-            const timelineEpoch = window.configOrganigramme.timeline.find(item =>
-                item.type === 'epoch' && item.id === 'corps-noir'
-            );
-            if (timelineEpoch) {
-                displayName = timelineEpoch.name;
+                btnMethane.classList.add('checked');
             }
         }
-        epochNameTempDisplay.textContent = displayName;
+
+        // 4. Albedo (toujours disponible sauf en Corps noir)
+        const btnAlbedo = document.getElementById('btn-albedo');
+        if (btnAlbedo) {
+            if (isCorpsNoir) {
+                btnAlbedo.classList.remove('checked');
+                btnAlbedo.classList.add('disabled');
+                btnAlbedo.disabled = true;
+            } else {
+                btnAlbedo.classList.remove('disabled');
+                btnAlbedo.disabled = false;
+                // Albedo est généralement activé par défaut
+                btnAlbedo.classList.add('checked');
+            }
+        }
+
+        // 4. Cloud coverage sera appliqué automatiquement dans les calculs via calculateCloudCoverage
+        // On peut stocker la valeur pour référence
+        if (epoch.cloud_coverage !== undefined) {
+            // Le cloud_coverage sera utilisé dans calculateCloudCoverage si nécessaire
+            // Pour l'instant, on le stocke dans plotData pour référence
+            plotData.epoch_cloud_coverage = epoch.cloud_coverage;
+        }
+
+        // Lancer le calcul avec les nouvelles conditions
+        updateCO2LevelDirect(co2_fraction);
     }
 
-    // Initialiser le nom de l'époque au chargement
-    const epochNameDisplay = document.getElementById('epoch-name');
-    if (epochNameDisplay) {
-        epochNameDisplay.textContent = 'État initial';
-    }
 
-    // Initialiser les boutons du flux en époque Corps noir (tout désactivé)
-    const fluxButtons = ['btn-co2', 'btn-methane', 'btn-h2o', 'btn-albedo'];
-    fluxButtons.forEach(btnId => {
-        const btn = document.getElementById(btnId);
+    function toggleWaterVapor() {
+        if (calculationInProgress) return; // Bloquer si calcul en cours
+
+        // Vérifier si on est en époque Corps noir (tout désactivé)
+        const btnH2O = document.getElementById('btn-h2o');
+        if (btnH2O && btnH2O.classList.contains('disabled')) {
+            return; // Ne rien faire si désactivé
+        }
+
+        if (typeof window.waterVaporEnabled === 'undefined') {
+            // Accéder directement à la variable globale si disponible
+            return;
+        }
+
+        window.waterVaporEnabled = !window.waterVaporEnabled;
+
+        // Mettre à jour la classe checked
+        if (btnH2O) {
+            if (window.waterVaporEnabled) {
+                btnH2O.classList.add('checked');
+            } else {
+                btnH2O.classList.remove('checked');
+            }
+        }
+
+        disableButtons(); // Désactiver les boutons
+
+        // Mettre à jour l'affichage H2O
+        const h2oStatusElement = document.getElementById('h2o-status-synthese');
+        if (h2oStatusElement) {
+            // Afficher 0% si désactivé, sinon sera mis à jour lors du calcul
+            h2oStatusElement.textContent = window.waterVaporEnabled ? '-- %' : '0 %';
+        }
+
+        const btn = document.getElementById('btn-cloud');
         if (btn) {
-            btn.classList.remove('checked');
-            btn.classList.add('disabled');
-            btn.disabled = true;
+            if (window.waterVaporEnabled) {
+                btn.style.opacity = '1';
+                btn.style.border = '2px solid #4CAF50';
+                btn.title = 'Vapeur d\'eau activée - Cliquer pour désactiver';
+            } else {
+                btn.style.opacity = '0.5';
+                btn.style.border = '1px solid #ccc';
+                btn.title = 'Activer/Désactiver vapeur d\'eau';
+            }
         }
-    });
 
-    // Initialiser l'état des boutons selon l'époque géologique
-    enableButtons();
+        // Recalculer avec la nouvelle configuration
 
-    // Initialiser les event listeners sur les boutons du flux
-    if (typeof window.initFluxButtonListeners === 'function') {
-        // Attendre un peu pour que les boutons soient créés
+        // Vider le cache car les calculs changent avec H2O
+        cache_280ppm = null;
+        cache_420ppm = null;
+        plotData.current = null;
+
+        // Recalculer les données actuelles
+        if (plotData.co2_ppm !== undefined && plotData.co2_ppm !== null) {
+            const current_ppm = plotData.co2_ppm;
+            updateCO2LevelDirect(current_ppm * 1e-6);
+        } else {
+            // Recalculer depuis l'état actuel
+            updateCO2Level(currentState);
+        }
+    }
+
+    // Fonction pour rétracter/déployer le panneau de référence
+    function toggleReferencePanel() {
+        const container = document.querySelector('.reference-container');
+        const icon = document.querySelector('.reference-toggle-icon');
+        if (container) {
+            container.classList.toggle('collapsed');
+        }
+    }
+
+    // Exposer les fonctions globalement
+    window.toggleReferencePanel = toggleReferencePanel;
+    window.setEpoch = setEpoch;
+
+    window.addEventListener('DOMContentLoaded', () => {
+        calculateInitialData();
+        // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)
+        resetTimeline();
+
+        // Sélectionner "Corps noir" par défaut
+        const corpsNoirButton = document.querySelector('.epoch-btn[data-epoch="Corps noir"]');
+        if (corpsNoirButton) {
+            corpsNoirButton.classList.add('selected');
+        }
+
+        // Initialiser l'époque globale par défaut
+        window.currentEpochName = 'Corps noir';
+
+        // Initialiser l'époque par défaut (Corps noir)
+        if (typeof window.getGeologicalPeriodByName === 'function') {
+            const defaultEpoch = window.getGeologicalPeriodByName('Corps noir');
+            if (defaultEpoch) {
+                currentEpochStartYears = defaultEpoch.startYears;
+            }
+        }
+
+        // Initialiser le nom de l'époque dans la div de température
+        const epochNameTempDisplay = document.getElementById('epoch-name-temp');
+        if (epochNameTempDisplay) {
+            // Récupérer le nom depuis la timeline de configOrganigramme
+            let displayName = 'Corps noir';
+            if (window.configOrganigramme && window.configOrganigramme.timeline) {
+                const timelineEpoch = window.configOrganigramme.timeline.find(item =>
+                    item.type === 'epoch' && item.id === 'corps-noir'
+                );
+                if (timelineEpoch) {
+                    displayName = timelineEpoch.name;
+                }
+            }
+            epochNameTempDisplay.textContent = displayName;
+        }
+
+        // Initialiser le nom de l'époque au chargement
+        const epochNameDisplay = document.getElementById('epoch-name');
+        if (epochNameDisplay) {
+            epochNameDisplay.textContent = 'État initial';
+        }
+
+        // Initialiser les boutons du flux en époque Corps noir (tout désactivé)
+        const fluxButtons = ['btn-co2', 'btn-methane', 'btn-h2o', 'btn-albedo'];
+        fluxButtons.forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.classList.remove('checked');
+                btn.classList.add('disabled');
+                btn.disabled = true;
+            }
+        });
+
+        // Initialiser l'état des boutons selon l'époque géologique
+        enableButtons();
+
+        // Initialiser les event listeners sur les boutons du flux
+        if (typeof window.initFluxButtonListeners === 'function') {
+            // Attendre un peu pour que les boutons soient créés
+            setTimeout(() => {
+                window.initFluxButtonListeners();
+            }, 100);
+        }
+
+        // Créer les radiations de la terre (doit être fait après l'initialisation car le radius dépend de l'époque)
+        if (typeof window.recreateTerreRadiation === 'function') {
+            window.recreateTerreRadiation();
+        }
+
+        // Ajouter un gestionnaire de clic sur la température pour cycler les unités
+        const syntheseTempEl = document.querySelector('.synthese_Temp');
+        if (syntheseTempEl) {
+            syntheseTempEl.style.cursor = 'pointer';
+            syntheseTempEl.addEventListener('click', cycleTemperatureUnit);
+        }
+
+        // S'assurer que l'horloge est visible dès le départ
         setTimeout(() => {
-            window.initFluxButtonListeners();
+            const infoTimeDisplay = document.getElementById('info-time');
+            if (infoTimeDisplay) {
+                infoTimeDisplay.style.display = 'inline-block';
+                infoTimeDisplay.style.visibility = 'visible';
+                infoTimeDisplay.style.opacity = '1';
+                updateTimeline(); // Forcer une mise à jour immédiate (affichage seulement, pas d'incrémentation)
+            }
+            // NE PAS démarrer l'horloge automatiquement - elle s'incrémentera uniquement lors des calculs/clics
         }, 100);
-    }
-
-    // Créer les radiations de la terre (doit être fait après l'initialisation car le radius dépend de l'époque)
-    if (typeof window.recreateTerreRadiation === 'function') {
-        window.recreateTerreRadiation();
-    }
-
-    // Ajouter un gestionnaire de clic sur la température pour cycler les unités
-    const syntheseTempEl = document.querySelector('.synthese_Temp');
-    if (syntheseTempEl) {
-        syntheseTempEl.style.cursor = 'pointer';
-        syntheseTempEl.addEventListener('click', cycleTemperatureUnit);
-    }
-
-    // S'assurer que l'horloge est visible dès le départ
-    setTimeout(() => {
-        const infoTimeDisplay = document.getElementById('info-time');
-        if (infoTimeDisplay) {
-            infoTimeDisplay.style.display = 'inline-block';
-            infoTimeDisplay.style.visibility = 'visible';
-            infoTimeDisplay.style.opacity = '1';
-            updateTimeline(); // Forcer une mise à jour immédiate (affichage seulement, pas d'incrémentation)
-        }
-        // NE PAS démarrer l'horloge automatiquement - elle s'incrémentera uniquement lors des calculs/clics
-    }, 100);
-});
+    });
 

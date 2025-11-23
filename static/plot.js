@@ -843,16 +843,12 @@ window.updatePlot = function updatePlot(data) {
 
         // Courbe Planck correspondante (pointillée) à la température effective - en gras avec des points
         // C'est la courbe "plancher" thermodynamique (conservation de l'énergie)
-        // Elle doit être de la couleur de T_effective (Cyan pour -1.8°C)
-        let color_effective = 'cyan'; // Par défaut
-        const temp_effective_c = T_effective_display - 273.15;
-        if (typeof window.tempSurfaceToColor === 'function') {
-            color_effective = window.tempSurfaceToColor(temp_effective_c);
-        }
+        // L'utilisateur veut qu'elle ait la même couleur que la courbe pleine (T_current)
+        const color_effective = color_current;
 
         const planck_current = createPlanckTrace(T_effective_display, `Planck effective ${data.co2_ppm.toFixed(0)} ppm`, color_effective, false, 'dot');
         planck_current.line.width = 2; // En gras
-        planck_current.line.color = color_effective; // Cyan (ou couleur de T_effective)
+        planck_current.line.color = color_effective; // Même couleur que la courbe pleine
         traces.push(planck_current);
     }
 
