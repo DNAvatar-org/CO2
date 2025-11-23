@@ -2419,6 +2419,10 @@ window.updateFluxLabels = function (data) {
     const forcing_CH4 = (ch4_button_checked && ch4_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCH4Forcing === 'function'
         ? window.calculateCH4Forcing(ch4_ppm_num * 1e-6)
         : 0;
+
+    // DEBUG: Afficher les valeurs H2O pour comprendre le problème
+    console.log('[H2O DEBUG] h2o_button_checked:', h2o_button_checked, 'h2o_final_enabled:', h2o_final_enabled, 'cloud_coverage_num:', cloud_coverage_num);
+
     const forcing_H2O = (h2o_button_checked && h2o_final_enabled) && typeof window !== 'undefined' && typeof window.calculateH2OForcing === 'function'
         ? window.calculateH2OForcing(h2o_final_enabled, cloud_coverage_num)
         : 0;

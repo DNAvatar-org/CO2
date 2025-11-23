@@ -1258,6 +1258,25 @@ window.updateDisplay = function updateDisplay(data) {
             albedoNumberEl.textContent = '--';
         }
     }
+
+    // === DEBUG: Afficher toutes les valeurs du flux diagram ===
+    if (data) {
+        console.log('=== FLUX DIAGRAM VALUES ===');
+        console.log('CO2:', data.co2_ppm !== undefined ? `${Math.round(data.co2_ppm)} ppm` : '--');
+        console.log('H2O:', data.cloud_coverage !== undefined ? `${(data.cloud_coverage * 100).toFixed(0)}%` : '--');
+        console.log('CH4:', data.ch4_ppm !== undefined ? `${Math.round(data.ch4_ppm)} ppm` : '--');
+        console.log('Albedo:', data.albedo !== undefined ? `${(data.albedo * 100).toFixed(1)}%` : '--');
+        console.log('---');
+        console.log('Forcing CO2:', data.forcing_CO2 !== undefined ? `${data.forcing_CO2.toFixed(2)} W/m²` : '--');
+        console.log('Forcing H2O:', data.forcing_H2O !== undefined ? `${data.forcing_H2O.toFixed(2)} W/m²` : '--');
+        console.log('Forcing CH4:', data.forcing_CH4 !== undefined ? `${data.forcing_CH4.toFixed(2)} W/m²` : '--');
+        console.log('Forcing Albedo:', data.forcing_Albedo !== undefined ? `${data.forcing_Albedo.toFixed(2)} W/m²` : '--');
+        console.log('Forcing Total:', data.forcing !== undefined ? `${data.forcing.toFixed(2)} W/m²` : '--');
+        console.log('---');
+        console.log('Temp Surface:', data.temp_surface !== undefined ? `${(data.temp_surface - 273.15).toFixed(1)}°C (${data.temp_surface.toFixed(1)}K)` : '--');
+        console.log('Temp Effective:', data.current?.effective_temperature !== undefined ? `${(data.current.effective_temperature - 273.15).toFixed(1)}°C (${data.current.effective_temperature.toFixed(1)}K)` : '--');
+        console.log('===========================');
+    }
 }
 
 function updateLegend(data) {
