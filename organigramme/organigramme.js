@@ -2420,12 +2420,28 @@ window.updateFluxLabels = function (data) {
         ? window.calculateCH4Forcing(ch4_ppm_num * 1e-6)
         : 0;
 
-    // DEBUG: Afficher les valeurs H2O pour comprendre le problème
-    console.log('[H2O DEBUG] h2o_button_checked:', h2o_button_checked, 'h2o_final_enabled:', h2o_final_enabled, 'cloud_coverage_num:', cloud_coverage_num);
+    // Calculer les paramètres H2O (vapeur + nuages) avec la nouvelle fonction
+    const h2o_vapor_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
+    let h2o_params = null;
+    let forcing_H2O = 0;
 
-    const forcing_H2O = (h2o_button_checked && h2o_final_enabled) && typeof window !== 'undefined' && typeof window.calculateH2OForcing === 'function'
-        ? window.calculateH2OForcing(h2o_final_enabled, cloud_coverage_num)
-        : 0;
+    if (h2o_button_checked && h2o_final_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
+        // Calculer avec la température actuelle et le pourcentage de vapeur
+        h2o_params = window.calculateH2OParameters(T0_num, h2o_vapor_percent, cloud_coverage_num);
+        forcing_H2O = h2o_params.greenhouse_forcing;
+
+        // Mettre à jour cloud_coverage avec la valeur calculée (si pas forcée)
+        if (cloud_coverage_num === 0 || cloud_coverage_num === null) {
+            cloud_coverage_num = h2o_params.cloud_coverage;
+        }
+
+        console.log('[H2O PARAMS]', {
+            vapor_percent: h2o_vapor_percent,
+            cloud_coverage: cloud_coverage_num,
+            greenhouse_forcing: forcing_H2O,
+            cloud_albedo_contribution: h2o_params.cloud_albedo_contribution
+        });
+    }
     // En mode corps noir, forcer le forçage albédo à 0
     // Le forçage albédo est actif seulement si le bouton est checked
     const forcing_Albedo = (isCorpsNoir || !albedo_button_checked) ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
@@ -2802,10 +2818,11 @@ window.updateFluxLabels = function (data) {
     // Ne plus forcer automatiquement le bouton CH4 en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement
 
-    // H2O : utiliser l'état du bouton (on/off) déjà calculé
-    // "--" seulement si h2o_enabled est true ET le bouton est activé
-    // "0%" si h2o_enabled est false (pas d'eau dans l'atmosphère pour cette époque)
-    const h2o_percent = (h2o_enabled && h2o_button_checked) ? '--' : '0';
+    // H2O : afficher le pourcentage de vapeur d'eau (effet de serre)
+    // Séparé de la couverture nuageuse (qui affecte l'albedo)
+    const h2o_percent = (h2o_enabled && h2o_button_checked && h2o_vapor_percent > 0)
+        ? h2o_vapor_percent.toFixed(1)
+        : '0';
     // Le forçage H2O doit être 0 si h2o_enabled est false (pas d'eau dans l'atmosphère)
     // Utiliser directement forcing_H2O qui est déjà calculé avec les bonnes conditions
     const forcing_H2O_final = h2o_enabled ? forcing_H2O : 0;

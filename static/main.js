@@ -1726,6 +1726,8 @@ function setEpoch(epochName) {
     // 2. H2O
     if (typeof window.waterVaporEnabled !== 'undefined') {
         window.waterVaporEnabled = !isCorpsNoir && (epoch.h2o_enabled !== false); // true par défaut si non spécifié
+        window.h2oVaporPercent = epoch.h2o_vapor_percent || 0; // Pourcentage de vapeur d'eau
+        window.cloudCoverage = epoch.cloud_coverage || 0; // Couverture nuageuse
     }
 
     // Mettre à jour l'affichage H2O
