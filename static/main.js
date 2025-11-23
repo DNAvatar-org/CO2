@@ -1112,8 +1112,22 @@ window.updateDisplay = function updateDisplay(data) {
     if (data && data.co2_ppm !== undefined) {
         const ppm = Math.round(data.co2_ppm);
         const co2NumberEl = document.getElementById('co2-number-synthese');
+        const co2UnitEl = co2NumberEl ? co2NumberEl.nextElementSibling : null;
         if (co2NumberEl) {
-            co2NumberEl.textContent = ppm.toString();
+            if (ppm > 10000) {
+                // Afficher en % si > 10000 ppm (10000 ppm = 1%)
+                const percent = (ppm / 10000).toFixed(1);
+                co2NumberEl.textContent = percent;
+                if (co2UnitEl && co2UnitEl.classList.contains('info-unit')) {
+                    co2UnitEl.textContent = '%';
+                }
+            } else {
+                // Afficher en ppm si <= 10000
+                co2NumberEl.textContent = ppm.toString();
+                if (co2UnitEl && co2UnitEl.classList.contains('info-unit')) {
+                    co2UnitEl.textContent = 'ppm';
+                }
+            }
         }
 
         // L'emoji est maintenant dans le bouton principal btn-co2 autour du cercle albedo
