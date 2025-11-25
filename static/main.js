@@ -372,21 +372,18 @@ function updateTimeline() {
         frameDisplay.textContent = timelineFrame.toString();
     }
 
-    // Mettre à jour l'horloge dans l'en-tête d'info (prioritaire)
+    // Mettre à jour l'horloge dans la zone horloge
     // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
     if (infoTimeDisplay && currentEpochStartYears !== null) {
         // Calculer le delta depuis le début de l'époque
         const deltaYears = years - currentEpochStartYears;
         // Toujours afficher en dizaines d'années (jamais millions/milliards)
         const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
-        if (deltaInTens > 0) {
-            infoTimeDisplay.textContent = `+${deltaInTens} ans`;
-        } else {
-            infoTimeDisplay.textContent = '+0 ans';
+        const newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
+        // Ne modifier le texte que s'il a changé pour éviter le clignotement
+        if (infoTimeDisplay.textContent !== newText) {
+            infoTimeDisplay.textContent = newText;
         }
-        infoTimeDisplay.style.display = 'inline-block';
-        infoTimeDisplay.style.visibility = 'visible';
-        infoTimeDisplay.style.opacity = '1';
     }
 
     // Incrémenter automatiquement de +10 ans toutes les secondes UNIQUEMENT si pas de calcul en cours
@@ -408,10 +405,10 @@ function updateTimeline() {
             if (infoTimeDisplay && currentEpochStartYears !== null) {
                 const deltaYears = years - currentEpochStartYears;
                 const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
-                if (deltaInTens > 0) {
-                    infoTimeDisplay.textContent = `+${deltaInTens} ans`;
-                } else {
-                    infoTimeDisplay.textContent = '+0 ans';
+                const newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
+                // Ne modifier le texte que s'il a changé pour éviter le clignotement
+                if (infoTimeDisplay.textContent !== newText) {
+                    infoTimeDisplay.textContent = newText;
                 }
             }
         }
@@ -670,7 +667,7 @@ function updateCO2Level(state) {
             const forcing_CO2 = typeof window.calculateCO2Forcing === 'function'
                 ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6)
                 : 0;
-            
+
             // Calculer le forcing H2O avec la nouvelle fonction calculateH2OParameters
             let forcing_H2O = 0;
             let h2o_vapor_percent = 0;
@@ -679,12 +676,12 @@ function updateCO2Level(state) {
                 const h2o_params = window.calculateH2OParameters(temp_surface, h2o_vapor_percent, cloud_coverage);
                 forcing_H2O = h2o_params.greenhouse_forcing;
             }
-            
+
             // Calculer le forcing CH4
             const forcing_CH4 = (typeof window.methaneEnabled !== 'undefined' && window.methaneEnabled && plotData.ch4_ppm > 0 && typeof window.calculateCH4Forcing === 'function')
                 ? window.calculateCH4Forcing(plotData.ch4_ppm * 1e-6)
                 : 0;
-            
+
             const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
                 ? window.calculateAlbedoForcing(albedo)
                 : 0;
@@ -1046,7 +1043,7 @@ function updateCO2LevelDirect(co2_fraction) {
             const forcing_CO2 = typeof window.calculateCO2Forcing === 'function'
                 ? window.calculateCO2Forcing(plotData.co2_ppm * 1e-6)
                 : 0;
-            
+
             // Calculer le forcing H2O avec la nouvelle fonction calculateH2OParameters
             let forcing_H2O = 0;
             let h2o_vapor_percent = 0;
@@ -1055,12 +1052,12 @@ function updateCO2LevelDirect(co2_fraction) {
                 const h2o_params = window.calculateH2OParameters(temp_surface, h2o_vapor_percent, cloud_coverage);
                 forcing_H2O = h2o_params.greenhouse_forcing;
             }
-            
+
             // Calculer le forcing CH4
             const forcing_CH4 = (typeof window.methaneEnabled !== 'undefined' && window.methaneEnabled && plotData.ch4_ppm > 0 && typeof window.calculateCH4Forcing === 'function')
                 ? window.calculateCH4Forcing(plotData.ch4_ppm * 1e-6)
                 : 0;
-            
+
             const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
                 ? window.calculateAlbedoForcing(albedo)
                 : 0;
@@ -1312,7 +1309,7 @@ window.updateDisplay = function updateDisplay(data) {
                 }
             }
         }
-        
+
         console.log('=== FLUX DIAGRAM VALUES ===');
         console.log('Époque:', epochName);
         console.log('Date:', epochDate);
@@ -1325,10 +1322,10 @@ window.updateDisplay = function updateDisplay(data) {
         console.log('Forcing CH4:', data.forcing_CH4 !== undefined ? `${data.forcing_CH4.toFixed(2)} W/m²` : '--');
         console.log('Forcing Total:', data.forcing !== undefined ? `${data.forcing.toFixed(2)} W/m²` : '--');
         console.log('---');
-        
+
         // Section Albedo avec détails
         console.log('Albedo:', data.albedo !== undefined ? `${(data.albedo * 100).toFixed(1)}%` : '--');
-        
+
         // Récupérer les données d'albedo détaillées depuis l'époque courante
         let albedoComponents = [];
         if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
@@ -1339,42 +1336,42 @@ window.updateDisplay = function updateDisplay(data) {
                 const ocean_cov = Math.round((currentEpoch.ocean_coverage || 0) * 100);
                 const forest_cov = Math.round((currentEpoch.forest_coverage || 0) * 100);
                 const desert_cov = Math.round((currentEpoch.desert_coverage || 0) * 100);
-                
+
                 // Calculer la couverture de glace (similaire à organigramme.js)
                 // IMPORTANT : Pas de glace si pas d'eau (corps noir = sec)
                 let ice_cov = 0;
                 const isCorpsNoir = window.currentEpochName === 'Corps noir';
-                const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined) 
-                    ? window.waterVaporEnabled 
+                const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
+                    ? window.waterVaporEnabled
                     : (currentEpoch.h2o_enabled !== false);
-                
+
                 // Pas de glace si pas d'eau (corps noir ou H2O désactivé)
                 if (!isCorpsNoir && h2o_enabled && data.temp_surface !== undefined) {
                     const T_surface_C = data.temp_surface - 273.15;
                     if (T_surface_C < 0 && T_surface_C > -100) {
                         let ice_coverage = Math.min(1, 1 - Math.exp(T_surface_C / 3));
-                        
+
                         // Réduire selon l'effet volcanique
                         const volcanoIceReduction = (typeof window !== 'undefined' && window.volcanoIceReduction !== undefined)
                             ? window.volcanoIceReduction / 100 : 0;
                         ice_coverage = Math.max(0, ice_coverage - volcanoIceReduction);
-                        
+
                         // Réduire selon le flux géothermique
                         const geo_flux = currentEpoch.geothermal_flux || 0.087;
                         const geo_flux_reduction = Math.min(1, geo_flux / 10);
                         ice_coverage = Math.max(0, ice_coverage * (1 - geo_flux_reduction));
-                        
+
                         ice_cov = Math.round(ice_coverage * 100);
                     }
                 }
-                
+
                 const cloud_alb = (currentEpoch.cloud_albedo || 0.40).toFixed(2);
                 const magma_alb = (currentEpoch.magma_albedo || 0.05).toFixed(2);
                 const ocean_alb = (currentEpoch.ocean_albedo || 0.08).toFixed(2);
                 const forest_alb = (currentEpoch.forest_albedo || 0.12).toFixed(2);
                 const desert_alb = (currentEpoch.desert_albedo || 0.30).toFixed(2);
                 const ice_alb = (currentEpoch.ice_albedo || 0.70).toFixed(2);
-                
+
                 const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
                 albedoComponents = [
                     { emoji: LOGOS.CLOUD || '⛅', coverage: cloud_cov, albedo: cloud_alb },
@@ -1386,7 +1383,7 @@ window.updateDisplay = function updateDisplay(data) {
                 ];
             }
         }
-        
+
         // Afficher les composantes d'albedo
         if (albedoComponents.length > 0) {
             albedoComponents.forEach(comp => {
@@ -1402,7 +1399,7 @@ window.updateDisplay = function updateDisplay(data) {
             console.log('desert 0% x0.30');
             console.log('🧊 0% x0.70');
         }
-        
+
         console.log('---');
         console.log('Temp Surface:', data.temp_surface !== undefined ? `${(data.temp_surface - 273.15).toFixed(1)}°C (${data.temp_surface.toFixed(1)}K)` : '--');
         console.log('Temp Effective:', data.temp_eff !== undefined ? `${(data.temp_eff - 273.15).toFixed(1)}°C (${data.temp_eff.toFixed(1)}K)` : '--');
@@ -1694,6 +1691,11 @@ function setEpoch(epochName) {
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
 
+    // Mettre à jour les boutons d'action selon l'époque
+    if (typeof window.updateEpochActions === 'function') {
+        window.updateEpochActions();
+    }
+
     // Mettre à jour le logo de la Terre avec l'image de l'époque
     // Modifier la configuration du noeud terre et recréer la cellule
     const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
@@ -1793,10 +1795,10 @@ function setEpoch(epochName) {
         epochNameTempDisplay.textContent = displayName;
     }
 
-    // Cacher "+90 ans" quand on clique sur une époque (sera réaffiché lors de l'incrémentation)
+    // Réinitialiser "+0 ans" quand on clique sur une époque
     const infoTimeDisplay = document.getElementById('info-time');
     if (infoTimeDisplay) {
-        infoTimeDisplay.style.display = 'none';
+        infoTimeDisplay.textContent = '+0 ans';
     }
 
     updateTimeline();
@@ -2045,13 +2047,55 @@ window.addEventListener('DOMContentLoaded', () => {
     // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)
     resetTimeline();
 
-    // Gestionnaire pour la zone horloge (étapes)
-    const horlogeSection = document.querySelector('.timeline-horloge-section');
-    if (horlogeSection) {
-        horlogeSection.addEventListener('click', () => {
-            // TODO: Implémenter la logique des étapes (météorites, etc.)
-            console.log('Zone horloge cliquée');
-        });
+    // Fonction pour mettre à jour les boutons d'action selon l'époque
+    window.updateEpochActions = function () {
+        const eventsLogos = document.getElementById('timeline-events-logos');
+        if (!eventsLogos) return;
+
+        eventsLogos.innerHTML = ''; // Vider les boutons existants
+
+        const currentEpochName = window.currentEpochName || 'Corps noir';
+
+        if (currentEpochName === 'Corps noir') {
+            // Action 1 : Météorites de glace (augmente H2O)
+            const iceMeteorBtn = document.createElement('img');
+            iceMeteorBtn.src = 'fonts/pics/ice_meteorite.png';
+            iceMeteorBtn.alt = 'Météorite de glace';
+            iceMeteorBtn.className = 'timeline-event-logo';
+            iceMeteorBtn.title = 'Météorite de glace - Augmente la vapeur d\'eau de +5%';
+            iceMeteorBtn.addEventListener('click', () => {
+                // Augmenter H2O
+                if (typeof window.waterVaporEnabled !== 'undefined') {
+                    window.waterVaporEnabled = true;
+                    window.h2oVaporPercent = Math.min(100, (window.h2oVaporPercent || 0) + 5); // +5% par météorite
+                    // Recalculer
+                    if (typeof window.updateCO2Level === 'function') {
+                        window.updateCO2Level(3);
+                    }
+                }
+            });
+            eventsLogos.appendChild(iceMeteorBtn);
+
+            // Action 2 : Impact majeur (création de la lune, passe à l'époque suivante)
+            const bigImpactBtn = document.createElement('img');
+            bigImpactBtn.src = 'fonts/pics/big_impact.png';
+            bigImpactBtn.alt = 'Impact majeur';
+            bigImpactBtn.className = 'timeline-event-logo';
+            bigImpactBtn.title = 'Impact majeur - Crée la lune et passe à l\'époque Hadéen';
+            bigImpactBtn.addEventListener('click', () => {
+                // Passer à l'époque suivante (Hadéen)
+                if (typeof window.setEpoch === 'function') {
+                    window.setEpoch('Hadéen');
+                }
+            });
+            eventsLogos.appendChild(bigImpactBtn);
+        }
+        // Ajouter d'autres actions pour d'autres époques si nécessaire
+    };
+
+    // Mettre à jour les actions au chargement
+    if (typeof window.updateEpochActions === 'function') {
+        window.updateEpochActions();
     }
 
     // Sélectionner "Corps noir" par défaut
@@ -2127,13 +2171,11 @@ window.addEventListener('DOMContentLoaded', () => {
         syntheseTempEl.addEventListener('click', cycleTemperatureUnit);
     }
 
-    // S'assurer que l'horloge est visible dès le départ
+    // Initialiser l'horloge au chargement
     setTimeout(() => {
         const infoTimeDisplay = document.getElementById('info-time');
         if (infoTimeDisplay) {
-            infoTimeDisplay.style.display = 'inline-block';
-            infoTimeDisplay.style.visibility = 'visible';
-            infoTimeDisplay.style.opacity = '1';
+            infoTimeDisplay.textContent = '+0 ans';
             updateTimeline(); // Forcer une mise à jour immédiate (affichage seulement, pas d'incrémentation)
         }
         // NE PAS démarrer l'horloge automatiquement - elle s'incrémentera uniquement lors des calculs/clics
