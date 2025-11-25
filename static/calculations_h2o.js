@@ -118,32 +118,98 @@ function estimateCloudCoverage(temp_K, h2o_vapor_fraction, relative_humidity = 0
 }
 
 /**
+ * Calcule la répartition eau vapeur / glace selon la température
+ * Utilise la pression de vapeur saturante pour déterminer combien d'eau peut rester en vapeur
+ * @param {number} temp_K - Température en Kelvin
+ * @param {number} h2o_total_fraction - Fraction totale d'eau disponible (vapeur + glace, 0-1)
+ * @param {number} pressure_atm - Pression atmosphérique en atm (défaut: 1)
+ * @returns {Object} {vapor_fraction, ice_fraction, max_vapor_fraction}
+ */
+function calculateWaterPartition(temp_K, h2o_total_fraction, pressure_atm = 1.0) {
+    // Calculer la fraction maximale de vapeur d'eau à saturation
+    const max_vapor_fraction = calculateMaxH2OVaporFraction(temp_K, pressure_atm);
+    
+    // La vapeur d'eau ne peut pas dépasser la saturation
+    const vapor_fraction = Math.min(h2o_total_fraction, max_vapor_fraction);
+    
+    // Le reste devient de la glace
+    const ice_fraction = Math.max(0, h2o_total_fraction - vapor_fraction);
+    
+    return {
+        vapor_fraction,
+        ice_fraction,
+        max_vapor_fraction
+    };
+}
+
+/**
  * Fonction principale : calcule tous les paramètres H2O
  * @param {number} temp_K - Température en Kelvin
  * @param {number} h2o_vapor_percent - Pourcentage volumique de vapeur d'eau (0-100)
  * @param {number} cloud_coverage_override - Couverture nuageuse forcée (optionnel, 0-1)
- * @returns {Object} {vapor_fraction, cloud_coverage, greenhouse_forcing, cloud_albedo_contribution}
+ * @returns {Object} {vapor_fraction, cloud_coverage, greenhouse_forcing, cloud_albedo_contribution, ice_fraction}
  */
 window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_coverage_override = null) {
-    const vapor_fraction = h2o_vapor_percent / 100;
+    const h2o_total_fraction = h2o_vapor_percent / 100;
+    
+    // Calculer la répartition eau vapeur / glace selon la température
+    const waterPartition = calculateWaterPartition(temp_K, h2o_total_fraction);
+    const vapor_fraction = waterPartition.vapor_fraction;
+    const ice_fraction = waterPartition.ice_fraction;
 
     // Calculer ou utiliser la couverture nuageuse
     const cloud_coverage = cloud_coverage_override !== null
         ? cloud_coverage_override
         : estimateCloudCoverage(temp_K, vapor_fraction);
 
-    // Calculer le forçage de l'effet de serre
+    // Calculer le forçage de l'effet de serre (seulement pour la vapeur, pas la glace)
     const greenhouse_forcing = calculateH2OGreenhouseForcing(vapor_fraction, temp_K);
 
     // Calculer la contribution à l'albedo
     const cloud_albedo_contribution = calculateCloudAlbedoContribution(cloud_coverage);
+    
+    // Mettre à jour la composition atmosphérique (si disponible)
+    if (typeof window !== 'undefined' && window.atmosphericComposition) {
+        window.atmosphericComposition.H2O_vapor = vapor_fraction;
+        window.atmosphericComposition.H2O_ice = ice_fraction;
+        window.atmosphericComposition.H2O_total = h2o_total_fraction;
+        
+        // Normaliser les gaz neutres pour que la somme fasse 1.0
+        const total_ges = (window.atmosphericComposition.CO2 || 0) + 
+                         vapor_fraction + 
+                         (window.atmosphericComposition.CH4 || 0);
+        const remaining = Math.max(0, 1.0 - total_ges);
+        
+        // Calculer les ratios initiaux (valeurs par défaut si non définies)
+        const n2_default = window.atmosphericComposition.N2 || 0.78;
+        const o2_default = window.atmosphericComposition.O2 || 0.21;
+        const ar_default = window.atmosphericComposition.Ar || 0.009;
+        const total_neutres_default = n2_default + o2_default + ar_default;
+        
+        if (total_neutres_default > 0) {
+            // Répartir proportionnellement N2, O2, Ar selon leurs ratios par défaut
+            const n2_ratio = n2_default / total_neutres_default;
+            const o2_ratio = o2_default / total_neutres_default;
+            const ar_ratio = ar_default / total_neutres_default;
+            
+            window.atmosphericComposition.N2 = remaining * n2_ratio;
+            window.atmosphericComposition.O2 = remaining * o2_ratio;
+            window.atmosphericComposition.Ar = remaining * ar_ratio;
+        } else {
+            // Si pas de valeurs par défaut, répartir équitablement
+            window.atmosphericComposition.N2 = remaining / 3;
+            window.atmosphericComposition.O2 = remaining / 3;
+            window.atmosphericComposition.Ar = remaining / 3;
+        }
+    }
 
     return {
         vapor_fraction,
+        ice_fraction,
         cloud_coverage,
         greenhouse_forcing,
         cloud_albedo_contribution,
-        max_vapor_fraction: calculateMaxH2OVaporFraction(temp_K)
+        max_vapor_fraction: waterPartition.max_vapor_fraction
     };
 };
 
@@ -154,4 +220,5 @@ if (typeof window !== 'undefined') {
     window.calculateH2OGreenhouseForcing = calculateH2OGreenhouseForcing;
     window.calculateCloudAlbedoContribution = calculateCloudAlbedoContribution;
     window.estimateCloudCoverage = estimateCloudCoverage;
+    window.calculateWaterPartition = calculateWaterPartition;
 }

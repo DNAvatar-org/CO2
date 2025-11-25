@@ -152,16 +152,23 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         }
     }
 
+    // Récupérer la glace additionnelle provenant des météorites (pour le corps noir)
+    const iceCoverageBonus = (typeof window !== 'undefined' && window.iceCoverageBonus !== undefined)
+        ? Math.min(1, Math.max(0, window.iceCoverageBonus)) // Clamper entre 0 et 1
+        : 0;
+    
+    const ice_albedo = 0.7; // Albedo moyen de la glace (approximation créative)
+    let ice_fraction = 0;
+    
     if (T_surface_C < 0) {
         // Albedo de la glace : ~0.6-0.9 selon l'épaisseur (valeur moyenne choisie pour visualisation)
         // Note : Le blanc (glace) ne fait pas totalement miroir, il y a une rediffusion vers le bas
         // Plus il fait froid, plus il y a de glace
         // Utiliser une fonction qui monte rapidement : à -2.2°C, on veut ~70% de la surface du globe couverte de glace
-        const ice_albedo = 0.7; // Albedo moyen de la glace (approximation créative)
         // Fonction exponentielle pour avoir beaucoup de glace dès -2.2°C
         // À -2.2°C : fraction = 1 - exp(-2.2/3) ≈ 0.7 (70% de la surface du globe couverte de glace)
         // À -10°C : fraction ≈ 0.97 (97% de la surface du globe couverte de glace)
-        let ice_fraction = Math.min(1, 1 - Math.exp(T_surface_C / 3)); // Fraction de surface couverte de glace (0 à 1)
+        ice_fraction = Math.min(1, 1 - Math.exp(T_surface_C / 3)); // Fraction de surface couverte de glace (0 à 1)
 
         // ⚠️ MODIFICATION POUR GAMEPLAY : Réduire la glace selon l'effet volcanique
         // Les volcans réchauffent et font fondre la glace
@@ -177,11 +184,17 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         // Seuil : au-delà de 10 W/m², la glace fond complètement
         const geo_flux_reduction = Math.min(1, geo_flux / 10); // Réduction de 0 à 1 selon le flux (seuil à 10 W/m²)
         ice_fraction = Math.max(0, ice_fraction * (1 - geo_flux_reduction));
-
+    }
+    
+    // Ajouter la glace additionnelle provenant des météorites (pour le corps noir)
+    // Cette glace s'ajoute même si la température est > 0°C (corps noir froid)
+    ice_fraction = Math.min(1, ice_fraction + iceCoverageBonus);
+    
+    if (ice_fraction > 0) {
         // Transition progressive : albedo = base + (glace - base) * fraction_glace
         // Utiliser l'albedo de base de l'époque (déjà récupéré plus haut)
         albedo = albedo_base + (ice_albedo - albedo_base) * ice_fraction;
-        console.log(`[ALBEDO] Contribution glace: ice_fraction=${ice_fraction.toFixed(3)}, geo_flux_reduction=${geo_flux_reduction.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
+        console.log(`[ALBEDO] Contribution glace: ice_fraction=${ice_fraction.toFixed(3)}, iceCoverageBonus=${iceCoverageBonus.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
     }
 
     // Contribution des nuages (H2O activé)
@@ -398,6 +411,34 @@ const simulationState = {
     ice_coverage: 0,               // Couverture de glace (0 à 1)
     volcano_count: 0               // Nombre de volcans
 };
+
+// ============================================================================
+// COMPOSITION ATMOSPHÉRIQUE COMPLÈTE (pour calculs précis)
+// ============================================================================
+/**
+ * Structure pour la composition atmosphérique complète
+ * Stockée mais non affichée, utilisée pour des calculs plus précis
+ */
+if (typeof window !== 'undefined') {
+    window.atmosphericComposition = {
+        // Gaz à effet de serre
+        CO2: 0,                    // Fraction molaire CO₂ (0-1)
+        H2O_vapor: 0,              // Fraction molaire H₂O vapeur (0-1) - calculée dynamiquement
+        CH4: 0,                    // Fraction molaire CH₄ (0-1)
+        
+        // Gaz neutres (pas d'effet de serre direct)
+        N2: 0.78,                  // Azote - fraction molaire (défaut: 78% comme sur Terre moderne)
+        O2: 0.21,                  // Oxygène - fraction molaire (défaut: 21% comme sur Terre moderne)
+        Ar: 0.009,                 // Argon - fraction molaire (défaut: 0.9%)
+        
+        // Eau (répartition calculée dynamiquement)
+        H2O_total: 0,              // Total eau disponible (vapeur + glace) en fraction
+        H2O_ice: 0,                // Eau sous forme de glace (fraction)
+        
+        // Normalisation : la somme doit faire 1.0
+        // Les gaz neutres (N2, O2, Ar) remplissent le reste après soustraction des GES
+    };
+}
 
 // Variable globale pour stocker la fraction CO2 actuelle et T0 ajustée (pour compatibilité)
 let current_CO2_fraction_for_temp = null;

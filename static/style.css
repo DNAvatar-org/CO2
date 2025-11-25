@@ -232,7 +232,8 @@ h1 {
     background: #667eea;
     border: none;
     border-radius: 10px 10px 0 0;
-    cursor: pointer; /* Curseur pointer uniquement pour le toggle */
+    cursor: pointer;
+    /* Curseur pointer uniquement pour le toggle */
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -375,10 +376,13 @@ h1 {
     pointer-events: none;
     text-align: left;
     line-height: 1;
-    color: white; /* Changé en blanc */
+    color: white;
+    /* Changé en blanc */
     /* background: rgba(255, 255, 255, 0); /* Fond blanc transparent */
-    padding: 2px 4px; /* Petit padding pour que le fond entoure le texte */
-    border-radius: 2px; /* Coins légèrement arrondis */
+    padding: 2px 4px;
+    /* Petit padding pour que le fond entoure le texte */
+    border-radius: 2px;
+    /* Coins légèrement arrondis */
 }
 
 /* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
@@ -483,7 +487,8 @@ h1 {
     display: block !important;
     white-space: nowrap !important;
     /* Titre sur une seule ligne */
-    color: var(--base-color); /* color: #667eea (bleu) en réserve */
+    color: var(--base-color);
+    /* color: #667eea (bleu) en réserve */
 }
 
 .plot-title {
@@ -594,7 +599,6 @@ h1 {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
     width: 100%;
 }
 
@@ -614,21 +618,22 @@ h1 {
 .timeline-events-logos {
     display: flex;
     flex-direction: row;
-    gap: 5px;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
     width: 100%;
 }
 
 .timeline-event-logo {
-    width: 30px;
-    height: 30px;
+    width: 40px;
+    /* Même taille que les boutons d'époques */
+    height: 40px;
     object-fit: contain;
     cursor: pointer;
     opacity: 0.7;
     transition: opacity 0.3s ease, transform 0.2s ease;
-    border: 1px solid transparent;
+    border: none;
+    /* Pas de border */
     border-radius: 4px;
     padding: 2px;
     box-sizing: border-box;
@@ -643,7 +648,7 @@ h1 {
 .timeline-event-logo:hover {
     opacity: 1;
     transform: scale(1.1);
-    border-color: rgba(255, 255, 255, 0.3);
+    /* Pas de border au rollover */
 }
 
 .timeline-event-logo:active {
@@ -668,27 +673,33 @@ h1 {
 
 /* Ancien style pour compatibilité (peut être supprimé si plus utilisé) */
 .timeline-start-wrapper {
-    display: none; /* Masqué car remplacé par timeline-date-section */
+    display: none;
+    /* Masqué car remplacé par timeline-date-section */
 }
 
 .timeline-first-line {
-    display: none; /* Masqué car remplacé */
+    display: none;
+    /* Masqué car remplacé */
 }
 
 .epoch-name {
-    display: none; /* Masqué car remplacé */
+    display: none;
+    /* Masqué car remplacé */
 }
 
 .timeline-frise {
-    display: none; /* Masqué car remplacé par timeline-frise-vertical */
+    display: none;
+    /* Masqué car remplacé par timeline-frise-vertical */
 }
 
 .epochs-container {
-    display: none; /* Masqué car remplacé par epochs-container-vertical */
+    display: none;
+    /* Masqué car remplacé par epochs-container-vertical */
 }
 
 .epoch-separator-item {
-    display: none; /* Ancien style masqué */
+    display: none;
+    /* Ancien style masqué */
 }
 
 .epoch-date-item {
@@ -711,13 +722,16 @@ h1 {
 .epoch-btn {
     font-size: 24px;
     font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
-    background: none !important; /* Pas de fond */
-    border: none !important; /* Pas de border */
+    background: none !important;
+    /* Pas de fond */
+    border: none !important;
+    /* Pas de border */
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer !important; /* Curseur main au survol */
+    cursor: pointer !important;
+    /* Curseur main au survol */
     padding: 5px;
     transition: filter 0.3s ease, text-shadow 0.3s ease;
     width: 40px;
@@ -731,12 +745,13 @@ h1 {
 
 /* Bouton sélectionné : couleur avec contour vert autour du logo */
 .epoch-btn.selected {
-    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important; /* Couleur normale avec blur vert */
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    /* Couleur normale avec blur vert */
     /* Contour vert autour du logo - ne change pas au rollover */
     text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-                 0 0 4px rgba(0, 255, 0, 0.7),
-                 0 0 6px rgba(0, 255, 0, 0.5),
-                 0 0 8px rgba(0, 255, 0, 0.3) !important;
+        0 0 4px rgba(0, 255, 0, 0.7),
+        0 0 6px rgba(0, 255, 0, 0.5),
+        0 0 8px rgba(0, 255, 0, 0.3) !important;
 }
 
 /* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
@@ -745,26 +760,28 @@ h1 {
     filter: grayscale(0%);
     /* Glow blanc au rollover pour les boutons non sélectionnés */
     text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                 0 0 4px rgba(255, 255, 255, 0.7),
-                 0 0 6px rgba(255, 255, 255, 0.5);
-    cursor: pointer !important; /* Curseur main au survol */
+        0 0 4px rgba(255, 255, 255, 0.7),
+        0 0 6px rgba(255, 255, 255, 0.5);
+    cursor: pointer !important;
+    /* Curseur main au survol */
 }
 
 /* Rollover spécifique pour les boutons non sélectionnés : forcer le glow blanc */
 .epoch-btn:not(.selected):hover {
     text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                 0 0 4px rgba(255, 255, 255, 0.7),
-                 0 0 6px rgba(255, 255, 255, 0.5) !important;
+        0 0 4px rgba(255, 255, 255, 0.7),
+        0 0 6px rgba(255, 255, 255, 0.5) !important;
 }
 
 .epoch-btn.selected:hover {
     /* Si sélectionné : swap vers noir et blanc, contour reste vert */
     filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
     text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-                 0 0 4px rgba(0, 255, 0, 0.7),
-                 0 0 6px rgba(0, 255, 0, 0.5),
-                 0 0 8px rgba(0, 255, 0, 0.3) !important;
-    cursor: pointer !important; /* Curseur main au survol */
+        0 0 4px rgba(0, 255, 0, 0.7),
+        0 0 6px rgba(0, 255, 0, 0.5),
+        0 0 8px rgba(0, 255, 0, 0.3) !important;
+    cursor: pointer !important;
+    /* Curseur main au survol */
 }
 
 /* Boutons du flux : même style que les boutons radio mais pour checkboxes */
@@ -1105,11 +1122,13 @@ h1 {
     top: 70px !important;
     /* Descendu d'une ligne (~20px) depuis 50px */
     right: 80px !important;
-    padding: 4px 15px !important; /* Réduit le padding vertical pour tasser la légende */
+    padding: 4px 15px !important;
+    /* Réduit le padding vertical pour tasser la légende */
     border-radius: 5px !important;
     /*text-align: right !important;
     /* Aligné à droite comme le titre */
-    color: var(--base-color); /* color: #667eea (bleu) en réserve */
+    color: var(--base-color);
+    /* color: #667eea (bleu) en réserve */
 }
 
 .legend-section {
@@ -1133,7 +1152,8 @@ h1 {
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--base-color); /* color: #667eea (bleu) en réserve */
+    color: var(--base-color);
+    /* color: #667eea (bleu) en réserve */
 }
 
 .legend-planck-grid {
@@ -1241,7 +1261,8 @@ h1 {
 .legend-formula {
     font-size: 10px;
     text-align: center;
-    color: var(--base-color); /* color: #667eea (bleu) en réserve */
+    color: var(--base-color);
+    /* color: #667eea (bleu) en réserve */
 }
 
 .legend-item {
@@ -1543,8 +1564,8 @@ h1 {
     filter: grayscale(100%);
     /* Contour blanc autour du logo (emoji) */
     text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                 0 0 4px rgba(255, 255, 255, 0.7),
-                 0 0 6px rgba(255, 255, 255, 0.5);
+        0 0 4px rgba(255, 255, 255, 0.7),
+        0 0 6px rgba(255, 255, 255, 0.5);
     padding: 0 8px;
     margin: 0 1px;
     vertical-align: middle;
@@ -1580,7 +1601,8 @@ h1 {
 
 /* Mode Dark - Couleur de texte par défaut vert sur fond noir */
 body.mode-dark {
-    --base-color: #00ff00; /* Mettre à jour la variable pour le mode dark */
+    --base-color: #00ff00;
+    /* Mettre à jour la variable pour le mode dark */
     color: var(--base-color) !important;
     /* Garder l'image de fond */
     background: url('../fond.png') center center / cover no-repeat fixed !important;
@@ -1608,7 +1630,7 @@ body.mode-dark .divGlass {
     border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
     border-bottom: 1px solid rgb(0, 0, 0) !important;
     border-right: 1px solid rgb(0, 0, 0) !important;
-    box-shadow: 
+    box-shadow:
         0 1px 2px rgba(0, 0, 0, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.1),
         inset 0 -1px 0 rgba(0, 0, 0, 0.2) !important;
@@ -1632,4 +1654,3 @@ body.mode-dark .plot-overlay-title {
         inset 0 -1px 0 rgba(0, 0, 0, 0.2) !important;
 }
 */
-
