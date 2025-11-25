@@ -37,7 +37,7 @@ if (typeof window !== 'undefined') {
     window.volcanoIceReduction = 0;
     window.fps = 0; // Exposer le FPS pour l'optimisation de la visualisation spectrale
     window.methaneEnabled = true; // CH4 activé par défaut
-    window.iceCoverageBonus = 0; // Couverture de glace additionnelle (0-1) provenant des météorites
+    window.h2oTotalFromMeteorites = 0; // Eau totale ajoutée par les météorites (en pourcentage 0-100)
 }
 
 // ============================================================================
@@ -673,8 +673,15 @@ function updateCO2Level(state) {
             let forcing_H2O = 0;
             let h2o_vapor_percent = 0;
             if (typeof window.waterVaporEnabled !== 'undefined' && window.waterVaporEnabled && typeof window.calculateH2OParameters === 'function') {
+                // Récupérer l'eau de base de l'époque
                 h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
-                const h2o_params = window.calculateH2OParameters(temp_surface, h2o_vapor_percent, cloud_coverage);
+                
+                // Ajouter l'eau totale des météorites
+                const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+                const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
+                
+                // Calculer la répartition vapeur/glace selon la température
+                const h2o_params = window.calculateH2OParameters(temp_surface, h2o_total_percent, cloud_coverage);
                 forcing_H2O = h2o_params.greenhouse_forcing;
                 
                 // Mettre à jour la composition atmosphérique (H2O est déjà mis à jour dans calculateH2OParameters)
@@ -1057,8 +1064,15 @@ function updateCO2LevelDirect(co2_fraction) {
             let forcing_H2O = 0;
             let h2o_vapor_percent = 0;
             if (typeof window.waterVaporEnabled !== 'undefined' && window.waterVaporEnabled && typeof window.calculateH2OParameters === 'function') {
+                // Récupérer l'eau de base de l'époque
                 h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
-                const h2o_params = window.calculateH2OParameters(temp_surface, h2o_vapor_percent, cloud_coverage);
+                
+                // Ajouter l'eau totale des météorites
+                const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+                const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
+                
+                // Calculer la répartition vapeur/glace selon la température
+                const h2o_params = window.calculateH2OParameters(temp_surface, h2o_total_percent, cloud_coverage);
                 forcing_H2O = h2o_params.greenhouse_forcing;
                 
                 // Mettre à jour la composition atmosphérique (H2O est déjà mis à jour dans calculateH2OParameters)
@@ -1362,13 +1376,13 @@ window.updateDisplay = function updateDisplay(data) {
                     ? window.waterVaporEnabled
                     : (currentEpoch.h2o_enabled !== false);
                 
-                // Récupérer la glace additionnelle provenant des météorites
-                const iceCoverageBonus = (typeof window !== 'undefined' && window.iceCoverageBonus !== undefined)
-                    ? Math.min(1, Math.max(0, window.iceCoverageBonus)) : 0;
-
-                // Calculer la glace basée sur la température (si applicable)
+                // Récupérer la glace calculée depuis calculateWaterPartition (si disponible)
                 let ice_coverage = 0;
-                if (data.temp_surface !== undefined) {
+                if (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined) {
+                    // Utiliser la glace calculée depuis calculateWaterPartition
+                    ice_coverage = Math.min(1, Math.max(0, window.h2oIceFractionFromCalculation));
+                } else if (data.temp_surface !== undefined) {
+                    // Calcul classique de la glace basé sur la température (si pas de calcul H2O)
                     const T_surface_C = data.temp_surface - 273.15;
                     if (T_surface_C < 0 && T_surface_C > -100) {
                         ice_coverage = Math.min(1, 1 - Math.exp(T_surface_C / 3));
@@ -1384,9 +1398,6 @@ window.updateDisplay = function updateDisplay(data) {
                         ice_coverage = Math.max(0, ice_coverage * (1 - geo_flux_reduction));
                     }
                 }
-                
-                // Ajouter la glace additionnelle des météorites (pour le corps noir notamment)
-                ice_coverage = Math.min(1, ice_coverage + iceCoverageBonus);
                 ice_cov = Math.round(ice_coverage * 100);
 
                 const cloud_alb = (currentEpoch.cloud_albedo || 0.40).toFixed(2);
@@ -1715,9 +1726,9 @@ function setEpoch(epochName) {
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
     
-    // Réinitialiser la glace additionnelle si on change d'époque (sauf si on reste en Corps noir)
-    if (epochName !== 'Corps noir' && typeof window.iceCoverageBonus !== 'undefined') {
-        window.iceCoverageBonus = 0;
+    // Réinitialiser l'eau totale des météorites si on change d'époque (sauf si on reste en Corps noir)
+    if (epochName !== 'Corps noir' && typeof window.h2oTotalFromMeteorites !== 'undefined') {
+        window.h2oTotalFromMeteorites = 0;
     }
     
     // Mettre à jour les boutons d'action selon l'époque
@@ -2102,11 +2113,11 @@ window.addEventListener('DOMContentLoaded', () => {
             iceMeteorBtn.style.fontSize = '24px';
             iceMeteorBtn.textContent = '🧊'; // Emoji glace pour les météorites de glace
             iceMeteorBtn.addEventListener('click', () => {
-                // Augmenter la couverture de glace (pas la vapeur d'eau)
-                if (typeof window.iceCoverageBonus !== 'undefined') {
-                    window.iceCoverageBonus = Math.min(1, (window.iceCoverageBonus || 0) + 0.05); // +5% par météorite (0.05 en fraction)
+                // Ajouter de l'eau totale (la répartition vapeur/glace sera calculée selon la température)
+                if (typeof window.h2oTotalFromMeteorites !== 'undefined') {
+                    window.h2oTotalFromMeteorites = Math.min(100, (window.h2oTotalFromMeteorites || 0) + 5); // +5% d'eau totale par météorite
                 } else {
-                    window.iceCoverageBonus = 0.05;
+                    window.h2oTotalFromMeteorites = 5;
                 }
                 // Recalculer
                 if (typeof window.updateCO2Level === 'function') {

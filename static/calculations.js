@@ -152,15 +152,24 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         }
     }
 
-    // Récupérer la glace additionnelle provenant des météorites (pour le corps noir)
-    const iceCoverageBonus = (typeof window !== 'undefined' && window.iceCoverageBonus !== undefined)
-        ? Math.min(1, Math.max(0, window.iceCoverageBonus)) // Clamper entre 0 et 1
-        : 0;
-    
     const ice_albedo = 0.7; // Albedo moyen de la glace (approximation créative)
     let ice_fraction = 0;
     
-    if (T_surface_C < 0) {
+    // Calculer la glace depuis l'eau totale disponible (météorites + eau de base)
+    // Utiliser calculateWaterPartition pour déterminer la répartition vapeur/glace selon la température
+    const h2o_from_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined)
+        ? window.h2oTotalFromMeteorites : 0; // Eau totale des météorites en pourcentage
+    const h2o_base = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined)
+        ? window.h2oVaporPercent : 0; // Eau de base de l'époque en pourcentage
+    const h2o_total_percent = h2o_base + h2o_from_meteorites;
+    
+    // Si on a de l'eau totale disponible, calculer la répartition vapeur/glace
+    if (h2o_total_percent > 0 && typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
+        const h2o_total_fraction = h2o_total_percent / 100;
+        const waterPartition = window.calculateWaterPartition(T_surface_K, h2o_total_fraction);
+        ice_fraction = waterPartition.ice_fraction; // Utiliser la glace calculée
+    } else if (T_surface_C < 0) {
+        // Calcul classique de la glace basé sur la température (si pas de calcul H2O)
         // Albedo de la glace : ~0.6-0.9 selon l'épaisseur (valeur moyenne choisie pour visualisation)
         // Note : Le blanc (glace) ne fait pas totalement miroir, il y a une rediffusion vers le bas
         // Plus il fait froid, plus il y a de glace
@@ -186,15 +195,11 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         ice_fraction = Math.max(0, ice_fraction * (1 - geo_flux_reduction));
     }
     
-    // Ajouter la glace additionnelle provenant des météorites (pour le corps noir)
-    // Cette glace s'ajoute même si la température est > 0°C (corps noir froid)
-    ice_fraction = Math.min(1, ice_fraction + iceCoverageBonus);
-    
     if (ice_fraction > 0) {
         // Transition progressive : albedo = base + (glace - base) * fraction_glace
         // Utiliser l'albedo de base de l'époque (déjà récupéré plus haut)
         albedo = albedo_base + (ice_albedo - albedo_base) * ice_fraction;
-        console.log(`[ALBEDO] Contribution glace: ice_fraction=${ice_fraction.toFixed(3)}, iceCoverageBonus=${iceCoverageBonus.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
+        console.log(`[ALBEDO] Contribution glace: ice_fraction=${ice_fraction.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
     }
 
     // Contribution des nuages (H2O activé)
