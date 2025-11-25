@@ -163,12 +163,42 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         ? window.h2oVaporPercent : 0; // Eau de base de l'époque en pourcentage
     const h2o_total_percent = h2o_base + h2o_from_meteorites;
     
-    // Si on a de l'eau totale disponible, calculer la répartition vapeur/glace
+    // Si on a de l'eau totale disponible, calculer la répartition vapeur/liquide/glace
     if (h2o_total_percent > 0 && typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
         const h2o_total_fraction = h2o_total_percent / 100;
-        const waterPartition = window.calculateWaterPartition(T_surface_K, h2o_total_fraction);
+        
+        // Récupérer les paramètres de l'époque courante (si disponibles)
+        let epochParams = {};
+        if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch) {
+                epochParams = {
+                    pressure_atm: currentEpoch.atmospheric_pressure || 1.0,
+                    molar_mass_air: currentEpoch.molar_mass_air || 0.029,
+                    gravity: currentEpoch.gravity || 9.81,
+                    ocean_coverage: currentEpoch.ocean_coverage || 0.7
+                };
+            }
+        }
+        
+        const waterPartition = window.calculateWaterPartition(T_surface_K, h2o_total_fraction, epochParams);
         ice_fraction = waterPartition.ice_fraction; // Utiliser la glace calculée
-    } else if (T_surface_C < 0) {
+        
+        // Stocker la glace calculée pour les logs (si disponible)
+        // 🔒 Ne pas écraser si calculateH2OParameters a déjà calculé la valeur (plus précis)
+        if (typeof window !== 'undefined') {
+            // Si calculateH2OParameters a déjà calculé la valeur, la garder (elle est plus précise)
+            // Sinon, utiliser la valeur calculée ici
+            if (window.h2oIceFractionFromCalculation === undefined) {
+                window.h2oIceFractionFromCalculation = ice_fraction;
+            } else {
+                // Utiliser la valeur déjà calculée par calculateH2OParameters
+                ice_fraction = window.h2oIceFractionFromCalculation;
+            }
+        }
+    } else if (h2o_total_percent > 0 && T_surface_C < 0) {
+        // 🔒 CORRECTION : Ne calculer la glace que s'il y a de l'eau disponible
+        // Calcul classique de la glace basé sur la température (si pas de calcul H2O mais qu'il y a de l'eau)
         // Calcul classique de la glace basé sur la température (si pas de calcul H2O)
         // Albedo de la glace : ~0.6-0.9 selon l'épaisseur (valeur moyenne choisie pour visualisation)
         // Note : Le blanc (glace) ne fait pas totalement miroir, il y a une rediffusion vers le bas
@@ -195,11 +225,16 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         ice_fraction = Math.max(0, ice_fraction * (1 - geo_flux_reduction));
     }
     
+    // 🔒 PRIORITÉ : Si calculateH2OParameters a déjà calculé la glace, l'utiliser (plus précis)
+    if (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined) {
+        ice_fraction = window.h2oIceFractionFromCalculation;
+    }
+    
     if (ice_fraction > 0) {
         // Transition progressive : albedo = base + (glace - base) * fraction_glace
         // Utiliser l'albedo de base de l'époque (déjà récupéré plus haut)
         albedo = albedo_base + (ice_albedo - albedo_base) * ice_fraction;
-        console.log(`[ALBEDO] Contribution glace: ice_fraction=${ice_fraction.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
+        console.log(`[ALBEDO] Contribution glace: ice_fraction=${ice_fraction.toFixed(3)}, ice_percent=${(ice_fraction * 100).toFixed(1)}%, albedo_base=${albedo_base.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
     }
 
     // Contribution des nuages (H2O activé)
@@ -231,8 +266,9 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         // Si cloud_fraction < 5%, on n'ajoute pas de contribution nuageuse à l'albedo
     }
 
-    // Clamper entre 0.1 et 0.9 (valeurs physiques raisonnables pour la Terre)
-    const final_albedo = Math.max(0.1, Math.min(0.9, albedo));
+    // Clamper entre 0.0 (corps noir) et 0.9 (valeurs physiques raisonnables)
+    // Permettre 0.0 pour le corps noir, mais limiter à 0.9 maximum
+    const final_albedo = Math.max(0.0, Math.min(0.9, albedo));
     console.log(`[ALBEDO] Résultat final: ${final_albedo.toFixed(3)} (${(final_albedo * 100).toFixed(1)}%)`);
     return final_albedo;
 }
@@ -638,6 +674,7 @@ function crossSectionH2O(wavelength) {
 }
 
 // Densité numérique de H2O
+// 🔄 MODIFIÉ : Utilise maintenant calculateWaterPartition pour déterminer la vapeur selon la température
 function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null) {
     // Vérifier si H2O est activé (via variable globale ou window)
     const enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
@@ -645,9 +682,63 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null) {
         : waterVaporEnabled;
     if (!enabled) return 0;
 
-    const n_air = airNumberDensity(z, CO2_fraction, T0_override);
-    const mixing_ratio = waterVaporMixingRatio(z);
-    return n_air * mixing_ratio;
+    // Récupérer la température de surface (T0_override ou valeur globale)
+    const T0 = T0_override !== null ? T0_override : 
+               (typeof window !== 'undefined' && window.current_T0_adjusted !== undefined ? window.current_T0_adjusted : null);
+    
+    // Si pas de température disponible, utiliser l'ancienne méthode (valeur fixe)
+    if (T0 === null || !isFinite(T0) || T0 <= 0) {
+        const n_air = airNumberDensity(z, CO2_fraction, T0_override);
+        const mixing_ratio = waterVaporMixingRatio(z);
+        return n_air * mixing_ratio;
+    }
+
+    // Récupérer l'eau totale disponible (base + météorites)
+    const h2o_base = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined)
+        ? window.h2oVaporPercent : 0;
+    const h2o_from_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined)
+        ? window.h2oTotalFromMeteorites : 0;
+    const h2o_total_percent = h2o_base + h2o_from_meteorites;
+    
+    if (h2o_total_percent <= 0) return 0;
+
+    // Récupérer les paramètres de l'époque courante
+    let epochParams = {};
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch) {
+            epochParams = {
+                pressure_atm: currentEpoch.atmospheric_pressure || 1.0,
+                molar_mass_air: currentEpoch.molar_mass_air || 0.029,
+                gravity: currentEpoch.gravity || 9.81,
+                ocean_coverage: currentEpoch.ocean_coverage || 0.7
+            };
+        }
+    }
+
+    // Calculer la répartition vapeur/liquide/glace selon la température
+    if (typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
+        const h2o_total_fraction = h2o_total_percent / 100;
+        const waterPartition = window.calculateWaterPartition(T0, h2o_total_fraction, epochParams);
+        const vapor_fraction = waterPartition.vapor_fraction;
+        
+        // Calculer la densité numérique de vapeur d'eau
+        // n_H2O = n_air * vapor_fraction (fraction molaire de vapeur)
+        const n_air = airNumberDensity(z, CO2_fraction, T0_override);
+        
+        // Ajuster la fraction de vapeur selon l'altitude (décroît avec z)
+        // Utiliser le même profil que waterVaporMixingRatio pour la distribution verticale
+        const H_H2O = 2500; // Échelle de hauteur de la vapeur d'eau (m)
+        const altitude_factor = Math.exp(-z / H_H2O);
+        const vapor_fraction_at_z = vapor_fraction * altitude_factor;
+        
+        return n_air * vapor_fraction_at_z;
+    } else {
+        // Fallback : utiliser l'ancienne méthode si calculateWaterPartition n'est pas disponible
+        const n_air = airNumberDensity(z, CO2_fraction, T0_override);
+        const mixing_ratio = waterVaporMixingRatio(z);
+        return n_air * mixing_ratio;
+    }
 }
 
 // ============================================================================
@@ -1413,6 +1504,12 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         return;
                     }
 
+                    // Mettre à jour current_T0_adjusted dans window pour que waterVaporNumberDensity puisse y accéder
+                    if (typeof window !== 'undefined') {
+                        window.current_T0_adjusted = T0_current;
+                    }
+                    current_T0_adjusted = T0_current;
+                    
                     final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
                     // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
                     // Récupérer le flux géothermique depuis l'époque courante

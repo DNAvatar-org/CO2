@@ -98,12 +98,24 @@ function calculateH2OForcing(h2o_enabled, cloud_coverage) {
 }
 
 // Fonction pour calculer le forçage radiatif de l'albedo
-// L'albedo est déjà pris en compte dans le calcul du flux solaire absorbé
-// Il n'y a donc pas de forçage albedo séparé à calculer
-// Le forçage albedo est toujours 0 car l'albedo est déjà intégré dans les calculs
+// ✅ SCIENTIFIQUEMENT CERTAIN :
+// - Le forçage albedo est : ΔF_albedo = -S/4 * ΔA où S est la constante solaire et ΔA est le changement d'albedo
+// - Référence : albedo de référence = 0.3 (valeur terrestre moyenne)
+// - Si albedo augmente, le forçage est négatif (refroidissement)
+// - Si albedo diminue, le forçage est positif (réchauffement)
 function calculateAlbedoForcing(albedo) {
-    // Pas de forçage albedo séparé : l'albedo est déjà pris en compte dans le flux solaire absorbé
-    return 0;
+    if (albedo === null || albedo === undefined) return 0;
+    
+    const ALBEDO_REF = 0.3; // Albedo de référence (valeur terrestre moyenne)
+    const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
+    const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4; // 341.5 W/m²
+    
+    // ΔF_albedo = -S/4 * (A - A_ref)
+    // Négatif car une augmentation d'albedo réduit le flux absorbé (refroidissement)
+    const delta_albedo = albedo - ALBEDO_REF;
+    const forcing = -SOLAR_FLUX_AVERAGE * delta_albedo;
+    
+    return forcing; // W/m²
 }
 
 // Exposer globalement

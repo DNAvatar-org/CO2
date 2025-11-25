@@ -60,19 +60,31 @@ function calculateMaxH2OVaporFraction(temp_K, pressure_atm = 1.0) {
 function calculateH2OGreenhouseForcing(h2o_vapor_fraction, temp_K) {
     if (h2o_vapor_fraction <= 0) return 0;
 
-    // Formule empirique simplifiée basée sur la littérature
+    // Formule basée sur la littérature (similaire à CO2 mais adaptée pour H2O)
     // L'effet de serre de H2O est logarithmique avec la concentration
     // et dépend de la température (feedback positif)
+    
+    // Référence : concentration très basse (comme CO2 utilise 280 ppm)
+    // Utiliser 100 ppm (0.01%) comme référence - concentration typique dans une atmosphère très sèche
+    // Les concentrations atmosphériques réalistes vont de quelques ppm à ~2-3% max (saturation)
+    const H2O_REF_FRACTION = 100e-6; // 100 ppm = 0.01% (référence basse, comme CO2 à 280 ppm)
+    
+    // Coefficient : H2O est ~1.5-2x plus efficace que CO2 (5.35 W/m²)
+    // Basé sur la littérature : H2O absorbe mieux dans l'IR que CO2
+    // Utiliser 6.0 W/m² comme coefficient (plus conservateur pour éviter les amplifications excessives)
+    const H2O_FORCING_COEFFICIENT = 6.0; // W/m² (réduit de 8.0 à 6.0 pour éviter les amplifications)
+    
+    // Forçage de base : formule logarithmique standard (comme CO2)
+    // ΔF = α * ln(C/C₀) où C est la concentration et C₀ la référence
+    // Fonctionne pour des concentrations réalistes (de quelques ppm à quelques %)
+    const base_forcing = H2O_FORCING_COEFFICIENT * Math.log(Math.max(h2o_vapor_fraction, H2O_REF_FRACTION) / H2O_REF_FRACTION);
 
-    // Conversion fraction -> ppm équivalent pour la formule
-    const h2o_ppm_equiv = h2o_vapor_fraction * 1e6;
-
-    // Forçage de base (similaire au CO2 mais plus fort)
-    // H2O a un forçage ~2-3x plus fort que le CO2 à concentration égale
-    const base_forcing = 5.35 * Math.log(h2o_ppm_equiv / 4000); // 4000 ppm = valeur de référence moderne
-
-    // Feedback température (effet amplifié à haute température)
-    const temp_factor = Math.min(temp_K / 288, 2.0); // Normalisation à 288K (15°C)
+    // Feedback température : effet amplifié à haute température (feedback positif)
+    // Plus il fait chaud, plus il y a de vapeur, plus l'effet de serre est fort
+    // Formule continue : normalisation à 288K (15°C, température de référence terrestre)
+    // À basse température, l'effet est réduit car moins de vapeur peut exister
+    // Réduire l'amplification pour éviter les rétroactions trop fortes
+    const temp_factor = Math.min(temp_K / 288, 1.2); // Limiter à 1.2 pour éviter les amplifications excessives
 
     return Math.max(base_forcing * temp_factor, 0);
 }
@@ -118,27 +130,86 @@ function estimateCloudCoverage(temp_K, h2o_vapor_fraction, relative_humidity = 0
 }
 
 /**
- * Calcule la répartition eau vapeur / glace selon la température
- * Utilise la pression de vapeur saturante pour déterminer combien d'eau peut rester en vapeur
+ * Calcule la répartition eau vapeur / liquide / glace selon les conditions physiques
+ * Formule complète basée sur la thermodynamique et le cycle de l'eau
+ * 
  * @param {number} temp_K - Température en Kelvin
- * @param {number} h2o_total_fraction - Fraction totale d'eau disponible (vapeur + glace, 0-1)
- * @param {number} pressure_atm - Pression atmosphérique en atm (défaut: 1)
- * @returns {Object} {vapor_fraction, ice_fraction, max_vapor_fraction}
+ * @param {number} h2o_total_fraction - Fraction totale d'eau disponible (vapeur + liquide + glace, 0-1)
+ * @param {Object} options - Options supplémentaires
+ * @param {number} options.pressure_atm - Pression atmosphérique en atm (défaut: 1.0)
+ * @param {number} options.molar_mass_air - Masse molaire moyenne de l'air en kg/mol (défaut: 0.029)
+ * @param {number} options.gravity - Accélération gravitationnelle en m/s² (défaut: 9.81)
+ * @param {number} options.ocean_coverage - Couverture océanique (0-1, défaut: 0.7)
+ * @returns {Object} {vapor_fraction, liquid_fraction, ice_fraction, max_vapor_fraction}
  */
-function calculateWaterPartition(temp_K, h2o_total_fraction, pressure_atm = 1.0) {
-    // Calculer la fraction maximale de vapeur d'eau à saturation
-    const max_vapor_fraction = calculateMaxH2OVaporFraction(temp_K, pressure_atm);
+function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
+    // Paramètres par défaut
+    const pressure_atm = options.pressure_atm || 1.0;
+    const molar_mass_air = options.molar_mass_air || 0.029; // kg/mol (air sec ~0.029, air humide légèrement moins)
+    const gravity = options.gravity || 9.81; // m/s²
+    const ocean_coverage = options.ocean_coverage || 0.7; // Fraction de surface océanique
     
-    // La vapeur d'eau ne peut pas dépasser la saturation
-    const vapor_fraction = Math.min(h2o_total_fraction, max_vapor_fraction);
+    // Constantes physiques
+    const R = 8.314; // Constante des gaz parfaits, J/(mol·K)
+    const T0 = 273.15; // Point triple de l'eau (K)
+    const T_freeze = 273.15; // Point de congélation (K)
+    const T_boil = 373.15; // Point d'ébullition à 1 atm (K)
     
-    // Le reste devient de la glace
-    const ice_fraction = Math.max(0, h2o_total_fraction - vapor_fraction);
+    // 1. Calculer la pression de vapeur saturante (équation de Clausius-Clapeyron)
+    const P_sat = calculateSaturatedVaporPressure(temp_K);
+    
+    // 2. Calculer la pression atmosphérique totale
+    const P_total = pressure_atm * 101325; // Conversion atm -> Pa
+    
+    // 3. Calculer la fraction maximale de vapeur d'eau à saturation (loi de Dalton)
+    // P_vapor = P_sat = x_vapor * P_total
+    // x_vapor = P_sat / P_total
+    const max_vapor_fraction = Math.min(P_sat / P_total, 1.0);
+    
+    // 4. Calculer la densité de l'air (loi des gaz parfaits)
+    // ρ = P * M / (R * T) où M est la masse molaire
+    const air_density = (P_total * molar_mass_air) / (R * temp_K); // kg/m³
+    
+    // 5. Déterminer les phases selon la température et la pression
+    let vapor_fraction = 0;
+    let liquid_fraction = 0;
+    let ice_fraction = 0;
+    
+    if (temp_K >= T_boil) {
+        // Au-dessus du point d'ébullition : tout est vapeur (jusqu'à saturation)
+        vapor_fraction = Math.min(h2o_total_fraction, max_vapor_fraction);
+        // Le reste reste liquide (sous pression, l'eau peut rester liquide au-delà de 100°C)
+        liquid_fraction = Math.max(0, h2o_total_fraction - vapor_fraction);
+    } else if (temp_K >= T_freeze) {
+        // Entre 0°C et 100°C : vapeur + liquide
+        // La vapeur est limitée par la saturation
+        vapor_fraction = Math.min(h2o_total_fraction, max_vapor_fraction);
+        // Le reste est liquide (océans, lacs, etc.)
+        liquid_fraction = Math.max(0, h2o_total_fraction - vapor_fraction);
+    } else {
+        // En-dessous de 0°C : vapeur + glace
+        // La vapeur est limitée par la saturation (très faible à basse température)
+        vapor_fraction = Math.min(h2o_total_fraction, max_vapor_fraction);
+        // Le reste est glace
+        ice_fraction = Math.max(0, h2o_total_fraction - vapor_fraction);
+        
+        // Transition liquide-glace : si on refroidit progressivement, l'eau liquide peut persister
+        // en surfusion jusqu'à ~-20°C, mais on simplifie ici
+        if (temp_K > T_freeze - 20) {
+            // Zone de transition : peut y avoir un peu de liquide
+            const transition_factor = (temp_K - (T_freeze - 20)) / 20;
+            const liquid_from_ice = ice_fraction * transition_factor * ocean_coverage;
+            liquid_fraction = liquid_from_ice;
+            ice_fraction = ice_fraction - liquid_from_ice;
+        }
+    }
     
     return {
         vapor_fraction,
+        liquid_fraction,
         ice_fraction,
-        max_vapor_fraction
+        max_vapor_fraction,
+        air_density // Densité de l'air pour d'autres calculs
     };
 }
 
@@ -152,9 +223,24 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, pressure_atm = 1.0)
 window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_coverage_override = null) {
     const h2o_total_fraction = h2o_vapor_percent / 100;
     
-    // Calculer la répartition eau vapeur / glace selon la température
-    const waterPartition = calculateWaterPartition(temp_K, h2o_total_fraction);
+    // Récupérer les paramètres de l'époque courante (si disponibles)
+    let epochParams = {};
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch) {
+            epochParams = {
+                pressure_atm: currentEpoch.atmospheric_pressure || 1.0,
+                molar_mass_air: currentEpoch.molar_mass_air || 0.029,
+                gravity: currentEpoch.gravity || 9.81,
+                ocean_coverage: currentEpoch.ocean_coverage || 0.7
+            };
+        }
+    }
+    
+    // Calculer la répartition eau vapeur / liquide / glace selon les conditions physiques
+    const waterPartition = calculateWaterPartition(temp_K, h2o_total_fraction, epochParams);
     const vapor_fraction = waterPartition.vapor_fraction;
+    const liquid_fraction = waterPartition.liquid_fraction || 0;
     const ice_fraction = waterPartition.ice_fraction;
 
     // Calculer ou utiliser la couverture nuageuse
@@ -167,6 +253,11 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
 
     // Calculer la contribution à l'albedo
     const cloud_albedo_contribution = calculateCloudAlbedoContribution(cloud_coverage);
+    
+    // Stocker la glace calculée pour calculateAlbedo et les logs
+    if (typeof window !== 'undefined') {
+        window.h2oIceFractionFromCalculation = ice_fraction;
+    }
     
     // Mettre à jour la composition atmosphérique (si disponible)
     if (typeof window !== 'undefined' && window.atmosphericComposition) {
@@ -220,5 +311,5 @@ if (typeof window !== 'undefined') {
     window.calculateH2OGreenhouseForcing = calculateH2OGreenhouseForcing;
     window.calculateCloudAlbedoContribution = calculateCloudAlbedoContribution;
     window.estimateCloudCoverage = estimateCloudCoverage;
-    window.calculateWaterPartition = calculateWaterPartition;
+    window.calculateWaterPartition = calculateWaterPartition; // Fonction complète avec tous les paramètres physiques
 }

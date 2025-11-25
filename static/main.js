@@ -684,6 +684,12 @@ function updateCO2Level(state) {
                 const h2o_params = window.calculateH2OParameters(temp_surface, h2o_total_percent, cloud_coverage);
                 forcing_H2O = h2o_params.greenhouse_forcing;
                 
+                // 🔒 TOUJOURS mettre à jour h2oIceFractionFromCalculation pour l'affichage
+                // (déjà fait dans calculateH2OParameters, mais on force la mise à jour pour être sûr)
+                if (typeof window !== 'undefined') {
+                    window.h2oIceFractionFromCalculation = h2o_params.ice_fraction || 0;
+                }
+                
                 // Mettre à jour la composition atmosphérique (H2O est déjà mis à jour dans calculateH2OParameters)
             }
             
@@ -1075,6 +1081,12 @@ function updateCO2LevelDirect(co2_fraction) {
                 const h2o_params = window.calculateH2OParameters(temp_surface, h2o_total_percent, cloud_coverage);
                 forcing_H2O = h2o_params.greenhouse_forcing;
                 
+                // 🔒 TOUJOURS mettre à jour h2oIceFractionFromCalculation pour l'affichage
+                // (déjà fait dans calculateH2OParameters, mais on force la mise à jour pour être sûr)
+                if (typeof window !== 'undefined') {
+                    window.h2oIceFractionFromCalculation = h2o_params.ice_fraction || 0;
+                }
+                
                 // Mettre à jour la composition atmosphérique (H2O est déjà mis à jour dans calculateH2OParameters)
             }
             
@@ -1351,6 +1363,7 @@ window.updateDisplay = function updateDisplay(data) {
         console.log('Forcing CO2:', data.forcing_CO2 !== undefined ? `${data.forcing_CO2.toFixed(2)} W/m²` : '--');
         console.log('Forcing H2O:', data.forcing_H2O !== undefined ? `${data.forcing_H2O.toFixed(2)} W/m²` : '--');
         console.log('Forcing CH4:', data.forcing_CH4 !== undefined ? `${data.forcing_CH4.toFixed(2)} W/m²` : '--');
+        console.log('Forcing Albedo:', data.forcing_Albedo !== undefined ? `${data.forcing_Albedo.toFixed(2)} W/m²` : '--');
         console.log('Forcing Total:', data.forcing !== undefined ? `${data.forcing.toFixed(2)} W/m²` : '--');
         console.log('---');
 
@@ -1359,8 +1372,12 @@ window.updateDisplay = function updateDisplay(data) {
 
         // Récupérer les données d'albedo détaillées depuis l'époque courante
         let albedoComponents = [];
+        console.log('[updateDisplay] 🔍 DEBUG ALBEDO COMPONENTS - Début');
+        console.log('[updateDisplay] 🔍 currentEpochName:', typeof window !== 'undefined' ? window.currentEpochName : 'window undefined');
+        console.log('[updateDisplay] 🔍 getGeologicalPeriodByName disponible:', typeof window !== 'undefined' && typeof window.getGeologicalPeriodByName === 'function');
         if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            console.log('[updateDisplay] 🔍 currentEpoch:', currentEpoch ? 'trouvé' : 'non trouvé');
             if (currentEpoch) {
                 const cloud_cov = data.cloud_coverage !== undefined ? Math.round(data.cloud_coverage * 100) : 0;
                 const magma_cov = Math.round((currentEpoch.magma_coverage || 0) * 100);
@@ -1378,10 +1395,50 @@ window.updateDisplay = function updateDisplay(data) {
                 
                 // Récupérer la glace calculée depuis calculateWaterPartition (si disponible)
                 let ice_coverage = 0;
+                console.log('[updateDisplay] 🔍 DEBUG GLACE - Début calcul ice_coverage');
+                console.log('[updateDisplay] 🔍 h2oIceFractionFromCalculation:', typeof window !== 'undefined' ? window.h2oIceFractionFromCalculation : 'window undefined');
+                console.log('[updateDisplay] 🔍 temp_surface:', data.temp_surface);
+                console.log('[updateDisplay] 🔍 calculateWaterPartition disponible:', typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function');
+                
+                // 🔒 PRIORITÉ 1 : Utiliser la valeur calculée par calculateAlbedo (la plus récente et précise)
                 if (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined) {
-                    // Utiliser la glace calculée depuis calculateWaterPartition
                     ice_coverage = Math.min(1, Math.max(0, window.h2oIceFractionFromCalculation));
-                } else if (data.temp_surface !== undefined) {
+                    console.log('[updateDisplay] ✅ PRIORITÉ 1: Utilisation de h2oIceFractionFromCalculation =', ice_coverage, '(', (ice_coverage * 100).toFixed(1), '%)');
+                } 
+                // 🔒 PRIORITÉ 2 : Recalculer avec calculateWaterPartition si pas de valeur disponible
+                else if (data.temp_surface !== undefined && typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
+                    const h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
+                    const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+                    const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
+                    console.log('[updateDisplay] 🔍 PRIORITÉ 2: h2o_vapor_percent =', h2o_vapor_percent, '%, h2o_from_meteorites =', h2o_from_meteorites, '%, h2o_total_percent =', h2o_total_percent, '%');
+                    if (h2o_total_percent > 0) {
+                        const h2o_total_fraction = h2o_total_percent / 100;
+                        // Récupérer les paramètres de l'époque courante
+                        let epochParams = {};
+                        if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                            if (currentEpoch) {
+                                epochParams = {
+                                    pressure_atm: currentEpoch.atmospheric_pressure || 1.0,
+                                    molar_mass_air: currentEpoch.molar_mass_air || 0.029,
+                                    gravity: currentEpoch.gravity || 9.81,
+                                    ocean_coverage: currentEpoch.ocean_coverage || 0.7
+                                };
+                            }
+                        }
+                        console.log('[updateDisplay] 🔍 Appel calculateWaterPartition avec T=', data.temp_surface, 'K, h2o_total_fraction=', h2o_total_fraction);
+                        const waterPartition = window.calculateWaterPartition(data.temp_surface, h2o_total_fraction, epochParams);
+                        ice_coverage = waterPartition.ice_fraction || 0;
+                        console.log('[updateDisplay] ✅ PRIORITÉ 2: Recalcul avec calculateWaterPartition =', ice_coverage, '(', (ice_coverage * 100).toFixed(1), '%)');
+                        // Mettre à jour pour les prochains appels
+                        window.h2oIceFractionFromCalculation = ice_coverage;
+                    } else {
+                        console.log('[updateDisplay] ⚠️ PRIORITÉ 2: h2o_total_percent = 0, pas de calcul');
+                    }
+                } 
+                // 🔒 PRIORITÉ 3 : Calcul classique basé sur la température (fallback)
+                else if (data.temp_surface !== undefined) {
+                    console.log('[updateDisplay] 🔍 PRIORITÉ 3: Calcul classique basé sur température');
                     // Calcul classique de la glace basé sur la température (si pas de calcul H2O)
                     const T_surface_C = data.temp_surface - 273.15;
                     if (T_surface_C < 0 && T_surface_C > -100) {
@@ -1396,9 +1453,15 @@ window.updateDisplay = function updateDisplay(data) {
                         const geo_flux = currentEpoch.geothermal_flux || 0.087;
                         const geo_flux_reduction = Math.min(1, geo_flux / 10);
                         ice_coverage = Math.max(0, ice_coverage * (1 - geo_flux_reduction));
+                        console.log('[updateDisplay] ✅ PRIORITÉ 3: Calcul classique =', ice_coverage, '(', (ice_coverage * 100).toFixed(1), '%)');
+                    } else {
+                        console.log('[updateDisplay] ⚠️ PRIORITÉ 3: Température hors limites pour calcul classique');
                     }
+                } else {
+                    console.log('[updateDisplay] ⚠️ Aucune méthode disponible pour calculer la glace');
                 }
                 ice_cov = Math.round(ice_coverage * 100);
+                console.log('[updateDisplay] 🧊 FIN: ice_coverage =', ice_coverage, '(', (ice_coverage * 100).toFixed(1), '%), ice_cov =', ice_cov, '%');
 
                 const cloud_alb = (currentEpoch.cloud_albedo || 0.40).toFixed(2);
                 const magma_alb = (currentEpoch.magma_albedo || 0.05).toFixed(2);
@@ -1416,23 +1479,36 @@ window.updateDisplay = function updateDisplay(data) {
                     { emoji: 'desert', coverage: desert_cov, albedo: desert_alb },
                     { emoji: LOGOS.ICE || '🧊', coverage: ice_cov, albedo: ice_alb }
                 ];
+                console.log('[updateDisplay] ✅ albedoComponents rempli avec', albedoComponents.length, 'composantes');
+                console.log('[updateDisplay] 🔍 ice_cov dans albedoComponents:', ice_cov, '%');
+            } else {
+                console.log('[updateDisplay] ⚠️ currentEpoch non trouvé, albedoComponents reste vide');
             }
+        } else {
+            console.log('[updateDisplay] ⚠️ Conditions non remplies pour remplir albedoComponents');
         }
 
         // Afficher les composantes d'albedo
+        console.log('[updateDisplay] 🔍 Affichage albedoComponents: length =', albedoComponents.length);
         if (albedoComponents.length > 0) {
             albedoComponents.forEach(comp => {
                 console.log(`${comp.emoji} ${comp.coverage}% x${comp.albedo}`);
             });
         } else {
             // Fallback si pas d'époque
+            console.log('[updateDisplay] ⚠️ FALLBACK: albedoComponents vide, utilisation du fallback');
             const cloud_cov = data.cloud_coverage !== undefined ? Math.round(data.cloud_coverage * 100) : 0;
+            // 🔒 CORRECTION : Utiliser ice_cov si disponible même en fallback
+            const fallback_ice_cov = (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined)
+                ? Math.round(window.h2oIceFractionFromCalculation * 100)
+                : 0;
+            console.log('[updateDisplay] 🔍 fallback_ice_cov =', fallback_ice_cov, '%');
             console.log(`⛅ ${cloud_cov}% x0.40`);
             console.log('🌋 0% x0.05');
             console.log('🌊 0% x0.08');
             console.log('🌳 0% x0.12');
             console.log('desert 0% x0.30');
-            console.log('🧊 0% x0.70');
+            console.log(`🧊 ${fallback_ice_cov}% x0.70`);
         }
 
         console.log('---');
@@ -2098,20 +2174,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
         if (currentEpochName === 'Corps noir') {
             // Action 1 : Météorites de glace (augmente la glace à la surface, donc l'albedo)
-            const iceMeteorBtn = document.createElement('button');
+            const iceMeteorBtn = document.createElement('img');
+            iceMeteorBtn.src = 'fonts/pics/ice_meteorite.png';
+            iceMeteorBtn.alt = 'Météorite de glace';
             iceMeteorBtn.className = 'timeline-event-logo';
-            iceMeteorBtn.title = 'Météorite de glace - Ajoute de la glace à la surface (+5% couverture)';
-            iceMeteorBtn.style.background = 'transparent';
-            iceMeteorBtn.style.border = 'none';
-            iceMeteorBtn.style.cursor = 'pointer';
-            iceMeteorBtn.style.padding = '0';
-            iceMeteorBtn.style.width = '40px';
-            iceMeteorBtn.style.height = '40px';
-            iceMeteorBtn.style.display = 'flex';
-            iceMeteorBtn.style.alignItems = 'center';
-            iceMeteorBtn.style.justifyContent = 'center';
-            iceMeteorBtn.style.fontSize = '24px';
-            iceMeteorBtn.textContent = '🧊'; // Emoji glace pour les météorites de glace
+            iceMeteorBtn.title = 'Météorite de glace - Ajoute de l\'eau totale (+5%), répartition vapeur/glace selon température';
             iceMeteorBtn.addEventListener('click', () => {
                 // Ajouter de l'eau totale (la répartition vapeur/glace sera calculée selon la température)
                 if (typeof window.h2oTotalFromMeteorites !== 'undefined') {
@@ -2119,9 +2186,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 } else {
                     window.h2oTotalFromMeteorites = 5;
                 }
-                // Recalculer
-                if (typeof window.updateCO2Level === 'function') {
-                    window.updateCO2Level(3);
+                // Recalculer avec le CO2 actuel (ne pas changer le CO2, juste recalculer avec la nouvelle eau)
+                if (typeof window.updateCO2LevelDirect === 'function' && plotData.co2_ppm !== undefined) {
+                    const current_co2_fraction = plotData.co2_ppm * 1e-6;
+                    window.updateCO2LevelDirect(current_co2_fraction);
                 }
             });
             eventsLogos.appendChild(iceMeteorBtn);

@@ -2296,9 +2296,17 @@ window.updateFluxLabels = function (data) {
     // En mode Corps noir, on désactive tous les éléments atmosphériques
     const isCorpsNoir = (typeof window !== 'undefined' && window.currentEpochName === 'Corps noir');
 
-    // En mode "corps noir", forcer l'albedo à 0 (pas d'atmosphère, pas d'eau, pas de glace)
+    // En mode "corps noir", utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
+    // Sinon, forcer l'albedo à 0 (pas d'atmosphère, pas d'eau, pas de glace)
     if (isCorpsNoir) {
-        albedo_num = 0;
+        // 🔒 CORRECTION : Utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
+        if (albedo !== null && albedo !== undefined && albedo > 0) {
+            albedo_num = albedo;
+            console.log(`[updateFluxLabels] Mode corps noir avec glace: albedo_num=${albedo_num.toFixed(3)} (data.albedo=${albedo})`);
+        } else {
+            albedo_num = 0; // Corps noir sans glace : pas d'albedo
+            console.log(`[updateFluxLabels] Mode corps noir sans glace: albedo_num=0`);
+        }
         // Forcer aussi cloud_coverage à 0 en mode corps noir
         cloud_coverage_num = 0;
     }
@@ -2309,8 +2317,13 @@ window.updateFluxLabels = function (data) {
     console.log(`[updateFluxLabels] Albedo initial: data.albedo=${albedo}, albedo_num=${albedo_num}, isCorpsNoir=${isCorpsNoir}`);
 
     if (isCorpsNoir) {
-        albedo_num = 0; // Corps noir : pas d'albedo
-        console.log(`[updateFluxLabels] Mode corps noir: albedo_num=0`);
+        // 🔒 CORRECTION : Ne pas écraser si on a déjà utilisé data.albedo (peut avoir de la glace)
+        if (albedo_num === 0 && albedo !== null && albedo !== undefined && albedo > 0) {
+            albedo_num = albedo;
+            console.log(`[updateFluxLabels] Mode corps noir: utilisation de data.albedo=${albedo_num.toFixed(3)} (glace des météorites)`);
+        } else if (albedo_num === 0) {
+            console.log(`[updateFluxLabels] Mode corps noir: albedo_num=0 (pas de glace)`);
+        }
     } else if (albedo_num === 0 || albedo === null || albedo === undefined) {
         // Si albedo_num est 0 ou data.albedo n'est pas défini, recalculer avec le flux géothermique
         let geo_flux = null;
@@ -2351,14 +2364,19 @@ window.updateFluxLabels = function (data) {
     console.log(`[updateFluxLabels] Flux réfléchi: ${SOLAR_FLUX_AVERAGE.toFixed(2)} * ${albedo_num.toFixed(3)} = ${flux_reflected.toFixed(2)} W/m²`);
 
     // Calculer la couverture de glace (même logique que calculateAlbedo)
-    // En mode "corps noir" (T0 < 10K), pas d'albedo : pas de nuages, pas de glace
+    // 🔒 CORRECTION : En mode "corps noir", on peut avoir de la glace des météorites
     let ice_coverage = 0;
     let cloud_percent = 0;
 
-    if (isCorpsNoir) {
-        // Corps noir : pas d'albedo (pas d'atmosphère, pas d'eau)
+    // 🔒 PRIORITÉ 1 : Utiliser la valeur calculée par calculateAlbedo (la plus récente et précise)
+    if (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined) {
+        ice_coverage = Math.min(1, Math.max(0, window.h2oIceFractionFromCalculation));
+        console.log(`[updateFluxLabels] 🔍 Utilisation de h2oIceFractionFromCalculation = ${ice_coverage.toFixed(3)} (${(ice_coverage * 100).toFixed(1)}%)`);
+    } else if (isCorpsNoir) {
+        // Corps noir sans glace calculée : pas d'albedo (pas d'atmosphère, pas d'eau)
         ice_coverage = 0;
         cloud_percent = 0;
+        console.log(`[updateFluxLabels] 🔍 Mode corps noir sans glace: ice_coverage = 0`);
     } else {
         const T_surface_C = T0_num - 273.15;
         const volcanoIceReduction = (typeof window !== 'undefined' && window.volcanoIceReduction !== undefined)
@@ -2404,7 +2422,14 @@ window.updateFluxLabels = function (data) {
         // Nuages : utiliser la valeur calculée (déjà à 0 si H2O désactivé ou très froid)
         cloud_percent = Math.round(cloud_coverage_num * 100);
     }
+    
+    // 🔒 CORRECTION : Si on a utilisé h2oIceFractionFromCalculation, ne pas écraser cloud_percent en mode corps noir
+    if (isCorpsNoir && (typeof window === 'undefined' || window.h2oIceFractionFromCalculation === undefined)) {
+        cloud_percent = 0;
+    }
+    
     const ice_percent = Math.round(ice_coverage * 100);
+    console.log(`[updateFluxLabels] 🧊 FIN: ice_coverage = ${ice_coverage.toFixed(3)} (${(ice_coverage * 100).toFixed(1)}%), ice_percent = ${ice_percent}%`);
 
     // Forçages radiatifs
     // Utiliser les états des boutons déjà calculés pour déterminer si les forçages sont actifs
@@ -2438,9 +2463,9 @@ window.updateFluxLabels = function (data) {
             cloud_albedo_contribution: h2o_params.cloud_albedo_contribution
         });
     }
-    // En mode corps noir, forcer le forçage albédo à 0
-    // Le forçage albédo est actif seulement si le bouton est checked
-    const forcing_Albedo = (isCorpsNoir || !albedo_button_checked) ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
+    // 🔒 CORRECTION : Le forçage albédo est actif seulement si le bouton est checked
+    // En mode corps noir, on peut avoir un forçage albedo si il y a de la glace des météorites
+    const forcing_Albedo = (!albedo_button_checked) ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
         ? window.calculateAlbedoForcing(albedo_num)
         : 0);
     const forcing_total = forcing_CO2 + forcing_CH4 + forcing_H2O + forcing_Albedo;
@@ -2587,13 +2612,16 @@ window.updateFluxLabels = function (data) {
     };
 
     if (isCorpsNoir) {
-        // Corps noir : tout à 0
+        // 🔒 CORRECTION : Corps noir peut avoir de la glace des météorites
+        // Utiliser ice_coverage calculé au lieu de forcer à 0
+        const ice_cov_corps_noir = Math.round(ice_coverage * 100);
+        console.log(`[updateFluxLabels] 🔍 Corps noir: utilisation de ice_coverage = ${ice_coverage.toFixed(3)}, ice_cov = ${ice_cov_corps_noir}%`);
         const components = [
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: '0.05' },
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: '0.08' },
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: '0.12' },
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: '0.30' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: 0, albedo: '0.70' },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: ice_cov_corps_noir, albedo: '0.70' },
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: 0, albedo: '0.40' }
         ];
         albedoBreakdown = createAlbedoComponents(components);
@@ -2606,7 +2634,9 @@ window.updateFluxLabels = function (data) {
             const forest_cov = Math.round((currentEpoch.forest_coverage || 0) * 100);
             const desert_cov = Math.round((currentEpoch.desert_coverage || 0) * 100);
             // Pour la glace, utiliser la valeur calculée dynamiquement (ice_coverage)
+            // 🔒 CORRECTION : S'assurer qu'on utilise bien la valeur calculée
             const ice_cov = Math.round(ice_coverage * 100);
+            console.log(`[updateFluxLabels] 🔍 Création albedoBreakdown: ice_coverage = ${ice_coverage.toFixed(3)}, ice_cov = ${ice_cov}%`);
             // Pour les nuages, utiliser la valeur calculée dynamiquement (cloud_percent)
             // Arrondir à un entier
             const cloud_cov = Math.round(cloud_percent);
