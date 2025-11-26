@@ -509,28 +509,6 @@ body.no-blur .flux-sphere {
     backdrop-filter: none !important;
 }
 
-/* Tooltip personnalisé avec délai de 0.5s */
-.flux-custom-tooltip {
-    position: fixed;
-    background: rgba(10, 14, 39, 0.95);
-    color: #fff;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
-    font-weight: normal;
-    pointer-events: none;
-    z-index: 99999 !important; /* Z-index très élevé pour être au-dessus de tout */
-    white-space: normal; /* Permettre les retours à la ligne pour les <br> */
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    max-width: 250px; /* Limiter la largeur pour les textes longs */
-    text-align: left;
-    line-height: 1.5;
-    word-wrap: break-word;
-}
+/* 🔒 Tooltips gérés par tooltips.js (styles injectés dynamiquement) */
 
 

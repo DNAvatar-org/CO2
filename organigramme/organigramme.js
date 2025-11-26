@@ -19,124 +19,15 @@ if (typeof window !== 'undefined') {
 }
 
 // Fonction pour ajouter un tooltip personnalisé avec délai de 0.5s
+// 🔒 Utiliser le système centralisé de tooltips (tooltips.js)
 function addCustomTooltip(element, text) {
-    if (!text || text.trim() === '') return; // Ne pas créer de tooltip si le texte est vide
-
-    let tooltipTimeout = null;
-    let tooltipElement = null;
-
-    // Créer l'élément tooltip
-    const createTooltip = () => {
-        if (tooltipElement) return; // Déjà créé
-
-        tooltipElement = document.createElement('div');
-        tooltipElement.className = 'flux-custom-tooltip';
-        tooltipElement.innerHTML = text; // Utiliser innerHTML pour supporter les balises HTML comme <br>
-        document.body.appendChild(tooltipElement);
-    };
-
-    // Afficher le tooltip
-    const showTooltip = (e) => {
-        // Annuler le timeout précédent si présent
-        if (tooltipTimeout) {
-            clearTimeout(tooltipTimeout);
-            tooltipTimeout = null;
-        }
-
-        // Délai de 0.5s avant d'afficher
-        tooltipTimeout = setTimeout(() => {
-            if (!tooltipElement) {
-                createTooltip();
-            }
-
-            // Positionner le tooltip en utilisant la position de la souris avec offset
-            const mouseX = e ? e.clientX : (element.getBoundingClientRect().left + element.getBoundingClientRect().width / 2);
-            const mouseY = e ? e.clientY : element.getBoundingClientRect().top;
-            const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-            const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-            // Offset pour éviter que le tooltip soit sous la souris (15px à droite et 15px au-dessus)
-            const offsetX = 15;
-            const offsetY = -15;
-
-            // Position horizontale : à droite de la souris
-            tooltipElement.style.left = (mouseX + offsetX + scrollX) + 'px';
-
-            // Vérifier si le tooltip dépasserait en haut de l'écran
-            const estimatedTooltipHeight = 50;
-            const wouldOverflowTop = (mouseY + offsetY) < estimatedTooltipHeight + 20;
-
-            if (wouldOverflowTop) {
-                // Positionner en bas de la souris
-                tooltipElement.style.top = (mouseY - offsetY + scrollY) + 'px';
-                tooltipElement.style.transform = 'translate(0, 0)';
-            } else {
-                // Positionner au-dessus de la souris (comportement par défaut)
-                tooltipElement.style.top = (mouseY + offsetY + scrollY) + 'px';
-                tooltipElement.style.transform = 'translate(0, -100%)';
-            }
-
-            tooltipElement.style.opacity = '1';
-            tooltipElement.style.visibility = 'visible';
-        }, 500); // 0.5 secondes
-    };
-
-    // Cacher le tooltip
-    const hideTooltip = () => {
-        if (tooltipTimeout) {
-            clearTimeout(tooltipTimeout);
-            tooltipTimeout = null;
-        }
-        if (tooltipElement) {
-            tooltipElement.style.opacity = '0';
-            tooltipElement.style.visibility = 'hidden';
-        }
-    };
-
-    // Supprimer le tooltip du DOM
-    const removeTooltip = () => {
-        if (tooltipElement && tooltipElement.parentNode) {
-            tooltipElement.parentNode.removeChild(tooltipElement);
-            tooltipElement = null;
-        }
-    };
-
-    // Ajouter les événements
-    element.addEventListener('mouseenter', (e) => showTooltip(e));
-    element.addEventListener('mouseleave', () => {
-        hideTooltip();
-        // Supprimer après l'animation de fade-out
-        setTimeout(removeTooltip, 200);
-    });
-    element.addEventListener('mousemove', (e) => {
-        if (tooltipElement && tooltipElement.style.visibility === 'visible') {
-            const mouseX = e.clientX;
-            const mouseY = e.clientY;
-            const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-            const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-            // Offset pour éviter que le tooltip soit sous la souris
-            const offsetX = 15;
-            const offsetY = -15;
-
-            // Position horizontale : à droite de la souris
-            tooltipElement.style.left = (mouseX + offsetX + scrollX) + 'px';
-
-            // Vérifier si le tooltip dépasserait en haut de l'écran
-            const estimatedTooltipHeight = 50;
-            const wouldOverflowTop = (mouseY + offsetY) < estimatedTooltipHeight + 20;
-
-            if (wouldOverflowTop) {
-                // Positionner en bas de la souris
-                tooltipElement.style.top = (mouseY - offsetY + scrollY) + 'px';
-                tooltipElement.style.transform = 'translate(0, 0)';
-            } else {
-                // Positionner au-dessus de la souris
-                tooltipElement.style.top = (mouseY + offsetY + scrollY) + 'px';
-                tooltipElement.style.transform = 'translate(0, -100%)';
-            }
-        }
-    });
+    // Déléguer à la fonction centralisée
+    if (typeof window !== 'undefined' && typeof window.addTooltip === 'function') {
+        window.addTooltip(element, text);
+    } else {
+        // Fallback si tooltips.js n'est pas encore chargé
+        console.warn('[organigramme.js] tooltips.js non chargé, tooltip non affiché');
+    }
 }
 
 // Fonction pour créer un rectangle avec des facteurs

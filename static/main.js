@@ -387,33 +387,33 @@ function updateTimeline() {
         }
     }
 
-    // Incrémenter automatiquement de +10 ans toutes les secondes UNIQUEMENT si pas de calcul en cours
-    // Si un calcul est en cours, on s'arrête, mais on reprend automatiquement après
-    if (timelineRunning && !calculationInProgress) {
-        const currentTime = performance.now();
-        const elapsed = currentTime - timelineLastUpdate;
-
-        // Incrémenter les frames selon l'intervalle (1 seconde = 10 ans)
-        if (elapsed >= TIMELINE_UPDATE_INTERVAL) {
-            timelineFrame++;
-            timelineLastUpdate = currentTime;
-            const years = timelineFrame * YEARS_PER_FRAME;
-            // Mettre à jour l'affichage immédiatement après l'incrémentation
-            const formattedYears = formatYears(years);
-            if (timelineDisplay) timelineDisplay.innerHTML = `<span class="timeline-hourglass">📅</span> ${formattedYears}`;
-            if (frameDisplay) frameDisplay.textContent = timelineFrame.toString();
-            // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
-            if (infoTimeDisplay && currentEpochStartYears !== null) {
-                const deltaYears = years - currentEpochStartYears;
-                const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
-                const newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
-                // Ne modifier le texte que s'il a changé pour éviter le clignotement
-                if (infoTimeDisplay.textContent !== newText) {
-                    infoTimeDisplay.textContent = newText;
-                }
-            }
-        }
-    }
+    // 🔒 DÉSACTIVÉ : Ne plus incrémenter automatiquement de +10 ans toutes les secondes
+    // L'incrémentation se fait uniquement lors des clics sur boutons (météorite glace, etc.)
+    // if (timelineRunning && !calculationInProgress) {
+    //     const currentTime = performance.now();
+    //     const elapsed = currentTime - timelineLastUpdate;
+    //
+    //     // Incrémenter les frames selon l'intervalle (1 seconde = 10 ans)
+    //     if (elapsed >= TIMELINE_UPDATE_INTERVAL) {
+    //         timelineFrame++;
+    //         timelineLastUpdate = currentTime;
+    //         const years = timelineFrame * YEARS_PER_FRAME;
+    //         // Mettre à jour l'affichage immédiatement après l'incrémentation
+    //         const formattedYears = formatYears(years);
+    //         if (timelineDisplay) timelineDisplay.innerHTML = `<span class="timeline-hourglass">📅</span> ${formattedYears}`;
+    //         if (frameDisplay) frameDisplay.textContent = timelineFrame.toString();
+    //         // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
+    //         if (infoTimeDisplay && currentEpochStartYears !== null) {
+    //             const deltaYears = years - currentEpochStartYears;
+    //             const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
+    //             const newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
+    //             // Ne modifier le texte que s'il a changé pour éviter le clignotement
+    //             if (infoTimeDisplay.textContent !== newText) {
+    //                 infoTimeDisplay.textContent = newText;
+    //             }
+    //         }
+    //     }
+    // }
     // Si calculationInProgress = true, on ne fait rien (pas d'incrémentation, pas de mise à jour de timelineLastUpdate)
     // pour que le tic reprenne immédiatement après la fin du calcul
 
@@ -1799,13 +1799,20 @@ function setEpoch(epochName) {
         return;
     }
 
+    // 🔒 Stocker l'ancienne époque AVANT de la changer (pour conserver l'eau des météorites)
+    const previousEpoch = (typeof window.currentEpochName !== 'undefined') ? window.currentEpochName : 'Corps noir';
+    
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
     
-    // Réinitialiser l'eau totale des météorites si on change d'époque (sauf si on reste en Corps noir)
-    if (epochName !== 'Corps noir' && typeof window.h2oTotalFromMeteorites !== 'undefined') {
+    // 🔒 CONSERVER l'eau totale des météorites lors du passage de "Corps noir" à une autre époque
+    // (elle sera ajustée plus tard pour ne pas dépasser 100% au total)
+    // Ne réinitialiser que si on change d'époque ET qu'on ne vient pas de "Corps noir"
+    if (epochName !== 'Corps noir' && previousEpoch !== 'Corps noir' && typeof window.h2oTotalFromMeteorites !== 'undefined') {
+        // Réinitialiser seulement si on change d'époque normale (pas depuis Corps noir)
         window.h2oTotalFromMeteorites = 0;
     }
+    // Si on vient de "Corps noir", conserver h2oTotalFromMeteorites (sera ajusté plus tard)
     
     // Mettre à jour les boutons d'action selon l'époque
     if (typeof window.updateEpochActions === 'function') {
@@ -1975,7 +1982,46 @@ function setEpoch(epochName) {
     // 2. H2O
     if (typeof window.waterVaporEnabled !== 'undefined') {
         window.waterVaporEnabled = !isCorpsNoir && (epoch.h2o_enabled !== false); // true par défaut si non spécifié
-        window.h2oVaporPercent = epoch.h2o_vapor_percent || 0; // Pourcentage de vapeur d'eau
+        
+        // 🔒 Si on vient de big_impact, prendre le max entre l'eau avant et les valeurs par défaut de l'époque
+        const h2o_default = epoch.h2o_vapor_percent || 0;
+        const h2o_meteorites_before = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+        const h2o_base_before = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
+        const h2o_total_before = h2o_base_before + h2o_meteorites_before;
+        
+        if (typeof window !== 'undefined' && window.fromBigImpact && previousEpoch === 'Corps noir') {
+            // Prendre le max entre l'eau totale avant et la valeur par défaut de l'époque
+            const h2o_total_max = Math.max(h2o_total_before, h2o_default);
+            
+            // Répartir : base = valeur par défaut, météorites = le reste (max 100% total)
+            window.h2oVaporPercent = h2o_default;
+            window.h2oTotalFromMeteorites = Math.max(0, Math.min(100 - h2o_default, h2o_total_max - h2o_default));
+            
+            console.log(`[setEpoch] big_impact: eau avant=${h2o_total_before.toFixed(1)}%, défaut=${h2o_default.toFixed(1)}%, max=${h2o_total_max.toFixed(1)}%`);
+            console.log(`[setEpoch] Résultat: base=${window.h2oVaporPercent.toFixed(1)}%, météorites=${window.h2oTotalFromMeteorites.toFixed(1)}%, total=${(window.h2oVaporPercent + window.h2oTotalFromMeteorites).toFixed(1)}%`);
+            
+            // Réinitialiser le flag
+            window.fromBigImpact = false;
+        } else {
+            // Comportement normal : utiliser les valeurs par défaut de l'époque
+            window.h2oVaporPercent = h2o_default;
+            
+            // 🔒 Ajuster l'eau des météorites si on vient de "Corps noir" pour ne pas dépasser 100% au total
+            if (previousEpoch === 'Corps noir' && typeof window.h2oTotalFromMeteorites !== 'undefined' && window.h2oTotalFromMeteorites > 0) {
+                const h2o_base = window.h2oVaporPercent || 0;
+                const h2o_meteorites = window.h2oTotalFromMeteorites || 0;
+                const h2o_total = h2o_base + h2o_meteorites;
+                
+                if (h2o_total > 100) {
+                    // Ajuster l'eau des météorites pour que la somme ne dépasse pas 100%
+                    window.h2oTotalFromMeteorites = Math.max(0, 100 - h2o_base);
+                    console.log(`[setEpoch] Ajustement eau météorites: ${h2o_meteorites.toFixed(1)}% → ${window.h2oTotalFromMeteorites.toFixed(1)}% (base: ${h2o_base.toFixed(1)}%, total: ${(h2o_base + window.h2oTotalFromMeteorites).toFixed(1)}%)`);
+                } else {
+                    console.log(`[setEpoch] Eau conservée: base=${h2o_base.toFixed(1)}%, météorites=${h2o_meteorites.toFixed(1)}%, total=${h2o_total.toFixed(1)}%`);
+                }
+            }
+        }
+        
         window.cloudCoverage = epoch.cloud_coverage || 0; // Couverture nuageuse
     }
 
@@ -2178,14 +2224,28 @@ window.addEventListener('DOMContentLoaded', () => {
             iceMeteorBtn.src = 'fonts/pics/ice_meteorite.png';
             iceMeteorBtn.alt = 'Météorite de glace';
             iceMeteorBtn.className = 'timeline-event-logo';
-            iceMeteorBtn.title = 'Météorite de glace - Ajoute de l\'eau totale (+5%), répartition vapeur/glace selon température';
+            // 🔒 Le tooltip sera ajouté automatiquement depuis l'attribut alt
             iceMeteorBtn.addEventListener('click', () => {
                 // Ajouter de l'eau totale (la répartition vapeur/glace sera calculée selon la température)
-                if (typeof window.h2oTotalFromMeteorites !== 'undefined') {
-                    window.h2oTotalFromMeteorites = Math.min(100, (window.h2oTotalFromMeteorites || 0) + 5); // +5% d'eau totale par météorite
-                } else {
-                    window.h2oTotalFromMeteorites = 5;
+                const currentH2O = (typeof window.h2oTotalFromMeteorites !== 'undefined' && window.h2oTotalFromMeteorites !== null) ? window.h2oTotalFromMeteorites : 0;
+                const newH2O = Math.min(100, currentH2O + 5); // +5% d'eau totale par météorite, max 100%
+                window.h2oTotalFromMeteorites = newH2O;
+                
+                console.log(`[Météorite glace] Eau totale: ${currentH2O.toFixed(1)}% → ${newH2O.toFixed(1)}%`);
+                
+                // 🔒 FORCER le recalcul en réinitialisant la valeur mise en cache
+                // Sinon, calculateAlbedo réutilise l'ancienne valeur de h2oIceFractionFromCalculation
+                if (typeof window !== 'undefined') {
+                    window.h2oIceFractionFromCalculation = undefined;
                 }
+                
+                // 🔒 Ajouter +1000 ans (100 frames) à chaque clic sur météorite glace
+                for (let i = 0; i < 100; i++) {
+                    if (typeof window.incrementTimeline === 'function') {
+                        window.incrementTimeline();
+                    }
+                }
+                
                 // Recalculer avec le CO2 actuel (ne pas changer le CO2, juste recalculer avec la nouvelle eau)
                 if (typeof window.updateCO2LevelDirect === 'function' && plotData.co2_ppm !== undefined) {
                     const current_co2_fraction = plotData.co2_ppm * 1e-6;
@@ -2197,10 +2257,14 @@ window.addEventListener('DOMContentLoaded', () => {
             // Action 2 : Impact majeur (création de la lune, passe à l'époque suivante)
             const bigImpactBtn = document.createElement('img');
             bigImpactBtn.src = 'fonts/pics/big_impact.png';
-            bigImpactBtn.alt = 'Impact majeur';
+            bigImpactBtn.alt = 'Impact majeur - Crée la lune';
             bigImpactBtn.className = 'timeline-event-logo';
-            bigImpactBtn.title = 'Impact majeur - Crée la lune et passe à l\'époque Hadéen';
+            // 🔒 Le tooltip sera ajouté automatiquement depuis l'attribut alt
             bigImpactBtn.addEventListener('click', () => {
+                // 🔒 Flag pour indiquer qu'on vient de big_impact (pas du bouton Hadéen)
+                if (typeof window !== 'undefined') {
+                    window.fromBigImpact = true;
+                }
                 // Passer à l'époque suivante (Hadéen)
                 if (typeof window.setEpoch === 'function') {
                     window.setEpoch('Hadéen');

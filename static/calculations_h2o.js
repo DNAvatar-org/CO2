@@ -151,7 +151,7 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
     
     // Constantes physiques
     const R = 8.314; // Constante des gaz parfaits, J/(mol·K)
-    const T0 = 273.15; // Point triple de l'eau (K)
+    //const T0 = 273.15; // Point triple de l'eau (K)
     const T_freeze = 273.15; // Point de congélation (K)
     const T_boil = 373.15; // Point d'ébullition à 1 atm (K)
     
@@ -202,6 +202,21 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
             liquid_fraction = liquid_from_ice;
             ice_fraction = ice_fraction - liquid_from_ice;
         }
+    }
+    
+    // Normaliser pour garantir que toutes les fractions sont dans [0, 1] et que leur somme ne dépasse pas 1.0
+    // La glace ne peut pas dépasser 100% de la surface
+    vapor_fraction = Math.max(0, Math.min(1.0, vapor_fraction));
+    liquid_fraction = Math.max(0, Math.min(1.0, liquid_fraction));
+    ice_fraction = Math.max(0, Math.min(1.0, ice_fraction));
+    
+    // S'assurer que la somme ne dépasse pas h2o_total_fraction (normalisation)
+    const total_phases = vapor_fraction + liquid_fraction + ice_fraction;
+    if (total_phases > h2o_total_fraction && total_phases > 0) {
+        const scale = h2o_total_fraction / total_phases;
+        vapor_fraction *= scale;
+        liquid_fraction *= scale;
+        ice_fraction *= scale;
     }
     
     return {

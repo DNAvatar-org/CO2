@@ -184,17 +184,10 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         const waterPartition = window.calculateWaterPartition(T_surface_K, h2o_total_fraction, epochParams);
         ice_fraction = waterPartition.ice_fraction; // Utiliser la glace calculée
         
-        // Stocker la glace calculée pour les logs (si disponible)
-        // 🔒 Ne pas écraser si calculateH2OParameters a déjà calculé la valeur (plus précis)
+        // Stocker la glace calculée pour les logs (toujours mettre à jour avec la nouvelle valeur)
+        // 🔒 TOUJOURS recalculer et stocker la nouvelle valeur (ne pas réutiliser l'ancienne)
         if (typeof window !== 'undefined') {
-            // Si calculateH2OParameters a déjà calculé la valeur, la garder (elle est plus précise)
-            // Sinon, utiliser la valeur calculée ici
-            if (window.h2oIceFractionFromCalculation === undefined) {
-                window.h2oIceFractionFromCalculation = ice_fraction;
-            } else {
-                // Utiliser la valeur déjà calculée par calculateH2OParameters
-                ice_fraction = window.h2oIceFractionFromCalculation;
-            }
+            window.h2oIceFractionFromCalculation = ice_fraction;
         }
     } else if (h2o_total_percent > 0 && T_surface_C < 0) {
         // 🔒 CORRECTION : Ne calculer la glace que s'il y a de l'eau disponible
@@ -225,10 +218,9 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         ice_fraction = Math.max(0, ice_fraction * (1 - geo_flux_reduction));
     }
     
-    // 🔒 PRIORITÉ : Si calculateH2OParameters a déjà calculé la glace, l'utiliser (plus précis)
-    if (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined) {
-        ice_fraction = window.h2oIceFractionFromCalculation;
-    }
+    // Limiter la glace à 100% de la surface (physiquement, on ne peut pas avoir plus de 100% de glace)
+    // Note: window.h2oIceFractionFromCalculation est mis à jour dans le bloc calculateWaterPartition ci-dessus
+    ice_fraction = Math.min(1.0, Math.max(0, ice_fraction));
     
     if (ice_fraction > 0) {
         // Transition progressive : albedo = base + (glace - base) * fraction_glace
@@ -1647,10 +1639,11 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
             const flux_diff = result.total_flux - solar_flux_absorbed;
 
-            // Incrémenter le temps à chaque itération de dichotomie
-            if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
-                window.incrementTimeline();
-            }
+            // 🔒 DÉSACTIVÉ : Ne plus incrémenter le temps à chaque itération de dichotomie
+            // L'incrémentation se fait uniquement lors des clics sur boutons (météorite glace, etc.)
+            // if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
+            //     window.incrementTimeline();
+            // }
 
             if (Math.abs(flux_diff) < tolerance) {
                 // Convergence atteinte : recalculer avec spectre complet pour précision finale
