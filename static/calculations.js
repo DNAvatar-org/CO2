@@ -1367,6 +1367,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         CH4_fraction = null // Fraction molaire de CH4 (optionnel)
     } = options;
 
+    // Calculer T0 initiale
+    let T0_initial = null; // Initialiser T0_initial ici
+
     // Si pas de température initiale définie, calculer depuis les formules
     // 🔒 OPTIMISATION : Utiliser la dernière température connue comme point de départ si disponible
     // Cela accélère considérablement la convergence lors de petites perturbations (ajout d'eau, de CO2)
@@ -1414,7 +1417,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     // On ne doit pas les redéclarer ici
     
     // Calculer T0 initiale
-    let T0_initial = null; // Initialiser T0_initial ici
+    // let T0_initial = null; // REMOVED: Déjà déclaré plus haut
     let T0_initial_config = null;
     // Vérifier si l'époque définit une température initiale
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
