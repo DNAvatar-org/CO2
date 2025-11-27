@@ -2798,28 +2798,33 @@ window.updateFluxLabels = function (data) {
 
     updateLabel('core_flux_wm', geothermie_value, 'watt');
 
-    // Surface -> Albedo : Flux total émis par la surface (Solaire + Géothermique)
-    // C'est le flux qui part de la surface vers l'atmosphère
-    const surface_flux_emitted = solar_flux_absorbed + geothermie_value;
+    // Surface -> Albedo : Flux total émis par la surface (Loi de Stefan-Boltzmann)
+    // C'est la puissance thermodynamique rayonnée par le sol chaud : F = σT⁴
+    // ⚠️ CORRECTION CRITIQUE : Ne PAS utiliser solar_flux_absorbed + geothermie_value ici !
+    // En présence d'effet de serre, la surface reçoit aussi la "Back Radiation" (non affichée explicitement)
+    // et chauffe bien plus que la simple somme solaire + géothermie.
+    // La seule vérité est la température de surface T0 trouvée par l'équilibre radiatif.
+    const CONST_STEFAN = 5.67e-8; // Renommé pour éviter conflit scope
+    const surface_flux_emitted = CONST_STEFAN * Math.pow(T0_num, 4);
     updateLabel('surface_flux_emitted_wm', surface_flux_emitted, 'watt_total_dual'); // MODIFIÉ : Affichage dual
 
     // 🔒 CORRECTION : Calculer l'effet de serre réel à partir du transfert radiatif
     // Le transfert radiatif (calculations.js) calcule déjà le flux sortant au sommet (total_flux)
     // en fonction du flux émis par la surface ET de la composition de l'atmosphère (CO2, CH4, H2O).
     // 
-    // Effet de serre = Flux émis par la surface - Flux sortant au sommet
+    // Effet de serre = Flux émis par la surface - Flux sortant au sommet (OLR)
     // Si total_flux est disponible (résultat du transfert radiatif), l'utiliser pour l'effet de serre réel
     if (total_flux > 0 && surface_flux_emitted > 0) {
+        // L'effet de serre est la différence entre ce que le sol émet et ce qui sort réellement
         const greenhouse_effect_real = surface_flux_emitted - total_flux;
-        // Utiliser l'effet de serre réel calculé par le transfert radiatif
-        if (greenhouse_effect_real >= 0) {
-            forcing_total = greenhouse_effect_real;
-            console.log(`[updateFluxLabels] Effet de serre réel (transfert radiatif): ${forcing_total.toFixed(2)} W/m² (surface=${surface_flux_emitted.toFixed(2)} W/m², sortant=${total_flux.toFixed(2)} W/m²)`);
-        }
+        
+        // En théorie, surface_flux_emitted >= total_flux (sauf si l'atmosphère génère de l'énergie ex-nihilo ou transitoire)
+        // On autorise les valeurs négatives transitoires mais on logge l'anomalie
+        forcing_total = greenhouse_effect_real;
+        console.log(`[updateFluxLabels] Effet de serre réel (transfert radiatif): ${forcing_total.toFixed(2)} W/m² (surface=${surface_flux_emitted.toFixed(2)} W/m², sortant=${total_flux.toFixed(2)} W/m²)`);
     }
 
     // Albedo -> Espace2 : flux éjecté = flux sortant au sommet (résultat direct du transfert radiatif)
-    // PAS de calcul : flux_ejected = total_flux (pas surface_flux_emitted - forcing_total qui serait une boucle)
     const flux_ejected = total_flux > 0 ? total_flux : (surface_flux_emitted - forcing_total); // Fallback si total_flux non disponible
     updateLabel('flux_ejected_wm', flux_ejected, 'watt_total_dual'); // MODIFIÉ : Affichage dual
     let corePowerText = '';
