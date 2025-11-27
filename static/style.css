@@ -1729,3 +1729,26 @@ body.mode-dark .plot-overlay-title {
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
+/* Imposer une hauteur fixe à left-timeline pour éviter les sauts */
+.left-timeline {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    height: 625px !important;
+    position: relative; /* Pour positionner l'overlay en absolute par rapport à ce conteneur si besoin */
+}
+
+/* S'assurer que timeline-display prend toute la hauteur */
+.timeline-display {
+    text-align: center;
+    padding: 0px 0px;
+    display: flex;
+    flex-direction: column;
+    /* gap: 15px; */
+    width: 80px;
+    align-items: center;
+    height: 100% !important; /* Remplir le parent */
+    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    position: relative; /* Pour l'overlay */
+}
+
