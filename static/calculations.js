@@ -823,6 +823,23 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // Pour lambda : regrouper en plages de moyennes pour accélérer
     // Pour z : précision fine sous tropopause, grossière au-dessus
 
+    // Si Hadéen, l'atmosphère est plus haute (jusqu'à 600km pour 99.99% masse)
+    // On détecte si total_atmosphere_mass > 1e19 (Hadéen ~5e20, Terre ~5e18)
+    let dynamic_z_max = z_max;
+    
+    if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName) {
+        const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+        if (currentEpoch) {
+            // Détection massive atmosphere (ex: Hadéen)
+            // Seuil arbitraire : > 5x masse actuelle
+            const MASSIVE_ATM_THRESHOLD = 2.5e19; 
+            if (currentEpoch.total_atmosphere_mass_kg > MASSIVE_ATM_THRESHOLD) {
+                dynamic_z_max = 600000; // 600 km pour Hadéen (au lieu de 120km)
+                console.log(`[calculateFluxForT0] Atmosphère massive détectée (${currentEpoch.total_atmosphere_mass_kg.toExponential(2)} kg) -> z_max étendu à ${dynamic_z_max/1000}km`);
+            }
+        }
+    }
+    
     // Calculer la tropopause pour déterminer les zones de précision
     const z_trop_precalc = calculateTropopauseHeight(T0_test);
 
@@ -909,6 +926,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     //   - precisionFactor = 1.0 → delta_z_stratosphere = delta_z * 5 (250m, standard)
     //   - precisionFactor = 2.0 → delta_z_stratosphere = delta_z * 2.5 (125m, plus précis, plus lent)
     const delta_z_stratosphere = (delta_z * 5) / precisionFactor;
+    
+    // AJUSTEMENT HADÉEN : Si on va jusqu'à 600km, on doit augmenter le pas dans la haute atmosphère 
+    // sinon on aura trop de couches (600000 / 250 = 2400 couches ! trop lent)
+    // Stratégie : garder 250m jusqu'à 120km, puis augmenter fortement au-delà
+    const delta_z_exosphere = (dynamic_z_max > 120000) ? 5000 : delta_z_stratosphere; // 5km pas au-delà de 120km
 
     // Sous tropopause : précision fine (delta_z constant = 50m)
     for (let z = 0; z < z_trop_precalc; z += delta_z_troposphere) {
@@ -919,10 +941,31 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     if (z_range[z_range.length - 1] < z_trop_precalc) {
         z_range.push(z_trop_precalc);
     }
+    
+    // Au-dessus de la tropopause jusqu'à 120km : précision moyenne (250m)
+    const limit_std_atmosphere = 120000;
+    let current_z_max_loop = Math.min(dynamic_z_max, limit_std_atmosphere);
 
     // Au-dessus de la tropopause : précision grossière (delta_z * 5 = 250m)
-    for (let z = z_trop_precalc + delta_z_stratosphere; z < z_max; z += delta_z_stratosphere) {
+    for (let z = z_trop_precalc + delta_z_stratosphere; z < current_z_max_loop; z += delta_z_stratosphere) {
         z_range.push(z);
+    }
+    
+    // Si atmosphère massive, continuer au-delà de 120km avec un pas plus grand
+    if (dynamic_z_max > limit_std_atmosphere) {
+        // S'assurer d'inclure la limite 120km
+        if (z_range[z_range.length - 1] < limit_std_atmosphere) {
+            z_range.push(limit_std_atmosphere);
+        }
+        
+        for (let z = limit_std_atmosphere + delta_z_exosphere; z < dynamic_z_max; z += delta_z_exosphere) {
+            z_range.push(z);
+        }
+    }
+    
+    // S'assurer que z_max est inclus
+    if (z_range[z_range.length - 1] < dynamic_z_max) {
+        z_range.push(dynamic_z_max);
     }
 
     // Initialiser les tableaux

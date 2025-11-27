@@ -943,14 +943,14 @@ window.updatePlot = function updatePlot(data) {
             },
             overlaying: 'y',
             side: 'right', // Altitude à droite
-            range: [0, 120], // 0 km en bas, 120 km en haut (même orientation que yaxis)
+            range: [0, z_max_km], // Dynamique : 0 à z_max_km (ex: 120km ou 600km)
             fixedrange: true, // Désactiver le zoom
             position: 1, // Position à 1 (droite)
             // Aligner les ticks avec l'axe Y principal
-            // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
-            // Utiliser le même espacement que yaxis (généralement 5 ou 10)
+            // yaxis: 0-40 (8 divisions de 5)
+            // yaxis2 doit aussi avoir 8 divisions
             tickmode: 'linear',
-            dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
+            dtick: z_max_km / 8, // Calculer dynamiquement pour avoir 8 intervalles (alignés avec yaxis)
             tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showline: true,
@@ -1628,15 +1628,22 @@ function drawSpectralVisualization(canvas, data) {
     const graph_max_um = 50;
 
     // Calculer l'altitude max pour normaliser
-    const z_max = z_range.length > 0 ? z_range[z_range.length - 1] : 120000; // 120 km par défaut
+    const z_max = z_range.length > 0 ? z_range[z_range.length - 1] : 120000; // 120 km par défaut ou valeur dynamique
     const z_max_km = z_max / 1000; // En km
 
     // Mapper chaque pixel Y à une altitude spécifique (0 à z_max)
     // Pour avoir une correspondance directe entre pixel Y et altitude
+    // Le canvas est inversé : y=0 (haut canvas) = z_max (haut atmosphère)
+    // y=H (bas canvas) = z=0 (sol)
     const altitudePerPixel = z_max / visualizationHeight; // Altitude en mètres par pixel
 
     // Constantes pour le calcul de la densité (approximation exponentielle)
-    const H = 8500; // Échelle de hauteur en mètres (environ 8.5 km)
+    // ⚡ CORRECTION : Ajuster H en fonction de la masse atmosphérique si disponible
+    let H = 8500; // Échelle de hauteur standard en mètres (environ 8.5 km)
+    // Si atmosphère massive (Hadéen), H est beaucoup plus grand
+    if (z_max_km > 200) {
+        H = 40000; // ~40 km pour atmosphère vapeur chaude Hadéen
+    }
     const P0 = 101325; // Pression au niveau de la mer en Pa
 
     // Dessiner chaque pixel de la visualisation principale
