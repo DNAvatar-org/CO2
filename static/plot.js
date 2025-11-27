@@ -885,6 +885,8 @@ window.updatePlot = function updatePlot(data) {
     const z_trop_m = (typeof window.calculateTropopauseHeight === 'function')
         ? window.calculateTropopauseHeight(T0)
         : 11000; // Fallback à 11 km si la fonction n'est pas disponible
+    // Rendre z_trop_km accessible globalement (ou au moins dans updateSpectralVisualization) si nécessaire, 
+    // mais ici on utilise des variables locales pour updatePlot
     const z_trop_km = z_trop_m / 1000; // Convertir en km
 
     // Calculer z_max_km pour l'axe Y (dynamique selon l'époque)
@@ -900,6 +902,13 @@ window.updatePlot = function updatePlot(data) {
             const props = window.calculateAtmosphereProperties(total_mass);
             z_max_km = props.z_max / 1000;
         }
+    }
+
+    // EXPOSER GLOBALEMENT pour drawSpectralVisualization (si besoin) ou stocker dans data
+    // Pour l'instant, on passe z_max_km et z_trop_km via l'objet data ou une variable globale si drawSpectralVisualization en a besoin
+    // Mais drawSpectralVisualization recalcule ses propres échelles
+    if (typeof window !== 'undefined') {
+        window.current_z_trop_km = z_trop_km; // Exposer pour autres fonctions
     }
 
     traces.push({
