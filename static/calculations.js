@@ -823,19 +823,23 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // Pour lambda : regrouper en plages de moyennes pour accélérer
     // Pour z : précision fine sous tropopause, grossière au-dessus
 
-    // Si Hadéen, l'atmosphère est plus haute (jusqu'à 600km pour 99.99% masse)
-    // On détecte si total_atmosphere_mass > 1e19 (Hadéen ~5e20, Terre ~5e18)
+    // Récupérer la hauteur max de l'atmosphère dynamique (ex: 600km pour Hadéen)
+    let total_mass = 5.15e18; // Terre actuelle par défaut
     let dynamic_z_max = z_max;
     
     if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName) {
         const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
         if (currentEpoch) {
-            // Détection massive atmosphere (ex: Hadéen)
-            // Seuil arbitraire : > 5x masse actuelle
-            const MASSIVE_ATM_THRESHOLD = 2.5e19; 
-            if (currentEpoch.total_atmosphere_mass_kg > MASSIVE_ATM_THRESHOLD) {
-                dynamic_z_max = 600000; // 600 km pour Hadéen (au lieu de 120km)
-                console.log(`[calculateFluxForT0] Atmosphère massive détectée (${currentEpoch.total_atmosphere_mass_kg.toExponential(2)} kg) -> z_max étendu à ${dynamic_z_max/1000}km`);
+            total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
+            
+            // Utiliser la nouvelle fonction centralisée dans calculations_atm.js
+            if (typeof window.calculateAtmosphereProperties === 'function') {
+                const props = window.calculateAtmosphereProperties(total_mass);
+                dynamic_z_max = props.z_max;
+                
+                if (props.is_massive) {
+                    console.log(`[calculateFluxForT0] Atmosphère massive détectée (${total_mass.toExponential(2)} kg) -> z_max étendu à ${dynamic_z_max/1000}km`);
+                }
             }
         }
     }

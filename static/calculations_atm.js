@@ -1,6 +1,6 @@
 // File: calculations_atm.js - Calculs composition atmosphérique
 // Desc: En français, dans l'architecture, je suis le module de calculs atmosphériques
-// Version 1.0.0
+// Version 1.1.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
@@ -8,6 +8,7 @@
 // Logs:
 //   - Initial version: calculs composition atmosphérique à partir de quantités (CO2, CH4, H2O, N2, O2)
 //   - Conversion quantités → fractions molaires pour calculs physiques
+//   - Ajout calcul hauteur atmosphère dynamique (Hadéen vs Standard)
 
 // ============================================================================
 // CONSTANTES ATMOSPHÉRIQUES
@@ -28,6 +29,10 @@ const EARTH_TOTAL_WATER_MASS_KG = 1.4e21;
 // Masse totale de l'atmosphère terrestre actuelle (kg)
 // Source: ~5.15 × 10¹⁸ kg
 const EARTH_ATMOSPHERE_MASS_KG = 5.15e18;
+
+// Seuil pour considérer une atmosphère comme massive (ex: Hadéen)
+// ~5x la masse actuelle (5.15e18 kg)
+const MASSIVE_ATM_THRESHOLD = 2.5e19;
 
 // ============================================================================
 // FONCTIONS DE CONVERSION QUANTITÉ → FRACTION MOLAIRE
@@ -181,8 +186,34 @@ function ch4FractionToKg(ch4_fraction, total_atmosphere_mass_kg = EARTH_ATMOSPHE
 }
 
 // ============================================================================
-// CALCUL DE PRESSION ATMOSPHÉRIQUE
+// CALCUL DE PRESSION ET STRUCTURE ATMOSPHÉRIQUE
 // ============================================================================
+
+/**
+ * Calcule les propriétés structurelles de l'atmosphère (Hauteur max, Échelle de hauteur)
+ * basées sur la masse totale de l'atmosphère
+ * @param {number} total_atmosphere_mass_kg - Masse totale en kg
+ * @returns {Object} { z_max: number, scale_height: number, is_massive: boolean }
+ */
+function calculateAtmosphereProperties(total_atmosphere_mass_kg) {
+    let z_max = 120000; // 120 km standard (Terre actuelle)
+    let scale_height = 8500; // 8.5 km standard
+    let is_massive = false;
+    
+    // Détection atmosphère massive (ex: Hadéen)
+    // Si > 5x masse actuelle, on considère que l'atmosphère est très étendue
+    if (total_atmosphere_mass_kg > MASSIVE_ATM_THRESHOLD) {
+        is_massive = true;
+        z_max = 600000; // 600 km pour atmosphère massive (dilatée par la chaleur et la masse)
+        scale_height = 40000; // 40 km échelle de hauteur visuelle (pour le rendu)
+    }
+    
+    return {
+        z_max,
+        scale_height,
+        is_massive
+    };
+}
 
 /**
  * Calcule la pression atmosphérique à une altitude z
@@ -286,11 +317,13 @@ if (typeof window !== 'undefined') {
     window.calculateAtmosphericComposition = calculateAtmosphericComposition;
     window.co2FractionToKg = co2FractionToKg;
     window.ch4FractionToKg = ch4FractionToKg;
+    window.calculateAtmosphereProperties = calculateAtmosphereProperties;
     window.calculatePressure = calculatePressure;
     
     // Constantes
     window.EARTH_TOTAL_WATER_MASS_KG = EARTH_TOTAL_WATER_MASS_KG;
     window.EARTH_ATMOSPHERE_MASS_KG = EARTH_ATMOSPHERE_MASS_KG;
+    window.MASSIVE_ATM_THRESHOLD = MASSIVE_ATM_THRESHOLD;
     window.MOLAR_MASS_CO2 = MOLAR_MASS_CO2;
     window.MOLAR_MASS_CH4 = MOLAR_MASS_CH4;
     window.MOLAR_MASS_H2O = MOLAR_MASS_H2O;
@@ -298,4 +331,3 @@ if (typeof window !== 'undefined') {
     window.MOLAR_MASS_O2 = MOLAR_MASS_O2;
     window.MOLAR_MASS_AR = MOLAR_MASS_AR;
 }
-

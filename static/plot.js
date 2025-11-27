@@ -1640,10 +1640,21 @@ function drawSpectralVisualization(canvas, data) {
     // Constantes pour le calcul de la densité (approximation exponentielle)
     // ⚡ CORRECTION : Ajuster H en fonction de la masse atmosphérique si disponible
     let H = 8500; // Échelle de hauteur standard en mètres (environ 8.5 km)
-    // Si atmosphère massive (Hadéen), H est beaucoup plus grand
-    if (z_max_km > 200) {
+    
+    // Essayer de récupérer H depuis les propriétés atmosphériques globales
+    // On a besoin de la masse totale pour ça, qu'on peut trouver dans configOrganigramme
+    if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
+        const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+        if (currentEpoch) {
+            const total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
+            const props = window.calculateAtmosphereProperties(total_mass);
+            H = props.scale_height;
+        }
+    } else if (z_max_km > 200) {
+        // Fallback si calculateAtmosphereProperties n'est pas dispo
         H = 40000; // ~40 km pour atmosphère vapeur chaude Hadéen
     }
+
     const P0 = 101325; // Pression au niveau de la mer en Pa
 
     // Dessiner chaque pixel de la visualisation principale
