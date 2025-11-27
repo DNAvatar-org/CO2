@@ -2428,7 +2428,33 @@ window.addEventListener('DOMContentLoaded', () => {
             // Action 2 : Apport d'eau supplémentaire (météorites continuent de tomber)
             const waterAdditionBtn = document.createElement('img');
             waterAdditionBtn.src = 'fonts/pics/ice_meteorite.png';
-            waterAdditionBtn.alt = 'Météorite de glace'; // Texte court comme en Corps Noir
+            
+            // Calculer la masse d'eau ajoutée (+2% vol) en kg pour l'info-bulle
+            // Si h2oVaporPercent (base) correspond à h2o_kg (2.1e20 kg), alors +2% = (2/base) * 2.1e20
+            // Note: h2o_kg est défini dans configOrganigramme pour Hadéen
+            let mass_added_txt = '';
+            if (typeof window.h2oVaporPercent !== 'undefined' && window.h2oVaporPercent > 0 && typeof window.configOrganigramme !== 'undefined') {
+                // Chercher l'époque Hadéen
+                const hadeenEpoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
+                if (hadeenEpoch && hadeenEpoch.h2o_kg) {
+                    const mass_total = hadeenEpoch.h2o_kg;
+                    const base_percent = window.h2oVaporPercent;
+                    // Approximation : ratio direct (si 40% = 2.1e20, alors 2% = 2.1e20 * 2/40)
+                    const mass_added = (2 / base_percent) * mass_total;
+                    if (mass_added > 0 && isFinite(mass_added)) {
+                        mass_added_txt = ` (+${mass_added.toExponential(1)} kg)`;
+                    }
+                }
+            }
+            
+            // Tooltip avec quantité
+            if (typeof window.addCustomTooltip === 'function') {
+                 window.addCustomTooltip(waterAdditionBtn, 'Météorite de glace<br>Apport d\'eau +2%' + mass_added_txt);
+            } else {
+                 waterAdditionBtn.title = 'Météorite de glace - Apport d\'eau +2%' + mass_added_txt;
+            }
+            
+            waterAdditionBtn.alt = 'Météorite de glace'; 
             waterAdditionBtn.className = 'timeline-event-logo';
             waterAdditionBtn.addEventListener('click', () => {
                 // Ajouter de l'eau totale (en kg, pas en %)

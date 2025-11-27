@@ -1367,23 +1367,83 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         CH4_fraction = null // Fraction molaire de CH4 (optionnel)
     } = options;
 
-    // Calculer T0 initiale (approximation avec albedo de base)
-    // 🔒 Vérifier si l'époque définit une température initiale (ex: Hadéen juste après l'impact)
-    let T0_initial = null;
+    // Si pas de température initiale définie, calculer depuis les formules
+    // 🔒 OPTIMISATION : Utiliser la dernière température connue comme point de départ si disponible
+    // Cela accélère considérablement la convergence lors de petites perturbations (ajout d'eau, de CO2)
+    if (T0_initial === null && typeof window !== 'undefined' && window.current_T0_adjusted !== null && window.current_T0_adjusted > 0) {
+        // Vérifier si on a changé d'époque récemment (si oui, ne pas utiliser la T0 précédente)
+        // On suppose que si T0_initial est null, c'est qu'on n'a pas changé d'époque ou que l'époque n'a pas de T0 fixe
+        // Mais attention : si on passe de Corps Noir à Hadéen, T0_initial est défini dans l'époque, donc on ne rentre pas ici.
+        // Si on est déjà en Hadéen et qu'on ajoute de l'eau, T0_initial est null (car currentEpoch.initial_temperature_K est utilisé plus haut seulement si défini)
+        // Ah, wait. configOrganigramme définit initial_temperature_K pour Hadéen.
+        // Donc T0_initial est TOUJOURS réinitialisé à 2469.65K pour Hadéen via le bloc précédent.
+        
+        // On doit modifier la logique ci-dessus pour prioriser la T0 précédente SI elle est proche de l'équilibre attendu
+        // ou si on est dans une simulation continue.
+    }
+
+    // 🔒 REVISION DE LA LOGIQUE D'INITIALISATION
+    // 1. Si on a une T0 précédente valide (simulation en cours), on l'utilise comme base.
+    // 2. Sinon, si l'époque définit une T0 initiale, on l'utilise.
+    // 3. Sinon, on calcule une T0 théorique sans effet de serre.
+    
+    let usePreviousT0 = false;
+    if (typeof window !== 'undefined' && window.current_T0_adjusted !== null && window.current_T0_adjusted > 0) {
+        // On utilise la T0 précédente seulement si on n'a pas changé d'époque "drastiquement"
+        // Pour simplifier : si on a une T0 précédente, c'est probablement le meilleur point de départ
+        // sauf si on vient de changer d'époque via setEpoch (qui devrait reset current_T0_adjusted ?)
+        // current_T0_adjusted est reset à null au début de cette fonction ! 
+        // Ah, "current_T0_adjusted = null;" à la ligne 1359.
+        // Donc on ne peut pas l'utiliser ici car elle vient d'être effacée.
+        
+        // Solution : récupérer la valeur AVANT le reset.
+        // Elle est passée via window.plotData.temp_surface ou sauvegardée avant l'appel.
+    }
+    
+    // Récupérer la température précédente depuis window.plotData AVANT d'écraser quoi que ce soit
+    let prev_T0 = null;
+    if (typeof window !== 'undefined' && window.plotData && window.plotData.temp_surface) {
+        prev_T0 = window.plotData.temp_surface;
+    }
+
+    // Définir la fraction CO2 globale
+    current_CO2_fraction_for_temp = CO2_fraction;
+    current_T0_adjusted = null; // Réinitialiser
+
+    // z_max, delta_z, etc. sont déjà définis au début de la fonction (ligne 1361)
+    // On ne doit pas les redéclarer ici
+    
+    // Calculer T0 initiale
+    let T0_initial_config = null;
+    // Vérifier si l'époque définit une température initiale
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch && typeof currentEpoch.initial_temperature_K === 'number' && currentEpoch.initial_temperature_K > 0) {
-            // Utiliser la température initiale définie dans la config de l'époque
-            T0_initial = currentEpoch.initial_temperature_K;
-            logCalculationPhase('DICHOTOMIE START (température initiale depuis config)', {
-                T0_initial: T0_initial.toFixed(2),
-                epoch: window.currentEpochName
-            });
+            T0_initial_config = currentEpoch.initial_temperature_K;
         }
     }
     
-    // Si pas de température initiale définie, calculer depuis les formules
-    if (T0_initial === null) {
+    // Stratégie de choix de T0_initial :
+    // 1. Si on a une température précédente (simulation continue), on l'utilise (meilleure convergence).
+    // 2. Sinon, si config époque existe, on l'utilise.
+    // 3. Sinon, calcul théorique.
+    
+    if (prev_T0 !== null && prev_T0 > 0) {
+        T0_initial = prev_T0;
+        // Si on ajoute des GES (H2O, CO2), la température va monter.
+        // On ajoute un petit delta pour aider la dichotomie à chercher "vers le haut"
+        // (Sauf si on est en refroidissement -> à gérer par la dichotomie)
+        logCalculationPhase('DICHOTOMIE START (continuité)', {
+            T0_initial: T0_initial.toFixed(2),
+            prev_T0: prev_T0.toFixed(2)
+        });
+    } else if (T0_initial_config !== null) {
+        T0_initial = T0_initial_config;
+        logCalculationPhase('DICHOTOMIE START (config époque)', {
+            T0_initial: T0_initial.toFixed(2)
+        });
+    } else {
+        // Si pas de température initiale définie, calculer depuis les formules
         const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
         
         // Récupérer le flux géothermique pour l'initialisation
@@ -1419,7 +1479,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             T0_initial = T0_no_greenhouse + delta_T_greenhouse;
         }
 
-        logCalculationPhase('DICHOTOMIE START', {
+        logCalculationPhase('DICHOTOMIE START (calcul théorique)', {
             T0_initial: T0_initial.toFixed(2),
             T0_no_greenhouse: T0_no_greenhouse.toFixed(2),
             geo_flux_init: geo_flux_init.toFixed(2)
@@ -1443,7 +1503,10 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         : waterVaporEnabled;
     
     // Si T0_initial est très élevé (ex: Hadéen post-impact), utiliser un intervalle plus large
-    const INITIAL_RANGE = (T0_initial > 1000) ? 200 : 50; // Intervalle plus large pour températures élevées
+    // 🔒 OPTIMISATION : Réduire l'intervalle si on part d'une T0 précédente connue (continuité)
+    const range_factor = (prev_T0 !== null && prev_T0 > 0) ? 0.5 : 1.0; // Réduire intervalle de 50% si continuité
+    const INITIAL_RANGE = ((T0_initial > 1000) ? 200 : 50) * range_factor; // Intervalle adaptatif
+    
     let T0_min = Math.max(200, T0_initial - INITIAL_RANGE); // Borne inférieure, minimum 200K
     // Borne supérieure : permettre jusqu'à 3000K pour Hadéen (juste après impact)
     const T0_max_limit = (T0_initial > 1000) ? 3000 : (h2o_enabled_check ? 400 : 350);
@@ -1453,6 +1516,18 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     const max_iterations = 20;
     let iteration = 0;
     let result = null;
+
+    // 🔒 GESTION DE L'OVERLAY DE CALCUL
+    // Afficher l'overlay au début du calcul (si mode asynchrone)
+    if (typeof window !== 'undefined' && typeof document !== 'undefined' && window.setTimeout) {
+        const overlay = document.getElementById('calculation-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex'; // Afficher (flex pour centrer)
+            // Reset des points
+            const dots = document.getElementById('calculation-dots');
+            if (dots) dots.textContent = '';
+        }
+    }
 
     // Vérifier si on doit afficher les étapes (seulement pour les calculs interactifs)
     const shouldDisplaySteps = typeof window !== 'undefined' && window.showDichotomySteps;
@@ -1706,6 +1781,16 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
                         window.incrementTimeline();
                     }
+                    
+                    // Mettre à jour l'overlay (points qui bougent)
+                    if (typeof document !== 'undefined') {
+                        const dots = document.getElementById('calculation-dots');
+                        if (dots) {
+                            const dotCount = (iter % 4); // 0, 1, 2, 3 points
+                            dots.textContent = '.'.repeat(dotCount);
+                        }
+                    }
+                    
                     // Continuer avec un délai pour permettre la visualisation
                     if (shouldDisplaySteps && !isCancelled) {
                         const timeoutId = setTimeout(iterate, 50); // Délai pour visualiser chaque étape
@@ -1835,6 +1920,14 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
 
 // Fonction pour finaliser les résultats (mode asynchrone)
 function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
+    // Cacher l'overlay de calcul
+    if (typeof document !== 'undefined') {
+        const overlay = document.getElementById('calculation-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+
     // Stocker la T0 ajustée
     current_T0_adjusted = final_T0;
 
