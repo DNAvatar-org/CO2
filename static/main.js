@@ -2049,7 +2049,28 @@ function setEpoch(epochName) {
         // Sinon (appel depuis un bouton époque), utiliser la config de l'époque
         // Note: h2o_kg sera utilisé via calculations_h2o.js pour calculer les 3 états (vapeur/liquide/glace)
         // Pour l'instant, on utilise h2o_vapor_percent comme fallback si h2o_kg n'est pas disponible
-        const h2o_default = epoch.h2o_vapor_percent || 0; // DEPRECATED: Sera remplacé par calcul depuis h2o_kg
+        let h2o_default = epoch.h2o_vapor_percent || 0; 
+        
+        // 🔒 Calculer depuis h2o_kg si disponible et si h2o_vapor_percent n'est pas défini
+        if (h2o_default === 0 && epoch.h2o_kg > 0 && epoch.total_atmosphere_mass_kg > 0) {
+            // Estimation fraction molaire
+            // H2O = 18 g/mol
+            // Reste = 44 g/mol (CO2 dominant) ou 29 (Air)
+            // Si Hadéen, reste probablement CO2/N2 lourd
+            const mass_h2o = epoch.h2o_kg;
+            const mass_total = epoch.total_atmosphere_mass_kg;
+            const mass_rest = Math.max(0, mass_total - mass_h2o);
+            
+            const mol_h2o = mass_h2o / 18.015;
+            // Estimation masse molaire du reste (si CO2 dominant = 44, si N2 = 28)
+            // Pour Hadéen, on suppose un mélange lourd
+            const mol_rest = mass_rest / 44.01; 
+            
+            const fraction_molaire = mol_h2o / (mol_h2o + mol_rest);
+            h2o_default = fraction_molaire * 100; // En pourcent
+            
+            console.log(`[setEpoch] Calcul H2O depuis kg: ${mass_h2o.toExponential(2)}kg / ${mass_total.toExponential(2)}kg → ${h2o_default.toFixed(1)}% vol`);
+        }
         
         if (typeof window !== 'undefined' && window.maximiseData) {
             // Prendre le max entre l'eau totale sauvegardée et la valeur par défaut de l'époque

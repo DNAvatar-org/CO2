@@ -158,6 +158,7 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
 
     const ice_albedo = 0.7; // Albedo moyen de la glace (approximation créative)
     let ice_fraction = 0;
+    let vapor_fraction = null; // 🔒 Pour calcul nuages
     
     // Calculer la glace depuis l'eau totale disponible (météorites + eau de base)
     // Utiliser calculateWaterPartition pour déterminer la répartition vapeur/glace selon la température
@@ -187,6 +188,7 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         
         const waterPartition = window.calculateWaterPartition(T_surface_K, h2o_total_fraction, epochParams);
         ice_fraction = waterPartition.ice_fraction; // Utiliser la glace calculée
+        vapor_fraction = waterPartition.vapor_fraction; // 🔒 Récupérer la vapeur pour les nuages
         
         // Stocker la glace calculée pour les logs (toujours mettre à jour avec la nouvelle valeur)
         // 🔒 TOUJOURS recalculer et stocker la nouvelle valeur (ne pas réutiliser l'ancienne)
@@ -243,7 +245,7 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     // TODO : Justifier ce choix de modélisation (couverture nuageuse vs température, altitude, etc.)
     if (h2o_enabled) {
         // Utiliser la fonction dédiée pour calculer la couverture nuageuse
-        const cloud_fraction = calculateCloudCoverage(T_surface_K, h2o_enabled);
+        const cloud_fraction = calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction);
 
         // Seuil minimum : ne pas appliquer l'albedo nuageux si la couverture est trop faible (< 5%)
         // Cela évite que 1% de nuages ait un impact drastique sur l'albedo
@@ -273,7 +275,7 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
 // ============================================================================
 
 // Fonction pour calculer la couverture nuageuse (fraction de surface couverte vue depuis le ciel)
-function calculateCloudCoverage(T_surface_K, h2o_enabled) {
+function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_override = null) {
     if (!h2o_enabled) {
         // ⚠️ MODIFICATION POUR GAMEPLAY : Les volcans peuvent créer des nuages même si H2O désactivé
         // Les volcans émettent de la vapeur d'eau et des particules qui forment des nuages
@@ -284,6 +286,46 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled) {
             return Math.min(1, volcanoBonus); // Bonus volcanique en fraction (0 à 1)
         }
         return 0; // Pas de nuages si H2O désactivé et pas de volcans
+    }
+
+    // 🔒 CORRECTION : Vérifier la disponibilité de l'eau
+    // Si on utilise estimateCloudCoverage (plus précis), on a besoin de la fraction de vapeur
+    if (typeof window !== 'undefined' && typeof window.estimateCloudCoverage === 'function') {
+        let vapor_fraction = vapor_fraction_override;
+        
+        // Si pas fourni, essayer de le calculer ou de l'estimer
+        if (vapor_fraction === null) {
+            // Récupérer l'eau totale
+            const h2o_from_meteorites = (window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+            const h2o_base = (window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
+            const h2o_total_percent = h2o_base + h2o_from_meteorites;
+            
+            if (h2o_total_percent <= 0.01) {
+                // Pas d'eau = pas de nuages (sauf volcans)
+                 const volcanoBonus = (window.volcanoH2OBonus !== undefined) ? window.volcanoH2OBonus / 100 : 0;
+                 return Math.min(1, volcanoBonus);
+            }
+            
+            // Si on a de l'eau, estimer la part de vapeur
+            if (typeof window.calculateWaterPartition === 'function') {
+                // Estimation rapide (paramètres par défaut)
+                const wp = window.calculateWaterPartition(T_surface_K, h2o_total_percent / 100);
+                vapor_fraction = wp.vapor_fraction;
+            } else {
+                // Fallback : tout est vapeur si > 100°C, sinon fraction
+                vapor_fraction = (T_surface_K > 373) ? h2o_total_percent / 100 : (h2o_total_percent / 100) * 0.5;
+            }
+        }
+        
+        // Utiliser la fonction d'estimation plus précise
+        let cloud_cov = window.estimateCloudCoverage(T_surface_K, vapor_fraction);
+        
+        // Ajouter le bonus volcanique
+        const volcanoBonus = (typeof window !== 'undefined' && window.volcanoH2OBonus !== undefined)
+            ? window.volcanoH2OBonus / 100
+            : 0;
+            
+        return Math.min(1, cloud_cov + volcanoBonus);
     }
 
     const T_surface_C = T_surface_K - 273.15;

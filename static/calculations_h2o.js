@@ -175,11 +175,25 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
     let liquid_fraction = 0;
     let ice_fraction = 0;
     
-    if (temp_K >= T_boil) {
-        // Au-dessus du point d'ébullition : tout est vapeur (jusqu'à saturation)
-        vapor_fraction = Math.min(h2o_total_fraction, max_vapor_fraction);
-        // Le reste reste liquide (sous pression, l'eau peut rester liquide au-delà de 100°C)
-        liquid_fraction = Math.max(0, h2o_total_fraction - vapor_fraction);
+    // En Hadéen, la température peut dépasser 2000K et la pression 100 bar
+    // L'eau est alors un fluide supercritique ou une vapeur dense, mais pour ce modèle
+    // on considère que c'est de la vapeur (gaz) si T > T_boil(P)
+    
+    // Point d'ébullition ajusté selon la pression (approximation Antoine simplifiée)
+    // T_boil augmente avec la pression. À 100 bar, T_boil ≈ 311°C (584K)
+    // Formule approximative : T_boil(P) ≈ T_boil(1) * P^0.1 (très grossier mais suffisant pour l'ordre de grandeur)
+    // Pour être plus précis, on utilise T_boil ≈ 1 / (1/373.15 - R*ln(P_atm)/L)
+    const L_v = 40660; // J/mol
+    let T_boil_pressure = 1 / (1/T_boil - (R * Math.log(pressure_atm)) / L_v);
+    
+    // Si P < 1 atm, la formule marche aussi.
+    
+    if (temp_K >= T_boil_pressure) {
+        // Au-dessus du point d'ébullition : tout est vapeur (jusqu'à saturation ou tout le stock)
+        // À haute température, l'atmosphère peut contenir beaucoup d'eau
+        vapor_fraction = h2o_total_fraction; 
+        liquid_fraction = 0;
+        ice_fraction = 0;
     } else if (temp_K >= T_freeze) {
         // Entre 0°C et 100°C : vapeur + liquide
         // La vapeur est limitée par la saturation

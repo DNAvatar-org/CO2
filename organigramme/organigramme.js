@@ -2931,8 +2931,16 @@ window.updateFluxLabels = function (data) {
 
     // H2O : afficher le pourcentage de vapeur d'eau (effet de serre)
     // Séparé de la couverture nuageuse (qui affecte l'albedo)
-    const h2o_percent = (h2o_enabled && h2o_button_checked && h2o_vapor_percent > 0)
-        ? h2o_vapor_percent.toFixed(1)
+    // 🔒 Utiliser la fraction de vapeur calculée (h2o_params) si disponible, sinon le total
+    let h2o_display_value = 0;
+    if (h2o_params && h2o_params.vapor_fraction !== undefined) {
+        h2o_display_value = h2o_params.vapor_fraction * 100;
+    } else {
+        h2o_display_value = h2o_vapor_percent;
+    }
+
+    const h2o_percent = (h2o_enabled && h2o_button_checked && h2o_display_value > 0)
+        ? h2o_display_value.toFixed(1)
         : '0';
     // Le forçage H2O doit être 0 si h2o_enabled est false (pas d'eau dans l'atmosphère)
     // Utiliser directement forcing_H2O qui est déjà calculé avec les bonnes conditions
