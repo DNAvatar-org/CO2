@@ -1724,9 +1724,20 @@ body.mode-dark .plot-overlay-title {
     font-size: 16px;
     writing-mode: vertical-rl;
     text-orientation: mixed;
+    transform: rotate(180deg); /* Tourner à 180° pour lire de bas en haut */
     text-transform: uppercase;
     letter-spacing: 2px;
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    display: flex; /* Pour gérer l'alignement du span */
+    align-items: center; /* Centrer verticalement (horizontalement après rotation) */
+    width: 20px; /* Fixer la largeur pour éviter le déplacement */
+    justify-content: center;
+}
+
+#calculation-dots {
+    display: inline-block;
+    width: 20px; /* Espace réservé pour les points */
+    text-align: left; /* Aligner les points */
 }
 
 /* Imposer une hauteur fixe à left-timeline pour éviter les sauts */
