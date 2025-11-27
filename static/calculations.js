@@ -1007,6 +1007,24 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
         // Calculer pour chaque longueur d'onde
         for (let j = 0; j < lambda_range.length; j++) {
+            // Mettre à jour l'overlay pour la boucle interne (tous les 500 points pour ne pas ralentir)
+            // La boucle interne est critique pour la performance, on limite les mises à jour DOM
+            // lambda_range contient ~1000 points, donc 2 mises à jour par couche
+            if (j % 500 === 0 && typeof document !== 'undefined') {
+                const dots = document.getElementById('calculation-dots');
+                if (dots) {
+                    // Ajouter un point seulement si on n'a pas trop de contenu (limite visuelle)
+                    if (dots.innerHTML.length < 50) {
+                        dots.innerHTML += '.';
+                    } else {
+                        // Reset si trop long pour éviter de casser l'affichage (garder les '+')
+                        // On garde les 20 derniers caractères
+                        const text = dots.innerHTML;
+                        dots.innerHTML = text.substring(text.length - 20) + '.';
+                    }
+                }
+            }
+
             const lambda = lambda_range[j];
 
             // ⚡ OPTIMISATION : Utiliser les sections efficaces précalculées
@@ -1073,6 +1091,24 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
         // Calculer pour chaque longueur d'onde
         for (let j = 0; j < lambda_range.length; j++) {
+            // Mettre à jour l'overlay pour la boucle interne (tous les 500 points pour ne pas ralentir)
+            // La boucle interne est critique pour la performance, on limite les mises à jour DOM
+            // lambda_range contient ~1000 points, donc 2 mises à jour par couche
+            if (j % 500 === 0 && typeof document !== 'undefined') {
+                const dots = document.getElementById('calculation-dots');
+                if (dots) {
+                    // Ajouter un point seulement si on n'a pas trop de contenu (limite visuelle)
+                    if (dots.innerHTML.length < 50) {
+                        dots.innerHTML += '.';
+                    } else {
+                        // Reset si trop long pour éviter de casser l'affichage (garder les '+')
+                        // On garde les 20 derniers caractères
+                        const text = dots.innerHTML;
+                        dots.innerHTML = text.substring(text.length - 20) + '.';
+                    }
+                }
+            }
+
             const lambda = lambda_range[j];
 
             // ⚡ OPTIMISATION : Utiliser les sections efficaces précalculées
@@ -1786,12 +1822,12 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         window.incrementTimeline();
                     }
                     
-                    // Mettre à jour l'overlay (points qui bougent)
+                    // Mettre à jour l'overlay (barre de progression avec + et .)
                     if (typeof document !== 'undefined') {
                         const dots = document.getElementById('calculation-dots');
                         if (dots) {
-                            const dotCount = (iter % 4); // 0, 1, 2, 3 points
-                            dots.textContent = '.'.repeat(dotCount);
+                            // Ajouter un '+' à chaque étape de dichotomie (boucle externe)
+                            dots.innerHTML += '+';
                         }
                     }
                     
