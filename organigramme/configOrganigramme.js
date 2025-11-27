@@ -334,7 +334,16 @@ const timeline = [
         cloud_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.0,
         ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 0.0
+        volcanoFactor: 0.0,
+        // Événements interactifs
+        events: {
+            ice_meteorite: {
+                water_added_kg: 6.8e18 // ~10^19 kg (valeur arbitraire pour l'exemple)
+            },
+            big_impact: {
+                energy_flux_wm2: 2000000 // 2 MW/m² (correspond au flux géothermique de l'Hadéen)
+            }
+        }
     },
     {
         type: 'separator',
@@ -378,7 +387,13 @@ const timeline = [
         albedo_base: 0.05,
         ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         magma_coverage: 1.0, // Spécifique Hadéen
-        volcanoFactor: 10.0
+        volcanoFactor: 10.0,
+        // Événements interactifs
+        events: {
+            ice_meteorite: {
+                water_added_kg: 2.1e19 // ~10% de l'eau initiale (2.1e20) pour effet visible
+            }
+        }
     },
     {
         type: 'separator',

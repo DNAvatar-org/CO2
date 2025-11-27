@@ -2327,13 +2327,42 @@ window.addEventListener('DOMContentLoaded', () => {
 
         const currentEpochName = window.currentEpochName || 'Corps noir';
 
+        // Fonction utilitaire pour formater la masse
+        const formatMass = (mass_kg) => {
+            if (!mass_kg || mass_kg <= 0) return '';
+            const expStr = mass_kg.toExponential(1); // ex: 6.8e+18
+            // Remplacer e+18 par x10<sup>18</sup>
+            const [base, exp] = expStr.split('e');
+            // Nettoyer l'exposant (+18 -> 18)
+            const cleanExp = exp.replace('+', '');
+            return `+${base}x10<sup>${cleanExp}</sup> kg`;
+        };
+
         if (currentEpochName === 'Corps noir') {
             // Action 1 : Météorites de glace (augmente la glace à la surface, donc l'albedo)
             const iceMeteorBtn = document.createElement('img');
             iceMeteorBtn.src = 'fonts/pics/ice_meteorite.png';
             iceMeteorBtn.alt = 'Météorite de glace';
             iceMeteorBtn.className = 'timeline-event-logo';
-            // 🔒 Le tooltip sera ajouté automatiquement depuis l'attribut alt
+            
+            // Récupérer la donnée depuis la config
+            let mass_added_txt = '';
+            if (window.configOrganigramme) {
+                const epoch = window.configOrganigramme.timeline.find(e => e.id === 'corps-noir');
+                if (epoch && epoch.events && epoch.events.ice_meteorite) {
+                    mass_added_txt = formatMass(epoch.events.ice_meteorite.water_added_kg);
+                }
+            }
+            
+            // Tooltip
+            if (typeof window.addCustomTooltip === 'function') {
+                iceMeteorBtn.setAttribute('data-tooltip-initialized', 'true');
+                window.addCustomTooltip(iceMeteorBtn, 'Météorite de glace<br>' + mass_added_txt);
+            } else {
+                // Fallback texte brut
+                iceMeteorBtn.title = 'Météorite de glace ' + mass_added_txt.replace(/<sup>|<\/sup>/g, '');
+            }
+            
             iceMeteorBtn.addEventListener('click', () => {
                 // Ajouter de l'eau totale (la répartition vapeur/glace sera calculée selon la température)
                 const currentH2O = (typeof window.h2oTotalFromMeteorites !== 'undefined' && window.h2oTotalFromMeteorites !== null) ? window.h2oTotalFromMeteorites : 0;
@@ -2368,7 +2397,32 @@ window.addEventListener('DOMContentLoaded', () => {
             bigImpactBtn.src = 'fonts/pics/big_impact.png';
             bigImpactBtn.alt = 'Impact majeur - Crée la lune';
             bigImpactBtn.className = 'timeline-event-logo';
-            // 🔒 Le tooltip sera ajouté automatiquement depuis l'attribut alt
+            
+            // Récupérer la donnée depuis la config
+            let impact_flux_txt = '';
+            if (window.configOrganigramme) {
+                const epoch = window.configOrganigramme.timeline.find(e => e.id === 'corps-noir');
+                if (epoch && epoch.events && epoch.events.big_impact) {
+                    const flux = epoch.events.big_impact.energy_flux_wm2;
+                    if (flux) {
+                         // Convertir en MW/m2 si grand
+                        if (flux >= 1000000) {
+                            impact_flux_txt = (flux / 1000000).toFixed(0) + ' MW/m²';
+                        } else {
+                            impact_flux_txt = flux + ' W/m²';
+                        }
+                    }
+                }
+            }
+
+            // Tooltip
+            if (typeof window.addCustomTooltip === 'function') {
+                bigImpactBtn.setAttribute('data-tooltip-initialized', 'true');
+                window.addCustomTooltip(bigImpactBtn, 'Impact majeur - Crée la lune<br>Flux : ' + impact_flux_txt);
+            } else {
+                bigImpactBtn.title = 'Impact majeur - Crée la lune - Flux : ' + impact_flux_txt;
+            }
+
             bigImpactBtn.addEventListener('click', () => {
                 // 🔒 Sauvegarder les valeurs actuelles avant le changement d'époque
                 if (typeof window !== 'undefined') {
@@ -2429,24 +2483,12 @@ window.addEventListener('DOMContentLoaded', () => {
             const waterAdditionBtn = document.createElement('img');
             waterAdditionBtn.src = 'fonts/pics/ice_meteorite.png';
             
-            // Calculer la masse d'eau ajoutée (+2% vol) en kg pour l'info-bulle
-            // Si h2oVaporPercent (base) correspond à h2o_kg (2.1e20 kg), alors +2% = (2/base) * 2.1e20
-            // Note: h2o_kg est défini dans configOrganigramme pour Hadéen
+            // Récupérer la donnée depuis la config (Hadéen)
             let mass_added_txt = '';
-            if (typeof window.h2oVaporPercent !== 'undefined' && window.h2oVaporPercent > 0 && typeof window.configOrganigramme !== 'undefined') {
-                // Chercher l'époque Hadéen
-                const hadeenEpoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
-                if (hadeenEpoch && hadeenEpoch.h2o_kg) {
-                    const mass_total = hadeenEpoch.h2o_kg;
-                    const base_percent = window.h2oVaporPercent;
-                    // Approximation : ratio direct (si 40% = 2.1e20, alors 2% = 2.1e20 * 2/40)
-                    const mass_added = (2 / base_percent) * mass_total;
-                    if (mass_added > 0 && isFinite(mass_added)) {
-                        // Format scientifique : 6.8x10^18
-                        const expStr = mass_added.toExponential(1);
-                        // Remplacer e+ ou e par x10^
-                        mass_added_txt = '+' + expStr.replace('e+', 'x10^').replace('e', 'x10^') + ' kg';
-                    }
+            if (window.configOrganigramme) {
+                const epoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
+                if (epoch && epoch.events && epoch.events.ice_meteorite) {
+                    mass_added_txt = formatMass(epoch.events.ice_meteorite.water_added_kg);
                 }
             }
             
@@ -2456,7 +2498,7 @@ window.addEventListener('DOMContentLoaded', () => {
                  waterAdditionBtn.setAttribute('data-tooltip-initialized', 'true');
                  window.addCustomTooltip(waterAdditionBtn, 'Météorite de glace<br>' + mass_added_txt);
             } else {
-                 waterAdditionBtn.title = 'Météorite de glace - ' + mass_added_txt;
+                 waterAdditionBtn.title = 'Météorite de glace ' + mass_added_txt.replace(/<sup>|<\/sup>/g, '');
             }
             
             waterAdditionBtn.alt = 'Météorite de glace'; 
