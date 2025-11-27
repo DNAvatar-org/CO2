@@ -2937,7 +2937,43 @@ window.updateFluxLabels = function (data) {
     // Surface -> Albedo : flux émis par la surface (approximation avec Stefan-Boltzmann)
     const STEFAN_BOLTZMANN = 5.670374419e-8;
     const flux_emission_surface = isCorpsNoir ? 0 : STEFAN_BOLTZMANN * Math.pow(T0_num, 4);
-    // updateLabel('flux_emission_surface', flux_emission_surface, 'watt'); // REMOVED: Replaced by solar_flux_absorbed_wm in config
+    
+    // Mettre à jour l'épaisseur de l'atmosphère dans le label de l'arc Terre->Albedo
+    // Utiliser calculateAtmosphereProperties pour obtenir la vraie hauteur physique
+    let atm_height_km = 0;
+    if (!isCorpsNoir && typeof window.calculateAtmosphereProperties === 'function') {
+        // Récupérer la masse atmosphérique de l'époque
+        let total_mass = 5.15e18; // Terre actuelle
+        if (typeof window.getGeologicalPeriodByName === 'function' && window.currentEpochName) {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch && currentEpoch.total_atmosphere_mass_kg) {
+                total_mass = currentEpoch.total_atmosphere_mass_kg;
+            }
+        }
+        const props = window.calculateAtmosphereProperties(total_mass);
+        atm_height_km = props.z_max / 1000; // Conversion m -> km
+    }
+    
+    // Mise à jour directe du DOM pour le label 'name' de l'arc terre->albedo
+    const terreAlbedoArrow = document.querySelector('[data-from="terre"][data-to="albedo"]');
+    if (terreAlbedoArrow) {
+        const nameLabel = terreAlbedoArrow.querySelector('.flux-label-name');
+        if (nameLabel) {
+            nameLabel.textContent = `${atm_height_km.toFixed(0)} km`;
+            // Couleur par défaut (vert/défaut), retirer les classes spécifiques
+            nameLabel.className = 'flux-label-name'; 
+            // Ajouter un tooltip explicatif
+            if (typeof window.addTooltip === 'function') {
+                const tooltipText = isCorpsNoir 
+                    ? "Pas d'atmosphère" 
+                    : `Hauteur effective de l'atmosphère<br>(99.99% de la masse)`;
+                // Réinitialiser le tooltip
+                const newLabel = nameLabel.cloneNode(true);
+                nameLabel.parentNode.replaceChild(newLabel, nameLabel);
+                window.addTooltip(newLabel, tooltipText);
+            }
+        }
+    }
 
     // Réémis : forçage radiatif total
     updateLabel('forcing_total', forcing_total, 'watt');

@@ -1657,6 +1657,90 @@ function drawSpectralVisualization(canvas, data) {
 
     const P0 = 101325; // Pression au niveau de la mer en Pa
 
+    // ... suite du code de rendu canvas ...
+
+    const updateLayout = {
+        margin: PLOT_MARGINS, // Marges du graphique (variable commune)
+        xaxis: {
+            // ... configuration axe X inchangée ...
+            range: [0, 50], // Commence à 0
+            fixedrange: true,
+            title: {
+                text: "Longueur d'onde (μm)",
+                standoff: 20, // Remonté pour être plus proche de l'axe
+                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
+            },
+            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            showgrid: false,
+            showline: false, // Pas de ligne d'axe
+            zeroline: false,
+            showticklabels: true, // Garder les valeurs 0, 10, 20, etc.
+            ticks: 'outside', // Garder les ticks mais à l'extérieur
+            ticklen: 0, // Longueur des ticks à 0 pour les cacher
+            tickwidth: 0 // Épaisseur des ticks à 0
+        },
+        yaxis: {
+            // ... configuration axe Y inchangée ...
+            range: [0, 40],
+            fixedrange: true, // Désactiver le zoom
+            title: {
+                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
+                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
+            },
+            side: 'left', // Luminance à gauche
+            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            showgrid: true,
+            gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
+            gridwidth: 1,
+            showline: true, // Afficher le trait vertical de l'axe
+            linecolor: 'rgba(0, 0, 0, 0.5)',
+            linewidth: 1,
+            mirror: 'ticks'
+        },
+        yaxis2: {
+            title: {
+                text: "Altitude (km)",
+                font: getPlotlyFont(14, getDefaultTextColor())
+            },
+            overlaying: 'y',
+            side: 'right', // Altitude à droite
+            range: [0, z_max_km], // ⚡ UTILISATION CORRECTE : z_max_km est défini dans cette portée
+            fixedrange: true, // Désactiver le zoom
+            position: 1, // Position à 1 (droite)
+            // Aligner les ticks avec l'axe Y principal
+            // yaxis: 0-40 (8 divisions de 5)
+            // yaxis2 doit aussi avoir 8 divisions
+            tickmode: 'linear',
+            dtick: z_max_km / 8, // Calculer dynamiquement pour avoir 8 intervalles (alignés avec yaxis)
+            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            showline: true,
+            linecolor: 'rgba(0, 0, 0, 0.5)',
+            linewidth: 1,
+            mirror: 'ticks',
+            showgrid: false,
+            zeroline: false,
+            visible: true
+        },
+        plot_bgcolor: PLOT_BACKGROUND_COLOR, // Fond de la zone de dessin (configurable)
+        paper_bgcolor: PLOT_BACKGROUND_COLOR, // Fond du papier (configurable)
+        annotations: [
+            {
+                x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
+                y: z_trop_km, // Position de la tropopause (en km, axe altitude)
+                text: 'Stratosphère<br>8.0K<br>Troposphère',
+                showarrow: false,
+                xref: 'paper', // Coordonnées relatives au graphique
+                yref: 'y2', // Utiliser l'axe altitude (droite)
+                xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
+                yanchor: 'middle',
+                align: 'left', // Justifié à gauche
+                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR) // Couleur configurable
+            },
+        ]
+    };
+
     // Dessiner chaque pixel de la visualisation principale
     // Adapter le pas en Y en fonction du FPS et de la convergence
     // Le canvas écoute l'événement 'calculationConverged' pour savoir quand augmenter la précision

@@ -201,7 +201,38 @@
         });
     }
 
-    // ... (reste du code inchangé pour addTooltipFromAttribute et autoInitTooltips)
+    /**
+     * Ajoute un tooltip depuis les attributs d'un élément (alt, title, data-tooltip)
+     * @param {HTMLElement} element - L'élément à traiter
+     */
+    function addTooltipFromAttribute(element) {
+        let text = element.getAttribute('data-tooltip') || element.getAttribute('alt') || element.getAttribute('title');
+        
+        if (text && text.trim() !== '') {
+            // Remplacer les retours à la ligne par <br>
+            text = text.replace(/\n/g, '<br>');
+            
+            // Nettoyer le title par défaut pour éviter le tooltip natif du navigateur
+            if (element.hasAttribute('title')) {
+                element.removeAttribute('title');
+            }
+            
+            addTooltip(element, text);
+        }
+    }
+
+    /**
+     * Initialise automatiquement tous les tooltips de la page
+     */
+    function autoInitTooltips() {
+        const elements = document.querySelectorAll('[alt], [title], [data-tooltip]');
+        elements.forEach(el => {
+            if (!el.hasAttribute('data-tooltip-initialized')) {
+                addTooltipFromAttribute(el);
+                el.setAttribute('data-tooltip-initialized', 'true');
+            }
+        });
+    }
 
     // ============================================================================
     // EXPOSITION GLOBALE

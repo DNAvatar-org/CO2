@@ -298,7 +298,7 @@ const arcs = [
     { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: { text: '0.0 W/m²', dataId: 'solar_flux_absorbed_wm' } } },
     { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' } },
     { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0.0<br>W/m²', dataId: 'core_flux_wm' }, txtF: '' } },
-    { from: 'terre', to: 'albedo', zIndex: 22, label: { name: '', txtD: { text: '0.0<br>W/m²', dataId: 'surface_flux_emitted_wm' } }, color: 'red' },//tout doit etre retourné
+    { from: 'terre', to: 'albedo', zIndex: 22, label: { name: '0 km', txtD: { text: '0.0<br>W/m²', dataId: 'surface_flux_emitted_wm' } }, color: 'red' },//tout doit etre retourné
     { from: 'albedo', to: 'espace2', zIndex: 22, label: { name: '', txtD: { text: '0.0<br>W/m²', dataId: 'flux_ejected_wm' } }, color: '#ff5500' },
     { from: 'reemis', to: 'terre', zIndex: 26, label: { name: { text: '0.0<br>W/m²', dataId: 'forcing_total' }, txtD: '' }, color: '#ff0000' },
 ];
