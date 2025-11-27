@@ -377,10 +377,20 @@ function updateTimeline() {
     // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
     if (infoTimeDisplay && currentEpochStartYears !== null) {
         // Calculer le delta depuis le début de l'époque
-        const deltaYears = years - currentEpochStartYears;
-        // Toujours afficher en dizaines d'années (jamais millions/milliards)
-        const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
-        const newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
+            // 🔒 Utiliser Math.abs pour afficher le delta de temps écoulé, que l'on avance ou recule dans le temps
+            // (car timelineFrame décrémente pour avancer vers le présent)
+            const deltaYears = Math.abs(years - currentEpochStartYears);
+            // Toujours afficher en dizaines d'années (jamais millions/milliards)
+            // Si le delta est très grand (millions d'années), afficher en Ma
+            let newText = '';
+            if (deltaYears >= 1e6) {
+                // Afficher en Ma si > 1 million
+                const deltaMa = (deltaYears / 1e6).toFixed(1).replace(/\.?0+$/, '');
+                newText = `+${deltaMa} Ma`;
+            } else {
+                const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
+                newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
+            }
         // Ne modifier le texte que s'il a changé pour éviter le clignotement
         if (infoTimeDisplay.textContent !== newText) {
             infoTimeDisplay.textContent = newText;
@@ -2472,13 +2482,68 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             timeAdvanceBtn.addEventListener('click', () => {
-                // Avancer de 50 Ma (5000 frames de 10 ans)
-                for (let i = 0; i < 5000; i++) {
-                    if (typeof window.incrementTimeline === 'function') {
-                        window.incrementTimeline();
+                // Avancer de 50 Ma (50 millions d'années) vers le présent
+                // Comme timelineFrame correspond à des années dans le passé (ex: 4.5e9),
+                // pour avancer vers le présent (4.45e9), il faut DÉCRÉMENTER timelineFrame.
+                
+                const YEARS_STEP = 50e6; // 50 Ma
+                const framesToSubtract = YEARS_STEP / YEARS_PER_FRAME;
+                
+                // Vérifier si on ne dépasse pas la fin de l'époque (Archean à 4.0e9)
+                const hadeanEnd = 4.0e9;
+                const currentYears = timelineFrame * YEARS_PER_FRAME;
+                const nextYears = currentYears - YEARS_STEP;
+                
+                if (nextYears <= hadeanEnd) {
+                    // On arrive à l'Archéen !
+                    console.log('[Hadéen] Fin de l\'époque atteinte, passage à l\'Archéen');
+                    if (typeof window.setEpoch === 'function') {
+                        window.setEpoch('Archéen');
+                    }
+                    return;
+                }
+                
+                // Mettre à jour le temps
+                timelineFrame -= framesToSubtract;
+                updateTimeline();
+                
+                // 🔒 LOGIQUE DE REFROIDISSEMENT HADÉEN
+                // Interpoler le flux géothermique et la couverture de magma
+                // Start: 4.5e9 (Flux ~2e6, Magma 1.0)
+                // End: 4.0e9 (Flux ~0.3, Magma 0.0)
+                
+                const hadeanStart = 4.5e9;
+                const totalDuration = hadeanStart - hadeanEnd;
+                const elapsed = hadeanStart - nextYears; // Temps écoulé depuis le début (0 à 500Ma)
+                const progress = Math.min(1, Math.max(0, elapsed / totalDuration)); // 0 à 1
+                
+                // Interpolation Log-Lineaire pour le flux (décroissance exponentielle)
+                const fluxStart = 2000000; // 2 MW/m²
+                const fluxEnd = 0.3; // ~0.3 W/m²
+                const logFlux = (1 - progress) * Math.log(fluxStart) + progress * Math.log(fluxEnd);
+                const currentFlux = Math.exp(logFlux);
+                
+                // Interpolation Linéaire pour le magma
+                const magmaStart = 1.0;
+                const magmaEnd = 0.0;
+                const currentMagma = (1 - progress) * magmaStart + progress * magmaEnd;
+                
+                console.log(`[Hadéen] Avance +50Ma. Temps: ${formatYears(nextYears)}. Progress: ${(progress*100).toFixed(1)}%. Flux: ${currentFlux.toExponential(2)} W/m². Magma: ${(currentMagma*100).toFixed(1)}%`);
+                
+                // Mettre à jour les paramètres de l'époque en cours (modification dynamique)
+                if (typeof window.configOrganigramme !== 'undefined') {
+                    const hadeenEpoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
+                    if (hadeenEpoch) {
+                        hadeenEpoch.geothermal_flux = currentFlux;
+                        hadeenEpoch.magma_coverage = currentMagma;
+                        
+                        // Mettre à jour aussi cloud_coverage ? (User: "diminue le % de lave ...")
+                        // Peut-être que les nuages diminuent aussi si moins d'évaporation massive ?
+                        // On laisse calculateCloudCoverage gérer via la T° de surface pour l'instant.
                     }
                 }
-                // Recalculer avec les nouvelles conditions (refroidissement, apport d'eau possible)
+                
+                // Recalculer avec les nouvelles conditions
                 if (typeof window.updateCO2LevelDirect === 'function' && plotData.co2_ppm !== undefined) {
                     const current_co2_fraction = plotData.co2_ppm * 1e-6;
                     window.updateCO2LevelDirect(current_co2_fraction);
