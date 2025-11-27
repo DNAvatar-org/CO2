@@ -882,9 +882,15 @@ window.updatePlot = function updatePlot(data) {
     }
 
     // Calculer la tropopause dynamiquement
-    const z_trop_m = (typeof window.calculateTropopauseHeight === 'function')
-        ? window.calculateTropopauseHeight(T0)
-        : 11000; // Fallback à 11 km si la fonction n'est pas disponible
+    let z_trop_m;
+    if (window.currentEpochName === 'Corps noir') {
+        z_trop_m = 0;
+    } else {
+        z_trop_m = (typeof window.calculateTropopauseHeight === 'function')
+            ? window.calculateTropopauseHeight(T0)
+            : 11000; // Fallback à 11 km si la fonction n'est pas disponible
+    }
+    
     // Rendre z_trop_km accessible globalement (ou au moins dans updateSpectralVisualization) si nécessaire, 
     // mais ici on utilise des variables locales pour updatePlot
     const z_trop_km = z_trop_m / 1000; // Convertir en km
@@ -922,6 +928,35 @@ window.updatePlot = function updatePlot(data) {
         hovertemplate: `Ligne de séparation (${z_trop_km.toFixed(1)} km)<extra></extra>`,
         yaxis: 'y2' // Utiliser l'axe altitude (gauche)
     });
+
+    /* Bloc supprimé car z_trop_km est déjà calculé plus haut
+    // Calculer la tropopause pour déterminer les zones de précision
+    let z_trop_km = 11; // Valeur par défaut
+    // Essayer de récupérer la tropopause calculée dans updatePlot si disponible
+    if (typeof window.current_z_trop_km !== 'undefined') {
+        z_trop_km = window.current_z_trop_km;
+    } else if (typeof window.calculateTropopauseHeight === 'function') {
+        // Sinon recalculer avec une température par défaut
+        z_trop_km = window.calculateTropopauseHeight(288) / 1000;
+    }
+    */
+    
+    // Calculer la tropopause pour déterminer les zones de précision et l'annotation
+    // let z_trop_km = 11; // DEJA DÉCLARÉ PLUS HAUT - On commente pour éviter la redéclaration
+    /*
+    let z_trop_km = 11; // Valeur par défaut
+    // Essayer de récupérer la tropopause calculée dans updatePlot si disponible
+    if (typeof window.current_z_trop_km !== 'undefined') {
+        z_trop_km = window.current_z_trop_km;
+    } else if (typeof window.calculateTropopauseHeight === 'function') {
+        // Sinon recalculer avec une température par défaut
+        z_trop_km = window.calculateTropopauseHeight(288) / 1000;
+    }
+    */
+    
+    // Initialiser z_trop_km par défaut pour l'annotation si pas défini (ce qui ne devrait plus arriver)
+    // Mais pour être sûr à 100% pour le linter/exécution
+    const annotation_z_trop_km = typeof z_trop_km !== 'undefined' ? z_trop_km : 11;
 
     const updateLayout = {
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
@@ -990,7 +1025,7 @@ window.updatePlot = function updatePlot(data) {
         annotations: [
             {
                 x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
-                y: z_trop_km, // Position de la tropopause (en km, axe altitude)
+                y: annotation_z_trop_km, // Position de la tropopause (en km, axe altitude)
                 text: 'Stratosphère<br>8.0K<br>Troposphère',
                 showarrow: false,
                 xref: 'paper', // Coordonnées relatives au graphique
@@ -1683,6 +1718,35 @@ function drawSpectralVisualization(canvas, data) {
 
     // ... suite du code de rendu canvas ...
 
+    /* Bloc supprimé car z_trop_km est déjà calculé plus haut
+    // Calculer la tropopause pour déterminer les zones de précision
+    let z_trop_km = 11; // Valeur par défaut
+    // Essayer de récupérer la tropopause calculée dans updatePlot si disponible
+    if (typeof window.current_z_trop_km !== 'undefined') {
+        z_trop_km = window.current_z_trop_km;
+    } else if (typeof window.calculateTropopauseHeight === 'function') {
+        // Sinon recalculer avec une température par défaut
+        z_trop_km = window.calculateTropopauseHeight(288) / 1000;
+    }
+    */
+    
+    // Calculer la tropopause pour déterminer les zones de précision et l'annotation
+    // let z_trop_km = 11; // DEJA DÉCLARÉ PLUS HAUT - On commente pour éviter la redéclaration
+    /*
+    let z_trop_km = 11; // Valeur par défaut
+    // Essayer de récupérer la tropopause calculée dans updatePlot si disponible
+    if (typeof window.current_z_trop_km !== 'undefined') {
+        z_trop_km = window.current_z_trop_km;
+    } else if (typeof window.calculateTropopauseHeight === 'function') {
+        // Sinon recalculer avec une température par défaut
+        z_trop_km = window.calculateTropopauseHeight(288) / 1000;
+    }
+    */
+    
+    // Initialiser z_trop_km par défaut pour l'annotation si pas défini (ce qui ne devrait plus arriver)
+    // Mais pour être sûr à 100% pour le linter/exécution
+    const annotation_z_trop_km = typeof z_trop_km !== 'undefined' ? z_trop_km : 11;
+
     const updateLayout = {
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
         xaxis: {
@@ -1752,7 +1816,7 @@ function drawSpectralVisualization(canvas, data) {
         annotations: [
             {
                 x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
-                y: z_trop_km, // Position de la tropopause (en km, axe altitude)
+                y: annotation_z_trop_km, // Position de la tropopause (en km, axe altitude)
                 text: 'Stratosphère<br>8.0K<br>Troposphère',
                 showarrow: false,
                 xref: 'paper', // Coordonnées relatives au graphique
