@@ -1370,7 +1370,31 @@ window.updateDisplay = function updateDisplay(data) {
         console.log('Forcing H2O:', data.forcing_H2O !== undefined ? `${data.forcing_H2O.toFixed(2)} W/m²` : '--');
         console.log('Forcing CH4:', data.forcing_CH4 !== undefined ? `${data.forcing_CH4.toFixed(2)} W/m²` : '--');
         console.log('Forcing Albedo:', data.forcing_Albedo !== undefined ? `${data.forcing_Albedo.toFixed(2)} W/m²` : '--');
+        if (data.forcing_Albedo < 0 && data.temp_surface > 373) {
+             console.log('  ℹ️ Note: Négatif car les nuages refroidissent par rapport au magma sombre (Albédo Ref < Actuel)');
+        }
         console.log('Forcing Total:', data.forcing !== undefined ? `${data.forcing.toFixed(2)} W/m²` : '--');
+        
+        // EDS Réel (Calculé depuis le transfert radiatif)
+        // EDS = Flux Surface (σT⁴) - Flux Sortant (au sommet)
+        const STEFAN_BOLTZMANN = 5.670374419e-8;
+        const flux_surface_real = STEFAN_BOLTZMANN * Math.pow(data.temp_surface, 4);
+        // Récupérer le flux total sortant (si disponible dans les données brutes plotData.current)
+        const flux_top_real = (plotData.current && plotData.current.total_flux) ? plotData.current.total_flux : null;
+        
+        if (flux_top_real !== null) {
+            const eds_real = flux_surface_real - flux_top_real;
+            console.log('---');
+            console.log('🌡️ BILAN RADIATIF (EDS RÉEL) 🌡️');
+            console.log(`Flux Surface (σT⁴): ${flux_surface_real.toFixed(2)} W/m² (${(flux_surface_real/1e6).toFixed(2)} MW/m²)`);
+            console.log(`Flux Sortant (Top): ${flux_top_real.toFixed(2)} W/m² (${(flux_top_real/1e6).toFixed(2)} MW/m²)`);
+            console.log(`Effet de Serre (EDS): ${eds_real.toFixed(2)} W/m² (${(eds_real/1e6).toFixed(4)} MW/m²)`);
+            console.log(`Part piégée: ${((eds_real/flux_surface_real)*100).toFixed(2)}%`);
+        } else {
+             console.log('---');
+             console.log('EDS Réel: Données de flux sortant non disponibles');
+        }
+
         console.log('---');
 
         // Section Albedo avec détails

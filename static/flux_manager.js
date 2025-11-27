@@ -103,7 +103,15 @@
 
             // Valeurs par défaut si non définies
             const solarIntensity = typeof epoch.solar_intensity === 'number' ? epoch.solar_intensity : 1.0;
-            const geothermalFlux = typeof epoch.geothermal_flux === 'number' ? epoch.geothermal_flux : 0.087;
+            
+            let geothermalFlux = 0.087; // Défaut Terre actuelle
+            if (typeof epoch.geothermal_flux === 'number') {
+                geothermalFlux = epoch.geothermal_flux;
+            } else if (epoch.core_temperature === 0) {
+                // Cas explicite : pas de noyau (ex: Corps Noir)
+                geothermalFlux = 0;
+            }
+            
             const planetRadius = typeof epoch.planet_radius === 'number' ? epoch.planet_radius : 6371000;
 
             // Appliquer les mises à jour

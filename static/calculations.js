@@ -1384,8 +1384,31 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     
     // Si pas de température initiale définie, calculer depuis les formules
     if (T0_initial === null) {
+        const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+        
+        // Récupérer le flux géothermique pour l'initialisation
+        let geo_flux_init = 0;
+        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch) {
+                if (typeof window.calculateGeothermalFlux === 'function' && 
+                    typeof currentEpoch.core_temperature === 'number' && 
+                    typeof currentEpoch.geothermal_diffusion_factor === 'number') {
+                    geo_flux_init = window.calculateGeothermalFlux(currentEpoch.core_temperature, currentEpoch.geothermal_diffusion_factor);
+                } else if (typeof currentEpoch.geothermal_flux === 'number') {
+                    geo_flux_init = currentEpoch.geothermal_flux;
+                }
+            }
+        }
+
         // Utiliser un albedo de base pour l'initialisation (sans glace ni nuages)
-        const T0_no_greenhouse = Math.pow(calculateSolarFluxAbsorbed(255, false) / STEFAN_BOLTZMANN, 0.25);
+        const solar_absorbed_init = calculateSolarFluxAbsorbed(255, false);
+        
+        // 🔒 CORRECTION CRITIQUE : Inclure le flux géothermique dans l'estimation de T0 initiale
+        // T = ((Flux Solaire + Flux Géo) / sigma)^0.25
+        const total_flux_init = solar_absorbed_init + geo_flux_init;
+        const T0_no_greenhouse = Math.pow(total_flux_init / STEFAN_BOLTZMANN, 0.25);
+        
         if (CO2_fraction === 0) {
             T0_initial = T0_no_greenhouse;
         } else {
@@ -1398,7 +1421,8 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
 
         logCalculationPhase('DICHOTOMIE START', {
             T0_initial: T0_initial.toFixed(2),
-            T0_no_greenhouse: T0_no_greenhouse.toFixed(2)
+            T0_no_greenhouse: T0_no_greenhouse.toFixed(2),
+            geo_flux_init: geo_flux_init.toFixed(2)
         });
 
         // Si H2O est activé, ajuster T0_initial (H2O ajoute un effet de serre important)

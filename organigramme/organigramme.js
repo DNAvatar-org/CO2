@@ -2281,7 +2281,12 @@ window.updateFluxLabels = function (data) {
 
     // Détecter le mode "Corps noir" : utiliser le nom de l'époque stocké globalement
     // En mode Corps noir, on désactive tous les éléments atmosphériques
-    const isCorpsNoir = (typeof window !== 'undefined' && window.currentEpochName === 'Corps noir');
+    // Utiliser une comparaison insensible à la casse et aux espaces
+    const currentName = (typeof window !== 'undefined' && window.currentEpochName) ? window.currentEpochName.trim() : '';
+    const isCorpsNoir = currentName === 'Corps noir' || currentName === 'Corps Noir';
+    
+    // Debug de détection
+    // console.log(`[updateFluxLabels] isCorpsNoir=${isCorpsNoir} (currentName="${currentName}")`);
 
     // En mode "corps noir", utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
     // Sinon, forcer l'albedo à 0 (pas d'atmosphère, pas d'eau, pas de glace)
@@ -2461,7 +2466,20 @@ window.updateFluxLabels = function (data) {
     
     // 🔒 CORRECTION : Le forçage total affiché dans le diagramme (effet de serre) ne doit PAS inclure l'albédo
     // L'albédo agit en amont (réflexion directe). Le forçage "Total" ici est celui de l'effet de serre (Back Radiation).
-    const forcing_total = forcing_CO2 + forcing_CH4 + forcing_H2O; // + forcing_Albedo (RETIRÉ)
+    // 
+    // Pour les conditions extrêmes (ex: Hadéen avec 2 MW/m²), utiliser l'effet de serre réel calculé par le transfert radiatif
+    // au lieu des formules de forçage standard (qui sont des approximations pour conditions proches de l'équilibre moderne).
+    // 
+    // Effet de serre réel = Flux émis par la surface - Flux sortant au sommet de l'atmosphère
+    // (sera calculé après avoir obtenu surface_flux_emitted et total_flux)
+    
+    // Calculer d'abord les forçages individuels pour l'affichage des boutons (référence)
+    const forcing_CO2_display = forcing_CO2;
+    const forcing_CH4_display = forcing_CH4;
+    const forcing_H2O_display = forcing_H2O;
+    
+    // L'effet de serre réel sera calculé plus tard avec surface_flux_emitted et total_flux
+    let forcing_total = forcing_CO2 + forcing_CH4 + forcing_H2O; // Valeur par défaut (sera remplacée si total_flux disponible)
 
     // Fonction helper pour mettre à jour un label par dataId
     const updateLabel = (dataId, value, format = 'auto') => {
@@ -2724,20 +2742,19 @@ window.updateFluxLabels = function (data) {
     // Albedo -> Espace1 : flux total au sommet
     updateLabel('solar_flux_reflected_wm', flux_reflected, 'watt');
 
-    // Albedo -> Espace2 : flux éjecté (absorbé - forçage)
-    // flux_ejected_wm = solar_flux_absorbed_wm - forcing_total
-    const flux_ejected = solar_flux_absorbed - forcing_total;
-    updateLabel('flux_ejected_wm', flux_ejected, 'watt');
-
-
     // Noyau -> Surface : géothermie (flux dynamique selon l'époque)
     // Récupérer le flux géothermique de l'époque courante
     let geothermie_value = GEOTHERMIE_FLUX; // Valeur par défaut (0.087 W/m²)
 
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
-            geothermie_value = currentEpoch.geothermal_flux;
+        if (currentEpoch) {
+            if (typeof currentEpoch.geothermal_flux === 'number') {
+                geothermie_value = currentEpoch.geothermal_flux;
+            } else if (currentEpoch.core_temperature === 0) {
+                // Si core_temperature est explicitement 0 (ex: Corps Noir), flux = 0
+                geothermie_value = 0;
+            }
         }
     }
 
@@ -2748,7 +2765,30 @@ window.updateFluxLabels = function (data) {
 
     updateLabel('core_flux_wm', geothermie_value, 'watt');
 
-    // Mettre à jour la puissance du noyau (au lieu de la température)
+    // Surface -> Albedo : Flux total émis par la surface (Solaire + Géothermique)
+    // C'est le flux qui part de la surface vers l'atmosphère
+    const surface_flux_emitted = solar_flux_absorbed + geothermie_value;
+    updateLabel('surface_flux_emitted_wm', surface_flux_emitted, 'watt');
+
+    // 🔒 CORRECTION : Calculer l'effet de serre réel à partir du transfert radiatif
+    // Le transfert radiatif (calculations.js) calcule déjà le flux sortant au sommet (total_flux)
+    // en fonction du flux émis par la surface ET de la composition de l'atmosphère (CO2, CH4, H2O).
+    // 
+    // Effet de serre = Flux émis par la surface - Flux sortant au sommet
+    // Si total_flux est disponible (résultat du transfert radiatif), l'utiliser pour l'effet de serre réel
+    if (total_flux > 0 && surface_flux_emitted > 0) {
+        const greenhouse_effect_real = surface_flux_emitted - total_flux;
+        // Utiliser l'effet de serre réel calculé par le transfert radiatif
+        if (greenhouse_effect_real >= 0) {
+            forcing_total = greenhouse_effect_real;
+            console.log(`[updateFluxLabels] Effet de serre réel (transfert radiatif): ${forcing_total.toFixed(2)} W/m² (surface=${surface_flux_emitted.toFixed(2)} W/m², sortant=${total_flux.toFixed(2)} W/m²)`);
+        }
+    }
+
+    // Albedo -> Espace2 : flux éjecté = flux sortant au sommet (résultat direct du transfert radiatif)
+    // PAS de calcul : flux_ejected = total_flux (pas surface_flux_emitted - forcing_total qui serait une boucle)
+    const flux_ejected = total_flux > 0 ? total_flux : (surface_flux_emitted - forcing_total); // Fallback si total_flux non disponible
+    updateLabel('flux_ejected_wm', flux_ejected, 'watt');
     let corePowerText = '';
     if (isCorpsNoir) {
         // En mode corps noir : pas de noyau actif
