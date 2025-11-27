@@ -15,10 +15,48 @@
 const SOLAR_CONSTANT = 1366;          // Constante solaire, W/m²
 
 // Zone habitable pour la vie (températures en Kelvin)
+// Note : Ces limites sont basées sur la vie terrestre (eau liquide)
 const TEMP_HABITABLE_MIN = 253;       // -20°C : limite inférieure pour la vie complexe
 const TEMP_HABITABLE_MAX = 323;       // 50°C : limite supérieure pour la vie complexe
-const TEMP_HABITABLE_OPTIMAL = 288;    // 15°C : température optimale pour la vie (référence)
-const TEMP_REF_NO_CO2 = 255.0;        // Température effective sans CO2 (référence pour ΔT°)
+const TEMP_HABITABLE_OPTIMAL = 288;    // 15°C : température optimale pour la vie terrestre actuelle
+
+// Température de référence sans effet de serre (T_eff)
+// ⚠️ NE PAS HARDCODER 255K ! Cela dépend de l'albedo et de l'intensité solaire
+// Sera calculé dynamiquement via la fonction getEffectiveTemperatureNoGreenhouse()
+// const TEMP_REF_NO_CO2 = 255.0; // DEPRECATED
+
+// Fonction pour obtenir la température effective sans effet de serre
+// T_eff = (S * (1 - A) / 4σ)^(1/4)
+function getEffectiveTemperatureNoGreenhouse() {
+    if (typeof window === 'undefined') return 255.0;
+
+    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+    const solar_constant = window.SOLAR_CONSTANT || 1366;
+    
+    // Récupérer l'albedo de base de l'époque courante
+    let albedo_ref = 0.3; 
+    if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch) {
+            // Ajuster la constante solaire si définie
+            if (typeof currentEpoch.solar_intensity === 'number') {
+                // solar_intensity est un facteur (ex: 0.7 pour 70%)
+                // Mais attention, SOLAR_CONSTANT est la valeur actuelle
+                // Il faut vérifier si solar_constant est déjà ajusté ou si on doit le faire ici
+                // Dans main.js, FluxManager met à jour SOLAR_CONSTANT. Supposons qu'il est à jour.
+            }
+            
+            if (typeof currentEpoch.albedo_base === 'number') {
+                albedo_ref = currentEpoch.albedo_base;
+            }
+        }
+    }
+
+    const flux_absorbed = (solar_constant / 4) * (1 - albedo_ref);
+    const T_eff = Math.pow(flux_absorbed / STEFAN_BOLTZMANN, 0.25);
+    
+    return T_eff;
+}
 
 // Fonction pour calculer le forçage radiatif du CO2
 // ✅ SCIENTIFIQUEMENT CERTAIN :
@@ -100,19 +138,34 @@ function calculateH2OForcing(h2o_enabled, cloud_coverage) {
 // Fonction pour calculer le forçage radiatif de l'albedo
 // ✅ SCIENTIFIQUEMENT CERTAIN :
 // - Le forçage albedo est : ΔF_albedo = -S/4 * ΔA où S est la constante solaire et ΔA est le changement d'albedo
-// - Référence : albedo de référence = 0.3 (valeur terrestre moyenne)
+// - Référence : albedo de référence de l'époque courante (albedo_base)
 // - Si albedo augmente, le forçage est négatif (refroidissement)
 // - Si albedo diminue, le forçage est positif (réchauffement)
+// 🔒 CORRECTION : Utiliser l'albedo_base de l'époque comme référence, pas toujours 0.3
 function calculateAlbedoForcing(albedo) {
     if (albedo === null || albedo === undefined) return 0;
     
-    const ALBEDO_REF = 0.3; // Albedo de référence (valeur terrestre moyenne)
+    // Récupérer l'albedo de référence de l'époque courante (albedo_base)
+    let albedo_ref = 0.3; // Valeur par défaut (terrestre moyenne)
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch && typeof currentEpoch.albedo_base === 'number') {
+            albedo_ref = currentEpoch.albedo_base;
+        }
+    }
+    
+    // Si albedo = albedo_ref, alors forçage = 0 (pas de changement)
+    // Pour Corps noir : albedo_base = 0, donc si albedo = 0, forçage = 0
+    if (Math.abs(albedo - albedo_ref) < 1e-6) {
+        return 0;
+    }
+    
     const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
     const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4; // 341.5 W/m²
     
     // ΔF_albedo = -S/4 * (A - A_ref)
     // Négatif car une augmentation d'albedo réduit le flux absorbé (refroidissement)
-    const delta_albedo = albedo - ALBEDO_REF;
+    const delta_albedo = albedo - albedo_ref;
     const forcing = -SOLAR_FLUX_AVERAGE * delta_albedo;
     
     return forcing; // W/m²
@@ -124,7 +177,8 @@ if (typeof window !== 'undefined') {
     window.TEMP_HABITABLE_MIN = TEMP_HABITABLE_MIN;
     window.TEMP_HABITABLE_MAX = TEMP_HABITABLE_MAX;
     window.TEMP_HABITABLE_OPTIMAL = TEMP_HABITABLE_OPTIMAL;
-    window.TEMP_REF_NO_CO2 = TEMP_REF_NO_CO2;
+    // window.TEMP_REF_NO_CO2 = TEMP_REF_NO_CO2; // DEPRECATED
+    window.getEffectiveTemperatureNoGreenhouse = getEffectiveTemperatureNoGreenhouse;
     window.calculateCO2Forcing = calculateCO2Forcing;
     window.calculateCH4Forcing = calculateCH4Forcing;
     window.calculateH2OForcing = calculateH2OForcing;

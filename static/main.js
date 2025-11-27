@@ -644,8 +644,11 @@ function updateCO2Level(state) {
             if (cache_420ppm) plotData.flux_420ppm = cache_420ppm;
 
             const temp_eff = plotData.current.effective_temperature;
-            // Température effective sans effet de serre (référence) ~255K
-            const temp_eff_0 = 255.0; // Température effective sans CO2 (approximation)
+            // Température effective sans effet de serre (référence) ~255K (Terre)
+            // Calculée dynamiquement selon l'albedo et l'intensité solaire de l'époque
+            const temp_eff_0 = (typeof window.getEffectiveTemperatureNoGreenhouse === 'function')
+                ? window.getEffectiveTemperatureNoGreenhouse()
+                : 255.0;
             // Température de surface calculée par dichotomie (équilibre radiatif avec CO2 uniquement)
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
@@ -711,14 +714,14 @@ function updateCO2Level(state) {
             // Forçage total
             const forcing_total = forcing_CO2 + forcing_H2O + forcing_CH4 + forcing_Albedo;
 
-            // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)
-            // ΔT° = T° actuelle - T° référence (255K)
+            // Calculer ΔT° = différence de température par rapport à la référence sans CO2
+            // ΔT° = T° actuelle - T° référence (sans effet de serre)
             // C'est la différence directe de température, plus claire et compréhensible
-            const TEMP_REF_NO_CO2 = 255.0; // Température effective sans CO2 (référence)
+            const TEMP_REF_NO_CO2 = temp_eff_0; // Température effective sans CO2 (référence dynamique)
             delta_temp = temp_surface - TEMP_REF_NO_CO2;
 
             // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
-            const TEMP_HABITABLE_OPTIMAL = 288; // 15°C
+            const TEMP_HABITABLE_OPTIMAL = 288; // 15°C (Référence terrestre actuelle)
             const TEMP_HABITABLE_MIN = 253; // -20°C
             const TEMP_HABITABLE_MAX = 323; // 50°C
             const delta_temp_habitable = temp_surface - TEMP_HABITABLE_OPTIMAL;
@@ -1041,8 +1044,11 @@ function updateCO2LevelDirect(co2_fraction) {
             if (cache_420ppm) plotData.flux_420ppm = cache_420ppm;
 
             const temp_eff = plotData.current.effective_temperature;
-            // Température effective sans effet de serre (référence) ~255K
-            const temp_eff_0 = 255.0; // Température effective sans CO2 (approximation)
+            // Température effective sans effet de serre (référence) ~255K (Terre)
+            // Calculée dynamiquement selon l'albedo et l'intensité solaire de l'époque
+            const temp_eff_0 = (typeof window.getEffectiveTemperatureNoGreenhouse === 'function')
+                ? window.getEffectiveTemperatureNoGreenhouse()
+                : 255.0;
             // Température de surface calculée par dichotomie (équilibre radiatif avec CO2 uniquement)
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
@@ -1108,14 +1114,14 @@ function updateCO2LevelDirect(co2_fraction) {
             // Forçage total
             const forcing_total = forcing_CO2 + forcing_H2O + forcing_CH4 + forcing_Albedo;
 
-            // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)
-            // ΔT° = T° actuelle - T° référence (255K)
+            // Calculer ΔT° = différence de température par rapport à la référence sans CO2
+            // ΔT° = T° actuelle - T° référence (sans effet de serre)
             // C'est la différence directe de température, plus claire et compréhensible
-            const TEMP_REF_NO_CO2 = 255.0; // Température effective sans CO2 (référence)
+            const TEMP_REF_NO_CO2 = temp_eff_0; // Température effective sans CO2 (référence dynamique)
             delta_temp = temp_surface - TEMP_REF_NO_CO2;
 
             // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
-            const TEMP_HABITABLE_OPTIMAL = 288; // 15°C
+            const TEMP_HABITABLE_OPTIMAL = 288; // 15°C (Référence terrestre actuelle)
             const TEMP_HABITABLE_MIN = 253; // -20°C
             const TEMP_HABITABLE_MAX = 323; // 50°C
             const delta_temp_habitable = temp_surface - TEMP_HABITABLE_OPTIMAL;
@@ -1471,12 +1477,13 @@ window.updateDisplay = function updateDisplay(data) {
                 const ice_alb = (currentEpoch.ice_albedo || 0.70).toFixed(2);
 
                 const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
+                const desert_icon = LOGOS.DESERT || 'fonts/pics/desert.png';
                 albedoComponents = [
                     { emoji: LOGOS.CLOUD || '⛅', coverage: cloud_cov, albedo: cloud_alb },
                     { emoji: LOGOS.VOLCANO || '🌋', coverage: magma_cov, albedo: magma_alb },
                     { emoji: LOGOS.OCEAN || '🌊', coverage: ocean_cov, albedo: ocean_alb },
                     { emoji: LOGOS.FOREST || '🌳', coverage: forest_cov, albedo: forest_alb },
-                    { emoji: 'desert', coverage: desert_cov, albedo: desert_alb },
+                    { emoji: desert_icon, coverage: desert_cov, albedo: desert_alb },
                     { emoji: LOGOS.ICE || '🧊', coverage: ice_cov, albedo: ice_alb }
                 ];
                 console.log('[updateDisplay] ✅ albedoComponents rempli avec', albedoComponents.length, 'composantes');
@@ -1497,18 +1504,6 @@ window.updateDisplay = function updateDisplay(data) {
         } else {
             // Fallback si pas d'époque
             console.log('[updateDisplay] ⚠️ FALLBACK: albedoComponents vide, utilisation du fallback');
-            const cloud_cov = data.cloud_coverage !== undefined ? Math.round(data.cloud_coverage * 100) : 0;
-            // 🔒 CORRECTION : Utiliser ice_cov si disponible même en fallback
-            const fallback_ice_cov = (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined)
-                ? Math.round(window.h2oIceFractionFromCalculation * 100)
-                : 0;
-            console.log('[updateDisplay] 🔍 fallback_ice_cov =', fallback_ice_cov, '%');
-            console.log(`⛅ ${cloud_cov}% x0.40`);
-            console.log('🌋 0% x0.05');
-            console.log('🌊 0% x0.08');
-            console.log('🌳 0% x0.12');
-            console.log('desert 0% x0.30');
-            console.log(`🧊 ${fallback_ice_cov}% x0.70`);
         }
 
         console.log('---');
@@ -1777,6 +1772,17 @@ function getDashStyleForPattern(pattern) {
 function setEpoch(epochName) {
     if (calculationInProgress) return; // Bloquer si calcul en cours
 
+    // 🔒 Si setEpoch est appelé depuis un bouton époque (pas depuis un événement),
+    // s'assurer que maximiseData est false pour utiliser la config de l'époque
+    // (maximiseData ne sera true que si un événement l'a défini avant d'appeler setEpoch)
+    const isEventCall = (typeof window !== 'undefined' && window.maximiseData === true);
+    if (!isEventCall) {
+        // Réinitialiser maximiseData si ce n'est pas un appel depuis un événement
+        if (typeof window !== 'undefined') {
+            window.maximiseData = false;
+        }
+    }
+
     // Gérer la sélection unique (boutons radio)
     const allEpochButtons = document.querySelectorAll('.epoch-btn');
     allEpochButtons.forEach(btn => {
@@ -1955,14 +1961,42 @@ function setEpoch(epochName) {
     }
 
     // 1. CO2
-    const co2_fraction = epoch.co2_ppm * 1e-6;
-    plotData.co2_ppm = epoch.co2_ppm;
+    // 🔒 Convertir les quantités (kg) en ppm pour compatibilité avec le code existant
+    // Récupérer la masse atmosphérique totale de l'époque (ou utiliser la valeur moderne par défaut)
+    const total_atmosphere_mass_kg = epoch.total_atmosphere_mass_kg || (typeof window !== 'undefined' && window.EARTH_ATMOSPHERE_MASS_KG) || 5.15e18;
+    
+    // Convertir co2_kg en fraction molaire puis en ppm
+    let defaultCO2_ppm = 0;
+    if (!isCorpsNoir && epoch.co2_kg !== undefined && epoch.co2_kg > 0) {
+        if (typeof window !== 'undefined' && typeof window.co2KgToFraction === 'function') {
+            const co2_fraction = window.co2KgToFraction(epoch.co2_kg, total_atmosphere_mass_kg);
+            defaultCO2_ppm = co2_fraction * 1e6; // Convertir fraction en ppm
+        } else {
+            // Fallback : approximation simple
+            const MOLAR_MASS_AIR = epoch.molar_mass_air || 0.029;
+            const moles_CO2 = epoch.co2_kg / 0.044; // MOLAR_MASS_CO2
+            const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
+            defaultCO2_ppm = (moles_CO2 / moles_total) * 1e6;
+        }
+    }
+    
+    // 🔒 Si maximiseData (appel depuis un événement), prendre le max entre la valeur sauvegardée et la valeur par défaut
+    // Sinon (appel depuis un bouton époque), utiliser la config de l'époque
+    if (typeof window !== 'undefined' && window.maximiseData) {
+        const savedCO2 = (typeof window.savedCO2 !== 'undefined') ? window.savedCO2 : 0;
+        plotData.co2_ppm = Math.max(savedCO2, defaultCO2_ppm);
+        console.log(`[setEpoch] maximiseData CO2: sauvegardé=${savedCO2.toFixed(1)}ppm, défaut=${defaultCO2_ppm.toFixed(1)}ppm, max=${plotData.co2_ppm.toFixed(1)}ppm`);
+    } else {
+        // Comportement normal : utiliser la config de l'époque
+        plotData.co2_ppm = defaultCO2_ppm;
+    }
+    const co2_fraction = plotData.co2_ppm * 1e-6;
     currentState = 3; // Utiliser state 3 comme base pour les valeurs personnalisées
 
     // Mettre à jour le bouton CO2
     const btnCo2 = document.getElementById('btn-co2');
     if (btnCo2) {
-        if (isCorpsNoir || epoch.co2_ppm === 0) {
+        if (isCorpsNoir || defaultCO2_ppm === 0) {
             // Forcer en off/gris si 0% ou Corps noir
             btnCo2.classList.remove('checked');
             if (isCorpsNoir) {
@@ -1980,33 +2014,39 @@ function setEpoch(epochName) {
     }
 
     // 2. H2O
+    // 🔒 L'état H2O est déterminé par la présence d'eau (h2o_kg > 0) et l'état du bouton, pas par la config
     if (typeof window.waterVaporEnabled !== 'undefined') {
-        window.waterVaporEnabled = !isCorpsNoir && (epoch.h2o_enabled !== false); // true par défaut si non spécifié
+        // H2O peut être activé si : pas Corps noir ET il y a de l'eau (h2o_kg > 0)
+        const hasWater = !isCorpsNoir && epoch.h2o_kg > 0;
+        // Si l'époque a de l'eau, activer H2O par défaut (l'utilisateur peut désactiver via le bouton)
+        window.waterVaporEnabled = hasWater;
         
-        // 🔒 Si on vient de big_impact, prendre le max entre l'eau avant et les valeurs par défaut de l'époque
-        const h2o_default = epoch.h2o_vapor_percent || 0;
-        const h2o_meteorites_before = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
-        const h2o_base_before = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
-        const h2o_total_before = h2o_base_before + h2o_meteorites_before;
+        // 🔒 Si maximiseData (appel depuis un événement), prendre le max entre l'eau sauvegardée et les valeurs par défaut de l'époque
+        // Sinon (appel depuis un bouton époque), utiliser la config de l'époque
+        // Note: h2o_kg sera utilisé via calculations_h2o.js pour calculer les 3 états (vapeur/liquide/glace)
+        // Pour l'instant, on utilise h2o_vapor_percent comme fallback si h2o_kg n'est pas disponible
+        const h2o_default = epoch.h2o_vapor_percent || 0; // DEPRECATED: Sera remplacé par calcul depuis h2o_kg
         
-        if (typeof window !== 'undefined' && window.fromBigImpact && previousEpoch === 'Corps noir') {
-            // Prendre le max entre l'eau totale avant et la valeur par défaut de l'époque
-            const h2o_total_max = Math.max(h2o_total_before, h2o_default);
+        if (typeof window !== 'undefined' && window.maximiseData) {
+            // Prendre le max entre l'eau totale sauvegardée et la valeur par défaut de l'époque
+            const savedH2O = (typeof window.savedH2O !== 'undefined') ? window.savedH2O : 0;
+            const h2o_total_max = Math.max(savedH2O, h2o_default);
             
             // Répartir : base = valeur par défaut, météorites = le reste (max 100% total)
             window.h2oVaporPercent = h2o_default;
             window.h2oTotalFromMeteorites = Math.max(0, Math.min(100 - h2o_default, h2o_total_max - h2o_default));
             
-            console.log(`[setEpoch] big_impact: eau avant=${h2o_total_before.toFixed(1)}%, défaut=${h2o_default.toFixed(1)}%, max=${h2o_total_max.toFixed(1)}%`);
+            console.log(`[setEpoch] maximiseData H2O: sauvegardé=${savedH2O.toFixed(1)}%, défaut=${h2o_default.toFixed(1)}%, max=${h2o_total_max.toFixed(1)}%`);
             console.log(`[setEpoch] Résultat: base=${window.h2oVaporPercent.toFixed(1)}%, météorites=${window.h2oTotalFromMeteorites.toFixed(1)}%, total=${(window.h2oVaporPercent + window.h2oTotalFromMeteorites).toFixed(1)}%`);
             
-            // Réinitialiser le flag
-            window.fromBigImpact = false;
+            // Réinitialiser le flag après utilisation
+            window.maximiseData = false;
         } else {
             // Comportement normal : utiliser les valeurs par défaut de l'époque
             window.h2oVaporPercent = h2o_default;
             
             // 🔒 Ajuster l'eau des météorites si on vient de "Corps noir" pour ne pas dépasser 100% au total
+            // (seulement si on n'utilise pas maximiseData, donc si on clique directement sur un bouton époque)
             if (previousEpoch === 'Corps noir' && typeof window.h2oTotalFromMeteorites !== 'undefined' && window.h2oTotalFromMeteorites > 0) {
                 const h2o_base = window.h2oVaporPercent || 0;
                 const h2o_meteorites = window.h2oTotalFromMeteorites || 0;
@@ -2019,6 +2059,9 @@ function setEpoch(epochName) {
                 } else {
                     console.log(`[setEpoch] Eau conservée: base=${h2o_base.toFixed(1)}%, météorites=${h2o_meteorites.toFixed(1)}%, total=${h2o_total.toFixed(1)}%`);
                 }
+            } else if (previousEpoch !== 'Corps noir') {
+                // Si on change d'époque normale (pas depuis Corps noir), réinitialiser l'eau des météorites
+                window.h2oTotalFromMeteorites = 0;
             }
         }
         
@@ -2028,13 +2071,13 @@ function setEpoch(epochName) {
     // Mettre à jour l'affichage H2O
     const h2oStatusElement = document.getElementById('h2o-status-synthese');
     if (h2oStatusElement) {
-        h2oStatusElement.textContent = (!isCorpsNoir && epoch.h2o_enabled !== false) ? 'Activé' : 'Désactivé';
+        h2oStatusElement.textContent = (!isCorpsNoir && epoch.h2o_kg > 0 && window.waterVaporEnabled) ? 'Activé' : 'Désactivé';
     }
 
     // Mettre à jour le bouton H2O
     const btnH2O = document.getElementById('btn-h2o');
     if (btnH2O) {
-        if (isCorpsNoir || epoch.h2o_enabled === false) {
+        if (isCorpsNoir || epoch.h2o_kg === 0) {
             // Forcer en off/gris si désactivé ou Corps noir
             btnH2O.classList.remove('checked');
             if (isCorpsNoir) {
@@ -2047,13 +2090,18 @@ function setEpoch(epochName) {
         } else {
             btnH2O.classList.remove('disabled');
             btnH2O.disabled = false;
-            btnH2O.classList.add('checked');
+            // Synchroniser le bouton avec window.waterVaporEnabled (état déterminé par la présence d'eau)
+            if (window.waterVaporEnabled) {
+                btnH2O.classList.add('checked');
+            } else {
+                btnH2O.classList.remove('checked');
+            }
         }
     }
 
     const btn = document.getElementById('btn-cloud');
     if (btn) {
-        if (!isCorpsNoir && epoch.h2o_enabled !== false) {
+        if (!isCorpsNoir && epoch.h2o_kg > 0) {
             btn.style.opacity = '1';
             btn.style.border = '2px solid #4CAF50';
             btn.title = 'Vapeur d\'eau activée - Cliquer pour désactiver';
@@ -2065,18 +2113,34 @@ function setEpoch(epochName) {
     }
 
     // 3. CH4 (méthane)
-    if (epoch.ch4_ppm !== undefined) {
-        plotData.ch4_ppm = isCorpsNoir ? 0 : epoch.ch4_ppm;
-        // Activer CH4 si la concentration est > 0
-        if (typeof window.methaneEnabled !== 'undefined') {
-            window.methaneEnabled = !isCorpsNoir && (epoch.ch4_ppm > 0);
+    // 🔒 Convertir ch4_kg en ppm
+    let defaultCH4_ppm = 0;
+    if (!isCorpsNoir && epoch.ch4_kg !== undefined && epoch.ch4_kg > 0) {
+        if (typeof window !== 'undefined' && typeof window.ch4KgToFraction === 'function') {
+            const ch4_fraction = window.ch4KgToFraction(epoch.ch4_kg, total_atmosphere_mass_kg);
+            defaultCH4_ppm = ch4_fraction * 1e6; // Convertir fraction en ppm
+        } else {
+            // Fallback : approximation simple
+            const MOLAR_MASS_AIR = epoch.molar_mass_air || 0.029;
+            const moles_CH4 = epoch.ch4_kg / 0.016; // MOLAR_MASS_CH4
+            const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
+            defaultCH4_ppm = (moles_CH4 / moles_total) * 1e6;
         }
+    }
+    
+    // 🔒 Si maximiseData (appel depuis un événement), prendre le max entre la valeur sauvegardée et la valeur par défaut
+    // Sinon (appel depuis un bouton époque), utiliser la config de l'époque
+    if (typeof window !== 'undefined' && window.maximiseData) {
+        const savedCH4 = (typeof window.savedCH4 !== 'undefined') ? window.savedCH4 : 0;
+        plotData.ch4_ppm = Math.max(savedCH4, defaultCH4_ppm);
+        console.log(`[setEpoch] maximiseData CH4: sauvegardé=${savedCH4.toFixed(1)}ppm, défaut=${defaultCH4_ppm.toFixed(1)}ppm, max=${plotData.ch4_ppm.toFixed(1)}ppm`);
     } else {
-        // Par défaut, désactiver CH4 si non spécifié
-        plotData.ch4_ppm = 0;
-        if (typeof window.methaneEnabled !== 'undefined') {
-            window.methaneEnabled = false;
-        }
+        // Comportement normal : utiliser la config de l'époque
+        plotData.ch4_ppm = defaultCH4_ppm;
+    }
+    // Activer CH4 si la concentration est > 0
+    if (typeof window.methaneEnabled !== 'undefined') {
+        window.methaneEnabled = !isCorpsNoir && (defaultCH4_ppm > 0);
     }
 
     // Mettre à jour le bouton CH4
@@ -2261,9 +2325,23 @@ window.addEventListener('DOMContentLoaded', () => {
             bigImpactBtn.className = 'timeline-event-logo';
             // 🔒 Le tooltip sera ajouté automatiquement depuis l'attribut alt
             bigImpactBtn.addEventListener('click', () => {
-                // 🔒 Flag pour indiquer qu'on vient de big_impact (pas du bouton Hadéen)
+                // 🔒 Sauvegarder les valeurs actuelles avant le changement d'époque
                 if (typeof window !== 'undefined') {
-                    window.fromBigImpact = true;
+                    // Sauvegarder eau (base + météorites)
+                    const h2o_base = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
+                    const h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+                    window.savedH2O = h2o_base + h2o_meteorites;
+                    
+                    // Sauvegarder CO2
+                    window.savedCO2 = (typeof plotData !== 'undefined' && plotData.co2_ppm !== undefined) ? plotData.co2_ppm : 0;
+                    
+                    // Sauvegarder CH4
+                    window.savedCH4 = (typeof plotData !== 'undefined' && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
+                    
+                    console.log(`[big_impact] Sauvegarde: H2O=${window.savedH2O.toFixed(1)}%, CO2=${window.savedCO2.toFixed(1)}ppm, CH4=${window.savedCH4.toFixed(1)}ppm`);
+                    
+                    // Flag pour maximiser les données
+                    window.maximiseData = true;
                 }
                 // Passer à l'époque suivante (Hadéen)
                 if (typeof window.setEpoch === 'function') {
@@ -2271,6 +2349,57 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
             });
             eventsLogos.appendChild(bigImpactBtn);
+        } else if (currentEpochName === 'Hadéen') {
+            // Actions pour l'Hadéen : évolution temporelle vers l'Archéen
+            // Après l'impact, la Terre se refroidit progressivement sur 200-500 Ma
+            
+            // Action 1 : Avancer dans le temps (refroidissement progressif)
+            const timeAdvanceBtn = document.createElement('button');
+            timeAdvanceBtn.textContent = '⏩ +50 Ma';
+            timeAdvanceBtn.className = 'timeline-event-button';
+            timeAdvanceBtn.alt = 'Avancer de 50 Ma - Refroidissement progressif';
+            timeAdvanceBtn.addEventListener('click', () => {
+                // Avancer de 50 Ma (5000 frames de 10 ans)
+                for (let i = 0; i < 5000; i++) {
+                    if (typeof window.incrementTimeline === 'function') {
+                        window.incrementTimeline();
+                    }
+                }
+                // Recalculer avec les nouvelles conditions (refroidissement, apport d'eau possible)
+                if (typeof window.updateCO2LevelDirect === 'function' && plotData.co2_ppm !== undefined) {
+                    const current_co2_fraction = plotData.co2_ppm * 1e-6;
+                    window.updateCO2LevelDirect(current_co2_fraction);
+                }
+            });
+            eventsLogos.appendChild(timeAdvanceBtn);
+            
+            // Action 2 : Apport d'eau supplémentaire (météorites continuent de tomber)
+            const waterAdditionBtn = document.createElement('img');
+            waterAdditionBtn.src = 'fonts/pics/ice_meteorite.png';
+            waterAdditionBtn.alt = 'Apport d\'eau - Météorites continuent de tomber';
+            waterAdditionBtn.className = 'timeline-event-logo';
+            waterAdditionBtn.addEventListener('click', () => {
+                // Ajouter de l'eau totale (en kg, pas en %)
+                // TODO: Convertir h2oTotalFromMeteorites en kg et l'ajouter à epoch.h2o_kg
+                // Pour l'instant, on garde le système en % pour compatibilité
+                const currentH2O = (typeof window.h2oTotalFromMeteorites !== 'undefined' && window.h2oTotalFromMeteorites !== null) ? window.h2oTotalFromMeteorites : 0;
+                const newH2O = Math.min(100, currentH2O + 2); // +2% d'eau totale par apport
+                window.h2oTotalFromMeteorites = newH2O;
+                
+                console.log(`[Hadéen - Apport eau] Eau totale: ${currentH2O.toFixed(1)}% → ${newH2O.toFixed(1)}%`);
+                
+                // Forcer le recalcul
+                if (typeof window !== 'undefined') {
+                    window.h2oIceFractionFromCalculation = undefined;
+                }
+                
+                // Recalculer
+                if (typeof window.updateCO2LevelDirect === 'function' && plotData.co2_ppm !== undefined) {
+                    const current_co2_fraction = plotData.co2_ppm * 1e-6;
+                    window.updateCO2LevelDirect(current_co2_fraction);
+                }
+            });
+            eventsLogos.appendChild(waterAdditionBtn);
         }
         // Ajouter d'autres actions pour d'autres époques si nécessaire
     };

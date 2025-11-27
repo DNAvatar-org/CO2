@@ -9,6 +9,35 @@ const CRUST_MOLTEN_END = 3.5e9;    // Fin : croûte solidifiée (3.5 Ga)
 const CRUST_MOLTEN_FACTOR_MAX = 100; // Facteur maximum (x100) au tout début
 const CRUST_MOLTEN_FACTOR_MIN = 10;  // Facteur minimum (x10) à la fin de la période
 
+/**
+ * Calcule le flux géothermique d'une époque
+ * Priorité : geothermal_flux > core_power_watts > (core_temperature * factor)
+ */
+function computeFluxFromEpoch(epoch) {
+    if (!epoch) return 0;
+    
+    // 1. Valeur explicite (ex: Hadéen avec flux forcé)
+    if (typeof epoch.geothermal_flux === 'number') {
+        return epoch.geothermal_flux;
+    }
+    
+    // 2. Calcul depuis la puissance totale (Watts) - NOUVELLE MÉTHODE
+    if (typeof epoch.core_power_watts === 'number') {
+        // Surface terrestre
+        const radius = epoch.planet_radius || 6371000;
+        const surface = 4 * Math.PI * Math.pow(radius, 2);
+        return epoch.core_power_watts / surface;
+    }
+    
+    // 3. Calcul depuis la température du noyau (Legacy)
+    if (typeof epoch.core_temperature === 'number' && typeof epoch.geothermal_diffusion_factor === 'number') {
+        const CONVERSION_CONSTANT = 0.00457;
+        return epoch.core_temperature * epoch.geothermal_diffusion_factor * CONVERSION_CONSTANT;
+    }
+    
+    return 0;
+}
+
 // Fonction pour obtenir une période géologique par son nom depuis configOrganigramme
 function getGeologicalPeriodByName(periodName) {
     if (typeof window.configOrganigramme === 'undefined' || !window.configOrganigramme.timeline) {
@@ -22,10 +51,13 @@ function getGeologicalPeriodByName(periodName) {
     );
 
     if (epoch) {
-        // Ajouter un alias pour compatibilité avec l'ancien code qui attendait core_temperature_k
+        // Calculer le flux géothermique unifié
+        const flux = computeFluxFromEpoch(epoch);
+        
         return {
             ...epoch,
-            core_temperature_k: epoch.core_temperature
+            core_temperature_k: epoch.core_temperature, // Legacy compat
+            geothermal_flux: flux // Injecter le flux calculé
         };
     }
     return null;
@@ -40,39 +72,34 @@ function getGeologicalPeriod(yearsAgo) {
     // Filtrer pour ne garder que les époques
     const epochs = window.configOrganigramme.timeline.filter(item => item.type === 'epoch');
 
-    // Parcourir les périodes (supposées ordonnées chronologiquement ou inversement ?)
-    // Dans configOrganigramme, elles sont de la plus ancienne à la plus récente (Corps noir -> Aujourd'hui)
-    // Mais startYears/endYears sont définis (ex: Hadéen start=4.5e9, end=4.0e9)
-
-    // On cherche la période où yearsAgo est entre startYears et endYears
-    // Attention : endYears peut être -1 pour "Aujourd'hui"
-
+    // Parcourir les périodes
+    let selectedEpoch = null;
+    
     for (const epoch of epochs) {
-        // Vérifier si startYears et endYears sont définis
         if (typeof epoch.startYears === 'number' && typeof epoch.endYears === 'number') {
-            // Cas normal : startYears > endYears (passé vers présent)
             if (yearsAgo <= epoch.startYears && yearsAgo > epoch.endYears) {
-                return {
-                    ...epoch,
-                    core_temperature_k: epoch.core_temperature
-                };
+                selectedEpoch = epoch;
+                break;
             }
-            // Cas "Aujourd'hui" : endYears = -1, startYears = 0
-            // Si yearsAgo est très petit (futur ou présent)
             if (epoch.endYears === -1 && yearsAgo <= epoch.startYears && yearsAgo >= 0) {
-                return {
-                    ...epoch,
-                    core_temperature_k: epoch.core_temperature
-                };
+                selectedEpoch = epoch;
+                break;
             }
         }
     }
 
     // Si non trouvé, retourner la dernière époque (Aujourd'hui) par défaut
-    const currentEpoch = epochs[epochs.length - 1];
+    if (!selectedEpoch) {
+        selectedEpoch = epochs[epochs.length - 1];
+    }
+    
+    // Hydrater avec le flux calculé
+    const flux = computeFluxFromEpoch(selectedEpoch);
+    
     return {
-        ...currentEpoch,
-        core_temperature_k: currentEpoch.core_temperature
+        ...selectedEpoch,
+        core_temperature_k: selectedEpoch.core_temperature,
+        geothermal_flux: flux
     };
 }
 
@@ -121,10 +148,22 @@ function getGeologicalEra(years) {
     };
 }
 
+/**
+ * Calcule le flux géothermique en surface à partir de la température du noyau et d'un facteur de diffusion
+ * DEPRECATED: Utiliser computeFluxFromEpoch à la place
+ * @returns {number} Flux géothermique en W/m²
+ */
+function calculateGeothermalFlux(core_temperature_K, geothermal_diffusion_factor) {
+    // Legacy support
+    const CONVERSION_CONSTANT = 0.00457;
+    return core_temperature_K * geothermal_diffusion_factor * CONVERSION_CONSTANT;
+}
+
 // Exposer globalement
 if (typeof window !== 'undefined') {
     window.getGeologicalPeriodByName = getGeologicalPeriodByName;
     window.getGeologicalPeriod = getGeologicalPeriod;
     window.getMoltenCrustFactor = getMoltenCrustFactor;
     window.getGeologicalEra = getGeologicalEra;
+    window.calculateGeothermalFlux = calculateGeothermalFlux;
 }

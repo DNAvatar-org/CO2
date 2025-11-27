@@ -30,6 +30,58 @@ function addCustomTooltip(element, text) {
     }
 }
 
+// Fonction pour mettre à jour le tooltip d'un bouton selon son état
+function updateButtonTooltip(cell, circleBg) {
+    if (!cell || !circleBg) return;
+    
+    const cellId = cell.id;
+    let nodeId = null;
+    let baseName = null;
+    
+    // Déterminer le nodeId et le nom de base
+    if (cellId === 'cell-co2') {
+        nodeId = 'co2';
+        baseName = 'CO2';
+    } else if (cellId === 'cell-methane') {
+        nodeId = 'methane';
+        baseName = 'CH4';
+    } else if (cellId === 'cell-h2o') {
+        nodeId = 'h2o';
+        baseName = 'H2O';
+    } else if (cellId === 'cell-albedo-btn') {
+        nodeId = 'albedo-btn';
+        baseName = 'Albedo';
+    }
+    
+    if (!nodeId || !baseName) return;
+    
+    // Déterminer l'état actuel
+    const isChecked = cell.classList.contains('checked');
+    const stateText = isChecked ? 'on' : 'off';
+    // Format: "on/off<br>CO2" (saut de ligne HTML pour séparer l'état du nom)
+    const tooltipText = `${stateText}/${isChecked ? 'off' : 'on'}<br>${baseName}`;
+    
+    // Mettre à jour le tooltip via l'attribut alt ou data-tooltip
+    if (circleBg.hasAttribute('alt')) {
+        circleBg.setAttribute('alt', tooltipText);
+    } else if (circleBg.hasAttribute('data-tooltip')) {
+        circleBg.setAttribute('data-tooltip', tooltipText);
+    } else {
+        // Ajouter l'attribut alt pour que tooltips.js le détecte
+        circleBg.setAttribute('alt', tooltipText);
+    }
+    
+    // Si tooltips.js est chargé, forcer la mise à jour
+    if (typeof window !== 'undefined' && typeof window.addTooltip === 'function') {
+        // Retirer l'ancien tooltip et en ajouter un nouveau
+        const existingTooltip = circleBg.querySelector('.flux-custom-tooltip');
+        if (existingTooltip) {
+            existingTooltip.remove();
+        }
+        window.addTooltip(circleBg, tooltipText);
+    }
+}
+
 // Fonction pour créer un rectangle avec des facteurs
 function createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage = null, strokeSize = 4) {
     // Le rectangle est positionné dans la zone centrale de la grille (comme le cercle)
@@ -144,11 +196,13 @@ function shouldLabelBeGray(text, nodeId, cell = null) {
         }
     }
 
-    // Vérifier si le texte contient W/m², W/m2 ou %
-    const hasWattPerM2 = textStr.includes('W/m²') || textStr.includes('W/m2');
-    const hasPercent = textStr.includes('%');
+    // Vérifier si le texte contient une unité connue (W/m², %, ppm, W, K)
+    // Note: " W" avec espace pour éviter de matcher des mots contenant W
+    const hasUnit = textStr.includes('W/m²') || textStr.includes('W/m2') || 
+                   textStr.includes('%') || textStr.includes('ppm') || 
+                   textStr.includes(' W') || textStr.includes(' K');
 
-    if (!hasWattPerM2 && !hasPercent) return false;
+    if (!hasUnit) return false;
 
     // Extraire la valeur numérique (peut être "0", "0.00", "0.0", etc.)
     // Supprimer les balises HTML et extraire les nombres
@@ -201,16 +255,23 @@ function updateLabelClasses(label, nodeId = null) {
     const text = label.innerHTML || label.textContent || '';
 
     // Retirer les classes existantes
-    label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value');
+    label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value', 'percent-label', 'ppm-label');
 
-    // Si le texte contient " W " ou " K " (avec espaces), appliquer la classe rouge
-    if (text && (text.includes(' W ') || text.includes(' K '))) {
-        label.classList.add('watt-or-kelvin');
+    // Vérifier si la valeur doit être grise (0 ou négligeable)
+    if (shouldLabelBeGray(text)) {
+        label.classList.add('zero-value');
+        return; // Priorité au gris
     }
+
     // Sinon, si le texte contient W/m² ou W/m2, appliquer la classe orange
-    else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+    // PRIORITÉ : Vérifier d'abord W/m²
+    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
         // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
         label.classList.add('watt-per-m2');
+    }
+    // Si le texte contient " W" ou " K" (avec espace avant), appliquer la classe rouge
+    else if (text && (text.includes(' W') || text.includes(' K'))) {
+        label.classList.add('watt-or-kelvin');
     }
     // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
 }
@@ -433,6 +494,9 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 if (typeof window.updateFluxLabels === 'function') {
                     window.updateFluxLabels(window.plotData || {});
                 }
+                
+                // Mettre à jour le tooltip du bouton
+                updateButtonTooltip(parentCell, circleBg);
             } else {
                 // Ce n'est pas un bouton : copier le logo (comportement original)
                 navigator.clipboard.writeText(logo).then(() => {
@@ -450,7 +514,30 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
 
         // Ajouter tooltip personnalisé sur le cercle/logo si présent (au lieu de la cellule entière)
         if (tooltip) {
-            addCustomTooltip(circleBg, tooltip);
+            // Pour les boutons, afficher "on/off" + nom selon l'état
+            let tooltipText = tooltip;
+            if (nodeId && (nodeId === 'co2' || nodeId === 'methane' || nodeId === 'h2o' || nodeId === 'albedo-btn')) {
+                // Déterminer l'état initial du bouton
+                const isChecked = cell.classList.contains('checked');
+                const stateText = isChecked ? 'on' : 'off';
+                // Mapper les noms pour l'affichage
+                let displayName = tooltip;
+                if (nodeId === 'co2') displayName = 'CO2';
+                else if (nodeId === 'methane') displayName = 'CH4';
+                else if (nodeId === 'h2o') displayName = 'H2O';
+                else if (nodeId === 'albedo-btn') displayName = 'Albedo';
+                // Format: "on/off<br>CO2" (saut de ligne HTML)
+                tooltipText = `${stateText}/${isChecked ? 'off' : 'on'}<br>${displayName}`;
+            }
+            addCustomTooltip(circleBg, tooltipText);
+            
+            // Pour les boutons, mettre à jour le tooltip quand l'état change
+            if (nodeId && (nodeId === 'co2' || nodeId === 'methane' || nodeId === 'h2o' || nodeId === 'albedo-btn')) {
+                // Stocker une référence pour mettre à jour le tooltip
+                circleBg._tooltipElement = circleBg;
+                circleBg._tooltipNodeId = nodeId;
+                circleBg._tooltipBaseName = tooltip;
+            }
         }
 
         cell.appendChild(circleBg);
@@ -500,14 +587,16 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                             label.classList.add('buttonData');
                         }
                     }
-                    // Si le texte contient " W " ou " K " (avec espaces), ajouter la classe rouge
-                    if (text && (text.includes(' W ') || text.includes(' K '))) {
-                        label.classList.add('watt-or-kelvin');
-                    }
                     // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
-                    else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+                    // PRIORITÉ : Vérifier d'abord W/m² pour ne pas qu'il soit capturé comme " W"
+                    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
                         // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
                         label.classList.add('watt-per-m2');
+                    }
+                    // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
+                    // Cela capture aussi "×10... W"
+                    else if (text && (text.includes(' W') || text.includes(' K'))) {
+                        label.classList.add('watt-or-kelvin');
                     }
                     // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -537,14 +626,16 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                             label.classList.add('buttonData');
                         }
                     }
-                    // Si le texte contient " W " ou " K " (avec espaces), ajouter la classe rouge
-                    if (text && (text.includes(' W ') || text.includes(' K '))) {
-                        label.classList.add('watt-or-kelvin');
-                    }
                     // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
-                    else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+                    // PRIORITÉ : Vérifier d'abord W/m² pour ne pas qu'il soit capturé comme " W"
+                    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
                         // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
                         label.classList.add('watt-per-m2');
+                    }
+                    // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
+                    // Cela capture aussi "×10... W"
+                    else if (text && (text.includes(' W') || text.includes(' K'))) {
+                        label.classList.add('watt-or-kelvin');
                     }
                     // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -579,14 +670,16 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                             label.classList.add('buttonData');
                         }
                     }
-                    // Si le texte contient " W " ou " K " (avec espaces), ajouter la classe rouge
-                    if (text && (text.includes(' W ') || text.includes(' K '))) {
-                        label.classList.add('watt-or-kelvin');
-                    }
                     // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
-                    else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+                    // PRIORITÉ : Vérifier d'abord W/m² pour ne pas qu'il soit capturé comme " W"
+                    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
                         // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
                         label.classList.add('watt-per-m2');
+                    }
+                    // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
+                    // Cela capture aussi "×10... W"
+                    else if (text && (text.includes(' W') || text.includes(' K'))) {
+                        label.classList.add('watt-or-kelvin');
                     }
                     // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -625,14 +718,16 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                             label.classList.add('buttonData');
                         }
                     }
-                    // Si le texte contient " W " ou " K " (avec espaces), ajouter la classe rouge
-                    if (text && (text.includes(' W ') || text.includes(' K '))) {
-                        label.classList.add('watt-or-kelvin');
-                    }
                     // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
-                    else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+                    // PRIORITÉ : Vérifier d'abord W/m² pour ne pas qu'il soit capturé comme " W"
+                    if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
                         // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
                         label.classList.add('watt-per-m2');
+                    }
+                    // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
+                    // Cela capture aussi "×10... W"
+                    else if (text && (text.includes(' W') || text.includes(' K'))) {
+                        label.classList.add('watt-or-kelvin');
                     }
                     // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
                     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -708,18 +803,19 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
                 label.classList.add('zero-value');
             }
         }
-        // Si le texte contient " W " ou " K " (avec espaces), ajouter la classe rouge
-        if (text && (text.includes(' W ') || text.includes(' K '))) {
-            label.classList.add('watt-or-kelvin');
-        }
         // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0)
-        else if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
+        // PRIORITÉ : Vérifier d'abord W/m²
+        if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
             if (shouldLabelBeGray(text, null, null)) {
                 // Valeur à 0 : ajouter zero-value pour forcer le gris
                 label.classList.add('zero-value');
             } else {
                 label.classList.add('watt-per-m2');
             }
+        }
+        // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
+        else if (text && (text.includes(' W') || text.includes(' K'))) {
+            label.classList.add('watt-or-kelvin');
         }
         // Si le texte contient % et valeur 0, s'assurer qu'il est gris
         if (text && text.includes('%') && shouldLabelBeGray(text, null, null)) {
@@ -2311,8 +2407,11 @@ window.updateFluxLabels = function (data) {
         }
 
         // Nuages : utiliser la valeur calculée (déjà à 0 si H2O désactivé ou très froid)
-        cloud_percent = Math.round(cloud_coverage_num * 100);
+        // cloud_percent = Math.round(cloud_coverage_num * 100); // Déplacé après le if/else
     }
+    
+    // 🔒 CORRECTION : Calculer cloud_percent dans tous les cas (sauf si forcé à 0 par corps noir)
+    cloud_percent = Math.round(cloud_coverage_num * 100);
     
     // 🔒 CORRECTION : Si on a utilisé h2oIceFractionFromCalculation, ne pas écraser cloud_percent en mode corps noir
     if (isCorpsNoir && (typeof window === 'undefined' || window.h2oIceFractionFromCalculation === undefined)) {
@@ -2359,7 +2458,10 @@ window.updateFluxLabels = function (data) {
     const forcing_Albedo = (!albedo_button_checked) ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
         ? window.calculateAlbedoForcing(albedo_num)
         : 0);
-    const forcing_total = forcing_CO2 + forcing_CH4 + forcing_H2O + forcing_Albedo;
+    
+    // 🔒 CORRECTION : Le forçage total affiché dans le diagramme (effet de serre) ne doit PAS inclure l'albédo
+    // L'albédo agit en amont (réflexion directe). Le forçage "Total" ici est celui de l'effet de serre (Back Radiation).
+    const forcing_total = forcing_CO2 + forcing_CH4 + forcing_H2O; // + forcing_Albedo (RETIRÉ)
 
     // Fonction helper pour mettre à jour un label par dataId
     const updateLabel = (dataId, value, format = 'auto') => {
@@ -2386,11 +2488,25 @@ window.updateFluxLabels = function (data) {
             } else if (typeof value === 'number') {
                 // C'est un nombre, formater selon le format demandé
                 if (format === 'watt') {
-                    formattedValue = value.toFixed(2) + '<br>W/m²';
+                    // Formatage intelligent pour les grands nombres (MW, kW)
+                    if (Math.abs(value) >= 1000000) {
+                        formattedValue = (value / 1000000).toFixed(2) + '<br>MW/m²';
+                    } else if (Math.abs(value) >= 1000) {
+                        formattedValue = (value / 1000).toFixed(2) + '<br>kW/m²';
+                    } else {
+                        formattedValue = value.toFixed(2) + '<br>W/m²';
+                    }
                 } else if (format === 'percent') {
                     formattedValue = value.toFixed(0) + '%';
                 } else if (format === 'watt_simple') {
-                    formattedValue = value.toFixed(2) + ' W/m²';
+                    // Formatage intelligent pour les grands nombres (MW, kW) - simple (sans <br>)
+                    if (Math.abs(value) >= 1000000) {
+                        formattedValue = (value / 1000000).toFixed(2) + ' MW/m²';
+                    } else if (Math.abs(value) >= 1000) {
+                        formattedValue = (value / 1000).toFixed(2) + ' kW/m²';
+                    } else {
+                        formattedValue = value.toFixed(2) + ' W/m²';
+                    }
                 } else if (format === 'percent_simple') {
                     formattedValue = value.toFixed(0) + '%';
                 } else if (format === 'ppm' || format === 'ppm_simple') {
@@ -2445,28 +2561,49 @@ window.updateFluxLabels = function (data) {
 
             // Appliquer les couleurs selon l'algorithme existant : W/m² en orange, % en bleu, le reste en défaut (vert)
             if (shouldApplyColors) {
-                // D'abord vérifier " W " ou " K " (rouge)
-                if (formattedValue.includes(' W ') || formattedValue.includes(' K ')) {
-                    label.classList.add('watt-or-kelvin');
+                // D'abord vérifier " W " ou " K " (rouge) - inclut le cas notation scientifique "×10... W"
+                // Attention : " W/m²" contient " W" mais ne doit pas être rouge. On vérifie d'abord W/m².
+                
+                // 1. W/m² (orange) - Prioritaire pour éviter confusion avec W
+                if (formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
+                    if (shouldLabelBeGray(formattedValue)) {
+                        label.classList.add('zero-value');
+                    } else {
+                        label.classList.add('watt-per-m2');
+                    }
                 }
-                // Sinon, vérifier W/m² (orange)
-                else if (formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
-                    label.classList.add('watt-per-m2');
+                // 2. W ou K (rouge) - Y compris avec notation scientifique
+                else if (formattedValue.includes(' W') || formattedValue.includes(' K')) {
+                    if (shouldLabelBeGray(formattedValue)) {
+                        label.classList.add('zero-value');
+                    } else {
+                        label.classList.add('watt-or-kelvin');
+                    }
                 }
-                // Sinon, vérifier % (bleu clair)
+                // 3. Sinon, vérifier % (bleu clair)
                 else if (formattedValue.includes('%')) {
-                    label.classList.add('percent-label');
+                    if (shouldLabelBeGray(formattedValue)) {
+                        label.classList.add('zero-value');
+                    } else {
+                        label.classList.add('percent-label');
+                    }
                 }
                 // Sinon, vérifier ppm (bleu clair, comme les %)
                 else if (formattedValue.includes('ppm')) {
-                    label.classList.add('ppm-label');
+                    if (shouldLabelBeGray(formattedValue)) {
+                        label.classList.add('zero-value');
+                    } else {
+                        label.classList.add('ppm-label');
+                    }
                 }
                 // Sinon, couleur par défaut (vert pour CO2)
                 else if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
                     label.classList.add('co2-label');
                 }
+            } else {
+                // Bouton inactif : appliquer le style "zero-value" (gris)
+                label.classList.add('zero-value');
             }
-            // Si label de bouton inactif, ne pas appliquer de couleur spéciale (couleur par défaut)
         });
     };
 
@@ -2611,25 +2748,42 @@ window.updateFluxLabels = function (data) {
 
     updateLabel('core_flux_wm', geothermie_value, 'watt');
 
-    // Mettre à jour la température du noyau selon l'époque
-    let coreTemperatureText = '';
+    // Mettre à jour la puissance du noyau (au lieu de la température)
+    let corePowerText = '';
     if (isCorpsNoir) {
-        // En mode corps noir : température d'équilibre du corps noir (pas de noyau)
-        // À la distance du Soleil: T ≈ 206K
-        coreTemperatureText = '~206 K';
-    } else if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch && currentEpoch.core_temperature_k !== null && currentEpoch.core_temperature_k !== undefined) {
-            coreTemperatureText = `~${currentEpoch.core_temperature_k} K`;
+        // En mode corps noir : pas de noyau actif
+        corePowerText = '0 W';
+    } else {
+        // Calculer la puissance totale : Flux (W/m²) * Surface (m²)
+        // Surface = 4 * PI * R²
+        let radius = 6371000; // Défaut Terre
+        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+             if (currentEpoch && currentEpoch.planet_radius) {
+                 radius = currentEpoch.planet_radius;
+             }
+        }
+        const surface = 4 * Math.PI * Math.pow(radius, 2);
+        const totalPower = geothermie_value * surface;
+        
+        // Formatage scientifique : X.XX x 10^Y W
+        if (totalPower <= 0) {
+            corePowerText = '0 W';
+        } else {
+            const exponent = Math.floor(Math.log10(totalPower));
+            const mantissa = totalPower / Math.pow(10, exponent);
+            corePowerText = `${mantissa.toFixed(2)}×10<sup>${exponent}</sup> W`;
         }
     }
 
     // Mettre à jour le label (ou le cacher si vide)
     const coreTempLabel = document.querySelector('[data-id="core_temperature"]');
     if (coreTempLabel) {
-        if (coreTemperatureText) {
-            coreTempLabel.textContent = coreTemperatureText;
+        if (corePowerText) {
+            coreTempLabel.innerHTML = corePowerText;
             coreTempLabel.style.display = '';
+            // Appliquer les couleurs
+            updateLabelClasses(coreTempLabel);
         } else {
             coreTempLabel.style.display = 'none';
         }
@@ -2788,6 +2942,17 @@ if (typeof window !== 'undefined') {
             { cellId: 'cell-h2o', varName: 'useH2O' },
             { cellId: 'cell-albedo-btn', varName: 'useAlbedo' }
         ];
+        
+        // Mettre à jour les tooltips des boutons selon leur état initial
+        buttonMap.forEach(({ cellId }) => {
+            const cell = document.getElementById(cellId);
+            if (cell) {
+                const circleBg = cell.querySelector('.flux-circle-bg');
+                if (circleBg) {
+                    updateButtonTooltip(cell, circleBg);
+                }
+            }
+        });
 
         buttonMap.forEach(({ cellId, varName }) => {
             const cell = document.getElementById(cellId);

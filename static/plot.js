@@ -1137,6 +1137,12 @@ window.updatePlot = function updatePlot(data) {
                     clearTimeout(debounceTimer);
                 }
                 debounceTimer = setTimeout(() => {
+                    // 🔒 Supprimer automatiquement js-plotly-tester si créé par Plotly
+                    const plotlyTester = document.querySelector('.js-plotly-tester');
+                    if (plotlyTester && plotlyTester.parentNode) {
+                        plotlyTester.parentNode.removeChild(plotlyTester);
+                    }
+
                     if (canvas && canvas.parentElement && plotContainerWrapper) {
                         // S'assurer que le canvas est AVANT plot-container dans le DOM (ordre de rendu)
                         if (canvas.nextSibling !== plotContainer && canvas.parentElement === plotContainerWrapper) {

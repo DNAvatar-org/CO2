@@ -17,349 +17,78 @@
 // Constantes physiques et climatiques sont maintenant dans physics.js et climate.js
 // Utiliser directement les constantes globales exposées par ces modules
 
-// Fonction pour calculer l'albedo dynamique basé sur la glace et les nuages
-// Modélisation créative inspirée de :
-// - "Ice-Albedo Feedback in Climate Models" (approximation simplifiée)
-// - Modèles de rétroaction glace-albedo (Budyko, 1969; Sellers, 1969)
-// - Paramétrisation nuageuse simplifiée pour visualisation pédagogique
+// Les fonctions calculateAlbedo, calculateCloudCoverage et calculateSolarFluxAbsorbed
+// ont été déplacées dans calculations_albedo.js
+// Utiliser window.calculateAlbedo, window.calculateCloudCoverage, window.calculateSolarFluxAbsorbed
+
+// Fonction wrapper pour compatibilité (redirige vers calculations_albedo.js)
+// ⚠️ IMPORTANT : Ne pas créer de récursion infinie
 function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
-    const T_surface_C = T_surface_K - 273.15;
-    
-    // Récupérer l'albedo de base de l'époque courante
-    // Calculer depuis les composantes détaillées ou utiliser albedo_base de l'époque
-    let albedo_base = null; // Pas de valeur par défaut, on doit toujours avoir une époque
-    let epochName = 'default';
-    
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch) {
-            epochName = currentEpoch.name || window.currentEpochName;
-            
-            // Si l'époque a des composantes détaillées, calculer l'albedo de base comme moyenne pondérée
-            if (currentEpoch.ocean_coverage !== undefined || currentEpoch.magma_coverage !== undefined) {
-                let total_coverage = 0;
-                let weighted_albedo = 0;
-                
-                // Magma (Hadéen uniquement)
-                if (currentEpoch.magma_coverage !== undefined && currentEpoch.magma_albedo !== undefined) {
-                    const magma_cov = currentEpoch.magma_coverage; // Déjà en fraction (0-1)
-                    weighted_albedo += currentEpoch.magma_albedo * magma_cov;
-                    total_coverage += magma_cov;
-                }
-                
-                // Océans
-                if (currentEpoch.ocean_coverage !== undefined && currentEpoch.ocean_albedo !== undefined) {
-                    const ocean_cov = currentEpoch.ocean_coverage; // Déjà en fraction (0-1)
-                    weighted_albedo += currentEpoch.ocean_albedo * ocean_cov;
-                    total_coverage += ocean_cov;
-                }
-                
-                // Forêts
-                if (currentEpoch.forest_coverage !== undefined && currentEpoch.forest_albedo !== undefined) {
-                    const forest_cov = currentEpoch.forest_coverage; // Déjà en fraction (0-1)
-                    weighted_albedo += currentEpoch.forest_albedo * forest_cov;
-                    total_coverage += forest_cov;
-                }
-                
-                // Déserts
-                if (currentEpoch.desert_coverage !== undefined && currentEpoch.desert_albedo !== undefined) {
-                    const desert_cov = currentEpoch.desert_coverage; // Déjà en fraction (0-1)
-                    weighted_albedo += currentEpoch.desert_albedo * desert_cov;
-                    total_coverage += desert_cov;
-                }
-                
-                // Si total_coverage > 0, utiliser la moyenne pondérée, sinon utiliser albedo_base
-                if (total_coverage > 0) {
-                    albedo_base = weighted_albedo / total_coverage;
-                } else if (typeof currentEpoch.albedo_base === 'number') {
-                    albedo_base = currentEpoch.albedo_base;
-                }
-            } else if (typeof currentEpoch.albedo_base === 'number') {
-                // Sinon, utiliser directement albedo_base
-                albedo_base = currentEpoch.albedo_base;
-            }
+    // Utiliser la fonction originale sauvegardée par calculations_albedo.js
+    if (typeof window !== 'undefined' && typeof window._calculateAlbedoOriginal === 'function') {
+        return window._calculateAlbedoOriginal(T_surface_K, h2o_enabled, geothermal_flux);
+    }
+    // Fallback vers window.calculateAlbedo si la version originale n'existe pas
+    if (typeof window !== 'undefined' && typeof window.calculateAlbedo === 'function') {
+        const realFunction = window.calculateAlbedo;
+        // Vérifier que ce n'est pas nous-mêmes (éviter récursion)
+        if (realFunction !== calculateAlbedo) {
+            return realFunction(T_surface_K, h2o_enabled, geothermal_flux);
         }
     }
-    
-    // Si albedo_base est toujours null, utiliser la dernière époque comme fallback
-    if (albedo_base === null && typeof window !== 'undefined' && window.GEOLOGICAL_PERIODS) {
-        const lastEpoch = window.GEOLOGICAL_PERIODS[window.GEOLOGICAL_PERIODS.length - 1];
-        if (lastEpoch) {
-            // Calculer depuis les composantes ou utiliser albedo_base
-            if (lastEpoch.ocean_coverage !== undefined || lastEpoch.magma_coverage !== undefined) {
-                let total_coverage = 0;
-                let weighted_albedo = 0;
-                
-                if (lastEpoch.magma_coverage !== undefined && lastEpoch.magma_albedo !== undefined) {
-                    weighted_albedo += lastEpoch.magma_albedo * lastEpoch.magma_coverage;
-                    total_coverage += lastEpoch.magma_coverage;
-                }
-                if (lastEpoch.ocean_coverage !== undefined && lastEpoch.ocean_albedo !== undefined) {
-                    weighted_albedo += lastEpoch.ocean_albedo * lastEpoch.ocean_coverage;
-                    total_coverage += lastEpoch.ocean_coverage;
-                }
-                if (lastEpoch.forest_coverage !== undefined && lastEpoch.forest_albedo !== undefined) {
-                    weighted_albedo += lastEpoch.forest_albedo * lastEpoch.forest_coverage;
-                    total_coverage += lastEpoch.forest_coverage;
-                }
-                if (lastEpoch.desert_coverage !== undefined && lastEpoch.desert_albedo !== undefined) {
-                    weighted_albedo += lastEpoch.desert_albedo * lastEpoch.desert_coverage;
-                    total_coverage += lastEpoch.desert_coverage;
-                }
-                
-                if (total_coverage > 0) {
-                    albedo_base = weighted_albedo / total_coverage;
-                } else if (typeof lastEpoch.albedo_base === 'number') {
-                    albedo_base = lastEpoch.albedo_base;
-                }
-            } else if (typeof lastEpoch.albedo_base === 'number') {
-                albedo_base = lastEpoch.albedo_base;
-            }
-        }
-    }
-    
-    // Si toujours null, erreur (ne devrait jamais arriver si les époques sont bien configurées)
-    if (albedo_base === null) {
-        console.error('[ALBEDO] Erreur : impossible de déterminer albedo_base, aucune époque trouvée');
-        albedo_base = 0.3; // Dernier recours uniquement pour éviter un crash
-    }
-    
-    let albedo = albedo_base;
-    console.log(`[ALBEDO] Début calcul: T=${T_surface_K.toFixed(2)}K (${T_surface_C.toFixed(2)}°C), h2o=${h2o_enabled}, geo_flux=${geothermal_flux}, albedo_base=${albedo_base.toFixed(3)} (époque: ${epochName})`);
-
-    // Contribution de la glace (albedo augmente avec le froid)
-    // Modélisation : transition progressive de l'albedo terrestre vers l'albedo glaciaire
-    // Référence conceptuelle : rétroaction glace-albedo (modèles simplifiés de climat)
-    // Si température < 0°C, il y a de la glace
-    // À -2.2°C, on veut beaucoup de glace (fraction élevée)
-    // ⚠️ MODIFICATION POUR GAMEPLAY : Les volcans réduisent la glace (réchauffement, fonte)
-    const volcanoIceReduction = (typeof window !== 'undefined' && window.volcanoIceReduction !== undefined)
-        ? window.volcanoIceReduction / 100
-        : 0; // Réduction en fraction (0 à 1)
-
-    // Récupérer le flux géothermique (si non fourni, essayer de le récupérer depuis l'époque courante)
-    let geo_flux = geothermal_flux;
-    if (geo_flux === null || geo_flux === undefined) {
-        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-            if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
-                geo_flux = currentEpoch.geothermal_flux;
-            }
-        }
-        // Valeur par défaut si toujours null
-        if (geo_flux === null || geo_flux === undefined) {
-            geo_flux = 0.087; // Valeur moderne par défaut (W/m²)
-        }
-    }
-
-    const ice_albedo = 0.7; // Albedo moyen de la glace (approximation créative)
-    let ice_fraction = 0;
-    
-    // Calculer la glace depuis l'eau totale disponible (météorites + eau de base)
-    // Utiliser calculateWaterPartition pour déterminer la répartition vapeur/glace selon la température
-    const h2o_from_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined)
-        ? window.h2oTotalFromMeteorites : 0; // Eau totale des météorites en pourcentage
-    const h2o_base = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined)
-        ? window.h2oVaporPercent : 0; // Eau de base de l'époque en pourcentage
-    const h2o_total_percent = h2o_base + h2o_from_meteorites;
-    
-    // Si on a de l'eau totale disponible, calculer la répartition vapeur/liquide/glace
-    if (h2o_total_percent > 0 && typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
-        const h2o_total_fraction = h2o_total_percent / 100;
-        
-        // Récupérer les paramètres de l'époque courante (si disponibles)
-        let epochParams = {};
-        if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-            if (currentEpoch) {
-                epochParams = {
-                    pressure_atm: currentEpoch.atmospheric_pressure || 1.0,
-                    molar_mass_air: currentEpoch.molar_mass_air || 0.029,
-                    gravity: currentEpoch.gravity || 9.81,
-                    ocean_coverage: currentEpoch.ocean_coverage || 0.7
-                };
-            }
-        }
-        
-        const waterPartition = window.calculateWaterPartition(T_surface_K, h2o_total_fraction, epochParams);
-        ice_fraction = waterPartition.ice_fraction; // Utiliser la glace calculée
-        
-        // Stocker la glace calculée pour les logs (toujours mettre à jour avec la nouvelle valeur)
-        // 🔒 TOUJOURS recalculer et stocker la nouvelle valeur (ne pas réutiliser l'ancienne)
-        if (typeof window !== 'undefined') {
-            window.h2oIceFractionFromCalculation = ice_fraction;
-        }
-    } else if (h2o_total_percent > 0 && T_surface_C < 0) {
-        // 🔒 CORRECTION : Ne calculer la glace que s'il y a de l'eau disponible
-        // Calcul classique de la glace basé sur la température (si pas de calcul H2O mais qu'il y a de l'eau)
-        // Calcul classique de la glace basé sur la température (si pas de calcul H2O)
-        // Albedo de la glace : ~0.6-0.9 selon l'épaisseur (valeur moyenne choisie pour visualisation)
-        // Note : Le blanc (glace) ne fait pas totalement miroir, il y a une rediffusion vers le bas
-        // Plus il fait froid, plus il y a de glace
-        // Utiliser une fonction qui monte rapidement : à -2.2°C, on veut ~70% de la surface du globe couverte de glace
-        // Fonction exponentielle pour avoir beaucoup de glace dès -2.2°C
-        // À -2.2°C : fraction = 1 - exp(-2.2/3) ≈ 0.7 (70% de la surface du globe couverte de glace)
-        // À -10°C : fraction ≈ 0.97 (97% de la surface du globe couverte de glace)
-        ice_fraction = Math.min(1, 1 - Math.exp(T_surface_C / 3)); // Fraction de surface couverte de glace (0 à 1)
-
-        // ⚠️ MODIFICATION POUR GAMEPLAY : Réduire la glace selon l'effet volcanique
-        // Les volcans réchauffent et font fondre la glace
-        ice_fraction = Math.max(0, ice_fraction - volcanoIceReduction);
-
-        // ⚠️ NOUVEAU : Réduire la glace selon le flux géothermique
-        // Le flux géothermique réchauffe la surface et fait fondre la glace
-        // 15 W/m² est énorme et devrait empêcher la formation de glace
-        // Formule : réduction proportionnelle au flux géothermique
-        // À 0 W/m² : pas de réduction
-        // À 15 W/m² : réduction maximale (fonte complète de la glace)
-        // Utiliser une fonction qui réduit la glace progressivement avec le flux
-        // Seuil : au-delà de 10 W/m², la glace fond complètement
-        const geo_flux_reduction = Math.min(1, geo_flux / 10); // Réduction de 0 à 1 selon le flux (seuil à 10 W/m²)
-        ice_fraction = Math.max(0, ice_fraction * (1 - geo_flux_reduction));
-    }
-    
-    // Limiter la glace à 100% de la surface (physiquement, on ne peut pas avoir plus de 100% de glace)
-    // Note: window.h2oIceFractionFromCalculation est mis à jour dans le bloc calculateWaterPartition ci-dessus
-    ice_fraction = Math.min(1.0, Math.max(0, ice_fraction));
-    
-    if (ice_fraction > 0) {
-        // Transition progressive : albedo = base + (glace - base) * fraction_glace
-        // Utiliser l'albedo de base de l'époque (déjà récupéré plus haut)
-        albedo = albedo_base + (ice_albedo - albedo_base) * ice_fraction;
-        console.log(`[ALBEDO] Contribution glace: ice_fraction=${ice_fraction.toFixed(3)}, ice_percent=${(ice_fraction * 100).toFixed(1)}%, albedo_base=${albedo_base.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
-    }
-
-    // Contribution des nuages (H2O activé)
-    // Modélisation : ajout d'un albedo nuageux moyen lorsque H2O est activé
-    // Référence conceptuelle : paramétrisation nuageuse simplifiée (modèles climatiques simplifiés)
-    // Note : Les nuages noirs (épais, sombres) n'ont pas d'albedo significatif
-    // Note : Sur les nuages, la réflexion/absorption ne passe pas très bien dans les deux sens,
-    // mais ce ne sont pas les mêmes fréquences, donc pas les mêmes absorption/miroir/radiation
-    // Note : La couverture nuageuse est proportionnelle/croissante avec la température au sol
-    // (plus il fait chaud, plus il y a d'évaporation et donc de nuages)
-    // TODO : Justifier ce choix de modélisation (couverture nuageuse vs température, altitude, etc.)
-    if (h2o_enabled) {
-        // Utiliser la fonction dédiée pour calculer la couverture nuageuse
-        const cloud_fraction = calculateCloudCoverage(T_surface_K, h2o_enabled);
-
-        // Seuil minimum : ne pas appliquer l'albedo nuageux si la couverture est trop faible (< 5%)
-        // Cela évite que 1% de nuages ait un impact drastique sur l'albedo
-        if (cloud_fraction >= 0.05) {
-            // Albedo des nuages : ~0.3-0.6 selon la couverture nuageuse (valeur moyenne choisie)
-            const cloud_albedo = 0.4; // Albedo moyen des nuages (approximation créative)
-
-            // Diviser par 2 car les nuages noirs ne réfléchissent pas (ou très peu)
-            // Ajuster la contribution pour qu'elle soit proportionnelle à la couverture nuageuse
-            // mais avec un effet plus doux pour les faibles couvertures
-            const cloud_contribution = (cloud_albedo * cloud_fraction) / 2;
-            albedo = albedo + cloud_contribution;
-            console.log(`[ALBEDO] Contribution nuages: cloud_fraction=${cloud_fraction.toFixed(3)}, cloud_contribution=${cloud_contribution.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
-        }
-        // Si cloud_fraction < 5%, on n'ajoute pas de contribution nuageuse à l'albedo
-    }
-
-    // Clamper entre 0.0 (corps noir) et 0.9 (valeurs physiques raisonnables)
-    // Permettre 0.0 pour le corps noir, mais limiter à 0.9 maximum
-    const final_albedo = Math.max(0.0, Math.min(0.9, albedo));
-    console.log(`[ALBEDO] Résultat final: ${final_albedo.toFixed(3)} (${(final_albedo * 100).toFixed(1)}%)`);
-    return final_albedo;
+    // Fallback si calculations_albedo.js n'est pas chargé
+    console.error('[calculations.js] calculateAlbedo non disponible, calculations_albedo.js doit être chargé avant');
+    return 0.3; // Valeur par défaut
 }
 
-// Fonction pour calculer la couverture nuageuse (fraction de surface couverte vue depuis le ciel)
+// Fonction wrapper pour compatibilité (redirige vers calculations_albedo.js)
+// ⚠️ IMPORTANT : Ne pas créer de récursion infinie
 function calculateCloudCoverage(T_surface_K, h2o_enabled) {
-    if (!h2o_enabled) {
-        // ⚠️ MODIFICATION POUR GAMEPLAY : Les volcans peuvent créer des nuages même si H2O désactivé
-        // Les volcans émettent de la vapeur d'eau et des particules qui forment des nuages
-        const volcanoBonus = (typeof window !== 'undefined' && window.volcanoH2OBonus !== undefined)
-            ? window.volcanoH2OBonus / 100
-            : 0;
-        if (volcanoBonus > 0) {
-            return Math.min(1, volcanoBonus); // Bonus volcanique en fraction (0 à 1)
-        }
-        return 0; // Pas de nuages si H2O désactivé et pas de volcans
+    // Utiliser la fonction originale sauvegardée par calculations_albedo.js
+    if (typeof window !== 'undefined' && typeof window._calculateCloudCoverageOriginal === 'function') {
+        return window._calculateCloudCoverageOriginal(T_surface_K, h2o_enabled);
     }
-
-    const T_surface_C = T_surface_K - 273.15;
-
-    // ⚠️ MODIFICATION POUR GAMEPLAY : Bonus volcanique sur la couverture nuageuse
-    // Les volcans émettent de la vapeur d'eau et des particules qui augmentent la couverture nuageuse
-    const volcanoBonus = (typeof window !== 'undefined' && window.volcanoH2OBonus !== undefined)
-        ? window.volcanoH2OBonus / 100
-        : 0; // Bonus en fraction (0 à 1)
-
-    // À très basse température (< -20°C), l'air est très sec, peu de nuages possibles
-    // Nuages blancs (cirrus, stratus) : nécessitent de la vapeur d'eau, peu probables à très basse température
-    // Nuages noirs (orageux) : encore moins probables à très basse température
-    // À des températures très froides, la couverture nuageuse doit être proche de 0
-
-    if (T_surface_C < -20) {
-        // Très froid : presque pas de nuages (air très sec)
-        // Fonction décroissante exponentielle : à -60°C ≈ 0%, à -20°C = 5%
-        // Calcul à -60°C : 0.05 * exp(0.1 * (-60 - (-20))) = 0.05 * exp(-4) ≈ 0.0009 ≈ 0%
-        const T_cold = -20; // Seuil de froid
-        const cloud_at_cold = 0.05; // 5% à -20°C
-        const decay_rate = 0.1; // Taux de décroissance
-        let cloud_fraction = cloud_at_cold * Math.exp(decay_rate * (T_surface_C - T_cold));
-
-        // ⚠️ MODIFICATION POUR GAMEPLAY : Ajouter le bonus volcanique même par temps très froid
-        cloud_fraction = Math.min(1, Math.max(0, cloud_fraction) + volcanoBonus);
-
-        return cloud_fraction;
-    } else if (T_surface_C < 0) {
-        // Froid mais pas extrême : quelques nuages possibles (nuages blancs)
-        // Interpolation entre -20°C (5%) et 0°C (20%)
-        const cloud_at_0 = 0.2; // 20% à 0°C
-        const cloud_at_cold = 0.05; // 5% à -20°C
-        let cloud_fraction = cloud_at_cold + (cloud_at_0 - cloud_at_cold) * ((T_surface_C - (-20)) / 20);
-
-        // ⚠️ MODIFICATION POUR GAMEPLAY : Ajouter le bonus volcanique
-        cloud_fraction = Math.min(1, cloud_fraction + volcanoBonus);
-
-        return cloud_fraction;
-    } else {
-        // Température positive : couverture nuageuse proportionnelle à la température
-        // Plus il fait chaud, plus il y a d'évaporation et donc de nuages
-        // Référence : Climat tropical humide (30-35°C) → 70-80% de couverture nuageuse moyenne
-        // Limitation : Utiliser une saturation douce pour éviter l'emballement thermique
-        const cloud_fraction_min = 0.2; // Couverture minimale à 0°C (20%)
-        const cloud_fraction_max_physical = 0.75; // Couverture maximale physique pour climat tropical humide (75%)
-        const cloud_fraction_max_limited = 0.6; // Limite appliquée pour éviter l'emballement (60%)
-        const T_ref_max = 30; // Température de référence maximale (°C)
-
-        // Calculer la valeur physique (réaliste pour climat tropical humide)
-        // À 0°C = 20%, à 30°C = 75% (référence : zones tropicales humides)
-        let physical_fraction;
-        if (T_surface_C >= T_ref_max) {
-            // Au-delà de 30°C : saturation à la valeur physique maximale (75%)
-            physical_fraction = cloud_fraction_max_physical;
-        } else {
-            // Interpolation linéaire entre 0°C et 30°C
-            physical_fraction = cloud_fraction_min + (cloud_fraction_max_physical - cloud_fraction_min) *
-                (T_surface_C / T_ref_max);
+    // Fallback vers window.calculateCloudCoverage si la version originale n'existe pas
+    if (typeof window !== 'undefined' && typeof window.calculateCloudCoverage === 'function') {
+        const realFunction = window.calculateCloudCoverage;
+        // Vérifier que ce n'est pas nous-mêmes (éviter récursion)
+        if (realFunction !== calculateCloudCoverage) {
+            return realFunction(T_surface_K, h2o_enabled);
         }
-
-        // Appliquer une limitation à 60% pour éviter l'emballement thermique
-        // (compromis entre réalisme physique et stabilité numérique)
-        let final_fraction = Math.min(cloud_fraction_max_limited, physical_fraction);
-
-        // ⚠️ MODIFICATION POUR GAMEPLAY : Ajouter le bonus volcanique (les volcans augmentent la couverture nuageuse)
-        final_fraction = Math.min(1, final_fraction + volcanoBonus);
-
-        return final_fraction;
     }
+    // Fallback si calculations_albedo.js n'est pas chargé
+    console.error('[calculations.js] calculateCloudCoverage non disponible, calculations_albedo.js doit être chargé avant');
+    return 0;
 }
 
-// Fonction pour calculer le flux solaire absorbé avec albedo dynamique
-// ✅ SCIENTIFIQUEMENT CERTAIN : 
-// - La formule F = S_0 * (1 - A) / 4 est la base de l'équilibre radiatif terrestre
-// - La division par 4 vient de la géométrie sphérique : surface 4πr² vs section πr² (facteur 4)
-// - Cette formule est utilisée dans tous les modèles climatiques (IPCC, GCM)
+// Fonction wrapper pour compatibilité (redirige vers calculations_albedo.js)
+// ⚠️ IMPORTANT : Ne pas créer de récursion infinie
+// On utilise directement window._calculateSolarFluxAbsorbedOriginal si disponible
 function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled, geothermal_flux = null) {
-    const albedo = calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux);
+    // Utiliser la fonction originale sauvegardée par calculations_albedo.js
+    if (typeof window !== 'undefined' && typeof window._calculateSolarFluxAbsorbedOriginal === 'function') {
+        return window._calculateSolarFluxAbsorbedOriginal(T_surface_K, h2o_enabled, geothermal_flux);
+    }
+    // Fallback vers window.calculateSolarFluxAbsorbed si la version originale n'existe pas
+    if (typeof window !== 'undefined' && typeof window.calculateSolarFluxAbsorbed === 'function') {
+        const realFunction = window.calculateSolarFluxAbsorbed;
+        // Vérifier que ce n'est pas nous-mêmes (éviter récursion)
+        if (realFunction !== calculateSolarFluxAbsorbed) {
+            return realFunction(T_surface_K, h2o_enabled, geothermal_flux);
+        }
+    }
+    // Fallback si calculations_albedo.js n'est pas chargé
     const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
-    const flux_absorbed = SOLAR_CONSTANT * (1 - albedo) / 4; // Divisé par 4 car la surface de la sphère (4πr²) est 4 fois la section (πr²)
-    return flux_absorbed;
+    return SOLAR_CONSTANT * 0.7 / 4; // Valeur par défaut (albedo 0.3)
 }
+
+// Les fonctions calculateAlbedo, calculateCloudCoverage et calculateSolarFluxAbsorbed
+// ont été déplacées dans calculations_albedo.js
+// Les wrappers ci-dessus redirigent vers les fonctions globales exposées par ce module
+
+// ============================================================================
+// FONCTIONS DE TRANSFERT RADIATIF (conservées dans ce fichier)
+// ============================================================================
 
 // Les fonctions de forçage radiatif sont maintenant dans climate.js
 // Utiliser directement les fonctions globales exposées par ce module (window.calculateCO2Forcing, etc.)
@@ -393,28 +122,182 @@ function getPlanckFunction() {
         return window.planckFunction;
     }
     // Fallback si physics.js n'est pas chargé
-    return function (lambda, T) {
-        const PLANCK_H = 6.62607015e-34;
-        const SPEED_OF_LIGHT = 2.998e8;
-        const BOLTZMANN_KB = 1.380649e-23;
-        const term1 = (2 * PLANCK_H * SPEED_OF_LIGHT * SPEED_OF_LIGHT) / Math.pow(lambda, 5);
-        const term2 = Math.exp((PLANCK_H * SPEED_OF_LIGHT) / (lambda * BOLTZMANN_KB * T)) - 1;
-        return term1 / term2;
-    };
+    console.error('[calculations.js] planckFunction non disponible, physics.js doit être chargé avant');
+    return null;
 }
+
 // Fonction locale pour utiliser planckFunction sans conflit
 function localPlanckFunction(lambda, T) {
-    return getPlanckFunction()(lambda, T);
+    const planckFunc = getPlanckFunction();
+    if (planckFunc) {
+        return planckFunc(lambda, T);
+    }
+    // Fallback si physics.js n'est pas chargé (ne devrait jamais arriver)
+    const PLANCK_H = 6.62607015e-34;
+    const SPEED_OF_LIGHT = 2.998e8;
+    const BOLTZMANN_KB = 1.380649e-23;
+    const term1 = (2 * PLANCK_H * SPEED_OF_LIGHT * SPEED_OF_LIGHT) / Math.pow(lambda, 5);
+    const term2 = Math.exp((PLANCK_H * SPEED_OF_LIGHT) / (lambda * BOLTZMANN_KB * T)) - 1;
+    return term1 / term2;
 }
 
 // ============================================================================
 // MODÈLE ATMOSPHÉRIQUE
 // ============================================================================
 
-function pressure(z) {
-    const P0 = 101325;  // Pression au niveau de la mer, Pa
-    const H = 8500;     // Échelle de hauteur, m
+/**
+ * Wrapper pour la fonction pressure de calculations_atm.js
+ * Calcule la pression à partir des quantités de gaz (pas de formule fixe)
+ * 
+ * @param {number} z - Altitude en mètres
+ * @param {Object} params - Paramètres atmosphériques (optionnel, utilise valeurs par défaut si non fourni)
+ * @returns {number} Pression en Pascal (Pa)
+ */
+// Fonction physique pour calculer la pression
+// P0 = (M_atm * g) / S_terre
+// P(z) = P0 * exp(-z / H) avec H = R*T / (M_air * g)
+function pressure(z, params = null) {
+    const R_GAS_CONSTANT = 8.314462618; // J/(mol·K)
+    
+    // Initialisation avec undefined pour détecter les manquants
+    let total_mass, gravity, planet_radius, temp_K, molar_mass_air;
+
+    // Récupération des paramètres dynamiques (depuis window ou params)
+    if (typeof window !== 'undefined') {
+        // 1. Paramètres de l'époque
+        if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch) {
+                if (typeof currentEpoch.total_atmosphere_mass_kg === 'number') total_mass = currentEpoch.total_atmosphere_mass_kg;
+                if (typeof currentEpoch.gravity === 'number') gravity = currentEpoch.gravity;
+                if (typeof currentEpoch.planet_radius === 'number') planet_radius = currentEpoch.planet_radius;
+                
+                // Calculer ou récupérer la masse molaire moyenne de l'air
+                if (typeof currentEpoch.molar_mass_air === 'number') {
+                    molar_mass_air = currentEpoch.molar_mass_air;
+                } else {
+                    // Essayer de calculer depuis les composants (kg)
+                    // M_air = Masse_totale / Moles_totales
+                    const M_N2 = 0.02801; const M_O2 = 0.03200; const M_CO2 = 0.04401; const M_CH4 = 0.01604;
+                    
+                    let m_n2 = currentEpoch.n2_kg || 0;
+                    let m_o2 = currentEpoch.o2_kg || 0;
+                    let m_co2 = currentEpoch.co2_kg || 0;
+                    let m_ch4 = currentEpoch.ch4_kg || 0;
+                    // On ignore l'Argon et H2O pour cette estimation par défaut si non fournis
+                    
+                    let mass_sum = m_n2 + m_o2 + m_co2 + m_ch4;
+                    let moles_sum = (m_n2/M_N2) + (m_o2/M_O2) + (m_co2/M_CO2) + (m_ch4/M_CH4);
+                    
+                    if (moles_sum > 0) {
+                        molar_mass_air = mass_sum / moles_sum;
+                    }
+                }
+                
+                // Température initiale si définie dans l'époque
+                if (typeof currentEpoch.initial_temperature_K === 'number') temp_K = currentEpoch.initial_temperature_K;
+            }
+        }
+        
+        // 2. Température calculée (prioritaire sur l'initiale)
+        if (window.plotData && typeof window.plotData.temp_surface === 'number') {
+            temp_K = window.plotData.temp_surface;
+        }
+        // Ou T0 ajustée lors des calculs itératifs
+        else if (typeof window.current_T0_adjusted === 'number' && window.current_T0_adjusted > 0) {
+            temp_K = window.current_T0_adjusted;
+        }
+    }
+
+    // Surcharge par params si fourni
+    if (params) {
+        if (params.total_atmosphere_mass_kg) total_mass = params.total_atmosphere_mass_kg;
+        if (params.gravity) gravity = params.gravity;
+        if (params.temperature_K) temp_K = params.temperature_K;
+        if (params.planet_radius) planet_radius = params.planet_radius;
+        if (params.molar_mass_air) molar_mass_air = params.molar_mass_air; // Si fourni explicitement
+    }
+
+    // 🔒 VALIDATION STRICTE : Aucune valeur par défaut terrestre silencieuse
+    if (total_mass === undefined || gravity === undefined || planet_radius === undefined) {
+        console.error("[pressure] ❌ ERREUR CRITIQUE : Paramètres physiques manquants pour calcul de pression !", { total_mass, gravity, planet_radius, epoch: (typeof window !== 'undefined' ? window.currentEpochName : 'unknown') });
+        
+        if (typeof window !== 'undefined' && !window._physicsAlertShown) {
+            const alertFunc = (window.showSelectableAlert) ? window.showSelectableAlert : alert;
+            alertFunc(`ERREUR PHYSIQUE : Paramètres atmosphériques manquants pour l'époque '${window.currentEpochName}'.\n\nIl manque : ${total_mass===undefined?'Masse Atm':''} ${gravity===undefined?'Gravité':''} ${planet_radius===undefined?'Rayon':''}\n\nLe calcul va utiliser des valeurs par défaut (Terre actuelle) pour éviter le crash, mais le résultat sera FAUX.`, "Erreur Physique");
+            window._physicsAlertShown = true;
+        }
+        
+        // Valeurs de repli UNIQUEMENT pour éviter le crash NaN (Terre actuelle)
+        if (total_mass === undefined) total_mass = 5.15e18;
+        if (gravity === undefined) gravity = 9.81;
+        if (planet_radius === undefined) planet_radius = 6371000;
+    }
+    
+    if (temp_K === undefined) temp_K = 288; // Fallback température
+    if (molar_mass_air === undefined) molar_mass_air = 0.02896; // Fallback air sec
+
+    // Calcul de la surface planétaire
+    // S = 4 * pi * R^2
+    const surface_area = 4 * Math.PI * Math.pow(planet_radius, 2);
+
+    // Calcul de la pression au sol P0 (Pa)
+    // P = F / S = (m * g) / S
+    const P0 = (total_mass * gravity) / surface_area;
+
+    // Calcul de l'échelle de hauteur H (Scale Height)
+    // H = (R * T) / (M * g)
+    // Note : T devrait être la température moyenne de la basse atmosphère, T0 est une bonne approx
+    const H = (R_GAS_CONSTANT * temp_K) / (molar_mass_air * gravity);
+
+    // Formule barométrique isotherme (approximation suffisante pour la structure globale)
     return P0 * Math.exp(-z / H);
+}
+
+// ============================================================================
+// OBJET D'ÉTAT CENTRALISÉ POUR LES CONCENTRATIONS ET ÉTATS
+// ============================================================================
+/**
+ * Convertit les ppm en différentes unités
+ * @param {number} ppm - Valeur en ppm (parties par million)
+ * @returns {object} Objet avec différentes représentations
+ */
+function convertPPM(ppm) {
+    const fraction = ppm * 1e-6; // ppm → fraction molaire
+    const percent = ppm * 0.0001; // ppm → pourcentage
+    return {
+        ppm: ppm,
+        fraction: fraction,
+        percent: percent,
+        formattedPPM: `${ppm.toFixed(2)} ppm`,
+        formattedPercent: `${percent.toFixed(6)}%`,
+        formattedFraction: `${fraction.toExponential(3)}`
+    };
+}
+
+/**
+ * Convertit une fraction molaire en ppm
+ * @param {number} fraction - Fraction molaire (0 à 1)
+ * @returns {number} Valeur en ppm
+ */
+function fractionToPPM(fraction) {
+    return fraction * 1e6;
+}
+
+/**
+ * Convertit les ppm en pourcentage
+ * @param {number} ppm - Valeur en ppm
+ * @returns {number} Pourcentage (0 à 100)
+ */
+function ppmToPercent(ppm) {
+    return ppm * 0.0001; // 1 ppm = 0.0001%
+}
+
+// Exposer globalement
+if (typeof window !== 'undefined') {
+    window.convertPPM = convertPPM;
+    window.fractionToPPM = fractionToPPM;
+    window.ppmToPercent = ppmToPercent;
 }
 
 // ============================================================================
@@ -549,17 +432,36 @@ if (typeof window !== 'undefined') {
  * @returns {number} Hauteur de la tropopause en mètres
  */
 function calculateTropopauseHeight(T0) {
-    // Tropopause standard : 11 km pour T0 = 288K (conditions terrestres moyennes)
-    // Variation : environ 0.1 km par Kelvin de différence
-    // Limites physiques : entre 8 km (pôles, très froid) et 17 km (tropiques, très chaud)
-    const z_trop_standard = 11000; // 11 km en mètres
-    const T0_standard = 288; // Température standard en K
-    const sensitivity = 100; // 0.1 km/K = 100 m/K
+    // Tropopause standard : dépend de T0 et de la gravité
+    // Formule physique approximative : z_trop ≈ R * T / (g * M) * constante_structure
+    // Mais on garde l'approche empirique paramétrable
+    
+    let z_trop_standard = 11000; // 11 km par défaut (Terre)
+    let T0_standard = 288; // 288K par défaut
+    let sensitivity = 100; // 100 m/K
+    
+    // Récupérer les paramètres de l'époque si disponibles
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch) {
+            // Ajuster selon la gravité (plus g est fort, plus l'atmosphère est tassée)
+            // z_trop ~ 1/g
+            const g_earth = 9.81;
+            const g_current = currentEpoch.gravity || g_earth;
+            
+            if (g_current > 0) {
+                z_trop_standard = z_trop_standard * (g_earth / g_current);
+            }
+            
+            // On pourrait ajouter d'autres paramètres ici si définis dans l'époque
+        }
+    }
 
     let z_trop = z_trop_standard + (T0 - T0_standard) * sensitivity;
 
-    // Limites physiques
-    z_trop = Math.max(8000, Math.min(17000, z_trop)); // Entre 8 et 17 km
+    // Limites physiques (ajustées selon la gravité aussi potentiellement, mais gardons simple)
+    // Élargir les bornes pour permettre des atmosphères différentes
+    z_trop = Math.max(5000, Math.min(30000, z_trop)); 
 
     return z_trop;
 }
@@ -594,7 +496,27 @@ function temperature(z, CO2_fraction = null, T0_override = null) {
 
     // Calculer la tropopause dynamiquement en fonction de T0
     const z_trop = calculateTropopauseHeight(T0);
-    const Gamma = -0.0065; // Gradient de température, K/m
+    
+    // Gradient de température (Lapse Rate)
+    // Terre standard : -6.5 K/km
+    // Dépend de la composition (humide vs sec) et de la gravité
+    // Γ = g / cp (adiabatique sec), réduit par la condensation
+    let Gamma = -0.0065; // Valeur par défaut
+    
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch) {
+            // Si un lapse rate spécifique est défini
+            if (typeof currentEpoch.lapse_rate === 'number') {
+                Gamma = currentEpoch.lapse_rate;
+            } else if (currentEpoch.gravity) {
+                // Ajustement proportionnel à la gravité (Γ ~ g)
+                // Si g double, le gradient double (l'air se refroidit plus vite en montant)
+                Gamma = -0.0065 * (currentEpoch.gravity / 9.81);
+            }
+        }
+    }
+    
     const T_trop = T0 + Gamma * z_trop;
 
     if (z < z_trop) {
@@ -643,9 +565,23 @@ function crossSectionCO2(wavelength) {
  * @param {number} z - Altitude en mètres
  * @returns {number} Ratio de mélange (fraction molaire, 0 à 1)
  */
-function waterVaporMixingRatio(z) {
-    const r0 = 0.015;  // Mixing ratio au niveau de la mer (~1.5% de l'air en vapeur d'eau)
-    const H_H2O = 2500; // Échelle de hauteur de la vapeur d'eau (m) - décroît avec l'altitude
+function waterVaporMixingRatio(z, r0_override = null) {
+    let r0 = r0_override;
+    if (r0 === null) {
+        // Essayer de récupérer depuis la variable globale
+        if (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) {
+            r0 = window.h2oVaporPercent / 100;
+        } else {
+            r0 = 0.015;  // Fallback: ~1.5% (conditions modernes)
+        }
+    }
+    
+    // Échelle de hauteur de la vapeur d'eau (H_H2O)
+    // La vapeur d'eau décroît beaucoup plus vite que l'air (H_air ≈ 8.5 km vs H_H2O ≈ 2-2.5 km)
+    // Cela dépend de la température (Clausius-Clapeyron)
+    // Pour l'instant on garde 2500m comme approximation standard
+    const H_H2O = 2500; 
+    
     return r0 * Math.exp(-z / H_H2O);
 }
 
@@ -681,7 +617,14 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null) {
     // Si pas de température disponible, utiliser l'ancienne méthode (valeur fixe)
     if (T0 === null || !isFinite(T0) || T0 <= 0) {
         const n_air = airNumberDensity(z, CO2_fraction, T0_override);
-        const mixing_ratio = waterVaporMixingRatio(z);
+        
+        // Récupérer la quantité d'eau globale pour le mixing ratio
+        let h2o_percent = 1.5; // Défaut 1.5%
+        if (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) {
+            h2o_percent = window.h2oVaporPercent + (window.h2oTotalFromMeteorites || 0);
+        }
+        
+        const mixing_ratio = waterVaporMixingRatio(z, h2o_percent / 100);
         return n_air * mixing_ratio;
     }
 
@@ -1013,6 +956,8 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // ⚡ OPTIMISATION : Calculer tropopause une seule fois
     const z_trop = calculateTropopauseHeight(T0_test);
     const Gamma = -0.0065; // Gradient de température, K/m
+    console.log(`[calculateFluxForT0] Gamma=${Gamma}, z_trop=${z_trop}, T0=${T0_test}`);
+
     const T_trop = T0_test + Gamma * z_trop;
 
     // Trouver l'index de la tropopause dans z_range
@@ -1092,14 +1037,23 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
                 emitted_flux[i][j] = 0;
                 absorbed_flux[i][j] = 0;
             } else {
-                // Transfert radiatif dans la couche :
-                // 1. Absorption : le CO2/H2O absorbe une partie du flux entrant
-                const abs_flux = Math.min(kappa * delta_z_real * flux_in[j], flux_in[j]);
-                // 2. Émission : le CO2/H2O réémet à sa température (loi de Planck)
-                //    F_émis = τ × π × B_λ(T_couche) × Δλ × poids
-                const em_flux = optical_thickness[i][j] * Math.PI * localPlanckFunction(lambda, T) * delta_lambda * (lambda_weights[j] || 1.0);
-                // 3. Flux sortant = flux entrant - absorption + émission
-                upward_flux[i][j] = flux_in[j] - abs_flux + em_flux;
+                // Transfert radiatif dans la couche (Formule exacte avec exponentielle)
+                // I_out = I_in * exp(-tau) + B(T) * (1 - exp(-tau))
+                
+                const tau = optical_thickness[i][j];
+                const transmission = Math.exp(-tau);
+                const emissivity = 1 - transmission; // Kirchhoff: epsilon = 1 - transmission
+                
+                // 1. Flux absorbé
+                const abs_flux = flux_in[j] * (1 - transmission);
+                
+                // 2. Flux émis
+                // F_émis = (1 - exp(-tau)) × π × B_λ(T_couche) × Δλ × poids
+                const em_flux = emissivity * Math.PI * localPlanckFunction(lambda, T) * delta_lambda * (lambda_weights[j] || 1.0);
+                
+                // 3. Flux sortant
+                upward_flux[i][j] = flux_in[j] * transmission + em_flux;
+                
                 // Stocker les valeurs pour la visualisation
                 emitted_flux[i][j] = em_flux;
                 absorbed_flux[i][j] = abs_flux;
@@ -1144,20 +1098,21 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
                 emitted_flux[i][j] = 0;
                 absorbed_flux[i][j] = 0;
             } else {
-                // Transfert radiatif dans la couche :
-                // 1. Absorption : le CO2/H2O absorbe une partie du flux entrant
-                const abs_flux = Math.min(kappa * delta_z_real * flux_in[j], flux_in[j]);
-                // 2. Émission : le CO2/H2O réémet à sa température (loi de Planck)
-                //    ⚡ OPTIMISATION : Utiliser B_λ(T_trop) précalculé au lieu de recalculer
-                //    F_émis = τ × π × B_λ(T_trop) × Δλ × poids
-                const em_flux = optical_thickness[i][j] * Math.PI * planck_trop[j] * delta_lambda * (lambda_weights[j] || 1.0);
-                // 3. Flux sortant = flux entrant - absorption + émission
-                //    NOTE : Le "palier" observé dans les courbes correspond à F_émis
-                //    Quand l'absorption est totale (F_absorbé ≈ F_entrant),
-                //    alors F_sortant ≈ F_émis, ce qui crée un "palier" qui suit
-                //    la courbe de Planck à la température de la couche la plus froide
-                //    (généralement la tropopause ~216K)
-                upward_flux[i][j] = flux_in[j] - abs_flux + em_flux;
+                // Transfert radiatif dans la couche (Formule exacte avec exponentielle)
+                const tau = optical_thickness[i][j];
+                const transmission = Math.exp(-tau);
+                const emissivity = 1 - transmission;
+                
+                // 1. Flux absorbé
+                const abs_flux = flux_in[j] * (1 - transmission);
+                
+                // 2. Flux émis
+                // ⚡ OPTIMISATION : Utiliser B_λ(T_trop) précalculé
+                const em_flux = emissivity * Math.PI * planck_trop[j] * delta_lambda * (lambda_weights[j] || 1.0);
+                
+                // 3. Flux sortant
+                upward_flux[i][j] = flux_in[j] * transmission + em_flux;
+                
                 // Stocker les valeurs pour la visualisation
                 emitted_flux[i][j] = em_flux;
                 absorbed_flux[i][j] = abs_flux;
@@ -1172,7 +1127,36 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         i_trop: i_trop
     });
 
+    // Debug: Tracer le profil vertical pour lambda = 10µm
+    const lambda_debug_idx = lambda_range.findIndex(l => Math.abs(l - 10e-6) < 1e-7);
+    if (lambda_debug_idx >= 0) {
+        console.log(`[calculateFluxForT0] Profil vertical à 10µm (idx=${lambda_debug_idx}):`);
+        // Afficher seulement quelques points clés (surface, tropopause, sommet)
+        console.log(`  Surface (z=0): Flux=${upward_flux[0][lambda_debug_idx].toExponential(2)}, Tau=${optical_thickness[0][lambda_debug_idx].toExponential(2)}`);
+        if (i_trop < z_range.length) {
+            console.log(`  Tropopause (z=${z_range[i_trop]}): Flux=${upward_flux[i_trop][lambda_debug_idx].toExponential(2)}, Tau=${optical_thickness[i_trop][lambda_debug_idx].toExponential(2)}`);
+        }
+        const top = z_range.length - 1;
+        console.log(`  Sommet (z=${z_range[top]}): Flux=${upward_flux[top][lambda_debug_idx].toExponential(2)}, Tau=${optical_thickness[top][lambda_debug_idx].toExponential(2)}`);
+    }
+
     // Calculer le flux total au sommet
+    // Vérifier que upward_flux n'est pas vide avant d'appeler reduce
+    if (!upward_flux || upward_flux.length === 0 || !upward_flux[upward_flux.length - 1]) {
+        console.error('[calculateFluxForT0] upward_flux est vide ou invalide');
+        return {
+            total_flux: 0,
+            lambda_range: [],
+            z_range: [],
+            upward_flux: [],
+            optical_thickness: [],
+            emitted_flux: [],
+            absorbed_flux: [],
+            earth_flux: [],
+            albedo: 0.3,
+            cloud_coverage: 0
+        };
+    }
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
 
     logCalculationPhase('6. Flux total calculé', {
@@ -1215,11 +1199,20 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
         ? window.waterVaporEnabled
         : false;
     // Récupérer le flux géothermique depuis l'époque courante
+    // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
-            geo_flux = currentEpoch.geothermal_flux;
+        if (currentEpoch) {
+            if (typeof window.calculateGeothermalFlux === 'function' && 
+                typeof currentEpoch.core_temperature === 'number' && 
+                typeof currentEpoch.geothermal_diffusion_factor === 'number') {
+                geo_flux = window.calculateGeothermalFlux(currentEpoch.core_temperature, currentEpoch.geothermal_diffusion_factor);
+            } 
+            // Fallback : utiliser geothermal_flux directement (ancien système, DEPRECATED)
+            else if (typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            }
         }
     }
     // Récupérer CH4 depuis options
@@ -1375,40 +1368,62 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     } = options;
 
     // Calculer T0 initiale (approximation avec albedo de base)
-    // Utiliser un albedo de base pour l'initialisation (sans glace ni nuages)
-    const T0_no_greenhouse = Math.pow(calculateSolarFluxAbsorbed(255, false) / STEFAN_BOLTZMANN, 0.25);
-    let T0_initial;
-    if (CO2_fraction === 0) {
-        T0_initial = T0_no_greenhouse;
-    } else {
-        const CO2_ref = 1e-6;
-        const forcing_CO2 = 5.35 * Math.log(Math.max(CO2_fraction, CO2_ref) / CO2_ref);
-        const climate_sensitivity = 0.8;
-        const delta_T_greenhouse = climate_sensitivity * forcing_CO2;
-        T0_initial = T0_no_greenhouse + delta_T_greenhouse;
+    // 🔒 Vérifier si l'époque définit une température initiale (ex: Hadéen juste après l'impact)
+    let T0_initial = null;
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch && typeof currentEpoch.initial_temperature_K === 'number' && currentEpoch.initial_temperature_K > 0) {
+            // Utiliser la température initiale définie dans la config de l'époque
+            T0_initial = currentEpoch.initial_temperature_K;
+            logCalculationPhase('DICHOTOMIE START (température initiale depuis config)', {
+                T0_initial: T0_initial.toFixed(2),
+                epoch: window.currentEpochName
+            });
+        }
     }
+    
+    // Si pas de température initiale définie, calculer depuis les formules
+    if (T0_initial === null) {
+        // Utiliser un albedo de base pour l'initialisation (sans glace ni nuages)
+        const T0_no_greenhouse = Math.pow(calculateSolarFluxAbsorbed(255, false) / STEFAN_BOLTZMANN, 0.25);
+        if (CO2_fraction === 0) {
+            T0_initial = T0_no_greenhouse;
+        } else {
+            const CO2_ref = 1e-6;
+            const forcing_CO2 = 5.35 * Math.log(Math.max(CO2_fraction, CO2_ref) / CO2_ref);
+            const climate_sensitivity = 0.8;
+            const delta_T_greenhouse = climate_sensitivity * forcing_CO2;
+            T0_initial = T0_no_greenhouse + delta_T_greenhouse;
+        }
 
-    logCalculationPhase('DICHOTOMIE START', {
-        T0_initial: T0_initial.toFixed(2),
-        T0_no_greenhouse: T0_no_greenhouse.toFixed(2)
-    });
+        logCalculationPhase('DICHOTOMIE START', {
+            T0_initial: T0_initial.toFixed(2),
+            T0_no_greenhouse: T0_no_greenhouse.toFixed(2)
+        });
 
-    // Si H2O est activé, ajuster T0_initial (H2O ajoute un effet de serre important)
-    const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-        ? window.waterVaporEnabled
-        : waterVaporEnabled;
-    if (h2o_enabled) {
-        // H2O ajoute un effet de serre supplémentaire, mais limité pour éviter l'emballement
-        // Réduit de 25K à 15K pour limiter la rétroaction positive température → nuages → forçage
-        T0_initial += 15; // Approximation réduite
+        // Si H2O est activé, ajuster T0_initial (H2O ajoute un effet de serre important)
+        const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
+            ? window.waterVaporEnabled
+            : waterVaporEnabled;
+        if (h2o_enabled) {
+            // H2O ajoute un effet de serre supplémentaire, mais limité pour éviter l'emballement
+            // Réduit de 25K à 15K pour limiter la rétroaction positive température → nuages → forçage
+            T0_initial += 15; // Approximation réduite
+        }
     }
 
     // Dichotomie pour trouver T0 qui donne flux_total = flux_solaire_absorbé
-    // Réduire les pas initiaux en centrant les bornes autour de T0_initial
-    // Intervalle initial plus serré : ±50K autour de T0_initial (au lieu de 200-350K)
-    const INITIAL_RANGE = 50; // Intervalle initial autour de T0_initial (K)
+    // 🔒 Ajuster les bornes selon la température initiale (peut être très élevée pour Hadéen)
+    const h2o_enabled_check = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
+        ? window.waterVaporEnabled
+        : waterVaporEnabled;
+    
+    // Si T0_initial est très élevé (ex: Hadéen post-impact), utiliser un intervalle plus large
+    const INITIAL_RANGE = (T0_initial > 1000) ? 200 : 50; // Intervalle plus large pour températures élevées
     let T0_min = Math.max(200, T0_initial - INITIAL_RANGE); // Borne inférieure, minimum 200K
-    let T0_max = Math.min(h2o_enabled ? 400 : 350, T0_initial + INITIAL_RANGE); // Borne supérieure, maximum selon H2O
+    // Borne supérieure : permettre jusqu'à 3000K pour Hadéen (juste après impact)
+    const T0_max_limit = (T0_initial > 1000) ? 3000 : (h2o_enabled_check ? 400 : 350);
+    let T0_max = Math.min(T0_max_limit, T0_initial + INITIAL_RANGE);
     let T0 = T0_initial;
     const tolerance = 0.1; // Tolérance sur le flux (W/m²)
     const max_iterations = 20;
@@ -1512,13 +1527,23 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                             geo_flux = currentEpoch.geothermal_flux;
                         }
                     }
-                    const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0_current, h2o_enabled, geo_flux);
-                    const flux_diff = final_result.total_flux - solar_flux_absorbed;
+                    // Récupérer l'état H2O depuis window.waterVaporEnabled (état du bouton)
+                    const h2o_enabled_state = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
+                        ? window.waterVaporEnabled
+                        : false;
+                    const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0_current, h2o_enabled_state, geo_flux);
+                    
+                    // 🔒 CORRECTION CRITIQUE : Inclure le flux géothermique dans le bilan énergétique !
+                    // Équilibre : Flux Sortant = Flux Solaire Absorbé + Flux Géothermique
+                    const total_flux_in = solar_flux_absorbed + (geo_flux || 0);
+                    const flux_diff = final_result.total_flux - total_flux_in;
 
                     logCalculationPhase(`DICHOTOMIE ITER ${iter + 1}`, {
                         T0_current: T0_current.toFixed(2),
                         total_flux: final_result.total_flux.toFixed(2),
                         solar_flux_absorbed: solar_flux_absorbed.toFixed(2),
+                        geo_flux: (geo_flux || 0).toFixed(2),
+                        total_flux_in: total_flux_in.toFixed(2),
                         flux_diff: flux_diff.toFixed(2)
                     });
 
@@ -1716,11 +1741,20 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         ? window.waterVaporEnabled
         : waterVaporEnabled;
     // Récupérer le flux géothermique depuis l'époque courante
+    // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
-            geo_flux = currentEpoch.geothermal_flux;
+        if (currentEpoch) {
+            if (typeof window.calculateGeothermalFlux === 'function' && 
+                typeof currentEpoch.core_temperature === 'number' && 
+                typeof currentEpoch.geothermal_diffusion_factor === 'number') {
+                geo_flux = window.calculateGeothermalFlux(currentEpoch.core_temperature, currentEpoch.geothermal_diffusion_factor);
+            } 
+            // Fallback : utiliser geothermal_flux directement (ancien système, DEPRECATED)
+            else if (typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            }
         }
     }
     // Récupérer CH4 pour détecter le cas du corps noir
@@ -1795,11 +1829,20 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
         ? window.waterVaporEnabled
         : waterVaporEnabled;
     // Récupérer le flux géothermique depuis l'époque courante
+    // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
-            geo_flux = currentEpoch.geothermal_flux;
+        if (currentEpoch) {
+            if (typeof window.calculateGeothermalFlux === 'function' && 
+                typeof currentEpoch.core_temperature === 'number' && 
+                typeof currentEpoch.geothermal_diffusion_factor === 'number') {
+                geo_flux = window.calculateGeothermalFlux(currentEpoch.core_temperature, currentEpoch.geothermal_diffusion_factor);
+            } 
+            // Fallback : utiliser geothermal_flux directement (ancien système, DEPRECATED)
+            else if (typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            }
         }
     }
     const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
@@ -1849,8 +1892,11 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
 // Exposer les fonctions globalement pour être accessibles depuis main.js
 if (typeof window !== 'undefined') {
     window.simulateRadiativeTransfer = simulateRadiativeTransfer;
-    window.calculateAlbedo = calculateAlbedo;
-    window.calculateSolarFluxAbsorbed = calculateSolarFluxAbsorbed;
+    // Ne pas exposer les wrappers calculateAlbedo et calculateSolarFluxAbsorbed
+    // car ils appellent window.calculateAlbedo et window.calculateSolarFluxAbsorbed
+    // qui sont déjà exposés par calculations_albedo.js
+    // window.calculateAlbedo = calculateAlbedo; // ❌ Éviter récursion infinie
+    // window.calculateSolarFluxAbsorbed = calculateSolarFluxAbsorbed; // ❌ Éviter récursion infinie
     // Les fonctions de forçage sont maintenant dans climate.js, pas besoin de les exposer ici
 }
 

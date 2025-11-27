@@ -63,21 +63,26 @@
         },
 
         /**
-         * Met à jour la température du noyau et son affichage
-         * @param {number} tempK - Température en Kelvin
+         * Met à jour la puissance totale du noyau et son affichage
+         * @param {number} flux - Flux géothermique en W/m²
+         * @param {number} radius - Rayon de la planète en m
          */
-        setCoreTemperature: function (tempK) {
-            if (typeof tempK !== 'number') {
-                // Peut être null ou undefined pour "Corps noir"
-                if (tempK === 0 || tempK === null) {
-                    this._updateLabel('core_temperature', `~0 K`);
-                    return;
-                }
-                console.warn('[FluxManager] Core temperature is not a number:', tempK);
-                return;
+        setCorePower: function (flux, radius) {
+            if (typeof flux !== 'number' || typeof radius !== 'number') {
+                 this._updateLabel('core_temperature', '0 W');
+                 return;
             }
+            
+            const surface = 4 * Math.PI * Math.pow(radius, 2);
+            const totalPower = flux * surface;
 
-            this._updateLabel('core_temperature', `~${tempK} K`);
+            if (totalPower <= 0) {
+                this._updateLabel('core_temperature', '0 W');
+            } else {
+                const exponent = Math.floor(Math.log10(totalPower));
+                const mantissa = totalPower / Math.pow(10, exponent);
+                this._updateLabel('core_temperature', `${mantissa.toFixed(2)}×10<sup>${exponent}</sup> W`);
+            }
         },
 
         /**
@@ -99,16 +104,12 @@
             // Valeurs par défaut si non définies
             const solarIntensity = typeof epoch.solar_intensity === 'number' ? epoch.solar_intensity : 1.0;
             const geothermalFlux = typeof epoch.geothermal_flux === 'number' ? epoch.geothermal_flux : 0.087;
-
-            // Gestion de la température du noyau (compatibilité k/sans k)
-            let coreTemp = 4000;
-            if (typeof epoch.core_temperature_k === 'number') coreTemp = epoch.core_temperature_k;
-            else if (typeof epoch.core_temperature === 'number') coreTemp = epoch.core_temperature;
+            const planetRadius = typeof epoch.planet_radius === 'number' ? epoch.planet_radius : 6371000;
 
             // Appliquer les mises à jour
             this.setSolarIntensity(solarIntensity);
             this.setGeothermalFlux(geothermalFlux);
-            this.setCoreTemperature(coreTemp);
+            this.setCorePower(geothermalFlux, planetRadius);
         },
 
         /**

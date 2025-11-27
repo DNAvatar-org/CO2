@@ -135,7 +135,7 @@ const nodes = [
         left: [],
         right: [],
         top: [],
-        bottom: [{ text: '~5700 K ', dataId: 'core_temperature' }],
+        bottom: [{ text: '4.44 x 10^13 W', dataId: 'core_temperature' }],
         tooltip: 'Noyau - Géothermie',
         radiation: [
             {
@@ -271,8 +271,10 @@ const nodes = [
     },
 
     { id: 'espace2', logo: '🛰', logoScale: 0.5, x: centerX + 150, y: centerY + 310, radius: 50, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
-
-    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Forçage<br>Radiatif', dataId: 'forcing_label' }, tooltip: 'Réémis', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
+    
+    // 🔒 MODIFICATION : Renommer "Forçage Radiatif" en "Effet de Serre" pour plus de justesse scientifique
+    // (L'albédo est traité avant, ici c'est l'action de l'atmosphère/gaz)
+    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
 
     // Boutons
     //+circleMiddleRadius*Math.cos(135*Math.PI/180)
@@ -311,20 +313,27 @@ const timeline = [
         date: '-5000 Ma',
         startYears: 5.0e9,
         endYears: 4.5e9,
-        temp: '1200°C',
+        // temp: '1200°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: 'fonts/pics/corps_noir.png',
-        title: 'Corps noir - État initial (206.1K), avant formation de la Terre',
+        title: 'Corps noir - État étalon<br>(Remplace la phase d\'accrétion)',
         solar_intensity: 0.70,
-        geothermal_flux: 0.0, // Pas de flux géothermique (corps froid)
-        core_temperature: 0, // Pas de noyau
-        // Simulation parameters
-        co2_ppm: 0,
-        ch4_ppm: 0,
-        h2o_enabled: false,
-        h2o_vapor_percent: 0.0, // Pas d'atmosphère
-        cloud_coverage: 0,
+        core_temperature: 0, // Pas de noyau (K)
+        geothermal_diffusion_factor: 0.0, // Facteur de diffusion du noyau vers la surface (0-1) - Corps noir : pas de noyau
+        planet_radius: 6371000, // Rayon de la planète en mètres (Terre : 6371 km)
+        gravity: 9.81, // Gravité en m/s²
+        total_atmosphere_mass_kg: 0, // Pas d'atmosphère
+        // Note: geothermal_flux sera calculé à partir de core_temperature et geothermal_diffusion_factor
+        // Simulation parameters - Quantités en kg (pas de ppm/%)
+        co2_kg: 0, // Quantité de CO2 en kg
+        ch4_kg: 0, // Quantité de CH4 en kg
+        h2o_kg: 0, // Quantité totale d'eau en kg (vapeur + liquide + glace)
+        n2_kg: 0, // Quantité de N2 en kg (non affiché dans le flux diagram)
+        o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
+        // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
+        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
+        cloud_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.0,
-        ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0,
+        ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         volcanoFactor: 0.0
     },
     {
@@ -338,20 +347,36 @@ const timeline = [
         date: '-4500 Ma',
         startYears: 4.5e9,
         endYears: 4.0e9,
-        temp: '46.0°C',
+        // temp: '46.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: 'fonts/pics/hadeen.png',
         title: 'Hadéen - Terre en formation, océan de magma (Atmosphère dense)',
         solar_intensity: 0.75,
-        geothermal_flux: 20.0, // Flux élevé (littérature: 10-20 W/m² pour magma ocean)
-        core_temperature: 6000,
-        // Simulation parameters
-        co2_ppm: 100000, // 10% CO2 pour simuler l'atmosphère dense primitive
-        ch4_ppm: 1000,   // Méthane élevé
-        h2o_enabled: true, // Vapeur d'eau massive
-        h2o_vapor_percent: 5.0, // 5% de vapeur d'eau dans l'atmosphère (effet de serre)
-        cloud_coverage: 0.1, // 10% de nuages (peu de condensation à haute température)
+        core_temperature: 6000, // Température du noyau en K
+        // geothermal_diffusion_factor: 0.0073, // REMPLACÉ par un flux explicite
+        // Flux géothermique colossal (2 000 000 W/m²) pour maintenir la surface en fusion (~2400K)
+        // Correspond à la phase immédiate post-impact (océan de magma rayonnant)
+        geothermal_flux: 2000000, 
+        planet_radius: 6371000, // Rayon de la planète en mètres
+        gravity: 9.81, // Gravité en m/s²
+        total_atmosphere_mass_kg: 5.3e20, // Atmosphère très dense (~100 bar, principalement CO2/H2O)
+        // Note: geothermal_flux = core_temperature * geothermal_diffusion_factor * 0.00457
+        // Hadéen: ~0.20 W/m² (6000K * 0.0073 * 0.00457 ≈ 0.20 W/m²)
+        // D'après Grok: ~0.20-0.25 W/m² à la surface pour Hadéen
+        // initial_temperature_K: 2500, // SUPPRIMÉ : La température doit émerger de la physique (flux géo + effet de serre)
+        // Juste après l'impact : 10⁵ à 10⁷ W/m², >4000-6000K (roche vaporisée)
+        // Post-impact (vrai Hadéen) : 1000 → 100 W/m² en décroissance, 2500K → 500K
+        // Simulation parameters - Quantités en kg (pas de ppm/%)
+        // Conversion approximative: 10% CO2 ≈ 5.15e17 kg (10% de 5.15e18 kg atmosphère)
+        co2_kg: 5.15e17, // Quantité de CO2 en kg (~10% de l'atmosphère moderne)
+        ch4_kg: 5.15e15, // Quantité de CH4 en kg (~1000 ppm)
+        h2o_kg: 2.1e20, // Quantité totale d'eau en kg (~15% de 1.4e21 kg)
+        n2_kg: 1.0e18, // Quantité de N2 en kg (non affiché dans le flux diagram)
+        o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
+        // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
+        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
+        cloud_coverage: 0.1, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.05,
-        ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0,
+        ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         magma_coverage: 1.0, // Spécifique Hadéen
         volcanoFactor: 10.0
     },
@@ -366,20 +391,28 @@ const timeline = [
         date: '-4000 Ma',
         startYears: 4.0e9,
         endYears: 2.5e9,
-        temp: '38.0°C',
+        // temp: '38.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: 'fonts/pics/archeen.png',
         title: 'Archéen (-4000 à -2500 Ma)',
         solar_intensity: 0.80,
-        geothermal_flux: 0.5,
-        core_temperature: 5500,
-        // Simulation parameters
-        co2_ppm: 5000,
-        ch4_ppm: 80,
-        h2o_enabled: true,
-        h2o_vapor_percent: 1.5, // Atmosphère stabilisée
-        cloud_coverage: 0.6,
+        core_power_watts: 1.5e14, // Puissance géothermique totale (~150 TW)
+        // core_temperature: 5500, // DEPRECATED
+        // geothermal_diffusion_factor: 0.00009, // DEPRECATED
+        planet_radius: 6371000, // Rayon de la planète en mètres
+        gravity: 9.81, // Gravité en m/s²
+        total_atmosphere_mass_kg: 1.0e19, // Atmosphère dense (~2 bar, CO2/N2)
+        // Note: geothermal_flux ≈ 0.29 W/m² (1.5e14 / 5.1e14)
+        // Simulation parameters - Quantités en kg
+        co2_kg: 2.575e16, // Quantité de CO2 en kg (~5000 ppm)
+        ch4_kg: 4.12e14, // Quantité de CH4 en kg (~80 ppm)
+        h2o_kg: 8.4e20, // Quantité totale d'eau en kg (~60% de 1.4e21 kg)
+        n2_kg: 3.0e18, // Quantité de N2 en kg (non affiché dans le flux diagram)
+        o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
+        // Note: Les % seront calculés via calculations_atm.js
+        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
+        cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.12,
-        ocean_coverage: 0.80, forest_coverage: 0, desert_coverage: 0.05, ice_coverage: 0,
+        ocean_coverage: 0.80, forest_coverage: 0, desert_coverage: 0.05, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         volcanoFactor: 5.0
     },
     {
@@ -393,20 +426,28 @@ const timeline = [
         date: '-2500 Ma',
         startYears: 2.5e9,
         endYears: 541e6,
-        temp: '12.0°C',
+        // temp: '12.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🦠',
         title: 'Protérozoïque (-2500 à -541 Ma)',
         solar_intensity: 0.90,
-        geothermal_flux: 0.2,
-        core_temperature: 5000,
-        // Simulation parameters
-        co2_ppm: 2000,
-        ch4_ppm: 25,
-        h2o_enabled: true,
-        h2o_vapor_percent: 1.0, // Climat tempéré
-        cloud_coverage: 0.6,
+        core_power_watts: 1.0e14, // Puissance géothermique totale (~100 TW)
+        // core_temperature: 5000, // DEPRECATED
+        // geothermal_diffusion_factor: 0.00004, // DEPRECATED
+        planet_radius: 6371000, // Rayon de la planète en mètres
+        gravity: 9.81, // Gravité en m/s²
+        total_atmosphere_mass_kg: 5.15e18, // Atmosphère proche de l'actuelle (~1 bar)
+        // Note: geothermal_flux ≈ 0.2 W/m² (1.0e14 / 5.1e14)
+        // Simulation parameters - Quantités en kg
+        co2_kg: 1.03e16, // Quantité de CO2 en kg (~2000 ppm)
+        ch4_kg: 1.2875e14, // Quantité de CH4 en kg (~25 ppm)
+        h2o_kg: 1.19e21, // Quantité totale d'eau en kg (~85% de 1.4e21 kg)
+        n2_kg: 3.5e18, // Quantité de N2 en kg (non affiché dans le flux diagram)
+        o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
+        // Note: Les % seront calculés via calculations_atm.js
+        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
+        cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.20,
-        ocean_coverage: 0.70, forest_coverage: 0.05, desert_coverage: 0.15, ice_coverage: 0,
+        ocean_coverage: 0.70, forest_coverage: 0.05, desert_coverage: 0.15, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         volcanoFactor: 2.0
     },
     {
@@ -420,20 +461,28 @@ const timeline = [
         date: '-250 Ma',
         startYears: 252e6,
         endYears: 66e6,
-        temp: '25.0°C',
+        // temp: '25.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🦕',
         title: 'Mésozoïque (-252 à -66 Ma)',
         solar_intensity: 0.98,
-        geothermal_flux: 0.1,
-        core_temperature: 4500,
-        // Simulation parameters
-        co2_ppm: 2500,
-        ch4_ppm: 8,
-        h2o_enabled: true,
-        h2o_vapor_percent: 1.2, // Climat chaud (dinosaures)
-        cloud_coverage: 0.6,
+        core_power_watts: 6.0e13, // Puissance géothermique totale (~60 TW)
+        // core_temperature: 4500, // DEPRECATED
+        // geothermal_diffusion_factor: 0.000022, // DEPRECATED
+        planet_radius: 6371000, // Rayon de la planète en mètres
+        gravity: 9.81, // Gravité en m/s²
+        total_atmosphere_mass_kg: 5.15e18, // Atmosphère standard (~1 bar)
+        // Note: geothermal_flux ≈ 0.12 W/m² (6.0e13 / 5.1e14)
+        // Simulation parameters - Quantités en kg
+        co2_kg: 1.2875e16, // Quantité de CO2 en kg (~2500 ppm)
+        ch4_kg: 4.12e13, // Quantité de CH4 en kg (~8 ppm)
+        h2o_kg: 1.33e21, // Quantité totale d'eau en kg (~95% de 1.4e21 kg)
+        n2_kg: 4.0e18, // Quantité de N2 en kg (non affiché dans le flux diagram)
+        o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
+        // Note: Les % seront calculés via calculations_atm.js
+        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
+        cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.28,
-        ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0,
+        ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         volcanoFactor: 1.0
     },
     {
@@ -447,20 +496,28 @@ const timeline = [
         date: '-145 Ma',
         startYears: 145e6,
         endYears: 66e6,
-        temp: '28.0°C',
+        // temp: '28.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🦴',
         title: 'Crétacé (-145 à -66 Ma)',
         solar_intensity: 0.99,
-        geothermal_flux: 0.095,
-        core_temperature: 4300,
-        // Simulation parameters
-        co2_ppm: 3000,
-        ch4_ppm: 10,
-        h2o_enabled: true,
-        h2o_vapor_percent: 0.8, // Refroidissement
-        cloud_coverage: 0.6,
+        core_power_watts: 5.5e13, // Puissance géothermique totale (~55 TW)
+        // core_temperature: 4300, // DEPRECATED
+        // geothermal_diffusion_factor: 0.000022, // DEPRECATED
+        planet_radius: 6371000, // Rayon de la planète en mètres
+        gravity: 9.81, // Gravité en m/s²
+        total_atmosphere_mass_kg: 5.15e18, // Atmosphère standard (~1 bar)
+        // Note: geothermal_flux ≈ 0.11 W/m² (5.5e13 / 5.1e14)
+        // Simulation parameters - Quantités en kg
+        co2_kg: 1.545e16, // Quantité de CO2 en kg (~3000 ppm)
+        ch4_kg: 5.15e13, // Quantité de CH4 en kg (~10 ppm)
+        h2o_kg: 1.372e21, // Quantité totale d'eau en kg (~98% de 1.4e21 kg)
+        n2_kg: 4.0e18, // Quantité de N2 en kg (non affiché dans le flux diagram)
+        o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
+        // Note: Les % seront calculés via calculations_atm.js
+        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
+        cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.28,
-        ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0,
+        ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         volcanoFactor: 1.0
     },
     {
@@ -474,20 +531,28 @@ const timeline = [
         date: '-66 Ma',
         startYears: 66e6,
         endYears: 0,
-        temp: '18.0°C',
+        // temp: '18.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🦣',
         title: 'Cénozoïque (-66 Ma à aujourd\'hui)',
         solar_intensity: 0.995,
-        geothermal_flux: 0.09,
-        core_temperature: 4100,
-        // Simulation parameters
-        co2_ppm: 280,
-        ch4_ppm: 0.7,
-        h2o_enabled: true,
-        h2o_vapor_percent: 0.6, // Climat glaciaire/interglaciaire
-        cloud_coverage: 0.4,
+        core_power_watts: 5.0e13, // Puissance géothermique totale (~50 TW)
+        // core_temperature: 4100, // DEPRECATED
+        // geothermal_diffusion_factor: 0.000022, // DEPRECATED
+        planet_radius: 6371000, // Rayon de la planète en mètres
+        gravity: 9.81, // Gravité en m/s²
+        total_atmosphere_mass_kg: 5.15e18, // Atmosphère standard (~1 bar)
+        // Note: geothermal_flux ≈ 0.1 W/m² (5.0e13 / 5.1e14)
+        // Simulation parameters - Quantités en kg
+        co2_kg: 1.443e15, // Quantité de CO2 en kg (~280 ppm)
+        ch4_kg: 3.605e12, // Quantité de CH4 en kg (~0.7 ppm)
+        h2o_kg: 1.4e21, // Quantité totale d'eau en kg (100% de 1.4e21 kg)
+        n2_kg: 4.017e18, // Quantité de N2 en kg (~78% de l'atmosphère moderne, non affiché dans le flux diagram)
+        o2_kg: 1.0815e18, // Quantité de O2 en kg (~21% de l'atmosphère moderne, non affiché dans le flux diagram)
+        // Note: Les % seront calculés via calculations_atm.js
+        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
+        cloud_coverage: 0.4, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.30,
-        ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05,
+        ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05, // DEPRECATED: Sera calculé dynamiquement
         volcanoFactor: 1.0
     },
     {
@@ -501,20 +566,28 @@ const timeline = [
         date: '0',
         startYears: 0,
         endYears: -1,
-        temp: '15.0°C',
+        // temp: '15.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🐘',
         title: 'Aujourd\'hui',
         solar_intensity: 1.00,
-        geothermal_flux: 0.087,
-        core_temperature: 4000,
-        // Simulation parameters
-        co2_ppm: 420,
-        ch4_ppm: 1.9,
-        h2o_enabled: true,
-        h2o_vapor_percent: 0.4, // Valeur moderne (référence: ~0.4% en volume)
-        cloud_coverage: 0.4,
+        core_power_watts: 4.6e13, // Puissance géothermique totale (~46 TW)
+        // core_temperature: 4000, // DEPRECATED
+        // geothermal_diffusion_factor: 0.000022, // DEPRECATED
+        planet_radius: 6371000, // Rayon de la planète en mètres
+        gravity: 9.81, // Gravité en m/s²
+        total_atmosphere_mass_kg: 5.15e18, // Atmosphère standard (~1 bar)
+        // Note: geothermal_flux ≈ 0.09 W/m² (4.6e13 / 5.1e14)
+        // Simulation parameters - Quantités en kg
+        co2_kg: 2.163e15, // Quantité de CO2 en kg (~420 ppm)
+        ch4_kg: 9.785e12, // Quantité de CH4 en kg (~1.9 ppm)
+        h2o_kg: 1.4e21, // Quantité totale d'eau en kg (100% de 1.4e21 kg)
+        n2_kg: 4.017e18, // Quantité de N2 en kg (~78% de l'atmosphère moderne, non affiché dans le flux diagram)
+        o2_kg: 1.0815e18, // Quantité de O2 en kg (~21% de l'atmosphère moderne, non affiché dans le flux diagram)
+        // Note: Les % seront calculés via calculations_atm.js
+        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
+        cloud_coverage: 0.4, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.30,
-        ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05,
+        ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05, // DEPRECATED: Sera calculé dynamiquement
         volcanoFactor: 1.0
     }
 ];

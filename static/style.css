@@ -1652,4 +1652,28 @@ body.mode-dark .plot-overlay-title {
         inset 0 1px 0 rgba(255, 255, 255, 0.1),
         inset 0 -1px 0 rgba(0, 0, 0, 0.2) !important;
 }
-*/
+*//* File: static/style.css (Appending missing styles) */
+
+/* Styles for flux labels - Modified to remove bold and !important where not needed */
+.flux-label.watt-or-kelvin {
+    color: #ff4444; /* Rouge pour Watts et Kelvin */
+}
+
+.flux-label.watt-per-m2 {
+    color: #ff9800; /* Orange pour W/m² */
+}
+
+.flux-label.percent-label,
+.flux-label.ppm-label {
+    color: #00bfff; /* Bleu pour % et ppm */
+}
+
+.flux-label.zero-value {
+    color: #888888 !important; /* Gris pour 0 - Prioritaire */
+    opacity: 0.7;
+}
+
+.flux-label.co2-label {
+    color: #4ade80; /* Vert pour défaut/CO2 */
+}
+
