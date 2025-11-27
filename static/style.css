@@ -1728,17 +1728,12 @@ body.mode-dark .plot-overlay-title {
     text-transform: uppercase;
     letter-spacing: 2px;
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-    display: flex; /* Pour gérer l'alignement du span */
-    align-items: center; /* Centrer verticalement (horizontalement après rotation) */
-    width: 20px; /* Fixer la largeur pour éviter le déplacement */
-    justify-content: center;
+    /* display: flex; Supprimé pour que <br> fonctionne */
+    width: 60px; /* Largeur fixe pour 2 lignes (Texte + Points) sans saut */
+    text-align: center;
 }
 
-#calculation-dots {
-    display: inline-block;
-    width: 20px; /* Espace réservé pour les points */
-    text-align: left; /* Aligner les points */
-}
+/* #calculation-dots supprimé car plus de style spécifique nécessaire */
 
 /* Imposer une hauteur fixe à left-timeline pour éviter les sauts */
 .left-timeline {
