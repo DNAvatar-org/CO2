@@ -2442,16 +2442,21 @@ window.addEventListener('DOMContentLoaded', () => {
                     // Approximation : ratio direct (si 40% = 2.1e20, alors 2% = 2.1e20 * 2/40)
                     const mass_added = (2 / base_percent) * mass_total;
                     if (mass_added > 0 && isFinite(mass_added)) {
-                        mass_added_txt = ` (+${mass_added.toExponential(1)} kg)`;
+                        // Format scientifique : 6.8x10^18
+                        const expStr = mass_added.toExponential(1);
+                        // Remplacer e+ ou e par x10^
+                        mass_added_txt = '+' + expStr.replace('e+', 'x10^').replace('e', 'x10^') + ' kg';
                     }
                 }
             }
             
             // Tooltip avec quantité
             if (typeof window.addCustomTooltip === 'function') {
-                 window.addCustomTooltip(waterAdditionBtn, 'Météorite de glace<br>Apport d\'eau +2%' + mass_added_txt);
+                 // 🔒 Marquer comme initialisé pour éviter que tooltips.js ne crée un doublon via l'attribut alt
+                 waterAdditionBtn.setAttribute('data-tooltip-initialized', 'true');
+                 window.addCustomTooltip(waterAdditionBtn, 'Météorite de glace<br>' + mass_added_txt);
             } else {
-                 waterAdditionBtn.title = 'Météorite de glace - Apport d\'eau +2%' + mass_added_txt;
+                 waterAdditionBtn.title = 'Météorite de glace - ' + mass_added_txt;
             }
             
             waterAdditionBtn.alt = 'Météorite de glace'; 
