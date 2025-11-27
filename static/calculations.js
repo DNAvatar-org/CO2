@@ -1414,6 +1414,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     // On ne doit pas les redéclarer ici
     
     // Calculer T0 initiale
+    let T0_initial = null; // Initialiser T0_initial ici
     let T0_initial_config = null;
     // Vérifier si l'époque définit une température initiale
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
