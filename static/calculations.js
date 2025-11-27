@@ -1499,6 +1499,12 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         displayDichotomyStep(CO2_fraction, T0_initial, result, 0, true, options);
     }
 
+    // Reset des flux diff min/max pour la nouvelle dichotomie asynchrone
+    if (typeof window !== 'undefined') {
+        window.flux_diff_min = -1e9;
+        window.flux_diff_max = 1e9;
+    }
+
     // Dichotomie avec affichage progressif
     // Note: On utilise une approche asynchrone pour permettre l'affichage progressif
     // mais on retourne immédiatement une Promise pour ne pas bloquer
@@ -1636,11 +1642,63 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     if (flux_diff > 0) {
                         // Flux trop élevé, diminuer T0
                         T0_max = T0_current;
-                        T0_current = (T0_min + T0_max) / 2;
+                        
+                        // ⚡ OPTIMISATION : Méthode Regula Falsi (Fausse Position) au lieu de Dichotomie simple
+                        // Au lieu de prendre le milieu (T_min + T_max)/2, on utilise l'erreur relative
+                        // pour estimer où le zéro se trouve probablement.
+                        // Comme Flux ~ T^4, la fonction est monotone et convexe/concave, donc très prédictible.
+                        
+                        // Sauvegarder la différence de flux pour les bornes (si disponible)
+                        if (typeof window.flux_diff_min === 'undefined') window.flux_diff_min = -1e9; // Valeur très négative par défaut
+                        if (typeof window.flux_diff_max === 'undefined') window.flux_diff_max = 1e9;  // Valeur très positive par défaut
+                        
+                        window.flux_diff_max = flux_diff;
+                        
+                        // Si on a des bornes valides avec des signes opposés, utiliser Regula Falsi
+                        if (window.flux_diff_min < 0 && window.flux_diff_max > 0) {
+                            // Formule de la sécante : x = a - f(a) * (b - a) / (f(b) - f(a))
+                            // Ici a = T0_min, b = T0_max
+                            const delta = (T0_max - T0_min);
+                            const df = (window.flux_diff_max - window.flux_diff_min);
+                            
+                            // Interpolation linéaire
+                            let T0_next = T0_min - window.flux_diff_min * (delta / df);
+                            
+                            // 🔒 SÉCURITÉ : Garder une marge par rapport aux bords (éviter stagnation)
+                            // Ne pas aller trop près des bornes (min 10% de l'intervalle)
+                            const safety_margin = delta * 0.1;
+                            T0_next = Math.max(T0_min + safety_margin, Math.min(T0_max - safety_margin, T0_next));
+                            
+                            T0_current = T0_next;
+                        } else {
+                            // Fallback Dichotomie classique si pas assez d'infos
+                            T0_current = (T0_min + T0_max) / 2;
+                        }
                     } else {
                         // Flux trop faible, augmenter T0
                         T0_min = T0_current;
-                        T0_current = (T0_min + T0_max) / 2;
+                        
+                        // Sauvegarder la différence de flux
+                        if (typeof window.flux_diff_min === 'undefined') window.flux_diff_min = -1e9;
+                        if (typeof window.flux_diff_max === 'undefined') window.flux_diff_max = 1e9;
+                        
+                        window.flux_diff_min = flux_diff;
+                        
+                        // Si on a des bornes valides avec des signes opposés, utiliser Regula Falsi
+                        if (window.flux_diff_min < 0 && window.flux_diff_max > 0) {
+                            const delta = (T0_max - T0_min);
+                            const df = (window.flux_diff_max - window.flux_diff_min);
+                            
+                            let T0_next = T0_min - window.flux_diff_min * (delta / df);
+                            
+                            // 🔒 SÉCURITÉ
+                            const safety_margin = delta * 0.1;
+                            T0_next = Math.max(T0_min + safety_margin, Math.min(T0_max - safety_margin, T0_next));
+                            
+                            T0_current = T0_next;
+                        } else {
+                            T0_current = (T0_min + T0_max) / 2;
+                        }
                     }
 
                     iter++;
@@ -1714,11 +1772,51 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             if (flux_diff > 0) {
                 // Flux trop élevé, diminuer T0
                 T0_max = T0;
-                T0 = (T0_min + T0_max) / 2;
+                
+                // ⚡ OPTIMISATION : Méthode Regula Falsi (Fausse Position)
+                if (typeof window !== 'undefined') {
+                    window.flux_diff_max = flux_diff;
+                    
+                    if (window.flux_diff_min < 0 && window.flux_diff_max > 0) {
+                        const delta = (T0_max - T0_min);
+                        const df = (window.flux_diff_max - window.flux_diff_min);
+                        let T0_next = T0_min - window.flux_diff_min * (delta / df);
+                        
+                        // 🔒 SÉCURITÉ
+                        const safety_margin = delta * 0.1;
+                        T0_next = Math.max(T0_min + safety_margin, Math.min(T0_max - safety_margin, T0_next));
+                        
+                        T0 = T0_next;
+                    } else {
+                        T0 = (T0_min + T0_max) / 2;
+                    }
+                } else {
+                    T0 = (T0_min + T0_max) / 2;
+                }
             } else {
                 // Flux trop faible, augmenter T0
                 T0_min = T0;
-                T0 = (T0_min + T0_max) / 2;
+                
+                // Sauvegarder la différence de flux
+                if (typeof window !== 'undefined') {
+                    window.flux_diff_min = flux_diff;
+                    
+                    if (window.flux_diff_min < 0 && window.flux_diff_max > 0) {
+                        const delta = (T0_max - T0_min);
+                        const df = (window.flux_diff_max - window.flux_diff_min);
+                        let T0_next = T0_min - window.flux_diff_min * (delta / df);
+                        
+                        // 🔒 SÉCURITÉ
+                        const safety_margin = delta * 0.1;
+                        T0_next = Math.max(T0_min + safety_margin, Math.min(T0_max - safety_margin, T0_next));
+                        
+                        T0 = T0_next;
+                    } else {
+                        T0 = (T0_min + T0_max) / 2;
+                    }
+                } else {
+                    T0 = (T0_min + T0_max) / 2;
+                }
             }
 
             iteration++;

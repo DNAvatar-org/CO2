@@ -17,7 +17,8 @@
         'title-container',
         'flux-diagram-wrapper',
         'plot-container-wrapper',
-        'timeline-display'
+        'timeline-display',
+        'fps-display' // Ajouté pour le positionnement dynamique
         // synthese_EdS est intégrée dans l'organigramme par integrateEds.js, donc pas besoin de la positionner
     ];
     
@@ -89,6 +90,42 @@
         // plot-container-wrapper (seul dans right)
         if (divs['plot-container-wrapper']) {
             rightColumn.appendChild(divs['plot-container-wrapper']);
+        }
+        
+        // Gestion du FPS (Hors flux, position absolue calculée)
+        // Ne pas mettre dans rightColumn pour que le footer ne soit pas affecté
+        const fpsDisplay = document.getElementById('fps-display');
+        if (fpsDisplay) {
+            // S'assurer qu'il est dans le body (pour position absolute par rapport au doc)
+            if (fpsDisplay.parentElement !== document.body) {
+                document.body.appendChild(fpsDisplay);
+            }
+            
+            // Calculer la position Y sous la colonne de droite de manière déterministe
+            // Logique imposée :
+            // - Hauteur colonne fixe = 630px
+            // - Padding Body = 20px
+            // - Si desktop (côte à côte) : Y = 630 + 2*20 = 670px
+            // - Si mobile (l'un sous l'autre) : Y = 2*630 + 3*20 = 1320px
+            
+            const PADDING_BODY = 20;
+            const COL_HEIGHT = 630;
+            let topPos;
+            
+            if (screenWidth < 1000) {
+                // Mode Mobile : Colonnes empilées (Left puis Right)
+                // Y = PaddingTop + LeftCol + Gap(Padding) + RightCol + PaddingBottom
+                // Formule simplifiée demandée : 2*630 + 3*20 = 1320px
+                topPos = (2 * COL_HEIGHT) + (3 * PADDING_BODY);
+            } else {
+                // Mode Desktop : Colonnes côte à côte
+                // Y = PaddingTop + RightCol + PaddingBottom
+                // Formule simplifiée demandée : 630 + 2*20 = 670px
+                topPos = COL_HEIGHT + (2 * PADDING_BODY);
+            }
+            
+            fpsDisplay.style.top = topPos + 'px';
+            // fpsDisplay.style.left = '0px'; // Gauche toute - SUPPRIMÉ pour laisser le CSS gérer (left: 20px)
         }
         
         // synthese_EdS est intégrée dans l'organigramme par integrateEds.js, donc pas besoin de la positionner

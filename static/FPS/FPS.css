@@ -12,21 +12,24 @@
    ============================================================================ */
 
 .fps-display {
-    position: fixed;
-    top: 0;
-    left: 0;
+    /* Position absolue calculée par JS layout.js */
+    position: absolute;
+    left: 20px; /* Marge de 20px à gauche */
+    /* top géré par JS */
     background: rgba(0, 0, 0, 0.9); /* Fond noir */
     color: #fff;
-    border-radius: 5px;
-    width: 400px; /* Plus large pour 2 courbes */
+    border-radius: 0 5px 5px 0; /* Arrondi à droite */
+    width: 100%; /* Largeur fluide */
+    max-width: 400px; /* Max width comme avant */
     height: 120px; /* Hauteur agrandie pour meilleure visibilité */
     padding: 5px;
-    z-index: 1000;
+    z-index: 100; /* Au-dessus du reste si besoin, mais pas trop haut */
     pointer-events: auto; /* Permettre les interactions pour le bouton */
     transition: height 0.3s ease;
     display: flex; /* Flexbox pour que le graphique prenne toute la hauteur */
     flex-direction: column;
     box-sizing: border-box; /* Inclure padding dans la hauteur */
+    margin: 0; /* Pas de marges */
 }
 
 .fps-display.collapsed {

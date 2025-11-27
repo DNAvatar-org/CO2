@@ -362,7 +362,7 @@ const timeline = [
         // Note: geothermal_flux = core_temperature * geothermal_diffusion_factor * 0.00457
         // Hadéen: ~0.20 W/m² (6000K * 0.0073 * 0.00457 ≈ 0.20 W/m²)
         // D'après Grok: ~0.20-0.25 W/m² à la surface pour Hadéen
-        // initial_temperature_K: 2500, // SUPPRIMÉ : La température doit émerger de la physique (flux géo + effet de serre)
+        initial_temperature_K: 2469.65, // 2196.5°C - Valeur proche de l'équilibre pour convergence rapide
         // Juste après l'impact : 10⁵ à 10⁷ W/m², >4000-6000K (roche vaporisée)
         // Post-impact (vrai Hadéen) : 1000 → 100 W/m² en décroissance, 2500K → 500K
         // Simulation parameters - Quantités en kg (pas de ppm/%)
