@@ -1715,7 +1715,8 @@ body.mode-dark .plot-overlay-title {
     align-items: center;
     justify-content: center;
     border-radius: 10px;
-    pointer-events: none;
+    pointer-events: all; /* Capture les clics pour bloquer les éléments dessous */
+    cursor: wait; /* Curseur d'attente pour indiquer que c'est occupé */
 }
 
 .calculation-text {

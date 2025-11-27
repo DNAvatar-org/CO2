@@ -1106,6 +1106,41 @@ function generateArrows() {
     }
 
     arcs.forEach(arc => {
+        // PATCH: Calcul dynamique de la hauteur de l'atmosphère pour l'arc terre->albedo
+        // Ceci écrase la valeur "0 km" de la config AVANT le dessin pour garantir l'affichage correct
+        if (arc.from === 'terre' && arc.to === 'albedo' && arc.label) {
+            let atm_height_km = 0;
+            const isCorpsNoir = (typeof window !== 'undefined' && window.currentEpochName === 'Corps noir');
+            
+            if (!isCorpsNoir && typeof window.calculateAtmosphereProperties === 'function') {
+                let total_mass = 5.15e18; // Terre actuelle
+                if (typeof window.getGeologicalPeriodByName === 'function' && window.currentEpochName) {
+                    const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                    if (currentEpoch && currentEpoch.total_atmosphere_mass_kg) {
+                        total_mass = currentEpoch.total_atmosphere_mass_kg;
+                    }
+                }
+                
+                // Récupérer T0 si disponible globalement
+                const T0 = (typeof window.T0_num !== 'undefined') ? window.T0_num : 288;
+                
+                const isMassive = total_mass > 2.5e19;
+                const M_avg = isMassive ? 0.044 : 0.029;
+                
+                const props = window.calculateAtmosphereProperties(total_mass, T0, M_avg);
+                atm_height_km = props.z_max / 1000;
+                
+                // Mettre à jour directement l'objet arc pour le rendu à venir
+                if (typeof arc.label === 'object') {
+                    arc.label.name = `${atm_height_km.toFixed(0)} km`;
+                }
+            } else {
+                 if (typeof arc.label === 'object') {
+                    arc.label.name = '0 km';
+                }
+            }
+        }
+
         const idDep = nodes.find(n => n.id === arc.from);
         const idDest = nodes.find(n => n.id === arc.to);
 
@@ -2950,28 +2985,70 @@ window.updateFluxLabels = function (data) {
                 total_mass = currentEpoch.total_atmosphere_mass_kg;
             }
         }
-        const props = window.calculateAtmosphereProperties(total_mass);
+        
+        // Estimation de la masse molaire moyenne (M)
+        // Si atmosphère massive (Hadéen), dominée par CO2 (44g/mol) -> 0.044
+        // Sinon Terre actuelle (Air) -> 0.029
+        // On utilise le seuil défini dans calculations_atm.js (2.5e19)
+        const isMassive = total_mass > 2.5e19;
+        const M_avg = isMassive ? 0.044 : 0.029;
+        
+        // On passe T0_num (Température surface) et M_avg pour un calcul physique de H
+        const props = window.calculateAtmosphereProperties(total_mass, T0_num, M_avg);
         atm_height_km = props.z_max / 1000; // Conversion m -> km
     }
     
     // Mise à jour directe du DOM pour le label 'name' de l'arc terre->albedo
     const terreAlbedoArrow = document.querySelector('[data-from="terre"][data-to="albedo"]');
     if (terreAlbedoArrow) {
-        const nameLabel = terreAlbedoArrow.querySelector('.flux-label-name');
+        // Chercher le label qui contient "km" ou qui est positionné comme le nom
+        // On cherche parmi tous les flux-label celui qui n'est PAS une valeur numérique de flux (qui aurait un dataId ou une classe spécifique)
+        // Le label "0 km" est généralement le premier ou celui qui contient "km"
+        const labels = terreAlbedoArrow.querySelectorAll('.flux-label');
+        let nameLabel = null;
+        
+        labels.forEach(label => {
+            if (label.textContent.includes('km')) {
+                nameLabel = label;
+            }
+        });
+        
+        // Fallback : si pas trouvé par "km", c'est peut-être "0 km" initialement donc on cherche le texte exact "0 km"
+        if (!nameLabel) {
+            labels.forEach(label => {
+                if (label.textContent.trim() === '0 km') {
+                    nameLabel = label;
+                }
+            });
+        }
+
         if (nameLabel) {
             nameLabel.textContent = `${atm_height_km.toFixed(0)} km`;
             // Couleur par défaut (vert/défaut), retirer les classes spécifiques
-            nameLabel.className = 'flux-label-name'; 
+            // nameLabel.className = 'flux-label'; // Ne pas changer la classe pour ne pas casser le style
+            
             // Ajouter un tooltip explicatif
             if (typeof window.addTooltip === 'function') {
                 const tooltipText = isCorpsNoir 
                     ? "Pas d'atmosphère" 
                     : `Hauteur effective de l'atmosphère<br>(99.99% de la masse)`;
-                // Réinitialiser le tooltip
+                
+                // Réattacher le tooltip proprement
+                // On doit cloner pour supprimer les event listeners précédents si on change le texte/tooltip souvent
+                // Mais ici c'est une mise à jour simple, on peut juste mettre à jour l'attribut title si on utilisait title
+                // Comme addTooltip utilise des events, le plus propre est de recréer le tooltip
+                
+                // Note: addTooltip attache des événements mouseenter/mouseleave.
+                // Si on le rappelle sur le même élément, on risque d'empiler les listeners.
+                // On va cloner le noeud pour nettoyer les listeners
                 const newLabel = nameLabel.cloneNode(true);
-                nameLabel.parentNode.replaceChild(newLabel, nameLabel);
-                window.addTooltip(newLabel, tooltipText);
+                if (nameLabel.parentNode) {
+                    nameLabel.parentNode.replaceChild(newLabel, nameLabel);
+                    window.addTooltip(newLabel, tooltipText);
+                }
             }
+        } else {
+            console.warn('[organigramme] ⚠️ Label "km" non trouvé dans terre->albedo', labels);
         }
     }
 

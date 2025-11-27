@@ -191,26 +191,58 @@ function ch4FractionToKg(ch4_fraction, total_atmosphere_mass_kg = EARTH_ATMOSPHE
 
 /**
  * Calcule les propriétés structurelles de l'atmosphère (Hauteur max, Échelle de hauteur)
- * basées sur la masse totale de l'atmosphère
+ * basées sur la physique (T, M, g)
  * @param {number} total_atmosphere_mass_kg - Masse totale en kg
+ * @param {number} temperature_K - Température de surface (K) - défaut 288
+ * @param {number} molar_mass_kg_mol - Masse molaire moyenne (kg/mol) - défaut 0.029
+ * @param {number} gravity - Gravité (m/s²) - défaut 9.81
  * @returns {Object} { z_max: number, scale_height: number, is_massive: boolean }
  */
-function calculateAtmosphereProperties(total_atmosphere_mass_kg) {
-    let z_max = 120000; // 120 km standard (Terre actuelle)
-    let scale_height = 8500; // 8.5 km standard
+function calculateAtmosphereProperties(total_atmosphere_mass_kg, temperature_K = 288, molar_mass_kg_mol = 0.029, gravity = 9.81) {
+    const R = 8.314; // Constante des gaz parfaits
+    
+    // Calcul physique de l'échelle de hauteur H = RT / Mg
+    let scale_height = (R * temperature_K) / (molar_mass_kg_mol * gravity);
+    
+    // Si les paramètres sont invalides (ex: init), fallback sur standard
+    if (isNaN(scale_height) || scale_height <= 0) scale_height = 8500;
+
     let is_massive = false;
     
     // Détection atmosphère massive (ex: Hadéen)
-    // Si > 5x masse actuelle, on considère que l'atmosphère est très étendue
     if (total_atmosphere_mass_kg > MASSIVE_ATM_THRESHOLD) {
         is_massive = true;
-        z_max = 600000; // 600 km pour atmosphère massive (dilatée par la chaleur et la masse)
-        scale_height = 40000; // 40 km échelle de hauteur visuelle (pour le rendu)
     }
     
+    // Calcul de z_max basé sur la pression au sol P0
+    // P(z) = P0 * exp(-z/H) => z = -H * ln(P/P0)
+    // On cherche z tel que P soit négligeable (ex: 0.01 Pa, limite de l'exosphère/espace)
+    
+    // 1. Estimer P0 (approximation rapide si on n'a pas le rayon exact, on prend celui de la Terre)
+    const surface_area = 5.1e14; // m²
+    const P0 = (total_atmosphere_mass_kg * gravity) / surface_area;
+    
+    // 2. Définir une pression limite "espace" (0.01 Pa)
+    const P_limit = 0.01;
+    
+    // 3. Calculer z_max théorique
+    // Si P0 est très grand (Hadéen ~100 bar = 10^7 Pa), ln(P0/P_limit) sera grand
+    let z_max_theoretical = scale_height * Math.log(Math.max(P0, 1) / P_limit);
+    
+    // Sécurité : bornes min/max
+    let z_max = Math.max(120000, z_max_theoretical);
+    
+    // Si atmosphère massive, on s'assure que ça monte bien (boost visuel si besoin)
+    if (is_massive && z_max < 300000) {
+        z_max = 300000;
+    }
+
+    // Arrondir z_max au 10km supérieur pour faire propre
+    z_max = Math.ceil(z_max / 10000) * 10000;
+
     return {
-        z_max,
-        scale_height,
+        z_max, // en mètres
+        scale_height, // en mètres
         is_massive
     };
 }

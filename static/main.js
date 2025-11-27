@@ -1385,6 +1385,34 @@ window.updateDisplay = function updateDisplay(data) {
         }
         console.log('Forcing Total:', data.forcing !== undefined ? `${data.forcing.toFixed(2)} W/m²` : '--');
         
+        // --- LOG ATMOSPHERE & TROPOPAUSE ---
+        if (typeof window !== 'undefined') {
+             let total_mass_log = 5.15e18;
+             let M_avg_log = 0.029;
+             
+             if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                 const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                 if (currentEpoch && currentEpoch.total_atmosphere_mass_kg) {
+                     total_mass_log = currentEpoch.total_atmosphere_mass_kg;
+                 }
+             }
+             
+             // Détection atmosphère massive (Hadéen)
+             if (total_mass_log > 2.5e19) M_avg_log = 0.044;
+             
+             const T0_log = data.temp_surface || 288;
+             
+             if (typeof window.calculateAtmosphereProperties === 'function') {
+                 const props = window.calculateAtmosphereProperties(total_mass_log, T0_log, M_avg_log);
+                 // console.log('Atmosphere Height:', `${(props.z_max / 1000).toFixed(0)} km`);
+             }
+             
+             if (typeof window.calculateTropopauseHeight === 'function') {
+                 const tropo_m = window.calculateTropopauseHeight(T0_log);
+                 // console.log('Tropopause Height:', `${(tropo_m / 1000).toFixed(1)} km`);
+             }
+        }
+        
         // EDS Réel (Calculé depuis le transfert radiatif)
         // EDS = Flux Surface (σT⁴) - Flux Sortant (au sommet)
         const STEFAN_BOLTZMANN = 5.670374419e-8;

@@ -895,8 +895,48 @@ window.updatePlot = function updatePlot(data) {
     // mais ici on utilise des variables locales pour updatePlot
     const z_trop_km = z_trop_m / 1000; // Convertir en km
 
-    // Calculer z_max_km pour l'axe Y (dynamique selon l'époque)
+    // Calculer z_max_km pour l'axe Y (dynamique selon l'époque et la physique)
     let z_max_km = 120; // Valeur par défaut
+    let scale_height_m = 8500; // Valeur par défaut
+
+    if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
+        const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+        if (currentEpoch) {
+            const total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
+            // Utiliser T0 (calculé plus haut) pour la température
+            const props = window.calculateAtmosphereProperties(total_mass, T0);
+            z_max_km = props.z_max / 1000;
+            scale_height_m = props.scale_height;
+        }
+    } else if (z_trop_km > 50) {
+        // Fallback heuristique si pas de calcul physique disponible
+        z_max_km = 600; 
+    }
+
+    // Mettre à jour la trace invisible pour l'échelle
+    // Note: On doit modifier la trace existante ou s'assurer qu'elle est créée avec les bonnes valeurs
+    // Comme on recrée 'traces' à chaque fois ici, on ajuste juste la création de la trace axe altitude ci-dessus/dessous.
+    
+    // CORRECTION: La trace invisible a été créée AVANT ce bloc (lignes ~861). 
+    // On doit la retrouver et la modifier, ou mieux, déplacer sa création APRÈS ce calcul.
+    // Pour minimiser les diffs risqués, on va chercher la trace "Axe altitude" dans le tableau traces et la modifier.
+    const axisTrace = traces.find(t => t.name === 'Axe altitude');
+    if (axisTrace) {
+        axisTrace.y = [0, z_max_km];
+    } else {
+        // Si pas trouvée (ex: créée plus bas dans une autre version), on la crée ici
+         traces.push({
+            x: [0, 0], // Points invisibles à x=0
+            y: [0, z_max_km], // De 0 à z_max_km
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Axe altitude',
+            line: { color: 'rgba(0,0,0,0)', width: 0 }, // Invisible
+            showlegend: false,
+            hoverinfo: 'skip',
+            yaxis: 'y2' // Utiliser l'axe secondaire (altitude)
+        });
+    }
     if (data.z_range && data.z_range.length > 0) {
         const z_max = data.z_range[data.z_range.length - 1];
         z_max_km = z_max / 1000;
@@ -954,9 +994,39 @@ window.updatePlot = function updatePlot(data) {
     }
     */
     
-    // Initialiser z_trop_km par défaut pour l'annotation si pas défini (ce qui ne devrait plus arriver)
-    // Mais pour être sûr à 100% pour le linter/exécution
+    // Initialiser z_trop_km par défaut pour l'annotation si pas défini
     const annotation_z_trop_km = typeof z_trop_km !== 'undefined' ? z_trop_km : 11;
+
+    // --- CALCUL DYNAMIQUE DE L'AXE Y (LUMINANCE) ---
+    // Trouver le max Y parmi toutes les traces visibles (hors axe altitude)
+    let y_max_luminance = 40; // Valeur par défaut minimale
+    
+    traces.forEach(trace => {
+        if (trace.y && Array.isArray(trace.y) && trace.visible !== false && trace.yaxis !== 'y2') {
+            // Filtrer les valeurs infinies ou NaN
+            const validY = trace.y.filter(v => isFinite(v) && !isNaN(v));
+            if (validY.length > 0) {
+                const maxTrace = Math.max(...validY);
+                if (maxTrace > y_max_luminance) {
+                    y_max_luminance = maxTrace;
+                }
+            }
+        }
+    });
+    
+    // Ajouter une marge de 10% pour ne pas coller au bord haut
+    y_max_luminance = y_max_luminance * 1.1;
+    
+    // Arrondir pour faire joli (multiple de 5 ou 10 supérieur)
+    // Si > 100, arrondir au 100 supérieur, sinon au 10
+    if (y_max_luminance > 100) {
+        y_max_luminance = Math.ceil(y_max_luminance / 100) * 100;
+    } else {
+        y_max_luminance = Math.ceil(y_max_luminance / 5) * 5;
+    }
+    
+    // On veut 8 divisions pour s'aligner avec l'axe altitude
+    const dtick_luminance = y_max_luminance / 8;
 
     const updateLayout = {
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
@@ -978,7 +1048,7 @@ window.updatePlot = function updatePlot(data) {
             tickwidth: 0 // Épaisseur des ticks à 0
         },
         yaxis: {
-            range: [0, 40],
+            range: [0, y_max_luminance], // Dynamique
             fixedrange: true, // Désactiver le zoom
             title: {
                 text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
@@ -993,7 +1063,9 @@ window.updatePlot = function updatePlot(data) {
             showline: true, // Afficher le trait vertical de l'axe
             linecolor: 'rgba(0, 0, 0, 0.5)',
             linewidth: 1,
-            mirror: 'ticks'
+            mirror: 'ticks',
+            dtick: dtick_luminance, // Synchronisé avec l'altitude (8 divisions)
+            tickmode: 'linear'
         },
         yaxis2: {
             title: {
@@ -1002,14 +1074,14 @@ window.updatePlot = function updatePlot(data) {
             },
             overlaying: 'y',
             side: 'right', // Altitude à droite
-            range: [0, z_max_km], // Dynamique : 0 à z_max_km (ex: 120km ou 600km)
+            range: [0, z_max_km], // Dynamique
             fixedrange: true, // Désactiver le zoom
             position: 1, // Position à 1 (droite)
             // Aligner les ticks avec l'axe Y principal
             // yaxis: 0-40 (8 divisions de 5)
             // yaxis2 doit aussi avoir 8 divisions
             tickmode: 'linear',
-            dtick: z_max_km / 8, // Calculer dynamiquement pour avoir 8 intervalles (alignés avec yaxis)
+            dtick: z_max_km / 8, // Synchronisé (8 divisions)
             tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showline: true,
@@ -1165,12 +1237,12 @@ window.updatePlot = function updatePlot(data) {
         },
         overlaying: 'y',
         side: 'right', // Altitude à droite
-        range: [0, 120], // 0 km en bas, 120 km en haut
+        range: [0, z_max_km], // Dynamique : 0 à z_max_km
         fixedrange: true, // Désactiver le zoom
         position: 1, // Position à 1 (droite)
         // Aligner les ticks avec l'axe Y principal
         tickmode: 'linear',
-        dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
+        dtick: z_max_km / 8, // Adapter les ticks dynamiquement (environ 8 divisions)
         tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
         titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
         showline: true,
