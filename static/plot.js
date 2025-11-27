@@ -887,6 +887,21 @@ window.updatePlot = function updatePlot(data) {
         : 11000; // Fallback à 11 km si la fonction n'est pas disponible
     const z_trop_km = z_trop_m / 1000; // Convertir en km
 
+    // Calculer z_max_km pour l'axe Y (dynamique selon l'époque)
+    let z_max_km = 120; // Valeur par défaut
+    if (data.z_range && data.z_range.length > 0) {
+        const z_max = data.z_range[data.z_range.length - 1];
+        z_max_km = z_max / 1000;
+    } else if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
+        // Fallback si z_range n'est pas encore disponible (init)
+        const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+        if (currentEpoch) {
+            const total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
+            const props = window.calculateAtmosphereProperties(total_mass);
+            z_max_km = props.z_max / 1000;
+        }
+    }
+
     traces.push({
         x: [0, 50], // Ligne horizontale sur toute la largeur du graphique
         y: [z_trop_km, z_trop_km], // Ligne horizontale à la hauteur de la tropopause (en km, axe altitude 0-120)
