@@ -1206,14 +1206,15 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
-            if (typeof window.calculateGeothermalFlux === 'function' && 
+            // 🔒 Priorité absolue au flux géothermique direct (dynamique ou statique)
+            if (typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            } 
+            // Fallback legacy (ne devrait plus être utilisé car getGeologicalPeriodByName injecte geothermal_flux)
+            else if (typeof window.calculateGeothermalFlux === 'function' && 
                 typeof currentEpoch.core_temperature === 'number' && 
                 typeof currentEpoch.geothermal_diffusion_factor === 'number') {
                 geo_flux = window.calculateGeothermalFlux(currentEpoch.core_temperature, currentEpoch.geothermal_diffusion_factor);
-            } 
-            // Fallback : utiliser geothermal_flux directement (ancien système, DEPRECATED)
-            else if (typeof currentEpoch.geothermal_flux === 'number') {
-                geo_flux = currentEpoch.geothermal_flux;
             }
         }
     }
@@ -1668,14 +1669,11 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
                             ? window.waterVaporEnabled
                             : waterVaporEnabled;
-                        // Récupérer le flux géothermique depuis l'époque courante
-                        let geo_flux = null;
-                        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-                            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-                            if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
-                                geo_flux = currentEpoch.geothermal_flux;
-                            }
-                        }
+                        
+                        // 🔒 UTILISER geo_flux (variable locale déjà calculée correctement ci-dessus)
+                        // au lieu de le recalculer (potentiellement mal) via getGeologicalPeriodByName
+                        // let geo_flux = null; ... REMOVED
+                        
                         const albedo = calculateAlbedo(T0_current, h2o_enabled, geo_flux);
                         const cloud_coverage = calculateCloudCoverage(T0_current, h2o_enabled);
                         const co2_ppm = CO2_fraction * 1e6;
@@ -1689,7 +1687,8 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                             albedo: albedo,
                             cloud_coverage: cloud_coverage,
                             co2_ppm: co2_ppm,
-                            ch4_ppm: ch4_ppm
+                            ch4_ppm: ch4_ppm,
+                            geo_flux: geo_flux // Passer geo_flux explicitement
                         });
                     }
 
@@ -1967,14 +1966,15 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
-            if (typeof window.calculateGeothermalFlux === 'function' && 
+            // 🔒 Priorité absolue au flux géothermique direct (dynamique ou statique)
+            if (typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            } 
+            // Fallback legacy (ne devrait plus être utilisé car getGeologicalPeriodByName injecte geothermal_flux)
+            else if (typeof window.calculateGeothermalFlux === 'function' && 
                 typeof currentEpoch.core_temperature === 'number' && 
                 typeof currentEpoch.geothermal_diffusion_factor === 'number') {
                 geo_flux = window.calculateGeothermalFlux(currentEpoch.core_temperature, currentEpoch.geothermal_diffusion_factor);
-            } 
-            // Fallback : utiliser geothermal_flux directement (ancien système, DEPRECATED)
-            else if (typeof currentEpoch.geothermal_flux === 'number') {
-                geo_flux = currentEpoch.geothermal_flux;
             }
         }
     }
@@ -2055,14 +2055,15 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
-            if (typeof window.calculateGeothermalFlux === 'function' && 
+            // 🔒 Priorité absolue au flux géothermique direct (dynamique ou statique)
+            if (typeof currentEpoch.geothermal_flux === 'number') {
+                geo_flux = currentEpoch.geothermal_flux;
+            } 
+            // Fallback legacy (ne devrait plus être utilisé car getGeologicalPeriodByName injecte geothermal_flux)
+            else if (typeof window.calculateGeothermalFlux === 'function' && 
                 typeof currentEpoch.core_temperature === 'number' && 
                 typeof currentEpoch.geothermal_diffusion_factor === 'number') {
                 geo_flux = window.calculateGeothermalFlux(currentEpoch.core_temperature, currentEpoch.geothermal_diffusion_factor);
-            } 
-            // Fallback : utiliser geothermal_flux directement (ancien système, DEPRECATED)
-            else if (typeof currentEpoch.geothermal_flux === 'number') {
-                geo_flux = currentEpoch.geothermal_flux;
             }
         }
     }

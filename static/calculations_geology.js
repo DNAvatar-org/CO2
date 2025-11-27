@@ -17,6 +17,7 @@ function computeFluxFromEpoch(epoch) {
     if (!epoch) return 0;
     
     // 1. Valeur explicite (ex: Hadéen avec flux forcé)
+    // 🔒 Utiliser la valeur dynamique si elle a été mise à jour dans l'objet (ex: refroidissement Hadéen)
     if (typeof epoch.geothermal_flux === 'number') {
         return epoch.geothermal_flux;
     }

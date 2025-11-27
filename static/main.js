@@ -2543,6 +2543,13 @@ window.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 
+                // 🔒 BUGFIX : Réinitialiser la mémoire de convergence
+                // Le saut de température est trop grand (refroidissement brutal), l'optimisation de continuité
+                // empêcherait de trouver la solution (ex: passage de 2200°C à 1300°C alors que la fenêtre de recherche est ±100°C)
+                if (typeof window !== 'undefined') {
+                    window.current_T0_adjusted = null;
+                }
+                
                 // Recalculer avec les nouvelles conditions
                 if (typeof window.updateCO2LevelDirect === 'function' && plotData.co2_ppm !== undefined) {
                     const current_co2_fraction = plotData.co2_ppm * 1e-6;
