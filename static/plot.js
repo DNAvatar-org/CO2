@@ -378,8 +378,12 @@ function initPlot() {
         doubleClick: false,
         dragmode: false
     }).then(() => {
-        // Redimensionner le graphique Plotly à la bonne taille
-        Plotly.Plots.resize('plot-container');
+        // Redimensionner le graphique Plotly à la bonne taille SI visible
+        const plotEl = document.getElementById('plot-container');
+        // offsetParent est null si l'élément (ou un parent) est en display: none
+        if (plotEl && plotEl.offsetParent !== null) {
+             Plotly.Plots.resize(plotEl);
+        }
 
         // Calculer et définir la taille du canvas dès que Plotly est prêt
         // La bande sera dessinée automatiquement dans resizeCanvasToPlot()
@@ -1137,12 +1141,6 @@ window.updatePlot = function updatePlot(data) {
                     clearTimeout(debounceTimer);
                 }
                 debounceTimer = setTimeout(() => {
-                    // 🔒 Supprimer automatiquement js-plotly-tester si créé par Plotly
-                    const plotlyTester = document.querySelector('.js-plotly-tester');
-                    if (plotlyTester && plotlyTester.parentNode) {
-                        plotlyTester.parentNode.removeChild(plotlyTester);
-                    }
-
                     if (canvas && canvas.parentElement && plotContainerWrapper) {
                         // S'assurer que le canvas est AVANT plot-container dans le DOM (ordre de rendu)
                         if (canvas.nextSibling !== plotContainer && canvas.parentElement === plotContainerWrapper) {

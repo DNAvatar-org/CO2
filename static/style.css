@@ -772,6 +772,23 @@ h1 {
         0 0 6px rgba(255, 255, 255, 0.5) !important;
 }
 
+/* Pour les images dans les boutons (PNG) : utiliser drop-shadow car text-shadow ne marche pas */
+.epoch-btn img {
+    transition: filter 0.3s ease;
+    pointer-events: none; /* Laisse le clic passer au bouton */
+}
+
+.epoch-btn:not(.selected):hover img {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9)) 
+            drop-shadow(0 0 4px rgba(255, 255, 255, 0.7)) !important;
+}
+
+.epoch-btn.selected img {
+    /* Appliquer le glow vert aussi sur l'image quand sélectionné */
+    filter: drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) 
+            drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+}
+
 .epoch-btn.selected:hover {
     /* Si sélectionné : swap vers noir et blanc, contour reste vert */
     filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;

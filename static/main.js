@@ -2379,9 +2379,39 @@ window.addEventListener('DOMContentLoaded', () => {
             
             // Action 1 : Avancer dans le temps (refroidissement progressif)
             const timeAdvanceBtn = document.createElement('button');
-            timeAdvanceBtn.textContent = '⏩ +50 Ma';
+            timeAdvanceBtn.textContent = '⏩';
             timeAdvanceBtn.className = 'timeline-event-button';
-            timeAdvanceBtn.alt = 'Avancer de 50 Ma - Refroidissement progressif';
+            
+            // Style propre et simple (rond, centré, effet hover)
+            timeAdvanceBtn.style.width = '40px';
+            timeAdvanceBtn.style.height = '40px';
+            timeAdvanceBtn.style.borderRadius = '50%';
+            timeAdvanceBtn.style.border = 'none'; // Pas de bordure visible par défaut
+            timeAdvanceBtn.style.backgroundColor = 'transparent'; // Fond transparent pour juste voir l'emoji ou léger fond
+            timeAdvanceBtn.style.fontSize = '24px'; // Emoji plus grand
+            timeAdvanceBtn.style.cursor = 'pointer';
+            timeAdvanceBtn.style.transition = 'transform 0.2s ease';
+            timeAdvanceBtn.style.display = 'flex';
+            timeAdvanceBtn.style.alignItems = 'center';
+            timeAdvanceBtn.style.justifyContent = 'center';
+            timeAdvanceBtn.style.padding = '0';
+            timeAdvanceBtn.style.lineHeight = '1';
+            
+            // Effet hover simple (juste grossissement)
+            timeAdvanceBtn.onmouseover = function() {
+                this.style.transform = 'scale(1.2)';
+            };
+            timeAdvanceBtn.onmouseout = function() {
+                this.style.transform = 'scale(1)';
+            };
+
+            // Tooltip
+            if (typeof window.addCustomTooltip === 'function') {
+                 window.addCustomTooltip(timeAdvanceBtn, 'Avancer de 50 Ma<br>Refroidissement progressif');
+            } else {
+                 timeAdvanceBtn.title = 'Avancer de 50 Ma - Refroidissement progressif';
+            }
+
             timeAdvanceBtn.addEventListener('click', () => {
                 // Avancer de 50 Ma (5000 frames de 10 ans)
                 for (let i = 0; i < 5000; i++) {
@@ -2400,7 +2430,7 @@ window.addEventListener('DOMContentLoaded', () => {
             // Action 2 : Apport d'eau supplémentaire (météorites continuent de tomber)
             const waterAdditionBtn = document.createElement('img');
             waterAdditionBtn.src = 'fonts/pics/ice_meteorite.png';
-            waterAdditionBtn.alt = 'Apport d\'eau - Météorites continuent de tomber';
+            waterAdditionBtn.alt = 'Météorite de glace'; // Texte court comme en Corps Noir
             waterAdditionBtn.className = 'timeline-event-logo';
             waterAdditionBtn.addEventListener('click', () => {
                 // Ajouter de l'eau totale (en kg, pas en %)
