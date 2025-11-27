@@ -2418,9 +2418,10 @@ window.addEventListener('DOMContentLoaded', () => {
             // Tooltip
             if (typeof window.addCustomTooltip === 'function') {
                 bigImpactBtn.setAttribute('data-tooltip-initialized', 'true');
-                window.addCustomTooltip(bigImpactBtn, 'Impact majeur - Crée la lune<br>Flux : ' + impact_flux_txt);
+                // Affichage du titre seulement, pas du flux dans le tooltip comme demandé
+                window.addCustomTooltip(bigImpactBtn, 'Impact majeur - Crée la lune');
             } else {
-                bigImpactBtn.title = 'Impact majeur - Crée la lune - Flux : ' + impact_flux_txt;
+                bigImpactBtn.title = 'Impact majeur - Crée la lune';
             }
 
             bigImpactBtn.addEventListener('click', () => {
