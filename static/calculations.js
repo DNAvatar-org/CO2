@@ -1688,7 +1688,8 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                             cloud_coverage: cloud_coverage,
                             co2_ppm: co2_ppm,
                             ch4_ppm: ch4_ppm,
-                            geo_flux: geo_flux // Passer geo_flux explicitement
+                            geo_flux: geo_flux, // Passer geo_flux explicitement
+                            planet_radius: (options && options.planet_radius) ? options.planet_radius : 6371000 // Passer le rayon
                         });
                     }
 

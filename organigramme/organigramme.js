@@ -2525,6 +2525,39 @@ window.updateFluxLabels = function (data) {
                     } else {
                         formattedValue = value.toFixed(2) + ' W/m²';
                     }
+                } else if (format === 'watt_total_dual') {
+                    // ⚠️ NOUVEAU FORMAT : Affiche W/m² (moyenne sphère) ET Watts Totaux (Conservation Énergie)
+                    // Format: "VAL W/m²<br>(VAL_TOT W)" en plus petit
+                    
+                    // 1. Partie W/m²
+                    let wm2_part = '';
+                    if (Math.abs(value) >= 1000000) {
+                        wm2_part = (value / 1000000).toFixed(2) + ' MW/m²';
+                    } else if (Math.abs(value) >= 1000) {
+                        wm2_part = (value / 1000).toFixed(2) + ' kW/m²';
+                    } else {
+                        wm2_part = value.toFixed(2) + ' W/m²';
+                    }
+                    
+                    // 2. Partie Watts Totaux
+                    // Surface Terre = 4 * PI * R^2
+                    // R par défaut = 6371000m
+                    // Mais on devrait idéalement récupérer le R de l'époque... 
+                    // Approximation : R constant pour l'affichage conservation énergie
+                    const R = 6371000;
+                    const SURFACE_AREA = 4 * Math.PI * Math.pow(R, 2); // ~5.1e14 m2
+                    const total_watts = value * SURFACE_AREA;
+                    
+                    // Formatage scientifique propre : X.XX × 10^YY
+                    const expStr = total_watts.toExponential(2);
+                    const [mantissa, exponent] = expStr.split('e');
+                    // Nettoyer l'exposant (+26 -> 26)
+                    const cleanExp = exponent.replace('+', '');
+                    const watts_part = `${mantissa}×10<sup>${cleanExp}</sup> W`;
+                    
+                    // Combiner : W/m² en grand, Watts en petit et italique
+                    formattedValue = `${wm2_part}<br><span style="font-size: 0.8em; font-style: italic; opacity: 0.8;">(${watts_part})</span>`;
+                    
                 } else if (format === 'percent_simple') {
                     formattedValue = value.toFixed(0) + '%';
                 } else if (format === 'ppm' || format === 'ppm_simple') {
@@ -2768,7 +2801,7 @@ window.updateFluxLabels = function (data) {
     // Surface -> Albedo : Flux total émis par la surface (Solaire + Géothermique)
     // C'est le flux qui part de la surface vers l'atmosphère
     const surface_flux_emitted = solar_flux_absorbed + geothermie_value;
-    updateLabel('surface_flux_emitted_wm', surface_flux_emitted, 'watt');
+    updateLabel('surface_flux_emitted_wm', surface_flux_emitted, 'watt_total_dual'); // MODIFIÉ : Affichage dual
 
     // 🔒 CORRECTION : Calculer l'effet de serre réel à partir du transfert radiatif
     // Le transfert radiatif (calculations.js) calcule déjà le flux sortant au sommet (total_flux)
@@ -2788,7 +2821,7 @@ window.updateFluxLabels = function (data) {
     // Albedo -> Espace2 : flux éjecté = flux sortant au sommet (résultat direct du transfert radiatif)
     // PAS de calcul : flux_ejected = total_flux (pas surface_flux_emitted - forcing_total qui serait une boucle)
     const flux_ejected = total_flux > 0 ? total_flux : (surface_flux_emitted - forcing_total); // Fallback si total_flux non disponible
-    updateLabel('flux_ejected_wm', flux_ejected, 'watt');
+    updateLabel('flux_ejected_wm', flux_ejected, 'watt_total_dual'); // MODIFIÉ : Affichage dual
     let corePowerText = '';
     if (isCorpsNoir) {
         // En mode corps noir : pas de noyau actif
