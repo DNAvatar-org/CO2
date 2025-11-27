@@ -2424,6 +2424,12 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             bigImpactBtn.addEventListener('click', () => {
+                // 🔒 Cacher le tooltip immédiatement car le bouton va disparaître
+                // Empêche le tooltip de rester coincé si le bouton est supprimé avant le mouseleave
+                if (typeof window.hideTooltip === 'function') {
+                    window.hideTooltip();
+                }
+
                 // 🔒 Sauvegarder les valeurs actuelles avant le changement d'époque
                 if (typeof window !== 'undefined') {
                     // Sauvegarder eau (base + météorites)

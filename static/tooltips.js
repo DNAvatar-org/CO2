@@ -256,6 +256,7 @@
         window.addTooltip = addTooltip;
         window.addTooltipFromAttribute = addTooltipFromAttribute;
         window.autoInitTooltips = autoInitTooltips;
+        window.hideTooltip = hideTooltip; // Exposer pour masquage manuel (ex: au clic si l'élément disparaît)
     }
 
     // ============================================================================
@@ -281,7 +282,10 @@
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === 1) { // Element node
                         // Scanner les nouveaux éléments et leurs enfants
-                        if (node.hasAttribute && (node.hasAttribute('alt') || node.hasAttribute('title') || node.hasAttribute('data-tooltip'))) {
+                        // 🔒 Vérifier si le tooltip est déjà initialisé pour éviter les doublons
+                        if (!node.hasAttribute('data-tooltip-initialized') && 
+                            node.hasAttribute && 
+                            (node.hasAttribute('alt') || node.hasAttribute('title') || node.hasAttribute('data-tooltip'))) {
                             addTooltipFromAttribute(node);
                             node.setAttribute('data-tooltip-initialized', 'true');
                         }
