@@ -1106,8 +1106,7 @@ function generateArrows() {
     }
 
     arcs.forEach(arc => {
-        // PATCH: Calcul dynamique de la hauteur de l'atmosphère pour l'arc terre->albedo
-        // Ceci écrase la valeur "0 km" de la config AVANT le dessin pour garantir l'affichage correct
+        // Mise à jour dynamique de la hauteur de l'atmosphère (Terre -> Albedo)
         if (arc.from === 'terre' && arc.to === 'albedo' && arc.label) {
             let atm_height_km = 0;
             const isCorpsNoir = (typeof window !== 'undefined' && window.currentEpochName === 'Corps noir');
@@ -1130,17 +1129,18 @@ function generateArrows() {
                 const props = window.calculateAtmosphereProperties(total_mass, T0, M_avg);
                 atm_height_km = props.z_max / 1000;
                 
-                // Mettre à jour directement l'objet arc pour le rendu à venir
+                // Appliquer la valeur calculée
                 if (typeof arc.label === 'object') {
-                    // Si txtF est défini dans la config (même vide), on l'utilise pour l'affichage en fin de flèche
+                    // Si txtF est présent dans la config, on l'utilise pour l'affichage en bout de flèche
                     if (arc.label.txtF !== undefined) {
                         arc.label.txtF = `${atm_height_km.toFixed(0)} km`;
                     } else {
-                        // Sinon on utilise name (milieu de flèche) par défaut
+                        // Sinon comportement standard : affichage au centre (name)
                         arc.label.name = `${atm_height_km.toFixed(0)} km`;
                     }
                 }
             } else {
+                 // Cas Corps Noir ou défaut
                  if (typeof arc.label === 'object') {
                     if (arc.label.txtF !== undefined) {
                         arc.label.txtF = '0 km';
