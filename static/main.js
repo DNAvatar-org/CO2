@@ -1387,23 +1387,29 @@ window.updateDisplay = function updateDisplay(data) {
         
         // --- LOG ATMOSPHERE & TROPOPAUSE ---
         if (typeof window !== 'undefined') {
-             let total_mass_log = 5.15e18;
-             let M_avg_log = 0.029;
+             let total_mass_log = 0;
+             let M_avg_log = undefined;
+             let gravity_log = 9.81; // Défaut temporaire
              
              if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
                  const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-                 if (currentEpoch && currentEpoch.total_atmosphere_mass_kg) {
-                     total_mass_log = currentEpoch.total_atmosphere_mass_kg;
+                 if (currentEpoch) {
+                     if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass_log = currentEpoch.total_atmosphere_mass_kg;
+                     if (currentEpoch.gravity !== undefined) gravity_log = currentEpoch.gravity;
+                     if (currentEpoch.molar_mass_air !== undefined) M_avg_log = currentEpoch.molar_mass_air;
                  }
              }
              
-             // Détection atmosphère massive (Hadéen)
-             if (total_mass_log > 2.5e19) M_avg_log = 0.044;
+             // Si M_avg non définie, estimation
+             if (M_avg_log === undefined) {
+                 if (total_mass_log > 2.5e19) M_avg_log = 0.044;
+                 else M_avg_log = 0.029;
+             }
              
              const T0_log = data.temp_surface || 288;
              
              if (typeof window.calculateAtmosphereProperties === 'function') {
-                 const props = window.calculateAtmosphereProperties(total_mass_log, T0_log, M_avg_log);
+                 const props = window.calculateAtmosphereProperties(total_mass_log, T0_log, M_avg_log, gravity_log);
                  // console.log('Atmosphere Height:', `${(props.z_max / 1000).toFixed(0)} km`);
              }
              
@@ -1487,10 +1493,10 @@ window.updateDisplay = function updateDisplay(data) {
                             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                             if (currentEpoch) {
                                 epochParams = {
-                                    pressure_atm: currentEpoch.atmospheric_pressure || 1.0,
-                                    molar_mass_air: currentEpoch.molar_mass_air || 0.029,
-                                    gravity: currentEpoch.gravity || 9.81,
-                                    ocean_coverage: currentEpoch.ocean_coverage || 0.7
+                                    pressure_atm: currentEpoch.atmospheric_pressure,
+                                    molar_mass_air: currentEpoch.molar_mass_air,
+                                    gravity: currentEpoch.gravity,
+                                    ocean_coverage: currentEpoch.ocean_coverage
                                 };
                             }
                         }
@@ -2025,7 +2031,11 @@ function setEpoch(epochName) {
     // 1. CO2
     // 🔒 Convertir les quantités (kg) en ppm pour compatibilité avec le code existant
     // Récupérer la masse atmosphérique totale de l'époque (ou utiliser la valeur moderne par défaut)
-    const total_atmosphere_mass_kg = epoch.total_atmosphere_mass_kg || (typeof window !== 'undefined' && window.EARTH_ATMOSPHERE_MASS_KG) || 5.15e18;
+    const total_atmosphere_mass_kg = epoch.total_atmosphere_mass_kg;
+    if (total_atmosphere_mass_kg === undefined) {
+         console.error("[main] total_atmosphere_mass_kg manquant pour calculer la composition, arrêt.", epoch.name);
+         return; // Arrêter le calcul
+    }
     
     // Convertir co2_kg en fraction molaire puis en ppm
     let defaultCO2_ppm = 0;

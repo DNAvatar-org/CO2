@@ -143,11 +143,17 @@ function estimateCloudCoverage(temp_K, h2o_vapor_fraction, relative_humidity = 0
  * @returns {Object} {vapor_fraction, liquid_fraction, ice_fraction, max_vapor_fraction}
  */
 function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
-    // Paramètres par défaut
-    const pressure_atm = options.pressure_atm || 1.0;
-    const molar_mass_air = options.molar_mass_air || 0.029; // kg/mol (air sec ~0.029, air humide légèrement moins)
-    const gravity = options.gravity || 9.81; // m/s²
-    const ocean_coverage = options.ocean_coverage || 0.7; // Fraction de surface océanique
+    // Validation stricte
+    if (options.pressure_atm === undefined || options.molar_mass_air === undefined || options.gravity === undefined || options.ocean_coverage === undefined) {
+         console.warn("[calculateWaterPartition] Paramètres physiques manquants, calcul incomplet", options);
+         // Si manque gravité ou pression, impossible de calculer T_boil
+         if (options.gravity === undefined || options.pressure_atm === undefined) return { vapor_fraction: 0, liquid_fraction: 0, ice_fraction: 0, max_vapor_fraction: 0, air_density: 0 };
+    }
+
+    const pressure_atm = options.pressure_atm;
+    const molar_mass_air = options.molar_mass_air; 
+    const gravity = options.gravity; 
+    const ocean_coverage = options.ocean_coverage; 
     
     // Constantes physiques
     const R = 8.314; // Constante des gaz parfaits, J/(mol·K)
@@ -258,10 +264,10 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             epochParams = {
-                pressure_atm: currentEpoch.atmospheric_pressure || 1.0,
-                molar_mass_air: currentEpoch.molar_mass_air || 0.029,
-                gravity: currentEpoch.gravity || 9.81,
-                ocean_coverage: currentEpoch.ocean_coverage || 0.7
+                pressure_atm: currentEpoch.atmospheric_pressure,
+                molar_mass_air: currentEpoch.molar_mass_air,
+                gravity: currentEpoch.gravity,
+                ocean_coverage: currentEpoch.ocean_coverage
             };
         }
     }

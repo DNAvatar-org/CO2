@@ -382,7 +382,7 @@ function initPlot() {
         const plotEl = document.getElementById('plot-container');
         // offsetParent est null si l'élément (ou un parent) est en display: none
         if (plotEl && plotEl.offsetParent !== null) {
-             Plotly.Plots.resize(plotEl);
+            Plotly.Plots.resize(plotEl);
         }
 
         // Calculer et définir la taille du canvas dès que Plotly est prêt
@@ -890,7 +890,7 @@ window.updatePlot = function updatePlot(data) {
             ? window.calculateTropopauseHeight(T0)
             : 11000; // Fallback à 11 km si la fonction n'est pas disponible
     }
-    
+
     // Rendre z_trop_km accessible globalement (ou au moins dans updateSpectralVisualization) si nécessaire, 
     // mais ici on utilise des variables locales pour updatePlot
     const z_trop_km = z_trop_m / 1000; // Convertir en km
@@ -898,25 +898,47 @@ window.updatePlot = function updatePlot(data) {
     // Calculer z_max_km pour l'axe Y (dynamique selon l'époque et la physique)
     let z_max_km = 120; // Valeur par défaut
     let scale_height_m = 8500; // Valeur par défaut
+    let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
     if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
         const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
         if (currentEpoch) {
-            const total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
-            // Utiliser T0 (calculé plus haut) pour la température
-            const props = window.calculateAtmosphereProperties(total_mass, T0);
-            z_max_km = props.z_max / 1000;
-            scale_height_m = props.scale_height;
+            const total_atmosphere_mass_kg = currentEpoch.total_atmosphere_mass_kg; // Nom plus explicite
+            console.log('[DEBUG] Epoch:', window.currentEpochName, 'total_atmosphere_mass_kg:', total_atmosphere_mass_kg, 'type:', typeof total_atmosphere_mass_kg);
+            // Détecter le cas "pas d'atmosphère"
+            if (total_atmosphere_mass_kg === 0 || total_atmosphere_mass_kg === undefined) {
+                has_atmosphere = false;
+                z_max_km = 0.001; // Très petit pour éviter les calculs inutiles (1 mètre)
+                console.log('[DEBUG] Pas d\'atmosphère détecté, has_atmosphere:', has_atmosphere, 'z_max_km:', z_max_km);
+            } else {
+                // Récupérer gravité et masse molaire
+                let gravity = 9.81;
+                if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+
+                let molar_mass = currentEpoch.molar_mass_air;
+                if (molar_mass === undefined) {
+                    if (total_mass > 2.5e19) molar_mass = 0.044;
+                    else molar_mass = 0.029;
+                }
+
+                const props = window.calculateAtmosphereProperties(total_mass, T0, molar_mass, gravity);
+                z_max_km = props.z_max / 1000;
+                scale_height_m = props.scale_height;
+            }
         }
     } else if (z_trop_km > 50) {
         // Fallback heuristique si pas de calcul physique disponible
-        z_max_km = 600; 
+        z_max_km = 600;
     }
+
+    // Détecter si on a une atmosphère nulle ou quasi-nulle (Corps noir)
+    const isNoAtmosphere = z_max_km < 0.1; // Seuil : moins de 100m = pas d'atmosphère
+
 
     // Mettre à jour la trace invisible pour l'échelle
     // Note: On doit modifier la trace existante ou s'assurer qu'elle est créée avec les bonnes valeurs
     // Comme on recrée 'traces' à chaque fois ici, on ajuste juste la création de la trace axe altitude ci-dessus/dessous.
-    
+
     // CORRECTION: La trace invisible a été créée AVANT ce bloc (lignes ~861). 
     // On doit la retrouver et la modifier, ou mieux, déplacer sa création APRÈS ce calcul.
     // Pour minimiser les diffs risqués, on va chercher la trace "Axe altitude" dans le tableau traces et la modifier.
@@ -925,7 +947,7 @@ window.updatePlot = function updatePlot(data) {
         axisTrace.y = [0, z_max_km];
     } else {
         // Si pas trouvée (ex: créée plus bas dans une autre version), on la crée ici
-         traces.push({
+        traces.push({
             x: [0, 0], // Points invisibles à x=0
             y: [0, z_max_km], // De 0 à z_max_km
             type: 'scatter',
@@ -937,17 +959,34 @@ window.updatePlot = function updatePlot(data) {
             yaxis: 'y2' // Utiliser l'axe secondaire (altitude)
         });
     }
-    if (data.z_range && data.z_range.length > 0) {
-        const z_max = data.z_range[data.z_range.length - 1];
-        z_max_km = z_max / 1000;
-    } else if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
-        // Fallback si z_range n'est pas encore disponible (init)
-        const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
-        if (currentEpoch) {
-            const total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
-            const props = window.calculateAtmosphereProperties(total_mass);
-            z_max_km = props.z_max / 1000;
+    // ⚠️ IMPORTANT : Ne pas écraser z_max_km si on a détecté "pas d'atmosphère"
+    if (has_atmosphere) {
+        if (data.z_range && data.z_range.length > 0) {
+            const z_max = data.z_range[data.z_range.length - 1];
+            z_max_km = z_max / 1000;
+            console.log('[DEBUG] z_max_km recalculé depuis data.z_range:', z_max_km);
+        } else if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
+            // Fallback si z_range n'est pas encore disponible (init)
+            const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+            if (currentEpoch) {
+                const total_atmosphere_mass_kg = currentEpoch.total_atmosphere_mass_kg; // Nom plus explicite
+
+                let gravity = 9.81;
+                if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+
+                let molar_mass = currentEpoch.molar_mass_air;
+                if (molar_mass === undefined) {
+                    if (total_atmosphere_mass_kg > 2.5e19) molar_mass = 0.044;
+                    else molar_mass = 0.029;
+                }
+
+                const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, molar_mass, gravity);
+                z_max_km = props.z_max / 1000;
+                console.log('[DEBUG] z_max_km recalculé depuis calculateAtmosphereProperties:', z_max_km);
+            }
         }
+    } else {
+        console.log('[DEBUG] z_max_km NON recalculé car pas d\'atmosphère, reste à:', z_max_km);
     }
 
     // EXPOSER GLOBALEMENT pour drawSpectralVisualization (si besoin) ou stocker dans data
@@ -980,7 +1019,7 @@ window.updatePlot = function updatePlot(data) {
         z_trop_km = window.calculateTropopauseHeight(288) / 1000;
     }
     */
-    
+
     // Calculer la tropopause pour déterminer les zones de précision et l'annotation
     // let z_trop_km = 11; // DEJA DÉCLARÉ PLUS HAUT - On commente pour éviter la redéclaration
     /*
@@ -993,14 +1032,14 @@ window.updatePlot = function updatePlot(data) {
         z_trop_km = window.calculateTropopauseHeight(288) / 1000;
     }
     */
-    
+
     // Initialiser z_trop_km par défaut pour l'annotation si pas défini
     const annotation_z_trop_km = typeof z_trop_km !== 'undefined' ? z_trop_km : 11;
 
     // --- CALCUL DYNAMIQUE DE L'AXE Y (LUMINANCE) ---
     // Trouver le max Y parmi toutes les traces visibles (hors axe altitude)
     let y_max_luminance = 40; // Valeur par défaut minimale
-    
+
     traces.forEach(trace => {
         if (trace.y && Array.isArray(trace.y) && trace.visible !== false && trace.yaxis !== 'y2') {
             // Filtrer les valeurs infinies ou NaN
@@ -1013,10 +1052,10 @@ window.updatePlot = function updatePlot(data) {
             }
         }
     });
-    
+
     // Ajouter une marge de 10% pour ne pas coller au bord haut
     y_max_luminance = y_max_luminance * 1.1;
-    
+
     // Arrondir pour faire joli (multiple de 5 ou 10 supérieur)
     // Si > 100, arrondir au 100 supérieur, sinon au 10
     if (y_max_luminance > 100) {
@@ -1024,9 +1063,38 @@ window.updatePlot = function updatePlot(data) {
     } else {
         y_max_luminance = Math.ceil(y_max_luminance / 5) * 5;
     }
-    
+
     // On veut 8 divisions pour s'aligner avec l'axe altitude
     const dtick_luminance = y_max_luminance / 8;
+
+    console.log('[DEBUG] AVANT construction updateLayout: has_atmosphere =', has_atmosphere, 'z_max_km =', z_max_km);
+
+    // Construire la config yaxis2 séparément pour être sûr
+    const yaxis2Config = {
+        title: {
+            text: has_atmosphere ? "Altitude (km)" : "Pas d'atmosphère",
+            font: getPlotlyFont(14, getDefaultTextColor())
+        },
+        overlaying: 'y',
+        side: 'right', // Altitude à droite
+        range: [0, z_max_km], // Dynamique (très petit si pas d'atmosphère)
+        fixedrange: true, // Désactiver le zoom
+        position: 1, // Position à 1 (droite)
+        tickmode: 'linear',
+        dtick: has_atmosphere ? (z_max_km / 8) : (z_max_km / 4),
+        tickfont: getPlotlyFont(12, getDefaultTextColor()),
+        titlefont: getPlotlyFont(14, getDefaultTextColor()),
+        showline: true,
+        linecolor: 'rgba(0, 0, 0, 0.5)',
+        linewidth: 1,
+        mirror: 'ticks',
+        showgrid: false,
+        zeroline: false,
+        visible: true,
+        showticklabels: has_atmosphere // Cacher les graduations si pas d'atmosphère
+    };
+
+    console.log('[DEBUG] yaxis2Config:', JSON.stringify(yaxis2Config));
 
     const updateLayout = {
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
@@ -1067,31 +1135,7 @@ window.updatePlot = function updatePlot(data) {
             dtick: dtick_luminance, // Synchronisé avec l'altitude (8 divisions)
             tickmode: 'linear'
         },
-        yaxis2: {
-            title: {
-                text: "Altitude (km)",
-                font: getPlotlyFont(14, getDefaultTextColor())
-            },
-            overlaying: 'y',
-            side: 'right', // Altitude à droite
-            range: [0, z_max_km], // Dynamique
-            fixedrange: true, // Désactiver le zoom
-            position: 1, // Position à 1 (droite)
-            // Aligner les ticks avec l'axe Y principal
-            // yaxis: 0-40 (8 divisions de 5)
-            // yaxis2 doit aussi avoir 8 divisions
-            tickmode: 'linear',
-            dtick: z_max_km / 8, // Synchronisé (8 divisions)
-            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            showline: true,
-            linecolor: 'rgba(0, 0, 0, 0.5)',
-            linewidth: 1,
-            mirror: 'ticks',
-            showgrid: false,
-            zeroline: false,
-            visible: true
-        },
+        yaxis2: yaxis2Config,
         plot_bgcolor: PLOT_BACKGROUND_COLOR, // Fond de la zone de dessin (configurable)
         paper_bgcolor: PLOT_BACKGROUND_COLOR, // Fond du papier (configurable)
         annotations: [
@@ -1105,7 +1149,8 @@ window.updatePlot = function updatePlot(data) {
                 xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
                 yanchor: 'middle',
                 align: 'left', // Justifié à gauche
-                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR) // Couleur configurable
+                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR), // Couleur configurable
+                visible: has_atmosphere // Cacher si pas d'atmosphère
             },
         ]
     };
@@ -1230,29 +1275,18 @@ window.updatePlot = function updatePlot(data) {
     // Ajouter les indicateurs de bandes d'absorption sur le spectre
     drawAbsorptionBandIndicators();
 
-    updateLayout.yaxis2 = {
-        title: {
-            text: "Altitude (km)",
-            font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
-        },
-        overlaying: 'y',
-        side: 'right', // Altitude à droite
-        range: [0, z_max_km], // Dynamique : 0 à z_max_km
-        fixedrange: true, // Désactiver le zoom
-        position: 1, // Position à 1 (droite)
-        // Aligner les ticks avec l'axe Y principal
-        tickmode: 'linear',
-        dtick: z_max_km / 8, // Adapter les ticks dynamiquement (environ 8 divisions)
-        tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-        titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-        showline: true,
-        linecolor: 'rgba(0, 0, 0, 0.5)',
-        linewidth: 1,
-        mirror: 'ticks',
-        showgrid: false,
-        zeroline: false,
-        visible: true
-    };
+    // Ajouter les indicateurs de bandes d'absorption sur le spectre
+    drawAbsorptionBandIndicators();
+
+    // L'assignation redondante de updateLayout.yaxis2 a été supprimée ici pour respecter la configuration yaxis2Config établie plus haut.
+
+
+    console.log('[DEBUG] updateLayout.yaxis2:', {
+        title: updateLayout.yaxis2.title.text,
+        range: updateLayout.yaxis2.range,
+        showticklabels: updateLayout.yaxis2.showticklabels,
+        has_atmosphere: has_atmosphere
+    });
 
     Plotly.react('plot-container', traces, updateLayout).then(() => {
         // Masquer la ligne de l'axe x (trait noir de 0 à 50μm)
@@ -1771,20 +1805,39 @@ function drawSpectralVisualization(canvas, data) {
     // Constantes pour le calcul de la densité (approximation exponentielle)
     // ⚡ CORRECTION : Ajuster H en fonction de la masse atmosphérique si disponible
     let H = 8500; // Échelle de hauteur standard en mètres (environ 8.5 km)
-    
+
     // Essayer de récupérer H depuis les propriétés atmosphériques globales
     // On a besoin de la masse totale pour ça, qu'on peut trouver dans configOrganigramme
+    let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
+
     if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
         const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
         if (currentEpoch) {
-            const total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
-            const props = window.calculateAtmosphereProperties(total_mass);
-            H = props.scale_height;
+            const total_mass = currentEpoch.total_atmosphere_mass_kg; // Pas de fallback
+
+            // Détecter le cas "pas d'atmosphère"
+            if (total_mass === 0 || total_mass === undefined) {
+                has_atmosphere = false;
+            } else {
+                // Récupérer gravité et masse molaire
+                let gravity = 9.81;
+                if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+
+                let molar_mass = currentEpoch.molar_mass_air;
+                if (molar_mass === undefined) {
+                    if (total_mass > 2.5e19) molar_mass = 0.044;
+                    else molar_mass = 0.029;
+                }
+
+                const props = window.calculateAtmosphereProperties(total_mass, 288, molar_mass, gravity);
+                H = props.scale_height;
+            }
         }
     } else if (z_max_km > 200) {
         // Fallback si calculateAtmosphereProperties n'est pas dispo
         H = 40000; // ~40 km pour atmosphère vapeur chaude Hadéen
     }
+
 
     const P0 = 101325; // Pression au niveau de la mer en Pa
 
@@ -1801,7 +1854,7 @@ function drawSpectralVisualization(canvas, data) {
         z_trop_km = window.calculateTropopauseHeight(288) / 1000;
     }
     */
-    
+
     // Calculer la tropopause pour déterminer les zones de précision et l'annotation
     // let z_trop_km = 11; // DEJA DÉCLARÉ PLUS HAUT - On commente pour éviter la redéclaration
     /*
@@ -1814,7 +1867,7 @@ function drawSpectralVisualization(canvas, data) {
         z_trop_km = window.calculateTropopauseHeight(288) / 1000;
     }
     */
-    
+
     // Initialiser z_trop_km par défaut pour l'annotation si pas défini (ce qui ne devrait plus arriver)
     // Mais pour être sûr à 100% pour le linter/exécution
     const annotation_z_trop_km = typeof z_trop_km !== 'undefined' ? z_trop_km : 11;
@@ -1896,7 +1949,8 @@ function drawSpectralVisualization(canvas, data) {
                 xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
                 yanchor: 'middle',
                 align: 'left', // Justifié à gauche
-                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR) // Couleur configurable
+                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR), // Couleur configurable
+                visible: has_atmosphere // Cacher si pas d'atmosphère
             },
         ]
     };

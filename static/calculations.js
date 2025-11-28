@@ -224,18 +224,27 @@ function pressure(z, params = null) {
         
         if (typeof window !== 'undefined' && !window._physicsAlertShown) {
             const alertFunc = (window.showSelectableAlert) ? window.showSelectableAlert : alert;
-            alertFunc(`ERREUR PHYSIQUE : Paramètres atmosphériques manquants pour l'époque '${window.currentEpochName}'.\n\nIl manque : ${total_mass===undefined?'Masse Atm':''} ${gravity===undefined?'Gravité':''} ${planet_radius===undefined?'Rayon':''}\n\nLe calcul va utiliser des valeurs par défaut (Terre actuelle) pour éviter le crash, mais le résultat sera FAUX.`, "Erreur Physique");
+            alertFunc(`ERREUR PHYSIQUE : Paramètres atmosphériques manquants pour l'époque '${window.currentEpochName}'.\n\nIl manque : ${total_mass===undefined?'Masse Atm':''} ${gravity===undefined?'Gravité':''} ${planet_radius===undefined?'Rayon':''}\n\nLe calcul ne peut pas aboutir.`, "Erreur Physique");
             window._physicsAlertShown = true;
         }
         
-        // Valeurs de repli UNIQUEMENT pour éviter le crash NaN (Terre actuelle)
-        if (total_mass === undefined) total_mass = 5.15e18;
-        if (gravity === undefined) gravity = 9.81;
-        if (planet_radius === undefined) planet_radius = 6371000;
+        // Sans paramètres, pas d'atmosphère
+        return 0;
     }
     
-    if (temp_K === undefined) temp_K = 288; // Fallback température
-    if (molar_mass_air === undefined) molar_mass_air = 0.02896; // Fallback air sec
+    // Température et Molaire doivent aussi être définis ou calculables
+    // Si molar_mass_air manque dans params, essayer de le récupérer depuis la config
+    if (molar_mass_air === undefined && typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch && currentEpoch.molar_mass_air !== undefined) {
+            molar_mass_air = currentEpoch.molar_mass_air;
+        }
+    }
+    
+    if (temp_K === undefined || molar_mass_air === undefined) {
+        console.warn("[pressure] Température ou masse molaire indéfinie, retour 0", { temp_K, molar_mass_air });
+        return 0;
+    }
 
     // Calcul de la surface planétaire
     // S = 4 * pi * R^2
@@ -531,9 +540,9 @@ if (typeof window !== 'undefined') {
     window.calculateTropopauseHeight = calculateTropopauseHeight;
 }
 
-function airNumberDensity(z, CO2_fraction = null, T0_override = null) {
+function airNumberDensity(z, CO2_fraction = null, T0_override = null, params = null) {
     const BOLTZMANN_KB = window.BOLTZMANN_KB || 1.380649e-23;
-    return pressure(z) / (BOLTZMANN_KB * temperature(z, CO2_fraction, T0_override));
+    return pressure(z, params) / (BOLTZMANN_KB * temperature(z, CO2_fraction, T0_override));
 }
 
 // ============================================================================
@@ -603,7 +612,7 @@ function crossSectionH2O(wavelength) {
 
 // Densité numérique de H2O
 // 🔄 MODIFIÉ : Utilise maintenant calculateWaterPartition pour déterminer la vapeur selon la température
-function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null) {
+function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null, params = null) {
     // Vérifier si H2O est activé (via variable globale ou window)
     const enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
         ? window.waterVaporEnabled
@@ -616,7 +625,7 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null) {
     
     // Si pas de température disponible, utiliser l'ancienne méthode (valeur fixe)
     if (T0 === null || !isFinite(T0) || T0 <= 0) {
-        const n_air = airNumberDensity(z, CO2_fraction, T0_override);
+        const n_air = airNumberDensity(z, CO2_fraction, T0_override, params);
         
         // Récupérer la quantité d'eau globale pour le mixing ratio
         let h2o_percent = 1.5; // Défaut 1.5%
@@ -637,16 +646,18 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null) {
     
     if (h2o_total_percent <= 0) return 0;
 
-    // Récupérer les paramètres de l'époque courante
-    let epochParams = {};
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    // Récupérer les paramètres de l'époque courante (ou utiliser params si fournis)
+    let epochParams = params || {};
+    // Si params n'est pas fourni, on tente de récupérer de window (fallback)
+    if (!params && typeof window !== 'undefined' && window.currentEpochName &&
+        typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             epochParams = {
-                pressure_atm: currentEpoch.atmospheric_pressure || 1.0,
-                molar_mass_air: currentEpoch.molar_mass_air || 0.029,
-                gravity: currentEpoch.gravity || 9.81,
-                ocean_coverage: currentEpoch.ocean_coverage || 0.7
+                pressure_atm: currentEpoch.atmospheric_pressure,
+                molar_mass_air: currentEpoch.molar_mass_air,
+                gravity: currentEpoch.gravity,
+                ocean_coverage: currentEpoch.ocean_coverage
             };
         }
     }
@@ -659,7 +670,7 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null) {
         
         // Calculer la densité numérique de vapeur d'eau
         // n_H2O = n_air * vapor_fraction (fraction molaire de vapeur)
-        const n_air = airNumberDensity(z, CO2_fraction, T0_override);
+        const n_air = airNumberDensity(z, CO2_fraction, T0_override, params);
         
         // Ajuster la fraction de vapeur selon l'altitude (décroît avec z)
         // Utiliser le même profil que waterVaporMixingRatio pour la distribution verticale
@@ -670,7 +681,7 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null) {
         return n_air * vapor_fraction_at_z;
     } else {
         // Fallback : utiliser l'ancienne méthode si calculateWaterPartition n'est pas disponible
-        const n_air = airNumberDensity(z, CO2_fraction, T0_override);
+        const n_air = airNumberDensity(z, CO2_fraction, T0_override, params);
         const mixing_ratio = waterVaporMixingRatio(z);
         return n_air * mixing_ratio;
     }
@@ -699,7 +710,7 @@ function crossSectionCH4(wavelength) {
 
 // Densité numérique de CH4
 // CH4 est un gaz bien mélangé dans l'atmosphère (comme CO2), pas de profil vertical complexe
-function methaneNumberDensity(z, CH4_fraction = null, CO2_fraction = null, T0_override = null) {
+function methaneNumberDensity(z, CH4_fraction = null, CO2_fraction = null, T0_override = null, params = null) {
     // Vérifier si CH4 est activé (via variable globale ou window)
     const enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)
         ? window.methaneEnabled
@@ -708,7 +719,7 @@ function methaneNumberDensity(z, CH4_fraction = null, CO2_fraction = null, T0_ov
 
     // CH4 est bien mélangé, donc la fraction est constante avec l'altitude
     // (contrairement à H2O qui décroît avec l'altitude)
-    const n_air = airNumberDensity(z, CO2_fraction, T0_override);
+    const n_air = airNumberDensity(z, CO2_fraction, T0_override, params);
     return n_air * CH4_fraction;
 }
 
@@ -793,7 +804,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     logCalculationPhase('1. Initialisation', { CO2_fraction, T0_test, options });
 
     const {
-        z_max = 120000,
+        z_max, // ⚡ Plus de valeur par défaut (120000), doit être fourni ou calculé
         delta_z = 50,
         lambda_min = 0.1e-6,
         lambda_max = 100e-6,
@@ -824,17 +835,42 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // Pour z : précision fine sous tropopause, grossière au-dessus
 
     // Récupérer la hauteur max de l'atmosphère dynamique (ex: 600km pour Hadéen)
-    let total_mass = 5.15e18; // Terre actuelle par défaut
-    let dynamic_z_max = z_max;
+    let total_mass; // Pas de valeur par défaut, doit être fourni par l'époque
+    let dynamic_z_max = z_max; // Initialisé avec l'option passée (peut être undefined)
+    let gravity_val; // Sera récupéré de l'époque
+    let planet_radius_val; // Sera récupéré de l'époque
+    let molar_mass_val; // Sera récupéré de l'époque
+    let physParams = null; // Objet regroupant les paramètres physiques pour les helpers
     
     if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName) {
         const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
         if (currentEpoch) {
-            total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
+            // Récupération stricte : si undefined, on laisse undefined (ce qui provoquera une erreur plus loin)
+            // Sauf si on veut explicitement autoriser 0 (Corps Noir)
+            if (currentEpoch.total_atmosphere_mass_kg !== undefined) {
+                total_mass = currentEpoch.total_atmosphere_mass_kg;
+            } else {
+                console.error(`[calculateFluxForT0] ❌ ERREUR : 'total_atmosphere_mass_kg' manquant dans l'époque '${window.currentEpochName}'`);
+            }
+
+            // Récupération gravity, radius et masse molaire
+            if (currentEpoch.gravity !== undefined) gravity_val = currentEpoch.gravity;
+            if (currentEpoch.planet_radius !== undefined) planet_radius_val = currentEpoch.planet_radius;
+            molar_mass_val = currentEpoch.molar_mass_air; // Peut être undefined (Corps Noir)
+            
+            // Création de l'objet params pour les helpers
+            physParams = {
+                total_atmosphere_mass_kg: total_mass,
+                gravity: gravity_val,
+                planet_radius: planet_radius_val,
+                molar_mass_air: molar_mass_val,
+                temperature_K: T0_test
+            };
             
             // Utiliser la nouvelle fonction centralisée dans calculations_atm.js
-            if (typeof window.calculateAtmosphereProperties === 'function') {
-                const props = window.calculateAtmosphereProperties(total_mass);
+            if (typeof window.calculateAtmosphereProperties === 'function' && total_mass !== undefined) {
+                // Passer T0_test pour avoir une hauteur d'atmosphère cohérente avec la température testée
+                const props = window.calculateAtmosphereProperties(total_mass, T0_test, molar_mass_val, gravity_val); // gravity passed explicitement
                 dynamic_z_max = props.z_max;
                 
                 if (props.is_massive) {
@@ -842,6 +878,21 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
                 }
             }
         }
+    } else if (dynamic_z_max === undefined) {
+        // Hors contexte global, pas de fallback magique sur 5.15e18.
+        // Si total_mass n'est pas fourni (undefined), calculateAtmosphereProperties va (ou devrait) râler.
+        // Mais ici total_mass est undefined.
+        if (typeof window !== 'undefined' && typeof window.calculateAtmosphereProperties === 'function' && total_mass !== undefined) {
+             const props = window.calculateAtmosphereProperties(total_mass, T0_test);
+             dynamic_z_max = props.z_max;
+        }
+    }
+
+    // 🚨 VALIDATION CRITIQUE : Si z_max n'est toujours pas défini, on arrête tout.
+    // Pas de valeur par défaut silencieuse qui cache des bugs.
+    if (dynamic_z_max === undefined || dynamic_z_max === null || isNaN(dynamic_z_max)) {
+        console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE : Hauteur d'atmosphère (z_max) indéterminée. total_mass=${total_mass}, z_max_option=${z_max}`);
+        return null;
     }
     
     // Calculer la tropopause pour déterminer les zones de précision
@@ -1046,7 +1097,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     for (let i = 0; i < i_trop; i++) {
         const z = z_range[i];
         const T = T0_test + Gamma * z; // Calcul direct, sans appel à temperature()
-        const n_CO2 = airNumberDensity(z, CO2_fraction, T0_test) * CO2_fraction;
+        const n_CO2 = airNumberDensity(z, CO2_fraction, T0_test, physParams) * CO2_fraction;
 
         // ⚠️ IMPORTANT : Sous tropopause, on garde delta_z constant = 50m (PAS D'OPTIMISATION)
         // On utilise directement delta_z_troposphere, pas de calcul de delta_z_real
@@ -1062,11 +1113,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             const kappa_CO2 = cross_section_CO2[j] * n_CO2;
 
             // Absorption H2O (si activé)
-            const n_H2O = waterVaporNumberDensity(z, CO2_fraction, T0_test);
+            const n_H2O = waterVaporNumberDensity(z, CO2_fraction, T0_test, physParams);
             const kappa_H2O = h2o_enabled ? cross_section_H2O[j] * n_H2O : 0;
 
             // Absorption CH4 (si activé)
-            const n_CH4 = methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test);
+            const n_CH4 = methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test, physParams);
             const kappa_CH4 = (ch4_enabled && CH4_fraction) ? cross_section_CH4[j] * n_CH4 : 0;
 
             // Debug: analyser l'absorption H2O dans la zone < 9μm (une fois par itération, pour quelques longueurs d'onde clés)
