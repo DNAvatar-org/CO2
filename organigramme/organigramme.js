@@ -372,7 +372,10 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     // Avec transform: translate(-50%, -50%) sur la grille, ce centre sera à (x, y)
     const circleBg = document.createElement('div');
     circleBg.className = 'flux-circle-bg';
-    const circleSize = radius * 2;
+    // Vérifier si c'est une image pour ajuster la taille avec logoScale
+    const isImage = logo && (logo.endsWith('.svg') || logo.endsWith('.png'));
+    // Pour les images sans cercle visible, ajuster la taille du cercle avec logoScale
+    const circleSize = hasCircle ? (radius * 2) : (isImage ? (radius * 2 * logoScale) : (radius * 2));
     circleBg.style.width = circleSize + 'px';
     circleBg.style.height = circleSize + 'px';
     // Z-index du cercle géré par CSS via les sélecteurs #cell-{nodeId} .flux-circle-bg
@@ -394,9 +397,9 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             circleBg.classList.add('flux-space-hole');
         }
         circleBg.style.backgroundColor = fillColor;
-        // Toujours créer le cercle, mais rendre la bordure invisible si strokeColor est vide ou transparent
+        // Toujours créer le cercle, mais rendre la bordure invisible si strokeColor est vide, transparent, ou strokeSize est 0
         // Le cercle est nécessaire pour que les étiquettes s'éloignent correctement du logo
-        if (!strokeColor || strokeColor.trim() === '') {
+        if (!strokeColor || strokeColor.trim() === '' || strokeSize <= 0) {
             circleBg.style.border = 'none';
         } else {
             // Vérifier si la couleur est transparente (alpha = 0)
@@ -422,8 +425,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         logoSpan.style.height = '100%';
         logoSpan.style.zIndex = Z_NODE_INTERNAL.LOGO;
 
-        // Vérifier si c'est une image (PNG, SVG) ou un emoji
-        const isImage = logo && (logo.endsWith('.svg') || logo.endsWith('.png'));
+        // isImage est déjà défini plus haut (ligne 376)
 
         // Si le logo est un fichier image (SVG, PNG, etc.)
         if (isImage) {
@@ -436,6 +438,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             img.style.objectPosition = 'center';
             img.style.display = 'block';
             logoSpan.appendChild(img);
+            // Pour les images, logoScale est déjà appliqué via circleSize (ligne 377)
+            // logoSpan reste à 100% de circleBg, donc l'image s'adapte automatiquement
         } else {
             // Sinon c'est un emoji/texte
             logoSpan.textContent = logo;
@@ -451,8 +455,11 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         }
         circleBg.appendChild(logoSpan);
         // Taille du logo : si cercle visible, relatif au diamètre; sinon relatif au radius
-        const logoFontSize = hasCircle ? (radius * 2 * logoScale) : (radius * logoScale);
-        circleBg.style.fontSize = logoFontSize + 'px';
+        // Pour les emojis, utiliser fontSize; pour les images, la taille est déjà définie sur logoSpan
+        if (!isImage) {
+            const logoFontSize = hasCircle ? (radius * 2 * logoScale) : (radius * logoScale);
+            circleBg.style.fontSize = logoFontSize + 'px';
+        }
 
         // Gestionnaire de clic pour copier le logo ou déclencher le bouton
         circleBg.addEventListener('click', (e) => {
@@ -1841,7 +1848,7 @@ cellOrder.forEach(nodeId => {
         nodeConfig.zIndex || null, // Pass the custom z-index
         nodeConfig.logoScale || 1.4, // Pass the logo scale (default 1.4)
         nodeConfig.logoOffsetY || 0, // Pass the vertical logo offset (default 0)
-        nodeConfig.strokeSize || 4 // Pass the border thickness (default 4px)
+        (nodeConfig.strokeSize !== undefined && nodeConfig.strokeSize !== null) ? nodeConfig.strokeSize : 4 // Pass the border thickness (default 4px, but allow 0)
     );
 
     createdCells[node.id] = cell;
@@ -1953,7 +1960,7 @@ nodes.forEach(node => {
         node.zIndex || null,
         node.logoScale || 1.4,
         node.logoOffsetY || 0,
-        node.strokeSize || 4
+        (node.strokeSize !== undefined && node.strokeSize !== null) ? node.strokeSize : 4 // Allow strokeSize: 0
     );
 
     createdCells[node.id] = cell;
@@ -2565,9 +2572,9 @@ window.updateFluxLabels = function (data) {
             // Vérifier si le label est lié à un bouton
             // Note: forcing_total et albedo_percent sont sur le bouton albedo, mais forcing_total est aussi sur la flèche reemis->terre
             // On doit vérifier si c'est le label du bouton albedo ou celui de la flèche
-            const isButtonLabel = dataId === 'co2_percent' || dataId === 'co2_forcing' ||
-                dataId === 'ch4_percent' || dataId === 'ch4_forcing' ||
-                dataId === 'h2o_percent' || dataId === 'h2o_forcing' ||
+            const isButtonLabel = dataId === 'co2_percent' || dataId === 'co2_forcing_wm' ||
+                dataId === 'ch4_percent' || dataId === 'ch4_forcing_wm' ||
+                dataId === 'h2o_percent' || dataId === 'h2o_forcing_wm' ||
                 dataId === 'albedo_percent' || dataId === 'albedo_forcing';
 
             // Vérifier si forcing_total est sur le bouton albedo (pas sur la flèche)
@@ -2596,7 +2603,7 @@ window.updateFluxLabels = function (data) {
                 // Valeur à 0 et bouton actif : appliquer le style "zero-value" (gris)
                 label.classList.add('zero-value');
                 // Mais quand même appliquer co2-label si c'est un label CO2 (pour la couleur de base)
-                if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
+                if (dataId === 'co2_percent' || dataId === 'co2_forcing_wm') {
                     label.classList.add('co2-label');
                 }
             } else {
@@ -2612,7 +2619,7 @@ window.updateFluxLabels = function (data) {
                 }
                 
                 // Vérifier si c'est un label CO2 pour appliquer la classe spécifique
-                if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
+                if (dataId === 'co2_percent' || dataId === 'co2_forcing_wm') {
                     label.classList.add('co2-label');
                 }
             }
@@ -3096,21 +3103,9 @@ window.updateFluxLabels = function (data) {
     const CONST_STEFAN = 5.67e-8; // Renommé pour éviter conflit scope
     const surface_flux_emitted = CONST_STEFAN * Math.pow(T0_num, 4);
 
-    // 🔒 CORRECTION : Calculer l'effet de serre réel à partir du transfert radiatif
-    // Le transfert radiatif (calculations.js) calcule déjà le flux sortant au sommet (total_flux)
-    // en fonction du flux émis par la surface ET de la composition de l'atmosphère (CO2, CH4, H2O).
-    // 
-    // Effet de serre = Flux émis par la surface - Flux sortant au sommet (OLR)
-    // Si total_flux est disponible (résultat du transfert radiatif), l'utiliser pour l'effet de serre réel
-    if (total_flux > 0 && surface_flux_emitted > 0) {
-        // L'effet de serre est la différence entre ce que le sol émet et ce qui sort réellement
-        const greenhouse_effect_real = surface_flux_emitted - total_flux;
-        
-        // En théorie, surface_flux_emitted >= total_flux (sauf si l'atmosphère génère de l'énergie ex-nihilo ou transitoire)
-        // On autorise les valeurs négatives transitoires mais on logge l'anomalie
-        forcing_total = greenhouse_effect_real;
-        console.log(`[updateFluxLabels] Effet de serre réel (transfert radiatif): ${forcing_total.toFixed(2)} W/m² (surface=${surface_flux_emitted.toFixed(2)} W/m², sortant=${total_flux.toFixed(2)} W/m²)`);
-    }
+    // forcing_total sera calculé plus tard avec la formule : (flux_ejected_watts - surface_flux_emitted_watts) / surfTerre
+    // Initialiser à 0 pour l'instant (sera remplacé après le calcul des watts totaux)
+    forcing_total = 0;
 
     // Albedo -> Espace2 : flux éjecté = flux sortant au sommet (résultat direct du transfert radiatif)
     let flux_ejected = total_flux > 0 ? total_flux : (surface_flux_emitted - forcing_total);
@@ -3141,6 +3136,11 @@ window.updateFluxLabels = function (data) {
     // Calculer et mettre à jour flux_ejected_watts (total en watts)
     const w_ejected_total = flux_ejected * SURFACE_AREA;
     updateLabel('flux_ejected_watts', w_ejected_total);
+    
+    // Calculer l'EDS (Effet de Serre) : forcing_total = (surface_flux_emitted_watts - flux_ejected_watts) / surfTerre
+    const eds_wm = (w_sol_total - w_ejected_total) / SURFACE_AREA;
+    // Utiliser eds_wm pour forcing_total
+    forcing_total = eds_wm;
     let corePowerText = '';
     if (geothermie_value === 0 || coreTemp_K === 0) {
         // Pas de noyau actif
@@ -3304,7 +3304,7 @@ window.updateFluxLabels = function (data) {
     // CO2 - formatValueFromTemplate gère automatiquement la conversion > 10000 ppm en %
     // Passer directement la valeur en ppm, le template sera adapté automatiquement
     updateLabel('co2_percent', co2_ppm_num);
-    updateLabel('co2_forcing', forcing_CO2);
+    updateLabel('co2_forcing_wm', forcing_CO2);
 
     // Ne plus forcer automatiquement le bouton CO2 en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement
@@ -3313,7 +3313,7 @@ window.updateFluxLabels = function (data) {
     // Passer directement la valeur en ppm, le template sera adapté automatiquement
     updateLabel('ch4_percent', ch4_ppm_num);
     // Utiliser directement forcing_CH4 qui est déjà calculé avec les bonnes conditions
-    updateLabel('ch4_forcing', forcing_CH4);
+    updateLabel('ch4_forcing_wm', forcing_CH4);
 
     // Ne plus forcer automatiquement le bouton CH4 en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement
@@ -3336,7 +3336,7 @@ window.updateFluxLabels = function (data) {
     // Utiliser directement forcing_H2O qui est déjà calculé avec les bonnes conditions
     const forcing_H2O_final = h2o_enabled ? forcing_H2O : 0;
     updateLabel('h2o_percent', h2o_percent);
-    updateLabel('h2o_forcing', forcing_H2O_final);
+    updateLabel('h2o_forcing_wm', forcing_H2O_final);
 
     // Albédo
     const albedo_percent_value = albedo_num * 100;
