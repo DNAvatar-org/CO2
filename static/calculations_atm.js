@@ -47,10 +47,12 @@ const MASSIVE_ATM_THRESHOLD = 2.5e19;
  */
 function co2KgToFraction(co2_kg, total_atmosphere_mass_kg, molar_mass_air) {
     if (co2_kg === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
-        console.error("[co2KgToFraction] Paramètres manquants", { co2_kg, total_atmosphere_mass_kg, molar_mass_air });
-        return 0;
+        console.error("[co2KgToFraction] ❌ ERREUR CRITIQUE : Paramètres manquants", { co2_kg, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('co2KgToFraction: Paramètres requis manquants');
     }
-    if (co2_kg <= 0 || total_atmosphere_mass_kg <= 0) return 0;
+    if (co2_kg <= 0 || total_atmosphere_mass_kg <= 0) {
+        return 0; // Cas valide : pas de CO2 ou pas d'atmosphère
+    }
     
     // Nombre de moles de CO2
     const moles_CO2 = co2_kg / MOLAR_MASS_CO2;
@@ -71,10 +73,12 @@ function co2KgToFraction(co2_kg, total_atmosphere_mass_kg, molar_mass_air) {
  */
 function ch4KgToFraction(ch4_kg, total_atmosphere_mass_kg, molar_mass_air) {
     if (ch4_kg === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
-        console.error("[ch4KgToFraction] Paramètres manquants", { ch4_kg, total_atmosphere_mass_kg, molar_mass_air });
-        return 0;
+        console.error("[ch4KgToFraction] ❌ ERREUR CRITIQUE : Paramètres manquants", { ch4_kg, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('ch4KgToFraction: Paramètres requis manquants');
     }
-    if (ch4_kg <= 0 || total_atmosphere_mass_kg <= 0) return 0;
+    if (ch4_kg <= 0 || total_atmosphere_mass_kg <= 0) {
+        return 0; // Cas valide : pas de CH4 ou pas d'atmosphère
+    }
     
     const moles_CH4 = ch4_kg / MOLAR_MASS_CH4;
     const moles_total = total_atmosphere_mass_kg / molar_mass_air;
@@ -92,10 +96,12 @@ function ch4KgToFraction(ch4_kg, total_atmosphere_mass_kg, molar_mass_air) {
  */
 function h2oKgToVaporFraction(h2o_total_kg, vapor_fraction, total_atmosphere_mass_kg, molar_mass_air) {
     if (h2o_total_kg === undefined || vapor_fraction === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
-        console.error("[h2oKgToVaporFraction] Paramètres manquants", { h2o_total_kg, vapor_fraction, total_atmosphere_mass_kg, molar_mass_air });
-        return 0;
+        console.error("[h2oKgToVaporFraction] ❌ ERREUR CRITIQUE : Paramètres manquants", { h2o_total_kg, vapor_fraction, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('h2oKgToVaporFraction: Paramètres requis manquants');
     }
-    if (h2o_total_kg <= 0 || vapor_fraction <= 0 || total_atmosphere_mass_kg <= 0) return 0;
+    if (h2o_total_kg <= 0 || vapor_fraction <= 0 || total_atmosphere_mass_kg <= 0) {
+        return 0; // Cas valide : pas d'eau ou pas d'atmosphère
+    }
     
     const h2o_vapor_kg = h2o_total_kg * vapor_fraction;
     const moles_H2O = h2o_vapor_kg / MOLAR_MASS_H2O;
@@ -118,11 +124,9 @@ function h2oKgToVaporFraction(h2o_total_kg, vapor_fraction, total_atmosphere_mas
  * @returns {Object} Composition atmosphérique avec fractions molaires
  */
 function calculateAtmosphericComposition(quantities, total_atmosphere_mass_kg) {
-    // Si total_atmosphere_mass_kg est undefined, on ne peut pas calculer les fractions
     if (total_atmosphere_mass_kg === undefined) {
-        console.error("[calculateAtmosphericComposition] total_atmosphere_mass_kg manquant");
-        // On ne peut pas retourner un objet vide sans casser le reste, mais on retourne des 0
-        return { CO2: 0, CH4: 0, H2O_vapor: 0, N2: 0, O2: 0, Ar: 0, quantities: quantities };
+        console.error("[calculateAtmosphericComposition] ❌ ERREUR CRITIQUE : total_atmosphere_mass_kg manquant");
+        throw new Error('calculateAtmosphericComposition: total_atmosphere_mass_kg requis');
     }
     
     // Fallback pour molar_mass_air (paramètre interne des helpers, non exposé ici)
@@ -192,8 +196,13 @@ function calculateAtmosphericComposition(quantities, total_atmosphere_mass_kg) {
  * @returns {number} Quantité de CO2 en kg
  */
 function co2FractionToKg(co2_fraction, total_atmosphere_mass_kg, molar_mass_air) {
-    if (co2_fraction === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) return 0;
-    if (co2_fraction <= 0) return 0;
+    if (co2_fraction === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
+        console.error("[co2FractionToKg] ❌ ERREUR CRITIQUE : Paramètres manquants", { co2_fraction, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('co2FractionToKg: Paramètres requis manquants');
+    }
+    if (co2_fraction <= 0) {
+        return 0; // Cas valide : pas de CO2
+    }
     
     const moles_total = total_atmosphere_mass_kg / molar_mass_air;
     const moles_CO2 = co2_fraction * moles_total;
@@ -208,8 +217,13 @@ function co2FractionToKg(co2_fraction, total_atmosphere_mass_kg, molar_mass_air)
  * @returns {number} Quantité de CH4 en kg
  */
 function ch4FractionToKg(ch4_fraction, total_atmosphere_mass_kg, molar_mass_air) {
-    if (ch4_fraction === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) return 0;
-    if (ch4_fraction <= 0) return 0;
+    if (ch4_fraction === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
+        console.error("[ch4FractionToKg] ❌ ERREUR CRITIQUE : Paramètres manquants", { ch4_fraction, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('ch4FractionToKg: Paramètres requis manquants');
+    }
+    if (ch4_fraction <= 0) {
+        return 0; // Cas valide : pas de CH4
+    }
     
     const moles_total = total_atmosphere_mass_kg / molar_mass_air;
     const moles_CH4 = ch4_fraction * moles_total;
@@ -237,22 +251,19 @@ function calculateAtmosphereProperties(total_atmosphere_mass_kg, temperature_K, 
 
     // Validation stricte
     if (total_atmosphere_mass_kg === undefined || temperature_K === undefined || molar_mass_kg_mol === undefined || gravity === undefined) {
-        console.error("[calculateAtmosphereProperties] Paramètres manquants", { total_atmosphere_mass_kg, temperature_K, molar_mass_kg_mol, gravity });
-        // Valeurs de secours CRITIQUES pour éviter le crash complet, mais le log d'erreur est là pour le débogage
-        if (gravity === undefined) gravity = 9.81;
-        if (molar_mass_kg_mol === undefined) molar_mass_kg_mol = 0.029;
-        if (temperature_K === undefined) temperature_K = 288;
-        // total_atmosphere_mass_kg est critique, s'il manque, on renvoie une atmosphère vide
-        if (total_atmosphere_mass_kg === undefined) return { z_max: 0, scale_height: 0, is_massive: false };
+        console.error("[calculateAtmosphereProperties] ❌ ERREUR CRITIQUE : Paramètres manquants", { total_atmosphere_mass_kg, temperature_K, molar_mass_kg_mol, gravity });
+        throw new Error('calculateAtmosphereProperties: Tous les paramètres requis (total_atmosphere_mass_kg, temperature_K, molar_mass_kg_mol, gravity)');
     }
 
     const R = 8.314; // Constante des gaz parfaits
     
     // Calcul physique de l'échelle de hauteur H = RT / Mg
-    let scale_height = (R * temperature_K) / (molar_mass_kg_mol * gravity);
+    const scale_height = (R * temperature_K) / (molar_mass_kg_mol * gravity);
     
-    // Si les paramètres sont invalides (ex: init), fallback sur standard
-    if (isNaN(scale_height) || scale_height <= 0) scale_height = 8500;
+    if (isNaN(scale_height) || scale_height <= 0) {
+        console.error("[calculateAtmosphereProperties] ❌ ERREUR CRITIQUE : scale_height invalide", { scale_height, temperature_K, molar_mass_kg_mol, gravity });
+        throw new Error('calculateAtmosphereProperties: scale_height invalide (NaN ou <= 0)');
+    }
 
     let is_massive = false;
     
@@ -353,8 +364,7 @@ function calculatePressure(z, params = {}) {
     // Validation stricte
     if (total_atmosphere_mass_kg === undefined || temperature_K === undefined || gravity === undefined || planet_radius === undefined) {
          console.error("[calculatePressure] ❌ ERREUR CRITIQUE : Paramètres physiques manquants", { total_atmosphere_mass_kg, temperature_K, gravity, planet_radius });
-         // Pas de fallback magique. Pas de paramètres = pas de calcul possible.
-         return 0; 
+         throw new Error('calculatePressure: Tous les paramètres requis (total_atmosphere_mass_kg, temperature_K, gravity, planet_radius)');
     }
     
     // Constantes physiques
