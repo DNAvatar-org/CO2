@@ -801,8 +801,11 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
 
     const createLabel = (labelData, posX, posY, isName = false, size = null, labelType = '') => {
         if (!labelData) return null;
-        const text = getLabelText(labelData);
+        // Si c'est un objet avec dataId, créer le label même si text est vide
         const dataId = getLabelDataId(labelData);
+        const text = getLabelText(labelData);
+        // Si pas de texte mais un dataId, créer quand même le label (sera rempli par updateLabel)
+        if (!text && !dataId) return null;
         const label = document.createElement('div');
         label.className = 'flux-label'; // Tous les textes des flèches
         if (dataId) label.setAttribute('data-id', dataId);
@@ -874,27 +877,58 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
     }
 
     // name : au milieu de la flèche (50%)
+    // Créer le label même si name est un objet avec dataId (même si text est vide)
     if (labelObj.name) {
         const midX = (x1 + x2) / 2;
         const midY = (y1 + y2) / 2;
-        createLabel(labelObj.name, midX, midY, true, labelSize, 'name');
+        // Si name est un objet avec dataId, créer le label même si text est vide
+        const nameDataId = typeof labelObj.name === 'object' ? labelObj.name.dataId : null;
+        if (nameDataId || getLabelText(labelObj.name)) {
+            createLabel(labelObj.name, midX, midY, true, labelSize, 'name');
+        }
     }
 
     // txtF : à la fin de la flèche (90% du chemin)
+    // Peut être un objet unique, un tableau d'objets, ou une chaîne
     if (labelObj.txtF) {
         // Positionner à LABEL_POSITIONS.txtF (juste avant le bout de la flèche)
         // Note: x2, y2 sont déjà ajustés avec la marge dans createArrow
         let percent = LABEL_POSITIONS.txtF;
 
-        // Exception pour 'albedo_percents' (petite flèche jaune)
-        // L'utilisateur signale que le milieu n'est pas sur le chapeau
-        if (labelObj.txtF.dataId === 'albedo_percents') {
-            percent = LABEL_POSITIONS.txtF_albedo; // Pousser encore plus loin pour celle-ci
-        }
+        // Si txtF est un tableau, créer plusieurs labels au même endroit (fin de flèche)
+        if (Array.isArray(labelObj.txtF)) {
+            // Vérifier si un des éléments a 'albedo_percents' pour ajuster le percent
+            for (const txtFItem of labelObj.txtF) {
+                const dataId = getLabelDataId(txtFItem);
+                if (dataId === 'albedo_percents') {
+                    percent = LABEL_POSITIONS.txtF_albedo;
+                    break;
+                }
+            }
+            
+            const pos2X = x1 + (x2 - x1) * percent;
+            const baseY = y1 + (y2 - y1) * percent;
+            
+            // Espacer verticalement (décalage pour éviter chevauchement)
+            const spacing = 18; // Espacement entre les labels
+            const totalOffset = (labelObj.txtF.length - 1) * spacing / 2;
+            
+            labelObj.txtF.forEach((labelData, index) => {
+                const pos2Y = baseY - totalOffset + (index * spacing);
+                createLabel(labelData, pos2X, pos2Y, false, labelSize, 'txtF');
+            });
+        } else {
+            // txtF est un objet unique ou une chaîne
+            // Exception pour 'albedo_percents' (petite flèche jaune)
+            const dataId = getLabelDataId(labelObj.txtF);
+            if (dataId === 'albedo_percents') {
+                percent = LABEL_POSITIONS.txtF_albedo; // Pousser encore plus loin pour celle-ci
+            }
 
-        const pos2X = x1 + (x2 - x1) * percent;
-        const pos2Y = y1 + (y2 - y1) * percent;
-        createLabel(labelObj.txtF, pos2X, pos2Y, false, labelSize, 'txtF');
+            const pos2X = x1 + (x2 - x1) * percent;
+            const pos2Y = y1 + (y2 - y1) * percent;
+            createLabel(labelObj.txtF, pos2X, pos2Y, false, labelSize, 'txtF');
+        }
     }
 
     // txt3 (à gauche) et txt4 (à droite) - relatifs au milieu
@@ -2334,11 +2368,23 @@ window.updateFluxLabels = function (data) {
                 labelPath = 'name';
                 break;
             }
-            // Vérifier txtF
-            if (arc.label.txtF && typeof arc.label.txtF === 'object' && arc.label.txtF.dataId === dataId) {
-                template = arc.label.txtF.text;
-                labelPath = 'txtF';
-                break;
+            // Vérifier txtF (peut être un objet unique ou un tableau d'objets)
+            if (arc.label.txtF) {
+                if (Array.isArray(arc.label.txtF)) {
+                    // Si txtF est un tableau, chercher dans chaque élément
+                    for (const txtFItem of arc.label.txtF) {
+                        if (typeof txtFItem === 'object' && txtFItem.dataId === dataId) {
+                            template = txtFItem.text;
+                            labelPath = 'txtF';
+                            break;
+                        }
+                    }
+                    if (template) break;
+                } else if (typeof arc.label.txtF === 'object' && arc.label.txtF.dataId === dataId) {
+                    template = arc.label.txtF.text;
+                    labelPath = 'txtF';
+                    break;
+                }
             }
             // Vérifier txtD
             if (arc.label.txtD && typeof arc.label.txtD === 'object' && arc.label.txtD.dataId === dataId) {
@@ -2537,6 +2583,9 @@ window.updateFluxLabels = function (data) {
     // Fonction helper pour mettre à jour un label par dataId (utilise maintenant le template)
     const updateLabel = (dataId, value, format = 'auto') => {
         const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
+        if (labels.length === 0 && dataId === 'solar_flux_absorbed_watts') {
+            console.warn(`[updateLabel] ⚠️ Aucun label trouvé pour dataId="${dataId}"`);
+        }
         labels.forEach(label => {
             let formattedValue;
 
@@ -3131,6 +3180,10 @@ window.updateFluxLabels = function (data) {
     updateLabel('surface_flux_emitted_wm', surface_flux_emitted);
     const w_sol_total = surface_flux_emitted * SURFACE_AREA;
     updateLabel('surface_flux_emitted_watts', w_sol_total);
+    // Calculer et mettre à jour solar_flux_absorbed_watts (total en watts)
+    // flux_passed est défini plus haut (ligne 3045) comme solar_flux_absorbed
+    const w_absorbed_total = solar_flux_absorbed * SURFACE_AREA;
+    updateLabel('solar_flux_absorbed_watts', w_absorbed_total);
     // Garder flux_ejected_wm (non utilisé mais conservé)
     updateLabel('flux_ejected_wm', flux_ejected);
     // Calculer et mettre à jour flux_ejected_watts (total en watts)

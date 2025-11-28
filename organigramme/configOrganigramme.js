@@ -287,8 +287,8 @@ const nodes = [
 // Les labels peuvent être des strings (statiques) ou des objets avec { text, dataId } (dynamiques)
 const arcs = [
     { from: 'soleil', to: 'geometrie', zIndex: 10, label: { name: { text: '1UA', dataId: 'distance_1ua' }, txtD: '', txtF: '' }},
-    { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_average_wm' }, txtF: { text: '0%', dataId: 'passing_albedo_percent' } } },
-    { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'solar_flux_absorbed_wm' } } },
+    { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_average_wm' }, txtF:  { text: '0%', dataId: 'passing_albedo_percent' }} },
+    { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: [ { text: '0×10<sup><b>17</b></sup> W', dataId: 'solar_flux_absorbed_watts' }, { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'solar_flux_absorbed_wm' } ] } },
     { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' } },
     { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'core_flux_wm' }, txtF: '' } },
     { from: 'terre', to: 'albedo', zIndex: 22, label: { name: { text: '0×10<sup><b>17</b></sup> W', dataId: 'surface_flux_emitted_watts' }, txtF: { text: '0 km', dataId: 'atm_height_km' }, txtD: { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'surface_flux_emitted_wm' } }, color: 'red' },//tout doit etre retourné
@@ -565,18 +565,18 @@ const timeline = [
     },
     {
         type: 'separator',
-        date: 'aujourd\'hui'
+        date: '1800'
     },
     {
         type: 'epoch',
-        id: 'aujourdhui',
-        name: 'Aujourd\'hui',
-        date: '0',
-        startYears: 0,
+        id: 'pre-industriel',
+        name: '1800',
+        date: '-1800',
+        startYears: 1800,
         endYears: -1,
-        // temp: '15.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
+        // temp: '14.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🐘',
-        title: 'Aujourd\'hui',
+        title: '1800 - Pré-industriel',
         solar_intensity: 1.00,
         core_power_watts: 4.6e13, // Puissance géothermique totale (~46 TW)
         // core_temperature: 4000, // DEPRECATED
@@ -586,8 +586,8 @@ const timeline = [
         total_atmosphere_mass_kg: 5.15e18, // Atmosphère standard (~1 bar)
         // Note: geothermal_flux ≈ 0.09 W/m² (4.6e13 / 5.1e14)
         // Simulation parameters - Quantités en kg
-        co2_kg: 2.163e15, // Quantité de CO2 en kg (~420 ppm)
-        ch4_kg: 9.785e12, // Quantité de CH4 en kg (~1.9 ppm)
+        co2_kg: 1.443e15, // Quantité de CO2 en kg (~280 ppm, niveau pré-industriel)
+        ch4_kg: 3.605e12, // Quantité de CH4 en kg (~0.7 ppm, niveau pré-industriel)
         h2o_kg: 1.4e21, // Quantité totale d'eau en kg (100% de 1.4e21 kg)
         n2_kg: 4.017e18, // Quantité de N2 en kg (~78% de l'atmosphère moderne, non affiché dans le flux diagram)
         o2_kg: 1.0815e18, // Quantité de O2 en kg (~21% de l'atmosphère moderne, non affiché dans le flux diagram)

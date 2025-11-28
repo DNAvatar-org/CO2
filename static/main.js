@@ -374,23 +374,22 @@ function updateTimeline() {
     }
 
     // Mettre à jour l'horloge dans la zone horloge
-    // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
-    if (infoTimeDisplay && currentEpochStartYears !== null) {
-        // Calculer le delta depuis le début de l'époque
-            // 🔒 Utiliser Math.abs pour afficher le delta de temps écoulé, que l'on avance ou recule dans le temps
-            // (car timelineFrame décrémente pour avancer vers le présent)
-            const deltaYears = Math.abs(years - currentEpochStartYears);
-            // Toujours afficher en dizaines d'années (jamais millions/milliards)
-            // Si le delta est très grand (millions d'années), afficher en Ma
-            let newText = '';
-            if (deltaYears >= 1e6) {
-                // Afficher en Ma si > 1 million
-                const deltaMa = (deltaYears / 1e6).toFixed(1).replace(/\.?0+$/, '');
-                newText = `+${deltaMa} Ma`;
-            } else {
-                const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
-                newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
-            }
+    // Afficher uniquement les années ajoutées par les actions depuis le début de l'époque
+    if (infoTimeDisplay) {
+        // timelineFrame commence à 0 pour chaque époque, donc years = timelineFrame * YEARS_PER_FRAME
+        // représente directement les années ajoutées par les actions
+        const yearsAdded = years;
+        // Toujours afficher en dizaines d'années (jamais millions/milliards)
+        // Si les années ajoutées sont très grandes (millions d'années), afficher en Ma
+        let newText = '';
+        if (yearsAdded >= 1e6) {
+            // Afficher en Ma si > 1 million
+            const yearsMa = (yearsAdded / 1e6).toFixed(1).replace(/\.?0+$/, '');
+            newText = `+${yearsMa} Ma`;
+        } else {
+            const yearsInTens = Math.floor(yearsAdded / 10) * 10; // Arrondir à la dizaine
+            newText = yearsInTens > 0 ? `+${yearsInTens} ans` : '+0 ans';
+        }
         // Ne modifier le texte que s'il a changé pour éviter le clignotement
         if (infoTimeDisplay.textContent !== newText) {
             infoTimeDisplay.textContent = newText;
@@ -1945,10 +1944,11 @@ function setEpoch(epochName) {
 
     disableButtons(); // Désactiver les boutons
 
-    // Mettre à jour la timeline pour correspondre au début de l'époque
-    timelineFrame = Math.floor(epoch.startYears / YEARS_PER_FRAME);
+    // Réinitialiser timelineFrame à 0 pour chaque nouvelle époque
+    // Les années ajoutées par les actions seront comptées depuis 0
+    timelineFrame = 0;
 
-    // Stocker le début de l'époque pour calculer le delta
+    // Stocker le début de l'époque pour référence (affichage de la date de début)
     currentEpochStartYears = epoch.startYears;
 
     // Mettre à jour la date de début affichée
