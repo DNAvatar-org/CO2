@@ -31,9 +31,18 @@
             const solarSurfaceFluxMW = (solarPowerTotal / this.SOLAR_SURFACE_AREA) / 1e6; // MW/m²
 
             // 3. Mise à jour du DOM (Flux Diagram)
-            this._updateLabel('solar_surface_mw', `${solarSurfaceFluxMW.toFixed(1)}<br>MW/m²`);
-            this._updateLabel('solar_power_total', `${(solarPowerTotal / 1e26).toFixed(1)}×10<sup>26</sup> W`);
-            this._updateLabel('solar_1UA_mw', `${solarConstant.toFixed(0)}<br>W/m²`);
+            // Utiliser updateLabel avec les valeurs numériques pour utiliser les templates de la config
+            if (typeof window !== 'undefined' && typeof window.updateLabel === 'function') {
+                // Utiliser updateLabel qui utilise automatiquement le template depuis la config
+                window.updateLabel('solar_surface_mw', solarSurfaceFluxMW);
+                window.updateLabel('solar_power_total', solarPowerTotal);
+                window.updateLabel('solar_1UA_mw', solarConstant);
+            } else {
+                // Fallback si updateLabel n'est pas disponible (ne devrait pas arriver)
+                this._updateLabel('solar_surface_mw', `${solarSurfaceFluxMW.toFixed(1)}<br>MW/m²`);
+                this._updateLabel('solar_power_total', `${(solarPowerTotal / 1e26).toFixed(1)}×10<sup><b>26</b></sup> W`);
+                this._updateLabel('solar_1UA_mw', `${solarConstant.toFixed(0)}<br>W/m²`);
+            }
 
             console.log(`[FluxManager] Solar updated: intensity=${intensity}, constant=${solarConstant.toFixed(0)} W/m²`);
         },
@@ -54,12 +63,14 @@
                 window.GEOTHERMAL_FLUX = flux;
             }
 
-            // Affichage : gestion fine des décimales
-            // Si flux < 0.1 (ex: 0.087), on veut 3 décimales (0.087)
-            // Si flux >= 0.1 (ex: 15), on veut 1 décimale (15.0)
-            // Si flux == 0, on veut 0.0
-            const decimals = flux < 0.1 && flux > 0 ? 3 : 1;
-            this._updateLabel('core_flux_wm', `${flux.toFixed(decimals)}<br>W/m²`);
+            // Utiliser updateLabel qui utilise automatiquement le template depuis la config
+            if (typeof window !== 'undefined' && typeof window.updateLabel === 'function') {
+                window.updateLabel('core_flux_wm', flux);
+            } else {
+                // Fallback si updateLabel n'est pas disponible
+                const decimals = flux < 0.1 && flux > 0 ? 3 : 1;
+                this._updateLabel('core_flux_wm', `${flux.toFixed(decimals)}<br>W/m²`);
+            }
         },
 
         /**
@@ -76,12 +87,18 @@
             const surface = 4 * Math.PI * Math.pow(radius, 2);
             const totalPower = flux * surface;
 
-            if (totalPower <= 0) {
-                this._updateLabel('core_temperature', '0 W');
+            // Utiliser updateLabel qui utilise automatiquement le template depuis la config
+            if (typeof window !== 'undefined' && typeof window.updateLabel === 'function') {
+                window.updateLabel('core_temperature', totalPower <= 0 ? 0 : totalPower);
             } else {
-                const exponent = Math.floor(Math.log10(totalPower));
-                const mantissa = totalPower / Math.pow(10, exponent);
-                this._updateLabel('core_temperature', `${mantissa.toFixed(2)}×10<sup>${exponent}</sup> W`);
+                // Fallback si updateLabel n'est pas disponible
+                if (totalPower <= 0) {
+                    this._updateLabel('core_temperature', '0 W');
+                } else {
+                    const exponent = Math.floor(Math.log10(totalPower));
+                    const mantissa = totalPower / Math.pow(10, exponent);
+                    this._updateLabel('core_temperature', `${mantissa.toFixed(2)}×10<sup><b>${exponent}</b></sup> W`);
+                }
             }
         },
 

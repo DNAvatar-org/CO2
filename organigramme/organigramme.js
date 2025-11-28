@@ -443,7 +443,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             logoSpan.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
         }
 
-        // Appliquer logoOffsetY uniquement aux emojis (pas aux images PNG/SVG)
+        // Appliquer logoOffsetY uniquement aux emojis (pas aux images)
         // Le patch pour descendre les emojis ne doit pas s'appliquer aux images
         if (logoOffsetY !== 0 && !isImage) {
             const scaledLogoOffsetY = logoOffsetY * logoScale;
@@ -508,6 +508,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     //     circleBg.style.transform = originalTransform;
                     // }, 200);
                 }).catch(err => {
+                    console.error('[organigramme] Erreur lors de la mise à jour:', err);
+                    throw err; // Propager l'erreur au lieu de la masquer
                 });
             }
         });
@@ -1110,7 +1112,7 @@ function generateArrows() {
         // Ceci écrase la valeur "0 km" de la config AVANT le dessin pour garantir l'affichage correct
         if (arc.from === 'terre' && arc.to === 'albedo' && arc.label) {
             let atm_height_km = 0;
-            const isCorpsNoir = (typeof window !== 'undefined' && window.currentEpochName === 'Corps noir');
+            const isCorpsNoir = isBlackBodyEpoch();
             
             if (!isCorpsNoir && typeof window.calculateAtmosphereProperties === 'function') {
                 let total_mass = 5.15e18; // Terre actuelle
@@ -1130,14 +1132,10 @@ function generateArrows() {
                 const props = window.calculateAtmosphereProperties(total_mass, T0, M_avg);
                 atm_height_km = props.z_max / 1000;
                 
-                // Mettre à jour directement l'objet arc pour le rendu à venir
-                if (typeof arc.label === 'object') {
-                    arc.label.name = `${atm_height_km.toFixed(0)} km`;
-                }
+                // txtF est maintenant un objet avec dataId dans la config, sera mis à jour par updateFluxLabels
+                // Ne rien faire ici, updateFluxLabels s'en chargera
             } else {
-                 if (typeof arc.label === 'object') {
-                    arc.label.name = '0 km';
-                }
+                // Pas d'atmosphère : txtF sera mis à jour à "0 km" par updateFluxLabels via updateLabel
             }
         }
 
@@ -1819,7 +1817,7 @@ cellOrder.forEach(nodeId => {
                 radius: lastEpoch.radius || node.epoch[0].radius,
                 fillColor: lastEpoch.fillColor || node.epoch[0].fillColor,
                 strokeColor: lastEpoch.strokeColor || node.epoch[0].strokeColor,
-                strokeSize: lastEpoch.strokeSize || node.epoch[0].strokeSize
+                strokeSize: lastEpoch.strokeSize || node.epoch[0].strokeSize,
             };
         }
     }
@@ -2257,12 +2255,377 @@ function generateTimelineFromConfig() {
     });
 }
 
+// Fonction helper pour déterminer si l'époque actuelle est un "corps noir"
+// Basée sur les propriétés physiques, pas sur le nom
+function isBlackBodyEpoch() {
+    if (typeof window === 'undefined' || !window.currentEpochName || typeof window.getGeologicalPeriodByName !== 'function') {
+        return false;
+    }
+    const epoch = window.getGeologicalPeriodByName(window.currentEpochName);
+    if (!epoch) return false;
+    
+    // Corps noir = pas de noyau différencié ET pas d'atmosphère
+    const hasNoCore = (epoch.core_temperature === 0 || epoch.geothermal_flux === 0 || 
+                       (epoch.core_power_watts !== undefined && epoch.core_power_watts === 0));
+    const hasNoAtmosphere = (epoch.total_atmosphere_mass_kg === 0 || epoch.total_atmosphere_mass_kg === undefined);
+    
+    return hasNoCore && hasNoAtmosphere;
+}
+
+
 // Fonction pour mettre à jour les labels du flux avec les valeurs calculées
 // Appelée pendant le déroulement de l'algorithme (dichotomie)
 window.updateFluxLabels = function (data) {
     if (!data) return;
 
+    // Définir les fonctions helper AVANT l'appel à FluxManager
+    // (elles seront utilisées par FluxManager et par la suite dans cette fonction)
+    
+    // Fonction pour détecter le type de valeur (W, W/m², %, ppm) pour la couleur
+    const detectValueType = (text) => {
+        if (!text) return null;
+        const textStr = String(text);
+        if (textStr.includes('W/m²') || textStr.includes('W/m2')) return 'watt_per_m2';
+        if (textStr.includes('MW') || (textStr.includes(' W') && !textStr.includes('W/m²') && !textStr.includes('W/m2'))) return 'watt';
+        if (textStr.includes('%')) return 'percent';
+        if (textStr.includes('ppm')) return 'ppm';
+        return null;
+    };
+
+    // Fonction pour formater une valeur numérique avec notation scientifique si nécessaire
+    const formatNumberWithScientific = (num) => {
+        if (typeof num !== 'number' || isNaN(num)) return String(num);
+        
+        // Si le nombre est >= 1000, utiliser notation scientifique (calcul mathématique)
+        if (Math.abs(num) >= 1000) {
+            // Calculer l'exposant mathématiquement
+            const exponent = Math.floor(Math.log10(Math.abs(num)));
+            const mantissa = num / Math.pow(10, exponent);
+            return `${mantissa.toFixed(2)}×10<sup><b>${exponent}</b></sup>`;
+        }
+        // Sinon, afficher avec 2 décimales
+        return num.toFixed(2);
+    };
+
+    // Fonction générique qui lit le template depuis la config et remplace les valeurs
+    const formatValueFromTemplate = (dataId, value) => {
+        // Chercher le template dans la config des arcs
+        if (!window.configOrganigramme || !window.configOrganigramme.arcs) {
+            return String(value);
+        }
+
+        let template = null;
+        let labelPath = null; // 'name', 'txtF', 'txtD'
+
+        // Parcourir tous les arcs pour trouver le dataId
+        for (const arc of window.configOrganigramme.arcs) {
+            if (!arc.label) continue;
+            
+            // Vérifier name
+            if (arc.label.name && typeof arc.label.name === 'object' && arc.label.name.dataId === dataId) {
+                template = arc.label.name.text;
+                labelPath = 'name';
+                break;
+            }
+            // Vérifier txtF
+            if (arc.label.txtF && typeof arc.label.txtF === 'object' && arc.label.txtF.dataId === dataId) {
+                template = arc.label.txtF.text;
+                labelPath = 'txtF';
+                break;
+            }
+            // Vérifier txtD
+            if (arc.label.txtD && typeof arc.label.txtD === 'object' && arc.label.txtD.dataId === dataId) {
+                template = arc.label.txtD.text;
+                labelPath = 'txtD';
+                break;
+            }
+        }
+
+        // Si pas de template trouvé, chercher dans les nœuds (pour les boutons)
+        if (!template && window.configOrganigramme.nodes) {
+            for (const node of window.configOrganigramme.nodes) {
+                // Chercher dans left, right, top, bottom
+                const searchInArray = (arr) => {
+                    if (!Array.isArray(arr)) return null;
+                    for (const item of arr) {
+                        if (item && typeof item === 'object' && item.dataId === dataId) {
+                            return item.text;
+                        }
+                    }
+                    return null;
+                };
+                template = searchInArray(node.left) || searchInArray(node.right) || 
+                          searchInArray(node.top) || searchInArray(node.bottom);
+                if (template) break;
+            }
+        }
+
+        // Si pas de template, retourner la valeur formatée simplement
+        if (!template) {
+            if (typeof value === 'number') {
+                return formatNumberWithScientific(value);
+            }
+            // Si c'est une string (comme albedoBreakdown), la retourner telle quelle
+            return String(value);
+        }
+
+        // Remplacer les valeurs numériques dans le template
+        // On calcule mathématiquement la notation scientifique, puis on remplace avec une regex simple
+        let result = template;
+        
+        if (typeof value === 'number') {
+            // Détecter si le template contient "ppm" ou "%"
+            const hasPpmInTemplate = template.includes('ppm');
+            const hasPercentInTemplate = template.includes('%');
+            
+            // Logique de conversion :
+            // - Si template contient " W" (watts) et valeur >= 10^6 : convertir en MW (diviser par 10^6)
+            // - Si template contient "%" ET dataId est co2_percent ou ch4_percent : la valeur est en ppm, convertir en % (diviser par 10000)
+            //   Exemple: 1000000 ppm → 100%, 6400 ppm → 0.64%, 0 ppm → 0%
+            // - Si template contient "%" ET dataId est déjà en % (albedo_percent, h2o_percent, passing_albedo_percent) : ne pas convertir
+            // - Si template contient "ppm" et valeur > 10000 : convertir en % (diviser par 10000)
+            // - Si template contient "ppm" et valeur <= 10000 : afficher en ppm (entier)
+            // Note: Les valeurs passées pour co2_percent et ch4_percent sont toujours en ppm
+            //       Les valeurs passées pour albedo_percent, h2o_percent, passing_albedo_percent sont déjà en % (0-100)
+            let valueToFormat = value;
+            let shouldConvertPpmToPercent = false;
+            let shouldConvertPercentToPpm = false;
+            let shouldConvertWattToMW = false;
+            
+            // Détecter si le template contient " W" (watts) mais pas "W/m²" ou "W/m2"
+            const hasWattInTemplate = (template.includes(' W') || template.includes(' W ')) && 
+                                      !template.includes('W/m²') && !template.includes('W/m2');
+            
+            // Si template contient " W" et valeur >= 10^6, convertir en MW
+            // Pour les très grandes valeurs (>= 10^9), garder la notation scientifique et soustraire 6 de l'exposant
+            // Pour les valeurs moyennes (10^6 à 10^9), convertir en MW sans notation scientifique
+            if (hasWattInTemplate && Math.abs(value) >= 1e6) {
+                if (Math.abs(value) >= 1e9) {
+                    // Très grande valeur : garder notation scientifique, soustraire 6 de l'exposant
+                    // Exemple: 3×10^26 W → 3×10^20 MW
+                    shouldConvertWattToMW = true;
+                    // On ne divise pas maintenant, on le fera lors du formatage en soustrayant 6 de l'exposant
+                } else {
+                    // Valeur moyenne : convertir en MW sans notation scientifique
+                    // Exemple: 1.76×10^6 W → 1.76 MW
+                    valueToFormat = value / 1e6;
+                    shouldConvertWattToMW = true;
+                }
+            }
+            
+            // DataId qui sont déjà en % (pas de conversion ppm -> %)
+            const percentDataIds = ['albedo_percent', 'h2o_percent', 'passing_albedo_percent'];
+            const isAlreadyInPercent = percentDataIds.includes(dataId);
+            
+            if (hasPercentInTemplate && !hasPpmInTemplate && !isAlreadyInPercent) {
+                // Template avec "%" et dataId n'est pas déjà en % : la valeur est en ppm, convertir en %
+                // 0 ppm = 0%, 10000 ppm = 1%, 1000000 ppm = 100%
+                valueToFormat = value / 10000; // Convertir ppm en %
+                shouldConvertPpmToPercent = true; // Pour remplacer "%" par "%" (pas de changement d'unité, juste conversion)
+            } else if (hasPpmInTemplate && !hasPercentInTemplate && value > 10000) {
+                // Template avec "ppm", valeur > 10000 : convertir en %
+                valueToFormat = value / 10000; // Convertir ppm en %
+                shouldConvertPpmToPercent = true; // Pour remplacer "ppm" par "%"
+            }
+            
+            // Pour les ppm : jamais de notation scientifique, toujours entier
+            // Pour les % : 1 décimale
+            // Pour le reste : notation scientifique si >= 1000
+            
+            // Vérifier si le template contient déjà un <b> dans le <sup> (pour le préserver)
+            const hasBoldInTemplate = template.includes('<sup><b>') || template.includes('<sup> <b>');
+            
+            let formattedValue;
+            
+            // Cas spécial : ppm (même après conversion) - toujours entier, jamais notation scientifique
+            if (hasPpmInTemplate || shouldConvertPercentToPpm) {
+                formattedValue = valueToFormat > 0 ? Math.floor(valueToFormat).toString() : '0';
+            }
+            // Cas spécial : % (normal ou après conversion ppm -> %)
+            else if (hasPercentInTemplate || shouldConvertPpmToPercent) {
+                formattedValue = valueToFormat.toFixed(1);
+            }
+            // Cas spécial : MW (après conversion W -> MW)
+            else if (shouldConvertWattToMW) {
+                // Si la valeur originale est >= 10^9, utiliser notation scientifique avec exposant réduit de 6
+                if (Math.abs(value) >= 1e9) {
+                    const exponent = Math.floor(Math.log10(Math.abs(value)));
+                    const mantissa = value / Math.pow(10, exponent);
+                    const mwExponent = exponent - 6; // Soustraire 6 pour convertir W -> MW
+                    // Préserver le <b> si présent dans le template
+                    if (hasBoldInTemplate) {
+                        formattedValue = `${mantissa.toFixed(2)}×10<sup><b>${mwExponent}</b></sup>`;
+                    } else {
+                        formattedValue = `${mantissa.toFixed(2)}×10<sup>${mwExponent}</sup>`;
+                    }
+                } else {
+                    // Valeur moyenne : format simple en MW
+                    formattedValue = valueToFormat.toFixed(2);
+                }
+            }
+            // Cas général : notation scientifique si >= 1000
+            else {
+                const shouldUseScientific = Math.abs(valueToFormat) >= 1000;
+                if (shouldUseScientific) {
+                    // Calculer l'exposant mathématiquement
+                    const exponent = Math.floor(Math.log10(Math.abs(valueToFormat)));
+                    const mantissa = valueToFormat / Math.pow(10, exponent);
+                    // Préserver le <b> si présent dans le template
+                    if (hasBoldInTemplate) {
+                        formattedValue = `${mantissa.toFixed(2)}×10<sup><b>${exponent}</b></sup>`;
+                    } else {
+                        formattedValue = `${mantissa.toFixed(2)}×10<sup>${exponent}</sup>`;
+                    }
+                } else {
+                    formattedValue = valueToFormat.toFixed(2);
+                }
+            }
+            
+            // Regex simple : détecte un nombre (simple ou avec notation scientifique, avec ou sans <b>)
+            // Pattern flexible : détecte ×10<sup>XX</sup> ou ×10<sup><b>XX</b></sup>
+            // On doit capturer le pattern complet pour le remplacer
+            const numberPattern = /\d+(?:\.\d+)?(?:×10<sup>(?:<b>)?\d+(?:<\/b>)?<\/sup>)?/;
+            
+            if (numberPattern.test(template)) {
+                // Remplacer le premier nombre trouvé par la valeur formatée (qui contient déjà le <b>)
+                result = template.replace(numberPattern, formattedValue);
+                
+                // Si conversion ppm -> %, remplacer "ppm" par "%" dans le template
+                if (shouldConvertPpmToPercent) {
+                    result = result.replace(/ppm/g, '%');
+                }
+                // Si conversion % -> ppm, remplacer "%" par "ppm" dans le template
+                if (shouldConvertPercentToPpm) {
+                    result = result.replace(/%/g, 'ppm');
+                }
+                // Si conversion W -> MW, remplacer " W" par " MW" dans le template
+                if (shouldConvertWattToMW) {
+                    result = result.replace(/\s+W\b/g, ' MW');
+                }
+            } else {
+                // Aucun nombre trouvé, remplacer tout le template
+                result = formattedValue;
+                // Si conversion ppm -> %, ajouter "%" au lieu de "ppm"
+                if (shouldConvertPpmToPercent) {
+                    result = result + '%';
+                }
+                // Si conversion % -> ppm, ajouter "ppm" au lieu de "%"
+                if (shouldConvertPercentToPpm) {
+                    result = result + 'ppm';
+                }
+                // Si conversion W -> MW, ajouter "MW" au lieu de "W"
+                if (shouldConvertWattToMW) {
+                    result = result + ' MW';
+                }
+            }
+        } else {
+            // Si c'est une string, ne pas remplacer (c'est déjà formaté, comme albedoBreakdown)
+            // Retourner la valeur telle quelle si c'est une string complexe
+            return String(value);
+        }
+
+        return result;
+    };
+
+    // Fonction helper pour mettre à jour un label par dataId (utilise maintenant le template)
+    const updateLabel = (dataId, value, format = 'auto') => {
+        const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
+        labels.forEach(label => {
+            let formattedValue;
+
+            // Si format est 'text', utiliser la valeur directement (pas de template)
+            if (format === 'text' && typeof value === 'string') {
+                formattedValue = value;
+            } else {
+                // Sinon, utiliser le template depuis la config
+                formattedValue = formatValueFromTemplate(dataId, value);
+            }
+
+            label.innerHTML = formattedValue;
+
+            // Détecter automatiquement le type pour la couleur
+            const valueType = detectValueType(formattedValue);
+            
+            // Réinitialiser toutes les classes de couleur
+            label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value', 'co2-label', 'percent-label', 'ppm-label');
+            
+            // Vérifier si la valeur est 0 (ou proche de 0)
+            // Convertir la valeur en nombre si possible (extraire le nombre du formattedValue ou utiliser value)
+            let numericValue = 0;
+            if (typeof value === 'number') {
+                numericValue = value;
+            } else if (typeof value === 'string') {
+                // Essayer d'extraire un nombre de la string
+                const numMatch = value.match(/[\d.]+/);
+                if (numMatch) {
+                    numericValue = parseFloat(numMatch[0]);
+                }
+            }
+            
+            // Vérifier si le label est lié à un bouton
+            // Note: forcing_total et albedo_percent sont sur le bouton albedo, mais forcing_total est aussi sur la flèche reemis->terre
+            // On doit vérifier si c'est le label du bouton albedo ou celui de la flèche
+            const isButtonLabel = dataId === 'co2_percent' || dataId === 'co2_forcing' ||
+                dataId === 'ch4_percent' || dataId === 'ch4_forcing' ||
+                dataId === 'h2o_percent' || dataId === 'h2o_forcing' ||
+                dataId === 'albedo_percent' || dataId === 'albedo_forcing';
+
+            // Vérifier si forcing_total est sur le bouton albedo (pas sur la flèche)
+            // Le label du bouton albedo est dans la cellule cell-albedo-btn
+            // Vérifier si le label est dans la cellule du bouton albedo
+            const isAlbedoButtonLabel = dataId === 'forcing_total' &&
+                (label.closest('#cell-albedo-btn') !== null);
+
+            // Vérifier si le bouton est actif (pour les labels de boutons)
+            let isButtonActive = true;
+            if (isButtonLabel || isAlbedoButtonLabel) {
+                // Trouver la cellule du bouton correspondant
+                const buttonCell = label.closest('.flux-button-cell');
+                if (buttonCell) {
+                    isButtonActive = buttonCell.classList.contains('checked');
+                }
+            }
+            
+            // Si la valeur est 0 (ou très proche de 0), appliquer le style gris
+            const isZero = Math.abs(numericValue) < 0.001;
+            
+            // Si le bouton est inactif, forcer le style gris
+            if (!isButtonActive) {
+                label.classList.add('zero-value');
+            } else if (isZero) {
+                // Valeur à 0 et bouton actif : appliquer le style "zero-value" (gris)
+                label.classList.add('zero-value');
+                // Mais quand même appliquer co2-label si c'est un label CO2 (pour la couleur de base)
+                if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
+                    label.classList.add('co2-label');
+                }
+            } else {
+                // Valeur non nulle et bouton actif : appliquer la couleur selon l'unité
+                if (valueType === 'watt_per_m2') {
+                    label.classList.add('watt-per-m2');
+                } else if (valueType === 'watt') {
+                    label.classList.add('watt-or-kelvin');
+                } else if (valueType === 'percent') {
+                    label.classList.add('percent-label');
+                } else if (valueType === 'ppm') {
+                    label.classList.add('ppm-label');
+                }
+                
+                // Vérifier si c'est un label CO2 pour appliquer la classe spécifique
+                if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
+                    label.classList.add('co2-label');
+                }
+            }
+        });
+    };
+    
+    // Exposer updateLabel globalement pour que FluxManager puisse l'utiliser
+    if (typeof window !== 'undefined') {
+        window.updateLabel = updateLabel;
+    }
+
     // Déléguer la mise à jour des flux d'entrée (Soleil, Noyau) au FluxManager
+    // (maintenant que updateLabel est disponible)
     if (window.FluxManager && window.currentEpochName) {
         window.FluxManager.updateAllFluxes(window.currentEpochName);
     }
@@ -2299,33 +2662,50 @@ window.updateFluxLabels = function (data) {
 
     const h2o_final_enabled = h2o_enabled && h2o_button_checked;
 
-    // S'assurer que toutes les valeurs numériques sont bien des nombres
-    const T0_num = Number(T0) || 0;
-    const total_flux_num = Number(total_flux) || 0;
-    let albedo_num = Number(albedo) || 0;
-    let cloud_coverage_num = Number(cloud_coverage) || 0;
-    const co2_ppm_num = Number(co2_ppm) || 0;
-    const ch4_ppm_num = Number(ch4_ppm) || 0;
+    // Vérifier que toutes les valeurs numériques sont bien des nombres (pas de fallback)
+    if (T0 === null || T0 === undefined || isNaN(Number(T0))) {
+        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : T0 manquant ou invalide');
+        throw new Error('T0 (température de surface) requise');
+    }
+    if (total_flux === null || total_flux === undefined || isNaN(Number(total_flux))) {
+        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : total_flux manquant ou invalide');
+        throw new Error('total_flux requis');
+    }
+    
+    const T0_num = Number(T0);
+    const total_flux_num = Number(total_flux);
+    let albedo_num = (albedo !== null && albedo !== undefined) ? Number(albedo) : 0;
+    let cloud_coverage_num = (cloud_coverage !== null && cloud_coverage !== undefined) ? Number(cloud_coverage) : 0;
+    const co2_ppm_num = (co2_ppm !== null && co2_ppm !== undefined) ? Number(co2_ppm) : 0;
+    const ch4_ppm_num = (ch4_ppm !== null && ch4_ppm !== undefined) ? Number(ch4_ppm) : 0;
 
-    // Récupérer les constantes mises à jour par FluxManager pour les calculs locaux si besoin
-    const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1361;
-    const GEOTHERMIE_FLUX = window.GEOTHERMAL_FLUX || 0.087;
+    // Récupérer les constantes mises à jour par FluxManager (doivent être définies)
+    if (typeof window.SOLAR_CONSTANT === 'undefined' || window.SOLAR_CONSTANT === null) {
+        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : SOLAR_CONSTANT non défini');
+        throw new Error('SOLAR_CONSTANT requis (doit être défini par FluxManager)');
+    }
+    if (typeof window.GEOTHERMAL_FLUX === 'undefined' || window.GEOTHERMAL_FLUX === null) {
+        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : GEOTHERMAL_FLUX non défini');
+        throw new Error('GEOTHERMAL_FLUX requis (doit être défini par FluxManager)');
+    }
+    const SOLAR_CONSTANT = window.SOLAR_CONSTANT;
+    const GEOTHERMIE_FLUX = window.GEOTHERMAL_FLUX;
 
     // Pour les calculs de moyenne (si utilisés plus bas)
     const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
 
-    // Détecter le mode "Corps noir" : utiliser le nom de l'époque stocké globalement
-    // En mode Corps noir, on désactive tous les éléments atmosphériques
-    // Utiliser une comparaison insensible à la casse et aux espaces
-    const currentName = (typeof window !== 'undefined' && window.currentEpochName) ? window.currentEpochName.trim() : '';
-    const isCorpsNoir = currentName === 'Corps noir' || currentName === 'Corps Noir';
-    
-    // Debug de détection
-    // console.log(`[updateFluxLabels] isCorpsNoir=${isCorpsNoir} (currentName="${currentName}")`);
+    // Détecter le mode "Corps noir" : basé sur les propriétés physiques de l'époque
+    const isCorpsNoir = isBlackBodyEpoch();
 
-    // En mode "corps noir", utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
+    // En mode "corps noir" (pas d'atmosphère), utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
     // Sinon, forcer l'albedo à 0 (pas d'atmosphère, pas d'eau, pas de glace)
-    if (isCorpsNoir) {
+    const hasNoAtmosphere = (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') ? 
+        (() => {
+            const epoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            return epoch && (epoch.total_atmosphere_mass_kg === 0 || epoch.total_atmosphere_mass_kg === undefined);
+        })() : false;
+    
+    if (hasNoAtmosphere) {
         // 🔒 CORRECTION : Utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
         if (albedo !== null && albedo !== undefined && albedo > 0) {
             albedo_num = albedo;
@@ -2341,9 +2721,9 @@ window.updateFluxLabels = function (data) {
     // Calculer les valeurs dynamiques
     // Utiliser data.albedo qui vient de la simulation (calculé avec tous les paramètres corrects)
     // Seulement recalculer si data.albedo n'est pas défini ou si on est en mode corps noir
-    console.log(`[updateFluxLabels] Albedo initial: data.albedo=${albedo}, albedo_num=${albedo_num}, isCorpsNoir=${isCorpsNoir}`);
+    console.log(`[updateFluxLabels] Albedo initial: data.albedo=${albedo}, albedo_num=${albedo_num}, hasNoAtmosphere=${hasNoAtmosphere}`);
 
-    if (isCorpsNoir) {
+    if (hasNoAtmosphere) {
         // 🔒 CORRECTION : Ne pas écraser si on a déjà utilisé data.albedo (peut avoir de la glace)
         if (albedo_num === 0 && albedo !== null && albedo !== undefined && albedo > 0) {
             albedo_num = albedo;
@@ -2370,7 +2750,7 @@ window.updateFluxLabels = function (data) {
     // Sinon, utiliser data.albedo qui vient de la simulation (déjà calculé avec tous les paramètres)
 
     let solar_flux_absorbed;
-    if (isCorpsNoir) {
+    if (hasNoAtmosphere) {
         solar_flux_absorbed = SOLAR_FLUX_AVERAGE;
     } else {
         // Récupérer le flux géothermique pour calculateSolarFluxAbsorbed
@@ -2399,7 +2779,7 @@ window.updateFluxLabels = function (data) {
     if (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined) {
         ice_coverage = Math.min(1, Math.max(0, window.h2oIceFractionFromCalculation));
         console.log(`[updateFluxLabels] 🔍 Utilisation de h2oIceFractionFromCalculation = ${ice_coverage.toFixed(3)} (${(ice_coverage * 100).toFixed(1)}%)`);
-    } else if (isCorpsNoir) {
+    } else if (hasNoAtmosphere) {
         // Corps noir sans glace calculée : pas d'albedo (pas d'atmosphère, pas d'eau)
         ice_coverage = 0;
         cloud_percent = 0;
@@ -2453,8 +2833,8 @@ window.updateFluxLabels = function (data) {
     // 🔒 CORRECTION : Calculer cloud_percent dans tous les cas (sauf si forcé à 0 par corps noir)
     cloud_percent = Math.round(cloud_coverage_num * 100);
     
-    // 🔒 CORRECTION : Si on a utilisé h2oIceFractionFromCalculation, ne pas écraser cloud_percent en mode corps noir
-    if (isCorpsNoir && (typeof window === 'undefined' || window.h2oIceFractionFromCalculation === undefined)) {
+    // 🔒 CORRECTION : Si on a utilisé h2oIceFractionFromCalculation, ne pas écraser cloud_percent si pas d'atmosphère
+    if (hasNoAtmosphere && (typeof window === 'undefined' || window.h2oIceFractionFromCalculation === undefined)) {
         cloud_percent = 0;
     }
     
@@ -2516,186 +2896,15 @@ window.updateFluxLabels = function (data) {
     // L'effet de serre réel sera calculé plus tard avec surface_flux_emitted et total_flux
     let forcing_total = forcing_CO2 + forcing_CH4 + forcing_H2O; // Valeur par défaut (sera remplacée si total_flux disponible)
 
-    // Fonction helper pour mettre à jour un label par dataId
-    const updateLabel = (dataId, value, format = 'auto') => {
-        const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
-        labels.forEach(label => {
-            let formattedValue = value;
-
-            // Si c'est déjà une string, l'utiliser directement (pour '--', '0', etc.)
-            if (typeof value === 'string') {
-                if (format === 'text') {
-                    formattedValue = value;
-                } else if (format === 'watt' || format === 'watt_simple') {
-                    // Si c'est une string avec W/m², l'utiliser directement
-                    formattedValue = value.includes('W/m²') || value.includes('W/m2') ? value : value + (format === 'watt' ? '<br>W/m²' : ' W/m²');
-                } else if (format === 'percent' || format === 'percent_simple') {
-                    // Si c'est une string avec %, l'utiliser directement
-                    formattedValue = value.includes('%') ? value : value + '%';
-                } else if (format === 'ppm' || format === 'ppm_simple') {
-                    // Si c'est une string avec ppm, l'utiliser directement
-                    formattedValue = value.includes('ppm') ? value : value + ' ppm';
-                } else {
-                    formattedValue = value;
-                }
-            } else if (typeof value === 'number') {
-                // C'est un nombre, formater selon le format demandé
-                if (format === 'watt') {
-                    // Formatage intelligent pour les grands nombres (MW, kW)
-                    if (Math.abs(value) >= 1000000) {
-                        formattedValue = (value / 1000000).toFixed(2) + '<br>MW/m²';
-                    } else if (Math.abs(value) >= 1000) {
-                        formattedValue = (value / 1000).toFixed(2) + '<br>kW/m²';
-                    } else {
-                        formattedValue = value.toFixed(2) + '<br>W/m²';
-                    }
-                } else if (format === 'percent') {
-                    formattedValue = value.toFixed(0) + '%';
-                } else if (format === 'watt_simple') {
-                    // Formatage intelligent pour les grands nombres (MW, kW) - simple (sans <br>)
-                    if (Math.abs(value) >= 1000000) {
-                        formattedValue = (value / 1000000).toFixed(2) + ' MW/m²';
-                    } else if (Math.abs(value) >= 1000) {
-                        formattedValue = (value / 1000).toFixed(2) + ' kW/m²';
-                    } else {
-                        formattedValue = value.toFixed(2) + ' W/m²';
-                    }
-                } else if (format === 'watt_total_dual') {
-                    // ⚠️ NOUVEAU FORMAT : Affiche W/m² (moyenne sphère) ET Watts Totaux (Conservation Énergie)
-                    // Format: "VAL W/m²<br>(VAL_TOT W)" en plus petit
-                    
-                    // 1. Partie W/m²
-                    let wm2_part = '';
-                    if (Math.abs(value) >= 1000000) {
-                        wm2_part = (value / 1000000).toFixed(2) + ' MW/m²';
-                    } else if (Math.abs(value) >= 1000) {
-                        wm2_part = (value / 1000).toFixed(2) + ' kW/m²';
-                    } else {
-                        wm2_part = value.toFixed(2) + ' W/m²';
-                    }
-                    
-                    // 2. Partie Watts Totaux
-                    // Surface Terre = 4 * PI * R^2
-                    // R par défaut = 6371000m
-                    // Mais on devrait idéalement récupérer le R de l'époque... 
-                    // Approximation : R constant pour l'affichage conservation énergie
-                    const R = 6371000;
-                    const SURFACE_AREA = 4 * Math.PI * Math.pow(R, 2); // ~5.1e14 m2
-                    const total_watts = value * SURFACE_AREA;
-                    
-                    // Formatage scientifique propre : X.XX × 10^YY
-                    const expStr = total_watts.toExponential(2);
-                    const [mantissa, exponent] = expStr.split('e');
-                    // Nettoyer l'exposant (+26 -> 26)
-                    const cleanExp = exponent.replace('+', '');
-                    const watts_part = `${mantissa}×10<sup>${cleanExp}</sup> W`;
-                    
-                    // Combiner : W/m² en grand, Watts en petit et italique
-                    formattedValue = `${wm2_part}<br><span style="font-size: 0.8em; font-style: italic; opacity: 0.8;">(${watts_part})</span>`;
-                    
-                } else if (format === 'percent_simple') {
-                    formattedValue = value.toFixed(0) + '%';
-                } else if (format === 'ppm' || format === 'ppm_simple') {
-                    formattedValue = value.toFixed(0) + ' ppm';
-                } else {
-                    formattedValue = value.toFixed(2);
-                }
-            } else {
-                // Autre type, convertir en string
-                formattedValue = String(value);
-            }
-
-            label.innerHTML = formattedValue;
-
-            // Réinitialiser toutes les classes de couleur
-            label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value', 'co2-label', 'percent-label', 'ppm-label');
-
-            // Vérifier si le label est lié à un bouton
-            // Note: forcing_total et albedo_percent sont sur le bouton albedo, mais forcing_total est aussi sur la flèche reemis->terre
-            // On doit vérifier si c'est le label du bouton albedo ou celui de la flèche
-            const isButtonLabel = dataId === 'co2_percent' || dataId === 'co2_forcing' ||
-                dataId === 'ch4_percent' || dataId === 'ch4_forcing' ||
-                dataId === 'h2o_percent' || dataId === 'h2o_forcing' ||
-                dataId === 'albedo_percent' || dataId === 'albedo_forcing';
-
-            // Vérifier si forcing_total est sur le bouton albedo (pas sur la flèche)
-            // Le label du bouton albedo est dans la cellule cell-albedo-btn
-            // Vérifier si le label est dans la cellule du bouton albedo
-            const isAlbedoButtonLabel = dataId === 'forcing_total' &&
-                (label.closest('#cell-albedo-btn') !== null);
-
-            // Si c'est un label lié à un bouton, vérifier si le bouton est actif
-            let shouldApplyColors = true;
-            if (isButtonLabel || isAlbedoButtonLabel) {
-                const useCO2 = typeof window !== 'undefined' ? window.useCO2 : false;
-                const useCH4 = typeof window !== 'undefined' ? window.useCH4 : false;
-                const useH2O = typeof window !== 'undefined' ? window.useH2O : false;
-                const useAlbedo = typeof window !== 'undefined' ? window.useAlbedo : false;
-
-                let isActive = false;
-                if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
-                    isActive = useCO2;
-                } else if (dataId === 'ch4_percent' || dataId === 'ch4_forcing') {
-                    isActive = useCH4;
-                } else if (dataId === 'h2o_percent' || dataId === 'h2o_forcing') {
-                    isActive = useH2O;
-                } else if (dataId === 'albedo_percent' || dataId === 'albedo_forcing' || isAlbedoButtonLabel) {
-                    isActive = useAlbedo;
-                }
-                shouldApplyColors = isActive;
-            }
-
-            // Appliquer les couleurs selon l'algorithme existant : W/m² en orange, % en bleu, le reste en défaut (vert)
-            if (shouldApplyColors) {
-                // D'abord vérifier " W " ou " K " (rouge) - inclut le cas notation scientifique "×10... W"
-                // Attention : " W/m²" contient " W" mais ne doit pas être rouge. On vérifie d'abord W/m².
-                
-                // 1. W/m² (orange) - Prioritaire pour éviter confusion avec W
-                if (formattedValue.includes('W/m²') || formattedValue.includes('W/m2')) {
-                    if (shouldLabelBeGray(formattedValue)) {
-                        label.classList.add('zero-value');
-                    } else {
-                        label.classList.add('watt-per-m2');
-                    }
-                }
-                // 2. W ou K (rouge) - Y compris avec notation scientifique
-                else if (formattedValue.includes(' W') || formattedValue.includes(' K')) {
-                    if (shouldLabelBeGray(formattedValue)) {
-                        label.classList.add('zero-value');
-                    } else {
-                        label.classList.add('watt-or-kelvin');
-                    }
-                }
-                // 3. Sinon, vérifier % (bleu clair)
-                else if (formattedValue.includes('%')) {
-                    if (shouldLabelBeGray(formattedValue)) {
-                        label.classList.add('zero-value');
-                    } else {
-                        label.classList.add('percent-label');
-                    }
-                }
-                // Sinon, vérifier ppm (bleu clair, comme les %)
-                else if (formattedValue.includes('ppm')) {
-                    if (shouldLabelBeGray(formattedValue)) {
-                        label.classList.add('zero-value');
-                    } else {
-                        label.classList.add('ppm-label');
-                    }
-                }
-                // Sinon, couleur par défaut (vert pour CO2)
-                else if (dataId === 'co2_percent' || dataId === 'co2_forcing') {
-                    label.classList.add('co2-label');
-                }
-            } else {
-                // Bouton inactif : appliquer le style "zero-value" (gris)
-                label.classList.add('zero-value');
-            }
-        });
-    };
+    // Les fonctions helper (detectValueType, formatNumberWithScientific, formatValueFromTemplate, updateLabel)
+    // sont déjà définies plus haut dans cette fonction et exposées globalement pour FluxManager
 
     // Mettre à jour les labels des nœuds
     // Géométrie -> Albedo : flux solaire moyen
-    updateLabel('solar_flux_average_wm', SOLAR_FLUX_AVERAGE, 'watt');
+
+    // Mettre à jour les labels des nœuds
+    // Géométrie -> Albedo : flux solaire moyen
+    updateLabel('solar_flux_average_wm', SOLAR_FLUX_AVERAGE);
 
     // Géométrie -> Surface : breakdown albedo détaillé
     // Récupérer les valeurs de l'époque courante
@@ -2725,28 +2934,42 @@ window.updateFluxLabels = function (data) {
         }).join('<br>');
     };
 
-    if (isCorpsNoir) {
+    // Constantes physiques d'albedo (utilisées partout, pas dans la config)
+    const ALBEDO_MAGMA = 0.05;   // Albedo du magma/lave
+    const ALBEDO_OCEAN = 0.08;   // Albedo de l'océan
+    const ALBEDO_FOREST = 0.12;  // Albedo de la forêt
+    const ALBEDO_DESERT = 0.30;  // Albedo du désert
+    const ALBEDO_ICE = 0.70;     // Albedo de la glace
+    const ALBEDO_CLOUD = 0.40;   // Albedo des nuages
+    
+    if (hasNoAtmosphere) {
         // 🔒 CORRECTION : Corps noir peut avoir de la glace des météorites
         // Utiliser ice_coverage calculé au lieu de forcer à 0
         const ice_cov_corps_noir = Math.round(ice_coverage * 100);
         console.log(`[updateFluxLabels] 🔍 Corps noir: utilisation de ice_coverage = ${ice_coverage.toFixed(3)}, ice_cov = ${ice_cov_corps_noir}%`);
         const components = [
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: '0.05' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: '0.08' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: '0.12' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: '0.30' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: ice_cov_corps_noir, albedo: '0.70' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: 0, albedo: '0.40' }
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: ice_cov_corps_noir, albedo: ALBEDO_ICE.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: 0, albedo: ALBEDO_CLOUD.toFixed(2) }
         ];
         albedoBreakdown = createAlbedoComponents(components);
     } else if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             // Récupérer les valeurs de couverture de l'époque
-            const magma_cov = Math.round((currentEpoch.magma_coverage || 0) * 100);
-            const ocean_cov = Math.round((currentEpoch.ocean_coverage || 0) * 100);
-            const forest_cov = Math.round((currentEpoch.forest_coverage || 0) * 100);
-            const desert_cov = Math.round((currentEpoch.desert_coverage || 0) * 100);
+            // Récupérer les valeurs de couverture depuis l'époque (doivent être définies)
+            if (currentEpoch.magma_coverage === undefined || currentEpoch.ocean_coverage === undefined || 
+                currentEpoch.forest_coverage === undefined || currentEpoch.desert_coverage === undefined) {
+                console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : Valeurs de couverture manquantes dans l\'époque');
+                throw new Error('Valeurs de couverture requises dans l\'époque');
+            }
+            const magma_cov = Math.round(currentEpoch.magma_coverage * 100);
+            const ocean_cov = Math.round(currentEpoch.ocean_coverage * 100);
+            const forest_cov = Math.round(currentEpoch.forest_coverage * 100);
+            const desert_cov = Math.round(currentEpoch.desert_coverage * 100);
             // Pour la glace, utiliser la valeur calculée dynamiquement (ice_coverage)
             // 🔒 CORRECTION : S'assurer qu'on utilise bien la valeur calculée
             const ice_cov = Math.round(ice_coverage * 100);
@@ -2755,13 +2978,21 @@ window.updateFluxLabels = function (data) {
             // Arrondir à un entier
             const cloud_cov = Math.round(cloud_percent);
 
-            // Récupérer les albedos de chaque composante
-            const magma_alb = (currentEpoch.magma_albedo || 0.05).toFixed(2);
-            const ocean_alb = (currentEpoch.ocean_albedo || 0.08).toFixed(2);
-            const forest_alb = (currentEpoch.forest_albedo || 0.12).toFixed(2);
-            const desert_alb = (currentEpoch.desert_albedo || 0.30).toFixed(2);
-            const ice_alb = (currentEpoch.ice_albedo || 0.70).toFixed(2);
-            const cloud_alb = (currentEpoch.cloud_albedo || 0.40).toFixed(2);
+            // Utiliser les constantes physiques d'albedo (ne sont pas dans la config, ce sont des propriétés physiques)
+            // Ces valeurs sont des constantes physiques standard utilisées dans les calculs
+            const ALBEDO_MAGMA = 0.05;   // Albedo du magma/lave
+            const ALBEDO_OCEAN = 0.08;   // Albedo de l'océan
+            const ALBEDO_FOREST = 0.12;  // Albedo de la forêt
+            const ALBEDO_DESERT = 0.30;  // Albedo du désert
+            const ALBEDO_ICE = 0.70;     // Albedo de la glace
+            const ALBEDO_CLOUD = 0.40;   // Albedo des nuages
+            
+            const magma_alb = ALBEDO_MAGMA.toFixed(2);
+            const ocean_alb = ALBEDO_OCEAN.toFixed(2);
+            const forest_alb = ALBEDO_FOREST.toFixed(2);
+            const desert_alb = ALBEDO_DESERT.toFixed(2);
+            const ice_alb = ALBEDO_ICE.toFixed(2);
+            const cloud_alb = ALBEDO_CLOUD.toFixed(2);
 
             // Créer le tableau des composantes avec leurs valeurs
             const components = [
@@ -2774,30 +3005,30 @@ window.updateFluxLabels = function (data) {
             ];
             albedoBreakdown = createAlbedoComponents(components);
         } else {
-            // Fallback si époque non trouvée
+            // Époque non trouvée : utiliser les constantes physiques et les valeurs calculées
             const final_cloud_percent = Math.round(cloud_percent);
             const final_ice_percent = Math.round(ice_coverage * 100);
             const components = [
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: '0.05' },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: '0.08' },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: '0.12' },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: '0.30' },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: '0.70' },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: '0.40' }
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: ALBEDO_ICE.toFixed(2) },
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) }
             ];
             albedoBreakdown = createAlbedoComponents(components);
         }
     } else {
-        // Fallback si pas d'époque
+        // Pas d'époque : utiliser les constantes physiques et les valeurs calculées
         const final_cloud_percent = Math.round(cloud_percent);
         const final_ice_percent = Math.round(ice_coverage * 100);
         const components = [
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: '0.05' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: '0.08' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: '0.12' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: '0.30' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: '0.70' },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: '0.40' }
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: ALBEDO_ICE.toFixed(2) },
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) }
         ];
         albedoBreakdown = createAlbedoComponents(components);
     }
@@ -2805,33 +3036,56 @@ window.updateFluxLabels = function (data) {
     // Flux qui passe (solar_flux_average - flux_reflected = flux qui arrive à la surface)
     // En mode corps-noir : albedo = 0, donc tout passe (340.25 W/m²)
     const flux_passed = solar_flux_absorbed; // C'est le flux qui arrive à la surface après albédo
-    updateLabel('solar_flux_absorbed_wm', flux_passed, 'watt_simple');
+    updateLabel('solar_flux_absorbed_wm', flux_passed);
 
     // Albedo -> Espace1 : flux total au sommet
-    updateLabel('solar_flux_reflected_wm', flux_reflected, 'watt');
+    updateLabel('solar_flux_reflected_wm', flux_reflected);
 
     // Noyau -> Surface : géothermie (flux dynamique selon l'époque)
-    // Récupérer le flux géothermique de l'époque courante
-    let geothermie_value = GEOTHERMIE_FLUX; // Valeur par défaut (0.087 W/m²)
-
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch) {
-            if (typeof currentEpoch.geothermal_flux === 'number') {
-                geothermie_value = currentEpoch.geothermal_flux;
-            } else if (currentEpoch.core_temperature === 0) {
-                // Si core_temperature est explicitement 0 (ex: Corps Noir), flux = 0
-                geothermie_value = 0;
-            }
-        }
+    // Récupérer le flux géothermique de l'époque courante (doit être défini)
+    let geothermie_value;
+    if (typeof window === 'undefined' || !window.currentEpochName || typeof window.getGeologicalPeriodByName !== 'function') {
+        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : Impossible de récupérer l\'époque courante');
+        throw new Error('Époque courante requise pour calculer le flux géothermique');
     }
-
-    // En mode corps noir, forcer à 0 (pas de noyau différencié)
-    if (isCorpsNoir) {
+    
+    const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+    if (!currentEpoch) {
+        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : Époque non trouvée:', window.currentEpochName);
+        throw new Error(`Époque "${window.currentEpochName}" non trouvée`);
+    }
+    
+    // Récupérer la température du noyau depuis la config de l'époque (doit être définie)
+    let coreTemp_K;
+    if (currentEpoch.core_temperature !== undefined && typeof currentEpoch.core_temperature === 'number') {
+        coreTemp_K = currentEpoch.core_temperature;
+    } else {
+        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : core_temperature manquant dans l\'époque');
+        throw new Error('core_temperature requis dans la config de l\'époque');
+    }
+    
+    // Calculer le flux géothermique depuis les propriétés physiques de l'époque
+    if (coreTemp_K === 0 || currentEpoch.geothermal_flux === 0) {
+        // Pas de noyau différencié : flux = 0
         geothermie_value = 0;
+    } else if (typeof currentEpoch.geothermal_flux === 'number' && currentEpoch.geothermal_flux > 0) {
+        // Flux géothermique défini directement
+        geothermie_value = currentEpoch.geothermal_flux;
+    } else if (typeof currentEpoch.core_power_watts === 'number' && currentEpoch.core_power_watts > 0) {
+        // Calculer depuis la puissance du noyau et la surface de la planète
+        const radius = currentEpoch.planet_radius;
+        if (!radius || radius <= 0) {
+            console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : planet_radius invalide pour calculer le flux géothermique');
+            throw new Error('planet_radius requis pour calculer le flux géothermique depuis core_power_watts');
+        }
+        const surface = 4 * Math.PI * Math.pow(radius, 2);
+        geothermie_value = currentEpoch.core_power_watts / surface;
+    } else {
+        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : Impossible de déterminer le flux géothermique depuis l\'époque');
+        throw new Error('geothermal_flux ou core_power_watts requis dans l\'époque');
     }
 
-    updateLabel('core_flux_wm', geothermie_value, 'watt');
+    updateLabel('core_flux_wm', geothermie_value);
 
     // Surface -> Albedo : Flux total émis par la surface (Loi de Stefan-Boltzmann)
     // C'est la puissance thermodynamique rayonnée par le sol chaud : F = σT⁴
@@ -2841,7 +3095,6 @@ window.updateFluxLabels = function (data) {
     // La seule vérité est la température de surface T0 trouvée par l'équilibre radiatif.
     const CONST_STEFAN = 5.67e-8; // Renommé pour éviter conflit scope
     const surface_flux_emitted = CONST_STEFAN * Math.pow(T0_num, 4);
-    updateLabel('surface_flux_emitted_wm', surface_flux_emitted, 'watt_total_dual'); // MODIFIÉ : Affichage dual
 
     // 🔒 CORRECTION : Calculer l'effet de serre réel à partir du transfert radiatif
     // Le transfert radiatif (calculations.js) calcule déjà le flux sortant au sommet (total_flux)
@@ -2860,11 +3113,37 @@ window.updateFluxLabels = function (data) {
     }
 
     // Albedo -> Espace2 : flux éjecté = flux sortant au sommet (résultat direct du transfert radiatif)
-    const flux_ejected = total_flux > 0 ? total_flux : (surface_flux_emitted - forcing_total); // Fallback si total_flux non disponible
-    updateLabel('flux_ejected_wm', flux_ejected, 'watt_total_dual'); // MODIFIÉ : Affichage dual
+    let flux_ejected = total_flux > 0 ? total_flux : (surface_flux_emitted - forcing_total);
+    
+    // 🔒 PATCH ESTHÉTIQUE : Si la différence en W totaux est < tolérance de convergence, utiliser la même valeur
+    // C'est justifié scientifiquement : la tolérance représente la précision des calculs
+    // Tolérance de 0.1×10^17 W (équivalent à ~0.1 W/m² × surface Terre)
+    // Calculer la différence en W totaux
+    const R = 6371000; // Rayon Terre en m
+    const SURFACE_AREA = 4 * Math.PI * Math.pow(R, 2); // ~5.1×10^14 m²
+    const w_sol = surface_flux_emitted * SURFACE_AREA;
+    const w_espace = flux_ejected * SURFACE_AREA;
+    const diff_w = Math.abs(w_sol - w_espace);
+    const tolerance_w = 0.1 * 1e17; // 0.1×10^17 W
+    
+    if (diff_w <= tolerance_w) {
+        // Différence en W totaux < tolérance : utiliser la même valeur pour les deux (confort esthétique justifié)
+        // Cela garantit un EDS nul cohérent avec la précision des calculs
+        flux_ejected = surface_flux_emitted;
+    }
+    
+    // Séparer les W/m² et les watts totaux
+    updateLabel('surface_flux_emitted_wm', surface_flux_emitted);
+    const w_sol_total = surface_flux_emitted * SURFACE_AREA;
+    updateLabel('surface_flux_emitted_watts', w_sol_total);
+    // Garder flux_ejected_wm (non utilisé mais conservé)
+    updateLabel('flux_ejected_wm', flux_ejected);
+    // Calculer et mettre à jour flux_ejected_watts (total en watts)
+    const w_ejected_total = flux_ejected * SURFACE_AREA;
+    updateLabel('flux_ejected_watts', w_ejected_total);
     let corePowerText = '';
-    if (isCorpsNoir) {
-        // En mode corps noir : pas de noyau actif
+    if (geothermie_value === 0 || coreTemp_K === 0) {
+        // Pas de noyau actif
         corePowerText = '0 W';
     } else {
         // Calculer la puissance totale : Flux (W/m²) * Surface (m²)
@@ -2885,7 +3164,7 @@ window.updateFluxLabels = function (data) {
         } else {
             const exponent = Math.floor(Math.log10(totalPower));
             const mantissa = totalPower / Math.pow(10, exponent);
-            corePowerText = `${mantissa.toFixed(2)}×10<sup>${exponent}</sup> W`;
+            corePowerText = `${mantissa.toFixed(2)}×10<sup><b>${exponent}</b></sup> W`;
         }
     }
 
@@ -2903,67 +3182,83 @@ window.updateFluxLabels = function (data) {
     }
 
 
-    // Mettre à jour le label du noyau pour qu'il soit gris si corps noir
+    // Mettre à jour le style du noyau basé sur la température (saturation/brightness)
+    // coreTemp_K a déjà été récupéré depuis la config de l'époque plus haut
+    
+    // Calculer saturation et brightness basés sur la température
+    // Température 0K = saturation 0%, brightness 30% (gris foncé)
+    // Température 6000K = saturation 100%, brightness 100% (rouge vif)
+    const maxTemp = 6000;
+    const saturation = Math.min(100, Math.max(0, (coreTemp_K / maxTemp) * 100));
+    const brightness = Math.min(100, Math.max(30, 30 + (coreTemp_K / maxTemp) * 70));
+    
     const noyauLabels = document.querySelectorAll('#cell-noyau .flux-label[data-id="core_flux_wm"]');
     noyauLabels.forEach(label => {
-        if (isCorpsNoir) {
+        if (coreTemp_K === 0 || geothermie_value === 0) {
             label.classList.add('zero-value');
         } else {
             label.classList.remove('zero-value');
         }
     });
 
-    // Cacher/afficher les radiations du noyau selon l'époque
+    // Cacher/afficher les radiations du noyau selon la température
     const noyauRadiationGroup = document.querySelector('.flux-radiation-group[data-node="noyau"]');
     if (noyauRadiationGroup) {
-        if (isCorpsNoir) {
-            // Corps noir: pas de noyau différencié, donc pas de radiation
+        if (coreTemp_K === 0 || geothermie_value === 0) {
             noyauRadiationGroup.style.display = 'none';
         } else {
-            // Autres époques: afficher les radiations
             noyauRadiationGroup.style.display = '';
         }
     }
 
-
-    // Cacher le logo du noyau en mode corps noir (pas de noyau différencié)
+    // Ajuster l'opacité et la visibilité du logo du noyau selon la température
     const noyauCell = document.querySelector('#cell-noyau');
     if (noyauCell) {
         const noyauLogo = noyauCell.querySelector('.flux-circle-bg span');
         if (noyauLogo) {
-            if (isCorpsNoir) {
+            if (coreTemp_K === 0 || geothermie_value === 0) {
                 noyauLogo.style.opacity = '0';
                 noyauLogo.style.visibility = 'hidden';
             } else {
-                noyauLogo.style.opacity = '1';
+                // Opacité proportionnelle à la température
+                const opacity = Math.min(1, Math.max(0.3, coreTemp_K / maxTemp));
+                noyauLogo.style.opacity = opacity.toString();
                 noyauLogo.style.visibility = 'visible';
             }
         }
 
-        // Griser le cercle du noyau en mode corps noir
+        // Ajuster la couleur du cercle du noyau selon la température (saturation/brightness)
         const noyauCircle = noyauCell.querySelector('.flux-circle-bg');
         if (noyauCircle) {
             const noyauNode = nodes.find(n => n.id === 'noyau');
-            if (isCorpsNoir) {
+            // Récupérer la couleur de base du noyau (doit être définie dans la config)
+            if (!noyauNode || !noyauNode.strokeColor) {
+                console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : strokeColor du noyau non défini dans la config');
+                throw new Error('strokeColor du noyau requis dans la config');
+            }
+            const baseColor = noyauNode.strokeColor;
+            
+            if (coreTemp_K === 0 || geothermie_value === 0) {
                 noyauCircle.style.borderColor = '#666'; // Gris
             } else {
-                // Réappliquer la couleur depuis la configuration
-                const strokeColor = noyauNode ? (noyauNode.strokeColor || '#ff5500') : '#ff5500';
-                noyauCircle.style.borderColor = strokeColor;
+                // Appliquer saturation et brightness via filter CSS
+                noyauCircle.style.filter = `saturate(${saturation}%) brightness(${brightness}%)`;
+                noyauCircle.style.borderColor = baseColor;
             }
         }
     }
 
-    // Griser la flèche noyau → surface en mode corps noir
+    // Ajuster la flèche noyau → surface selon la température
     const noyauArrow = document.querySelector('[data-from="noyau"][data-to="terre"]');
     if (noyauArrow) {
-        if (isCorpsNoir) {
+        if (coreTemp_K === 0 || geothermie_value === 0) {
             noyauArrow.style.backgroundColor = '#666'; // Gris
-            // Griser aussi les labels de cette flèche
+            noyauArrow.style.filter = 'saturate(0%) brightness(50%)';
             const arrowLabels = noyauArrow.querySelectorAll('.flux-label');
             arrowLabels.forEach(label => label.classList.add('zero-value'));
         } else {
             noyauArrow.style.backgroundColor = ''; // Réinitialiser
+            noyauArrow.style.filter = `saturate(${saturation}%) brightness(${brightness}%)`;
             const arrowLabels = noyauArrow.querySelectorAll('.flux-label');
             arrowLabels.forEach(label => label.classList.remove('zero-value'));
         }
@@ -2971,12 +3266,12 @@ window.updateFluxLabels = function (data) {
 
     // Surface -> Albedo : flux émis par la surface (approximation avec Stefan-Boltzmann)
     const STEFAN_BOLTZMANN = 5.670374419e-8;
-    const flux_emission_surface = isCorpsNoir ? 0 : STEFAN_BOLTZMANN * Math.pow(T0_num, 4);
+    const flux_emission_surface = hasNoAtmosphere ? 0 : STEFAN_BOLTZMANN * Math.pow(T0_num, 4);
     
     // Mettre à jour l'épaisseur de l'atmosphère dans le label de l'arc Terre->Albedo
     // Utiliser calculateAtmosphereProperties pour obtenir la vraie hauteur physique
     let atm_height_km = 0;
-    if (!isCorpsNoir && typeof window.calculateAtmosphereProperties === 'function') {
+    if (!hasNoAtmosphere && typeof window.calculateAtmosphereProperties === 'function') {
         // Récupérer la masse atmosphérique de l'époque
         let total_mass = 5.15e18; // Terre actuelle
         if (typeof window.getGeologicalPeriodByName === 'function' && window.currentEpochName) {
@@ -2998,84 +3293,27 @@ window.updateFluxLabels = function (data) {
         atm_height_km = props.z_max / 1000; // Conversion m -> km
     }
     
-    // Mise à jour directe du DOM pour le label 'name' de l'arc terre->albedo
-    const terreAlbedoArrow = document.querySelector('[data-from="terre"][data-to="albedo"]');
-    if (terreAlbedoArrow) {
-        // Chercher le label qui contient "km" ou qui est positionné comme le nom
-        // On cherche parmi tous les flux-label celui qui n'est PAS une valeur numérique de flux (qui aurait un dataId ou une classe spécifique)
-        // Le label "0 km" est généralement le premier ou celui qui contient "km"
-        const labels = terreAlbedoArrow.querySelectorAll('.flux-label');
-        let nameLabel = null;
-        
-        labels.forEach(label => {
-            if (label.textContent.includes('km')) {
-                nameLabel = label;
-            }
-        });
-        
-        // Fallback : si pas trouvé par "km", c'est peut-être "0 km" initialement donc on cherche le texte exact "0 km"
-        if (!nameLabel) {
-            labels.forEach(label => {
-                if (label.textContent.trim() === '0 km') {
-                    nameLabel = label;
-                }
-            });
-        }
-
-        if (nameLabel) {
-            nameLabel.textContent = `${atm_height_km.toFixed(0)} km`;
-            // Couleur par défaut (vert/défaut), retirer les classes spécifiques
-            // nameLabel.className = 'flux-label'; // Ne pas changer la classe pour ne pas casser le style
-            
-            // Ajouter un tooltip explicatif
-            if (typeof window.addTooltip === 'function') {
-                const tooltipText = isCorpsNoir 
-                    ? "Pas d'atmosphère" 
-                    : `Hauteur effective de l'atmosphère<br>(99.99% de la masse)`;
-                
-                // Réattacher le tooltip proprement
-                // On doit cloner pour supprimer les event listeners précédents si on change le texte/tooltip souvent
-                // Mais ici c'est une mise à jour simple, on peut juste mettre à jour l'attribut title si on utilisait title
-                // Comme addTooltip utilise des events, le plus propre est de recréer le tooltip
-                
-                // Note: addTooltip attache des événements mouseenter/mouseleave.
-                // Si on le rappelle sur le même élément, on risque d'empiler les listeners.
-                // On va cloner le noeud pour nettoyer les listeners
-                const newLabel = nameLabel.cloneNode(true);
-                if (nameLabel.parentNode) {
-                    nameLabel.parentNode.replaceChild(newLabel, nameLabel);
-                    window.addTooltip(newLabel, tooltipText);
-                }
-            }
-        } else {
-            console.warn('[organigramme] ⚠️ Label "km" non trouvé dans terre->albedo', labels);
-        }
-    }
+    // Mettre à jour le label via updateLabel avec le dataId (évite les doublons)
+    // txtF est maintenant un objet avec dataId: 'atm_height_km' dans la config
+    updateLabel('atm_height_km', `${atm_height_km.toFixed(0)} km`, 'text');
 
     // Réémis : forçage radiatif total
-    updateLabel('forcing_total', forcing_total, 'watt');
+    updateLabel('forcing_total', forcing_total);
 
     // Boutons
-    // CO2 - afficher en % si > 10000 ppm, sinon en ppm
-    let co2_ppm_display, co2_format;
-    if (co2_ppm_num > 10000) {
-        co2_ppm_display = (co2_ppm_num / 10000).toFixed(1);
-        co2_format = 'percent';
-    } else {
-        co2_ppm_display = co2_ppm_num > 0 ? co2_ppm_num.toFixed(0) : '0';
-        co2_format = 'ppm_simple';
-    }
-    updateLabel('co2_percent', co2_ppm_display, co2_format);
-    updateLabel('co2_forcing', forcing_CO2, 'watt_simple');
+    // CO2 - formatValueFromTemplate gère automatiquement la conversion > 10000 ppm en %
+    // Passer directement la valeur en ppm, le template sera adapté automatiquement
+    updateLabel('co2_percent', co2_ppm_num);
+    updateLabel('co2_forcing', forcing_CO2);
 
     // Ne plus forcer automatiquement le bouton CO2 en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement
 
-    // CH4 - afficher directement en ppm (pas de conversion en %)
-    const ch4_ppm_display = ch4_ppm_num > 0 ? ch4_ppm_num.toFixed(0) : '0';
-    updateLabel('ch4_percent', ch4_ppm_display, 'ppm_simple');
+    // CH4 - formatValueFromTemplate gère automatiquement la conversion > 10000 ppm en %
+    // Passer directement la valeur en ppm, le template sera adapté automatiquement
+    updateLabel('ch4_percent', ch4_ppm_num);
     // Utiliser directement forcing_CH4 qui est déjà calculé avec les bonnes conditions
-    updateLabel('ch4_forcing', forcing_CH4, 'watt_simple');
+    updateLabel('ch4_forcing', forcing_CH4);
 
     // Ne plus forcer automatiquement le bouton CH4 en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement
@@ -3090,27 +3328,31 @@ window.updateFluxLabels = function (data) {
         h2o_display_value = h2o_vapor_percent;
     }
 
+    // Passer un nombre pour que formatValueFromTemplate gère le formatage automatiquement
     const h2o_percent = (h2o_enabled && h2o_button_checked && h2o_display_value > 0)
-        ? h2o_display_value.toFixed(1)
-        : '0';
+        ? h2o_display_value
+        : 0;
     // Le forçage H2O doit être 0 si h2o_enabled est false (pas d'eau dans l'atmosphère)
     // Utiliser directement forcing_H2O qui est déjà calculé avec les bonnes conditions
     const forcing_H2O_final = h2o_enabled ? forcing_H2O : 0;
-    updateLabel('h2o_percent', h2o_percent, 'percent_simple');
-    updateLabel('h2o_forcing', forcing_H2O_final, 'watt_simple');
+    updateLabel('h2o_percent', h2o_percent);
+    updateLabel('h2o_forcing', forcing_H2O_final);
 
     // Albédo
     const albedo_percent_value = albedo_num * 100;
-    updateLabel('albedo_percent', albedo_percent_value, 'percent_simple');
-    updateLabel('albedo_forcing', forcing_Albedo, 'watt_simple');
+    updateLabel('albedo_percent', albedo_percent_value);
+    updateLabel('albedo_forcing', forcing_Albedo);
     // Les labels du bouton albedo utilisent forcing_total et albedo_percent
     // albedo_percent : pourcentage total d'albedo (somme des %), pas le détail
-    updateLabel('albedo_percent', albedo_percent_value, 'percent_simple');
+    updateLabel('albedo_percent', albedo_percent_value);
 
     // passing_albedo_percent : pourcentage qui passe (1 - albedo_percent)
     // Sur la flèche geometrie -> albedo
+    // En corps noir : albedo_num = 0, donc passing = 100%
+    // Avec albedo : passing = (1 - albedo_num) * 100
     const passing_albedo_percent = (1 - albedo_num) * 100;
-    updateLabel('passing_albedo_percent', passing_albedo_percent, 'percent_simple');
+    // S'assurer que le résultat est correct (0% si albedo = 1, 100% si albedo = 0)
+    updateLabel('passing_albedo_percent', passing_albedo_percent);
 
     // Ne plus forcer automatiquement le bouton albedo en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%

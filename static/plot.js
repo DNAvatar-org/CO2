@@ -343,8 +343,9 @@ function initPlot() {
         annotations: [
             {
                 x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
-                y: 11, // Position de la tropopause (11 km sur l'axe altitude)
-                text: 'Stratosphère<br>8.0K<br>Troposphère',
+                y: 0, // Position de la tropopause (sera mise à jour dynamiquement dans updatePlot)
+                visible: false, // Cachée par défaut, sera mise à jour dans updatePlot
+                text: 'Stratosphère<br>--<br>Troposphère',
                 showarrow: false,
                 xref: 'paper', // Coordonnées relatives au graphique
                 yref: 'y2', // Utiliser l'axe altitude (droite)
@@ -872,28 +873,60 @@ window.updatePlot = function updatePlot(data) {
 
     // 4. Ajouter une ligne horizontale pour la tropopause (calculée dynamiquement)
     // Calculer la tropopause en fonction de T0 (température de surface)
-    let T0 = 288; // Valeur par défaut (15°C)
-    if (data.current && data.current.effective_temperature) {
-        // Utiliser la température effective comme approximation de T0
+    // Récupérer T0 depuis les données (pas de valeur par défaut)
+    let T0;
+    if (data.current && data.current.effective_temperature !== undefined) {
         T0 = data.current.effective_temperature;
     } else if (data.temp_surface_c !== undefined) {
-        // Convertir de °C en K
         T0 = data.temp_surface_c + 273.15;
+    } else if (data.temp_surface !== undefined) {
+        T0 = data.temp_surface;
+    } else {
+        // Pas de température disponible : ne pas afficher la tropopause
+        T0 = null;
     }
 
     // Calculer la tropopause dynamiquement
-    let z_trop_m;
-    if (window.currentEpochName === 'Corps noir') {
-        z_trop_m = 0;
+    let z_trop_km;
+    let delta_T_trop_strato = null; // Différence de température entre tropopause et stratosphère
+    if (T0 === null) {
+        // Pas de température : pas de tropopause à afficher
+        z_trop_km = null;
+    } else if (window.currentEpochName === 'Corps noir') {
+        z_trop_km = 0;
     } else {
-        z_trop_m = (typeof window.calculateTropopauseHeight === 'function')
-            ? window.calculateTropopauseHeight(T0)
-            : 11000; // Fallback à 11 km si la fonction n'est pas disponible
+        if (typeof window.calculateTropopauseHeight !== 'function') {
+            console.error('[updatePlot] ❌ ERREUR CRITIQUE : calculateTropopauseHeight non disponible');
+            throw new Error('calculateTropopauseHeight requise pour calculer la tropopause');
+        }
+        const z_trop_m = window.calculateTropopauseHeight(T0);
+        z_trop_km = z_trop_m / 1000; // Convertir en km
+        
+        // Calculer la différence de température entre tropopause et stratosphère
+        // Gradient de température : Gamma = -0.0065 K/m (par défaut)
+        let Gamma = -0.0065;
+        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (currentEpoch) {
+                if (typeof currentEpoch.lapse_rate === 'number') {
+                    Gamma = currentEpoch.lapse_rate;
+                } else if (currentEpoch.gravity) {
+                    Gamma = -0.0065 * (currentEpoch.gravity / 9.81);
+                }
+            }
+        }
+        const T_trop = T0 + Gamma * z_trop_m; // Température à la tropopause
+        // Dans la stratosphère, la température est constante (T_trop)
+        // La différence est donc 0, mais on peut afficher la température de la tropopause
+        // Ou la différence entre surface et tropopause : T0 - T_trop = -Gamma * z_trop
+        delta_T_trop_strato = -Gamma * z_trop_m; // Différence en Kelvin
     }
     
-    // Rendre z_trop_km accessible globalement (ou au moins dans updateSpectralVisualization) si nécessaire, 
-    // mais ici on utilise des variables locales pour updatePlot
-    const z_trop_km = z_trop_m / 1000; // Convertir en km
+    // Exposer z_trop_km et delta_T globalement pour drawSpectralVisualization
+    if (z_trop_km !== null) {
+        window.current_z_trop_km = z_trop_km;
+        window.current_delta_T_trop_strato = delta_T_trop_strato;
+    }
 
     // Calculer z_max_km pour l'axe Y (dynamique selon l'époque et la physique)
     let z_max_km = 120; // Valeur par défaut
@@ -957,17 +990,20 @@ window.updatePlot = function updatePlot(data) {
         window.current_z_trop_km = z_trop_km; // Exposer pour autres fonctions
     }
 
-    traces.push({
-        x: [0, 50], // Ligne horizontale sur toute la largeur du graphique
-        y: [z_trop_km, z_trop_km], // Ligne horizontale à la hauteur de la tropopause (en km, axe altitude 0-120)
-        type: 'scatter',
-        mode: 'lines',
-        name: `Ligne de séparation (${z_trop_km.toFixed(1)} km)`,
-        line: { color: ColorTropo, width: 1, dash: 'dot' }, // Même couleur que l'annotation
-        showlegend: false,
-        hovertemplate: `Ligne de séparation (${z_trop_km.toFixed(1)} km)<extra></extra>`,
-        yaxis: 'y2' // Utiliser l'axe altitude (gauche)
-    });
+    // Ajouter la ligne de tropopause seulement si z_trop_km est défini
+    if (z_trop_km !== null && z_trop_km !== undefined) {
+        traces.push({
+            x: [0, 50], // Ligne horizontale sur toute la largeur du graphique
+            y: [z_trop_km, z_trop_km], // Ligne horizontale à la hauteur de la tropopause (en km, axe altitude)
+            type: 'scatter',
+            mode: 'lines',
+            name: `Ligne de séparation (${z_trop_km.toFixed(1)} km)`,
+            line: { color: ColorTropo, width: 1, dash: 'dot' }, // Même couleur que l'annotation
+            showlegend: false,
+            hovertemplate: `Ligne de séparation (${z_trop_km.toFixed(1)} km)<extra></extra>`,
+            yaxis: 'y2' // Utiliser l'axe altitude (gauche)
+        });
+    }
 
     /* Bloc supprimé car z_trop_km est déjà calculé plus haut
     // Calculer la tropopause pour déterminer les zones de précision
@@ -994,8 +1030,15 @@ window.updatePlot = function updatePlot(data) {
     }
     */
     
-    // Initialiser z_trop_km par défaut pour l'annotation si pas défini
-    const annotation_z_trop_km = typeof z_trop_km !== 'undefined' ? z_trop_km : 11;
+    // Utiliser z_trop_km calculé (pas de valeur par défaut)
+    const annotation_z_trop_km = z_trop_km !== null && z_trop_km !== undefined ? z_trop_km : null;
+    
+    // Préparer le texte de l'annotation avec la différence de température calculée
+    // Plotly n'interprète pas le HTML complexe, on utilise du texte simple avec <br>
+    let annotation_text = 'Stratosphère<br>--<br>Troposphère';
+    if (annotation_z_trop_km !== null && delta_T_trop_strato !== null) {
+        annotation_text = `Stratosphère<br>${delta_T_trop_strato.toFixed(1)} K<br>Troposphère`;
+    }
 
     // --- CALCUL DYNAMIQUE DE L'AXE Y (LUMINANCE) ---
     // Trouver le max Y parmi toutes les traces visibles (hors axe altitude)
@@ -1097,8 +1140,9 @@ window.updatePlot = function updatePlot(data) {
         annotations: [
             {
                 x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
-                y: annotation_z_trop_km, // Position de la tropopause (en km, axe altitude)
-                text: 'Stratosphère<br>8.0K<br>Troposphère',
+                y: annotation_z_trop_km !== null ? annotation_z_trop_km : 0, // Position de la tropopause (en km, axe altitude)
+                visible: annotation_z_trop_km !== null, // Cacher si pas de tropopause
+                text: annotation_text,
                 showarrow: false,
                 xref: 'paper', // Coordonnées relatives au graphique
                 yref: 'y2', // Utiliser l'axe altitude (droite)
@@ -1257,6 +1301,33 @@ window.updatePlot = function updatePlot(data) {
     Plotly.react('plot-container', traces, updateLayout).then(() => {
         // Masquer la ligne de l'axe x (trait noir de 0 à 50μm)
         hideXAxisLine();
+        
+        // Mettre à jour le DOM de l'annotation tropopause pour réduire l'espacement
+        // Plotly crée les annotations dans le DOM après le rendu
+        setTimeout(() => {
+            const plotContainer = document.getElementById('plot-container');
+            if (plotContainer) {
+                // Chercher l'annotation de la tropopause dans le DOM Plotly
+                const annotationElements = plotContainer.querySelectorAll('.annotation-text');
+                if (annotationElements.length > 0) {
+                    // La première annotation devrait être la tropopause (stratosphère/troposphère)
+                    // Chercher celle qui contient "Stratosphère"
+                    for (let elem of annotationElements) {
+                        if (elem.textContent && elem.textContent.includes('Stratosphère')) {
+                            // Réduire l'espacement entre les lignes
+                            elem.style.lineHeight = '0.8';
+                            // Trouver la ligne du milieu (la température) et la rendre plus petite
+                            const lines = elem.querySelectorAll('tspan');
+                            if (lines.length >= 3) {
+                                // La ligne du milieu (index 1) est la température
+                                lines[1].style.fontSize = '0.9em';
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }, 100);
 
         // Observer le parent pour détecter quand Plotly modifie le DOM
         const plotContainer = document.getElementById('plot-container');
@@ -1817,7 +1888,20 @@ function drawSpectralVisualization(canvas, data) {
     
     // Initialiser z_trop_km par défaut pour l'annotation si pas défini (ce qui ne devrait plus arriver)
     // Mais pour être sûr à 100% pour le linter/exécution
-    const annotation_z_trop_km = typeof z_trop_km !== 'undefined' ? z_trop_km : 11;
+    // Récupérer z_trop_km et delta_T depuis window (calculés dans updatePlot)
+    const annotation_z_trop_km = (typeof window.current_z_trop_km !== 'undefined' && window.current_z_trop_km !== null) 
+        ? window.current_z_trop_km 
+        : null;
+    const delta_T_trop_strato = (typeof window.current_delta_T_trop_strato !== 'undefined' && window.current_delta_T_trop_strato !== null)
+        ? window.current_delta_T_trop_strato
+        : null;
+    
+    // Préparer le texte de l'annotation avec la différence de température calculée
+    // Plotly n'interprète pas le HTML complexe, on utilise du texte simple avec <br>
+    let annotation_text = 'Stratosphère<br>--<br>Troposphère';
+    if (annotation_z_trop_km !== null && delta_T_trop_strato !== null) {
+        annotation_text = `Stratosphère<br>${delta_T_trop_strato.toFixed(1)} K<br>Troposphère`;
+    }
 
     const updateLayout = {
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
@@ -1888,8 +1972,9 @@ function drawSpectralVisualization(canvas, data) {
         annotations: [
             {
                 x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
-                y: annotation_z_trop_km, // Position de la tropopause (en km, axe altitude)
-                text: 'Stratosphère<br>8.0K<br>Troposphère',
+                y: annotation_z_trop_km !== null ? annotation_z_trop_km : 0, // Position de la tropopause (en km, axe altitude)
+                visible: annotation_z_trop_km !== null, // Cacher si pas de tropopause
+                text: annotation_text,
                 showarrow: false,
                 xref: 'paper', // Coordonnées relatives au graphique
                 yref: 'y2', // Utiliser l'axe altitude (droite)
