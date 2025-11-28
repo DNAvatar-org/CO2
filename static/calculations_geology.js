@@ -25,7 +25,11 @@ function computeFluxFromEpoch(epoch) {
     // 2. Calcul depuis la puissance totale (Watts) - NOUVELLE MÉTHODE
     if (typeof epoch.core_power_watts === 'number') {
         // Surface terrestre
-        const radius = epoch.planet_radius || 6371000;
+        const radius = epoch.planet_radius;
+        if (!radius) {
+            console.warn("[geology] planet_radius manquant pour calculer surface_area, flux=0");
+            return 0;
+        }
         const surface = 4 * Math.PI * Math.pow(radius, 2);
         return epoch.core_power_watts / surface;
     }

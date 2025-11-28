@@ -382,7 +382,7 @@ function initPlot() {
         const plotEl = document.getElementById('plot-container');
         // offsetParent est null si l'élément (ou un parent) est en display: none
         if (plotEl && plotEl.offsetParent !== null) {
-             Plotly.Plots.resize(plotEl);
+            Plotly.Plots.resize(plotEl);
         }
 
         // Calculer et définir la taille du canvas dès que Plotly est prêt
@@ -708,22 +708,50 @@ window.updatePlot = function updatePlot(data) {
 
     if (!data.lambda_range) return;
 
-    const lambda_planck = data.lambda_range.map(l => l * 1e6); // Convertir en μm
+    const lambda_range = data.lambda_range; // ⚡ Nécessaire pour createFluxTrace
+    const lambda_planck = lambda_range.map(l => l * 1e6); // Convertir en μm
     // ⚡ CORRECTION : Utiliser lambda_weights si disponible pour normalisation correcte
     // Le flux est calculé avec delta_lambda = 0.1e-6 dans calculations.js
     // Chaque point représente une plage de largeur delta_lambda * lambda_weights[j]
     const delta_lambda_base = 0.1e-6; // Pas de base utilisé dans les calculs (toujours 0.1e-6)
-    const lambda_weights = data.lambda_weights || data.lambda_range.map(() => 1.0); // Par défaut, poids unitaire si non fourni
+    if (!data.lambda_weights) {
+        console.error('[updatePlot] ❌ ERREUR CRITIQUE : lambda_weights manquant');
+        throw new Error('lambda_weights requis dans data');
+    }
+    const lambda_weights = data.lambda_weights;
 
     // Fonction helper pour créer une trace de flux observé (absorption)
     function createFluxTrace(flux_data, co2_ppm, temp_eff, color, label) {
         // ⚡ CORRECTION : Normaliser avec la largeur effective de chaque point
         // Le flux calculé utilise delta_lambda * lambda_weights[j] dans calculations.js
         // Donc on doit diviser par la même valeur pour obtenir W/m²/μm
-        const flux = flux_data.upward_flux[flux_data.upward_flux.length - 1]
+        const topFlux = flux_data.upward_flux[flux_data.upward_flux.length - 1];
+        
+        // Vérifier que les longueurs correspondent
+        if (topFlux.length !== lambda_range.length) {
+            console.error(`[updatePlot] ❌ ERREUR CRITIQUE : Longueurs incompatibles - topFlux: ${topFlux.length}, lambda_range: ${lambda_range.length}, lambda_weights: ${lambda_weights.length}`);
+            // Ajuster la longueur de topFlux pour correspondre à lambda_range (tronquer ou compléter)
+            if (topFlux.length > lambda_range.length) {
+                console.warn(`[updatePlot] ⚠️ Troncature de topFlux de ${topFlux.length} à ${lambda_range.length} éléments`);
+                topFlux.length = lambda_range.length;
+            } else {
+                console.error(`[updatePlot] ❌ ERREUR : topFlux (${topFlux.length}) < lambda_range (${lambda_range.length})`);
+                throw new Error(`Longueurs incompatibles : topFlux (${topFlux.length}) < lambda_range (${lambda_range.length})`);
+            }
+        }
+        if (lambda_weights.length !== lambda_range.length) {
+            console.error(`[updatePlot] ❌ ERREUR CRITIQUE : Longueurs incompatibles - lambda_weights: ${lambda_weights.length}, lambda_range: ${lambda_range.length}`);
+            throw new Error(`Longueurs incompatibles : lambda_weights (${lambda_weights.length}) != lambda_range (${lambda_range.length})`);
+        }
+        
+        const flux = topFlux
             .map((f, idx) => {
                 // Largeur effective = delta_lambda_base * lambda_weights[j]
-                const effective_delta_lambda = delta_lambda_base * (lambda_weights[idx] || 1.0);
+                if (lambda_weights[idx] === undefined) {
+                    console.error(`[updatePlot] ❌ ERREUR CRITIQUE : lambda_weights[${idx}] manquant`);
+                    throw new Error(`lambda_weights[${idx}] requis`);
+                }
+                const effective_delta_lambda = delta_lambda_base * lambda_weights[idx];
                 return f / effective_delta_lambda / 1e6; // Convertir en W/m²/μm
             });
         // Tooltip : "Courbe d'équilibre d'émission de la terre" pour 0 ppm, sinon avec température
@@ -751,7 +779,11 @@ window.updatePlot = function updatePlot(data) {
     // Fonction helper pour créer une trace Planck
     function createPlanckTrace(T, label, color, showInLegend = false, dashPattern = 'dash') {
         const planck = data.lambda_range.map(l => {
-            const value = Math.PI * (window.planckFunction || function () { return 0; })(l, T) / 1e6;
+            if (typeof window.planckFunction !== 'function') {
+                console.error('[updatePlot] ❌ ERREUR CRITIQUE : planckFunction non disponible');
+                throw new Error('planckFunction requise');
+            }
+            const value = Math.PI * window.planckFunction(l, T) / 1e6;
             // Pour 255K, s'assurer que la valeur est visible même si faible
             if (T === 255 && value < 0.01) {
                 return 0.01; // Minimum visible
@@ -872,51 +904,100 @@ window.updatePlot = function updatePlot(data) {
 
     // 4. Ajouter une ligne horizontale pour la tropopause (calculée dynamiquement)
     // Calculer la tropopause en fonction de T0 (température de surface)
-    let T0 = 288; // Valeur par défaut (15°C)
-    if (data.current && data.current.effective_temperature) {
-        // Utiliser la température effective comme approximation de T0
+    // ⚠️ T0 peut être indisponible lors de l'initialisation (affichage des courbes Planck uniquement)
+    let T0;
+    let has_temperature = false;
+    if (data.current && data.current.effective_temperature !== undefined) {
         T0 = data.current.effective_temperature;
+        has_temperature = true;
     } else if (data.temp_surface_c !== undefined) {
-        // Convertir de °C en K
         T0 = data.temp_surface_c + 273.15;
+        has_temperature = true;
+    } else if (data.temp_surface !== undefined) {
+        T0 = data.temp_surface;
+        has_temperature = true;
     }
 
-    // Calculer la tropopause dynamiquement
+    // Calculer la tropopause dynamiquement (seulement si T0 est disponible)
     let z_trop_m;
-    if (window.currentEpochName === 'Corps noir') {
-        z_trop_m = 0;
+    let z_trop_km;
+    if (has_temperature) {
+        if (window.currentEpochName === 'Corps noir') {
+            z_trop_m = 0;
+        } else {
+            if (typeof window.calculateTropopauseHeight !== 'function') {
+                console.error('[updatePlot] ❌ ERREUR CRITIQUE : calculateTropopauseHeight non disponible');
+                throw new Error('calculateTropopauseHeight requise pour calculer la tropopause');
+            }
+            z_trop_m = window.calculateTropopauseHeight(T0);
+        }
+        z_trop_km = z_trop_m / 1000; // Convertir en km
     } else {
-        z_trop_m = (typeof window.calculateTropopauseHeight === 'function')
-            ? window.calculateTropopauseHeight(T0)
-            : 11000; // Fallback à 11 km si la fonction n'est pas disponible
+        // Pas de température disponible (initialisation) : pas de tropopause à afficher
+        z_trop_km = null;
     }
-    
-    // Rendre z_trop_km accessible globalement (ou au moins dans updateSpectralVisualization) si nécessaire, 
-    // mais ici on utilise des variables locales pour updatePlot
-    const z_trop_km = z_trop_m / 1000; // Convertir en km
 
     // Calculer z_max_km pour l'axe Y (dynamique selon l'époque et la physique)
-    let z_max_km = 120; // Valeur par défaut
-    let scale_height_m = 8500; // Valeur par défaut
+    let z_max_km;
+    let scale_height_m;
+    let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
-    if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
-        const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
-        if (currentEpoch) {
-            const total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
-            // Utiliser T0 (calculé plus haut) pour la température
-            const props = window.calculateAtmosphereProperties(total_mass, T0);
-            z_max_km = props.z_max / 1000;
-            scale_height_m = props.scale_height;
-        }
-    } else if (z_trop_km > 50) {
-        // Fallback heuristique si pas de calcul physique disponible
-        z_max_km = 600; 
+    if (typeof window.configOrganigramme === 'undefined') {
+        console.error('[updatePlot] ❌ ERREUR CRITIQUE : configOrganigramme non disponible');
+        throw new Error('configOrganigramme requis pour calculer z_max_km');
     }
+    if (!window.currentEpochName) {
+        console.error('[updatePlot] ❌ ERREUR CRITIQUE : currentEpochName non défini');
+        throw new Error('currentEpochName requis pour calculer z_max_km');
+    }
+    if (typeof window.calculateAtmosphereProperties !== 'function') {
+        console.error('[updatePlot] ❌ ERREUR CRITIQUE : calculateAtmosphereProperties non disponible');
+        throw new Error('calculateAtmosphereProperties requise pour calculer z_max_km');
+    }
+
+    const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+    if (!currentEpoch) {
+        console.error('[updatePlot] ❌ ERREUR CRITIQUE : Époque non trouvée:', window.currentEpochName);
+        throw new Error(`Époque '${window.currentEpochName}' non trouvée dans timeline`);
+    }
+
+    const total_atmosphere_mass_kg = currentEpoch.total_atmosphere_mass_kg;
+    if (total_atmosphere_mass_kg === undefined) {
+        console.error('[updatePlot] ❌ ERREUR CRITIQUE : total_atmosphere_mass_kg non défini pour l\'époque:', window.currentEpochName);
+        throw new Error(`total_atmosphere_mass_kg non défini pour l'époque '${window.currentEpochName}'`);
+    }
+
+    if (total_atmosphere_mass_kg === 0) {
+        has_atmosphere = false;
+        z_max_km = 0.001; // Très petit pour éviter les calculs inutiles (1 mètre)
+    } else {
+        if (currentEpoch.gravity === undefined) {
+            console.error('[updatePlot] ❌ ERREUR CRITIQUE : gravity non défini pour l\'époque:', window.currentEpochName);
+            throw new Error(`gravity non défini pour l'époque '${window.currentEpochName}'`);
+        }
+        if (currentEpoch.molar_mass_air === undefined) {
+            console.error('[updatePlot] ❌ ERREUR CRITIQUE : molar_mass_air non défini pour l\'époque:', window.currentEpochName);
+            throw new Error(`molar_mass_air non défini pour l'époque '${window.currentEpochName}'`);
+        }
+
+        // T0 peut être indisponible lors de l'initialisation
+        if (!has_temperature) {
+            console.error('[updatePlot] ❌ ERREUR CRITIQUE : T0 requis pour calculateAtmosphereProperties mais non disponible');
+            throw new Error('T0 (température de surface) requise pour calculer les propriétés atmosphériques');
+        }
+        const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, currentEpoch.molar_mass_air, currentEpoch.gravity);
+        z_max_km = props.z_max / 1000;
+        scale_height_m = props.scale_height;
+    }
+
+    // Détecter si on a une atmosphère nulle ou quasi-nulle (Corps noir)
+    const isNoAtmosphere = z_max_km < 0.1; // Seuil : moins de 100m = pas d'atmosphère
+
 
     // Mettre à jour la trace invisible pour l'échelle
     // Note: On doit modifier la trace existante ou s'assurer qu'elle est créée avec les bonnes valeurs
     // Comme on recrée 'traces' à chaque fois ici, on ajuste juste la création de la trace axe altitude ci-dessus/dessous.
-    
+
     // CORRECTION: La trace invisible a été créée AVANT ce bloc (lignes ~861). 
     // On doit la retrouver et la modifier, ou mieux, déplacer sa création APRÈS ce calcul.
     // Pour minimiser les diffs risqués, on va chercher la trace "Axe altitude" dans le tableau traces et la modifier.
@@ -925,7 +1006,7 @@ window.updatePlot = function updatePlot(data) {
         axisTrace.y = [0, z_max_km];
     } else {
         // Si pas trouvée (ex: créée plus bas dans une autre version), on la crée ici
-         traces.push({
+        traces.push({
             x: [0, 0], // Points invisibles à x=0
             y: [0, z_max_km], // De 0 à z_max_km
             type: 'scatter',
@@ -937,37 +1018,62 @@ window.updatePlot = function updatePlot(data) {
             yaxis: 'y2' // Utiliser l'axe secondaire (altitude)
         });
     }
-    if (data.z_range && data.z_range.length > 0) {
-        const z_max = data.z_range[data.z_range.length - 1];
-        z_max_km = z_max / 1000;
-    } else if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
-        // Fallback si z_range n'est pas encore disponible (init)
-        const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
-        if (currentEpoch) {
-            const total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
-            const props = window.calculateAtmosphereProperties(total_mass);
-            z_max_km = props.z_max / 1000;
+    // ⚠️ IMPORTANT : Ne pas écraser z_max_km si on a détecté "pas d'atmosphère"
+    if (has_atmosphere) {
+        if (data.z_range && data.z_range.length > 0) {
+            const z_max = data.z_range[data.z_range.length - 1];
+            z_max_km = z_max / 1000;
+            console.log('[DEBUG] z_max_km recalculé depuis data.z_range:', z_max_km);
+        } else if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
+            // Fallback si z_range n'est pas encore disponible (init)
+            const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+            if (currentEpoch) {
+                const total_atmosphere_mass_kg = currentEpoch.total_atmosphere_mass_kg; // Nom plus explicite
+
+                let gravity = 9.81;
+                if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+
+                let molar_mass = currentEpoch.molar_mass_air;
+                if (molar_mass === undefined) {
+                    if (total_atmosphere_mass_kg > 2.5e19) molar_mass = 0.044;
+                    else molar_mass = 0.029;
+                }
+
+                // T0 peut être indisponible lors de l'initialisation
+                if (!has_temperature) {
+                    console.error('[updatePlot] ❌ ERREUR CRITIQUE : T0 requis pour calculateAtmosphereProperties mais non disponible');
+                    throw new Error('T0 (température de surface) requise pour calculer les propriétés atmosphériques');
+                }
+                const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, molar_mass, gravity);
+                z_max_km = props.z_max / 1000;
+                console.log('[DEBUG] z_max_km recalculé depuis calculateAtmosphereProperties:', z_max_km);
+            }
         }
+    } else {
+        console.log('[DEBUG] z_max_km NON recalculé car pas d\'atmosphère, reste à:', z_max_km);
     }
 
     // EXPOSER GLOBALEMENT pour drawSpectralVisualization (si besoin) ou stocker dans data
     // Pour l'instant, on passe z_max_km et z_trop_km via l'objet data ou une variable globale si drawSpectralVisualization en a besoin
     // Mais drawSpectralVisualization recalcule ses propres échelles
     if (typeof window !== 'undefined') {
-        window.current_z_trop_km = z_trop_km; // Exposer pour autres fonctions
+        window.current_z_trop_km = z_trop_km; // Exposer pour autres fonctions (peut être null)
     }
 
-    traces.push({
-        x: [0, 50], // Ligne horizontale sur toute la largeur du graphique
-        y: [z_trop_km, z_trop_km], // Ligne horizontale à la hauteur de la tropopause (en km, axe altitude 0-120)
-        type: 'scatter',
-        mode: 'lines',
-        name: `Ligne de séparation (${z_trop_km.toFixed(1)} km)`,
-        line: { color: ColorTropo, width: 1, dash: 'dot' }, // Même couleur que l'annotation
-        showlegend: false,
-        hovertemplate: `Ligne de séparation (${z_trop_km.toFixed(1)} km)<extra></extra>`,
-        yaxis: 'y2' // Utiliser l'axe altitude (gauche)
-    });
+    // Ajouter la ligne de tropopause seulement si z_trop_km est disponible
+    if (z_trop_km !== null) {
+        traces.push({
+            x: [0, 50], // Ligne horizontale sur toute la largeur du graphique
+            y: [z_trop_km, z_trop_km], // Ligne horizontale à la hauteur de la tropopause (en km, axe altitude 0-120)
+            type: 'scatter',
+            mode: 'lines',
+            name: `Ligne de séparation (${z_trop_km.toFixed(1)} km)`,
+            line: { color: ColorTropo, width: 1, dash: 'dot' }, // Même couleur que l'annotation
+            showlegend: false,
+            hovertemplate: `Ligne de séparation (${z_trop_km.toFixed(1)} km)<extra></extra>`,
+            yaxis: 'y2' // Utiliser l'axe altitude (gauche)
+        });
+    }
 
     /* Bloc supprimé car z_trop_km est déjà calculé plus haut
     // Calculer la tropopause pour déterminer les zones de précision
@@ -980,7 +1086,7 @@ window.updatePlot = function updatePlot(data) {
         z_trop_km = window.calculateTropopauseHeight(288) / 1000;
     }
     */
-    
+
     // Calculer la tropopause pour déterminer les zones de précision et l'annotation
     // let z_trop_km = 11; // DEJA DÉCLARÉ PLUS HAUT - On commente pour éviter la redéclaration
     /*
@@ -993,14 +1099,15 @@ window.updatePlot = function updatePlot(data) {
         z_trop_km = window.calculateTropopauseHeight(288) / 1000;
     }
     */
-    
-    // Initialiser z_trop_km par défaut pour l'annotation si pas défini
-    const annotation_z_trop_km = typeof z_trop_km !== 'undefined' ? z_trop_km : 11;
+
+    // Utiliser z_trop_km pour l'annotation (peut être null si pas de température)
+    const annotation_z_trop_km = z_trop_km;
+    console.log('[DEBUG] updatePlot: z_trop_km =', z_trop_km, 'annotation_z_trop_km =', annotation_z_trop_km);
 
     // --- CALCUL DYNAMIQUE DE L'AXE Y (LUMINANCE) ---
     // Trouver le max Y parmi toutes les traces visibles (hors axe altitude)
     let y_max_luminance = 40; // Valeur par défaut minimale
-    
+
     traces.forEach(trace => {
         if (trace.y && Array.isArray(trace.y) && trace.visible !== false && trace.yaxis !== 'y2') {
             // Filtrer les valeurs infinies ou NaN
@@ -1013,10 +1120,10 @@ window.updatePlot = function updatePlot(data) {
             }
         }
     });
-    
+
     // Ajouter une marge de 10% pour ne pas coller au bord haut
     y_max_luminance = y_max_luminance * 1.1;
-    
+
     // Arrondir pour faire joli (multiple de 5 ou 10 supérieur)
     // Si > 100, arrondir au 100 supérieur, sinon au 10
     if (y_max_luminance > 100) {
@@ -1024,9 +1131,38 @@ window.updatePlot = function updatePlot(data) {
     } else {
         y_max_luminance = Math.ceil(y_max_luminance / 5) * 5;
     }
-    
+
     // On veut 8 divisions pour s'aligner avec l'axe altitude
     const dtick_luminance = y_max_luminance / 8;
+
+    console.log('[DEBUG] AVANT construction updateLayout: has_atmosphere =', has_atmosphere, 'z_max_km =', z_max_km);
+
+    // Construire la config yaxis2 séparément pour être sûr
+    const yaxis2Config = {
+        title: {
+            text: has_atmosphere ? "Altitude (km)" : "Pas d'atmosphère",
+            font: getPlotlyFont(14, getDefaultTextColor())
+        },
+        overlaying: 'y',
+        side: 'right', // Altitude à droite
+        range: [0, z_max_km], // Dynamique (très petit si pas d'atmosphère)
+        fixedrange: true, // Désactiver le zoom
+        position: 1, // Position à 1 (droite)
+        tickmode: 'linear',
+        dtick: has_atmosphere ? (z_max_km / 8) : (z_max_km / 4),
+        tickfont: getPlotlyFont(12, getDefaultTextColor()),
+        titlefont: getPlotlyFont(14, getDefaultTextColor()),
+        showline: true,
+        linecolor: 'rgba(0, 0, 0, 0.5)',
+        linewidth: 1,
+        mirror: 'ticks',
+        showgrid: false,
+        zeroline: false,
+        visible: true,
+        showticklabels: has_atmosphere // Cacher les graduations si pas d'atmosphère
+    };
+
+    console.log('[DEBUG] yaxis2Config:', JSON.stringify(yaxis2Config));
 
     const updateLayout = {
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
@@ -1067,37 +1203,13 @@ window.updatePlot = function updatePlot(data) {
             dtick: dtick_luminance, // Synchronisé avec l'altitude (8 divisions)
             tickmode: 'linear'
         },
-        yaxis2: {
-            title: {
-                text: "Altitude (km)",
-                font: getPlotlyFont(14, getDefaultTextColor())
-            },
-            overlaying: 'y',
-            side: 'right', // Altitude à droite
-            range: [0, z_max_km], // Dynamique
-            fixedrange: true, // Désactiver le zoom
-            position: 1, // Position à 1 (droite)
-            // Aligner les ticks avec l'axe Y principal
-            // yaxis: 0-40 (8 divisions de 5)
-            // yaxis2 doit aussi avoir 8 divisions
-            tickmode: 'linear',
-            dtick: z_max_km / 8, // Synchronisé (8 divisions)
-            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            showline: true,
-            linecolor: 'rgba(0, 0, 0, 0.5)',
-            linewidth: 1,
-            mirror: 'ticks',
-            showgrid: false,
-            zeroline: false,
-            visible: true
-        },
+        yaxis2: yaxis2Config,
         plot_bgcolor: PLOT_BACKGROUND_COLOR, // Fond de la zone de dessin (configurable)
         paper_bgcolor: PLOT_BACKGROUND_COLOR, // Fond du papier (configurable)
         annotations: [
             {
                 x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
-                y: annotation_z_trop_km, // Position de la tropopause (en km, axe altitude)
+                y: annotation_z_trop_km !== null ? annotation_z_trop_km : 0, // Position de la tropopause (en km, axe altitude)
                 text: 'Stratosphère<br>8.0K<br>Troposphère',
                 showarrow: false,
                 xref: 'paper', // Coordonnées relatives au graphique
@@ -1105,7 +1217,8 @@ window.updatePlot = function updatePlot(data) {
                 xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
                 yanchor: 'middle',
                 align: 'left', // Justifié à gauche
-                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR) // Couleur configurable
+                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR), // Couleur configurable
+                visible: has_atmosphere && annotation_z_trop_km !== null // Cacher si pas d'atmosphère ou pas de température
             },
         ]
     };
@@ -1230,29 +1343,18 @@ window.updatePlot = function updatePlot(data) {
     // Ajouter les indicateurs de bandes d'absorption sur le spectre
     drawAbsorptionBandIndicators();
 
-    updateLayout.yaxis2 = {
-        title: {
-            text: "Altitude (km)",
-            font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
-        },
-        overlaying: 'y',
-        side: 'right', // Altitude à droite
-        range: [0, z_max_km], // Dynamique : 0 à z_max_km
-        fixedrange: true, // Désactiver le zoom
-        position: 1, // Position à 1 (droite)
-        // Aligner les ticks avec l'axe Y principal
-        tickmode: 'linear',
-        dtick: z_max_km / 8, // Adapter les ticks dynamiquement (environ 8 divisions)
-        tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-        titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-        showline: true,
-        linecolor: 'rgba(0, 0, 0, 0.5)',
-        linewidth: 1,
-        mirror: 'ticks',
-        showgrid: false,
-        zeroline: false,
-        visible: true
-    };
+    // Ajouter les indicateurs de bandes d'absorption sur le spectre
+    drawAbsorptionBandIndicators();
+
+    // L'assignation redondante de updateLayout.yaxis2 a été supprimée ici pour respecter la configuration yaxis2Config établie plus haut.
+
+
+    console.log('[DEBUG] updateLayout.yaxis2:', {
+        title: updateLayout.yaxis2.title.text,
+        range: updateLayout.yaxis2.range,
+        showticklabels: updateLayout.yaxis2.showticklabels,
+        has_atmosphere: has_atmosphere
+    });
 
     Plotly.react('plot-container', traces, updateLayout).then(() => {
         // Masquer la ligne de l'axe x (trait noir de 0 à 50μm)
@@ -1486,7 +1588,11 @@ if (typeof window !== 'undefined') {
 if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('calculationConverged', (event) => {
         // Convergence atteinte : vérifier le FPS pour décider de la précision finale
-        const currentFPS = window.fps || 60;
+        if (window.fps === undefined) {
+            console.error('[plot.js] ❌ ERREUR CRITIQUE : window.fps non défini');
+            throw new Error('window.fps requis');
+        }
+        const currentFPS = window.fps;
         if (currentFPS > 55) {
             // FPS stable : cibler la précision maximale (pixel par pixel)
             window.spectralConverged = true;
@@ -1649,21 +1755,37 @@ function drawSpectralVisualization(canvas, data) {
     // Utiliser la taille réelle du canvas visible à l'écran (pas une taille fixe)
     // Cela limite les calculs aux pixels réellement visibles
     const rect = canvas.getBoundingClientRect();
-    let width = Math.floor(rect.width) || canvas.width; // Taille visible à l'écran
-    let height = Math.floor(rect.height) || canvas.height; // Taille visible à l'écran
+    if (!rect.width || !rect.height) {
+        console.error('[drawSpectralVisualization] ❌ ERREUR CRITIQUE : rect.width ou rect.height invalide');
+        throw new Error('rect.width et rect.height requis');
+    }
+    let width = Math.floor(rect.width);
+    let height = Math.floor(rect.height);
 
     // Ajuster la résolution du canvas pour correspondre à la taille visible
     // Réduire la résolution si retina (devicePixelRatio > 1) pour améliorer les performances
-    const devicePixelRatio = window.devicePixelRatio || 1;
+    if (window.devicePixelRatio === undefined) {
+        console.error('[drawSpectralVisualization] ❌ ERREUR CRITIQUE : window.devicePixelRatio non défini');
+        throw new Error('window.devicePixelRatio requis');
+    }
+    const devicePixelRatio = window.devicePixelRatio;
 
     // Réduire drastiquement la résolution pendant la dichotomie (/4 des 2 dimensions = /16)
     const isDichotomy = typeof window !== 'undefined' && window.calculationInProgress;
 
     // Adapter la précision en fonction du FPS et de l'état de convergence
     // Le canvas écoute l'événement 'calculationConverged' pour savoir quand augmenter la précision
-    const currentFPS = typeof window !== 'undefined' && window.fps ? window.fps : 60;
-    const isConverged = typeof window !== 'undefined' && window.spectralConverged;
-    const precisionTarget = typeof window !== 'undefined' && window.spectralPrecisionTarget ? window.spectralPrecisionTarget : 'auto';
+    if (window.fps === undefined) {
+        console.error('[drawSpectralVisualization] ❌ ERREUR CRITIQUE : window.fps non défini');
+        throw new Error('window.fps requis');
+    }
+    const currentFPS = window.fps;
+    const isConverged = window.spectralConverged !== undefined ? window.spectralConverged : false;
+    if (window.spectralPrecisionTarget === undefined) {
+        console.error('[drawSpectralVisualization] ❌ ERREUR CRITIQUE : window.spectralPrecisionTarget non défini');
+        throw new Error('window.spectralPrecisionTarget requis');
+    }
+    const precisionTarget = window.spectralPrecisionTarget;
 
     let resolutionFactor;
     if (isDichotomy) {
@@ -1720,7 +1842,8 @@ function drawSpectralVisualization(canvas, data) {
     const visualizationHeight = height - spectrumBarHeight + Math.max(1, Math.floor(2 / resolutionFactor));
 
     const upward_flux = data.upward_flux;
-    const earth_flux = data.earth_flux || null; // Courbe de Planck pure au sol
+    // earth_flux est optionnel (peut être null)
+    const earth_flux = data.earth_flux !== undefined ? data.earth_flux : null;
     const lambda_range = data.lambda_range;
     const z_range = data.z_range;
 
@@ -1750,8 +1873,12 @@ function drawSpectralVisualization(canvas, data) {
     // (réduire de 5% à 1% pour éviter d'écraser les faibles flux dans la zone < 9 μm)
     const p1Index = Math.floor(allFluxes.length * 0.01);
     const p99Index = Math.floor(allFluxes.length * 0.99);
-    const minFlux = allFluxes[p1Index] || allFluxes[0] || 0;
-    const maxFlux = allFluxes[p99Index] || allFluxes[allFluxes.length - 1] || 1;
+    if (allFluxes.length === 0) {
+        console.error('[drawSpectralVisualization] ❌ ERREUR CRITIQUE : allFluxes vide');
+        throw new Error('allFluxes ne peut pas être vide');
+    }
+    const minFlux = allFluxes[p1Index] !== undefined ? allFluxes[p1Index] : allFluxes[0];
+    const maxFlux = allFluxes[p99Index] !== undefined ? allFluxes[p99Index] : allFluxes[allFluxes.length - 1];
     const fluxRange = maxFlux - minFlux;
 
     // Plage de l'axe X du graphique : 0 à 50 μm
@@ -1759,7 +1886,11 @@ function drawSpectralVisualization(canvas, data) {
     const graph_max_um = 50;
 
     // Calculer l'altitude max pour normaliser
-    const z_max = z_range.length > 0 ? z_range[z_range.length - 1] : 120000; // 120 km par défaut ou valeur dynamique
+    if (!z_range || z_range.length === 0) {
+        console.error('[drawSpectralVisualization] ❌ ERREUR CRITIQUE : z_range vide ou invalide');
+        throw new Error('z_range requis et non vide');
+    }
+    const z_max = z_range[z_range.length - 1];
     const z_max_km = z_max / 1000; // En km
 
     // Mapper chaque pixel Y à une altitude spécifique (0 à z_max)
@@ -1771,20 +1902,39 @@ function drawSpectralVisualization(canvas, data) {
     // Constantes pour le calcul de la densité (approximation exponentielle)
     // ⚡ CORRECTION : Ajuster H en fonction de la masse atmosphérique si disponible
     let H = 8500; // Échelle de hauteur standard en mètres (environ 8.5 km)
-    
+
     // Essayer de récupérer H depuis les propriétés atmosphériques globales
     // On a besoin de la masse totale pour ça, qu'on peut trouver dans configOrganigramme
+    let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
+
     if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
         const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
         if (currentEpoch) {
-            const total_mass = currentEpoch.total_atmosphere_mass_kg || 5.15e18;
-            const props = window.calculateAtmosphereProperties(total_mass);
-            H = props.scale_height;
+            const total_mass = currentEpoch.total_atmosphere_mass_kg; // Pas de fallback
+
+            // Détecter le cas "pas d'atmosphère"
+            if (total_mass === 0 || total_mass === undefined) {
+                has_atmosphere = false;
+            } else {
+                // Récupérer gravité et masse molaire
+                let gravity = 9.81;
+                if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+
+                let molar_mass = currentEpoch.molar_mass_air;
+                if (molar_mass === undefined) {
+                    if (total_mass > 2.5e19) molar_mass = 0.044;
+                    else molar_mass = 0.029;
+                }
+
+                const props = window.calculateAtmosphereProperties(total_mass, 288, molar_mass, gravity);
+                H = props.scale_height;
+            }
         }
     } else if (z_max_km > 200) {
         // Fallback si calculateAtmosphereProperties n'est pas dispo
         H = 40000; // ~40 km pour atmosphère vapeur chaude Hadéen
     }
+
 
     const P0 = 101325; // Pression au niveau de la mer en Pa
 
@@ -1801,7 +1951,7 @@ function drawSpectralVisualization(canvas, data) {
         z_trop_km = window.calculateTropopauseHeight(288) / 1000;
     }
     */
-    
+
     // Calculer la tropopause pour déterminer les zones de précision et l'annotation
     // let z_trop_km = 11; // DEJA DÉCLARÉ PLUS HAUT - On commente pour éviter la redéclaration
     /*
@@ -1814,10 +1964,32 @@ function drawSpectralVisualization(canvas, data) {
         z_trop_km = window.calculateTropopauseHeight(288) / 1000;
     }
     */
+
+    // Récupérer z_trop_km depuis window.current_z_trop_km (défini dans updatePlot)
+    // ou le recalculer si nécessaire
+    let z_trop_km;
+    if (typeof window !== 'undefined' && typeof window.current_z_trop_km !== 'undefined') {
+        z_trop_km = window.current_z_trop_km; // Peut être null
+    } else if (typeof window.calculateTropopauseHeight === 'function') {
+        // Recalculer avec la température de surface si disponible
+        let T0;
+        if (data.current && data.current.effective_temperature !== undefined) {
+            T0 = data.current.effective_temperature;
+        } else if (data.temp_surface_c !== undefined) {
+            T0 = data.temp_surface_c + 273.15;
+        } else if (data.temp_surface !== undefined) {
+            T0 = data.temp_surface;
+        }
+        if (T0 !== undefined) {
+            z_trop_km = window.calculateTropopauseHeight(T0) / 1000;
+        } else {
+            z_trop_km = null; // Pas de température disponible
+        }
+    } else {
+        z_trop_km = null; // Pas de fonction disponible
+    }
     
-    // Initialiser z_trop_km par défaut pour l'annotation si pas défini (ce qui ne devrait plus arriver)
-    // Mais pour être sûr à 100% pour le linter/exécution
-    const annotation_z_trop_km = typeof z_trop_km !== 'undefined' ? z_trop_km : 11;
+    const annotation_z_trop_km = z_trop_km; // Peut être null
 
     const updateLayout = {
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
@@ -1888,7 +2060,7 @@ function drawSpectralVisualization(canvas, data) {
         annotations: [
             {
                 x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
-                y: annotation_z_trop_km, // Position de la tropopause (en km, axe altitude)
+                y: annotation_z_trop_km !== null ? annotation_z_trop_km : 0, // Position de la tropopause (en km, axe altitude)
                 text: 'Stratosphère<br>8.0K<br>Troposphère',
                 showarrow: false,
                 xref: 'paper', // Coordonnées relatives au graphique
@@ -1896,7 +2068,8 @@ function drawSpectralVisualization(canvas, data) {
                 xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
                 yanchor: 'middle',
                 align: 'left', // Justifié à gauche
-                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR) // Couleur configurable
+                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR), // Couleur configurable
+                visible: has_atmosphere && annotation_z_trop_km !== null // Cacher si pas d'atmosphère ou pas de température
             },
         ]
     };

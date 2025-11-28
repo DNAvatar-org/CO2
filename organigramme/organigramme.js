@@ -1106,18 +1106,22 @@ function generateArrows() {
     }
 
     arcs.forEach(arc => {
-        // PATCH: Calcul dynamique de la hauteur de l'atmosphère pour l'arc terre->albedo
-        // Ceci écrase la valeur "0 km" de la config AVANT le dessin pour garantir l'affichage correct
+        // Mise à jour dynamique de la hauteur de l'atmosphère (Terre -> Albedo)
         if (arc.from === 'terre' && arc.to === 'albedo' && arc.label) {
             let atm_height_km = 0;
             const isCorpsNoir = (typeof window !== 'undefined' && window.currentEpochName === 'Corps noir');
             
             if (!isCorpsNoir && typeof window.calculateAtmosphereProperties === 'function') {
-                let total_mass = 5.15e18; // Terre actuelle
+                let total_mass = 0; 
+                let gravity = 9.81; // Défaut temporaire, devrait venir de l'époque
+                let molar_mass_air = undefined;
+
                 if (typeof window.getGeologicalPeriodByName === 'function' && window.currentEpochName) {
                     const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-                    if (currentEpoch && currentEpoch.total_atmosphere_mass_kg) {
-                        total_mass = currentEpoch.total_atmosphere_mass_kg;
+                    if (currentEpoch) {
+                        if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass = currentEpoch.total_atmosphere_mass_kg;
+                        if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+                        if (currentEpoch.molar_mass_air !== undefined) molar_mass_air = currentEpoch.molar_mass_air;
                     }
                 }
                 
@@ -1125,18 +1129,29 @@ function generateArrows() {
                 const T0 = (typeof window.T0_num !== 'undefined') ? window.T0_num : 288;
                 
                 const isMassive = total_mass > 2.5e19;
-                const M_avg = isMassive ? 0.044 : 0.029;
+                const M_avg = (molar_mass_air !== undefined) ? molar_mass_air : (isMassive ? 0.044 : 0.029);
                 
-                const props = window.calculateAtmosphereProperties(total_mass, T0, M_avg);
+                const props = window.calculateAtmosphereProperties(total_mass, T0, M_avg, gravity);
                 atm_height_km = props.z_max / 1000;
                 
-                // Mettre à jour directement l'objet arc pour le rendu à venir
+                // Appliquer la valeur calculée
                 if (typeof arc.label === 'object') {
-                    arc.label.name = `${atm_height_km.toFixed(0)} km`;
+                    // Si txtF est présent dans la config, on l'utilise pour l'affichage en bout de flèche
+                    if (arc.label.txtF !== undefined) {
+                        arc.label.txtF = `${atm_height_km.toFixed(0)} km`;
+                    } else {
+                        // Sinon comportement standard : affichage au centre (name)
+                        arc.label.name = `${atm_height_km.toFixed(0)} km`;
+                    }
                 }
             } else {
+                 // Cas Corps Noir ou défaut
                  if (typeof arc.label === 'object') {
-                    arc.label.name = '0 km';
+                    if (arc.label.txtF !== undefined) {
+                        arc.label.txtF = '0 km';
+                    } else {
+                        arc.label.name = '0 km';
+                    }
                 }
             }
         }
@@ -2590,8 +2605,8 @@ window.updateFluxLabels = function (data) {
                     const cleanExp = exponent.replace('+', '');
                     const watts_part = `${mantissa}×10<sup>${cleanExp}</sup> W`;
                     
-                    // Combiner : W/m² en grand, Watts en petit et italique
-                    formattedValue = `${wm2_part}<br><span style="font-size: 0.8em; font-style: italic; opacity: 0.8;">(${watts_part})</span>`;
+                    // Combiner : W/m² en grand, Watts en grand aussi (sans parenthèses)
+                    formattedValue = `${wm2_part}<br><span style="font-size: 1em; font-style: normal; opacity: 1;">${watts_part}</span>`;
                     
                 } else if (format === 'percent_simple') {
                     formattedValue = value.toFixed(0) + '%';
@@ -2977,24 +2992,26 @@ window.updateFluxLabels = function (data) {
     // Utiliser calculateAtmosphereProperties pour obtenir la vraie hauteur physique
     let atm_height_km = 0;
     if (!isCorpsNoir && typeof window.calculateAtmosphereProperties === 'function') {
-        // Récupérer la masse atmosphérique de l'époque
-        let total_mass = 5.15e18; // Terre actuelle
+        // Récupérer la masse atmosphérique et la gravité de l'époque
+        let total_mass = 0;
+        let gravity = 9.81;
+        let molar_mass_air = undefined;
+
         if (typeof window.getGeologicalPeriodByName === 'function' && window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-            if (currentEpoch && currentEpoch.total_atmosphere_mass_kg) {
-                total_mass = currentEpoch.total_atmosphere_mass_kg;
+            if (currentEpoch) {
+                if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass = currentEpoch.total_atmosphere_mass_kg;
+                if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+                if (currentEpoch.molar_mass_air !== undefined) molar_mass_air = currentEpoch.molar_mass_air;
             }
         }
         
         // Estimation de la masse molaire moyenne (M)
-        // Si atmosphère massive (Hadéen), dominée par CO2 (44g/mol) -> 0.044
-        // Sinon Terre actuelle (Air) -> 0.029
-        // On utilise le seuil défini dans calculations_atm.js (2.5e19)
         const isMassive = total_mass > 2.5e19;
-        const M_avg = isMassive ? 0.044 : 0.029;
+        const M_avg = (molar_mass_air !== undefined) ? molar_mass_air : (isMassive ? 0.044 : 0.029);
         
-        // On passe T0_num (Température surface) et M_avg pour un calcul physique de H
-        const props = window.calculateAtmosphereProperties(total_mass, T0_num, M_avg);
+        // On passe T0_num (Température surface), M_avg et gravity pour un calcul physique de H
+        const props = window.calculateAtmosphereProperties(total_mass, T0_num, M_avg, gravity);
         atm_height_km = props.z_max / 1000; // Conversion m -> km
     }
     
