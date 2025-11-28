@@ -1132,11 +1132,21 @@ function generateArrows() {
                 
                 // Mettre à jour directement l'objet arc pour le rendu à venir
                 if (typeof arc.label === 'object') {
-                    arc.label.name = `${atm_height_km.toFixed(0)} km`;
+                    // Si txtF est défini dans la config (même vide), on l'utilise pour l'affichage en fin de flèche
+                    if (arc.label.txtF !== undefined) {
+                        arc.label.txtF = `${atm_height_km.toFixed(0)} km`;
+                    } else {
+                        // Sinon on utilise name (milieu de flèche) par défaut
+                        arc.label.name = `${atm_height_km.toFixed(0)} km`;
+                    }
                 }
             } else {
                  if (typeof arc.label === 'object') {
-                    arc.label.name = '0 km';
+                    if (arc.label.txtF !== undefined) {
+                        arc.label.txtF = '0 km';
+                    } else {
+                        arc.label.name = '0 km';
+                    }
                 }
             }
         }
