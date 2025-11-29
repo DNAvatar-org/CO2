@@ -678,7 +678,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 const labelContainer = document.createElement('div');
                 labelContainer.style.display = 'flex';
                 labelContainer.style.flexDirection = 'column';
-                labelContainer.style.gap = '4px';
+                labelContainer.style.gap = '5px';
                 labelContainer.style.alignItems = 'flex-end'; // À gauche (col === 0)
                 labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
                 labelContainer.style.position = 'relative'; // Créer un stacking context
@@ -722,6 +722,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 const labelContainer = document.createElement('div');
                 labelContainer.style.display = 'flex';
                 labelContainer.style.flexDirection = 'column';
+                labelContainer.style.gap = '5px';
                 labelContainer.style.alignItems = 'flex-start'; // À droite (col === 2)
                 labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
                 labelContainer.style.position = 'relative'; // Créer un stacking context

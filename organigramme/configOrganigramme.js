@@ -34,7 +34,7 @@ if (typeof window !== 'undefined') {
 
 // Configuration de base
 const radius = 40; // Cercles plus petits (par défaut)
-const centerX = 185; // Centre horizontal du diagramme (328px / 2)
+const centerX = 183; // Centre horizontal du diagramme (328px / 2)
 const centerY = 200; // Centre vertical du diagramme (640px / 2)
 const earthCenterY = centerY + 100; // Centre vertical de la Terre et éléments concentriques
 const arrowMarginTop = 10; // Marge en haut des flèches
@@ -42,8 +42,8 @@ const arrowMarginBottom = 15; // Marge en bas des flèches
 const cellHeight = 110;
 const cellHalfHeight = cellHeight / 2; // 55px
 
-const radiusTerre = 100;
-const radiusAtmosphere = 180;
+const radiusTerre = 90;
+const radiusAtmosphere = 175;
 const circleMiddleRadius = (radiusTerre*2 + radiusAtmosphere) / 3;
 // 4 tailles d'espacement pour les flèches
 const spacingSizes = {
