@@ -178,10 +178,10 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
                 epochParams = {
-                    pressure_atm: currentEpoch.atmospheric_pressure || 1.0,
-                    molar_mass_air: currentEpoch.molar_mass_air || 0.029,
-                    gravity: currentEpoch.gravity || 9.81,
-                    ocean_coverage: currentEpoch.ocean_coverage || 0.7
+                    pressure_atm: currentEpoch.atmospheric_pressure, // Peut être undefined -> doit être géré dans waterPartition
+                    molar_mass_air: currentEpoch.molar_mass_air,
+                    gravity: currentEpoch.gravity,
+                    ocean_coverage: currentEpoch.ocean_coverage
                 };
             }
         }

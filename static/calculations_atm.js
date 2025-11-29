@@ -45,8 +45,14 @@ const MASSIVE_ATM_THRESHOLD = 2.5e19;
  * @param {number} molar_mass_air - Masse molaire moyenne de l'air en kg/mol (défaut: 0.029)
  * @returns {number} Fraction molaire de CO2 (0-1)
  */
-function co2KgToFraction(co2_kg, total_atmosphere_mass_kg = EARTH_ATMOSPHERE_MASS_KG, molar_mass_air = 0.029) {
-    if (co2_kg <= 0 || total_atmosphere_mass_kg <= 0) return 0;
+function co2KgToFraction(co2_kg, total_atmosphere_mass_kg, molar_mass_air) {
+    if (co2_kg === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
+        console.error("[co2KgToFraction] ❌ ERREUR CRITIQUE : Paramètres manquants", { co2_kg, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('co2KgToFraction: Paramètres requis manquants');
+    }
+    if (co2_kg <= 0 || total_atmosphere_mass_kg <= 0) {
+        return 0; // Cas valide : pas de CO2 ou pas d'atmosphère
+    }
     
     // Nombre de moles de CO2
     const moles_CO2 = co2_kg / MOLAR_MASS_CO2;
@@ -65,8 +71,14 @@ function co2KgToFraction(co2_kg, total_atmosphere_mass_kg = EARTH_ATMOSPHERE_MAS
  * @param {number} molar_mass_air - Masse molaire moyenne de l'air en kg/mol (défaut: 0.029)
  * @returns {number} Fraction molaire de CH4 (0-1)
  */
-function ch4KgToFraction(ch4_kg, total_atmosphere_mass_kg = EARTH_ATMOSPHERE_MASS_KG, molar_mass_air = 0.029) {
-    if (ch4_kg <= 0 || total_atmosphere_mass_kg <= 0) return 0;
+function ch4KgToFraction(ch4_kg, total_atmosphere_mass_kg, molar_mass_air) {
+    if (ch4_kg === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
+        console.error("[ch4KgToFraction] ❌ ERREUR CRITIQUE : Paramètres manquants", { ch4_kg, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('ch4KgToFraction: Paramètres requis manquants');
+    }
+    if (ch4_kg <= 0 || total_atmosphere_mass_kg <= 0) {
+        return 0; // Cas valide : pas de CH4 ou pas d'atmosphère
+    }
     
     const moles_CH4 = ch4_kg / MOLAR_MASS_CH4;
     const moles_total = total_atmosphere_mass_kg / molar_mass_air;
@@ -82,8 +94,14 @@ function ch4KgToFraction(ch4_kg, total_atmosphere_mass_kg = EARTH_ATMOSPHERE_MAS
  * @param {number} molar_mass_air - Masse molaire moyenne de l'air en kg/mol (défaut: 0.029)
  * @returns {number} Fraction molaire de H2O vapeur (0-1)
  */
-function h2oKgToVaporFraction(h2o_total_kg, vapor_fraction, total_atmosphere_mass_kg = EARTH_ATMOSPHERE_MASS_KG, molar_mass_air = 0.029) {
-    if (h2o_total_kg <= 0 || vapor_fraction <= 0 || total_atmosphere_mass_kg <= 0) return 0;
+function h2oKgToVaporFraction(h2o_total_kg, vapor_fraction, total_atmosphere_mass_kg, molar_mass_air) {
+    if (h2o_total_kg === undefined || vapor_fraction === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
+        console.error("[h2oKgToVaporFraction] ❌ ERREUR CRITIQUE : Paramètres manquants", { h2o_total_kg, vapor_fraction, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('h2oKgToVaporFraction: Paramètres requis manquants');
+    }
+    if (h2o_total_kg <= 0 || vapor_fraction <= 0 || total_atmosphere_mass_kg <= 0) {
+        return 0; // Cas valide : pas d'eau ou pas d'atmosphère
+    }
     
     const h2o_vapor_kg = h2o_total_kg * vapor_fraction;
     const moles_H2O = h2o_vapor_kg / MOLAR_MASS_H2O;
@@ -105,7 +123,22 @@ function h2oKgToVaporFraction(h2o_total_kg, vapor_fraction, total_atmosphere_mas
  * @param {number} total_atmosphere_mass_kg - Masse totale de l'atmosphère en kg (optionnel)
  * @returns {Object} Composition atmosphérique avec fractions molaires
  */
-function calculateAtmosphericComposition(quantities, total_atmosphere_mass_kg = EARTH_ATMOSPHERE_MASS_KG) {
+function calculateAtmosphericComposition(quantities, total_atmosphere_mass_kg) {
+    if (total_atmosphere_mass_kg === undefined) {
+        console.error("[calculateAtmosphericComposition] ❌ ERREUR CRITIQUE : total_atmosphere_mass_kg manquant");
+        throw new Error('calculateAtmosphericComposition: total_atmosphere_mass_kg requis');
+    }
+    
+    // Fallback pour molar_mass_air (paramètre interne des helpers, non exposé ici)
+    // Pour calculateAtmosphericComposition, on doit calculer la masse molaire moyenne,
+    // mais les helpers (co2KgToFraction) demandent une masse molaire de l'air pour convertir masse totale -> moles totales
+    // C'est un problème circulaire : pour avoir M_air il faut la composition, pour avoir la composition il faut M_air (via total_moles)
+    // Solution : Utiliser une approximation initiale pour le nombre total de moles, ou itérer.
+    // Ici, on va conserver l'usage de 0.029 (Air standard) comme référence pour "total_moles" dans les helpers,
+    // car "total_atmosphere_mass_kg" est souvent défini par rapport à la Terre actuelle.
+    // Si on voulait être exact, il faudrait définir "total_moles" directement dans l'époque.
+    const molar_mass_air_ref = 0.029; // Référence standard pour convertir kg -> moles "d'air équivalent"
+    
     const {
         co2_kg = 0,
         ch4_kg = 0,
@@ -114,9 +147,9 @@ function calculateAtmosphericComposition(quantities, total_atmosphere_mass_kg = 
     } = quantities;
     
     // Calculer les fractions molaires des GES
-    const CO2_fraction = co2KgToFraction(co2_kg, total_atmosphere_mass_kg);
-    const CH4_fraction = ch4KgToFraction(ch4_kg, total_atmosphere_mass_kg);
-    const H2O_vapor_fraction = h2oKgToVaporFraction(h2o_total_kg, h2o_vapor_fraction, total_atmosphere_mass_kg);
+    const CO2_fraction = co2KgToFraction(co2_kg, total_atmosphere_mass_kg, molar_mass_air_ref);
+    const CH4_fraction = ch4KgToFraction(ch4_kg, total_atmosphere_mass_kg, molar_mass_air_ref);
+    const H2O_vapor_fraction = h2oKgToVaporFraction(h2o_total_kg, h2o_vapor_fraction, total_atmosphere_mass_kg, molar_mass_air_ref);
     
     // Calculer la fraction totale des GES
     const total_ges_fraction = CO2_fraction + CH4_fraction + H2O_vapor_fraction;
@@ -162,8 +195,14 @@ function calculateAtmosphericComposition(quantities, total_atmosphere_mass_kg = 
  * @param {number} molar_mass_air - Masse molaire moyenne de l'air en kg/mol (défaut: 0.029)
  * @returns {number} Quantité de CO2 en kg
  */
-function co2FractionToKg(co2_fraction, total_atmosphere_mass_kg = EARTH_ATMOSPHERE_MASS_KG, molar_mass_air = 0.029) {
-    if (co2_fraction <= 0) return 0;
+function co2FractionToKg(co2_fraction, total_atmosphere_mass_kg, molar_mass_air) {
+    if (co2_fraction === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
+        console.error("[co2FractionToKg] ❌ ERREUR CRITIQUE : Paramètres manquants", { co2_fraction, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('co2FractionToKg: Paramètres requis manquants');
+    }
+    if (co2_fraction <= 0) {
+        return 0; // Cas valide : pas de CO2
+    }
     
     const moles_total = total_atmosphere_mass_kg / molar_mass_air;
     const moles_CO2 = co2_fraction * moles_total;
@@ -177,8 +216,14 @@ function co2FractionToKg(co2_fraction, total_atmosphere_mass_kg = EARTH_ATMOSPHE
  * @param {number} molar_mass_air - Masse molaire moyenne de l'air en kg/mol (défaut: 0.029)
  * @returns {number} Quantité de CH4 en kg
  */
-function ch4FractionToKg(ch4_fraction, total_atmosphere_mass_kg = EARTH_ATMOSPHERE_MASS_KG, molar_mass_air = 0.029) {
-    if (ch4_fraction <= 0) return 0;
+function ch4FractionToKg(ch4_fraction, total_atmosphere_mass_kg, molar_mass_air) {
+    if (ch4_fraction === undefined || total_atmosphere_mass_kg === undefined || molar_mass_air === undefined) {
+        console.error("[ch4FractionToKg] ❌ ERREUR CRITIQUE : Paramètres manquants", { ch4_fraction, total_atmosphere_mass_kg, molar_mass_air });
+        throw new Error('ch4FractionToKg: Paramètres requis manquants');
+    }
+    if (ch4_fraction <= 0) {
+        return 0; // Cas valide : pas de CH4
+    }
     
     const moles_total = total_atmosphere_mass_kg / molar_mass_air;
     const moles_CH4 = ch4_fraction * moles_total;
@@ -198,14 +243,27 @@ function ch4FractionToKg(ch4_fraction, total_atmosphere_mass_kg = EARTH_ATMOSPHE
  * @param {number} gravity - Gravité (m/s²) - défaut 9.81
  * @returns {Object} { z_max: number, scale_height: number, is_massive: boolean }
  */
-function calculateAtmosphereProperties(total_atmosphere_mass_kg, temperature_K = 288, molar_mass_kg_mol = 0.029, gravity = 9.81) {
+function calculateAtmosphereProperties(total_atmosphere_mass_kg, temperature_K, molar_mass_kg_mol, gravity) {
+    // Cas spécial : Vide / Corps Noir
+    if (total_atmosphere_mass_kg === 0) {
+        return { z_max: 0, scale_height: 0, is_massive: false };
+    }
+
+    // Validation stricte
+    if (total_atmosphere_mass_kg === undefined || temperature_K === undefined || molar_mass_kg_mol === undefined || gravity === undefined) {
+        console.error("[calculateAtmosphereProperties] ❌ ERREUR CRITIQUE : Paramètres manquants", { total_atmosphere_mass_kg, temperature_K, molar_mass_kg_mol, gravity });
+        throw new Error('calculateAtmosphereProperties: Tous les paramètres requis (total_atmosphere_mass_kg, temperature_K, molar_mass_kg_mol, gravity)');
+    }
+
     const R = 8.314; // Constante des gaz parfaits
     
     // Calcul physique de l'échelle de hauteur H = RT / Mg
-    let scale_height = (R * temperature_K) / (molar_mass_kg_mol * gravity);
+    const scale_height = (R * temperature_K) / (molar_mass_kg_mol * gravity);
     
-    // Si les paramètres sont invalides (ex: init), fallback sur standard
-    if (isNaN(scale_height) || scale_height <= 0) scale_height = 8500;
+    if (isNaN(scale_height) || scale_height <= 0) {
+        console.error("[calculateAtmosphereProperties] ❌ ERREUR CRITIQUE : scale_height invalide", { scale_height, temperature_K, molar_mass_kg_mol, gravity });
+        throw new Error('calculateAtmosphereProperties: scale_height invalide (NaN ou <= 0)');
+    }
 
     let is_massive = false;
     
@@ -227,18 +285,38 @@ function calculateAtmosphereProperties(total_atmosphere_mass_kg, temperature_K =
     
     // 3. Calculer z_max théorique
     // Si P0 est très grand (Hadéen ~100 bar = 10^7 Pa), ln(P0/P_limit) sera grand
-    let z_max_theoretical = scale_height * Math.log(Math.max(P0, 1) / P_limit);
+    // Si P0 est très petit (Corps Noir ~0 Pa), ln(P0/P_limit) sera négatif ou petit
+    // On prend Math.max(P0, 1e-5) pour éviter log(0)
+    let z_max_theoretical = scale_height * Math.log(Math.max(P0, 1e-5) / P_limit);
+    
+    // Si z_max_theoretical est négatif (P0 < P_limit), on met 0
+    z_max_theoretical = Math.max(0, z_max_theoretical);
     
     // Sécurité : bornes min/max
-    let z_max = Math.max(120000, z_max_theoretical);
+    // Si P0 est significatif (> 100 Pa = 1 mbar), on garde le minimum de 120km pour la visualisation standard
+    // Sinon (atmosphère ténue ou nulle), on laisse z_max suivre la physique
+    let z_max = z_max_theoretical;
+    
+    if (P0 > 100) {
+        z_max = Math.max(120000, z_max_theoretical);
+    } else {
+        // Si atmosphère quasi-nulle, on garde une valeur minimale (1m) pour éviter les bugs de division par zéro dans les boucles
+        z_max = Math.max(1, z_max_theoretical); 
+    }
     
     // Si atmosphère massive, on s'assure que ça monte bien (boost visuel si besoin)
     if (is_massive && z_max < 300000) {
         z_max = 300000;
     }
 
-    // Arrondir z_max au 10km supérieur pour faire propre
-    z_max = Math.ceil(z_max / 10000) * 10000;
+    // Arrondir z_max
+    // Si grand (> 1km), on arrondit au 10km
+    // Si petit, on garde la précision
+    if (z_max > 1000) {
+        z_max = Math.ceil(z_max / 10000) * 10000;
+    } else {
+        z_max = Math.ceil(z_max);
+    }
 
     return {
         z_max, // en mètres
@@ -275,29 +353,19 @@ function calculateAtmosphereProperties(total_atmosphere_mass_kg, temperature_K =
  * @returns {number} Pression en Pascal (Pa)
  */
 function calculatePressure(z, params = {}) {
-    // Validation stricte des paramètres physiques
-    // On refuse les valeurs par défaut silencieuses pour la physique planétaire
-    if (params.total_atmosphere_mass_kg === undefined || 
-        params.gravity === undefined || 
-        params.planet_radius === undefined) {
-        
-        console.error("[calculatePressure] ❌ ERREUR CRITIQUE : Paramètres physiques manquants !", params);
-        
-        // Alerte utilisateur (une seule fois pour ne pas spammer)
-        if (typeof window !== 'undefined' && !window._physicsAlertShown) {
-            const alertFunc = (window.showSelectableAlert) ? window.showSelectableAlert : alert;
-            alertFunc("ERREUR PHYSIQUE : Paramètres atmosphériques manquants (masse, gravité ou rayon).\nLe calcul de pression utilise des valeurs par défaut terrestres, ce qui est probablement INCORRECT pour cette époque/planète.\n\nVérifiez la configuration de l'époque.", "Erreur Physique");
-            window._physicsAlertShown = true;
-        }
-    }
-
     const {
-        total_atmosphere_mass_kg = EARTH_ATMOSPHERE_MASS_KG,
-        temperature_K = 288, // Température standard (15°C)
-        gravity = 9.81,
-        planet_radius = 6371000, // Rayon Terre (m)
+        total_atmosphere_mass_kg, // Doit être fourni
+        temperature_K, // Doit être fourni
+        gravity, // Doit être fourni
+        planet_radius, // Doit être fourni
         composition = {}
     } = params;
+    
+    // Validation stricte
+    if (total_atmosphere_mass_kg === undefined || temperature_K === undefined || gravity === undefined || planet_radius === undefined) {
+         console.error("[calculatePressure] ❌ ERREUR CRITIQUE : Paramètres physiques manquants", { total_atmosphere_mass_kg, temperature_K, gravity, planet_radius });
+         throw new Error('calculatePressure: Tous les paramètres requis (total_atmosphere_mass_kg, temperature_K, gravity, planet_radius)');
+    }
     
     // Constantes physiques
     const R = 8.314; // Constante des gaz parfaits (J/(mol·K))
