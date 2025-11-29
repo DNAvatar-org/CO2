@@ -1415,7 +1415,12 @@ window.updateDisplay = function updateDisplay(data) {
                 if (currentEpoch) {
                     if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass_log = currentEpoch.total_atmosphere_mass_kg;
                     if (currentEpoch.gravity !== undefined) gravity_log = currentEpoch.gravity;
-                    if (currentEpoch.molar_mass_air !== undefined) M_avg_log = currentEpoch.molar_mass_air;
+                    // Calculer molar_mass_air depuis les composants si non défini
+                    if (typeof window.calculateMolarMassAir === 'function') {
+                        M_avg_log = window.calculateMolarMassAir(currentEpoch);
+                    } else if (currentEpoch.molar_mass_air !== undefined) {
+                        M_avg_log = currentEpoch.molar_mass_air;
+                    }
                 }
             }
 
@@ -1506,14 +1511,20 @@ window.updateDisplay = function updateDisplay(data) {
                     console.log('[updateDisplay] 🔍 PRIORITÉ 2: h2o_vapor_percent =', h2o_vapor_percent, '%, h2o_from_meteorites =', h2o_from_meteorites, '%, h2o_total_percent =', h2o_total_percent, '%');
                     if (h2o_total_percent > 0) {
                         const h2o_total_fraction = h2o_total_percent / 100;
-                        // Récupérer les paramètres de l'époque courante
+                        // Récupérer les paramètres de l'époque courante et calculer les valeurs dérivées
                         let epochParams = {};
                         if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
                             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                             if (currentEpoch) {
+                                // Calculer pressure_atm et molar_mass_air depuis les composants
+                                const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+                                    ? window.calculatePressureAtm(currentEpoch) : undefined;
+                                const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+                                    ? window.calculateMolarMassAir(currentEpoch) : undefined;
+                                
                                 epochParams = {
-                                    pressure_atm: currentEpoch.atmospheric_pressure,
-                                    molar_mass_air: currentEpoch.molar_mass_air,
+                                    pressure_atm: pressure_atm,
+                                    molar_mass_air: molar_mass_air,
                                     gravity: currentEpoch.gravity,
                                     ocean_coverage: currentEpoch.ocean_coverage
                                 };
@@ -1533,9 +1544,15 @@ window.updateDisplay = function updateDisplay(data) {
                         if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
                             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                             if (currentEpoch) {
+                                // Calculer pressure_atm et molar_mass_air depuis les composants
+                                const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+                                    ? window.calculatePressureAtm(currentEpoch) : undefined;
+                                const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+                                    ? window.calculateMolarMassAir(currentEpoch) : undefined;
+                                
                                 epochParams = {
-                                    pressure_atm: currentEpoch.atmospheric_pressure,
-                                    molar_mass_air: currentEpoch.molar_mass_air,
+                                    pressure_atm: pressure_atm,
+                                    molar_mass_air: molar_mass_air,
                                     gravity: currentEpoch.gravity,
                                     ocean_coverage: currentEpoch.ocean_coverage
                                 };

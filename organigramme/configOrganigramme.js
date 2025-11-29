@@ -271,9 +271,7 @@ const nodes = [
     },
 
     { id: 'espace2', logo: '🛰', logoScale: 0.5, x: centerX + 150, y: centerY + 310, radius: 50, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
-
-    // 🔒 MODIFICATION : Renommer "Forçage Radiatif" en "Effet de Serre" pour plus de justesse scientifique
-    // (L'albédo est traité avant, ici c'est l'action de l'atmosphère/gaz)
+    
     { id: 'reemis', logo: '📛', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
 
     { id: 'co2', type: 'button', logo: LOGOS.CO2, logoOffsetY: 0, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
@@ -288,14 +286,14 @@ const nodes = [
 // Définition du graphe : arcs (flèches)
 // Les labels peuvent être des strings (statiques) ou des objets avec { text, dataId } (dynamiques)
 const arcs = [
-    { from: 'soleil', to: 'geometrie', zIndex: 10, label: { name: { text: '1UA', dataId: 'distance_1ua' }, txtD: '', txtF: '' } },
-    { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_average_wm' }, txtF: { text: '0%', dataId: 'passing_albedo_percent' } } },
-    { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: { text: '0.0 W/m²', dataId: 'solar_flux_absorbed_wm' } } },
-    { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0.0<br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' } },
-    { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0.0<br>W/m²', dataId: 'core_flux_wm' }, txtF: '' } },
-    { from: 'terre', to: 'albedo', zIndex: 22, label: { name: '', txtD: { text: '0.0<br>W/m²', dataId: 'surface_flux_emitted_wm' }, txtF: { text: '0 km', dataId: 'atm_height_km' } }, color: 'red' },//tout doit etre retourné
-    { from: 'albedo', to: 'espace2', zIndex: 22, label: { name: { text: '0.0<br>W/m²', dataId: 'flux_ejected_wm' }, txtD: '' }, color: '#ff5500' },
-    { from: 'reemis', to: 'terre', zIndex: 26, label: { name: { text: '0.0<br>W/m²', dataId: 'forcing_total' }, txtD: '' }, color: '#ff0000' },
+    { from: 'soleil', to: 'geometrie', zIndex: 10, label: { name: { text: '1UA', dataId: 'distance_1ua' }, txtD: '', txtF: '' }},
+    { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_average_wm' }, txtF:  { text: '0%', dataId: 'passing_albedo_percent' }} },
+    { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: [ { text: '0×10<sup><b>17</b></sup> W', dataId: 'solar_flux_absorbed_watts' }, { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'solar_flux_absorbed_wm' } ] } },
+    { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' } },
+    { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'core_flux_wm' }, txtF: '' } },
+    { from: 'terre', to: 'albedo', zIndex: 22, label: { name: { text: '0×10<sup><b>17</b></sup> W', dataId: 'surface_flux_emitted_watts' }, txtF: { text: '0 km', dataId: 'atm_height_km' }, txtD: { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'surface_flux_emitted_wm' } }, color: 'red' },//tout doit etre retourné
+    { from: 'albedo', to: 'espace2', zIndex: 22, label: { name: { text: '0×10<sup><b>17</b></sup> W', dataId: 'flux_ejected_watts' } }, color: '#ff5500' },
+    { from: 'reemis', to: 'terre', zIndex: 26, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'forcing_total' }, txtD: '' }, color: '#ff0000' },
 ];
 
 // Définition de la chronologie (timeline)
@@ -317,7 +315,7 @@ const timeline = [
         planet_radius: 6371000, // Rayon de la planète en mètres (Terre : 6371 km)
         gravity: 9.81, // Gravité en m/s²
         total_atmosphere_mass_kg: 0, // Pas d'atmosphère
-        molar_mass_air: 0.029, // Valeur par défaut (même si pas d'atmosphère, évite les warnings)
+        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         // Note: geothermal_flux sera calculé à partir de core_temperature et geothermal_diffusion_factor
         // Simulation parameters - Quantités en kg (pas de ppm/%)
         co2_kg: 0, // Quantité de CO2 en kg
@@ -360,10 +358,10 @@ const timeline = [
         // geothermal_diffusion_factor: 0.0073, // REMPLACÉ par un flux explicite
         // Flux géothermique colossal (2 000 000 W/m²) pour maintenir la surface en fusion (~2400K)
         // Correspond à la phase immédiate post-impact (océan de magma rayonnant)
-        geothermal_flux: 2000000,
+        geothermal_flux: 2000000, 
         planet_radius: 6371000, // Rayon de la planète en mètres
         gravity: 9.81, // Gravité en m/s²
-        molar_mass_air: 0.044, // Masse molaire moyenne (kg/mol) - Atmosphère lourde
+        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         total_atmosphere_mass_kg: 5.3e20, // Atmosphère très dense (~100 bar, principalement CO2/H2O)
         // Note: geothermal_flux = core_temperature * geothermal_diffusion_factor * 0.00457
         // Hadéen: ~0.20 W/m² (6000K * 0.0073 * 0.00457 ≈ 0.20 W/m²)
@@ -412,7 +410,7 @@ const timeline = [
         // geothermal_diffusion_factor: 0.00009, // DEPRECATED
         planet_radius: 6371000, // Rayon de la planète en mètres
         gravity: 9.81, // Gravité en m/s²
-        molar_mass_air: 0.029, // Masse molaire moyenne (kg/mol)
+        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         total_atmosphere_mass_kg: 1.0e19, // Atmosphère dense (~2 bar, CO2/N2)
         // Note: geothermal_flux ≈ 0.29 W/m² (1.5e14 / 5.1e14)
         // Simulation parameters - Quantités en kg
@@ -448,7 +446,7 @@ const timeline = [
         // geothermal_diffusion_factor: 0.00004, // DEPRECATED
         planet_radius: 6371000, // Rayon de la planète en mètres
         gravity: 9.81, // Gravité en m/s²
-        molar_mass_air: 0.029, // Masse molaire moyenne (kg/mol)
+        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         total_atmosphere_mass_kg: 5.15e18, // Atmosphère proche de l'actuelle (~1 bar)
         // Note: geothermal_flux ≈ 0.2 W/m² (1.0e14 / 5.1e14)
         // Simulation parameters - Quantités en kg
@@ -484,7 +482,7 @@ const timeline = [
         // geothermal_diffusion_factor: 0.000022, // DEPRECATED
         planet_radius: 6371000, // Rayon de la planète en mètres
         gravity: 9.81, // Gravité en m/s²
-        molar_mass_air: 0.029, // Masse molaire moyenne (kg/mol)
+        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         total_atmosphere_mass_kg: 5.15e18, // Atmosphère standard (~1 bar)
         // Note: geothermal_flux ≈ 0.12 W/m² (6.0e13 / 5.1e14)
         // Simulation parameters - Quantités en kg
@@ -520,7 +518,7 @@ const timeline = [
         // geothermal_diffusion_factor: 0.000022, // DEPRECATED
         planet_radius: 6371000, // Rayon de la planète en mètres
         gravity: 9.81, // Gravité en m/s²
-        molar_mass_air: 0.029, // Masse molaire moyenne (kg/mol)
+        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         total_atmosphere_mass_kg: 5.15e18, // Atmosphère standard (~1 bar)
         // Note: geothermal_flux ≈ 0.11 W/m² (5.5e13 / 5.1e14)
         // Simulation parameters - Quantités en kg
@@ -556,7 +554,7 @@ const timeline = [
         // geothermal_diffusion_factor: 0.000022, // DEPRECATED
         planet_radius: 6371000, // Rayon de la planète en mètres
         gravity: 9.81, // Gravité en m/s²
-        molar_mass_air: 0.029, // Masse molaire moyenne (kg/mol)
+        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         total_atmosphere_mass_kg: 5.15e18, // Atmosphère standard (~1 bar)
         // Note: geothermal_flux ≈ 0.1 W/m² (5.0e13 / 5.1e14)
         // Simulation parameters - Quantités en kg
@@ -592,7 +590,7 @@ const timeline = [
         // geothermal_diffusion_factor: 0.000022, // DEPRECATED
         planet_radius: 6371000, // Rayon de la planète en mètres
         gravity: 9.81, // Gravité en m/s²
-        molar_mass_air: 0.029, // Masse molaire moyenne (kg/mol)
+        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         total_atmosphere_mass_kg: 5.15e18, // Atmosphère standard (~1 bar)
         // Note: geothermal_flux ≈ 0.09 W/m² (4.6e13 / 5.1e14)
         // Simulation parameters - Quantités en kg

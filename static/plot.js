@@ -1000,7 +1000,12 @@ window.updatePlot = function updatePlot(data) {
             console.error('[updatePlot] ❌ ERREUR CRITIQUE : gravity non défini pour l\'époque:', window.currentEpochName);
             throw new Error(`gravity non défini pour l'époque '${window.currentEpochName}'`);
         }
-        if (currentEpoch.molar_mass_air === undefined) {
+        // Calculer molar_mass_air depuis les composants si non défini dans la config
+        let molar_mass_air = currentEpoch.molar_mass_air;
+        if (molar_mass_air === undefined && typeof window.calculateMolarMassAir === 'function') {
+            molar_mass_air = window.calculateMolarMassAir(currentEpoch);
+        }
+        if (molar_mass_air === undefined) {
             console.error('[updatePlot] ❌ ERREUR CRITIQUE : molar_mass_air non défini pour l\'époque:', window.currentEpochName);
             throw new Error(`molar_mass_air non défini pour l'époque '${window.currentEpochName}'`);
         }
@@ -1010,7 +1015,7 @@ window.updatePlot = function updatePlot(data) {
             console.error('[updatePlot] ❌ ERREUR CRITIQUE : T0 requis pour calculateAtmosphereProperties mais non disponible');
             throw new Error('T0 (température de surface) requise pour calculer les propriétés atmosphériques');
         }
-        const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, currentEpoch.molar_mass_air, currentEpoch.gravity);
+        const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, molar_mass_air, currentEpoch.gravity);
         z_max_km = props.z_max / 1000;
         scale_height_m = props.scale_height;
     }
@@ -1059,6 +1064,9 @@ window.updatePlot = function updatePlot(data) {
                 if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
 
                 let molar_mass = currentEpoch.molar_mass_air;
+                if (molar_mass === undefined && typeof window.calculateMolarMassAir === 'function') {
+                    molar_mass = window.calculateMolarMassAir(currentEpoch);
+                }
                 if (molar_mass === undefined) {
                     if (total_atmosphere_mass_kg > 2.5e19) molar_mass = 0.044;
                     else molar_mass = 0.029;
@@ -1955,6 +1963,9 @@ function drawSpectralVisualization(canvas, data) {
                 if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
 
                 let molar_mass = currentEpoch.molar_mass_air;
+                if (molar_mass === undefined && typeof window.calculateMolarMassAir === 'function') {
+                    molar_mass = window.calculateMolarMassAir(currentEpoch);
+                }
                 if (molar_mass === undefined) {
                     if (total_mass > 2.5e19) molar_mass = 0.044;
                     else molar_mass = 0.029;

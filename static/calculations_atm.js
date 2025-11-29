@@ -50,8 +50,8 @@ function co2KgToFraction(co2_kg, total_atmosphere_mass_kg, molar_mass_air) {
         console.error("[co2KgToFraction] ❌ ERREUR CRITIQUE : Paramètres manquants", { co2_kg, total_atmosphere_mass_kg, molar_mass_air });
         throw new Error('co2KgToFraction: Paramètres requis manquants');
     }
-    if (co2_kg <= 0 || total_atmosphere_mass_kg <= 0) {
-        return 0; // Cas valide : pas de CO2 ou pas d'atmosphère
+    if (co2_kg <= 0 || total_atmosphere_mass_kg <= 0 || molar_mass_air <= 0) {
+        return 0; // Cas valide : pas de CO2, pas d'atmosphère, ou pas de masse molaire
     }
     
     // Nombre de moles de CO2
@@ -76,8 +76,8 @@ function ch4KgToFraction(ch4_kg, total_atmosphere_mass_kg, molar_mass_air) {
         console.error("[ch4KgToFraction] ❌ ERREUR CRITIQUE : Paramètres manquants", { ch4_kg, total_atmosphere_mass_kg, molar_mass_air });
         throw new Error('ch4KgToFraction: Paramètres requis manquants');
     }
-    if (ch4_kg <= 0 || total_atmosphere_mass_kg <= 0) {
-        return 0; // Cas valide : pas de CH4 ou pas d'atmosphère
+    if (ch4_kg <= 0 || total_atmosphere_mass_kg <= 0 || molar_mass_air <= 0) {
+        return 0; // Cas valide : pas de CH4, pas d'atmosphère, ou pas de masse molaire
     }
     
     const moles_CH4 = ch4_kg / MOLAR_MASS_CH4;
@@ -99,8 +99,8 @@ function h2oKgToVaporFraction(h2o_total_kg, vapor_fraction, total_atmosphere_mas
         console.error("[h2oKgToVaporFraction] ❌ ERREUR CRITIQUE : Paramètres manquants", { h2o_total_kg, vapor_fraction, total_atmosphere_mass_kg, molar_mass_air });
         throw new Error('h2oKgToVaporFraction: Paramètres requis manquants');
     }
-    if (h2o_total_kg <= 0 || vapor_fraction <= 0 || total_atmosphere_mass_kg <= 0) {
-        return 0; // Cas valide : pas d'eau ou pas d'atmosphère
+    if (h2o_total_kg <= 0 || vapor_fraction <= 0 || total_atmosphere_mass_kg <= 0 || molar_mass_air <= 0) {
+        return 0; // Cas valide : pas d'eau, pas d'atmosphère, ou pas de masse molaire
     }
     
     const h2o_vapor_kg = h2o_total_kg * vapor_fraction;
@@ -407,6 +407,50 @@ function calculatePressure(z, params = {}) {
 }
 
 // ============================================================================
+// FONCTIONS HELPER POUR CALCULER LES PARAMÈTRES DEPUIS LA CONFIG
+// ============================================================================
+
+/**
+ * Calcule la masse molaire moyenne de l'air depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg)
+ * @param {Object} epoch - Objet époque avec n2_kg, o2_kg, co2_kg, ch4_kg
+ * @returns {number|undefined} Masse molaire moyenne en kg/mol, ou undefined si impossible à calculer
+ */
+function calculateMolarMassAir(epoch) {
+    if (!epoch) return 0; // Pas d'époque = pas d'atmosphère = 0
+    
+    const M_N2 = 0.02801; const M_O2 = 0.03200; const M_CO2 = 0.04401; const M_CH4 = 0.01604;
+    const m_n2 = epoch.n2_kg || 0;
+    const m_o2 = epoch.o2_kg || 0;
+    const m_co2 = epoch.co2_kg || 0;
+    const m_ch4 = epoch.ch4_kg || 0;
+    const mass_sum = m_n2 + m_o2 + m_co2 + m_ch4;
+    const moles_sum = (m_n2 / M_N2) + (m_o2 / M_O2) + (m_co2 / M_CO2) + (m_ch4 / M_CH4);
+    
+    if (moles_sum > 0) {
+        return mass_sum / moles_sum;
+    }
+    return 0; // Pas de composants = pas d'atmosphère = 0 (au lieu de undefined)
+}
+
+/**
+ * Calcule la pression atmosphérique depuis total_atmosphere_mass_kg, gravity, planet_radius
+ * @param {Object} epoch - Objet époque avec total_atmosphere_mass_kg, gravity, planet_radius
+ * @returns {number|undefined} Pression en atm, ou undefined si impossible à calculer
+ */
+function calculatePressureAtm(epoch) {
+    if (!epoch) return undefined;
+    
+    if (epoch.total_atmosphere_mass_kg !== undefined && 
+        epoch.gravity !== undefined && 
+        epoch.planet_radius !== undefined) {
+        const surface_area = 4 * Math.PI * Math.pow(epoch.planet_radius, 2);
+        const pressure_pa = (epoch.total_atmosphere_mass_kg * epoch.gravity) / surface_area;
+        return pressure_pa / 101325; // Conversion Pa -> atm
+    }
+    return undefined;
+}
+
+// ============================================================================
 // EXPOSITION GLOBALE
 // ============================================================================
 
@@ -419,6 +463,8 @@ if (typeof window !== 'undefined') {
     window.ch4FractionToKg = ch4FractionToKg;
     window.calculateAtmosphereProperties = calculateAtmosphereProperties;
     window.calculatePressure = calculatePressure;
+    window.calculateMolarMassAir = calculateMolarMassAir;
+    window.calculatePressureAtm = calculatePressureAtm;
     
     // Constantes
     window.EARTH_TOTAL_WATER_MASS_KG = EARTH_TOTAL_WATER_MASS_KG;

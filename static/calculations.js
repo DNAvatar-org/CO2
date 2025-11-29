@@ -175,8 +175,11 @@ function pressure(z, params = null) {
                 // Calculer ou récupérer la masse molaire moyenne de l'air
                 if (typeof currentEpoch.molar_mass_air === 'number') {
                     molar_mass_air = currentEpoch.molar_mass_air;
+                } else if (typeof window.calculateMolarMassAir === 'function') {
+                    // Utiliser la fonction helper pour calculer depuis les composants
+                    molar_mass_air = window.calculateMolarMassAir(currentEpoch);
                 } else {
-                    // Essayer de calculer depuis les composants (kg)
+                    // Fallback : Essayer de calculer depuis les composants (kg)
                     // M_air = Masse_totale / Moles_totales
                     const M_N2 = 0.02801; const M_O2 = 0.03200; const M_CO2 = 0.04401; const M_CH4 = 0.01604;
 
@@ -219,6 +222,11 @@ function pressure(z, params = null) {
     }
 
     // 🔒 VALIDATION STRICTE : Aucune valeur par défaut terrestre silencieuse
+    // Si pas d'atmosphère (total_mass = 0), retourner 0 immédiatement sans warning
+    if (total_mass === 0) {
+        return 0; // Pas d'atmosphère = pas de pression (cas normal pour Corps noir)
+    }
+    
     if (total_mass === undefined || gravity === undefined || planet_radius === undefined) {
         console.error("[pressure] ❌ ERREUR CRITIQUE : Paramètres physiques manquants pour calcul de pression !", { total_mass, gravity, planet_radius, epoch: (typeof window !== 'undefined' ? window.currentEpochName : 'unknown') });
 
@@ -233,16 +241,48 @@ function pressure(z, params = null) {
     }
 
     // Température et Molaire doivent aussi être définis ou calculables
-    // Si molar_mass_air manque dans params, essayer de le récupérer depuis la config
+    // Si molar_mass_air manque dans params, essayer de le calculer depuis les composants
     if (molar_mass_air === undefined && typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch && currentEpoch.molar_mass_air !== undefined) {
-            molar_mass_air = currentEpoch.molar_mass_air;
+        if (currentEpoch) {
+            if (typeof window.calculateMolarMassAir === 'function') {
+                molar_mass_air = window.calculateMolarMassAir(currentEpoch);
+                if (molar_mass_air === undefined) {
+                    console.log(`[pressure] calculateMolarMassAir retourne undefined pour époque ${window.currentEpochName}`, {
+                        n2_kg: currentEpoch.n2_kg,
+                        o2_kg: currentEpoch.o2_kg,
+                        co2_kg: currentEpoch.co2_kg,
+                        ch4_kg: currentEpoch.ch4_kg
+                    });
+                }
+            } else {
+                console.warn(`[pressure] window.calculateMolarMassAir non disponible, fallback vers currentEpoch.molar_mass_air`);
+                if (currentEpoch.molar_mass_air !== undefined) {
+                    molar_mass_air = currentEpoch.molar_mass_air; // Fallback si fonction non disponible
+                }
+            }
+        } else {
+            console.warn(`[pressure] currentEpoch non trouvé pour ${window.currentEpochName}`);
         }
     }
+    
+    // Si molar_mass_air est toujours undefined mais qu'on a une atmosphère, utiliser une valeur par défaut
+    // (pour les cas où tous les composants sont à 0 mais qu'il y a quand même une atmosphère)
+    if (molar_mass_air === undefined && total_mass !== undefined && total_mass > 0) {
+        // Valeur par défaut basée sur la masse totale de l'atmosphère
+        // Atmosphère lourde (> 2.5e19 kg) → 0.044, sinon 0.029 (air moderne)
+        molar_mass_air = (total_mass > 2.5e19) ? 0.044 : 0.029;
+        console.log(`[pressure] ⚠️ molar_mass_air non calculable, utilisation valeur par défaut: ${molar_mass_air} (total_mass=${total_mass})`);
+    }
 
+    // Si pas d'atmosphère (total_mass = 0), retourner 0 sans warning (c'est normal)
+    if (total_mass === 0 || total_mass === undefined) {
+        return 0; // Pas d'atmosphère = pas de pression
+    }
+
+    // Si temp_K ou molar_mass_air sont undefined alors qu'on a une atmosphère, c'est une erreur
     if (temp_K === undefined || molar_mass_air === undefined) {
-        console.warn("[pressure] Température ou masse molaire indéfinie, retour 0", { temp_K, molar_mass_air });
+        console.warn("[pressure] Température ou masse molaire indéfinie, retour 0", { temp_K, molar_mass_air, total_mass, epoch: (typeof window !== 'undefined' ? window.currentEpochName : 'unknown') });
         return 0;
     }
 
@@ -653,9 +693,15 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null, par
         typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
+            // Calculer pressure_atm et molar_mass_air depuis les composants
+            const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+                ? window.calculatePressureAtm(currentEpoch) : currentEpoch.atmospheric_pressure;
+            const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+                ? window.calculateMolarMassAir(currentEpoch) : currentEpoch.molar_mass_air;
+            
             epochParams = {
-                pressure_atm: currentEpoch.atmospheric_pressure,
-                molar_mass_air: currentEpoch.molar_mass_air,
+                pressure_atm: pressure_atm,
+                molar_mass_air: molar_mass_air,
                 gravity: currentEpoch.gravity,
                 ocean_coverage: currentEpoch.ocean_coverage
             };
@@ -856,17 +902,28 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             // Récupération gravity, radius et masse molaire
             if (currentEpoch.gravity !== undefined) gravity_val = currentEpoch.gravity;
             if (currentEpoch.planet_radius !== undefined) planet_radius_val = currentEpoch.planet_radius;
-            molar_mass_val = currentEpoch.molar_mass_air; // Peut être undefined (Corps Noir)
-
-            // Calculer la pression atmosphérique si non définie (nécessaire pour H2O)
-            let pressure_atm_val = currentEpoch.atmospheric_pressure;
-            if (pressure_atm_val === undefined && total_mass !== undefined && gravity_val !== undefined && planet_radius_val !== undefined) {
-                const surface_area = 4 * Math.PI * Math.pow(planet_radius_val, 2);
-                const pressure_pa = (total_mass * gravity_val) / surface_area;
-                pressure_atm_val = pressure_pa / 101325;
-                console.log(`[calculateFluxForT0] Pression calculée: ${pressure_atm_val.toFixed(2)} atm (M=${total_mass.toExponential(2)}, g=${gravity_val}, R=${planet_radius_val})`);
+            // Calculer molar_mass_air depuis les composants si non défini
+            if (typeof window.calculateMolarMassAir === 'function') {
+                molar_mass_val = window.calculateMolarMassAir(currentEpoch);
             } else {
-                console.log(`[calculateFluxForT0] Pression non calculée: P_def=${pressure_atm_val}, M=${total_mass}, g=${gravity_val}, R=${planet_radius_val}`);
+                molar_mass_val = currentEpoch.molar_mass_air; // Peut être undefined (Corps Noir)
+            }
+
+            // Calculer la pression atmosphérique depuis les composants si non définie
+            let pressure_atm_val;
+            if (typeof window.calculatePressureAtm === 'function') {
+                pressure_atm_val = window.calculatePressureAtm(currentEpoch);
+            } else {
+                pressure_atm_val = currentEpoch.atmospheric_pressure;
+                // Fallback : calculer manuellement si nécessaire
+                if (pressure_atm_val === undefined && total_mass !== undefined && gravity_val !== undefined && planet_radius_val !== undefined) {
+                    const surface_area = 4 * Math.PI * Math.pow(planet_radius_val, 2);
+                    const pressure_pa = (total_mass * gravity_val) / surface_area;
+                    pressure_atm_val = pressure_pa / 101325;
+                    console.log(`[calculateFluxForT0] Pression calculée: ${pressure_atm_val.toFixed(2)} atm (M=${total_mass.toExponential(2)}, g=${gravity_val}, R=${planet_radius_val})`);
+                } else {
+                    console.log(`[calculateFluxForT0] Pression non calculée: P_def=${pressure_atm_val}, M=${total_mass}, g=${gravity_val}, R=${planet_radius_val}`);
+                }
             }
 
             // Création de l'objet params pour les helpers

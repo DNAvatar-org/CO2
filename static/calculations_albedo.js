@@ -177,12 +177,18 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
-                epochParams = {
-                    pressure_atm: currentEpoch.atmospheric_pressure, // Peut être undefined -> doit être géré dans waterPartition
-                    molar_mass_air: currentEpoch.molar_mass_air,
-                    gravity: currentEpoch.gravity,
-                    ocean_coverage: currentEpoch.ocean_coverage
-                };
+            // Calculer pressure_atm et molar_mass_air depuis les composants
+            const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+                ? window.calculatePressureAtm(currentEpoch) : undefined;
+            const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+                ? window.calculateMolarMassAir(currentEpoch) : undefined;
+            
+            epochParams = {
+                pressure_atm: pressure_atm, // Calculé depuis total_atmosphere_mass_kg, gravity, planet_radius
+                molar_mass_air: molar_mass_air, // Calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg)
+                gravity: currentEpoch.gravity,
+                ocean_coverage: currentEpoch.ocean_coverage
+            };
             }
         }
         

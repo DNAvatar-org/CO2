@@ -143,7 +143,7 @@ function estimateCloudCoverage(temp_K, h2o_vapor_fraction, relative_humidity = 0
  * @returns {Object} {vapor_fraction, liquid_fraction, ice_fraction, max_vapor_fraction}
  */
 function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
-    // Validation stricte
+    // Validation stricte (molar_mass_air peut être 0 pour Corps noir, c'est valide)
     if (options.pressure_atm === undefined || options.molar_mass_air === undefined || options.gravity === undefined || options.ocean_coverage === undefined) {
         if (!window._hasWarnedWaterPartition) {
             console.warn("[calculateWaterPartition] Paramètres physiques manquants, calcul incomplet (suppression des warnings suivants)", options);
@@ -151,6 +151,11 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
         }
         // Si manque gravité ou pression, impossible de calculer T_boil
         if (options.gravity === undefined || options.pressure_atm === undefined) return { vapor_fraction: 0, liquid_fraction: 0, ice_fraction: 0, max_vapor_fraction: 0, air_density: 0 };
+    }
+    
+    // Si molar_mass_air = 0 (pas d'atmosphère), retourner 0 partout
+    if (options.molar_mass_air === 0 || options.pressure_atm === 0) {
+        return { vapor_fraction: 0, liquid_fraction: 0, ice_fraction: 0, max_vapor_fraction: 0, air_density: 0 };
     }
 
     const pressure_atm = options.pressure_atm;
@@ -261,14 +266,20 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
 window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_coverage_override = null) {
     const h2o_total_fraction = h2o_vapor_percent / 100;
 
-    // Récupérer les paramètres de l'époque courante (si disponibles)
+    // Récupérer les paramètres de l'époque courante et calculer les valeurs dérivées
     let epochParams = {};
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
+            // Calculer pressure_atm et molar_mass_air depuis les composants
+            const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+                ? window.calculatePressureAtm(currentEpoch) : undefined;
+            const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+                ? window.calculateMolarMassAir(currentEpoch) : undefined;
+            
             epochParams = {
-                pressure_atm: currentEpoch.atmospheric_pressure,
-                molar_mass_air: currentEpoch.molar_mass_air,
+                pressure_atm: pressure_atm,
+                molar_mass_air: molar_mass_air,
                 gravity: currentEpoch.gravity,
                 ocean_coverage: currentEpoch.ocean_coverage
             };
