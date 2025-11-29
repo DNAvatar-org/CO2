@@ -258,11 +258,19 @@ function calculateAtmosphereProperties(total_atmosphere_mass_kg, temperature_K, 
     const R = 8.314; // Constante des gaz parfaits
     
     // Calcul physique de l'échelle de hauteur H = RT / Mg
-    const scale_height = (R * temperature_K) / (molar_mass_kg_mol * gravity);
+    let scale_height = (R * temperature_K) / (molar_mass_kg_mol * gravity);
     
-    if (isNaN(scale_height) || scale_height <= 0) {
-        console.error("[calculateAtmosphereProperties] ❌ ERREUR CRITIQUE : scale_height invalide", { scale_height, temperature_K, molar_mass_kg_mol, gravity });
-        throw new Error('calculateAtmosphereProperties: scale_height invalide (NaN ou <= 0)');
+    // Si scale_height est invalide (température = 0, molar_mass = 0, etc.), utiliser une valeur par défaut
+    if (isNaN(scale_height) || scale_height <= 0 || !isFinite(scale_height)) {
+        // Valeur par défaut : échelle de hauteur terrestre standard (~8.5 km)
+        scale_height = 8500; // mètres
+        console.warn("[calculateAtmosphereProperties] ⚠️ scale_height invalide, utilisation valeur par défaut", { 
+            scale_height_calc: (R * temperature_K) / (molar_mass_kg_mol * gravity),
+            temperature_K, 
+            molar_mass_kg_mol, 
+            gravity,
+            scale_height_default: scale_height
+        });
     }
 
     let is_massive = false;

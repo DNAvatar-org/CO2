@@ -247,22 +247,9 @@ function pressure(z, params = null) {
         if (currentEpoch) {
             if (typeof window.calculateMolarMassAir === 'function') {
                 molar_mass_air = window.calculateMolarMassAir(currentEpoch);
-                if (molar_mass_air === undefined) {
-                    console.log(`[pressure] calculateMolarMassAir retourne undefined pour époque ${window.currentEpochName}`, {
-                        n2_kg: currentEpoch.n2_kg,
-                        o2_kg: currentEpoch.o2_kg,
-                        co2_kg: currentEpoch.co2_kg,
-                        ch4_kg: currentEpoch.ch4_kg
-                    });
-                }
-            } else {
-                console.warn(`[pressure] window.calculateMolarMassAir non disponible, fallback vers currentEpoch.molar_mass_air`);
-                if (currentEpoch.molar_mass_air !== undefined) {
-                    molar_mass_air = currentEpoch.molar_mass_air; // Fallback si fonction non disponible
-                }
+            } else if (currentEpoch.molar_mass_air !== undefined) {
+                molar_mass_air = currentEpoch.molar_mass_air; // Fallback si fonction non disponible
             }
-        } else {
-            console.warn(`[pressure] currentEpoch non trouvé pour ${window.currentEpochName}`);
         }
     }
     
@@ -272,7 +259,6 @@ function pressure(z, params = null) {
         // Valeur par défaut basée sur la masse totale de l'atmosphère
         // Atmosphère lourde (> 2.5e19 kg) → 0.044, sinon 0.029 (air moderne)
         molar_mass_air = (total_mass > 2.5e19) ? 0.044 : 0.029;
-        console.log(`[pressure] ⚠️ molar_mass_air non calculable, utilisation valeur par défaut: ${molar_mass_air} (total_mass=${total_mass})`);
     }
 
     // Si pas d'atmosphère (total_mass = 0), retourner 0 sans warning (c'est normal)
@@ -824,12 +810,30 @@ if (typeof window !== 'undefined') {
 function logCalculationPhase(phase, data) {
     if (typeof window === 'undefined' || !window.console) return;
 
-    // Récupérer les états actifs/inactifs
-    const h2o_enabled = (typeof window.waterVaporEnabled !== 'undefined') ? window.waterVaporEnabled : false;
-    const ch4_enabled = (typeof window.methaneEnabled !== 'undefined') ? window.methaneEnabled : false;
-    const co2_active = (data && data.CO2_fraction !== undefined && data.CO2_fraction > 0) ||
+    // Récupérer les états actifs/inactifs en vérifiant les boutons (comme dans organigramme.js)
+    // Vérifier les cellules du flux (pas les boutons HTML) pour cohérence avec updateFluxLabels
+    const cellCO2 = typeof document !== 'undefined' ? document.getElementById('cell-co2') : null;
+    const cellCH4 = typeof document !== 'undefined' ? document.getElementById('cell-methane') : null;
+    const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+    const cellAlbedo = typeof document !== 'undefined' ? document.getElementById('cell-albedo-btn') : null;
+
+    // Vérifier l'état via les cellules ET les variables globales (fallback) - même logique que organigramme.js
+    const co2_active = (cellCO2 && cellCO2.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useCO2 === true) ||
+        (data && data.CO2_fraction !== undefined && data.CO2_fraction > 0) ||
         (typeof window !== 'undefined' && window.plotData && window.plotData.co2_ppm > 0);
-    const albedo_active = (data && data.albedo !== undefined && data.albedo > 0);
+    
+    const ch4_enabled = (cellCH4 && cellCH4.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useCH4 === true) ||
+        (typeof window !== 'undefined' && window.methaneEnabled === true);
+    
+    const h2o_enabled = (cellH2O && cellH2O.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useH2O === true) ||
+        (typeof window !== 'undefined' && window.waterVaporEnabled === true);
+    
+    const albedo_active = (cellAlbedo && cellAlbedo.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useAlbedo === true) ||
+        (data && data.albedo !== undefined && data.albedo > 0);
 
     const states = {
         CO2: co2_active ? 'ON' : 'OFF',
@@ -920,9 +924,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
                     const surface_area = 4 * Math.PI * Math.pow(planet_radius_val, 2);
                     const pressure_pa = (total_mass * gravity_val) / surface_area;
                     pressure_atm_val = pressure_pa / 101325;
-                    console.log(`[calculateFluxForT0] Pression calculée: ${pressure_atm_val.toFixed(2)} atm (M=${total_mass.toExponential(2)}, g=${gravity_val}, R=${planet_radius_val})`);
-                } else {
-                    console.log(`[calculateFluxForT0] Pression non calculée: P_def=${pressure_atm_val}, M=${total_mass}, g=${gravity_val}, R=${planet_radius_val}`);
                 }
             }
 
@@ -944,7 +945,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
                 dynamic_z_max = props.z_max;
 
                 if (props.is_massive) {
-                    console.log(`[calculateFluxForT0] Atmosphère massive détectée (${total_mass.toExponential(2)} kg) -> z_max étendu à ${dynamic_z_max / 1000}km`);
                 }
             }
         }
@@ -1006,7 +1006,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         }
         
         // Log pour debug
-        console.log(`[calculateFluxForT0] DEBUG lambda_range créé: length=${lambda_range.length}, expected=${expected_points}, first=${lambda_range[0]}, last=${lambda_range[lambda_range.length - 1]}, lambda_max=${lambda_max}`);
     } else {
         // Optimisation : regroupement adaptatif (sans ajustement FPS, précision maximale)
         // Zone critique : 10-20 μm (bande CO₂) - haute précision
@@ -1121,7 +1120,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
     // Initialiser les tableaux avec la longueur finale de lambda_range
     const final_lambda_length = lambda_range.length;
-    console.log(`[calculateFluxForT0] DEBUG: lambda_range.length = ${lambda_range.length}, lambda_weights.length = ${lambda_weights.length}`);
     const upward_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const optical_thickness = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
@@ -1146,7 +1144,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         }
         return Math.PI * localPlanckFunction(lambda, T0_test) * delta_lambda * lambda_weights[idx];
     });
-    console.log(`[calculateFluxForT0] DEBUG: earth_flux.length = ${earth_flux.length}, lambda_range.length = ${lambda_range.length}`);
 
     logCalculationPhase('3. Flux terrestre calculé', {
         total_earth_flux: earth_flux.reduce((sum, f) => sum + f, 0),
@@ -1161,7 +1158,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // ⚡ OPTIMISATION : Calculer tropopause une seule fois
     const z_trop = calculateTropopauseHeight(T0_test);
     const Gamma = -0.0065; // Gradient de température, K/m
-    console.log(`[calculateFluxForT0] Gamma=${Gamma}, z_trop=${z_trop}, T0=${T0_test}`);
 
     const T_trop = T0_test + Gamma * z_trop;
 
@@ -1204,7 +1200,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         throw new Error(`Longueurs incompatibles: earth_flux (${earth_flux.length}) != lambda_range (${lambda_range.length})`);
     }
     let flux_in = [...earth_flux];
-    console.log(`[calculateFluxForT0] DEBUG: flux_in.length = ${flux_in.length}, upward_flux[0].length = ${upward_flux[0].length}`);
 
     // ⚡ OPTIMISATION : Boucle avant tropopause (T varie avec z)
     for (let i = 0; i < i_trop; i++) {
@@ -1368,25 +1363,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         i_trop: i_trop
     });
 
-    // Debug: Tracer le profil vertical pour lambda = 10µm
-    const lambda_debug_idx = lambda_range.findIndex(l => Math.abs(l - 10e-6) < 1e-7);
-    if (lambda_debug_idx >= 0) {
-        console.log(`[calculateFluxForT0] Profil vertical à 10µm (idx=${lambda_debug_idx}):`);
-        // Afficher seulement quelques points clés (surface, tropopause, sommet)
-        console.log(`  Surface (z=0): Flux=${upward_flux[0][lambda_debug_idx].toExponential(2)}, Tau=${optical_thickness[0][lambda_debug_idx].toExponential(2)}`);
-        if (i_trop < z_range.length) {
-            console.log(`  Tropopause (z=${z_range[i_trop]}): Flux=${upward_flux[i_trop][lambda_debug_idx].toExponential(2)}, Tau=${optical_thickness[i_trop][lambda_debug_idx].toExponential(2)}`);
-        }
-        const top = z_range.length - 1;
-        console.log(`  Sommet (z=${z_range[top]}): Flux=${upward_flux[top][lambda_debug_idx].toExponential(2)}, Tau=${optical_thickness[top][lambda_debug_idx].toExponential(2)}`);
-    }
-
     // Calculer le flux total au sommet
     // Vérifier que upward_flux n'est pas vide avant d'appeler reduce
     // Vérifier la longueur de upward_flux avant de retourner
     if (upward_flux.length > 0) {
         const topFluxLength = upward_flux[upward_flux.length - 1].length;
-        console.log(`[calculateFluxForT0] DEBUG FINAL: upward_flux[top].length = ${topFluxLength}, lambda_range.length = ${lambda_range.length}, lambda_weights.length = ${lambda_weights.length}`);
         if (topFluxLength !== lambda_range.length) {
             console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE FINALE: upward_flux[top].length (${topFluxLength}) != lambda_range.length (${lambda_range.length})`);
         }

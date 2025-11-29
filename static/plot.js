@@ -1005,17 +1005,32 @@ window.updatePlot = function updatePlot(data) {
         if (molar_mass_air === undefined && typeof window.calculateMolarMassAir === 'function') {
             molar_mass_air = window.calculateMolarMassAir(currentEpoch);
         }
-        if (molar_mass_air === undefined) {
-            console.error('[updatePlot] ❌ ERREUR CRITIQUE : molar_mass_air non défini pour l\'époque:', window.currentEpochName);
-            throw new Error(`molar_mass_air non défini pour l'époque '${window.currentEpochName}'`);
+        // Fallback si toujours undefined ou 0
+        if (molar_mass_air === undefined || molar_mass_air === 0) {
+            // Estimation basée sur la masse atmosphérique (Hadéen = CO2 dense, moderne = N2/O2)
+            const isMassive = total_atmosphere_mass_kg > 2.5e19;
+            molar_mass_air = isMassive ? 0.044 : 0.029;
         }
 
-        // T0 peut être indisponible lors de l'initialisation
+        // T0 peut être indisponible lors de l'initialisation (pendant la dichotomie)
+        // Utiliser initial_temperature_K de la config de l'époque comme fallback
+        let T0_to_use = T0;
         if (!has_temperature) {
-            console.error('[updatePlot] ❌ ERREUR CRITIQUE : T0 requis pour calculateAtmosphereProperties mais non disponible');
-            throw new Error('T0 (température de surface) requise pour calculer les propriétés atmosphériques');
+            // Récupérer initial_temperature_K depuis la config de l'époque
+            if (currentEpoch && typeof currentEpoch.initial_temperature_K === 'number' && currentEpoch.initial_temperature_K > 0) {
+                T0_to_use = currentEpoch.initial_temperature_K;
+            } else {
+                // Fallback : estimation basée sur l'intensité solaire (température effective sans effet de serre)
+                const SOLAR_CONSTANT = (typeof window !== 'undefined' && window.SOLAR_CONSTANT) ? window.SOLAR_CONSTANT : 1361;
+                const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
+                const STEFAN_BOLTZMANN = 5.670374419e-8;
+                // Estimation rapide : T_eff = (S/σ)^0.25 avec albedo = 0.3
+                const albedo_est = 0.3;
+                const flux_absorbed = SOLAR_FLUX_AVERAGE * (1 - albedo_est);
+                T0_to_use = Math.pow(flux_absorbed / STEFAN_BOLTZMANN, 0.25);
+            }
         }
-        const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, molar_mass_air, currentEpoch.gravity);
+        const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use, molar_mass_air, currentEpoch.gravity);
         z_max_km = props.z_max / 1000;
         scale_height_m = props.scale_height;
     }
@@ -1053,7 +1068,6 @@ window.updatePlot = function updatePlot(data) {
         if (data.z_range && data.z_range.length > 0) {
             const z_max = data.z_range[data.z_range.length - 1];
             z_max_km = z_max / 1000;
-            console.log('[DEBUG] z_max_km recalculé depuis data.z_range:', z_max_km);
         } else if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
             // Fallback si z_range n'est pas encore disponible (init)
             const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
@@ -1072,18 +1086,29 @@ window.updatePlot = function updatePlot(data) {
                     else molar_mass = 0.029;
                 }
 
-                // T0 peut être indisponible lors de l'initialisation
+                // T0 peut être indisponible lors de l'initialisation (pendant la dichotomie)
+                // Utiliser initial_temperature_K de la config de l'époque comme fallback
+                let T0_to_use_fallback = T0;
                 if (!has_temperature) {
-                    console.error('[updatePlot] ❌ ERREUR CRITIQUE : T0 requis pour calculateAtmosphereProperties mais non disponible');
-                    throw new Error('T0 (température de surface) requise pour calculer les propriétés atmosphériques');
+                    // Récupérer initial_temperature_K depuis la config de l'époque
+                    if (currentEpoch && typeof currentEpoch.initial_temperature_K === 'number' && currentEpoch.initial_temperature_K > 0) {
+                        T0_to_use_fallback = currentEpoch.initial_temperature_K;
+                    } else {
+                        // Fallback : estimation basée sur l'intensité solaire (température effective sans effet de serre)
+                        const SOLAR_CONSTANT = (typeof window !== 'undefined' && window.SOLAR_CONSTANT) ? window.SOLAR_CONSTANT : 1361;
+                        const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
+                        const STEFAN_BOLTZMANN = 5.670374419e-8;
+                        // Estimation rapide : T_eff = (S/σ)^0.25 avec albedo = 0.3
+                        const albedo_est = 0.3;
+                        const flux_absorbed = SOLAR_FLUX_AVERAGE * (1 - albedo_est);
+                        T0_to_use_fallback = Math.pow(flux_absorbed / STEFAN_BOLTZMANN, 0.25);
+                    }
                 }
-                const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, molar_mass, gravity);
+                const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use_fallback, molar_mass, gravity);
                 z_max_km = props.z_max / 1000;
-                console.log('[DEBUG] z_max_km recalculé depuis calculateAtmosphereProperties:', z_max_km);
             }
         }
     } else {
-        console.log('[DEBUG] z_max_km NON recalculé car pas d\'atmosphère, reste à:', z_max_km);
     }
 
     // EXPOSER GLOBALEMENT pour drawSpectralVisualization (si besoin) ou stocker dans data
@@ -1149,7 +1174,6 @@ window.updatePlot = function updatePlot(data) {
     // On veut 8 divisions pour s'aligner avec l'axe altitude
     const dtick_luminance = y_max_luminance / 8;
 
-    console.log('[DEBUG] AVANT construction updateLayout: has_atmosphere =', has_atmosphere, 'z_max_km =', z_max_km);
 
     // Construire la config yaxis2 séparément pour être sûr
     const yaxis2Config = {
@@ -1176,7 +1200,6 @@ window.updatePlot = function updatePlot(data) {
         showticklabels: has_atmosphere // Cacher les graduations si pas d'atmosphère
     };
 
-    console.log('[DEBUG] yaxis2Config:', JSON.stringify(yaxis2Config));
 
     const updateLayout = {
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
@@ -1364,12 +1387,6 @@ window.updatePlot = function updatePlot(data) {
     // L'assignation redondante de updateLayout.yaxis2 a été supprimée ici pour respecter la configuration yaxis2Config établie plus haut.
 
 
-    console.log('[DEBUG] updateLayout.yaxis2:', {
-        title: updateLayout.yaxis2.title.text,
-        range: updateLayout.yaxis2.range,
-        showticklabels: updateLayout.yaxis2.showticklabels,
-        has_atmosphere: has_atmosphere
-    });
 
     Plotly.react('plot-container', traces, updateLayout).then(() => {
         // Masquer la ligne de l'axe x (trait noir de 0 à 50μm)

@@ -120,7 +120,6 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     }
     
     let albedo = albedo_base;
-    console.log(`[ALBEDO] Début calcul: T=${T_surface_K.toFixed(2)}K (${T_surface_C.toFixed(2)}°C), h2o=${h2o_enabled}, geo_flux=${geothermal_flux}, albedo_base=${albedo_base.toFixed(3)} (époque: ${epochName})`);
 
     // Contribution de la glace (albedo augmente avec le froid)
     // Modélisation : transition progressive de l'albedo terrestre vers l'albedo glaciaire
@@ -237,7 +236,6 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         // Transition progressive : albedo = base + (glace - base) * fraction_glace
         // Utiliser l'albedo de base de l'époque (déjà récupéré plus haut)
         albedo = albedo_base + (ice_albedo - albedo_base) * ice_fraction;
-        console.log(`[ALBEDO] Contribution glace: ice_fraction=${ice_fraction.toFixed(3)}, ice_percent=${(ice_fraction * 100).toFixed(1)}%, albedo_base=${albedo_base.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
     }
 
     // Contribution des nuages (H2O activé)
@@ -264,7 +262,6 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
             // mais avec un effet plus doux pour les faibles couvertures
             const cloud_contribution = (cloud_albedo * cloud_fraction) / 2;
             albedo = albedo + cloud_contribution;
-            console.log(`[ALBEDO] Contribution nuages: cloud_fraction=${cloud_fraction.toFixed(3)}, cloud_contribution=${cloud_contribution.toFixed(3)}, albedo=${albedo.toFixed(3)}`);
         }
         // Si cloud_fraction < 5%, on n'ajoute pas de contribution nuageuse à l'albedo
     }
@@ -272,7 +269,6 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     // Clamper entre 0.0 (corps noir) et 0.9 (valeurs physiques raisonnables)
     // Permettre 0.0 pour le corps noir, mais limiter à 0.9 maximum
     const final_albedo = Math.max(0.0, Math.min(0.9, albedo));
-    console.log(`[ALBEDO] Résultat final: ${final_albedo.toFixed(3)} (${(final_albedo * 100).toFixed(1)}%)`);
     return final_albedo;
 }
 
@@ -314,8 +310,26 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_overrid
             
             // Si on a de l'eau, estimer la part de vapeur
             if (typeof window.calculateWaterPartition === 'function') {
-                // Estimation rapide (paramètres par défaut)
-                const wp = window.calculateWaterPartition(T_surface_K, h2o_total_percent / 100);
+                // Construire epochParams avec les paramètres physiques nécessaires
+                let epochParams = {};
+                if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                    const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                    if (currentEpoch) {
+                        // Calculer pressure_atm et molar_mass_air depuis les composants
+                        const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+                            ? window.calculatePressureAtm(currentEpoch) : undefined;
+                        const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+                            ? window.calculateMolarMassAir(currentEpoch) : undefined;
+                        
+                        epochParams = {
+                            pressure_atm: pressure_atm, // Calculé depuis total_atmosphere_mass_kg, gravity, planet_radius
+                            molar_mass_air: molar_mass_air, // Calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg)
+                            gravity: currentEpoch.gravity,
+                            ocean_coverage: currentEpoch.ocean_coverage
+                        };
+                    }
+                }
+                const wp = window.calculateWaterPartition(T_surface_K, h2o_total_percent / 100, epochParams);
                 vapor_fraction = wp.vapor_fraction;
             } else {
                 // Fallback : tout est vapeur si > 100°C, sinon fraction

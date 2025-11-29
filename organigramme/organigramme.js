@@ -83,7 +83,7 @@ function updateButtonTooltip(cell, circleBg) {
 }
 
 // Fonction pour créer un rectangle avec des facteurs
-function createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage = null, strokeSize = 4) {
+function createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage = null, strokeSize = 4, strokeStyle = 'solid') {
     // Le rectangle est positionné dans la zone centrale de la grille (comme le cercle)
     // Centre de la colonne centrale = 130px, centre de la ligne centrale = variable selon hauteur
     const rect = document.createElement('div');
@@ -132,9 +132,18 @@ function createRectangle(cell, width, height, factors, fillColor, strokeColor, f
 
     // Ne pas mettre de bordure si strokeColor est vide
     if (strokeColor && strokeColor.trim() !== '') {
-        rect.style.borderColor = strokeColor;
-        rect.style.borderWidth = strokeSize + 'px';
-        rect.style.borderStyle = 'solid';
+        if (strokeStyle === 'blur') {
+            // Effet de bordure floue avec box-shadow
+            rect.style.border = 'none';
+            const blurRadius = Math.max(strokeSize * 2, 4); // Rayon de flou proportionnel à l'épaisseur
+            rect.style.boxShadow = `0 0 ${blurRadius}px ${strokeSize}px ${strokeColor}`;
+        } else {
+            // Bordure solide classique
+            rect.style.borderColor = strokeColor;
+            rect.style.borderWidth = strokeSize + 'px';
+            rect.style.borderStyle = strokeStyle || 'solid';
+            rect.style.boxShadow = 'none'; // S'assurer qu'il n'y a pas de box-shadow si ce n'est pas blur
+        }
     } else {
         rect.style.border = 'none';
     }
@@ -277,7 +286,7 @@ function updateLabelClasses(label, nodeId = null) {
 }
 
 // Fonction pour créer une cellule avec un tableau 3x3
-function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4, targetContainer = null) {
+function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4, strokeStyle = 'solid', targetContainer = null) {
     // Utiliser le container fourni ou le flux-diagram par défaut
     const container = targetContainer || document.getElementById('flux-diagram');
 
@@ -409,11 +418,20 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 // Bordure transparente mais présente pour l'espacement
                 circleBg.style.borderColor = strokeColor;
                 circleBg.style.borderWidth = strokeSize + 'px';
-                circleBg.style.borderStyle = 'solid';
+                circleBg.style.borderStyle = strokeStyle || 'solid';
             } else {
-                circleBg.style.borderColor = strokeColor;
-                circleBg.style.borderWidth = strokeSize + 'px';
-                circleBg.style.borderStyle = 'solid';
+                if (strokeStyle === 'blur') {
+                    // Effet de bordure floue avec box-shadow
+                    circleBg.style.border = 'none';
+                    const blurRadius = Math.max(strokeSize * 2, 4); // Rayon de flou proportionnel à l'épaisseur
+                    circleBg.style.boxShadow = `0 0 ${blurRadius}px ${strokeSize}px ${strokeColor}`;
+                } else {
+                    // Bordure solide classique
+                    circleBg.style.borderColor = strokeColor;
+                    circleBg.style.borderWidth = strokeSize + 'px';
+                    circleBg.style.borderStyle = strokeStyle || 'solid';
+                    circleBg.style.boxShadow = 'none'; // S'assurer qu'il n'y a pas de box-shadow si ce n'est pas blur
+                }
             }
         }
         // Wrapper le logo dans un span pour appliquer l'offset sans bouger le cercle
@@ -772,7 +790,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     if (rectangleOptions) {
         const { width, height, factors } = rectangleOptions;
         // Utiliser fillImage depuis le nœud racine (passé en paramètre)
-        createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage, strokeSize);
+        createRectangle(cell, width, height, factors, fillColor, strokeColor, fillImage, strokeSize, strokeStyle);
     }
 
     return cell;
@@ -1164,18 +1182,29 @@ function generateArrows() {
                     if (currentEpoch) {
                         if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass = currentEpoch.total_atmosphere_mass_kg;
                         if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
-                        if (currentEpoch.molar_mass_air !== undefined) molar_mass_air = currentEpoch.molar_mass_air;
+                        if (currentEpoch.molar_mass_air !== undefined) {
+                            molar_mass_air = currentEpoch.molar_mass_air;
+                        } else if (typeof window.calculateMolarMassAir === 'function') {
+                            // Calculer depuis les composants de l'époque
+                            molar_mass_air = window.calculateMolarMassAir(currentEpoch);
+                        }
                     }
                 }
                 
                 // Récupérer T0 si disponible globalement
-                const T0 = (typeof window.T0_num !== 'undefined') ? window.T0_num : 288;
+                const T0 = (typeof window.T0_num !== 'undefined' && window.T0_num > 0) ? window.T0_num : 288;
                 
-                const isMassive = total_mass > 2.5e19;
-                const M_avg = (molar_mass_air !== undefined) ? molar_mass_air : (isMassive ? 0.044 : 0.029);
+                // Estimation de la masse molaire moyenne (M) si toujours undefined
+                if (molar_mass_air === undefined || molar_mass_air === 0) {
+                    const isMassive = total_mass > 2.5e19;
+                    molar_mass_air = isMassive ? 0.044 : 0.029;
+                }
                 
-                const props = window.calculateAtmosphereProperties(total_mass, T0, M_avg, gravity);
-                atm_height_km = props.z_max / 1000;
+                // Vérifier que T0 est valide (> 0) avant l'appel
+                if (T0 > 0 && molar_mass_air > 0) {
+                    const props = window.calculateAtmosphereProperties(total_mass, T0, molar_mass_air, gravity);
+                    atm_height_km = props.z_max / 1000;
+                }
                 
                 // txtF est maintenant un objet avec dataId dans la config, sera mis à jour par updateFluxLabels
                 // Ne rien faire ici, updateFluxLabels s'en chargera
@@ -1886,7 +1915,8 @@ cellOrder.forEach(nodeId => {
         nodeConfig.zIndex || null, // Pass the custom z-index
         nodeConfig.logoScale || 1.4, // Pass the logo scale (default 1.4)
         nodeConfig.logoOffsetY || 0, // Pass the vertical logo offset (default 0)
-        (nodeConfig.strokeSize !== undefined && nodeConfig.strokeSize !== null) ? nodeConfig.strokeSize : 4 // Pass the border thickness (default 4px, but allow 0)
+        (nodeConfig.strokeSize !== undefined && nodeConfig.strokeSize !== null) ? nodeConfig.strokeSize : 4, // Pass the border thickness (default 4px, but allow 0)
+        nodeConfig.strokeStyle || 'solid' // Pass the stroke style (default 'solid', can be 'blur')
     );
 
     createdCells[node.id] = cell;
@@ -1998,7 +2028,8 @@ nodes.forEach(node => {
         node.zIndex || null,
         node.logoScale || 1.4,
         node.logoOffsetY || 0,
-        (node.strokeSize !== undefined && node.strokeSize !== null) ? node.strokeSize : 4 // Allow strokeSize: 0
+        (node.strokeSize !== undefined && node.strokeSize !== null) ? node.strokeSize : 4, // Allow strokeSize: 0
+        node.strokeStyle || 'solid' // Pass the stroke style (default 'solid', can be 'blur')
     );
 
     createdCells[node.id] = cell;
@@ -2330,7 +2361,10 @@ window.updateFluxLabels = function (data) {
     const detectValueType = (text) => {
         if (!text) return null;
         const textStr = String(text);
-        if (textStr.includes('W/m²') || textStr.includes('W/m2')) return 'watt_per_m2';
+        // Détecter W/m² ou MW/m² (après conversion)
+        if (textStr.includes('W/m²') || textStr.includes('W/m2') || 
+            textStr.includes('MW/m²') || textStr.includes('MW/m2')) return 'watt_per_m2';
+        // Détecter MW ou W (mais pas W/m² qui est déjà géré ci-dessus)
         if (textStr.includes('MW') || (textStr.includes(' W') && !textStr.includes('W/m²') && !textStr.includes('W/m2'))) return 'watt';
         if (textStr.includes('%')) return 'percent';
         if (textStr.includes('ppm')) return 'ppm';
@@ -2452,19 +2486,40 @@ window.updateFluxLabels = function (data) {
             // Détecter si le template contient " W" (watts) mais pas "W/m²" ou "W/m2"
             const hasWattInTemplate = (template.includes(' W') || template.includes(' W ')) && 
                                       !template.includes('W/m²') && !template.includes('W/m2');
+            // Détecter si le template contient "W/m²" ou "W/m2" (watts par m²)
+            const hasWattPerM2InTemplate = template.includes('W/m²') || template.includes('W/m2');
             
-            // Si template contient " W" et valeur >= 10^6, convertir en MW
+            // Si template contient " W" (sans /m²) et valeur >= 10^5, convertir en MW
             // Pour les très grandes valeurs (>= 10^9), garder la notation scientifique et soustraire 6 de l'exposant
-            // Pour les valeurs moyennes (10^6 à 10^9), convertir en MW sans notation scientifique
-            if (hasWattInTemplate && Math.abs(value) >= 1e6) {
+            // Pour les valeurs moyennes (10^5 à 10^9), convertir en MW sans notation scientifique
+            // Exemple: 1×10^6 W → 1.00 MW, 1×10^5 W → 0.10 MW
+            if (hasWattInTemplate && Math.abs(value) >= 1e5) {
                 if (Math.abs(value) >= 1e9) {
                     // Très grande valeur : garder notation scientifique, soustraire 6 de l'exposant
                     // Exemple: 3×10^26 W → 3×10^20 MW
                     shouldConvertWattToMW = true;
                     // On ne divise pas maintenant, on le fera lors du formatage en soustrayant 6 de l'exposant
                 } else {
-                    // Valeur moyenne : convertir en MW sans notation scientifique
-                    // Exemple: 1.76×10^6 W → 1.76 MW
+                    // Valeur moyenne (>= 10^5) : convertir en MW sans notation scientifique
+                    // Exemple: 1.76×10^6 W → 1.76 MW, 1×10^5 W → 0.10 MW
+                    valueToFormat = value / 1e6;
+                    shouldConvertWattToMW = true;
+                }
+            }
+            
+            // Si template contient "W/m²" et valeur >= 10^5, convertir en MW/m²
+            // Pour les très grandes valeurs (>= 10^9), garder la notation scientifique et soustraire 6 de l'exposant
+            // Pour les valeurs moyennes (10^5 à 10^9), convertir en MW/m² sans notation scientifique
+            // Exemple: 2×10^6 W/m² → 2.00 MW/m², 1.16×10^5 W/m² → 0.12 MW/m²
+            if (hasWattPerM2InTemplate && Math.abs(value) >= 1e5) {
+                if (Math.abs(value) >= 1e9) {
+                    // Très grande valeur : garder notation scientifique, soustraire 6 de l'exposant
+                    // Exemple: 3×10^26 W/m² → 3×10^20 MW/m²
+                    shouldConvertWattToMW = true;
+                    // On ne divise pas maintenant, on le fera lors du formatage en soustrayant 6 de l'exposant
+                } else {
+                    // Valeur moyenne (>= 10^5) : convertir en MW/m² sans notation scientifique
+                    // Exemple: 2.00×10^6 W/m² → 2.00 MW/m², 1.16×10^5 W/m² → 0.12 MW/m²
                     valueToFormat = value / 1e6;
                     shouldConvertWattToMW = true;
                 }
@@ -2555,8 +2610,12 @@ window.updateFluxLabels = function (data) {
                 if (shouldConvertPercentToPpm) {
                     result = result.replace(/%/g, 'ppm');
                 }
-                // Si conversion W -> MW, remplacer " W" par " MW" dans le template
+                // Si conversion W -> MW, remplacer "W/m²" par "MW/m²" ou " W" par " MW" dans le template
                 if (shouldConvertWattToMW) {
+                    // D'abord remplacer "W/m²" par "MW/m²" pour préserver l'unité
+                    result = result.replace(/W\/m²/g, 'MW/m²');
+                    result = result.replace(/W\/m2/g, 'MW/m2');
+                    // Ensuite remplacer " W" (avec espace) par " MW" pour les autres cas
                     result = result.replace(/\s+W\b/g, ' MW');
                 }
             } else {
@@ -2570,9 +2629,14 @@ window.updateFluxLabels = function (data) {
                 if (shouldConvertPercentToPpm) {
                     result = result + 'ppm';
                 }
-                // Si conversion W -> MW, ajouter "MW" au lieu de "W"
+                // Si conversion W -> MW, ajouter "MW" ou "MW/m²" selon le template original
                 if (shouldConvertWattToMW) {
-                    result = result + ' MW';
+                    // Vérifier si le template original contenait "W/m²" pour préserver l'unité
+                    if (template.includes('W/m²') || template.includes('W/m2')) {
+                        result = result + ' MW/m²';
+                    } else {
+                        result = result + ' MW';
+                    }
                 }
             }
         } else {
@@ -2655,8 +2719,8 @@ window.updateFluxLabels = function (data) {
             } else if (isZero) {
                 // Valeur à 0 et bouton actif : appliquer le style "zero-value" (gris)
                 label.classList.add('zero-value');
-                // Mais quand même appliquer co2-label si c'est un label CO2 (pour la couleur de base)
-                if (dataId === 'co2_percent' || dataId === 'co2_forcing_wm') {
+                // Appliquer co2-label seulement pour co2_percent (pas pour co2_forcing_wm qui utilise la couleur selon l'unité)
+                if (dataId === 'co2_percent') {
                     label.classList.add('co2-label');
                 }
             } else {
@@ -2672,9 +2736,12 @@ window.updateFluxLabels = function (data) {
                 }
                 
                 // Vérifier si c'est un label CO2 pour appliquer la classe spécifique
-                if (dataId === 'co2_percent' || dataId === 'co2_forcing_wm') {
+                // Pour co2_forcing_wm, ne jamais ajouter co2-label (utiliser uniquement la couleur selon l'unité)
+                // pour éviter que le vert écrase l'orange
+                if (dataId === 'co2_percent') {
                     label.classList.add('co2-label');
                 }
+                // co2_forcing_wm utilise uniquement la couleur selon l'unité (watt-per-m2 pour orange)
             }
         });
     };
@@ -2769,10 +2836,8 @@ window.updateFluxLabels = function (data) {
         // 🔒 CORRECTION : Utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
         if (albedo !== null && albedo !== undefined && albedo > 0) {
             albedo_num = albedo;
-            console.log(`[updateFluxLabels] Mode corps noir avec glace: albedo_num=${albedo_num.toFixed(3)} (data.albedo=${albedo})`);
         } else {
             albedo_num = 0; // Corps noir sans glace : pas d'albedo
-            console.log(`[updateFluxLabels] Mode corps noir sans glace: albedo_num=0`);
         }
         // Forcer aussi cloud_coverage à 0 en mode corps noir
         cloud_coverage_num = 0;
@@ -2781,15 +2846,11 @@ window.updateFluxLabels = function (data) {
     // Calculer les valeurs dynamiques
     // Utiliser data.albedo qui vient de la simulation (calculé avec tous les paramètres corrects)
     // Seulement recalculer si data.albedo n'est pas défini ou si on est en mode corps noir
-    console.log(`[updateFluxLabels] Albedo initial: data.albedo=${albedo}, albedo_num=${albedo_num}, hasNoAtmosphere=${hasNoAtmosphere}`);
 
     if (hasNoAtmosphere) {
         // 🔒 CORRECTION : Ne pas écraser si on a déjà utilisé data.albedo (peut avoir de la glace)
         if (albedo_num === 0 && albedo !== null && albedo !== undefined && albedo > 0) {
             albedo_num = albedo;
-            console.log(`[updateFluxLabels] Mode corps noir: utilisation de data.albedo=${albedo_num.toFixed(3)} (glace des météorites)`);
-        } else if (albedo_num === 0) {
-            console.log(`[updateFluxLabels] Mode corps noir: albedo_num=0 (pas de glace)`);
         }
     } else if (albedo_num === 0 || albedo === null || albedo === undefined) {
         // Si albedo_num est 0 ou data.albedo n'est pas défini, recalculer avec le flux géothermique
@@ -2802,10 +2863,7 @@ window.updateFluxLabels = function (data) {
         }
         if (typeof window !== 'undefined' && typeof window.calculateAlbedo === 'function') {
             albedo_num = window.calculateAlbedo(T0_num, h2o_enabled, geo_flux);
-            console.log(`[updateFluxLabels] Albedo recalculé: ${albedo_num.toFixed(3)} (T0=${T0_num.toFixed(2)}K, h2o=${h2o_enabled}, geo_flux=${geo_flux})`);
         }
-    } else {
-        console.log(`[updateFluxLabels] Utilisation de data.albedo: ${albedo_num.toFixed(3)}`);
     }
     // Sinon, utiliser data.albedo qui vient de la simulation (déjà calculé avec tous les paramètres)
 
@@ -2828,7 +2886,6 @@ window.updateFluxLabels = function (data) {
 
     // Calculer le flux réfléchi avec l'albedo (venant de data.albedo ou recalculé)
     const flux_reflected = SOLAR_FLUX_AVERAGE * albedo_num;
-    console.log(`[updateFluxLabels] Flux réfléchi: ${SOLAR_FLUX_AVERAGE.toFixed(2)} * ${albedo_num.toFixed(3)} = ${flux_reflected.toFixed(2)} W/m²`);
 
     // Calculer la couverture de glace (même logique que calculateAlbedo)
     // 🔒 CORRECTION : En mode "corps noir", on peut avoir de la glace des météorites
@@ -2838,12 +2895,10 @@ window.updateFluxLabels = function (data) {
     // 🔒 PRIORITÉ 1 : Utiliser la valeur calculée par calculateAlbedo (la plus récente et précise)
     if (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined) {
         ice_coverage = Math.min(1, Math.max(0, window.h2oIceFractionFromCalculation));
-        console.log(`[updateFluxLabels] 🔍 Utilisation de h2oIceFractionFromCalculation = ${ice_coverage.toFixed(3)} (${(ice_coverage * 100).toFixed(1)}%)`);
     } else if (hasNoAtmosphere) {
         // Corps noir sans glace calculée : pas d'albedo (pas d'atmosphère, pas d'eau)
         ice_coverage = 0;
         cloud_percent = 0;
-        console.log(`[updateFluxLabels] 🔍 Mode corps noir sans glace: ice_coverage = 0`);
     } else {
         const T_surface_C = T0_num - 273.15;
         const volcanoIceReduction = (typeof window !== 'undefined' && window.volcanoIceReduction !== undefined)
@@ -2899,7 +2954,6 @@ window.updateFluxLabels = function (data) {
     }
     
     const ice_percent = Math.round(ice_coverage * 100);
-    console.log(`[updateFluxLabels] 🧊 FIN: ice_coverage = ${ice_coverage.toFixed(3)} (${(ice_coverage * 100).toFixed(1)}%), ice_percent = ${ice_percent}%`);
 
     // Forçages radiatifs
     // Utiliser les états des boutons déjà calculés pour déterminer si les forçages sont actifs
@@ -3006,7 +3060,6 @@ window.updateFluxLabels = function (data) {
         // 🔒 CORRECTION : Corps noir peut avoir de la glace des météorites
         // Utiliser ice_coverage calculé au lieu de forcer à 0
         const ice_cov_corps_noir = Math.round(ice_coverage * 100);
-        console.log(`[updateFluxLabels] 🔍 Corps noir: utilisation de ice_coverage = ${ice_coverage.toFixed(3)}, ice_cov = ${ice_cov_corps_noir}%`);
         const components = [
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
@@ -3033,7 +3086,6 @@ window.updateFluxLabels = function (data) {
             // Pour la glace, utiliser la valeur calculée dynamiquement (ice_coverage)
             // 🔒 CORRECTION : S'assurer qu'on utilise bien la valeur calculée
             const ice_cov = Math.round(ice_coverage * 100);
-            console.log(`[updateFluxLabels] 🔍 Création albedoBreakdown: ice_coverage = ${ice_coverage.toFixed(3)}, ice_cov = ${ice_cov}%`);
             // Pour les nuages, utiliser la valeur calculée dynamiquement (cloud_percent)
             // Arrondir à un entier
             const cloud_cov = Math.round(cloud_percent);
@@ -3154,7 +3206,7 @@ window.updateFluxLabels = function (data) {
     // et chauffe bien plus que la simple somme solaire + géothermie.
     // La seule vérité est la température de surface T0 trouvée par l'équilibre radiatif.
     const CONST_STEFAN = 5.67e-8; // Renommé pour éviter conflit scope
-    const surface_flux_emitted = CONST_STEFAN * Math.pow(T0_num, 4);
+    let surface_flux_emitted = CONST_STEFAN * Math.pow(T0_num, 4);
 
     // forcing_total sera calculé plus tard avec la formule : (flux_ejected_watts - surface_flux_emitted_watts) / surfTerre
     // Initialiser à 0 pour l'instant (sera remplacé après le calcul des watts totaux)
@@ -3163,21 +3215,38 @@ window.updateFluxLabels = function (data) {
     // Albedo -> Espace2 : flux éjecté = flux sortant au sommet (résultat direct du transfert radiatif)
     let flux_ejected = total_flux > 0 ? total_flux : (surface_flux_emitted - forcing_total);
     
-    // 🔒 PATCH ESTHÉTIQUE : Si la différence en W totaux est < tolérance de convergence, utiliser la même valeur
-    // C'est justifié scientifiquement : la tolérance représente la précision des calculs
-    // Tolérance de 0.1×10^17 W (équivalent à ~0.1 W/m² × surface Terre)
-    // Calculer la différence en W totaux
-    const R = 6371000; // Rayon Terre en m
-    const SURFACE_AREA = 4 * Math.PI * Math.pow(R, 2); // ~5.1×10^14 m²
-    const w_sol = surface_flux_emitted * SURFACE_AREA;
-    const w_espace = flux_ejected * SURFACE_AREA;
-    const diff_w = Math.abs(w_sol - w_espace);
-    const tolerance_w = 0.1 * 1e17; // 0.1×10^17 W
+    // Calculer la surface de la planète (utilisée pour les conversions W/m² <-> W totaux)
+    const R = 6371000; // Rayon Terre en m (par défaut)
+    let planet_radius = R;
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch && currentEpoch.planet_radius) {
+            planet_radius = currentEpoch.planet_radius;
+        }
+    }
+    const SURFACE_AREA = 4 * Math.PI * Math.pow(planet_radius, 2); // ~5.1×10^14 m²
     
-    if (diff_w <= tolerance_w) {
-        // Différence en W totaux < tolérance : utiliser la même valeur pour les deux (confort esthétique justifié)
-        // Cela garantit un EDS nul cohérent avec la précision des calculs
-        flux_ejected = surface_flux_emitted;
+    // 🔒 CORRECTION CORPS NOIR : En Corps noir (pas d'atmosphère), le flux émis par la surface doit être égal au flux sortant
+    // et au flux entrant en équilibre radiatif : surface_flux_emitted = total_flux = solar_flux_absorbed
+    if (hasNoAtmosphere) {
+        // En Corps noir, utiliser directement solar_flux_absorbed pour garantir l'équilibre radiatif
+        surface_flux_emitted = solar_flux_absorbed;
+        flux_ejected = solar_flux_absorbed;
+    } else {
+        // 🔒 PATCH ESTHÉTIQUE : Si la différence en W totaux est < tolérance de convergence, utiliser la même valeur
+        // C'est justifié scientifiquement : la tolérance représente la précision des calculs
+        // Tolérance de 0.1×10^17 W (équivalent à ~0.1 W/m² × surface Terre)
+        // Calculer la différence en W totaux
+        const w_sol = surface_flux_emitted * SURFACE_AREA;
+        const w_espace = flux_ejected * SURFACE_AREA;
+        const diff_w = Math.abs(w_sol - w_espace);
+        const tolerance_w = 0.1 * 1e17; // 0.1×10^17 W
+        
+        if (diff_w <= tolerance_w) {
+            // Différence en W totaux < tolérance : utiliser la même valeur pour les deux (confort esthétique justifié)
+            // Cela garantit un EDS nul cohérent avec la précision des calculs
+            flux_ejected = surface_flux_emitted;
+        }
     }
     
     // Séparer les W/m² et les watts totaux
@@ -3328,7 +3397,7 @@ window.updateFluxLabels = function (data) {
     // Mettre à jour l'épaisseur de l'atmosphère dans le label de l'arc Terre->Albedo
     // Utiliser calculateAtmosphereProperties pour obtenir la vraie hauteur physique
     let atm_height_km = 0;
-    if (!hasNoAtmosphere && typeof window.calculateAtmosphereProperties === 'function') {
+    if (!hasNoAtmosphere && typeof window.calculateAtmosphereProperties === 'function' && T0_num > 0) {
         // Récupérer la masse atmosphérique et la gravité de l'époque
         let total_mass = 0;
         let gravity = 9.81;
@@ -3339,17 +3408,27 @@ window.updateFluxLabels = function (data) {
             if (currentEpoch) {
                 if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass = currentEpoch.total_atmosphere_mass_kg;
                 if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
-                if (currentEpoch.molar_mass_air !== undefined) molar_mass_air = currentEpoch.molar_mass_air;
+                if (currentEpoch.molar_mass_air !== undefined) {
+                    molar_mass_air = currentEpoch.molar_mass_air;
+                } else if (typeof window.calculateMolarMassAir === 'function') {
+                    // Calculer depuis les composants de l'époque
+                    molar_mass_air = window.calculateMolarMassAir(currentEpoch);
+                }
             }
         }
         
-        // Estimation de la masse molaire moyenne (M)
-        const isMassive = total_mass > 2.5e19;
-        const M_avg = (molar_mass_air !== undefined) ? molar_mass_air : (isMassive ? 0.044 : 0.029);
+        // Estimation de la masse molaire moyenne (M) si toujours undefined
+        if (molar_mass_air === undefined || molar_mass_air === 0) {
+            const isMassive = total_mass > 2.5e19;
+            molar_mass_air = isMassive ? 0.044 : 0.029;
+        }
         
-        // On passe T0_num (Température surface), M_avg et gravity pour un calcul physique de H
-        const props = window.calculateAtmosphereProperties(total_mass, T0_num, M_avg, gravity);
-        atm_height_km = props.z_max / 1000; // Conversion m -> km
+        // On passe T0_num (Température surface), molar_mass_air et gravity pour un calcul physique de H
+        // Vérifier que T0_num est valide (> 0) avant l'appel
+        if (T0_num > 0 && molar_mass_air > 0) {
+            const props = window.calculateAtmosphereProperties(total_mass, T0_num, molar_mass_air, gravity);
+            atm_height_km = props.z_max / 1000; // Conversion m -> km
+        }
     }
     
     // Mettre à jour le label via updateLabel avec le dataId (évite les doublons)

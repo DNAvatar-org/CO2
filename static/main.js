@@ -1388,21 +1388,6 @@ window.updateDisplay = function updateDisplay(data) {
             }
         }
 
-        console.log('=== FLUX DIAGRAM VALUES ===');
-        console.log('Époque:', epochName);
-        console.log('Date:', epochDate);
-        console.log('CO2:', data.co2_ppm !== undefined ? `${Math.round(data.co2_ppm)} ppm` : '--');
-        console.log('H2O Vapeur:', data.h2o_vapor_percent !== undefined ? `${data.h2o_vapor_percent.toFixed(1)}%` : '--');
-        console.log('CH4:', data.ch4_ppm !== undefined ? `${Math.round(data.ch4_ppm)} ppm` : '--');
-        console.log('---');
-        console.log('Forcing CO2:', data.forcing_CO2 !== undefined ? `${data.forcing_CO2.toFixed(2)} W/m²` : '--');
-        console.log('Forcing H2O:', data.forcing_H2O !== undefined ? `${data.forcing_H2O.toFixed(2)} W/m²` : '--');
-        console.log('Forcing CH4:', data.forcing_CH4 !== undefined ? `${data.forcing_CH4.toFixed(2)} W/m²` : '--');
-        console.log('Forcing Albedo:', data.forcing_Albedo !== undefined ? `${data.forcing_Albedo.toFixed(2)} W/m²` : '--');
-        if (data.forcing_Albedo < 0 && data.temp_surface > 373) {
-            console.log('  ℹ️ Note: Négatif car les nuages refroidissent par rapport au magma sombre (Albédo Ref < Actuel)');
-        }
-        console.log('Forcing Total:', data.forcing !== undefined ? `${data.forcing.toFixed(2)} W/m²` : '--');
 
         // --- LOG ATMOSPHERE & TROPOPAUSE ---
         if (typeof window !== 'undefined') {
@@ -1452,30 +1437,12 @@ window.updateDisplay = function updateDisplay(data) {
 
         if (flux_top_real !== null) {
             const eds_real = flux_surface_real - flux_top_real;
-            console.log('---');
-            console.log('🌡️ BILAN RADIATIF (EDS RÉEL) 🌡️');
-            console.log(`Flux Surface (σT⁴): ${flux_surface_real.toFixed(2)} W/m² (${(flux_surface_real / 1e6).toFixed(2)} MW/m²)`);
-            console.log(`Flux Sortant (Top): ${flux_top_real.toFixed(2)} W/m² (${(flux_top_real / 1e6).toFixed(2)} MW/m²)`);
-            console.log(`Effet de Serre (EDS): ${eds_real.toFixed(2)} W/m² (${(eds_real / 1e6).toFixed(4)} MW/m²)`);
-            console.log(`Part piégée: ${((eds_real / flux_surface_real) * 100).toFixed(2)}%`);
-        } else {
-            console.log('---');
-            console.log('EDS Réel: Données de flux sortant non disponibles');
         }
-
-        console.log('---');
-
-        // Section Albedo avec détails
-        console.log('Albedo:', data.albedo !== undefined ? `${(data.albedo * 100).toFixed(1)}%` : '--');
 
         // Récupérer les données d'albedo détaillées depuis l'époque courante
         let albedoComponents = [];
-        console.log('[updateDisplay] 🔍 DEBUG ALBEDO COMPONENTS - Début');
-        console.log('[updateDisplay] 🔍 currentEpochName:', typeof window !== 'undefined' ? window.currentEpochName : 'window undefined');
-        console.log('[updateDisplay] 🔍 getGeologicalPeriodByName disponible:', typeof window !== 'undefined' && typeof window.getGeologicalPeriodByName === 'function');
         if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-            console.log('[updateDisplay] 🔍 currentEpoch:', currentEpoch ? 'trouvé' : 'non trouvé');
             if (currentEpoch) {
                 const cloud_cov = data.cloud_coverage !== undefined ? Math.round(data.cloud_coverage * 100) : 0;
                 const magma_cov = Math.round((currentEpoch.magma_coverage || 0) * 100);
@@ -1493,22 +1460,16 @@ window.updateDisplay = function updateDisplay(data) {
 
                 // Récupérer la glace calculée depuis calculateWaterPartition (si disponible)
                 let ice_coverage = 0;
-                console.log('[updateDisplay] 🔍 DEBUG GLACE - Début calcul ice_coverage');
-                console.log('[updateDisplay] 🔍 h2oIceFractionFromCalculation:', typeof window !== 'undefined' ? window.h2oIceFractionFromCalculation : 'window undefined');
-                console.log('[updateDisplay] 🔍 temp_surface:', data.temp_surface);
-                console.log('[updateDisplay] 🔍 calculateWaterPartition disponible:', typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function');
 
                 // 🔒 PRIORITÉ 1 : Utiliser la valeur calculée par calculateAlbedo (la plus récente et précise)
                 if (typeof window !== 'undefined' && window.h2oIceFractionFromCalculation !== undefined) {
                     ice_coverage = Math.min(1, Math.max(0, window.h2oIceFractionFromCalculation));
-                    console.log('[updateDisplay] ✅ PRIORITÉ 1: Utilisation de h2oIceFractionFromCalculation =', ice_coverage, '(', (ice_coverage * 100).toFixed(1), '%)');
                 }
                 // 🔒 PRIORITÉ 2 : Recalculer avec calculateWaterPartition si pas de valeur disponible
                 else if (data.temp_surface !== undefined && typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
                     const h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
                     const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
                     const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
-                    console.log('[updateDisplay] 🔍 PRIORITÉ 2: h2o_vapor_percent =', h2o_vapor_percent, '%, h2o_from_meteorites =', h2o_from_meteorites, '%, h2o_total_percent =', h2o_total_percent, '%');
                     if (h2o_total_percent > 0) {
                         const h2o_total_fraction = h2o_total_percent / 100;
                         // Récupérer les paramètres de l'époque courante et calculer les valeurs dérivées
@@ -1530,15 +1491,12 @@ window.updateDisplay = function updateDisplay(data) {
                                 };
                             }
                         }
-                        console.log('[updateDisplay] 🔍 Appel calculateWaterPartition avec T=', data.temp_surface, 'K, h2o_total_fraction=', h2o_total_fraction);
                         const waterPartition = window.calculateWaterPartition(data.temp_surface, h2o_total_fraction, epochParams);
                         ice_coverage = waterPartition.ice_fraction || 0;
-                        console.log('[updateDisplay] ✅ PRIORITÉ 2: Recalcul avec calculateWaterPartition =', ice_coverage, '(', (ice_coverage * 100).toFixed(1), '%)');
                         // Mettre à jour pour les prochains appels
                         window.h2oIceFractionFromCalculation = ice_coverage;
                     } else {
                         // Même sans eau, appeler calculateWaterPartition pour obtenir 0 partout
-                        console.log('[updateDisplay] 🔍 PRIORITÉ 2: h2o_total_percent = 0, appel calculateWaterPartition pour obtenir 0 partout');
                         const h2o_total_fraction = 0;
                         let epochParams = {};
                         if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
@@ -1561,12 +1519,10 @@ window.updateDisplay = function updateDisplay(data) {
                         const waterPartition = window.calculateWaterPartition(data.temp_surface, h2o_total_fraction, epochParams);
                         ice_coverage = waterPartition.ice_fraction || 0;
                         window.h2oIceFractionFromCalculation = ice_coverage;
-                        console.log('[updateDisplay] ✅ PRIORITÉ 2: calculateWaterPartition avec 0% eau =', ice_coverage, '(', (ice_coverage * 100).toFixed(1), '%)');
                     }
                 }
                 // 🔒 PRIORITÉ 3 : Calcul classique basé sur la température (fallback)
                 else if (data.temp_surface !== undefined) {
-                    console.log('[updateDisplay] 🔍 PRIORITÉ 3: Calcul classique basé sur température');
                     // Calcul classique de la glace basé sur la température (si pas de calcul H2O)
                     const T_surface_C = data.temp_surface - 273.15;
                     if (T_surface_C < 0 && T_surface_C > -100) {
@@ -1581,15 +1537,11 @@ window.updateDisplay = function updateDisplay(data) {
                         const geo_flux = currentEpoch.geothermal_flux || 0.087;
                         const geo_flux_reduction = Math.min(1, geo_flux / 10);
                         ice_coverage = Math.max(0, ice_coverage * (1 - geo_flux_reduction));
-                        console.log('[updateDisplay] ✅ PRIORITÉ 3: Calcul classique =', ice_coverage, '(', (ice_coverage * 100).toFixed(1), '%)');
-                    } else {
-                        console.log('[updateDisplay] ⚠️ PRIORITÉ 3: Température hors limites pour calcul classique');
+                        } else {
                     }
                 } else {
-                    console.log('[updateDisplay] ⚠️ Aucune méthode disponible pour calculer la glace');
                 }
                 ice_cov = Math.round(ice_coverage * 100);
-                console.log('[updateDisplay] 🧊 FIN: ice_coverage =', ice_coverage, '(', (ice_coverage * 100).toFixed(1), '%), ice_cov =', ice_cov, '%');
 
                 const cloud_alb = (currentEpoch.cloud_albedo || 0.40).toFixed(2);
                 const magma_alb = (currentEpoch.magma_albedo || 0.05).toFixed(2);
@@ -1608,30 +1560,8 @@ window.updateDisplay = function updateDisplay(data) {
                     { emoji: desert_icon, coverage: desert_cov, albedo: desert_alb },
                     { emoji: LOGOS.ICE || '🧊', coverage: ice_cov, albedo: ice_alb }
                 ];
-                console.log('[updateDisplay] ✅ albedoComponents rempli avec', albedoComponents.length, 'composantes');
-                console.log('[updateDisplay] 🔍 ice_cov dans albedoComponents:', ice_cov, '%');
-            } else {
-                console.log('[updateDisplay] ⚠️ currentEpoch non trouvé, albedoComponents reste vide');
             }
-        } else {
-            console.log('[updateDisplay] ⚠️ Conditions non remplies pour remplir albedoComponents');
         }
-
-        // Afficher les composantes d'albedo
-        console.log('[updateDisplay] 🔍 Affichage albedoComponents: length =', albedoComponents.length);
-        if (albedoComponents.length > 0) {
-            albedoComponents.forEach(comp => {
-                console.log(`${comp.emoji} ${comp.coverage}% x${comp.albedo}`);
-            });
-        } else {
-            // Fallback si pas d'époque
-            console.log('[updateDisplay] ⚠️ FALLBACK: albedoComponents vide, utilisation du fallback');
-        }
-
-        console.log('---');
-        console.log('Temp Surface:', data.temp_surface !== undefined ? `${(data.temp_surface - 273.15).toFixed(1)}°C (${data.temp_surface.toFixed(1)}K)` : '--');
-        console.log('Temp Effective:', data.temp_eff !== undefined ? `${(data.temp_eff - 273.15).toFixed(1)}°C (${data.temp_eff.toFixed(1)}K)` : '--');
-        console.log('===========================');
     }
 }
 
@@ -2092,15 +2022,27 @@ function setEpoch(epochName) {
         return; // Arrêter le calcul
     }
 
+    // Calculer molar_mass_air depuis les composants de l'époque si non défini
+    let molar_mass_air = epoch.molar_mass_air;
+    if (molar_mass_air === undefined && typeof window !== 'undefined' && typeof window.calculateMolarMassAir === 'function') {
+        molar_mass_air = window.calculateMolarMassAir(epoch);
+    }
+    // Fallback si toujours undefined ou 0
+    if (molar_mass_air === undefined || molar_mass_air === 0) {
+        // Estimation basée sur la masse atmosphérique (Hadéen = CO2 dense, moderne = N2/O2)
+        const isMassive = total_atmosphere_mass_kg > 2.5e19;
+        molar_mass_air = isMassive ? 0.044 : 0.029;
+    }
+
     // Convertir co2_kg en fraction molaire puis en ppm
     let defaultCO2_ppm = 0;
     if (!isCorpsNoir && epoch.co2_kg !== undefined && epoch.co2_kg > 0) {
         if (typeof window !== 'undefined' && typeof window.co2KgToFraction === 'function') {
-            const co2_fraction = window.co2KgToFraction(epoch.co2_kg, total_atmosphere_mass_kg, epoch.molar_mass_air);
+            const co2_fraction = window.co2KgToFraction(epoch.co2_kg, total_atmosphere_mass_kg, molar_mass_air);
             defaultCO2_ppm = co2_fraction * 1e6; // Convertir fraction en ppm
         } else {
             // Fallback : approximation simple
-            const MOLAR_MASS_AIR = epoch.molar_mass_air || 0.029;
+            const MOLAR_MASS_AIR = molar_mass_air || 0.029;
             const moles_CO2 = epoch.co2_kg / 0.044; // MOLAR_MASS_CO2
             const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
             defaultCO2_ppm = (moles_CO2 / moles_total) * 1e6;
@@ -2112,12 +2054,10 @@ function setEpoch(epochName) {
     if (typeof window !== 'undefined' && window.maximiseData) {
         const savedCO2 = (typeof window.savedCO2 !== 'undefined') ? window.savedCO2 : 0;
         plotData.co2_ppm = Math.max(savedCO2, defaultCO2_ppm);
-        console.log(`[setEpoch] maximiseData CO2: sauvegardé=${savedCO2.toFixed(1)}ppm, défaut=${defaultCO2_ppm.toFixed(1)}ppm, max=${plotData.co2_ppm.toFixed(1)}ppm`);
     } else {
         // Comportement normal : utiliser la config de l'époque
         plotData.co2_ppm = defaultCO2_ppm;
     }
-    console.log(`[setEpoch] CO2: default=${defaultCO2_ppm}, plotData=${plotData.co2_ppm}`);
     const co2_fraction = plotData.co2_ppm * 1e-6;
     currentState = 3; // Utiliser state 3 comme base pour les valeurs personnalisées
 
@@ -2173,7 +2113,6 @@ function setEpoch(epochName) {
             const fraction_molaire = mol_h2o / (mol_h2o + mol_rest);
             h2o_default = fraction_molaire * 100; // En pourcent
 
-            console.log(`[setEpoch] Calcul H2O depuis kg: ${mass_h2o.toExponential(2)}kg / ${mass_total.toExponential(2)}kg → ${h2o_default.toFixed(1)}% vol`);
         }
 
         if (typeof window !== 'undefined' && window.maximiseData) {
@@ -2185,8 +2124,6 @@ function setEpoch(epochName) {
             window.h2oVaporPercent = h2o_default;
             window.h2oTotalFromMeteorites = Math.max(0, Math.min(100 - h2o_default, h2o_total_max - h2o_default));
 
-            console.log(`[setEpoch] maximiseData H2O: sauvegardé=${savedH2O.toFixed(1)}%, défaut=${h2o_default.toFixed(1)}%, max=${h2o_total_max.toFixed(1)}%`);
-            console.log(`[setEpoch] Résultat: base=${window.h2oVaporPercent.toFixed(1)}%, météorites=${window.h2oTotalFromMeteorites.toFixed(1)}%, total=${(window.h2oVaporPercent + window.h2oTotalFromMeteorites).toFixed(1)}%`);
 
             // Réinitialiser le flag après utilisation
             window.maximiseData = false;
@@ -2204,9 +2141,7 @@ function setEpoch(epochName) {
                 if (h2o_total > 100) {
                     // Ajuster l'eau des météorites pour que la somme ne dépasse pas 100%
                     window.h2oTotalFromMeteorites = Math.max(0, 100 - h2o_base);
-                    console.log(`[setEpoch] Ajustement eau météorites: ${h2o_meteorites.toFixed(1)}% → ${window.h2oTotalFromMeteorites.toFixed(1)}% (base: ${h2o_base.toFixed(1)}%, total: ${(h2o_base + window.h2oTotalFromMeteorites).toFixed(1)}%)`);
                 } else {
-                    console.log(`[setEpoch] Eau conservée: base=${h2o_base.toFixed(1)}%, météorites=${h2o_meteorites.toFixed(1)}%, total=${h2o_total.toFixed(1)}%`);
                 }
             } else if (previousEpoch !== 'Corps noir') {
                 // Si on change d'époque normale (pas depuis Corps noir), réinitialiser l'eau des météorites
@@ -2266,11 +2201,11 @@ function setEpoch(epochName) {
     let defaultCH4_ppm = 0;
     if (!isCorpsNoir && epoch.ch4_kg !== undefined && epoch.ch4_kg > 0) {
         if (typeof window !== 'undefined' && typeof window.ch4KgToFraction === 'function') {
-            const ch4_fraction = window.ch4KgToFraction(epoch.ch4_kg, total_atmosphere_mass_kg, epoch.molar_mass_air);
+            const ch4_fraction = window.ch4KgToFraction(epoch.ch4_kg, total_atmosphere_mass_kg, molar_mass_air);
             defaultCH4_ppm = ch4_fraction * 1e6; // Convertir fraction en ppm
         } else {
             // Fallback : approximation simple
-            const MOLAR_MASS_AIR = epoch.molar_mass_air || 0.029;
+            const MOLAR_MASS_AIR = molar_mass_air || 0.029;
             const moles_CH4 = epoch.ch4_kg / 0.016; // MOLAR_MASS_CH4
             const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
             defaultCH4_ppm = (moles_CH4 / moles_total) * 1e6;
@@ -2282,12 +2217,10 @@ function setEpoch(epochName) {
     if (typeof window !== 'undefined' && window.maximiseData) {
         const savedCH4 = (typeof window.savedCH4 !== 'undefined') ? window.savedCH4 : 0;
         plotData.ch4_ppm = Math.max(savedCH4, defaultCH4_ppm);
-        console.log(`[setEpoch] maximiseData CH4: sauvegardé=${savedCH4.toFixed(1)}ppm, défaut=${defaultCH4_ppm.toFixed(1)}ppm, max=${plotData.ch4_ppm.toFixed(1)}ppm`);
     } else {
         // Comportement normal : utiliser la config de l'époque
         plotData.ch4_ppm = defaultCH4_ppm;
     }
-    console.log(`[setEpoch] CH4: default=${defaultCH4_ppm}, plotData=${plotData.ch4_ppm}, enabled=${!isCorpsNoir && (defaultCH4_ppm > 0)}`);
     // Activer CH4 si la concentration est > 0
     if (typeof window.methaneEnabled !== 'undefined') {
         window.methaneEnabled = !isCorpsNoir && (defaultCH4_ppm > 0);
@@ -2477,7 +2410,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 const newH2O = Math.min(100, currentH2O + 5); // +5% d'eau totale par météorite, max 100%
                 window.h2oTotalFromMeteorites = newH2O;
 
-                console.log(`[Météorite glace] Eau totale: ${currentH2O.toFixed(1)}% → ${newH2O.toFixed(1)}%`);
 
                 // 🔒 FORCER le recalcul en réinitialisant la valeur mise en cache
                 // Sinon, calculateAlbedo réutilise l'ancienne valeur de h2oIceFractionFromCalculation
@@ -2552,7 +2484,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     // Sauvegarder CH4
                     window.savedCH4 = (typeof plotData !== 'undefined' && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
 
-                    console.log(`[big_impact] Sauvegarde: H2O=${window.savedH2O.toFixed(1)}%, CO2=${window.savedCO2.toFixed(1)}ppm, CH4=${window.savedCH4.toFixed(1)}ppm`);
 
                     // Flag pour maximiser les données
                     window.maximiseData = true;
@@ -2594,7 +2525,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 if (nextYears <= hadeanEnd) {
                     // On arrive à l'Archéen !
-                    console.log('[Hadéen] Fin de l\'époque atteinte, passage à l\'Archéen');
                     if (typeof window.setEpoch === 'function') {
                         window.setEpoch('Archéen');
                     }
@@ -2626,7 +2556,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 const magmaEnd = 0.0;
                 const currentMagma = (1 - progress) * magmaStart + progress * magmaEnd;
 
-                console.log(`[Hadéen] Avance +50Ma. Temps: ${formatYears(nextYears)}. Progress: ${(progress * 100).toFixed(1)}%. Flux: ${currentFlux.toExponential(2)} W/m². Magma: ${(currentMagma * 100).toFixed(1)}%`);
 
                 // Mettre à jour les paramètres de l'époque en cours (modification dynamique)
                 if (typeof window.configOrganigramme !== 'undefined') {
@@ -2688,7 +2617,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 const newH2O = Math.min(100, currentH2O + 2); // +2% d'eau totale par apport
                 window.h2oTotalFromMeteorites = newH2O;
 
-                console.log(`[Hadéen - Apport eau] Eau totale: ${currentH2O.toFixed(1)}% → ${newH2O.toFixed(1)}%`);
 
                 // Forcer le recalcul
                 if (typeof window !== 'undefined') {
