@@ -121,17 +121,17 @@ const nodes = [
 
     { id: 'espace1', logo: '🛰', logoScale: 0.5, x: centerX + 150, y: centerY - 170, radius: 50, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null, zIndex: 14 },
 
-    { id: 'albedo', logo: LOGOS.ALBEDO, x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
+    { id: 'albedo', logo: '', planetEffect: false, x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
 
     {
         id: 'noyau',
-        logo: '🌕',
+        logo: '',//'🌕',
         x: centerX - 0.2,
         y: earthCenterY - 0.1,
         radius: 30,
         fillColor: 'rgba(255, 69, 0, 0)',
-        strokeSize: 1,
-        strokeColor: '#ff5500',
+        strokeSize: 0,
+        strokeColor: 'rgba(255, 69, 0, 0)',//'#ff5500',
         left: [],
         right: [],
         top: [],
@@ -151,7 +151,7 @@ const nodes = [
                 epochName: 'Hadéen',
                 numCircles: 6,
                 maxRadius: 100,
-                strokeSize: 3,
+                strokeSize: 1,
                 openingAngle: 0,
                 rotation: 0,
                 color: '#ff9800'
@@ -160,7 +160,7 @@ const nodes = [
                 epochName: 'Archéen',
                 numCircles: 6,
                 maxRadius: 70,
-                strokeSize: 2,
+                strokeSize: 1,
                 openingAngle: 0,
                 rotation: 0,
                 color: '#ff9800'
@@ -169,7 +169,7 @@ const nodes = [
                 epochName: 'Protérozoïque',
                 numCircles: 3,
                 maxRadius: 70,
-                strokeSize: 2,
+                strokeSize: 1,
                 openingAngle: 0,
                 rotation: 0,
                 color: '#ff9800'
@@ -178,7 +178,7 @@ const nodes = [
                 epochName: 'Mésozoïque',
                 numCircles: 2,
                 maxRadius: 50,
-                strokeSize: 2,
+                strokeSize: 1,
                 openingAngle: 0,
                 rotation: 0,
                 color: '#ff9800'
@@ -196,15 +196,21 @@ const nodes = [
         epoch: [
             {
                 epochName: 'Corps noir',
-                logo: 'fonts/pics/corps_noir.png',
+                logo: 'fonts/pics/text_noir.png',//'fonts/pics/corps_noir.png',
+                planetEffect: true,
+                luxSaturation: 1.0,
+                lightDistance: 7,
                 radius: radiusTerre * 0.8,
-                fillColor: 'rgba(0, 0, 0, 0.3)',
+                fillColor: 'rgba(0, 0, 0, 0)',
                 strokeColor: '#000000',
                 strokeSize: 1
             },
             {
                 epochName: 'Hadéen',
-                logo: 'fonts/pics/hadeen.png',
+                logo: 'fonts/pics/text_hadeen.png',
+                planetEffect: true,
+                luxSaturation: 3.0,
+                lightDistance: 0, // 0 = éclairage interne (PointLight au centre)
                 radius: radiusTerre * 1.1,
                 fillColor: 'rgba(255, 69, 0, 0.3)',
                 strokeColor: '#ff4500',
@@ -212,11 +218,12 @@ const nodes = [
             },
             {
                 epochName: 'Archéen',
-                logo: 'fonts/pics/archeen.png',
+                logo: 'fonts/pics/text_archeen.png',
                 radius: radiusTerre,
                 fillColor: 'rgba(255, 140, 0, 0.3)', // Orange/jaune : début de l'oxygène mais encore réductrice
                 strokeColor: '#ff8c00',
-                strokeSize: 1
+                strokeSize: 1,
+                planetEffect: true // Activer l'effet planète avec rotation lente
             },
             {
                 epochName: 'Protérozoïque',
@@ -252,11 +259,12 @@ const nodes = [
             },
             {
                 epochName: 'Aujourd\'hui',
-                logo: '🌏',
+                logo: 'fonts/pics/text_today.png',
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 200, 255, 0.3)',
                 strokeColor: '#00eeff',
-                strokeSize: 1
+                strokeSize: 1,
+                planetEffect: true // Activer l'effet planète avec rotation lente
             }
         ],
         left: [],
@@ -266,7 +274,7 @@ const nodes = [
         tooltip: 'Terre',
         radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' },
         zIndex: 15,
-        logoScale: 0.95,
+        logoScale: 0.9,
         logoOffsetY: 7
     },
 
@@ -290,7 +298,7 @@ const arcs = [
     { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_average_wm' }, txtF:  { text: '0%', dataId: 'passing_albedo_percent' }} },
     { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: [ { text: '0×10<sup><b>17</b></sup> W', dataId: 'solar_flux_absorbed_watts' }, { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'solar_flux_absorbed_wm' } ] } },
     { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' } },
-    { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'core_flux_wm' }, txtF: '' } },
+    { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'core_flux_wm' }, txtF: '' }, color: '#ff0000' },
     { from: 'terre', to: 'albedo', zIndex: 22, label: { name: { text: '0×10<sup><b>17</b></sup> W', dataId: 'surface_flux_emitted_watts' }, txtF: { text: '0 km', dataId: 'atm_height_km' }, txtD: { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'surface_flux_emitted_wm' } }, color: 'red' },//tout doit etre retourné
     { from: 'albedo', to: 'espace2', zIndex: 22, label: { name: { text: '0×10<sup><b>17</b></sup> W', dataId: 'flux_ejected_watts' } }, color: '#ff5500' },
     { from: 'reemis', to: 'terre', zIndex: 26, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'forcing_total' }, txtD: '' }, color: '#ff0000' },
@@ -312,8 +320,8 @@ const timeline = [
         solar_intensity: 0.70,
         core_temperature: 0, // Pas de noyau (K)
         geothermal_diffusion_factor: 0.0, // Facteur de diffusion du noyau vers la surface (0-1) - Corps noir : pas de noyau
-        planet_radius: 6371000, // Rayon de la planète en mètres (Terre : 6371 km)
-        gravity: 9.81, // Gravité en m/s²
+        planet_radius: 6371000*0.8, // Rayon de la planète en mètres (Terre : 6371 km)
+        gravity: 8.3, // Gravité en m/s²
         total_atmosphere_mass_kg: 0, // Pas d'atmosphère
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         // Note: geothermal_flux sera calculé à partir de core_temperature et geothermal_diffusion_factor
@@ -359,8 +367,8 @@ const timeline = [
         // Flux géothermique colossal (2 000 000 W/m²) pour maintenir la surface en fusion (~2400K)
         // Correspond à la phase immédiate post-impact (océan de magma rayonnant)
         geothermal_flux: 2000000, 
-        planet_radius: 6371000, // Rayon de la planète en mètres
-        gravity: 9.81, // Gravité en m/s²
+        planet_radius: 6371000*1.1, // Rayon de la planète en mètres
+        gravity: 10.3, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         total_atmosphere_mass_kg: 5.3e20, // Atmosphère très dense (~100 bar, principalement CO2/H2O)
         // Note: geothermal_flux = core_temperature * geothermal_diffusion_factor * 0.00457

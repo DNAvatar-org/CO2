@@ -62,10 +62,12 @@
     /* Pas de z-index : l'ordre DOM détermine la superposition */
     cursor: pointer;
     transition: transform 0.2s ease;
-    /* Effets visuels supplémentaires */
+    /* Effets visuels supplémentaires - box-shadow avec inset crée un effet de pulse/respiration */
+    /* Commenté temporairement car crée un effet bleuté qui pulse à toutes les époques
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(2px);
-    /* Léger flou pour l'effet verre */
+    */
+    /* Léger flou pour l'effet verre - désactivé pour éviter l'effet de pulse */
 }
 
 /* Effet de trou transparent pour les nœuds espace */
@@ -510,5 +512,28 @@ body.no-blur .flux-sphere {
 }
 
 /* 🔒 Tooltips gérés par tooltips.js (styles injectés dynamiquement) */
+
+/* ==========================================================================
+   Animation de pulse/respiration pour sphère (commenté - joli effet à garder sous le coude)
+   ========================================================================== */
+/* 
+Effet de pulse/respiration sur les sphères de radiation - très joli, comme si ça respirait
+Peut être réactivé plus tard avec une autre couleur ou pour d'autres époques
+
+.flux-sphere {
+    animation: sphere-pulse 3s ease-in-out infinite;
+}
+
+@keyframes sphere-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+}
+*/
 
 

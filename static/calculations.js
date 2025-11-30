@@ -842,7 +842,11 @@ function logCalculationPhase(phase, data) {
         Albedo: albedo_active ? 'ON' : 'OFF'
     };
 
-    console.log(`[PHASE: ${phase}] États: CO2=${states.CO2}, H2O=${states.H2O}, CH4=${states.CH4}, Albedo=${states.Albedo}`, data || '');
+    // Log seulement pour les phases importantes (réduire le bruit)
+    const importantPhases = ['SIMULATION START', 'DICHOTOMIE START', 'CALCULATION COMPLETE', 'CONVERGENCE'];
+    if (importantPhases.some(imp => phase.includes(imp))) {
+        console.log(`[PHASE: ${phase}] États: CO2=${states.CO2}, H2O=${states.H2O}, CH4=${states.CH4}, Albedo=${states.Albedo}`, data || '');
+    }
 }
 
 // Exposer globalement pour utilisation dans main.js

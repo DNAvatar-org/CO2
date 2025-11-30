@@ -361,6 +361,9 @@ let timelineLastUpdate = performance.now();
 const TIMELINE_UPDATE_INTERVAL = 1000; // Mise à jour toutes les 1000ms (1 seconde = 10 ans) - UNIQUEMENT si pas de calcul en cours
 let currentEpochStartYears = null; // Stocker le début de l'époque actuelle pour calculer le delta
 
+// Variable globale pour le temps écoulé dans l'époque (commence toujours à 0 ans)
+window.infoTimeYears = 0; // Temps écoulé depuis le début de l'époque (en années)
+
 function updateTimeline() {
     // Mettre à jour l'affichage (toujours, même si timelineRunning = false)
     const timelineDisplay = document.getElementById('timeline-display');
@@ -381,25 +384,41 @@ function updateTimeline() {
     }
 
     // Mettre à jour l'horloge dans la zone horloge
-    // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
-    if (infoTimeDisplay && currentEpochStartYears !== null) {
-        // Calculer le delta depuis le début de l'époque
-        // 🔒 Utiliser Math.abs pour afficher le delta de temps écoulé, que l'on avance ou recule dans le temps
-        // (car timelineFrame décrémente pour avancer vers le présent)
-        const deltaYears = Math.abs(years - currentEpochStartYears);
-        // Toujours afficher en dizaines d'années (jamais millions/milliards)
-        // Si le delta est très grand (millions d'années), afficher en Ma
+    // Pour Hadéen, utiliser window.infoTimeYears (commence à 0 ans)
+    // Pour les autres époques, afficher le delta depuis le début de l'époque
+    if (infoTimeDisplay) {
         let newText = '';
-        if (deltaYears >= 1e6) {
-            // Afficher en Ma si > 1 million
-            const deltaMa = (deltaYears / 1e6).toFixed(1).replace(/\.?0+$/, '');
-            newText = `+${deltaMa} Ma`;
-        } else {
-            const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
-            newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
+        const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
+        
+        if (currentEpoch === 'Hadéen') {
+            // Pour Hadéen, utiliser window.infoTimeYears (commence à 0 ans)
+            if (window.infoTimeYears >= 1e6) {
+                // Afficher en Ma si > 1 million
+                const deltaMa = (window.infoTimeYears / 1e6).toFixed(1).replace(/\.?0+$/, '');
+                newText = `+${deltaMa} Ma`;
+            } else {
+                const deltaInTens = Math.floor(window.infoTimeYears / 10) * 10; // Arrondir à la dizaine
+                newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
+            }
+        } else if (currentEpochStartYears !== null) {
+            // Pour les autres époques, calculer le delta depuis le début de l'époque
+            // 🔒 Utiliser Math.abs pour afficher le delta de temps écoulé, que l'on avance ou recule dans le temps
+            // (car timelineFrame décrémente pour avancer vers le présent)
+            const deltaYears = Math.abs(years - currentEpochStartYears);
+            // Toujours afficher en dizaines d'années (jamais millions/milliards)
+            // Si le delta est très grand (millions d'années), afficher en Ma
+            if (deltaYears >= 1e6) {
+                // Afficher en Ma si > 1 million
+                const deltaMa = (deltaYears / 1e6).toFixed(1).replace(/\.?0+$/, '');
+                newText = `+${deltaMa} Ma`;
+            } else {
+                const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
+                newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
+            }
         }
+        
         // Ne modifier le texte que s'il a changé pour éviter le clignotement
-        if (infoTimeDisplay.textContent !== newText) {
+        if (newText && infoTimeDisplay.textContent !== newText) {
             infoTimeDisplay.textContent = newText;
         }
     }
@@ -1912,6 +1931,14 @@ function setEpoch(epochName) {
                 });
                 
                 oldCell.remove();
+                
+                // Pour Hadéen, calculer le logo dynamique selon infoTimeYears
+                let logoPath = epochConfig.logo;
+                if (epochName === 'Hadéen') {
+                    const textureIndex = Math.floor(window.infoTimeYears / 50e6);
+                    const clampedIndex = Math.min(9, Math.max(0, textureIndex)); // Limiter entre 0 et 9
+                    logoPath = `fonts/pics/text_hadeen${clampedIndex}.png`;
+                }
 
                 const newCell = window.createCell(
                     terreNode.x,
@@ -1919,7 +1946,7 @@ function setEpoch(epochName) {
                     epochConfig.radius,
                     epochConfig.fillColor,
                     epochConfig.strokeColor,
-                    epochConfig.logo,
+                    logoPath, // Utiliser le logo calculé
                     terreNode.left,
                     terreNode.right,
                     terreNode.top,
@@ -2033,6 +2060,9 @@ function setEpoch(epochName) {
     if (infoTimeDisplay) {
         infoTimeDisplay.textContent = '+0 ans';
     }
+    
+    // Réinitialiser window.infoTimeYears à 0 lors du changement d'époque
+    window.infoTimeYears = 0;
 
     updateTimeline();
 
@@ -2571,7 +2601,23 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             timeAdvanceBtn.addEventListener('click', () => {
-                // Avancer de 50 Ma (50 millions d'années) vers le présent
+                // Avancer de 50 Ma (50 millions d'années) pour Hadéen
+                // Utiliser window.infoTimeYears au lieu de timelineFrame
+                window.infoTimeYears += 50e6;
+                
+                // Limiter à 450Ma (9 textures de 0 à 9, chaque texture = 50Ma)
+                // 0-49Ma = texture 0, 50-99Ma = texture 1, ..., 450-499Ma = texture 9
+                if (window.infoTimeYears > 450e6) {
+                    window.infoTimeYears = 450e6; // Limiter à la dernière texture
+                }
+                
+                // Mettre à jour l'affichage
+                updateTimeline();
+                
+                // Mettre à jour le logo de la Terre avec la nouvelle texture
+                updateHadeenTexture();
+                
+                // Ancien code (désactivé) : Avancer de 50 Ma (50 millions d'années) vers le présent
                 // Comme timelineFrame correspond à des années dans le passé (ex: 4.5e9),
                 // pour avancer vers le présent (4.45e9), il faut DÉCRÉMENTER timelineFrame.
 
@@ -2591,9 +2637,8 @@ window.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Mettre à jour le temps
+                // Mettre à jour le temps (garder pour compatibilité avec l'ancien système)
                 timelineFrame -= framesToSubtract;
-                updateTimeline();
 
                 // 🔒 LOGIQUE DE REFROIDISSEMENT HADÉEN
                 // Interpoler le flux géothermique et la couverture de magma
@@ -2781,5 +2826,70 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         // NE PAS démarrer l'horloge automatiquement - elle s'incrémentera uniquement lors des calculs/clics
     }, 100);
+    
 });
+
+// Fonction pour mettre à jour la texture Hadéen selon infoTimeYears
+function updateHadeenTexture() {
+    const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
+    if (currentEpoch !== 'Hadéen') return;
+    
+    // Calculer l'index de la texture (0 à 9)
+    // Chaque texture = 50Ma : 0-49Ma = 0, 50-99Ma = 1, ..., 450-499Ma = 9
+    const textureIndex = Math.floor(window.infoTimeYears / 50e6);
+    const clampedIndex = Math.min(9, Math.max(0, textureIndex)); // Limiter entre 0 et 9
+    
+    const newLogoPath = `fonts/pics/text_hadeen${clampedIndex}.png`;
+    
+    // Recréer la cellule Terre avec la nouvelle texture
+    const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
+    if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
+        const epochConfig = terreNode.epoch.find(e => e.epochName === 'Hadéen');
+        if (epochConfig) {
+            const oldCell = document.getElementById('cell-terre');
+            if (oldCell && typeof window.createCell === 'function') {
+                const parent = oldCell.parentElement;
+                oldCell.remove();
+                
+                // Créer une nouvelle config avec le logo mis à jour
+                const updatedEpochConfig = {
+                    ...epochConfig,
+                    logo: newLogoPath
+                };
+                
+                const newCell = window.createCell(
+                    terreNode.x,
+                    terreNode.y,
+                    updatedEpochConfig.radius,
+                    updatedEpochConfig.fillColor,
+                    updatedEpochConfig.strokeColor,
+                    updatedEpochConfig.logo,
+                    terreNode.left,
+                    terreNode.right,
+                    terreNode.top,
+                    terreNode.bottom,
+                    terreNode.tooltip,
+                    terreNode.radiation,
+                    null, // rectangleOptions
+                    null, // fillImage
+                    terreNode.id,
+                    terreNode.zIndex,
+                    terreNode.logoScale,
+                    terreNode.logoOffsetY,
+                    updatedEpochConfig.strokeSize,
+                    terreNode.strokeStyle || 'solid',
+                    null, // targetContainer
+                    updatedEpochConfig.planetEffect || false
+                );
+                
+                parent.appendChild(newCell);
+                console.log('[updateHadeenTexture] 🔍 DEBUG - Texture mise à jour:', {
+                    infoTimeYears: window.infoTimeYears,
+                    textureIndex: clampedIndex,
+                    logoPath: newLogoPath
+                });
+            }
+        }
+    }
+}
 

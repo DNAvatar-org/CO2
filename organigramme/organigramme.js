@@ -289,7 +289,7 @@ function updateLabelClasses(label, nodeId = null) {
 
 // Fonction pour créer une cellule avec un tableau 3x3
 // Fonction pour initialiser Three.js pour l'effet planète
-function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logoScale) {
+function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logoScale, luxSaturation = 1.0, lightDistance = null) {
     if (typeof THREE === 'undefined') {
         console.error('[initPlanetThreeJS] ❌ Three.js non chargé !');
         return;
@@ -309,7 +309,8 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         logoScale,
         planetSize,
         width,
-        height
+        height,
+        luxSaturation
     });
     
     // Calculer le rayon de la sphère pour qu'elle remplisse le container et frôle le cercle noir
@@ -384,20 +385,66 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
     
-    // Éclairage : lumière directionnelle (comme le soleil)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, lightContrast);
-    const lightDirection = new THREE.Vector3(-1, 1, 0).normalize(); // Déclarer avant createPlanetSphere
-    let lightDistance = sphereRadius * 3;
-    let lightPosition = lightDirection.clone().multiplyScalar(lightDistance);
-    directionalLight.position.copy(lightPosition);
-    directionalLight.castShadow = false;
-    scene.add(directionalLight);
+    // Éclairage : lumière directionnelle (comme le soleil) ou point au centre (éclairage interne)
+    let directionalLight = null;
+    let pointLight = null;
+    const lightDirection = new THREE.Vector3(-1, 1, 0).normalize();
     
-    // Ajuster le contraste de l'éclairage
-    const directionalIntensity = 0.1 + lightContrast * 1.2;
-    directionalLight.intensity = directionalIntensity;
-    const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
-    ambientLight.intensity = ambientIntensity;
+    // Si lightDistance est 0, utiliser un PointLight au centre (éclairage interne)
+    // Sinon, utiliser une DirectionalLight (la distance ajuste l'intensité)
+    if (lightDistance !== null && lightDistance === 0) {
+        // Éclairage interne : PointLight au centre avec intensité très élevée
+        pointLight = new THREE.PointLight(0xffffff, lightContrast * luxSaturation * 20); // Intensité x20 pour éclairage interne
+        pointLight.position.set(0, 0, 0); // Au centre
+        pointLight.castShadow = false;
+        scene.add(pointLight);
+        // Augmenter drastiquement la lumière ambiante pour l'éclairage interne
+        ambientLight.intensity = 1.5; // Très forte lumière ambiante pour éclairage interne
+        console.log('[initPlanetThreeJS] 🔍 DEBUG - Éclairage interne (PointLight au centre), intensité:', lightContrast * luxSaturation * 20);
+    } else {
+        // Éclairage externe : DirectionalLight (soleil)
+        // Note: Pour DirectionalLight, la distance n'a pas d'effet visuel (rayons parallèles)
+        // Mais on utilise lightDistance comme facteur d'intensité (plus grand = plus intense)
+        directionalLight = new THREE.DirectionalLight(0xffffff, lightContrast);
+        const defaultDistance = sphereRadius * 3;
+        const actualLightDistance = lightDistance !== null && lightDistance > 0 ? lightDistance : defaultDistance;
+        const lightPosition = lightDirection.clone().multiplyScalar(actualLightDistance);
+        directionalLight.position.copy(lightPosition);
+        directionalLight.castShadow = false;
+        scene.add(directionalLight);
+        console.log('[initPlanetThreeJS] 🔍 DEBUG - Éclairage externe (DirectionalLight), distance:', actualLightDistance);
+    }
+    
+    // Ajuster le contraste de l'éclairage avec luxSaturation
+    // luxSaturation contrôle l'intensité de la lumière (soleil ou interne)
+    // 0.0 = pas de lumière (pas d'ombre), 1.0 = lumière normale, >1.0 = lumière plus intense
+    // lightDistance affecte l'intensité selon la loi en 1/distance² (loi de l'inverse du carré)
+    if (directionalLight) {
+        const baseDirectionalIntensity = 0.1 + lightContrast * 1.2;
+        // Calculer le facteur d'intensité selon la loi en 1/distance²
+        const defaultDistance = sphereRadius * 3;
+        const actualLightDistance = lightDistance !== null && lightDistance > 0 ? lightDistance : defaultDistance;
+        // Facteur d'intensité : loi en 1/distance² (plus loin = moins intense)
+        const distanceFactor = (defaultDistance * defaultDistance) / (actualLightDistance * actualLightDistance);
+        directionalLight.intensity = baseDirectionalIntensity * luxSaturation * distanceFactor;
+        console.log('[initPlanetThreeJS] 🔍 DEBUG - Intensité DirectionalLight:', {
+            base: baseDirectionalIntensity.toFixed(2),
+            luxSaturation,
+            distance: actualLightDistance,
+            distanceFactor: distanceFactor.toFixed(4),
+            final: directionalLight.intensity.toFixed(2)
+        });
+    } else if (pointLight) {
+        // L'intensité du PointLight est déjà ajustée lors de la création
+        pointLight.intensity = lightContrast * luxSaturation * 20;
+    }
+    // Ajuster la lumière ambiante (plus faible pour éclairage externe, plus forte pour interne)
+    if (!pointLight) {
+        // Éclairage externe : lumière ambiante normale
+        const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
+        ambientLight.intensity = ambientIntensity;
+    }
+    // Pour éclairage interne, l'intensité ambiante est déjà ajustée lors de la création du PointLight
     
     let sphere = null;
     
@@ -419,10 +466,13 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         camera.lookAt(0, 0, 0);
         camera.updateProjectionMatrix();
         
-        // Ajuster la position de la lumière
-        const lightDistance = currentSphereRadius * 3;
-        const lightPosition = lightDirection.clone().multiplyScalar(lightDistance);
-        directionalLight.position.copy(lightPosition);
+        // Ajuster la position de la lumière (seulement si c'est une DirectionalLight)
+        if (directionalLight) {
+            const actualLightDistance = lightDistance !== null && lightDistance !== 0 ? lightDistance : (currentSphereRadius * 3);
+            const lightPosition = lightDirection.clone().multiplyScalar(actualLightDistance);
+            directionalLight.position.copy(lightPosition);
+        }
+        // PointLight reste au centre (0, 0, 0)
         
         // DEBUG: Log avant création de la sphère
         console.log('[initPlanetThreeJS] 🔍 DEBUG - Création sphère:', {
@@ -440,6 +490,10 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
             roughness: 0.9, // Plus rugueux pour moins de brillance
             metalness: 0.0  // Pas métallique pour un rendu plus naturel
         };
+        // Pour éclairage interne (PointLight), utiliser DoubleSide pour voir les faces de l'intérieur
+        if (pointLight) {
+            materialOptions.side = THREE.DoubleSide;
+        }
         if (texture) {
             materialOptions.map = texture;
         }
@@ -721,10 +775,22 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 canvas.style.display = 'block';
                 planetContainer.appendChild(canvas);
                 
+                // Récupérer luxSaturation et lightDistance depuis la config de l'époque (si disponible)
+                let luxSaturation = 1.0; // Valeur par défaut
+                let lightDistance = null; // null = distance automatique, 0 = éclairage interne, >0 = distance spécifique
+                if (nodeId === 'terre' && typeof window !== 'undefined' && window.configOrganigramme) {
+                    const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
+                    if (terreNode) {
+                        luxSaturation = getNodeProperty(terreNode, 'luxSaturation', 1.0);
+                        lightDistance = getNodeProperty(terreNode, 'lightDistance', null);
+                        console.log('[createCell] 🔍 DEBUG - Paramètres éclairage:', { luxSaturation, lightDistance });
+                    }
+                }
+                
                 // Initialiser Three.js avec éclairage
                 // Le chemin de la texture est résolu depuis le document HTML, pas depuis le CSS
                 if (typeof THREE !== 'undefined') {
-                    initPlanetThreeJS(canvas, logo, planetSize, planetContainer, radius, logoScale);
+                    initPlanetThreeJS(canvas, logo, planetSize, planetContainer, radius, logoScale, luxSaturation, lightDistance);
                 } else {
                     console.error('[createCell] ❌ Three.js non chargé !');
                 }

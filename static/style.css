@@ -583,6 +583,28 @@ h1 {
     display: inline-block;
 }
 
+.btn-advance-time {
+    font-size: 20px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    margin-left: 8px;
+    opacity: 0.7;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    display: inline-block;
+    line-height: 1;
+}
+
+.btn-advance-time:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.btn-advance-time:active {
+    transform: scale(0.95);
+}
+
 /* 2. Zone Horloge horizontale */
 .timeline-horloge-section {
     width: 100%;
