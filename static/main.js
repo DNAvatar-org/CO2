@@ -298,6 +298,13 @@ function disableButtons() {
 // Fonction pour réactiver les boutons selon l'époque géologique
 function enableButtons() {
     calculationInProgress = false;
+    
+    // Activer l'animation de la planète après la fin des calculs
+    // Chercher toutes les textures de planète et retirer la classe "paused"
+    const planetTextures = document.querySelectorAll('.planet-texture[data-planet-texture="true"]');
+    planetTextures.forEach(texture => {
+        texture.classList.remove('paused');
+    });
     const currentYears = timelineFrame * YEARS_PER_FRAME;
     const available = getAvailableButtons(currentYears);
 
@@ -1822,6 +1829,12 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour activer/désactiver la vapeur d'eau
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
+    // DEBUG: Log au début de setEpoch
+    console.log('[setEpoch] 🔍 DEBUG - Début setEpoch:', {
+        epochName,
+        calculationInProgress
+    });
+    
     if (calculationInProgress) return; // Bloquer si calcul en cours
 
     // 🔒 Si setEpoch est appelé depuis un bouton époque (pas depuis un événement),
@@ -1889,6 +1902,15 @@ function setEpoch(epochName) {
             const oldCell = document.getElementById('cell-terre');
             if (oldCell && typeof window.createCell === 'function') {
                 const parent = oldCell.parentElement;
+                
+                // DEBUG: Log avant recréation
+                console.log('[setEpoch] 🔍 DEBUG - Recréation cellule Terre:', {
+                    epochName,
+                    oldRadius: epochConfig.radius,
+                    planetEffect: epochConfig.planetEffect || false,
+                    logo: epochConfig.logo
+                });
+                
                 oldCell.remove();
 
                 const newCell = window.createCell(
@@ -1910,11 +1932,40 @@ function setEpoch(epochName) {
                     terreNode.zIndex,
                     terreNode.logoScale,
                     terreNode.logoOffsetY,
-                    epochConfig.strokeSize
+                    epochConfig.strokeSize,
+                    terreNode.strokeStyle || 'solid', // strokeStyle
+                    null, // targetContainer
+                    epochConfig.planetEffect || false // planetEffect
                 );
 
                 parent.appendChild(newCell);
+                
+                // DEBUG: Log après recréation
+                console.log('[setEpoch] 🔍 DEBUG - Cellule Terre recréée:', {
+                    newCellId: newCell.id,
+                    hasThreeJS: newCell.querySelector('canvas') !== null
+                });
+                
+                // Remettre l'animation en pause lors du changement d'époque (les calculs vont commencer)
+                const planetTextures = newCell.querySelectorAll('.planet-texture[data-planet-texture="true"]');
+                planetTextures.forEach(texture => {
+                    texture.classList.add('paused');
+                });
             }
+        }
+    }
+
+    // Cacher/montrer la sphère albedo (bleutée/blanche qui pulse) selon l'époque
+    // C'est une sphère éclairée en haut à gauche, transparente à 50%, peut-être bleutée mais surtout blanche
+    // Joli effet à garder sous le coude pour d'autres époques, mais pas pour "Corps noir"
+    const cellAlbedo = document.getElementById('cell-albedo');
+    if (cellAlbedo) {
+        if (epochName === 'Corps noir') {
+            // Cacher la sphère albedo en Corps noir (sphère bleutée/blanche qui pulse)
+            cellAlbedo.style.display = 'none';
+        } else {
+            // Afficher la sphère albedo pour les autres époques
+            cellAlbedo.style.display = '';
         }
     }
 
@@ -2354,6 +2405,15 @@ window.setEpoch = setEpoch;
 window.addEventListener('DOMContentLoaded', () => {
     // Initialiser l'époque globale par défaut AVANT calculateInitialData
     window.currentEpochName = 'Corps noir';
+    
+    // Écouter l'événement 'calculationConverged' pour activer l'animation de la planète
+    window.addEventListener('calculationConverged', () => {
+        // Activer l'animation de la planète après la convergence des calculs
+        const planetTextures = document.querySelectorAll('.planet-texture[data-planet-texture="true"]');
+        planetTextures.forEach(texture => {
+            texture.classList.remove('paused');
+        });
+    });
     
     calculateInitialData();
     // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)

@@ -1,0 +1,236 @@
+/* File: planet-effect.css - Effet planète sphérique avec reflet et rotation
+ * Desc: CSS pour transformer une texture PNG en boule avec reflet et animation de rotation
+ * Version 2.0.0
+ * © 2025 DNAvatar.org - Arnaud Maignan
+ * Licensed under Apache License 2.0 with Commons Clause.
+ * See LICENSE_HEADER.txt for full terms.
+ * Date: [June 08, 2025] [HH:MM UTC+1]
+ * Logs:
+ *   - Version 2.0.0: Version propre avec sinusoïde uniquement
+ */
+
+.planet-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: visible;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), 
+                inset 0 0 20px rgba(0, 0, 0, 0.2);
+    background: #000;
+    mask-image: radial-gradient(circle, black 48%, transparent 52%);
+    -webkit-mask-image: radial-gradient(circle, black 48%, transparent 52%);
+}
+
+.planet-texture {
+    position: absolute;
+    width: 200%;
+    height: 250%;
+    top: -75%;
+    left: -50%;
+    transform-origin: center;
+    /* Pas de mask ici : les bandes doivent être visibles, le mask est sur .planet-container */
+    overflow: visible;
+}
+
+.planet-band {
+    position: absolute;
+    left: -50%;
+    width: 200%;
+    background-image: var(--planet-texture-url);
+    background-size: 50% 100%;
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    animation: planet-rotate 20s linear infinite;
+    pointer-events: none;
+    transform-origin: center;
+}
+
+.planet-band.band-pole-top-extreme {
+    top: 0;
+    height: 8%;
+    transform: scaleY(0.25) scaleX(1.0);
+    z-index: 1;
+    opacity: 0.90;
+    mask-image: linear-gradient(to bottom, black 0%, black 100%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 100%, transparent 100%);
+}
+
+.planet-band.band-pole-top {
+    top: 8%;
+    height: 10%;
+    transform: scaleY(0.40) scaleX(1.0);
+    z-index: 2;
+    opacity: 0.95;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+.planet-band.band-subpolar-top {
+    top: 18%;
+    height: 17%;
+    transform: scaleY(0.70) scaleX(1.0);
+    z-index: 3;
+    opacity: 0.98;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+.planet-band.band-equator {
+    top: 35%;
+    height: 30%;
+    transform: scaleY(1.0) scaleX(1.0);
+    z-index: 4;
+    opacity: 1;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+.planet-band.band-subpolar-bottom {
+    top: 65%;
+    height: 17%;
+    transform: scaleY(0.70) scaleX(1.0);
+    z-index: 3;
+    opacity: 0.98;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+.planet-band.band-pole-bottom {
+    top: 82%;
+    height: 10%;
+    transform: scaleY(0.40) scaleX(1.0);
+    z-index: 2;
+    opacity: 0.95;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+.planet-band.band-pole-bottom-extreme {
+    top: 92%;
+    height: 8%;
+    transform: scaleY(0.25) scaleX(1.0);
+    z-index: 1;
+    opacity: 0.90;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 0%, black 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 0%, black 100%);
+}
+
+@keyframes planet-rotate {
+    from {
+        background-position-x: 0;
+    }
+    to {
+        background-position-x: 100%;
+    }
+}
+
+@keyframes planet-shine {
+    0%, 100% {
+        opacity: 0.8;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+}
+
+.planet-container::after {
+    content: '';
+    position: absolute;
+    bottom: -10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 20%;
+    border-radius: 50%;
+    background: radial-gradient(
+        ellipse,
+        rgba(0, 0, 0, 0.4) 0%,
+        rgba(0, 0, 0, 0.2) 50%,
+        transparent 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+.planet-container.small {
+    width: 100px;
+    height: 100px;
+}
+
+.planet-container.medium {
+    width: 200px;
+    height: 200px;
+}
+
+.planet-container.large {
+    width: 400px;
+    height: 400px;
+}
+
+.planet-texture.slow {
+    animation-duration: 40s;
+}
+.planet-texture.slow .planet-band {
+    animation-duration: 40s;
+}
+
+.planet-texture.normal {
+    animation-duration: 20s;
+}
+.planet-texture.normal .planet-band {
+    animation-duration: 20s;
+}
+
+.planet-texture.fast {
+    animation-duration: 10s;
+}
+.planet-texture.fast .planet-band {
+    animation-duration: 10s;
+}
+
+.planet-texture.paused {
+    animation-play-state: paused;
+}
+.planet-texture.paused .planet-band {
+    animation-play-state: paused;
+}
+
+/* Désactiver les pseudo-éléments (flares) et effets CSS pour Three.js */
+/* IMPORTANT: Ces règles doivent être après les règles de base pour override */
+.planet-container.threejs-container::before {
+    display: none !important;
+    content: '' !important;
+    background: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    animation: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    position: static !important;
+}
+
+.planet-container.threejs-container::after {
+    display: none !important;
+    content: '' !important;
+    background: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    animation: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    position: static !important;
+}
+
+/* Désactiver box-shadow et background noir pour Three.js (évite le halo) */
+.planet-container.threejs-container {
+    box-shadow: none !important;
+    background: transparent !important;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+    /* Désactiver tous les effets visuels qui pourraient créer une sphère blanche */
+    border-radius: 0 !important; /* Pas de border-radius pour éviter les effets de masque */
+    overflow: visible !important;
+}

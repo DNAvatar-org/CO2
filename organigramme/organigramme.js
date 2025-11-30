@@ -16,6 +16,8 @@ if (typeof window !== 'undefined') {
     window.useCH4 = true;
     window.useH2O = true;
     window.useAlbedo = true;
+    // Variable globale pour contrôler l'animation Three.js (false = animée, true = pause)
+    window.threeJSAnimationPaused = false;
 }
 
 // Fonction pour ajouter un tooltip personnalisé avec délai de 0.5s
@@ -286,7 +288,215 @@ function updateLabelClasses(label, nodeId = null) {
 }
 
 // Fonction pour créer une cellule avec un tableau 3x3
-function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4, strokeStyle = 'solid', targetContainer = null) {
+// Fonction pour initialiser Three.js pour l'effet planète
+function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logoScale) {
+    if (typeof THREE === 'undefined') {
+        console.error('[initPlanetThreeJS] ❌ Three.js non chargé !');
+        return;
+    }
+    
+    const width = planetSize;
+    const height = planetSize;
+    
+    // Stocker les références dans le canvas pour pouvoir les mettre à jour plus tard
+    if (!canvas._threeJSData) {
+        canvas._threeJSData = {};
+    }
+    
+    // DEBUG: Log des paramètres d'entrée
+    console.log('[initPlanetThreeJS] 🔍 DEBUG - Paramètres:', {
+        radius,
+        logoScale,
+        planetSize,
+        width,
+        height
+    });
+    
+    // Calculer le rayon de la sphère pour qu'elle remplisse le container et frôle le cercle noir
+    // Le container fait planetSize pixels (radius * 2 * logoScale)
+    // Référence : radiusTerre = 90px, logoScale = 0.95 → planetSize = 171px
+    // Dans planet-test.html : rayon 1.5 pour un container de 400px → facteur = 1.5/400 = 0.00375
+    // Mais cette formule donne un rayon trop petit. Il faut ajuster.
+    // Test empirique : pour planetSize = 171px, on veut un rayon d'environ 1.5 (comme planet-test.html)
+    // Donc : sphereRadius = planetSize * (1.5 / 171) ≈ planetSize * 0.00877
+    // Pour frôler le cercle avec logoScale 0.95, on augmente : sphereRadius = planetSize * 0.01
+    // MAIS : peut-être que Three.js attend le diamètre, donc on multiplie par 2
+    const sphereRadius = (planetSize * 0.01) * 2;
+    
+    // DEBUG: Log du rayon calculé
+    const facteur = 0.01 * 2; // Facteur utilisé pour le calcul (x2 pour le diamètre)
+    console.log('[initPlanetThreeJS] 🔍 DEBUG - Rayon calculé:', {
+        sphereRadius,
+        planetSize,
+        facteur,
+        calcul: `${planetSize} * 0.01 * 2 = ${sphereRadius}`
+    });
+    
+    const sphereSegments = 32; // Précision comme dans planet-test.html
+    const lightContrast = 1.5; // Contraste comme dans planet-test.html
+    const tiltAngle = 55; // Inclinaison en degrés (comme demandé)
+    
+    // Scène - fond transparent pour s'intégrer dans le diagramme
+    const scene = new THREE.Scene();
+    scene.background = null; // Transparent pour s'intégrer dans le diagramme
+    
+    // Caméra - distance fixe pour que la sphère remplisse le container
+    // Si on ajuste la distance proportionnellement au rayon, la taille visuelle reste la même
+    // Il faut utiliser une distance fixe basée sur la taille du container
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+    // Distance fixe calculée empiriquement pour que la sphère remplisse le container et frôle le cercle
+    const distance = planetSize / 30.5; // Distance fixe basée sur la taille du container
+    camera.position.set(0, 0, distance);
+    camera.lookAt(0, 0, 0);
+    
+    // Renderer - avec alpha pour transparence (comme dans planet-test.html mais adapté pour intégration)
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setClearColor(0x000000, 0); // Fond transparent
+    
+    // Texture - vérifier le protocole (Three.js nécessite HTTP/HTTPS)
+    let texture = null;
+    if (window.location.protocol === 'file:') {
+        console.error('[initPlanetThreeJS] ❌ ERREUR: Three.js nécessite HTTP/HTTPS !');
+        console.error('⚠️ Utilisez: http://localhost:8000/index.html');
+        // Créer quand même la sphère sans texture
+        createPlanetSphere();
+    } else {
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(
+            logoPath,
+            function(loadedTexture) {
+                loadedTexture.wrapS = THREE.RepeatWrapping;
+                loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
+                texture = loadedTexture;
+                createPlanetSphere();
+            },
+            undefined,
+            function(error) {
+                console.error('[initPlanetThreeJS] ❌ Erreur chargement texture:', error);
+                createPlanetSphere();
+            }
+        );
+    }
+    
+    // Éclairage : lumière ambiante
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+    
+    // Éclairage : lumière directionnelle (comme le soleil)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, lightContrast);
+    const lightDirection = new THREE.Vector3(-1, 1, 0).normalize(); // Déclarer avant createPlanetSphere
+    let lightDistance = sphereRadius * 3;
+    let lightPosition = lightDirection.clone().multiplyScalar(lightDistance);
+    directionalLight.position.copy(lightPosition);
+    directionalLight.castShadow = false;
+    scene.add(directionalLight);
+    
+    // Ajuster le contraste de l'éclairage
+    const directionalIntensity = 0.1 + lightContrast * 1.2;
+    directionalLight.intensity = directionalIntensity;
+    const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
+    ambientLight.intensity = ambientIntensity;
+    
+    let sphere = null;
+    
+    // Fonction pour créer/mettre à jour la sphère
+    function createPlanetSphere(newRadius = null) {
+        // Si un nouveau rayon est fourni, recalculer sphereRadius
+        let currentSphereRadius = newRadius !== null ? newRadius : sphereRadius;
+        
+        if (sphere) {
+            scene.remove(sphere);
+            if (sphere.geometry) sphere.geometry.dispose();
+            if (sphere.material) sphere.material.dispose();
+        }
+        
+        // Ajuster la distance de la caméra pour que la sphère remplisse le container
+        // Utiliser la même distance fixe basée sur planetSize (pas sur le rayon)
+        const distance = planetSize / 30.5; // Distance fixe basée sur la taille du container
+        camera.position.set(0, 0, distance);
+        camera.lookAt(0, 0, 0);
+        camera.updateProjectionMatrix();
+        
+        // Ajuster la position de la lumière
+        const lightDistance = currentSphereRadius * 3;
+        const lightPosition = lightDirection.clone().multiplyScalar(lightDistance);
+        directionalLight.position.copy(lightPosition);
+        
+        // DEBUG: Log avant création de la sphère
+        console.log('[initPlanetThreeJS] 🔍 DEBUG - Création sphère:', {
+            sphereRadius: currentSphereRadius,
+            sphereSegments,
+            texture: texture ? 'chargée' : 'absente',
+            newRadius: newRadius !== null ? newRadius : 'non fourni',
+            cameraDistance: distance,
+            lightDistance: lightDistance
+        });
+        
+        const geometry = new THREE.SphereGeometry(currentSphereRadius, sphereSegments, sphereSegments);
+        // Matériau comme dans planet-test.html (sans options supplémentaires qui créent des effets indésirables)
+        const materialOptions = {
+            roughness: 0.9, // Plus rugueux pour moins de brillance
+            metalness: 0.0  // Pas métallique pour un rendu plus naturel
+        };
+        if (texture) {
+            materialOptions.map = texture;
+        }
+        const material = new THREE.MeshStandardMaterial(materialOptions);
+        
+        sphere = new THREE.Mesh(geometry, material);
+        sphere.rotation.x = (tiltAngle * Math.PI) / 180;
+        scene.add(sphere);
+        
+        // Stocker les références pour mise à jour ultérieure
+        canvas._threeJSData.scene = scene;
+        canvas._threeJSData.sphere = sphere;
+        canvas._threeJSData.camera = camera;
+        canvas._threeJSData.renderer = renderer;
+        canvas._threeJSData.updateSphere = createPlanetSphere;
+        canvas._threeJSData.currentRadius = currentSphereRadius;
+        
+        // DEBUG: Log après création
+        console.log('[initPlanetThreeJS] 🔍 DEBUG - Sphère créée:', {
+            geometryRadius: geometry.parameters.radius,
+            spherePosition: sphere.position,
+            sphereScale: sphere.scale,
+            cameraDistance: distance
+        });
+    }
+    
+    // Animation - rotation lente (comme dans planet-test.html)
+    let animationId = null;
+    const speed = 1.0; // Vitesse normale comme dans planet-test.html
+    
+    function animate() {
+        // Utiliser la variable globale pour contrôler l'animation
+        const isPaused = (typeof window !== 'undefined' && window.threeJSAnimationPaused) || false;
+        if (!isPaused && sphere) {
+            sphere.rotation.y += 0.005 * speed; // Incrément comme dans planet-test.html
+        }
+        renderer.render(scene, camera);
+        animationId = requestAnimationFrame(animate);
+    }
+    animate();
+    
+    // L'animation démarre immédiatement (pas besoin d'attendre calculationConverged pour Three.js)
+    
+    // Redimensionnement
+    const resizeObserver = new ResizeObserver(() => {
+        const newWidth = container.clientWidth;
+        const newHeight = container.clientHeight;
+        if (newWidth > 0 && newHeight > 0) {
+            camera.aspect = newWidth / newHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(newWidth, newHeight);
+        }
+    });
+    resizeObserver.observe(container);
+}
+
+function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4, strokeStyle = 'solid', targetContainer = null, planetEffect = false) {
     // Utiliser le container fourni ou le flux-diagram par défaut
     const container = targetContainer || document.getElementById('flux-diagram');
 
@@ -405,12 +615,36 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         if (nodeId && (nodeId === 'espace1' || nodeId === 'espace2')) {
             circleBg.classList.add('flux-space-hole');
         }
-        circleBg.style.backgroundColor = fillColor;
-        // Toujours créer le cercle, mais rendre la bordure invisible si strokeColor est vide, transparent, ou strokeSize est 0
-        // Le cercle est nécessaire pour que les étiquettes s'éloignent correctement du logo
-        if (!strokeColor || strokeColor.trim() === '' || strokeSize <= 0) {
-            circleBg.style.border = 'none';
+        // Si planetEffect est activé, rendre le fond transparent mais garder le stroke visible
+        // Le contenu (canvas Three.js) reste visible
+        if (planetEffect) {
+            circleBg.style.backgroundColor = 'transparent'; // Fond transparent
+            // Garder le stroke visible pour voir le radius
+            if (!strokeColor || strokeColor.trim() === '' || strokeSize <= 0) {
+                circleBg.style.border = 'none';
+            } else {
+                // Vérifier si la couleur est transparente (alpha = 0)
+                const isTransparent = strokeColor.includes('rgba') && strokeColor.includes(', 0)') ||
+                    strokeColor.includes('rgba') && strokeColor.includes(', 0 )');
+                if (isTransparent) {
+                    circleBg.style.border = 'none';
+                } else {
+                    circleBg.style.borderColor = strokeColor;
+                    circleBg.style.borderWidth = strokeSize + 'px';
+                    circleBg.style.borderStyle = strokeStyle || 'solid';
+                }
+            }
+            circleBg.style.boxShadow = 'none'; // Pas d'ombre
+            circleBg.style.backdropFilter = 'none'; // Pas de filtre
+            // Ne pas mettre opacity: 0 car cela masquerait aussi le contenu (canvas Three.js)
+            circleBg.style.pointerEvents = 'auto'; // Garder les clics fonctionnels
         } else {
+            circleBg.style.backgroundColor = fillColor;
+            // Toujours créer le cercle, mais rendre la bordure invisible si strokeColor est vide, transparent, ou strokeSize est 0
+            // Le cercle est nécessaire pour que les étiquettes s'éloignent correctement du logo
+            if (!strokeColor || strokeColor.trim() === '' || strokeSize <= 0) {
+                circleBg.style.border = 'none';
+            } else {
             // Vérifier si la couleur est transparente (alpha = 0)
             const isTransparent = strokeColor.includes('rgba') && strokeColor.includes(', 0)') ||
                 strokeColor.includes('rgba') && strokeColor.includes(', 0 )');
@@ -434,6 +668,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 }
             }
         }
+        }
         // Wrapper le logo dans un span pour appliquer l'offset sans bouger le cercle
         const logoSpan = document.createElement('span');
         logoSpan.style.display = 'flex';
@@ -447,15 +682,66 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
 
         // Si le logo est un fichier image (SVG, PNG, etc.)
         if (isImage) {
-            const img = document.createElement('img');
-            img.src = logo;
-            img.alt = nodeId || 'logo';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'contain';
-            img.style.objectPosition = 'center';
-            img.style.display = 'block';
-            logoSpan.appendChild(img);
+            console.log('[createCell] isImage=true, logo=', logo, 'planetEffect=', planetEffect);
+            if (planetEffect) {
+                console.log('[createCell] planetEffect activé pour logo:', logo);
+                // Utiliser Three.js pour l'effet planète avec rotation et éclairage
+                const planetContainer = document.createElement('div');
+                planetContainer.className = 'planet-container threejs-container';
+                planetContainer.style.position = 'relative';
+                planetContainer.style.width = '100%';
+                planetContainer.style.height = '100%';
+                planetContainer.style.background = 'transparent';
+                // Désactiver tous les effets CSS qui pourraient créer un halo (box-shadow, mask, etc.)
+                planetContainer.style.boxShadow = 'none';
+                planetContainer.style.maskImage = 'none';
+                planetContainer.style.webkitMaskImage = 'none';
+                planetContainer.style.borderRadius = '0'; // Pas de border-radius pour éviter les effets de masque
+                planetContainer.style.setProperty('--disable-flare', 'true');
+                // Forcer la désactivation des pseudo-éléments qui créent la sphère blanche
+                planetContainer.style.setProperty('--before-display', 'none');
+                planetContainer.style.setProperty('--after-display', 'none');
+                
+                // Calculer la taille du canvas Three.js
+                const planetSize = (radius * 2) * logoScale;
+                
+                // DEBUG: Log avant initialisation Three.js
+                console.log('[createCell] 🔍 DEBUG - Initialisation Three.js pour Terre:', {
+                    nodeId,
+                    radius,
+                    logoScale,
+                    planetSize,
+                    calcul: `(${radius} * 2) * ${logoScale} = ${planetSize}`
+                });
+                
+                // Créer le canvas pour Three.js
+                const canvas = document.createElement('canvas');
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                canvas.style.display = 'block';
+                planetContainer.appendChild(canvas);
+                
+                // Initialiser Three.js avec éclairage
+                // Le chemin de la texture est résolu depuis le document HTML, pas depuis le CSS
+                if (typeof THREE !== 'undefined') {
+                    initPlanetThreeJS(canvas, logo, planetSize, planetContainer, radius, logoScale);
+                } else {
+                    console.error('[createCell] ❌ Three.js non chargé !');
+                }
+                
+                logoSpan.appendChild(planetContainer);
+            } else {
+                // Image normale sans effet planète
+                const img = document.createElement('img');
+                img.src = logo;
+                img.alt = nodeId || 'logo';
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                img.style.objectPosition = 'center';
+                img.style.display = 'block';
+                logoSpan.appendChild(img);
+            }
             // Pour les images, logoScale est déjà appliqué via circleSize (ligne 377)
             // logoSpan reste à 100% de circleBg, donc l'image s'adapte automatiquement
         } else {
@@ -482,6 +768,15 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         // Gestionnaire de clic pour copier le logo ou déclencher le bouton
         circleBg.addEventListener('click', (e) => {
             e.stopPropagation();
+
+            // Vérifier si c'est la Terre (toggle animation Three.js)
+            if (nodeId === 'terre') {
+                if (typeof window !== 'undefined') {
+                    window.threeJSAnimationPaused = !window.threeJSAnimationPaused;
+                    console.log('[organigramme] Animation Three.js:', window.threeJSAnimationPaused ? 'PAUSE' : 'PLAY');
+                }
+                return; // Ne pas copier le logo ni déclencher d'autres actions
+            }
 
             // Vérifier si c'est un bouton (cellule parente a la classe flux-button-cell)
             const parentCell = circleBg.closest('.flux-button-cell');
@@ -785,6 +1080,14 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     // Pas de création de radiations ici
 
     // Ajouter la cellule au container
+    if (!container) {
+        console.error('[createCell] ❌ Container non trouvé ! targetContainer=', targetContainer, 'flux-diagram=', document.getElementById('flux-diagram'));
+        throw new Error('Container non trouvé pour créer la cellule');
+    }
+    if (typeof container.appendChild !== 'function') {
+        console.error('[createCell] ❌ Container n\'est pas un élément DOM valide !', container);
+        throw new Error('Container n\'est pas un élément DOM valide');
+    }
     container.appendChild(cell);
 
     // Créer le rectangle avec les facteurs si demandé
@@ -1881,7 +2184,8 @@ cellOrder.forEach(nodeId => {
                 radius: epochConfig.radius,
                 fillColor: epochConfig.fillColor,
                 strokeColor: epochConfig.strokeColor,
-                strokeSize: epochConfig.strokeSize
+                strokeSize: epochConfig.strokeSize,
+                planetEffect: epochConfig.planetEffect || false // Passer planetEffect si défini
             };
         } else if (node.epoch.length > 0) {
             // Fallback : utiliser la dernière époque du tableau (permet d'alléger les répétitions)
@@ -1893,6 +2197,7 @@ cellOrder.forEach(nodeId => {
                 fillColor: lastEpoch.fillColor || node.epoch[0].fillColor,
                 strokeColor: lastEpoch.strokeColor || node.epoch[0].strokeColor,
                 strokeSize: lastEpoch.strokeSize || node.epoch[0].strokeSize,
+                planetEffect: lastEpoch.planetEffect || node.epoch[0].planetEffect || false // Récupérer planetEffect
             };
         }
     }
@@ -1917,7 +2222,9 @@ cellOrder.forEach(nodeId => {
         nodeConfig.logoScale || 1.4, // Pass the logo scale (default 1.4)
         nodeConfig.logoOffsetY || 0, // Pass the vertical logo offset (default 0)
         (nodeConfig.strokeSize !== undefined && nodeConfig.strokeSize !== null) ? nodeConfig.strokeSize : 4, // Pass the border thickness (default 4px, but allow 0)
-        nodeConfig.strokeStyle || 'solid' // Pass the stroke style (default 'solid', can be 'blur')
+        nodeConfig.strokeStyle || 'solid', // Pass the stroke style (default 'solid', can be 'blur')
+        null, // targetContainer (utiliser le flux-diagram par défaut)
+        nodeConfig.planetEffect || false // Pass planetEffect flag (default false)
     );
 
     createdCells[node.id] = cell;
@@ -2981,12 +3288,13 @@ window.updateFluxLabels = function (data) {
             cloud_coverage_num = h2o_params.cloud_coverage;
         }
 
-        console.log('[H2O PARAMS]', {
-            vapor_percent: h2o_vapor_percent,
-            cloud_coverage: cloud_coverage_num,
-            greenhouse_forcing: forcing_H2O,
-            cloud_albedo_contribution: h2o_params.cloud_albedo_contribution
-        });
+        // Log désactivé pour réduire le bruit (trop répétitif)
+        // console.log('[H2O PARAMS]', {
+        //     vapor_percent: h2o_vapor_percent,
+        //     cloud_coverage: cloud_coverage_num,
+        //     greenhouse_forcing: forcing_H2O,
+        //     cloud_albedo_contribution: h2o_params.cloud_albedo_contribution
+        // });
     }
     // 🔒 CORRECTION : Le forçage albédo est actif seulement si le bouton est checked
     // En mode corps noir, on peut avoir un forçage albedo si il y a de la glace des météorites
@@ -3340,14 +3648,10 @@ window.updateFluxLabels = function (data) {
         }
     });
 
-    // Cacher/afficher les radiations du noyau selon la température
+    // Afficher les radiations du noyau (cas particulier supprimé)
     const noyauRadiationGroup = document.querySelector('.flux-radiation-group[data-node="noyau"]');
     if (noyauRadiationGroup) {
-        if (coreTemp_K === 0 || geothermie_value === 0) {
-            noyauRadiationGroup.style.display = 'none';
-        } else {
-            noyauRadiationGroup.style.display = '';
-        }
+        noyauRadiationGroup.style.display = '';
     }
 
     // Ajuster l'opacité et la visibilité du logo du noyau selon la température
@@ -3355,7 +3659,9 @@ window.updateFluxLabels = function (data) {
     if (noyauCell) {
         const noyauLogo = noyauCell.querySelector('.flux-circle-bg span');
         if (noyauLogo) {
-            if (coreTemp_K === 0 || geothermie_value === 0) {
+            const noyauNode = nodes.find(n => n.id === 'noyau');
+            // Si le logo est vide, le rendre invisible
+            if (noyauNode && (!noyauNode.logo || noyauNode.logo.trim() === '')) {
                 noyauLogo.style.opacity = '0';
                 noyauLogo.style.visibility = 'hidden';
             } else {
@@ -3370,19 +3676,25 @@ window.updateFluxLabels = function (data) {
         const noyauCircle = noyauCell.querySelector('.flux-circle-bg');
         if (noyauCircle) {
             const noyauNode = nodes.find(n => n.id === 'noyau');
-            // Récupérer la couleur de base du noyau (doit être définie dans la config)
-            if (!noyauNode || !noyauNode.strokeColor) {
-                console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : strokeColor du noyau non défini dans la config');
-                throw new Error('strokeColor du noyau requis dans la config');
-            }
-            const baseColor = noyauNode.strokeColor;
-            
-            if (coreTemp_K === 0 || geothermie_value === 0) {
-                noyauCircle.style.borderColor = '#666'; // Gris
-            } else {
-                // Appliquer saturation et brightness via filter CSS
-                noyauCircle.style.filter = `saturate(${saturation}%) brightness(${brightness}%)`;
-                noyauCircle.style.borderColor = baseColor;
+            if (noyauNode) {
+                // Vérifier si le noyau doit être invisible (strokeSize: 0 ou strokeColor transparent)
+                const isTransparent = !noyauNode.strokeColor || 
+                                     noyauNode.strokeColor.trim() === '' || 
+                                     noyauNode.strokeSize === 0 ||
+                                     (noyauNode.strokeColor.includes('rgba') && noyauNode.strokeColor.includes(', 0)'));
+                
+                if (isTransparent) {
+                    // Rendre le cercle complètement invisible
+                    noyauCircle.style.border = 'none';
+                    noyauCircle.style.display = 'none';
+                } else {
+                    // Récupérer la couleur de base du noyau
+                    const baseColor = noyauNode.strokeColor;
+                    // Appliquer saturation et brightness via filter CSS
+                    noyauCircle.style.filter = `saturate(${saturation}%) brightness(${brightness}%)`;
+                    noyauCircle.style.borderColor = baseColor;
+                    noyauCircle.style.display = '';
+                }
             }
         }
     }
@@ -3390,17 +3702,10 @@ window.updateFluxLabels = function (data) {
     // Ajuster la flèche noyau → surface selon la température
     const noyauArrow = document.querySelector('[data-from="noyau"][data-to="terre"]');
     if (noyauArrow) {
-        if (coreTemp_K === 0 || geothermie_value === 0) {
-            noyauArrow.style.backgroundColor = '#666'; // Gris
-            noyauArrow.style.filter = 'saturate(0%) brightness(50%)';
-            const arrowLabels = noyauArrow.querySelectorAll('.flux-label');
-            arrowLabels.forEach(label => label.classList.add('zero-value'));
-        } else {
-            noyauArrow.style.backgroundColor = ''; // Réinitialiser
-            noyauArrow.style.filter = `saturate(${saturation}%) brightness(${brightness}%)`;
-            const arrowLabels = noyauArrow.querySelectorAll('.flux-label');
-            arrowLabels.forEach(label => label.classList.remove('zero-value'));
-        }
+        noyauArrow.style.backgroundColor = ''; // Réinitialiser
+        noyauArrow.style.filter = `saturate(${saturation}%) brightness(${brightness}%)`;
+        const arrowLabels = noyauArrow.querySelectorAll('.flux-label');
+        arrowLabels.forEach(label => label.classList.remove('zero-value'));
     }
 
     // Surface -> Albedo : flux émis par la surface (approximation avec Stefan-Boltzmann)
@@ -3719,3 +4024,4 @@ window.createCell = createCell;
 window.recreateNoyauRadiation = recreateNoyauRadiation;
 window.recreateTerreRadiation = recreateTerreRadiation;
 window.initFluxButtonListeners = initFluxButtonListeners;
+window.createCell = createCell; // Exposer createCell pour que setEpoch puisse recréer la Terre
