@@ -199,7 +199,7 @@ const nodes = [
                 logo: 'fonts/pics/text_noir.png',//'fonts/pics/corps_noir.png',
                 planetEffect: true,
                 luxSaturation: 1.0,
-                lightDistance: 7,
+                lightDistance: '7-{$ticTime}/3', // Expression interprétée dynamiquement
                 radius: radiusTerre * 0.8,
                 fillColor: 'rgba(0, 0, 0, 0)',
                 strokeColor: '#000000',
@@ -207,10 +207,12 @@ const nodes = [
             },
             {
                 epochName: 'Hadéen',
-                logo: 'fonts/pics/text_hadeen.png',
+                logo: 'fonts/pics/text_hadeen{$ticTime}.png', // Sera remplacé dynamiquement selon textureIndex
                 planetEffect: true,
                 luxSaturation: 3.0,
                 lightDistance: 0, // 0 = éclairage interne (PointLight au centre)
+                // textureIndex est calculé automatiquement: window.textureIndex = Math.floor(window.infoTimeMa / 50)
+                // On peut aussi stocker textureIndex directement dans lightDistance (0-9) si on veut forcer une texture
                 radius: radiusTerre * 1.1,
                 fillColor: 'rgba(255, 69, 0, 0.3)',
                 strokeColor: '#ff4500',

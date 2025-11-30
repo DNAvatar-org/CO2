@@ -366,6 +366,87 @@ let currentEpochStartYears = null; // Stocker le début de l'époque actuelle po
 
 // Variable globale pour le temps écoulé dans l'époque (commence toujours à 0 Ma)
 window.infoTimeMa = 0; // Temps écoulé depuis le début de l'époque (en millions d'années, Ma)
+// textureIndex = infoTimeMa / 50 (calculé automatiquement, chaque texture = 50Ma)
+// Accessible via window.textureIndex ou via epochConfig.lightDistance pour Hadéen
+
+// Variables de tracking pour détecter les changements
+window.lastTicTime = undefined; // Dernière valeur de ticTime (infoTimeMa / 50)
+window.lastIceLevel = undefined; // Dernière valeur de h2oIceFractionFromCalculation
+
+// ============================================================================
+// INTERPRÉTEUR DE CONFIGURATION DYNAMIQUE
+// ============================================================================
+/**
+ * Interprète une valeur de configuration en remplaçant les variables dynamiques
+ * Variables supportées:
+ * - {$ticTime} : remplacé par Math.floor(window.infoTimeMa / 50)
+ * 
+ * Expressions mathématiques supportées:
+ * - '10-{$ticTime}' : calculé comme 10 - ticTime
+ * - '7-{$ticTime}/2' : calculé comme 7 - (ticTime / 2)
+ * - Toute expression mathématique valide après remplacement de {$ticTime}
+ * 
+ * @param {string|number} value - Valeur à interpréter (peut être une chaîne avec {$ticTime} ou un nombre)
+ * @returns {number|string} - Valeur interprétée (nombre si expression mathématique, chaîne sinon)
+ */
+function interpretConfigValue(value) {
+    if (typeof value === 'number') {
+        return value; // Pas besoin d'interprétation pour les nombres
+    }
+    
+    if (typeof value !== 'string') {
+        return value; // Retourner tel quel si ce n'est pas une chaîne
+    }
+    
+    // Si la chaîne ne contient pas {$ticTime}, retourner tel quel
+    if (!value.includes('{$ticTime}')) {
+        return value;
+    }
+    
+    // S'assurer que window.infoTimeMa est défini (initialiser à 0 si nécessaire)
+    if (typeof window.infoTimeMa === 'undefined') {
+        window.infoTimeMa = 0;
+    }
+    
+    // Calculer ticTime = infoTimeMa / 50
+    const ticTime = Math.floor((window.infoTimeMa || 0) / 50);
+    
+    // Remplacer {$ticTime} par la valeur calculée
+    let interpreted = value.replace(/\{\$ticTime\}/g, ticTime.toString());
+    
+    // Vérifier si la chaîne interprétée est une expression mathématique pure
+    // Pattern: uniquement chiffres, espaces, opérateurs mathématiques, parenthèses, points décimaux
+    const mathExpressionPattern = /^[\d\s+\-*/().]+$/;
+    
+    // Si c'est une expression mathématique pure (sans caractères alphabétiques ou autres)
+    if (mathExpressionPattern.test(interpreted.trim())) {
+        try {
+            // Utiliser Function pour évaluer l'expression de manière sécurisée
+            // Exemple: "7-5/2" → Function('"use strict"; return (7-5/2)')() → 4.5
+            const result = Function('"use strict"; return (' + interpreted.trim() + ')')();
+            if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+                console.log('[interpretConfigValue] 🔍 DEBUG - Expression évaluée:', {
+                    original: value,
+                    interpreted: interpreted.trim(),
+                    ticTime: ticTime,
+                    result: result
+                });
+                return result;
+            }
+        } catch (e) {
+            // Si l'évaluation échoue, retourner la chaîne interprétée
+            console.warn('[interpretConfigValue] ⚠️ Erreur évaluation expression:', interpreted.trim(), e);
+        }
+    }
+    
+    // Si ce n'est pas une expression mathématique pure, retourner la chaîne interprétée
+    // (ex: "fonts/pics/text_hadeen{$ticTime}.png" → "fonts/pics/text_hadeen5.png")
+    return interpreted;
+}
+
+// Variables de tracking pour détecter les changements
+window.lastTicTime = undefined; // Dernière valeur de ticTime (infoTimeMa / 50)
+window.lastIceLevel = undefined; // Dernière valeur de h2oIceFractionFromCalculation
 
 function updateTimeline() {
     // Mettre à jour l'affichage (toujours, même si timelineRunning = false)
@@ -400,6 +481,36 @@ function updateTimeline() {
         // Ne modifier le texte que s'il a changé pour éviter le clignotement
         if (infoTimeDisplay.textContent !== newText) {
             infoTimeDisplay.textContent = newText;
+        }
+    }
+    
+    // Calculer textureIndex = infoTimeMa / 50 (variable globale pour simplifier)
+    // Chaque texture = 50Ma : 0-49Ma = 0, 50-99Ma = 1, ..., 450-499Ma = 9
+    if (typeof window !== 'undefined') {
+        window.textureIndex = Math.floor((window.infoTimeMa || 0) / 50);
+        
+        // Détecter les changements pour déclencher les mises à jour
+        const currentTicTime = window.textureIndex;
+        const currentIceLevel = window.h2oIceFractionFromCalculation !== undefined ? window.h2oIceFractionFromCalculation : 0;
+        
+        // Détecter changement de texture (ticTime)
+        window.isTextChange = (window.lastTicTime !== undefined && window.lastTicTime !== currentTicTime);
+        if (window.isTextChange || window.lastTicTime === undefined) {
+            window.lastTicTime = currentTicTime;
+        }
+        
+        // Détecter changement de glace
+        window.isIceChange = (window.lastIceLevel !== undefined && Math.abs(window.lastIceLevel - currentIceLevel) > 0.001);
+        if (window.isIceChange || window.lastIceLevel === undefined) {
+            window.lastIceLevel = currentIceLevel;
+        }
+        
+        // Si changement de texture (ticTime) ou de glace, mettre à jour Three.js
+        if (window.isTextChange && typeof window.updateHadeenTexture === 'function') {
+            window.updateHadeenTexture();
+        } else if (window.isIceChange && typeof window.updatePlanetLighting === 'function') {
+            // Mettre à jour l'éclairage Three.js si la glace change (affecte lightDistance)
+            window.updatePlanetLighting();
         }
     }
 
@@ -1912,13 +2023,39 @@ function setEpoch(epochName) {
                 
                 oldCell.remove();
                 
-                // Pour Hadéen, calculer le logo dynamique selon infoTimeMa
-                let logoPath = epochConfig.logo;
-                if (epochName === 'Hadéen') {
-                    // infoTimeMa est en Ma, chaque texture = 50Ma
-                    const textureIndex = Math.floor(window.infoTimeMa / 50);
-                    const clampedIndex = Math.min(9, Math.max(0, textureIndex)); // Limiter entre 0 et 9
-                    logoPath = `fonts/pics/text_hadeen${clampedIndex}.png`;
+                // Interpréter les valeurs dynamiques de la configuration
+                // logo peut contenir {$ticTime} qui sera remplacé par textureIndex
+                let logoPath = interpretConfigValue(epochConfig.logo);
+                
+                // Si le logo contient encore {$ticTime} après interprétation, c'est une erreur
+                if (typeof logoPath === 'string' && logoPath.includes('{$ticTime}')) {
+                    console.warn('[setEpoch] ⚠️ WARNING - Logo contient encore {$ticTime} après interprétation:', logoPath);
+                }
+                
+                // Interpréter lightDistance (peut contenir des expressions comme "10-{$ticTime}" ou "7-{$ticTime}/2")
+                let lightDistance = epochConfig.lightDistance;
+                console.log('[setEpoch] 🔍 DEBUG - lightDistance avant interprétation:', {
+                    type: typeof lightDistance,
+                    value: lightDistance,
+                    epochName: epochName
+                });
+                if (typeof lightDistance === 'string' || (typeof lightDistance !== 'number' && lightDistance !== null && lightDistance !== undefined)) {
+                    lightDistance = interpretConfigValue(lightDistance);
+                    console.log('[setEpoch] 🔍 DEBUG - lightDistance après interprétation:', {
+                        type: typeof lightDistance,
+                        value: lightDistance
+                    });
+                }
+                
+                // Si isIceChange, diminuer lightDistance de 1
+                if (window.isIceChange && typeof lightDistance === 'number') {
+                    lightDistance = Math.max(0, lightDistance - 1);
+                }
+                
+                // Stocker les valeurs interprétées dans window pour que createCell puisse les récupérer
+                if (typeof window !== 'undefined') {
+                    window.currentEpochLuxSaturation = epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
+                    window.currentEpochLightDistance = lightDistance;
                 }
 
                 const newCell = window.createCell(
@@ -1927,7 +2064,7 @@ function setEpoch(epochName) {
                     epochConfig.radius,
                     epochConfig.fillColor,
                     epochConfig.strokeColor,
-                    logoPath, // Utiliser le logo calculé
+                    logoPath, // Utiliser le logo interprété
                     terreNode.left,
                     terreNode.right,
                     terreNode.top,
@@ -2827,66 +2964,77 @@ function updateHadeenTexture() {
     const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
     if (currentEpoch !== 'Hadéen') return;
     
-    // Calculer l'index de la texture (0 à 9)
-    // Chaque texture = 50Ma : 0-49Ma = 0, 50-99Ma = 1, ..., 450-499Ma = 9
-    // infoTimeMa est en Ma, donc on divise par 50
-    const textureIndex = Math.floor(window.infoTimeMa / 50);
-    const clampedIndex = Math.min(9, Math.max(0, textureIndex)); // Limiter entre 0 et 9
+    // Récupérer la config de l'époque et interpréter le logo
+    const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
+    if (!terreNode || !terreNode.epoch || !Array.isArray(terreNode.epoch)) return;
     
-    const newLogoPath = `fonts/pics/text_hadeen${clampedIndex}.png`;
+    const epochConfig = terreNode.epoch.find(e => e.epochName === 'Hadéen');
+    if (!epochConfig) return;
+    
+    // Interpréter le logo avec l'interpréteur (remplace {$ticTime})
+    const newLogoPath = interpretConfigValue(epochConfig.logo);
+    
+    // Interpréter lightDistance aussi
+    let lightDistance = epochConfig.lightDistance;
+    if (typeof lightDistance === 'string' || (typeof lightDistance !== 'number' && lightDistance !== null && lightDistance !== undefined)) {
+        lightDistance = interpretConfigValue(lightDistance);
+    }
+    
+    // Si isIceChange, diminuer lightDistance de 1
+    if (window.isIceChange && typeof lightDistance === 'number') {
+        lightDistance = Math.max(0, lightDistance - 1);
+    }
+    
+    // Stocker les valeurs interprétées pour createCell
+    if (typeof window !== 'undefined') {
+        window.currentEpochLuxSaturation = epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
+        window.currentEpochLightDistance = lightDistance;
+    }
     
     // Recréer la cellule Terre avec la nouvelle texture
-    const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
-    if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
-        const epochConfig = terreNode.epoch.find(e => e.epochName === 'Hadéen');
-        if (epochConfig) {
-            const oldCell = document.getElementById('cell-terre');
-            if (oldCell && typeof window.createCell === 'function') {
-                const parent = oldCell.parentElement;
-                oldCell.remove();
-                
-                // Créer une nouvelle config avec le logo mis à jour
-                const updatedEpochConfig = {
-                    ...epochConfig,
-                    logo: newLogoPath
-                };
-                
-                const newCell = window.createCell(
-                    terreNode.x,
-                    terreNode.y,
-                    updatedEpochConfig.radius,
-                    updatedEpochConfig.fillColor,
-                    updatedEpochConfig.strokeColor,
-                    updatedEpochConfig.logo,
-                    terreNode.left,
-                    terreNode.right,
-                    terreNode.top,
-                    terreNode.bottom,
-                    terreNode.tooltip,
-                    terreNode.radiation,
-                    null, // rectangleOptions
-                    null, // fillImage
-                    terreNode.id,
-                    terreNode.zIndex,
-                    terreNode.logoScale,
-                    terreNode.logoOffsetY,
-                    updatedEpochConfig.strokeSize,
-                    terreNode.strokeStyle || 'solid',
-                    null, // targetContainer
-                    updatedEpochConfig.planetEffect || false
-                );
-                
-                parent.appendChild(newCell);
-                console.log('[updateHadeenTexture] 🔍 DEBUG - Texture mise à jour:', {
-                    infoTimeMa: window.infoTimeMa,
-                    textureIndex: clampedIndex,
-                    logoPath: newLogoPath
-                });
-            }
-        }
+    const oldCell = document.getElementById('cell-terre');
+    if (oldCell && typeof window.createCell === 'function') {
+        const parent = oldCell.parentElement;
+        oldCell.remove();
+        
+        const newCell = window.createCell(
+            terreNode.x,
+            terreNode.y,
+            epochConfig.radius,
+            epochConfig.fillColor,
+            epochConfig.strokeColor,
+            newLogoPath, // Utiliser le logo interprété
+            terreNode.left,
+            terreNode.right,
+            terreNode.top,
+            terreNode.bottom,
+            terreNode.tooltip,
+            terreNode.radiation,
+            null, // rectangleOptions
+            null, // fillImage
+            terreNode.id,
+            terreNode.zIndex,
+            terreNode.logoScale,
+            terreNode.logoOffsetY,
+            epochConfig.strokeSize,
+            terreNode.strokeStyle || 'solid',
+            null, // targetContainer
+            epochConfig.planetEffect || false
+        );
+        
+        parent.appendChild(newCell);
+        console.log('[updateHadeenTexture] 🔍 DEBUG - Texture mise à jour:', {
+            infoTimeMa: window.infoTimeMa,
+            textureIndex: window.textureIndex,
+            logoPath: newLogoPath,
+            lightDistance: lightDistance,
+            isTextChange: window.isTextChange,
+            isIceChange: window.isIceChange
+        });
     }
 }
 
-// Exposer updateHadeenTexture globalement
+// Exposer updateHadeenTexture et interpretConfigValue globalement
 window.updateHadeenTexture = updateHadeenTexture;
+window.interpretConfigValue = interpretConfigValue;
 

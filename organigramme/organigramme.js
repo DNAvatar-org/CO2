@@ -356,6 +356,16 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setClearColor(0x000000, 0); // Fond transparent
     
+    // Stocker les références de base maintenant que scene, camera, renderer sont créés
+    canvas._threeJSData.scene = scene;
+    canvas._threeJSData.camera = camera;
+    canvas._threeJSData.renderer = renderer;
+    canvas._threeJSData.sphere = null; // Sera défini dans createPlanetSphere
+    canvas._threeJSData.sphereRadius = sphereRadius;
+    canvas._threeJSData.luxSaturation = luxSaturation;
+    canvas._threeJSData.lightDistance = lightDistance;
+    canvas._threeJSData.lightContrast = lightContrast;
+    
     // Texture - vérifier le protocole (Three.js nécessite HTTP/HTTPS)
     let texture = null;
     if (window.location.protocol === 'file:') {
@@ -401,6 +411,11 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         // Augmenter drastiquement la lumière ambiante pour l'éclairage interne
         ambientLight.intensity = 1.5; // Très forte lumière ambiante pour éclairage interne
         console.log('[initPlanetThreeJS] 🔍 DEBUG - Éclairage interne (PointLight au centre), intensité:', lightContrast * luxSaturation * 20);
+        
+        // Stocker les références des lumières après création
+        canvas._threeJSData.pointLight = pointLight;
+        canvas._threeJSData.directionalLight = null;
+        canvas._threeJSData.ambientLight = ambientLight;
     } else {
         // Éclairage externe : DirectionalLight (soleil)
         // Note: Pour DirectionalLight, la distance n'a pas d'effet visuel (rayons parallèles)
@@ -413,6 +428,11 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         directionalLight.castShadow = false;
         scene.add(directionalLight);
         console.log('[initPlanetThreeJS] 🔍 DEBUG - Éclairage externe (DirectionalLight), distance:', actualLightDistance);
+        
+        // Stocker les références des lumières après création
+        canvas._threeJSData.directionalLight = directionalLight;
+        canvas._threeJSData.pointLight = null;
+        canvas._threeJSData.ambientLight = ambientLight;
     }
     
     // Ajuster le contraste de l'éclairage avec luxSaturation
@@ -548,6 +568,145 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         }
     });
     resizeObserver.observe(container);
+}
+
+// Fonction pour mettre à jour l'éclairage Three.js sans recréer la scène
+function updatePlanetLighting() {
+    const cellTerre = document.getElementById('cell-terre');
+    if (!cellTerre) {
+        console.warn('[updatePlanetLighting] ⚠️ Cellule Terre non trouvée');
+        return;
+    }
+    
+    // Trouver le canvas Three.js dans la cellule
+    const canvas = cellTerre.querySelector('canvas');
+    if (!canvas || !canvas._threeJSData) {
+        console.warn('[updatePlanetLighting] ⚠️ Canvas Three.js non trouvé ou non initialisé');
+        return;
+    }
+    
+    const threeJSData = canvas._threeJSData;
+    if (!threeJSData.directionalLight && !threeJSData.pointLight) {
+        console.warn('[updatePlanetLighting] ⚠️ Aucune lumière trouvée dans la scène Three.js');
+        return;
+    }
+    
+    // Récupérer la config de l'époque courante
+    const currentEpochName = (typeof window !== 'undefined' && window.currentEpochName) || 'Corps noir';
+    const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
+    if (!terreNode || !terreNode.epoch || !Array.isArray(terreNode.epoch)) {
+        console.warn('[updatePlanetLighting] ⚠️ Configuration époque non trouvée');
+        return;
+    }
+    
+    const epochConfig = terreNode.epoch.find(e => e.epochName === currentEpochName);
+    if (!epochConfig) {
+        console.warn('[updatePlanetLighting] ⚠️ Époque non trouvée:', currentEpochName);
+        return;
+    }
+    
+    // Interpréter lightDistance
+    let lightDistance = epochConfig.lightDistance;
+    if (typeof lightDistance === 'string' || (typeof lightDistance !== 'number' && lightDistance !== null && lightDistance !== undefined)) {
+        if (typeof window.interpretConfigValue === 'function') {
+            lightDistance = window.interpretConfigValue(lightDistance);
+        }
+    }
+    
+    // Si isIceChange, diminuer lightDistance de 1
+    if (window.isIceChange && typeof lightDistance === 'number') {
+        lightDistance = Math.max(0, lightDistance - 1);
+    }
+    
+    const luxSaturation = epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
+    const lightContrast = threeJSData.lightContrast || 1.5;
+    const sphereRadius = threeJSData.currentRadius || threeJSData.sphereRadius;
+    
+    console.log('[updatePlanetLighting] 🔍 DEBUG - Mise à jour éclairage:', {
+        currentEpochName,
+        lightDistance,
+        luxSaturation,
+        isIceChange: window.isIceChange,
+        hasDirectionalLight: !!threeJSData.directionalLight,
+        hasPointLight: !!threeJSData.pointLight
+    });
+    
+    // Mettre à jour l'éclairage selon le type
+    if (lightDistance !== null && lightDistance === 0) {
+        // Éclairage interne : PointLight
+        if (threeJSData.pointLight) {
+            threeJSData.pointLight.intensity = lightContrast * luxSaturation * 20;
+            if (threeJSData.ambientLight) {
+                threeJSData.ambientLight.intensity = 1.5;
+            }
+        } else {
+            // Passer de DirectionalLight à PointLight
+            if (threeJSData.directionalLight) {
+                threeJSData.scene.remove(threeJSData.directionalLight);
+            }
+            const pointLight = new THREE.PointLight(0xffffff, lightContrast * luxSaturation * 20);
+            pointLight.position.set(0, 0, 0);
+            pointLight.castShadow = false;
+            threeJSData.scene.add(pointLight);
+            threeJSData.pointLight = pointLight;
+            threeJSData.directionalLight = null;
+            if (threeJSData.ambientLight) {
+                threeJSData.ambientLight.intensity = 1.5;
+            }
+        }
+    } else {
+        // Éclairage externe : DirectionalLight
+        if (threeJSData.directionalLight) {
+            const defaultDistance = sphereRadius * 3;
+            const actualLightDistance = lightDistance !== null && lightDistance > 0 ? lightDistance : defaultDistance;
+            const lightDirection = new THREE.Vector3(-1, 1, 0).normalize();
+            const lightPosition = lightDirection.clone().multiplyScalar(actualLightDistance);
+            threeJSData.directionalLight.position.copy(lightPosition);
+            
+            // Mettre à jour l'intensité
+            const baseDirectionalIntensity = 0.1 + lightContrast * 1.2;
+            const distanceFactor = (defaultDistance * defaultDistance) / (actualLightDistance * actualLightDistance);
+            threeJSData.directionalLight.intensity = baseDirectionalIntensity * luxSaturation * distanceFactor;
+            
+            if (threeJSData.ambientLight) {
+                const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
+                threeJSData.ambientLight.intensity = ambientIntensity;
+            }
+        } else {
+            // Passer de PointLight à DirectionalLight
+            if (threeJSData.pointLight) {
+                threeJSData.scene.remove(threeJSData.pointLight);
+            }
+            const directionalLight = new THREE.DirectionalLight(0xffffff, lightContrast);
+            const defaultDistance = sphereRadius * 3;
+            const actualLightDistance = lightDistance !== null && lightDistance > 0 ? lightDistance : defaultDistance;
+            const lightDirection = new THREE.Vector3(-1, 1, 0).normalize();
+            const lightPosition = lightDirection.clone().multiplyScalar(actualLightDistance);
+            directionalLight.position.copy(lightPosition);
+            directionalLight.castShadow = false;
+            threeJSData.scene.add(directionalLight);
+            
+            const baseDirectionalIntensity = 0.1 + lightContrast * 1.2;
+            const distanceFactor = (defaultDistance * defaultDistance) / (actualLightDistance * actualLightDistance);
+            directionalLight.intensity = baseDirectionalIntensity * luxSaturation * distanceFactor;
+            
+            threeJSData.directionalLight = directionalLight;
+            threeJSData.pointLight = null;
+            if (threeJSData.ambientLight) {
+                const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
+                threeJSData.ambientLight.intensity = ambientIntensity;
+            }
+        }
+    }
+    
+    // Mettre à jour les références stockées
+    threeJSData.lightDistance = lightDistance;
+    threeJSData.luxSaturation = luxSaturation;
+}
+
+// Exposer updatePlanetLighting globalement
+if (typeof window !== 'undefined') {
+    window.updatePlanetLighting = updatePlanetLighting;
 }
 
 function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4, strokeStyle = 'solid', targetContainer = null, planetEffect = false) {
@@ -779,12 +938,74 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 let luxSaturation = 1.0; // Valeur par défaut
                 let lightDistance = null; // null = distance automatique, 0 = éclairage interne, >0 = distance spécifique
                 if (nodeId === 'terre' && typeof window !== 'undefined' && window.configOrganigramme) {
-                    const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
-                    if (terreNode) {
-                        luxSaturation = getNodeProperty(terreNode, 'luxSaturation', 1.0);
-                        lightDistance = getNodeProperty(terreNode, 'lightDistance', null);
-                        console.log('[createCell] 🔍 DEBUG - Paramètres éclairage:', { luxSaturation, lightDistance });
+                    // Priorité 1: Utiliser les valeurs interprétées stockées dans window (depuis setEpoch)
+                    if (window.currentEpochLuxSaturation !== undefined) {
+                        luxSaturation = window.currentEpochLuxSaturation;
                     }
+                    if (window.currentEpochLightDistance !== undefined) {
+                        lightDistance = window.currentEpochLightDistance;
+                        console.log('[createCell] 🔍 DEBUG - lightDistance depuis window.currentEpochLightDistance:', {
+                            value: lightDistance,
+                            type: typeof lightDistance
+                        });
+                    }
+                    
+                    // Priorité 2: Récupérer depuis la config si pas encore interprétées
+                    if (luxSaturation === 1.0 || lightDistance === null) {
+                        const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
+                        if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
+                            const currentEpochName = window.currentEpochName || 'Corps noir';
+                            const epochConfig = terreNode.epoch.find(e => e.epochName === currentEpochName);
+                            if (epochConfig) {
+                                // Interpréter les valeurs si nécessaire
+                                if (luxSaturation === 1.0 && epochConfig.luxSaturation !== undefined) {
+                                    luxSaturation = epochConfig.luxSaturation;
+                                }
+                                if (lightDistance === null && epochConfig.lightDistance !== undefined) {
+                                    console.log('[createCell] 🔍 DEBUG - lightDistance avant interprétation:', {
+                                        value: epochConfig.lightDistance,
+                                        type: typeof epochConfig.lightDistance,
+                                        epochName: currentEpochName
+                                    });
+                                    // Interpréter lightDistance si c'est une chaîne
+                                    if (typeof epochConfig.lightDistance === 'string' && typeof window.interpretConfigValue === 'function') {
+                                        lightDistance = window.interpretConfigValue(epochConfig.lightDistance);
+                                        console.log('[createCell] 🔍 DEBUG - lightDistance après interprétation:', {
+                                            value: lightDistance,
+                                            type: typeof lightDistance,
+                                            original: epochConfig.lightDistance
+                                        });
+                                    } else {
+                                        lightDistance = epochConfig.lightDistance;
+                                        console.log('[createCell] 🔍 DEBUG - lightDistance utilisé tel quel (pas de chaîne):', {
+                                            value: lightDistance,
+                                            type: typeof lightDistance
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    console.log('[createCell] 🔍 DEBUG - Paramètres éclairage finaux:', { 
+                        luxSaturation, 
+                        lightDistance,
+                        lightDistanceType: typeof lightDistance,
+                        infoTimeMa: window.infoTimeMa,
+                        textureIndex: window.textureIndex
+                    });
+                }
+                
+                // S'assurer que lightDistance est interprété avant de passer à initPlanetThreeJS
+                // Si c'est encore une chaîne, l'interpréter maintenant
+                if (typeof lightDistance === 'string' && typeof window.interpretConfigValue === 'function') {
+                    const interpretedLightDistance = window.interpretConfigValue(lightDistance);
+                    console.log('[createCell] 🔍 DEBUG - lightDistance réinterprété avant initPlanetThreeJS:', {
+                        original: lightDistance,
+                        interpreted: interpretedLightDistance,
+                        type: typeof interpretedLightDistance
+                    });
+                    lightDistance = interpretedLightDistance;
                 }
                 
                 // Initialiser Three.js avec éclairage
@@ -1456,6 +1677,14 @@ function createArc(cx, cy, r, opacity, openingAngle = 0, rotation = 270, contain
 
 // Fonction pour calculer les positions Y automatiquement
 function calculatePositions() {
+    // Récupérer nodes depuis window.configOrganigramme (défini dans configOrganigramme.js)
+    const nodes = (typeof window !== 'undefined' && window.configOrganigramme && window.configOrganigramme.nodes) 
+        ? window.configOrganigramme.nodes 
+        : [];
+    if (nodes.length === 0) {
+        console.warn('[calculatePositions] ⚠️ WARNING - nodes non disponible, positions non calculées');
+        return;
+    }
     const nodeMap = {};
     nodes.forEach(node => nodeMap[node.id] = node);
 
