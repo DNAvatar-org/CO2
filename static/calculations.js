@@ -842,9 +842,12 @@ function logCalculationPhase(phase, data) {
         Albedo: albedo_active ? 'ON' : 'OFF'
     };
 
-    // Log seulement pour les phases importantes (réduire le bruit)
-    const importantPhases = ['SIMULATION START', 'DICHOTOMIE START', 'CALCULATION COMPLETE', 'CONVERGENCE'];
-    if (importantPhases.some(imp => phase.includes(imp))) {
+    // Flag pour contrôler l'affichage des phases de debug
+    const isDebugPhases = (typeof window !== 'undefined' && window.isDebugPhases === true);
+    
+    // Si le flag est activé, afficher toutes les phases
+    // Sinon, ne rien afficher
+    if (isDebugPhases) {
         console.log(`[PHASE: ${phase}] États: CO2=${states.CO2}, H2O=${states.H2O}, CH4=${states.CH4}, Albedo=${states.Albedo}`, data || '');
     }
 }
@@ -1876,10 +1879,11 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                             geo_flux = currentEpoch.geothermal_flux;
                         }
                     }
-                    // Récupérer l'état H2O depuis window.waterVaporEnabled (état du bouton)
-                    const h2o_enabled_state = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-                        ? window.waterVaporEnabled
-                        : false;
+                    // Récupérer l'état H2O depuis l'état réel du bouton (checked/unchecked)
+                    const cellH2O_state = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+                    const h2o_enabled_state = (cellH2O_state && cellH2O_state.classList.contains('checked')) ||
+                        (typeof window !== 'undefined' && window.useH2O === true) ||
+                        (typeof window !== 'undefined' && window.waterVaporEnabled === true);
                     const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0_current, h2o_enabled_state, geo_flux);
 
                     // 🔒 CORRECTION CRITIQUE : Inclure le flux géothermique dans le bilan énergétique !
@@ -1903,9 +1907,11 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
 
                     // Mettre à jour les labels du flux pendant le calcul
                     if (typeof window !== 'undefined' && typeof window.updateFluxLabels === 'function') {
-                        const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-                            ? window.waterVaporEnabled
-                            : waterVaporEnabled;
+                        // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked)
+                        const cellH2O_iter = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+                        const h2o_enabled = (cellH2O_iter && cellH2O_iter.classList.contains('checked')) ||
+                            (typeof window !== 'undefined' && window.useH2O === true) ||
+                            (typeof window !== 'undefined' && window.waterVaporEnabled === true);
 
                         // 🔒 UTILISER geo_flux (variable locale déjà calculée correctement ci-dessus)
                         // au lieu de le recalculer (potentiellement mal) via getGeologicalPeriodByName
@@ -2195,9 +2201,11 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
 
     // Calculer l'albedo dynamique et la couverture nuageuse
-    const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-        ? window.waterVaporEnabled
-        : waterVaporEnabled;
+    // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked) au lieu de se fier uniquement à window.waterVaporEnabled
+    const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+    const h2o_enabled = (cellH2O && cellH2O.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useH2O === true) ||
+        (typeof window !== 'undefined' && window.waterVaporEnabled === true);
     // Récupérer le flux géothermique depuis l'époque courante
     // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
@@ -2236,8 +2244,46 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         ? final_T0  // Corps noir : utiliser directement temp_surface (formule analytique exacte)
         : Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
 
+    // 🔒 FORCER le recalcul de la glace avant de calculer l'albedo
+    // Si H2O est activé, recalculer h2oIceFractionFromCalculation avec la température finale
+    console.log('[finalizeResults] 🔍 DEBUG - Avant recalcul glace:', {
+        h2o_enabled,
+        final_T0,
+        h2oVaporPercent: typeof window !== 'undefined' ? window.h2oVaporPercent : 'N/A',
+        h2oTotalFromMeteorites: typeof window !== 'undefined' ? window.h2oTotalFromMeteorites : 'N/A',
+        h2oIceFractionFromCalculation: typeof window !== 'undefined' ? window.h2oIceFractionFromCalculation : 'N/A'
+    });
+    
+    if (h2o_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
+        const h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
+        const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+        const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
+        
+        console.log('[finalizeResults] 🔍 DEBUG - Calcul H2O:', {
+            h2o_vapor_percent,
+            h2o_from_meteorites,
+            h2o_total_percent,
+            final_T0,
+            temp_C: final_T0 - 273.15
+        });
+        
+        if (h2o_total_percent > 0) {
+            // Calculer la répartition vapeur/glace selon la température finale
+            const h2o_params = window.calculateH2OParameters(final_T0, h2o_total_percent, null);
+            console.log('[finalizeResults] 🔍 DEBUG - h2o_params:', h2o_params);
+            // Mettre à jour h2oIceFractionFromCalculation pour que calculateAlbedo() l'utilise
+            window.h2oIceFractionFromCalculation = h2o_params.ice_fraction || 0;
+            console.log('[finalizeResults] 🔍 DEBUG - h2oIceFractionFromCalculation mis à jour:', window.h2oIceFractionFromCalculation, 'pour T0:', final_T0);
+        } else {
+            console.log('[finalizeResults] ⚠️ WARNING - h2o_total_percent = 0, pas de recalcul de glace');
+        }
+    } else {
+        console.log('[finalizeResults] ⚠️ WARNING - H2O désactivé ou calculateH2OParameters non disponible');
+    }
+    
     const albedo = calculateAlbedo(final_T0, h2o_enabled, geo_flux);
     const cloud_coverage = calculateCloudCoverage(final_T0, h2o_enabled);
+    console.log('[finalizeResults] 🔍 DEBUG - albedo calculé:', albedo, 'pour T0:', final_T0, 'h2o_enabled:', h2o_enabled);
 
     const final_result_obj = {
         lambda_range: lambda_range,
@@ -2284,9 +2330,11 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
 
     // Récupérer h2o_enabled pour calculer l'albedo dynamique et la couverture nuageuse
-    const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-        ? window.waterVaporEnabled
-        : waterVaporEnabled;
+    // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked) au lieu de se fier uniquement à window.waterVaporEnabled
+    const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+    const h2o_enabled = (cellH2O && cellH2O.classList.contains('checked')) ||
+        (typeof window !== 'undefined' && window.useH2O === true) ||
+        (typeof window !== 'undefined' && window.waterVaporEnabled === true);
     // Récupérer le flux géothermique depuis l'époque courante
     // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
@@ -2306,8 +2354,25 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
         }
     }
     const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
+    // 🔒 FORCER le recalcul de la glace avant de calculer l'albedo (mode synchrone)
+    // Si H2O est activé, recalculer h2oIceFractionFromCalculation avec la température finale
+    if (h2o_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
+        const h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
+        const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+        const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
+        
+        if (h2o_total_percent > 0) {
+            // Calculer la répartition vapeur/glace selon la température finale
+            const h2o_params = window.calculateH2OParameters(T0, h2o_total_percent, null);
+            // Mettre à jour h2oIceFractionFromCalculation pour que calculateAlbedo() l'utilise
+            window.h2oIceFractionFromCalculation = h2o_params.ice_fraction || 0;
+            console.log('[finalizeResultsSync] 🔍 DEBUG - h2oIceFractionFromCalculation mis à jour:', window.h2oIceFractionFromCalculation, 'pour T0:', T0);
+        }
+    }
+    
     const albedo = calculateAlbedo(T0, h2o_enabled, geo_flux);
     const cloud_coverage = calculateCloudCoverage(T0, h2o_enabled);
+    console.log('[finalizeResultsSync] 🔍 DEBUG - albedo calculé:', albedo, 'pour T0:', T0);
 
     // Récupérer CH4 pour détecter le cas du corps noir
     const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)

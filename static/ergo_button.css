@@ -118,3 +118,82 @@
                  0 0 8px rgba(0, 255, 0, 0.3) !important;
 }
 
+/* ==========================================================================
+   Boutons événements (timeline events) - contour noir 1px + glow blanc pulsant
+   ========================================================================== */
+
+/* Classe pour les boutons événements avec contour blur blanc pulsant */
+.timeline-event-logo.btn-events {
+    /* Contour blur blanc pulsant - très léger, max 3px */
+    /* Pour les images (img) et les boutons (button) */
+    /* Le filtre initial est défini dans l'animation, pas ici pour éviter les conflits */
+    animation: event-logo-pulse-img 2s ease-in-out infinite !important;
+}
+
+/* Pour les boutons texte/emoji uniquement */
+.timeline-event-logo.btn-events:not(img) {
+    text-shadow: 0 0 1px rgba(255, 255, 255, 0.5),
+                 0 0 2px rgba(255, 255, 255, 0.3),
+                 0 0 3px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Pour les images enfants (si le bouton contient une image) */
+.timeline-event-logo.btn-events img {
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.4)) 
+            drop-shadow(0 0 2px rgba(255, 255, 255, 0.2)) !important;
+    animation: event-logo-pulse-img 2s ease-in-out infinite !important;
+}
+
+.timeline-event-logo.btn-events:hover {
+    /* Légèrement plus intense au rollover, mais toujours subtil - contour noir 1px + glow blanc 3px */
+    filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1)) 
+            drop-shadow(0 0 2px rgba(255, 255, 255, 0.6)) 
+            drop-shadow(0 0 3px rgba(255, 255, 255, 0.3)) !important;
+}
+
+.timeline-event-logo.btn-events:hover:not(img) {
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.6),
+                 0 0 3px rgba(255, 255, 255, 0.4) !important;
+}
+
+.timeline-event-logo.btn-events:hover img {
+    filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1)) 
+            drop-shadow(0 0 2px rgba(255, 255, 255, 0.6)) 
+            drop-shadow(0 0 3px rgba(255, 255, 255, 0.3)) !important;
+}
+
+/* Animation de pulse pour les boutons événements (texte/emoji) - contour noir 1px + glow blanc 3px = 4px total */
+@keyframes event-logo-pulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1)) 
+                drop-shadow(0 0 1px rgba(255, 255, 255, 0.5)) 
+                drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+        text-shadow: 0 0 0px rgba(0, 0, 0, 1),
+                     0 0 1px rgba(255, 255, 255, 0.5),
+                     0 0 2px rgba(255, 255, 255, 0.3),
+                     0 0 3px rgba(255, 255, 255, 0.2);
+    }
+    50% {
+        filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1)) 
+                drop-shadow(0 0 2px rgba(255, 255, 255, 0.7)) 
+                drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
+        text-shadow: 0 0 0px rgba(0, 0, 0, 1),
+                     0 0 2px rgba(255, 255, 255, 0.6),
+                     0 0 3px rgba(255, 255, 255, 0.4);
+    }
+}
+
+/* Animation de pulse pour les images dans les boutons événements - contour noir 1px + glow blanc 3px = 4px total */
+@keyframes event-logo-pulse-img {
+    0%, 100% {
+        filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1)) 
+                drop-shadow(0 0 1px rgba(255, 255, 255, 0.5)) 
+                drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+    }
+    50% {
+        filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1)) 
+                drop-shadow(0 0 2px rgba(255, 255, 255, 0.7)) 
+                drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
+    }
+}
+

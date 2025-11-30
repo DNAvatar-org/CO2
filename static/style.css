@@ -655,7 +655,7 @@ h1 {
     transition: opacity 0.3s ease, transform 0.2s ease;
     border: none;
     /* Pas de border */
-    border-radius: 4px;
+    border-radius: 2px;
     padding: 0;
     box-sizing: border-box;
     /* Support pour les boutons emojis */

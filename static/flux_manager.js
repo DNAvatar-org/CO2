@@ -44,7 +44,10 @@
                 this._updateLabel('solar_1UA_mw', `${solarConstant.toFixed(0)}<br>W/m²`);
             }
 
-            console.log(`[FluxManager] Solar updated: intensity=${intensity}, constant=${solarConstant.toFixed(0)} W/m²`);
+            // Log désactivé (trop verbeux)
+            // if (window.isDebugPhases) {
+            //     console.log(`[FluxManager] Solar updated: intensity=${intensity}, constant=${solarConstant.toFixed(0)} W/m²`);
+            // }
         },
 
         /**

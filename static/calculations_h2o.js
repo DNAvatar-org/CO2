@@ -153,9 +153,25 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
         if (options.gravity === undefined || options.pressure_atm === undefined) return { vapor_fraction: 0, liquid_fraction: 0, ice_fraction: 0, max_vapor_fraction: 0, air_density: 0 };
     }
     
-    // Si molar_mass_air = 0 (pas d'atmosphère), retourner 0 partout
-    if (options.molar_mass_air === 0 || options.pressure_atm === 0) {
-        return { vapor_fraction: 0, liquid_fraction: 0, ice_fraction: 0, max_vapor_fraction: 0, air_density: 0 };
+    // Si molar_mass_air = 0 (pas d'atmosphère), on peut quand même avoir de la glace à la surface
+    // La glace peut se former même sans atmosphère si la température est < 0°C
+    const hasNoAtmosphere = (options.molar_mass_air === 0 || options.pressure_atm === 0);
+    if (hasNoAtmosphere) {
+        // Pas d'atmosphère : pas de vapeur, mais on peut avoir de la glace si T < 0°C
+        const T_freeze = 273.15;
+        if (temp_K < T_freeze && h2o_total_fraction > 0) {
+            // Tout l'eau disponible devient de la glace (pas de vapeur sans atmosphère)
+            return { 
+                vapor_fraction: 0, 
+                liquid_fraction: 0, 
+                ice_fraction: h2o_total_fraction, // Toute l'eau devient glace
+                max_vapor_fraction: 0, 
+                air_density: 0 
+            };
+        } else {
+            // Température >= 0°C sans atmosphère : pas de glace possible (sublimation directe)
+            return { vapor_fraction: 0, liquid_fraction: 0, ice_fraction: 0, max_vapor_fraction: 0, air_density: 0 };
+        }
     }
 
     const pressure_atm = options.pressure_atm;
