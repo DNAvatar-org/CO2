@@ -85,6 +85,12 @@ window.updateEpochActions = function () {
         }
 
         iceMeteorBtn.addEventListener('click', () => {
+            // Mettre en pause l'animation Three.js lors du clic sur événement
+            if (typeof window !== 'undefined') {
+                window.threeJSAnimationPaused = true;
+                console.log('[events.js] ⏸️ Animation Three.js mise en pause (météorite glace)');
+            }
+            
             // Ajouter de l'eau totale (la répartition vapeur/glace sera calculée selon la température)
             // Calculer depuis la masse en kg (6.8e18 kg = 6.8 MGT)
             // Masse totale d'eau terrestre : 1.4e21 kg
@@ -121,6 +127,27 @@ window.updateEpochActions = function () {
             // 🔒 Ajouter +50Ma à info-time à chaque clic sur météorite glace
             if (typeof window !== 'undefined') {
                 window.infoTimeMa = (window.infoTimeMa || 0) + 50;
+                
+                // 🔒 Mettre à jour le flux géothermique selon le temps écoulé (refroidissement)
+                // Même logique que pour Hadéen
+                if (window.configOrganigramme && window.currentEpochName === 'Hadéen') {
+                    const hadeenEpoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
+                    if (hadeenEpoch) {
+                        const hadeanStart = 4.5e9; // 4.5 Ga
+                        const hadeanEnd = 4.0e9; // 4.0 Ga
+                        const totalDuration = hadeanStart - hadeanEnd; // 500 Ma
+                        const elapsed = window.infoTimeMa * 1e6; // Convertir Ma en années
+                        const progress = Math.min(1, Math.max(0, elapsed / totalDuration)); // 0 à 1
+                        
+                        // Interpolation Log-Lineaire pour le flux (décroissance exponentielle)
+                        const fluxStart = 2000000; // 2 MW/m²
+                        const fluxEnd = 0.3; // ~0.3 W/m²
+                        const logFlux = (1 - progress) * Math.log(fluxStart) + progress * Math.log(fluxEnd);
+                        const currentFlux = Math.exp(logFlux);
+                        
+                        hadeenEpoch.geothermal_flux = currentFlux;
+                    }
+                }
                 
                 // Mettre à jour l'affichage
                 if (typeof window.updateTimeline === 'function') {
@@ -178,6 +205,12 @@ window.updateEpochActions = function () {
         }
 
         bigImpactBtn.addEventListener('click', () => {
+            // Mettre en pause l'animation Three.js lors du clic sur événement
+            if (typeof window !== 'undefined') {
+                window.threeJSAnimationPaused = true;
+                console.log('[events.js] ⏸️ Animation Three.js mise en pause (impact majeur)');
+            }
+            
             // 🔒 Cacher le tooltip immédiatement car le bouton va disparaître
             // Empêche le tooltip de rester coincé si le bouton est supprimé avant le mouseleave
             if (typeof window.hideTooltip === 'function') {
@@ -223,8 +256,26 @@ window.updateEpochActions = function () {
         }
 
         timeAdvanceBtn.addEventListener('click', () => {
+            // Mettre en pause l'animation Three.js lors du clic sur événement
+            if (typeof window !== 'undefined') {
+                window.threeJSAnimationPaused = true;
+                console.log('[events.js] ⏸️ Animation Three.js mise en pause (avancer temps)');
+            }
+            
+            // Sauvegarder l'angle de rotation AVANT de mettre à jour la texture
+            const cellTerre = document.getElementById('cell-terre');
+            if (cellTerre) {
+                const canvas = cellTerre.querySelector('canvas');
+                if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
+                    const savedRotationY = canvas._threeJSData.sphere.rotation.y;
+                    window.savedPlanetRotationY = savedRotationY;
+                    console.log('[events.js] 🔍 DEBUG - Rotation sauvegardée (avancer temps):', savedRotationY);
+                }
+            }
+            
             // Avancer de 50 Ma (50 millions d'années) pour Hadéen
             // Utiliser window.infoTimeMa (en Ma, pas en années)
+            // ⚠️ IMPORTANT: Ce bouton n'ajoute PAS d'eau, seulement avance le temps et change la texture
             if (typeof window !== 'undefined') {
                 window.infoTimeMa = (window.infoTimeMa || 0) + 50;
                 
@@ -240,6 +291,7 @@ window.updateEpochActions = function () {
                 }
                 
                 // Mettre à jour le logo de la Terre avec la nouvelle texture
+                // ⚠️ IMPORTANT: updateHadeenTexture() change seulement la texture, PAS l'eau
                 if (typeof window.updateHadeenTexture === 'function') {
                     window.updateHadeenTexture();
                 }
@@ -359,6 +411,12 @@ window.updateEpochActions = function () {
         waterAdditionBtn.alt = 'Météorite de glace';
         waterAdditionBtn.className = 'timeline-event-logo btn-events';
         waterAdditionBtn.addEventListener('click', () => {
+            // Mettre en pause l'animation Three.js lors du clic sur événement
+            if (typeof window !== 'undefined') {
+                window.threeJSAnimationPaused = true;
+                console.log('[events.js] ⏸️ Animation Three.js mise en pause (météorite glace Hadéen)');
+            }
+            
             // Ajouter de l'eau totale (en kg, pas en %)
             // Calculer depuis la masse en kg (2.1e19 kg pour Hadéen)
             // Masse totale d'eau terrestre : 1.4e21 kg
@@ -387,6 +445,60 @@ window.updateEpochActions = function () {
             // Forcer le recalcul
             if (typeof window !== 'undefined') {
                 window.h2oIceFractionFromCalculation = undefined;
+            }
+
+            // 🔒 Ajouter +50Ma à info-time à chaque clic sur météorite glace (Hadéen)
+            if (typeof window !== 'undefined') {
+                window.infoTimeMa = (window.infoTimeMa || 0) + 50;
+                
+                // Limiter à 450Ma (9 textures de 0 à 9, chaque texture = 50Ma)
+                // 0-49Ma = texture 0, 50-99Ma = texture 1, ..., 450-499Ma = texture 9
+                if (window.infoTimeMa > 450) {
+                    window.infoTimeMa = 450; // Limiter à la dernière texture
+                }
+                
+                // 🔒 Mettre à jour le flux géothermique selon le temps écoulé (refroidissement)
+                // Même logique que le bouton ⏩
+                if (window.configOrganigramme) {
+                    const hadeenEpoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
+                    if (hadeenEpoch) {
+                        const hadeanStart = 4.5e9; // 4.5 Ga
+                        const hadeanEnd = 4.0e9; // 4.0 Ga
+                        const totalDuration = hadeanStart - hadeanEnd; // 500 Ma
+                        // infoTimeMa représente le temps écoulé depuis le début de l'Hadéen (0 à 500Ma)
+                        const elapsed = window.infoTimeMa * 1e6; // Convertir Ma en années
+                        const progress = Math.min(1, Math.max(0, elapsed / totalDuration)); // 0 à 1
+                        
+                        // Interpolation Log-Lineaire pour le flux (décroissance exponentielle)
+                        const fluxStart = 2000000; // 2 MW/m²
+                        const fluxEnd = 0.3; // ~0.3 W/m²
+                        const logFlux = (1 - progress) * Math.log(fluxStart) + progress * Math.log(fluxEnd);
+                        const currentFlux = Math.exp(logFlux);
+                        
+                        hadeenEpoch.geothermal_flux = currentFlux;
+                        console.log('[events.js] 🔍 DEBUG - Flux géothermique mis à jour:', {
+                            infoTimeMa: window.infoTimeMa,
+                            elapsed: elapsed,
+                            progress: progress,
+                            currentFlux: currentFlux
+                        });
+                    }
+                }
+                
+                // Mettre à jour l'affichage
+                if (typeof window.updateTimeline === 'function') {
+                    window.updateTimeline();
+                }
+                
+                // Mettre à jour le logo de la Terre avec la nouvelle texture
+                if (typeof window.updateHadeenTexture === 'function') {
+                    window.updateHadeenTexture();
+                }
+                
+                // Vérifier les événements automatiques
+                if (typeof checkDateEvents === 'function') {
+                    checkDateEvents();
+                }
             }
 
             // Recalculer avec updateH2OLevelDirect (passe par calculations_h2o.js pour la répartition glace/vapeur)

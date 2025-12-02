@@ -512,9 +512,9 @@ function temperature(z, CO2_fraction = null, T0_override = null) {
         // Calculer T0 à partir des formules (valeur initiale)
         const co2_frac = CO2_fraction !== null ? CO2_fraction : current_CO2_fraction_for_temp;
         // Utiliser un albedo de base pour l'initialisation (sans glace ni nuages)
-        const h2o_enabled_temp = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-            ? window.waterVaporEnabled
-            : waterVaporEnabled;
+        // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
+        const cellH2O_temp = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+        const h2o_enabled_temp = cellH2O_temp && cellH2O_temp.classList.contains('checked');
         const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
         const T0_no_greenhouse = Math.pow(calculateSolarFluxAbsorbed(255, false) / STEFAN_BOLTZMANN, 0.25);
 
@@ -818,22 +818,16 @@ function logCalculationPhase(phase, data) {
     const cellAlbedo = typeof document !== 'undefined' ? document.getElementById('cell-albedo-btn') : null;
 
     // Vérifier l'état via les cellules ET les variables globales (fallback) - même logique que organigramme.js
-    const co2_active = (cellCO2 && cellCO2.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useCO2 === true) ||
-        (data && data.CO2_fraction !== undefined && data.CO2_fraction > 0) ||
-        (typeof window !== 'undefined' && window.plotData && window.plotData.co2_ppm > 0);
+    // 🔒 SEUL l'état du bouton compte pour déterminer si CO2 est activé (pas de booléens en trop)
+    const co2_active = cellCO2 && cellCO2.classList.contains('checked');
     
-    const ch4_enabled = (cellCH4 && cellCH4.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useCH4 === true) ||
-        (typeof window !== 'undefined' && window.methaneEnabled === true);
+    // 🔒 SEUL l'état du bouton compte pour déterminer si CH4 est activé (pas de booléens en trop)
+    const ch4_enabled = cellCH4 && cellCH4.classList.contains('checked');
     
-    const h2o_enabled = (cellH2O && cellH2O.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useH2O === true) ||
-        (typeof window !== 'undefined' && window.waterVaporEnabled === true);
+    // 🔒 SEUL l'état du bouton compte pour déterminer si H2O/Albedo sont activés (pas de booléens en trop)
+    const h2o_enabled = cellH2O && cellH2O.classList.contains('checked');
     
-    const albedo_active = (cellAlbedo && cellAlbedo.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useAlbedo === true) ||
-        (data && data.albedo !== undefined && data.albedo > 0);
+    const albedo_active = cellAlbedo && cellAlbedo.classList.contains('checked');
 
     const states = {
         CO2: co2_active ? 'ON' : 'OFF',
@@ -1187,9 +1181,9 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const cross_section_H2O = lambda_range.map(lambda => crossSectionH2O(lambda));
     const cross_section_CH4 = lambda_range.map(lambda => crossSectionCH4(lambda));
 
-    const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-        ? window.waterVaporEnabled
-        : waterVaporEnabled;
+    // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
+    const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+    const h2o_enabled = cellH2O && cellH2O.classList.contains('checked');
 
     const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)
         ? window.methaneEnabled
@@ -1661,8 +1655,23 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     // Vérifier si l'époque définit une température initiale
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch && typeof currentEpoch.initial_temperature_K === 'number' && currentEpoch.initial_temperature_K > 0) {
-            T0_initial_config = currentEpoch.initial_temperature_K;
+        if (currentEpoch) {
+            // 🔒 PRIORITÉ 1 : Température selon ticTime (si disponible) pour convergence ultra-rapide
+            if (currentEpoch.ticTime_temperatures && Array.isArray(currentEpoch.ticTime_temperatures)) {
+                const ticTime = typeof window.textureIndex !== 'undefined' ? window.textureIndex : 
+                                (typeof window.infoTimeMa !== 'undefined' ? Math.floor(window.infoTimeMa / 50) : 0);
+                if (ticTime >= 0 && ticTime < currentEpoch.ticTime_temperatures.length) {
+                    T0_initial_config = currentEpoch.ticTime_temperatures[ticTime];
+                    logCalculationPhase('DICHOTOMIE START (ticTime température)', {
+                        ticTime: ticTime,
+                        T0_initial: T0_initial_config.toFixed(2)
+                    });
+                }
+            }
+            // 🔒 PRIORITÉ 2 : Température initiale de l'époque (fallback)
+            if (T0_initial_config === null && typeof currentEpoch.initial_temperature_K === 'number' && currentEpoch.initial_temperature_K > 0) {
+                T0_initial_config = currentEpoch.initial_temperature_K;
+            }
         }
     }
 
@@ -1729,9 +1738,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         });
 
         // Si H2O est activé, ajuster T0_initial (H2O ajoute un effet de serre important)
-        const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-            ? window.waterVaporEnabled
-            : waterVaporEnabled;
+        // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
+        const cellH2O_init = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+        const h2o_enabled = cellH2O_init && cellH2O_init.classList.contains('checked');
         if (h2o_enabled) {
             // H2O ajoute un effet de serre supplémentaire, mais limité pour éviter l'emballement
             // Réduit de 25K à 15K pour limiter la rétroaction positive température → nuages → forçage
@@ -1741,9 +1750,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
 
     // Dichotomie pour trouver T0 qui donne flux_total = flux_solaire_absorbé
     // 🔒 Ajuster les bornes selon la température initiale (peut être très élevée pour Hadéen)
-    const h2o_enabled_check = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-        ? window.waterVaporEnabled
-        : waterVaporEnabled;
+    // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
+    const cellH2O_check = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+    const h2o_enabled_check = cellH2O_check && cellH2O_check.classList.contains('checked');
 
     // Si T0_initial est très élevé (ex: Hadéen post-impact), utiliser un intervalle plus large
     // 🔒 OPTIMISATION : Réduire l'intervalle si on part d'une T0 précédente connue (continuité)
@@ -1880,10 +1889,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         }
                     }
                     // Récupérer l'état H2O depuis l'état réel du bouton (checked/unchecked)
+                    // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
                     const cellH2O_state = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
-                    const h2o_enabled_state = (cellH2O_state && cellH2O_state.classList.contains('checked')) ||
-                        (typeof window !== 'undefined' && window.useH2O === true) ||
-                        (typeof window !== 'undefined' && window.waterVaporEnabled === true);
+                    const h2o_enabled_state = cellH2O_state && cellH2O_state.classList.contains('checked');
                     const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0_current, h2o_enabled_state, geo_flux);
 
                     // 🔒 CORRECTION CRITIQUE : Inclure le flux géothermique dans le bilan énergétique !
@@ -1909,9 +1917,8 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     if (typeof window !== 'undefined' && typeof window.updateFluxLabels === 'function') {
                         // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked)
                         const cellH2O_iter = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
-                        const h2o_enabled = (cellH2O_iter && cellH2O_iter.classList.contains('checked')) ||
-                            (typeof window !== 'undefined' && window.useH2O === true) ||
-                            (typeof window !== 'undefined' && window.waterVaporEnabled === true);
+                        // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
+                        const h2o_enabled = cellH2O_iter && cellH2O_iter.classList.contains('checked');
 
                         // 🔒 UTILISER geo_flux (variable locale déjà calculée correctement ci-dessus)
                         // au lieu de le recalculer (potentiellement mal) via getGeologicalPeriodByName
@@ -2203,9 +2210,8 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     // Calculer l'albedo dynamique et la couverture nuageuse
     // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked) au lieu de se fier uniquement à window.waterVaporEnabled
     const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
-    const h2o_enabled = (cellH2O && cellH2O.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useH2O === true) ||
-        (typeof window !== 'undefined' && window.waterVaporEnabled === true);
+    // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
+    const h2o_enabled = cellH2O && cellH2O.classList.contains('checked');
     // Récupérer le flux géothermique depuis l'époque courante
     // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
@@ -2297,7 +2303,10 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         total_flux: total_flux,
         effective_temperature: effective_temperature,
         albedo: albedo,
-        cloud_coverage: cloud_coverage
+        cloud_coverage: cloud_coverage,
+        T0: final_T0, // 🔒 Température de surface (K) - nécessaire pour updateH2OLevelDirect
+        temp_surface: final_T0, // 🔒 Alias pour compatibilité
+        temp_surface_c: final_T0 - 273.15 // 🔒 Température de surface (°C) - nécessaire pour updateH2OLevelDirect
     };
 
     // Mettre à jour la visualisation spectrale avant de résoudre
@@ -2332,9 +2341,8 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     // Récupérer h2o_enabled pour calculer l'albedo dynamique et la couverture nuageuse
     // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked) au lieu de se fier uniquement à window.waterVaporEnabled
     const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
-    const h2o_enabled = (cellH2O && cellH2O.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useH2O === true) ||
-        (typeof window !== 'undefined' && window.waterVaporEnabled === true);
+    // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
+    const h2o_enabled = cellH2O && cellH2O.classList.contains('checked');
     // Récupérer le flux géothermique depuis l'époque courante
     // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
@@ -2406,7 +2414,10 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
         total_flux: total_flux,
         effective_temperature: effective_temperature,
         albedo: albedo,
-        cloud_coverage: cloud_coverage
+        cloud_coverage: cloud_coverage,
+        T0: T0, // 🔒 Température de surface (K) - nécessaire pour updateH2OLevelDirect
+        temp_surface: T0, // 🔒 Alias pour compatibilité
+        temp_surface_c: T0 - 273.15 // 🔒 Température de surface (°C) - nécessaire pour updateH2OLevelDirect
     };
 }
 

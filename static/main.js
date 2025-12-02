@@ -40,7 +40,7 @@ if (typeof window !== 'undefined') {
     window.h2oTotalFromMeteorites = 0; // Eau totale ajoutée par les météorites (en pourcentage 0-100)
     
     // Flag pour contrôler l'affichage des phases de debug
-    window.isDebugPhases = true; // Mettre à false pour désactiver les logs de phases
+    window.isDebugPhases = false; // Désactiver les logs de phase pour nettoyer // Mettre à false pour désactiver les logs de phases
 }
 
 // ============================================================================
@@ -390,16 +390,18 @@ window.lastIceLevel = undefined; // Dernière valeur de h2oIceFractionFromCalcul
  * @returns {number|string} - Valeur interprétée (nombre si expression mathématique, chaîne sinon)
  */
 function interpretConfigValue(value) {
+    // Pas besoin d'interprétation pour les nombres
     if (typeof value === 'number') {
-        return value; // Pas besoin d'interprétation pour les nombres
+        return value;
     }
     
+    // Retourner tel quel si ce n'est pas une chaîne
     if (typeof value !== 'string') {
-        return value; // Retourner tel quel si ce n'est pas une chaîne
+        return value;
     }
     
-    // Si la chaîne ne contient pas {$ticTime}, retourner tel quel
-    if (!value.includes('{$ticTime}')) {
+    // Si pas de placeholder, retourner tel quel
+    if (!value.includes('{$') && !value.includes('$ticTime')) {
         return value;
     }
     
@@ -411,36 +413,69 @@ function interpretConfigValue(value) {
     // Calculer ticTime = infoTimeMa / 50
     const ticTime = Math.floor((window.infoTimeMa || 0) / 50);
     
-    // Remplacer {$ticTime} par la valeur calculée
-    let interpreted = value.replace(/\{\$ticTime\}/g, ticTime.toString());
+    // Détecter si c'est un chemin d'image (pour arrondir automatiquement les résultats)
+    const isImagePath = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(value);
     
-    // Vérifier si la chaîne interprétée est une expression mathématique pure
-    // Pattern: uniquement chiffres, espaces, opérateurs mathématiques, parenthèses, points décimaux
-    const mathExpressionPattern = /^[\d\s+\-*/().]+$/;
+    // Gérer les expressions entre accolades {expression}
+    // Exemple: "text_archeen{$ticTime/3}.png" → "text_archeen2.png"
+    // 1. Trouver toutes les expressions entre accolades
+    // 2. Remplacer $ticTime dans chaque expression
+    // 3. Évaluer l'expression
+    // 4. Remplacer l'expression complète par le résultat (arrondi si image)
     
-    // Si c'est une expression mathématique pure (sans caractères alphabétiques ou autres)
-    if (mathExpressionPattern.test(interpreted.trim())) {
+    let interpreted = value;
+    
+    // Pattern pour trouver {expression} où expression peut contenir $ticTime et fonctions Math
+    // Note: Le pattern doit capturer les accolades ET l'expression à l'intérieur
+    const expressionPattern = /\{([^}]+)\}/g;
+    const matches = [...value.matchAll(expressionPattern)];
+    
+    // Traiter chaque expression trouvée
+    for (const match of matches) {
+        const fullMatch = match[0]; // {expression}
+        const expression = match[1]; // expression (sans les accolades)
+        
+        // Remplacer $ticTime dans l'expression
+        let exprWithValue = expression.replace(/\$ticTime/g, ticTime.toString());
+        
         try {
-            // Utiliser Function pour évaluer l'expression de manière sécurisée
-            // Exemple: "7-5/2" → Function('"use strict"; return (7-5/2)')() → 4.5
-            const result = Function('"use strict"; return (' + interpreted.trim() + ')')();
+            // Évaluer l'expression avec eval (plus simple et direct)
+            const result = eval(exprWithValue);
+            
             if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
-                console.log('[interpretConfigValue] 🔍 DEBUG - Expression évaluée:', {
-                    original: value,
-                    interpreted: interpreted.trim(),
-                    ticTime: ticTime,
-                    result: result
-                });
-                return result;
+                // Pour les chemins d'image, arrondir automatiquement le résultat
+                // Pour les autres cas (lightDistance, etc.), garder la précision
+                const finalResult = isImagePath ? Math.round(result) : result;
+                interpreted = interpreted.replace(fullMatch, finalResult.toString());
             }
         } catch (e) {
-            // Si l'évaluation échoue, retourner la chaîne interprétée
-            console.warn('[interpretConfigValue] ⚠️ Erreur évaluation expression:', interpreted.trim(), e);
+            // Si l'évaluation échoue, utiliser le fallback
+            const fallback = exprWithValue;
+            interpreted = interpreted.replace(fullMatch, fallback);
         }
     }
     
-    // Si ce n'est pas une expression mathématique pure, retourner la chaîne interprétée
-    // (ex: "fonts/pics/text_hadeen{$ticTime}.png" → "fonts/pics/text_hadeen5.png")
+    // Si pas d'expressions entre accolades, remplacer simplement {$ticTime}
+    if (!matches.length) {
+        interpreted = value.replace(/\{\$ticTime\}/g, ticTime.toString());
+    }
+    
+    // Si c'est une expression mathématique pure (pas une image), évaluer le résultat final
+    if (!isImagePath) {
+        // Vérifier si le résultat est une expression mathématique pure
+        const mathExpressionPattern = /^[\d\s+\-*/().]+$/;
+        if (mathExpressionPattern.test(interpreted.trim())) {
+            try {
+                const result = eval(interpreted.trim());
+                if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+                    return result;
+                }
+            } catch (e) {
+                // Ignorer l'erreur, retourner la chaîne interprétée
+            }
+        }
+    }
+    
     return interpreted;
 }
 
@@ -1710,6 +1745,7 @@ function updateLegend(data) {
 
             // Utiliser SVG pour dessiner le pattern (plus fiable que canvas)
             // Passer l'index original et le totalCount pour calculer le stroke-width correct
+            // 🔒 Les lignes de référence (courbes étalons) restent blanches
             const patternSVG = typeof window.createDashPatternSVG === 'function'
                 ? window.createDashPatternSVG(dashPattern, originalIndex, totalCount)
                 : `<svg width="50" height="5" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
@@ -1748,6 +1784,8 @@ function updateLegend(data) {
                 tempCAbove.style.lineHeight = '1';
                 tempCAbove.style.textAlign = 'right';
                 tempCAbove.style.whiteSpace = 'nowrap';
+                // 🔒 Les textes des courbes étalons restent blancs
+                tempCAbove.style.color = 'white';
                 tempCAbove.textContent = `${(T - 273.15).toFixed(0)}°C`;
                 patternContainer.appendChild(tempCAbove);
             }
@@ -1762,6 +1800,8 @@ function updateLegend(data) {
                 tempFBelow.style.lineHeight = '1';
                 tempFBelow.style.textAlign = 'right';
                 tempFBelow.style.whiteSpace = 'nowrap';
+                // 🔒 Les textes des courbes étalons restent blancs
+                tempFBelow.style.color = 'white';
                 const tempF = ((T - 273.15) * 9 / 5 + 32).toFixed(0);
                 tempFBelow.textContent = `${tempF}°F`;
                 patternContainer.appendChild(tempFBelow);
@@ -1772,7 +1812,7 @@ function updateLegend(data) {
             // K à côté (normal) - toujours afficher .0K même si entier
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
-            // Couleur gérée par CSS (.legend-section * { color: white !important; })
+            // 🔒 Les textes des courbes étalons restent blancs (géré par CSS)
             labelSpan.textContent = `${T.toFixed(1)}K`;
 
             item.appendChild(patternContainer);
@@ -1797,10 +1837,17 @@ function updateLegend(data) {
         const tempC = (T - 273.15).toFixed(0);
         const tempF = ((T - 273.15) * 9 / 5 + 32).toFixed(0);
 
-        // Calculer la couleur dynamique basée sur la température de surface (pour harmoniser avec le plot)
+        // 🔒 Calculer la couleur dynamique basée sur la température de surface (pour harmoniser avec le plot)
+        // Utiliser temp_surface (courbe réelle) et non effective_temperature (corps noir)
         let dynamicColor = 'cyan';
         if (data.current && typeof data.current.temp_surface === 'number') {
             const tempSurfaceC = data.current.temp_surface - 273.15;
+            if (typeof window.tempSurfaceToColor === 'function') {
+                dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
+            }
+        } else if (data.current && typeof data.current.T0 === 'number') {
+            // Fallback vers T0 si temp_surface n'est pas disponible
+            const tempSurfaceC = data.current.T0 - 273.15;
             if (typeof window.tempSurfaceToColor === 'function') {
                 dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
             }
@@ -1939,10 +1986,24 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour activer/désactiver la vapeur d'eau
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
+    // Mettre en pause l'animation Three.js lors du changement d'époque
+    if (typeof window !== 'undefined') {
+        window.threeJSAnimationPaused = true;
+        console.log('[setEpoch] ⏸️ Animation Three.js mise en pause');
+    }
+    
+    // 🔄 Remettre infoTimeMa à 0 lors du changement d'époque
+    // IMPORTANT: Doit être fait AVANT l'interprétation du logo pour que ticTime = 0
+    if (typeof window !== 'undefined') {
+        window.infoTimeMa = 0;
+        console.log('[setEpoch] 🔄 infoTimeMa remis à 0 pour nouvelle époque:', epochName);
+    }
+    
     // DEBUG: Log au début de setEpoch
     console.log('[setEpoch] 🔍 DEBUG - Début setEpoch:', {
         epochName,
-        calculationInProgress
+        calculationInProgress,
+        infoTimeMa: window.infoTimeMa
     });
     
     if (calculationInProgress) return; // Bloquer si calcul en cours
@@ -1988,12 +2049,12 @@ function setEpoch(epochName) {
 
     // 🔒 CONSERVER l'eau totale des météorites lors du passage de "Corps noir" à une autre époque
     // (elle sera ajustée plus tard pour ne pas dépasser 100% au total)
-    // Ne réinitialiser que si on change d'époque ET qu'on ne vient pas de "Corps noir"
-    if (epochName !== 'Corps noir' && previousEpoch !== 'Corps noir' && typeof window.h2oTotalFromMeteorites !== 'undefined') {
-        // Réinitialiser seulement si on change d'époque normale (pas depuis Corps noir)
+    // Ne réinitialiser que si on change d'époque ET qu'on ne vient pas de "Corps noir" ET qu'on ne reste pas dans la même époque
+    if (epochName !== 'Corps noir' && previousEpoch !== 'Corps noir' && epochName !== previousEpoch && typeof window.h2oTotalFromMeteorites !== 'undefined') {
+        // Réinitialiser seulement si on change d'époque normale (pas depuis Corps noir et pas la même époque)
         window.h2oTotalFromMeteorites = 0;
     }
-    // Si on vient de "Corps noir", conserver h2oTotalFromMeteorites (sera ajusté plus tard)
+    // Si on vient de "Corps noir" ou si on reste dans la même époque, conserver h2oTotalFromMeteorites (sera ajusté plus tard)
 
     // Mettre à jour les boutons d'action selon l'époque
     if (typeof window.updateEpochActions === 'function') {
@@ -2020,6 +2081,23 @@ function setEpoch(epochName) {
                     planetEffect: epochConfig.planetEffect || false,
                     logo: epochConfig.logo
                 });
+                
+                // Sauvegarder l'angle de rotation AVANT de supprimer la cellule
+                const canvas = oldCell.querySelector('canvas');
+                let savedRotationY = 0;
+                if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
+                    savedRotationY = canvas._threeJSData.sphere.rotation.y;
+                    // 🔒 Stocker dans window pour que initPlanetThreeJS puisse le récupérer
+                    // (pour éviter que la terre pivote d'un coup lors du changement d'époque)
+                    if (typeof window !== 'undefined') {
+                        window.savedPlanetRotationY = savedRotationY;
+                        console.log('[setEpoch] 🔍 DEBUG - Rotation sauvegardée:', savedRotationY);
+                    }
+                } else if (typeof window !== 'undefined' && window.savedPlanetRotationY !== undefined) {
+                    // Si pas de sphere mais qu'on a déjà une rotation sauvegardée, la conserver
+                    savedRotationY = window.savedPlanetRotationY;
+                    console.log('[setEpoch] 🔍 DEBUG - Rotation déjà sauvegardée:', savedRotationY);
+                }
                 
                 oldCell.remove();
                 
@@ -2179,8 +2257,7 @@ function setEpoch(epochName) {
         infoTimeDisplay.textContent = '+0 Ma';
     }
     
-    // Réinitialiser window.infoTimeMa à 0 lors du changement d'époque
-    window.infoTimeMa = 0;
+    // Note: infoTimeMa a déjà été remis à 0 au début de setEpoch (avant l'interprétation du logo)
     
     // Vérifier les événements automatiques après le changement d'époque
     if (typeof checkDateEvents === 'function') {
@@ -2190,8 +2267,10 @@ function setEpoch(epochName) {
     updateTimeline();
 
     // Forcer la mise à jour des labels de flux (Soleil, Noyau, etc.) avec les paramètres de la nouvelle époque
+    // Utiliser plotData.current si disponible (résultats du calcul), sinon plotData
     if (typeof window.updateFluxLabels === 'function') {
-        window.updateFluxLabels(window.plotData || {});
+        const dataForLabels = (window.plotData && window.plotData.current) ? window.plotData : (window.plotData || {});
+        window.updateFluxLabels(dataForLabels);
     }
 
     // Appliquer les conditions initiales
@@ -2512,40 +2591,38 @@ function updateH2OLevelDirect(h2o_total_percent) {
         if (typeof window.simulateRadiativeTransfer !== 'function') {
             return;
         }
-        // Récupérer CO2_fraction et CH4_fraction depuis plotData
-        const co2_ppm = plotData.co2_ppm || 0;
+        // 🔒 Récupérer CO2_fraction et CH4_fraction depuis plotData (PRÉSERVER les valeurs existantes)
+        const co2_ppm = (plotData.co2_ppm !== undefined && plotData.co2_ppm !== null) ? plotData.co2_ppm : 0;
         const co2_fraction = co2_ppm * 1e-6;
-        const ch4_ppm = plotData.ch4_ppm || 0;
+        const ch4_ppm = (plotData.ch4_ppm !== undefined && plotData.ch4_ppm !== null) ? plotData.ch4_ppm : 0;
         const ch4_fraction = ch4_ppm * 1e-6;
+        
+        // Vérification critique avant le calcul
+        if (co2_ppm === 0 && ch4_ppm === 0 && h2o_total_percent === 0) {
+            console.error('[updateH2OLevelDirect] ❌ ERREUR CRITIQUE - Tous les gaz sont à 0:', {
+                co2_ppm,
+                ch4_ppm,
+                h2o_total_percent
+            });
+            enableButtons();
+            return;
+        }
+        
         const result = window.simulateRadiativeTransfer(co2_fraction, {
             CH4_fraction: ch4_fraction
         });
         currentCalculationPromise = result;
 
         const processResult = (data) => {
-            // 🔍 DEBUG : Log détaillé des données reçues
-            console.log('[updateH2OLevelDirect] 🔍 DEBUG - Données reçues:', {
-                data_type: typeof data,
-                data_keys: data ? Object.keys(data) : 'null',
-                T0: data?.T0,
-                temp_surface: data?.temp_surface,
-                temp_surface_c: data?.temp_surface_c,
-                albedo: data?.albedo,
-                cloud_coverage: data?.cloud_coverage,
-                effective_temperature: data?.effective_temperature,
-                total_flux: data?.total_flux
-            });
-
-            // Vérifier si le calcul a été annulé
-            if (window.cancelCalculation) {
-                console.log('[updateH2OLevelDirect] ⚠️ Calcul annulé');
+            // 🔍 Vérification critique des données reçues
+            if (!data || typeof data !== 'object' || data.T0 === undefined || data.temp_surface === undefined) {
+                console.error('[updateH2OLevelDirect] ❌ ERREUR CRITIQUE - Données invalides:', data);
+                enableButtons();
                 return;
             }
 
-            // Vérifier que data est valide
-            if (!data || typeof data !== 'object') {
-                console.error('[updateH2OLevelDirect] ❌ ERREUR - data invalide:', data);
-                enableButtons();
+            // Vérifier si le calcul a été annulé
+            if (window.cancelCalculation) {
                 return;
             }
 
@@ -2555,16 +2632,17 @@ function updateH2OLevelDirect(h2o_total_percent) {
                 currentCalculationTimeouts.splice(index, 1);
             }
 
-            // Logger les résultats finaux avec les états
-            if (typeof window.logCalculationPhase === 'function') {
-                window.logCalculationPhase('CALCULATION COMPLETE (H2O)', {
-                    T0: data.T0 ? data.T0.toFixed(2) : 'N/A',
-                    temp_surface_c: data.temp_surface_c ? data.temp_surface_c.toFixed(2) : 'N/A',
-                    total_flux: data.total_flux ? data.total_flux.toFixed(2) : 'N/A',
-                    albedo: data.albedo ? data.albedo.toFixed(3) : 'N/A',
-                    cloud_coverage: data.cloud_coverage ? (data.cloud_coverage * 100).toFixed(1) + '%' : 'N/A',
-                    h2o_total_percent: h2o_total_percent.toFixed(1)
+            // Vérification critique des valeurs de sortie
+            if (!data.T0 || data.T0 === 0 || !data.total_flux || data.total_flux === 0) {
+                console.error('[updateH2OLevelDirect] ❌ ERREUR CRITIQUE - Calcul invalide:', {
+                    T0: data.T0,
+                    total_flux: data.total_flux,
+                    co2_ppm: plotData.co2_ppm,
+                    ch4_ppm: plotData.ch4_ppm,
+                    h2o_total_percent: h2o_total_percent
                 });
+                enableButtons();
+                return;
             }
 
             // Gérer la géothermie selon la température finale
@@ -2588,17 +2666,10 @@ function updateH2OLevelDirect(h2o_total_percent) {
 
             // 🔍 DEBUG : Vérifier que temperature() est défini
             // temperature() est définie dans calculations.js et devrait être accessible globalement
-            if (typeof temperature !== 'function') {
-                console.error('[updateH2OLevelDirect] ❌ ERREUR - temperature() n\'est pas défini');
-                console.error('[updateH2OLevelDirect] 🔍 DEBUG - typeof temperature:', typeof temperature);
-                console.error('[updateH2OLevelDirect] 🔍 DEBUG - window.temperature:', typeof window.temperature);
-                // Essayer d'utiliser data.T0 directement si disponible
-                if (data.T0 !== undefined) {
-                    console.log('[updateH2OLevelDirect] 🔍 DEBUG - Utilisation de data.T0 directement:', data.T0);
-                } else {
-                    enableButtons();
-                    return;
-                }
+            if (typeof temperature !== 'function' && !data.T0) {
+                console.error('[updateH2OLevelDirect] ❌ ERREUR - temperature() non défini et data.T0 manquant');
+                enableButtons();
+                return;
             }
 
             // Les scénarios de référence sont déjà calculés dans calculateInitialData
@@ -2606,22 +2677,17 @@ function updateH2OLevelDirect(h2o_total_percent) {
             if (cache_420ppm) plotData.flux_420ppm = cache_420ppm;
 
             const temp_eff = plotData.current.effective_temperature;
-            console.log('[updateH2OLevelDirect] 🔍 DEBUG - temp_eff:', temp_eff);
-            
             const temp_eff_0 = (typeof window.getEffectiveTemperatureNoGreenhouse === 'function')
                 ? window.getEffectiveTemperatureNoGreenhouse()
                 : 255.0;
-            console.log('[updateH2OLevelDirect] 🔍 DEBUG - temp_eff_0:', temp_eff_0);
             
             // Température de surface calculée par dichotomie
             // Utiliser data.T0 si disponible, sinon temperature(0)
             let temp_surface;
             if (data.T0 !== undefined && data.T0 !== null) {
                 temp_surface = data.T0;
-                console.log('[updateH2OLevelDirect] 🔍 DEBUG - temp_surface depuis data.T0:', temp_surface);
             } else if (typeof temperature === 'function') {
                 temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
-                console.log('[updateH2OLevelDirect] 🔍 DEBUG - temp_surface (temperature(0)):', temp_surface);
             } else {
                 console.error('[updateH2OLevelDirect] ❌ ERREUR - Impossible de calculer temp_surface');
                 enableButtons();
@@ -2629,7 +2695,6 @@ function updateH2OLevelDirect(h2o_total_percent) {
             }
             
             const temp_surface_c = temp_surface - 273.15;
-            console.log('[updateH2OLevelDirect] 🔍 DEBUG - temp_surface_c:', temp_surface_c);
             
             let delta_temp = 0;
 
@@ -2656,22 +2721,14 @@ function updateH2OLevelDirect(h2o_total_percent) {
                 // Ajouter l'eau totale des météorites
                 const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
                 const h2o_total_percent_calc = h2o_vapor_percent + h2o_from_meteorites;
-                console.log('[updateH2OLevelDirect] 🔍 DEBUG - H2O:', {
-                    h2o_vapor_percent,
-                    h2o_from_meteorites,
-                    h2o_total_percent_calc,
-                    temp_surface
-                });
 
                 // Calculer la répartition vapeur/glace selon la température
                 const h2o_params = window.calculateH2OParameters(temp_surface, h2o_total_percent_calc, cloud_coverage);
-                console.log('[updateH2OLevelDirect] 🔍 DEBUG - h2o_params:', h2o_params);
                 forcing_H2O = h2o_params.greenhouse_forcing;
 
                 // 🔒 TOUJOURS mettre à jour h2oIceFractionFromCalculation pour l'albedo
                 if (typeof window !== 'undefined') {
                     window.h2oIceFractionFromCalculation = h2o_params.ice_fraction || 0;
-                    console.log('[updateH2OLevelDirect] 🔍 DEBUG - h2oIceFractionFromCalculation mis à jour:', window.h2oIceFractionFromCalculation);
                 }
             }
 
@@ -2727,6 +2784,14 @@ function updateH2OLevelDirect(h2o_total_percent) {
 
             updateLegend(plotData);
             updatePlot(plotData);
+            
+            // 🔒 Mettre à jour les labels de flux (y compris h2o_percent) après le calcul
+            // Utiliser plotData.current si disponible (résultats du calcul), sinon plotData
+            if (typeof window.updateFluxLabels === 'function') {
+                const dataForLabels = (window.plotData && window.plotData.current) ? window.plotData : (window.plotData || {});
+                window.updateFluxLabels(dataForLabels);
+            }
+            
             // Mettre à jour la visualisation spectrale après un délai
             setTimeout(() => {
                 const canvas = document.getElementById('spectral-visualization');
@@ -2856,6 +2921,48 @@ window.addEventListener('DOMContentLoaded', () => {
     
     // Écouter l'événement 'calculationConverged' pour activer l'animation de la planète
     window.addEventListener('calculationConverged', () => {
+        console.log('[main.js] 🔍 DEBUG - Événement calculationConverged reçu');
+        // 🔒 Attendre que le FPS revienne à >=60FPS avant de relancer l'animation
+        // Le garde-fou dans animate() gère aussi <30FPS pour arrêter automatiquement
+        let attempts = 0;
+        const maxAttempts = 100; // Maximum 10 secondes (100 * 100ms)
+        
+        const checkFPSAndResume = () => {
+            attempts++;
+            const currentFPS = (typeof window !== 'undefined' && window.fps) ? window.fps : 0;
+            console.log('[main.js] 🔍 DEBUG - Vérification FPS:', currentFPS.toFixed(1), 'tentative', attempts);
+            
+            if (currentFPS >= 60) {
+                // FPS >= 60 : relancer l'animation Three.js
+                if (typeof window !== 'undefined') {
+                    window.threeJSAnimationPaused = false;
+                    console.log('[main.js] ▶️ Animation Three.js relancée (FPS:', currentFPS.toFixed(1), ')');
+                }
+            } else if (currentFPS < 30) {
+                // FPS < 30 : s'assurer que l'animation est bien arrêtée
+                if (typeof window !== 'undefined') {
+                    window.threeJSAnimationPaused = true;
+                    console.log('[main.js] ⏸️ Animation Three.js arrêtée (FPS trop bas:', currentFPS.toFixed(1), ')');
+                }
+                // Ne plus réessayer si FPS trop bas
+                return;
+            } else if (attempts < maxAttempts) {
+                // FPS entre 30 et 60 : réessayer dans 100ms
+                setTimeout(checkFPSAndResume, 100);
+            } else {
+                // Timeout : forcer la reprise si FPS > 30 (même si < 60)
+                if (currentFPS > 30) {
+                    if (typeof window !== 'undefined') {
+                        window.threeJSAnimationPaused = false;
+                        console.log('[main.js] ▶️ Animation Three.js relancée (timeout, FPS:', currentFPS.toFixed(1), ')');
+                    }
+                }
+            }
+        };
+        
+        // Vérifier le FPS immédiatement et continuer à vérifier si nécessaire
+        setTimeout(checkFPSAndResume, 100);
+        
         // Activer l'animation de la planète après la convergence des calculs
         const planetTextures = document.querySelectorAll('.planet-texture[data-planet-texture="true"]');
         planetTextures.forEach(texture => {
@@ -2994,6 +3101,24 @@ function updateHadeenTexture() {
     // Recréer la cellule Terre avec la nouvelle texture
     const oldCell = document.getElementById('cell-terre');
     if (oldCell && typeof window.createCell === 'function') {
+        // 🔒 Sauvegarder l'angle de rotation AVANT de supprimer la cellule
+        // (pour éviter que la terre pivote d'un coup lors du changement de texture)
+        const canvas = oldCell.querySelector('canvas');
+        let savedRotationY = 0;
+        if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
+            savedRotationY = canvas._threeJSData.sphere.rotation.y;
+            // 🔒 Stocker dans window pour que initPlanetThreeJS puisse le récupérer
+            // (pour éviter que la terre pivote d'un coup lors du changement de texture)
+            if (typeof window !== 'undefined') {
+                window.savedPlanetRotationY = savedRotationY;
+                console.log('[updateHadeenTexture] 🔍 DEBUG - Rotation sauvegardée:', savedRotationY);
+            }
+        } else if (typeof window !== 'undefined' && window.savedPlanetRotationY !== undefined) {
+            // Si pas de sphere mais qu'on a déjà une rotation sauvegardée, la conserver
+            savedRotationY = window.savedPlanetRotationY;
+            console.log('[updateHadeenTexture] 🔍 DEBUG - Rotation déjà sauvegardée:', savedRotationY);
+        }
+        
         const parent = oldCell.parentElement;
         oldCell.remove();
         

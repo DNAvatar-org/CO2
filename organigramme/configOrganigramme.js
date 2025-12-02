@@ -203,7 +203,22 @@ const nodes = [
                 radius: radiusTerre * 0.8,
                 fillColor: 'rgba(0, 0, 0, 0)',
                 strokeColor: '#000000',
-                strokeSize: 1
+                strokeSize: 1,
+                // 🔒 Tableau de températures de référence par ticTime pour convergence rapide
+                // Corps noir : température constante (corps noir théorique sans atmosphère)
+                // Température effective ~206K (calculée depuis flux solaire avec albedo=0)
+                ticTime_temperatures: [
+                    206.1,  // ticTime 0: 0-49Ma (~-67°C)
+                    206.1,  // ticTime 1: 50-99Ma
+                    206.1,  // ticTime 2: 100-149Ma
+                    206.1,  // ticTime 3: 150-199Ma
+                    206.1,  // ticTime 4: 200-249Ma
+                    206.1,  // ticTime 5: 250-299Ma
+                    206.1,  // ticTime 6: 300-349Ma
+                    206.1,  // ticTime 7: 350-399Ma
+                    206.1,  // ticTime 8: 400-449Ma
+                    206.1   // ticTime 9: 450-499Ma
+                ]
             },
             {
                 epochName: 'Hadéen',
@@ -220,7 +235,7 @@ const nodes = [
             },
             {
                 epochName: 'Archéen',
-                logo: 'fonts/pics/text_archeen.png',
+                logo: 'fonts/pics/text_archeen{$ticTime/3}.png', // $ticTime/3 sera arrondi automatiquement pour les images
                 radius: radiusTerre,
                 fillColor: 'rgba(255, 140, 0, 0.3)', // Orange/jaune : début de l'oxygène mais encore réductrice
                 strokeColor: '#ff8c00',
@@ -334,6 +349,19 @@ const timeline = [
         n2_kg: 0, // Quantité de N2 en kg (non affiché dans le flux diagram)
         o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
         // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
+        ticTime_temperatures: [
+            254.6,  // ticTime 0: 0-49Ma (initial, ~2196°C)
+            250.1,   // ticTime 1: 50-99Ma (~1983°C)
+            246.9,   // ticTime 2: 100-149Ma (~1727°C)
+            243.5,   // ticTime 3: 150-199Ma (~1527°C)
+            240.0,   // ticTime 4: 200-249Ma (~1327°C)
+            236.6,   // ticTime 5: 250-299Ma (~1127°C)
+            232.4,   // ticTime 6: 300-349Ma (~927°C)
+            228.3,   // ticTime 7: 350-399Ma (~727°C)
+            224.0,    // ticTime 8: 400-449Ma (~527°C)
+            219.4,     // ticTime 9: 450-499Ma (~327°C)
+            214.5
+        ],
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
         cloud_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.0,
@@ -377,6 +405,21 @@ const timeline = [
         // Hadéen: ~0.20 W/m² (6000K * 0.0073 * 0.00457 ≈ 0.20 W/m²)
         // D'après Grok: ~0.20-0.25 W/m² à la surface pour Hadéen
         initial_temperature_K: 2469.65, // 2196.5°C - Valeur proche de l'équilibre pour convergence rapide
+        // 🔒 Tableau de températures de référence par ticTime pour convergence rapide
+        // ticTime = Math.floor(infoTimeMa / 50), donc ticTime[0] = 0-49Ma, ticTime[1] = 50-99Ma, etc.
+        // Ces températures sont utilisées comme T0_initial pour accélérer la convergence
+        ticTime_temperatures: [
+            2469.65,  // ticTime 0: 0-49Ma (initial, ~2196°C)
+            2256.2,   // ticTime 1: 50-99Ma (~1983°C)
+            2000.0,   // ticTime 2: 100-149Ma (~1727°C)
+            1800.0,   // ticTime 3: 150-199Ma (~1527°C)
+            1600.0,   // ticTime 4: 200-249Ma (~1327°C)
+            1400.0,   // ticTime 5: 250-299Ma (~1127°C)
+            1200.0,   // ticTime 6: 300-349Ma (~927°C)
+            1000.0,   // ticTime 7: 350-399Ma (~727°C)
+            800.0,    // ticTime 8: 400-449Ma (~527°C)
+            600.0     // ticTime 9: 450-499Ma (~327°C)
+        ],
         // Juste après l'impact : 10⁵ à 10⁷ W/m², >4000-6000K (roche vaporisée)
         // Post-impact (vrai Hadéen) : 1000 → 100 W/m² en décroissance, 2500K → 500K
         // Simulation parameters - Quantités en kg (pas de ppm/%)

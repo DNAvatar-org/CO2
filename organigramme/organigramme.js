@@ -303,6 +303,25 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         canvas._threeJSData = {};
     }
     
+    // Sauvegarder l'angle de rotation actuel si la sphère existe déjà
+    // Priorité 1: Utiliser la valeur sauvegardée dans window (depuis setEpoch/updateHadeenTexture)
+    // Priorité 2: Utiliser la valeur depuis canvas._threeJSData.sphere (si canvas existe encore)
+    let savedRotationY = 0;
+    // 🔒 Restaurer la rotation sauvegardée si disponible (pour éviter que la terre pivote d'un coup)
+    if (typeof window !== 'undefined' && window.savedPlanetRotationY !== undefined) {
+        savedRotationY = window.savedPlanetRotationY;
+        console.log('[initPlanetThreeJS] 🔍 DEBUG - Rotation restaurée depuis window:', savedRotationY);
+        // NE PAS nettoyer la variable - elle peut être réutilisée pour les changements de texture
+    } else if (canvas._threeJSData && canvas._threeJSData.sphere) {
+        // Si pas de rotation sauvegardée dans window, utiliser celle du canvas existant
+        savedRotationY = canvas._threeJSData.sphere.rotation.y;
+        console.log('[initPlanetThreeJS] 🔍 DEBUG - Rotation sauvegardée depuis canvas:', savedRotationY);
+        // Sauvegarder aussi dans window pour les prochains changements
+        if (typeof window !== 'undefined') {
+            window.savedPlanetRotationY = savedRotationY;
+        }
+    }
+    
     // DEBUG: Log des paramètres d'entrée
     console.log('[initPlanetThreeJS] 🔍 DEBUG - Paramètres:', {
         radius,
@@ -521,6 +540,11 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         
         sphere = new THREE.Mesh(geometry, material);
         sphere.rotation.x = (tiltAngle * Math.PI) / 180;
+        // Restaurer l'angle de rotation Y sauvegardé (pour garder la continuité)
+        if (savedRotationY !== undefined && savedRotationY !== null) {
+            sphere.rotation.y = savedRotationY;
+            console.log('[initPlanetThreeJS] 🔍 DEBUG - Rotation restaurée:', savedRotationY);
+        }
         scene.add(sphere);
         
         // Stocker les références pour mise à jour ultérieure
@@ -545,9 +569,31 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
     const speed = 1.0; // Vitesse normale comme dans planet-test.html
     
     function animate() {
+        // 🔒 Garde-fou FPS : si <30 fps arrêter l'anim, si >60 fps mettre l'anim
+        const currentFPS = (typeof window !== 'undefined' && window.fps) ? window.fps : 60;
+        const isPausedByFPS = currentFPS < 30;
+        const shouldResumeByFPS = currentFPS >= 60;
+        
         // Utiliser la variable globale pour contrôler l'animation
         const isPaused = (typeof window !== 'undefined' && window.threeJSAnimationPaused) || false;
-        if (!isPaused && sphere) {
+        
+        // Si FPS < 30, forcer la pause
+        if (isPausedByFPS) {
+            if (typeof window !== 'undefined') {
+                window.threeJSAnimationPaused = true;
+            }
+        }
+        // Si FPS >= 60 et qu'on n'est pas en pause manuelle, reprendre automatiquement
+        else if (shouldResumeByFPS && isPaused) {
+            if (typeof window !== 'undefined') {
+                window.threeJSAnimationPaused = false;
+                console.log('[organigramme.js] ▶️ Animation Three.js reprise automatique (FPS:', currentFPS.toFixed(1), ')');
+            }
+        }
+        
+        // Animer seulement si pas en pause
+        const finalIsPaused = (typeof window !== 'undefined' && window.threeJSAnimationPaused) || false;
+        if (!finalIsPaused && sphere) {
             sphere.rotation.y += 0.005 * speed; // Incrément comme dans planet-test.html
         }
         renderer.render(scene, camera);
@@ -2472,10 +2518,38 @@ cellOrder.forEach(nodeId => {
         const epochConfig = node.epoch.find(e => e.epochName === currentEpochName);
 
         if (epochConfig) {
+            // Interpréter le logo si nécessaire (peut contenir {$ticTime} ou expressions)
+            // IMPORTANT: S'assurer que infoTimeMa est à 0 pour les nouvelles époques
+            if (typeof window !== 'undefined' && typeof window.infoTimeMa === 'undefined') {
+                window.infoTimeMa = 0;
+                console.log('[organigramme.js] 🔄 infoTimeMa initialisé à 0');
+            }
+            
+            let interpretedLogo = epochConfig.logo;
+            if (typeof window !== 'undefined' && typeof window.interpretConfigValue === 'function') {
+                console.log('[organigramme.js] 🔍 DEBUG - Avant interprétation:', {
+                    logo: epochConfig.logo,
+                    infoTimeMa: window.infoTimeMa,
+                    interpretConfigValue: typeof window.interpretConfigValue
+                });
+                interpretedLogo = window.interpretConfigValue(epochConfig.logo);
+                console.log('[organigramme.js] 🔍 DEBUG - Logo interprété:', {
+                    original: epochConfig.logo,
+                    interpreted: interpretedLogo,
+                    epochName: currentEpochName,
+                    stillContainsPlaceholder: typeof interpretedLogo === 'string' && (interpretedLogo.includes('{$') || interpretedLogo.includes('$ticTime'))
+                });
+            } else {
+                console.warn('[organigramme.js] ⚠️ interpretConfigValue non disponible:', {
+                    window: typeof window,
+                    interpretConfigValue: typeof window?.interpretConfigValue
+                });
+            }
+            
             // Créer une configuration fusionnée avec les propriétés de l'époque
             nodeConfig = {
                 ...node,
-                logo: epochConfig.logo,
+                logo: interpretedLogo, // Utiliser le logo interprété
                 radius: epochConfig.radius,
                 fillColor: epochConfig.fillColor,
                 strokeColor: epochConfig.strokeColor,
@@ -2485,9 +2559,16 @@ cellOrder.forEach(nodeId => {
         } else if (node.epoch.length > 0) {
             // Fallback : utiliser la dernière époque du tableau (permet d'alléger les répétitions)
             const lastEpoch = node.epoch[node.epoch.length - 1];
+            
+            // Interpréter le logo si nécessaire
+            let interpretedLogo = lastEpoch.logo || node.epoch[0].logo;
+            if (typeof window !== 'undefined' && typeof window.interpretConfigValue === 'function') {
+                interpretedLogo = window.interpretConfigValue(interpretedLogo);
+            }
+            
             nodeConfig = {
                 ...node,
-                logo: lastEpoch.logo || node.epoch[0].logo,
+                logo: interpretedLogo,
                 radius: lastEpoch.radius || node.epoch[0].radius,
                 fillColor: lastEpoch.fillColor || node.epoch[0].fillColor,
                 strokeColor: lastEpoch.strokeColor || node.epoch[0].strokeColor,
@@ -3360,12 +3441,21 @@ window.updateFluxLabels = function (data) {
         window.FluxManager.updateAllFluxes(window.currentEpochName);
     }
 
+    // 🔒 Récupérer les valeurs depuis data.current si disponible (résultats du calcul), sinon depuis data directement
+    const currentData = (data.current && typeof data.current === 'object') ? data.current : data;
+    
     // Récupérer les valeurs calculées (avec vérifications pour null/undefined)
-    const T0 = (data.T0 !== null && data.T0 !== undefined) ? data.T0 : (data.temp_surface !== null && data.temp_surface !== undefined ? data.temp_surface : 0);
-    const total_flux = (data.total_flux !== null && data.total_flux !== undefined) ? data.total_flux : 0;
-    let albedo = (data.albedo !== null && data.albedo !== undefined) ? data.albedo : 0;
+    const T0 = (currentData.T0 !== null && currentData.T0 !== undefined) ? currentData.T0 : 
+               (currentData.temp_surface !== null && currentData.temp_surface !== undefined) ? currentData.temp_surface : 
+               (data.T0 !== null && data.T0 !== undefined) ? data.T0 : 
+               (data.temp_surface !== null && data.temp_surface !== undefined) ? data.temp_surface : 0;
+    const total_flux = (currentData.total_flux !== null && currentData.total_flux !== undefined) ? currentData.total_flux : 
+                       (data.total_flux !== null && data.total_flux !== undefined) ? data.total_flux : 0;
+    let albedo = (currentData.albedo !== null && currentData.albedo !== undefined) ? currentData.albedo : 
+                 (data.albedo !== null && data.albedo !== undefined) ? data.albedo : 0;
     // Récupérer les valeurs depuis plotData (valeurs d'époque) si disponibles, sinon depuis data
-    const cloud_coverage = (data.cloud_coverage !== null && data.cloud_coverage !== undefined) ? data.cloud_coverage : 0;
+    const cloud_coverage = (currentData.cloud_coverage !== null && currentData.cloud_coverage !== undefined) ? currentData.cloud_coverage : 
+                           (data.cloud_coverage !== null && data.cloud_coverage !== undefined) ? data.cloud_coverage : 0;
     // Utiliser plotData pour les valeurs d'époque (CO2, CH4, H2O)
     const plotData_co2 = (typeof window !== 'undefined' && window.plotData && window.plotData.co2_ppm !== undefined) ? window.plotData.co2_ppm : 0;
     const plotData_ch4 = (typeof window !== 'undefined' && window.plotData && window.plotData.ch4_ppm !== undefined) ? window.plotData.ch4_ppm : 0;
@@ -3570,12 +3660,14 @@ window.updateFluxLabels = function (data) {
 
     // Calculer les paramètres H2O (vapeur + nuages) avec la nouvelle fonction
     const h2o_vapor_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
+    const h2o_from_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+    const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites; // Total = base + météorites
     let h2o_params = null;
     let forcing_H2O = 0;
 
     if (h2o_button_checked && h2o_final_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
-        // Calculer avec la température actuelle et le pourcentage de vapeur
-        h2o_params = window.calculateH2OParameters(T0_num, h2o_vapor_percent, cloud_coverage_num);
+        // Calculer avec la température actuelle et le pourcentage TOTAL (base + météorites)
+        h2o_params = window.calculateH2OParameters(T0_num, h2o_total_percent, cloud_coverage_num);
         forcing_H2O = h2o_params.greenhouse_forcing;
 
         // Mettre à jour cloud_coverage avec la valeur calculée (si pas forcée)
@@ -4069,14 +4161,18 @@ window.updateFluxLabels = function (data) {
     // Ne plus forcer automatiquement le bouton CH4 en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement
 
-    // H2O : afficher le pourcentage de vapeur d'eau (effet de serre)
+    // H2O : afficher le pourcentage TOTAL d'eau (base + météorites)
     // Séparé de la couverture nuageuse (qui affecte l'albedo)
-    // 🔒 Utiliser la fraction de vapeur calculée (h2o_params) si disponible, sinon le total
+    // 🔒 Utiliser h2o_total_percent (base + météorites) qui est déjà calculé ci-dessus
     let h2o_display_value = 0;
     if (h2o_params && h2o_params.vapor_fraction !== undefined) {
-        h2o_display_value = h2o_params.vapor_fraction * 100;
+        // Si h2o_params est disponible, utiliser la fraction de vapeur + glace (total)
+        // Note: h2o_params a été calculé avec h2o_total_percent, donc vapor_fraction + ice_fraction = total
+        const h2o_total_fraction = (h2o_params.vapor_fraction || 0) + (h2o_params.ice_fraction || 0);
+        h2o_display_value = h2o_total_fraction * 100;
     } else {
-        h2o_display_value = h2o_vapor_percent;
+        // Sinon, utiliser h2o_total_percent directement (déjà calculé ci-dessus)
+        h2o_display_value = h2o_total_percent;
     }
 
     // Passer un nombre pour que formatValueFromTemplate gère le formatage automatiquement
