@@ -18,6 +18,91 @@ if (typeof window !== 'undefined') {
     window.useAlbedo = true;
     // Variable globale pour contrôler l'animation Three.js (false = animée, true = pause)
     window.threeJSAnimationPaused = false;
+    
+    // 🔒 Version de secours de interpretConfigValue (sera remplacée par celle de main.js si elle existe)
+    // Cette fonction est nécessaire car organigramme.js est chargé avant main.js
+    if (typeof window.interpretConfigValue === 'undefined') {
+        window.interpretConfigValue = function(value) {
+            // Pas besoin d'interprétation pour les nombres
+            if (typeof value === 'number') {
+                return value;
+            }
+            
+            // Retourner tel quel si ce n'est pas une chaîne
+            if (typeof value !== 'string') {
+                return value;
+            }
+            
+            // Si pas de placeholder, retourner tel quel
+            if (!value.includes('{$') && !value.includes('$ticTime')) {
+                return value;
+            }
+            
+            // S'assurer que window.infoTimeMa est défini (initialiser à 0 si nécessaire)
+            if (typeof window.infoTimeMa === 'undefined') {
+                window.infoTimeMa = 0;
+            }
+            
+            // Calculer ticTime = infoTimeMa / 50
+            const ticTime = Math.floor((window.infoTimeMa || 0) / 50);
+            
+            // Détecter si c'est un chemin d'image (pour arrondir automatiquement les résultats)
+            const isImagePath = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(value);
+            
+            // Gérer les expressions entre accolades {expression}
+            let interpreted = value;
+            const expressionPattern = /\{([^}]+)\}/g;
+            const matches = [...value.matchAll(expressionPattern)];
+            
+            // Traiter chaque expression trouvée
+            for (const match of matches) {
+                const fullMatch = match[0]; // {expression}
+                const expression = match[1]; // expression (sans les accolades)
+                
+                // Remplacer $ticTime dans l'expression
+                let exprWithValue = expression.replace(/\$ticTime/g, ticTime.toString());
+                
+                try {
+                    // Évaluer l'expression avec eval (plus simple et direct)
+                    const result = eval(exprWithValue);
+                    
+                    if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+                        // Pour les chemins d'image, arrondir automatiquement le résultat
+                        // Pour les autres cas (lightDistance, etc.), garder la précision
+                        const finalResult = isImagePath ? Math.round(result) : result;
+                        interpreted = interpreted.replace(fullMatch, finalResult.toString());
+                    }
+                } catch (e) {
+                    // En cas d'erreur, remplacer simplement $ticTime
+                    const fallback = exprWithValue;
+                    interpreted = interpreted.replace(fullMatch, fallback);
+                }
+            }
+            
+            // Si pas d'expressions entre accolades, remplacer simplement {$ticTime}
+            if (!matches.length) {
+                interpreted = value.replace(/\{\$ticTime\}/g, ticTime.toString());
+            }
+            
+            // Si c'est une expression mathématique pure (pas un chemin d'image), évaluer le résultat final
+            if (!isImagePath && matches.length > 0) {
+                const mathExpressionPattern = /^[\d\s+\-*/().]+$/;
+                if (mathExpressionPattern.test(interpreted.trim())) {
+                    try {
+                        const result = eval(interpreted.trim());
+                        if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+                            return result;
+                        }
+                    } catch (e) {
+                        // Ignorer l'erreur, retourner la chaîne interprétée
+                    }
+                }
+            }
+            
+            return interpreted;
+        };
+        console.log('[organigramme.js] 🔄 Version de secours de interpretConfigValue créée');
+    }
 }
 
 // Fonction pour ajouter un tooltip personnalisé avec délai de 0.5s
@@ -659,9 +744,19 @@ function updatePlanetLighting() {
         }
     }
     
+    // 🔒 Convertir en nombre si c'est une chaîne après interprétation
+    if (typeof lightDistance === 'string') {
+        const parsed = parseFloat(lightDistance);
+        if (!isNaN(parsed)) {
+            lightDistance = parsed;
+        }
+    }
+    
     // Si isIceChange, diminuer lightDistance de 1
-    if (window.isIceChange && typeof lightDistance === 'number') {
+    if (window.isIceChange && typeof lightDistance === 'number' && !isNaN(lightDistance)) {
+        const oldLightDistance = lightDistance;
         lightDistance = Math.max(0, lightDistance - 1);
+        console.log('[updatePlanetLighting] 🔍 DEBUG - lightDistance diminué:', oldLightDistance, '->', lightDistance);
     }
     
     const luxSaturation = epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
@@ -709,10 +804,19 @@ function updatePlanetLighting() {
             const lightPosition = lightDirection.clone().multiplyScalar(actualLightDistance);
             threeJSData.directionalLight.position.copy(lightPosition);
             
-            // Mettre à jour l'intensité
+            // 🔒 Mettre à jour l'intensité (DirectionalLight n'est pas affecté par la distance physiquement,
+            // mais on ajuste l'intensité pour l'effet visuel : plus proche = plus intense)
             const baseDirectionalIntensity = 0.1 + lightContrast * 1.2;
+            // Plus la distance est petite, plus l'intensité est grande (inverse de la distance au carré)
             const distanceFactor = (defaultDistance * defaultDistance) / (actualLightDistance * actualLightDistance);
             threeJSData.directionalLight.intensity = baseDirectionalIntensity * luxSaturation * distanceFactor;
+            
+            console.log('[updatePlanetLighting] 🔍 DEBUG - DirectionalLight mis à jour:', {
+                actualLightDistance: actualLightDistance.toFixed(2),
+                distanceFactor: distanceFactor.toFixed(2),
+                intensity: threeJSData.directionalLight.intensity.toFixed(2),
+                position: lightPosition
+            });
             
             if (threeJSData.ambientLight) {
                 const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
@@ -3494,7 +3598,19 @@ window.updateFluxLabels = function (data) {
     
     const T0_num = Number(T0);
     const total_flux_num = Number(total_flux);
-    let albedo_num = (albedo !== null && albedo !== undefined) ? Number(albedo) : 0;
+    // 🔒 PRIORITÉ : Utiliser data.current.albedo (résultats du calcul) si disponible, sinon data.albedo
+    // Note: albedo vient déjà de currentData.albedo (qui est data.current si disponible), donc on peut l'utiliser directement
+    // Mais on vérifie aussi data.current.albedo explicitement pour être sûr
+    const albedoValue = (data.current && data.current.albedo !== undefined) ? data.current.albedo : albedo;
+    let albedo_num = (albedoValue !== null && albedoValue !== undefined) ? Number(albedoValue) : 0;
+    console.log('[updateFluxLabels] 🔍 DEBUG - Albedo initial:', {
+        albedo_num,
+        albedoValue,
+        albedo,
+        currentData_albedo: currentData?.albedo,
+        data_current_albedo: data.current?.albedo,
+        data_albedo: data.albedo
+    });
     let cloud_coverage_num = (cloud_coverage !== null && cloud_coverage !== undefined) ? Number(cloud_coverage) : 0;
     const co2_ppm_num = (co2_ppm !== null && co2_ppm !== undefined) ? Number(co2_ppm) : 0;
     const ch4_ppm_num = (ch4_ppm !== null && ch4_ppm !== undefined) ? Number(ch4_ppm) : 0;
@@ -3525,27 +3641,25 @@ window.updateFluxLabels = function (data) {
             return epoch && (epoch.total_atmosphere_mass_kg === 0 || epoch.total_atmosphere_mass_kg === undefined);
         })() : false;
     
+    // 🔒 SUPPRESSION : Ne plus forcer l'albedo à 0 en Corps noir
+    // L'albedo doit être affiché selon l'état du bouton albedo (checked/unchecked), pas selon hasNoAtmosphere
+    // L'albedo peut être > 0 même en Corps noir si de la glace est ajoutée via météorites
+    // hasNoAtmosphere ne sert que pour d'autres calculs (pas pour l'affichage de l'albedo)
+    
+    // Forcer cloud_coverage à 0 en mode corps noir (pas d'atmosphère = pas de nuages)
     if (hasNoAtmosphere) {
-        // 🔒 CORRECTION : Utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
-        if (albedo !== null && albedo !== undefined && albedo > 0) {
-            albedo_num = albedo;
-        } else {
-            albedo_num = 0; // Corps noir sans glace : pas d'albedo
-        }
-        // Forcer aussi cloud_coverage à 0 en mode corps noir
         cloud_coverage_num = 0;
     }
 
     // Calculer les valeurs dynamiques
     // Utiliser data.albedo qui vient de la simulation (calculé avec tous les paramètres corrects)
-    // Seulement recalculer si data.albedo n'est pas défini ou si on est en mode corps noir
-
-    if (hasNoAtmosphere) {
-        // 🔒 CORRECTION : Ne pas écraser si on a déjà utilisé data.albedo (peut avoir de la glace)
-        if (albedo_num === 0 && albedo !== null && albedo !== undefined && albedo > 0) {
-            albedo_num = albedo;
-        }
-    } else if (albedo_num === 0 || albedo === null || albedo === undefined) {
+    // Seulement recalculer si data.albedo n'est pas défini
+    
+    // 🔒 SUPPRESSION : Ne plus forcer l'albedo à 0 en Corps noir
+    // L'albedo doit être affiché selon l'état du bouton albedo (checked/unchecked), pas selon hasNoAtmosphere
+    // L'albedo peut être > 0 même en Corps noir si de la glace est ajoutée via météorites
+    
+    if (albedo_num === 0 || albedo === null || albedo === undefined) {
         // Si albedo_num est 0 ou data.albedo n'est pas défini, recalculer avec le flux géothermique
         let geo_flux = null;
         if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
@@ -4170,9 +4284,24 @@ window.updateFluxLabels = function (data) {
         // Note: h2o_params a été calculé avec h2o_total_percent, donc vapor_fraction + ice_fraction = total
         const h2o_total_fraction = (h2o_params.vapor_fraction || 0) + (h2o_params.ice_fraction || 0);
         h2o_display_value = h2o_total_fraction * 100;
+        console.log('[updateFluxLabels] 🔍 DEBUG - H2O affichage:', {
+            h2o_vapor_percent,
+            h2o_from_meteorites,
+            h2o_total_percent,
+            vapor_fraction: h2o_params.vapor_fraction,
+            ice_fraction: h2o_params.ice_fraction,
+            h2o_total_fraction,
+            h2o_display_value
+        });
     } else {
         // Sinon, utiliser h2o_total_percent directement (déjà calculé ci-dessus)
         h2o_display_value = h2o_total_percent;
+        console.log('[updateFluxLabels] 🔍 DEBUG - H2O affichage (sans h2o_params):', {
+            h2o_vapor_percent,
+            h2o_from_meteorites,
+            h2o_total_percent,
+            h2o_display_value
+        });
     }
 
     // Passer un nombre pour que formatValueFromTemplate gère le formatage automatiquement

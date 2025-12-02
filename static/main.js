@@ -1838,15 +1838,23 @@ function updateLegend(data) {
         const tempF = ((T - 273.15) * 9 / 5 + 32).toFixed(0);
 
         // 🔒 Calculer la couleur dynamique basée sur la température de surface (pour harmoniser avec le plot)
-        // Utiliser temp_surface (courbe réelle) et non effective_temperature (corps noir)
+        // Utiliser la MÊME logique que dans plot.js : data.temp_surface_c ou data.temp_surface
         let dynamicColor = 'cyan';
-        if (data.current && typeof data.current.temp_surface === 'number') {
+        // Priorité 1 : temp_surface_c (comme dans plot.js)
+        if (data && typeof data.temp_surface_c === 'number') {
+            if (typeof window.tempSurfaceToColor === 'function') {
+                dynamicColor = window.tempSurfaceToColor(data.temp_surface_c);
+            }
+        }
+        // Priorité 2 : temp_surface (calculé depuis T0)
+        else if (data.current && typeof data.current.temp_surface === 'number') {
             const tempSurfaceC = data.current.temp_surface - 273.15;
             if (typeof window.tempSurfaceToColor === 'function') {
                 dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
             }
-        } else if (data.current && typeof data.current.T0 === 'number') {
-            // Fallback vers T0 si temp_surface n'est pas disponible
+        }
+        // Priorité 3 : T0 (fallback)
+        else if (data.current && typeof data.current.T0 === 'number') {
             const tempSurfaceC = data.current.T0 - 273.15;
             if (typeof window.tempSurfaceToColor === 'function') {
                 dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
@@ -1959,6 +1967,22 @@ function updateLegend(data) {
             // Supprimer le style CSS border qui n'est plus nécessaire
             solidSpan.style.border = 'none';
         }
+        
+        // 🔒 Appliquer la couleur dynamique à tous les textes de la section legend-equilibre
+        const legendEquilibre = document.querySelector('.legend-equilibre');
+        if (legendEquilibre) {
+            // Appliquer la couleur aux textes statiques (hors des éléments déjà colorés)
+            const staticTexts = legendEquilibre.querySelectorAll('br, span:not(.legend-line-dotted):not(.legend-line-solid):not(.legend-equilibre-item *)');
+            staticTexts.forEach(el => {
+                // Ne pas appliquer aux éléments qui ont déjà une couleur spécifique
+                if (!el.closest('.legend-equilibre-item') && !el.classList.contains('legend-line-dotted') && !el.classList.contains('legend-line-solid')) {
+                    el.style.color = dynamicColor;
+                }
+            });
+            
+            // Appliquer la couleur au conteneur principal si nécessaire
+            legendEquilibre.style.color = dynamicColor;
+        }
     }
 }
 
@@ -2041,20 +2065,17 @@ function setEpoch(epochName) {
         return;
     }
 
-    // 🔒 Stocker l'ancienne époque AVANT de la changer (pour conserver l'eau des météorites)
+    // 🔒 Stocker l'ancienne époque AVANT de la changer
     const previousEpoch = (typeof window.currentEpochName !== 'undefined') ? window.currentEpochName : 'Corps noir';
 
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
 
-    // 🔒 CONSERVER l'eau totale des météorites lors du passage de "Corps noir" à une autre époque
-    // (elle sera ajustée plus tard pour ne pas dépasser 100% au total)
-    // Ne réinitialiser que si on change d'époque ET qu'on ne vient pas de "Corps noir" ET qu'on ne reste pas dans la même époque
-    if (epochName !== 'Corps noir' && previousEpoch !== 'Corps noir' && epochName !== previousEpoch && typeof window.h2oTotalFromMeteorites !== 'undefined') {
-        // Réinitialiser seulement si on change d'époque normale (pas depuis Corps noir et pas la même époque)
+    // 🔒 RÉINITIALISER l'eau totale des météorites lors du changement d'époque
+    // (utiliser uniquement les valeurs de la config de l'époque, ne pas garder le surplus de l'époque précédente)
+    if (epochName !== previousEpoch && typeof window.h2oTotalFromMeteorites !== 'undefined') {
         window.h2oTotalFromMeteorites = 0;
     }
-    // Si on vient de "Corps noir" ou si on reste dans la même époque, conserver h2oTotalFromMeteorites (sera ajusté plus tard)
 
     // Mettre à jour les boutons d'action selon l'époque
     if (typeof window.updateEpochActions === 'function') {
@@ -2414,20 +2435,9 @@ function setEpoch(epochName) {
             // Comportement normal : utiliser les valeurs par défaut de l'époque
             window.h2oVaporPercent = h2o_default;
 
-            // 🔒 Ajuster l'eau des météorites si on vient de "Corps noir" pour ne pas dépasser 100% au total
-            // (seulement si on n'utilise pas maximiseData, donc si on clique directement sur un bouton époque)
-            if (previousEpoch === 'Corps noir' && typeof window.h2oTotalFromMeteorites !== 'undefined' && window.h2oTotalFromMeteorites > 0) {
-                const h2o_base = window.h2oVaporPercent || 0;
-                const h2o_meteorites = window.h2oTotalFromMeteorites || 0;
-                const h2o_total = h2o_base + h2o_meteorites;
-
-                if (h2o_total > 100) {
-                    // Ajuster l'eau des météorites pour que la somme ne dépasse pas 100%
-                    window.h2oTotalFromMeteorites = Math.max(0, 100 - h2o_base);
-                } else {
-                }
-            } else if (previousEpoch !== 'Corps noir') {
-                // Si on change d'époque normale (pas depuis Corps noir), réinitialiser l'eau des météorites
+            // 🔒 RÉINITIALISER l'eau des météorites lors du changement d'époque
+            // (utiliser uniquement les valeurs de la config, ne pas garder le surplus de l'époque précédente)
+            if (epochName !== previousEpoch) {
                 window.h2oTotalFromMeteorites = 0;
             }
         }
@@ -2702,9 +2712,10 @@ function updateH2OLevelDirect(h2o_total_percent) {
             plotData.temp_surface = temp_surface;
             plotData.temp_surface_c = temp_surface_c;
 
-            // Récupérer l'albedo et la couverture nuageuse depuis les résultats
+            // Récupérer l'albedo, la couverture nuageuse et le flux total depuis les résultats
             const albedo = plotData.current.albedo !== undefined ? plotData.current.albedo : null;
             const cloud_coverage = plotData.current.cloud_coverage !== undefined ? plotData.current.cloud_coverage : null;
+            const total_flux = plotData.current.total_flux !== undefined ? plotData.current.total_flux : (data.total_flux !== undefined ? data.total_flux : 0);
 
             // Calculer les forçages radiatifs séparés
             const forcing_CO2 = typeof window.calculateCO2Forcing === 'function'
@@ -2784,6 +2795,21 @@ function updateH2OLevelDirect(h2o_total_percent) {
 
             updateLegend(plotData);
             updatePlot(plotData);
+            
+            // 🔒 Mettre à jour plotData.current avec les résultats du calcul pour que updateFluxLabels puisse les utiliser
+            if (typeof window.plotData === 'undefined') {
+                window.plotData = {};
+            }
+            window.plotData.current = {
+                T0: temp_surface,
+                temp_surface: temp_surface,
+                temp_surface_c: temp_surface_c,
+                total_flux: total_flux,
+                albedo: albedo,
+                cloud_coverage: cloud_coverage,
+                co2_ppm: plotData.co2_ppm,
+                ch4_ppm: plotData.ch4_ppm
+            };
             
             // 🔒 Mettre à jour les labels de flux (y compris h2o_percent) après le calcul
             // Utiliser plotData.current si disponible (résultats du calcul), sinon plotData

@@ -1218,14 +1218,12 @@ h1 {
 
 .legend-equilibre {
     font-size: 11px;
-    color: cyan !important;
+    /* 🔒 Couleur dynamique appliquée via JavaScript (updateLegend) */
     text-align: left;
     line-height: 1.3;
 }
 
-.legend-equilibre * {
-    color: cyan !important;
-}
+/* 🔒 Couleur dynamique appliquée via JavaScript, pas de couleur fixe ici */
 
 .legend-equilibre sub {
     font-size: 0.75em;

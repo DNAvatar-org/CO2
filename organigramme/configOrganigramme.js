@@ -370,7 +370,7 @@ const timeline = [
         // Événements interactifs
         events: {
             ice_meteorite: {
-                water_added_kg: 6.8e18 // ~10^19 kg (valeur arbitraire pour l'exemple)
+                water_added_kg: 2.0e19 // ~10^20 kg (100 fois plus pour un effet visible)
             },
             big_impact: {
                 energy_flux_wm2: 2000000 // 2 MW/m² (correspond au flux géothermique de l'Hadéen)
@@ -409,7 +409,7 @@ const timeline = [
         // ticTime = Math.floor(infoTimeMa / 50), donc ticTime[0] = 0-49Ma, ticTime[1] = 50-99Ma, etc.
         // Ces températures sont utilisées comme T0_initial pour accélérer la convergence
         ticTime_temperatures: [
-            2469.65,  // ticTime 0: 0-49Ma (initial, ~2196°C)
+            2437.1,  // ticTime 0: 0-49Ma (initial, ~2196°C)
             2256.2,   // ticTime 1: 50-99Ma (~1983°C)
             2000.0,   // ticTime 2: 100-149Ma (~1727°C)
             1800.0,   // ticTime 3: 150-199Ma (~1527°C)

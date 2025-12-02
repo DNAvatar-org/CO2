@@ -192,16 +192,32 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
                 ? window.calculateMolarMassAir(currentEpoch) : undefined;
             
             epochParams = {
-                pressure_atm: pressure_atm, // Calculé depuis total_atmosphere_mass_kg, gravity, planet_radius
-                molar_mass_air: molar_mass_air, // Calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg)
-                gravity: currentEpoch.gravity,
-                ocean_coverage: currentEpoch.ocean_coverage
+                pressure_atm: pressure_atm !== undefined ? pressure_atm : 0, // 0 si pas d'atmosphère (Corps noir)
+                molar_mass_air: molar_mass_air !== undefined ? molar_mass_air : 0, // 0 si pas d'atmosphère (Corps noir)
+                gravity: currentEpoch.gravity !== undefined ? currentEpoch.gravity : 9.81,
+                ocean_coverage: currentEpoch.ocean_coverage !== undefined ? currentEpoch.ocean_coverage : 0
             };
+            
+            console.log('[calculateAlbedo] 🔍 DEBUG - epochParams:', {
+                pressure_atm: epochParams.pressure_atm,
+                molar_mass_air: epochParams.molar_mass_air,
+                gravity: epochParams.gravity,
+                ocean_coverage: epochParams.ocean_coverage,
+                hasNoAtmosphere: epochParams.pressure_atm === 0 || epochParams.molar_mass_air === 0
+            });
             }
         }
         
         const waterPartition = window.calculateWaterPartition(T_surface_K, h2o_total_fraction, epochParams);
-        console.log('[calculateAlbedo] 🔍 DEBUG - waterPartition:', waterPartition);
+        console.log('[calculateAlbedo] 🔍 DEBUG - waterPartition:', {
+            ice_fraction: waterPartition.ice_fraction,
+            vapor_fraction: waterPartition.vapor_fraction,
+            liquid_fraction: waterPartition.liquid_fraction,
+            h2o_total_fraction: h2o_total_fraction,
+            T_surface_K: T_surface_K,
+            T_surface_C: T_surface_K - 273.15,
+            epochParams: epochParams
+        });
         ice_fraction = waterPartition.ice_fraction; // Utiliser la glace calculée
         vapor_fraction = waterPartition.vapor_fraction; // 🔒 Récupérer la vapeur pour les nuages
         

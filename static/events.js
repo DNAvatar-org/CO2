@@ -98,30 +98,41 @@ window.updateEpochActions = function () {
             // Mais pour un effet visible, on peut ajouter plus (ex: 6.8% pour correspondre aux 6.8 MGT)
             const currentH2O = (typeof window.h2oTotalFromMeteorites !== 'undefined' && window.h2oTotalFromMeteorites !== null) ? window.h2oTotalFromMeteorites : 0;
             
-            // Calculer le pourcentage depuis la masse en kg si disponible
-            // 6.8e18 kg = 6.8 MGT (millions de gigatonnes)
+            // 🔒 Calculer le pourcentage depuis la masse en kg
             // Masse totale d'eau terrestre : 1.4e21 kg
-            // 6.8e18 kg représente : 6.8e18 / 1.4e21 = 0.00486 = 0.486% de l'eau totale terrestre
-            // Mais pour un effet visible et correspondre aux 6.8 MGT, on ajoute directement 6.8%
-            let h2oToAdd = 6.8; // Par défaut : 6.8% (pour correspondre aux 6.8 MGT)
+            // Conversion : (mass_kg / 1.4e21) * 100 = pourcentage d'eau totale
+            let h2oToAdd = 0;
             if (window.configOrganigramme) {
                 const epoch = window.configOrganigramme.timeline.find(e => e.id === 'corps-noir');
                 if (epoch && epoch.events && epoch.events.ice_meteorite && epoch.events.ice_meteorite.water_added_kg) {
                     const mass_kg = epoch.events.ice_meteorite.water_added_kg;
-                    // 6.8e18 kg = 6.8 MGT → on ajoute 6.8% directement pour correspondre
-                    // (la conversion exacte serait 0.486%, mais on veut un effet visible)
-                    h2oToAdd = 6.8; // Toujours 6.8% pour correspondre aux 6.8 MGT
+                    const EARTH_TOTAL_WATER_MASS_KG = 1.4e21; // Masse totale d'eau terrestre
+                    // Convertir la masse en pourcentage d'eau totale
+                    h2oToAdd = (mass_kg / EARTH_TOTAL_WATER_MASS_KG) * 100;
+                    console.log('[events.js] 🔍 DEBUG - Calcul eau:', {
+                        mass_kg: mass_kg.toExponential(2),
+                        h2oToAdd_percent: h2oToAdd.toFixed(4),
+                        currentH2O: currentH2O
+                    });
                 }
             }
             
-            const newH2O = Math.min(100, currentH2O + h2oToAdd); // Ajouter 6.8% d'eau totale par météorite, max 100%
+            // Si pas de config, utiliser une valeur par défaut (pour compatibilité)
+            if (h2oToAdd === 0) {
+                h2oToAdd = 0.486; // 6.8e18 kg / 1.4e21 kg * 100 = 0.486%
+            }
+            
+            const newH2O = Math.min(100, currentH2O + h2oToAdd);
             window.h2oTotalFromMeteorites = newH2O;
-            console.log('[events.js] 🔍 DEBUG - Eau ajoutée:', h2oToAdd.toFixed(1) + '%', 'Total:', newH2O.toFixed(1) + '%');
+            console.log('[events.js] 🔍 DEBUG - Eau ajoutée:', h2oToAdd.toFixed(4) + '%', 'Total:', newH2O.toFixed(4) + '%');
 
             // 🔒 FORCER le recalcul en réinitialisant la valeur mise en cache
             // Sinon, calculateAlbedo réutilise l'ancienne valeur de h2oIceFractionFromCalculation
             if (typeof window !== 'undefined') {
                 window.h2oIceFractionFromCalculation = undefined;
+                // 🔒 Forcer isIceChange = true pour que updatePlanetLighting diminue lightDistance
+                window.isIceChange = true;
+                window.lastIceLevel = undefined; // Forcer la détection du changement
             }
 
             // 🔒 Ajouter +50Ma à info-time à chaque clic sur météorite glace
@@ -556,4 +567,5 @@ function checkDateEvents() {
 
 // Exposer checkDateEvents globalement
 window.checkDateEvents = checkDateEvents;
+
 
