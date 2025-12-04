@@ -821,7 +821,7 @@ function logCalculationPhase(phase, data) {
     // Afficher uniquement T0 pour les phases importantes
     if (phase.includes('DICHOTOMIE START')) {
         const T0_init = data?.T0_initial || data?.t0 || data?.T0_initial_config || 'N/A';
-        console.log(`🌡️ T° corps noir init: ${T0_init}K (${(parseFloat(T0_init) - 273.15).toFixed(1)}°C)`);
+        console.log(`🌡️ T° au sol init: ${T0_init}K (${(parseFloat(T0_init) - 273.15).toFixed(1)}°C)`);
     } else if (phase.includes('DICHOTOMIE ITER')) {
         // Log supprimé : redondant avec le log delta aire qui affiche déjà la température
     } else if (phase.includes('DICHOTOMIE CONVERGENCE')) {
@@ -1957,44 +1957,60 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     const total_flux_in = solar_flux_absorbed + (geo_flux || 0);
                     const flux_diff = final_result.total_flux - total_flux_in;
                     
-                    // 🔒 Log des AIRES SOUS LES COURBES SPECTRALES pour l'équilibrage radiatif
-                    // Les aires sous les courbes sont les intégrales spectrales calculées dans calculateFluxForT0
-                    // - Aire corps noir théorique = intégrale de B_λ(T0_current) sur toutes les λ
-                    // - Aire émission réelle = intégrale du flux sortant au sommet (upward_flux[top])
-                    // - Delta = différence entre ces deux aires (utilisé pour la dichotomie)
+                    // 🔒 ÉQUILIBRE RADIATIF : Les aires sous les courbes affichées doivent être égales
+                    // Sur le graphique :
+                    // - Courbe pointillée (...) = Planck à T_effective = σT_eff⁴
+                    // - Courbe pleine (___) = émission réelle spectrale = total_flux
+                    // Légende : "∫ ...= ∫___" signifie équilibre des aires sous ces deux courbes
                     const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
                     
-                    // Aire corps noir théorique : intégrale spectrale de B_λ(T0_current)
-                    // C'est ce que calculateFluxForT0 calcule dans earth_flux pour T0_current
-                    const blackbody_flux = STEFAN_BOLTZMANN * Math.pow(T0_current, 4);
-                    
-                    // Aire émission réelle : intégrale spectrale du flux sortant au sommet
-                    // C'est final_result.total_flux (somme de upward_flux[top] sur toutes les λ)
+                    // Calculer la température effective du corps noir (T° de la courbe pointillée affichée)
+                    // T_eff = (total_flux / σ)^0.25
+                    // 🔒 TOUJOURS calculer depuis total_flux (pas d'initialisation à T0)
                     const real_emission_flux = final_result.total_flux;
+                    const T_effective = Math.pow(real_emission_flux / STEFAN_BOLTZMANN, 0.25);
                     
-                    // Delta aire = différence entre corps noir théorique et émission réelle
-                    // C'est l'aire sous la courbe du delta spectral (utilisé pour la dichotomie)
-                    const delta_aire = blackbody_flux - real_emission_flux;
+                    // Aire sous courbe pointillée (Planck à T_effective) : σT_eff⁴
+                    const planck_effective_flux = STEFAN_BOLTZMANN * Math.pow(T_effective, 4);
                     
-                    // Delta équilibrage (pour info) : flux_sortant - flux_entrant
+                    // Delta aire (équilibre des courbes affichées) : différence entre les aires sous les deux courbes
+                    // Par définition de T_effective, ce delta devrait être 0 (ou très proche de 0)
+                    // C'est l'équilibre mentionné dans la légende "∫ ...= ∫___"
+                    const delta_aire = planck_effective_flux - real_emission_flux;
+                    
+                    // Delta équilibrage (pour convergence) : flux_sortant - flux_entrant
+                    // C'est CE delta qui tend vers 0 pour la convergence (équilibre énergétique global)
                     const delta_equilibre = flux_diff;
                     
-                    // Signe * sqrt(abs(delta)) pour l'équilibrage (utiliser delta_aire)
-                    const signe = delta_aire >= 0 ? 1 : -1;
-                    const sqrt_delta = signe * Math.sqrt(Math.abs(delta_aire));
+                    // Delta EDS (Effet de Serre) : différence entre corps noir théorique à T0 et émission réelle
+                    // Ce delta NE TEND PAS vers 0, c'est l'effet de serre (normal qu'il reste élevé)
+                    // C'est la différence entre ce que la surface émet (σT0⁴) et ce qui sort réellement
+                    const blackbody_flux_T0 = STEFAN_BOLTZMANN * Math.pow(T0_current, 4);
+                    const delta_eds = blackbody_flux_T0 - real_emission_flux;
                     
-                    // 🔒 Afficher le log AVANT la phase exponentielle (pour voir la première itération)
-                    console.log(`🌡️ T°: ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(1)}°C) | Delta aire: ${delta_aire.toFixed(4)} W/m² | signe×√|delta|: ${sqrt_delta.toFixed(4)} | aire_corps_noir: ${blackbody_flux.toFixed(4)} | aire_réelle: ${real_emission_flux.toFixed(4)}`);
+                    // Signe * sqrt(abs(delta)) pour l'équilibrage (utiliser delta_equilibre pour la phase exponentielle)
+                    // C'est le delta qui doit tendre vers 0, pas delta_aire (qui est toujours ~0 par définition)
+                    // 🔒 CORRECTION : Si delta_equilibre < 0, on émet moins qu'on reçoit → il faut AUGMENTER T
+                    // Donc signe×√|delta| négatif signifie qu'on doit augmenter T (incrément positif)
+                    const sqrt_delta = Math.sqrt(Math.abs(delta_equilibre));
+                    const signe_sqrt = delta_equilibre >= 0 ? 1 : -1; // Signe pour l'affichage
+                    const sqrt_delta_signed = signe_sqrt * sqrt_delta;
                     
-                    // 🔒 Phase exponentielle : activer seulement si signe×√|delta| > 0 (on est en dessous)
+                    // 🔒 Afficher le log avec T° au sol ET T° corps noir (courbe)
+                    // Delta équilibre (→0) : flux_sortant - flux_entrant (convergence énergétique globale)
+                    // Delta aire (→0) : équilibre des aires sous les courbes affichées (pointillée vs pleine)
+                    // Delta EDS : effet de serre (ne tend PAS vers 0, c'est normal)
+                    console.log(`🌡️ T° sol: ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(1)}°C) | T° corps noir: ${T_effective.toFixed(2)}K (${(T_effective - 273.15).toFixed(1)}°C) | Delta équilibre (→0): ${delta_equilibre.toFixed(4)} W/m² | Delta aire (→0): ${delta_aire.toFixed(4)} W/m² | Delta EDS: ${delta_eds.toFixed(4)} W/m² | signe×√|delta|: ${sqrt_delta_signed.toFixed(4)}`);
+                    
+                    // 🔒 Phase exponentielle : activer seulement si delta_equilibre < 0 (on émet moins qu'on reçoit, il faut augmenter T)
                     // Si c'est la première itération et qu'on est en dessous, activer la phase exponentielle
-                    if (iter === 0 && sqrt_delta > 0) {
+                    if (iter === 0 && delta_equilibre < 0) {
                         exponentialPhase = true;
                         // T_min = T0_current (point de départ)
                         T0_min = T0_current;
-                        // delta0 = signe×√|delta| / 10 (utiliser sqrt_delta, pas delta_aire)
+                        // delta0 = sqrt(|delta|) / 10 (incrément en K, toujours positif car on augmente T)
                         const delta0 = sqrt_delta / 10;
-                        // T_max = T_min + delta0
+                        // T_max = T_min + delta0 (on augmente T)
                         T0_max = T0_min + delta0;
                         exponentialIncrement = delta0; // Incrément initial = delta0
                         lastFluxDiffSign = -1;
@@ -2015,10 +2031,17 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         
                         if (flux_diff < 0) {
                             // On est encore en dessous : continuer la montée exponentielle
-                            previousT0 = T0_current; // Sauvegarder la valeur précédente
-                            // T_max += 2*delta0, puis 4*delta0, etc. (doubler l'incrément)
-                            exponentialIncrement = exponentialIncrement * 2; // Doubler l'incrément : delta0, 2*delta0, 4*delta0, 8*delta0...
-                            T0_max = T0_max + exponentialIncrement;
+                            previousT0 = T0_current; // Sauvegarder la valeur précédente (T° où flux_diff < 0)
+                            // 🔒 Sauvegarder aussi le flux_diff précédent (négatif) pour la dichotomie
+                            if (typeof window !== 'undefined') {
+                                window.previousFluxDiff = flux_diff; // Valeur négative
+                            }
+                            // 🔒 Utiliser le nouveau signe×√|delta| pour calculer l'incrément (pas doubler l'ancien)
+                            // Calculer le nouveau delta0 depuis le delta_equilibre actuel
+                            const new_sqrt_delta = Math.sqrt(Math.abs(delta_equilibre));
+                            const new_delta0 = new_sqrt_delta / 10; // Incrément en K
+                            // T_max = T_current + new_delta0 (on augmente T)
+                            T0_max = T0_current + new_delta0;
                             T0_current = T0_max; // Tester le nouveau T_max
                             lastFluxDiffSign = currentFluxDiffSign;
                             // Continuer l'itération avec le nouveau T0_current
@@ -2032,12 +2055,15 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                             // Changement de signe détecté (négatif -> positif) : passer à la dichotomie classique
                             exponentialPhase = false;
                             // Initialiser les bornes pour la dichotomie
-                            // T0_current est la première valeur où flux_diff > 0
-                            // previousT0 est la dernière valeur où flux_diff < 0
-                            T0_max = T0_current;
-                            T0_min = previousT0; // Valeur précédente (dernière où flux_diff < 0)
-                            window.flux_diff_min = -1e9;
-                            window.flux_diff_max = flux_diff;
+                            // T0_current est la première valeur où flux_diff > 0 (on a dépassé)
+                            // previousT0 est la dernière valeur où flux_diff < 0 (juste avant de dépasser)
+                            T0_max = T0_current; // Première valeur où flux_diff > 0
+                            T0_min = previousT0; // Dernière valeur où flux_diff < 0
+                            // 🔒 Utiliser le flux_diff précédent (négatif) sauvegardé
+                            window.flux_diff_min = (typeof window !== 'undefined' && window.previousFluxDiff !== undefined) 
+                                ? window.previousFluxDiff 
+                                : -1e9; // Valeur négative (dernière où flux_diff < 0)
+                            window.flux_diff_max = flux_diff; // Valeur actuelle (positive)
                             // 🔒 Calculer T0_current = (T0_min + T0_max) / 2 pour la dichotomie classique
                             T0_current = (T0_min + T0_max) / 2;
                             // Recalculer avec le nouveau T0_current avant de continuer
@@ -2050,6 +2076,23 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         } else {
                             // Premier calcul ou flux_diff === 0 (ne devrait pas arriver)
                             lastFluxDiffSign = currentFluxDiffSign;
+                        }
+                    }
+
+                    // 🔒 Dichotomie classique (après la phase exponentielle ou si flux_diff > 0 dès le début)
+                    if (!exponentialPhase) {
+                        // S'assurer que T0_min et T0_max sont bien définis
+                        if (T0_min === undefined || T0_max === undefined || T0_min >= T0_max) {
+                            // Si les bornes ne sont pas définies, les initialiser
+                            if (flux_diff > 0) {
+                                // On émet trop, diminuer T0
+                                T0_max = T0_current;
+                                T0_min = Math.max(200, T0_current - 100); // Borne inférieure
+                            } else {
+                                // On émet pas assez, augmenter T0
+                                T0_min = T0_current;
+                                T0_max = Math.min(3000, T0_current + 100); // Borne supérieure
+                            }
                         }
                     }
 
