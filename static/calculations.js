@@ -1649,18 +1649,50 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     }
                 }
                 
-                // Calculer la température initiale : t0 + deltaTemp * nombre_météorites
+                // Calculer ticTime = infoTimeMa / 50 (pour ajustement temporel)
+                const ticTime = (typeof window !== 'undefined' && window.infoTimeMa !== undefined) 
+                    ? Math.floor(window.infoTimeMa / 50) 
+                    : 0;
+                
+                // Calculer la température initiale : t0 + deltaTemp * nombre_météorites + ajustement ticTime
                 if (currentEpoch.events && currentEpoch.events.ice_meteorite && typeof currentEpoch.events.ice_meteorite.deltaTemp === 'number') {
                     const deltaTemp = currentEpoch.events.ice_meteorite.deltaTemp;
-                    T0_initial_config = currentEpoch.t0 + (deltaTemp * meteoriteCount);
+                    // Ajustement avec ticTime : chaque ticTime (50Ma) diminue la température de deltaTemp
+                    T0_initial_config = currentEpoch.t0 + (deltaTemp * meteoriteCount) - (deltaTemp * ticTime);
                 } else {
-                    // Si pas de deltaTemp, utiliser juste t0
+                    // Si pas de deltaTemp, utiliser juste t0 (sans ajustement ticTime)
                     T0_initial_config = currentEpoch.t0;
+                }
+                
+                // 🔒 Anticiper la couleur avec t0 dès le début (AVANT les calculs)
+                if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
+                    const tempC_anticipated = T0_initial_config - 273.15;
+                    const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
+                    window.updateBlackBodyColor(color_anticipated);
+                    
+                    // Mettre à jour legend-equilibre avec la couleur anticipée
+                    const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+                    if (legendEquilibre) {
+                        legendEquilibre.style.color = color_anticipated;
+                    }
                 }
             }
             // 🔒 PRIORITÉ 2 : Température initiale de l'époque (fallback)
             if (T0_initial_config === null && typeof currentEpoch.initial_temperature_K === 'number' && currentEpoch.initial_temperature_K > 0) {
                 T0_initial_config = currentEpoch.initial_temperature_K;
+                
+                // 🔒 Anticiper la couleur avec initial_temperature_K si t0 n'est pas disponible
+                if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
+                    const tempC_anticipated = T0_initial_config - 273.15;
+                    const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
+                    window.updateBlackBodyColor(color_anticipated);
+                    
+                    // Mettre à jour legend-equilibre avec la couleur anticipée
+                    const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+                    if (legendEquilibre) {
+                        legendEquilibre.style.color = color_anticipated;
+                    }
+                }
             }
         }
     }
@@ -1678,11 +1710,37 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         logCalculationPhase('DICHOTOMIE START', {
             T0_initial: T0_initial.toFixed(2)
         });
+        
+        // 🔒 Anticiper la couleur avec T0_initial dès le début
+        if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
+            const tempC_anticipated = T0_initial - 273.15;
+            const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
+            window.updateBlackBodyColor(color_anticipated);
+            
+            // Mettre à jour legend-equilibre avec la couleur anticipée
+            const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+            if (legendEquilibre) {
+                legendEquilibre.style.color = color_anticipated;
+            }
+        }
     } else if (T0_initial_config !== null) {
         T0_initial = T0_initial_config;
         logCalculationPhase('DICHOTOMIE START', {
             T0_initial: T0_initial.toFixed(2)
         });
+        
+        // 🔒 Anticiper la couleur avec T0_initial dès le début
+        if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
+            const tempC_anticipated = T0_initial - 273.15;
+            const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
+            window.updateBlackBodyColor(color_anticipated);
+            
+            // Mettre à jour legend-equilibre avec la couleur anticipée
+            const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+            if (legendEquilibre) {
+                legendEquilibre.style.color = color_anticipated;
+            }
+        }
     } else {
         // Si pas de température initiale définie, calculer depuis les formules
         const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
@@ -2167,6 +2225,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         // Mode synchrone (si pas de setTimeout disponible) - pas d'affichage progressif
         while (iteration < max_iterations) {
             result = calculateFluxForT0(CO2_fraction, T0, options);
+            
             // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
             // Récupérer le flux géothermique depuis l'époque courante
             let geo_flux = null;
@@ -2368,6 +2427,19 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     const flux_surface = STEFAN_BOLTZMANN * Math.pow(final_T0, 4);
     const eds = flux_surface - total_flux;
     
+    // 🔒 Mettre à jour la couleur avec la température finale (après convergence)
+    if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
+        const tempC_final = final_T0 - 273.15;
+        const color_final = window.tempSurfaceToColor(tempC_final);
+        window.updateBlackBodyColor(color_final);
+        
+        // Mettre à jour legend-equilibre avec la couleur finale
+        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+        if (legendEquilibre) {
+            legendEquilibre.style.color = color_final;
+        }
+    }
+    
     // Log EDS et T° finale
     console.log(`🔥 EDS: ${eds.toFixed(1)} W/m²`);
     console.log(`🌡️ T° finale: ${final_T0.toFixed(2)}K (${(final_T0 - 273.15).toFixed(1)}°C)`);
@@ -2463,6 +2535,19 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     
     // Log albedo
     console.log(`🌍 Albedo: ${(albedo * 100).toFixed(1)}%`);
+    
+    // 🔒 Mettre à jour la couleur avec la température finale (après convergence, mode synchrone)
+    if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
+        const tempC_final = T0 - 273.15;
+        const color_final = window.tempSurfaceToColor(tempC_final);
+        window.updateBlackBodyColor(color_final);
+        
+        // Mettre à jour legend-equilibre avec la couleur finale
+        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+        if (legendEquilibre) {
+            legendEquilibre.style.color = color_final;
+        }
+    }
 
     // Récupérer CH4 pour détecter le cas du corps noir
     const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)

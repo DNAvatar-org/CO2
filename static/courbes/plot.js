@@ -862,9 +862,12 @@ window.updatePlot = function updatePlot(data) {
         T_effective_display = data.current.effective_temperature;
 
         // Déterminer la couleur selon la température terrestre (T° Terrestre)
-
-        if (temp_surface_c !== undefined && typeof window.tempSurfaceToColor === 'function') {
-            // Utiliser la température terrestre en °C pour déterminer la couleur
+        // 🔒 Priorité 1 : Utiliser window.currentBlackBodyColor si défini (couleur anticipée avec t0)
+        // Cette couleur est mise à jour dans setEpoch avant les calculs, et dans finalizeResults après convergence
+        if (typeof window !== 'undefined' && window.currentBlackBodyColor) {
+            color_current = window.currentBlackBodyColor;
+        } else if (temp_surface_c !== undefined && typeof window.tempSurfaceToColor === 'function') {
+            // Priorité 2 : Utiliser la température terrestre en °C pour déterminer la couleur
             color_current = window.tempSurfaceToColor(temp_surface_c);
         } else {
             // Fallback : utiliser l'ancienne logique basée sur le ppm

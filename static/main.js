@@ -1738,22 +1738,26 @@ function updateLegend(data) {
         const tempF = ((T - 273.15) * 9 / 5 + 32).toFixed(0);
 
         // 🔒 Calculer la couleur dynamique basée sur la température de surface (pour harmoniser avec le plot)
-        // Utiliser la MÊME logique que dans plot.js : data.temp_surface_c ou data.temp_surface
+        // Utiliser la MÊME logique que dans plot.js : window.currentBlackBodyColor (priorité 1), puis temp_surface_c
         let dynamicColor = 'cyan';
-        // Priorité 1 : temp_surface_c (comme dans plot.js)
-        if (data && typeof data.temp_surface_c === 'number') {
+        // Priorité 1 : window.currentBlackBodyColor (couleur anticipée avec t0, mise à jour dans setEpoch)
+        if (typeof window !== 'undefined' && window.currentBlackBodyColor) {
+            dynamicColor = window.currentBlackBodyColor;
+        }
+        // Priorité 2 : temp_surface_c (comme dans plot.js)
+        else if (data && typeof data.temp_surface_c === 'number') {
             if (typeof window.tempSurfaceToColor === 'function') {
                 dynamicColor = window.tempSurfaceToColor(data.temp_surface_c);
             }
         }
-        // Priorité 2 : temp_surface (calculé depuis T0)
+        // Priorité 3 : temp_surface (calculé depuis T0)
         else if (data.current && typeof data.current.temp_surface === 'number') {
             const tempSurfaceC = data.current.temp_surface - 273.15;
             if (typeof window.tempSurfaceToColor === 'function') {
                 dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
             }
         }
-        // Priorité 3 : T0 (fallback)
+        // Priorité 4 : T0 (fallback)
         else if (data.current && typeof data.current.T0 === 'number') {
             const tempSurfaceC = data.current.T0 - 273.15;
             if (typeof window.tempSurfaceToColor === 'function') {
@@ -1965,6 +1969,51 @@ function setEpoch(epochName) {
 
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
+
+    // 🔒 Anticiper la couleur avec t0 dès le clic sur l'époque (AVANT les calculs)
+    if (typeof epoch.t0 === 'number' && epoch.t0 > 0 && typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
+        // Calculer ticTime = infoTimeMa / 50 (pour ajustement temporel)
+        const ticTime = (typeof window.infoTimeMa !== 'undefined') ? Math.floor((window.infoTimeMa || 0) / 50) : 0;
+        
+        // Calculer la température initiale : t0 - deltaTemp * ticTime (si deltaTemp existe)
+        let T0_anticipated = epoch.t0;
+        if (epoch.events && epoch.events.ice_meteorite && typeof epoch.events.ice_meteorite.deltaTemp === 'number') {
+            const deltaTemp = epoch.events.ice_meteorite.deltaTemp;
+            T0_anticipated = epoch.t0 - (deltaTemp * ticTime);
+        }
+        
+        const tempC_anticipated = T0_anticipated - 273.15;
+        const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
+        window.updateBlackBodyColor(color_anticipated);
+        
+        // Mettre à jour legend-equilibre avec la couleur anticipée
+        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+        if (legendEquilibre) {
+            legendEquilibre.style.color = color_anticipated;
+        }
+        
+        // 🔒 FORCER la mise à jour immédiate du plot et de la légende avec la couleur anticipée
+        // (même si les données ne sont pas encore mises à jour, la couleur doit changer tout de suite)
+        const currentPlotData = (typeof window !== 'undefined' && window.plotData) ? window.plotData : plotData;
+        if (typeof window.updatePlot === 'function' && currentPlotData) {
+            // Créer un plotData temporaire avec la température anticipée pour forcer la couleur
+            const tempPlotData = {
+                ...currentPlotData,
+                temp_surface: T0_anticipated,
+                temp_surface_c: tempC_anticipated
+            };
+            window.updatePlot(tempPlotData);
+        }
+        if (typeof window.updateLegend === 'function' && currentPlotData) {
+            // Créer un plotData temporaire avec la température anticipée pour forcer la couleur
+            const tempPlotData = {
+                ...currentPlotData,
+                temp_surface: T0_anticipated,
+                temp_surface_c: tempC_anticipated
+            };
+            window.updateLegend(tempPlotData);
+        }
+    }
 
     // 🔒 RÉINITIALISER l'eau totale des météorites lors du changement d'époque
     // (utiliser uniquement les valeurs de la config de l'époque, ne pas garder le surplus de l'époque précédente)
