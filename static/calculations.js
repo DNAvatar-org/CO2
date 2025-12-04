@@ -810,39 +810,23 @@ if (typeof window !== 'undefined') {
 function logCalculationPhase(phase, data) {
     if (typeof window === 'undefined' || !window.console) return;
 
-    // Récupérer les états actifs/inactifs en vérifiant les boutons (comme dans organigramme.js)
-    // Vérifier les cellules du flux (pas les boutons HTML) pour cohérence avec updateFluxLabels
-    const cellCO2 = typeof document !== 'undefined' ? document.getElementById('cell-co2') : null;
-    const cellCH4 = typeof document !== 'undefined' ? document.getElementById('cell-methane') : null;
-    const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
-    const cellAlbedo = typeof document !== 'undefined' ? document.getElementById('cell-albedo-btn') : null;
+    // Ne garder que les phases importantes : DICHOTOMIE START, DICHOTOMIE ITER, DICHOTOMIE CONVERGENCE
+    const importantPhases = ['DICHOTOMIE START', 'DICHOTOMIE ITER', 'DICHOTOMIE CONVERGENCE'];
+    const isImportantPhase = importantPhases.some(important => phase.includes(important));
+    
+    if (!isImportantPhase) {
+        return; // Ne pas afficher les autres phases
+    }
 
-    // Vérifier l'état via les cellules ET les variables globales (fallback) - même logique que organigramme.js
-    // 🔒 SEUL l'état du bouton compte pour déterminer si CO2 est activé (pas de booléens en trop)
-    const co2_active = cellCO2 && cellCO2.classList.contains('checked');
-    
-    // 🔒 SEUL l'état du bouton compte pour déterminer si CH4 est activé (pas de booléens en trop)
-    const ch4_enabled = cellCH4 && cellCH4.classList.contains('checked');
-    
-    // 🔒 SEUL l'état du bouton compte pour déterminer si H2O/Albedo sont activés (pas de booléens en trop)
-    const h2o_enabled = cellH2O && cellH2O.classList.contains('checked');
-    
-    const albedo_active = cellAlbedo && cellAlbedo.classList.contains('checked');
-
-    const states = {
-        CO2: co2_active ? 'ON' : 'OFF',
-        H2O: h2o_enabled ? 'ON' : 'OFF',
-        CH4: ch4_enabled ? 'ON' : 'OFF',
-        Albedo: albedo_active ? 'ON' : 'OFF'
-    };
-
-    // Flag pour contrôler l'affichage des phases de debug
-    const isDebugPhases = (typeof window !== 'undefined' && window.isDebugPhases === true);
-    
-    // Si le flag est activé, afficher toutes les phases
-    // Sinon, ne rien afficher
-    if (isDebugPhases) {
-        console.log(`[PHASE: ${phase}] États: CO2=${states.CO2}, H2O=${states.H2O}, CH4=${states.CH4}, Albedo=${states.Albedo}`, data || '');
+    // Afficher uniquement T0 pour les phases importantes
+    if (phase.includes('DICHOTOMIE START')) {
+        const T0_init = data?.T0_initial || data?.t0 || data?.T0_initial_config || 'N/A';
+        console.log(`🌡️ T° corps noir init: ${T0_init}K (${(parseFloat(T0_init) - 273.15).toFixed(1)}°C)`);
+    } else if (phase.includes('DICHOTOMIE ITER')) {
+        // Log supprimé : redondant avec le log delta aire qui affiche déjà la température
+    } else if (phase.includes('DICHOTOMIE CONVERGENCE')) {
+        const T0_final = data?.T0_final || 'N/A';
+        console.log(`✅ Convergence: T° = ${T0_final}K (${(parseFloat(T0_final) - 273.15).toFixed(1)}°C)`);
     }
 }
 
@@ -852,7 +836,7 @@ if (typeof window !== 'undefined') {
 }
 
 function calculateFluxForT0(CO2_fraction, T0_test, options) {
-    logCalculationPhase('1. Initialisation', { CO2_fraction, T0_test, options });
+    // Log supprimé (non essentiel)
 
     const {
         z_max, // ⚡ Plus de valeur par défaut (120000), doit être fourni ou calculé
@@ -1126,11 +1110,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const absorbed_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
 
-    logCalculationPhase('2. Grilles créées', {
-        lambda_points: lambda_range.length,
-        z_points: z_range.length,
-        z_trop: z_trop_precalc
-    });
+    // Log supprimé (non essentiel)
 
     // Condition limite : flux émis par la surface avec T0_test
     // ⚡ OPTIMISATION : Tenir compte des poids lambda pour les plages regroupées
@@ -1146,10 +1126,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         return Math.PI * localPlanckFunction(lambda, T0_test) * delta_lambda * lambda_weights[idx];
     });
 
-    logCalculationPhase('3. Flux terrestre calculé', {
-        total_earth_flux: earth_flux.reduce((sum, f) => sum + f, 0),
-        flux_below_9um: earth_flux.filter((flux, idx) => lambda_range[idx] < 9e-6).reduce((sum, f) => sum + f, 0)
-    });
+    // Log supprimé (non essentiel)
 
     // Debug: analyser l'émission dans la zone < 9 microns
     const lambda_9um = 9e-6; // 9 microns en mètres
@@ -1189,11 +1166,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         ? window.methaneEnabled
         : (typeof methaneEnabled !== 'undefined' ? methaneEnabled : false);
 
-    logCalculationPhase('4. Sections efficaces précalculées', {
-        CO2: CO2_fraction > 0 ? 'ON' : 'OFF',
-        H2O: h2o_enabled ? 'ON' : 'OFF',
-        CH4: (ch4_enabled && CH4_fraction) ? 'ON' : 'OFF'
-    });
+    // Log supprimé (non essentiel)
 
     // Vérifier que earth_flux a la bonne longueur
     if (earth_flux.length !== lambda_range.length) {
@@ -1236,11 +1209,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             const kappa_CO2 = cross_section_CO2[j] * n_CO2;
 
             // Absorption H2O (si activé)
-            const n_H2O = waterVaporNumberDensity(z, CO2_fraction, T0_test, physParams);
+            const n_H2O = h2o_enabled ? waterVaporNumberDensity(z, CO2_fraction, T0_test, physParams) : 0;
             const kappa_H2O = h2o_enabled ? cross_section_H2O[j] * n_H2O : 0;
 
             // Absorption CH4 (si activé)
-            const n_CH4 = methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test, physParams);
+            const n_CH4 = (ch4_enabled && CH4_fraction) ? methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test, physParams) : 0;
             const kappa_CH4 = (ch4_enabled && CH4_fraction) ? cross_section_CH4[j] * n_CH4 : 0;
 
             // Debug: analyser l'absorption H2O dans la zone < 9μm (une fois par itération, pour quelques longueurs d'onde clés)
@@ -1253,8 +1226,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
             optical_thickness[i][j] = kappa * delta_z_real;
 
-            if (CO2_fraction === 0 && !h2o_enabled && (!ch4_enabled || !CH4_fraction)) {
-                // Pas d'absorption si CO2 = 0, H2O désactivé et CH4 désactivé ou absent
+            // 🔒 Corps noir = pas d'absorption (CO2=0 ET H2O réellement absent ET CH4 réellement absent)
+            // Vérifier les valeurs réelles, pas seulement les boutons
+            const has_absorption = (CO2_fraction > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
+            if (!has_absorption) {
+                // Pas d'absorption : corps noir pur, flux passe sans modification
                 upward_flux[i][j] = flux_in[j];
                 emitted_flux[i][j] = 0;
                 absorbed_flux[i][j] = 0;
@@ -1317,11 +1293,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             const kappa_CO2 = cross_section_CO2[j] * n_CO2;
 
             // Absorption H2O (si activé)
-            const n_H2O = waterVaporNumberDensity(z, CO2_fraction, T0_test, physParams);
+            const n_H2O = h2o_enabled ? waterVaporNumberDensity(z, CO2_fraction, T0_test, physParams) : 0;
             const kappa_H2O = h2o_enabled ? cross_section_H2O[j] * n_H2O : 0;
 
             // Absorption CH4 (si activé)
-            const n_CH4 = methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test, physParams);
+            const n_CH4 = (ch4_enabled && CH4_fraction) ? methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test, physParams) : 0;
             const kappa_CH4 = (ch4_enabled && CH4_fraction) ? cross_section_CH4[j] * n_CH4 : 0;
 
             // Coefficient d'absorption total (CO2 + H2O + CH4)
@@ -1329,8 +1305,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
             optical_thickness[i][j] = kappa * delta_z_real;
 
-            if (CO2_fraction === 0 && !h2o_enabled && (!ch4_enabled || !CH4_fraction)) {
-                // Pas d'absorption si CO2 = 0, H2O désactivé et CH4 désactivé ou absent
+            // 🔒 Corps noir = pas d'absorption (CO2=0 ET H2O réellement absent ET CH4 réellement absent)
+            // Vérifier les valeurs réelles, pas seulement les boutons
+            const has_absorption = (CO2_fraction > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
+            if (!has_absorption) {
+                // Pas d'absorption : corps noir pur, flux passe sans modification
                 upward_flux[i][j] = flux_in[j];
                 emitted_flux[i][j] = 0;
                 absorbed_flux[i][j] = 0;
@@ -1359,10 +1338,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         }
     }
 
-    logCalculationPhase('5. Transfert radiatif terminé', {
-        layers_processed: z_range.length,
-        i_trop: i_trop
-    });
+    // Log supprimé (non essentiel)
 
     // Calculer le flux total au sommet
     // Vérifier que upward_flux n'est pas vide avant d'appeler reduce
@@ -1390,11 +1366,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         };
     }
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
-
-    logCalculationPhase('6. Flux total calculé', {
-        total_flux: total_flux.toFixed(2),
-        T0_test: T0_test.toFixed(2)
-    });
 
     // Debug: analyser le flux < 9μm au sommet de l'atmosphère
     const top_flux = upward_flux[upward_flux.length - 1];
@@ -1585,7 +1556,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
 }
 
 function simulateRadiativeTransfer(CO2_fraction, options = {}) {
-    logCalculationPhase('SIMULATION START', { CO2_fraction, options });
+    // Log supprimé (non essentiel)
 
     // Définir la fraction CO2 globale
     current_CO2_fraction_for_temp = CO2_fraction;
@@ -1656,16 +1627,35 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
-            // 🔒 PRIORITÉ 1 : Température selon ticTime (si disponible) pour convergence ultra-rapide
-            if (currentEpoch.ticTime_temperatures && Array.isArray(currentEpoch.ticTime_temperatures)) {
-                const ticTime = typeof window.textureIndex !== 'undefined' ? window.textureIndex : 
-                                (typeof window.infoTimeMa !== 'undefined' ? Math.floor(window.infoTimeMa / 50) : 0);
-                if (ticTime >= 0 && ticTime < currentEpoch.ticTime_temperatures.length) {
-                    T0_initial_config = currentEpoch.ticTime_temperatures[ticTime];
-                    logCalculationPhase('DICHOTOMIE START (ticTime température)', {
-                        ticTime: ticTime,
-                        T0_initial: T0_initial_config.toFixed(2)
-                    });
+            // 🔒 PRIORITÉ 1 : Température selon t0 + deltaTemp * nombre_météorites (si disponible) pour convergence rapide
+            if (typeof currentEpoch.t0 === 'number' && currentEpoch.t0 > 0) {
+                let meteoriteCount = 0;
+                
+                // Calculer le nombre de météorites à partir de h2oTotalFromMeteorites
+                if (currentEpoch.events && currentEpoch.events.ice_meteorite && currentEpoch.events.ice_meteorite.water_added_kg) {
+                    const h2oTotalFromMeteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+                    
+                    if (h2oTotalFromMeteorites > 0) {
+                        // Calculer le pourcentage ajouté par météorite
+                        const mass_kg = currentEpoch.events.ice_meteorite.water_added_kg;
+                        const EARTH_TOTAL_WATER_MASS_KG = 1.4e21; // Masse totale d'eau terrestre
+                        const h2oPerMeteorite = (mass_kg / EARTH_TOTAL_WATER_MASS_KG) * 100;
+                        
+                        // Pour Hadéen, multiplier par 10 (comme dans events.js)
+                        const h2oPerMeteoriteAdjusted = (currentEpoch.id === 'hadeen') ? Math.max(h2oPerMeteorite * 10, 2.1) : h2oPerMeteorite;
+                        
+                        // Calculer le nombre approximatif de météorites
+                        meteoriteCount = Math.floor(h2oTotalFromMeteorites / h2oPerMeteoriteAdjusted);
+                    }
+                }
+                
+                // Calculer la température initiale : t0 + deltaTemp * nombre_météorites
+                if (currentEpoch.events && currentEpoch.events.ice_meteorite && typeof currentEpoch.events.ice_meteorite.deltaTemp === 'number') {
+                    const deltaTemp = currentEpoch.events.ice_meteorite.deltaTemp;
+                    T0_initial_config = currentEpoch.t0 + (deltaTemp * meteoriteCount);
+                } else {
+                    // Si pas de deltaTemp, utiliser juste t0
+                    T0_initial_config = currentEpoch.t0;
                 }
             }
             // 🔒 PRIORITÉ 2 : Température initiale de l'époque (fallback)
@@ -1685,13 +1675,12 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         // Si on ajoute des GES (H2O, CO2), la température va monter.
         // On ajoute un petit delta pour aider la dichotomie à chercher "vers le haut"
         // (Sauf si on est en refroidissement -> à gérer par la dichotomie)
-        logCalculationPhase('DICHOTOMIE START (continuité)', {
-            T0_initial: T0_initial.toFixed(2),
-            prev_T0: prev_T0.toFixed(2)
+        logCalculationPhase('DICHOTOMIE START', {
+            T0_initial: T0_initial.toFixed(2)
         });
     } else if (T0_initial_config !== null) {
         T0_initial = T0_initial_config;
-        logCalculationPhase('DICHOTOMIE START (config époque)', {
+        logCalculationPhase('DICHOTOMIE START', {
             T0_initial: T0_initial.toFixed(2)
         });
     } else {
@@ -1731,10 +1720,8 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             T0_initial = T0_no_greenhouse + delta_T_greenhouse;
         }
 
-        logCalculationPhase('DICHOTOMIE START (calcul théorique)', {
-            T0_initial: T0_initial.toFixed(2),
-            T0_no_greenhouse: T0_no_greenhouse.toFixed(2),
-            geo_flux_init: geo_flux_init.toFixed(2)
+        logCalculationPhase('DICHOTOMIE START', {
+            T0_initial: T0_initial.toFixed(2)
         });
 
         // Si H2O est activé, ajuster T0_initial (H2O ajoute un effet de serre important)
@@ -1858,6 +1845,18 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                 // Déclarer shouldDisplaySteps une seule fois pour toute la fonction iterate
                 const shouldDisplaySteps = typeof window !== 'undefined' && window.showDichotomySteps;
 
+                // 🔒 Initialiser les bornes pour la dichotomie classique
+                // Ces bornes seront mises à jour par la phase exponentielle ou la dichotomie classique
+                let T0_min = T0_initial - 50; // Borne inférieure initiale
+                let T0_max = T0_initial + 50; // Borne supérieure initiale
+
+                // 🔒 Phase de recherche exponentielle : variables pour la montée exponentielle
+                // La phase exponentielle ne s'active que si on part d'une température trop basse (flux_diff < 0)
+                let exponentialPhase = false; // Sera activée seulement si nécessaire
+                let exponentialIncrement = 1; // Incrément initial : 1, puis 2, 4, 8...
+                let lastFluxDiffSign = null; // Signe du flux_diff précédent pour détecter le changement
+                let previousT0 = T0_initial; // Valeur précédente de T0 pour calculer T0_min correctement
+
                 const iterate = () => {
                     // Vérifier si annulé avant chaque itération
                     if (window.cancelCalculation || isCancelled) {
@@ -1878,6 +1877,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     }
                     current_T0_adjusted = T0_current;
 
+                    // Toujours recalculer pour avoir les valeurs à jour (le delta doit changer avec T0_current)
                     final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
                     // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
                     // Récupérer le flux géothermique depuis l'époque courante
@@ -1898,14 +1898,105 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     // Équilibre : Flux Sortant = Flux Solaire Absorbé + Flux Géothermique
                     const total_flux_in = solar_flux_absorbed + (geo_flux || 0);
                     const flux_diff = final_result.total_flux - total_flux_in;
+                    
+                    // 🔒 Log des AIRES SOUS LES COURBES SPECTRALES pour l'équilibrage radiatif
+                    // Les aires sous les courbes sont les intégrales spectrales calculées dans calculateFluxForT0
+                    // - Aire corps noir théorique = intégrale de B_λ(T0_current) sur toutes les λ
+                    // - Aire émission réelle = intégrale du flux sortant au sommet (upward_flux[top])
+                    // - Delta = différence entre ces deux aires (utilisé pour la dichotomie)
+                    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+                    
+                    // Aire corps noir théorique : intégrale spectrale de B_λ(T0_current)
+                    // C'est ce que calculateFluxForT0 calcule dans earth_flux pour T0_current
+                    const blackbody_flux = STEFAN_BOLTZMANN * Math.pow(T0_current, 4);
+                    
+                    // Aire émission réelle : intégrale spectrale du flux sortant au sommet
+                    // C'est final_result.total_flux (somme de upward_flux[top] sur toutes les λ)
+                    const real_emission_flux = final_result.total_flux;
+                    
+                    // Delta aire = différence entre corps noir théorique et émission réelle
+                    // C'est l'aire sous la courbe du delta spectral (utilisé pour la dichotomie)
+                    const delta_aire = blackbody_flux - real_emission_flux;
+                    
+                    // Delta équilibrage (pour info) : flux_sortant - flux_entrant
+                    const delta_equilibre = flux_diff;
+                    
+                    // Signe * sqrt(abs(delta)) pour l'équilibrage (utiliser delta_aire)
+                    const signe = delta_aire >= 0 ? 1 : -1;
+                    const sqrt_delta = signe * Math.sqrt(Math.abs(delta_aire));
+                    
+                    // 🔒 Afficher le log AVANT la phase exponentielle (pour voir la première itération)
+                    console.log(`🌡️ T°: ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(1)}°C) | Delta aire: ${delta_aire.toFixed(4)} W/m² | signe×√|delta|: ${sqrt_delta.toFixed(4)} | aire_corps_noir: ${blackbody_flux.toFixed(4)} | aire_réelle: ${real_emission_flux.toFixed(4)}`);
+                    
+                    // 🔒 Phase exponentielle : activer seulement si signe×√|delta| > 0 (on est en dessous)
+                    // Si c'est la première itération et qu'on est en dessous, activer la phase exponentielle
+                    if (iter === 0 && sqrt_delta > 0) {
+                        exponentialPhase = true;
+                        // T_min = T0_current (point de départ)
+                        T0_min = T0_current;
+                        // delta0 = signe×√|delta| / 10 (utiliser sqrt_delta, pas delta_aire)
+                        const delta0 = sqrt_delta / 10;
+                        // T_max = T_min + delta0
+                        T0_max = T0_min + delta0;
+                        exponentialIncrement = delta0; // Incrément initial = delta0
+                        lastFluxDiffSign = -1;
+                        previousT0 = T0_current; // Initialiser previousT0
+                        // Tester T_max immédiatement
+                        T0_current = T0_max;
+                        iter++;
+                        if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
+                            window.incrementTimeline();
+                        }
+                        setTimeout(iterate, 0);
+                        return; // Sortir de cette itération, la suivante utilisera T0_max
+                    }
+                    
+                    // 🔒 Phase exponentielle : montée rapide si on est en dessous, détection du changement de signe
+                    if (exponentialPhase) {
+                        const currentFluxDiffSign = flux_diff < 0 ? -1 : (flux_diff > 0 ? 1 : 0);
+                        
+                        if (flux_diff < 0) {
+                            // On est encore en dessous : continuer la montée exponentielle
+                            previousT0 = T0_current; // Sauvegarder la valeur précédente
+                            // T_max += 2*delta0, puis 4*delta0, etc. (doubler l'incrément)
+                            exponentialIncrement = exponentialIncrement * 2; // Doubler l'incrément : delta0, 2*delta0, 4*delta0, 8*delta0...
+                            T0_max = T0_max + exponentialIncrement;
+                            T0_current = T0_max; // Tester le nouveau T_max
+                            lastFluxDiffSign = currentFluxDiffSign;
+                            // Continuer l'itération avec le nouveau T0_current
+                            iter++;
+                            if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
+                                window.incrementTimeline();
+                            }
+                            setTimeout(iterate, 0);
+                            return; // Sortir de cette itération, la suivante utilisera le nouveau T0_current
+                        } else if (flux_diff > 0 && lastFluxDiffSign !== null && lastFluxDiffSign < 0) {
+                            // Changement de signe détecté (négatif -> positif) : passer à la dichotomie classique
+                            exponentialPhase = false;
+                            // Initialiser les bornes pour la dichotomie
+                            // T0_current est la première valeur où flux_diff > 0
+                            // previousT0 est la dernière valeur où flux_diff < 0
+                            T0_max = T0_current;
+                            T0_min = previousT0; // Valeur précédente (dernière où flux_diff < 0)
+                            window.flux_diff_min = -1e9;
+                            window.flux_diff_max = flux_diff;
+                            // 🔒 Calculer T0_current = (T0_min + T0_max) / 2 pour la dichotomie classique
+                            T0_current = (T0_min + T0_max) / 2;
+                            // Recalculer avec le nouveau T0_current avant de continuer
+                            iter++;
+                            if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
+                                window.incrementTimeline();
+                            }
+                            setTimeout(iterate, 0);
+                            return; // Sortir pour recalculer avec T0_current = (T_min + T_max) / 2
+                        } else {
+                            // Premier calcul ou flux_diff === 0 (ne devrait pas arriver)
+                            lastFluxDiffSign = currentFluxDiffSign;
+                        }
+                    }
 
                     logCalculationPhase(`DICHOTOMIE ITER ${iter + 1}`, {
-                        T0_current: T0_current.toFixed(2),
-                        total_flux: final_result.total_flux.toFixed(2),
-                        solar_flux_absorbed: solar_flux_absorbed.toFixed(2),
-                        geo_flux: (geo_flux || 0).toFixed(2),
-                        total_flux_in: total_flux_in.toFixed(2),
-                        flux_diff: flux_diff.toFixed(2)
+                        T0_current: T0_current.toFixed(2)
                     });
 
                     // Afficher chaque étape de la dichotomie seulement si demandé
@@ -1945,9 +2036,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
 
                     if (Math.abs(flux_diff) < tolerance) {
                         logCalculationPhase('DICHOTOMIE CONVERGENCE', {
-                            iteration: iter + 1,
-                            T0_final: T0_current.toFixed(2),
-                            flux_diff: flux_diff.toFixed(4)
+                            T0_final: T0_current.toFixed(2)
                         });
 
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
@@ -1972,7 +2061,10 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
 
                     if (flux_diff > 0) {
                         // Flux trop élevé, diminuer T0
-                        T0_max = T0_current;
+                        // 🔒 Mettre à jour T0_max seulement si on n'a pas encore de borne supérieure valide
+                        if (T0_max > T0_current || T0_max === T0_initial + 50) {
+                            T0_max = T0_current;
+                        }
 
                         // ⚡ OPTIMISATION : Méthode Regula Falsi (Fausse Position) au lieu de Dichotomie simple
                         // Au lieu de prendre le milieu (T_min + T_max)/2, on utilise l'erreur relative
@@ -2006,7 +2098,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                             T0_current = (T0_min + T0_max) / 2;
                         }
                     } else {
-                        // Flux trop faible, augmenter T0
+                        // Flux trop faible, augmenter T0 (dichotomie classique)
                         T0_min = T0_current;
 
                         // Sauvegarder la différence de flux
@@ -2245,6 +2337,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     // ⚠️ CAS PARTICULIER : Corps noir (pas d'atmosphère, albedo = 0)
     //   → Pas d'effet de serre, donc temp_surface = effective_temperature
     //   → On utilise final_T0 directement pour éviter les erreurs numériques
+    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
     const isBlackBody = (CO2_fraction === 0 || CO2_fraction === null) && !h2o_enabled && (!ch4_enabled || !CH4_fraction);
     const effective_temperature = isBlackBody
         ? final_T0  // Corps noir : utiliser directement temp_surface (formule analytique exacte)
@@ -2252,45 +2345,33 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
 
     // 🔒 FORCER le recalcul de la glace avant de calculer l'albedo
     // Si H2O est activé, recalculer h2oIceFractionFromCalculation avec la température finale
-    console.log('[finalizeResults] 🔍 DEBUG - Avant recalcul glace:', {
-        h2o_enabled,
-        final_T0,
-        h2oVaporPercent: typeof window !== 'undefined' ? window.h2oVaporPercent : 'N/A',
-        h2oTotalFromMeteorites: typeof window !== 'undefined' ? window.h2oTotalFromMeteorites : 'N/A',
-        h2oIceFractionFromCalculation: typeof window !== 'undefined' ? window.h2oIceFractionFromCalculation : 'N/A'
-    });
-    
     if (h2o_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
         const h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
         const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
         const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
         
-        console.log('[finalizeResults] 🔍 DEBUG - Calcul H2O:', {
-            h2o_vapor_percent,
-            h2o_from_meteorites,
-            h2o_total_percent,
-            final_T0,
-            temp_C: final_T0 - 273.15
-        });
-        
         if (h2o_total_percent > 0) {
             // Calculer la répartition vapeur/glace selon la température finale
             const h2o_params = window.calculateH2OParameters(final_T0, h2o_total_percent, null);
-            console.log('[finalizeResults] 🔍 DEBUG - h2o_params:', h2o_params);
             // Mettre à jour h2oIceFractionFromCalculation pour que calculateAlbedo() l'utilise
             window.h2oIceFractionFromCalculation = h2o_params.ice_fraction || 0;
-            console.log('[finalizeResults] 🔍 DEBUG - h2oIceFractionFromCalculation mis à jour:', window.h2oIceFractionFromCalculation, 'pour T0:', final_T0);
-        } else {
-            console.log('[finalizeResults] ⚠️ WARNING - h2o_total_percent = 0, pas de recalcul de glace');
         }
-    } else {
-        console.log('[finalizeResults] ⚠️ WARNING - H2O désactivé ou calculateH2OParameters non disponible');
     }
     
     const albedo = calculateAlbedo(final_T0, h2o_enabled, geo_flux);
     const cloud_coverage = calculateCloudCoverage(final_T0, h2o_enabled);
-    console.log('[finalizeResults] 🔍 DEBUG - albedo calculé:', albedo, 'pour T0:', final_T0, 'h2o_enabled:', h2o_enabled);
+    
+    // Log albedo
+    console.log(`🌍 Albedo: ${(albedo * 100).toFixed(1)}%`);
 
+    // Calculer EDS (Effet de Serre) = Flux Surface - Flux Sortant
+    const flux_surface = STEFAN_BOLTZMANN * Math.pow(final_T0, 4);
+    const eds = flux_surface - total_flux;
+    
+    // Log EDS et T° finale
+    console.log(`🔥 EDS: ${eds.toFixed(1)} W/m²`);
+    console.log(`🌡️ T° finale: ${final_T0.toFixed(2)}K (${(final_T0 - 273.15).toFixed(1)}°C)`);
+    
     const final_result_obj = {
         lambda_range: lambda_range,
         lambda_weights: lambda_weights, // ⚡ Nécessaire pour normalisation correcte dans plot.js
@@ -2374,13 +2455,14 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
             const h2o_params = window.calculateH2OParameters(T0, h2o_total_percent, null);
             // Mettre à jour h2oIceFractionFromCalculation pour que calculateAlbedo() l'utilise
             window.h2oIceFractionFromCalculation = h2o_params.ice_fraction || 0;
-            console.log('[finalizeResultsSync] 🔍 DEBUG - h2oIceFractionFromCalculation mis à jour:', window.h2oIceFractionFromCalculation, 'pour T0:', T0);
         }
     }
     
     const albedo = calculateAlbedo(T0, h2o_enabled, geo_flux);
     const cloud_coverage = calculateCloudCoverage(T0, h2o_enabled);
-    console.log('[finalizeResultsSync] 🔍 DEBUG - albedo calculé:', albedo, 'pour T0:', T0);
+    
+    // Log albedo
+    console.log(`🌍 Albedo: ${(albedo * 100).toFixed(1)}%`);
 
     // Récupérer CH4 pour détecter le cas du corps noir
     const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)
@@ -2402,6 +2484,15 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
         ? T0  // Corps noir : utiliser directement temp_surface (formule analytique exacte)
         : Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
 
+    // Calculer EDS (Effet de Serre) = Flux Surface - Flux Sortant
+    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+    const flux_surface = STEFAN_BOLTZMANN * Math.pow(T0, 4);
+    const eds = flux_surface - total_flux;
+    
+    // Log EDS et T° finale
+    console.log(`🔥 EDS: ${eds.toFixed(1)} W/m²`);
+    console.log(`🌡️ T° finale: ${T0.toFixed(2)}K (${(T0 - 273.15).toFixed(1)}°C)`);
+    
     return {
         lambda_range: lambda_range,
         lambda_weights: lambda_weights, // ⚡ Nécessaire pour normalisation correcte dans plot.js

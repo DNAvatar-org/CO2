@@ -101,7 +101,7 @@ if (typeof window !== 'undefined') {
             
             return interpreted;
         };
-        console.log('[organigramme.js] 🔄 Version de secours de interpretConfigValue créée');
+        // Log supprimé (non essentiel)
     }
 }
 
@@ -395,27 +395,19 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
     // 🔒 Restaurer la rotation sauvegardée si disponible (pour éviter que la terre pivote d'un coup)
     if (typeof window !== 'undefined' && window.savedPlanetRotationY !== undefined) {
         savedRotationY = window.savedPlanetRotationY;
-        console.log('[initPlanetThreeJS] 🔍 DEBUG - Rotation restaurée depuis window:', savedRotationY);
+        // Log supprimé (non essentiel)
         // NE PAS nettoyer la variable - elle peut être réutilisée pour les changements de texture
     } else if (canvas._threeJSData && canvas._threeJSData.sphere) {
         // Si pas de rotation sauvegardée dans window, utiliser celle du canvas existant
         savedRotationY = canvas._threeJSData.sphere.rotation.y;
-        console.log('[initPlanetThreeJS] 🔍 DEBUG - Rotation sauvegardée depuis canvas:', savedRotationY);
+        // Log supprimé (non essentiel)
         // Sauvegarder aussi dans window pour les prochains changements
         if (typeof window !== 'undefined') {
             window.savedPlanetRotationY = savedRotationY;
         }
     }
     
-    // DEBUG: Log des paramètres d'entrée
-    console.log('[initPlanetThreeJS] 🔍 DEBUG - Paramètres:', {
-        radius,
-        logoScale,
-        planetSize,
-        width,
-        height,
-        luxSaturation
-    });
+    // Log supprimé (non essentiel)
     
     // Calculer le rayon de la sphère pour qu'elle remplisse le container et frôle le cercle noir
     // Le container fait planetSize pixels (radius * 2 * logoScale)
@@ -430,12 +422,7 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
     
     // DEBUG: Log du rayon calculé
     const facteur = 0.01 * 2; // Facteur utilisé pour le calcul (x2 pour le diamètre)
-    console.log('[initPlanetThreeJS] 🔍 DEBUG - Rayon calculé:', {
-        sphereRadius,
-        planetSize,
-        facteur,
-        calcul: `${planetSize} * 0.01 * 2 = ${sphereRadius}`
-    });
+    // Log supprimé (non essentiel)
     
     const sphereSegments = 32; // Précision comme dans planet-test.html
     const lightContrast = 1.5; // Contraste comme dans planet-test.html
@@ -514,7 +501,7 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         scene.add(pointLight);
         // Augmenter drastiquement la lumière ambiante pour l'éclairage interne
         ambientLight.intensity = 1.5; // Très forte lumière ambiante pour éclairage interne
-        console.log('[initPlanetThreeJS] 🔍 DEBUG - Éclairage interne (PointLight au centre), intensité:', lightContrast * luxSaturation * 20);
+        // Log supprimé (non essentiel)
         
         // Stocker les références des lumières après création
         canvas._threeJSData.pointLight = pointLight;
@@ -528,10 +515,10 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         const defaultDistance = sphereRadius * 3;
         const actualLightDistance = lightDistance !== null && lightDistance > 0 ? lightDistance : defaultDistance;
         const lightPosition = lightDirection.clone().multiplyScalar(actualLightDistance);
-        directionalLight.position.copy(lightPosition);
-        directionalLight.castShadow = false;
-        scene.add(directionalLight);
-        console.log('[initPlanetThreeJS] 🔍 DEBUG - Éclairage externe (DirectionalLight), distance:', actualLightDistance);
+    directionalLight.position.copy(lightPosition);
+    directionalLight.castShadow = false;
+    scene.add(directionalLight);
+        // Log supprimé (non essentiel)
         
         // Stocker les références des lumières après création
         canvas._threeJSData.directionalLight = directionalLight;
@@ -551,13 +538,7 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         // Facteur d'intensité : loi en 1/distance² (plus loin = moins intense)
         const distanceFactor = (defaultDistance * defaultDistance) / (actualLightDistance * actualLightDistance);
         directionalLight.intensity = baseDirectionalIntensity * luxSaturation * distanceFactor;
-        console.log('[initPlanetThreeJS] 🔍 DEBUG - Intensité DirectionalLight:', {
-            base: baseDirectionalIntensity.toFixed(2),
-            luxSaturation,
-            distance: actualLightDistance,
-            distanceFactor: distanceFactor.toFixed(4),
-            final: directionalLight.intensity.toFixed(2)
-        });
+        // Log supprimé (non essentiel)
     } else if (pointLight) {
         // L'intensité du PointLight est déjà ajustée lors de la création
         pointLight.intensity = lightContrast * luxSaturation * 20;
@@ -565,8 +546,8 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
     // Ajuster la lumière ambiante (plus faible pour éclairage externe, plus forte pour interne)
     if (!pointLight) {
         // Éclairage externe : lumière ambiante normale
-        const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
-        ambientLight.intensity = ambientIntensity;
+    const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
+    ambientLight.intensity = ambientIntensity;
     }
     // Pour éclairage interne, l'intensité ambiante est déjà ajustée lors de la création du PointLight
     
@@ -598,15 +579,7 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         }
         // PointLight reste au centre (0, 0, 0)
         
-        // DEBUG: Log avant création de la sphère
-        console.log('[initPlanetThreeJS] 🔍 DEBUG - Création sphère:', {
-            sphereRadius: currentSphereRadius,
-            sphereSegments,
-            texture: texture ? 'chargée' : 'absente',
-            newRadius: newRadius !== null ? newRadius : 'non fourni',
-            cameraDistance: distance,
-            lightDistance: lightDistance
-        });
+        // Log supprimé (non essentiel)
         
         const geometry = new THREE.SphereGeometry(currentSphereRadius, sphereSegments, sphereSegments);
         // Matériau comme dans planet-test.html (sans options supplémentaires qui créent des effets indésirables)
@@ -628,7 +601,7 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         // Restaurer l'angle de rotation Y sauvegardé (pour garder la continuité)
         if (savedRotationY !== undefined && savedRotationY !== null) {
             sphere.rotation.y = savedRotationY;
-            console.log('[initPlanetThreeJS] 🔍 DEBUG - Rotation restaurée:', savedRotationY);
+            // Log supprimé (non essentiel)
         }
         scene.add(sphere);
         
@@ -640,13 +613,7 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         canvas._threeJSData.updateSphere = createPlanetSphere;
         canvas._threeJSData.currentRadius = currentSphereRadius;
         
-        // DEBUG: Log après création
-        console.log('[initPlanetThreeJS] 🔍 DEBUG - Sphère créée:', {
-            geometryRadius: geometry.parameters.radius,
-            spherePosition: sphere.position,
-            sphereScale: sphere.scale,
-            cameraDistance: distance
-        });
+        // Log supprimé (non essentiel)
     }
     
     // Animation - rotation lente (comme dans planet-test.html)
@@ -672,7 +639,7 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
         else if (shouldResumeByFPS && isPaused) {
             if (typeof window !== 'undefined') {
                 window.threeJSAnimationPaused = false;
-                console.log('[organigramme.js] ▶️ Animation Three.js reprise automatique (FPS:', currentFPS.toFixed(1), ')');
+                // Log supprimé (non essentiel)
             }
         }
         
@@ -756,21 +723,14 @@ function updatePlanetLighting() {
     if (window.isIceChange && typeof lightDistance === 'number' && !isNaN(lightDistance)) {
         const oldLightDistance = lightDistance;
         lightDistance = Math.max(0, lightDistance - 1);
-        console.log('[updatePlanetLighting] 🔍 DEBUG - lightDistance diminué:', oldLightDistance, '->', lightDistance);
+        // Log supprimé (non essentiel)
     }
     
     const luxSaturation = epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
     const lightContrast = threeJSData.lightContrast || 1.5;
     const sphereRadius = threeJSData.currentRadius || threeJSData.sphereRadius;
     
-    console.log('[updatePlanetLighting] 🔍 DEBUG - Mise à jour éclairage:', {
-        currentEpochName,
-        lightDistance,
-        luxSaturation,
-        isIceChange: window.isIceChange,
-        hasDirectionalLight: !!threeJSData.directionalLight,
-        hasPointLight: !!threeJSData.pointLight
-    });
+    // Log supprimé (non essentiel)
     
     // Mettre à jour l'éclairage selon le type
     if (lightDistance !== null && lightDistance === 0) {
@@ -811,12 +771,7 @@ function updatePlanetLighting() {
             const distanceFactor = (defaultDistance * defaultDistance) / (actualLightDistance * actualLightDistance);
             threeJSData.directionalLight.intensity = baseDirectionalIntensity * luxSaturation * distanceFactor;
             
-            console.log('[updatePlanetLighting] 🔍 DEBUG - DirectionalLight mis à jour:', {
-                actualLightDistance: actualLightDistance.toFixed(2),
-                distanceFactor: distanceFactor.toFixed(2),
-                intensity: threeJSData.directionalLight.intensity.toFixed(2),
-                position: lightPosition
-            });
+            // Log supprimé (non essentiel)
             
             if (threeJSData.ambientLight) {
                 const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
@@ -1045,9 +1000,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
 
         // Si le logo est un fichier image (SVG, PNG, etc.)
         if (isImage) {
-            console.log('[createCell] isImage=true, logo=', logo, 'planetEffect=', planetEffect);
             if (planetEffect) {
-                console.log('[createCell] planetEffect activé pour logo:', logo);
+                // Log supprimé (non essentiel)
                 // Utiliser Three.js pour l'effet planète avec rotation et éclairage
                 const planetContainer = document.createElement('div');
                 planetContainer.className = 'planet-container threejs-container';
@@ -1068,14 +1022,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 // Calculer la taille du canvas Three.js
                 const planetSize = (radius * 2) * logoScale;
                 
-                // DEBUG: Log avant initialisation Three.js
-                console.log('[createCell] 🔍 DEBUG - Initialisation Three.js pour Terre:', {
-                    nodeId,
-                    radius,
-                    logoScale,
-                    planetSize,
-                    calcul: `(${radius} * 2) * ${logoScale} = ${planetSize}`
-                });
+                // Log supprimé (non essentiel)
                 
                 // Créer le canvas pour Three.js
                 const canvas = document.createElement('canvas');
@@ -1094,10 +1041,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     }
                     if (window.currentEpochLightDistance !== undefined) {
                         lightDistance = window.currentEpochLightDistance;
-                        console.log('[createCell] 🔍 DEBUG - lightDistance depuis window.currentEpochLightDistance:', {
-                            value: lightDistance,
-                            type: typeof lightDistance
-                        });
+                        // Log supprimé (non essentiel)
                     }
                     
                     // Priorité 2: Récupérer depuis la config si pas encore interprétées
@@ -1112,49 +1056,28 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                                     luxSaturation = epochConfig.luxSaturation;
                                 }
                                 if (lightDistance === null && epochConfig.lightDistance !== undefined) {
-                                    console.log('[createCell] 🔍 DEBUG - lightDistance avant interprétation:', {
-                                        value: epochConfig.lightDistance,
-                                        type: typeof epochConfig.lightDistance,
-                                        epochName: currentEpochName
-                                    });
+                                    // Log supprimé (non essentiel)
                                     // Interpréter lightDistance si c'est une chaîne
                                     if (typeof epochConfig.lightDistance === 'string' && typeof window.interpretConfigValue === 'function') {
                                         lightDistance = window.interpretConfigValue(epochConfig.lightDistance);
-                                        console.log('[createCell] 🔍 DEBUG - lightDistance après interprétation:', {
-                                            value: lightDistance,
-                                            type: typeof lightDistance,
-                                            original: epochConfig.lightDistance
-                                        });
+                                        // Log supprimé (non essentiel)
                                     } else {
                                         lightDistance = epochConfig.lightDistance;
-                                        console.log('[createCell] 🔍 DEBUG - lightDistance utilisé tel quel (pas de chaîne):', {
-                                            value: lightDistance,
-                                            type: typeof lightDistance
-                                        });
+                                        // Log supprimé (non essentiel)
                                     }
                                 }
                             }
                         }
                     }
                     
-                    console.log('[createCell] 🔍 DEBUG - Paramètres éclairage finaux:', { 
-                        luxSaturation, 
-                        lightDistance,
-                        lightDistanceType: typeof lightDistance,
-                        infoTimeMa: window.infoTimeMa,
-                        textureIndex: window.textureIndex
-                    });
+                    // Log supprimé (non essentiel)
                 }
                 
                 // S'assurer que lightDistance est interprété avant de passer à initPlanetThreeJS
                 // Si c'est encore une chaîne, l'interpréter maintenant
                 if (typeof lightDistance === 'string' && typeof window.interpretConfigValue === 'function') {
                     const interpretedLightDistance = window.interpretConfigValue(lightDistance);
-                    console.log('[createCell] 🔍 DEBUG - lightDistance réinterprété avant initPlanetThreeJS:', {
-                        original: lightDistance,
-                        interpreted: interpretedLightDistance,
-                        type: typeof interpretedLightDistance
-                    });
+                    // Log supprimé (non essentiel)
                     lightDistance = interpretedLightDistance;
                 }
                 
@@ -1210,7 +1133,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             if (nodeId === 'terre') {
                 if (typeof window !== 'undefined') {
                     window.threeJSAnimationPaused = !window.threeJSAnimationPaused;
-                    console.log('[organigramme] Animation Three.js:', window.threeJSAnimationPaused ? 'PAUSE' : 'PLAY');
+                    // Log supprimé (non essentiel)
                 }
                 return; // Ne pas copier le logo ni déclencher d'autres actions
             }
@@ -2626,23 +2549,13 @@ cellOrder.forEach(nodeId => {
             // IMPORTANT: S'assurer que infoTimeMa est à 0 pour les nouvelles époques
             if (typeof window !== 'undefined' && typeof window.infoTimeMa === 'undefined') {
                 window.infoTimeMa = 0;
-                console.log('[organigramme.js] 🔄 infoTimeMa initialisé à 0');
+                // Log supprimé (non essentiel)
             }
             
             let interpretedLogo = epochConfig.logo;
             if (typeof window !== 'undefined' && typeof window.interpretConfigValue === 'function') {
-                console.log('[organigramme.js] 🔍 DEBUG - Avant interprétation:', {
-                    logo: epochConfig.logo,
-                    infoTimeMa: window.infoTimeMa,
-                    interpretConfigValue: typeof window.interpretConfigValue
-                });
+                // Log supprimé (non essentiel)
                 interpretedLogo = window.interpretConfigValue(epochConfig.logo);
-                console.log('[organigramme.js] 🔍 DEBUG - Logo interprété:', {
-                    original: epochConfig.logo,
-                    interpreted: interpretedLogo,
-                    epochName: currentEpochName,
-                    stillContainsPlaceholder: typeof interpretedLogo === 'string' && (interpretedLogo.includes('{$') || interpretedLogo.includes('$ticTime'))
-                });
             } else {
                 console.warn('[organigramme.js] ⚠️ interpretConfigValue non disponible:', {
                     window: typeof window,
@@ -3547,7 +3460,7 @@ window.updateFluxLabels = function (data) {
 
     // 🔒 Récupérer les valeurs depuis data.current si disponible (résultats du calcul), sinon depuis data directement
     const currentData = (data.current && typeof data.current === 'object') ? data.current : data;
-    
+
     // Récupérer les valeurs calculées (avec vérifications pour null/undefined)
     const T0 = (currentData.T0 !== null && currentData.T0 !== undefined) ? currentData.T0 : 
                (currentData.temp_surface !== null && currentData.temp_surface !== undefined) ? currentData.temp_surface : 
@@ -3603,14 +3516,6 @@ window.updateFluxLabels = function (data) {
     // Mais on vérifie aussi data.current.albedo explicitement pour être sûr
     const albedoValue = (data.current && data.current.albedo !== undefined) ? data.current.albedo : albedo;
     let albedo_num = (albedoValue !== null && albedoValue !== undefined) ? Number(albedoValue) : 0;
-    console.log('[updateFluxLabels] 🔍 DEBUG - Albedo initial:', {
-        albedo_num,
-        albedoValue,
-        albedo,
-        currentData_albedo: currentData?.albedo,
-        data_current_albedo: data.current?.albedo,
-        data_albedo: data.albedo
-    });
     let cloud_coverage_num = (cloud_coverage !== null && cloud_coverage !== undefined) ? Number(cloud_coverage) : 0;
     const co2_ppm_num = (co2_ppm !== null && co2_ppm !== undefined) ? Number(co2_ppm) : 0;
     const ch4_ppm_num = (ch4_ppm !== null && ch4_ppm !== undefined) ? Number(ch4_ppm) : 0;
@@ -4284,24 +4189,10 @@ window.updateFluxLabels = function (data) {
         // Note: h2o_params a été calculé avec h2o_total_percent, donc vapor_fraction + ice_fraction = total
         const h2o_total_fraction = (h2o_params.vapor_fraction || 0) + (h2o_params.ice_fraction || 0);
         h2o_display_value = h2o_total_fraction * 100;
-        console.log('[updateFluxLabels] 🔍 DEBUG - H2O affichage:', {
-            h2o_vapor_percent,
-            h2o_from_meteorites,
-            h2o_total_percent,
-            vapor_fraction: h2o_params.vapor_fraction,
-            ice_fraction: h2o_params.ice_fraction,
-            h2o_total_fraction,
-            h2o_display_value
-        });
+        // Log supprimé (non essentiel)
     } else {
         // Sinon, utiliser h2o_total_percent directement (déjà calculé ci-dessus)
         h2o_display_value = h2o_total_percent;
-        console.log('[updateFluxLabels] 🔍 DEBUG - H2O affichage (sans h2o_params):', {
-            h2o_vapor_percent,
-            h2o_from_meteorites,
-            h2o_total_percent,
-            h2o_display_value
-        });
     }
 
     // Passer un nombre pour que formatValueFromTemplate gère le formatage automatiquement

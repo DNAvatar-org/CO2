@@ -1,13 +1,28 @@
 /* File: ergo_button.css - Système de boutons ergonomiques réutilisables
  * Desc: Styles CSS pour des boutons circulaires avec états checked/selected/unselected
- * Version 1.0.0
+ * Version 1.1.0
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
  * See LICENSE_HEADER.txt for full terms.
  * Date: [June 08, 2025] [HH:MM UTC+1]
  * Logs:
  *   - Initial version: extraction du système de boutons du diagramme de flux
+ *   - Externalisation des couleurs de l'animation event-logo-pulse-img
  */
+
+/* ==========================================================================
+   Variables CSS pour les animations
+   ========================================================================== */
+
+:root {
+    /* Couleurs pour l'animation event-logo-pulse-img */
+    --event-pulse-black: rgba(0, 0, 0, 1);
+    --event-pulse-white-min: rgba(255, 255, 255, 0.5);
+    --event-pulse-white-mid: rgba(0, 255, 255, 0.7);
+    --event-pulse-white-max: rgba(255, 255, 255, 0.4);
+    --event-pulse-white-shadow-min: rgba(255, 255, 255, 0.3);
+    --event-pulse-white-shadow-max: rgba(0, 255, 255, 0.4);
+}
 
 /* ==========================================================================
    Conteneur du bouton
@@ -186,14 +201,14 @@
 /* Animation de pulse pour les images dans les boutons événements - contour noir 1px + glow blanc 3px = 4px total */
 @keyframes event-logo-pulse-img {
     0%, 100% {
-        filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1)) 
-                drop-shadow(0 0 1px rgba(255, 255, 255, 0.5)) 
-                drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+        filter: drop-shadow(0 0 0px var(--event-pulse-black)) 
+                drop-shadow(0 0 1px var(--event-pulse-white-min)) 
+                drop-shadow(0 0 2px var(--event-pulse-white-shadow-min));
     }
     50% {
-        filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1)) 
-                drop-shadow(0 0 2px rgba(255, 255, 255, 0.7)) 
-                drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
+        filter: drop-shadow(0 0 0px var(--event-pulse-black)) 
+                drop-shadow(0 0 2px var(--event-pulse-white-mid)) 
+                drop-shadow(0 0 3px var(--event-pulse-white-shadow-max));
     }
 }
 

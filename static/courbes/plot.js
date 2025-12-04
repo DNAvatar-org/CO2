@@ -887,6 +887,11 @@ window.updatePlot = function updatePlot(data) {
         planck_current.line.width = 2; // En gras
         planck_current.line.color = color_effective; // Même couleur que la courbe pleine
         traces.push(planck_current);
+        
+        // 🔒 Mettre à jour la couleur globale de la courbe du corps noir (accessible partout)
+        if (typeof window !== 'undefined' && typeof window.updateBlackBodyColor === 'function') {
+            window.updateBlackBodyColor(color_effective);
+        }
     }
 
     // 3. Ajouter une trace invisible pour forcer la création de l'axe yaxis2 (altitude)

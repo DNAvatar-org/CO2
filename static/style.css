@@ -583,27 +583,7 @@ h1 {
     display: inline-block;
 }
 
-.btn-advance-time {
-    font-size: 20px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 4px 8px;
-    margin-left: 8px;
-    opacity: 0.7;
-    transition: opacity 0.3s ease, transform 0.2s ease;
-    display: inline-block;
-    line-height: 1;
-}
-
-.btn-advance-time:hover {
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-.btn-advance-time:active {
-    transform: scale(0.95);
-}
+/* Styles de boutons déplacés dans buttons.css */
 
 /* 2. Zone Horloge horizontale */
 .timeline-horloge-section {
@@ -612,7 +592,7 @@ h1 {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset, 0 -1px 0 rgba(255, 255, 255, 0.1) inset;
     display: flex;
-    height: 80px;
+    height: 90px;
 }
 
 .timeline-horloge-content {
@@ -1087,76 +1067,7 @@ h1 {
     justify-content: center;
 }
 
-.btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: none;
-    font-size: 28px;
-    /* Emojis plus gros */
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.btn:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-}
-
-.btn-multiply {
-    background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-}
-
-.btn-divide {
-    background: linear-gradient(135deg, #4ecdc4, #44a08d);
-}
-
-.btn-iceberg {
-    background: linear-gradient(135deg, #b0e0e6, #87ceeb);
-    font-size: 24px;
-}
-
-.btn-desert {
-    background: linear-gradient(135deg, #f4a460, #d2691e);
-    font-size: 24px;
-}
-
-.btn-forest {
-    background: linear-gradient(135deg, #228b22, #006400);
-    font-size: 24px;
-}
-
-.btn-factory {
-    background: linear-gradient(135deg, #696969, #2f2f2f);
-    font-size: 24px;
-}
-
-.btn-volcano {
-    background: linear-gradient(135deg, #ff4500, #8b0000);
-    font-size: 24px;
-}
-
-.btn-cloud {
-    background: linear-gradient(135deg, #c0c0c0, #a0a0a0);
-    font-size: 24px;
-    opacity: 0.5;
-    border: 1px solid #ccc;
-}
-
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
+/* Styles de boutons déplacés dans buttons.css */
 
 
 .legend-container {

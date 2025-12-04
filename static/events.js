@@ -109,11 +109,7 @@ window.updateEpochActions = function () {
                     const EARTH_TOTAL_WATER_MASS_KG = 1.4e21; // Masse totale d'eau terrestre
                     // Convertir la masse en pourcentage d'eau totale
                     h2oToAdd = (mass_kg / EARTH_TOTAL_WATER_MASS_KG) * 100;
-                    console.log('[events.js] 🔍 DEBUG - Calcul eau:', {
-                        mass_kg: mass_kg.toExponential(2),
-                        h2oToAdd_percent: h2oToAdd.toFixed(4),
-                        currentH2O: currentH2O
-                    });
+                    // Log supprimé (non essentiel)
                 }
             }
             
@@ -124,7 +120,7 @@ window.updateEpochActions = function () {
             
             const newH2O = Math.min(100, currentH2O + h2oToAdd);
             window.h2oTotalFromMeteorites = newH2O;
-            console.log('[events.js] 🔍 DEBUG - Eau ajoutée:', h2oToAdd.toFixed(4) + '%', 'Total:', newH2O.toFixed(4) + '%');
+            // Log supprimé (non essentiel)
 
             // 🔒 FORCER le recalcul en réinitialisant la valeur mise en cache
             // Sinon, calculateAlbedo réutilise l'ancienne valeur de h2oIceFractionFromCalculation
@@ -280,7 +276,7 @@ window.updateEpochActions = function () {
                 if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
                     const savedRotationY = canvas._threeJSData.sphere.rotation.y;
                     window.savedPlanetRotationY = savedRotationY;
-                    console.log('[events.js] 🔍 DEBUG - Rotation sauvegardée (avancer temps):', savedRotationY);
+                    // Log supprimé (non essentiel)
                 }
             }
             
@@ -451,7 +447,7 @@ window.updateEpochActions = function () {
             
             const newH2O = Math.min(100, currentH2O + h2oToAdd); // Ajouter 2.1% d'eau totale par apport, max 100%
             window.h2oTotalFromMeteorites = newH2O;
-            console.log('[events.js] 🔍 DEBUG - Eau ajoutée (Hadéen):', h2oToAdd.toFixed(1) + '%', 'Total:', newH2O.toFixed(1) + '%');
+            // Log supprimé (non essentiel)
 
             // Forcer le recalcul
             if (typeof window !== 'undefined') {
@@ -487,12 +483,6 @@ window.updateEpochActions = function () {
                         const currentFlux = Math.exp(logFlux);
                         
                         hadeenEpoch.geothermal_flux = currentFlux;
-                        console.log('[events.js] 🔍 DEBUG - Flux géothermique mis à jour:', {
-                            infoTimeMa: window.infoTimeMa,
-                            elapsed: elapsed,
-                            progress: progress,
-                            currentFlux: currentFlux
-                        });
                     }
                 }
                 
@@ -534,8 +524,6 @@ function checkDateEvents() {
     
     // En Corps noir, si info-time > 500Ma, déclencher automatiquement l'impact majeur
     if (currentEpoch === 'Corps noir' && infoTimeMa > 500) {
-        console.log('[checkDateEvents] 🔍 DEBUG - Impact majeur déclenché automatiquement (info-time > 500Ma)');
-        
         // 🔒 Cacher le tooltip immédiatement
         if (typeof window.hideTooltip === 'function') {
             window.hideTooltip();

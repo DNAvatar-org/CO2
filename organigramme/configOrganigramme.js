@@ -151,7 +151,7 @@ const nodes = [
                 epochName: 'Hadéen',
                 numCircles: 6,
                 maxRadius: 100,
-                strokeSize: 1,
+                strokeSize: 3,
                 openingAngle: 0,
                 rotation: 0,
                 color: '#ff9800'
@@ -203,22 +203,7 @@ const nodes = [
                 radius: radiusTerre * 0.8,
                 fillColor: 'rgba(0, 0, 0, 0)',
                 strokeColor: '#000000',
-                strokeSize: 1,
-                // 🔒 Tableau de températures de référence par ticTime pour convergence rapide
-                // Corps noir : température constante (corps noir théorique sans atmosphère)
-                // Température effective ~206K (calculée depuis flux solaire avec albedo=0)
-                ticTime_temperatures: [
-                    206.1,  // ticTime 0: 0-49Ma (~-67°C)
-                    206.1,  // ticTime 1: 50-99Ma
-                    206.1,  // ticTime 2: 100-149Ma
-                    206.1,  // ticTime 3: 150-199Ma
-                    206.1,  // ticTime 4: 200-249Ma
-                    206.1,  // ticTime 5: 250-299Ma
-                    206.1,  // ticTime 6: 300-349Ma
-                    206.1,  // ticTime 7: 350-399Ma
-                    206.1,  // ticTime 8: 400-449Ma
-                    206.1   // ticTime 9: 450-499Ma
-                ]
+                strokeSize: 1
             },
             {
                 epochName: 'Hadéen',
@@ -331,6 +316,7 @@ const timeline = [
         date: '-5000 Ma',
         startYears: 5.0e9,
         endYears: 4.5e9,
+        t0: 255,
         // temp: '1200°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: 'fonts/pics/corps_noir.png',
         title: 'Corps noir - État étalon<br>(Remplace la phase d\'accrétion)',
@@ -349,19 +335,6 @@ const timeline = [
         n2_kg: 0, // Quantité de N2 en kg (non affiché dans le flux diagram)
         o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
         // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
-        ticTime_temperatures: [
-            254.6,  // ticTime 0: 0-49Ma (initial, ~2196°C)
-            250.1,   // ticTime 1: 50-99Ma (~1983°C)
-            246.9,   // ticTime 2: 100-149Ma (~1727°C)
-            243.5,   // ticTime 3: 150-199Ma (~1527°C)
-            240.0,   // ticTime 4: 200-249Ma (~1327°C)
-            236.6,   // ticTime 5: 250-299Ma (~1127°C)
-            232.4,   // ticTime 6: 300-349Ma (~927°C)
-            228.3,   // ticTime 7: 350-399Ma (~727°C)
-            224.0,    // ticTime 8: 400-449Ma (~527°C)
-            219.4,     // ticTime 9: 450-499Ma (~327°C)
-            214.5
-        ],
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
         cloud_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.0,
@@ -370,7 +343,8 @@ const timeline = [
         // Événements interactifs
         events: {
             ice_meteorite: {
-                water_added_kg: 2.0e19 // ~10^20 kg (100 fois plus pour un effet visible)
+                water_added_kg: 2.0e19, // ~10^20 kg (100 fois plus pour un effet visible)
+                deltaTemp: -3.5 // Refroidissement par météorite (K)
             },
             big_impact: {
                 energy_flux_wm2: 2000000 // 2 MW/m² (correspond au flux géothermique de l'Hadéen)
@@ -388,6 +362,7 @@ const timeline = [
         date: '-4500 Ma',
         startYears: 4.5e9,
         endYears: 4.0e9,
+        t0: 2437,
         // temp: '46.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: 'fonts/pics/hadeen.png',
         title: 'Hadéen - Terre en formation, océan de magma (Atmosphère dense)',
@@ -404,22 +379,7 @@ const timeline = [
         // Note: geothermal_flux = core_temperature * geothermal_diffusion_factor * 0.00457
         // Hadéen: ~0.20 W/m² (6000K * 0.0073 * 0.00457 ≈ 0.20 W/m²)
         // D'après Grok: ~0.20-0.25 W/m² à la surface pour Hadéen
-        initial_temperature_K: 2469.65, // 2196.5°C - Valeur proche de l'équilibre pour convergence rapide
-        // 🔒 Tableau de températures de référence par ticTime pour convergence rapide
-        // ticTime = Math.floor(infoTimeMa / 50), donc ticTime[0] = 0-49Ma, ticTime[1] = 50-99Ma, etc.
-        // Ces températures sont utilisées comme T0_initial pour accélérer la convergence
-        ticTime_temperatures: [
-            2437.1,  // ticTime 0: 0-49Ma (initial, ~2196°C)
-            2256.2,   // ticTime 1: 50-99Ma (~1983°C)
-            2000.0,   // ticTime 2: 100-149Ma (~1727°C)
-            1800.0,   // ticTime 3: 150-199Ma (~1527°C)
-            1600.0,   // ticTime 4: 200-249Ma (~1327°C)
-            1400.0,   // ticTime 5: 250-299Ma (~1127°C)
-            1200.0,   // ticTime 6: 300-349Ma (~927°C)
-            1000.0,   // ticTime 7: 350-399Ma (~727°C)
-            800.0,    // ticTime 8: 400-449Ma (~527°C)
-            600.0     // ticTime 9: 450-499Ma (~327°C)
-        ],
+        // 🔒 Température initiale : t0 + deltaTemp * nombre_météorites (voir calculations.js)
         // Juste après l'impact : 10⁵ à 10⁷ W/m², >4000-6000K (roche vaporisée)
         // Post-impact (vrai Hadéen) : 1000 → 100 W/m² en décroissance, 2500K → 500K
         // Simulation parameters - Quantités en kg (pas de ppm/%)
@@ -439,7 +399,8 @@ const timeline = [
         // Événements interactifs
         events: {
             ice_meteorite: {
-                water_added_kg: 2.1e19 // ~10% de l'eau initiale (2.1e20) pour effet visible
+                water_added_kg: 1.0e18, // ~10% de l'eau initiale (2.1e20) pour effet
+                deltaTemp: -180 // Refroidissement par météorite (K) - refroidissement rapide en Hadéen
             }
         }
     },
@@ -454,6 +415,7 @@ const timeline = [
         date: '-4000 Ma',
         startYears: 4.0e9,
         endYears: 2.5e9,
+        t0: 311, // ~38°C - Température initiale pour convergence rapide
         // temp: '38.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: 'fonts/pics/archeen.png',
         title: 'Archéen (-4000 à -2500 Ma)',
@@ -477,7 +439,13 @@ const timeline = [
         cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.12,
         ocean_coverage: 0.80, forest_coverage: 0, desert_coverage: 0.05, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 5.0
+        volcanoFactor: 5.0,
+        events: {
+            ice_meteorite: {
+                water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
+                deltaTemp: -5 // Refroidissement par météorite (K) - refroidissement modéré en Archéen
+            }
+        }
     },
     {
         type: 'separator',
@@ -490,6 +458,7 @@ const timeline = [
         date: '-2500 Ma',
         startYears: 2.5e9,
         endYears: 541e6,
+        t0: 285, // ~12°C - Température initiale pour convergence rapide
         // temp: '12.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🦠',
         title: 'Protérozoïque (-2500 à -541 Ma)',
@@ -513,7 +482,13 @@ const timeline = [
         cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.20,
         ocean_coverage: 0.70, forest_coverage: 0.05, desert_coverage: 0.15, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 2.0
+        volcanoFactor: 2.0,
+        events: {
+            ice_meteorite: {
+                water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
+                deltaTemp: -2 // Refroidissement par météorite (K) - refroidissement léger en Protérozoïque
+            }
+        }
     },
     {
         type: 'separator',
@@ -526,6 +501,7 @@ const timeline = [
         date: '-250 Ma',
         startYears: 252e6,
         endYears: 66e6,
+        t0: 298, // ~25°C - Température initiale pour convergence rapide
         // temp: '25.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🦕',
         title: 'Mésozoïque (-252 à -66 Ma)',
@@ -549,7 +525,13 @@ const timeline = [
         cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.28,
         ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 1.0
+        volcanoFactor: 1.0,
+        events: {
+            ice_meteorite: {
+                water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
+                deltaTemp: -1.5 // Refroidissement par météorite (K) - refroidissement léger en Mésozoïque
+            }
+        }
     },
     {
         type: 'separator',
@@ -562,6 +544,7 @@ const timeline = [
         date: '-145 Ma',
         startYears: 145e6,
         endYears: 66e6,
+        t0: 301, // ~28°C - Température initiale pour convergence rapide
         // temp: '28.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🦴',
         title: 'Crétacé (-145 à -66 Ma)',
@@ -585,7 +568,13 @@ const timeline = [
         cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.28,
         ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 1.0
+        volcanoFactor: 1.0,
+        events: {
+            ice_meteorite: {
+                water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
+                deltaTemp: -1 // Refroidissement par météorite (K) - refroidissement très léger en Crétacé
+            }
+        }
     },
     {
         type: 'separator',
@@ -598,6 +587,7 @@ const timeline = [
         date: '-66 Ma',
         startYears: 66e6,
         endYears: 0,
+        t0: 291, // ~18°C - Température initiale pour convergence rapide
         // temp: '18.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🦣',
         title: 'Cénozoïque (-66 Ma à aujourd\'hui)',
@@ -621,7 +611,13 @@ const timeline = [
         cloud_coverage: 0.4, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.30,
         ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 1.0
+        volcanoFactor: 1.0,
+        events: {
+            ice_meteorite: {
+                water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
+                deltaTemp: -1 // Refroidissement par météorite (K) - refroidissement très léger en Cénozoïque
+            }
+        }
     },
     {
         type: 'separator',
@@ -634,6 +630,7 @@ const timeline = [
         date: '-1800',
         startYears: 1800,
         endYears: -1,
+        t0: 287, // ~14°C - Température initiale pour convergence rapide
         // temp: '14.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: '🐘',
         title: '1800 - Pré-industriel',
@@ -657,7 +654,13 @@ const timeline = [
         cloud_coverage: 0.4, // DEPRECATED: Sera calculé dynamiquement
         albedo_base: 0.30,
         ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 1.0
+        volcanoFactor: 1.0,
+        events: {
+            ice_meteorite: {
+                water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
+                deltaTemp: -0.5 // Refroidissement par météorite (K) - refroidissement très léger en 1800
+            }
+        }
     }
 ];
 

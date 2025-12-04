@@ -308,7 +308,7 @@ function enableButtons() {
     planetTextures.forEach(texture => {
         texture.classList.remove('paused');
     });
-    const currentYears = timelineFrame * YEARS_PER_FRAME;
+    const currentYears = (window.timelineFrame || 0) * (window.YEARS_PER_FRAME || 10);
     const available = getAvailableButtons(currentYears);
 
     const buttons = [
@@ -350,28 +350,15 @@ function enableButtons() {
 
     // Remettre le timer à jour à la fin du processus de convergence
     // pour que les tics automatiques reprennent immédiatement
-    timelineLastUpdate = performance.now();
+    if (typeof window !== 'undefined' && window.timelineLastUpdate !== undefined) {
+        window.timelineLastUpdate = performance.now();
+    }
 }
 
 // ============================================================================
 // HORLOGE / TIMELINE
 // ============================================================================
-let timelineFrame = 0; // Nombre de frames écoulées
-const YEARS_PER_FRAME = 10; // 1 frame = 10 ans (tic automatique toutes les secondes = +10 ans)
-// Note : Pour les sources industrielles ou volcaniques, on peut espérer un étalement dans le temps
-let timelineRunning = true; // État de l'horloge (activée - tics automatiques de +10 ans/seconde)
-let timelineLastUpdate = performance.now();
-const TIMELINE_UPDATE_INTERVAL = 1000; // Mise à jour toutes les 1000ms (1 seconde = 10 ans) - UNIQUEMENT si pas de calcul en cours
-let currentEpochStartYears = null; // Stocker le début de l'époque actuelle pour calculer le delta
-
-// Variable globale pour le temps écoulé dans l'époque (commence toujours à 0 Ma)
-window.infoTimeMa = 0; // Temps écoulé depuis le début de l'époque (en millions d'années, Ma)
-// textureIndex = infoTimeMa / 50 (calculé automatiquement, chaque texture = 50Ma)
-// Accessible via window.textureIndex ou via epochConfig.lightDistance pour Hadéen
-
-// Variables de tracking pour détecter les changements
-window.lastTicTime = undefined; // Dernière valeur de ticTime (infoTimeMa / 50)
-window.lastIceLevel = undefined; // Dernière valeur de h2oIceFractionFromCalculation
+// Code déplacé dans timeline.js
 
 // ============================================================================
 // INTERPRÉTEUR DE CONFIGURATION DYNAMIQUE
@@ -483,165 +470,78 @@ function interpretConfigValue(value) {
 window.lastTicTime = undefined; // Dernière valeur de ticTime (infoTimeMa / 50)
 window.lastIceLevel = undefined; // Dernière valeur de h2oIceFractionFromCalculation
 
-function updateTimeline() {
-    // Mettre à jour l'affichage (toujours, même si timelineRunning = false)
-    const timelineDisplay = document.getElementById('timeline-display');
-    const frameDisplay = document.getElementById('frame-display');
-    const infoTimeDisplay = document.getElementById('info-time');
+// Variable globale pour la couleur de la courbe du corps noir (accessible partout)
+window.currentBlackBodyColor = 'cyan'; // Couleur par défaut
 
-    const years = timelineFrame * YEARS_PER_FRAME;
-
-    // Formater les années avec M (Mega) et M̅ (Milliard avec barre)
-    const formattedYears = formatYears(years);
-
-    if (timelineDisplay) {
-        timelineDisplay.innerHTML = `<span class="timeline-hourglass">📅</span> ${formattedYears}`;
-    }
-
-    if (frameDisplay) {
-        frameDisplay.textContent = timelineFrame.toString();
-    }
-
-    // Mettre à jour l'horloge dans la zone horloge
-    // Toujours utiliser window.infoTimeMa (commence toujours à 0 Ma)
-    // S'affiche toujours en Ma (millions d'années)
-    if (infoTimeDisplay) {
-        const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
-        
-        // Toujours afficher en Ma (millions d'années)
-        const infoTimeMa = window.infoTimeMa || 0;
-        const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
-        const newText = `+${deltaMa} Ma`;
-        
-        // Ne modifier le texte que s'il a changé pour éviter le clignotement
-        if (infoTimeDisplay.textContent !== newText) {
-            infoTimeDisplay.textContent = newText;
+/**
+ * Met à jour la couleur globale de la courbe du corps noir et les variables CSS
+ * @param {string} color - Couleur au format string (rgb, nom, etc.)
+ */
+window.updateBlackBodyColor = function(color) {
+    if (!color) return;
+    
+    // Stocker la couleur globalement
+    window.currentBlackBodyColor = color;
+    
+    // Convertir la couleur en rgba pour les variables CSS
+    let r, g, b;
+    
+    if (typeof color === 'string') {
+        // Si c'est un nom de couleur (cyan, red, etc.) ou rgb(...), le convertir en RGB
+        if (color.startsWith('rgb')) {
+            // Extraire directement depuis rgb(r, g, b) ou rgba(r, g, b, a)
+            const match = color.match(/\d+/g);
+            if (match && match.length >= 3) {
+                r = parseInt(match[0]);
+                g = parseInt(match[1]);
+                b = parseInt(match[2]);
+            } else {
+                // Fallback : cyan par défaut
+                r = 0;
+                g = 255;
+                b = 255;
+            }
+        } else {
+            // Si c'est un nom de couleur (cyan, red, etc.), le convertir en RGB
+            const temp = document.createElement('div');
+            temp.style.color = color;
+            document.body.appendChild(temp);
+            const computed = window.getComputedStyle(temp).color;
+            document.body.removeChild(temp);
+            
+            // Extraire les valeurs RGB depuis "rgb(r, g, b)" ou "rgba(r, g, b, a)"
+            const match = computed.match(/\d+/g);
+            if (match && match.length >= 3) {
+                r = parseInt(match[0]);
+                g = parseInt(match[1]);
+                b = parseInt(match[2]);
+            } else {
+                // Fallback : cyan par défaut
+                r = 0;
+                g = 255;
+                b = 255;
+            }
         }
+    } else if (Array.isArray(color) && color.length >= 3) {
+        // Si c'est un tableau [r, g, b]
+        r = color[0];
+        g = color[1];
+        b = color[2];
+    } else {
+        // Fallback : cyan par défaut
+        r = 0;
+        g = 255;
+        b = 255;
     }
     
-    // Calculer textureIndex = infoTimeMa / 50 (variable globale pour simplifier)
-    // Chaque texture = 50Ma : 0-49Ma = 0, 50-99Ma = 1, ..., 450-499Ma = 9
-    if (typeof window !== 'undefined') {
-        window.textureIndex = Math.floor((window.infoTimeMa || 0) / 50);
-        
-        // Détecter les changements pour déclencher les mises à jour
-        const currentTicTime = window.textureIndex;
-        const currentIceLevel = window.h2oIceFractionFromCalculation !== undefined ? window.h2oIceFractionFromCalculation : 0;
-        
-        // Détecter changement de texture (ticTime)
-        window.isTextChange = (window.lastTicTime !== undefined && window.lastTicTime !== currentTicTime);
-        if (window.isTextChange || window.lastTicTime === undefined) {
-            window.lastTicTime = currentTicTime;
-        }
-        
-        // Détecter changement de glace
-        window.isIceChange = (window.lastIceLevel !== undefined && Math.abs(window.lastIceLevel - currentIceLevel) > 0.001);
-        if (window.isIceChange || window.lastIceLevel === undefined) {
-            window.lastIceLevel = currentIceLevel;
-        }
-        
-        // Si changement de texture (ticTime) ou de glace, mettre à jour Three.js
-        if (window.isTextChange && typeof window.updateHadeenTexture === 'function') {
-            window.updateHadeenTexture();
-        } else if (window.isIceChange && typeof window.updatePlanetLighting === 'function') {
-            // Mettre à jour l'éclairage Three.js si la glace change (affecte lightDistance)
-            window.updatePlanetLighting();
-        }
+    // Mettre à jour les variables CSS pour les pulsations des boutons événements
+    if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.style.setProperty('--event-pulse-white-mid', `rgba(${r}, ${g}, ${b}, 0.7)`);
+        document.documentElement.style.setProperty('--event-pulse-white-shadow-max', `rgba(${r}, ${g}, ${b}, 0.4)`);
     }
+};
 
-    // 🔒 DÉSACTIVÉ : Ne plus incrémenter automatiquement de +10 ans toutes les secondes
-    // L'incrémentation se fait uniquement lors des clics sur boutons (météorite glace, etc.)
-    // if (timelineRunning && !calculationInProgress) {
-    //     const currentTime = performance.now();
-    //     const elapsed = currentTime - timelineLastUpdate;
-    //
-    //     // Incrémenter les frames selon l'intervalle (1 seconde = 10 ans)
-    //     if (elapsed >= TIMELINE_UPDATE_INTERVAL) {
-    //         timelineFrame++;
-    //         timelineLastUpdate = currentTime;
-    //         const years = timelineFrame * YEARS_PER_FRAME;
-    //         // Mettre à jour l'affichage immédiatement après l'incrémentation
-    //         const formattedYears = formatYears(years);
-    //         if (timelineDisplay) timelineDisplay.innerHTML = `<span class="timeline-hourglass">📅</span> ${formattedYears}`;
-    //         if (frameDisplay) frameDisplay.textContent = timelineFrame.toString();
-    //         // Afficher le delta depuis le début de l'époque en dizaines d'années uniquement
-    //         if (infoTimeDisplay && currentEpochStartYears !== null) {
-    //             const deltaYears = years - currentEpochStartYears;
-    //             const deltaInTens = Math.floor(deltaYears / 10) * 10; // Arrondir à la dizaine
-    //             const newText = deltaInTens > 0 ? `+${deltaInTens} ans` : '+0 ans';
-    //             // Ne modifier le texte que s'il a changé pour éviter le clignotement
-    //             if (infoTimeDisplay.textContent !== newText) {
-    //                 infoTimeDisplay.textContent = newText;
-    //             }
-    //         }
-    //     }
-    // }
-    // Si calculationInProgress = true, on ne fait rien (pas d'incrémentation, pas de mise à jour de timelineLastUpdate)
-    // pour que le tic reprenne immédiatement après la fin du calcul
-
-    requestAnimationFrame(updateTimeline);
-}
-
-// Fonction pour formater les années avec Ma (millions d'années)
-// Format : -4500 Ma (exemple : -4500 millions d'années)
-// Les valeurs positives sont considérées comme des dates dans le passé (affichées avec "-")
-function formatYears(years) {
-    if (years === 0) return '0 ans';
-
-    const MEGA = 1e6;    // 1 million
-
-    // Les valeurs positives représentent des dates dans le passé, donc on les affiche avec "-"
-    // Les valeurs négatives sont déjà dans le bon format (futur, rare)
-    const isPast = years > 0; // Dates positives = passé
-    const yearsAbs = Math.abs(years);
-
-    // Convertir en millions d'années
-    const millions = yearsAbs / MEGA;
-
-    // Formater avec 0 décimales si entier, sinon avec décimales
-    let result;
-    if (millions % 1 === 0) {
-        result = millions.toString();
-    } else {
-        // Afficher avec décimales si nécessaire (max 1 décimale)
-        result = millions.toFixed(1).replace(/\.?0+$/, ''); // Enlever les zéros inutiles
-    }
-
-    // Ajouter le signe "-" si c'est dans le passé (years > 0)
-    if (isPast) {
-        result = '-' + result;
-    }
-
-    return result + ' Ma';
-}
-
-// Fonction pour incrémenter le temps de 10 ans (lors des clics sur boutons)
-// Note : Les tics automatiques ajoutent aussi +10 ans/seconde
-function incrementTimeline() {
-    timelineFrame++;
-    updateTimeline();
-}
-
-// Démarrer l'horloge
-if (typeof window !== 'undefined' && window.requestAnimationFrame) {
-    requestAnimationFrame(updateTimeline);
-}
-
-function startTimeline() {
-    timelineRunning = true;
-    timelineLastUpdate = performance.now();
-    updateTimeline();
-}
-
-function pauseTimeline() {
-    timelineRunning = false;
-}
-
-function resetTimeline() {
-    timelineFrame = 0;
-    timelineRunning = false;
-    updateTimeline();
-}
+// Code timeline déplacé dans timeline.js
 
 function updateFPS() {
     // Vérifier si le timer est désactivé (système de ping actif)
@@ -1065,7 +965,7 @@ function multiplyCO2() {
     // ⚠️ MODIFICATION POUR GAMEPLAY : Un volcan ajoute une quantité de CO2 selon l'époque géologique
     // Au début de la Terre (Hadéen/Archéen), les volcans étaient beaucoup plus gros et nombreux
     // Calculer l'époque actuelle selon le temps écoulé
-    const currentYears = timelineFrame * YEARS_PER_FRAME;
+    const currentYears = (window.timelineFrame || 0) * (window.YEARS_PER_FRAME || 10);
     const era = (window.getGeologicalEra || function () { return { volcanoFactor: 1.0, co2PerVolcano: 150 }; })(currentYears);
 
     // CO2 par volcan selon l'époque (plus gros au début)
@@ -2023,12 +1923,7 @@ function setEpoch(epochName) {
         console.log('[setEpoch] 🔄 infoTimeMa remis à 0 pour nouvelle époque:', epochName);
     }
     
-    // DEBUG: Log au début de setEpoch
-    console.log('[setEpoch] 🔍 DEBUG - Début setEpoch:', {
-        epochName,
-        calculationInProgress,
-        infoTimeMa: window.infoTimeMa
-    });
+    // Log supprimé (non essentiel)
     
     if (calculationInProgress) return; // Bloquer si calcul en cours
 
@@ -2095,13 +1990,7 @@ function setEpoch(epochName) {
             if (oldCell && typeof window.createCell === 'function') {
                 const parent = oldCell.parentElement;
                 
-                // DEBUG: Log avant recréation
-                console.log('[setEpoch] 🔍 DEBUG - Recréation cellule Terre:', {
-                    epochName,
-                    oldRadius: epochConfig.radius,
-                    planetEffect: epochConfig.planetEffect || false,
-                    logo: epochConfig.logo
-                });
+                // Log supprimé (non essentiel)
                 
                 // Sauvegarder l'angle de rotation AVANT de supprimer la cellule
                 const canvas = oldCell.querySelector('canvas');
@@ -2112,12 +2001,10 @@ function setEpoch(epochName) {
                     // (pour éviter que la terre pivote d'un coup lors du changement d'époque)
                     if (typeof window !== 'undefined') {
                         window.savedPlanetRotationY = savedRotationY;
-                        console.log('[setEpoch] 🔍 DEBUG - Rotation sauvegardée:', savedRotationY);
                     }
                 } else if (typeof window !== 'undefined' && window.savedPlanetRotationY !== undefined) {
                     // Si pas de sphere mais qu'on a déjà une rotation sauvegardée, la conserver
                     savedRotationY = window.savedPlanetRotationY;
-                    console.log('[setEpoch] 🔍 DEBUG - Rotation déjà sauvegardée:', savedRotationY);
                 }
                 
                 oldCell.remove();
@@ -2133,17 +2020,10 @@ function setEpoch(epochName) {
                 
                 // Interpréter lightDistance (peut contenir des expressions comme "10-{$ticTime}" ou "7-{$ticTime}/2")
                 let lightDistance = epochConfig.lightDistance;
-                console.log('[setEpoch] 🔍 DEBUG - lightDistance avant interprétation:', {
-                    type: typeof lightDistance,
-                    value: lightDistance,
-                    epochName: epochName
-                });
+                // Log supprimé (non essentiel)
                 if (typeof lightDistance === 'string' || (typeof lightDistance !== 'number' && lightDistance !== null && lightDistance !== undefined)) {
                     lightDistance = interpretConfigValue(lightDistance);
-                    console.log('[setEpoch] 🔍 DEBUG - lightDistance après interprétation:', {
-                        type: typeof lightDistance,
-                        value: lightDistance
-                    });
+                    // Log supprimé (non essentiel)
                 }
                 
                 // Si isIceChange, diminuer lightDistance de 1
@@ -2184,11 +2064,7 @@ function setEpoch(epochName) {
 
                 parent.appendChild(newCell);
                 
-                // DEBUG: Log après recréation
-                console.log('[setEpoch] 🔍 DEBUG - Cellule Terre recréée:', {
-                    newCellId: newCell.id,
-                    hasThreeJS: newCell.querySelector('canvas') !== null
-                });
+                // Log supprimé (non essentiel)
                 
                 // Remettre l'animation en pause lors du changement d'époque (les calculs vont commencer)
                 const planetTextures = newCell.querySelectorAll('.planet-texture[data-planet-texture="true"]');
@@ -2232,7 +2108,9 @@ function setEpoch(epochName) {
 
     // Réinitialiser timelineFrame à 0 pour chaque nouvelle époque
     // Les années ajoutées par les actions seront comptées depuis 0
-    timelineFrame = 0;
+    if (typeof window !== 'undefined' && window.timelineFrame !== undefined) {
+        window.timelineFrame = 0;
+    }
 
     // Stocker le début de l'époque pour référence (affichage de la date de début)
     currentEpochStartYears = epoch.startYears;
@@ -2844,15 +2722,12 @@ function updateH2OLevelDirect(h2o_total_percent) {
         };
 
         // Gérer le résultat (Promise ou valeur directe)
-        console.log('[updateH2OLevelDirect] 🔍 DEBUG - Type de résultat:', typeof result, result instanceof Promise);
         if (result && typeof result.then === 'function') {
-            console.log('[updateH2OLevelDirect] 🔍 DEBUG - Résultat est une Promise, attente...');
             result.then(processResult).catch((error) => {
                 console.error('[updateH2OLevelDirect] ❌ ERREUR lors du calcul:', error);
                 enableButtons();
             });
         } else {
-            console.log('[updateH2OLevelDirect] 🔍 DEBUG - Résultat direct, traitement immédiat');
             processResult(result);
         }
     }, 50);
@@ -2947,7 +2822,6 @@ window.addEventListener('DOMContentLoaded', () => {
     
     // Écouter l'événement 'calculationConverged' pour activer l'animation de la planète
     window.addEventListener('calculationConverged', () => {
-        console.log('[main.js] 🔍 DEBUG - Événement calculationConverged reçu');
         // 🔒 Attendre que le FPS revienne à >=60FPS avant de relancer l'animation
         // Le garde-fou dans animate() gère aussi <30FPS pour arrêter automatiquement
         let attempts = 0;
@@ -2956,7 +2830,6 @@ window.addEventListener('DOMContentLoaded', () => {
         const checkFPSAndResume = () => {
             attempts++;
             const currentFPS = (typeof window !== 'undefined' && window.fps) ? window.fps : 0;
-            console.log('[main.js] 🔍 DEBUG - Vérification FPS:', currentFPS.toFixed(1), 'tentative', attempts);
             
             if (currentFPS >= 60) {
                 // FPS >= 60 : relancer l'animation Three.js
@@ -3084,7 +2957,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         const infoTimeDisplay = document.getElementById('info-time');
         if (infoTimeDisplay) {
-            infoTimeDisplay.textContent = '+0 ans';
+            infoTimeDisplay.textContent = 'Actions';
             updateTimeline(); // Forcer une mise à jour immédiate (affichage seulement, pas d'incrémentation)
         }
         // NE PAS démarrer l'horloge automatiquement - elle s'incrémentera uniquement lors des calculs/clics
@@ -3137,12 +3010,10 @@ function updateHadeenTexture() {
             // (pour éviter que la terre pivote d'un coup lors du changement de texture)
             if (typeof window !== 'undefined') {
                 window.savedPlanetRotationY = savedRotationY;
-                console.log('[updateHadeenTexture] 🔍 DEBUG - Rotation sauvegardée:', savedRotationY);
             }
         } else if (typeof window !== 'undefined' && window.savedPlanetRotationY !== undefined) {
             // Si pas de sphere mais qu'on a déjà une rotation sauvegardée, la conserver
             savedRotationY = window.savedPlanetRotationY;
-            console.log('[updateHadeenTexture] 🔍 DEBUG - Rotation déjà sauvegardée:', savedRotationY);
         }
         
         const parent = oldCell.parentElement;
@@ -3174,18 +3045,9 @@ function updateHadeenTexture() {
         );
         
         parent.appendChild(newCell);
-        console.log('[updateHadeenTexture] 🔍 DEBUG - Texture mise à jour:', {
-            infoTimeMa: window.infoTimeMa,
-            textureIndex: window.textureIndex,
-            logoPath: newLogoPath,
-            lightDistance: lightDistance,
-            isTextChange: window.isTextChange,
-            isIceChange: window.isIceChange
-        });
     }
 }
 
 // Exposer updateHadeenTexture et interpretConfigValue globalement
 window.updateHadeenTexture = updateHadeenTexture;
 window.interpretConfigValue = interpretConfigValue;
-

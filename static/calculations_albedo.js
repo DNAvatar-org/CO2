@@ -167,14 +167,7 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         ? window.h2oVaporPercent : 0; // Eau de base de l'époque en pourcentage
     const h2o_total_percent = h2o_base + h2o_from_meteorites;
     
-    console.log('[calculateAlbedo] 🔍 DEBUG - Eau disponible:', {
-        h2o_base,
-        h2o_from_meteorites,
-        h2o_total_percent,
-        T_surface_K,
-        T_surface_C: T_surface_K - 273.15,
-        h2oIceFractionFromCalculation: typeof window !== 'undefined' ? window.h2oIceFractionFromCalculation : 'N/A'
-    });
+    // Log supprimé (non essentiel)
     
     // Si on a de l'eau totale disponible, calculer la répartition vapeur/liquide/glace
     if (h2o_total_percent > 0 && typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
@@ -198,26 +191,10 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
                 ocean_coverage: currentEpoch.ocean_coverage !== undefined ? currentEpoch.ocean_coverage : 0
             };
             
-            console.log('[calculateAlbedo] 🔍 DEBUG - epochParams:', {
-                pressure_atm: epochParams.pressure_atm,
-                molar_mass_air: epochParams.molar_mass_air,
-                gravity: epochParams.gravity,
-                ocean_coverage: epochParams.ocean_coverage,
-                hasNoAtmosphere: epochParams.pressure_atm === 0 || epochParams.molar_mass_air === 0
-            });
             }
         }
         
         const waterPartition = window.calculateWaterPartition(T_surface_K, h2o_total_fraction, epochParams);
-        console.log('[calculateAlbedo] 🔍 DEBUG - waterPartition:', {
-            ice_fraction: waterPartition.ice_fraction,
-            vapor_fraction: waterPartition.vapor_fraction,
-            liquid_fraction: waterPartition.liquid_fraction,
-            h2o_total_fraction: h2o_total_fraction,
-            T_surface_K: T_surface_K,
-            T_surface_C: T_surface_K - 273.15,
-            epochParams: epochParams
-        });
         ice_fraction = waterPartition.ice_fraction; // Utiliser la glace calculée
         vapor_fraction = waterPartition.vapor_fraction; // 🔒 Récupérer la vapeur pour les nuages
         
@@ -258,20 +235,10 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     // Note: window.h2oIceFractionFromCalculation est mis à jour dans le bloc calculateWaterPartition ci-dessus
     ice_fraction = Math.min(1.0, Math.max(0, ice_fraction));
     
-    console.log('[calculateAlbedo] 🔍 DEBUG - Glace calculée:', {
-        ice_fraction,
-        albedo_base,
-        ice_albedo,
-        albedo_avant_glace: albedo
-    });
-    
     if (ice_fraction > 0) {
         // Transition progressive : albedo = base + (glace - base) * fraction_glace
         // Utiliser l'albedo de base de l'époque (déjà récupéré plus haut)
         albedo = albedo_base + (ice_albedo - albedo_base) * ice_fraction;
-        console.log('[calculateAlbedo] 🔍 DEBUG - Albedo avec glace:', albedo, '(glace:', ice_fraction, ')');
-    } else {
-        console.log('[calculateAlbedo] ⚠️ WARNING - ice_fraction = 0, pas de contribution de glace à l\'albedo');
     }
 
     // Contribution des nuages (H2O activé)
