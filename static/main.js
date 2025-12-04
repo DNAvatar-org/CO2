@@ -399,7 +399,7 @@ function interpretConfigValue(value) {
     
     // Calculer ticTime = infoTimeMa / 50
     const ticTime = Math.floor((window.infoTimeMa || 0) / 50);
-    
+
     // Détecter si c'est un chemin d'image (pour arrondir automatiquement les résultats)
     const isImagePath = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(value);
     
@@ -508,14 +508,14 @@ window.updateBlackBodyColor = function(color) {
             document.body.appendChild(temp);
             const computed = window.getComputedStyle(temp).color;
             document.body.removeChild(temp);
-            
+
             // Extraire les valeurs RGB depuis "rgb(r, g, b)" ou "rgba(r, g, b, a)"
             const match = computed.match(/\d+/g);
             if (match && match.length >= 3) {
                 r = parseInt(match[0]);
                 g = parseInt(match[1]);
                 b = parseInt(match[2]);
-            } else {
+    } else {
                 // Fallback : cyan par défaut
                 r = 0;
                 g = 255;
@@ -634,6 +634,7 @@ let cache_280ppm = null;
 let cache_420ppm = null;
 
 function calculateInitialData() {
+    console.log('[calculateInitialData] 🚀 DÉBUT - Initialisation des données au chargement');
     initPlot();
     document.getElementById('status').textContent = 'Initialisation...';
 
@@ -687,10 +688,12 @@ function calculateInitialData() {
 
     // Initialiser à 0 ppm par défaut et calculer
     plotData.co2_ppm = 0;
+    console.log('[calculateInitialData] ⚠️ Appel de updateCO2Level(0) - cela va déclencher un calcul');
     updateCO2Level(0); // 0 ppm - déclenche le calcul
 }
 
 function updateCO2Level(state) {
+    console.log(`[updateCO2Level] 🚀 DÉBUT - state: ${state}, CO2_fraction: ${state === 0 ? 0 : CO2_STATES[state] || 'calculé'}`);
     currentState = state;
     // Gérer explicitement le cas state = 0 (0 ppm) car 0 est falsy en JavaScript
     let co2_fraction;
@@ -1914,6 +1917,12 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour activer/désactiver la vapeur d'eau
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
+    // 🔒 Cacher le tooltip immédiatement lors du changement d'époque
+    // Empêche le tooltip de rester affiché après le changement
+    if (typeof window !== 'undefined' && typeof window.hideTooltip === 'function') {
+        window.hideTooltip();
+    }
+    
     // Mettre en pause l'animation Three.js lors du changement d'époque
     if (typeof window !== 'undefined') {
         window.threeJSAnimationPaused = true;
@@ -2866,11 +2875,22 @@ window.toggleReferencePanel = toggleReferencePanel;
 window.setEpoch = setEpoch;
 
 window.addEventListener('DOMContentLoaded', () => {
-    // Initialiser l'époque globale par défaut AVANT calculateInitialData
-    window.currentEpochName = 'Corps noir';
+    console.log('[DOMContentLoaded] 🚀 DOM chargé, attente du rendu avant initialisation...');
     
-    // Écouter l'événement 'calculationConverged' pour activer l'animation de la planète
-    window.addEventListener('calculationConverged', () => {
+    // Attendre que le DOM soit complètement rendu avant de lancer les calculs
+    // Utiliser requestAnimationFrame pour s'assurer que le navigateur a eu le temps de rendre
+    requestAnimationFrame(() => {
+        // Double RAF pour s'assurer que le rendu est terminé
+        requestAnimationFrame(() => {
+            // Petit délai supplémentaire pour laisser le temps au navigateur de finaliser le rendu
+            setTimeout(() => {
+                console.log('[DOMContentLoaded] ✅ Rendu terminé, initialisation des données...');
+                
+                // Initialiser l'époque globale par défaut AVANT calculateInitialData
+                window.currentEpochName = 'Corps noir';
+                
+                // Écouter l'événement 'calculationConverged' pour activer l'animation de la planète
+                window.addEventListener('calculationConverged', () => {
         // 🔒 Attendre que le FPS revienne à >=60FPS avant de relancer l'animation
         // Le garde-fou dans animate() gère aussi <30FPS pour arrêter automatiquement
         let attempts = 0;
@@ -2891,16 +2911,16 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (typeof window !== 'undefined') {
                     window.threeJSAnimationPaused = true;
                     console.log('[main.js] ⏸️ Animation Three.js arrêtée (FPS trop bas:', currentFPS.toFixed(1), ')');
-                }
+                    }
                 // Ne plus réessayer si FPS trop bas
                 return;
             } else if (attempts < maxAttempts) {
                 // FPS entre 30 et 60 : réessayer dans 100ms
                 setTimeout(checkFPSAndResume, 100);
-            } else {
+                        } else {
                 // Timeout : forcer la reprise si FPS > 30 (même si < 60)
                 if (currentFPS > 30) {
-                    if (typeof window !== 'undefined') {
+                if (typeof window !== 'undefined') {
                         window.threeJSAnimationPaused = false;
                         console.log('[main.js] ▶️ Animation Three.js relancée (timeout, FPS:', currentFPS.toFixed(1), ')');
                     }
@@ -3012,6 +3032,9 @@ window.addEventListener('DOMContentLoaded', () => {
         // NE PAS démarrer l'horloge automatiquement - elle s'incrémentera uniquement lors des calculs/clics
     }, 100);
     
+            }, 200); // Délai de 200ms pour laisser le temps au DOM de se construire
+        });
+    });
 });
 
 // Fonction pour mettre à jour la texture Hadéen selon infoTimeMa

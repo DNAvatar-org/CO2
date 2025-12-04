@@ -252,7 +252,15 @@ window.updateEpochActions = function () {
 
         // Action 1 : Avancer dans le temps (refroidissement progressif)
         const timeAdvanceBtn = document.createElement('button');
-        timeAdvanceBtn.textContent = '⏩';
+        // Récupérer l'emoji depuis la config
+        let timeAdvanceIcon = '🕓'; // Valeur par défaut
+        if (window.configOrganigramme) {
+            const hadeenEpoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
+            if (hadeenEpoch && hadeenEpoch.events && hadeenEpoch.events.tic_time && hadeenEpoch.events.tic_time.icon) {
+                timeAdvanceIcon = hadeenEpoch.events.tic_time.icon;
+            }
+        }
+        timeAdvanceBtn.textContent = timeAdvanceIcon;
         timeAdvanceBtn.className = 'timeline-event-logo btn-events';
 
         // Tooltip
@@ -303,82 +311,38 @@ window.updateEpochActions = function () {
                     window.updateHadeenTexture();
                 }
                 
+                // 🔒 Mettre à jour le flux géothermique selon le temps écoulé (décroissance exponentielle)
+                if (window.configOrganigramme && window.currentEpochName === 'Hadéen') {
+                    const hadeenEpoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
+                    if (hadeenEpoch && hadeenEpoch.events && hadeenEpoch.events.tic_time && hadeenEpoch.events.tic_time.geothermal_flux) {
+                        const fluxConfig = hadeenEpoch.events.tic_time.geothermal_flux;
+                        const fluxStart = fluxConfig.start || 2000000; // 2 MW/m²
+                        const fluxEnd = fluxConfig.end || 0.3; // ~0.3 W/m²
+                        
+                        // Calculer le progrès (0 à 1) : infoTimeMa / 500Ma
+                        const totalDuration = 500; // 500 Ma pour l'Hadéen
+                        const progress = Math.min(1, Math.max(0, window.infoTimeMa / totalDuration));
+                        
+                        // Décroissance exponentielle : flux = start * exp(ln(end/start) * progress)
+                        const logFlux = (1 - progress) * Math.log(fluxStart) + progress * Math.log(fluxEnd);
+                        const currentFlux = Math.exp(logFlux);
+                        
+                        hadeenEpoch.geothermal_flux = currentFlux;
+                    }
+                }
+                
+                // 🔒 Recalculer avec les nouvelles conditions (refroidissement -300K par ticTime)
+                // Utiliser updateCO2LevelDirect avec la valeur actuelle pour forcer un recalcul
+                // Le calcul utilisera t0 - deltaTemp * ticTime pour la température initiale
+                if (typeof window.updateCO2LevelDirect === 'function' && typeof plotData !== 'undefined' && plotData.co2_ppm !== undefined) {
+                    const current_co2_fraction = plotData.co2_ppm * 1e-6;
+                    window.updateCO2LevelDirect(current_co2_fraction);
+                }
+                
                 // Vérifier les événements automatiques
                 if (typeof checkDateEvents === 'function') {
                     checkDateEvents();
                 }
-            }
-            
-            // Ancien code (désactivé) : Avancer de 50 Ma (50 millions d'années) vers le présent
-            // Comme timelineFrame correspond à des années dans le passé (ex: 4.5e9),
-            // pour avancer vers le présent (4.45e9), il faut DÉCRÉMENTER timelineFrame.
-
-            const YEARS_STEP = 50e6; // 50 Ma
-            const framesToSubtract = YEARS_STEP / (typeof YEARS_PER_FRAME !== 'undefined' ? YEARS_PER_FRAME : 10);
-
-            // Vérifier si on ne dépasse pas la fin de l'époque (Archean à 4.0e9)
-            const hadeanEnd = 4.0e9;
-            const currentYears = (typeof timelineFrame !== 'undefined' ? timelineFrame : 0) * (typeof YEARS_PER_FRAME !== 'undefined' ? YEARS_PER_FRAME : 10);
-            const nextYears = currentYears - YEARS_STEP;
-
-            if (nextYears <= hadeanEnd) {
-                // On arrive à l'Archéen !
-                if (typeof window.setEpoch === 'function') {
-                    window.setEpoch('Archéen');
-                }
-                return;
-            }
-
-            // Mettre à jour le temps (garder pour compatibilité avec l'ancien système)
-            if (typeof timelineFrame !== 'undefined') {
-                timelineFrame -= framesToSubtract;
-            }
-
-            // 🔒 LOGIQUE DE REFROIDISSEMENT HADÉEN
-            // Interpoler le flux géothermique et la couverture de magma
-            // Start: 4.5e9 (Flux ~2e6, Magma 1.0)
-            // End: 4.0e9 (Flux ~0.3, Magma 0.0)
-
-            const hadeanStart = 4.5e9;
-            const totalDuration = hadeanStart - hadeanEnd;
-            const elapsed = hadeanStart - nextYears; // Temps écoulé depuis le début (0 à 500Ma)
-            const progress = Math.min(1, Math.max(0, elapsed / totalDuration)); // 0 à 1
-
-            // Interpolation Log-Lineaire pour le flux (décroissance exponentielle)
-            const fluxStart = 2000000; // 2 MW/m²
-            const fluxEnd = 0.3; // ~0.3 W/m²
-            const logFlux = (1 - progress) * Math.log(fluxStart) + progress * Math.log(fluxEnd);
-            const currentFlux = Math.exp(logFlux);
-
-            // Interpolation Linéaire pour le magma
-            const magmaStart = 1.0;
-            const magmaEnd = 0.0;
-            const currentMagma = (1 - progress) * magmaStart + progress * magmaEnd;
-
-            // Mettre à jour les paramètres de l'époque en cours (modification dynamique)
-            if (typeof window.configOrganigramme !== 'undefined') {
-                const hadeenEpoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
-                if (hadeenEpoch) {
-                    hadeenEpoch.geothermal_flux = currentFlux;
-                    hadeenEpoch.magma_coverage = currentMagma;
-
-                    // Mettre à jour aussi cloud_coverage ? (User: "diminue le % de lave ...")
-                    // Peut-être que les nuages diminuent aussi si moins d'évaporation massive ?
-                    // On laisse calculateCloudCoverage gérer via la T° de surface pour l'instant.
-                }
-            }
-
-            // 🔒 BUGFIX : Réinitialiser la mémoire de convergence
-            // Le saut de température est trop grand (refroidissement brutal), l'optimisation de continuité
-            // empêcherait de trouver la solution (ex: passage de 2200°C à 1300°C alors que la fenêtre de recherche est ±100°C)
-            if (typeof window !== 'undefined') {
-                window.current_T0_adjusted = null;
-            }
-
-            // Recalculer avec les nouvelles conditions
-            if (typeof window.updateCO2LevelDirect === 'function' && typeof plotData !== 'undefined' && plotData.co2_ppm !== undefined) {
-                const current_co2_fraction = plotData.co2_ppm * 1e-6;
-                window.updateCO2LevelDirect(current_co2_fraction);
             }
         });
         eventsLogos.appendChild(timeAdvanceBtn);
@@ -465,7 +429,7 @@ window.updateEpochActions = function () {
                 }
                 
                 // 🔒 Mettre à jour le flux géothermique selon le temps écoulé (refroidissement)
-                // Même logique que le bouton ⏩
+                // Même logique que le bouton 🕓
                 if (window.configOrganigramme) {
                     const hadeenEpoch = window.configOrganigramme.timeline.find(e => e.id === 'hadeen');
                     if (hadeenEpoch) {
