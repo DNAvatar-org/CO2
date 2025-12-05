@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bilan Radiatif Terrestre</title>
     <script>
-        console.log('[index.html] 🚀 Script inline DÉBUT - avant tout chargement', performance.now().toFixed(2) + 'ms');
         // Variable globale pour la langue
         window.lang = 'fr';
 
@@ -33,16 +32,9 @@
             }
         });
     </script>
+    <script src="static/lib/plotly-2.26.0.min.js"></script>
+    <script src="static/lib/three.min.js"></script>
     <script>
-        console.log('[index.html] 📦 Chargement Plotly...', performance.now().toFixed(2) + 'ms');
-    </script>
-    <script src="static/lib/plotly-2.26.0.min.js" onload="console.log('[index.html] ✅ Plotly chargé', performance.now().toFixed(2) + 'ms')" onerror="console.error('[index.html] ❌ Erreur chargement Plotly')"></script>
-    <script>
-        console.log('[index.html] 📦 Chargement Three.js...', performance.now().toFixed(2) + 'ms');
-    </script>
-    <script src="static/lib/three.min.js" onload="console.log('[index.html] ✅ Three.js chargé', performance.now().toFixed(2) + 'ms')" onerror="console.error('[index.html] ❌ Erreur chargement Three.js')"></script>
-    <script>
-        console.log('[index.html] 📦 Configuration MathJax...', performance.now().toFixed(2) + 'ms');
         window.MathJax = {
             tex: {
                 inlineMath: [['\\(', '\\)']],
@@ -76,19 +68,13 @@
             }
         };
     </script>
-    <script id="MathJax-script" async src="static/lib/mathjax-tex-mml-chtml.js" onload="console.log('[index.html] ✅ MathJax chargé', performance.now().toFixed(2) + 'ms')" onerror="console.error('[index.html] ❌ Erreur chargement MathJax')"></script>
-    <script>
-        console.log('[index.html] 🎨 Chargement CSS...', performance.now().toFixed(2) + 'ms');
-    </script>
+    <script id="MathJax-script" async src="static/lib/mathjax-tex-mml-chtml.js"></script>
     <link rel="stylesheet" href="static/style.css">
     <link rel="stylesheet" href="static/buttons/ergo_button.css">
     <link rel="stylesheet" href="static/buttons/buttons.css">
     <link rel="stylesheet" href="static/FPS/FPS.css">
     <link rel="stylesheet" href="organigramme/organigramme.css">
     <link rel="stylesheet" href="static/planet-effect.css">
-    <script>
-        console.log('[index.html] ✅ CSS déclarés', performance.now().toFixed(2) + 'ms');
-    </script>
 </head>
 
 <body class="mode-dark no-blur">
@@ -129,6 +115,29 @@
         <div class="plot-container-wrapper divGlass">
             <div id="plot-container">
                 <div class="plot-overlay-title">Courbes d'émission du rayonnement<br>d'un corps (noir ou la terre)</div>
+                <div class="plot-controls" style="position: absolute; bottom: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
+                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--base-color);">
+                        <span style="opacity: 0.8;" title="Précision convergence">Préc.:</span>
+                        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
+                                <input type="radio" name="precision-convergence" value="0.1" checked style="cursor: pointer;">
+                                <span>0.1°</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
+                                <input type="radio" name="precision-convergence" value="1" style="cursor: pointer;">
+                                <span>1°</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
+                                <input type="radio" name="precision-convergence" value="10" style="cursor: pointer;">
+                                <span>10°</span>
+                            </label>
+                        </div>
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: var(--base-color);">
+                        <input type="checkbox" id="plot-anim-toggle" checked style="cursor: pointer;">
+                        <span>anim</span>
+                    </label>
+                </div>
                 <div class="legend-container" id="legend-container">
                     <div class="legend-section">
                         <div class="legend-planck-grid" id="legend-planck-grid">
@@ -254,34 +263,28 @@
         </div>
     </footer>
 
-    <script>
-        console.log('[index.html] 📦 Chargement scripts applicatifs...', performance.now().toFixed(2) + 'ms');
-    </script>
-    <script src="static/timeline/configTimeline.js" onload="console.log('[index.html] ✅ configTimeline.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="organigramme/configOrganigramme.js" onload="console.log('[index.html] ✅ configOrganigramme.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/flux_manager.js" onload="console.log('[index.html] ✅ flux_manager.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/tooltips.js" onload="console.log('[index.html] ✅ tooltips.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/modal.js" onload="console.log('[index.html] ✅ modal.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="organigramme/organigramme.js" onload="console.log('[index.html] ✅ organigramme.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/patterns.js" onload="console.log('[index.html] ✅ patterns.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/physics.js" onload="console.log('[index.html] ✅ physics.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/climate.js" onload="console.log('[index.html] ✅ climate.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/calculations_atm.js" onload="console.log('[index.html] ✅ calculations_atm.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/calculations_albedo.js" onload="console.log('[index.html] ✅ calculations_albedo.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/calculations_geology.js" onload="console.log('[index.html] ✅ calculations_geology.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/calculations_h2o.js" onload="console.log('[index.html] ✅ calculations_h2o.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/calculations.js" onload="console.log('[index.html] ✅ calculations.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/FPS/FPS.js" onload="console.log('[index.html] ✅ FPS.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/courbes/plot.js" onload="console.log('[index.html] ✅ plot.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/layout.js" onload="console.log('[index.html] ✅ layout.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/integrateEds.js" onload="console.log('[index.html] ✅ integrateEds.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/debug.js" onload="console.log('[index.html] ✅ debug.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/events.js" onload="console.log('[index.html] ✅ events.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/timeline/timeline.js" onload="console.log('[index.html] ✅ timeline.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script src="static/main.js" onload="console.log('[index.html] ✅ main.js chargé', performance.now().toFixed(2) + 'ms')"></script>
-    <script>
-        console.log('[index.html] ✅ Tous les scripts chargés', performance.now().toFixed(2) + 'ms');
-    </script>
+    <script src="static/timeline/configTimeline.js"></script>
+    <script src="organigramme/configOrganigramme.js"></script>
+    <script src="static/flux_manager.js"></script>
+    <script src="static/tooltips.js"></script>
+    <script src="static/modal.js"></script>
+    <script src="organigramme/organigramme.js"></script>
+    <script src="static/patterns.js"></script>
+    <script src="static/physics.js"></script>
+    <script src="static/climate.js"></script>
+    <script src="static/calculations_atm.js"></script>
+    <script src="static/calculations_albedo.js"></script>
+    <script src="static/calculations_geology.js"></script>
+    <script src="static/calculations_h2o.js"></script>
+    <script src="static/calculations.js"></script>
+    <script src="static/FPS/FPS.js"></script>
+    <script src="static/courbes/plot.js"></script>
+    <script src="static/layout.js"></script>
+    <script src="static/integrateEds.js"></script>
+    <script src="static/debug.js"></script>
+    <script src="static/events.js"></script>
+    <script src="static/timeline/timeline.js"></script>
+    <script src="static/main.js"></script>
     <script>
         // Système de rollover avec délai de 0.5s pour les boutons Tipeee
         // Utilise la même méthode que addCustomTooltip (pas de délai au premier rollover si déjà hover)

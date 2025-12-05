@@ -274,21 +274,37 @@ function ping(dt) {
         window.fps = fps;
     }
     
-    // Récupérer la précision actuelle
+    // 🔒 Déterminer le niveau de performance FPS
+    let fpsLevel = 'warning';
     let precisionFactor = 1.0;
-    if (typeof window !== 'undefined' && typeof getPrecisionFactorFromFPS === 'function') {
-        precisionFactor = getPrecisionFactorFromFPS();
+    
+    if (fps > 60) {
+        fpsLevel = 'ultra';
+        precisionFactor = 2.0;
+    } else if (fps > 30) {
+        fpsLevel = 'rapide';
+        precisionFactor = 1.0;
+    } else if (fps > 20) {
+        fpsLevel = 'lent';
+        precisionFactor = 0.75;
+    } else if (fps > 10) {
+        fpsLevel = 'aïe';
+        precisionFactor = 0.5;
     } else {
-        // Calculer approximativement la précision selon le FPS
-        if (fps < FPSmin) {
-            precisionFactor = 0.5;
-        } else if (fps < FPSalert) {
-            precisionFactor = 0.75;
-        } else if (fps > FPSmax) {
-            precisionFactor = 2.0;
-        } else {
-            precisionFactor = 1.0;
-        }
+        fpsLevel = 'warning';
+        precisionFactor = 0.5;
+    }
+    
+    // 🔒 Émettre un événement FPS avec le niveau et la précision
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        const fpsEvent = new CustomEvent('fpsLevelChanged', {
+            detail: {
+                fps: fps,
+                level: fpsLevel,
+                precisionFactor: precisionFactor
+            }
+        });
+        window.dispatchEvent(fpsEvent);
     }
     
     // Accumuler les valeurs dans le buffer
@@ -315,6 +331,30 @@ function ping(dt) {
 // Fonction principale appelée depuis main.js (ancienne méthode, conservée pour compatibilité)
 function updateFPSDisplay(fps, precisionFactor) {
     updateFPSChart(fps, precisionFactor);
+    
+    // 🔒 Émettre aussi l'événement FPS depuis cette fonction (pour compatibilité avec l'ancien système)
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        // Déterminer le niveau selon le FPS
+        let fpsLevel = 'warning';
+        if (fps > 60) {
+            fpsLevel = 'ultra';
+        } else if (fps > 30) {
+            fpsLevel = 'rapide';
+        } else if (fps > 20) {
+            fpsLevel = 'lent';
+        } else if (fps > 10) {
+            fpsLevel = 'aïe';
+        }
+        
+        const fpsEvent = new CustomEvent('fpsLevelChanged', {
+            detail: {
+                fps: fps,
+                level: fpsLevel,
+                precisionFactor: precisionFactor
+            }
+        });
+        window.dispatchEvent(fpsEvent);
+    }
 }
 
 // Fonction pour rétracter/étendre la fenêtre FPS

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caractères UTF-8 par Sous-ensembles Unicode</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.1;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #667eea;
+            font-size: 24px;
+        }
+        
+        
+        .category {
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            page-break-inside: avoid;
+        }
+        
+        .category-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #667eea;
+        }
+        
+        .chars-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1px;
+            word-break: break-all;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.3;
+        }
+        
+        .char-item {
+            display: inline-block;
+            padding: 1px 2px;
+            min-width: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.3s ease;
+        }
+        
+        .char-item:hover {
+            background: #e0e0e0;
+            border-radius: 2px;
+            transform: scale(2.5);
+            z-index: 1000;
+            position: relative;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .logos-list {
+            background: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .logos-list-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            align-items: center;
+        }
+        
+        .logos-list-title > span:first-child {
+            flex: 0 0 auto; /* Titre - auto */
+        }
+        
+        .logos-list-title-spacer {
+            flex: 1 1 auto; /* espace flexible - pousse "utilisation 2025" à droite */
+        }
+        
+        .logos-list-title-usage {
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea; /* Même couleur que les pourcentages */
+            text-align: right;
+            flex: 0 0 auto; /* auto - utilisation 2025 */
+            white-space: nowrap;
+        }
+        
+        .logos-list-title-gauge-space {
+            flex: 0 0 var(--gauge-width); /* 20% - même largeur que la jauge, via variable */
+            margin-left: var(--gauge-margin-left); /* Même marge que la jauge */
+        }
+        
+        .logos-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .logo-item {
+            display: inline-block;
+            padding: 4px 8px;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s, transform 0.3s ease;
+        }
+        
+        .logo-item:hover {
+            background: #e0e0e0;
+            transform: scale(2.5);
+            z-index: 1000;
+            position: relative;
+        }
+        
+        /* Styles pour les titres de rubriques avec flexbox */
+        /* Modifier directement dans .logo-year-title les variables CSS ci-dessous */
+        .logo-year-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea;
+            
+            /* Variables CSS - Modifier ici dans l'inspecteur */
+            --gauge-flex: 0 0 var(--gauge-width);       /* 20% - jauge */
+        }
+        
+        /* Variable partagée pour la largeur de la jauge (utilisée aussi dans le titre) */
+        :root {
+            --gauge-width: 20%;
+            --gauge-margin-left: 10px;
+        }
+        
+        .logo-year-title-year {
+            flex: 0 0 auto; /* auto - année */
+        }
+        
+        .logo-year-title-usage {
+            flex: 0 0 auto; /* auto - pourcentage */
+            text-align: right;
+            white-space: nowrap;
+        }
+        
+        .logo-year-title-spacer {
+            flex: 1 1 auto; /* espace flexible - pousse le pourcentage à droite */
+        }
+        
+        .logo-year-title-gauge-wrapper {
+            flex: var(--gauge-flex);
+            margin-left: var(--gauge-margin-left);
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .logo-year-title-gauge {
+            height: 100%;
+            border-radius: 4px;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        
+        /* Couleurs de la jauge selon le pourcentage */
+        .logo-year-title-gauge.gauge-high {
+            background: #28a745; /* Vert pour > 80% */
+        }
+        
+        .logo-year-title-gauge.gauge-medium {
+            background: #ff9800; /* Orange pour > 60% et <= 80% */
+        }
+        
+        .logo-year-title-gauge.gauge-low {
+            background: #dc3545; /* Rouge pour <= 60% */
+        }
+        
+        /* Police emoji locale pour rendu cohérent */
+        @font-face {
+            font-family: 'EmojiFont';
+            src: local('Apple Color Emoji'),
+                 local('Segoe UI Emoji'),
+                 local('Noto Color Emoji'),
+                 local('Android Emoji'),
+                 local('EmojiOne Color'),
+                 local('Twemoji Mozilla');
+            /* Fallback vers les polices système si pas de police locale */
+        }
+        
+        /* Appliquer la police emoji aux logos colorés */
+        .logo-item,
+        #logos-colored-grid .logo-item {
+            font-family: 'EmojiFont', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', sans-serif;
+        }
+        
+        /* Option : Charger Noto Color Emoji depuis Google Fonts (décommentez si besoin) */
+        /*
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap');
+        .logo-item {
+            font-family: 'Noto Color Emoji', 'EmojiFont', sans-serif;
+        }
+        */
+    </style>
+</head>
+<body>
+    <h1>Caractères UTF-8 par Sous-ensembles Unicode</h1>
+    
+    <div id="logos-container" class="logos-list">
+        <div class="logos-list-title">
+            <span>Logos Colorés (Emojis & Pictos)</span>
+            <span class="logos-list-title-spacer"></span>
+            <span class="logos-list-title-usage">% en 2025</span>
+            <span class="logos-list-title-gauge-space"></span>
+        </div>
+        <div class="logos-grid" id="logos-colored-grid"></div>
+    </div>
+    
+    <div id="logos-bw-container" class="logos-list">
+        <div class="logos-list-title">Logos Noir & Blanc (Symboles & Dingbats)</div>
+        <div class="logos-grid" id="logos-bw-grid"></div>
+    </div>
+    
+    <div class="logos-list" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+        <div class="logos-list-title" style="color: #856404;">⚠️ Compatibilité Emojis</div>
+        <div style="font-size: 12px; color: #856404; line-height: 1.6;">
+            <p><strong>Caractères en carrés (□) ou invisibles :</strong> Non supportés par votre navigateur/système</p>
+            <p style="margin-top: 8px;"><strong>Pourquoi certains emojis ne s'affichent pas ?</strong></p>
+            <ul style="margin-left: 20px; margin-top: 5px;">
+                <li><strong>Plages Unicode étendues :</strong> La plage "Miscellaneous Symbols And Pictographs" (0x1F300-0x1F5FF) a été créée en Unicode 6.0 (2010), mais elle a été <strong>étendue</strong> dans les versions suivantes (7.0, 8.0, 9.0, etc.)</li>
+                <li><strong>Exemples :</strong> 🎔 (U+1F394), 🎕 (U+1F395), 🕀 (U+1F540) sont dans cette plage mais ont été ajoutés <strong>après</strong> Unicode 6.0, donc ils nécessitent des versions plus récentes</li>
+                <li><strong>Police emoji obsolète :</strong> Apple Color Emoji, Segoe UI Emoji, etc. doivent être à jour pour inclure ces extensions</li>
+                <li><strong>Solution :</strong> Mettre à jour macOS/iOS, Windows, ou utiliser une police emoji récente (Noto Color Emoji)</li>
+            </ul>
+            <p><strong>Rendu des emojis :</strong></p>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li><strong>Polices emoji :</strong> Les emojis sont rendus par des polices spéciales (emoji fonts)</li>
+                <li><strong>Propre au navigateur/OS :</strong> Chaque système utilise sa propre police emoji (Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, etc.)</li>
+                <li><strong>Police locale :</strong> On peut charger une police emoji en local (ex: Noto Color Emoji, Twemoji) pour un rendu cohérent</li>
+                <li><strong>Avantage :</strong> Rendu identique sur tous les navigateurs, même sans support natif</li>
+            </ul>
+            <p><strong>Compatibilité approximative :</strong></p>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li><strong>Emojis Unicode 6.0-8.0 (2010-2015)</strong> : ~95-98% de compatibilité (Chrome, Firefox, Safari, Edge modernes)</li>
+                <li><strong>Emojis Unicode 9.0-11.0 (2016-2018)</strong> : ~85-90% de compatibilité</li>
+                <li><strong>Emojis Unicode 12.0-14.0 (2019-2021)</strong> : ~70-80% de compatibilité</li>
+                <li><strong>Emojis Unicode 15.0+ (2022+)</strong> : ~50-60% de compatibilité (nécessite mises à jour récentes)</li>
+                <li><strong>Symboles & Dingbats (noir & blanc)</strong> : ~98-99% de compatibilité (très anciens, largement supportés)</li>
+            </ul>
+            <p style="margin-top: 10px;"><strong>Recommandation :</strong> Utilisez les emojis de la section "Noir & Blanc" pour une compatibilité maximale, ou les emojis colorés Unicode 6.0-8.0 pour un bon équilibre. Pour un rendu cohérent, chargez une police emoji locale (Noto Color Emoji, Twemoji).</p>
+            <p style="margin-top: 10px;"><strong>Structure des polices emoji :</strong></p>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li><strong>Code point Unicode (ID) :</strong> Identifiant numérique unique (ex: U+1F600 pour 😀)</li>
+                <li><strong>Nom Unicode formel :</strong> Nom standard défini par Unicode (ex: "GRINNING FACE")</li>
+                <li><strong>Nom de glyphe (psname) :</strong> Nom interne à la police (variable selon la police, ex: "uni1F600" ou "grinning_face")</li>
+                <li><strong>Résultat :</strong> La police mappe le code point → nom de glyphe → glyphe visuel</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div id="categories-container"></div>
+    
+    <script>
+        // Sous-ensembles Unicode avec leurs plages de codes
+        const unicodeSubsets = [
+            { name: "Basic Latin (ASCII)", start: 0x0000, end: 0x007F },
+            { name: "Latin-1 Supplement", start: 0x0080, end: 0x00FF },
+            { name: "Latin Extended-A", start: 0x0100, end: 0x017F },
+            { name: "Latin Extended-B", start: 0x0180, end: 0x024F },
+            { name: "IPA Extensions", start: 0x0250, end: 0x02AF },
+            { name: "Spacing Modifier Letters", start: 0x02B0, end: 0x02FF },
+            { name: "Combining Diacritical Marks", start: 0x0300, end: 0x036F },
+            { name: "Greek", start: 0x0370, end: 0x03FF },
+            { name: "Cyrillic", start: 0x0400, end: 0x04FF },
+            { name: "Cyrillic Supplement", start: 0x0500, end: 0x052F },
+            { name: "Arrows", start: 0x2190, end: 0x21FF },
+            { name: "Mathematical Operators", start: 0x2200, end: 0x22FF },
+            { name: "Miscellaneous Technical", start: 0x2300, end: 0x23FF },
+            { name: "Box Drawing", start: 0x2500, end: 0x257F },
+            { name: "Block Elements", start: 0x2580, end: 0x259F },
+            { name: "Geometric Shapes", start: 0x25A0, end: 0x25FF },
+            { name: "Miscellaneous Symbols", start: 0x2600, end: 0x26FF },
+            { name: "Dingbats", start: 0x2700, end: 0x27BF },
+            { name: "Supplemental Arrows-A", start: 0x27F0, end: 0x27FF },
+            { name: "Supplemental Arrows-B", start: 0x2900, end: 0x297F },
+            { name: "Miscellaneous Mathematical Symbols-A", start: 0x27C0, end: 0x27EF },
+            { name: "Miscellaneous Mathematical Symbols-B", start: 0x2980, end: 0x29FF },
+            { name: "Supplemental Mathematical Operators", start: 0x2A00, end: 0x2AFF },
+            { name: "Miscellaneous Symbols and Arrows", start: 0x2B00, end: 0x2BFF },
+            { name: "Superscripts and Subscripts", start: 0x2070, end: 0x209F },
+            { name: "Currency Symbols", start: 0x20A0, end: 0x20CF },
+            { name: "Letterlike Symbols", start: 0x2100, end: 0x214F },
+            { name: "Number Forms", start: 0x2150, end: 0x218F },
+            { name: "Enclosed Alphanumerics", start: 0x2460, end: 0x24FF },
+            { name: "Geometric Shapes Extended", start: 0x1F780, end: 0x1F7FF },
+            { name: "Supplemental Arrows-C", start: 0x1F800, end: 0x1F8FF },
+            { name: "Miscellaneous Symbols And Pictographs", start: 0x1F300, end: 0x1F5FF },
+            { name: "Emoticons", start: 0x1F600, end: 0x1F64F },
+            { name: "Transport and Map Symbols", start: 0x1F680, end: 0x1F6FF },
+            { name: "Supplemental Symbols and Pictographs", start: 0x1F900, end: 0x1F9FF },
+            { name: "Symbols and Pictographs Extended-A", start: 0x1FA00, end: 0x1FA6F },
+            { name: "Symbols for Legacy Computing", start: 0x1FB00, end: 0x1FBFF }
+        ];
+        
+        // Identifier les sous-ensembles avec des logos colorés (emojis/pictos) par version Unicode/année
+        // avec pourcentage d'utilisation mondiale approximatif et sous-catégories par version réelle
+        const logoColoredSubsetsByYear = {
+            "1993 (Unicode 1.1) - ~99% utilisation 2025": {
+                subsets: ["Miscellaneous Symbols (emojis colorés)"], // 0x2600-0x26FF - Emojis colorés très anciens
+                usage: 99,
+                customLogos: '▶◀☀☁☂☃☄☎☑☔☕☘☝☠☢☣☦☪☮☯☸☹☺♈♉♊♋♌♍♎♏♐♑♒♓♟♠♣♥♦♨♻♿⚖⚗⚙⚛⚜⚠⚡⚧⚪⚫⚰⚱⚽⚾⛄⛅⛈⛎⛏⛑⛔⛩⛪⛰⛱⛲⛳⛴⛵⛷⛸⛹⛺⛽✂✅✈✉✊✋✌✍✏✒✝✡✨✳✴❇❌❎❓❗❣❤➡'
+            },
+            "2010 (Unicode 6.0) Miscellaneous Symbols - ~95% utilisation 2025": {
+                subsets: ["Miscellaneous Symbols And Pictographs (partie 2010)"], // 0x1F300-0x1F393
+                usage: 95,
+                customRange: { start: 0x1F300, end: 0x1F393 }
+            },
+            "2010 (Unicode 6.0) Technical & Arrows - ~95% utilisation 2025": {
+                subsets: ["Miscellaneous Technical & Symbols and Arrows (emojis colorés)"], // Emojis colorés de ces plages
+                usage: 95,
+                customLogos: '⏩⏪⏫⏬⏰⏳⭐⭕' // U+23E9-23EC, 23F0, 23F3, 2B50, 2B55
+            },
+            "2012 (Unicode 6.1) Miscellaneous Symbols - ~95% utilisation 2025": {
+                subsets: ["Miscellaneous Symbols And Pictographs (partie 2012)"], // 0x1F394-0x1F39F
+                usage: 95,
+                customRange: { start: 0x1F394, end: 0x1F39F }
+            },
+            "2014 (Unicode 7.0) Miscellaneous Symbols - ~90% utilisation 2025": {
+                subsets: ["Miscellaneous Symbols And Pictographs (partie 2014)"], // 0x1F3A0-0x1F3FF
+                usage: 90,
+                customRange: { start: 0x1F3A0, end: 0x1F3FF }
+            },
+            "2015 (Unicode 8.0) Miscellaneous Symbols - ~90% utilisation 2025": {
+                subsets: ["Miscellaneous Symbols And Pictographs (partie 2015)"], // 0x1F400-0x1F4FF
+                usage: 90,
+                customRange: { start: 0x1F400, end: 0x1F4FF }
+            },
+            "2016 (Unicode 9.0) Miscellaneous Symbols - ~85% utilisation 2025": {
+                subsets: ["Miscellaneous Symbols And Pictographs (partie 2016)"], // 0x1F500-0x1F53F
+                usage: 85,
+                customRange: { start: 0x1F500, end: 0x1F53F }
+            },
+            "2017 (Unicode 10.0) Miscellaneous Symbols - ~80% utilisation 2025": {
+                subsets: ["Miscellaneous Symbols And Pictographs (partie 2017)"], // 0x1F540-0x1F5FF
+                usage: 80,
+                customRange: { start: 0x1F540, end: 0x1F5FF }
+            },
+            "2012 (Unicode 6.1) Emoticons - ~98% utilisation 2025": {
+                subsets: ["Emoticons"], // 0x1F600-0x1F64F
+                usage: 98
+            },
+            "2015 (Unicode 8.0) Transport - ~90% utilisation 2025": {
+                subsets: ["Transport and Map Symbols"], // 0x1F680-0x1F6FF
+                usage: 90
+            },
+            "2018 (Unicode 11.0) Supplemental Symbols - ~75% utilisation 2025": {
+                subsets: ["Supplemental Symbols and Pictographs"], // 0x1F900-0x1F9FF
+                usage: 75
+            },
+            "2021 (Unicode 14.0) Symbols Extended-A - ~55% utilisation 2025": {
+                subsets: ["Symbols and Pictographs Extended-A"], // 0x1FA00-0x1FA6F
+                usage: 55
+            },
+            "Hors dates / Non classés - ~40% utilisation 2025": {
+                subsets: [
+                    "Geometric Shapes Extended",      // 0x1F780-0x1F7FF - Emojis récents non classés
+                    "Supplemental Arrows-C",          // 0x1F800-0x1F8FF - Flèches emoji
+                    "Symbols for Legacy Computing"    // 0x1FB00-0x1FBFF - Emojis très récents
+                ],
+                usage: 40
+            }
+        };
+        
+        // Liste plate pour compatibilité
+        const logoColoredSubsets = [
+            "Miscellaneous Symbols And Pictographs",
+            "Emoticons",
+            "Transport and Map Symbols",
+            "Supplemental Symbols and Pictographs",
+            "Symbols and Pictographs Extended-A",
+            "Geometric Shapes Extended",      // Emojis récents non classés
+            "Supplemental Arrows-C",          // Flèches emoji
+            "Symbols for Legacy Computing"   // Emojis très récents
+        ];
+        
+        // Identifier les sous-ensembles avec des logos noir & blanc (symboles/dingbats)
+        // Note: "Miscellaneous Symbols" (0x2600-0x26FF) contient un mélange de symboles noir & blanc ET emojis colorés
+        // On ne peut pas les séparer automatiquement, donc on les garde dans noir & blanc
+        const logoBWSubsets = [
+            "Miscellaneous Symbols", // 0x2600-0x26FF - Mélange (symboles + emojis colorés)
+            "Dingbats",           // 0x2700-0x27BF - Symboles noir & blanc
+            "Box Drawing",        // 0x2500-0x257F - Lignes de dessin
+            "Block Elements",      // 0x2580-0x259F - Blocs
+            "Geometric Shapes"    // 0x25A0-0x25FF - Formes géométriques
+        ];
+        
+        // Fonction pour générer les caractères d'une plage
+        function generateChars(start, end) {
+            const chars = [];
+            for (let code = start; code <= end; code++) {
+                // Ignorer les caractères de contrôle (sauf quelques-uns utiles)
+                if (code < 0x20 && code !== 0x09 && code !== 0x0A && code !== 0x0D) {
+                    continue;
+                }
+                // Ignorer les caractères de substitution
+                if (code >= 0xD800 && code <= 0xDFFF) {
+                    continue;
+                }
+                try {
+                    const char = String.fromCodePoint(code);
+                    // Vérifier que le caractère est valide et visible
+                    if (char && char.trim() !== '' || char.charCodeAt(0) === code) {
+                        chars.push(char);
+                    }
+                } catch (e) {
+                    // Ignorer les codes invalides
+                }
+            }
+            return chars;
+        }
+        
+        // Fonction pour créer la liste des logos colorés par année
+        function createLogosColoredList() {
+            const logosContainer = document.getElementById('logos-colored-grid');
+            logosContainer.innerHTML = ''; // Vider le conteneur
+            
+            // Créer une sous-catégorie pour chaque année, triées par date (du plus ancien au plus récent)
+            const sortedYears = Object.keys(logoColoredSubsetsByYear).sort((a, b) => {
+                // Vérifier si c'est "Hors dates" ou sans année au début
+                const isHorsDatesA = a.startsWith('Hors dates') || !a.match(/^\d{4}/);
+                const isHorsDatesB = b.startsWith('Hors dates') || !b.match(/^\d{4}/);
+                
+                // Mettre "Hors dates" à la fin
+                if (isHorsDatesA && !isHorsDatesB) return 1;
+                if (!isHorsDatesA && isHorsDatesB) return -1;
+                if (isHorsDatesA && isHorsDatesB) return a.localeCompare(b);
+                
+                // Extraire l'année du début de la clé (ex: "1993 (Unicode 1.1)" -> 1993)
+                const matchA = a.match(/^(\d{4})/);
+                const matchB = b.match(/^(\d{4})/);
+                const yearA = matchA ? parseInt(matchA[1]) : 0;
+                const yearB = matchB ? parseInt(matchB[1]) : 0;
+                
+                // Si même année, trier par ordre alphabétique pour les sous-catégories
+                if (yearA === yearB) {
+                    return a.localeCompare(b);
+                }
+                
+                return yearA - yearB; // Ordre croissant (plus ancien en premier, commence en 1993)
+            });
+            
+            sortedYears.forEach(yearKey => {
+                const yearData = logoColoredSubsetsByYear[yearKey];
+                const yearDiv = document.createElement('div');
+                yearDiv.className = 'logo-year-section';
+                yearDiv.style.marginBottom = '20px';
+                yearDiv.style.padding = '10px';
+                yearDiv.style.background = '#f8f9fa';
+                yearDiv.style.borderRadius = '6px';
+                yearDiv.style.borderLeft = '3px solid #667eea';
+                yearDiv.style.width = '100%';
+                yearDiv.style.boxSizing = 'border-box';
+                
+                // Créer un conteneur flexbox
+                const yearTitle = document.createElement('div');
+                yearTitle.className = 'logo-year-title';
+                
+                // Extraire l'année, le nom de catégorie et le pourcentage du titre
+                const titleParts = yearKey.split(' - ');
+                let yearPart = titleParts[0];
+                // Retirer "utilisation 2025" du pourcentage, garder seulement le %
+                let usagePart = titleParts[1] || '';
+                usagePart = usagePart.replace(/\s+utilisation\s+2025/i, '').trim();
+                
+                // Extraire le nom de catégorie si présent (ex: "2010 (Unicode 6.0) Technical & Arrows" -> "Technical & Arrows")
+                let categoryName = '';
+                // Chercher le nom de catégorie après la parenthèse fermante Unicode
+                const categoryMatch = yearPart.match(/\(Unicode\s+[^)]+\)\s+(.+)$/);
+                if (categoryMatch && categoryMatch[1]) {
+                    categoryName = categoryMatch[1].trim();
+                    // Retirer le nom de catégorie de yearPart pour garder l'année + (Unicode X.X)
+                    // On retire tout ce qui suit après ") " (parenthèse fermante + espace)
+                    yearPart = yearPart.replace(/\s+[^)]+$/, '').trim();
+                }
+                
+                // Élément 1: Année + (Unicode X.X) + Catégorie (auto)
+                const yearSpan = document.createElement('span');
+                yearSpan.className = 'logo-year-title-year';
+                yearSpan.setAttribute('data-flex', '0 0 auto'); // flex-grow: 0, flex-shrink: 0, flex-basis: auto
+                let yearText = yearPart; // Contient "2010 (Unicode 6.0)"
+                if (categoryName) {
+                    yearText += ' ' + categoryName; // Ajouter "Technical & Arrows" etc.
+                }
+                yearSpan.textContent = yearText;
+                yearTitle.appendChild(yearSpan);
+                
+                // Élément 2: Espace flexible - pousse le pourcentage à droite
+                const spacer = document.createElement('span');
+                spacer.className = 'logo-year-title-spacer';
+                spacer.setAttribute('data-flex', '1 1 auto'); // flex-grow: 1, flex-shrink: 1, flex-basis: auto
+                yearTitle.appendChild(spacer);
+                
+                // Élément 3: Pourcentage (auto, aligné à droite)
+                const usageSpan = document.createElement('span');
+                usageSpan.className = 'logo-year-title-usage';
+                usageSpan.setAttribute('data-flex', '0 0 auto'); // flex-grow: 0, flex-shrink: 0, flex-basis: auto
+                usageSpan.textContent = usagePart;
+                yearTitle.appendChild(usageSpan);
+                
+                // Élément 4: Jauge (20%)
+                const gaugeWrapper = document.createElement('div');
+                gaugeWrapper.className = 'logo-year-title-gauge-wrapper';
+                gaugeWrapper.setAttribute('data-flex', '0 0 20%'); // flex-grow: 0, flex-shrink: 0, flex-basis: 20%
+                
+                // Jauge de pourcentage (remplit selon le %)
+                const gauge = document.createElement('div');
+                gauge.className = 'logo-year-title-gauge';
+                gauge.style.width = `${yearData.usage}%`;
+                
+                // Ajouter la classe de couleur selon le pourcentage
+                if (yearData.usage > 80) {
+                    gauge.classList.add('gauge-high'); // Vert
+                } else if (yearData.usage > 60) {
+                    gauge.classList.add('gauge-medium'); // Orange
+                } else {
+                    gauge.classList.add('gauge-low'); // Rouge
+                }
+                
+                gaugeWrapper.appendChild(gauge);
+                yearTitle.appendChild(gaugeWrapper);
+                
+                yearDiv.appendChild(yearTitle);
+                
+                const yearGrid = document.createElement('div');
+                yearGrid.className = 'logos-grid';
+                yearGrid.style.display = 'flex';
+                yearGrid.style.flexWrap = 'wrap';
+                yearGrid.style.gap = '8px';
+                
+                const subsetsForYear = yearData.subsets;
+                
+                // Cas spécial : 1993 avec liste personnalisée
+                if (yearData.customLogos) {
+                    const logoChars = [];
+                    for (const char of yearData.customLogos) {
+                        logoChars.push({ char, subset: 'Miscellaneous Symbols (emojis colorés)' });
+                    }
+                    
+                    // Afficher les logos
+                    logoChars.forEach(({ char, subset }) => {
+                        const logoSpan = createLogoSpan(char, subset, yearKey, yearData.usage);
+                        yearGrid.appendChild(logoSpan);
+                    });
+                } 
+                // Cas avec plage personnalisée (pour les parties de Miscellaneous Symbols And Pictographs)
+                else if (yearData.customRange) {
+                    const chars = generateChars(yearData.customRange.start, yearData.customRange.end);
+                    chars.forEach(char => {
+                        const logoSpan = createLogoSpan(char, subsetsForYear[0], yearKey, yearData.usage);
+                        yearGrid.appendChild(logoSpan);
+                    });
+                }
+                // Cas normal : collecter tous les caractères
+                else {
+                    const logoChars = [];
+                    unicodeSubsets.forEach(subset => {
+                        if (subsetsForYear.includes(subset.name)) {
+                            const chars = generateChars(subset.start, subset.end);
+                            chars.forEach(char => {
+                                logoChars.push({ char, subset: subset.name });
+                            });
+                        }
+                    });
+                    
+                    // Afficher les logos
+                    logoChars.forEach(({ char, subset }) => {
+                        const logoSpan = createLogoSpan(char, subset, yearKey, yearData.usage);
+                        yearGrid.appendChild(logoSpan);
+                    });
+                }
+                
+                yearDiv.appendChild(yearGrid);
+                logosContainer.appendChild(yearDiv);
+            });
+        }
+        
+        // Fonction helper pour créer un span de logo
+        function createLogoSpan(char, subset, yearKey, usage, subcategory = null) {
+            const logoSpan = document.createElement('span');
+            logoSpan.className = 'logo-item';
+            logoSpan.textContent = char;
+            const codePoint = char.codePointAt(0);
+            const codeHex = codePoint.toString(16).toUpperCase().padStart(4, '0');
+            
+            // Essayer de récupérer le nom Unicode (si disponible via l'API)
+            let unicodeName = '';
+            try {
+                if (Intl && Intl.DisplayNames) {
+                    const displayNames = new Intl.DisplayNames(['en'], { type: 'emoji' });
+                    unicodeName = displayNames.of(codePoint) || '';
+                }
+            } catch (e) {
+                // Fallback si l'API n'est pas disponible
+            }
+            
+            const tooltip = unicodeName 
+                ? `${char} (U+${codeHex}) - ${unicodeName} - ${subset} - ${yearKey} - ${usage}% utilisation`
+                : `${char} (U+${codeHex}) - ${subset} - ${yearKey} - ${usage}% utilisation`;
+            
+            logoSpan.title = tooltip;
+            logoSpan.onclick = () => {
+                navigator.clipboard.writeText(char).then(() => {
+                    console.log(`Copié: ${char} (U+${codeHex})${unicodeName ? ' - ' + unicodeName : ''}`);
+                });
+            };
+            
+            return logoSpan;
+        }
+        
+        // Fonction pour créer la liste des logos noir & blanc
+        function createLogosBWList() {
+            const logosGrid = document.getElementById('logos-bw-grid');
+            const logoChars = [];
+            
+            // Collecter tous les caractères des sous-ensembles de logos noir & blanc
+            unicodeSubsets.forEach(subset => {
+                if (logoBWSubsets.includes(subset.name)) {
+                    const chars = generateChars(subset.start, subset.end);
+                    chars.forEach(char => {
+                        logoChars.push({ char, subset: subset.name });
+                    });
+                }
+            });
+            
+            // Afficher les logos dans l'ordre d'apparition
+            logoChars.forEach(({ char, subset }) => {
+                const logoSpan = document.createElement('span');
+                logoSpan.className = 'logo-item';
+                logoSpan.textContent = char;
+                const codePoint = char.codePointAt(0);
+                const codeHex = codePoint.toString(16).toUpperCase().padStart(4, '0');
+                
+                // Essayer de récupérer le nom Unicode
+                let unicodeName = '';
+                try {
+                    if (Intl && Intl.DisplayNames) {
+                        const displayNames = new Intl.DisplayNames(['en'], { type: 'emoji' });
+                        unicodeName = displayNames.of(codePoint) || '';
+                    }
+                } catch (e) {}
+                
+                const tooltip = unicodeName 
+                    ? `${char} (U+${codeHex}) - ${unicodeName} - ${subset}`
+                    : `${char} (U+${codeHex}) - ${subset}`;
+                
+                logoSpan.title = tooltip;
+                logoSpan.onclick = () => {
+                    navigator.clipboard.writeText(char).then(() => {
+                        console.log(`Copié: ${char} (U+${codeHex})${unicodeName ? ' - ' + unicodeName : ''}`);
+                    });
+                };
+                logosGrid.appendChild(logoSpan);
+            });
+        }
+        
+        // Fonction pour créer une catégorie
+        function createCategory(subset) {
+            const categoryDiv = document.createElement('div');
+            categoryDiv.className = 'category';
+            categoryDiv.dataset.name = subset.name.toLowerCase();
+            
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'category-title';
+            titleDiv.textContent = `${subset.name} (U+${subset.start.toString(16).toUpperCase().padStart(4, '0')}-U+${subset.end.toString(16).toUpperCase().padStart(4, '0')})`;
+            
+            const charsDiv = document.createElement('div');
+            charsDiv.className = 'chars-container';
+            
+            // Générer les caractères
+            const chars = generateChars(subset.start, subset.end);
+            
+            // Afficher tous les caractères d'affilée
+            chars.forEach(char => {
+                const charSpan = document.createElement('span');
+                charSpan.className = 'char-item';
+                charSpan.textContent = char;
+                const codePoint = char.codePointAt(0);
+                charSpan.title = `${char} (U+${codePoint.toString(16).toUpperCase().padStart(4, '0')})`;
+                charSpan.onclick = () => {
+                    navigator.clipboard.writeText(char).then(() => {
+                        console.log(`Copié: ${char} (U+${codePoint.toString(16).toUpperCase().padStart(4, '0')})`);
+                    });
+                };
+                charsDiv.appendChild(charSpan);
+            });
+            
+            categoryDiv.appendChild(titleDiv);
+            categoryDiv.appendChild(charsDiv);
+            
+            return categoryDiv;
+        }
+        
+        // Créer les listes des logos (colorés et noir & blanc)
+        createLogosColoredList();  // Inclut maintenant 1993 en premier
+        createLogosBWList();
+        
+        // Afficher toutes les catégories dans l'ordre d'apparition
+        const container = document.getElementById('categories-container');
+        unicodeSubsets.forEach(subset => {
+            container.appendChild(createCategory(subset));
+        });
+    </script>
+</body>
+</html>

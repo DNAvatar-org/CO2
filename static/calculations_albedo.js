@@ -426,15 +426,20 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_overrid
 // ============================================================================
 
 // Fonction pour calculer le flux solaire absorbé avec albedo dynamique
-// ✅ SCIENTIFIQUEMENT CERTAIN : 
-// - La formule F = S_0 * (1 - A) / 4 est la base de l'équilibre radiatif terrestre
+// ✅ FORMULE TOUJOURS UTILISÉE : solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm
+// - Pas de cas particulier, même en corps noir (albedo = 0, donc solar_flux_reflected_wm = 0)
+// - Entrer dans la formule avec des paramètres à 0 est plus propre que de zapper des étapes
 // - La division par 4 vient de la géométrie sphérique : surface 4πr² vs section πr² (facteur 4)
-// - Cette formule est utilisée dans tous les modèles climatiques (IPCC, GCM)
 function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled, geothermal_flux = null) {
     const albedo = calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux);
     const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
-    const flux_absorbed = SOLAR_CONSTANT * (1 - albedo) / 4; // Divisé par 4 car la surface de la sphère (4πr²) est 4 fois la section (πr²)
-    return flux_absorbed;
+    
+    // 🔒 FORMULE TOUJOURS UTILISÉE : solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm
+    const solar_flux_average_wm = SOLAR_CONSTANT / 4; // Flux solaire moyen (divisé par 4 pour la géométrie sphérique)
+    const solar_flux_reflected_wm = solar_flux_average_wm * albedo; // Flux réfléchi (peut être 0 si albedo = 0)
+    const solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm; // Flux absorbé
+    
+    return solar_flux_absorbed_wm;
 }
 
 // ============================================================================
@@ -457,5 +462,96 @@ if (typeof window !== 'undefined') {
     window.calculateAlbedo = originalCalculateAlbedo;
     window.calculateCloudCoverage = originalCalculateCloudCoverage;
     window.calculateSolarFluxAbsorbed = originalCalculateSolarFluxAbsorbed;
+}
+
+// ============================================================================
+// FONCTION : METTRE À JOUR LES NIVEAUX DEPUIS LA CONFIG DE L'ÉPOQUE
+// ============================================================================
+
+// Fonction pour initialiser les niveaux de CO2, H2O, CH4 depuis la config de l'époque
+// Appelée depuis setEpoch pour initialiser les valeurs depuis la config
+// Utilise les mêmes fonctions de conversion que setEpoch (co2KgToFraction, ch4KgToFraction, etc.)
+function updateLevelsConfig(epoch, total_atmosphere_mass_kg, molar_mass_air, isCorpsNoir) {
+    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    
+    if (!epoch) {
+        console.warn(`${logoEDS} ⚠️ [updateLevelsConfig@calculations_albedo.js] Époque manquante`);
+        return;
+    }
+    
+    // Initialiser CO2 depuis la config de l'époque (utiliser la même logique que setEpoch)
+    let co2_ppm = 0;
+    if (!isCorpsNoir && epoch.co2_kg !== undefined && epoch.co2_kg > 0) {
+        if (typeof window !== 'undefined' && typeof window.co2KgToFraction === 'function') {
+            const co2_fraction = window.co2KgToFraction(epoch.co2_kg, total_atmosphere_mass_kg, molar_mass_air);
+            co2_ppm = co2_fraction * 1e6; // Convertir fraction en ppm
+        } else {
+            // Fallback : approximation simple
+            const MOLAR_MASS_AIR = molar_mass_air || 0.029;
+            const moles_CO2 = epoch.co2_kg / 0.044; // MOLAR_MASS_CO2
+            const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
+            co2_ppm = (moles_CO2 / moles_total) * 1e6;
+        }
+    }
+    
+    // Initialiser CH4 depuis la config de l'époque (utiliser la même logique que setEpoch)
+    let ch4_ppm = 0;
+    if (!isCorpsNoir && epoch.ch4_kg !== undefined && epoch.ch4_kg > 0) {
+        if (typeof window !== 'undefined' && typeof window.ch4KgToFraction === 'function') {
+            const ch4_fraction = window.ch4KgToFraction(epoch.ch4_kg, total_atmosphere_mass_kg, molar_mass_air);
+            ch4_ppm = ch4_fraction * 1e6; // Convertir fraction en ppm
+        } else {
+            // Fallback : approximation simple
+            const MOLAR_MASS_AIR = molar_mass_air || 0.029;
+            const moles_CH4 = epoch.ch4_kg / 0.016; // MOLAR_MASS_CH4
+            const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
+            ch4_ppm = (moles_CH4 / moles_total) * 1e6;
+        }
+    } else if (epoch.ch4_ppm !== undefined) {
+        ch4_ppm = epoch.ch4_ppm;
+    }
+    
+    // Initialiser H2O depuis la config de l'époque
+    let h2o_percent = 0;
+    if (epoch.h2o_kg !== undefined && epoch.h2o_kg > 0) {
+        // Calculer % depuis kg (approximation)
+        const total_atm_mass = total_atmosphere_mass_kg || epoch.total_atmosphere_mass_kg || 1e19;
+        h2o_percent = (epoch.h2o_kg / total_atm_mass) * 100;
+    } else if (epoch.h2o_vapor_percent !== undefined) {
+        h2o_percent = epoch.h2o_vapor_percent;
+    }
+    
+    // 🔒 Si maximiseData (appel depuis un événement), prendre le max entre la valeur sauvegardée et la valeur par défaut
+    // Sinon (appel depuis un bouton époque), utiliser la config de l'époque
+    if (typeof window !== 'undefined' && window.maximiseData) {
+        const savedCO2 = (typeof window.savedCO2 !== 'undefined') ? window.savedCO2 : 0;
+        const savedCH4 = (typeof window.savedCH4 !== 'undefined') ? window.savedCH4 : 0;
+        const savedH2O = (typeof window.savedH2O !== 'undefined') ? window.savedH2O : 0;
+        co2_ppm = Math.max(savedCO2, co2_ppm);
+        ch4_ppm = Math.max(savedCH4, ch4_ppm);
+        h2o_percent = Math.max(savedH2O, h2o_percent);
+    }
+    
+    // Mettre à jour plotData
+    if (typeof plotData !== 'undefined') {
+        plotData.co2_ppm = co2_ppm;
+        plotData.ch4_ppm = ch4_ppm;
+    }
+    
+    // Mettre à jour window.h2oVaporPercent
+    if (typeof window !== 'undefined') {
+        window.h2oVaporPercent = h2o_percent;
+        window.h2oTotalFromMeteorites = 0; // Réinitialiser les météorites au changement d'époque
+    }
+    
+    console.log(`${logoEDS} 🛠 [updateLevelsConfig@calculations_albedo.js] 🏭=${co2_ppm.toFixed(0)}ppm 💧=${h2o_percent.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
+}
+
+// Exposer globalement pour utilisation dans main.js
+if (typeof window !== 'undefined') {
+    window.updateLevelsConfig = updateLevelsConfig;
 }
 

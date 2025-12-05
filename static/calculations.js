@@ -778,25 +778,27 @@ function waterVaporTransport(z) {
 // ============================================================================
 
 // ⚡ OPTIMISATION : Calculer le facteur de précision adaptatif selon le FPS
+// 🔒 Cette fonction est maintenant contrôlée par l'événement fpsLevelChanged
 function getPrecisionFactorFromFPS() {
-    const FPSalert = 25;  // Seuil d'alerte (FPS bas)
-    const FPSmin = 20;     // FPS minimum acceptable
-    const FPSmax = 55;     // FPS maximum (bonne performance)
-
+    // Utiliser window.fpsLevel si disponible (défini par l'événement FPS)
+    if (typeof window !== 'undefined' && window.fpsLevel && window.fpsPrecisionFactor !== undefined) {
+        return window.fpsPrecisionFactor;
+    }
+    
+    // Fallback : calculer selon l'ancienne logique
+    const FPSalert = 25;
+    const FPSmin = 20;
+    const FPSmax = 55;
     const currentFPS = (typeof window !== 'undefined' && window.fps) ? window.fps : 60;
 
     if (currentFPS < FPSmin) {
-        // FPS très bas : diviser la précision par 2 (réduire les points)
         return 0.5;
     } else if (currentFPS > FPSmax) {
-        // FPS excellent : multiplier la précision par 2 (augmenter les points)
         return 2.0;
     } else if (currentFPS < FPSalert) {
-        // FPS en alerte : légèrement réduire la précision
         return 0.75;
     }
 
-    // FPS normal : précision standard
     return 1.0;
 }
 
@@ -820,8 +822,7 @@ function logCalculationPhase(phase, data) {
 
     // Afficher uniquement T0 pour les phases importantes
     if (phase.includes('DICHOTOMIE START')) {
-        const T0_init = data?.T0_initial || data?.t0 || data?.T0_initial_config || 'N/A';
-        console.log(`🌡️ T° au sol init: ${T0_init}K (${(parseFloat(T0_init) - 273.15).toFixed(1)}°C)`);
+        // Log supprimé : redondant avec T0_initial_config qui affiche déjà la température
     } else if (phase.includes('DICHOTOMIE ITER')) {
         // Log supprimé : redondant avec le log delta aire qui affiche déjà la température
     } else if (phase.includes('DICHOTOMIE CONVERGENCE')) {
@@ -836,7 +837,9 @@ if (typeof window !== 'undefined') {
 }
 
 function calculateFluxForT0(CO2_fraction, T0_test, options) {
-    // Log supprimé (non essentiel)
+    const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    console.log(`${logo} [calculateFluxForT0@calculations.js] CO2=${CO2_fraction} T0=${T0_test?.toFixed(2) || 'N/A'}K ${logoCH4} CH4=${options?.CH4_fraction || 0} fullSpectre=${options?.fullSpectre || false}`);
 
     const {
         z_max, // ⚡ Plus de valeur par défaut (120000), doit être fourni ou calculé
@@ -852,7 +855,10 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // ⚡ FORCER fullSpectre à true pour désactiver le regroupement adaptatif lambda
     const forceFullSpectre = true; // Toujours utiliser le spectre complet (pas de regroupement lambda)
 
-    // Récupérer le facteur de précision depuis le FPS
+    // 🔒 Récupérer le facteur de précision depuis le FPS (pour l'échantillonnage atmosphère)
+    // 🔒 IMPORTANT : precisionFactor contrôle la taille des échantillons (delta_z_stratosphere), pas la convergence
+    // - tolerance : seuil de convergence pour delta_equilibre (flux_sortant - flux_entrant) en W/m²
+    // - precisionFactor : facteur d'échantillonnage atmosphère (delta_z_stratosphere) contrôlé par FPS
     // precisionFactor < 1.0 : réduire la précision (augmenter delta_z_stratosphere) pour aller plus vite
     // precisionFactor = 1.0 : précision standard
     // precisionFactor > 1.0 : augmenter la précision (réduire delta_z_stratosphere) pour plus de détails
@@ -1378,6 +1384,20 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
 // Fonction helper pour afficher une courbe temporaire pendant la dichotomie
 function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitial = false, options = {}) {
+    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    
+    // Récupérer H2O et CH4 pour le log
+    const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
+    const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+    const h2o_total = h2o_percent + h2o_meteorites;
+    const ch4_ppm = (options?.CH4_fraction || 0) * 1e6;
+    
+    if (iteration === 0 || isInitial) {
+        console.log(`${logoEDS} [displayDichotomyStep@calculations.js] iter=${iteration} T0=${T0_test?.toFixed(2) || 'N/A'}K 🏭=${(CO2_fraction * 1e6).toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
+    }
     if (typeof window === 'undefined') return;
 
     // Créer un objet plotData temporaire pour l'affichage
@@ -1501,6 +1521,18 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
         });
     }
 
+    // 🔒 Mettre à jour la couleur avec la température actuelle (à chaque étape de dichotomie)
+    if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
+        const color_current = window.tempSurfaceToColor(temp_surface_c);
+        window.updateBlackBodyColor(color_current);
+        
+        // Mettre à jour legend-equilibre avec la couleur actuelle
+        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+        if (legendEquilibre) {
+            legendEquilibre.style.color = color_current;
+        }
+    }
+
     const tempPlotData = {
         lambda_range: result.lambda_range,
         lambda_weights: result.lambda_weights, // ⚡ Nécessaire pour normalisation correcte du flux
@@ -1555,9 +1587,35 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     }
 }
 
-function simulateRadiativeTransfer(CO2_fraction, options = {}) {
-    console.log(`[simulateRadiativeTransfer] 🚀 DÉBUT - CO2_fraction: ${CO2_fraction}, appelé depuis:`, new Error().stack.split('\n')[2]?.trim() || 'unknown');
+// Fonction helper pour récupérer l'état du bouton "anim"
+// Retourne un seul boolean depuis la variable globale unique (seule référence)
+function getAnimState() {
+    // 🔒 UTILISER UNIQUEMENT la variable globale unique (seule référence)
+    // Cette variable est initialisée depuis la config UNIQUEMENT au changement d'époque (setEpoch)
+    // Si l'utilisateur change le bouton anim, la config ne l'écrase plus
+    // La boucle principale ne relit PAS la config, elle utilise la valeur courante
+    return typeof window !== 'undefined' && window.isAnim !== undefined
+        ? window.isAnim
+        : true; // Fallback par défaut si pas encore initialisé
+}
 
+function simulateRadiativeTransfer(CO2_fraction, options = {}) {
+    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    
+    // Récupérer H2O depuis window si disponible
+    const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
+    const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+    const h2o_total = h2o_percent + h2o_meteorites;
+    const ch4_ppm = (options?.CH4_fraction || 0) * 1e6;
+    
+    // fullSpectre=false : utilise un regroupement adaptatif des longueurs d'onde pour optimiser les calculs
+    // fullSpectre=true : utilise le spectre complet sans regroupement (plus précis mais plus lent)
+    // Note: actuellement forcé à true dans le code (forceFullSpectre), donc toujours spectre complet
+    console.log(`${logoEDS} [simulateRadiativeTransfer@calculations.js] 🏭=${(CO2_fraction * 1e6).toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
+    
     // Définir la fraction CO2 globale
     current_CO2_fraction_for_temp = CO2_fraction;
     current_T0_adjusted = null; // Réinitialiser
@@ -1608,7 +1666,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     }
 
     // Récupérer la température précédente depuis window.plotData AVANT d'écraser quoi que ce soit
-    let prev_T0 = null;
+    let prev_T0 = 3; // Initialiser à -270°C (3K) au lieu de null
     if (typeof window !== 'undefined' && window.plotData && window.plotData.temp_surface) {
         prev_T0 = window.plotData.temp_surface;
     }
@@ -1654,13 +1712,20 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     ? Math.floor(window.infoTimeMa / 50) 
                     : 0;
                 
-                // Calculer la température initiale : base + deltaTemp_meteorite * meteoriteCount + deltaTemp_ticTime * deltaTicTime
+                // 🔒 Récupérer l'état du bouton "anim" (controle l'affichage des étapes de dichotomie)
+                // Le bouton "anim" (id="plot-anim-toggle") contrôle window.showDichotomySteps
+                // Si anim est désactivé, on peut utiliser une stratégie différente pour T0_initial_config
+                const showDichotomySteps = getAnimState();
+                
+                // Calculer la température initiale : base + deltaMeteorite * meteoriteCount + deltaTicTime_per_tic * deltaTicTime
                 // 🔒 TOUJOURS utiliser prev_T0 comme base si disponible (température finale précédente)
                 // Sinon, utiliser t0 de l'époque
                 // ticTime = nombre de textures écoulées (chaque texture = 50Ma)
-                // deltaTemp_ticTime = changement de température par ticTime (refroidissement au fil du temps)
+                // deltaTicTime_per_tic = changement de température par ticTime (refroidissement au fil du temps)
                 // 🔒 IMPORTANT : Si prev_T0 existe, on applique seulement le delta pour le nouveau ticTime, pas depuis t0
                 // Exemple : ticTime=0 → T°=2470K, ticTime=1 → T°=2470K + (-300*1) = 2170K (pas 2437K + (-300*1))
+                // ⚠️ NOTE : Le calcul de T0_initial_config peut dépendre de showDichotomySteps (anim enabled/disabled)
+                // Si anim est désactivé, on peut utiliser une stratégie plus directe (à implémenter selon les besoins)
                 const baseTemp = (prev_T0 !== null && prev_T0 > 0) ? prev_T0 : currentEpoch.t0;
                 
                 // 🔒 Stocker meteoriteCount dans window pour la vérification de priorité
@@ -1668,43 +1733,59 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     window.currentMeteoriteCount = meteoriteCount;
                 }
                 
-                // Récupérer deltaTemp pour ticTime depuis events.tic_time.deltaTemp
-                const deltaTemp_ticTime = (currentEpoch.events && currentEpoch.events.tic_time && typeof currentEpoch.events.tic_time.deltaTemp === 'number')
+                // Récupérer deltaTicTime depuis events.tic_time.deltaTemp (changement de température par ticTime)
+                const deltaTicTime_per_tic = (currentEpoch.events && currentEpoch.events.tic_time && typeof currentEpoch.events.tic_time.deltaTemp === 'number')
                     ? currentEpoch.events.tic_time.deltaTemp
                     : null;
-                
-                // Récupérer deltaTemp pour météorites depuis events.ice_meteorite.deltaTemp
-                const deltaTemp_meteorite = (currentEpoch.events && currentEpoch.events.ice_meteorite && typeof currentEpoch.events.ice_meteorite.deltaTemp === 'number')
+
+                // Récupérer deltaMeteorite depuis events.ice_meteorite.deltaTemp (changement de température par météorite)
+                const deltaMeteorite = (currentEpoch.events && currentEpoch.events.ice_meteorite && typeof currentEpoch.events.ice_meteorite.deltaTemp === 'number')
                     ? currentEpoch.events.ice_meteorite.deltaTemp
                     : null;
                 
-                // 🔒 Calculer le deltaTicTime : différence entre le ticTime actuel et le ticTime précédent
-                // Si prev_T0 existe, on part de la température finale précédente et on applique seulement le delta pour le nouveau ticTime
-                // Sinon, on applique le delta depuis t0 (première fois)
-                let deltaTicTime = 0;
-                if (prev_T0 !== null && prev_T0 > 0 && deltaTemp_ticTime !== null) {
-                    // On a une température finale précédente : on applique seulement le delta pour le nouveau ticTime
-                    // Si ticTime passe de 0 à 1, on applique -300K une fois
-                    // Si ticTime passe de 1 à 2, on applique -300K une fois de plus
-                    // Donc : deltaTicTime = 1 (on avance d'un ticTime)
-                    deltaTicTime = 1;
-                } else if (deltaTemp_ticTime !== null) {
-                    // Première fois : on applique le delta depuis t0
-                    deltaTicTime = ticTime;
+                // 🔒 CORRECTION : Si prev_T0 existe, c'est la température finale du calcul précédent
+                // qui a déjà pris en compte TOUS les effets (météorites, ticTime, etc.)
+                // Donc on ne doit PAS réappliquer les deltas, mais utiliser prev_T0 directement
+                // OU partir de t0 et appliquer les NOUVEAUX deltas seulement
+                // 
+                // Stratégie : Si prev_T0 existe, l'utiliser directement comme T0_initial_config
+                // car il représente déjà l'état actuel du système après convergence
+                // Sinon, partir de t0 et appliquer tous les deltas
+                let deltaTicTime = 0; // Déclarer en dehors du if/else pour éviter l'erreur
+                if (prev_T0 !== null && prev_T0 > 0) {
+                    // Utiliser directement prev_T0 (déjà convergé avec tous les effets)
+                    T0_initial_config = prev_T0;
+                    // Log avec format demandé (emojis)
+                    const logoConfig = '🛠';
+                    const tempC = (baseTemp - 273.15).toFixed(1);
+                    const prev_T0_str = `${prev_T0.toFixed(2)}K (${(prev_T0 - 273.15).toFixed(1)}°C)`;
+                    // deltaTicTime n'est pas utilisé quand prev_T0 est utilisé directement, mais on affiche quand même la valeur
+                    const deltaTicTime_str = deltaTicTime_per_tic !== null ? `${deltaTicTime_per_tic.toFixed(1)}K` : '0K';
+                    console.log(`${logoConfig} [T0_initial_config@calculations.js] 🌡️:${baseTemp.toFixed(2)}K (${tempC}°C), ☄️:${meteoriteCount}, 🌡️☄️:N/A, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str}, prev_T0:${prev_T0_str} (utilisé directement)`);
+                } else {
+                    // Première fois : partir de t0 et appliquer tous les deltas
+                    if (deltaTicTime_per_tic !== null) {
+                        deltaTicTime = ticTime; // Première fois : appliquer depuis t0
+                    }
+                    
+                    let adjustment = 0;
+                    if (deltaMeteorite !== null) {
+                        adjustment += deltaMeteorite * meteoriteCount;
+                    }
+                    if (deltaTicTime_per_tic !== null) {
+                        adjustment += deltaTicTime_per_tic * deltaTicTime;
+                    }
+                    T0_initial_config = baseTemp + adjustment;
+                    
+                    // Log simplifié avec format demandé (emojis)
+                    const logoConfig = '🛠';
+                    const tempC = (baseTemp - 273.15).toFixed(1);
+                    const deltaMeteorite_str = deltaMeteorite !== null ? `${deltaMeteorite.toFixed(1)}K` : 'N/A';
+                    // deltaTicTime est toujours initialisé (0 si deltaTicTime_per_tic est null)
+                    const deltaTicTime_str = deltaTicTime_per_tic !== null ? `${deltaTicTime_per_tic.toFixed(1)}K` : '0K';
+                    const prev_T0_str = prev_T0 !== null && prev_T0 > 0 ? `${prev_T0.toFixed(2)}K (${(prev_T0 - 273.15).toFixed(1)}°C)` : 'null';
+                    console.log(`${logoConfig} [T0_initial_config@calculations.js] 🌡️:${baseTemp.toFixed(2)}K (${tempC}°C), ☄️:${meteoriteCount}, 🌡️☄️:${deltaMeteorite_str}, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str}, prev_T0:${prev_T0_str}`);
                 }
-                
-                // Calculer T0_initial_config avec les deux deltas
-                // 🔒 TOUJOURS calculer T0_initial_config depuis t0 de l'époque (même sans deltaTemp)
-                // pour garantir qu'on parte de la bonne température initiale
-                let adjustment = 0;
-                if (deltaTemp_meteorite !== null) {
-                    adjustment += deltaTemp_meteorite * meteoriteCount;
-                }
-                if (deltaTemp_ticTime !== null) {
-                    adjustment += deltaTemp_ticTime * deltaTicTime;
-                }
-                T0_initial_config = baseTemp + adjustment;
-                console.log(`[T0_initial_config] baseTemp: ${baseTemp.toFixed(2)}K (${prev_T0 !== null && prev_T0 > 0 ? 'prev_T0' : 't0'}), meteoriteCount: ${meteoriteCount}, deltaTemp_meteorite: ${deltaTemp_meteorite !== null ? deltaTemp_meteorite + 'K' : 'N/A'}, deltaTemp_ticTime: ${deltaTemp_ticTime !== null ? deltaTemp_ticTime + 'K' : 'N/A'}, ticTime: ${ticTime}, deltaTicTime: ${deltaTicTime} → T0_initial_config: ${T0_initial_config.toFixed(2)}K`);
                 
                 // 🔒 Anticiper la couleur avec t0 dès le début (AVANT les calculs)
                 if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
@@ -1754,15 +1835,12 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             ? window.currentMeteoriteCount 
             : 0;
         
-        console.log(`[useT0Config] T0_initial_config: ${T0_initial_config.toFixed(2)}K, meteoriteCount: ${meteoriteCount}, prev_T0: ${prev_T0 !== null ? prev_T0.toFixed(2) : 'null'}K`);
-        
         // 🔒 Utiliser T0_initial_config si :
         // 1. Des météorites ont été ajoutées (ajustement deltaTemp)
         // 2. OU si prev_T0 est null (premier calcul de l'époque, doit partir de t0)
         if (meteoriteCount > 0 || prev_T0 === null || prev_T0 <= 0) {
             // Utiliser T0_initial_config (depuis t0 de l'époque ou avec ajustement deltaTemp)
             useT0Config = true;
-            console.log(`[useT0Config] ✅ Utilisation de T0_initial_config (${meteoriteCount > 0 ? 'avec deltaTemp' : 'depuis t0 de l\'époque'})`);
         }
     }
 
@@ -1894,20 +1972,30 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     let T0_max = Math.min(T0_max_limit, T0_initial + INITIAL_RANGE);
     let T0 = T0_initial;
     
-    // 🔒 Calculer la tolérance depuis la précision de l'époque (en K) convertie en W/m²
+    // 🔒 Calculer la tolérance depuis la précision de convergence (variable globale unique)
+    // 🔒 IMPORTANT : tolerance (convergence) ≠ precision (échantillonnage atmosphère)
+    // - tolerance : seuil de convergence pour delta_equilibre (flux_sortant - flux_entrant) en W/m²
+    // - precision : taille des échantillons d'atmosphère (delta_z_stratosphere) contrôlée par precisionFactor (FPS)
     // Relation : ΔF = 4 * σ * T³ * ΔT (dérivée de F = σ * T⁴)
-    let tolerance = 0.1; // Tolérance par défaut (W/m²)
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch && typeof currentEpoch.precision === 'number' && currentEpoch.precision > 0) {
-            const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
-            const precision_K = currentEpoch.precision; // Précision en K depuis la config
-            // Convertir en W/m² : ΔF = 4 * σ * T³ * ΔT
-            // Utiliser T0_initial comme température de référence pour la conversion
-            tolerance = 4 * STEFAN_BOLTZMANN * Math.pow(T0_initial, 3) * precision_K;
-            console.log(`[DICHOTOMIE] Précision config: ${precision_K}K → Tolérance: ${tolerance.toFixed(4)} W/m² (T_ref: ${T0_initial.toFixed(2)}K)`);
-        }
-    }
+    // Note : 1 K = 1 °C (même delta, juste décalage de 273.15), donc 0.1° = 0.1 K
+    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+    
+    // 🔒 UTILISER UNIQUEMENT la variable globale unique (seule référence)
+    // Cette variable est initialisée depuis la config UNIQUEMENT au changement d'époque (setEpoch)
+    // Si l'utilisateur change la précision, la config ne l'écrase plus
+    // La boucle principale ne relit PAS la config, elle utilise la valeur courante
+    const precision_K = typeof window !== 'undefined' && window.convergencePrecision_K !== undefined
+        ? window.convergencePrecision_K
+        : 0.1; // Fallback par défaut si pas encore initialisé
+    
+    console.log(`[DICHOTOMIE] Précision convergence: ${precision_K}K (${precision_K}°C) → Tolérance calculée depuis T_ref`);
+    
+    // Convertir la précision en K en tolérance de base en W/m² : ΔF = 4 * σ * T³ * ΔT
+    // La tolérance sera recalculée à chaque itération avec T0_current (car la sensibilité change avec T)
+    // Utiliser T0_initial comme température de référence initiale pour le log
+    const tolerance_base = 4 * STEFAN_BOLTZMANN * Math.pow(T0_initial, 3) * precision_K;
+    console.log(`[DICHOTOMIE] Précision: ${precision_K}K (${precision_K}°C) → Tolérance initiale: ${tolerance_base.toFixed(4)} W/m² (T_ref: ${T0_initial.toFixed(2)}K)`);
+    // Note : La tolérance sera recalculée à chaque itération avec T0_current pour une précision correcte
     
     const max_iterations = 20;
     let iteration = 0;
@@ -1926,6 +2014,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     }
 
     // Vérifier si on doit afficher les étapes (seulement pour les calculs interactifs)
+    // 🔒 Le bouton "anim" contrôle directement window.showDichotomySteps
     const shouldDisplaySteps = typeof window !== 'undefined' && window.showDichotomySteps;
 
     if (shouldDisplaySteps) {
@@ -1967,13 +2056,10 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     }
 
     // Calculer la courbe initiale
-    console.log(`[simulateRadiativeTransfer] 📊 Calcul de la courbe initiale - T0_initial: ${T0_initial.toFixed(2)}K`);
-    const startTime = performance.now();
     result = calculateFluxForT0(CO2_fraction, T0_initial, options);
-    const endTime = performance.now();
-    console.log(`[simulateRadiativeTransfer] ⏱️ Courbe initiale calculée en ${(endTime - startTime).toFixed(2)}ms`);
 
     // Afficher la courbe initiale (avant dichotomie) seulement si demandé
+    // 🔒 Réutiliser shouldDisplaySteps déjà calculé ci-dessus (peut avoir changé via bouton anim)
     if (shouldDisplaySteps) {
         displayDichotomyStep(CO2_fraction, T0_initial, result, 0, true, options);
     }
@@ -1994,19 +2080,14 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             const timeoutIds = [];
 
             const performDichotomy = () => {
-                console.log(`[performDichotomy] 🚀 DÉBUT dichotomie - T0_initial: ${T0_initial.toFixed(2)}K, tolerance: ${tolerance.toFixed(4)} W/m²`);
                 // Vérifier si annulé
                 if (window.cancelCalculation || isCancelled) {
-                    console.log(`[performDichotomy] ⏸️ Annulé avant démarrage`);
                     return;
                 }
 
                 let T0_current = T0_initial;
                 let iter = 0;
                 let final_result = result;
-
-                // Déclarer shouldDisplaySteps une seule fois pour toute la fonction iterate
-                const shouldDisplaySteps = typeof window !== 'undefined' && window.showDichotomySteps;
 
                 // 🔒 Initialiser les bornes pour la dichotomie classique
                 // Ces bornes seront mises à jour par la phase exponentielle ou la dichotomie classique
@@ -2019,6 +2100,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                 let exponentialIncrement = 1; // Incrément initial : 1, puis 2, 4, 8...
                 let lastFluxDiffSign = null; // Signe du flux_diff précédent pour détecter le changement
                 let previousT0 = T0_initial; // Valeur précédente de T0 pour calculer T0_min correctement
+                let previousT0_for_convergence = null; // T0 précédente pour vérifier la convergence en température (null = pas encore d'itération précédente)
 
                 const iterate = () => {
                     // Vérifier si annulé avant chaque itération
@@ -2033,6 +2115,9 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         }
                         return;
                     }
+
+                    // 🔒 Vérifier shouldDisplaySteps à chaque itération (peut changer via événement FPS)
+                    const shouldDisplaySteps = typeof window !== 'undefined' && window.showDichotomySteps;
 
                     // Mettre à jour current_T0_adjusted dans window pour que waterVaporNumberDensity puisse y accéder
                     if (typeof window !== 'undefined') {
@@ -2079,7 +2164,10 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     const planck_effective_flux = STEFAN_BOLTZMANN * Math.pow(T_effective, 4);
                     
                     // Delta aire (équilibre des courbes affichées) : différence entre les aires sous les deux courbes
-                    // Par définition de T_effective, ce delta devrait être 0 (ou très proche de 0)
+                    // ⚠️ IMPORTANT : delta_aire est TOUJOURS ~0 par définition mathématique !
+                    // T_effective est calculé depuis real_emission_flux : T_eff = (real_emission_flux / σ)^0.25
+                    // Donc planck_effective_flux = σT_eff⁴ = real_emission_flux (par construction)
+                    // delta_aire = planck_effective_flux - real_emission_flux ≈ 0 (vérification de cohérence, pas de convergence)
                     // C'est l'équilibre mentionné dans la légende "∫ ...= ∫___"
                     const delta_aire = planck_effective_flux - real_emission_flux;
                     
@@ -2087,11 +2175,36 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     // C'est CE delta qui tend vers 0 pour la convergence (équilibre énergétique global)
                     const delta_equilibre = flux_diff;
                     
+                    // 🔒 CORRECTION : Recalculer la tolérance à chaque itération avec T0_current
+                    // La sensibilité change avec la température : ΔF = 4 * σ * T³ * ΔT
+                    // À 255K, 10K = 37.6 W/m², mais à 2470K, 10K = beaucoup plus grand (≈33000 W/m²)
+                    // Il faut recalculer la tolérance avec T0_current pour une précision correcte
+                    const tolerance_current = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3) * precision_K;
+                    
                     // Delta EDS (Effet de Serre) : différence entre corps noir théorique à T0 et émission réelle
                     // Ce delta NE TEND PAS vers 0, c'est l'effet de serre (normal qu'il reste élevé)
                     // C'est la différence entre ce que la surface émet (σT0⁴) et ce qui sort réellement
                     const blackbody_flux_T0 = STEFAN_BOLTZMANN * Math.pow(T0_current, 4);
                     const delta_eds = blackbody_flux_T0 - real_emission_flux;
+                    
+                    // 🔒 CALCUL DIRECT D'AJUSTEMENT DE T0 (pour information/debug)
+                    // Relation approximative : dT/dF ≈ 1/(4σT³) où F est le flux
+                    // Pour un delta_equilibre donné, l'ajustement de T0 serait approximativement :
+                    // T0_ajusté ≈ T0 - delta_equilibre / (4σT0³)
+                    // Facteur de conversion : 4σT0³ (sensibilité de la température au flux)
+                    // ⚠️ PROTECTION : Cette formule n'est valide que pour de petits ajustements
+                    // Quand T0 est très basse, le dénominateur devient très petit et l'ajustement devient absurde
+                    let T0_adjustment_direct = 0;
+                    let T0_ajuste_theorique = T0_current;
+                    if (T0_current > 50) { // Seulement si T0 > 50K (éviter les valeurs absurdes)
+                        const sensitivity_factor = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3);
+                        if (Math.abs(sensitivity_factor) > 1e-10) { // Éviter division par zéro
+                            T0_adjustment_direct = -delta_equilibre / sensitivity_factor;
+                            // Limiter l'ajustement à ±1000K pour éviter les valeurs absurdes
+                            T0_adjustment_direct = Math.max(-1000, Math.min(1000, T0_adjustment_direct));
+                            T0_ajuste_theorique = T0_current + T0_adjustment_direct;
+                        }
+                    }
                     
                     // Signe * sqrt(abs(delta)) pour l'équilibrage (utiliser delta_equilibre pour la phase exponentielle)
                     // C'est le delta qui doit tendre vers 0, pas delta_aire (qui est toujours ~0 par définition)
@@ -2101,11 +2214,36 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     const signe_sqrt = delta_equilibre >= 0 ? 1 : -1; // Signe pour l'affichage
                     const sqrt_delta_signed = signe_sqrt * sqrt_delta;
                     
-                    // 🔒 Afficher le log avec T° au sol ET T° corps noir (courbe)
+                    // 🔒 Afficher le log en commençant par Delta équilibre (valeur utilisée pour le calcul)
                     // Delta équilibre (→0) : flux_sortant - flux_entrant (convergence énergétique globale)
-                    // Delta aire (→0) : équilibre des aires sous les courbes affichées (pointillée vs pleine)
+                    // Delta aire (→0) : équilibre des aires sous les courbes affichées (pointillée vs pleine) - TOUJOURS ~0 par définition
                     // Delta EDS : effet de serre (ne tend PAS vers 0, c'est normal)
-                    console.log(`🌡️ T° sol: ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(1)}°C) | T° corps noir: ${T_effective.toFixed(2)}K (${(T_effective - 273.15).toFixed(1)}°C) | Delta équilibre (→0): ${delta_equilibre.toFixed(4)} W/m² | Delta aire (→0): ${delta_aire.toFixed(4)} W/m² | Delta EDS: ${delta_eds.toFixed(4)} W/m² | signe×√|delta|: ${sqrt_delta_signed.toFixed(4)}`);
+                    // T0 ajusté théorique : calcul direct T0 - delta_equilibre/(4σT0³) pour référence
+                    // Tolérance actuelle : recalculée avec T0_current (change avec la température)
+                    const tolerance_status = Math.abs(delta_equilibre) <= tolerance_current ? '✅' : '⏳';
+                    
+                    // ⚠️ Vérifier si delta_equilibre est anormalement grand
+                    if (Math.abs(delta_equilibre) > 10000) {
+                        console.warn(`⚠️ [calculations.js] Delta équilibre anormalement grand: ${delta_equilibre.toFixed(2)} W/m² (flux_sortant=${final_result.total_flux.toFixed(2)} W/m², flux_entrant=${total_flux_in.toFixed(2)} W/m²)`);
+                    }
+                    
+                    console.log(`🌡️ Delta équilibre (→0): ${delta_equilibre.toFixed(4)} W/m² | T° sol: ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(1)}°C) | T° corps noir: ${T_effective.toFixed(2)}K (${(T_effective - 273.15).toFixed(1)}°C) | Delta EDS: ${delta_eds.toFixed(4)} W/m² | Tolérance: ${tolerance_current.toFixed(2)} W/m² ${tolerance_status}`);
+                    
+                    // Afficher le calcul direct seulement si l'ajustement est calculé (T0 > 50K)
+                    if (T0_current > 50 && Math.abs(T0_adjustment_direct) > 0.01) {
+                        const sensitivity_factor = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3);
+                        console.log(`   📊 Calcul direct: T0_ajusté = T0 - delta_equilibre/(4σT0³) = ${T0_current.toFixed(2)}K - ${delta_equilibre.toFixed(2)}/(4σ×${T0_current.toFixed(2)}³) = ${T0_ajuste_theorique.toFixed(2)}K (ajustement: ${T0_adjustment_direct > 0 ? '+' : ''}${T0_adjustment_direct.toFixed(2)}K, sensibilité: ${sensitivity_factor.toFixed(2)} W/m²/K)`);
+                    }
+                    
+                    // 🔒 Mettre à jour la couleur de legend-equilibre avec la température actuelle (pendant les calculs)
+                    if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function') {
+                        const tempC_current = T0_current - 273.15;
+                        const color_current = window.tempSurfaceToColor(tempC_current);
+                        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+                        if (legendEquilibre) {
+                            legendEquilibre.style.color = color_current;
+                        }
+                    }
                     
                     // 🔒 Ajouter un point à chaque cycle/phase de calcul (exponentielle ou dichotomie)
                     // Avec une pause de 0.1s pour permettre l'affichage de la courbe
@@ -2120,7 +2258,25 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     }
                     
                     // 🔒 Vérifier la convergence IMMÉDIATEMENT après le calcul (avant phase exponentielle/dichotomie)
-                    if (Math.abs(delta_equilibre) <= tolerance) {
+                    // Deux critères de convergence :
+                    // 1. Delta équilibre en W/m² : |delta_equilibre| <= tolerance_current (recalculé avec T0_current)
+                    // 2. Variation de température : |T0_current - previousT0_for_convergence| <= precision_K
+                    // Si l'un des deux est satisfait, on converge (précision en température OU en flux)
+                    // 🔒 CORRECTION : Ne pas vérifier la convergence par température à la première itération (iter === 0)
+                    // car previousT0_for_convergence = T0_initial = T0_current, donc |ΔT| = 0 toujours
+                    // Utiliser previousT0_for_convergence AVANT de le mettre à jour (pour comparer avec l'itération précédente)
+                    // previousT0_for_convergence est null à la première itération, donc on ne vérifie pas la convergence par température
+                    const delta_T_convergence = previousT0_for_convergence !== null ? Math.abs(T0_current - previousT0_for_convergence) : Infinity;
+                    const converged_by_flux = Math.abs(delta_equilibre) <= tolerance_current;
+                    // 🔒 CORRECTION : La convergence par température est un critère secondaire
+                    // Elle ne doit se déclencher QUE si l'équilibre radiatif est déjà atteint (ou presque)
+                    // Si delta_equilibre est encore élevé, on continue même si la température ne bouge plus
+                    const converged_by_temp = previousT0_for_convergence !== null && delta_T_convergence <= precision_K && Math.abs(delta_equilibre) <= tolerance_current * 10; // Seulement si on a une valeur précédente ET que l'équilibre est presque atteint
+                    
+                    if (converged_by_flux || converged_by_temp) {
+                        if (converged_by_temp && !converged_by_flux) {
+                            console.log(`[DICHOTOMIE] ✅ Convergence par précision température: |ΔT| = ${delta_T_convergence.toFixed(2)}K <= ${precision_K}K (delta_equilibre: ${delta_equilibre.toFixed(2)} W/m², tolerance: ${tolerance_current.toFixed(2)} W/m²)`);
+                        }
                         logCalculationPhase('DICHOTOMIE CONVERGENCE', {
                             T0_final: T0_current.toFixed(2)
                         });
@@ -2146,7 +2302,8 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                     
                     // 🔒 Phase exponentielle : activer si delta_equilibre != 0 (on n'est pas à l'équilibre)
                     // Si c'est la première itération et qu'on n'est pas à l'équilibre, activer la phase exponentielle
-                    if (iter === 0 && Math.abs(delta_equilibre) > tolerance) {
+                    // Utiliser tolerance_current (recalculé avec T0_current) au lieu de tolerance (basé sur T0_initial)
+                    if (iter === 0 && Math.abs(delta_equilibre) > tolerance_current) {
                         exponentialPhase = true;
                         // T_min ou T_max = T0_current (point de départ)
                         if (delta_equilibre < 0) {
@@ -2167,12 +2324,19 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         previousT0 = T0_current; // Initialiser previousT0
                         // Tester la nouvelle température immédiatement
                         T0_current = (delta_equilibre < 0) ? T0_max : T0_min;
-                        iter++;
+                        // 🔒 Recalculer final_result avec la nouvelle T0_current avant de continuer
+                        final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
+                        // Recalculer aussi delta_aire pour la vérification de sortie
+                        const real_emission_flux_new = final_result.total_flux;
+                        const T_effective_new = Math.pow(real_emission_flux_new / STEFAN_BOLTZMANN, 0.25);
+                        const planck_effective_flux_new = STEFAN_BOLTZMANN * Math.pow(T_effective_new, 4);
+                        const delta_aire_new = planck_effective_flux_new - real_emission_flux_new;
+                        // Continuer normalement (le dessin sera fait dans la boucle principale)
                         if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
                             window.incrementTimeline();
                         }
-                        setTimeout(iterate, 0);
-                        return; // Sortir de cette itération, la suivante utilisera la nouvelle T
+                        // Ne pas faire setTimeout ici, continuer normalement pour passer par le dessin
+                        // (pas de return, on continue dans la boucle)
                     }
                     
                     // 🔒 Phase exponentielle : recherche rapide, détection du changement de signe
@@ -2193,13 +2357,14 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                             T0_max = T0_current + new_delta0;
                             T0_current = T0_max; // Tester le nouveau T_max
                             lastFluxDiffSign = -1;
-                            // Continuer l'itération avec le nouveau T0_current
-                            iter++;
+                            // 🔒 Recalculer final_result avec la nouvelle T0_current avant de continuer
+                            final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
+                            // Continuer normalement (le dessin sera fait dans la boucle principale)
                             if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
                                 window.incrementTimeline();
                             }
-                            setTimeout(iterate, 0);
-                            return; // Sortir de cette itération, la suivante utilisera le nouveau T0_current
+                            // Ne pas faire setTimeout ici, continuer normalement pour passer par le dessin
+                            // (pas de return, on continue dans la boucle)
                         } else if (delta_equilibre > 0) {
                             // On émet trop : continuer à DIMINUER T
                             previousT0 = T0_current; // Sauvegarder la valeur précédente (T° où flux_diff > 0)
@@ -2214,50 +2379,85 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                             T0_min = T0_current - new_delta0;
                             T0_current = T0_min; // Tester le nouveau T_min
                             lastFluxDiffSign = 1;
-                            // Continuer l'itération avec le nouveau T0_current
-                            iter++;
+                            // 🔒 Recalculer final_result avec la nouvelle T0_current avant de continuer
+                            final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
+                            // Continuer normalement (le dessin sera fait dans la boucle principale)
                             if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
                                 window.incrementTimeline();
                             }
-                            setTimeout(iterate, 0);
-                            return; // Sortir de cette itération, la suivante utilisera le nouveau T0_current
-                        } else if (Math.abs(delta_equilibre) <= tolerance) {
-                            // On a atteint l'équilibre pendant la phase exponentielle
-                            exponentialPhase = false;
-                            // Convergence atteinte
-                            final_T0 = T0_current;
-                            result = final_result;
-                            return;
-                        } else if ((delta_equilibre < 0 && lastFluxDiffSign > 0) || (delta_equilibre > 0 && lastFluxDiffSign < 0)) {
-                            // Changement de signe détecté (négatif -> positif) : passer à la dichotomie classique
-                            exponentialPhase = false;
-                            // Initialiser les bornes pour la dichotomie
-                            // T0_current est la première valeur où flux_diff > 0 (on a dépassé)
-                            // previousT0 est la dernière valeur où flux_diff < 0 (juste avant de dépasser)
-                            T0_max = T0_current; // Première valeur où flux_diff > 0
-                            T0_min = previousT0; // Dernière valeur où flux_diff < 0
-                            // 🔒 Utiliser le flux_diff précédent (négatif) sauvegardé
-                            window.flux_diff_min = (typeof window !== 'undefined' && window.previousFluxDiff !== undefined) 
+                            // Ne pas faire setTimeout ici, continuer normalement pour passer par le dessin
+                            // (pas de return, on continue dans la boucle)
+                        } else {
+                            // Vérifier la convergence par température aussi
+                            // 🔒 CORRECTION : Ne pas vérifier la convergence par température à la première itération
+                            const delta_T_exp = Math.abs(T0_current - previousT0_for_convergence);
+                            const converged_by_temp_exp = iter > 0 && delta_T_exp <= precision_K; // Seulement après la première itération
+                            const converged_by_flux_exp = Math.abs(delta_equilibre) <= tolerance_current;
+                            
+                            if (converged_by_flux_exp || converged_by_temp_exp) {
+                                if (converged_by_temp_exp && !converged_by_flux_exp) {
+                                    console.log(`[DICHOTOMIE] ✅ Convergence par précision température (phase exp): |ΔT| = ${delta_T_exp.toFixed(2)}K <= ${precision_K}K`);
+                                }
+                                // On a atteint l'équilibre pendant la phase exponentielle
+                                exponentialPhase = false;
+                                // Convergence atteinte
+                                final_T0 = T0_current;
+                                result = final_result;
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // 🔒 Vérifier le changement de signe après la phase exponentielle
+                    if (exponentialPhase && ((delta_equilibre < 0 && lastFluxDiffSign > 0) || (delta_equilibre > 0 && lastFluxDiffSign < 0))) {
+                        // Changement de signe détecté (négatif -> positif) : passer à la dichotomie classique
+                        exponentialPhase = false;
+                        // Initialiser les bornes pour la dichotomie
+                        // T0_current est la première valeur où flux_diff > 0 (on a dépassé)
+                        // previousT0 est la dernière valeur où flux_diff < 0 (juste avant de dépasser)
+                        T0_max = T0_current; // Première valeur où flux_diff > 0
+                        T0_min = previousT0; // Dernière valeur où flux_diff < 0
+                        // 🔒 Utiliser le flux_diff précédent (négatif) sauvegardé
+                        if (typeof window !== 'undefined') {
+                            window.flux_diff_min = window.previousFluxDiff !== undefined 
                                 ? window.previousFluxDiff 
                                 : -1e9; // Valeur négative (dernière où flux_diff < 0)
                             window.flux_diff_max = flux_diff; // Valeur actuelle (positive)
-                            // 🔒 Calculer T0_current = (T0_min + T0_max) / 2 pour la dichotomie classique
-                            T0_current = (T0_min + T0_max) / 2;
-                            // Recalculer avec le nouveau T0_current avant de continuer
-                            iter++;
-                            if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
-                                window.incrementTimeline();
-                            }
-                            setTimeout(iterate, 0);
-                            return; // Sortir pour recalculer avec T0_current = (T_min + T_max) / 2
-                        } else {
-                            // Premier calcul ou flux_diff === 0 (ne devrait pas arriver)
-                            lastFluxDiffSign = currentFluxDiffSign;
                         }
+                        // 🔒 Calculer T0_current = (T0_min + T0_max) / 2 pour la dichotomie classique
+                        T0_current = (T0_min + T0_max) / 2;
+                        // 🔒 Recalculer final_result avec la nouvelle T0_current avant de continuer
+                        final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
+                        // Continuer normalement (le dessin sera fait dans la boucle principale)
+                        if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
+                            window.incrementTimeline();
+                        }
+                        // Ne pas faire setTimeout ici, continuer normalement pour passer par le dessin
+                        // (pas de return, on continue dans la boucle)
+                    }
+                    
+                    // Mettre à jour lastFluxDiffSign pour la détection de changement de signe
+                    if (!exponentialPhase || ((delta_equilibre >= 0 && lastFluxDiffSign <= 0) || (delta_equilibre <= 0 && lastFluxDiffSign >= 0))) {
+                        lastFluxDiffSign = delta_equilibre < 0 ? -1 : (delta_equilibre > 0 ? 1 : 0);
                     }
 
                     // 🔒 Vérifier la convergence AVANT de continuer (peu importe la phase)
-                    if (Math.abs(delta_equilibre) <= tolerance) {
+                    // Deux critères de convergence :
+                    // 1. Delta équilibre en W/m² : |delta_equilibre| <= tolerance_current (recalculé avec T0_current)
+                    // 2. Variation de température : |T0_current - previousT0_for_convergence| <= precision_K
+                    // 🔒 CORRECTION : Ne pas vérifier la convergence par température à la première itération
+                    // previousT0_for_convergence est null à la première itération, donc on ne vérifie pas la convergence par température
+                    const delta_T_convergence_check = previousT0_for_convergence !== null ? Math.abs(T0_current - previousT0_for_convergence) : Infinity;
+                    const converged_by_flux_check = Math.abs(delta_equilibre) <= tolerance_current;
+                    // 🔒 CORRECTION : La convergence par température est un critère secondaire
+                    // Elle ne doit se déclencher QUE si l'équilibre radiatif est déjà atteint (ou presque)
+                    // Si delta_equilibre est encore élevé, on continue même si la température ne bouge plus
+                    const converged_by_temp_check = previousT0_for_convergence !== null && delta_T_convergence_check <= precision_K && Math.abs(delta_equilibre) <= tolerance_current * 10; // Seulement si on a une valeur précédente ET que l'équilibre est presque atteint
+                    
+                    if (converged_by_flux_check || converged_by_temp_check) {
+                        if (converged_by_temp_check && !converged_by_flux_check) {
+                            console.log(`[DICHOTOMIE] ✅ Convergence par précision température: |ΔT| = ${delta_T_convergence_check.toFixed(2)}K <= ${precision_K}K (delta_equilibre: ${delta_equilibre.toFixed(2)} W/m², tolerance: ${tolerance_current.toFixed(2)} W/m²)`);
+                        }
                         logCalculationPhase('DICHOTOMIE CONVERGENCE', {
                             T0_final: T0_current.toFixed(2)
                         });
@@ -2303,9 +2503,81 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         T0_current: T0_current.toFixed(2)
                     });
 
+                    // 🔒 CASSER LA DOUBLE BOUCLE : incrémenter, dessiner, puis vérifier conditions
+                    iter++;
+                    
                     // Afficher chaque étape de la dichotomie seulement si demandé
-                    if (shouldDisplaySteps && !isCancelled) {
-                        displayDichotomyStep(CO2_fraction, T0_current, final_result, iter + 1, false, options);
+                    // 🔒 Vérifier shouldDisplaySteps à chaque itération (peut changer via bouton anim)
+                    const shouldDisplayStepsIter = typeof window !== 'undefined' && window.showDichotomySteps;
+                    
+                    // 🔒 Vérifier conditions de sortie AVANT de dessiner (pour éviter de dessiner inutilement)
+                    // 🔒 IMPORTANT : tolerance_current est pour la convergence (delta_equilibre), pas pour delta_aire
+                    // delta_aire est toujours ~0 par définition (T_effective est calculé depuis total_flux)
+                    // On utilise delta_equilibre pour la convergence, pas delta_aire
+                    // tolerance_current est recalculé à chaque itération avec T0_current pour une précision correcte
+                    // Deux critères de convergence : flux OU température
+                    // 🔒 CORRECTION : Ne pas vérifier la convergence par température à la première itération
+                    // Utiliser previousT0_for_convergence AVANT de le mettre à jour (pour comparer avec l'itération précédente)
+                    // previousT0_for_convergence est null à la première itération, donc on ne vérifie pas la convergence par température
+                    const delta_T_final = previousT0_for_convergence !== null ? Math.abs(T0_current - previousT0_for_convergence) : Infinity;
+                    const converged_by_flux_final = Math.abs(delta_equilibre) < tolerance_current;
+                    // 🔒 CORRECTION : La convergence par température est un critère secondaire
+                    // Elle ne doit se déclencher QUE si l'équilibre radiatif est déjà atteint (ou presque)
+                    // Si delta_equilibre est encore élevé, on continue même si la température ne bouge plus
+                    const converged_by_temp_final = previousT0_for_convergence !== null && delta_T_final <= precision_K && Math.abs(delta_equilibre) <= tolerance_current * 10; // Seulement si on a une valeur précédente ET que l'équilibre est presque atteint
+                    
+                    if (iter > 20 || converged_by_flux_final || converged_by_temp_final) {
+                        // Condition de sortie atteinte
+                        if (iter > 20) {
+                            console.log('[calculations.js] ⚠️ Maximum d\'itérations atteint (20)');
+                        } else if (converged_by_temp_final && !converged_by_flux_final) {
+                            console.log(`[calculations.js] ✅ Convergence par précision température: |ΔT| = ${delta_T_final.toFixed(2)}K <= ${precision_K}K (delta_equilibre: ${delta_equilibre.toFixed(2)} W/m², tolerance: ${tolerance_current.toFixed(2)} W/m²)`);
+                        } else {
+                            console.log(`[calculations.js] ✅ Convergence atteinte (delta_equilibre: ${Math.abs(delta_equilibre).toFixed(4)} < tolerance: ${tolerance_current.toFixed(4)} W/m² à T=${T0_current.toFixed(2)}K)`);
+                        }
+                        
+                        logCalculationPhase('DICHOTOMIE CONVERGENCE', {
+                            T0_final: T0_current.toFixed(2)
+                        });
+
+                        // Convergence atteinte : recalculer avec spectre complet pour précision finale
+                        const final_options = { ...options, fullSpectre: true };
+                        final_result = calculateFluxForT0(CO2_fraction, T0_current, final_options);
+
+                        // Déclencher un événement de convergence
+                        if (typeof window !== 'undefined') {
+                            window.calculationConverged = true;
+                            if (window.dispatchEvent) {
+                                window.dispatchEvent(new CustomEvent('calculationConverged', {
+                                    detail: { T0: T0_current, iteration: iter }
+                                }));
+                            }
+                        }
+                        if (!isCancelled) {
+                            finalizeResults(final_result, T0_current, CO2_fraction, resolve);
+                        }
+                        return;
+                    }
+                    
+                    // Mettre à jour previousT0_for_convergence pour la prochaine itération (APRÈS vérification de convergence)
+                    // Si on continue, on met à jour pour la prochaine comparaison
+                    previousT0_for_convergence = T0_current;
+                    
+                    // 🔒 Dessiner après avoir vérifié qu'on continue (utiliser requestAnimationFrame pour laisser le navigateur rendre)
+                    if (shouldDisplayStepsIter && !isCancelled) {
+                        displayDichotomyStep(CO2_fraction, T0_current, final_result, iter, false, options);
+                        
+                        // 🔒 Utiliser requestAnimationFrame pour laisser le navigateur dessiner avant de continuer
+                        // Double RAF pour s'assurer que le rendu est fait
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                // Continuer après que le navigateur ait eu le temps de rendre
+                                setTimeout(() => {
+                                    iterate();
+                                }, 50); // Petit délai supplémentaire pour laisser le temps de rendre
+                            });
+                        });
+                        return; // Sortir pour laisser le temps de rendre
                     }
 
                     // Mettre à jour les labels du flux pendant le calcul
@@ -2338,32 +2610,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         });
                     }
 
-                    // 🔒 Vérification de convergence déjà faite plus haut (avant la dichotomie)
-                    // Cette vérification est maintenant redondante mais conservée pour sécurité
-                    if (Math.abs(flux_diff) < tolerance) {
-                        logCalculationPhase('DICHOTOMIE CONVERGENCE', {
-                            T0_final: T0_current.toFixed(2)
-                        });
-
-                        // Convergence atteinte : recalculer avec spectre complet pour précision finale
-                        const final_options = { ...options, fullSpectre: true };
-                        final_result = calculateFluxForT0(CO2_fraction, T0_current, final_options);
-
-                        // Déclencher un événement de convergence pour permettre l'augmentation de précision
-                        if (typeof window !== 'undefined') {
-                            window.calculationConverged = true;
-                            // Déclencher un événement personnalisé
-                            if (window.dispatchEvent) {
-                                window.dispatchEvent(new CustomEvent('calculationConverged', {
-                                    detail: { T0: T0_current, iteration: iter + 1 }
-                                }));
-                            }
-                        }
-                        if (!isCancelled) {
-                            finalizeResults(final_result, T0_current, CO2_fraction, resolve);
-                        }
-                        return;
-                    }
+                    // 🔒 Vérification de convergence déjà faite plus haut (après incrément et dessin)
 
                     if (flux_diff > 0) {
                         // Flux trop élevé, diminuer T0
@@ -2430,7 +2677,6 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
                         }
                     }
 
-                    iter++;
                     // Incrémenter le temps à chaque itération de dichotomie
                     if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
                         window.incrementTimeline();
@@ -2490,13 +2736,17 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
             const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
             const flux_diff = result.total_flux - solar_flux_absorbed;
 
+            // 🔒 CORRECTION : Recalculer la tolérance avec T0 actuel (mode synchrone)
+            // La sensibilité change avec la température : ΔF = 4 * σ * T³ * ΔT
+            const tolerance_sync = 4 * STEFAN_BOLTZMANN * Math.pow(T0, 3) * precision_K;
+
             // 🔒 DÉSACTIVÉ : Ne plus incrémenter le temps à chaque itération de dichotomie
             // L'incrémentation se fait uniquement lors des clics sur boutons (météorite glace, etc.)
             // if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
             //     window.incrementTimeline();
             // }
 
-            if (Math.abs(flux_diff) < tolerance) {
+            if (Math.abs(flux_diff) < tolerance_sync) {
                 // Convergence atteinte : recalculer avec spectre complet pour précision finale
                 const final_options = { ...options, fullSpectre: true };
                 result = calculateFluxForT0(CO2_fraction, T0, final_options);
@@ -2579,6 +2829,13 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
 
 // Fonction pour finaliser les résultats (mode asynchrone)
 function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
+    const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    console.log(`${logo} [finalizeResults@calculations.js] T0=${final_T0?.toFixed(2) || 'N/A'}K flux=${final_result?.total_flux?.toFixed(2) || 'N/A'}W/m²`);
+    // 🔒 Réactiver l'affichage du spectre à la fin des calculs (même si FPS était bas pendant)
+    if (typeof window !== 'undefined') {
+        window.showSpectralBackground = true;
+    }
+    
     // Cacher l'overlay de calcul
     if (typeof document !== 'undefined') {
         const overlay = document.getElementById('calculation-overlay');
@@ -2723,11 +2980,22 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         temp_surface_c: final_T0 - 273.15 // 🔒 Température de surface (°C) - nécessaire pour updateH2OLevelDirect
     };
 
-    // Mettre à jour la visualisation spectrale avant de résoudre
+    // 🔒 Mettre à jour la visualisation spectrale avant de résoudre
+    // Forcer la précision maximale (1px) à la fin des calculs si pas déjà fait
+    if (typeof window !== 'undefined') {
+        // Réactiver l'affichage du fond spectral (au cas où il aurait été désactivé)
+        window.showSpectralBackground = true;
+        // Forcer la précision maximale (1px) pour le recalcul final
+        window.spectralConverged = true;
+        window.spectralPrecisionTarget = 'max';
+    }
+    
     if (typeof window !== 'undefined' && typeof window.updateSpectralVisualization === 'function') {
+        // 🔒 Utiliser un délai plus long pour s'assurer que updatePlot a fini
         setTimeout(() => {
             const canvas = document.getElementById('spectral-visualization');
             if (canvas) {
+                // 🔒 FORCER la visibilité du canvas avec !important
                 canvas.style.setProperty('display', 'block', 'important');
                 canvas.style.setProperty('visibility', 'visible', 'important');
                 canvas.style.setProperty('opacity', '1', 'important');
@@ -2740,8 +3008,28 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
                 lambda_range: lambda_range,
                 z_range: z_range
             };
+            // 🔒 S'assurer que showSpectralBackground est toujours true avant de mettre à jour
+            if (typeof window !== 'undefined') {
+                window.showSpectralBackground = true;
+            }
+            // 🔒 Recalculer avec précision maximale (1px) à la fin
             window.updateSpectralVisualization(spectralData);
-        }, 150);
+            
+            // 🔒 Vérifier après un court délai que le canvas est toujours visible
+            setTimeout(() => {
+                const canvasCheck = document.getElementById('spectral-visualization');
+                if (canvasCheck && (canvasCheck.style.display === 'none' || canvasCheck.style.visibility === 'hidden' || canvasCheck.style.opacity === '0')) {
+                    console.warn('[finalizeResults] ⚠️ Canvas spectral caché après mise à jour, réactivation...');
+                    canvasCheck.style.setProperty('display', 'block', 'important');
+                    canvasCheck.style.setProperty('visibility', 'visible', 'important');
+                    canvasCheck.style.setProperty('opacity', '1', 'important');
+                    // Redessiner avec les mêmes données
+                    if (typeof window.updateSpectralVisualization === 'function') {
+                        window.updateSpectralVisualization(spectralData);
+                    }
+                }
+            }, 300);
+        }, 250); // Délai plus long pour laisser updatePlot finir
     }
 
     resolve(final_result_obj);
@@ -2749,6 +3037,8 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
 
 // Fonction pour finaliser les résultats (mode synchrone)
 function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction) {
+    const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    console.log(`${logo} [finalizeResultsSync@calculations.js] T0=${T0?.toFixed(2) || 'N/A'}K emitted=${emitted_flux?.toFixed(2) || 'N/A'}W/m² absorbed=${absorbed_flux?.toFixed(2) || 'N/A'}W/m²`);
     // Calculer le flux total au sommet de l'atmosphère
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
 
@@ -2838,6 +3128,39 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     // Log EDS et T° finale
     console.log(`🔥 EDS: ${eds.toFixed(1)} W/m²`);
     console.log(`🌡️ T° finale: ${T0.toFixed(2)}K (${(T0 - 273.15).toFixed(1)}°C)`);
+
+    // 🔒 Mettre à jour la visualisation spectrale (mode synchrone)
+    // Forcer la précision maximale (1px) à la fin des calculs si pas déjà fait
+    if (typeof window !== 'undefined') {
+        // Réactiver l'affichage du fond spectral (au cas où il aurait été désactivé)
+        window.showSpectralBackground = true;
+        // Forcer la précision maximale (1px) pour le recalcul final
+        window.spectralConverged = true;
+        window.spectralPrecisionTarget = 'max';
+        
+        // Mettre à jour le fond spectral avec les données finales
+        if (typeof window.updateSpectralVisualization === 'function') {
+            // Utiliser setTimeout pour laisser le DOM se mettre à jour (même en mode synchrone)
+            setTimeout(() => {
+                const canvas = document.getElementById('spectral-visualization');
+                if (canvas) {
+                    canvas.style.setProperty('display', 'block', 'important');
+                    canvas.style.setProperty('visibility', 'visible', 'important');
+                    canvas.style.setProperty('opacity', '1', 'important');
+                    canvas.style.setProperty('z-index', '1', 'important');
+                    canvas.style.setProperty('position', 'absolute', 'important');
+                }
+                // Créer un objet avec les données nécessaires pour la visualisation
+                const spectralData = {
+                    upward_flux: upward_flux,
+                    lambda_range: lambda_range,
+                    z_range: z_range
+                };
+                // 🔒 Recalculer avec précision maximale (1px) à la fin
+                window.updateSpectralVisualization(spectralData);
+            }, 150);
+        }
+    }
 
     return {
         lambda_range: lambda_range,

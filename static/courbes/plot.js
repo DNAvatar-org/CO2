@@ -1688,13 +1688,26 @@ if (typeof window !== 'undefined' && window.addEventListener) {
 
 // Fonction pour créer la visualisation spectrale
 window.updateSpectralVisualization = function (data) {
-    // Ne pas actualiser pendant les calculs de dichotomie pour améliorer les performances
-    if (typeof window !== 'undefined' && window.calculationInProgress) {
-        return; // Ignorer les mises à jour pendant la dichotomie
+    // 🔒 CORRECTION : Le canvas doit TOUJOURS être visible
+    // showSpectralBackground contrôle seulement si on redessine ou non (pas la visibilité)
+    const canvas = document.getElementById('spectral-visualization');
+    if (!canvas) {
+        return;
+    }
+    
+    // 🔒 FORCER la visibilité du canvas (toujours visible, même si showSpectralBackground = false)
+    // Le fond spectral doit toujours être visible, juste pas redessiné entre les calculs si pas anim
+    canvas.style.setProperty('display', 'block', 'important');
+    canvas.style.setProperty('visibility', 'visible', 'important');
+    canvas.style.setProperty('opacity', '1', 'important');
+    
+    // 🔒 showSpectralBackground contrôle seulement le redessin, pas la visibilité
+    // Si false, on ne redessine pas (mais le canvas reste visible avec les dernières données)
+    if (typeof window !== 'undefined' && window.showSpectralBackground === false) {
+        return; // Ne pas redessiner si FPS trop bas ou anim désactivé (mais canvas reste visible)
     }
 
-    const canvas = document.getElementById('spectral-visualization');
-    if (!canvas || !data || !data.upward_flux || !data.lambda_range || !data.z_range) {
+    if (!data || !data.upward_flux || !data.lambda_range || !data.z_range) {
         return;
     }
 
@@ -1817,6 +1830,14 @@ window.updateSpectralVisualization = function (data) {
 };
 
 function drawSpectralVisualization(canvas, data) {
+    // 🔒 CORRECTION : showSpectralBackground contrôle seulement le redessin, pas la visibilité
+    // Le canvas doit toujours être visible, même si showSpectralBackground = false
+    // Si false, on ne redessine pas (mais le canvas reste visible avec les dernières données)
+    if (typeof window !== 'undefined' && window.showSpectralBackground === false) {
+        // Ne pas redessiner si FPS trop bas ou anim désactivé (mais canvas reste visible)
+        return;
+    }
+    
     const ctx = canvas.getContext('2d');
 
     // Utiliser la taille réelle du canvas visible à l'écran (pas une taille fixe)

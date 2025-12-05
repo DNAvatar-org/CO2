@@ -170,7 +170,7 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
             };
         } else {
             // Température >= 0°C sans atmosphère : pas de glace possible (sublimation directe)
-            return { vapor_fraction: 0, liquid_fraction: 0, ice_fraction: 0, max_vapor_fraction: 0, air_density: 0 };
+        return { vapor_fraction: 0, liquid_fraction: 0, ice_fraction: 0, max_vapor_fraction: 0, air_density: 0 };
         }
     }
 

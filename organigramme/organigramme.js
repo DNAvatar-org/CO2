@@ -12,6 +12,22 @@
 
 // Variables globales pour l'état des boutons (sélectionnés par défaut)
 if (typeof window !== 'undefined') {
+    // 🔒 VARIABLES GLOBALES UNIQUES : Seule référence pour l'état des boutons EDS
+    // Ces variables sont mises à jour UNIQUEMENT au clic sur les boutons
+    // Elles sont utilisées dans TOUS les calculs et logs
+    window.isCO2_eds = true;
+    window.isCH4_eds = true;
+    window.isH2O_eds = true;
+    window.isAlbedo = true;
+    
+    // 🔒 VARIABLES GLOBALES UNIQUES : Précision de convergence et état anim
+    // Initialisées depuis la config UNIQUEMENT au changement d'époque (setEpoch)
+    // Mises à jour UNIQUEMENT quand l'utilisateur change les boutons UI
+    // La boucle principale utilise ces valeurs, ne relit PAS la config
+    window.convergencePrecision_K = 0.1; // Précision de convergence en K (par défaut 0.1°)
+    window.isAnim = true; // État du bouton anim (par défaut activé)
+    
+    // Variables legacy (à supprimer progressivement, gardées pour compatibilité temporaire)
     window.useCO2 = true;
     window.useCH4 = true;
     window.useH2O = true;
@@ -814,7 +830,7 @@ if (typeof window !== 'undefined') {
     window.updatePlanetLighting = updatePlanetLighting;
 }
 
-function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4, strokeStyle = 'solid', targetContainer = null, planetEffect = false) {
+function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right = [], top = [], bottom = [], tooltip = null, radiationOptions = null, rectangleOptions = null, fillImage = null, nodeId = null, zIndex = null, logoScale = 1.4, logoOffsetY = 0, strokeSize = 4, strokeStyle = 'solid', targetContainer = null, planetEffect = false, align = null) {
     // Utiliser le container fourni ou le flux-diagram par défaut
     const container = targetContainer || document.getElementById('flux-diagram');
 
@@ -910,7 +926,8 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
     const circleBg = document.createElement('div');
     circleBg.className = 'flux-circle-bg';
     // Vérifier si c'est une image pour ajuster la taille avec logoScale
-    const isImage = logo && (logo.endsWith('.svg') || logo.endsWith('.png'));
+    // 🔒 CORRECTION : Vérifier que logo est une string avant d'appeler endsWith (peut être un tableau)
+    const isImage = logo && typeof logo === 'string' && (logo.endsWith('.svg') || logo.endsWith('.png'));
     // Pour les images sans cercle visible, ajuster la taille du cercle avec logoScale
     const circleSize = hasCircle ? (radius * 2) : (isImage ? (radius * 2 * logoScale) : (radius * 2));
     circleBg.style.width = circleSize + 'px';
@@ -990,16 +1007,52 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
         // Wrapper le logo dans un span pour appliquer l'offset sans bouger le cercle
         const logoSpan = document.createElement('span');
         logoSpan.style.display = 'flex';
-        logoSpan.style.alignItems = 'center';
-        logoSpan.style.justifyContent = 'center';
+        // 🔒 Gérer l'alignement : 'zorder' = centrer verticalement (flex-direction: column), sinon centrer normalement
+        if (align === 'zorder') {
+            logoSpan.style.flexDirection = 'column';
+            logoSpan.style.alignItems = 'center';
+            logoSpan.style.justifyContent = 'center';
+        } else {
+            logoSpan.style.alignItems = 'center';
+            logoSpan.style.justifyContent = 'center';
+        }
         logoSpan.style.width = '100%';
         logoSpan.style.height = '100%';
         logoSpan.style.zIndex = Z_NODE_INTERNAL.LOGO;
 
         // isImage est déjà défini plus haut (ligne 376)
 
+        // 🔒 Gérer les logos en tableau (ex: ['🌞', { text: '...', dataId: '...' }])
+        // Le parser ne doit PAS modifier le contenu des logos (sauf pour les époques où c'est nécessaire)
+        // 🔒 INVERSER l'ordre d'affichage : le dernier élément du tableau est affiché en premier (en haut)
+        if (Array.isArray(logo)) {
+            // Parcourir le tableau à l'envers pour que le texte soit au-dessus de l'emoji
+            for (let i = logo.length - 1; i >= 0; i--) {
+                const logoItem = logo[i];
+                if (typeof logoItem === 'string') {
+                    // C'est un emoji/texte simple
+                    const emojiSpan = document.createElement('span');
+                    emojiSpan.textContent = logoItem;
+                    emojiSpan.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+                    emojiSpan.style.display = 'block';
+                    emojiSpan.style.lineHeight = '1';
+                    logoSpan.appendChild(emojiSpan);
+                } else if (typeof logoItem === 'object' && logoItem.text !== undefined) {
+                    // C'est un objet { text, dataId }
+                    const textSpan = document.createElement('span');
+                    textSpan.innerHTML = logoItem.text; // Utiliser innerHTML pour supporter HTML (ex: <sup>)
+                    textSpan.style.display = 'block';
+                    textSpan.style.lineHeight = '1';
+                    textSpan.style.fontSize = '0.4em'; // Plus petit que l'emoji
+                    if (logoItem.dataId) {
+                        textSpan.setAttribute('data-id', logoItem.dataId);
+                        textSpan.className = 'flux-label'; // Pour que updateFluxLabels puisse le mettre à jour
+                    }
+                    logoSpan.appendChild(textSpan);
+                }
+            }
+        } else if (isImage) {
         // Si le logo est un fichier image (SVG, PNG, etc.)
-        if (isImage) {
             if (planetEffect) {
                 // Log supprimé (non essentiel)
                 // Utiliser Three.js pour l'effet planète avec rotation et éclairage
@@ -1104,12 +1157,13 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             }
             // Pour les images, logoScale est déjà appliqué via circleSize (ligne 377)
             // logoSpan reste à 100% de circleBg, donc l'image s'adapte automatiquement
-        } else {
-            // Sinon c'est un emoji/texte
+        } else if (!Array.isArray(logo)) {
+            // Sinon c'est un emoji/texte simple (pas un tableau)
             logoSpan.textContent = logo;
             // Appliquer les polices emoji standard aux logos
             logoSpan.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
         }
+        // Si logo est un tableau, il a déjà été traité ci-dessus
 
         // Appliquer logoOffsetY uniquement aux emojis (pas aux images)
         // Le patch pour descendre les emojis ne doit pas s'appliquer aux images
@@ -1149,16 +1203,31 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     parentCell.classList.add('checked');
                 }
 
-                // Mettre à jour les variables globales et les couleurs
+                // Mettre à jour les variables globales UNIQUES et les couleurs
                 const cellId = parentCell.id;
-                let varName = null;
-                if (cellId === 'cell-co2') varName = 'useCO2';
-                else if (cellId === 'cell-methane') varName = 'useCH4';
-                else if (cellId === 'cell-h2o') varName = 'useH2O';
-                else if (cellId === 'cell-albedo-btn') varName = 'useAlbedo';
+                let edsVarName = null;
+                let legacyVarName = null;
+                if (cellId === 'cell-co2') {
+                    edsVarName = 'isCO2_eds';
+                    legacyVarName = 'useCO2';
+                } else if (cellId === 'cell-methane') {
+                    edsVarName = 'isCH4_eds';
+                    legacyVarName = 'useCH4';
+                } else if (cellId === 'cell-h2o') {
+                    edsVarName = 'isH2O_eds';
+                    legacyVarName = 'useH2O';
+                } else if (cellId === 'cell-albedo-btn') {
+                    edsVarName = 'isAlbedo';
+                    legacyVarName = 'useAlbedo';
+                }
 
-                if (varName && typeof window !== 'undefined') {
-                    window[varName] = !isChecked;
+                // 🔒 Mettre à jour UNIQUEMENT les variables globales uniques (seule référence)
+                if (edsVarName && typeof window !== 'undefined') {
+                    window[edsVarName] = !isChecked;
+                    // Garder aussi les variables legacy pour compatibilité temporaire
+                    if (legacyVarName) {
+                        window[legacyVarName] = !isChecked;
+                    }
                 }
 
                 // Mettre à jour la classe selected
@@ -2552,10 +2621,18 @@ cellOrder.forEach(nodeId => {
                 // Log supprimé (non essentiel)
             }
             
+            // 🔒 PROTECTION : Ne pas parser les logos en tableau (ils contiennent { text, dataId } qui ne doivent pas être modifiés)
+            // Le parser ne doit modifier que les logos simples (string) qui contiennent des expressions comme {$ticTime}
             let interpretedLogo = epochConfig.logo;
             if (typeof window !== 'undefined' && typeof window.interpretConfigValue === 'function') {
-                // Log supprimé (non essentiel)
-                interpretedLogo = window.interpretConfigValue(epochConfig.logo);
+                // Ne parser que si c'est une string (pas un tableau ni un objet)
+                if (typeof epochConfig.logo === 'string') {
+                    // Log supprimé (non essentiel)
+                    interpretedLogo = window.interpretConfigValue(epochConfig.logo);
+                } else {
+                    // Pour les tableaux ou objets, utiliser tel quel (pas de parsing)
+                    interpretedLogo = epochConfig.logo;
+                }
             } else {
                 console.warn('[organigramme.js] ⚠️ interpretConfigValue non disponible:', {
                     window: typeof window,
@@ -2730,7 +2807,10 @@ nodes.forEach(node => {
         node.logoScale || 1.4,
         node.logoOffsetY || 0,
         (node.strokeSize !== undefined && node.strokeSize !== null) ? node.strokeSize : 4, // Allow strokeSize: 0
-        node.strokeStyle || 'solid' // Pass the stroke style (default 'solid', can be 'blur')
+        node.strokeStyle || 'solid', // Pass the stroke style (default 'solid', can be 'blur')
+        null, // targetContainer
+        node.planetEffect || false, // planetEffect
+        node.align || null // align (pour 'zorder' ou autre)
     );
 
     createdCells[node.id] = cell;
@@ -2993,7 +3073,8 @@ function generateTimelineFromConfig() {
             // Ne pas utiliser title natif, utiliser addCustomTooltip à la place
 
             // Si le logo est un fichier image (SVG, PNG, etc.)
-            if (item.logo && (item.logo.endsWith('.svg') || item.logo.endsWith('.png'))) {
+            // 🔒 CORRECTION : Vérifier que logo est une string avant d'appeler endsWith (peut être un tableau)
+            if (item.logo && typeof item.logo === 'string' && (item.logo.endsWith('.svg') || item.logo.endsWith('.png'))) {
                 const img = document.createElement('img');
                 img.src = item.logo;
                 img.alt = item.name;
@@ -3395,27 +3476,47 @@ window.updateFluxLabels = function (data) {
                 dataId === 'h2o_percent' || dataId === 'h2o_forcing_wm' ||
                 dataId === 'albedo_percent' || dataId === 'albedo_forcing';
 
+            // 🔒 UTILISER UNIQUEMENT les variables globales uniques pour déterminer l'état des boutons
+            // Récupérer l'état du bouton depuis les variables globales uniques (seule référence)
+            let isButtonActive = true;
+            if (dataId === 'co2_percent' || dataId === 'co2_forcing_wm') {
+                isButtonActive = typeof window !== 'undefined' ? (window.isCO2_eds !== undefined ? window.isCO2_eds : true) : true;
+            } else if (dataId === 'ch4_percent' || dataId === 'ch4_forcing_wm') {
+                isButtonActive = typeof window !== 'undefined' ? (window.isCH4_eds !== undefined ? window.isCH4_eds : true) : true;
+            } else if (dataId === 'h2o_percent' || dataId === 'h2o_forcing_wm') {
+                isButtonActive = typeof window !== 'undefined' ? (window.isH2O_eds !== undefined ? window.isH2O_eds : true) : true;
+            } else if (dataId === 'albedo_percent' || dataId === 'albedo_forcing') {
+                isButtonActive = typeof window !== 'undefined' ? (window.isAlbedo !== undefined ? window.isAlbedo : true) : true;
+            }
+
             // Vérifier si forcing_total est sur le bouton albedo (pas sur la flèche)
             // Le label du bouton albedo est dans la cellule cell-albedo-btn
             // Vérifier si le label est dans la cellule du bouton albedo
             const isAlbedoButtonLabel = dataId === 'forcing_total' &&
                 (label.closest('#cell-albedo-btn') !== null);
 
-            // Vérifier si le bouton est actif (pour les labels de boutons)
-            let isButtonActive = true;
-            if (isButtonLabel || isAlbedoButtonLabel) {
-                // Trouver la cellule du bouton correspondant
-                const buttonCell = label.closest('.flux-button-cell');
-                if (buttonCell) {
-                    isButtonActive = buttonCell.classList.contains('checked');
-                }
-            }
+            // 🔒 CORRECTION : forcing_total (EDS) ne doit PAS dépendre de l'état des boutons
+            // L'EDS est l'effet de serre réel calculé par le transfert radiatif, qui est toujours valide
+            // Même si les boutons sont inactifs, l'EDS existe physiquement
+            // Exception : si forcing_total est sur le bouton albedo ET que le bouton est inactif,
+            // on peut le griser (mais c'est juste esthétique, l'EDS existe toujours)
+            const isForcingTotal = dataId === 'forcing_total';
+            const isForcingTotalOnAlbedoButton = isForcingTotal && isAlbedoButtonLabel;
             
             // Si la valeur est 0 (ou très proche de 0), appliquer le style gris
             const isZero = Math.abs(numericValue) < 0.001;
             
-            // Si le bouton est inactif, forcer le style gris
-            if (!isButtonActive) {
+            // 🔒 CORRECTION : forcing_total (EDS) ne doit pas être grisé sauf si vraiment sur le bouton albedo ET bouton inactif
+            // L'EDS existe toujours physiquement, même si les boutons sont inactifs
+            if (isForcingTotal && !isForcingTotalOnAlbedoButton) {
+                // forcing_total sur la flèche : toujours afficher avec la bonne couleur (pas de gris)
+                if (!isZero && valueType === 'watt_per_m2') {
+                    label.classList.add('watt-per-m2');
+                } else if (isZero) {
+                    label.classList.add('zero-value');
+                }
+            } else if (!isButtonActive && !isForcingTotal) {
+                // Si le bouton est inactif (et ce n'est pas forcing_total), forcer le style gris
                 label.classList.add('zero-value');
             } else if (isZero) {
                 // Valeur à 0 et bouton actif : appliquer le style "zero-value" (gris)
@@ -3478,26 +3579,15 @@ window.updateFluxLabels = function (data) {
     const plotData_ch4 = (typeof window !== 'undefined' && window.plotData && window.plotData.ch4_ppm !== undefined) ? window.plotData.ch4_ppm : 0;
     const co2_ppm = (data.co2_ppm !== null && data.co2_ppm !== undefined) ? data.co2_ppm : plotData_co2;
     const ch4_ppm = (data.ch4_ppm !== null && data.ch4_ppm !== undefined) ? data.ch4_ppm : plotData_ch4;
-    // H2O : vérifier l'état du bouton (on/off)
+    // 🔒 UTILISER UNIQUEMENT LES VARIABLES GLOBALES UNIQUES (seule référence)
+    // Ces variables sont mises à jour UNIQUEMENT au clic sur les boutons
+    const isCO2_eds = typeof window !== 'undefined' ? (window.isCO2_eds !== undefined ? window.isCO2_eds : true) : true;
+    const isCH4_eds = typeof window !== 'undefined' ? (window.isCH4_eds !== undefined ? window.isCH4_eds : true) : true;
+    const isH2O_eds = typeof window !== 'undefined' ? (window.isH2O_eds !== undefined ? window.isH2O_eds : true) : true;
+    const isAlbedo = typeof window !== 'undefined' ? (window.isAlbedo !== undefined ? window.isAlbedo : true) : true;
+    
+    // H2O : vérifier si la vapeur d'eau est disponible (physique)
     const h2o_enabled = typeof window !== 'undefined' && window.waterVaporEnabled;
-    // Vérifier l'état de tous les boutons (on/off) via les cellules du flux (pas les boutons HTML)
-    // Les boutons du flux sont des cellules avec la classe 'flux-button-cell'
-    const cellCO2 = document.getElementById('cell-co2');
-    const cellCH4 = document.getElementById('cell-methane');
-    const cellH2O = document.getElementById('cell-h2o');
-    const cellAlbedo = document.getElementById('cell-albedo-btn');
-
-    // Vérifier l'état via les cellules ET les variables globales (fallback)
-    const co2_button_checked = (cellCO2 && cellCO2.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useCO2 === true);
-    const ch4_button_checked = (cellCH4 && cellCH4.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useCH4 === true);
-    const h2o_button_checked = (cellH2O && cellH2O.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useH2O === true);
-    const albedo_button_checked = (cellAlbedo && cellAlbedo.classList.contains('checked')) ||
-        (typeof window !== 'undefined' && window.useAlbedo === true);
-
-    const h2o_final_enabled = h2o_enabled && h2o_button_checked;
 
     // Vérifier que toutes les valeurs numériques sont bien des nombres (pas de fallback)
     if (T0 === null || T0 === undefined || isNaN(Number(T0))) {
@@ -3579,22 +3669,24 @@ window.updateFluxLabels = function (data) {
     }
     // Sinon, utiliser data.albedo qui vient de la simulation (déjà calculé avec tous les paramètres)
 
+    // 🔒 FORMULE TOUJOURS UTILISÉE : solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm
+    // Pas de cas particulier, même en corps noir (albedo = 0, donc solar_flux_reflected_wm = 0)
+    // Entrer dans la formule avec des paramètres à 0 est plus propre que de zapper des étapes
     let solar_flux_absorbed;
-    if (hasNoAtmosphere) {
-        solar_flux_absorbed = SOLAR_FLUX_AVERAGE;
-    } else {
-        // Récupérer le flux géothermique pour calculateSolarFluxAbsorbed
-        let geo_flux = null;
-        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-            if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
-                geo_flux = currentEpoch.geothermal_flux;
-            }
+    // Récupérer le flux géothermique pour calculateSolarFluxAbsorbed
+    let geo_flux = null;
+    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
+            geo_flux = currentEpoch.geothermal_flux;
         }
-        solar_flux_absorbed = typeof window !== 'undefined' && typeof window.calculateSolarFluxAbsorbed === 'function'
-            ? window.calculateSolarFluxAbsorbed(T0_num, h2o_enabled, geo_flux)
-            : SOLAR_FLUX_AVERAGE * (1 - albedo_num);
     }
+    // 🔒 TOUJOURS utiliser calculateSolarFluxAbsorbed (même en corps noir)
+    // La fonction utilise la formule : solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm
+    // En corps noir, albedo = 0, donc solar_flux_reflected_wm = 0, donc solar_flux_absorbed_wm = solar_flux_average_wm
+    solar_flux_absorbed = typeof window !== 'undefined' && typeof window.calculateSolarFluxAbsorbed === 'function'
+        ? window.calculateSolarFluxAbsorbed(T0_num, h2o_enabled, geo_flux)
+        : SOLAR_FLUX_AVERAGE * (1 - albedo_num); // Fallback si la fonction n'est pas disponible
 
     // Calculer le flux réfléchi avec l'albedo (venant de data.albedo ou recalculé)
     const flux_reflected = SOLAR_FLUX_AVERAGE * albedo_num;
@@ -3668,12 +3760,12 @@ window.updateFluxLabels = function (data) {
     const ice_percent = Math.round(ice_coverage * 100);
 
     // Forçages radiatifs
-    // Utiliser les états des boutons déjà calculés pour déterminer si les forçages sont actifs
-    const forcing_CO2 = (co2_button_checked && co2_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCO2Forcing === 'function'
+    // 🔒 UTILISER UNIQUEMENT isCO2_eds, isCH4_eds, isH2O_eds, isAlbedo (seule référence)
+    const forcing_CO2 = (isCO2_eds && co2_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCO2Forcing === 'function'
         ? window.calculateCO2Forcing(co2_ppm_num * 1e-6)
         : 0;
     // CH4 : calculer le forçage radiatif (bande d'absorption à ~7.7 μm et pic à ~23 μm)
-    const forcing_CH4 = (ch4_button_checked && ch4_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCH4Forcing === 'function'
+    const forcing_CH4 = (isCH4_eds && ch4_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCH4Forcing === 'function'
         ? window.calculateCH4Forcing(ch4_ppm_num * 1e-6)
         : 0;
 
@@ -3684,15 +3776,21 @@ window.updateFluxLabels = function (data) {
     let h2o_params = null;
     let forcing_H2O = 0;
 
-    if (h2o_button_checked && h2o_final_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
+    // 🔒 CORRECTION : Calculer forcing_H2O même si le bouton est inactif (pour debug/diagnostic)
+    // Mais l'afficher seulement si le bouton est actif
+    if (h2o_total_percent > 0 && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
         // Calculer avec la température actuelle et le pourcentage TOTAL (base + météorites)
         h2o_params = window.calculateH2OParameters(T0_num, h2o_total_percent, cloud_coverage_num);
         forcing_H2O = h2o_params.greenhouse_forcing;
-
+        
         // Mettre à jour cloud_coverage avec la valeur calculée (si pas forcée)
         if (cloud_coverage_num === 0 || cloud_coverage_num === null) {
             cloud_coverage_num = h2o_params.cloud_coverage;
         }
+        
+        // 🔒 CORRECTION : Calculer forcing_H2O même si isH2O_eds est false (pour debug)
+        // Mais l'afficher seulement si isH2O_eds est true
+        // Le forçage est calculé physiquement, mais l'affichage dépend du bouton
 
         // Log désactivé pour réduire le bruit (trop répétitif)
         // console.log('[H2O PARAMS]', {
@@ -3702,9 +3800,9 @@ window.updateFluxLabels = function (data) {
         //     cloud_albedo_contribution: h2o_params.cloud_albedo_contribution
         // });
     }
-    // 🔒 CORRECTION : Le forçage albédo est actif seulement si le bouton est checked
+    // 🔒 CORRECTION : Le forçage albédo est actif seulement si isAlbedo est true
     // En mode corps noir, on peut avoir un forçage albedo si il y a de la glace des météorites
-    const forcing_Albedo = (!albedo_button_checked) ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
+    const forcing_Albedo = (!isAlbedo) ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
         ? window.calculateAlbedoForcing(albedo_num)
         : 0);
     
@@ -3953,27 +4051,21 @@ window.updateFluxLabels = function (data) {
     }
     const SURFACE_AREA = 4 * Math.PI * Math.pow(planet_radius, 2); // ~5.1×10^14 m²
     
-    // 🔒 CORRECTION CORPS NOIR : En Corps noir (pas d'atmosphère), le flux émis par la surface doit être égal au flux sortant
-    // et au flux entrant en équilibre radiatif : surface_flux_emitted = total_flux = solar_flux_absorbed
-    if (hasNoAtmosphere) {
-        // En Corps noir, utiliser directement solar_flux_absorbed pour garantir l'équilibre radiatif
-        surface_flux_emitted = solar_flux_absorbed;
-        flux_ejected = solar_flux_absorbed;
-    } else {
-        // 🔒 PATCH ESTHÉTIQUE : Si la différence en W totaux est < tolérance de convergence, utiliser la même valeur
-        // C'est justifié scientifiquement : la tolérance représente la précision des calculs
-        // Tolérance de 0.1×10^17 W (équivalent à ~0.1 W/m² × surface Terre)
-        // Calculer la différence en W totaux
-        const w_sol = surface_flux_emitted * SURFACE_AREA;
-        const w_espace = flux_ejected * SURFACE_AREA;
-        const diff_w = Math.abs(w_sol - w_espace);
-        const tolerance_w = 0.1 * 1e17; // 0.1×10^17 W
-        
-        if (diff_w <= tolerance_w) {
-            // Différence en W totaux < tolérance : utiliser la même valeur pour les deux (confort esthétique justifié)
-            // Cela garantit un EDS nul cohérent avec la précision des calculs
-            flux_ejected = surface_flux_emitted;
-        }
+    // 🔒 FORMULE TOUJOURS UTILISÉE : surface_flux_emitted = σT₀⁴ (pas de cas particulier)
+    // En corps noir, l'équilibre radiatif sera garanti par la convergence, pas besoin de forcer
+    // 🔒 PATCH ESTHÉTIQUE : Si la différence en W totaux est < tolérance de convergence, utiliser la même valeur
+    // C'est justifié scientifiquement : la tolérance représente la précision des calculs
+    // Tolérance de 0.1×10^17 W (équivalent à ~0.1 W/m² × surface Terre)
+    // Calculer la différence en W totaux
+    const w_sol = surface_flux_emitted * SURFACE_AREA;
+    const w_espace = flux_ejected * SURFACE_AREA;
+    const diff_w = Math.abs(w_sol - w_espace);
+    const tolerance_w = 0.1 * 1e17; // 0.1×10^17 W
+    
+    if (diff_w <= tolerance_w) {
+        // Différence en W totaux < tolérance : utiliser la même valeur pour les deux (confort esthétique justifié)
+        // Cela garantit un EDS nul cohérent avec la précision des calculs
+        flux_ejected = surface_flux_emitted;
     }
     
     // Séparer les W/m² et les watts totaux
@@ -4067,7 +4159,11 @@ window.updateFluxLabels = function (data) {
         if (noyauLogo) {
             const noyauNode = nodes.find(n => n.id === 'noyau');
             // Si le logo est vide, le rendre invisible
-            if (noyauNode && (!noyauNode.logo || noyauNode.logo.trim() === '')) {
+            // 🔒 CORRECTION : Vérifier que logo est une string avant d'appeler trim (peut être un tableau)
+            const isLogoEmpty = !noyauNode || !noyauNode.logo || 
+                (Array.isArray(noyauNode.logo) && noyauNode.logo.length === 0) ||
+                (typeof noyauNode.logo === 'string' && noyauNode.logo.trim() === '');
+            if (isLogoEmpty) {
                 noyauLogo.style.opacity = '0';
                 noyauLogo.style.visibility = 'hidden';
             } else {
@@ -4115,8 +4211,10 @@ window.updateFluxLabels = function (data) {
     }
 
     // Surface -> Albedo : flux émis par la surface (approximation avec Stefan-Boltzmann)
+    // 🔒 FORMULE TOUJOURS UTILISÉE : flux_emission_surface = σT₀⁴ (pas de cas particulier)
+    // La surface émet toujours selon Stefan-Boltzmann, même sans atmosphère
     const STEFAN_BOLTZMANN = 5.670374419e-8;
-    const flux_emission_surface = hasNoAtmosphere ? 0 : STEFAN_BOLTZMANN * Math.pow(T0_num, 4);
+    const flux_emission_surface = STEFAN_BOLTZMANN * Math.pow(T0_num, 4);
     
     // Mettre à jour l'épaisseur de l'atmosphère dans le label de l'arc Terre->Albedo
     // Utiliser calculateAtmosphereProperties pour obtenir la vraie hauteur physique
@@ -4195,13 +4293,14 @@ window.updateFluxLabels = function (data) {
         h2o_display_value = h2o_total_percent;
     }
 
+    // 🔒 CORRECTION : Utiliser isH2O_eds (seule référence)
+    // Le bouton est actif = on fait les calculs avec la valeur (même si 0%)
     // Passer un nombre pour que formatValueFromTemplate gère le formatage automatiquement
-    const h2o_percent = (h2o_enabled && h2o_button_checked && h2o_display_value > 0)
-        ? h2o_display_value
-        : 0;
+    const h2o_percent = (h2o_enabled && isH2O_eds) ? h2o_display_value : 0;
     // Le forçage H2O doit être 0 si h2o_enabled est false (pas d'eau dans l'atmosphère)
+    // OU si isH2O_eds est false (bouton désactivé)
     // Utiliser directement forcing_H2O qui est déjà calculé avec les bonnes conditions
-    const forcing_H2O_final = h2o_enabled ? forcing_H2O : 0;
+    const forcing_H2O_final = (h2o_enabled && isH2O_eds) ? forcing_H2O : 0;
     updateLabel('h2o_percent', h2o_percent);
     updateLabel('h2o_forcing_wm', forcing_H2O_final);
 
@@ -4225,23 +4324,135 @@ window.updateFluxLabels = function (data) {
     // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%
 }
 
+// Fonction pour mettre à jour des champs spécifiques par leurs data-id
+// Prend un tableau d'IDs ou un objet { id: value }
+// Si le tableau est vide, met à jour tous les champs trouvés
+window.updateFields = function(fieldIdsOrValues, values = null) {
+    // Si values est fourni, fieldIdsOrValues est un tableau d'IDs
+    // Sinon, fieldIdsOrValues est un objet { id: value }
+    let fieldsToUpdate = {};
+    
+    if (values !== null && Array.isArray(fieldIdsOrValues)) {
+        // Mode 1 : tableau d'IDs + objet de valeurs
+        if (typeof values === 'object' && values !== null) {
+            fieldIdsOrValues.forEach(id => {
+                if (values.hasOwnProperty(id)) {
+                    fieldsToUpdate[id] = values[id];
+                }
+            });
+        }
+    } else if (typeof fieldIdsOrValues === 'object' && fieldIdsOrValues !== null && !Array.isArray(fieldIdsOrValues)) {
+        // Mode 2 : objet { id: value }
+        fieldsToUpdate = fieldIdsOrValues;
+    } else if (Array.isArray(fieldIdsOrValues) && fieldIdsOrValues.length === 0) {
+        // Mode 3 : tableau vide = mettre à jour tous les champs
+        // Trouver tous les éléments avec data-id
+        const allFields = document.querySelectorAll('[data-id]');
+        allFields.forEach(field => {
+            const dataId = field.getAttribute('data-id');
+            if (dataId) {
+                // Essayer de retrouver la valeur depuis les variables globales ou window
+                // Les noms des data-id correspondent aux noms des variables dans updateFluxLabels
+                let value = null;
+                
+                // Chercher dans window avec le nom exact
+                if (typeof window !== 'undefined' && window[dataId] !== undefined) {
+                    value = window[dataId];
+                }
+                
+                // Si pas trouvé, essayer avec des variantes courantes
+                if (value === null || value === undefined) {
+                    // Mapper les data-id aux noms de variables possibles
+                    const varMap = {
+                        'solar_flux_average_wm': () => window.SOLAR_CONSTANT ? window.SOLAR_CONSTANT / 4 : null,
+                        'solar_flux_absorbed_wm': () => {
+                            if (typeof window.calculateSolarFluxAbsorbed === 'function' && window.plotData) {
+                                const T0 = window.plotData.temp_surface || 0;
+                                const h2o_enabled = window.waterVaporEnabled || false;
+                                return window.calculateSolarFluxAbsorbed(T0, h2o_enabled, window.GEOTHERMAL_FLUX);
+                            }
+                            return null;
+                        },
+                        'core_flux_wm': () => window.GEOTHERMAL_FLUX || null,
+                        'forcing_total': () => window.plotData ? window.plotData.forcing_total : null,
+                        'co2_percent': () => window.plotData ? window.plotData.co2_ppm : null,
+                        'ch4_percent': () => window.plotData ? window.plotData.ch4_ppm : null,
+                        'h2o_percent': () => window.h2oVaporPercent || null,
+                        'albedo_percent': () => window.plotData ? window.plotData.albedo * 100 : null
+                    };
+                    
+                    if (varMap[dataId]) {
+                        value = varMap[dataId]();
+                    }
+                }
+                
+                if (value !== null && value !== undefined) {
+                    fieldsToUpdate[dataId] = value;
+                }
+            }
+        });
+    } else if (Array.isArray(fieldIdsOrValues)) {
+        // Mode 4 : tableau d'IDs sans valeurs = utiliser les valeurs depuis window/plotData
+        fieldIdsOrValues.forEach(id => {
+            let value = null;
+            if (typeof window !== 'undefined') {
+                // Chercher directement dans window
+                if (window[id] !== undefined) {
+                    value = window[id];
+                }
+                // Chercher dans plotData
+                else if (window.plotData && window.plotData[id] !== undefined) {
+                    value = window.plotData[id];
+                }
+            }
+            if (value !== null && value !== undefined) {
+                fieldsToUpdate[id] = value;
+            }
+        });
+    }
+    
+    // Mettre à jour chaque champ trouvé
+    Object.keys(fieldsToUpdate).forEach(dataId => {
+        const value = fieldsToUpdate[dataId];
+        // Utiliser updateLabel si disponible, sinon mettre à jour directement
+        if (typeof window.updateLabel === 'function') {
+            window.updateLabel(dataId, value);
+        } else {
+            // Fallback : mise à jour directe
+            const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
+            labels.forEach(label => {
+                label.textContent = String(value);
+            });
+        }
+    });
+    
+    return Object.keys(fieldsToUpdate).length; // Retourner le nombre de champs mis à jour
+};
+
 // Exposer les fonctions globalement
 if (typeof window !== 'undefined') {
     window.updateFluxLabels = updateFluxLabels;
 
-    // Initialiser les variables globales selon l'état initial des cellules (boutons du flux)
-    // Les boutons du flux sont des cellules, pas des boutons HTML
-    const cellCO2_init = document.getElementById('cell-co2');
-    const cellCH4_init = document.getElementById('cell-methane');
-    const cellH2O_init = document.getElementById('cell-h2o');
-    const cellAlbedo_init = document.getElementById('cell-albedo-btn');
+        // Initialiser les variables globales UNIQUES selon l'état initial des cellules (boutons du flux)
+        // Les boutons du flux sont des cellules, pas des boutons HTML
+        const cellCO2_init = document.getElementById('cell-co2');
+        const cellCH4_init = document.getElementById('cell-methane');
+        const cellH2O_init = document.getElementById('cell-h2o');
+        const cellAlbedo_init = document.getElementById('cell-albedo-btn');
 
-    if (typeof window !== 'undefined') {
-        // Les boutons sont activés par défaut (voir createCell ligne 1822)
-        window.useCO2 = cellCO2_init ? cellCO2_init.classList.contains('checked') : true;
-        window.useCH4 = cellCH4_init ? cellCH4_init.classList.contains('checked') : true;
-        window.useH2O = cellH2O_init ? cellH2O_init.classList.contains('checked') : true;
-        window.useAlbedo = cellAlbedo_init ? cellAlbedo_init.classList.contains('checked') : true;
+        if (typeof window !== 'undefined') {
+            // Les boutons sont activés par défaut (voir createCell ligne 1822)
+            // 🔒 Initialiser les variables globales UNIQUES (seule référence)
+            window.isCO2_eds = cellCO2_init ? cellCO2_init.classList.contains('checked') : true;
+            window.isCH4_eds = cellCH4_init ? cellCH4_init.classList.contains('checked') : true;
+            window.isH2O_eds = cellH2O_init ? cellH2O_init.classList.contains('checked') : true;
+            window.isAlbedo = cellAlbedo_init ? cellAlbedo_init.classList.contains('checked') : true;
+            
+            // Garder aussi les variables legacy pour compatibilité temporaire
+            window.useCO2 = window.isCO2_eds;
+            window.useCH4 = window.isCH4_eds;
+            window.useH2O = window.isH2O_eds;
+            window.useAlbedo = window.isAlbedo;
 
         // Initialiser les classes selected/unselected sur les cellules
         const buttonMap = [
@@ -4422,8 +4633,19 @@ function initFluxButtonListeners() {
                 cell.classList.add('unselected');
             }
 
-            // Initialiser la variable globale
+            // Initialiser les variables globales UNIQUES
             if (typeof window !== 'undefined') {
+                // Mapping vers les variables uniques
+                let edsVarName = null;
+                if (cellId === 'cell-co2') edsVarName = 'isCO2_eds';
+                else if (cellId === 'cell-methane') edsVarName = 'isCH4_eds';
+                else if (cellId === 'cell-h2o') edsVarName = 'isH2O_eds';
+                else if (cellId === 'cell-albedo-btn') edsVarName = 'isAlbedo';
+                
+                if (edsVarName) {
+                    window[edsVarName] = isChecked;
+                }
+                // Garder aussi la variable legacy pour compatibilité temporaire
                 window[varName] = isChecked;
             }
         }

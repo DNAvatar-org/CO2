@@ -1,8 +1,8 @@
 
 == Boutons Thermodynamique
-🏐 Albédo
+🪞 Albédo
 
-🌱 CO2
+🏭 CO2
 💧 H2O
 ⛽ Méthane
 ==

@@ -23,7 +23,7 @@ const timeline = [
         startYears: 5.0e9,
         endYears: 4.5e9,
         t0: 255,
-        precision: 1,
+        precision: 0.1,
         // temp: '1200°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: 'fonts/pics/corps_noir.png',
         title: 'Corps noir - État étalon<br>(Remplace la phase d\'accrétion)',
@@ -69,7 +69,7 @@ const timeline = [
         date: '-4500 Ma',
         startYears: 4.5e9,
         endYears: 4.0e9,
-        t0: 2437,
+        t0: 2450,
         precision: 1,
         // temp: '46.0°C', // DEPRECATED: Valeur de référence non utilisée dans les calculs
         logo: 'fonts/pics/hadeen.png',

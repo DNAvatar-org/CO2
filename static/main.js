@@ -634,7 +634,8 @@ let cache_280ppm = null;
 let cache_420ppm = null;
 
 function calculateInitialData() {
-    console.log('[calculateInitialData] 🚀 DÉBUT - Initialisation des données au chargement');
+    const logo = '🔧';
+    console.log(`${logo} [calculateInitialData@main.js] Init données`);
     initPlot();
     document.getElementById('status').textContent = 'Initialisation...';
 
@@ -686,14 +687,17 @@ function calculateInitialData() {
     updateLegend(plotData);
     updatePlot(plotData);
 
-    // Initialiser à 0 ppm par défaut et calculer
-    plotData.co2_ppm = 0;
-    console.log('[calculateInitialData] ⚠️ Appel de updateCO2Level(0) - cela va déclencher un calcul');
-    updateCO2Level(0); // 0 ppm - déclenche le calcul
+    // 🔒 NOTE: Le calcul sera lancé par setEpoch("Corps noir") appelé avant calculateInitialData
+    // Pas besoin d'appeler updateCO2Level ici, cela créerait un appel en double
+    // Les valeurs sont déjà initialisées par updateLevelsConfig dans setEpoch
 }
 
 function updateCO2Level(state) {
-    console.log(`[updateCO2Level] 🚀 DÉBUT - state: ${state}, CO2_fraction: ${state === 0 ? 0 : CO2_STATES[state] || 'calculé'}`);
+    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    
     currentState = state;
     // Gérer explicitement le cas state = 0 (0 ppm) car 0 est falsy en JavaScript
     let co2_fraction;
@@ -705,6 +709,14 @@ function updateCO2Level(state) {
         co2_fraction = CO2_STATES[3] * Math.pow(2, state - 3);
     }
     plotData.co2_ppm = co2_fraction * 1e6;
+    
+    // Récupérer les valeurs H2O et CH4 depuis plotData pour le log
+    const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
+    const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+    const h2o_total = h2o_percent + h2o_meteorites;
+    const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
+    
+    console.log(`${logoEDS} [updateCO2Level@main.js] 🏭=${plotData.co2_ppm.toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
 
     document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
 
@@ -720,6 +732,8 @@ function updateCO2Level(state) {
             CH4_fraction: ch4_fraction
         });
         const processResult = (data) => {
+            const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+            console.log(`${logo} [processResult@main.js] T0=${data?.T0?.toFixed(2) || 'N/A'}K flux=${data?.total_flux?.toFixed(2) || 'N/A'}W/m²`);
             plotData.current = data;
 
             // Les scénarios de référence sont déjà calculés dans calculateInitialData
@@ -849,11 +863,18 @@ function updateCO2Level(state) {
                 }
             }, 200);
             document.getElementById('status').textContent = 'Prêt';
+            // 🔒 PROTECTION : S'assurer que showSpectralBackground reste à true après les calculs
+            if (typeof window !== 'undefined') {
+                window.showSpectralBackground = true;
+            }
             // Réinitialiser les flags de convergence après l'affichage final (après un délai pour laisser le temps à la précision max)
+            // 🔒 NE PAS réinitialiser showSpectralBackground (il doit rester à true)
             setTimeout(() => {
                 if (typeof window !== 'undefined') {
                     window.spectralConverged = false;
                     window.spectralPrecisionTarget = 'auto';
+                    // 🔒 S'assurer que showSpectralBackground reste à true même après réinitialisation
+                    window.showSpectralBackground = true;
                 }
             }, 2000); // Laisser 2 secondes pour la précision maximale
             enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
@@ -1045,7 +1066,22 @@ function cancelCurrentCalculation() {
     }
 }
 
+// Fonction pour mettre à jour le niveau CO2 directement
+// ⚠️ NOTE: Cette fonction met à jour CO2 explicitement, mais utilise aussi H2O et CH4 depuis plotData/window
+// Elle devrait peut-être être renommée en updateLevelsDirect ou updateEDSLevels pour refléter qu'elle utilise les 3 gaz
 function updateCO2LevelDirect(co2_fraction) {
+    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    
+    // Récupérer les valeurs H2O et CH4 depuis plotData/window (déjà initialisées par updateLevelsConfig)
+    const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
+    const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+    const h2o_total = h2o_percent + h2o_meteorites;
+    const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
+    
+    console.log(`${logoEDS} [updateCO2LevelDirect@main.js] 🏭=${(co2_fraction * 1e6).toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
     // Annuler tout calcul en cours avant de commencer un nouveau
     cancelCurrentCalculation();
 
@@ -1054,8 +1090,13 @@ function updateCO2LevelDirect(co2_fraction) {
     document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
 
     // Activer l'affichage des étapes de dichotomie pour le calcul courant
+    // 🔒 Vérifier le bouton anim pour s'assurer que showDichotomySteps est correct
+    const animToggleCheck = typeof document !== 'undefined' ? document.getElementById('plot-anim-toggle') : null;
+    const animEnabledCheck = animToggleCheck && animToggleCheck.checked;
+    
     if (typeof window !== 'undefined') {
-        window.showDichotomySteps = true;
+        // Le bouton anim contrôle directement showDichotomySteps
+        window.showDichotomySteps = animEnabledCheck !== false; // true par défaut si bouton pas encore initialisé
         window.cancelCalculation = false; // Réinitialiser le flag d'annulation
     }
 
@@ -1078,6 +1119,8 @@ function updateCO2LevelDirect(co2_fraction) {
         currentCalculationPromise = result;
 
         const processResult = (data) => {
+            const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+            console.log(`${logo} [processResult@main.js] T0=${data?.T0?.toFixed(2) || 'N/A'}K flux=${data?.total_flux?.toFixed(2) || 'N/A'}W/m²`);
             // Vérifier si le calcul a été annulé
             if (window.cancelCalculation) {
                 return;
@@ -1249,11 +1292,18 @@ function updateCO2LevelDirect(co2_fraction) {
                 }
             }, 200);
             document.getElementById('status').textContent = 'Prêt';
+            // 🔒 PROTECTION : S'assurer que showSpectralBackground reste à true après les calculs
+            if (typeof window !== 'undefined') {
+                window.showSpectralBackground = true;
+            }
             // Réinitialiser les flags de convergence après l'affichage final (après un délai pour laisser le temps à la précision max)
+            // 🔒 NE PAS réinitialiser showSpectralBackground (il doit rester à true)
             setTimeout(() => {
                 if (typeof window !== 'undefined') {
                     window.spectralConverged = false;
                     window.spectralPrecisionTarget = 'auto';
+                    // 🔒 S'assurer que showSpectralBackground reste à true même après réinitialisation
+                    window.showSpectralBackground = true;
                 }
             }, 2000); // Laisser 2 secondes pour la précision maximale
             enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
@@ -1269,6 +1319,20 @@ function updateCO2LevelDirect(co2_fraction) {
 
 // Exposer updateDisplay globalement pour être accessible depuis calculations.js
 window.updateDisplay = function updateDisplay(data) {
+    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    
+    // Récupérer les valeurs pour le log
+    const co2_ppm = (data && data.co2_ppm !== undefined) ? data.co2_ppm : 0;
+    const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
+    const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+    const h2o_total = h2o_percent + h2o_meteorites;
+    const ch4_ppm = (data && data.ch4_ppm !== undefined) ? data.ch4_ppm : (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
+    
+    console.log(`${logoEDS} [updateDisplay@main.js] 🏭=${co2_ppm.toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
+    
     if (data && data.co2_ppm !== undefined) {
         const ppm = Math.round(data.co2_ppm);
         const co2NumberEl = document.getElementById('co2-number-synthese');
@@ -1917,6 +1981,16 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour activer/désactiver la vapeur d'eau
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
+    // 🔒 Log de l'époque au tout début (avant tous les autres logs)
+    const logoEpoch = '🕰';
+    console.log(`${logoEpoch} ${epochName}`);
+    
+    // 🔒 Légende des emojis (affichée une seule fois au premier appel)
+    if (typeof window !== 'undefined' && !window._logLegendShown) {
+        console.log('📋 Légende: 🕰 Époque | 📛 EDS(Forçage) | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪞 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
+        window._logLegendShown = true;
+    }
+    
     // 🔒 Cacher le tooltip immédiatement lors du changement d'époque
     // Empêche le tooltip de rester affiché après le changement
     if (typeof window !== 'undefined' && typeof window.hideTooltip === 'function') {
@@ -1926,14 +2000,14 @@ function setEpoch(epochName) {
     // Mettre en pause l'animation Three.js lors du changement d'époque
     if (typeof window !== 'undefined') {
         window.threeJSAnimationPaused = true;
-        console.log('[setEpoch] ⏸️ Animation Three.js mise en pause');
+        console.log(`${logoEpoch} ⏸️ [setEpoch@main.js] Three.js pause`);
     }
     
     // 🔄 Remettre infoTimeMa à 0 lors du changement d'époque
     // IMPORTANT: Doit être fait AVANT l'interprétation du logo pour que ticTime = 0
     if (typeof window !== 'undefined') {
         window.infoTimeMa = 0;
-        console.log('[setEpoch] 🔄 infoTimeMa remis à 0 pour nouvelle époque:', epochName);
+        console.log(`${logoEpoch} 🔄 [setEpoch@main.js] infoTimeMa=0 epoch=${epochName}`);
     }
     
     // Log supprimé (non essentiel)
@@ -1978,6 +2052,37 @@ function setEpoch(epochName) {
 
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
+    
+    // 🔒 INITIALISER les variables globales uniques depuis la config UNIQUEMENT au changement d'époque
+    // Si l'utilisateur a déjà modifié ces valeurs, elles ne seront pas écrasées (mais au changement d'époque, on repart de la config)
+    if (typeof window !== 'undefined') {
+        // Initialiser la précision de convergence depuis la config de l'époque
+        if (typeof epoch.precision === 'number' && epoch.precision > 0) {
+            window.convergencePrecision_K = epoch.precision;
+            // 🔒 Mettre à jour le bouton radio correspondant (sélectionner celui qui correspond à la précision de la config)
+            const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
+            let found = false;
+            precisionRadios.forEach(radio => {
+                if (Math.abs(parseFloat(radio.value) - epoch.precision) < 0.01) {
+                    radio.checked = true;
+                    found = true;
+                } else {
+                    radio.checked = false;
+                }
+            });
+            if (found) {
+                console.log(`${logoEpoch} 🛠 🎚 [setEpoch@main.js] 🎚=${window.convergencePrecision_K}° 🔘 selected`);
+            } else {
+                console.warn(`${logoEpoch} 🛠 ⚠️ [setEpoch@main.js] 🎚=${window.convergencePrecision_K}° => Aucun bouton radio`);
+            }
+        }
+        
+        // Initialiser isAnim depuis la config (par défaut true, peut être modifié par l'utilisateur)
+        // Note: isAnim n'est pas dans la config, donc on garde la valeur actuelle ou true par défaut
+        if (window.isAnim === undefined) {
+            window.isAnim = true;
+        }
+    }
 
     // 🔒 Anticiper la couleur avec t0 dès le clic sur l'époque (AVANT les calculs)
     if (typeof epoch.t0 === 'number' && epoch.t0 > 0 && typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
@@ -2274,37 +2379,23 @@ function setEpoch(epochName) {
         molar_mass_air = isMassive ? 0.044 : 0.029;
     }
 
-    // Convertir co2_kg en fraction molaire puis en ppm
-    let defaultCO2_ppm = 0;
-    if (!isCorpsNoir && epoch.co2_kg !== undefined && epoch.co2_kg > 0) {
-        if (typeof window !== 'undefined' && typeof window.co2KgToFraction === 'function') {
-            const co2_fraction = window.co2KgToFraction(epoch.co2_kg, total_atmosphere_mass_kg, molar_mass_air);
-            defaultCO2_ppm = co2_fraction * 1e6; // Convertir fraction en ppm
-        } else {
-            // Fallback : approximation simple
-            const MOLAR_MASS_AIR = molar_mass_air || 0.029;
-            const moles_CO2 = epoch.co2_kg / 0.044; // MOLAR_MASS_CO2
-            const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
-            defaultCO2_ppm = (moles_CO2 / moles_total) * 1e6;
-        }
+    // 🔒 INITIALISER les niveaux depuis la config de l'époque (CO2, H2O, CH4)
+    // Appeler updateLevelsConfig depuis calculations_albedo.js pour initialiser les valeurs
+    // Cette fonction remplace les calculs manuels de co2_ppm, ch4_ppm, h2o_percent
+    if (typeof window !== 'undefined' && typeof window.updateLevelsConfig === 'function') {
+        window.updateLevelsConfig(epoch, total_atmosphere_mass_kg, molar_mass_air, isCorpsNoir);
     }
-
-    // 🔒 Si maximiseData (appel depuis un événement), prendre le max entre la valeur sauvegardée et la valeur par défaut
-    // Sinon (appel depuis un bouton époque), utiliser la config de l'époque
-    if (typeof window !== 'undefined' && window.maximiseData) {
-        const savedCO2 = (typeof window.savedCO2 !== 'undefined') ? window.savedCO2 : 0;
-        plotData.co2_ppm = Math.max(savedCO2, defaultCO2_ppm);
-    } else {
-        // Comportement normal : utiliser la config de l'époque
-        plotData.co2_ppm = defaultCO2_ppm;
-    }
-    const co2_fraction = plotData.co2_ppm * 1e-6;
+    
+    // Récupérer les valeurs depuis plotData (mises à jour par updateLevelsConfig) pour les boutons
+    const defaultCO2_ppm_for_buttons = (plotData && plotData.co2_ppm !== undefined) ? plotData.co2_ppm : 0;
+    const defaultCH4_ppm_for_buttons = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
+    
     currentState = 3; // Utiliser state 3 comme base pour les valeurs personnalisées
 
     // Mettre à jour le bouton CO2
     const btnCo2 = document.getElementById('btn-co2');
     if (btnCo2) {
-        if (isCorpsNoir || defaultCO2_ppm === 0) {
+        if (isCorpsNoir || defaultCO2_ppm_for_buttons === 0) {
             // Forcer en off/gris si 0% ou Corps noir
             btnCo2.classList.remove('checked');
             if (isCorpsNoir) {
@@ -2426,39 +2517,16 @@ function setEpoch(epochName) {
     }
 
     // 3. CH4 (méthane)
-    // 🔒 Convertir ch4_kg en ppm
-    let defaultCH4_ppm = 0;
-    if (!isCorpsNoir && epoch.ch4_kg !== undefined && epoch.ch4_kg > 0) {
-        if (typeof window !== 'undefined' && typeof window.ch4KgToFraction === 'function') {
-            const ch4_fraction = window.ch4KgToFraction(epoch.ch4_kg, total_atmosphere_mass_kg, molar_mass_air);
-            defaultCH4_ppm = ch4_fraction * 1e6; // Convertir fraction en ppm
-        } else {
-            // Fallback : approximation simple
-            const MOLAR_MASS_AIR = molar_mass_air || 0.029;
-            const moles_CH4 = epoch.ch4_kg / 0.016; // MOLAR_MASS_CH4
-            const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
-            defaultCH4_ppm = (moles_CH4 / moles_total) * 1e6;
-        }
-    }
-
-    // 🔒 Si maximiseData (appel depuis un événement), prendre le max entre la valeur sauvegardée et la valeur par défaut
-    // Sinon (appel depuis un bouton époque), utiliser la config de l'époque
-    if (typeof window !== 'undefined' && window.maximiseData) {
-        const savedCH4 = (typeof window.savedCH4 !== 'undefined') ? window.savedCH4 : 0;
-        plotData.ch4_ppm = Math.max(savedCH4, defaultCH4_ppm);
-    } else {
-        // Comportement normal : utiliser la config de l'époque
-        plotData.ch4_ppm = defaultCH4_ppm;
-    }
     // Activer CH4 si la concentration est > 0
+    // (defaultCH4_ppm_for_buttons est déjà déclaré plus haut)
     if (typeof window.methaneEnabled !== 'undefined') {
-        window.methaneEnabled = !isCorpsNoir && (defaultCH4_ppm > 0);
+        window.methaneEnabled = !isCorpsNoir && (defaultCH4_ppm_for_buttons > 0);
     }
 
     // Mettre à jour le bouton CH4
     const btnMethane = document.getElementById('btn-methane');
     if (btnMethane) {
-        if (isCorpsNoir || !epoch.ch4_ppm || epoch.ch4_ppm === 0) {
+        if (isCorpsNoir || !defaultCH4_ppm_for_buttons || defaultCH4_ppm_for_buttons === 0) {
             // Forcer en off/gris si 0% ou Corps noir
             btnMethane.classList.remove('checked');
             if (isCorpsNoir) {
@@ -2499,12 +2567,26 @@ function setEpoch(epochName) {
     }
 
     // Lancer le calcul avec les nouvelles conditions
-    updateCO2LevelDirect(co2_fraction);
+    // Utiliser les valeurs depuis plotData (mises à jour par updateLevelsConfig ci-dessus)
+    const co2_fraction_from_config = (plotData && plotData.co2_ppm !== undefined) ? plotData.co2_ppm * 1e-6 : 0;
+    if (typeof window.updateCO2LevelDirect === 'function') {
+        window.updateCO2LevelDirect(co2_fraction_from_config);
+    }
 }
 
 
 // Fonction pour mettre à jour le niveau H2O directement (similaire à updateCO2LevelDirect)
 function updateH2OLevelDirect(h2o_total_percent) {
+    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    
+    // Récupérer CO2 et CH4 depuis plotData
+    const co2_ppm = (plotData && plotData.co2_ppm !== undefined) ? plotData.co2_ppm : 0;
+    const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
+    
+    console.log(`${logoEDS} [updateH2OLevelDirect@main.js] 🏭=${co2_ppm.toFixed(0)}ppm 💧=${h2o_total_percent.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
     // Annuler tout calcul en cours avant de commencer un nouveau
     cancelCurrentCalculation();
 
@@ -2769,11 +2851,18 @@ function updateH2OLevelDirect(h2o_total_percent) {
                 }
             }, 200);
             document.getElementById('status').textContent = 'Prêt';
+            // 🔒 PROTECTION : S'assurer que showSpectralBackground reste à true après les calculs
+            if (typeof window !== 'undefined') {
+                window.showSpectralBackground = true;
+            }
             // Réinitialiser les flags de convergence après l'affichage final
+            // 🔒 NE PAS réinitialiser showSpectralBackground (il doit rester à true)
             setTimeout(() => {
                 if (typeof window !== 'undefined') {
                     window.spectralConverged = false;
                     window.spectralPrecisionTarget = 'auto';
+                    // 🔒 S'assurer que showSpectralBackground reste à true même après réinitialisation
+                    window.showSpectralBackground = true;
                 }
             }, 2000);
             enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
@@ -2875,7 +2964,11 @@ window.toggleReferencePanel = toggleReferencePanel;
 window.setEpoch = setEpoch;
 
 window.addEventListener('DOMContentLoaded', () => {
-    console.log('[DOMContentLoaded] 🚀 DOM chargé, attente du rendu avant initialisation...');
+    // 🔒 Légende des emojis (affichée une seule fois au démarrage)
+    if (typeof window !== 'undefined' && !window._logLegendShown) {
+        console.log('📋 Légende: 🕰 Époque | 📛 EDS(Forçage) | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪞 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
+        window._logLegendShown = true;
+    }
     
     // Attendre que le DOM soit complètement rendu avant de lancer les calculs
     // Utiliser requestAnimationFrame pour s'assurer que le navigateur a eu le temps de rendre
@@ -2884,10 +2977,109 @@ window.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(() => {
             // Petit délai supplémentaire pour laisser le temps au navigateur de finaliser le rendu
             setTimeout(() => {
-                console.log('[DOMContentLoaded] ✅ Rendu terminé, initialisation des données...');
+                // 🔒 Écouter les événements FPS pour contrôler précision, affichage et animation
+                window.addEventListener('fpsLevelChanged', (event) => {
+                    const { fps, level, precisionFactor } = event.detail;
+                    
+                    // Stocker le niveau et la précision globalement
+                    window.fpsLevel = level;
+                    window.fpsPrecisionFactor = precisionFactor;
+                    
+                    // Contrôler l'affichage selon le niveau FPS
+                    // 🔒 Le bouton "anim" contrôle directement showDichotomySteps, on ne le modifie pas ici
+                    // On contrôle seulement l'animation de la planète selon le FPS
+                    const animToggle = document.getElementById('plot-anim-toggle');
+                    const animEnabled = animToggle && animToggle.checked;
+                    
+                    if (level === 'warning' || level === 'aïe' || level === 'lent') {
+                        // FPS bas : arrêter l'animation de la planète (même si anim activé, on arrête pour performance)
+                        if (typeof window !== 'undefined') {
+                            window.threeJSAnimationPaused = true;
+                        }
+                    } else {
+                        // FPS correct : relancer l'animation si le bouton anim est activé
+                        if (animEnabled && typeof window !== 'undefined') {
+                            window.threeJSAnimationPaused = false;
+                        }
+                    }
+                    
+                    // Contrôler l'affichage du fond coloré (spectral visualization)
+                    // Désactiver si FPS < 20
+                    if (level === 'warning' || level === 'aïe') {
+                        window.showSpectralBackground = false;
+                    } else {
+                        window.showSpectralBackground = true;
+                    }
+                });
                 
-                // Initialiser l'époque globale par défaut AVANT calculateInitialData
-                window.currentEpochName = 'Corps noir';
+                // Initialiser les variables globales pour le contrôle FPS
+                if (typeof window !== 'undefined') {
+                    window.showSpectralBackground = true; // Par défaut, afficher le fond coloré
+                    window.fpsLevel = 'rapide'; // Niveau par défaut
+                    window.fpsPrecisionFactor = 1.0; // Précision par défaut
+                }
+                
+                // Initialiser le bouton anim (activé par défaut, contrôle directement showDichotomySteps)
+                const animToggle = document.getElementById('plot-anim-toggle');
+                if (animToggle) {
+                    // 🔒 Initialiser window.isAnim depuis le bouton (variable globale unique)
+                    if (typeof window !== 'undefined') {
+                        window.isAnim = animToggle.checked !== false; // true par défaut
+                        window.showDichotomySteps = window.isAnim; // Synchroniser avec showDichotomySteps
+                    }
+                    
+                    animToggle.addEventListener('change', (e) => {
+                        const enabled = e.target.checked;
+                        if (typeof window !== 'undefined') {
+                            // 🔒 Mettre à jour la variable globale unique (seule référence)
+                            window.isAnim = enabled;
+                            window.showDichotomySteps = enabled;
+                            
+                            // Si on désactive, arrêter aussi l'animation de la planète
+                            if (!enabled) {
+                                window.threeJSAnimationPaused = true;
+                            } else if (window.fpsLevel && window.fpsLevel !== 'warning' && window.fpsLevel !== 'aïe' && window.fpsLevel !== 'lent') {
+                                // Si on réactive et que le FPS est correct, relancer l'animation
+                                window.threeJSAnimationPaused = false;
+                            }
+                        }
+                    });
+                }
+                
+                // 🔒 Initialiser la précision de convergence depuis les radio buttons (variable globale unique)
+                const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
+                if (precisionRadios.length > 0 && typeof window !== 'undefined') {
+                    // Trouver le bouton radio checked
+                    const checkedRadio = Array.from(precisionRadios).find(r => r.checked);
+                    if (checkedRadio && checkedRadio.value) {
+                        window.convergencePrecision_K = parseFloat(checkedRadio.value);
+                    }
+                    
+                    // Écouter les changements pour mettre à jour la variable globale unique
+                    precisionRadios.forEach(radio => {
+                        radio.addEventListener('change', (e) => {
+                            if (e.target.checked && typeof window !== 'undefined') {
+                                // 🔒 Mettre à jour la variable globale unique (seule référence)
+                                // Si l'utilisateur change la précision, la config ne doit plus être prise en compte
+                                window.convergencePrecision_K = parseFloat(e.target.value);
+                                console.log(`[UI] Précision convergence modifiée: ${window.convergencePrecision_K}K`);
+                            }
+                        });
+                    });
+                }
+                
+                // 🔒 INITIALISER l'époque en appelant setEpoch("Corps noir") AVANT calculateInitialData
+                // Cela garantit que toutes les variables globales (précision, isAnim, etc.) sont initialisées depuis la config
+                // Pas de set de base avec ||, mais bien un changement d'époque complet
+                // Le log "🕰 Corps noir" sera affiché au début de setEpoch
+                if (typeof window.setEpoch === 'function') {
+                    window.setEpoch('Corps noir');
+                } else {
+                    // Fallback si setEpoch n'est pas encore disponible
+                    window.currentEpochName = 'Corps noir';
+                    const logoEpoch = '🕰';
+                    console.log(`${logoEpoch} Corps noir`);
+                }
                 
                 // Écouter l'événement 'calculationConverged' pour activer l'animation de la planète
                 window.addEventListener('calculationConverged', () => {
@@ -2949,22 +3141,9 @@ window.addEventListener('DOMContentLoaded', () => {
         window.updateEpochActions();
     }
 
-    // Sélectionner "Corps noir" par défaut
-    const corpsNoirButton = document.querySelector('.epoch-btn[data-epoch="Corps noir"]');
-    if (corpsNoirButton) {
-        corpsNoirButton.classList.add('selected');
-    }
-
-    // Initialiser l'époque globale par défaut
-    window.currentEpochName = 'Corps noir';
-
-    // Initialiser l'époque par défaut (Corps noir)
-    if (typeof window.getGeologicalPeriodByName === 'function') {
-        const defaultEpoch = window.getGeologicalPeriodByName('Corps noir');
-        if (defaultEpoch) {
-            currentEpochStartYears = defaultEpoch.startYears;
-        }
-    }
+    // 🔒 setEpoch("Corps noir") a déjà été appelé plus haut (avant calculateInitialData)
+    // Ici on fait juste les initialisations complémentaires si nécessaire
+    // (setEpoch a déjà initialisé les variables globales et sélectionné le bouton)
 
     // Initialiser le nom de l'époque dans la div de température
     const epochNameTempDisplay = document.getElementById('epoch-name-temp');
