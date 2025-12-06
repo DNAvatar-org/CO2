@@ -1066,9 +1066,10 @@ function cancelCurrentCalculation() {
     }
 }
 
-// Fonction pour mettre à jour le niveau CO2 directement
-// ⚠️ NOTE: Cette fonction met à jour CO2 explicitement, mais utilise aussi H2O et CH4 depuis plotData/window
-// Elle devrait peut-être être renommée en updateLevelsDirect ou updateEDSLevels pour refléter qu'elle utilise les 3 gaz
+// Fonction pour mettre à jour les niveaux EDS (CO2, H2O, CH4) et lancer le calcul
+// ⚠️ NOTE: Le nom "updateCO2LevelDirect" est trompeur - cette fonction gère les 3 gaz (CO2, H2O, CH4)
+// Elle met à jour CO2 explicitement, mais utilise aussi H2O et CH4 depuis plotData/window
+// TODO: Renommer en updateEDSLevels ou updateLevelsDirect pour refléter qu'elle utilise les 3 gaz
 function updateCO2LevelDirect(co2_fraction) {
     const logoEDS = '📛'; // Forçage radiatif (EDS)
     const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
@@ -1081,6 +1082,7 @@ function updateCO2LevelDirect(co2_fraction) {
     const h2o_total = h2o_percent + h2o_meteorites;
     const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
     
+    // ⚠️ NOTE: Le nom de la fonction est trompeur - elle gère les 3 gaz (CO2, H2O, CH4), pas seulement CO2
     console.log(`${logoEDS} [updateCO2LevelDirect@main.js] 🏭=${(co2_fraction * 1e6).toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
     // Annuler tout calcul en cours avant de commencer un nouveau
     cancelCurrentCalculation();
@@ -2071,7 +2073,7 @@ function setEpoch(epochName) {
                 }
             });
             if (found) {
-                console.log(`${logoEpoch} 🛠 🎚 [setEpoch@main.js] 🎚=${window.convergencePrecision_K}° 🔘 selected`);
+                console.log(`${logoEpoch} 🛠 [setEpoch@main.js] 🎚=${window.convergencePrecision_K}° 🔘 selected`);
             } else {
                 console.warn(`${logoEpoch} 🛠 ⚠️ [setEpoch@main.js] 🎚=${window.convergencePrecision_K}° => Aucun bouton radio`);
             }
