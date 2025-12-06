@@ -13,7 +13,7 @@
 // DÉFINITION DE LA CHRONOLOGIE (TIMELINE)
 // ============================================================================
 // Structure : array d'objets { type: 'epoch' | 'separator', ... }
-// Les icônes des boutons d'événements sont définies dans events.tic_time.icon et events.ice_meteorite.icon
+// Les icônes des boutons d'événements sont définies dans events.tic_time.icon et events.meteor.icon
 const timeline = [
     {
         type: 'epoch',
@@ -43,15 +43,11 @@ const timeline = [
         o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
         // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
-        cloud_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        albedo_base: 0.0,
-        ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 0.0,
         // Événements interactifs
         events: {
-            ice_meteorite: {
-                water_added_kg: 2.0e19, // ~10^20 kg (100 fois plus pour un effet visible)
-                deltaTemp: -3.5 // Refroidissement par météorite (K)
+            meteor: {
+                water_added_kg: 2.0e19, // ~10^20 kg (100 fois plus pour un effet visible) ☄️💧🐳
+                deltaTemp: -3.5 // Refroidissement par météorite (K) 🌡️☄️
             },
             big_impact: {
                 energy_flux_wm2: 2000000 // 2 MW/m² (correspond au flux géothermique de l'Hadéen)
@@ -99,11 +95,8 @@ const timeline = [
         o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
         // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
-        cloud_coverage: 0.1, // DEPRECATED: Sera calculé dynamiquement
-        albedo_base: 0.05,
-        ocean_coverage: 0, forest_coverage: 0, desert_coverage: 0, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
         magma_coverage: 1.0, // Spécifique Hadéen
-        volcanoFactor: 10.0,
+        volcanoFactor: 10.0, // Spécifique Hadéen (à voir plus tard)
         // Événements interactifs
         events: {
             tic_time: {
@@ -118,7 +111,7 @@ const timeline = [
                     // Formule : flux = start * exp(ln(end/start) * progress)
                 }
             },
-            ice_meteorite: {
+            meteor: {
                 water_added_kg: 1.0e18, // ~10% de l'eau initiale (2.1e20) pour effet
                 deltaTemp: -3 // Refroidissement par météorite (K) - refroidissement rapide en Hadéen
             }
@@ -157,12 +150,8 @@ const timeline = [
         o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
-        cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
-        albedo_base: 0.12,
-        ocean_coverage: 0.80, forest_coverage: 0, desert_coverage: 0.05, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 5.0,
         events: {
-            ice_meteorite: {
+            meteor: {
                 water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
                 deltaTemp: -5 // Refroidissement par météorite (K) - refroidissement modéré en Archéen
             }
@@ -201,10 +190,6 @@ const timeline = [
         o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
-        cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
-        albedo_base: 0.20,
-        ocean_coverage: 0.70, forest_coverage: 0.05, desert_coverage: 0.15, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 2.0,
         events: {
             ice_meteorite: {
                 water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
@@ -245,10 +230,6 @@ const timeline = [
         o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
-        cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
-        albedo_base: 0.28,
-        ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 1.0,
         events: {
             ice_meteorite: {
                 water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
@@ -289,10 +270,6 @@ const timeline = [
         o2_kg: 0, // Quantité de O2 en kg (non affiché dans le flux diagram)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
-        cloud_coverage: 0.6, // DEPRECATED: Sera calculé dynamiquement
-        albedo_base: 0.28,
-        ocean_coverage: 0.70, forest_coverage: 0.20, desert_coverage: 0.10, ice_coverage: 0, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 1.0,
         events: {
             ice_meteorite: {
                 water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
@@ -333,10 +310,6 @@ const timeline = [
         o2_kg: 1.0815e18, // Quantité de O2 en kg (~21% de l'atmosphère moderne, non affiché dans le flux diagram)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
-        cloud_coverage: 0.4, // DEPRECATED: Sera calculé dynamiquement
-        albedo_base: 0.30,
-        ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 1.0,
         events: {
             ice_meteorite: {
                 water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite
@@ -377,10 +350,6 @@ const timeline = [
         o2_kg: 1.0815e18, // Quantité de O2 en kg (~21% de l'atmosphère moderne, non affiché dans le flux diagram)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
-        cloud_coverage: 0.4, // DEPRECATED: Sera calculé dynamiquement
-        albedo_base: 0.30,
-        ocean_coverage: 0.70, forest_coverage: 0.15, desert_coverage: 0.10, ice_coverage: 0.05, // DEPRECATED: Sera calculé dynamiquement
-        volcanoFactor: 1.0,
         events: {
             ice_meteorite: {
                 water_added_kg: 1.0e18, // Quantité d'eau ajoutée par météorite

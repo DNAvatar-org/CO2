@@ -110,6 +110,9 @@ function calculateCloudAlbedoContribution(cloud_coverage, cloud_albedo = 0.5) {
  * @returns {number} Couverture nuageuse estimée (0-1)
  */
 function estimateCloudCoverage(temp_K, h2o_vapor_fraction, relative_humidity = 0.8) {
+    // Pas de nuages si pas d'eau
+    if (h2o_vapor_fraction <= 0) return 0;
+
     // Pas de nuages si température trop élevée (> 350K = 77°C)
     if (temp_K > 350) return 0.05;
 
@@ -284,22 +287,36 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
 
     // Récupérer les paramètres de l'époque courante et calculer les valeurs dérivées
     let epochParams = {};
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch) {
-            // Calculer pressure_atm et molar_mass_air depuis les composants
-            const pressure_atm = typeof window.calculatePressureAtm === 'function' 
-                ? window.calculatePressureAtm(currentEpoch) : undefined;
-            const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
-                ? window.calculateMolarMassAir(currentEpoch) : undefined;
-            
-            epochParams = {
-                pressure_atm: pressure_atm,
-                molar_mass_air: molar_mass_air,
-                gravity: currentEpoch.gravity,
-                ocean_coverage: currentEpoch.ocean_coverage
-            };
+    const epoch = window.epoch;
+    if (epoch) {
+        // Calculer pressure_atm et molar_mass_air depuis les composants
+        const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+            ? window.calculatePressureAtm(epoch) : 0;
+        const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+            ? window.calculateMolarMassAir(epoch) : 0;
+        
+        // Calculer ocean_coverage depuis window.h2o si disponible, sinon 0
+        let ocean_coverage = 0;
+        if (window.h2o && window.h2o['🌊'] !== undefined) {
+            ocean_coverage = window.h2o['🌊'] / 100; // Convertir de % à fraction
+        } else if (window.calculateOceanCoverage && window.T0) {
+            ocean_coverage = window.calculateOceanCoverage(window.T0, epoch) || 0;
         }
+        
+        epochParams = {
+            pressure_atm: pressure_atm || 0,
+            molar_mass_air: molar_mass_air || 0,
+            gravity: epoch.gravity || 9.81,
+            ocean_coverage: ocean_coverage
+        };
+    } else {
+        // Valeurs par défaut si pas d'époque
+        epochParams = {
+            pressure_atm: 0,
+            molar_mass_air: 0,
+            gravity: 9.81,
+            ocean_coverage: 0
+        };
     }
 
     // Calculer la répartition eau vapeur / liquide / glace selon les conditions physiques
@@ -359,6 +376,24 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
         }
     }
 
+    // Créer window.h2o avec logos
+    const h2o_result = {
+        '💧': vapor_fraction * 100,
+        '🧊': ice_fraction * 100,
+        '⛅': cloud_coverage * 100,
+        '🌊': liquid_fraction * 100,
+        '♻': greenhouse_forcing,
+        '🌤': cloud_albedo_contribution,
+        '🌧': waterPartition.max_vapor_fraction * 100
+    };
+    
+    // Sauvegarder dans window.h2o
+    window.h2o = h2o_result;
+    
+    // Log
+    console.log(`💧 [calculateH2OParameters@calculations_h2o.js]`);
+    console.log(`h2o={'💧':${h2o_result['💧'].toFixed(0)}, '🧊':${h2o_result['🧊'].toFixed(0)}, '⛅':${h2o_result['⛅'].toFixed(0)}, '🌊':${h2o_result['🌊'].toFixed(0)}, '♻':${h2o_result['♻'].toFixed(0)}, '🌤':${h2o_result['🌤'].toFixed(4)}, '🌧':${h2o_result['🌧'].toFixed(0)}}`);
+    
     return {
         vapor_fraction,
         ice_fraction,

@@ -18,7 +18,27 @@ const LOGOS = {
     CO2: '🏭',      // CO2 : usine (émissions industrielles)
     CH4: '⛽',       // CH4 : pompe à essence (combustibles fossiles, pets de vache)
     H2O: '💧',      // H2O : goutte d'eau
+    O2: '🌫',       // O2 : brouillard/air
+    WEIGHT: '🐳',   // Poids : baleine (masse)
+    DENSITY: '💨',  // Densité : vent
+    ALTITUDE: '🚀', // Altitude : fusée
+    ANIMATION: '🎬', // Animation : caméra
+    TROPOPAUSE: '🛩', // Tropopause : avion
+    GREENHOUSE_FORCING: '♻', // Greenhouse forcing : recyclage
+    CLOUD_ALBEDO: '🌤', // Cloud albedo contribution : soleil avec nuage
+    MAX_VAPOR: '🌧', // Max vapor fraction : pluie
     ALBEDO: '🪞',   // Albédo : miroir
+    EDS: '📛',      // EDS : Forçage radiatif (Radiative Forcing)
+    TEMP: '🌡️',     // TEMP : Température
+    PHASE: '⚧',     // Phase : symbole transgenre (phase de convergence)
+    T0: '🚩',        // T0 : drapeau (température initiale)
+    SIGNE_DELTA_FIRST: '🔺', // SigneDeltaFirst : triangle rouge (signe du premier delta)
+    BIG_IMPACT: '🎇', // Big impact : feu d'artifice (événement d'impact majeur)
+    TIC_TIME: '🕓', // TicTime : horloge (événement d'avancement temporel)
+    GEOTHERMAL_FLUX: '🌕', // Geothermal flux : lune (flux géothermique)
+    FLUX_START: '▶', // Flux start : flèche droite (valeur de départ)
+    FLUX_END: '◀', // Flux end : flèche gauche (valeur de fin)
+    ENERGY_FLUX: '♨', // Energy flux : sources chaudes (W/m² - généralisé pour tous les flux énergétiques)
     DESERT: 'fonts/pics/desert.png',   // Désert : dunes de sable (utilisé dans albedo breakdown)
     VOLCANO: '🌋',  // Volcan : magma (utilisé dans albedo breakdown)
     OCEAN: '🌊',    // Océan : vagues (utilisé dans albedo breakdown)
@@ -27,9 +47,18 @@ const LOGOS = {
     CLOUD: '⛅'     // Nuages : nuage avec soleil (utilisé dans albedo breakdown)
 };
 
+// Objet pour mapper les logos emoji vers les fichiers images
+// Utilisé quand un logo emoji doit être remplacé par une image
+const logosImages = {
+    '🎇': 'big_impact.png',  // Big impact utilise une image
+    // Ajouter d'autres mappings si nécessaire
+    // Exemple: '🌋': 'volcano.png' si on veut remplacer l'emoji par une image
+};
+
 // Exposer globalement pour utilisation dans plot.js
 if (typeof window !== 'undefined') {
     window.LOGOS = LOGOS;
+    window.logosImages = logosImages;
 }
 
 // Configuration de base
@@ -115,7 +144,7 @@ const ARROW_Z_INDEX = {
 // Explication : La Terre est une sphère. Vu du Soleil, seule la face éclairée est visible (disque de rayon R, surface = πR²)
 // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
 const nodes = [
-    { id: 'soleil', logo: '🌞', x: centerX - 140, y: centerY - 155, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, strokeStyle: 'solid', left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, zIndex: 12, logoScale: 1.0, logoOffsetY: 1 },
+    { id: 'soleil', logo: ['🌞',{ text: '3.8×10<sup><b>26</b></sup> W ', dataId: 'solar_power_total' }], align: 'zorder', x: centerX - 140, y: centerY - 155, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, strokeStyle: 'solid', left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, zIndex: 12, logoScale: 1.0, logoOffsetY: 1 },
 
     { id: 'geometrie', logo: 'fonts/pics/geometrie.png', x: centerX + 65, y: centerY - 155, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 0, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: ['Géométrie'], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 13, logoScale: 0.8 },
 

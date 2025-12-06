@@ -459,6 +459,95 @@ function calculatePressureAtm(epoch) {
 }
 
 // ============================================================================
+// FONCTION PRINCIPALE : CALCULER COMPOSITION DEPUIS OBJET AVEC LOGOS
+// ============================================================================
+
+/**
+ * Calcule la composition atmosphérique à partir d'un objet avec logos comme clés
+ * @param {Object} configObj - Objet avec logos comme clés (depuis getEpochDateConfig)
+ * @param {number} total_atmosphere_mass_kg - Masse totale de l'atmosphère en kg
+ * @param {Object} epoch - Configuration de l'époque (pour molar_mass_air)
+ * @returns {Object} Objet avec logos comme clés contenant les fractions molaires (ppm/%) et les poids
+ */
+function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg, epoch) {
+    if (!configObj || total_atmosphere_mass_kg === undefined) {
+        console.error("[calculateCompositionFromLogoConfig] ❌ ERREUR CRITIQUE : Paramètres manquants");
+        throw new Error('calculateCompositionFromLogoConfig: configObj et total_atmosphere_mass_kg requis');
+    }
+    
+    // Récupérer les poids depuis l'objet config
+    const co2_kg = configObj['🏭🐳'] || 0;
+    const ch4_kg = configObj['⛽🐳'] || 0;
+    const h2o_kg = configObj['💧🐳'] || 0;
+    const o2_kg = configObj['🌫🐳'] || 0;
+    
+    // Calculer la masse molaire moyenne
+    let molar_mass_air = 0.029; // Défaut
+    if (epoch && typeof window !== 'undefined' && typeof window.calculateMolarMassAir === 'function') {
+        molar_mass_air = window.calculateMolarMassAir(epoch);
+    } else if (epoch && epoch.molar_mass_air) {
+        molar_mass_air = epoch.molar_mass_air;
+    }
+    
+    // Calculer les fractions molaires
+    const CO2_fraction = co2KgToFraction(co2_kg, total_atmosphere_mass_kg, molar_mass_air);
+    const CH4_fraction = ch4KgToFraction(ch4_kg, total_atmosphere_mass_kg, molar_mass_air);
+    
+    // Pour H2O, on utilise une fraction vapeur par défaut (sera calculée plus tard dans calculations_h2o)
+    // Ici, on calcule juste la fraction molaire totale H2O si tout était vapeur
+    const h2o_vapor_fraction_default = 1.0; // Approximation : tout en vapeur pour le calcul initial
+    const H2O_fraction = h2oKgToVaporFraction(h2o_kg, h2o_vapor_fraction_default, total_atmosphere_mass_kg, molar_mass_air);
+    
+    // Pour O2, convertir kg en fraction molaire
+    let O2_fraction = 0;
+    if (o2_kg > 0 && total_atmosphere_mass_kg > 0 && molar_mass_air > 0) {
+        const moles_O2 = o2_kg / MOLAR_MASS_O2;
+        const moles_total = total_atmosphere_mass_kg / molar_mass_air;
+        O2_fraction = moles_O2 / moles_total;
+    }
+    
+    // Calculer les propriétés atmosphériques (densité, altitude, tropopause)
+    let density = 0;
+    let altitude = 0;
+    let tropopause = 0;
+    
+    if (total_atmosphere_mass_kg > 0 && window.calculateAtmosphereProperties) {
+        const T0 = configObj['🌡️'] || 288; // Température de surface
+        const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, molar_mass_air, epoch?.gravity || 9.81);
+        altitude = props.z_max || 0; // Altitude max en mètres
+        
+        // Densité = masse totale / volume (approximation : surface * altitude)
+        const planet_radius = epoch?.planet_radius || 6371000;
+        const surface_area = 4 * Math.PI * Math.pow(planet_radius, 2);
+        if (altitude > 0) {
+            density = total_atmosphere_mass_kg / (surface_area * altitude); // kg/m³
+        }
+        
+        // Calculer tropopause si disponible
+        if (typeof window.calculateTropopauseHeight === 'function') {
+            tropopause = window.calculateTropopauseHeight(T0) || 0;
+        }
+    }
+    
+    // Créer l'objet avec logos comme clés
+    const atmComposition = {
+        '💨': density,                  // Densité
+        '🚀': altitude,                 // Altitude max
+        '🛩': tropopause,               // Tropopause
+        '🌫': O2_fraction * 100,        // O2 en %
+        '🏭': CO2_fraction * 1e6,        // CO2 en ppm
+        '💧': H2O_fraction * 100,       // H2O en %
+        '⛽': CH4_fraction * 1e6         // CH4 en ppm
+    };
+    
+    // Sauvegarder dans window.atm
+    window.atm = atmComposition;
+    
+    // Retourner l'objet (sans les champs d'origine, juste la composition)
+    return atmComposition;
+}
+
+// ============================================================================
 // EXPOSITION GLOBALE
 // ============================================================================
 
@@ -473,6 +562,7 @@ if (typeof window !== 'undefined') {
     window.calculatePressure = calculatePressure;
     window.calculateMolarMassAir = calculateMolarMassAir;
     window.calculatePressureAtm = calculatePressureAtm;
+    window.calculateCompositionFromLogoConfig = calculateCompositionFromLogoConfig;
     
     // Constantes
     window.EARTH_TOTAL_WATER_MASS_KG = EARTH_TOTAL_WATER_MASS_KG;

@@ -20,103 +20,46 @@
 function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     const T_surface_C = T_surface_K - 273.15;
     
-    // Récupérer l'albedo de base de l'époque courante
-    // Calculer depuis les composantes détaillées ou utiliser albedo_base de l'époque
-    let albedo_base = null; // Pas de valeur par défaut, on doit toujours avoir une époque
-    let epochName = 'default';
+    // Récupérer l'albedo de base de l'époque courante depuis window.epoch
+    // Calculer dynamiquement depuis les composantes (océan, glace, etc.)
+    let albedo_base = 0.3; // Valeur par défaut
     
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch) {
-            epochName = currentEpoch.name || window.currentEpochName;
-            
-            // Si l'époque a des composantes détaillées, calculer l'albedo de base comme moyenne pondérée
-            if (currentEpoch.ocean_coverage !== undefined || currentEpoch.magma_coverage !== undefined) {
-                let total_coverage = 0;
-                let weighted_albedo = 0;
-                
-                // Magma (Hadéen uniquement)
-                if (currentEpoch.magma_coverage !== undefined && currentEpoch.magma_albedo !== undefined) {
-                    const magma_cov = currentEpoch.magma_coverage; // Déjà en fraction (0-1)
-                    weighted_albedo += currentEpoch.magma_albedo * magma_cov;
-                    total_coverage += magma_cov;
-                }
-                
-                // Océans
-                if (currentEpoch.ocean_coverage !== undefined && currentEpoch.ocean_albedo !== undefined) {
-                    const ocean_cov = currentEpoch.ocean_coverage; // Déjà en fraction (0-1)
-                    weighted_albedo += currentEpoch.ocean_albedo * ocean_cov;
-                    total_coverage += ocean_cov;
-                }
-                
-                // Forêts
-                if (currentEpoch.forest_coverage !== undefined && currentEpoch.forest_albedo !== undefined) {
-                    const forest_cov = currentEpoch.forest_coverage; // Déjà en fraction (0-1)
-                    weighted_albedo += currentEpoch.forest_albedo * forest_cov;
-                    total_coverage += forest_cov;
-                }
-                
-                // Déserts
-                if (currentEpoch.desert_coverage !== undefined && currentEpoch.desert_albedo !== undefined) {
-                    const desert_cov = currentEpoch.desert_coverage; // Déjà en fraction (0-1)
-                    weighted_albedo += currentEpoch.desert_albedo * desert_cov;
-                    total_coverage += desert_cov;
-                }
-                
-                // Si total_coverage > 0, utiliser la moyenne pondérée, sinon utiliser albedo_base
-                if (total_coverage > 0) {
-                    albedo_base = weighted_albedo / total_coverage;
-                } else if (typeof currentEpoch.albedo_base === 'number') {
-                    albedo_base = currentEpoch.albedo_base;
-                }
-            } else if (typeof currentEpoch.albedo_base === 'number') {
-                // Sinon, utiliser directement albedo_base
-                albedo_base = currentEpoch.albedo_base;
-            }
+    const epoch = window.epoch;
+    if (epoch) {
+        // Calculer dynamiquement depuis les composantes si disponibles
+        // Utiliser window.h2o pour la glace et l'océan
+        const ice_fraction = window.h2o ? (window.h2o['🧊'] / 100) : 0;
+        const ocean_coverage = window.h2o ? (window.h2o['🌊'] / 100) : 0;
+        
+        // Calculer l'albedo pondéré selon les couvertures
+        let total_coverage = 0;
+        let weighted_albedo = 0;
+        
+        // Océan
+        if (ocean_coverage > 0) {
+            const ocean_albedo = 0.06;
+            weighted_albedo += ocean_coverage * ocean_albedo;
+            total_coverage += ocean_coverage;
         }
-    }
-    
-    // Si albedo_base est toujours null, utiliser la dernière époque comme fallback
-    if (albedo_base === null && typeof window !== 'undefined' && window.GEOLOGICAL_PERIODS) {
-        const lastEpoch = window.GEOLOGICAL_PERIODS[window.GEOLOGICAL_PERIODS.length - 1];
-        if (lastEpoch) {
-            // Calculer depuis les composantes ou utiliser albedo_base
-            if (lastEpoch.ocean_coverage !== undefined || lastEpoch.magma_coverage !== undefined) {
-                let total_coverage = 0;
-                let weighted_albedo = 0;
-                
-                if (lastEpoch.magma_coverage !== undefined && lastEpoch.magma_albedo !== undefined) {
-                    weighted_albedo += lastEpoch.magma_albedo * lastEpoch.magma_coverage;
-                    total_coverage += lastEpoch.magma_coverage;
-                }
-                if (lastEpoch.ocean_coverage !== undefined && lastEpoch.ocean_albedo !== undefined) {
-                    weighted_albedo += lastEpoch.ocean_albedo * lastEpoch.ocean_coverage;
-                    total_coverage += lastEpoch.ocean_coverage;
-                }
-                if (lastEpoch.forest_coverage !== undefined && lastEpoch.forest_albedo !== undefined) {
-                    weighted_albedo += lastEpoch.forest_albedo * lastEpoch.forest_coverage;
-                    total_coverage += lastEpoch.forest_coverage;
-                }
-                if (lastEpoch.desert_coverage !== undefined && lastEpoch.desert_albedo !== undefined) {
-                    weighted_albedo += lastEpoch.desert_albedo * lastEpoch.desert_coverage;
-                    total_coverage += lastEpoch.desert_coverage;
-                }
-                
-                if (total_coverage > 0) {
-                    albedo_base = weighted_albedo / total_coverage;
-                } else if (typeof lastEpoch.albedo_base === 'number') {
-                    albedo_base = lastEpoch.albedo_base;
-                }
-            } else if (typeof lastEpoch.albedo_base === 'number') {
-                albedo_base = lastEpoch.albedo_base;
-            }
+        
+        // Glace
+        if (ice_fraction > 0) {
+            const ice_albedo = 0.6;
+            weighted_albedo += ice_fraction * ice_albedo;
+            total_coverage += ice_fraction;
         }
-    }
-    
-    // Si toujours null, erreur (ne devrait jamais arriver si les époques sont bien configurées)
-    if (albedo_base === null) {
-        console.error('[ALBEDO] Erreur : impossible de déterminer albedo_base, aucune époque trouvée');
-        albedo_base = 0.3; // Dernier recours uniquement pour éviter un crash
+        
+        // Surface restante (roche/magma)
+        const surface_remaining = Math.max(0, 1.0 - total_coverage);
+        if (surface_remaining > 0) {
+            const surface_albedo = 0.1; // Albedo de la roche/magma
+            weighted_albedo += surface_remaining * surface_albedo;
+            total_coverage += surface_remaining;
+        }
+        
+        if (total_coverage > 0) {
+            albedo_base = weighted_albedo / total_coverage;
+        }
     }
     
     let albedo = albedo_base;
