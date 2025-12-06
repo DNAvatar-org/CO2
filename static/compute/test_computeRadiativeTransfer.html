@@ -55,8 +55,102 @@
             margin-bottom: 20px;
             display: flex;
             gap: 20px;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .controls-left {
+            display: flex;
+            gap: 20px;
             flex-wrap: wrap;
             align-items: center;
+            flex: 1;
+        }
+        
+        .timeline-horizontal-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        
+        .timeline-date-display, .timeline-horloge-display {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            color: #e0e0e0;
+            white-space: nowrap;
+        }
+        
+        .timeline-hourglass, .horloge-icon {
+            font-size: 16px;
+        }
+        
+        .epochs-container-horizontal {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .epoch-btn-horizontal {
+            font-size: 24px;
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+            background: none !important;
+            border: none !important;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer !important;
+            padding: 5px;
+            transition: filter 0.3s ease, text-shadow 0.3s ease;
+            width: 40px;
+            height: 40px;
+            position: relative;
+            filter: grayscale(100%);
+            text-shadow: none;
+        }
+        
+        .epoch-btn-horizontal:hover {
+            filter: grayscale(0%);
+            text-shadow: 0 0 8px rgba(81, 207, 102, 0.6);
+        }
+        
+        .epoch-btn-horizontal.selected {
+            filter: grayscale(0%);
+            text-shadow: 0 0 12px rgba(81, 207, 102, 1);
+            box-shadow: 0 0 0 2px rgba(81, 207, 102, 0.8);
+        }
+        
+        .timeline-events-logos {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .timeline-event-logo {
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            transition: transform 0.2s ease, filter 0.3s ease;
+            filter: grayscale(100%);
+        }
+        
+        .timeline-event-logo:hover {
+            transform: scale(1.1);
+            filter: grayscale(0%);
+        }
+        
+        .controls-right {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
         }
         
         .control-group {
@@ -92,6 +186,38 @@
         
         button:hover {
             background: #3a8eef;
+        }
+        
+        .icon-button {
+            background: #3a3a3a;
+            border: 2px solid #555;
+            color: #e0e0e0;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 20px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .icon-button:hover {
+            background: #4a4a4a;
+            border-color: #666;
+        }
+        
+        .icon-button.selected {
+            background: #51cf66;
+            border-color: #51cf66;
+            color: white;
+        }
+        
+        .icon-button.selected:hover {
+            background: #40bf55;
+            border-color: #40bf55;
         }
         
         .results {
@@ -187,6 +313,35 @@
         .config-value {
             color: #e0e0e0;
             font-family: 'EmojiFont', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', monospace, sans-serif;
+        }
+        
+        .results.replied .config-title {
+            display: none;
+        }
+        
+        .results.replied .config-section {
+            margin-bottom: 0;
+            padding: 5px;
+        }
+        
+        .toggle-button {
+            background: #4a9eff;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .toggle-button:hover {
+            background: #3a8eef;
+        }
+        
+        .results h2 {
+            display: flex;
+            align-items: center;
             padding: 8px;
             background: #0a0a0a;
             border-radius: 4px;
@@ -219,81 +374,117 @@
     <div class="container">
         <h1>🧪 Test computeRadiativeTransfer</h1>
         
-        <!-- Légende des logos -->
+        <!-- Légende des logos selon grammar.txt -->
         <div class="results" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
             <h2 style="color: #4a9eff; margin-bottom: 10px;">📖 Légende des logos</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; font-size: 13px;">
-                <div><strong>🎬</strong> Animation</div>
-                <div><strong>🏮</strong> old_T0 (température précédente)</div>
-                <div><strong>🌡️</strong> Température (T0 config)</div>
-                <div><strong>☄️</strong> Nombre de météorites / Événement météorite</div>
-                <div><strong>🌡️☄️</strong> Delta température météorite</div>
-                <div><strong>☄️💧🐳</strong> Masse d'eau ajoutée par météorite (kg)</div>
-                <div><strong>🕓</strong> TicTime</div>
-                <div><strong>🌡️🕓</strong> Delta température ticTime</div>
-                <div><strong>🚩</strong> T0 (température calculée)</div>
-                <div><strong>⚧</strong> Phase (None/Search/Dicho)</div>
-                <div><strong>🔺</strong> signeDeltaFirst</div>
-                <div><strong>🏭🐳</strong> Masse CO2 (kg)</div>
-                <div><strong>⛽🐳</strong> Masse CH4 (kg)</div>
-                <div><strong>💧🐳</strong> Masse H2O (kg)</div>
-                <div><strong>🌫🐳</strong> Masse O2 (kg)</div>
-                <div><strong>🐳</strong> Masse totale atmosphère (kg)</div>
-                <div><strong>💨</strong> Densité</div>
-                <div><strong>🚀</strong> Altitude</div>
-                <div><strong>🛩</strong> Tropopause</div>
-                <div><strong>🏭</strong> CO2 (ppm)</div>
-                <div><strong>💧</strong> H2O (%)</div>
-                <div><strong>⛽</strong> CH4 (ppm)</div>
-                <div><strong>🌫</strong> O2 (%)</div>
-                <div><strong>🧊</strong> Glace (%)</div>
-                <div><strong>⛅</strong> Nuages (%)</div>
-                <div><strong>🌊</strong> Océan (%)</div>
-                <div><strong>♻</strong> Greenhouse forcing</div>
-                <div><strong>🌤</strong> Cloud albedo contribution</div>
-                <div><strong>🌧</strong> Max vapor fraction</div>
-                <div><strong>☀️</strong> Flux radiatif (W/m²)</div>
-                <div><strong>🎇</strong> Big impact (événement d'impact majeur)</div>
-                <div><strong>🕓</strong> TicTime (événement d'avancement temporel)</div>
-                <div><strong>🌕</strong> Geothermal flux (flux géothermique)</div>
-                <div><strong>▶</strong> Flux start (valeur de départ)</div>
-                <div><strong>◀</strong> Flux end (valeur de fin)</div>
-                <div><strong>♨</strong> Energy flux (W/m² - généralisé pour tous les flux énergétiques)</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13px;">
+                <!-- Colonne 1 : Configuration et états -->
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <div><strong>📫🎬</strong> Animation</div>
+                    <div><strong>🌡️🏮📜</strong> old_T0 (température précédente)</div>
+                    <div><strong>⏳🌡️</strong> T0 attendu (température config)</div>
+                    <div><strong>🎓☄️📜</strong> Nombre de météorites</div>
+                    <div><strong>🔺🌡️☄️📜</strong> Delta température / météorite</div>
+                    <div><strong>🔺🐳💧☄️📜</strong> Masse d'eau ajoutée / météorite</div>
+                    <div><strong>🎓💫📜</strong> Nombre de ticTime</div>
+                    <div><strong>🔺🌡️💫📜</strong> Delta température / ticTime</div>
+                    <div><strong>🔺🧲🌕💫📜</strong> Delta Flux Geom /ticTime</div>
+                    <div><strong>⏳🌡️🚩</strong> T0 calculé (température calculée)</div>
+                    <div><strong>⏳⚧</strong> Phase (None/Search/Dicho)</div>
+                    <div><strong>⏳🔺</strong> signeDeltaFirst</div>
+                    <div><strong>📫💧📛</strong> H2O EDS activé</div>
+                    <div><strong>📫⛽📛</strong> CH4 EDS activé</div>
+                    <div><strong>📫🏭📛</strong> CO2 EDS activé</div>
+                    <div><strong>📫🪞</strong> Albedo activé</div>
+                </div>
+                <!-- Colonne 2 : Masses et composition -->
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <div><strong>🐳🏭</strong> Masse CO2 (kg)</div>
+                    <div><strong>🐳⛽</strong> Masse CH4 (kg)</div>
+                    <div><strong>🐳💧</strong> Masse H2O (kg)</div>
+                    <div><strong>🐳🌫</strong> Masse O2 (kg)</div>
+                    <div><strong>🐳🎓</strong> Masse totale atmosphère (kg)</div>
+                    <div><strong>📏🌬🚀</strong> Altitude max (km) - épaisseur de l'atmosphère</div>
+                    <div><strong>📏🌬🛩</strong> Tropopause (km) - limite troposphère/stratosphère</div>
+                    <div><strong>🥒🌬🏭</strong> CO2 (%)</div>
+                    <div><strong>🥒🌬💧</strong> H2O (%)</div>
+                    <div><strong>🥒🌬⛽</strong> CH4 (%)</div>
+                    <div><strong>🥒🌬🌫</strong> O2 (%)</div>
+                    <div><strong>🥒💧🧊</strong> Glace (%)</div>
+                    <div><strong>🥒💧⛅</strong> Nuages (%)</div>
+                    <div><strong>🥒💧🌊</strong> Océan (%)</div>
+                    <div><strong>⏳🌴</strong> Greenhouse forcing</div>
+                    <div><strong>🌤</strong> Cloud albedo contribution</div>
+                    <div><strong>⏳🌧</strong> Max vapor fraction</div>
+                </div>
+                <!-- Colonne 3 : Flux et événements -->
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <div><strong>🧲☀️</strong> Flux solaire (W/m²)</div>
+                    <div><strong>🧲☀️🔽</strong> Flux solaire absorbé (W/m²)</div>
+                    <div><strong>🧲🌕🔽</strong> Flux géothermique (W/m²)</div>
+                    <div><strong>🧲🔼</strong> Flux sortant (corps noir σT⁴, W/m²)</div>
+                    <div><strong>🔺🧲</strong> Delta flux (W/m²)</div>
+                    <div><strong>🔺🧲🌕</strong> Delta flux géothermique (W/m²)</div>
+                    <div><strong>🧲🧯</strong> Tolérance (précision pour test d'arrêt, W/m²)</div>
+                    <div><strong>🎇</strong> Big impact (événement d'impact majeur)</div>
+                    <div><strong>💫</strong> TicTime (événement d'avancement temporel)</div>
+                    <div><strong>☄️</strong> Météorite de glace (événement)</div>
+                    <div><strong>▶</strong> Flux start (valeur de départ)</div>
+                    <div><strong>◀</strong> Flux end (valeur de fin)</div>
+                    <div><strong>🥒🪞🎓</strong> % Albedo total</div>
+                    <div><strong>🥒🪞🌋</strong> Volcan (couverture)</div>
+                    <div><strong>🥒🪞🌊</strong> Océan (couverture)</div>
+                    <div><strong>🥒🪞🌳</strong> Forêt (couverture)</div>
+                    <div><strong>🥒🪞🏖</strong> Désert (couverture)</div>
+                    <div><strong>🥒🪞🧊</strong> Glace (couverture)</div>
+                    <div><strong>🥒🪞⛅</strong> Cloud albedo (couverture)</div>
+                </div>
             </div>
         </div>
         
         <div class="controls">
-            <div class="control-group">
-                <label for="epoch-select">Époque géologique</label>
-                <select id="epoch-select">
-                    <option value="corps-noir">Corps noir</option>
-                    <option value="hadeen">Hadéen</option>
-                    <option value="archeen">Archéen</option>
-                    <option value="proterozoique">Protérozoïque</option>
-                    <option value="mesozoique">Mésozoïque</option>
-                    <option value="cretace">Crétacé</option>
-                    <option value="cenozoique">Cénozoïque</option>
-                    <option value="pre-industriel">1800 (Pré-industriel)</option>
-                </select>
+            <div class="controls-left">
+                <!-- Timeline horizontale -->
+                <div class="timeline-horizontal-container">
+                    <!-- Date de l'époque -->
+                    <div class="timeline-date-display">
+                        <span class="timeline-hourglass">📅</span>
+                        <span class="epoch-start-time" id="epoch-start-time">-5000 Ma</span>
+                    </div>
+                    
+                    <!-- Horloge / TicTime -->
+                    <div class="timeline-horloge-display">
+                        <span class="horloge-icon">🕰</span>
+                        <span class="info-time" id="info-time">Actions</span>
+                    </div>
+                    
+                    <!-- Boutons d'époques -->
+                    <div class="epochs-container-horizontal" id="epochs-container-horizontal">
+                        <!-- Sera rempli dynamiquement -->
+                    </div>
+                    
+                    <!-- Boutons d'actions (événements) -->
+                    <div class="timeline-events-logos" id="timeline-events-logos">
+                        <!-- Sera rempli dynamiquement -->
+                    </div>
+                </div>
             </div>
             
-            <div class="control-group">
-                <label for="h2o-meteorites">H2O depuis météorites (%)</label>
-                <input type="number" id="h2o-meteorites" value="0" min="0" max="100" step="0.1">
+            <div class="controls-right">
+                <button class="icon-button" id="anim-toggle" onclick="toggleAnim()" title="Animation">🎬</button>
+                <button class="icon-button" onclick="runTest()" title="Exécuter">▶️</button>
+                <button class="icon-button" onclick="clearLog()" title="Effacer les logs">🗑️</button>
             </div>
-            
-            <div class="control-group">
-                <label for="anim-toggle">Animation (🎬)</label>
-                <input type="checkbox" id="anim-toggle">
-            </div>
-            
-            <button onclick="runTest()">▶️ Exécuter computeRadiativeTransfer</button>
-            <button onclick="clearLog()">🗑️ Effacer les logs</button>
         </div>
         
-        <div id="config" class="results" style="display: none;">
-            <h2>📋 Configuration</h2>
+        <div id="config" class="results replied" style="display: none;">
+            <h2>📋 Configuration <button class="toggle-button" onclick="toggleConfig()">x</button></h2>
             <div id="config-content"></div>
+        </div>
+        
+        <div id="convergence" class="results replied" style="display: none;">
+            <h2>⚙ Convergence <button class="toggle-button" onclick="toggleConvergence()">x</button></h2>
+            <div id="convergence-content"></div>
         </div>
         
         <div id="results" class="results" style="display: none;">
@@ -310,6 +501,8 @@
     <!-- Charger les dépendances dans l'ordre -->
     <script src="../../organigramme/configOrganigramme.js"></script>
     <script src="../timeline/configTimeline.js"></script>
+    <script src="../timeline/timeline.js"></script>
+    <script src="../events.js"></script>
     <script src="../calculations.js"></script>
     <script src="../calculations_h2o.js"></script>
     <script src="../calculations_albedo.js"></script>
@@ -345,10 +538,176 @@
             logContent.innerHTML = '';
         }
         
+        function toggleAnim() {
+            const animButton = document.getElementById('anim-toggle');
+            if (animButton) {
+                const isSelected = animButton.classList.contains('selected');
+                if (isSelected) {
+                    animButton.classList.remove('selected');
+                } else {
+                    animButton.classList.add('selected');
+                }
+                // Créer ou mettre à jour plot-anim-toggle pour compatibilité
+                let plotAnimToggle = document.getElementById('plot-anim-toggle');
+                if (!plotAnimToggle) {
+                    plotAnimToggle = document.createElement('input');
+                    plotAnimToggle.type = 'checkbox';
+                    plotAnimToggle.id = 'plot-anim-toggle';
+                    plotAnimToggle.style.display = 'none';
+                    document.body.appendChild(plotAnimToggle);
+                }
+                plotAnimToggle.checked = !isSelected;
+            }
+        }
+        
+        // Fonction helper pour convertir les chemins relatifs en chemins absolus depuis la racine
+        // Depuis static/compute/, on doit remonter de 2 niveaux pour atteindre la racine
+        function getImagePath(relativePath) {
+            if (!relativePath) return relativePath;
+            // Si le chemin commence déjà par http:// ou https:// ou /, le retourner tel quel
+            if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('/')) {
+                return relativePath;
+            }
+            // Sinon, remonter de 2 niveaux depuis static/compute/ pour atteindre la racine
+            return '../../' + relativePath;
+        }
+        
+        // Générer la timeline horizontale
+        function generateHorizontalTimeline() {
+            const epochsContainer = document.getElementById('epochs-container-horizontal');
+            if (!epochsContainer || !window.configTimeline || !window.configTimeline.timeline) return;
+            
+            epochsContainer.innerHTML = '';
+            
+            window.configTimeline.timeline.forEach(item => {
+                if (item.type === 'epoch') {
+                    const button = document.createElement('button');
+                    button.className = 'epoch-btn-horizontal';
+                    button.setAttribute('data-epoch', item.id || item.name);
+                    button.onclick = () => selectEpoch(item.id || item.name);
+                    
+                    // Si le logo est un fichier image
+                    if (item.logo && typeof item.logo === 'string' && (item.logo.endsWith('.svg') || item.logo.endsWith('.png'))) {
+                        const img = document.createElement('img');
+                        img.src = getImagePath(item.logo);
+                        img.alt = item.name;
+                        img.style.width = '24px';
+                        img.style.height = '24px';
+                        img.style.objectFit = 'contain';
+                        img.style.display = 'block';
+                        img.style.margin = '0 auto';
+                        img.style.pointerEvents = 'none';
+                        button.appendChild(img);
+                    } else {
+                        // Sinon c'est un emoji/texte
+                        button.textContent = item.logo || '?';
+                        button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+                    }
+                    
+                    epochsContainer.appendChild(button);
+                }
+            });
+            
+            // Sélectionner la première époque par défaut
+            if (window.configTimeline.timeline.length > 0) {
+                const firstEpoch = window.configTimeline.timeline.find(item => item.type === 'epoch');
+                if (firstEpoch) {
+                    selectEpoch(firstEpoch.id || firstEpoch.name);
+                }
+            }
+        }
+        
+        // Sélectionner une époque
+        function selectEpoch(epochId) {
+            window.currentEpochName = epochId;
+            
+            // Mettre à jour les boutons
+            document.querySelectorAll('.epoch-btn-horizontal').forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn.getAttribute('data-epoch') === epochId) {
+                    btn.classList.add('selected');
+                }
+            });
+            
+            // Mettre à jour l'époque
+            if (window.configTimeline && window.configTimeline.timeline) {
+                const epoch = window.configTimeline.timeline.find(item => 
+                    item.type === 'epoch' && (item.id === epochId || item.name === epochId)
+                );
+                if (epoch) {
+                    window.epoch = epoch;
+                    
+                    // Mettre à jour la date de l'époque
+                    const epochStartTime = document.getElementById('epoch-start-time');
+                    if (epochStartTime && epoch.date) {
+                        epochStartTime.textContent = epoch.date;
+                    }
+                }
+            }
+            
+            // Mettre à jour les actions (boutons d'événements)
+            updateEpochActions();
+            
+            // Réinitialiser le temps
+            if (typeof window !== 'undefined') {
+                window.infoTimeMa = 0;
+                updateTimelineDisplay();
+            }
+        }
+        
+        // Mettre à jour l'affichage de la timeline
+        function updateTimelineDisplay() {
+            const infoTimeDisplay = document.getElementById('info-time');
+            if (infoTimeDisplay) {
+                const infoTimeMa = window.infoTimeMa || 0;
+                if (infoTimeMa === 0) {
+                    infoTimeDisplay.textContent = 'Actions';
+                } else {
+                    const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
+                    infoTimeDisplay.textContent = `+${deltaMa} Ma`;
+                }
+            }
+        }
+        
+        // Mettre à jour les actions selon l'époque (version simplifiée de events.js)
+        function updateEpochActions() {
+            const eventsLogos = document.getElementById('timeline-events-logos');
+            if (!eventsLogos) return;
+            
+            eventsLogos.innerHTML = '';
+            
+            const currentEpochName = window.currentEpochName || 'Corps noir';
+            const epoch = window.epoch;
+            
+            if (!epoch || !epoch.events) return;
+            
+            // Bouton météorite
+            if (epoch.events.meteor) {
+                const meteorBtn = document.createElement('img');
+                meteorBtn.src = getImagePath('fonts/pics/ice_meteorite.png');
+                meteorBtn.alt = 'Météorite';
+                meteorBtn.className = 'timeline-event-logo btn-events';
+                meteorBtn.title = 'Météorite de glace';
+                meteorBtn.addEventListener('click', () => {
+                    // Ajouter +50Ma
+                    if (typeof window !== 'undefined') {
+                        window.infoTimeMa = (window.infoTimeMa || 0) + 50;
+                        updateTimelineDisplay();
+                    }
+                });
+                eventsLogos.appendChild(meteorBtn);
+            }
+        }
+        
         // Initialiser les variables globales nécessaires
         function initializeGlobals() {
-            // Initialiser window.currentEpochName
-            window.currentEpochName = document.getElementById('epoch-select').value;
+            // Initialiser window.currentEpochName depuis le bouton sélectionné
+            const selectedBtn = document.querySelector('.epoch-btn-horizontal.selected');
+            if (selectedBtn) {
+                window.currentEpochName = selectedBtn.getAttribute('data-epoch');
+            } else {
+                window.currentEpochName = 'corps-noir'; // Par défaut
+            }
             
             // Initialiser window.epoch depuis timeline (les époques sont aux indices pairs)
             if (window.configTimeline && window.configTimeline.timeline) {
@@ -370,17 +729,23 @@
                 };
             }
             
-            // Initialiser window.h2oTotalFromMeteorites
-            window.h2oTotalFromMeteorites = parseFloat(document.getElementById('h2o-meteorites').value) || 0;
+            // Initialiser window.h2oTotalFromMeteorites (plus de champ input, initialisé à 0)
+            window.h2oTotalFromMeteorites = 0;
             
-            // Initialiser window.isH2O_eds, window.isCO2_eds, window.isCH4_eds
+            // Initialiser window.isH2O_eds, window.isCO2_eds, window.isCH4_eds (pour getEnabledStates)
             window.isH2O_eds = true;
             window.isCO2_eds = true;
             window.isCH4_eds = true;
             window.isAlbedo = true;
             
+            // Initialiser window.enabledStates
+            if (window.getEnabledStates) {
+                window.getEnabledStates();
+            }
+            
             // Initialiser window.T0 et window.old_T0
-            const animEnabled = document.getElementById('anim-toggle').checked;
+            const animBtn = document.getElementById('anim-toggle');
+            const animEnabled = animBtn ? animBtn.classList.contains('selected') : false;
             if (animEnabled) {
                 // Si anim activé, initialiser old_T0 à 180K pour test
                 if (window.old_T0 === undefined || window.old_T0 === null) {
@@ -404,16 +769,24 @@
             // Initialiser window.convergencePrecision_K
             window.convergencePrecision_K = 0.1;
             
-            // Créer un toggle pour anim si nécessaire
-            if (!document.getElementById('plot-anim-toggle')) {
-                const animToggle = document.createElement('input');
-                animToggle.type = 'checkbox';
-                animToggle.id = 'plot-anim-toggle';
-                animToggle.checked = animEnabled;
-                animToggle.style.display = 'none';
-                document.body.appendChild(animToggle);
-            } else {
-                document.getElementById('plot-anim-toggle').checked = animEnabled;
+            // Créer ou mettre à jour plot-anim-toggle pour compatibilité
+            let plotAnimToggle = document.getElementById('plot-anim-toggle');
+            if (!plotAnimToggle) {
+                plotAnimToggle = document.createElement('input');
+                plotAnimToggle.type = 'checkbox';
+                plotAnimToggle.id = 'plot-anim-toggle';
+                plotAnimToggle.style.display = 'none';
+                document.body.appendChild(plotAnimToggle);
+            }
+            plotAnimToggle.checked = animEnabled;
+            
+            // Mettre à jour le bouton anim
+            if (animBtn) {
+                if (animEnabled) {
+                    animBtn.classList.add('selected');
+                } else {
+                    animBtn.classList.remove('selected');
+                }
             }
         }
         
@@ -421,10 +794,32 @@
             try {
                 initializeGlobals();
                 
+                // Afficher la grammaire complète selon grammar.txt
+                console.log('📖 Grammar.txt - Structure complète des objets:');
+                console.log('');
+                console.log('enabledStates={\'📫💧📛\':true, \'📫⛽📛\':true, \'📫🏭📛\':true, \'📫🪞\':true, \'📫🎬\':false}');
+                console.log('');
+                console.log('dateConfig={\'🌡️🏮📜\':180.00K, \'⏳🌡️\':2450, \'🎓☄️📜\':0, \'🔺🌡️☄️📜\':-3.0, \'🔺🐳💧☄️📜\':1.00e+18, \'🎓💫📜\':0, \'🔺🌡️💫📜\':-300.0, \'🔺🧲🌕💫📜\':{\'▶\':2000000, \'◀\':0.3}}');
+                console.log('');
+                console.log('events={\'☄️\':\'🎓☄️📜\', \'💫\':\'🎓💫📜\'}');
+                console.log('');
+                console.log('masses={\'🐳🏭\': 5.15e+17, \'🐳⛽\': 5.15e+15, \'🐳💧\': 2.10e+20, \'🐳🌫\': 0.00e+0, \'🐳🎓\': 5.30e+20}');
+                console.log('');
+                console.log('atm={\'📏🌬🚀\':1300, \'📏🌬🛩\':30, \'🥒🌬🌫\':0.0, \'🥒🌬🏭\':0.703, \'🥒🌬💧\':0.000701158, \'🥒🌬⛽\':0.00019}');
+                console.log('');
+                console.log('h2o={\'💧\':70, \'🥒💧🧊\':0, \'🥒💧⛅\':5, \'🥒💧🌊\':0, \'🌴\':64, \'🌤\':0.0248, \'🌧\':100}');
+                console.log('');
+                console.log('albedoReflectorCoeff={\'🥒🌋🪞\':0.05, \'🥒🌊🪞\':0.08, \'🥒🌳🪞\':0.12, \'🥒🏖🪞\':0.30, \'🥒🧊🪞\':0.20, \'🥒⛅🪞\':0.50}');
+                console.log('');
+                console.log('albedo={\'🥒🪞🎓\':0.05, \'🥒🪞🌋\':1.00, \'🥒🪞🌊\':0.00, \'🥒🪞🌳\':0.00, \'🥒🪞🏖\':0.00, \'🥒🪞🧊\':0.00, \'🥒🪞⛅\':0.05}');
+                console.log('');
+                
                 console.log('🧪 Démarrage du test computeRadiativeTransfer');
                 console.log(`📅 Époque: ${window.currentEpochName}`);
                 console.log(`💧 H2O météorites: ${window.h2oTotalFromMeteorites}%`);
-                console.log(`🎥 Animation: ${document.getElementById('anim-toggle').checked}`);
+                const animBtn2 = document.getElementById('anim-toggle');
+                const animEnabled2 = animBtn2 ? animBtn2.classList.contains('selected') : false;
+                console.log(`🎬 Animation: ${animEnabled2}`);
                 
                 // 1. getEpochDateConfig() - Récupérer la config de date
                 const dateConfig = window.getEpochDateConfig ? window.getEpochDateConfig() : null;
@@ -451,6 +846,56 @@
             }
         }
         
+        // Fonction json2html pour convertir un objet JSON en HTML formaté
+        // Utilise JSON.stringify puis formate pour correspondre à grammar.txt (guillemets simples)
+        function json2html(obj, title, source, objName = null) {
+            if (!obj) return '';
+            
+            // Formater les nombres : notation scientifique pour grands nombres, 2 décimales toujours
+            const formatNumber = (value) => {
+                if (typeof value !== 'number') return value;
+                if (value === 0) return '0.00';
+                // Utiliser notation scientifique si |value| >= 1000 ou |value| < 0.01
+                if (Math.abs(value) >= 1000 || (Math.abs(value) < 0.01 && value !== 0)) {
+                    return value.toExponential(2);
+                }
+                // Sinon, 2 décimales
+                return value.toFixed(2);
+            };
+            
+            // Formater récursivement l'objet
+            const formatValue = (value) => {
+                if (value === null) return 'null';
+                if (value === undefined) return 'undefined';
+                if (typeof value === 'number') return formatNumber(value);
+                if (typeof value === 'boolean') return value.toString();
+                if (typeof value === 'string') return `'${value}'`;
+                if (Array.isArray(value)) {
+                    return '[' + value.map(formatValue).join(', ') + ']';
+                }
+                if (typeof value === 'object') {
+                    const entries = Object.entries(value).map(([k, v]) => `'${k}':${formatValue(v)}`);
+                    return '{' + entries.join(', ') + '}';
+                }
+                return String(value);
+            };
+            
+            // Construire la chaîne JSON formatée
+            let jsonStr = formatValue(obj);
+            
+            // Ajouter le nom de l'objet si fourni
+            if (objName) {
+                jsonStr = `${objName}=${jsonStr}`;
+            }
+            
+            return `
+                <div class="config-section">
+                    <div class="config-title">${title} ${source ? `[${source}]` : ''}</div>
+                    <div class="config-value" style="font-family: monospace;">${jsonStr}</div>
+                </div>
+            `;
+        }
+        
         function displayResults(result, epoch, dateConfig) {
             const configDiv = document.getElementById('config');
             const configContent = document.getElementById('config-content');
@@ -459,123 +904,94 @@
             
             let html = '';
             
-            // 1. 🕓🛠 [getEpochDateConfig@compute.js]
-            if (window.dateConfig) {
-                const old_T0_str = window.old_T0 > 0 ? `${window.old_T0.toFixed(2)}K` : 'null';
-                const t0_config_str = window.dateConfig['🌡️'] ? window.dateConfig['🌡️'].toFixed(0) : 'null';
-                const deltaMeteorite_str = (window.dateConfig['🌡️☄️'] ?? 0).toFixed(1);
-                const deltaTicTime_str = (window.dateConfig['🌡️🕓'] ?? 0).toFixed(1);
-                const water_added_str = window.dateConfig['☄️💧🐳'] ? window.dateConfig['☄️💧🐳'].toExponential(2) : '0';
-                
-                html += '<div class="config-section">';
-                html += '<div class="config-title">🕓🛠 [getEpochDateConfig@compute.js]</div>';
-                html += '<div class="config-value" style="font-family: monospace;">';
-                html += `dateConfig={'🎬':${window.dateConfig['🎬']}, '🏮':${old_T0_str}, '🌡️':${t0_config_str}, '☄️':${window.dateConfig['☄️']}, '🌡️☄️':${deltaMeteorite_str}, '☄️💧🐳':${water_added_str}, '🕓':${window.dateConfig['🕓']}, '🌡️🕓':${deltaTicTime_str}}`;
-                html += '</div>';
-                html += '</div>';
-            }
+            // 0. État des activations [getEnabledStates@compute.js]
+            html += json2html(window.enabledStates, '⚙️ États activés', 'getEnabledStates@compute.js', 'enabledStates');
             
-            // Afficher les événements de l'époque
+            // 1. 💫🛠 [getEpochDateConfig@compute.js]
+            html += json2html(window.dateConfig, '💫🛠', 'getEpochDateConfig@compute.js', 'dateConfig');
+            
+            // 2. 📅 Événements [epoch.events]
             if (epoch && epoch.events) {
-                html += '<div class="config-section">';
-                html += '<div class="config-title">📅 Événements [epoch.events]</div>';
-                html += '<div class="config-value" style="font-family: monospace;">';
-                
-                let eventsStr = '{';
-                const eventsParts = [];
-                
+                // Construire l'objet events selon grammar.txt : events={'☄️':'🎓☄️📜', '💫':'🎓💫📜'}
+                const eventsObj = {};
                 if (epoch.events.meteor) {
-                    const meteor = epoch.events.meteor;
-                    eventsParts.push(`'☄️':{'☄️💧🐳':${meteor.water_added_kg?.toExponential(2) || 0}, '🌡️☄️':${meteor.deltaTemp || 0}}`);
+                    eventsObj['☄️'] = '🎓☄️📜';
                 }
-                
                 if (epoch.events.tic_time) {
-                    const ticTime = epoch.events.tic_time;
-                    const ticTimeParts = [];
-                    if (ticTime.deltaTemp !== undefined) {
-                        ticTimeParts.push(`'🌡️🕓':${ticTime.deltaTemp || 0}`);
-                    }
-                    if (ticTime.geothermal_flux) {
-                        const geoParts = [];
-                        if (ticTime.geothermal_flux.start !== undefined) {
-                            geoParts.push(`'▶':${ticTime.geothermal_flux.start || 0}`);
-                        }
-                        if (ticTime.geothermal_flux.end !== undefined) {
-                            geoParts.push(`'◀':${ticTime.geothermal_flux.end || 0}`);
-                        }
-                        if (geoParts.length > 0) {
-                            ticTimeParts.push(`'🌕':{${geoParts.join(', ')}}`);
-                        }
-                    }
-                    if (ticTimeParts.length > 0) {
-                        eventsParts.push(`'🕓':{${ticTimeParts.join(', ')}}`);
-                    }
+                    eventsObj['💫'] = '🎓💫📜';
                 }
-                
                 if (epoch.events.big_impact) {
-                    const bigImpact = epoch.events.big_impact;
-                    eventsParts.push(`'🎇':{'♨':${bigImpact.energy_flux_wm2 || 0}}`);
+                    eventsObj['🎇'] = '🎇';
                 }
-                
-                eventsStr += eventsParts.join(', ') + '}';
-                html += `events=${eventsStr}`;
-                html += '</div>';
-                html += '</div>';
-            }
-            
-            // 2. 🌡️ T0 [calculateT0@calculations_flux.js]
-            if (window.T0converge) {
-                html += '<div class="config-section">';
-                html += '<div class="config-title">🌡️ T0 [calculateT0@calculations_flux.js]</div>';
-                html += '<div class="config-value" style="font-family: monospace;">';
-                html += `T0converge={'🚩':${window.T0converge['🚩'].toFixed(1)}, '⚧':'${window.T0converge['⚧']}', '🔺':${window.T0converge['🔺']}}`;
-                html += '</div>';
-                html += '</div>';
+                html += json2html(eventsObj, '📅 Événements', 'epoch.events', 'events');
             }
             
             // 3. 📋 Corps noir [getMasses@compute.js]
-            if (window.masses) {
-                html += '<div class="config-section">';
-                html += `<div class="config-title">📋 ${epoch?.name || epoch?.id || 'N/A'} [getMasses@compute.js]</div>`;
-                html += '<div class="config-value" style="font-family: monospace;">';
-                const massesStr = `{'🏭🐳': ${(window.masses['🏭🐳'] || 0).toExponential(2)}, '⛽🐳': ${(window.masses['⛽🐳'] || 0).toExponential(2)}, '💧🐳': ${(window.masses['💧🐳'] || 0).toExponential(2)}, '🌫🐳': ${(window.masses['🌫🐳'] || 0).toExponential(2)}, '🐳': ${(window.masses['🐳'] || 0).toFixed(0)}}`;
-                html += `masses=${massesStr}`;
-                html += '</div>';
-                html += '</div>';
-            }
+            html += json2html(window.masses, `📋 ${epoch?.name || epoch?.id || 'N/A'}`, 'getMasses@compute.js', 'masses');
             
             // 4. 🌍 Composition atmosphérique [calculateCompositionFromLogoConfig@calculations_atm.js]
-            if (window.atm) {
-                html += '<div class="config-section">';
-                html += '<div class="config-title">🌍 Composition atmosphérique [calculateCompositionFromLogoConfig@calculations_atm.js]</div>';
-                html += '<div class="config-value" style="font-family: monospace;">';
-                html += `atm={'💨':${(window.atm['💨'] || 0).toFixed(0)}, '🚀':${(window.atm['🚀'] || 0).toFixed(0)}, '🛩':${(window.atm['🛩'] || 0).toFixed(0)}, '🌫':${(window.atm['🌫'] || 0).toFixed(0)}, '🏭':${(window.atm['🏭'] || 0).toFixed(0)}, '💧':${(window.atm['💧'] || 0).toFixed(0)}, '⛽':${(window.atm['⛽'] || 0).toFixed(0)}}`;
-                html += '</div>';
-                html += '</div>';
-            }
+            html += json2html(window.atm, '🌍 Composition atmosphérique', 'calculateCompositionFromLogoConfig@calculations_atm.js', 'atm');
             
             // 5. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js]
-            if (window.h2o) {
-                html += '<div class="config-section">';
-                html += '<div class="config-title">💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js]</div>';
-                html += '<div class="config-value" style="font-family: monospace;">';
-                html += `h2o={'💧':${(window.h2o['💧'] || 0).toFixed(0)}, '🧊':${(window.h2o['🧊'] || 0).toFixed(0)}, '⛅':${(window.h2o['⛅'] || 0).toFixed(0)}, '🌊':${(window.h2o['🌊'] || 0).toFixed(0)}, '♻':${(window.h2o['♻'] || 0).toFixed(0)}, '🌤':${(window.h2o['🌤'] || 0).toFixed(4)}, '🌧':${(window.h2o['🌧'] || 0).toFixed(0)}}`;
-                html += '</div>';
-                html += '</div>';
-            }
+            html += json2html(window.h2o, '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o');
             
-            // 6. ☀️ Flux radiatif [calculateSolarFluxAbsorbed@calculations_albedo.js]
-            if (window.flux) {
-                html += '<div class="config-section">';
-                html += '<div class="config-title">☀️ Flux radiatif [calculateSolarFluxAbsorbed@calculations_albedo.js]</div>';
-                html += '<div class="config-value" style="font-family: monospace;">';
-                html += `flux={'☀️':${window.flux['☀️']?.toFixed(2) || 0}}`;
-                html += '</div>';
-                html += '</div>';
-            }
+            // 6. 🪞 Coefficients d'albédo [calculations_albedo.js]
+            html += json2html(window.albedoReflectorCoeff, '🪞 Coefficients d\'albédo', 'calculations_albedo.js', 'albedoReflectorCoeff');
+            
+            // 7. 🪞 Albedo [calculateAlbedo@calculations_albedo.js]
+            html += json2html(window.albedo, '🪞 Albedo', 'calculateAlbedo@calculations_albedo.js', 'albedo');
+            
+            // 8. ☀️ Soleil [getSoleil@compute.js]
+            html += json2html(window.soleil, '☀️ Soleil', 'getSoleil@compute.js', 'soleil');
+            
+            // 9. 🌕 Noyau [getNoyau@compute.js]
+            html += json2html(window.noyau, '🌕 Noyau', 'getNoyau@compute.js', 'noyau');
+            
+            // 10. ☀️ Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
+            html += json2html(window.flux, '☀️ Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux');
             
             configContent.innerHTML = html;
             configDiv.style.display = 'block';
+            
+            // Afficher la section Convergence
+            displayConvergence();
+        }
+        
+        function displayConvergence() {
+            const convergenceDiv = document.getElementById('convergence');
+            const convergenceContent = document.getElementById('convergence-content');
+            
+            if (!convergenceDiv || !convergenceContent) return;
+            
+            // Afficher window.fluxState avec json2html
+            const html = json2html(window.fluxState, '⚙ Convergence', 'computeRadiativeTransfer@calculations_flux.js', 'fluxState');
+            
+            convergenceContent.innerHTML = html;
+            convergenceDiv.style.display = 'block';
+        }
+        
+        function toggleConfig() {
+            const configDiv = document.getElementById('config');
+            const button = configDiv.querySelector('.toggle-button');
+            if (configDiv.classList.contains('replied')) {
+                configDiv.classList.remove('replied');
+                button.textContent = '+';
+            } else {
+                configDiv.classList.add('replied');
+                button.textContent = 'x';
+            }
+        }
+        
+        function toggleConvergence() {
+            const convergenceDiv = document.getElementById('convergence');
+            const button = convergenceDiv.querySelector('.toggle-button');
+            if (convergenceDiv.classList.contains('replied')) {
+                convergenceDiv.classList.remove('replied');
+                button.textContent = '+';
+            } else {
+                convergenceDiv.classList.add('replied');
+                button.textContent = 'x';
+            }
         }
         
         // Initialiser au chargement
@@ -586,6 +1002,8 @@
             // S'assurer que configTimeline est chargé
             if (window.configTimeline && window.configTimeline.timeline) {
                 console.log(`✅ Timeline chargée: ${window.configTimeline.timeline.length} époques`);
+                // Générer la timeline horizontale
+                generateHorizontalTimeline();
             } else {
                 console.error('❌ Timeline non chargée');
             }
