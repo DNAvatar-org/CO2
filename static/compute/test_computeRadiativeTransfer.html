@@ -148,9 +148,9 @@
         
         .controls-right {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             gap: 10px;
-            align-items: flex-end;
+            align-items: center;
         }
         
         .control-group {
@@ -324,6 +324,10 @@
             padding: 5px;
         }
         
+        .results.replied .formule {
+            display: none;
+        }
+        
         .toggle-button {
             background: #4a9eff;
             border: none;
@@ -381,7 +385,7 @@
                 <!-- Colonne 1 : Configuration et états -->
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                     <div><strong>📫🎬</strong> Animation</div>
-                    <div><strong>🌡️🏮📜</strong> old_T0 (température précédente)</div>
+                    <div><strong>🌡️🏮</strong> old_T0 (température précédente)</div>
                     <div><strong>⏳🌡️</strong> T0 attendu (température config)</div>
                     <div><strong>🎓☄️📜</strong> Nombre de météorites</div>
                     <div><strong>🔺🌡️☄️📜</strong> Delta température / météorite</div>
@@ -413,8 +417,8 @@
                     <div><strong>🥒💧🧊</strong> Glace (%)</div>
                     <div><strong>🥒💧⛅</strong> Nuages (%)</div>
                     <div><strong>🥒💧🌊</strong> Océan (%)</div>
-                    <div><strong>⏳🌴</strong> Greenhouse forcing</div>
-                    <div><strong>🌤</strong> Cloud albedo contribution</div>
+                    <div><strong>🧲💧📛</strong> Greenhouse forcing H2O (dans step5_spectral)</div>
+                    <div><strong>🥒🪞⛅</strong> Cloud albedo (dans window.albedo)</div>
                     <div><strong>⏳🌧</strong> Max vapor fraction</div>
                 </div>
                 <!-- Colonne 3 : Flux et événements -->
@@ -503,6 +507,7 @@
     <script src="../timeline/configTimeline.js"></script>
     <script src="../timeline/timeline.js"></script>
     <script src="../events.js"></script>
+    <script src="../physics.js"></script>
     <script src="../calculations.js"></script>
     <script src="../calculations_h2o.js"></script>
     <script src="../calculations_albedo.js"></script>
@@ -743,13 +748,13 @@
                 window.getEnabledStates();
             }
             
-            // Initialiser window.T0 et window.old_T0
+            // Initialiser window.T0 (old_T0 n'existe plus, utilise dateConfig['🌡️🏮'] qui vient de window.T0)
             const animBtn = document.getElementById('anim-toggle');
             const animEnabled = animBtn ? animBtn.classList.contains('selected') : false;
             if (animEnabled) {
-                // Si anim activé, initialiser old_T0 à 180K pour test
-                if (window.old_T0 === undefined || window.old_T0 === null) {
-                    window.old_T0 = 180.0;
+                // Si anim activé, initialiser T0 à 180K pour test (sera utilisé comme old_T0 dans dateConfig)
+                if (window.T0 === undefined || window.T0 === null) {
+                    window.T0 = 180.0;
                 }
             }
             // Initialiser T0 si nécessaire
@@ -807,7 +812,9 @@
                 console.log('');
                 console.log('atm={\'📏🌬🚀\':1300, \'📏🌬🛩\':30, \'🥒🌬🌫\':0.0, \'🥒🌬🏭\':0.703, \'🥒🌬💧\':0.000701158, \'🥒🌬⛽\':0.00019}');
                 console.log('');
-                console.log('h2o={\'💧\':70, \'🥒💧🧊\':0, \'🥒💧⛅\':5, \'🥒💧🌊\':0, \'🌴\':64, \'🌤\':0.0248, \'🌧\':100}');
+                console.log('h2o={\'🥒💧🧊\':0, \'🥒💧⛅\':5, \'🥒💧🌊\':0, \'⏳🌧\':100}');
+                console.log('Note: 💧 (H2O vapeur %) est dans atm[\'🥒🌬💧\'] - source unique');
+                console.log('Note: 🧲💧📛 (greenhouse forcing H2O) est dans step5_spectral, 🥒🪞⛅ (cloud albedo) est dans window.albedo');
                 console.log('');
                 console.log('albedoReflectorCoeff={\'🥒🌋🪞\':0.05, \'🥒🌊🪞\':0.08, \'🥒🌳🪞\':0.12, \'🥒🏖🪞\':0.30, \'🥒🧊🪞\':0.20, \'🥒⛅🪞\':0.50}');
                 console.log('');
@@ -844,6 +851,42 @@
                     </div>
                 `;
             }
+        }
+        
+        // Fonction pour calculer et afficher la formule de l'albedo
+        function calculateAlbedoFormula(albedo, albedoReflectorCoeff) {
+            if (!albedo || !albedoReflectorCoeff) return '';
+            
+            const elements = ['🌋', '🌊', '🌳', '🏖', '🧊', '⛅'];
+            let total = 0;
+            
+            // Calculer le total
+            elements.forEach(element => {
+                const coverage_key = `🥒🪞${element}`;
+                const coeff_key = `🥒${element}🪞`;
+                const coverage = albedo[coverage_key] || 0;
+                const coeff = albedoReflectorCoeff[coeff_key] || 0;
+                total += coverage * coeff;
+            });
+            
+            // Construire la formule avec notation sigma (utiliser ⛀ au lieu de *)
+            const elementsStr = elements.join(',');
+            const formula = `<strong>🥒🪞🎓</strong> = Σ(<strong>🥒🪞⛀</strong>×<strong>🥒⛀🪞</strong>) | ⛀∈{${elementsStr}} => <strong>${total.toFixed(4)}</strong>`;
+            
+            // Formater albedoReflectorCoeff pour l'affichage
+            const formatNumber = (value) => {
+                if (typeof value !== 'number') return value;
+                return value.toFixed(2);
+            };
+            const formatValue = (value) => {
+                if (typeof value === 'number') return formatNumber(value);
+                if (typeof value === 'string') return `'${value}'`;
+                return String(value);
+            };
+            const coeffEntries = Object.entries(albedoReflectorCoeff).map(([k, v]) => `'${k}':${formatValue(v)}`);
+            const coeffStr = `{${coeffEntries.join(', ')}}`;
+            
+            return `<div class="formule" style="margin-top: 5px; padding: 5px; font-family: monospace; font-size: 0.9em;">${formula}<br>albedoReflectorCoeff=${coeffStr}</div>`;
         }
         
         // Fonction json2html pour convertir un objet JSON en HTML formaté
@@ -888,12 +931,16 @@
                 jsonStr = `${objName}=${jsonStr}`;
             }
             
-            return `
+            let html = `
                 <div class="config-section">
                     <div class="config-title">${title} ${source ? `[${source}]` : ''}</div>
+            `;
+            // La formule sera ajoutée ici si nécessaire (pour albedo)
+            html += `
                     <div class="config-value" style="font-family: monospace;">${jsonStr}</div>
                 </div>
             `;
+            return html;
         }
         
         function displayResults(result, epoch, dateConfig) {
@@ -935,11 +982,18 @@
             // 5. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js]
             html += json2html(window.h2o, '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o');
             
-            // 6. 🪞 Coefficients d'albédo [calculations_albedo.js]
-            html += json2html(window.albedoReflectorCoeff, '🪞 Coefficients d\'albédo', 'calculations_albedo.js', 'albedoReflectorCoeff');
-            
-            // 7. 🪞 Albedo [calculateAlbedo@calculations_albedo.js]
-            html += json2html(window.albedo, '🪞 Albedo', 'calculateAlbedo@calculations_albedo.js', 'albedo');
+            // 6. 🪞 Albedo [calculateAlbedo@calculations_albedo.js]
+            // Construire le HTML avec la formule intégrée dans config-section après config-title
+            if (window.albedo) {
+                const albedoHtml = json2html(window.albedo, '🪞 Albedo', 'calculateAlbedo@calculations_albedo.js', 'albedo');
+                if (window.albedoReflectorCoeff) {
+                    const formula = calculateAlbedoFormula(window.albedo, window.albedoReflectorCoeff);
+                    // Insérer la formule après config-title (avant config-value)
+                    html += albedoHtml.replace('<div class="config-value"', formula + '<div class="config-value"');
+                } else {
+                    html += albedoHtml;
+                }
+            }
             
             // 8. ☀️ Soleil [getSoleil@compute.js]
             html += json2html(window.soleil, '☀️ Soleil', 'getSoleil@compute.js', 'soleil');
@@ -963,8 +1017,57 @@
             
             if (!convergenceDiv || !convergenceContent) return;
             
-            // Afficher window.fluxState avec json2html
-            const html = json2html(window.fluxState, '⚙ Convergence', 'computeRadiativeTransfer@calculations_flux.js', 'fluxState');
+            let html = '';
+            
+            // Afficher toutes les itérations avec leurs étapes intermédiaires
+            if (window.fluxStateHistory && window.fluxStateHistory.length > 0) {
+                window.fluxStateHistory.forEach((iterationData, index) => {
+                    // Afficher le cycle (avant step1)
+                    if (iterationData.step0_cycle) {
+                        html += json2html(iterationData.step0_cycle, `🔄 Cycle ${index + 1}`, 'computeRadiativeTransfer@calculations_flux.js', 'step0_cycle');
+                    }
+                    
+                    // Afficher toutes les étapes intermédiaires pour chaque itération
+                    // Note: Étape 1 - H2O supprimée (redondante : 🥒🌬💧 dans atm, 🌡️⏳ dans step0_cycle)
+                    if (iterationData.step2_solar) {
+                        html += json2html(iterationData.step2_solar, `📊 Étape 2 - Flux solaire (Itération ${index + 1})`, 'calculateSolarFluxAbsorbed@calculations_albedo.js', 'step2_solar');
+                    }
+                    if (iterationData.step3_geothermal) {
+                        html += json2html(iterationData.step3_geothermal, `📊 Étape 3 - Géothermique (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step3_geothermal');
+                    }
+                    if (iterationData.step4_fluxIn) {
+                        html += json2html(iterationData.step4_fluxIn, `📊 Étape 4 - Flux entrant (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step4_fluxIn');
+                    }
+                    if (iterationData.step5_fluxOut) {
+                        html += json2html(iterationData.step5_fluxOut, `📊 Étape 5 - Flux sortant (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step5_fluxOut');
+                    }
+                    if (iterationData.step5_spectral) {
+                        html += json2html(iterationData.step5_spectral, `📊 Étape 5b - Calcul spectral (Itération ${index + 1})`, 'calculateFluxForT0@calculations.js', 'step5_spectral');
+                    }
+                    if (iterationData.step6_delta) {
+                        html += json2html(iterationData.step6_delta, `📊 Étape 6 - Delta (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step6_delta');
+                    }
+                    if (iterationData.step7_tolerance) {
+                        html += json2html(iterationData.step7_tolerance, `📊 Étape 7 - Tolérance (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step7_tolerance');
+                    }
+                    
+                    // Afficher la conclusion (après step7)
+                    if (iterationData.step8_conclusion) {
+                        html += json2html(iterationData.step8_conclusion, `📋 Conclusion (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step8_conclusion');
+                    }
+                    
+                    // Afficher fluxState pour cette itération (après toutes les étapes)
+                    html += json2html(iterationData.fluxState, `⚙ Convergence - Itération ${index + 1}`, 'computeRadiativeTransfer@calculations_flux.js', 'fluxState');
+                    
+                    // Ajouter un séparateur entre les cycles (sauf pour le dernier)
+                    if (index < window.fluxStateHistory.length - 1) {
+                        html += '<div style="margin: 20px 0; border-top: 2px solid #ccc; padding-top: 20px;"></div>';
+                    }
+                });
+            } else if (window.fluxState) {
+                // Fallback : afficher le dernier fluxState si l'historique n'existe pas
+                html += json2html(window.fluxState, '⚙ Convergence', 'computeRadiativeTransfer@calculations_flux.js', 'fluxState');
+            }
             
             convergenceContent.innerHTML = html;
             convergenceDiv.style.display = 'block';

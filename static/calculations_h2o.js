@@ -289,21 +289,21 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
     let epochParams = {};
     const epoch = window.epoch;
     if (epoch) {
-        // Calculer pressure_atm et molar_mass_air depuis les composants
-        const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+            // Calculer pressure_atm et molar_mass_air depuis les composants
+            const pressure_atm = typeof window.calculatePressureAtm === 'function' 
             ? window.calculatePressureAtm(epoch) : 0;
-        const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+            const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
             ? window.calculateMolarMassAir(epoch) : 0;
         
         // Calculer ocean_coverage depuis window.h2o si disponible, sinon 0
         let ocean_coverage = 0;
-        if (window.h2o && window.h2o['🌊'] !== undefined) {
-            ocean_coverage = window.h2o['🌊'] / 100; // Convertir de % à fraction
+        if (window.h2o && window.h2o['🥒💧🌊'] !== undefined) {
+            ocean_coverage = window.h2o['🥒💧🌊'] / 100; // Convertir de % à fraction
         } else if (window.calculateOceanCoverage && window.T0) {
             ocean_coverage = window.calculateOceanCoverage(window.T0, epoch) || 0;
         }
-        
-        epochParams = {
+            
+            epochParams = {
             pressure_atm: pressure_atm || 0,
             molar_mass_air: molar_mass_air || 0,
             gravity: epoch.gravity || 9.81,
@@ -316,7 +316,7 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
             molar_mass_air: 0,
             gravity: 9.81,
             ocean_coverage: 0
-        };
+            };
     }
 
     // Calculer la répartition eau vapeur / liquide / glace selon les conditions physiques
@@ -376,15 +376,16 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
         }
     }
 
-    // Créer window.h2o avec logos
+    // Créer window.h2o avec logos selon grammar.txt : h2o={'🥒💧🧊':0, '🥒💧⛅':5, '🥒💧🌊':0, '⏳🌧':100}
+    // Note: 💧 (H2O vapeur %) est dans atm['🥒🌬💧'] - source unique, pas de duplication
+    // Note: 🌴 (greenhouse forcing) est dans step5_spectral['🧲💧📛']
+    // Note: 🌤 (cloud albedo) est dans window.albedo['🥒🪞⛅']
+    // window.h2o contient uniquement les informations de répartition du cycle de l'eau
     const h2o_result = {
-        '💧': vapor_fraction * 100,
-        '🧊': ice_fraction * 100,
-        '⛅': cloud_coverage * 100,
-        '🌊': liquid_fraction * 100,
-        '♻': greenhouse_forcing,
-        '🌤': cloud_albedo_contribution,
-        '🌧': waterPartition.max_vapor_fraction * 100
+        '🥒💧🧊': ice_fraction * 100,                    // 🥒💧🧊 Glace (%)
+        '🥒💧⛅': cloud_coverage * 100,                  // 🥒💧⛅ Nuages (%)
+        '🥒💧🌊': liquid_fraction * 100,                 // 🥒💧🌊 Océan (%)
+        '⏳🌧': waterPartition.max_vapor_fraction * 100  // ⏳🌧 Max vapor fraction (%) - calcul du cycle de l'eau
     };
     
     // Sauvegarder dans window.h2o
@@ -392,8 +393,8 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
     
     // Log
     console.log(`💧 [calculateH2OParameters@calculations_h2o.js]`);
-    console.log(`h2o={'💧':${h2o_result['💧'].toFixed(0)}, '🧊':${h2o_result['🧊'].toFixed(0)}, '⛅':${h2o_result['⛅'].toFixed(0)}, '🌊':${h2o_result['🌊'].toFixed(0)}, '♻':${h2o_result['♻'].toFixed(0)}, '🌤':${h2o_result['🌤'].toFixed(4)}, '🌧':${h2o_result['🌧'].toFixed(0)}}`);
-    
+    console.log(`h2o={'🥒💧🧊':${(h2o_result['🥒💧🧊'] || 0).toFixed(2)}, '🥒💧⛅':${(h2o_result['🥒💧⛅'] || 0).toFixed(2)}, '🥒💧🌊':${(h2o_result['🥒💧🌊'] || 0).toFixed(2)}, '⏳🌧':${(h2o_result['⏳🌧'] || 0).toFixed(2)}}`);
+
     return {
         vapor_fraction,
         ice_fraction,

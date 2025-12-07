@@ -20,7 +20,7 @@
 🛰 Espace
 🌍 Surface
 🌕 Noyau
-🌫 Athmosphere
+🌫 O2
 🏭 CO2
 💧 H2O
 ⛽ Méthane
@@ -29,12 +29,14 @@
 ==
 
 == Interface:
+🎬 Animation
 🌡️ T°
 🎛️ Contrôles
 🎚 Jauges
 🔘 Boutons
 🌋 Volcan
 ☄️ Comète
+💫
 ==
 
 == Temps:
@@ -58,10 +60,10 @@ archeen.png Archéen [-4000 à -2500 Ma]
 ==
 
 == Autres:
-💥🧿🌈🧨🧯🪞♨
+💥🧿🌈🧨🧯🪞🔬
 🌤🌥🌦🌧🌨🌩🐄
 🌬🌞☀️🌊🎱🔥🐮
-🕰🌟⏳🕶🕳🏐
+🕰🌟⏳🕶🕳🏐🔋
 
 🧲 Magnetisme
 🌳 Forêt

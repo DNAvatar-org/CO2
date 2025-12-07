@@ -133,10 +133,7 @@
                             </label>
                         </div>
                     </div>
-                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: var(--base-color);">
-                        <input type="checkbox" id="plot-anim-toggle" checked style="cursor: pointer;">
-                        <span>🎥</span>
-                    </label>
+                    <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Animation" style="background: #51cf66; border-color: #51cf66; color: white;">🎬</button>
                 </div>
                 <div class="legend-container" id="legend-container">
                     <div class="legend-section">
@@ -265,6 +262,53 @@
 
     <script src="static/timeline/configTimeline.js"></script>
     <script src="organigramme/configOrganigramme.js"></script>
+    <script>
+        // Fonction pour toggle l'animation dans index.html
+        function togglePlotAnim() {
+            const animButton = document.getElementById('plot-anim-toggle');
+            if (animButton) {
+                const isSelected = animButton.classList.contains('selected');
+                if (isSelected) {
+                    animButton.classList.remove('selected');
+                } else {
+                    animButton.classList.add('selected');
+                }
+                // Créer ou mettre à jour le checkbox caché pour compatibilité avec main.js
+                // Utiliser plot-anim-toggle comme id pour le checkbox (compatibilité)
+                let plotAnimToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
+                if (!plotAnimToggleCheckbox) {
+                    plotAnimToggleCheckbox = document.createElement('input');
+                    plotAnimToggleCheckbox.type = 'checkbox';
+                    plotAnimToggleCheckbox.id = 'plot-anim-toggle-checkbox';
+                    plotAnimToggleCheckbox.style.display = 'none';
+                    document.body.appendChild(plotAnimToggleCheckbox);
+                }
+                plotAnimToggleCheckbox.checked = !isSelected;
+                
+                // Déclencher l'événement change pour main.js
+                plotAnimToggleCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+        
+        // Initialiser le bouton au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            const animButton = document.getElementById('plot-anim-toggle');
+            if (animButton) {
+                // Par défaut, l'animation est activée (checked dans l'ancien code)
+                animButton.classList.add('selected');
+                // Créer le checkbox caché pour compatibilité avec main.js
+                let plotAnimToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
+                if (!plotAnimToggleCheckbox) {
+                    plotAnimToggleCheckbox = document.createElement('input');
+                    plotAnimToggleCheckbox.type = 'checkbox';
+                    plotAnimToggleCheckbox.id = 'plot-anim-toggle-checkbox';
+                    plotAnimToggleCheckbox.checked = true;
+                    plotAnimToggleCheckbox.style.display = 'none';
+                    document.body.appendChild(plotAnimToggleCheckbox);
+                }
+            }
+        });
+    </script>
     <script src="static/flux_manager.js"></script>
     <script src="static/tooltips.js"></script>
     <script src="static/modal.js"></script>

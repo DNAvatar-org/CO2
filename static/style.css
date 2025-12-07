@@ -1690,3 +1690,36 @@ body.mode-dark .plot-overlay-title {
     position: relative; /* Pour l'overlay */
 }
 
+/* Boutons icônes pour animation et actions */
+.icon-button {
+    background: #3a3a3a;
+    border: 2px solid #555;
+    color: #e0e0e0;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 20px;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.icon-button:hover {
+    background: #4a4a4a;
+    border-color: #666;
+}
+
+.icon-button.selected {
+    background: #51cf66;
+    border-color: #51cf66;
+    color: white;
+}
+
+.icon-button.selected:hover {
+    background: #40bf55;
+    border-color: #40bf55;
+}
+

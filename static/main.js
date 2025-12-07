@@ -1093,7 +1093,10 @@ function updateCO2LevelDirect(co2_fraction) {
 
     // Activer l'affichage des étapes de dichotomie pour le calcul courant
     // 🔒 Vérifier le bouton anim pour s'assurer que showDichotomySteps est correct
-    const animToggleCheck = typeof document !== 'undefined' ? document.getElementById('plot-anim-toggle') : null;
+    // Vérifier d'abord le checkbox caché, puis le bouton
+    const animToggleCheck = typeof document !== 'undefined' 
+        ? (document.getElementById('plot-anim-toggle-checkbox') || document.getElementById('plot-anim-toggle'))
+        : null;
     const animEnabledCheck = animToggleCheck && animToggleCheck.checked;
     
     if (typeof window !== 'undefined') {
@@ -3022,7 +3025,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 // Initialiser le bouton anim (activé par défaut, contrôle directement showDichotomySteps)
-                const animToggle = document.getElementById('plot-anim-toggle');
+                // Vérifier d'abord le checkbox caché, puis le bouton (pour compatibilité)
+                const animToggle = document.getElementById('plot-anim-toggle-checkbox') || document.getElementById('plot-anim-toggle');
                 if (animToggle) {
                     // 🔒 Initialiser window.isAnim depuis le bouton (variable globale unique)
                     if (typeof window !== 'undefined') {
@@ -3036,6 +3040,16 @@ window.addEventListener('DOMContentLoaded', () => {
                             // 🔒 Mettre à jour la variable globale unique (seule référence)
                             window.isAnim = enabled;
                             window.showDichotomySteps = enabled;
+                            
+                            // Mettre à jour le bouton visuel si présent
+                            const animButton = document.getElementById('plot-anim-toggle');
+                            if (animButton && animButton.classList) {
+                                if (enabled) {
+                                    animButton.classList.add('selected');
+                                } else {
+                                    animButton.classList.remove('selected');
+                                }
+                            }
                             
                             // Si on désactive, arrêter aussi l'animation de la planète
                             if (!enabled) {

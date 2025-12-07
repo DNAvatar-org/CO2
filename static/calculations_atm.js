@@ -475,11 +475,11 @@ function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg,
         throw new Error('calculateCompositionFromLogoConfig: configObj et total_atmosphere_mass_kg requis');
     }
     
-    // Récupérer les poids depuis l'objet config
-    const co2_kg = configObj['🏭🐳'] || 0;
-    const ch4_kg = configObj['⛽🐳'] || 0;
-    const h2o_kg = configObj['💧🐳'] || 0;
-    const o2_kg = configObj['🌫🐳'] || 0;
+    // Récupérer les poids depuis l'objet config (selon grammar.txt : 🐳🏭, 🐳⛽, 🐳💧, 🐳🌫)
+    const co2_kg = configObj['🐳🏭'] || 0;
+    const ch4_kg = configObj['🐳⛽'] || 0;
+    const h2o_kg = configObj['🐳💧'] || 0;
+    const o2_kg = configObj['🐳🌫'] || 0;
     
     // Calculer la masse molaire moyenne
     let molar_mass_air = 0.029; // Défaut
@@ -507,7 +507,6 @@ function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg,
     }
     
     // Calculer les propriétés atmosphériques (densité, altitude, tropopause)
-    let density = 0;
     let altitude = 0;
     let tropopause = 0;
     
@@ -516,13 +515,6 @@ function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg,
         const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, molar_mass_air, epoch?.gravity || 9.81);
         altitude = props.z_max || 0; // Altitude max en mètres
         
-        // Densité = masse totale / volume (approximation : surface * altitude)
-        const planet_radius = epoch?.planet_radius || 6371000;
-        const surface_area = 4 * Math.PI * Math.pow(planet_radius, 2);
-        if (altitude > 0) {
-            density = total_atmosphere_mass_kg / (surface_area * altitude); // kg/m³
-        }
-        
         // Calculer tropopause si disponible
         if (typeof window.calculateTropopauseHeight === 'function') {
             tropopause = window.calculateTropopauseHeight(T0) || 0;
@@ -530,14 +522,14 @@ function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg,
     }
     
     // Créer l'objet avec logos comme clés
+    // Unités selon grammar.txt : atm={'📏🌬🚀':1300, '📏🌬🛩':30, '🥒🌬🌫':0.0, '🥒🌬🏭':0.703, '🥒🌬💧':0.000701158, '🥒🌬⛽':0.00019}
     const atmComposition = {
-        '💨': density,                  // Densité
-        '🚀': altitude,                 // Altitude max
-        '🛩': tropopause,               // Tropopause
-        '🌫': O2_fraction * 100,        // O2 en %
-        '🏭': CO2_fraction * 1e6,        // CO2 en ppm
-        '💧': H2O_fraction * 100,       // H2O en %
-        '⛽': CH4_fraction * 1e6         // CH4 en ppm
+        '📏🌬🚀': altitude / 1000,  // Altitude max en km
+        '📏🌬🛩': tropopause / 1000,  // Tropopause en km
+        '🥒🌬🌫': O2_fraction * 100,    // O2 en %
+        '🥒🌬🏭': CO2_fraction * 100,   // CO2 en %
+        '🥒🌬💧': H2O_fraction * 100,  // H2O en %
+        '🥒🌬⛽': CH4_fraction * 100    // CH4 en %
     };
     
     // Sauvegarder dans window.atm

@@ -22,8 +22,7 @@ function getLogo(name) {
 // VARIABLES GLOBALES D'ÉTAT
 // ============================================================================
 
-let old_T0 = 180.0;
-let T0 = 180.0;
+let T0 = 180.0;  // old_T0 n'existe plus, utilise dateConfig['🌡️🏮'] qui vient de window.T0
 let Phase = "None";
 let signeDeltaFirst = 0;
 let flux_entrant = 238;
@@ -155,14 +154,15 @@ function getEpochDateConfig() {
     
     const animEnabled = getAnimState(); // 🎞
     
-    // Récupérer prev_T0 depuis old_T0
-    const prev_T0_val = window.old_T0 > 0 ? window.old_T0 : null;
+    // Récupérer old_T0 depuis window.T0 (température précédente calculée)
+    const old_T0_val = window.T0;
     
     // Retourner un objet avec logos complets selon grammar.txt
-    // dateConfig={'🌡️🏮📜':180.0, '⏳🌡️':2450, '🎓☄️📜':0, '🔺🌡️☄️📜':-3.0, '🔺🐳💧☄️📜':1.00e+18, '🎓💫📜':0, '🔺🌡️💫📜':-300.0, '🔺🧲🌕💫📜':{'▶':2000000, '◀':0.3}}
+    // dateConfig={'🌡️🏮':180.0, '🌡️⏳📜':2450, '📫🎬':false, '🎓☄️📜':0, '🔺🌡️☄️📜':-3.0, '🔺🐳💧☄️📜':1.00e+18, '🎓💫📜':0, '🔺🌡️💫📜':-300.0, '🔺🧲🌕💫📜':{'▶':2000000, '◀':0.3}}
     const result = {
-        '🌡️🏮📜': prev_T0_val,  // old_T0 (température précédente) - le logo 🌡️ indique déjà que c'est une température
-        '⏳🌡️': t0_config,                       // T0 attendu (température config)
+        '🌡️🏮': old_T0_val,  // old_T0 (température précédente) - PAS de 📜 car ne vient pas de la config
+        '🌡️⏳📜': t0_config,                       // T0 attendu (température config) - 🌡️⏳📜 (unité au début, 📜 car config)
+        '📫🎬': animEnabled,                        // Animation (booléen) - nécessaire pour la logique calculateT0
         '🎓☄️📜': meteoriteCount ?? 0,              // Nombre de météorites
         '🔺🌡️☄️📜': deltaMeteorite ?? 0,           // Delta température / météorite
         '🔺🐳💧☄️📜': water_added_kg,               // Masse d'eau ajoutée / météorite
@@ -181,7 +181,7 @@ function getEpochDateConfig() {
     window.dateConfig = result;
     
     // Log getEpochDateConfig
-    const old_T0_str = prev_T0_val ? `${prev_T0_val.toFixed(2)}K` : 'null';
+    const old_T0_str = old_T0_val ? old_T0_val.toFixed(2) : 'null';
     const t0_config_str = t0_config ? t0_config.toFixed(0) : 'null';
     const deltaMeteorite_str = (deltaMeteorite ?? 0).toFixed(1);
     const deltaTicTime_str = (deltaTicTime_per_tic ?? 0).toFixed(1);
@@ -190,7 +190,7 @@ function getEpochDateConfig() {
         ? `{'▶':${epoch.events.tic_time.geothermal_flux.start || 0}, '◀':${epoch.events.tic_time.geothermal_flux.end || 0}}`
         : 'null';
     console.log(`💫🛠 [getEpochDateConfig@compute.js]`);
-    console.log(`dateConfig={'🌡️🏮📜':${old_T0_str}, '⏳🌡️':${t0_config_str}, '🎓☄️📜':${meteoriteCount}, '🔺🌡️☄️📜':${deltaMeteorite_str}, '🔺🐳💧☄️📜':${water_added_str}, '🎓💫📜':${ticTime}, '🔺🌡️💫📜':${deltaTicTime_str}, '🔺🧲🌕💫📜':${geothermal_flux_str}}`);
+    console.log(`dateConfig={'🌡️🏮':${old_T0_str}, '🌡️⏳📜':${t0_config_str}, '📫🎬':${animEnabled}, '🎓☄️📜':${meteoriteCount}, '🔺🌡️☄️📜':${deltaMeteorite_str}, '🔺🐳💧☄️📜':${water_added_str}, '🎓💫📜':${ticTime}, '🔺🌡️💫📜':${deltaTicTime_str}, '🔺🧲🌕💫📜':${geothermal_flux_str}}`);
     
     return result;
 }
@@ -208,27 +208,30 @@ function getSoleil() {
     const SOLAR_SURFACE_AREA = 6.09e18; // m² (surface du soleil)
     const SOLAR_CONSTANT_REF = 1361; // W/m² (constante solaire à 1 UA)
     
-    // Flux solaire à la surface du soleil (en W/m²) - calculé depuis solar_intensity (config 📜)
-    const solar_surface_flux = (SOLAR_POWER_REF / SOLAR_SURFACE_AREA) * solar_intensity; // ~62.9e6 W/m²
+    // Constante solaire à 1 UA (depuis solar_intensity - config 📜)
+    const SOLAR_CONSTANT = SOLAR_CONSTANT_REF * solar_intensity;
     
     // Flux solaire à 1 UA / 4 (moyenne sphérique, AVANT albedo)
     // 🎱 représente la géométrie (division par 4 pour la moyenne sphérique)
-    const SOLAR_CONSTANT = SOLAR_CONSTANT_REF * solar_intensity;
     const solar_flux_1ua_geometric = SOLAR_CONSTANT / 4; // Moyenne sphérique, AVANT albedo
+    
+    // Flux solaire à la surface du soleil (en W/m²) - calculé depuis solar_intensity (config 📜)
+    const solar_surface_flux = (SOLAR_POWER_REF / SOLAR_SURFACE_AREA) * solar_intensity; // ~62.9e6 W/m²
     
     // Puissance totale du soleil (en Watts) - calculé depuis solar_intensity (config 📜)
     const solar_power_total = SOLAR_POWER_REF * solar_intensity;
     
     const result = {
-        '🧲☀️📜': solar_surface_flux,  // Flux solaire à la surface du soleil (W/m²) - depuis solar_intensity (config 📜)
+        '🧲☀️📜': SOLAR_CONSTANT,  // Constante solaire à 1 UA (W/m²) - depuis solar_intensity (config 📜)
         '🧲☀️🎱': solar_flux_1ua_geometric,  // Flux solaire à 1 UA / 4 (moyenne sphérique, AVANT albedo)
+        '🧲☀️🌞': solar_surface_flux,  // Flux solaire à la surface du soleil (W/m²) - depuis solar_intensity (config 📜)
         '🔋☀️📜': solar_power_total  // Puissance totale du soleil (W) - depuis solar_intensity (config 📜)
     };
     
     window.soleil = result;
     
     console.log(`☀️ [getSoleil@compute.js]`);
-    console.log(`soleil={'🧲☀️📜':${solar_surface_flux.toExponential(2)}, '🧲☀️🎱':${solar_flux_1ua_geometric.toFixed(2)}, '🔋☀️📜':${solar_power_total.toExponential(2)}}`);
+    console.log(`soleil={'🧲☀️📜':${SOLAR_CONSTANT.toFixed(2)}, '🧲☀️🎱':${solar_flux_1ua_geometric.toFixed(2)}, '🧲☀️🌞':${solar_surface_flux.toExponential(2)}, '🔋☀️📜':${solar_power_total.toExponential(2)}}`);
     
     return result;
 }
@@ -286,11 +289,7 @@ if (typeof window !== 'undefined') {
     window.getEnabledStates = getEnabledStates; // Exposer getEnabledStates
     window.getSoleil = getSoleil; // Exposer getSoleil
     window.getNoyau = getNoyau; // Exposer getNoyau
-    // Exposer old_T0 et T0 pour utilisation dans calculations_flux.js
-    Object.defineProperty(window, 'old_T0', {
-        get: () => old_T0,
-        set: (value) => { old_T0 = value; }
-    });
+    // Exposer T0 pour utilisation dans calculations_flux.js (old_T0 n'existe plus, utilise dateConfig['🌡️🏮'])
     Object.defineProperty(window, 'T0', {
         get: () => T0,
         set: (value) => { T0 = value; }

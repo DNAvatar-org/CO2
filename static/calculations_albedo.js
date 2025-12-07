@@ -9,6 +9,22 @@
 //   - Initial version: déplacement calculateAlbedo et calculateCloudCoverage depuis calculations.js
 
 // ============================================================================
+// COEFFICIENTS D'ALBÉDO PAR TYPE DE SURFACE
+// ============================================================================
+// Créer window.albedoReflectorCoeff avec les coefficients d'albédo selon grammar.txt
+// albedoReflectorCoeff={'🥒🌋🪞':0.05, '🥒🌊🪞':0.08, '🥒🌳🪞':0.12, '🥒🏖🪞':0.30, '🥒🧊🪞':0.20, '🥒⛅🪞':0.50}
+if (typeof window !== 'undefined') {
+    window.albedoReflectorCoeff = {
+        '🥒🌋🪞': 0.05,  // Volcan/magma : très sombre
+        '🥒🌊🪞': 0.08,  // Océan : sombre
+        '🥒🌳🪞': 0.12,  // Forêt : légèrement réfléchissant
+        '🥒🏖🪞': 0.3,   // Désert : réfléchissant
+        '🥒🧊🪞': 0.2,   // Glace : réfléchissant
+        '🥒⛅🪞': 0.5    // Nuages : moyennement réfléchissant
+    };
+}
+
+// ============================================================================
 // FONCTION : CALCULER L'ALBEDO DYNAMIQUE
 // ============================================================================
 
@@ -28,35 +44,61 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     if (epoch) {
         // Calculer dynamiquement depuis les composantes si disponibles
         // Utiliser window.h2o pour la glace et l'océan
-        const ice_fraction = window.h2o ? (window.h2o['🧊'] / 100) : 0;
-        const ocean_coverage = window.h2o ? (window.h2o['🌊'] / 100) : 0;
+        const ice_fraction = window.h2o ? (window.h2o['🥒💧🧊'] / 100) : 0;
+        const ocean_coverage = window.h2o ? (window.h2o['🥒💧🌊'] / 100) : 0;
+            
+        // Calculer l'albedo pondéré selon les couvertures en utilisant window.albedoReflectorCoeff
+        // D'abord déterminer les couvertures : volcan, océan, forêt, désert, glace
+        const T_surface_C = T_surface_K - 273.15;
         
-        // Calculer l'albedo pondéré selon les couvertures
-        let total_coverage = 0;
+        // Volcan : en Hadéen (température très élevée) ou si flux géothermique très élevé
+        let volcano_coverage = 0;
+        const isHadeen = epoch.id === 'hadeen';
+        if (isHadeen || (geothermal_flux && geothermal_flux > 1000)) {
+            // En Hadéen : volcan = 100%, désert = 0%
+            volcano_coverage = isHadeen ? 1.0 : Math.min(1.0, geothermal_flux / 10000);
+                }
+                
+        // Forêt : apparaît quand T < 30°C et qu'il y a de l'eau (océan > 0)
+        let forest_coverage = 0;
+        if (T_surface_C < 30 && ocean_coverage > 0.1 && !isHadeen) {
+            forest_coverage = Math.min(0.5, ocean_coverage * (1 - T_surface_C / 30));
+                }
+                
+        // Désert : surface restante (sauf en Hadéen où c'est volcan)
+        const total_covered = ocean_coverage + ice_fraction + forest_coverage + volcano_coverage;
+        const desert_coverage = isHadeen ? 0 : Math.max(0, Math.min(1, 1.0 - total_covered));
+        
+        // Calculer l'albedo pondéré avec les coefficients
+        // Note: Pour Hadéen, volcano_coverage = 1.0, donc albedo_base = 1.0 * 0.05 = 0.05
+        // Les nuages seront ajoutés ensuite (contribution additive)
         let weighted_albedo = 0;
+        let total_coverage = 0;
+        const coeff = window.albedoReflectorCoeff || {};
         
-        // Océan
+        // Albedo de surface (moyenne pondérée des couvertures)
+        if (volcano_coverage > 0) {
+            weighted_albedo += volcano_coverage * (coeff['🥒🌋🪞'] || 0.05);
+            total_coverage += volcano_coverage;
+        }
         if (ocean_coverage > 0) {
-            const ocean_albedo = 0.06;
-            weighted_albedo += ocean_coverage * ocean_albedo;
+            weighted_albedo += ocean_coverage * (coeff['🥒🌊🪞'] || 0.08);
             total_coverage += ocean_coverage;
         }
-        
-        // Glace
+        if (forest_coverage > 0) {
+            weighted_albedo += forest_coverage * (coeff['🥒🌳🪞'] || 0.12);
+            total_coverage += forest_coverage;
+        }
+        if (desert_coverage > 0) {
+            weighted_albedo += desert_coverage * (coeff['🥒🏖🪞'] || 0.3);
+            total_coverage += desert_coverage;
+        }
         if (ice_fraction > 0) {
-            const ice_albedo = 0.6;
-            weighted_albedo += ice_fraction * ice_albedo;
+            weighted_albedo += ice_fraction * (coeff['🥒🧊🪞'] || 0.2);
             total_coverage += ice_fraction;
         }
         
-        // Surface restante (roche/magma)
-        const surface_remaining = Math.max(0, 1.0 - total_coverage);
-        if (surface_remaining > 0) {
-            const surface_albedo = 0.1; // Albedo de la roche/magma
-            weighted_albedo += surface_remaining * surface_albedo;
-            total_coverage += surface_remaining;
-        }
-        
+        // L'albedo de base est la moyenne pondérée
         if (total_coverage > 0) {
             albedo_base = weighted_albedo / total_coverage;
         }
@@ -185,36 +227,74 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     }
 
     // Contribution des nuages (H2O activé)
-    // Modélisation : ajout d'un albedo nuageux moyen lorsque H2O est activé
-    // Référence conceptuelle : paramétrisation nuageuse simplifiée (modèles climatiques simplifiés)
-    // Note : Les nuages noirs (épais, sombres) n'ont pas d'albedo significatif
-    // Note : Sur les nuages, la réflexion/absorption ne passe pas très bien dans les deux sens,
-    // mais ce ne sont pas les mêmes fréquences, donc pas les mêmes absorption/miroir/radiation
-    // Note : La couverture nuageuse est proportionnelle/croissante avec la température au sol
-    // (plus il fait chaud, plus il y a d'évaporation et donc de nuages)
-    // TODO : Justifier ce choix de modélisation (couverture nuageuse vs température, altitude, etc.)
-    if (h2o_enabled) {
-        // Utiliser la fonction dédiée pour calculer la couverture nuageuse
-        const cloud_fraction = calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction);
+    // Utiliser window.h2o['🥒💧⛅'] comme source unique (pas de duplication)
+    // IMPORTANT : Les nuages sont toujours ajoutés si window.h2o['🥒💧⛅'] est défini, même si h2o_enabled est false
+    // car window.h2o['🥒💧⛅'] représente la couverture nuageuse calculée, indépendamment de l'état du bouton
+    let cloud_fraction = 0;
+    if (window.h2o && window.h2o['🥒💧⛅'] !== undefined) {
+        cloud_fraction = window.h2o['🥒💧⛅'] / 100; // Convertir de % à fraction
+    } else if (h2o_enabled) {
+        // Fallback : calculer avec calculateCloudCoverage si window.h2o n'est pas encore disponible
+        cloud_fraction = calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction);
+    }
 
-        // Seuil minimum : ne pas appliquer l'albedo nuageux si la couverture est trop faible (< 5%)
-        // Cela évite que 1% de nuages ait un impact drastique sur l'albedo
-        if (cloud_fraction >= 0.05) {
-            // Albedo des nuages : ~0.3-0.6 selon la couverture nuageuse (valeur moyenne choisie)
-            const cloud_albedo = 0.4; // Albedo moyen des nuages (approximation créative)
-
-            // Diviser par 2 car les nuages noirs ne réfléchissent pas (ou très peu)
-            // Ajuster la contribution pour qu'elle soit proportionnelle à la couverture nuageuse
-            // mais avec un effet plus doux pour les faibles couvertures
-            const cloud_contribution = (cloud_albedo * cloud_fraction) / 2;
-            albedo = albedo + cloud_contribution;
-        }
-        // Si cloud_fraction < 5%, on n'ajoute pas de contribution nuageuse à l'albedo
+    // Toujours ajouter la contribution des nuages si cloud_fraction > 0
+    // (pas de seuil minimum, car window.h2o['🥒💧⛅'] est déjà calculé avec précision)
+    if (cloud_fraction > 0) {
+        const coeff = window.albedoReflectorCoeff || {};
+        const cloud_albedo_coeff = coeff['🥒⛅🪞'] || 0.5; // Coefficient d'albédo des nuages
+        
+        // Contribution des nuages : albedo_nuages × couverture_nuageuse
+        // Les nuages sont dans l'atmosphère, donc ils ajoutent leur contribution à l'albedo de surface
+        const cloud_contribution = cloud_albedo_coeff * cloud_fraction;
+        albedo = albedo + cloud_contribution;
     }
 
     // Clamper entre 0.0 (corps noir) et 0.9 (valeurs physiques raisonnables)
     // Permettre 0.0 pour le corps noir, mais limiter à 0.9 maximum
     const final_albedo = Math.max(0.0, Math.min(0.9, albedo));
+    
+    // Créer window.albedo avec les logos
+    if (typeof window !== 'undefined' && window.getLogo) {
+        const ocean_coverage_display = window.h2o ? (window.h2o['🥒💧🌊'] / 100) : 0;
+        const ice_coverage_display = window.h2o ? (window.h2o['🥒💧🧊'] / 100) : 0;
+        const cloud_coverage_display = window.h2o ? (window.h2o['🥒💧⛅'] / 100) : 0;
+        
+        // Calculer les couvertures (même logique que pour albedo_base)
+        const T_surface_C = T_surface_K - 273.15;
+        const epoch = window.epoch;
+        const isHadeen = epoch?.id === 'hadeen';
+        
+        // Volcan : en Hadéen = 100%, sinon selon flux géothermique
+        let volcano_coverage_display = 0;
+        if (isHadeen) {
+            volcano_coverage_display = 1.0;
+        } else if (geothermal_flux && geothermal_flux > 1000) {
+            volcano_coverage_display = Math.min(1.0, geothermal_flux / 10000);
+        }
+        
+        // Forêt : apparaît quand T < 30°C et qu'il y a de l'eau (océan > 0)
+        let forest_coverage_display = 0;
+        if (T_surface_C < 30 && ocean_coverage_display > 0.1 && !isHadeen) {
+            forest_coverage_display = Math.min(0.5, ocean_coverage_display * (1 - T_surface_C / 30));
+        }
+        
+        // Désert : surface restante (sauf en Hadéen où c'est volcan)
+        const total_covered_display = ocean_coverage_display + ice_coverage_display + forest_coverage_display + volcano_coverage_display;
+        const desert_coverage_display = isHadeen ? 0 : Math.max(0, Math.min(1, 1.0 - total_covered_display));
+        
+        // Selon grammar.txt : albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}
+        window.albedo = {
+            '🥒🪞🎓': final_albedo,  // % Albedo total
+            '🥒🪞🌋': volcano_coverage_display,
+            '🥒🪞🌊': ocean_coverage_display,
+            '🥒🪞🌳': forest_coverage_display,
+            '🥒🪞🏖': desert_coverage_display,
+            '🥒🪞🧊': ice_coverage_display,
+            '🥒🪞⛅': cloud_coverage_display
+        };
+    }
+    
     return final_albedo;
 }
 

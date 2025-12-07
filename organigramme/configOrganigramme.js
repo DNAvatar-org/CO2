@@ -18,6 +18,9 @@ const LOGOS = {
     CO2: '🏭',      // CO2 : usine (émissions industrielles)
     CH4: '⛽',       // CH4 : pompe à essence (combustibles fossiles, pets de vache)
     H2O: '💧',      // H2O : goutte d'eau
+    H2O_EDS: '💧📛', // H2O EDS activé
+    CH4_EDS: '⛽📛', // CH4 EDS activé
+    CO2_EDS: '🏭📛', // CO2 EDS activé
     O2: '🌫',       // O2 : brouillard/air
     WEIGHT: '🐳',   // Poids : baleine (masse)
     DENSITY: '💨',  // Densité : vent
@@ -34,17 +37,38 @@ const LOGOS = {
     T0: '🚩',        // T0 : drapeau (température initiale)
     SIGNE_DELTA_FIRST: '🔺', // SigneDeltaFirst : triangle rouge (signe du premier delta)
     BIG_IMPACT: '🎇', // Big impact : feu d'artifice (événement d'impact majeur)
-    TIC_TIME: '🕓', // TicTime : horloge (événement d'avancement temporel)
+    TIC_TIME: '💫', // TicTime : étoile (événement d'avancement temporel)
+    TIC_TIME_COUNT: '💫', // TicTime Count : étoile (nombre de tics)
+    DELTA_TEMP_TIC_TIME: '🌡️💫', // Delta température ticTime
     GEOTHERMAL_FLUX: '🌕', // Geothermal flux : lune (flux géothermique)
     FLUX_START: '▶', // Flux start : flèche droite (valeur de départ)
     FLUX_END: '◀', // Flux end : flèche gauche (valeur de fin)
     ENERGY_FLUX: '♨', // Energy flux : sources chaudes (W/m² - généralisé pour tous les flux énergétiques)
-    DESERT: 'fonts/pics/desert.png',   // Désert : dunes de sable (utilisé dans albedo breakdown)
+    FLUX_OUT: '🌑', // Flux sortant : lune noire (rayonnement corps noir sortant)
+    FLUX_IN: '♨🔽', // Flux entrant : flux qui arrive (solaire absorbé + géothermique)
+    FLUX_OUT_LOGO: '♨🔼', // Flux sortant : flux qui sort (corps noir σT⁴)
+    DELTA_FLUX: '♨🔺', // Delta flux : différence entre flux sortant et entrant
+    TOLERANCE: '📏', // Tolérance : précision pour le test d'arrêt
+    DESERT: '🏖',   // Désert : plage (utilisé dans albedo breakdown)
     VOLCANO: '🌋',  // Volcan : magma (utilisé dans albedo breakdown)
     OCEAN: '🌊',    // Océan : vagues (utilisé dans albedo breakdown)
     FOREST: '🌳',   // Forêt : arbre (utilisé dans albedo breakdown)
     ICE: '🧊',      // Glace : glaçon (utilisé dans albedo breakdown)
-    CLOUD: '⛅'     // Nuages : nuage avec soleil (utilisé dans albedo breakdown)
+    CLOUD: '⛅',     // Nuages : nuage avec soleil (utilisé dans albedo breakdown)
+    COMPUTE: '⏳',  // Compute : sablier (pour les valeurs de convergence)
+    GREENHOUSE_FORCING_ALT: '🌴',  // Greenhouse forcing alternatif : palmier
+    // Logos composés selon grammar.txt
+    BOOLEAN: '📫',  // Boolean : enveloppe
+    CARDINAL: '🎓', // Cardinal : chapeau de diplômé
+    DELTA: '🔺',    // Delta : triangle
+    METER: '📏',    // Mètre : règle
+    PROPORTION: '🥒', // Proportion : concombre
+    ATMOSPHERE: '🌬', // Atmosphère : vent
+    CONFIG: '📜',   // Config : parchemin
+    OLD_T0: '🏮',   // Old T0 : lanterne
+    METEORITE_COUNT: '☄️', // Nombre de météorites
+    METEORITE_WATER_ADDED: '☄️💧🐳', // Masse d'eau ajoutée par météorite
+    TOTAL_ATMOSPHERE_MASS: '🐳🎓' // Masse totale atmosphère
 };
 
 // Objet pour mapper les logos emoji vers les fichiers images

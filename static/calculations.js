@@ -905,7 +905,85 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     let molar_mass_val; // Sera récupéré de l'époque
     let physParams = null; // Objet regroupant les paramètres physiques pour les helpers
 
-    if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName) {
+    // Priorité 1 : Utiliser les paramètres passés dans options (pour test_computeRadiativeTransfer.html)
+    if (options?.total_atmosphere_mass_kg !== undefined) {
+        total_mass = options.total_atmosphere_mass_kg;
+    }
+    if (options?.z_max !== undefined) {
+        dynamic_z_max = options.z_max; // Utiliser z_max depuis options en priorité
+    }
+    
+    // Si on a total_mass depuis options, essayer de créer physParams depuis window.epoch
+    if (total_mass !== undefined && physParams === null && typeof window !== 'undefined' && window.epoch) {
+        if (window.epoch.gravity !== undefined) gravity_val = window.epoch.gravity;
+        if (window.epoch.planet_radius !== undefined) planet_radius_val = window.epoch.planet_radius;
+        if (typeof window.calculateMolarMassAir === 'function') {
+            molar_mass_val = window.calculateMolarMassAir(window.epoch);
+        } else {
+            molar_mass_val = window.epoch.molar_mass_air;
+        }
+        
+        // Calculer la pression atmosphérique
+        let pressure_atm_val = 0;
+        if (typeof window.calculatePressureAtm === 'function') {
+            pressure_atm_val = window.calculatePressureAtm(window.epoch);
+        } else if (gravity_val !== undefined && planet_radius_val !== undefined) {
+            const surface_area = 4 * Math.PI * Math.pow(planet_radius_val, 2);
+            const pressure_pa = (total_mass * gravity_val) / surface_area;
+            pressure_atm_val = pressure_pa / 101325;
+        }
+        
+        // Créer physParams si on a tous les paramètres
+        if (gravity_val !== undefined && planet_radius_val !== undefined && molar_mass_val !== undefined) {
+            physParams = {
+                total_atmosphere_mass_kg: total_mass,
+                gravity: gravity_val,
+                planet_radius: planet_radius_val,
+                molar_mass_air: molar_mass_val,
+                temperature_K: T0_test,
+                pressure_atm: pressure_atm_val,
+                ocean_coverage: window.epoch.ocean_coverage || 0
+            };
+        }
+    }
+
+    // Priorité 2 : Utiliser window.epoch si disponible (pour test_computeRadiativeTransfer.html)
+    if (typeof window !== 'undefined' && window.epoch && total_mass === undefined) {
+        total_mass = window.epoch.total_atmosphere_mass_kg;
+        if (window.epoch.gravity !== undefined) gravity_val = window.epoch.gravity;
+        if (window.epoch.planet_radius !== undefined) planet_radius_val = window.epoch.planet_radius;
+        if (typeof window.calculateMolarMassAir === 'function') {
+            molar_mass_val = window.calculateMolarMassAir(window.epoch);
+        } else {
+            molar_mass_val = window.epoch.molar_mass_air;
+        }
+        
+        // Calculer la pression atmosphérique
+        let pressure_atm_val = 0;
+        if (typeof window.calculatePressureAtm === 'function') {
+            pressure_atm_val = window.calculatePressureAtm(window.epoch);
+        } else if (total_mass !== undefined && gravity_val !== undefined && planet_radius_val !== undefined) {
+            const surface_area = 4 * Math.PI * Math.pow(planet_radius_val, 2);
+            const pressure_pa = (total_mass * gravity_val) / surface_area;
+            pressure_atm_val = pressure_pa / 101325;
+        }
+        
+        // Créer physParams pour window.epoch
+        if (total_mass !== undefined && gravity_val !== undefined && planet_radius_val !== undefined && molar_mass_val !== undefined) {
+            physParams = {
+                total_atmosphere_mass_kg: total_mass,
+                gravity: gravity_val,
+                planet_radius: planet_radius_val,
+                molar_mass_air: molar_mass_val,
+                temperature_K: T0_test,
+                pressure_atm: pressure_atm_val,
+                ocean_coverage: window.epoch.ocean_coverage || 0
+            };
+        }
+    }
+
+    // Priorité 3 : Utiliser window.configOrganigramme et window.currentEpochName (pour index.html)
+    if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName && total_mass === undefined) {
         const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
         if (currentEpoch) {
             // Récupération stricte : si undefined, on laisse undefined (ce qui provoquera une erreur plus loin)
@@ -961,13 +1039,25 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
                 }
             }
         }
-    } else if (dynamic_z_max === undefined) {
-        // Hors contexte global, pas de fallback magique sur 5.15e18.
-        // Si total_mass n'est pas fourni (undefined), calculateAtmosphereProperties va (ou devrait) râler.
-        // Mais ici total_mass est undefined.
-        if (typeof window !== 'undefined' && typeof window.calculateAtmosphereProperties === 'function' && total_mass !== undefined) {
-            const props = window.calculateAtmosphereProperties(total_mass, T0_test);
-            dynamic_z_max = props.z_max;
+    }
+    
+    // Si z_max n'est toujours pas défini mais que total_mass est disponible, le calculer
+    if (dynamic_z_max === undefined && total_mass !== undefined) {
+        // Utiliser window.epoch ou window.currentEpochName pour récupérer les paramètres physiques
+        let epoch_for_calc = null;
+        if (typeof window !== 'undefined' && window.epoch) {
+            epoch_for_calc = window.epoch;
+        } else if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName) {
+            epoch_for_calc = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+        }
+        
+        if (epoch_for_calc && typeof window !== 'undefined' && typeof window.calculateAtmosphereProperties === 'function') {
+            const temp_gravity = gravity_val || epoch_for_calc.gravity;
+            const temp_molar_mass = molar_mass_val || (typeof window.calculateMolarMassAir === 'function' ? window.calculateMolarMassAir(epoch_for_calc) : epoch_for_calc.molar_mass_air);
+            if (temp_gravity !== undefined && temp_molar_mass !== undefined) {
+                const props = window.calculateAtmosphereProperties(total_mass, T0_test, temp_molar_mass, temp_gravity);
+                dynamic_z_max = props.z_max;
+            }
         }
     }
 
@@ -975,6 +1065,13 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // Pas de valeur par défaut silencieuse qui cache des bugs.
     if (dynamic_z_max === undefined || dynamic_z_max === null || isNaN(dynamic_z_max)) {
         console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE : Hauteur d'atmosphère (z_max) indéterminée. total_mass=${total_mass}, z_max_option=${z_max}`);
+        return null;
+    }
+    
+    // 🚨 VALIDATION CRITIQUE : Si physParams n'est pas défini, on arrête tout.
+    // physParams est requis pour pressure() et airNumberDensity()
+    if (physParams === null || physParams.temperature_K === undefined) {
+        console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE : physParams non défini ou temperature_K manquant. total_mass=${total_mass}, epoch=${typeof window !== 'undefined' && window.epoch ? window.epoch.id : 'unknown'}`);
         return null;
     }
 
@@ -1133,12 +1230,20 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
     // Initialiser les tableaux avec la longueur finale de lambda_range
     const final_lambda_length = lambda_range.length;
+    const num_couches = z_range.length;
+    const num_plages_spectre = final_lambda_length;
+    const total_cases = num_couches * num_plages_spectre;
+    
     const upward_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const optical_thickness = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const absorbed_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
 
-    // Log supprimé (non essentiel)
+    // Log du calcul spectral
+    console.log(`📊 [calculateFluxForT0@calculations.js] Calcul spectral:`);
+    console.log(`   Nombre de couches atmosphériques: ${num_couches}`);
+    console.log(`   Nombre de plages spectrales: ${num_plages_spectre}`);
+    console.log(`   Produit (cases calculées): ${total_cases}`);
 
     // Condition limite : flux émis par la surface avec T0_test
     // ⚡ OPTIMISATION : Tenir compte des poids lambda pour les plages regroupées
@@ -1394,6 +1499,15 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         };
     }
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
+    
+    // Log du delta (flux sortant - flux entrant initial)
+    // Note: flux entrant initial = earth_flux total (flux émis par la surface)
+    const earth_flux_total = earth_flux.reduce((sum, val) => sum + val, 0);
+    const delta_spectral = total_flux - earth_flux_total;
+    console.log(`📊 [calculateFluxForT0@calculations.js] Résultat calcul spectral:`);
+    console.log(`   Flux entrant initial (surface): ${earth_flux_total.toFixed(2)} W/m²`);
+    console.log(`   Flux sortant final (sommet atm): ${total_flux.toFixed(2)} W/m²`);
+    console.log(`   Delta (sortant - entrant): ${delta_spectral.toFixed(2)} W/m²`);
 
     // Debug: analyser le flux < 9μm au sommet de l'atmosphère
     const top_flux = upward_flux[upward_flux.length - 1];

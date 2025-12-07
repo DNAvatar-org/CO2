@@ -13,7 +13,7 @@
 // DÉFINITION DE LA CHRONOLOGIE (TIMELINE)
 // ============================================================================
 // Structure : array d'objets { type: 'epoch' | 'separator', ... }
-// Les icônes des boutons d'événements sont définies dans events.tic_time.icon et events.meteor.icon
+// Les icônes des boutons d'événements sont définies dans events.tic_time.icon et events.ice_meteorite.icon
 const timeline = [
     {
         type: 'epoch',
