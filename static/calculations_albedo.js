@@ -65,9 +65,12 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
             forest_coverage = Math.min(0.5, ocean_coverage * (1 - T_surface_C / 30));
                 }
                 
-        // Désert : surface restante (sauf en Hadéen où c'est volcan)
-        const total_covered = ocean_coverage + ice_fraction + forest_coverage + volcano_coverage;
-        const desert_coverage = isHadeen ? 0 : Math.max(0, Math.min(1, 1.0 - total_covered));
+        // Désert : ne pas calculer comme "surface restante" par défaut
+        // Le désert vient des coquillages (époques spécifiques), pas du corps noir
+        // Soit il est défini dans la config, soit on le laisse à 0 pour le moment
+        let desert_coverage = 0;
+        // TODO: Si desert_coverage est défini dans epoch.config, l'utiliser ici
+        // Pour l'instant, on laisse à 0 (pas de désert par défaut)
         
         // Calculer l'albedo pondéré avec les coefficients
         // Note: Pour Hadéen, volcano_coverage = 1.0, donc albedo_base = 1.0 * 0.05 = 0.05
@@ -101,6 +104,10 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         // L'albedo de base est la moyenne pondérée
         if (total_coverage > 0) {
             albedo_base = weighted_albedo / total_coverage;
+        } else {
+            // Si aucune couverture n'est définie (total_coverage = 0), albedo = 0
+            // Exemple : "corps noir" sans atmosphère, sans océan, sans rien
+            albedo_base = 0;
         }
     }
     
@@ -279,9 +286,12 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
             forest_coverage_display = Math.min(0.5, ocean_coverage_display * (1 - T_surface_C / 30));
         }
         
-        // Désert : surface restante (sauf en Hadéen où c'est volcan)
-        const total_covered_display = ocean_coverage_display + ice_coverage_display + forest_coverage_display + volcano_coverage_display;
-        const desert_coverage_display = isHadeen ? 0 : Math.max(0, Math.min(1, 1.0 - total_covered_display));
+        // Désert : ne pas calculer comme "surface restante" par défaut
+        // Le désert vient des coquillages (époques spécifiques), pas du corps noir
+        // Soit il est défini dans la config, soit on le laisse à 0 pour le moment
+        let desert_coverage_display = 0;
+        // TODO: Si desert_coverage est défini dans epoch.config, l'utiliser ici
+        // Pour l'instant, on laisse à 0 (pas de désert par défaut)
         
         // Selon grammar.txt : albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}
         window.albedo = {
@@ -455,10 +465,21 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_overrid
 // - La division par 4 vient de la géométrie sphérique : surface 4πr² vs section πr² (facteur 4)
 function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled, geothermal_flux = null) {
     const albedo = calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux);
-    const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
+    
+    // Utiliser window.soleil['🧲☀️🎱'] comme source unique (flux solaire moyen sphérique, AVANT albedo)
+    // Par définition : 🧲☀️🎱 = 🧲☀️📜 / 4 (rapporté au rayon au sol pour les m²)
+    let solar_flux_average_wm;
+    if (window.soleil && window.soleil['🧲☀️🎱'] !== undefined) {
+        // Utiliser window.soleil['🧲☀️🎱'] directement (source unique)
+        solar_flux_average_wm = window.soleil['🧲☀️🎱'];
+    } else {
+        // Fallback : calculer depuis window.SOLAR_CONSTANT ou valeur par défaut
+        const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
+        solar_flux_average_wm = SOLAR_CONSTANT / 4;
+    }
     
     // 🔒 FORMULE TOUJOURS UTILISÉE : solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm
-    const solar_flux_average_wm = SOLAR_CONSTANT / 4; // Flux solaire moyen (divisé par 4 pour la géométrie sphérique)
+    // = solar_flux_average_wm × (1 - albedo)
     const solar_flux_reflected_wm = solar_flux_average_wm * albedo; // Flux réfléchi (peut être 0 si albedo = 0)
     const solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm; // Flux absorbé
     

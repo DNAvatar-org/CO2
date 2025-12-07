@@ -37,13 +37,13 @@
 // dateConfig utilise maintenant les logos complets selon grammar.txt
 function calculateT0(dateConfig) {
     // Récupérer les valeurs depuis dateConfig (pas de fallback, pas de window.old_T0)
-    const old_T0 = dateConfig['🌡️🏮'];  // old_T0 depuis dateConfig uniquement
-    const t0_config = dateConfig['🌡️⏳📜'];  // T0 config depuis dateConfig
-    const animEnabled = dateConfig['📫🎬'];  // Animation depuis dateConfig
-    const meteoriteCount = dateConfig['🎓☄️📜'];
-    const deltaMeteorite = dateConfig['🔺🌡️☄️📜'];
-    const ticTime = dateConfig['🎓💫📜'];
-    const deltaTicTime_per_tic = dateConfig['🔺🌡️💫📜'];
+    const old_T0 = dateConfig[window.getLogoKey('TEMP', 'OLD_T0')];  // old_T0 depuis dateConfig uniquement
+    const t0_config = dateConfig[window.getLogoKey('TEMP', 'COMPUTE', 'CONFIG')];  // T0 config depuis dateConfig
+    const animEnabled = dateConfig[window.getLogoKey('BOOLEAN', 'ANIMATION')];  // Animation depuis dateConfig
+    const meteoriteCount = dateConfig[window.getLogoKey('CARDINAL', 'METEORITE_COUNT', 'CONFIG')];
+    const deltaMeteorite = dateConfig[window.getLogoKey('DELTA', 'TEMP', 'METEORITE_COUNT', 'CONFIG')];
+    const ticTime = dateConfig[window.getLogoKey('CARDINAL', 'TIC_TIME', 'CONFIG')];
+    const deltaTicTime_per_tic = dateConfig[window.getLogoKey('DELTA', 'TEMP', 'TIC_TIME', 'CONFIG')];
     
     if (!t0_config || t0_config <= 0) {
         console.error(`${window.getLogo('EDS')} [calculateT0@calculations_flux.js] ❌ t0_config invalide: ${t0_config}`);
@@ -51,8 +51,8 @@ function calculateT0(dateConfig) {
     }
     
     // Logique selon la sémantique :
-    // (!📫🎬) => ⏳🌡️🚩 = 🌡️⏳📜  (si animation désactivée, T0 calculé = T0 config)
-    // (📫🎬) => ⏳🌡️🚩 = 🌡️🏮     (si animation activée, T0 calculé = old_T0)
+    // (!🔘🎬) => ⏳🌡️🚩 = 🌡️⏳📜  (si animation désactivée, T0 calculé = T0 config)
+    // (🔘🎬) => ⏳🌡️🚩 = 🌡️🏮     (si animation activée, T0 calculé = old_T0)
     const baseTemp = animEnabled ? old_T0 : t0_config;
     
     // T0 += ☄️*🌡️☄️ + 💫*🌡️💫
@@ -337,11 +337,14 @@ function computeRadiativeTransfer(options = {}) {
         // ========================================================================
         const flux_entrant = flux_solaire_absorbe + flux_geothermique;
         
+        // Log de débogage pour vérifier le calcul
+        console.log(`   🔍 [DEBUG step4] flux_solaire_absorbe=${flux_solaire_absorbe.toFixed(2)} W/m², flux_geothermique=${flux_geothermique > 1000 ? flux_geothermique.toExponential(2) : flux_geothermique.toFixed(2)} W/m², flux_entrant=${flux_entrant > 1000 ? flux_entrant.toExponential(2) : flux_entrant.toFixed(2)} W/m²`);
+        
         // Objet étape 4 : Flux entrant
         window.step4_fluxIn = {
-            '🧲☀️🔽': flux_solaire_absorbe,  // Flux solaire absorbé
-            '🧲🌕🔽': flux_geothermique,     // Flux géothermique
-            '🧲🔽': flux_entrant  // Flux entrant total
+            '🧲☀️🔽': flux_solaire_absorbe,  // Flux solaire absorbé (W/m²)
+            '🧲🌕🔽': flux_geothermique,     // Flux géothermique (W/m²)
+            '🧲🔽': flux_entrant  // Flux entrant total = solaire + géothermique (W/m²)
         };
         
         // ========================================================================
@@ -409,14 +412,17 @@ function computeRadiativeTransfer(options = {}) {
                         }
                     }
                     
-                    // Selon grammar.txt : 🎓⏳ (cardinal + compute), 🎓🌈 (cardinal + spectre), 🎓⏳🌈 (cardinal + compute + spectre)
+                    // Selon grammar.txt : 🎓⏳🌬 (cardinal + compute + atmosphère), 🎓⏳🌈 (cardinal + compute + spectre), 🎓⏳🌬🌈 (cardinal + compute + atmosphère + spectre)
+                    // 🎓⏳🌬 = nombre de couches atmosphériques calculées (ex: 1060 couches)
+                    // 🎓⏳🌈 = nombre de plages spectrales (longueurs d'onde) (ex: 1000 plages)
+                    // 🎓⏳🌬🌈 = total de cases calculées = couches × plages spectrales (ex: 1 060 000 cases)
                     spectral_info = {
-                        '🎓⏳': num_couches,  // Nombre de couches (cardinal + compute)
-                        '🎓🌈': num_plages_spectre,  // Nombre de plages spectrales (cardinal + spectre)
-                        '🎓⏳🌈': total_cases,  // Total cases (couches × spectre) - cardinal + compute + spectre
-                        '🧲🏭📛': contribution_CO2,  // Contribution CO2 réémis (EDS) - flux + CO2 + EDS
-                        '🧲💧📛': contribution_H2O,  // Contribution H2O réémis (EDS) - flux + H2O + EDS
-                        '🧲⛽📛': contribution_CH4  // Contribution CH4 réémis (EDS) - flux + CH4 + EDS
+                        '🎓⏳🌬': num_couches,  // Nombre de couches atmosphériques (cardinal + compute + atmosphère)
+                        '🎓⏳🌈': num_plages_spectre,  // Nombre de plages spectrales (cardinal + compute + spectre)
+                        '🎓⏳🌬🌈': total_cases,  // Total cases calculées = couches × plages (cardinal + compute + atmosphère + spectre)
+                        '🧲🏭📛': contribution_CO2,  // Contribution CO2 réémis vers la Terre (EDS) - flux + CO2 + EDS (W/m²)
+                        '🧲💧📛': contribution_H2O,  // Contribution H2O réémis vers la Terre (EDS) - flux + H2O + EDS (W/m²)
+                        '🧲⛽📛': contribution_CH4  // Contribution CH4 réémis vers la Terre (EDS) - flux + CH4 + EDS (W/m²)
                     };
                 }
             } catch (error) {
@@ -465,10 +471,10 @@ function computeRadiativeTransfer(options = {}) {
         // ========================================================================
         // CONCLUSION : Résumé de l'itération
         // ========================================================================
-        // Selon grammar.txt : 📫 (boolean), 🌡️⏳ (température + compute), 🔺🧲 (delta flux), 🧲🔬 (tolérance), ⏳⚧ (phase), ⏳🔺 (signeDeltaFirst)
+        // Selon grammar.txt : 🔘 (boolean), 🌡️⏳ (température + compute), 🔺🧲 (delta flux), 🧲🔬 (tolérance), ⏳⚧ (phase), ⏳🔺 (signeDeltaFirst)
         const convergence_reached = Math.abs(delta_equilibre) <= tolerance;
         window.step8_conclusion = {
-            '📫✅': convergence_reached,  // Convergence atteinte ? (boolean)
+            '🔘✅': convergence_reached,  // Convergence atteinte ? (boolean)
             '🌡️⏳': T0_current,  // Température finale du cycle (température + compute origin)
             '🔺🧲': delta_equilibre,  // Delta équilibre (delta + flux)
             '🧲🔬': tolerance,  // Tolérance (flux + tolerance)

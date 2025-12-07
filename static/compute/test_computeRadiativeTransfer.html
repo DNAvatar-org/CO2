@@ -306,13 +306,21 @@
         .config-title {
             font-weight: bold;
             color: #4a9eff;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             font-size: 16px;
         }
         
         .config-value {
-            color: #e0e0e0;
+            color: beige;
+            margin-top: 5px;
             font-family: 'EmojiFont', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', monospace, sans-serif;
+        }
+        
+        .formule {
+            color: gray;
+            margin-top: -5px;
+            margin-left: 35px;
+            font-size: 11px;
         }
         
         .results.replied .config-title {
@@ -381,68 +389,8 @@
         <!-- Légende des logos selon grammar.txt -->
         <div class="results" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
             <h2 style="color: #4a9eff; margin-bottom: 10px;">📖 Légende des logos</h2>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13px;">
-                <!-- Colonne 1 : Configuration et états -->
-                <div style="display: flex; flex-direction: column; gap: 5px;">
-                    <div><strong>📫🎬</strong> Animation</div>
-                    <div><strong>🌡️🏮</strong> old_T0 (température précédente)</div>
-                    <div><strong>⏳🌡️</strong> T0 attendu (température config)</div>
-                    <div><strong>🎓☄️📜</strong> Nombre de météorites</div>
-                    <div><strong>🔺🌡️☄️📜</strong> Delta température / météorite</div>
-                    <div><strong>🔺🐳💧☄️📜</strong> Masse d'eau ajoutée / météorite</div>
-                    <div><strong>🎓💫📜</strong> Nombre de ticTime</div>
-                    <div><strong>🔺🌡️💫📜</strong> Delta température / ticTime</div>
-                    <div><strong>🔺🧲🌕💫📜</strong> Delta Flux Geom /ticTime</div>
-                    <div><strong>⏳🌡️🚩</strong> T0 calculé (température calculée)</div>
-                    <div><strong>⏳⚧</strong> Phase (None/Search/Dicho)</div>
-                    <div><strong>⏳🔺</strong> signeDeltaFirst</div>
-                    <div><strong>📫💧📛</strong> H2O EDS activé</div>
-                    <div><strong>📫⛽📛</strong> CH4 EDS activé</div>
-                    <div><strong>📫🏭📛</strong> CO2 EDS activé</div>
-                    <div><strong>📫🪞</strong> Albedo activé</div>
-                </div>
-                <!-- Colonne 2 : Masses et composition -->
-                <div style="display: flex; flex-direction: column; gap: 5px;">
-                    <div><strong>🐳🏭</strong> Masse CO2 (kg)</div>
-                    <div><strong>🐳⛽</strong> Masse CH4 (kg)</div>
-                    <div><strong>🐳💧</strong> Masse H2O (kg)</div>
-                    <div><strong>🐳🌫</strong> Masse O2 (kg)</div>
-                    <div><strong>🐳🎓</strong> Masse totale atmosphère (kg)</div>
-                    <div><strong>📏🌬🚀</strong> Altitude max (km) - épaisseur de l'atmosphère</div>
-                    <div><strong>📏🌬🛩</strong> Tropopause (km) - limite troposphère/stratosphère</div>
-                    <div><strong>🥒🌬🏭</strong> CO2 (%)</div>
-                    <div><strong>🥒🌬💧</strong> H2O (%)</div>
-                    <div><strong>🥒🌬⛽</strong> CH4 (%)</div>
-                    <div><strong>🥒🌬🌫</strong> O2 (%)</div>
-                    <div><strong>🥒💧🧊</strong> Glace (%)</div>
-                    <div><strong>🥒💧⛅</strong> Nuages (%)</div>
-                    <div><strong>🥒💧🌊</strong> Océan (%)</div>
-                    <div><strong>🧲💧📛</strong> Greenhouse forcing H2O (dans step5_spectral)</div>
-                    <div><strong>🥒🪞⛅</strong> Cloud albedo (dans window.albedo)</div>
-                    <div><strong>⏳🌧</strong> Max vapor fraction</div>
-                </div>
-                <!-- Colonne 3 : Flux et événements -->
-                <div style="display: flex; flex-direction: column; gap: 5px;">
-                    <div><strong>🧲☀️</strong> Flux solaire (W/m²)</div>
-                    <div><strong>🧲☀️🔽</strong> Flux solaire absorbé (W/m²)</div>
-                    <div><strong>🧲🌕🔽</strong> Flux géothermique (W/m²)</div>
-                    <div><strong>🧲🔼</strong> Flux sortant (corps noir σT⁴, W/m²)</div>
-                    <div><strong>🔺🧲</strong> Delta flux (W/m²)</div>
-                    <div><strong>🔺🧲🌕</strong> Delta flux géothermique (W/m²)</div>
-                    <div><strong>🧲🧯</strong> Tolérance (précision pour test d'arrêt, W/m²)</div>
-                    <div><strong>🎇</strong> Big impact (événement d'impact majeur)</div>
-                    <div><strong>💫</strong> TicTime (événement d'avancement temporel)</div>
-                    <div><strong>☄️</strong> Météorite de glace (événement)</div>
-                    <div><strong>▶</strong> Flux start (valeur de départ)</div>
-                    <div><strong>◀</strong> Flux end (valeur de fin)</div>
-                    <div><strong>🥒🪞🎓</strong> % Albedo total</div>
-                    <div><strong>🥒🪞🌋</strong> Volcan (couverture)</div>
-                    <div><strong>🥒🪞🌊</strong> Océan (couverture)</div>
-                    <div><strong>🥒🪞🌳</strong> Forêt (couverture)</div>
-                    <div><strong>🥒🪞🏖</strong> Désert (couverture)</div>
-                    <div><strong>🥒🪞🧊</strong> Glace (couverture)</div>
-                    <div><strong>🥒🪞⛅</strong> Cloud albedo (couverture)</div>
-                </div>
+            <div id="legend-content">
+                <!-- La légende sera générée dynamiquement par window.generateLegend() -->
             </div>
         </div>
         
@@ -504,6 +452,7 @@
 
     <!-- Charger les dépendances dans l'ordre -->
     <script src="../../organigramme/configOrganigramme.js"></script>
+    <script src="grammar.js"></script>
     <script src="../timeline/configTimeline.js"></script>
     <script src="../timeline/timeline.js"></script>
     <script src="../events.js"></script>
@@ -516,6 +465,27 @@
     <script src="calculations_flux.js"></script>
     
     <script>
+        // Fonction helper pour construire les clés de logos dans le HTML (utilise window.getLogoKey si disponible)
+        function getLogoKeyHTML(...names) {
+            if (typeof window !== 'undefined' && window.getLogoKey) {
+                return window.getLogoKey(...names);
+            }
+            if (typeof window === 'undefined' || !window.LOGOS) {
+                return '';
+            }
+            return names.map(name => window.LOGOS[name] || '').join('');
+        }
+        
+        function getLogoHTML(name) {
+            if (typeof window !== 'undefined' && window.getLogo) {
+                return window.getLogo(name);
+            }
+            if (typeof window === 'undefined' || !window.LOGOS) {
+                return '';
+            }
+            return window.LOGOS[name] || '';
+        }
+        
         // Intercepter console.log pour afficher dans la page
         const originalLog = console.log;
         const originalError = console.error;
@@ -800,25 +770,27 @@
                 initializeGlobals();
                 
                 // Afficher la grammaire complète selon grammar.txt
+                const getKey = getLogoKeyHTML;
+                const get = getLogoHTML;
                 console.log('📖 Grammar.txt - Structure complète des objets:');
                 console.log('');
-                console.log('enabledStates={\'📫💧📛\':true, \'📫⛽📛\':true, \'📫🏭📛\':true, \'📫🪞\':true, \'📫🎬\':false}');
+                console.log(`enabledStates={'${getKey('BOOLEAN', 'H2O', 'EDS')}':true, '${getKey('BOOLEAN', 'CH4', 'EDS')}':true, '${getKey('BOOLEAN', 'CO2', 'EDS')}':true, '${getKey('BOOLEAN', 'ALBEDO')}':true, '${getKey('BOOLEAN', 'ANIMATION')}':false}`);
                 console.log('');
-                console.log('dateConfig={\'🌡️🏮📜\':180.00K, \'⏳🌡️\':2450, \'🎓☄️📜\':0, \'🔺🌡️☄️📜\':-3.0, \'🔺🐳💧☄️📜\':1.00e+18, \'🎓💫📜\':0, \'🔺🌡️💫📜\':-300.0, \'🔺🧲🌕💫📜\':{\'▶\':2000000, \'◀\':0.3}}');
+                console.log(`dateConfig={'${getKey('TEMP', 'OLD_T0')}':180.00, '${getKey('TEMP', 'COMPUTE', 'CONFIG')}':2450, '${getKey('CARDINAL', 'METEORITE_COUNT', 'CONFIG')}':0, '${getKey('DELTA', 'TEMP', 'METEORITE_COUNT', 'CONFIG')}':-3.0, '${getKey('DELTA', 'WEIGHT', 'H2O', 'METEORITE_COUNT', 'CONFIG')}':1.00e+18, '${getKey('CARDINAL', 'TIC_TIME', 'CONFIG')}':0, '${getKey('DELTA', 'TEMP', 'TIC_TIME', 'CONFIG')}':-300.0, '${getKey('DELTA', 'ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'TIC_TIME', 'CONFIG')}':{'${get('FLUX_START')}':2000000, '${get('FLUX_END')}':0.3}}`);
                 console.log('');
-                console.log('events={\'☄️\':\'🎓☄️📜\', \'💫\':\'🎓💫📜\'}');
+                console.log(`events={'${get('METEORITE_COUNT')}':'${getKey('CARDINAL', 'METEORITE_COUNT', 'CONFIG')}', '${get('TIC_TIME')}':'${getKey('CARDINAL', 'TIC_TIME', 'CONFIG')}'}`);
                 console.log('');
-                console.log('masses={\'🐳🏭\': 5.15e+17, \'🐳⛽\': 5.15e+15, \'🐳💧\': 2.10e+20, \'🐳🌫\': 0.00e+0, \'🐳🎓\': 5.30e+20}');
+                console.log(`masses={'${getKey('WEIGHT', 'CO2')}': 5.15e+17, '${getKey('WEIGHT', 'CH4')}': 5.15e+15, '${getKey('WEIGHT', 'H2O')}': 2.10e+20, '${getKey('WEIGHT', 'O2')}': 0.00e+0, '${getKey('WEIGHT', 'CARDINAL')}': 5.30e+20}`);
                 console.log('');
-                console.log('atm={\'📏🌬🚀\':1300, \'📏🌬🛩\':30, \'🥒🌬🌫\':0.0, \'🥒🌬🏭\':0.703, \'🥒🌬💧\':0.000701158, \'🥒🌬⛽\':0.00019}');
+                console.log(`atm={'${getKey('METER', 'ATMOSPHERE', 'ALTITUDE')}':1300, '${getKey('METER', 'ATMOSPHERE', 'TROPOPAUSE')}':30, '${getKey('PROPORTION', 'ATMOSPHERE', 'O2')}':0.0, '${getKey('PROPORTION', 'ATMOSPHERE', 'CO2')}':0.703, '${getKey('PROPORTION', 'ATMOSPHERE', 'H2O')}':0.000701158, '${getKey('PROPORTION', 'ATMOSPHERE', 'CH4')}':0.00019}`);
                 console.log('');
-                console.log('h2o={\'🥒💧🧊\':0, \'🥒💧⛅\':5, \'🥒💧🌊\':0, \'⏳🌧\':100}');
-                console.log('Note: 💧 (H2O vapeur %) est dans atm[\'🥒🌬💧\'] - source unique');
-                console.log('Note: 🧲💧📛 (greenhouse forcing H2O) est dans step5_spectral, 🥒🪞⛅ (cloud albedo) est dans window.albedo');
+                console.log(`h2o={'${getKey('PROPORTION', 'H2O', 'ICE')}':0, '${getKey('PROPORTION', 'H2O', 'CLOUD')}':5, '${getKey('PROPORTION', 'H2O', 'OCEAN')}':0, '${getKey('COMPUTE', 'MAX_VAPOR')}':100}`);
+                console.log(`Note: ${get('H2O')} (H2O vapeur %) est dans atm['${getKey('PROPORTION', 'ATMOSPHERE', 'H2O')}'] - source unique`);
+                console.log(`Note: ${getKey('ENERGY_FLUX', 'H2O', 'EDS')} (greenhouse forcing H2O) est dans step5_spectral, ${getKey('PROPORTION', 'ALBEDO', 'CLOUD')} (cloud albedo) est dans window.albedo`);
                 console.log('');
-                console.log('albedoReflectorCoeff={\'🥒🌋🪞\':0.05, \'🥒🌊🪞\':0.08, \'🥒🌳🪞\':0.12, \'🥒🏖🪞\':0.30, \'🥒🧊🪞\':0.20, \'🥒⛅🪞\':0.50}');
+                console.log(`albedoReflectorCoeff={'${getKey('PROPORTION', 'VOLCANO', 'ALBEDO')}':0.05, '${getKey('PROPORTION', 'OCEAN', 'ALBEDO')}':0.08, '${getKey('PROPORTION', 'FOREST', 'ALBEDO')}':0.12, '${getKey('PROPORTION', 'DESERT', 'ALBEDO')}':0.30, '${getKey('PROPORTION', 'ICE', 'ALBEDO')}':0.20, '${getKey('PROPORTION', 'CLOUD', 'ALBEDO')}':0.50}`);
                 console.log('');
-                console.log('albedo={\'🥒🪞🎓\':0.05, \'🥒🪞🌋\':1.00, \'🥒🪞🌊\':0.00, \'🥒🪞🌳\':0.00, \'🥒🪞🏖\':0.00, \'🥒🪞🧊\':0.00, \'🥒🪞⛅\':0.05}');
+                console.log(`albedo={'${getKey('PROPORTION', 'ALBEDO', 'CARDINAL')}':0.05, '${getKey('PROPORTION', 'ALBEDO', 'VOLCANO')}':1.00, '${getKey('PROPORTION', 'ALBEDO', 'OCEAN')}':0.00, '${getKey('PROPORTION', 'ALBEDO', 'FOREST')}':0.00, '${getKey('PROPORTION', 'ALBEDO', 'DESERT')}':0.00, '${getKey('PROPORTION', 'ALBEDO', 'ICE')}':0.00, '${getKey('PROPORTION', 'ALBEDO', 'CLOUD')}':0.05}`);
                 console.log('');
                 
                 console.log('🧪 Démarrage du test computeRadiativeTransfer');
@@ -869,9 +841,10 @@
                 total += coverage * coeff;
             });
             
-            // Construire la formule avec notation sigma (utiliser ⛀ au lieu de *)
+            // essais graphique, ne modifie pas la formule : 
+            const variableChar = '❀';//❉✪✩⛬✤ //<i></i>
             const elementsStr = elements.join(',');
-            const formula = `<strong>🥒🪞🎓</strong> = Σ(<strong>🥒🪞⛀</strong>×<strong>🥒⛀🪞</strong>) | ⛀∈{${elementsStr}} => <strong>${total.toFixed(4)}</strong>`;
+            const formula = `🥒🪞🎓<span style="font-size: 15px;"> = Σ(</span>🥒🪞<span style="font-size: 15px;">${variableChar} × </span>🥒<span style="font-size: 15px;">${variableChar}</span>🪞<span style="font-size: 15px;">) | ${variableChar} ∈ { </span>${elementsStr}<span style="font-size: 15px;"> }</span> => ${total.toFixed(4)}`;
             
             // Formater albedoReflectorCoeff pour l'affichage
             const formatNumber = (value) => {
@@ -886,7 +859,85 @@
             const coeffEntries = Object.entries(albedoReflectorCoeff).map(([k, v]) => `'${k}':${formatValue(v)}`);
             const coeffStr = `{${coeffEntries.join(', ')}}`;
             
-            return `<div class="formule" style="margin-top: 5px; padding: 5px; font-family: monospace; font-size: 0.9em;">${formula}<br>albedoReflectorCoeff=${coeffStr}</div>`;
+            // Ajouter les formules de calcul des couvertures
+            let coverageFormulas = [];
+            const epoch = window.epoch;
+            const T_surface_K = window.T0 || 255;
+            const T_surface_C = T_surface_K - 273.15;
+            const isHadeen = epoch?.id === 'hadeen';
+            const ocean_coverage = albedo['🥒🪞🌊'] || 0;
+            const ice_coverage = albedo['🥒🪞🧊'] || 0;
+            const forest_coverage = albedo['🥒🪞🌳'] || 0;
+            const volcano_coverage = albedo['🥒🪞🌋'] || 0;
+            const desert_coverage = albedo['🥒🪞🏖'] || 0;
+            const cloud_coverage = albedo['🥒🪞⛅'] || 0;
+            
+            // Formules de calcul des couvertures
+            if (isHadeen) {
+                coverageFormulas.push(`🥒🪞🌋 = 1.00 (Hadéen: volcan 100%)`);
+                coverageFormulas.push(`🥒🪞🏖 = 0.00 (Hadéen: désert 0%)`);
+            } else {
+                if (volcano_coverage > 0) {
+                    coverageFormulas.push(`🥒🪞🌋 = min(1.0, 🧲🌕 / 10000) si 🧲🌕 > 1000 W/m²`);
+                }
+                if (ocean_coverage > 0) {
+                    coverageFormulas.push(`🥒🪞🌊 = 🥒💧🌊 (depuis h2o)`);
+                }
+                if (ice_coverage > 0) {
+                    coverageFormulas.push(`🥒🪞🧊 = 🥒💧🧊 (depuis h2o)`);
+                }
+                if (forest_coverage > 0) {
+                    coverageFormulas.push(`🥒🪞🌳 = min(0.5, 🥒🪞🌊 × (1 - 🌡️/30)) si 🌡️ < 30°C et 🥒🪞🌊 > 0.1`);
+                }
+                if (desert_coverage > 0) {
+                    coverageFormulas.push(`🥒🪞🏖 = ${desert_coverage.toFixed(2)} (depuis config, pas calculé comme surface restante)`);
+                } else {
+                    coverageFormulas.push(`🥒🪞🏖 = 0.00 (non défini dans config, pas de désert par défaut)`);
+                }
+            }
+            if (cloud_coverage > 0) {
+                coverageFormulas.push(`🥒🪞⛅ = 🥒💧⛅ (depuis h2o)`);
+            }
+            
+            let formulasHtml = formula;
+            if (coverageFormulas.length > 0) {
+                formulasHtml += '<br><small>Formules couvertures:</small><br><small>' + coverageFormulas.join('<br>') + '</small>';
+            }
+            
+            return `<div class="formule">${formulasHtml}<br>albedoReflectorCoeff=${coeffStr}</div>`;
+        }
+        
+        // Fonction pour calculer et afficher les formules des flux
+        function calculateFluxFormulas(flux, soleil, albedo) {
+            if (!flux) return '';
+            
+            let formulas = [];
+            
+            // Formule pour 🧲☀️🔽 (flux solaire absorbé)
+            // SOURCE RÉELLE : window.flux['🧲☀️🔽'] est calculé avec calculateSolarFluxAbsorbed()
+            // qui utilise maintenant window.soleil['🧲☀️🎱'] comme source unique
+            // Par définition : 🧲☀️🎱 = 🧲☀️📜 / 4 (rapporté au rayon au sol pour les m²)
+            // 🧲☀️🔽 = 🧲☀️🎱 × (1 - 🥒🪞🎓) (on enlève l'albedo, c'est le flux au sol reçu du soleil)
+            if (flux['🧲☀️🔽'] !== undefined && soleil && soleil['🧲☀️🎱'] !== undefined && albedo && albedo['🥒🪞🎓'] !== undefined) {
+                const solar_avg = soleil['🧲☀️🎱'];
+                const albedo_val = albedo['🥒🪞🎓'];
+                const calculated = solar_avg * (1 - albedo_val);
+                const actual = flux['🧲☀️🔽'];
+                
+                // Vérifier que le calcul correspond (tolérance 0.01 W/m²)
+                const match = Math.abs(calculated - actual) < 0.01 ? '✓' : '⚠';
+                formulas.push(`<strong>🧲☀️🔽</strong> = <strong>🧲☀️🎱</strong> × (1 - <strong>🥒🪞🎓</strong>) = ${solar_avg.toFixed(2)} × (1 - ${albedo_val.toFixed(4)}) = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+            }
+            
+            // Formule pour 🧲🔼 (flux sortant - Stefan-Boltzmann σT⁴)
+            // Le flux sortant est calculé comme σT⁴ (corps noir) ou via calculateFluxForT0 (spectral)
+            if (flux['🧲🔼'] !== undefined) {
+                formulas.push(`<strong>🧲🔼</strong> = σT⁴ (corps noir) ou calcul spectral si disponible`);
+            }
+            
+            if (formulas.length === 0) return '';
+            
+            return `<div class="formule">${formulas.join('<br>')}</div>`;
         }
         
         // Fonction json2html pour convertir un objet JSON en HTML formaté
@@ -954,30 +1005,37 @@
             // 0. État des activations [getEnabledStates@compute.js]
             html += json2html(window.enabledStates, '⚙️ États activés', 'getEnabledStates@compute.js', 'enabledStates');
             
-            // 1. 💫🛠 [getEpochDateConfig@compute.js]
-            html += json2html(window.dateConfig, '💫🛠', 'getEpochDateConfig@compute.js', 'dateConfig');
+            // 1. 💫📜 [getEpochDateConfig@compute.js]
+            const epochName = epoch?.name || epoch?.id || '';
+            // Récupérer 🎓💫📜 depuis window.dateConfig pour afficher +(50*🎓💫📜)Ma
+            const ticTime = window.dateConfig?.[getLogoKeyHTML('CARDINAL', 'TIC_TIME', 'CONFIG')] || 0;
+            const ticTimeDisplay = ticTime > 0 ? ` +(${ticTime}×50)Ma` : '';
+            const dateConfigTitle = `💫📜 <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}${ticTimeDisplay}</span>`;
+            html += json2html(window.dateConfig, dateConfigTitle, 'getEpochDateConfig@compute.js', 'dateConfig');
             
             // 2. 📅 Événements [epoch.events]
             if (epoch && epoch.events) {
                 // Construire l'objet events selon grammar.txt : events={'☄️':'🎓☄️📜', '💫':'🎓💫📜'}
                 const eventsObj = {};
                 if (epoch.events.meteor) {
-                    eventsObj['☄️'] = '🎓☄️📜';
+                    eventsObj[getLogoHTML('METEORITE_COUNT')] = getLogoKeyHTML('CARDINAL', 'METEORITE_COUNT', 'CONFIG');
                 }
                 if (epoch.events.tic_time) {
-                    eventsObj['💫'] = '🎓💫📜';
+                    eventsObj[getLogoHTML('TIC_TIME')] = getLogoKeyHTML('CARDINAL', 'TIC_TIME', 'CONFIG');
                 }
                 if (epoch.events.big_impact) {
-                    eventsObj['🎇'] = '🎇';
+                    eventsObj[getLogoHTML('BIG_IMPACT')] = getLogoHTML('BIG_IMPACT');
                 }
-                html += json2html(eventsObj, '📅 Événements', 'epoch.events', 'events');
+                // Ajouter epoch.name à la fin (en plus petit, pas en strong)
+                const eventsTitle = `📅 Événements <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`;
+                html += json2html(eventsObj, eventsTitle, 'epoch.events', 'events');
             }
             
-            // 3. 📋 Corps noir [getMasses@compute.js]
-            html += json2html(window.masses, `📋 ${epoch?.name || epoch?.id || 'N/A'}`, 'getMasses@compute.js', 'masses');
+            // 3. 🐳 [getMasses@compute.js]
+            html += json2html(window.masses, '🐳', 'getMasses@compute.js', 'masses');
             
-            // 4. 🌍 Composition atmosphérique [calculateCompositionFromLogoConfig@calculations_atm.js]
-            html += json2html(window.atm, '🌍 Composition atmosphérique', 'calculateCompositionFromLogoConfig@calculations_atm.js', 'atm');
+            // 4. 🌬 Composition atmosphérique [calculateCompositionFromLogoConfig@calculations_atm.js]
+            html += json2html(window.atm, '🌬 Composition atmosphérique', 'calculateCompositionFromLogoConfig@calculations_atm.js', 'atm');
             
             // 5. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js]
             html += json2html(window.h2o, '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o');
@@ -995,14 +1053,20 @@
                 }
             }
             
+            // 7. 🌕 Noyau [getNoyau@compute.js]
+            html += json2html(window.noyau, `🌕 Noyau <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`, 'getNoyau@compute.js', 'noyau');
+            
             // 8. ☀️ Soleil [getSoleil@compute.js]
-            html += json2html(window.soleil, '☀️ Soleil', 'getSoleil@compute.js', 'soleil');
+            html += json2html(window.soleil, `☀️ Soleil <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`, 'getSoleil@compute.js', 'soleil');
             
-            // 9. 🌕 Noyau [getNoyau@compute.js]
-            html += json2html(window.noyau, '🌕 Noyau', 'getNoyau@compute.js', 'noyau');
-            
-            // 10. ☀️ Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
-            html += json2html(window.flux, '☀️ Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux');
+            // 9. ☀️ Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
+            // Construire le HTML avec les formules intégrées
+            if (window.flux) {
+                const fluxHtml = json2html(window.flux, '☀️ Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux');
+                const fluxFormulas = calculateFluxFormulas(window.flux, window.soleil, window.albedo);
+                // Insérer les formules après config-title (avant config-value)
+                html += fluxHtml.replace('<div class="config-value"', fluxFormulas + '<div class="config-value"');
+            }
             
             configContent.innerHTML = html;
             configDiv.style.display = 'block';
@@ -1099,6 +1163,17 @@
         
         // Initialiser au chargement
         window.addEventListener('DOMContentLoaded', function() {
+            // Générer la légende dynamiquement
+            const legendContent = document.getElementById('legend-content');
+            if (legendContent && typeof generateLegend === 'function') {
+                // Utiliser window.generateLegend() si disponible (depuis grammar.js), sinon fonction locale
+                if (typeof window !== 'undefined' && window.generateLegend) {
+                    legendContent.innerHTML = window.generateLegend();
+                } else {
+                    console.warn('[test_computeRadiativeTransfer] window.generateLegend non disponible, légende vide');
+                    legendContent.innerHTML = '';
+                }
+            }
             console.log('📄 Page de test chargée');
             console.log('🔧 Initialisation des variables globales...');
             

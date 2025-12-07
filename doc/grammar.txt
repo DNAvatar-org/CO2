@@ -1,34 +1,53 @@
-⏳ Compute
-
--- Events --
-🎇 Big impact
-💫 TicTime
-☄️ Météorite de glace
-🎬 Animation
-
--- Action --
-🧲🌕💫▶ Flux start (valeur de départ)
-🧲🌕💫◀ Flux end (valeur de fin)
-
--- Origine --
-🌬 Atmosphère
-🪞 Albédo
-🌕 Geothermal
-☀️ Soleil
-🎱 Géometrie
-📜 Config
-🌈 Spectre
-
--- Unités : Types --
-📫 Boolean
-🌡️ Température (K)
-🐳 Masse (kg)
-📏 Mètre (km)
-🔋 Puissance (W)
-🧲 Flux (W/m2)
-🥒 Proportion (%)
+-- Unités
+🔘 is Computed (Boolean)
 🎓 Cardinal (#)
 🔺 Delta (*)
+🌡️ Température (K)
+🐳 Masse (kg)
+📏 Longueur (km)
+🍰 Proportion (%)
+🧲 Flux (W/m²)
+🔋 Puissance (W)
+
+-- Elements
+💧 H2O
+⛽ CH4
+🏭 CO2
+🌫 O2
+🧊 Glace
+⛅ Nuages
+🌊 Océan
+🌋 Volcan
+🏖 Désert
+🌳 Forêt
+🌬 Atmosphère
+☀️ Soleil
+🎱 Géometrie
+🌈 Spectre
+
+-- calculs
+⏳ Compute
+🎬 Animation
+⚧ Phase (None/Search/Dicho)
+🔬 Tolérance (précision)
+🔺 signeDeltaFirst
+🏮 old_T0 (température précédente)
+🚩 T0 (température initiale)
+🪞 Albédo
+🌕 Flux géothermique
+📛 EDS (Forçage radiatif)
+
+-- evenements
+📜 Config
+💫 TicTime
+☄️ Météorite de glace
+🌧 Max vapor fraction
+🎇 Big impact
+▶ Flux start (valeur de départ)
+◀ Flux end (valeur de fin)
+🚀 Altitude (km)
+🛩 Tropopause (km)
+
 
 -- Json --
 🌡️🏮📜 old_T0 (température précédente)
@@ -38,11 +57,11 @@
 🔺🌡️💫📜 Delta température / ticTime
 🎓💫📜 Nombre de ticTime
 🔺🧲🌕💫📜 Delta Flux Geom /ticTime
-📫🎬 Animation
-📫💧📛 H2O EDS activé
-📫⛽📛 CH4 EDS activé
-📫🏭📛 CO2 EDS activé
-📫🪞 Albedo activé
+🔘🎬 Animation
+🔘💧📛 H2O EDS activé
+🔘⛽📛 CH4 EDS activé
+🔘🏭📛 CO2 EDS activé
+🔘🪞 Albedo activé
 🐳🏭 Masse CO2
 🐳⛽ Masse CH4
 🐳💧 Masse H2O
@@ -80,11 +99,3 @@
 ⏳🌴 Greenhouse forcing
 ⏳🌧 Max vapor fraction (calcul du cycle de l'eau)
 
-enabledStates={'📫💧📛':true, '📫⛽📛':true, '📫🏭📛':true, '📫🪞':true, '📫🎬':false}
-dateConfig={'🌡️🏮📜':180.00K, '⏳🌡️':2450, '🎓☄️📜':0, '🔺🌡️☄️📜':-3.0, '🔺🐳💧☄️📜':1.00e+18, '🎓💫📜':0, '🔺🌡️💫📜':-300.0, '🔺🧲🌕💫📜':{'▶':2000000, '◀':0.3}}
-events={☄️':'🎓☄️📜', '💫':'🎓💫📜'}
-masses={'🐳🏭': 5.15e+17, '🐳⛽': 5.15e+15, '🐳💧': 2.10e+20, '🐳🌫': 0.00e+0, '🐳🎓': 5.30e+20}
-atm={'📏🌬🚀':1300, '📏🌬🛩':30, '🥒🌬🌫':0.0, '🥒🌬🏭':0.703, '🥒🌬💧':0.000701158, '🥒🌬⛽':0.00019}
-h2o={'🥒💧🧊':0, '🥒💧⛅':5, '🥒💧🌊':0, '⏳🌧':100}
-albedoReflectorCoeff={'🥒🌋🪞':0.05, '🥒🌊🪞':0.08, '🥒🌳🪞':0.12, '🥒🏖🪞':0.30, '🥒🧊🪞':0.20, '🥒⛅🪞':0.50}
-albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}

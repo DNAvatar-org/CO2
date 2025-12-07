@@ -113,8 +113,11 @@ function estimateCloudCoverage(temp_K, h2o_vapor_fraction, relative_humidity = 0
     // Pas de nuages si pas d'eau
     if (h2o_vapor_fraction <= 0) return 0;
 
-    // Pas de nuages si température trop élevée (> 350K = 77°C)
-    if (temp_K > 350) return 0.05;
+    // À très haute température (> 350K = 77°C), les nuages sont rares car l'eau est en vapeur
+    // Mais en Hadéen (2450K), il peut y avoir des nuages par condensation locale (altitude, refroidissement)
+    // TODO: Revoir cette logique pour Hadéen - les nuages peuvent se former même à haute température
+    // si la vapeur est abondante et qu'il y a des zones de refroidissement (altitude, ombre, etc.)
+    if (temp_K > 350) return 0.05;  // Minimum 5% même à haute température
 
     // Pas de nuages si température trop basse (< 200K = -73°C, tout gelé)
     if (temp_K < 200) return 0.1;
@@ -197,6 +200,10 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
     // 3. Calculer la fraction maximale de vapeur d'eau à saturation (loi de Dalton)
     // P_vapor = P_sat = x_vapor * P_total
     // x_vapor = P_sat / P_total
+    // ⏳🌧 (max_vapor_fraction) = capacité maximale de l'atmosphère à contenir de la vapeur avant condensation
+    // À haute température (ex: 2450K Hadéen), P_sat est très élevée → max_vapor_fraction ≈ 100%
+    // Cela signifie que l'atmosphère PEUT contenir jusqu'à 100% de vapeur, mais la quantité RÉELLE
+    // dépend de la quantité totale d'eau disponible (h2o_total_fraction)
     const max_vapor_fraction = Math.min(P_sat / P_total, 1.0);
 
     // 4. Calculer la densité de l'air (loi des gaz parfaits)
@@ -381,11 +388,17 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
     // Note: 🌴 (greenhouse forcing) est dans step5_spectral['🧲💧📛']
     // Note: 🌤 (cloud albedo) est dans window.albedo['🥒🪞⛅']
     // window.h2o contient uniquement les informations de répartition du cycle de l'eau
+    // 
+    // ⏳🌧 (max_vapor_fraction) = capacité maximale de l'atmosphère à contenir de la vapeur avant condensation
+    // À haute température (ex: Hadéen 2450K), ⏳🌧 ≈ 100% signifie que l'atmosphère PEUT contenir
+    // jusqu'à 100% de vapeur, mais la quantité RÉELLE dépend de h2o_total_fraction disponible.
+    // Si ⏳🌧 = 100% et qu'il y a de l'eau disponible, elle sera en vapeur, et peut se condenser
+    // en nuages (⛅) si saturation locale (altitude, refroidissement).
     const h2o_result = {
         '🥒💧🧊': ice_fraction * 100,                    // 🥒💧🧊 Glace (%)
-        '🥒💧⛅': cloud_coverage * 100,                  // 🥒💧⛅ Nuages (%)
-        '🥒💧🌊': liquid_fraction * 100,                 // 🥒💧🌊 Océan (%)
-        '⏳🌧': waterPartition.max_vapor_fraction * 100  // ⏳🌧 Max vapor fraction (%) - calcul du cycle de l'eau
+        '🥒💧⛅': cloud_coverage * 100,                  // 🥒💧⛅ Nuages (%) - condensation de la vapeur
+        '🥒💧🌊': liquid_fraction * 100,                 // 🥒💧🌊 Océan (%) - eau liquide à la surface (impossible si T > T_boil)
+        '⏳🌧': waterPartition.max_vapor_fraction * 100  // ⏳🌧 Max vapor fraction (%) - capacité max avant condensation
     };
     
     // Sauvegarder dans window.h2o

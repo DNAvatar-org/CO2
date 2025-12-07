@@ -11,11 +11,21 @@
 // ============================================================================
 
 // ============================================================================
-// FONCTION HELPER : getLogo()
-// ============================================================================
-// window.LOGOS est défini dans organigramme/configOrganigramme.js
-function getLogo(name) {
-    return window.LOGOS[name];
+// FONCTION HELPER : getLogo() et getLogoKey() sont maintenant dans grammar.js
+// On utilise window.getLogo et window.getLogoKey exposés par grammar.js
+// Si grammar.js n'est pas chargé, on définit des fallbacks
+if (typeof window === 'undefined' || !window.getLogo) {
+    function getLogo(name) {
+        return window.LOGOS ? (window.LOGOS[name] || '') : '';
+    }
+    window.getLogo = getLogo;
+}
+
+if (typeof window === 'undefined' || !window.getLogoKey) {
+    function getLogoKey(...names) {
+        return window.LOGOS ? names.map(name => window.LOGOS[name] || '').join('') : '';
+    }
+    window.getLogoKey = getLogoKey;
 }
 
 // ============================================================================
@@ -36,13 +46,13 @@ let flux_entrant = 238;
 // Les anciennes variables window.isH2O_eds, window.isCO2_eds, etc. sont encore utilisées pour la compatibilité
 // mais window.enabledStates est la source unique de vérité pour les états activés
 function getEnabledStates() {
-    // Selon grammar.txt : enabledStates={'📫💧📛':true, '📫⛽📛':true, '📫🏭📛':true, '📫🪞':true, '📫🎬':false}
+    // Selon grammar.txt : enabledStates={'🔘💧📛':true, '🔘⛽📛':true, '🔘🏭📛':true, '🔘🪞':true, '🔘🎬':false}
     window.enabledStates = {
-        '📫💧📛': window.isH2O_eds !== undefined ? window.isH2O_eds : true,
-        '📫⛽📛': window.isCH4_eds !== undefined ? window.isCH4_eds : true,
-        '📫🏭📛': window.isCO2_eds !== undefined ? window.isCO2_eds : true,
-        '📫🪞': window.isAlbedo !== undefined ? window.isAlbedo : true,
-        '📫🎬': getAnimState()
+        [getLogoKey('BOOLEAN', 'H2O', 'EDS')]: window.isH2O_eds !== undefined ? window.isH2O_eds : true,
+        [getLogoKey('BOOLEAN', 'CH4', 'EDS')]: window.isCH4_eds !== undefined ? window.isCH4_eds : true,
+        [getLogoKey('BOOLEAN', 'CO2', 'EDS')]: window.isCO2_eds !== undefined ? window.isCO2_eds : true,
+        [getLogoKey('BOOLEAN', 'ALBEDO')]: window.isAlbedo !== undefined ? window.isAlbedo : true,
+        [getLogoKey('BOOLEAN', 'ANIMATION')]: getAnimState()
     };
     return window.enabledStates;
 }
@@ -88,8 +98,8 @@ function getMasses(dateConfig, epoch) {
     
     // Appliquer les événements
     if (epoch?.events?.meteor?.water_added_kg) {
-        const meteoriteCount = dateConfig?.['🎓☄️📜'] || 0;
-        const water_added_kg = dateConfig?.['🔺🐳💧☄️📜'] || epoch.events.meteor.water_added_kg || 0;
+        const meteoriteCount = dateConfig?.[getLogoKey('CARDINAL', 'METEORITE_COUNT', 'CONFIG')] || 0;
+        const water_added_kg = dateConfig?.[getLogoKey('DELTA', 'WEIGHT', 'H2O', 'METEORITE_COUNT', 'CONFIG')] || epoch.events.meteor.water_added_kg || 0;
         if (meteoriteCount > 0 && water_added_kg > 0) {
             h2o_kg += water_added_kg * meteoriteCount;
         }
@@ -100,11 +110,11 @@ function getMasses(dateConfig, epoch) {
     
     // Créer l'objet avec logos selon grammar.txt : masses={'🐳🏭': 5.15e+17, '🐳⛽': 5.15e+15, '🐳💧': 2.10e+20, '🐳🌫': 0.00e+0, '🐳🎓': 5.30e+20}
     const masses = {
-        '🐳🏭': co2_kg,
-        '🐳⛽': ch4_kg,
-        '🐳💧': h2o_kg,
-        '🐳🌫': o2_kg,
-        '🐳🎓': total_atmosphere_mass_kg
+        [getLogoKey('WEIGHT', 'CO2')]: co2_kg,
+        [getLogoKey('WEIGHT', 'CH4')]: ch4_kg,
+        [getLogoKey('WEIGHT', 'H2O')]: h2o_kg,
+        [getLogoKey('WEIGHT', 'O2')]: o2_kg,
+        [getLogoKey('WEIGHT', 'CARDINAL')]: total_atmosphere_mass_kg
     };
     
     // Sauvegarder dans window.masses
@@ -158,19 +168,19 @@ function getEpochDateConfig() {
     const old_T0_val = window.T0;
     
     // Retourner un objet avec logos complets selon grammar.txt
-    // dateConfig={'🌡️🏮':180.0, '🌡️⏳📜':2450, '📫🎬':false, '🎓☄️📜':0, '🔺🌡️☄️📜':-3.0, '🔺🐳💧☄️📜':1.00e+18, '🎓💫📜':0, '🔺🌡️💫📜':-300.0, '🔺🧲🌕💫📜':{'▶':2000000, '◀':0.3}}
+    // dateConfig={'🌡️🏮':180.0, '🌡️⏳📜':2450, '🔘🎬':false, '🎓☄️📜':0, '🔺🌡️☄️📜':-3.0, '🔺🐳💧☄️📜':1.00e+18, '🎓💫📜':0, '🔺🌡️💫📜':-300.0, '🔺🧲🌕💫📜':{'▶':2000000, '◀':0.3}}
     const result = {
-        '🌡️🏮': old_T0_val,  // old_T0 (température précédente) - PAS de 📜 car ne vient pas de la config
-        '🌡️⏳📜': t0_config,                       // T0 attendu (température config) - 🌡️⏳📜 (unité au début, 📜 car config)
-        '📫🎬': animEnabled,                        // Animation (booléen) - nécessaire pour la logique calculateT0
-        '🎓☄️📜': meteoriteCount ?? 0,              // Nombre de météorites
-        '🔺🌡️☄️📜': deltaMeteorite ?? 0,           // Delta température / météorite
-        '🔺🐳💧☄️📜': water_added_kg,               // Masse d'eau ajoutée / météorite
-        '🎓💫📜': ticTime ?? 0,                     // Nombre de ticTime
-        '🔺🌡️💫📜': deltaTicTime_per_tic ?? 0,     // Delta température / ticTime
-        '🔺🧲🌕💫📜': epoch?.events?.tic_time?.geothermal_flux ? {  // Delta Flux Geom /ticTime
-            '▶': epoch.events.tic_time.geothermal_flux.start || 0,
-            '◀': epoch.events.tic_time.geothermal_flux.end || 0
+        [getLogoKey('TEMP', 'OLD_T0')]: old_T0_val,  // old_T0 (température précédente) - PAS de 📜 car ne vient pas de la config
+        [getLogoKey('TEMP', 'COMPUTE', 'CONFIG')]: t0_config,                       // T0 attendu (température config) - 🌡️⏳📜 (unité au début, 📜 car config)
+        [getLogoKey('BOOLEAN', 'ANIMATION')]: animEnabled,                        // Animation (booléen) - nécessaire pour la logique calculateT0
+        [getLogoKey('CARDINAL', 'METEORITE_COUNT', 'CONFIG')]: meteoriteCount ?? 0,              // Nombre de météorites
+        [getLogoKey('DELTA', 'TEMP', 'METEORITE_COUNT', 'CONFIG')]: deltaMeteorite ?? 0,           // Delta température / météorite
+        [getLogoKey('DELTA', 'WEIGHT', 'H2O', 'METEORITE_COUNT', 'CONFIG')]: water_added_kg,               // Masse d'eau ajoutée / météorite
+        [getLogoKey('CARDINAL', 'TIC_TIME', 'CONFIG')]: ticTime ?? 0,                     // Nombre de ticTime
+        [getLogoKey('DELTA', 'TEMP', 'TIC_TIME', 'CONFIG')]: deltaTicTime_per_tic ?? 0,     // Delta température / ticTime
+        [getLogoKey('DELTA', 'ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'TIC_TIME', 'CONFIG')]: epoch?.events?.tic_time?.geothermal_flux ? {  // Delta Flux Geom /ticTime
+            [getLogo('FLUX_START')]: epoch.events.tic_time.geothermal_flux.start || 0,
+            [getLogo('FLUX_END')]: epoch.events.tic_time.geothermal_flux.end || 0
         } : null
     };
     
@@ -190,7 +200,16 @@ function getEpochDateConfig() {
         ? `{'▶':${epoch.events.tic_time.geothermal_flux.start || 0}, '◀':${epoch.events.tic_time.geothermal_flux.end || 0}}`
         : 'null';
     console.log(`💫🛠 [getEpochDateConfig@compute.js]`);
-    console.log(`dateConfig={'🌡️🏮':${old_T0_str}, '🌡️⏳📜':${t0_config_str}, '📫🎬':${animEnabled}, '🎓☄️📜':${meteoriteCount}, '🔺🌡️☄️📜':${deltaMeteorite_str}, '🔺🐳💧☄️📜':${water_added_str}, '🎓💫📜':${ticTime}, '🔺🌡️💫📜':${deltaTicTime_str}, '🔺🧲🌕💫📜':${geothermal_flux_str}}`);
+    const LOGO_TEMP_OLD_T0 = getLogoKey('TEMP', 'OLD_T0');
+    const LOGO_TEMP_COMPUTE_CONFIG = getLogoKey('TEMP', 'COMPUTE', 'CONFIG');
+    const LOGO_BOOLEAN_ANIMATION = getLogoKey('BOOLEAN', 'ANIMATION');
+    const LOGO_CARDINAL_METEORITE_CONFIG = getLogoKey('CARDINAL', 'METEORITE_COUNT', 'CONFIG');
+    const LOGO_DELTA_TEMP_METEORITE_CONFIG = getLogoKey('DELTA', 'TEMP', 'METEORITE_COUNT', 'CONFIG');
+    const LOGO_DELTA_WEIGHT_H2O_METEORITE_CONFIG = getLogoKey('DELTA', 'WEIGHT', 'H2O', 'METEORITE_COUNT', 'CONFIG');
+    const LOGO_CARDINAL_TIC_TIME_CONFIG = getLogoKey('CARDINAL', 'TIC_TIME', 'CONFIG');
+    const LOGO_DELTA_TEMP_TIC_TIME_CONFIG = getLogoKey('DELTA', 'TEMP', 'TIC_TIME', 'CONFIG');
+    const LOGO_DELTA_FLUX_GEOTHERMAL_TIC_TIME_CONFIG = getLogoKey('DELTA', 'ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'TIC_TIME', 'CONFIG');
+    console.log(`dateConfig={'${LOGO_TEMP_OLD_T0}':${old_T0_str}, '${LOGO_TEMP_COMPUTE_CONFIG}':${t0_config_str}, '${LOGO_BOOLEAN_ANIMATION}':${animEnabled}, '${LOGO_CARDINAL_METEORITE_CONFIG}':${meteoriteCount}, '${LOGO_DELTA_TEMP_METEORITE_CONFIG}':${deltaMeteorite_str}, '${LOGO_DELTA_WEIGHT_H2O_METEORITE_CONFIG}':${water_added_str}, '${LOGO_CARDINAL_TIC_TIME_CONFIG}':${ticTime}, '${LOGO_DELTA_TEMP_TIC_TIME_CONFIG}':${deltaTicTime_str}, '${LOGO_DELTA_FLUX_GEOTHERMAL_TIC_TIME_CONFIG}':${geothermal_flux_str}}`);
     
     return result;
 }
@@ -286,6 +305,7 @@ if (typeof window !== 'undefined') {
     window.getDateConfig = getEpochDateConfig; // Alias pour compatibilité
     window.getMasses = getMasses; // Exposer getMasses
     window.getLogo = getLogo; // Exposer getLogo pour utilisation dans calculations_flux.js
+    window.getLogoKey = getLogoKey; // Exposer getLogoKey pour construction dynamique des clés
     window.getEnabledStates = getEnabledStates; // Exposer getEnabledStates
     window.getSoleil = getSoleil; // Exposer getSoleil
     window.getNoyau = getNoyau; // Exposer getNoyau
