@@ -69,14 +69,14 @@ function calculateT0(dateConfig) {
     
     // Initialiser window.fluxState (sera complété dans computeRadiativeTransfer)
     window.fluxState = {
-        '⏳🌡️🚩': T0,        // T0 calculé (température)
-        '⏳⚧': 'None',       // Phase (None/Search/Dicho)
-        '⏳🔺': 0,           // signeDeltaFirst (signe: -1, 0, 1 - pas d'unité physique)
-        '🧲☀️🔽': 0,         // Flux solaire absorbé (W/m²)
-        '🧲🌕🔽': 0,         // Flux géothermique (W/m²)
-        '🧲🔼': 0,            // Flux sortant (W/m²)
-        '🔺🧲': 0,           // Delta flux (W/m²)
-        '🧲🔬': 0            // Tolérance (W/m²)
+        [window.getLogoKey('COMPUTE', 'TEMP', 'T0')]: T0,        // T0 calculé (température)
+        [window.getLogoKey('COMPUTE', 'PHASE')]: 'None',       // Phase (None/Search/Dicho)
+        [window.getLogoKey('COMPUTE', 'SIGNE_DELTA_FIRST')]: 0,           // signeDeltaFirst (signe: -1, 0, 1 - pas d'unité physique)
+        [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'FLUX_IN')]: 0,         // Flux solaire absorbé (W/m²)
+        [window.getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'FLUX_IN')]: 0,         // Flux géothermique (W/m²)
+        [window.getLogoKey('ENERGY_FLUX', 'FLUX_OUT')]: 0,            // Flux sortant (W/m²)
+        [window.getLogoKey('DELTA', 'ENERGY_FLUX')]: 0,           // Delta flux (W/m²)
+        [window.getLogoKey('ENERGY_FLUX', 'TOLERANCE')]: 0            // Tolérance (W/m²)
     };
     
     // Log T0
@@ -160,16 +160,16 @@ function computeRadiativeTransfer(options = {}) {
     const epoch = window.epoch; // window.epoch = timeline[2*k]
     // Selon grammar.txt : masses={'🐳🏭': 5.15e+17, '🐳⛽': 5.15e+15, '🐳💧': 2.10e+20, '🐳🌫': 0.00e+0, '🐳🎓': 5.30e+20}
     const masses = window.masses || {
-        '🐳🏭': epoch?.co2_kg || 0,
-        '🐳⛽': epoch?.ch4_kg || 0,
-        '🐳💧': epoch?.h2o_kg || 0,
-        '🐳🌫': epoch?.o2_kg || 0,
-        '🐳🎓': epoch?.total_atmosphere_mass_kg || 0
+        [window.getLogoKey('WEIGHT', 'CO2')]: epoch?.co2_kg || 0,
+        [window.getLogoKey('WEIGHT', 'CH4')]: epoch?.ch4_kg || 0,
+        [window.getLogoKey('WEIGHT', 'H2O')]: epoch?.h2o_kg || 0,
+        [window.getLogoKey('WEIGHT', 'O2')]: epoch?.o2_kg || 0,
+        [window.getLogoKey('WEIGHT', 'CARDINAL')]: epoch?.total_atmosphere_mass_kg || 0
     };
     
     // 2. Passer par calculations_atm.js pour avoir la densité et les %/ppm utilisés pour EDS
     // calculateCompositionFromLogoConfig() prend dateConfig (avec logos incluant les masses) et retourne les fractions molaires
-    const total_atmosphere_mass_kg = masses['🐳'] || epoch?.total_atmosphere_mass_kg || 0;
+    const total_atmosphere_mass_kg = masses[window.getLogoKey('WEIGHT', 'CARDINAL')] || epoch?.total_atmosphere_mass_kg || 0;
     const dateConfigWithMasses = { ...dateConfig, ...masses };
     const atmComposition = window.calculateCompositionFromLogoConfig 
         ? window.calculateCompositionFromLogoConfig(dateConfigWithMasses, total_atmosphere_mass_kg, epoch)
@@ -177,16 +177,16 @@ function computeRadiativeTransfer(options = {}) {
     
     // Extraire les valeurs depuis atmComposition (avec logos complets selon grammar.txt)
     // atm={'📏🌬🚀':1300, '📏🌬🛩':30, '🥒🌬🌫':0.0, '🥒🌬🏭':0.703, '🥒🌬💧':0.000701158, '🥒🌬⛽':0.00019}
-    const CO2_percent = atmComposition['🥒🌬🏭'] || 0;
-    const CH4_percent = atmComposition['🥒🌬⛽'] || 0;
-    const H2O_percent = atmComposition['🥒🌬💧'] || 0;
-    const O2_percent = atmComposition['🥒🌬🌫'] || 0;
-    const altitude_km = atmComposition['📏🌬🚀'] || 0;
-    const tropopause_km = atmComposition['📏🌬🛩'] || 0;
+    const CO2_percent = atmComposition[window.getLogoKey('PROPORTION', 'ATMOSPHERE', 'CO2')] || 0;
+    const CH4_percent = atmComposition[window.getLogoKey('PROPORTION', 'ATMOSPHERE', 'CH4')] || 0;
+    const H2O_percent = atmComposition[window.getLogoKey('PROPORTION', 'ATMOSPHERE', 'H2O')] || 0;
+    const O2_percent = atmComposition[window.getLogoKey('PROPORTION', 'ATMOSPHERE', 'O2')] || 0;
+    const altitude_km = atmComposition[window.getLogoKey('METER', 'ATMOSPHERE', 'ALTITUDE')] || 0;
+    const tropopause_km = atmComposition[window.getLogoKey('METER', 'ATMOSPHERE', 'TROPOPAUSE')] || 0;
     
     // Log composition atmosphérique
     console.log(`🌍 [calculateCompositionFromLogoConfig@calculations_atm.js]`);
-    console.log(`atm={'📏🌬🚀':${altitude_km.toFixed(0)}, '📏🌬🛩':${tropopause_km.toFixed(0)}, '🥒🌬🌫':${O2_percent.toFixed(3)}, '🥒🌬🏭':${CO2_percent.toFixed(3)}, '🥒🌬💧':${H2O_percent.toFixed(6)}, '🥒🌬⛽':${CH4_percent.toFixed(3)}}`);
+    console.log(`atm={'${window.getLogoKey('METER', 'ATMOSPHERE', 'ALTITUDE')}':${altitude_km.toFixed(0)}, '${window.getLogoKey('METER', 'ATMOSPHERE', 'TROPOPAUSE')}':${tropopause_km.toFixed(0)}, '${window.getLogoKey('PROPORTION', 'ATMOSPHERE', 'O2')}':${O2_percent.toFixed(3)}, '${window.getLogoKey('PROPORTION', 'ATMOSPHERE', 'CO2')}':${CO2_percent.toFixed(3)}, '${window.getLogoKey('PROPORTION', 'ATMOSPHERE', 'H2O')}':${H2O_percent.toFixed(6)}, '${window.getLogoKey('PROPORTION', 'ATMOSPHERE', 'CH4')}':${CH4_percent.toFixed(3)}}`);
     
     // 2. Passer par calculations_h2o.js pour les trucs de l'albedo
     // calculateH2OParameters attend un pourcentage, H2O_percent est déjà en %
@@ -256,10 +256,10 @@ function computeRadiativeTransfer(options = {}) {
         // ========================================================================
         // Selon grammar.txt : 🎓⏳ (cardinal + compute), 🌡️⏳ (température + compute), 🌡️🔬📜 (température + tolerance + config)
         window.step0_cycle = {
-            '🎓⏳': iteration,  // Numéro du cycle (cardinal + compute origin)
-            '🌡️⏳': T0_current,  // Température de départ (température + compute origin)
-            '⏳⚧': Phase,  // Phase actuelle (compute + phase)
-            '🌡️🔬📜': precision_K  // Précision demandée (température + tolerance + config origin)
+            [window.getLogoKey('CARDINAL', 'COMPUTE')]: iteration,  // Numéro du cycle (cardinal + compute origin)
+            [window.getLogoKey('TEMP', 'COMPUTE')]: T0_current,  // Température de départ (température + compute origin)
+            [window.getLogoKey('COMPUTE', 'PHASE')]: Phase,  // Phase actuelle (compute + phase)
+            [window.getLogoKey('TEMP', 'TOLERANCE', 'CONFIG')]: precision_K  // Précision demandée (température + tolerance + config origin)
         };
         
         // ========================================================================
@@ -281,22 +281,29 @@ function computeRadiativeTransfer(options = {}) {
         // ========================================================================
         // ÉTAPE 2 : Calculer flux solaire absorbé (albedo + réflexion)
         // ========================================================================
+        // IMPORTANT : Utiliser window.calculateSolarFluxAbsorbed() comme fonction commune
+        // pour garantir la cohérence avec le calcul final (même fonction, même logique)
         const enabledStates = window.getEnabledStates ? window.getEnabledStates() : {};
         const h2o_enabled = enabledStates[window.getLogo('H2O_EDS')] || false;
         
-        // Calculer albedo (crée window.albedo)
-        let albedo_value = 0;
+        // Calculer albedo (crée window.albedo) - nécessaire pour step2_solar
         if (window.calculateAlbedo) {
-            albedo_value = window.calculateAlbedo(T0_current, h2o_enabled, geo_flux);
+            window.calculateAlbedo(T0_current, h2o_enabled, geo_flux);
         }
         
-        // Utiliser window.soleil si disponible (source unique), sinon calculer depuis solar_intensity
+        // Utiliser la fonction commune calculateSolarFluxAbsorbed() (source unique)
+        const flux_solaire_absorbe = window.calculateSolarFluxAbsorbed ? 
+            window.calculateSolarFluxAbsorbed(T0_current, h2o_enabled, geo_flux) : 
+            238; // Fallback
+        
+        // Récupérer les valeurs pour step2_solar depuis window.soleil et window.albedo (sources uniques)
         let SOLAR_CONSTANT;
         let solar_flux_average_wm;
-        if (window.soleil && window.soleil['🧲☀️🎱']) {
+        const soleil_geometry_key = window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'GEOMETRY_ORIGIN');
+        if (window.soleil && window.soleil[soleil_geometry_key]) {
             // Utiliser les valeurs de window.soleil (source unique)
-            SOLAR_CONSTANT = window.soleil['🧲☀️🎱'] * 4; // Reconstruire depuis la moyenne sphérique
-            solar_flux_average_wm = window.soleil['🧲☀️🎱'];
+            SOLAR_CONSTANT = window.soleil[soleil_geometry_key] * 4; // Reconstruire depuis la moyenne sphérique
+            solar_flux_average_wm = window.soleil[soleil_geometry_key];
         } else {
             // Fallback : calculer depuis solar_intensity de l'époque
             const epoch = window.epoch;
@@ -306,20 +313,19 @@ function computeRadiativeTransfer(options = {}) {
             solar_flux_average_wm = SOLAR_CONSTANT / 4; // Moyenne sphérique
         }
         
-        // Utiliser window.albedo['🥒🪞🎓'] directement (source unique)
-        const albedo_from_window = window.albedo?.['🥒🪞🎓'] ?? albedo_value;
-        
+        // Utiliser window.albedo['🥒🪞🎓'] directement (source unique, mis à jour par calculateAlbedo)
+        const albedo_from_window = window.albedo?.[window.getLogoKey('PROPORTION', 'ALBEDO', 'CARDINAL')] ?? 0;
         const solar_flux_reflected_wm = solar_flux_average_wm * albedo_from_window;
-        const flux_solaire_absorbe = solar_flux_average_wm - solar_flux_reflected_wm;
         
         // Objet étape 2 : Flux solaire
+        // IMPORTANT : Utilise window.calculateSolarFluxAbsorbed() pour garantir la cohérence
         // Note: Utilise window.soleil['🧲☀️🎱'] et window.albedo['🥒🪞🎓'] comme sources uniques
         window.step2_solar = {
-            '🧲☀️📜': SOLAR_CONSTANT,  // Constante solaire à 1 UA (W/m²) - depuis solar_intensity (config 📜)
-            '🧲☀️🎱': solar_flux_average_wm,  // Flux moyen sphérique (W/m²) - depuis window.soleil si disponible
-            '🥒🪞🎓': albedo_from_window,  // Albedo total - depuis window.albedo['🥒🪞🎓'] (source unique)
-            '🧲☀️🪞': solar_flux_reflected_wm,  // Flux réfléchi (W/m²) - flux solaire + albedo (réflexion)
-            '🧲☀️🔽': flux_solaire_absorbe  // Flux absorbé (W/m²) - flux solaire absorbé
+            [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'CONFIG')]: SOLAR_CONSTANT,  // Constante solaire à 1 UA (W/m²) - depuis solar_intensity (config 📜)
+            [soleil_geometry_key]: solar_flux_average_wm,  // Flux moyen sphérique (W/m²) - depuis window.soleil si disponible
+            [window.getLogoKey('PROPORTION', 'ALBEDO', 'CARDINAL')]: albedo_from_window,  // Albedo total - depuis window.albedo['🥒🪞🎓'] (source unique)
+            [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'ALBEDO')]: solar_flux_reflected_wm,  // Flux réfléchi (W/m²) - flux solaire + albedo (réflexion)
+            [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'FLUX_IN')]: flux_solaire_absorbe  // Flux absorbé (W/m²) - depuis calculateSolarFluxAbsorbed() (fonction commune)
         };
         
         // ========================================================================
@@ -329,7 +335,7 @@ function computeRadiativeTransfer(options = {}) {
         
         // Objet étape 3 : Géothermique
         window.step3_geothermal = {
-            '🧲🌕🔽': flux_geothermique  // Flux géothermique (W/m²)
+            [window.getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'FLUX_IN')]: flux_geothermique  // Flux géothermique (W/m²)
         };
         
         // ========================================================================
@@ -350,15 +356,18 @@ function computeRadiativeTransfer(options = {}) {
         
         // Objet étape 4 : Flux entrant
         window.step4_fluxIn = {
-            '🧲☀️🔽': flux_solaire_absorbe,  // Flux solaire absorbé (W/m²)
-            '🧲🌕🔽': flux_geothermique,     // Flux géothermique (W/m²)
-            '🧲🔽': flux_entrant  // Flux entrant total = solaire + géothermique (W/m²)
+            [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'FLUX_IN')]: flux_solaire_absorbe,  // Flux solaire absorbé (W/m²)
+            [window.getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'FLUX_IN')]: flux_geothermique,     // Flux géothermique (W/m²)
+            [window.getLogoKey('ENERGY_FLUX', 'FLUX_IN')]: flux_entrant  // Flux entrant total = solaire + géothermique (W/m²)
         };
         
         // ========================================================================
         // ÉTAPE 5 : Calculer flux sortant (corps noir : σT⁴ ou spectral si disponible)
         // ========================================================================
-        let flux_sortant = STEFAN_BOLTZMANN * Math.pow(T0_current, 4);
+        // IMPORTANT : Le flux sortant dans step5_fluxOut est le flux ÉMIS PAR LA SURFACE (avant EDS)
+        // C'est le flux corps noir : σT⁴ (ou earth_flux_total du calcul spectral)
+        let flux_sortant_surface = STEFAN_BOLTZMANN * Math.pow(T0_current, 4);
+        let flux_sortant_effectif = flux_sortant_surface; // Par défaut, égal au flux surface (pas d'EDS)
         let spectral_info = null;
         
         // Si calculateFluxForT0 est disponible, utiliser le calcul spectral
@@ -371,8 +380,8 @@ function computeRadiativeTransfer(options = {}) {
                 const ch4_fraction = CH4_percent / 100;
                 
                 // Récupérer total_mass depuis window.masses et z_max depuis window.atm
-                const total_mass = window.masses?.['🐳🎓'] || window.epoch?.total_atmosphere_mass_kg;
-                const z_max_km = window.atm?.['📏🌬🚀'] || 0;
+                const total_mass = window.masses?.[window.getLogoKey('WEIGHT', 'CARDINAL')] || window.epoch?.total_atmosphere_mass_kg;
+                const z_max_km = window.atm?.[window.getLogoKey('METER', 'ATMOSPHERE', 'ALTITUDE')] || 0;
                 const z_max = z_max_km * 1000; // Convertir km en mètres
                 
                 const spectral_result = window.calculateFluxForT0(co2_fraction, T0_current, {
@@ -383,8 +392,17 @@ function computeRadiativeTransfer(options = {}) {
                     total_atmosphere_mass_kg: total_mass  // Passer total_mass pour calculateAtmosphereProperties
                 });
                 
-                if (spectral_result && spectral_result.total_flux) {
-                    flux_sortant = spectral_result.total_flux;
+                if (spectral_result) {
+                    // Flux émis par la surface (AVANT EDS) = earth_flux_total
+                    const earth_flux_total = spectral_result.earth_flux ? 
+                        spectral_result.earth_flux.reduce((sum, val) => sum + val, 0) : 
+                        flux_sortant_surface;
+                    flux_sortant_surface = earth_flux_total;
+                    
+                    // Flux sortant effectif (APRÈS EDS) = total_flux au sommet de l'atmosphère
+                    if (spectral_result.total_flux) {
+                        flux_sortant_effectif = spectral_result.total_flux;
+                    }
                     
                     // Calculer les contributions des gaz (réémis vers la terre = EDS)
                     const num_couches = spectral_result.z_range ? spectral_result.z_range.length : 0;
@@ -425,12 +443,12 @@ function computeRadiativeTransfer(options = {}) {
                     // 🎓⏳🌈 = nombre de plages spectrales (longueurs d'onde) (ex: 1000 plages)
                     // 🎓⏳🌬🌈 = total de cases calculées = couches × plages spectrales (ex: 1 060 000 cases)
                     spectral_info = {
-                        '🎓⏳🌬': num_couches,  // Nombre de couches atmosphériques (cardinal + compute + atmosphère)
-                        '🎓⏳🌈': num_plages_spectre,  // Nombre de plages spectrales (cardinal + compute + spectre)
-                        '🎓⏳🌬🌈': total_cases,  // Total cases calculées = couches × plages (cardinal + compute + atmosphère + spectre)
-                        '🧲🏭📛': contribution_CO2,  // Contribution CO2 réémis vers la Terre (EDS) - flux + CO2 + EDS (W/m²)
-                        '🧲💧📛': contribution_H2O,  // Contribution H2O réémis vers la Terre (EDS) - flux + H2O + EDS (W/m²)
-                        '🧲⛽📛': contribution_CH4  // Contribution CH4 réémis vers la Terre (EDS) - flux + CH4 + EDS (W/m²)
+                        [window.getLogoKey('CARDINAL', 'COMPUTE', 'ATMOSPHERE')]: num_couches,  // Nombre de couches atmosphériques (cardinal + compute + atmosphère)
+                        [window.getLogoKey('CARDINAL', 'COMPUTE', 'SPECTRAL')]: num_plages_spectre,  // Nombre de plages spectrales (cardinal + compute + spectre)
+                        [window.getLogoKey('CARDINAL', 'COMPUTE', 'ATMOSPHERE', 'SPECTRAL')]: total_cases,  // Total cases calculées = couches × plages (cardinal + compute + atmosphère + spectre)
+                        [window.getLogoKey('ENERGY_FLUX', 'CO2', 'EDS')]: contribution_CO2,  // Contribution CO2 réémis vers la Terre (EDS) - flux + CO2 + EDS (W/m²)
+                        [window.getLogoKey('ENERGY_FLUX', 'H2O', 'EDS')]: contribution_H2O,  // Contribution H2O réémis vers la Terre (EDS) - flux + H2O + EDS (W/m²)
+                        [window.getLogoKey('ENERGY_FLUX', 'CH4', 'EDS')]: contribution_CH4  // Contribution CH4 réémis vers la Terre (EDS) - flux + CH4 + EDS (W/m²)
                     };
                 }
             } catch (error) {
@@ -440,9 +458,10 @@ function computeRadiativeTransfer(options = {}) {
         
         // Objet étape 5 : Flux sortant
         // Selon grammar.txt : 🌡️⏳ (température + compute), 🧲🔼 (flux sortant)
+        // IMPORTANT : 🧲🔼 = flux émis par la surface (AVANT EDS), pas le flux effectif après EDS
         window.step5_fluxOut = {
-            '🌡️⏳': T0_current,  // Température (K) - température + compute origin
-            '🧲🔼': flux_sortant  // Flux sortant (W/m²) - spectral si disponible, sinon σT⁴
+            [window.getLogoKey('TEMP', 'COMPUTE')]: T0_current,  // Température (K) - température + compute origin
+            [window.getLogoKey('ENERGY_FLUX', 'FLUX_OUT')]: flux_sortant_surface  // Flux sortant surface (W/m²)
         };
         
         // Ajouter les infos spectrales si disponibles
@@ -453,13 +472,16 @@ function computeRadiativeTransfer(options = {}) {
         // ========================================================================
         // ÉTAPE 6 : Delta équilibre
         // ========================================================================
-        const delta_equilibre = flux_sortant - flux_entrant;
+        // IMPORTANT : Pour l'équilibre, on compare flux_entrant avec flux_sortant_effectif (après EDS)
+        // Le flux_sortant_surface est affiché pour information (corps noir pur)
+        const delta_equilibre = flux_sortant_effectif - flux_entrant;
         
         // Objet étape 6 : Delta
+        // IMPORTANT : 🧲🔼 dans step6_delta = flux_sortant_effectif (après EDS) pour l'équilibre
         window.step6_delta = {
-            '🧲🔼': flux_sortant,  // Flux sortant
-            '🧲🔽': flux_entrant,  // Flux entrant
-            '🔺🧲': delta_equilibre  // Delta (sortant - entrant)
+            [window.getLogoKey('ENERGY_FLUX', 'FLUX_OUT')]: flux_sortant_effectif,  // Flux sortant effectif (après EDS)
+            [window.getLogoKey('ENERGY_FLUX', 'FLUX_IN')]: flux_entrant,  // Flux entrant
+            [window.getLogoKey('DELTA', 'ENERGY_FLUX')]: delta_equilibre  // Delta (sortant effectif - entrant)
         };
         
         // ========================================================================
@@ -471,35 +493,36 @@ function computeRadiativeTransfer(options = {}) {
         // Objet étape 7 : Tolérance
         // Selon grammar.txt : 🌡️⏳ (température + compute), 🌡️🔬📜 (précision config), 🧲🔬 (tolérance)
         window.step7_tolerance = {
-            '🌡️⏳': T0_current,  // Température (K) - température + compute origin
-            '🌡️🔬📜': precision_K,  // Précision demandée (K) - température + tolerance + config origin
-            '🧲🔬': tolerance  // Tolérance calculée (W/m²) - flux + tolerance
+            [window.getLogoKey('TEMP', 'COMPUTE')]: T0_current,  // Température (K) - température + compute origin
+            [window.getLogoKey('TEMP', 'TOLERANCE', 'CONFIG')]: precision_K,  // Précision demandée (K) - température + tolerance + config origin
+            [window.getLogoKey('ENERGY_FLUX', 'TOLERANCE')]: tolerance  // Tolérance calculée (W/m²) - flux + tolerance
         };
         
         // ========================================================================
         // CONCLUSION : Résumé de l'itération
         // ========================================================================
-        // Selon grammar.txt : 🔘 (boolean), 🌡️⏳ (température + compute), 🔺🧲 (delta flux), 🧲🔬 (tolérance), ⏳⚧ (phase), ⏳🔺 (signeDeltaFirst)
+        // Selon grammar.txt : 🔘 (boolean), 🌡️⏳ (température + compute), 🔺🧲 (delta flux), 🧲🔬 (tolérance), ⏳⚧ (phase), ⏳🍴 (signeDeltaFirst)
         const convergence_reached = Math.abs(delta_equilibre) <= tolerance;
         window.step8_conclusion = {
-            '🔘✅': convergence_reached,  // Convergence atteinte ? (boolean)
-            '🌡️⏳': T0_current,  // Température finale du cycle (température + compute origin)
-            '🔺🧲': delta_equilibre,  // Delta équilibre (delta + flux)
-            '🧲🔬': tolerance,  // Tolérance (flux + tolerance)
-            '⏳⚧': Phase,  // Phase finale (compute + phase)
-            '⏳🔺': signeDeltaFirst  // Signe delta first (compute + delta)
+            [window.getLogo('BOOLEAN') + '✅']: convergence_reached,  // Convergence atteinte ? (boolean) - ✅ n'est pas dans LOGOS, ajouté manuellement
+            [window.getLogoKey('TEMP', 'COMPUTE')]: T0_current,  // Température finale du cycle (température + compute origin)
+            [window.getLogoKey('DELTA', 'ENERGY_FLUX')]: delta_equilibre,  // Delta équilibre (delta + flux)
+            [window.getLogoKey('ENERGY_FLUX', 'TOLERANCE')]: tolerance,  // Tolérance (flux + tolerance)
+            [window.getLogoKey('COMPUTE', 'PHASE')]: Phase,  // Phase finale (compute + phase)
+            [window.getLogoKey('COMPUTE', 'SIGNE_DELTA_FIRST')]: signeDeltaFirst  // Signe delta first (compute + signeDeltaFirst)
         };
         
         // 8. Mettre à jour window.fluxState avec les valeurs de l'itération (séparer solaire et géothermique)
+        // IMPORTANT : 🧲🔼 dans fluxState = flux_sortant_surface (AVANT EDS) pour cohérence avec step5_fluxOut
         window.fluxState = {
-            '⏳🌡️🚩': T0_current,
-            '⏳⚧': Phase,
-            '⏳🔺': signeDeltaFirst,
-            '🧲☀️🔽': flux_solaire_absorbe,  // Flux solaire absorbé (séparé)
-            '🧲🌕🔽': flux_geothermique,     // Flux géothermique (séparé)
-            '🧲🔼': flux_sortant,            // Flux sortant (corps noir)
-            '🔺🧲': delta_equilibre,        // Delta flux (sortant - entrant)
-            '🧲🔬': tolerance                // Tolérance (précision pour test d'arrêt) - 🔬 selon grammar.txt
+            [window.getLogoKey('COMPUTE', 'TEMP', 'T0')]: T0_current,
+            [window.getLogoKey('COMPUTE', 'PHASE')]: Phase,
+            [window.getLogoKey('COMPUTE', 'SIGNE_DELTA_FIRST')]: signeDeltaFirst,
+            [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'FLUX_IN')]: flux_solaire_absorbe,  // Flux solaire absorbé (séparé)
+            [window.getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'FLUX_IN')]: flux_geothermique,     // Flux géothermique (séparé)
+            [window.getLogoKey('ENERGY_FLUX', 'FLUX_OUT')]: flux_sortant_surface,     // Flux sortant surface (AVANT EDS)
+            [window.getLogoKey('DELTA', 'ENERGY_FLUX')]: delta_equilibre,        // Delta flux (sortant effectif - entrant) - utilise flux_sortant_effectif
+            [window.getLogoKey('ENERGY_FLUX', 'TOLERANCE')]: tolerance                // Tolérance (précision pour test d'arrêt) - 🔬 selon grammar.txt
         };
         
         // Ajouter une copie de fluxState et des étapes à l'historique
@@ -527,8 +550,10 @@ function computeRadiativeTransfer(options = {}) {
         console.log(`   📊 Étape 7 - Tolérance: step7_tolerance=${JSON.stringify(window.step7_tolerance)}`);
         
         // Log de l'itération avec fluxState complet
-        console.log(`   Itération ${iteration}: T0=${T0_current.toFixed(2)}K, flux_entrant=${flux_entrant.toFixed(2)} W/m², flux_sortant=${flux_sortant.toFixed(2)} W/m², delta=${delta_equilibre.toFixed(2)} W/m², tolerance=${tolerance.toFixed(2)} W/m²`);
-        console.log(`   fluxState={'⏳🌡️🚩':${T0_current.toFixed(2)}, '⏳⚧':'${Phase}', '⏳🔺':${signeDeltaFirst.toFixed(2)}, '🧲☀️🔽':${flux_solaire_absorbe.toFixed(2)}, '🧲🌕🔽':${flux_geothermique > 1000 ? flux_geothermique.toExponential(2) : flux_geothermique.toFixed(2)}, '🧲🔼':${flux_sortant > 1000 ? flux_sortant.toExponential(2) : flux_sortant.toFixed(2)}, '🔺🧲':${delta_equilibre > 1000 ? delta_equilibre.toExponential(2) : delta_equilibre.toFixed(2)}, '🧲🔬':${tolerance.toFixed(2)}}`);
+        // IMPORTANT : flux_sortant_surface = flux émis par la surface (AVANT EDS), flux_sortant_effectif = flux après EDS
+        console.log(`   Itération ${iteration}: T0=${T0_current.toFixed(2)}K, flux_entrant=${flux_entrant.toFixed(2)} W/m², flux_sortant_surface=${flux_sortant_surface > 1000 ? flux_sortant_surface.toExponential(2) : flux_sortant_surface.toFixed(2)} W/m², flux_sortant_effectif=${flux_sortant_effectif > 1000 ? flux_sortant_effectif.toExponential(2) : flux_sortant_effectif.toFixed(2)} W/m², delta=${delta_equilibre > 1000 ? delta_equilibre.toExponential(2) : delta_equilibre.toFixed(2)} W/m², tolerance=${tolerance.toFixed(2)} W/m²`);
+        const signeDeltaFirst_key = window.getLogoKey('COMPUTE', 'SIGNE_DELTA_FIRST');
+        console.log(`   fluxState={'${window.getLogoKey('COMPUTE', 'TEMP', 'T0')}':${T0_current.toFixed(2)}, '${window.getLogoKey('COMPUTE', 'PHASE')}':'${Phase}', '${signeDeltaFirst_key}':${signeDeltaFirst.toFixed(2)}, '${window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'FLUX_IN')}':${flux_solaire_absorbe.toFixed(2)}, '${window.getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'FLUX_IN')}':${flux_geothermique > 1000 ? flux_geothermique.toExponential(2) : flux_geothermique.toFixed(2)}, '${window.getLogoKey('ENERGY_FLUX', 'FLUX_OUT')}':${flux_sortant_surface > 1000 ? flux_sortant_surface.toExponential(2) : flux_sortant_surface.toFixed(2)}, '${window.getLogoKey('DELTA', 'ENERGY_FLUX')}':${delta_equilibre > 1000 ? delta_equilibre.toExponential(2) : delta_equilibre.toFixed(2)}, '${window.getLogoKey('ENERGY_FLUX', 'TOLERANCE')}':${tolerance.toFixed(2)}}`);
         if (window.h2o) {
             // Note: 💧 (H2O vapeur %) est dans atm['🥒🌬💧'] - source unique, pas de duplication
             // Note: 🌴 (greenhouse forcing) est dans step5_spectral['🧲💧📛'], 🌤 (cloud albedo) est dans window.albedo['🥒🪞⛅']
@@ -595,6 +620,26 @@ function computeRadiativeTransfer(options = {}) {
         
         // 9. Mettre à jour window.T0 pour la prochaine itération
         window.T0 = T0_current;
+        
+        // 10. IMPORTANT : Recalculer h2o et albedo à la fin du cycle (après ajustement de T0)
+        // pour le cycle suivant - garantit la cohérence avec le nouveau T0
+        if (iteration < max_iterations) { // Pas besoin de recalculer si c'est la dernière itération
+            const enabledStates_next = window.getEnabledStates ? window.getEnabledStates() : {};
+            const h2o_enabled_next = enabledStates_next[window.getLogo('H2O_EDS')] || false;
+            
+            // Recalculer h2o avec le nouveau T0_current pour le prochain cycle
+            const h2o_total_percent_next = H2O_percent + (window.h2oTotalFromMeteorites || 0);
+            if (window.calculateH2OParameters) {
+                window.calculateH2OParameters(T0_current, h2o_total_percent_next, null);
+            }
+            
+            // Recalculer albedo avec le nouveau T0_current pour le prochain cycle
+            if (window.calculateAlbedo) {
+                window.calculateAlbedo(T0_current, h2o_enabled_next, geo_flux);
+            }
+            
+            console.log(`   🔄 Recalcul h2o et albedo pour cycle suivant (T0=${T0_current.toFixed(2)}K)`);
+        }
     }
     
     if (iteration >= max_iterations) {
@@ -605,37 +650,43 @@ function computeRadiativeTransfer(options = {}) {
     window.T0 = T0_current;
     
     // Calculer le flux final (séparer solaire et géothermique)
+    // IMPORTANT : flux_sortant_final = flux émis par la surface (AVANT EDS) = σT⁴
+    // Pour l'équilibre, on utilise le flux_sortant_effectif (après EDS) depuis la dernière itération
     const enabledStates_final = window.getEnabledStates ? window.getEnabledStates() : {};
     const h2o_enabled_final = enabledStates_final[window.getLogo('H2O_EDS')] || false;
     const flux_solaire_absorbe_final = window.calculateSolarFluxAbsorbed ? window.calculateSolarFluxAbsorbed(T0_current, h2o_enabled_final, geo_flux) : 238;
     const flux_geothermique_final = geo_flux || 0;
     const flux_entrant_final = flux_solaire_absorbe_final + flux_geothermique_final;
-    const flux_sortant_final = STEFAN_BOLTZMANN * Math.pow(T0_current, 4);
-    const delta_equilibre_final = flux_sortant_final - flux_entrant_final;
+    const flux_sortant_surface_final = STEFAN_BOLTZMANN * Math.pow(T0_current, 4);  // Flux émis par la surface (AVANT EDS)
+    // Utiliser le delta_equilibre de la dernière itération (qui utilise flux_sortant_effectif)
+    const delta_equilibre_final = window.fluxState?.[window.getLogoKey('DELTA', 'ENERGY_FLUX')] || (flux_sortant_surface_final - flux_entrant_final);
     const tolerance_final = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3) * precision_K;
     
     // Mettre à jour window.fluxState avec les valeurs finales (séparer solaire et géothermique)
+    // IMPORTANT : 🧲🔼 dans fluxState = flux_sortant_surface (AVANT EDS) pour cohérence avec step5_fluxOut
     window.fluxState = {
-        '⏳🌡️🚩': T0_current,
-        '⏳⚧': Phase,
-        '⏳🔺': signeDeltaFirst,
-        '🧲☀️🔽': flux_solaire_absorbe_final,  // Flux solaire absorbé (séparé)
-        '🧲🌕🔽': flux_geothermique_final,     // Flux géothermique (séparé)
-        '🧲🔼': flux_sortant_final,            // Flux sortant (corps noir)
-        '🔺🧲': delta_equilibre_final,        // Delta flux (sortant - entrant)
-        '🧲🔬': tolerance_final                // Tolérance (précision pour test d'arrêt) - 🔬 selon grammar.txt
+        [window.getLogoKey('COMPUTE', 'TEMP', 'T0')]: T0_current,
+        [window.getLogoKey('COMPUTE', 'PHASE')]: Phase,
+        [window.getLogoKey('COMPUTE', 'SIGNE_DELTA_FIRST')]: signeDeltaFirst,
+        [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'FLUX_IN')]: flux_solaire_absorbe_final,  // Flux solaire absorbé (séparé)
+        [window.getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'FLUX_IN')]: flux_geothermique_final,     // Flux géothermique (séparé)
+        [window.getLogoKey('ENERGY_FLUX', 'FLUX_OUT')]: flux_sortant_surface_final,    // Flux sortant surface (AVANT EDS)
+        [window.getLogoKey('DELTA', 'ENERGY_FLUX')]: delta_equilibre_final,        // Delta flux (utilise flux_sortant_effectif pour équilibre)
+        [window.getLogoKey('ENERGY_FLUX', 'TOLERANCE')]: tolerance_final                // Tolérance (précision pour test d'arrêt) - 🔬 selon grammar.txt
     };
     
     // Créer window.flux (pour l'affichage simplifié)
+    // IMPORTANT : 🧲🔼 = flux émis par la surface (AVANT EDS), pas le flux effectif après EDS
     window.flux = { 
-        '🧲☀️🔽': flux_solaire_absorbe_final,  // Flux solaire absorbé
-        '🧲🌕🔽': flux_geothermique_final,     // Flux géothermique
-        '🧲🔼': flux_sortant_final              // Flux sortant (corps noir)
+        [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'FLUX_IN')]: flux_solaire_absorbe_final,  // Flux solaire absorbé
+        [window.getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'FLUX_IN')]: flux_geothermique_final,     // Flux géothermique
+        [window.getLogoKey('ENERGY_FLUX', 'FLUX_OUT')]: flux_sortant_surface_final     // Flux sortant surface (AVANT EDS)
     };
     
     // Log flux radiatif final
+    // IMPORTANT : 🧲🔼 = flux émis par la surface (AVANT EDS), pas le flux effectif après EDS
     console.log(`☀️ [computeRadiativeTransfer@calculations_flux.js]`);
-    console.log(`flux={'🧲☀️🔽':${flux_solaire_absorbe_final.toFixed(2)}, '🧲🌕🔽':${flux_geothermique_final.toFixed(2)}, '🧲🔼':${flux_sortant_final.toFixed(2)}}`);
+    console.log(`flux={'🧲☀️🔽':${flux_solaire_absorbe_final.toFixed(2)}, '🧲🌕🔽':${flux_geothermique_final > 1000 ? flux_geothermique_final.toExponential(2) : flux_geothermique_final.toFixed(2)}, '🧲🔼':${flux_sortant_surface_final > 1000 ? flux_sortant_surface_final.toExponential(2) : flux_sortant_surface_final.toFixed(2)}}`);
     
     // Retourner les résultats
     return Promise.resolve({

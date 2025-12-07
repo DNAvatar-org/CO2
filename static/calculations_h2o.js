@@ -318,8 +318,13 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
         
         // Calculer ocean_coverage depuis window.h2o si disponible, sinon 0
         let ocean_coverage = 0;
-        if (window.h2o && window.h2o['🥒💧🌊'] !== undefined) {
-            ocean_coverage = window.h2o['🥒💧🌊'] / 100; // Convertir de % à fraction
+        const getLogoKey = (typeof window !== 'undefined' && window.getLogoKey) ? window.getLogoKey : function(...names) {
+            const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
+            return names.map(name => LOGOS[name] || '').join('');
+        };
+        const h2o_ocean_key = getLogoKey('PROPORTION', 'H2O', 'OCEAN');
+        if (window.h2o && window.h2o[h2o_ocean_key] !== undefined) {
+            ocean_coverage = window.h2o[h2o_ocean_key] / 100; // Convertir de % à fraction
         } else if (window.calculateOceanCoverage && window.T0) {
             ocean_coverage = window.calculateOceanCoverage(window.T0, epoch) || 0;
         }
@@ -408,19 +413,31 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
     // jusqu'à 100% de vapeur, mais la quantité RÉELLE dépend de h2o_total_fraction disponible.
     // Si ⏳🌧 = 100% et qu'il y a de l'eau disponible, elle sera en vapeur, et peut se condenser
     // en nuages (⛅) si saturation locale (altitude, refroidissement).
+    
+    // Utiliser getLogoKey() pour construire les clés dynamiquement
+    const getLogoKey = (typeof window !== 'undefined' && window.getLogoKey) ? window.getLogoKey : function(...names) {
+        // Fallback si getLogoKey n'est pas disponible
+        const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
+        return names.map(name => LOGOS[name] || '').join('');
+    };
+    
     const h2o_result = {
-        '🥒💧🧊': ice_fraction * 100,                    // 🥒💧🧊 Glace (%)
-        '🥒💧⛅': cloud_coverage * 100,                  // 🥒💧⛅ Nuages (%) - condensation de la vapeur
-        '🥒💧🌊': liquid_fraction * 100,                 // 🥒💧🌊 Océan (%) - eau liquide à la surface (impossible si T > T_boil)
-        '⏳🌧': waterPartition.max_vapor_fraction * 100  // ⏳🌧 Max vapor fraction (%) - capacité max avant condensation
+        [getLogoKey('PROPORTION', 'H2O', 'ICE')]: ice_fraction * 100,                    // 🍰💧🧊 Glace (%)
+        [getLogoKey('PROPORTION', 'H2O', 'CLOUD')]: cloud_coverage * 100,                  // 🍰💧⛅ Nuages (%) - condensation de la vapeur
+        [getLogoKey('PROPORTION', 'H2O', 'OCEAN')]: liquid_fraction * 100,                 // 🍰💧🌊 Océan (%) - eau liquide à la surface (impossible si T > T_boil)
+        [getLogoKey('COMPUTE', 'MAX_VAPOR')]: waterPartition.max_vapor_fraction * 100  // ⏳🌧 Max vapor fraction (%) - capacité max avant condensation
     };
     
     // Sauvegarder dans window.h2o
     window.h2o = h2o_result;
     
-    // Log
+    // Log avec les clés dynamiques
+    const key_ice = getLogoKey('PROPORTION', 'H2O', 'ICE');
+    const key_cloud = getLogoKey('PROPORTION', 'H2O', 'CLOUD');
+    const key_ocean = getLogoKey('PROPORTION', 'H2O', 'OCEAN');
+    const key_max_vapor = getLogoKey('COMPUTE', 'MAX_VAPOR');
     console.log(`💧 [calculateH2OParameters@calculations_h2o.js]`);
-    console.log(`h2o={'🥒💧🧊':${(h2o_result['🥒💧🧊'] || 0).toFixed(2)}, '🥒💧⛅':${(h2o_result['🥒💧⛅'] || 0).toFixed(2)}, '🥒💧🌊':${(h2o_result['🥒💧🌊'] || 0).toFixed(2)}, '⏳🌧':${(h2o_result['⏳🌧'] || 0).toFixed(2)}}`);
+    console.log(`h2o={'${key_ice}':${(h2o_result[key_ice] || 0).toFixed(2)}, '${key_cloud}':${(h2o_result[key_cloud] || 0).toFixed(2)}, '${key_ocean}':${(h2o_result[key_ocean] || 0).toFixed(2)}, '${key_max_vapor}':${(h2o_result[key_max_vapor] || 0).toFixed(2)}}`);
 
     return {
         vapor_fraction,

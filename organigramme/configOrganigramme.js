@@ -36,7 +36,7 @@ const LOGOS = {
     TEMP: '🌡️',     // TEMP : Température
     PHASE: '⚧',     // Phase : symbole transgenre (phase de convergence)
     T0: '🚩',        // T0 : drapeau (température initiale)
-    SIGNE_DELTA_FIRST: '🔺', // SigneDeltaFirst : triangle rouge (signe du premier delta)
+    SIGNE_DELTA_FIRST: '☯', // SigneDeltaFirst : yin-yang (signe du premier delta)
     BIG_IMPACT: '🎇', // Big impact : feu d'artifice (événement d'impact majeur)
     TIC_TIME: '💫', // TicTime : étoile (événement d'avancement temporel)
     FLUX_CN: '🌑', // Flux sortant : lune noire (rayonnement corps noir sortant)
@@ -62,6 +62,8 @@ const LOGOS = {
     CONFIG: '📜',   // Config : parchemin
     OLD_T0: '🏮',   // Old T0 : lanterne
     METEORITE_COUNT: '☄️', // Nombre de météorites
+    FLUX_IN: '🔽',  // Flux entrant (réception, +)
+    FLUX_OUT: '🔼', // Flux sortant (émission, -)
 
     
 };

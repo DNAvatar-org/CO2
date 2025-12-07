@@ -241,10 +241,10 @@ function getSoleil() {
     const solar_power_total = SOLAR_POWER_REF * solar_intensity;
     
     const result = {
-        '🧲☀️📜': SOLAR_CONSTANT,  // Constante solaire à 1 UA (W/m²) - depuis solar_intensity (config 📜)
-        '🧲☀️🎱': solar_flux_1ua_geometric,  // Flux solaire à 1 UA / 4 (moyenne sphérique, AVANT albedo)
-        '🧲☀️🌞': solar_surface_flux,  // Flux solaire à la surface du soleil (W/m²) - depuis solar_intensity (config 📜)
-        '🔋☀️📜': solar_power_total  // Puissance totale du soleil (W) - depuis solar_intensity (config 📜)
+        [getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'CONFIG')]: SOLAR_CONSTANT,  // Constante solaire à 1 UA (W/m²) - depuis solar_intensity (config 📜)
+        [getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'GEOMETRY_ORIGIN')]: solar_flux_1ua_geometric,  // Flux solaire à 1 UA / 4 (moyenne sphérique, AVANT albedo)
+        [getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'SUN_ORIGIN')]: solar_surface_flux,  // Flux solaire à la surface du soleil (W/m²) - TODO: vérifier le nom du logo
+        [getLogoKey('POWER', 'SUN_ORIGIN', 'CONFIG')]: solar_power_total  // Puissance totale du soleil (W) - depuis solar_intensity (config 📜)
     };
     
     window.soleil = result;
@@ -285,8 +285,8 @@ function getNoyau() {
     }
     
     const result = {
-        '🧲🌕📜': geothermal_flux_wm2,  // Flux géothermique (W/m²) - depuis epoch.geothermal_flux (config 📜)
-        '🔋🌕📜': geothermal_power_total  // Puissance totale du noyau (W) - depuis epoch.core_power_watts (config 📜) ou calculé
+        [getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'CONFIG')]: geothermal_flux_wm2,  // Flux géothermique (W/m²) - depuis epoch.geothermal_flux (config 📜)
+        [getLogoKey('POWER', 'GEOTHERMAL_FLUX', 'CONFIG')]: geothermal_power_total  // Puissance totale du noyau (W) - depuis epoch.core_power_watts (config 📜) ou calculé
     };
     
     window.noyau = result;

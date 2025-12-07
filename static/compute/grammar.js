@@ -98,6 +98,8 @@ const LOGO_DESCRIPTIONS = {
     'PROPORTION': 'Proportion (%)',
     'ENERGY_FLUX': 'Flux (W/m²)',
     'POWER': 'Puissance (W)',
+    'FLUX_IN': 'Réception (+)',
+    'FLUX_OUT': 'Émission (-)',
     // Éléments
     'H2O': 'H2O',
     'CH4': 'CH4',
@@ -116,11 +118,11 @@ const LOGO_DESCRIPTIONS = {
     // Calculs
     'COMPUTE': 'Compute',
     'ANIMATION': 'Animation',
-    'PHASE': 'Phase (None/Search/Dicho)',
+    'PHASE': 'Phase (Search/Dicho)',
     'TOLERANCE': 'Tolérance (précision)',
-    'SIGNE_DELTA_FIRST': 'signeDeltaFirst',
-    'OLD_T0': 'old_T0 (température précédente)',
-    'T0': 'T0 (température initiale)',
+    'SIGNE_DELTA_FIRST': 'signeDeltaFirst (+/-)',
+    'OLD_T0': 'old_T0 (backup T°)',
+    'T0': 'T0 (T° initiale)',
     'ALBEDO': 'Albédo',
     'GEOTHERMAL_FLUX': 'Flux géothermique',
     'EDS': 'EDS (Forçage radiatif)',
@@ -206,17 +208,17 @@ function generateLegend() {
     
     // Colonne 1 : Unités
     const logosCol1 = [
-        'BOOLEAN', 'CARDINAL', 'DELTA', 'TEMP', 'WEIGHT', 'METER', 'PROPORTION', 'ENERGY_FLUX', 'POWER'
+        'BOOLEAN', 'CARDINAL', 'DELTA', 'TEMP', 'WEIGHT', 'METER', 'PROPORTION', 'ENERGY_FLUX', 'POWER', 'FLUX_IN', 'FLUX_OUT'
     ];
     
     // Colonne 2 : Éléments
     const logosCol2 = [
-        'H2O', 'CH4', 'CO2', 'O2', 'ICE', 'CLOUD', 'OCEAN', 'VOLCANO', 'DESERT', 'FOREST', 'ATMOSPHERE', 'SUN_ORIGIN', 'GEOMETRY_ORIGIN', 'SPECTRAL'
+        'H2O', 'CH4', 'CO2', 'O2', 'ICE', 'CLOUD', 'OCEAN', 'VOLCANO', 'DESERT', 'FOREST', 'ATMOSPHERE', 'SUN_ORIGIN', 'SPECTRAL'
     ];
     
     // Colonne 3 : Calculs
     const logosCol3 = [
-        'COMPUTE', 'ANIMATION', 'PHASE', 'TOLERANCE', 'SIGNE_DELTA_FIRST', 'OLD_T0', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS'
+        'COMPUTE', 'ANIMATION', 'PHASE', 'TOLERANCE', 'SIGNE_DELTA_FIRST', 'OLD_T0', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS', 'GEOMETRY_ORIGIN'
     ];
     
     // Colonne 4 : Événements

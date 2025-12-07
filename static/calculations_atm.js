@@ -475,11 +475,17 @@ function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg,
         throw new Error('calculateCompositionFromLogoConfig: configObj et total_atmosphere_mass_kg requis');
     }
     
+    // Utiliser getLogoKey() pour construire les clés dynamiquement
+    const getLogoKey = (typeof window !== 'undefined' && window.getLogoKey) ? window.getLogoKey : function(...names) {
+        const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
+        return names.map(name => LOGOS[name] || '').join('');
+    };
+    
     // Récupérer les poids depuis l'objet config (selon grammar.txt : 🐳🏭, 🐳⛽, 🐳💧, 🐳🌫)
-    const co2_kg = configObj['🐳🏭'] || 0;
-    const ch4_kg = configObj['🐳⛽'] || 0;
-    const h2o_kg = configObj['🐳💧'] || 0;
-    const o2_kg = configObj['🐳🌫'] || 0;
+    const co2_kg = configObj[getLogoKey('WEIGHT', 'CO2')] || 0;
+    const ch4_kg = configObj[getLogoKey('WEIGHT', 'CH4')] || 0;
+    const h2o_kg = configObj[getLogoKey('WEIGHT', 'H2O')] || 0;
+    const o2_kg = configObj[getLogoKey('WEIGHT', 'O2')] || 0;
     
     // Calculer la masse molaire moyenne
     let molar_mass_air = 0.029; // Défaut
@@ -511,7 +517,9 @@ function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg,
     let tropopause = 0;
     
     if (total_atmosphere_mass_kg > 0 && window.calculateAtmosphereProperties) {
-        const T0 = configObj['🌡️'] || 288; // Température de surface
+        // Utiliser getLogoKey() pour récupérer T0 depuis configObj
+        const T0_key = getLogoKey('TEMP', 'COMPUTE', 'CONFIG');
+        const T0 = configObj[T0_key] || 288; // Température de surface
         const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, molar_mass_air, epoch?.gravity || 9.81);
         altitude = props.z_max || 0; // Altitude max en mètres
         
@@ -522,14 +530,16 @@ function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg,
     }
     
     // Créer l'objet avec logos comme clés
-    // Unités selon grammar.txt : atm={'📏🌬🚀':1300, '📏🌬🛩':30, '🥒🌬🌫':0.0, '🥒🌬🏭':0.703, '🥒🌬💧':0.000701158, '🥒🌬⛽':0.00019}
+    // Unités selon grammar.txt : atm={'📏🌬🚀':1300, '📏🌬🛩':30, '🍰🌬🌫':0.0, '🍰🌬🏭':0.703, '🍰🌬💧':0.000701158, '🍰🌬⛽':0.00019}
+    // getLogoKey() est déjà défini plus haut dans la fonction
+    
     const atmComposition = {
-        '📏🌬🚀': altitude / 1000,  // Altitude max en km
-        '📏🌬🛩': tropopause / 1000,  // Tropopause en km
-        '🥒🌬🌫': O2_fraction * 100,    // O2 en %
-        '🥒🌬🏭': CO2_fraction * 100,   // CO2 en %
-        '🥒🌬💧': H2O_fraction * 100,  // H2O en %
-        '🥒🌬⛽': CH4_fraction * 100    // CH4 en %
+        [getLogoKey('METER', 'ATMOSPHERE', 'ALTITUDE')]: altitude / 1000,  // Altitude max en km
+        [getLogoKey('METER', 'ATMOSPHERE', 'TROPOPAUSE')]: tropopause / 1000,  // Tropopause en km
+        [getLogoKey('PROPORTION', 'ATMOSPHERE', 'O2')]: O2_fraction * 100,    // O2 en %
+        [getLogoKey('PROPORTION', 'ATMOSPHERE', 'CO2')]: CO2_fraction * 100,   // CO2 en %
+        [getLogoKey('PROPORTION', 'ATMOSPHERE', 'H2O')]: H2O_fraction * 100,  // H2O en %
+        [getLogoKey('PROPORTION', 'ATMOSPHERE', 'CH4')]: CH4_fraction * 100    // CH4 en %
     };
     
     // Sauvegarder dans window.atm

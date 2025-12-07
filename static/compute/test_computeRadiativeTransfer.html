@@ -221,10 +221,10 @@
         }
         
         .results {
-            background: #2a2a2a;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 20px;
+            /* background: #2a2a2a; */
+            padding: 10px;
+            /* border-radius: 8px; */
+            /* margin-top: 20px; */
         }
         
         .results h2 {
@@ -336,6 +336,54 @@
             display: none;
         }
         
+        /* Cacher le contenu quand la section est repliée (replied) - seulement pour Lexique et Syntaxe */
+        .results.replied #legend-content,
+        .results.replied #syntaxe-content {
+            display: none;
+        }
+        
+        /* Style pour les iframes dans Lexique et Syntaxe */
+        #legend-content iframe,
+        #syntaxe-content iframe {
+            width: 100%;
+            height: auto;
+            min-height: 400px;
+            max-height: 500px;
+            border: none;
+            background: #1a1a1a;
+        }
+        
+        /* Pour Configuration et Convergence : couleur plus grise et comportement différent */
+        #config,
+        #convergence {
+            background: #2a2a2a !important; /* Plus gris que #1a2a3a */
+            border-left-color: #6a6a6a !important; /* Bordure plus grise */
+        }
+        
+        /* Configuration et Convergence : quand repliées, afficher les objets JSON mais cacher formules et titres */
+        #config.replied .config-title,
+        #convergence.replied .config-title {
+            display: none;
+        }
+        
+        #config.replied .formule,
+        #convergence.replied .formule {
+            display: none;
+        }
+        
+        /* Les objets JSON restent visibles même quand repliées */
+        #config.replied .config-value,
+        #convergence.replied .config-value {
+            display: block;
+        }
+        
+        /* Aligner les titres avec les boutons à droite */
+        .results h2 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
         .toggle-button {
             background: #4a9eff;
             border: none;
@@ -344,7 +392,7 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-            margin-left: 10px;
+            margin-left: auto; /* Pousser le bouton à droite */
         }
         
         .toggle-button:hover {
@@ -386,11 +434,19 @@
     <div class="container">
         <h1>🧪 Test computeRadiativeTransfer</h1>
         
-        <!-- Légende des logos selon grammar.txt -->
-        <div class="results" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
-            <h2 style="color: #4a9eff; margin-bottom: 10px;">📖 Légende des logos</h2>
+        <!-- Lexique des logos selon grammar.txt -->
+        <div id="lexique" class="results replied" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
+            <h2 style="color: #4a9eff; margin-bottom: 10px;">📖 Lexique <button class="toggle-button" onclick="toggleLexique()">+</button></h2>
             <div id="legend-content">
-                <!-- La légende sera générée dynamiquement par window.generateLegend() -->
+                <iframe src="lexique.html" style="width: 100%; height: 600px; border: none; background: #1a1a1a;"></iframe>
+            </div>
+        </div>
+        
+        <!-- Syntaxe des logos -->
+        <div id="syntaxe" class="results replied" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
+            <h2 style="color: #4a9eff; margin-bottom: 10px;">📝 Syntaxe <button class="toggle-button" onclick="toggleSyntaxe()">+</button></h2>
+            <div id="syntaxe-content">
+                <iframe src="syntaxe.html" style="width: 100%; height: 600px; border: none; background: #1a1a1a;"></iframe>
             </div>
         </div>
         
@@ -430,12 +486,12 @@
         </div>
         
         <div id="config" class="results replied" style="display: none;">
-            <h2>📋 Configuration <button class="toggle-button" onclick="toggleConfig()">x</button></h2>
+            <h2>📋 Configuration <button class="toggle-button" onclick="toggleConfig()">+</button></h2>
             <div id="config-content"></div>
         </div>
         
         <div id="convergence" class="results replied" style="display: none;">
-            <h2>⚙ Convergence <button class="toggle-button" onclick="toggleConvergence()">x</button></h2>
+            <h2>⚙ Convergence <button class="toggle-button" onclick="toggleConvergence()">+</button></h2>
             <div id="convergence-content"></div>
         </div>
         
@@ -1142,10 +1198,10 @@
             const button = configDiv.querySelector('.toggle-button');
             if (configDiv.classList.contains('replied')) {
                 configDiv.classList.remove('replied');
-                button.textContent = '+';
+                button.textContent = 'x'; // Déplié : afficher x
             } else {
                 configDiv.classList.add('replied');
-                button.textContent = 'x';
+                button.textContent = '+'; // Replié : afficher +
             }
         }
         
@@ -1154,26 +1210,41 @@
             const button = convergenceDiv.querySelector('.toggle-button');
             if (convergenceDiv.classList.contains('replied')) {
                 convergenceDiv.classList.remove('replied');
-                button.textContent = '+';
+                button.textContent = 'x'; // Déplié : afficher x
             } else {
                 convergenceDiv.classList.add('replied');
-                button.textContent = 'x';
+                button.textContent = '+'; // Replié : afficher +
             }
         }
         
+        function toggleLexique() {
+            const lexiqueDiv = document.getElementById('lexique');
+            const button = lexiqueDiv.querySelector('.toggle-button');
+            if (lexiqueDiv.classList.contains('replied')) {
+                lexiqueDiv.classList.remove('replied');
+                button.textContent = 'x';
+            } else {
+                lexiqueDiv.classList.add('replied');
+                button.textContent = '+';
+            }
+        }
+        
+        function toggleSyntaxe() {
+            const syntaxeDiv = document.getElementById('syntaxe');
+            const button = syntaxeDiv.querySelector('.toggle-button');
+            if (syntaxeDiv.classList.contains('replied')) {
+                syntaxeDiv.classList.remove('replied');
+                button.textContent = 'x';
+            } else {
+                syntaxeDiv.classList.add('replied');
+                button.textContent = '+';
+            }
+        }
+        
+        
         // Initialiser au chargement
         window.addEventListener('DOMContentLoaded', function() {
-            // Générer la légende dynamiquement
-            const legendContent = document.getElementById('legend-content');
-            if (legendContent && typeof generateLegend === 'function') {
-                // Utiliser window.generateLegend() si disponible (depuis grammar.js), sinon fonction locale
-                if (typeof window !== 'undefined' && window.generateLegend) {
-                    legendContent.innerHTML = window.generateLegend();
-                } else {
-                    console.warn('[test_computeRadiativeTransfer] window.generateLegend non disponible, légende vide');
-                    legendContent.innerHTML = '';
-                }
-            }
+            // Les contenus Lexique et Syntaxe sont maintenant chargés via iframe (lexique.html et syntaxe.html)
             console.log('📄 Page de test chargée');
             console.log('🔧 Initialisation des variables globales...');
             
