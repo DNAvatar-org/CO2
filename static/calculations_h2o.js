@@ -113,22 +113,36 @@ function estimateCloudCoverage(temp_K, h2o_vapor_fraction, relative_humidity = 0
     // Pas de nuages si pas d'eau
     if (h2o_vapor_fraction <= 0) return 0;
 
-    // À très haute température (> 350K = 77°C), les nuages sont rares car l'eau est en vapeur
-    // Mais en Hadéen (2450K), il peut y avoir des nuages par condensation locale (altitude, refroidissement)
-    // TODO: Revoir cette logique pour Hadéen - les nuages peuvent se former même à haute température
-    // si la vapeur est abondante et qu'il y a des zones de refroidissement (altitude, ombre, etc.)
-    if (temp_K > 350) return 0.05;  // Minimum 5% même à haute température
+    // Calculer la saturation maximale
+    const max_fraction = calculateMaxH2OVaporFraction(temp_K);
+    
+    // Si on est proche de la saturation, formation de nuages
+    const saturation_ratio = h2o_vapor_fraction / (max_fraction * relative_humidity);
+
+    // Cas spécial : Hadéen (température très élevée, 2000K+)
+    // En Hadéen, même à haute température, il peut y avoir des nuages par :
+    // - Condensation locale (altitude, zones de refroidissement)
+    // - Vapeur abondante (h2o_vapor_fraction élevée)
+    // - Refroidissement par expansion (effet adiabatique)
+    // On utilise le ratio de saturation même à haute température
+    if (temp_K > 2000) {
+        // Hadéen : nuages proportionnels à la saturation, avec minimum 5%
+        // Si vapeur abondante (saturation_ratio > 0.5), nuages significatifs (10-30%)
+        const cloud_coverage = Math.min(saturation_ratio * 0.4, 0.3); // Max 30% en Hadéen
+        return Math.max(cloud_coverage, 0.05); // Minimum 5%
+    }
+    
+    // Température très élevée (> 350K mais < 2000K) : nuages rares mais possibles
+    if (temp_K > 350) {
+        // Utiliser le ratio de saturation même à haute température
+        const cloud_coverage = Math.min(saturation_ratio * 0.3, 0.15); // Max 15%
+        return Math.max(cloud_coverage, 0.05); // Minimum 5%
+    }
 
     // Pas de nuages si température trop basse (< 200K = -73°C, tout gelé)
     if (temp_K < 200) return 0.1;
 
-    // Saturation maximale
-    const max_fraction = calculateMaxH2OVaporFraction(temp_K);
-
-    // Si on est proche de la saturation, formation de nuages
-    const saturation_ratio = h2o_vapor_fraction / (max_fraction * relative_humidity);
-
-    // Couverture nuageuse proportionnelle au ratio de saturation
+    // Température normale : couverture nuageuse proportionnelle au ratio de saturation
     // Avec un maximum de 80% de couverture
     const cloud_coverage = Math.min(saturation_ratio * 0.8, 0.8);
 

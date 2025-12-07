@@ -335,7 +335,15 @@ function computeRadiativeTransfer(options = {}) {
         // ========================================================================
         // ÉTAPE 4 : Flux entrant total
         // ========================================================================
-        const flux_entrant = flux_solaire_absorbe + flux_geothermique;
+        // Vérification : flux_entrant doit être la somme exacte de solaire + géothermique
+        const flux_entrant_calculated = flux_solaire_absorbe + flux_geothermique;
+        const flux_entrant = flux_entrant_calculated;
+        
+        // Vérification de cohérence
+        const expected_sum = flux_solaire_absorbe + flux_geothermique;
+        if (Math.abs(flux_entrant - expected_sum) > 0.01) {
+            console.error(`   ❌ [ERROR step4] Incohérence flux_entrant: ${flux_entrant.toFixed(2)} ≠ ${flux_solaire_absorbe.toFixed(2)} + ${flux_geothermique > 1000 ? flux_geothermique.toExponential(2) : flux_geothermique.toFixed(2)} = ${expected_sum > 1000 ? expected_sum.toExponential(2) : expected_sum.toFixed(2)}`);
+        }
         
         // Log de débogage pour vérifier le calcul
         console.log(`   🔍 [DEBUG step4] flux_solaire_absorbe=${flux_solaire_absorbe.toFixed(2)} W/m², flux_geothermique=${flux_geothermique > 1000 ? flux_geothermique.toExponential(2) : flux_geothermique.toFixed(2)} W/m², flux_entrant=${flux_entrant > 1000 ? flux_entrant.toExponential(2) : flux_entrant.toFixed(2)} W/m²`);
