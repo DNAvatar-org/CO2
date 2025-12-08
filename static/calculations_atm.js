@@ -512,13 +512,20 @@ function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg,
         O2_fraction = moles_O2 / moles_total;
     }
     
+    // Calculer N2 comme "le reste" après avoir soustrait les autres gaz
+    // N2 est crucial pour les calculs de pression, saturation, etc.
+    const total_ges_fraction = CO2_fraction + CH4_fraction + H2O_fraction;
+    const remaining_fraction = Math.max(0, 1.0 - (total_ges_fraction + O2_fraction));
+    // Répartition moderne : N2 représente ~78% des gaz neutres (le reste après GES et O2)
+    const N2_fraction = remaining_fraction * 0.78; // 78% du reste
+    
     // Calculer les propriétés atmosphériques (densité, altitude, tropopause)
     let altitude = 0;
     let tropopause = 0;
     
     if (total_atmosphere_mass_kg > 0 && window.calculateAtmosphereProperties) {
-        // Utiliser getLogoKey() pour récupérer T0 depuis configObj
-        const T0_key = getLogoKey('TEMP', 'COMPUTE', 'CONFIG');
+        // Utiliser DATE_CONFIG pour récupérer T0 depuis configObj
+        const T0_key = window.DATE_CONFIG.T0_CONFIG.key;
         const T0 = configObj[T0_key] || 288; // Température de surface
         const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0, molar_mass_air, epoch?.gravity || 9.81);
         altitude = props.z_max || 0; // Altitude max en mètres
@@ -539,7 +546,8 @@ function calculateCompositionFromLogoConfig(configObj, total_atmosphere_mass_kg,
         [getLogoKey('PROPORTION', 'ATMOSPHERE', 'O2')]: O2_fraction * 100,    // O2 en %
         [getLogoKey('PROPORTION', 'ATMOSPHERE', 'CO2')]: CO2_fraction * 100,   // CO2 en %
         [getLogoKey('PROPORTION', 'ATMOSPHERE', 'H2O')]: H2O_fraction * 100,  // H2O en %
-        [getLogoKey('PROPORTION', 'ATMOSPHERE', 'CH4')]: CH4_fraction * 100    // CH4 en %
+        [getLogoKey('PROPORTION', 'ATMOSPHERE', 'CH4')]: CH4_fraction * 100,   // CH4 en %
+        [window.ATM.N2.key]: N2_fraction * 100    // N2 en % (crucial pour pression, saturation, etc.)
     };
     
     // Sauvegarder dans window.atm

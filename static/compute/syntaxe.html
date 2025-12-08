@@ -4,20 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Syntaxe des logos</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: #2a2a2a;
-            width: 100%;
-            height: 100%;
-        }
-    </style>
+    <link rel="stylesheet" href="legende.css">
 </head>
 <body>
+    <div class="container">
+        <div id="syntaxe-content">
+            <!-- Le contenu sera généré par JavaScript -->
+        </div>
+    </div>
+    
+    <script src="grammar.js"></script>
+    <script src="../../organigramme/configOrganigramme.js"></script>
+    <script>
+        // Générer la syntaxe au chargement
+        window.addEventListener('DOMContentLoaded', function() {
+            const syntaxeContent = document.getElementById('syntaxe-content');
+            if (syntaxeContent && typeof window !== 'undefined' && window.createSyntaxe) {
+                syntaxeContent.innerHTML = window.createSyntaxe();
+                
+                // Ajuster la hauteur de l'iframe au contenu
+                setTimeout(() => {
+                    const height = document.body.scrollHeight;
+                    const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'syntaxe' }, '*');
+                    }
+                }, 100);
+            } else {
+                syntaxeContent.innerHTML = '<p style="color: #ff6b6b;">Erreur : Impossible de générer la syntaxe. Vérifiez que grammar.js est chargé.</p>';
+            }
+        });
+        
+        // Réajuster si le contenu change
+        window.addEventListener('resize', function() {
+            setTimeout(() => {
+                const height = document.body.scrollHeight;
+                const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'syntaxe' }, '*');
+                }
+            }, 100);
+        });
+    </script>
 </body>
 </html>

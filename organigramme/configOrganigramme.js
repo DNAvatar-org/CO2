@@ -10,76 +10,15 @@
 //   - Added dataId mapping for dynamic label updates
 
 // ============================================================================
-// RÉFÉRENCE UNIQUE DES LOGOS
+// RÉFÉRENCE DES LOGOS (déplacée vers grammar.js)
 // ============================================================================
-// Source unique de référence pour tous les logos utilisés dans l'application
-// Utilisé à la fois dans le flux (organigramme) et dans le graphique (plot)
-const LOGOS = {
-    CO2: '🏭',      // CO2 : usine (émissions industrielles)
-    CH4: '⛽',       // CH4 : pompe à essence (combustibles fossiles, pets de vache)
-    H2O: '💧',      // H2O : goutte d'eau
-    GEOTHERMAL_FLUX: '🌕', // Geothermal flux : lune (flux géothermique)
-    FLUX_START: '▶', // Flux start : flèche droite (valeur de départ)
-    FLUX_END: '◀', // Flux end : flèche gauche (valeur de fin)
-    ENERGY_FLUX: '🧲', // Energy flux : sources chaudes (W/m²)
-    O2: '🌫',       // O2 : brouillard/air
-    WEIGHT: '🐳',   // Poids : baleine (masse)
-    DENSITY: '💨',  // Densité : vent
-    ALTITUDE: '🚀', // Altitude : fusée
-    ANIMATION: '🎬', // Animation : caméra
-    TROPOPAUSE: '🛩', // Tropopause : avion
-    GREENHOUSE_FORCING: '♻', // Greenhouse forcing : recyclage
-    CLOUD_ALBEDO: '🌤', // Cloud albedo contribution : soleil avec nuage
-    MAX_VAPOR: '🌧', // Max vapor fraction : pluie
-    ALBEDO: '🪞',   // Albédo : miroir
-    EDS: '📛',      // EDS : Forçage radiatif (Radiative Forcing)
-    TEMP: '🌡️',     // TEMP : Température
-    PHASE: '⚧',     // Phase : symbole transgenre (phase de convergence)
-    T0: '🚩',        // T0 : drapeau (température initiale)
-    SIGNE_DELTA_FIRST: '☯', // SigneDeltaFirst : yin-yang (signe du premier delta)
-    BIG_IMPACT: '🎇', // Big impact : feu d'artifice (événement d'impact majeur)
-    TIC_TIME: '💫', // TicTime : étoile (événement d'avancement temporel)
-    FLUX_CN: '🌑', // Flux sortant : lune noire (rayonnement corps noir sortant)
-    TOLERANCE: '🔬', // Tolérance : précision pour le test d'arrêt
-    DESERT: '🏖',   // Désert : plage (utilisé dans albedo breakdown)
-    VOLCANO: '🌋',  // Volcan : magma (utilisé dans albedo breakdown)
-    OCEAN: '🌊',    // Océan : vagues (utilisé dans albedo breakdown)
-    FOREST: '🌳',   // Forêt : arbre (utilisé dans albedo breakdown)
-    ICE: '🧊',      // Glace : glaçon (utilisé dans albedo breakdown)
-    CLOUD: '⛅',     // Nuages : nuage avec soleil (utilisé dans albedo breakdown)
-    COMPUTE: '⏳',  // Compute : sablier (pour les valeurs de convergence)
-    GREENHOUSE_FORCING_ALT: '🌴',  // Greenhouse forcing alternatif : palmier
-    BOOLEAN: '🔘',  // Boolean : bouton
-    CARDINAL: '🎓', // Cardinal : chapeau de diplômé
-    DELTA: '🔺',    // Delta : triangle
-    METER: '📏',    // Mètre : règle
-    PROPORTION: '🍰', // Proportion : 🥒 🧩
-    POWER: '🔋',    // Puissance : batterie (Watts)
-    SUN_ORIGIN: '☀️', // Soleil : soleil
-    GEOMETRY_ORIGIN: '🎱', // Géometrie : boule de billard
-    SPECTRAL: '🌈', // Spectre : arc-en-ciel
-    ATMOSPHERE: '🌬', // Atmosphère : vent
-    CONFIG: '📜',   // Config : parchemin
-    OLD_T0: '🏮',   // Old T0 : lanterne
-    METEORITE_COUNT: '☄️', // Nombre de météorites
-    FLUX_IN: '🔽',  // Flux entrant (réception, +)
-    FLUX_OUT: '🔼', // Flux sortant (émission, -)
+// ⚠️ IMPORTANT : Les logos sont maintenant définis dans static/compute/grammar.js
+// Ce fichier utilise window.LOGOS et window.logosImages définis dans grammar.js
+// Assurez-vous que grammar.js est chargé avant configOrganigramme.js
 
-    
-};
-
-// Objet pour mapper les logos emoji vers les fichiers images
-// Utilisé quand un logo emoji doit être remplacé par une image
-const logosImages = {
-    '🎇': 'big_impact.png',  // Big impact utilise une image
-    // Ajouter d'autres mappings si nécessaire
-    // Exemple: '🌋': 'volcano.png' si on veut remplacer l'emoji par une image
-};
-
-// Exposer globalement pour utilisation dans plot.js
-if (typeof window !== 'undefined') {
-    window.LOGOS = LOGOS;
-    window.logosImages = logosImages;
+// Utiliser les logos depuis grammar.js si disponibles, sinon définir des valeurs par défaut
+if (typeof window === 'undefined' || !window.LOGOS) {
+    console.warn('[configOrganigramme.js] window.LOGOS non défini. Assurez-vous que grammar.js est chargé avant ce fichier.');
 }
 
 // Configuration de base
