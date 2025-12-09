@@ -3,35 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Syntaxe des logos</title>
+    <title>Dictionnaire des clés</title>
     <link rel="stylesheet" href="legende.css">
 </head>
 <body>
     <div class="container">
-        <div id="syntaxe-content">
+        <div id="dico-content">
             <!-- Le contenu sera généré par JavaScript -->
         </div>
     </div>
     
-    <script src="grammar.js"></script>
+    <script src="alphabet.js"></script>
+    <script src="dico.js"></script>
     <script src="../../organigramme/configOrganigramme.js"></script>
     <script>
-        // Générer la syntaxe au chargement
+        // Générer le dictionnaire au chargement
         window.addEventListener('DOMContentLoaded', function() {
-            const syntaxeContent = document.getElementById('syntaxe-content');
-            if (syntaxeContent && typeof window !== 'undefined' && window.createSyntaxe) {
-                syntaxeContent.innerHTML = window.createSyntaxe();
+            const dicoContent = document.getElementById('dico-content');
+            if (dicoContent && typeof window !== 'undefined' && window.createDico) {
+                dicoContent.innerHTML = window.createDico();
                 
                 // Ajuster la hauteur de l'iframe au contenu
                 setTimeout(() => {
                     const height = document.body.scrollHeight;
                     const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
                     if (window.parent && window.parent !== window) {
-                        window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'syntaxe' }, '*');
+                        window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'dico' }, '*');
                     }
                 }, 100);
             } else {
-                syntaxeContent.innerHTML = '<p style="color: #ff6b6b;">Erreur : Impossible de générer la syntaxe. Vérifiez que grammar.js est chargé.</p>';
+                dicoContent.innerHTML = '<p style="color: #ff6b6b;">Erreur : Impossible de générer le dictionnaire. Vérifiez que alphabet.js et dico.js sont chargés.</p>';
             }
         });
         
@@ -41,7 +42,7 @@
                 const height = document.body.scrollHeight;
                 const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
                 if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'syntaxe' }, '*');
+                    window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'dico' }, '*');
                 }
             }, 100);
         });

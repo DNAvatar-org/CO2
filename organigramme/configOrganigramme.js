@@ -10,15 +10,15 @@
 //   - Added dataId mapping for dynamic label updates
 
 // ============================================================================
-// RÉFÉRENCE DES LOGOS (déplacée vers grammar.js)
+// RÉFÉRENCE DES LOGOS (déplacée vers alphabet.js)
 // ============================================================================
-// ⚠️ IMPORTANT : Les logos sont maintenant définis dans static/compute/grammar.js
-// Ce fichier utilise window.LOGOS et window.logosImages définis dans grammar.js
-// Assurez-vous que grammar.js est chargé avant configOrganigramme.js
+// ⚠️ IMPORTANT : Les logos sont maintenant définis dans static/compute/alphabet.js
+// Ce fichier utilise window.CHARS (ou window.LOGOS pour compatibilité) et window.charsImages définis dans alphabet.js
+// Assurez-vous que alphabet.js est chargé avant configOrganigramme.js
 
-// Utiliser les logos depuis grammar.js si disponibles, sinon définir des valeurs par défaut
-if (typeof window === 'undefined' || !window.LOGOS) {
-    console.warn('[configOrganigramme.js] window.LOGOS non défini. Assurez-vous que grammar.js est chargé avant ce fichier.');
+// Utiliser les logos depuis alphabet.js si disponibles, sinon définir des valeurs par défaut
+if (typeof window === 'undefined' || (!window.CHARS && !window.LOGOS)) {
+    console.warn('[configOrganigramme.js] window.CHARS/window.LOGOS non défini. Assurez-vous que alphabet.js est chargé avant ce fichier.');
 }
 
 // Configuration de base

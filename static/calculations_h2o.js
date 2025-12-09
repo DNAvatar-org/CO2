@@ -298,41 +298,47 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
 
 /**
  * Fonction principale : calcule tous les paramètres H2O
+ * Appelle getMasses() pour mettre à jour ALL_DATA.MASSES.H2O
  * @param {number} temp_K - Température en Kelvin
  * @param {number} h2o_vapor_percent - Pourcentage volumique de vapeur d'eau (0-100)
  * @param {number} cloud_coverage_override - Couverture nuageuse forcée (optionnel, 0-1)
  * @returns {Object} {vapor_fraction, cloud_coverage, greenhouse_forcing, cloud_albedo_contribution, ice_fraction}
  */
 window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_coverage_override = null) {
+    // Wrappers pour éviter window abusifs
+    const ALL_DATA = window.ALL_DATA;
+    const ALL_DESC = window.ALL_DESC;
+    
+    // ⚠️ CRITIQUE : Appeler getMasses() pour mettre à jour ALL_DATA.MASSES.H2O
+    if (typeof window.getMasses === 'function') {
+        window.getMasses();
+    }
+    
     const h2o_total_fraction = h2o_vapor_percent / 100;
 
     // Récupérer les paramètres de l'époque courante et calculer les valeurs dérivées
     let epochParams = {};
-    const epoch = window.epoch;
-    if (epoch) {
-            // Calculer pressure_atm et molar_mass_air depuis les composants
-            const pressure_atm = typeof window.calculatePressureAtm === 'function' 
-            ? window.calculatePressureAtm(epoch) : 0;
-            const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
-            ? window.calculateMolarMassAir(epoch) : 0;
+    if (ALL_DATA.EPOCH) {
+        // Calculer pressure_atm et molar_mass_air depuis les composants
+        const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+            ? window.calculatePressureAtm(ALL_DATA.EPOCH) : 0;
+        const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+            ? window.calculateMolarMassAir(ALL_DATA.EPOCH) : 0;
         
-        // Calculer ocean_coverage depuis window.h2o si disponible, sinon 0
+        // Calculer ocean_coverage depuis ALL_DATA.H2O si disponible (valeur déjà calculée)
+        // Note: ALL_DATA.H2O.OCEAN peut être soit la clé logo (string) soit la valeur (number)
+        // On vérifie si c'est un number pour savoir si c'est déjà calculé
         let ocean_coverage = 0;
-        const getLogoKey = (typeof window !== 'undefined' && window.getLogoKey) ? window.getLogoKey : function(...names) {
-            const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
-            return names.map(name => LOGOS[name] || '').join('');
-        };
-        const h2o_ocean_key = getLogoKey('PROPORTION', 'H2O', 'OCEAN');
-        if (window.h2o && window.h2o[h2o_ocean_key] !== undefined) {
-            ocean_coverage = window.h2o[h2o_ocean_key] / 100; // Convertir de % à fraction
-        } else if (window.calculateOceanCoverage && window.T0) {
-            ocean_coverage = window.calculateOceanCoverage(window.T0, epoch) || 0;
+        if (ALL_DATA.H2O && typeof ALL_DATA.H2O.OCEAN === 'number') {
+            ocean_coverage = ALL_DATA.H2O.OCEAN / 100; // Convertir de % à fraction
+        } else if (window.calculateOceanCoverage && ALL_DATA.CONVERGENCE.T0) {
+            ocean_coverage = window.calculateOceanCoverage(ALL_DATA.CONVERGENCE.T0, ALL_DATA.EPOCH);
         }
             
-            epochParams = {
-            pressure_atm: pressure_atm || 0,
-            molar_mass_air: molar_mass_air || 0,
-            gravity: epoch.gravity || 9.81,
+        epochParams = {
+            pressure_atm: pressure_atm,
+            molar_mass_air: molar_mass_air,
+            gravity: ALL_DATA.EPOCH.gravity,
             ocean_coverage: ocean_coverage
         };
     } else {
@@ -342,13 +348,13 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
             molar_mass_air: 0,
             gravity: 9.81,
             ocean_coverage: 0
-            };
+        };
     }
 
     // Calculer la répartition eau vapeur / liquide / glace selon les conditions physiques
     const waterPartition = calculateWaterPartition(temp_K, h2o_total_fraction, epochParams);
     const vapor_fraction = waterPartition.vapor_fraction;
-    const liquid_fraction = waterPartition.liquid_fraction || 0;
+    const liquid_fraction = waterPartition.liquid_fraction;
     const ice_fraction = waterPartition.ice_fraction;
 
     // Calculer ou utiliser la couverture nuageuse
@@ -367,6 +373,24 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
         window.h2oIceFractionFromCalculation = ice_fraction;
     }
 
+    // Sauvegarder les clés logo avant de les écraser avec les valeurs
+    const h2o_ice_key = ALL_DATA.H2O.ICE;
+    const h2o_cloud_key = ALL_DATA.H2O.CLOUD;
+    const h2o_ocean_key = ALL_DATA.H2O.OCEAN;
+    const h2o_max_vapor_key = ALL_DATA.H2O.MAX_VAPOR;
+    
+    // Mettre à jour ALL_DATA.H2O avec les résultats du cycle de l'eau (écrase les clés logo avec les valeurs)
+    ALL_DATA.H2O.ICE = ice_fraction * 100;                    // Glace (%)
+    ALL_DATA.H2O.CLOUD = cloud_coverage * 100;                // Nuages (%) - condensation de la vapeur
+    ALL_DATA.H2O.OCEAN = liquid_fraction * 100;              // Océan (%) - eau liquide à la surface
+    ALL_DATA.H2O.MAX_VAPOR = waterPartition.max_vapor_fraction * 100;  // Max vapor fraction (%)
+    
+    // Sauvegarder la clé logo pour ATM.H2O avant de l'écraser
+    const atm_h2o_key = ALL_DATA.ATM.H2O;
+    
+    // Mettre à jour ALL_DATA.ATM.H2O avec le pourcentage de vapeur (écrase la clé logo avec la valeur)
+    ALL_DATA.ATM.H2O = h2o_vapor_percent;  // Pourcentage volumique de vapeur d'eau (0-100)
+    
     // Mettre à jour la composition atmosphérique (si disponible)
     if (typeof window !== 'undefined' && window.atmosphericComposition) {
         window.atmosphericComposition.H2O_vapor = vapor_fraction;
@@ -374,15 +398,15 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
         window.atmosphericComposition.H2O_total = h2o_total_fraction;
 
         // Normaliser les gaz neutres pour que la somme fasse 1.0
-        const total_ges = (window.atmosphericComposition.CO2 || 0) +
+        const total_ges = window.atmosphericComposition.CO2 +
             vapor_fraction +
-            (window.atmosphericComposition.CH4 || 0);
+            window.atmosphericComposition.CH4;
         const remaining = Math.max(0, 1.0 - total_ges);
 
         // Calculer les ratios initiaux (valeurs par défaut si non définies)
-        const n2_default = window.atmosphericComposition.N2 || 0.78;
-        const o2_default = window.atmosphericComposition.O2 || 0.21;
-        const ar_default = window.atmosphericComposition.Ar || 0.009;
+        const n2_default = window.atmosphericComposition.N2;
+        const o2_default = window.atmosphericComposition.O2;
+        const ar_default = window.atmosphericComposition.Ar;
         const total_neutres_default = n2_default + o2_default + ar_default;
 
         if (total_neutres_default > 0) {
@@ -401,43 +425,10 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
             window.atmosphericComposition.Ar = remaining / 3;
         }
     }
-
-    // Créer window.h2o avec logos selon grammar.txt : h2o={'🥒💧🧊':0, '🥒💧⛅':5, '🥒💧🌊':0, '⏳🌧':100}
-    // Note: 💧 (H2O vapeur %) est dans atm['🥒🌬💧'] - source unique, pas de duplication
-    // Note: 🌴 (greenhouse forcing) est dans step5_spectral['🧲💧📛']
-    // Note: 🌤 (cloud albedo) est dans window.albedo['🥒🪞⛅']
-    // window.h2o contient uniquement les informations de répartition du cycle de l'eau
-    // 
-    // ⏳🌧 (max_vapor_fraction) = capacité maximale de l'atmosphère à contenir de la vapeur avant condensation
-    // À haute température (ex: Hadéen 2450K), ⏳🌧 ≈ 100% signifie que l'atmosphère PEUT contenir
-    // jusqu'à 100% de vapeur, mais la quantité RÉELLE dépend de h2o_total_fraction disponible.
-    // Si ⏳🌧 = 100% et qu'il y a de l'eau disponible, elle sera en vapeur, et peut se condenser
-    // en nuages (⛅) si saturation locale (altitude, refroidissement).
     
-    // Utiliser getLogoKey() pour construire les clés dynamiquement
-    const getLogoKey = (typeof window !== 'undefined' && window.getLogoKey) ? window.getLogoKey : function(...names) {
-        // Fallback si getLogoKey n'est pas disponible
-        const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
-        return names.map(name => LOGOS[name] || '').join('');
-    };
-    
-    const h2o_result = {
-        [getLogoKey('PROPORTION', 'H2O', 'ICE')]: ice_fraction * 100,                    // 🍰💧🧊 Glace (%)
-        [getLogoKey('PROPORTION', 'H2O', 'CLOUD')]: cloud_coverage * 100,                  // 🍰💧⛅ Nuages (%) - condensation de la vapeur
-        [getLogoKey('PROPORTION', 'H2O', 'OCEAN')]: liquid_fraction * 100,                 // 🍰💧🌊 Océan (%) - eau liquide à la surface (impossible si T > T_boil)
-        [getLogoKey('COMPUTE', 'MAX_VAPOR')]: waterPartition.max_vapor_fraction * 100  // ⏳🌧 Max vapor fraction (%) - capacité max avant condensation
-    };
-    
-    // Sauvegarder dans window.h2o
-    window.h2o = h2o_result;
-    
-    // Log avec les clés dynamiques
-    const key_ice = getLogoKey('PROPORTION', 'H2O', 'ICE');
-    const key_cloud = getLogoKey('PROPORTION', 'H2O', 'CLOUD');
-    const key_ocean = getLogoKey('PROPORTION', 'H2O', 'OCEAN');
-    const key_max_vapor = getLogoKey('COMPUTE', 'MAX_VAPOR');
+    // Log avec les clés logo sauvegardées et les valeurs
     console.log(`💧 [calculateH2OParameters@calculations_h2o.js]`);
-    console.log(`h2o={'${key_ice}':${(h2o_result[key_ice] || 0).toFixed(2)}, '${key_cloud}':${(h2o_result[key_cloud] || 0).toFixed(2)}, '${key_ocean}':${(h2o_result[key_ocean] || 0).toFixed(2)}, '${key_max_vapor}':${(h2o_result[key_max_vapor] || 0).toFixed(2)}}`);
+    console.log(`h2o={'${h2o_ice_key}':${ALL_DATA.H2O.ICE.toFixed(2)}, '${h2o_cloud_key}':${ALL_DATA.H2O.CLOUD.toFixed(2)}, '${h2o_ocean_key}':${ALL_DATA.H2O.OCEAN.toFixed(2)}, '${h2o_max_vapor_key}':${ALL_DATA.H2O.MAX_VAPOR.toFixed(2)}}`);
 
     return {
         vapor_fraction,

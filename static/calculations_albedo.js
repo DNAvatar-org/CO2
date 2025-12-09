@@ -317,15 +317,29 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         // TODO: Si desert_coverage est défini dans epoch.config, l'utiliser ici
         // Pour l'instant, on laisse à 0 (pas de désert par défaut)
         
-        // Selon grammar.txt : albedo={'🍰🪞🎓':0.05, '🍰🪞🌋':1.00, '🍰🪞🌊':0.00, '🍰🪞🌳':0.00, '🍰🪞🏖':0.00, '🍰🪞🧊':0.00, '🍰🪞⛅':0.05}
+        // Wrappers pour éviter window abusifs
+        const ALL = window.ALL_DATA || {};
+        const ALBEDO = window.ALBEDO;
+        
+        // Selon grammar.txt : albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}
+        // Mettre à jour ALL directement (source unique de vérité)
+        ALL[ALBEDO.TOTAL.key] = final_albedo;  // % Albedo total
+        ALL[ALBEDO.VOLCANO.key] = volcano_coverage_display;
+        ALL[ALBEDO.OCEAN.key] = ocean_coverage_display;
+        ALL[ALBEDO.FOREST.key] = forest_coverage_display;
+        ALL[ALBEDO.DESERT.key] = desert_coverage_display;
+        ALL[ALBEDO.ICE.key] = ice_coverage_display;
+        ALL[ALBEDO.CLOUD.key] = cloud_coverage_display;
+        
+        // Compatibilité : garder window.albedo pour l'affichage (mais ALL est la source)
         window.albedo = {
-            [getLogoKey3('PROPORTION', 'ALBEDO', 'CARDINAL')]: final_albedo,  // % Albedo total
-            [getLogoKey3('PROPORTION', 'ALBEDO', 'VOLCANO')]: volcano_coverage_display,
-            [getLogoKey3('PROPORTION', 'ALBEDO', 'OCEAN')]: ocean_coverage_display,
-            [getLogoKey3('PROPORTION', 'ALBEDO', 'FOREST')]: forest_coverage_display,
-            [getLogoKey3('PROPORTION', 'ALBEDO', 'DESERT')]: desert_coverage_display,
-            [getLogoKey3('PROPORTION', 'ALBEDO', 'ICE')]: ice_coverage_display,
-            [getLogoKey3('PROPORTION', 'ALBEDO', 'CLOUD')]: cloud_coverage_display
+            [ALBEDO.TOTAL.key]: ALL[ALBEDO.TOTAL.key],
+            [ALBEDO.VOLCANO.key]: ALL[ALBEDO.VOLCANO.key],
+            [ALBEDO.OCEAN.key]: ALL[ALBEDO.OCEAN.key],
+            [ALBEDO.FOREST.key]: ALL[ALBEDO.FOREST.key],
+            [ALBEDO.DESERT.key]: ALL[ALBEDO.DESERT.key],
+            [ALBEDO.ICE.key]: ALL[ALBEDO.ICE.key],
+            [ALBEDO.CLOUD.key]: ALL[ALBEDO.CLOUD.key]
         };
     }
     

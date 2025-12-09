@@ -3,35 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lexique des logos</title>
+    <title>Alphabet des caractères</title>
     <link rel="stylesheet" href="legende.css">
 </head>
 <body>
     <div class="container">
-        <div id="legend-content">
+        <div id="alphabet-content">
             <!-- Le contenu sera généré par JavaScript -->
         </div>
     </div>
     
-    <script src="grammar.js"></script>
+    <script src="alphabet.js"></script>
     <script src="../../organigramme/configOrganigramme.js"></script>
     <script>
-        // Générer la légende au chargement
+        // Générer l'alphabet au chargement
         window.addEventListener('DOMContentLoaded', function() {
-            const legendContent = document.getElementById('legend-content');
-            if (legendContent && typeof window !== 'undefined' && window.createLexique) {
-                legendContent.innerHTML = window.createLexique();
+            const alphabetContent = document.getElementById('alphabet-content');
+            if (alphabetContent && typeof window !== 'undefined' && window.createAlphabet) {
+                alphabetContent.innerHTML = window.createAlphabet();
                 
                 // Ajuster la hauteur de l'iframe au contenu
                 setTimeout(() => {
                     const height = document.body.scrollHeight;
                     const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
                     if (window.parent && window.parent !== window) {
-                        window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'lexique' }, '*');
+                        window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'alphabet' }, '*');
                     }
                 }, 100);
             } else {
-                legendContent.innerHTML = '<p style="color: #ff6b6b;">Erreur : Impossible de générer le lexique. Vérifiez que grammar.js est chargé.</p>';
+                alphabetContent.innerHTML = '<p style="color: #ff6b6b;">Erreur : Impossible de générer l\'alphabet. Vérifiez que alphabet.js est chargé.</p>';
             }
         });
         
@@ -41,7 +41,7 @@
                 const height = document.body.scrollHeight;
                 const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
                 if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'lexique' }, '*');
+                    window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'alphabet' }, '*');
                 }
             }, 100);
         });

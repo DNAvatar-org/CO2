@@ -1721,15 +1721,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
 
 // Fonction helper pour récupérer l'état du bouton "anim"
 // Retourne un seul boolean depuis la variable globale unique (seule référence)
-function getAnimState() {
-    // 🔒 UTILISER UNIQUEMENT la variable globale unique (seule référence)
-    // Cette variable est initialisée depuis la config UNIQUEMENT au changement d'époque (setEpoch)
-    // Si l'utilisateur change le bouton anim, la config ne l'écrase plus
-    // La boucle principale ne relit PAS la config, elle utilise la valeur courante
-    return typeof window !== 'undefined' && window.isAnim !== undefined
-        ? window.isAnim
-        : true; // Fallback par défaut si pas encore initialisé
-}
+// Fonction supprimée : utiliser directement window.enabledStates[window.ENABLED_STATES.ANIMATION.key]
 
 // 🔒 Fonction pour calculer T0_initial_config AVANT simulateRadiativeTransfer
 // Cette fonction doit être appelée avant simulateRadiativeTransfer pour déterminer la température de départ
@@ -1763,13 +1755,12 @@ function calculateT0InitialConfig() {
                 ? Math.floor(window.infoTimeMa / 50) 
                 : 0;
             
-            const animEnabled = getAnimState(); // 🎥
+            // Wrapper pour éviter window abusifs
+            const ENABLED_STATES = window.ENABLED_STATES;
+            const animEnabled = (window.enabledStates && window.enabledStates[ENABLED_STATES.ANIMATION.key]) || true; // 🎥
             const t0_config = currentEpoch.t0; // 🌡️
             
             // Récupérer les deltas
-            const deltaMeteorite = (currentEpoch.events && currentEpoch.events.ice_meteorite && typeof currentEpoch.events.ice_meteorite.deltaTemp === 'number')
-                ? currentEpoch.events.ice_meteorite.deltaTemp
-                : null;
             const deltaTicTime_per_tic = (currentEpoch.events && currentEpoch.events.tic_time && typeof currentEpoch.events.tic_time.deltaTemp === 'number')
                 ? currentEpoch.events.tic_time.deltaTemp
                 : null;
@@ -1778,12 +1769,9 @@ function calculateT0InitialConfig() {
                 window.currentMeteoriteCount = meteoriteCount;
             }
             
-            // 🔒 Formule : 🎥 ? T0=🏮 : T0=🌡️, puis T0 += ☄️*🌡️☄️ + 🕓*🌡️🕓
+            // 🔒 Formule : 🎥 ? T0=🏮 : T0=🌡️, puis T0 += 🕓*🌡️🕓
             const baseTemp = animEnabled ? (prev_T0 !== null && prev_T0 > 0 ? prev_T0 : t0_config) : t0_config;
             let adjustment = 0;
-            if (deltaMeteorite !== null) {
-                adjustment += deltaMeteorite * meteoriteCount;
-            }
             if (deltaTicTime_per_tic !== null) {
                 adjustment += deltaTicTime_per_tic * ticTime;
             }
@@ -1792,19 +1780,14 @@ function calculateT0InitialConfig() {
             // Log du calcul : afficher la formule exacte
             const prev_T0_str = prev_T0 !== null && prev_T0 > 0 ? `${prev_T0.toFixed(2)}K (${(prev_T0 - 273.15).toFixed(1)}°C)` : 'null';
             const t0_config_str = `${t0_config.toFixed(2)}K (${(t0_config - 273.15).toFixed(1)}°C)`;
-            const deltaMeteorite_str = deltaMeteorite !== null ? `${deltaMeteorite.toFixed(1)}K` : 'N/A';
             const deltaTicTime_str = deltaTicTime_per_tic !== null ? `${deltaTicTime_per_tic.toFixed(1)}K` : '0K';
             
-            // Construire la formule : T0 = base + ☄️*🌡️☄️ + 🕓*🌡️🕓
+            // Construire la formule : T0 = base + 🕓*🌡️🕓
             let formula_parts = [];
             if (animEnabled) {
                 formula_parts.push(`T0=${prev_T0_str}`);
             } else {
                 formula_parts.push(`T0=${t0_config_str}`);
-            }
-            if (deltaMeteorite !== null && meteoriteCount > 0) {
-                const meteorite_adj = deltaMeteorite * meteoriteCount;
-                formula_parts.push(`+${meteoriteCount}×${deltaMeteorite.toFixed(1)}K`);
             }
             if (deltaTicTime_per_tic !== null && ticTime > 0) {
                 const tictime_adj = deltaTicTime_per_tic * ticTime;
@@ -1812,7 +1795,7 @@ function calculateT0InitialConfig() {
             }
             const formula = formula_parts.join(' ');
             
-            console.log(`🕓🛠 [T0_initial_config@calculations.js] 🎥:${animEnabled} 🏮:${prev_T0_str} 🌡️:${t0_config_str}, ☄️:${meteoriteCount}, 🌡️☄️:${deltaMeteorite_str}, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str} => ${formula} = ${T0_initial_config.toFixed(2)}K`);
+            console.log(`🕓🛠 [T0_initial_config@calculations.js] 🎥:${animEnabled} 🏮:${prev_T0_str} 🌡️:${t0_config_str}, ☄️:${meteoriteCount}, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str} => ${formula} = ${T0_initial_config.toFixed(2)}K`);
             
             // Anticiper la couleur
             if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
@@ -1861,7 +1844,9 @@ function simulateRadiativeTransfer(options = {}) {
     if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch && typeof currentEpoch.t0 === 'number' && currentEpoch.t0 > 0) {
-            const animEnabled = getAnimState(); // 🎥
+            // Wrapper pour éviter window abusifs
+            const ENABLED_STATES = window.ENABLED_STATES;
+            const animEnabled = (window.enabledStates && window.enabledStates[ENABLED_STATES.ANIMATION.key]) || true; // 🎥
             const t0_config = currentEpoch.t0; // 🌡️
             
             // (🎥) => T0=🏮 : T0=🌡️
@@ -1884,17 +1869,11 @@ function simulateRadiativeTransfer(options = {}) {
                 ? Math.floor(window.infoTimeMa / 50) 
                 : 0;
             
-            const deltaMeteorite = (currentEpoch.events && currentEpoch.events.ice_meteorite && typeof currentEpoch.events.ice_meteorite.deltaTemp === 'number')
-                ? currentEpoch.events.ice_meteorite.deltaTemp
-                : null;
             const deltaTicTime_per_tic = (currentEpoch.events && currentEpoch.events.tic_time && typeof currentEpoch.events.tic_time.deltaTemp === 'number')
                 ? currentEpoch.events.tic_time.deltaTemp
                 : null;
             
             let adjustment = 0;
-            if (deltaMeteorite !== null) {
-                adjustment += deltaMeteorite * meteoriteCount;
-            }
             if (deltaTicTime_per_tic !== null) {
                 adjustment += deltaTicTime_per_tic * ticTime;
             }
@@ -1904,7 +1883,6 @@ function simulateRadiativeTransfer(options = {}) {
             // Log du calcul
             const prev_T0_str = prev_T0 !== null && prev_T0 > 0 ? `${prev_T0.toFixed(2)}K (${(prev_T0 - 273.15).toFixed(1)}°C)` : 'null';
             const t0_config_str = `${t0_config.toFixed(2)}K (${(t0_config - 273.15).toFixed(1)}°C)`;
-            const deltaMeteorite_str = deltaMeteorite !== null ? `${deltaMeteorite.toFixed(1)}K` : 'N/A';
             const deltaTicTime_str = deltaTicTime_per_tic !== null ? `${deltaTicTime_per_tic.toFixed(1)}K` : '0K';
             
             let formula_parts = [];
@@ -1913,15 +1891,12 @@ function simulateRadiativeTransfer(options = {}) {
             } else {
                 formula_parts.push(`T0=${t0_config_str}`);
             }
-            if (deltaMeteorite !== null && meteoriteCount > 0) {
-                formula_parts.push(`+${meteoriteCount}×${deltaMeteorite.toFixed(1)}K`);
-            }
             if (deltaTicTime_per_tic !== null && ticTime > 0) {
                 formula_parts.push(`+${ticTime}×${deltaTicTime_per_tic.toFixed(1)}K`);
             }
             const formula = formula_parts.join(' ');
             
-            console.log(`🕓🛠 [simulateRadiativeTransfer@calculations.js] 🎥:${animEnabled} 🏮:${prev_T0_str} 🌡️:${t0_config_str}, ☄️:${meteoriteCount}, 🌡️☄️:${deltaMeteorite_str}, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str} => ${formula} = ${T0_initial.toFixed(2)}K`);
+            console.log(`🕓🛠 [simulateRadiativeTransfer@calculations.js] 🎥:${animEnabled} 🏮:${prev_T0_str} 🌡️:${t0_config_str}, ☄️:${meteoriteCount}, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str} => ${formula} = ${T0_initial.toFixed(2)}K`);
         }
     }
     

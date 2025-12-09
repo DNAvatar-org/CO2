@@ -60,7 +60,6 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
         // 2.4. Calculer T0_initial_config :
         //   - Si prev_T0 existe : utiliser prev_T0 directement (déjà convergé)
         //   - Sinon : baseTemp (t0 ou initial_temperature_K) + deltas
-        //     * deltaTemp_meteorite * meteoriteCount
         //     * deltaTemp_ticTime * ticTime
         //   ⚠️ NOTE : Le calcul peut dépendre de showDichotomySteps (anim enabled/disabled)
         //   Si anim est désactivé, on peut utiliser une stratégie plus directe (à implémenter)

@@ -50,20 +50,15 @@ function updateTimeline() {
 
     // Mettre à jour l'horloge dans la zone horloge
     // Toujours utiliser window.infoTimeMa (commence toujours à 0 Ma)
-    // Si infoTimeMa = 0, afficher "Actions", sinon afficher "+n Ma"
     if (infoTimeDisplay) {
         const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
         
         const infoTimeMa = window.infoTimeMa || 0;
         let newText;
         
-        if (infoTimeMa === 0) {
-            newText = 'Actions';
-        } else {
-            // Afficher en Ma (millions d'années)
-            const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
-            newText = `+${deltaMa} Ma`;
-        }
+        // Afficher en Ma (millions d'années)
+        const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
+        newText = `+${deltaMa} Ma`;
         
         // Ne modifier le texte que s'il a changé pour éviter le clignotement
         if (infoTimeDisplay.textContent !== newText) {

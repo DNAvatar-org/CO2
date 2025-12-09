@@ -2094,13 +2094,8 @@ function setEpoch(epochName) {
         // Calculer ticTime = infoTimeMa / 50 (pour ajustement temporel)
         const ticTime = (typeof window.infoTimeMa !== 'undefined') ? Math.floor((window.infoTimeMa || 0) / 50) : 0;
         
-        // Calculer la température initiale : t0 - deltaTemp * ticTime (si deltaTemp existe)
-        let T0_anticipated = epoch.t0;
-        if (epoch.events && epoch.events.ice_meteorite && typeof epoch.events.ice_meteorite.deltaTemp === 'number') {
-            const deltaTemp = epoch.events.ice_meteorite.deltaTemp;
-            T0_anticipated = epoch.t0 - (deltaTemp * ticTime);
-        }
-        
+        // Calculer la température initiale
+        const T0_anticipated = epoch.t0;
         const tempC_anticipated = T0_anticipated - 273.15;
         const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
         window.updateBlackBodyColor(color_anticipated);
@@ -3221,7 +3216,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         const infoTimeDisplay = document.getElementById('info-time');
         if (infoTimeDisplay) {
-            infoTimeDisplay.textContent = 'Actions';
+            infoTimeDisplay.textContent = '+0 Ma';
             updateTimeline(); // Forcer une mise à jour immédiate (affichage seulement, pas d'incrémentation)
         }
         // NE PAS démarrer l'horloge automatiquement - elle s'incrémentera uniquement lors des calculs/clics

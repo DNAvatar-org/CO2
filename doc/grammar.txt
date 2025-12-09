@@ -24,6 +24,7 @@
 ☀️ Soleil
 🎱 Géometrie
 🌈 Spectre
+🥽 IR Log.
 
 -- calculs
 ⏳ Compute

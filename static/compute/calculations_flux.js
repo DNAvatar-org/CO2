@@ -35,55 +35,44 @@
 
 // (🎬) => T0=🏮 : T0=🌡️, puis T0 += ☄️*🌡️☄️ + 💫*🌡️💫
 // dateConfig utilise maintenant les logos complets selon grammar.txt
+// dateConfig est maintenant window.ALL_DATA (source unique de vérité)
 function calculateT0(dateConfig) {
-    // Récupérer les valeurs depuis dateConfig (pas de fallback, pas de window.old_T0)
-    const old_T0 = dateConfig[window.CONVERGENCE.OLD_T0.key];  // old_T0 depuis dateConfig uniquement
-    const t0_config = dateConfig[window.DATE_CONFIG.T0_CONFIG.key];  // T0 config depuis dateConfig
-    const animEnabled = dateConfig[window.ENABLED_STATES.ANIMATION.key];  // Animation depuis dateConfig
-    const meteoriteCount = dateConfig[window.DATE_CONFIG.METEORITE_COUNT.key];
-    const deltaMeteorite = dateConfig[window.DATE_CONFIG.DELTA_TEMP_METEORITE.key];
-    const ticTime = dateConfig[window.DATE_CONFIG.TIC_TIME_COUNT.key];
-    const deltaTicTime_per_tic = dateConfig[window.DATE_CONFIG.DELTA_TEMP_TIC_TIME.key];
+    // dateConfig est maintenant ALL_DATA directement
+    const ALL_DATA = window.ALL_DATA;
+    const ALL_DESC = window.ALL_DESC;
     
-    if (!t0_config || t0_config <= 0) {
-        console.error(`${window.getLogo('EDS')} [calculateT0@calculations_flux.js] ❌ t0_config invalide: ${t0_config}`);
+    if (!ALL_DATA.DATE_CONFIG.T0_CONFIG || ALL_DATA.DATE_CONFIG.T0_CONFIG <= 0) {
+        console.error(`${window.getLogo('EDS')} [calculateT0@calculations_flux.js] ❌ t0_config invalide: ${ALL_DATA.DATE_CONFIG.T0_CONFIG}`);
         return null;
     }
     
     // Logique selon la sémantique :
     // (!🔘🎬) => ⏳🌡️🚩 = 🌡️⏳📜  (si animation désactivée, T0 calculé = T0 config)
     // (🔘🎬) => ⏳🌡️🚩 = 🌡️🏮     (si animation activée, T0 calculé = old_T0)
-    const baseTemp = animEnabled ? old_T0 : t0_config;
-    
-    // T0 += ☄️*🌡️☄️ + 💫*🌡️💫
     let adjustment = 0;
-    if (deltaMeteorite) adjustment += deltaMeteorite * meteoriteCount;
-    if (deltaTicTime_per_tic) adjustment += deltaTicTime_per_tic * ticTime;
+    if (ALL_DATA.DATE_CONFIG.DELTA_TEMP_TIC_TIME) adjustment += ALL_DATA.DATE_CONFIG.DELTA_TEMP_TIC_TIME * ALL_DATA.DATE_CONFIG.TIC_TIME_COUNT;
     
-    const T0 = baseTemp + adjustment;
+    ALL_DATA.CONVERGENCE.T0 = (ALL_DATA.ENABLED_STATES.ANIMATION ? ALL_DATA.CONVERGENCE.OLD_T0 : ALL_DATA.DATE_CONFIG.T0_CONFIG) + adjustment;        // T0 calculé (température)
     
-    if (T0 <= 0) {
-        console.error(`${window.getLogo('EDS')} [calculateT0@calculations_flux.js] ❌ T0 invalide: ${T0}`);
+    if (ALL_DATA.CONVERGENCE.T0 <= 0) {
+        console.error(`${window.getLogo('EDS')} [calculateT0@calculations_flux.js] ❌ T0 invalide: ${ALL_DATA.CONVERGENCE.T0}`);
         return null;
     }
     
-    // Initialiser window.fluxState (sera complété dans computeRadiativeTransfer)
-    window.fluxState = {
-        [window.CONVERGENCE.T0.key]: T0,        // T0 calculé (température)
-        [window.CONVERGENCE.PHASE.key]: 'None',       // Phase (None/Search/Dicho)
-        [window.CONVERGENCE.DIRECTION.key]: 0,           // direction (signe: -1, 0, 1 - pas d'unité physique)
-        [window.FLUX.SOLAR_ABSORBED.key]: 0,         // Flux solaire absorbé (W/m²)
-        [window.FLUX.GEOTHERMAL_IN.key]: 0,         // Flux géothermique (W/m²)
-        [window.FLUX.OUT.key]: 0,            // Flux sortant (W/m²)
-        [window.FLUX.DELTA.key]: 0,           // Delta flux (W/m²)
-        [window.CONVERGENCE.TOLERANCE.key]: 0            // Tolérance (W/m²)
-    };
+    // Initialiser ALL_DATA directement (sera complété dans computeRadiativeTransfer)
+    ALL_DATA.CONVERGENCE.PHASE = 'None';       // Phase (None/Search/Dicho)
+    ALL_DATA.CONVERGENCE.DIRECTION = 0;           // direction (signe: -1, 0, 1 - pas d'unité physique)
+    ALL_DATA.FLUX.SOLAR_ABSORBED = 0;         // Flux solaire absorbé (W/m²)
+    ALL_DATA.FLUX.GEOTHERMAL_IN = 0;         // Flux géothermique (W/m²)
+    ALL_DATA.FLUX.OUT = 0;            // Flux sortant (W/m²)
+    ALL_DATA.FLUX.DELTA = 0;           // Delta flux (W/m²)
+    ALL_DATA.CONVERGENCE.TOLERANCE = 0;            // Tolérance (W/m²)
     
     // Log T0
     console.log(`🌡️ T0 [calculateT0@calculations_flux.js]`);
-    console.log(`T0 initial: ${T0.toFixed(2)}K`);
+    console.log(`T0 initial: ${ALL_DATA.CONVERGENCE.T0.toFixed(2)}K`);
     
-    return T0;
+    return ALL_DATA.CONVERGENCE.T0;
 }
 
 // Fonction pour réinitialiser les variables lors d'un changement de date
@@ -92,55 +81,31 @@ function newDate() {
     signeDeltaFirst = 0;
 }
 
-// Fonction helper pour récupérer les valeurs de gaz depuis la config de l'époque ou options
-function getGasValuesFromConfig(options = {}) {
-    // Si options fourni, utiliser options
-    if (options.CO2_percent !== undefined || options.CH4_percent !== undefined || options.H2O_percent !== undefined) {
-        return {
-            CO2_ppm: (options.CO2_percent || 0),
-            CH4_ppm: (options.CH4_percent || 0),
-            H2O_percent: (options.H2O_percent || 0),
-            // Valeurs en kg si disponibles dans options
-            co2_kg: options.co2_kg || 0,
-            ch4_kg: options.ch4_kg || 0,
-            h2o_kg: options.h2o_kg || 0
-        };
-    }
+// Fonction helper pour récupérer les valeurs de gaz depuis ALL_DATA
+function getGasValuesFromConfig() {
+    const ALL_DATA = window.ALL_DATA;
+    const ALL_DESC = window.ALL_DESC;
     
-    // Sinon, récupérer depuis la config de l'époque
     let CO2_ppm = 0;
     let CH4_ppm = 0;
     let H2O_percent = 0;
-    let co2_kg = 0;
-    let ch4_kg = 0;
-    let h2o_kg = 0;
     
-    if (window?.currentEpochName && window.getGeologicalPeriodByName) {
-        const epoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (epoch) {
-            // Récupérer les valeurs en kg directement depuis la config
-            co2_kg = epoch.co2_kg || 0;
-            ch4_kg = epoch.ch4_kg || 0;
-            h2o_kg = epoch.h2o_kg || 0;
-            
-            // Convertir co2_kg, ch4_kg, h2o_kg en ppm/%
-            if (co2_kg > 0 && window.co2KgToFraction && epoch.total_atmosphere_mass_kg) {
-                const molar_mass_air = window.calculateMolarMassAir ? window.calculateMolarMassAir(epoch) : 0.029;
-                const co2_fraction = window.co2KgToFraction(co2_kg, epoch.total_atmosphere_mass_kg, molar_mass_air);
-                CO2_ppm = co2_fraction * 1e6;
-            }
-            if (ch4_kg > 0 && window.ch4KgToFraction && epoch.total_atmosphere_mass_kg) {
-                const molar_mass_air = window.calculateMolarMassAir ? window.calculateMolarMassAir(epoch) : 0.029;
-                const ch4_fraction = window.ch4KgToFraction(ch4_kg, epoch.total_atmosphere_mass_kg, molar_mass_air);
-                CH4_ppm = ch4_fraction * 1e6;
-            }
-            if (h2o_kg > 0 && epoch.total_atmosphere_mass_kg) {
-                H2O_percent = (h2o_kg / epoch.total_atmosphere_mass_kg) * 100;
-            }
-        }
+    // Convertir co2_kg, ch4_kg, h2o_kg en ppm/%
+    if (ALL_DATA.EPOCH.co2_kg > 0 && window.co2KgToFraction && ALL_DATA.EPOCH.total_atmosphere_mass_kg) {
+        const molar_mass_air = window.calculateMolarMassAir ? window.calculateMolarMassAir(ALL_DATA.EPOCH) : 0.029;
+        const co2_fraction = window.co2KgToFraction(ALL_DATA.EPOCH.co2_kg, ALL_DATA.EPOCH.total_atmosphere_mass_kg, molar_mass_air);
+        CO2_ppm = co2_fraction * 1e6;
+    }
+    if (ALL_DATA.EPOCH.ch4_kg > 0 && window.ch4KgToFraction && ALL_DATA.EPOCH.total_atmosphere_mass_kg) {
+        const molar_mass_air = window.calculateMolarMassAir ? window.calculateMolarMassAir(ALL_DATA.EPOCH) : 0.029;
+        const ch4_fraction = window.ch4KgToFraction(ALL_DATA.EPOCH.ch4_kg, ALL_DATA.EPOCH.total_atmosphere_mass_kg, molar_mass_air);
+        CH4_ppm = ch4_fraction * 1e6;
+    }
+    if (ALL_DATA.EPOCH.h2o_kg > 0 && ALL_DATA.EPOCH.total_atmosphere_mass_kg) {
+        H2O_percent = (ALL_DATA.EPOCH.h2o_kg / ALL_DATA.EPOCH.total_atmosphere_mass_kg) * 100;
     }
     
-    return { CO2_ppm, CH4_ppm, H2O_percent, co2_kg, ch4_kg, h2o_kg };
+    return { CO2_ppm, CH4_ppm, H2O_percent, co2_kg: ALL_DATA.EPOCH.co2_kg, ch4_kg: ALL_DATA.EPOCH.ch4_kg, h2o_kg: ALL_DATA.EPOCH.h2o_kg };
 }
 
 function computeRadiativeTransfer(options = {}) {
@@ -151,51 +116,37 @@ function computeRadiativeTransfer(options = {}) {
     if (window.getSoleil) window.getSoleil();
     if (window.getNoyau) window.getNoyau();
     
-    const dateConfig = getEpochDateConfig();
+    getEpochDateConfig();
     // 🎥:true 🏮:180.00K (-93.1°C) 🌡️:255.00K (-18.1°C), ☄️:0, 🌡️☄️:-3.5K, 💫:0, 🌡️💫:0K
-    window.T0 = calculateT0(dateConfig);
-    if (!window.T0) return Promise.reject(new Error('T0 invalide'));
+    if (!calculateT0()) return Promise.reject(new Error('T0 invalide'));
     
-    // 1. Récupérer les masses depuis window.masses (calculé par getMasses() dans getEpochDateConfig())
-    const epoch = window.epoch; // window.epoch = timeline[2*k]
-    // Selon grammar.txt : masses={'🐳🏭': 5.15e+17, '🐳⛽': 5.15e+15, '🐳💧': 2.10e+20, '🐳🌫': 0.00e+0, '🐳🎓': 5.30e+20}
-    const masses = window.masses || {
-        [window.MASSES.CO2.key]: epoch?.co2_kg || 0,
-        [window.MASSES.CH4.key]: epoch?.ch4_kg || 0,
-        [window.MASSES.H2O.key]: epoch?.h2o_kg || 0,
-        [window.MASSES.O2.key]: epoch?.o2_kg || 0,
-        [window.MASSES.TOTAL.key]: epoch?.total_atmosphere_mass_kg || 0
-    };
+    // Wrappers pour éviter window abusifs
+    const ALL_DATA = window.ALL_DATA;
+    const ALL_DESC = window.ALL_DESC;
     
     // 2. Passer par calculations_atm.js pour avoir la densité et les %/ppm utilisés pour EDS
-    // calculateCompositionFromLogoConfig() prend dateConfig (avec logos incluant les masses) et retourne les fractions molaires
-    const total_atmosphere_mass_kg = masses[window.MASSES.TOTAL.key] || epoch?.total_atmosphere_mass_kg || 0;
-    const dateConfigWithMasses = { ...dateConfig, ...masses };
-    const atmComposition = window.calculateCompositionFromLogoConfig 
-        ? window.calculateCompositionFromLogoConfig(dateConfigWithMasses, total_atmosphere_mass_kg, epoch)
-        : dateConfigWithMasses; // Fallback si pas disponible
+    // calculateCompositionFromLogoConfig() prend dateConfig (qui est maintenant ALL_DATA) et retourne les fractions molaires
+    const atmComposition = window.calculateCompositionFromLogoConfig(ALL_DATA, ALL_DATA.MASSES.TOTAL, ALL_DATA.EPOCH);
     
-    // Extraire les valeurs depuis atmComposition (avec logos complets selon grammar.txt)
-    // atm={'📏🌬🚀':1300, '📏🌬🛩':30, '🥒🌬🌫':0.0, '🥒🌬🏭':0.703, '🥒🌬💧':0.000701158, '🥒🌬⛽':0.00019}
-    const CO2_percent = atmComposition[window.ATM.CO2.key] || 0;
-    const CH4_percent = atmComposition[window.ATM.CH4.key] || 0;
-    const H2O_percent = atmComposition[window.ATM.H2O.key] || 0;
-    const O2_percent = atmComposition[window.ATM.O2.key] || 0;
-    const altitude_km = atmComposition[window.ATM.ALTITUDE.key] || 0;
-    const tropopause_km = atmComposition[window.ATM.TROPOPAUSE.key] || 0;
+    // Mettre à jour ALL_DATA avec la composition atmosphérique
+    ALL_DATA.ATM.CO2 = atmComposition[ALL_DATA.ATM.CO2];
+    ALL_DATA.ATM.CH4 = atmComposition[ALL_DATA.ATM.CH4];
+    ALL_DATA.ATM.H2O = atmComposition[ALL_DATA.ATM.H2O];
+    ALL_DATA.ATM.O2 = atmComposition[ALL_DATA.ATM.O2];
+    ALL_DATA.ATM.ALTITUDE = atmComposition[ALL_DATA.ATM.ALTITUDE];
+    ALL_DATA.ATM.TROPOPAUSE = atmComposition[ALL_DATA.ATM.TROPOPAUSE];
     
     // Log composition atmosphérique
     console.log(`🌍 [calculateCompositionFromLogoConfig@calculations_atm.js]`);
-    console.log(`atm={'${window.ATM.ALTITUDE.key}':${altitude_km.toFixed(0)}, '${window.ATM.TROPOPAUSE.key}':${tropopause_km.toFixed(0)}, '${window.ATM.O2.key}':${O2_percent.toFixed(3)}, '${window.ATM.CO2.key}':${CO2_percent.toFixed(3)}, '${window.ATM.H2O.key}':${H2O_percent.toFixed(6)}, '${window.ATM.CH4.key}':${CH4_percent.toFixed(3)}}`);
+    console.log(`atm={'${ALL_DATA.ATM.ALTITUDE}':${ALL_DATA.ATM.ALTITUDE.toFixed(0)}, '${ALL_DATA.ATM.TROPOPAUSE}':${ALL_DATA.ATM.TROPOPAUSE.toFixed(0)}, '${ALL_DATA.ATM.O2}':${ALL_DATA.ATM.O2.toFixed(3)}, '${ALL_DATA.ATM.CO2}':${ALL_DATA.ATM.CO2.toFixed(3)}, '${ALL_DATA.ATM.H2O}':${ALL_DATA.ATM.H2O.toFixed(6)}, '${ALL_DATA.ATM.CH4}':${ALL_DATA.ATM.CH4.toFixed(3)}}`);
     
     // 2. Passer par calculations_h2o.js pour les trucs de l'albedo
-    // calculateH2OParameters attend un pourcentage, H2O_percent est déjà en %
-    const h2o_from_meteorites = window.h2oTotalFromMeteorites || 0; // Déjà en %
-    const h2o_total_percent = H2O_percent + h2o_from_meteorites;
+    // calculateH2OParameters attend un pourcentage, ALL_DATA.ATM.H2O est déjà en %
+    const h2o_total_percent = ALL_DATA.ATM.H2O + window.h2oTotalFromMeteorites;
     
     // Calculer les paramètres H2O (vapeur, glace, nuages) avec T0 initial
     // calculateH2OParameters va créer window.h2o automatiquement
-    const h2o_params = window.calculateH2OParameters ? window.calculateH2OParameters(window.T0, h2o_total_percent, null) : {
+    const h2o_params = window.calculateH2OParameters ? window.calculateH2OParameters(ALL_DATA.CONVERGENCE.T0, h2o_total_percent, null) : {
         vapor_fraction: 0,
         ice_fraction: 0,
         cloud_coverage: 0,
@@ -230,12 +181,8 @@ function computeRadiativeTransfer(options = {}) {
     //    - Exemple : à T=255K avec precision_K=0.1K → tolerance = 4×5.67e-8×255³×0.1 ≈ 0.38 W/m²
     //    - Condition d'arrêt : |flux_sortant - flux_entrant| <= tolerance
     
-    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
-    const geo_flux = epoch?.geothermal_flux || null;
-    const precision_K = window.convergencePrecision_K || 0.1; // Précision en K (défaut: 0.1K)
-    
     // Initialiser les variables d'itération
-    let T0_current = window.T0;
+    let T0_current = ALL_DATA.CONVERGENCE.T0;
     let T0_min = null;
     let T0_max = null;
     let signeDeltaFirst = 0;  // Sera initialisé à la première itération
@@ -265,13 +212,9 @@ function computeRadiativeTransfer(options = {}) {
         // ========================================================================
         // ÉTAPE 1 : Recalculer H2O avec le nouveau T0_current
         // ========================================================================
-        const H2O_percent_iter = H2O_percent; // Déjà en %
-        const h2o_from_meteorites_iter = window.h2oTotalFromMeteorites || 0; // Déjà en %
-        const h2o_total_percent_iter = H2O_percent_iter + h2o_from_meteorites_iter;
-        
         // Recalculer les paramètres H2O avec T0_current (crée window.h2o)
         if (window.calculateH2OParameters) {
-            window.calculateH2OParameters(T0_current, h2o_total_percent_iter, null);
+            window.calculateH2OParameters(T0_current, ALL_DATA.ATM.H2O + window.h2oTotalFromMeteorites, null);
         }
         
         // Note: step1_h2o supprimé car redondant :
@@ -283,67 +226,58 @@ function computeRadiativeTransfer(options = {}) {
         // ========================================================================
         // IMPORTANT : Utiliser window.calculateSolarFluxAbsorbed() comme fonction commune
         // pour garantir la cohérence avec le calcul final (même fonction, même logique)
-        const enabledStates = window.getEnabledStates ? window.getEnabledStates() : {};
-        const h2o_enabled = enabledStates[window.getLogo('H2O_EDS')] || false;
+        const h2o_enabled = window.getEnabledStates()[window.getLogo('H2O_EDS')];
         
         // Calculer albedo (crée window.albedo) - nécessaire pour step2_solar
         if (window.calculateAlbedo) {
-            window.calculateAlbedo(T0_current, h2o_enabled, geo_flux);
+            window.calculateAlbedo(T0_current, h2o_enabled, ALL_DATA.EPOCH.geothermal_flux);
         }
         
         // Utiliser la fonction commune calculateSolarFluxAbsorbed() (source unique)
         const flux_solaire_absorbe = window.calculateSolarFluxAbsorbed ? 
-            window.calculateSolarFluxAbsorbed(T0_current, h2o_enabled, geo_flux) : 
+            window.calculateSolarFluxAbsorbed(T0_current, h2o_enabled, ALL_DATA.EPOCH.geothermal_flux) : 
             238; // Fallback
         
-        // Récupérer les valeurs pour step2_solar depuis window.soleil et window.albedo (sources uniques)
+        // Récupérer les valeurs pour step2_solar depuis ALL_DATA (sources uniques)
         let SOLAR_CONSTANT;
         let solar_flux_average_wm;
-        const soleil_geometry_key = window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'GEOMETRY_ORIGIN');
-        if (window.soleil && window.soleil[soleil_geometry_key]) {
-            // Utiliser les valeurs de window.soleil (source unique)
-            SOLAR_CONSTANT = window.soleil[soleil_geometry_key] * 4; // Reconstruire depuis la moyenne sphérique
-            solar_flux_average_wm = window.soleil[soleil_geometry_key];
+        const SOLEIL = ALL_DATA.SOLEIL;
+        if (ALL_DATA.SOLEIL.GEOMETRY_ORIGIN) {
+            // Utiliser les valeurs de ALL_DATA (source unique)
+            SOLAR_CONSTANT = ALL_DATA.SOLEIL.GEOMETRY_ORIGIN * 4; // Reconstruire depuis la moyenne sphérique
+            solar_flux_average_wm = ALL_DATA.SOLEIL.GEOMETRY_ORIGIN;
         } else {
             // Fallback : calculer depuis solar_intensity de l'époque
-            const epoch = window.epoch;
-            const solar_intensity = epoch?.solar_intensity || 1.0;
-            const SOLAR_CONSTANT_REF = 1361; // W/m² (constante solaire de référence)
-            SOLAR_CONSTANT = SOLAR_CONSTANT_REF * solar_intensity;
+            SOLAR_CONSTANT = ALL_DATA.CONSTANTS.SOLAR_CONSTANT_REF * ALL_DATA.EPOCH.solar_intensity;
             solar_flux_average_wm = SOLAR_CONSTANT / 4; // Moyenne sphérique
         }
         
-        // Utiliser window.albedo['🥒🪞🎓'] directement (source unique, mis à jour par calculateAlbedo)
-        const albedo_from_window = window.albedo?.[window.ALBEDO.TOTAL.key] ?? 0;
-        const solar_flux_reflected_wm = solar_flux_average_wm * albedo_from_window;
+        const solar_flux_reflected_wm = solar_flux_average_wm * ALL_DATA.ALBEDO.TOTAL;
         
         // Objet étape 2 : Flux solaire
         // IMPORTANT : Utilise window.calculateSolarFluxAbsorbed() pour garantir la cohérence
-        // Note: Utilise window.soleil['🧲☀️🎱'] et window.albedo['🥒🪞🎓'] comme sources uniques
+        // Note: Utilise ALL_DATA.SOLEIL et ALL_DATA.ALBEDO comme sources uniques
         window.step2_solar = {
-            [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'CONFIG')]: SOLAR_CONSTANT,  // Constante solaire à 1 UA (W/m²) - depuis solar_intensity (config 📜)
-            [soleil_geometry_key]: solar_flux_average_wm,  // Flux moyen sphérique (W/m²) - depuis window.soleil si disponible
-            [window.ALBEDO.TOTAL.key]: albedo_from_window,  // Albedo total - depuis window.albedo['🥒🪞🎓'] (source unique)
-            [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'ALBEDO')]: solar_flux_reflected_wm,  // Flux réfléchi (W/m²) - flux solaire + albedo (réflexion)
-            [window.FLUX.SOLAR_ABSORBED.key]: flux_solaire_absorbe  // Flux absorbé (W/m²) - depuis calculateSolarFluxAbsorbed() (fonction commune)
+            [SOLEIL.CONSTANT]: SOLAR_CONSTANT,  // Constante solaire à 1 UA (W/m²) - depuis solar_intensity (config 📜)
+            [SOLEIL.GEOMETRY_ORIGIN]: solar_flux_average_wm,  // Flux moyen sphérique (W/m²) - depuis ALL si disponible
+            [ALL_DATA.ALBEDO.TOTAL]: ALL_DATA.ALBEDO.TOTAL,  // Albedo total - depuis ALL_DATA.ALBEDO.TOTAL (source unique)
+            [ALL_DATA.FLUX.REFLECTED]: solar_flux_reflected_wm,  // Flux réfléchi (W/m²) - flux solaire + albedo (réflexion)
+            [ALL_DATA.FLUX.SOLAR_ABSORBED]: flux_solaire_absorbe  // Flux absorbé (W/m²) - depuis calculateSolarFluxAbsorbed() (fonction commune)
         };
         
         // ========================================================================
         // ÉTAPE 3 : Flux géothermique
         // ========================================================================
-        const flux_geothermique = geo_flux || 0;
-        
         // Objet étape 3 : Géothermique
         window.step3_geothermal = {
-            [window.FLUX.GEOTHERMAL_IN.key]: flux_geothermique  // Flux géothermique (W/m²)
+            [ALL_DATA.FLUX.GEOTHERMAL_IN]: ALL_DATA.EPOCH.geothermal_flux  // Flux géothermique (W/m²)
         };
         
         // ========================================================================
         // ÉTAPE 4 : Flux entrant total
         // ========================================================================
         // Vérification : flux_entrant doit être la somme exacte de solaire + géothermique
-        const flux_entrant_calculated = flux_solaire_absorbe + flux_geothermique;
-        const flux_entrant = flux_entrant_calculated;
+        const flux_entrant = flux_solaire_absorbe + ALL_DATA.EPOCH.geothermal_flux;
         
         // Vérification de cohérence
         const expected_sum = flux_solaire_absorbe + flux_geothermique;
@@ -355,9 +289,10 @@ function computeRadiativeTransfer(options = {}) {
         console.log(`   🔍 [DEBUG step4] flux_solaire_absorbe=${flux_solaire_absorbe.toFixed(2)} W/m², flux_geothermique=${flux_geothermique > 1000 ? flux_geothermique.toExponential(2) : flux_geothermique.toFixed(2)} W/m², flux_entrant=${flux_entrant > 1000 ? flux_entrant.toExponential(2) : flux_entrant.toFixed(2)} W/m²`);
         
         // Objet étape 4 : Flux entrant
+        const FLUX = ALL_DATA.FLUX;
         window.step4_fluxIn = {
-            [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'FLUX_IN')]: flux_solaire_absorbe,  // Flux solaire absorbé (W/m²)
-            [window.getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'FLUX_IN')]: flux_geothermique,     // Flux géothermique (W/m²)
+            [FLUX.SOLAR_ABSORBED]: flux_solaire_absorbe,  // Flux solaire absorbé (W/m²)
+            [FLUX.GEOTHERMAL_IN]: flux_geothermique,     // Flux géothermique (W/m²)
             [window.getLogoKey('ENERGY_FLUX', 'FLUX_IN')]: flux_entrant  // Flux entrant total = solaire + géothermique (W/m²)
         };
         
@@ -374,14 +309,14 @@ function computeRadiativeTransfer(options = {}) {
         if (typeof window.calculateFluxForT0 === 'function') {
             try {
                 const enabledStates = window.getEnabledStates ? window.getEnabledStates() : {};
-                const h2o_enabled = enabledStates[window.getLogo('H2O_EDS')] || false;
-                const ch4_enabled = enabledStates[window.getLogo('CH4_EDS')] || false;
+                const h2o_enabled = enabledStates[window.getLogo('H2O_EDS')];
+                const ch4_enabled = enabledStates[window.getLogo('CH4_EDS')];
                 const co2_fraction = CO2_percent / 100;
                 const ch4_fraction = CH4_percent / 100;
                 
-                // Récupérer total_mass depuis window.masses et z_max depuis window.atm
-                const total_mass = window.masses?.[window.MASSES.TOTAL.key] || window.epoch?.total_atmosphere_mass_kg;
-                const z_max_km = window.atm?.[window.ATM.ALTITUDE.key] || 0;
+                // Récupérer total_mass depuis ALL_DATA et z_max depuis ALL_DATA
+                const total_mass = ALL_DATA.MASSES.TOTAL;
+                const z_max_km = ALL_DATA.ATM.ALTITUDE;
                 const z_max = z_max_km * 1000; // Convertir km en mètres
                 
                 const spectral_result = window.calculateFluxForT0(co2_fraction, T0_current, {
@@ -419,8 +354,8 @@ function computeRadiativeTransfer(options = {}) {
                         // Pour chaque couche et chaque longueur d'onde, calculer la contribution de chaque gaz
                         for (let i = 0; i < spectral_result.emitted_flux.length; i++) {
                             for (let j = 0; j < spectral_result.emitted_flux[i].length; j++) {
-                                const em_flux = spectral_result.emitted_flux[i][j] || 0;
-                                const tau_total = spectral_result.optical_thickness[i][j] || 0;
+                                const em_flux = spectral_result.emitted_flux[i][j];
+                                const tau_total = spectral_result.optical_thickness[i][j];
                                 
                                 if (tau_total > 0 && em_flux > 0) {
                                     // Calculer les épaisseurs optiques individuelles (approximation)
@@ -488,46 +423,51 @@ function computeRadiativeTransfer(options = {}) {
         // ÉTAPE 7 : Tolérance (test d'arrêt)
         // ========================================================================
         // tolerance = 4σT³ × precision_K (dérivée de F = σT⁴)
-        const tolerance = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3) * precision_K;
+        ALL_DATA.CONVERGENCE.TOLERANCE = 4 * ALL_DATA.CONSTANTS.STEFAN_BOLTZMANN * Math.pow(T0_current, 3) * window.convergencePrecision_K;
         
         // Objet étape 7 : Tolérance
         // Selon grammar.txt : 🌡️⏳ (température + compute), 🌡️🔬📜 (précision config), 🧲🔬 (tolérance)
         window.step7_tolerance = {
             [window.getLogoKey('TEMP', 'COMPUTE')]: T0_current,  // Température (K) - température + compute origin
-            [window.getLogoKey('TEMP', 'TOLERANCE', 'CONFIG')]: precision_K,  // Précision demandée (K) - température + tolerance + config origin
-            [window.getLogoKey('ENERGY_FLUX', 'TOLERANCE')]: tolerance  // Tolérance calculée (W/m²) - flux + tolerance
+            [window.getLogoKey('TEMP', 'TOLERANCE', 'CONFIG')]: window.convergencePrecision_K,  // Précision demandée (K) - température + tolerance + config origin
+            [ALL_DATA.CONVERGENCE.TOLERANCE]: ALL_DATA.CONVERGENCE.TOLERANCE  // Tolérance calculée (W/m²) - flux + tolerance
         };
         
         // ========================================================================
         // CONCLUSION : Résumé de l'itération
         // ========================================================================
         // Selon grammar.txt : 🔘 (boolean), 🌡️⏳ (température + compute), 🔺🧲 (delta flux), 🧲🔬 (tolérance), ⏳⚧ (phase), ⏳🍴 (signeDeltaFirst)
-        const convergence_reached = Math.abs(delta_equilibre) <= tolerance;
         window.step8_conclusion = {
-            [window.getLogo('BOOLEAN') + '✅']: convergence_reached,  // Convergence atteinte ? (boolean) - ✅ n'est pas dans LOGOS, ajouté manuellement
+            [window.getLogo('BOOLEAN') + '✅']: Math.abs(ALL_DATA.FLUX.DELTA) <= ALL_DATA.CONVERGENCE.TOLERANCE,  // Convergence atteinte ? (boolean) - ✅ n'est pas dans LOGOS, ajouté manuellement
             [window.getLogoKey('TEMP', 'COMPUTE')]: T0_current,  // Température finale du cycle (température + compute origin)
-            [window.getLogoKey('DELTA', 'ENERGY_FLUX')]: delta_equilibre,  // Delta équilibre (delta + flux)
-            [window.getLogoKey('ENERGY_FLUX', 'TOLERANCE')]: tolerance,  // Tolérance (flux + tolerance)
-            [window.CONVERGENCE.PHASE.key]: Phase,  // Phase finale (compute + phase)
-            [window.CONVERGENCE.DIRECTION.key]: signeDeltaFirst  // Direction (compute + direction)
+            [window.getLogoKey('DELTA', 'ENERGY_FLUX')]: ALL_DATA.FLUX.DELTA,  // Delta équilibre (delta + flux)
+            [ALL_DATA.CONVERGENCE.TOLERANCE]: ALL_DATA.CONVERGENCE.TOLERANCE,  // Tolérance (flux + tolerance)
+            [ALL_DATA.CONVERGENCE.PHASE]: Phase,  // Phase finale (compute + phase)
+            [ALL_DATA.CONVERGENCE.DIRECTION]: signeDeltaFirst  // Direction (compute + direction)
         };
         
-        // 8. Mettre à jour window.fluxState avec les valeurs de l'itération (séparer solaire et géothermique)
-        // IMPORTANT : 🧲🔼 dans fluxState = flux_sortant_surface (AVANT EDS) pour cohérence avec step5_fluxOut
-        window.fluxState = {
-            [window.CONVERGENCE.T0.key]: T0_current,
-            [window.CONVERGENCE.PHASE.key]: Phase,
-            [window.CONVERGENCE.DIRECTION.key]: signeDeltaFirst,
-            [window.FLUX.SOLAR_ABSORBED.key]: flux_solaire_absorbe,  // Flux solaire absorbé (séparé)
-            [window.FLUX.GEOTHERMAL_IN.key]: flux_geothermique,     // Flux géothermique (séparé)
-            [window.FLUX.OUT.key]: flux_sortant_surface,     // Flux sortant surface (AVANT EDS)
-            [window.FLUX.DELTA.key]: delta_equilibre,        // Delta flux (sortant effectif - entrant) - utilise flux_sortant_effectif
-            [window.CONVERGENCE.TOLERANCE.key]: tolerance                // Tolérance (précision pour test d'arrêt) - 🔬 selon grammar.txt
-        };
+        // 8. Mettre à jour ALL_DATA avec les valeurs de l'itération (séparer solaire et géothermique)
+        // IMPORTANT : 🧲🔼 dans ALL_DATA = flux_sortant_surface (AVANT EDS) pour cohérence avec step5_fluxOut
+        ALL_DATA.CONVERGENCE.T0 = T0_current;
+        ALL_DATA.CONVERGENCE.PHASE = Phase;
+        ALL_DATA.CONVERGENCE.DIRECTION = signeDeltaFirst;
+        ALL_DATA.FLUX.SOLAR_ABSORBED = flux_solaire_absorbe;  // Flux solaire absorbé (séparé)
+        ALL_DATA.FLUX.GEOTHERMAL_IN = ALL_DATA.EPOCH.geothermal_flux;     // Flux géothermique (séparé)
+        ALL_DATA.FLUX.OUT = flux_sortant_surface;     // Flux sortant surface (AVANT EDS)
+        ALL_DATA.FLUX.DELTA = flux_sortant_effectif - flux_entrant;        // Delta flux (sortant effectif - entrant) - utilise flux_sortant_effectif
         
-        // Ajouter une copie de fluxState et des étapes à l'historique
+        // Ajouter une copie de ALL_DATA et des étapes à l'historique
         window.fluxStateHistory.push({
-            fluxState: JSON.parse(JSON.stringify(window.fluxState)),
+            fluxState: JSON.parse(JSON.stringify({
+                [ALL_DATA.CONVERGENCE.T0]: ALL_DATA.CONVERGENCE.T0,
+                [ALL_DATA.CONVERGENCE.PHASE]: ALL_DATA.CONVERGENCE.PHASE,
+                [ALL_DATA.CONVERGENCE.DIRECTION]: ALL_DATA.CONVERGENCE.DIRECTION,
+                [ALL_DATA.FLUX.SOLAR_ABSORBED]: ALL_DATA.FLUX.SOLAR_ABSORBED,
+                [ALL_DATA.FLUX.GEOTHERMAL_IN]: ALL_DATA.FLUX.GEOTHERMAL_IN,
+                [ALL_DATA.FLUX.OUT]: ALL_DATA.FLUX.OUT,
+                [ALL_DATA.FLUX.DELTA]: ALL_DATA.FLUX.DELTA,
+                [ALL_DATA.CONVERGENCE.TOLERANCE]: ALL_DATA.CONVERGENCE.TOLERANCE
+            })),
             step0_cycle: window.step0_cycle ? JSON.parse(JSON.stringify(window.step0_cycle)) : null,
             // step1_h2o supprimé : redondant (🥒🌬💧 dans atm, 🌡️⏳ dans step0_cycle)
             step2_solar: window.step2_solar ? JSON.parse(JSON.stringify(window.step2_solar)) : null,
@@ -552,17 +492,16 @@ function computeRadiativeTransfer(options = {}) {
         // Log de l'itération avec fluxState complet
         // IMPORTANT : flux_sortant_surface = flux émis par la surface (AVANT EDS), flux_sortant_effectif = flux après EDS
         console.log(`   Itération ${iteration}: T0=${T0_current.toFixed(2)}K, flux_entrant=${flux_entrant.toFixed(2)} W/m², flux_sortant_surface=${flux_sortant_surface > 1000 ? flux_sortant_surface.toExponential(2) : flux_sortant_surface.toFixed(2)} W/m², flux_sortant_effectif=${flux_sortant_effectif > 1000 ? flux_sortant_effectif.toExponential(2) : flux_sortant_effectif.toFixed(2)} W/m², delta=${delta_equilibre > 1000 ? delta_equilibre.toExponential(2) : delta_equilibre.toFixed(2)} W/m², tolerance=${tolerance.toFixed(2)} W/m²`);
-        const signeDeltaFirst_key = window.CONVERGENCE.DIRECTION.key;
-        console.log(`   fluxState={'${window.CONVERGENCE.T0.key}':${T0_current.toFixed(2)}, '${window.CONVERGENCE.PHASE.key}':'${Phase}', '${signeDeltaFirst_key}':${signeDeltaFirst.toFixed(2)}, '${window.FLUX.SOLAR_ABSORBED.key}':${flux_solaire_absorbe.toFixed(2)}, '${window.FLUX.GEOTHERMAL_IN.key}':${flux_geothermique > 1000 ? flux_geothermique.toExponential(2) : flux_geothermique.toFixed(2)}, '${window.FLUX.OUT.key}':${flux_sortant_surface > 1000 ? flux_sortant_surface.toExponential(2) : flux_sortant_surface.toFixed(2)}, '${window.FLUX.DELTA.key}':${delta_equilibre > 1000 ? delta_equilibre.toExponential(2) : delta_equilibre.toFixed(2)}, '${window.CONVERGENCE.TOLERANCE.key}':${tolerance.toFixed(2)}}`);
+        const signeDeltaFirst_key = ALL_DATA.CONVERGENCE.DIRECTION;
+        console.log(`   fluxState={'${ALL_DATA.CONVERGENCE.T0}':${T0_current.toFixed(2)}, '${ALL_DATA.CONVERGENCE.PHASE}':'${Phase}', '${signeDeltaFirst_key}':${signeDeltaFirst.toFixed(2)}, '${ALL_DATA.FLUX.SOLAR_ABSORBED}':${flux_solaire_absorbe.toFixed(2)}, '${ALL_DATA.FLUX.GEOTHERMAL_IN}':${flux_geothermique > 1000 ? flux_geothermique.toExponential(2) : flux_geothermique.toFixed(2)}, '${ALL_DATA.FLUX.OUT}':${flux_sortant_surface > 1000 ? flux_sortant_surface.toExponential(2) : flux_sortant_surface.toFixed(2)}, '${ALL_DATA.FLUX.DELTA}':${delta_equilibre > 1000 ? delta_equilibre.toExponential(2) : delta_equilibre.toFixed(2)}, '${ALL_DATA.CONVERGENCE.TOLERANCE}':${tolerance.toFixed(2)}}`);
         if (window.h2o) {
             // Note: 💧 (H2O vapeur %) est dans atm['🥒🌬💧'] - source unique, pas de duplication
             // Note: 🌴 (greenhouse forcing) est dans step5_spectral['🧲💧📛'], 🌤 (cloud albedo) est dans window.albedo['🥒🪞⛅']
-            console.log(`   h2o={'🥒💧🧊':${(window.h2o['🥒💧🧊'] || 0).toFixed(2)}, '🥒💧⛅':${(window.h2o['🥒💧⛅'] || 0).toFixed(2)}, '🥒💧🌊':${(window.h2o['🥒💧🌊'] || 0).toFixed(2)}, '⏳🌧':${(window.h2o['⏳🌧'] || 0).toFixed(2)}}`);
+            console.log(`   h2o={'🥒💧🧊':${window.h2o['🥒💧🧊'].toFixed(2)}, '🥒💧⛅':${window.h2o['🥒💧⛅'].toFixed(2)}, '🥒💧🌊':${window.h2o['🥒💧🌊'].toFixed(2)}, '⏳🌧':${window.h2o['⏳🌧'].toFixed(2)}}`);
         }
-        if (window.albedo) {
-            // Selon grammar.txt : albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}
-            console.log(`   albedo={'🥒🪞🎓':${(window.albedo['🥒🪞🎓'] || 0).toFixed(2)}, '🥒🪞🌋':${(window.albedo['🥒🪞🌋'] || 0).toFixed(2)}, '🥒🪞🌊':${(window.albedo['🥒🪞🌊'] || 0).toFixed(2)}, '🥒🪞🌳':${(window.albedo['🥒🪞🌳'] || 0).toFixed(2)}, '🥒🪞🏖':${(window.albedo['🥒🪞🏖'] || 0).toFixed(2)}, '🥒🪞🧊':${(window.albedo['🥒🪞🧊'] || 0).toFixed(2)}, '🥒🪞⛅':${(window.albedo['🥒🪞⛅'] || 0).toFixed(2)}}`);
-        }
+        // Utiliser ALL_DATA pour l'albedo (source unique)
+        // Selon grammar.txt : albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}
+        console.log(`   albedo={'${ALL_DATA.ALBEDO.TOTAL}':${ALL_DATA.ALBEDO.TOTAL.toFixed(2)}, '${ALL_DATA.ALBEDO.VOLCANO}':${ALL_DATA.ALBEDO.VOLCANO.toFixed(2)}, '${ALL_DATA.ALBEDO.OCEAN}':${ALL_DATA.ALBEDO.OCEAN.toFixed(2)}, '${ALL_DATA.ALBEDO.FOREST}':${ALL_DATA.ALBEDO.FOREST.toFixed(2)}, '${ALL_DATA.ALBEDO.DESERT}':${ALL_DATA.ALBEDO.DESERT.toFixed(2)}, '${ALL_DATA.ALBEDO.ICE}':${ALL_DATA.ALBEDO.ICE.toFixed(2)}, '${ALL_DATA.ALBEDO.CLOUD}':${ALL_DATA.ALBEDO.CLOUD.toFixed(2)}}`);
         
         // 8. Test d'arrêt : |delta_equilibre| <= tolerance
         if (Math.abs(delta_equilibre) <= tolerance) {
@@ -625,10 +564,10 @@ function computeRadiativeTransfer(options = {}) {
         // pour le cycle suivant - garantit la cohérence avec le nouveau T0
         if (iteration < max_iterations) { // Pas besoin de recalculer si c'est la dernière itération
             const enabledStates_next = window.getEnabledStates ? window.getEnabledStates() : {};
-            const h2o_enabled_next = enabledStates_next[window.getLogo('H2O_EDS')] || false;
+            const h2o_enabled_next = enabledStates_next[window.getLogo('H2O_EDS')];
             
             // Recalculer h2o avec le nouveau T0_current pour le prochain cycle
-            const h2o_total_percent_next = H2O_percent + (window.h2oTotalFromMeteorites || 0);
+            const h2o_total_percent_next = H2O_percent + window.h2oTotalFromMeteorites;
             if (window.calculateH2OParameters) {
                 window.calculateH2OParameters(T0_current, h2o_total_percent_next, null);
             }
@@ -653,34 +592,35 @@ function computeRadiativeTransfer(options = {}) {
     // IMPORTANT : flux_sortant_final = flux émis par la surface (AVANT EDS) = σT⁴
     // Pour l'équilibre, on utilise le flux_sortant_effectif (après EDS) depuis la dernière itération
     const enabledStates_final = window.getEnabledStates ? window.getEnabledStates() : {};
-    const h2o_enabled_final = enabledStates_final[window.getLogo('H2O_EDS')] || false;
-    const flux_solaire_absorbe_final = window.calculateSolarFluxAbsorbed ? window.calculateSolarFluxAbsorbed(T0_current, h2o_enabled_final, geo_flux) : 238;
-    const flux_geothermique_final = geo_flux || 0;
+    const h2o_enabled_final = enabledStates_final[window.getLogo('H2O_EDS')];
+    const flux_solaire_absorbe_final = window.calculateSolarFluxAbsorbed(T0_current, h2o_enabled_final, geo_flux);
+    const flux_geothermique_final = geo_flux;
     const flux_entrant_final = flux_solaire_absorbe_final + flux_geothermique_final;
     const flux_sortant_surface_final = STEFAN_BOLTZMANN * Math.pow(T0_current, 4);  // Flux émis par la surface (AVANT EDS)
+    // Note: ALL, CONVERGENCE et FLUX sont déjà déclarés au début de computeRadiativeTransfer
+    
     // Utiliser le delta_equilibre de la dernière itération (qui utilise flux_sortant_effectif)
-    const delta_equilibre_final = window.fluxState?.[window.FLUX.DELTA.key] || (flux_sortant_surface_final - flux_entrant_final);
+    const delta_equilibre_final = ALL_DATA.FLUX.DELTA;
     const tolerance_final = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3) * precision_K;
     
-    // Mettre à jour window.fluxState avec les valeurs finales (séparer solaire et géothermique)
-    // IMPORTANT : 🧲🔼 dans fluxState = flux_sortant_surface (AVANT EDS) pour cohérence avec step5_fluxOut
-    window.fluxState = {
-        [window.CONVERGENCE.T0.key]: T0_current,
-        [window.CONVERGENCE.PHASE.key]: Phase,
-        [window.CONVERGENCE.DIRECTION.key]: signeDeltaFirst,
-        [window.FLUX.SOLAR_ABSORBED.key]: flux_solaire_absorbe_final,  // Flux solaire absorbé (séparé)
-        [window.FLUX.GEOTHERMAL_IN.key]: flux_geothermique_final,     // Flux géothermique (séparé)
-        [window.FLUX.OUT.key]: flux_sortant_surface_final,    // Flux sortant surface (AVANT EDS)
-        [window.FLUX.DELTA.key]: delta_equilibre_final,        // Delta flux (utilise flux_sortant_effectif pour équilibre)
-        [window.getLogoKey('ENERGY_FLUX', 'TOLERANCE')]: tolerance_final                // Tolérance (précision pour test d'arrêt) - 🔬 selon grammar.txt
-    };
+    // Mettre à jour ALL_DATA avec les valeurs finales (séparer solaire et géothermique)
+    // IMPORTANT : 🧲🔼 dans ALL_DATA = flux_sortant_surface (AVANT EDS) pour cohérence avec step5_fluxOut
+    ALL_DATA.CONVERGENCE.T0 = T0_current;
+    ALL_DATA.CONVERGENCE.PHASE = Phase;
+    ALL_DATA.CONVERGENCE.DIRECTION = signeDeltaFirst;
+    ALL_DATA.FLUX.SOLAR_ABSORBED = flux_solaire_absorbe_final;  // Flux solaire absorbé (séparé)
+    ALL_DATA.FLUX.GEOTHERMAL_IN = flux_geothermique_final;     // Flux géothermique (séparé)
+    ALL_DATA.FLUX.OUT = flux_sortant_surface_final;    // Flux sortant surface (AVANT EDS)
+    ALL_DATA.FLUX.DELTA = delta_equilibre_final;        // Delta flux (utilise flux_sortant_effectif pour équilibre)
+    ALL_DATA.CONVERGENCE.TOLERANCE = tolerance_final;                // Tolérance (précision pour test d'arrêt) - 🔬 selon grammar.txt
     
     // Créer window.flux (pour l'affichage simplifié)
     // IMPORTANT : 🧲🔼 = flux émis par la surface (AVANT EDS), pas le flux effectif après EDS
+    const FLUX = ALL_DATA.FLUX;
     window.flux = { 
-        [window.getLogoKey('ENERGY_FLUX', 'SUN_ORIGIN', 'FLUX_IN')]: flux_solaire_absorbe_final,  // Flux solaire absorbé
-        [window.getLogoKey('ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'FLUX_IN')]: flux_geothermique_final,     // Flux géothermique
-        [window.getLogoKey('ENERGY_FLUX', 'FLUX_CN', 'FLUX_OUT')]: flux_sortant_surface_final     // Flux sortant surface (AVANT EDS)
+        [FLUX.SOLAR_ABSORBED]: flux_solaire_absorbe_final,  // Flux solaire absorbé
+        [FLUX.GEOTHERMAL_IN]: flux_geothermique_final,     // Flux géothermique
+        [FLUX.OUT]: flux_sortant_surface_final     // Flux sortant surface (AVANT EDS)
     };
     
     // Log flux radiatif final
@@ -691,10 +631,10 @@ function computeRadiativeTransfer(options = {}) {
     // Retourner les résultats
     return Promise.resolve({
         T0: window.T0,
-        h2o_result: window.h2o || {},
-        albedo_result: window.flux || {},
+        h2o_result: window.h2o,
+        albedo_result: window.flux,
         atm_result: {},
-        atm_composition: window.atm || {},
+        atm_composition: ALL_DATA, // Utiliser ALL_DATA directement (source unique)
         Phase: Phase,
         signeDeltaFirst: signeDeltaFirst,
         iterations: iteration
