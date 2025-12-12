@@ -62,92 +62,106 @@ const CHARS = {
     METEORITE_COUNT: '☄️', // Nombre de météorites
     FLUX_IN: '🔽',  // Flux entrant (réception, +)
     FLUX_OUT: '🔼', // Flux sortant (émission, -)
+    // Époques géologiques
+    EPOCH: '📜',    // Époque : parchemin
+    CORPS_NOIR: '⚫', // Corps noir
+    HADEEN: '🔥',   // Hadéen : feu/lave
+    ARCHEEN: '🦠',  // Archéen : microbe unicellulaire
+    PROTEROZOIC: '🌿', // Protérozoïque : plantes primitives
+    MESOZOIC: '🦕', // Mésozoïque : dinosaure sauropode
+    CRETACEOUS: '🦴', // Crétacé : os/fossile
+    CENOZOIC: '🦣', // Cénozoïque : mammouth
+    TODAY: '🐘',    // Today : éléphant
+    EVENTS: '🕰',   // Événements : horloge
+    TRANSITION: '⏩', // Transition : flèche rapide
+    DATE: '📅',     // Date : calendrier
+    PLANET_RADIUS: '📐', // Rayon de la planète : équerre
+    GRAVITY: '🐋',  // Gravité : baleine (masse/gravité)
 };
 
 // Objet pour mapper les logos emoji vers les fichiers images
 const charsImages = {
     '🎇': 'big_impact.png',  // Big impact utilise une image
+    '⚫': 'fonts/pics/corps_noir.png',  // Corps noir
 };
 
 // ============================================================================
-// DESCRIPTIONS DES CARACTÈRES (CHARS_DESC)
+// DESCRIPTIONS DES CARACTÈRES (CHARS_DESC) - Utilise directement les emojis
 // ============================================================================
 const CHARS_DESC = {
     // Unités
-    'BOOLEAN': 'is Computed (Boolean)',
-    'CARDINAL': 'Cardinal (#)',
-    'DELTA': 'Delta (*)',
-    'TEMP': 'Température (K)',
-    'WEIGHT': 'Masse (kg)',
-    'METER': 'Longueur (km)',
-    'PROPORTION': 'Proportion (%)',
-    'ENERGY_FLUX': 'Flux (W/m²)',
-    'POWER': 'Puissance (W)',
-    'FLUX_IN': 'Réception (+)',
-    'FLUX_OUT': 'Émission (-)',
+    '🔘': 'Calculé (Boolean)',
+    '📿': 'Cardinal (#)',
+    '🔺': 'Delta (*)',
+    '🌡️': 'Température (K)',
+    '🐳': 'Masse (kg)',
+    '📏': 'Longueur (km)',
+    '🍰': 'Proportion (%)',
+    '🧲': 'Flux (W/m²)',
+    '🔋': 'Puissance (W)',
+    '🔽': 'Réception (+)',
+    '🔼': 'Émission (-)',
     // Éléments
-    'H2O': 'H2O',
-    'CH4': 'CH4',
-    'CO2': 'CO2',
-    'O2': 'O2',
-    'ICE': 'Glace',
-    'CLOUD': 'Nuages',
-    'OCEAN': 'Océan',
-    'VOLCANO': 'Volcan',
-    'DESERT': 'Désert',
-    'FOREST': 'Forêt',
-    'ATMOSPHERE': 'Atmosphère',
-    'SUN_ORIGIN': 'Soleil',
-    'GEOMETRY_ORIGIN': 'Géometrie',
-    'SPECTRAL': 'Spectre',
+    '💧': 'H2O',
+    '⛽': 'CH4',
+    '🏭': 'CO2',
+    '🌫': 'O2',
+    '🧊': 'Glace',
+    '⛅': 'Nuages',
+    '🌊': 'Océan',
+    '🌋': 'Volcan',
+    '🏖': 'Désert',
+    '🌳': 'Forêt',
+    '🌬': 'Atmosphère',
+    '☀️': 'Soleil',
+    '🎱': 'Géometrie',
+    '🌈': 'Spectre',
     // Calculs
-    'COMPUTE': 'Compute',
-    'ANIMATION': 'Animation',
-    'PHASE': 'Phase (Search/Dicho)',
-    'TOLERANCE': 'Tolérance (précision)',
-    'DIRECTION': 'Direction (+/-)',
-    'OLD_T0': 'old_T0 (backup T°)',
-    'T0': 'T0 (T° initiale)',
-    'ALBEDO': 'Albédo',
-    'GEOTHERMAL_FLUX': 'Flux géothermique',
-    'EDS': 'EDS (Forçage radiatif)',
-    'FLUX_CN': 'Corps noir',
+    '⏳': 'Calculs (O(f(n)))',
+    '🎬': 'Animation',
+    '⚧': 'Phase (Search/Dicho)',
+    '🔬': 'Tolérance (précision)',
+    '☯': 'Direction (+/-)',
+    '🏮': 'old_T0 (backup T°)',
+    '🚩': 'T0 (T° initiale)',
+    '🪞': 'Albédo',
+    '🌕': 'Flux géothermique',
+    '📛': 'EDS (Forçage radiatif)',
+    '🌑': 'Corps noir',
     // Événements
-    'CONFIG': 'Config',
-    'TIC_TIME': 'TicTime',
-    'METEORITE_COUNT': 'Météorite de glace',
-    'SATELLITE': 'Satellite',
-    'MAX_VAPOR': 'Max vapor fraction',
-    'BIG_IMPACT': 'Big impact',
-    'FLUX_START': 'Flux start',
-    'FLUX_END': 'Flux end',
-    'ALTITUDE': 'Ligne de Kármán',
-    'TROPOPAUSE': 'Tropopause'
+    '💫': 'TicTime (+50 Ma)',
+    '☄️': 'Météorite de glace',
+    '🛰': 'Satellite',
+    '🌧': 'Max vapor fraction',
+    '🎇': 'Big impact',
+    '▶': 'Début',
+    '◀': 'Fin',
+    '🧿': 'Ligne de Kármán',
+    '🛩': 'Tropopause',
+    // Autres
+    '⚗': 'N2',
+    // Époques géologiques
+    '📜': 'Époque',
+    '⚫': 'Corps noir',
+    '🔥': 'Hadéen',
+    '🦠': 'Archéen',
+    '🌿': 'Protérozoïque',
+    '🦕': 'Mésozoïque',
+    '🦴': 'Crétacé',
+    '🦣': 'Cénozoïque',
+    '🐘': 'Today (1800)',
+    '🕰': 'Événements',
+    '⏩': 'Transition',
+    '📅': 'Date Époque (Ma)',
+    '📐': 'Rayon planète',
+    '🐋': 'Gravité (m/s²)'
 };
-
-// ============================================================================
-// FONCTIONS HELPER
-// ============================================================================
-
-// FONCTION HELPER : getChar(name)
-// Récupère un caractère depuis CHARS
-function getChar(name) {
-    return CHARS[name] || '';
-}
-
-// FONCTION HELPER : getCharKey(...)
-// Construit une clé composite à partir de plusieurs caractères
-// Exemple: getCharKey('BOOLEAN', 'ANIMATION') => '🔘🎬'
-// Exemple: getCharKey('BOOLEAN', 'H2O', 'EDS') => '🔘💧📛'
-function getCharKey(...names) {
-    return names.map(name => CHARS[name] || '').join('');
-}
 
 // ============================================================================
 // FONCTION : CRÉER L'ALPHABET (LEXIQUE)
 // ============================================================================
 
-function createAlphabet() {
+function createAlphabetHtml() {
     if (typeof CHARS === 'undefined') {
         console.error('[createAlphabet] CHARS non défini');
         return '';
@@ -155,7 +169,7 @@ function createAlphabet() {
     
     // Colonne 1 : Unités
     const charsCol1 = [
-        'BOOLEAN', 'CARDINAL', 'DELTA', 'TEMP', 'WEIGHT', 'METER', 'PROPORTION', 'ENERGY_FLUX', 'POWER', 'FLUX_IN', 'FLUX_OUT'
+        'BOOLEAN', 'CARDINAL', 'DELTA', 'TEMP', 'WEIGHT', 'METER', 'PROPORTION', 'ENERGY_FLUX', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'DATE', 'GRAVITY'
     ];
     
     // Colonne 2 : Éléments
@@ -165,12 +179,17 @@ function createAlphabet() {
     
     // Colonne 3 : Calculs
     const charsCol3 = [
-        'COMPUTE', 'ANIMATION', 'PHASE', 'TOLERANCE', 'DIRECTION', 'OLD_T0', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS', 'GEOMETRY_ORIGIN', 'FLUX_CN'
+        'COMPUTE', 'ANIMATION', 'PHASE', 'TOLERANCE', 'DIRECTION', 'OLD_T0', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS', 'GEOMETRY_ORIGIN', 'FLUX_CN', 'MAX_VAPOR'
     ];
     
     // Colonne 4 : Événements
     const charsCol4 = [
-        'CONFIG', 'TIC_TIME', 'BIG_IMPACT', 'METEORITE_COUNT', 'MAX_VAPOR', 'FLUX_START', 'FLUX_END', 'SATELLITE', 'ALTITUDE', 'TROPOPAUSE'
+        'TIC_TIME', 'BIG_IMPACT', 'METEORITE_COUNT', 'FLUX_START', 'FLUX_END', 'SATELLITE', 'ALTITUDE', 'TROPOPAUSE', 'EVENTS', 'TRANSITION', 'PLANET_RADIUS'
+    ];
+    
+    // Colonne 5 : Époques et autres logos
+    const charsCol5 = [
+        'EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'MESOZOIC', 'CRETACEOUS', 'CENOZOIC', 'TODAY'
     ];
     
     // Descriptions personnalisées pour certains caractères
@@ -182,9 +201,9 @@ function createAlphabet() {
     
     // Fonction helper pour créer une div avec caractère et description
     const createCharDiv = (charName) => {
-        const char = getChar(charName);
-        // Utiliser la description personnalisée si disponible, sinon CHARS_DESC, sinon le nom
-        const description = customDescriptions[charName] || CHARS_DESC[charName] || charName;
+        const char = CHARS[charName];
+        // Utiliser la description depuis CHARS_DESC avec l'emoji comme clé
+        const description = CHARS_DESC[char] || charName;
         
         // Si le caractère est vide, ne rien afficher plutôt que le nom
         if (!char || char === '') {
@@ -200,6 +219,7 @@ function createAlphabet() {
     const col2_filtered = charsCol2.map(createCharDiv).filter(div => div !== '').join('');
     const col3_filtered = charsCol3.map(createCharDiv).filter(div => div !== '').join('');
     const col4_filtered = charsCol4.map(createCharDiv).filter(div => div !== '').join('');
+    const col5_filtered = charsCol5.map(createCharDiv).filter(div => div !== '').join('');
     
     return `
         <div class="legend-grid">
@@ -219,6 +239,10 @@ function createAlphabet() {
                 <h3 class="legend-title">Événements</h3>
                 ${col4_filtered}
             </div>
+            <div class="legend-column">
+                <h3 class="legend-title">Époques & Autres</h3>
+                ${col5_filtered}
+            </div>
         </div>
     `;
 }
@@ -231,13 +255,6 @@ if (typeof window !== 'undefined') {
     window.CHARS = CHARS;
     window.CHARS_DESC = CHARS_DESC;
     window.charsImages = charsImages;
-    window.getChar = getChar;
-    window.getCharKey = getCharKey;
-    window.createAlphabet = createAlphabet;
-    
-    // Compatibilité : exposer aussi comme LOGOS pour les anciens fichiers
-    window.LOGOS = CHARS;
-    window.getLogo = getChar;
-    window.getLogoKey = getCharKey;
+    window.createAlphabetHtml = createAlphabetHtml;
 }
 

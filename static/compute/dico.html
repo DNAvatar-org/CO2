@@ -20,8 +20,8 @@
         // Générer le dictionnaire au chargement
         window.addEventListener('DOMContentLoaded', function() {
             const dicoContent = document.getElementById('dico-content');
-            if (dicoContent && typeof window !== 'undefined' && window.createDico) {
-                dicoContent.innerHTML = window.createDico();
+            if (dicoContent && typeof window !== 'undefined' && window.createDicoHtml) {
+                dicoContent.innerHTML = window.createDicoHtml();
                 
                 // Ajuster la hauteur de l'iframe au contenu
                 setTimeout(() => {

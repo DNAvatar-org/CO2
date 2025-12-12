@@ -177,7 +177,8 @@ function pressure(z, params = null) {
             if (currentEpoch) {
                 if (typeof currentEpoch.total_atmosphere_mass_kg === 'number') total_mass = currentEpoch.total_atmosphere_mass_kg;
                 if (typeof currentEpoch.gravity === 'number') gravity = currentEpoch.gravity;
-                if (typeof currentEpoch.planet_radius === 'number') planet_radius = currentEpoch.planet_radius;
+                // Convertir le rayon de km en mètres pour les calculs
+                if (typeof currentEpoch['📐'] === 'number') planet_radius = currentEpoch['📐'] * 1000;
 
                 // Calculer ou récupérer la masse molaire moyenne de l'air
                 if (typeof currentEpoch.molar_mass_air === 'number') {
@@ -950,8 +951,9 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // Priorité 2 : Utiliser window.epoch si disponible (pour test_computeRadiativeTransfer.html)
     if (typeof window !== 'undefined' && window.epoch && total_mass === undefined) {
         total_mass = window.epoch.total_atmosphere_mass_kg;
-        if (window.epoch.gravity !== undefined) gravity_val = window.epoch.gravity;
-        if (window.epoch.planet_radius !== undefined) planet_radius_val = window.epoch.planet_radius;
+        if (window.epoch['🐋'] !== undefined) gravity_val = window.epoch['🐋'];
+        // Convertir le rayon de km en mètres pour les calculs
+        if (window.epoch['📐'] !== undefined) planet_radius_val = window.epoch['📐'] * 1000;
         if (typeof window.calculateMolarMassAir === 'function') {
             molar_mass_val = window.calculateMolarMassAir(window.epoch);
         } else {
@@ -995,8 +997,9 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             }
 
             // Récupération gravity, radius et masse molaire
-            if (currentEpoch.gravity !== undefined) gravity_val = currentEpoch.gravity;
-            if (currentEpoch.planet_radius !== undefined) planet_radius_val = currentEpoch.planet_radius;
+            if (currentEpoch['🐋'] !== undefined) gravity_val = currentEpoch['🐋'];
+            // Convertir le rayon de km en mètres pour les calculs
+            if (currentEpoch['📐'] !== undefined) planet_radius_val = currentEpoch['📐'] * 1000;
             // Calculer molar_mass_air depuis les composants si non défini
             if (typeof window.calculateMolarMassAir === 'function') {
                 molar_mass_val = window.calculateMolarMassAir(currentEpoch);

@@ -1,6 +1,6 @@
 -- Unités
 🔘 is Computed (Boolean)
-🎓 Cardinal (#)
+📿 Cardinal (#)
 🔺 Delta (*)
 🌡️ Température (K)
 🐳 Masse (kg)
@@ -44,59 +44,9 @@
 ☄️ Météorite de glace
 🌧 Max vapor fraction
 🎇 Big impact
-▶ Flux start (valeur de départ)
-◀ Flux end (valeur de fin)
-🚀 Altitude (km)
-🛩 Tropopause (km)
+▶ start 
+◀ end 
+🚀 Altitude max
+🛩 Tropopause
 
-
--- Json --
-🌡️🏮📜 old_T0 (température précédente)
-🎓☄️📜 Nombre de météorites
-🔺🌡️☄️📜 Delta température / météorite
-🔺🐳💧☄️📜 Masse d'eau ajoutée / météorite
-🔺🌡️💫📜 Delta température / ticTime
-🎓💫📜 Nombre de ticTime
-🔺🧲🌕💫📜 Delta Flux Geom /ticTime
-🔘🎬 Animation
-🔘💧📛 H2O EDS activé
-🔘⛽📛 CH4 EDS activé
-🔘🏭📛 CO2 EDS activé
-🔘🪞 Albedo activé
-🐳🏭 Masse CO2
-🐳⛽ Masse CH4
-🐳💧 Masse H2O
-🐳🌫 Masse O2
-🐳🎓 Masse totale atmosphère
-📏🌬🚀 Altitude max - épaisseur de l'atmosphère
-📏🌬🛩 Tropopause - limite stratosphère
-🥒🌬🏭 CO2
-🥒🌬💧 H2O
-🥒🌬⛽ CH4
-🥒🌬🌫 O2
-🥒💧🧊 Glace
-🥒💧⛅ Nuages
-🥒💧🌊 Océan
-🧲☀️ Flux solaire
-🧲☀️🔽 Flux solaire absorbé
-🧲🌕🔽 Flux géothermique
-🧲🔼 Flux sortant (corps noir σT⁴)
-🔺🧲 Delta flux
-🔺🧲🌕 Delta flux
-🧲🔬 Tolérance (précision pour test d'arrêt)
-🥒🪞🎓 % Albedo total
-🥒🪞⛅ Cloud albedo
-🥒🪞🌋 Volcan 
-🥒🪞🏖 Désert 
-🥒🪞🌳 Forêt 
-🥒🪞🌊 Océan
-🥒🪞🌋 magma
-🥒🪞🧊 glace
-
-⏳🌡️ T0 attendu
-⏳🌡️🚩 T0 calculé
-⏳⚧ Phase (None/Search/Dicho)
-⏳🔺 signeDeltaFirst
-⏳🌴 Greenhouse forcing
-⏳🌧 Max vapor fraction (calcul du cycle de l'eau)
 

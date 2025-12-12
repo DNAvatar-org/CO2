@@ -3047,10 +3047,12 @@ function positionnerBoutonsSurCercleAlbedo() {
 
 // Fonction pour générer la timeline depuis la configuration
 function generateTimelineFromConfig() {
-    if (typeof timeline === 'undefined' || !Array.isArray(timeline)) {
+    if (typeof window === 'undefined' || !window.timeline || !Array.isArray(window.timeline)) {
         console.warn('Timeline config not found, using default HTML');
         return;
     }
+    
+    const timeline = window.timeline;
 
     // Utiliser le nouveau conteneur vertical, avec fallback sur l'ancien
     const epochsContainer = document.querySelector('.epochs-container-vertical') || document.querySelector('.epochs-container');
@@ -3064,42 +3066,29 @@ function generateTimelineFromConfig() {
 
     // Générer les éléments depuis la config
     timeline.forEach(item => {
-        if (item.type === 'epoch') {
+        if (item['📅']) {
             // Créer un bouton d'époque
             const button = document.createElement('button');
             button.className = 'epoch-btn';
-            button.setAttribute('data-epoch', item.name);
-            button.setAttribute('onclick', `setEpoch('${item.name.replace(/'/g, "\\'")}')`);
+            const epochId = item['📅'];
+            button.setAttribute('data-epoch', epochId);
+            button.setAttribute('onclick', `setEpoch('${epochId.replace(/'/g, "\\'")}')`);
             // Ne pas utiliser title natif, utiliser addCustomTooltip à la place
 
-            // Si le logo est un fichier image (SVG, PNG, etc.)
-            // 🔒 CORRECTION : Vérifier que logo est une string avant d'appeler endsWith (peut être un tableau)
-            if (item.logo && typeof item.logo === 'string' && (item.logo.endsWith('.svg') || item.logo.endsWith('.png'))) {
-                const img = document.createElement('img');
-                img.src = item.logo;
-                img.alt = item.name;
-                img.style.width = '24px';
-                img.style.height = '24px';
-                img.style.objectFit = 'contain';
-                img.style.display = 'block';
-                img.style.margin = '0 auto';
-                img.style.pointerEvents = 'none'; // Pour que le clic passe au bouton
-                button.appendChild(img);
-            } else {
-                // Sinon c'est un emoji/texte
-                button.textContent = item.logo;
-                // Appliquer les polices emoji standard aux logos
-                button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
-            }
+            // Le logo est maintenant directement l'emoji '📅'
+            button.textContent = epochId;
+            // Appliquer les polices emoji standard aux logos
+            button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
 
             epochsContainer.appendChild(button);
 
-            // Ajouter le tooltip personnalisé avec délai de 0.5s
-            if (item.title && item.title.trim() !== '') {
-                addCustomTooltip(button, item.title);
+            // Ajouter le tooltip personnalisé avec description depuis DESC
+            // Le title est maintenant dans DESC, pas dans item.title
+            if (typeof window !== 'undefined' && window.CHARS_DESC && window.CHARS_DESC[epochId]) {
+                addCustomTooltip(button, window.CHARS_DESC[epochId]);
             }
-        } else if (item.type === 'separator') {
-            // Afficher la date entre les logos (sans le "|")
+        } else {
+            // Séparateur automatique (détecté par '◀' et '▶')
             const dateItem = document.createElement('div');
             dateItem.className = 'epoch-date-item';
             
@@ -3778,7 +3767,7 @@ window.updateFluxLabels = function (data) {
 
     // 🔒 CORRECTION : Calculer forcing_H2O même si le bouton est inactif (pour debug/diagnostic)
     // Mais l'afficher seulement si le bouton est actif
-    if (h2o_total_percent > 0 && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
+    if (h2o_total_percent > 0) {
         // Calculer avec la température actuelle et le pourcentage TOTAL (base + météorites)
         h2o_params = window.calculateH2OParameters(T0_num, h2o_total_percent, cloud_coverage_num);
         forcing_H2O = h2o_params.greenhouse_forcing;

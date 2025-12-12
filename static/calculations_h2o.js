@@ -305,11 +305,10 @@ function calculateWaterPartition(temp_K, h2o_total_fraction, options = {}) {
  * @returns {Object} {vapor_fraction, cloud_coverage, greenhouse_forcing, cloud_albedo_contribution, ice_fraction}
  */
 window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_coverage_override = null) {
-    // Wrappers pour éviter window abusifs
-    const ALL_DATA = window.ALL_DATA;
-    const ALL_DESC = window.ALL_DESC;
+    // Utiliser DATA directement (pas de paramètres)
+    const DATA = window.DATA;
     
-    // ⚠️ CRITIQUE : Appeler getMasses() pour mettre à jour ALL_DATA.MASSES.H2O
+    // ⚠️ CRITIQUE : Appeler getMasses() pour mettre à jour DATA['🐳']['🐳💧']
     if (typeof window.getMasses === 'function') {
         window.getMasses();
     }
@@ -318,27 +317,28 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
 
     // Récupérer les paramètres de l'époque courante et calculer les valeurs dérivées
     let epochParams = {};
-    if (ALL_DATA.EPOCH) {
-        // Calculer pressure_atm et molar_mass_air depuis les composants
-        const pressure_atm = typeof window.calculatePressureAtm === 'function' 
-            ? window.calculatePressureAtm(ALL_DATA.EPOCH) : 0;
-        const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
-            ? window.calculateMolarMassAir(ALL_DATA.EPOCH) : 0;
+    const epoch = DATA['📅'];
+    if (epoch) {
+            // Calculer pressure_atm et molar_mass_air depuis les composants
+            const pressure_atm = typeof window.calculatePressureAtm === 'function' 
+            ? window.calculatePressureAtm() : 0;  // calculatePressureAtm utilise DATA directement
+            const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
+            ? window.calculateMolarMassAir() : 0;  // calculateMolarMassAir utilise DATA directement
         
-        // Calculer ocean_coverage depuis ALL_DATA.H2O si disponible (valeur déjà calculée)
-        // Note: ALL_DATA.H2O.OCEAN peut être soit la clé logo (string) soit la valeur (number)
+        // Calculer ocean_coverage depuis DATA['💧'] si disponible (valeur déjà calculée)
+        // Note: DATA['💧']['🍰💧🌊'] peut être soit la clé logo (string) soit la valeur (number)
         // On vérifie si c'est un number pour savoir si c'est déjà calculé
         let ocean_coverage = 0;
-        if (ALL_DATA.H2O && typeof ALL_DATA.H2O.OCEAN === 'number') {
-            ocean_coverage = ALL_DATA.H2O.OCEAN / 100; // Convertir de % à fraction
-        } else if (window.calculateOceanCoverage && ALL_DATA.CONVERGENCE.T0) {
-            ocean_coverage = window.calculateOceanCoverage(ALL_DATA.CONVERGENCE.T0, ALL_DATA.EPOCH);
+        if (DATA['💧'] && typeof DATA['💧']['🍰💧🌊'] === 'number') {
+            ocean_coverage = DATA['💧']['🍰💧🌊'] / 100; // Convertir de % à fraction
+        } else if (window.calculateOceanCoverage && DATA['⏳']['⏳🌡️🚩']) {
+            ocean_coverage = window.calculateOceanCoverage(DATA['⏳']['⏳🌡️🚩'], epoch);
         }
             
-        epochParams = {
+            epochParams = {
             pressure_atm: pressure_atm,
             molar_mass_air: molar_mass_air,
-            gravity: ALL_DATA.EPOCH.gravity,
+            gravity: epoch.gravity,
             ocean_coverage: ocean_coverage
         };
     } else {
@@ -348,7 +348,7 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
             molar_mass_air: 0,
             gravity: 9.81,
             ocean_coverage: 0
-        };
+            };
     }
 
     // Calculer la répartition eau vapeur / liquide / glace selon les conditions physiques
@@ -373,24 +373,18 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
         window.h2oIceFractionFromCalculation = ice_fraction;
     }
 
-    // Sauvegarder les clés logo avant de les écraser avec les valeurs
-    const h2o_ice_key = ALL_DATA.H2O.ICE;
-    const h2o_cloud_key = ALL_DATA.H2O.CLOUD;
-    const h2o_ocean_key = ALL_DATA.H2O.OCEAN;
-    const h2o_max_vapor_key = ALL_DATA.H2O.MAX_VAPOR;
+    // Sauvegarder les clés logo avant de les écraser avec les valeurs (si nécessaire)
+    // Les clés sont déjà définies dans dico.js, on les utilise directement
     
-    // Mettre à jour ALL_DATA.H2O avec les résultats du cycle de l'eau (écrase les clés logo avec les valeurs)
-    ALL_DATA.H2O.ICE = ice_fraction * 100;                    // Glace (%)
-    ALL_DATA.H2O.CLOUD = cloud_coverage * 100;                // Nuages (%) - condensation de la vapeur
-    ALL_DATA.H2O.OCEAN = liquid_fraction * 100;              // Océan (%) - eau liquide à la surface
-    ALL_DATA.H2O.MAX_VAPOR = waterPartition.max_vapor_fraction * 100;  // Max vapor fraction (%)
+    // Mettre à jour DATA['💧'] avec les résultats du cycle de l'eau
+    DATA['💧']['🍰💧🧊'] = ice_fraction * 100;                    // Glace (%)
+    DATA['💧']['🍰💧⛅'] = cloud_coverage * 100;                // Nuages (%) - condensation de la vapeur
+    DATA['💧']['🍰💧🌊'] = liquid_fraction * 100;              // Océan (%) - eau liquide à la surface
+    DATA['💧']['🍰⏳🌧'] = waterPartition.max_vapor_fraction * 100;  // Max vapor fraction (%)
     
-    // Sauvegarder la clé logo pour ATM.H2O avant de l'écraser
-    const atm_h2o_key = ALL_DATA.ATM.H2O;
-    
-    // Mettre à jour ALL_DATA.ATM.H2O avec le pourcentage de vapeur (écrase la clé logo avec la valeur)
-    ALL_DATA.ATM.H2O = h2o_vapor_percent;  // Pourcentage volumique de vapeur d'eau (0-100)
-    
+    // Mettre à jour DATA['🌬']['🍰🌬💧'] avec le pourcentage de vapeur
+    DATA['🌬']['🍰🌬💧'] = h2o_vapor_percent;  // Pourcentage volumique de vapeur d'eau (0-100)
+
     // Mettre à jour la composition atmosphérique (si disponible)
     if (typeof window !== 'undefined' && window.atmosphericComposition) {
         window.atmosphericComposition.H2O_vapor = vapor_fraction;
@@ -425,10 +419,10 @@ window.calculateH2OParameters = function (temp_K, h2o_vapor_percent, cloud_cover
             window.atmosphericComposition.Ar = remaining / 3;
         }
     }
-    
+
     // Log avec les clés logo sauvegardées et les valeurs
     console.log(`💧 [calculateH2OParameters@calculations_h2o.js]`);
-    console.log(`h2o={'${h2o_ice_key}':${ALL_DATA.H2O.ICE.toFixed(2)}, '${h2o_cloud_key}':${ALL_DATA.H2O.CLOUD.toFixed(2)}, '${h2o_ocean_key}':${ALL_DATA.H2O.OCEAN.toFixed(2)}, '${h2o_max_vapor_key}':${ALL_DATA.H2O.MAX_VAPOR.toFixed(2)}}`);
+    console.log(`h2o={'🍰💧🧊':${DATA['💧']['🍰💧🧊'].toFixed(2)}, '🍰💧⛅':${DATA['💧']['🍰💧⛅'].toFixed(2)}, '🍰💧🌊':${DATA['💧']['🍰💧🌊'].toFixed(2)}, '🍰⏳🌧':${DATA['💧']['🍰⏳🌧'].toFixed(2)}}`);
 
     return {
         vapor_fraction,

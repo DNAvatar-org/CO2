@@ -605,51 +605,50 @@
         // Générer la timeline horizontale
         function generateHorizontalTimeline() {
             const epochsContainer = document.getElementById('epochs-container-horizontal');
-            if (!epochsContainer || !window.configTimeline || !window.configTimeline.timeline) return;
+            if (!epochsContainer || !window.timeline) return;
             
             epochsContainer.innerHTML = '';
             
-            window.configTimeline.timeline.forEach(item => {
-                if (item.type === 'epoch') {
+            window.timeline.forEach(item => {
+                if (item['📅']) {
                     const button = document.createElement('button');
                     button.className = 'epoch-btn-horizontal';
-                    button.setAttribute('data-epoch', item.id || item.name);
-                    button.onclick = () => selectEpoch(item.id || item.name);
+                    const epochId = item['📅'];
+                    button.setAttribute('data-epoch', epochId);
+                    button.onclick = () => selectEpoch(epochId);
                     
-                    // Si le logo est un fichier image
-                    if (item.logo && typeof item.logo === 'string' && (item.logo.endsWith('.svg') || item.logo.endsWith('.png'))) {
-                        const img = document.createElement('img');
-                        img.src = getImagePath(item.logo);
-                        img.alt = item.name;
-                        img.style.width = '24px';
-                        img.style.height = '24px';
-                        img.style.objectFit = 'contain';
-                        img.style.display = 'block';
-                        img.style.margin = '0 auto';
-                        img.style.pointerEvents = 'none';
-                        button.appendChild(img);
-                    } else {
-                        // Sinon c'est un emoji/texte
-                        button.textContent = item.logo || '?';
-                        button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
-                    }
+                    // Le logo est maintenant dans charsImages ou directement l'emoji
+                    const logoEmoji = epochId;
+                    button.textContent = logoEmoji;
+                    button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
                     
                     epochsContainer.appendChild(button);
                 }
             });
             
             // Sélectionner la première époque par défaut
-            if (window.configTimeline.timeline.length > 0) {
-                const firstEpoch = window.configTimeline.timeline.find(item => item.type === 'epoch');
+            if (window.timeline.length > 0) {
+                const firstEpoch = window.timeline.find(item => item['📅']);
                 if (firstEpoch) {
-                    selectEpoch(firstEpoch.id || firstEpoch.name);
+                    selectEpoch(firstEpoch['📅']);
                 }
             }
         }
         
-        // Sélectionner une époque
+        // Sélectionner une époque (utilise l'index directement)
         function selectEpoch(epochId) {
-            window.currentEpochName = epochId;
+            if (!window.timeline) return;
+            
+            // Trouver l'index de l'époque dans la timeline
+            const epochIndex = window.timeline.findIndex(item => item['📅'] === epochId);
+            if (epochIndex < 0) {
+                console.error(`[selectEpoch] Époque ${epochId} non trouvée`);
+                return;
+            }
+            
+            // Utiliser l'index directement (pas de copie)
+            window.currentEpochIndex = epochIndex;
+            window.currentEpochName = epochId; // Garder pour compatibilité affichage
             
             // Mettre à jour les boutons
             document.querySelectorAll('.epoch-btn-horizontal').forEach(btn => {
@@ -659,24 +658,11 @@
                 }
             });
             
-            // Mettre à jour l'époque
-            if (window.configTimeline && window.configTimeline.timeline) {
-                const epoch = window.configTimeline.timeline.find(item => 
-                    item.type === 'epoch' && (item.id === epochId || item.name === epochId)
-                );
-                if (epoch) {
-                    window.epoch = epoch;
-                    // Mettre à jour ALL.EPOCH (remplace window.epoch)
-                    if (window.ALL_DATA) {
-                        window.ALL_DATA.EPOCH = epoch;
-                    }
-                    
-                    // Mettre à jour la date de l'époque
-                    const epochStartTime = document.getElementById('epoch-start-time');
-                    if (epochStartTime && epoch.date) {
-                        epochStartTime.textContent = epoch.date;
-                    }
-                }
+            // Mettre à jour la date de l'époque (depuis '▶')
+            const epoch = window.timeline[epochIndex];
+            const epochStartTime = document.getElementById('epoch-start-time');
+            if (epochStartTime && epoch && epoch['▶'] !== undefined) {
+                epochStartTime.textContent = `-${(epoch['▶'] / 1e6).toFixed(0)} Ma`;
             }
             
             // Mettre à jour les actions (boutons d'événements)
@@ -747,35 +733,34 @@
         
         // Initialiser les variables globales nécessaires
         function initializeGlobals() {
-            // Initialiser window.currentEpochName depuis le bouton sélectionné
+            // Initialiser window.currentEpochIndex depuis le bouton sélectionné
             const selectedBtn = document.querySelector('.epoch-btn-horizontal.selected');
+            let epochId = null;
             if (selectedBtn) {
-                window.currentEpochName = selectedBtn.getAttribute('data-epoch');
+                epochId = selectedBtn.getAttribute('data-epoch');
             } else {
-                window.currentEpochName = 'corps-noir'; // Par défaut
+                epochId = '⚫'; // Par défaut : Corps noir
             }
             
-            // Initialiser window.epoch depuis timeline (les époques sont aux indices pairs)
-            if (window.configTimeline && window.configTimeline.timeline) {
-                const epochIndex = window.configTimeline.timeline.findIndex(item => 
-                    item.type === 'epoch' && (item.id === window.currentEpochName || item.name === window.currentEpochName)
-                );
+            // Trouver l'index de l'époque dans timeline (utilise directement l'index)
+            if (window.timeline) {
+                const epochIndex = window.timeline.findIndex(item => item['📅'] === epochId);
                 if (epochIndex >= 0) {
-                    window.epoch = window.configTimeline.timeline[epochIndex];
+                    window.currentEpochIndex = epochIndex;
+                    window.currentEpochName = epochId; // Garder pour compatibilité affichage
                 } else {
                     // Fallback : première époque
-                    window.epoch = window.configTimeline.timeline.find(item => item.type === 'epoch');
-                }
-                // Mettre à jour ALL.EPOCH (remplace window.epoch)
-                if (window.ALL_DATA) {
-                    window.ALL_DATA.EPOCH = window.epoch;
+                    window.currentEpochIndex = window.timeline.findIndex(item => item['📅']);
+                    if (window.currentEpochIndex >= 0) {
+                        window.currentEpochName = window.timeline[window.currentEpochIndex]['📅'];
+                    }
                 }
             }
             
             // Initialiser window.getGeologicalPeriodByName si nécessaire
-            if (!window.getGeologicalPeriodByName && window.configTimeline && window.configTimeline.timeline) {
+            if (!window.getGeologicalPeriodByName && window.timeline) {
                 window.getGeologicalPeriodByName = function(name) {
-                    return window.configTimeline.timeline.find(epoch => epoch.id === name);
+                    return window.timeline.find(epoch => epoch['📅'] === name);
                 };
             }
             
@@ -844,28 +829,31 @@
             try {
                 initializeGlobals();
                 
-                // Afficher la grammaire complète selon grammar.txt
-                const getKey = getLogoKeyHTML;
-                const get = getLogoHTML;
+                // Afficher la grammaire complète selon grammar.txt - utiliser DATA directement
                 console.log('📖 Grammar.txt - Structure complète des objets:');
                 console.log('');
-                console.log(`enabledStates={'${getKey('BOOLEAN', 'H2O', 'EDS')}':true, '${getKey('BOOLEAN', 'CH4', 'EDS')}':true, '${getKey('BOOLEAN', 'CO2', 'EDS')}':true, '${getKey('BOOLEAN', 'ALBEDO')}':true, '${getKey('BOOLEAN', 'ANIMATION')}':false}`);
+                console.log(`enabledStates=${JSON.stringify(window.DATA['🔘'])}`);
                 console.log('');
-                console.log(`dateConfig={'${getKey('TEMP', 'OLD_T0')}':180.00, '${getKey('TEMP', 'COMPUTE', 'CONFIG')}':2450, '${getKey('CARDINAL', 'METEORITE_COUNT', 'CONFIG')}':0, '${getKey('DELTA', 'WEIGHT', 'H2O', 'METEORITE_COUNT', 'CONFIG')}':1.00e+18, '${getKey('CARDINAL', 'TIC_TIME', 'CONFIG')}':0, '${getKey('DELTA', 'TEMP', 'TIC_TIME', 'CONFIG')}':-300.0, '${getKey('DELTA', 'ENERGY_FLUX', 'GEOTHERMAL_FLUX', 'TIC_TIME', 'CONFIG')}':{'${get('FLUX_START')}':2000000, '${get('FLUX_END')}':0.3}}`);
+                // dateConfig sera logué après getEpochDateConfig() dans compute.js
+                console.log('dateConfig sera logué après getEpochDateConfig()');
                 console.log('');
-                console.log(`events={'${get('METEORITE_COUNT')}':'${getKey('CARDINAL', 'METEORITE_COUNT', 'CONFIG')}', '${get('TIC_TIME')}':'${getKey('CARDINAL', 'TIC_TIME', 'CONFIG')}'}`);
+                // events sera logué après récupération de epoch
+                console.log('events sera logué après récupération de epoch');
                 console.log('');
-                console.log(`masses={'${getKey('WEIGHT', 'CO2')}': 5.15e+17, '${getKey('WEIGHT', 'CH4')}': 5.15e+15, '${getKey('WEIGHT', 'H2O')}': 2.10e+20, '${getKey('WEIGHT', 'O2')}': 0.00e+0, '${getKey('WEIGHT', 'CARDINAL')}': 5.30e+20}`);
+                // masses sera logué après getMasses() dans compute.js
+                console.log('masses sera logué après getMasses()');
                 console.log('');
-                console.log(`atm={'${getKey('METER', 'ATMOSPHERE', 'ALTITUDE')}':1300, '${getKey('METER', 'ATMOSPHERE', 'TROPOPAUSE')}':30, '${getKey('PROPORTION', 'ATMOSPHERE', 'O2')}':0.0, '${getKey('PROPORTION', 'ATMOSPHERE', 'CO2')}':0.703, '${getKey('PROPORTION', 'ATMOSPHERE', 'H2O')}':0.000701158, '${getKey('PROPORTION', 'ATMOSPHERE', 'CH4')}':0.00019}`);
+                // atm sera logué après calculateCompositionFromLogoConfig()
+                console.log('atm sera logué après calculateCompositionFromLogoConfig()');
                 console.log('');
-                console.log(`h2o={'${getKey('PROPORTION', 'H2O', 'ICE')}':0, '${getKey('PROPORTION', 'H2O', 'CLOUD')}':5, '${getKey('PROPORTION', 'H2O', 'OCEAN')}':0, '${getKey('COMPUTE', 'MAX_VAPOR')}':100}`);
-                console.log(`Note: ${get('H2O')} (H2O vapeur %) est dans atm['${getKey('PROPORTION', 'ATMOSPHERE', 'H2O')}'] - source unique`);
-                console.log(`Note: ${getKey('ENERGY_FLUX', 'H2O', 'EDS')} (greenhouse forcing H2O) est dans step5_spectral, ${getKey('PROPORTION', 'ALBEDO', 'CLOUD')} (cloud albedo) est dans window.albedo`);
+                // h2o sera logué après calculateH2OParameters()
+                console.log('h2o sera logué après calculateH2OParameters()');
                 console.log('');
-                console.log(`albedoReflectorCoeff={'${getKey('PROPORTION', 'VOLCANO', 'ALBEDO')}':0.05, '${getKey('PROPORTION', 'OCEAN', 'ALBEDO')}':0.08, '${getKey('PROPORTION', 'FOREST', 'ALBEDO')}':0.12, '${getKey('PROPORTION', 'DESERT', 'ALBEDO')}':0.30, '${getKey('PROPORTION', 'ICE', 'ALBEDO')}':0.20, '${getKey('PROPORTION', 'CLOUD', 'ALBEDO')}':0.50}`);
+                // albedoReflectorCoeff
+                console.log(`albedoReflectorCoeff=${JSON.stringify(window.albedoReflectorCoeff)}`);
                 console.log('');
-                console.log(`albedo={'${getKey('PROPORTION', 'ALBEDO', 'CARDINAL')}':0.05, '${getKey('PROPORTION', 'ALBEDO', 'VOLCANO')}':1.00, '${getKey('PROPORTION', 'ALBEDO', 'OCEAN')}':0.00, '${getKey('PROPORTION', 'ALBEDO', 'FOREST')}':0.00, '${getKey('PROPORTION', 'ALBEDO', 'DESERT')}':0.00, '${getKey('PROPORTION', 'ALBEDO', 'ICE')}':0.00, '${getKey('PROPORTION', 'ALBEDO', 'CLOUD')}':0.05}`);
+                // albedo sera logué après calculateAlbedo()
+                console.log('albedo sera logué après calculateAlbedo()');
                 console.log('');
                 
                 console.log('🧪 Démarrage du test computeRadiativeTransfer');
@@ -878,11 +866,20 @@
                 // 1. getEpochDateConfig() - Récupérer la config de date
                 const dateConfig = window.getEpochDateConfig ? window.getEpochDateConfig() : null;
                 
+                // Loguer les objets directement après getEpochDateConfig
+                console.log('');
+                console.log('📊 Objets après getEpochDateConfig():');
+                console.log(`dateConfig=${JSON.stringify(window.DATA['📜'])}`);
+                console.log(`masses=${JSON.stringify(window.DATA['🐳'])}`);
+                if (window.epoch && window.epoch.events) {
+                    console.log(`events=${JSON.stringify(window.epoch.events)}`);
+                }
+                
                 // 2. Appeler computeRadiativeTransfer
                 const result = await window.computeRadiativeTransfer({});
                 
                 // 3. Afficher les résultats dans l'ordre
-                displayResults(result, window.epoch, dateConfig);
+                displayResults(result);
                 
                 console.log('✅ Test terminé avec succès');
                 addLogEntry('Test terminé avec succès', 'success');
@@ -909,17 +906,17 @@
             
             // Calculer le total
             elements.forEach(element => {
-                const coverage_key = `🥒🪞${element}`;
-                const coeff_key = `🥒${element}🪞`;
-                const coverage = albedo[coverage_key] || 0;
-                const coeff = albedoReflectorCoeff[coeff_key] || 0;
+                const coverage_key = `🍰🪞${element}`;
+                const coeff_key = `🍰${element}🪞`;
+                const coverage = albedo[coverage_key];
+                const coeff = albedoReflectorCoeff[coeff_key];
                 total += coverage * coeff;
             });
             
             // essais graphique, ne modifie pas la formule : 
             const variableChar = '❀';//❉✪✩⛬✤ //<i></i>
             const elementsStr = elements.join(',');
-            const formula = `🥒🪞🎓<span style="font-size: 15px;"> = Σ(</span>🥒🪞<span style="font-size: 15px;">${variableChar} × </span>🥒<span style="font-size: 15px;">${variableChar}</span>🪞<span style="font-size: 15px;">) | ${variableChar} ∈ { </span>${elementsStr}<span style="font-size: 15px;"> }</span> => ${total.toFixed(4)}`;
+            const formula = `🍰🪞📿<span style="font-size: 15px;"> = Σ(</span>🍰🪞<span style="font-size: 15px;">${variableChar} × </span>🍰<span style="font-size: 15px;">${variableChar}</span>🪞<span style="font-size: 15px;">) | ${variableChar} ∈ { </span>${elementsStr}<span style="font-size: 15px;"> }</span> => ${total.toFixed(4)}`;
             
             // Formater albedoReflectorCoeff pour l'affichage
             const formatNumber = (value) => {
@@ -940,38 +937,38 @@
             const T_surface_K = window.T0 || 255;
             const T_surface_C = T_surface_K - 273.15;
             const isHadeen = epoch?.id === 'hadeen';
-            const ocean_coverage = albedo['🥒🪞🌊'] || 0;
-            const ice_coverage = albedo['🥒🪞🧊'] || 0;
-            const forest_coverage = albedo['🥒🪞🌳'] || 0;
-            const volcano_coverage = albedo['🥒🪞🌋'] || 0;
-            const desert_coverage = albedo['🥒🪞🏖'] || 0;
-            const cloud_coverage = albedo['🥒🪞⛅'] || 0;
+            const ocean_coverage = albedo['🍰🪞🌊'];
+            const ice_coverage = albedo['🍰🪞🧊'];
+            const forest_coverage = albedo['🍰🪞🌳'];
+            const volcano_coverage = albedo['🍰🪞🌋'];
+            const desert_coverage = albedo['🍰🪞🏖'];
+            const cloud_coverage = albedo['🍰🪞⛅'];
             
             // Formules de calcul des couvertures
             if (isHadeen) {
-                coverageFormulas.push(`🥒🪞🌋 = 1.00 (Hadéen: volcan 100%)`);
-                coverageFormulas.push(`🥒🪞🏖 = 0.00 (Hadéen: désert 0%)`);
+                coverageFormulas.push(`🍰🪞🌋 = 1.00 (Hadéen: volcan 100%)`);
+                coverageFormulas.push(`🍰🪞🏖 = 0.00 (Hadéen: désert 0%)`);
             } else {
                 if (volcano_coverage > 0) {
-                    coverageFormulas.push(`🥒🪞🌋 = min(1.0, 🧲🌕 / 10000) si 🧲🌕 > 1000 W/m²`);
+                    coverageFormulas.push(`🍰🪞🌋 = min(1.0, 🧲🌕 / 10000) si 🧲🌕 > 1000 W/m²`);
                 }
                 if (ocean_coverage > 0) {
-                    coverageFormulas.push(`🥒🪞🌊 = 🥒💧🌊 (depuis h2o)`);
+                    coverageFormulas.push(`🍰🪞🌊 = 🍰💧🌊 (depuis h2o)`);
                 }
                 if (ice_coverage > 0) {
-                    coverageFormulas.push(`🥒🪞🧊 = 🥒💧🧊 (depuis h2o)`);
+                    coverageFormulas.push(`🍰🪞🧊 = 🍰💧🧊 (depuis h2o)`);
                 }
                 if (forest_coverage > 0) {
-                    coverageFormulas.push(`🥒🪞🌳 = min(0.5, 🥒🪞🌊 × (1 - 🌡️/30)) si 🌡️ < 30°C et 🥒🪞🌊 > 0.1`);
+                    coverageFormulas.push(`🍰🪞🌳 = min(0.5, 🍰🪞🌊 × (1 - 🌡️/30)) si 🌡️ < 30°C et 🍰🪞🌊 > 0.1`);
                 }
                 if (desert_coverage > 0) {
-                    coverageFormulas.push(`🥒🪞🏖 = ${desert_coverage.toFixed(2)} (depuis config, pas calculé comme surface restante)`);
+                    coverageFormulas.push(`🍰🪞🏖 = ${desert_coverage.toFixed(2)} (depuis config, pas calculé comme surface restante)`);
                 } else {
-                    coverageFormulas.push(`🥒🪞🏖 = 0.00 (non défini dans config, pas de désert par défaut)`);
+                    coverageFormulas.push(`🍰🪞🏖 = 0.00 (non défini dans config, pas de désert par défaut)`);
                 }
             }
             if (cloud_coverage > 0) {
-                coverageFormulas.push(`🥒🪞⛅ = 🥒💧⛅ (depuis h2o)`);
+                coverageFormulas.push(`🍰🪞⛅ = 🍰💧⛅ (depuis h2o)`);
             }
             
             let formulasHtml = formula;
@@ -992,10 +989,10 @@
             // SOURCE RÉELLE : window.flux['🧲☀️🔽'] est calculé avec calculateSolarFluxAbsorbed()
             // qui utilise maintenant window.soleil['🧲☀️🎱'] comme source unique
             // Par définition : 🧲☀️🎱 = 🧲☀️📜 / 4 (rapporté au rayon au sol pour les m²)
-            // 🧲☀️🔽 = 🧲☀️🎱 × (1 - 🥒🪞🎓) (on enlève l'albedo, c'est le flux au sol reçu du soleil)
-            if (flux['🧲☀️🔽'] !== undefined && soleil && soleil['🧲☀️🎱'] !== undefined && albedo && albedo['🥒🪞🎓'] !== undefined) {
+            // 🧲☀️🔽 = 🧲☀️🎱 × (1 - 🍰🪞📿) (on enlève l'albedo, c'est le flux au sol reçu du soleil)
+            if (flux['🧲☀️🔽'] !== undefined && soleil && soleil['🧲☀️🎱'] !== undefined && albedo && albedo['🍰🪞📿'] !== undefined) {
                 const solar_avg = soleil['🧲☀️🎱'];
-                const albedo_val = albedo['🥒🪞🎓'];
+                const albedo_val = albedo['🍰🪞📿'];
                 const calculated = solar_avg * (1 - albedo_val);
                 const actual = flux['🧲☀️🔽'];
                 
@@ -1069,58 +1066,53 @@
             return html;
         }
         
-        function displayResults(result, epoch, dateConfig) {
+        function displayResults(result) {
             const configDiv = document.getElementById('config');
             const configContent = document.getElementById('config-content');
             
             if (!configDiv || !configContent) return;
+            
+            // Récupérer l'époque directement depuis timeline avec l'index (pas de copie)
+            const epochIndex = (typeof window.currentEpochIndex !== 'undefined' && window.currentEpochIndex !== null) 
+                ? window.currentEpochIndex 
+                : 0;
+            const epoch = window.timeline && window.timeline[epochIndex] ? window.timeline[epochIndex] : null;
             
             let html = '';
             
             // 0. État des activations [getEnabledStates@compute.js]
             html += json2html(window.enabledStates, '⚙️ États activés', 'getEnabledStates@compute.js', 'enabledStates');
             
-            // 1. 💫📜 [getEpochDateConfig@compute.js]
-            const epochName = epoch?.name || epoch?.id || '';
-            // Récupérer 🎓💫📜 depuis window.dateConfig pour afficher +(50*🎓💫📜)Ma
-            const ticTime = window.dateConfig?.[getLogoKeyHTML('CARDINAL', 'TIC_TIME', 'CONFIG')] || 0;
+            // 1. 💫📜 [getEpochDateConfig@compute.js] - utiliser DATA directement
+            const epochId = epoch ? epoch['📅'] : '';
+            const epochName = epochId && window.CHARS_DESC ? window.CHARS_DESC[epochId] : epochId;
+            // Récupérer 🎓💫📜 depuis DATA['📜'] pour afficher +(50*🎓💫📜)Ma
+            const ticTime = window.DATA['📜']['📿💫'] || 0;
             const ticTimeDisplay = ticTime > 0 ? ` +(${ticTime}×50)Ma` : '';
             const dateConfigTitle = `💫📜 <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}${ticTimeDisplay}</span>`;
-            html += json2html(window.dateConfig, dateConfigTitle, 'getEpochDateConfig@compute.js', 'dateConfig');
+            html += json2html(window.DATA['📜'], dateConfigTitle, 'getEpochDateConfig@compute.js', 'dateConfig');
             
-            // 2. 📅 Événements [epoch.events]
-            if (epoch && epoch.events) {
-                // Construire l'objet events selon grammar.txt : events={'☄️':'🎓☄️📜', '💫':'🎓💫📜'}
-                const eventsObj = {};
-                if (epoch.events.meteor) {
-                    eventsObj[getLogoHTML('METEORITE_COUNT')] = getLogoKeyHTML('CARDINAL', 'METEORITE_COUNT', 'CONFIG');
-                }
-                if (epoch.events.tic_time) {
-                    eventsObj[getLogoHTML('TIC_TIME')] = getLogoKeyHTML('CARDINAL', 'TIC_TIME', 'CONFIG');
-                }
-                if (epoch.events.big_impact) {
-                    eventsObj[getLogoHTML('BIG_IMPACT')] = getLogoHTML('BIG_IMPACT');
-                }
-                // Ajouter epoch.name à la fin (en plus petit, pas en strong)
+            // 2. 📅 Événements [epoch['🕰']] - utiliser epoch['🕰'] directement depuis timeline
+            if (epoch && epoch['🕰']) {
                 const eventsTitle = `📅 Événements <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`;
-                html += json2html(eventsObj, eventsTitle, 'epoch.events', 'events');
+                html += json2html(epoch['🕰'], eventsTitle, 'epoch[\'🕰\']', 'events');
             }
             
-            // 3. 🐳 [getMasses@compute.js]
-            html += json2html(window.masses, '🐳', 'getMasses@compute.js', 'masses');
+            // 3. 🐳 [getMasses@compute.js] - utiliser DATA directement
+            html += json2html(window.DATA['🐳'], '🐳', 'getMasses@compute.js', 'masses');
             
-            // 4. 🌬 Composition atmosphérique [calculateCompositionFromLogoConfig@calculations_atm.js]
-            html += json2html(window.atm, '🌬 Composition atmosphérique', 'calculateCompositionFromLogoConfig@calculations_atm.js', 'atm');
+            // 4. 🌬 Composition atmosphérique [calculateCompositionFromLogoConfig@calculations_atm.js] - utiliser DATA directement
+            html += json2html(window.DATA['🌬'], '🌬 Composition atmosphérique', 'calculateCompositionFromLogoConfig@calculations_atm.js', 'atm');
             
-            // 5. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js]
-            html += json2html(window.h2o, '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o');
+            // 5. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js] - utiliser DATA directement
+            html += json2html(window.DATA['💧'], '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o');
             
-            // 6. 🪞 Albedo [calculateAlbedo@calculations_albedo.js]
+            // 6. 🪞 Albedo [calculateAlbedo@calculations_albedo.js] - utiliser DATA directement
             // Construire le HTML avec la formule intégrée dans config-section après config-title
-            if (window.albedo) {
-                const albedoHtml = json2html(window.albedo, '🪞 Albedo', 'calculateAlbedo@calculations_albedo.js', 'albedo');
+            if (window.DATA['🪞']) {
+                const albedoHtml = json2html(window.DATA['🪞'], '🪞 Albedo', 'calculateAlbedo@calculations_albedo.js', 'albedo');
                 if (window.albedoReflectorCoeff) {
-                    const formula = calculateAlbedoFormula(window.albedo, window.albedoReflectorCoeff);
+                    const formula = calculateAlbedoFormula(window.DATA['🪞'], window.albedoReflectorCoeff);
                     // Insérer la formule après config-title (avant config-value)
                     html += albedoHtml.replace('<div class="config-value"', formula + '<div class="config-value"');
                 } else {
@@ -1128,17 +1120,18 @@
                 }
             }
             
-            // 7. 🌕 Noyau [getNoyau@compute.js]
-            html += json2html(window.noyau, `🌕 Noyau <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`, 'getNoyau@compute.js', 'noyau');
+            // 7. 🌕 Noyau [getNoyau@compute.js] - utiliser DATA directement
+            html += json2html(window.DATA['🌕'], `🌕 Noyau <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`, 'getNoyau@compute.js', 'noyau');
             
-            // 8. ☀️ Soleil [getSoleil@compute.js]
-            html += json2html(window.soleil, `☀️ Soleil <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`, 'getSoleil@compute.js', 'soleil');
+            // 8. ☀️ Soleil [getSoleil@compute.js] - utiliser DATA directement
+            html += json2html(window.DATA['☀️'], `☀️ Soleil <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`, 'getSoleil@compute.js', 'soleil');
             
             // 9. ☀️ Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
             // Construire le HTML avec les formules intégrées
+            // window.flux est créé dans calculations_flux.js ligne 640
             if (window.flux) {
                 const fluxHtml = json2html(window.flux, '☀️ Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux');
-                const fluxFormulas = calculateFluxFormulas(window.flux, window.soleil, window.albedo);
+                const fluxFormulas = calculateFluxFormulas(window.flux, window.DATA['☀️'], window.DATA['🪞']);
                 // Insérer les formules après config-title (avant config-value)
                 html += fluxHtml.replace('<div class="config-value"', fluxFormulas + '<div class="config-value"');
             }
@@ -1279,9 +1272,9 @@
             console.log('📄 Page de test chargée');
             console.log('🔧 Initialisation des variables globales...');
             
-            // S'assurer que configTimeline est chargé
-            if (window.configTimeline && window.configTimeline.timeline) {
-                console.log(`✅ Timeline chargée: ${window.configTimeline.timeline.length} époques`);
+            // S'assurer que timeline est chargée
+            if (window.timeline) {
+                console.log(`✅ Timeline chargée: ${window.timeline.length} époques`);
                 // Générer la timeline horizontale
                 generateHorizontalTimeline();
             } else {

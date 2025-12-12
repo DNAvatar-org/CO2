@@ -19,8 +19,8 @@
         // Générer l'alphabet au chargement
         window.addEventListener('DOMContentLoaded', function() {
             const alphabetContent = document.getElementById('alphabet-content');
-            if (alphabetContent && typeof window !== 'undefined' && window.createAlphabet) {
-                alphabetContent.innerHTML = window.createAlphabet();
+            if (alphabetContent && typeof window !== 'undefined' && window.createAlphabetHtml) {
+                alphabetContent.innerHTML = window.createAlphabetHtml();
                 
                 // Ajuster la hauteur de l'iframe au contenu
                 setTimeout(() => {

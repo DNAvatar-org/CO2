@@ -20,13 +20,14 @@ if (typeof window !== 'undefined') {
         return names.map(name => LOGOS[name] || '').join('');
     };
     
+    // Utiliser les clés emoji directement selon grammar.txt : albedoReflectorCoeff={'🍰🌋🪞':0.05, '🍰🌊🪞':0.08, '🍰🌳🪞':0.12, '🍰🏖🪞':0.30, '🍰🧊🪞':0.20, '🍰⛅🪞':0.50}
     window.albedoReflectorCoeff = {
-        [getLogoKey('PROPORTION', 'VOLCANO', 'ALBEDO')]: 0.05,  // Volcan/magma : très sombre
-        [getLogoKey('PROPORTION', 'OCEAN', 'ALBEDO')]: 0.08,  // Océan : sombre
-        [getLogoKey('PROPORTION', 'FOREST', 'ALBEDO')]: 0.12,  // Forêt : légèrement réfléchissant
-        [getLogoKey('PROPORTION', 'DESERT', 'ALBEDO')]: 0.3,   // Désert : réfléchissant
-        [getLogoKey('PROPORTION', 'ICE', 'ALBEDO')]: 0.2,   // Glace : réfléchissant
-        [getLogoKey('PROPORTION', 'CLOUD', 'ALBEDO')]: 0.5    // Nuages : moyennement réfléchissant
+        '🍰🌋🪞': 0.05,  // Volcan/magma : très sombre
+        '🍰🌊🪞': 0.08,  // Océan : sombre
+        '🍰🌳🪞': 0.12,  // Forêt : légèrement réfléchissant
+        '🍰🏖🪞': 0.3,   // Désert : réfléchissant
+        '🍰🧊🪞': 0.2,   // Glace : réfléchissant
+        '🍰⛅🪞': 0.5    // Nuages : moyennement réfléchissant
     };
 }
 
@@ -55,9 +56,9 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     const epoch = window.epoch;
     if (epoch) {
         // Calculer dynamiquement depuis les composantes si disponibles
-        // Utiliser window.h2o pour la glace et l'océan
-        const ice_fraction = window.h2o ? (window.h2o[getLogoKey('PROPORTION', 'H2O', 'ICE')] / 100) : 0;
-        const ocean_coverage = window.h2o ? (window.h2o[getLogoKey('PROPORTION', 'H2O', 'OCEAN')] / 100) : 0;
+        // Utiliser window.h2o pour la glace et l'océan (clés emoji directes selon dico.js)
+        const ice_fraction = window.h2o ? (window.h2o['🍰💧🧊'] / 100) : 0;
+        const ocean_coverage = window.h2o ? (window.h2o['🍰💧🌊'] / 100) : 0;
             
         // Calculer l'albedo pondéré selon les couvertures en utilisant window.albedoReflectorCoeff
         // D'abord déterminer les couvertures : volcan, océan, forêt, désert, glace
@@ -89,27 +90,28 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         // Les nuages seront ajoutés ensuite (contribution additive)
         let weighted_albedo = 0;
         let total_coverage = 0;
-        const coeff = window.albedoReflectorCoeff || {};
+        const coeff = window.albedoReflectorCoeff;
         
         // Albedo de surface (moyenne pondérée des couvertures)
+        // Utiliser les clés emoji directement : '🍰🌋🪞', '🍰🌊🪞', etc.
         if (volcano_coverage > 0) {
-            weighted_albedo += volcano_coverage * (coeff[getLogoKey('PROPORTION', 'VOLCANO', 'ALBEDO')] || 0.05);
+            weighted_albedo += volcano_coverage * coeff['🍰🌋🪞'];
             total_coverage += volcano_coverage;
         }
         if (ocean_coverage > 0) {
-            weighted_albedo += ocean_coverage * (coeff[getLogoKey('PROPORTION', 'OCEAN', 'ALBEDO')] || 0.08);
+            weighted_albedo += ocean_coverage * coeff['🍰🌊🪞'];
             total_coverage += ocean_coverage;
         }
         if (forest_coverage > 0) {
-            weighted_albedo += forest_coverage * (coeff[getLogoKey('PROPORTION', 'FOREST', 'ALBEDO')] || 0.12);
+            weighted_albedo += forest_coverage * coeff['🍰🌳🪞'];
             total_coverage += forest_coverage;
         }
         if (desert_coverage > 0) {
-            weighted_albedo += desert_coverage * (coeff[getLogoKey('PROPORTION', 'DESERT', 'ALBEDO')] || 0.3);
+            weighted_albedo += desert_coverage * coeff['🍰🏖🪞'];
             total_coverage += desert_coverage;
         }
         if (ice_fraction > 0) {
-            weighted_albedo += ice_fraction * (coeff[getLogoKey('PROPORTION', 'ICE', 'ALBEDO')] || 0.2);
+            weighted_albedo += ice_fraction * coeff['🍰🧊🪞'];
             total_coverage += ice_fraction;
         }
         
@@ -246,17 +248,10 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     }
 
     // Contribution des nuages (H2O activé)
-    // Utiliser getLogoKey() pour construire les clés dynamiquement
-    const getLogoKey2 = (typeof window !== 'undefined' && window.getLogoKey) ? window.getLogoKey : function(...names) {
-        const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
-        return names.map(name => LOGOS[name] || '').join('');
-    };
-    
-    // Utiliser window.h2o[getLogoKey('PROPORTION', 'H2O', 'CLOUD')] comme source unique (pas de duplication)
-    // IMPORTANT : Les nuages sont toujours ajoutés si window.h2o[getLogoKey('PROPORTION', 'H2O', 'CLOUD')] est défini, même si h2o_enabled est false
-    // car window.h2o[getLogoKey('PROPORTION', 'H2O', 'CLOUD')] représente la couverture nuageuse calculée, indépendamment de l'état du bouton
+    // IMPORTANT : Les nuages sont toujours ajoutés si window.h2o['🍰💧⛅'] est défini, même si h2o_enabled est false
+    // car window.h2o['🍰💧⛅'] représente la couverture nuageuse calculée, indépendamment de l'état du bouton
     let cloud_fraction = 0;
-    const h2o_cloud_key = getLogoKey2('PROPORTION', 'H2O', 'CLOUD');
+    const h2o_cloud_key = '🍰💧⛅';  // Clé emoji directe selon dico.js
     if (window.h2o && window.h2o[h2o_cloud_key] !== undefined) {
         cloud_fraction = window.h2o[h2o_cloud_key] / 100; // Convertir de % à fraction
     } else if (h2o_enabled) {
@@ -267,8 +262,8 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     // Toujours ajouter la contribution des nuages si cloud_fraction > 0
     // (pas de seuil minimum, car window.h2o[h2o_cloud_key] est déjà calculé avec précision)
     if (cloud_fraction > 0) {
-        const coeff = window.albedoReflectorCoeff || {};
-        const cloud_albedo_coeff = coeff[getLogoKey2('PROPORTION', 'CLOUD', 'ALBEDO')] || 0.5; // Coefficient d'albédo des nuages
+        const coeff = window.albedoReflectorCoeff;
+        const cloud_albedo_coeff = coeff['🍰⛅🪞']; // Coefficient d'albédo des nuages
         
         // Contribution des nuages : albedo_nuages × couverture_nuageuse
         // Les nuages sont dans l'atmosphère, donc ils ajoutent leur contribution à l'albedo de surface
@@ -317,29 +312,28 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         // TODO: Si desert_coverage est défini dans epoch.config, l'utiliser ici
         // Pour l'instant, on laisse à 0 (pas de désert par défaut)
         
-        // Wrappers pour éviter window abusifs
-        const ALL = window.ALL_DATA || {};
-        const ALBEDO = window.ALBEDO;
+        // Utiliser DATA directement (pas de paramètres)
+        const DATA = window.DATA;
         
         // Selon grammar.txt : albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}
-        // Mettre à jour ALL directement (source unique de vérité)
-        ALL[ALBEDO.TOTAL.key] = final_albedo;  // % Albedo total
-        ALL[ALBEDO.VOLCANO.key] = volcano_coverage_display;
-        ALL[ALBEDO.OCEAN.key] = ocean_coverage_display;
-        ALL[ALBEDO.FOREST.key] = forest_coverage_display;
-        ALL[ALBEDO.DESERT.key] = desert_coverage_display;
-        ALL[ALBEDO.ICE.key] = ice_coverage_display;
-        ALL[ALBEDO.CLOUD.key] = cloud_coverage_display;
+        // Mettre à jour DATA directement (source unique de vérité)
+        DATA['🪞']['🍰🪞📿'] = final_albedo;  // Albedo total
+        DATA['🪞']['🍰🪞🌋'] = volcano_coverage_display;  // Volcan
+        DATA['🪞']['🍰🪞🌊'] = ocean_coverage_display;  // Océan
+        DATA['🪞']['🍰🪞🌳'] = forest_coverage_display;  // Forêt
+        DATA['🪞']['🍰🪞🏖'] = desert_coverage_display;  // Désert
+        DATA['🪞']['🍰🪞🧊'] = ice_coverage_display;  // Glace
+        DATA['🪞']['🍰🪞⛅'] = cloud_coverage_display;  // Nuages
         
-        // Compatibilité : garder window.albedo pour l'affichage (mais ALL est la source)
+        // Compatibilité : garder window.albedo pour l'affichage (mais DATA est la source)
         window.albedo = {
-            [ALBEDO.TOTAL.key]: ALL[ALBEDO.TOTAL.key],
-            [ALBEDO.VOLCANO.key]: ALL[ALBEDO.VOLCANO.key],
-            [ALBEDO.OCEAN.key]: ALL[ALBEDO.OCEAN.key],
-            [ALBEDO.FOREST.key]: ALL[ALBEDO.FOREST.key],
-            [ALBEDO.DESERT.key]: ALL[ALBEDO.DESERT.key],
-            [ALBEDO.ICE.key]: ALL[ALBEDO.ICE.key],
-            [ALBEDO.CLOUD.key]: ALL[ALBEDO.CLOUD.key]
+            '🍰🪞📿': DATA['🪞']['🍰🪞📿'],
+            '🍰🪞🌋': DATA['🪞']['🍰🪞🌋'],
+            '🍰🪞🌊': DATA['🪞']['🍰🪞🌊'],
+            '🍰🪞🌳': DATA['🪞']['🍰🪞🌳'],
+            '🍰🪞🏖': DATA['🪞']['🍰🪞🏖'],
+            '🍰🪞🧊': DATA['🪞']['🍰🪞🧊'],
+            '🍰🪞⛅': DATA['🪞']['🍰🪞⛅']
         };
     }
     

@@ -56,9 +56,9 @@ function updateTimeline() {
         const infoTimeMa = window.infoTimeMa || 0;
         let newText;
         
-        // Afficher en Ma (millions d'années)
-        const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
-        newText = `+${deltaMa} Ma`;
+            // Afficher en Ma (millions d'années)
+            const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
+            newText = `+${deltaMa} Ma`;
         
         // Ne modifier le texte que s'il a changé pour éviter le clignotement
         if (infoTimeDisplay.textContent !== newText) {

@@ -21,6 +21,9 @@ if (typeof window === 'undefined' || (!window.CHARS && !window.LOGOS)) {
     console.warn('[configOrganigramme.js] window.CHARS/window.LOGOS non défini. Assurez-vous que alphabet.js est chargé avant ce fichier.');
 }
 
+// Constante locale pour utiliser CHARS ou LOGOS
+const LOGOS = (typeof window !== 'undefined' && (window.CHARS || window.LOGOS)) ? (window.CHARS || window.LOGOS) : {};
+
 // Configuration de base
 const radius = 40; // Cercles plus petits (par défaut)
 const centerX = 183; // Centre horizontal du diagramme (328px / 2)
@@ -270,8 +273,8 @@ const nodes = [
     },
 
     { id: 'espace2', logo: '🛰', logoScale: 0.5, x: centerX + 150, y: centerY + 310, radius: 50, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
-    
-    { id: 'reemis', logo: '📛', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
+    //📛
+    { id: 'reemis', logo: '🛡', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
 
     { id: 'co2', type: 'button', logo: LOGOS.CO2, logoOffsetY: 0, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
@@ -301,6 +304,4 @@ const arcs = [
 // Note: timeline est maintenant chargée depuis static/timeline/configTimeline.js
 window.configOrganigramme = { nodes, arcs };
 // La timeline sera ajoutée par static/timeline/configTimeline.js si elle est chargée après
-if (typeof window !== 'undefined' && window.configTimeline && window.configTimeline.timeline) {
-    window.configOrganigramme.timeline = window.configTimeline.timeline;
-}
+// Timeline est maintenant directement dans window.timeline
