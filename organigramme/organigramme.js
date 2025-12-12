@@ -1913,19 +1913,19 @@ function generateArrows() {
             let atm_height_km = 0;
             const isCorpsNoir = isBlackBodyEpoch();
             
-            if (!isCorpsNoir && typeof window.calculateAtmosphereProperties === 'function') {
+            if (!isCorpsNoir) {
                 let total_mass = 0; 
                 let gravity = 9.81; // Défaut temporaire, devrait venir de l'époque
                 let molar_mass_air = undefined;
 
-                if (typeof window.getGeologicalPeriodByName === 'function' && window.currentEpochName) {
+                if (window.currentEpochName) {
                     const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                     if (currentEpoch) {
                         if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass = currentEpoch.total_atmosphere_mass_kg;
                         if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
                         if (currentEpoch.molar_mass_air !== undefined) {
                             molar_mass_air = currentEpoch.molar_mass_air;
-                        } else if (typeof window.calculateMolarMassAir === 'function') {
+                        } else {
                             // Calculer depuis les composants de l'époque
                             molar_mass_air = window.calculateMolarMassAir(currentEpoch);
                         }
@@ -3619,7 +3619,7 @@ window.updateFluxLabels = function (data) {
 
     // En mode "corps noir" (pas d'atmosphère), utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
     // Sinon, forcer l'albedo à 0 (pas d'atmosphère, pas d'eau, pas de glace)
-    const hasNoAtmosphere = (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') ? 
+    const hasNoAtmosphere = (typeof window !== 'undefined' && window.currentEpochName) ? 
         (() => {
             const epoch = window.getGeologicalPeriodByName(window.currentEpochName);
             return epoch && (epoch.total_atmosphere_mass_kg === 0 || epoch.total_atmosphere_mass_kg === undefined);
@@ -3646,7 +3646,7 @@ window.updateFluxLabels = function (data) {
     if (albedo_num === 0 || albedo === null || albedo === undefined) {
         // Si albedo_num est 0 ou data.albedo n'est pas défini, recalculer avec le flux géothermique
         let geo_flux = null;
-        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        if (typeof window !== 'undefined' && window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
                 geo_flux = currentEpoch.geothermal_flux;
@@ -3700,7 +3700,7 @@ window.updateFluxLabels = function (data) {
 
         // Récupérer le flux géothermique depuis l'époque courante
         let geo_flux = 0.087; // Valeur par défaut (moderne)
-        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        if (typeof window !== 'undefined' && window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
                 geo_flux = currentEpoch.geothermal_flux;
@@ -3871,7 +3871,7 @@ window.updateFluxLabels = function (data) {
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: 0, albedo: ALBEDO_CLOUD.toFixed(2) }
         ];
         albedoBreakdown = createAlbedoComponents(components);
-    } else if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    } else if (typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             // Récupérer les valeurs de couverture de l'époque
@@ -4208,20 +4208,20 @@ window.updateFluxLabels = function (data) {
     // Mettre à jour l'épaisseur de l'atmosphère dans le label de l'arc Terre->Albedo
     // Utiliser calculateAtmosphereProperties pour obtenir la vraie hauteur physique
     let atm_height_km = 0;
-    if (!hasNoAtmosphere && typeof window.calculateAtmosphereProperties === 'function' && T0_num > 0) {
+    if (!hasNoAtmosphere && T0_num > 0) {
         // Récupérer la masse atmosphérique et la gravité de l'époque
         let total_mass = 0;
         let gravity = 9.81;
         let molar_mass_air = undefined;
 
-        if (typeof window.getGeologicalPeriodByName === 'function' && window.currentEpochName) {
+        if (window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
                 if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass = currentEpoch.total_atmosphere_mass_kg;
                 if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
                 if (currentEpoch.molar_mass_air !== undefined) {
                     molar_mass_air = currentEpoch.molar_mass_air;
-                } else if (typeof window.calculateMolarMassAir === 'function') {
+                } else {
                     // Calculer depuis les composants de l'époque
                     molar_mass_air = window.calculateMolarMassAir(currentEpoch);
                 }

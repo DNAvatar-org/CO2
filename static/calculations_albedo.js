@@ -140,7 +140,7 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     // Récupérer le flux géothermique (si non fourni, calculer depuis core_temperature et geothermal_diffusion_factor)
     let geo_flux = geothermal_flux;
     if (geo_flux === null || geo_flux === undefined) {
-        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        if (typeof window !== 'undefined' && window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
                 // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
@@ -181,20 +181,18 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         
         // Récupérer les paramètres de l'époque courante (si disponibles)
         let epochParams = {};
-        if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        if (window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
             // Calculer pressure_atm et molar_mass_air depuis les composants
-            const pressure_atm = typeof window.calculatePressureAtm === 'function' 
-                ? window.calculatePressureAtm(currentEpoch) : undefined;
-            const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
-                ? window.calculateMolarMassAir(currentEpoch) : undefined;
+            const pressure_atm = window.calculatePressureAtm(currentEpoch);
+            const molar_mass_air = window.calculateMolarMassAir(currentEpoch);
             
             epochParams = {
-                pressure_atm: pressure_atm !== undefined ? pressure_atm : 0, // 0 si pas d'atmosphère (Corps noir)
-                molar_mass_air: molar_mass_air !== undefined ? molar_mass_air : 0, // 0 si pas d'atmosphère (Corps noir)
-                gravity: currentEpoch.gravity !== undefined ? currentEpoch.gravity : 9.81,
-                ocean_coverage: currentEpoch.ocean_coverage !== undefined ? currentEpoch.ocean_coverage : 0
+                pressure_atm: pressure_atm,
+                molar_mass_air: molar_mass_air,
+                gravity: currentEpoch.gravity,
+                ocean_coverage: currentEpoch.ocean_coverage
             };
             
             }
@@ -380,14 +378,12 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_overrid
             if (typeof window.calculateWaterPartition === 'function') {
                 // Construire epochParams avec les paramètres physiques nécessaires
                 let epochParams = {};
-                if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                if (window.currentEpochName) {
                     const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                     if (currentEpoch) {
                         // Calculer pressure_atm et molar_mass_air depuis les composants
-                        const pressure_atm = typeof window.calculatePressureAtm === 'function' 
-                            ? window.calculatePressureAtm(currentEpoch) : undefined;
-                        const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
-                            ? window.calculateMolarMassAir(currentEpoch) : undefined;
+                        const pressure_atm = window.calculatePressureAtm(currentEpoch);
+                        const molar_mass_air = window.calculateMolarMassAir(currentEpoch);
                         
                         epochParams = {
                             pressure_atm: pressure_atm, // Calculé depuis total_atmosphere_mass_kg, gravity, planet_radius
@@ -561,7 +557,7 @@ function updateLevelsConfig(epoch, total_atmosphere_mass_kg, molar_mass_air, isC
     // Initialiser CO2 depuis la config de l'époque (utiliser la même logique que setEpoch)
     let co2_ppm = 0;
     if (!isCorpsNoir && epoch.co2_kg !== undefined && epoch.co2_kg > 0) {
-        if (typeof window !== 'undefined' && typeof window.co2KgToFraction === 'function') {
+        if (typeof window !== 'undefined') {
             const co2_fraction = window.co2KgToFraction(epoch.co2_kg, total_atmosphere_mass_kg, molar_mass_air);
             co2_ppm = co2_fraction * 1e6; // Convertir fraction en ppm
         } else {
@@ -576,7 +572,7 @@ function updateLevelsConfig(epoch, total_atmosphere_mass_kg, molar_mass_air, isC
     // Initialiser CH4 depuis la config de l'époque (utiliser la même logique que setEpoch)
     let ch4_ppm = 0;
     if (!isCorpsNoir && epoch.ch4_kg !== undefined && epoch.ch4_kg > 0) {
-        if (typeof window !== 'undefined' && typeof window.ch4KgToFraction === 'function') {
+        if (typeof window !== 'undefined') {
             const ch4_fraction = window.ch4KgToFraction(epoch.ch4_kg, total_atmosphere_mass_kg, molar_mass_air);
             ch4_ppm = ch4_fraction * 1e6; // Convertir fraction en ppm
         } else {

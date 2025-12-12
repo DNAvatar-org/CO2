@@ -2027,7 +2027,7 @@ function drawSpectralVisualization(canvas, data) {
     }
 
 
-    const P0 = 101325; // Pression au niveau de la mer en Pa
+    const P0 = window.CONST.STANDARD_ATMOSPHERE_PA; // Pression au niveau de la mer en Pa
 
     // ... suite du code de rendu canvas ...
 

@@ -25,21 +25,21 @@ const timeline = [
         '🔋🌕': 0, // core_temperature (Pas de noyau en K)
         '🍰🧲🌕': 0.0, // geothermal_diffusion_factor (Facteur de diffusion du noyau vers la surface 0-1)
         '📐': 5096.8, // Rayon de la planète en km (Terre : 6371 km)
-        '🐋': 8.3, // Gravité en m/s²
-        '🐳📿': 0, // total_atmosphere_mass_kg (Pas d'atmosphère)
+        '🍎': 8.3, // Gravité en m/s²
+        '⚖️📿': 0, // total_atmosphere_mass_kg (Pas d'atmosphère)
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         // Note: geothermal_flux sera calculé à partir de core_temperature et geothermal_diffusion_factor
         // Simulation parameters - Quantités en kg (pas de ppm/%)
-        '🐳🏭': 0, // co2_kg (Quantité de CO2 en kg)
-        '🐳⛽': 0, // ch4_kg (Quantité de CH4 en kg)
-        '🐳💧': 0, // h2o_kg (Quantité totale d'eau en kg)
-        '🐳🌫': 0, // o2_kg (Quantité de O2 en kg)
+        '⚖️🏭': 0, // co2_kg (Quantité de CO2 en kg)
+        '⚖️⛽': 0, // ch4_kg (Quantité de CH4 en kg)
+        '⚖️💧': 0, // h2o_kg (Quantité totale d'eau en kg)
+        '⚖️🌫': 0, // o2_kg (Quantité de O2 en kg)
         // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
         // Événements interactifs
         '🕰': {
             '☄️': {
-                '🔺🐳💧☄️': 2.0e19, // water_added_kg (~10^20 kg)
+                '🔺⚖️💧☄️': 2.0e19, // water_added_kg (~10^20 kg)
                 // deltaTemp: -3.5 // Inutile, déclenche aussi 📿💫++
             },
             '🎇': {
@@ -59,14 +59,14 @@ const timeline = [
         // Correspond à la phase immédiate post-impact (océan de magma rayonnant)
         '🧲🌕': 2000000, // geothermal_flux (W/m²)
         '📐': 7008.1, // Rayon de la planète en km
-        '🐋': 10.3, // Gravité en m/s²
+        '🍎': 10.3, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '🐳📿': 5.3e20, // total_atmosphere_mass_kg (Atmosphère très dense ~100 bar)
+        '⚖️📿': 5.3e20, // total_atmosphere_mass_kg (Atmosphère très dense ~100 bar)
         // Simulation parameters - Quantités en kg (pas de ppm/%)
-        '🐳🏭': 5.15e17, // co2_kg (~10% de l'atmosphère moderne)
-        '🐳⛽': 5.15e15, // ch4_kg (~1000 ppm)
-        '🐳💧': 2.1e20, // h2o_kg (~15% de 1.4e21 kg)
-        '🐳🌫': 0, // o2_kg
+        '⚖️🏭': 5.15e17, // co2_kg (~10% de l'atmosphère moderne)
+        '⚖️⛽': 5.15e15, // ch4_kg (~1000 ppm)
+        '⚖️💧': 2.1e20, // h2o_kg (~15% de 1.4e21 kg)
+        '⚖️🌫': 0, // o2_kg
         // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
         magma_coverage: 1.0, // Spécifique Hadéen - TODO: trouver logo combo
@@ -81,7 +81,7 @@ const timeline = [
                 }
             },
             '☄️': {
-                '🔺🐳💧☄️': 1.0e18, // water_added_kg (~10% de l'eau initiale)
+                '🔺⚖️💧☄️': 1.0e18, // water_added_kg (~10% de l'eau initiale)
                 // deltaTemp: -3 // Inutile, déclenche aussi 📿💫++
             }
         }
@@ -95,19 +95,19 @@ const timeline = [
         '🔋☀️': 3.0624e26, // Puissance totale du soleil (W) - 80% de 3.828e26 W
         '🔋🌕': 1.5e14, // core_power_watts (Puissance géothermique totale ~150 TW)
         '📐': 6371, // Rayon de la planète en km
-        '🐋': 9.81, // Gravité en m/s²
+        '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '🐳📿': 1.0e19, // total_atmosphere_mass_kg (Atmosphère dense ~2 bar)
+        '⚖️📿': 1.0e19, // total_atmosphere_mass_kg (Atmosphère dense ~2 bar)
         // Simulation parameters - Quantités en kg
-        '🐳🏭': 2.575e16, // co2_kg (~5000 ppm)
-        '🐳⛽': 4.12e14, // ch4_kg (~80 ppm)
-        '🐳💧': 8.4e20, // h2o_kg (~60% de 1.4e21 kg)
-        '🐳🌫': 0, // o2_kg
+        '⚖️🏭': 2.575e16, // co2_kg (~5000 ppm)
+        '⚖️⛽': 4.12e14, // ch4_kg (~80 ppm)
+        '⚖️💧': 8.4e20, // h2o_kg (~60% de 1.4e21 kg)
+        '⚖️🌫': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
             '☄️': {
-                '🔺🐳💧☄️': 1.0e18, // water_added_kg
+                '🔺⚖️💧☄️': 1.0e18, // water_added_kg
                 // deltaTemp: -5 // Inutile, déclenche aussi 📿💫++
             }
         }
@@ -121,19 +121,19 @@ const timeline = [
         '🔋☀️': 3.4452e26, // Puissance totale du soleil (W) - 90% de 3.828e26 W
         '🔋🌕': 1.0e14, // core_power_watts (Puissance géothermique totale ~100 TW)
         '📐': 6371, // Rayon de la planète en km
-        '🐋': 9.81, // Gravité en m/s²
+        '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '🐳📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère proche de l'actuelle ~1 bar)
+        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère proche de l'actuelle ~1 bar)
         // Simulation parameters - Quantités en kg
-        '🐳🏭': 1.03e16, // co2_kg (~2000 ppm)
-        '🐳⛽': 1.2875e14, // ch4_kg (~25 ppm)
-        '🐳💧': 1.19e21, // h2o_kg (~85% de 1.4e21 kg)
-        '🐳🌫': 0, // o2_kg
+        '⚖️🏭': 1.03e16, // co2_kg (~2000 ppm)
+        '⚖️⛽': 1.2875e14, // ch4_kg (~25 ppm)
+        '⚖️💧': 1.19e21, // h2o_kg (~85% de 1.4e21 kg)
+        '⚖️🌫': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
             '☄️': {
-                '🔺🐳💧☄️': 1.0e18, // water_added_kg
+                '🔺⚖️💧☄️': 1.0e18, // water_added_kg
                 // deltaTemp: -2 // Inutile, déclenche aussi 📿💫++
             }
         }
@@ -147,19 +147,19 @@ const timeline = [
         '🔋☀️': 3.75144e26, // Puissance totale du soleil (W) - 98% de 3.828e26 W
         '🔋🌕': 6.0e13, // core_power_watts (Puissance géothermique totale ~60 TW)
         '📐': 6371, // Rayon de la planète en km
-        '🐋': 9.81, // Gravité en m/s²
+        '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '🐳📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
+        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
         // Simulation parameters - Quantités en kg
-        '🐳🏭': 1.2875e16, // co2_kg (~2500 ppm)
-        '🐳⛽': 4.12e13, // ch4_kg (~8 ppm)
-        '🐳💧': 1.33e21, // h2o_kg (~95% de 1.4e21 kg)
-        '🐳🌫': 0, // o2_kg
+        '⚖️🏭': 1.2875e16, // co2_kg (~2500 ppm)
+        '⚖️⛽': 4.12e13, // ch4_kg (~8 ppm)
+        '⚖️💧': 1.33e21, // h2o_kg (~95% de 1.4e21 kg)
+        '⚖️🌫': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
             '☄️': {
-                '🔺🐳💧☄️': 1.0e18, // water_added_kg
+                '🔺⚖️💧☄️': 1.0e18, // water_added_kg
                 // deltaTemp: -1.5 // Inutile, déclenche aussi 📿💫++
             }
         }
@@ -173,19 +173,19 @@ const timeline = [
         '🔋☀️': 3.78972e26, // Puissance totale du soleil (W) - 99% de 3.828e26 W
         '🔋🌕': 5.5e13, // core_power_watts (Puissance géothermique totale ~55 TW)
         '📐': 6371, // Rayon de la planète en km
-        '🐋': 9.81, // Gravité en m/s²
+        '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '🐳📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
+        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
         // Simulation parameters - Quantités en kg
-        '🐳🏭': 1.545e16, // co2_kg (~3000 ppm)
-        '🐳⛽': 5.15e13, // ch4_kg (~10 ppm)
-        '🐳💧': 1.372e21, // h2o_kg (~98% de 1.4e21 kg)
-        '🐳🌫': 0, // o2_kg
+        '⚖️🏭': 1.545e16, // co2_kg (~3000 ppm)
+        '⚖️⛽': 5.15e13, // ch4_kg (~10 ppm)
+        '⚖️💧': 1.372e21, // h2o_kg (~98% de 1.4e21 kg)
+        '⚖️🌫': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
             '☄️': {
-                '🔺🐳💧☄️': 1.0e18, // water_added_kg
+                '🔺⚖️💧☄️': 1.0e18, // water_added_kg
                 // deltaTemp: -1 // Inutile, déclenche aussi 📿💫++
             }
         }
@@ -199,19 +199,19 @@ const timeline = [
         '🔋☀️': 3.80886e26, // Puissance totale du soleil (W) - 99.5% de 3.828e26 W
         '🔋🌕': 5.0e13, // core_power_watts (Puissance géothermique totale ~50 TW)
         '📐': 6371, // Rayon de la planète en km
-        '🐋': 9.81, // Gravité en m/s²
+        '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '🐳📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
+        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
         // Simulation parameters - Quantités en kg
-        '🐳🏭': 1.443e15, // co2_kg (~280 ppm)
-        '🐳⛽': 3.605e12, // ch4_kg (~0.7 ppm)
-        '🐳💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
-        '🐳🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
+        '⚖️🏭': 1.443e15, // co2_kg (~280 ppm)
+        '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm)
+        '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
+        '⚖️🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
             '☄️': {
-                '🔺🐳💧☄️': 1.0e18, // water_added_kg
+                '🔺⚖️💧☄️': 1.0e18, // water_added_kg
                 // deltaTemp: -1 // Inutile, déclenche aussi 📿💫++
             }
         }
@@ -225,19 +225,19 @@ const timeline = [
         '🔋☀️': 3.828e26, // Puissance totale du soleil (W) - 100% (valeur actuelle)
         '🔋🌕': 4.6e13, // core_power_watts (Puissance géothermique totale ~46 TW)
         '📐': 6371, // Rayon de la planète en km
-        '🐋': 9.81, // Gravité en m/s²
+        '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '🐳📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
+        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
         // Simulation parameters - Quantités en kg
-        '🐳🏭': 1.443e15, // co2_kg (~280 ppm, niveau pré-industriel)
-        '🐳⛽': 3.605e12, // ch4_kg (~0.7 ppm, niveau pré-industriel)
-        '🐳💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
-        '🐳🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
+        '⚖️🏭': 1.443e15, // co2_kg (~280 ppm, niveau pré-industriel)
+        '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm, niveau pré-industriel)
+        '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
+        '⚖️🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
             '☄️': {
-                '🔺🐳💧☄️': 1.0e18, // water_added_kg
+                '🔺⚖️💧☄️': 1.0e18, // water_added_kg
                 // deltaTemp: -0.5 // Inutile, déclenche aussi 📿💫++
             }
         }

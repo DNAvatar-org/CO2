@@ -1493,7 +1493,7 @@ window.updateDisplay = function updateDisplay(data) {
         // Récupérer l'époque et la date
         let epochName = '--';
         let epochDate = '--';
-        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        if (typeof window !== 'undefined' && window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
                 epochName = currentEpoch.name || window.currentEpochName;
@@ -1519,17 +1519,13 @@ window.updateDisplay = function updateDisplay(data) {
             let M_avg_log = undefined;
             let gravity_log = 9.81; // Défaut temporaire
 
-            if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            if (window.currentEpochName) {
                 const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                 if (currentEpoch) {
                     if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass_log = currentEpoch.total_atmosphere_mass_kg;
                     if (currentEpoch.gravity !== undefined) gravity_log = currentEpoch.gravity;
                     // Calculer molar_mass_air depuis les composants si non défini
-                    if (typeof window.calculateMolarMassAir === 'function') {
-                        M_avg_log = window.calculateMolarMassAir(currentEpoch);
-                    } else if (currentEpoch.molar_mass_air !== undefined) {
-                        M_avg_log = currentEpoch.molar_mass_air;
-                    }
+                    M_avg_log = window.calculateMolarMassAir(currentEpoch);
                 }
             }
 
@@ -1541,10 +1537,8 @@ window.updateDisplay = function updateDisplay(data) {
 
             const T0_log = data.temp_surface || 288;
 
-            if (typeof window.calculateAtmosphereProperties === 'function') {
-                const props = window.calculateAtmosphereProperties(total_mass_log, T0_log, M_avg_log, gravity_log);
-                // console.log('Atmosphere Height:', `${(props.z_max / 1000).toFixed(0)} km`);
-            }
+            const props = window.calculateAtmosphereProperties(total_mass_log, T0_log, M_avg_log, gravity_log);
+            // console.log('Atmosphere Height:', `${(props.z_max / 1000).toFixed(0)} km`);
 
             if (typeof window.calculateTropopauseHeight === 'function') {
                 const tropo_m = window.calculateTropopauseHeight(T0_log);
@@ -1565,7 +1559,7 @@ window.updateDisplay = function updateDisplay(data) {
 
         // Récupérer les données d'albedo détaillées depuis l'époque courante
         let albedoComponents = [];
-        if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        if (typeof window !== 'undefined' && window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
                 const cloud_cov = data.cloud_coverage !== undefined ? Math.round(data.cloud_coverage * 100) : 0;
@@ -1598,14 +1592,12 @@ window.updateDisplay = function updateDisplay(data) {
                         const h2o_total_fraction = h2o_total_percent / 100;
                         // Récupérer les paramètres de l'époque courante et calculer les valeurs dérivées
                         let epochParams = {};
-                        if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                        if (window.currentEpochName) {
                             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                             if (currentEpoch) {
                                 // Calculer pressure_atm et molar_mass_air depuis les composants
-                                const pressure_atm = typeof window.calculatePressureAtm === 'function' 
-                                    ? window.calculatePressureAtm(currentEpoch) : undefined;
-                                const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
-                                    ? window.calculateMolarMassAir(currentEpoch) : undefined;
+                                const pressure_atm = window.calculatePressureAtm(currentEpoch);
+                                const molar_mass_air = window.calculateMolarMassAir(currentEpoch);
                                 
                                 epochParams = {
                                     pressure_atm: pressure_atm,
@@ -1623,14 +1615,12 @@ window.updateDisplay = function updateDisplay(data) {
                         // Même sans eau, appeler calculateWaterPartition pour obtenir 0 partout
                         const h2o_total_fraction = 0;
                         let epochParams = {};
-                        if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                        if (window.currentEpochName) {
                             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                             if (currentEpoch) {
                                 // Calculer pressure_atm et molar_mass_air depuis les composants
-                                const pressure_atm = typeof window.calculatePressureAtm === 'function' 
-                                    ? window.calculatePressureAtm(currentEpoch) : undefined;
-                                const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
-                                    ? window.calculateMolarMassAir(currentEpoch) : undefined;
+                                const pressure_atm = window.calculatePressureAtm(currentEpoch);
+                                const molar_mass_air = window.calculateMolarMassAir(currentEpoch);
                                 
                                 epochParams = {
                                     pressure_atm: pressure_atm,
@@ -2369,7 +2359,7 @@ function setEpoch(epochName) {
 
     // Calculer molar_mass_air depuis les composants de l'époque si non défini
     let molar_mass_air = epoch.molar_mass_air;
-    if (molar_mass_air === undefined && typeof window !== 'undefined' && typeof window.calculateMolarMassAir === 'function') {
+    if (molar_mass_air === undefined && typeof window !== 'undefined') {
         molar_mass_air = window.calculateMolarMassAir(epoch);
     }
     // Fallback si toujours undefined ou 0
