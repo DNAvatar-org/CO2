@@ -24,7 +24,7 @@ const KEYS = {
         'OLD_T0': '🌡️🏮',
         'T0_CONFIG': '🌡️⏳',
         'METEORITE_COUNT': '📿☄️',
-        'DELTA_WATER_METEORITE': '🔺🐳💧☄️',
+        'DELTA_WATER_METEORITE': '🔺⚖️💧☄️',
         'TIC_TIME_COUNT': '📿💫',
         'DELTA_TEMP_TIC_TIME': '🔺🌡️💫',
         'DELTA_FLUX_GEOTHERMAL_TIC_TIME': '🔺🧲🌕💫',
@@ -38,12 +38,12 @@ const KEYS = {
     },
     
     // Masses
-    '🐳': {
-        'MASSE_CO2': '🐳🏭',
-        'MASSE_CH4': '🐳⛽',
-        'MASSE_H2O': '🐳💧',
-        'MASSE_O2': '🐳🌫',
-        'MASSE_TOTAL': '🐳📿',
+    '⚖️': {
+        'MASSE_CO2': '⚖️🏭',
+        'MASSE_CH4': '⚖️⛽',
+        'MASSE_H2O': '⚖️💧',
+        'MASSE_O2': '⚖️🌫',
+        'MASSE_TOTAL': '⚖️📿',
     },
     // Composition atmosphérique
     '🌬': {
@@ -53,7 +53,8 @@ const KEYS = {
         'ATM_H2O': '🍰🌬💧',
         'ATM_CH4': '🍰🌬⛽',
         'ATM_O2': '🍰🌬🌫',
-        'ATM_N2': '🍰🌬⚗',
+        'ATM_N2': '🍰🌬💨',
+        'ATM_PRESSURE': '🎈',
     },
     // Cycle de l'eau
     '💧': {
@@ -102,6 +103,10 @@ const KEYS = {
     '🌕': {
         'NOYAU_FLUX': '🧲🌕',
         'NOYAU_POWER': '🔋🌕',
+    },
+    // EDS (Forçage radiatif)
+    '📛': {
+        'EDS_H2O': '📛💧',
     }
 };
 
@@ -121,7 +126,7 @@ const DESC = {
         '🌡️🏮': 'old_T0 (backup t°)',
         '🌡️⏳': 'T0 attendu (t° config)',
         '📿☄️': 'Nombre de météore',
-        '🔺🐳💧☄️': 'Masse d\'eau / météore',
+        '🔺⚖️💧☄️': 'Masse d\'eau / météore',
         '📿💫': 'Nombre de ticTime',
         '🔺🌡️💫': 'Delta t° / ticTime',
         '🔺🧲🌕💫': 'Delta Geoth / ticTime',
@@ -133,14 +138,15 @@ const DESC = {
         '🍰🌬💧': 'H2O',
         '🍰🌬⛽': 'CH4',
         '🍰🌬🌫': 'O2',
-        '🍰🌬⚗': 'N2',
+        '🍰🌬💨': 'N2',
+        '🎈': 'Pression atmosphérique',
     },
-    '🐳': {
-        '🐳🏭': 'Masse CO2',
-        '🐳⛽': 'Masse CH4',
-        '🐳💧': 'Masse H2O',
-        '🐳🌫': 'Masse O2',
-        '🐳📿': 'Masse Atm.',
+    '⚖️': {
+        '⚖️🏭': 'Masse CO2',
+        '⚖️⛽': 'Masse CH4',
+        '⚖️💧': 'Masse H2O',
+        '⚖️🌫': 'Masse O2',
+        '⚖️📿': 'Masse Atm.',
     },
     '💧': {
         '🍰💧🧊': 'Glace',
@@ -188,6 +194,9 @@ const DESC = {
         '◀': 'Date Fin',
         '🌡️⏳': 'T° attendue',
         '🧲🔬': 'Précision Flux',
+    },
+    '📛': {
+        '📛💧': 'Forçage radiatif H2O',
     }
 };
 
@@ -280,7 +289,7 @@ function createDicoHtml() {
             name: 'Date Époque'
         },
         {
-            logo: '🐳',
+            logo: '⚖️',
             name: 'Masses'
         }
     ];

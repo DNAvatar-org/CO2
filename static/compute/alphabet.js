@@ -19,8 +19,8 @@ const CHARS = {
     FLUX_END: '◀', // Flux end : flèche gauche (valeur de fin)
     ENERGY_FLUX: '🧲', // Energy flux : sources chaudes (W/m²)
     O2: '🌫',       // O2 : brouillard/air
-    N2: '⚗',       // N2 : azote (tornade/air)⚗💨🌪
-    WEIGHT: '🐳',   // Poids : baleine (masse)
+    N2: '💨',       // N2 : vent (azote/air)
+    WEIGHT: '⚖️',   // Poids : balance (masse)
     DENSITY: '💨',  // Densité : vent
     ALTITUDE: '🧿', // Altitude : galaxie (Ligne de Kármán, frontière atmosphère/espace)
     ANIMATION: '🎬', // Animation : caméra
@@ -76,7 +76,9 @@ const CHARS = {
     TRANSITION: '⏩', // Transition : flèche rapide
     DATE: '📅',     // Date : calendrier
     PLANET_RADIUS: '📐', // Rayon de la planète : équerre
-    GRAVITY: '🐋',  // Gravité : baleine (masse/gravité)
+    GRAVITY: '🍎',  // Gravité : pomme (gravité)
+    MOLAR_MASS_AIR: '🧪', // Masse molaire de l'air : flacon (chimie)
+    PRESSURE: '🎈', // Pression : ballon (pression)
 };
 
 // Objet pour mapper les logos emoji vers les fichiers images
@@ -94,13 +96,14 @@ const CHARS_DESC = {
     '📿': 'Cardinal (#)',
     '🔺': 'Delta (*)',
     '🌡️': 'Température (K)',
-    '🐳': 'Masse (kg)',
+    '⚖️': 'Masse (kg)',
     '📏': 'Longueur (km)',
     '🍰': 'Proportion (%)',
     '🧲': 'Flux (W/m²)',
     '🔋': 'Puissance (W)',
     '🔽': 'Réception (+)',
     '🔼': 'Émission (-)',
+    '🧪': 'Masse molaire air (kg/mol)',
     // Éléments
     '💧': 'H2O',
     '⛽': 'CH4',
@@ -139,7 +142,7 @@ const CHARS_DESC = {
     '🧿': 'Ligne de Kármán',
     '🛩': 'Tropopause',
     // Autres
-    '⚗': 'N2',
+    '💨': 'N2',
     // Époques géologiques
     '📜': 'Époque',
     '⚫': 'Corps noir',
@@ -154,7 +157,8 @@ const CHARS_DESC = {
     '⏩': 'Transition',
     '📅': 'Date Époque (Ma)',
     '📐': 'Rayon planète',
-    '🐋': 'Gravité (m/s²)'
+    '🍎': 'Gravité (m/s²)',
+    '🎈': 'Pression (atm)'
 };
 
 // ============================================================================
@@ -169,7 +173,7 @@ function createAlphabetHtml() {
     
     // Colonne 1 : Unités
     const charsCol1 = [
-        'BOOLEAN', 'CARDINAL', 'DELTA', 'TEMP', 'WEIGHT', 'METER', 'PROPORTION', 'ENERGY_FLUX', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'DATE', 'GRAVITY'
+        'BOOLEAN', 'CARDINAL', 'DELTA', 'TEMP', 'WEIGHT', 'METER', 'PROPORTION', 'ENERGY_FLUX', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'DATE', 'GRAVITY', 'MOLAR_MASS_AIR'
     ];
     
     // Colonne 2 : Éléments
@@ -179,7 +183,7 @@ function createAlphabetHtml() {
     
     // Colonne 3 : Calculs
     const charsCol3 = [
-        'COMPUTE', 'ANIMATION', 'PHASE', 'TOLERANCE', 'DIRECTION', 'OLD_T0', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS', 'GEOMETRY_ORIGIN', 'FLUX_CN', 'MAX_VAPOR'
+        'COMPUTE', 'ANIMATION', 'PHASE', 'TOLERANCE', 'DIRECTION', 'OLD_T0', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS', 'GEOMETRY_ORIGIN', 'FLUX_CN', 'MAX_VAPOR', 'MOLAR_MASS_AIR', 'PRESSURE'
     ];
     
     // Colonne 4 : Événements
@@ -248,13 +252,27 @@ function createAlphabetHtml() {
 }
 
 // ============================================================================
+// FONCTIONS HELPER
+// ============================================================================
+
+//Récupère un logo (emoji) depuis son nom
+function getLogo(name) {
+    return CHARS[name] || '';
+}
+
+//Combine plusieurs noms de logos en une seule clé emoji
+function getLogoKey(...names) {
+    return names.map(name => CHARS[name] || '').join('');
+}
+
+// ============================================================================
 // EXPOSITION GLOBALE
 // ============================================================================
 
-if (typeof window !== 'undefined') {
-    window.CHARS = CHARS;
-    window.CHARS_DESC = CHARS_DESC;
-    window.charsImages = charsImages;
-    window.createAlphabetHtml = createAlphabetHtml;
-}
+window.CHARS = CHARS;
+window.CHARS_DESC = CHARS_DESC;
+window.charsImages = charsImages;
+window.createAlphabetHtml = createAlphabetHtml;
+window.getLogo = getLogo;
+window.getLogoKey = getLogoKey;
 

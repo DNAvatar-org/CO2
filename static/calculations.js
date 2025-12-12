@@ -172,7 +172,7 @@ function pressure(z, params = null) {
     // Récupération des paramètres dynamiques (depuis window ou params)
     if (typeof window !== 'undefined') {
         // 1. Paramètres de l'époque
-        if (window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+        if (window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
                 if (typeof currentEpoch.total_atmosphere_mass_kg === 'number') total_mass = currentEpoch.total_atmosphere_mass_kg;
@@ -183,26 +183,9 @@ function pressure(z, params = null) {
                 // Calculer ou récupérer la masse molaire moyenne de l'air
                 if (typeof currentEpoch.molar_mass_air === 'number') {
                     molar_mass_air = currentEpoch.molar_mass_air;
-                } else if (typeof window.calculateMolarMassAir === 'function') {
+                } else {
                     // Utiliser la fonction helper pour calculer depuis les composants
                     molar_mass_air = window.calculateMolarMassAir(currentEpoch);
-                } else {
-                    // Fallback : Essayer de calculer depuis les composants (kg)
-                    // M_air = Masse_totale / Moles_totales
-                    const M_N2 = 0.02801; const M_O2 = 0.03200; const M_CO2 = 0.04401; const M_CH4 = 0.01604;
-
-                    let m_n2 = currentEpoch.n2_kg || 0;
-                    let m_o2 = currentEpoch.o2_kg || 0;
-                    let m_co2 = currentEpoch.co2_kg || 0;
-                    let m_ch4 = currentEpoch.ch4_kg || 0;
-                    // On ignore l'Argon et H2O pour cette estimation par défaut si non fournis
-
-                    let mass_sum = m_n2 + m_o2 + m_co2 + m_ch4;
-                    let moles_sum = (m_n2 / M_N2) + (m_o2 / M_O2) + (m_co2 / M_CO2) + (m_ch4 / M_CH4);
-
-                    if (moles_sum > 0) {
-                        molar_mass_air = mass_sum / moles_sum;
-                    }
                 }
 
                 // Température initiale si définie dans l'époque
@@ -228,6 +211,26 @@ function pressure(z, params = null) {
         if (params.planet_radius) planet_radius = params.planet_radius;
         if (params.molar_mass_air) molar_mass_air = params.molar_mass_air; // Si fourni explicitement
     }
+    
+    // Si params n'est pas fourni, essayer d'utiliser window._currentPhysParams (exposé par calculateFluxForT0)
+    if (!params && typeof window !== 'undefined' && window._currentPhysParams) {
+        const physParams = window._currentPhysParams;
+        if (physParams.total_atmosphere_mass_kg !== undefined) total_mass = physParams.total_atmosphere_mass_kg;
+        if (physParams.gravity !== undefined) gravity = physParams.gravity;
+        if (physParams.temperature_K !== undefined) temp_K = physParams.temperature_K;
+        if (physParams.planet_radius !== undefined) planet_radius = physParams.planet_radius;
+        if (physParams.molar_mass_air !== undefined) molar_mass_air = physParams.molar_mass_air;
+    }
+    
+    // Si total_mass est toujours undefined, essayer de le récupérer depuis window._currentPhysParams
+    if (total_mass === undefined && typeof window !== 'undefined' && window._currentPhysParams) {
+        total_mass = window._currentPhysParams.total_atmosphere_mass_kg;
+    }
+    
+    // Si total_mass est toujours undefined, essayer de le récupérer depuis window.DATA
+    if (total_mass === undefined && typeof window !== 'undefined' && window.DATA && window.DATA['⚖️']) {
+        total_mass = window.DATA['⚖️']['⚖️📿'] || 0;
+    }
 
     // 🔒 VALIDATION STRICTE : Aucune valeur par défaut terrestre silencieuse
     // Si pas d'atmosphère (total_mass = 0), retourner 0 immédiatement sans warning
@@ -250,15 +253,9 @@ function pressure(z, params = null) {
 
     // Température et Molaire doivent aussi être définis ou calculables
     // Si molar_mass_air manque dans params, essayer de le calculer depuis les composants
-    if (molar_mass_air === undefined && typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    if (molar_mass_air === undefined && typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch) {
-            if (typeof window.calculateMolarMassAir === 'function') {
-                molar_mass_air = window.calculateMolarMassAir(currentEpoch);
-            } else if (currentEpoch.molar_mass_air !== undefined) {
-                molar_mass_air = currentEpoch.molar_mass_air; // Fallback si fonction non disponible
-            }
-        }
+        molar_mass_air = window.calculateMolarMassAir(currentEpoch);
     }
     
     // Si molar_mass_air est toujours undefined mais qu'on a une atmosphère, utiliser une valeur par défaut
@@ -484,7 +481,7 @@ function calculateTropopauseHeight(T0) {
     let sensitivity = 100; // 100 m/K
 
     // Récupérer les paramètres de l'époque si disponibles
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    if (typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             // Ajuster selon la gravité (plus g est fort, plus l'atmosphère est tassée)
@@ -546,7 +543,7 @@ function temperature(z, CO2_fraction = null, T0_override = null) {
     // Γ = g / cp (adiabatique sec), réduit par la condensation
     let Gamma = -0.0065; // Valeur par défaut
 
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    if (typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             // Si un lapse rate spécifique est défini
@@ -664,7 +661,7 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null, par
         // Récupérer la quantité d'eau globale pour le mixing ratio
         let h2o_percent = 1.5; // Défaut 1.5%
         if (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) {
-            h2o_percent = window.h2oVaporPercent + (window.h2oTotalFromMeteorites || 0);
+            h2o_percent = window.h2oVaporPercent + window.h2oTotalFromMeteorites;
         }
 
         const mixing_ratio = waterVaporMixingRatio(z, h2o_percent / 100);
@@ -681,17 +678,14 @@ function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null, par
     if (h2o_total_percent <= 0) return 0;
 
     // Récupérer les paramètres de l'époque courante (ou utiliser params si fournis)
-    let epochParams = params || {};
+    let epochParams = params;
     // Si params n'est pas fourni, on tente de récupérer de window (fallback)
-    if (!params && typeof window !== 'undefined' && window.currentEpochName &&
-        typeof window.getGeologicalPeriodByName === 'function') {
+    if (!params && typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             // Calculer pressure_atm et molar_mass_air depuis les composants
-            const pressure_atm = typeof window.calculatePressureAtm === 'function' 
-                ? window.calculatePressureAtm(currentEpoch) : currentEpoch.atmospheric_pressure;
-            const molar_mass_air = typeof window.calculateMolarMassAir === 'function' 
-                ? window.calculateMolarMassAir(currentEpoch) : currentEpoch.molar_mass_air;
+            const pressure_atm = window.calculatePressureAtm(currentEpoch);
+            const molar_mass_air = window.calculateMolarMassAir(currentEpoch);
             
             epochParams = {
                 pressure_atm: pressure_atm,
@@ -906,8 +900,14 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     let molar_mass_val; // Sera récupéré de l'époque
     let physParams = null; // Objet regroupant les paramètres physiques pour les helpers
 
-    // Priorité 1 : Utiliser les paramètres passés dans options (pour test_computeRadiativeTransfer.html)
-    if (options?.total_atmosphere_mass_kg !== undefined) {
+    // Priorité 1 : Utiliser physParams depuis options si fourni (pour test_computeRadiativeTransfer.html)
+    if (options?.physParams !== undefined) {
+        physParams = options.physParams;
+        total_mass = physParams.total_atmosphere_mass_kg;
+    }
+    
+    // Priorité 1b : Utiliser les paramètres passés dans options (pour test_computeRadiativeTransfer.html)
+    if (options?.total_atmosphere_mass_kg !== undefined && total_mass === undefined) {
         total_mass = options.total_atmosphere_mass_kg;
     }
     if (options?.z_max !== undefined) {
@@ -916,72 +916,46 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     
     // Si on a total_mass depuis options, essayer de créer physParams depuis window.epoch
     if (total_mass !== undefined && physParams === null && typeof window !== 'undefined' && window.epoch) {
-        if (window.epoch.gravity !== undefined) gravity_val = window.epoch.gravity;
-        if (window.epoch.planet_radius !== undefined) planet_radius_val = window.epoch.planet_radius;
-        if (typeof window.calculateMolarMassAir === 'function') {
-            molar_mass_val = window.calculateMolarMassAir(window.epoch);
-        } else {
-            molar_mass_val = window.epoch.molar_mass_air;
-        }
+        gravity_val = window.epoch.gravity;
+        planet_radius_val = window.epoch.planet_radius;
+        molar_mass_val = window.calculateMolarMassAir(window.epoch);
         
         // Calculer la pression atmosphérique
-        let pressure_atm_val = 0;
-        if (typeof window.calculatePressureAtm === 'function') {
-            pressure_atm_val = window.calculatePressureAtm(window.epoch);
-        } else if (gravity_val !== undefined && planet_radius_val !== undefined) {
-            const surface_area = 4 * Math.PI * Math.pow(planet_radius_val, 2);
-            const pressure_pa = (total_mass * gravity_val) / surface_area;
-            pressure_atm_val = pressure_pa / 101325;
-        }
+        const pressure_atm_val = window.calculatePressureAtm(window.epoch);
         
-        // Créer physParams si on a tous les paramètres
-        if (gravity_val !== undefined && planet_radius_val !== undefined && molar_mass_val !== undefined) {
-            physParams = {
-                total_atmosphere_mass_kg: total_mass,
-                gravity: gravity_val,
-                planet_radius: planet_radius_val,
-                molar_mass_air: molar_mass_val,
-                temperature_K: T0_test,
-                pressure_atm: pressure_atm_val,
-                ocean_coverage: window.epoch.ocean_coverage || 0
-            };
-        }
+        // Créer physParams
+        physParams = {
+            total_atmosphere_mass_kg: total_mass,
+            gravity: gravity_val,
+            planet_radius: planet_radius_val,
+            molar_mass_air: molar_mass_val,
+            temperature_K: T0_test,
+            pressure_atm: pressure_atm_val,
+            ocean_coverage: window.epoch.ocean_coverage
+        };
     }
 
     // Priorité 2 : Utiliser window.epoch si disponible (pour test_computeRadiativeTransfer.html)
     if (typeof window !== 'undefined' && window.epoch && total_mass === undefined) {
         total_mass = window.epoch.total_atmosphere_mass_kg;
-        if (window.epoch['🐋'] !== undefined) gravity_val = window.epoch['🐋'];
+        if (window.epoch['🍎'] !== undefined) gravity_val = window.epoch['🍎'];
         // Convertir le rayon de km en mètres pour les calculs
         if (window.epoch['📐'] !== undefined) planet_radius_val = window.epoch['📐'] * 1000;
-        if (typeof window.calculateMolarMassAir === 'function') {
-            molar_mass_val = window.calculateMolarMassAir(window.epoch);
-        } else {
-            molar_mass_val = window.epoch.molar_mass_air;
-        }
+        molar_mass_val = window.calculateMolarMassAir(window.epoch);
         
         // Calculer la pression atmosphérique
-        let pressure_atm_val = 0;
-        if (typeof window.calculatePressureAtm === 'function') {
-            pressure_atm_val = window.calculatePressureAtm(window.epoch);
-        } else if (total_mass !== undefined && gravity_val !== undefined && planet_radius_val !== undefined) {
-            const surface_area = 4 * Math.PI * Math.pow(planet_radius_val, 2);
-            const pressure_pa = (total_mass * gravity_val) / surface_area;
-            pressure_atm_val = pressure_pa / 101325;
-        }
+        const pressure_atm_val = window.calculatePressureAtm(window.epoch);
         
         // Créer physParams pour window.epoch
-        if (total_mass !== undefined && gravity_val !== undefined && planet_radius_val !== undefined && molar_mass_val !== undefined) {
-            physParams = {
-                total_atmosphere_mass_kg: total_mass,
-                gravity: gravity_val,
-                planet_radius: planet_radius_val,
-                molar_mass_air: molar_mass_val,
-                temperature_K: T0_test,
-                pressure_atm: pressure_atm_val,
-                ocean_coverage: window.epoch.ocean_coverage || 0
-            };
-        }
+        physParams = {
+            total_atmosphere_mass_kg: total_mass,
+            gravity: gravity_val,
+            planet_radius: planet_radius_val,
+            molar_mass_air: molar_mass_val,
+            temperature_K: T0_test,
+            pressure_atm: pressure_atm_val,
+            ocean_coverage: window.epoch.ocean_coverage
+        };
     }
 
     // Priorité 3 : Utiliser window.configOrganigramme et window.currentEpochName (pour index.html)
@@ -997,29 +971,14 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             }
 
             // Récupération gravity, radius et masse molaire
-            if (currentEpoch['🐋'] !== undefined) gravity_val = currentEpoch['🐋'];
+            if (currentEpoch['🍎'] !== undefined) gravity_val = currentEpoch['🍎'];
             // Convertir le rayon de km en mètres pour les calculs
             if (currentEpoch['📐'] !== undefined) planet_radius_val = currentEpoch['📐'] * 1000;
             // Calculer molar_mass_air depuis les composants si non défini
-            if (typeof window.calculateMolarMassAir === 'function') {
-                molar_mass_val = window.calculateMolarMassAir(currentEpoch);
-            } else {
-                molar_mass_val = currentEpoch.molar_mass_air; // Peut être undefined (Corps Noir)
-            }
+            molar_mass_val = window.calculateMolarMassAir(currentEpoch);
 
-            // Calculer la pression atmosphérique depuis les composants si non définie
-            let pressure_atm_val;
-            if (typeof window.calculatePressureAtm === 'function') {
-                pressure_atm_val = window.calculatePressureAtm(currentEpoch);
-            } else {
-                pressure_atm_val = currentEpoch.atmospheric_pressure;
-                // Fallback : calculer manuellement si nécessaire
-                if (pressure_atm_val === undefined && total_mass !== undefined && gravity_val !== undefined && planet_radius_val !== undefined) {
-                    const surface_area = 4 * Math.PI * Math.pow(planet_radius_val, 2);
-                    const pressure_pa = (total_mass * gravity_val) / surface_area;
-                    pressure_atm_val = pressure_pa / 101325;
-                }
-            }
+            // Calculer la pression atmosphérique depuis les composants
+            const pressure_atm_val = window.calculatePressureAtm(currentEpoch);
 
             // Création de l'objet params pour les helpers
             physParams = {
@@ -1029,11 +988,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
                 molar_mass_air: molar_mass_val,
                 temperature_K: T0_test,
                 pressure_atm: pressure_atm_val,
-                ocean_coverage: currentEpoch.ocean_coverage || 0
+                ocean_coverage: currentEpoch.ocean_coverage
             };
 
             // Utiliser la nouvelle fonction centralisée dans calculations_atm.js
-            if (typeof window.calculateAtmosphereProperties === 'function' && total_mass !== undefined) {
+            if (total_mass !== undefined) {
                 // Passer T0_test pour avoir une hauteur d'atmosphère cohérente avec la température testée
                 const props = window.calculateAtmosphereProperties(total_mass, T0_test, molar_mass_val, gravity_val); // gravity passed explicitement
                 dynamic_z_max = props.z_max;
@@ -1054,9 +1013,9 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             epoch_for_calc = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
         }
         
-        if (epoch_for_calc && typeof window !== 'undefined' && typeof window.calculateAtmosphereProperties === 'function') {
+        if (epoch_for_calc && typeof window !== 'undefined') {
             const temp_gravity = gravity_val || epoch_for_calc.gravity;
-            const temp_molar_mass = molar_mass_val || (typeof window.calculateMolarMassAir === 'function' ? window.calculateMolarMassAir(epoch_for_calc) : epoch_for_calc.molar_mass_air);
+            const temp_molar_mass = molar_mass_val || window.calculateMolarMassAir(epoch_for_calc);
             if (temp_gravity !== undefined && temp_molar_mass !== undefined) {
                 const props = window.calculateAtmosphereProperties(total_mass, T0_test, temp_molar_mass, temp_gravity);
                 dynamic_z_max = props.z_max;
@@ -1074,8 +1033,38 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // 🚨 VALIDATION CRITIQUE : Si physParams n'est pas défini, on arrête tout.
     // physParams est requis pour pressure() et airNumberDensity()
     if (physParams === null || physParams.temperature_K === undefined) {
-        console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE : physParams non défini ou temperature_K manquant. total_mass=${total_mass}, epoch=${typeof window !== 'undefined' && window.epoch ? window.epoch.id : 'unknown'}`);
-        return null;
+        // Si physParams n'est pas défini mais qu'on a les paramètres de base, le créer
+        if (total_mass !== undefined && typeof window !== 'undefined' && window.timeline && window.currentEpochIndex !== undefined) {
+            const EPOCH = window.timeline[window.currentEpochIndex];
+            physParams = {
+                total_atmosphere_mass_kg: total_mass || 0,
+                gravity: EPOCH['🍎'],
+                planet_radius: EPOCH['📐'] * 1000,
+                molar_mass_air: window.DATA && window.DATA['🌬'] ? window.DATA['🌬']['🧪'] : 0.029,
+                temperature_K: T0_test,
+                pressure_atm: window.DATA && window.DATA['🌬'] ? window.DATA['🌬']['🎈'] : 0,
+                ocean_coverage: window.DATA && window.DATA['💧'] ? window.DATA['💧']['🍰💧🌊'] : 0
+            };
+        } else {
+            console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE : physParams non défini ou temperature_K manquant. total_mass=${total_mass}, epoch=${typeof window !== 'undefined' && window.epoch ? window.epoch.id : 'unknown'}`);
+            return null;
+        }
+    }
+    
+    // S'assurer que total_atmosphere_mass_kg est défini dans physParams (même si 0)
+    if (physParams.total_atmosphere_mass_kg === undefined) {
+        physParams.total_atmosphere_mass_kg = total_mass !== undefined ? total_mass : 0;
+    }
+    
+    // S'assurer que total_mass est défini (même si 0) pour éviter les erreurs
+    if (total_mass === undefined) {
+        total_mass = physParams.total_atmosphere_mass_kg || 0;
+    }
+    
+    // Exposer physParams globalement pour que pressure() et airNumberDensity() puissent y accéder
+    // IMPORTANT : Exposer AVANT tout appel à pressure() ou airNumberDensity()
+    if (typeof window !== 'undefined') {
+        window._currentPhysParams = physParams;
     }
 
     // Calculer la tropopause pour déterminer les zones de précision
@@ -1527,7 +1516,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
     const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
     const h2o_total = h2o_percent + h2o_meteorites;
-    const ch4_ppm = (options?.CH4_fraction || 0) * 1e6;
+    const ch4_ppm = options.CH4_fraction * 1e6;
     
     // Log supprimé : affichage uniquement du mode (dichotomie/exponentielle) dans la boucle principale
     // if (iteration === 0 || isInitial) {
@@ -1559,7 +1548,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     // Récupérer le flux géothermique depuis l'époque courante
     // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    if (typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             // 🔒 Priorité absolue au flux géothermique direct (dynamique ou statique)
@@ -1591,15 +1580,15 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     // Calculer la température terrestre en °C à partir de T0_test (température au sol en K)
     const temp_surface_c = T0_test - 273.15;
     const temp_eff_0 = 255.0; // Température effective sans CO2 (référence 255K)
-    const albedo = result.albedo !== undefined ? result.albedo : calculateAlbedo(T0_test, h2o_enabled, geo_flux);
-    const cloud_coverage = result.cloud_coverage !== undefined ? result.cloud_coverage : calculateCloudCoverage(T0_test, h2o_enabled);
+    const albedo = result.albedo;
+    const cloud_coverage = result.cloud_coverage;
 
     // Calculer les forçages radiatifs séparés
     const forcing_CO2 = typeof window.calculateCO2Forcing === 'function'
         ? window.calculateCO2Forcing(CO2_fraction)
         : 0;
     const forcing_H2O = typeof window.calculateH2OForcing === 'function'
-        ? window.calculateH2OForcing(h2o_enabled, cloud_coverage || 0)
+        ? window.calculateH2OForcing(h2o_enabled, cloud_coverage)
         : 0;
     const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
         ? window.calculateAlbedoForcing(albedo)
@@ -1738,7 +1727,7 @@ function calculateT0InitialConfig() {
     
     let T0_initial_config = null;
     // Vérifier si l'époque définit une température initiale
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    if (typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch && typeof currentEpoch.t0 === 'number' && currentEpoch.t0 > 0) {
             // Calculer le nombre de météorites
@@ -1829,9 +1818,9 @@ function calculateT0InitialConfig() {
 }
 
 function simulateRadiativeTransfer(options = {}) {
-    const CO2_percent = options?.CO2_percent !== undefined ? options.CO2_percent : 0; // en ppm
-    const H2O_percent = options?.H2O_percent !== undefined ? options.H2O_percent : 0; // en pourcentage
-    const CH4_percent = options?.CH4_percent !== undefined ? options.CH4_percent : 0; // en ppm
+    const CO2_percent = options.CO2_percent; // en ppm
+    const H2O_percent = options.H2O_percent; // en pourcentage
+    const CH4_percent = options.CH4_percent; // en ppm
     
     // Convertir en fractions pour les calculs
     const CO2_fraction = CO2_percent * 1e-6;
@@ -1844,7 +1833,7 @@ function simulateRadiativeTransfer(options = {}) {
     }
     
     let T0_initial = null;
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    if (typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch && typeof currentEpoch.t0 === 'number' && currentEpoch.t0 > 0) {
             // Wrapper pour éviter window abusifs
@@ -2131,7 +2120,7 @@ function simulateRadiativeTransfer(options = {}) {
                     // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
                     // Récupérer le flux géothermique depuis l'époque courante
                     let geo_flux = null;
-                    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+                    if (typeof window !== 'undefined' && window.currentEpochName) {
                         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                         if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
                             geo_flux = currentEpoch.geothermal_flux;
@@ -2145,7 +2134,7 @@ function simulateRadiativeTransfer(options = {}) {
 
                     // 🔒 CORRECTION CRITIQUE : Inclure le flux géothermique dans le bilan énergétique !
                     // Équilibre : Flux Sortant = Flux Solaire Absorbé + Flux Géothermique
-                    const total_flux_in = solar_flux_absorbed + (geo_flux || 0);
+                    const total_flux_in = solar_flux_absorbed + geo_flux;
                     const flux_diff = final_result.total_flux - total_flux_in;
                     
                     // 🔒 ÉQUILIBRE RADIATIF : Les aires sous les courbes affichées doivent être égales
@@ -2660,7 +2649,7 @@ function simulateRadiativeTransfer(options = {}) {
             // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
             // Récupérer le flux géothermique depuis l'époque courante
             let geo_flux = null;
-            if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+            if (typeof window !== 'undefined' && window.currentEpochName) {
                 const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                 if (currentEpoch && typeof currentEpoch.geothermal_flux === 'number') {
                     geo_flux = currentEpoch.geothermal_flux;
@@ -2808,7 +2797,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     // Récupérer le flux géothermique depuis l'époque courante
     // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    if (typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             // 🔒 Priorité absolue au flux géothermique direct (dynamique ou statique)
@@ -2855,7 +2844,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
             // Calculer la répartition vapeur/glace selon la température finale
             const h2o_params = window.calculateH2OParameters(final_T0, h2o_total_percent, null);
             // Mettre à jour h2oIceFractionFromCalculation pour que calculateAlbedo() l'utilise
-            window.h2oIceFractionFromCalculation = h2o_params.ice_fraction || 0;
+            window.h2oIceFractionFromCalculation = h2o_params.ice_fraction;
         }
     }
 
@@ -2983,7 +2972,7 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     // Récupérer le flux géothermique depuis l'époque courante
     // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
     let geo_flux = null;
-    if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
+    if (typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             // 🔒 Priorité absolue au flux géothermique direct (dynamique ou statique)
@@ -3010,7 +2999,7 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
             // Calculer la répartition vapeur/glace selon la température finale
             const h2o_params = window.calculateH2OParameters(T0, h2o_total_percent, null);
             // Mettre à jour h2oIceFractionFromCalculation pour que calculateAlbedo() l'utilise
-            window.h2oIceFractionFromCalculation = h2o_params.ice_fraction || 0;
+            window.h2oIceFractionFromCalculation = h2o_params.ice_fraction;
         }
     }
     

@@ -20,92 +20,115 @@
 // ============================================================================
 
 // T0 est dans DATA['⏳']['⏳🌡️🚩'], pas besoin de variable globale
-let Phase = "None";
-let signeDeltaFirst = 0;
-let flux_entrant = 238;
+// Phase est dans DATA['⏳']['⏳⚧'], pas besoin de variable globale
+// signeDeltaFirst est dans DATA['⏳']['⏳☯'], pas besoin de variable globale
+// flux_entrant est calculé localement dans computeRadiativeTransfer, pas besoin de variable globale
 
 // ============================================================================
 // FONCTIONS HELPER
 // ============================================================================
 
-// Ajouter les constantes physiques à window.CONST (plantera si window.CONST n'existe pas)
-window.CONST.STEFAN_BOLTZMANN = 5.670374419e-8;  // W/(m²·K⁴) - constante de Stefan-Boltzmann
-window.CONST.SOLAR_CONSTANT_REF = 1361;          // W/m² - constante solaire à 1 UA
-window.CONST.SOLAR_POWER_REF = 3.828e26;         // W - puissance totale du soleil
-window.CONST.SOLAR_SURFACE_AREA = 6.09e18;       // m² - surface du soleil
-window.CONST.EARTH_RADIUS_REF = 6371000;         // m - rayon terrestre de référence (utilisé comme base)
-window.CONST.EARTH_TOTAL_WATER_MASS_KG = 1.4e21;  // kg - masse totale d'eau terrestre
+// Initialiser window.CONST s'il n'existe pas
+if (typeof window !== 'undefined' && !window.CONST) {
+    window.CONST = {};
+}
 
-// Fonction pour récupérer les états activés (utilise DATA directement, pas de paramètres)
-// Retourne true si DATA a été modifié
+// Ajouter les constantes physiques universelles à window.CONST
+// CONST contient uniquement les constantes physiques universelles (ne varient pas avec les époques)
+window.CONST.STEFAN_BOLTZMANN = 5.670374419e-8;  // W/(m²·K⁴) - constante de Stefan-Boltzmann
+window.CONST.AU_M = 1.496e11;                     // m - 1 Unité Astronomique en mètres (constante universelle)
+window.CONST.STANDARD_ATMOSPHERE_PA = 101325;     // Pa - Pression atmosphérique standard (1 atm = 101325 Pa)
+
+// Constantes molaires (masse molaire en kg/mol) - propriétés intrinsèques des molécules
+window.CONST.M_N2 = 0.02801;      // N₂ : 28.01 g/mol
+window.CONST.M_O2 = 0.03200;      // O₂ : 32.00 g/mol
+window.CONST.M_CO2 = 0.04401;     // CO₂ : 44.01 g/mol
+window.CONST.M_CH4 = 0.01604;     // CH₄ : 16.04 g/mol
+window.CONST.M_H2O = 0.01802;     // H₂O : 18.02 g/mol
+window.CONST.M_AR = 0.03995;      // Ar : 39.95 g/mol
+    window.CONST.molar_mass_air_ref = 0.029;  // Masse molaire moyenne de l'air de référence (kg/mol)
+    // Constantes pour l'eau (H2O)
+    window.CONST.R_GAS = 8.314;  // Constante des gaz parfaits, J/(mol·K)
+    window.CONST.T_FREEZE = 273.15;  // Point de congélation de l'eau (K)
+    window.CONST.T_BOIL = 373.15;  // Point d'ébullition de l'eau à 1 atm (K)
+    window.CONST.T0_WATER = 273.15;  // Point triple de l'eau (K)
+    window.CONST.P0_WATER = 611.2;  // Pression au point triple de l'eau (Pa)
+    window.CONST.L_VAPORIZATION = 2.5e6;  // Chaleur latente de vaporisation (J/kg)
+    window.CONST.RV_WATER = 461.5;  // Constante des gaz pour la vapeur d'eau (J/(kg·K))
+    window.CONST.L_V = 40660;  // Chaleur latente de vaporisation (J/mol)
+
+// Note: SOLAR_CONSTANT_REF, SOLAR_POWER_REF, EARTH_RADIUS_REF, EARTH_TOTAL_WATER_MASS_KG
+// sont des valeurs de référence actuelles et devraient être dans la timeline (époque "Today")
+
+//Récupère les états activés (utilise DATA directement)
 function getEnabledStates() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
-    const CONST = window.CONST;
     
-    // Récupérer l'état anim depuis le DOM
-    // Accès direct (plantera si n'existe pas, comme demandé)
-    const animToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
-    const animState = animToggleCheckbox.checked;
+    // Chercher tous les boutons ergonomiques (ergo-button-cell ou flux-button-cell)
+    const allCells = Array.from(document.querySelectorAll('.ergo-button-cell, .flux-button-cell'));
     
-    // Mettre à jour DATA directement (source unique de vérité)
-    DATA['🔘']['🔘💧📛'] = window.isH2O_eds;
-    DATA['🔘']['🔘⛽📛'] = window.isCH4_eds;
-    DATA['🔘']['🔘🏭📛'] = window.isCO2_eds;
-    DATA['🔘']['🔘🪞'] = window.isAlbedo;
-    DATA['🔘']['🔘🎬'] = animState;
+    // Fonction helper pour trouver un bouton par son logo
+    function findButtonByLogo(logo) {
+        for (const cell of allCells) {
+            const circle = cell.querySelector('.ergo-button-circle');
+            if (circle && circle.textContent.includes(logo)) {
+                return cell;
+            }
+        }
+        return null;
+    }
+    
+    const h2oCell = findButtonByLogo('💧');
+    DATA['🔘']['🔘💧📛'] = h2oCell ? h2oCell.classList.contains('checked') : true;
+    const ch4Cell = findButtonByLogo('⛽');
+    DATA['🔘']['🔘⛽📛'] = ch4Cell ? ch4Cell.classList.contains('checked') : true;
+    const co2Cell = findButtonByLogo('🏭');
+    DATA['🔘']['🔘🏭📛'] = co2Cell ? co2Cell.classList.contains('checked') : true;
+    const albedoCell = findButtonByLogo('🪞');
+    DATA['🔘']['🔘🪞'] = albedoCell ? albedoCell.classList.contains('checked') : true;
+    const animCell = findButtonByLogo('🎬');
+    DATA['🔘']['🔘🎬'] = animCell ? animCell.classList.contains('checked') : true;
     
     // Retourner true car DATA a été modifié
     return true;
 }
 
-// ============================================================================
-// FONCTION PRINCIPALE : getMasses()
-// ============================================================================
-// Calcule les masses en tenant compte des événements (meteor, etc.)
-// Utilise DATA directement (pas de paramètres)
-// Retourne true si DATA a été modifié
+//Calcule les masses en tenant compte des événements (meteor, etc.) :: utilise DATA directement
 function getMasses() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
-    const CONST = window.CONST;
+    //const CONST = window.CONST;
     
     // Récupérer l'époque directement depuis timeline avec l'index
     const EPOCH = window.timeline[window.currentEpochIndex];
-    let h2o_kg = EPOCH['🐳💧'];
+    let h2o_kg = EPOCH['⚖️💧'] || 0;
     
     // Appliquer les événements
-    const meteoriteCount = DATA['📜']['📿☄️'];
-    const deltaWater = DATA['📜']['🔺🐳💧☄️'];
+    const meteoriteCount = DATA['📜']['📿☄️'] || 0;
+    const deltaWater = DATA['📜']['🔺⚖️💧☄️'] || 0;
     h2o_kg += deltaWater * meteoriteCount;
     
     // Mettre à jour DATA directement
-    DATA['🐳']['🐳🏭'] = EPOCH['🐳🏭'];
-    DATA['🐳']['🐳⛽'] = EPOCH['🐳⛽'];
-    DATA['🐳']['🐳💧'] = h2o_kg;
-    DATA['🐳']['🐳🌫'] = EPOCH['🐳🌫'];
-    DATA['🐳']['🐳📿'] = EPOCH['🐳📿'];
+    DATA['⚖️']['⚖️🏭'] = EPOCH['⚖️🏭'];
+    DATA['⚖️']['⚖️⛽'] = EPOCH['⚖️⛽'];
+    DATA['⚖️']['⚖️💧'] = h2o_kg;
+    DATA['⚖️']['⚖️🌫'] = EPOCH['⚖️🌫'];
+    DATA['⚖️']['⚖️📿'] = EPOCH['⚖️📿'];
     
     // Log getMasses - utiliser DATA directement
     console.log(`📋 [getMasses@compute.js]`);
-    console.log(`masses=${JSON.stringify(DATA['🐳'])}`);
+    console.log(`masses=${JSON.stringify(DATA['⚖️'])}`);
     
     // Retourner true car DATA a été modifié
     return true;
 }
 
-// ============================================================================
-// FONCTION PRINCIPALE : getEpochDateConfig()
-// ============================================================================
-// Utilise DATA directement (pas de paramètres)
-// Retourne true si DATA a été modifié
+//Récupère la configuration de l'époque (utilise DATA directement)
 function getEpochDateConfig() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const CHARS = window.CHARS;
-    
-    // Récupérer l'époque directement depuis timeline avec l'index
     const EPOCH = window.timeline[window.currentEpochIndex];
     
     let meteoriteCount = 0;
@@ -113,31 +136,44 @@ function getEpochDateConfig() {
     let deltaTicTime_per_tic = null;
     let water_added_kg = 0;
     // Calculer le nombre de météorites
-    const h2oTotalFromMeteorites = window.h2oTotalFromMeteorites;
-    // Accès direct à '🕰'['☄️'] (plantera si n'existe pas, comme demandé)
-    const mass_kg = EPOCH['🕰']['☄️']['🔺🐳💧☄️'];
-    const h2oPerMeteorite = (mass_kg / CONST.EARTH_TOTAL_WATER_MASS_KG) * 100;
-    const h2oPerMeteoriteAdjusted = Math.max(h2oPerMeteorite * 10, 2.1);
-    meteoriteCount = Math.floor(h2oTotalFromMeteorites / h2oPerMeteoriteAdjusted);
-    water_added_kg = mass_kg;
+    const h2oTotalFromMeteorites = window.h2oTotalFromMeteorites || 0;
+    meteoriteCount = 0;
+    water_added_kg = 0;
+    if (EPOCH['🕰'] && EPOCH['🕰']['☄️']) {
+        const mass_kg = EPOCH['🕰']['☄️']['🔺⚖️💧☄️'];
+        const h2oPerMeteorite = (mass_kg / CONST.EARTH_TOTAL_WATER_MASS_KG) * 100;
+        const h2oPerMeteoriteAdjusted = Math.max(h2oPerMeteorite * 10, 2.1);
+        meteoriteCount = Math.floor(h2oTotalFromMeteorites / h2oPerMeteoriteAdjusted);
+        water_added_kg = mass_kg;
+    }
     
     ticTime = Math.floor(window.infoTimeMa / 50);
     
-    // Accès direct (plantera si n'existe pas, comme demandé)
-    deltaTicTime_per_tic = EPOCH['🕰']['💫']['🔺🌡️💫'];
+    // Vérifier si 💫 existe dans les événements (certaines époques n'ont pas de ticTime)
+    if (EPOCH['🕰']['💫']) {
+        // Accès direct (plantera si n'existe pas, comme demandé)
+        deltaTicTime_per_tic = EPOCH['🕰']['💫']['🔺🌡️💫'];
+        // Accès direct (plantera si n'existe pas, comme demandé)
+        DATA['📜']['🔺🧲🌕💫'] = {
+            '▶': EPOCH['🕰']['💫']['🔺🧲🌕💫']['▶'],
+            '◀': EPOCH['🕰']['💫']['🔺🧲🌕💫']['◀']
+        };
+    } else {
+        // Pas de ticTime pour cette époque
+        deltaTicTime_per_tic = 0;
+        DATA['📜']['🔺🧲🌕💫'] = { '▶': 0, '◀': 0 };
+    }
     
     // Mettre à jour DATA directement (source unique de vérité)
-    DATA['⏳']['🌡️🏮'] = DATA['⏳']['⏳🌡️🚩'];
+    // 🌡️🏮 (old_T0) : garder la valeur précédente si elle existe, sinon utiliser T0 config
+    if (!DATA['⏳']['🌡️🏮'] || DATA['⏳']['🌡️🏮'] <= 0) {
+        DATA['⏳']['🌡️🏮'] = EPOCH['🌡️⏳'];
+    }
     DATA['📜']['🌡️⏳'] = EPOCH['🌡️⏳'];
-    DATA['📜']['📿☄️'] = meteoriteCount;              // Nombre de météorites
-    DATA['📜']['🔺🐳💧☄️'] = water_added_kg;               // Masse d'eau ajoutée / météorite
-    DATA['📜']['📿💫'] = ticTime;                     // Nombre de ticTime
-    DATA['📜']['🔺🌡️💫'] = deltaTicTime_per_tic;     // Delta température / ticTime
-    // Accès direct (plantera si n'existe pas, comme demandé)
-    DATA['📜']['🔺🧲🌕💫'] = {
-        '▶': EPOCH['🕰']['💫']['🔺🧲🌕💫']['▶'],
-        '◀': EPOCH['🕰']['💫']['🔺🧲🌕💫']['◀']
-    };
+    DATA['📜']['📿☄️'] = meteoriteCount || 0;              // Nombre de météorites
+    DATA['📜']['🔺⚖️💧☄️'] = water_added_kg || 0;               // Masse d'eau ajoutée / météorite
+    DATA['📜']['📿💫'] = ticTime || 0;                     // Nombre de ticTime
+    DATA['📜']['🔺🌡️💫'] = deltaTicTime_per_tic || 0;     // Delta température / ticTime
     
     // Calculer les masses avec getMasses() (met à jour DATA directement)
     getMasses();
@@ -150,17 +186,11 @@ function getEpochDateConfig() {
     return true;
 }
 
-// ============================================================================
-// FONCTION : getSoleil() - Calculer les valeurs du soleil
-// ============================================================================
-// Utilise DATA directement (pas de paramètres)
-// Retourne true si DATA a été modifié
+//Calcule les valeurs du soleil (utilise DATA directement)
 function getSoleil() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
     const CONST = window.CONST;
-    
-    // Récupérer l'époque directement depuis timeline avec l'index
     const EPOCH = window.timeline[window.currentEpochIndex];
     
     // Mettre à jour DATA directement (source unique de vérité)
@@ -169,8 +199,7 @@ function getSoleil() {
     // Calculer la constante solaire à 1 UA depuis la puissance totale
     // Relation: P = S * 4πr² où P est la puissance totale, S est la constante solaire, r = 1 UA = 1.496e11 m
     // Donc: S = P / (4π * (1 UA)²)
-    const AU_M = 1.496e11; // 1 UA en mètres
-    DATA['☀️']['🧲☀️'] = DATA['☀️']['🔋☀️'] / (4 * Math.PI * AU_M * AU_M);
+    DATA['☀️']['🧲☀️'] = DATA['☀️']['🔋☀️'] / (4 * Math.PI * CONST.AU_M * CONST.AU_M);
     
     // Flux solaire à 1 UA / 4 (moyenne sphérique, AVANT albedo)
     // 🎱 représente la géométrie (division par 4 pour la moyenne sphérique)
@@ -183,11 +212,7 @@ function getSoleil() {
     return true;
 }
 
-// ============================================================================
-// FONCTION : getNoyau() - Calculer les valeurs du noyau (géothermique)
-// ============================================================================
-// Utilise DATA directement (pas de paramètres)
-// Retourne true si DATA a été modifié
+//Calcule les valeurs du noyau géothermique (utilise DATA directement)
 function getNoyau() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
@@ -197,8 +222,17 @@ function getNoyau() {
     const EPOCH = window.timeline[window.currentEpochIndex];
     
     // Flux géothermique en W/m² (depuis timeline)
-    // Accès direct (plantera si n'existe pas, comme demandé)
-    DATA['🌕']['🧲🌕'] = EPOCH['🕰']['💫']['🔺🧲🌕💫']['▶'];
+    // Vérifier si 💫 existe dans les événements (certaines époques ont le flux directement)
+    if (EPOCH['🕰']['💫'] && EPOCH['🕰']['💫']['🔺🧲🌕💫']) {
+        // Flux depuis les événements ticTime
+        DATA['🌕']['🧲🌕'] = EPOCH['🕰']['💫']['🔺🧲🌕💫']['▶'];
+    } else if (EPOCH['🧲🌕'] !== undefined) {
+        // Flux directement dans l'époque (ex: Hadéen)
+        DATA['🌕']['🧲🌕'] = EPOCH['🧲🌕'];
+    } else {
+        // Pas de flux géothermique pour cette époque
+        DATA['🌕']['🧲🌕'] = 0;
+    }
     
     // Puissance totale du noyau (en Watts) - depuis 🔋🌕
     DATA['🌕']['🔋🌕'] = EPOCH['🔋🌕'];

@@ -11,7 +11,7 @@
             box-sizing: border-box;
         }
         
-        /* Police emoji pour les logos */
+        /* Police emoji pour les logos - EXACTEMENT comme sur la page de référence UTF-8 */
         @font-face {
             font-family: 'EmojiFont';
             src: local('Apple Color Emoji'),
@@ -22,20 +22,35 @@
                  local('Twemoji Mozilla');
         }
         
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: #1a1a1a;
             color: #e0e0e0;
             padding: 20px;
+        }
+        
+        /* Classe pour les éléments contenant des emojis/logos - EXACTEMENT comme .logo-item sur la page de référence UTF-8 */
+        .logo-item,
+        .emoji-text {
+            font-family: 'EmojiFont', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', sans-serif;
         }
         
         /* Appliquer la police emoji aux éléments contenant des logos */
         .config-value,
         .config-title,
         code,
-        pre {
-            font-family: 'EmojiFont', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', monospace, sans-serif;
+        pre,
+        h1,
+        h2,
+        h3,
+        .epoch-btn-horizontal,
+        .icon-button,
+        .timeline-hourglass,
+        .horloge-icon,
+        button {
+            font-family: 'EmojiFont', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', 'Symbola', 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;
         }
+        
         
         .container {
             max-width: 1400px;
@@ -98,7 +113,7 @@
         
         .epoch-btn-horizontal {
             font-size: 24px;
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+            /* font-family héritée de la règle générale pour button */
             background: none !important;
             border: none !important;
             border-radius: 50%;
@@ -111,19 +126,47 @@
             width: 40px;
             height: 40px;
             position: relative;
+            /* Par défaut : noir et blanc sans glow (glow uniquement pour selected) */
             filter: grayscale(100%);
+            /* Pas de text-shadow par défaut pour les boutons non sélectionnés */
             text-shadow: none;
         }
         
+        /* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
         .epoch-btn-horizontal:hover {
+            /* Si non sélectionné : swap vers couleur, contour blanc au rollover */
             filter: grayscale(0%);
-            text-shadow: 0 0 8px rgba(81, 207, 102, 0.6);
+            /* Glow blanc au rollover pour les boutons non sélectionnés */
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                0 0 4px rgba(255, 255, 255, 0.7),
+                0 0 6px rgba(255, 255, 255, 0.5);
         }
         
+        /* Rollover spécifique pour les boutons non sélectionnés : forcer le glow blanc */
+        .epoch-btn-horizontal:not(.selected):hover {
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                0 0 4px rgba(255, 255, 255, 0.7),
+                0 0 6px rgba(255, 255, 255, 0.5) !important;
+        }
+        
+        /* Bouton sélectionné : couleur avec contour vert autour du logo */
         .epoch-btn-horizontal.selected {
-            filter: grayscale(0%);
-            text-shadow: 0 0 12px rgba(81, 207, 102, 1);
-            box-shadow: 0 0 0 2px rgba(81, 207, 102, 0.8);
+            filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+            /* Couleur normale avec blur vert */
+            /* Contour vert autour du logo - ne change pas au rollover */
+            text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                0 0 4px rgba(0, 255, 0, 0.7),
+                0 0 6px rgba(0, 255, 0, 0.5),
+                0 0 8px rgba(0, 255, 0, 0.3) !important;
+        }
+        
+        .epoch-btn-horizontal.selected:hover {
+            /* Si sélectionné : swap vers noir et blanc, contour reste vert */
+            filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+            text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                0 0 4px rgba(0, 255, 0, 0.7),
+                0 0 6px rgba(0, 255, 0, 0.5),
+                0 0 8px rgba(0, 255, 0, 0.3) !important;
         }
         
         .timeline-events-logos {
@@ -189,35 +232,61 @@
         }
         
         .icon-button {
-            background: #3a3a3a;
-            border: 2px solid #555;
-            color: #e0e0e0;
-            padding: 10px;
-            border-radius: 4px;
-            cursor: pointer;
             font-size: 20px;
-            width: 45px;
-            height: 45px;
+            /* font-family héritée de la règle générale pour button */
+            background: none !important;
+            border: none !important;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s;
+            cursor: pointer !important;
+            padding: 5px;
+            transition: filter 0.3s ease, text-shadow 0.3s ease;
+            width: 45px;
+            height: 45px;
+            position: relative;
+            /* Par défaut : noir et blanc sans glow (glow uniquement pour selected) */
+            filter: grayscale(100%);
+            /* Pas de text-shadow par défaut pour les boutons non sélectionnés */
+            text-shadow: none;
         }
         
+        /* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
         .icon-button:hover {
-            background: #4a4a4a;
-            border-color: #666;
+            /* Si non sélectionné : swap vers couleur, contour blanc au rollover */
+            filter: grayscale(0%);
+            /* Glow blanc au rollover pour les boutons non sélectionnés */
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                0 0 4px rgba(255, 255, 255, 0.7),
+                0 0 6px rgba(255, 255, 255, 0.5);
         }
         
+        /* Rollover spécifique pour les boutons non sélectionnés : forcer le glow blanc */
+        .icon-button:not(.selected):hover {
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                0 0 4px rgba(255, 255, 255, 0.7),
+                0 0 6px rgba(255, 255, 255, 0.5) !important;
+        }
+        
+        /* Bouton sélectionné : couleur avec contour vert autour du logo */
         .icon-button.selected {
-            background: #51cf66;
-            border-color: #51cf66;
-            color: white;
+            filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+            /* Couleur normale avec blur vert */
+            /* Contour vert autour du logo - ne change pas au rollover */
+            text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                0 0 4px rgba(0, 255, 0, 0.7),
+                0 0 6px rgba(0, 255, 0, 0.5),
+                0 0 8px rgba(0, 255, 0, 0.3) !important;
         }
         
         .icon-button.selected:hover {
-            background: #40bf55;
-            border-color: #40bf55;
+            /* Si sélectionné : swap vers noir et blanc, contour reste vert */
+            filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+            text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+                0 0 4px rgba(0, 255, 0, 0.7),
+                0 0 6px rgba(0, 255, 0, 0.5),
+                0 0 8px rgba(0, 255, 0, 0.3) !important;
         }
         
         .results {
@@ -313,7 +382,7 @@
         .config-value {
             color: beige;
             margin-top: 5px;
-            font-family: 'EmojiFont', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', monospace, sans-serif;
+            /* font-family héritée de la règle générale pour .config-value */
         }
         
         .formule {
@@ -577,16 +646,16 @@
                 } else {
                     animButton.classList.add('selected');
                 }
-                // Créer ou mettre à jour plot-anim-toggle pour compatibilité
-                let plotAnimToggle = document.getElementById('plot-anim-toggle');
-                if (!plotAnimToggle) {
-                    plotAnimToggle = document.createElement('input');
-                    plotAnimToggle.type = 'checkbox';
-                    plotAnimToggle.id = 'plot-anim-toggle';
-                    plotAnimToggle.style.display = 'none';
-                    document.body.appendChild(plotAnimToggle);
+                // Créer ou mettre à jour plot-anim-toggle-checkbox pour compatibilité avec compute.js
+                let plotAnimToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
+                if (!plotAnimToggleCheckbox) {
+                    plotAnimToggleCheckbox = document.createElement('input');
+                    plotAnimToggleCheckbox.type = 'checkbox';
+                    plotAnimToggleCheckbox.id = 'plot-anim-toggle-checkbox';
+                    plotAnimToggleCheckbox.style.display = 'none';
+                    document.body.appendChild(plotAnimToggleCheckbox);
                 }
-                plotAnimToggle.checked = !isSelected;
+                plotAnimToggleCheckbox.checked = !isSelected;
             }
         }
         
@@ -620,7 +689,7 @@
                     // Le logo est maintenant dans charsImages ou directement l'emoji
                     const logoEmoji = epochId;
                     button.textContent = logoEmoji;
-                    button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+                    // font-family héritée de la règle CSS générale pour button
                     
                     epochsContainer.appendChild(button);
                 }
@@ -804,16 +873,16 @@
             // Initialiser window.convergencePrecision_K
             window.convergencePrecision_K = 0.1;
             
-            // Créer ou mettre à jour plot-anim-toggle pour compatibilité
-            let plotAnimToggle = document.getElementById('plot-anim-toggle');
-            if (!plotAnimToggle) {
-                plotAnimToggle = document.createElement('input');
-                plotAnimToggle.type = 'checkbox';
-                plotAnimToggle.id = 'plot-anim-toggle';
-                plotAnimToggle.style.display = 'none';
-                document.body.appendChild(plotAnimToggle);
+            // Créer ou mettre à jour plot-anim-toggle-checkbox pour compatibilité avec compute.js
+            let plotAnimToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
+            if (!plotAnimToggleCheckbox) {
+                plotAnimToggleCheckbox = document.createElement('input');
+                plotAnimToggleCheckbox.type = 'checkbox';
+                plotAnimToggleCheckbox.id = 'plot-anim-toggle-checkbox';
+                plotAnimToggleCheckbox.style.display = 'none';
+                document.body.appendChild(plotAnimToggleCheckbox);
             }
-            plotAnimToggle.checked = animEnabled;
+            plotAnimToggleCheckbox.checked = animEnabled;
             
             // Mettre à jour le bouton anim
             if (animBtn) {
@@ -843,8 +912,8 @@
                 // masses sera logué après getMasses() dans compute.js
                 console.log('masses sera logué après getMasses()');
                 console.log('');
-                // atm sera logué après calculateCompositionFromLogoConfig()
-                console.log('atm sera logué après calculateCompositionFromLogoConfig()');
+                // atm sera logué après calculateAtmosphereComposition()
+                console.log('atm sera logué après calculateAtmosphereComposition()');
                 console.log('');
                 // h2o sera logué après calculateH2OParameters()
                 console.log('h2o sera logué après calculateH2OParameters()');
@@ -870,13 +939,13 @@
                 console.log('');
                 console.log('📊 Objets après getEpochDateConfig():');
                 console.log(`dateConfig=${JSON.stringify(window.DATA['📜'])}`);
-                console.log(`masses=${JSON.stringify(window.DATA['🐳'])}`);
+                console.log(`masses=${JSON.stringify(window.DATA['⚖️'])}`);
                 if (window.epoch && window.epoch.events) {
                     console.log(`events=${JSON.stringify(window.epoch.events)}`);
                 }
                 
                 // 2. Appeler computeRadiativeTransfer
-                const result = await window.computeRadiativeTransfer({});
+                const result = await window.computeRadiativeTransfer();
                 
                 // 3. Afficher les résultats dans l'ordre
                 displayResults(result);
@@ -1060,7 +1129,7 @@
             `;
             // La formule sera ajoutée ici si nécessaire (pour albedo)
             html += `
-                    <div class="config-value" style="font-family: monospace;">${jsonStr}</div>
+                    <div class="config-value">${jsonStr}</div>
                 </div>
             `;
             return html;
@@ -1098,11 +1167,11 @@
                 html += json2html(epoch['🕰'], eventsTitle, 'epoch[\'🕰\']', 'events');
             }
             
-            // 3. 🐳 [getMasses@compute.js] - utiliser DATA directement
-            html += json2html(window.DATA['🐳'], '🐳', 'getMasses@compute.js', 'masses');
+            // 3. ⚖️ [getMasses@compute.js] - utiliser DATA directement
+            html += json2html(window.DATA['⚖️'], '⚖️', 'getMasses@compute.js', 'masses');
             
-            // 4. 🌬 Composition atmosphérique [calculateCompositionFromLogoConfig@calculations_atm.js] - utiliser DATA directement
-            html += json2html(window.DATA['🌬'], '🌬 Composition atmosphérique', 'calculateCompositionFromLogoConfig@calculations_atm.js', 'atm');
+            // 4. 🌬 Composition atmosphérique [calculateAtmosphereComposition@calculations_atm.js] - utiliser DATA directement
+            html += json2html(window.DATA['🌬'], '🌬 Composition atmosphérique', 'calculateAtmosphereComposition@calculations_atm.js', 'atm');
             
             // 5. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js] - utiliser DATA directement
             html += json2html(window.DATA['💧'], '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o');
