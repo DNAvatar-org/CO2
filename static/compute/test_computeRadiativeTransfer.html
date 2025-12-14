@@ -94,6 +94,21 @@
             font-size: 12px;
         }
         
+        .epoch-date-item-horizontal {
+            display: inline-flex;
+            align-items: center;
+            font-size: 9px;
+            color: #888;
+            padding: 0 5px;
+            margin: 0 2px;
+        }
+        
+        .epoch-date-horizontal {
+            font-size: 9px;
+            color: #aaa;
+            white-space: nowrap;
+        }
+        
         .epochs-container-horizontal {
             display: flex;
             gap: 8px;
@@ -506,7 +521,7 @@
         
         <!-- Lexique des logos selon grammar.txt -->
         <div id="lexique" class="results replied" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
-            <h2 style="color: #4a9eff; margin-bottom: 10px;">📖 Lexique <button class="toggle-button" onclick="toggleLexique()">+</button></h2>
+            <h2 style="color: #4a9eff; margin-bottom: 10px;">🔡 Alphabet(.js) > window.CHARS_DESC <button class="toggle-button" onclick="toggleLexique()">+</button></h2>
             <div id="alphabet-content">
                 <iframe id="alphabet-iframe" src="alphabet.html" style="width: 100%; height: 400px; border: none; background: #1a1a1a;"></iframe>
             </div>
@@ -514,35 +529,43 @@
         
         <!-- Syntaxe des logos -->
         <div id="syntaxe" class="results replied" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
-            <h2 style="color: #4a9eff; margin-bottom: 10px;">📝 Syntaxe <button class="toggle-button" onclick="toggleSyntaxe()">+</button></h2>
+            <h2 style="color: #4a9eff; margin-bottom: 10px;">📖 Dico(.js) > window.DESC <button class="toggle-button" onclick="toggleSyntaxe()">+</button></h2>
             <div id="dico-content">
                 <iframe id="dico-iframe" src="dico.html" style="width: 100%; height: 400px; border: none; background: #1a1a1a;"></iframe>
             </div>
         </div>
         
         <div class="controls">
-            <div class="controls-left">
-                <!-- Timeline horizontale -->
-                <div class="timeline-horizontal-container">
-                    <!-- Date de l'époque -->
-                    <div class="timeline-date-display">
-                        <span class="timeline-hourglass">📅</span>
-                        <span class="epoch-start-time" id="epoch-start-time">-5000 Ma</span>
-                    </div>
-                    
-                    <!-- Horloge / TicTime -->
-                    <div class="timeline-horloge-display">
-                        <span class="horloge-icon">🕰</span>
-                        <span class="info-time" id="info-time">+0 Ma</span>
-                        <div class="timeline-events-logos" id="timeline-events-logos">
-                            <!-- Logos d'événements (météorites, etc.) -->
+            <div class="controls-left" style="position: relative; width: 100%;">
+                <!-- En-tête window.TIMELINE (superposé en z-index) -->
+                <div style="position: absolute; top: 0; left: 0; font-size: 10px; color: #888; z-index: 10; background: #2a2a2a; padding: 2px 5px;">> window.TIMELINE</div>
+                
+                <!-- Timeline horizontale (une seule ligne) -->
+                <div class="timeline-horizontal-container" style="padding-top: 15px;">
+                        <!-- 📜 Époque avec date -->
+                        <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; padding: 0 10px; border-right: 1px solid #444;">
+                            <span class="timeline-hourglass" style="font-size: 20px;">📜</span>
+                            <span class="epoch-start-time" id="epoch-start-time" style="font-size: 10px; margin-top: 2px;">-5000 Ma</span>
                         </div>
-                    </div>
-                    
-                    <!-- Boutons d'époques -->
-                    <div class="epochs-container-horizontal" id="epochs-container-horizontal">
-                        <!-- Sera rempli dynamiquement -->
-                    </div>
+                        
+                        <!-- 📅 Date avec ticTime -->
+                        <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; padding: 0 10px; border-right: 1px solid #444;">
+                            <span class="timeline-hourglass" style="font-size: 20px;">📅</span>
+                            <span class="info-time" id="info-time" style="font-size: 10px; margin-top: 2px;">+0 Ma</span>
+                        </div>
+                        
+                        <!-- 🕰 Horloge avec événements -->
+                        <div class="timeline-horloge-display" style="display: flex; flex-direction: column; align-items: center; padding: 0 10px; border-right: 1px solid #444;">
+                            <span class="horloge-icon" style="font-size: 20px;">🕰</span>
+                            <div class="timeline-events-logos" id="timeline-events-logos" style="margin-top: 2px;">
+                                <!-- Logos d'événements (météorites, etc.) -->
+                            </div>
+                        </div>
+                        
+                        <!-- Boutons d'époques avec graduations intégrées -->
+                        <div class="epochs-container-horizontal" id="epochs-container-horizontal" style="flex: 1; padding-left: 10px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                            <!-- Sera rempli dynamiquement avec boutons et graduations -->
+                        </div>
                 </div>
             </div>
             
@@ -652,29 +675,109 @@
             return '../../' + relativePath;
         }
         
-        // Générer la timeline horizontale
+        // ============================================================================
+        // UTILITAIRES PARTAGÉS POUR TIMELINE (verticale et horizontale)
+        // ============================================================================
+        
+        // Créer un bouton d'époque (utilitaire partagé)
+        function createEpochButton(epochId, orientation) {
+            const button = document.createElement('button');
+            button.className = orientation === 'horizontal' ? 'epoch-btn-horizontal' : 'epoch-btn';
+            button.setAttribute('data-epoch', epochId);
+            
+            // Le logo est directement l'emoji
+            button.textContent = epochId;
+            button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+            
+            // Ajouter le tooltip personnalisé avec description depuis DESC
+            if (window.CHARS_DESC && window.CHARS_DESC[epochId]) {
+                // Utiliser addCustomTooltip si disponible, sinon title
+                if (typeof addCustomTooltip === 'function') {
+                    addCustomTooltip(button, window.CHARS_DESC[epochId]);
+                } else {
+                    button.title = window.CHARS_DESC[epochId];
+                }
+            }
+            
+            return button;
+        }
+        
+        // Créer une graduation (utilitaire partagé)
+        function createGraduation(dateText, orientation) {
+            const graduation = document.createElement('div');
+            graduation.className = orientation === 'horizontal' ? 'epoch-date-item-horizontal' : 'epoch-date-item';
+            
+            const date = document.createElement('span');
+            date.className = orientation === 'horizontal' ? 'epoch-date-horizontal' : 'epoch-date';
+            date.textContent = dateText;
+            
+            graduation.appendChild(date);
+            return graduation;
+        }
+        
+        // Formater une date en Ma depuis les années
+        function formatDateMa(years) {
+            const millions = Math.abs(years) / 1e6;
+            if (millions >= 1) {
+                const sign = years < 0 ? '-' : '';
+                const millionsFormatted = millions.toFixed(0);
+                return `${sign}${millionsFormatted}Ma`;
+            }
+            return `${years < 0 ? '-' : ''}${Math.abs(years)}`;
+        }
+        
+        // ============================================================================
+        // GÉNÉRATION TIMELINE HORIZONTALE
+        // ============================================================================
         function generateHorizontalTimeline() {
             const epochsContainer = document.getElementById('epochs-container-horizontal');
             if (!epochsContainer || !window.TIMELINE) return;
             
             epochsContainer.innerHTML = '';
             
-            window.TIMELINE.forEach(item => {
+            // Dates importantes pour les graduations (en Ma)
+            const importantDates = [-5000, 1800, 2025];
+            let lastEpochDate = null;
+            
+            window.TIMELINE.forEach((item, index) => {
                 if (item['📅']) {
-                    const button = document.createElement('button');
-                    button.className = 'epoch-btn-horizontal';
-                    const epochId = item['📅'];
-                    button.setAttribute('data-epoch', epochId);
-                    button.onclick = () => selectEpoch(epochId);
+                    const currentDate = item['▶'] / 1e6; // Convertir en Ma
                     
-                    // Le logo est maintenant dans charsImages ou directement l'emoji
-                    const logoEmoji = epochId;
-                    button.textContent = logoEmoji;
-                    // font-family héritée de la règle CSS générale pour button
+                    // Ajouter une graduation AVANT le bouton si nécessaire
+                    if (index === 0) {
+                        // Première époque : ajouter graduation -5000Ma
+                        const graduation = createGraduation('-5000Ma', 'horizontal');
+                        epochsContainer.appendChild(graduation);
+                    } else if (lastEpochDate !== null) {
+                        // Vérifier si on doit ajouter une graduation entre les boutons
+                        const dateDiff = Math.abs(currentDate - lastEpochDate);
+                        const isImportantDate = importantDates.some(d => Math.abs(currentDate - d) < 50);
+                        
+                        // Ajouter graduation si changement > 200Ma ou si c'est une date importante
+                        if (dateDiff > 200 || isImportantDate) {
+                            const graduation = createGraduation(formatDateMa(item['▶']), 'horizontal');
+                            epochsContainer.appendChild(graduation);
+                        }
+                    }
                     
+                    // Créer le bouton d'époque
+                    const button = createEpochButton(item['📅'], 'horizontal');
+                    button.onclick = () => selectEpoch(item['📅']);
                     epochsContainer.appendChild(button);
+                    
+                    lastEpochDate = currentDate;
                 }
             });
+            
+            // Ajouter graduation finale (2025) après le dernier bouton si nécessaire
+            const lastEpoch = window.TIMELINE[window.TIMELINE.length - 1];
+            if (lastEpoch && lastEpoch['📅']) {
+                const lastEpochEndDate = lastEpoch['◀'] / 1e6;
+                if (Math.abs(lastEpochEndDate - 2025) < 50) {
+                    const graduation = createGraduation('2025', 'horizontal');
+                    epochsContainer.appendChild(graduation);
+                }
+            }
             
             // Sélectionner la première époque par défaut
             if (window.TIMELINE.length > 0) {
@@ -683,6 +786,29 @@
                     selectEpoch(firstEpoch['📅']);
                 }
             }
+        }
+        
+        // ============================================================================
+        // GÉNÉRATION TIMELINE VERTICALE (pour index.html)
+        // ============================================================================
+        function generateVerticalTimeline() {
+            const epochsContainer = document.querySelector('.epochs-container-vertical') || document.querySelector('.epochs-container');
+            if (!epochsContainer || !window.TIMELINE) return;
+            
+            epochsContainer.innerHTML = '';
+            
+            window.TIMELINE.forEach(item => {
+                if (item['📅']) {
+                    // Créer le bouton d'époque
+                    const button = createEpochButton(item['📅'], 'vertical');
+                    button.setAttribute('onclick', `setEpoch('${item['📅'].replace(/'/g, "\\'")}')`);
+                    epochsContainer.appendChild(button);
+                } else if (item.date) {
+                    // Séparateur/graduation (comme dans generateTimelineFromConfig)
+                    const graduation = createGraduation(item.date, 'vertical');
+                    epochsContainer.appendChild(graduation);
+                }
+            });
         }
         
         // Sélectionner une époque (utilise l'index directement)
@@ -694,11 +820,7 @@
                 return;
             }
             
-            // Utiliser l'index directement (pas de copie)
-            window.currentEpochIndex = epochIndex;
-            window.currentEpochName = epochId; // Garder pour compatibilité affichage
-            
-            // Mettre à jour DATA['📅'] avec l'objet epoch complet
+            // Mettre à jour DATA['📅'] avec l'objet epoch complet (source unique de vérité)
             if (!window.DATA) window.DATA = {};
             if (!window.DATA['📜']) window.DATA['📜'] = {};
             window.DATA['📅'] = window.TIMELINE[epochIndex];
@@ -714,11 +836,7 @@
             });
             
             // Mettre à jour la date de l'époque (depuis '▶')
-            const EPOCH = window.TIMELINE[epochIndex];
-            const epochStartTime = document.getElementById('epoch-start-time');
-            if (epochStartTime && EPOCH && EPOCH['▶'] !== undefined) {
-                epochStartTime.textContent = `-${(EPOCH['▶'] / 1e6).toFixed(0)} Ma`;
-            }
+            updateTimelineDisplay();
             
             // Mettre à jour les actions (boutons d'événements)
             updateEpochActions();
@@ -734,11 +852,17 @@
         // Mettre à jour l'affichage de la timeline
         function updateTimelineDisplay() {
             const infoTimeDisplay = document.getElementById('info-time');
-            if (infoTimeDisplay) {
-                const DATA = window.DATA;
-                const infoTimeMa = (DATA['📜'] && DATA['📜']['📿💫']) ? DATA['📜']['📿💫'] * 50 : 0;
+            const epochStartTime = document.getElementById('epoch-start-time');
+            const DATA = window.DATA;
+            if (infoTimeDisplay && DATA && DATA['📜']) {
+                const infoTimeMa = DATA['📜']['📿💫'] * 50;
                 const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
                 infoTimeDisplay.textContent = `+${deltaMa} Ma`;
+            }
+            if (epochStartTime && DATA && DATA['📅']) {
+                const EPOCH = DATA['📅'];
+                const epochStart = EPOCH['▶'] / 1e6;
+                epochStartTime.textContent = `-${epochStart.toFixed(0)} Ma`;
             }
         }
         
@@ -751,8 +875,8 @@
             
             const DATA = window.DATA;
             let EPOCH = DATA['📅'];
-            if (!EPOCH && window.currentEpochIndex !== undefined && window.TIMELINE) {
-                EPOCH = window.TIMELINE[window.currentEpochIndex];
+            if (!EPOCH && window.DATA && window.DATA['📜'] && window.DATA['📜']['👉'] !== undefined && window.TIMELINE) {
+                EPOCH = window.TIMELINE[window.DATA['📜']['👉']];
                 if (!DATA['📅']) {
                     DATA['📅'] = EPOCH;
                 }
@@ -804,15 +928,14 @@
             
             // Trouver l'index de l'époque dans TIMELINE
             const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
-            window.currentEpochIndex = epochIndex >= 0 ? epochIndex : window.TIMELINE.findIndex(item => item['📅']);
-            window.currentEpochName = epochId;
+            const epochIndex_final = epochIndex >= 0 ? epochIndex : window.TIMELINE.findIndex(item => item['📅']);
             
-            // Initialiser DATA['📅'] avec l'objet epoch complet
+            // Initialiser DATA['📅'] avec l'objet epoch complet (source unique de vérité)
             if (!window.DATA) window.DATA = {};
             if (!window.DATA['📜']) window.DATA['📜'] = {};
-            window.DATA['📅'] = window.TIMELINE[window.currentEpochIndex];
-            window.DATA['📜']['👉'] = window.currentEpochIndex;
-            window.DATA['📜']['🗿'] = window.currentEpochName; // Logo de l'époque (emoji), pas la description
+            window.DATA['📅'] = window.TIMELINE[epochIndex_final];
+            window.DATA['📜']['👉'] = epochIndex_final;
+            window.DATA['📜']['🗿'] = epochId; // Logo de l'époque (emoji), pas la description
             
             // Initialiser window.getGeologicalPeriodByName si nécessaire
             if (!window.getGeologicalPeriodByName) {
@@ -880,8 +1003,9 @@
                 // h2o sera logué après calculateH2OParameters()
                 console.log('h2o sera logué après calculateH2OParameters()');
                 console.log('');
-                // albedoReflectorCoeff
-                console.log(`albedoReflectorCoeff=${JSON.stringify(window.albedoReflectorCoeff)}`);
+                // albedoReflectorCoeff (dans CONST)
+                const CONST = window.CONST;
+                console.log(`albedoReflectorCoeff=${JSON.stringify(CONST['🪞🍰'])}`);
                 console.log('');
                 // albedo sera logué après calculateAlbedo()
                 console.log('albedo sera logué après calculateAlbedo()');
@@ -889,7 +1013,7 @@
                 
                 const DATA = window.DATA;
                 console.log('🧪 Démarrage du test computeRadiativeTransfer');
-                console.log(`📅 Époque: ${window.currentEpochName}`);
+                console.log(`📅 Époque: ${window.DATA['📜']['🗿']}`);
                 const animBtn2 = document.getElementById('anim-toggle');
                 const animEnabled2 = animBtn2 ? animBtn2.classList.contains('selected') : false;
                 console.log(`🎬 Animation: ${animEnabled2}`);
@@ -975,7 +1099,7 @@
             const EPOCH = DATA['📅'];
             const T_surface_K = DATA['⏳']['🌡️'] || 255;
             const T_surface_C = T_surface_K - 273.15;
-            const isHadeen = EPOCH && EPOCH['📅'] === '🌋';
+            const isHadeen = DATA['📜']['🗿'] === '🔥';
             const ocean_coverage = albedo['🍰🪞🌊'];
             const ice_coverage = albedo['🍰🪞🧊'];
             const forest_coverage = albedo['🍰🪞🌳'];
@@ -1088,26 +1212,35 @@
             // Construire la chaîne JSON formatée
             let jsonStr = formatValue(obj);
             
-            // Ajouter le nom de l'objet avec logo si categoryKey fourni
-            if (objName) {
-                if (categoryKey) {
-                    // Utiliser le logo de la catégorie + description si disponible
-                    const desc = window.DESC && window.DESC[categoryKey] ? '' : ''; // Description sera dans le titre
-                    jsonStr = `${categoryKey}${objName}=${jsonStr}`;
-                } else {
-                    jsonStr = `${objName}=${jsonStr}`;
-                }
-            } else if (categoryKey) {
-                // Si pas de objName mais categoryKey, utiliser juste le logo
+            // Ajouter le logo si categoryKey fourni (sans objName)
+            if (categoryKey) {
+                // Utiliser juste le logo, sans nom de description
                 jsonStr = `${categoryKey}=${jsonStr}`;
+            } else if (objName) {
+                // Si pas de categoryKey mais objName, utiliser juste objName
+                jsonStr = `${objName}=${jsonStr}`;
+            }
+            
+            // Ne pas afficher le titre (description) - juste le JSON avec le logo
+            // Ajouter les formules depuis FORM si categoryKey fourni
+            let formuleHtml = '';
+            if (categoryKey && window.FORM && window.FORM[categoryKey]) {
+                const formulas = [];
+                for (const key in obj) {
+                    if (window.FORM[categoryKey][key]) {
+                        formulas.push(`${key}: ${window.FORM[categoryKey][key]}`);
+                    }
+                }
+                if (formulas.length > 0) {
+                    formuleHtml = `<div class="formule">${formulas.join('<br>')}</div>`;
+                }
             }
             
             let html = `
                 <div class="config-section">
-                    <div class="config-title">${title} ${source ? `[${source}]` : ''}</div>
                     <div class="config-value">${jsonStr}</div>
                     <div class="formule-container">
-                        <!-- Les formules seront ajoutées ici -->
+                        ${formuleHtml}
                     </div>
                 </div>
             `;
@@ -1123,49 +1256,58 @@
             
             // Récupérer l'époque et le nom depuis DATA
             const EPOCH = DATA['📅'];
-            const epochName = DATA['📜']['🗿'];
+            const epochId = DATA['📜']['🗿'];
+            const epochName = window.CHARS_DESC[epochId] || epochId;
             
-            // Mettre à jour le titre avec le nom de l'époque
+            // Calculer la date actuelle (📅) : EPOCH['▶'] - ticTime effect
+            const ticTimeMa = DATA['📜']['📿💫'] * 50;
+            const currentDateMa = (EPOCH['▶'] / 1e6) - ticTimeMa;
+            const currentDateStr = currentDateMa >= 0 ? `-${currentDateMa.toFixed(0)}Ma` : `${Math.abs(currentDateMa).toFixed(0)}Ma`;
+            
+            // Mettre à jour le titre avec le nom de l'époque et la description
             const configTitle = configDiv.querySelector('h2');
             if (configTitle) {
-                configTitle.innerHTML = `📋 Configuration : ${epochName} <button class="toggle-button" onclick="toggleConfig()">+</button>`;
+                configTitle.innerHTML = `📋 Configuration : ${epochId} ${epochName} | 📅: ${currentDateStr} <button class="toggle-button" onclick="toggleConfig()">+</button>`;
             }
             
             let html = '';
             
             // 0. État des activations [getEnabledStates@compute.js]
             if (DATA['🔘']) {
-                html += json2html(DATA['🔘'], '⚙️ États activés', 'getEnabledStates@compute.js', 'enabledStates');
+                html += json2html(DATA['🔘'], '', '', 'enabledStates', '🔘');
             }
             
-            // 1. 💫📜 [getEpochDateConfig@compute.js] - utiliser DATA directement
+            // 1. 📜 epochConfig [getEpochDateConfig@compute.js] - Configuration de l'époque (sans ticTime)
             if (DATA['📜']) {
-                // Récupérer 🎓💫📜 depuis DATA['📜'] pour afficher +(50*🎓💫📜)Ma
-                const ticTime = DATA['📜']['📿💫'] || 0;
-                const ticTimeDisplay = ticTime > 0 ? ` +(${ticTime}×50)Ma` : '';
-                const dateConfigTitle = `💫📜 <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}${ticTimeDisplay}</span>`;
-                html += json2html(DATA['📜'], dateConfigTitle, 'getEpochDateConfig@compute.js', 'dateConfig');
+                // Créer une copie sans ticTime pour epochConfig
+                const epochConfig = {...DATA['📜']};
+                delete epochConfig['📿💫']; // Retirer ticTime de epochConfig
+                html += json2html(epochConfig, '', '', 'epochConfig', '📜');
             }
             
-            // 2. 📅 Événements [EPOCH['🕰']] - utiliser EPOCH['🕰'] directement depuis TIMELINE
+            // 2. 📜 dateConfig [getEpochDateConfig@compute.js] - Configuration avec ticTime (si ticTime > 0)
+            if (DATA['📜'] && DATA['📜']['📿💫'] > 0) {
+                html += json2html(DATA['📜'], '', '', 'dateConfig', '📜');
+            }
+            
+            // 4. 🕰 Événements [EPOCH['🕰']] - utiliser EPOCH['🕰'] directement depuis TIMELINE
             if (EPOCH && EPOCH['🕰']) {
-                const eventsTitle = `📅 Événements <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`;
-                html += json2html(EPOCH['🕰'], eventsTitle, 'EPOCH[\'🕰\']', 'events');
+                html += json2html(EPOCH['🕰'], '', '', 'events', '🕰');
             }
             
             // 5. ⚖️ [getMasses@compute.js] - utiliser DATA directement
             if (DATA['⚖️']) {
-                html += json2html(DATA['⚖️'], '⚖️', 'getMasses@compute.js', 'masses', '⚖️');
+                html += json2html(DATA['⚖️'], '', '', 'masses', '⚖️');
             }
             
             // 6. 🌬 Composition atmosphérique [calculateAtmosphereComposition@calculations_atm.js] - utiliser DATA directement
             if (DATA['🌬']) {
-                html += json2html(DATA['🌬'], '🌬 Composition atmosphérique', 'calculateAtmosphereComposition@calculations_atm.js', 'atm', '🌬');
+                html += json2html(DATA['🌬'], '', '', 'atm', '🌬');
             }
             
             // 7. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js] - utiliser DATA directement
             if (DATA['💧']) {
-                html += json2html(DATA['💧'], '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o', '💧');
+                html += json2html(DATA['💧'], '', '', 'h2o', '💧');
             }
             
             // 8. 🪞 Albedo [calculateAlbedo@calculations_albedo.js] - utiliser DATA['🪞_initial'] (albedo initial, ne change plus)
@@ -1173,31 +1315,28 @@
             // Utiliser DATA['🪞_initial'] si disponible (albedo initial), sinon DATA['🪞'] (fallback)
             const albedoForConfig = DATA['🪞_initial'] || DATA['🪞'];
             if (albedoForConfig) {
-                const albedoHtml = json2html(albedoForConfig, '🪞 Albedo (initial)', 'calculateAlbedo@calculations_albedo.js', 'albedo', '🪞');
-                if (window.albedoReflectorCoeff) {
-                    const formula = calculateAlbedoFormula(albedoForConfig, window.albedoReflectorCoeff);
-                    // Insérer la formule dans le conteneur formule-container
-                    html += albedoHtml.replace('<div class="formule-container">', `<div class="formule-container">${formula}`);
-                } else {
-                    html += albedoHtml;
-                }
+                const albedoHtml = json2html(albedoForConfig, '', '', 'albedo', '🪞');
+                const CONST = window.CONST;
+                const formula = calculateAlbedoFormula(albedoForConfig, CONST['🪞🍰']);
+                // Insérer la formule dans le conteneur formule-container
+                html += albedoHtml.replace('<div class="formule-container">', `<div class="formule-container">${formula}`);
             }
             
             // 9. 🌕 Noyau [getNoyau@compute.js] - utiliser DATA directement
             if (DATA['🌕']) {
-                html += json2html(DATA['🌕'], `🌕 Noyau <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`, 'getNoyau@compute.js', 'noyau', '🌕');
+                html += json2html(DATA['🌕'], '', '', 'noyau', '🌕');
             }
             
             // 10. ☀️ Soleil [getSoleil@compute.js] - utiliser DATA directement
             if (DATA['☀️']) {
-                html += json2html(DATA['☀️'], `☀️ Soleil <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`, 'getSoleil@compute.js', 'soleil', '☀️');
+                html += json2html(DATA['☀️'], '', '', 'soleil', '☀️');
             }
             
-            // 11. ☀️ Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
+            // 11. 🧲 Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
             // Construire le HTML avec les formules dans le conteneur formule-container
             // DATA['🧲'] contient les flux radiatifs
             if (DATA['🧲']) {
-                const fluxHtml = json2html(DATA['🧲'], '☀️ Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux', '🧲');
+                const fluxHtml = json2html(DATA['🧲'], '', '', 'flux', '🧲');
                 const fluxFormulas = calculateFluxFormulas(DATA['🧲'], DATA['☀️'], DATA['🪞']);
                 // Insérer les formules dans le conteneur formule-container
                 html += fluxHtml.replace('<div class="formule-container"', `<div class="formule-container">${fluxFormulas}`);
@@ -1229,97 +1368,20 @@
             let html = '';
             
             // Afficher l'historique des itérations si disponible
+            // Afficher ⏳ et 🧲 de toutes les itérations
             if (DATA && DATA['⏳'] && DATA['⏳']['history'] && DATA['⏳']['history'].length > 0) {
-                html += '<div class="config-section">';
-                html += '<div class="config-title">📊 Historique des itérations</div>';
-                html += '<div class="config-value" style="max-height: 400px; overflow-y: auto; font-size: 11px; font-family: monospace;">';
-                html += '<table style="width: 100%; border-collapse: collapse;">';
-                html += '<thead><tr style="background: rgba(255,255,255,0.1);">';
-                html += '<th style="padding: 4px; text-align: center;">It</th>';
-                html += '<th style="padding: 4px; text-align: center;">T (K)</th>';
-                html += '<th style="padding: 4px; text-align: center;">T (°C)</th>';
-                html += '<th style="padding: 4px; text-align: right;">Flux entrant</th>';
-                html += '<th style="padding: 4px; text-align: right;">Flux sortant</th>';
-                html += '<th style="padding: 4px; text-align: right;">Delta</th>';
-                html += '<th style="padding: 4px; text-align: right;">Tolérance</th>';
-                html += '<th style="padding: 4px; text-align: center;">Phase</th>';
-                html += '<th style="padding: 4px; text-align: right;">Albedo</th>';
-                html += '</tr></thead><tbody>';
-                
                 DATA['⏳']['history'].forEach(state => {
-                    // Utiliser temperature_C si disponible, sinon calculer depuis temperature_K
-                    const temp_C = state.temperature_C !== undefined ? state.temperature_C.toFixed(2) : (state.temperature_K - 273.15).toFixed(2);
-                    const flux_entrant_str = state.flux_entrant.toFixed(2);
-                    const flux_sortant_str = state.flux_sortant_effectif > 1000 ? state.flux_sortant_effectif.toExponential(2) : state.flux_sortant_effectif.toFixed(2);
-                    const delta_str = Math.abs(state.delta_equilibre) > 1000 ? state.delta_equilibre.toExponential(2) : state.delta_equilibre.toFixed(2);
-                    const tolerance_str = state.tolerance.toFixed(2);
-                    const albedo_str = state.albedo && state.albedo['🍰🪞📿'] !== undefined ? state.albedo['🍰🪞📿'].toFixed(4) : '-';
-                    const is_converged = Math.abs(state.delta_equilibre) <= state.tolerance;
-                    const row_style = is_converged ? 'background: rgba(0,255,0,0.1);' : '';
-                    
-                    html += `<tr style="${row_style}">`;
-                    html += `<td style="padding: 2px; text-align: center;">${state.iteration}</td>`;
-                    html += `<td style="padding: 2px; text-align: center;">${state.temperature_K.toFixed(2)}</td>`;
-                    html += `<td style="padding: 2px; text-align: center;">${temp_C}</td>`;
-                    html += `<td style="padding: 2px; text-align: right;">${flux_entrant_str}</td>`;
-                    html += `<td style="padding: 2px; text-align: right;">${flux_sortant_str}</td>`;
-                    html += `<td style="padding: 2px; text-align: right;">${delta_str}</td>`;
-                    html += `<td style="padding: 2px; text-align: right;">${tolerance_str}</td>`;
-                    html += `<td style="padding: 2px; text-align: center;">${state.phase || '-'}</td>`;
-                    html += `<td style="padding: 2px; text-align: right;">${albedo_str}</td>`;
-                    html += '</tr>';
-                });
-                
-                html += '</tbody></table>';
-                html += '</div></div>';
-                
-                // Afficher les DATA qui ont changé à chaque itération (si bouton + cliqué)
-                // Comparer chaque itération avec la précédente pour voir ce qui a changé
-                if (DATA['⏳']['history'].length > 1) {
-                    html += '<div class="config-section">';
-                    html += '<div class="config-title">📊 DATA modifiés par itération <button class="toggle-button" onclick="toggleDataChanges()">+</button></div>';
-                    html += '<div class="config-value data-changes-container" style="display: none; max-height: 400px; overflow-y: auto; font-size: 11px; font-family: monospace;">';
-                    
-                    for (let i = 1; i < DATA['⏳']['history'].length; i++) {
-                        const prevState = DATA['⏳']['history'][i - 1];
-                        const currState = DATA['⏳']['history'][i];
-                        const prevData = prevState.data_snapshot || {};
-                        const currData = currState.data_snapshot || {};
-                        
-                        // Comparer les catégories principales
-                        const categories = ['⏳', '💧', '🪞', '🧲', '📛'];
-                        let changes = [];
-                        
-                        categories.forEach(cat => {
-                            if (prevData[cat] && currData[cat]) {
-                                const prev = JSON.stringify(prevData[cat]);
-                                const curr = JSON.stringify(currData[cat]);
-                                if (prev !== curr) {
-                                    changes.push(`${cat}=${JSON.stringify(currData[cat])}`);
-                                }
-                            } else if (currData[cat]) {
-                                changes.push(`${cat}=${JSON.stringify(currData[cat])}`);
-                            }
-                        });
-                        
-                        if (changes.length > 0) {
-                            html += `<div style="margin-bottom: 10px;"><strong>Itération ${currState.iteration}:</strong><br>${changes.join('<br>')}</div>`;
-                        }
+                    // Afficher ⏳ de cette itération
+                    if (state.data_snapshot && state.data_snapshot['⏳']) {
+                        const iterationData = {...state.data_snapshot['⏳']};
+                        delete iterationData.history;
+                        html += json2html(iterationData, '', '', null, '⏳');
                     }
-                    
-                    html += '</div></div>';
-                }
-            }
-            
-            // Afficher les données de convergence finales depuis DATA (dernier état, plié par défaut)
-            if (DATA && DATA['⏳']) {
-                // Créer une copie sans l'historique pour l'affichage
-                const convergenceData = {...DATA['⏳']};
-                delete convergenceData.history;
-                html += json2html(convergenceData, '⚙ Convergence (final)', 'computeRadiativeTransfer@calculations_flux.js', 'convergence', '⏳');
-            }
-            if (DATA && DATA['🧲']) {
-                html += json2html(DATA['🧲'], '🧲 Flux radiatif (final)', 'computeRadiativeTransfer@calculations_flux.js', 'flux', '🧲');
+                    // Afficher 🧲 de cette itération (le plus important pour les calculs)
+                    if (state.data_snapshot && state.data_snapshot['🧲']) {
+                        html += json2html(state.data_snapshot['🧲'], '', '', null, '🧲');
+                    }
+                });
             }
             
             // Toujours afficher le panneau même si html est vide
@@ -1332,16 +1394,21 @@
             const button = configDiv.querySelector('.toggle-button');
             const formuleContainers = configDiv.querySelectorAll('.formule-container');
             
+            if (formuleContainers.length === 0) return;
+            
+            // Vérifier si au moins un conteneur est visible (style inline ou CSS)
+            const isVisible = Array.from(formuleContainers).some(container => {
+                const style = window.getComputedStyle(container);
+                return style.display !== 'none';
+            });
+            
             // Toggle l'affichage des formules
             formuleContainers.forEach(container => {
-                if (container.style.display === 'none') {
-                    container.style.display = 'block';
-                    button.textContent = '−'; // Afficher moins quand les formules sont visibles
-                } else {
-                    container.style.display = 'none';
-                    button.textContent = '+'; // Afficher plus quand les formules sont cachées
-                }
+                container.style.display = isVisible ? 'none' : 'block';
             });
+            
+            // Mettre à jour le bouton
+            button.textContent = isVisible ? '+' : '−';
         }
         
         function toggleConvergence() {
@@ -1349,16 +1416,21 @@
             const button = convergenceDiv.querySelector('.toggle-button');
             const formuleContainers = convergenceDiv.querySelectorAll('.formule-container');
             
+            if (formuleContainers.length === 0) return;
+            
+            // Vérifier si au moins un conteneur est visible (style inline ou CSS)
+            const isVisible = Array.from(formuleContainers).some(container => {
+                const style = window.getComputedStyle(container);
+                return style.display !== 'none';
+            });
+            
             // Toggle l'affichage des formules
             formuleContainers.forEach(container => {
-                if (container.style.display === 'none') {
-                    container.style.display = 'block';
-                    button.textContent = '−'; // Afficher moins quand les formules sont visibles
-                } else {
-                    container.style.display = 'none';
-                    button.textContent = '+'; // Afficher plus quand les formules sont cachées
-                }
+                container.style.display = isVisible ? 'none' : 'block';
             });
+            
+            // Mettre à jour le bouton
+            button.textContent = isVisible ? '+' : '−';
         }
         
         function toggleLexique() {

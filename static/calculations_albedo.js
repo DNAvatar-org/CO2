@@ -11,17 +11,8 @@
 // ============================================================================
 // COEFFICIENTS D'ALBÉDO PAR TYPE DE SURFACE
 // ============================================================================
-// Créer window.albedoReflectorCoeff avec les coefficients d'albédo selon grammar.txt
-// albedoReflectorCoeff={'🍰🌋🪞':0.05, '🍰🌊🪞':0.08, '🍰🌳🪞':0.12, '🍰🏖🪞':0.30, '🍰🧊🪞':0.20, '🍰⛅🪞':0.50}
-// Utiliser les clés emoji directement selon grammar.txt : albedoReflectorCoeff={'🍰🌋🪞':0.05, '🍰🌊🪞':0.08, '🍰🌳🪞':0.12, '🍰🏖🪞':0.30, '🍰🧊🪞':0.20, '🍰⛅🪞':0.50}
-window.albedoReflectorCoeff = {
-    '🍰🌋🪞': 0.05,  // Volcan/magma : très sombre
-    '🍰🌊🪞': 0.08,  // Océan : sombre
-    '🍰🌳🪞': 0.12,  // Forêt : légèrement réfléchissant
-    '🍰🏖🪞': 0.3,   // Désert : réfléchissant
-    '🍰🧊🪞': 0.2,   // Glace : réfléchissant
-    '🍰⛅🪞': 0.5    // Nuages : moyennement réfléchissant
-};
+// Coefficients d'albédo déplacés dans CONST (propriétés physiques constantes)
+// Utiliser CONST.ALBEDO_REFLECTOR_COEFF depuis physics.js
 
 // ============================================================================
 // FONCTION : CALCULER L'ALBEDO DYNAMIQUE
@@ -33,8 +24,9 @@ window.albedoReflectorCoeff = {
 // - Modèles de rétroaction glace-albedo (Budyko, 1969; Sellers, 1969)
 // - Paramétrisation nuageuse simplifiée pour visualisation pédagogique
 function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
-    // Utiliser DATA directement (pas de paramètres)
+    // Utiliser DATA et CONST directement (pas de paramètres)
     const DATA = window.DATA;
+    const CONST = window.CONST;
     const T_surface_C = T_surface_K - 273.15;
     
     // Récupérer l'albedo de base de l'époque courante depuis DATA
@@ -48,12 +40,12 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     const ice_fraction_base = DATA['💧']['🍰💧🧊'];
     const ocean_coverage = DATA['💧']['🍰💧🌊'];
         
-    // Calculer l'albedo pondéré selon les couvertures en utilisant window.albedoReflectorCoeff
+    // Calculer l'albedo pondéré selon les couvertures en utilisant CONST.ALBEDO_REFLECTOR_COEFF
     // D'abord déterminer les couvertures : volcan, océan, forêt, désert, glace
     
     // Volcan : en Hadéen (température très élevée) ou si flux géothermique très élevé
     let volcano_coverage = 0;
-    const epochId = epoch['📅'];
+    const epochId = DATA['📜']['🗿'];
     const isHadeen = epochId === '🔥';
         if (isHadeen || (geothermal_flux && geothermal_flux > 1000)) {
             // En Hadéen : volcan = 100%, désert = 0%
@@ -78,28 +70,28 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         // Les nuages seront ajoutés ensuite (contribution additive)
         let weighted_albedo = 0;
         let total_coverage = 0;
-        const coeff = window.albedoReflectorCoeff;
+        const coeff = CONST['🪞🍰'];
         
         // Albedo de surface (moyenne pondérée des couvertures)
-        // Utiliser les clés emoji directement : '🍰🌋🪞', '🍰🌊🪞', etc.
+        // Utiliser les clés emoji directement : '🪞🍰🌋', '🪞🍰🌊', etc.
         if (volcano_coverage > 0) {
-            weighted_albedo += volcano_coverage * coeff['🍰🌋🪞'];
+            weighted_albedo += volcano_coverage * coeff['🪞🍰🌋'];
             total_coverage += volcano_coverage;
         }
         if (ocean_coverage > 0) {
-            weighted_albedo += ocean_coverage * coeff['🍰🌊🪞'];
+            weighted_albedo += ocean_coverage * coeff['🪞🍰🌊'];
             total_coverage += ocean_coverage;
         }
         if (forest_coverage > 0) {
-            weighted_albedo += forest_coverage * coeff['🍰🌳🪞'];
+            weighted_albedo += forest_coverage * coeff['🪞🍰🌳'];
             total_coverage += forest_coverage;
         }
         if (desert_coverage > 0) {
-            weighted_albedo += desert_coverage * coeff['🍰🏖🪞'];
+            weighted_albedo += desert_coverage * coeff['🪞🍰🏖'];
             total_coverage += desert_coverage;
         }
         if (ice_fraction_base > 0) {
-            weighted_albedo += ice_fraction_base * coeff['🍰🧊🪞'];
+            weighted_albedo += ice_fraction_base * coeff['🪞🍰🧊'];
             total_coverage += ice_fraction_base;
         }
         
@@ -231,22 +223,22 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     }
 
     // Contribution des nuages (H2O activé)
-    // IMPORTANT : Les nuages sont toujours ajoutés si window.h2o['🍰💧⛅'] est défini, même si h2o_enabled est false
-    // car window.h2o['🍰💧⛅'] représente la couverture nuageuse calculée, indépendamment de l'état du bouton
+    // IMPORTANT : Les nuages sont toujours ajoutés si DATA['💧']['🍰💧⛅'] est défini, même si h2o_enabled est false
+    // car DATA['💧']['🍰💧⛅'] représente la couverture nuageuse calculée, indépendamment de l'état du bouton
     let cloud_fraction = 0;
     const h2o_cloud_key = '🍰💧⛅';  // Clé emoji directe selon dico.js
-    if (window.h2o && window.h2o[h2o_cloud_key] !== undefined) {
-        cloud_fraction = window.h2o[h2o_cloud_key] / 100; // Convertir de % à fraction
+    if (window.DATA && window.DATA['💧'] && window.DATA['💧'][h2o_cloud_key] !== undefined) {
+        cloud_fraction = window.DATA['💧'][h2o_cloud_key]; // Déjà en fraction (< 1.0)
     } else if (h2o_enabled) {
-        // Fallback : calculer avec calculateCloudCoverage si window.h2o n'est pas encore disponible
+        // Fallback : calculer avec calculateCloudCoverage si DATA['💧'] n'est pas encore disponible
         cloud_fraction = calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction);
     }
 
     // Toujours ajouter la contribution des nuages si cloud_fraction > 0
-    // (pas de seuil minimum, car window.h2o[h2o_cloud_key] est déjà calculé avec précision)
+    // (pas de seuil minimum, car DATA['💧'][h2o_cloud_key] est déjà calculé avec précision)
     if (cloud_fraction > 0) {
-        const coeff = window.albedoReflectorCoeff;
-        const cloud_albedo_coeff = coeff['🍰⛅🪞']; // Coefficient d'albédo des nuages
+        const coeff = window.CONST['🪞🍰'];
+        const cloud_albedo_coeff = coeff['🪞🍰⛅']; // Coefficient d'albédo des nuages
         
         // Contribution des nuages : albedo_nuages × couverture_nuageuse
         // Les nuages sont dans l'atmosphère, donc ils ajoutent leur contribution à l'albedo de surface
@@ -276,7 +268,7 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     // Si nécessaire, on peut ajouter : obliquity_factor = 1.0 - (obliquity - 23.44) / 23.44 * 0.1 (max ±10% d'ajustement)
     
     // Calculer les couvertures (même logique que pour albedo_base)
-    const epochId_display = epoch['📅'];
+    const epochId_display = DATA['📜']['🗿'];
     const isHadeen_display = epochId_display === '🔥';
         
     // Volcan : en Hadéen = 100%, sinon selon flux géothermique
@@ -313,7 +305,6 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         ice_coverage_display *= scale;
     }
     
-    // Selon grammar.txt : albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}
     // Mettre à jour DATA directement (source unique de vérité)
     DATA['🪞']['🍰🪞📿'] = final_albedo;  // Albedo total
     DATA['🪞']['🍰🪞🌋'] = volcano_coverage_display;  // Volcan
@@ -323,16 +314,8 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     DATA['🪞']['🍰🪞🧊'] = ice_coverage_display;  // Glace
     DATA['🪞']['🍰🪞⛅'] = cloud_coverage_display;  // Nuages (pas une couverture de surface, mais une couverture atmosphérique)
     
-    // Compatibilité : garder window.albedo pour l'affichage (mais DATA est la source)
-    window.albedo = {
-        '🍰🪞📿': DATA['🪞']['🍰🪞📿'],
-        '🍰🪞🌋': DATA['🪞']['🍰🪞🌋'],
-        '🍰🪞🌊': DATA['🪞']['🍰🪞🌊'],
-        '🍰🪞🌳': DATA['🪞']['🍰🪞🌳'],
-        '🍰🪞🏖': DATA['🪞']['🍰🪞🏖'],
-        '🍰🪞🧊': DATA['🪞']['🍰🪞🧊'],
-        '🍰🪞⛅': DATA['🪞']['🍰🪞⛅']
-    };
+    // Albedo stocké dans DATA['🪞'] (source unique de vérité)
+    // window.albedo supprimé, utiliser DATA['🪞'] directement
     
     return final_albedo;
 }
@@ -493,12 +476,12 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_overrid
 function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled, geothermal_flux = null) {
     const albedo = calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux);
     
-    // Utiliser window.soleil['🧲☀️🎱'] comme source unique (flux solaire moyen sphérique, AVANT albedo)
+    // Utiliser DATA['☀️']['🧲☀️🎱'] comme source unique (flux solaire moyen sphérique, AVANT albedo)
     // Par définition : 🧲☀️🎱 = 🧲☀️📜 / 4 (rapporté au rayon au sol pour les m²)
     let solar_flux_average_wm;
-    if (window.soleil && window.soleil['🧲☀️🎱'] !== undefined) {
-        // Utiliser window.soleil['🧲☀️🎱'] directement (source unique)
-        solar_flux_average_wm = window.soleil['🧲☀️🎱'];
+    if (window.DATA && window.DATA['☀️'] && window.DATA['☀️']['🧲☀️🎱'] !== undefined) {
+        // Utiliser DATA['☀️']['🧲☀️🎱'] directement (source unique)
+        solar_flux_average_wm = window.DATA['☀️']['🧲☀️🎱'];
     } else {
         // Fallback : calculer depuis window.SOLAR_CONSTANT ou valeur par défaut
         const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
@@ -548,7 +531,7 @@ function updateLevelsConfig() {
     const EPOCH = DATA['📅'];
     const total_atmosphere_mass_kg = DATA['⚖️']['⚖️📿'];
     const molar_mass_air = DATA['🌬']['🧪'];
-    const isCorpsNoir = EPOCH['📅'] === '⚫';
+    const isCorpsNoir = DATA['📜']['🗿'] === '⚫';
     
     // Initialiser CO2 depuis EPOCH
     let co2_ppm = 0;

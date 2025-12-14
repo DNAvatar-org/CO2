@@ -73,8 +73,8 @@ function getMasses() {
     //const CONST = window.CONST;
     
     // Récupérer l'époque directement depuis TIMELINE avec l'index depuis DATA
-    const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
-    const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+    const epochId = DATA['📜']['🗿'];
+    const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
     const EPOCH = window.TIMELINE[epochIndex];
     let h2o_kg = EPOCH['⚖️💧'] || 0;
     
@@ -110,8 +110,8 @@ function getEpochDateConfig() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
-    const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+    const epochId = DATA['📜']['🗿'];
+    const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
     const EPOCH = window.TIMELINE[epochIndex];
     
     let meteoriteCount = 0;
@@ -173,8 +173,8 @@ function getSoleil() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
-    const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+    const epochId = DATA['📜']['🗿'];
+    const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
     const EPOCH = window.TIMELINE[epochIndex];
     
     // Mettre à jour DATA directement (source unique de vérité)
@@ -203,8 +203,8 @@ function getNoyau() {
     const CONST = window.CONST;
     
     // Récupérer l'époque directement depuis TIMELINE avec l'index depuis DATA
-    const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
-    const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+    const epochId = DATA['📜']['🗿'];
+    const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
     const EPOCH = window.TIMELINE[epochIndex];
     
     // Flux géothermique en W/m² (depuis TIMELINE)

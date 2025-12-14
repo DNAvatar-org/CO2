@@ -131,6 +131,40 @@ const DESC = {
 };
 
 // ============================================================================
+// OBJET FORM (formules de calcul) - Structure hiérarchique (2 niveaux)
+// ============================================================================
+const FORM = {
+    '🧲': {
+        '🧲☀️🔽': '🧲☀️🎱 × (1 - 🍰🪞📿) = Flux solaire absorbé',
+        '🧲🌕🔽': 'Flux géothermique (constant)',
+        '🧲🌑🔼': '∫[0.1μm→100μm] π × B_λ(T) × dλ ≈ 237.97 W/m² pour T=255K (vs σT⁴=239.76 W/m² intégration complète 0→∞)',
+        '🧲🌈🔼': 'Aire sous courbe spectrale (émission espace)',
+        '🧲🪞🔼': '🧲☀️🎱 × 🍰🪞📿 = Flux réfléchi par albedo',
+        '🔺🧲': '🧲🌈🔼 - (🧲☀️🔽 + 🧲🌕🔽) = Delta équilibre radiatif',
+        '_explication_equilibre': 'Corps noir (70% soleil): 🧲☀️🔽 devrait être ~238 W/m² (pas 341.50) → équilibre à T≈255K',
+        '_temperature_equilibre_corps_noir': 'T_équilibre = (S/4σ)^(1/4) = (952/4σ)^(1/4) ≈ 255K (-18°C) pour corps noir pur (S=70% actuel)',
+        '_bug_flux_solaire': 'BUG: Si 🧲☀️🔽=341.50 W/m² au lieu de 238 W/m² → code utilise soleil actuel (100%) au lieu de 70%',
+        '_effet_serre': 'Avec EDS: surface émet plus (T_surface > T_effective) mais atmosphère bloque → 🧲🌈🔼 < 🧲🌑🔼',
+        '_evolution_soleil': 'Soleil jeune (4.5 Ga): 🔋☀️ = 70% actuel (2.68e26 W vs 3.83e26 W) - Faint Young Sun Paradox',
+        '_faint_young_sun': 'Paradoxe: Soleil 30% moins lumineux mais Terre pas gelée → EDS plus fort (CO₂, CH₄) compensait',
+        '_flux_entrant': '🧲☀️🔽 + 🧲🌕🔽 = Flux entrant total',
+        '_formule_planck': 'B_λ(T) = (2hc²/λ⁵) / (exp(hc/λkT) - 1)',
+        '_formule_stefan': 'F = σT⁴ ≈ 239.7 W/m² pour T=255K (intégration complète 0→∞)',
+        '_note_spectrale': 'Calcul spectral: intégration sur λ ∈ [0.1μm, 100μm] avec Δλ=0.1μm'
+    },
+    '⏳': {
+        '🌡️': 'T° courante (K)',
+        '⏳⚧': 'Phase (Init/Search/Dicho)',
+        '⏳☯': 'Direction Search (+/-)',
+        '🧲🔬': '!Précision en Flux',
+        '🔬🌈': 'Résolution spectrale',
+        '🔬🌬': 'Résolution atmosphérique',
+        '⏳🔄': 'Nombre d\'itérations (O(🔬🌈×🔬🌬))',
+        '⏳🌡️🚩': 'T° initiale (T0)'
+    }
+};
+
+// ============================================================================
 // OBJET DATA (initialisé avec 0.0, structure hiérarchique 2 niveaux)
 // ============================================================================
 const DATA = {};
@@ -285,6 +319,7 @@ function createDicoHtml() {
 if (typeof window !== 'undefined') {
     window.DESC = DESC;
     window.DATA = DATA;
+    window.FORM = FORM;
     window.createDicoHtml = createDicoHtml;
     //window.createDico = createDicoHtml; // Alias pour compatibilité
 }

@@ -1036,8 +1036,8 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         // Si physParams n'est pas défini mais qu'on a les paramètres de base, le créer
         if (total_mass !== undefined && typeof window !== 'undefined' && window.TIMELINE && window.DATA) {
             const DATA = window.DATA;
-            const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
-            const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+            const epochId = DATA['📜']['🗿'];
+            const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
             const EPOCH = window.TIMELINE[epochIndex];
             physParams = {
                 total_atmosphere_mass_kg: total_mass || 0,

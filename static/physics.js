@@ -44,14 +44,26 @@ CONST.L_VAPORIZATION = 2.5e6;  // Chaleur latente de vaporisation (J/kg)
 CONST.RV_WATER = 461.5;  // Constante des gaz pour la vapeur d'eau (J/(kg·K))
 CONST.L_V = 40660;  // Chaleur latente de vaporisation (J/mol)
 
+// Coefficients d'albédo par type de surface (propriétés physiques constantes)
+// Ces valeurs sont des propriétés intrinsèques des matériaux, indépendantes de l'époque
+CONST['🪞🍰'] = {
+    '🪞🍰🌋': 0.05,  // Volcan/magma : très sombre
+    '🪞🍰🌊': 0.08,  // Océan : sombre
+    '🪞🍰🌳': 0.12,  // Forêt : légèrement réfléchissant
+    '🪞🍰🏖': 0.3,   // Désert : réfléchissant
+    '🪞🍰🧊': 0.2,   // Glace : réfléchissant
+    '🪞🍰⛅': 0.5    // Nuages : moyennement réfléchissant
+};
+
 // ✅ SCIENTIFIQUEMENT CERTAIN :
 // - La loi de Planck B(λ,T) = (2hc²/λ⁵) / (exp(hc/λkT) - 1) est une loi fondamentale de la physique
 // - Dérivée par Max Planck en 1900, elle décrit le spectre d'émission d'un corps noir
 // - Cette formule est exacte et utilisée dans tous les modèles de transfert radiatif
 // - Les constantes utilisées (h, c, k) sont des constantes fondamentales mesurées avec précision
-window.planckFunction = function(lambda, T) {
+function planckFunction(lambda, T) {
     const term1 = (2 * CONST.PLANCK_H * CONST.SPEED_OF_LIGHT * CONST.SPEED_OF_LIGHT) / Math.pow(lambda, 5);
     const term2 = Math.exp((CONST.PLANCK_H * CONST.SPEED_OF_LIGHT) / (lambda * CONST.BOLTZMANN_KB * T)) - 1;
     return term1 / term2; // W/(m²·m·sr) - Intensité spectrale d'un corps noir
 }
 
+window.planckFunction=planckFunction;

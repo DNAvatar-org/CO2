@@ -250,7 +250,7 @@ function createAlphabetHtml() {
                 ${col4_filtered}
             </div>
             <div class="legend-column">
-                <h3 class="legend-title">Époques & Autres</h3>
+                <h3 class="legend-title">Époques</h3>
                 ${col5_filtered}
             </div>
         </div>

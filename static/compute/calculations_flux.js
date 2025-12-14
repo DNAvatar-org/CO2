@@ -40,7 +40,7 @@ function calculateT0() {
     // Calculer T0 initial dans DATA['⏳']['⏳🌡️🚩'] temporairement
     const adjustment = DATA['📜']['🔺🌡️💫'] * DATA['📜']['📿💫'];
     
-    const epochId = DATA['📅']['📅'];
+    const epochId = DATA['📜']['🗿'];
     const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
     const EPOCH = window.TIMELINE[epochIndex];
     const T0_base = DATA['🔘']['🔘🎬'] ? DATA['⏳']['🌡️'] : EPOCH['🌡️⏳'];
@@ -82,7 +82,7 @@ function newDate() {
 async function computeRadiativeTransfer() {
     const DATA = window.DATA;
     // Récupérer l'époque directement depuis TIMELINE avec l'index depuis DATA
-    const epochId = DATA['📅']['📅'];
+    const epochId = DATA['📜']['🗿'];
     const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
     const EPOCH = window.TIMELINE[epochIndex];
     
@@ -154,18 +154,120 @@ async function computeRadiativeTransfer() {
     //    - Exemple : à T=255K avec precision_K=0.1K → tolerance = 4×5.67e-8×255³×0.1 ≈ 0.38 W/m²
     //    - Condition d'arrêt : |flux_sortant - flux_entrant| <= tolerance
     
+    // ========================================================================
+    // PHASE INIT : Initialisation avant la boucle d'itération
+    // ========================================================================
+    DATA['⏳']['⏳⚧'] = 'Init';
+    DATA['⏳']['⏳🔄'] = 0;
+    DATA['⏳']['history'] = [];
+    
+    // Calculer le flux initial pour avoir un état de référence
+    const h2o_enabled_init = DATA['🔘']['🔘💧📛'];
+    const geothermal_flux_init = DATA['🌕']['🧲🌕'];
+    const flux_solaire_absorbe_init = window.calculateSolarFluxAbsorbed(DATA['⏳']['🌡️'], h2o_enabled_init, geothermal_flux_init);
+    const flux_entrant_init = flux_solaire_absorbe_init + geothermal_flux_init;
+    
+    // Calcul spectral initial
+    // Récupérer total_mass et z_max depuis DATA (comme dans la boucle principale)
+    const total_mass_init = DATA['⚖️']['⚖️🌬'];
+    const z_max_km_init = DATA['🌬']['📏🌬🧿'];
+    let z_max_init = z_max_km_init * 1000; // Convertir km en mètres
+    
+    // Si z_max est 0 ou NaN, utiliser une valeur minimale
+    if (!z_max_init || isNaN(z_max_init) || z_max_init <= 0) {
+        console.warn(`📛 [computeRadiativeTransfer@calculations_flux.js] ⚠️ z_max invalide (${z_max_init}m), utilisation de 1m par défaut`);
+        z_max_init = 1; // 1 mètre minimum
+    }
+    
+    // Construire physParams depuis DATA pour calculateFluxForT0
+        const epochId_init = DATA['📜']['🗿'];
+        const epochIndex_init = window.TIMELINE.findIndex(item => item['📅'] === epochId_init);
+    const EPOCH_init = window.TIMELINE[epochIndex_init];
+    const physParams_init = {
+        total_atmosphere_mass_kg: total_mass_init,
+        gravity: EPOCH_init['🍎'],
+        planet_radius: EPOCH_init['📐'] * 1000, // Convertir km en mètres
+        molar_mass_air: DATA['🌬']['🧪'],
+        temperature_K: DATA['⏳']['🌡️'],
+        pressure_atm: DATA['🌬']['🎈'],
+        ocean_coverage: DATA['💧']['🍰💧🌊']
+    };
+    
+    const co2_fraction_init = DATA['🌬']['🍰🌬🏭'];
+    const ch4_fraction_init = DATA['🌬']['🍰🌬⛽'];
+    const ch4_enabled_init = DATA['🔘']['🔘⛽📛'];
+    
+    const spectral_result_init = window.calculateFluxForT0(co2_fraction_init, DATA['⏳']['🌡️'], {
+        h2o_enabled: h2o_enabled_init,
+        ch4_enabled: ch4_enabled_init,
+        ch4_fraction: ch4_fraction_init,
+        z_max: z_max_init,  // Passer z_max en mètres
+        total_atmosphere_mass_kg: total_mass_init,  // Passer total_mass
+        physParams: physParams_init  // Passer physParams explicitement
+    });
+    
+    if (!spectral_result_init || !spectral_result_init.earth_flux) {
+        console.error(`📛 [computeRadiativeTransfer@calculations_flux.js] ❌ ERREUR CRITIQUE : spectral_result_init invalide`);
+        return Promise.reject(new Error('spectral_result_init invalide'));
+    }
+    
+    const earth_flux_total_init = spectral_result_init.earth_flux.reduce((sum, val) => sum + val, 0);
+    const flux_sortant_surface_init = earth_flux_total_init;
+    const flux_sortant_effectif_init = spectral_result_init.total_flux;
+    const spectral_flux_init = spectral_result_init.total_flux_by_wavelength ? 
+        spectral_result_init.total_flux_by_wavelength.reduce((sum, val) => sum + val, 0) : 
+        flux_sortant_effectif_init;
+    const solar_flux_incident_init = DATA['☀️']['🧲☀️🎱'];
+    const albedo_flux_init = solar_flux_incident_init * DATA['🪞']['🍰🪞📿'];
+    const delta_equilibre_init = flux_sortant_effectif_init - flux_entrant_init;
+    const precision_K = EPOCH['🧲🔬'];
+    const tolerance_init = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['⏳']['🌡️'], 3) * precision_K;
+    
+    // Stocker l'état initial dans l'historique
+    const temp_C_init = DATA['⏳']['🌡️'] - 273.15;
+    const albedo_init = JSON.parse(JSON.stringify(DATA['🪞']));
+    
+    // Mettre à jour DATA['🧲'] pour l'état initial
+    DATA['🧲']['🧲☀️🔽'] = flux_solaire_absorbe_init;
+    DATA['🧲']['🧲🌕🔽'] = geothermal_flux_init;
+    DATA['🧲']['🧲🌑🔼'] = flux_sortant_surface_init;
+    DATA['🧲']['🧲🌈🔼'] = spectral_flux_init;
+    DATA['🧲']['🧲🪞🔼'] = albedo_flux_init;
+    DATA['🧲']['🔺🧲'] = delta_equilibre_init;
+    DATA['⏳']['🧲🔬'] = tolerance_init;
+    
+    const data_snapshot_init = {
+        '⏳': JSON.parse(JSON.stringify(DATA['⏳'])),
+        '💧': JSON.parse(JSON.stringify(DATA['💧'])),
+        '🪞': JSON.parse(JSON.stringify(DATA['🪞'])),
+        '🧲': JSON.parse(JSON.stringify(DATA['🧲'])),
+        '📛': JSON.parse(JSON.stringify(DATA['📛']))
+    };
+    
+    DATA['⏳']['history'].push({
+        iteration: 0,
+        temperature_K: DATA['⏳']['🌡️'],
+        temperature_C: temp_C_init,
+        flux_entrant: flux_entrant_init,
+        flux_sortant_surface: flux_sortant_surface_init,
+        flux_sortant_effectif: flux_sortant_effectif_init,
+        delta_equilibre: delta_equilibre_init,
+        tolerance: tolerance_init,
+        phase: 'Init',
+        signe: 0,
+        albedo: albedo_init,
+        data_snapshot: data_snapshot_init
+    });
+    
+    // ========================================================================
+    // BOUCLE D'ITÉRATION : Ajuster T0 jusqu'à convergence
+    // ========================================================================
     // Initialiser les variables d'itération
     let T0_min = null;
     let T0_max = null;
     DATA['⏳']['⏳☯'] = 0;
-    DATA['⏳']['⏳⚧'] = 'Search';
     const max_iterations = 20;
     let iteration = 0;
-    
-    const precision_K = EPOCH['🧲🔬'];
-    
-    // Initialiser l'historique des itérations
-    DATA['⏳']['history'] = []; // Réinitialiser à chaque nouveau calcul
     
     console.log(`🔄 [computeRadiativeTransfer@calculations_flux.js] Début itération`);
     console.log(`   Précision demandée: ${precision_K}K`);
@@ -175,7 +277,28 @@ async function computeRadiativeTransfer() {
     while (iteration < max_iterations) {
         iteration++;
         
-        // Recalculer les paramètres H2O
+        // Pour la première itération (iteration=1), faire l'ajustement de température AVANT de calculer les flux
+        // en utilisant le delta_equilibre de Init, pour que les résultats soient différents
+        if (iteration === 1) {
+            // Utiliser le delta_equilibre de Init pour faire le premier ajustement
+            const delta_equilibre_init = DATA['🧲']['🔺🧲'];
+            const signeDelta_init = Math.sign(delta_equilibre_init);
+            DATA['⏳']['⏳☯'] = signeDelta_init;
+            DATA['⏳']['⏳⚧'] = 'Search';
+            
+            // Ajuster T0 selon le delta de Init
+            const sensitivity = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['⏳']['🌡️'], 3);
+            const delta_T = -delta_equilibre_init / sensitivity;
+            DATA['⏳']['🌡️'] += delta_T;
+            
+            // Limiter T0 à des valeurs physiques raisonnables
+            const T0_limite = Math.max(100, Math.min(3000, DATA['⏳']['🌡️']));
+            DATA['⏳']['🌡️'] = T0_limite;
+            
+            console.log(`   🔧 Premier ajustement T0 (depuis Init): delta=${delta_equilibre_init.toFixed(2)} W/m², delta_T=${delta_T.toFixed(2)}K → T0=${DATA['⏳']['🌡️'].toFixed(2)}K`);
+        }
+        
+        // Recalculer les paramètres H2O avec la nouvelle température
         window.calculateH2OParameters();
         
         // Mettre à jour les états activés depuis les boutons
@@ -216,7 +339,7 @@ async function computeRadiativeTransfer() {
         }
         
         // Construire physParams depuis DATA pour calculateFluxForT0
-        const epochId_loop = DATA['📅']['📅'];
+        const epochId_loop = DATA['📜']['🗿'];
         const epochIndex_loop = window.TIMELINE.findIndex(item => item['📅'] === epochId_loop);
         const EPOCH_loop = window.TIMELINE[epochIndex_loop];
         const physParams = {
@@ -228,28 +351,28 @@ async function computeRadiativeTransfer() {
             pressure_atm: DATA['🌬']['🎈'],
             ocean_coverage: DATA['💧']['🍰💧🌊']
         };
-        
+                
         const spectral_result = window.calculateFluxForT0(co2_fraction, DATA['⏳']['🌡️'], {
-            h2o_enabled: h2o_enabled,
-            ch4_enabled: ch4_enabled,
-            ch4_fraction: ch4_fraction,
-            z_max: z_max,  // Passer z_max en mètres
+                    h2o_enabled: h2o_enabled,
+                    ch4_enabled: ch4_enabled,
+                    ch4_fraction: ch4_fraction,
+                    z_max: z_max,  // Passer z_max en mètres
             total_atmosphere_mass_kg: total_mass,  // Passer total_mass pour calculateAtmosphereProperties
             physParams: physParams  // Passer physParams explicitement
-        });
-        
+                });
+                
         // Vérifier si calculateFluxForT0 a retourné null (erreur)
         if (!spectral_result || !spectral_result.earth_flux) {
             console.error(`📛 [computeRadiativeTransfer@calculations_flux.js] ❌ calculateFluxForT0 a retourné null pour T0=${DATA['⏳']['🌡️']}K, z_max=${z_max}m`);
             return Promise.reject(new Error(`calculateFluxForT0 a retourné null (z_max=${z_max}m, total_mass=${total_mass}kg)`));
         }
         
-        // Flux émis par la surface (AVANT EDS) = earth_flux_total
+                    // Flux émis par la surface (AVANT EDS) = earth_flux_total
         const earth_flux_total = spectral_result.earth_flux.reduce((sum, val) => sum + val, 0);
-        flux_sortant_surface = earth_flux_total;
-        
-        // Flux sortant effectif (APRÈS EDS) = total_flux au sommet de l'atmosphère
-        flux_sortant_effectif = spectral_result.total_flux;
+                    flux_sortant_surface = earth_flux_total;
+                    
+                    // Flux sortant effectif (APRÈS EDS) = total_flux au sommet de l'atmosphère
+                        flux_sortant_effectif = spectral_result.total_flux;
         
         // Flux spectral (courbe spectrale) = somme des flux par longueur d'onde
         // Si total_flux_by_wavelength n'existe pas, utiliser flux_sortant_effectif
@@ -260,38 +383,38 @@ async function computeRadiativeTransfer() {
         // Flux réfléchi par l'albedo = flux solaire incident × albedo
         const solar_flux_incident = DATA['☀️']['🧲☀️🎱'];
         const albedo_flux = solar_flux_incident * DATA['🪞']['🍰🪞📿'];
-        
-        // Calculer les contributions des gaz (réémis vers la terre = EDS)
+                    
+                    // Calculer les contributions des gaz (réémis vers la terre = EDS)
         const num_couches = spectral_result.z_range.length;
         const num_plages_spectre = spectral_result.lambda_range.length;
-        const total_cases = num_couches * num_plages_spectre;
-        
-        // Calculer les contributions par gaz depuis optical_thickness et emitted_flux
-        // Note: Le flux émis est proportionnel à l'épaisseur optique de chaque gaz
-        let contribution_CO2 = 0;
-        let contribution_H2O = 0;
-        let contribution_CH4 = 0;
-        
-        // Pour chaque couche et chaque longueur d'onde, calculer la contribution de chaque gaz
-        for (let i = 0; i < spectral_result.emitted_flux.length; i++) {
-            for (let j = 0; j < spectral_result.emitted_flux[i].length; j++) {
-                const em_flux = spectral_result.emitted_flux[i][j];
-                const tau_total = spectral_result.optical_thickness[i][j];
-                
-                // Calculer les épaisseurs optiques individuelles (approximation)
+                    const total_cases = num_couches * num_plages_spectre;
+                    
+                    // Calculer les contributions par gaz depuis optical_thickness et emitted_flux
+                    // Note: Le flux émis est proportionnel à l'épaisseur optique de chaque gaz
+                    let contribution_CO2 = 0;
+                    let contribution_H2O = 0;
+                    let contribution_CH4 = 0;
+                    
+                        // Pour chaque couche et chaque longueur d'onde, calculer la contribution de chaque gaz
+                        for (let i = 0; i < spectral_result.emitted_flux.length; i++) {
+                            for (let j = 0; j < spectral_result.emitted_flux[i].length; j++) {
+                                const em_flux = spectral_result.emitted_flux[i][j];
+                                const tau_total = spectral_result.optical_thickness[i][j];
+                                
+                                    // Calculer les épaisseurs optiques individuelles (approximation)
                 const h2o_fraction_used = h2o_enabled ? h2o_fraction : 0;
                 const denominator = co2_fraction + ch4_fraction + h2o_fraction_used + 0.001;
                 const tau_CO2 = tau_total * (co2_fraction / denominator);
                 const tau_H2O = tau_total * (h2o_fraction / (co2_fraction + ch4_fraction + h2o_fraction + 0.001));
                 const tau_CH4 = tau_total * (ch4_fraction / denominator);
-                
-                // Répartition du flux émis selon les épaisseurs optiques
+                                    
+                                    // Répartition du flux émis selon les épaisseurs optiques
                 contribution_CO2 += em_flux * (tau_CO2 / tau_total);
                 contribution_H2O += em_flux * (tau_H2O / tau_total);
                 contribution_CH4 += em_flux * (tau_CH4 / tau_total);
-            }
-        }
-        
+                        }
+                    }
+                    
         // Delta équilibre : comparer flux_entrant avec flux_sortant_effectif (après EDS)
         const delta_equilibre = flux_sortant_effectif - flux_entrant;
         
@@ -320,6 +443,84 @@ async function computeRadiativeTransfer() {
         DATA['🧲']['🧲🌈🔼'] = spectral_flux;             // Flux spectral (courbe spectrale)
         DATA['🧲']['🧲🪞🔼'] = albedo_flux;               // Flux réfléchi par l'albedo
         DATA['🧲']['🔺🧲'] = flux_sortant_effectif - flux_entrant;
+        
+        // 7. Détecter changement de signe pour passer en Phase="Dicho" (AVANT d'ajouter dans l'historique)
+        // Sauvegarder la température actuelle avant de détecter le changement de signe
+        const T0_actuel_avant_detection = DATA['⏳']['🌡️'];
+        // IMPORTANT : Détecter AVANT d'ajouter l'état dans l'historique pour avoir accès à l'état précédent
+        // Condition : quand 🔺🧲*⏳☯<0 (changement de signe) alors on passe en dicho
+        // ⏳☯ = signe précédent, signeDelta = signe actuel
+        // Ne détecter le changement de signe qu'à partir de la 2ème itération (iteration > 1)
+        if (DATA['⏳']['⏳☯'] !== 0 && iteration > 1) {
+            const signeDelta = Math.sign(delta_equilibre);
+            // Changement de signe : 🔺🧲*⏳☯<0 signifie que les signes sont opposés
+            // Si delta_equilibre * ⏳☯ < 0, alors changement de signe détecté
+            if (delta_equilibre * DATA['⏳']['⏳☯'] < 0) {
+                // Changement de signe détecté → passer en dichotomie
+                DATA['⏳']['⏳⚧'] = 'Dicho';
+                // Initialiser les bornes correctement : utiliser la température précédente depuis l'historique
+                if (T0_min === null || T0_max === null) {
+                    // Récupérer l'avant-dernière entrée (pas la dernière qui est l'état actuel)
+                    if (DATA['⏳']['history'] && DATA['⏳']['history'].length > 1) {
+                        const prevState = DATA['⏳']['history'][DATA['⏳']['history'].length - 1];
+                        const T0_prev = prevState.temperature_K;
+                        const T0_actuel = DATA['⏳']['🌡️'];
+                        
+                        // Si le signe précédent était négatif (réchauffement) et maintenant positif (refroidissement)
+                        // Alors T0_prev < T0_actuel, donc T0_min = T0_prev, T0_max = T0_actuel
+                        // Si le signe précédent était positif (refroidissement) et maintenant négatif (réchauffement)
+                        // Alors T0_prev > T0_actuel, donc T0_min = T0_actuel, T0_max = T0_prev
+                        if (DATA['⏳']['⏳☯'] < 0 && signeDelta > 0) {
+                            // Passé de négatif à positif : on était trop froid, maintenant trop chaud
+                            T0_min = T0_prev;
+                            T0_max = T0_actuel;
+                        } else if (DATA['⏳']['⏳☯'] > 0 && signeDelta < 0) {
+                            // Passé de positif à négatif : on était trop chaud, maintenant trop froid
+                            T0_min = T0_actuel;
+                            T0_max = T0_prev;
+                        } else {
+                            // Par défaut, utiliser T0 actuel et une estimation
+                            if (signeDelta > 0) {
+                                // Trop chaud : T0_max = T0 actuel
+                                T0_max = T0_actuel;
+                                T0_min = Math.max(100, T0_actuel - 50);
+                            } else {
+                                // Trop froid : T0_min = T0 actuel
+                                T0_min = T0_actuel;
+                                T0_max = Math.min(500, T0_actuel + 50);
+                            }
+                        }
+                    } else {
+                        // Pas assez d'historique : utiliser une estimation
+                        const T0_actuel = T0_actuel_avant_detection;
+                        if (signeDelta > 0) {
+                            T0_max = T0_actuel;
+                            T0_min = Math.max(100, T0_actuel - 50);
+                        } else {
+                            T0_min = T0_actuel;
+                            T0_max = Math.min(500, T0_actuel + 50);
+                        }
+                    }
+                }
+                console.log(`   🔀 Changement de signe détecté → Phase=Dicho (T0_min=${T0_min.toFixed(2)}K, T0_max=${T0_max.toFixed(2)}K)`);
+            }
+        } else if (iteration === 1) {
+            // Première itération (après Init) : ⏳☯ a déjà été initialisé au début de la boucle avec le signe de Init
+            // Ne PAS le réinitialiser avec le signe actuel, garder le signe de Init
+            // DATA['⏳']['⏳☯'] est déjà correct (initialisé avec le signe de 🔺🧲 de Init)
+            DATA['⏳']['⏳⚧'] = 'Search';
+            console.log(`   🔍 Première itération Search : ⏳☯=${DATA['⏳']['⏳☯']} (depuis Init), 🔺🧲=${delta_equilibre.toFixed(2)} W/m²`);
+        } else {
+            // Itération suivante : mettre à jour le signe (reste en Search si pas de changement de signe détecté)
+            DATA['⏳']['⏳☯'] = Math.sign(delta_equilibre);
+            // Rester en Search si pas de changement de signe détecté
+            if (DATA['⏳']['⏳⚧'] !== 'Dicho') {
+                DATA['⏳']['⏳⚧'] = 'Search';
+            }
+        }
+        
+        // Mettre à jour le compteur d'itérations
+        DATA['⏳']['⏳🔄'] = iteration;
         
         // Log de l'itération
         console.log(`   Itération ${iteration}: T0=${DATA['⏳']['🌡️'].toFixed(2)}K, flux_entrant=${flux_entrant.toFixed(2)} W/m², flux_sortant_surface=${flux_sortant_surface > 1000 ? flux_sortant_surface.toExponential(2) : flux_sortant_surface.toFixed(2)} W/m², flux_sortant_effectif=${flux_sortant_effectif > 1000 ? flux_sortant_effectif.toExponential(2) : flux_sortant_effectif.toFixed(2)} W/m², delta=${delta_equilibre > 1000 ? delta_equilibre.toExponential(2) : delta_equilibre.toFixed(2)} W/m², tolerance=${tolerance.toFixed(2)} W/m²`);
@@ -373,26 +574,12 @@ async function computeRadiativeTransfer() {
             break;
         }
         
-        // 7. Détecter changement de signe pour passer en Phase="Dicho"
-        if (DATA['⏳']['⏳☯'] !== 0) {
-            const signeDelta = Math.sign(delta_equilibre);
-            if (DATA['⏳']['⏳☯'] !== signeDelta) {
-                // Changement de signe détecté → passer en dichotomie
-                DATA['⏳']['⏳⚧'] = 'Dicho';
-                // T0_min sera initialisé à la première itération avec changement de signe
-                if (T0_min === null) T0_min = DATA['⏳']['🌡️'];
-                if (T0_max === null) T0_max = DATA['⏳']['🌡️'];
-                console.log(`   🔀 Changement de signe détecté → Phase=Dicho (T0_min=${T0_min.toFixed(2)}K, T0_max=${T0_max.toFixed(2)}K)`);
-            }
-        } else {
-            // Première itération : initialiser signeDeltaFirst
-            DATA['⏳']['⏳☯'] = Math.sign(delta_equilibre);
-        }
-        
         // 8. Ajuster T0 selon la phase
         if (DATA['⏳']['⏳⚧'] === 'Search') {
             // Phase Search : ajustement direct proportionnel au delta
             // Sensibilité : dF/dT = 4σT³, donc dT = dF / (4σT³)
+            // Si delta_equilibre < 0 : flux_sortant < flux_entrant → on se réchauffe → augmenter T
+            // Si delta_equilibre > 0 : flux_sortant > flux_entrant → on se refroidit → diminuer T
             const sensitivity = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['⏳']['🌡️'], 3);
             const delta_T = -delta_equilibre / sensitivity;
             const T0_avant = DATA['⏳']['🌡️'];
@@ -407,13 +594,58 @@ async function computeRadiativeTransfer() {
             
             console.log(`   🔧 Ajustement T0 (Phase=Search): T0=${T0_avant.toFixed(2)}K, sensitivity=${sensitivity.toFixed(2)} W/(m²·K), delta_T=${delta_T.toFixed(2)}K → T0_new=${DATA['⏳']['🌡️'].toFixed(2)}K`);
         } else if (DATA['⏳']['⏳⚧'] === 'Dicho') {
-            // Phase Dicho : méthode de dichotomie
+            // Phase Dicho : dichotomie entre T0_min et T0_max
+            if (T0_min === null || T0_max === null) {
+                // Initialiser les bornes si nécessaire
+                if (delta_equilibre > 0) {
+                    // Trop chaud : T0_max = T0 actuel
+                    T0_max = DATA['⏳']['🌡️'];
+                    T0_min = Math.max(100, DATA['⏳']['🌡️'] - 50); // Estimation, minimum 100K
+                } else {
+                    // Trop froid : T0_min = T0 actuel
+                    T0_min = DATA['⏳']['🌡️'];
+                    T0_max = Math.min(500, DATA['⏳']['🌡️'] + 50); // Estimation, maximum 500K
+                }
+            }
+            
+            // Mettre à jour les bornes selon le signe du delta
             if (delta_equilibre > 0) {
+                // Trop chaud : réduire T0_max
                 T0_max = DATA['⏳']['🌡️'];
             } else {
+                // Trop froid : augmenter T0_min
                 T0_min = DATA['⏳']['🌡️'];
             }
-            DATA['⏳']['🌡️'] = (T0_min + T0_max) / 2;
+            
+            // Vérifier que l'intervalle est valide
+            if (T0_min >= T0_max) {
+                console.error(`📛 [computeRadiativeTransfer@calculations_flux.js] ❌ ERREUR : Intervalle dichotomie invalide (T0_min=${T0_min.toFixed(2)}K >= T0_max=${T0_max.toFixed(2)}K)`);
+                // Forcer un intervalle valide en élargissant légèrement
+                const delta_T = Math.max(0.1, Math.abs(T0_max - T0_min) / 2 + 1);
+                if (T0_min >= T0_max) {
+                    const T0_center = DATA['⏳']['🌡️'];
+                    T0_min = T0_center - delta_T;
+                    T0_max = T0_center + delta_T;
+                    console.warn(`   ⚠️ Correction automatique : T0_min=${T0_min.toFixed(2)}K, T0_max=${T0_max.toFixed(2)}K`);
+                }
+                if (T0_min >= T0_max) {
+                    // Si toujours invalide, arrêter
+                    break;
+                }
+            }
+            
+            // Nouvelle température = milieu de l'intervalle
+            const T0_avant = DATA['⏳']['🌡️'];
+            const T0_nouveau = (T0_min + T0_max) / 2;
+            
+            // Vérifier que la température change vraiment
+            if (Math.abs(T0_nouveau - T0_avant) < 0.01) {
+                console.warn(`⚠️ [computeRadiativeTransfer@calculations_flux.js] Dichotomie bloquée : T0 ne change pas (${T0_avant.toFixed(2)}K → ${T0_nouveau.toFixed(2)}K)`);
+                break;
+            }
+            
+            DATA['⏳']['🌡️'] = T0_nouveau;
+            console.log(`   🔧 Ajustement T0 (Phase=Dicho): T0=${T0_avant.toFixed(2)}K → ${T0_nouveau.toFixed(2)}K (intervalle [${T0_min.toFixed(2)}K, ${T0_max.toFixed(2)}K])`);
         }
         
         // 9. T0 est dans DATA['⏳']['🌡️'], pas besoin de window.T0
