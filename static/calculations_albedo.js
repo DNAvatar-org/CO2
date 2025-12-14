@@ -13,23 +13,15 @@
 // ============================================================================
 // Créer window.albedoReflectorCoeff avec les coefficients d'albédo selon grammar.txt
 // albedoReflectorCoeff={'🍰🌋🪞':0.05, '🍰🌊🪞':0.08, '🍰🌳🪞':0.12, '🍰🏖🪞':0.30, '🍰🧊🪞':0.20, '🍰⛅🪞':0.50}
-if (typeof window !== 'undefined') {
-    // Utiliser getLogoKey() pour construire les clés dynamiquement
-    const getLogoKey = (typeof window !== 'undefined' && window.getLogoKey) ? window.getLogoKey : function(...names) {
-        const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
-        return names.map(name => LOGOS[name] || '').join('');
-    };
-    
-    // Utiliser les clés emoji directement selon grammar.txt : albedoReflectorCoeff={'🍰🌋🪞':0.05, '🍰🌊🪞':0.08, '🍰🌳🪞':0.12, '🍰🏖🪞':0.30, '🍰🧊🪞':0.20, '🍰⛅🪞':0.50}
-    window.albedoReflectorCoeff = {
-        '🍰🌋🪞': 0.05,  // Volcan/magma : très sombre
-        '🍰🌊🪞': 0.08,  // Océan : sombre
-        '🍰🌳🪞': 0.12,  // Forêt : légèrement réfléchissant
-        '🍰🏖🪞': 0.3,   // Désert : réfléchissant
-        '🍰🧊🪞': 0.2,   // Glace : réfléchissant
-        '🍰⛅🪞': 0.5    // Nuages : moyennement réfléchissant
-    };
-}
+// Utiliser les clés emoji directement selon grammar.txt : albedoReflectorCoeff={'🍰🌋🪞':0.05, '🍰🌊🪞':0.08, '🍰🌳🪞':0.12, '🍰🏖🪞':0.30, '🍰🧊🪞':0.20, '🍰⛅🪞':0.50}
+window.albedoReflectorCoeff = {
+    '🍰🌋🪞': 0.05,  // Volcan/magma : très sombre
+    '🍰🌊🪞': 0.08,  // Océan : sombre
+    '🍰🌳🪞': 0.12,  // Forêt : légèrement réfléchissant
+    '🍰🏖🪞': 0.3,   // Désert : réfléchissant
+    '🍰🧊🪞': 0.2,   // Glace : réfléchissant
+    '🍰⛅🪞': 0.5    // Nuages : moyennement réfléchissant
+};
 
 // ============================================================================
 // FONCTION : CALCULER L'ALBEDO DYNAMIQUE
@@ -41,32 +33,28 @@ if (typeof window !== 'undefined') {
 // - Modèles de rétroaction glace-albedo (Budyko, 1969; Sellers, 1969)
 // - Paramétrisation nuageuse simplifiée pour visualisation pédagogique
 function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
-    // Utiliser getLogoKey() pour construire les clés dynamiquement
-    const getLogoKey = (typeof window !== 'undefined' && window.getLogoKey) ? window.getLogoKey : function(...names) {
-        const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
-        return names.map(name => LOGOS[name] || '').join('');
-    };
-    
+    // Utiliser DATA directement (pas de paramètres)
+    const DATA = window.DATA;
     const T_surface_C = T_surface_K - 273.15;
     
-    // Récupérer l'albedo de base de l'époque courante depuis window.epoch
+    // Récupérer l'albedo de base de l'époque courante depuis DATA
     // Calculer dynamiquement depuis les composantes (océan, glace, etc.)
     let albedo_base = 0.3; // Valeur par défaut
     
-    const epoch = window.epoch;
-    if (epoch) {
-        // Calculer dynamiquement depuis les composantes si disponibles
-        // Utiliser window.h2o pour la glace et l'océan (clés emoji directes selon dico.js)
-        const ice_fraction = window.h2o ? (window.h2o['🍰💧🧊'] / 100) : 0;
-        const ocean_coverage = window.h2o ? (window.h2o['🍰💧🌊'] / 100) : 0;
-            
-        // Calculer l'albedo pondéré selon les couvertures en utilisant window.albedoReflectorCoeff
-        // D'abord déterminer les couvertures : volcan, océan, forêt, désert, glace
-        const T_surface_C = T_surface_K - 273.15;
+    const epoch = DATA['📅'];
+    
+    // Calculer dynamiquement depuis les composantes si disponibles
+    // Utiliser DATA['💧'] directement (source unique de vérité)
+    const ice_fraction_base = DATA['💧']['🍰💧🧊'];
+    const ocean_coverage = DATA['💧']['🍰💧🌊'];
         
-        // Volcan : en Hadéen (température très élevée) ou si flux géothermique très élevé
-        let volcano_coverage = 0;
-        const isHadeen = epoch.id === 'hadeen';
+    // Calculer l'albedo pondéré selon les couvertures en utilisant window.albedoReflectorCoeff
+    // D'abord déterminer les couvertures : volcan, océan, forêt, désert, glace
+    
+    // Volcan : en Hadéen (température très élevée) ou si flux géothermique très élevé
+    let volcano_coverage = 0;
+    const epochId = epoch['📅'];
+    const isHadeen = epochId === '🔥';
         if (isHadeen || (geothermal_flux && geothermal_flux > 1000)) {
             // En Hadéen : volcan = 100%, désert = 0%
             volcano_coverage = isHadeen ? 1.0 : Math.min(1.0, geothermal_flux / 10000);
@@ -110,19 +98,18 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
             weighted_albedo += desert_coverage * coeff['🍰🏖🪞'];
             total_coverage += desert_coverage;
         }
-        if (ice_fraction > 0) {
-            weighted_albedo += ice_fraction * coeff['🍰🧊🪞'];
-            total_coverage += ice_fraction;
+        if (ice_fraction_base > 0) {
+            weighted_albedo += ice_fraction_base * coeff['🍰🧊🪞'];
+            total_coverage += ice_fraction_base;
         }
         
-        // L'albedo de base est la moyenne pondérée
-        if (total_coverage > 0) {
-            albedo_base = weighted_albedo / total_coverage;
-        } else {
-            // Si aucune couverture n'est définie (total_coverage = 0), albedo = 0
-            // Exemple : "corps noir" sans atmosphère, sans océan, sans rien
-            albedo_base = 0;
-        }
+    // L'albedo de base est la moyenne pondérée
+    if (total_coverage > 0) {
+        albedo_base = weighted_albedo / total_coverage;
+    } else {
+        // Si aucune couverture n'est définie (total_coverage = 0), albedo = 0
+        // Exemple : "corps noir" sans atmosphère, sans océan, sans rien
+        albedo_base = 0;
     }
     
     let albedo = albedo_base;
@@ -140,11 +127,11 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     // Récupérer le flux géothermique (si non fourni, calculer depuis core_temperature et geothermal_diffusion_factor)
     let geo_flux = geothermal_flux;
     if (geo_flux === null || geo_flux === undefined) {
-        if (typeof window !== 'undefined' && window.currentEpochName) {
+        if (window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
                 // 🔒 Utiliser calculateGeothermalFlux si disponible (nouveau système)
-                if (typeof window.calculateGeothermalFlux === 'function' && 
+                if (window.calculateGeothermalFlux && 
                     typeof currentEpoch.core_temperature === 'number' && 
                     typeof currentEpoch.geothermal_diffusion_factor === 'number') {
                     geo_flux = window.calculateGeothermalFlux(currentEpoch.core_temperature, currentEpoch.geothermal_diffusion_factor);
@@ -204,9 +191,7 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
         
         // Stocker la glace calculée pour les logs (toujours mettre à jour avec la nouvelle valeur)
         // 🔒 TOUJOURS recalculer et stocker la nouvelle valeur (ne pas réutiliser l'ancienne)
-        if (typeof window !== 'undefined') {
-            window.h2oIceFractionFromCalculation = ice_fraction;
-        }
+        window.h2oIceFractionFromCalculation = ice_fraction;
     } else if (h2o_total_percent > 0 && T_surface_C < 0) {
         // 🔒 CORRECTION : Ne calculer la glace que s'il y a de l'eau disponible
         // Calcul classique de la glace basé sur la température (si pas de calcul H2O mais qu'il y a de l'eau)
@@ -273,67 +258,81 @@ function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
     // Permettre 0.0 pour le corps noir, mais limiter à 0.9 maximum
     const final_albedo = Math.max(0.0, Math.min(0.9, albedo));
     
-    // Créer window.albedo avec les logos
-    if (typeof window !== 'undefined' && window.getLogo) {
-        const getLogoKey3 = (typeof window !== 'undefined' && window.getLogoKey) ? window.getLogoKey : function(...names) {
-            const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
-            return names.map(name => LOGOS[name] || '').join('');
-        };
+    // Récupérer les couvertures depuis DATA['💧'] (source unique de vérité)
+    let ocean_coverage_display = DATA['💧']['🍰💧🌊'];
+    let ice_coverage_display = DATA['💧']['🍰💧🧊'];
+    const cloud_coverage_display = DATA['💧']['🍰💧⛅'];
+    
+    // NOTE : Effet de l'obliquité (inclinaison axiale) sur l'albedo de la glace
+    // L'obliquité détermine l'angle d'incidence solaire sur la glace polaire :
+    // - Obliquité élevée (24.5°) → pôles plus face au soleil en été → plus de fonte → moins de glace persistante → albedo plus faible
+    // - Obliquité faible (22.1°) → pôles moins face au soleil → moins de fonte → plus de glace persistante → albedo plus élevé
+    // Cependant, pour une température moyenne annuelle globale :
+    // - L'obliquité varie peu (22.1° à 24.5°, écart de 2.4°)
+    // - L'effet principal est saisonnier, pas annuel
+    // - Pour des époques anciennes (> 1 Ma), d'autres facteurs dominent (CO2, albedo, volcanisme)
+    // - Pour des époques récentes (< 500 ka), l'effet peut être significatif mais reste faible comparé à la température
+    // CONCLUSION : L'effet de l'obliquité sur l'albedo de la glace est probablement négligeable pour la plupart des époques
+    // Si nécessaire, on peut ajouter : obliquity_factor = 1.0 - (obliquity - 23.44) / 23.44 * 0.1 (max ±10% d'ajustement)
+    
+    // Calculer les couvertures (même logique que pour albedo_base)
+    const epochId_display = epoch['📅'];
+    const isHadeen_display = epochId_display === '🔥';
         
-        const ocean_coverage_display = window.h2o ? (window.h2o[getLogoKey3('PROPORTION', 'H2O', 'OCEAN')] / 100) : 0;
-        const ice_coverage_display = window.h2o ? (window.h2o[getLogoKey3('PROPORTION', 'H2O', 'ICE')] / 100) : 0;
-        const cloud_coverage_display = window.h2o ? (window.h2o[getLogoKey3('PROPORTION', 'H2O', 'CLOUD')] / 100) : 0;
-        
-        // Calculer les couvertures (même logique que pour albedo_base)
-        const T_surface_C = T_surface_K - 273.15;
-        const epoch = window.epoch;
-        const isHadeen = epoch?.id === 'hadeen';
-        
-        // Volcan : en Hadéen = 100%, sinon selon flux géothermique
-        let volcano_coverage_display = 0;
-        if (isHadeen) {
-            volcano_coverage_display = 1.0;
-        } else if (geothermal_flux && geothermal_flux > 1000) {
-            volcano_coverage_display = Math.min(1.0, geothermal_flux / 10000);
-        }
-        
-        // Forêt : apparaît quand T < 30°C et qu'il y a de l'eau (océan > 0)
-        let forest_coverage_display = 0;
-        if (T_surface_C < 30 && ocean_coverage_display > 0.1 && !isHadeen) {
-            forest_coverage_display = Math.min(0.5, ocean_coverage_display * (1 - T_surface_C / 30));
-        }
-        
-        // Désert : ne pas calculer comme "surface restante" par défaut
-        // Le désert vient des coquillages (époques spécifiques), pas du corps noir
-        // Soit il est défini dans la config, soit on le laisse à 0 pour le moment
-        let desert_coverage_display = 0;
-        // TODO: Si desert_coverage est défini dans epoch.config, l'utiliser ici
-        // Pour l'instant, on laisse à 0 (pas de désert par défaut)
-        
-        // Utiliser DATA directement (pas de paramètres)
-        const DATA = window.DATA;
-        
-        // Selon grammar.txt : albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}
-        // Mettre à jour DATA directement (source unique de vérité)
-        DATA['🪞']['🍰🪞📿'] = final_albedo;  // Albedo total
-        DATA['🪞']['🍰🪞🌋'] = volcano_coverage_display;  // Volcan
-        DATA['🪞']['🍰🪞🌊'] = ocean_coverage_display;  // Océan
-        DATA['🪞']['🍰🪞🌳'] = forest_coverage_display;  // Forêt
-        DATA['🪞']['🍰🪞🏖'] = desert_coverage_display;  // Désert
-        DATA['🪞']['🍰🪞🧊'] = ice_coverage_display;  // Glace
-        DATA['🪞']['🍰🪞⛅'] = cloud_coverage_display;  // Nuages
-        
-        // Compatibilité : garder window.albedo pour l'affichage (mais DATA est la source)
-        window.albedo = {
-            '🍰🪞📿': DATA['🪞']['🍰🪞📿'],
-            '🍰🪞🌋': DATA['🪞']['🍰🪞🌋'],
-            '🍰🪞🌊': DATA['🪞']['🍰🪞🌊'],
-            '🍰🪞🌳': DATA['🪞']['🍰🪞🌳'],
-            '🍰🪞🏖': DATA['🪞']['🍰🪞🏖'],
-            '🍰🪞🧊': DATA['🪞']['🍰🪞🧊'],
-            '🍰🪞⛅': DATA['🪞']['🍰🪞⛅']
-        };
+    // Volcan : en Hadéen = 100%, sinon selon flux géothermique
+    let volcano_coverage_display = 0;
+    if (isHadeen_display) {
+        volcano_coverage_display = 1.0;
+    } else if (geothermal_flux && geothermal_flux > 1000) {
+        volcano_coverage_display = Math.min(1.0, geothermal_flux / 10000);
     }
+    
+    // Forêt : apparaît quand T < 30°C et qu'il y a de l'eau (océan > 0)
+    let forest_coverage_display = 0;
+    if (T_surface_C < 30 && ocean_coverage_display > 0.1 && !isHadeen_display) {
+        forest_coverage_display = Math.min(0.5, ocean_coverage_display * (1 - T_surface_C / 30));
+    }
+    
+    // Désert : calculer comme surface restante si les autres couvertures ne somment pas à 1.0
+    // Le désert apparaît dans les zones sèches (pas d'océan, pas de forêt, pas de glace)
+    let desert_coverage_display = 0;
+    const other_coverages = volcano_coverage_display + ocean_coverage_display + forest_coverage_display + ice_coverage_display;
+    if (other_coverages < 1.0) {
+        desert_coverage_display = 1.0 - other_coverages;
+    }
+    
+    // Normaliser les couvertures pour que la somme = 1.0
+    // Les couvertures sont : volcan, océan, forêt, désert, glace (nuages sont séparés, pas une couverture de surface)
+    const total_surface_coverage = volcano_coverage_display + ocean_coverage_display + forest_coverage_display + desert_coverage_display + ice_coverage_display;
+    if (total_surface_coverage > 0 && Math.abs(total_surface_coverage - 1.0) > 0.01) {
+        const scale = 1.0 / total_surface_coverage;
+        volcano_coverage_display *= scale;
+        ocean_coverage_display *= scale;
+        forest_coverage_display *= scale;
+        desert_coverage_display *= scale;
+        ice_coverage_display *= scale;
+    }
+    
+    // Selon grammar.txt : albedo={'🥒🪞🎓':0.05, '🥒🪞🌋':1.00, '🥒🪞🌊':0.00, '🥒🪞🌳':0.00, '🥒🪞🏖':0.00, '🥒🪞🧊':0.00, '🥒🪞⛅':0.05}
+    // Mettre à jour DATA directement (source unique de vérité)
+    DATA['🪞']['🍰🪞📿'] = final_albedo;  // Albedo total
+    DATA['🪞']['🍰🪞🌋'] = volcano_coverage_display;  // Volcan
+    DATA['🪞']['🍰🪞🌊'] = ocean_coverage_display;  // Océan
+    DATA['🪞']['🍰🪞🌳'] = forest_coverage_display;  // Forêt
+    DATA['🪞']['🍰🪞🏖'] = desert_coverage_display;  // Désert
+    DATA['🪞']['🍰🪞🧊'] = ice_coverage_display;  // Glace
+    DATA['🪞']['🍰🪞⛅'] = cloud_coverage_display;  // Nuages (pas une couverture de surface, mais une couverture atmosphérique)
+    
+    // Compatibilité : garder window.albedo pour l'affichage (mais DATA est la source)
+    window.albedo = {
+        '🍰🪞📿': DATA['🪞']['🍰🪞📿'],
+        '🍰🪞🌋': DATA['🪞']['🍰🪞🌋'],
+        '🍰🪞🌊': DATA['🪞']['🍰🪞🌊'],
+        '🍰🪞🌳': DATA['🪞']['🍰🪞🌳'],
+        '🍰🪞🏖': DATA['🪞']['🍰🪞🏖'],
+        '🍰🪞🧊': DATA['🪞']['🍰🪞🧊'],
+        '🍰🪞⛅': DATA['🪞']['🍰🪞⛅']
+    };
     
     return final_albedo;
 }
@@ -358,7 +357,7 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_overrid
 
     // 🔒 CORRECTION : Vérifier la disponibilité de l'eau
     // Si on utilise estimateCloudCoverage (plus précis), on a besoin de la fraction de vapeur
-    if (typeof window !== 'undefined' && typeof window.estimateCloudCoverage === 'function') {
+    if (window.estimateCloudCoverage) {
         let vapor_fraction = vapor_fraction_override;
         
         // Si pas fourni, essayer de le calculer ou de l'estimer
@@ -375,7 +374,7 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_overrid
             }
             
             // Si on a de l'eau, estimer la part de vapeur
-            if (typeof window.calculateWaterPartition === 'function') {
+            if (window.calculateWaterPartition) {
                 // Construire epochParams avec les paramètres physiques nécessaires
                 let epochParams = {};
                 if (window.currentEpochName) {
@@ -542,66 +541,40 @@ if (typeof window !== 'undefined') {
 
 // Fonction pour initialiser les niveaux de CO2, H2O, CH4 depuis la config de l'époque
 // Appelée depuis setEpoch pour initialiser les valeurs depuis la config
-// Utilise les mêmes fonctions de conversion que setEpoch (co2KgToFraction, ch4KgToFraction, etc.)
-function updateLevelsConfig(epoch, total_atmosphere_mass_kg, molar_mass_air, isCorpsNoir) {
-    const logoEDS = '📛'; // Forçage radiatif (EDS)
-    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
-    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+// Initialise les niveaux depuis DATA et EPOCH (utilise DATA directement, pas de paramètres)
+function updateLevelsConfig() {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
+    const EPOCH = DATA['📅'];
+    const total_atmosphere_mass_kg = DATA['⚖️']['⚖️📿'];
+    const molar_mass_air = DATA['🌬']['🧪'];
+    const isCorpsNoir = EPOCH['📅'] === '⚫';
     
-    if (!epoch) {
-        console.warn(`${logoEDS} ⚠️ [updateLevelsConfig@calculations_albedo.js] Époque manquante`);
-        return;
-    }
-    
-    // Initialiser CO2 depuis la config de l'époque (utiliser la même logique que setEpoch)
+    // Initialiser CO2 depuis EPOCH
     let co2_ppm = 0;
-    if (!isCorpsNoir && epoch.co2_kg !== undefined && epoch.co2_kg > 0) {
-        if (typeof window !== 'undefined') {
-            const co2_fraction = window.co2KgToFraction(epoch.co2_kg, total_atmosphere_mass_kg, molar_mass_air);
-            co2_ppm = co2_fraction * 1e6; // Convertir fraction en ppm
-        } else {
-            // Fallback : approximation simple
-            const MOLAR_MASS_AIR = molar_mass_air || 0.029;
-            const moles_CO2 = epoch.co2_kg / 0.044; // MOLAR_MASS_CO2
-            const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
-            co2_ppm = (moles_CO2 / moles_total) * 1e6;
-        }
+    if (!isCorpsNoir && EPOCH['⚖️🏭'] > 0) {
+        const co2_fraction = window.co2KgToFraction(EPOCH['⚖️🏭'], total_atmosphere_mass_kg, molar_mass_air);
+        co2_ppm = co2_fraction * 1e6;
     }
     
-    // Initialiser CH4 depuis la config de l'époque (utiliser la même logique que setEpoch)
+    // Initialiser CH4 depuis EPOCH
     let ch4_ppm = 0;
-    if (!isCorpsNoir && epoch.ch4_kg !== undefined && epoch.ch4_kg > 0) {
-        if (typeof window !== 'undefined') {
-            const ch4_fraction = window.ch4KgToFraction(epoch.ch4_kg, total_atmosphere_mass_kg, molar_mass_air);
-            ch4_ppm = ch4_fraction * 1e6; // Convertir fraction en ppm
-        } else {
-            // Fallback : approximation simple
-            const MOLAR_MASS_AIR = molar_mass_air || 0.029;
-            const moles_CH4 = epoch.ch4_kg / 0.016; // MOLAR_MASS_CH4
-            const moles_total = total_atmosphere_mass_kg / MOLAR_MASS_AIR;
-            ch4_ppm = (moles_CH4 / moles_total) * 1e6;
-        }
-    } else if (epoch.ch4_ppm !== undefined) {
-        ch4_ppm = epoch.ch4_ppm;
+    if (!isCorpsNoir && EPOCH['⚖️⛽'] > 0) {
+        const ch4_fraction = window.ch4KgToFraction(EPOCH['⚖️⛽'], total_atmosphere_mass_kg, molar_mass_air);
+        ch4_ppm = ch4_fraction * 1e6;
     }
     
-    // Initialiser H2O depuis la config de l'époque
+    // Initialiser H2O depuis EPOCH
     let h2o_percent = 0;
-    if (epoch.h2o_kg !== undefined && epoch.h2o_kg > 0) {
-        // Calculer % depuis kg (approximation)
-        const total_atm_mass = total_atmosphere_mass_kg || epoch.total_atmosphere_mass_kg || 1e19;
-        h2o_percent = (epoch.h2o_kg / total_atm_mass) * 100;
-    } else if (epoch.h2o_vapor_percent !== undefined) {
-        h2o_percent = epoch.h2o_vapor_percent;
+    if (EPOCH['⚖️💧'] > 0) {
+        h2o_percent = (EPOCH['⚖️💧'] / total_atmosphere_mass_kg) * 100;
     }
     
-    // 🔒 Si maximiseData (appel depuis un événement), prendre le max entre la valeur sauvegardée et la valeur par défaut
-    // Sinon (appel depuis un bouton époque), utiliser la config de l'époque
-    if (typeof window !== 'undefined' && window.maximiseData) {
-        const savedCO2 = (typeof window.savedCO2 !== 'undefined') ? window.savedCO2 : 0;
-        const savedCH4 = (typeof window.savedCH4 !== 'undefined') ? window.savedCH4 : 0;
-        const savedH2O = (typeof window.savedH2O !== 'undefined') ? window.savedH2O : 0;
+    // Si maximiseData (appel depuis un événement), prendre le max entre la valeur sauvegardée et la valeur par défaut
+    if (window.maximiseData) {
+        const savedCO2 = window.savedCO2 || 0;
+        const savedCH4 = window.savedCH4 || 0;
+        const savedH2O = window.savedH2O || 0;
         co2_ppm = Math.max(savedCO2, co2_ppm);
         ch4_ppm = Math.max(savedCH4, ch4_ppm);
         h2o_percent = Math.max(savedH2O, h2o_percent);
@@ -614,16 +587,12 @@ function updateLevelsConfig(epoch, total_atmosphere_mass_kg, molar_mass_air, isC
     }
     
     // Mettre à jour window.h2oVaporPercent
-    if (typeof window !== 'undefined') {
-        window.h2oVaporPercent = h2o_percent;
-        window.h2oTotalFromMeteorites = 0; // Réinitialiser les météorites au changement d'époque
-    }
+    window.h2oVaporPercent = h2o_percent;
+    window.h2oTotalFromMeteorites = 0;
     
-    console.log(`${logoEDS} 🛠 [updateLevelsConfig@calculations_albedo.js] 🏭=${co2_ppm.toFixed(0)}ppm 💧=${h2o_percent.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
+    console.log(`📛 🛠 [updateLevelsConfig@calculations_albedo.js] 🏭=${co2_ppm.toFixed(0)}ppm 💧=${h2o_percent.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
 }
 
 // Exposer globalement pour utilisation dans main.js
-if (typeof window !== 'undefined') {
-    window.updateLevelsConfig = updateLevelsConfig;
-}
+window.updateLevelsConfig = updateLevelsConfig;
 

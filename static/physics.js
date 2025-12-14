@@ -1,38 +1,57 @@
 // ============================================================================
 // File: physics.js - Constantes et lois physiques fondamentales
 // Desc: En français, dans l'architecture, je suis le module de physique fondamentale
-// Version 1.0.0
+// Version 2.0.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
 //   - Initial creation: physics constants and Planck/Stefan-Boltzmann functions
+//   - Centralisation de toutes les CONST dans physics.js
 // ============================================================================
 
+// Initialiser CONST (pointeur vers window.CONST)
+// CONST est un pointeur : modifier CONST modifie automatiquement window.CONST
+const CONST = window.CONST = window.CONST || {};
+
 // ✅ SCIENTIFIQUEMENT CERTAIN : Toutes ces constantes sont des valeurs mesurées et acceptées internationalement
-const PLANCK_H = 6.62607015e-34;      // Constante de Planck, J·s (CODATA 2018)
-const SPEED_OF_LIGHT = 2.998e8;       // Vitesse de la lumière, m/s (mesurée)
-const BOLTZMANN_KB = 1.380649e-23;    // Constante de Boltzmann, J/K (CODATA 2018)
-const STEFAN_BOLTZMANN = 5.670374419e-8; // Constante de Stefan-Boltzmann, W/(m²·K⁴) (dérivée des constantes fondamentales)
+CONST.PLANCK_H = 6.62607015e-34;      // Constante de Planck, J·s (CODATA 2018)
+CONST.SPEED_OF_LIGHT = 2.998e8;       // Vitesse de la lumière, m/s (mesurée)
+CONST.BOLTZMANN_KB = 1.380649e-23;    // Constante de Boltzmann, J/K (CODATA 2018)
+CONST.STEFAN_BOLTZMANN = 5.670374419e-8; // Constante de Stefan-Boltzmann, W/(m²·K⁴) (dérivée des constantes fondamentales)
+
+// Constantes physiques universelles (ne varient pas avec les époques)
+CONST.AU_M = 1.496e11;                     // m - 1 Unité Astronomique en mètres (constante universelle)
+CONST.STANDARD_ATMOSPHERE_PA = 101325;     // Pa - Pression atmosphérique standard (1 atm = 101325 Pa)
+
+// Constantes molaires (masse molaire en kg/mol) - propriétés intrinsèques des molécules
+CONST.M_N2 = 0.02801;      // N₂ : 28.01 g/mol
+CONST.M_O2 = 0.03200;      // O₂ : 32.00 g/mol
+CONST.M_CO2 = 0.04401;     // CO₂ : 44.01 g/mol
+CONST.M_CH4 = 0.01604;     // CH₄ : 16.04 g/mol
+CONST.M_H2O = 0.01802;     // H₂O : 18.02 g/mol
+CONST.M_AR = 0.03995;      // Ar : 39.95 g/mol
+CONST.molar_mass_air_ref = 0.029;  // Masse molaire moyenne de l'air de référence (kg/mol)
+
+// Constantes pour l'eau (H2O)
+CONST.R_GAS = 8.314;  // Constante des gaz parfaits, J/(mol·K)
+CONST.T_FREEZE = 273.15;  // Point de congélation de l'eau (K)
+CONST.T_BOIL = 373.15;  // Point d'ébullition de l'eau à 1 atm (K)
+CONST.T0_WATER = 273.15;  // Point triple de l'eau (K)
+CONST.P0_WATER = 611.2;  // Pression au point triple de l'eau (Pa)
+CONST.L_VAPORIZATION = 2.5e6;  // Chaleur latente de vaporisation (J/kg)
+CONST.RV_WATER = 461.5;  // Constante des gaz pour la vapeur d'eau (J/(kg·K))
+CONST.L_V = 40660;  // Chaleur latente de vaporisation (J/mol)
 
 // ✅ SCIENTIFIQUEMENT CERTAIN :
 // - La loi de Planck B(λ,T) = (2hc²/λ⁵) / (exp(hc/λkT) - 1) est une loi fondamentale de la physique
 // - Dérivée par Max Planck en 1900, elle décrit le spectre d'émission d'un corps noir
 // - Cette formule est exacte et utilisée dans tous les modèles de transfert radiatif
 // - Les constantes utilisées (h, c, k) sont des constantes fondamentales mesurées avec précision
-function planckFunction(lambda, T) {
-    const term1 = (2 * PLANCK_H * SPEED_OF_LIGHT * SPEED_OF_LIGHT) / Math.pow(lambda, 5);
-    const term2 = Math.exp((PLANCK_H * SPEED_OF_LIGHT) / (lambda * BOLTZMANN_KB * T)) - 1;
+window.planckFunction = function(lambda, T) {
+    const term1 = (2 * CONST.PLANCK_H * CONST.SPEED_OF_LIGHT * CONST.SPEED_OF_LIGHT) / Math.pow(lambda, 5);
+    const term2 = Math.exp((CONST.PLANCK_H * CONST.SPEED_OF_LIGHT) / (lambda * CONST.BOLTZMANN_KB * T)) - 1;
     return term1 / term2; // W/(m²·m·sr) - Intensité spectrale d'un corps noir
-}
-
-// Exposer globalement
-if (typeof window !== 'undefined') {
-    window.PLANCK_H = PLANCK_H;
-    window.SPEED_OF_LIGHT = SPEED_OF_LIGHT;
-    window.BOLTZMANN_KB = BOLTZMANN_KB;
-    window.STEFAN_BOLTZMANN = STEFAN_BOLTZMANN;
-    window.planckFunction = planckFunction;
 }
 

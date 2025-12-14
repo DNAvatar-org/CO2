@@ -16,13 +16,8 @@
 // Ce fichier utilise window.CHARS (ou window.LOGOS pour compatibilité) et window.charsImages définis dans alphabet.js
 // Assurez-vous que alphabet.js est chargé avant configOrganigramme.js
 
-// Utiliser les logos depuis alphabet.js si disponibles, sinon définir des valeurs par défaut
-if (typeof window === 'undefined' || (!window.CHARS && !window.LOGOS)) {
-    console.warn('[configOrganigramme.js] window.CHARS/window.LOGOS non défini. Assurez-vous que alphabet.js est chargé avant ce fichier.');
-}
-
-// Constante locale pour utiliser CHARS ou LOGOS
-const LOGOS = (typeof window !== 'undefined' && (window.CHARS || window.LOGOS)) ? (window.CHARS || window.LOGOS) : {};
+// Constante locale pour utiliser CHARS
+const LOGOS = window.CHARS;
 
 // Configuration de base
 const radius = 40; // Cercles plus petits (par défaut)

@@ -383,6 +383,16 @@
             font-size: 9px;
         }
         
+        .formule-container {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
         .results.replied .config-title {
             display: none;
         }
@@ -558,10 +568,6 @@
             <div id="results-content"></div>
         </div>
         
-        <div class="log">
-            <h3>📝 Logs de la console</h3>
-            <div id="log-content"></div>
-        </div>
     </div>
 
     <!-- Charger les dépendances dans l'ordre -->
@@ -605,31 +611,11 @@
         // Intercepter console.log pour afficher dans la page
         const originalLog = console.log;
         const originalError = console.error;
-        const logContent = document.getElementById('log-content');
-        
-        function addLogEntry(message, type = 'log') {
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logContent.appendChild(entry);
-            logContent.scrollTop = logContent.scrollHeight;
-        }
-        
-        console.log = function(...args) {
-            originalLog.apply(console, args);
-            addLogEntry(args.join(' '), 'log');
-        };
-        
-        console.error = function(...args) {
-            originalError.apply(console, args);
-            addLogEntry(args.join(' '), 'error');
-        };
+        // Logs désactivés - la div de logs a été supprimée
+        // console.log et console.error utilisent les fonctions originales
         
         function clearLog() {
-            const logContent = document.getElementById('log-content');
-            if (logContent) {
-                logContent.innerHTML = '';
-            }
+            // Logs désactivés - la div de logs a été supprimée
         }
         
         function toggleAnim() {
@@ -712,6 +698,13 @@
             window.currentEpochIndex = epochIndex;
             window.currentEpochName = epochId; // Garder pour compatibilité affichage
             
+            // Mettre à jour DATA['📅'] avec l'objet epoch complet
+            if (!window.DATA) window.DATA = {};
+            if (!window.DATA['📜']) window.DATA['📜'] = {};
+            window.DATA['📅'] = window.TIMELINE[epochIndex];
+            window.DATA['📜']['👉'] = epochIndex;
+            window.DATA['📜']['🗿'] = epochId; // Logo de l'époque (emoji), pas la description
+            
             // Mettre à jour les boutons
             document.querySelectorAll('.epoch-btn-horizontal').forEach(btn => {
                 btn.classList.remove('selected');
@@ -757,10 +750,13 @@
             eventsLogos.innerHTML = '';
             
             const DATA = window.DATA;
-            const currentEpochName = window.currentEpochName || 'Corps noir';
-            const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
-            const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
-            const EPOCH = window.TIMELINE[epochIndex];
+            let EPOCH = DATA['📅'];
+            if (!EPOCH && window.currentEpochIndex !== undefined && window.TIMELINE) {
+                EPOCH = window.TIMELINE[window.currentEpochIndex];
+                if (!DATA['📅']) {
+                    DATA['📅'] = EPOCH;
+                }
+            }
             
             if (!EPOCH || !EPOCH['🕰']) return;
             
@@ -789,11 +785,7 @@
                 bigImpactBtn.className = 'timeline-event-logo btn-events';
                 bigImpactBtn.title = 'Impact majeur - Crée la lune';
                 bigImpactBtn.addEventListener('click', () => {
-                    // Passer à l'époque suivante (Hadéen)
-                    if (EPOCH['🕰']['🎇'] && EPOCH['🕰']['🎇']['⏩']) {
-                        const nextEpochId = EPOCH['🕰']['🎇']['⏩'] === '..' ? '🔥' : EPOCH['🕰']['🎇']['⏩'];
-                        selectEpoch(nextEpochId);
-                    }
+                    selectEpoch(EPOCH['🕰']['🎇']['⏩']);
                 });
                 eventsLogos.appendChild(bigImpactBtn);
             }
@@ -814,6 +806,13 @@
             const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
             window.currentEpochIndex = epochIndex >= 0 ? epochIndex : window.TIMELINE.findIndex(item => item['📅']);
             window.currentEpochName = epochId;
+            
+            // Initialiser DATA['📅'] avec l'objet epoch complet
+            if (!window.DATA) window.DATA = {};
+            if (!window.DATA['📜']) window.DATA['📜'] = {};
+            window.DATA['📅'] = window.TIMELINE[window.currentEpochIndex];
+            window.DATA['📜']['👉'] = window.currentEpochIndex;
+            window.DATA['📜']['🗿'] = window.currentEpochName; // Logo de l'époque (emoji), pas la description
             
             // Initialiser window.getGeologicalPeriodByName si nécessaire
             if (!window.getGeologicalPeriodByName) {
@@ -903,25 +902,29 @@
                 console.log('📊 Objets après getEpochDateConfig():');
                 console.log(`dateConfig=${JSON.stringify(DATA['📜'])}`);
                 console.log(`masses=${JSON.stringify(DATA['⚖️'])}`);
-                const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
-                const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
-                const EPOCH = window.TIMELINE[epochIndex];
+                const EPOCH = DATA['📅'];
                 if (EPOCH && EPOCH['🕰']) {
                     console.log(`events=${JSON.stringify(EPOCH['🕰'])}`);
                 }
                 
+                // 1.5. Afficher la configuration initiale AVANT les calculs
+                displayResults(null);
+                
+                // Permettre au DOM de se mettre à jour avant les calculs
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
                 // 2. Appeler computeRadiativeTransfer
                 const result = await window.computeRadiativeTransfer();
                 
-                // 3. Afficher les résultats dans l'ordre
+                // 3. Afficher les résultats finaux dans l'ordre
                 displayResults(result);
                 
                 console.log('✅ Test terminé avec succès');
-                addLogEntry('Test terminé avec succès', 'success');
+                // Logs désactivés
                 
             } catch (error) {
                 console.error('❌ Erreur lors du test:', error);
-                addLogEntry(`Erreur: ${error.message}`, 'error');
+                // Logs désactivés
                 document.getElementById('results').style.display = 'block';
                 document.getElementById('results-content').innerHTML = `
                     <div class="error">
@@ -969,9 +972,7 @@
             // Ajouter les formules de calcul des couvertures
             let coverageFormulas = [];
             const DATA = window.DATA;
-            const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
-            const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
-            const EPOCH = window.TIMELINE[epochIndex];
+            const EPOCH = DATA['📅'];
             const T_surface_K = DATA['⏳']['🌡️'] || 255;
             const T_surface_C = T_surface_K - 273.15;
             const isHadeen = EPOCH && EPOCH['📅'] === '🌋';
@@ -1052,7 +1053,7 @@
         
         // Fonction json2html pour convertir un objet JSON en HTML formaté
         // Utilise JSON.stringify puis formate pour correspondre à grammar.txt (guillemets simples)
-        function json2html(obj, title, source, objName = null) {
+        function json2html(obj, title, source, objName = null, categoryKey = null) {
             if (!obj) return '';
             
             // Formater les nombres : notation scientifique pour grands nombres, 2 décimales toujours
@@ -1087,18 +1088,27 @@
             // Construire la chaîne JSON formatée
             let jsonStr = formatValue(obj);
             
-            // Ajouter le nom de l'objet si fourni
+            // Ajouter le nom de l'objet avec logo si categoryKey fourni
             if (objName) {
-                jsonStr = `${objName}=${jsonStr}`;
+                if (categoryKey) {
+                    // Utiliser le logo de la catégorie + description si disponible
+                    const desc = window.DESC && window.DESC[categoryKey] ? '' : ''; // Description sera dans le titre
+                    jsonStr = `${categoryKey}${objName}=${jsonStr}`;
+                } else {
+                    jsonStr = `${objName}=${jsonStr}`;
+                }
+            } else if (categoryKey) {
+                // Si pas de objName mais categoryKey, utiliser juste le logo
+                jsonStr = `${categoryKey}=${jsonStr}`;
             }
             
             let html = `
                 <div class="config-section">
                     <div class="config-title">${title} ${source ? `[${source}]` : ''}</div>
-            `;
-            // La formule sera ajoutée ici si nécessaire (pour albedo)
-            html += `
                     <div class="config-value">${jsonStr}</div>
+                    <div class="formule-container">
+                        <!-- Les formules seront ajoutées ici -->
+                    </div>
                 </div>
             `;
             return html;
@@ -1111,32 +1121,31 @@
             
             if (!configDiv || !configContent) return;
             
-            // Récupérer l'époque directement depuis TIMELINE avec l'index depuis DATA
-            const epochIdFromData = DATA['📅'] ? DATA['📅']['📅'] : null;
-            const epochIndex = epochIdFromData ? window.TIMELINE.findIndex(item => item['📅'] === epochIdFromData) : 0;
-            const EPOCH = window.TIMELINE[epochIndex];
-            
-            // Récupérer le nom de l'époque
-            const epochId = EPOCH ? EPOCH['📅'] : '';
-            const epochName = epochId && window.CHARS_DESC ? window.CHARS_DESC[epochId] : epochId;
+            // Récupérer l'époque et le nom depuis DATA
+            const EPOCH = DATA['📅'];
+            const epochName = DATA['📜']['🗿'];
             
             // Mettre à jour le titre avec le nom de l'époque
             const configTitle = configDiv.querySelector('h2');
             if (configTitle) {
-                configTitle.innerHTML = `📋 Configuration <span style="color: beige; font-size: 10px; font-weight: normal;"> ${epochName}</span> <button class="toggle-button" onclick="toggleConfig()">+</button>`;
+                configTitle.innerHTML = `📋 Configuration : ${epochName} <button class="toggle-button" onclick="toggleConfig()">+</button>`;
             }
             
             let html = '';
             
             // 0. État des activations [getEnabledStates@compute.js]
-            html += json2html(DATA['🔘'], '⚙️ États activés', 'getEnabledStates@compute.js', 'enabledStates');
+            if (DATA['🔘']) {
+                html += json2html(DATA['🔘'], '⚙️ États activés', 'getEnabledStates@compute.js', 'enabledStates');
+            }
             
             // 1. 💫📜 [getEpochDateConfig@compute.js] - utiliser DATA directement
-            // Récupérer 🎓💫📜 depuis DATA['📜'] pour afficher +(50*🎓💫📜)Ma
-            const ticTime = DATA['📜']['📿💫'] || 0;
-            const ticTimeDisplay = ticTime > 0 ? ` +(${ticTime}×50)Ma` : '';
-            const dateConfigTitle = `💫📜 <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}${ticTimeDisplay}</span>`;
-            html += json2html(DATA['📜'], dateConfigTitle, 'getEpochDateConfig@compute.js', 'dateConfig');
+            if (DATA['📜']) {
+                // Récupérer 🎓💫📜 depuis DATA['📜'] pour afficher +(50*🎓💫📜)Ma
+                const ticTime = DATA['📜']['📿💫'] || 0;
+                const ticTimeDisplay = ticTime > 0 ? ` +(${ticTime}×50)Ma` : '';
+                const dateConfigTitle = `💫📜 <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}${ticTimeDisplay}</span>`;
+                html += json2html(DATA['📜'], dateConfigTitle, 'getEpochDateConfig@compute.js', 'dateConfig');
+            }
             
             // 2. 📅 Événements [EPOCH['🕰']] - utiliser EPOCH['🕰'] directement depuis TIMELINE
             if (EPOCH && EPOCH['🕰']) {
@@ -1144,45 +1153,58 @@
                 html += json2html(EPOCH['🕰'], eventsTitle, 'EPOCH[\'🕰\']', 'events');
             }
             
-            // 3. ⚖️ [getMasses@compute.js] - utiliser DATA directement
-            html += json2html(DATA['⚖️'], '⚖️', 'getMasses@compute.js', 'masses');
+            // 5. ⚖️ [getMasses@compute.js] - utiliser DATA directement
+            if (DATA['⚖️']) {
+                html += json2html(DATA['⚖️'], '⚖️', 'getMasses@compute.js', 'masses', '⚖️');
+            }
             
-            // 4. 🌬 Composition atmosphérique [calculateAtmosphereComposition@calculations_atm.js] - utiliser DATA directement
-            html += json2html(DATA['🌬'], '🌬 Composition atmosphérique', 'calculateAtmosphereComposition@calculations_atm.js', 'atm');
+            // 6. 🌬 Composition atmosphérique [calculateAtmosphereComposition@calculations_atm.js] - utiliser DATA directement
+            if (DATA['🌬']) {
+                html += json2html(DATA['🌬'], '🌬 Composition atmosphérique', 'calculateAtmosphereComposition@calculations_atm.js', 'atm', '🌬');
+            }
             
-            // 5. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js] - utiliser DATA directement
-            html += json2html(DATA['💧'], '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o');
+            // 7. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js] - utiliser DATA directement
+            if (DATA['💧']) {
+                html += json2html(DATA['💧'], '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o', '💧');
+            }
             
-            // 6. 🪞 Albedo [calculateAlbedo@calculations_albedo.js] - utiliser DATA directement
-            // Construire le HTML avec la formule intégrée dans config-section après config-title
-            if (DATA['🪞']) {
-                const albedoHtml = json2html(DATA['🪞'], '🪞 Albedo', 'calculateAlbedo@calculations_albedo.js', 'albedo');
+            // 8. 🪞 Albedo [calculateAlbedo@calculations_albedo.js] - utiliser DATA['🪞_initial'] (albedo initial, ne change plus)
+            // Construire le HTML avec la formule dans le conteneur formule-container
+            // Utiliser DATA['🪞_initial'] si disponible (albedo initial), sinon DATA['🪞'] (fallback)
+            const albedoForConfig = DATA['🪞_initial'] || DATA['🪞'];
+            if (albedoForConfig) {
+                const albedoHtml = json2html(albedoForConfig, '🪞 Albedo (initial)', 'calculateAlbedo@calculations_albedo.js', 'albedo', '🪞');
                 if (window.albedoReflectorCoeff) {
-                    const formula = calculateAlbedoFormula(DATA['🪞'], window.albedoReflectorCoeff);
-                    // Insérer la formule après config-title (avant config-value)
-                    html += albedoHtml.replace('<div class="config-value"', formula + '<div class="config-value"');
+                    const formula = calculateAlbedoFormula(albedoForConfig, window.albedoReflectorCoeff);
+                    // Insérer la formule dans le conteneur formule-container
+                    html += albedoHtml.replace('<div class="formule-container">', `<div class="formule-container">${formula}`);
                 } else {
                     html += albedoHtml;
                 }
             }
             
-            // 7. 🌕 Noyau [getNoyau@compute.js] - utiliser DATA directement
-            html += json2html(DATA['🌕'], `🌕 Noyau <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`, 'getNoyau@compute.js', 'noyau');
-            
-            // 8. ☀️ Soleil [getSoleil@compute.js] - utiliser DATA directement
-            html += json2html(DATA['☀️'], `☀️ Soleil <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`, 'getSoleil@compute.js', 'soleil');
-            
-            // 9. ☀️ Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
-            // Construire le HTML avec les formules intégrées
-            // DATA['🧲'] contient les flux radiatifs
-            if (DATA['🧲']) {
-                const fluxHtml = json2html(DATA['🧲'], '☀️ Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux');
-                const fluxFormulas = calculateFluxFormulas(DATA['🧲'], DATA['☀️'], DATA['🪞']);
-                // Insérer les formules après config-title (avant config-value)
-                html += fluxHtml.replace('<div class="config-value"', fluxFormulas + '<div class="config-value"');
+            // 9. 🌕 Noyau [getNoyau@compute.js] - utiliser DATA directement
+            if (DATA['🌕']) {
+                html += json2html(DATA['🌕'], `🌕 Noyau <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`, 'getNoyau@compute.js', 'noyau', '🌕');
             }
             
-            configContent.innerHTML = html;
+            // 10. ☀️ Soleil [getSoleil@compute.js] - utiliser DATA directement
+            if (DATA['☀️']) {
+                html += json2html(DATA['☀️'], `☀️ Soleil <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`, 'getSoleil@compute.js', 'soleil', '☀️');
+            }
+            
+            // 11. ☀️ Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
+            // Construire le HTML avec les formules dans le conteneur formule-container
+            // DATA['🧲'] contient les flux radiatifs
+            if (DATA['🧲']) {
+                const fluxHtml = json2html(DATA['🧲'], '☀️ Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux', '🧲');
+                const fluxFormulas = calculateFluxFormulas(DATA['🧲'], DATA['☀️'], DATA['🪞']);
+                // Insérer les formules dans le conteneur formule-container
+                html += fluxHtml.replace('<div class="formule-container"', `<div class="formule-container">${fluxFormulas}`);
+            }
+            
+            // Toujours afficher les panneaux même si html est vide
+            configContent.innerHTML = html || '<div class="config-value">Aucune donnée disponible</div>';
             configDiv.style.display = 'block';
             
             // Afficher la section Convergence
@@ -1196,41 +1218,147 @@
             
             if (!convergenceDiv || !convergenceContent) return;
             
-            let html = '';
-            
-            // Afficher les données de convergence depuis DATA
-            if (DATA && DATA['⏳'] && DATA['🧲']) {
-                // Afficher l'état de convergence
-                html += json2html(DATA['⏳'], '⚙ Convergence', 'computeRadiativeTransfer@calculations_flux.js', 'convergence');
-                html += json2html(DATA['🧲'], '🧲 Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux');
+            // Mettre à jour le titre avec la température en °C
+            const convergenceTitle = convergenceDiv.querySelector('h2');
+            if (convergenceTitle && DATA && DATA['⏳'] && DATA['⏳']['🌡️']) {
+                const temp_K = DATA['⏳']['🌡️'];
+                const temp_C = (temp_K - 273.15).toFixed(2);
+                convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <button class="toggle-button" onclick="toggleConvergence()">+</button>`;
             }
             
-            convergenceContent.innerHTML = html;
+            let html = '';
+            
+            // Afficher l'historique des itérations si disponible
+            if (DATA && DATA['⏳'] && DATA['⏳']['history'] && DATA['⏳']['history'].length > 0) {
+                html += '<div class="config-section">';
+                html += '<div class="config-title">📊 Historique des itérations</div>';
+                html += '<div class="config-value" style="max-height: 400px; overflow-y: auto; font-size: 11px; font-family: monospace;">';
+                html += '<table style="width: 100%; border-collapse: collapse;">';
+                html += '<thead><tr style="background: rgba(255,255,255,0.1);">';
+                html += '<th style="padding: 4px; text-align: center;">It</th>';
+                html += '<th style="padding: 4px; text-align: center;">T (K)</th>';
+                html += '<th style="padding: 4px; text-align: center;">T (°C)</th>';
+                html += '<th style="padding: 4px; text-align: right;">Flux entrant</th>';
+                html += '<th style="padding: 4px; text-align: right;">Flux sortant</th>';
+                html += '<th style="padding: 4px; text-align: right;">Delta</th>';
+                html += '<th style="padding: 4px; text-align: right;">Tolérance</th>';
+                html += '<th style="padding: 4px; text-align: center;">Phase</th>';
+                html += '<th style="padding: 4px; text-align: right;">Albedo</th>';
+                html += '</tr></thead><tbody>';
+                
+                DATA['⏳']['history'].forEach(state => {
+                    // Utiliser temperature_C si disponible, sinon calculer depuis temperature_K
+                    const temp_C = state.temperature_C !== undefined ? state.temperature_C.toFixed(2) : (state.temperature_K - 273.15).toFixed(2);
+                    const flux_entrant_str = state.flux_entrant.toFixed(2);
+                    const flux_sortant_str = state.flux_sortant_effectif > 1000 ? state.flux_sortant_effectif.toExponential(2) : state.flux_sortant_effectif.toFixed(2);
+                    const delta_str = Math.abs(state.delta_equilibre) > 1000 ? state.delta_equilibre.toExponential(2) : state.delta_equilibre.toFixed(2);
+                    const tolerance_str = state.tolerance.toFixed(2);
+                    const albedo_str = state.albedo && state.albedo['🍰🪞📿'] !== undefined ? state.albedo['🍰🪞📿'].toFixed(4) : '-';
+                    const is_converged = Math.abs(state.delta_equilibre) <= state.tolerance;
+                    const row_style = is_converged ? 'background: rgba(0,255,0,0.1);' : '';
+                    
+                    html += `<tr style="${row_style}">`;
+                    html += `<td style="padding: 2px; text-align: center;">${state.iteration}</td>`;
+                    html += `<td style="padding: 2px; text-align: center;">${state.temperature_K.toFixed(2)}</td>`;
+                    html += `<td style="padding: 2px; text-align: center;">${temp_C}</td>`;
+                    html += `<td style="padding: 2px; text-align: right;">${flux_entrant_str}</td>`;
+                    html += `<td style="padding: 2px; text-align: right;">${flux_sortant_str}</td>`;
+                    html += `<td style="padding: 2px; text-align: right;">${delta_str}</td>`;
+                    html += `<td style="padding: 2px; text-align: right;">${tolerance_str}</td>`;
+                    html += `<td style="padding: 2px; text-align: center;">${state.phase || '-'}</td>`;
+                    html += `<td style="padding: 2px; text-align: right;">${albedo_str}</td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                html += '</div></div>';
+                
+                // Afficher les DATA qui ont changé à chaque itération (si bouton + cliqué)
+                // Comparer chaque itération avec la précédente pour voir ce qui a changé
+                if (DATA['⏳']['history'].length > 1) {
+                    html += '<div class="config-section">';
+                    html += '<div class="config-title">📊 DATA modifiés par itération <button class="toggle-button" onclick="toggleDataChanges()">+</button></div>';
+                    html += '<div class="config-value data-changes-container" style="display: none; max-height: 400px; overflow-y: auto; font-size: 11px; font-family: monospace;">';
+                    
+                    for (let i = 1; i < DATA['⏳']['history'].length; i++) {
+                        const prevState = DATA['⏳']['history'][i - 1];
+                        const currState = DATA['⏳']['history'][i];
+                        const prevData = prevState.data_snapshot || {};
+                        const currData = currState.data_snapshot || {};
+                        
+                        // Comparer les catégories principales
+                        const categories = ['⏳', '💧', '🪞', '🧲', '📛'];
+                        let changes = [];
+                        
+                        categories.forEach(cat => {
+                            if (prevData[cat] && currData[cat]) {
+                                const prev = JSON.stringify(prevData[cat]);
+                                const curr = JSON.stringify(currData[cat]);
+                                if (prev !== curr) {
+                                    changes.push(`${cat}=${JSON.stringify(currData[cat])}`);
+                                }
+                            } else if (currData[cat]) {
+                                changes.push(`${cat}=${JSON.stringify(currData[cat])}`);
+                            }
+                        });
+                        
+                        if (changes.length > 0) {
+                            html += `<div style="margin-bottom: 10px;"><strong>Itération ${currState.iteration}:</strong><br>${changes.join('<br>')}</div>`;
+                        }
+                    }
+                    
+                    html += '</div></div>';
+                }
+            }
+            
+            // Afficher les données de convergence finales depuis DATA (dernier état, plié par défaut)
+            if (DATA && DATA['⏳']) {
+                // Créer une copie sans l'historique pour l'affichage
+                const convergenceData = {...DATA['⏳']};
+                delete convergenceData.history;
+                html += json2html(convergenceData, '⚙ Convergence (final)', 'computeRadiativeTransfer@calculations_flux.js', 'convergence', '⏳');
+            }
+            if (DATA && DATA['🧲']) {
+                html += json2html(DATA['🧲'], '🧲 Flux radiatif (final)', 'computeRadiativeTransfer@calculations_flux.js', 'flux', '🧲');
+            }
+            
+            // Toujours afficher le panneau même si html est vide
+            convergenceContent.innerHTML = html || '<div class="config-value">Aucune donnée de convergence disponible</div>';
             convergenceDiv.style.display = 'block';
         }
         
         function toggleConfig() {
             const configDiv = document.getElementById('config');
             const button = configDiv.querySelector('.toggle-button');
-            if (configDiv.classList.contains('replied')) {
-                configDiv.classList.remove('replied');
-                button.textContent = 'x'; // Déplié : afficher x
-            } else {
-                configDiv.classList.add('replied');
-                button.textContent = '+'; // Replié : afficher +
-            }
+            const formuleContainers = configDiv.querySelectorAll('.formule-container');
+            
+            // Toggle l'affichage des formules
+            formuleContainers.forEach(container => {
+                if (container.style.display === 'none') {
+                    container.style.display = 'block';
+                    button.textContent = '−'; // Afficher moins quand les formules sont visibles
+                } else {
+                    container.style.display = 'none';
+                    button.textContent = '+'; // Afficher plus quand les formules sont cachées
+                }
+            });
         }
         
         function toggleConvergence() {
             const convergenceDiv = document.getElementById('convergence');
             const button = convergenceDiv.querySelector('.toggle-button');
-            if (convergenceDiv.classList.contains('replied')) {
-                convergenceDiv.classList.remove('replied');
-                button.textContent = 'x'; // Déplié : afficher x
-            } else {
-                convergenceDiv.classList.add('replied');
-                button.textContent = '+'; // Replié : afficher +
-            }
+            const formuleContainers = convergenceDiv.querySelectorAll('.formule-container');
+            
+            // Toggle l'affichage des formules
+            formuleContainers.forEach(container => {
+                if (container.style.display === 'none') {
+                    container.style.display = 'block';
+                    button.textContent = '−'; // Afficher moins quand les formules sont visibles
+                } else {
+                    container.style.display = 'none';
+                    button.textContent = '+'; // Afficher plus quand les formules sont cachées
+                }
+            });
         }
         
         function toggleLexique() {

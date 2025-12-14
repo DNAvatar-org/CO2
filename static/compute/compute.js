@@ -58,8 +58,9 @@ function getEnabledStates() {
     DATA['🔘']['🔘🏭📛'] = co2Cell ? co2Cell.classList.contains('checked') : true;
     const albedoCell = findButtonByLogo('🪞');
     DATA['🔘']['🔘🪞'] = albedoCell ? albedoCell.classList.contains('checked') : true;
-    const animCell = findButtonByLogo('🎬');
-    DATA['🔘']['🔘🎬'] = animCell ? animCell.classList.contains('checked') : true;
+    // Chercher le bouton animation par son ID (anim-toggle)
+    const animBtn = document.getElementById('anim-toggle');
+    DATA['🔘']['🔘🎬'] = animBtn ? animBtn.classList.contains('selected') : false;
     
     // Retourner true car DATA a été modifié
     return true;
@@ -88,12 +89,10 @@ function getMasses() {
     DATA['⚖️']['⚖️💧'] = h2o_kg;
     DATA['⚖️']['⚖️🌫'] = EPOCH['⚖️🌫'];
     
-    // Calculer la masse atmosphérique totale (somme des gaz atmosphériques)
-    // Note : H2O dans l'atmosphère est la vapeur d'eau, pas l'eau liquide totale
-    // Pour l'instant, on utilise la masse totale H2O (sera ajustée par calculateH2OParameters)
-    const N2_kg = EPOCH['⚖️💨'] || 0;
-    DATA['⚖️']['⚖️🌬'] = DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫'] + N2_kg;
-    // Note : H2O atmosphérique sera calculé séparément dans calculateH2OParameters
+    // Utiliser la masse atmosphérique depuis l'EPOCH (source de vérité)
+    // Si ⚖️🌬 n'est pas défini dans l'EPOCH, calculer comme somme des gaz
+    DATA['⚖️']['⚖️🌬'] = EPOCH['⚖️🌬'] || (DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫'] + (EPOCH['⚖️💨'] || 0));
+    // Note : H2O atmosphérique (vapeur) sera calculé séparément dans calculateH2OParameters
     
     // Masse totale = masse atmosphérique + eau (liquide + glace)
     DATA['⚖️']['⚖️📿'] = DATA['⚖️']['⚖️🌬'] + DATA['⚖️']['⚖️💧'];
@@ -154,6 +153,9 @@ function getEpochDateConfig() {
     DATA['📜']['🔺⚖️💧☄️'] = water_added_kg || 0;               // Masse d'eau ajoutée / météorite
     DATA['📜']['📿💫'] = ticTime || 0;                     // Nombre de ticTime
     DATA['📜']['🔺🌡️💫'] = deltaTicTime_per_tic || 0;     // Delta température / ticTime
+    DATA['📜']['🧲🔬'] = EPOCH['🧲🔬'];                    // Précision de convergence
+    DATA['📜']['👉'] = epochIndex;                         // Index de l'époque
+    DATA['📜']['🗿'] = epochId;                            // Logo de l'époque (emoji)
     
     // Calculer les masses avec getMasses() (met à jour DATA directement)
     getMasses();
@@ -207,15 +209,22 @@ function getNoyau() {
     
     // Flux géothermique en W/m² (depuis TIMELINE)
     // Vérifier si 💫 existe dans les événements (certaines époques ont le flux directement)
-    if (EPOCH['🕰']['💫'] && EPOCH['🕰']['💫']['🔺🧲🌕💫']) {
+    if (EPOCH['🕰'] && EPOCH['🕰']['💫'] && EPOCH['🕰']['💫']['🔺🧲🌕💫']) {
         // Flux depuis les événements ticTime
         DATA['🌕']['🧲🌕'] = EPOCH['🕰']['💫']['🔺🧲🌕💫']['▶'];
     } else if (EPOCH['🧲🌕'] !== undefined) {
         // Flux directement dans l'époque (ex: Hadéen)
         DATA['🌕']['🧲🌕'] = EPOCH['🧲🌕'];
     } else {
-        // Pas de flux géothermique pour cette époque
-        DATA['🌕']['🧲🌕'] = 0;
+        // Calculer depuis la puissance du noyau si disponible
+        if (EPOCH['🔋🌕'] !== undefined) {
+            const planet_radius_m = EPOCH['📐'] * 1000;
+            const surface_area = 4 * Math.PI * Math.pow(planet_radius_m, 2);
+            DATA['🌕']['🧲🌕'] = surface_area > 0 ? EPOCH['🔋🌕'] / surface_area : 0.087;
+        } else {
+            // Valeur par défaut moderne : ~0.087 W/m²
+            DATA['🌕']['🧲🌕'] = 0.087;
+        }
     }
     
     // Puissance totale du noyau (en Watts) - depuis 🔋🌕

@@ -12,7 +12,7 @@
 // ============================================================================
 // DÉFINITION DE LA CHRONOLOGIE (TIMELINE)
 // ============================================================================
-// Structure : array d'objets { '📅': '⚫' | '🔥' | '🦠' | '🦕' | '🦴' | '🦣' | '🐘', '▶': number, '◀': number, ... }
+// Structure : array d'objets { '📅': '⚫' | '🔥' | '🦠' | '🦕' | '🦴' | '🦣' | '🚂' | '📱', '▶': number, '◀': number, ... }
 // Les icônes des boutons d'événements sont définies dans events.tic_time.icon et events.meteor.icon
 const timeline = [
     {
@@ -43,7 +43,7 @@ const timeline = [
                 // deltaTemp: -3.5 // Inutile, déclenche aussi 📿💫++
             },
             '🎇': {
-                '⏩': '..' // Transition vers Hadéen
+                '⏩': '🔥' // Transition vers Hadéen
             }
         }
     },
@@ -217,9 +217,9 @@ const timeline = [
         }
     },
     {
-        '📅': '🐘', // Today (1800)
+        '📅': '🚂', // 1800
         '▶': 1800,
-        '◀': -1,
+        '◀': 2025,
         '🌡️⏳': 287,
         '🧲🔬': 0.01,
         '🔋☀️': 3.828e26, // Puissance totale du soleil (W) - 100% (valeur actuelle)
@@ -233,6 +233,34 @@ const timeline = [
         '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm, niveau pré-industriel)
         '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
         '⚖️🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
+        '⚖️💨': 3.97e18, // n2_kg (~78% de l'atmosphère moderne, calculé comme reste pour atteindre 5.15e18)
+        // Note: Les % seront calculés via calculations_atm.js
+        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
+        '🕰': {
+            '☄️': {
+                '🔺⚖️💧☄️': 1.0e18, // water_added_kg
+                // deltaTemp: -0.5 // Inutile, déclenche aussi 📿💫++
+            }
+        }
+    },
+    {
+        '📅': '📱', // 2025
+        '▶': 2025,
+        '◀': -1,
+        '🌡️⏳': 288,
+        '🧲🔬': 0.01,
+        '🔋☀️': 3.828e26, // Puissance totale du soleil (W) - 100% (valeur actuelle)
+        '🔋🌕': 4.6e13, // core_power_watts (Puissance géothermique totale ~46 TW)
+        '📐': 6371, // Rayon de la planète en km
+        '🍎': 9.81, // Gravité en m/s²
+        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
+        '⚖️🌬': 5.15e18, // Masse atmosphère (Atmosphère standard ~1 bar)
+        // Simulation parameters - Quantités en kg
+        '⚖️🏭': 2.16e15, // co2_kg (~420 ppm, niveau actuel 2025)
+        '⚖️⛽': 5.2e12, // ch4_kg (~1.9 ppm, niveau actuel 2025)
+        '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
+        '⚖️🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
+        '⚖️💨': 3.97e18, // n2_kg (~78% de l'atmosphère moderne, calculé comme reste pour atteindre 5.15e18)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {

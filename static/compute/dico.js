@@ -11,103 +11,29 @@
 // ============================================================================
 const KEYS = {
     // États activés
-    '🔘': {
-        'ENABLED_H2O': '🔘💧📛',
-        'ENABLED_CH4': '🔘⛽📛',
-        'ENABLED_CO2': '🔘🏭📛',
-        'ENABLED_ALBEDO': '🔘🪞',
-        'ENABLED_ANIMATION': '🔘🎬',
-    },
-    
+    '🔘': ['🔘💧📛', '🔘⛽📛', '🔘🏭📛', '🔘🪞', '🔘🎬'],
     // Configuration de date / Événements
-    '📜': {
-        'OLD_T0': '🌡️🏮',
-        'T0_CONFIG': '🌡️⏳',
-        'METEORITE_COUNT': '📿☄️',
-        'DELTA_WATER_METEORITE': '🔺⚖️💧☄️',
-        'TIC_TIME_COUNT': '📿💫',
-        'DELTA_TEMP_TIC_TIME': '🔺🌡️💫',
-        'DELTA_FLUX_GEOTHERMAL_TIC_TIME': '🔺🧲🌕💫',
-    },
+    '📜': ['🌡️⏳', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫','🧲🔬', '👉', '🗿'],
     // Date Époque
-    '📅': {
-        'DATE_START': '▶',
-        'DATE_END': '◀',
-        'T0_CONFIG': '🌡️⏳',
-        'PRECISION': '🧲🔬',
-    },
-    
+    '📅': ['🌡️⏳','📿💫'],
     // Masses
-    '⚖️': {
-        'MASSE_CO2': '⚖️🏭',
-        'MASSE_CH4': '⚖️⛽',
-        'MASSE_H2O': '⚖️💧',
-        'MASSE_O2': '⚖️🌫',
-        'MASSE_TOTAL': '⚖️📿',
-    },
+    '⚖️': ['⚖️🏭', '⚖️⛽', '⚖️💧', '⚖️🌫', '⚖️📿', '⚖️🌬'],
     // Composition atmosphérique
-    '🌬': {
-        'ATM_ALTITUDE': '📏🌬🧿',
-        'ATM_TROPOPAUSE': '📏🌬🛩',
-        'ATM_CO2': '🍰🌬🏭',
-        'ATM_H2O': '🍰🌬💧',
-        'ATM_CH4': '🍰🌬⛽',
-        'ATM_O2': '🍰🌬🌫',
-        'ATM_N2': '🍰🌬💨',
-        'ATM_PRESSURE': '🎈',
-    },
+    '🌬': ['🎈', '🧪', '📏🌬🧿', '📏🌬🛩', '🍰🌬🏭', '🍰🌬💧', '🍰🌬⛽', '🍰🌬🌫', '🍰🌬💨'],
     // Cycle de l'eau
-    '💧': {
-        'H2O_ICE': '🍰💧🧊',
-        'H2O_CLOUD': '🍰💧⛅',
-        'H2O_OCEAN': '🍰💧🌊',
-        'H2O_MAX_VAPOR': '🍰⏳🌧',
-    },
+    '💧': ['🍰💧🧊', '🍰💧⛅', '🍰💧🌊', '🍰⏳🌧'],
     // Albédo
-    '🪞': {
-        'ALBEDO_TOTAL': '🍰🪞📿',
-        'ALBEDO_VOLCANO': '🍰🪞🌋',
-        'ALBEDO_DESERT': '🍰🪞🏖',
-        'ALBEDO_FOREST': '🍰🪞🌳',
-        'ALBEDO_OCEAN': '🍰🪞🌊',
-        'ALBEDO_ICE': '🍰🪞🧊',
-        'ALBEDO_CLOUD': '🍰🪞⛅',
-    },
+    '🪞': ['🍰🪞📿', '🍰🪞🌋', '🍰🪞🏖', '🍰🪞🌳', '🍰🪞🌊', '🍰🪞🧊', '🍰🪞⛅'],
     // Flux radiatif
-    '🧲': {
-        'FLUX_SOLAR_ABSORBED': '🧲☀️🔽',
-        'FLUX_GEOTHERMAL_IN': '🧲🌕🔽',
-        'FLUX_OUT': '🧲🌑🔼',
-        'FLUX_SPECTRAL_OUT': '🧲🌈🔼',
-        'FLUX_REFLECTED': '🧲🪞🔼',
-        'FLUX_DELTA': '🔺🧲',
-    },
+    '🧲': ['🧲☀️🔽', '🧲🌕🔽', '🧲🌑🔼', '🧲🌈🔼', '🧲🪞🔼', '🔺🧲'],
     // Convergence
-    '⏳': {
-        'CONVERGENCE_OLD_T0': '🌡️🏮',
-        'CONVERGENCE_T0': '⏳🌡️🚩',
-        'CONVERGENCE_PHASE': '⏳⚧',
-        'CONVERGENCE_DIRECTION': '⏳☯',
-        'CONVERGENCE_TOLERANCE': '🧲🔬',
-        'CONVERGENCE_SPECTRAL_SAMPLING': '🔬🌈',
-        'CONVERGENCE_ATMOSPHERE_SAMPLING': '🔬🌬',
-    },
+    '⏳': ['🌡️', '⏳⚧', '⏳☯', '🧲🔬', '🔬🌈', '🔬🌬', '⏳🔄'],
     // Soleil
-    '☀️': {
-        'SOLEIL_CONSTANT': '🧲☀️',
-        'SOLEIL_GEOMETRY_ORIGIN': '🧲☀️🎱',
-        'SOLEIL_POWER': '🔋☀️',
-    },
-    
+    '☀️': ['🧲☀️', '🧲☀️🎱', '🔋☀️'],
     // Noyau
-    '🌕': {
-        'NOYAU_FLUX': '🧲🌕',
-        'NOYAU_POWER': '🔋🌕',
-    },
+    '🌕': ['🧲🌕', '🔋🌕'],
     // EDS (Forçage radiatif)
-    '📛': {
-        'EDS_H2O': '📛💧',
-    }
+    '📛': ['📛💧', '📛🏭', '📛⛽', '📿📛']
 };
 
 // ============================================================================
@@ -123,15 +49,22 @@ const DESC = {
         '🔘🎬': 'Animation on/off',
     },
     '📜': {
-        '🌡️🏮': 'old_T0 (backup t°)',
         '🌡️⏳': 'T0 attendu (t° config)',
         '📿☄️': 'Nombre de météore',
         '🔺⚖️💧☄️': 'Masse d\'eau / météore',
-        '📿💫': 'Nombre de ticTime',
         '🔺🌡️💫': 'Delta t° / ticTime',
         '🔺🧲🌕💫': 'Delta Geoth / ticTime',
+        '🧲🔬': 'Précision Flux',
+        '👉': 'Index',
+        '🗿': 'Logo',
+    },
+    '📅': {
+        '🌡️⏳': 'T° attendue',
+        '📿💫': 'Nombre de ticTime',
     },
     '🌬': {
+        '🎈': 'Pression atmosphérique',
+        '🧪': 'Masse molaire air',
         '📏🌬🧿': 'Ligne de Kármán',
         '📏🌬🛩': 'Tropopause',
         '🍰🌬🏭': 'CO2',
@@ -139,7 +72,6 @@ const DESC = {
         '🍰🌬⛽': 'CH4',
         '🍰🌬🌫': 'O2',
         '🍰🌬💨': 'N2',
-        '🎈': 'Pression atmosphérique',
     },
     '⚖️': {
         '⚖️🏭': 'Masse CO2',
@@ -147,6 +79,7 @@ const DESC = {
         '⚖️💧': 'Masse H2O',
         '⚖️🌫': 'Masse O2',
         '⚖️📿': 'Masse Atm.',
+        '⚖️🌬': 'Masse atmosphère',
     },
     '💧': {
         '🍰💧🧊': 'Glace',
@@ -172,13 +105,13 @@ const DESC = {
         '🔺🧲': 'Delta flux',
     },
     '⏳': {
-        '🌡️🏮': 'old_T0 (backup t°)',
-        '⏳🌡️🚩': 'T0 (t° initiale)',
-        '⏳⚧': 'Phase (Search/Dicho)',
+        '🌡️': 'T0 (t° courante)',
+        '⏳⚧': 'Phase (Init/Search/Dicho)',
         '⏳☯': 'Direction (+/-)',
-        '🧲🔬': 'Précision en Flux',
+        '🧲🔬': '!Précision en Flux',
         '🔬🌈': 'Résolution spectrale',
         '🔬🌬': 'Résolution atmosphérique',
+        '⏳🔄': 'Nombre d\'itérations (O(🔬🌈*🔬🌬))',
     },
     '☀️': {
         '🧲☀️': 'Flux solaire à 1 UA',
@@ -189,14 +122,11 @@ const DESC = {
         '🧲🌕': 'Flux géothermique',
         '🔋🌕': 'Puissance totale du noyau',
     },
-    '📅': {
-        '▶': 'Date Début',
-        '◀': 'Date Fin',
-        '🌡️⏳': 'T° attendue',
-        '🧲🔬': 'Précision Flux',
-    },
     '📛': {
         '📛💧': 'Forçage radiatif H2O',
+        '📛🏭': 'Forçage radiatif CO2',
+        '📛⛽': 'Forçage radiatif CH4',
+        '📿📛': 'Forçage radiatif total (EDS)',
     }
 };
 
@@ -209,18 +139,19 @@ for (const categoryKey in KEYS) {
     const category = KEYS[categoryKey];
     DATA[categoryKey] = {};
     
-    for (const keyName in category) {
-        const fullKey = category[keyName];
-        
-        // Déterminer le type par défaut selon le nom de la clé
-        if (keyName.includes('ENABLED') || keyName.includes('ANIMATION')) {
-            DATA[categoryKey][fullKey] = false;  // Booléens
-        } else if (keyName.includes('PHASE')) {
-            DATA[categoryKey][fullKey] = '';  // String
-        } else if (keyName.includes('DIRECTION')) {
-            DATA[categoryKey][fullKey] = 0;  // Number (signe)
-        } else if (keyName.includes('DELTA_FLUX_GEOTHERMAL_TIC_TIME')) {
-            DATA[categoryKey][fullKey] = null;  // Object
+    // KEYS peut être un tableau ou un objet
+    const keysArray = Array.isArray(category) ? category : Object.values(category);
+    
+    for (const fullKey of keysArray) {
+        // Déterminer le type par défaut selon l'emoji
+        if (fullKey.startsWith('🔘')) {
+            DATA[categoryKey][fullKey] = false;  // Booléens (états activés)
+        } else if (fullKey.includes('⚧')) {
+            DATA[categoryKey][fullKey] = '';  // String (phase)
+        } else if (fullKey.includes('☯')) {
+            DATA[categoryKey][fullKey] = 0;  // Number (signe/direction)
+        } else if (fullKey.includes('🔺🧲🌕💫')) {
+            DATA[categoryKey][fullKey] = null;  // Object (delta flux géothermique ticTime)
         } else {
             DATA[categoryKey][fullKey] = 0.0;  // Numbers
         }
@@ -249,12 +180,20 @@ function createDicoHtml() {
     // Catégories avec leurs logos et noms (utilise directement les emojis)
     const categories = [
         {
+            logo: '📜',
+            name: 'Config Événements'
+        },
+        {
+            logo: '📅',
+            name: 'Date Époque'
+        },
+        {
             logo: '🔘',
             name: 'États activés'
         },
         {
-            logo: '📜',
-            name: 'Config Événements'
+            logo: '⚖️',
+            name: 'Masses'
         },
         {
             logo: '🌬',
@@ -283,14 +222,6 @@ function createDicoHtml() {
         {
             logo: '🌕',
             name: 'Noyau'
-        },
-        {
-            logo: '📅',
-            name: 'Date Époque'
-        },
-        {
-            logo: '⚖️',
-            name: 'Masses'
         }
     ];
     
@@ -298,12 +229,19 @@ function createDicoHtml() {
     const categoryHTMLs = categories.map(category => {
         if (!KEYS[category.logo]) return '';
         
-        const items = Object.keys(KEYS[category.logo])
-            .map(keyName => {
-                const fullKey = KEYS[category.logo][keyName];
+        // KEYS peut être un tableau ou un objet
+        const keysArray = Array.isArray(KEYS[category.logo]) 
+            ? KEYS[category.logo] 
+            : Object.values(KEYS[category.logo]);
+        
+        const items = keysArray
+            .map(fullKey => {
                 const desc = DESC[category.logo] && DESC[category.logo][fullKey] ? DESC[category.logo][fullKey] : '';
+                // Ignorer les variables dont la description commence par "!" (variables internes aux calculs)
+                if (desc.startsWith('!')) return '';
                 return createDicoEntry(fullKey, desc);
             })
+            .filter(item => item !== '') // Retirer les entrées vides
             .join('');
         
         return `

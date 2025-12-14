@@ -1522,7 +1522,7 @@ window.updateDisplay = function updateDisplay(data) {
             if (window.currentEpochName) {
                 const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                 if (currentEpoch) {
-                    if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass_log = currentEpoch.total_atmosphere_mass_kg;
+                    if (currentEpoch['⚖️🌬'] !== undefined) total_mass_log = currentEpoch['⚖️🌬'];
                     if (currentEpoch.gravity !== undefined) gravity_log = currentEpoch.gravity;
                     // Calculer molar_mass_air depuis les composants si non défini
                     M_avg_log = window.calculateMolarMassAir(currentEpoch);
@@ -2351,9 +2351,9 @@ function setEpoch(epochName) {
     // 1. CO2
     // 🔒 Convertir les quantités (kg) en ppm pour compatibilité avec le code existant
     // Récupérer la masse atmosphérique totale de l'époque (ou utiliser la valeur moderne par défaut)
-    const total_atmosphere_mass_kg = epoch.total_atmosphere_mass_kg;
+    const total_atmosphere_mass_kg = epoch['⚖️🌬'];
     if (total_atmosphere_mass_kg === undefined) {
-        console.error("[main] total_atmosphere_mass_kg manquant pour calculer la composition, arrêt.", epoch.name);
+        console.error("[main] ⚖️🌬 manquant pour calculer la composition, arrêt.", epoch.name);
         return; // Arrêter le calcul
     }
 
@@ -2373,7 +2373,7 @@ function setEpoch(epochName) {
     // Appeler updateLevelsConfig depuis calculations_albedo.js pour initialiser les valeurs
     // Cette fonction remplace les calculs manuels de co2_ppm, ch4_ppm, h2o_percent
     if (typeof window !== 'undefined' && typeof window.updateLevelsConfig === 'function') {
-        window.updateLevelsConfig(epoch, total_atmosphere_mass_kg, molar_mass_air, isCorpsNoir);
+        window.updateLevelsConfig();
     }
     
     // Récupérer les valeurs depuis plotData (mises à jour par updateLevelsConfig) pour les boutons
@@ -2417,13 +2417,13 @@ function setEpoch(epochName) {
         let h2o_default = epoch.h2o_vapor_percent || 0;
 
         // 🔒 Calculer depuis h2o_kg si disponible et si h2o_vapor_percent n'est pas défini
-        if (h2o_default === 0 && epoch.h2o_kg > 0 && epoch.total_atmosphere_mass_kg > 0) {
+        if (h2o_default === 0 && epoch.h2o_kg > 0 && epoch['⚖️🌬'] > 0) {
             // Estimation fraction molaire
             // H2O = 18 g/mol
             // Reste = 44 g/mol (CO2 dominant) ou 29 (Air)
             // Si Hadéen, reste probablement CO2/N2 lourd
             const mass_h2o = epoch.h2o_kg;
-            const mass_total = epoch.total_atmosphere_mass_kg;
+            const mass_total = epoch['⚖️🌬'];
             const mass_rest = Math.max(0, mass_total - mass_h2o);
 
             const mol_h2o = mass_h2o / 18.015;

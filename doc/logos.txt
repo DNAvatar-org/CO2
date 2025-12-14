@@ -39,16 +39,17 @@
 💫
 ==
 
-== Temps:
+== Epoch:
 📅 Date depuis creation terre, en années
-corps_noir.png Corps noir [-5000 à -4500 Ma]
-hadeen.png Hadéen [-4500 à -4000 Ma]
-archeen.png Archéen [-4000 à -2500 Ma]
-🦠 Protérozoïque [-2500 à -541 Ma]
-//❄️ Cryogénien [-720 à -635 Ma]
+⚫ Corps noir [-5000 à -4500 Ma] //corps_noir.png
+🔥 Hadéen [-4500 à -4000 Ma] //hadeen.png
+🦠 Archéen [-4000 à -2500 Ma] //archeen.png 
+🌿 Protérozoïque [-2500 à -541 Ma]
 🦕 Mésozoïque [-252 à -66 Ma]
 🦴 Crétacé [-145 à -66 Ma]
 🦣 Cénozoïque [-66 à 0 Ma]
+🚂 1800
+📱 2025
 ==
 
 == Etats:
@@ -62,7 +63,7 @@ archeen.png Archéen [-4000 à -2500 Ma]
 == Autres:
 💥🧿🌈🧨🧯🪞🔬👓
 🌤🌥🌦🌧🌨🌩🐄🕶
-🌬🌞☀️🌊🎱🔥🐮
+🌬🌞☀️🌊🎱🔥🐮🧮
 🕰🌟⏳🕶🕳🏐🔋
 
 🧲 Magnetisme

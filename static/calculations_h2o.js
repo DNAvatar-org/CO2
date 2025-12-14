@@ -20,22 +20,18 @@
 
 //Calcule la pression de vapeur saturante selon l'équation de Clausius-Clapeyron
 function calculateSaturatedVaporPressure() {
-    console.log(`💧 [calculateSaturatedVaporPressure@calculations_h2o.js]`);
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const temp_K = DATA['⏳']['⏳🌡️🚩'];
+    const temp_K = DATA['⏳']['🌡️'];
     const exponent = (CONST.L_VAPORIZATION / CONST.RV_WATER) * (1 / CONST.T0_WATER - 1 / temp_K);
-    DATA['💧']['💧P_sat'] = CONST.P0_WATER * Math.exp(exponent);
-    return true;
+    return CONST.P0_WATER * Math.exp(exponent);
 }
 
 //Calcule la fraction volumique maximale de vapeur d'eau à saturation
 function calculateMaxH2OVaporFraction() {
-    console.log(`💧 [calculateMaxH2OVaporFraction@calculations_h2o.js]`);
     const DATA = window.DATA;
     const CONST = window.CONST;
-    calculateSaturatedVaporPressure();
-    const P_sat = DATA['💧']['💧P_sat'];
+    const P_sat = calculateSaturatedVaporPressure();
     const P_total = DATA['🌬']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA;
     DATA['💧']['🍰⏳🌧'] = Math.min(P_sat / P_total, 1.0);
     return true;
@@ -47,7 +43,7 @@ function calculateH2OGreenhouseForcing() {
     const DATA = window.DATA;
     if (!DATA['📛']) DATA['📛'] = {};
     const h2o_vapor_fraction = DATA['🌬']['🍰🌬💧'];
-    const temp_K = DATA['⏳']['⏳🌡️🚩'];
+    const temp_K = DATA['⏳']['🌡️'];
     
     if (h2o_vapor_fraction <= 0) {
         DATA['📛']['📛💧'] = 0;
@@ -86,11 +82,8 @@ function calculateH2OGreenhouseForcing() {
 
 //Calcule la contribution des nuages à l'albedo
 function calculateCloudAlbedoContribution() {
-    console.log(`💧 [calculateCloudAlbedoContribution@calculations_h2o.js]`);
-    const DATA = window.DATA;
-    const cloud_coverage = DATA['💧']['🍰💧⛅'];
-    const cloud_albedo = 0.5;
-    DATA['🪞']['🪞⛅'] = cloud_coverage * cloud_albedo * (1 - 0.2 * cloud_coverage);
+    // Note: L'albedo des nuages est calculé directement dans calculateAlbedo()
+    // Cette fonction est conservée pour compatibilité mais ne fait plus rien
     return true;
 }
 
@@ -99,7 +92,7 @@ function calculateCloudAlbedoContribution() {
 function estimateCloudCoverage() {
     console.log(`💧 [estimateCloudCoverage@calculations_h2o.js]`);
     const DATA = window.DATA;
-    const temp_K = DATA['⏳']['⏳🌡️🚩'];
+    const temp_K = DATA['⏳']['🌡️'];
     const h2o_vapor_fraction = DATA['🌬']['🍰🌬💧'];
     const relative_humidity = 0.8;
     
@@ -133,7 +126,7 @@ function calculateWaterPartition() {
     
     // Pas d'atmosphère : pas de vapeur, mais on peut avoir de la glace si T < 0°C
     const hasNoAtmosphere = DATA['🌬']['🧪'] === 0 || DATA['🌬']['🎈'] === 0;
-    DATA['💧']['🍰💧🧊'] = hasNoAtmosphere && DATA['⏳']['⏳🌡️🚩'] < CONST.T_FREEZE && h2o_total_fraction > 0 ? h2o_total_fraction : 0;
+    DATA['💧']['🍰💧🧊'] = hasNoAtmosphere && DATA['⏳']['🌡️'] < CONST.T_FREEZE && h2o_total_fraction > 0 ? h2o_total_fraction : 0;
     DATA['💧']['🍰💧⛅'] = 0;
     DATA['💧']['🍰💧🌊'] = 0;
     DATA['💧']['🍰⏳🌧'] = 0;
@@ -143,8 +136,7 @@ function calculateWaterPartition() {
     if (hasNoAtmosphere) return true;
 
     // Calculer la pression de vapeur saturante
-    calculateSaturatedVaporPressure();
-    const P_sat = DATA['💧']['💧P_sat'];
+    const P_sat = calculateSaturatedVaporPressure();
     const P_total = DATA['🌬']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA;
     const max_vapor_fraction = Math.min(P_sat / P_total, 1.0);
 
@@ -152,24 +144,56 @@ function calculateWaterPartition() {
     const T_boil_pressure = 1 / (1 / CONST.T_BOIL - (CONST.R_GAS * Math.log(DATA['🌬']['🎈'])) / CONST.L_V);
 
     // Déterminer les phases selon la température
-    DATA['🌬']['🍰🌬💧'] = DATA['⏳']['⏳🌡️🚩'] >= T_boil_pressure ? h2o_total_fraction : Math.min(h2o_total_fraction, max_vapor_fraction);
-    DATA['💧']['🍰💧🌊'] = DATA['⏳']['⏳🌡️🚩'] >= CONST.T_FREEZE && DATA['⏳']['⏳🌡️🚩'] < T_boil_pressure ? Math.max(0, h2o_total_fraction - DATA['🌬']['🍰🌬💧']) : 0;
-    DATA['💧']['🍰💧🧊'] = DATA['⏳']['⏳🌡️🚩'] < CONST.T_FREEZE ? Math.max(0, h2o_total_fraction - DATA['🌬']['🍰🌬💧']) : 0;
-
-    // Transition liquide-glace
-    DATA['💧']['🍰💧🌊'] = DATA['⏳']['⏳🌡️🚩'] > CONST.T_FREEZE - 20 && DATA['⏳']['⏳🌡️🚩'] < CONST.T_FREEZE ? DATA['💧']['🍰💧🧊'] * ((DATA['⏳']['⏳🌡️🚩'] - (CONST.T_FREEZE - 20)) / 20) * DATA['💧']['🍰💧🌊'] : DATA['💧']['🍰💧🌊'];
-    DATA['💧']['🍰💧🧊'] = DATA['⏳']['⏳🌡️🚩'] > CONST.T_FREEZE - 20 && DATA['⏳']['⏳🌡️🚩'] < CONST.T_FREEZE ? DATA['💧']['🍰💧🧊'] - DATA['💧']['🍰💧🌊'] : DATA['💧']['🍰💧🧊'];
-
-    // Normaliser
-    DATA['🌬']['🍰🌬💧'] = Math.max(0, Math.min(1.0, DATA['🌬']['🍰🌬💧']));
-    DATA['💧']['🍰💧🌊'] = Math.max(0, Math.min(1.0, DATA['💧']['🍰💧🌊']));
-    DATA['💧']['🍰💧🧊'] = Math.max(0, Math.min(1.0, DATA['💧']['🍰💧🧊']));
+    // Note : Même à température moyenne > 0°C, il peut y avoir de la glace aux pôles
+    // Approximation : glace aux pôles si température moyenne < 20°C
+    // À 0°C : ~10% de glace (calottes polaires)
+    // À 15°C : ~3% de glace (pôles partiellement gelés)
+    // À 20°C : 0% de glace
+    const temp_C = DATA['⏳']['🌡️'] - 273.15;
+    const has_polar_ice = temp_C < 20;
+    // Fonction linéaire : 0°C = 0.10 (10%), 20°C = 0.00 (0%)
+    const polar_ice_fraction = has_polar_ice ? Math.max(0, Math.min(0.10, (20 - temp_C) / 20 * 0.10)) : 0;
     
+    DATA['🌬']['🍰🌬💧'] = DATA['⏳']['🌡️'] >= T_boil_pressure ? h2o_total_fraction : Math.min(h2o_total_fraction, max_vapor_fraction);
+    const remaining_after_vapor = Math.max(0, h2o_total_fraction - DATA['🌬']['🍰🌬💧']);
+    
+    // Si température < 0°C : toute l'eau restante est glace
+    // Si température >= 0°C : glace aux pôles seulement
+    if (DATA['⏳']['🌡️'] < CONST.T_FREEZE) {
+        DATA['💧']['🍰💧🧊'] = remaining_after_vapor;
+        DATA['💧']['🍰💧🌊'] = 0;
+    } else {
+        DATA['💧']['🍰💧🧊'] = polar_ice_fraction;
+        DATA['💧']['🍰💧🌊'] = Math.max(0, remaining_after_vapor - polar_ice_fraction);
+    }
+
+    // Transition liquide-glace (zone de transition entre -20°C et 0°C)
+    if (DATA['⏳']['🌡️'] > CONST.T_FREEZE - 20 && DATA['⏳']['🌡️'] < CONST.T_FREEZE) {
+        const transition_factor = (DATA['⏳']['🌡️'] - (CONST.T_FREEZE - 20)) / 20;
+        const ice_before = DATA['💧']['🍰💧🧊'];
+        const liquid_before = DATA['💧']['🍰💧🌊'];
+        // Convertir une partie de la glace en liquide selon la température
+        const ice_to_liquid = ice_before * (1 - transition_factor);
+        DATA['💧']['🍰💧🌊'] = liquid_before + ice_to_liquid;
+        DATA['💧']['🍰💧🧊'] = ice_before - ice_to_liquid;
+    }
+
+    // Normaliser pour que la somme des phases = h2o_total_fraction
+    // Les phases sont : vapeur (🌬), liquide (🌊), glace (🧊)
     const total_phases = DATA['🌬']['🍰🌬💧'] + DATA['💧']['🍰💧🌊'] + DATA['💧']['🍰💧🧊'];
-    const scale = total_phases > h2o_total_fraction && total_phases > 0 ? h2o_total_fraction / total_phases : 1;
-    DATA['🌬']['🍰🌬💧'] *= scale;
-    DATA['💧']['🍰💧🌊'] *= scale;
-    DATA['💧']['🍰💧🧊'] *= scale;
+    
+    // Si la somme dépasse h2o_total_fraction, normaliser proportionnellement
+    if (total_phases > 0) {
+        const scale = h2o_total_fraction / total_phases;
+        DATA['🌬']['🍰🌬💧'] = Math.max(0, Math.min(1.0, DATA['🌬']['🍰🌬💧'] * scale));
+        DATA['💧']['🍰💧🌊'] = Math.max(0, Math.min(1.0, DATA['💧']['🍰💧🌊'] * scale));
+        DATA['💧']['🍰💧🧊'] = Math.max(0, Math.min(1.0, DATA['💧']['🍰💧🧊'] * scale));
+    } else {
+        // Pas d'eau : tout à 0
+        DATA['🌬']['🍰🌬💧'] = 0;
+        DATA['💧']['🍰💧🌊'] = 0;
+        DATA['💧']['🍰💧🧊'] = 0;
+    }
 
     DATA['💧']['🍰⏳🌧'] = max_vapor_fraction;
     

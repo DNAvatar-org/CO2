@@ -3047,12 +3047,12 @@ function positionnerBoutonsSurCercleAlbedo() {
 
 // Fonction pour générer la timeline depuis la configuration
 function generateTimelineFromConfig() {
-    if (typeof window === 'undefined' || !window.timeline || !Array.isArray(window.timeline)) {
+    if (typeof window === 'undefined' || !window.TIMELINE || !Array.isArray(window.TIMELINE)) {
         console.warn('Timeline config not found, using default HTML');
         return;
     }
     
-    const timeline = window.timeline;
+    const timeline = window.TIMELINE;
 
     // Utiliser le nouveau conteneur vertical, avec fallback sur l'ancien
     const epochsContainer = document.querySelector('.epochs-container-vertical') || document.querySelector('.epochs-container');

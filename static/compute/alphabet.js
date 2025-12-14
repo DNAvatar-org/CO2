@@ -71,7 +71,8 @@ const CHARS = {
     MESOZOIC: '🦕', // Mésozoïque : dinosaure sauropode
     CRETACEOUS: '🦴', // Crétacé : os/fossile
     CENOZOIC: '🦣', // Cénozoïque : mammouth
-    TODAY: '🐘',    // Today : éléphant
+    TODAY: '🚂',    // 1800 : train (1800)
+    MODERN: '📱',   // Moderne : smartphone (2025)
     EVENTS: '🕰',   // Événements : horloge
     TRANSITION: '⏩', // Transition : flèche rapide
     DATE: '📅',     // Date : calendrier
@@ -79,6 +80,8 @@ const CHARS = {
     GRAVITY: '🍎',  // Gravité : pomme (gravité)
     MOLAR_MASS_AIR: '🧪', // Masse molaire de l'air : flacon (chimie)
     PRESSURE: '🎈', // Pression : ballon (pression)
+    INDEX_EPOCH: '👉', // Index de l'époque : pointeur
+    LOGO_EPOCH: '🗿', // Logo/Nom de l'époque : statue
 };
 
 // Objet pour mapper les logos emoji vers les fichiers images
@@ -104,6 +107,8 @@ const CHARS_DESC = {
     '🔽': 'Réception (+)',
     '🔼': 'Émission (-)',
     '🧪': 'Masse molaire air (kg/mol)',
+    '⚧': 'Phase (Init/Search/Dicho)',
+    '☯': 'Direction Search (+/-)',
     // Éléments
     '💧': 'H2O',
     '⛽': 'CH4',
@@ -120,11 +125,9 @@ const CHARS_DESC = {
     '🎱': 'Géometrie',
     '🌈': 'Spectre',
     // Calculs
-    '⏳': 'Calculs (O(f(n)))',
+    '⏳': 'Calculs O(🧲🔬x🔬🌈x🔬🌬)',
     '🎬': 'Animation',
-    '⚧': 'Phase (Search/Dicho)',
     '🔬': 'Tolérance (précision)',
-    '☯': 'Direction (+/-)',
     '🏮': 'old_T0 (backup T°)',
     '🚩': 'T0 (T° initiale)',
     '🪞': 'Albédo',
@@ -144,7 +147,9 @@ const CHARS_DESC = {
     // Autres
     '💨': 'N2',
     // Époques géologiques
-    '📜': 'Époque',
+    '📜': 'Époque (Ma)',
+    '👉': 'Index',
+    '🗿': 'Logo',
     '⚫': 'Corps noir',
     '🔥': 'Hadéen',
     '🦠': 'Archéen',
@@ -152,10 +157,11 @@ const CHARS_DESC = {
     '🦕': 'Mésozoïque',
     '🦴': 'Crétacé',
     '🦣': 'Cénozoïque',
-    '🐘': 'Today (1800)',
+    '🚂': '1800',
+    '📱': '2025',
     '🕰': 'Événements',
     '⏩': 'Transition',
-    '📅': 'Date Époque (Ma)',
+    '📅': 'Date (Ma)',
     '📐': 'Rayon planète',
     '🍎': 'Gravité (m/s²)',
     '🎈': 'Pression (atm)'
@@ -173,7 +179,7 @@ function createAlphabetHtml() {
     
     // Colonne 1 : Unités
     const charsCol1 = [
-        'BOOLEAN', 'CARDINAL', 'DELTA', 'TEMP', 'WEIGHT', 'METER', 'PROPORTION', 'ENERGY_FLUX', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'DATE', 'GRAVITY', 'MOLAR_MASS_AIR'
+        'BOOLEAN', 'CARDINAL', 'DELTA', 'TEMP', 'WEIGHT', 'METER', 'PROPORTION', 'ENERGY_FLUX', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'GRAVITY', 'MOLAR_MASS_AIR'
     ];
     
     // Colonne 2 : Éléments
@@ -183,17 +189,17 @@ function createAlphabetHtml() {
     
     // Colonne 3 : Calculs
     const charsCol3 = [
-        'COMPUTE', 'ANIMATION', 'PHASE', 'TOLERANCE', 'DIRECTION', 'OLD_T0', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS', 'GEOMETRY_ORIGIN', 'FLUX_CN', 'MAX_VAPOR', 'MOLAR_MASS_AIR', 'PRESSURE'
+        'COMPUTE', 'ANIMATION', 'PHASE', 'TOLERANCE', 'DIRECTION', 'OLD_T0', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS', 'GEOMETRY_ORIGIN', 'FLUX_CN', 'MAX_VAPOR', 'PRESSURE'
     ];
     
     // Colonne 4 : Événements
     const charsCol4 = [
-        'TIC_TIME', 'BIG_IMPACT', 'METEORITE_COUNT', 'FLUX_START', 'FLUX_END', 'SATELLITE', 'ALTITUDE', 'TROPOPAUSE', 'EVENTS', 'TRANSITION', 'PLANET_RADIUS'
+        'DATE', 'TIC_TIME', 'EVENTS', 'TRANSITION', 'BIG_IMPACT', 'METEORITE_COUNT', 'FLUX_START', 'FLUX_END', 'PLANET_RADIUS', 'TROPOPAUSE', 'ALTITUDE', 'SATELLITE'
     ];
     
     // Colonne 5 : Époques et autres logos
     const charsCol5 = [
-        'EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'MESOZOIC', 'CRETACEOUS', 'CENOZOIC', 'TODAY'
+        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'MESOZOIC', 'CRETACEOUS', 'CENOZOIC', 'TODAY', 'MODERN'
     ];
     
     // Descriptions personnalisées pour certains caractères
