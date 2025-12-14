@@ -19,7 +19,7 @@
 // VARIABLES GLOBALES D'ÉTAT
 // ============================================================================
 
-// T0 est dans DATA['⏳']['⏳🌡️🚩'], pas besoin de variable globale
+// T0 est dans DATA['⏳']['🌡️'], pas besoin de variable globale
 // Phase est dans DATA['⏳']['⏳⚧'], pas besoin de variable globale
 // signeDeltaFirst est dans DATA['⏳']['⏳☯'], pas besoin de variable globale
 // flux_entrant est calculé localement dans computeRadiativeTransfer, pas besoin de variable globale
@@ -28,37 +28,8 @@
 // FONCTIONS HELPER
 // ============================================================================
 
-// Initialiser window.CONST s'il n'existe pas
-if (typeof window !== 'undefined' && !window.CONST) {
-    window.CONST = {};
-}
-
-// Ajouter les constantes physiques universelles à window.CONST
-// CONST contient uniquement les constantes physiques universelles (ne varient pas avec les époques)
-window.CONST.STEFAN_BOLTZMANN = 5.670374419e-8;  // W/(m²·K⁴) - constante de Stefan-Boltzmann
-window.CONST.AU_M = 1.496e11;                     // m - 1 Unité Astronomique en mètres (constante universelle)
-window.CONST.STANDARD_ATMOSPHERE_PA = 101325;     // Pa - Pression atmosphérique standard (1 atm = 101325 Pa)
-
-// Constantes molaires (masse molaire en kg/mol) - propriétés intrinsèques des molécules
-window.CONST.M_N2 = 0.02801;      // N₂ : 28.01 g/mol
-window.CONST.M_O2 = 0.03200;      // O₂ : 32.00 g/mol
-window.CONST.M_CO2 = 0.04401;     // CO₂ : 44.01 g/mol
-window.CONST.M_CH4 = 0.01604;     // CH₄ : 16.04 g/mol
-window.CONST.M_H2O = 0.01802;     // H₂O : 18.02 g/mol
-window.CONST.M_AR = 0.03995;      // Ar : 39.95 g/mol
-    window.CONST.molar_mass_air_ref = 0.029;  // Masse molaire moyenne de l'air de référence (kg/mol)
-    // Constantes pour l'eau (H2O)
-    window.CONST.R_GAS = 8.314;  // Constante des gaz parfaits, J/(mol·K)
-    window.CONST.T_FREEZE = 273.15;  // Point de congélation de l'eau (K)
-    window.CONST.T_BOIL = 373.15;  // Point d'ébullition de l'eau à 1 atm (K)
-    window.CONST.T0_WATER = 273.15;  // Point triple de l'eau (K)
-    window.CONST.P0_WATER = 611.2;  // Pression au point triple de l'eau (Pa)
-    window.CONST.L_VAPORIZATION = 2.5e6;  // Chaleur latente de vaporisation (J/kg)
-    window.CONST.RV_WATER = 461.5;  // Constante des gaz pour la vapeur d'eau (J/(kg·K))
-    window.CONST.L_V = 40660;  // Chaleur latente de vaporisation (J/mol)
-
-// Note: SOLAR_CONSTANT_REF, SOLAR_POWER_REF, EARTH_RADIUS_REF, EARTH_TOTAL_WATER_MASS_KG
-// sont des valeurs de référence actuelles et devraient être dans la timeline (époque "Today")
+// CONST est maintenant centralisé dans physics.js
+// Plus besoin d'initialisation ici, CONST sera créé une seule fois dans physics.js
 
 //Récupère les états activés (utilise DATA directement)
 function getEnabledStates() {
@@ -100,8 +71,10 @@ function getMasses() {
     const DATA = window.DATA;
     //const CONST = window.CONST;
     
-    // Récupérer l'époque directement depuis timeline avec l'index
-    const EPOCH = window.timeline[window.currentEpochIndex];
+    // Récupérer l'époque directement depuis TIMELINE avec l'index depuis DATA
+    const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
+    const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+    const EPOCH = window.TIMELINE[epochIndex];
     let h2o_kg = EPOCH['⚖️💧'] || 0;
     
     // Appliquer les événements
@@ -114,7 +87,16 @@ function getMasses() {
     DATA['⚖️']['⚖️⛽'] = EPOCH['⚖️⛽'];
     DATA['⚖️']['⚖️💧'] = h2o_kg;
     DATA['⚖️']['⚖️🌫'] = EPOCH['⚖️🌫'];
-    DATA['⚖️']['⚖️📿'] = EPOCH['⚖️📿'];
+    
+    // Calculer la masse atmosphérique totale (somme des gaz atmosphériques)
+    // Note : H2O dans l'atmosphère est la vapeur d'eau, pas l'eau liquide totale
+    // Pour l'instant, on utilise la masse totale H2O (sera ajustée par calculateH2OParameters)
+    const N2_kg = EPOCH['⚖️💨'] || 0;
+    DATA['⚖️']['⚖️🌬'] = DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫'] + N2_kg;
+    // Note : H2O atmosphérique sera calculé séparément dans calculateH2OParameters
+    
+    // Masse totale = masse atmosphérique + eau (liquide + glace)
+    DATA['⚖️']['⚖️📿'] = DATA['⚖️']['⚖️🌬'] + DATA['⚖️']['⚖️💧'];
     
     // Log getMasses - utiliser DATA directement
     console.log(`📋 [getMasses@compute.js]`);
@@ -129,7 +111,9 @@ function getEpochDateConfig() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const EPOCH = window.timeline[window.currentEpochIndex];
+    const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
+    const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+    const EPOCH = window.TIMELINE[epochIndex];
     
     let meteoriteCount = 0;
     let ticTime = 0;
@@ -165,10 +149,6 @@ function getEpochDateConfig() {
     }
     
     // Mettre à jour DATA directement (source unique de vérité)
-    // 🌡️🏮 (old_T0) : garder la valeur précédente si elle existe, sinon utiliser T0 config
-    if (!DATA['⏳']['🌡️🏮'] || DATA['⏳']['🌡️🏮'] <= 0) {
-        DATA['⏳']['🌡️🏮'] = EPOCH['🌡️⏳'];
-    }
     DATA['📜']['🌡️⏳'] = EPOCH['🌡️⏳'];
     DATA['📜']['📿☄️'] = meteoriteCount || 0;              // Nombre de météorites
     DATA['📜']['🔺⚖️💧☄️'] = water_added_kg || 0;               // Masse d'eau ajoutée / météorite
@@ -191,7 +171,9 @@ function getSoleil() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const EPOCH = window.timeline[window.currentEpochIndex];
+    const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
+    const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+    const EPOCH = window.TIMELINE[epochIndex];
     
     // Mettre à jour DATA directement (source unique de vérité)
     DATA['☀️']['🔋☀️'] = EPOCH['🔋☀️'];
@@ -218,10 +200,12 @@ function getNoyau() {
     const DATA = window.DATA;
     const CONST = window.CONST;
     
-    // Récupérer l'époque directement depuis timeline avec l'index
-    const EPOCH = window.timeline[window.currentEpochIndex];
+    // Récupérer l'époque directement depuis TIMELINE avec l'index depuis DATA
+    const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
+    const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+    const EPOCH = window.TIMELINE[epochIndex];
     
-    // Flux géothermique en W/m² (depuis timeline)
+    // Flux géothermique en W/m² (depuis TIMELINE)
     // Vérifier si 💫 existe dans les événements (certaines époques ont le flux directement)
     if (EPOCH['🕰']['💫'] && EPOCH['🕰']['💫']['🔺🧲🌕💫']) {
         // Flux depuis les événements ticTime
@@ -253,6 +237,6 @@ window.getMasses = getMasses; // Exposer getMasses
 window.getEnabledStates = getEnabledStates; // Exposer getEnabledStates
 window.getSoleil = getSoleil; // Exposer getSoleil
 window.getNoyau = getNoyau; // Exposer getNoyau
-// T0 est dans DATA['⏳']['⏳🌡️🚩'], pas besoin de window.T0
+// T0 est dans DATA['⏳']['🌡️'], pas besoin de window.T0
 // getLogo et getLogoKey sont exposés par alphabet.js
 

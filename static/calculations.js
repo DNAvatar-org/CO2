@@ -175,7 +175,7 @@ function pressure(z, params = null) {
         if (window.currentEpochName) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
-                if (typeof currentEpoch.total_atmosphere_mass_kg === 'number') total_mass = currentEpoch.total_atmosphere_mass_kg;
+                if (typeof currentEpoch['⚖️🌬'] === 'number') total_mass = currentEpoch['⚖️🌬'];
                 if (typeof currentEpoch.gravity === 'number') gravity = currentEpoch.gravity;
                 // Convertir le rayon de km en mètres pour les calculs
                 if (typeof currentEpoch['📐'] === 'number') planet_radius = currentEpoch['📐'] * 1000;
@@ -937,7 +937,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
     // Priorité 2 : Utiliser window.epoch si disponible (pour test_computeRadiativeTransfer.html)
     if (typeof window !== 'undefined' && window.epoch && total_mass === undefined) {
-        total_mass = window.epoch.total_atmosphere_mass_kg;
+        total_mass = window.epoch['⚖️🌬'];
         if (window.epoch['🍎'] !== undefined) gravity_val = window.epoch['🍎'];
         // Convertir le rayon de km en mètres pour les calculs
         if (window.epoch['📐'] !== undefined) planet_radius_val = window.epoch['📐'] * 1000;
@@ -964,8 +964,8 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         if (currentEpoch) {
             // Récupération stricte : si undefined, on laisse undefined (ce qui provoquera une erreur plus loin)
             // Sauf si on veut explicitement autoriser 0 (Corps Noir)
-            if (currentEpoch.total_atmosphere_mass_kg !== undefined) {
-                total_mass = currentEpoch.total_atmosphere_mass_kg;
+            if (currentEpoch['⚖️🌬'] !== undefined) {
+                total_mass = currentEpoch['⚖️🌬'];
             } else {
                 console.error(`[calculateFluxForT0] ❌ ERREUR : 'total_atmosphere_mass_kg' manquant dans l'époque '${window.currentEpochName}'`);
             }
@@ -1034,8 +1034,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // physParams est requis pour pressure() et airNumberDensity()
     if (physParams === null || physParams.temperature_K === undefined) {
         // Si physParams n'est pas défini mais qu'on a les paramètres de base, le créer
-        if (total_mass !== undefined && typeof window !== 'undefined' && window.timeline && window.currentEpochIndex !== undefined) {
-            const EPOCH = window.timeline[window.currentEpochIndex];
+        if (total_mass !== undefined && typeof window !== 'undefined' && window.TIMELINE && window.DATA) {
+            const DATA = window.DATA;
+            const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
+            const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+            const EPOCH = window.TIMELINE[epochIndex];
             physParams = {
                 total_atmosphere_mass_kg: total_mass || 0,
                 gravity: EPOCH['🍎'],

@@ -26,7 +26,7 @@ const timeline = [
         '🍰🧲🌕': 0.0, // geothermal_diffusion_factor (Facteur de diffusion du noyau vers la surface 0-1)
         '📐': 5096.8, // Rayon de la planète en km (Terre : 6371 km)
         '🍎': 8.3, // Gravité en m/s²
-        '⚖️📿': 0, // total_atmosphere_mass_kg (Pas d'atmosphère)
+        '⚖️🌬': 0, // Masse atmosphère (Pas d'atmosphère)
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         // Note: geothermal_flux sera calculé à partir de core_temperature et geothermal_diffusion_factor
         // Simulation parameters - Quantités en kg (pas de ppm/%)
@@ -61,7 +61,7 @@ const timeline = [
         '📐': 7008.1, // Rayon de la planète en km
         '🍎': 10.3, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️📿': 5.3e20, // total_atmosphere_mass_kg (Atmosphère très dense ~100 bar)
+        '⚖️🌬': 5.3e20, // Masse atmosphère (Atmosphère très dense ~100 bar)
         // Simulation parameters - Quantités en kg (pas de ppm/%)
         '⚖️🏭': 5.15e17, // co2_kg (~10% de l'atmosphère moderne)
         '⚖️⛽': 5.15e15, // ch4_kg (~1000 ppm)
@@ -97,7 +97,7 @@ const timeline = [
         '📐': 6371, // Rayon de la planète en km
         '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️📿': 1.0e19, // total_atmosphere_mass_kg (Atmosphère dense ~2 bar)
+        '⚖️🌬': 1.0e19, // Masse atmosphère (Atmosphère dense ~2 bar)
         // Simulation parameters - Quantités en kg
         '⚖️🏭': 2.575e16, // co2_kg (~5000 ppm)
         '⚖️⛽': 4.12e14, // ch4_kg (~80 ppm)
@@ -123,7 +123,7 @@ const timeline = [
         '📐': 6371, // Rayon de la planète en km
         '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère proche de l'actuelle ~1 bar)
+        '⚖️🌬': 5.15e18, // Masse atmosphère (Atmosphère proche de l'actuelle ~1 bar)
         // Simulation parameters - Quantités en kg
         '⚖️🏭': 1.03e16, // co2_kg (~2000 ppm)
         '⚖️⛽': 1.2875e14, // ch4_kg (~25 ppm)
@@ -149,7 +149,7 @@ const timeline = [
         '📐': 6371, // Rayon de la planète en km
         '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
+        '⚖️🌬': 5.15e18, // Masse atmosphère (Atmosphère standard ~1 bar)
         // Simulation parameters - Quantités en kg
         '⚖️🏭': 1.2875e16, // co2_kg (~2500 ppm)
         '⚖️⛽': 4.12e13, // ch4_kg (~8 ppm)
@@ -175,7 +175,7 @@ const timeline = [
         '📐': 6371, // Rayon de la planète en km
         '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
+        '⚖️🌬': 5.15e18, // Masse atmosphère (Atmosphère standard ~1 bar)
         // Simulation parameters - Quantités en kg
         '⚖️🏭': 1.545e16, // co2_kg (~3000 ppm)
         '⚖️⛽': 5.15e13, // ch4_kg (~10 ppm)
@@ -201,7 +201,7 @@ const timeline = [
         '📐': 6371, // Rayon de la planète en km
         '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
+        '⚖️🌬': 5.15e18, // Masse atmosphère (Atmosphère standard ~1 bar)
         // Simulation parameters - Quantités en kg
         '⚖️🏭': 1.443e15, // co2_kg (~280 ppm)
         '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm)
@@ -227,7 +227,7 @@ const timeline = [
         '📐': 6371, // Rayon de la planète en km
         '🍎': 9.81, // Gravité en m/s²
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️📿': 5.15e18, // total_atmosphere_mass_kg (Atmosphère standard ~1 bar)
+        '⚖️🌬': 5.15e18, // Masse atmosphère (Atmosphère standard ~1 bar)
         // Simulation parameters - Quantités en kg
         '⚖️🏭': 1.443e15, // co2_kg (~280 ppm, niveau pré-industriel)
         '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm, niveau pré-industriel)
@@ -244,6 +244,6 @@ const timeline = [
     }
 ];
 
-window.timeline = timeline;
+window.TIMELINE = timeline;
 
 

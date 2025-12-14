@@ -11,31 +11,21 @@
             box-sizing: border-box;
         }
         
-        /* Police emoji pour les logos - EXACTEMENT comme sur la page de référence UTF-8 */
-        @font-face {
-            font-family: 'EmojiFont';
-            src: local('Apple Color Emoji'),
-                 local('Segoe UI Emoji'),
-                 local('Noto Color Emoji'),
-                 local('Android Emoji'),
-                 local('EmojiOne Color'),
-                 local('Twemoji Mozilla');
-        }
-        
-        
         body {
             background: #1a1a1a;
             color: #e0e0e0;
             padding: 20px;
+            font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+            font-size: 11px;
         }
         
-        /* Classe pour les éléments contenant des emojis/logos - EXACTEMENT comme .logo-item sur la page de référence UTF-8 */
+        /* Classe pour les éléments contenant des emojis/logos */
         .logo-item,
         .emoji-text {
-            font-family: 'EmojiFont', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', sans-serif;
+            font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
         }
         
-        /* Appliquer la police emoji aux éléments contenant des logos */
+        /* Appliquer la police par défaut aux éléments */
         .config-value,
         .config-title,
         code,
@@ -48,7 +38,7 @@
         .timeline-hourglass,
         .horloge-icon,
         button {
-            font-family: 'EmojiFont', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', 'Symbola', 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;
+            font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
         }
         
         
@@ -95,13 +85,13 @@
             display: flex;
             align-items: center;
             gap: 5px;
-            font-size: 14px;
+            font-size: 11px;
             color: #e0e0e0;
             white-space: nowrap;
         }
         
         .timeline-hourglass, .horloge-icon {
-            font-size: 16px;
+            font-size: 12px;
         }
         
         .epochs-container-horizontal {
@@ -203,7 +193,7 @@
         }
         
         label {
-            font-size: 12px;
+            font-size: 11px;
             color: #aaa;
         }
         
@@ -214,6 +204,7 @@
             padding: 8px;
             border-radius: 4px;
             width: 200px;
+            font-size: 11px;
         }
         
         button {
@@ -223,7 +214,7 @@
             padding: 10px 20px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 11px;
             transition: background 0.3s;
         }
         
@@ -232,7 +223,7 @@
         }
         
         .icon-button {
-            font-size: 20px;
+            font-size: 18px;
             /* font-family héritée de la règle générale pour button */
             background: none !important;
             border: none !important;
@@ -348,8 +339,8 @@
             margin-top: 20px;
             max-height: 400px;
             overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+            font-size: 10px;
         }
         
         .log-entry {
@@ -376,20 +367,20 @@
             font-weight: bold;
             color: #4a9eff;
             margin-bottom: 5px;
-            font-size: 16px;
+            font-size: 12px;
         }
         
         .config-value {
             color: beige;
-            margin-top: 5px;
-            /* font-family héritée de la règle générale pour .config-value */
+            margin-top: -5px;
+            font-size: 12px;
         }
         
         .formule {
             color: gray;
             margin-top: -5px;
             margin-left: 35px;
-            font-size: 11px;
+            font-size: 9px;
         }
         
         .results.replied .config-title {
@@ -460,7 +451,7 @@
             padding: 5px 10px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 11px;
             margin-left: auto; /* Pousser le bouton à droite */
         }
         
@@ -581,6 +572,7 @@
     <script src="../timeline/timeline.js"></script>
     <script src="../events.js"></script>
     <script src="../physics.js"></script>
+    <script src="../climate.js"></script>
     <script src="../calculations.js"></script>
     <script src="../calculations_h2o.js"></script>
     <script src="../calculations_albedo.js"></script>
@@ -634,7 +626,10 @@
         };
         
         function clearLog() {
-            logContent.innerHTML = '';
+            const logContent = document.getElementById('log-content');
+            if (logContent) {
+                logContent.innerHTML = '';
+            }
         }
         
         function toggleAnim() {
@@ -674,11 +669,11 @@
         // Générer la timeline horizontale
         function generateHorizontalTimeline() {
             const epochsContainer = document.getElementById('epochs-container-horizontal');
-            if (!epochsContainer || !window.timeline) return;
+            if (!epochsContainer || !window.TIMELINE) return;
             
             epochsContainer.innerHTML = '';
             
-            window.timeline.forEach(item => {
+            window.TIMELINE.forEach(item => {
                 if (item['📅']) {
                     const button = document.createElement('button');
                     button.className = 'epoch-btn-horizontal';
@@ -696,8 +691,8 @@
             });
             
             // Sélectionner la première époque par défaut
-            if (window.timeline.length > 0) {
-                const firstEpoch = window.timeline.find(item => item['📅']);
+            if (window.TIMELINE.length > 0) {
+                const firstEpoch = window.TIMELINE.find(item => item['📅']);
                 if (firstEpoch) {
                     selectEpoch(firstEpoch['📅']);
                 }
@@ -706,10 +701,8 @@
         
         // Sélectionner une époque (utilise l'index directement)
         function selectEpoch(epochId) {
-            if (!window.timeline) return;
-            
-            // Trouver l'index de l'époque dans la timeline
-            const epochIndex = window.timeline.findIndex(item => item['📅'] === epochId);
+            // Trouver l'index de l'époque dans TIMELINE
+            const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
             if (epochIndex < 0) {
                 console.error(`[selectEpoch] Époque ${epochId} non trouvée`);
                 return;
@@ -728,18 +721,19 @@
             });
             
             // Mettre à jour la date de l'époque (depuis '▶')
-            const epoch = window.timeline[epochIndex];
+            const EPOCH = window.TIMELINE[epochIndex];
             const epochStartTime = document.getElementById('epoch-start-time');
-            if (epochStartTime && epoch && epoch['▶'] !== undefined) {
-                epochStartTime.textContent = `-${(epoch['▶'] / 1e6).toFixed(0)} Ma`;
+            if (epochStartTime && EPOCH && EPOCH['▶'] !== undefined) {
+                epochStartTime.textContent = `-${(EPOCH['▶'] / 1e6).toFixed(0)} Ma`;
             }
             
             // Mettre à jour les actions (boutons d'événements)
             updateEpochActions();
             
             // Réinitialiser le temps
-            if (typeof window !== 'undefined') {
-                window.infoTimeMa = 0;
+            if (typeof window !== 'undefined' && window.DATA) {
+                if (!window.DATA['📜']) window.DATA['📜'] = {};
+                window.DATA['📜']['📿💫'] = 0;
                 updateTimelineDisplay();
             }
         }
@@ -748,7 +742,8 @@
         function updateTimelineDisplay() {
             const infoTimeDisplay = document.getElementById('info-time');
             if (infoTimeDisplay) {
-                const infoTimeMa = window.infoTimeMa || 0;
+                const DATA = window.DATA;
+                const infoTimeMa = (DATA['📜'] && DATA['📜']['📿💫']) ? DATA['📜']['📿💫'] * 50 : 0;
                 const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
                 infoTimeDisplay.textContent = `+${deltaMa} Ma`;
             }
@@ -761,13 +756,16 @@
             
             eventsLogos.innerHTML = '';
             
+            const DATA = window.DATA;
             const currentEpochName = window.currentEpochName || 'Corps noir';
-            const epoch = window.epoch;
+            const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
+            const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+            const EPOCH = window.TIMELINE[epochIndex];
             
-            if (!epoch || !epoch.events) return;
+            if (!EPOCH || !EPOCH['🕰']) return;
             
             // Bouton météorite de glace
-            if (epoch.events.ice_meteorite || epoch.events.meteor) {
+            if (EPOCH['🕰'] && EPOCH['🕰']['☄️']) {
                 const meteorBtn = document.createElement('img');
                 meteorBtn.src = getImagePath('fonts/pics/ice_meteorite.png');
                 meteorBtn.alt = 'Météorite';
@@ -775,8 +773,8 @@
                 meteorBtn.title = 'Météorite de glace';
                 meteorBtn.addEventListener('click', () => {
                     // Ajouter +50Ma
-                    if (typeof window !== 'undefined') {
-                        window.infoTimeMa = (window.infoTimeMa || 0) + 50;
+                    if (typeof window !== 'undefined' && window.DATA) {
+                        window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
                         updateTimelineDisplay();
                     }
                 });
@@ -784,16 +782,17 @@
             }
             
             // Bouton impact majeur
-            if (epoch.events.big_impact) {
+            if (EPOCH['🕰'] && EPOCH['🕰']['🎇']) {
                 const bigImpactBtn = document.createElement('img');
                 bigImpactBtn.src = getImagePath('fonts/pics/big_impact.png');
                 bigImpactBtn.alt = 'Impact majeur';
                 bigImpactBtn.className = 'timeline-event-logo btn-events';
                 bigImpactBtn.title = 'Impact majeur - Crée la lune';
                 bigImpactBtn.addEventListener('click', () => {
-                    // Passer à l'époque suivante
-                    if (typeof window !== 'undefined' && typeof window.setEpoch === 'function') {
-                        window.setEpoch('Hadéen');
+                    // Passer à l'époque suivante (Hadéen)
+                    if (EPOCH['🕰']['🎇'] && EPOCH['🕰']['🎇']['⏩']) {
+                        const nextEpochId = EPOCH['🕰']['🎇']['⏩'] === '..' ? '🔥' : EPOCH['🕰']['🎇']['⏩'];
+                        selectEpoch(nextEpochId);
                     }
                 });
                 eventsLogos.appendChild(bigImpactBtn);
@@ -811,67 +810,36 @@
                 epochId = '⚫'; // Par défaut : Corps noir
             }
             
-            // Trouver l'index de l'époque dans timeline (utilise directement l'index)
-            if (window.timeline) {
-                const epochIndex = window.timeline.findIndex(item => item['📅'] === epochId);
-                if (epochIndex >= 0) {
-                    window.currentEpochIndex = epochIndex;
-                    window.currentEpochName = epochId; // Garder pour compatibilité affichage
-                } else {
-                    // Fallback : première époque
-                    window.currentEpochIndex = window.timeline.findIndex(item => item['📅']);
-                    if (window.currentEpochIndex >= 0) {
-                        window.currentEpochName = window.timeline[window.currentEpochIndex]['📅'];
-                    }
-                }
-            }
+            // Trouver l'index de l'époque dans TIMELINE
+            const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
+            window.currentEpochIndex = epochIndex >= 0 ? epochIndex : window.TIMELINE.findIndex(item => item['📅']);
+            window.currentEpochName = epochId;
             
             // Initialiser window.getGeologicalPeriodByName si nécessaire
-            if (!window.getGeologicalPeriodByName && window.timeline) {
+            if (!window.getGeologicalPeriodByName) {
                 window.getGeologicalPeriodByName = function(name) {
-                    return window.timeline.find(epoch => epoch['📅'] === name);
+                    return window.TIMELINE.find(epoch => epoch['📅'] === name);
                 };
             }
             
-            // Initialiser window.h2oTotalFromMeteorites (plus de champ input, initialisé à 0)
-            window.h2oTotalFromMeteorites = 0;
+            // Initialiser DATA si nécessaire
+            if (!window.DATA) window.DATA = {};
+            if (!window.DATA['📜']) window.DATA['📜'] = {};
+            if (!window.DATA['🔘']) window.DATA['🔘'] = {};
+            if (!window.DATA['⏳']) window.DATA['⏳'] = {};
             
-            // Initialiser window.isH2O_eds, window.isCO2_eds, window.isCH4_eds (pour getEnabledStates)
-            window.isH2O_eds = true;
-            window.isCO2_eds = true;
-            window.isCH4_eds = true;
-            window.isAlbedo = true;
+            // Initialiser les valeurs dans DATA
+            window.DATA['📜']['📿💫'] = 0;
+            window.DATA['⏳']['🌡️'] = 180.0;
             
-            // Initialiser window.enabledStates
+            // Initialiser les états activés
             if (window.getEnabledStates) {
                 window.getEnabledStates();
             }
             
-            // Initialiser window.T0 (old_T0 n'existe plus, utilise dateConfig['🌡️🏮'] qui vient de window.T0)
+            // Récupérer le bouton animation et son état
             const animBtn = document.getElementById('anim-toggle');
             const animEnabled = animBtn ? animBtn.classList.contains('selected') : false;
-            if (animEnabled) {
-                // Si anim activé, initialiser T0 à 180K pour test (sera utilisé comme old_T0 dans dateConfig)
-                if (window.T0 === undefined || window.T0 === null) {
-                    window.T0 = 180.0;
-                }
-            }
-            // Initialiser T0 si nécessaire
-            if (window.T0 === undefined || window.T0 === null) {
-                window.T0 = 180.0;
-            }
-            
-            // Initialiser window.infoTimeMa
-            window.infoTimeMa = 0;
-            
-            // Initialiser window.waterVaporEnabled
-            window.waterVaporEnabled = true;
-            
-            // Initialiser window.h2oVaporPercent
-            window.h2oVaporPercent = 0;
-            
-            // Initialiser window.convergencePrecision_K
-            window.convergencePrecision_K = 0.1;
             
             // Créer ou mettre à jour plot-anim-toggle-checkbox pour compatibilité avec compute.js
             let plotAnimToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
@@ -884,14 +852,9 @@
             }
             plotAnimToggleCheckbox.checked = animEnabled;
             
-            // Mettre à jour le bouton anim
-            if (animBtn) {
-                if (animEnabled) {
-                    animBtn.classList.add('selected');
-                } else {
-                    animBtn.classList.remove('selected');
-                }
-            }
+            // Mettre à jour DATA['🔘']['🔘🎬'] avec l'état d'animation
+            if (!window.DATA['🔘']) window.DATA['🔘'] = {};
+            window.DATA['🔘']['🔘🎬'] = animEnabled;
         }
         
         async function runTest() {
@@ -925,9 +888,9 @@
                 console.log('albedo sera logué après calculateAlbedo()');
                 console.log('');
                 
+                const DATA = window.DATA;
                 console.log('🧪 Démarrage du test computeRadiativeTransfer');
                 console.log(`📅 Époque: ${window.currentEpochName}`);
-                console.log(`💧 H2O météorites: ${window.h2oTotalFromMeteorites}%`);
                 const animBtn2 = document.getElementById('anim-toggle');
                 const animEnabled2 = animBtn2 ? animBtn2.classList.contains('selected') : false;
                 console.log(`🎬 Animation: ${animEnabled2}`);
@@ -938,10 +901,13 @@
                 // Loguer les objets directement après getEpochDateConfig
                 console.log('');
                 console.log('📊 Objets après getEpochDateConfig():');
-                console.log(`dateConfig=${JSON.stringify(window.DATA['📜'])}`);
-                console.log(`masses=${JSON.stringify(window.DATA['⚖️'])}`);
-                if (window.epoch && window.epoch.events) {
-                    console.log(`events=${JSON.stringify(window.epoch.events)}`);
+                console.log(`dateConfig=${JSON.stringify(DATA['📜'])}`);
+                console.log(`masses=${JSON.stringify(DATA['⚖️'])}`);
+                const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
+                const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+                const EPOCH = window.TIMELINE[epochIndex];
+                if (EPOCH && EPOCH['🕰']) {
+                    console.log(`events=${JSON.stringify(EPOCH['🕰'])}`);
                 }
                 
                 // 2. Appeler computeRadiativeTransfer
@@ -985,7 +951,7 @@
             // essais graphique, ne modifie pas la formule : 
             const variableChar = '❀';//❉✪✩⛬✤ //<i></i>
             const elementsStr = elements.join(',');
-            const formula = `🍰🪞📿<span style="font-size: 15px;"> = Σ(</span>🍰🪞<span style="font-size: 15px;">${variableChar} × </span>🍰<span style="font-size: 15px;">${variableChar}</span>🪞<span style="font-size: 15px;">) | ${variableChar} ∈ { </span>${elementsStr}<span style="font-size: 15px;"> }</span> => ${total.toFixed(4)}`;
+            const formula = `🍰🪞📿<span style="font-size: 10px;"> = Σ(</span>🍰🪞<span style="font-size: 10px;">${variableChar} × </span>🍰<span style="font-size: 10px;">${variableChar}</span>🪞<span style="font-size: 10px;">) | ${variableChar} ∈ { </span>${elementsStr}<span style="font-size: 10px;"> }</span> => ${total.toFixed(4)}`;
             
             // Formater albedoReflectorCoeff pour l'affichage
             const formatNumber = (value) => {
@@ -1002,10 +968,13 @@
             
             // Ajouter les formules de calcul des couvertures
             let coverageFormulas = [];
-            const epoch = window.epoch;
-            const T_surface_K = window.T0 || 255;
+            const DATA = window.DATA;
+            const epochId = DATA['📅'] ? DATA['📅']['📅'] : null;
+            const epochIndex = epochId ? window.TIMELINE.findIndex(item => item['📅'] === epochId) : 0;
+            const EPOCH = window.TIMELINE[epochIndex];
+            const T_surface_K = DATA['⏳']['🌡️'] || 255;
             const T_surface_C = T_surface_K - 273.15;
-            const isHadeen = epoch?.id === 'hadeen';
+            const isHadeen = EPOCH && EPOCH['📅'] === '🌋';
             const ocean_coverage = albedo['🍰🪞🌊'];
             const ice_coverage = albedo['🍰🪞🧊'];
             const forest_coverage = albedo['🍰🪞🌳'];
@@ -1136,52 +1105,60 @@
         }
         
         function displayResults(result) {
+            const DATA = window.DATA;
             const configDiv = document.getElementById('config');
             const configContent = document.getElementById('config-content');
             
             if (!configDiv || !configContent) return;
             
-            // Récupérer l'époque directement depuis timeline avec l'index (pas de copie)
-            const epochIndex = (typeof window.currentEpochIndex !== 'undefined' && window.currentEpochIndex !== null) 
-                ? window.currentEpochIndex 
-                : 0;
-            const epoch = window.timeline && window.timeline[epochIndex] ? window.timeline[epochIndex] : null;
+            // Récupérer l'époque directement depuis TIMELINE avec l'index depuis DATA
+            const epochIdFromData = DATA['📅'] ? DATA['📅']['📅'] : null;
+            const epochIndex = epochIdFromData ? window.TIMELINE.findIndex(item => item['📅'] === epochIdFromData) : 0;
+            const EPOCH = window.TIMELINE[epochIndex];
+            
+            // Récupérer le nom de l'époque
+            const epochId = EPOCH ? EPOCH['📅'] : '';
+            const epochName = epochId && window.CHARS_DESC ? window.CHARS_DESC[epochId] : epochId;
+            
+            // Mettre à jour le titre avec le nom de l'époque
+            const configTitle = configDiv.querySelector('h2');
+            if (configTitle) {
+                configTitle.innerHTML = `📋 Configuration <span style="color: beige; font-size: 10px; font-weight: normal;"> ${epochName}</span> <button class="toggle-button" onclick="toggleConfig()">+</button>`;
+            }
             
             let html = '';
             
             // 0. État des activations [getEnabledStates@compute.js]
-            html += json2html(window.enabledStates, '⚙️ États activés', 'getEnabledStates@compute.js', 'enabledStates');
+            html += json2html(DATA['🔘'], '⚙️ États activés', 'getEnabledStates@compute.js', 'enabledStates');
             
             // 1. 💫📜 [getEpochDateConfig@compute.js] - utiliser DATA directement
-            const epochId = epoch ? epoch['📅'] : '';
-            const epochName = epochId && window.CHARS_DESC ? window.CHARS_DESC[epochId] : epochId;
             // Récupérer 🎓💫📜 depuis DATA['📜'] pour afficher +(50*🎓💫📜)Ma
-            const ticTime = window.DATA['📜']['📿💫'] || 0;
+            const ticTime = DATA['📜']['📿💫'] || 0;
             const ticTimeDisplay = ticTime > 0 ? ` +(${ticTime}×50)Ma` : '';
-            const dateConfigTitle = `💫📜 <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}${ticTimeDisplay}</span>`;
-            html += json2html(window.DATA['📜'], dateConfigTitle, 'getEpochDateConfig@compute.js', 'dateConfig');
+            const dateConfigTitle = `💫📜 <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}${ticTimeDisplay}</span>`;
+            html += json2html(DATA['📜'], dateConfigTitle, 'getEpochDateConfig@compute.js', 'dateConfig');
             
-            // 2. 📅 Événements [epoch['🕰']] - utiliser epoch['🕰'] directement depuis timeline
-            if (epoch && epoch['🕰']) {
-                const eventsTitle = `📅 Événements <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`;
-                html += json2html(epoch['🕰'], eventsTitle, 'epoch[\'🕰\']', 'events');
+            // 2. 📅 Événements [EPOCH['🕰']] - utiliser EPOCH['🕰'] directement depuis TIMELINE
+            if (EPOCH && EPOCH['🕰']) {
+                const eventsTitle = `📅 Événements <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`;
+                html += json2html(EPOCH['🕰'], eventsTitle, 'EPOCH[\'🕰\']', 'events');
             }
             
             // 3. ⚖️ [getMasses@compute.js] - utiliser DATA directement
-            html += json2html(window.DATA['⚖️'], '⚖️', 'getMasses@compute.js', 'masses');
+            html += json2html(DATA['⚖️'], '⚖️', 'getMasses@compute.js', 'masses');
             
             // 4. 🌬 Composition atmosphérique [calculateAtmosphereComposition@calculations_atm.js] - utiliser DATA directement
-            html += json2html(window.DATA['🌬'], '🌬 Composition atmosphérique', 'calculateAtmosphereComposition@calculations_atm.js', 'atm');
+            html += json2html(DATA['🌬'], '🌬 Composition atmosphérique', 'calculateAtmosphereComposition@calculations_atm.js', 'atm');
             
             // 5. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js] - utiliser DATA directement
-            html += json2html(window.DATA['💧'], '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o');
+            html += json2html(DATA['💧'], '💧 Résultats H2O', 'calculateH2OParameters@calculations_h2o.js', 'h2o');
             
             // 6. 🪞 Albedo [calculateAlbedo@calculations_albedo.js] - utiliser DATA directement
             // Construire le HTML avec la formule intégrée dans config-section après config-title
-            if (window.DATA['🪞']) {
-                const albedoHtml = json2html(window.DATA['🪞'], '🪞 Albedo', 'calculateAlbedo@calculations_albedo.js', 'albedo');
+            if (DATA['🪞']) {
+                const albedoHtml = json2html(DATA['🪞'], '🪞 Albedo', 'calculateAlbedo@calculations_albedo.js', 'albedo');
                 if (window.albedoReflectorCoeff) {
-                    const formula = calculateAlbedoFormula(window.DATA['🪞'], window.albedoReflectorCoeff);
+                    const formula = calculateAlbedoFormula(DATA['🪞'], window.albedoReflectorCoeff);
                     // Insérer la formule après config-title (avant config-value)
                     html += albedoHtml.replace('<div class="config-value"', formula + '<div class="config-value"');
                 } else {
@@ -1190,17 +1167,17 @@
             }
             
             // 7. 🌕 Noyau [getNoyau@compute.js] - utiliser DATA directement
-            html += json2html(window.DATA['🌕'], `🌕 Noyau <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`, 'getNoyau@compute.js', 'noyau');
+            html += json2html(DATA['🌕'], `🌕 Noyau <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`, 'getNoyau@compute.js', 'noyau');
             
             // 8. ☀️ Soleil [getSoleil@compute.js] - utiliser DATA directement
-            html += json2html(window.DATA['☀️'], `☀️ Soleil <span style="color: beige; font-size: 0.9em; font-weight: normal;">${epochName}</span>`, 'getSoleil@compute.js', 'soleil');
+            html += json2html(DATA['☀️'], `☀️ Soleil <span style="color: beige; font-size: 10px; font-weight: normal;">${epochName}</span>`, 'getSoleil@compute.js', 'soleil');
             
             // 9. ☀️ Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
             // Construire le HTML avec les formules intégrées
-            // window.flux est créé dans calculations_flux.js ligne 640
-            if (window.flux) {
-                const fluxHtml = json2html(window.flux, '☀️ Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux');
-                const fluxFormulas = calculateFluxFormulas(window.flux, window.DATA['☀️'], window.DATA['🪞']);
+            // DATA['🧲'] contient les flux radiatifs
+            if (DATA['🧲']) {
+                const fluxHtml = json2html(DATA['🧲'], '☀️ Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux');
+                const fluxFormulas = calculateFluxFormulas(DATA['🧲'], DATA['☀️'], DATA['🪞']);
                 // Insérer les formules après config-title (avant config-value)
                 html += fluxHtml.replace('<div class="config-value"', fluxFormulas + '<div class="config-value"');
             }
@@ -1213,6 +1190,7 @@
         }
         
         function displayConvergence() {
+            const DATA = window.DATA;
             const convergenceDiv = document.getElementById('convergence');
             const convergenceContent = document.getElementById('convergence-content');
             
@@ -1220,54 +1198,11 @@
             
             let html = '';
             
-            // Afficher toutes les itérations avec leurs étapes intermédiaires
-            if (window.fluxStateHistory && window.fluxStateHistory.length > 0) {
-                window.fluxStateHistory.forEach((iterationData, index) => {
-                    // Afficher le cycle (avant step1)
-                    if (iterationData.step0_cycle) {
-                        html += json2html(iterationData.step0_cycle, `🔄 Cycle ${index + 1}`, 'computeRadiativeTransfer@calculations_flux.js', 'step0_cycle');
-                    }
-                    
-                    // Afficher toutes les étapes intermédiaires pour chaque itération
-                    // Note: Étape 1 - H2O supprimée (redondante : 🥒🌬💧 dans atm, 🌡️⏳ dans step0_cycle)
-                    if (iterationData.step2_solar) {
-                        html += json2html(iterationData.step2_solar, `📊 Étape 2 - Flux solaire (Itération ${index + 1})`, 'calculateSolarFluxAbsorbed@calculations_albedo.js', 'step2_solar');
-                    }
-                    if (iterationData.step3_geothermal) {
-                        html += json2html(iterationData.step3_geothermal, `📊 Étape 3 - Géothermique (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step3_geothermal');
-                    }
-                    if (iterationData.step4_fluxIn) {
-                        html += json2html(iterationData.step4_fluxIn, `📊 Étape 4 - Flux entrant (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step4_fluxIn');
-                    }
-                    if (iterationData.step5_fluxOut) {
-                        html += json2html(iterationData.step5_fluxOut, `📊 Étape 5 - Flux sortant (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step5_fluxOut');
-                    }
-                    if (iterationData.step5_spectral) {
-                        html += json2html(iterationData.step5_spectral, `📊 Étape 5b - Calcul spectral (Itération ${index + 1})`, 'calculateFluxForT0@calculations.js', 'step5_spectral');
-                    }
-                    if (iterationData.step6_delta) {
-                        html += json2html(iterationData.step6_delta, `📊 Étape 6 - Delta (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step6_delta');
-                    }
-                    if (iterationData.step7_tolerance) {
-                        html += json2html(iterationData.step7_tolerance, `📊 Étape 7 - Tolérance (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step7_tolerance');
-                    }
-                    
-                    // Afficher la conclusion (après step7)
-                    if (iterationData.step8_conclusion) {
-                        html += json2html(iterationData.step8_conclusion, `📋 Conclusion (Itération ${index + 1})`, 'computeRadiativeTransfer@calculations_flux.js', 'step8_conclusion');
-                    }
-                    
-                    // Afficher fluxState pour cette itération (après toutes les étapes)
-                    html += json2html(iterationData.fluxState, `⚙ Convergence - Itération ${index + 1}`, 'computeRadiativeTransfer@calculations_flux.js', 'fluxState');
-                    
-                    // Ajouter un séparateur entre les cycles (sauf pour le dernier)
-                    if (index < window.fluxStateHistory.length - 1) {
-                        html += '<div style="margin: 20px 0; border-top: 2px solid #ccc; padding-top: 20px;"></div>';
-                    }
-                });
-            } else if (window.fluxState) {
-                // Fallback : afficher le dernier fluxState si l'historique n'existe pas
-                html += json2html(window.fluxState, '⚙ Convergence', 'computeRadiativeTransfer@calculations_flux.js', 'fluxState');
+            // Afficher les données de convergence depuis DATA
+            if (DATA && DATA['⏳'] && DATA['🧲']) {
+                // Afficher l'état de convergence
+                html += json2html(DATA['⏳'], '⚙ Convergence', 'computeRadiativeTransfer@calculations_flux.js', 'convergence');
+                html += json2html(DATA['🧲'], '🧲 Flux radiatif', 'computeRadiativeTransfer@calculations_flux.js', 'flux');
             }
             
             convergenceContent.innerHTML = html;
@@ -1341,9 +1276,9 @@
             console.log('📄 Page de test chargée');
             console.log('🔧 Initialisation des variables globales...');
             
-            // S'assurer que timeline est chargée
-            if (window.timeline) {
-                console.log(`✅ Timeline chargée: ${window.timeline.length} époques`);
+            // S'assurer que TIMELINE est chargée
+            if (window.TIMELINE) {
+                console.log(`✅ Timeline chargée: ${window.TIMELINE.length} époques`);
                 // Générer la timeline horizontale
                 generateHorizontalTimeline();
             } else {
