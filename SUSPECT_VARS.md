@@ -2,15 +2,15 @@
 
 ## Variables qui devraient être dans `DATA` ou supprimées
 
-### 🌬️ Atmosphère / Composition
-- ✅ `window.albedo` → `DATA['🪞']` **FAIT** (calculations_albedo.js)
+### 🫧️ Atmosphère / Composition
+- ✅ `window.albedo` → `DATA['🪩']` **FAIT** (calculations_albedo.js)
 - ✅ `window.albedoReflectorCoeff` → `CONST.ALBEDO_REFLECTOR_COEFF` **FAIT** (déplacé dans physics.js - constantes physiques)
-- `window.atmosphericComposition` → `DATA['🌬']`
+- `window.atmosphericComposition` → `DATA['🫧']`
 - ✅ `window.soleil` → `DATA['☀️']` **FAIT** (supprimé de compute.js, utilise DATA directement)
 
 ### 💧 H2O / Eau
 - ✅ `window.h2o` → `DATA['💧']` **FAIT** (calculations_albedo.js)
-- `window.h2oVaporPercent` → `DATA['💧']['🍰⏳🌧']` (fraction, pas %)
+- `window.h2oVaporPercent` → `DATA['💧']['🍰🧮🌧']` (fraction, pas %)
 - `window.h2oTotalFromMeteorites` → `DATA['📜']['🔺⚖️💧☄️']` ou calculé
 - `window.h2oIceFractionFromCalculation` → `DATA['💧']['🍰💧🧊']`
 
@@ -18,7 +18,7 @@
 - ✅ `window.currentEpochIndex` → `DATA['📜']['👉']` **FAIT** (test_computeRadiativeTransfer.html)
 - ⚠️ `window.currentEpochName` → `DATA['📜']['🗿']` (logo) ou `DATA['📅']['📅']` **EN COURS** (fait dans test_computeRadiativeTransfer.html, reste dans calculations_albedo.js, calculations.js, main.js, plot.js)
 - ⚠️ `window.epoch` → `DATA['📅']` **EN COURS** (reste dans calculations.js)
-- `window.current_T0_adjusted` → `DATA['⏳']['🌡️']`
+- `window.current_T0_adjusted` → `DATA['🧮']['🌡️']`
 - `window.infoTimeMa` → `DATA['📜']['📿💫']` ou calculé depuis timeline
 
 ### 🧲 Flux / Forçage
@@ -32,7 +32,7 @@
 - `window.savedCO2` → `DATA['📜']['⚖️🏭']` ou backup ?
 - `window.savedCH4` → `DATA['📜']['⚖️⛽']` ou backup ?
 - `window.savedH2O` → `DATA['📜']['⚖️💧']` ou backup ?
-- `window.convergencePrecision_K` → `DATA['⏳']['🧲🔬']`
+- `window.convergencePrecision_K` → `DATA['🧮']['🧲🔬']`
 
 ### 🌋 Volcanisme / Bonus
 - `window.volcanoIceReduction` → `DATA['📜']` ou calculé ?
@@ -40,14 +40,14 @@
 
 ### 📊 Plot / Affichage
 - `window.plotData` → À vérifier (données d'affichage ou calcul ?)
-- `window.currentBlackBodyColor` → Calculé depuis `DATA['⏳']['🌡️']`
+- `window.currentBlackBodyColor` → Calculé depuis `DATA['🧮']['🌡️']`
 - `window.currentMeteoriteCount` → `DATA['📜']['📿☄️']`
 
 ### 🔘 États / Flags
 - `window.methaneEnabled` → `DATA['🔘']['🔘⛽📛']`
 - `window.waterVaporEnabled` → `DATA['🔘']['🔘💧📛']`
 - `window.isAnim` → `DATA['🔘']['🔘🎬']`
-- `window.isAlbedo` → `DATA['🔘']['🔘🪞']`
+- `window.isAlbedo` → `DATA['🔘']['🔘🪩']`
 - `window.isCO2_eds` → `DATA['🔘']['🔘🏭📛']`
 - `window.isCH4_eds` → `DATA['🔘']['🔘⛽📛']`
 - `window.isH2O_eds` → `DATA['🔘']['🔘💧📛']`
@@ -69,7 +69,7 @@
 
 ### ✅ Terminé
 1. ✅ **`window.soleil`** supprimé - utilise `DATA['☀️']` directement
-2. ✅ **`window.albedo`** supprimé - utilise `DATA['🪞']` directement
+2. ✅ **`window.albedo`** supprimé - utilise `DATA['🪩']` directement
 3. ✅ **`window.h2o`** remplacé par `DATA['💧']` dans `calculations_albedo.js`
 4. ✅ **`window.currentEpochIndex`** remplacé par `DATA['📜']['👉']` dans `test_computeRadiativeTransfer.html`
 

@@ -19,9 +19,9 @@
 // VARIABLES GLOBALES D'ÉTAT
 // ============================================================================
 
-// T0 est dans DATA['⏳']['🌡️'], pas besoin de variable globale
-// Phase est dans DATA['⏳']['⏳⚧'], pas besoin de variable globale
-// signeDeltaFirst est dans DATA['⏳']['⏳☯'], pas besoin de variable globale
+// T0 est dans DATA['🧮']['🌡️'], pas besoin de variable globale
+// Phase est dans DATA['🧮']['🧮⚧'], pas besoin de variable globale
+// signeDeltaFirst est dans DATA['🧮']['🧮☯'], pas besoin de variable globale
 // flux_entrant est calculé localement dans computeRadiativeTransfer, pas besoin de variable globale
 
 // ============================================================================
@@ -56,8 +56,8 @@ function getEnabledStates() {
     DATA['🔘']['🔘⛽📛'] = ch4Cell ? ch4Cell.classList.contains('checked') : true;
     const co2Cell = findButtonByLogo('🏭');
     DATA['🔘']['🔘🏭📛'] = co2Cell ? co2Cell.classList.contains('checked') : true;
-    const albedoCell = findButtonByLogo('🪞');
-    DATA['🔘']['🔘🪞'] = albedoCell ? albedoCell.classList.contains('checked') : true;
+    const albedoCell = findButtonByLogo('🪩');
+    DATA['🔘']['🔘🪩'] = albedoCell ? albedoCell.classList.contains('checked') : true;
     // Chercher le bouton animation par son ID (anim-toggle)
     const animBtn = document.getElementById('anim-toggle');
     DATA['🔘']['🔘🎬'] = animBtn ? animBtn.classList.contains('selected') : false;
@@ -88,18 +88,15 @@ function getMasses() {
     DATA['⚖️']['⚖️⛽'] = EPOCH['⚖️⛽'];
     DATA['⚖️']['⚖️💧'] = h2o_kg;
     DATA['⚖️']['⚖️🌫'] = EPOCH['⚖️🌫'];
+    DATA['⚖️']['⚖️💨'] = EPOCH['⚖️💨'];  // N2 depuis EPOCH
     
-    // Utiliser la masse atmosphérique depuis l'EPOCH (source de vérité)
-    // Si ⚖️🌬 n'est pas défini dans l'EPOCH, calculer comme somme des gaz
-    DATA['⚖️']['⚖️🌬'] = EPOCH['⚖️🌬'] || (DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫'] + (EPOCH['⚖️💨'] || 0));
-    // Note : H2O atmosphérique (vapeur) sera calculé séparément dans calculateH2OParameters
+    // ⚖️🫧 = masse atmosphérique totale (air sec, sans vapeur d'eau)
+    // ⚖️🫧 = somme de tous les gaz atmosphériques (CO2, CH4, O2, N2)
+    DATA['⚖️']['⚖️🫧'] = DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫'] + DATA['⚖️']['⚖️💨'];
     
-    // Masse totale = masse atmosphérique + eau (liquide + glace)
-    DATA['⚖️']['⚖️📿'] = DATA['⚖️']['⚖️🌬'] + DATA['⚖️']['⚖️💧'];
-    
-    // Log getMasses - utiliser DATA directement
-    console.log(`📋 [getMasses@compute.js]`);
-    console.log(`masses=${JSON.stringify(DATA['⚖️'])}`);
+    // Logs désactivés pour réduire la taille
+    // console.log(`📋 [getMasses@compute.js]`);
+    // console.log(`masses=${JSON.stringify(DATA['⚖️'])}`);
     
     // Retourner true car DATA a été modifié
     return true;
@@ -148,7 +145,9 @@ function getEpochDateConfig() {
     }
     
     // Mettre à jour DATA directement (source unique de vérité)
-    DATA['📜']['🌡️⏳'] = EPOCH['🌡️⏳'];
+    DATA['📜']['🌡️🧮'] = EPOCH['🌡️🧮'];
+    DATA['📅']['🌡️🧮'] = EPOCH['🌡️🧮'];                  // Température attendue de l'époque
+    DATA['📅']['📿💫'] = ticTime || 0;                    // Nombre de ticTime
     DATA['📜']['📿☄️'] = meteoriteCount || 0;              // Nombre de météorites
     DATA['📜']['🔺⚖️💧☄️'] = water_added_kg || 0;               // Masse d'eau ajoutée / météorite
     DATA['📜']['📿💫'] = ticTime || 0;                     // Nombre de ticTime
@@ -160,9 +159,9 @@ function getEpochDateConfig() {
     // Calculer les masses avec getMasses() (met à jour DATA directement)
     getMasses();
     
-    // Log getEpochDateConfig - utiliser DATA directement
-    console.log(`💫🛠 [getEpochDateConfig@compute.js]`);
-    console.log(`dateConfig=${JSON.stringify(DATA['📜'])}`);
+    // Logs désactivés pour réduire la taille
+    // console.log(`💫🛠 [getEpochDateConfig@compute.js]`);
+    // console.log(`dateConfig=${JSON.stringify(DATA['📜'])}`);
     
     // Retourner true car DATA a été modifié
     return true;
@@ -189,8 +188,8 @@ function getSoleil() {
     // 🎱 représente la géométrie (division par 4 pour la moyenne sphérique)
     DATA['☀️']['🧲☀️🎱'] = DATA['☀️']['🧲☀️'] / 4;
     
-    console.log(`☀️ [getSoleil@compute.js]`);
-    console.log(`soleil=${JSON.stringify(DATA['☀️'])}`);
+    // console.log(`☀️ [getSoleil@compute.js]`);
+    // console.log(`soleil=${JSON.stringify(DATA['☀️'])}`);
     
     // Retourner true car DATA a été modifié
     return true;
@@ -230,8 +229,8 @@ function getNoyau() {
     // Puissance totale du noyau (en Watts) - depuis 🔋🌕
     DATA['🌕']['🔋🌕'] = EPOCH['🔋🌕'];
     
-    console.log(`🌕 [getNoyau@compute.js]`);
-    console.log(`noyau=${JSON.stringify(DATA['🌕'])}`);
+    // console.log(`🌕 [getNoyau@compute.js]`);
+    // console.log(`noyau=${JSON.stringify(DATA['🌕'])}`);
     
     // Retourner true car DATA a été modifié
     return true;
@@ -246,6 +245,6 @@ window.getMasses = getMasses; // Exposer getMasses
 window.getEnabledStates = getEnabledStates; // Exposer getEnabledStates
 window.getSoleil = getSoleil; // Exposer getSoleil
 window.getNoyau = getNoyau; // Exposer getNoyau
-// T0 est dans DATA['⏳']['🌡️'], pas besoin de window.T0
+// T0 est dans DATA['🧮']['🌡️'], pas besoin de window.T0
 // getLogo et getLogoKey sont exposés par alphabet.js
 

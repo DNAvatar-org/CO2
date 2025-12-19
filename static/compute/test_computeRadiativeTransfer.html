@@ -55,7 +55,7 @@
         
         .controls {
             background: #2a2a2a;
-            padding: 20px;
+            padding: 10px 20px;
             border-radius: 8px;
             margin-bottom: 20px;
             display: flex;
@@ -372,8 +372,8 @@
         }
         
         .config-section {
-            margin-bottom: 20px;
-            padding: 15px;
+            margin-bottom: 5px;
+            padding: 10px;
             background: #1a1a1a;
             border-radius: 4px;
         }
@@ -393,13 +393,11 @@
         
         .formule {
             color: gray;
-            margin-top: -5px;
-            margin-left: 35px;
-            font-size: 9px;
+            margin: -10px;
+            font-size: 10px;
         }
         
         .formule-container {
-            display: none;
             margin-top: 10px;
             padding: 10px;
             background: rgba(0,0,0,0.2);
@@ -408,13 +406,16 @@
             font-weight: bold;
         }
         
-        .results.replied .config-title {
+        .formule-container.notVisible {
             display: none;
         }
         
-        .results.replied .config-section {
-            margin-bottom: 0;
-            padding: 5px;
+        .formule-container.visible {
+            display: block;
+        }
+        
+        .results.replied .config-title {
+            display: none;
         }
         
         .results.replied .formule {
@@ -538,24 +539,24 @@
         <div class="controls">
             <div class="controls-left" style="position: relative; width: 100%;">
                 <!-- En-tête window.TIMELINE (superposé en z-index) -->
-                <div style="position: absolute; top: 0; left: 0; font-size: 10px; color: #888; z-index: 10; background: #2a2a2a; padding: 2px 5px;">> window.TIMELINE</div>
+                <div style="position: absolute; top: -8px; left: -5px; font-size: 10px; color: #888; z-index: 10; background: #2a2a2a; padding: 2px 5px;">> window.TIMELINE</div>
                 
                 <!-- Timeline horizontale (une seule ligne) -->
-                <div class="timeline-horizontal-container" style="padding-top: 15px;">
+                <div class="timeline-horizontal-container" style="padding-top: 5px;">
                         <!-- 📜 Époque avec date -->
-                        <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; padding: 0 10px; border-right: 1px solid #444;">
+                        <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
                             <span class="timeline-hourglass" style="font-size: 20px;">📜</span>
                             <span class="epoch-start-time" id="epoch-start-time" style="font-size: 10px; margin-top: 2px;">-5000 Ma</span>
                         </div>
                         
                         <!-- 📅 Date avec ticTime -->
-                        <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; padding: 0 10px; border-right: 1px solid #444;">
+                        <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
                             <span class="timeline-hourglass" style="font-size: 20px;">📅</span>
                             <span class="info-time" id="info-time" style="font-size: 10px; margin-top: 2px;">+0 Ma</span>
                         </div>
                         
                         <!-- 🕰 Horloge avec événements -->
-                        <div class="timeline-horloge-display" style="display: flex; flex-direction: column; align-items: center; padding: 0 10px; border-right: 1px solid #444;">
+                        <div class="timeline-horloge-display" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
                             <span class="horloge-icon" style="font-size: 20px;">🕰</span>
                             <div class="timeline-events-logos" id="timeline-events-logos" style="margin-top: 2px;">
                                 <!-- Logos d'événements (météorites, etc.) -->
@@ -576,13 +577,13 @@
             </div>
         </div>
         
-        <div id="config" class="results replied" style="display: none;">
-            <h2>📋 Configuration <button class="toggle-button" onclick="toggleConfig()">+</button></h2>
+        <div id="config" class="results replied">
+            <h2>📋 Configuration <button class="toggle-button" onclick="toggleConfig()">Formules +</button></h2>
             <div id="config-content"></div>
         </div>
         
-        <div id="convergence" class="results replied" style="display: none;">
-            <h2>⚙ Convergence <button class="toggle-button" onclick="toggleConvergence()">+</button></h2>
+        <div id="convergence" class="results replied">
+            <h2>⚙ Convergence <button class="toggle-button" onclick="toggleConvergence()">Formules +</button></h2>
             <div id="convergence-content"></div>
         </div>
         
@@ -948,20 +949,40 @@
             if (!window.DATA) window.DATA = {};
             if (!window.DATA['📜']) window.DATA['📜'] = {};
             if (!window.DATA['🔘']) window.DATA['🔘'] = {};
-            if (!window.DATA['⏳']) window.DATA['⏳'] = {};
+            if (!window.DATA['🧮']) window.DATA['🧮'] = {};
+            
+            // Récupérer le bouton animation et son état AVANT d'initialiser DATA
+            const animBtn = document.getElementById('anim-toggle');
+            const animEnabled = animBtn ? animBtn.classList.contains('selected') : false;
             
             // Initialiser les valeurs dans DATA
             window.DATA['📜']['📿💫'] = 0;
-            window.DATA['⏳']['🌡️'] = 180.0;
+            // IMPORTANT: Si animation activée, on NE TOUCHE PAS à DATA['🧮']['🌡️']
+            // On garde la température actuelle pour continuité entre époques
+            // Note: getEpochDateConfig() sera appelé plus tard et initialisera DATA['📅']['🌡️🧮']
+            if (!animEnabled) {
+                // Si animation désactivée, on initialisera avec DATA['📅']['🌡️🧮'] après getEpochDateConfig()
+                // Pour l'instant, on initialise avec une valeur par défaut si nécessaire
+                if (!window.DATA['🧮'] || !window.DATA['🧮']['🌡️'] || window.DATA['🧮']['🌡️'] === 0) {
+                const epochIndex = window.DATA['📜'] && window.DATA['📜']['👉'] !== undefined ? window.DATA['📜']['👉'] : 0;
+                const EPOCH = window.TIMELINE[epochIndex];
+                    window.DATA['🧮']['🌡️'] = EPOCH ? EPOCH['🌡️🧮'] : 180.0;
+                }
+            } else {
+                // Si animation activée, on ne touche PAS à DATA['🧮']['🌡️']
+                // Elle sera utilisée dans calculateT0() ligne 43 comme T0_base
+                if (!window.DATA['🧮'] || !window.DATA['🧮']['🌡️'] || window.DATA['🧮']['🌡️'] === 0) {
+                    // Seulement si elle n'existe vraiment pas, on l'initialise
+                    const epochIndex = window.DATA['📜'] && window.DATA['📜']['👉'] !== undefined ? window.DATA['📜']['👉'] : 0;
+                    const EPOCH = window.TIMELINE[epochIndex];
+                    window.DATA['🧮']['🌡️'] = EPOCH ? EPOCH['🌡️🧮'] : 180.0;
+                }
+            }
             
             // Initialiser les états activés
             if (window.getEnabledStates) {
                 window.getEnabledStates();
             }
-            
-            // Récupérer le bouton animation et son état
-            const animBtn = document.getElementById('anim-toggle');
-            const animEnabled = animBtn ? animBtn.classList.contains('selected') : false;
             
             // Créer ou mettre à jour plot-anim-toggle-checkbox pour compatibilité avec compute.js
             let plotAnimToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
@@ -983,53 +1004,19 @@
             try {
                 initializeGlobals();
                 
-                // Afficher la grammaire complète selon grammar.txt - utiliser DATA directement
-                console.log('📖 Grammar.txt - Structure complète des objets:');
-                console.log('');
-                console.log(`enabledStates=${JSON.stringify(window.DATA['🔘'])}`);
-                console.log('');
-                // dateConfig sera logué après getEpochDateConfig() dans compute.js
-                console.log('dateConfig sera logué après getEpochDateConfig()');
-                console.log('');
-                // events sera logué après récupération de epoch
-                console.log('events sera logué après récupération de epoch');
-                console.log('');
-                // masses sera logué après getMasses() dans compute.js
-                console.log('masses sera logué après getMasses()');
-                console.log('');
-                // atm sera logué après calculateAtmosphereComposition()
-                console.log('atm sera logué après calculateAtmosphereComposition()');
-                console.log('');
-                // h2o sera logué après calculateH2OParameters()
-                console.log('h2o sera logué après calculateH2OParameters()');
-                console.log('');
-                // albedoReflectorCoeff (dans CONST)
-                const CONST = window.CONST;
-                console.log(`albedoReflectorCoeff=${JSON.stringify(CONST['🪞🍰'])}`);
-                console.log('');
-                // albedo sera logué après calculateAlbedo()
-                console.log('albedo sera logué après calculateAlbedo()');
-                console.log('');
-                
+                // Logs désactivés pour réduire la taille (déjà affichés dans l'UI)
                 const DATA = window.DATA;
-                console.log('🧪 Démarrage du test computeRadiativeTransfer');
-                console.log(`📅 Époque: ${window.DATA['📜']['🗿']}`);
-                const animBtn2 = document.getElementById('anim-toggle');
-                const animEnabled2 = animBtn2 ? animBtn2.classList.contains('selected') : false;
-                console.log(`🎬 Animation: ${animEnabled2}`);
                 
                 // 1. getEpochDateConfig() - Récupérer la config de date
                 const dateConfig = window.getEpochDateConfig ? window.getEpochDateConfig() : null;
                 
-                // Loguer les objets directement après getEpochDateConfig
-                console.log('');
-                console.log('📊 Objets après getEpochDateConfig():');
-                console.log(`dateConfig=${JSON.stringify(DATA['📜'])}`);
-                console.log(`masses=${JSON.stringify(DATA['⚖️'])}`);
-                const EPOCH = DATA['📅'];
-                if (EPOCH && EPOCH['🕰']) {
-                    console.log(`events=${JSON.stringify(EPOCH['🕰'])}`);
+                // 1.1. Initialiser DATA['🧮']['🌡️'] selon 🔘🎬 après getEpochDateConfig()
+                // Si animation désactivée (🔘🎬 = false), alors 🧮.🌡️ = 📅.🌡️🧮
+                if (!DATA['🔘']['🔘🎬']) {
+                    // Animation désactivée : initialiser avec 📅.🌡️🧮 (température attendue de l'époque)
+                    DATA['🧮']['🌡️'] = DATA['📅']['🌡️🧮'];
                 }
+                // Si animation activée (🔘🎬 = true), on garde DATA['🧮']['🌡️'] tel quel (continuité)
                 
                 // 1.5. Afficher la configuration initiale AVANT les calculs
                 displayResults(null);
@@ -1068,17 +1055,17 @@
             
             // Calculer le total
             elements.forEach(element => {
-                const coverage_key = `🍰🪞${element}`;
-                const coeff_key = `🍰${element}🪞`;
-                const coverage = albedo[coverage_key];
-                const coeff = albedoReflectorCoeff[coeff_key];
+                const coverage_key = `🍰🪩${element}`;
+                const coeff_key = `🪩🍰${element}`; // CORRECTION: clé correcte pour CONST['🪩🍰']
+                const coverage = albedo[coverage_key] || 0;
+                const coeff = albedoReflectorCoeff[coeff_key] || 0;
                 total += coverage * coeff;
             });
             
             // essais graphique, ne modifie pas la formule : 
             const variableChar = '❀';//❉✪✩⛬✤ //<i></i>
             const elementsStr = elements.join(',');
-            const formula = `🍰🪞📿<span style="font-size: 10px;"> = Σ(</span>🍰🪞<span style="font-size: 10px;">${variableChar} × </span>🍰<span style="font-size: 10px;">${variableChar}</span>🪞<span style="font-size: 10px;">) | ${variableChar} ∈ { </span>${elementsStr}<span style="font-size: 10px;"> }</span> => ${total.toFixed(4)}`;
+            const formula = `🍰🪩📿<span style="font-size: 10px;"> = Σ(</span>🍰🪩<span style="font-size: 10px;">${variableChar} × </span>🪩🍰<span style="font-size: 10px;">${variableChar}</span><span style="font-size: 10px;">) | ${variableChar} <strong style="font-size: 1.1em;">∈</strong> { </span>${elementsStr}<span style="font-size: 10px;"> }</span>`;
             
             // Formater albedoReflectorCoeff pour l'affichage
             const formatNumber = (value) => {
@@ -1093,53 +1080,21 @@
             const coeffEntries = Object.entries(albedoReflectorCoeff).map(([k, v]) => `'${k}':${formatValue(v)}`);
             const coeffStr = `{${coeffEntries.join(', ')}}`;
             
-            // Ajouter les formules de calcul des couvertures
-            let coverageFormulas = [];
-            const DATA = window.DATA;
-            const EPOCH = DATA['📅'];
-            const T_surface_K = DATA['⏳']['🌡️'] || 255;
-            const T_surface_C = T_surface_K - 273.15;
-            const isHadeen = DATA['📜']['🗿'] === '🔥';
-            const ocean_coverage = albedo['🍰🪞🌊'];
-            const ice_coverage = albedo['🍰🪞🧊'];
-            const forest_coverage = albedo['🍰🪞🌳'];
-            const volcano_coverage = albedo['🍰🪞🌋'];
-            const desert_coverage = albedo['🍰🪞🏖'];
-            const cloud_coverage = albedo['🍰🪞⛅'];
+            // Formule simplifiée : seulement la formule principale et les coefficients
+            let formulasHtml = `<strong>${formula}</strong>`;
+            formulasHtml += `<br>${coeffStr}`;
             
-            // Formules de calcul des couvertures
-            if (isHadeen) {
-                coverageFormulas.push(`🍰🪞🌋 = 1.00 (Hadéen: volcan 100%)`);
-                coverageFormulas.push(`🍰🪞🏖 = 0.00 (Hadéen: désert 0%)`);
-            } else {
-                if (volcano_coverage > 0) {
-                    coverageFormulas.push(`🍰🪞🌋 = min(1.0, 🧲🌕 / 10000) si 🧲🌕 > 1000 W/m²`);
-                }
-                if (ocean_coverage > 0) {
-                    coverageFormulas.push(`🍰🪞🌊 = 🍰💧🌊 (depuis h2o)`);
-                }
-                if (ice_coverage > 0) {
-                    coverageFormulas.push(`🍰🪞🧊 = 🍰💧🧊 (depuis h2o)`);
-                }
-                if (forest_coverage > 0) {
-                    coverageFormulas.push(`🍰🪞🌳 = min(0.5, 🍰🪞🌊 × (1 - 🌡️/30)) si 🌡️ < 30°C et 🍰🪞🌊 > 0.1`);
-                }
-                if (desert_coverage > 0) {
-                    coverageFormulas.push(`🍰🪞🏖 = ${desert_coverage.toFixed(2)} (depuis config, pas calculé comme surface restante)`);
-                } else {
-                    coverageFormulas.push(`🍰🪞🏖 = 0.00 (non défini dans config, pas de désert par défaut)`);
-                }
-            }
-            if (cloud_coverage > 0) {
-                coverageFormulas.push(`🍰🪞⛅ = 🍰💧⛅ (depuis h2o)`);
-            }
+            // Ajouter les formules de calcul de chaque couverture
+            formulasHtml += `<br><br><strong>Formules de couverture :</strong><br>`;
+            formulasHtml += `🍰🪩🌊 = Volume_océan / Profondeur_moyenne / Surface_planète<br>`;
+            formulasHtml += `&nbsp;&nbsp;&nbsp;&nbsp;= (Masse_eau_océan / Densité_eau) / Profondeur / (4πR²)<br>`;
+            formulasHtml += `&nbsp;&nbsp;&nbsp;&nbsp;= (🍰💧🌊 × ⚖️💧 / 1000) / 3700 / (4πR²)<br>`;
+            formulasHtml += `🍰🪩🌳 = min(0.5, 🍰🪩🌊 × (1 - T_surface_C / 30)) si T < 30°C et 🍰🪩🌊 > 0.1<br>`;
+            formulasHtml += `🍰🪩🧊 = min(0.9, 🍰💧🧊 × 0.9) (fraction eau en glace → couverture surface)<br>`;
+            formulasHtml += `🍰🪩🏖 = 1.0 - (🍰🪩🌋 + 🍰🪩🌊 + 🍰🪩🌳 + 🍰🪩🧊) (surface restante)<br>`;
+            formulasHtml += `🍰🪩⛅ = calculé depuis température et humidité (estimateCloudCoverage)<br>`;
             
-            let formulasHtml = formula;
-            if (coverageFormulas.length > 0) {
-                formulasHtml += '<br><small>Formules couvertures:</small><br><small>' + coverageFormulas.join('<br>') + '</small>';
-            }
-            
-            return `<div class="formule">${formulasHtml}<br>albedoReflectorCoeff=${coeffStr}</div>`;
+            return `<div class="formule">${formulasHtml}</div>`;
         }
         
         // Fonction pour calculer et afficher les formules des flux
@@ -1147,27 +1102,58 @@
             if (!flux) return '';
             
             let formulas = [];
+            const CONST = window.CONST;
+            const DATA = window.DATA;
             
-            // Formule pour 🧲☀️🔽 (flux solaire absorbé)
-            // SOURCE RÉELLE : window.flux['🧲☀️🔽'] est calculé avec calculateSolarFluxAbsorbed()
-            // qui utilise maintenant window.soleil['🧲☀️🎱'] comme source unique
-            // Par définition : 🧲☀️🎱 = 🧲☀️📜 / 4 (rapporté au rayon au sol pour les m²)
-            // 🧲☀️🔽 = 🧲☀️🎱 × (1 - 🍰🪞📿) (on enlève l'albedo, c'est le flux au sol reçu du soleil)
-            if (flux['🧲☀️🔽'] !== undefined && soleil && soleil['🧲☀️🎱'] !== undefined && albedo && albedo['🍰🪞📿'] !== undefined) {
+            // 🧲☀️🔽: 🧲☀️🎱 × (1 - 🍰🪩📿) = Flux solaire absorbé
+            if (flux['🧲☀️🔽'] !== undefined && soleil && soleil['🧲☀️🎱'] !== undefined && albedo && albedo['🍰🪩📿'] !== undefined) {
                 const solar_avg = soleil['🧲☀️🎱'];
-                const albedo_val = albedo['🍰🪞📿'];
+                const albedo_val = albedo['🍰🪩📿'];
                 const calculated = solar_avg * (1 - albedo_val);
                 const actual = flux['🧲☀️🔽'];
-                
-                // Vérifier que le calcul correspond (tolérance 0.01 W/m²)
                 const match = Math.abs(calculated - actual) < 0.01 ? '✓' : '⚠';
-                formulas.push(`<strong>🧲☀️🔽</strong> = <strong>🧲☀️🎱</strong> × (1 - <strong>🥒🪞🎓</strong>) = ${solar_avg.toFixed(2)} × (1 - ${albedo_val.toFixed(4)}) = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+                formulas.push(`<strong>🧲☀️🔽</strong>: <strong>🧲☀️🎱</strong> × (1 - <strong>🍰🪩📿</strong>) = ${solar_avg.toFixed(2)} × (1 - ${albedo_val.toFixed(4)}) = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
             }
             
-            // Formule pour 🧲🔼 (flux sortant - Stefan-Boltzmann σT⁴)
-            // Le flux sortant est calculé comme σT⁴ (corps noir) ou via calculateFluxForT0 (spectral)
-            if (flux['🧲🔼'] !== undefined) {
-                formulas.push(`<strong>🧲🔼</strong> = σT⁴ (corps noir) ou calcul spectral si disponible`);
+            // 🧲🌕🔽: Flux géothermique (constant)
+            if (flux['🧲🌕🔽'] !== undefined) {
+                formulas.push(`<strong>🧲🌕🔽</strong>: Flux géothermique (constant) = ${flux['🧲🌕🔽'].toFixed(2)} W/m²`);
+            }
+            
+            // 🧲🌑🔼: σ × T⁴ = Flux émis par la surface (corps noir théorique à température T)
+            if (flux['🧲🌑🔼'] !== undefined && DATA && DATA['🧮'] && DATA['🧮']['🌡️'] !== undefined) {
+                const T = DATA['🧮']['🌡️'];
+                const sigma = CONST.STEFAN_BOLTZMANN;
+                const calculated = sigma * Math.pow(T, 4);
+                const actual = flux['🧲🌑🔼'];
+                const match = Math.abs(calculated - actual) < 1.0 ? '✓' : '⚠';
+                formulas.push(`<strong>🧲🌑🔼</strong>: σ × T⁴ = ${sigma.toExponential(2)} × ${T.toFixed(2)}⁴ = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+                formulas.push(`&nbsp;&nbsp;&nbsp;&nbsp;Flux émis par la surface (corps noir théorique). ⚠️ Ce n'est PAS le flux qui sort au sommet (c'est 🧲🌈🔼)`);
+            }
+            
+            // 🧲🌈🔼: Σ[λ=0.1→100μm] I_λ(z_max) × Δλ = Aire sous courbe spectrale réelle
+            if (flux['🧲🌈🔼'] !== undefined) {
+                formulas.push(`<strong>🧲🌈🔼</strong>: Σ[λ=0.1→100μm] I_λ(z_max) × Δλ = ${flux['🧲🌈🔼'].toFixed(2)} W/m²`);
+                formulas.push(`&nbsp;&nbsp;&nbsp;&nbsp;Aire sous courbe spectrale réelle (émission au sommet atmosphère, après transfert radiatif couche par couche)`);
+            }
+            
+            // 🧲🪩🔼: 🧲☀️🎱 - 🧲☀️🔽 = 🧲☀️🎱 × 🍰🪩📿 = Flux réfléchi par albedo
+            if (flux['🧲🪩🔼'] !== undefined && soleil && soleil['🧲☀️🎱'] !== undefined && flux['🧲☀️🔽'] !== undefined) {
+                const solar_avg = soleil['🧲☀️🎱'];
+                const calculated1 = solar_avg - flux['🧲☀️🔽'];
+                const calculated2 = albedo && albedo['🍰🪩📿'] !== undefined ? solar_avg * albedo['🍰🪩📿'] : calculated1;
+                const actual = flux['🧲🪩🔼'];
+                const match = Math.abs(calculated2 - actual) < 0.01 ? '✓' : '⚠';
+                formulas.push(`<strong>🧲🪩🔼</strong>: <strong>🧲☀️🎱</strong> - <strong>🧲☀️🔽</strong> = <strong>🧲☀️🎱</strong> × <strong>🍰🪩📿</strong> = ${calculated2.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+            }
+            
+            // 🔺🧲: 🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 = Delta équilibre radiatif
+            if (flux['🔺🧲'] !== undefined && flux['🧲☀️🔽'] !== undefined && flux['🧲🌕🔽'] !== undefined && flux['🧲🌈🔼'] !== undefined) {
+                const calculated = flux['🧲☀️🔽'] + flux['🧲🌕🔽'] - flux['🧲🌈🔼'];
+                const actual = flux['🔺🧲'];
+                const match = Math.abs(calculated - actual) < 0.01 ? '✓' : '⚠';
+                formulas.push(`<strong>🔺🧲</strong>: <strong>🧲☀️🔽</strong> + <strong>🧲🌕🔽</strong> - <strong>🧲🌈🔼</strong> = ${flux['🧲☀️🔽'].toFixed(2)} + ${flux['🧲🌕🔽'].toFixed(2)} - ${flux['🧲🌈🔼'].toFixed(2)} = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+                formulas.push(`&nbsp;&nbsp;&nbsp;&nbsp;Delta équilibre radiatif (flux entrant - flux sortant). En équilibre: 🔺🧲 ≈ 0`);
             }
             
             if (formulas.length === 0) return '';
@@ -1228,7 +1214,28 @@
                 const formulas = [];
                 for (const key in obj) {
                     if (window.FORM[categoryKey][key]) {
-                        formulas.push(`${key}: ${window.FORM[categoryKey][key]}`);
+                        let formula = window.FORM[categoryKey][key];
+                        // Ignorer les formules dont la description commence par "!" (variables internes aux calculs)
+                        if (formula.startsWith('!')) continue;
+                        // Remplacer %1, %2, %3... par les valeurs réelles depuis obj[key]
+                        // %1 = valeur actuelle, %2 = valeur précédente (si disponible), etc.
+                        const value = obj[key];
+                        if (typeof value === 'number') {
+                            // Formater selon la valeur (notation scientifique si grand/petit)
+                            const formatValue = (val) => {
+                                if (val === 0) return '0.00';
+                                if (Math.abs(val) >= 1000 || (Math.abs(val) < 0.01 && val !== 0)) {
+                                    return val.toExponential(2);
+                                }
+                                return val.toFixed(2);
+                            };
+                            formula = formula.replace(/%1/g, formatValue(value));
+                            formula = formula.replace(/%2/g, formatValue(value)); // Pour l'instant, %2 = %1
+                        }
+                        // Rendre les symboles mathématiques plus visibles
+                        formula = formula.replace(/∀/g, '<strong style="font-size: 1.1em;">∀</strong>');
+                        formula = formula.replace(/∈/g, '<strong style="font-size: 1.1em;">∈</strong>');
+                        formulas.push(`${key}: ${formula}`);
                     }
                 }
                 if (formulas.length > 0) {
@@ -1239,9 +1246,7 @@
             let html = `
                 <div class="config-section">
                     <div class="config-value">${jsonStr}</div>
-                    <div class="formule-container">
-                        ${formuleHtml}
-                    </div>
+                    ${formuleHtml ? `<div class="formule-container notVisible">${formuleHtml}</div>` : ''}
                 </div>
             `;
             return html;
@@ -1267,7 +1272,9 @@
             // Mettre à jour le titre avec le nom de l'époque et la description
             const configTitle = configDiv.querySelector('h2');
             if (configTitle) {
-                configTitle.innerHTML = `📋 Configuration : ${epochId} ${epochName} | 📅: ${currentDateStr} <button class="toggle-button" onclick="toggleConfig()">+</button>`;
+                const button = configTitle.querySelector('.toggle-button');
+                const buttonText = button ? button.textContent : 'Formules +';
+                configTitle.innerHTML = `📋 Configuration : ${epochId} ${epochName} | 📅: ${currentDateStr} <button class="toggle-button" onclick="toggleConfig()">${buttonText}</button>`;
             }
             
             let html = '';
@@ -1300,26 +1307,29 @@
                 html += json2html(DATA['⚖️'], '', '', 'masses', '⚖️');
             }
             
-            // 6. 🌬 Composition atmosphérique [calculateAtmosphereComposition@calculations_atm.js] - utiliser DATA directement
-            if (DATA['🌬']) {
-                html += json2html(DATA['🌬'], '', '', 'atm', '🌬');
+            // 6. 🫧 Composition atmosphérique [calculateAtmosphereComposition@calculations_atm.js] - utiliser DATA directement
+            if (DATA['🫧']) {
+                html += json2html(DATA['🫧'], '', '', 'atm', '🫧');
             }
             
-            // 7. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js] - utiliser DATA directement
-            if (DATA['💧']) {
-                html += json2html(DATA['💧'], '', '', 'h2o', '💧');
+            // 7. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js] - utiliser DATA['💧_initial'] (h2o initial, ne change plus)
+            // Utiliser DATA['💧_initial'] si disponible (h2o initial), sinon DATA['💧'] (fallback)
+            const h2oForConfig = DATA['💧_initial'] || DATA['💧'];
+            if (h2oForConfig) {
+                html += json2html(h2oForConfig, '', '', 'h2o', '💧');
             }
             
-            // 8. 🪞 Albedo [calculateAlbedo@calculations_albedo.js] - utiliser DATA['🪞_initial'] (albedo initial, ne change plus)
+            // 8. 🪩 Albedo [calculateAlbedo@calculations_albedo.js] - utiliser DATA['🪩_initial'] (albedo initial, ne change plus)
             // Construire le HTML avec la formule dans le conteneur formule-container
-            // Utiliser DATA['🪞_initial'] si disponible (albedo initial), sinon DATA['🪞'] (fallback)
-            const albedoForConfig = DATA['🪞_initial'] || DATA['🪞'];
+            // Utiliser DATA['🪩_initial'] si disponible (albedo initial), sinon DATA['🪩'] (fallback)
+            const albedoForConfig = DATA['🪩_initial'] || DATA['🪩'];
             if (albedoForConfig) {
-                const albedoHtml = json2html(albedoForConfig, '', '', 'albedo', '🪞');
+                const albedoHtml = json2html(albedoForConfig, '', '', 'albedo', '🪩');
                 const CONST = window.CONST;
-                const formula = calculateAlbedoFormula(albedoForConfig, CONST['🪞🍰']);
-                // Insérer la formule dans le conteneur formule-container
-                html += albedoHtml.replace('<div class="formule-container">', `<div class="formule-container">${formula}`);
+                const formula = calculateAlbedoFormula(albedoForConfig, CONST['🪩🍰']);
+                // Insérer la formule dans le conteneur formule-container (remplacer le conteneur vide)
+                // Le conteneur est créé par json2html avec du contenu vide, on le remplace complètement
+                html += albedoHtml.replace(/<div class="formule-container[^"]*">[\s\S]*?<\/div>/, `<div class="formule-container notVisible">${formula}</div>`);
             }
             
             // 9. 🌕 Noyau [getNoyau@compute.js] - utiliser DATA directement
@@ -1334,12 +1344,14 @@
             
             // 11. 🧲 Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
             // Construire le HTML avec les formules dans le conteneur formule-container
-            // DATA['🧲'] contient les flux radiatifs
-            if (DATA['🧲']) {
-                const fluxHtml = json2html(DATA['🧲'], '', '', 'flux', '🧲');
-                const fluxFormulas = calculateFluxFormulas(DATA['🧲'], DATA['☀️'], DATA['🪞']);
-                // Insérer les formules dans le conteneur formule-container
-                html += fluxHtml.replace('<div class="formule-container"', `<div class="formule-container">${fluxFormulas}`);
+            // Utiliser DATA['🧲_initial'] pour Configuration (valeurs initiales, ne changent plus)
+            const fluxForConfig = DATA['🧲_initial'] || DATA['🧲'];
+            if (fluxForConfig) {
+                const fluxHtml = json2html(fluxForConfig, '', '', 'flux', '🧲');
+                const albedoForFlux = DATA['🪩_initial'] || DATA['🪩'];
+                const fluxFormulas = calculateFluxFormulas(fluxForConfig, DATA['☀️'], albedoForFlux);
+                // Insérer les formules dans le conteneur formule-container (remplacer le conteneur vide)
+                html += fluxHtml.replace(/<div class="formule-container[^"]*">[\s\S]*?<\/div>/, `<div class="formule-container notVisible">${fluxFormulas}</div>`);
             }
             
             // Toujours afficher les panneaux même si html est vide
@@ -1348,6 +1360,34 @@
             
             // Afficher la section Convergence
             displayConvergence();
+        }
+        
+        // Fonction pour comparer deux objets et retourner seulement les différences
+        function getDifferences(current, previous) {
+            if (!previous) return current; // Première itération : afficher tout
+            
+            const diff = {};
+            for (const key in current) {
+                const currentVal = current[key];
+                const previousVal = previous[key];
+                
+                // Comparer les valeurs (tolérance pour les nombres)
+                if (typeof currentVal === 'number' && typeof previousVal === 'number') {
+                    if (Math.abs(currentVal - previousVal) > 0.0001) {
+                        diff[key] = currentVal;
+                    }
+                } else if (typeof currentVal === 'object' && currentVal !== null && typeof previousVal === 'object' && previousVal !== null) {
+                    // Objets imbriqués : comparer récursivement
+                    const nestedDiff = getDifferences(currentVal, previousVal);
+                    if (Object.keys(nestedDiff).length > 0) {
+                        diff[key] = nestedDiff;
+                    }
+                } else if (currentVal !== previousVal) {
+                    // Valeurs différentes
+                    diff[key] = currentVal;
+                }
+            }
+            return diff;
         }
         
         function displayConvergence() {
@@ -1359,28 +1399,49 @@
             
             // Mettre à jour le titre avec la température en °C
             const convergenceTitle = convergenceDiv.querySelector('h2');
-            if (convergenceTitle && DATA && DATA['⏳'] && DATA['⏳']['🌡️']) {
-                const temp_K = DATA['⏳']['🌡️'];
+            if (convergenceTitle && DATA && DATA['🧮'] && DATA['🧮']['🌡️']) {
+                const temp_K = DATA['🧮']['🌡️'];
                 const temp_C = (temp_K - 273.15).toFixed(2);
-                convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <button class="toggle-button" onclick="toggleConvergence()">+</button>`;
+                const button = convergenceTitle.querySelector('.toggle-button');
+                const buttonText = button ? button.textContent : 'Formules +';
+                convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <button class="toggle-button" onclick="toggleConvergence()">${buttonText}</button>`;
             }
             
             let html = '';
             
             // Afficher l'historique des itérations si disponible
-            // Afficher ⏳ et 🧲 de toutes les itérations
-            if (DATA && DATA['⏳'] && DATA['⏳']['history'] && DATA['⏳']['history'].length > 0) {
-                DATA['⏳']['history'].forEach(state => {
-                    // Afficher ⏳ de cette itération
-                    if (state.data_snapshot && state.data_snapshot['⏳']) {
-                        const iterationData = {...state.data_snapshot['⏳']};
-                        delete iterationData.history;
-                        html += json2html(iterationData, '', '', null, '⏳');
-                    }
-                    // Afficher 🧲 de cette itération (le plus important pour les calculs)
-                    if (state.data_snapshot && state.data_snapshot['🧲']) {
-                        html += json2html(state.data_snapshot['🧲'], '', '', null, '🧲');
-                    }
+            // Afficher seulement les différences avec l'itération précédente
+            if (DATA && DATA['🧮'] && DATA['🧮']['history'] && DATA['🧮']['history'].length > 0) {
+                let previous_snapshot = null;
+                
+                DATA['🧮']['history'].forEach((state, index) => {
+                    if (!state.data_snapshot) return;
+                    
+                    // Pour chaque catégorie (🧮, 🧲, 💧, 🪩), comparer avec l'itération précédente
+                    const categories = ['🧮', '🧲', '💧', '🪩'];
+                    
+                    categories.forEach(categoryKey => {
+                        if (state.data_snapshot[categoryKey]) {
+                            const current = state.data_snapshot[categoryKey];
+                            const previous = previous_snapshot ? previous_snapshot[categoryKey] : null;
+                            
+                            // Obtenir seulement les différences
+                            // Pour la première itération (Init, iteration=0), afficher tout
+                            const diff = (state.iteration === 0 || !previous) ? current : getDifferences(current, previous);
+                            
+                            // Si des différences existent, les afficher
+                            if (Object.keys(diff).length > 0) {
+                                // Pour 🧮, exclure history
+                                if (categoryKey === '🧮') {
+                                    delete diff.history;
+                                }
+                                html += json2html(diff, '', '', null, categoryKey);
+                            }
+                        }
+                    });
+                    
+                    // Mettre à jour previous_snapshot pour la prochaine itération
+                    previous_snapshot = state.data_snapshot;
                 });
             }
             
@@ -1394,21 +1455,25 @@
             const button = configDiv.querySelector('.toggle-button');
             const formuleContainers = configDiv.querySelectorAll('.formule-container');
             
-            if (formuleContainers.length === 0) return;
-            
-            // Vérifier si au moins un conteneur est visible (style inline ou CSS)
-            const isVisible = Array.from(formuleContainers).some(container => {
-                const style = window.getComputedStyle(container);
-                return style.display !== 'none';
-            });
-            
-            // Toggle l'affichage des formules
-            formuleContainers.forEach(container => {
-                container.style.display = isVisible ? 'none' : 'block';
-            });
-            
-            // Mettre à jour le bouton
-            button.textContent = isVisible ? '+' : '−';
+            // Toggle la classe 'replied' pour replier/déplier la section
+            const isReplied = configDiv.classList.contains('replied');
+            if (isReplied) {
+                configDiv.classList.remove('replied');
+                button.textContent = 'Results −';
+                // Quand on déplie, afficher les formules si elles existent
+                formuleContainers.forEach(container => {
+                    container.classList.remove('notVisible');
+                    container.classList.add('visible');
+                });
+            } else {
+                configDiv.classList.add('replied');
+                button.textContent = 'Formules +';
+                // Quand on replie, cacher les formules
+                formuleContainers.forEach(container => {
+                    container.classList.remove('visible');
+                    container.classList.add('notVisible');
+                });
+            }
         }
         
         function toggleConvergence() {
@@ -1416,21 +1481,25 @@
             const button = convergenceDiv.querySelector('.toggle-button');
             const formuleContainers = convergenceDiv.querySelectorAll('.formule-container');
             
-            if (formuleContainers.length === 0) return;
-            
-            // Vérifier si au moins un conteneur est visible (style inline ou CSS)
-            const isVisible = Array.from(formuleContainers).some(container => {
-                const style = window.getComputedStyle(container);
-                return style.display !== 'none';
-            });
-            
-            // Toggle l'affichage des formules
-            formuleContainers.forEach(container => {
-                container.style.display = isVisible ? 'none' : 'block';
-            });
-            
-            // Mettre à jour le bouton
-            button.textContent = isVisible ? '+' : '−';
+            // Toggle la classe 'replied' pour replier/déplier la section
+            const isReplied = convergenceDiv.classList.contains('replied');
+            if (isReplied) {
+                convergenceDiv.classList.remove('replied');
+                button.textContent = 'Results −';
+                // Quand on déplie, afficher les formules si elles existent
+                formuleContainers.forEach(container => {
+                    container.classList.remove('notVisible');
+                    container.classList.add('visible');
+                });
+            } else {
+                convergenceDiv.classList.add('replied');
+                button.textContent = 'Formules +';
+                // Quand on replie, cacher les formules
+                formuleContainers.forEach(container => {
+                    container.classList.remove('visible');
+                    container.classList.add('notVisible');
+                });
+            }
         }
         
         function toggleLexique() {

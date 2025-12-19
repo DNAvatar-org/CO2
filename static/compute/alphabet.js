@@ -28,7 +28,7 @@ const CHARS = {
     GREENHOUSE_FORCING: '♻', // Greenhouse forcing : recyclage
     CLOUD_ALBEDO: '🌤', // Cloud albedo contribution : soleil avec nuage
     MAX_VAPOR: '🌧', // Max vapor fraction : pluie
-    ALBEDO: '🪞',   // Albédo : miroir
+    ALBEDO: '🪩',   // Albédo : miroir
     EDS: '📛',      // EDS : Forçage radiatif (Radiative Forcing)
     TEMP: '🌡️',     // TEMP : Température
     PHASE: '⚧',     // Phase : symbole transgenre (phase de convergence)
@@ -45,20 +45,20 @@ const CHARS = {
     FOREST: '🌳',   // Forêt : arbre (utilisé dans albedo breakdown)
     ICE: '🧊',      // Glace : glaçon (utilisé dans albedo breakdown)
     CLOUD: '⛅',     // Nuages : nuage avec soleil (utilisé dans albedo breakdown)
-    COMPUTE: '⏳',  // Compute : sablier (pour les valeurs de convergence)
+    CLOUD_FORMATION: '☁️', // Potentiel de condensation nuageuse
+    COMPUTE: '🧮',  // Compute : sablier (pour les valeurs de convergence)
     GREENHOUSE_FORCING_ALT: '🌴',  // Greenhouse forcing alternatif : palmier
     BOOLEAN: '🔘',  // Boolean : bouton
     CARDINAL: '📿', // Cardinal : 🎓
     DELTA: '🔺',    // Delta : triangle
     METER: '📏',    // Mètre : règle
-    PROPORTION: '🍰', // Proportion : 🥒 🧩
+    PROPORTION: '🍰', // Proportion : 🍰 🧩
     POWER: '🔋',    // Puissance : batterie (Watts)
     SUN_ORIGIN: '☀️', // Soleil : soleil
     GEOMETRY_ORIGIN: '🎱', // Géometrie : boule de billard
     SPECTRAL: '🌈', // Spectre : arc-en-ciel
-    ATMOSPHERE: '🌬', // Atmosphère : vent
+    ATMOSPHERE: '🫧', // Atmosphère : vent
     CONFIG: '📜',   // Config : parchemin
-    OLD_T0: '🏮',   // Old T0 : lanterne
     METEORITE_COUNT: '☄️', // Nombre de météorites
     FLUX_IN: '🔽',  // Flux entrant (réception, +)
     FLUX_OUT: '🔼', // Flux sortant (émission, -)
@@ -82,6 +82,7 @@ const CHARS = {
     PRESSURE: '🎈', // Pression : ballon (pression)
     INDEX_EPOCH: '👉', // Index de l'époque : pointeur
     LOGO_EPOCH: '🗿', // Logo/Nom de l'époque : statue
+    TRIPLE_POINT: '┴', // Point triple : pont (P,T au point triple)
 };
 
 // Objet pour mapper les logos emoji vers les fichiers images
@@ -95,57 +96,60 @@ const charsImages = {
 // ============================================================================
 const CHARS_DESC = {
     // Unités
-    '🔘': 'Calculé (Boolean)',
     '📿': 'Cardinal (#)',
-    '🔺': 'Delta (*)',
-    '🌡️': 'Température (K)',
-    '⚖️': 'Masse (kg)',
+    '🍰': 'Proportion ([0,1])',
+    '🔘': 'Calculé (Boolean)',
     '📏': 'Longueur (km)',
-    '🍰': 'Proportion (%)',
-    '🧲': 'Flux (W/m²)',
+    '⚖️': 'Masse (kg)',
+    '🎈': 'Pression (atm)',
+    '🌡️': 't° (K)',
     '🔋': 'Puissance (W)',
     '🔽': 'Réception (+)',
     '🔼': 'Émission (-)',
-    '🧪': 'Masse molaire air (kg/mol)',
+    '🍎': 'Gravité (m/s²)',
+    '🧲': 'Flux (W/m²)',
+    '🧪': 'Masse molaire (kg/mol)',
+    '┴': 'Point triple (🎈,🌡️)',
     '⚧': 'Phase (Init/Search/Dicho)',
     '☯': 'Direction Search (+/-)',
     // Éléments
-    '💧': 'H2O',
-    '⛽': 'CH4',
-    '🏭': 'CO2',
-    '🌫': 'O2',
+    '💧': 'H₂O',
+    '⛽': 'CH₄',
+    '🏭': 'CO₂',
+    '🌫': 'O₂',
     '🧊': 'Glace',
     '⛅': 'Nuages',
     '🌊': 'Océan',
     '🌋': 'Volcan',
     '🏖': 'Désert',
     '🌳': 'Forêt',
-    '🌬': 'Atmosphère',
+    '🫧': 'Atmosphère',
     '☀️': 'Soleil',
     '🎱': 'Géometrie',
     '🌈': 'Spectre',
     // Calculs
-    '⏳': 'Calculs O(🧲🔬x🔬🌈x🔬🌬)',
+    '🧮': 'Calculs O(🧲🔬x🔬🌈x🔬🫧)',
     '🎬': 'Animation',
+    '🔺': 'Delta (*)',
     '🔬': 'Tolérance (précision)',
-    '🏮': 'old_T0 (backup T°)',
-    '🚩': 'T0 (T° initiale)',
-    '🪞': 'Albédo',
+    '🚩': 'T0 (t° initiale)',
+    '🪩': 'Albédo',
     '🌕': 'Flux géothermique',
     '📛': 'EDS (Forçage radiatif)',
     '🌑': 'Corps noir',
+    '☁️': 'Index formation nuageuse [0,1]',
     // Événements
     '💫': 'TicTime (+50 Ma)',
     '☄️': 'Météorite de glace',
     '🛰': 'Satellite',
-    '🌧': 'Max vapor fraction',
+    '🌧': 'Saturation H₂O',
     '🎇': 'Big impact',
     '▶': 'Début',
     '◀': 'Fin',
     '🧿': 'Ligne de Kármán',
     '🛩': 'Tropopause',
     // Autres
-    '💨': 'N2',
+    '💨': 'N₂',
     // Époques géologiques
     '📜': 'Époque (Ma)',
     '👉': 'Index',
@@ -164,7 +168,7 @@ const CHARS_DESC = {
     '📅': 'Date (Ma)',
     '📐': 'Rayon planète',
     '🍎': 'Gravité (m/s²)',
-    '🎈': 'Pression (atm)'
+    '┴': 'Point triple (🎈,🌡️)'
 };
 
 // ============================================================================
@@ -179,22 +183,22 @@ function createAlphabetHtml() {
     
     // Colonne 1 : Unités
     const charsCol1 = [
-        'BOOLEAN', 'CARDINAL', 'DELTA', 'TEMP', 'WEIGHT', 'METER', 'PROPORTION', 'ENERGY_FLUX', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'GRAVITY', 'MOLAR_MASS_AIR'
+        'CARDINAL', 'PROPORTION', 'BOOLEAN', 'METER', 'WEIGHT', 'PRESSURE', 'TEMP', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'GRAVITY', 'ENERGY_FLUX', 'MOLAR_MASS_AIR', 'TRIPLE_POINT'
     ];
     
     // Colonne 2 : Éléments
     const charsCol2 = [
-        'H2O', 'CH4', 'CO2', 'O2', 'ICE', 'CLOUD', 'OCEAN', 'VOLCANO', 'DESERT', 'FOREST', 'ATMOSPHERE', 'SUN_ORIGIN', 'SPECTRAL'
+        'H2O', 'CH4', 'CO2', 'O2', 'N2', 'ICE', 'CLOUD', 'OCEAN', 'VOLCANO', 'DESERT', 'FOREST', 'ATMOSPHERE', 'SUN_ORIGIN', 'SPECTRAL'
     ];
     
     // Colonne 3 : Calculs
     const charsCol3 = [
-        'COMPUTE', 'ANIMATION', 'PHASE', 'TOLERANCE', 'DIRECTION', 'OLD_T0', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS', 'GEOMETRY_ORIGIN', 'FLUX_CN', 'MAX_VAPOR', 'PRESSURE'
+        'COMPUTE', 'ANIMATION', 'PHASE', 'DELTA', 'TOLERANCE', 'DIRECTION', 'T0', 'ALBEDO', 'GEOTHERMAL_FLUX', 'EDS', 'GEOMETRY_ORIGIN', 'FLUX_CN', 'MAX_VAPOR', 'CLOUD_FORMATION'
     ];
     
     // Colonne 4 : Événements
     const charsCol4 = [
-        'DATE', 'TIC_TIME', 'EVENTS', 'TRANSITION', 'BIG_IMPACT', 'METEORITE_COUNT', 'FLUX_START', 'FLUX_END', 'PLANET_RADIUS', 'TROPOPAUSE', 'ALTITUDE', 'SATELLITE'
+        'DATE', 'TIC_TIME', 'EVENTS', 'TRANSITION', 'BIG_IMPACT', 'METEORITE_COUNT', 'FLUX_START', 'FLUX_END', 'PLANET_RADIUS', 'TROPOPAUSE', 'ALTITUDE', 'SATELLITE', 'INDEX_EPOCH'
     ];
     
     // Colonne 5 : Époques et autres logos
@@ -205,7 +209,6 @@ function createAlphabetHtml() {
     // Descriptions personnalisées pour certains caractères
     const customDescriptions = {
         'TIC_TIME': 'TicTime (+50 Ma)',
-        'OLD_T0': 'old_T0 (backup t°)',
         'T0': 'T0 (t° initiale)'
     };
     

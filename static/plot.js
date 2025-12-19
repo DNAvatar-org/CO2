@@ -651,7 +651,7 @@ function drawAbsorptionBandIndicators() {
         CO2: '🏭',
         CH4: '⛽',
         H2O: '💧',
-        ALBEDO: '🪞'
+        ALBEDO: '🪩'
     };
 
     // CO2 : ~15 μm (principale), pic à ~11 μm
@@ -991,10 +991,10 @@ window.updatePlot = function updatePlot(data) {
         throw new Error(`Époque '${window.currentEpochName}' non trouvée dans timeline`);
     }
 
-    const total_atmosphere_mass_kg = currentEpoch['⚖️🌬'];
+    const total_atmosphere_mass_kg = currentEpoch['⚖️🫧'];
     if (total_atmosphere_mass_kg === undefined) {
-        console.error('[updatePlot] ❌ ERREUR CRITIQUE : ⚖️🌬 non défini pour l\'époque:', window.currentEpochName);
-        throw new Error(`⚖️🌬 non défini pour l'époque '${window.currentEpochName}'`);
+        console.error('[updatePlot] ❌ ERREUR CRITIQUE : ⚖️🫧 non défini pour l\'époque:', window.currentEpochName);
+        throw new Error(`⚖️🫧 non défini pour l'époque '${window.currentEpochName}'`);
     }
 
     if (total_atmosphere_mass_kg === 0) {
@@ -1077,7 +1077,7 @@ window.updatePlot = function updatePlot(data) {
             // Fallback si z_range n'est pas encore disponible (init)
             const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
             if (currentEpoch) {
-                const total_atmosphere_mass_kg = currentEpoch['⚖️🌬']; // Nom plus explicite
+                const total_atmosphere_mass_kg = currentEpoch['⚖️🫧']; // Nom plus explicite
 
                 let gravity = 9.81;
                 if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
@@ -1974,7 +1974,7 @@ function drawSpectralVisualization(canvas, data) {
     if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
         const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
         if (currentEpoch) {
-            const total_mass = currentEpoch['⚖️🌬']; // Pas de fallback
+            const total_mass = currentEpoch['⚖️🫧']; // Pas de fallback
 
             // Détecter le cas "pas d'atmosphère"
             if (total_mass === 0 || total_mass === undefined) {

@@ -114,8 +114,13 @@
                 </div>
                 
                 <div class="formula-category">
-                    <div class="formula-category-title">🪞 Albédo</div>
-                    <div class="formula-item">$$A = A_{\text{base}} + A_{\text{glace}} + A_{\text{nuages}}$$</div>
+                    <div class="formula-category-title">🪩 Albédo</div>
+                    <div class="formula-item">$$A = \sum_{i} A_i \times C_i$$</div>
+                    <div class="formula-item" style="font-size: 0.9em; margin-top: 0.5em;">
+                        Où $A_i$ = albedo du type $i$ (Océan: 0.08, Forêt: 0.17, Désert: 0.30, Glace: 0.70, Nuages: 0.50)<br>
+                        et $C_i$ = couverture de surface du type $i$<br>
+                        <span style="color: #666;">Albedo moyen Terre actuelle : ~0.31 (31%)</span>
+                    </div>
                 </div>
             </div>
             

@@ -9,7 +9,7 @@
 - Formule : `max_vapor_fraction = calculateMaxH2OVaporFraction(temp_K)`
 - À 2450K (Hadéen), la saturation est très élevée (~100%), donc `🌧=100`
 
-## 2. 🌤 Cloud albedo contribution vs 🥒🪞⛅
+## 2. 🌤 Cloud albedo contribution vs 🍰🪩⛅
 
 **Réponse :** Ce sont **deux choses différentes** :
 
@@ -17,11 +17,11 @@
   - Formule : `cloud_coverage × cloud_albedo_coeff × (1 - 0.2 × cloud_coverage)`
   - Exemple : si `cloud_coverage = 0.1` et `cloud_albedo_coeff = 0.5` → `🌤 = 0.1 × 0.5 × 0.98 = 0.049`
 
-- **`🥒🪞⛅` Cloud albedo proportion** : **Pourcentage** de couverture nuageuse dans l'albedo
+- **`🍰🪩⛅` Cloud albedo proportion** : **Pourcentage** de couverture nuageuse dans l'albedo
   - C'est la **couverture** nuageuse (0-100%), pas la contribution
   - Utilisé dans `window.albedo` pour afficher les proportions de surface
 
-**Relation :** `🌤` est calculé **depuis** `🥒💧⛅` (cloud coverage) dans `calculateCloudAlbedoContribution()`
+**Relation :** `🌤` est calculé **depuis** `🍰🪩⛅` (cloud coverage) qui est lui-même calculé depuis `☁️` (CloudFormationIndex) dans `calculateCloudFormationIndex()`
 
 ## 3. 🌴 Greenhouse forcing
 

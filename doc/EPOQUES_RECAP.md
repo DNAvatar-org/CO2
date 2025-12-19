@@ -44,7 +44,7 @@
   - 🌨️ (neige avec nuages) - actuel
   - ❄️ (flocon) - déjà utilisé
   - 🧊 (glace) - déjà utilisé pour iceberg
-  - 🌬️ (vent froid)
+  - 🫧️ (vent froid)
   - **CHOIX : 🌨️** (représente la neige et les nuages de glace)
 
 ### 5. **Paléozoïque/Mésozoïque** (-300 à -145 Ma)
@@ -95,7 +95,7 @@
 - Hadéen : ⚡, 💥, 🌑
 - Archéen : 🌊, 🦠, 🧬
 - Protérozoïque : 🌱, 🦠, ❄️
-- Cryogénien : 🌬️, ❄️
+- Cryogénien : 🫧️, ❄️
 - Paléozoïque/Mésozoïque : 🌳, 🦎, 🌲
 - Crétacé : 🌸, 🌺, 🦴
 - Cénozoïque/Quaternaire : 🦣, 🌍

@@ -1,6 +1,6 @@
 
 == Boutons Thermodynamique
-🪞 Albédo
+🪞 Albédo 🪩
 
 🏭 CO2
 💧 H2O
@@ -10,8 +10,8 @@
 == Diagramme
 🌞 Soleil
 🎱 Géometrie
-🪞 Albédo
-	🌊 Océans : 0.05-0.10
+🪞 Albédo 🪩
+	🌊 Océans : 0.05-0.10 // ratio profondeur surface pour labedo 🪼
 	🌳 Forêts : 0.05-0.20
 	🏜️ Déserts : ~0.30
 	🧊 Neige/glace : 0.40-0.90
@@ -64,7 +64,7 @@
 💥🧿🌈🧨🧯🪞🔬👓
 🌤🌥🌦🌧🌨🌩🐄🕶
 🌬🌞☀️🌊🎱🔥🐮🧮
-🕰🌟⏳🕶🕳🏐🔋
+🕰🌟⏳🕶🕳🏐🔋🪼
 
 🧲 Magnetisme
 🌳 Forêt

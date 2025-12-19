@@ -122,21 +122,29 @@ body {
     min-width: 0;
     flex: 1 1 0;
     max-width: 100%;
-    line-height: 1.2em;
-    height: 1.2em;
+    line-height: 1.6em;
+    height: 1.6em;
     box-sizing: border-box;
     /* Forcer le texte à ne pas passer à la ligne */
     word-break: keep-all !important;
     word-wrap: normal !important;
     display: block;
     /* Empêcher tout wrapping */
-    max-height: 1.2em;
+    max-height: 1.6em;
     overflow-y: hidden;
     /* Forcer la largeur maximale basée sur le parent */
     width: 0;
     flex-grow: 1;
     flex-shrink: 1;
     flex-basis: 0;
+}
+
+.legend-item .description sub {
+    font-size: 0.7em;
+    vertical-align: baseline;
+    position: relative;
+    bottom: -0.2em;
+    line-height: 0;
 }
 
 /* ============================================================================

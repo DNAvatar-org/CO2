@@ -1522,7 +1522,7 @@ window.updateDisplay = function updateDisplay(data) {
             if (window.currentEpochName) {
                 const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
                 if (currentEpoch) {
-                    if (currentEpoch['⚖️🌬'] !== undefined) total_mass_log = currentEpoch['⚖️🌬'];
+                    if (currentEpoch['⚖️🫧'] !== undefined) total_mass_log = currentEpoch['⚖️🫧'];
                     if (currentEpoch.gravity !== undefined) gravity_log = currentEpoch.gravity;
                     // Calculer molar_mass_air depuis les composants si non défini
                     M_avg_log = window.calculateMolarMassAir(currentEpoch);
@@ -1585,52 +1585,33 @@ window.updateDisplay = function updateDisplay(data) {
                 }
                 // 🔒 PRIORITÉ 2 : Recalculer avec calculateWaterPartition si pas de valeur disponible
                 else if (data.temp_surface !== undefined && typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
-                    const h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
-                    const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
-                    const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
-                    if (h2o_total_percent > 0) {
-                        const h2o_total_fraction = h2o_total_percent / 100;
-                        // Récupérer les paramètres de l'époque courante et calculer les valeurs dérivées
-                        let epochParams = {};
-                        if (window.currentEpochName) {
-                            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-                            if (currentEpoch) {
-                                // Calculer pressure_atm et molar_mass_air depuis les composants
-                                const pressure_atm = window.calculatePressureAtm(currentEpoch);
-                                const molar_mass_air = window.calculateMolarMassAir(currentEpoch);
-                                
-                                epochParams = {
-                                    pressure_atm: pressure_atm,
-                                    molar_mass_air: molar_mass_air,
-                                    gravity: currentEpoch.gravity,
-                                    ocean_coverage: currentEpoch.ocean_coverage
-                                };
-                            }
-                        }
-                        const waterPartition = window.calculateWaterPartition(data.temp_surface, h2o_total_fraction, epochParams);
+                    // 🔒 CORRECTION : calculateWaterPartition() lit directement depuis DATA, pas besoin de calculer h2o_total_percent
+                    const DATA = window.DATA;
+                    const h2o_total_fraction = DATA['⚖️']['⚖️🫧'] > 0 ? (DATA['⚖️']['⚖️💧'] / DATA['⚖️']['⚖️🫧']) : 0;
+                    if (h2o_total_fraction > 0) {
+                        // 🔒 CORRECTION : calculateWaterPartition() n'a pas de paramètres, elle lit depuis DATA
+                        // Mettre à jour DATA['🧮']['🌡️'] avant d'appeler calculateWaterPartition()
+                        window.DATA['🧮']['🌡️'] = data.temp_surface;
+                        window.calculateWaterPartition();
+                        const waterPartition = {
+                            vapor_fraction: window.DATA['🫧']['🍰🫧💧'],
+                            ice_fraction: window.DATA['💧']['🍰💧🧊'],
+                            liquid_fraction: window.DATA['💧']['🍰💧🌊']
+                        };
                         ice_coverage = waterPartition.ice_fraction || 0;
                         // Mettre à jour pour les prochains appels
                         window.h2oIceFractionFromCalculation = ice_coverage;
                     } else {
                         // Même sans eau, appeler calculateWaterPartition pour obtenir 0 partout
-                        const h2o_total_fraction = 0;
-                        let epochParams = {};
-                        if (window.currentEpochName) {
-                            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-                            if (currentEpoch) {
-                                // Calculer pressure_atm et molar_mass_air depuis les composants
-                                const pressure_atm = window.calculatePressureAtm(currentEpoch);
-                                const molar_mass_air = window.calculateMolarMassAir(currentEpoch);
-                                
-                                epochParams = {
-                                    pressure_atm: pressure_atm,
-                                    molar_mass_air: molar_mass_air,
-                                    gravity: currentEpoch.gravity,
-                                    ocean_coverage: currentEpoch.ocean_coverage
-                                };
-                            }
-                        }
-                        const waterPartition = window.calculateWaterPartition(data.temp_surface, h2o_total_fraction, epochParams);
+                        // 🔒 CORRECTION : calculateWaterPartition() n'a pas de paramètres, elle lit depuis DATA
+                        // Mettre à jour DATA['🧮']['🌡️'] avant d'appeler calculateWaterPartition()
+                        window.DATA['🧮']['🌡️'] = data.temp_surface;
+                        window.calculateWaterPartition();
+                        const waterPartition = {
+                            vapor_fraction: window.DATA['🫧']['🍰🫧💧'],
+                            ice_fraction: window.DATA['💧']['🍰💧🧊'],
+                            liquid_fraction: window.DATA['💧']['🍰💧🌊']
+                        };
                         ice_coverage = waterPartition.ice_fraction || 0;
                         window.h2oIceFractionFromCalculation = ice_coverage;
                     }
@@ -1982,7 +1963,7 @@ function setEpoch(epochName) {
     
     // 🔒 Légende des emojis (affichée une seule fois au premier appel)
     if (typeof window !== 'undefined' && !window._logLegendShown) {
-        console.log('📋 Légende: 🕰 Époque | 📛 EDS(Forçage) | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪞 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
+        console.log('📋 Légende: 🕰 Époque | 📛 EDS(Forçage) | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪩 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
         window._logLegendShown = true;
     }
     
@@ -2351,9 +2332,9 @@ function setEpoch(epochName) {
     // 1. CO2
     // 🔒 Convertir les quantités (kg) en ppm pour compatibilité avec le code existant
     // Récupérer la masse atmosphérique totale de l'époque (ou utiliser la valeur moderne par défaut)
-    const total_atmosphere_mass_kg = epoch['⚖️🌬'];
+    const total_atmosphere_mass_kg = epoch['⚖️🫧'];
     if (total_atmosphere_mass_kg === undefined) {
-        console.error("[main] ⚖️🌬 manquant pour calculer la composition, arrêt.", epoch.name);
+        console.error("[main] ⚖️🫧 manquant pour calculer la composition, arrêt.", epoch.name);
         return; // Arrêter le calcul
     }
 
@@ -2417,13 +2398,13 @@ function setEpoch(epochName) {
         let h2o_default = epoch.h2o_vapor_percent || 0;
 
         // 🔒 Calculer depuis h2o_kg si disponible et si h2o_vapor_percent n'est pas défini
-        if (h2o_default === 0 && epoch.h2o_kg > 0 && epoch['⚖️🌬'] > 0) {
+        if (h2o_default === 0 && epoch.h2o_kg > 0 && epoch['⚖️🫧'] > 0) {
             // Estimation fraction molaire
             // H2O = 18 g/mol
             // Reste = 44 g/mol (CO2 dominant) ou 29 (Air)
             // Si Hadéen, reste probablement CO2/N2 lourd
             const mass_h2o = epoch.h2o_kg;
-            const mass_total = epoch['⚖️🌬'];
+            const mass_total = epoch['⚖️🫧'];
             const mass_rest = Math.max(0, mass_total - mass_h2o);
 
             const mol_h2o = mass_h2o / 18.015;
@@ -2956,7 +2937,7 @@ window.setEpoch = setEpoch;
 window.addEventListener('DOMContentLoaded', () => {
     // 🔒 Légende des emojis (affichée une seule fois au démarrage)
     if (typeof window !== 'undefined' && !window._logLegendShown) {
-        console.log('📋 Légende: 🕰 Époque | 📛 EDS(Forçage) | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪞 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
+        console.log('📋 Légende: 🕰 Époque | 📛 EDS(Forçage) | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪩 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
         window._logLegendShown = true;
     }
     

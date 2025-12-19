@@ -20,21 +20,21 @@
 🌋 Volcan
 🏖 Désert
 🌳 Forêt
-🌬 Atmosphère
+🫧 Atmosphère
 ☀️ Soleil
 🎱 Géometrie
 🌈 Spectre
 🥽 IR Log.
 
 -- calculs
-⏳ Compute
+🧮 Compute
 🎬 Animation
 ⚧ Phase (None/Search/Dicho)
 🔬 Tolérance (précision)
 🔺 signeDeltaFirst
 🏮 old_T0 (température précédente)
 🚩 T0 (température initiale)
-🪞 Albédo
+🪩 Albédo
 🌕 Flux géothermique
 📛 EDS (Forçage radiatif)
 

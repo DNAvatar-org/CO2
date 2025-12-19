@@ -12,7 +12,7 @@ calculations_h2o.js => h2o_percent 💧, h2o_solid 🧊, h2o_liquide 🌊, h2o_n
 calculations_albedo.js => flux_entrant : 238W/m2
 calculations_atm.js => 🏭=0ppm 💧=0.0% ⛽=0ppm
 
-🌡️ Delta équilibre (→0): -179.7933 W/m² | T° sol: 180.00K (-93.1°C) | T° corps noir: 179.13K (-94.0°C) | Delta EDS: 1.1436 W/m² | Tolérance: 0.13 W/m² ⏳
+🌡️ Delta équilibre (→0): -179.7933 W/m² | T° sol: 180.00K (-93.1°C) | T° corps noir: 179.13K (-94.0°C) | Delta EDS: 1.1436 W/m² | Tolérance: 0.13 W/m² 🧮
 
 old_T0=T0
 (signeDeltaFirst!=0 && signeDeltaFirst!=signe(Delta équilibre)) => Phase="Dicho"

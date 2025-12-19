@@ -46,14 +46,34 @@ CONST.L_V = 40660;  // Chaleur latente de vaporisation (J/mol)
 
 // Coefficients d'albédo par type de surface (propriétés physiques constantes)
 // Ces valeurs sont des propriétés intrinsèques des matériaux, indépendantes de l'époque
-CONST['🪞🍰'] = {
-    '🪞🍰🌋': 0.05,  // Volcan/magma : très sombre
-    '🪞🍰🌊': 0.08,  // Océan : sombre
-    '🪞🍰🌳': 0.12,  // Forêt : légèrement réfléchissant
-    '🪞🍰🏖': 0.3,   // Désert : réfléchissant
-    '🪞🍰🧊': 0.2,   // Glace : réfléchissant
-    '🪞🍰⛅': 0.5    // Nuages : moyennement réfléchissant
+// Références littérature :
+// - Albedo moyen Terre actuelle : ~0.31 (31%)
+// - Neige fraîche : 0.75-0.90
+// - Glace : 0.60
+// - Nuages : 0.50-0.80
+// - Forêt de feuillus : 0.15-0.20
+// - Cultures : 0.15-0.25
+// - Mer/Océan : 0.05-0.15
+// - Déserts : ~0.30
+// - Zones urbaines : 0.1-0.2
+CONST['🪩🍰'] = {
+    '🪩🍰🌋': 0.05,  // Volcan/magma : très sombre (littérature : ~0.05-0.10)
+    '🪩🍰🌊': 0.08,  // Océan : sombre (littérature : 0.05-0.15, moyenne ~0.08)
+    '🪩🍰🌳': 0.17,  // Forêt : légèrement réfléchissant (littérature : 0.15-0.20, moyenne ~0.17)
+    '🪩🍰🏖': 0.30,  // Désert : réfléchissant (littérature : ~0.30)
+    '🪩🍰🧊': 0.70,  // Glace : très réfléchissant (littérature : 0.60, neige fraîche 0.75-0.90, moyenne ~0.70)
+    '🪩🍰⛅': 0.50,  // Nuages : moyennement réfléchissant (littérature : 0.50-0.80, moyenne ~0.50)
+    '🪩🍰🌍': 0.18   // Land/Continents : prairies, sols humides (littérature : 0.15-0.20, moyenne ~0.18)
 };
+
+// Constantes pour le calcul de l'index de formation nuageuse (☁️)
+// ☁️ = clamp((🍰🫧💧 / H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + ALPHA_OCEAN × 🍰🪩🌊), 0, 1)
+CONST.H2O_VAPOR_REF = 0.4;  // 🍰🫧💧_ref = 0.4 (Terre tempérée, référence pour ratio vapeur)
+CONST.ALPHA_OCEAN = 0.3;    // α = 0.3 (effet océan / convection sur formation nuageuse)
+
+// NOTE : C_MAX_CLOUD et ETA_CLOUD ne sont PAS des constantes universelles
+// Elles dépendent de la pression atmosphérique, composition, gravité, température
+// Elles sont calculées dynamiquement dans calculateCloudFormationIndex() ou calculateAlbedo()
 
 // ✅ SCIENTIFIQUEMENT CERTAIN :
 // - La loi de Planck B(λ,T) = (2hc²/λ⁵) / (exp(hc/λkT) - 1) est une loi fondamentale de la physique

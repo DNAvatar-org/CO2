@@ -10,6 +10,10 @@
 //   - Initial creation: calculs de transfert radiatif en JavaScript
 // ============================================================================
 
+// 🔒 CORRECTION : Ne pas déclarer DATA/CONST au niveau global pour éviter les conflits
+// Utiliser window.DATA et window.CONST directement, ou déclarer localement dans les fonctions
+// Note: dico.js déclare déjà const DATA = {} au niveau global, donc on ne peut pas redéclarer
+
 // ============================================================================
 // CALCULS DE TRANSFERT RADIATIF EN JAVASCRIPT
 // ============================================================================
@@ -21,25 +25,8 @@
 // ont été déplacées dans calculations_albedo.js
 // Utiliser window.calculateAlbedo, window.calculateCloudCoverage, window.calculateSolarFluxAbsorbed
 
-// Fonction wrapper pour compatibilité (redirige vers calculations_albedo.js)
-// ⚠️ IMPORTANT : Ne pas créer de récursion infinie
-function calculateAlbedo(T_surface_K, h2o_enabled, geothermal_flux = null) {
-    // Utiliser la fonction originale sauvegardée par calculations_albedo.js
-    if (typeof window !== 'undefined' && typeof window._calculateAlbedoOriginal === 'function') {
-        return window._calculateAlbedoOriginal(T_surface_K, h2o_enabled, geothermal_flux);
-    }
-    // Fallback vers window.calculateAlbedo si la version originale n'existe pas
-    if (typeof window !== 'undefined' && typeof window.calculateAlbedo === 'function') {
-        const realFunction = window.calculateAlbedo;
-        // Vérifier que ce n'est pas nous-mêmes (éviter récursion)
-        if (realFunction !== calculateAlbedo) {
-            return realFunction(T_surface_K, h2o_enabled, geothermal_flux);
-        }
-    }
-    // Fallback si calculations_albedo.js n'est pas chargé
-    console.error('[calculations.js] calculateAlbedo non disponible, calculations_albedo.js doit être chargé avant');
-    return 0.3; // Valeur par défaut
-}
+// 🔒 SUPPRIMÉ : calculateAlbedo() wrapper - utiliser window.calculateAlbedo() directement
+// calculateAlbedo() lit tout depuis DATA, pas de paramètres
 
 // Fonction wrapper pour compatibilité (redirige vers calculations_albedo.js)
 // ⚠️ IMPORTANT : Ne pas créer de récursion infinie
@@ -61,31 +48,6 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled) {
     return 0;
 }
 
-// Fonction wrapper pour compatibilité (redirige vers calculations_albedo.js)
-// ⚠️ IMPORTANT : Ne pas créer de récursion infinie
-// On utilise directement window._calculateSolarFluxAbsorbedOriginal si disponible
-function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled, geothermal_flux = null) {
-    // Utiliser la fonction originale sauvegardée par calculations_albedo.js
-    if (typeof window !== 'undefined' && typeof window._calculateSolarFluxAbsorbedOriginal === 'function') {
-        return window._calculateSolarFluxAbsorbedOriginal(T_surface_K, h2o_enabled, geothermal_flux);
-    }
-    // Fallback vers window.calculateSolarFluxAbsorbed si la version originale n'existe pas
-    if (typeof window !== 'undefined' && typeof window.calculateSolarFluxAbsorbed === 'function') {
-        const realFunction = window.calculateSolarFluxAbsorbed;
-        // Vérifier que ce n'est pas nous-mêmes (éviter récursion)
-        if (realFunction !== calculateSolarFluxAbsorbed) {
-            return realFunction(T_surface_K, h2o_enabled, geothermal_flux);
-        }
-    }
-    // Fallback si calculations_albedo.js n'est pas chargé
-    const SOLAR_CONSTANT = window.SOLAR_CONSTANT || 1366;
-    return SOLAR_CONSTANT * 0.7 / 4; // Valeur par défaut (albedo 0.3)
-}
-
-// Les fonctions calculateAlbedo, calculateCloudCoverage et calculateSolarFluxAbsorbed
-// ont été déplacées dans calculations_albedo.js
-// Les wrappers ci-dessus redirigent vers les fonctions globales exposées par ce module
-
 // ============================================================================
 // FONCTIONS DE TRANSFERT RADIATIF (conservées dans ce fichier)
 // ============================================================================
@@ -93,16 +55,10 @@ function calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled, geothermal_flux = 
 // Les fonctions de forçage radiatif sont maintenant dans climate.js
 // Utiliser directement les fonctions globales exposées par ce module (window.calculateCO2Forcing, etc.)
 
-// Valeurs de référence
-const CO2_PREINDUSTRIAL = 280e-6;     // 280 ppm
-const CO2_CURRENT = 420e-6;           // 420 ppm
+// 🔒 SUPPRIMÉ : CO2_PREINDUSTRIAL et CO2_CURRENT - valeurs hardcodées sans sens pour d'autres planètes
+// Les valeurs de référence doivent venir des configs epoch, pas de constantes globales
 
-// Logos pour les logs (utilise window.LOGOS si disponible, sinon valeurs par défaut)
-const LOGO_EDS = '📛'; // Forçage radiatif (EDS)
-const LOGO_CO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-const LOGO_H2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
-const LOGO_CH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
-const LOGO_TEMP = '🌡️';
+// 🔒 SUPPRIMÉ : LOGO_* inutiles - utiliser directement les emojis depuis dico.js
 
 // Variable globale pour activer/désactiver la vapeur d'eau
 let waterVaporEnabled = false;
@@ -139,12 +95,9 @@ function localPlanckFunction(lambda, T) {
     if (planckFunc) {
         return planckFunc(lambda, T);
     }
-    // Fallback si physics.js n'est pas chargé (ne devrait jamais arriver)
-    const PLANCK_H = 6.62607015e-34;
-    const SPEED_OF_LIGHT = 2.998e8;
-    const BOLTZMANN_KB = 1.380649e-23;
-    const term1 = (2 * PLANCK_H * SPEED_OF_LIGHT * SPEED_OF_LIGHT) / Math.pow(lambda, 5);
-    const term2 = Math.exp((PLANCK_H * SPEED_OF_LIGHT) / (lambda * BOLTZMANN_KB * T)) - 1;
+    // 🔒 CORRECTION : Utiliser window.CONST directement, ça plante si CONST n'existe pas
+    const term1 = (2 * CONST.PLANCK_H * CONST.SPEED_OF_LIGHT * CONST.SPEED_OF_LIGHT) / Math.pow(lambda, 5);
+    const term2 = Math.exp((CONST.PLANCK_H * CONST.SPEED_OF_LIGHT) / (lambda * CONST.BOLTZMANN_KB * T)) - 1;
     return term1 / term2;
 }
 
@@ -163,119 +116,20 @@ function localPlanckFunction(lambda, T) {
 // Fonction physique pour calculer la pression
 // P0 = (M_atm * g) / S_terre
 // P(z) = P0 * exp(-z / H) avec H = R*T / (M_air * g)
-function pressure(z, params = null) {
-    const R_GAS_CONSTANT = 8.314462618; // J/(mol·K)
-
-    // Initialisation avec undefined pour détecter les manquants
-    let total_mass, gravity, planet_radius, temp_K, molar_mass_air;
-
-    // Récupération des paramètres dynamiques (depuis window ou params)
-    if (typeof window !== 'undefined') {
-        // 1. Paramètres de l'époque
-        if (window.currentEpochName) {
-            const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-            if (currentEpoch) {
-                if (typeof currentEpoch['⚖️🌬'] === 'number') total_mass = currentEpoch['⚖️🌬'];
-                if (typeof currentEpoch.gravity === 'number') gravity = currentEpoch.gravity;
-                // Convertir le rayon de km en mètres pour les calculs
-                if (typeof currentEpoch['📐'] === 'number') planet_radius = currentEpoch['📐'] * 1000;
-
-                // Calculer ou récupérer la masse molaire moyenne de l'air
-                if (typeof currentEpoch.molar_mass_air === 'number') {
-                    molar_mass_air = currentEpoch.molar_mass_air;
-                } else {
-                    // Utiliser la fonction helper pour calculer depuis les composants
-                    molar_mass_air = window.calculateMolarMassAir(currentEpoch);
-                }
-
-                // Température initiale si définie dans l'époque
-                if (typeof currentEpoch.initial_temperature_K === 'number') temp_K = currentEpoch.initial_temperature_K;
-            }
-        }
-
-        // 2. Température calculée (prioritaire sur l'initiale)
-        if (window.plotData && typeof window.plotData.temp_surface === 'number') {
-            temp_K = window.plotData.temp_surface;
-        }
-        // Ou T0 ajustée lors des calculs itératifs
-        else if (typeof window.current_T0_adjusted === 'number' && window.current_T0_adjusted > 0) {
-            temp_K = window.current_T0_adjusted;
-        }
-    }
-
-    // Surcharge par params si fourni
-    if (params) {
-        if (params.total_atmosphere_mass_kg) total_mass = params.total_atmosphere_mass_kg;
-        if (params.gravity) gravity = params.gravity;
-        if (params.temperature_K) temp_K = params.temperature_K;
-        if (params.planet_radius) planet_radius = params.planet_radius;
-        if (params.molar_mass_air) molar_mass_air = params.molar_mass_air; // Si fourni explicitement
-    }
-    
-    // Si params n'est pas fourni, essayer d'utiliser window._currentPhysParams (exposé par calculateFluxForT0)
-    if (!params && typeof window !== 'undefined' && window._currentPhysParams) {
-        const physParams = window._currentPhysParams;
-        if (physParams.total_atmosphere_mass_kg !== undefined) total_mass = physParams.total_atmosphere_mass_kg;
-        if (physParams.gravity !== undefined) gravity = physParams.gravity;
-        if (physParams.temperature_K !== undefined) temp_K = physParams.temperature_K;
-        if (physParams.planet_radius !== undefined) planet_radius = physParams.planet_radius;
-        if (physParams.molar_mass_air !== undefined) molar_mass_air = physParams.molar_mass_air;
-    }
-    
-    // Si total_mass est toujours undefined, essayer de le récupérer depuis window._currentPhysParams
-    if (total_mass === undefined && typeof window !== 'undefined' && window._currentPhysParams) {
-        total_mass = window._currentPhysParams.total_atmosphere_mass_kg;
-    }
-    
-    // Si total_mass est toujours undefined, essayer de le récupérer depuis window.DATA
-    if (total_mass === undefined && typeof window !== 'undefined' && window.DATA && window.DATA['⚖️']) {
-        total_mass = window.DATA['⚖️']['⚖️📿'] || 0;
-    }
+// 🔒 CORRECTION : Tous les paramètres sont dans DATA, plus besoin de paramètres
+function pressure(z) {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    const planet_radius = EPOCH['📐'] * 1000; // km → m
 
     // 🔒 VALIDATION STRICTE : Aucune valeur par défaut terrestre silencieuse
     // Si pas d'atmosphère (total_mass = 0), retourner 0 immédiatement sans warning
-    if (total_mass === 0) {
+    if (DATA['⚖️']['⚖️🫧'] === 0) {
         return 0; // Pas d'atmosphère = pas de pression (cas normal pour Corps noir)
     }
     
-    if (total_mass === undefined || gravity === undefined || planet_radius === undefined) {
-        console.error("[pressure] ❌ ERREUR CRITIQUE : Paramètres physiques manquants pour calcul de pression !", { total_mass, gravity, planet_radius, epoch: (typeof window !== 'undefined' ? window.currentEpochName : 'unknown') });
-
-        if (typeof window !== 'undefined' && !window._physicsAlertShown) {
-            const alertFunc = (window.showSelectableAlert) ? window.showSelectableAlert : alert;
-            alertFunc(`ERREUR PHYSIQUE : Paramètres atmosphériques manquants pour l'époque '${window.currentEpochName}'.\n\nIl manque : ${total_mass === undefined ? 'Masse Atm' : ''} ${gravity === undefined ? 'Gravité' : ''} ${planet_radius === undefined ? 'Rayon' : ''}\n\nLe calcul ne peut pas aboutir.`, "Erreur Physique");
-            window._physicsAlertShown = true;
-        }
-
-        // Sans paramètres, pas d'atmosphère
-        return 0;
-    }
-
-    // Température et Molaire doivent aussi être définis ou calculables
-    // Si molar_mass_air manque dans params, essayer de le calculer depuis les composants
-    if (molar_mass_air === undefined && typeof window !== 'undefined' && window.currentEpochName) {
-        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        molar_mass_air = window.calculateMolarMassAir(currentEpoch);
-    }
-    
-    // Si molar_mass_air est toujours undefined mais qu'on a une atmosphère, utiliser une valeur par défaut
-    // (pour les cas où tous les composants sont à 0 mais qu'il y a quand même une atmosphère)
-    if (molar_mass_air === undefined && total_mass !== undefined && total_mass > 0) {
-        // Valeur par défaut basée sur la masse totale de l'atmosphère
-        // Atmosphère lourde (> 2.5e19 kg) → 0.044, sinon 0.029 (air moderne)
-        molar_mass_air = (total_mass > 2.5e19) ? 0.044 : 0.029;
-    }
-
-    // Si pas d'atmosphère (total_mass = 0), retourner 0 sans warning (c'est normal)
-    if (total_mass === 0 || total_mass === undefined) {
-        return 0; // Pas d'atmosphère = pas de pression
-    }
-
-    // Si temp_K ou molar_mass_air sont undefined alors qu'on a une atmosphère, c'est une erreur
-    if (temp_K === undefined || molar_mass_air === undefined) {
-        console.warn("[pressure] Température ou masse molaire indéfinie, retour 0", { temp_K, molar_mass_air, total_mass, epoch: (typeof window !== 'undefined' ? window.currentEpochName : 'unknown') });
-        return 0;
-    }
+    // 🔒 Ça plante si DATA n'est pas disponible, pas de vérification
 
     // Calcul de la surface planétaire
     // S = 4 * pi * R^2
@@ -283,12 +137,11 @@ function pressure(z, params = null) {
 
     // Calcul de la pression au sol P0 (Pa)
     // P = F / S = (m * g) / S
-    const P0 = (total_mass * gravity) / surface_area;
+    const P0 = (DATA['⚖️']['⚖️🫧'] * EPOCH['🍎']) / surface_area;
 
     // Calcul de l'échelle de hauteur H (Scale Height)
     // H = (R * T) / (M * g)
-    // Note : T devrait être la température moyenne de la basse atmosphère, T0 est une bonne approx
-    const H = (R_GAS_CONSTANT * temp_K) / (molar_mass_air * gravity);
+    const H = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (DATA['🫧']['🧪'] * EPOCH['🍎']);
 
     // Formule barométrique isotherme (approximation suffisante pour la structure globale)
     return P0 * Math.exp(-z / H);
@@ -487,7 +340,7 @@ function calculateTropopauseHeight(T0) {
             // Ajuster selon la gravité (plus g est fort, plus l'atmosphère est tassée)
             // z_trop ~ 1/g
             const g_earth = 9.81;
-            const g_current = currentEpoch.gravity || g_earth;
+            const g_current = currentEpoch.gravity; // Plantera si n'existe pas
 
             if (g_current > 0) {
                 z_trop_standard = z_trop_standard * (g_earth / g_current);
@@ -506,36 +359,17 @@ function calculateTropopauseHeight(T0) {
     return z_trop;
 }
 
-function temperature(z, CO2_fraction = null, T0_override = null) {
-    // Utiliser T0_override si fourni (pour la dichotomie), sinon utiliser la globale
-    let T0;
-    if (T0_override !== null) {
-        T0 = T0_override;
-    } else if (current_T0_adjusted !== null) {
-        T0 = current_T0_adjusted;
-    } else {
-        // Calculer T0 à partir des formules (valeur initiale)
-        const co2_frac = CO2_fraction !== null ? CO2_fraction : current_CO2_fraction_for_temp;
-        // Utiliser un albedo de base pour l'initialisation (sans glace ni nuages)
-        // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
-        const cellH2O_temp = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
-        const h2o_enabled_temp = cellH2O_temp && cellH2O_temp.classList.contains('checked');
-        const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
-        const T0_no_greenhouse = Math.pow(calculateSolarFluxAbsorbed(255, false) / STEFAN_BOLTZMANN, 0.25);
-
-        if (co2_frac === 0 || co2_frac === null) {
-            T0 = T0_no_greenhouse;
-        } else {
-            const CO2_ref = 1e-6;
-            const forcing_CO2 = 5.35 * Math.log(Math.max(co2_frac, CO2_ref) / CO2_ref);
-            const climate_sensitivity = 0.8;
-            const delta_T_greenhouse = climate_sensitivity * forcing_CO2;
-            T0 = T0_no_greenhouse + delta_T_greenhouse;
-        }
-    }
+// 🔒 CORRECTION : Utiliser DATA['🧮']['🧮🌡️'] comme source unique de vérité
+// 🔒 CORRECTION : Utiliser DATA['🧮']['🧮🌡️'] comme source unique de vérité
+function temperature(z) {
+    const DATA = window.DATA;
+    // Utiliser DATA['🧮']['🧮🌡️'] comme source unique de vérité
+    
+    // 🔒 CORRECTION : Utiliser DATA['📜']['🗿'] pour récupérer l'époque
+    const currentEpoch = window.TIMELINE.find(item => item['📅'] === DATA['📜']['🗿']);
 
     // Calculer la tropopause dynamiquement en fonction de T0
-    const z_trop = calculateTropopauseHeight(T0);
+    const z_trop = calculateTropopauseHeight(DATA['🧮']['🧮🌡️']);
 
     // Gradient de température (Lapse Rate)
     // Terre standard : -6.5 K/km
@@ -543,24 +377,21 @@ function temperature(z, CO2_fraction = null, T0_override = null) {
     // Γ = g / cp (adiabatique sec), réduit par la condensation
     let Gamma = -0.0065; // Valeur par défaut
 
-    if (typeof window !== 'undefined' && window.currentEpochName) {
-        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch) {
-            // Si un lapse rate spécifique est défini
-            if (typeof currentEpoch.lapse_rate === 'number') {
-                Gamma = currentEpoch.lapse_rate;
-            } else if (currentEpoch.gravity) {
-                // Ajustement proportionnel à la gravité (Γ ~ g)
-                // Si g double, le gradient double (l'air se refroidit plus vite en montant)
-                Gamma = -0.0065 * (currentEpoch.gravity / 9.81);
-            }
+    if (currentEpoch) {
+        // Si un lapse rate spécifique est défini
+        if (typeof currentEpoch.lapse_rate === 'number') {
+            Gamma = currentEpoch.lapse_rate;
+        } else if (currentEpoch.gravity) {
+            // Ajustement proportionnel à la gravité (Γ ~ g)
+            // Si g double, le gradient double (l'air se refroidit plus vite en montant)
+            Gamma = -0.0065 * (currentEpoch.gravity / 9.81);
         }
     }
 
-    const T_trop = T0 + Gamma * z_trop;
+    const T_trop = DATA['🧮']['🧮🌡️'] + Gamma * z_trop;
 
     if (z < z_trop) {
-        return T0 + Gamma * z;
+        return DATA['🧮']['🧮🌡️'] + Gamma * z;
     } else {
         return T_trop;
     }
@@ -571,9 +402,9 @@ if (typeof window !== 'undefined') {
     window.calculateTropopauseHeight = calculateTropopauseHeight;
 }
 
-function airNumberDensity(z, CO2_fraction = null, T0_override = null, params = null) {
-    const BOLTZMANN_KB = window.BOLTZMANN_KB || 1.380649e-23;
-    return pressure(z, params) / (BOLTZMANN_KB * temperature(z, CO2_fraction, T0_override));
+// 🔒 CORRECTION : Tous les paramètres sont dans DATA, plus besoin de paramètres
+function airNumberDensity(z) {
+    return pressure(z) / (CONST.BOLTZMANN_KB * temperature(z));
 }
 
 // ============================================================================
@@ -606,21 +437,23 @@ function crossSectionCO2(wavelength) {
  * @returns {number} Ratio de mélange (fraction molaire, 0 à 1)
  */
 function waterVaporMixingRatio(z, r0_override = null) {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     let r0 = r0_override;
     if (r0 === null) {
-        // Essayer de récupérer depuis la variable globale
-        if (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) {
-            r0 = window.h2oVaporPercent / 100;
-        } else {
+        // 🔒 CORRECTION : Utiliser DATA['🫧']['🍰🫧💧'] comme source unique de vérité
+        r0 = DATA['🫧']['🍰🫧💧'];
+        if (r0 === undefined) {
             r0 = 0.015;  // Fallback: ~1.5% (conditions modernes)
         }
     }
 
-    // Échelle de hauteur de la vapeur d'eau (H_H2O)
-    // La vapeur d'eau décroît beaucoup plus vite que l'air (H_air ≈ 8.5 km vs H_H2O ≈ 2-2.5 km)
-    // Cela dépend de la température (Clausius-Clapeyron)
-    // Pour l'instant on garde 2500m comme approximation standard
-    const H_H2O = 2500;
+    // 🔒 CORRECTION : Échelle de hauteur de la vapeur d'eau calculée dynamiquement
+    // Formule : H_H2O = RT / (M_H2O * g)
+    // où R = constante des gaz parfaits, T = température, M_H2O = masse molaire H2O, g = gravité
+    // La vapeur d'eau décroît plus vite que l'air car M_H2O (0.018 kg/mol) < M_air (0.029 kg/mol)
+    const H_H2O = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (CONST.M_H2O * EPOCH['🍎']);
 
     return r0 * Math.exp(-z / H_H2O);
 }
@@ -641,84 +474,32 @@ function crossSectionH2O(wavelength) {
     return Math.max(sigma1, sigma2);
 }
 
-// Densité numérique de H2O
-// 🔄 MODIFIÉ : Utilise maintenant calculateWaterPartition pour déterminer la vapeur selon la température
-function waterVaporNumberDensity(z, CO2_fraction = null, T0_override = null, params = null) {
-    // Vérifier si H2O est activé (via variable globale ou window)
-    const enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
-        ? window.waterVaporEnabled
-        : waterVaporEnabled;
-    if (!enabled) return 0;
+// Fraction de CO2 (bien mélangé, constante avec l'altitude)
+function co2FractionAtZ(z) {
+    const DATA = window.DATA;
+    // CO2 est bien mélangé, donc la fraction est constante avec l'altitude
+    return DATA['🫧']['🍰🫧🏭'];
+}
 
-    // Récupérer la température de surface (T0_override ou valeur globale)
-    const T0 = T0_override !== null ? T0_override :
-        (typeof window !== 'undefined' && window.current_T0_adjusted !== undefined ? window.current_T0_adjusted : null);
-
-    // Si pas de température disponible, utiliser l'ancienne méthode (valeur fixe)
-    if (T0 === null || !isFinite(T0) || T0 <= 0) {
-        const n_air = airNumberDensity(z, CO2_fraction, T0_override, params);
-
-        // Récupérer la quantité d'eau globale pour le mixing ratio
-        let h2o_percent = 1.5; // Défaut 1.5%
-        if (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) {
-            h2o_percent = window.h2oVaporPercent + window.h2oTotalFromMeteorites;
-        }
-
-        const mixing_ratio = waterVaporMixingRatio(z, h2o_percent / 100);
-        return n_air * mixing_ratio;
-    }
-
-    // Récupérer l'eau totale disponible (base + météorites)
-    const h2o_base = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined)
-        ? window.h2oVaporPercent : 0;
-    const h2o_from_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined)
-        ? window.h2oTotalFromMeteorites : 0;
-    const h2o_total_percent = h2o_base + h2o_from_meteorites;
-
-    if (h2o_total_percent <= 0) return 0;
-
-    // Récupérer les paramètres de l'époque courante (ou utiliser params si fournis)
-    let epochParams = params;
-    // Si params n'est pas fourni, on tente de récupérer de window (fallback)
-    if (!params && typeof window !== 'undefined' && window.currentEpochName) {
-        const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
-        if (currentEpoch) {
-            // Calculer pressure_atm et molar_mass_air depuis les composants
-            const pressure_atm = window.calculatePressureAtm(currentEpoch);
-            const molar_mass_air = window.calculateMolarMassAir(currentEpoch);
-            
-            epochParams = {
-                pressure_atm: pressure_atm,
-                molar_mass_air: molar_mass_air,
-                gravity: currentEpoch.gravity,
-                ocean_coverage: currentEpoch.ocean_coverage
-            };
-        }
-    }
+// Fraction de vapeur d'eau ajustée selon l'altitude
+// H2O décroît avec l'altitude selon un profil exponentiel (échelle de hauteur)
+function waterVaporFractionAtZ(z) {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    if (!DATA['🔘']['🔘💧📛']) return 0;
 
     // Calculer la répartition vapeur/liquide/glace selon la température
-    if (typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
-        const h2o_total_fraction = h2o_total_percent / 100;
-        const waterPartition = window.calculateWaterPartition(T0, h2o_total_fraction, epochParams);
-        const vapor_fraction = waterPartition.vapor_fraction;
+    window.calculateWaterPartition();
 
-        // Calculer la densité numérique de vapeur d'eau
-        // n_H2O = n_air * vapor_fraction (fraction molaire de vapeur)
-        const n_air = airNumberDensity(z, CO2_fraction, T0_override, params);
-
-        // Ajuster la fraction de vapeur selon l'altitude (décroît avec z)
-        // Utiliser le même profil que waterVaporMixingRatio pour la distribution verticale
-        const H_H2O = 2500; // Échelle de hauteur de la vapeur d'eau (m)
-        const altitude_factor = Math.exp(-z / H_H2O);
-        const vapor_fraction_at_z = vapor_fraction * altitude_factor;
-
-        return n_air * vapor_fraction_at_z;
-    } else {
-        // Fallback : utiliser l'ancienne méthode si calculateWaterPartition n'est pas disponible
-        const n_air = airNumberDensity(z, CO2_fraction, T0_override, params);
-        const mixing_ratio = waterVaporMixingRatio(z);
-        return n_air * mixing_ratio;
-    }
+    // 🔒 CORRECTION : Échelle de hauteur de la vapeur d'eau calculée dynamiquement
+    // Formule : H_H2O = RT / (M_H2O * g)
+    // où R = constante des gaz parfaits, T = température, M_H2O = masse molaire H2O, g = gravité
+    const H_H2O = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (CONST.M_H2O * EPOCH['🍎']);
+    
+    // Ajuster la fraction de vapeur selon l'altitude (décroît avec z)
+    // Utiliser le même profil que waterVaporMixingRatio pour la distribution verticale
+    return DATA['🫧']['🍰🫧💧'] * Math.exp(-z / H_H2O);
 }
 
 // ============================================================================
@@ -742,19 +523,17 @@ function crossSectionCH4(wavelength) {
     return Math.max(sigma1, sigma2);
 }
 
+// 🔒 CORRECTION : Tous les paramètres sont dans DATA, plus besoin de paramètres
 // Densité numérique de CH4
-// CH4 est un gaz bien mélangé dans l'atmosphère (comme CO2), pas de profil vertical complexe
-function methaneNumberDensity(z, CH4_fraction = null, CO2_fraction = null, T0_override = null, params = null) {
-    // Vérifier si CH4 est activé (via variable globale ou window)
-    const enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)
-        ? window.methaneEnabled
-        : (typeof methaneEnabled !== 'undefined' ? methaneEnabled : false);
-    if (!enabled || !CH4_fraction) return 0;
 
+// Fraction de CH4 (bien mélangé, constante avec l'altitude)
+function methaneFractionAtZ(z) {
+    const DATA = window.DATA;
+    if (!DATA['🔘']['🔘⛽📛']) return 0;
+    if (!DATA['🫧']['🍰🫧⛽']) return 0;
     // CH4 est bien mélangé, donc la fraction est constante avec l'altitude
     // (contrairement à H2O qui décroît avec l'altitude)
-    const n_air = airNumberDensity(z, CO2_fraction, T0_override, params);
-    return n_air * CH4_fraction;
+    return DATA['🫧']['🍰🫧⛽'];
 }
 
 // Évaporation/précipitation (formule simplifiée)
@@ -769,11 +548,7 @@ function evaporationRate(T_surface) {
 
 // Transport de vapeur d'eau (profil basé sur la pression)
 // Le transport vertical est modélisé par un profil exponentiel
-function waterVaporTransport(z) {
-    // Le transport diminue avec l'altitude (moins de vapeur en altitude)
-    // Utilise le même profil que le mixing ratio
-    return waterVaporMixingRatio(z);
-}
+// 🔒 SUPPRIMÉ : waterVaporTransport inutile
 
 // ============================================================================
 // SIMULATION DU TRANSFERT RADIATIF
@@ -782,16 +557,16 @@ function waterVaporTransport(z) {
 // ⚡ OPTIMISATION : Calculer le facteur de précision adaptatif selon le FPS
 // 🔒 Cette fonction est maintenant contrôlée par l'événement fpsLevelChanged
 function getPrecisionFactorFromFPS() {
-    // Utiliser window.fpsLevel si disponible (défini par l'événement FPS)
-    if (typeof window !== 'undefined' && window.fpsLevel && window.fpsPrecisionFactor !== undefined) {
+    // Utiliser window.fpsPrecisionFactor si disponible (défini par l'événement fpsLevelChanged)
+    if (window.fpsPrecisionFactor !== undefined) {
         return window.fpsPrecisionFactor;
     }
     
-    // Fallback : calculer selon l'ancienne logique
+    // Calculer selon le FPS actuel
     const FPSalert = 25;
     const FPSmin = 20;
     const FPSmax = 55;
-    const currentFPS = (typeof window !== 'undefined' && window.fps) ? window.fps : 60;
+    const currentFPS = window.fps; // Plantera si n'existe pas
 
     if (currentFPS < FPSmin) {
         return 0.5;
@@ -805,9 +580,7 @@ function getPrecisionFactorFromFPS() {
 }
 
 // Exposer la fonction globalement pour l'affichage FPS
-if (typeof window !== 'undefined') {
     window.getPrecisionFactorFromFPS = getPrecisionFactorFromFPS;
-}
 
 // Fonction pour log Delta équilibre
 function logDeltaEquilibre(delta_equilibre, T0_current, T_effective, delta_eds, tolerance_current, tolerance_status) {
@@ -816,73 +589,36 @@ function logDeltaEquilibre(delta_equilibre, T0_current, T_effective, delta_eds, 
 
 // Fonction interne pour calculer le flux total sortant pour une T0 donnée
 // Fonction de logging centralisée pour les phases de calcul
-function logCalculationPhase(phase, data) {
-    if (typeof window === 'undefined' || !window.console) return;
+// 🔒 SUPPRIMÉ : logCalculationPhase inutile
 
-    // Ne garder que les phases importantes : DICHOTOMIE START, DICHOTOMIE ITER, DICHOTOMIE CONVERGENCE
-    const importantPhases = ['DICHOTOMIE START', 'DICHOTOMIE ITER', 'DICHOTOMIE CONVERGENCE'];
-    const isImportantPhase = importantPhases.some(important => phase.includes(important));
+function calculateFluxForT0() {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     
-    if (!isImportantPhase) {
-        return; // Ne pas afficher les autres phases
-    }
-
-    // Afficher uniquement T0 pour les phases importantes
-    if (phase.includes('DICHOTOMIE START')) {
-        // Log supprimé : redondant avec T0_initial_config qui affiche déjà la température
-    } else if (phase.includes('DICHOTOMIE ITER')) {
-        // Log supprimé : redondant avec le log delta aire qui affiche déjà la température
-    } else if (phase.includes('DICHOTOMIE CONVERGENCE')) {
-        const T0_final = data?.T0_final || 'N/A';
-        console.log(`✅ Convergence: T° = ${T0_final}K (${(parseFloat(T0_final) - 273.15).toFixed(1)}°C)`);
-    }
-}
-
-// Exposer globalement pour utilisation dans main.js
-if (typeof window !== 'undefined') {
-    window.logCalculationPhase = logCalculationPhase;
-}
-
-function calculateFluxForT0(CO2_fraction, T0_test, options) {
+    // 🔒 Créer DATA['📊'] directement (crash si DATA n'existe pas)
+    DATA['📊'] = {};
     
-    // fullSpectre=false : utilise un regroupement adaptatif des longueurs d'onde pour optimiser les calculs (plus rapide)
-    // fullSpectre=true : utilise le spectre complet sans regroupement (plus précis mais plus lent)
-    // Note: actuellement forcé à true dans le code (forceFullSpectre), donc toujours spectre complet
-    // Log supprimé : affichage uniquement du mode (dichotomie/exponentielle) dans la boucle principale
-    // const co2_ppm = (CO2_fraction * 1e6).toFixed(0);
-    // const ch4_ppm = ((options?.CH4_fraction || 0) * 1e6).toFixed(0);
-    // const fullSpectre_emoji = (options?.fullSpectre || false) ? '🌈' : '⚡';
-    // console.log(`${LOGO_EDS} [calculateFluxForT0@calculations.js] 🏭 ${co2_ppm}ppm ${LOGO_TEMP} ${T0_test?.toFixed(2) || 'N/A'}K ⛽ ${ch4_ppm}ppm ${fullSpectre_emoji}`);
-
-    const {
-        z_max, // ⚡ Plus de valeur par défaut (120000), doit être fourni ou calculé
-        delta_z = 50,
-        lambda_min = 0.1e-6,
-        lambda_max = 100e-6,
-        delta_lambda = 0.1e-6,
-        fullSpectre = false, // ⚡ Si true, désactive les optimisations lambda (spectre complet)
-        CH4_fraction = null // Fraction molaire de CH4 (optionnel)
-    } = options;
-
-    // ⚡ PRÉCISION ADAPTATIVE : Utiliser la précision selon le FPS
-    // 🔒 forceFullSpectre : contrôle si on utilise le spectre complet ou le regroupement adaptatif
-    // - true : toujours spectre complet (précision maximale, plus lent)
-    // - false : regroupement adaptatif selon FPS (plus rapide, moins précis)
-    // - Peut être dynamique selon FPS ou delta_equilibre (à implémenter si nécessaire)
-    // Pour l'instant : toujours true pour précision maximale
-    const forceFullSpectre = true; // TODO: pourrait être dynamique selon FPS ou delta_equilibre
-
-    // 🔒 Récupérer le facteur de précision depuis le FPS (pour l'échantillonnage atmosphère)
-    // 🔒 IMPORTANT : precisionFactor contrôle la taille des échantillons (delta_z_stratosphere), pas la convergence
-    // - tolerance : seuil de convergence pour delta_equilibre (flux_sortant - flux_entrant) en W/m²
-    // - precisionFactor : facteur d'échantillonnage atmosphère (delta_z_stratosphere) contrôlé par FPS
-    // precisionFactor < 1.0 : réduire la précision (augmenter delta_z_stratosphere) pour aller plus vite
-    // precisionFactor = 1.0 : précision standard
-    // precisionFactor > 1.0 : augmenter la précision (réduire delta_z_stratosphere) pour plus de détails
-    let precisionFactor = 1.0;
-    if (typeof window !== 'undefined' && typeof getPrecisionFactorFromFPS === 'function') {
-        precisionFactor = getPrecisionFactorFromFPS();
-    }
+    // Options
+    const delta_z = 50;
+    const lambda_min = 0.1e-6;
+    const lambda_max = 100e-6;
+    const delta_lambda = 0.1e-6;
+    const z_max = DATA['🫧']['📏🫧🧿'] * 1000; // km → m
+    
+    const physParams = {
+        total_atmosphere_mass_kg: DATA['⚖️']['⚖️🫧'],
+        gravity: EPOCH['🍎'],
+        planet_radius: EPOCH['📐'] * 1000,
+        molar_mass_air: DATA['🫧']['🧪'],
+        temperature_K: DATA['🧮']['🧮🌡️'],
+        pressure_atm: DATA['🫧']['🎈'],
+        ocean_coverage: DATA['💧']['🍰💧🌊']
+    };
+    
+    // 🔒 Ça plante si z_max est invalide, pas de vérification
+    // precisionFactor vient de l'événement fpsLevelChanged (FPS.js) ou de getPrecisionFactorFromFPS()
+    const precisionFactor = getPrecisionFactorFromFPS();
 
     // Ajuster delta_z et delta_lambda (toujours à la valeur de base, pas de réduction)
     // Note : delta_z sous tropopause reste constant (pas d'optimisation)
@@ -891,196 +627,19 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // ⚡ OPTIMISATION : Créer les grilles avec précision adaptative
     // Pour lambda : regrouper en plages de moyennes pour accélérer
     // Pour z : précision fine sous tropopause, grossière au-dessus
-
-    // Récupérer la hauteur max de l'atmosphère dynamique (ex: 600km pour Hadéen)
-    let total_mass; // Pas de valeur par défaut, doit être fourni par l'époque
-    let dynamic_z_max = z_max; // Initialisé avec l'option passée (peut être undefined)
-    let gravity_val; // Sera récupéré de l'époque
-    let planet_radius_val; // Sera récupéré de l'époque
-    let molar_mass_val; // Sera récupéré de l'époque
-    let physParams = null; // Objet regroupant les paramètres physiques pour les helpers
-
-    // Priorité 1 : Utiliser physParams depuis options si fourni (pour test_computeRadiativeTransfer.html)
-    if (options?.physParams !== undefined) {
-        physParams = options.physParams;
-        total_mass = physParams.total_atmosphere_mass_kg;
-    }
-    
-    // Priorité 1b : Utiliser les paramètres passés dans options (pour test_computeRadiativeTransfer.html)
-    if (options?.total_atmosphere_mass_kg !== undefined && total_mass === undefined) {
-        total_mass = options.total_atmosphere_mass_kg;
-    }
-    if (options?.z_max !== undefined) {
-        dynamic_z_max = options.z_max; // Utiliser z_max depuis options en priorité
-    }
-    
-    // Si on a total_mass depuis options, essayer de créer physParams depuis window.epoch
-    if (total_mass !== undefined && physParams === null && typeof window !== 'undefined' && window.epoch) {
-        gravity_val = window.epoch.gravity;
-        planet_radius_val = window.epoch.planet_radius;
-        molar_mass_val = window.calculateMolarMassAir(window.epoch);
-        
-        // Calculer la pression atmosphérique
-        const pressure_atm_val = window.calculatePressureAtm(window.epoch);
-        
-        // Créer physParams
-        physParams = {
-            total_atmosphere_mass_kg: total_mass,
-            gravity: gravity_val,
-            planet_radius: planet_radius_val,
-            molar_mass_air: molar_mass_val,
-            temperature_K: T0_test,
-            pressure_atm: pressure_atm_val,
-            ocean_coverage: window.epoch.ocean_coverage
-        };
-    }
-
-    // Priorité 2 : Utiliser window.epoch si disponible (pour test_computeRadiativeTransfer.html)
-    if (typeof window !== 'undefined' && window.epoch && total_mass === undefined) {
-        total_mass = window.epoch['⚖️🌬'];
-        if (window.epoch['🍎'] !== undefined) gravity_val = window.epoch['🍎'];
-        // Convertir le rayon de km en mètres pour les calculs
-        if (window.epoch['📐'] !== undefined) planet_radius_val = window.epoch['📐'] * 1000;
-        molar_mass_val = window.calculateMolarMassAir(window.epoch);
-        
-        // Calculer la pression atmosphérique
-        const pressure_atm_val = window.calculatePressureAtm(window.epoch);
-        
-        // Créer physParams pour window.epoch
-        physParams = {
-            total_atmosphere_mass_kg: total_mass,
-            gravity: gravity_val,
-            planet_radius: planet_radius_val,
-            molar_mass_air: molar_mass_val,
-            temperature_K: T0_test,
-            pressure_atm: pressure_atm_val,
-            ocean_coverage: window.epoch.ocean_coverage
-        };
-    }
-
-    // Priorité 3 : Utiliser window.configOrganigramme et window.currentEpochName (pour index.html)
-    if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName && total_mass === undefined) {
-        const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
-        if (currentEpoch) {
-            // Récupération stricte : si undefined, on laisse undefined (ce qui provoquera une erreur plus loin)
-            // Sauf si on veut explicitement autoriser 0 (Corps Noir)
-            if (currentEpoch['⚖️🌬'] !== undefined) {
-                total_mass = currentEpoch['⚖️🌬'];
-            } else {
-                console.error(`[calculateFluxForT0] ❌ ERREUR : 'total_atmosphere_mass_kg' manquant dans l'époque '${window.currentEpochName}'`);
-            }
-
-            // Récupération gravity, radius et masse molaire
-            if (currentEpoch['🍎'] !== undefined) gravity_val = currentEpoch['🍎'];
-            // Convertir le rayon de km en mètres pour les calculs
-            if (currentEpoch['📐'] !== undefined) planet_radius_val = currentEpoch['📐'] * 1000;
-            // Calculer molar_mass_air depuis les composants si non défini
-            molar_mass_val = window.calculateMolarMassAir(currentEpoch);
-
-            // Calculer la pression atmosphérique depuis les composants
-            const pressure_atm_val = window.calculatePressureAtm(currentEpoch);
-
-            // Création de l'objet params pour les helpers
-            physParams = {
-                total_atmosphere_mass_kg: total_mass,
-                gravity: gravity_val,
-                planet_radius: planet_radius_val,
-                molar_mass_air: molar_mass_val,
-                temperature_K: T0_test,
-                pressure_atm: pressure_atm_val,
-                ocean_coverage: currentEpoch.ocean_coverage
-            };
-
-            // Utiliser la nouvelle fonction centralisée dans calculations_atm.js
-            if (total_mass !== undefined) {
-                // Passer T0_test pour avoir une hauteur d'atmosphère cohérente avec la température testée
-                const props = window.calculateAtmosphereProperties(total_mass, T0_test, molar_mass_val, gravity_val); // gravity passed explicitement
-                dynamic_z_max = props.z_max;
-
-                if (props.is_massive) {
-                }
-            }
-        }
-    }
-    
-    // Si z_max n'est toujours pas défini mais que total_mass est disponible, le calculer
-    if (dynamic_z_max === undefined && total_mass !== undefined) {
-        // Utiliser window.epoch ou window.currentEpochName pour récupérer les paramètres physiques
-        let epoch_for_calc = null;
-        if (typeof window !== 'undefined' && window.epoch) {
-            epoch_for_calc = window.epoch;
-        } else if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName) {
-            epoch_for_calc = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
-        }
-        
-        if (epoch_for_calc && typeof window !== 'undefined') {
-            const temp_gravity = gravity_val || epoch_for_calc.gravity;
-            const temp_molar_mass = molar_mass_val || window.calculateMolarMassAir(epoch_for_calc);
-            if (temp_gravity !== undefined && temp_molar_mass !== undefined) {
-                const props = window.calculateAtmosphereProperties(total_mass, T0_test, temp_molar_mass, temp_gravity);
-                dynamic_z_max = props.z_max;
-            }
-        }
-    }
-
-    // 🚨 VALIDATION CRITIQUE : Si z_max n'est toujours pas défini, on arrête tout.
-    // Pas de valeur par défaut silencieuse qui cache des bugs.
-    if (dynamic_z_max === undefined || dynamic_z_max === null || isNaN(dynamic_z_max)) {
-        console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE : Hauteur d'atmosphère (z_max) indéterminée. total_mass=${total_mass}, z_max_option=${z_max}`);
-        return null;
-    }
-    
-    // 🚨 VALIDATION CRITIQUE : Si physParams n'est pas défini, on arrête tout.
-    // physParams est requis pour pressure() et airNumberDensity()
-    if (physParams === null || physParams.temperature_K === undefined) {
-        // Si physParams n'est pas défini mais qu'on a les paramètres de base, le créer
-        if (total_mass !== undefined && typeof window !== 'undefined' && window.TIMELINE && window.DATA) {
-            const DATA = window.DATA;
-            const epochId = DATA['📜']['🗿'];
-            const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
-            const EPOCH = window.TIMELINE[epochIndex];
-            physParams = {
-                total_atmosphere_mass_kg: total_mass || 0,
-                gravity: EPOCH['🍎'],
-                planet_radius: EPOCH['📐'] * 1000,
-                molar_mass_air: window.DATA && window.DATA['🌬'] ? window.DATA['🌬']['🧪'] : 0.029,
-                temperature_K: T0_test,
-                pressure_atm: window.DATA && window.DATA['🌬'] ? window.DATA['🌬']['🎈'] : 0,
-                ocean_coverage: window.DATA && window.DATA['💧'] ? window.DATA['💧']['🍰💧🌊'] : 0
-            };
-        } else {
-            console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE : physParams non défini ou temperature_K manquant. total_mass=${total_mass}, epoch=${typeof window !== 'undefined' && window.epoch ? window.epoch.id : 'unknown'}`);
-            return null;
-        }
-    }
-    
-    // S'assurer que total_atmosphere_mass_kg est défini dans physParams (même si 0)
-    if (physParams.total_atmosphere_mass_kg === undefined) {
-        physParams.total_atmosphere_mass_kg = total_mass !== undefined ? total_mass : 0;
-    }
-    
-    // S'assurer que total_mass est défini (même si 0) pour éviter les erreurs
-    if (total_mass === undefined) {
-        total_mass = physParams.total_atmosphere_mass_kg || 0;
-    }
     
     // Exposer physParams globalement pour que pressure() et airNumberDensity() puissent y accéder
-    // IMPORTANT : Exposer AVANT tout appel à pressure() ou airNumberDensity()
-    if (typeof window !== 'undefined') {
-        window._currentPhysParams = physParams;
-    }
-
+    window._currentPhysParams = physParams;
+    
     // Calculer la tropopause pour déterminer les zones de précision
-    const z_trop_precalc = calculateTropopauseHeight(T0_test);
+    const z_trop_precalc = calculateTropopauseHeight(DATA['🧮']['🧮🌡️']);
 
     // Créer la grille lambda avec regroupement adaptatif (sauf si fullSpectre)
     const lambda_range = [];
     const lambda_weights = []; // Poids pour les moyennes pondérées
 
-    // ⚡ FORCER fullSpectre pour précision maximale (pas de regroupement)
-    const useFullSpectre = fullSpectre || forceFullSpectre;
-
-    if (useFullSpectre) {
+    // ⚡ Spectre complet pour précision maximale
+    {
         // ⚡ Dernière itération : spectre complet sans optimisation
         // Calculer le nombre exact d'éléments : (lambda_max - lambda_min) / delta_lambda + 1
         // Exemple : de 0.1e-6 à 100e-6 avec pas 0.1e-6 = (100-0.1)/0.1 + 1 = 999 + 1 = 1000 points
@@ -1111,51 +670,6 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         }
         
         // Log pour debug
-    } else {
-        // Optimisation : regroupement adaptatif (sans ajustement FPS, précision maximale)
-        // Zone critique : 10-20 μm (bande CO₂) - haute précision
-        const lambda_critical_min = 10e-6;
-        const lambda_critical_max = 20e-6;
-        const delta_lambda_critical = final_delta_lambda; // Précision maximale dans la bande CO₂
-
-        // Zones non-critiques : précision réduite (moyennes sur plages) mais avec précision maximale
-        const delta_lambda_coarse = final_delta_lambda * 10; // Regroupement fixe (10x) pour zones non-critiques
-
-        for (let lambda = lambda_min; lambda < lambda_max;) {
-            if (lambda >= lambda_critical_min && lambda < lambda_critical_max) {
-                // Zone critique (10-20 μm) : précision fine
-                lambda_range.push(lambda);
-                lambda_weights.push(1.0); // Poids unitaire
-                lambda += delta_lambda_critical;
-            } else {
-                // Zone non-critique : moyenne sur une plage
-                const lambda_start = lambda;
-                let lambda_end = lambda + delta_lambda_coarse;
-
-                // Ne pas dépasser la zone critique si on est avant
-                if (lambda < lambda_critical_min && lambda_end > lambda_critical_min) {
-                    lambda_end = lambda_critical_min;
-                }
-                // Ne pas dépasser lambda_max
-                if (lambda_end > lambda_max) {
-                    lambda_end = lambda_max;
-                }
-                // Si on est après la zone critique, continuer normalement
-                if (lambda >= lambda_critical_max && lambda_end > lambda_critical_max) {
-                    // OK, on continue
-                }
-
-                const lambda_mid = (lambda_start + lambda_end) / 2;
-                lambda_range.push(lambda_mid);
-                lambda_weights.push((lambda_end - lambda_start) / delta_lambda); // Poids = nombre de points regroupés
-                lambda = lambda_end;
-
-                // Arrêter si on a atteint lambda_max
-                if (lambda >= lambda_max) {
-                    break;
-                }
-            }
-        }
     }
 
     // Créer la grille z avec précision adaptative
@@ -1178,7 +692,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // AJUSTEMENT HADÉEN : Si on va jusqu'à 600km, on doit augmenter le pas dans la haute atmosphère 
     // sinon on aura trop de couches (600000 / 250 = 2400 couches ! trop lent)
     // Stratégie : garder 250m jusqu'à 120km, puis augmenter fortement au-delà
-    const delta_z_exosphere = (dynamic_z_max > 120000) ? 5000 : delta_z_stratosphere; // 5km pas au-delà de 120km
+    const delta_z_exosphere = (z_max > 120000) ? 5000 : delta_z_stratosphere; // 5km pas au-delà de 120km
 
     // Sous tropopause : précision fine (delta_z constant = 50m)
     for (let z = 0; z < z_trop_precalc; z += delta_z_troposphere) {
@@ -1192,7 +706,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
     // Au-dessus de la tropopause jusqu'à 120km : précision moyenne (250m)
     const limit_std_atmosphere = 120000;
-    let current_z_max_loop = Math.min(dynamic_z_max, limit_std_atmosphere);
+    let current_z_max_loop = Math.min(z_max, limit_std_atmosphere);
 
     // Au-dessus de la tropopause : précision grossière (delta_z * 5 = 250m)
     for (let z = z_trop_precalc + delta_z_stratosphere; z < current_z_max_loop; z += delta_z_stratosphere) {
@@ -1200,20 +714,20 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     }
 
     // Si atmosphère massive, continuer au-delà de 120km avec un pas plus grand
-    if (dynamic_z_max > limit_std_atmosphere) {
+    if (z_max > limit_std_atmosphere) {
         // S'assurer d'inclure la limite 120km
         if (z_range[z_range.length - 1] < limit_std_atmosphere) {
             z_range.push(limit_std_atmosphere);
         }
 
-        for (let z = limit_std_atmosphere + delta_z_exosphere; z < dynamic_z_max; z += delta_z_exosphere) {
+        for (let z = limit_std_atmosphere + delta_z_exosphere; z < z_max; z += delta_z_exosphere) {
             z_range.push(z);
         }
     }
 
     // S'assurer que z_max est inclus
-    if (z_range[z_range.length - 1] < dynamic_z_max) {
-        z_range.push(dynamic_z_max);
+    if (z_range[z_range.length - 1] < z_max) {
+        z_range.push(z_max);
     }
 
     // ⚠️ IMPORTANT : S'assurer que lambda_range est complètement construit avant de créer upward_flux
@@ -1234,13 +748,13 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const absorbed_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
 
-    // Log du calcul spectral
-    console.log(`📊 [calculateFluxForT0@calculations.js] Calcul spectral:`);
-    console.log(`   Nombre de couches atmosphériques: ${num_couches}`);
-    console.log(`   Nombre de plages spectrales: ${num_plages_spectre}`);
-    console.log(`   Produit (cases calculées): ${total_cases}`);
+    // Log du calcul spectral (désactivé pour réduire la taille des logs)
+    // console.log(`📊 [calculateFluxForT0@calculations.js] Calcul spectral:`);
+    // console.log(`   Nombre de couches atmosphériques: ${num_couches}`);
+    // console.log(`   Nombre de plages spectrales: ${num_plages_spectre}`);
+    // console.log(`   Produit (cases calculées): ${total_cases}`);
 
-    // Condition limite : flux émis par la surface avec T0_test
+    // Condition limite : flux émis par la surface
     // ⚡ OPTIMISATION : Tenir compte des poids lambda pour les plages regroupées
     if (lambda_range.length !== lambda_weights.length) {
         console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE avant earth_flux: lambda_range.length (${lambda_range.length}) != lambda_weights.length (${lambda_weights.length})`);
@@ -1251,7 +765,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE: lambda_weights[${idx}] manquant pour lambda_range[${idx}] = ${lambda}`);
             throw new Error(`lambda_weights[${idx}] requis`);
         }
-        return Math.PI * localPlanckFunction(lambda, T0_test) * delta_lambda * lambda_weights[idx];
+        return Math.PI * localPlanckFunction(lambda, DATA['🧮']['🧮🌡️']) * delta_lambda * lambda_weights[idx];
     });
 
     // Log supprimé (non essentiel)
@@ -1262,10 +776,10 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const flux_total = earth_flux.reduce((sum, f) => sum + f, 0);
 
     // ⚡ OPTIMISATION : Calculer tropopause une seule fois
-    const z_trop = calculateTropopauseHeight(T0_test);
+    const z_trop = calculateTropopauseHeight(DATA['🧮']['🧮🌡️']);
     const Gamma = -0.0065; // Gradient de température, K/m
 
-    const T_trop = T0_test + Gamma * z_trop;
+    const T_trop = DATA['🧮']['🧮🌡️'] + Gamma * z_trop;
 
     // Trouver l'index de la tropopause dans z_range
     let i_trop = z_range.length; // Par défaut, pas de tropopause (tout avant)
@@ -1286,13 +800,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const cross_section_H2O = lambda_range.map(lambda => crossSectionH2O(lambda));
     const cross_section_CH4 = lambda_range.map(lambda => crossSectionCH4(lambda));
 
-    // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
-    const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
-    const h2o_enabled = cellH2O && cellH2O.classList.contains('checked');
-
-    const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)
-        ? window.methaneEnabled
-        : (typeof methaneEnabled !== 'undefined' ? methaneEnabled : false);
+    // h2o_enabled et ch4_enabled sont déjà lus depuis DATA au début de la fonction
 
     // Log supprimé (non essentiel)
 
@@ -1303,11 +811,20 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     }
     let flux_in = [...earth_flux];
 
+    // 🔒 LOG : Vérifier les densités numériques à z=0 (première couche)
+    const z_log = 0;
+    const n_air_log = airNumberDensity(z_log);
+    // Logs désactivés pour réduire la taille
+    
     // ⚡ OPTIMISATION : Boucle avant tropopause (T varie avec z)
     for (let i = 0; i < i_trop; i++) {
         const z = z_range[i];
-        const T = T0_test + Gamma * z; // Calcul direct, sans appel à temperature()
-        const n_CO2 = airNumberDensity(z, CO2_fraction, T0_test, physParams) * CO2_fraction;
+        const T = DATA['🧮']['🧮🌡️'] + Gamma * z; // Calcul direct, sans appel à temperature()
+        // ⚡ OPTIMISATION : Calculer les densités numériques une seule fois par altitude (pas dans la boucle lambda)
+        const n_air = airNumberDensity(z);
+        const n_CO2 = n_air * co2FractionAtZ(z);
+        const n_H2O = n_air * waterVaporFractionAtZ(z);
+        const n_CH4 = n_air * methaneFractionAtZ(z);
 
         // ⚠️ IMPORTANT : Sous tropopause, on garde delta_z constant = 50m (PAS D'OPTIMISATION)
         // On utilise directement delta_z_troposphere, pas de calcul de delta_z_real
@@ -1336,13 +853,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             // Absorption CO2
             const kappa_CO2 = cross_section_CO2[j] * n_CO2;
 
-            // Absorption H2O (si activé)
-            const n_H2O = h2o_enabled ? waterVaporNumberDensity(z, CO2_fraction, T0_test, physParams) : 0;
-            const kappa_H2O = h2o_enabled ? cross_section_H2O[j] * n_H2O : 0;
+            // Absorption H2O
+            const kappa_H2O = cross_section_H2O[j] * n_H2O;
 
-            // Absorption CH4 (si activé)
-            const n_CH4 = (ch4_enabled && CH4_fraction) ? methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test, physParams) : 0;
-            const kappa_CH4 = (ch4_enabled && CH4_fraction) ? cross_section_CH4[j] * n_CH4 : 0;
+            // Absorption CH4
+            const kappa_CH4 = cross_section_CH4[j] * n_CH4;
 
             // Debug: analyser l'absorption H2O dans la zone < 9μm (une fois par itération, pour quelques longueurs d'onde clés)
             if (i === 0 && (j === 0 || j === Math.floor(lambda_range.length / 4) || j === Math.floor(lambda_range.length / 2))) {
@@ -1353,10 +868,16 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             const kappa = kappa_CO2 + kappa_H2O + kappa_CH4;
 
             optical_thickness[i][j] = kappa * delta_z_real;
+            
+            // 🔒 LOG : Vérifier l'absorption à la première couche (z=0) pour quelques longueurs d'onde clés
+            if (i === 0 && (j === 0 || j === Math.floor(lambda_range.length / 4) || j === Math.floor(lambda_range.length / 2) || j === Math.floor(lambda_range.length * 0.75))) {
+                const lambda_um = lambda * 1e6;
+                console.log(`🔍 [calculateFluxForT0] z=${z.toFixed(0)}m, λ=${lambda_um.toFixed(2)}μm: kappa_CO2=${kappa_CO2.toExponential(2)}, kappa_H2O=${kappa_H2O.toExponential(2)}, kappa_CH4=${kappa_CH4.toExponential(2)}, kappa_total=${kappa.toExponential(2)}, tau=${optical_thickness[i][j].toExponential(2)}`);
+            }
 
             // 🔒 Corps noir = pas d'absorption (CO2=0 ET H2O réellement absent ET CH4 réellement absent)
             // Vérifier les valeurs réelles, pas seulement les boutons
-            const has_absorption = (CO2_fraction > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
+            const has_absorption = (DATA['🫧']['🍰🫧🏭'] > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
             if (!has_absorption) {
                 // Pas d'absorption : corps noir pur, flux passe sans modification
                 upward_flux[i][j] = flux_in[j];
@@ -1375,7 +896,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
                 // 2. Flux émis
                 // F_émis = (1 - exp(-tau)) × π × B_λ(T_couche) × Δλ × poids
-                const em_flux = emissivity * Math.PI * localPlanckFunction(lambda, T) * delta_lambda * (lambda_weights[j] || 1.0);
+                const em_flux = emissivity * Math.PI * localPlanckFunction(lambda, T) * delta_lambda * lambda_weights[j];
 
                 // 3. Flux sortant
                 upward_flux[i][j] = flux_in[j] * transmission + em_flux;
@@ -1392,7 +913,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // ⚡ OPTIMISATION : Boucle après tropopause (T constante = T_trop, B_λ précalculé)
     for (let i = i_trop; i < z_range.length; i++) {
         const z = z_range[i];
-        const n_CO2 = airNumberDensity(z, CO2_fraction, T0_test, physParams) * CO2_fraction;
+        // ⚡ OPTIMISATION : Calculer les densités numériques une seule fois par altitude (pas dans la boucle lambda)
+        const n_air = airNumberDensity(z);
+        const n_CO2 = n_air * co2FractionAtZ(z);
+        const n_H2O = n_air * waterVaporFractionAtZ(z);
+        const n_CH4 = n_air * methaneFractionAtZ(z);
 
         // ⚡ OPTIMISATION : Calculer delta_z réel pour cette couche (précision grossière au-dessus)
         const delta_z_real = i > i_trop ? z - z_range[i - 1] : delta_z_stratosphere;
@@ -1420,13 +945,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
             // Absorption CO2
             const kappa_CO2 = cross_section_CO2[j] * n_CO2;
 
-            // Absorption H2O (si activé)
-            const n_H2O = h2o_enabled ? waterVaporNumberDensity(z, CO2_fraction, T0_test, physParams) : 0;
-            const kappa_H2O = h2o_enabled ? cross_section_H2O[j] * n_H2O : 0;
+            // Absorption H2O
+            const kappa_H2O = cross_section_H2O[j] * n_H2O;
 
-            // Absorption CH4 (si activé)
-            const n_CH4 = (ch4_enabled && CH4_fraction) ? methaneNumberDensity(z, CH4_fraction, CO2_fraction, T0_test, physParams) : 0;
-            const kappa_CH4 = (ch4_enabled && CH4_fraction) ? cross_section_CH4[j] * n_CH4 : 0;
+            // Absorption CH4
+            const kappa_CH4 = cross_section_CH4[j] * n_CH4;
 
             // Coefficient d'absorption total (CO2 + H2O + CH4)
             const kappa = kappa_CO2 + kappa_H2O + kappa_CH4;
@@ -1435,7 +958,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
             // 🔒 Corps noir = pas d'absorption (CO2=0 ET H2O réellement absent ET CH4 réellement absent)
             // Vérifier les valeurs réelles, pas seulement les boutons
-            const has_absorption = (CO2_fraction > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
+            const has_absorption = (DATA['🫧']['🍰🫧🏭'] > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
             if (!has_absorption) {
                 // Pas d'absorption : corps noir pur, flux passe sans modification
                 upward_flux[i][j] = flux_in[j];
@@ -1452,7 +975,7 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
 
                 // 2. Flux émis
                 // ⚡ OPTIMISATION : Utiliser B_λ(T_trop) précalculé
-                const em_flux = emissivity * Math.PI * planck_trop[j] * delta_lambda * (lambda_weights[j] || 1.0);
+                const em_flux = emissivity * Math.PI * planck_trop[j] * delta_lambda * lambda_weights[j];
 
                 // 3. Flux sortant
                 upward_flux[i][j] = flux_in[j] * transmission + em_flux;
@@ -1478,20 +1001,9 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
         }
     }
     
+    // 🔒 CRASH si upward_flux invalide (pas de fallback)
     if (!upward_flux || upward_flux.length === 0 || !upward_flux[upward_flux.length - 1]) {
-        console.error('[calculateFluxForT0] upward_flux est vide ou invalide');
-        return {
-            total_flux: 0,
-            lambda_range: [],
-            z_range: [],
-            upward_flux: [],
-            optical_thickness: [],
-            emitted_flux: [],
-            absorbed_flux: [],
-            earth_flux: [],
-            albedo: 0.3,
-            cloud_coverage: 0
-        };
+        throw new Error('[calculateFluxForT0] upward_flux est vide ou invalide');
     }
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
     
@@ -1499,10 +1011,11 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     // Note: flux entrant initial = earth_flux total (flux émis par la surface)
     const earth_flux_total = earth_flux.reduce((sum, val) => sum + val, 0);
     const delta_spectral = total_flux - earth_flux_total;
-    console.log(`📊 [calculateFluxForT0@calculations.js] Résultat calcul spectral:`);
-    console.log(`   Flux entrant initial (surface): ${earth_flux_total.toFixed(2)} W/m²`);
-    console.log(`   Flux sortant final (sommet atm): ${total_flux.toFixed(2)} W/m²`);
-    console.log(`   Delta (sortant - entrant): ${delta_spectral.toFixed(2)} W/m²`);
+    // Log désactivé pour réduire la taille des logs
+    // console.log(`📊 [calculateFluxForT0@calculations.js] Résultat calcul spectral:`);
+    // console.log(`   Flux entrant initial (surface): ${earth_flux_total.toFixed(2)} W/m²`);
+    // console.log(`   Flux sortant final (sommet atm): ${total_flux.toFixed(2)} W/m²`);
+    // console.log(`   Delta (sortant - entrant): ${delta_spectral.toFixed(2)} W/m²`);
 
     // Debug: analyser le flux < 9μm au sommet de l'atmosphère
     const top_flux = upward_flux[upward_flux.length - 1];
@@ -1510,20 +1023,197 @@ function calculateFluxForT0(CO2_fraction, T0_test, options) {
     const top_flux_below_9um = top_flux.filter((flux, idx) => lambda_range[idx] < lambda_9um_top).reduce((sum, f) => sum + f, 0);
     const top_flux_total = top_flux.reduce((sum, f) => sum + f, 0);
 
-    return { total_flux, lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux };
+    // 🔒 Stocker les résultats dans DATA (crash si DATA['📊'] n'existe pas)
+    DATA['📊'].total_flux = total_flux;
+    DATA['📊'].lambda_range = lambda_range;
+    DATA['📊'].lambda_weights = lambda_weights;
+    DATA['📊'].z_range = z_range;
+    DATA['📊'].upward_flux = upward_flux;
+    DATA['📊'].optical_thickness = optical_thickness;
+    DATA['📊'].emitted_flux = emitted_flux;
+    DATA['📊'].absorbed_flux = absorbed_flux;
+    DATA['📊'].earth_flux = earth_flux;
+    
+    // Mettre à jour les résolutions dans DATA['🧮'] (crash si DATA['🧮'] n'existe pas)
+    DATA['🧮']['🔬🌈'] = lambda_range.length;
+    DATA['🧮']['🔬🫧'] = z_range.length;
+    
+    // Stocker aussi dans window.plotData pour compatibilité (crash si window.plotData n'existe pas)
+    window.plotData.spectral_result = {
+        total_flux: total_flux,
+        lambda_range: lambda_range,
+        lambda_weights: lambda_weights,
+        z_range: z_range,
+        upward_flux: upward_flux,
+        optical_thickness: optical_thickness,
+        emitted_flux: emitted_flux,
+        absorbed_flux: absorbed_flux,
+        earth_flux: earth_flux
+    };
+
+    return true; // Succès
+}
+
+// 🔒 Fonction helper pour récupérer les résultats depuis DATA (après calculateFluxForT0())
+function getSpectralResultFromDATA() {
+    const DATA = window.DATA;
+    return {
+        total_flux: DATA['📊'].total_flux,
+        lambda_range: DATA['📊'].lambda_range,
+        lambda_weights: DATA['📊'].lambda_weights,
+        z_range: DATA['📊'].z_range,
+        upward_flux: DATA['📊'].upward_flux,
+        optical_thickness: DATA['📊'].optical_thickness,
+        emitted_flux: DATA['📊'].emitted_flux,
+        absorbed_flux: DATA['📊'].absorbed_flux,
+        earth_flux: DATA['📊'].earth_flux
+    };
+}
+
+// Exposer globalement pour utilisation dans calculations_flux.js
+if (typeof window !== 'undefined') {
+    window.getSpectralResultFromDATA = getSpectralResultFromDATA;
+}
+
+// ============================================================================
+// FONCTION : CALCULER LES CAPACITÉS RADIATIVE IR (🍰🫧❀🌈)
+// ============================================================================
+// Calcule les capacités radiative IR normalisées pour H2O, CO2, CH4
+// depuis les données spectrales stockées dans DATA['📊']
+//
+// FORMULE :
+// 🍰🫧❀🌈 = ⟨ 1 - e^{-τ_❀(λ)} ⟩_{IR}
+//          = ∫_{λ∈IR} ∫_{z=0}^{z_max} (1 - e^{-τ_❀(λ,z)}) · w(λ) dz dλ
+//            ─────────────────────────────────────────────────────────────
+//            ∫_{λ∈IR} w(λ) dλ
+//
+// où :
+//   τ_❀(λ,z) = ∫_{z'=0}^{z} κ_❀(λ,z') dz' (épaisseur optique intégrée)
+//   κ_❀(λ,z) = σ_❀(λ) × n_❀(z) (coefficient d'absorption)
+//   w(λ) = poids radiatif (Planck à T_surface)
+//
+// Résultat normalisé ∈ [0,1], valable à toutes les époques
+function calculateRadiativeCapacities() {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    
+    // 🔒 CRASH si données manquantes (pas de fallback) - utiliser DATA directement
+    // 🔒 FILTRER sur l'IR uniquement (λ > 0.7 μm = 0.7e-6 m)
+    // L'IR commence à ~0.7-1 μm, on prend 0.7 μm comme limite
+    const lambda_IR_min = 0.7e-6; // 0.7 μm en mètres
+    const lambda_IR_indices = [];
+    for (let j = 0; j < DATA['📊'].lambda_range.length; j++) {
+        if (DATA['📊'].lambda_range[j] >= lambda_IR_min) {
+            lambda_IR_indices.push(j);
+        }
+    }
+    
+    // Calculer le poids radiatif (Planck à T_surface) pour chaque longueur d'onde IR
+    const lambda_weights_IR = lambda_IR_indices.map(idx => {
+        return planckFunction(DATA['📊'].lambda_range[idx], DATA['🧮']['🧮🌡️']);
+    });
+    
+    // Intégrale du poids radiatif sur IR (pour normalisation)
+    const delta_lambda = DATA['📊'].lambda_range.length > 1 ? (DATA['📊'].lambda_range[DATA['📊'].lambda_range.length - 1] - DATA['📊'].lambda_range[0]) / (DATA['📊'].lambda_range.length - 1) : 1e-6;
+    const weight_integral = lambda_weights_IR.reduce((sum, w) => sum + w, 0) * delta_lambda;
+    
+    // Précalculer les sections efficaces pour toutes les longueurs d'onde (calcul répétitif → garder const)
+    const cross_section_CO2 = DATA['📊'].lambda_range.map(lambda => crossSectionCO2(lambda));
+    const cross_section_H2O = DATA['📊'].lambda_range.map(lambda => crossSectionH2O(lambda));
+    const cross_section_CH4 = DATA['📊'].lambda_range.map(lambda => crossSectionCH4(lambda));
+    
+    // Initialiser les intégrales pondérées
+    let integral_H2O = 0;
+    let integral_CO2 = 0;
+    let integral_CH4 = 0;
+    
+    // Calculer la densité numérique de l'air à chaque altitude
+    const Gamma = -0.0065; // Gradient de température, K/m
+    const airNumberDensity = (z) => {
+        const T = DATA['🧮']['🧮🌡️'] + Gamma * z;
+        const P = DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA * Math.exp(-z / (CONST.R_GAS * T / (EPOCH['🍎'] * CONST.molar_mass_air_ref)));
+        return P / (CONST.BOLTZMANN_KB * T);
+    };
+    
+    // Pour chaque longueur d'onde IR uniquement
+    for (let idx = 0; idx < lambda_IR_indices.length; idx++) {
+        const j = lambda_IR_indices[idx];
+        const w_lambda = lambda_weights_IR[idx];
+        
+        // Initialiser les épaisseurs optiques intégrées pour cette longueur d'onde
+        let tau_H2O_lambda = 0;
+        let tau_CO2_lambda = 0;
+        let tau_CH4_lambda = 0;
+        
+        // Intégrer sur toutes les couches pour cette longueur d'onde
+        for (let i = 0; i < DATA['📊'].z_range.length - 1; i++) {
+            const z = DATA['📊'].z_range[i];
+            const delta_z = DATA['📊'].z_range[i + 1] - DATA['📊'].z_range[i];
+            
+            // Densités numériques à cette altitude
+            const n_air = airNumberDensity(z);
+            const n_CO2 = n_air * co2FractionAtZ(z);
+            const n_H2O = n_air * waterVaporFractionAtZ(z);
+            const n_CH4 = n_air * methaneFractionAtZ(z);
+            
+            // Coefficients d'absorption pour cette longueur d'onde et cette altitude
+            const kappa_CO2 = cross_section_CO2[j] * n_CO2;
+            const kappa_H2O = cross_section_H2O[j] * n_H2O;
+            const kappa_CH4 = cross_section_CH4[j] * n_CH4;
+            
+            // Épaisseur optique pour cette couche
+            const delta_tau_CO2 = kappa_CO2 * delta_z;
+            const delta_tau_H2O = kappa_H2O * delta_z;
+            const delta_tau_CH4 = kappa_CH4 * delta_z;
+            
+            // Accumuler les épaisseurs optiques intégrées
+            tau_CO2_lambda += delta_tau_CO2;
+            tau_H2O_lambda += delta_tau_H2O;
+            tau_CH4_lambda += delta_tau_CH4;
+        }
+        
+        // Calculer (1 - exp(-tau)) pour chaque gaz
+        const transmittance_CO2 = 1 - Math.exp(-tau_CO2_lambda);
+        const transmittance_H2O = 1 - Math.exp(-tau_H2O_lambda);
+        const transmittance_CH4 = 1 - Math.exp(-tau_CH4_lambda);
+        
+        // Accumuler les intégrales pondérées
+        integral_CO2 += transmittance_CO2 * w_lambda * delta_lambda;
+        integral_H2O += transmittance_H2O * w_lambda * delta_lambda;
+        integral_CH4 += transmittance_CH4 * w_lambda * delta_lambda;
+    }
+    
+    // Normaliser par l'intégrale du poids radiatif
+    // 🔒 CRASH si weight_integral = 0 (pas de fallback)
+    if (weight_integral <= 0) {
+        throw new Error(`calculateRadiativeCapacities: weight_integral = ${weight_integral}, impossible de normaliser`);
+    }
+    DATA['🫧']['🍰🫧🏭🌈'] = Math.max(0, Math.min(1, integral_CO2 / weight_integral));
+    DATA['🫧']['🍰🫧💧🌈'] = Math.max(0, Math.min(1, integral_H2O / weight_integral));
+    DATA['🫧']['🍰🫧⛽🌈'] = Math.max(0, Math.min(1, integral_CH4 / weight_integral));
+    DATA['🫧']['🍰🫧📿🌈'] = DATA['🫧']['🍰🫧🏭🌈'] + DATA['🫧']['🍰🫧💧🌈'] + DATA['🫧']['🍰🫧⛽🌈'];
+    
+    return true;
+}
+
+// Exposer globalement
+if (typeof window !== 'undefined') {
+    window.calculateRadiativeCapacities = calculateRadiativeCapacities;
 }
 
 // Fonction helper pour afficher une courbe temporaire pendant la dichotomie
 function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitial = false, options = {}) {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
     // Récupérer H2O et CH4 pour le log
-    const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
-    const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
-    const h2o_total = h2o_percent + h2o_meteorites;
+    // 🔒 CORRECTION : Utiliser DATA['🫧']['🍰🫧💧'] comme source unique de vérité
+    const h2o_total = DATA['🫧']['🍰🫧💧'] * 100; // Fraction → %
     const ch4_ppm = options.CH4_fraction * 1e6;
     
     // Log supprimé : affichage uniquement du mode (dichotomie/exponentielle) dans la boucle principale
     // if (iteration === 0 || isInitial) {
-    //     console.log(`${LOGO_EDS} [displayDichotomyStep@calculations.js] iter=${iteration} T0=${T0_test?.toFixed(2) || 'N/A'}K 🏭=${(CO2_fraction * 1e6).toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
+    //     console.log(`📛 [displayDichotomyStep@calculations.js] iter=${iteration} T0=${T0_test.toFixed(2)}K 🏭=${(CO2_fraction * 1e6).toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
     // }
     if (typeof window === 'undefined') return;
 
@@ -1532,7 +1222,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     // - Cette loi décrit la température effective d'un corps noir en équilibre radiatif
     // - Dérivée de la loi de Planck, elle est exacte pour un corps noir
     // - La constante σ = 5.67×10⁻⁸ W/(m²·K⁴) est une constante fondamentale
-    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+    const STEFAN_BOLTZMANN = CONST.STEFAN_BOLTZMANN;
 
     // ⚠️ DIFFÉRENCE ENTRE effective_temperature ET temp_surface :
     // - effective_temperature (temp_eff) = (flux_total / σ)^0.25
@@ -1616,7 +1306,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     // Mettre à jour les informations à chaque étape
     if (typeof window.updateDisplay === 'function') {
         window.updateDisplay({
-            state: typeof window.currentState !== 'undefined' ? window.currentState : 0,
+            state: window.currentState, // Plantera si n'existe pas
             co2_ppm: CO2_fraction * 1e6,
             temp_surface: T0_test,
             temp_surface_c: temp_surface_c,
@@ -1654,7 +1344,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
         window.updateBlackBodyColor(color_current);
         
         // Mettre à jour legend-equilibre avec la couleur actuelle
-        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+        const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
         if (legendEquilibre) {
             legendEquilibre.style.color = color_current;
         }
@@ -1720,8 +1410,9 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
 
 // 🔒 Fonction pour calculer T0_initial_config AVANT simulateRadiativeTransfer
 // Cette fonction doit être appelée avant simulateRadiativeTransfer pour déterminer la température de départ
-// Formule : 🎥 ? T0=🏮 : T0=🌡️, puis T0 += ☄️*🌡️☄️ + 🕓*🌡️🕓
+// Formule : 🎥 ? T0=prev_T0 : T0=🌡️, puis T0 += ☄️*🌡️☄️ + 🕓*🌡️🕓
 function calculateT0InitialConfig() {
+    const DATA = window.DATA;
     // Récupérer la température précédente depuis window.plotData
     let prev_T0 = null;
     if (typeof window !== 'undefined' && window.plotData && window.plotData.temp_surface) {
@@ -1733,15 +1424,17 @@ function calculateT0InitialConfig() {
     if (typeof window !== 'undefined' && window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch && typeof currentEpoch.t0 === 'number' && currentEpoch.t0 > 0) {
-            // Calculer le nombre de météorites
+            // 🔒 CORRECTION : Utiliser DATA['📜']['🔺⚖️💧☄️'] comme source unique de vérité
+            // Calculer le nombre de météorites depuis DATA
             let meteoriteCount = 0;
             if (currentEpoch.events && currentEpoch.events.ice_meteorite && currentEpoch.events.ice_meteorite.water_added_kg) {
-                const h2oTotalFromMeteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
-                if (h2oTotalFromMeteorites > 0) {
+                const water_added_kg = DATA['📜']['🔺⚖️💧☄️'];
+                if (water_added_kg > 0) {
                     const mass_kg = currentEpoch.events.ice_meteorite.water_added_kg;
                     const EARTH_TOTAL_WATER_MASS_KG = 1.4e21;
                     const h2oPerMeteorite = (mass_kg / EARTH_TOTAL_WATER_MASS_KG) * 100;
                     const h2oPerMeteoriteAdjusted = (currentEpoch.id === 'hadeen') ? Math.max(h2oPerMeteorite * 10, 2.1) : h2oPerMeteorite;
+                    const h2oTotalFromMeteorites = (water_added_kg / EARTH_TOTAL_WATER_MASS_KG) * 100; // Convertir kg en %
                     meteoriteCount = Math.floor(h2oTotalFromMeteorites / h2oPerMeteoriteAdjusted);
                 }
             }
@@ -1764,7 +1457,7 @@ function calculateT0InitialConfig() {
                 window.currentMeteoriteCount = meteoriteCount;
             }
             
-            // 🔒 Formule : 🎥 ? T0=🏮 : T0=🌡️, puis T0 += 🕓*🌡️🕓
+            // 🔒 Formule : 🎥 ? T0=prev_T0 : T0=🌡️, puis T0 += 🕓*🌡️🕓
             const baseTemp = animEnabled ? (prev_T0 !== null && prev_T0 > 0 ? prev_T0 : t0_config) : t0_config;
             let adjustment = 0;
             if (deltaTicTime_per_tic !== null) {
@@ -1790,14 +1483,14 @@ function calculateT0InitialConfig() {
             }
             const formula = formula_parts.join(' ');
             
-            console.log(`🕓🛠 [T0_initial_config@calculations.js] 🎥:${animEnabled} 🏮:${prev_T0_str} 🌡️:${t0_config_str}, ☄️:${meteoriteCount}, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str} => ${formula} = ${T0_initial_config.toFixed(2)}K`);
+            console.log(`🕓🛠 [T0_initial_config@calculations.js] 🎥:${animEnabled} prev_T0:${prev_T0_str} 🌡️:${t0_config_str}, ☄️:${meteoriteCount}, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str} => ${formula} = ${T0_initial_config.toFixed(2)}K`);
             
             // Anticiper la couleur
             if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
                 const tempC_anticipated = T0_initial_config - 273.15;
                 const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
                 window.updateBlackBodyColor(color_anticipated);
-                const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+                const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
                 if (legendEquilibre) {
                     legendEquilibre.style.color = color_anticipated;
                 }
@@ -1809,7 +1502,7 @@ function calculateT0InitialConfig() {
                 const tempC_anticipated = T0_initial_config - 273.15;
                 const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
                 window.updateBlackBodyColor(color_anticipated);
-                const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+                const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
                 if (legendEquilibre) {
                     legendEquilibre.style.color = color_anticipated;
                 }
@@ -1829,7 +1522,7 @@ function simulateRadiativeTransfer(options = {}) {
     const CO2_fraction = CO2_percent * 1e-6;
     const CH4_fraction = CH4_percent * 1e-6;
     
-    // 🔒 Calcul simple de T0 : (🎥) => T0=🏮 : T0=🌡️, puis T0 += ☄️*🌡️☄️ + 🕓*🌡️🕓
+    // 🔒 Calcul simple de T0 : (🎥) => T0=prev_T0 : T0=🌡️, puis T0 += ☄️*🌡️☄️ + 🕓*🌡️🕓
     let prev_T0 = null;
     if (typeof window !== 'undefined' && window.plotData && window.plotData.temp_surface) {
         prev_T0 = window.plotData.temp_surface;
@@ -1844,18 +1537,20 @@ function simulateRadiativeTransfer(options = {}) {
             const animEnabled = (window.enabledStates && window.enabledStates[ENABLED_STATES.ANIMATION.key]) || true; // 🎥
             const t0_config = currentEpoch.t0; // 🌡️
             
-            // (🎥) => T0=🏮 : T0=🌡️
+            // (🎥) => T0=prev_T0 : T0=🌡️
             const baseTemp = animEnabled ? (prev_T0 !== null && prev_T0 > 0 ? prev_T0 : t0_config) : t0_config;
             
+            // 🔒 CORRECTION : Utiliser DATA['📜']['🔺⚖️💧☄️'] comme source unique de vérité
             // T0 += ☄️*🌡️☄️ + 🕓*🌡️🕓
             let meteoriteCount = 0;
             if (currentEpoch.events && currentEpoch.events.ice_meteorite && currentEpoch.events.ice_meteorite.water_added_kg) {
-                const h2oTotalFromMeteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
-                if (h2oTotalFromMeteorites > 0) {
+                const water_added_kg = DATA['📜']['🔺⚖️💧☄️'];
+                if (water_added_kg > 0) {
                     const mass_kg = currentEpoch.events.ice_meteorite.water_added_kg;
                     const EARTH_TOTAL_WATER_MASS_KG = 1.4e21;
                     const h2oPerMeteorite = (mass_kg / EARTH_TOTAL_WATER_MASS_KG) * 100;
                     const h2oPerMeteoriteAdjusted = (currentEpoch.id === 'hadeen') ? Math.max(h2oPerMeteorite * 10, 2.1) : h2oPerMeteorite;
+                    const h2oTotalFromMeteorites = (water_added_kg / EARTH_TOTAL_WATER_MASS_KG) * 100; // Convertir kg en %
                     meteoriteCount = Math.floor(h2oTotalFromMeteorites / h2oPerMeteoriteAdjusted);
                 }
             }
@@ -1891,19 +1586,19 @@ function simulateRadiativeTransfer(options = {}) {
             }
             const formula = formula_parts.join(' ');
             
-            console.log(`🕓🛠 [simulateRadiativeTransfer@calculations.js] 🎥:${animEnabled} 🏮:${prev_T0_str} 🌡️:${t0_config_str}, ☄️:${meteoriteCount}, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str} => ${formula} = ${T0_initial.toFixed(2)}K`);
+            console.log(`🕓🛠 [simulateRadiativeTransfer@calculations.js] 🎥:${animEnabled} prev_T0:${prev_T0_str} 🌡️:${t0_config_str}, ☄️:${meteoriteCount}, 🕓:${ticTime}, 🌡️🕓:${deltaTicTime_str} => ${formula} = ${T0_initial.toFixed(2)}K`);
         }
     }
     
     if (T0_initial === null || T0_initial <= 0) {
-        console.error(`${LOGO_EDS} [simulateRadiativeTransfer@calculations.js] ❌ T0_initial invalide: ${T0_initial}`);
+        console.error(`📛 [simulateRadiativeTransfer@calculations.js] ❌ T0_initial invalide: ${T0_initial}`);
         return Promise.reject(new Error('T0_initial invalide'));
     }
     
     // fullSpectre=false : utilise un regroupement adaptatif des longueurs d'onde pour optimiser les calculs
     // fullSpectre=true : utilise le spectre complet sans regroupement (plus précis mais plus lent)
     // Note: actuellement forcé à true dans le code (forceFullSpectre), donc toujours spectre complet
-    console.log(`${LOGO_EDS} [simulateRadiativeTransfer@calculations.js] ${LOGO_CO2}=${CO2_percent.toFixed(0)}ppm ${LOGO_H2O}=${H2O_percent.toFixed(1)}% ${LOGO_CH4}=${CH4_percent.toFixed(0)}ppm`);
+    console.log(`📛 [simulateRadiativeTransfer@calculations.js] 🏭=${CO2_percent.toFixed(0)}ppm 💧=${H2O_percent.toFixed(1)}% ⛽=${CH4_percent.toFixed(0)}ppm`);
     
     // Définir la fraction CO2 globale
     current_CO2_fraction_for_temp = CO2_fraction;
@@ -1917,9 +1612,7 @@ function simulateRadiativeTransfer(options = {}) {
         delta_lambda = 0.1e-6,
     } = options;
     
-    logCalculationPhase('DICHOTOMIE START', {
-        T0_initial: T0_initial.toFixed(2)
-    });
+    // 🔒 SUPPRIMÉ : logCalculationPhase inutile
     
     // 🔒 Anticiper la couleur avec T0_initial dès le début
     if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
@@ -1928,7 +1621,7 @@ function simulateRadiativeTransfer(options = {}) {
         window.updateBlackBodyColor(color_anticipated);
         
         // Mettre à jour legend-equilibre avec la couleur anticipée
-        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+        const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
         if (legendEquilibre) {
             legendEquilibre.style.color = color_anticipated;
         }
@@ -1943,12 +1636,12 @@ function simulateRadiativeTransfer(options = {}) {
     // Dichotomie pour trouver T0 qui donne flux_total = flux_solaire_absorbé
     // 🔒 Ajuster les bornes selon la température initiale (peut être très élevée pour Hadéen)
     // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
-    const cellH2O_check = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+    const cellH2O_check = document.getElementById('cell-h2o'); // Plantera si n'existe pas
     const h2o_enabled_check = cellH2O_check && cellH2O_check.classList.contains('checked');
 
     // Si T0_initial est très élevé (ex: Hadéen post-impact), utiliser un intervalle plus large
     // 🔒 OPTIMISATION : Réduire l'intervalle si on part d'une T0 précédente connue (continuité)
-    const prev_T0_for_range = (typeof window !== 'undefined' && window.plotData && window.plotData.temp_surface) ? window.plotData.temp_surface : null;
+    const prev_T0_for_range = window.plotData.temp_surface; // Plantera si n'existe pas
     const range_factor = (prev_T0_for_range !== null && prev_T0_for_range > 0) ? 0.5 : 1.0; // Réduire intervalle de 50% si continuité
     const INITIAL_RANGE = ((T0_initial > 1000) ? 200 : 50) * range_factor; // Intervalle adaptatif
 
@@ -1974,7 +1667,7 @@ function simulateRadiativeTransfer(options = {}) {
     //   - À 255K avec precision_K=1K → tolerance = 4×5.67e-8×255³×1 ≈ 3.8 W/m²
     //   - À 255K avec precision_K=10K → tolerance = 4×5.67e-8×255³×10 ≈ 38 W/m²
     // Note : 1 K = 1 °C (même delta, juste décalage de 273.15), donc 0.1° = 0.1 K
-    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+    const STEFAN_BOLTZMANN = CONST.STEFAN_BOLTZMANN;
     
     // 🔒 UTILISER UNIQUEMENT la variable globale unique (seule référence)
     // Cette variable est initialisée depuis la config UNIQUEMENT au changement d'époque (setEpoch)
@@ -2048,13 +1741,47 @@ function simulateRadiativeTransfer(options = {}) {
         // Pour les calculs de référence, pas d'affichage graphique
     }
 
+    // 🔒 LOG : Avant le calcul initial
+    console.log(`\n🚀 [performDichotomy] ========== DÉBUT CONVERGENCE ==========`);
+    console.log(`🚀 [performDichotomy] T0_initial = ${T0_initial.toFixed(2)}K (${(T0_initial - 273.15).toFixed(2)}°C)`);
+    console.log(`🚀 [performDichotomy] DATA['🧮']['🧮🌡️'] AVANT calcul initial = ${DATA['🧮']['🧮🌡️'].toFixed(2)}K`);
+    
+    // 🔒 IMPORTANT : Mettre à jour DATA['🧮']['🧮🌡️'] AVANT le calcul initial aussi !
+    DATA['🧮']['🧮🌡️'] = T0_initial;
+    console.log(`🚀 [performDichotomy] DATA['🧮']['🧮🌡️'] mis à jour à T0_initial = ${T0_initial.toFixed(2)}K`);
+    
     // Calculer la courbe initiale
-    result = calculateFluxForT0(CO2_fraction, T0_initial, fluxOptions);
+    const calc_success_init = calculateFluxForT0();
+    if (!calc_success_init) {
+        console.error('[performDichotomy] calculateFluxForT0() initial a échoué');
+        return;
+    }
+    result = getSpectralResultFromDATA();
+    if (!result) {
+        console.error('[performDichotomy] Impossible de récupérer les résultats depuis DATA');
+        return;
+    }
+    
+    // 🔒 LOG : Après le calcul initial - calculer le bilan énergétique
+    const geo_flux_init = window.getGeologicalPeriodByName(window.currentEpochName).geothermal_flux; // Plantera si n'existe pas
+    const cellH2O_init = document.getElementById('cell-h2o'); // Plantera si n'existe pas
+    const h2o_enabled_init = cellH2O_init && cellH2O_init.classList.contains('checked');
+    const solar_flux_absorbed_init = window.calculateSolarFluxAbsorbed();
+    const total_flux_in_init = solar_flux_absorbed_init + geo_flux_init;
+    const delta_equilibre_init = result.total_flux - total_flux_in_init;
+    
+    console.log(`🚀 [performDichotomy] Après calcul initial:`);
+    console.log(`   Flux solaire absorbé = ${solar_flux_absorbed_init.toFixed(2)} W/m²`);
+    console.log(`   Flux géothermique = ${geo_flux_init.toFixed(2)} W/m²`);
+    console.log(`   Flux entrant total = ${total_flux_in_init.toFixed(2)} W/m²`);
+    console.log(`   Flux sortant (spectral) = ${result.total_flux.toFixed(2)} W/m²`);
+    console.log(`   Delta équilibre = ${delta_equilibre_init.toFixed(2)} W/m²`);
+    console.log(`🚀 [performDichotomy] =========================================\n`);
 
     // Afficher la courbe initiale (avant dichotomie) seulement si demandé
     // 🔒 Réutiliser shouldDisplaySteps déjà calculé ci-dessus (peut avoir changé via bouton anim)
     if (shouldDisplaySteps) {
-        displayDichotomyStep(CO2_fraction, T0_initial, result, 0, true, options);
+        displayDichotomyStep(DATA['🫧']['🍰🫧🏭'], T0_initial, result, 0, true, options);
     }
 
     // Reset des flux diff min/max pour la nouvelle dichotomie asynchrone
@@ -2095,16 +1822,29 @@ function simulateRadiativeTransfer(options = {}) {
                 let old_T0 = T0_initial;
                 let previousT0_for_convergence = null; // T0 précédente pour vérifier la convergence en température
 
+                // 🔒 LOG : Début de la convergence
+                console.log(`🚀 [performDichotomy] Début convergence - T0_initial = ${T0_initial.toFixed(2)}K (${(T0_initial - 273.15).toFixed(2)}°C)`);
+                console.log(`🚀 [performDichotomy] DATA['🧮']['🧮🌡️'] avant = ${DATA['🧮']['🧮🌡️'].toFixed(2)}K`);
+
                 const iterate = () => {
                     // Vérifier si annulé avant chaque itération
                     if (window.cancelCalculation || isCancelled) {
                         return;
                     }
 
+                    // 🔒 LOG : Début de l'itération
+                    console.log(`\n🔄 [iterate ${iter}] ========== DÉBUT ITÉRATION ${iter} ==========`);
+                    console.log(`🔄 [iterate ${iter}] T0_current = ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(2)}°C)`);
+                    console.log(`🔄 [iterate ${iter}] DATA['🧮']['🧮🌡️'] avant mise à jour = ${DATA['🧮']['🧮🌡️'].toFixed(2)}K`);
+
                     if (iter >= max_iterations) {
                         // Maximum d'itérations atteint
                         if (!isCancelled) {
-                            finalizeResults(final_result, T0_current, CO2_fraction, resolve);
+                            // 🔒 Désactiver les logs de debug après convergence
+                            if (typeof window !== 'undefined') {
+                                window.DEBUG_CONVERGENCE = false;
+                            }
+                            finalizeResults(final_result, T0_current, DATA['🫧']['🍰🫧🏭'], resolve);
                         }
                         return;
                     }
@@ -2112,14 +1852,28 @@ function simulateRadiativeTransfer(options = {}) {
                     // 🔒 Vérifier shouldDisplaySteps à chaque itération (peut changer via événement FPS)
                     const shouldDisplaySteps = typeof window !== 'undefined' && window.showDichotomySteps;
 
-                    // Mettre à jour current_T0_adjusted dans window pour que waterVaporNumberDensity puisse y accéder
+                    // Mettre à jour current_T0_adjusted dans window pour que waterVaporFractionAtZ puisse y accéder
                     if (typeof window !== 'undefined') {
                         window.current_T0_adjusted = T0_current;
                     }
                     current_T0_adjusted = T0_current;
 
+                    // 🔒 CORRECTION CRITIQUE : Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
+                    // Sinon calculateFluxForT0() lit toujours la température initiale au lieu de T0_current
+                    console.log(`🔍 [iterate ${iter}] Mise à jour DATA['🧮']['🧮🌡️'] : ${DATA['🧮']['🧮🌡️'].toFixed(2)}K → ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(2)}°C)`);
+                    DATA['🧮']['🧮🌡️'] = T0_current;
+
                     // Toujours recalculer pour avoir les valeurs à jour (le delta doit changer avec T0_current)
-                    final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
+                    const calc_success = calculateFluxForT0();
+                    if (!calc_success) {
+                        console.error('[iterate] calculateFluxForT0() a échoué');
+                        return;
+                    }
+                    final_result = getSpectralResultFromDATA();
+                    if (!final_result) {
+                        console.error('[iterate] Impossible de récupérer les résultats depuis DATA');
+                        return;
+                    }
                     // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
                     // Récupérer le flux géothermique depuis l'époque courante
                     let geo_flux = null;
@@ -2129,23 +1883,29 @@ function simulateRadiativeTransfer(options = {}) {
                             geo_flux = currentEpoch.geothermal_flux;
                         }
                     }
-                    // Récupérer l'état H2O depuis l'état réel du bouton (checked/unchecked)
-                    // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
-                    const cellH2O_state = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
-                    const h2o_enabled_state = cellH2O_state && cellH2O_state.classList.contains('checked');
-                    const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0_current, h2o_enabled_state, geo_flux);
+                    // 🔒 CORRECTION : Utiliser DATA directement, pas le bouton
+                    const solar_flux_absorbed = window.calculateSolarFluxAbsorbed();
 
                     // 🔒 CORRECTION CRITIQUE : Inclure le flux géothermique dans le bilan énergétique !
                     // Équilibre : Flux Sortant = Flux Solaire Absorbé + Flux Géothermique
-                    const total_flux_in = solar_flux_absorbed + geo_flux;
+                    const total_flux_in = solar_flux_absorbed + (geo_flux || 0);
                     const flux_diff = final_result.total_flux - total_flux_in;
+                    
+                    // 🔒 LOG SYSTÉMATIQUE : Toujours afficher le bilan énergétique
+                    console.log(`🔍 [iterate ${iter}] Bilan énergétique:`);
+                    console.log(`   T0_current = ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(2)}°C)`);
+                    console.log(`   Flux solaire absorbé = ${solar_flux_absorbed.toFixed(2)} W/m²`);
+                    console.log(`   Flux géothermique = ${(geo_flux || 0).toFixed(2)} W/m²`);
+                    console.log(`   Flux entrant total = ${total_flux_in.toFixed(2)} W/m²`);
+                    console.log(`   Flux sortant (spectral) = ${final_result.total_flux.toFixed(2)} W/m²`);
+                    console.log(`   Delta équilibre = ${flux_diff.toFixed(2)} W/m²`);
                     
                     // 🔒 ÉQUILIBRE RADIATIF : Les aires sous les courbes affichées doivent être égales
                     // Sur le graphique :
                     // - Courbe pointillée (...) = Planck à T_effective = σT_eff⁴
                     // - Courbe pleine (___) = émission réelle spectrale = total_flux
                     // Légende : "∫ ...= ∫___" signifie équilibre des aires sous ces deux courbes
-                    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+                    const STEFAN_BOLTZMANN = CONST.STEFAN_BOLTZMANN;
                     
                     // Calculer la température effective du corps noir (T° de la courbe pointillée affichée)
                     // T_eff = (total_flux / σ)^0.25
@@ -2213,7 +1973,7 @@ function simulateRadiativeTransfer(options = {}) {
                     // Delta EDS : effet de serre (ne tend PAS vers 0, c'est normal)
                     // T0 ajusté théorique : calcul direct T0 - delta_equilibre/(4σT0³) pour référence
                     // Tolérance actuelle : recalculée avec T0_current (change avec la température)
-                    const tolerance_status = Math.abs(delta_equilibre) <= tolerance_current ? '✅' : '⏳';
+                    const tolerance_status = Math.abs(delta_equilibre) <= tolerance_current ? '✅' : '🧮';
                     
                     // ⚠️ Vérifier si delta_equilibre est anormalement grand
                     if (Math.abs(delta_equilibre) > 10000) {
@@ -2236,7 +1996,7 @@ function simulateRadiativeTransfer(options = {}) {
                     if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function') {
                         const tempC_current = T0_current - 273.15;
                         const color_current = window.tempSurfaceToColor(tempC_current);
-                        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+                        const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
                         if (legendEquilibre) {
                             legendEquilibre.style.color = color_current;
                         }
@@ -2274,13 +2034,21 @@ function simulateRadiativeTransfer(options = {}) {
                         if (converged_by_temp && !converged_by_flux) {
                             console.log(`[DICHOTOMIE] ✅ Convergence par précision température: |ΔT| = ${delta_T_convergence.toFixed(2)}K <= ${precision_K}K (delta_equilibre: ${delta_equilibre.toFixed(2)} W/m², tolerance: ${tolerance_current.toFixed(2)} W/m²)`);
                         }
-                        logCalculationPhase('DICHOTOMIE CONVERGENCE', {
-                            T0_final: T0_current.toFixed(2)
-                        });
+                        // 🔒 SUPPRIMÉ : logCalculationPhase inutile
 
+                        // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
+                        DATA['🧮']['🧮🌡️'] = T0_current;
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
-                        const final_options = { ...options, fullSpectre: true };
-                        final_result = calculateFluxForT0(CO2_fraction, T0_current, final_options);
+                        const calc_success_conv = calculateFluxForT0();
+                        if (!calc_success_conv) {
+                            console.error('[Convergence] calculateFluxForT0() a échoué');
+                            return;
+                        }
+                        final_result = getSpectralResultFromDATA();
+                        if (!final_result) {
+                            console.error('[Convergence] Impossible de récupérer les résultats depuis DATA');
+                            return;
+                        }
 
                         // Déclencher un événement de convergence
                         if (typeof window !== 'undefined') {
@@ -2292,7 +2060,11 @@ function simulateRadiativeTransfer(options = {}) {
                             }
                         }
                         if (!isCancelled) {
-                            finalizeResults(final_result, T0_current, CO2_fraction, resolve);
+                            // 🔒 Désactiver les logs de debug après convergence
+                            if (typeof window !== 'undefined') {
+                                window.DEBUG_CONVERGENCE = false;
+                            }
+                            finalizeResults(final_result, T0_current, DATA['🫧']['🍰🫧🏭'], resolve);
                         }
                         return;
                     }
@@ -2328,12 +2100,39 @@ function simulateRadiativeTransfer(options = {}) {
                     if (Phase === "Search") {
                         // Phase="Search" : T0 -= Delta équilibre
                         old_T0 = T0_current;
-                        T0_current = T0_current - delta_equilibre;
-                        console.log(`📈 [Search] T0=${old_T0.toFixed(2)}K → ${T0_current.toFixed(2)}K (Δ=${(-delta_equilibre).toFixed(2)}K)`);
+                        // 🔒 CORRECTION : L'ajustement doit être proportionnel, pas direct
+                        // Si delta_equilibre est positif (on émet trop), on doit diminuer T
+                        // Si delta_equilibre est négatif (on émet pas assez), on doit augmenter T
+                        // Relation : dF/dT = 4σT³, donc dT = dF / (4σT³)
+                        const STEFAN_BOLTZMANN = CONST.STEFAN_BOLTZMANN;
+                        const sensitivity = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3);
+                        let T0_adjustment = -delta_equilibre / sensitivity;
+                        // 🔒 Limiter l'ajustement pour éviter des sauts trop importants (max ±50K par itération)
+                        const T0_adjustment_unlimited = T0_adjustment;
+                        T0_adjustment = Math.max(-50, Math.min(50, T0_adjustment));
+                        T0_current = T0_current + T0_adjustment;
+                        // 🔒 Protection : éviter les températures négatives ou trop basses
+                        T0_current = Math.max(200, T0_current);
+                        console.log(`📈 [Search] T0=${old_T0.toFixed(2)}K → ${T0_current.toFixed(2)}K`);
+                        console.log(`   Delta équilibre = ${delta_equilibre.toFixed(2)} W/m²`);
+                        console.log(`   Sensibilité = ${sensitivity.toFixed(2)} W/m²/K`);
+                        console.log(`   Ajustement théorique = ${T0_adjustment_unlimited.toFixed(2)}K`);
+                        console.log(`   Ajustement limité = ${T0_adjustment.toFixed(2)}K`);
+                        // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
+                        DATA['🧮']['🧮🌡️'] = T0_current;
                         // Recalculer avec la nouvelle T0
-                        final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
+                        const calc_success_search = calculateFluxForT0();
+                        if (!calc_success_search) {
+                            console.error('[Search] calculateFluxForT0() a échoué');
+                            return;
+                        }
+                        final_result = getSpectralResultFromDATA();
+                        if (!final_result) {
+                            console.error('[Search] Impossible de récupérer les résultats depuis DATA');
+                            return;
+                        }
                         // Recalculer delta_equilibre avec la nouvelle T0
-                        const solar_flux_absorbed_new = calculateSolarFluxAbsorbed(T0_current, h2o_enabled_state, geo_flux);
+                        const solar_flux_absorbed_new = calculateSolarFluxAbsorbed(T0_current, DATA['🔘']['🔘💧📛'], geo_flux);
                         const total_flux_in_new = solar_flux_absorbed_new + (geo_flux || 0);
                         delta_equilibre = final_result.total_flux - total_flux_in_new;
                         // Recalculer tolerance_current avec la nouvelle T0
@@ -2343,10 +2142,21 @@ function simulateRadiativeTransfer(options = {}) {
                         old_T0 = T0_current;
                         T0_current = (T0_min + T0_max) / 2;
                         console.log(`🔍 [DICH] T0=${T0_current.toFixed(2)}K (min=${T0_min.toFixed(2)}K, max=${T0_max.toFixed(2)}K)`);
+                        // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
+                        DATA['🧮']['🧮🌡️'] = T0_current;
                         // Recalculer avec la nouvelle T0
-                        final_result = calculateFluxForT0(CO2_fraction, T0_current, options);
+                        const calc_success_dicho = calculateFluxForT0();
+                        if (!calc_success_dicho) {
+                            console.error('[Dicho] calculateFluxForT0() a échoué');
+                            return;
+                        }
+                        final_result = getSpectralResultFromDATA();
+                        if (!final_result) {
+                            console.error('[Dicho] Impossible de récupérer les résultats depuis DATA');
+                            return;
+                        }
                         // Recalculer delta_equilibre avec la nouvelle T0
-                        const solar_flux_absorbed_new = calculateSolarFluxAbsorbed(T0_current, h2o_enabled_state, geo_flux);
+                        const solar_flux_absorbed_new = calculateSolarFluxAbsorbed(T0_current, DATA['🔘']['🔘💧📛'], geo_flux);
                         const total_flux_in_new = solar_flux_absorbed_new + (geo_flux || 0);
                         delta_equilibre = final_result.total_flux - total_flux_in_new;
                         // Recalculer tolerance_current avec la nouvelle T0
@@ -2390,13 +2200,21 @@ function simulateRadiativeTransfer(options = {}) {
                         if (converged_by_temp_check && !converged_by_flux_check) {
                             console.log(`[DICHOTOMIE] ✅ Convergence par précision température: |ΔT| = ${delta_T_convergence_check.toFixed(2)}K <= ${precision_K}K (delta_equilibre: ${delta_equilibre.toFixed(2)} W/m², tolerance: ${tolerance_current.toFixed(2)} W/m²)`);
                         }
-                        logCalculationPhase('DICHOTOMIE CONVERGENCE', {
-                            T0_final: T0_current.toFixed(2)
-                        });
+                        // 🔒 SUPPRIMÉ : logCalculationPhase inutile
 
+                        // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
+                        DATA['🧮']['🧮🌡️'] = T0_current;
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
-                        const final_options = { ...options, fullSpectre: true };
-                        final_result = calculateFluxForT0(CO2_fraction, T0_current, final_options);
+                        const calc_success_conv = calculateFluxForT0();
+                        if (!calc_success_conv) {
+                            console.error('[Convergence] calculateFluxForT0() a échoué');
+                            return;
+                        }
+                        final_result = getSpectralResultFromDATA();
+                        if (!final_result) {
+                            console.error('[Convergence] Impossible de récupérer les résultats depuis DATA');
+                            return;
+                        }
 
                         // Déclencher un événement de convergence pour permettre l'augmentation de précision
                         if (typeof window !== 'undefined') {
@@ -2409,7 +2227,11 @@ function simulateRadiativeTransfer(options = {}) {
                             }
                         }
                         if (!isCancelled) {
-                            finalizeResults(final_result, T0_current, CO2_fraction, resolve);
+                            // 🔒 Désactiver les logs de debug après convergence
+                            if (typeof window !== 'undefined') {
+                                window.DEBUG_CONVERGENCE = false;
+                            }
+                            finalizeResults(final_result, T0_current, DATA['🫧']['🍰🫧🏭'], resolve);
                         }
                         return;
                     }
@@ -2461,13 +2283,21 @@ function simulateRadiativeTransfer(options = {}) {
                             console.log(`[calculations.js] ✅ Convergence atteinte (delta_equilibre: ${Math.abs(delta_equilibre).toFixed(4)} < tolerance: ${tolerance_current.toFixed(4)} W/m² à T=${T0_current.toFixed(2)}K)`);
                         }
                         
-                        logCalculationPhase('DICHOTOMIE CONVERGENCE', {
-                            T0_final: T0_current.toFixed(2)
-                        });
+                        // 🔒 SUPPRIMÉ : logCalculationPhase inutile
 
+                        // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
+                        DATA['🧮']['🧮🌡️'] = T0_current;
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
-                        const final_options = { ...options, fullSpectre: true };
-                        final_result = calculateFluxForT0(CO2_fraction, T0_current, final_options);
+                        const calc_success_conv = calculateFluxForT0();
+                        if (!calc_success_conv) {
+                            console.error('[Convergence] calculateFluxForT0() a échoué');
+                            return;
+                        }
+                        final_result = getSpectralResultFromDATA();
+                        if (!final_result) {
+                            console.error('[Convergence] Impossible de récupérer les résultats depuis DATA');
+                            return;
+                        }
 
                         // Déclencher un événement de convergence
                         if (typeof window !== 'undefined') {
@@ -2479,7 +2309,11 @@ function simulateRadiativeTransfer(options = {}) {
                             }
                         }
                         if (!isCancelled) {
-                            finalizeResults(final_result, T0_current, CO2_fraction, resolve);
+                            // 🔒 Désactiver les logs de debug après convergence
+                            if (typeof window !== 'undefined') {
+                                window.DEBUG_CONVERGENCE = false;
+                            }
+                            finalizeResults(final_result, T0_current, DATA['🫧']['🍰🫧🏭'], resolve);
                         }
                         return;
                     }
@@ -2490,7 +2324,7 @@ function simulateRadiativeTransfer(options = {}) {
                     
                     // 🔒 Dessiner après avoir vérifié qu'on continue (utiliser requestAnimationFrame pour laisser le navigateur rendre)
                     if (shouldDisplayStepsIter && !isCancelled) {
-                        displayDichotomyStep(CO2_fraction, T0_current, final_result, iter, false, options);
+                        displayDichotomyStep(DATA['🫧']['🍰🫧🏭'], T0_current, final_result, iter, false, options);
                         
                         // 🔒 Utiliser requestAnimationFrame pour laisser le navigateur dessiner avant de continuer
                         // Double RAF pour s'assurer que le rendu est fait
@@ -2508,7 +2342,7 @@ function simulateRadiativeTransfer(options = {}) {
                     // Mettre à jour les labels du flux pendant le calcul
                     if (typeof window !== 'undefined' && typeof window.updateFluxLabels === 'function') {
                         // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked)
-                        const cellH2O_iter = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+                        const cellH2O_iter = document.getElementById('cell-h2o'); // Plantera si n'existe pas
                         // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
                         const h2o_enabled = cellH2O_iter && cellH2O_iter.classList.contains('checked');
 
@@ -2516,10 +2350,10 @@ function simulateRadiativeTransfer(options = {}) {
                         // au lieu de le recalculer (potentiellement mal) via getGeologicalPeriodByName
                         // let geo_flux = null; ... REMOVED
 
-                        const albedo = calculateAlbedo(T0_current, h2o_enabled, geo_flux);
+                        const albedo = window.calculateAlbedo();
                         const cloud_coverage = calculateCloudCoverage(T0_current, h2o_enabled);
-                        const co2_ppm = CO2_fraction * 1e6;
-                        const ch4_ppm = (options && options.CH4_fraction) ? options.CH4_fraction * 1e6 : 0;
+                        const co2_ppm = DATA['🫧']['🍰🫧🏭'] * 1e6;
+                        const ch4_ppm = DATA['🫧']['🍰🫧⛽'] * 1e6;
 
                         // Mettre à jour les labels avec les valeurs actuelles
                         window.updateFluxLabels({
@@ -2531,7 +2365,7 @@ function simulateRadiativeTransfer(options = {}) {
                             co2_ppm: co2_ppm,
                             ch4_ppm: ch4_ppm,
                             geo_flux: geo_flux, // Passer geo_flux explicitement
-                            planet_radius: (options && options.planet_radius) ? options.planet_radius : 6371000 // Passer le rayon
+                            planet_radius: (options && options.planet_radius) ? options.planet_radius : 6371000
                         });
                     }
 
@@ -2541,7 +2375,7 @@ function simulateRadiativeTransfer(options = {}) {
                         // Flux trop élevé, diminuer T0
                         // 🔒 Mettre à jour T0_max seulement si on n'a pas encore de borne supérieure valide
                         if (T0_max > T0_current || T0_max === T0_initial + 50) {
-                        T0_max = T0_current;
+                            T0_max = T0_current;
                         }
 
                         // ⚡ OPTIMISATION : Méthode Regula Falsi (Fausse Position) au lieu de Dichotomie simple
@@ -2647,7 +2481,18 @@ function simulateRadiativeTransfer(options = {}) {
     } else {
         // Mode synchrone (si pas de setTimeout disponible) - pas d'affichage progressif
         while (iteration < max_iterations) {
-            result = calculateFluxForT0(CO2_fraction, T0, options);
+            // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
+            DATA['🧮']['🧮🌡️'] = T0;
+            const calc_success_sync = calculateFluxForT0();
+            if (!calc_success_sync) {
+                console.error('[sync] calculateFluxForT0() a échoué');
+                break;
+            }
+            result = getSpectralResultFromDATA();
+            if (!result) {
+                console.error('[sync] Impossible de récupérer les résultats depuis DATA');
+                break;
+            }
             
             // Calculer le flux solaire absorbé avec albedo dynamique (glace + nuages)
             // Récupérer le flux géothermique depuis l'époque courante
@@ -2658,7 +2503,7 @@ function simulateRadiativeTransfer(options = {}) {
                     geo_flux = currentEpoch.geothermal_flux;
                 }
             }
-            const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
+            const solar_flux_absorbed = window.calculateSolarFluxAbsorbed();
             const flux_diff = result.total_flux - solar_flux_absorbed;
 
             // 🔒 CORRECTION : Recalculer la tolérance avec T0 actuel (mode synchrone)
@@ -2673,8 +2518,20 @@ function simulateRadiativeTransfer(options = {}) {
 
             if (Math.abs(flux_diff) < tolerance_sync) {
                 // Convergence atteinte : recalculer avec spectre complet pour précision finale
-                const final_options = { ...options, fullSpectre: true };
-                result = calculateFluxForT0(CO2_fraction, T0, final_options);
+                // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
+                if (typeof window !== 'undefined' && window.DATA && window.DATA['🧮']) {
+                    window.DATA['🧮']['🧮🌡️'] = T0;
+                }
+                const calc_success_final = calculateFluxForT0();
+                if (!calc_success_final) {
+                    console.error('[sync final] calculateFluxForT0() a échoué');
+                    break;
+                }
+                result = getSpectralResultFromDATA();
+                if (!result) {
+                    console.error('[sync final] Impossible de récupérer les résultats depuis DATA');
+                    break;
+                }
 
                 if (typeof window !== 'undefined') {
                     window.calculationConverged = true;
@@ -2748,14 +2605,14 @@ function simulateRadiativeTransfer(options = {}) {
         // Utiliser les résultats de la dernière itération
         const { lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux } = result;
 
-        return finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction);
+        return finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, DATA['🫧']['🍰🫧🏭']);
     }
 }
 
 // Fonction pour finaliser les résultats (mode asynchrone)
 function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
-    const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-    console.log(`${logo} [finalizeResults@calculations.js] T0=${final_T0?.toFixed(2) || 'N/A'}K flux=${final_result?.total_flux?.toFixed(2) || 'N/A'}W/m²`);
+    const logo = '🏭'; // Emoji CO2 depuis dico.js
+    console.log(`${logo} [finalizeResults@calculations.js] T0=${final_T0.toFixed(2)}K flux=${final_result.total_flux.toFixed(2)}W/m²`);
     // 🔒 Réactiver l'affichage du spectre à la fin des calculs (même si FPS était bas pendant)
     if (typeof window !== 'undefined') {
         window.showSpectralBackground = true;
@@ -2794,7 +2651,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
 
     // Calculer l'albedo dynamique et la couverture nuageuse
     // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked) au lieu de se fier uniquement à window.waterVaporEnabled
-    const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+    const cellH2O = document.getElementById('cell-h2o'); // Plantera si n'existe pas
     // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
     const h2o_enabled = cellH2O && cellH2O.classList.contains('checked');
     // Récupérer le flux géothermique depuis l'époque courante
@@ -2830,18 +2687,17 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     // ⚠️ CAS PARTICULIER : Corps noir (pas d'atmosphère, albedo = 0)
     //   → Pas d'effet de serre, donc temp_surface = effective_temperature
     //   → On utilise final_T0 directement pour éviter les erreurs numériques
-    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+    const STEFAN_BOLTZMANN = CONST.STEFAN_BOLTZMANN;
     const isBlackBody = (CO2_fraction === 0 || CO2_fraction === null) && !h2o_enabled && (!ch4_enabled || !CH4_fraction);
     const effective_temperature = isBlackBody
         ? final_T0  // Corps noir : utiliser directement temp_surface (formule analytique exacte)
         : Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
 
     // 🔒 FORCER le recalcul de la glace avant de calculer l'albedo
+    // 🔒 CORRECTION : Utiliser DATA['🫧']['🍰🫧💧'] comme source unique de vérité
     // Si H2O est activé, recalculer h2oIceFractionFromCalculation avec la température finale
     if (h2o_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
-        const h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
-        const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
-        const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
+        const h2o_total_percent = DATA['🫧']['🍰🫧💧'] * 100; // Fraction → %
         
         if (h2o_total_percent > 0) {
             // Calculer la répartition vapeur/glace selon la température finale
@@ -2851,7 +2707,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         }
     }
 
-    const albedo = calculateAlbedo(final_T0, h2o_enabled, geo_flux);
+    const albedo = window.calculateAlbedo();
     const cloud_coverage = calculateCloudCoverage(final_T0, h2o_enabled);
     
     // Log albedo
@@ -2868,7 +2724,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         window.updateBlackBodyColor(color_final);
         
         // Mettre à jour legend-equilibre avec la couleur finale
-        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+        const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
         if (legendEquilibre) {
             legendEquilibre.style.color = color_final;
         }
@@ -2885,6 +2741,10 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         }
         window.plotData.temp_surface = final_T0;
         window.plotData.temp_surface_c = final_T0 - 273.15;
+        
+        // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] avec la température finale convergée
+        // Nécessaire pour que displayConvergence() affiche la bonne température
+        DATA['🧮']['🧮🌡️'] = final_T0;
     }
 
     const final_result_obj = {
@@ -2962,14 +2822,14 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
 
 // Fonction pour finaliser les résultats (mode synchrone)
 function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction) {
-    const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-    console.log(`${logo} [finalizeResultsSync@calculations.js] T0=${T0?.toFixed(2) || 'N/A'}K emitted=${emitted_flux?.toFixed(2) || 'N/A'}W/m² absorbed=${absorbed_flux?.toFixed(2) || 'N/A'}W/m²`);
+    const logo = '🏭'; // Emoji CO2 depuis dico.js
+    console.log(`${logo} [finalizeResultsSync@calculations.js] T0=${T0.toFixed(2)}K emitted=${emitted_flux.toFixed(2)}W/m² absorbed=${absorbed_flux.toFixed(2)}W/m²`);
     // Calculer le flux total au sommet de l'atmosphère
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
 
     // Récupérer h2o_enabled pour calculer l'albedo dynamique et la couverture nuageuse
     // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked) au lieu de se fier uniquement à window.waterVaporEnabled
-    const cellH2O = typeof document !== 'undefined' ? document.getElementById('cell-h2o') : null;
+    const cellH2O = document.getElementById('cell-h2o'); // Plantera si n'existe pas
     // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
     const h2o_enabled = cellH2O && cellH2O.classList.contains('checked');
     // Récupérer le flux géothermique depuis l'époque courante
@@ -2992,11 +2852,10 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     }
     const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
     // 🔒 FORCER le recalcul de la glace avant de calculer l'albedo (mode synchrone)
+    // 🔒 CORRECTION : Utiliser DATA['🫧']['🍰🫧💧'] comme source unique de vérité
     // Si H2O est activé, recalculer h2oIceFractionFromCalculation avec la température finale
     if (h2o_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
-        const h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
-        const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
-        const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
+        const h2o_total_percent = DATA['🫧']['🍰🫧💧'] * 100; // Fraction → %
         
         if (h2o_total_percent > 0) {
             // Calculer la répartition vapeur/glace selon la température finale
@@ -3019,7 +2878,7 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
         window.updateBlackBodyColor(color_final);
         
         // Mettre à jour legend-equilibre avec la couleur finale
-        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
+        const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
         if (legendEquilibre) {
             legendEquilibre.style.color = color_final;
         }
@@ -3046,13 +2905,26 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
         : Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
 
     // Calculer EDS (Effet de Serre) = Flux Surface - Flux Sortant
-    const STEFAN_BOLTZMANN = window.STEFAN_BOLTZMANN || 5.670374419e-8;
+    const STEFAN_BOLTZMANN = CONST.STEFAN_BOLTZMANN;
     const flux_surface = STEFAN_BOLTZMANN * Math.pow(T0, 4);
     const eds = flux_surface - total_flux;
     
     // Log EDS et T° finale
     console.log(`🔥 EDS: ${eds.toFixed(1)} W/m²`);
     console.log(`🌡️ T° finale: ${T0.toFixed(2)}K (${(T0 - 273.15).toFixed(1)}°C)`);
+
+    // 🔒 Mettre à jour window.plotData.temp_surface et DATA['🧮']['🧮🌡️'] pour cohérence
+    if (typeof window !== 'undefined') {
+        if (!window.plotData) {
+            window.plotData = {};
+        }
+        window.plotData.temp_surface = T0;
+        window.plotData.temp_surface_c = T0 - 273.15;
+        
+        // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] avec la température finale convergée
+        // Nécessaire pour que displayConvergence() affiche la bonne température
+        DATA['🧮']['🧮🌡️'] = T0;
+    }
 
     // 🔒 Mettre à jour la visualisation spectrale (mode synchrone)
     // Forcer la précision maximale (1px) à la fin des calculs si pas déjà fait
@@ -3126,8 +2998,6 @@ if (typeof module !== 'undefined' && module.exports) {
         planckFunction: getPlanckFunction(),
         temperature,
         simulateRadiativeTransfer,
-        CO2_PREINDUSTRIAL,
-        CO2_CURRENT
     };
 }
 
