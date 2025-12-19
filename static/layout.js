@@ -6,8 +6,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
-//   - Initial version: système de layout automatique avec deux colonnes
-//   - Moved timeline-display to top of right column for visibility
 
 (function() {
     'use strict';

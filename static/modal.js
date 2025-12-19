@@ -1,10 +1,12 @@
 // File: modal.js - Système de modale/alerte personnalisée
-// Desc: Module pour afficher des alertes avec texte sélectionnable
-// Version 1.0.0
+// Desc: Module pour afficher des alertes avec texte sélectionnable et pages HTML dans des popups
+// Version 1.1.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
+// Logs:
+//   - Added openPageModal function to display HTML pages in iframe popups
 
 (function(global) {
     // Injecter le CSS nécessaire
@@ -122,6 +124,120 @@
             0% { transform: scale(0.8); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
+
+        .page-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            backdrop-filter: blur(2px);
+        }
+
+        .page-modal-box {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+            max-height: 90vh;
+            width: 90%;
+            height: calc(400px + 60px);
+            display: flex;
+            flex-direction: column;
+            animation: custom-alert-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: hidden;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .page-modal-box::-webkit-scrollbar {
+            display: none;
+        }
+
+        body.mode-dark .page-modal-box {
+            background: #222;
+            border: 1px solid #444;
+        }
+
+        .page-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+        }
+
+        body.mode-dark .page-modal-header {
+            border-bottom: 1px solid #444;
+        }
+
+        .page-modal-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body.mode-dark .page-modal-title {
+            color: #eee;
+        }
+
+        .page-modal-close {
+            cursor: pointer;
+            font-size: 1.5em;
+            color: #999;
+            line-height: 1;
+            padding: 0 5px;
+            transition: color 0.2s;
+        }
+
+        .page-modal-close:hover {
+            color: #333;
+        }
+
+        body.mode-dark .page-modal-close:hover {
+            color: #fff;
+        }
+
+        .page-modal-iframe-container {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+            min-height: 0;
+        }
+
+        .page-modal-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fff;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+        }
+
+        .page-modal-iframe::-webkit-scrollbar {
+            display: none;
+        }
+
+        .page-modal-iframe {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        body.mode-dark .page-modal-iframe {
+            background: #1a1a1a;
+        }
     `;
     document.head.appendChild(style);
 
@@ -200,8 +316,118 @@
         }
     }
 
+    // Variable globale pour suivre la popup ouverte (une seule à la fois)
+    let currentPageModal = null;
+
+    /**
+     * Ouvre une page HTML dans une popup avec iframe (une seule popup à la fois)
+     * @param {string} url - L'URL de la page à charger
+     * @param {string} title - Le titre de la popup (défaut: "Popup")
+     * @param {Function} onClose - Callback optionnel à la fermeture
+     */
+    function openPageModal(url, title = "Popup", onClose = null) {
+        // Fermer la popup précédente si elle existe
+        if (currentPageModal && currentPageModal.closePageModal) {
+            currentPageModal.closePageModal();
+        }
+
+        // Créer l'overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'page-modal-overlay';
+        currentPageModal = overlay;
+        
+        // Container pour l'iframe
+        const iframeContainer = document.createElement('div');
+        iframeContainer.className = 'page-modal-iframe-container';
+        
+        // Iframe
+        const iframe = document.createElement('iframe');
+        iframe.className = 'page-modal-iframe';
+        iframe.src = url;
+        iframe.setAttribute('loading', 'lazy');
+        // Styles inline pour éviter le flash de la barre de scroll sur l'iframe
+        iframe.style.overflow = 'hidden';
+        iframe.style.msOverflowStyle = 'none';
+        iframe.style.scrollbarWidth = 'none';
+        
+        // Écouter les messages postMessage de l'iframe pour ajuster la hauteur
+        // Utiliser la même logique que test_computeRadiativeTransfer.html
+        const handleResizeMessage = function(event) {
+            if (event.data && event.data.type === 'resize-iframe' && currentPageModal === overlay) {
+                const height = event.data.height;
+                if (height && height > 0) {
+                    // Utiliser exactement la hauteur demandée (comme dans test*.html)
+                    iframeContainer.style.height = height + 'px';
+                    // Ajuster la hauteur totale de la modal box en ajoutant la hauteur du header
+                    const headerHeight = header.offsetHeight;
+                    box.style.height = (height + headerHeight) + 'px';
+                }
+            }
+        };
+        window.addEventListener('message', handleResizeMessage);
+        
+        // Fonction de fermeture (définie avant utilisation)
+        const originalClosePageModal = function() {
+            window.removeEventListener('message', handleResizeMessage);
+            if (currentPageModal === overlay && document.body.contains(overlay)) {
+                document.body.removeChild(overlay);
+                currentPageModal = null;
+            }
+            if (typeof onClose === 'function') {
+                onClose();
+            }
+        };
+        
+        // Fermer si on clique sur l'overlay (hors de la boîte)
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                originalClosePageModal();
+            }
+        });
+
+        // Créer la boîte
+        const box = document.createElement('div');
+        box.className = 'page-modal-box';
+        // Styles inline pour éviter le flash de la barre de scroll
+        box.style.overflow = 'hidden';
+        box.style.msOverflowStyle = 'none';
+        box.style.scrollbarWidth = 'none';
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'page-modal-header';
+        
+        const titleEl = document.createElement('h3');
+        titleEl.className = 'page-modal-title';
+        titleEl.textContent = title;
+        
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'page-modal-close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.onclick = function() {
+            originalClosePageModal();
+        };
+        
+        header.appendChild(titleEl);
+        header.appendChild(closeBtn);
+        
+        iframeContainer.appendChild(iframe);
+        
+        // Assemblage
+        box.appendChild(header);
+        box.appendChild(iframeContainer);
+        overlay.appendChild(box);
+        
+        document.body.appendChild(overlay);
+
+        // Exposer la fonction de fermeture sur l'overlay pour pouvoir la fermer depuis l'extérieur
+        overlay.closePageModal = originalClosePageModal;
+    }
+
     // Exposer globalement
     global.showSelectableAlert = showSelectableAlert;
+    global.openPageModal = openPageModal;
 
 })(typeof window !== 'undefined' ? window : this);
+
 

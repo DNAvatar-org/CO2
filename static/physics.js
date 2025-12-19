@@ -7,8 +7,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-//   - Initial creation: physics constants and Planck/Stefan-Boltzmann functions
-//   - Centralisation de toutes les CONST dans physics.js
 // ============================================================================
 
 // Initialiser CONST (pointeur vers window.CONST)
@@ -43,6 +41,19 @@ CONST.P0_WATER = 611.2;  // Pression au point triple de l'eau (Pa)
 CONST.L_VAPORIZATION = 2.5e6;  // Chaleur latente de vaporisation (J/kg)
 CONST.RV_WATER = 461.5;  // Constante des gaz pour la vapeur d'eau (J/(kg·K))
 CONST.L_V = 40660;  // Chaleur latente de vaporisation (J/mol)
+CONST.CP_AIR = 1005;  // Capacité calorifique à pression constante de l'air sec (J/(kg·K))
+
+// Constantes pour l'évaporation
+CONST.EVAPORATION_E0 = 0.001;  // Taux d'évaporation de base (kg/(m²·s))
+CONST.EVAPORATION_T_REF = 288;  // Température de référence pour l'évaporation (K, 15°C)
+CONST.EVAPORATION_T_SCALE = 20;  // Facteur d'échelle température-évaporation (K)
+
+// Constantes de longueur d'onde pour les bandes d'absorption (m)
+CONST.LAMBDA_CO2_CENTER = 15.0e-6;  // Centre de bande CO₂ (15 μm)
+CONST.LAMBDA_H2O_1 = 6.3e-6;  // Première bande H₂O (6.3 μm)
+CONST.LAMBDA_H2O_2 = 17.0e-6;  // Deuxième bande H₂O (17 μm)
+CONST.LAMBDA_CH4_1 = 7.7e-6;  // Première bande CH₄ (7.7 μm)
+CONST.LAMBDA_CH4_2 = 3.3e-6;  // Deuxième bande CH₄ (3.3 μm)
 
 // Coefficients d'albédo par type de surface (propriétés physiques constantes)
 // Ces valeurs sont des propriétés intrinsèques des matériaux, indépendantes de l'époque

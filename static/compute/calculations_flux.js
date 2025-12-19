@@ -7,11 +7,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-//   - Initial creation: calculs de flux radiatif simplifiés
-//   - Updated getGasValuesFromConfig to return kg values (co2_kg, ch4_kg, h2o_kg) from config
-//   - Fixed computeRadiativeTransfer to calculate h2o_total_percent from h2o_kg config + meteorites
-//   - Fixed computeRadiativeTransfer to use h2o_total_percent instead of h2o_total_MT
-//   - Moved to static/compute/ and updated to use window.LOGOS
 // ============================================================================
 
 // ============================================================================

@@ -7,7 +7,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-//   - Initial creation: graphique Plotly avec visualisation spectrale
 // ============================================================================
 
 // ============================================================================
@@ -656,13 +655,13 @@ function drawAbsorptionBandIndicators() {
 
     // CO2 : ~15 μm (principale), pic à ~11 μm
     // CH4 : ~7.7 μm (principale), pic à ~23 μm
-    // H2O : ~6.3 μm (principale), nombreuses bandes entre 5–8 μm
+    const CONST = window.CONST;
     const absorptionBands = [
-        { lambda: 6.3, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },  // H2O : ~6.3 μm (principale)
-        { lambda: 7.7, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' },  // CH4 : ~7.7 μm (principale)
-        { lambda: 11, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },  // CO2 : pic à ~11 μm
-        { lambda: 15, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },  // CO2 : ~15 μm (principale)
-        { lambda: 23, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' }   // CH4 : pic à ~23 μm
+        { lambda: CONST.LAMBDA_H2O_1 * 1e6, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
+        { lambda: CONST.LAMBDA_CH4_1 * 1e6, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' },
+        { lambda: 11, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
+        { lambda: CONST.LAMBDA_CO2_CENTER * 1e6, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
+        { lambda: 23, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' }
     ];
 
     absorptionBands.forEach(band => {
@@ -940,7 +939,7 @@ window.updatePlot = function updatePlot(data) {
                 console.error('[updatePlot] ❌ ERREUR CRITIQUE : calculateTropopauseHeight non disponible');
                 throw new Error('calculateTropopauseHeight requise pour calculer la tropopause');
             }
-            z_trop_m = window.calculateTropopauseHeight(T0);
+            z_trop_m = window.calculateTropopauseHeight();
             z_trop_km = z_trop_m / 1000; // Convertir en km
             
             // Calculer la différence de température entre tropopause et stratosphère
@@ -2039,7 +2038,7 @@ function drawSpectralVisualization(canvas, data) {
         z_trop_km = window.current_z_trop_km;
     } else if (typeof window.calculateTropopauseHeight === 'function') {
         // Sinon recalculer avec une température par défaut
-        z_trop_km = window.calculateTropopauseHeight(288) / 1000;
+        z_trop_km = window.calculateTropopauseHeight() / 1000;
     }
     */
 
@@ -2052,7 +2051,7 @@ function drawSpectralVisualization(canvas, data) {
         z_trop_km = window.current_z_trop_km;
     } else if (typeof window.calculateTropopauseHeight === 'function') {
         // Sinon recalculer avec une température par défaut
-        z_trop_km = window.calculateTropopauseHeight(288) / 1000;
+        z_trop_km = window.calculateTropopauseHeight() / 1000;
     }
     */
 

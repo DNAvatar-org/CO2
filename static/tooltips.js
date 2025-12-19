@@ -6,7 +6,6 @@
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
-//   - Initial version: centralisation des tooltips avec délai 0.5s et bords 90°
 
 (function() {
     'use strict';

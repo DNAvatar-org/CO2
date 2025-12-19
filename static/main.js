@@ -7,7 +7,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-//   - Initial creation: simulation du bilan radiatif terrestre
 // ============================================================================
 
 // ============================================================================
@@ -749,7 +748,7 @@ function updateCO2Level(state) {
                 : 255.0;
             // Température de surface calculée par dichotomie (équilibre radiatif avec CO2 uniquement)
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
-            const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
+            const temp_surface = temperatureAtZ(0);
             const temp_surface_c = temp_surface - 273.15;
             // Calculer ΔT° à partir du forçage radiatif (calibration)
             // ΔT° = différence par rapport à 255K (sans CO2)
@@ -1183,7 +1182,7 @@ function updateCO2LevelDirect(co2_fraction) {
                 : 255.0;
             // Température de surface calculée par dichotomie (équilibre radiatif avec CO2 uniquement)
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
-            const temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
+            const temp_surface = temperatureAtZ(0);
             const temp_surface_c = temp_surface - 273.15;
             // Calculer ΔT° à partir du forçage radiatif (calibration)
             // ΔT° = différence par rapport à 255K (sans CO2)
@@ -1541,7 +1540,7 @@ window.updateDisplay = function updateDisplay(data) {
             // console.log('Atmosphere Height:', `${(props.z_max / 1000).toFixed(0)} km`);
 
             if (typeof window.calculateTropopauseHeight === 'function') {
-                const tropo_m = window.calculateTropopauseHeight(T0_log);
+                const tropo_m = window.calculateTropopauseHeight();
                 // console.log('Tropopause Height:', `${(tropo_m / 1000).toFixed(1)} km`);
             }
         }
@@ -2663,10 +2662,8 @@ function updateH2OLevelDirect(h2o_total_percent) {
 
             plotData.current = data;
 
-            // 🔍 DEBUG : Vérifier que temperature() est défini
-            // temperature() est définie dans calculations.js et devrait être accessible globalement
-            if (typeof temperature !== 'function' && !data.T0) {
-                console.error('[updateH2OLevelDirect] ❌ ERREUR - temperature() non défini et data.T0 manquant');
+            if (!data.T0) {
+                console.error('[updateH2OLevelDirect] ❌ ERREUR - data.T0 manquant');
                 enableButtons();
                 return;
             }
@@ -2680,14 +2677,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
                 ? window.getEffectiveTemperatureNoGreenhouse()
                 : 255.0;
             
-            // Température de surface calculée par dichotomie
-            // Utiliser data.T0 si disponible, sinon temperature(0)
-            let temp_surface;
-            if (data.T0 !== undefined && data.T0 !== null) {
-                temp_surface = data.T0;
-            } else if (typeof temperature === 'function') {
-                temp_surface = temperature(0); // Température au sol (z=0) ajustée par dichotomie
-            } else {
+            const temp_surface = data.T0;
                 console.error('[updateH2OLevelDirect] ❌ ERREUR - Impossible de calculer temp_surface');
                 enableButtons();
                 return;

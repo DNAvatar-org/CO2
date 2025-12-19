@@ -6,11 +6,7 @@
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
-//   - Initial version: calculs composition atmosphérique à partir de quantités (CO2, CH4, H2O, N2, O2)
-//   - Conversion quantités → fractions molaires pour calculs physiques
-//   - Ajout calcul hauteur atmosphère dynamique (Hadéen vs Standard)
-
-
+//
 // ============================================================================
 // CALCUL DE PRESSION ET STRUCTURE ATMOSPHÉRIQUE
 // ============================================================================
@@ -156,11 +152,9 @@ function calculateAtmosphereComposition() {
         DATA['🫧']['🍰🫧💨'] = Math.max(0, 1.0 - (DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🌫']));
     }
     
-    // Calculer les propriétés atmosphériques (densité, altitude, tropopause)
-    const T0 = DATA['🧮']['🌡️'];
     const props = window.calculateAtmosphereProperties();
-    const altitude = props.z_max; // Altitude max en mètres
-    const tropopause = window.calculateTropopauseHeight(T0);
+    const altitude = props.z_max;
+    const tropopause = calculateTropopauseHeight();
     
     // Mettre à jour DATA directement
     DATA['🫧']['📏🫧🧿'] = altitude / 1000;  // Altitude max en km
@@ -174,7 +168,34 @@ function calculateAtmosphereComposition() {
 // EXPOSITION GLOBALE
 // ============================================================================
 
+function calculateTropopauseHeight() {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    return (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (DATA['🫧']['🧪'] * EPOCH['🍎']);
+}
+
+function pressureAtZ(z) {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    
+    if (DATA['⚖️']['⚖️🫧'] === 0) return 0;
+    
+    const P0 = (DATA['⚖️']['⚖️🫧'] * EPOCH['🍎']) / (4 * Math.PI * Math.pow(EPOCH['📐'] * 1000, 2));
+    const H = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (DATA['🫧']['🧪'] * EPOCH['🍎']);
+    return P0 * Math.exp(-z / H);
+}
+
+function airNumberDensityAtZ(z) {
+    const CONST = window.CONST;
+    return pressureAtZ(z) / (CONST.BOLTZMANN_KB * window.temperatureAtZ(z));
+}
+
 window.calculateAtmosphereProperties = calculateAtmosphereProperties;
 window.calculateMolarMassAir = calculateMolarMassAir;
 window.calculatePressureAtm = calculatePressureAtm;
 window.calculateAtmosphereComposition = calculateAtmosphereComposition;
+window.calculateTropopauseHeight = calculateTropopauseHeight;
+window.pressureAtZ = pressureAtZ;
+window.airNumberDensityAtZ = airNumberDensityAtZ;

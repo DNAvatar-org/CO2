@@ -7,10 +7,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-//   - Initial creation: FPS chart with 2 curves (FPS and precision)
-//   - v1.1.0: Système de ping avec dt, échelle logarithmique pour précision
-//   - v1.1.1: Fix z-order: FPS curve (white) now drawn above precision curve (grey)
-//   - v1.1.2: Shift FPS curve 1px to the right for better visibility
 // ============================================================================
 
 // Historique des valeurs (pour les courbes)
@@ -27,6 +23,23 @@ const PIXEL_DURATION = 0.1; // 100ms par pixel (10 pixels par seconde à 60 FPS)
 const FPSalert = 25;  // Seuil d'alerte (FPS bas)
 const FPSmin = 20;     // FPS minimum acceptable
 const FPSmax = 55;     // FPS maximum (bonne performance)
+
+function getPrecisionFactorFromFPS() {
+    if (window.fpsPrecisionFactor !== undefined) {
+        return window.fpsPrecisionFactor;
+    }
+    const currentFPS = window.fps;
+    if (currentFPS < FPSmin) {
+        return 0.5;
+    } else if (currentFPS > FPSmax) {
+        return 2.0;
+    } else if (currentFPS < FPSalert) {
+        return 0.75;
+    }
+    return 1.0;
+}
+
+window.getPrecisionFactorFromFPS = getPrecisionFactorFromFPS;
 
 // Variables pour le système de ping
 let t0 = null; // Temps du ping précédent (sera réinitialisé quand le ping arrive)

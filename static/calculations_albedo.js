@@ -6,13 +6,6 @@
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
-//   - Initial version: déplacement calculateAlbedo et calculateCloudCoverage depuis calculations.js
-//   - v1.1.0: Valeurs albedo mises à jour selon littérature (Océan: 0.08, Forêt: 0.17, Désert: 0.30, Glace: 0.70, Nuages: 0.50)
-//   - v1.2.0: 🔒 REFONTE PIPELINE - Géologie → Surfaces → Stocks → Climat → Albedo
-//     - Ajout calculateGeologySurfaces() : fixe les surfaces depuis la géologie (océan/continent/hautes terres)
-//     - calculateAlbedo() : calcule océan depuis surfaces géologiques + stocks d'eau (pas l'inverse)
-//     - calculateAlbedo() : calcule forêts/déserts depuis surfaces géologiques + climat (pas depuis stocks)
-//     - La géologie fixe les surfaces → les surfaces fixent les stocks → les stocks modifient le climat
 //
 // FORMULES ALBEDO :
 // 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏖,🧊} + contribution_glace + contribution_nuages

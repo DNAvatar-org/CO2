@@ -6,10 +6,7 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
-//   - Initial version: extraction de la timeline depuis configOrganigramme.js
-//   - Moved to static/timeline/config.js (alongside timeline.js)
-//   - v1.2.0: Ajout des paramètres géologiques 🗻 (🍰🗻🌊, 🍰🗻🏔, 🍰🗻🌍) dans chaque époque
-
+//
 // ============================================================================
 // DÉFINITION DE LA CHRONOLOGIE (TIMELINE)
 // ============================================================================

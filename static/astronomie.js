@@ -6,8 +6,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-//   - v2.0.0: Ajout calcul distance Terre-Soleil, intensité solaire, et effets sur le climat
-//   - v1.0.0: Initial version: implémentation des cycles de Milankovitch basés sur la date de création de la Terre
 
 /**
  * CONSTANTES ASTRONOMIQUES

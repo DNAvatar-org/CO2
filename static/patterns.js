@@ -6,7 +6,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-//   - v1.1.0: Changed pattern order to dash, dashdot, longdash, longdashdot; simplified stroke-width cycling
 
 // Ordre complet des patterns : dot (0, réservé), dash (1), dashdot (2), longdash (3), longdashdot (4), solid (5, réservé)
 window.DASH_PATTERNS = ['dot', 'dash', 'dashdot', 'longdash', 'longdashdot', 'solid'];

@@ -7,7 +7,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-//   - Initial creation: refactoring de calculations_flux.js avec nouvelle structure
 // ============================================================================
 
 // ============================================================================

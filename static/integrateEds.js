@@ -6,7 +6,6 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [November 18, 2025] [HH:MM UTC+1]
 // Logs:
-//   - Initial version: intégration de synthese_EdS dans l'organigramme
 
 (function() {
     'use strict';

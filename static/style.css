@@ -1476,8 +1476,10 @@ h1 {
     font-style: normal;
 }
 
-.credits-line:has(a[href*="dnavatar.org"]) {
-    font-size: 14px;
+.credits-doc-label {
+    color: #00ff00;
+    font-weight: 500;
+    margin-right: 4px;
 }
 
 .credits-footer a {
