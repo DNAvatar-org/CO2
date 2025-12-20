@@ -83,11 +83,12 @@ function getMasses() {
     h2o_kg += deltaWater * meteoriteCount;
     
     // Mettre à jour DATA directement
-    DATA['⚖️']['⚖️🏭'] = EPOCH['⚖️🏭'];
-    DATA['⚖️']['⚖️⛽'] = EPOCH['⚖️⛽'];
+    // 🔒 Protection contre undefined : traiter comme 0
+    DATA['⚖️']['⚖️🏭'] = isFinite(EPOCH['⚖️🏭']) ? EPOCH['⚖️🏭'] : 0;
+    DATA['⚖️']['⚖️⛽'] = isFinite(EPOCH['⚖️⛽']) ? EPOCH['⚖️⛽'] : 0;
     DATA['⚖️']['⚖️💧'] = h2o_kg;
-    DATA['⚖️']['⚖️🌫'] = EPOCH['⚖️🌫'];
-    DATA['⚖️']['⚖️💨'] = EPOCH['⚖️💨'];  // N2 depuis EPOCH
+    DATA['⚖️']['⚖️🌫'] = isFinite(EPOCH['⚖️🌫']) ? EPOCH['⚖️🌫'] : 0;
+    DATA['⚖️']['⚖️💨'] = isFinite(EPOCH['⚖️💨']) ? EPOCH['⚖️💨'] : 0;  // N2 depuis EPOCH
     
     // ⚖️🫧 = masse atmosphérique totale (air sec, sans vapeur d'eau)
     // ⚖️🫧 = somme de tous les gaz atmosphériques (CO2, CH4, O2, N2)

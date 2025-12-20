@@ -37,22 +37,10 @@ function calculateGeologySurfaces() {
     const DATA = window.DATA;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     
-    // 🔒 Lire les surfaces géologiques depuis les configs epoch - DOIT EXISTER
-    if (!EPOCH || !EPOCH['🗻']) {
-        console.error(`❌ [calculateGeologySurfaces] EPOCH['🗻'] n'existe pas pour l'époque ${DATA['📜']['👉']}`);
-        return false;
-    }
-    
-    // Lire depuis les configs epoch - DOIT EXISTER
+    // Lire depuis les configs epoch - DOIT EXISTER (crash si manquant)
     const ocean_basin_fraction = EPOCH['🗻']['🍰🗻🌊'];
     const highlands_fraction = EPOCH['🗻']['🍰🗻🏔'];
     const lowlands_fraction = EPOCH['🗻']['🍰🗻🌍'];
-    
-    // Vérifier que les valeurs existent
-    if (ocean_basin_fraction === undefined || highlands_fraction === undefined || lowlands_fraction === undefined) {
-        console.error(`❌ [calculateGeologySurfaces] Valeurs manquantes dans EPOCH['🗻'] :`, EPOCH['🗻']);
-        return false;
-    }
     
     // Vérifier que la somme est cohérente (doit être ≤ 1.0)
     const total = ocean_basin_fraction + lowlands_fraction + highlands_fraction;
@@ -133,69 +121,54 @@ function calculateAlbedo() {
     const DATA = window.DATA;
     const CONST = window.CONST;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
-    const T_surface_K = DATA['🧮']['🌡️'];
-    const h2o_enabled = DATA['🔘']['🔘💧📛'];
-    const geothermal_flux = DATA['🌕']['🧲🌕'];
-    const T_surface_C = T_surface_K - 273.15;
+    const T_surface_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
     
     // 🔒 ÉTAPE 1 : Calculer les surfaces géologiques (fixes, déterminées par la géologie)
-    if (!calculateGeologySurfaces()) {
-        console.error(`❌ [calculateAlbedo] calculateGeologySurfaces() a échoué`);
-        return false;
-    }
-    const ocean_basin_fraction = DATA['🗻']['🍰🗻🌊'];
-    const highlands_fraction = DATA['🗻']['🍰🗻🏔'];
-    const lowlands_fraction = DATA['🗻']['🍰🗻🌍'];
+    calculateGeologySurfaces();
+    
+    // 🔒 ÉTAPE 1.5 : Calculer volcano_coverage depuis la température de base de l'époque
+    // À 2100°C (2373K), tout est lave → volcano_coverage = 1.0
+    // Transition progressive : T < 1000K → 0, T > 2373K → 1.0
+    const volcano_coverage = Math.max(0, Math.min(1.0, (DATA['📅']['🌡️🧮'] - CONST.T_LAVA_START) / (CONST.T_LAVA_COMPLETE - CONST.T_LAVA_START)));
     
     // 🔒 ÉTAPE 2 : Calculer la couverture océanique réelle depuis la géologie + stocks d'eau
     // La surface océanique est limitée par la géologie ET par la quantité d'eau disponible
-    const planet_radius_m = EPOCH['📐'];
-    const planet_surface_m2 = 4 * Math.PI * planet_radius_m * planet_radius_m;
-    const ocean_depth_avg_m = EPOCH['📏🌊'] * 1000;
-    const seaRelief = EPOCH['🐚'];
-    const h2o_total_mass_kg = DATA['⚖️']['⚖️💧'];
-    const RHO_WATER = 1000; // kg/m³
+    // Si volcano_coverage = 1.0, alors ocean_coverage = 0 (pas de mer possible)
+    const planet_surface_m2 = 4 * Math.PI * EPOCH['📐'] * EPOCH['📐'];
     
     // Volume maximum que peut contenir le bassin océanique
-    const ocean_basin_surface_m2 = ocean_basin_fraction * planet_surface_m2;
-    const ocean_volume_max_m3 = (ocean_basin_surface_m2 / seaRelief) * ocean_depth_avg_m;
-    const ocean_mass_max_kg = ocean_volume_max_m3 * RHO_WATER;
+    const ocean_basin_surface_m2 = DATA['🗻']['🍰🗻🌊'] * planet_surface_m2;
+    const ocean_volume_max_m3 = (ocean_basin_surface_m2 / EPOCH['🐚']) * EPOCH['📏🌊'] * 1000;
+    const ocean_mass_max_kg = ocean_volume_max_m3 * CONST.RHO_WATER;
     
     // Masse d'eau océanique réelle = min(stock_total, capacité_bassin)
-    const ocean_mass_actual_kg = Math.min(h2o_total_mass_kg, ocean_mass_max_kg);
+    const ocean_mass_actual_kg = Math.min(DATA['⚖️']['⚖️💧'], ocean_mass_max_kg);
     
     // Surface océanique réelle (peut être < bassin si pas assez d'eau)
-    const ocean_volume_actual_m3 = ocean_mass_actual_kg / RHO_WATER;
-    const ocean_surface_actual_m2 = (ocean_volume_actual_m3 / ocean_depth_avg_m) * seaRelief;
-    const ocean_coverage = Math.min(ocean_basin_fraction, Math.max(0.0, ocean_surface_actual_m2 / planet_surface_m2));
+    const ocean_volume_actual_m3 = ocean_mass_actual_kg / CONST.RHO_WATER;
+    const ocean_surface_actual_m2 = (ocean_volume_actual_m3 / EPOCH['📏🌊'] / 1000) * EPOCH['🐚'];
+    const ocean_coverage_base = Math.min(DATA['🗻']['🍰🗻🌊'], Math.max(0.0, ocean_surface_actual_m2 / planet_surface_m2));
     
-    // 🔒 Mettre à jour 🍰💧🌊 depuis la surface (inverse du calcul précédent)
-    // 🍰💧🌊 = masse_océan / masse_totale
-    if (h2o_total_mass_kg > 0) {
-        DATA['💧']['🍰💧🌊'] = ocean_mass_actual_kg / h2o_total_mass_kg;
-    } else {
-        DATA['💧']['🍰💧🌊'] = 0;
-    }
+    // Réduire ocean_coverage proportionnellement à volcano_coverage
+    const ocean_coverage = ocean_coverage_base * (1.0 - volcano_coverage);
     
     // 🔒 Stocker ocean_coverage dans DATA AVANT calculateCloudFormationIndex()
     // calculateCloudFormationIndex() a besoin de DATA['🪩']['🍰🪩🌊'] pour calculer ☁️
     DATA['🪩']['🍰🪩🌊'] = ocean_coverage;
     
-    let albedo_base = 0.31;
+    let albedo_base = 0.0;
     
     // 🔒 ÉTAPE 3 : Calculer la couverture de glace depuis les hautes terres + climat
     // La glace est limitée par la surface disponible (hautes terres) ET par le climat
-    const ice_water_fraction = DATA['💧']['🍰💧🧊'];
+    // 🔒 IMPORTANT : ice_fraction_base = surface de glace (0-1), PAS fraction du stock d'eau
+    // On calcule d'abord calculateWaterPartition() pour obtenir 🍰💧🧊 (fraction du stock)
+    // 🔒 NOTE : calculateWaterPartition() est responsable de mettre à jour DATA['💧']['🍰💧🌊']
+    // calculateAlbedo() ne doit PAS écraser cette valeur car elle est calculée depuis la répartition vapeur/glace/liquide
+    window.calculateWaterPartition();
     // Surface de glace = min(surface_haute_terre, fraction_glace_du_stock)
     // La glace ne peut pas dépasser les hautes terres disponibles
-    const ice_surface_max = highlands_fraction;
-    const ice_fraction_base = Math.min(ice_surface_max, Math.min(0.9, ice_water_fraction * 0.9));
-    let volcano_coverage = 0;
-    const epochId = DATA['📜']['🗿'];
-    const isHadeen = epochId === '🔥';
-    if (isHadeen || (geothermal_flux && geothermal_flux > 1000)) {
-        volcano_coverage = isHadeen ? 1.0 : Math.min(1.0, geothermal_flux / 10000);
-    }
+    const ice_fraction_base = Math.min(DATA['🗻']['🍰🗻🏔'], Math.min(0.9, DATA['💧']['🍰💧🧊'] * 0.9));
+    // 🔒 volcano_coverage déjà calculé plus haut (ligne ~200)
     
     // 🔒 ÉTAPE 4 : Calculer forêts/déserts/terres depuis l'indice d'humidité climatique (H)
     // NOUVEAU SYSTÈME : Répartition automatique 🌳 / 🏖 / 🌍 basée sur température et précipitations
@@ -206,7 +179,7 @@ function calculateAlbedo() {
     // Où 🍰🧮🌧 = max vapor fraction (potentiel de précipitation)
     //    🍰🪩🌊 = couverture océanique (source d'évaporation)
     //    F_conv = facteur de convection (fonction de température)
-    const max_vapor_fraction = DATA['💧']['🍰🧮🌧'];
+    const max_vapor_fraction = DATA['💧']['🍰🧮🌧'] || 0;
     const F_conv = Math.max(0.1, Math.min(2.0, 1.0 + (T_surface_C - 15) / 50));  // Facteur convection (T optimal ~15°C)
     const P_ann_base = max_vapor_fraction * ocean_coverage * F_conv;
     const P_ann = P_ann_base * 1000;  // Conversion en mm/an (facteur d'échelle)
@@ -216,7 +189,8 @@ function calculateAlbedo() {
     // Où P_ref = 1000 mm/an (référence Terre)
     // Interprétation : H < 0.5 → aride, 0.5 ≤ H ≤ 1.2 → tempéré, H > 1.2 → humide
     const P_ref = 1000;  // mm/an (référence Terre)
-    const H = Math.max(0, Math.min(2.0, P_ann / (P_ref * Math.exp(0.05 * T_surface_C))));
+    const H_denom = P_ref * Math.exp(0.05 * T_surface_C);
+    const H = H_denom > 0 ? Math.max(0, Math.min(2.0, P_ann / H_denom)) : 0;
     
     // 3. Calculer la terre libre de glace L
     // L = 1 - 🍰🪩🌊 - 🍰🪩🧊 (terre disponible pour biomes)
@@ -225,27 +199,28 @@ function calculateAlbedo() {
     // 4. Calculer forêts 🌳
     // 🍰🪩🌳 = L × clamp((H - 0.5) / 0.7, 0, 1)
     // Forêts apparaissent si H > 0.5, maximum si H ≥ 1.2
-    const forest_coverage = L * Math.max(0, Math.min(1.0, (H - 0.5) / 0.7));
+    const forest_coverage = (isFinite(H) && isFinite(L)) ? L * Math.max(0, Math.min(1.0, (H - 0.5) / 0.7)) : 0;
     
     // 5. Calculer déserts 🏖
     // 🍰🪩🏖 = L × clamp((0.6 - H) / 0.6, 0, 1)
     // Déserts apparaissent si H < 0.6, maximum si H ≤ 0
-    const desert_coverage = L * Math.max(0, Math.min(1.0, (0.6 - H) / 0.6));
+    const desert_coverage = (isFinite(H) && isFinite(L)) ? L * Math.max(0, Math.min(1.0, (0.6 - H) / 0.6)) : 0;
     
     // 6. Calculer terres restantes 🌍
     // 🍰🪩🌍 = L - 🍰🪩🌳 - 🍰🪩🏖
     // 🌍 absorbe automatiquement : steppes, prairies, toundras, montagnes
-    const total_land_coverage = Math.max(0, L - forest_coverage - desert_coverage);
+    const total_land_coverage = (isFinite(L) && isFinite(forest_coverage) && isFinite(desert_coverage)) ? Math.max(0, L - forest_coverage - desert_coverage) : 0;
     
-    // 🔒 VÉRIFICATION : Les surfaces doivent sommer à 1 (sans les nuages)
+    // 🔒 VÉRIFICATION : Les surfaces SECHES doivent sommer à 1 (sans H2O, sans nuages)
     // 🍰🪩🌊 + 🍰🪩🌳 + 🍰🪩🧊 + 🍰🪩🏖 + 🍰🪩🌍 + 🍰🪩🌋 = 1
     // Les nuages ⛅ restent hors somme (fraction optique, pas surface au sol)
+    // 🔒 H2O (glace) est calculé séparément pour l'albedo, mais ice_fraction_base est dans la somme des surfaces
     const surface_sum = volcano_coverage + ocean_coverage + forest_coverage + ice_fraction_base + total_land_coverage + desert_coverage;
     if (Math.abs(surface_sum - 1.0) > 0.01) {
-        console.warn(`⚠️ [calculateAlbedo] Somme des surfaces = ${surface_sum.toFixed(4)} (attendu: 1.0)`);
+        console.warn(`⚠️ [calculateAlbedo] Somme des surfaces = ${surface_sum.toFixed(4)} (attendu: 1.0) | 🌋=${volcano_coverage.toFixed(3)} 🌊=${ocean_coverage.toFixed(3)} 🌳=${forest_coverage.toFixed(3)} 🧊=${ice_fraction_base.toFixed(3)} 🌍=${total_land_coverage.toFixed(3)} 🏖=${desert_coverage.toFixed(3)}`);
     }
     
-    // Stocker toutes les surfaces dans DATA['🪩']
+    // Stocker toutes les surfaces dans DATA['🪩'] (SURFACES SECHES, sans H2O)
     DATA['🪩']['🍰🪩🌋'] = volcano_coverage;
     DATA['🪩']['🍰🪩🌊'] = ocean_coverage;
     DATA['🪩']['🍰🪩🌳'] = forest_coverage;
@@ -253,50 +228,32 @@ function calculateAlbedo() {
     DATA['🪩']['🍰🪩🌍'] = total_land_coverage;
     DATA['🪩']['🍰🪩🏖'] = desert_coverage;
     
+    // 🔒 ALBEDO BASE : Calculer depuis les surfaces SECHES uniquement
     let weighted_albedo = 0;
-    const coeff = CONST['🪩🍰'];
+    const albedo_coeff = CONST['🪩🍰'];
     
-    if (volcano_coverage > 0) {
-        weighted_albedo += volcano_coverage * coeff['🪩🍰🌋'];
-    }
-    if (ocean_coverage > 0) {
-        weighted_albedo += ocean_coverage * coeff['🪩🍰🌊'];
-    }
-    if (forest_coverage > 0) {
-        weighted_albedo += forest_coverage * coeff['🪩🍰🌳'];
-    }
-    if (total_land_coverage > 0) {
-        weighted_albedo += total_land_coverage * coeff['🪩🍰🌍'];
-    }
-    if (desert_coverage > 0) {
-        weighted_albedo += desert_coverage * coeff['🪩🍰🏖'];
+    if (albedo_coeff) {
+        weighted_albedo += (isFinite(volcano_coverage) ? volcano_coverage : 0) * albedo_coeff['🪩🍰🌋'];
+        weighted_albedo += (isFinite(ocean_coverage) ? ocean_coverage : 0) * albedo_coeff['🪩🍰🌊'];
+        weighted_albedo += (isFinite(forest_coverage) ? forest_coverage : 0) * albedo_coeff['🪩🍰🌳'];
+        weighted_albedo += (isFinite(total_land_coverage) ? total_land_coverage : 0) * albedo_coeff['🪩🍰🌍'];
+        weighted_albedo += (isFinite(desert_coverage) ? desert_coverage : 0) * albedo_coeff['🪩🍰🏖'];
+        weighted_albedo += (isFinite(ice_fraction_base) ? ice_fraction_base : 0) * albedo_coeff['🪩🍰🧊'];
     }
     
-    albedo_base = weighted_albedo;
+    albedo_base = isFinite(weighted_albedo) ? weighted_albedo : 0;
     
     let albedo = albedo_base;
 
+    // 🔒 CONTRIBUTION H2O (GLACE) : Calculée séparément, n'affecte PAS la somme des surfaces
+    // ice_fraction = fraction du stock d'eau (0-1), PAS fraction de surface
     const ice_albedo = CONST['🪩🍰']['🪩🍰🧊'];
-    let ice_fraction = 0;
-    let vapor_fraction = null;
+    const ice_fraction_stock = Math.min(1.0, Math.max(0, DATA['💧']['🍰💧🧊']));
     
-    const h2o_total_fraction = DATA['⚖️']['⚖️💧'] / DATA['⚖️']['⚖️🫧'];
-    
-    if (h2o_total_fraction > 0) {
-        DATA['🧮']['🌡️'] = T_surface_K;
-        window.calculateWaterPartition();
-        // 🔒 REFONTE : estimateCloudCoverage() supprimé, remplacé par calculateCloudFormationIndex()
-        ice_fraction = DATA['💧']['🍰💧🧊'];
-        vapor_fraction = DATA['🫧']['🍰🫧💧'];
-    }
-    
-    ice_fraction = Math.min(1.0, Math.max(0, ice_fraction));
-    
-    if (ice_fraction > 0) {
-        const ice_impact_factor = 0.5;
-        const ice_albedo_contribution = (ice_albedo - albedo_base) * ice_fraction * ice_impact_factor;
-        albedo = albedo_base + ice_albedo_contribution;
-    }
+    // 🔒 Contribution glace à l'albedo : utilise ice_fraction_stock (fraction du stock), pas ice_fraction_base (surface)
+    const ice_impact_factor = 0.5;
+    const ice_albedo_contribution = (ice_albedo - albedo_base) * ice_fraction_stock * ice_impact_factor;
+    albedo = albedo_base + ice_albedo_contribution;
 
     // Contribution des nuages (H2O activé)
     // 🔒 REFONTE : Les nuages ne sont pas un stock d'eau, mais un phénomène optique
@@ -318,7 +275,7 @@ function calculateAlbedo() {
     //
     // Les nuages saturent vite : au-delà d'un certain seuil d'humidité, c'est l'optique — pas l'eau — qui limite leur effet
     let cloud_fraction = 0;
-    if (h2o_enabled && DATA['🫧']['🍰🫧💧'] > 0) {
+    if (DATA['🔘']['🔘💧📛'] && DATA['🫧']['🍰🫧💧'] > 0) {
         // Calculer l'index de formation nuageuse
         const cloud_index = calculateCloudFormationIndex();
         
@@ -359,7 +316,7 @@ function calculateAlbedo() {
         }
         const eta_0 = 0.40;  // Base moderne
         // Ajustement température (plus chaud = nuages plus efficaces optiquement)
-        const T_surface_C = T_surface_K - 273.15;
+        const T_surface_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
         const temp_factor_optique = Math.min(1.2, Math.max(0.7, 1.0 + (T_surface_C - 15) / 100));  // Ajustement température
         const eta_cloud = eta_0 * f_CCN * temp_factor_optique;  // Efficacité optique ajustée par époque et température
         
@@ -388,66 +345,46 @@ function calculateAlbedo() {
     // 🔒 FORMULE ALBEDO CORRIGÉE :
     // 🍰🪩📿 = 🍰🪩⛅ × 🪩🍰⛅ + Σ(🍰🪩❀ × 🪩🍰❀) | ❀ ∈ { 🌋,🌊,🌳,🏖,🧊 }
     // Les nuages contribuent directement à l'albédo avec leur propre coefficient
-    if (cloud_fraction > 0 && cloud_fraction <= 1) {
-        const coeff = CONST['🪩🍰'];
-        const cloud_albedo_coeff = coeff['🪩🍰⛅'];
-        // Contribution nuageuse : 🍰🪩⛅ × 🪩🍰⛅
-        const cloud_albedo_contribution = cloud_fraction * cloud_albedo_coeff;
-        // Albedo final = albedo de surface + contribution nuageuse
-        albedo = albedo + cloud_albedo_contribution;
-    }
+    const cloud_albedo_coeff = albedo_coeff['🪩🍰⛅'];
+    const cloud_albedo_contribution = cloud_fraction * cloud_albedo_coeff;
+    albedo = albedo + cloud_albedo_contribution;
 
-    const final_albedo = Math.max(0.0, Math.min(0.9, albedo));
+    const final_albedo = isFinite(albedo) ? Math.max(0.0, Math.min(0.9, albedo)) : 0;
     
-    const ocean_coverage_display = ocean_coverage;
-    const ice_coverage_display = ice_fraction;
-    const cloud_coverage_display = cloud_fraction;
-    const land_coverage_display = total_land_coverage;
-    
+    // 🔒 Les surfaces sont déjà stockées plus haut (lignes 249-254)
+    // ice_fraction_base est la surface de glace, ice_fraction_stock est la fraction du stock d'eau
     DATA['🪩']['🍰🪩📿'] = final_albedo;
-    DATA['🪩']['🍰🪩🌋'] = volcano_coverage;
-    DATA['🪩']['🍰🪩🌊'] = ocean_coverage_display;
-    DATA['🪩']['🍰🪩🌳'] = forest_coverage;
-    DATA['🪩']['🍰🪩🌍'] = land_coverage_display;
-    DATA['🪩']['🍰🪩🏖'] = desert_coverage;
-    DATA['🪩']['🍰🪩🧊'] = ice_coverage_display;
-    DATA['🪩']['🍰🪩⛅'] = cloud_coverage_display;
+    DATA['🪩']['🍰🪩⛅'] = isFinite(cloud_fraction) ? cloud_fraction : 0;
     
     return final_albedo;
 }
 
-function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_override = null) {
+function calculateCloudCoverage() {
     const DATA = window.DATA;
+    const CONST = window.CONST;
     
-    if (!h2o_enabled) {
+    if (!DATA['🔘']['🔘💧📛']) {
         return 0;
     }
 
     // 🔒 REFONTE : calculateCloudCoverage() est maintenant DEPRECATED
     // Utiliser calculateCloudFormationIndex() + 🍰🪩⛅ = C_max × ☁️ à la place
     // Cette fonction est conservée pour compatibilité mais ne devrait plus être utilisée
-
-    const T_surface_C = T_surface_K - 273.15;
+    const T_surface_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
 
     if (T_surface_C < -20) {
         const T_cold = -20;
         const cloud_at_cold = 0.05;
         const decay_rate = 0.1; // Taux de décroissance
-        let cloud_fraction = cloud_at_cold * Math.exp(decay_rate * (T_surface_C - T_cold));
-
+        const cloud_fraction = cloud_at_cold * Math.exp(decay_rate * (T_surface_C - T_cold));
         return Math.min(1, Math.max(0, cloud_fraction));
-
-        return cloud_fraction;
     } else if (T_surface_C < 0) {
         // Froid mais pas extrême : quelques nuages possibles (nuages blancs)
         // Interpolation entre -20°C (5%) et 0°C (20%)
         const cloud_at_0 = 0.2; // 20% à 0°C
         const cloud_at_cold = 0.05; // 5% à -20°C
-        let cloud_fraction = cloud_at_cold + (cloud_at_0 - cloud_at_cold) * ((T_surface_C - (-20)) / 20);
-
+        const cloud_fraction = cloud_at_cold + (cloud_at_0 - cloud_at_cold) * ((T_surface_C - (-20)) / 20);
         return Math.min(1, cloud_fraction);
-
-        return cloud_fraction;
     } else {
         // Température positive : couverture nuageuse proportionnelle à la température
         // Plus il fait chaud, plus il y a d'évaporation et donc de nuages
@@ -477,11 +414,8 @@ function calculateCloudCoverage(T_surface_K, h2o_enabled, vapor_fraction_overrid
 
 function calculateSolarFluxAbsorbed() {
     const DATA = window.DATA;
+    // 🔒 CRASH si calculateAlbedo() échoue (pas de fallback)
     const albedo = calculateAlbedo();
-    if (albedo === false) {
-        console.error(`❌ [calculateSolarFluxAbsorbed] calculateAlbedo() a échoué`);
-        return false;
-    }
     const solar_flux_average_wm = DATA['☀️']['🧲☀️🎱'];
     const solar_flux_reflected_wm = solar_flux_average_wm * albedo;
     const solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm;

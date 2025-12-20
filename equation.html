@@ -42,6 +42,21 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <link rel="stylesheet" href="static/style.css">
     <link rel="stylesheet" href="equation.css">
+    <script>
+        // Envoyer la hauteur à la fenêtre parente pour ajuster l'iframe
+        window.addEventListener('load', function() {
+            const height = Math.max(
+                document.body.scrollHeight,
+                document.body.offsetHeight,
+                document.documentElement.clientHeight,
+                document.documentElement.scrollHeight,
+                document.documentElement.offsetHeight
+            );
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'resize-iframe', height: height }, '*');
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="definitions-container">

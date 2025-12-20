@@ -958,25 +958,25 @@
             
             // Initialiser les valeurs dans DATA
             window.DATA['📜']['📿💫'] = 0;
-            // IMPORTANT: Si animation activée, on NE TOUCHE PAS à DATA['🧮']['🌡️']
+            // IMPORTANT: Si animation activée, on NE TOUCHE PAS à DATA['🧮']['🧮🌡️']
             // On garde la température actuelle pour continuité entre époques
             // Note: getEpochDateConfig() sera appelé plus tard et initialisera DATA['📅']['🌡️🧮']
             if (!animEnabled) {
                 // Si animation désactivée, on initialisera avec DATA['📅']['🌡️🧮'] après getEpochDateConfig()
                 // Pour l'instant, on initialise avec une valeur par défaut si nécessaire
-                if (!window.DATA['🧮'] || !window.DATA['🧮']['🌡️'] || window.DATA['🧮']['🌡️'] === 0) {
+                if (!window.DATA['🧮'] || !window.DATA['🧮']['🧮🌡️'] || window.DATA['🧮']['🧮🌡️'] === 0) {
                 const epochIndex = window.DATA['📜'] && window.DATA['📜']['👉'] !== undefined ? window.DATA['📜']['👉'] : 0;
                 const EPOCH = window.TIMELINE[epochIndex];
-                    window.DATA['🧮']['🌡️'] = EPOCH ? EPOCH['🌡️🧮'] : 180.0;
+                    window.DATA['🧮']['🧮🌡️'] = EPOCH ? EPOCH['🌡️🧮'] : 180.0;
                 }
             } else {
-                // Si animation activée, on ne touche PAS à DATA['🧮']['🌡️']
-                // Elle sera utilisée dans calculateT0() ligne 43 comme T0_base
-                if (!window.DATA['🧮'] || !window.DATA['🧮']['🌡️'] || window.DATA['🧮']['🌡️'] === 0) {
+                // Si animation activée, on ne touche PAS à DATA['🧮']['🧮🌡️']
+                // Elle sera utilisée dans calculateT0() ligne 38 comme T0_base
+                if (!window.DATA['🧮'] || !window.DATA['🧮']['🧮🌡️'] || window.DATA['🧮']['🧮🌡️'] === 0) {
                     // Seulement si elle n'existe vraiment pas, on l'initialise
                     const epochIndex = window.DATA['📜'] && window.DATA['📜']['👉'] !== undefined ? window.DATA['📜']['👉'] : 0;
                     const EPOCH = window.TIMELINE[epochIndex];
-                    window.DATA['🧮']['🌡️'] = EPOCH ? EPOCH['🌡️🧮'] : 180.0;
+                    window.DATA['🧮']['🧮🌡️'] = EPOCH ? EPOCH['🌡️🧮'] : 180.0;
                 }
             }
             
@@ -1011,13 +1011,13 @@
                 // 1. getEpochDateConfig() - Récupérer la config de date
                 const dateConfig = window.getEpochDateConfig ? window.getEpochDateConfig() : null;
                 
-                // 1.1. Initialiser DATA['🧮']['🌡️'] selon 🔘🎬 après getEpochDateConfig()
-                // Si animation désactivée (🔘🎬 = false), alors 🧮.🌡️ = 📅.🌡️🧮
+                // 1.1. Initialiser DATA['🧮']['🧮🌡️'] selon 🔘🎬 après getEpochDateConfig()
+                // Si animation désactivée (🔘🎬 = false), alors 🧮.🧮🌡️ = 📅.🌡️🧮
                 if (!DATA['🔘']['🔘🎬']) {
                     // Animation désactivée : initialiser avec 📅.🌡️🧮 (température attendue de l'époque)
-                    DATA['🧮']['🌡️'] = DATA['📅']['🌡️🧮'];
+                    DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
                 }
-                // Si animation activée (🔘🎬 = true), on garde DATA['🧮']['🌡️'] tel quel (continuité)
+                // Si animation activée (🔘🎬 = true), on garde DATA['🧮']['🧮🌡️'] tel quel (continuité)
                 
                 // 1.5. Afficher la configuration initiale AVANT les calculs
                 displayResults(null);
@@ -1100,21 +1100,26 @@
         
         // Fonction pour calculer et afficher les formules des flux
         function calculateFluxFormulas(flux, soleil, albedo) {
-            if (!flux) return '';
+            if (!flux || !soleil || !albedo) return '';
             
             let formulas = [];
             const CONST = window.CONST;
             const DATA = window.DATA;
             
             // 🧲☀️🔽: 🧲☀️🎱 × (1 - 🍰🪩📿) = Flux solaire absorbé
-            if (flux['🧲☀️🔽'] !== undefined && soleil && soleil['🧲☀️🎱'] !== undefined && albedo && albedo['🍰🪩📿'] !== undefined) {
-                const solar_avg = soleil['🧲☀️🎱'];
-                const albedo_val = albedo['🍰🪩📿'];
-                const calculated = solar_avg * (1 - albedo_val);
-                const actual = flux['🧲☀️🔽'];
-                const match = Math.abs(calculated - actual) < 0.01 ? '✓' : '⚠';
-                formulas.push(`<strong>🧲☀️🔽</strong>: <strong>🧲☀️🎱</strong> × (1 - <strong>🍰🪩📿</strong>) = ${solar_avg.toFixed(2)} × (1 - ${albedo_val.toFixed(4)}) = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+            // 🔒 Toutes les valeurs doivent exister (crash si manquant)
+            const solar_avg = soleil['🧲☀️🎱'];
+            const albedo_val = albedo['🍰🪩📿'];
+            const calculated = solar_avg * (1 - albedo_val);
+            const actual = flux['🧲☀️🔽'];
+            
+            // 🔒 Vérifier que toutes les valeurs sont définies avant d'appeler toFixed()
+            if (solar_avg == null || albedo_val == null || calculated == null || actual == null) {
+                return ''; // Retourner vide si valeurs manquantes (crash évité ici car c'est pour l'affichage)
             }
+            
+            const match = Math.abs(calculated - actual) < 0.01 ? '✓' : '⚠';
+            formulas.push(`<strong>🧲☀️🔽</strong>: <strong>🧲☀️🎱</strong> × (1 - <strong>🍰🪩📿</strong>) = ${solar_avg.toFixed(2)} × (1 - ${albedo_val.toFixed(4)}) = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
             
             // 🧲🌕🔽: Flux géothermique (constant)
             if (flux['🧲🌕🔽'] !== undefined) {
@@ -1347,10 +1352,12 @@
             // Construire le HTML avec les formules dans le conteneur formule-container
             // Utiliser DATA['🧲_initial'] pour Configuration (valeurs initiales, ne changent plus)
             const fluxForConfig = DATA['🧲_initial'] || DATA['🧲'];
-            if (fluxForConfig) {
+            const soleilForFlux = DATA['☀️'];
+            const albedoForFlux = DATA['🪩_initial'] || DATA['🪩'];
+            // 🔒 Toutes les valeurs doivent exister (crash si manquant)
+            if (fluxForConfig && soleilForFlux && albedoForFlux) {
                 const fluxHtml = json2html(fluxForConfig, '', '', 'flux', '🧲');
-                const albedoForFlux = DATA['🪩_initial'] || DATA['🪩'];
-                const fluxFormulas = calculateFluxFormulas(fluxForConfig, DATA['☀️'], albedoForFlux);
+                const fluxFormulas = calculateFluxFormulas(fluxForConfig, soleilForFlux, albedoForFlux);
                 // Insérer les formules dans le conteneur formule-container (remplacer le conteneur vide)
                 html += fluxHtml.replace(/<div class="formule-container[^"]*">[\s\S]*?<\/div>/, `<div class="formule-container notVisible">${fluxFormulas}</div>`);
             }
@@ -1400,8 +1407,8 @@
             
             // Mettre à jour le titre avec la température en °C
             const convergenceTitle = convergenceDiv.querySelector('h2');
-            if (convergenceTitle && DATA && DATA['🧮'] && DATA['🧮']['🌡️']) {
-                const temp_K = DATA['🧮']['🌡️'];
+            if (convergenceTitle) {
+                const temp_K = DATA['🧮']['🧮🌡️'];
                 const temp_C = (temp_K - 273.15).toFixed(2);
                 const button = convergenceTitle.querySelector('.toggle-button');
                 const buttonText = button ? button.textContent : 'Formules +';
@@ -1410,40 +1417,47 @@
             
             let html = '';
             
-            // Afficher l'historique des itérations si disponible
-            // Afficher seulement les différences avec l'itération précédente
-            if (DATA && DATA['🧮'] && DATA['🧮']['history'] && DATA['🧮']['history'].length > 0) {
-                let previous_snapshot = null;
+            // Afficher les détails de convergence si disponible
+            const history = DATA['🧮']['previous'];
+            if (Array.isArray(history) && history.length > 0) {
+                console.log(`🔍 [displayConvergence] Historique: ${history.length} itérations`);
                 
-                DATA['🧮']['history'].forEach((state, index) => {
-                    if (!state.data_snapshot) return;
-                    
-                    // Pour chaque catégorie (🧮, 🧲, 💧, 🪩), comparer avec l'itération précédente
-                    const categories = ['🧮', '🧲', '💧', '🪩'];
-                    
-                    categories.forEach(categoryKey => {
-                        if (state.data_snapshot[categoryKey]) {
-                            const current = state.data_snapshot[categoryKey];
-                            const previous = previous_snapshot ? previous_snapshot[categoryKey] : null;
-                            
-                            // Obtenir seulement les différences
-                            // Pour la première itération (Init, iteration=0), afficher tout
-                            const diff = (state.iteration === 0 || !previous) ? current : getDifferences(current, previous);
-                            
-                            // Si des différences existent, les afficher
-                            if (Object.keys(diff).length > 0) {
-                                // Pour 🧮, exclure history
+                // Afficher toutes les itérations (ou les dernières si trop nombreuses)
+                const max_display = 10; // Limiter à 10 itérations pour l'affichage
+                const start_idx = Math.max(0, history.length - max_display);
+                const iterations_to_show = history.slice(start_idx);
+                
+                console.log(`🔍 [displayConvergence] Affichage: ${iterations_to_show.length} itérations (${start_idx} à ${history.length - 1})`);
+                
+                iterations_to_show.forEach((state, idx) => {
+                    const real_idx = start_idx + idx;
+                    if (state.data_snapshot) {
+                        // Afficher l'en-tête de l'itération
+                        html += `<div class="iteration-header"><strong>Itération ${state.iteration}</strong> (${state.temperature_C.toFixed(2)}°C, phase: ${state.phase}, Δ: ${state.delta_equilibre.toFixed(2)} W/m²)</div>`;
+                        
+                        const categories = ['🧮', '🧲', '💧', '🪩'];
+                        categories.forEach(categoryKey => {
+                            if (state.data_snapshot[categoryKey]) {
+                                const current = state.data_snapshot[categoryKey];
+                                
+                                // Pour 🧮, exclure previous (récursif)
                                 if (categoryKey === '🧮') {
-                                    delete diff.history;
+                                    const current_clean = { ...current };
+                                    delete current_clean.previous;
+                                    html += json2html(current_clean, '', '', null, categoryKey);
+                                } else {
+                                    html += json2html(current, '', '', null, categoryKey);
                                 }
-                                html += json2html(diff, '', '', null, categoryKey);
                             }
-                        }
-                    });
-                    
-                    // Mettre à jour previous_snapshot pour la prochaine itération
-                    previous_snapshot = state.data_snapshot;
+                        });
+                    }
                 });
+                
+                // Afficher la température finale
+                const last_state = history[history.length - 1];
+                html += `<div class="config-value"><strong>Température finale: ${last_state.temperature_C.toFixed(2)}°C (${last_state.temperature_K.toFixed(2)}K)</strong></div>`;
+            } else {
+                console.log(`🔍 [displayConvergence] Pas d'historique: history =`, history);
             }
             
             // Toujours afficher le panneau même si html est vide

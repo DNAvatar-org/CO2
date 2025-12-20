@@ -42,6 +42,18 @@ CONST.L_VAPORIZATION = 2.5e6;  // Chaleur latente de vaporisation (J/kg)
 CONST.RV_WATER = 461.5;  // Constante des gaz pour la vapeur d'eau (J/(kg·K))
 CONST.L_V = 40660;  // Chaleur latente de vaporisation (J/mol)
 CONST.CP_AIR = 1005;  // Capacité calorifique à pression constante de l'air sec (J/(kg·K))
+CONST.T_NO_POLAR_ICE_C = 20;  // Température en °C au-dessus de laquelle il n'y a plus de glace polaire
+CONST.T_ICE_TRANSITION_RANGE_C = 20;  // Zone de transition liquide-glace (en °C)
+
+// Constantes de conversion température
+CONST.KELVIN_TO_CELSIUS = 273.15;  // Conversion Kelvin → Celsius (K = °C + 273.15)
+
+// Constantes pour l'eau
+CONST.RHO_WATER = 1000;  // Densité de l'eau (kg/m³)
+
+// Constantes pour le calcul de volcano_coverage
+CONST.T_LAVA_START = 1000;  // Température de début de transition vers lave (K)
+CONST.T_LAVA_COMPLETE = 2373;  // Température complète de lave (K, 2100°C)
 
 // Constantes pour l'évaporation
 CONST.EVAPORATION_E0 = 0.001;  // Taux d'évaporation de base (kg/(m²·s))

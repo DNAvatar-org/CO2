@@ -155,6 +155,12 @@
             scrollbar-width: none;
         }
 
+        .page-modal-box.tall {
+            max-height: 95vh;
+            width: 95%;
+            max-width: 1400px;
+        }
+
         .page-modal-box::-webkit-scrollbar {
             display: none;
         }
@@ -324,8 +330,9 @@
      * @param {string} url - L'URL de la page à charger
      * @param {string} title - Le titre de la popup (défaut: "Popup")
      * @param {Function} onClose - Callback optionnel à la fermeture
+     * @param {string} size - Taille de la modal: "normal" (défaut) ou "tall" (plus grande en hauteur)
      */
-    function openPageModal(url, title = "Popup", onClose = null) {
+    function openPageModal(url, title = "Popup", onClose = null, size = "normal") {
         // Fermer la popup précédente si elle existe
         if (currentPageModal && currentPageModal.closePageModal) {
             currentPageModal.closePageModal();
@@ -387,7 +394,7 @@
 
         // Créer la boîte
         const box = document.createElement('div');
-        box.className = 'page-modal-box';
+        box.className = 'page-modal-box' + (size === 'tall' ? ' tall' : '');
         // Styles inline pour éviter le flash de la barre de scroll
         box.style.overflow = 'hidden';
         box.style.msOverflowStyle = 'none';

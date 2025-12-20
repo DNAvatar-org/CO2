@@ -78,18 +78,29 @@ function calculateAtmosphereProperties() {
 // FONCTIONS HELPER POUR CALCULER LES PARAMÈTRES DEPUIS LA CONFIG
 // ============================================================================
 
-//Calcule la masse molaire moyenne de l'air depuis les composants (utilise DATA directement)
+//Calcule la masse molaire moyenne de l'air depuis les fractions actuelles (utilise DATA directement)
 function calculateMolarMassAir() {
-    // console.log(`🫧 [calculateMolarMassAir@calculations_atm.js]`);
     const DATA = window.DATA;
     const CONST = window.CONST;
     
-    const EPOCH = DATA['📅'];
-    const mass_sum = EPOCH['⚖️💨'] + EPOCH['⚖️🌫'] + EPOCH['⚖️🏭'] + EPOCH['⚖️⛽'];
-    const moles_sum = (EPOCH['⚖️💨'] / CONST.M_N2) + (EPOCH['⚖️🌫'] / CONST.M_O2) + (EPOCH['⚖️🏭'] / CONST.M_CO2) + (EPOCH['⚖️⛽'] / CONST.M_CH4);
+    // 🔒 UTILISER LES FRACTIONS ACTUELLES (après renormalisation avec H2O), pas les masses de l'époque
+    // Les fractions sont déjà normalisées : 🍰🫧🏭 + 🍰🫧⛽ + 🍰🫧🌫 + 🍰🫧💨 + 🍰🫧💧 = 1.0
+    const frac_CO2 = DATA['🫧']['🍰🫧🏭'] || 0;
+    const frac_CH4 = DATA['🫧']['🍰🫧⛽'] || 0;
+    const frac_O2 = DATA['🫧']['🍰🫧🌫'] || 0;
+    const frac_N2 = DATA['🫧']['🍰🫧💨'] || 0;
+    const frac_H2O = DATA['🫧']['🍰🫧💧'] || 0;
     
-    // Éviter NaN si moles_sum = 0 (pas d'atmosphère)
-    DATA['🫧']['🧪'] = moles_sum > 0 ? mass_sum / moles_sum : CONST.molar_mass_air_ref;
+    // Masse molaire moyenne pondérée par les fractions molaires (approximation : fractions volumiques ≈ fractions molaires)
+    // M_air = Σ(fraction_i × M_i)
+    const M_air = frac_CO2 * CONST.M_CO2 + 
+                   frac_CH4 * CONST.M_CH4 + 
+                   frac_O2 * CONST.M_O2 + 
+                   frac_N2 * CONST.M_N2 + 
+                   frac_H2O * CONST.M_H2O;
+    
+    // Si pas d'atmosphère, utiliser la valeur de référence
+    DATA['🫧']['🧪'] = M_air > 0 ? M_air : CONST.molar_mass_air_ref;
     
     return true;
 }
@@ -124,22 +135,33 @@ function calculateAtmosphereComposition() {
     // La vapeur d'eau sera ajoutée après dans calculateWaterPartition()
     const atm_mass_total = DATA['⚖️']['⚖️🫧'];
     
-    // 🔒 CRASH si atm_mass_total = 0 (pas de fallback)
+    // 🔒 Protection contre undefined/NaN : traiter comme 0
+    const mass_CO2 = isFinite(DATA['⚖️']['⚖️🏭']) ? DATA['⚖️']['⚖️🏭'] : 0;
+    const mass_CH4 = isFinite(DATA['⚖️']['⚖️⛽']) ? DATA['⚖️']['⚖️⛽'] : 0;
+    const mass_O2 = isFinite(DATA['⚖️']['⚖️🌫']) ? DATA['⚖️']['⚖️🌫'] : 0;
+    const mass_N2 = isFinite(DATA['⚖️']['⚖️💨']) ? DATA['⚖️']['⚖️💨'] : 0;
+    
+    // 🔒 GESTION CAS SANS ATMOSPHÈRE (corps noir, etc.) : toutes les fractions à 0
     if (atm_mass_total <= 0) {
-        throw new Error(`calculateAtmosphereComposition: atm_mass_total = ${atm_mass_total}, impossible de calculer les fractions`);
+        DATA['🫧']['🍰🫧🏭'] = 0;
+        DATA['🫧']['🍰🫧⛽'] = 0;
+        DATA['🫧']['🍰🫧🌫'] = 0;
+        DATA['🫧']['🍰🫧💨'] = 0;
+        DATA['🫧']['🍰🫧💧'] = 0;
+    } else {
+        // 🔒 FORMULES CORRIGÉES : Toutes les fractions sont calculées par rapport à ⚖️🫧
+        // 🍰🫧🏭 = ⚖️🏭 / ⚖️🫧
+        DATA['🫧']['🍰🫧🏭'] = mass_CO2 / atm_mass_total;
+        
+        // 🍰🫧⛽ = ⚖️⛽ / ⚖️🫧
+        DATA['🫧']['🍰🫧⛽'] = mass_CH4 / atm_mass_total;
+        
+        // 🍰🫧🌫 = ⚖️🌫 / ⚖️🫧
+        DATA['🫧']['🍰🫧🌫'] = mass_O2 / atm_mass_total;
+        
+        // 🍰🫧💨 = ⚖️💨 / ⚖️🫧
+        DATA['🫧']['🍰🫧💨'] = mass_N2 / atm_mass_total;
     }
-    // 🔒 FORMULES CORRIGÉES : Toutes les fractions sont calculées par rapport à ⚖️🫧
-    // 🍰🫧🏭 = ⚖️🏭 / ⚖️🫧
-    DATA['🫧']['🍰🫧🏭'] = DATA['⚖️']['⚖️🏭'] / atm_mass_total;
-    
-    // 🍰🫧⛽ = ⚖️⛽ / ⚖️🫧
-    DATA['🫧']['🍰🫧⛽'] = DATA['⚖️']['⚖️⛽'] / atm_mass_total;
-    
-    // 🍰🫧🌫 = ⚖️🌫 / ⚖️🫧
-    DATA['🫧']['🍰🫧🌫'] = DATA['⚖️']['⚖️🌫'] / atm_mass_total;
-    
-    // 🍰🫧💨 = ⚖️💨 / ⚖️🫧
-    DATA['🫧']['🍰🫧💨'] = DATA['⚖️']['⚖️💨'] / atm_mass_total;
         
     // H2O atmosphérique (vapeur) : sera calculé dans calculateWaterPartition()
     // 🍰🫧💧 = ⚖️💧 × 🍰🧮🌧 / ⚖️🫧 (sera calculé après)

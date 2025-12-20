@@ -616,8 +616,12 @@ let plotData = {
     lambda_range: null,
     current: null,
     co2_ppm: 0,
-    ch4_ppm: 0 // Concentration de CH4 en ppm (initialisée à 0)
+    ch4_ppm: 0, // Concentration de CH4 en ppm (initialisée à 0)
+    temp_surface: 0 // Température de surface initialisée à 0
 };
+
+// Exposer plotData sur window pour que calculations.js puisse y accéder
+window.plotData = plotData;
 
 // Valeurs de référence pour les boutons
 const CO2_STATES = {
@@ -635,6 +639,16 @@ let cache_420ppm = null;
 function calculateInitialData() {
     const logo = '🔧';
     console.log(`${logo} [calculateInitialData@main.js] Init données`);
+    
+    // 🔒 S'assurer que plotData est exposé sur window et initialisé
+    if (typeof window.plotData === 'undefined') {
+        window.plotData = plotData;
+    }
+    // Initialiser temp_surface si elle n'existe pas
+    if (typeof window.plotData.temp_surface === 'undefined') {
+        window.plotData.temp_surface = 0;
+    }
+    
     initPlot();
     document.getElementById('status').textContent = 'Initialisation...';
 
@@ -2028,6 +2042,49 @@ function setEpoch(epochName) {
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
     
+    // 🔒 INITIALISER DATA['📜']['👉'] et DATA['📜']['🗿'] pour que calculations_albedo.js puisse accéder à l'époque
+    // Trouver l'index de l'époque dans TIMELINE
+    if (typeof window.TIMELINE !== 'undefined') {
+        // Initialiser DATA s'il n'existe pas
+        if (typeof window.DATA === 'undefined') {
+            window.DATA = {};
+        }
+        if (!window.DATA['📜']) {
+            window.DATA['📜'] = {};
+        }
+        // Trouver l'index de l'époque par son emoji (id) ou son nom
+        // Mapper le nom de l'époque vers l'emoji si nécessaire
+        const epochNameToEmojiMap = {
+            'Corps noir': '⚫',
+            'Hadéen': '🔥',
+            'Archéen': '🦠',
+            'Mésozoïque': '🦕',
+            'Paléozoïque': '🦴',
+            'Cénozoïque': '🦣',
+            'Industriel': '🚂',
+            'Aujourd\'hui': '📱'
+        };
+        // epoch.id devrait être défini depuis getGeologicalPeriodByName (timeline transformée)
+        // Sinon, utiliser le mapping ou le nom directement
+        const epochId = epoch.id || epochNameToEmojiMap[epochName] || epochName;
+        const epochIndex = window.TIMELINE.findIndex(item => {
+            if (item['📅']) {
+                return item['📅'] === epochId;
+            }
+            // Si la timeline a été transformée, chercher par id ou name
+            return (item.id === epochId || item.name === epochName);
+        });
+        
+        if (epochIndex >= 0) {
+            window.DATA['📜']['👉'] = epochIndex;
+            window.DATA['📜']['🗿'] = epochId;
+            // Initialiser aussi DATA['📅'] avec l'objet epoch complet
+            window.DATA['📅'] = window.TIMELINE[epochIndex];
+        } else {
+            console.error(`[setEpoch] ⚠️ Époque ${epochName} (${epochId}) non trouvée dans TIMELINE`);
+        }
+    }
+    
     // 🔒 INITIALISER les variables globales uniques depuis la config UNIQUEMENT au changement d'époque
     // Si l'utilisateur a déjà modifié ces valeurs, elles ne seront pas écrasées (mais au changement d'époque, on repart de la config)
     if (typeof window !== 'undefined') {
@@ -2678,6 +2735,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
                 : 255.0;
             
             const temp_surface = data.T0;
+            if (!temp_surface) {
                 console.error('[updateH2OLevelDirect] ❌ ERREUR - Impossible de calculer temp_surface');
                 enableButtons();
                 return;
@@ -3101,6 +3159,11 @@ window.addEventListener('DOMContentLoaded', () => {
             texture.classList.remove('paused');
         });
     });
+    
+    // 🔒 S'assurer que currentEpochName est initialisé avant calculateInitialData
+    if (typeof window.currentEpochName === 'undefined') {
+        window.currentEpochName = 'Corps noir';
+    }
     
     calculateInitialData();
     // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)

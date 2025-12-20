@@ -22,9 +22,12 @@
 function calculateSaturatedVaporPressure() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const temp_K = DATA['🧮']['🌡️'];
+    const temp_K = DATA['🧮']['🧮🌡️'];
+    // 🔒 Vérifier que temp_K est valide avant de calculer
+    if (!isFinite(temp_K) || temp_K <= 0) return 0;
     const exponent = (CONST.L_VAPORIZATION / CONST.RV_WATER) * (1 / CONST.T0_WATER - 1 / temp_K);
-    return CONST.P0_WATER * Math.exp(exponent);
+    const P_sat = CONST.P0_WATER * Math.exp(exponent);
+    return isFinite(P_sat) && P_sat > 0 ? P_sat : 0;
 }
 
 //Calcule la fraction volumique maximale de vapeur d'eau à saturation
@@ -43,7 +46,7 @@ function calculateH2OGreenhouseForcing() {
     const DATA = window.DATA;
     if (!DATA['📛']) DATA['📛'] = {};
     const h2o_vapor_fraction = DATA['🫧']['🍰🫧💧'];
-    const temp_K = DATA['🧮']['🌡️'];
+    const temp_K = DATA['🧮']['🧮🌡️'];
     
     if (h2o_vapor_fraction <= 0) {
         DATA['📛']['📛💧'] = 0;
@@ -96,49 +99,67 @@ function calculateCloudAlbedoContribution() {
 function calculateWaterPartition() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    //const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+
+    if (DATA['⚖️']['⚖️🫧'] == 0) {
+        DATA['💧']['🍰💧🧊'] = 0;
+        DATA['💧']['🍰💧🌊'] = 0;
+        DATA['💧']['🍰🧮🌧'] = 0;
+        DATA['🫧']['🍰🫧💧'] = 0;
+        return true;
+    }
     
-    const h2o_total_fraction = DATA['⚖️']['⚖️🫧'] > 0 ? (DATA['⚖️']['⚖️💧'] / DATA['⚖️']['⚖️🫧']) : 0;
-    const h2o_total_mass_kg = DATA['⚖️']['⚖️💧'];
+    const h2o_total_fraction =DATA['⚖️']['⚖️💧'] / DATA['⚖️']['⚖️🫧'];
     
     // 🔒 ÉTAPE 1 : Obtenir les surfaces géologiques (doit être calculé avant)
-    if (!window.calculateGeologySurfaces || !window.calculateGeologySurfaces()) {
-        console.error(`❌ [calculateWaterPartition] calculateGeologySurfaces() a échoué`);
-        return false;
-    }
-    const highlands_fraction = DATA['🗻']['🍰🗻🏔'];
-    
+    window.calculateGeologySurfaces();
+
     // Pas d'atmosphère : pas de vapeur, mais on peut avoir de la glace si T < 0°C
-    const hasNoAtmosphere = DATA['🫧']['🧪'] === 0 || DATA['🫧']['🎈'] === 0;
-    DATA['💧']['🍰💧🧊'] = hasNoAtmosphere && DATA['🧮']['🌡️'] < CONST.T_FREEZE && h2o_total_fraction > 0 ? h2o_total_fraction : 0;
-    // 🔒 REFONTE : 🍰💧⛅ supprimé (nuages ne sont pas un stock d'eau)
+    const hasNoAtmosphere = DATA['🫧']['🧪'] === 0 || DATA['🫧']['🎈'] === 0 || !isFinite(DATA['🫧']['🎈']) || DATA['🫧']['🎈'] <= 0;
+    if (hasNoAtmosphere) {
+        // Sans atmosphère : toute l'eau est soit glace (si T < 0°C) soit liquide (océan)
+        DATA['💧']['🍰🧮🌧'] = 0;  // Pas de vapeur sans atmosphère
+        DATA['🫧']['🍰🫧💧'] = 0;
+        if (DATA['🧮']['🧮🌡️'] < CONST.T_FREEZE && h2o_total_fraction > 0) {
+            // T < 0°C : toute l'eau est glace
+            DATA['💧']['🍰💧🧊'] = h2o_total_fraction;
+            DATA['💧']['🍰💧🌊'] = 0;
+        } else {
+            // T >= 0°C : toute l'eau est liquide (océan)
+            DATA['💧']['🍰💧🧊'] = 0;
+            DATA['💧']['🍰💧🌊'] = h2o_total_fraction;
+        }
+        return true;
+    }
+    
+    // Avec atmosphère : initialiser les valeurs avant calcul
+    DATA['💧']['🍰💧🧊'] = 0;
     DATA['💧']['🍰💧🌊'] = 0;
     DATA['💧']['🍰🧮🌧'] = 0;
     DATA['🫧']['🍰🫧💧'] = 0;
-    
-    // Si pas d'atmosphère, retourner
-    if (hasNoAtmosphere) return true;
 
     // Calculer la pression de vapeur saturante
     const P_sat = calculateSaturatedVaporPressure();
     const P_total = DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA;
-    const max_vapor_fraction = Math.min(P_sat / P_total, 1.0);
+    // 🔒 Si P_total est 0 ou invalide, ou si P_sat est invalide, max_vapor_fraction = 0
+    // Mais si P_total > 0 et P_sat > 0, alors il y a de la vapeur d'eau possible
+    const max_vapor_fraction = (P_total > 0 && isFinite(P_sat) && P_sat > 0 && isFinite(P_total)) ? Math.min(P_sat / P_total, 1.0) : 0;
 
     // Point d'ébullition ajusté selon la pression
     const T_boil_pressure = 1 / (1 / CONST.T_BOIL - (CONST.R_GAS * Math.log(DATA['🫧']['🎈'])) / CONST.L_V);
 
     // 🔒 ÉTAPE 2 : Déterminer la glace selon la température ET les surfaces disponibles
     // La glace est limitée par les hautes terres disponibles (géologie)
-    const temp_C = DATA['🧮']['🌡️'] - 273.15;
-    const has_polar_ice = temp_C < 20;
+    const temp_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+    const has_polar_ice = temp_C < CONST.T_NO_POLAR_ICE_C;
     
     // Calculer la fraction de glace souhaitée selon le climat
-    // À 0°C : ~10% de glace (calottes polaires), à 20°C : 0% de glace
-    const polar_ice_fraction_climate = has_polar_ice ? Math.max(0, Math.min(0.10, (20 - temp_C) / 20 * 0.10)) : 0;
+    // À 0°C : ~10% de glace (calottes polaires), à T_NO_POLAR_ICE_C : 0% de glace
+    const polar_ice_fraction_climate = has_polar_ice ? Math.max(0, Math.min(0.10, (CONST.T_NO_POLAR_ICE_C - temp_C) / CONST.T_NO_POLAR_ICE_C * 0.10)) : 0;
     
     // 🔒 CONTRAINTE GÉOLOGIQUE : La glace ne peut pas dépasser les hautes terres disponibles
     // polar_ice_fraction est une fraction de surface, limitée par highlands_fraction
-    const polar_ice_fraction = Math.min(highlands_fraction, polar_ice_fraction_climate);
+    const polar_ice_fraction = Math.min(DATA['🗻']['🍰🗻🏔'], polar_ice_fraction_climate);
     
     // 🔒 FORMULE CORRIGÉE : 🍰🫧💧 = ⚖️💧 × 🍰🧮🌧 / ⚖️🫧
     // Où :
@@ -156,22 +177,35 @@ function calculateWaterPartition() {
     // Approximation : M_H2O ≈ 0.018 kg/mol, M_air ≈ 0.029 kg/mol, donc ratio ≈ 0.62
     const M_H2O = CONST.M_H2O;
     const M_air = DATA['🫧']['🧪'];
-    const mass_ratio = M_H2O / M_air; // ~0.62
-    const max_vapor_mass_kg = max_vapor_fraction * atm_mass_total * mass_ratio;
-    const h2o_vapor_mass_kg = Math.min(DATA['⚖️']['⚖️💧'], max_vapor_mass_kg);
+    const mass_ratio = M_air > 0 ? M_H2O / M_air : 0; // ~0.62
+    const max_vapor_mass_kg = (isFinite(max_vapor_fraction) && isFinite(atm_mass_total) && isFinite(mass_ratio)) ? max_vapor_fraction * atm_mass_total * mass_ratio : 0;
+    const h2o_vapor_mass_kg = isFinite(max_vapor_mass_kg) ? Math.min(DATA['⚖️']['⚖️💧'], max_vapor_mass_kg) : 0;
     
     // 🍰🫧💧 = fraction de vapeur d'eau dans l'atmosphère totale
-    DATA['🫧']['🍰🫧💧'] = atm_mass_total > 0 ? Math.min(1.0, h2o_vapor_mass_kg / atm_mass_total) : 0;
+    DATA['🫧']['🍰🫧💧'] = (atm_mass_total > 0 && isFinite(h2o_vapor_mass_kg)) ? Math.min(1.0, h2o_vapor_mass_kg / atm_mass_total) : 0;
     
     // 🔒 RENORMALISATION : Les fractions de l'air sec doivent être ajustées pour que la somme totale = 1.0
+    // 🔒 IMPORTANT : TOUJOURS recalculer depuis les masses pour éviter l'accumulation d'erreurs
     // Si 🍰🫧💧 > 0, alors les fractions de l'air sec doivent être multipliées par (1 - 🍰🫧💧)
-    if (DATA['🫧']['🍰🫧💧'] > 0 && DATA['🫧']['🍰🫧💧'] < 1.0) {
-        const dry_air_fraction = 1.0 - DATA['🫧']['🍰🫧💧'];
-        // Renormaliser les fractions de l'air sec pour qu'elles représentent des fractions de l'atmosphère totale
-        DATA['🫧']['🍰🫧🏭'] = DATA['🫧']['🍰🫧🏭'] * dry_air_fraction;
-        DATA['🫧']['🍰🫧⛽'] = DATA['🫧']['🍰🫧⛽'] * dry_air_fraction;
-        DATA['🫧']['🍰🫧🌫'] = DATA['🫧']['🍰🫧🌫'] * dry_air_fraction;
-        DATA['🫧']['🍰🫧💨'] = DATA['🫧']['🍰🫧💨'] * dry_air_fraction;
+    const dry_air_fraction = DATA['🫧']['🍰🫧💧'] > 0 && DATA['🫧']['🍰🫧💧'] < 1.0 ? (1.0 - DATA['🫧']['🍰🫧💧']) : 1.0;
+    
+    // 🔒 TOUJOURS recalculer depuis les masses pour éviter l'accumulation d'erreurs
+    const mass_CO2 = isFinite(DATA['⚖️']['⚖️🏭']) ? DATA['⚖️']['⚖️🏭'] : 0;
+    const mass_CH4 = isFinite(DATA['⚖️']['⚖️⛽']) ? DATA['⚖️']['⚖️⛽'] : 0;
+    const mass_O2 = isFinite(DATA['⚖️']['⚖️🌫']) ? DATA['⚖️']['⚖️🌫'] : 0;
+    const mass_N2 = isFinite(DATA['⚖️']['⚖️💨']) ? DATA['⚖️']['⚖️💨'] : 0;
+    
+    // Calculer les fractions de l'air sec depuis les masses, puis multiplier par dry_air_fraction
+    if (atm_mass_total > 0) {
+        DATA['🫧']['🍰🫧🏭'] = (mass_CO2 / atm_mass_total) * dry_air_fraction;
+        DATA['🫧']['🍰🫧⛽'] = (mass_CH4 / atm_mass_total) * dry_air_fraction;
+        DATA['🫧']['🍰🫧🌫'] = (mass_O2 / atm_mass_total) * dry_air_fraction;
+        DATA['🫧']['🍰🫧💨'] = (mass_N2 / atm_mass_total) * dry_air_fraction;
+    } else {
+        DATA['🫧']['🍰🫧🏭'] = 0;
+        DATA['🫧']['🍰🫧⛽'] = 0;
+        DATA['🫧']['🍰🫧🌫'] = 0;
+        DATA['🫧']['🍰🫧💨'] = 0;
     }
     
     // Calculer la masse d'eau restante (après vapeur) pour liquide/glace
@@ -191,7 +225,7 @@ function calculateWaterPartition() {
     
     // Si température < point de congélation ajusté : toute l'eau restante est glace
     // Si température >= point de congélation ajusté : glace aux pôles seulement
-    if (DATA['🧮']['🌡️'] < T_freeze_adjusted) {
+    if (DATA['🧮']['🧮🌡️'] < T_freeze_adjusted) {
         DATA['💧']['🍰💧🧊'] = remaining_after_vapor;
         DATA['💧']['🍰💧🌊'] = 0;
     } else {
@@ -203,8 +237,8 @@ function calculateWaterPartition() {
     // T_FREEZE_SEAWATER et T_freeze_adjusted déjà déclarés plus haut, réutiliser
     const pressure_atm_transition = DATA['🫧']['🎈'];
     // T_freeze_adjusted déjà calculé ligne 206, réutiliser cette valeur
-    if (DATA['🧮']['🌡️'] > T_freeze_adjusted - 20 && DATA['🧮']['🌡️'] < T_freeze_adjusted) {
-        const transition_factor = (DATA['🧮']['🌡️'] - (CONST.T_FREEZE - 20)) / 20;
+    if (DATA['🧮']['🧮🌡️'] > T_freeze_adjusted - CONST.T_ICE_TRANSITION_RANGE_C && DATA['🧮']['🧮🌡️'] < T_freeze_adjusted) {
+        const transition_factor = (DATA['🧮']['🧮🌡️'] - (CONST.T_FREEZE - CONST.T_ICE_TRANSITION_RANGE_C)) / CONST.T_ICE_TRANSITION_RANGE_C;
         const ice_before = DATA['💧']['🍰💧🧊'];
         const liquid_before = DATA['💧']['🍰💧🌊'];
         // Convertir une partie de la glace en liquide selon la température
@@ -233,7 +267,7 @@ function calculateWaterPartition() {
         DATA['💧']['🍰💧🧊'] = 0;
     }
 
-    DATA['💧']['🍰🧮🌧'] = max_vapor_fraction;
+    DATA['💧']['🍰🧮🌧'] = isFinite(max_vapor_fraction) ? max_vapor_fraction : 0;
     
     return true;
 }
@@ -244,8 +278,8 @@ window.calculateH2OParameters = function () {
 
     window.getMasses();
     window.calculatePressureAtm();
-    window.calculateMolarMassAir();
-    calculateWaterPartition();
+    calculateWaterPartition(); // 🔒 DOIT être appelé AVANT calculateMolarMassAir() pour avoir les fractions correctes
+    window.calculateMolarMassAir(); // 🔒 DOIT être appelé APRÈS calculateWaterPartition() pour utiliser les fractions avec H2O
         // 🔒 REFONTE : estimateCloudCoverage() supprimé, remplacé par calculateCloudFormationIndex()
     calculateH2OGreenhouseForcing();
     calculateCloudAlbedoContribution();
