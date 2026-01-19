@@ -432,9 +432,7 @@
         #alphabet-content iframe,
         #dico-content iframe {
             width: 100%;
-            height: auto;
-            min-height: 400px;
-            max-height: 500px;
+            height: 700px;
             border: none;
             background: #1a1a1a;
         }
@@ -524,7 +522,7 @@
         <div id="lexique" class="results replied" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
             <h2 style="color: #4a9eff; margin-bottom: 10px;">🔡 Alphabet <button class="toggle-button" onclick="toggleLexique()">+</button></h2>
             <div id="alphabet-content">
-                <iframe id="alphabet-iframe" src="alphabet.html" style="width: 100%; height: 400px; border: none; background: #1a1a1a;"></iframe>
+                <iframe id="alphabet-iframe" src="alphabet.html" style="width: 100%; height: 800px; border: none; background: #1a1a1a;"></iframe>
             </div>
         </div>
         
@@ -532,7 +530,7 @@
         <div id="syntaxe" class="results replied" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
             <h2 style="color: #4a9eff; margin-bottom: 10px;">📖 Dictionnaire <button class="toggle-button" onclick="toggleSyntaxe()">+</button></h2>
             <div id="dico-content">
-                <iframe id="dico-iframe" src="dico.html" style="width: 100%; height: 400px; border: none; background: #1a1a1a;"></iframe>
+                <iframe id="dico-iframe" src="dico.html" style="width: 100%; height: 800px; border: none; background: #1a1a1a;"></iframe>
             </div>
         </div>
         
@@ -952,6 +950,11 @@
             if (!window.DATA['🔘']) window.DATA['🔘'] = {};
             if (!window.DATA['🧮']) window.DATA['🧮'] = {};
             
+            // 🔒 Initialiser previous (historique de convergence) comme tableau vide
+            if (!window.DATA['🧮']['previous']) {
+                window.DATA['🧮']['previous'] = [];
+            }
+            
             // Récupérer le bouton animation et son état AVANT d'initialiser DATA
             const animBtn = document.getElementById('anim-toggle');
             const animEnabled = animBtn ? animBtn.classList.contains('selected') : false;
@@ -1026,10 +1029,13 @@
                 await new Promise(resolve => setTimeout(resolve, 50));
                 
                 // 2. Appeler computeRadiativeTransfer
-                const result = await window.computeRadiativeTransfer();
+                const result = window.computeRadiativeTransfer();
                 
                 // 3. Afficher les résultats finaux dans l'ordre
                 displayResults(result);
+                
+                // 4. Afficher la convergence
+                displayConvergence();
                 
                 console.log('✅ Test terminé avec succès');
                 // Logs désactivés
@@ -1071,7 +1077,7 @@
             // Formater albedoReflectorCoeff pour l'affichage
             const formatNumber = (value) => {
                 if (typeof value !== 'number') return value;
-                return value.toFixed(2);
+                return value.toFixed(3);
             };
             const formatValue = (value) => {
                 if (typeof value === 'number') return formatNumber(value);
@@ -1093,7 +1099,7 @@
             formulasHtml += `🍰🪩🌳 = min(0.5, 🍰🪩🌊 × (1 - T_surface_C / 30)) si T < 30°C et 🍰🪩🌊 > 0.1<br>`;
             formulasHtml += `🍰🪩🧊 = min(0.9, 🍰💧🧊 × 0.9) (fraction eau en glace → couverture surface)<br>`;
             formulasHtml += `🍰🪩🏖 = 1.0 - (🍰🪩🌋 + 🍰🪩🌊 + 🍰🪩🌳 + 🍰🪩🧊) (surface restante)<br>`;
-            formulasHtml += `🍰🪩⛅ = calculé depuis température et humidité (estimateCloudCoverage)<br>`;
+            formulasHtml += `🍰🪩⛅ = Si moderne : 0.20 + 0.10 × ☁️ (plage 0.20-0.30). Si Hadéen/Archéen : C_max × ☁️<br>`;
             
             return `<div class="formule">${formulasHtml}</div>`;
         }
@@ -1118,8 +1124,7 @@
                 return ''; // Retourner vide si valeurs manquantes (crash évité ici car c'est pour l'affichage)
             }
             
-            const match = Math.abs(calculated - actual) < 0.01 ? '✓' : '⚠';
-            formulas.push(`<strong>🧲☀️🔽</strong>: <strong>🧲☀️🎱</strong> × (1 - <strong>🍰🪩📿</strong>) = ${solar_avg.toFixed(2)} × (1 - ${albedo_val.toFixed(4)}) = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+            formulas.push(`<strong>🧲☀️🔽</strong>: <strong>🧲☀️🎱</strong> × (1 - <strong>🍰🪩📿</strong>) = ${solar_avg.toFixed(2)} × (1 - ${albedo_val.toFixed(4)}) = ${calculated.toFixed(2)} W/m²`);
             
             // 🧲🌕🔽: Flux géothermique (constant)
             if (flux['🧲🌕🔽'] !== undefined) {
@@ -1132,8 +1137,7 @@
                 const sigma = CONST.STEFAN_BOLTZMANN;
                 const calculated = sigma * Math.pow(T, 4);
                 const actual = flux['🧲🌑🔼'];
-                const match = Math.abs(calculated - actual) < 1.0 ? '✓' : '⚠';
-                formulas.push(`<strong>🧲🌑🔼</strong>: σ × T⁴ = ${sigma.toExponential(2)} × ${T.toFixed(2)}⁴ = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+                formulas.push(`<strong>🧲🌑🔼</strong>: σ × T⁴ = ${sigma.toExponential(2)} × ${T.toFixed(2)}⁴ = ${calculated.toFixed(2)} W/m²`);
                 formulas.push(`&nbsp;&nbsp;&nbsp;&nbsp;Flux émis par la surface (corps noir théorique). ⚠️ Ce n'est PAS le flux qui sort au sommet (c'est 🧲🌈🔼)`);
             }
             
@@ -1149,16 +1153,14 @@
                 const calculated1 = solar_avg - flux['🧲☀️🔽'];
                 const calculated2 = albedo && albedo['🍰🪩📿'] !== undefined ? solar_avg * albedo['🍰🪩📿'] : calculated1;
                 const actual = flux['🧲🪩🔼'];
-                const match = Math.abs(calculated2 - actual) < 0.01 ? '✓' : '⚠';
-                formulas.push(`<strong>🧲🪩🔼</strong>: <strong>🧲☀️🎱</strong> - <strong>🧲☀️🔽</strong> = <strong>🧲☀️🎱</strong> × <strong>🍰🪩📿</strong> = ${calculated2.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+                formulas.push(`<strong>🧲🪩🔼</strong>: <strong>🧲☀️🎱</strong> - <strong>🧲☀️🔽</strong> = <strong>🧲☀️🎱</strong> × <strong>🍰🪩📿</strong> = ${calculated2.toFixed(2)} W/m²`);
             }
             
             // 🔺🧲: 🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 = Delta équilibre radiatif
             if (flux['🔺🧲'] !== undefined && flux['🧲☀️🔽'] !== undefined && flux['🧲🌕🔽'] !== undefined && flux['🧲🌈🔼'] !== undefined) {
                 const calculated = flux['🧲☀️🔽'] + flux['🧲🌕🔽'] - flux['🧲🌈🔼'];
                 const actual = flux['🔺🧲'];
-                const match = Math.abs(calculated - actual) < 0.01 ? '✓' : '⚠';
-                formulas.push(`<strong>🔺🧲</strong>: <strong>🧲☀️🔽</strong> + <strong>🧲🌕🔽</strong> - <strong>🧲🌈🔼</strong> = ${flux['🧲☀️🔽'].toFixed(2)} + ${flux['🧲🌕🔽'].toFixed(2)} - ${flux['🧲🌈🔼'].toFixed(2)} = ${calculated.toFixed(2)} ${match} (réel: ${actual.toFixed(2)})`);
+                formulas.push(`<strong>🔺🧲</strong>: <strong>🧲☀️🔽</strong> + <strong>🧲🌕🔽</strong> - <strong>🧲🌈🔼</strong> = ${flux['🧲☀️🔽'].toFixed(2)} + ${flux['🧲🌕🔽'].toFixed(2)} - ${flux['🧲🌈🔼'].toFixed(2)} = ${calculated.toFixed(2)} W/m²`);
                 formulas.push(`&nbsp;&nbsp;&nbsp;&nbsp;Delta équilibre radiatif (flux entrant - flux sortant). En équilibre: 🔺🧲 ≈ 0`);
             }
             
@@ -1172,16 +1174,16 @@
         function json2html(obj, title, source, objName = null, categoryKey = null) {
             if (!obj) return '';
             
-            // Formater les nombres : notation scientifique pour grands nombres, 2 décimales toujours
+            // Formater les nombres : notation scientifique pour grands nombres, 3 décimales toujours
             const formatNumber = (value) => {
                 if (typeof value !== 'number') return value;
-                if (value === 0) return '0.00';
-                // Utiliser notation scientifique si |value| >= 1000 ou |value| < 0.01
-                if (Math.abs(value) >= 1000 || (Math.abs(value) < 0.01 && value !== 0)) {
-                    return value.toExponential(2);
+                if (value === 0) return '0.000';
+                // Utiliser notation scientifique si |value| > 1000 ou |value| < 0.001
+                if (Math.abs(value) > 1000 || (Math.abs(value) < 0.001 && value !== 0)) {
+                    return value.toExponential(3);
                 }
-                // Sinon, 2 décimales
-                return value.toFixed(2);
+                // Sinon, 3 décimales
+                return value.toFixed(3);
             };
             
             // Formater récursivement l'objet
@@ -1229,11 +1231,11 @@
                         if (typeof value === 'number') {
                             // Formater selon la valeur (notation scientifique si grand/petit)
                             const formatValue = (val) => {
-                                if (val === 0) return '0.00';
-                                if (Math.abs(val) >= 1000 || (Math.abs(val) < 0.01 && val !== 0)) {
-                                    return val.toExponential(2);
+                                if (val === 0) return '0.000';
+                                if (Math.abs(val) > 1000 || (Math.abs(val) < 0.001 && val !== 0)) {
+                                    return val.toExponential(3);
                                 }
-                                return val.toFixed(2);
+                                return val.toFixed(3);
                             };
                             formula = formula.replace(/%1/g, formatValue(value));
                             formula = formula.replace(/%2/g, formatValue(value)); // Pour l'instant, %2 = %1
@@ -1258,8 +1260,24 @@
             return html;
         }
         
+        // Fonction pour formater JSON avec notation scientifique pour les grands/petits nombres
+        function formatJSONCompact(obj) {
+            return JSON.stringify(obj, (key, value) => {
+                if (typeof value === 'number') {
+                    // Utiliser notation scientifique si > 1000 ou < 0.001
+                    if (Math.abs(value) > 1000 || (Math.abs(value) < 0.001 && value !== 0)) {
+                        return value.toExponential(3);
+                    }
+                    // Sinon, garder la notation décimale avec 3 décimales max
+                    return parseFloat(value.toFixed(3));
+                }
+                return value;
+            });
+        }
+        
         function displayResults(result) {
             const DATA = window.DATA;
+            const CONST = window.CONST;
             const configDiv = document.getElementById('config');
             const configContent = document.getElementById('config-content');
             
@@ -1285,89 +1303,24 @@
             
             let html = '';
             
-            // 0. État des activations [getEnabledStates@compute.js]
-            if (DATA['🔘']) {
-                html += json2html(DATA['🔘'], '', '', 'enabledStates', '🔘');
-            }
+            // Afficher tous les objets DATA en entier avec format compact : 🔘:{...}
+            // Utiliser json2html pour générer les formules depuis window.FORM
+            html += json2html(DATA['🔘'], null, null, null, '🔘');
+            html += json2html(DATA['📜'], null, null, null, '📜');
+            html += json2html(EPOCH['🕰'], null, null, null, '🕰');
+            html += json2html(DATA['⚖️'], null, null, null, '⚖️');
+            html += json2html(DATA['🫧'], null, null, null, '🫧');
+            html += json2html(DATA['💧'], null, null, null, '💧');
+            html += json2html(DATA['🪩'], null, null, null, '🪩');
+            html += json2html(DATA['🌕'], null, null, null, '🌕');
+            html += json2html(DATA['☀️'], null, null, null, '☀️');
+            html += json2html(DATA['🧲'], null, null, null, '🧲');
             
-            // 1. 📜 epochConfig [getEpochDateConfig@compute.js] - Configuration de l'époque (sans ticTime)
-            if (DATA['📜']) {
-                // Créer une copie sans ticTime pour epochConfig
-                const epochConfig = {...DATA['📜']};
-                delete epochConfig['📿💫']; // Retirer ticTime de epochConfig
-                html += json2html(epochConfig, '', '', 'epochConfig', '📜');
-            }
-            
-            // 2. 📜 dateConfig [getEpochDateConfig@compute.js] - Configuration avec ticTime (si ticTime > 0)
-            if (DATA['📜'] && DATA['📜']['📿💫'] > 0) {
-                html += json2html(DATA['📜'], '', '', 'dateConfig', '📜');
-            }
-            
-            // 4. 🕰 Événements [EPOCH['🕰']] - utiliser EPOCH['🕰'] directement depuis TIMELINE
-            if (EPOCH && EPOCH['🕰']) {
-                html += json2html(EPOCH['🕰'], '', '', 'events', '🕰');
-            }
-            
-            // 5. ⚖️ [getMasses@compute.js] - utiliser DATA directement
-            if (DATA['⚖️']) {
-                html += json2html(DATA['⚖️'], '', '', 'masses', '⚖️');
-            }
-            
-            // 6. 🫧 Composition atmosphérique [calculateAtmosphereComposition@calculations_atm.js] - utiliser DATA directement
-            if (DATA['🫧']) {
-                html += json2html(DATA['🫧'], '', '', 'atm', '🫧');
-            }
-            
-            // 7. 💧 Résultats H2O [calculateH2OParameters@calculations_h2o.js] - utiliser DATA['💧_initial'] (h2o initial, ne change plus)
-            // Utiliser DATA['💧_initial'] si disponible (h2o initial), sinon DATA['💧'] (fallback)
-            const h2oForConfig = DATA['💧_initial'] || DATA['💧'];
-            if (h2oForConfig) {
-                html += json2html(h2oForConfig, '', '', 'h2o', '💧');
-            }
-            
-            // 8. 🪩 Albedo [calculateAlbedo@calculations_albedo.js] - utiliser DATA['🪩_initial'] (albedo initial, ne change plus)
-            // Construire le HTML avec la formule dans le conteneur formule-container
-            // Utiliser DATA['🪩_initial'] si disponible (albedo initial), sinon DATA['🪩'] (fallback)
-            const albedoForConfig = DATA['🪩_initial'] || DATA['🪩'];
-            if (albedoForConfig) {
-                const albedoHtml = json2html(albedoForConfig, '', '', 'albedo', '🪩');
-                const CONST = window.CONST;
-                const formula = calculateAlbedoFormula(albedoForConfig, CONST['🪩🍰']);
-                // Insérer la formule dans le conteneur formule-container (remplacer le conteneur vide)
-                // Le conteneur est créé par json2html avec du contenu vide, on le remplace complètement
-                html += albedoHtml.replace(/<div class="formule-container[^"]*">[\s\S]*?<\/div>/, `<div class="formule-container notVisible">${formula}</div>`);
-            }
-            
-            // 9. 🌕 Noyau [getNoyau@compute.js] - utiliser DATA directement
-            if (DATA['🌕']) {
-                html += json2html(DATA['🌕'], '', '', 'noyau', '🌕');
-            }
-            
-            // 10. ☀️ Soleil [getSoleil@compute.js] - utiliser DATA directement
-            if (DATA['☀️']) {
-                html += json2html(DATA['☀️'], '', '', 'soleil', '☀️');
-            }
-            
-            // 11. 🧲 Flux radiatif [computeRadiativeTransfer@calculations_flux.js]
-            // Construire le HTML avec les formules dans le conteneur formule-container
-            // Utiliser DATA['🧲_initial'] pour Configuration (valeurs initiales, ne changent plus)
-            const fluxForConfig = DATA['🧲_initial'] || DATA['🧲'];
-            const soleilForFlux = DATA['☀️'];
-            const albedoForFlux = DATA['🪩_initial'] || DATA['🪩'];
-            // 🔒 Toutes les valeurs doivent exister (crash si manquant)
-            if (fluxForConfig && soleilForFlux && albedoForFlux) {
-                const fluxHtml = json2html(fluxForConfig, '', '', 'flux', '🧲');
-                const fluxFormulas = calculateFluxFormulas(fluxForConfig, soleilForFlux, albedoForFlux);
-                // Insérer les formules dans le conteneur formule-container (remplacer le conteneur vide)
-                html += fluxHtml.replace(/<div class="formule-container[^"]*">[\s\S]*?<\/div>/, `<div class="formule-container notVisible">${fluxFormulas}</div>`);
-            }
-            
-            // Toujours afficher les panneaux même si html est vide
-            configContent.innerHTML = html || '<div class="config-value">Aucune donnée disponible</div>';
+            configContent.innerHTML = html;
             configDiv.style.display = 'block';
             
-            // Afficher la section Convergence
-            displayConvergence();
+            // 🔒 Ne pas appeler displayConvergence() ici pour éviter les boucles infinies
+            // displayConvergence() sera appelé séparément si nécessaire
         }
         
         // Fonction pour comparer deux objets et retourner seulement les différences
@@ -1400,6 +1353,7 @@
         
         function displayConvergence() {
             const DATA = window.DATA;
+            const CONST = window.CONST;
             const convergenceDiv = document.getElementById('convergence');
             const convergenceContent = document.getElementById('convergence-content');
             
@@ -1408,8 +1362,8 @@
             // Mettre à jour le titre avec la température en °C
             const convergenceTitle = convergenceDiv.querySelector('h2');
             if (convergenceTitle) {
-                const temp_K = DATA['🧮']['🧮🌡️'];
-                const temp_C = (temp_K - 273.15).toFixed(2);
+                //const temp_K = DATA['🧮']['🧮🌡️'];
+                const temp_C = (DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS).toFixed(3);
                 const button = convergenceTitle.querySelector('.toggle-button');
                 const buttonText = button ? button.textContent : 'Formules +';
                 convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <button class="toggle-button" onclick="toggleConvergence()">${buttonText}</button>`;
@@ -1420,50 +1374,52 @@
             // Afficher les détails de convergence si disponible
             const history = DATA['🧮']['previous'];
             if (Array.isArray(history) && history.length > 0) {
-                console.log(`🔍 [displayConvergence] Historique: ${history.length} itérations`);
-                
-                // Afficher toutes les itérations (ou les dernières si trop nombreuses)
-                const max_display = 10; // Limiter à 10 itérations pour l'affichage
-                const start_idx = Math.max(0, history.length - max_display);
-                const iterations_to_show = history.slice(start_idx);
-                
-                console.log(`🔍 [displayConvergence] Affichage: ${iterations_to_show.length} itérations (${start_idx} à ${history.length - 1})`);
+                // Afficher toutes les itérations
+                const iterations_to_show = history;
                 
                 iterations_to_show.forEach((state, idx) => {
-                    const real_idx = start_idx + idx;
                     if (state.data_snapshot) {
-                        // Afficher l'en-tête de l'itération
-                        html += `<div class="iteration-header"><strong>Itération ${state.iteration}</strong> (${state.temperature_C.toFixed(2)}°C, phase: ${state.phase}, Δ: ${state.delta_equilibre.toFixed(2)} W/m²)</div>`;
+                        // Afficher l'en-tête de l'itération avec imbrication
+                        let header = '';
+                        if (state.outerIter !== undefined && state.innerIter !== undefined) {
+                            header = `<strong>💧 cycle de l'eau ${state.outerIter}</strong> → <strong>🌈 calcul radiatif ${state.innerIter}</strong>`;
+                        } else if (state.iteration !== undefined) {
+                            header = `<strong>Itération ${state.iteration}</strong>`;
+                        } else {
+                            header = `<strong>État initial</strong>`;
+                        }
+                        html += `<div class="iteration-header">${header} (${state.temperature_C.toFixed(3)}°C, phase: ${state.phase}, Δ: ${state.delta_equilibre.toFixed(3)} W/m²)</div>`;
                         
-                        const categories = ['🧮', '🧲', '💧', '🪩'];
-                        categories.forEach(categoryKey => {
+                const categories = ['🧮', '🫧', '🧲', '💧', '🪩'];
+                categories.forEach(categoryKey => {
                             if (state.data_snapshot[categoryKey]) {
                                 const current = state.data_snapshot[categoryKey];
-                                
-                                // Pour 🧮, exclure previous (récursif)
-                                if (categoryKey === '🧮') {
-                                    const current_clean = { ...current };
-                                    delete current_clean.previous;
-                                    html += json2html(current_clean, '', '', null, categoryKey);
-                                } else {
-                                    html += json2html(current, '', '', null, categoryKey);
-                                }
-                            }
-                        });
+                        
+                        // Pour 🧮, exclure previous (récursif)
+                        if (categoryKey === '🧮') {
+                            const current_clean = { ...current };
+                            delete current_clean.previous;
+                            html += json2html(current_clean, '', '', null, categoryKey);
+                        } else {
+                            html += json2html(current, '', '', null, categoryKey);
+                        }
+                    }
+                });
                     }
                 });
                 
                 // Afficher la température finale
                 const last_state = history[history.length - 1];
-                html += `<div class="config-value"><strong>Température finale: ${last_state.temperature_C.toFixed(2)}°C (${last_state.temperature_K.toFixed(2)}K)</strong></div>`;
-            } else {
-                console.log(`🔍 [displayConvergence] Pas d'historique: history =`, history);
+                html += `<div class="config-value"><strong>Température finale: ${last_state.temperature_C.toFixed(3)}°C (${last_state.temperature_K.toFixed(3)}K)</strong></div>`;
             }
             
             // Toujours afficher le panneau même si html est vide
             convergenceContent.innerHTML = html || '<div class="config-value">Aucune donnée de convergence disponible</div>';
             convergenceDiv.style.display = 'block';
         }
+        
+        // 🔒 Exposer displayConvergence sur window pour que calculations_flux.js puisse l'appeler
+        window.displayConvergence = displayConvergence;
         
         function toggleConfig() {
             const configDiv = document.getElementById('config');

@@ -24,6 +24,8 @@ const timeline = [
         '🍰🧲🌕': 0.0, // geothermal_diffusion_factor (Facteur de diffusion du noyau vers la surface 0-1)
         '📐': 5096.8, // Rayon de la planète en km (Terre : 6371 km)
         '🍎': 8.3, // Gravité en m/s²
+        '📏🌊': 3.7, // Profondeur moyenne océans en km (valeur par défaut, pas d'eau pour cette époque)
+        '🐚': 1.0, // Facteur relief sous-marin (1.0 = pas de modification)
         '⚖️🫧': 0, // Masse atmosphère (Pas d'atmosphère)
         // Surfaces géologiques (Couche A - géologie/relief)
         '🗻': {
@@ -307,8 +309,8 @@ const timeline = [
         '📅': '📱', // 2025
         '▶': 2025,
         '◀': -1,
-        '🌡️🧮': 288,
-        '🧲🔬': 0.01,
+        '🌡️🧮': 288.8,  // ~15.6-16°C moyenne 2025 (record chaud)
+        '🧲🔬': 0.010,
         '🔋☀️': 3.828e26, // Puissance totale du soleil (W) - 100% (valeur actuelle)
         '🔋🌕': 4.6e13, // core_power_watts (Puissance géothermique totale ~46 TW)
         '📐': 6371, // Rayon de la planète en km
@@ -322,12 +324,14 @@ const timeline = [
             '🍰🗻🌍': 0.20  // Terres basses (20% - continents modernes)
         },
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️🫧': 5.15e18, // Masse atmosphère (Atmosphère standard ~1 bar)
+        // Note: 🍰🪩🏖, 🍰🪩🌳, 🍰🪩🌍 sont maintenant calculés dynamiquement dans calculateAlbedo()
+        // ⚖️🫧 sera calculé automatiquement comme somme de l'air sec (⚖️🏭 + ⚖️⛽ + ⚖️🌫 + ⚖️💨) = ~5.05e18 kg
+        // Note: La vapeur d'eau (~1.3e16 kg) n'est pas incluse dans ⚖️🫧
         // Simulation parameters - Quantités en kg
-        '⚖️🏭': 2.16e15, // co2_kg (~420 ppm, niveau actuel 2025)
-        '⚖️⛽': 5.2e12, // ch4_kg (~1.9 ppm, niveau actuel 2025)
+        '⚖️🏭': 3.3e15,   // ~420-450 ppm CO2 2025
+        '⚖️⛽': 5.5e12,
         '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
-        '⚖️🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
+        '⚖️🌫': 1.18e18, // O2 ~23% masse air sec
         '⚖️💨': 3.97e18, // n2_kg (~78% de l'atmosphère moderne, calculé comme reste pour atteindre 5.15e18)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement

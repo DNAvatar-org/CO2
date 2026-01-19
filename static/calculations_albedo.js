@@ -68,42 +68,115 @@ function calculateGeologySurfaces() {
 // ☁️ = CloudFormationIndex ∈ [0, 1] : potentiel de condensation (ni masse ni surface)
 //
 // FORMULE EXPLICITE :
-// ☁️ = clamp((🍰🫧💧 / 🍰🫧💧_ref) × f(T_surface, 📏🫧🛩) × (1 + α × 🍰🪩🌊), 0, 1)
+// ☁️ = clamp((🍰🫧💧 / CONST.H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + CONST.ALPHA_OCEAN × 🍰🪩🌊) × CONST.SCALE_CLOUD, 0, 1)
 //
 // Où :
-//   🍰🫧💧_ref = 0.4 (référence Terre tempérée, depuis CONST.H2O_VAPOR_REF)
-//   α = 0.3 (effet océan / convection, depuis CONST.ALPHA_OCEAN)
+//   CONST.H2O_VAPOR_REF = 0.01 (1%, référence Terre tempérée)
+//   CONST.ALPHA_OCEAN = 0.3 (effet océan / convection)
 //   f(T_surface, 📏🫧🛩) = fonction thermodynamique (température + tropopause)
 //
-// Exemple Terre 1800 :
-//   🍰🫧💧 = 0.63, 🍰🫧💧_ref = 0.4 → vapor_ratio = 1.575
-//   T = 287K (14°C), 📏🫧🛩 = 10.9 km → f(T, 📏🫧🛩) ≈ 0.9
+// Exemple Terre moderne (2025) :
+//   🍰🫧💧 = 0.0108 (1.08%), CONST.H2O_VAPOR_REF = 0.01 (1%) → vapor_ratio = 1.075
+//   T = 288K (15°C), 📏🫧🛩 = 8.45 km → f(T, 📏🫧🛩) ≈ 0.771
 //   🍰🪩🌊 = 0.71 → ocean_effect = 1 + 0.3 × 0.71 = 1.213
-//   ☁️ = clamp(1.575 × 0.9 × 1.213, 0, 1) = clamp(1.72, 0, 1) = 1.0
+//   CONST.SCALE_CLOUD = 0.4
+//   ☁️ = clamp(1.075 × 0.771 × 1.213 × 0.4, 0, 1) = clamp(0.402, 0, 1) = 0.402
 
 function calculateCloudFormationIndex() {
     const DATA = window.DATA;
+    const CONST = window.CONST;
     
-    // 🔒 NOUVELLE FORMULE : ☁️ = clamp(🍰🫧💧🌈 × 🍰🧮🌧 × (📏🫧🛩 / 📏🫧🧿), 0, 1)
+    // 🔒 FORMULE : ☁️ = clamp((🍰🫧💧 / CONST.H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + CONST.ALPHA_OCEAN × 🍰🪩🌊) × CONST.SCALE_CLOUD, 0, 1)
     // où :
-    //   🍰🫧💧🌈 = capacité radiative IR de H2O (normalisée ∈ [0,1])
-    //   🍰🧮🌧 = max vapor fraction (P_sat / P_total)
-    //   📏🫧🛩 = hauteur de la tropopause (km)
-    //   📏🫧🧿 = échelle de hauteur atmosphérique (km)
+    //   🍰🫧💧 = fraction massique de vapeur d'eau dans l'atmosphère
+    //   CONST.H2O_VAPOR_REF = 0.01 (1%, référence Terre tempérée)
+    //   f(T_surface, 📏🫧🛩) = fonction thermodynamique (température + tropopause)
+    //   CONST.ALPHA_OCEAN = 0.3 (effet océan / convection)
+    //   🍰🪩🌊 = couverture océanique
     
-    const h2o_radiative_capacity = DATA['🫧']['🍰🫧💧🌈'];
-    const max_vapor_fraction = DATA['💧']['🍰🧮🌧'];
+    const h2o_vapor_fraction = DATA['💧']['🍰🫧💧'];
+    const h2o_vapor_ref = CONST.H2O_VAPOR_REF;
+    const T_surface_K = DATA['🧮']['🧮🌡️'];
     const tropopause_km = DATA['🫧']['📏🫧🛩'];
-    const scale_height_km = DATA['🫧']['📏🫧🧿'];
+    const ocean_coverage = DATA['🪩']['🍰🪩🌊'];
+    const alpha_ocean = CONST.ALPHA_OCEAN;
+    const phase = DATA['🧮']['🧮⚧'];
+    const isInit = phase === 'Init';
     
-    // Calculer ☁️
-    const cloud_formation_index = h2o_radiative_capacity * max_vapor_fraction * (tropopause_km / scale_height_km);
+    // 🔒 CALCUL DE 🍰🫧☔ (Humidité relative moyenne globale)
+    // FORMULE : 🍰🫧☔ = clamp(🍰🫧💧 / ((CONST.M_H2O / 🧪) × 🍰🧮🌧), 0, 1)
+    // où :
+    //   🍰🫧💧 = fraction massique de vapeur d'eau dans l'atmosphère
+    //   CONST.M_H2O = masse molaire de H2O (0.01802 kg/mol)
+    //   🧪 = masse molaire de l'air (DATA['🫧']['🧪'])
+    //   🍰🧮🌧 = fraction molaire maximale de vapeur saturante (P_sat / P_total)
+    //   (CONST.M_H2O / 🧪) × 🍰🧮🌧 = fraction massique saturante q_sat
+    //   🍰🫧☔ = q / q_sat = humidité relative (RH)
+    const M_H2O = CONST.M_H2O;
+    const M_air = DATA['🫧']['🧪'];
+    const max_vapor_fraction = DATA['💧']['🍰🧮🌧'];
+    const mass_ratio = M_H2O / M_air;
+    const q_sat = mass_ratio * max_vapor_fraction;  // Fraction massique saturante
+    const relative_humidity = q_sat > 0 ? Math.max(0, Math.min(1, h2o_vapor_fraction / q_sat)) : 0;
+    DATA['💧']['🍰🫧☔'] = relative_humidity;
+    
+    // 🔒 CALCUL DE 💭☔ (Seuil critique précipitations)
+    // FORMULE : 💭☔ = clamp(0.75 + 0.05 × (🧮🌡️ - CONST.EVAPORATION_T_REF) / CONST.EVAPORATION_T_SCALE, 0.7, 0.95)
+    const temp_K = DATA['🧮']['🧮🌡️'];
+    const temp_diff = temp_K - CONST.EVAPORATION_T_REF;
+    const temp_factor = temp_diff / CONST.EVAPORATION_T_SCALE;
+    const precip_threshold = Math.max(0.7, Math.min(0.95, 0.75 + 0.05 * temp_factor));
+    DATA['💧']['💭☔'] = precip_threshold;
+    
+    // 🔒 CALCUL DE 🍰💭 (CCN - Efficacité condensation nuageuse)
+    // FORMULE : 🍰💭 = clamp(0.4 + 0.6 × (⚖️🌫 / 1.08e18 + ⚖️⛽ / 5.2e12), 0.3, 1.0)
+    const O2_mass = DATA['⚖️']['⚖️🌫'];
+    const CH4_mass = DATA['⚖️']['⚖️⛽'];
+    const O2_ratio = O2_mass / 1.08e18;
+    const CH4_ratio = CH4_mass / 5.2e12;
+    const ccn_efficiency = Math.max(0.3, Math.min(1.0, 0.4 + 0.6 * (O2_ratio + CH4_ratio)));
+    DATA['🫧']['🍰💭'] = ccn_efficiency;
+    
+    // 🔒 FORMULE SUNDQVIST : ☁️ = (1 - Math.pow(1 - min(🍰🫧☔, 1), 0.6)) × 🍰💭
+    // Exposant 0.6 (Sundqvist 1989) au lieu de 0.5 (sqrt) pour donner des valeurs plus réalistes
+    const rh_clamped = Math.min(relative_humidity, 1);
+    const cloud_formation_index = (1 - Math.pow(1 - rh_clamped, 0.6)) * ccn_efficiency;
     
     // Clamp entre 0 et 1
     const clamped_index = Math.max(0, Math.min(1, cloud_formation_index));
     
     // Stocker dans DATA
-    DATA['🫧']['☁️'] = clamped_index;
+    DATA['🪩']['☁️'] = clamped_index;
+    
+    // 🔒 CALCUL DE ⏳☔ (Inverse du temps de vie moyen de la vapeur excédentaire)
+    // ⏳☔ = 1 / τ_vapeur où τ_vapeur est le temps de vie moyen de la vapeur excédentaire (en s)
+    // Plus ⏳☔ est grand, plus la vapeur excédentaire est rapidement précipitée
+    // FORMULE : ⏳☔ = 5e-4 s⁻¹ (inverse d'un temps de vie de ~2000 s ≈ 33 min)
+    DATA['💧']['⏳☔'] = 5e-4;
+    
+    // 🔒 INITIALISATION DE 🔺⏳ (Pas de temps fixe = 1 jour)
+    // FORMULE : 🔺⏳ = 86400 s (1 jour)
+    DATA['📅']['🔺⏳'] = 86400;
+    
+    // 🔒 CALCUL DE 🍰⚖️💦 (Précipitation critiques en kg/m²/s)
+    // 🍰⚖️💦 représente la fraction massique de vapeur d'eau retirée par seconde quand l'humidité relative dépasse le seuil critique
+    // FORMULE : 🍰⚖️💦 = max(0, (🍰🫧☔ - 💭☔) × 🍰🫧💧 × ⏳☔) × (masse_vapeur_par_m²)
+    // Unités : (sans dimension) × (sans dimension) × (s⁻¹) × (kg/m²) = kg/m²/s
+    const rh_excess = relative_humidity - precip_threshold;
+    const fraction_rate = Math.max(0, rh_excess * h2o_vapor_fraction * DATA['💧']['⏳☔']); // s⁻¹ (fraction par seconde)
+    // Convertir en kg/m²/s : multiplier par la masse de vapeur par m²
+    const atm_mass_total = DATA['⚖️']['⚖️🫧'];
+    const planet_radius_km = window.TIMELINE[DATA['📜']['👉']]['📐'];
+    const planet_surface_m2 = 4 * Math.PI * Math.pow(planet_radius_km * 1000, 2);
+    const vapor_mass_per_m2 = (DATA['💧']['🍰🫧💧'] * atm_mass_total) / planet_surface_m2; // kg/m²
+    const precipitation_rate = fraction_rate * vapor_mass_per_m2; // kg/m²/s
+    DATA['💧']['🍰⚖️💦'] = precipitation_rate;
+    
+    // 🔒 LOGS UNIQUEMENT EN PHASE INIT
+    if (isInit) {
+        const cloud_without_ccn = 1 - Math.sqrt(1 - rh_clamped);
+        console.log(`🔍 [calculateCloudFormationIndex] ☁️=${clamped_index.toFixed(3)} (sans 🍰💭: ${cloud_without_ccn.toFixed(3)}) | 🍰🫧☔=${relative_humidity.toFixed(4)} | 💭☔=${precip_threshold.toFixed(3)} | 🍰💭=${ccn_efficiency.toFixed(3)} | ⏳☔=${DATA['💧']['⏳☔'].toExponential(2)} | 🍰⚖️💦=${precipitation_rate.toExponential(2)} | 🍰🫧💧=${h2o_vapor_fraction.toFixed(4)} | q_sat=${q_sat.toFixed(4)} | 🍰🧮🌧=${max_vapor_fraction.toFixed(4)}`);
+    }
     
     return clamped_index;
 }
@@ -122,6 +195,7 @@ function calculateAlbedo() {
     const CONST = window.CONST;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     const T_surface_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+    const phase = DATA['🧮']['🧮⚧'];
     
     // 🔒 ÉTAPE 1 : Calculer les surfaces géologiques (fixes, déterminées par la géologie)
     calculateGeologySurfaces();
@@ -130,6 +204,12 @@ function calculateAlbedo() {
     // À 2100°C (2373K), tout est lave → volcano_coverage = 1.0
     // Transition progressive : T < 1000K → 0, T > 2373K → 1.0
     const volcano_coverage = Math.max(0, Math.min(1.0, (DATA['📅']['🌡️🧮'] - CONST.T_LAVA_START) / (CONST.T_LAVA_COMPLETE - CONST.T_LAVA_START)));
+    
+    // 🔍 LOGS DÉTAILLÉS POUR 🪩
+    if (phase === 'Init') {
+        console.log(`\n📊 [calculateAlbedo] ========== DÉTAILS CALCUL 🪩 ==========`);
+        console.log(`   🍰🪩🌋 = ${volcano_coverage.toFixed(3)} (volcans, T=${DATA['📅']['🌡️🧮'].toFixed(1)}K)`);
+    }
     
     // 🔒 ÉTAPE 2 : Calculer la couverture océanique réelle depuis la géologie + stocks d'eau
     // La surface océanique est limitée par la géologie ET par la quantité d'eau disponible
@@ -156,18 +236,29 @@ function calculateAlbedo() {
     // calculateCloudFormationIndex() a besoin de DATA['🪩']['🍰🪩🌊'] pour calculer ☁️
     DATA['🪩']['🍰🪩🌊'] = ocean_coverage;
     
+    if (phase === 'Init') {
+        console.log(`   🍰🪩🌊 = ${ocean_coverage.toFixed(3)} (océans, bassin=${DATA['🗻']['🍰🗻🌊'].toFixed(3)}, volcans=${volcano_coverage.toFixed(3)})`);
+    }
+    
     let albedo_base = 0.0;
     
     // 🔒 ÉTAPE 3 : Calculer la couverture de glace depuis les hautes terres + climat
-    // La glace est limitée par la surface disponible (hautes terres) ET par le climat
-    // 🔒 IMPORTANT : ice_fraction_base = surface de glace (0-1), PAS fraction du stock d'eau
-    // On calcule d'abord calculateWaterPartition() pour obtenir 🍰💧🧊 (fraction du stock)
-    // 🔒 NOTE : calculateWaterPartition() est responsable de mettre à jour DATA['💧']['🍰💧🌊']
-    // calculateAlbedo() ne doit PAS écraser cette valeur car elle est calculée depuis la répartition vapeur/glace/liquide
-    window.calculateWaterPartition();
-    // Surface de glace = min(surface_haute_terre, fraction_glace_du_stock)
-    // La glace ne peut pas dépasser les hautes terres disponibles
-    const ice_fraction_base = Math.min(DATA['🗻']['🍰🗻🏔'], Math.min(0.9, DATA['💧']['🍰💧🧊'] * 0.9));
+    // FORMULE CORRIGÉE : 🍰🪩🧊 = min(🗻.🍰🗻🏔, max(0, 0.1 × (CONST.T_NO_POLAR_ICE_C + 273.15 - 🧮🌡️) / CONST.T_NO_POLAR_ICE_C))
+    // La glace est limitée par la surface disponible (hautes terres) ET par la température
+    // En 2025 : T ≈ 15°C (288.8K), il y a ~10% de glace polaire (Groenland ~3% + Antarctique ~7%)
+    // Si T > 20°C (CONST.T_NO_POLAR_ICE_C), il n'y a plus de glace polaire
+    // Si T = 0°C, glace maximale = 0.1 × (20 + 273.15 - 273.15) / 20 = 0.1
+    // Correction : Utiliser un facteur plus élevé pour avoir ~10% à 15°C
+    // À 15°C : 0.1 × (293.15 - 288.8) / 20 = 0.02175 (trop faible)
+    // Pour avoir 0.1 à 15°C : facteur = 0.1 / ((293.15 - 288.8) / 20) = 0.46
+    const temp_K = DATA['🧮']['🧮🌡️'];
+    const T_no_ice_K = CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS;
+    const ice_temp_factor = Math.max(0, (T_no_ice_K - temp_K) / CONST.T_NO_POLAR_ICE_C);
+    const ice_fraction_base = Math.min(DATA['🗻']['🍰🗻🏔'], 0.46 * ice_temp_factor);
+    
+    if (phase === 'Init') {
+        console.log(`   🍰🪩🧊 = ${ice_fraction_base.toFixed(3)} (glace, hautes_terres=${DATA['🗻']['🍰🗻🏔'].toFixed(3)}, T=${temp_K.toFixed(1)}K)`);
+    }
     // 🔒 volcano_coverage déjà calculé plus haut (ligne ~200)
     
     // 🔒 ÉTAPE 4 : Calculer forêts/déserts/terres depuis l'indice d'humidité climatique (H)
@@ -175,41 +266,91 @@ function calculateAlbedo() {
     // Les biomes dépendent uniquement de température et pluie, robuste pour d'autres planètes
     //
     // 1. Calculer précipitations annuelles P_ann (mm/an)
-    // P_ann ∝ 🍰🧮🌧 × 🍰🪩🌊 × F_conv
+    // P_ann ∝ 🍰🧮🌧 × 🍰🪩🌊 × F_conv × facteur_échelle
     // Où 🍰🧮🌧 = max vapor fraction (potentiel de précipitation)
     //    🍰🪩🌊 = couverture océanique (source d'évaporation)
     //    F_conv = facteur de convection (fonction de température)
+    // 🔒 CORRECTION : Le facteur d'échelle était trop faible
+    // Sur Terre : 🍰🧮🌧 ≈ 0.017, 🍰🪩🌊 ≈ 0.71, F_conv ≈ 1.0
+    // P_ann_base = 0.017 × 0.71 × 1.0 = 0.01207
+    // Pour obtenir H ≈ 1.0 à 15°C : H = P_ann / (1000 × exp(0.05 × 15)) = P_ann / 2117
+    // Donc P_ann ≈ 2117 mm/an pour H = 1.0
+    // Facteur d'échelle : 2117 / 0.01207 ≈ 175000
+    // Mais on veut H ≈ 1.0-1.2 pour avoir des forêts, donc facteur ≈ 200000
     const max_vapor_fraction = DATA['💧']['🍰🧮🌧'] || 0;
     const F_conv = Math.max(0.1, Math.min(2.0, 1.0 + (T_surface_C - 15) / 50));  // Facteur convection (T optimal ~15°C)
     const P_ann_base = max_vapor_fraction * ocean_coverage * F_conv;
-    const P_ann = P_ann_base * 1000;  // Conversion en mm/an (facteur d'échelle)
+    const P_ann = P_ann_base * 200000;  // Conversion en mm/an (facteur d'échelle corrigé)
+
+    // 🔒 ÉTAPE 4 : Calculer ☁️ (index de formation nuageuse) AVANT de calculer les biomes
+    // calculateCloudFormationIndex() calcule aussi 🍰🫧☔ (humidité relative) nécessaire pour les biomes
+    window.calculateCloudFormationIndex();
     
-    // 2. Calculer l'indice d'humidité climatique H
-    // H = clamp(P_ann / (P_ref × exp(0.05 × T_C)), 0, 2)
-    // Où P_ref = 1000 mm/an (référence Terre)
-    // Interprétation : H < 0.5 → aride, 0.5 ≤ H ≤ 1.2 → tempéré, H > 1.2 → humide
-    const P_ref = 1000;  // mm/an (référence Terre)
-    const H_denom = P_ref * Math.exp(0.05 * T_surface_C);
-    const H = H_denom > 0 ? Math.max(0, Math.min(2.0, P_ann / H_denom)) : 0;
+    // 🔒 ÉTAPE 5 : Calculer les terres disponibles (🍰🪩🌍_)
+    // FORMULE : 🍰🪩🌍_ = 1 - 🍰🗻🌊 - 🍰🪩🧊
+    // Terres disponibles = surface totale - océans - glace
+    const land_available = Math.max(0, 1.0 - DATA['🗻']['🍰🗻🌊'] - ice_fraction_base);
     
-    // 3. Calculer la terre libre de glace L
-    // L = 1 - 🍰🪩🌊 - 🍰🪩🧊 (terre disponible pour biomes)
-    const L = Math.max(0, 1.0 - ocean_coverage - ice_fraction_base - volcano_coverage);
+    // 🔒 ÉTAPE 6 : Calculer forêts 🌳
+    // FORMULE : 🍰🪩🌳 = min(🍰🪩🌍_, 🗻.🍰🗻🌍 × clamp((🧮🌡️_C - 0) / 30, 0, 1) × clamp((🍰🫧☔ - 0.5) / 0.3, 0, 1) × clamp((1 - ☁️), 0, 1) × 0.6)
+    // Dépend de : température (optimum 0-30°C), humidité relative (RH > 0.5-0.8), nuages (moins de forêts si trop de nuages)
+    const temp_C = T_surface_C;
+    const relative_humidity = DATA['💧']['🍰🫧☔'];
+    const cloud_index = DATA['🪩']['☁️'];
+    const temp_factor_forest = Math.max(0, Math.min(1, (temp_C - 0) / 30)); // Optimum thermique 0-30°C
+    const humidity_factor_forest = Math.max(0, Math.min(1, (relative_humidity - 0.5) / 0.3)); // Besoin RH > 0.5-0.8
+    const cloud_factor_forest = Math.max(0, Math.min(1, 1 - cloud_index)); // Moins de forêts si trop de nuages
+    const forest_potential = DATA['🗻']['🍰🗻🌍'] * temp_factor_forest * humidity_factor_forest * cloud_factor_forest * 0.6;
+    const forest_coverage = Math.min(land_available, forest_potential);
     
-    // 4. Calculer forêts 🌳
-    // 🍰🪩🌳 = L × clamp((H - 0.5) / 0.7, 0, 1)
-    // Forêts apparaissent si H > 0.5, maximum si H ≥ 1.2
-    const forest_coverage = (isFinite(H) && isFinite(L)) ? L * Math.max(0, Math.min(1.0, (H - 0.5) / 0.7)) : 0;
+    if (phase === 'Init') {
+        console.log(`   🍰🪩🌳 = ${forest_coverage.toFixed(3)} (forêts, terres_dispo=${land_available.toFixed(3)}, temp_factor=${temp_factor_forest.toFixed(3)}, hum_factor=${humidity_factor_forest.toFixed(3)}, cloud_factor=${cloud_factor_forest.toFixed(3)})`);
+    }
     
-    // 5. Calculer déserts 🏖
-    // 🍰🪩🏖 = L × clamp((0.6 - H) / 0.6, 0, 1)
-    // Déserts apparaissent si H < 0.6, maximum si H ≤ 0
-    const desert_coverage = (isFinite(H) && isFinite(L)) ? L * Math.max(0, Math.min(1.0, (0.6 - H) / 0.6)) : 0;
+    // 🔒 ÉTAPE 7 : Calculer déserts 🏖
+    // FORMULE CORRIGÉE : 🍰🪩🏖 = 🍰🪩🌍_ × (base_aridité + variabilité_régionale)
+    // Les déserts sont des zones régionales avec conditions locales très différentes de la moyenne globale
+    // En 2025 : Sahara a P_ann < 200 mm/an et RH < 0.3, mais moyenne globale P_ann ≈ 2600 mm/an et RH ≈ 0.83
+    // Correction : Utiliser un facteur de variabilité régionale pour avoir ~20% de déserts même si moyenne globale est humide
+    // Base : déserts si conditions moyennes sont arides
+    const precip_factor_desert = Math.max(0, 1 - Math.min(1, P_ann / 1000)); // P_ann < 1000 mm/an → désert
+    const humidity_factor_desert = Math.max(0, 1 - Math.min(1, relative_humidity / 0.6)); // RH < 0.6 → désert
+    const desert_base = land_available * precip_factor_desert * humidity_factor_desert;
     
-    // 6. Calculer terres restantes 🌍
-    // 🍰🪩🌍 = L - 🍰🪩🌳 - 🍰🪩🏖
+    // Variabilité régionale : même si moyenne globale est humide, il y a toujours des zones arides
+    // Facteur basé sur la température (plus chaud → plus de variabilité) et l'inverse de l'humidité
+    // En 2025 : ~20% de déserts sur les terres (Sahara, Gobi, etc.) même si moyenne globale est humide
+    // Sur les terres disponibles (0.20), on veut ~0.06 de déserts (30% des terres)
+    const temp_variability = Math.max(0.5, Math.min(1, (temp_C - 5) / 10)); // Plus de variabilité si T > 5°C, minimum 0.5
+    const humidity_variability = Math.max(0.5, 1 - relative_humidity * 0.6); // Plus de variabilité si RH faible, minimum 0.5
+    const VARIABILITY_FACTOR = 0.6; // 60% des terres disponibles peuvent être arides (pondéré par les facteurs)
+    const variability_term = land_available * VARIABILITY_FACTOR * temp_variability * humidity_variability;
+    
+    const desert_coverage = Math.min(land_available, desert_base + variability_term);
+    
+    if (phase === 'Init') {
+        console.log(`   🍰🪩🏖 = ${desert_coverage.toFixed(3)} (déserts)`);
+        console.log(`      land_available = ${land_available.toFixed(3)} (terres disponibles)`);
+        console.log(`      P_ann = ${P_ann.toFixed(0)} mm/an (précipitations annuelles moyennes globales)`);
+        console.log(`      precip_factor_desert = max(0, 1 - min(1, ${P_ann.toFixed(0)} / 1000)) = ${precip_factor_desert.toFixed(3)}`);
+        console.log(`      relative_humidity (🍰🫧☔) = ${relative_humidity.toFixed(4)} (humidité relative moyenne globale)`);
+        console.log(`      humidity_factor_desert = max(0, 1 - min(1, ${relative_humidity.toFixed(4)} / 0.6)) = ${humidity_factor_desert.toFixed(3)}`);
+        console.log(`      desert_base = ${land_available.toFixed(3)} × ${precip_factor_desert.toFixed(3)} × ${humidity_factor_desert.toFixed(3)} = ${desert_base.toFixed(3)}`);
+        console.log(`      temp_C = ${temp_C.toFixed(1)}°C`);
+        console.log(`      temp_variability = max(0, min(1, (${temp_C.toFixed(1)} - 10) / 20)) = ${temp_variability.toFixed(3)}`);
+        console.log(`      humidity_variability = max(0, 1 - ${relative_humidity.toFixed(4)}) = ${humidity_variability.toFixed(3)}`);
+        console.log(`      variability_term = ${land_available.toFixed(3)} × ${VARIABILITY_FACTOR} × ${temp_variability.toFixed(3)} × ${humidity_variability.toFixed(3)} = ${variability_term.toFixed(3)}`);
+        console.log(`      desert_coverage = ${desert_base.toFixed(3)} + ${variability_term.toFixed(3)} = ${desert_coverage.toFixed(3)}`);
+    }
+    
+    // 🔒 ÉTAPE 8 : Calculer terres restantes 🌍
+    // FORMULE : 🍰🪩🌍 = 🍰🪩🌍_ - 🍰🪩🌳 - 🍰🪩🏖
     // 🌍 absorbe automatiquement : steppes, prairies, toundras, montagnes
-    const total_land_coverage = (isFinite(L) && isFinite(forest_coverage) && isFinite(desert_coverage)) ? Math.max(0, L - forest_coverage - desert_coverage) : 0;
+    const total_land_coverage = Math.max(0, land_available - forest_coverage - desert_coverage);
+    
+    if (phase === 'Init') {
+        console.log(`   🍰🪩🌍 = ${total_land_coverage.toFixed(3)} (terres, = ${land_available.toFixed(3)} - ${forest_coverage.toFixed(3)} - ${desert_coverage.toFixed(3)})`);
+    }
     
     // 🔒 VÉRIFICATION : Les surfaces SECHES doivent sommer à 1 (sans H2O, sans nuages)
     // 🍰🪩🌊 + 🍰🪩🌳 + 🍰🪩🧊 + 🍰🪩🏖 + 🍰🪩🌍 + 🍰🪩🌋 = 1
@@ -243,6 +384,10 @@ function calculateAlbedo() {
     
     albedo_base = isFinite(weighted_albedo) ? weighted_albedo : 0;
     
+    if (phase === 'Init') {
+        console.log(`   Albédo base = ${albedo_base.toFixed(3)} (pondéré par surfaces)`);
+    }
+    
     let albedo = albedo_base;
 
     // 🔒 CONTRIBUTION H2O (GLACE) : Calculée séparément, n'affecte PAS la somme des surfaces
@@ -254,6 +399,10 @@ function calculateAlbedo() {
     const ice_impact_factor = 0.5;
     const ice_albedo_contribution = (ice_albedo - albedo_base) * ice_fraction_stock * ice_impact_factor;
     albedo = albedo_base + ice_albedo_contribution;
+    
+    if (phase === 'Init') {
+        console.log(`   Albédo après glace = ${albedo.toFixed(3)} (base=${albedo_base.toFixed(3)} + glace=${ice_albedo_contribution.toFixed(3)})`);
+    }
 
     // Contribution des nuages (H2O activé)
     // 🔒 REFONTE : Les nuages ne sont pas un stock d'eau, mais un phénomène optique
@@ -275,9 +424,10 @@ function calculateAlbedo() {
     //
     // Les nuages saturent vite : au-delà d'un certain seuil d'humidité, c'est l'optique — pas l'eau — qui limite leur effet
     let cloud_fraction = 0;
-    if (DATA['🔘']['🔘💧📛'] && DATA['🫧']['🍰🫧💧'] > 0) {
-        // Calculer l'index de formation nuageuse
-        const cloud_index = calculateCloudFormationIndex();
+    if (DATA['🔘']['🔘💧📛'] && DATA['💧']['🍰🫧💧'] > 0) {
+        // 🔒 calculateCloudFormationIndex() a déjà été appelé plus haut (ligne ~262)
+        // On réutilise DATA['🪩']['☁️'] déjà calculé
+        const cloud_index = DATA['🪩']['☁️'];
         
         // Calculer C_max et eta_cloud depuis l'époque et les propriétés atmosphériques
         // C_max : plafond physique dépend de l'époque (structure verticale) et de la pression
@@ -338,6 +488,10 @@ function calculateAlbedo() {
         
         // Stocker la couverture nuageuse dans DATA['🪩']
         DATA['🪩']['🍰🪩⛅'] = cloud_fraction;
+        
+        if (phase === 'Init') {
+            console.log(`   🍰🪩⛅ = ${cloud_fraction.toFixed(3)} (nuages, C_max=${C_max.toFixed(3)}, eta_cloud=${eta_cloud.toFixed(3)}, ☁️=${cloud_index.toFixed(3)})`);
+        }
     } else {
         DATA['🪩']['🍰🪩⛅'] = 0;
     }
@@ -348,13 +502,26 @@ function calculateAlbedo() {
     const cloud_albedo_coeff = albedo_coeff['🪩🍰⛅'];
     const cloud_albedo_contribution = cloud_fraction * cloud_albedo_coeff;
     albedo = albedo + cloud_albedo_contribution;
+    
+    if (phase === 'Init') {
+        console.log(`   Albédo après nuages = ${albedo.toFixed(3)} (+ nuages=${cloud_albedo_contribution.toFixed(3)})`);
+    }
 
     const final_albedo = isFinite(albedo) ? Math.max(0.0, Math.min(0.9, albedo)) : 0;
+    
+    if (phase === 'Init') {
+        console.log(`   🍰🪩📿 = ${final_albedo.toFixed(3)} (albédo final, clampé 0-0.9)`);
+    }
     
     // 🔒 Les surfaces sont déjà stockées plus haut (lignes 249-254)
     // ice_fraction_base est la surface de glace, ice_fraction_stock est la fraction du stock d'eau
     DATA['🪩']['🍰🪩📿'] = final_albedo;
     DATA['🪩']['🍰🪩⛅'] = isFinite(cloud_fraction) ? cloud_fraction : 0;
+    
+    if (phase === 'Init') {
+        console.log(`   ☁️ = ${DATA['🪩']['☁️'].toFixed(3)} (index formation nuageuse, calculé dans calculateCloudFormationIndex)`);
+        console.log(`========== FIN DÉTAILS CALCUL 🪩 ==========\n`);
+    }
     
     return final_albedo;
 }
