@@ -326,7 +326,9 @@ function calculateAlbedo() {
     const VARIABILITY_FACTOR = 0.6; // 60% des terres disponibles peuvent être arides (pondéré par les facteurs)
     const variability_term = land_available * VARIABILITY_FACTOR * temp_variability * humidity_variability;
     
-    const desert_coverage = Math.min(land_available, desert_base + variability_term);
+    // Si EPOCH['🍰🪩🏖'] est défini (même si = 0.0), l'utiliser directement (override pour cas particuliers comme Corps noir)
+    // Utiliser ?? au lieu de || car 0.0 est falsy mais est une valeur valide qu'on veut utiliser
+    const desert_coverage = EPOCH['🍰🪩🏖'] ?? Math.min(land_available, desert_base + variability_term);
     
     if (phase === 'Init') {
         console.log(`   🍰🪩🏖 = ${desert_coverage.toFixed(3)} (déserts)`);
@@ -370,8 +372,9 @@ function calculateAlbedo() {
     DATA['🪩']['🍰🪩🏖'] = desert_coverage;
     
     // 🔒 ALBEDO BASE : Calculer depuis les surfaces SECHES uniquement
+    // Fusionner les coefficients : EPOCH peut override certains coefficients (ex: Corps noir)
+    const albedo_coeff = { ...CONST['🪩🍰'], ...(EPOCH['🪩🍰'] || {}) };
     let weighted_albedo = 0;
-    const albedo_coeff = CONST['🪩🍰'];
     
     if (albedo_coeff) {
         weighted_albedo += (isFinite(volcano_coverage) ? volcano_coverage : 0) * albedo_coeff['🪩🍰🌋'];
@@ -509,13 +512,36 @@ function calculateAlbedo() {
 
     const final_albedo = isFinite(albedo) ? Math.max(0.0, Math.min(0.9, albedo)) : 0;
     
+    // 🔒 Facteur corps noir : si pas assez d'eau pour 10m de profondeur, réduire l'albedo
+    // Calculer le volume d'eau disponible (m³)
+    const water_volume_m3 = DATA['⚖️']['⚖️💧'] / CONST.RHO_WATER;
+    
+    // Surface totale de la planète (m²) - réutiliser celle calculée ligne 217
+    
+    // Volume minimal requis pour 10 mètres de profondeur (m³)
+    const min_depth_m = 10; // 10 mètres minimum
+    const min_volume_required_m3 = planet_surface_m2 * min_depth_m;
+    
+    // Ratio : si ratio < 1, pas assez d'eau pour 10m de profondeur
+    // Si ratio = 0 (pas d'eau), blackbody_factor = 0 (corps noir)
+    const water_ratio = min_volume_required_m3 > 0 ? water_volume_m3 / min_volume_required_m3 : 0;
+    
+    // blackbody_factor : 0 si pas d'eau, 1 si assez d'eau pour 10m
+    const blackbody_factor = Math.min(1, Math.max(0, water_ratio));
+    
+    // Appliquer au final_albedo
+    const final_albedo_with_water = final_albedo * blackbody_factor;
+    
     if (phase === 'Init') {
-        console.log(`   🍰🪩📿 = ${final_albedo.toFixed(3)} (albédo final, clampé 0-0.9)`);
+        console.log(`   🍰🪩📿 (avant blackbody) = ${final_albedo.toFixed(3)} (albédo final, clampé 0-0.9)`);
+        console.log(`   blackbody_factor = ${blackbody_factor.toFixed(6)}`);
+        console.log(`      water_ratio = ${water_ratio.toFixed(6)} (⚖️💧=${DATA['⚖️']['⚖️💧'].toExponential(2)} kg, volume=${water_volume_m3.toExponential(2)} m³, min_required=${min_volume_required_m3.toExponential(2)} m³ pour 10m)`);
+        console.log(`   🍰🪩📿 (après blackbody) = ${final_albedo_with_water.toFixed(3)} (${final_albedo.toFixed(3)} × ${blackbody_factor.toFixed(6)})`);
     }
     
     // 🔒 Les surfaces sont déjà stockées plus haut (lignes 249-254)
     // ice_fraction_base est la surface de glace, ice_fraction_stock est la fraction du stock d'eau
-    DATA['🪩']['🍰🪩📿'] = final_albedo;
+    DATA['🪩']['🍰🪩📿'] = final_albedo_with_water;
     DATA['🪩']['🍰🪩⛅'] = isFinite(cloud_fraction) ? cloud_fraction : 0;
     
     if (phase === 'Init') {

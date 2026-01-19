@@ -33,6 +33,11 @@ const timeline = [
             '🍰🗻🏔': 0.0,  // Hautes terres (0% - pas de relief)
             '🍰🗻🌍': 1.0   // Terres basses (100% - surface rocheuse)
         },
+        // 🔒 Corps noir : pas de désert, albedo = 0 (corps noir absorbe tout)
+        '🍰🪩🏖': 0.0,  // Forcer couverture désert à 0 (pas de désert pour corps noir)
+        '🪩🍰': {
+            '🪩🍰🌍': 0.0  // Override coefficient albedo terres à 0 (corps noir absorbe tout)
+        },
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         // Note: geothermal_flux sera calculé à partir de core_temperature et geothermal_diffusion_factor
         // Simulation parameters - Quantités en kg (pas de ppm/%)
