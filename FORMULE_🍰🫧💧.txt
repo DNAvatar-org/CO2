@@ -1,0 +1,129 @@
+================================================================================
+FORMULE POUR 🍰🫧💧 (Proportion radiative EDS de H₂O dans l'atmosphère)
+================================================================================
+
+Source: calculations_h2o.js, fonction calculateWaterPartition()
+
+================================================================================
+ÉTAPE 1: Calcul de la pression de vapeur saturante (P_sat)
+================================================================================
+
+Fonction: calculateSaturatedVaporPressure()
+
+Formule Clausius-Clapeyron:
+P_sat = P₀ × exp(L_v / R_v × (1/T₀ - 1/T))
+
+Où:
+  P₀ = 611.2 Pa (pression au point triple de l'eau)
+  T₀ = 273.15 K (température au point triple)
+  L_v = 2.5e6 J/kg (chaleur latente de vaporisation)
+  R_v = 461.5 J/(kg·K) = R / M_H2O
+  T = DATA['🧮']['🧮🌡️'] (température actuelle en K)
+
+Code (ligne 22-30):
+  const temp_K = DATA['🧮']['🧮🌡️'];
+  if (!isFinite(temp_K) || temp_K <= 0) return 0;
+  const exponent = (CONST.L_VAPORIZATION / CONST.RV_WATER) * (1 / CONST.T0_WATER - 1 / temp_K);
+  const P_sat = CONST.P0_WATER * Math.exp(exponent);
+  return isFinite(P_sat) && P_sat > 0 ? P_sat : 0;
+
+================================================================================
+ÉTAPE 2: Calcul de la fraction molaire maximale (🍰🧮🌧)
+================================================================================
+
+Formule:
+🍰🧮🌧 = P_sat / P_total
+
+Où:
+  P_total = DATA['🫧']['🎈'] × CONST.STANDARD_ATMOSPHERE_PA
+  (P_total = pression atmosphérique en Pa)
+
+Code (ligne 143-146):
+  const P_sat = calculateSaturatedVaporPressure();
+  const P_total = DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA;
+  const max_vapor_fraction = (P_total > 0 && isFinite(P_sat) && P_sat > 0 && isFinite(P_total))
+      ? Math.min(P_sat / P_total, 1.0)
+      : 0;
+
+Note: 🍰🧮🌧 est une FRACTION MOLAIRE (rapport de pressions partielles)
+
+================================================================================
+ÉTAPE 3: Conversion fraction molaire → fraction massique
+================================================================================
+
+Formule:
+🍰🫧💧 = 🍰🧮🌧 × (M_H2O / M_air)
+
+Où:
+  M_H2O = 0.018 kg/mol (masse molaire de H₂O)
+  M_air = DATA['🫧']['🧪'] (masse molaire de l'air, typiquement 0.029 kg/mol)
+  Ratio ≈ 0.62
+
+Code (ligne 175-185):
+  const atm_mass_total = DATA['⚖️']['⚖️🫧'];
+  const M_H2O = CONST.M_H2O;
+  const M_air = DATA['🫧']['🧪'];
+  const mass_ratio = M_air > 0 ? M_H2O / M_air : 0; // ~0.62
+  
+  // Calculer la masse de vapeur maximale possible
+  const max_vapor_mass_kg = max_vapor_fraction * atm_mass_total * mass_ratio;
+  
+  // Limiter par la masse totale d'eau disponible
+  const h2o_vapor_mass_kg = Math.min(DATA['⚖️']['⚖️💧'], max_vapor_mass_kg);
+  
+  // Fraction massique dans l'atmosphère
+  DATA['🫧']['🍰🫧💧'] = h2o_vapor_mass_kg / atm_mass_total;
+
+================================================================================
+FORMULE FINALE SIMPLIFIÉE
+================================================================================
+
+Si on simplifie (en supposant qu'il y a assez d'eau disponible):
+
+🍰🫧💧 = 🍰🧮🌧 × (M_H2O / M_air)
+
+Où:
+  🍰🧮🌧 = P_sat / P_total
+  M_H2O / M_air ≈ 0.62
+
+Donc:
+🍰🫧💧 = (P_sat / P_total) × 0.62
+
+================================================================================
+PROBLÈME IDENTIFIÉ
+================================================================================
+
+À 288K et ~1 atm:
+  P_sat ≈ 1700 Pa (calculé par Clausius-Clapeyron)
+  P_total ≈ 99000 Pa (0.98 atm × 101325 Pa)
+  🍰🧮🌧 = 1700 / 99000 ≈ 0.017 (1.7%)
+
+Avec le ratio de masse:
+  🍰🫧💧 = 0.017 × 0.62 ≈ 0.0105 (1.05%)
+
+Mais le modèle affiche 🍰🫧💧 = 0.03 (3%), ce qui est IMPOSSIBLE car cela signifierait:
+  🍰🧮🌧 = 0.03 / 0.62 ≈ 0.048 (4.8%)
+  P_sat nécessaire = 0.048 × 99000 ≈ 4750 Pa
+  Température nécessaire ≈ 305K (32°C) pour avoir P_sat = 4750 Pa
+
+Le problème est probablement que:
+1. M_air est incorrect (trop faible)
+2. Ou la conversion molaire → massique est incorrecte
+3. Ou il y a une erreur dans le calcul de max_vapor_mass_kg
+
+================================================================================
+VÉRIFICATION
+================================================================================
+
+Vérifier dans le code:
+- Ligne 179: M_air = DATA['🫧']['🧪']
+- Ligne 180: mass_ratio = M_H2O / M_air
+- Ligne 181: max_vapor_mass_kg = max_vapor_fraction * atm_mass_total * mass_ratio
+- Ligne 185: 🍰🫧💧 = h2o_vapor_mass_kg / atm_mass_total
+
+Si mass_ratio est incorrect (par exemple si M_air est trop faible), alors 🍰🫧💧 sera trop élevé.
+
+================================================================================
+FIN DU FICHIER
+================================================================================
+

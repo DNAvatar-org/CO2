@@ -89,7 +89,7 @@ function calculateMolarMassAir() {
     const frac_CH4 = DATA['🫧']['🍰🫧⛽'] || 0;
     const frac_O2 = DATA['🫧']['🍰🫧🌫'] || 0;
     const frac_N2 = DATA['🫧']['🍰🫧💨'] || 0;
-    const frac_H2O = DATA['🫧']['🍰🫧💧'] || 0;
+    const frac_H2O = DATA['💧']['🍰🫧💧'] || 0;
     
     // Masse molaire moyenne pondérée par les fractions molaires (approximation : fractions volumiques ≈ fractions molaires)
     // M_air = Σ(fraction_i × M_i)
@@ -113,10 +113,14 @@ function calculatePressureAtm() {
     const EPOCH = DATA['📅'];
     const planet_radius_m = EPOCH['📐'] * 1000;
     const surface_area = 4 * Math.PI * Math.pow(planet_radius_m, 2);
-    const pressure_pa = (EPOCH['⚖️🫧'] * EPOCH['🍎']) / surface_area;
+    // 🔒 CORRECTION : Utiliser DATA['⚖️']['⚖️🫧'] au lieu de EPOCH['⚖️🫧']
+    // car ⚖️🫧 est calculé dans getMasses() et stocké dans DATA
+    const atm_mass = DATA['⚖️']['⚖️🫧'];
+    const gravity = EPOCH['🍎'];
+    const pressure_pa = (atm_mass * gravity) / surface_area;
     
     // Éviter NaN si surface_area = 0 ou si pressure_pa est invalide
-    DATA['🫧']['🎈'] = (surface_area > 0 && isFinite(pressure_pa)) ? pressure_pa / CONST.STANDARD_ATMOSPHERE_PA : 0;
+    DATA['🫧']['🎈'] = (surface_area > 0 && isFinite(pressure_pa) && pressure_pa > 0) ? pressure_pa / CONST.STANDARD_ATMOSPHERE_PA : 0;
     
     return true;
 }
@@ -147,7 +151,7 @@ function calculateAtmosphereComposition() {
         DATA['🫧']['🍰🫧⛽'] = 0;
         DATA['🫧']['🍰🫧🌫'] = 0;
         DATA['🫧']['🍰🫧💨'] = 0;
-        DATA['🫧']['🍰🫧💧'] = 0;
+        DATA['💧']['🍰🫧💧'] = 0;
     } else {
         // 🔒 FORMULES CORRIGÉES : Toutes les fractions sont calculées par rapport à ⚖️🫧
         // 🍰🫧🏭 = ⚖️🏭 / ⚖️🫧
@@ -165,7 +169,7 @@ function calculateAtmosphereComposition() {
         
     // H2O atmosphérique (vapeur) : sera calculé dans calculateWaterPartition()
     // 🍰🫧💧 = ⚖️💧 × 🍰🧮🌧 / ⚖️🫧 (sera calculé après)
-    DATA['🫧']['🍰🫧💧'] = 0;
+    DATA['💧']['🍰🫧💧'] = 0;
         
     // Vérifier que la somme des fractions de l'air sec = 1.0 (avec tolérance)
     const total_fraction_dry = DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🌫'] + DATA['🫧']['🍰🫧💨'];

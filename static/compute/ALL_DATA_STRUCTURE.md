@@ -245,11 +245,11 @@ Surfaces géologiques (Couche A) - surfaces fixes déterminées par la géologie
 
 ```javascript
 // Accès direct
-const h2o_fraction = DATA['🫧']['🍰🫧💧'];
+const h2o_fraction = DATA['💧']['🍰🫧💧'];
 const albedo_total = DATA['🪩']['🍰🪩📿'];
 
 // Vérification d'existence
-if (DATA['🫧'] && DATA['🫧']['🍰🫧💧'] !== undefined) {
+if (DATA['🫧'] && DATA['💧']['🍰🫧💧'] !== undefined) {
     // ...
 }
 ```

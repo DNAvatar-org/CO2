@@ -1,0 +1,181 @@
+================================================================================
+ORDRE D'APPEL DES FONCTIONS DANS computeRadiativeTransfer()
+================================================================================
+
+Source: static/compute/calculations_flux.js
+
+================================================================================
+ORDRE D'APPEL (lignes 88-553)
+================================================================================
+
+1. getSoleil()                    [ligne 95]
+2. getNoyau()                     [ligne 99]
+3. getEpochDateConfig()           [ligne 103]
+4. calculateT0()                   [ligne 108] ⚠️ CALCULE DATA['🧮']['🧮🌡️']
+5. calculateAtmosphereComposition() [ligne 113]
+6. calculateGeologySurfaces()     [ligne 124]
+7. calculateH2OParameters()       [ligne 132] ⚠️ UTILISE DATA['🧮']['🧮🌡️']
+   └─ getMasses()
+   └─ calculatePressureAtm()
+   └─ calculateWaterPartition()    ⚠️ UTILISE DATA['🧮']['🧮🌡️'] et DATA['🫧']['🧪']
+   └─ calculateMolarMassAir()      ⚠️ CALCULE DATA['🫧']['🧪']
+   └─ calculateH2OGreenhouseForcing()
+   └─ calculateCloudAlbedoContribution()
+8. calculateAlbedo()              [ligne 138]
+9. calculateFluxForT0()           [ligne 192] ⚠️ UTILISE DATA['🫧']['🍰🫧💧']
+10. calculateRadiativeCapacities() [ligne 202]
+
+BOUCLE D'ITÉRATION (lignes 298-522):
+   - Ajustement de T0
+   - calculateH2OParameters()       [ligne 306, 519] ⚠️ RECALCULÉ avec nouvelle T
+   - calculateAlbedo()             [ligne 520]
+   - calculateFluxForT0()          [ligne 400+]
+
+================================================================================
+PROBLÈME IDENTIFIÉ #1 : calculateWaterPartition() utilise M_air AVANT qu'il soit calculé
+================================================================================
+
+Dans calculateH2OParameters() (ligne 276-292):
+  1. calculateWaterPartition()    [ligne 281] ⚠️ UTILISE DATA['🫧']['🧪'] (ligne 179)
+  2. calculateMolarMassAir()       [ligne 282] ⚠️ CALCULE DATA['🫧']['🧪']
+
+PROBLÈME: calculateWaterPartition() utilise DATA['🫧']['🧪'] à la ligne 179, mais cette
+valeur n'est calculée qu'après dans calculateMolarMassAir() (ligne 282).
+
+Si DATA['🫧']['🧪'] n'est pas initialisé correctement, alors:
+  - mass_ratio = M_H2O / M_air peut être incorrect
+  - Si M_air = 0.018 (au lieu de 0.029), alors mass_ratio = 1.0 (au lieu de 0.62)
+  - 🍰🫧💧 sera alors trop élevé (0.03 au lieu de 0.01)
+
+SOLUTION: calculateMolarMassAir() doit être appelé AVANT calculateWaterPartition(),
+OU calculateWaterPartition() doit utiliser une valeur par défaut pour M_air si non calculé.
+
+================================================================================
+PROBLÈME IDENTIFIÉ #2 : Formule P_sat n'utilise pas L_v ajusté
+================================================================================
+
+Formule actuelle (ligne 28):
+  P_sat = P₀ × exp((L_v / R_v) × (1/T₀ - 1/T))
+
+Où:
+  L_v = CONST.L_VAPORIZATION = 2.5e6 J/kg (constant)
+  R_v = CONST.RV_WATER = 461.5 J/(kg·K)
+  T₀ = CONST.T0_WATER = 273.15 K
+  P₀ = CONST.P0_WATER = 611.2 Pa
+
+Formule suggérée (avec L_v ajusté):
+  L_v = 2.501e6 - 2300 × (T - 273.15)  // Ajustement optionnel
+  P_sat = 611.2 × exp((L_v / R_v) × (1/273.15 - 1/T))
+
+PROBLÈME: La formule actuelle utilise L_v constant (2.5e6 J/kg), ce qui est une
+approximation. Pour plus de précision, L_v devrait être ajusté avec la température.
+
+SOLUTION: Ajouter l'ajustement de L_v si nécessaire pour plus de précision.
+
+================================================================================
+CALCUL DE 🍰🧮🌧 (max vapor fraction)
+================================================================================
+
+Source: static/calculations_h2o.js, ligne 146
+
+Formule:
+  🍰🧮🌧 = P_sat / P_total
+
+Où:
+  P_sat = calculateSaturatedVaporPressure()  [ligne 142]
+  P_total = DATA['🫧']['🎈'] × CONST.STANDARD_ATMOSPHERE_PA  [ligne 143]
+
+🍰🧮🌧 est une FRACTION MOLAIRE (rapport de pressions partielles).
+
+À 288K:
+  P_sat ≈ 1700 Pa
+  P_total ≈ 99000 Pa (0.98 atm × 101325 Pa)
+  🍰🧮🌧 = 1700 / 99000 ≈ 0.017 (1.7%)
+
+Cette valeur est ensuite stockée dans DATA['💧']['🍰🧮🌧'] à la ligne 270.
+
+================================================================================
+CALCUL DE 🍰🫧💧 (fraction massique de vapeur d'eau)
+================================================================================
+
+Source: static/calculations_h2o.js, lignes 175-185
+
+Formule:
+  max_vapor_fraction = P_sat / P_total  (fraction molaire)
+  mass_ratio = M_H2O / M_air  (≈ 0.62)
+  max_vapor_mass_kg = max_vapor_fraction × atm_mass_total × mass_ratio
+  h2o_vapor_mass_kg = min(⚖️💧, max_vapor_mass_kg)
+  🍰🫧💧 = h2o_vapor_mass_kg / atm_mass_total
+
+Simplifié (si assez d'eau):
+  🍰🫧💧 = (P_sat / P_total) × (M_H2O / M_air)
+
+À 288K avec M_air = 0.029 kg/mol:
+  🍰🫧💧 = 0.017 × 0.62 ≈ 0.0105 (1.05%)
+
+Si M_air = 0.018 kg/mol (incorrect):
+  mass_ratio = 0.018 / 0.018 = 1.0
+  🍰🫧💧 = 0.017 × 1.0 = 0.017 (1.7%)
+
+Si M_air est encore plus petit ou non initialisé:
+  mass_ratio peut être > 1.0 ou NaN
+  🍰🫧💧 peut être beaucoup trop élevé (0.03 = 3%)
+
+================================================================================
+CALCUL DE DATA['🫧']['🧪'] (masse molaire de l'air)
+================================================================================
+
+Source: static/calculations_atm.js, fonction calculateMolarMassAir() (ligne 82)
+
+Formule:
+  M_air = Σ(fraction_i × M_i)
+
+Où:
+  fraction_i = DATA['🫧']['🍰🫧❀'] pour chaque gaz (CO2, CH4, O2, N2, H2O)
+  M_i = masse molaire de chaque gaz (CONST.M_CO2, CONST.M_CH4, etc.)
+
+Valeurs typiques:
+  M_CO2 = 0.044 kg/mol
+  M_CH4 = 0.016 kg/mol
+  M_O2 = 0.032 kg/mol
+  M_N2 = 0.028 kg/mol
+  M_H2O = 0.018 kg/mol
+
+Pour l'air sec (sans H2O):
+  M_air ≈ 0.029 kg/mol (78% N2 + 21% O2 + 1% autres)
+
+Pour l'air humide (avec H2O):
+  M_air diminue car M_H2O < M_air_sec
+  M_air ≈ 0.028-0.029 kg/mol selon l'humidité
+
+PROBLÈME: Si calculateMolarMassAir() n'est pas appelé AVANT calculateWaterPartition(),
+alors DATA['🫧']['🧪'] peut être:
+  - Non initialisé (undefined)
+  - Valeur par défaut incorrecte
+  - Valeur de l'époque précédente (si animation)
+
+SOLUTION: S'assurer que calculateMolarMassAir() est appelé AVANT calculateWaterPartition(),
+ou utiliser une valeur par défaut dans calculateWaterPartition() si M_air n'est pas calculé.
+
+================================================================================
+RECOMMANDATIONS
+================================================================================
+
+1. ORDRE D'APPEL CORRIGÉ dans calculateH2OParameters():
+   - getMasses()
+   - calculatePressureAtm()
+   - calculateMolarMassAir()  ⚠️ AVANT calculateWaterPartition()
+   - calculateWaterPartition()  ⚠️ APRÈS calculateMolarMassAir()
+   - calculateH2OGreenhouseForcing()
+   - calculateCloudAlbedoContribution()
+
+2. VÉRIFIER que DATA['🫧']['🧪'] est initialisé correctement avant calculateWaterPartition()
+
+3. OPTIONNEL: Ajouter l'ajustement de L_v dans calculateSaturatedVaporPressure() pour plus de précision
+
+4. VÉRIFIER que calculateH2OParameters() est appelé APRÈS calculateT0() pour avoir la bonne température
+
+================================================================================
+FIN DU FICHIER
+================================================================================
+

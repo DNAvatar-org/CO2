@@ -31,7 +31,7 @@ function waterVaporMixingRatio(z, r0_override = null) {
     const DATA = window.DATA;
     const CONST = window.CONST;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
-    const r0 = r0_override !== null ? r0_override : DATA['🫧']['🍰🫧💧'];
+    const r0 = r0_override !== null ? r0_override : DATA['💧']['🍰🫧💧'];
     const H_H2O = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (CONST.M_H2O * EPOCH['🍎']);
 
     return r0 * Math.exp(-z / H_H2O);
@@ -52,7 +52,7 @@ function waterVaporFractionAtZ(z) {
 
     window.calculateWaterPartition();
     const H_H2O = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (CONST.M_H2O * EPOCH['🍎']);
-    return DATA['🫧']['🍰🫧💧'] * Math.exp(-z / H_H2O);
+    return DATA['💧']['🍰🫧💧'] * Math.exp(-z / H_H2O);
 }
 
 // ============================================================================
@@ -672,8 +672,8 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     const DATA = window.DATA;
     const CONST = window.CONST;
     // Récupérer H2O et CH4 pour le log
-    // 🔒 CORRECTION : Utiliser DATA['🫧']['🍰🫧💧'] comme source unique de vérité
-    const h2o_total = DATA['🫧']['🍰🫧💧'] * 100; // Fraction → %
+    // 🔒 CORRECTION : Utiliser DATA['💧']['🍰🫧💧'] comme source unique de vérité
+    const h2o_total = DATA['💧']['🍰🫧💧'] * 100; // Fraction → %
     const ch4_ppm = options.CH4_fraction * 1e6;
     
     // Log supprimé : affichage uniquement du mode (dichotomie/exponentielle) dans la boucle principale
@@ -1042,7 +1042,7 @@ function simulateRadiativeTransfer() {
     } else {
         // Pour les calculs de référence, pas d'affichage graphique
     }
-
+    
     // 🔒 IMPORTANT : Mettre à jour DATA['🧮']['🧮🌡️'] AVANT le calcul initial aussi !
     DATA['🧮']['🧮🌡️'] = T0_initial;
     
@@ -1790,10 +1790,10 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         : Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
 
     // 🔒 FORCER le recalcul de la glace avant de calculer l'albedo
-    // 🔒 CORRECTION : Utiliser DATA['🫧']['🍰🫧💧'] comme source unique de vérité
+    // 🔒 CORRECTION : Utiliser DATA['💧']['🍰🫧💧'] comme source unique de vérité
     // Si H2O est activé, recalculer h2oIceFractionFromCalculation avec la température finale
     if (h2o_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
-        const h2o_total_percent = DATA['🫧']['🍰🫧💧'] * 100; // Fraction → %
+        const h2o_total_percent = DATA['💧']['🍰🫧💧'] * 100; // Fraction → %
         
         if (h2o_total_percent > 0) {
             // Calculer la répartition vapeur/glace selon la température finale
@@ -1932,10 +1932,10 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     const geo_flux = EPOCH.geothermal_flux || (window.calculateGeothermalFlux ? window.calculateGeothermalFlux(EPOCH.core_temperature, EPOCH.geothermal_diffusion_factor) : null);
     const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
     // 🔒 FORCER le recalcul de la glace avant de calculer l'albedo (mode synchrone)
-    // 🔒 CORRECTION : Utiliser DATA['🫧']['🍰🫧💧'] comme source unique de vérité
+    // 🔒 CORRECTION : Utiliser DATA['💧']['🍰🫧💧'] comme source unique de vérité
     // Si H2O est activé, recalculer h2oIceFractionFromCalculation avec la température finale
     if (h2o_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
-        const h2o_total_percent = DATA['🫧']['🍰🫧💧'] * 100; // Fraction → %
+        const h2o_total_percent = DATA['💧']['🍰🫧💧'] * 100; // Fraction → %
         
         if (h2o_total_percent > 0) {
             // Calculer la répartition vapeur/glace selon la température finale

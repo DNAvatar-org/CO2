@@ -15,15 +15,15 @@ const KEYS = {
     // Configuration de date / Événements
     '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫','🧲🔬'],
     // Date Époque
-    '📅': ['🌡️🧮','📿💫'],
+    '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
     '⚖️': ['⚖️💧', '⚖️🫧', '⚖️🏭', '⚖️⛽', '⚖️🌫', '⚖️💨'],
     // Composition atmosphérique
-    '🫧': ['🎈', '🧪', '📏🫧🧿', '📏🫧🛩', '🍰🫧💧', '🍰🫧🏭', '🍰🫧⛽', '🍰🫧🌫', '🍰🫧💨', '☁️', '🍰🫧📿🌈', '🍰🫧🏭🌈', '🍰🫧💧🌈', '🍰🫧⛽🌈'],
+    '🫧': ['🎈', '🧪', '📏🫧🧿', '📏🫧🛩', '🍰🫧🏭', '🍰🫧⛽', '🍰🫧🌫', '🍰🫧💨', '🍰🫧📿🌈', '🍰🫧🏭🌈', '🍰🫧💧🌈', '🍰🫧⛽🌈', '🍰💭'],
     // Cycle de l'eau
-    '💧': ['🍰💧🧊', '🍰💧🌊', '🍰🧮🌧'],
+    '💧': ['🍰💧🧊', '🍰💧🌊', '🍰🧮🌧', '🍰🫧💧', '🍰🫧☔', '🍰⚖️💦', '💭☔', '⏳☔'],
     // Albédo
-    '🪩': ['🍰🪩📿', '🍰🪩🌋', '🍰🪩🏖', '🍰🪩🌳', '🍰🪩🌊', '🍰🪩🧊', '🍰🪩⛅', '🍰🪩🌍'],
+    '🪩': ['🍰🪩📿', '🍰🪩🌋', '🍰🪩🏖', '🍰🪩🌳', '🍰🪩🌊', '🍰🪩🧊', '🍰🪩⛅', '🍰🪩🌍', '☁️'],
     // Flux radiatif
     '🧲': ['🧲☀️🔽', '🧲🌕🔽', '🧲🌑🔼', '🧲🌈🔼', '🧲🪩🔼', '🔺🧲'],
     // Convergence
@@ -63,14 +63,29 @@ const DESC = {
     '📅': {
         '🌡️🧮': 't° attendue',
         '📿💫': 'Nombre de ticTime',
+        '🔺⏳': 'Durée équilibre précipitation (s)',
+    },
+    '☀️': {
+        '🧲☀️': 'Flux solaire à 1 UA',
+        '🧲☀️🎱': 'Flux moyen sphérique',
+        '🔋☀️': 'Puissance totale du soleil',
+    },
+    '🪩': {
+        '🍰🪩📿': 'Albedo total',
+        '🍰🪩🌋': 'Volcan',
+        '🍰🪩🏖': 'Désert',
+        '🍰🪩🌳': 'Forêt',
+        '🍰🪩🌊': 'Océan',
+        '🍰🪩🧊': 'Glace',
+        '🍰🪩⛅': 'Nuages',
+        '🍰🪩🌍': 'Continents',
     },
     '🫧': {
-        '🎈': '!Pression atmosphérique',
+        '🎈': 'Pression atmosphérique',
         '🧪': '!Masse molaire (kg/mol)',
         '📏🫧🧿': 'Ligne de Kármán',
         '📏🫧🛩': 'Tropopause',
         '🍰🫧❀': 'Prop.Rad.EDS<sub>❀∈{🏭, ⛽, 🌫, 💨}</sub>',
-        '🍰🫧💧': 'Prop.Rad.EDS H₂O atm.',
         '🍰🫧🏭': '!CO₂',
         '🍰🫧⛽': '!CH₄',
         '🍰🫧🌫': '!O₂',
@@ -80,7 +95,7 @@ const DESC = {
         '🍰🫧🏭🌈': '!Capacité radiative IR de CO₂',
         '🍰🫧💧🌈': 'Cap.Rad.IR H₂O atm.',
         '🍰🫧⛽🌈': '!Capacité radiative IR de CH₄',
-        '☁️': '!Index formation nuageuse [0,1]',
+        '🍰💭': 'CCN - Eff.Cond nuageuse [0.3,1.0]',
     },
     '⚖️': {
         '⚖️❀': 'Masse<sub>❀∈{🏭, ⛽, 🌫, 💨}</sub>',
@@ -95,16 +110,12 @@ const DESC = {
         '🍰💧🧊': 'Glace',
         '🍰💧🌊': 'Océan',
         '🍰🧮🌧': 'Fraction de vapeur max',
-    },
-    '🪩': {
-        '🍰🪩📿': 'Albedo total',
-        '🍰🪩🌋': 'Volcan',
-        '🍰🪩🏖': 'Désert',
-        '🍰🪩🌳': 'Forêt',
-        '🍰🪩🌊': 'Océan',
-        '🍰🪩🧊': 'Glace',
-        '🍰🪩⛅': 'Nuages',
-        '🍰🪩🌍': 'Continents',
+        '🍰🫧💧': 'Fraction massique de vapeur',
+        '🍰🫧☔': 'Humidité relative moyenne [0,1]',
+        '☁️': 'Index de formation nuageuse [0,1]',
+        '💭☔': 'Seuil critique précipitations [0.7,0.9]',
+        '⏳☔': '1/dt(vie vapeur excé) (s⁻¹)',
+        '🍰⚖️💦': 'Précipitation critiques (kg/m²/s)',
     },
     '🧲': {
         '🧲☀️🔽': 'Flux solaire absorbé',
@@ -122,11 +133,6 @@ const DESC = {
         '🔬🌈': 'Résolution spectrale (🔺λ)',
         '🔬🫧': 'Résolution atm. (🔺z)',
         '🧮🔄': 'Complexité O(🔬🌈×🔬🫧)',
-    },
-    '☀️': {
-        '🧲☀️': 'Flux solaire à 1 UA',
-        '🧲☀️🎱': 'Flux moyen sphérique',
-        '🔋☀️': 'Puissance totale du soleil',
     },
     '🌕': {
         '🧲🌕': 'Flux géothermique',
@@ -183,34 +189,42 @@ const FORM = {
         '🔋☀️': 'Puissance totale du soleil (W)'
     },
     '🌕': {
-        '🧲🌕': '🔋🌕 / (4π × R²) = Flux géothermique (W/m²), où R = rayon planète (m). Actuellement simplifié : ne tient pas compte de la couverture océanique, température de l\'eau, profondeurs, niveau de la mer. TODO: Affiner avec calculs géologiques (calculations_geology.js ou nouveau fichier)',
+        '🧲🌕': '🔋🌕 / (4π × R²) = Flux géothermique (W/m²), où R = rayon planète (m)',
         '🔋🌕': 'Puissance totale du noyau (W)'
     },
     '🫧': {
-        '🎈': '!Pression atmosphérique',
+        '🎈': '(⚖️🫧 × 🍎) / (4 × π × 📐²) / CONST.STANDARD_ATMOSPHERE_PA [pression hydrostatique] - Pression atmosphérique',
         '🧪': '!Masse molaire (kg/mol)',
-        '📏🫧🧿': 'Ligne de Kármán',
-        '📏🫧🛩': 'Tropopause',
+        '📏🫧🧿': 'H × ln(P₀ / P_limit) où H = RT/(Mg) [von Kármán] - Ligne de Kármán (altitude où P = 0.01 Pa)',
+        '📏🫧🛩': 'RT/(Mg) [équation hydrostatique] - Tropopause (échelle de hauteur atmosphérique)',
         '🍰🫧❀': 'Proportion radiative EDS - ∀ ❀ ∈ {🏭, ⛽, 🌫, 💨}',
-        '🍰🫧💧': 'Proportion radiative EDS de H₂O dans l\'atmosphère',
         '🍰🫧❀🌈': 'Capacité radiative IR de ❀ - ∀ ❀ ∈ {🏭, ⛽, 💧}',
         '🍰🫧📿🌈': 'Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, ⛽, 💧} (pour normalisation)',
-        '☁️': 'clamp(🍰🫧💧🌈 × 🍰🧮🌧 × (📏🫧🛩 / 📏🫧🧿), 0, 1) - Potentiel de condensation nuageuse'
+        '🍰💭': 'clamp(0.4 + 0.6 × (⚖️🌫 / 1.08e18 + ⚖️⛽ / 5.2e12), 0.3, 1.0) - CCN - Eff.Cond nuageuse [0.3,1.0]'
     },
     '💧': {
         '🍰💧🧊': 'Si T < ❄️ alors toute l\'eau restante (après vapeur) est glace, sinon glace polaire (10% à 0°C → 0% à 20°C) - ❄️ = 271.15K - (P-1)×1.0',
         '🍰💧🌊': 'Océan',
-        '🍰🧮🌧': '🎈🌧 / 🎈<br>🎈🌧 = 🎈┴💧 × exp(L_v/R_v × (1/🌡️┴💧 - 1/🧮🌡️)) [Clausius-Clapeyron]<br>🎈┴💧 = 611.2 Pa, 🌡️┴💧 = 273.15 K,<br>L_v = 2.5e6 J/kg (chaleur latente vaporisation H2O), R_v = 461.5 J/(kg·K) = R/M_H2O, 🧮🌡️ = température actuelle'
+        '🍰🧮🌧': '🎈🌧 / 🎈<br>🎈🌧 = 🎈┴💧 × exp(L_v/R_v × (1/🌡️┴💧 - 1/🧮🌡️)) [Clausius-Clapeyron]<br>🎈┴💧 = 611.2 Pa, 🌡️┴💧 = 273.15 K,<br>L_v = 2.5e6 J/kg (chaleur latente vaporisation H2O), R_v = 461.5 J/(kg·K) = R/M_H2O, 🧮🌡️ = température actuelle',
+        '🍰🫧💧': 'max(0, min(🍰🧮🌧 × (CONST.M_H2O / 🧪), ⚖️💧 / ⚖️🫧) - (🍰⚖️💦 × (4 × π × (📐 × 1000)²) × 🔺⏳) / ⚖️🫧) - Fraction massique de vapeur',
+        '🍰🫧☔': 'clamp(🍰🫧💧 / ((CONST.M_H2O / 🧪) × 🍰🧮🌧), 0, 1) [Clausius-Clapeyron] - Humidité relative globale (q / q_sat en fraction massique)',
+        '☁️': '(1 - Math.pow(1 - min(🍰🫧☔, 1), 0.6)) × 🍰💭 - Schéma Sundqvist classique (couverture nuageuse à partir de RH) × (🍰💭) – nuages plus minces = optiquement moins actifs',
+        '💭☔': 'clamp(0.75 + 0.05 × (🧮🌡️ - CONST.EVAPORATION_T_REF) / CONST.EVAPORATION_T_SCALE, 0.7, 0.95) - Seuil critique précipitations [0.7,0.9]',
+        '⏳☔': '5e-4 s⁻¹ - Inverse du temps de vie moyen de la vapeur excédentaire (1/τ_vapeur, où τ_vapeur ≈ 2000 s)',
+        '🍰⚖️💦': 'max(0, (🍰🫧☔ - 💭☔) × 🍰🫧💧 × ⏳☔) × (masse_vapeur_par_m²) - Précipitation critiques (kg/m²/s)'
+    },
+    '📅': {
+        '🔺⏳': '86400 s (1 jour) - Durée équilibre précipitation'
     },
     '🪩': {
-        '🍰🪩📿': 'Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏖,🧊} + contribution_glace + contribution_nuages',
+        '🍰🪩📿': '🍰🪩🌋 × CONST.🪩🍰.🪩🍰🌋 + 🍰🪩🌊 × CONST.🪩🍰.🪩🍰🌊 + 🍰🪩🌳 × CONST.🪩🍰.🪩🍰🌳 + 🍰🪩🏖 × CONST.🪩🍰.🪩🍰🏖 + 🍰🪩🧊 × CONST.🪩🍰.🪩🍰🧊 + 🍰🪩⛅ × CONST.🪩🍰.🪩🍰⛅ + 🍰🪩🌍 × CONST.🪩🍰.🪩🍰🌍',
         '🍰🪩🌋': 'volcano_coverage = f(T, flux_geo) : Hadéen=1.0, sinon min(1.0, flux_geo/10000)',
-        '🍰🪩🌊': 'ocean_coverage = (ocean_volume_m3 / (📏🌊 × 1000)) × 🐚 / (4π × 📐²) où ocean_volume_m3 = (⚖️💧 × 🍰💧🌊) / 1000',
-        '🍰🪩🌳': 'forest_coverage = L × clamp((H - 0.5) / 0.7, 0, 1) où H = indice d\'humidité climatique, L = terre libre de glace. Forêts apparaissent si H > 0.5',
-        '🍰🪩🏖': 'desert_coverage = L × clamp((0.6 - H) / 0.6, 0, 1) où H = indice d\'humidité climatique. Déserts apparaissent si H < 0.6 (zones arides, albedo ~0.30)',
+        '🍰🪩🌊': '(🍰💧🌊 × ⚖️💧 / CONST.RHO_WATER) / (📏🌊 × 1000) / (4 × π × (📐 × 1000)²)',
+        '🍰🪩🌳': 'min(🍰🪩🌍_, 🗻.🍰🗻🌍 × clamp((🧮🌡️_C - 0)/30, 0, 1) × clamp((🍰🫧☔ - 0.5)/0.3, 0, 1) × clamp((1 - ☁️), 0, 1) × 0.6) où 🍰🪩🌍_ = 1 - 🍰🗻🌊 - 🍰🪩🧊 - Forêts dépendent de température (optimum 0-30°C), humidité relative (RH > 0.5-0.8) et nuages (moins de forêts si trop de nuages)',
+        '🍰🪩🏖': '🍰🪩🌍_ × (base_aridité + variabilité_régionale) où base_aridité = max(0, 1 - min(1, P_ann/1000)) × max(0, 1 - min(1, 🍰🫧☔/0.6)) et variabilité_régionale = 0.6 × max(0.5, min(1, (🧮🌡️_C-5)/10)) × max(0.5, 1-🍰🫧☔×0.6) - Déserts basés sur précipitations (P_ann < 1000 mm/an) et humidité relative (RH < 0.6) avec variabilité régionale',
         '🍰🪩🌍': 'land_coverage = L - 🍰🪩🌳 - 🍰🪩🏖 où L = terre libre de glace. Absorbe automatiquement : steppes, prairies, toundras, montagnes (albedo ~0.18)',
-        '🍰🪩🧊': 'ice_coverage = min(0.9, 🍰💧🧊 × 0.9)',
-        '🍰🪩⛅': 'cloud_coverage = C_max × η_cloud × ☁️ où C_max = 0.65 (plafond physique), η_cloud = 0.40 (efficacité optique), ☁️ = CloudFormationIndex. Fraction optique moyenne vue par le Soleil, pas proportion de surface au sol.',
+        '🍰🪩🧊': 'min(🗻.🍰🗻🏔, 0.46 × (T_no_ice_K - 🧮🌡️) / CONST.T_NO_POLAR_ICE_C) où T_no_ice_K = CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS - Glace polaire basée sur température (10% à 15°C, 0% si T > 20°C)',
+        '🍰🪩⛅': '0.20 + 0.15 × ☁️ × 🍰💭',
         '_contribution_glace': 'contribution_glace = (🪩🍰🧊 - albedo_base) × 🍰💧🧊 × 0.5',
         '_contribution_nuages': 'contribution_nuages = albedo × (1 - 🍰🪩⛅) + 🪩🍰⛅ × 🍰🪩⛅'
     },
@@ -256,8 +270,8 @@ for (const categoryKey in KEYS) {
             DATA[categoryKey][fullKey] = '';  // String (phase)
         } else if (fullKey.includes('☯')) {
             DATA[categoryKey][fullKey] = 0;  // Number (signe/direction)
-        } else if (fullKey.includes('🔺🧲🌕💫')) {
-            DATA[categoryKey][fullKey] = null;  // Object (delta flux géothermique ticTime)
+        } else if (fullKey === '🔺🧲🌕💫') {
+            DATA[categoryKey][fullKey] = { '▶': 0, '◀': 0 };  // Object (delta flux géothermique ticTime)
         } else {
             DATA[categoryKey][fullKey] = 0.0;  // Numbers
         }
@@ -298,25 +312,24 @@ function createDicoHtml() {
             name: 'Date Époque'
         },
         {
-            logo: '🫧',
-            name: 'Atmosphère'
+            logo: '🌕',
+            name: 'Noyau'
         },
-        
         {
             logo: '☀️',
             name: 'Soleil'
         },
         {
-            logo: '🌕',
-            name: 'Noyau'
+            logo: '🪩',
+            name: 'Albédo'
         },
         {
             logo: '⚖️',
             name: 'Masses'
         },
         {
-            logo: '🪩',
-            name: 'Albédo'
+            logo: '🫧',
+            name: 'Atmosphère'
         },
         {
             logo: '💧',
@@ -359,11 +372,11 @@ function createDicoHtml() {
     
     // Organiser en colonnes (répartir les 11 catégories en 5 colonnes)
     // Répartition équilibrée : 3, 2, 2, 2, 2 (total = 11)
-    const col1 = categoryHTMLs.slice(0, 2).join('');
-    const col2 = categoryHTMLs.slice(2, 4).join('');
-    const col3 = categoryHTMLs.slice(4, 7).join('');
-    const col4 = categoryHTMLs.slice(7, 9).join('');
-    const col5 = categoryHTMLs.slice(9, 11).join('');
+    const col1 = categoryHTMLs.slice(0, 3).join('');
+    const col2 = categoryHTMLs.slice(3, 6).join('');
+    const col3 = categoryHTMLs.slice(6, 8).join('');
+    const col4 = categoryHTMLs.slice(8, 10).join('');
+    const col5 = categoryHTMLs.slice(10, 11).join('');
     
     return `
         <div class="legend-grid">

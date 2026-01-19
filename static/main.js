@@ -1607,7 +1607,7 @@ window.updateDisplay = function updateDisplay(data) {
                         window.DATA['🧮']['🌡️'] = data.temp_surface;
                         window.calculateWaterPartition();
                         const waterPartition = {
-                            vapor_fraction: window.DATA['🫧']['🍰🫧💧'],
+                            vapor_fraction: window.DATA['💧']['🍰🫧💧'],
                             ice_fraction: window.DATA['💧']['🍰💧🧊'],
                             liquid_fraction: window.DATA['💧']['🍰💧🌊']
                         };
@@ -1621,7 +1621,7 @@ window.updateDisplay = function updateDisplay(data) {
                         window.DATA['🧮']['🌡️'] = data.temp_surface;
                         window.calculateWaterPartition();
                         const waterPartition = {
-                            vapor_fraction: window.DATA['🫧']['🍰🫧💧'],
+                            vapor_fraction: window.DATA['💧']['🍰🫧💧'],
                             ice_fraction: window.DATA['💧']['🍰💧🧊'],
                             liquid_fraction: window.DATA['💧']['🍰💧🌊']
                         };

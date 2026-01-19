@@ -90,9 +90,23 @@ CONST['🪩🍰'] = {
 };
 
 // Constantes pour le calcul de l'index de formation nuageuse (☁️)
-// ☁️ = clamp((🍰🫧💧 / H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + ALPHA_OCEAN × 🍰🪩🌊), 0, 1)
-CONST.H2O_VAPOR_REF = 0.4;  // 🍰🫧💧_ref = 0.4 (Terre tempérée, référence pour ratio vapeur)
+// ☁️ = clamp((🍰🫧💧 / H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + ALPHA_OCEAN × 🍰🪩🌊) × SCALE_CLOUD, 0, 1)
+// 🔒 CORRECTION : H2O_VAPOR_REF = 0.01 (1%)
+// Sur Terre moderne : 🍰🫧💧 ≈ 0.011 (1.1%), vapor_ratio ≈ 1.1, T_factor ≈ 0.77, ocean_effect ≈ 1.21
+// Produit = 1.1 × 0.77 × 1.21 ≈ 1.0 → trop élevé, besoin d'un facteur d'échelle
+// Pour obtenir ☁️ ≈ 0.4 : SCALE_CLOUD ≈ 0.4
+CONST.H2O_VAPOR_REF = 0.01;  // 🍰🫧💧_ref = 0.01 (1%, Terre tempérée, référence pour ratio vapeur)
 CONST.ALPHA_OCEAN = 0.3;    // α = 0.3 (effet océan / convection sur formation nuageuse)
+CONST.SCALE_CLOUD = 0.4;    // Facteur d'échelle pour ajuster ☁️ dans la plage 0.3-0.5
+
+// Constantes pour les précipitations
+CONST.PRECIP_BASE_RATE = 5e-6;  // Taux de base de précipitation (s⁻¹)
+CONST.PRECIP_PRESSURE_SCALE = 5e-6;  // Facteur d'échelle pression pour précipitations
+CONST.PRECIP_CLOUD_SCALE = 1e-6;  // Facteur d'échelle nuages pour précipitations
+
+// Constantes de référence pour les masses
+CONST.O2_REF_MASS = 1e18;  // Masse de référence pour O₂ (kg)
+CONST.CH4_REF_MASS = 1e13;  // Masse de référence pour CH₄ (kg)
 
 // NOTE : C_MAX_CLOUD et ETA_CLOUD ne sont PAS des constantes universelles
 // Elles dépendent de la pression atmosphérique, composition, gravité, température
