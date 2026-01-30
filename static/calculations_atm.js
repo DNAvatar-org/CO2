@@ -31,26 +31,31 @@ function calculateAtmosphereProperties() {
     const is_massive = DATA['⚖️']['⚖️🫧'] > 2.5e19;
     
     // Calcul de z_max basé sur la pression au sol P0
-    // Convertir le rayon de km en mètres pour les calculs
     const planet_radius_m = DATA['📅']['📐'] * 1000;
     const surface_area = 4 * Math.PI * Math.pow(planet_radius_m, 2);
-    const P0 = DATA['⚖️']['⚖️🫧'] * DATA['📅']['🍎'] / surface_area;
+    const atm_mass = (DATA['⚖️'] && DATA['⚖️']['⚖️🫧']) ? DATA['⚖️']['⚖️🫧'] : 0;
+    const P0 = atm_mass * DATA['📅']['🍎'] / surface_area;
     const P_limit = 0.01;
-    
+
+    // Tout à 0 (pas d'atmosphère) → une seule couche très fine, calcul en une passe (corps noir, 🧲🌈🔼 = σT⁴)
+    if (atm_mass <= 0 || P0 <= 0) {
+        return { z_max: 1e-6, scale_height: 0, is_massive: false };
+    }
+
     // Éviter NaN si scale_height = 0 ou P0 invalide
     let z_max_theoretical = 0;
     if (scale_height > 0 && P0 > 0) {
         z_max_theoretical = scale_height * Math.log(Math.max(P0, 1e-5) / P_limit);
         z_max_theoretical = Math.max(0, z_max_theoretical);
     }
-    
+
     let z_max = z_max_theoretical;
     if (P0 > 100) {
         z_max = Math.max(120000, z_max_theoretical);
     } else {
-        z_max = Math.max(1, z_max_theoretical); 
+        z_max = Math.max(1, z_max_theoretical);
     }
-    
+
     if (is_massive && z_max < 300000) {
         z_max = 300000;
     }
@@ -61,7 +66,6 @@ function calculateAtmosphereProperties() {
         z_max = Math.ceil(z_max);
     }
 
-    // Éviter NaN final
     if (!isFinite(z_max) || isNaN(z_max)) {
         z_max = 0;
     }
@@ -82,7 +86,9 @@ function calculateAtmosphereProperties() {
 function calculateMolarMassAir() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    
+    const _fmt = (typeof window !== 'undefined' && window.stringifyScientificForLog) ? window.stringifyScientificForLog : JSON.stringify;
+    const _f = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x;
+    const debugIn = window.DEBUG_DATA_IO ? { '🍰🫧🏭': DATA['🫧']['🍰🫧🏭'], '🍰🫧⛽': DATA['🫧']['🍰🫧⛽'], '🍰🫧🌫': DATA['🫧']['🍰🫧🌫'], '🍰🫧💨': DATA['🫧']['🍰🫧💨'], '🍰🫧💧': DATA['💧']['🍰🫧💧'] } : null;
     // 🔒 UTILISER LES FRACTIONS ACTUELLES (après renormalisation avec H2O), pas les masses de l'époque
     // Les fractions sont déjà normalisées : 🍰🫧🏭 + 🍰🫧⛽ + 🍰🫧🌫 + 🍰🫧💨 + 🍰🫧💧 = 1.0
     const frac_CO2 = DATA['🫧']['🍰🫧🏭'] || 0;
@@ -101,7 +107,7 @@ function calculateMolarMassAir() {
     
     // Si pas d'atmosphère, utiliser la valeur de référence
     DATA['🫧']['🧪'] = M_air > 0 ? M_air : CONST.molar_mass_air_ref;
-    
+    if (window.DEBUG_DATA_IO && debugIn !== null) console.log(`🫧 [calculateMolarMassAir] in=${_fmt(debugIn)} out=🧪=${_f(DATA['🫧']['🧪'])}`);
     return true;
 }
 
@@ -122,6 +128,10 @@ function calculatePressureAtm() {
     // Éviter NaN si surface_area = 0 ou si pressure_pa est invalide
     DATA['🫧']['🎈'] = (surface_area > 0 && isFinite(pressure_pa) && pressure_pa > 0) ? pressure_pa / CONST.STANDARD_ATMOSPHERE_PA : 0;
     
+    if (window.DEBUG_DATA_IO) {
+        const _fp = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x;
+        console.log(`🫧 [calculatePressureAtm] in=📐=${_fp(EPOCH['📐'])}, ⚖️🫧=${_fp(atm_mass)}, 🍎=${_fp(gravity)} out=🎈=${_fp(DATA['🫧']['🎈'])}`);
+    }
     return true;
 }
 
@@ -131,9 +141,9 @@ function calculatePressureAtm() {
 
 //Calcule la composition atmosphérique depuis DATA (met à jour DATA['🫧'])
 function calculateAtmosphereComposition() {
-    // Log désactivé pour réduire la taille
     const DATA = window.DATA;
-    
+    const _fmtAtm = (typeof window !== 'undefined' && window.stringifyScientificForLog) ? window.stringifyScientificForLog : JSON.stringify;
+    const debugIn = window.DEBUG_DATA_IO ? { '⚖️🫧': DATA['⚖️']['⚖️🫧'], '⚖️🏭': DATA['⚖️']['⚖️🏭'], '⚖️⛽': DATA['⚖️']['⚖️⛽'], '⚖️🌫': DATA['⚖️']['⚖️🌫'], '⚖️💨': DATA['⚖️']['⚖️💨'] } : null;
     // 🔒 CORRECTION : Les fractions sont calculées par rapport à ⚖️🫧 (masse atmosphérique totale)
     // ⚖️🫧 = ⚖️🏭 + ⚖️⛽ + ⚖️🌫 + ⚖️💨 (air sec, sans vapeur d'eau pour l'instant)
     // La vapeur d'eau sera ajoutée après dans calculateWaterPartition()
@@ -186,7 +196,10 @@ function calculateAtmosphereComposition() {
     DATA['🫧']['📏🫧🧿'] = altitude / 1000;  // Altitude max en km
     DATA['🫧']['📏🫧🛩'] = tropopause / 1000;  // Tropopause en km
     
-    // Retourner true car DATA a été modifié
+    if (window.DEBUG_DATA_IO && debugIn !== null) {
+        const out = { '🍰🫧🏭': DATA['🫧']['🍰🫧🏭'], '🍰🫧⛽': DATA['🫧']['🍰🫧⛽'], '🍰🫧🌫': DATA['🫧']['🍰🫧🌫'], '🍰🫧💨': DATA['🫧']['🍰🫧💨'], '📏🫧🧿': DATA['🫧']['📏🫧🧿'], '📏🫧🛩': DATA['🫧']['📏🫧🛩'] };
+        console.log(`🫧 [calculateAtmosphereComposition] in=${_fmtAtm(debugIn)} out=${_fmtAtm(out)}`);
+    }
     return true;
 }
 
@@ -198,6 +211,8 @@ function calculateTropopauseHeight() {
     const DATA = window.DATA;
     const CONST = window.CONST;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    const atm_mass = (DATA['⚖️'] && DATA['⚖️']['⚖️🫧']) ? DATA['⚖️']['⚖️🫧'] : 0;
+    if (atm_mass <= 0) return 0;
     return (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (DATA['🫧']['🧪'] * EPOCH['🍎']);
 }
 
