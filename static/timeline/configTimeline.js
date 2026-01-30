@@ -18,7 +18,7 @@ const timeline = [
         '▶': 5.0e9, // Départ
         '◀': 4.5e9, // Fin
         '🌡️🧮': 255,
-        '🧲🔬': 0.1,
+        '🧲🔬': 0.01,
         '🔋☀️': 2.6796e26, // Puissance totale du soleil (W) - 70% de 3.828e26 W
         '🔋🌕': 0, // core_temperature (Pas de noyau en K)
         '🍰🧲🌕': 0.0, // geothermal_diffusion_factor (Facteur de diffusion du noyau vers la surface 0-1)
@@ -59,15 +59,15 @@ const timeline = [
         }
     },
     {
-        '📅': '🔥', // Hadéen
+        '📅': '🔥', // Hadéen — début, juste après impact formant la Lune (ordre 100–1000 ans)
         '▶': 4.5e9,
         '◀': 4.0e9,
         '🌡️🧮': 2450,
-        '🧲🔬': 1,
+        '🧲🔬': 1.7,//596,
         '🔋☀️': 2.871e26, // Puissance totale du soleil (W) - 75% de 3.828e26 W
         '🔋🌕': 1.23e21, // core_power_watts (Puissance géothermique totale calculée depuis 🧲🌕 = 2 MW/m² et R = 7008.1 km)
-        // Flux géothermique colossal (2 000 000 W/m²) pour maintenir la surface en fusion (~2400K)
-        // Correspond à la phase immédiate post-impact (océan de magma rayonnant)
+        // Flux géothermique colossal (2 MW/m²) pour maintenir la surface en fusion (~2400K)
+        // Phase immédiate post-impact (océan de magma rayonnant) ; le temps peut avancer dans la simu
         '🧲🌕': 2000000, // geothermal_flux (W/m²) - hardcodé pour cette époque
         '📐': 7008.1, // Rayon de la planète en km
         '🍎': 10.3, // Gravité en m/s²
@@ -91,12 +91,14 @@ const timeline = [
         magma_coverage: 1.0, // Spécifique Hadéen - TODO: trouver logo combo
         volcanoFactor: 10.0, // Spécifique Hadéen - TODO: trouver logo combo
         // Événements interactifs
+        // Hadéen dure 500 Ma (▶ 4.5 Ga → ◀ 4.0 Ga). Courbes : T° = 🌡️🧮 + 🔺🌡️💫×tic ; 🧲🌕 = ▶→◀ ; gaz fixes.
         '🕰': {
             '💫': {
-                '🔺🌡️💫': -300, // deltaTemp (Refroidissement par ticTime en K)
+                '🔺⏳': 50,       // durée d'un tic en Ma (500 Ma / 10 tics ≈ 50 Ma/tic)
+                '🔺🌡️💫': -300, // delta T° par tic (K) — refroidissement linéaire
                 '🔺🧲🌕💫': {
-                    '▶': 2000000, // start (2 MW/m² au début)
-                    '◀': 0.3 // end (~0.3 W/m² à la fin)
+                    '▶': 2000000, // flux géothermique début (W/m²)
+                    '◀': 0.3     // flux géothermique fin (W/m²) — interpolation selon tic
                 }
             },
             '☄️': {
@@ -351,4 +353,9 @@ const timeline = [
 
 window.TIMELINE = timeline;
 
+// Paramètres de calcul (convergence radiatif)
+window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
+window.CONFIG_COMPUTE.maxRadiatifIters = 41;
+// Plafond T en Search (K). 2373 = lave complète (~2100°C), réaliste pour surface (au-delà = vaporisation). null = pas de plafond (test).
+window.CONFIG_COMPUTE.maxSearchT_K = null;
 

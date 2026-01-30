@@ -31,7 +31,8 @@
 //Calcule T0 initial :: (🎬) => T0=prev_T0 : T0=🌡️, puis T0 += ☄️*🌡️☄️ + 💫*🌡️💫
 function calculateT0() {
     const DATA = window.DATA;
-    
+    const CONST = window.CONST;
+
     // Calculer T0 initial : si animation activée, garder T0 actuel (pas de config)
     if (DATA['🔘']['🔘🎬']) {
         // Animation activée : T0 ne change pas (garde la température actuelle)
@@ -59,14 +60,15 @@ function calculateT0() {
     DATA['🧲']['🧲🌈🔼'] = 0;
     DATA['🧲']['🧲🪩🔼'] = 0;
     DATA['🧲']['🔺🧲'] = 0;
-    DATA['🧮']['🧲🔬'] = EPOCH['🧲🔬'];
-    
+
     // IMPORTANT: On met toujours à jour DATA['🧮']['🧮🌡️'] avec la valeur calculée
     // Si animation activée (🔘🎬 = true) : T0_base a été lu depuis DATA['🧮']['🧮🌡️'] (ligne 43)
     // Si animation désactivée (🔘🎬 = false) : T0 = DATA['📅']['🌡️🧮'] + adjustment (ligne 47)
     // On doit mettre à jour DATA['🧮']['🧮🌡️'] pour que la convergence utilise cette nouvelle valeur
     // Pour la convergence, c'est TOUJOURS DATA['🧮']['🧮🌡️'] qui est utilisé
     DATA['🧮']['🧮🌡️'] = DATA['🧮']['🧮🌡️🚩'];
+    // Tolérance flux (W/m²) = 4σT³ × precision_K (EPOCH['🧲🔬'] en K) — pas une valeur fixe 1 W/m²
+    DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * (EPOCH['🧲🔬'] ?? 0.1);
     
     // Logs désactivés pour réduire la taille
     // console.log(`🌡️ T0 [calculateT0@calculations_flux.js]`);
@@ -85,57 +87,348 @@ function newDate() {
 // Fonction supprimée : getGasValuesFromConfig() n'était pas utilisée
 // Les valeurs sont directement dans DATA['🫧'] après calculateAtmosphereComposition()
 
-function computeRadiativeTransfer() {
+// ============================================================================
+// initForConfig — Config sans aucun calcul radiatif (affichée dès le debug)
+// ============================================================================
+function initForConfig() {
+    if (window.ABORT_COMPUTE) return false;
     const DATA = window.DATA;
-    // Récupérer l'époque directement depuis TIMELINE avec l'index depuis DATA
-    const epochIndex = DATA['📜']['👉'];
-    const EPOCH = window.TIMELINE[epochIndex];
-    
-    // 0. Calculer les valeurs du soleil et du noyau
     window.getSoleil();
     window.getNoyau();
     getEpochDateConfig();
-    
-    // 🎥:true prev_T0:180.00K (-93.1°C) 🌡️:255.00K (-18.1°C), ☄️:0, 🌡️☄️:-3.5K, 💫:0, 🌡️💫:0K
-    if (!calculateT0()) return Promise.reject(new Error('T0 invalide'));
-    
-    // 🔒 CONST doit être défini (crash si manquant)
-    const CONST = window.CONST;
-    // Logs désactivés pour réduire la taille
+    if (!calculateT0()) return false;
     window.calculateAtmosphereComposition();
-    
-    // Logs désactivés pour réduire la taille
-    // console.log(`🌍 [calculateAtmosphereComposition@calculations_atm.js]`);
-    // console.log(`atm=${JSON.stringify(DATA['🫧'], null, 2)}`);
-    
-    // 🔒 ÉTAPE 0 : Calculer les surfaces géologiques (fixes, déterminées par la géologie)
-    // DOIT être appelé AVANT calculateH2OParameters() et calculateAlbedo()
-    if (window.calculateGeologySurfaces) {
-        window.calculateGeologySurfaces();
-    }
-    
-    // 3. Calculer les paramètres H2O (vapeur, glace, nuages) avec T0 initial
-    // IMPORTANT: Ces valeurs sont calculées avec la température ACTUELLE (qui peut venir de l'époque précédente si animation)
-    // Note: h2oTotalFromMeteorites dépend de la température et peut rester de la glace,
-        // donc on utilise uniquement DATA['💧']['🍰🫧💧'] qui est déjà calculé
-    // 🔒 NOUVEAU : calculateH2OParameters() utilise maintenant les surfaces géologiques
+    if (window.calculateGeologySurfaces) window.calculateGeologySurfaces();
+    // Partition eau une fois avec T0 de la config (cache invalidé pour forcer le recalcul)
+    window._lastH2OParamsCache = null;
     window.calculateH2OParameters();
+    window.getEnabledStates && window.getEnabledStates();
+    window.calculateAlbedo();
+    return true;
+}
+
+// ============================================================================
+// cycleDeLeau — Cycle eau (h2o, précip, albedo, nuages). Retourne Promise<{ changed }>.
+// isFirst: true = après config, on pousse le premier cycle dans Convergence.
+// Async + yields pour que le bouton Stop soit cliquable pendant les calculs.
+// ============================================================================
+const CYCLE_TOL_ALBEDO = 1e-4;
+const CYCLE_TOL_VAPOR = 1e-6;
+// Pas minimum en Search quand |Δ| grand : évite pas ≈ Δ/(4σT³) trop petit (ex. 0.3 K à 3000 K) → jamais Dicho
+const MIN_SEARCH_STEP_K = 30;
+// Pas maximum en Search : avec atmosphère opaque, flux_out ne suit pas σT⁴ → plafonner pour éviter overshoot
+const MAX_SEARCH_STEP_K = 100;
+// Quand |Δ| >> tolérance (ex. Hadéen), pas proportionnel à Δ pour atteindre l'équilibre et passer en Dicho
+const MAX_SEARCH_STEP_LARGE_K = 500;   // plafond absolu du pas (K)
+const LARGE_DELTA_FACTOR = 10;         // si |Δ| > LARGE_DELTA_FACTOR * tolérance → scale le pas
+const SEARCH_STEP_SCALE_MAX = 200;     // facteur max : pas = (Δ/sensitivity) * min(SEARCH_STEP_SCALE_MAX, |Δ|/tolérance)
+
+async function cycleDeLeau(outerIter, isFirst) {
+    await new Promise(r => setTimeout(r, 0));
+    if (window.ABORT_COMPUTE) return { changed: false };
+    const DATA = window.DATA;
+    window.calculateH2OParameters();
+    await new Promise(r => setTimeout(r, 0));
+    if (window.ABORT_COMPUTE) return { changed: false };
+    window.getEnabledStates && window.getEnabledStates();
+    if (typeof window.calculatePrecipitationFeedback === 'function') window.calculatePrecipitationFeedback();
+    window.calculateAlbedo();
+    await new Promise(r => setTimeout(r, 0));
+    if (window.ABORT_COMPUTE) return { changed: false };
+    if (typeof window.calculateCloudFormationIndex === 'function') window.calculateCloudFormationIndex();
+
+    const albedo = (DATA['🪩'] && DATA['🪩']['🍰🪩📿']) != null ? DATA['🪩']['🍰🪩📿'] : 0;
+    const vapor = (DATA['💧'] && DATA['💧']['🍰🫧💧']) != null ? DATA['💧']['🍰🫧💧'] : 0;
+
+    if (isFirst) {
+        if (!DATA['🧮']['previous']) DATA['🧮']['previous'] = [];
+        DATA['🧮']['previous'].push({
+            outerIter,
+            innerIter: null,
+            phase: 'CycleEau',
+            data_snapshot: {
+                '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
+                '💧': JSON.parse(JSON.stringify(DATA['💧'])),
+                '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
+            }
+        });
+        window._lastCycleRef = { albedo, vapor };
+        return { changed: false };
+    }
+
+    // Régime T hors bande liquide (gel / vapeur pure) → un seul passage radiatif, pas de boucle cycle eau
+    if (typeof window.getWaterCycleTempBoundsFromPressure === 'function') {
+        const P_atm = (DATA['🫧'] && DATA['🫧']['🎈']) || 1;
+        const { T_low_K, T_high_K } = window.getWaterCycleTempBoundsFromPressure(P_atm);
+        const T_K = DATA['🧮']['🧮🌡️'];
+        if (T_K < T_low_K || T_K > T_high_K) {
+            window._lastCycleRef = { albedo, vapor };
+            return { changed: false };
+        }
+    }
+    const ref = window._lastCycleRef || { albedo: 0, vapor: 0 };
+    const changed = (Math.abs(albedo - ref.albedo) > CYCLE_TOL_ALBEDO) || (Math.abs(vapor - ref.vapor) > CYCLE_TOL_VAPOR);
+    window._lastCycleRef = { albedo, vapor };
+    return { changed };
+}
+
+// ============================================================================
+// computeRadiativeTransfer(outerIter, waterPass) — Radiatif seul (0..20) si (outerIter, waterPass) fournis.
+// À appeler après initForConfig() et cycleDeLeau(outerIter, true).
+// Après retour, l'orchestrateur fait cycleDeLeau(outerIter, false); si changed → rappeler avec waterPass+1.
+// Sans args : ancien flux complet (legacy).
+// ============================================================================
+function computeRadiativeTransfer(outerIter, waterPass) {
+    if (typeof outerIter === 'number' && typeof waterPass === 'number') {
+        return runRadiatifOnly(outerIter, waterPass);
+    }
+    return computeRadiativeTransferLegacy();
+}
+
+async function runRadiatifOnly(outerIter, waterPass) {
+    await new Promise(r => setTimeout(r, 0));
+    if (window.ABORT_COMPUTE) return null;
+    const DATA = window.DATA;
+    const epochIndex = DATA['📜']['👉'];
+    const EPOCH = window.TIMELINE[epochIndex];
+    const CONST = window.CONST;
+    if (!DATA['🧮']['previous']) DATA['🧮']['previous'] = [];
+
+    if (window.DEBUG_DATA_IO) {
+        const _e = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x;
+        const alb = (DATA['🪩'] && DATA['🪩']['🍰🪩📿']) != null ? DATA['🪩']['🍰🪩📿'] : '-';
+        console.log(`🧲 [runRadiatifOnly] in outerIter=${outerIter} waterPass=${waterPass} T=${_e(DATA['🧮']['🧮🌡️'])} albedo=${typeof alb === 'number' ? _e(alb) : alb}`);
+    }
+    const geothermal_flux_init = DATA['🌕']['🧲🌕'];
+    const solar_flux_incident_init = DATA['☀️']['🧲☀️🎱'];
+    const albedo_init_value = (DATA['🪩'] && DATA['🪩']['🍰🪩📿']) != null ? DATA['🪩']['🍰🪩📿'] : 0;
+    const flux_solaire_absorbe_init = solar_flux_incident_init * (1 - albedo_init_value);
+    const flux_entrant_init = flux_solaire_absorbe_init + geothermal_flux_init;
+
+    if (!window.calculateFluxForT0()) return Promise.reject(new Error('calculateFluxForT0() a échoué'));
+    const spectral_result_init = window.getSpectralResultFromDATA();
+    if (window.calculateRadiativeCapacities) window.calculateRadiativeCapacities();
+    // Équilibre radiatif (sommet de l'atmosphère) :
+    // - flux_entrant = solaire absorbé + géothermique (ce que la planète reçoit).
+    // - flux_sortant_effectif = intégrale du spectre d'émission réel au sommet = aire sous la courbe "réelle"
+    //   (ce qui s'échappe vers l'espace ; 🧲🌈🔼 = total_flux du transfert radiatif).
+    // - À l'équilibre : flux_entrant = flux_sortant_effectif ⇒ Δ = 0.
+    // La surface émet σT⁴ (corps noir à T) ; l'atmosphère absorbe une partie → ce qui sort au sommet
+    // (aire sous la courbe réelle) est < σT⁴. Donc "aire courbe Planck T" ≠ "aire courbe réelle" en général ;
+    // le delta est bien (flux_entrant − aire courbe réelle), pas la différence entre deux aires spectrales.
+    const flux_sortant_surface_init = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 4);
+    let flux_sortant_effectif_init = spectral_result_init.total_flux;
+    if (!Number.isFinite(flux_sortant_effectif_init) || flux_sortant_effectif_init <= 0) {
+        flux_sortant_effectif_init = flux_sortant_surface_init;
+    }
+    const delta_equilibre_init = flux_entrant_init - flux_sortant_effectif_init;
+
+    DATA['🧮']['🔬🌈'] = spectral_result_init.lambda_range ? spectral_result_init.lambda_range.length : 0;
+    DATA['🧮']['🔬🫧'] = spectral_result_init.z_range ? spectral_result_init.z_range.length : 0;
+    DATA['🧲']['🧲☀️🔽'] = flux_solaire_absorbe_init;
+    DATA['🧲']['🧲🌕🔽'] = geothermal_flux_init;
+    DATA['🧲']['🧲🌑🔼'] = flux_sortant_surface_init;
+    DATA['🧲']['🧲🌈🔼'] = flux_sortant_effectif_init;
+    DATA['🧲']['🧲🪩🔼'] = solar_flux_incident_init * albedo_init_value;
+    DATA['🧲']['🔺🧲'] = delta_equilibre_init;
+    // Tolérance flux (W/m²) = 4σT³ × precision_K — à 2500K avec 1K : ~6e6 W/m² (pas 1)
+    DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * (EPOCH['🧲🔬'] ?? 0.1);
+
+    DATA['🧮']['🧮☯'] = Math.sign(delta_equilibre_init);
+    DATA['🧮']['🧮⚧'] = 'Search';
+    DATA['🧮']['🧮🔄☀️'] = 0;
+    DATA['🧮']['🧮🌡️🔽'] = DATA['🧮']['🧮🌡️'] - 50;
+    DATA['🧮']['🧮🌡️🔼'] = DATA['🧮']['🧮🌡️'] + 50;
+    DATA['🧮']['🧮🌡️⏮'] = DATA['🧮']['🧮🌡️'];
+    DATA['🧮']['🧲🔺⏮'] = delta_equilibre_init;
+    const T_K = DATA['🧮']['🧮🌡️'];
+    DATA['🧮']['🔬🌈_target'] = (T_K > 2000) ? 50 : 1000; // Régime T élevé : résolution réduite (éviter OOM)
+    DATA['📅']['🔺⏳'] = 86400 * 10;
+
+    // Snapshot Init (calcul radiatif -1) : {T°, Albedo} => Δ => phase => ☯
+    const init_T_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+    DATA['🧮']['previous'].push({
+        outerIter,
+        innerIter: -1,
+        waterPass,
+        phase: 'Init',
+        temperature_K: DATA['🧮']['🧮🌡️'],
+        temperature_C: init_T_C,
+        delta_equilibre: delta_equilibre_init,
+        albedo: albedo_init_value,
+        yinYang: Math.sign(delta_equilibre_init),
+        data_snapshot: {
+            '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
+            '🧲': JSON.parse(JSON.stringify(DATA['🧲']))
+        }
+    });
+
+    if (window.DEBUG_DATA_IO) {
+        const _e = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x;
+        console.log(`🧲 [runRadiatifOnly] init out 🔺🧲=${_e(delta_equilibre_init)} 🧮🌡️=${_e(DATA['🧮']['🧮🌡️'])} 🧲☀️🔽=${_e(flux_solaire_absorbe_init)} 🧲🌈🔼=${_e(flux_sortant_effectif_init)}`);
+    }
+    try { if (typeof window.displayConvergence === 'function') window.displayConvergence(); } catch (e) { if (typeof console !== 'undefined') console.warn('displayConvergence:', e); }
+    await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console afficher Init
+
+    const maxInnerIters = (CONST.maxRadiatifIters != null) ? CONST.maxRadiatifIters : 21;
+    let innerConverged = false;
+    while (DATA['🧮']['🧮🔄☀️'] < maxInnerIters && !innerConverged) {
+        await new Promise(r => setTimeout(r, 0)); // Laisser le clic Stop être traité
+        if (window.ABORT_COMPUTE) return null;
+        DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * (EPOCH['🧲🔬'] ?? 0.1);
+        window.calculateH2OParameters();
+        window.getEnabledStates && window.getEnabledStates();
+        window.calculateAlbedo();
+        window.calculateFluxForT0();
+        window.calculateRadiativeCapacities && window.calculateRadiativeCapacities();
+        const spectral_result = window.getSpectralResultFromDATA();
+        DATA['🧲']['🧲☀️🔽'] = window.calculateSolarFluxAbsorbed();
+        DATA['🧲']['🧲🌕🔽'] = DATA['🌕']['🧲🌕'];
+        DATA['🧲']['🧲🌑🔼'] = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 4);
+        const flux_sortant_effectif_inner = Number.isFinite(spectral_result.total_flux) && spectral_result.total_flux > 0 ? spectral_result.total_flux : DATA['🧲']['🧲🌑🔼'];
+        DATA['🧲']['🧲🌈🔼'] = flux_sortant_effectif_inner;
+        DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * (DATA['🪩'] && DATA['🪩']['🍰🪩📿'] ? DATA['🪩']['🍰🪩📿'] : 0);
+        DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
+        DATA['🧮']['🔬🌈'] = spectral_result.lambda_range ? spectral_result.lambda_range.length : 0;
+        DATA['🧮']['🔬🫧'] = spectral_result.z_range ? spectral_result.z_range.length : 0;
+
+        // Dicho : encadrer Δ=0. Convention 🔽 = borne basse (min T), 🔼 = borne haute (max T), toujours 🔽 < 🔼.
+        if (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0) {
+            DATA['🧮']['🧮⚧'] = 'Dicho';
+            if (DATA['🧮']['🧮☯'] < 0 && Math.sign(DATA['🧲']['🔺🧲']) > 0) {
+                // Δ était <0, maintenant >0 : on a baissé T → T_prev > T_curr → 🔽 = current, 🔼 = previous
+                DATA['🧮']['🧮🌡️🔽'] = DATA['🧮']['🧮🌡️'];
+                DATA['🧮']['🧮🌡️🔼'] = DATA['🧮']['🧮🌡️⏮'];
+            } else if (DATA['🧮']['🧮☯'] > 0 && Math.sign(DATA['🧲']['🔺🧲']) < 0) {
+                // Δ était >0, maintenant <0 : on a monté T → T_prev < T_curr → 🔽 = previous, 🔼 = current
+                DATA['🧮']['🧮🌡️🔽'] = DATA['🧮']['🧮🌡️⏮'];
+                DATA['🧮']['🧮🌡️🔼'] = DATA['🧮']['🧮🌡️'];
+            }
+        }
+        DATA['🧮']['🧮🌡️⏮'] = DATA['🧮']['🧮🌡️'];
+        if (DATA['🧮']['🧮🔄☀️'] === 0) DATA['🧮']['🧮⚧'] = 'Search';
+        else { DATA['🧮']['🧮☯'] = Math.sign(DATA['🧲']['🔺🧲']); if (DATA['🧮']['🧮⚧'] !== 'Dicho') DATA['🧮']['🧮⚧'] = 'Search'; }
+
+        const delta_this = DATA['🧲']['🔺🧲'];
+        const phase_this = DATA['🧮']['🧮⚧'];
+        const yinYang_this = DATA['🧮']['🧮☯'];
+        const albedo_this = (DATA['🪩'] && DATA['🪩']['🍰🪩📿']) != null ? DATA['🪩']['🍰🪩📿'] : 0;
+
+        if (phase_this === 'Search' && yinYang_this === 0) {
+            if (typeof window.alert === 'function') {
+                window.alert('Crash algo: ☯=0 en phase Search (Δ sans signe, direction impossible). Arrêt.');
+            }
+            console.error('Crash algo: ☯=0 en phase Search');
+            return null;
+        }
+        try { if (typeof window.displayConvergence === 'function') window.displayConvergence(); } catch (e) { if (typeof console !== 'undefined') console.warn('displayConvergence:', e); }
+        await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console à jour après chaque itération
+
+        if (window.DEBUG_DATA_IO) { const _e = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x; console.log(`🧲 [runRadiatifOnly] iter=${DATA['🧮']['🧮🔄☀️']} T=${_e(DATA['🧮']['🧮🌡️'])} 🔺🧲=${_e(delta_this)} phase=${phase_this} ☯=${yinYang_this}`); }
+        if (Math.abs(delta_this) <= DATA['🧮']['🧲🔬']) innerConverged = true;
+        if (innerConverged) break;
+
+        // Nouvelle T° testée : Search → T += Δ/sensitivity ; Dicho → T = (🔽+🔼)/2
+        const T_before_update_run = DATA['🧮']['🧮🌡️'];
+        if (DATA['🧮']['🧮⚧'] === 'Search') {
+            const delta_to_use = DATA['🧮']['🧮🔄☀️'] === 0 ? delta_equilibre_init : DATA['🧲']['🔺🧲'];
+            const sensitivity = (DATA['🧮']['🧲🔬'] / EPOCH['🧲🔬']) || 1;
+            let increment = sensitivity !== 0 ? delta_to_use / sensitivity : 0;
+            const tolerance = DATA['🧮']['🧲🔬'];
+            if (tolerance > 0 && Math.abs(delta_to_use) > LARGE_DELTA_FACTOR * tolerance) {
+                const scale = Math.min(SEARCH_STEP_SCALE_MAX, Math.abs(delta_to_use) / tolerance);
+                increment *= scale;
+            }
+            const maxStepK = (tolerance > 0 && Math.abs(delta_to_use) > LARGE_DELTA_FACTOR * tolerance) ? MAX_SEARCH_STEP_LARGE_K : MAX_SEARCH_STEP_K;
+            if (Number.isFinite(increment) && Math.abs(delta_to_use) > tolerance && Math.abs(increment) < MIN_SEARCH_STEP_K)
+                increment = Math.sign(delta_to_use) * Math.max(Math.abs(increment), MIN_SEARCH_STEP_K);
+            if (Number.isFinite(increment) && Math.abs(increment) > maxStepK)
+                increment = Math.sign(increment) * maxStepK;
+            DATA['🧮']['🧮🌡️'] += Number.isFinite(increment) ? increment : 0;
+            const rawCapRun = (typeof window !== 'undefined' && window.CONFIG_COMPUTE) ? window.CONFIG_COMPUTE.maxSearchT_K : undefined;
+            const TcapRun = (rawCapRun === null) ? Infinity : ((typeof rawCapRun === 'number' && Number.isFinite(rawCapRun)) ? rawCapRun : (CONST.T_LAVA_COMPLETE != null ? CONST.T_LAVA_COMPLETE : 2373));
+            if (Number.isFinite(TcapRun) && DATA['🧮']['🧮🌡️'] > TcapRun) DATA['🧮']['🧮🌡️'] = TcapRun;
+        } else if (DATA['🧮']['🧮⚧'] === 'Dicho') {
+            // Réduction du bracket : Δ>0 → T trop bas → 🔽 = T ; Δ<0 → T trop haut → 🔼 = T
+            if (DATA['🧲']['🔺🧲'] > 0 && DATA['🧮']['🧮🌡️'] > DATA['🧮']['🧮🌡️🔽']) DATA['🧮']['🧮🌡️🔽'] = DATA['🧮']['🧮🌡️'];
+            else if (DATA['🧲']['🔺🧲'] < 0 && DATA['🧮']['🧮🌡️'] < DATA['🧮']['🧮🌡️🔼']) DATA['🧮']['🧮🌡️🔼'] = DATA['🧮']['🧮🌡️'];
+            if (DATA['🧮']['🧮🌡️🔽'] >= DATA['🧮']['🧮🌡️🔼']) {
+                const T0 = DATA['🧮']['🧮🌡️'];
+                const dT = Math.max(1, Math.abs(DATA['🧲']['🔺🧲']) / 100);
+                if (DATA['🧲']['🔺🧲'] > 0) { DATA['🧮']['🧮🌡️🔽'] = T0; DATA['🧮']['🧮🌡️🔼'] = Math.min(3000, T0 + dT * 2); }
+                else { DATA['🧮']['🧮🌡️🔼'] = T0; DATA['🧮']['🧮🌡️🔽'] = Math.max(100, T0 - dT * 2); }
+            }
+            DATA['🧮']['🧮🌡️'] = (DATA['🧮']['🧮🌡️🔽'] + DATA['🧮']['🧮🌡️🔼']) / 2;
+        }
+        if (DATA['🧮']['🧮🌡️'] === T_before_update_run) innerConverged = true;
+        const iter_index = DATA['🧮']['🧮🔄☀️'];
+        DATA['🧮']['🧮🔄☀️']++;
+
+        // Recalculer flux et Δ à la nouvelle T pour afficher (T_new, Δ_new) cohérent
+        window.calculateH2OParameters();
+        window.calculateFluxForT0();
+        window.calculateRadiativeCapacities && window.calculateRadiativeCapacities();
+        const spectral_after = window.getSpectralResultFromDATA();
+        DATA['🧲']['🧲☀️🔽'] = window.calculateSolarFluxAbsorbed();
+        DATA['🧲']['🧲🌕🔽'] = DATA['🌕']['🧲🌕'];
+        DATA['🧲']['🧲🌑🔼'] = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 4);
+        const flux_sortant_after = Number.isFinite(spectral_after.total_flux) && spectral_after.total_flux > 0 ? spectral_after.total_flux : DATA['🧲']['🧲🌑🔼'];
+        DATA['🧲']['🧲🌈🔼'] = flux_sortant_after;
+        DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * (DATA['🪩'] && DATA['🪩']['🍰🪩📿'] ? DATA['🪩']['🍰🪩📿'] : 0);
+        DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
+        const delta_after = DATA['🧲']['🔺🧲'];
+        const albedo_after = (DATA['🪩'] && DATA['🪩']['🍰🪩📿']) != null ? DATA['🪩']['🍰🪩📿'] : 0;
+        const yinYang_after = Math.sign(delta_after);
+
+        const data_snapshot = {
+            '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
+            '🧲': JSON.parse(JSON.stringify(DATA['🧲']))
+        };
+        const pushPayload = {
+            outerIter,
+            innerIter: iter_index,
+            waterPass,
+            temperature_K: DATA['🧮']['🧮🌡️'],
+            temperature_C: DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS,
+            delta_equilibre: delta_after,
+            phase: phase_this,
+            albedo: albedo_after,
+            yinYang: yinYang_after,
+            data_snapshot
+        };
+        if (phase_this === 'Dicho') {
+            pushPayload.dichoT_low_C = DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS;
+            pushPayload.dichoT_high_C = DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS;
+        }
+        DATA['🧮']['previous'].push(pushPayload);
+        await new Promise(r => setTimeout(r, 0)); // Yield pour afficher cette étape avant la suivante
+    }
+    if (window.DEBUG_DATA_IO) { const _e = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x; console.log(`🧲 [runRadiatifOnly] out T=${_e(DATA['🧮']['🧮🌡️'])} 🔺🧲=${_e(DATA['🧲']['🔺🧲'])} iters=${DATA['🧮']['🧮🔄☀️']}`); }
+    return true;
+}
+
+function computeRadiativeTransferLegacy() {
+    const DATA = window.DATA;
+    const epochIndex = DATA['📜']['👉'];
+    const EPOCH = window.TIMELINE[epochIndex];
     
-    // 4. Calculer l'albedo initial avec T0 initial (pour Configuration - ne changera plus)
+    window.getSoleil();
+    window.getNoyau();
+    getEpochDateConfig();
+    if (!calculateT0()) return Promise.reject(new Error('T0 invalide'));
+    const CONST = window.CONST;
+    window.calculateAtmosphereComposition();
+    if (window.calculateGeologySurfaces) window.calculateGeologySurfaces();
+    window.calculateH2OParameters();
+    window.getEnabledStates && window.getEnabledStates();
     window.calculateAlbedo();
     
-    // 🔒 En mode config uniquement, DATA['💧'] et DATA['🪩'] ne changent pas après le calcul initial
-    // Donc on peut utiliser directement DATA['💧'] et DATA['🪩'] dans l'affichage, pas besoin de _initial
-    
-    // 🔒 Ne pas appeler displayResults ici pour éviter les boucles infinies
-    // displayResults sera appelé une seule fois à la fin
-    
-    // ========================================================================
-    // PHASE INIT : Initialisation avant la boucle d'itération
-    // ========================================================================
+    if (typeof window.displayConfigReady === 'function') window.displayConfigReady();
+    return (async function runAfterConfigPaint() {
+        await Promise.resolve();
     DATA['🧮']['🧮⚧'] = 'Init';
     DATA['🧮']['🧮🔄'] = 0;
-    DATA['🧮']['previous'] = []; // Historique des itérations (tableau)
+    DATA['🧮']['previous'] = [];
     
     // Calculer le flux initial pour avoir un état de référence
     // IMPORTANT: Pour être cohérent avec Configuration, on utilise l'albedo déjà calculé ligne 135
@@ -171,21 +464,28 @@ function computeRadiativeTransfer() {
         spectral_result_init.total_flux_by_wavelength.reduce((sum, val) => sum + val, 0) : 
         flux_sortant_effectif_init;
     const albedo_flux_init = solar_flux_incident_init * DATA['🪩']['🍰🪩📿'];
-    const delta_equilibre_init = flux_entrant_init - flux_sortant_effectif_init;
+    let flux_sortant_effectif_init_used = flux_sortant_effectif_init;
+    if (!Number.isFinite(flux_sortant_effectif_init) || flux_sortant_effectif_init <= 0) {
+        flux_sortant_effectif_init_used = flux_sortant_surface_init;
+    }
+    const delta_equilibre_init = flux_entrant_init - flux_sortant_effectif_init_used;
     
     // Mettre à jour les résolutions depuis spectral_result_init
     DATA['🧮']['🔬🌈'] = spectral_result_init.lambda_range ? spectral_result_init.lambda_range.length : 0;
     DATA['🧮']['🔬🫧'] = spectral_result_init.z_range ? spectral_result_init.z_range.length : 0;
     
+    // Flux spectral affiché : utiliser la valeur effective (fallback σT⁴ si spectral NaN)
+    const spectral_flux_init_used = Number.isFinite(spectral_flux_init) && spectral_flux_init > 0 ? spectral_flux_init : flux_sortant_effectif_init_used;
+    
     // Mettre à jour DATA['🧲'] pour l'état initial (APRÈS tous les ajustements)
     DATA['🧲']['🧲☀️🔽'] = flux_solaire_absorbe_init;
     DATA['🧲']['🧲🌕🔽'] = geothermal_flux_init;
     DATA['🧲']['🧲🌑🔼'] = flux_sortant_surface_init;
-    DATA['🧲']['🧲🌈🔼'] = spectral_flux_init;
+    DATA['🧲']['🧲🌈🔼'] = spectral_flux_init_used;
     DATA['🧲']['🧲🪩🔼'] = albedo_flux_init;
     DATA['🧲']['🔺🧲'] = delta_equilibre_init;
-    DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * EPOCH['🧲🔬'];
-    
+    DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * (EPOCH['🧲🔬'] ?? 0.1);
+
     // Sauvegarder les valeurs initiales de l'atmosphère (pour Configuration - ne changera plus)
     // ⚠️ ATTENTION : Cette valeur sera mise à jour APRÈS la phase Init pour inclure 🍰🫧💧 calculé
     // Pour l'instant, on initialise avec les valeurs de base (🍰🫧💧 sera mis à jour plus tard)
@@ -214,25 +514,31 @@ function computeRadiativeTransfer() {
     //    - Le flux est en W/m², donc on travaille directement avec des densités de flux
     //    - Pas besoin de multiplier par la surface pour l'équilibre énergétique
     //
-    // 3. TEST D'ARRÊT :
-    //    - Précision demandée : precision_K (en K, ex: 0.1K)
-    //    - Dérivée de F = σT⁴ : dF/dT = 4σT³
-    //    - Pour une variation ΔT = precision_K, la variation de flux est : ΔF = 4σT³ × precision_K
-    //    - Tolérance réelle : tolerance = 4σT³ × precision_K (en W/m²)
-    //    - Exemple : à T=255K avec precision_K=0.1K → tolerance = 4×5.67e-8×255³×0.1 ≈ 0.38 W/m²
-    //    - Condition d'arrêt : |flux_sortant - flux_entrant| <= tolerance
+    // 3. TEST D'ARRÊT : 🧲🔬 = tolérance flux (W/m²)
+    //    - EPOCH['🧲🔬'] = precision_K (en K, ex: 0.1K ou 1K Hadéen)
+    //    - DATA['🧮']['🧲🔬'] = 4σT³ × precision_K (W/m²). Pourquoi dépendre de T ?
+    //      Car F = σT⁴ → dF/dT = 4σT³ : un même ΔT donne un ΔF plus grand quand T est haut.
+    //      "À precision_K près en T" ⟺ "|ΔF| ≤ 4σT³×precision_K". Donc la tolérance en W/m² doit suivre T³.
+    //    - Ex. T=255K, precision_K=0.1 → 🧲🔬 ≈ 0.38 W/m². T=3000K, precision_K=1 → 🧲🔬 ≈ 6.1e3 W/m².
+    //    - Condition d'arrêt : |🔺🧲| ≤ 🧲🔬
     
     // 🔒 spectral_result_init doit exister (crash si manquant)
     
     // Stocker l'état initial dans l'historique
-    const temp_C_init = DATA['🧮']['🧮🌡️'] - 273.15;
+    const temp_C_init = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
     const albedo_init = JSON.parse(JSON.stringify(DATA['🪩']));
     
     // 🔒 SAUVEGARDE DES VALEURS INITIALES (pour Configuration - ne changera plus JAMAIS)
     // Ces valeurs sont figées et ne doivent jamais être modifiées après cette ligne
     DATA['🧲_initial'] = JSON.parse(JSON.stringify(DATA['🧲'])); // Copie profonde
-    // Protection : empêcher toute modification ultérieure (optionnel, pour debug)
     Object.freeze(DATA['🧲_initial']);
+
+    // Snapshot Init pour l’affichage Configuration : 🌕, ☀️, 🧲 ne doivent jamais se mettre à jour ensuite
+    window.CONFIG_INIT_SNAPSHOT = {
+        '🌕': JSON.parse(JSON.stringify(DATA['🌕'])),
+        '☀️': JSON.parse(JSON.stringify(DATA['☀️'])),
+        '🧲': JSON.parse(JSON.stringify(DATA['🧲']))
+    };
     
     // Snapshot initial pour comparaison
     const data_snapshot_init = {
@@ -307,29 +613,70 @@ function computeRadiativeTransfer() {
     DATA['📅']['🔺⏳'] = 86400 * 10; // 10 jours pour accélérer
     
     // ========================================================================
-    // BOUCLE EXTERNE : Cycle de l'eau
+    // BOUCLE EXTERNE : Cycle de l'eau — asynchrone pour laisser le DOM se peindre après chaque cycle
     // ========================================================================
+    return (async function runOuterLoop() {
     while (DATA['🧮']['🧮🔄🌊'] < 10) {
+        if (window.ABORT_COMPUTE) return null;
         DATA['🧮']['🧮🔄🌊']++;
-        
-        // 1. Partition eau (vapeur potentielle, glace, océan)
+
+        // 💧 Résolution spectrale : 1000 bins, ou 50 si T élevé (éviter OOM)
+        const _T = (DATA['🧮'] && DATA['🧮']['🧮🌡️']) || 300;
+        DATA['🧮']['🔬🌈_target'] = (_T > 2000) ? 50 : 1000;
+
+        // 🔒 Arrêt cycle eau si T hors bande active : [-10°C, 150°C] resserrée par pression (gel + évaporation)
+        if (DATA['🧮']['🧮🔄🌊'] > 1 && typeof window.getWaterCycleTempBoundsFromPressure === 'function') {
+            const P_atm = (DATA['🫧'] && DATA['🫧']['🎈']) || 1;
+            const { T_low_K, T_high_K } = window.getWaterCycleTempBoundsFromPressure(P_atm);
+            const T_K = DATA['🧮']['🧮🌡️'];
+            if (T_K < T_low_K || T_K > T_high_K) break;
+        }
+
+        // 1. Partition eau (vapeur potentielle, glace, océan) — calcul avec T0, sans flux
         // 🔒 IMPORTANT : Ne recalculer que si ce n'est pas la première itération après Init
-        // Car Init a déjà calculé les paramètres H2O
         if (DATA['🧮']['🧮🔄🌊'] > 1) {
             window.calculateH2OParameters();
             window.getEnabledStates();
             window.calculateAlbedo();
         }
         
-        // 2. Boucle radiatif interne (convergence T jusqu'à équilibre)
-        DATA['🧮']['🧮🔄☀️'] = 0;
+        // 💧 Cycle de l'eau : snapshot 🫧, 💧, 🪩 (sans calcul de flux) pour l'affichage Convergence
+        DATA['🧮']['previous'].push({
+            outerIter: DATA['🧮']['🧮🔄🌊'],
+            innerIter: null,
+            phase: 'CycleEau',
+            data_snapshot: {
+                '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
+                '💧': JSON.parse(JSON.stringify(DATA['💧'])),
+                '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
+            }
+        });
+        try { if (typeof window.displayConvergence === 'function') window.displayConvergence(); } catch (e) { if (typeof console !== 'undefined') console.warn('displayConvergence:', e); }
+        
+        // Référence cycle eau pour détecter si on doit refaire un tour radiatif (zone liquide)
+        const tol_albedo = 1e-4;
+        const tol_vapor = 1e-6;
+        let ref_cycle = {
+            albedo: (DATA['🪩'] && DATA['🪩']['🍰🪩📿']) != null ? DATA['🪩']['🍰🪩📿'] : 0,
+            vapor: (DATA['💧'] && DATA['💧']['🍰🫧💧']) != null ? DATA['💧']['🍰🫧💧'] : 0
+        };
+        let water_repeats = 0;
+        const max_water_repeats = 5;
         let innerConverged = false;
-        let firstIterationSaved = false;
+        let repeat_radiative = false;
         
-        while (DATA['🧮']['🧮🔄☀️'] < 20 && !innerConverged) {
-            DATA['🧮']['🧮🔄☀️']++;
+        do {
+            DATA['🧮']['🧮🔄☀️'] = 0;
+            innerConverged = false;
+            const waterPass = water_repeats;
         
-        // IMPORTANT: Pour la première itération (iteration=1), on calcule d'abord les flux avec T=287K (état Init)
+        // 2. Boucle radiatif interne : max CONST.maxRadiatifIters, afficher 🧮 et 🧲 à chaque calcul radiatif
+        const maxRadiatifIters = (CONST.maxRadiatifIters != null) ? CONST.maxRadiatifIters : 21;
+        while (DATA['🧮']['🧮🔄☀️'] < maxRadiatifIters && !innerConverged) {
+            if (window.ABORT_COMPUTE) break;
+            DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * (EPOCH['🧲🔬'] ?? 0.1);
+
+        // IMPORTANT: Pour la première itération (iteration=0), on calcule d'abord les flux avec T initial
         // puis on fait l'ajustement APRÈS le calcul des flux, pour que l'état Init soit visible avec T=287K
         // L'ajustement se fera à la fin de la première itération, après avoir calculé les flux
         
@@ -349,25 +696,23 @@ function computeRadiativeTransfer() {
             DATA['🧲']['🧲☀️🔽'] = window.calculateSolarFluxAbsorbed();
             DATA['🧲']['🧲🌕🔽'] = DATA['🌕']['🧲🌕'];
             DATA['🧲']['🧲🌑🔼'] = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 4);
-            DATA['🧲']['🧲🌈🔼'] = spectral_result.total_flux;
+            const flux_sortant_effectif_inner = Number.isFinite(spectral_result.total_flux) && spectral_result.total_flux > 0
+                ? spectral_result.total_flux
+                : DATA['🧲']['🧲🌑🔼'];
+            DATA['🧲']['🧲🌈🔼'] = flux_sortant_effectif_inner;
             DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * DATA['🪩']['🍰🪩📿'];
             DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
             
             DATA['🧮']['🔬🌈'] = spectral_result.lambda_range.length;
             DATA['🧮']['🔬🫧'] = spectral_result.z_range.length;
-            DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * EPOCH['🧲🔬'];
-            
+
             DATA['📛']['📛🏭'] = window.calculateCO2Forcing(DATA['🫧']['🍰🫧🏭']);
             DATA['📛']['📛⛽'] = window.calculateCH4Forcing(DATA['🫧']['🍰🫧⛽']);
             DATA['📛']['📿📛'] = DATA['📛']['📛🏭'] + DATA['📛']['📛⛽'] + DATA['📛']['📛💧'];
         DATA['📛']['📛🏭'] = window.calculateCO2Forcing(DATA['🫧']['🍰🫧🏭']);
         DATA['📛']['📛⛽'] = window.calculateCH4Forcing(DATA['🫧']['🍰🫧⛽']);
         DATA['📛']['📿📛'] = DATA['📛']['📛🏭'] + DATA['📛']['📛⛽'] + DATA['📛']['📛💧'];
-        
-        // 🔒 RECALCULER LA TOLÉRANCE AVANT LE TEST DE CONVERGENCE avec la température actuelle
-        // Tolérance (test d'arrêt) : tolerance = 4σT³ × precision_K (dérivée de F = σT⁴)
-        DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * EPOCH['🧲🔬'];
-        
+
             // Détecter changement de signe pour passer en Phase="Dicho"
             if (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0) {
                 DATA['🧮']['🧮⚧'] = 'Dicho';
@@ -381,7 +726,7 @@ function computeRadiativeTransfer() {
             }
             DATA['🧮']['🧮🌡️⏮'] = DATA['🧮']['🧮🌡️'];
             
-            if (DATA['🧮']['🧮🔄☀️'] === 1) {
+            if (DATA['🧮']['🧮🔄☀️'] === 0) {
                 DATA['🧮']['🧮⚧'] = 'Search';
             } else {
                 DATA['🧮']['🧮☯'] = Math.sign(DATA['🧲']['🔺🧲']);
@@ -390,82 +735,59 @@ function computeRadiativeTransfer() {
                 }
             }
         
-            // 🔒 Sauvegarder dans l'historique seulement pour la première itération
-            const isFirstIteration = DATA['🧮']['🧮🔄☀️'] === 1;
-            
-            if (isFirstIteration) {
-                const data_snapshot = {
-                    '🧮': (() => {
-                        const data = { ...DATA['🧮'] };
-                        delete data.previous;
-                        return JSON.parse(JSON.stringify(data));
-                    })(),
-                    '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
-                    '💧': JSON.parse(JSON.stringify(DATA['💧'])),
-                    '🪩': JSON.parse(JSON.stringify(DATA['🪩'])),
-                    '🧲': JSON.parse(JSON.stringify(DATA['🧲'])),
-                    '📛': JSON.parse(JSON.stringify(DATA['📛']))
-                };
-                DATA['🧮']['previous'].push({
-                    outerIter: DATA['🧮']['🧮🔄🌊'],
-                    innerIter: DATA['🧮']['🧮🔄☀️'],
-                    temperature_K: DATA['🧮']['🧮🌡️'],
-                    temperature_C: DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS,
-                    delta_equilibre: DATA['🧲']['🔺🧲'],
-                    phase: DATA['🧮']['🧮⚧'],
-                    data_snapshot: data_snapshot
-                });
-                
-                if (window.displayConvergence) {
-                    window.displayConvergence();
-                }
-            }
+            // Sauvegarder chaque calcul radiatif (0..20) : 🧮 et 🧲 uniquement
+            const data_snapshot = {
+                '🧮': (() => {
+                    const data = { ...DATA['🧮'] };
+                    delete data.previous;
+                    return JSON.parse(JSON.stringify(data));
+                })(),
+                '🧲': JSON.parse(JSON.stringify(DATA['🧲']))
+            };
+            DATA['🧮']['previous'].push({
+                outerIter: DATA['🧮']['🧮🔄🌊'],
+                innerIter: DATA['🧮']['🧮🔄☀️'],
+                waterPass: waterPass,
+                temperature_K: DATA['🧮']['🧮🌡️'],
+                temperature_C: DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS,
+                delta_equilibre: DATA['🧲']['🔺🧲'],
+                phase: DATA['🧮']['🧮⚧'],
+                data_snapshot: data_snapshot
+            });
+            try { if (typeof window.displayConvergence === 'function') window.displayConvergence(); } catch (e) { if (typeof console !== 'undefined') console.warn('displayConvergence:', e); }
             
             // Test convergence interne
             if (Math.abs(DATA['🧲']['🔺🧲']) <= DATA['🧮']['🧲🔬']) {
                 innerConverged = true;
             }
             
-            // Sauvegarder la dernière itération (convergence ou max itérations)
-            if (innerConverged || DATA['🧮']['🧮🔄☀️'] >= 20) {
-                // Ne sauvegarder que si ce n'est pas déjà la première itération
-                if (!isFirstIteration || innerConverged) {
-                    const data_snapshot = {
-                        '🧮': (() => {
-                            const data = { ...DATA['🧮'] };
-                            delete data.previous;
-                            return JSON.parse(JSON.stringify(data));
-                        })(),
-                        '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
-                        '💧': JSON.parse(JSON.stringify(DATA['💧'])),
-                        '🪩': JSON.parse(JSON.stringify(DATA['🪩'])),
-                        '🧲': JSON.parse(JSON.stringify(DATA['🧲'])),
-                        '📛': JSON.parse(JSON.stringify(DATA['📛']))
-                    };
-                    DATA['🧮']['previous'].push({
-                        outerIter: DATA['🧮']['🧮🔄🌊'],
-                        innerIter: DATA['🧮']['🧮🔄☀️'],
-                        temperature_K: DATA['🧮']['🧮🌡️'],
-                        temperature_C: DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS,
-                        delta_equilibre: DATA['🧲']['🔺🧲'],
-                        phase: DATA['🧮']['🧮⚧'],
-                        data_snapshot: data_snapshot
-                    });
-                    if (window.displayConvergence) {
-                        window.displayConvergence();
-                    }
-                }
-                if (innerConverged) {
-                    break;
-                }
-            }
+            if (innerConverged) break;
             
-            // Ajuster T selon la phase
+            // Ajuster T selon la phase (avant prochaine itération)
+            const T_before_update = DATA['🧮']['🧮🌡️'];
             if (DATA['🧮']['🧮⚧'] === 'Search') {
-                const delta_to_use = DATA['🧮']['🧮🔄☀️'] === 1 ? delta_equilibre_init : DATA['🧲']['🔺🧲'];
+                const delta_to_use = DATA['🧮']['🧮🔄☀️'] === 0 ? delta_equilibre_init : DATA['🧲']['🔺🧲'];
                 const sensitivity = DATA['🧮']['🧲🔬'] / EPOCH['🧲🔬'];
-                DATA['🧮']['🧮🌡️'] += delta_to_use / sensitivity;
-                DATA['🧮']['🧮🌡️'] = Math.max(100, Math.min(3000, DATA['🧮']['🧮🌡️']));
+                let increment = sensitivity !== 0 ? delta_to_use / sensitivity : 0;
+                const tolerance = DATA['🧮']['🧲🔬'];
+                if (tolerance > 0 && Math.abs(delta_to_use) > LARGE_DELTA_FACTOR * tolerance) {
+                    const scale = Math.min(SEARCH_STEP_SCALE_MAX, Math.abs(delta_to_use) / tolerance);
+                    increment *= scale;
+                }
+                const maxStepK = (tolerance > 0 && Math.abs(delta_to_use) > LARGE_DELTA_FACTOR * tolerance) ? MAX_SEARCH_STEP_LARGE_K : MAX_SEARCH_STEP_K;
+                if (Number.isFinite(increment) && Math.abs(delta_to_use) > tolerance && Math.abs(increment) < MIN_SEARCH_STEP_K)
+                    increment = Math.sign(delta_to_use) * Math.max(Math.abs(increment), MIN_SEARCH_STEP_K);
+                if (Number.isFinite(increment) && Math.abs(increment) > maxStepK)
+                    increment = Math.sign(increment) * maxStepK;
+                if (!Number.isFinite(increment)) {
+                    DATA['🧮']['🧮🌡️'] = (DATA['📅'] && DATA['📅']['🌡️🧮'] != null) ? DATA['📅']['🌡️🧮'] : DATA['🧮']['🧮🌡️'];
+                } else {
+                    DATA['🧮']['🧮🌡️'] += increment;
+                }
+                // Plafond T en Search : maxSearchT_K === null → pas de plafond (T monte) ; nombre → plafond ; non défini → T_LAVA_COMPLETE
+                const rawCap = (typeof window !== 'undefined' && window.CONFIG_COMPUTE) ? window.CONFIG_COMPUTE.maxSearchT_K : undefined;
+                const Tcap = (rawCap === null) ? Infinity : ((typeof rawCap === 'number' && Number.isFinite(rawCap)) ? rawCap : (CONST.T_LAVA_COMPLETE != null ? CONST.T_LAVA_COMPLETE : 2373));
+                if (Number.isFinite(Tcap) && DATA['🧮']['🧮🌡️'] > Tcap) DATA['🧮']['🧮🌡️'] = Tcap;
             } else if (DATA['🧮']['🧮⚧'] === 'Dicho') {
                 if (DATA['🧲']['🔺🧲'] > 0 && DATA['🧮']['🧮🌡️'] < DATA['🧮']['🧮🌡️🔼']) {
                     DATA['🧮']['🧮🌡️🔼'] = DATA['🧮']['🧮🌡️'];
@@ -485,8 +807,12 @@ function computeRadiativeTransfer() {
                 }
                 DATA['🧮']['🧮🌡️'] = (DATA['🧮']['🧮🌡️🔽'] + DATA['🧮']['🧮🌡️🔼']) / 2;
             }
+            // Arrêt si T inchangée (plafond atteint ou pas nul) → évite 21 itérations inutiles
+            if (DATA['🧮']['🧮🌡️'] === T_before_update) innerConverged = true;
+            DATA['🧮']['🧮🔄☀️']++;
         }
-        
+        if (window.ABORT_COMPUTE) return null;
+
         // 3. Calcul feedback précipitation (après RH et ☁️)
         window.calculatePrecipitationFeedback();
         
@@ -504,7 +830,10 @@ function computeRadiativeTransfer() {
         window.calculateRadiativeCapacities();
         const spectral_result_after = window.getSpectralResultFromDATA();
         const flux_sortant_surface_after = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 4);
-        const flux_sortant_effectif_after = spectral_result_after.total_flux;
+        let flux_sortant_effectif_after = spectral_result_after.total_flux;
+        if (!Number.isFinite(flux_sortant_effectif_after) || flux_sortant_effectif_after <= 0) {
+            flux_sortant_effectif_after = flux_sortant_surface_after;
+        }
         
         // Mettre à jour les flux dans DATA
         DATA['🧲']['🧲☀️🔽'] = flux_solaire_absorbe_after;
@@ -513,10 +842,32 @@ function computeRadiativeTransfer() {
         DATA['🧲']['🧲🌈🔼'] = flux_sortant_effectif_after;
         DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * DATA['🪩']['🍰🪩📿'];
         DATA['🧲']['🔺🧲'] = flux_entrant_after - flux_sortant_effectif_after;
-        
-        // Recalculer la tolérance avec la température actuelle
-        DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * EPOCH['🧲🔬'];
-        
+        // DATA['🧮']['🧲🔬'] garde la valeur EPOCH['🧲🔬'] définie à l'init (ne pas écraser)
+
+        // Si zone liquide et cycle eau a changé (albedo/vapeur) → refaire un tour radiatif (convergence rapide)
+        if (typeof window.getWaterCycleTempBoundsFromPressure === 'function') {
+            const P_atm = (DATA['🫧'] && DATA['🫧']['🎈']) || 1;
+            const { T_low_K, T_high_K } = window.getWaterCycleTempBoundsFromPressure(P_atm);
+            const T_K = DATA['🧮']['🧮🌡️'];
+            const in_liquid_range = (T_K >= T_low_K && T_K <= T_high_K);
+            const new_albedo = (DATA['🪩'] && DATA['🪩']['🍰🪩📿']) != null ? DATA['🪩']['🍰🪩📿'] : 0;
+            const new_vapor = (DATA['💧'] && DATA['💧']['🍰🫧💧']) != null ? DATA['💧']['🍰🫧💧'] : 0;
+            const water_changed = in_liquid_range && (
+                Math.abs(new_albedo - ref_cycle.albedo) > tol_albedo ||
+                Math.abs(new_vapor - ref_cycle.vapor) > tol_vapor
+            );
+            if (water_changed && water_repeats < max_water_repeats) {
+                ref_cycle = { albedo: new_albedo, vapor: new_vapor };
+                water_repeats++;
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+        } while (true);
+        if (window.ABORT_COMPUTE) return null;
+
         // 5. Ajuster température selon déséquilibre radiatif (seulement si la boucle interne n'a pas convergé)
         // Si la boucle interne a convergé, 🔺🧲 devrait être proche de zéro, donc pas besoin d'ajustement
         // Si la boucle interne n'a pas convergé, on ajuste légèrement la température pour la prochaine itération
@@ -532,14 +883,22 @@ function computeRadiativeTransfer() {
             // Même si la boucle interne a convergé, si 🔺🧲 change encore (à cause du cycle de l'eau),
             // on ajuste très légèrement la température
             const dT = DATA['🧲']['🔺🧲'] * 0.1; // Réduire le facteur de 0.8 à 0.1 pour éviter les oscillations
-            DATA['🧮']['🧮🌡️'] += dT;
-            DATA['🧮']['🧮🌡️'] = Math.max(100, Math.min(3000, DATA['🧮']['🧮🌡️']));
+            if (Number.isFinite(dT)) {
+                DATA['🧮']['🧮🌡️'] += dT;
+            } else {
+                DATA['🧮']['🧮🌡️'] = (DATA['📅'] && DATA['📅']['🌡️🧮'] != null) ? DATA['📅']['🌡️🧮'] : DATA['🧮']['🧮🌡️'];
+            }
+            //DATA['🧮']['🧮🌡️'] = Math.max(100, Math.min(3000, DATA['🧮']['🧮🌡️']));
         } else {
             // La boucle interne n'a pas convergé : ajuster la température plus agressivement
             // mais toujours avec un facteur réduit pour éviter les oscillations
             const dT = DATA['🧲']['🔺🧲'] * 0.2; // Réduire le facteur de 0.8 à 0.2
-            DATA['🧮']['🧮🌡️'] += dT;
-            DATA['🧮']['🧮🌡️'] = Math.max(100, Math.min(3000, DATA['🧮']['🧮🌡️']));
+            if (Number.isFinite(dT)) {
+                DATA['🧮']['🧮🌡️'] += dT;
+            } else {
+                DATA['🧮']['🧮🌡️'] = (DATA['📅'] && DATA['📅']['🌡️🧮'] != null) ? DATA['📅']['🌡️🧮'] : DATA['🧮']['🧮🌡️'];
+            }
+            //DATA['🧮']['🧮🌡️'] = Math.max(100, Math.min(3000, DATA['🧮']['🧮🌡️']));
         }
         DATA['🧮']['🧲🔺⏮'] = DATA['🧲']['🔺🧲'];
         
@@ -547,20 +906,26 @@ function computeRadiativeTransfer() {
         if (DATA['🧮']['🧮🔄🌊'] > 3 && DATA['📅']['🔺⏳'] > 86400) {
             DATA['📅']['🔺⏳'] = 86400; // Revenir à 1 jour
         }
+        try { if (window.displayConvergence) window.displayConvergence(); } catch (e) { if (typeof console !== 'undefined') console.warn('displayConvergence:', e); }
+        await new Promise(function (r) { setTimeout(r, 0); });
     }
-    
+
     window.getEnabledStates();
     DATA['📛']['📛🏭'] = window.calculateCO2Forcing(DATA['🫧']['🍰🫧🏭']);
     DATA['📛']['📛⛽'] = window.calculateCH4Forcing(DATA['🫧']['🍰🫧⛽']);
     DATA['📛']['📿📛'] = DATA['📛']['📛🏭'] + DATA['📛']['📛⛽'] + DATA['📛']['📛💧'];
-    DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * EPOCH['🧲🔬'];
+    // DATA['🧮']['🧲🔬'] garde la valeur EPOCH['🧲🔬'] définie à l'init (ne pas écraser)
     DATA['🧮']['🧮🔄'] = DATA['🧮']['🧮🔄🌊'];
     return true;
+    })();
+    })();
 }
 
 // Exposer les fonctions globalement
 // Note: getEpochDateConfig est déjà exposé dans compute.js
 window.calculateT0 = calculateT0;
+window.initForConfig = initForConfig;
+window.cycleDeLeau = cycleDeLeau;
 window.computeRadiativeTransfer = computeRadiativeTransfer;
 window.newDate = newDate;
 

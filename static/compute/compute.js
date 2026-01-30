@@ -18,7 +18,7 @@
 // VARIABLES GLOBALES D'ÉTAT
 // ============================================================================
 
-// T0 est dans DATA['🧮']['🌡️'], pas besoin de variable globale
+// T0 est dans DATA['🧮']['🧮🌡️'], pas besoin de variable globale
 // Phase est dans DATA['🧮']['🧮⚧'], pas besoin de variable globale
 // signeDeltaFirst est dans DATA['🧮']['🧮☯'], pas besoin de variable globale
 // flux_entrant est calculé localement dans computeRadiativeTransfer, pas besoin de variable globale
@@ -132,18 +132,18 @@ function getEpochDateConfig() {
         water_added_kg = mass_kg;
     }
     
-    ticTime = Math.floor(window.infoTimeMa / 50);
+    ticTime = (DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : Math.floor((window.infoTimeMa || 0) / 50);
     
     // Vérifier si 💫 existe dans les événements (certaines époques n'ont pas de ticTime)
     if (EPOCH['🕰']['💫']) {
-        // Accès direct (plantera si n'existe pas, comme demandé)
         deltaTicTime_per_tic = EPOCH['🕰']['💫']['🔺🌡️💫'];
-        // Accès direct (plantera si n'existe pas, comme demandé)
         DATA['📜']['🔺🧲🌕💫'] = {
             '▶': EPOCH['🕰']['💫']['🔺🧲🌕💫']['▶'],
             '◀': EPOCH['🕰']['💫']['🔺🧲🌕💫']['◀']
         };
+        DATA['📜']['🔺⏳'] = EPOCH['🕰']['💫']['🔺⏳'] != null ? EPOCH['🕰']['💫']['🔺⏳'] : 50;
     } else {
+        DATA['📜']['🔺⏳'] = 50;
         // Pas de ticTime pour cette époque
         deltaTicTime_per_tic = 0;
         DATA['📜']['🔺🧲🌕💫'] = { '▶': 0, '◀': 0 };
@@ -212,10 +212,14 @@ function getNoyau() {
     const EPOCH = window.TIMELINE[epochIndex];
     
     // Flux géothermique en W/m² (depuis TIMELINE)
-    // Vérifier si 💫 existe dans les événements (certaines époques ont le flux directement)
     if (EPOCH['🕰'] && EPOCH['🕰']['💫'] && EPOCH['🕰']['💫']['🔺🧲🌕💫']) {
-        // Flux depuis les événements ticTime
-        DATA['🌕']['🧲🌕'] = EPOCH['🕰']['💫']['🔺🧲🌕💫']['▶'];
+        const geo = EPOCH['🕰']['💫']['🔺🧲🌕💫'];
+        const tic = (DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
+        const durationMa = (DATA['📜'] && DATA['📜']['🔺⏳'] != null) ? DATA['📜']['🔺⏳'] : 50;
+        const spanYears = Math.max(0, (EPOCH['▶'] || 0) - (EPOCH['◀'] || 0));
+        const maxTics = durationMa > 0 && spanYears > 0 ? Math.max(1, Math.floor((spanYears / 1e6) / durationMa)) : 1;
+        const f = Math.min(1, tic / maxTics);
+        DATA['🌕']['🧲🌕'] = (geo['▶'] != null && geo['◀'] != null) ? geo['▶'] + f * (geo['◀'] - geo['▶']) : (geo['▶'] != null ? geo['▶'] : EPOCH['🧲🌕']);
     } else if (EPOCH['🧲🌕'] !== undefined) {
         // Flux directement dans l'époque (ex: Hadéen)
         DATA['🌕']['🧲🌕'] = EPOCH['🧲🌕'];
@@ -250,6 +254,6 @@ window.getMasses = getMasses; // Exposer getMasses
 window.getEnabledStates = getEnabledStates; // Exposer getEnabledStates
 window.getSoleil = getSoleil; // Exposer getSoleil
 window.getNoyau = getNoyau; // Exposer getNoyau
-// T0 est dans DATA['🧮']['🌡️'], pas besoin de window.T0
+// T0 est dans DATA['🧮']['🧮🌡️'], pas besoin de window.T0
 // getLogo et getLogoKey sont exposés par alphabet.js
 

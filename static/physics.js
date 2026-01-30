@@ -34,9 +34,8 @@ CONST.molar_mass_air_ref = 0.029;  // Masse molaire moyenne de l'air de référe
 
 // Constantes pour l'eau (H2O)
 CONST.R_GAS = 8.314;  // Constante des gaz parfaits, J/(mol·K)
-CONST.T_FREEZE = 273.15;  // Point de congélation de l'eau (K)
 CONST.T_BOIL = 373.15;  // Point d'ébullition de l'eau à 1 atm (K)
-CONST.T0_WATER = 273.15;  // Point triple de l'eau (K)
+CONST.T0_WATER = 273.15;  // Point triple de l'eau (K) = point de congélation à 1 atm
 CONST.P0_WATER = 611.2;  // Pression au point triple de l'eau (Pa)
 CONST.L_VAPORIZATION = 2.5e6;  // Chaleur latente de vaporisation (J/kg)
 CONST.RV_WATER = 461.5;  // Constante des gaz pour la vapeur d'eau (J/(kg·K))
@@ -47,6 +46,9 @@ CONST.T_ICE_TRANSITION_RANGE_C = 20;  // Zone de transition liquide-glace (en °
 
 // Constantes de conversion température
 CONST.KELVIN_TO_CELSIUS = 273.15;  // Conversion Kelvin → Celsius (K = °C + 273.15)
+
+// Convergence radiatif : nombre max d'itérations (lu depuis config si dispo)
+CONST.maxRadiatifIters = (typeof window !== 'undefined' && window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxRadiatifIters != null) ? window.CONFIG_COMPUTE.maxRadiatifIters : 21;
 
 // Constantes pour l'eau
 CONST.RHO_WATER = 1000;  // Densité de l'eau (kg/m³)
@@ -99,6 +101,15 @@ CONST.H2O_VAPOR_REF = 0.01;  // 🍰🫧💧_ref = 0.01 (1%, Terre tempérée, r
 CONST.ALPHA_OCEAN = 0.3;    // α = 0.3 (effet océan / convection sur formation nuageuse)
 CONST.SCALE_CLOUD = 0.4;    // Facteur d'échelle pour ajuster ☁️ dans la plage 0.3-0.5
 
+// Bornes température cycle de l'eau : -10°C à 150°C max, resserrées par la pression
+CONST.T_WATER_CYCLE_MIN_C = -10;   // Borne basse absolue (°C)
+CONST.T_WATER_CYCLE_MAX_C = 150;  // Borne haute absolue (°C)
+CONST.T_FREEZE_SEAWATER_K = 271.15;  // -2°C, congélation eau de mer à 1 atm (K)
+CONST.T_WATER_CYCLE_FREEZE_K_PER_ATM = 1;   // T_freeze baisse d'environ 1 K par atm au-dessus de 1
+CONST.T_WATER_CYCLE_MARGIN_GEL_K = 5;      // Marge autour du gel (K), bande gel = [T_freeze-margin, T_freeze+margin]
+CONST.T_WATER_CYCLE_EVAP_LOW_K = 323.15;   // 50°C, début zone évaporation (K)
+CONST.T_WATER_CYCLE_HIGH_K_PER_ATM = 5;    // Borne haute baisse de 5 K par atm > 1 (resserrement)
+
 // Constantes pour les précipitations
 CONST.PRECIP_BASE_RATE = 5e-6;  // Taux de base de précipitation (s⁻¹)
 CONST.PRECIP_PRESSURE_SCALE = 5e-6;  // Facteur d'échelle pression pour précipitations
@@ -117,10 +128,30 @@ CONST.CH4_REF_MASS = 1e13;  // Masse de référence pour CH₄ (kg)
 // - Dérivée par Max Planck en 1900, elle décrit le spectre d'émission d'un corps noir
 // - Cette formule est exacte et utilisée dans tous les modèles de transfert radiatif
 // - Les constantes utilisées (h, c, k) sont des constantes fondamentales mesurées avec précision
+// - Cap numérique : pour T très élevé (ex. Hadéen 2450 K) et λ court, term1/term2 peut overflow → plafonner
+const MAX_PLANCK_SAFE = 1e30; // W/(m²·sr·m) — évite Infinity dans le transfert radiatif
 function planckFunction(lambda, T) {
+    if (!Number.isFinite(lambda) || !Number.isFinite(T) || lambda <= 0 || T <= 0) return 0;
     const term1 = (2 * CONST.PLANCK_H * CONST.SPEED_OF_LIGHT * CONST.SPEED_OF_LIGHT) / Math.pow(lambda, 5);
     const term2 = Math.exp((CONST.PLANCK_H * CONST.SPEED_OF_LIGHT) / (lambda * CONST.BOLTZMANN_KB * T)) - 1;
-    return term1 / term2; // W/(m²·m·sr) - Intensité spectrale d'un corps noir
+    const B = (term2 > 0) ? term1 / term2 : 0;
+    if (!Number.isFinite(B) || B < 0) return 0;
+    return Math.min(B, MAX_PLANCK_SAFE); // W/(m²·m·sr) - Intensité spectrale d'un corps noir
 }
 
 window.planckFunction=planckFunction;
+
+// Borne basse/haute (K) pour "cycle eau actif", fonction de la pression (atm).
+// Plage max -10°C à 150°C ; la pression resserre la fourchette (gel et évaporation).
+function getWaterCycleTempBoundsFromPressure(P_atm) {
+    const T_MIN_K = CONST.T_WATER_CYCLE_MIN_C + CONST.KELVIN_TO_CELSIUS;
+    const T_MAX_K = CONST.T_WATER_CYCLE_MAX_C + CONST.KELVIN_TO_CELSIUS;
+    if (typeof P_atm !== 'number' || !Number.isFinite(P_atm) || P_atm < 0.01) {
+        return { T_low_K: T_MIN_K, T_high_K: T_MAX_K };
+    }
+    const T_freeze = CONST.T_FREEZE_SEAWATER_K - (P_atm - 1) * CONST.T_WATER_CYCLE_FREEZE_K_PER_ATM;
+    const T_low_K = Math.max(T_MIN_K, T_freeze - CONST.T_WATER_CYCLE_MARGIN_GEL_K);
+    const T_high_K = Math.max(CONST.T_WATER_CYCLE_EVAP_LOW_K, Math.min(T_MAX_K, T_MAX_K - (P_atm - 1) * CONST.T_WATER_CYCLE_HIGH_K_PER_ATM));
+    return { T_low_K, T_high_K };
+}
+window.getWaterCycleTempBoundsFromPressure = getWaterCycleTempBoundsFromPressure;

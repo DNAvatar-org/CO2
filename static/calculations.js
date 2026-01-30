@@ -50,7 +50,7 @@ function waterVaporFractionAtZ(z) {
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     if (!DATA['🔘']['🔘💧📛']) return 0;
 
-    window.calculateWaterPartition();
+    // 🔒 Ne pas appeler calculateWaterPartition ici : appelé une fois par le caller (calculateH2OParameters avant calculateFluxForT0)
     const H_H2O = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (CONST.M_H2O * EPOCH['🍎']);
     return DATA['💧']['🍰🫧💧'] * Math.exp(-z / H_H2O);
 }
@@ -84,14 +84,20 @@ function evaporationRate() {
 function calculateFluxForT0() {
     const DATA = window.DATA;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
-    
-    // 🔒 Initialiser calculateWaterPartition() AVANT les calculs pour éviter NaN
-    window.calculateWaterPartition();
-    
+    const T_K = (DATA['🧮'] && DATA['🧮']['🧮🌡️']) || 300;
+
+    // Régime T élevé : résolution réduite pour éviter OOM (grille spectrale + verticale)
+    const highTRegime = T_K > 2000;
+    if (highTRegime && DATA['🧮']) {
+        if (typeof DATA['🧮']['🔬🌈_target'] !== 'number' || DATA['🧮']['🔬🌈_target'] > 50) {
+            DATA['🧮']['🔬🌈_target'] = 50;
+        }
+    }
+
+    // 🔒 Partition eau déjà mise à jour par le caller (calculateH2OParameters avant chaque calculateFluxForT0 dans la boucle radiatif)
     DATA['📊'] = {};
     
-    // Options
-    const delta_z = 50;
+    const delta_z = highTRegime ? 200 : 50;
     const lambda_min = 0.1e-6;
     const lambda_max = 100e-6;
     const delta_lambda = 0.1e-6;
@@ -115,64 +121,49 @@ function calculateFluxForT0() {
     const lambda_range = [];
     const lambda_weights = []; // Poids pour les moyennes pondérées
 
-    // ⚡ Spectre complet pour précision maximale
+    // 💧 Phase cycle eau : résolution réduite (ex. 100 bins) pour accélérer. Phase T finale : 1000 bins.
+    let spectral_target = (DATA['🧮'] && typeof DATA['🧮']['🔬🌈_target'] === 'number') ? DATA['🧮']['🔬🌈_target'] : null;
+    if (highTRegime) spectral_target = Math.min(spectral_target != null ? spectral_target : 999, 50);
+    const lambda_span = lambda_max - lambda_min;
+
     {
-        // ⚡ Dernière itération : spectre complet sans optimisation
-        // Calculer le nombre exact d'éléments : (lambda_max - lambda_min) / delta_lambda + 1
-        // Exemple : de 0.1e-6 à 100e-6 avec pas 0.1e-6 = (100-0.1)/0.1 + 1 = 999 + 1 = 1000 points
-        const expected_points = Math.floor((lambda_max - lambda_min) / delta_lambda) + 1;
-        
+        // Nombre de bins : 🔬🌈_target si défini (100 = cycle eau, 1000 = T finale), régime T élevé plafonné à 50
+        const expected_points = spectral_target != null ? Math.max(2, Math.min(spectral_target, 10000)) : (Math.floor(lambda_span / delta_lambda) + 1);
+        const effective_delta = lambda_span / (expected_points - 1);
+
         // Créer exactement le bon nombre de points, en forçant lambda_max comme dernier élément
         for (let i = 0; i < expected_points; i++) {
             let lambda;
             if (i === expected_points - 1) {
-                // Dernier élément : forcer lambda_max exactement pour éviter les erreurs d'arrondi
                 lambda = lambda_max;
             } else {
-                // Autres éléments : calcul normal
-                lambda = lambda_min + i * delta_lambda;
+                lambda = lambda_min + i * effective_delta;
             }
             lambda_range.push(lambda);
-            lambda_weights.push(1.0); // Poids unitaire pour tous
+            lambda_weights.push(1.0);
         }
-        
-        // Vérification finale
         if (lambda_range.length !== expected_points) {
             console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE: lambda_range.length (${lambda_range.length}) != expected (${expected_points})`);
             throw new Error(`lambda_range.length (${lambda_range.length}) != expected (${expected_points})`);
         }
-        if (Math.abs(lambda_range[lambda_range.length - 1] - lambda_max) > delta_lambda * 0.0001) {
-            console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE: dernier élément (${lambda_range[lambda_range.length - 1]}) != lambda_max (${lambda_max})`);
+        if (Math.abs(lambda_range[lambda_range.length - 1] - lambda_max) > effective_delta * 0.0001) {
+            console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE: dernier élément != lambda_max`);
             throw new Error(`Dernier élément lambda_range != lambda_max`);
         }
         
         // Log pour debug
     }
 
-    // Créer la grille z avec précision adaptative
-    // ⚠️ IMPORTANT : Sous tropopause, on garde la précision fine (pas d'optimisation)
-    // Au-dessus de la tropopause, on peut réduire la précision (densité ↓ exponentielle)
+    // Largeur de bin réelle pour l'intégration : Σ π B_λ Δλ doit utiliser le pas de la grille, pas delta_lambda fixe
+    // Sinon avec 50 bins (pas ~2 µm) on multipliait par 0.1 µm → flux total ~20× trop faible (visible/IR mal compté)
+    const effective_delta_lambda = lambda_range.length > 1 ? (lambda_range[lambda_range.length - 1] - lambda_range[0]) / (lambda_range.length - 1) : lambda_span;
+
+    // Créer la grille z à partir des hauteurs calculées (📏🫧🧿, tropopause). Si tout à 0 → z_max=1e-6, tropo=0 → une couche en une passe.
     const z_range = [];
-    const delta_z_troposphere = delta_z; // Précision fine sous tropopause (50m) - PAS D'OPTIMISATION
-
-    // Au-dessus de la tropopause : précision adaptative selon precisionFactor
-    // precisionFactor < 1.0 → delta_z_stratosphere plus grand (moins de points, plus rapide)
-    // precisionFactor = 1.0 → delta_z_stratosphere standard (250m)
-    // precisionFactor > 1.0 → delta_z_stratosphere plus petit (plus de points, plus précis)
-    // Formule : delta_z_stratosphere = (delta_z * 5) / precisionFactor
-    // Exemples :
-    //   - precisionFactor = 0.5 → delta_z_stratosphere = delta_z * 10 (500m, moins précis, plus rapide)
-    //   - precisionFactor = 1.0 → delta_z_stratosphere = delta_z * 5 (250m, standard)
-    //   - precisionFactor = 2.0 → delta_z_stratosphere = delta_z * 2.5 (125m, plus précis, plus lent)
+    const delta_z_troposphere = delta_z;
     const delta_z_stratosphere = (delta_z * 5) / precisionFactor;
+    const delta_z_exosphere = (z_max > 120000) ? 5000 : delta_z_stratosphere;
 
-    // AJUSTEMENT HADÉEN : Si on va jusqu'à 600km, on doit augmenter le pas dans la haute atmosphère 
-    // sinon on aura trop de couches (600000 / 250 = 2400 couches ! trop lent)
-    // Stratégie : garder 250m jusqu'à 120km, puis augmenter fortement au-delà
-    const delta_z_exosphere = (z_max > 120000) ? 5000 : delta_z_stratosphere; // 5km pas au-delà de 120km
-
-    // Sous tropopause : précision fine (delta_z constant = 50m)
-    // 🔒 Toujours commencer par z=0
     if (z_trop_precalc > 0) {
         for (let z = 0; z < z_trop_precalc; z += delta_z_troposphere) {
             z_range.push(z);
@@ -186,11 +177,8 @@ function calculateFluxForT0() {
         z_range.push(0);
     }
 
-    // Au-dessus de la tropopause jusqu'à 120km : précision moyenne (250m)
     const limit_std_atmosphere = 120000;
     let current_z_max_loop = Math.min(z_max, limit_std_atmosphere);
-
-    // Au-dessus de la tropopause : précision grossière (delta_z * 5 = 250m)
     for (let z = z_trop_precalc + delta_z_stratosphere; z < current_z_max_loop; z += delta_z_stratosphere) {
         z_range.push(z);
     }
@@ -209,7 +197,6 @@ function calculateFluxForT0() {
 
     // S'assurer que z_max est inclus
     if (z_range.length === 0) {
-        // Cas particulier : z_max = 0 ou aucune couche créée → au moins z=0
         z_range.push(0);
     } else if (z_range[z_range.length - 1] < z_max) {
         z_range.push(z_max);
@@ -245,17 +232,16 @@ function calculateFluxForT0() {
         console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE avant earth_flux: lambda_range.length (${lambda_range.length}) != lambda_weights.length (${lambda_weights.length})`);
         throw new Error(`Longueurs incompatibles avant earth_flux: lambda_range (${lambda_range.length}) != lambda_weights (${lambda_weights.length})`);
     }
+    const T_surf_flux = DATA['🧮']['🧮🌡️'];
     const earth_flux = lambda_range.map((lambda, idx) => {
         if (lambda_weights[idx] === undefined) {
             console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE: lambda_weights[${idx}] manquant pour lambda_range[${idx}] = ${lambda}`);
             throw new Error(`lambda_weights[${idx}] requis`);
         }
-        return Math.PI * window.planckFunction(lambda, DATA['🧮']['🧮🌡️']) * delta_lambda * lambda_weights[idx];
+        const B = window.planckFunction(lambda, T_surf_flux);
+        return Math.PI * B * effective_delta_lambda * lambda_weights[idx];
     });
 
-    // Log supprimé (non essentiel)
-
-    // Debug: analyser l'émission dans la zone < 9 microns
     const lambda_9um = 9e-6; // 9 microns en mètres
     const flux_below_9um = earth_flux.filter((flux, idx) => lambda_range[idx] < lambda_9um).reduce((sum, f) => sum + f, 0);
     const flux_total = earth_flux.reduce((sum, f) => sum + f, 0);
@@ -295,6 +281,11 @@ function calculateFluxForT0() {
         throw new Error(`Longueurs incompatibles: earth_flux (${earth_flux.length}) != lambda_range (${lambda_range.length})`);
     }
     let flux_in = [...earth_flux];
+
+    // 🔒 Caps numériques : tau≥0 (évite transmission=∞, em_flux=-∞) ; flux/bande borné (évite sum→∞)
+    const TAU_EFF_MIN = 0;
+    const TAU_EFF_MAX = 700;   // exp(-700) ≈ 0
+    const MAX_FLUX_PER_BAND = 1e15;
 
     // 🔒 LOG : Vérifier les densités numériques à z=0 (première couche)
     const z_log = 0;
@@ -352,33 +343,35 @@ function calculateFluxForT0() {
             // Coefficient d'absorption total (CO2 + H2O + CH4)
             const kappa = kappa_CO2 + kappa_H2O + kappa_CH4;
 
-            optical_thickness[i][j] = kappa * delta_z_real;
+            const tau_raw = kappa * delta_z_real;
+            optical_thickness[i][j] = (Number.isFinite(tau_raw) && tau_raw >= 0) ? Math.min(tau_raw, TAU_EFF_MAX) : 0;
 
             // 🔒 Corps noir = pas d'absorption (CO2=0 ET H2O réellement absent ET CH4 réellement absent)
             // Vérifier les valeurs réelles, pas seulement les boutons
             const has_absorption = (DATA['🫧']['🍰🫧🏭'] > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
             if (!has_absorption) {
-                // Pas d'absorption : corps noir pur, flux passe sans modification
-                upward_flux[i][j] = flux_in[j];
+                // Pas d'absorption : corps noir pur, flux passe sans modification (clamp pour éviter overflow en somme)
+                upward_flux[i][j] = Math.max(-MAX_FLUX_PER_BAND, Math.min(MAX_FLUX_PER_BAND, flux_in[j]));
                 emitted_flux[i][j] = 0;
                 absorbed_flux[i][j] = 0;
             } else {
                 // Transfert radiatif dans la couche (Formule exacte avec exponentielle)
                 // I_out = I_in * exp(-tau) + B(T) * (1 - exp(-tau))
-
-                const tau = optical_thickness[i][j];
+                const tau = Math.max(TAU_EFF_MIN, Math.min(TAU_EFF_MAX, optical_thickness[i][j]));
                 const transmission = Math.exp(-tau);
-                const emissivity = 1 - transmission; // Kirchhoff: epsilon = 1 - transmission
+                const emissivity = 1 - transmission; // Kirchhoff: epsilon = 1 - transmission, ∈ [0,1]
 
                 // 1. Flux absorbé
                 const abs_flux = flux_in[j] * (1 - transmission);
 
                 // 2. Flux émis
-                // F_émis = (1 - exp(-tau)) × π × B_λ(T_couche) × Δλ × poids
-                const em_flux = emissivity * Math.PI * window.planckFunction(lambda, T) * delta_lambda * lambda_weights[j];
+                // F_émis = (1 - exp(-tau)) × π × B_λ(T_couche) × Δλ × poids (Δλ = pas réel de la grille)
+                const em_flux = emissivity * Math.PI * window.planckFunction(lambda, T) * effective_delta_lambda * lambda_weights[j];
 
-                // 3. Flux sortant
-                upward_flux[i][j] = flux_in[j] * transmission + em_flux;
+                // 3. Flux sortant + clamp pour éviter overflow de la somme totale
+                let out = flux_in[j] * transmission + em_flux;
+                if (!Number.isFinite(out)) out = flux_in[j];
+                upward_flux[i][j] = Math.max(-MAX_FLUX_PER_BAND, Math.min(MAX_FLUX_PER_BAND, out));
 
                 // Stocker les valeurs pour la visualisation
                 emitted_flux[i][j] = em_flux;
@@ -433,19 +426,20 @@ function calculateFluxForT0() {
             // Coefficient d'absorption total (CO2 + H2O + CH4)
             const kappa = kappa_CO2 + kappa_H2O + kappa_CH4;
 
-            optical_thickness[i][j] = kappa * delta_z_real;
+            const tau_raw_s = kappa * delta_z_real;
+            optical_thickness[i][j] = (Number.isFinite(tau_raw_s) && tau_raw_s >= 0) ? Math.min(tau_raw_s, TAU_EFF_MAX) : 0;
 
             // 🔒 Corps noir = pas d'absorption (CO2=0 ET H2O réellement absent ET CH4 réellement absent)
             // Vérifier les valeurs réelles, pas seulement les boutons
             const has_absorption = (DATA['🫧']['🍰🫧🏭'] > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
             if (!has_absorption) {
-                // Pas d'absorption : corps noir pur, flux passe sans modification
-                upward_flux[i][j] = flux_in[j];
+                // Pas d'absorption : corps noir pur, flux passe sans modification (clamp pour éviter overflow en somme)
+                upward_flux[i][j] = Math.max(-MAX_FLUX_PER_BAND, Math.min(MAX_FLUX_PER_BAND, flux_in[j]));
                 emitted_flux[i][j] = 0;
                 absorbed_flux[i][j] = 0;
             } else {
                 // Transfert radiatif dans la couche (Formule exacte avec exponentielle)
-                const tau = optical_thickness[i][j];
+                const tau = Math.max(TAU_EFF_MIN, Math.min(TAU_EFF_MAX, optical_thickness[i][j]));
                 const transmission = Math.exp(-tau);
                 const emissivity = 1 - transmission;
 
@@ -453,11 +447,13 @@ function calculateFluxForT0() {
                 const abs_flux = flux_in[j] * (1 - transmission);
 
                 // 2. Flux émis
-                // ⚡ OPTIMISATION : Utiliser B_λ(T_trop) précalculé
-                const em_flux = emissivity * Math.PI * planck_trop[j] * delta_lambda * lambda_weights[j];
+                // ⚡ OPTIMISATION : Utiliser B_λ(T_trop) précalculé ; Δλ = pas réel de la grille
+                const em_flux = emissivity * Math.PI * planck_trop[j] * effective_delta_lambda * lambda_weights[j];
 
-                // 3. Flux sortant
-                upward_flux[i][j] = flux_in[j] * transmission + em_flux;
+                // 3. Flux sortant + clamp pour éviter overflow de la somme totale
+                let out_s = flux_in[j] * transmission + em_flux;
+                if (!Number.isFinite(out_s)) out_s = flux_in[j];
+                upward_flux[i][j] = Math.max(-MAX_FLUX_PER_BAND, Math.min(MAX_FLUX_PER_BAND, out_s));
 
                 // Stocker les valeurs pour la visualisation
                 emitted_flux[i][j] = em_flux;
@@ -485,7 +481,7 @@ function calculateFluxForT0() {
         throw new Error('[calculateFluxForT0] upward_flux est vide ou invalide');
     }
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
-    
+
     // Log du delta (flux sortant - flux entrant initial)
     // Note: flux entrant initial = earth_flux total (flux émis par la surface)
     const earth_flux_total = earth_flux.reduce((sum, val) => sum + val, 0);
@@ -714,7 +710,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
         ? T0_test  // Corps noir : utiliser directement temp_surface (formule analytique exacte)
         : Math.pow(result.total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
     // Calculer la température terrestre en °C à partir de T0_test (température au sol en K)
-    const temp_surface_c = T0_test - 273.15;
+    const temp_surface_c = T0_test - CONST.KELVIN_TO_CELSIUS;
     const temp_eff_0 = 255.0; // Température effective sans CO2 (référence 255K)
     const albedo = result.albedo;
     const cloud_coverage = result.cloud_coverage;
@@ -754,7 +750,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             temp_surface: T0_test,
             temp_surface_c: temp_surface_c,
             temp_eff: temp_eff,
-            temp_eff_c: temp_eff - 273.15,
+            temp_eff_c: temp_eff - CONST.KELVIN_TO_CELSIUS,
             delta_temp: delta_temp,
             delta_temp_habitable: delta_temp_habitable,
             life_viable: life_viable,
@@ -871,7 +867,7 @@ function calculateT0InitialConfig() {
     const adjustment = deltaTicTime_per_tic * ticTime;
     const T0_initial_config = baseTemp + adjustment;
     
-    const tempC_anticipated = T0_initial_config - 273.15;
+    const tempC_anticipated = T0_initial_config - CONST.KELVIN_TO_CELSIUS;
     const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
     window.updateBlackBodyColor(color_anticipated);
     const legendEquilibre = document.querySelector('.legend-equilibre');
@@ -929,7 +925,7 @@ function simulateRadiativeTransfer() {
     
     // 🔒 Anticiper la couleur avec T0_initial dès le début
     
-        const tempC_anticipated = T0_initial - 273.15;
+        const tempC_anticipated = T0_initial - CONST.KELVIN_TO_CELSIUS;
         const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
         window.updateBlackBodyColor(color_anticipated);
         
@@ -1097,7 +1093,7 @@ function simulateRadiativeTransfer() {
                 let previousT0_for_convergence = null; // T0 précédente pour vérifier la convergence en température
 
                 // 🔒 LOG : Début de la convergence
-                console.log(`🚀 [performDichotomy] Début convergence - T0_initial = ${T0_initial.toFixed(2)}K (${(T0_initial - 273.15).toFixed(2)}°C)`);
+                console.log(`🚀 [performDichotomy] Début convergence - T0_initial = ${T0_initial.toFixed(2)}K (${(T0_initial - CONST.KELVIN_TO_CELSIUS).toFixed(2)}°C)`);
                 console.log(`🚀 [performDichotomy] DATA['🧮']['🧮🌡️'] avant = ${DATA['🧮']['🧮🌡️'].toFixed(2)}K`);
 
                 const iterate = () => {
@@ -1108,7 +1104,7 @@ function simulateRadiativeTransfer() {
 
                     // 🔒 LOG : Début de l'itération
                     console.log(`\n🔄 [iterate ${iter}] ========== DÉBUT ITÉRATION ${iter} ==========`);
-                    console.log(`🔄 [iterate ${iter}] T0_current = ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(2)}°C)`);
+                    console.log(`🔄 [iterate ${iter}] T0_current = ${T0_current.toFixed(2)}K (${(T0_current - CONST.KELVIN_TO_CELSIUS).toFixed(2)}°C)`);
                     console.log(`🔄 [iterate ${iter}] DATA['🧮']['🧮🌡️'] avant mise à jour = ${DATA['🧮']['🧮🌡️'].toFixed(2)}K`);
 
                     if (iter >= max_iterations) {
@@ -1241,7 +1237,7 @@ function simulateRadiativeTransfer() {
                     
                     // 🔒 Mettre à jour la couleur de legend-equilibre avec la température actuelle (pendant les calculs)
                     if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function') {
-                        const tempC_current = T0_current - 273.15;
+                        const tempC_current = T0_current - CONST.KELVIN_TO_CELSIUS;
                         const color_current = window.tempSurfaceToColor(tempC_current);
                         const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
                         if (legendEquilibre) {
@@ -1815,7 +1811,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     
     // 🔒 Mettre à jour la couleur avec la température finale (après convergence)
     if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
-        const tempC_final = final_T0 - 273.15;
+        const tempC_final = final_T0 - CONST.KELVIN_TO_CELSIUS;
         const color_final = window.tempSurfaceToColor(tempC_final);
         window.updateBlackBodyColor(color_final);
         
@@ -1828,7 +1824,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     
     // Log EDS et T° finale
     console.log(`🔥 EDS: ${eds.toFixed(1)} W/m²`);
-    console.log(`🌡️ T° finale: ${final_T0.toFixed(2)}K (${(final_T0 - 273.15).toFixed(1)}°C)`);
+    console.log(`🌡️ T° finale: ${final_T0.toFixed(2)}K (${(final_T0 - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C)`);
 
     // 🔒 Mettre à jour window.plotData.temp_surface pour que prev_T0 soit disponible au prochain calcul
     if (typeof window !== 'undefined') {
@@ -1836,7 +1832,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
             window.plotData = {};
         }
         window.plotData.temp_surface = final_T0;
-        window.plotData.temp_surface_c = final_T0 - 273.15;
+        window.plotData.temp_surface_c = final_T0 - CONST.KELVIN_TO_CELSIUS;
         
         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] avec la température finale convergée
         // Nécessaire pour que displayConvergence() affiche la bonne température
@@ -1858,7 +1854,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         cloud_coverage: cloud_coverage,
         T0: final_T0, // 🔒 Température de surface (K) - nécessaire pour updateH2OLevelDirect
         temp_surface: final_T0, // 🔒 Alias pour compatibilité
-        temp_surface_c: final_T0 - 273.15 // 🔒 Température de surface (°C) - nécessaire pour updateH2OLevelDirect
+        temp_surface_c: final_T0 - CONST.KELVIN_TO_CELSIUS // 🔒 Température de surface (°C) - nécessaire pour updateH2OLevelDirect
     };
 
     // 🔒 Mettre à jour la visualisation spectrale avant de résoudre
@@ -1953,7 +1949,7 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     
     // 🔒 Mettre à jour la couleur avec la température finale (après convergence, mode synchrone)
     if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
-        const tempC_final = T0 - 273.15;
+        const tempC_final = T0 - CONST.KELVIN_TO_CELSIUS;
         const color_final = window.tempSurfaceToColor(tempC_final);
         window.updateBlackBodyColor(color_final);
         
@@ -1991,7 +1987,7 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     
     // Log EDS et T° finale
     console.log(`🔥 EDS: ${eds.toFixed(1)} W/m²`);
-    console.log(`🌡️ T° finale: ${T0.toFixed(2)}K (${(T0 - 273.15).toFixed(1)}°C)`);
+    console.log(`🌡️ T° finale: ${T0.toFixed(2)}K (${(T0 - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C)`);
 
     // 🔒 Mettre à jour window.plotData.temp_surface et DATA['🧮']['🧮🌡️'] pour cohérence
     if (typeof window !== 'undefined') {
@@ -1999,7 +1995,7 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
             window.plotData = {};
         }
         window.plotData.temp_surface = T0;
-        window.plotData.temp_surface_c = T0 - 273.15;
+        window.plotData.temp_surface_c = T0 - CONST.KELVIN_TO_CELSIUS;
         
         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] avec la température finale convergée
         // Nécessaire pour que displayConvergence() affiche la bonne température
@@ -2054,7 +2050,7 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
         cloud_coverage: cloud_coverage,
         T0: T0, // 🔒 Température de surface (K) - nécessaire pour updateH2OLevelDirect
         temp_surface: T0, // 🔒 Alias pour compatibilité
-        temp_surface_c: T0 - 273.15 // 🔒 Température de surface (°C) - nécessaire pour updateH2OLevelDirect
+        temp_surface_c: T0 - CONST.KELVIN_TO_CELSIUS // 🔒 Température de surface (°C) - nécessaire pour updateH2OLevelDirect
     };
 }
 

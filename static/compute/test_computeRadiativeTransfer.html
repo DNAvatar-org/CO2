@@ -482,6 +482,17 @@
         .toggle-button:hover {
             background: #3a8eef;
         }
+        #convergence h2 .toggle-button + .toggle-button {
+            margin-left: 6px;
+        }
+        
+        /* 🧮 et 🧲 masqués par défaut ; visibles si #convergence.details-visible */
+        .convergence-details-block {
+            display: none;
+        }
+        #convergence.details-visible .convergence-details-block {
+            display: block;
+        }
         
         .results h2 {
             display: flex;
@@ -547,17 +558,18 @@
                             <span class="epoch-start-time" id="epoch-start-time" style="font-size: 10px; margin-top: 2px;">-5000 Ma</span>
                         </div>
                         
-                        <!-- 📅 Date avec ticTime -->
+                        <!-- 📅 Date avec ticTime (Ma) + durée 1 tic -->
                         <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
                             <span class="timeline-hourglass" style="font-size: 20px;">📅</span>
                             <span class="info-time" id="info-time" style="font-size: 10px; margin-top: 2px;">+0 Ma</span>
+                            <span class="tic-duration" id="tic-duration" style="font-size: 9px; color: var(--muted, #888); margin-top: 1px;"></span>
                         </div>
                         
-                        <!-- 🕰 Horloge avec événements -->
+                        <!-- 🕰 Horloge avec événements (>> ticTime, Météorite, etc.) -->
                         <div class="timeline-horloge-display" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
                             <span class="horloge-icon" style="font-size: 20px;">🕰</span>
-                            <div class="timeline-events-logos" id="timeline-events-logos" style="margin-top: 2px;">
-                                <!-- Logos d'événements (météorites, etc.) -->
+                            <div class="timeline-events-logos" id="timeline-events-logos" style="margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+                                <!-- >> ticTime puis logos (météorite, etc.) -->
                             </div>
                         </div>
                         
@@ -570,8 +582,9 @@
             
             <div class="controls-right">
                 <button class="icon-button" id="anim-toggle" onclick="toggleAnim()" title="Animation">🎬</button>
-                <button class="icon-button" onclick="runTest()" title="Exécuter">▶️</button>
+                <button class="icon-button" id="run-stop-btn" onclick="toggleRunStop()" title="Exécuter">▶️</button>
                 <button class="icon-button" onclick="clearLog()" title="Effacer les logs">🗑️</button>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" id="debug-io-cb" onchange="window.DEBUG_DATA_IO = this.checked;"> Debug I/O (🫧💧🪩🧲)</label>
             </div>
         </div>
         
@@ -610,6 +623,15 @@
     <script src="calculations_flux.js"></script>
     
     <script>
+        // Capturer toute erreur non gérée pour éviter plantage silencieux (ex: Hadéen)
+        window.onerror = function (msg, url, line, col, err) {
+            console.error('❌ Erreur non gérée:', msg, url, line, col, err && err.stack);
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function (e) {
+            console.error('❌ Promise rejetée non gérée:', e.reason, e.reason && e.reason.stack);
+        });
+
         // Fonction helper pour construire les clés de logos dans le HTML (utilise window.getLogoKey si disponible)
         function getLogoKeyHTML(...names) {
             if (typeof window !== 'undefined' && window.getLogoKey) {
@@ -849,20 +871,36 @@
             }
         }
         
-        // Mettre à jour l'affichage de la timeline
+        // Mettre à jour l'affichage de la timeline (📅 date en Ma, 1 tic = X Ma)
         function updateTimelineDisplay() {
             const infoTimeDisplay = document.getElementById('info-time');
+            const ticDurationEl = document.getElementById('tic-duration');
             const epochStartTime = document.getElementById('epoch-start-time');
             const DATA = window.DATA;
+            const EPOCH = (DATA && DATA['📜'] != null && window.TIMELINE) ? window.TIMELINE[DATA['📜']['👉']] : null;
+            const durationMa = (DATA && DATA['📜'] && DATA['📜']['🔺⏳'] != null) ? DATA['📜']['🔺⏳'] : 50;
+            const tic = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
             if (infoTimeDisplay && DATA && DATA['📜']) {
-                const infoTimeMa = DATA['📜']['📿💫'] * 50;
-                const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
-                infoTimeDisplay.textContent = `+${deltaMa} Ma`;
+                if (EPOCH && EPOCH['🕰'] && EPOCH['🕰']['💫']) {
+                    const startMa = (EPOCH['▶'] || 0) / 1e6;
+                    const dateMa = startMa - tic * durationMa;
+                    infoTimeDisplay.textContent = `${dateMa.toFixed(0)} Ma`;
+                } else {
+                    const infoTimeMa = tic * durationMa;
+                    infoTimeDisplay.textContent = `+${infoTimeMa.toFixed(0)} Ma`;
+                }
             }
-            if (epochStartTime && DATA && DATA['📅']) {
-                const EPOCH = DATA['📅'];
-                const epochStart = EPOCH['▶'] / 1e6;
-                epochStartTime.textContent = `-${epochStart.toFixed(0)} Ma`;
+            if (ticDurationEl) {
+                if (EPOCH && EPOCH['🕰'] && EPOCH['🕰']['💫']) {
+                    ticDurationEl.textContent = `1 tic = ${durationMa} Ma`;
+                    ticDurationEl.style.display = '';
+                } else {
+                    ticDurationEl.style.display = 'none';
+                }
+            }
+            if (epochStartTime && DATA && EPOCH) {
+                const epochStart = (EPOCH['▶'] || 0) / 1e6;
+                epochStartTime.textContent = `${epochStart.toFixed(0)} Ma`;
             }
         }
         
@@ -884,7 +922,25 @@
             
             if (!EPOCH || !EPOCH['🕰']) return;
             
-            // Bouton météorite de glace
+            // Bouton >> avancer ticTime (💫) — affiché si l'époque a 💫
+            if (EPOCH['🕰']['💫']) {
+                const ticBtn = document.createElement('button');
+                ticBtn.type = 'button';
+                ticBtn.className = 'icon-button btn-events';
+                ticBtn.textContent = '>>';
+                ticBtn.title = 'Avancer d\'un tic (refroidissement, flux géothermique)';
+                ticBtn.addEventListener('click', () => {
+                    if (typeof window !== 'undefined' && window.DATA && window.DATA['📜']) {
+                        window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
+                        if (typeof window.getEpochDateConfig === 'function') window.getEpochDateConfig();
+                        if (typeof window.getNoyau === 'function') window.getNoyau();
+                        updateTimelineDisplay();
+                    }
+                });
+                eventsLogos.appendChild(ticBtn);
+            }
+            
+            // Bouton météorite de glace (☄️)
             if (EPOCH['🕰'] && EPOCH['🕰']['☄️']) {
                 const meteorBtn = document.createElement('img');
                 meteorBtn.src = getImagePath('fonts/pics/ice_meteorite.png');
@@ -892,9 +948,10 @@
                 meteorBtn.className = 'timeline-event-logo btn-events';
                 meteorBtn.title = 'Météorite de glace';
                 meteorBtn.addEventListener('click', () => {
-                    // Ajouter +50Ma
                     if (typeof window !== 'undefined' && window.DATA) {
                         window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
+                        if (typeof window.getEpochDateConfig === 'function') window.getEpochDateConfig();
+                        if (typeof window.getNoyau === 'function') window.getNoyau();
                         updateTimelineDisplay();
                     }
                 });
@@ -1004,45 +1061,90 @@
             window.DATA['🔘']['🔘🎬'] = animEnabled;
         }
         
+        function setRunStopButtonRunning(running) {
+            const btn = document.getElementById('run-stop-btn');
+            if (!btn) return;
+            window.COMPUTE_RUNNING = !!running;
+            if (running) {
+                btn.textContent = '⏹';
+                btn.title = 'Arrêter les calculs';
+            } else {
+                btn.textContent = '▶️';
+                btn.title = 'Exécuter';
+            }
+        }
+
+        function toggleRunStop() {
+            if (window.COMPUTE_RUNNING) {
+                window.ABORT_COMPUTE = true;
+                return;
+            }
+            runTest();
+        }
+
         async function runTest() {
+            setRunStopButtonRunning(true);
+            window.ABORT_COMPUTE = false;
+            window.CONFIG_INIT_SNAPSHOT = null;
             try {
                 initializeGlobals();
-                
-                // Logs désactivés pour réduire la taille (déjà affichés dans l'UI)
                 const DATA = window.DATA;
-                
-                // 1. getEpochDateConfig() - Récupérer la config de date
+                let result = null;
                 const dateConfig = window.getEpochDateConfig ? window.getEpochDateConfig() : null;
-                
-                // 1.1. Initialiser DATA['🧮']['🧮🌡️'] selon 🔘🎬 après getEpochDateConfig()
-                // Si animation désactivée (🔘🎬 = false), alors 🧮.🧮🌡️ = 📅.🌡️🧮
                 if (!DATA['🔘']['🔘🎬']) {
-                    // Animation désactivée : initialiser avec 📅.🌡️🧮 (température attendue de l'époque)
                     DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
                 }
-                // Si animation activée (🔘🎬 = true), on garde DATA['🧮']['🧮🌡️'] tel quel (continuité)
-                
-                // 1.5. Afficher la configuration initiale AVANT les calculs
+
+                // 1. Config dès le debug (sans aucun calcul radiatif)
+                if (window.initForConfig && !window.initForConfig()) {
+                    console.error('❌ initForConfig a échoué');
+                    return;
+                }
                 displayResults(null);
-                
-                // Permettre au DOM de se mettre à jour avant les calculs
-                await new Promise(resolve => setTimeout(resolve, 50));
-                
-                // 2. Appeler computeRadiativeTransfer
-                const result = window.computeRadiativeTransfer();
-                
-                // 3. Afficher les résultats finaux dans l'ordre
-                displayResults(result);
-                
-                // 4. Afficher la convergence
-                displayConvergence();
-                
-                console.log('✅ Test terminé avec succès');
-                // Logs désactivés
-                
+                await new Promise(r => setTimeout(r, 0)); // Laisser le DOM afficher la config
+                if (window.ABORT_COMPUTE) { /* skip */ } else {
+
+                // 2. Premier cycle de l'eau → affiché dans Convergence
+                DATA['🧮']['previous'] = [];
+                DATA['🧮']['🧮🔄🌊'] = 1;
+                if (window.cycleDeLeau) await window.cycleDeLeau(1, true);
+                if (window.ABORT_COMPUTE) { /* skip loop */ } else {
+                if (window.displayConvergence) window.displayConvergence();
+                await new Promise(r => setTimeout(r, 0));
+                if (window.ABORT_COMPUTE) { /* skip loop */ } else {
+
+                // 3. Calculs radiatifs ; après chaque sortie, cycle de l'eau ; si changé → recalcul radiatif
+                let waterPass = 0;
+                const maxWaterPass = 5;
+                do {
+                    result = await window.computeRadiativeTransfer(1, waterPass);
+                    if (result === null || window.ABORT_COMPUTE) break;
+                    if (window.displayConvergence) window.displayConvergence();
+                    await new Promise(r => setTimeout(r, 0));
+                    if (window.ABORT_COMPUTE) break;
+                    const cycleResult = window.cycleDeLeau ? await window.cycleDeLeau(1, false) : { changed: false };
+                    const changed = cycleResult ? cycleResult.changed : false;
+                    if (window.displayConvergence) window.displayConvergence();
+                    await new Promise(r => setTimeout(r, 0));
+                    if (window.ABORT_COMPUTE) break;
+                    if (changed && waterPass < maxWaterPass) waterPass++; else break;
+                } while (true);
+
+                } } }
+
+                try {
+                    if (result !== null) displayResults(result);
+                    displayConvergence();
+                } catch (displayErr) {
+                    console.error('❌ Affichage après arrêt:', displayErr);
+                }
+                if (result !== null) {
+                    console.log('✅ Test terminé avec succès');
+                } else {
+                    console.log('⏹ Calculs arrêtés');
+                }
             } catch (error) {
                 console.error('❌ Erreur lors du test:', error);
-                // Logs désactivés
                 document.getElementById('results').style.display = 'block';
                 document.getElementById('results-content').innerHTML = `
                     <div class="error">
@@ -1050,6 +1152,8 @@
                         <pre>${error.stack}</pre>
                     </div>
                 `;
+            } finally {
+                setRunStopButtonRunning(false);
             }
         }
         
@@ -1112,33 +1216,32 @@
             const CONST = window.CONST;
             const DATA = window.DATA;
             
-            // 🧲☀️🔽: 🧲☀️🎱 × (1 - 🍰🪩📿) = Flux solaire absorbé
-            // 🔒 Toutes les valeurs doivent exister (crash si manquant)
+            // 🧲☀️🔽: 🧲☀️🎱 × (1 - 🍰🪩📿) = Flux solaire absorbé (formule = calcul dans calculations_flux.js)
             const solar_avg = soleil['🧲☀️🎱'];
             const albedo_val = albedo['🍰🪩📿'];
             const calculated = solar_avg * (1 - albedo_val);
             const actual = flux['🧲☀️🔽'];
             
-            // 🔒 Vérifier que toutes les valeurs sont définies avant d'appeler toFixed()
             if (solar_avg == null || albedo_val == null || calculated == null || actual == null) {
-                return ''; // Retourner vide si valeurs manquantes (crash évité ici car c'est pour l'affichage)
+                return '';
             }
-            
-            formulas.push(`<strong>🧲☀️🔽</strong>: <strong>🧲☀️🎱</strong> × (1 - <strong>🍰🪩📿</strong>) = ${solar_avg.toFixed(2)} × (1 - ${albedo_val.toFixed(4)}) = ${calculated.toFixed(2)} W/m²`);
+            const matchSolar = (Math.abs(calculated - actual) < 0.01) ? ' ✓' : ` (affiché: ${actual.toFixed(2)})`;
+            formulas.push(`<strong>🧲☀️🔽</strong>: <strong>🧲☀️🎱</strong> × (1 - <strong>🍰🪩📿</strong>) = ${solar_avg.toFixed(2)} × (1 - ${albedo_val.toFixed(4)}) = ${calculated.toFixed(2)} W/m²${matchSolar}`);
             
             // 🧲🌕🔽: Flux géothermique (constant)
             if (flux['🧲🌕🔽'] !== undefined) {
                 formulas.push(`<strong>🧲🌕🔽</strong>: Flux géothermique (constant) = ${flux['🧲🌕🔽'].toFixed(2)} W/m²`);
             }
             
-            // 🧲🌑🔼: σ × T⁴ = Flux émis par la surface (corps noir théorique à température T)
-            if (flux['🧲🌑🔼'] !== undefined && DATA && DATA['🧮'] && DATA['🧮']['🌡️'] !== undefined) {
-                const T = DATA['🧮']['🌡️'];
+            // 🧲🌑🔼: σ × T⁴ = Flux émis par la surface (corps noir) — T = DATA['🧮']['🧮🌡️'] (même clé que le calcul)
+            if (flux['🧲🌑🔼'] !== undefined && DATA && DATA['🧮'] && DATA['🧮']['🧮🌡️'] != null) {
+                const T = DATA['🧮']['🧮🌡️'];
                 const sigma = CONST.STEFAN_BOLTZMANN;
                 const calculated = sigma * Math.pow(T, 4);
                 const actual = flux['🧲🌑🔼'];
-                formulas.push(`<strong>🧲🌑🔼</strong>: σ × T⁴ = ${sigma.toExponential(2)} × ${T.toFixed(2)}⁴ = ${calculated.toFixed(2)} W/m²`);
-                formulas.push(`&nbsp;&nbsp;&nbsp;&nbsp;Flux émis par la surface (corps noir théorique). ⚠️ Ce n'est PAS le flux qui sort au sommet (c'est 🧲🌈🔼)`);
+                const match = (Math.abs(calculated - actual) < 0.01) ? ' ✓' : ` (affiché: ${actual.toFixed(2)}, écart: ${(actual - calculated).toFixed(2)})`;
+                formulas.push(`<strong>🧲🌑🔼</strong>: σ × T⁴ = ${sigma.toExponential(2)} × ${T.toFixed(2)}⁴ = ${calculated.toFixed(2)} W/m²${match}`);
+                formulas.push(`&nbsp;&nbsp;&nbsp;&nbsp;Flux émis par la surface (corps noir). ⚠️ Ce n'est PAS le flux qui sort au sommet (c'est 🧲🌈🔼)`);
             }
             
             // 🧲🌈🔼: Σ[λ=0.1→100μm] I_λ(z_max) × Δλ = Aire sous courbe spectrale réelle
@@ -1156,11 +1259,12 @@
                 formulas.push(`<strong>🧲🪩🔼</strong>: <strong>🧲☀️🎱</strong> - <strong>🧲☀️🔽</strong> = <strong>🧲☀️🎱</strong> × <strong>🍰🪩📿</strong> = ${calculated2.toFixed(2)} W/m²`);
             }
             
-            // 🔺🧲: 🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 = Delta équilibre radiatif
+            // 🔺🧲: 🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 (formule = calcul dans calculations_flux.js)
             if (flux['🔺🧲'] !== undefined && flux['🧲☀️🔽'] !== undefined && flux['🧲🌕🔽'] !== undefined && flux['🧲🌈🔼'] !== undefined) {
                 const calculated = flux['🧲☀️🔽'] + flux['🧲🌕🔽'] - flux['🧲🌈🔼'];
                 const actual = flux['🔺🧲'];
-                formulas.push(`<strong>🔺🧲</strong>: <strong>🧲☀️🔽</strong> + <strong>🧲🌕🔽</strong> - <strong>🧲🌈🔼</strong> = ${flux['🧲☀️🔽'].toFixed(2)} + ${flux['🧲🌕🔽'].toFixed(2)} - ${flux['🧲🌈🔼'].toFixed(2)} = ${calculated.toFixed(2)} W/m²`);
+                const matchDelta = (Math.abs(calculated - actual) < 0.01) ? ' ✓' : ` (affiché: ${actual.toFixed(2)})`;
+                formulas.push(`<strong>🔺🧲</strong>: <strong>🧲☀️🔽</strong> + <strong>🧲🌕🔽</strong> - <strong>🧲🌈🔼</strong> = ${flux['🧲☀️🔽'].toFixed(2)} + ${flux['🧲🌕🔽'].toFixed(2)} - ${flux['🧲🌈🔼'].toFixed(2)} = ${calculated.toFixed(2)} W/m²${matchDelta}`);
                 formulas.push(`&nbsp;&nbsp;&nbsp;&nbsp;Delta équilibre radiatif (flux entrant - flux sortant). En équilibre: 🔺🧲 ≈ 0`);
             }
             
@@ -1303,19 +1407,14 @@
             
             let html = '';
             
-            // Afficher tous les objets DATA en entier avec format compact : 🔘:{...}
-            // Utiliser json2html pour générer les formules depuis window.FORM
+            // Config minimale : pas de flux, pas de spectre. 🫧💧🪩🧲 sont dans Convergence (cycle eau + radiatif).
             html += json2html(DATA['🔘'], null, null, null, '🔘');
             html += json2html(DATA['📜'], null, null, null, '📜');
             html += json2html(EPOCH['🕰'], null, null, null, '🕰');
             html += json2html(DATA['⚖️'], null, null, null, '⚖️');
-            html += json2html(DATA['🫧'], null, null, null, '🫧');
-            html += json2html(DATA['💧'], null, null, null, '💧');
-            html += json2html(DATA['🪩'], null, null, null, '🪩');
-            html += json2html(DATA['🌕'], null, null, null, '🌕');
-            html += json2html(DATA['☀️'], null, null, null, '☀️');
-            html += json2html(DATA['🧲'], null, null, null, '🧲');
-            
+            html += json2html(DATA['🌕'] || {}, null, null, null, '🌕');
+            html += json2html(DATA['☀️'] || {}, null, null, null, '☀️');
+
             configContent.innerHTML = html;
             configDiv.style.display = 'block';
             
@@ -1352,70 +1451,124 @@
         }
         
         function displayConvergence() {
+            try {
             const DATA = window.DATA;
-            const CONST = window.CONST;
+            const CONST = window.CONST || { KELVIN_TO_CELSIUS: 273.15 };
             const convergenceDiv = document.getElementById('convergence');
             const convergenceContent = document.getElementById('convergence-content');
             
             if (!convergenceDiv || !convergenceContent) return;
+            if (!DATA || !DATA['🧮']) {
+                convergenceContent.innerHTML = '<div class="config-value">Aucune donnée de convergence disponible</div>';
+                convergenceDiv.style.display = 'block';
+                return;
+            }
             
             // Mettre à jour le titre avec la température en °C
             const convergenceTitle = convergenceDiv.querySelector('h2');
             if (convergenceTitle) {
-                //const temp_K = DATA['🧮']['🧮🌡️'];
-                const temp_C = (DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS).toFixed(3);
-                const button = convergenceTitle.querySelector('.toggle-button');
-                const buttonText = button ? button.textContent : 'Formules +';
-                convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <button class="toggle-button" onclick="toggleConvergence()">${buttonText}</button>`;
+                const T_K = DATA['🧮']['🧮🌡️'];
+                const temp_C = (T_K != null && Number.isFinite(T_K)) ? (T_K - CONST.KELVIN_TO_CELSIUS).toFixed(3) : '—';
+                const formulesButton = convergenceTitle.querySelector('.toggle-formules');
+                const formulesButtonText = formulesButton ? formulesButton.textContent : 'Formules +';
+                const detailsVisible = convergenceDiv.classList.contains('details-visible');
+                const detailsButtonText = detailsVisible ? 'Détails −' : 'Détails +';
+                convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">${detailsButtonText}</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">${formulesButtonText}</button>`;
             }
             
             let html = '';
             
-            // Afficher les détails de convergence si disponible
-            const history = DATA['🧮']['previous'];
+            // Afficher les détails de convergence si disponible (exclure Init = Configuration)
+            // Par cycle eau : 🫧, 💧, 🪩 une fois. À chaque calcul radiatif : 🧮 et 🧲 uniquement.
+            const history = Array.isArray(DATA['🧮']['previous']) ? DATA['🧮']['previous'] : [];
             if (Array.isArray(history) && history.length > 0) {
-                // Afficher toutes les itérations
-                const iterations_to_show = history;
-                
-                iterations_to_show.forEach((state, idx) => {
-                    if (state.data_snapshot) {
-                        // Afficher l'en-tête de l'itération avec imbrication
-                        let header = '';
-                        if (state.outerIter !== undefined && state.innerIter !== undefined) {
-                            header = `<strong>💧 cycle de l'eau ${state.outerIter}</strong> → <strong>🌈 calcul radiatif ${state.innerIter}</strong>`;
-                        } else if (state.iteration !== undefined) {
-                            header = `<strong>Itération ${state.iteration}</strong>`;
-                        } else {
-                            header = `<strong>État initial</strong>`;
-                        }
-                        html += `<div class="iteration-header">${header} (${state.temperature_C.toFixed(3)}°C, phase: ${state.phase}, Δ: ${state.delta_equilibre.toFixed(3)} W/m²)</div>`;
-                        
-                const categories = ['🧮', '🫧', '🧲', '💧', '🪩'];
-                categories.forEach(categoryKey => {
-                            if (state.data_snapshot[categoryKey]) {
-                                const current = state.data_snapshot[categoryKey];
-                        
-                        // Pour 🧮, exclure previous (récursif)
-                        if (categoryKey === '🧮') {
-                            const current_clean = { ...current };
-                            delete current_clean.previous;
-                            html += json2html(current_clean, '', '', null, categoryKey);
-                        } else {
-                            html += json2html(current, '', '', null, categoryKey);
-                        }
-                    }
+                const iterations_to_show = history.filter(s => s.phase !== 'Init' || s.innerIter === -1);
+                const radiatif_only = iterations_to_show.filter(s => s.innerIter != null);
+                const last_state = radiatif_only.length ? radiatif_only[radiatif_only.length - 1] : (iterations_to_show[iterations_to_show.length - 1] || history[history.length - 1]);
+
+                // Grouper par cycle eau (outerIter)
+                const byCycle = new Map();
+                iterations_to_show.forEach(state => {
+                    const k = state.outerIter !== undefined ? state.outerIter : 0;
+                    if (!byCycle.has(k)) byCycle.set(k, []);
+                    byCycle.get(k).push(state);
                 });
+                const outerOrder = [...byCycle.keys()].sort((a, b) => Number(a) - Number(b));
+
+                outerOrder.forEach(outerIter => {
+                    const states = byCycle.get(outerIter);
+                    const cycleState = states.find(s => s.phase === 'CycleEau');
+                    const radiatifStates = states.filter(s => s.innerIter != null).sort((a, b) => (a.innerIter || 0) - (b.innerIter || 0));
+
+                    // 💧 cycle de l'eau : 🫧, 💧, 🪩 (calcul avec T0, sans flux)
+                    html += `<div class="iteration-header"><strong>💧 cycle de l'eau ${outerIter}</strong></div>`;
+                    if (cycleState && cycleState.data_snapshot) {
+                        ['🫧', '💧', '🪩'].forEach(cat => {
+                            if (cycleState.data_snapshot[cat]) html += json2html(cycleState.data_snapshot[cat], '', '', null, cat);
+                        });
                     }
+
+                    // 🌈 calcul radiatif 0..20 par tour (plusieurs tours si cycle eau a changé en zone liquide)
+                    const byPass = new Map();
+                    radiatifStates.forEach(s => {
+                        const p = (s.waterPass != null) ? s.waterPass : 0;
+                        if (!byPass.has(p)) byPass.set(p, []);
+                        byPass.get(p).push(s);
+                    });
+                    [...byPass.keys()].sort((a, b) => a - b).forEach(waterPass => {
+                        const passStates = byPass.get(waterPass).sort((a, b) => (a.innerIter || 0) - (b.innerIter || 0));
+                        if (waterPass > 0) html += `<div class="iteration-header" style="margin-top:8px;color:var(--muted);">🌈 tour radiatif ${waterPass + 1} (cycle eau mis à jour)</div>`;
+                        const safeNum = (v, def) => { if (v == null) return def; const n = Number(v); if (!Number.isFinite(n)) return def; return (Math.abs(n) >= 1e3 || (Math.abs(n) < 1e-2 && n !== 0)) ? n.toExponential(3) : n.toFixed(3); };
+                        const safeNumTemp = (v, def) => { if (v == null) return def; const n = Number(v); if (!Number.isFinite(n)) return def; return n.toFixed(1); };
+                        passStates.forEach(state => {
+                            try {
+                                if (!state || !state.data_snapshot) return;
+                                const innerIter = state.innerIter;
+                                const T = safeNumTemp(state.temperature_C, '-');
+                                const albedo = safeNum(state.albedo, '-');
+                                const phase = (state.phase != null) ? String(state.phase) : '-';
+                                const delta = safeNum(state.delta_equilibre, '-');
+                                const yinYang = state.yinYang != null ? state.yinYang : '-';
+                                const iterLabel = (innerIter === -1) ? 'Init' : innerIter;
+                                const dichoBounds = (state.phase === 'Dicho' && state.dichoT_low_C != null && state.dichoT_high_C != null)
+                                    ? ` [🔽: ${safeNumTemp(state.dichoT_low_C, '-')}°C, 🔼: ${safeNumTemp(state.dichoT_high_C, '-')}°C]`
+                                    : '';
+                                const seuil = (state.data_snapshot['🧮'] && state.data_snapshot['🧮']['🧲🔬'] != null) ? state.data_snapshot['🧮']['🧲🔬'] : null;
+                                const seuilStr = seuil != null ? safeNum(seuil, '-') : '-';
+                                const deltaVal = state.delta_equilibre != null ? Number(state.delta_equilibre) : NaN;
+                                const arretOk = (Number.isFinite(deltaVal) && seuil != null && Math.abs(deltaVal) <= seuil) ? 'oui' : 'non';
+                                html += `<div class="iteration-header">🌈 calcul radiatif ${iterLabel} :: {T°: ${T}°C, Albedo: ${albedo}} => Δ: ${delta} W/m² => ⚧: ${phase} => ☯: ${yinYang} => arrêt |Δ|≤${seuilStr} W/m²: ${arretOk}${dichoBounds}</div>`;
+                                html += '<div class="convergence-details-block">';
+                                if (state.data_snapshot['🧮']) {
+                                    const m = { ...state.data_snapshot['🧮'] };
+                                    delete m.previous;
+                                    html += json2html(m, '', '', null, '🧮');
+                                }
+                                if (state.data_snapshot['🧲']) html += json2html(state.data_snapshot['🧲'], '', '', null, '🧲');
+                                html += '</div>';
+                            } catch (stateErr) {
+                                console.warn('État de convergence ignoré (données invalides):', stateErr);
+                            }
+                        });
+                    });
                 });
-                
-                // Afficher la température finale
-                const last_state = history[history.length - 1];
-                html += `<div class="config-value"><strong>Température finale: ${last_state.temperature_C.toFixed(3)}°C (${last_state.temperature_K.toFixed(3)}K)</strong></div>`;
+
+                // Afficher la température finale (dernier calcul radiatif) — T° toujours en décimal, 1 décimale
+                const safeNumLast = (v) => { if (v == null) return '—'; const n = Number(v); if (!Number.isFinite(n)) return '—'; return (Math.abs(n) >= 1e3 || (Math.abs(n) < 1e-2 && n !== 0)) ? n.toExponential(3) : n.toFixed(3); };
+                const safeNumTempLast = (v) => { if (v == null) return '—'; const n = Number(v); if (!Number.isFinite(n)) return '—'; return n.toFixed(1); };
+                const Tc = safeNumTempLast(last_state && last_state.temperature_C);
+                const Tk = safeNumTempLast(last_state && last_state.temperature_K);
+                html += `<div class="config-value"><strong>Température finale: ${Tc}°C (${Tk}K)</strong></div>`;
             }
             
             // Toujours afficher le panneau même si html est vide
             convergenceContent.innerHTML = html || '<div class="config-value">Aucune donnée de convergence disponible</div>';
             convergenceDiv.style.display = 'block';
+            } catch (err) {
+                console.error('❌ displayConvergence:', err);
+                const convergenceContent = document.getElementById('convergence-content');
+                if (convergenceContent) convergenceContent.innerHTML = `<div class="config-value error">Erreur affichage: ${err.message}</div>`;
+            }
         }
         
         // 🔒 Exposer displayConvergence sur window pour que calculations_flux.js puisse l'appeler
@@ -1449,28 +1602,32 @@
         
         function toggleConvergence() {
             const convergenceDiv = document.getElementById('convergence');
-            const button = convergenceDiv.querySelector('.toggle-button');
+            const formulesButton = convergenceDiv.querySelector('h2 .toggle-formules');
             const formuleContainers = convergenceDiv.querySelectorAll('.formule-container');
             
-            // Toggle la classe 'replied' pour replier/déplier la section
             const isReplied = convergenceDiv.classList.contains('replied');
             if (isReplied) {
                 convergenceDiv.classList.remove('replied');
-                button.textContent = 'Results −';
-                // Quand on déplie, afficher les formules si elles existent
+                if (formulesButton) formulesButton.textContent = 'Results −';
                 formuleContainers.forEach(container => {
                     container.classList.remove('notVisible');
                     container.classList.add('visible');
                 });
             } else {
                 convergenceDiv.classList.add('replied');
-                button.textContent = 'Formules +';
-                // Quand on replie, cacher les formules
+                if (formulesButton) formulesButton.textContent = 'Formules +';
                 formuleContainers.forEach(container => {
                     container.classList.remove('visible');
                     container.classList.add('notVisible');
                 });
             }
+        }
+        
+        function toggleConvergenceDetails() {
+            const convergenceDiv = document.getElementById('convergence');
+            const detailsButton = convergenceDiv.querySelector('h2 .toggle-details');
+            const detailsVisible = convergenceDiv.classList.toggle('details-visible');
+            if (detailsButton) detailsButton.textContent = detailsVisible ? 'Détails −' : 'Détails +';
         }
         
         function toggleLexique() {
