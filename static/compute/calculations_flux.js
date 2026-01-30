@@ -118,8 +118,8 @@ const CYCLE_TOL_VAPOR = 1e-6;
 const MIN_SEARCH_STEP_K = 30;
 // Pas maximum en Search : avec atmosphère opaque, flux_out ne suit pas σT⁴ → plafonner pour éviter overshoot
 const MAX_SEARCH_STEP_K = 100;
-// Quand |Δ| >> tolérance (ex. Hadéen), pas proportionnel à Δ pour atteindre l'équilibre et passer en Dicho
-const MAX_SEARCH_STEP_LARGE_K = 500;   // plafond absolu du pas (K)
+// Quand |Δ| >> tolérance : pas proportionnel à Δ, plafonné pour éviter saut Init→iter0 trop gros (ex. 38°C→538°C)
+const MAX_SEARCH_STEP_LARGE_K = 150;   // plafond du pas en Search quand |Δ| > 10×tolérance (K)
 const LARGE_DELTA_FACTOR = 10;         // si |Δ| > LARGE_DELTA_FACTOR * tolérance → scale le pas
 const SEARCH_STEP_SCALE_MAX = 200;     // facteur max : pas = (Δ/sensitivity) * min(SEARCH_STEP_SCALE_MAX, |Δ|/tolérance)
 
@@ -242,7 +242,8 @@ async function runRadiatifOnly(outerIter, waterPass) {
     DATA['🧮']['🧮🌡️⏮'] = DATA['🧮']['🧮🌡️'];
     DATA['🧮']['🧲🔺⏮'] = delta_equilibre_init;
     const T_K = DATA['🧮']['🧮🌡️'];
-    DATA['🧮']['🔬🌈_target'] = (T_K > 2000) ? 50 : 1000; // Régime T élevé : résolution réduite (éviter OOM)
+    const maxBinsRun = window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
+    DATA['🧮']['🔬🌈_target'] = (T_K > 2000) ? 50 : maxBinsRun; // Éviter OOM (1000×z = crash Archéen)
     DATA['📅']['🔺⏳'] = 86400 * 10;
 
     // Snapshot Init (calcul radiatif -1) : {T°, Albedo} => Δ => phase => ☯
@@ -620,9 +621,10 @@ function computeRadiativeTransferLegacy() {
         if (window.ABORT_COMPUTE) return null;
         DATA['🧮']['🧮🔄🌊']++;
 
-        // 💧 Résolution spectrale : 1000 bins, ou 50 si T élevé (éviter OOM)
+        // 💧 Résolution spectrale : 50 si T élevé, sinon plafond maxSpectralBinsConvergence (éviter OOM Archéen)
         const _T = (DATA['🧮'] && DATA['🧮']['🧮🌡️']) || 300;
-        DATA['🧮']['🔬🌈_target'] = (_T > 2000) ? 50 : 1000;
+        const maxBins = (typeof window !== 'undefined' && window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxSpectralBinsConvergence != null) ? window.CONFIG_COMPUTE.maxSpectralBinsConvergence : 150;
+        DATA['🧮']['🔬🌈_target'] = (_T > 2000) ? 50 : maxBins;
 
         // 🔒 Arrêt cycle eau si T hors bande active : [-10°C, 150°C] resserrée par pression (gel + évaporation)
         if (DATA['🧮']['🧮🔄🌊'] > 1 && typeof window.getWaterCycleTempBoundsFromPressure === 'function') {

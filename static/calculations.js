@@ -84,20 +84,10 @@ function evaporationRate() {
 function calculateFluxForT0() {
     const DATA = window.DATA;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
-    const T_K = (DATA['🧮'] && DATA['🧮']['🧮🌡️']) || 300;
-
-    // Régime T élevé : résolution réduite pour éviter OOM (grille spectrale + verticale)
-    const highTRegime = T_K > 2000;
-    if (highTRegime && DATA['🧮']) {
-        if (typeof DATA['🧮']['🔬🌈_target'] !== 'number' || DATA['🧮']['🔬🌈_target'] > 50) {
-            DATA['🧮']['🔬🌈_target'] = 50;
-        }
-    }
-
     // 🔒 Partition eau déjà mise à jour par le caller (calculateH2OParameters avant chaque calculateFluxForT0 dans la boucle radiatif)
     DATA['📊'] = {};
     
-    const delta_z = highTRegime ? 200 : 50;
+    const delta_z = 50;
     const lambda_min = 0.1e-6;
     const lambda_max = 100e-6;
     const delta_lambda = 0.1e-6;
@@ -122,8 +112,7 @@ function calculateFluxForT0() {
     const lambda_weights = []; // Poids pour les moyennes pondérées
 
     // 💧 Phase cycle eau : résolution réduite (ex. 100 bins) pour accélérer. Phase T finale : 1000 bins.
-    let spectral_target = (DATA['🧮'] && typeof DATA['🧮']['🔬🌈_target'] === 'number') ? DATA['🧮']['🔬🌈_target'] : null;
-    if (highTRegime) spectral_target = Math.min(spectral_target != null ? spectral_target : 999, 50);
+    const spectral_target = (DATA['🧮'] && typeof DATA['🧮']['🔬🌈_target'] === 'number') ? DATA['🧮']['🔬🌈_target'] : null;
     const lambda_span = lambda_max - lambda_min;
 
     {

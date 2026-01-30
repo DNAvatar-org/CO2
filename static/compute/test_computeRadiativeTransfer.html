@@ -1486,6 +1486,16 @@
                 const radiatif_only = iterations_to_show.filter(s => s.innerIter != null);
                 const last_state = radiatif_only.length ? radiatif_only[radiatif_only.length - 1] : (iterations_to_show[iterations_to_show.length - 1] || history[history.length - 1]);
 
+                // Formule Search (pas de T en phase Search) — dépend de EPOCH['🧲🔬'] (precision_K)
+                const precisionK = (window.TIMELINE && window.DATA && window.DATA['📜']) ? (window.TIMELINE[window.DATA['📜']['👉']] || {})['🧲🔬'] : null;
+                const tolW = (last_state && last_state.data_snapshot && last_state.data_snapshot['🧮']) ? last_state.data_snapshot['🧮']['🧲🔬'] : null;
+                html += '<div class="config-value" style="margin-bottom:8px;font-size:0.9em;color:var(--muted);">';
+                html += '<strong>Phase Search</strong>: T_new = T + increment, ';
+                html += 'increment = Δ/(🧲🔬/EPOCH[\'🧲🔬\']) = Δ/(4σT³); si |Δ|&gt;10×🧲🔬 alors increment ×= min(200, |Δ|/🧲🔬), puis cap [30, 100] K (ou 150 K si |Δ|&gt;10×🧲🔬). ';
+                html += 'Arrêt: |Δ|≤🧲🔬 avec 🧲🔬 = 4σT³×EPOCH[\'🧲🔬\'] (W/m²). ';
+                if (precisionK != null) html += `Ici EPOCH['🧲🔬'] = ${precisionK} K → tolérance ≈ ${tolW != null ? Number(tolW).toFixed(3) : '?'} W/m².`;
+                html += '</div>';
+
                 // Grouper par cycle eau (outerIter)
                 const byCycle = new Map();
                 iterations_to_show.forEach(state => {
@@ -1559,6 +1569,14 @@
                 const Tc = safeNumTempLast(last_state && last_state.temperature_C);
                 const Tk = safeNumTempLast(last_state && last_state.temperature_K);
                 html += `<div class="config-value"><strong>Température finale: ${Tc}°C (${Tk}K)</strong></div>`;
+                const P_atm = window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'];
+                if (typeof P_atm === 'number' && Number.isFinite(P_atm) && typeof window.getBoilingPointKFromPressure === 'function') {
+                    const T_boil_K = window.getBoilingPointKFromPressure(P_atm);
+                    const T_boil_C = (T_boil_K - 273.15).toFixed(1);
+                    const TcNum = last_state && last_state.temperature_C != null ? Number(last_state.temperature_C) : null;
+                    const aboveBoil = Number.isFinite(TcNum) && TcNum > T_boil_K - 273.15;
+                    html += `<div class="config-value">T_ébullition(🎈=${P_atm.toFixed(2)} atm) = ${T_boil_C}°C ${aboveBoil ? '→ T finale &gt; T_ébullition (eau bout)' : '→ liquide possible'}</div>`;
+                }
             }
             
             // Toujours afficher le panneau même si html est vide

@@ -112,7 +112,7 @@ const timeline = [
         '▶': 4.0e9,
         '◀': 2.5e9,
         '🌡️🧮': 311,
-        '🧲🔬': 0.1,
+        '🧲🔬': 0.05,
         '🔋☀️': 3.0624e26, // Puissance totale du soleil (W) - 80% de 3.828e26 W
         '🔋🌕': 1.5e14, // core_power_watts (Puissance géothermique totale ~150 TW)
         '📐': 6371, // Rayon de la planète en km
@@ -358,4 +358,5 @@ window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
 window.CONFIG_COMPUTE.maxRadiatifIters = 41;
 // Plafond T en Search (K). 2373 = lave complète (~2100°C), réaliste pour surface (au-delà = vaporisation). null = pas de plafond (test).
 window.CONFIG_COMPUTE.maxSearchT_K = null;
+window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 150;
 

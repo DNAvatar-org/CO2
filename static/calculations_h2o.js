@@ -17,24 +17,29 @@
 // - Cycle saisonnier (variations annuelles de l'évaporation et des précipitations)
 // - Impact du volcanisme sur l'apport d'eau (dégazage du manteau)
 
-// Helper logs : objet → JSON avec nombres en notation scientifique (e+*)
-function stringifyScientific(obj) {
+// Helper logs : objet → JSON, nombres en scientifique si grand/petit, sinon 2 décimales (évite crash/lisibilité Debug I/O)
+const STRINGIFY_MAX_DEPTH = 4;
+function stringifyScientific(obj, depth) {
+    if (depth == null) depth = 0;
+    if (depth > STRINGIFY_MAX_DEPTH) return '…';
     if (obj === null) return 'null';
     if (typeof obj === 'number') {
         if (Number.isNaN(obj)) return 'null';
         if (!Number.isFinite(obj)) return obj > 0 ? 'Infinity' : '-Infinity';
-        return (Math.abs(obj) >= 1e3 || (Math.abs(obj) < 1e-3 && obj !== 0)) ? obj.toExponential(2) : String(obj);
+        if (Math.abs(obj) >= 1e3 || (Math.abs(obj) < 1e-3 && obj !== 0)) return obj.toExponential(2);
+        return obj.toFixed(2);
     }
     if (typeof obj === 'string') return JSON.stringify(obj);
     if (typeof obj === 'boolean') return obj ? 'true' : 'false';
-    if (Array.isArray(obj)) return '[' + obj.map(stringifyScientific).join(',') + ']';
+    if (Array.isArray(obj)) return '[' + obj.slice(0, 5).map(v => stringifyScientific(v, depth + 1)).join(',') + (obj.length > 5 ? ',…' : '') + ']';
     if (typeof obj === 'object') {
-        const pairs = Object.keys(obj).map(k => JSON.stringify(k) + ':' + stringifyScientific(obj[k]));
-        return '{' + pairs.join(',') + '}';
+        const keys = Object.keys(obj).slice(0, 15);
+        const pairs = keys.map(k => JSON.stringify(k) + ':' + stringifyScientific(obj[k], depth + 1));
+        return '{' + pairs.join(',') + (Object.keys(obj).length > 15 ? ',…' : '') + '}';
     }
     return String(obj);
 }
-if (typeof window !== 'undefined') window.stringifyScientificForLog = stringifyScientific;
+if (typeof window !== 'undefined') window.stringifyScientificForLog = (o) => stringifyScientific(o, 0);
 
 //Calcule la pression de vapeur saturante selon l'équation de Clausius-Clapeyron
 // Formule: P_sat = P₀ × exp((L_v / R_v) × (1/T₀ - 1/T))
@@ -57,6 +62,18 @@ function calculateSaturatedVaporPressure() {
     const exponent = (L_v / CONST.RV_WATER) * (1 / CONST.T0_WATER - 1 / temp_K);
     const P_sat = CONST.P0_WATER * Math.exp(exponent);
     return P_sat;
+}
+
+// Point d'ébullition de l'eau à la pression P (Clausius-Clapeyron inverse).
+// P_atm en atm ; retourne T_boil en K. P_sat(T_boil) = P_total ⇒ 1/T_boil = 1/T0 - (R_v/L_v)*ln(P_total/P0).
+function getBoilingPointKFromPressure(P_atm) {
+    const CONST = window.CONST;
+    const P_total_Pa = P_atm * CONST.STANDARD_ATMOSPHERE_PA;
+    if (P_total_Pa <= 0) return CONST.T_BOIL;
+    const ln_P = Math.log(P_total_Pa / CONST.P0_WATER);
+    const inv_T = 1 / CONST.T0_WATER - (CONST.RV_WATER / CONST.L_VAPORIZATION) * ln_P;
+    if (inv_T <= 0) return CONST.T_BOIL;
+    return 1 / inv_T;
 }
 
 //Calcule la fraction volumique maximale de vapeur d'eau à saturation
@@ -585,3 +602,4 @@ window.calculateCloudAlbedoContribution = calculateCloudAlbedoContribution;
 // 🔒 SUPPRIMÉ : window.estimateCloudCoverage - Les nuages ne sont pas un stock d'eau
 window.calculateWaterPartition = calculateWaterPartition;
 window.calculatePrecipitationFeedback = calculatePrecipitationFeedback;
+window.getBoilingPointKFromPressure = getBoilingPointKFromPressure;
