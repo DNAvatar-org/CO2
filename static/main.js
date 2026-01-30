@@ -42,6 +42,8 @@ if (typeof window !== 'undefined') {
     window.isDebugPhases = false; // Désactiver les logs de phase pour nettoyer // Mettre à false pour désactiver les logs de phases
 }
 
+const CONST = window.CONST;
+
 // ============================================================================
 // UNITÉ DE TEMPÉRATURE (cycle °C → °F → K)
 // ============================================================================
@@ -56,7 +58,7 @@ function convertTemperature(tempC, unit) {
         case 'F':
             return tempC * 9 / 5 + 32;
         case 'K':
-            return tempC + 273.15;
+            return tempC + CONST.KELVIN_TO_CELSIUS;
         default:
             return tempC;
     }
@@ -156,7 +158,7 @@ function updateTemperatureDisplay() {
             const glowColor = getTemperatureGlowColor(currentTempCelsius);
 
             // Calculer la couleur du pic d'émission du corps noir (loi de Wien) avec symétrie à 7 μm
-            const tempK = currentTempCelsius + 273.15;
+            const tempK = currentTempCelsius + CONST.KELVIN_TO_CELSIUS;
             const wienConstant = 2898; // Constante de Wien en μm·K
             const lambda_um = wienConstant / tempK;
 
@@ -763,7 +765,7 @@ function updateCO2Level(state) {
             // Température de surface calculée par dichotomie (équilibre radiatif avec CO2 uniquement)
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperatureAtZ(0);
-            const temp_surface_c = temp_surface - 273.15;
+            const temp_surface_c = temp_surface - CONST.KELVIN_TO_CELSIUS;
             // Calculer ΔT° à partir du forçage radiatif (calibration)
             // ΔT° = différence par rapport à 255K (sans CO2)
             // On calcule d'abord les forçages, puis on calcule delta_temp
@@ -845,7 +847,7 @@ function updateCO2Level(state) {
                 temp_surface: temp_surface,
                 temp_surface_c: temp_surface_c,
                 temp_eff: temp_eff,
-                temp_eff_c: temp_eff - 273.15,
+                temp_eff_c: temp_eff - CONST.KELVIN_TO_CELSIUS,
                 delta_temp: delta_temp,
                 delta_temp_habitable: delta_temp_habitable,
                 life_viable: life_viable,
@@ -1197,7 +1199,7 @@ function updateCO2LevelDirect(co2_fraction) {
             // Température de surface calculée par dichotomie (équilibre radiatif avec CO2 uniquement)
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperatureAtZ(0);
-            const temp_surface_c = temp_surface - 273.15;
+            const temp_surface_c = temp_surface - CONST.KELVIN_TO_CELSIUS;
             // Calculer ΔT° à partir du forçage radiatif (calibration)
             // ΔT° = différence par rapport à 255K (sans CO2)
             // On calcule d'abord les forçages, puis on calcule delta_temp
@@ -1279,7 +1281,7 @@ function updateCO2LevelDirect(co2_fraction) {
                 temp_surface: temp_surface,
                 temp_surface_c: temp_surface_c,
                 temp_eff: temp_eff,
-                temp_eff_c: temp_eff - 273.15,
+                temp_eff_c: temp_eff - CONST.KELVIN_TO_CELSIUS,
                 delta_temp: delta_temp,
                 delta_temp_habitable: delta_temp_habitable,
                 life_viable: life_viable,
@@ -1632,7 +1634,7 @@ window.updateDisplay = function updateDisplay(data) {
                 // 🔒 PRIORITÉ 3 : Calcul classique basé sur la température (fallback)
                 else if (data.temp_surface !== undefined) {
                     // Calcul classique de la glace basé sur la température (si pas de calcul H2O)
-                    const T_surface_C = data.temp_surface - 273.15;
+                    const T_surface_C = data.temp_surface - CONST.KELVIN_TO_CELSIUS;
                     if (T_surface_C < 0 && T_surface_C > -100) {
                         ice_coverage = Math.min(1, 1 - Math.exp(T_surface_C / 3));
 
@@ -1742,7 +1744,7 @@ function updateLegend(data) {
                 tempCAbove.style.whiteSpace = 'nowrap';
                 // 🔒 Les textes des courbes étalons restent blancs
                 tempCAbove.style.color = 'white';
-                tempCAbove.textContent = `${(T - 273.15).toFixed(0)}°C`;
+                tempCAbove.textContent = `${(T - CONST.KELVIN_TO_CELSIUS).toFixed(0)}°C`;
                 patternContainer.appendChild(tempCAbove);
             }
 
@@ -1758,7 +1760,7 @@ function updateLegend(data) {
                 tempFBelow.style.whiteSpace = 'nowrap';
                 // 🔒 Les textes des courbes étalons restent blancs
                 tempFBelow.style.color = 'white';
-                const tempF = ((T - 273.15) * 9 / 5 + 32).toFixed(0);
+                const tempF = ((T - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(0);
                 tempFBelow.textContent = `${tempF}°F`;
                 patternContainer.appendChild(tempFBelow);
             }
@@ -1790,8 +1792,8 @@ function updateLegend(data) {
         equilibreCurvesContainer.innerHTML = '';
 
         const T = data.current.effective_temperature;
-        const tempC = (T - 273.15).toFixed(0);
-        const tempF = ((T - 273.15) * 9 / 5 + 32).toFixed(0);
+        const tempC = (T - CONST.KELVIN_TO_CELSIUS).toFixed(0);
+        const tempF = ((T - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(0);
 
         // 🔒 Calculer la couleur dynamique basée sur la température de surface (pour harmoniser avec le plot)
         // Utiliser la MÊME logique que dans plot.js : window.currentBlackBodyColor (priorité 1), puis temp_surface_c
@@ -1808,14 +1810,14 @@ function updateLegend(data) {
         }
         // Priorité 3 : temp_surface (calculé depuis T0)
         else if (data.current && typeof data.current.temp_surface === 'number') {
-            const tempSurfaceC = data.current.temp_surface - 273.15;
+            const tempSurfaceC = data.current.temp_surface - CONST.KELVIN_TO_CELSIUS;
             if (typeof window.tempSurfaceToColor === 'function') {
                 dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
             }
         }
         // Priorité 4 : T0 (fallback)
         else if (data.current && typeof data.current.T0 === 'number') {
-            const tempSurfaceC = data.current.T0 - 273.15;
+            const tempSurfaceC = data.current.T0 - CONST.KELVIN_TO_CELSIUS;
             if (typeof window.tempSurfaceToColor === 'function') {
                 dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
             }
@@ -2123,7 +2125,7 @@ function setEpoch(epochName) {
         
         // Calculer la température initiale
         const T0_anticipated = epoch.t0;
-        const tempC_anticipated = T0_anticipated - 273.15;
+        const tempC_anticipated = T0_anticipated - CONST.KELVIN_TO_CELSIUS;
         const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
         window.updateBlackBodyColor(color_anticipated);
         
@@ -2741,7 +2743,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
                 return;
             }
             
-            const temp_surface_c = temp_surface - 273.15;
+            const temp_surface_c = temp_surface - CONST.KELVIN_TO_CELSIUS;
             
             let delta_temp = 0;
 
@@ -2816,7 +2818,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
                 temp_surface: temp_surface,
                 temp_surface_c: temp_surface_c,
                 temp_eff: temp_eff,
-                temp_eff_c: temp_eff - 273.15,
+                temp_eff_c: temp_eff - CONST.KELVIN_TO_CELSIUS,
                 delta_temp: delta_temp,
                 delta_temp_habitable: delta_temp_habitable,
                 life_viable: life_viable,

@@ -159,7 +159,7 @@ const FORM = {
         '🧲☀️🔽': '🧲☀️🎱 × (1 - 🍰🪩📿) = Flux solaire absorbé',
         '🧲🌕🔽': 'Flux géothermique (constant)',
         '🧲🌑🔼': 'σ × T⁴ = Flux émis par la surface (corps noir théorique à température T). Formule: 🧲🌑🔼 = σT⁴ où σ = 5.670374419e-8 W/(m²·K⁴). Pour T=303.5K: ≈501 W/m². ⚠️ Ce n\'est PAS le flux qui sort au sommet (c\'est 🧲🌈🔼). ⚠️ Ne pas comparer directement à 🧲☀️🔽+🧲🌕🔽 car l\'effet de serre fait que la surface émet plus que ce qui sort.',
-        '🧲🌈🔼': 'Σ[λ=0.1→100μm] I_λ(z_max) × Δλ = Aire sous courbe spectrale réelle (émission au sommet atmosphère, après transfert radiatif couche par couche avec concentrations atmosphériques). Calculé via transfert radiatif spectral: pour chaque couche z et chaque λ, calcul de l\'épaisseur optique τ_λ(z) avec concentrations CO₂, CH₄, H₂O, O₂, N₂, puis transmission exp(-τ) et émission (1-exp(-τ))×π×B_λ(T). Intégration finale au sommet: 🧲🌈🔼 = Σ[λ] upward_flux[z_max][λ] × Δλ. En équilibre: 🧲🌈🔼 ≈ 🧲☀️🔽+🧲🌕🔽',
+        '🧲🌈🔼': 'Σ[λ=0.1→100μm] I_λ(z_max) × Δλ = Aire sous courbe spectrale réelle (émission au sommet atmosphère). Δλ = (λ_max−λ_min)/(N−1) = pas réel de la grille (effective_delta_lambda), pas 0.1 μm fixe. Transfert radiatif: τ_λ(z), transmission exp(-τ), émission (1-exp(-τ))×π×B_λ(T). Intégration: 🧲🌈🔼 = Σ[λ] upward_flux[z_max][λ]. En équilibre: 🧲🌈🔼 ≈ 🧲☀️🔽+🧲🌕🔽',
         '🧲🪩🔼': '🧲☀️🎱 - 🧲☀️🔽 = 🧲☀️🎱 × 🍰🪩📿 = Flux réfléchi par albedo',
         '🔺🧲': '🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 = Delta équilibre radiatif (flux entrant - flux sortant). En équilibre: 🔺🧲 ≈ 0',
         '_explication_equilibre': 'Corps noir (70% soleil): 🧲☀️🔽 devrait être ~238 W/m² (pas 341.50) → équilibre à T≈255K',

@@ -76,7 +76,7 @@ const solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm;
 
 **Détail :**
 - `σ` = Constante de Stefan-Boltzmann = `5.670374419e-8` W/(m²·K⁴)
-- `T` = Température de surface en Kelvin (`DATA['🧮']['🌡️']`)
+- `T` = Température de surface en Kelvin (`DATA['🧮']['🧮🌡️']`)
 - Flux émis par la surface (corps noir théorique à température T)
 - **⚠️ Important :** Ce n'est PAS le flux qui sort au sommet de l'atmosphère (c'est `🧲🌈🔼`)
 - **⚠️ Ne pas comparer directement à 🧲☀️🔽+🧲🌕🔽** car l'effet de serre fait que la surface émet plus que ce qui sort
@@ -102,7 +102,7 @@ Avec T ≈ 303.5 K (30.35°C) :
 
 **Code source :** `calculations_flux.js`
 ```javascript
-const flux_sortant_surface = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🌡️'], 4);
+const flux_sortant_surface = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 4);
 ```
 
 **Note :** Pour une intégration spectrale complète (0→∞), on aurait :

@@ -35,7 +35,7 @@ function logDeltaEquilibre() {
     const delta_eds = blackbody_flux_T0 - (DATA['🧲']['🧲🌈🔼'] || 0);
     const tolerance_current = DATA['🧮']['🧲🔬'] || 0.1;
     const tolerance_status = Math.abs(delta_equilibre) <= tolerance_current ? '✅' : '🧮';
-    console.log(`🌡️ Delta équilibre (→0): ${delta_equilibre.toFixed(4)} W/m² | T° sol: ${T0_current.toFixed(2)}K (${(T0_current - 273.15).toFixed(1)}°C) | T° corps noir: ${T_effective.toFixed(2)}K (${(T_effective - 273.15).toFixed(1)}°C) | Delta EDS: ${delta_eds.toFixed(4)} W/m² | Tolérance: ${tolerance_current.toFixed(2)} W/m² ${tolerance_status}`);
+    console.log(`🌡️ Delta équilibre (→0): ${delta_equilibre.toFixed(4)} W/m² | T° sol: ${T0_current.toFixed(2)}K (${(T0_current - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C) | T° corps noir: ${T_effective.toFixed(2)}K (${(T_effective - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C) | Delta EDS: ${delta_eds.toFixed(4)} W/m² | Tolérance: ${tolerance_current.toFixed(2)} W/m² ${tolerance_status}`);
 }
 
 window.logDeltaEquilibre = logDeltaEquilibre;

@@ -31,6 +31,8 @@ const PLOT_BACKGROUND_COLOR = 'rgba(255, 255, 255, 0)'; // Fond blanc opaque (10
 // Police globale - peut être changée via le bouton de debug
 window.globalFontFamily = 'ProggyDotted'; // Police par défaut pour le graphique
 
+const CONST = window.CONST;
+
 // Fonction pour obtenir la couleur par défaut du body (vert)
 function getDefaultTextColor() {
     if (typeof window !== 'undefined' && document.body) {
@@ -759,7 +761,7 @@ window.updatePlot = function updatePlot(data) {
         if (co2_ppm === 0) {
             hoverText = "Courbe d'équilibre d'émission de la terre";
         } else if (temp_eff) {
-            const tempC = (temp_eff - 273.15).toFixed(1);
+            const tempC = (temp_eff - CONST.KELVIN_TO_CELSIUS).toFixed(1);
             hoverText = `Courbe d'équilibre d'émission de la terre (${temp_eff.toFixed(1)} K, ${tempC}°C)`;
         } else {
             hoverText = "Courbe d'équilibre d'émission de la terre";
@@ -794,7 +796,7 @@ window.updatePlot = function updatePlot(data) {
         const lineColor = color || 'black';
 
         // Tooltip : "Courbe d'émission du corps noir" avec température (le corps noir est par définition à l'équilibre)
-        const tempC = (T - 273.15).toFixed(1);
+        const tempC = (T - CONST.KELVIN_TO_CELSIUS).toFixed(1);
         const hoverText = `Courbe d'émission du corps noir à ${T.toFixed(1)} K (${tempC}°C)`;
 
         return {
@@ -822,7 +824,7 @@ window.updatePlot = function updatePlot(data) {
 
         const totalCount = window.PLANCK_TEMPERATURES.length;
         window.PLANCK_TEMPERATURES.forEach((T, index) => {
-            const label = `${T}K (${(T - 273.15).toFixed(0)}°C)`;
+            const label = `${T}K (${(T - CONST.KELVIN_TO_CELSIUS).toFixed(0)}°C)`;
             // Utiliser la fonction pour obtenir le pattern
             const dashPattern = getPattern(index);
             const planck = createPlanckTrace(T, label, 'white', false, dashPattern); // Blanc
@@ -852,7 +854,7 @@ window.updatePlot = function updatePlot(data) {
         // Dans une atmosphère avec effet de serre, la surface est plus chaude que la température effective
         // Récupérer temp_surface depuis data (T0_test en K) ou calculer depuis temp_surface_c
         const T_surface = (data.temp_surface !== undefined) ? data.temp_surface :
-            (temp_surface_c !== undefined ? temp_surface_c + 273.15 : data.current.effective_temperature);
+            (temp_surface_c !== undefined ? temp_surface_c + CONST.KELVIN_TO_CELSIUS : data.current.effective_temperature);
         const T_current = T_surface; // Utiliser la température de surface pour les courbes (cohérence avec affichage)
         // Pour l'affichage dans le graphique, utiliser la même température que les courbes (cohérence totale)
         T_current_display = T_current;
@@ -919,7 +921,7 @@ window.updatePlot = function updatePlot(data) {
         T0 = data.current.effective_temperature;
         has_temperature = true;
     } else if (data.temp_surface_c !== undefined) {
-        T0 = data.temp_surface_c + 273.15;
+        T0 = data.temp_surface_c + CONST.KELVIN_TO_CELSIUS;
         has_temperature = true;
     } else if (data.temp_surface !== undefined) {
         T0 = data.temp_surface;
@@ -1286,8 +1288,8 @@ window.updatePlot = function updatePlot(data) {
 
             // Calculer les températures
             const tempK = T_effective_display.toFixed(1);
-            const tempC = (T_effective_display - 273.15).toFixed(1);
-            const tempF = ((T_effective_display - 273.15) * 9 / 5 + 32).toFixed(1);
+            const tempC = (T_effective_display - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+            const tempF = ((T_effective_display - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
 
             // Créer le contenu sur 3 lignes
             tempDisplay.innerHTML = `${tempK} K<br>${tempC}°C<br>${tempF}°F`;
@@ -1295,7 +1297,7 @@ window.updatePlot = function updatePlot(data) {
             // Utiliser la couleur de la température effective (cyan ou calculée)
             let color_effective = 'cyan';
             if (typeof window.tempSurfaceToColor === 'function') {
-                color_effective = window.tempSurfaceToColor(T_effective_display - 273.15);
+                color_effective = window.tempSurfaceToColor(T_effective_display - CONST.KELVIN_TO_CELSIUS);
             }
             tempDisplay.style.color = color_effective;
 
@@ -2066,7 +2068,7 @@ function drawSpectralVisualization(canvas, data) {
         if (data.current && data.current.effective_temperature !== undefined) {
             T0 = data.current.effective_temperature;
         } else if (data.temp_surface_c !== undefined) {
-            T0 = data.temp_surface_c + 273.15;
+            T0 = data.temp_surface_c + CONST.KELVIN_TO_CELSIUS;
         } else if (data.temp_surface !== undefined) {
             T0 = data.temp_surface;
         }
