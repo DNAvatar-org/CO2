@@ -1544,14 +1544,17 @@
                                 const delta = safeNum(state.delta_equilibre, '-');
                                 const yinYang = state.yinYang != null ? state.yinYang : '-';
                                 const iterLabel = (innerIter === -1) ? 'Init' : innerIter;
-                                const dichoBounds = (state.phase === 'Dicho' && state.dichoT_low_C != null && state.dichoT_high_C != null)
-                                    ? ` [🔽: ${safeNumTemp(state.dichoT_low_C, '-')}°C, 🔼: ${safeNumTemp(state.dichoT_high_C, '-')}°C]`
+                                const m = state.data_snapshot['🧮'] || {};
+                                const T_low_K = m['🧮🌡️🔽'];
+                                const T_high_K = m['🧮🌡️🔼'];
+                                const dichoBounds = (T_low_K != null && T_high_K != null)
+                                    ? ` [🔽: ${safeNumTemp(T_low_K - 273.15, '-')}°C, 🔼: ${safeNumTemp(T_high_K - 273.15, '-')}°C]`
                                     : '';
-                                const seuil = (state.data_snapshot['🧮'] && state.data_snapshot['🧮']['🧲🔬'] != null) ? state.data_snapshot['🧮']['🧲🔬'] : null;
+                                const seuil = (m['🧲🔬'] != null) ? m['🧲🔬'] : null;
                                 const seuilStr = seuil != null ? safeNum(seuil, '-') : '-';
                                 const deltaVal = state.delta_equilibre != null ? Number(state.delta_equilibre) : NaN;
                                 const arretOk = (Number.isFinite(deltaVal) && seuil != null && Math.abs(deltaVal) <= seuil) ? 'oui' : 'non';
-                                html += `<div class="iteration-header">🌈 calcul radiatif ${iterLabel} :: {T°: ${T}°C, Albedo: ${albedo}} => Δ: ${delta} W/m² => ⚧: ${phase} => ☯: ${yinYang} => arrêt |Δ|≤${seuilStr} W/m²: ${arretOk}${dichoBounds}</div>`;
+                                html += `<div class="iteration-header">🌈 calcul radiatif ${iterLabel} :: {T°: ${T}°C, Albedo: ${albedo}} => Δ: ${delta} W/m² & ⚧: ${phase} => ☯: ${yinYang} => arrêt |Δ|≤${seuilStr} W/m²: ${arretOk}${dichoBounds}</div>`;
                                 html += '<div class="convergence-details-block">';
                                 if (state.data_snapshot['🧮']) {
                                     const m = { ...state.data_snapshot['🧮'] };

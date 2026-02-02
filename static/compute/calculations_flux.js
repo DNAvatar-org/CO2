@@ -266,8 +266,10 @@ async function runRadiatifOnly(outerIter, waterPass) {
     DATA['🧮']['🧮☯'] = Math.sign(delta_equilibre_init);
     DATA['🧮']['🧮⚧'] = 'Search';
     DATA['🧮']['🧮🔄☀️'] = 0;
-    DATA['🧮']['🧮🌡️🔽'] = DATA['🧮']['🧮🌡️'] - 50;
-    DATA['🧮']['🧮🌡️🔼'] = DATA['🧮']['🧮🌡️'] + 50;
+    // Bornes dès calcul radiatif 0 : T° époque (pas anim prev) → mêmes bornes anim/sans anim
+    const T_bornes_init = DATA['📅']['🌡️🧮'] + (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
+    DATA['🧮']['🧮🌡️🔽'] = T_bornes_init - 50;
+    DATA['🧮']['🧮🌡️🔼'] = T_bornes_init + 50;
     DATA['🧮']['🧮🌡️⏮'] = DATA['🧮']['🧮🌡️'];
     DATA['🧮']['🧲🔺⏮'] = delta_equilibre_init;
     DATA['📅']['🔺⏳'] = 86400 * 10;
@@ -315,6 +317,17 @@ async function runRadiatifOnly(outerIter, waterPass) {
         // DATA['🧮']['🔬🌈'] et DATA['🧮']['🔬🫧'] déjà mis à jour par calculateFluxForT0
 
         // Dicho : encadrer Δ=0. Convention 🔽 = borne basse (min T), 🔼 = borne haute (max T), toujours 🔽 < 🔼.
+        // En Search : mettre à jour les bornes au fur et à mesure (sinon 🔽🔼 restent 205-305 si init avec T° epoch précédente)
+        if (DATA['🧮']['🧮⚧'] === 'Search' && DATA['🧮']['🧮🔄☀️'] > 0) {
+            const T_curr = DATA['🧮']['🧮🌡️'];
+            if (DATA['🧲']['🔺🧲'] > 0) {
+                DATA['🧮']['🧮🌡️🔽'] = T_curr;
+                if (DATA['🧮']['🧮🌡️🔼'] <= T_curr) DATA['🧮']['🧮🌡️🔼'] = T_curr + 50;
+            } else if (DATA['🧲']['🔺🧲'] < 0) {
+                DATA['🧮']['🧮🌡️🔼'] = T_curr;
+                if (DATA['🧮']['🧮🌡️🔽'] >= T_curr) DATA['🧮']['🧮🌡️🔽'] = Math.max(100, T_curr - 50);
+            }
+        }
         if (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0) {
             DATA['🧮']['🧮⚧'] = 'Dicho';
             if (DATA['🧮']['🧮☯'] < 0 && Math.sign(DATA['🧲']['🔺🧲']) > 0) {
