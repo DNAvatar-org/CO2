@@ -48,7 +48,7 @@ CONST.T_ICE_TRANSITION_RANGE_C = 20;  // Zone de transition liquide-glace (en °
 CONST.KELVIN_TO_CELSIUS = 273.15;  // Conversion Kelvin → Celsius (K = °C + 273.15)
 
 // Convergence radiatif : nombre max d'itérations (lu depuis config si dispo)
-CONST.maxRadiatifIters = (typeof window !== 'undefined' && window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxRadiatifIters != null) ? window.CONFIG_COMPUTE.maxRadiatifIters : 21;
+CONST.maxRadiatifIters = window.CONFIG_COMPUTE.maxRadiatifIters;
 
 // Constantes pour l'eau
 CONST.RHO_WATER = 1000;  // Densité de l'eau (kg/m³)

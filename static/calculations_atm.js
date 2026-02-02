@@ -7,7 +7,7 @@
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
 // - Fix: use DATA['🧮']['🧮🌡️'] in calculateAtmosphereProperties (was typo 🌡️)
-// - Log calculateMolarMassAir: 🧪 et fractions CO2/CH4/O2/N2/H2O (somme) pour debug anim vs sans anim
+// - Suppression logs calculateMolarMassAir
 //
 // ============================================================================
 // CALCUL DE PRESSION ET STRUCTURE ATMOSPHÉRIQUE
@@ -105,13 +105,6 @@ function calculateMolarMassAir() {
     
     // Si pas d'atmosphère, utiliser la valeur de référence
     DATA['🫧']['🧪'] = M_air > 0 ? M_air : CONST.molar_mass_air_ref;
-    const isAnim = !!(window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎬']);
-    const _f = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x;
-    const sum_f = frac_CO2 + frac_CH4 + frac_O2 + frac_N2 + frac_H2O;
-    console.log('🫧 [calculateMolarMassAir]', isAnim ? 'anim' : 'sans anim',
-        'CO2=' + _f(frac_CO2), 'CH4=' + _f(frac_CH4), 'O2=' + _f(frac_O2), 'N2=' + _f(frac_N2), 'H2O=' + _f(frac_H2O),
-        'somme=' + _f(sum_f),
-        'M_air=Σ(f×M)=' + _f(M_air), '🧪=' + _f(DATA['🫧']['🧪']));
     return true;
 }
 
