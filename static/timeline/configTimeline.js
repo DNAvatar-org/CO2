@@ -112,7 +112,7 @@ const timeline = [
         '▶': 4.0e9,
         '◀': 2.5e9,
         '🌡️🧮': 311,
-        '🧲🔬': 0.05,
+        '🧲🔬': 0.5,
         '🔋☀️': 3.0624e26, // Puissance totale du soleil (W) - 80% de 3.828e26 W
         '🔋🌕': 1.5e14, // core_power_watts (Puissance géothermique totale ~150 TW)
         '📐': 6371, // Rayon de la planète en km
@@ -128,8 +128,8 @@ const timeline = [
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         '⚖️🫧': 1.0e19, // Masse atmosphère (Atmosphère dense ~2 bar)
         // Simulation parameters - Quantités en kg
-        '⚖️🏭': 2.575e16, // co2_kg (~5000 ppm)
-        '⚖️⛽': 4.12e14, // ch4_kg (~80 ppm)
+        '⚖️🏭': 1.0e16, // co2_kg (~5000 ppm)
+        '⚖️⛽': 2.0e14, // ch4_kg (~80 ppm)
         '⚖️💧': 8.4e20, // h2o_kg (~60% de 1.4e21 kg)
         '⚖️🌫': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
@@ -160,12 +160,12 @@ const timeline = [
             '🍰🗻🌍': 0.17  // Terres basses (17% - continents émergents)
         },
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️🫧': 5.15e18, // Masse atmosphère (Atmosphère proche de l'actuelle ~1 bar)
-        // Simulation parameters - Quantités en kg
-        '⚖️🏭': 1.03e16, // co2_kg (~2000 ppm)
-        '⚖️⛽': 1.2875e14, // ch4_kg (~25 ppm)
+        '⚖️🫧': 5.15e18, // Masse atmosphère (~1 bar). Lit. 2.7 Ga: pression possiblement <0.5 bar.
+        // Lit. Proterozoic: CO2 10–200× actuel; paléosols ~2.2 Ga: 8000–9000 ppm. CH4 100–300 ppm.
+        '⚖️🏭': 4.7e16,  // co2_kg (~6000 ppm, milieu de fourchette lit. 5–9k ppm)
+        '⚖️⛽': 2.85e14,  // ch4_kg (~100 ppm, lit. 100–300 ppm)
         '⚖️💧': 1.19e21, // h2o_kg (~85% de 1.4e21 kg)
-        '⚖️🌫': 0, // o2_kg
+        '⚖️🌫': 0,       // o2_kg (GOE ~2.4 Ga puis O2 bas pendant le Protérozoïque)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
@@ -358,5 +358,6 @@ window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
 window.CONFIG_COMPUTE.maxRadiatifIters = 41;
 // Plafond T en Search (K). 2373 = lave complète (~2100°C), réaliste pour surface (au-delà = vaporisation). null = pas de plafond (test).
 window.CONFIG_COMPUTE.maxSearchT_K = null;
+// Bins spectaux (150 = bonne précision calcul). OOM évité par plafond tropopause/couches dans calculations.js.
 window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 150;
 

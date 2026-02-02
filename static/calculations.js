@@ -93,7 +93,9 @@ function calculateFluxForT0() {
     const delta_lambda = 0.1e-6;
     const z_max = DATA['🫧']['📏🫧🧿'] * 1000; // km → m
     
-    const precisionFactor = window.getPrecisionFactorFromFPS();
+    let precisionFactor = window.getPrecisionFactorFromFPS();
+    precisionFactor = Number.isFinite(precisionFactor) && precisionFactor > 0 ? Math.min(precisionFactor, 5) : 1;
+    if (precisionFactor > 5 && window.DEBUG_OOM) console.warn('[OOM] precisionFactor plafonné à 5 (était ' + precisionFactor + ') pour limiter le nombre de couches verticales');
 
     // Ajuster delta_z et delta_lambda (toujours à la valeur de base, pas de réduction)
     // Note : delta_z sous tropopause reste constant (pas d'optimisation)
@@ -104,8 +106,11 @@ function calculateFluxForT0() {
     // Pour z : précision fine sous tropopause, grossière au-dessus
     
     
-    // Calculer la tropopause pour déterminer les zones de précision
-    const z_trop_precalc = window.calculateTropopauseHeight();
+    // Calculer la tropopause pour déterminer les zones de précision (hauteur d'échelle H = R*T/(M*g))
+    const z_trop_raw = window.calculateTropopauseHeight();
+    const limit_std_atmosphere_z = 120000;
+    const z_trop_precalc = Math.min(z_trop_raw, Math.min(z_max, limit_std_atmosphere_z));
+    if (z_trop_raw > limit_std_atmosphere_z && window.DEBUG_OOM) console.warn('[OOM] tropopause plafonnée à ' + limit_std_atmosphere_z + ' m (H brut=' + (z_trop_raw / 1000).toFixed(0) + ' km) pour éviter grille OOM');
 
     // Créer la grille lambda avec regroupement adaptatif (sauf si fullSpectre)
     const lambda_range = [];
@@ -150,7 +155,9 @@ function calculateFluxForT0() {
     // Créer la grille z à partir des hauteurs calculées (📏🫧🧿, tropopause). Si tout à 0 → z_max=1e-6, tropo=0 → une couche en une passe.
     const z_range = [];
     const delta_z_troposphere = delta_z;
-    const delta_z_stratosphere = (delta_z * 5) / precisionFactor;
+    const raw_stratosphere = (delta_z * 5) / precisionFactor;
+    const delta_z_stratosphere = Math.max(100, raw_stratosphere);
+    if (raw_stratosphere < 100 && window.DEBUG_OOM) console.warn('[OOM] delta_z_stratosphere plafonné à 100 m (était ' + raw_stratosphere.toFixed(1) + ' m) pour éviter grille OOM');
     const delta_z_exosphere = (z_max > 120000) ? 5000 : delta_z_stratosphere;
 
     if (z_trop_precalc > 0) {
@@ -203,7 +210,10 @@ function calculateFluxForT0() {
     const num_couches = z_range.length;
     const num_plages_spectre = final_lambda_length;
     const total_cases = num_couches * num_plages_spectre;
-    
+    if (window.DEBUG_OOM && typeof console !== 'undefined') {
+        const estMB = (final_lambda_length * num_couches * 5 * 8) / 1e6;
+        console.log('[OOM] calculateFluxForT0 about to allocate grid', { bins: final_lambda_length, layers: num_couches, estMB: estMB.toFixed(1) + ' MB' });
+    }
     const upward_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const optical_thickness = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
@@ -836,35 +846,6 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
 // Retourne un seul boolean depuis la variable globale unique (seule référence)
 // Fonction supprimée : utiliser directement window.enabledStates[window.ENABLED_STATES.ANIMATION.key]
 
-// 🔒 Fonction pour calculer T0_initial_config AVANT simulateRadiativeTransfer
-// Cette fonction doit être appelée avant simulateRadiativeTransfer pour déterminer la température de départ
-// Formule : 🎥 ? T0=prev_T0 : T0=🌡️, puis T0 += ☄️*🌡️☄️ + 🕓*🌡️🕓
-function calculateT0InitialConfig() {
-    const DATA = window.DATA;
-    const prev_T0 = window.plotData.temp_surface;
-    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
-    const t0_config = EPOCH['🌡️🧮'];
-    
-    const meteoriteCount = DATA['📜']['📿☄️'];
-    const ticTime = DATA['📜']['📿💫'];
-    const deltaTicTime_per_tic = DATA['📜']['🔺🌡️💫'];
-    const animEnabled = DATA['🔘']['🔘🎬'];
-    
-    window.currentMeteoriteCount = meteoriteCount;
-    
-    const baseTemp = animEnabled ? (prev_T0 > 0 ? prev_T0 : t0_config) : t0_config;
-    const adjustment = deltaTicTime_per_tic * ticTime;
-    const T0_initial_config = baseTemp + adjustment;
-    
-    const tempC_anticipated = T0_initial_config - CONST.KELVIN_TO_CELSIUS;
-    const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
-    window.updateBlackBodyColor(color_anticipated);
-    const legendEquilibre = document.querySelector('.legend-equilibre');
-    legendEquilibre.style.color = color_anticipated;
-    
-    return T0_initial_config;
-}
-
 function simulateRadiativeTransfer() {
     const DATA = window.DATA;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
@@ -892,7 +873,10 @@ function simulateRadiativeTransfer() {
     
     const adjustment = deltaTicTime_per_tic * ticTime;
     const T0_initial = baseTemp + adjustment;
-    
+
+    const _fmt = (v) => (v == null) ? '?' : (typeof v === 'number' && (Math.abs(v) >= 1e3 || (Math.abs(v) < 0.001 && v !== 0)) ? v.toExponential(2) : Number(v).toFixed(4));
+    console.log(`[${animEnabled ? 'anim' : 'sans anim'}] simulateRadiativeTransfer: prev_T0=${prev_T0.toFixed(1)}K t0_config=${t0_config.toFixed(1)}K baseTemp=${baseTemp.toFixed(1)}K T0_initial=${T0_initial.toFixed(1)}K`);
+    console.log(`[${animEnabled ? 'anim' : 'sans anim'}] simulateRadiativeTransfer: 🧪=${_fmt(DATA['🫧']['🧪'])} 🍰🫧💧=${_fmt(DATA['💧'] && DATA['💧']['🍰🫧💧'])} 🍰🫧🏭=${_fmt(DATA['🫧']['🍰🫧🏭'])} 📏🫧🛩=${_fmt(DATA['🫧']['📏🫧🛩'])} 🍰🪩📿=${_fmt(DATA['🪩'] && DATA['🪩']['🍰🪩📿'])}`);
 
     if (T0_initial <= 0) {
         throw new Error(`T0_initial invalide: ${T0_initial}`);
@@ -1030,7 +1014,8 @@ function simulateRadiativeTransfer() {
     
     // 🔒 IMPORTANT : Mettre à jour DATA['🧮']['🧮🌡️'] AVANT le calcul initial aussi !
     DATA['🧮']['🧮🌡️'] = T0_initial;
-    
+    DATA['🧮']['🧮⚧'] = 'Search'; // Éviter Init (cycle eau complet) ; recalcul vapeur à chaque T
+    if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
     // Calculer la courbe initiale
     const calc_success_init = calculateFluxForT0();
     if (!calc_success_init) {
@@ -1110,7 +1095,7 @@ function simulateRadiativeTransfer() {
 
                     const shouldDisplaySteps = window.showDichotomySteps;
                     DATA['🧮']['🧮🌡️'] = T0_current;
-
+                    if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
                     // Toujours recalculer pour avoir les valeurs à jour (le delta doit changer avec T0_current)
                     const calc_success = calculateFluxForT0();
                     if (!calc_success) {
@@ -1270,6 +1255,7 @@ function simulateRadiativeTransfer() {
 
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
+                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
                         const calc_success_conv = calculateFluxForT0();
                         if (!calc_success_conv) {
@@ -1351,6 +1337,7 @@ function simulateRadiativeTransfer() {
                         console.log(`   Ajustement limité = ${T0_adjustment.toFixed(2)}K`);
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
+                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
                         // Recalculer avec la nouvelle T0
                         const calc_success_search = calculateFluxForT0();
                         if (!calc_success_search) {
@@ -1374,6 +1361,7 @@ function simulateRadiativeTransfer() {
                         T0_current = (T0_min + T0_max) / 2;
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
+                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
                         // Recalculer avec la nouvelle T0
                         const calc_success_dicho = calculateFluxForT0();
                         if (!calc_success_dicho) {
@@ -1434,6 +1422,7 @@ function simulateRadiativeTransfer() {
 
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
+                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
                         const calc_success_conv = calculateFluxForT0();
                         if (!calc_success_conv) {
@@ -1517,6 +1506,7 @@ function simulateRadiativeTransfer() {
 
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
+                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
                         const calc_success_conv = calculateFluxForT0();
                         if (!calc_success_conv) {

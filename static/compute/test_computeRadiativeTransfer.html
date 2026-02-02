@@ -494,6 +494,10 @@
             display: block;
         }
         
+        .convergence-final-block {
+            margin-top: 1.2em;
+        }
+        
         .results h2 {
             display: flex;
             align-items: center;
@@ -1566,6 +1570,7 @@
                 // Afficher la température finale (dernier calcul radiatif) — T° toujours en décimal, 1 décimale
                 const safeNumLast = (v) => { if (v == null) return '—'; const n = Number(v); if (!Number.isFinite(n)) return '—'; return (Math.abs(n) >= 1e3 || (Math.abs(n) < 1e-2 && n !== 0)) ? n.toExponential(3) : n.toFixed(3); };
                 const safeNumTempLast = (v) => { if (v == null) return '—'; const n = Number(v); if (!Number.isFinite(n)) return '—'; return n.toFixed(1); };
+                html += '<div class="config-value convergence-final-block">';
                 const Tc = safeNumTempLast(last_state && last_state.temperature_C);
                 const Tk = safeNumTempLast(last_state && last_state.temperature_K);
                 html += `<div class="config-value"><strong>Température finale: ${Tc}°C (${Tk}K)</strong></div>`;
@@ -1577,6 +1582,7 @@
                     const aboveBoil = Number.isFinite(TcNum) && TcNum > T_boil_K - 273.15;
                     html += `<div class="config-value">T_ébullition(🎈=${P_atm.toFixed(2)} atm) = ${T_boil_C}°C ${aboveBoil ? '→ T finale &gt; T_ébullition (eau bout)' : '→ liquide possible'}</div>`;
                 }
+                html += '</div>';
             }
             
             // Toujours afficher le panneau même si html est vide

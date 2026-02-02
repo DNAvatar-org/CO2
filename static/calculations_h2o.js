@@ -581,11 +581,28 @@ window.calculateH2OParameters = function () {
     window.calculatePressureAtm();
     window.calculateMolarMassAir();
     const T = DATA['🧮']['🧮🌡️'];
-    const P = (DATA['🫧'] && DATA['🫧']['🎈']) != null ? DATA['🫧']['🎈'] : 1;
+    const P = DATA['🫧']['🎈'];
+    const sum_f = DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🌫'] + DATA['🫧']['🍰🫧💨'] + DATA['💧']['🍰🫧💧'];
+    const fractionsOk = sum_f > 0.5 && Math.abs(sum_f - 1) < 0.01;
     const cache = window._lastH2OParamsCache;
-    if (cache &&
+    if (fractionsOk && cache &&
         Math.abs(T - cache.T) <= WATER_PARTITION_DELTA_T_K &&
         Math.abs(P - cache.P) <= WATER_PARTITION_DELTA_P_ATM) return true;
+
+    // 🔒 Recalculer 🍰🫧💧 depuis T et P (vapeur potentielle) avant calculateWaterPartition
+    // Sinon en anim, quand T change (dichotomie), on garde une 🍰🫧💧 obsolète → somme≠1, 🧪 faux
+    const CONST = window.CONST;
+    const P_sat = calculateSaturatedVaporPressure();
+    const P_total = P * CONST.STANDARD_ATMOSPHERE_PA;
+    const max_vapor_fraction = P_total > 0 ? Math.min(P_sat / P_total, 1.0) : 0;
+    DATA['💧']['🍰🧮🌧'] = max_vapor_fraction;
+    const atm_mass_total = DATA['⚖️']['⚖️🫧'];
+    const M_H2O = CONST.M_H2O;
+    const M_air = DATA['🫧']['🧪'];
+    const mass_ratio = M_air > 0 ? M_H2O / M_air : 0;
+    const max_vapor_mass_fraction = max_vapor_fraction * mass_ratio;
+    const available_water_fraction = atm_mass_total > 0 ? DATA['⚖️']['⚖️💧'] / atm_mass_total : 0;
+    DATA['💧']['🍰🫧💧'] = Math.min(max_vapor_mass_fraction, available_water_fraction);
 
     calculateWaterPartition();
     window.calculateMolarMassAir();

@@ -1,11 +1,13 @@
 // File: calculations_atm.js - Calculs composition atmosphérique
 // Desc: En français, dans l'architecture, je suis le module de calculs atmosphériques
-// Version 1.1.0
+// Version 1.1.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
+// - Fix: use DATA['🧮']['🧮🌡️'] in calculateAtmosphereProperties (was typo 🌡️)
+// - Log calculateMolarMassAir: 🧪 et fractions CO2/CH4/O2/N2/H2O (somme) pour debug anim vs sans anim
 //
 // ============================================================================
 // CALCUL DE PRESSION ET STRUCTURE ATMOSPHÉRIQUE
@@ -16,7 +18,7 @@ function calculateAtmosphereProperties() {
     // console.log(`🫧 [calculateAtmosphereProperties@calculations_atm.js]`);
     const DATA = window.DATA;
     
-    const temperature_K = DATA['🧮']['🌡️'];
+    const temperature_K = DATA['🧮']['🧮🌡️'];
     window.calculateMolarMassAir();
     const molar_mass_kg_mol = DATA['🫧']['🧪'];
 
@@ -86,9 +88,6 @@ function calculateAtmosphereProperties() {
 function calculateMolarMassAir() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const _fmt = (typeof window !== 'undefined' && window.stringifyScientificForLog) ? window.stringifyScientificForLog : JSON.stringify;
-    const _f = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x;
-    const debugIn = window.DEBUG_DATA_IO ? { '🍰🫧🏭': DATA['🫧']['🍰🫧🏭'], '🍰🫧⛽': DATA['🫧']['🍰🫧⛽'], '🍰🫧🌫': DATA['🫧']['🍰🫧🌫'], '🍰🫧💨': DATA['🫧']['🍰🫧💨'], '🍰🫧💧': DATA['💧']['🍰🫧💧'] } : null;
     // 🔒 UTILISER LES FRACTIONS ACTUELLES (après renormalisation avec H2O), pas les masses de l'époque
     // Les fractions sont déjà normalisées : 🍰🫧🏭 + 🍰🫧⛽ + 🍰🫧🌫 + 🍰🫧💨 + 🍰🫧💧 = 1.0
     const frac_CO2 = DATA['🫧']['🍰🫧🏭'] || 0;
@@ -96,7 +95,6 @@ function calculateMolarMassAir() {
     const frac_O2 = DATA['🫧']['🍰🫧🌫'] || 0;
     const frac_N2 = DATA['🫧']['🍰🫧💨'] || 0;
     const frac_H2O = DATA['💧']['🍰🫧💧'] || 0;
-    
     // Masse molaire moyenne pondérée par les fractions molaires (approximation : fractions volumiques ≈ fractions molaires)
     // M_air = Σ(fraction_i × M_i)
     const M_air = frac_CO2 * CONST.M_CO2 + 
@@ -107,7 +105,13 @@ function calculateMolarMassAir() {
     
     // Si pas d'atmosphère, utiliser la valeur de référence
     DATA['🫧']['🧪'] = M_air > 0 ? M_air : CONST.molar_mass_air_ref;
-    if (window.DEBUG_DATA_IO && debugIn !== null) console.log(`🫧 [calculateMolarMassAir] in=${_fmt(debugIn)} out=🧪=${_f(DATA['🫧']['🧪'])}`);
+    const isAnim = !!(window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎬']);
+    const _f = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x;
+    const sum_f = frac_CO2 + frac_CH4 + frac_O2 + frac_N2 + frac_H2O;
+    console.log('🫧 [calculateMolarMassAir]', isAnim ? 'anim' : 'sans anim',
+        'CO2=' + _f(frac_CO2), 'CH4=' + _f(frac_CH4), 'O2=' + _f(frac_O2), 'N2=' + _f(frac_N2), 'H2O=' + _f(frac_H2O),
+        'somme=' + _f(sum_f),
+        'M_air=Σ(f×M)=' + _f(M_air), '🧪=' + _f(DATA['🫧']['🧪']));
     return true;
 }
 
