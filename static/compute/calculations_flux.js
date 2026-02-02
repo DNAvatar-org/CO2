@@ -110,9 +110,10 @@ function initForConfig() {
     // Partition eau une fois avec T0 de la config (cache invalidé pour forcer le recalcul)
     window._lastH2OParamsCache = null;
     window.calculateH2OParameters();
-    window.getEnabledStates && window.getEnabledStates();
+    window.getEnabledStates();
     window.calculateAlbedo();
     DATA['🧮']['🧮🌡️'] = T_solver_init;
+    DATA['🧮']['🔬🌈'] = window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
     return true;
 }
 
@@ -149,12 +150,12 @@ async function cycleDeLeau(outerIter, isFirst) {
     window.calculateH2OParameters();
     await new Promise(r => setTimeout(r, 0));
     if (window.ABORT_COMPUTE) return { changed: false };
-    window.getEnabledStates && window.getEnabledStates();
-    if (typeof window.calculatePrecipitationFeedback === 'function') window.calculatePrecipitationFeedback();
+    window.getEnabledStates();
+    window.calculatePrecipitationFeedback();
     window.calculateAlbedo();
     await new Promise(r => setTimeout(r, 0));
     if (window.ABORT_COMPUTE) return { changed: false };
-    if (typeof window.calculateCloudFormationIndex === 'function') window.calculateCloudFormationIndex();
+    window.calculateCloudFormationIndex();
 
     const albedo = (DATA['🪩'] && DATA['🪩']['🍰🪩📿']) != null ? DATA['🪩']['🍰🪩📿'] : 0;
     const vapor = (DATA['💧'] && DATA['💧']['🍰🫧💧']) != null ? DATA['💧']['🍰🫧💧'] : 0;
@@ -176,14 +177,12 @@ async function cycleDeLeau(outerIter, isFirst) {
     }
 
     // Régime T hors bande liquide (gel / vapeur pure) → un seul passage radiatif, pas de boucle cycle eau
-    if (typeof window.getWaterCycleTempBoundsFromPressure === 'function') {
-        const P_atm = (DATA['🫧'] && DATA['🫧']['🎈']) || 1;
-        const { T_low_K, T_high_K } = window.getWaterCycleTempBoundsFromPressure(P_atm);
-        const T_K = DATA['🧮']['🧮🌡️'];
-        if (T_K < T_low_K || T_K > T_high_K) {
-            window._lastCycleRef = { albedo, vapor };
-            return { changed: false };
-        }
+    const P_atm = (DATA['🫧'] && DATA['🫧']['🎈']) || 1;
+    const { T_low_K, T_high_K } = window.getWaterCycleTempBoundsFromPressure(P_atm);
+    const T_K = DATA['🧮']['🧮🌡️'];
+    if (T_K < T_low_K || T_K > T_high_K) {
+        window._lastCycleRef = { albedo, vapor };
+        return { changed: false };
     }
     const ref = window._lastCycleRef || { albedo: 0, vapor: 0 };
     const changed = (Math.abs(albedo - ref.albedo) > CYCLE_TOL_ALBEDO) || (Math.abs(vapor - ref.vapor) > CYCLE_TOL_VAPOR);
@@ -220,9 +219,6 @@ async function runRadiatifOnly(outerIter, waterPass) {
     const flux_solaire_absorbe_init = solar_flux_incident_init * (1 - albedo_init_value);
     const flux_entrant_init = flux_solaire_absorbe_init + geothermal_flux_init;
 
-    const T_K = DATA['🧮']['🧮🌡️'];
-    const maxBinsRun = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxSpectralBinsConvergence != null) ? window.CONFIG_COMPUTE.maxSpectralBinsConvergence : 50;
-    DATA['🧮']['🔬🌈_target'] = (T_K > 2000) ? 50 : maxBinsRun;
     if (!window.calculateFluxForT0()) return Promise.reject(new Error('calculateFluxForT0() a échoué'));
     const spectral_result_init = window.getSpectralResultFromDATA();
     if (spectral_result_init.lambda_range && spectral_result_init.z_range) {
@@ -236,7 +232,7 @@ async function runRadiatifOnly(outerIter, waterPass) {
         const bins = spectral_result_init.lambda_range.length;
         const layers = spectral_result_init.z_range.length;
         const estMB = (bins * layers * 5 * 8) / 1e6;
-        if (estMB > 25 && typeof console !== 'undefined') {
+        if (estMB > 25) {
             console.warn('⚠️ Grille spectrale ~' + estMB.toFixed(0) + ' MB (bins=' + bins + ', couches=' + layers + '). Sur machine peu RAM ou crash (Brave code 5), réduire CONFIG_COMPUTE.maxSpectralBinsConvergence (ex. 50).');
             window._spectralMemoryWarned = true;
         }
@@ -257,8 +253,7 @@ async function runRadiatifOnly(outerIter, waterPass) {
     }
     const delta_equilibre_init = flux_entrant_init - flux_sortant_effectif_init;
 
-    DATA['🧮']['🔬🌈'] = spectral_result_init.lambda_range ? spectral_result_init.lambda_range.length : 0;
-    DATA['🧮']['🔬🫧'] = spectral_result_init.z_range ? spectral_result_init.z_range.length : 0;
+    // DATA['🧮']['🔬🌈'] et DATA['🧮']['🔬🫧'] déjà mis à jour par calculateFluxForT0
     DATA['🧲']['🧲☀️🔽'] = flux_solaire_absorbe_init;
     DATA['🧲']['🧲🌕🔽'] = geothermal_flux_init;
     DATA['🧲']['🧲🌑🔼'] = flux_sortant_surface_init;
@@ -295,7 +290,7 @@ async function runRadiatifOnly(outerIter, waterPass) {
         }
     });
 
-    try { if (typeof window.displayConvergence === 'function') window.displayConvergence(); } catch (e) { if (typeof console !== 'undefined') console.warn('displayConvergence:', e); }
+    try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
     await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console afficher Init
 
     const maxInnerIters = (CONST.maxRadiatifIters != null) ? CONST.maxRadiatifIters : 21;
@@ -305,10 +300,10 @@ async function runRadiatifOnly(outerIter, waterPass) {
         if (window.ABORT_COMPUTE) return null;
         DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * (EPOCH['🧲🔬'] ?? 0.1);
         window.calculateH2OParameters();
-        window.getEnabledStates && window.getEnabledStates();
+        window.getEnabledStates();
         window.calculateAlbedo();
         window.calculateFluxForT0();
-        window.calculateRadiativeCapacities && window.calculateRadiativeCapacities();
+        window.calculateRadiativeCapacities();
         const spectral_result = window.getSpectralResultFromDATA();
         DATA['🧲']['🧲☀️🔽'] = window.calculateSolarFluxAbsorbed();
         DATA['🧲']['🧲🌕🔽'] = DATA['🌕']['🧲🌕'];
@@ -317,8 +312,7 @@ async function runRadiatifOnly(outerIter, waterPass) {
         DATA['🧲']['🧲🌈🔼'] = flux_sortant_effectif_inner;
         DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * (DATA['🪩'] && DATA['🪩']['🍰🪩📿'] ? DATA['🪩']['🍰🪩📿'] : 0);
         DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
-        DATA['🧮']['🔬🌈'] = spectral_result.lambda_range ? spectral_result.lambda_range.length : 0;
-        DATA['🧮']['🔬🫧'] = spectral_result.z_range ? spectral_result.z_range.length : 0;
+        // DATA['🧮']['🔬🌈'] et DATA['🧮']['🔬🫧'] déjà mis à jour par calculateFluxForT0
 
         // Dicho : encadrer Δ=0. Convention 🔽 = borne basse (min T), 🔼 = borne haute (max T), toujours 🔽 < 🔼.
         if (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0) {
@@ -343,13 +337,11 @@ async function runRadiatifOnly(outerIter, waterPass) {
         const albedo_this = (DATA['🪩'] && DATA['🪩']['🍰🪩📿']) != null ? DATA['🪩']['🍰🪩📿'] : 0;
 
         if (phase_this === 'Search' && yinYang_this === 0) {
-            if (typeof window.alert === 'function') {
-                window.alert('Crash algo: ☯=0 en phase Search (Δ sans signe, direction impossible). Arrêt.');
-            }
+            window.alert('Crash algo: ☯=0 en phase Search (Δ sans signe, direction impossible). Arrêt.');
             console.error('Crash algo: ☯=0 en phase Search');
             return null;
         }
-        try { if (typeof window.displayConvergence === 'function') window.displayConvergence(); } catch (e) { if (typeof console !== 'undefined') console.warn('displayConvergence:', e); }
+        try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
         await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console à jour après chaque itération
 
         if (Math.abs(delta_this) <= DATA['🧮']['🧲🔬']) innerConverged = true;
@@ -372,7 +364,7 @@ async function runRadiatifOnly(outerIter, waterPass) {
             if (Number.isFinite(increment) && Math.abs(increment) > maxStepK)
                 increment = Math.sign(increment) * maxStepK;
             DATA['🧮']['🧮🌡️'] += Number.isFinite(increment) ? increment : 0;
-            const rawCapRun = (typeof window !== 'undefined' && window.CONFIG_COMPUTE) ? window.CONFIG_COMPUTE.maxSearchT_K : undefined;
+            const rawCapRun = window.CONFIG_COMPUTE.maxSearchT_K;
             const TcapRun = (rawCapRun === null) ? Infinity : ((typeof rawCapRun === 'number' && Number.isFinite(rawCapRun)) ? rawCapRun : (CONST.T_LAVA_COMPLETE != null ? CONST.T_LAVA_COMPLETE : 2373));
             if (Number.isFinite(TcapRun) && DATA['🧮']['🧮🌡️'] > TcapRun) DATA['🧮']['🧮🌡️'] = TcapRun;
         } else if (DATA['🧮']['🧮⚧'] === 'Dicho') {
@@ -398,7 +390,7 @@ async function runRadiatifOnly(outerIter, waterPass) {
         _oomLog('before calculateFluxForT0', { iter: DATA['🧮']['🧮🔄☀️'], T: DATA['🧮']['🧮🌡️'], previousLen: DATA['🧮']['previous'].length });
         window.calculateH2OParameters();
         window.calculateFluxForT0();
-        window.calculateRadiativeCapacities && window.calculateRadiativeCapacities();
+        window.calculateRadiativeCapacities();
         const spectral_after = window.getSpectralResultFromDATA();
         DATA['🧲']['🧲☀️🔽'] = window.calculateSolarFluxAbsorbed();
         DATA['🧲']['🧲🌕🔽'] = DATA['🌕']['🧲🌕'];
@@ -432,7 +424,7 @@ async function runRadiatifOnly(outerIter, waterPass) {
             pushPayload.dichoT_high_C = DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS;
         }
         DATA['🧮']['previous'].push(pushPayload);
-        const maxPrevious = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxPreviousLength != null) ? window.CONFIG_COMPUTE.maxPreviousLength : 25;
+        const maxPrevious = window.CONFIG_COMPUTE.maxPreviousLength;
         if (DATA['🧮']['previous'].length > maxPrevious) DATA['🧮']['previous'].splice(0, DATA['🧮']['previous'].length - maxPrevious);
         _oomLog('after push', { previousLen: DATA['🧮']['previous'].length });
         await new Promise(r => setTimeout(r, 0)); // Yield pour afficher cette étape avant la suivante

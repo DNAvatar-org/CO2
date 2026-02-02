@@ -360,4 +360,5 @@ window.CONFIG_COMPUTE.maxRadiatifIters = 41;
 window.CONFIG_COMPUTE.maxSearchT_K = null;
 // Bins spectaux (150 = bonne précision calcul). OOM évité par plafond tropopause/couches dans calculations.js.
 window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 150;
+window.CONFIG_COMPUTE.maxPreviousLength = 25;
 

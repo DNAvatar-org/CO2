@@ -116,13 +116,11 @@ function calculateFluxForT0() {
     const lambda_range = [];
     const lambda_weights = []; // Poids pour les moyennes pondérées
 
-    // 💧 Phase cycle eau : résolution réduite (ex. 100 bins) pour accélérer. Phase T finale : 1000 bins.
-    const spectral_target = (DATA['🧮'] && typeof DATA['🧮']['🔬🌈_target'] === 'number') ? DATA['🧮']['🔬🌈_target'] : null;
+    // 💧 Résolution spectrale : DATA['🧮']['🔬🌈'] = target (entrée) puis lambda_range.length (sortie)
     const lambda_span = lambda_max - lambda_min;
 
     {
-        // Nombre de bins : 🔬🌈_target si défini (100 = cycle eau, 1000 = T finale), régime T élevé plafonné à 50
-        const expected_points = spectral_target != null ? Math.max(2, Math.min(spectral_target, 10000)) : (Math.floor(lambda_span / delta_lambda) + 1);
+        const expected_points = Math.max(2, Math.min(DATA['🧮']['🔬🌈'], 10000));
         const effective_delta = lambda_span / (expected_points - 1);
 
         // Créer exactement le bon nombre de points, en forçant lambda_max comme dernier élément
@@ -669,7 +667,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     // Récupérer H2O et CH4 pour le log
     // 🔒 CORRECTION : Utiliser DATA['💧']['🍰🫧💧'] comme source unique de vérité
     const h2o_total = DATA['💧']['🍰🫧💧'] * 100; // Fraction → %
-    const ch4_ppm = options.CH4_fraction * 1e6;
+    const ch4_ppm = (options && options.CH4_fraction) ? options.CH4_fraction * 1e6 : 0;
     
     // Log supprimé : affichage uniquement du mode (dichotomie/exponentielle) dans la boucle principale
     // if (iteration === 0 || isInitial) {
@@ -715,15 +713,9 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     const cloud_coverage = result.cloud_coverage;
 
     // Calculer les forçages radiatifs séparés
-    const forcing_CO2 = typeof window.calculateCO2Forcing === 'function'
-        ? window.calculateCO2Forcing(CO2_fraction)
-        : 0;
-    const forcing_H2O = typeof window.calculateH2OForcing === 'function'
-        ? window.calculateH2OForcing(h2o_enabled, cloud_coverage)
-        : 0;
-    const forcing_Albedo = typeof window.calculateAlbedoForcing === 'function' && albedo !== null
-        ? window.calculateAlbedoForcing(albedo)
-        : 0;
+    const forcing_CO2 = window.calculateCO2Forcing(CO2_fraction);
+    const forcing_H2O = window.calculateH2OForcing(h2o_enabled, cloud_coverage);
+    const forcing_Albedo = (albedo !== null) ? window.calculateAlbedoForcing(albedo) : 0;
 
     // Forçage total
     const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
@@ -742,8 +734,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     const life_viable = T0_test >= TEMP_HABITABLE_MIN && T0_test <= TEMP_HABITABLE_MAX;
 
     // Mettre à jour les informations à chaque étape
-    if (typeof window.updateDisplay === 'function') {
-        window.updateDisplay({
+    window.updateDisplay({
             state: window.currentState, // Plantera si n'existe pas
             co2_ppm: CO2_fraction * 1e6,
             temp_surface: T0_test,
@@ -760,12 +751,9 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             albedo: albedo,
             cloud_coverage: cloud_coverage
         });
-    }
 
     // Mettre à jour les labels du flux pendant le calcul
-    if (typeof window !== 'undefined' && typeof window.updateFluxLabels === 'function') {
-        const ch4_ppm = (options && options.CH4_fraction) ? options.CH4_fraction * 1e6 : 0;
-        window.updateFluxLabels({
+    window.updateFluxLabels({
             T0: T0_test,
             temp_surface: T0_test,
             total_flux: result.total_flux,
@@ -774,19 +762,12 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             co2_ppm: CO2_fraction * 1e6,
             ch4_ppm: ch4_ppm
         });
-    }
 
     // 🔒 Mettre à jour la couleur avec la température actuelle (à chaque étape de dichotomie)
-    if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
-        const color_current = window.tempSurfaceToColor(temp_surface_c);
-        window.updateBlackBodyColor(color_current);
-        
-        // Mettre à jour legend-equilibre avec la couleur actuelle
-        const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
-        if (legendEquilibre) {
-            legendEquilibre.style.color = color_current;
-        }
-    }
+    const color_current = window.tempSurfaceToColor(temp_surface_c);
+    window.updateBlackBodyColor(color_current);
+    const legendEquilibre = document.querySelector('.legend-equilibre');
+    if (legendEquilibre) legendEquilibre.style.color = color_current;
 
     const tempPlotData = {
         lambda_range: result.lambda_range,
@@ -810,9 +791,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     };
 
     // Mettre à jour le graphique
-    if (typeof window.updatePlot === 'function') {
-        window.updatePlot(tempPlotData);
-    }
+    window.updatePlot(tempPlotData);
 
     // Mettre à jour la visualisation spectrale
     setTimeout(() => {
@@ -824,9 +803,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             canvas.style.setProperty('z-index', '0', 'important');
             canvas.style.setProperty('position', 'absolute', 'important');
         }
-        if (typeof window.updateSpectralVisualization === 'function' && tempPlotData.current) {
-            window.updateSpectralVisualization(tempPlotData.current);
-        }
+        if (tempPlotData.current) window.updateSpectralVisualization(tempPlotData.current);
     }, 100);
 
     // Mettre à jour le statut
@@ -1015,7 +992,9 @@ function simulateRadiativeTransfer() {
     // 🔒 IMPORTANT : Mettre à jour DATA['🧮']['🧮🌡️'] AVANT le calcul initial aussi !
     DATA['🧮']['🧮🌡️'] = T0_initial;
     DATA['🧮']['🧮⚧'] = 'Search'; // Éviter Init (cycle eau complet) ; recalcul vapeur à chaque T
-    if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
+    // 🔒 Résolution spectrale uniforme (test) ; init → doit exister
+    DATA['🧮']['🔬🌈'] = window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
+    window.calculateH2OParameters();
     // Calculer la courbe initiale
     const calc_success_init = calculateFluxForT0();
     if (!calc_success_init) {
@@ -1095,7 +1074,7 @@ function simulateRadiativeTransfer() {
 
                     const shouldDisplaySteps = window.showDichotomySteps;
                     DATA['🧮']['🧮🌡️'] = T0_current;
-                    if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
+                    window.calculateH2OParameters();
                     // Toujours recalculer pour avoir les valeurs à jour (le delta doit changer avec T0_current)
                     const calc_success = calculateFluxForT0();
                     if (!calc_success) {
@@ -1255,7 +1234,7 @@ function simulateRadiativeTransfer() {
 
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
-                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
+                        window.calculateH2OParameters();
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
                         const calc_success_conv = calculateFluxForT0();
                         if (!calc_success_conv) {
@@ -1269,14 +1248,10 @@ function simulateRadiativeTransfer() {
                         }
 
                         // Déclencher un événement de convergence
-                        if (typeof window !== 'undefined') {
-                            window.calculationConverged = true;
-                            if (window.dispatchEvent) {
-                                window.dispatchEvent(new CustomEvent('calculationConverged', {
-                                    detail: { T0: T0_current, iteration: iter + 1 }
-                                }));
-                            }
-                        }
+                        window.calculationConverged = true;
+                        window.dispatchEvent(new CustomEvent('calculationConverged', {
+                            detail: { T0: T0_current, iteration: iter + 1 }
+                        }));
                         if (!isCancelled) {
                             // 🔒 Désactiver les logs de debug après convergence
                             if (typeof window !== 'undefined') {
@@ -1337,7 +1312,7 @@ function simulateRadiativeTransfer() {
                         console.log(`   Ajustement limité = ${T0_adjustment.toFixed(2)}K`);
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
-                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
+                        window.calculateH2OParameters();
                         // Recalculer avec la nouvelle T0
                         const calc_success_search = calculateFluxForT0();
                         if (!calc_success_search) {
@@ -1361,7 +1336,7 @@ function simulateRadiativeTransfer() {
                         T0_current = (T0_min + T0_max) / 2;
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
-                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
+                        window.calculateH2OParameters();
                         // Recalculer avec la nouvelle T0
                         const calc_success_dicho = calculateFluxForT0();
                         if (!calc_success_dicho) {
@@ -1388,9 +1363,7 @@ function simulateRadiativeTransfer() {
                             T0_max = T0_current;
                         }
                         // Continuer normalement (le dessin sera fait dans la boucle principale)
-                        if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
-                            window.incrementTimeline();
-                        }
+                        window.incrementTimeline();
                         // Ne pas faire setTimeout ici, continuer normalement pour passer par le dessin
                         // (pas de return, on continue dans la boucle)
                     }
@@ -1422,7 +1395,7 @@ function simulateRadiativeTransfer() {
 
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
-                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
+                        window.calculateH2OParameters();
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
                         const calc_success_conv = calculateFluxForT0();
                         if (!calc_success_conv) {
@@ -1506,7 +1479,7 @@ function simulateRadiativeTransfer() {
 
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
-                        if (typeof window.calculateH2OParameters === 'function') window.calculateH2OParameters();
+                        window.calculateH2OParameters();
                         // Convergence atteinte : recalculer avec spectre complet pour précision finale
                         const calc_success_conv = calculateFluxForT0();
                         if (!calc_success_conv) {
@@ -1520,14 +1493,10 @@ function simulateRadiativeTransfer() {
                         }
 
                         // Déclencher un événement de convergence
-                        if (typeof window !== 'undefined') {
-                            window.calculationConverged = true;
-                            if (window.dispatchEvent) {
-                                window.dispatchEvent(new CustomEvent('calculationConverged', {
-                                    detail: { T0: T0_current, iteration: iter }
-                                }));
-                            }
-                        }
+                        window.calculationConverged = true;
+                        window.dispatchEvent(new CustomEvent('calculationConverged', {
+                            detail: { T0: T0_current, iteration: iter }
+                        }));
                         if (!isCancelled) {
                             // 🔒 Désactiver les logs de debug après convergence
                             if (typeof window !== 'undefined') {
@@ -1560,7 +1529,7 @@ function simulateRadiativeTransfer() {
                     }
 
                     // Mettre à jour les labels du flux pendant le calcul
-                    if (typeof window !== 'undefined' && typeof window.updateFluxLabels === 'function') {
+                    {
                         // 🔒 Vérifier l'état réel du bouton H2O (checked/unchecked)
                         const cellH2O_iter = document.getElementById('cell-h2o'); // Plantera si n'existe pas
                         // 🔒 SEUL l'état du bouton compte pour déterminer si H2O est activé (pas de booléens en trop)
@@ -1657,21 +1626,12 @@ function simulateRadiativeTransfer() {
                     }
 
                     // Incrémenter le temps à chaque itération de dichotomie
-                    if (typeof window !== 'undefined' && typeof window.incrementTimeline === 'function') {
-                        window.incrementTimeline();
-                    }
+                    window.incrementTimeline();
 
                     // Mettre à jour l'overlay (barre de progression avec .)
-                    // Avec une pause de 0.1s pour permettre l'affichage de la courbe
-                    if (typeof document !== 'undefined') {
-                        const dots = document.getElementById('calculation-dots');
-                        if (dots) {
-                            // Ajouter un '.' à chaque étape de dichotomie (boucle externe)
-                            // Avec un délai de 0.1s pour permettre l'affichage
-                            setTimeout(() => {
-                                dots.innerHTML += '.';
-                            }, 100);
-                        }
+                    const dots = document.getElementById('calculation-dots');
+                    if (dots) {
+                        setTimeout(() => { dots.innerHTML += '.'; }, 100);
                     }
 
                     // Continuer avec un délai pour permettre la visualisation
@@ -1765,15 +1725,10 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         : Math.pow(total_flux / STEFAN_BOLTZMANN, 0.25);  // Avec atmosphère : calculer depuis flux_total
 
     // 🔒 FORCER le recalcul de la glace avant de calculer l'albedo
-    // 🔒 CORRECTION : Utiliser DATA['💧']['🍰🫧💧'] comme source unique de vérité
-    // Si H2O est activé, recalculer h2oIceFractionFromCalculation avec la température finale
-    if (h2o_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
-        const h2o_total_percent = DATA['💧']['🍰🫧💧'] * 100; // Fraction → %
-        
+    if (h2o_enabled) {
+        const h2o_total_percent = DATA['💧']['🍰🫧💧'] * 100;
         if (h2o_total_percent > 0) {
-            // Calculer la répartition vapeur/glace selon la température finale
             const h2o_params = window.calculateH2OParameters(final_T0, h2o_total_percent, null);
-            // Mettre à jour h2oIceFractionFromCalculation pour que calculateAlbedo() l'utilise
             window.h2oIceFractionFromCalculation = h2o_params.ice_fraction;
         }
     }
@@ -1789,34 +1744,20 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     const eds = flux_surface - total_flux;
     
     // 🔒 Mettre à jour la couleur avec la température finale (après convergence)
-    if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
-        const tempC_final = final_T0 - CONST.KELVIN_TO_CELSIUS;
-        const color_final = window.tempSurfaceToColor(tempC_final);
-        window.updateBlackBodyColor(color_final);
-        
-        // Mettre à jour legend-equilibre avec la couleur finale
-        const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
-        if (legendEquilibre) {
-            legendEquilibre.style.color = color_final;
-        }
-    }
+    const tempC_final = final_T0 - CONST.KELVIN_TO_CELSIUS;
+    const color_final = window.tempSurfaceToColor(tempC_final);
+    window.updateBlackBodyColor(color_final);
+    const legendEquilibre_f = document.querySelector('.legend-equilibre');
+    if (legendEquilibre_f) legendEquilibre_f.style.color = color_final;
     
     // Log EDS et T° finale
     console.log(`🔥 EDS: ${eds.toFixed(1)} W/m²`);
     console.log(`🌡️ T° finale: ${final_T0.toFixed(2)}K (${(final_T0 - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C)`);
 
-    // 🔒 Mettre à jour window.plotData.temp_surface pour que prev_T0 soit disponible au prochain calcul
-    if (typeof window !== 'undefined') {
-        if (!window.plotData) {
-            window.plotData = {};
-        }
-        window.plotData.temp_surface = final_T0;
-        window.plotData.temp_surface_c = final_T0 - CONST.KELVIN_TO_CELSIUS;
-        
-        // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] avec la température finale convergée
-        // Nécessaire pour que displayConvergence() affiche la bonne température
-        DATA['🧮']['🧮🌡️'] = final_T0;
-    }
+    if (!window.plotData) window.plotData = {};
+    window.plotData.temp_surface = final_T0;
+    window.plotData.temp_surface_c = final_T0 - CONST.KELVIN_TO_CELSIUS;
+    DATA['🧮']['🧮🌡️'] = final_T0;
 
     const final_result_obj = {
         lambda_range: lambda_range,
@@ -1836,17 +1777,11 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         temp_surface_c: final_T0 - CONST.KELVIN_TO_CELSIUS // 🔒 Température de surface (°C) - nécessaire pour updateH2OLevelDirect
     };
 
-    // 🔒 Mettre à jour la visualisation spectrale avant de résoudre
-    // Forcer la précision maximale (1px) à la fin des calculs si pas déjà fait
-    if (typeof window !== 'undefined') {
-        // Réactiver l'affichage du fond spectral (au cas où il aurait été désactivé)
-        window.showSpectralBackground = true;
-        // Forcer la précision maximale (1px) pour le recalcul final
-        window.spectralConverged = true;
-        window.spectralPrecisionTarget = 'max';
-    }
+    window.showSpectralBackground = true;
+    window.spectralConverged = true;
+    window.spectralPrecisionTarget = 'max';
     
-    if (typeof window !== 'undefined' && typeof window.updateSpectralVisualization === 'function') {
+    {
         // 🔒 Utiliser un délai plus long pour s'assurer que updatePlot a fini
         setTimeout(() => {
             const canvas = document.getElementById('spectral-visualization');
@@ -1864,14 +1799,8 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
                 lambda_range: lambda_range,
                 z_range: z_range
             };
-            // 🔒 S'assurer que showSpectralBackground est toujours true avant de mettre à jour
-            if (typeof window !== 'undefined') {
-                window.showSpectralBackground = true;
-            }
-            // 🔒 Recalculer avec précision maximale (1px) à la fin
+            window.showSpectralBackground = true;
             window.updateSpectralVisualization(spectralData);
-            
-            // 🔒 Vérifier après un court délai que le canvas est toujours visible
             setTimeout(() => {
                 const canvasCheck = document.getElementById('spectral-visualization');
                 if (canvasCheck && (canvasCheck.style.display === 'none' || canvasCheck.style.visibility === 'hidden' || canvasCheck.style.opacity === '0')) {
@@ -1879,10 +1808,7 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
                     canvasCheck.style.setProperty('display', 'block', 'important');
                     canvasCheck.style.setProperty('visibility', 'visible', 'important');
                     canvasCheck.style.setProperty('opacity', '1', 'important');
-                    // Redessiner avec les mêmes données
-                    if (typeof window.updateSpectralVisualization === 'function') {
-                        window.updateSpectralVisualization(spectralData);
-                    }
+                    window.updateSpectralVisualization(spectralData);
                 }
             }, 300);
         }, 250); // Délai plus long pour laisser updatePlot finir
@@ -1906,16 +1832,10 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     const geo_flux = EPOCH.geothermal_flux || (window.calculateGeothermalFlux ? window.calculateGeothermalFlux(EPOCH.core_temperature, EPOCH.geothermal_diffusion_factor) : null);
     const solar_flux_absorbed = calculateSolarFluxAbsorbed(T0, h2o_enabled, geo_flux);
-    // 🔒 FORCER le recalcul de la glace avant de calculer l'albedo (mode synchrone)
-    // 🔒 CORRECTION : Utiliser DATA['💧']['🍰🫧💧'] comme source unique de vérité
-    // Si H2O est activé, recalculer h2oIceFractionFromCalculation avec la température finale
-    if (h2o_enabled && typeof window !== 'undefined' && typeof window.calculateH2OParameters === 'function') {
-        const h2o_total_percent = DATA['💧']['🍰🫧💧'] * 100; // Fraction → %
-        
+    if (h2o_enabled) {
+        const h2o_total_percent = DATA['💧']['🍰🫧💧'] * 100;
         if (h2o_total_percent > 0) {
-            // Calculer la répartition vapeur/glace selon la température finale
             const h2o_params = window.calculateH2OParameters(T0, h2o_total_percent, null);
-            // Mettre à jour h2oIceFractionFromCalculation pour que calculateAlbedo() l'utilise
             window.h2oIceFractionFromCalculation = h2o_params.ice_fraction;
         }
     }
@@ -1926,23 +1846,13 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     // Log albedo
     console.log(`🌍 Albedo: ${(albedo * 100).toFixed(1)}%`);
     
-    // 🔒 Mettre à jour la couleur avec la température finale (après convergence, mode synchrone)
-    if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
-        const tempC_final = T0 - CONST.KELVIN_TO_CELSIUS;
-        const color_final = window.tempSurfaceToColor(tempC_final);
-        window.updateBlackBodyColor(color_final);
-        
-        // Mettre à jour legend-equilibre avec la couleur finale
-        const legendEquilibre = document.querySelector('.legend-equilibre'); // Plantera si n'existe pas
-        if (legendEquilibre) {
-            legendEquilibre.style.color = color_final;
-        }
-    }
+    const tempC_final_sync = T0 - CONST.KELVIN_TO_CELSIUS;
+    const color_final_sync = window.tempSurfaceToColor(tempC_final_sync);
+    window.updateBlackBodyColor(color_final_sync);
+    const legendEquilibre_sync = document.querySelector('.legend-equilibre');
+    if (legendEquilibre_sync) legendEquilibre_sync.style.color = color_final_sync;
 
-    // Récupérer CH4 pour détecter le cas du corps noir
-    const ch4_enabled = (typeof window !== 'undefined' && window.methaneEnabled !== undefined)
-        ? window.methaneEnabled
-        : false;
+    const ch4_enabled = window.methaneEnabled;
     // Dans finalizeResultsSync, on n'a pas accès direct à CH4_fraction depuis options
     // On suppose que si ch4_enabled est false, alors CH4_fraction est null ou 0
     const CH4_fraction = null; // Approximation : sera vérifié via ch4_enabled
@@ -1968,32 +1878,15 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     console.log(`🔥 EDS: ${eds.toFixed(1)} W/m²`);
     console.log(`🌡️ T° finale: ${T0.toFixed(2)}K (${(T0 - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C)`);
 
-    // 🔒 Mettre à jour window.plotData.temp_surface et DATA['🧮']['🧮🌡️'] pour cohérence
-    if (typeof window !== 'undefined') {
-        if (!window.plotData) {
-            window.plotData = {};
-        }
-        window.plotData.temp_surface = T0;
-        window.plotData.temp_surface_c = T0 - CONST.KELVIN_TO_CELSIUS;
-        
-        // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] avec la température finale convergée
-        // Nécessaire pour que displayConvergence() affiche la bonne température
-        DATA['🧮']['🧮🌡️'] = T0;
-    }
+    if (!window.plotData) window.plotData = {};
+    window.plotData.temp_surface = T0;
+    window.plotData.temp_surface_c = T0 - CONST.KELVIN_TO_CELSIUS;
+    DATA['🧮']['🧮🌡️'] = T0;
 
-    // 🔒 Mettre à jour la visualisation spectrale (mode synchrone)
-    // Forcer la précision maximale (1px) à la fin des calculs si pas déjà fait
-    if (typeof window !== 'undefined') {
-        // Réactiver l'affichage du fond spectral (au cas où il aurait été désactivé)
-        window.showSpectralBackground = true;
-        // Forcer la précision maximale (1px) pour le recalcul final
-        window.spectralConverged = true;
-        window.spectralPrecisionTarget = 'max';
-        
-        // Mettre à jour le fond spectral avec les données finales
-        if (typeof window.updateSpectralVisualization === 'function') {
-            // Utiliser setTimeout pour laisser le DOM se mettre à jour (même en mode synchrone)
-            setTimeout(() => {
+    window.showSpectralBackground = true;
+    window.spectralConverged = true;
+    window.spectralPrecisionTarget = 'max';
+    setTimeout(() => {
                 const canvas = document.getElementById('spectral-visualization');
                 if (canvas) {
                     canvas.style.setProperty('display', 'block', 'important');
@@ -2010,9 +1903,7 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
                 };
                 // 🔒 Recalculer avec précision maximale (1px) à la fin
                 window.updateSpectralVisualization(spectralData);
-            }, 150);
-        }
-    }
+    }, 150);
 
     return {
         lambda_range: lambda_range,
