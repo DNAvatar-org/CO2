@@ -1,7 +1,7 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.31
+// Version 1.2.36
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -9,7 +9,6 @@
 // Logs:
 // - Init atmosphere from epoch T (🌡️🧮) in both anim/non-anim so same equilibrium (Hadéen)
 // - Phase Init cycle eau : utiliser T_epoch (pas T_solver) pour mêmes conditions initiales anim/sans anim
-// - Logs flux/atmosphère affichés tout le temps (sans flag DEBUG_DATA_IO)
 // - Cycle 1 : même calculs anim/sans anim (T_epoch + composition + H2O + albedo), une seule séquence, ref supprimée
 // - Suppression computeRadiativeTransferLegacy (chemin mort) ; sans args → rejet, utiliser simulateRadiativeTransfer
 // - updateConvergenceBounds() : bornes Init basées sur 🧮🌡️ et ☯ (pas 📅🌡️🧮) pour anim Hadéen
@@ -50,6 +49,11 @@
 // - v1.2.29 : 🧮🛑 raison arrêt (converged|max_iter|abort|crash|max_water) affichée dans convergence
 // - v1.2.30 : push état convergé avant break pour cohérence affichage (Δ final listé)
 // - v1.2.31 : phaseForStep = phase avant changement ; afficher phase réelle du pas (Search vs Dicho)
+// - v1.2.32 : fix clampBracketToEpochMax (supprimé, non défini) ; logs DEBUG_ANALYSE CO2, cloud_index, CycleEau T/albedo/vapor
+// - v1.2.33 : console.log complets (DEBUG_ANALYSE) pour copie/colle depuis la console
+// - v1.2.34 : fix ReferenceError DATA in computeSearchIncrement + newDate (const DATA = window.DATA)
+// - v1.2.35 : fix updateConvergenceBounds — définir les deux bornes (🔼 restait undefined → NaN)
+// - v1.2.36 : DEBUG_ANALYSE_DETAIL + logDetailPremiersCalculs (CYCLE0, Init, CycleEau iter=0) pour transmettre à une autre IA
 // ============================================================================
 
 // ============================================================================
@@ -120,6 +124,7 @@ function calculateT0() {
 
 //Réinitialise les variables lors d'un changement de date
 function newDate() {
+    const DATA = window.DATA;
     DATA['🧮']['🧮⚧'] = "Search";
     DATA['🧮']['🧮☯'] = 0;
 }
@@ -172,28 +177,30 @@ function updateConvergenceBounds() {
     const DATA = window.DATA;
     const T_curr = DATA['🧮']['🧮🌡️'];
     const yinYang = DATA['🧮']['🧮☯'];
+    const dT = computeSearchIncrement();
     // Δ = flux_entrant - flux_sortant : Δ>0 → réchauffer (🔽=T), Δ<0 → refroidir (🔼=T)
     if (yinYang > 0) {
         DATA['🧮']['🧮🌡️🔽'] = T_curr;
-        //DATA['🧮']['🧮🌡️🔼'] = Math.min(window.CONFIG_COMPUTE.bornesMaxK, T_curr + window.CONFIG_COMPUTE.bornesMarginK);
+        DATA['🧮']['🧮🌡️🔼'] = T_curr + Math.max(1, Math.abs(dT));
     } else if (yinYang < 0) {
         DATA['🧮']['🧮🌡️🔼'] = T_curr;
-        //DATA['🧮']['🧮🌡️🔽'] = window.CONFIG_COMPUTE.bornesMinK;
+        DATA['🧮']['🧮🌡️🔽'] = Math.max(100, T_curr - Math.abs(dT));
     }
 }
 
-/** Calcule l'incrément Search en K. ΔT ∝ |Δ|^(1/3), signe = signe(Δ). Math.pow(neg, 1/3)=NaN → utiliser |Δ|^(1/3)×sign(Δ). */
+/** Calcule l'incrément Search en K. ΔT ∝ |Δ|^(1/pow), signe = signe(Δ).
+ * pow = 2 + DT/1500 avec DT = |T - T_cible| (tuning par époque). */
 function computeSearchIncrement() {
-    const delta = window.DATA['🧲']['🔺🧲'];
-    const precision_K = DATA['📅']['🧲🔬'];
-    let DT=Math.abs(DATA['🧮']['🧮🌡️']-DATA['📅']['🌡️🧮']);
-    const pow=2+DT/1500.0;//DATA['🧮']['🧮🌡️'];
-    const res=Math.sign(delta) * Math.pow(Math.abs(delta), 1 / pow);
-    const iterIdx = (DATA['🧮'] && DATA['🧮']['🧮🔄☀️'] != null) ? (DATA['🧮']['🧮🔄☀️'] === 0 ? 'Init' : DATA['🧮']['🧮🔄☀️']) : '-';
-    console.log('computeSearchIncrement:', { iter: iterIdx, DT: DT.toFixed(2), pow: pow.toFixed(3), precision_K: precision_K?.toFixed(4), res: res.toFixed(4) });
+    const DATA = window.DATA;
+    const delta = DATA['🧲']['🔺🧲'];
+    const DT = Math.abs(DATA['🧮']['🧮🌡️'] - DATA['📅']['🌡️🧮']);
+    const pow = 2 + DT / 1500.0;
+    const res = Math.sign(delta) * Math.pow(Math.abs(delta), 1 / pow);
+    if (window.DEBUG_ANALYSE) {
+        const iterIdx = (DATA['🧮'] && DATA['🧮']['🧮🔄☀️'] != null) ? (DATA['🧮']['🧮🔄☀️'] === 0 ? 'Init' : DATA['🧮']['🧮🔄☀️']) : '-';
+        console.log('[computeSearchIncrement][calculations_flux.js] iter=' + iterIdx + ' DT=' + DT.toFixed(2) + ' pow=' + pow.toFixed(3) + ' res=' + res.toFixed(4) + 'K');
+    }
     return res;
-    //if (delta>1) 
-    //else return delta;
 }
 
 /** Expansion du bracket quand 🔽 >= 🔼. Formule physique : ΔT = |Δ|/(4σT³). Exécuté quelle que soit la phase. */
@@ -201,6 +208,10 @@ function expandBracketIfInvalid() {
     const DATA = window.DATA;
     if (DATA['🧮']['🧮🌡️🔽'] < DATA['🧮']['🧮🌡️🔼']) return; // Bracket valide, rien à faire
 
+    if (window.DEBUG_ANALYSE) {
+        const CONST = window.CONST;
+        console.log('[expandBracketIfInvalid][calculations_flux.js] Bracket invalide T_low=' + (DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' T_high=' + (DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' delta=' + DATA['🧲']['🔺🧲'].toFixed(2) + ' phase=' + DATA['🧮']['🧮⚧']);
+    }
     //window.alert('[expandBracketIfInvalid] Bracket invalide: 🔽 >= 🔼. Correction en cours.');
     const dT_clamped = computeSearchIncrement();
     if (DATA['🧲']['🔺🧲'] > 0) {
@@ -212,7 +223,7 @@ function expandBracketIfInvalid() {
     }
 }
 
-// OOM = Out Of Memory (manque de RAM → processus tué, ex. Brave code 5). Debug mémoire sans DEBUG_DATA_IO.
+// OOM = Out Of Memory (manque de RAM → processus tué, ex. Brave code 5).
 // Activer en console avant Calcul : window.DEBUG_OOM = true
 function _oomLog(label, extra) {
     if (!window.DEBUG_OOM || typeof console === 'undefined') return;
@@ -298,6 +309,12 @@ async function runRadiatifOnly() {
     const currentWaterPass = DATA['🧮']['🧮🔄🌊'];
     const maxWaterPass = 5;
     _oomLog('runRadiatifOnly start', { '🧮🔄🌊': currentWaterPass, previousLen: DATA['🧮']['previous'].length });
+    if (window.DEBUG_ANALYSE) {
+        const co2_kg = DATA['⚖️'] && DATA['⚖️']['⚖️🏭'];
+        const co2_frac = DATA['🫧'] && DATA['🫧']['🍰🫧🏭'];
+        const epochId = DATA['📜'] && DATA['📜']['🗿'] ? DATA['📜']['🗿'] : '?';
+        console.log('[runRadiatifOnly][calculations_flux.js] START CO2_kg=' + (co2_kg != null ? co2_kg.toExponential(2) : '?') + ' CO2_frac=' + (co2_frac != null ? co2_frac.toExponential(4) : '?') + ' epochId=' + epochId);
+    }
     if (currentWaterPass === 0) {
         window._fromCrossing = false;
         DATA['🧮']['🧮🔄🪩'] = 0;
@@ -365,7 +382,23 @@ async function runRadiatifOnly() {
     // le delta est bien (flux_entrant − aire courbe réelle), pas la différence entre deux aires spectrales.
     const flux_sortant_effectif_init = spectral_result_init.total_flux;
     const delta_equilibre_init = flux_entrant_init - flux_sortant_effectif_init;
-
+    if (window.DEBUG_ANALYSE) {
+        const eds = DATA['📛'] ? DATA['📛']['🧲📛'] : null;
+        const co2Pct = DATA['📛'] ? DATA['📛']['🍰📛🏭'] : null;
+        const h2oPct = DATA['📛'] ? DATA['📛']['🍰📛💧'] : null;
+        const ch4Pct = DATA['📛'] ? DATA['📛']['🍰📛⛽'] : null;
+        const h2oScale = (typeof window.getH2OVaporEDSScale === 'function') ? window.getH2OVaporEDSScale().toFixed(3) : '?';
+        console.log('[runRadiatifOnly][calculations_flux.js] CYCLE0 T_K=' + DATA['🧮']['🧮🌡️'].toFixed(2) + ' T_C=' + (DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' flux_in=' + flux_entrant_init.toFixed(2) + ' flux_out=' + flux_sortant_effectif_init.toFixed(2) + ' delta=' + delta_equilibre_init.toFixed(2) + ' solar=' + flux_solaire_absorbe_init.toFixed(2) + ' albedo=' + DATA['🪩']['🍰🪩📿'].toFixed(3) + ' vapor=' + (DATA['💧']['🍰🫧💧'] != null ? DATA['💧']['🍰🫧💧'].toExponential(3) : '?') + ' cloud=' + (DATA['🪩']['☁️'] != null ? DATA['🪩']['☁️'].toFixed(3) : '?') + ' tol=' + DATA['🧮']['🧲🔬'].toFixed(2) + ' EDS=' + (eds != null ? eds.toFixed(1) : '?') + ' CO2%=' + (co2Pct != null ? co2Pct.toFixed(1) : '?') + ' H2O%=' + (h2oPct != null ? h2oPct.toFixed(1) : '?') + ' CH4%=' + (ch4Pct != null ? ch4Pct.toFixed(1) : '?') + ' H2O_scale=' + h2oScale);
+    }
+    if (window.DEBUG_ANALYSE_DETAIL && window.logDetailPremiersCalculs) {
+        window.DETAIL_LOG_TEXT = '';
+        window._detailLogPhase = true;
+        const bins = spectral_result_init.lambda_range ? spectral_result_init.lambda_range.length : null;
+        const layers = spectral_result_init.z_range ? spectral_result_init.z_range.length : null;
+        const epochId = DATA['📜'] && DATA['📜']['🗿'] ? DATA['📜']['🗿'] : '?';
+        const T_cible_K = EPOCH && EPOCH['🌡️🧮'] != null ? EPOCH['🌡️🧮'] : null;
+        window.logDetailPremiersCalculs('CYCLE0 (premier calcul radiatif, delta ~+9.8)', DATA, CONST, { flux_in: flux_entrant_init, flux_out: flux_sortant_effectif_init, delta: delta_equilibre_init, bins, layers, epochId, T_cible_K });
+    }
     // DATA['🧮']['🔬🌈'] et DATA['🧮']['🔬🫧'] déjà mis à jour par calculateFluxForT0
     DATA['🧲']['🧲☀️🔽'] = flux_solaire_absorbe_init;
     DATA['🧲']['🧲🌕🔽'] = DATA['🌕']['🧲🌕'];
@@ -389,6 +422,12 @@ async function runRadiatifOnly() {
     // Init : snapshot INPUT (T avant increment), puis DATA = OUTPUT (T + increment)
     const incInit = computeSearchIncrement();
     const T_init_K = DATA['🧮']['🧮🌡️'];
+    if (window.DEBUG_ANALYSE) {
+        console.log('[Init][calculations_flux.js] T_K=' + T_init_K.toFixed(2) + ' T_C=' + (T_init_K - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' delta=' + delta_equilibre_init.toFixed(2) + ' incInit=' + incInit.toFixed(4) + 'K next_T_C=' + (T_init_K + incInit - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' albedo=' + DATA['🪩']['🍰🪩📿'].toFixed(3) + ' bounds=[' + (DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ',' + (DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ']');
+    }
+    if (window.DEBUG_ANALYSE_DETAIL && window.logDetailPremiersCalculs) {
+        window.logDetailPremiersCalculs('Init (avant pas Search, delta=' + delta_equilibre_init.toFixed(2) + ')', DATA, CONST, { delta: delta_equilibre_init, epochId: DATA['📜'] && DATA['📜']['🗿'] ? DATA['📜']['🗿'] : '?', T_cible_K: EPOCH && EPOCH['🌡️🧮'] != null ? EPOCH['🌡️🧮'] : null });
+    }
     DATA['🧮']['previous'].push({
         innerIter: -1,
         albedoIter: 0,
@@ -449,6 +488,27 @@ async function runRadiatifOnly() {
         DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
         const b = DATA['📊'] && DATA['📊'].eds_breakdown;
         DATA['📛'] = b ? { '🧲📛': b.EDS_Wm2, '🍰📛🏭': b.CO2.pct, '🍰📛💧': b.H2O.pct, '🍰📛⛽': b.CH4.pct } : null;
+        if (window.DEBUG_ANALYSE) {
+            const T_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+            const albedo = DATA['🪩']['🍰🪩📿'];
+            const vapor = DATA['💧']['🍰🫧💧'] || 0;
+            const cloudIdx = DATA['🪩']['☁️'];
+            const co2_frac = DATA['🫧']['🍰🫧🏭'] || 0;
+            const flux_in = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'];
+            const flux_out = DATA['🧲']['🧲🌈🔼'];
+            const delta = DATA['🧲']['🔺🧲'];
+            const eds = DATA['📛'] ? DATA['📛']['🧲📛'] : null;
+            const bounds = '[' + (DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ',' + (DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ']';
+            if (window.DEBUG_ANALYSE_DETAIL && DATA['🧮']['🧮🔄☀️'] === 0 && window.logDetailPremiersCalculs) {
+                const spectral = window.getSpectralResultFromDATA ? window.getSpectralResultFromDATA() : null;
+                const bins = spectral && spectral.lambda_range ? spectral.lambda_range.length : null;
+                const layers = spectral && spectral.z_range ? spectral.z_range.length : null;
+                window.logDetailPremiersCalculs('CycleEau iter=0 (après T=17°C, delta ~+7)', DATA, CONST, { flux_in, flux_out, delta, bins, layers, epochId: DATA['📜'] && DATA['📜']['🗿'] ? DATA['📜']['🗿'] : '?', T_cible_K: EPOCH && EPOCH['🌡️🧮'] != null ? EPOCH['🌡️🧮'] : null });
+                window._detailLogPhase = false;
+            }
+            const h2oScaleCyc = (typeof window.getH2OVaporEDSScale === 'function') ? window.getH2OVaporEDSScale().toFixed(3) : '?';
+            console.log('[CycleEau][calculations_flux.js] iter=' + DATA['🧮']['🧮🔄☀️'] + ' phase=' + DATA['🧮']['🧮⚧'] + ' T_C=' + T_C.toFixed(1) + ' flux_in=' + flux_in.toFixed(2) + ' flux_out=' + flux_out.toFixed(2) + ' delta=' + delta.toFixed(2) + ' albedo=' + albedo.toFixed(3) + ' vapor=' + vapor.toExponential(2) + ' cloud=' + (cloudIdx != null ? cloudIdx.toFixed(3) : '?') + ' CO2_frac=' + co2_frac.toExponential(4) + ' bounds=' + bounds + ' tol=' + DATA['🧮']['🧲🔬'].toFixed(2) + ' EDS=' + (eds != null ? eds.toFixed(1) : '?') + ' H2O_scale=' + h2oScaleCyc);
+        }
         // Phase AVANT mise à jour : pour affichage cohérent (phase utilisée pour le pas précédent)
         const phaseAtInput = DATA['🧮']['🧮⚧'];
 
@@ -464,6 +524,9 @@ async function runRadiatifOnly() {
         }
         // ☯ = ancien signe(Δ). Passage en Dicho quand signe(Δ) change (Δ×☯<0). Affiché ☯ = signe(Δ) actuel (mis à jour en fin de boucle).
         const switchedToDicho = (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0);
+        if (switchedToDicho && window.DEBUG_ANALYSE) {
+            console.log('[Search->Dicho][calculations_flux.js] iter=' + DATA['🧮']['🧮🔄☀️'] + ' T_C=' + (DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' delta=' + DATA['🧲']['🔺🧲'].toFixed(2) + ' bounds=[' + (DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ',' + (DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ']');
+        }
         if (switchedToDicho) {
             DATA['🧮']['🧮⚧'] = 'Dicho';
             dichoSameDirCount = 1;
@@ -518,6 +581,14 @@ async function runRadiatifOnly() {
         if (Math.abs(DATA['🧲']['🔺🧲']) <= DATA['🧮']['🧲🔬']) {
             innerConverged = true;
             DATA['🧮']['🧮🛑'] = 'converged';
+            if (window.DEBUG_ANALYSE) {
+                const T_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+                const eds = DATA['📛'] ? DATA['📛']['🧲📛'] : null;
+                const co2Pct = DATA['📛'] ? DATA['📛']['🍰📛🏭'] : null;
+                const h2oPct = DATA['📛'] ? DATA['📛']['🍰📛💧'] : null;
+                const h2oScaleConv = (typeof window.getH2OVaporEDSScale === 'function') ? window.getH2OVaporEDSScale().toFixed(3) : '?';
+                console.log('[CONVERGED][calculations_flux.js] iter=' + DATA['🧮']['🧮🔄☀️'] + ' T_C=' + T_C.toFixed(1) + ' flux_in=' + (DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽']).toFixed(2) + ' flux_out=' + DATA['🧲']['🧲🌈🔼'].toFixed(2) + ' delta=' + DATA['🧲']['🔺🧲'].toFixed(2) + ' albedo=' + DATA['🪩']['🍰🪩📿'].toFixed(3) + ' vapor=' + (DATA['💧']['🍰🫧💧'] != null ? DATA['💧']['🍰🫧💧'].toExponential(3) : '?') + ' EDS=' + (eds != null ? eds.toFixed(1) : '?') + ' CO2%=' + (co2Pct != null ? co2Pct.toFixed(1) : '?') + ' H2O%=' + (h2oPct != null ? h2oPct.toFixed(1) : '?') + ' H2O_scale=' + h2oScaleConv);
+            }
             // Push état convergé pour cohérence affichage (sinon Arrêt montre Δ final non listé)
             const data_snapshot_conv = {
                 '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
@@ -625,7 +696,9 @@ async function runRadiatifOnly() {
             dichoSameDirCount = 0;
             lastDichoSign = 0;
             expandBracketIfInvalid();
-            console.log('[crossing] T_next_K=' + T_next_K.toFixed(2) + 'K, T_crossing_C=' + T_crossing_C.toFixed(1) + '°C, cycleNum=' + (DATA['🧮']['🧮🔄🪩'] != null ? DATA['🧮']['🧮🔄🪩'] : DATA['🧮']['🧮🔄🌊'] + 1) + ', 🔽=' + (DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + '°C, 🔼=' + (DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + '°C');
+            if (window.DEBUG_ANALYSE) {
+                console.log('[crossing][calculations_flux.js] T_cross_C=' + T_crossing_C.toFixed(1) + ' T_prev=' + (T_prev_K - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' T_next=' + (T_next_K - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' cycle=' + (DATA['🧮']['🧮🔄🪩'] != null ? DATA['🧮']['🧮🔄🪩'] : DATA['🧮']['🧮🔄🌊'] + 1) + ' delta=' + DATA['🧲']['🔺🧲'].toFixed(2) + ' albedo=' + DATA['🪩']['🍰🪩📿'].toFixed(3) + ' vapor=' + (DATA['💧']['🍰🫧💧'] != null ? DATA['💧']['🍰🫧💧'].toExponential(3) : '?'));
+            }
             const data_snapshot = {
                 '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
                 '🧲': JSON.parse(JSON.stringify(DATA['🧲'])),
@@ -648,9 +721,9 @@ async function runRadiatifOnly() {
             if (phaseForStep === 'Dicho') {
                 pushPayload.dichoT_low_C = DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS;
                 pushPayload.dichoT_high_C = DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS;
-                console.log('[crossing] pushPayload Dicho: temperature_C=' + pushPayload.temperature_C.toFixed(1) + '°C, next_T_C=>' + pushPayload.next_T_C.toFixed(1) + '°C, cycleNum=' + (DATA['🧮']['🧮🔄🌊'] + 1));
-            } else if (DATA['🧮']['🧮⚧'] === 'Search') {
-                console.log('[crossing] pushPayload Search: temperature_C=' + pushPayload.temperature_C.toFixed(1) + '°C, next_T_C=>' + pushPayload.next_T_C.toFixed(1) + '°C (crossing T_prev=>T_next), cycleNum=' + (DATA['🧮']['🧮🔄🌊'] + 1));
+            }
+            if (window.DEBUG_ANALYSE) {
+                console.log('[crossing][calculations_flux.js] pushPayload phase=' + pushPayload.phase + ' T=' + pushPayload.temperature_C.toFixed(1) + '->' + pushPayload.next_T_C.toFixed(1) + ' delta=' + (pushPayload.delta_equilibre != null ? pushPayload.delta_equilibre.toFixed(2) : '?'));
             }
             DATA['🧮']['previous'].push(pushPayload);
             if (DATA['🧮']['🧮🔄🪩'] != null) DATA['🧮']['🧮🔄🪩']++;
@@ -698,6 +771,9 @@ async function runRadiatifOnly() {
         if (Math.abs(DATA['🧮']['🧮🌡️'] - DATA['🧮']['🧮🌡️⏮']) < epsT_K) {
             if (Math.abs(DATA['🧲']['🔺🧲']) <= DATA['🧮']['🧲🔬']) innerConverged = true;
             else {
+                if (window.DEBUG_ANALYSE) {
+                    console.log('[T_blocked][calculations_flux.js] T inchangée delta=' + DATA['🧲']['🔺🧲'].toFixed(2) + ' tol=' + DATA['🧮']['🧲🔬'].toFixed(2) + ' -> élargir bracket');
+                }
                 // Bloqué sans convergence : élargir le bracket pour pouvoir bouger
                 const mid = (DATA['🧮']['🧮🌡️🔽'] + DATA['🧮']['🧮🌡️🔼']) / 2;
                 const eps = Math.max(0.5, (DATA['🧮']['🧮🌡️🔼'] - DATA['🧮']['🧮🌡️🔽']) * 0.5);
@@ -785,6 +861,11 @@ async function runRadiatifOnly() {
         }
         // next_T_C = T atteinte par le pas (Search et Dicho)
         pushPayload.next_T_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+        if (window.DEBUG_ANALYSE) {
+            const eds = DATA['📛'] ? DATA['📛']['🧲📛'] : null;
+            const bounds = phaseForStep === 'Dicho' ? '[' + (DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ',' + (DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ']' : '-';
+            console.log('[Search/Dicho][calculations_flux.js] iter=' + (DATA['🧮']['🧮🔄☀️'] - 1) + ' phase=' + phaseForStep + ' T=' + pushPayload.temperature_C.toFixed(1) + '->' + pushPayload.next_T_C.toFixed(1) + ' delta=' + (pushPayload.delta_equilibre != null ? pushPayload.delta_equilibre.toFixed(2) : '?') + ' flux_in=' + (DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽']).toFixed(2) + ' flux_out=' + DATA['🧲']['🧲🌈🔼'].toFixed(2) + ' albedo=' + pushPayload.albedo.toFixed(3) + ' bounds=' + bounds + ' EDS=' + (eds != null ? eds.toFixed(1) : '?'));
+        }
         DATA['🧮']['previous'].push(pushPayload);
         DATA['🧮']['🧮🔄🪩']++;
         const maxPrevious = window.CONFIG_COMPUTE.maxPreviousLength;
@@ -793,6 +874,10 @@ async function runRadiatifOnly() {
         await new Promise(r => setTimeout(r, 0)); // Yield pour afficher cette étape avant la suivante
     }
     if (!DATA['🧮']['🧮🛑']) DATA['🧮']['🧮🛑'] = 'max_iter';
+    if (window.DEBUG_ANALYSE && DATA['🧮']['🧮🛑'] === 'max_iter') {
+        const T_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+        console.log('[max_iter][calculations_flux.js] Non convergé iter=' + DATA['🧮']['🧮🔄☀️'] + ' T_C=' + T_C.toFixed(1) + ' delta=' + DATA['🧲']['🔺🧲'].toFixed(2) + ' tol=' + DATA['🧮']['🧲🔬'].toFixed(2));
+    }
     return true;
 }
 

@@ -1,12 +1,17 @@
 // ============================================================================
 // File: physics.js - Constantes et lois physiques fondamentales
 // Desc: En français, dans l'architecture, je suis le module de physique fondamentale
-// Version 2.0.0
+// Version 2.0.2
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
+// - Added CO2_SIGMA_*, CO2_SIGMA_EXPONENT (HAPI/HITRAN regression)
+// - Added CO2_FORCING_COEFFICIENT=5.35, CO2_REF_PPM=280 (Myhre 1998, évite dilution /10)
+// - Added H2O_SIGMA_1_*, H2O_SIGMA_2_* (HAPI/HITRAN, bandes 6.3 et 17 μm)
+// - Added CH4_SIGMA_1_*, CH4_SIGMA_2_* (HAPI/HITRAN, bandes 7.7 et 3.3 μm)
+// - H2O_VAPOR_EDS_SCALE_BASE + getH2OVaporEDSScale(T,P,vapor) — calibration dynamique par époque
 // ============================================================================
 
 // Initialiser CONST (pointeur vers window.CONST)
@@ -62,12 +67,33 @@ CONST.EVAPORATION_E0 = 0.001;  // Taux d'évaporation de base (kg/(m²·s))
 CONST.EVAPORATION_T_REF = 288;  // Température de référence pour l'évaporation (K, 15°C)
 CONST.EVAPORATION_T_SCALE = 20;  // Facteur d'échelle température-évaporation (K)
 
+// Forçage radiatif CO₂ (Myhre et al. 1998, IPCC)
+// ΔF_CO2 = CO2_FORCING_COEFFICIENT × ln(C/C₀) en W/m²
+// Vérifier qu'il n'est pas dilué par un facteur 10 (0.535 serait faux)
+CONST.CO2_FORCING_COEFFICIENT = 5.35;  // W/m² (standard, ne pas diviser par 10)
+CONST.CO2_REF_PPM = 280;  // ppm pré-industriel (référence C₀)
+
 // Constantes de longueur d'onde pour les bandes d'absorption (m)
 CONST.LAMBDA_CO2_CENTER = 15.0e-6;  // Centre de bande CO₂ (15 μm)
+// Paramètres section efficace CO₂ (régression HAPI/HITRAN, bande 15 μm)
+CONST.CO2_SIGMA_LOG_PREFACTOR = -21.921;  // log10(σ_peak) en m²/molécule
+CONST.CO2_SIGMA_EXPONENT = 112.89;        // largeur bande : σ = 10^(prefactor - exponent × |Δλ/λ0|)
 CONST.LAMBDA_H2O_1 = 6.3e-6;  // Première bande H₂O (6.3 μm)
 CONST.LAMBDA_H2O_2 = 17.0e-6;  // Deuxième bande H₂O (17 μm)
+// Paramètres section efficace H₂O (régression HAPI: -22/-23, 12/12 ; valeurs actuelles conservées pour EDS)
+CONST.H2O_SIGMA_1_LOG_PREFACTOR = -21.0;   // bande 6.3 μm (HAPI: -22)
+CONST.H2O_SIGMA_1_EXPONENT = 15.0;
+CONST.H2O_SIGMA_2_LOG_PREFACTOR = -21.0;   // bande 17 μm (HAPI: -23)
+CONST.H2O_SIGMA_2_EXPONENT = 18.0;
+// Base pour getH2OVaporEDSScale(). 0.5 = nickel 1800 (15°C), H2O ~50% EDS, CO2 visible. Réf Schmidt 2010.
+CONST.H2O_VAPOR_EDS_SCALE_BASE = 0.5;
 CONST.LAMBDA_CH4_1 = 7.7e-6;  // Première bande CH₄ (7.7 μm)
 CONST.LAMBDA_CH4_2 = 3.3e-6;  // Deuxième bande CH₄ (3.3 μm)
+// Paramètres section efficace CH₄ (régression HAPI/HITRAN, bandes 7.7 et 3.3 μm)
+CONST.CH4_SIGMA_1_LOG_PREFACTOR = -20.0;   // bande 7.7 μm
+CONST.CH4_SIGMA_1_EXPONENT = 16.0;
+CONST.CH4_SIGMA_2_LOG_PREFACTOR = -21.0;   // bande 3.3 μm
+CONST.CH4_SIGMA_2_EXPONENT = 17.0;
 
 // Coefficients d'albédo par type de surface (propriétés physiques constantes)
 // Ces valeurs sont des propriétés intrinsèques des matériaux, indépendantes de l'époque
@@ -155,3 +181,26 @@ function getWaterCycleTempBoundsFromPressure(P_atm) {
     return { T_low_K, T_high_K };
 }
 window.getWaterCycleTempBoundsFromPressure = getWaterCycleTempBoundsFromPressure;
+
+// Facteur d'échelle vapeur d'eau (gaz) pour EDS. Dépend de l'époque : 1800/2025 → 0.5 (CO2 visible), Archéen/Hadéen → 1.0.
+function getH2OVaporEDSScale() {
+    const DATA = window.DATA;
+    if (!DATA || !DATA['🫧'] || !DATA['📜']) return CONST.H2O_VAPOR_EDS_SCALE_BASE;
+    const co2_frac = (DATA['🫧']['🍰🫧🏭'] != null && Number.isFinite(DATA['🫧']['🍰🫧🏭'])) ? DATA['🫧']['🍰🫧🏭'] : 0;
+    const epochId = DATA['📜']['🗿'];
+    if (epochId === '🔥' || epochId === '🦠') return 1.0;
+    if (co2_frac > 0.01) return 1.0;
+    return CONST.H2O_VAPOR_EDS_SCALE_BASE;
+    // Ancienne formule dynamique (à réactiver après calibration vapeur/nuages) :
+    // const DATA = window.DATA;
+    // if (!DATA || !DATA['🧮'] || !DATA['🫧'] || !DATA['💧']) return CONST.H2O_VAPOR_EDS_SCALE_BASE;
+    // const T = DATA['🧮']['🧮🌡️'];
+    // const P_atm = (DATA['🫧']['🎈'] != null && Number.isFinite(DATA['🫧']['🎈'])) ? DATA['🫧']['🎈'] : 1;
+    // const vapor = (DATA['💧']['🍰🫧💧'] != null && Number.isFinite(DATA['💧']['🍰🫧💧'])) ? DATA['💧']['🍰🫧💧'] : 0;
+    // const T_ref = 288; const P_ref = 1; const vapor_ref = 0.01;
+    // const f_T = Math.pow(T_ref / Math.max(T, 200), 0.15);
+    // const f_P = Math.pow(P_ref / Math.max(P_atm, 0.1), 0.05);
+    // const f_v = vapor > 1e-8 ? Math.min(1, Math.pow(vapor_ref / Math.max(vapor, 1e-8), 0.1)) : 1;
+    // return Math.max(0.2, Math.min(1, CONST.H2O_VAPOR_EDS_SCALE_BASE * f_T * f_P * f_v));
+}
+window.getH2OVaporEDSScale = getH2OVaporEDSScale;
