@@ -360,5 +360,19 @@ window.CONFIG_COMPUTE.maxRadiatifIters = 41;
 window.CONFIG_COMPUTE.maxSearchT_K = null;
 // Bins spectaux (150 = bonne précision calcul). OOM évité par plafond tropopause/couches dans calculations.js.
 window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 150;
-window.CONFIG_COMPUTE.maxPreviousLength = 25;
+window.CONFIG_COMPUTE.maxPreviousLength = 300;  /* Historique convergence : 25 → 300 pour afficher tout le détail (évite pile LIFO trop petite) */
+
+// Tolérances cycle eau (changement albedo/vapor pour relancer tour radiatif)
+window.CONFIG_COMPUTE.cycleTolAlbedo = 1e-4;
+window.CONFIG_COMPUTE.cycleTolVapor = 1e-6;
+// Search : pas min/max (K)
+window.CONFIG_COMPUTE.minSearchStepK = 30;
+window.CONFIG_COMPUTE.maxSearchStepK = 100;
+window.CONFIG_COMPUTE.maxSearchStepLargeK = 150;  // quand |Δ| > 10×tolérance
+window.CONFIG_COMPUTE.largeDeltaFactor = 10;
+window.CONFIG_COMPUTE.searchStepScaleMax = 200;
+// Bornes dichotomie Init
+window.CONFIG_COMPUTE.bornesMarginK = 50;
+window.CONFIG_COMPUTE.bornesMinK = 261;   // ~-12°C, inconnue en Init
+window.CONFIG_COMPUTE.bornesMaxK = 3500;  // réaliste surface
 
