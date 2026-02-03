@@ -125,10 +125,6 @@ function calculatePressureAtm() {
     // Éviter NaN si surface_area = 0 ou si pressure_pa est invalide
     DATA['🫧']['🎈'] = (surface_area > 0 && isFinite(pressure_pa) && pressure_pa > 0) ? pressure_pa / CONST.STANDARD_ATMOSPHERE_PA : 0;
     
-    if (window.DEBUG_DATA_IO) {
-        const _fp = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x;
-        console.log(`🫧 [calculatePressureAtm] in=📐=${_fp(EPOCH['📐'])}, ⚖️🫧=${_fp(atm_mass)}, 🍎=${_fp(gravity)} out=🎈=${_fp(DATA['🫧']['🎈'])}`);
-    }
     return true;
 }
 
@@ -139,8 +135,6 @@ function calculatePressureAtm() {
 //Calcule la composition atmosphérique depuis DATA (met à jour DATA['🫧'])
 function calculateAtmosphereComposition() {
     const DATA = window.DATA;
-    const _fmtAtm = (typeof window !== 'undefined' && window.stringifyScientificForLog) ? window.stringifyScientificForLog : JSON.stringify;
-    const debugIn = window.DEBUG_DATA_IO ? { '⚖️🫧': DATA['⚖️']['⚖️🫧'], '⚖️🏭': DATA['⚖️']['⚖️🏭'], '⚖️⛽': DATA['⚖️']['⚖️⛽'], '⚖️🌫': DATA['⚖️']['⚖️🌫'], '⚖️💨': DATA['⚖️']['⚖️💨'] } : null;
     // 🔒 CORRECTION : Les fractions sont calculées par rapport à ⚖️🫧 (masse atmosphérique totale)
     // ⚖️🫧 = ⚖️🏭 + ⚖️⛽ + ⚖️🌫 + ⚖️💨 (air sec, sans vapeur d'eau pour l'instant)
     // La vapeur d'eau sera ajoutée après dans calculateWaterPartition()
@@ -163,7 +157,11 @@ function calculateAtmosphereComposition() {
         // 🔒 FORMULES CORRIGÉES : Toutes les fractions sont calculées par rapport à ⚖️🫧
         // 🍰🫧🏭 = ⚖️🏭 / ⚖️🫧
         DATA['🫧']['🍰🫧🏭'] = mass_CO2 / atm_mass_total;
-        
+        if (window.DEBUG_ANALYSE) {
+            const frac = mass_CO2 / atm_mass_total;
+            const ppm_equiv = frac * 1e6;
+            console.log('[calculateAtmosphereComposition][calculations_atm.js] CO2_kg=' + mass_CO2.toExponential(2) + ' frac=' + frac.toExponential(4) + ' ppm_equiv=' + ppm_equiv.toFixed(0) + ' epochId=' + (DATA['📜'] && DATA['📜']['🗿'] ? DATA['📜']['🗿'] : '?'));
+        }
         // 🍰🫧⛽ = ⚖️⛽ / ⚖️🫧
         DATA['🫧']['🍰🫧⛽'] = mass_CH4 / atm_mass_total;
         
@@ -193,10 +191,6 @@ function calculateAtmosphereComposition() {
     DATA['🫧']['📏🫧🧿'] = altitude / 1000;  // Altitude max en km
     DATA['🫧']['📏🫧🛩'] = tropopause / 1000;  // Tropopause en km
     
-    if (window.DEBUG_DATA_IO && debugIn !== null) {
-        const out = { '🍰🫧🏭': DATA['🫧']['🍰🫧🏭'], '🍰🫧⛽': DATA['🫧']['🍰🫧⛽'], '🍰🫧🌫': DATA['🫧']['🍰🫧🌫'], '🍰🫧💨': DATA['🫧']['🍰🫧💨'], '📏🫧🧿': DATA['🫧']['📏🫧🧿'], '📏🫧🛩': DATA['🫧']['📏🫧🛩'] };
-        console.log(`🫧 [calculateAtmosphereComposition] in=${_fmtAtm(debugIn)} out=${_fmtAtm(out)}`);
-    }
     return true;
 }
 

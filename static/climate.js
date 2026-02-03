@@ -59,14 +59,18 @@ function getEffectiveTemperatureNoGreenhouse() {
 
 // Fonction pour calculer le forçage radiatif du CO2
 // ✅ SCIENTIFIQUEMENT CERTAIN :
-// - La formule ΔF = 5.35 * ln(C/C₀) est la formule standard de Myhre et al. (1998)
+// - La formule ΔF = 5.35 × ln(C/C₀) est la formule standard de Myhre et al. (1998)
 // - Cette formule est acceptée par l'IPCC et utilisée dans tous les modèles climatiques
 // - Le coefficient 5.35 W/m² est une valeur mesurée et validée expérimentalement
 // - La référence pré-industrielle de 280 ppm est une valeur paléoclimatique bien établie
+// - Constante depuis physics.js pour éviter dilution par facteur 10 (0.535 serait faux)
 function calculateCO2Forcing(CO2_fraction) {
-    const CO2_ref = 280e-6; // Référence pré-industrielle (280 ppm) - ✅ scientifiquement accepté
+    const coeff = (typeof window !== 'undefined' && window.CONST && window.CONST.CO2_FORCING_COEFFICIENT != null)
+        ? window.CONST.CO2_FORCING_COEFFICIENT : 5.35;
+    const CO2_ref = (typeof window !== 'undefined' && window.CONST && window.CONST.CO2_REF_PPM != null)
+        ? window.CONST.CO2_REF_PPM * 1e-6 : 280e-6;
     if (CO2_fraction <= 0) return 0;
-    return 5.35 * Math.log(Math.max(CO2_fraction, CO2_ref) / CO2_ref); // W/m² (formule de Myhre et al. 1998)
+    return coeff * Math.log(Math.max(CO2_fraction, CO2_ref) / CO2_ref); // W/m² (formule de Myhre et al. 1998)
 }
 
 // Fonction pour calculer le forçage radiatif du CH4 (méthane)

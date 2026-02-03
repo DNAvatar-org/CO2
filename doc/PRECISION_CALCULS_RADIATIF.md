@@ -1,8 +1,15 @@
 # Analyse de précision des calculs radiatifs
 
-**Objectif** : Identifier les sources potentielles de décalage entre la température simulée (12.3°C) et la cible Archéen (15°C).
+**Objectif** : Identifier les sources potentielles de décalage entre la température simulée et la cible Archéen.
 
 **Date** : 2025-01-31
+
+**Archéen — Température simulée 12.2°C : acceptable.**  
+Littérature (Charnay 2017, Kienert 2013) : 281–303 K (8–30°C) plausible pour Hadéen tardif/Archéen précoce. La simulation à 12.2°C (285.4 K) est **dans la fourchette**. Cible indicative 15°C (288 K) ; pas de tuning des sections efficaces au-delà des masses de gaz.
+
+**Cénozoïque — 22°C : fourchette basse** (lit. 22–26°C Paléocène).
+
+**1800 / 2025 — Problème** : convergence à 25°C au lieu de 15°C. Cause à identifier (EDS/vapeur à basse T ? rétroaction glace-albedo ?).
 
 ---
 
@@ -40,7 +47,7 @@
 
 - **CO₂** : σ = 10^(-22.5 - 24×|(λ−15μm)/15μm|) → pic ~3.2×10⁻²³ m²
 - **H₂O** : max(10^(-20-15×|…|), 10^(-21-18×|…|)) aux bandes 6.3 μm et 17 μm
-- **CH₄** : max(10^(-20-16×|…|), 10^(-21-17×|…|)) aux bandes 7.7 μm et 3.3 μm
+- **CH₄** : max(10^(-20-16×|…|), 10^(-21-17×|…|)) aux bandes 7.7 μm et 3.3 μm — **validé HAPI** (régression identique)
 
 **Limites** :
 - Pas de données HITRAN/PNNL
@@ -103,9 +110,8 @@ La section efficace CO₂ du modèle est environ 10–100× plus faible que les 
 - Comparer avec HITRAN/PNNL pour la bande 15 μm
 - Ajuster l’exposant ou le préfacteur si nécessaire
 
-### Priorité 2 – Ajouter le pressure broadening
-- Facteur de scaling : σ_eff = σ × f(P/P_ref), avec f(1)=1
-- Pour un broadening Lorentzien : f(P) ∝ √P en première approximation
+### Priorité 2 – Ajouter le pressure broadening ✅ (implémenté)
+- Facteur : σ_eff = σ × √(P/P_ref), cap 2.0. `CONFIG_COMPUTE.pressureBroadening = true`
 
 ### Priorité 3 – Augmenter la résolution spectrale (optionnel)
 - Passer à 300 bins pour les époques à haute pression
@@ -128,7 +134,121 @@ La section efficace CO₂ du modèle est environ 10–100× plus faible que les 
 
 ---
 
-## 6. Références
+## 6. Logs structurés pour analyses
+
+Activer en console avant Calcul :
+```javascript
+window.DEBUG_ANALYSE = true;
+```
+
+Puis lancer le calcul. Logs affichés :
+- `[ANALYSE] convergence` : bins, layers, P_atm, delta_W, EDS, T_final_K, T_cible_K
+- `pd()` : logs détaillés par fonction (iterate, Search, crossing, computeSearchIncrement)
+
+---
+
+## 7. Option C – Sections efficaces CO₂ (détail)
+
+**Contexte** : Le modèle utilise des formules empiriques (gaussiennes logarithmiques) au lieu de données spectroscopiques réelles.
+
+**Formule actuelle** (`calculations.js`) :
+```
+σ_CO2(λ) = 10^(-22.5 - 24×|(λ-15μm)/15μm|)  [m²/molécule]
+```
+→ Pic à 15 μm : σ ≈ 3×10⁻²³ m²/molécule
+
+**HITRAN/PNNL** :
+- **Unités** : cm²/molécule (1 cm² = 10⁻⁴ m²)
+- **Accès** : https://hitran.org/xsc/ → CO2, bande ν₂ ~667 cm⁻¹ (15 μm)
+- **Données** : σ(ν) à plusieurs T et P (ex. 296 K, 1 bar)
+- **Format** : grille en cm⁻¹, valeurs en cm²/molécule
+
+**Procédure** :
+1. Télécharger σ(ν) CO2 pour T≈288 K, P≈1 bar (ou 2 bar pour Archéen)
+2. Convertir ν (cm⁻¹) ↔ λ (m) : λ = 1/(ν×100)
+3. Convertir σ : m²/mol = σ_cm² × 10⁻⁴
+4. Comparer l'intensité intégrée ∫σ dν sur la bande 500–800 cm⁻¹
+5. Ajuster le préfacteur (ex. -22.5 → -21.5) ou la largeur (exposant 24) pour coller aux données
+
+**Impact attendu** : Si σ_CO2 est sous-estimée d'un facteur 10, l'EDS CO2 serait ~10× plus faible → T trop basse. Un facteur 2–3 sur σ pourrait expliquer ~2–3°C de décalage.
+
+**Workflow régression** :
+- **CO2** : `doc/fetch_co2_hapi.py` → `doc/fit_cross_sections.py --gas CO2 --csv doc/co2_15um.csv`
+- **H2O** : `doc/fetch_h2o_hapi.py` → `doc/fit_cross_sections.py --gas H2O --csv1 doc/h2o_6um.csv --csv2 doc/h2o_17um.csv`
+- **CH4** : `doc/fetch_ch4_hapi.py` → `doc/fit_cross_sections.py --gas CH4 --csv1 doc/ch4_7um.csv --csv2 doc/ch4_3um.csv`
+- Prérequis : `pip install hitran-api numpy scipy`, inscription gratuite HITRAN + API key (optionnel).
+
+---
+
+## 8. Accès aux données (URLs)
+
+| Ressource | URL | Inscription |
+|-----------|-----|-------------|
+| **HITRAN inscription** | https://hitran.org/register/ | Gratuite (nom, email, affiliation) |
+| **HITRAN login** | https://hitran.org/login/ | Après inscription |
+| **Cross-sections (xsc)** | https://hitran.org/xsc/ | Compte requis pour télécharger |
+| **Données suppl. (liste)** | https://hitran.org/suppl/xsec/ | Public (liste fichiers) |
+| **Données suppl. (fichiers)** | https://hitran.org/files/xsec/ | Compte requis |
+| **PNNL CO₂ (images)** | https://vpl.astro.washington.edu/spectra/co2.htm | Public (images, pas CSV) |
+| **AER cross-sections** | https://github.com/AER-RC/cross-sections | Public (pas de CO2 15 μm) |
+
+**⚠️ CO2 absent de hitran.org/xsc** : La base cross-sections (xsc) ne contient **pas** CO2. La recherche "CO2", "Carbon dioxide", "C6H6" ou CAS "124-38-9" renvoie toujours "not found" car la base xsc cible des composés organiques (alcools, CFC, hydrocarbures), pas les gaz atmosphériques majeurs. CO2 est dans la base **line-by-line** (hitran.org/lbl/) — molécule ID 2, 545 084 raies. Pour des cross-sections CO2, utiliser : (1) le dossier suppl. https://hitran.org/files/xsec/ après login gratuit, ou (2) **HAPI** (`pip install hitran-api`) pour générer des cross-sections à partir des raies line-by-line, ou (3) PNNL via VPL (images : https://vpl.astro.washington.edu/spectra/co2.htm).
+
+**Travail déjà fait ?** : Non. Les modèles climatiques (LBLRTM, etc.) utilisent les raies HITRAN line-by-line pour CO2, pas des formules simplifiées. Notre formule gaussienne est une approximation maison — aucun paramètre ajusté sur HITRAN n'existe dans le projet. Il faut faire la régression soi-même.
+
+---
+
+## 10. Autres gaz : N2O, O3 — Négligeables ou à ajouter ?
+
+**Modèle actuel** : CO2, H2O, CH4 (EDS radiatif) ; N2/O2 (combler : masse molaire, pression, pas d’absorption IR).
+
+### 10.1 Rôle de N2 et O2
+
+N2 et O2 sont des molécules symétriques : **pas d’absorption IR significative**. Ils servent uniquement à :
+- Compléter la masse atmosphérique (molar_mass, scale height)
+- Calculer les fractions molaires des GES
+
+Ils ne contribuent pas à l’EDS → correct de ne pas les inclure dans le transfert radiatif.
+
+### 10.2 N2O (protoxyde d’azote)
+
+| Aspect | Détail |
+|--------|--------|
+| **Source** | Dénitrification (bactéries). Présent après apparition de la vie. |
+| **Concentration** | ~0,3 ppm aujourd’hui ; ~0,1 ppm ou moins avant l’ère industrielle. |
+| **Contribution EDS** | ~2–5 % du total (~5–10 W/m² aujourd’hui). |
+| **HITRAN xsc** | ✅ **Présent** — chercher `nitrous oxide` ou `N2O` |
+| **Verdict** | **Négligeable** pour toutes les périodes du modèle. Optionnel si on vise une précision maximale pour Cénozoïque / 1800 / 2025. |
+
+### 10.3 O3 (ozone)
+
+| Aspect | Détail |
+|--------|--------|
+| **Source** | Photolyse de O2 (UV). Nécessite O2 atmosphérique. |
+| **Concentration** | Nulle si O2 = 0 ; ~0,01–0,1 ppm (troposphère) si O2 présent. |
+| **Contribution EDS** | ~5–10 % du total (~10–20 W/m²) quand O2 est présent. |
+| **HITRAN xsc** | ✅ **Présent** — chercher `ozone` ou `O3` |
+| **Verdict** | **Négligeable** pour Hadéen, Archéen, Protérozoïque, Mésozoïque, Crétacé (O2 absent ou très bas). **À envisager** pour Cénozoïque, 1800, 2025 (O2 ~21 %). |
+
+### 10.4 Synthèse par période
+
+| Période | CO2 | H2O | CH4 | N2O | O3 | Action |
+|---------|-----|-----|-----|-----|-----|--------|
+| Hadéen | ✓ | ✓ | ✓ | 0 | 0 | Rien à ajouter |
+| Archéen | ✓ | ✓ | ✓ | ~0 | 0 | Rien à ajouter |
+| Protérozoïque | ✓ | ✓ | ✓ | ~0 | 0 | Rien à ajouter |
+| Mésozoïque, Crétacé | ✓ | ✓ | ✓ | ~0 | 0 | Rien à ajouter |
+| Cénozoïque, 1800, 2025 | ✓ | ✓ | ✓ | ~0,3 ppm | ~0,05 ppm | **O3** : gain potentiel ~1–2°C si ajouté |
+
+### 10.5 Priorités
+
+1. **CO2, H2O, CH4** : déjà modélisés, priorité = améliorer les sections efficaces (CO2 surtout).
+2. **O3** : seul gaz à fort impact manquant ; pertinent pour les époques avec O2 (Cénozoïque, 1800, 2025). Données HITRAN xsc disponibles.
+3. **N2O** : impact faible (~2–5 %), ajout optionnel.
+
+---
+
+## 11. Références
 
 - HITRAN : https://hitran.org/
 - HITRAN Cross-Sections : https://hitran.org/xsc/

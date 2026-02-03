@@ -1,5 +1,7 @@
 # Récapitulatif des Époques Géologiques
 
+**Validation masses gaz** : voir `doc/VALIDATION_CONFIG_GAZ.md` pour traçabilité littérature des CO₂, CH₄, O₂.
+
 ## Périodes à définir avec emojis uniques
 
 ### 1. **Hadéen** (-4600 à -4000 Ma)
@@ -16,8 +18,9 @@
 
 ### 2. **Archéen** (-4000 à -2500 Ma)
 - **Caractéristiques** : Premières formes de vie unicellulaires, océans primitifs
-- **CO₂** : ~5000 ppm
-- **Température** : Élevée, refroidissement progressif
+- **CO₂** : ~40000 ppm (lit. 1000×–10000× PAL ; config visée ~15°C)
+- **CH₄** : ~800 ppm (lit. 100–10000 ppm)
+- **Température** : 281–303 K plausible (Charnay 2017, Kienert 2013) ; cible 288 K (15°C)
 - **Emojis proposés** :
   - 🐚 (coquillage) - actuel
   - 🌊 (océan)

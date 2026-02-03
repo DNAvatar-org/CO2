@@ -85,10 +85,6 @@ function calculateMaxH2OVaporFraction() {
     const P_total = DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA;
     DATA['💧']['🍰🧮🌧'] = Math.min(P_sat / P_total, 1.0);
     
-    if (window.DEBUG_DATA_IO) {
-        const fmt = (x) => (typeof x === 'number' && (Math.abs(x) >= 1e3 || (Math.abs(x) < 1e-3 && x !== 0))) ? x.toExponential(2) : x;
-        console.log(`💧 [calculateMaxH2OVaporFraction] in=🎈=${fmt(DATA['🫧']['🎈'])}, P_sat=${fmt(P_sat)} out=🍰🧮🌧=${fmt(DATA['💧']['🍰🧮🌧'])}`);
-    }
     return true;
 }
 
@@ -151,8 +147,6 @@ function calculateCloudAlbedoContribution() {
 function calculateWaterPartition() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const debugIn = window.DEBUG_DATA_IO ? { '⚖️🫧': DATA['⚖️']['⚖️🫧'], '⚖️💧': DATA['⚖️']['⚖️💧'], '🧮🌡️': DATA['🧮']['🧮🌡️'], '🎈': DATA['🫧']['🎈'], '🍰🫧💧': DATA['💧']['🍰🫧💧'] } : null;
-    //const EPOCH = window.TIMELINE[DATA['📜']['👉']];
 
     if (DATA['⚖️']['⚖️🫧'] == 0) {
         DATA['💧']['🍰💧🧊'] = 0;
@@ -358,10 +352,6 @@ function calculateWaterPartition() {
         DATA['💧']['🍰💧🌊'] *= correction;
         DATA['💧']['🍰💧🧊'] *= correction;
     }
-    if (window.DEBUG_DATA_IO && debugIn !== null) {
-        const out = { '🍰💧🧊': DATA['💧']['🍰💧🧊'], '🍰💧🌊': DATA['💧']['🍰💧🌊'], '🍰🧮🌧': DATA['💧']['🍰🧮🌧'], '🍰🫧💧': DATA['💧']['🍰🫧💧'] };
-        console.log(`💧 [calculateWaterPartition] in=${stringifyScientific(debugIn)} out=${stringifyScientific(out)}`);
-    }
     return true;
 }
 
@@ -371,7 +361,6 @@ function calculatePrecipitationFeedback() {
     const DATA = window.DATA;
     const CONST = window.CONST;
     
-    const debugIn = window.DEBUG_DATA_IO ? { '🧮🌡️': DATA['🧮']?.['🧮🌡️'], '📜👉': DATA['📜']?.['👉'], '📅.🌡️🧮': DATA['📅']?.['🌡️🧮'], '💭☔': DATA['💧']?.['💭☔'], '🍰⚖️💦': DATA['💧']?.['🍰⚖️💦'], '🍰🫧💧': DATA['💧']?.['🍰🫧💧'] } : null;
     // 1. Calculer 🍰🫧☔, 💭☔, ⏳☔, 🍰⚖️💦 (via calculateCloudFormationIndex)
     window.calculateCloudFormationIndex();
     
@@ -416,10 +405,6 @@ function calculatePrecipitationFeedback() {
         } else {
             DATA['💧']['🍰💧🌊'] = Math.min(1.0, (DATA['💧']['🍰💧🌊'] || 0) + precipitation_fraction_of_total_water);
         }
-    }
-    if (window.DEBUG_DATA_IO && debugIn !== null) {
-        const out = { '🍰🫧💧': DATA['💧']['🍰🫧💧'], '🍰💧🧊': DATA['💧']['🍰💧🧊'], '🍰💧🌊': DATA['💧']['🍰💧🌊'], '🍰🫧☔': DATA['💧']['🍰🫧☔'], '💭☔': DATA['💧']['💭☔'], '⏳☔': DATA['💧']['⏳☔'], '🍰⚖️💦': DATA['💧']['🍰⚖️💦'] };
-        console.log(`💧 [calculatePrecipitationFeedback] in=${stringifyScientific(debugIn)} out=${stringifyScientific(out)}`);
     }
 }
 
@@ -616,6 +601,10 @@ window.calculateH2OParameters = function () {
     const available_water_fraction = atm_mass_total > 0 ? DATA['⚖️']['⚖️💧'] / atm_mass_total : 0;
     const vapor_raw = Math.min(max_vapor_mass_fraction, available_water_fraction);
     const vapor_result = Math.min(1, vapor_raw);
+    if (window.DEBUG_ANALYSE) {
+        const T_C = T - (window.CONST && window.CONST.KELVIN_TO_CELSIUS || 273.15);
+        console.log('[calculateH2OParameters][calculations_h2o.js] T_C=' + T_C.toFixed(1) + ' P_sat=' + (P_sat != null ? P_sat.toExponential(2) : '?') + ' max_frac=' + max_vapor_fraction.toExponential(3) + ' vapor=' + vapor_result.toExponential(3));
+    }
     if (vapor_raw > 1 && typeof console !== 'undefined') {
         const who = (max_vapor_mass_fraction <= available_water_fraction) ? 'max_vapor_mass_frac' : 'available_water_frac';
         console.warn('[calculateH2OParameters][calculations_h2o.js] 🍰🫧💧 clamp 1: raw=' + vapor_raw.toFixed(4) + ' T=' + T.toFixed(1) + 'K M_dry=' + (M_dry != null ? M_dry.toFixed(4) : '?') + ' mass_ratio=' + (mass_ratio != null ? mass_ratio.toFixed(4) : '?') + ' limiter=' + who);
