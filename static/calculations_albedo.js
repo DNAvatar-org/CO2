@@ -6,6 +6,7 @@
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
+// - epochId Archéen : 🦠 (🌋 réservé actions). Archéen utilise clouds modernes pour ~15°C.
 //
 // FORMULES ALBEDO :
 // 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏖,🧊} + contribution_glace + contribution_nuages
@@ -85,8 +86,6 @@ function calculateGeologySurfaces() {
 function calculateCloudFormationIndex() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const _fmtAlb = (typeof window !== 'undefined' && window.stringifyScientificForLog) ? window.stringifyScientificForLog : JSON.stringify;
-    const debugIn = window.DEBUG_DATA_IO ? { '🍰🫧💧': DATA['💧']['🍰🫧💧'], '🧮🌡️': DATA['🧮']['🧮🌡️'], '📏🫧🛩': DATA['🫧']['📏🫧🛩'], '🍰🪩🌊': DATA['🪩']['🍰🪩🌊'], '🍰🧮🌧': DATA['💧']['🍰🧮🌧'] } : null;
     // 🔒 FORMULE : ☁️ = clamp((🍰🫧💧 / CONST.H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + CONST.ALPHA_OCEAN × 🍰🪩🌊) × CONST.SCALE_CLOUD, 0, 1)
     // où :
     //   🍰🫧💧 = fraction massique de vapeur d'eau dans l'atmosphère
@@ -172,10 +171,6 @@ function calculateCloudFormationIndex() {
     const precipitation_rate = fraction_rate * vapor_mass_per_m2; // kg/m²/s
     DATA['💧']['🍰⚖️💦'] = precipitation_rate;
 
-    if (window.DEBUG_DATA_IO && debugIn !== null) {
-        const out = { '🍰🫧☔': DATA['💧']['🍰🫧☔'], '💭☔': DATA['💧']['💭☔'], '⏳☔': DATA['💧']['⏳☔'], '🍰⚖️💦': DATA['💧']['🍰⚖️💦'], '🍰💭': DATA['🫧']['🍰💭'], '☁️': DATA['🪩']['☁️'] };
-        console.log(`💧🪩 [calculateCloudFormationIndex] in=${_fmtAlb(debugIn)} out=${_fmtAlb(out)}`);
-    }
     return clamped_index;
 }
 
@@ -194,8 +189,6 @@ function calculateAlbedo() {
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     const T_surface_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
     const phase = DATA['🧮']['🧮⚧'];
-    const _fmtAlbedo = (typeof window !== 'undefined' && window.stringifyScientificForLog) ? window.stringifyScientificForLog : JSON.stringify;
-    const debugInAlb = window.DEBUG_DATA_IO ? { '🧮🌡️': DATA['🧮']['🧮🌡️'], '📅.🌡️🧮': DATA['📅']['🌡️🧮'], '💧.🍰🧮🌧': DATA['💧']['🍰🧮🌧'], '💧.🍰💧🧊': DATA['💧']['🍰💧🧊'], '🗻': DATA['🗻'] ? { '🍰🗻🌊': DATA['🗻']['🍰🗻🌊'], '🍰🗻🏔': DATA['🗻']['🍰🗻🏔'], '🍰🗻🌍': DATA['🗻']['🍰🗻🌍'] } : null } : null;
     // 🔒 ÉTAPE 1 : Calculer les surfaces géologiques (fixes, déterminées par la géologie)
     calculateGeologySurfaces();
     
@@ -386,7 +379,9 @@ function calculateAlbedo() {
         // 🔒 calculateCloudFormationIndex() a déjà été appelé plus haut (ligne ~262)
         // On réutilise DATA['🪩']['☁️'] déjà calculé
         const cloud_index = DATA['🪩']['☁️'];
-        
+        if (window.DEBUG_ANALYSE) {
+            console.log('[calculateAlbedo][calculations_albedo.js] cloud_index=' + cloud_index.toFixed(4) + ' epochId=' + (DATA['📜'] && DATA['📜']['🗿'] ? DATA['📜']['🗿'] : '?'));
+        }
         // Calculer C_max et eta_cloud depuis l'époque et les propriétés atmosphériques
         // C_max : plafond physique dépend de l'époque (structure verticale) et de la pression
         // eta_cloud : efficacité optique dépend de l'époque (CCN - Cloud Condensation Nuclei) et de la température
@@ -399,9 +394,9 @@ function calculateAlbedo() {
         if (epochId === '🔥') {
             // Hadéen : 0.4 - 0.6
             f_dyn = 0.5;
-        } else if (epochId === '🌋') {
-            // Archéen : 0.7 - 0.8
-            f_dyn = 0.75;
+        } else if (epochId === '🦠') {
+            // Archéen : clouds modernes (f_dyn=1) pour ~15°C ; 🌋 réservé actions
+            f_dyn = 1.0;
         }
         // Ajustement par pression (plus de pression = plus de nuages possibles)
         const P0_atm = DATA['🫧']['🎈'];  // Pression au sol (en atmosphères)
@@ -418,9 +413,9 @@ function calculateAlbedo() {
         if (epochId === '🔥') {
             // Hadéen : 0.15 - 0.30
             f_CCN = 0.225;
-        } else if (epochId === '🌋') {
-            // Archéen : 0.4 - 0.6
-            f_CCN = 0.5;
+        } else if (epochId === '🦠') {
+            // Archéen : idem, clouds modernes
+            f_CCN = 1.0;
         }
         const eta_0 = 0.40;  // Base moderne
         // Ajustement température (plus chaud = nuages plus efficaces optiquement)
@@ -436,8 +431,8 @@ function calculateAlbedo() {
         // Correction : 🍰🪩⛅ = 0.20 + (0.30 - 0.20) × ☁️ pour obtenir 0.20-0.30
         // Mais on garde C_max pour les autres époques (Hadéen, Archéen)
         // Pour moderne : 🍰🪩⛅ = 0.20 + 0.10 × ☁️ (si ☁️ = 1.0 → 0.30, si ☁️ = 0.0 → 0.20)
-        if (epochId === '🔥' || epochId === '🌋') {
-            // Hadéen/Archéen : utiliser C_max × ☁️ (plafond réduit)
+        if (epochId === '🔥') {
+            // Hadéen seul : C_max × ☁️ ; Archéen (🦠) utilise formule moderne ci-dessous
             cloud_fraction = C_max * cloud_index;
         } else {
             // Moderne : 🍰🪩⛅ entre 0.20 et 0.30 selon ☁️
@@ -483,10 +478,8 @@ function calculateAlbedo() {
     // ice_fraction_base est la surface de glace, ice_fraction_stock est la fraction du stock d'eau
     DATA['🪩']['🍰🪩📿'] = final_albedo_with_water;
     DATA['🪩']['🍰🪩⛅'] = isFinite(cloud_fraction) ? cloud_fraction : 0;
-    
-    if (window.DEBUG_DATA_IO && debugInAlb !== null) {
-        const out = { '🍰🪩📿': DATA['🪩']['🍰🪩📿'], '🍰🪩🌋': DATA['🪩']['🍰🪩🌋'], '🍰🪩🏖': DATA['🪩']['🍰🪩🏖'], '🍰🪩🌳': DATA['🪩']['🍰🪩🌳'], '🍰🪩🌊': DATA['🪩']['🍰🪩🌊'], '🍰🪩🧊': DATA['🪩']['🍰🪩🧊'], '🍰🪩⛅': DATA['🪩']['🍰🪩⛅'], '🍰🪩🌍': DATA['🪩']['🍰🪩🌍'], '☁️': DATA['🪩']['☁️'] };
-        console.log(`🪩 [calculateAlbedo] in=${_fmtAlbedo(debugInAlb)} out=${_fmtAlbedo(out)}`);
+    if (window.DEBUG_ANALYSE) {
+        console.log('[calculateAlbedo][calculations_albedo.js] albedo_final=' + final_albedo_with_water.toFixed(4) + ' cloud_frac=' + (isFinite(cloud_fraction) ? cloud_fraction.toFixed(4) : '0'));
     }
     return final_albedo;
 }
