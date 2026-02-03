@@ -15,6 +15,7 @@
 //
 // Réfs 🌡️🧮 (temp. surface) : Kienert & Feulner Clim. Past 9:1841 (2013) ; Charnay 2017 ; PNAS 2018 ;
 // Clouds/Faint Young Sun Copernicus 2011 ; Astrobiology 2014. Valeurs au DÉBUT de chaque époque (parcours temporel à venir).
+// Réfs masses gaz (⚖️🏭, ⚖️⛽) : doc/VALIDATION_CONFIG_GAZ.md
 const timeline = [
     {
         '📅': '⚫', // Corps noir
@@ -116,7 +117,7 @@ const timeline = [
         '📅': '🦠', // Archéen — début (4 Ga) = Archéen précoce
         '▶': 4.0e9,
         '◀': 2.5e9,
-        // 🌡️🧮 : 288 K (15°C). Lit. 281–303 K plausible Hadéen tardif/Archéen précoce (Charnay 2017, Kienert 2013).
+        // 🌡️🧮 : 288 K (15°C cible indicative). Lit. 281–303 K plausible (Charnay 2017, Kienert 2013). Simu ~12.2°C OK (dans fourchette).
         // 288 K = état stable documenté (Clim. Past 9:1841, Astrobiology 2014). Parcours temporel à venir.
         '🌡️🧮': 288,
         '🧲🔬': 1.0,
@@ -125,7 +126,7 @@ const timeline = [
         '📐': 6371, // Rayon de la planète en km
         '🍎': 9.81, // Gravité en m/s²
         '📏🌊': 4.7, // Profondeur moyenne océans en km (Archéen, moins d'eau)
-        '🐚': 1.0, // Facteur relief sous-marin
+        '🐚': 1.0, // Facteur relief sous-marin 
         // Surfaces géologiques (Couche A - géologie/relief)
         '🗻': {
             '🍰🗻🌊': 0.80, // Surface océanique potentielle (80% - moins de continents qu'aujourd'hui)
@@ -134,9 +135,9 @@ const timeline = [
         },
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         '⚖️🫧': 1.0e19, // Masse atmosphère (Atmosphère dense ~2 bar)
-        // Simulation parameters - Quantités en kg (lit. 1000×–10000× PAL ; 40k ppm conservateur)
-        '⚖️🏭': 8.0e16, // co2_kg (~40000 ppm, visée ~15°C)
-        '⚖️⛽': 2.0e15, // ch4_kg (~800 ppm, lit. 100–10000 ppm)
+        // Simulation parameters - Quantités en kg (lit. 1000×–10000× PAL ; test visée 15°C)
+        '⚖️🏭': 1.2e17, // co2_kg (~60000 ppm, +50% vs 8e16 pour visée 15°C)
+        '⚖️⛽': 3.0e15, // ch4_kg (~1200 ppm, lit. 100–10000 ppm)
         '⚖️💧': 1.8e21, // h2o_kg (~129% actuel, litt. Harvard océans +26%)
         '⚖️🌫': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
@@ -257,7 +258,7 @@ const timeline = [
         '📅': '🦣', // Cénozoïque
         '▶': 66e6,
         '◀': 0,
-        // 🌡️🧮 : ~288–295 K (lit. Cénozoïque)
+        // 🌡️🧮 : ~288–295 K (lit. Cénozoïque). Refroidissement → 1800 via baisse CO2 (lit. Anagnostou Nature 2016).
         '🌡️🧮': 291,
         '🧲🔬': 0.1,
         '🔋☀️': 3.80886e26, // Puissance totale du soleil (W) - 99.5% de 3.828e26 W
@@ -274,8 +275,8 @@ const timeline = [
         },
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         '⚖️🫧': 5.15e18, // Masse atmosphère (Atmosphère standard ~1 bar)
-        // Simulation parameters - Quantités en kg
-        '⚖️🏭': 1.443e15, // co2_kg (~280 ppm)
+        // Simulation parameters - Quantités en kg. Lit. EECO ~1000-1400 ppm ; Paléocène ~600-800 ppm.
+        '⚖️🏭': 5.15e15, // co2_kg (~1000 ppm, Paléocène/Eocène — baisse CO2 explique refroidissement → 1800)
         '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm)
         '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
         '⚖️🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
@@ -386,4 +387,6 @@ window.CONFIG_COMPUTE.searchStepScaleMax = 200;
 // Bornes dichotomie Init
 window.CONFIG_COMPUTE.bornesMinK = 250;   // ~-12°C, inconnue en Init
 window.CONFIG_COMPUTE.bornesMaxK = 4000;  // réaliste surface
+// Pressure broadening : désactivé (empirique √P empirique → résultats pires, T baisse)
+window.CONFIG_COMPUTE.pressureBroadening = false;
 

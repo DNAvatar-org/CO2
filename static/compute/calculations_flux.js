@@ -189,13 +189,19 @@ function updateConvergenceBounds() {
 }
 
 /** Calcule l'incrément Search en K. ΔT ∝ |Δ|^(1/pow), signe = signe(Δ).
- * pow = 2 + DT/1500 avec DT = |T - T_cible| (tuning par époque). */
+ * pow = 2 + DT/1500 avec DT = |T - T_cible| (tuning par époque).
+ * Hadéen (T>2000K): cap 80 K pour éviter oscillation (équilibre bande étroite ~2250°C). */
 function computeSearchIncrement() {
     const DATA = window.DATA;
     const delta = DATA['🧲']['🔺🧲'];
-    const DT = Math.abs(DATA['🧮']['🧮🌡️'] - DATA['📅']['🌡️🧮']);
+    const T_K = DATA['🧮']['🧮🌡️'];
+    const DT = Math.abs(T_K - DATA['📅']['🌡️🧮']);
     const pow = 2 + DT / 1500.0;
-    const res = Math.sign(delta) * Math.pow(Math.abs(delta), 1 / pow);
+    let res = Math.sign(delta) * Math.pow(Math.abs(delta), 1 / pow);
+    if (T_K > 2000) {
+        const cap = 80;
+        if (Math.abs(res) > cap) res = Math.sign(res) * cap;
+    }
     if (window.DEBUG_ANALYSE) {
         const iterIdx = (DATA['🧮'] && DATA['🧮']['🧮🔄☀️'] != null) ? (DATA['🧮']['🧮🔄☀️'] === 0 ? 'Init' : DATA['🧮']['🧮🔄☀️']) : '-';
         console.log('[computeSearchIncrement][calculations_flux.js] iter=' + iterIdx + ' DT=' + DT.toFixed(2) + ' pow=' + pow.toFixed(3) + ' res=' + res.toFixed(4) + 'K');
