@@ -187,7 +187,9 @@ function getH2OVaporEDSScale() {
     const DATA = window.DATA;
     if (!DATA || !DATA['🫧'] || !DATA['📜']) return CONST.H2O_VAPOR_EDS_SCALE_BASE;
     const co2_frac = (DATA['🫧']['🍰🫧🏭'] != null && Number.isFinite(DATA['🫧']['🍰🫧🏭'])) ? DATA['🫧']['🍰🫧🏭'] : 0;
-    const epochId = DATA['📜']['🗿'];
+    // Source fiable : TIMELINE[👉]['📅] (🗿 peut être absent dans test_computeRadiativeTransfer)
+    const idx = DATA['📜']['👉'];
+    const epochId = (window.TIMELINE && idx != null && window.TIMELINE[idx]) ? window.TIMELINE[idx]['📅'] : (DATA['📜']['🗿'] || '');
     if (epochId === '🔥' || epochId === '🦠') return 1.0;
     if (co2_frac > 0.01) return 1.0;
     return CONST.H2O_VAPOR_EDS_SCALE_BASE;

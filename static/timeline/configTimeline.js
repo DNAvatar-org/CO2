@@ -120,7 +120,7 @@ const timeline = [
         // 🌡️🧮 : 288 K (15°C cible indicative). Lit. 281–303 K plausible (Charnay 2017, Kienert 2013). Simu ~12.2°C OK (dans fourchette).
         // 288 K = état stable documenté (Clim. Past 9:1841, Astrobiology 2014). Parcours temporel à venir.
         '🌡️🧮': 288,
-        '🧲🔬': 1.0,
+        '🧲🔬': 0.01,  // Précision stricte (tol ~0.4 W/m²) pour stabilité anim même époque
         '🔋☀️': 3.0624e26, // Puissance totale du soleil (W) - 80% de 3.828e26 W
         '🔋🌕': 1.5e14, // core_power_watts (Puissance géothermique totale ~150 TW)
         '📐': 6371, // Rayon de la planète en km
@@ -135,9 +135,9 @@ const timeline = [
         },
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         '⚖️🫧': 1.0e19, // Masse atmosphère (Atmosphère dense ~2 bar)
-        // Simulation parameters - Quantités en kg (lit. 1000×–10000× PAL ; test visée 15°C)
-        '⚖️🏭': 1.2e17, // co2_kg (~60000 ppm, +50% vs 8e16 pour visée 15°C)
-        '⚖️⛽': 3.0e15, // ch4_kg (~1200 ppm, lit. 100–10000 ppm)
+        // Simulation parameters - Quantités en kg (lit. 1000×–10000× PAL ; 40k ppm calibré ~15°C)
+        '⚖️🏭': 8.0e16, // co2_kg (~40000 ppm, calibré équilibre ~15°C, commit 5ecb155)
+        '⚖️⛽': 2.0e15, // ch4_kg (~800 ppm, lit. 100–10000 ppm)
         '⚖️💧': 1.8e21, // h2o_kg (~129% actuel, litt. Harvard océans +26%)
         '⚖️🌫': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
@@ -155,7 +155,7 @@ const timeline = [
         '◀': 541e6,
         // 🌡️🧮 : ~280–290 K (lit. Protérozoïque)
         '🌡️🧮': 285,
-        '🧲🔬': 0.1,
+        '🧲🔬': 0.01,
         '🔋☀️': 3.4452e26, // Puissance totale du soleil (W) - 90% de 3.828e26 W
         '🔋🌕': 1.0e14, // core_power_watts (Puissance géothermique totale ~100 TW)
         '📐': 6371, // Rayon de la planète en km
@@ -225,7 +225,7 @@ const timeline = [
         '◀': 66e6,
         // 🌡️🧮 : ~298–305 K (serre chaude, lit. Crétacé)
         '🌡️🧮': 301,
-        '🧲🔬': 0.1,
+        '🧲🔬': 0.01,
         '🔋☀️': 3.78972e26, // Puissance totale du soleil (W) - 99% de 3.828e26 W
         '🔋🌕': 5.5e13, // core_power_watts (Puissance géothermique totale ~55 TW)
         '📐': 6371, // Rayon de la planète en km

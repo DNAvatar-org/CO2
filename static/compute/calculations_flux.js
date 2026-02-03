@@ -1,7 +1,7 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.36
+// Version 1.2.38
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -54,6 +54,8 @@
 // - v1.2.34 : fix ReferenceError DATA in computeSearchIncrement + newDate (const DATA = window.DATA)
 // - v1.2.35 : fix updateConvergenceBounds — définir les deux bornes (🔼 restait undefined → NaN)
 // - v1.2.36 : DEBUG_ANALYSE_DETAIL + logDetailPremiersCalculs (CYCLE0, Init, CycleEau iter=0) pour transmettre à une autre IA
+// - v1.2.37 : Search step : clamp explicite 80 K pour T>2000 K (Hadéen) pour éviter oscillation
+// - v1.2.38 : initForConfig : T_epoch si |T_solver-T_epoch|≤20K (1800 OK), T réelle si transition extrême (Corps noir→Archéen)
 // ============================================================================
 
 // ============================================================================
@@ -145,7 +147,11 @@ function initForConfig() {
     if (!calculateT0()) return false;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     const T_solver_init = DATA['🧮']['🧮🌡️'];
-    DATA['🧮']['🧮🌡️'] = EPOCH['🌡️🧮'] + DATA['📜']['🔺🌡️💫'] * DATA['📜']['📿💫'];
+    const T_epoch = EPOCH['🌡️🧮'] + DATA['📜']['🔺🌡️💫'] * DATA['📜']['📿💫'];
+    // Transition extrême (ex: Corps noir -18°C→Archéen) : cycle eau avec T réelle pour Δ cohérent Init/iter
+    // Cas normal (ex: 1800) : T_epoch pour éviter régression (22°C au lieu de 15°C)
+    if (Math.abs(T_solver_init - T_epoch) > 20) DATA['🧮']['🧮🌡️'] = T_solver_init;
+    else DATA['🧮']['🧮🌡️'] = T_epoch;
     window.calculateAtmosphereComposition();
     if (window.calculateGeologySurfaces) window.calculateGeologySurfaces();
     // Partition eau une fois avec T0 de la config (cache invalidé pour forcer le recalcul)
@@ -319,7 +325,9 @@ async function runRadiatifOnly() {
         const co2_kg = DATA['⚖️'] && DATA['⚖️']['⚖️🏭'];
         const co2_frac = DATA['🫧'] && DATA['🫧']['🍰🫧🏭'];
         const epochId = DATA['📜'] && DATA['📜']['🗿'] ? DATA['📜']['🗿'] : '?';
-        console.log('[runRadiatifOnly][calculations_flux.js] START CO2_kg=' + (co2_kg != null ? co2_kg.toExponential(2) : '?') + ' CO2_frac=' + (co2_frac != null ? co2_frac.toExponential(4) : '?') + ' epochId=' + epochId);
+        const ch4_kg = DATA['⚖️'] && DATA['⚖️']['⚖️⛽'];
+        const epoch_co2 = EPOCH && EPOCH['⚖️🏭'];
+        console.log('[runRadiatifOnly][calculations_flux.js] START CO2_kg=' + (co2_kg != null ? co2_kg.toExponential(2) : '?') + ' CO2_frac=' + (co2_frac != null ? co2_frac.toExponential(4) : '?') + ' epochId=' + epochId + ' CH4_kg=' + (ch4_kg != null ? ch4_kg.toExponential(2) : '?') + ' EPOCH_CO2=' + (epoch_co2 != null ? epoch_co2.toExponential(2) : '?'));
     }
     if (currentWaterPass === 0) {
         window._fromCrossing = false;
@@ -556,12 +564,14 @@ async function runRadiatifOnly() {
                 if (dichoSameDirCount >= 3) {
                     DATA['🧮']['🧮⚧'] = 'Search';
                     DATA['🧮']['🧮☯'] = signDelta;
+                    // Hadéen (T>2000K) : expansion réduite (30 K) pour éviter oscillation
+                    const expK = (DATA['🧮']['🧮🌡️'] > 2000) ? 30 : 50;
                     if (signDelta > 0) {
                         DATA['🧮']['🧮🌡️🔽'] = DATA['🧮']['🧮🌡️'];
-                        DATA['🧮']['🧮🌡️🔼'] = DATA['🧮']['🧮🌡️'] + 50;
+                        DATA['🧮']['🧮🌡️🔼'] = DATA['🧮']['🧮🌡️'] + expK;
                     } else {
                         DATA['🧮']['🧮🌡️🔼'] = DATA['🧮']['🧮🌡️'];
-                        DATA['🧮']['🧮🌡️🔽'] = Math.max(100, DATA['🧮']['🧮🌡️'] - 50);
+                        DATA['🧮']['🧮🌡️🔽'] = Math.max(100, DATA['🧮']['🧮🌡️'] - expK);
                     }
                     dichoSameDirCount = 0;
                     lastDichoSign = 0;
@@ -633,12 +643,14 @@ async function runRadiatifOnly() {
         // Init : pas de déplacement (snapshot seul). Search/Dicho : déplacement ici (increment ou milieu bracket).
         let T_next_K = null;
         if (DATA['🧮']['🧮⚧'] === 'Search') {
-            const increment = computeSearchIncrement();
-            T_next_K = DATA['🧮']['🧮🌡️'] + increment;
-            // Garde : Δ>0 ⇒ T augmente, Δ<0 ⇒ T diminue (éviter T_next opposé au sens de Δ)
+            let increment = computeSearchIncrement();
             const T_curr_S = DATA['🧮']['🧮🌡️'];
+            // Hadéen (T>2000K) : clamp explicite 80 K pour éviter oscillation (équilibre bande étroite)
+            if (T_curr_S > 2000 && Math.abs(increment) > 80) increment = Math.sign(increment) * 80;
+            T_next_K = T_curr_S + increment;
+            // Garde : Δ>0 ⇒ T augmente, Δ<0 ⇒ T diminue (éviter T_next opposé au sens de Δ)
             if ((DATA['🧲']['🔺🧲'] > 0 && T_next_K < T_curr_S) || (DATA['🧲']['🔺🧲'] < 0 && T_next_K > T_curr_S)) {
-                const incAbs = Math.abs(computeSearchIncrement());
+                const incAbs = Math.abs(increment);
                 T_next_K = DATA['🧲']['🔺🧲'] > 0 ? T_curr_S + incAbs : T_curr_S - incAbs;
             }
             if (window.CONFIG_COMPUTE.maxSearchT_K != null && T_next_K > window.CONFIG_COMPUTE.maxSearchT_K)
