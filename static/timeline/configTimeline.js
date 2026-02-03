@@ -12,11 +12,15 @@
 // ============================================================================
 // Structure : array d'objets { '📅': '⚫' | '🔥' | '🦠' | '🦕' | '🦴' | '🦣' | '🚂' | '📱', '▶': number, '◀': number, ... }
 // Les icônes des boutons d'événements sont définies dans events.tic_time.icon et events.meteor.icon
+//
+// Réfs 🌡️🧮 (temp. surface) : Kienert & Feulner Clim. Past 9:1841 (2013) ; Charnay 2017 ; PNAS 2018 ;
+// Clouds/Faint Young Sun Copernicus 2011 ; Astrobiology 2014. Valeurs au DÉBUT de chaque époque (parcours temporel à venir).
 const timeline = [
     {
         '📅': '⚫', // Corps noir
         '▶': 5.0e9, // Départ
         '◀': 4.5e9, // Fin
+        // 🌡️🧮 : ~255 K équilibre corps noir (σT⁴ = S/4)
         '🌡️🧮': 255,
         '🧲🔬': 0.3,
         '🔋☀️': 2.6796e26, // Puissance totale du soleil (W) - 70% de 3.828e26 W
@@ -62,6 +66,7 @@ const timeline = [
         '📅': '🔥', // Hadéen — début, juste après impact formant la Lune (ordre 100–1000 ans)
         '▶': 4.5e9,
         '◀': 4.0e9,
+        // 🌡️🧮 : océan de magma ~2000–2500 K (surface en fusion)
         '🌡️🧮': 2450,
         '🧲🔬': 1.7,//596,
         '🔋☀️': 2.871e26, // Puissance totale du soleil (W) - 75% de 3.828e26 W
@@ -70,8 +75,8 @@ const timeline = [
         // Phase immédiate post-impact (océan de magma rayonnant) ; le temps peut avancer dans la simu
         '🧲🌕': 2000000, // geothermal_flux (W/m²) - hardcodé pour cette époque
         '📐': 7008.1, // Rayon de la planète en km
-        '🍎': 10.3, // Gravité en m/s²
-        '📏🌊': 10.0, // Profondeur moyenne océan de magma en km (Hadéen)
+        '🍎': 9.8, // Gravité en m/s²
+        '📏🌊': 100.0, // Profondeur moyenne océan de magma en km (Hadéen)
         '🐚': 1.0, // Facteur relief sous-marin
         // Surfaces géologiques (Couche A - géologie/relief)
         '🗻': {
@@ -108,16 +113,18 @@ const timeline = [
         }
     },
     {
-        '📅': '🦠', // Archéen
+        '📅': '🦠', // Archéen — début (4 Ga) = Archéen précoce
         '▶': 4.0e9,
         '◀': 2.5e9,
-        '🌡️🧮': 311,
+        // 🌡️🧮 : 288 K (15°C). Lit. 281–303 K plausible Hadéen tardif/Archéen précoce (Charnay 2017, Kienert 2013).
+        // 288 K = état stable documenté (Clim. Past 9:1841, Astrobiology 2014). Parcours temporel à venir.
+        '🌡️🧮': 288,
         '🧲🔬': 1.0,
         '🔋☀️': 3.0624e26, // Puissance totale du soleil (W) - 80% de 3.828e26 W
         '🔋🌕': 1.5e14, // core_power_watts (Puissance géothermique totale ~150 TW)
         '📐': 6371, // Rayon de la planète en km
         '🍎': 9.81, // Gravité en m/s²
-        '📏🌊': 3.5, // Profondeur moyenne océans en km (Archéen, moins d'eau)
+        '📏🌊': 4.7, // Profondeur moyenne océans en km (Archéen, moins d'eau)
         '🐚': 1.0, // Facteur relief sous-marin
         // Surfaces géologiques (Couche A - géologie/relief)
         '🗻': {
@@ -127,10 +134,10 @@ const timeline = [
         },
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         '⚖️🫧': 1.0e19, // Masse atmosphère (Atmosphère dense ~2 bar)
-        // Simulation parameters - Quantités en kg
-        '⚖️🏭': 1.0e16, // co2_kg (~5000 ppm)
-        '⚖️⛽': 2.0e14, // ch4_kg (~80 ppm)
-        '⚖️💧': 8.4e20, // h2o_kg (~60% de 1.4e21 kg)
+        // Simulation parameters - Quantités en kg (lit. 1000×–10000× PAL ; 40k ppm conservateur)
+        '⚖️🏭': 8.0e16, // co2_kg (~40000 ppm, visée ~15°C)
+        '⚖️⛽': 2.0e15, // ch4_kg (~800 ppm, lit. 100–10000 ppm)
+        '⚖️💧': 1.8e21, // h2o_kg (~129% actuel, litt. Harvard océans +26%)
         '⚖️🌫': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
@@ -145,6 +152,7 @@ const timeline = [
         '📅': '🌿', // Protérozoïque
         '▶': 2.5e9,
         '◀': 541e6,
+        // 🌡️🧮 : ~280–290 K (lit. Protérozoïque)
         '🌡️🧮': 285,
         '🧲🔬': 0.1,
         '🔋☀️': 3.4452e26, // Puissance totale du soleil (W) - 90% de 3.828e26 W
@@ -179,6 +187,7 @@ const timeline = [
         '📅': '🦕', // Mésozoïque
         '▶': 252e6,
         '◀': 66e6,
+        // 🌡️🧮 : ~295–305 K (lit. Mésozoïque)
         '🌡️🧮': 298,
         '🧲🔬': 0.1,
         '🔋☀️': 3.75144e26, // Puissance totale du soleil (W) - 98% de 3.828e26 W
@@ -213,6 +222,7 @@ const timeline = [
         '📅': '🦴', // Crétacé
         '▶': 145e6,
         '◀': 66e6,
+        // 🌡️🧮 : ~298–305 K (serre chaude, lit. Crétacé)
         '🌡️🧮': 301,
         '🧲🔬': 0.1,
         '🔋☀️': 3.78972e26, // Puissance totale du soleil (W) - 99% de 3.828e26 W
@@ -247,6 +257,7 @@ const timeline = [
         '📅': '🦣', // Cénozoïque
         '▶': 66e6,
         '◀': 0,
+        // 🌡️🧮 : ~288–295 K (lit. Cénozoïque)
         '🌡️🧮': 291,
         '🧲🔬': 0.1,
         '🔋☀️': 3.80886e26, // Puissance totale du soleil (W) - 99.5% de 3.828e26 W
@@ -281,6 +292,7 @@ const timeline = [
         '📅': '🚂', // 1800
         '▶': 1800,
         '◀': 2025,
+        // 🌡️🧮 : ~287 K (14°C, pré-industriel)
         '🌡️🧮': 287,
         '🧲🔬': 0.01,
         '🔋☀️': 3.828e26, // Puissance totale du soleil (W) - 100% (valeur actuelle)
@@ -316,7 +328,8 @@ const timeline = [
         '📅': '📱', // 2025
         '▶': 2025,
         '◀': -1,
-        '🌡️🧮': 288.8,  // ~15.6-16°C moyenne 2025 (record chaud)
+        // 🌡️🧮 : ~288.8 K (15.6–16°C, record chaud 2025)
+        '🌡️🧮': 288.8,
         '🧲🔬': 0.010,
         '🔋☀️': 3.828e26, // Puissance totale du soleil (W) - 100% (valeur actuelle)
         '🔋🌕': 4.6e13, // core_power_watts (Puissance géothermique totale ~46 TW)

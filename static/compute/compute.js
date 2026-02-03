@@ -94,9 +94,13 @@ function getMasses() {
     // Si EPOCH définit ⚖️🫧, l'utiliser, sinon calculer comme somme des gaz
     if (EPOCH['⚖️🫧'] !== undefined && isFinite(EPOCH['⚖️🫧'])) {
         DATA['⚖️']['⚖️🫧'] = EPOCH['⚖️🫧'];
+        // Si ⚖️💨 non défini, N₂ implicite = reste pour atteindre ⚖️🫧 (évite M_dry faux → vapeur/albédo erronés)
+        if (!isFinite(EPOCH['⚖️💨']) || EPOCH['⚖️💨'] === undefined) {
+            DATA['⚖️']['⚖️💨'] = Math.max(0, DATA['⚖️']['⚖️🫧'] - (DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫']));
+        }
     } else {
-    // ⚖️🫧 = somme de tous les gaz atmosphériques (CO2, CH4, O2, N2)
-    DATA['⚖️']['⚖️🫧'] = DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫'] + DATA['⚖️']['⚖️💨'];
+        // ⚖️🫧 = somme de tous les gaz atmosphériques (CO2, CH4, O2, N2)
+        DATA['⚖️']['⚖️🫧'] = DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫'] + DATA['⚖️']['⚖️💨'];
     }
     
     // Logs désactivés pour réduire la taille

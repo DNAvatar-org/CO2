@@ -111,9 +111,44 @@
         
         .epochs-container-horizontal {
             display: flex;
-            gap: 8px;
+            flex-direction: column;
             align-items: center;
+            gap: 4px;
+        }
+        
+        .epochs-row-emojis {
+            display: flex;
+            align-items: flex-start;
+            gap: 0;
             flex-wrap: wrap;
+        }
+        
+        .epoch-cell-horizontal {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 4px;
+        }
+        
+        .epoch-cell-horizontal .epoch-emoji-sep {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .epoch-cell-horizontal .epoch-separator {
+            font-size: 11px;
+            color: #666;
+            line-height: 1;
+        }
+        
+        .epoch-cell-horizontal .epoch-date-under {
+            font-size: 9px;
+            color: #aaa;
+            white-space: nowrap;
+            text-align: center;
+            margin-top: 2px;
+            width: 100%;
         }
         
         .epoch-btn-horizontal {
@@ -579,8 +614,6 @@
         
         <div class="controls">
             <div class="controls-left" style="position: relative; width: 100%;">
-                <!-- En-tête window.TIMELINE (superposé en z-index) -->
-                <div style="position: absolute; top: -8px; left: -5px; font-size: 10px; color: #888; z-index: 10; background: #2a2a2a; padding: 2px 5px;">> window.TIMELINE</div>
                 
                 <!-- Timeline horizontale (une seule ligne) -->
                 <div class="timeline-horizontal-container" style="padding-top: 5px;">
@@ -790,19 +823,19 @@
             return graduation;
         }
         
-        // Formater une date en Ma depuis les années
+        // Formater une date en Ma depuis les années (▶ = years, convention géo: -X Ma = X Ma avant présent)
         function formatDateMa(years) {
             const millions = Math.abs(years) / 1e6;
             if (millions >= 1) {
-                const sign = years < 0 ? '-' : '';
-                const millionsFormatted = millions.toFixed(0);
-                return `${sign}${millionsFormatted}Ma`;
+                const sign = years > 0 ? '-' : '';
+                return `${sign}${millions.toFixed(0)}Ma`;
             }
-            return `${years < 0 ? '-' : ''}${Math.abs(years)}`;
+            return years >= 0 ? `+${years}` : `${years}`;
         }
         
         // ============================================================================
         // GÉNÉRATION TIMELINE HORIZONTALE
+        // Structure : emoji | emoji | emoji (| entre les emojis), textes centrés sous les |
         // ============================================================================
         function generateHorizontalTimeline() {
             const epochsContainer = document.getElementById('epochs-container-horizontal');
@@ -810,56 +843,42 @@
             
             epochsContainer.innerHTML = '';
             
-            // Dates importantes pour les graduations (en Ma)
-            const importantDates = [-5000, 1800, 2025];
-            let lastEpochDate = null;
+            const rowEmojis = document.createElement('div');
+            rowEmojis.className = 'epochs-row-emojis';
             
-            window.TIMELINE.forEach((item, index) => {
-                if (item['📅']) {
-                    const currentDate = item['▶'] / 1e6; // Convertir en Ma
-                    
-                    // Ajouter une graduation AVANT le bouton si nécessaire
-                    if (index === 0) {
-                        // Première époque : ajouter graduation -5000Ma
-                        const graduation = createGraduation('-5000Ma', 'horizontal');
-                        epochsContainer.appendChild(graduation);
-                    } else if (lastEpochDate !== null) {
-                        // Vérifier si on doit ajouter une graduation entre les boutons
-                        const dateDiff = Math.abs(currentDate - lastEpochDate);
-                        const isImportantDate = importantDates.some(d => Math.abs(currentDate - d) < 50);
-                        
-                        // Ajouter graduation si changement > 200Ma ou si c'est une date importante
-                        if (dateDiff > 200 || isImportantDate) {
-                            const graduation = createGraduation(formatDateMa(item['▶']), 'horizontal');
-                            epochsContainer.appendChild(graduation);
-                        }
-                    }
-                    
-                    // Créer le bouton d'époque
-                    const button = createEpochButton(item['📅'], 'horizontal');
-                    button.onclick = () => selectEpoch(item['📅']);
-                    epochsContainer.appendChild(button);
-                    
-                    lastEpochDate = currentDate;
-                }
+            const epochItems = window.TIMELINE.filter(item => item['📅']);
+            
+            epochItems.forEach((item, index) => {
+                const cell = document.createElement('div');
+                cell.className = 'epoch-cell-horizontal';
+                
+                const emojiSep = document.createElement('div');
+                emojiSep.className = 'epoch-emoji-sep';
+                
+                const sep = document.createElement('span');
+                sep.className = 'epoch-separator';
+                sep.textContent = '|';
+                emojiSep.appendChild(sep);
+                
+                const button = createEpochButton(item['📅'], 'horizontal');
+                button.onclick = () => selectEpoch(item['📅']);
+                emojiSep.appendChild(button);
+                
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'epoch-date-under';
+                dateSpan.textContent = formatDateMa(item['▶']);
+                
+                cell.appendChild(emojiSep);
+                cell.appendChild(dateSpan);
+                
+                rowEmojis.appendChild(cell);
             });
             
-            // Ajouter graduation finale (2025) après le dernier bouton si nécessaire
-            const lastEpoch = window.TIMELINE[window.TIMELINE.length - 1];
-            if (lastEpoch && lastEpoch['📅']) {
-                const lastEpochEndDate = lastEpoch['◀'] / 1e6;
-                if (Math.abs(lastEpochEndDate - 2025) < 50) {
-                    const graduation = createGraduation('2025', 'horizontal');
-                    epochsContainer.appendChild(graduation);
-                }
-            }
+            epochsContainer.appendChild(rowEmojis);
             
             // Sélectionner la première époque par défaut
-            if (window.TIMELINE.length > 0) {
-                const firstEpoch = window.TIMELINE.find(item => item['📅']);
-                if (firstEpoch) {
-                    selectEpoch(firstEpoch['📅']);
-                }
+            if (epochItems.length > 0) {
+                selectEpoch(epochItems[0]['📅']);
             }
         }
         

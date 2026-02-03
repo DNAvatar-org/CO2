@@ -144,8 +144,13 @@ function initForConfig() {
     window.calculateAtmosphereComposition();
     if (window.calculateGeologySurfaces) window.calculateGeologySurfaces();
     // Partition eau une fois avec T0 de la config (cache invalidé pour forcer le recalcul)
+    // 🔒 WORKAROUND : En Init, calculateH2OParametersWithIteration converge vers 🍰🫧💧=0 (précip sans évap).
+    // Utiliser Search (vapeur potentielle) pour avoir nuages/albédo cohérents dès le départ.
+    const phasePrev = DATA['🧮']['🧮⚧'];
+    if (phasePrev === 'Init') DATA['🧮']['🧮⚧'] = 'Search';
     window._lastH2OParamsCache = null;
     window.calculateH2OParameters();
+    if (phasePrev === 'Init') DATA['🧮']['🧮⚧'] = phasePrev;
     window.getEnabledStates();
     window.calculateAlbedo();
     DATA['🧮']['🧮🌡️'] = T_solver_init;
