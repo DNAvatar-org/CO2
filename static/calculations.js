@@ -216,6 +216,7 @@ function calculateFluxForT0() {
     const optical_thickness = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const absorbed_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
+    let sum_blocked_CO2 = 0, sum_blocked_H2O = 0, sum_blocked_CH4 = 0;
 
     // Log du calcul spectral (désactivé pour réduire la taille des logs)
     // console.log(`📊 [calculateFluxForT0@calculations.js] Calcul spectral:`);
@@ -373,6 +374,17 @@ function calculateFluxForT0() {
                 // Stocker les valeurs pour la visualisation
                 emitted_flux[i][j] = em_flux;
                 absorbed_flux[i][j] = abs_flux;
+
+                // Attribution EDS par gaz (tau_i/tau × flux absorbé)
+                const tau_CO2 = Math.max(0, kappa_CO2 * delta_z_real);
+                const tau_H2O = Math.max(0, kappa_H2O * delta_z_real);
+                const tau_CH4 = Math.max(0, kappa_CH4 * delta_z_real);
+                const tau_tot = tau_CO2 + tau_H2O + tau_CH4;
+                if (tau_tot > 1e-20) {
+                    sum_blocked_CO2 += (tau_CO2 / tau_tot) * abs_flux;
+                    sum_blocked_H2O += (tau_H2O / tau_tot) * abs_flux;
+                    sum_blocked_CH4 += (tau_CH4 / tau_tot) * abs_flux;
+                }
             }
 
             flux_in[j] = upward_flux[i][j];
@@ -455,6 +467,17 @@ function calculateFluxForT0() {
                 // Stocker les valeurs pour la visualisation
                 emitted_flux[i][j] = em_flux;
                 absorbed_flux[i][j] = abs_flux;
+
+                // Attribution EDS par gaz (tau_i/tau × flux absorbé)
+                const tau_CO2_s = Math.max(0, kappa_CO2 * delta_z_real);
+                const tau_H2O_s = Math.max(0, kappa_H2O * delta_z_real);
+                const tau_CH4_s = Math.max(0, kappa_CH4 * delta_z_real);
+                const tau_tot_s = tau_CO2_s + tau_H2O_s + tau_CH4_s;
+                if (tau_tot_s > 1e-20) {
+                    sum_blocked_CO2 += (tau_CO2_s / tau_tot_s) * abs_flux;
+                    sum_blocked_H2O += (tau_H2O_s / tau_tot_s) * abs_flux;
+                    sum_blocked_CH4 += (tau_CH4_s / tau_tot_s) * abs_flux;
+                }
             }
 
             flux_in[j] = upward_flux[i][j];
@@ -478,10 +501,19 @@ function calculateFluxForT0() {
         throw new Error('[calculateFluxForT0] upward_flux est vide ou invalide');
     }
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
+    const earth_flux_total = earth_flux.reduce((sum, val) => sum + val, 0);
+    const EDS = earth_flux_total - total_flux;
+    const sum_blocked = sum_blocked_CO2 + sum_blocked_H2O + sum_blocked_CH4;
+    // pct ∈ [0, 1] (répartition absorption brute par gaz ; pas contribution nette EDS)
+    const pct = (v) => (sum_blocked > 1e-20 && Number.isFinite(v)) ? v / sum_blocked : 0;
+    const eds_breakdown = {
+        EDS_Wm2: EDS,
+        CO2: { pct: pct(sum_blocked_CO2) },
+        H2O: { pct: pct(sum_blocked_H2O) },
+        CH4: { pct: pct(sum_blocked_CH4) }
+    };
 
     // Log du delta (flux sortant - flux entrant initial)
-    // Note: flux entrant initial = earth_flux total (flux émis par la surface)
-    const earth_flux_total = earth_flux.reduce((sum, val) => sum + val, 0);
     const delta_spectral = total_flux - earth_flux_total;
     // Log désactivé pour réduire la taille des logs
     // console.log(`📊 [calculateFluxForT0@calculations.js] Résultat calcul spectral:`);
@@ -497,6 +529,7 @@ function calculateFluxForT0() {
 
     // 🔒 Stocker les résultats dans DATA (crash si DATA['📊'] n'existe pas)
     DATA['📊'].total_flux = total_flux;
+    DATA['📊'].eds_breakdown = eds_breakdown;
     DATA['📊'].lambda_range = lambda_range;
     DATA['📊'].lambda_weights = lambda_weights;
     DATA['📊'].z_range = z_range;

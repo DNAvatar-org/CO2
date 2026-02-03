@@ -1,11 +1,12 @@
 // ============================================================================
 // File: calculations_h2o.js - Calculs H2O (vapeur et nuages)
 // Desc: Séparation vapeur d'eau (effet de serre) et nuages (albedo)
-// Version 1.0.0
+// Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [November 2025]
+// - v1.0.1 : M_dry depuis masses (air sec) au lieu de M_air (dépendance circulaire) ; clamp 🍰🫧💧≤1
 // ============================================================================
 
 // TODO: Évolutions futures du cycle de l'eau
@@ -453,7 +454,6 @@ function calculateH2OParametersWithIteration() {
     // 🔒 ÉTAPE 1 : Préparer les calculs de base
     window.getMasses();
     window.calculatePressureAtm();
-    window.calculateMolarMassAir(); // Calculer M_air initial
     
     // 🔒 ÉTAPE 2 : Calculer 🍰🧮🌧 (saturation via T et P)
     const P_sat = calculateSaturatedVaporPressure();
@@ -464,11 +464,17 @@ function calculateH2OParametersWithIteration() {
     // 🔒 ÉTAPE 3 : Calculer vapeur potentielle = min(disponible, saturation massique)
     const atm_mass_total = DATA['⚖️']['⚖️🫧'];
     const M_H2O = CONST.M_H2O;
-    const M_air = DATA['🫧']['🧪'];
-    const mass_ratio = M_H2O / M_air;
+    const m_CO2 = DATA['⚖️']['⚖️🏭'] || 0;
+    const m_CH4 = DATA['⚖️']['⚖️⛽'] || 0;
+    const m_O2 = DATA['⚖️']['⚖️🌫'] || 0;
+    const m_N2 = DATA['⚖️']['⚖️💨'] || 0;
+    const M_dry = atm_mass_total > 0
+        ? (m_CO2 * CONST.M_CO2 + m_CH4 * CONST.M_CH4 + m_O2 * CONST.M_O2 + m_N2 * CONST.M_N2) / atm_mass_total
+        : CONST.molar_mass_air_ref;
+    const mass_ratio = M_dry > 0 ? M_H2O / M_dry : 0;
     const max_vapor_mass_fraction = max_vapor_fraction * mass_ratio;
     const available_water_fraction = atm_mass_total > 0 ? DATA['⚖️']['⚖️💧'] / atm_mass_total : 0;
-    let vapor_potentielle = Math.min(max_vapor_mass_fraction, available_water_fraction);
+    let vapor_potentielle = Math.min(1, Math.min(max_vapor_mass_fraction, available_water_fraction));
     
     // 🔒 INITIALISATION : Commencer avec la vapeur potentielle
     DATA['💧']['🍰🫧💧'] = vapor_potentielle;
@@ -579,7 +585,6 @@ window.calculateH2OParameters = function () {
     // En phase non-Init : recalcul seulement si (T, P) a changé de façon significative
     window.getMasses();
     window.calculatePressureAtm();
-    window.calculateMolarMassAir();
     const T = DATA['🧮']['🧮🌡️'];
     const P = DATA['🫧']['🎈'];
     const sum_f = DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🌫'] + DATA['🫧']['🍰🫧💨'] + DATA['💧']['🍰🫧💧'];
@@ -598,11 +603,24 @@ window.calculateH2OParameters = function () {
     DATA['💧']['🍰🧮🌧'] = max_vapor_fraction;
     const atm_mass_total = DATA['⚖️']['⚖️🫧'];
     const M_H2O = CONST.M_H2O;
-    const M_air = DATA['🫧']['🧪'];
-    const mass_ratio = M_air > 0 ? M_H2O / M_air : 0;
+    // 🔒 M_dry depuis masses (air sec) : évite dépendance circulaire avec 🍰🫧💧 (M_air = f(🍰🫧💧) → 🍰🫧💧 = f(M_air))
+    const m_CO2 = DATA['⚖️']['⚖️🏭'] || 0;
+    const m_CH4 = DATA['⚖️']['⚖️⛽'] || 0;
+    const m_O2 = DATA['⚖️']['⚖️🌫'] || 0;
+    const m_N2 = DATA['⚖️']['⚖️💨'] || 0;
+    const M_dry = atm_mass_total > 0
+        ? (m_CO2 * CONST.M_CO2 + m_CH4 * CONST.M_CH4 + m_O2 * CONST.M_O2 + m_N2 * CONST.M_N2) / atm_mass_total
+        : CONST.molar_mass_air_ref;
+    const mass_ratio = M_dry > 0 ? M_H2O / M_dry : 0;
     const max_vapor_mass_fraction = max_vapor_fraction * mass_ratio;
     const available_water_fraction = atm_mass_total > 0 ? DATA['⚖️']['⚖️💧'] / atm_mass_total : 0;
-    DATA['💧']['🍰🫧💧'] = Math.min(max_vapor_mass_fraction, available_water_fraction);
+    const vapor_raw = Math.min(max_vapor_mass_fraction, available_water_fraction);
+    const vapor_result = Math.min(1, vapor_raw);
+    if (vapor_raw > 1 && typeof console !== 'undefined') {
+        const who = (max_vapor_mass_fraction <= available_water_fraction) ? 'max_vapor_mass_frac' : 'available_water_frac';
+        console.warn('[calculateH2OParameters][calculations_h2o.js] 🍰🫧💧 clamp 1: raw=' + vapor_raw.toFixed(4) + ' T=' + T.toFixed(1) + 'K M_dry=' + (M_dry != null ? M_dry.toFixed(4) : '?') + ' mass_ratio=' + (mass_ratio != null ? mass_ratio.toFixed(4) : '?') + ' limiter=' + who);
+    }
+    DATA['💧']['🍰🫧💧'] = vapor_result;
 
     calculateWaterPartition();
     window.calculateMolarMassAir();

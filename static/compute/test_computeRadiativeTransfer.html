@@ -1589,8 +1589,9 @@
                         const phase = (state.phase != null) ? String(state.phase) : '-';
                         const delta = safeNumDelta(state.delta_equilibre, '-');
                         const m = state.data_snapshot['🧮'] || {};
-                        const signDelta = (state.delta_equilibre != null) ? Math.sign(Number(state.delta_equilibre)) : 0;
-                        const yinYangStr = (signDelta === 1) ? '+' : (signDelta === -1) ? '−' : '0';
+                        // ☯ = ancien signe (stocké au push) : permet de voir le changement de signe qui déclenche Dicho
+                        const yy = (state.yinYang != null) ? Number(state.yinYang) : ((state.delta_equilibre != null) ? Math.sign(Number(state.delta_equilibre)) : 0);
+                        const yinYangStr = (yy === 1) ? '+' : (yy === -1) ? '−' : '0';
                         const iterLabel = (innerIter === -1) ? 'Init' : (innerIter + 1);
                         const T_low_K = m['🧮🌡️🔽'];
                         const T_high_K = m['🧮🌡️🔼'];
@@ -1659,6 +1660,18 @@
                 const TcNum = T_final_C != null ? Number(T_final_C) : null;
                 const aboveBoil = Number.isFinite(TcNum) && TcNum > T_boil_K - 273.15;
                 html += `<div class="config-value">T_ébullition(🎈=${P_atm.toFixed(2)} atm) = ${T_boil_C}°C ${aboveBoil ? '→ T finale &gt; T_ébullition (eau bout)' : '→ liquide possible'}</div>`;
+                const stopReason = DATA['🧮'] && DATA['🧮']['🧮🛑'];
+                const deltaFinal = DATA['🧲'] && DATA['🧲']['🔺🧲'] != null ? Number(DATA['🧲']['🔺🧲']) : NaN;
+                const seuilFinal = DATA['🧮'] && DATA['🧮']['🧲🔬'] != null ? Number(DATA['🧮']['🧲🔬']) : null;
+                const stopLabels = { converged: 'Convergence |Δ|≤seuil', max_iter: 'Max itérations radiatives', abort: 'Arrêt manuel', crash: 'Crash algo', max_water: 'Max cycles eau' };
+                const stopLabel = (stopReason && stopLabels[stopReason]) ? stopLabels[stopReason] : (stopReason || '—');
+                const absDelta = Number.isFinite(deltaFinal) ? Math.abs(deltaFinal) : NaN;
+                const deltaStr = Number.isFinite(absDelta) ? (absDelta >= 1e3 || (absDelta < 1e-2 && absDelta !== 0) ? absDelta.toExponential(2) : absDelta.toFixed(2) + '') : '—';
+                const seuilStr = seuilFinal != null ? (Math.abs(seuilFinal) >= 1e3 || (Math.abs(seuilFinal) < 1e-2 && seuilFinal !== 0) ? seuilFinal.toExponential(2) : seuilFinal.toFixed(2) + '') : '—';
+                const stopDetail = (stopReason === 'max_iter' && Number.isFinite(deltaFinal) && seuilFinal != null)
+                    ? ` (|Δ|=${deltaStr} W/m² &gt; seuil ${seuilStr} W/m²)`
+                    : (stopReason === 'converged' ? ` (|Δ|=${deltaStr} W/m² ≤ ${seuilStr} W/m²)` : '');
+                html += `<div class="config-value"><strong>Arrêt:</strong> ${stopLabel}${stopDetail}</div>`;
                 html += '</div>';
             }
             

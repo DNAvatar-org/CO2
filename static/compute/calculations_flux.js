@@ -1,7 +1,7 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.27
+// Version 1.2.31
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -46,6 +46,10 @@
 // - v1.2.27 : 🧮🔄🪩++ déplacé en fin de boucle (après push calcul radiatif) et entre pushPayload/CycleEauCrossing
 // - CycleEauCrossing : T_transition_C, P_atm pour affichage 💧┴ = T°C [🎈=P atm]
 // - pushPayload : albedoIter (🪩), waterIter (💧) ; waterPassCrossing supprimé
+// - v1.2.28 : yinYangForPush = ☯ avant mise à jour ligne 709 pour afficher ☯ ancien (changement signe→Dicho visible)
+// - v1.2.29 : 🧮🛑 raison arrêt (converged|max_iter|abort|crash|max_water) affichée dans convergence
+// - v1.2.30 : push état convergé avant break pour cohérence affichage (Δ final listé)
+// - v1.2.31 : phaseForStep = phase avant changement ; afficher phase réelle du pas (Search vs Dicho)
 // ============================================================================
 
 // ============================================================================
@@ -178,7 +182,7 @@ function computeSearchIncrement() {
     const delta = window.DATA['🧲']['🔺🧲'];
     const precision_K = DATA['📅']['🧲🔬'];
     let DT=Math.abs(DATA['🧮']['🧮🌡️']-DATA['📅']['🌡️🧮']);
-    const pow=DT/1000.0+2.0;//DATA['🧮']['🧮🌡️'];
+    const pow=2+DT/1500.0;//DATA['🧮']['🧮🌡️'];
     const res=Math.sign(delta) * Math.pow(Math.abs(delta), 1 / pow);
     const iterIdx = (DATA['🧮'] && DATA['🧮']['🧮🔄☀️'] != null) ? (DATA['🧮']['🧮🔄☀️'] === 0 ? 'Init' : DATA['🧮']['🧮🔄☀️']) : '-';
     console.log('computeSearchIncrement:', { iter: iterIdx, DT: DT.toFixed(2), pow: pow.toFixed(3), precision_K: precision_K?.toFixed(4), res: res.toFixed(4) });
@@ -405,11 +409,12 @@ async function runRadiatifOnly() {
 
     const maxInnerIters = CONST.maxRadiatifIters;
     let innerConverged = false;
+    DATA['🧮']['🧮🛑'] = null;
     let dichoSameDirCount = 0;
     let lastDichoSign = 0;
     while (DATA['🧮']['🧮🔄☀️'] < maxInnerIters && !innerConverged) {
         await new Promise(r => setTimeout(r, 0)); // Laisser le clic Stop être traité
-        if (window.ABORT_COMPUTE) return null;
+        if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
         DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * EPOCH['🧲🔬'];
         window.calculateH2OParameters();
         window.getEnabledStates();
@@ -439,7 +444,8 @@ async function runRadiatifOnly() {
         DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
         const b = DATA['📊'] && DATA['📊'].eds_breakdown;
         DATA['📛'] = b ? { '🧲📛': b.EDS_Wm2, '🍰📛🏭': b.CO2.pct, '🍰📛💧': b.H2O.pct, '🍰📛⛽': b.CH4.pct } : null;
-        // DATA['🧮']['🔬🌈'] et DATA['🧮']['🔬🫧'] déjà mis à jour par calculateFluxForT0
+        // Phase AVANT mise à jour : pour affichage cohérent (phase utilisée pour le pas précédent)
+        const phaseAtInput = DATA['🧮']['🧮⚧'];
 
         // Dicho : encadrer Δ=0. Δ=flux_entrant-flux_sortant : Δ>0→réchauffer(🔽=T), Δ<0→refroidir(🔼=T)
         if (DATA['🧮']['🧮⚧'] === 'Search' && DATA['🧮']['🧮🔄☀️'] > 0) {
@@ -451,6 +457,7 @@ async function runRadiatifOnly() {
                 if (DATA['🧮']['🧮🌡️🔽'] >= DATA['🧮']['🧮🌡️']) DATA['🧮']['🧮🌡️🔽'] = Math.max(100, DATA['🧮']['🧮🌡️'] - 50);
             }
         }
+        // ☯ = ancien signe(Δ). Passage en Dicho quand signe(Δ) change (Δ×☯<0). Affiché ☯ = signe(Δ) actuel (mis à jour en fin de boucle).
         const switchedToDicho = (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0);
         if (switchedToDicho) {
             DATA['🧮']['🧮⚧'] = 'Dicho';
@@ -494,6 +501,7 @@ async function runRadiatifOnly() {
         }
 
         if (DATA['🧮']['🧮⚧'] === 'Search' && DATA['🧮']['🧮☯'] === 0) {
+            DATA['🧮']['🧮🛑'] = 'crash';
             window.alert('Crash algo: ☯=0 en phase Search (Δ sans signe, direction impossible). Arrêt.');
             console.error('Crash algo: ☯=0 en phase Search');
             return null;
@@ -502,11 +510,42 @@ async function runRadiatifOnly() {
         try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
         await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console à jour après chaque itération
 
-        if (Math.abs(DATA['🧲']['🔺🧲']) <= DATA['🧮']['🧲🔬']) innerConverged = true;
+        if (Math.abs(DATA['🧲']['🔺🧲']) <= DATA['🧮']['🧲🔬']) {
+            innerConverged = true;
+            DATA['🧮']['🧮🛑'] = 'converged';
+            // Push état convergé pour cohérence affichage (sinon Arrêt montre Δ final non listé)
+            const data_snapshot_conv = {
+                '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
+                '🧲': JSON.parse(JSON.stringify(DATA['🧲'])),
+                '🪩': JSON.parse(JSON.stringify(DATA['🪩'])),
+                '📛': DATA['📛'] ? JSON.parse(JSON.stringify(DATA['📛'])) : null
+            };
+            const pushConv = {
+                innerIter: DATA['🧮']['🧮🔄☀️'],
+                albedoIter: DATA['🧮']['🧮🔄🪩'],
+                waterIter: DATA['🧮']['🧮🔄🌊'],
+                temperature_K: DATA['🧮']['🧮🌡️'],
+                temperature_C: DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS,
+                delta_equilibre: DATA['🧲']['🔺🧲'],
+                phase: DATA['🧮']['🧮⚧'],
+                albedo: DATA['🪩']['🍰🪩📿'],
+                yinYang: DATA['🧮']['🧮☯'],
+                data_snapshot: data_snapshot_conv
+            };
+            pushConv.next_T_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+            if (DATA['🧮']['🧮⚧'] === 'Dicho') {
+                pushConv.dichoT_low_C = DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS;
+                pushConv.dichoT_high_C = DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS;
+            }
+            DATA['🧮']['previous'].push(pushConv);
+        }
         if (innerConverged) break;
 
         // Sauvegarder Δ à l'entrée (avant pas) pour push cohérent : afficher Δ@T_input, pas Δ@T_output
         DATA['🧮']['🧲🔺⏮'] = DATA['🧲']['🔺🧲'];
+
+        // Phase utilisée pour ce pas (avant tout changement) : afficher phase réelle du pas, pas celle du suivant
+        const phaseForStep = DATA['🧮']['🧮⚧'];
 
         // Calculer T_next AVANT de déplacer (pour snapshot cohérent : T, Δ, bounds, next_T)
         // Init : pas de déplacement (snapshot seul). Search/Dicho : déplacement ici (increment ou milieu bracket).
@@ -595,13 +634,13 @@ async function runRadiatifOnly() {
                 temperature_K: T_prev_K,
                 temperature_C: T_prev_K - CONST.KELVIN_TO_CELSIUS,
                 delta_equilibre: (DATA['🧮']['🧲🔺⏮'] != null) ? DATA['🧮']['🧲🔺⏮'] : DATA['🧲']['🔺🧲'],
-                phase: DATA['🧮']['🧮⚧'],
+                phase: phaseForStep,
                 albedo: DATA['🪩']['🍰🪩📿'],
                 yinYang: DATA['🧮']['🧮☯'],
                 data_snapshot
             };
             pushPayload.next_T_C = T_crossing_C;
-            if (DATA['🧮']['🧮⚧'] === 'Dicho') {
+            if (phaseForStep === 'Dicho') {
                 pushPayload.dichoT_low_C = DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS;
                 pushPayload.dichoT_high_C = DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS;
                 console.log('[crossing] pushPayload Dicho: temperature_C=' + pushPayload.temperature_C.toFixed(1) + '°C, next_T_C=>' + pushPayload.next_T_C.toFixed(1) + '°C, cycleNum=' + (DATA['🧮']['🧮🔄🌊'] + 1));
@@ -611,8 +650,9 @@ async function runRadiatifOnly() {
             DATA['🧮']['previous'].push(pushPayload);
             if (DATA['🧮']['🧮🔄🪩'] != null) DATA['🧮']['🧮🔄🪩']++;
             const isTboilCross = (T_prev_K < T_boil && T_next_K >= T_boil) || (T_prev_K >= T_boil && T_next_K < T_boil);
-            const T_transition_C = isTboilCross ? (T_boil - CONST.KELVIN_TO_CELSIUS) : 0;
             const P_atm = DATA['🫧']['🎈'];
+            // À P≈0 atm : pas de liquide, seul solide↔gaz (0°C) a un sens. T_boil=100°C serait faux.
+            const T_transition_C = (P_atm < 0.01) ? 0 : (isTboilCross ? (T_boil - CONST.KELVIN_TO_CELSIUS) : 0);
             DATA['🧮']['previous'].push({
                 innerIter: -0.5,
                 albedoIter: DATA['🧮']['🧮🔄🪩'],
@@ -634,11 +674,14 @@ async function runRadiatifOnly() {
             window._fromCrossing = true;
             try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
             await new Promise(r => setTimeout(r, 0));
-            if (DATA['🧮']['🧮🔄🌊'] >= maxWaterPass) return true;
+            if (DATA['🧮']['🧮🔄🌊'] >= maxWaterPass) {
+                DATA['🧮']['🧮🛑'] = 'max_water';
+                return true;
+            }
             const cycleResult = window.cycleDeLeau ? await window.cycleDeLeau(false) : { changed: false };
             window.displayConvergence();
             await new Promise(r => setTimeout(r, 0));
-            if (window.ABORT_COMPUTE) return null;
+            if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
             DATA['🧮']['🧮🔄🌊']++;
             // Ne pas réinitialiser 🧮🔄🪩 : garder l'index monotone pour affichage
             // Pas de push CycleEau ici : CycleEauCrossing suffit (évite doublon "cycle 2" et T incohérente)
@@ -678,6 +721,8 @@ async function runRadiatifOnly() {
         // Ne pas mettre à jour ☯ si changement de signe (Δ×☯<0) : garder ☯ pour détecter le passage en Dicho au tour suivant
         const signChangePost = (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0);
         if (!signChangePost) DATA['🧮']['🧮☯'] = Math.sign(DATA['🧲']['🔺🧲']);
+        // Sauvegarder ☯ avant mise à jour finale : pour push cohérent (☯ = ancien signe, celui qui a déclenché Dicho si switch)
+        const yinYangForPush = DATA['🧮']['🧮☯'];
 
         // Mise à jour bornes Dicho/Search AVANT snapshot : sinon affichage [🔽,🔼] et next_T°C incorrects
         // (le bloc en début de boucle s'exécute avant le déplacement de T ; ici T et Δ sont à jour)
@@ -691,7 +736,10 @@ async function runRadiatifOnly() {
             }
         }
         if (DATA['🧮']['🧮⚧'] === 'Dicho') {
-            // Réduction du bracket : Δ>0 → 🔽=T (réchauffer) ; Δ<0 → 🔼=T (refroidir)
+            // Réduction du bracket (post-T) : T et Δ sont à la NOUVELLE T (après déplacement).
+            // Δ>0 → 🔽=T (réchauffer) ; Δ<0 → 🔼=T (refroidir).
+            // On peut mettre à jour les deux bornes dans la même itération : avant move (T_curr, Δ_curr)
+            // puis après move (T_new, Δ_new) — ex: T=2409 Δ<0→🔼=2409, move→2218, Δ>0→🔽=2218.
             if (DATA['🧲']['🔺🧲'] > 0 && DATA['🧮']['🧮🌡️'] > DATA['🧮']['🧮🌡️🔽'] && DATA['🧮']['🧮🌡️'] < DATA['🧮']['🧮🌡️🔼'])
                 DATA['🧮']['🧮🌡️🔽'] = DATA['🧮']['🧮🌡️'];
             else if (DATA['🧲']['🔺🧲'] < 0 && DATA['🧮']['🧮🌡️'] < DATA['🧮']['🧮🌡️🔼'] && DATA['🧮']['🧮🌡️'] > DATA['🧮']['🧮🌡️🔽'])
@@ -721,12 +769,12 @@ async function runRadiatifOnly() {
             temperature_K: T_input_iter,
             temperature_C: T_input_iter - CONST.KELVIN_TO_CELSIUS,
             delta_equilibre: (DATA['🧮']['🧲🔺⏮'] != null) ? DATA['🧮']['🧲🔺⏮'] : DATA['🧲']['🔺🧲'],
-            phase: DATA['🧮']['🧮⚧'],
+            phase: phaseForStep,
             albedo: DATA['🪩']['🍰🪩📿'],
-            yinYang: DATA['🧮']['🧮☯'],
+            yinYang: yinYangForPush,
             data_snapshot
         };
-        if (DATA['🧮']['🧮⚧'] === 'Dicho') {
+        if (phaseForStep === 'Dicho') {
             pushPayload.dichoT_low_C = DATA['🧮']['🧮🌡️🔽'] - CONST.KELVIN_TO_CELSIUS;
             pushPayload.dichoT_high_C = DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS;
         }
@@ -739,6 +787,7 @@ async function runRadiatifOnly() {
         _oomLog('after push', { previousLen: DATA['🧮']['previous'].length });
         await new Promise(r => setTimeout(r, 0)); // Yield pour afficher cette étape avant la suivante
     }
+    if (!DATA['🧮']['🧮🛑']) DATA['🧮']['🧮🛑'] = 'max_iter';
     return true;
 }
 

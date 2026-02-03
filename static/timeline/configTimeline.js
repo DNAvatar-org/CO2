@@ -18,7 +18,7 @@ const timeline = [
         '▶': 5.0e9, // Départ
         '◀': 4.5e9, // Fin
         '🌡️🧮': 255,
-        '🧲🔬': 0.01,
+        '🧲🔬': 0.3,
         '🔋☀️': 2.6796e26, // Puissance totale du soleil (W) - 70% de 3.828e26 W
         '🔋🌕': 0, // core_temperature (Pas de noyau en K)
         '🍰🧲🌕': 0.0, // geothermal_diffusion_factor (Facteur de diffusion du noyau vers la surface 0-1)
@@ -112,7 +112,7 @@ const timeline = [
         '▶': 4.0e9,
         '◀': 2.5e9,
         '🌡️🧮': 311,
-        '🧲🔬': 0.5,
+        '🧲🔬': 1.0,
         '🔋☀️': 3.0624e26, // Puissance totale du soleil (W) - 80% de 3.828e26 W
         '🔋🌕': 1.5e14, // core_power_watts (Puissance géothermique totale ~150 TW)
         '📐': 6371, // Rayon de la planète en km
@@ -355,7 +355,7 @@ window.TIMELINE = timeline;
 
 // Paramètres de calcul (convergence radiatif)
 window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
-window.CONFIG_COMPUTE.maxRadiatifIters = 41;
+window.CONFIG_COMPUTE.maxRadiatifIters = 51;
 // Plafond T en Search (K). 2373 = lave complète (~2100°C), réaliste pour surface (au-delà = vaporisation). null = pas de plafond (test).
 window.CONFIG_COMPUTE.maxSearchT_K = null;
 // Bins spectaux (150 = bonne précision calcul). OOM évité par plafond tropopause/couches dans calculations.js.
@@ -365,14 +365,12 @@ window.CONFIG_COMPUTE.maxPreviousLength = 300;  /* Historique convergence : 25 �
 // Tolérances cycle eau (changement albedo/vapor pour relancer tour radiatif)
 window.CONFIG_COMPUTE.cycleTolAlbedo = 1e-4;
 window.CONFIG_COMPUTE.cycleTolVapor = 1e-6;
-// Search : pas min/max (K)
-window.CONFIG_COMPUTE.minSearchStepK = 30;
-window.CONFIG_COMPUTE.maxSearchStepK = 100;
-window.CONFIG_COMPUTE.maxSearchStepLargeK = 150;  // quand |Δ| > 10×tolérance
+// Search : ΔT proportionnel à Δ (formule physique Δ/(4σT³)). Cap max uniquement.
+window.CONFIG_COMPUTE.maxSearchStepK = 100;       // plafond step nominal
+window.CONFIG_COMPUTE.maxSearchStepLargeK = 150;  // plafond quand |Δ| > 10×tolérance10×tolérance
 window.CONFIG_COMPUTE.largeDeltaFactor = 10;
 window.CONFIG_COMPUTE.searchStepScaleMax = 200;
 // Bornes dichotomie Init
-window.CONFIG_COMPUTE.bornesMarginK = 50;
-window.CONFIG_COMPUTE.bornesMinK = 261;   // ~-12°C, inconnue en Init
-window.CONFIG_COMPUTE.bornesMaxK = 3500;  // réaliste surface
+window.CONFIG_COMPUTE.bornesMinK = 250;   // ~-12°C, inconnue en Init
+window.CONFIG_COMPUTE.bornesMaxK = 4000;  // réaliste surface
 

@@ -27,13 +27,13 @@ const KEYS = {
     // Flux radiatif
     '🧲': ['🧲☀️🔽', '🧲🌕🔽', '🧲🌑🔼', '🧲🌈🔼', '🧲🪩🔼', '🔺🧲'],
     // Convergence
-    '🧮': ['🧮🌡️', '🧮⚧', '🧮☯', '🧲🔬', '🔬🌈', '🔬🫧', '🧮🔄'],
+    '🧮': ['🧮🌡️', '🧮⚧', '🧮☯', '🧲🔬', '🔬🌈', '🔬🫧', '🧮🔄', '🧮🔄☀️', '🧮🔄🌊'],
     // Soleil
     '☀️': ['🧲☀️', '🧲☀️🎱', '🔋☀️'],
     // Noyau
     '🌕': ['🧲🌕', '🔋🌕'],
-    // EDS (Forçage radiatif)
-    '📛': ['📛💧', '📛🏭', '📛⛽', '📿📛'],
+    // EDS breakdown (🧲📛=EDS W/m², 🍰📛🏭/🍰📛💧/🍰📛⛽=répartition ∈ [0,1])
+    '📛': ['🧲📛', '🍰📛🏭', '🍰📛💧', '🍰📛⛽'],
     // Géologie (Surfaces géologiques - Couche A)
     '🗻': ['🍰🗻🌊', '🍰🗻🏔', '🍰🗻🌍'],
     // Constantes physiques
@@ -133,6 +133,8 @@ const DESC = {
         '🔬🌈': 'Résolution spectrale (🔺λ)',
         '🔬🫧': 'Résolution atm. (🔺z)',
         '🧮🔄': 'Complexité O(🔬🌈×🔬🫧)',
+        '🧮🔄☀️': 'Cycle radiatif (crossings 0°C/T_boil)',
+        '🧮🔄🌊': 'Cycle eau (0=init, 1+=après crossing)',
     },
     '🌕': {
         '🧲🌕': 'Flux géothermique',
@@ -161,7 +163,7 @@ const FORM = {
         '🧲🌑🔼': 'σ × T⁴ = Flux émis par la surface (corps noir théorique à température T). Formule: 🧲🌑🔼 = σT⁴ où σ = 5.670374419e-8 W/(m²·K⁴). Pour T=303.5K: ≈501 W/m². ⚠️ Ce n\'est PAS le flux qui sort au sommet (c\'est 🧲🌈🔼). ⚠️ Ne pas comparer directement à 🧲☀️🔽+🧲🌕🔽 car l\'effet de serre fait que la surface émet plus que ce qui sort.',
         '🧲🌈🔼': 'Σ[λ=0.1→100μm] I_λ(z_max) × Δλ = Aire sous courbe spectrale réelle (émission au sommet atmosphère). Δλ = (λ_max−λ_min)/(N−1) = pas réel de la grille (effective_delta_lambda), pas 0.1 μm fixe. Transfert radiatif: τ_λ(z), transmission exp(-τ), émission (1-exp(-τ))×π×B_λ(T). Intégration: 🧲🌈🔼 = Σ[λ] upward_flux[z_max][λ]. En équilibre: 🧲🌈🔼 ≈ 🧲☀️🔽+🧲🌕🔽',
         '🧲🪩🔼': '🧲☀️🎱 - 🧲☀️🔽 = 🧲☀️🎱 × 🍰🪩📿 = Flux réfléchi par albedo',
-        '🔺🧲': '🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 = Delta équilibre radiatif (flux entrant - flux sortant). En équilibre: 🔺🧲 ≈ 0',
+        '🔺🧲': '🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 = Delta équilibre radiatif (flux entrant - flux sortant). Δ>0→réchauffer, Δ<0→refroidir. En équilibre: 🔺🧲 ≈ 0',
         '_explication_equilibre': 'Corps noir (70% soleil): 🧲☀️🔽 devrait être ~238 W/m² (pas 341.50) → équilibre à T≈255K',
         '_temperature_equilibre_corps_noir': 'T_équilibre = (S/4σ)^(1/4) = (952/4σ)^(1/4) ≈ 255K (-18°C) pour corps noir pur (S=70% actuel)',
         '_bug_flux_solaire': 'BUG: Si 🧲☀️🔽=341.50 W/m² au lieu de 238 W/m² → code utilise soleil actuel (100%) au lieu de 70%',
@@ -181,6 +183,8 @@ const FORM = {
         '🔬🌈': 'Résolution spectrale',
         '🔬🫧': 'Résolution atmosphérique',
         '🧮🔄': 'Complexité O(🔬🌈×🔬🫧)',
+        '🧮🔄☀️': 'Cycle radiatif (nombre de crossings 0°C/T_boil)',
+        '🧮🔄🌊': 'Cycle eau (0=après init, 1+=après crossing)',
         '🧮🌡️🚩': 'T° initiale (T0)'
     },
     '☀️': {
