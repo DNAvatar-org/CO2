@@ -58,7 +58,7 @@
         </div>
         
         <div id="convergence" class="results replied convergence-cycles-hidden">
-            <h2>⚙ Convergence <button class="toggle-button" onclick="toggleConvergence()">Formules +</button></h2>
+            <h2>⚙ Convergence <span class="convergence-buttons"><button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">Cycles +</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">Détails +</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">Formules +</button></span></h2>
             <div id="convergence-content"></div>
         </div>
         
@@ -921,18 +921,17 @@
                 return;
             }
             
-            // Mettre à jour le titre avec la température en °C
+            // Mettre à jour le titre avec la température en °C (préserver les boutons)
             const convergenceTitle = convergenceDiv.querySelector('h2');
             if (convergenceTitle) {
                 const T_K = DATA['🧮']['🧮🌡️'];
                 const temp_C = (T_K != null && Number.isFinite(T_K)) ? (T_K - CONST.KELVIN_TO_CELSIUS).toFixed(3) : '—';
-                const formulesButton = convergenceTitle.querySelector('.toggle-formules');
-                const formulesButtonText = formulesButton ? formulesButton.textContent : 'Formules +';
+                const cyclesBtn = convergenceTitle.querySelector('.toggle-cycles');
+                const detailsBtn = convergenceTitle.querySelector('.toggle-details');
+                const formulesBtn = convergenceTitle.querySelector('.toggle-formules');
                 const detailsVisible = convergenceDiv.classList.contains('details-visible');
-                const detailsButtonText = detailsVisible ? 'Détails −' : 'Détails +';
                 const cyclesHidden = convergenceDiv.classList.contains('convergence-cycles-hidden');
-                const cyclesButtonText = cyclesHidden ? 'Cycles +' : 'Cycles −';
-                convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">${cyclesButtonText}</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">${detailsButtonText}</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">${formulesButtonText}</button>`;
+                convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <span class="convergence-buttons"><button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">${cyclesHidden ? 'Cycles +' : 'Cycles −'}</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">${detailsVisible ? 'Détails −' : 'Détails +'}</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">Formules +</button></span>`;
             }
             
             let html = '';
@@ -1101,6 +1100,10 @@
             // Toujours afficher le panneau même si html est vide
             convergenceContent.innerHTML = html || '<div class="config-value">Aucune donnée de convergence disponible</div>';
             convergenceDiv.style.display = 'block';
+            // Masquer les détails par défaut (sans details-visible)
+            if (!convergenceDiv.classList.contains('details-visible')) {
+                convergenceContent.querySelectorAll('.convergence-details-block').forEach(function (el) { el.style.display = 'none'; });
+            }
             // Log structuré pour analyses (window.DEBUG_ANALYSE = true)
             if (window.DEBUG_ANALYSE && window.DATA && window.DATA['📊']) {
                 const D = window.DATA;
@@ -1176,7 +1179,9 @@
         function toggleConvergenceDetails() {
             const convergenceDiv = document.getElementById('convergence');
             const detailsButton = convergenceDiv.querySelector('h2 .toggle-details');
+            const blocks = convergenceDiv.querySelectorAll('.convergence-details-block');
             const detailsVisible = convergenceDiv.classList.toggle('details-visible');
+            blocks.forEach(function (el) { el.style.display = detailsVisible ? '' : 'none'; });
             if (detailsButton) detailsButton.textContent = detailsVisible ? 'Détails −' : 'Détails +';
         }
         function toggleCycles() {

@@ -65,14 +65,16 @@ body {
 }
 
 .results { margin-top: 12px; padding: 12px; background: #0a0a0a; border-radius: 8px; }
-.results h2 { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 8px; }
-.toggle-button { padding: 4px 8px; font-size: 11px; cursor: pointer; background: rgba(255,255,255,0.1); border: none; border-radius: 4px; color: #ccc; }
+.results h2 { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 8px; flex-wrap: nowrap; gap: 8px; }
+.results h2 .convergence-buttons { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-shrink: 0; }
+.toggle-button { padding: 4px 8px; font-size: 11px; cursor: pointer; background: rgba(255,255,255,0.1); border: none; border-radius: 4px; color: #ccc; white-space: nowrap; }
 .config-value, .formule { font-size: 11px; font-family: monospace; white-space: pre-wrap; word-break: break-word; }
 .config-section { margin-bottom: 8px; }
 .formule-container { margin-top: 6px; }
 .notVisible { display: none; }
 
 .convergence-cycles-hidden .convergence-cycle { display: none; }
+#convergence:not(.details-visible) .convergence-details-block { display: none; }
 .convergence-details-block, .convergence-cycle-eau-block { margin-left: 12px; margin-top: 4px; }
 .iteration-header { font-size: 10px; color: #aaa; margin-top: 6px; }
 .convergence-inline-json { font-family: monospace; font-size: 10px; }

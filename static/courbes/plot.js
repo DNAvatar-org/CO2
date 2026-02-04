@@ -985,19 +985,6 @@ window.updatePlot = function updatePlot(data) {
     let scale_height_m;
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
-    if (typeof window.configOrganigramme === 'undefined') {
-        console.error('[updatePlot] ❌ ERREUR CRITIQUE : configOrganigramme non disponible');
-        throw new Error('configOrganigramme requis pour calculer z_max_km');
-    }
-    if (!window.currentEpochName) {
-        console.error('[updatePlot] ❌ ERREUR CRITIQUE : currentEpochName non défini');
-        throw new Error('currentEpochName requis pour calculer z_max_km');
-    }
-    if (typeof window.calculateAtmosphereProperties !== 'function') {
-        console.error('[updatePlot] ❌ ERREUR CRITIQUE : calculateAtmosphereProperties non disponible');
-        throw new Error('calculateAtmosphereProperties requise pour calculer z_max_km');
-    }
-
     const currentEpoch = window.configOrganigramme.timeline.find(e =>
         e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
     );
@@ -1042,7 +1029,7 @@ window.updatePlot = function updatePlot(data) {
                 T0_to_use = currentEpoch.initial_temperature_K;
             } else {
                 // Fallback : estimation basée sur l'intensité solaire (température effective sans effet de serre)
-                const SOLAR_CONSTANT = (typeof window !== 'undefined' && window.SOLAR_CONSTANT) ? window.SOLAR_CONSTANT : 1361;
+                const SOLAR_CONSTANT = window.SOLAR_CONSTANT;
                 const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
                 const STEFAN_BOLTZMANN = 5.670374419e-8;
                 // Estimation rapide : T_eff = (S/σ)^0.25 avec albedo = 0.3
@@ -1089,8 +1076,8 @@ window.updatePlot = function updatePlot(data) {
         if (data.z_range && data.z_range.length > 0) {
             const z_max = data.z_range[data.z_range.length - 1];
             z_max_km = z_max / 1000;
-        } else if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
-            // Fallback si z_range n'est pas encore disponible (init)
+        } else {
+            // z_range non disponible (init) — configOrganigramme/currentEpochName déjà validés en entrée
             const currentEpoch = window.configOrganigramme.timeline.find(e =>
                 e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
             );
@@ -1117,7 +1104,7 @@ window.updatePlot = function updatePlot(data) {
                         T0_to_use_fallback = currentEpoch.initial_temperature_K;
                     } else {
                         // Fallback : estimation basée sur l'intensité solaire (température effective sans effet de serre)
-                        const SOLAR_CONSTANT = (typeof window !== 'undefined' && window.SOLAR_CONSTANT) ? window.SOLAR_CONSTANT : 1361;
+                        const SOLAR_CONSTANT = window.SOLAR_CONSTANT;
                         const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
                         const STEFAN_BOLTZMANN = 5.670374419e-8;
                         // Estimation rapide : T_eff = (S/σ)^0.25 avec albedo = 0.3
@@ -2010,36 +1997,15 @@ function drawSpectralVisualization(canvas, data) {
     // On a besoin de la masse totale pour ça, qu'on peut trouver dans configOrganigramme
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
-    if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
-        const currentEpoch = window.configOrganigramme.timeline.find(e =>
-            e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
-        );
-        if (currentEpoch) {
-            const total_mass = currentEpoch['⚖️🫧']; // Pas de fallback
-
-            // Détecter le cas "pas d'atmosphère"
-            if (total_mass === 0 || total_mass === undefined) {
-                has_atmosphere = false;
-            } else {
-                // Récupérer gravité et masse molaire (config utilise 🍎, pas gravity)
-                const gravity = currentEpoch.gravity !== undefined ? currentEpoch.gravity : (currentEpoch['🍎'] !== undefined ? currentEpoch['🍎'] : 9.81);
-
-                let molar_mass = currentEpoch.molar_mass_air;
-                if (molar_mass === undefined && typeof window.calculateMolarMassAir === 'function') {
-                    molar_mass = window.calculateMolarMassAir(currentEpoch);
-                }
-                if (molar_mass === undefined) {
-                    if (total_mass > 2.5e19) molar_mass = 0.044;
-                    else molar_mass = 0.029;
-                }
-
-                const props = window.calculateAtmosphereProperties(total_mass, 288, molar_mass, gravity);
-                H = props.scale_height;
-            }
-        }
-    } else if (z_max_km > 200) {
-        // Fallback si calculateAtmosphereProperties n'est pas dispo
-        H = 40000; // ~40 km pour atmosphère vapeur chaude Hadéen
+    const currentEpoch = window.configOrganigramme.timeline.find(e =>
+        e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+    );
+    const total_mass = currentEpoch['⚖️🫧'];
+    if (total_mass === 0 || total_mass === undefined) {
+        has_atmosphere = false;
+    } else {
+        const props = window.calculateAtmosphereProperties();
+        H = props.scale_height;
     }
 
 
@@ -2072,37 +2038,8 @@ function drawSpectralVisualization(canvas, data) {
     }
     */
 
-    // Récupérer z_trop_km depuis window.current_z_trop_km (défini dans updatePlot)
-    // ou le recalculer si nécessaire
-    let z_trop_km;
-    if (typeof window !== 'undefined' && typeof window.current_z_trop_km !== 'undefined') {
-        z_trop_km = window.current_z_trop_km; // Peut être null
-    } else if (typeof window.calculateTropopauseHeight === 'function') {
-        // Recalculer avec la température de surface si disponible
-        let T0;
-        if (data.current && data.current.effective_temperature !== undefined) {
-            T0 = data.current.effective_temperature;
-        } else if (data.temp_surface_c !== undefined) {
-            T0 = data.temp_surface_c + CONST.KELVIN_TO_CELSIUS;
-        } else if (data.temp_surface !== undefined) {
-            T0 = data.temp_surface;
-        }
-        if (T0 !== undefined) {
-            z_trop_km = window.calculateTropopauseHeight(T0) / 1000;
-        } else {
-            z_trop_km = null; // Pas de température disponible
-        }
-    } else {
-        z_trop_km = null; // Pas de fonction disponible
-    }
-    
-    // Récupérer z_trop_km et delta_T depuis window (calculés dans updatePlot)
-    const annotation_z_trop_km = (typeof window.current_z_trop_km !== 'undefined' && window.current_z_trop_km !== null) 
-        ? window.current_z_trop_km 
-        : null;
-    const delta_T_trop_strato = (typeof window.current_delta_T_trop_strato !== 'undefined' && window.current_delta_T_trop_strato !== null)
-        ? window.current_delta_T_trop_strato
-        : null;
+    const annotation_z_trop_km = window.current_z_trop_km;
+    const delta_T_trop_strato = window.current_delta_T_trop_strato;
     
     // Préparer le texte de l'annotation avec la différence de température calculée
     // Plotly n'interprète pas le HTML complexe, on utilise du texte simple avec <br>

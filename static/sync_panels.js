@@ -54,7 +54,8 @@
                         window.DATA['📜']['👉'] = idx;
                         window.DATA['📜']['🗿'] = payload.epochId;
                     }
-                    if (window.CHARS_DESC) window.currentEpochName = window.CHARS_DESC[payload.epochId];
+                    var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === payload.epochId; });
+                    window.currentEpochName = ep.name;
                 }
             }
             if (visuPanel) {
@@ -139,9 +140,7 @@
     };
 
     function initSyncPanels() {
-        if (typeof window.displayConvergence !== 'function') {
-            window.displayConvergence = function () {};
-        }
+        if (!window.displayConvergence) window.displayConvergence = function () {};
         window.syncToScie = syncToScie;
 
         window.addEventListener('message', function (event) {
