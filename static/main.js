@@ -2604,6 +2604,14 @@ function setEpoch(epochName) {
     if (typeof window.updateCO2LevelDirect === 'function') {
         window.updateCO2LevelDirect(co2_fraction_from_config);
     }
+
+    // Synchroniser l'état avec l'iframe scie (epoch, anim, ticTime)
+    if (window.CO2_EVENTS) {
+        const epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || epoch.id || epochName;
+        const ticTime = (window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'] != null) ? window.DATA['📜']['📿💫'] : 0;
+        const animEnabled = (document.getElementById('plot-anim-toggle') && document.getElementById('plot-anim-toggle').classList.contains('selected')) || window.isAnim;
+        window.CO2_EVENTS.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime });
+    }
 }
 
 

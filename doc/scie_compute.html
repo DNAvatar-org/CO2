@@ -135,6 +135,17 @@
             return window.LOGOS[name] || '';
         }
         
+        // Synchronisation parent ↔ iframe (epoch, anim, ticTime)
+        function emitSyncToParent() {
+            if (window === window.top) return;
+            const DATA = window.DATA;
+            const epochId = (DATA && DATA['📜'] && DATA['📜']['🗿']) || '⚫';
+            const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
+            const animBtn = document.getElementById('anim-toggle');
+            const animEnabled = animBtn ? animBtn.classList.contains('selected') : true;
+            window.parent.postMessage({ type: 'sync:state', payload: { epochId, animEnabled, ticTime } }, '*');
+        }
+        
         // Intercepter console.log pour afficher dans la page
         const originalLog = console.log;
         const originalError = console.error;
@@ -164,6 +175,7 @@
                     document.body.appendChild(plotAnimToggleCheckbox);
                 }
                 plotAnimToggleCheckbox.checked = !isSelected;
+                emitSyncToParent();
             }
         }
         
@@ -271,9 +283,10 @@
             
             epochsContainer.appendChild(rowEmojis);
             
-            // Sélectionner la première époque par défaut
-            if (epochItems.length > 0) {
-                selectEpoch(epochItems[0]['📅']);
+            // Sélectionner Corps noir (⚫) par défaut
+            const defaultEpoch = epochItems.find(item => item['📅'] === '⚫') || epochItems[0];
+            if (defaultEpoch) {
+                selectEpoch(defaultEpoch['📅']);
             }
         }
         
@@ -336,6 +349,8 @@
                 window.DATA['📜']['📿💫'] = 0;
                 updateTimelineDisplay();
             }
+            emitSyncToParent();
+            if (typeof runTest === 'function') runTest();
         }
         
         // Mettre à jour l'affichage de la timeline (📅 date en Ma, 1 tic = X Ma)
@@ -402,6 +417,8 @@
                         if (typeof window.getEpochDateConfig === 'function') window.getEpochDateConfig();
                         if (typeof window.getNoyau === 'function') window.getNoyau();
                         updateTimelineDisplay();
+                        emitSyncToParent();
+                        if (typeof runTest === 'function') runTest();
                     }
                 });
                 eventsLogos.appendChild(ticBtn);
@@ -420,6 +437,8 @@
                         if (typeof window.getEpochDateConfig === 'function') window.getEpochDateConfig();
                         if (typeof window.getNoyau === 'function') window.getNoyau();
                         updateTimelineDisplay();
+                        emitSyncToParent();
+                        if (typeof runTest === 'function') runTest();
                     }
                 });
                 eventsLogos.appendChild(meteorBtn);
@@ -1214,6 +1233,42 @@
                     : document.getElementById('dico-iframe');
                 if (iframe && event.data.height) {
                     iframe.style.height = event.data.height + 'px';
+                }
+            }
+            if (event.data && event.data.type === 'sync:state') {
+                const p = event.data.payload;
+                if (!p) return;
+                if (p.epochId !== undefined) {
+                    const epochIndex = window.TIMELINE ? window.TIMELINE.findIndex(item => item['📅'] === p.epochId) : -1;
+                    if (epochIndex >= 0 && window.DATA) {
+                        if (!window.DATA['📜']) window.DATA['📜'] = {};
+                        window.DATA['📅'] = window.TIMELINE[epochIndex];
+                        window.DATA['📜']['👉'] = epochIndex;
+                        window.DATA['📜']['🗿'] = p.epochId;
+                        document.querySelectorAll('.epoch-btn-horizontal').forEach(btn => {
+                            btn.classList.toggle('selected', btn.getAttribute('data-epoch') === p.epochId);
+                        });
+                        updateEpochActions();
+                        updateTimelineDisplay();
+                    }
+                }
+                if (p.animEnabled !== undefined) {
+                    const animBtn = document.getElementById('anim-toggle');
+                    if (animBtn) animBtn.classList.toggle('selected', p.animEnabled);
+                    let cb = document.getElementById('plot-anim-toggle-checkbox');
+                    if (!cb) {
+                        cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.id = 'plot-anim-toggle-checkbox';
+                        cb.style.display = 'none';
+                        document.body.appendChild(cb);
+                    }
+                    cb.checked = p.animEnabled;
+                    if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎬'] = p.animEnabled;
+                }
+                if (p.ticTime !== undefined && window.DATA && window.DATA['📜']) {
+                    window.DATA['📜']['📿💫'] = p.ticTime;
+                    updateTimelineDisplay();
                 }
             }
         });

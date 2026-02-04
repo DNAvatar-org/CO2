@@ -12,6 +12,7 @@
         'static/compute/dico.js',
         'organigramme/configOrganigramme.js',
         'static/event_bus.js',
+        'static/sync_panels.js',
         'static/flux_manager.js',
         'static/tooltips.js',
         'static/modal.js',
@@ -86,6 +87,9 @@
             }
             cb.checked = !isSelected;
             cb.dispatchEvent(new Event('change', { bubbles: true }));
+            if (window.syncToScie) {
+                window.syncToScie({ animEnabled: !isSelected });
+            }
         }
     };
 
@@ -137,6 +141,17 @@
                     try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: payload.DATA }, '*'); } catch (e) {}
                 }
             });
+        }
+        var scieIframe = document.getElementById('scie-iframe');
+        if (scieIframe) {
+            scieIframe.addEventListener('load', function () {
+                if (window.syncToScie) {
+                    window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });
+                }
+            });
+        }
+        if (window.syncToScie) {
+            window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });
         }
         initTipeeeRollover();
     }
