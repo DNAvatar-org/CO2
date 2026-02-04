@@ -12,10 +12,10 @@
    ============================================================================ */
 
 .fps-display {
-    /* Position absolue calculée par JS layout.js */
-    position: absolute;
-    left: 20px; /* Marge de 20px à gauche */
-    /* top géré par JS */
+    /* Position absolue : ancré en bas de l'écran (layout.js) */
+    position: fixed;
+    left: 0;
+    bottom: 0;
     background: rgba(0, 0, 0, 0.9); /* Fond noir */
     color: #fff;
     border-radius: 0 5px 5px 0; /* Arrondi à droite */

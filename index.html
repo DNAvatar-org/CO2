@@ -75,156 +75,56 @@
     <link rel="stylesheet" href="static/FPS/FPS.css">
     <link rel="stylesheet" href="organigramme/organigramme.css">
     <link rel="stylesheet" href="static/planet-effect.css">
+    <style>
+        /* Onglets style plot-container/divGlass : relief (non-sélectionné), trou (sélectionné), coupé en haut */
+        .tabs-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            display: flex; gap: 4px; padding: 0 12px 0 12px; align-items: flex-start;
+            min-height: 20px; margin: 0;
+        }
+        .tabs-bar button {
+            padding: 4px 14px 6px; height: 20px; line-height: 1; font-size: 12px;
+            background: rgba(255,255,255,0.15); border: none; border-radius: 0 0 10px 10px;
+            color: var(--base-color, #aaa); cursor: pointer; box-sizing: border-box;
+            /* Relief : lumière haut-gauche, ombre bas-droite (comme divGlass) */
+            border-top: none;
+            border-left: 1px solid rgba(255,255,255,0.15);
+            border-bottom: 1px solid rgb(0,0,0);
+            border-right: 1px solid rgb(0,0,0);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2);
+        }
+        .tabs-bar button:hover { color: #fff; background: rgba(255,255,255,0.2); }
+        /* Sélectionné = trou (inset), lumière haut-gauche */
+        .tabs-bar button.active {
+            color: #51cf66; font-weight: bold;
+            background: rgba(255,255,255,0.15);
+            border-left: 1px solid rgba(0,0,0,0.4);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            border-right: 1px solid rgba(255,255,255,0.12);
+            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 0 rgba(255,255,255,0.08);
+        }
+        body { padding: 22px 20px 20px 20px !important; height: 100vh; overflow: hidden; } /* marge pour onglets, pas de scroll page */
+        .tab-panel { display: none; flex: 1; min-height: 0; }
+        .tab-panel.active { display: block; flex: 1; min-height: 0; }
+        #visu-panel { padding-top: 8px; overflow: auto; }
+        #scie-panel { overflow: hidden; }
+        #scie-panel.active { display: flex !important; flex-direction: column; flex: 1; min-height: 0; }
+        #scie-panel iframe { flex: 1; min-height: 0; width: 100%; border: none; }
+        .credits-footer { flex-shrink: 0; }
+    </style>
 </head>
 
 <body class="mode-dark no-blur">
-    <div class="fps-display" id="fps-display">
+    <div class="tabs-bar">
+        <button id="tab-visu" class="active" onclick="switchTab('visu')">Visuel</button>
+        <button id="tab-scie" onclick="switchTab('scie')">Scientifique</button>
+    </div>
+    <div class="fps-display collapsed" id="fps-display">
         <button class="fps-toggle" id="fps-toggle" title="Réduire/Agrandir"></button>
         <div id="fps-chart"></div>
     </div>
-    <div class="container">
-        <div class="left-column" id="left-column">
-            <div class="left-left" id="left-left"></div>
-            <div class="left-timeline" id="left-timeline"></div>
-        </div>
-        <div class="right-column" id="right-column"></div>
-
-        <!-- Divs à réorganiser automatiquement par layout.js -->
-        <div class="title-container divGlass">
-            <h1>Bilan Radiatif Terrestre</h1>
-            <p class="title-subtitle">Base de la météorologie<br>Comprendre les incidences de chaque facteur</p>
-        </div>
-
-        <div class="flux-diagram-wrapper">
-            <div class="flux-diagram divGlass" id="flux-diagram">
-                <div class="synthese_Temp divGlass">
-                    <div id="epoch-name-temp"
-                        style="font-size: 12px; font-weight: bold; line-height: 1.2; text-align: center; width: 100%;">
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div class="thermometer-icon" style="font-size: 32px; line-height: 1;">🌡️</div>
-                        <div style="font-size: 16px; font-weight: bold; line-height: 1.2;">
-                            <span id="temp-surface-synthese">--</span><span id="temp-unit-synthese"
-                                style="font-size: 18px;">°C</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="plot-container-wrapper divGlass">
-            <div id="plot-container">
-                <div class="plot-overlay-title">Courbes d'émission du rayonnement<br>d'un corps (noir ou la terre)</div>
-                <div class="plot-controls" style="position: absolute; bottom: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
-                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--base-color);">
-                        <span style="opacity: 0.8;" title="Précision convergence">Préc.:</span>
-                        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
-                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
-                                <input type="radio" name="precision-convergence" value="0.1" checked style="cursor: pointer;">
-                                <span>0.1°</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
-                                <input type="radio" name="precision-convergence" value="1" style="cursor: pointer;">
-                                <span>1°</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
-                                <input type="radio" name="precision-convergence" value="10" style="cursor: pointer;">
-                                <span>10°</span>
-                            </label>
-                        </div>
-                    </div>
-                    <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Animation" style="background: #51cf66; border-color: #51cf66; color: white;">🎬</button>
-                </div>
-                <div class="legend-container" id="legend-container">
-                    <div class="legend-section">
-                        <div class="legend-planck-grid" id="legend-planck-grid">
-                            <!-- Sera rempli dynamiquement -->
-                        </div>
-                    </div>
-                    <div class="legend-equilibre">
-                        <div id="legend-equilibre-curves" style="margin-bottom: 8px;"></div>
-                        Puissance dissipée :<br>
-                        ∫<sub><span class="legend-line-dotted"></span></sub> = ∫<sub><span
-                                class="legend-line-solid"></span></sub><br>
-                        soit W/m² = σ·T⁴<br>
-                        <span style="font-size: 0.9em; opacity: 0.9;">[Unité] ∫(W/m²/sr/μm)·d(μm) = W/m²/sr</span>
-                    </div>
-                </div>
-            </div>
-            <canvas id="spectral-visualization" width="333" height="400"></canvas>
-        </div>
-
-        <div class="timeline-display divGlass">
-            <!-- Overlay de calcul -->
-            <div id="calculation-overlay" class="calculation-overlay" style="display: none;">
-                <div class="calculation-text">Calculs d'équilibre radiatifs en cours<br><span id="calculation-dots"></span></div>
-            </div>
-            
-            <!-- 1. Date -->
-            <div class="timeline-date-section">
-                <span class="timeline-hourglass">📅</span>
-                <span class="epoch-start-time" id="epoch-start-time">-5000 Ma</span>
-            </div>
-            
-            <!-- 2. Zone horloge horizontale avec traits de relief -->
-            <div class="timeline-horloge-section">
-                <div class="timeline-horloge-content">
-                    <div class="timeline-horloge-line1">
-                        <span class="horloge-icon">🕰</span>
-                        <span class="info-time" id="info-time">+0 Ma</span>
-                    </div>
-                    <div class="timeline-events-logos" id="timeline-events-logos">
-                        <!-- Logos d'événements (météorites, etc.) -->
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 3. Frise verticale -->
-            <div class="timeline-frise-vertical">
-                <div class="epochs-container-vertical">
-                    <!-- Timeline générée dynamiquement depuis configOrganigramme.js -->
-                </div>
-            </div>
-        </div>
-
-
-        <div class="synthese_EdS">
-            <div class="info-unit-header">
-                <span class="controle-simulation-title"></span>
-                <span class="info-unit">(W/m²)</span>
-            </div>
-            <div class="info-row info-row-vertical info-row-co2">
-                <div class="info-vertical-stack">
-                    <span class="info-value"><span class="info-number" id="co2-number-synthese">0</span><span
-                            class="info-unit">%</span></span>
-                    <span class="info-forcing" id="forcing-co2-synthese">W/m²</span>
-                </div>
-            </div>
-            <div class="info-row info-row-vertical info-row-h2o">
-                <div class="info-vertical-stack">
-                    <span class="info-value" id="h2o-status-synthese">%</span>
-                    <span class="info-forcing" id="forcing-h2o-synthese">W/m²</span>
-                </div>
-            </div>
-            <div class="info-row info-row-vertical info-row-ch4">
-                <div class="info-vertical-stack">
-                    <span class="info-value"><span class="info-number" id="methane-number-synthese">--</span><span
-                            class="info-unit">%</span></span>
-                    <span class="info-forcing" id="forcing-methane-synthese">W/m²</span>
-                </div>
-            </div>
-            <div class="info-row info-separator-line">
-                <span class="info-forcing">_______</span>
-            </div>
-            <div class="info-row forcing-total-row">
-                <span class="info-label">Forç:</span>
-                <span class="info-emoji">📛</span>
-                <span class="info-forcing" id="forcing-total-synthese">--</span>
-            </div>
-        </div>
-
-        <div class="status" id="status" style="display: none;"></div>
-    </div>
+    <div id="visu-panel" class="tab-panel active"><p style="padding:20px;color:#888;">Chargement visu_radiatif.html…</p></div>
+    <div id="scie-panel" class="tab-panel"><p style="padding:20px;color:#888;">Chargement scie_radiatif.html…</p></div>
 
     <!-- Zone pour les boutons de debug (sera remplie par debug.js) -->
     <div class="bottom-info">
@@ -254,10 +154,6 @@
                 <a href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>
             </div>
             <div class="credits-line">
-                <a href="equation.html">📐 Équations, Définitions et Constantes</a> |
-                <a href="Algorithmes.html">⚙️ Algorithmes & Convergence</a>
-            </div>
-            <div class="credits-line">
                 Inspiration: <a href="https://sciencetonnante.wordpress.com/" target="_blank"
                     rel="noopener noreferrer">Science étonnante</a> |
                 <a href="https://www.youtube.com/watch?v=ewc8FBtEKPs" target="_blank" rel="noopener noreferrer">Vidéo
@@ -268,170 +164,8 @@
         </div>
     </footer>
 
-    <script src="static/timeline/configTimeline.js"></script>
-    <script src="static/compute/alphabet.js"></script>
-    <script src="static/compute/dico.js"></script>
-    <script src="organigramme/configOrganigramme.js"></script>
-    <script>
-        // 🔒 Ajouter la timeline à configOrganigramme après le chargement des deux fichiers
-        // Transformer la timeline pour ajouter name et type à chaque époque
-        if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
-            // Transformer la timeline pour ajouter les propriétés name et type
-            window.configOrganigramme.timeline = window.TIMELINE.map(item => {
-                if (item['📅']) {
-                    // C'est une époque
-                    const epochId = item['📅'];
-                    // Récupérer le nom depuis CHARS_DESC si disponible, sinon utiliser l'emoji
-                    let epochName = epochId;
-                    if (typeof window.CHARS_DESC !== 'undefined' && window.CHARS_DESC[epochId]) {
-                        epochName = window.CHARS_DESC[epochId];
-                    }
-                    // Mapper les emojis vers les noms d'époques
-                    const epochNameMap = {
-                        '⚫': 'Corps noir',
-                        '🔥': 'Hadéen',
-                        '🦠': 'Archéen',
-                        '🦕': 'Mésozoïque',
-                        '🦴': 'Paléozoïque',
-                        '🦣': 'Cénozoïque',
-                        '🚂': 'Industriel',
-                        '📱': 'Aujourd\'hui'
-                    };
-                    if (epochNameMap[epochId]) {
-                        epochName = epochNameMap[epochId];
-                    }
-                    return {
-                        ...item,
-                        type: 'epoch',
-                        name: epochName,
-                        id: epochId
-                    };
-                } else {
-                    // C'est un séparateur
-                    return {
-                        ...item,
-                        type: 'separator'
-                    };
-                }
-            });
-        }
-    </script>
-    <script>
-        // Fonction pour toggle l'animation dans index.html
-        function togglePlotAnim() {
-            const animButton = document.getElementById('plot-anim-toggle');
-            if (animButton) {
-                const isSelected = animButton.classList.contains('selected');
-                if (isSelected) {
-                    animButton.classList.remove('selected');
-                } else {
-                    animButton.classList.add('selected');
-                }
-                // Créer ou mettre à jour le checkbox caché pour compatibilité avec main.js
-                // Utiliser plot-anim-toggle comme id pour le checkbox (compatibilité)
-                let plotAnimToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
-                if (!plotAnimToggleCheckbox) {
-                    plotAnimToggleCheckbox = document.createElement('input');
-                    plotAnimToggleCheckbox.type = 'checkbox';
-                    plotAnimToggleCheckbox.id = 'plot-anim-toggle-checkbox';
-                    plotAnimToggleCheckbox.style.display = 'none';
-                    document.body.appendChild(plotAnimToggleCheckbox);
-                }
-                plotAnimToggleCheckbox.checked = !isSelected;
-                
-                // Déclencher l'événement change pour main.js
-                plotAnimToggleCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        }
-        
-        // Initialiser le bouton au chargement
-        document.addEventListener('DOMContentLoaded', function() {
-            const animButton = document.getElementById('plot-anim-toggle');
-            if (animButton) {
-                // Par défaut, l'animation est activée (checked dans l'ancien code)
-                animButton.classList.add('selected');
-                // Créer le checkbox caché pour compatibilité avec main.js
-                let plotAnimToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
-                if (!plotAnimToggleCheckbox) {
-                    plotAnimToggleCheckbox = document.createElement('input');
-                    plotAnimToggleCheckbox.type = 'checkbox';
-                    plotAnimToggleCheckbox.id = 'plot-anim-toggle-checkbox';
-                    plotAnimToggleCheckbox.checked = true;
-                    plotAnimToggleCheckbox.style.display = 'none';
-                    document.body.appendChild(plotAnimToggleCheckbox);
-                }
-            }
-        });
-    </script>
-    <script src="static/flux_manager.js"></script>
-    <script src="static/tooltips.js"></script>
-    <script src="static/modal.js"></script>
-    <script src="static/patterns.js"></script>
-    <script src="static/physics.js"></script>
-    <script src="static/climate.js"></script>
-    <script src="static/calculations_atm.js"></script>
-    <script src="static/calculations_albedo.js"></script>
-    <script src="organigramme/organigramme.js"></script>
-    <script src="static/calculations_geology.js"></script>
-    <script src="static/calculations_h2o.js"></script>
-    <script src="static/calculations.js"></script>
-    <script src="static/compute/compute.js"></script>
-    <script src="static/compute/calculations_flux.js"></script>
-    <script src="static/FPS/FPS.js"></script>
-    <script src="static/courbes/plot.js"></script>
-    <script src="static/layout.js"></script>
-    <script src="static/integrateEds.js"></script>
-    <script src="static/debug.js"></script>
-    <script src="static/events.js"></script>
-    <script src="static/timeline/timeline.js"></script>
-    <script src="static/main.js"></script>
-    <script>
-        // Système de rollover avec délai de 0.5s pour les boutons Tipeee
-        // Utilise la même méthode que addCustomTooltip (pas de délai au premier rollover si déjà hover)
-        (function () {
-            // Attendre que le DOM soit chargé
-            function initTipeeeRollover() {
-                const tipeeeButtons = document.querySelectorAll('.tipeee-btn');
-                if (tipeeeButtons.length === 0) {
-                    // Réessayer si les boutons ne sont pas encore là
-                    setTimeout(initTipeeeRollover, 100);
-                    return;
-                }
-
-                tipeeeButtons.forEach(button => {
-                    let hoverTimeout = null;
-                    let isHovered = false;
-
-                    button.addEventListener('mouseenter', function () {
-                        isHovered = true;
-                        // Délai de 0.5s avant d'activer le rollover (même au premier rollover)
-                        hoverTimeout = setTimeout(() => {
-                            if (isHovered) {
-                                button.classList.add('hover-active');
-                            }
-                        }, 500); // 0.5 secondes
-                    });
-
-                    button.addEventListener('mouseleave', function () {
-                        isHovered = false;
-                        if (hoverTimeout) {
-                            clearTimeout(hoverTimeout);
-                            hoverTimeout = null;
-                        }
-                        button.classList.remove('hover-active');
-                    });
-                });
-            }
-
-            // Initialiser dès que possible
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initTipeeeRollover);
-            } else {
-                initTipeeeRollover();
-            }
-        })();
-    </script>
+    <!-- Loader : fetch visu_radiatif.html + scie_radiatif.html, injection dans les panels, puis chargement des scripts -->
+    <script src="static/loader_panels.js"></script>
 </body>
 
-</html>
 </html>

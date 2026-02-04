@@ -1,0 +1,123 @@
+<!-- Fragment HTML pour injection dans #visu-panel -->
+<div class="container">
+    <div class="left-column" id="left-column">
+        <div class="left-left" id="left-left"></div>
+        <div class="left-timeline" id="left-timeline"></div>
+    </div>
+    <div class="right-column" id="right-column"></div>
+
+    <div class="title-container divGlass">
+        <h1>Bilan Radiatif Terrestre</h1>
+        <p class="title-subtitle">Base de la météorologie<br>Comprendre les incidences de chaque facteur</p>
+    </div>
+
+    <div class="flux-diagram-wrapper">
+        <div class="flux-diagram divGlass" id="flux-diagram">
+            <div class="synthese_Temp divGlass">
+                <div id="epoch-name-temp" style="font-size: 12px; font-weight: bold; line-height: 1.2; text-align: center; width: 100%;"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="thermometer-icon" style="font-size: 32px; line-height: 1;">🌡️</div>
+                    <div style="font-size: 16px; font-weight: bold; line-height: 1.2;">
+                        <span id="temp-surface-synthese">--</span><span id="temp-unit-synthese" style="font-size: 18px;">°C</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="plot-container-wrapper divGlass">
+        <div id="plot-container">
+            <div class="plot-overlay-title">Courbes d'émission du rayonnement<br>d'un corps (noir ou la terre)</div>
+            <div class="plot-controls" style="position: absolute; bottom: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
+                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--base-color);">
+                    <span style="opacity: 0.8;" title="Précision convergence">Préc.:</span>
+                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
+                            <input type="radio" name="precision-convergence" value="0.1" checked style="cursor: pointer;">
+                            <span>0.1°</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
+                            <input type="radio" name="precision-convergence" value="1" style="cursor: pointer;">
+                            <span>1°</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
+                            <input type="radio" name="precision-convergence" value="10" style="cursor: pointer;">
+                            <span>10°</span>
+                        </label>
+                    </div>
+                </div>
+                <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Animation">🎬</button>
+            </div>
+            <div class="legend-container" id="legend-container">
+                <div class="legend-section">
+                    <div class="legend-planck-grid" id="legend-planck-grid"></div>
+                </div>
+                <div class="legend-equilibre">
+                    <div id="legend-equilibre-curves" style="margin-bottom: 8px;"></div>
+                    Puissance dissipée :<br>
+                    ∫<sub><span class="legend-line-dotted"></span></sub> = ∫<sub><span class="legend-line-solid"></span></sub><br>
+                    soit W/m² = σ·T⁴<br>
+                    <span style="font-size: 0.9em; opacity: 0.9;">[Unité] ∫(W/m²/sr/μm)·d(μm) = W/m²/sr</span>
+                </div>
+            </div>
+        </div>
+        <canvas id="spectral-visualization" width="333" height="400"></canvas>
+    </div>
+
+    <div class="timeline-display divGlass">
+        <div id="calculation-overlay" class="calculation-overlay" style="display: none;">
+            <div class="calculation-text">Calculs d'équilibre radiatifs en cours<br><span id="calculation-dots"></span></div>
+        </div>
+        <div class="timeline-date-section">
+            <span class="timeline-hourglass">📅</span>
+            <span class="epoch-start-time" id="epoch-start-time">-5000 Ma</span>
+        </div>
+        <div class="timeline-horloge-section">
+            <div class="timeline-horloge-content">
+                <div class="timeline-horloge-line1">
+                    <span class="horloge-icon">🕰</span>
+                    <span class="info-time" id="info-time">+0 Ma</span>
+                </div>
+                <div class="timeline-events-logos" id="timeline-events-logos"></div>
+            </div>
+        </div>
+        <div class="timeline-frise-vertical">
+            <div class="epochs-container-vertical"></div>
+        </div>
+    </div>
+
+    <div class="synthese_EdS">
+        <div class="info-unit-header">
+            <span class="controle-simulation-title"></span>
+            <span class="info-unit">(W/m²)</span>
+        </div>
+        <div class="info-row info-row-vertical info-row-co2">
+            <div class="info-vertical-stack">
+                <span class="info-value"><span class="info-number" id="co2-number-synthese">0</span><span class="info-unit">%</span></span>
+                <span class="info-forcing" id="forcing-co2-synthese">W/m²</span>
+            </div>
+        </div>
+        <div class="info-row info-row-vertical info-row-h2o">
+            <div class="info-vertical-stack">
+                <span class="info-value" id="h2o-status-synthese">%</span>
+                <span class="info-forcing" id="forcing-h2o-synthese">W/m²</span>
+            </div>
+        </div>
+        <div class="info-row info-row-vertical info-row-ch4">
+            <div class="info-vertical-stack">
+                <span class="info-value"><span class="info-number" id="methane-number-synthese">--</span><span class="info-unit">%</span></span>
+                <span class="info-forcing" id="forcing-methane-synthese">W/m²</span>
+            </div>
+        </div>
+        <div class="info-row info-separator-line">
+            <span class="info-forcing">_______</span>
+        </div>
+        <div class="info-row forcing-total-row">
+            <span class="info-label">Forç:</span>
+            <span class="info-emoji">📛</span>
+            <span class="info-forcing" id="forcing-total-synthese">--</span>
+        </div>
+    </div>
+
+    <div class="status" id="status" style="display: none;"></div>
+</div>

@@ -3,620 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test computeRadiativeTransfer</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: #1a1a1a;
-            color: #e0e0e0;
-            padding: 20px;
-            font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
-            font-size: 11px;
-        }
-        
-        /* Classe pour les éléments contenant des emojis/logos */
-        .logo-item,
-        .emoji-text {
-            font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
-        }
-        
-        /* Appliquer la police par défaut aux éléments */
-        .config-value,
-        .config-title,
-        code,
-        pre,
-        h1,
-        h2,
-        h3,
-        .epoch-btn-horizontal,
-        .icon-button,
-        .timeline-hourglass,
-        .horloge-icon,
-        button {
-            font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
-        }
-        
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #fff;
-        }
-        
-        .controls {
-            background: #2a2a2a;
-            padding: 10px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            gap: 20px;
-            flex-direction: row;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .controls-left {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            align-items: center;
-            flex: 1;
-        }
-        
-        .timeline-horizontal-container {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-            width: 100%;
-        }
-        
-        .timeline-date-display, .timeline-horloge-display {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            color: #e0e0e0;
-            white-space: nowrap;
-        }
-        
-        .timeline-hourglass, .horloge-icon {
-            font-size: 12px;
-        }
-        
-        .epoch-date-item-horizontal {
-            display: inline-flex;
-            align-items: center;
-            font-size: 9px;
-            color: #888;
-            padding: 0 5px;
-            margin: 0 2px;
-        }
-        
-        .epoch-date-horizontal {
-            font-size: 9px;
-            color: #aaa;
-            white-space: nowrap;
-        }
-        
-        .epochs-container-horizontal {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .epochs-row-emojis {
-            display: flex;
-            align-items: flex-start;
-            gap: 0;
-            flex-wrap: wrap;
-        }
-        
-        .epoch-cell-horizontal {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 0 4px;
-        }
-        
-        .epoch-cell-horizontal .epoch-emoji-sep {
-            display: flex;
-            align-items: center;
-            gap: 2px;
-        }
-        
-        .epoch-cell-horizontal .epoch-separator {
-            font-size: 11px;
-            color: #666;
-            line-height: 1;
-        }
-        
-        .epoch-cell-horizontal .epoch-date-under {
-            font-size: 9px;
-            color: #aaa;
-            white-space: nowrap;
-            text-align: center;
-            margin-top: 2px;
-            width: 100%;
-        }
-        
-        .epoch-btn-horizontal {
-            font-size: 24px;
-            /* font-family héritée de la règle générale pour button */
-            background: none !important;
-            border: none !important;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer !important;
-            padding: 5px;
-            transition: filter 0.3s ease, text-shadow 0.3s ease;
-            width: 40px;
-            height: 40px;
-            position: relative;
-            /* Par défaut : noir et blanc sans glow (glow uniquement pour selected) */
-            filter: grayscale(100%);
-            /* Pas de text-shadow par défaut pour les boutons non sélectionnés */
-            text-shadow: none;
-        }
-        
-        /* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
-        .epoch-btn-horizontal:hover {
-            /* Si non sélectionné : swap vers couleur, contour blanc au rollover */
-            filter: grayscale(0%);
-            /* Glow blanc au rollover pour les boutons non sélectionnés */
-            text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                0 0 4px rgba(255, 255, 255, 0.7),
-                0 0 6px rgba(255, 255, 255, 0.5);
-        }
-        
-        /* Rollover spécifique pour les boutons non sélectionnés : forcer le glow blanc */
-        .epoch-btn-horizontal:not(.selected):hover {
-            text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                0 0 4px rgba(255, 255, 255, 0.7),
-                0 0 6px rgba(255, 255, 255, 0.5) !important;
-        }
-        
-        /* Bouton sélectionné : couleur avec contour vert autour du logo */
-        .epoch-btn-horizontal.selected {
-            filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
-            /* Couleur normale avec blur vert */
-            /* Contour vert autour du logo - ne change pas au rollover */
-            text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-                0 0 4px rgba(0, 255, 0, 0.7),
-                0 0 6px rgba(0, 255, 0, 0.5),
-                0 0 8px rgba(0, 255, 0, 0.3) !important;
-        }
-        
-        .epoch-btn-horizontal.selected:hover {
-            /* Si sélectionné : swap vers noir et blanc, contour reste vert */
-            filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
-            text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-                0 0 4px rgba(0, 255, 0, 0.7),
-                0 0 6px rgba(0, 255, 0, 0.5),
-                0 0 8px rgba(0, 255, 0, 0.3) !important;
-        }
-        
-        .timeline-events-logos {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .timeline-event-logo {
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            transition: transform 0.2s ease, filter 0.3s ease;
-            filter: grayscale(100%);
-        }
-        
-        .timeline-event-logo:hover {
-            transform: scale(1.1);
-            filter: grayscale(0%);
-        }
-        
-        .controls-right {
-            display: flex;
-            flex-direction: row;
-            gap: 10px;
-            align-items: center;
-        }
-        
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        label {
-            font-size: 11px;
-            color: #aaa;
-        }
-        
-        select, input[type="number"] {
-            background: #3a3a3a;
-            border: 1px solid #555;
-            color: #e0e0e0;
-            padding: 8px;
-            border-radius: 4px;
-            width: 200px;
-            font-size: 11px;
-        }
-        
-        button {
-            background: #4a9eff;
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            transition: background 0.3s;
-        }
-        
-        button:hover {
-            background: #3a8eef;
-        }
-        
-        .icon-button {
-            font-size: 18px;
-            /* font-family héritée de la règle générale pour button */
-            background: none !important;
-            border: none !important;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer !important;
-            padding: 5px;
-            transition: filter 0.3s ease, text-shadow 0.3s ease;
-            width: 45px;
-            height: 45px;
-            position: relative;
-            /* Par défaut : noir et blanc sans glow (glow uniquement pour selected) */
-            filter: grayscale(100%);
-            /* Pas de text-shadow par défaut pour les boutons non sélectionnés */
-            text-shadow: none;
-        }
-        
-        /* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
-        .icon-button:hover {
-            /* Si non sélectionné : swap vers couleur, contour blanc au rollover */
-            filter: grayscale(0%);
-            /* Glow blanc au rollover pour les boutons non sélectionnés */
-            text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                0 0 4px rgba(255, 255, 255, 0.7),
-                0 0 6px rgba(255, 255, 255, 0.5);
-        }
-        
-        /* Rollover spécifique pour les boutons non sélectionnés : forcer le glow blanc */
-        .icon-button:not(.selected):hover {
-            text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                0 0 4px rgba(255, 255, 255, 0.7),
-                0 0 6px rgba(255, 255, 255, 0.5) !important;
-        }
-        
-        /* Bouton sélectionné : couleur avec contour vert autour du logo */
-        .icon-button.selected {
-            filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
-            /* Couleur normale avec blur vert */
-            /* Contour vert autour du logo - ne change pas au rollover */
-            text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-                0 0 4px rgba(0, 255, 0, 0.7),
-                0 0 6px rgba(0, 255, 0, 0.5),
-                0 0 8px rgba(0, 255, 0, 0.3) !important;
-        }
-        
-        .icon-button.selected:hover {
-            /* Si sélectionné : swap vers noir et blanc, contour reste vert */
-            filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
-            text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-                0 0 4px rgba(0, 255, 0, 0.7),
-                0 0 6px rgba(0, 255, 0, 0.5),
-                0 0 8px rgba(0, 255, 0, 0.3) !important;
-        }
-        
-        .results {
-            /* background: #2a2a2a; */
-            padding: 10px;
-            /* border-radius: 8px; */
-            /* margin-top: 20px; */
-        }
-        
-        .results h2 {
-            margin-bottom: 15px;
-            color: #fff;
-        }
-        
-        .result-section {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #1a1a1a;
-            border-radius: 4px;
-        }
-        
-        .result-section h3 {
-            margin-bottom: 10px;
-            color: #4a9eff;
-        }
-        
-        .result-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #333;
-        }
-        
-        .result-item:last-child {
-            border-bottom: none;
-        }
-        
-        .result-label {
-            color: #aaa;
-        }
-        
-        .result-value {
-            color: #fff;
-            font-weight: bold;
-        }
-        
-        .error {
-            color: #ff6b6b;
-            background: #3a1a1a;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
-        
-        .log {
-            background: #1a1a1a;
-            padding: 15px;
-            border-radius: 4px;
-            margin-top: 20px;
-            max-height: 400px;
-            overflow-y: auto;
-            font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
-            font-size: 10px;
-        }
-        
-        .log-entry {
-            padding: 2px 0;
-            color: #aaa;
-        }
-        
-        .log-entry.error {
-            color: #ff6b6b;
-        }
-        
-        .log-entry.success {
-            color: #51cf66;
-        }
-        
-        .config-section {
-            margin-bottom: 5px;
-            padding: 10px;
-            background: #1a1a1a;
-            border-radius: 4px;
-        }
-        
-        .config-title {
-            font-weight: bold;
-            color: #4a9eff;
-            margin-bottom: 5px;
-            font-size: 12px;
-        }
-        
-        .config-value {
-            color: beige;
-            margin-top: -5px;
-            font-size: 12px;
-        }
-        
-        .formule {
-            color: gray;
-            margin: -10px;
-            font-size: 10px;
-        }
-        
-        .formule-container {
-            margin-top: 10px;
-            padding: 10px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        
-        .formule-container.notVisible {
-            display: none;
-        }
-        
-        .formule-container.visible {
-            display: block;
-        }
-        
-        .results.replied .config-title {
-            display: none;
-        }
-        
-        .results.replied .formule {
-            display: none;
-        }
-        
-        /* Cacher le contenu quand la section est repliée (replied) - seulement pour Lexique et Syntaxe */
-        .results.replied #alphabet-content,
-        .results.replied #dico-content {
-            display: none;
-        }
-        
-        /* Style pour les iframes dans Lexique et Syntaxe */
-        #alphabet-content iframe,
-        #dico-content iframe {
-            width: 100%;
-            height: 700px;
-            border: none;
-            background: #1a1a1a;
-        }
-        
-        /* Pour Configuration et Convergence : couleur plus grise et comportement différent */
-        #config,
-        #convergence {
-            background: #2a2a2a !important; /* Plus gris que #1a2a3a */
-            border-left-color: #6a6a6a !important; /* Bordure plus grise */
-        }
-        
-        /* Configuration et Convergence : quand repliées, afficher les objets JSON mais cacher formules et titres */
-        #config.replied .config-title,
-        #convergence.replied .config-title {
-            display: none;
-        }
-        
-        #config.replied .formule,
-        #convergence.replied .formule {
-            display: none;
-        }
-        
-        /* Les objets JSON restent visibles même quand repliées */
-        #config.replied .config-value,
-        #convergence.replied .config-value {
-            display: block;
-        }
-        
-        /* Aligner les titres avec les boutons à droite */
-        .results h2 {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .toggle-button {
-            background: #4a9eff;
-            border: none;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            margin-left: auto; /* Pousser le bouton à droite */
-        }
-        
-        .toggle-button:hover {
-            background: #3a8eef;
-        }
-        #convergence h2 .toggle-button + .toggle-button {
-            margin-left: 6px;
-        }
-        
-        /* 🧮, 🧲, cycle eau masqués par défaut ; visibles si #convergence.details-visible */
-        .convergence-details-block,
-        .convergence-cycle-eau-block {
-            display: none;
-        }
-        #convergence.details-visible .convergence-details-block,
-        #convergence.details-visible .convergence-cycle-eau-block {
-            display: block;
-        }
-        #convergence.convergence-cycles-hidden .convergence-cycle {
-            display: none !important;
-        }
-        #convergence-content {
-            max-height: 70vh;
-            height: 70vh;
-            overflow-y: scroll;
-            overflow-x: hidden;
-            /* Barre de défilement toujours visible (macOS masque par défaut) */
-        }
-        #convergence-content::-webkit-scrollbar {
-            width: 10px;
-        }
-        #convergence-content::-webkit-scrollbar-track {
-            background: #1a1a1a;
-        }
-        #convergence-content::-webkit-scrollbar-thumb {
-            background: #555;
-            border-radius: 5px;
-        }
-        
-        .convergence-inline-json {
-            margin-left: 6px;
-        }
-        .convergence-cycle-eau-block {
-            margin-bottom: 8px;
-        }
-        .convergence-final-block {
-            margin-top: 1.2em;
-        }
-        
-        .results h2 {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            background: #0a0a0a;
-            border-radius: 4px;
-        }
-        
-        .config-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .config-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #333;
-        }
-        
-        .config-item:last-child {
-            border-bottom: none;
-        }
-        
-        .config-label {
-            font-weight: bold;
-            color: #aaa;
-        }
-    </style>
+    <title>Vue scientifique</title>
+    <link href="css/scie_compute.css" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <h1>🧪 Test computeRadiativeTransfer</h1>
-        
-        <!-- Lexique des logos selon grammar.txt -->
-        <div id="lexique" class="results replied" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
-            <h2 style="color: #4a9eff; margin-bottom: 10px;">🔡 Alphabet <button class="toggle-button" onclick="toggleLexique()">+</button></h2>
-            <div id="alphabet-content">
-                <iframe id="alphabet-iframe" src="alphabet.html" style="width: 100%; height: 800px; border: none; background: #1a1a1a;"></iframe>
-            </div>
-        </div>
-        
-        <!-- Syntaxe des logos -->
-        <div id="syntaxe" class="results replied" style="margin-bottom: 20px; background: #1a2a3a; border-left: 4px solid #4a9eff;">
-            <h2 style="color: #4a9eff; margin-bottom: 10px;">📖 Dictionnaire <button class="toggle-button" onclick="toggleSyntaxe()">+</button></h2>
-            <div id="dico-content">
-                <iframe id="dico-iframe" src="dico.html" style="width: 100%; height: 800px; border: none; background: #1a1a1a;"></iframe>
-            </div>
-        </div>
-        
         <div class="controls">
-            <div class="controls-left" style="position: relative; width: 100%;">
+            <div class="controls-left" style="position: relative;">
                 
                 <!-- Timeline horizontale (une seule ligne) -->
-                <div class="timeline-horizontal-container" style="padding-top: 5px;">
+                <div class="timeline-horizontal-container">
                         <!-- 📜 Époque avec date -->
                         <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
                             <span class="timeline-hourglass" style="font-size: 20px;">📜</span>
@@ -638,19 +34,17 @@
                             </div>
                         </div>
                         
+                        <!-- Boutons 🎬 ▶️ sur 2 lignes : à droite des actions, à gauche de la frise -->
+                        <div class="controls-buttons-stack">
+                            <button class="icon-button selected" id="anim-toggle" onclick="toggleAnim()" title="Animation">🎬</button>
+                            <button class="icon-button" id="run-stop-btn" onclick="toggleRunStop()" title="Exécuter">▶️</button>
+                        </div>
+                        
                         <!-- Boutons d'époques avec graduations intégrées -->
-                        <div class="epochs-container-horizontal" id="epochs-container-horizontal" style="flex: 1; padding-left: 10px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                        <div class="epochs-container-horizontal" id="epochs-container-horizontal" style="flex: 1; padding-left: 2px; display: flex; align-items: center; gap: 0; flex-wrap: wrap; min-width: 0;">
                             <!-- Sera rempli dynamiquement avec boutons et graduations -->
                         </div>
                 </div>
-            </div>
-            
-            <div class="controls-right">
-                <button class="icon-button" id="anim-toggle" onclick="toggleAnim()" title="Animation">🎬</button>
-                <button class="icon-button" id="run-stop-btn" onclick="toggleRunStop()" title="Exécuter">▶️</button>
-                <button class="icon-button" onclick="clearLog()" title="Effacer les logs">🗑️</button>
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" id="debug-analyse-cb" onchange="window.DEBUG_ANALYSE = this.checked;"> Logs analyse (bins, EDS, T)</label>
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" id="debug-detail-cb" onchange="window.DEBUG_ANALYSE_DETAIL = this.checked;"> Détail premiers calculs (delta +9.8)</label>
             </div>
         </div>
         
@@ -660,7 +54,7 @@
         </div>
         
         <div id="convergence" class="results replied convergence-cycles-hidden">
-            <h2>⚙ Convergence <button class="toggle-button" onclick="toggleConvergence()">Formules +</button></h2>
+            <h2>⚙ Convergence : —°C <span class="convergence-buttons"><button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">Cycles +</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">Détails +</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">Formules +</button></span></h2>
             <div id="convergence-content"></div>
         </div>
         
@@ -671,23 +65,23 @@
         
     </div>
 
-    <!-- Charger les dépendances dans l'ordre -->
-    <script src="../debug.js"></script>
-    <script src="alphabet.js"></script>
-    <script src="dico.js"></script>
-    <script src="../../organigramme/configOrganigramme.js"></script>
-    <script src="../timeline/configTimeline.js"></script>
-    <script src="../timeline/timeline.js"></script>
-    <script src="../events.js"></script>
-    <script src="../physics.js"></script>
-    <script src="../climate.js"></script>
-    <script src="../FPS/FPS.js"></script>
-    <script src="../calculations.js"></script>
-    <script src="../calculations_h2o.js"></script>
-    <script src="../calculations_albedo.js"></script>
-    <script src="../calculations_atm.js"></script>
-    <script src="compute.js"></script>
-    <script src="calculations_flux.js"></script>
+    <!-- Charger les dépendances dans l'ordre (chemins depuis doc/) -->
+    <script src="../static/debug.js"></script>
+    <script src="../static/compute/alphabet.js"></script>
+    <script src="../static/compute/dico.js"></script>
+    <script src="../organigramme/configOrganigramme.js"></script>
+    <script src="../static/timeline/configTimeline.js"></script>
+    <script src="../static/timeline/timeline.js"></script>
+    <script src="../static/events.js"></script>
+    <script src="../static/physics.js"></script>
+    <script src="../static/climate.js"></script>
+    <script src="../static/FPS/FPS.js"></script>
+    <script src="../static/calculations.js"></script>
+    <script src="../static/calculations_h2o.js"></script>
+    <script src="../static/calculations_albedo.js"></script>
+    <script src="../static/calculations_atm.js"></script>
+    <script src="../static/compute/compute.js"></script>
+    <script src="../static/compute/calculations_flux.js"></script>
     
     <script>
         // Vérifier ressources critiques (ex: dico.js manquant → ERR_SOCKET_NOT_CONNECTED)
@@ -781,8 +175,8 @@
             if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('/')) {
                 return relativePath;
             }
-            // Sinon, remonter de 2 niveaux depuis static/compute/ pour atteindre la racine
-            return '../../' + relativePath;
+            // Depuis doc/ : remonter d'un niveau pour atteindre la racine
+            return '../' + relativePath;
         }
         
         // ============================================================================
@@ -837,8 +231,9 @@
         
         // ============================================================================
         // GÉNÉRATION TIMELINE HORIZONTALE
-        // Structure : emoji | emoji | emoji (| entre les emojis), textes centrés sous les |
+        // 3 lignes : noms (entre les |), | logos, dates (sous les |)
         // ============================================================================
+        var EPOCH_NAME_MAP = { '⚫': 'Corps noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🌿': 'Protérozoïque', '🦕': 'Mésozoïque', '🦴': 'Crétacé', '🦣': 'Cénozoïque', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
         function generateHorizontalTimeline() {
             const epochsContainer = document.getElementById('epochs-container-horizontal');
             if (!epochsContainer || !window.TIMELINE) return;
@@ -854,23 +249,21 @@
                 const cell = document.createElement('div');
                 cell.className = 'epoch-cell-horizontal';
                 
-                const emojiSep = document.createElement('div');
-                emojiSep.className = 'epoch-emoji-sep';
-                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'epoch-name-between';
+                nameSpan.textContent = EPOCH_NAME_MAP[item['📅']] || item['📅'];
                 const sep = document.createElement('span');
                 sep.className = 'epoch-separator';
                 sep.textContent = '|';
-                emojiSep.appendChild(sep);
-                
                 const button = createEpochButton(item['📅'], 'horizontal');
                 button.onclick = () => selectEpoch(item['📅']);
-                emojiSep.appendChild(button);
-                
                 const dateSpan = document.createElement('span');
                 dateSpan.className = 'epoch-date-under';
                 dateSpan.textContent = formatDateMa(item['▶']);
                 
-                cell.appendChild(emojiSep);
+                cell.appendChild(nameSpan);
+                cell.appendChild(sep);
+                cell.appendChild(button);
                 cell.appendChild(dateSpan);
                 
                 rowEmojis.appendChild(cell);
@@ -1142,9 +535,11 @@
             if (running) {
                 btn.textContent = '⏹';
                 btn.title = 'Arrêter les calculs';
+                btn.classList.add('selected');
             } else {
                 btn.textContent = '▶️';
                 btn.title = 'Exécuter';
+                btn.classList.remove('selected');
             }
         }
 
@@ -1534,7 +929,7 @@
                 const detailsButtonText = detailsVisible ? 'Détails −' : 'Détails +';
                 const cyclesHidden = convergenceDiv.classList.contains('convergence-cycles-hidden');
                 const cyclesButtonText = cyclesHidden ? 'Cycles +' : 'Cycles −';
-                convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">${cyclesButtonText}</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">${detailsButtonText}</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">${formulesButtonText}</button>`;
+                convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <span class="convergence-buttons"><button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">${cyclesButtonText}</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">${detailsButtonText}</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">${formulesButtonText}</button></span>`;
             }
             
             let html = '';
@@ -1695,7 +1090,7 @@
                 html += `<div class="config-value"><strong>Arrêt:</strong> ${stopLabel}${stopDetail}</div>`;
                 if (window.DEBUG_ANALYSE_DETAIL && window.DETAIL_LOG_TEXT) {
                     html += '<div class="config-value" style="margin-top:12px;padding:10px;background:rgba(0,0,0,0.25);border-radius:6px;font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;">';
-                    html += '<strong>Détail premiers calculs (copie sans debug.js:xx):</strong><br><pre style="margin:8px 0 0 0;padding:0;">' + (window.DETAIL_LOG_TEXT || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></div>';
+                    html += '<strong>Détail premiers calculs:</strong><br><pre style="margin:8px 0 0 0;padding:0;">' + (window.DETAIL_LOG_TEXT || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></div>';
                 }
                 html += '</div>';
             }
@@ -1812,8 +1207,6 @@
             }
         }
         
-        
-        // Écouter les messages de redimensionnement des iframes
         window.addEventListener('message', function(event) {
             if (event.data && event.data.type === 'resize-iframe') {
                 const iframe = event.data.source === 'alphabet' 

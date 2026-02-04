@@ -15,8 +15,8 @@
 // ============================================================================
 
 // Initialiser CONST (pointeur vers window.CONST)
-// CONST est un pointeur : modifier CONST modifie automatiquement window.CONST
-const CONST = window.CONST = window.CONST || {};
+// var pour permettre plot.js et main.js de faire var CONST = window.CONST sans erreur
+var CONST = window.CONST = window.CONST || {};
 
 // ✅ SCIENTIFIQUEMENT CERTAIN : Toutes ces constantes sont des valeurs mesurées et acceptées internationalement
 CONST.PLANCK_H = 6.62607015e-34;      // Constante de Planck, J·s (CODATA 2018)

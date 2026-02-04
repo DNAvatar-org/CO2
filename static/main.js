@@ -42,7 +42,7 @@ if (typeof window !== 'undefined') {
     window.isDebugPhases = false; // Désactiver les logs de phase pour nettoyer // Mettre à false pour désactiver les logs de phases
 }
 
-const CONST = window.CONST;
+var CONST = window.CONST; /* var pour éviter redeclaration avec plot.js */
 
 // ============================================================================
 // UNITÉ DE TEMPÉRATURE (cycle °C → °F → K)
@@ -1144,6 +1144,9 @@ function updateCO2LevelDirect(co2_fraction) {
             // Vérifier si le calcul a été annulé
             if (window.cancelCalculation) {
                 return;
+            }
+            if (window.CO2_EVENTS && data) {
+                window.CO2_EVENTS.emit('compute:done', { DATA: window.DATA, result: data });
             }
 
             // Retirer ce timeout de la liste
@@ -2681,6 +2684,9 @@ function updateH2OLevelDirect(h2o_total_percent) {
             // Vérifier si le calcul a été annulé
             if (window.cancelCalculation) {
                 return;
+            }
+            if (window.CO2_EVENTS && data) {
+                window.CO2_EVENTS.emit('compute:done', { DATA: window.DATA, result: data });
             }
 
             // Retirer ce timeout de la liste

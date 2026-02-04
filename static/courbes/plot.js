@@ -31,7 +31,7 @@ const PLOT_BACKGROUND_COLOR = 'rgba(255, 255, 255, 0)'; // Fond blanc opaque (10
 // Police globale - peut être changée via le bouton de debug
 window.globalFontFamily = 'ProggyDotted'; // Police par défaut pour le graphique
 
-const CONST = window.CONST;
+var CONST = window.CONST; /* var pour éviter redeclaration avec main.js */
 
 // Fonction pour obtenir la couleur par défaut du body (vert)
 function getDefaultTextColor() {

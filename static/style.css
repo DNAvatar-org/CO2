@@ -1692,36 +1692,41 @@ body.mode-dark .plot-overlay-title {
     position: relative; /* Pour l'overlay */
 }
 
-/* Boutons icônes pour animation et actions */
+/* Boutons icônes (🎬 ▶️ etc.) : même style que epoch-btn - contour vert rollover, vert si selected */
 .icon-button {
-    background: #3a3a3a;
-    border: 2px solid #555;
-    color: #e0e0e0;
-    padding: 10px;
-    border-radius: 4px;
-    cursor: pointer;
     font-size: 20px;
-    width: 45px;
-    height: 45px;
+    background: none !important;
+    border: none !important;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s;
+    cursor: pointer !important;
+    padding: 5px;
+    transition: filter 0.3s ease, text-shadow 0.3s ease;
+    width: 40px;
+    height: 40px;
+    position: relative;
+    filter: grayscale(100%);
+    text-shadow: none;
 }
 
 .icon-button:hover {
-    background: #4a4a4a;
-    border-color: #666;
+    filter: grayscale(0%);
+    text-shadow: 0 0 2px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.7), 0 0 6px rgba(255,255,255,0.5);
+}
+
+.icon-button:not(.selected):hover {
+    text-shadow: 0 0 2px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.7), 0 0 6px rgba(255,255,255,0.5) !important;
 }
 
 .icon-button.selected {
-    background: #51cf66;
-    border-color: #51cf66;
-    color: white;
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0,255,0,0.8)) drop-shadow(0 0 6px rgba(0,255,0,0.5)) !important;
+    text-shadow: 0 0 2px rgba(0,255,0,0.9), 0 0 4px rgba(0,255,0,0.7), 0 0 6px rgba(0,255,0,0.5), 0 0 8px rgba(0,255,0,0.3) !important;
 }
 
 .icon-button.selected:hover {
-    background: #40bf55;
-    border-color: #40bf55;
+    filter: grayscale(100%) drop-shadow(0 0 3px rgba(0,255,0,0.8)) drop-shadow(0 0 6px rgba(0,255,0,0.5)) !important;
+    text-shadow: 0 0 2px rgba(0,255,0,0.9), 0 0 4px rgba(0,255,0,0.7), 0 0 6px rgba(0,255,0,0.5), 0 0 8px rgba(0,255,0,0.3) !important;
 }
 
