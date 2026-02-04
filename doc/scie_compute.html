@@ -350,7 +350,6 @@
                 updateTimelineDisplay();
             }
             emitSyncToParent();
-            if (typeof runTest === 'function') runTest();
         }
         
         // Mettre à jour l'affichage de la timeline (📅 date en Ma, 1 tic = X Ma)
@@ -418,7 +417,6 @@
                         if (typeof window.getNoyau === 'function') window.getNoyau();
                         updateTimelineDisplay();
                         emitSyncToParent();
-                        if (typeof runTest === 'function') runTest();
                     }
                 });
                 eventsLogos.appendChild(ticBtn);
@@ -438,7 +436,6 @@
                         if (typeof window.getNoyau === 'function') window.getNoyau();
                         updateTimelineDisplay();
                         emitSyncToParent();
-                        if (typeof runTest === 'function') runTest();
                     }
                 });
                 eventsLogos.appendChild(meteorBtn);
@@ -565,6 +562,10 @@
         function toggleRunStop() {
             if (window.COMPUTE_RUNNING) {
                 window.ABORT_COMPUTE = true;
+                return;
+            }
+            if (window !== window.top) {
+                emitSyncToParent();
                 return;
             }
             runTest();
@@ -1269,6 +1270,15 @@
                 if (p.ticTime !== undefined && window.DATA && window.DATA['📜']) {
                     window.DATA['📜']['📿💫'] = p.ticTime;
                     updateTimelineDisplay();
+                }
+            }
+            if (event.data && event.data.type === 'compute:done') {
+                const DATA = event.data.DATA;
+                if (DATA && window !== window.top) {
+                    if (!window.DATA) window.DATA = {};
+                    Object.keys(DATA).forEach(k => { window.DATA[k] = DATA[k]; });
+                    if (typeof displayResults === 'function') displayResults(window.DATA);
+                    if (typeof displayConvergence === 'function') displayConvergence();
                 }
             }
         });

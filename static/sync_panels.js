@@ -1,16 +1,17 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
-// Desc: État partagé epoch, anim, ticTime entre panneau Visuel et iframe Scientifique
-// Version 1.0.0
+// Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
+// Version 1.1.3
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-03
 // Logs:
-// - Initial: sync epoch, anim, ticTime via postMessage
+// - v1.1.1: passage global _REGLE_JS_CRASH (pas de if abusifs, pas de fallbacks)
+// - v1.1.2: T0 init quand anim+T<=0 ; displayConvergence no-op parent ; _lastCycleRef guard
+// - v1.1.3: Guards null pour plot-anim-toggle, plot-anim-toggle-checkbox, info-time, visuPanel, DATA
 
 (function () {
     'use strict';
 
-    // État partagé (source de vérité côté parent)
     window.SYNC_STATE = {
         epochId: '⚫',
         animEnabled: true,
@@ -22,91 +23,140 @@
     }
 
     function syncToScie(payload) {
-        var s = payload || window.SYNC_STATE;
-        if (s.epochId !== undefined) window.SYNC_STATE.epochId = s.epochId;
-        if (s.animEnabled !== undefined) window.SYNC_STATE.animEnabled = s.animEnabled;
-        if (s.ticTime !== undefined) window.SYNC_STATE.ticTime = s.ticTime;
+        if (payload.epochId !== undefined) window.SYNC_STATE.epochId = payload.epochId;
+        if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
+        if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
 
         var iframe = getIframe();
-        if (iframe && iframe.contentWindow) {
-            try {
-                iframe.contentWindow.postMessage({
-                    type: 'sync:state',
-                    payload: {
-                        epochId: window.SYNC_STATE.epochId,
-                        animEnabled: window.SYNC_STATE.animEnabled,
-                        ticTime: window.SYNC_STATE.ticTime
-                    }
-                }, '*');
-            } catch (e) {}
-        }
+        iframe.contentWindow.postMessage({
+            type: 'sync:state',
+            payload: {
+                epochId: window.SYNC_STATE.epochId,
+                animEnabled: window.SYNC_STATE.animEnabled,
+                ticTime: window.SYNC_STATE.ticTime
+            }
+        }, '*');
     }
 
-    function applyToVisu(payload) {
-        if (!payload) return;
+    function applyToVisu(payload, fromScie) {
         var visuPanel = document.getElementById('visu-panel');
-        if (!visuPanel) return;
+        if (!payload) return;
 
         if (payload.epochId !== undefined) {
             window.SYNC_STATE.epochId = payload.epochId;
-            try {
-                if (typeof window.setEpoch === 'function') {
-                    window.setEpoch(payload.epochId);
+            if (!fromScie) {
+                if (typeof window.setEpoch === 'function') window.setEpoch(payload.epochId);
+            } else {
+                var idx = window.TIMELINE ? window.TIMELINE.findIndex(function (item) { return item['📅'] === payload.epochId; }) : -1;
+                if (window.DATA && idx >= 0) {
+                    window.DATA['📅'] = window.TIMELINE[idx];
+                    if (window.DATA['📜']) {
+                        window.DATA['📜']['👉'] = idx;
+                        window.DATA['📜']['🗿'] = payload.epochId;
+                    }
+                    if (window.CHARS_DESC) window.currentEpochName = window.CHARS_DESC[payload.epochId];
                 }
-            } catch (e) {}
-            var epochBtns = visuPanel.querySelectorAll('.epoch-btn');
-            epochBtns.forEach(function (btn) {
-                btn.classList.toggle('selected', btn.getAttribute('data-epoch') === payload.epochId);
-            });
+            }
+            if (visuPanel) {
+                var epochBtns = visuPanel.querySelectorAll('.epoch-btn');
+                epochBtns.forEach(function (btn) {
+                    btn.classList.toggle('selected', btn.getAttribute('data-epoch') === payload.epochId);
+                });
+            }
         }
         if (payload.animEnabled !== undefined) {
             window.SYNC_STATE.animEnabled = payload.animEnabled;
-            var animBtn = document.getElementById('plot-anim-toggle');
-            if (animBtn) {
-                animBtn.classList.toggle('selected', payload.animEnabled);
-            }
-            var cb = document.getElementById('plot-anim-toggle-checkbox');
-            if (cb) cb.checked = payload.animEnabled;
-            if (window.DATA && window.DATA['🔘']) {
-                window.DATA['🔘']['🔘🎬'] = payload.animEnabled;
-            }
-            if (typeof window.isAnim !== 'undefined') window.isAnim = payload.animEnabled;
+            var animToggle = document.getElementById('plot-anim-toggle');
+            if (animToggle) animToggle.classList.toggle('selected', payload.animEnabled);
+            var animCb = document.getElementById('plot-anim-toggle-checkbox');
+            if (animCb) animCb.checked = payload.animEnabled;
+            if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎬'] = payload.animEnabled;
+            window.isAnim = payload.animEnabled;
         }
         if (payload.ticTime !== undefined) {
             window.SYNC_STATE.ticTime = payload.ticTime;
-            if (typeof window.infoTimeMa !== 'undefined') {
-                window.infoTimeMa = payload.ticTime * 50;
-            }
-            if (window.DATA && window.DATA['📜']) {
-                window.DATA['📜']['📿💫'] = payload.ticTime;
-            }
-            var infoTimeEl = document.getElementById('info-time');
-            if (infoTimeEl) {
-                infoTimeEl.textContent = '+' + (payload.ticTime * 50).toFixed(0) + ' Ma';
-            }
+            window.infoTimeMa = payload.ticTime * 50;
+            if (window.DATA && window.DATA['📜']) window.DATA['📜']['📿💫'] = payload.ticTime;
+            var infoTime = document.getElementById('info-time');
+            if (infoTime) infoTime.textContent = '+' + (payload.ticTime * 50).toFixed(0) + ' Ma';
         }
     }
 
+    function projectToVisu(DATA) {
+        var spectral = window.getSpectralResultFromDATA();
+        var T0 = DATA['🧮']['🧮🌡️'];
+        var tempC = T0 - window.CONST.KELVIN_TO_CELSIUS;
+        document.getElementById('temp-surface-synthese').textContent = tempC.toFixed(1);
+        var co2_ppm = DATA['🫧']['🍰🫧🏭'] * 1e6;
+        window.plotData.lambda_range = spectral.lambda_range;
+        window.plotData.lambda_weights = spectral.lambda_weights;
+        window.plotData.current = {
+            T0: T0,
+            temp_surface: T0,
+            temp_surface_c: tempC,
+            total_flux: spectral.total_flux,
+            albedo: DATA['🪩']['🍰🪩📿'],
+            cloud_coverage: DATA['🪩']['☁️'],
+            lambda_range: spectral.lambda_range,
+            lambda_weights: spectral.lambda_weights,
+            upward_flux: spectral.upward_flux,
+            z_range: spectral.z_range,
+            earth_flux: spectral.earth_flux,
+            effective_temperature: window.getEffectiveTemperatureNoGreenhouse()
+        };
+        window.plotData.temp_surface_c = tempC;
+        window.plotData.co2_ppm = co2_ppm;
+        window.spectralConverged = true;
+        window.spectralPrecisionTarget = 'max';
+        window.showSpectralBackground = true;
+        window.updatePlot(window.plotData);
+        window.updateSpectralVisualization(window.plotData.current);
+        window.updateFluxLabels(window.plotData);
+    }
+
+    function projectToScie(DATA) {
+        getIframe().contentWindow.postMessage({ type: 'compute:done', DATA: DATA }, '*');
+    }
+
+    window.runComputeInParent = function () {
+        var DATA = window.DATA;
+        DATA['🧮']['previous'] = [];
+        DATA['🧮']['🧮🔄🌊'] = 0;
+        DATA['🧮']['🧮🔄🪩'] = 0;
+        if (!DATA['🔘']['🔘🎬']) {
+            DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
+        } else if (!DATA['🧮']['🧮🌡️'] || DATA['🧮']['🧮🌡️'] <= 0) {
+            var adj = (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
+            DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'] + adj;
+        }
+        window.initForConfig();
+        window.computeRadiativeTransfer().then(function (result) {
+            if (result === null) return;
+            window.CO2_EVENTS.emit('compute:done', { DATA: window.DATA, result: result });
+            projectToVisu(window.DATA);
+            projectToScie(window.DATA);
+        }).catch(function (e) { console.error('[runComputeInParent]', e); });
+    };
+
     function initSyncPanels() {
+        if (typeof window.displayConvergence !== 'function') {
+            window.displayConvergence = function () {};
+        }
         window.syncToScie = syncToScie;
 
         window.addEventListener('message', function (event) {
-            if (!event.data || event.data.type !== 'sync:state') return;
+            if (event.data.type !== 'sync:state') return;
             var p = event.data.payload;
-            if (!p) return;
-            applyToVisu(p);
+            applyToVisu(p, true);
+            window.runComputeInParent();
         });
 
-        if (window.CO2_EVENTS) {
-            window.CO2_EVENTS.on('sync:state', function (payload) {
-                if (payload) {
-                    if (payload.epochId !== undefined) window.SYNC_STATE.epochId = payload.epochId;
-                    if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
-                    if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
-                    syncToScie();
-                }
-            });
-        }
+        window.CO2_EVENTS.on('sync:state', function (payload) {
+            if (payload.epochId !== undefined) window.SYNC_STATE.epochId = payload.epochId;
+            if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
+            if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
+            syncToScie(payload);
+        });
     }
 
     if (document.readyState === 'loading') {

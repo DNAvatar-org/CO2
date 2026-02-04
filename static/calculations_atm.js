@@ -1,6 +1,6 @@
 // File: calculations_atm.js - Calculs composition atmosphérique
 // Desc: En français, dans l'architecture, je suis le module de calculs atmosphériques
-// Version 1.1.1
+// Version 1.1.2
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
@@ -8,6 +8,7 @@
 // Logs:
 // - Fix: use DATA['🧮']['🧮🌡️'] in calculateAtmosphereProperties (was typo 🌡️)
 // - Suppression logs calculateMolarMassAir
+// - co2KgToFraction, ch4KgToFraction (masse kg → fraction molaire pour updateLevelsConfig)
 //
 // ============================================================================
 // CALCUL DE PRESSION ET STRUCTURE ATMOSPHÉRIQUE
@@ -224,6 +225,22 @@ function airNumberDensityAtZ(z) {
     return pressureAtZ(z) / (CONST.BOLTZMANN_KB * window.temperatureAtZ(z));
 }
 
+/** Convertit masse CO2 (kg) en fraction molaire : (mass_CO2/M_CO2) / (mass_total/M_air) */
+function co2KgToFraction(co2_kg, total_atm_kg, molar_mass_air) {
+    const CONST = window.CONST;
+    if (!total_atm_kg || total_atm_kg <= 0) return 0;
+    const M_air = molar_mass_air && molar_mass_air > 0 ? molar_mass_air : CONST.molar_mass_air_ref;
+    return (co2_kg * M_air) / (total_atm_kg * CONST.M_CO2);
+}
+
+/** Convertit masse CH4 (kg) en fraction molaire : (mass_CH4/M_CH4) / (mass_total/M_air) */
+function ch4KgToFraction(ch4_kg, total_atm_kg, molar_mass_air) {
+    const CONST = window.CONST;
+    if (!total_atm_kg || total_atm_kg <= 0) return 0;
+    const M_air = molar_mass_air && molar_mass_air > 0 ? molar_mass_air : CONST.molar_mass_air_ref;
+    return (ch4_kg * M_air) / (total_atm_kg * CONST.M_CH4);
+}
+
 window.calculateAtmosphereProperties = calculateAtmosphereProperties;
 window.calculateMolarMassAir = calculateMolarMassAir;
 window.calculatePressureAtm = calculatePressureAtm;
@@ -231,3 +248,5 @@ window.calculateAtmosphereComposition = calculateAtmosphereComposition;
 window.calculateTropopauseHeight = calculateTropopauseHeight;
 window.pressureAtZ = pressureAtZ;
 window.airNumberDensityAtZ = airNumberDensityAtZ;
+window.co2KgToFraction = co2KgToFraction;
+window.ch4KgToFraction = ch4KgToFraction;

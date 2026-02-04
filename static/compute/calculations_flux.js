@@ -1,7 +1,7 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.38
+// Version 1.2.39
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -56,6 +56,7 @@
 // - v1.2.36 : DEBUG_ANALYSE_DETAIL + logDetailPremiersCalculs (CYCLE0, Init, CycleEau iter=0) pour transmettre à une autre IA
 // - v1.2.37 : Search step : clamp explicite 80 K pour T>2000 K (Hadéen) pour éviter oscillation
 // - v1.2.38 : initForConfig : T_epoch si |T_solver-T_epoch|≤20K (1800 OK), T réelle si transition extrême (Corps noir→Archéen)
+// - v1.2.39 : cycleDeLeau : guard _lastCycleRef undefined avant accès albedo/vapor (runComputeInParent crossing)
 // ============================================================================
 
 // ============================================================================
@@ -292,6 +293,9 @@ async function cycleDeLeau(isFirst) {
     if (DATA['🧮']['🧮🌡️'] < T_low_K || DATA['🧮']['🧮🌡️'] > T_high_K) {
         window._lastCycleRef = { albedo: DATA['🪩']['🍰🪩📿'], vapor: DATA['💧']['🍰🫧💧'] };
         return { changed: false };
+    }
+    if (!window._lastCycleRef) {
+        window._lastCycleRef = { albedo: DATA['🪩']['🍰🪩📿'], vapor: DATA['💧']['🍰🫧💧'] };
     }
     const changed = Math.abs(DATA['🪩']['🍰🪩📿'] - window._lastCycleRef.albedo) > window.CONFIG_COMPUTE.cycleTolAlbedo
         || Math.abs(DATA['💧']['🍰🫧💧'] - window._lastCycleRef.vapor) > window.CONFIG_COMPUTE.cycleTolVapor;

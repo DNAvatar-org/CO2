@@ -29,23 +29,6 @@
         <div id="plot-container">
             <div class="plot-overlay-title">Courbes d'émission du rayonnement<br>d'un corps (noir ou la terre)</div>
             <div class="plot-controls" style="position: absolute; bottom: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
-                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--base-color);">
-                    <span style="opacity: 0.8;" title="Précision convergence">Préc.:</span>
-                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
-                        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
-                            <input type="radio" name="precision-convergence" value="0.1" checked style="cursor: pointer;">
-                            <span>0.1°</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
-                            <input type="radio" name="precision-convergence" value="1" style="cursor: pointer;">
-                            <span>1°</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Préc.">
-                            <input type="radio" name="precision-convergence" value="10" style="cursor: pointer;">
-                            <span>10°</span>
-                        </label>
-                    </div>
-                </div>
                 <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Animation">🎬</button>
             </div>
             <div class="legend-container" id="legend-container">

@@ -1919,14 +1919,20 @@ function generateArrows() {
                 let molar_mass_air = undefined;
 
                 if (window.currentEpochName) {
-                    const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                    let currentEpoch = null;
+                    if (typeof window.getGeologicalPeriodByName === 'function') {
+                        currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                    } else if (window.configOrganigramme && window.configOrganigramme.timeline) {
+                        currentEpoch = window.configOrganigramme.timeline.find(e => e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName));
+                    } else if (window.TIMELINE) {
+                        currentEpoch = window.TIMELINE.find(e => e['📅'] === window.currentEpochName || (window.CHARS_DESC && window.CHARS_DESC[e['📅']] === window.currentEpochName));
+                    }
                     if (currentEpoch) {
-                        if (currentEpoch.total_atmosphere_mass_kg !== undefined) total_mass = currentEpoch.total_atmosphere_mass_kg;
-                        if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+                        total_mass = currentEpoch.total_atmosphere_mass_kg ?? currentEpoch['⚖️🫧'] ?? total_mass;
+                        gravity = currentEpoch.gravity ?? currentEpoch['🍎'] ?? gravity;
                         if (currentEpoch.molar_mass_air !== undefined) {
                             molar_mass_air = currentEpoch.molar_mass_air;
-                        } else {
-                            // Calculer depuis les composants de l'époque
+                        } else if (typeof window.calculateMolarMassAir === 'function') {
                             molar_mass_air = window.calculateMolarMassAir(currentEpoch);
                         }
                     }

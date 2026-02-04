@@ -1,12 +1,17 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.0
+// Version 1.0.5
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
+// - v1.0.1: H2O 17μm borne ajoutée (fallback si CONST absent), bornes repositionnées sous axe
+// - v1.0.2: Bornes et spectre collés juste sous l'axe (bottom 65px, canvas étendu marge 75px)
+// - v1.0.3: Resize artificiel après Plotly.react, spectre +1px, bornes -5px
+// - v1.0.4: displaylogo: false, showLink: false pour masquer branding Plotly
+// - v1.0.5: drawSpectralVisualization return early si rect invalide (panel masqué) ; switchTab visu → resize
 // ============================================================================
 
 // ============================================================================
@@ -376,6 +381,8 @@ function initPlot() {
     Plotly.newPlot('plot-container', [], layout, {
         responsive: true,
         displayModeBar: false,
+        displaylogo: false,
+        showLink: false,
         scrollZoom: false,
         doubleClick: false,
         dragmode: false
@@ -444,12 +451,12 @@ function resizeCanvasToPlot(callback) {
 
         if (targetElement) {
             const targetRect = targetElement.getBoundingClientRect();
-            const hBarre = 20; // Hauteur de la barre en bas (20px)
+            const marginBottomPx = 75; // PLOT_MARGINS.b - zone sous l'axe pour spectre + bornes
             const paddingX = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
 
-            // Dimensions : même largeur + 5px de chaque côté, même hauteur + barre
+            // Dimensions : même largeur + padding, hauteur = zone plot + marge sous l'axe
             const width = Math.round(targetRect.width) + (paddingX * 2);
-            const height = Math.round(targetRect.height) + hBarre;
+            const height = Math.round(targetRect.height) + marginBottomPx;
 
             // Positionner le canvas : même Y, left - 5px pour être derrière le 0
             if (wrapper) {
@@ -538,9 +545,10 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
     // Donc on doit diviser par resolutionFactor pour obtenir 20px d'affichage final
     const spectrumBarHeight = Math.max(1, Math.floor(20 / resolutionFactor)); // 20px d'affichage
     const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
+    const axisMarginB = 75; // PLOT_MARGINS.b - spectre collé juste sous l'axe
 
-    // Nettoyer seulement la zone de la bande
-    const spectrumBarY = height - spectrumBarHeight + 0.5;
+    // Barre spectrale : collée juste sous l'axe (dans la marge), +1px pour affiner
+    const spectrumBarY = height - axisMarginB - 1;
     ctx.clearRect(0, spectrumBarY, width, spectrumBarHeight);
 
     // Plage de l'axe X du graphique : 0 à 50 μm
@@ -614,11 +622,9 @@ function drawAbsorptionBandIndicators() {
     // Cela garantit que les logos sont alignés avec les bonnes graduations
     const graph_max_um = 50;
     const graph_min_um = 0;
-    // La bande spectrale est à bottom: 45px et fait 20px de hauteur
-    // Le centre vertical de la bande est à bottom: 35px (45 - 10)
-    const spectrumBarBottom = 45; // Position bottom de la bande spectrale
-    const spectrumBarHeight = 20; // Hauteur de la bande spectrale
-    const spectrumBarCenter = spectrumBarBottom - (spectrumBarHeight / 2); // Centre vertical de la bande
+    // Bornes juste sous le trait de l'axe (margin b: 75)
+    const axisMarginBottom = 75; // PLOT_MARGINS.b
+    const markersOffsetBelowAxis = -15; // px sous l'axe (bottom plus petit = plus bas, -5px vs avant)
 
     // Récupérer les dimensions du graphique Plotly
     const plotRect = plotContainer.getBoundingClientRect();
@@ -655,14 +661,18 @@ function drawAbsorptionBandIndicators() {
         ALBEDO: '🪩'
     };
 
-    // CO2 : ~15 μm (principale), pic à ~11 μm
-    // CH4 : ~7.7 μm (principale), pic à ~23 μm
-    const CONST = window.CONST;
+    // H2O : 6.3 μm et 17 μm ; CO2 : 11 μm et 15 μm ; CH4 : 7.7 μm et 23 μm
+    const CONST = window.CONST || {};
+    const LAMBDA_H2O_1_UM = (CONST.LAMBDA_H2O_1 != null) ? CONST.LAMBDA_H2O_1 * 1e6 : 6.3;
+    const LAMBDA_H2O_2_UM = (CONST.LAMBDA_H2O_2 != null) ? CONST.LAMBDA_H2O_2 * 1e6 : 17;
+    const LAMBDA_CH4_1_UM = (CONST.LAMBDA_CH4_1 != null) ? CONST.LAMBDA_CH4_1 * 1e6 : 7.7;
+    const LAMBDA_CO2_UM = (CONST.LAMBDA_CO2_CENTER != null) ? CONST.LAMBDA_CO2_CENTER * 1e6 : 15;
     const absorptionBands = [
-        { lambda: CONST.LAMBDA_H2O_1 * 1e6, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
-        { lambda: CONST.LAMBDA_CH4_1 * 1e6, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_H2O_1_UM, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_H2O_2_UM, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_CH4_1_UM, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' },
         { lambda: 11, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
-        { lambda: CONST.LAMBDA_CO2_CENTER * 1e6, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_CO2_UM, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
         { lambda: 23, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' }
     ];
 
@@ -674,10 +684,9 @@ function drawAbsorptionBandIndicators() {
         indicator.className = 'absorption-band-indicator';
         indicator.style.position = 'absolute';
         indicator.style.left = `${xPos}px`;
-        // Centrer verticalement sur la bande spectrale
-        // Positionner le bottom au centre de la bande, puis utiliser transform pour centrer le logo
-        indicator.style.bottom = `${spectrumBarCenter}px`; // Positionner au centre de la bande
-        indicator.style.transform = 'translateY(-188%)'; // Déplacer vers le haut pour monter l'alignement
+        // Juste sous le trait de l'axe (comme les graduations)
+        indicator.style.bottom = `${axisMarginBottom + markersOffsetBelowAxis}px`;
+        indicator.style.transform = 'translateY(0)';
         indicator.style.fontSize = '10px';
         indicator.style.zIndex = '101';
         indicator.style.pointerEvents = 'none';
@@ -952,8 +961,8 @@ window.updatePlot = function updatePlot(data) {
                 if (currentEpoch) {
                     if (typeof currentEpoch.lapse_rate === 'number') {
                         Gamma = currentEpoch.lapse_rate;
-                    } else if (currentEpoch.gravity) {
-                        Gamma = -0.0065 * (currentEpoch.gravity / 9.81);
+                    } else if (currentEpoch.gravity || currentEpoch['🍎']) {
+                        Gamma = -0.0065 * ((currentEpoch.gravity || currentEpoch['🍎']) / 9.81);
                     }
                 }
             }
@@ -989,7 +998,9 @@ window.updatePlot = function updatePlot(data) {
         throw new Error('calculateAtmosphereProperties requise pour calculer z_max_km');
     }
 
-    const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+    const currentEpoch = window.configOrganigramme.timeline.find(e =>
+        e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+    );
     if (!currentEpoch) {
         console.error('[updatePlot] ❌ ERREUR CRITIQUE : Époque non trouvée:', window.currentEpochName);
         throw new Error(`Époque '${window.currentEpochName}' non trouvée dans timeline`);
@@ -1005,7 +1016,8 @@ window.updatePlot = function updatePlot(data) {
         has_atmosphere = false;
         z_max_km = 0.001; // Très petit pour éviter les calculs inutiles (1 mètre)
     } else {
-        if (currentEpoch.gravity === undefined) {
+        const gravityVal = currentEpoch.gravity !== undefined ? currentEpoch.gravity : currentEpoch['🍎'];
+        if (gravityVal === undefined || gravityVal <= 0) {
             console.error('[updatePlot] ❌ ERREUR CRITIQUE : gravity non défini pour l\'époque:', window.currentEpochName);
             throw new Error(`gravity non défini pour l'époque '${window.currentEpochName}'`);
         }
@@ -1039,7 +1051,7 @@ window.updatePlot = function updatePlot(data) {
                 T0_to_use = Math.pow(flux_absorbed / STEFAN_BOLTZMANN, 0.25);
             }
         }
-        const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use, molar_mass_air, currentEpoch.gravity);
+        const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use, molar_mass_air, gravityVal);
         z_max_km = props.z_max / 1000;
         scale_height_m = props.scale_height;
     }
@@ -1079,12 +1091,13 @@ window.updatePlot = function updatePlot(data) {
             z_max_km = z_max / 1000;
         } else if (typeof window.configOrganigramme !== 'undefined' && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
             // Fallback si z_range n'est pas encore disponible (init)
-            const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+            const currentEpoch = window.configOrganigramme.timeline.find(e =>
+                e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+            );
             if (currentEpoch) {
                 const total_atmosphere_mass_kg = currentEpoch['⚖️🫧']; // Nom plus explicite
 
-                let gravity = 9.81;
-                if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+                const gravity = currentEpoch.gravity !== undefined ? currentEpoch.gravity : (currentEpoch['🍎'] !== undefined ? currentEpoch['🍎'] : 9.81);
 
                 let molar_mass = currentEpoch.molar_mass_air;
                 if (molar_mass === undefined && typeof window.calculateMolarMassAir === 'function') {
@@ -1400,6 +1413,10 @@ window.updatePlot = function updatePlot(data) {
     Plotly.react('plot-container', traces, updateLayout).then(() => {
         // Masquer la ligne de l'axe x (trait noir de 0 à 50μm)
         hideXAxisLine();
+        // Resize artificiel pour bien caler le spectre après rendu Plotly
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+            window.dispatchEvent(new Event('resize'));
+        }
         
         // Mettre à jour le DOM de l'annotation tropopause pour réduire l'espacement
         // Plotly crée les annotations dans le DOM après le rendu
@@ -1695,25 +1712,22 @@ window.updateSpectralVisualization = function (data) {
     if (!canvas) {
         return;
     }
-    
+    if (data && data.upward_flux && data.lambda_range && data.z_range) {
+        canvas._lastData = data;
+    }
+
     // 🔒 FORCER la visibilité du canvas (toujours visible, même si showSpectralBackground = false)
-    // Le fond spectral doit toujours être visible, juste pas redessiné entre les calculs si pas anim
     canvas.style.setProperty('display', 'block', 'important');
     canvas.style.setProperty('visibility', 'visible', 'important');
     canvas.style.setProperty('opacity', '1', 'important');
-    
-    // 🔒 showSpectralBackground contrôle seulement le redessin, pas la visibilité
-    // Si false, on ne redessine pas (mais le canvas reste visible avec les dernières données)
-    if (typeof window !== 'undefined' && window.showSpectralBackground === false) {
-        return; // Ne pas redessiner si FPS trop bas ou anim désactivé (mais canvas reste visible)
-    }
 
+    // 🔒 showSpectralBackground contrôle seulement le redessin, pas la visibilité
+    if (typeof window !== 'undefined' && window.showSpectralBackground === false) {
+        return;
+    }
     if (!data || !data.upward_flux || !data.lambda_range || !data.z_range) {
         return;
     }
-
-    // Stocker les données pour pouvoir les redessiner lors du resize
-    canvas._lastData = data;
 
     // Fonction pour forcer le z-index à 1 (au-dessus du fond mais en dessous des courbes)
     const forceZIndex = (silent = false, source = 'unknown') => {
@@ -1842,11 +1856,11 @@ function drawSpectralVisualization(canvas, data) {
     const ctx = canvas.getContext('2d');
 
     // Utiliser la taille réelle du canvas visible à l'écran (pas une taille fixe)
-    // Cela limite les calculs aux pixels réellement visibles
+    // Si le panel visu est masqué (onglet Scientifique), rect est 0 → sortir sans erreur
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) {
-        console.error('[drawSpectralVisualization] ❌ ERREUR CRITIQUE : rect.width ou rect.height invalide');
-        throw new Error('rect.width et rect.height requis');
+        canvas._lastData = data;
+        return;
     }
     let width = Math.floor(rect.width);
     let height = Math.floor(rect.height);
@@ -1922,13 +1936,13 @@ function drawSpectralVisualization(canvas, data) {
     // Donc on doit diviser par resolutionFactor pour obtenir 20px d'affichage final
     const spectrumBarHeight = Math.max(1, Math.floor(20 / resolutionFactor)); // 20px d'affichage
     const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
+    const axisMarginB = 75; // PLOT_MARGINS.b - zone sous l'axe (spectre + bornes)
 
     // Nettoyer le canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Zone de visualisation principale (hauteur - barre pour la bande, sans padding en haut pour dessiner jusqu'en haut)
-    // La barre fait maintenant 20px
-    const visualizationHeight = height - spectrumBarHeight + Math.max(1, Math.floor(2 / resolutionFactor));
+    // Zone de visualisation : jusqu'à l'axe (pas dans la marge)
+    const visualizationHeight = height - axisMarginB;
 
     const upward_flux = data.upward_flux;
     // earth_flux est optionnel (peut être null)
@@ -1997,7 +2011,9 @@ function drawSpectralVisualization(canvas, data) {
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
     if (typeof window !== 'undefined' && window.configOrganigramme && window.currentEpochName && typeof window.calculateAtmosphereProperties === 'function') {
-        const currentEpoch = window.configOrganigramme.timeline.find(e => e.name === window.currentEpochName);
+        const currentEpoch = window.configOrganigramme.timeline.find(e =>
+            e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+        );
         if (currentEpoch) {
             const total_mass = currentEpoch['⚖️🫧']; // Pas de fallback
 
@@ -2005,9 +2021,8 @@ function drawSpectralVisualization(canvas, data) {
             if (total_mass === 0 || total_mass === undefined) {
                 has_atmosphere = false;
             } else {
-                // Récupérer gravité et masse molaire
-                let gravity = 9.81;
-                if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
+                // Récupérer gravité et masse molaire (config utilise 🍎, pas gravity)
+                const gravity = currentEpoch.gravity !== undefined ? currentEpoch.gravity : (currentEpoch['🍎'] !== undefined ? currentEpoch['🍎'] : 9.81);
 
                 let molar_mass = currentEpoch.molar_mass_air;
                 if (molar_mass === undefined && typeof window.calculateMolarMassAir === 'function') {

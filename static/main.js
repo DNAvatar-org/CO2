@@ -1104,6 +1104,11 @@ function updateCO2LevelDirect(co2_fraction) {
 
     plotData.co2_ppm = co2_fraction * 1e6;
 
+    if (typeof window.runComputeInParent === 'function' && document.getElementById('scie-iframe')) {
+        window.runComputeInParent();
+        return;
+    }
+
     document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
 
     // Activer l'affichage des étapes de dichotomie pour le calcul courant
@@ -2006,7 +2011,10 @@ function setEpoch(epochName) {
     
     // Log supprimé (non essentiel)
     
-    if (calculationInProgress) return; // Bloquer si calcul en cours
+    if (calculationInProgress) {
+        cancelCurrentCalculation();
+        enableButtons();
+    }
 
     // 🔒 Si setEpoch est appelé depuis un bouton époque (pas depuis un événement),
     // s'assurer que maximiseData est false pour utiliser la config de l'époque
@@ -2639,6 +2647,11 @@ function updateH2OLevelDirect(h2o_total_percent) {
     // 🔒 FORCER le recalcul en réinitialisant la valeur mise en cache
     if (typeof window !== 'undefined') {
         window.h2oIceFractionFromCalculation = undefined;
+    }
+
+    if (typeof window.runComputeInParent === 'function' && document.getElementById('scie-iframe')) {
+        window.runComputeInParent();
+        return;
     }
 
     document.getElementById('status').textContent = `Calcul pour ${h2o_total_percent.toFixed(1)}% H2O...`;

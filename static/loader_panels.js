@@ -87,9 +87,7 @@
             }
             cb.checked = !isSelected;
             cb.dispatchEvent(new Event('change', { bubbles: true }));
-            if (window.syncToScie) {
-                window.syncToScie({ animEnabled: !isSelected });
-            }
+            window.syncToScie({ animEnabled: !isSelected });
         }
     };
 
@@ -100,6 +98,9 @@
         var btn = document.getElementById('tab-' + name);
         if (panel) panel.classList.add('active');
         if (btn) btn.classList.add('active');
+        if (name === 'visu' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new Event('resize'));
+        }
     };
 
     function initAfterLoad() {
@@ -143,16 +144,10 @@
             });
         }
         var scieIframe = document.getElementById('scie-iframe');
-        if (scieIframe) {
-            scieIframe.addEventListener('load', function () {
-                if (window.syncToScie) {
-                    window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });
-                }
-            });
-        }
-        if (window.syncToScie) {
+        scieIframe.addEventListener('load', function () {
             window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });
-        }
+        });
+        window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });
         initTipeeeRollover();
     }
 
