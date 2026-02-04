@@ -36,11 +36,7 @@
 
 Le calcul **spectral** (par longueur d'onde) est dans `static/calculations.js` dans `calculateFluxForT0()`.
 
-Dans `computeRadiativeTransfer()`, on utilise une **version simplifiée** :
-- `calculateSolarFluxAbsorbed()` : flux solaire absorbé (intègre albedo et greenhouse)
-- `calculateH2OGreenhouseForcing()` : forçage radiatif de H2O (formule logarithmique, pas spectral)
-
-Pour le calcul spectral complet, il faut utiliser `simulateRadiativeTransfer()` dans `calculations.js`.
+`computeRadiativeTransfer()` et `simulateRadiativeTransfer()` utilisent tous deux `calculateFluxForT0()` (calcul spectral complet dans `calculations.js`). La formule logarithmique `calculateH2OGreenhouseForcing()` est dans `climate.js` pour le forçage simplifié (vue Visuel).
 
 ## 5. Pourquoi h2o est calculé 2 fois ?
 

@@ -88,12 +88,24 @@
     </style>
 </head>
 <body>
-    <h1>Paramètres des Époques Géologiques - À Valider</h1>
+    <h1>Paramètres des Époques Géologiques</h1>
     
     <div class="info">
-        <p><strong>Objectif</strong> : Définir les conditions initiales pour chaque époque géologique afin de permettre à l'utilisateur de "sauter" directement à une époque avec les bons paramètres.</p>
-        <p><strong>Action requise</strong> : Valider cette liste de paramètres avant de rechercher les valeurs sur internet.</p>
+        <p><strong>Source de vérité</strong> : <code>static/timeline/configTimeline.js</code></p>
+        <p><strong>Validation littérature</strong> : voir <code>doc/VALIDATION_CONFIG_GAZ.md</code> (masses gaz) et <code>doc/RAPPORT_CONFIG_TIMELINE_VS_LITTERATURE.md</code> (synthèse).</p>
     </div>
+
+    <h2>Correspondance configTimeline ↔ paramètres</h2>
+    <table>
+        <tr><th>configTimeline (emoji)</th><th>Paramètre</th><th>Clé</th></tr>
+        <tr><td>📅</td><td>Emoji époque</td><td>Identifiant</td></tr>
+        <tr><td>▶, ◀</td><td>Début, fin (années)</td><td>startYears, endYears</td></tr>
+        <tr><td>🌡️🧮</td><td>Température surface (K)</td><td>temperature_surface</td></tr>
+        <tr><td>⚖️🏭, ⚖️⛽, ⚖️💧, ⚖️🌫</td><td>Masses CO₂, CH₄, H₂O, O₂ (kg)</td><td>co2_kg, ch4_kg, h2o_kg, o2_kg</td></tr>
+        <tr><td>⚖️🫧</td><td>Masse atmosphère (kg)</td><td>—</td></tr>
+        <tr><td>🔋☀️, 🧲🌕</td><td>Puissance solaire, flux géothermique</td><td>—</td></tr>
+        <tr><td>🧲🔬</td><td>Précision convergence (K)</td><td>—</td></tr>
+    </table>
 
     <h2>Paramètres à définir pour chaque époque</h2>
     
@@ -198,78 +210,48 @@
     <h2>Époques à définir</h2>
 
     <div class="epoch-section">
-        <h3><span class="emoji">🌑</span> Hadéen (-4600 à -4000 Ma)</h3>
-        <p><strong>Paramètres à rechercher</strong> :</p>
-        <ul>
-            <li>CO₂ atmosphérique (ppm)</li>
-            <li>Présence d'océans (H₂O activé ?)</li>
-            <li>Couverture nuageuse</li>
-            <li>Température de surface moyenne</li>
-            <li>Albédo (atmosphère dense, peu de réflexion ?)</li>
-        </ul>
+        <h3><span class="emoji">⚫</span> Corps noir (5.0–4.5 Ga)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=255 K, ⚖️🫧=0, ⚖️🏭=0. Équilibre corps noir (σT⁴=S/4).</p>
     </div>
 
     <div class="epoch-section">
-        <h3><span class="emoji">🦠</span> Archéen (-4000 à -2500 Ma)</h3>
-        <p><strong>Paramètres à rechercher</strong> :</p>
-        <ul>
-            <li>CO₂ atmosphérique (ppm)</li>
-            <li>Présence d'océans (H₂O activé ?)</li>
-            <li>Couverture nuageuse</li>
-            <li>Température de surface moyenne</li>
-            <li>Albédo</li>
-        </ul>
+        <h3><span class="emoji">🔥</span> Hadéen (4.5–4.0 Ga)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=2450 K, ⚖️🫧=5.3×10²⁰ kg, ⚖️🏭=5.15×10¹⁷ kg (~10% atm), ⚖️⛽=5.15×10¹⁵ kg (~1000 ppm), ⚖️💧=2.1×10²⁰ kg. Océan de magma, flux géothermique 2 MW/m².</p>
     </div>
 
     <div class="epoch-section">
-        <h3><span class="emoji">🌿</span> Protérozoïque (-2500 à -541 Ma)</h3>
-        <p><strong>Paramètres à rechercher</strong> :</p>
-        <ul>
-            <li>CO₂ atmosphérique (ppm) - déclin progressif</li>
-            <li>Présence d'océans (H₂O activé ?)</li>
-            <li>Couverture nuageuse</li>
-            <li>Température de surface moyenne</li>
-            <li>Albédo (apparition de glaciations)</li>
-        </ul>
-        <p><strong>Note</strong> : Période très longue, peut nécessiter des sous-périodes (Cryogénien, etc.)</p>
+        <h3><span class="emoji">🦠</span> Archéen (4.0–2.5 Ga)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=288 K (15°C), ⚖️🫧=1×10¹⁹ kg (~2 bar), ⚖️🏭=8×10¹⁶ kg (~40k ppm), ⚖️⛽=2×10¹⁵ kg (~800 ppm). Lit. 281–303 K (Charnay, Kienert).</p>
     </div>
 
     <div class="epoch-section">
-        <h3><span class="emoji">🦴</span> Paléozoïque (-541 à -252 Ma)</h3>
-        <p><strong>Paramètres à rechercher</strong> :</p>
-        <ul>
-            <li>CO₂ atmosphérique (ppm)</li>
-            <li>Présence d'océans (H₂O activé ?)</li>
-            <li>Couverture nuageuse</li>
-            <li>Température de surface moyenne</li>
-            <li>Albédo</li>
-        </ul>
+        <h3><span class="emoji">🌿</span> Protérozoïque (2.5 Ga – 541 Ma)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=285 K, ⚖️🏭=4.7×10¹⁶ kg (~6k ppm), ⚖️⛽=2.85×10¹⁴ kg (~100 ppm). Lit. paléosols 2.2 Ga : 8–9k ppm.</p>
     </div>
 
     <div class="epoch-section">
-        <h3><span class="emoji">🦕</span> Mésozoïque (-252 à -66 Ma)</h3>
-        <p><strong>Paramètres à rechercher</strong> :</p>
-        <ul>
-            <li>CO₂ atmosphérique (ppm) - élevé (2000-3000 ppm)</li>
-            <li>Présence d'océans (H₂O activé ?)</li>
-            <li>Couverture nuageuse</li>
-            <li>Température de surface moyenne (+6 à +8°C par rapport à aujourd'hui ?)</li>
-            <li>Albédo (peu de glaces)</li>
-        </ul>
-        <p><strong>Sous-périodes</strong> : Crétacé (-145 à -66 Ma) avec CO₂ très élevé</p>
+        <h3><span class="emoji">🦕</span> Mésozoïque (252–66 Ma)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=298 K, ⚖️🏭=1.29×10¹⁶ kg (~2500 ppm), ⚖️⛽=4.12×10¹³ kg (~8 ppm). Serre mésozoïque.</p>
     </div>
 
     <div class="epoch-section">
-        <h3><span class="emoji">🦣</span> Cénozoïque (-66 Ma à aujourd'hui)</h3>
-        <p><strong>Paramètres à rechercher</strong> :</p>
-        <ul>
-            <li>CO₂ atmosphérique (ppm) - 280 ppm avant industrie</li>
-            <li>Présence d'océans (H₂O activé ?)</li>
-            <li>Couverture nuageuse</li>
-            <li>Température de surface moyenne</li>
-            <li>Albédo (alternance glaces/interglaciaires)</li>
-        </ul>
-        <p><strong>Note</strong> : Période récente, données plus précises disponibles</p>
+        <h3><span class="emoji">🦴</span> Crétacé (145–66 Ma)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=301 K, ⚖️🏭=1.545×10¹⁶ kg (~3000 ppm), ⚖️⛽=5.15×10¹³ kg (~10 ppm). Serre chaude.</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🦣</span> Cénozoïque (66 Ma – aujourd'hui)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=291 K, ⚖️🏭=5.15×10¹⁵ kg (~1000 ppm), ⚖️🌫=1.08×10¹⁸ kg (O₂ ~21%). Lit. EECO 1000–1400 ppm.</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🚂</span> 1800 (pré-industriel)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=287 K (14°C), ⚖️🏭=1.443×10¹⁵ kg (~280 ppm), ⚖️⛽=3.605×10¹² kg (~0.7 ppm). IPCC 280±10 ppm.</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">📱</span> 2025</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=288.8 K, ⚖️🏭=3.3×10¹⁵ kg (~420 ppm), ⚖️⛽=5.5×10¹² kg (~1.9 ppm). Observations NOAA.</p>
     </div>
 
     <h2>Sources de données recommandées</h2>

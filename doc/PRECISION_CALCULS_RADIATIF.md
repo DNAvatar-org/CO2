@@ -128,9 +128,10 @@ La section efficace CO₂ du modèle est environ 10–100× plus faible que les 
 | Fichier | Rôle |
 |---------|------|
 | `static/calculations.js` | `crossSectionCO2`, `crossSectionH2O`, `crossSectionCH4`, `calculateFluxForT0` |
-| `static/physics.js` | `LAMBDA_CO2_CENTER`, `LAMBDA_H2O_1/2`, `LAMBDA_CH4_1/2` |
-| `static/timeline/configTimeline.js` | `maxSpectralBinsConvergence`, `🧲🔬` par époque |
+| `static/physics.js` | `LAMBDA_CO2_CENTER`, `LAMBDA_H2O_1/2`, `LAMBDA_CH4_1/2`, `getH2OVaporEDSScale` |
+| `static/timeline/configTimeline.js` | `maxSpectralBinsConvergence` (CONFIG_COMPUTE), `🧲🔬` par époque |
 | `static/calculations_atm.js` | `airNumberDensityAtZ`, `pressureAtZ` |
+| `static/compute/calculations_flux.js` | `computeRadiativeTransfer`, convergence Search/Dicho |
 
 ---
 
@@ -172,11 +173,7 @@ Puis lancer le calcul. Logs affichés :
 
 **Impact attendu** : Si σ_CO2 est sous-estimée d'un facteur 10, l'EDS CO2 serait ~10× plus faible → T trop basse. Un facteur 2–3 sur σ pourrait expliquer ~2–3°C de décalage.
 
-**Workflow régression** :
-- **CO2** : `doc/fetch_co2_hapi.py` → `doc/fit_cross_sections.py --gas CO2 --csv doc/co2_15um.csv`
-- **H2O** : `doc/fetch_h2o_hapi.py` → `doc/fit_cross_sections.py --gas H2O --csv1 doc/h2o_6um.csv --csv2 doc/h2o_17um.csv`
-- **CH4** : `doc/fetch_ch4_hapi.py` → `doc/fit_cross_sections.py --gas CH4 --csv1 doc/ch4_7um.csv --csv2 doc/ch4_3um.csv`
-- Prérequis : `pip install hitran-api numpy scipy`, inscription gratuite HITRAN + API key (optionnel).
+**Scripts Python HITRAN** : Supprimés. Les sections efficaces (formules empiriques dans `calculations.js`, `physics.js`) ont été validées vs littérature — les paramètres résultants sont cohérents. Vérification HITRAN quasi inutile pour l'usage actuel.
 
 ---
 

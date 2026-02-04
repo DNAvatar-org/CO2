@@ -1,8 +1,24 @@
 # Récapitulatif des Époques Géologiques
 
+**Source de vérité** : `static/timeline/configTimeline.js` — les emojis et paramètres sont définis là.
+
 **Validation masses gaz** : voir `doc/VALIDATION_CONFIG_GAZ.md` pour traçabilité littérature des CO₂, CH₄, O₂.
 
-## Périodes à définir avec emojis uniques
+## Emojis actuels (configTimeline.js)
+
+| Époque | Emoji | Période |
+|--------|-------|---------|
+| Corps noir | ⚫ | 5.0–4.5 Ga |
+| Hadéen | 🔥 | 4.5–4.0 Ga |
+| Archéen | 🦠 | 4.0–2.5 Ga |
+| Protérozoïque | 🌿 | 2.5–0.541 Ga |
+| Mésozoïque | 🦕 | 252–66 Ma |
+| Crétacé | 🦴 | 145–66 Ma |
+| Cénozoïque | 🦣 | 66 Ma–aujourd'hui |
+| Industriel (1800) | 🚂 | pré-industriel |
+| Aujourd'hui | 📱 | 2025 |
+
+## Périodes à définir avec emojis uniques (historique)
 
 ### 1. **Hadéen** (-4600 à -4000 Ma)
 - **Caractéristiques** : Formation de la Terre, océans de magma, volcanisme intense

@@ -207,7 +207,7 @@ const albedo_flux = solar_flux_incident * albedo_value;
 **Code source :** `calculations_flux.js`
 ```javascript
 const flux_entrant = flux_solaire_absorbe + flux_geothermique;
-const delta_equilibre = flux_sortant_effectif - flux_entrant;
+const delta_equilibre = flux_entrant - flux_sortant_effectif;  // Δ>0→réchauffer, Δ<0→refroidir
 ```
 
 ---
@@ -230,15 +230,15 @@ Flux sortant total = 🧲🌈🔼 + 🧲🪩🔼
 
 ### Bilan
 ```
-🔺🧲 = Flux sortant - Flux entrant
-     = 255.36 - 304.68
-     = -49.32 W/m²
+🔺🧲 = Flux entrant - Flux sortant (au sommet)
+     = (🧲☀️🔽 + 🧲🌕🔽) - 🧲🌈🔼
+     = 304.68 - 255.36
+     = +49.32 W/m² (réchauffement)
 ```
 
-**Note :** Cette valeur diffère légèrement de `🔺🧲 = -85.01` car :
+**Note :** Convention : `🔺🧲 = flux_entrant - flux_sortant = (🧲☀️🔽 + 🧲🌕🔽) - 🧲🌈🔼`. Δ>0 → réchauffement.
 - `🧲🌈🔼` est le flux au sommet de l'atmosphère (après EDS)
-- `🧲🪩🔼` est le flux réfléchi (ne sort pas vraiment, c'est une perte)
-- Le vrai bilan est : `🔺🧲 = 🧲🌈🔼 - (🧲☀️🔽 + 🧲🌕🔽)`
+- `🧲🪩🔼` est le flux réfléchi (perte solaire, pas dans le bilan IR)
 
 ---
 

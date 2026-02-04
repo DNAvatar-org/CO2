@@ -76,7 +76,7 @@
     <link rel="stylesheet" href="organigramme/organigramme.css">
     <link rel="stylesheet" href="static/planet-effect.css">
     <style>
-        /* Onglets style plot-container/divGlass : relief (non-sélectionné), trou (sélectionné), coupé en haut */
+        /* Onglets : vert si selected, gris si non-selected, rollovers colorés (comme epoch-btn/ergo-button) */
         .tabs-bar {
             position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
             display: flex; gap: 4px; padding: 0 12px 0 12px; align-items: flex-start;
@@ -85,18 +85,20 @@
         .tabs-bar button {
             padding: 4px 14px 6px; height: 20px; line-height: 1; font-size: 12px;
             background: rgba(255,255,255,0.15); border: none; border-radius: 0 0 10px 10px;
-            color: var(--base-color, #aaa); cursor: pointer; box-sizing: border-box;
-            /* Relief : lumière haut-gauche, ombre bas-droite (comme divGlass) */
+            color: #888; cursor: pointer; box-sizing: border-box;
+            transition: color 0.3s ease, box-shadow 0.3s ease;
             border-top: none;
             border-left: 1px solid rgba(255,255,255,0.15);
             border-bottom: 1px solid rgb(0,0,0);
             border-right: 1px solid rgb(0,0,0);
             box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2);
         }
-        .tabs-bar button:hover { color: #fff; background: rgba(255,255,255,0.2); }
-        /* Sélectionné = trou (inset), lumière haut-gauche */
+        /* Non-selected : gris. Rollover : vert (base-color) */
+        .tabs-bar button:not(.active) { color: #888; }
+        .tabs-bar button:not(.active):hover { color: var(--base-color, #00ff00); }
+        /* Selected : vert (base-color) */
         .tabs-bar button.active {
-            color: #51cf66; font-weight: bold;
+            color: var(--base-color, #00ff00);
             background: rgba(255,255,255,0.15);
             border-left: 1px solid rgba(0,0,0,0.4);
             border-bottom: 1px solid rgba(255,255,255,0.12);

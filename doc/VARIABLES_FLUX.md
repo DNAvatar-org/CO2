@@ -1,9 +1,11 @@
 # Variables disponibles dans le flux énergétique
 
+**Contexte** : Ce document décrit les variables de la **vue Visuel** (index.html, plotData, organigramme). Pour la vue **Scientifique** (doc/scie_compute.html), les données sont dans `DATA` (voir static/compute/FORMULES_FLUX.md).
+
 ## Variables globales (window)
 
 ### Constantes
-- `window.SOLAR_CONSTANT` : 1366 W/m² (constante solaire)
+- `window.SOLAR_CONSTANT` : 1366 W/m² (constante solaire) — ou depuis DATA['☀️'] selon époque
 - `window.waterVaporEnabled` : boolean (H2O activé/désactivé)
 - `window.methaneEnabled` : boolean (CH4 activé/désactivé)
 
