@@ -364,6 +364,12 @@ function shouldLabelBeGray(text, nodeId, cell = null) {
 function updateLabelClasses(label, nodeId = null) {
     if (!label) return;
 
+    // Exception : albedo_percents (breakdown détaillé) ne doit jamais être grisé
+    if (label.getAttribute('data-id') === 'albedo_percents') {
+        label.classList.remove('zero-value');
+        return;
+    }
+
     const text = label.innerHTML || label.textContent || '';
 
     // Retirer les classes existantes
@@ -1030,10 +1036,24 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             for (let i = logo.length - 1; i >= 0; i--) {
                 const logoItem = logo[i];
                 if (typeof logoItem === 'string') {
-                    // C'est un emoji/texte simple
+                    // Logo (image) : charsImages. Alt = ref (logoItem)
+                    const display = (window.charsImages && window.charsImages[logoItem]) || logoItem;
+                    const isImgPath = typeof display === 'string' && (display.endsWith('.png') || display.endsWith('.svg') || display.endsWith('.jpg'));
                     const emojiSpan = document.createElement('span');
-                    emojiSpan.textContent = logoItem;
-                    emojiSpan.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+                    if (isImgPath) {
+                        const img = document.createElement('img');
+                        img.src = display;
+                        img.alt = window.CHARS_DESC && window.CHARS_DESC[logoItem] ? window.CHARS_DESC[logoItem] : logoItem;
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'contain';
+                        img.style.objectPosition = 'center';
+                        img.style.display = 'block';
+                        emojiSpan.appendChild(img);
+                    } else {
+                        emojiSpan.textContent = display;
+                        emojiSpan.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+                    }
                     emojiSpan.style.display = 'block';
                     emojiSpan.style.lineHeight = '1';
                     logoSpan.appendChild(emojiSpan);
@@ -1159,9 +1179,23 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             // logoSpan reste à 100% de circleBg, donc l'image s'adapte automatiquement
         } else if (!Array.isArray(logo)) {
             // Sinon c'est un emoji/texte simple (pas un tableau)
-            logoSpan.textContent = logo;
-            // Appliquer les polices emoji standard aux logos
-            logoSpan.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+            // Logo (image) : charsImages. Alt = ref (logo)
+            const display = (window.charsImages && window.charsImages[logo]) || logo;
+            const isImgPathSimple = typeof display === 'string' && (display.endsWith('.png') || display.endsWith('.svg') || display.endsWith('.jpg'));
+            if (isImgPathSimple) {
+                const img = document.createElement('img');
+                img.src = display;
+                img.alt = (window.CHARS_DESC && window.CHARS_DESC[logo]) ? window.CHARS_DESC[logo] : logo;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                img.style.objectPosition = 'center';
+                img.style.display = 'block';
+                logoSpan.appendChild(img);
+            } else {
+                logoSpan.textContent = display;
+                logoSpan.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+            }
         }
         // Si logo est un tableau, il a déjà été traité ci-dessus
 
@@ -1560,8 +1594,12 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
         const label = document.createElement('div');
         label.className = 'flux-label'; // Tous les textes des flèches
         if (dataId) label.setAttribute('data-id', dataId);
+        // Exception : albedo_percents (breakdown détaillé) ne doit jamais être grisé
+        if (dataId === 'albedo_percents') {
+            // Ne pas ajouter zero-value, le détail est toujours informatif
+        }
         // Cas spécial : label albedo (contient "Albédo:" et des emojis)
-        if (text && text.includes('Albédo:') && (text.includes('⛅') || text.includes('❄️'))) {
+        else if (text && text.includes('Albédo:') && (text.includes('⛅') || text.includes('❄️'))) {
             if (shouldLabelBeGray(text, null, null)) {
                 label.classList.add('zero-value');
             }
@@ -1580,8 +1618,8 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
         else if (text && (text.includes(' W') || text.includes(' K'))) {
             label.classList.add('watt-or-kelvin');
         }
-        // Si le texte contient % et valeur 0, s'assurer qu'il est gris
-        if (text && text.includes('%') && shouldLabelBeGray(text, null, null)) {
+        // Si le texte contient % et valeur 0, s'assurer qu'il est gris (sauf albedo_percents)
+        if (dataId !== 'albedo_percents' && text && text.includes('%') && shouldLabelBeGray(text, null, null)) {
             label.classList.add('zero-value');
         }
         label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -3450,6 +3488,11 @@ window.updateFluxLabels = function (data) {
             // Réinitialiser toutes les classes de couleur
             label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value', 'co2-label', 'percent-label', 'ppm-label');
             
+            // Exception : albedo_percents (breakdown détaillé) ne doit jamais être grisé
+            // Le détail affiche la structure (🌋 0% x0.05, etc.) toujours informative
+            if (dataId === 'albedo_percents') {
+                // Pas de zero-value, fin du traitement pour ce label (contenu déjà mis à jour ci-dessus)
+            } else {
             // Vérifier si la valeur est 0 (ou proche de 0)
             // Convertir la valeur en nombre si possible (extraire le nombre du formattedValue ou utiliser value)
             let numericValue = 0;
@@ -3540,6 +3583,7 @@ window.updateFluxLabels = function (data) {
                 }
                 // co2_forcing_wm utilise uniquement la couleur selon l'unité (watt-per-m2 pour orange)
             }
+            } // fin else (albedo_percents)
         });
     };
     
@@ -3767,7 +3811,7 @@ window.updateFluxLabels = function (data) {
         : 0;
 
     // Calculer les paramètres H2O (vapeur + nuages) avec la nouvelle fonction
-    const h2o_vapor_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
+    const h2o_vapor_percent = (typeof window !== 'undefined' ? window.h2oVaporPercent : undefined) ?? 0;
     const h2o_from_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
     const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites; // Total = base + météorites
     let h2o_params = null;
@@ -3836,24 +3880,20 @@ window.updateFluxLabels = function (data) {
     // Classer par ordre décroissant de pondération (couverture × albedo)
     let albedoBreakdown = '';
 
-    // Fonction helper pour créer et trier les composantes
     const createAlbedoComponents = (components) => {
-        // Calculer la pondération pour chaque composante (couverture × albedo)
         components.forEach(comp => {
             comp.weight = (comp.coverage / 100) * parseFloat(comp.albedo);
         });
-        // Trier par ordre décroissant de pondération
         components.sort((a, b) => b.weight - a.weight);
-        // Construire la chaîne HTML
         return components.map(comp => {
-            // Arrondir le pourcentage à un entier et limiter à 99% maximum
             const coverage_int = Math.min(99, Math.round(comp.coverage));
-            // Si c'est un chemin d'image (contient .png, .jpg, etc.), utiliser une balise <img>
+            const label = window.CHARS_DESC[comp.emoji] || comp.emoji;
+            const titleAttr = `title="${label} : ${coverage_int}% couverture × albedo ${comp.albedo}"`;
             const isImage = comp.emoji && (comp.emoji.includes('.png') || comp.emoji.includes('.jpg') || comp.emoji.includes('.svg'));
             if (isImage) {
-                return `<img src="${comp.emoji}" style="width: 1.8em; height: 1.8em; vertical-align: middle; display: inline-block;" alt="desert"> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span>`;
+                return `<span ${titleAttr} style="cursor: help;"><img src="${comp.emoji}" alt="${label}"> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
             } else {
-                return `<span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span>`;
+                return `<span ${titleAttr} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
             }
         }).join('<br>');
     };
@@ -3867,48 +3907,31 @@ window.updateFluxLabels = function (data) {
     const ALBEDO_CLOUD = 0.40;   // Albedo des nuages
     const ALBEDO_LAND = 0.18;    // Albedo continents (prairies, sols humides)
 
-    const land_cov = (window.DATA && window.DATA['🪩'] && window.DATA['🪩']['🍰🪩🌍'] !== undefined)
-        ? Math.round(window.DATA['🪩']['🍰🪩🌍'] * 100) : 0;
+    const land_cov = Math.round((window.DATA?.['🪩']?.['🍰🪩🌍'] ?? 0) * 100);
 
     if (hasNoAtmosphere) {
-        // 🔒 CORRECTION : Corps noir peut avoir de la glace des météorites
-        // Utiliser ice_coverage calculé au lieu de forcer à 0
         const ice_cov_corps_noir = Math.round(ice_coverage * 100);
         const components = [
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: ice_cov_corps_noir, albedo: ALBEDO_ICE.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: 0, albedo: ALBEDO_CLOUD.toFixed(2) },
+            { emoji: window.CHARS.VOLCANO, coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
+            { emoji: window.CHARS.OCEAN, coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
+            { emoji: window.CHARS.FOREST, coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
+            { emoji: window.CHARS.DESERT, coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
+            { emoji: window.CHARS.ICE, coverage: ice_cov_corps_noir, albedo: ALBEDO_ICE.toFixed(2) },
+            { emoji: window.CHARS.CLOUD, coverage: 0, albedo: ALBEDO_CLOUD.toFixed(2) },
             { emoji: '🌍', coverage: 0, albedo: ALBEDO_LAND.toFixed(2) }
         ];
         albedoBreakdown = createAlbedoComponents(components);
-    } else if (typeof window !== 'undefined' && window.currentEpochName) {
+    } else if (window.currentEpochName) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
-            // Récupérer les valeurs de couverture de l'époque
-            // Utiliser des valeurs par défaut (0) si non définies (magma_coverage n'existe que pour Hadéen)
-            const magma_cov = Math.round((currentEpoch.magma_coverage || 0) * 100);
-            const ocean_cov = Math.round((currentEpoch.ocean_coverage || 0) * 100);
-            const forest_cov = Math.round((currentEpoch.forest_coverage || 0) * 100);
-            const desert_cov = Math.round((currentEpoch.desert_coverage || 0) * 100);
-            // Pour la glace, utiliser la valeur calculée dynamiquement (ice_coverage)
-            // 🔒 CORRECTION : S'assurer qu'on utilise bien la valeur calculée
-            const ice_cov = Math.round(ice_coverage * 100);
-            // Pour les nuages, utiliser la valeur calculée dynamiquement (cloud_percent)
-            // Arrondir à un entier
-            const cloud_cov = Math.round(cloud_percent);
+            const w = window.DATA?.['🪩'] ?? {};
+            const magma_cov = Math.round((w['🍰🪩🌋'] ?? currentEpoch.magma_coverage ?? 0) * 100);
+            const ocean_cov = Math.round((w['🍰🪩🌊'] ?? currentEpoch.ocean_coverage ?? 0) * 100);
+            const forest_cov = Math.round((w['🍰🪩🌳'] ?? currentEpoch.forest_coverage ?? 0) * 100);
+            const desert_cov = Math.round((w['🍰🪩🏜️'] ?? currentEpoch.desert_coverage ?? 0) * 100);
+            const ice_cov = Math.round((w['🍰🪩🧊'] ?? ice_coverage) * 100);
+            const cloud_cov = (w['🍰🪩⛅'] != null) ? Math.round(w['🍰🪩⛅'] * 100) : Math.round(cloud_percent);
 
-            // Utiliser les constantes physiques d'albedo (ne sont pas dans la config, ce sont des propriétés physiques)
-            // Ces valeurs sont des constantes physiques standard utilisées dans les calculs
-            const ALBEDO_MAGMA = 0.05;   // Albedo du magma/lave
-            const ALBEDO_OCEAN = 0.08;   // Albedo de l'océan
-            const ALBEDO_FOREST = 0.12;  // Albedo de la forêt
-            const ALBEDO_DESERT = 0.30;  // Albedo du désert
-            const ALBEDO_ICE = 0.70;     // Albedo de la glace
-            const ALBEDO_CLOUD = 0.40;   // Albedo des nuages
-            
             const magma_alb = ALBEDO_MAGMA.toFixed(2);
             const ocean_alb = ALBEDO_OCEAN.toFixed(2);
             const forest_alb = ALBEDO_FOREST.toFixed(2);
@@ -3916,43 +3939,40 @@ window.updateFluxLabels = function (data) {
             const ice_alb = ALBEDO_ICE.toFixed(2);
             const cloud_alb = ALBEDO_CLOUD.toFixed(2);
 
-            // Créer le tableau des composantes avec leurs valeurs
             const components = [
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: magma_cov, albedo: magma_alb },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: ocean_cov, albedo: ocean_alb },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: forest_cov, albedo: forest_alb },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: desert_cov, albedo: desert_alb },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: ice_cov, albedo: ice_alb },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: cloud_cov, albedo: cloud_alb },
+                { emoji: window.CHARS.VOLCANO, coverage: magma_cov, albedo: magma_alb },
+                { emoji: window.CHARS.OCEAN, coverage: ocean_cov, albedo: ocean_alb },
+                { emoji: window.CHARS.FOREST, coverage: forest_cov, albedo: forest_alb },
+                { emoji: window.CHARS.DESERT, coverage: desert_cov, albedo: desert_alb },
+                { emoji: window.CHARS.ICE, coverage: ice_cov, albedo: ice_alb },
+                { emoji: window.CHARS.CLOUD, coverage: cloud_cov, albedo: cloud_alb },
                 { emoji: '🌍', coverage: land_cov, albedo: ALBEDO_LAND.toFixed(2) }
             ];
             albedoBreakdown = createAlbedoComponents(components);
         } else {
-            // Époque non trouvée : utiliser les constantes physiques et les valeurs calculées
             const final_cloud_percent = Math.round(cloud_percent);
             const final_ice_percent = Math.round(ice_coverage * 100);
             const components = [
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: ALBEDO_ICE.toFixed(2) },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) },
+                { emoji: window.CHARS.VOLCANO, coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
+                { emoji: window.CHARS.OCEAN, coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
+                { emoji: window.CHARS.FOREST, coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
+                { emoji: window.CHARS.DESERT, coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
+                { emoji: window.CHARS.ICE, coverage: final_ice_percent, albedo: ALBEDO_ICE.toFixed(2) },
+                { emoji: window.CHARS.CLOUD, coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) },
                 { emoji: '🌍', coverage: land_cov, albedo: ALBEDO_LAND.toFixed(2) }
             ];
             albedoBreakdown = createAlbedoComponents(components);
         }
     } else {
-        // Pas d'époque : utiliser les constantes physiques et les valeurs calculées
         const final_cloud_percent = Math.round(cloud_percent);
         const final_ice_percent = Math.round(ice_coverage * 100);
         const components = [
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.VOLCANO : '🌋', coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.OCEAN : '🌊', coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: ALBEDO_ICE.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) },
+            { emoji: window.CHARS.VOLCANO, coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
+            { emoji: window.CHARS.OCEAN, coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
+            { emoji: window.CHARS.FOREST, coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
+            { emoji: window.CHARS.DESERT, coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
+            { emoji: window.CHARS.ICE, coverage: final_ice_percent, albedo: ALBEDO_ICE.toFixed(2) },
+            { emoji: window.CHARS.CLOUD, coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) },
             { emoji: '🌍', coverage: land_cov, albedo: ALBEDO_LAND.toFixed(2) }
         ];
         albedoBreakdown = createAlbedoComponents(components);
@@ -4289,13 +4309,13 @@ window.updateFluxLabels = function (data) {
     let h2o_display_value = 0;
     if (h2o_params && h2o_params.vapor_fraction !== undefined) {
         // Si h2o_params est disponible, utiliser la fraction de vapeur + glace (total)
-        // Note: h2o_params a été calculé avec h2o_total_percent, donc vapor_fraction + ice_fraction = total
         const h2o_total_fraction = (h2o_params.vapor_fraction || 0) + (h2o_params.ice_fraction || 0);
         h2o_display_value = h2o_total_fraction * 100;
-        // Log supprimé (non essentiel)
-    } else {
-        // Sinon, utiliser h2o_total_percent directement (déjà calculé ci-dessus)
+    } else if (h2o_total_percent > 0) {
         h2o_display_value = h2o_total_percent;
+    } else if (window.DATA?.['💧']?.['🍰🫧💧'] != null) {
+        // DATA['💧']['🍰🫧💧'] initialisé par dico.js (0), recalculé par calculateH2OParameters. Fraction 0-1 → %
+        h2o_display_value = Math.min(100, window.DATA['💧']['🍰🫧💧'] * 100);
     }
 
     // 🔒 CORRECTION : Utiliser isH2O_eds (seule référence)
