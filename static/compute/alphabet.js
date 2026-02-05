@@ -39,7 +39,7 @@ const CHARS = {
     SATELLITE: '🛰', // Satellite : satellite (événement)
     FLUX_CN: '🌑', // Flux sortant : lune noire (rayonnement corps noir sortant)
     TOLERANCE: '🔬', // Tolérance : précision pour le test d'arrêt
-    DESERT: '🏖',   // Désert : plage (utilisé dans albedo breakdown)
+    DESERT: '🏜️',   // Désert : plage (utilisé dans albedo breakdown)
     VOLCANO: '🌋',  // Volcan : magma (utilisé dans albedo breakdown)
     OCEAN: '🌊',    // Océan : vagues (utilisé dans albedo breakdown)
     FOREST: '🌳',   // Forêt : arbre (utilisé dans albedo breakdown)
@@ -121,7 +121,7 @@ const CHARS_DESC = {
     '⛅': 'Nuages',
     '🌊': 'Océan',
     '🌋': 'Volcan',
-    '🏖': 'Désert',
+    '🏜️': 'Désert',
     '🌳': 'Forêt',
     '🫧': 'Atmosphère',
     '☀️': 'Soleil',

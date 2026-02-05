@@ -139,7 +139,7 @@ Albédo (valeurs 0-1) et couvertures de surface.
 '🪩': {
     '🍰🪩📿': number,  // Albedo total
     '🍰🪩🌋': number, // Volcan (couverture)
-    '🍰🪩🏖': number, // Désert (couverture)
+    '🍰🪩🏜️': number, // Désert (couverture)
     '🍰🪩🌳': number, // Forêt (couverture)
     '🍰🪩🌊': number, // Océan (couverture)
     '🍰🪩🧊': number, // Glace (couverture)

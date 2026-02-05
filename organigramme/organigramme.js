@@ -3605,14 +3605,16 @@ window.updateFluxLabels = function (data) {
     const co2_ppm_num = (co2_ppm !== null && co2_ppm !== undefined) ? Number(co2_ppm) : 0;
     const ch4_ppm_num = (ch4_ppm !== null && ch4_ppm !== undefined) ? Number(ch4_ppm) : 0;
 
-    // Récupérer les constantes mises à jour par FluxManager (doivent être définies)
+    // Récupérer les constantes mises à jour par FluxManager (fallback depuis DATA si appel avant setEpoch)
     if (typeof window.SOLAR_CONSTANT === 'undefined' || window.SOLAR_CONSTANT === null) {
-        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : SOLAR_CONSTANT non défini');
-        throw new Error('SOLAR_CONSTANT requis (doit être défini par FluxManager)');
+        var fallback = (window.DATA && window.DATA['☀️'] && window.DATA['☀️']['🧲☀️🎱'] != null)
+            ? window.DATA['☀️']['🧲☀️🎱'] * 4 : 1361;
+        window.SOLAR_CONSTANT = fallback;
     }
     if (typeof window.GEOTHERMAL_FLUX === 'undefined' || window.GEOTHERMAL_FLUX === null) {
-        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : GEOTHERMAL_FLUX non défini');
-        throw new Error('GEOTHERMAL_FLUX requis (doit être défini par FluxManager)');
+        var geoFallback = (window.DATA && window.DATA['🌕'] && window.DATA['🌕']['🧲🌕'] != null)
+            ? window.DATA['🌕']['🧲🌕'] : 0.087;
+        window.GEOTHERMAL_FLUX = geoFallback;
     }
     const SOLAR_CONSTANT = window.SOLAR_CONSTANT;
     const GEOTHERMIE_FLUX = window.GEOTHERMAL_FLUX;
@@ -3863,7 +3865,11 @@ window.updateFluxLabels = function (data) {
     const ALBEDO_DESERT = 0.30;  // Albedo du désert
     const ALBEDO_ICE = 0.70;     // Albedo de la glace
     const ALBEDO_CLOUD = 0.40;   // Albedo des nuages
-    
+    const ALBEDO_LAND = 0.18;    // Albedo continents (prairies, sols humides)
+
+    const land_cov = (window.DATA && window.DATA['🪩'] && window.DATA['🪩']['🍰🪩🌍'] !== undefined)
+        ? Math.round(window.DATA['🪩']['🍰🪩🌍'] * 100) : 0;
+
     if (hasNoAtmosphere) {
         // 🔒 CORRECTION : Corps noir peut avoir de la glace des météorites
         // Utiliser ice_coverage calculé au lieu de forcer à 0
@@ -3874,7 +3880,8 @@ window.updateFluxLabels = function (data) {
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: ice_cov_corps_noir, albedo: ALBEDO_ICE.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: 0, albedo: ALBEDO_CLOUD.toFixed(2) }
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: 0, albedo: ALBEDO_CLOUD.toFixed(2) },
+            { emoji: '🌍', coverage: 0, albedo: ALBEDO_LAND.toFixed(2) }
         ];
         albedoBreakdown = createAlbedoComponents(components);
     } else if (typeof window !== 'undefined' && window.currentEpochName) {
@@ -3916,7 +3923,8 @@ window.updateFluxLabels = function (data) {
                 { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: forest_cov, albedo: forest_alb },
                 { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: desert_cov, albedo: desert_alb },
                 { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: ice_cov, albedo: ice_alb },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: cloud_cov, albedo: cloud_alb }
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: cloud_cov, albedo: cloud_alb },
+                { emoji: '🌍', coverage: land_cov, albedo: ALBEDO_LAND.toFixed(2) }
             ];
             albedoBreakdown = createAlbedoComponents(components);
         } else {
@@ -3929,7 +3937,8 @@ window.updateFluxLabels = function (data) {
                 { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
                 { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
                 { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: ALBEDO_ICE.toFixed(2) },
-                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) }
+                { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) },
+                { emoji: '🌍', coverage: land_cov, albedo: ALBEDO_LAND.toFixed(2) }
             ];
             albedoBreakdown = createAlbedoComponents(components);
         }
@@ -3943,7 +3952,8 @@ window.updateFluxLabels = function (data) {
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.FOREST : '🌳', coverage: 0, albedo: ALBEDO_FOREST.toFixed(2) },
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.DESERT : '🏜️', coverage: 0, albedo: ALBEDO_DESERT.toFixed(2) },
             { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.ICE : '🧊', coverage: final_ice_percent, albedo: ALBEDO_ICE.toFixed(2) },
-            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) }
+            { emoji: (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS.CLOUD : '⛅', coverage: final_cloud_percent, albedo: ALBEDO_CLOUD.toFixed(2) },
+            { emoji: '🌍', coverage: land_cov, albedo: ALBEDO_LAND.toFixed(2) }
         ];
         albedoBreakdown = createAlbedoComponents(components);
     }

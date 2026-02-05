@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.3
+// Version 1.1.4
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-03
@@ -8,6 +8,7 @@
 // - v1.1.1: passage global _REGLE_JS_CRASH (pas de if abusifs, pas de fallbacks)
 // - v1.1.2: T0 init quand anim+T<=0 ; displayConvergence no-op parent ; _lastCycleRef guard
 // - v1.1.3: Guards null pour plot-anim-toggle, plot-anim-toggle-checkbox, info-time, visuPanel, DATA
+// - v1.1.4: runComputeInParent init DATA[📅]/[📜] si race avec setEpoch ; guard initForConfig false
 
 (function () {
     'use strict';
@@ -121,6 +122,18 @@
 
     window.runComputeInParent = function () {
         var DATA = window.DATA;
+        if (!DATA || !DATA['🧮'] || !DATA['🔘']) return;
+        // S'assurer que DATA['📅'] et DATA['📜'] sont initialisés (race avec setEpoch au chargement)
+        var epochId = (DATA['📜'] && DATA['📜']['🗿']) || (window.SYNC_STATE && window.SYNC_STATE.epochId) || '⚫';
+        var idx = window.TIMELINE ? window.TIMELINE.findIndex(function (item) { return item['📅'] === epochId; }) : -1;
+        if (idx >= 0) {
+            DATA['📅'] = window.TIMELINE[idx];
+            if (!DATA['📜']) DATA['📜'] = {};
+            DATA['📜']['👉'] = idx;
+            DATA['📜']['🗿'] = epochId;
+        } else {
+            return; // TIMELINE non prêt ou époque invalide
+        }
         DATA['🧮']['previous'] = [];
         DATA['🧮']['🧮🔄🌊'] = 0;
         DATA['🧮']['🧮🔄🪩'] = 0;
@@ -130,7 +143,13 @@
             var adj = (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'] + adj;
         }
-        window.initForConfig();
+        if (!window.initForConfig()) return;
+        // S'assurer que FluxManager a SOLAR_CONSTANT et GEOTHERMAL_FLUX (requis par updateFluxLabels)
+        var epochId = DATA['📜']['🗿'];
+        if (window.FluxManager && window.getGeologicalPeriodByName) {
+            window.currentEpochName = window.currentEpochName || epochId;
+            window.FluxManager.updateAllFluxes(epochId);
+        }
         window.computeRadiativeTransfer().then(function (result) {
             if (result === null) return;
             window.CO2_EVENTS.emit('compute:done', { DATA: window.DATA, result: result });

@@ -142,8 +142,8 @@ function newDate() {
 function initForConfig() {
     if (window.ABORT_COMPUTE) return false;
     const DATA = window.DATA;
-    window.getSoleil();
-    window.getNoyau();
+    if (!DATA || !window.TIMELINE) return false;
+    if (!window.getSoleil() || !window.getNoyau()) return false;
     getEpochDateConfig();
     if (!calculateT0()) return false;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];

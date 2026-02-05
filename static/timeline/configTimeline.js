@@ -39,7 +39,7 @@ const timeline = [
             '🍰🗻🌍': 1.0   // Terres basses (100% - surface rocheuse)
         },
         // 🔒 Corps noir : pas de désert, albedo = 0 (corps noir absorbe tout)
-        '🍰🪩🏖': 0.0,  // Forcer couverture désert à 0 (pas de désert pour corps noir)
+        '🍰🪩🏜️': 0.0,  // Forcer couverture désert à 0 (pas de désert pour corps noir)
         '🪩🍰': {
             '🪩🍰🌍': 0.0  // Override coefficient albedo terres à 0 (corps noir absorbe tout)
         },
@@ -345,7 +345,7 @@ const timeline = [
             '🍰🗻🌍': 0.20  // Terres basses (20% - continents modernes)
         },
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        // Note: 🍰🪩🏖, 🍰🪩🌳, 🍰🪩🌍 sont maintenant calculés dynamiquement dans calculateAlbedo()
+        // Note: 🍰🪩🏜️, 🍰🪩🌳, 🍰🪩🌍 sont maintenant calculés dynamiquement dans calculateAlbedo()
         '⚖️🫧': 5.15e18, // Masse atmosphère (air sec ~1 bar, comme Industriel)
         // Simulation parameters - Quantités en kg
         '⚖️🏭': 3.3e15,   // ~420-450 ppm CO2 2025
@@ -368,7 +368,7 @@ window.TIMELINE = timeline;
 
 // Paramètres de calcul (convergence radiatif)
 window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
-window.CONFIG_COMPUTE.maxRadiatifIters = 51;
+window.CONFIG_COMPUTE.maxRadiatifIters = 101;
 // Plafond T en Search (K). 2373 = lave complète (~2100°C), réaliste pour surface (au-delà = vaporisation). null = pas de plafond (test).
 window.CONFIG_COMPUTE.maxSearchT_K = null;
 // Bins spectaux (150 = bonne précision calcul). OOM évité par plafond tropopause/couches dans calculations.js.

@@ -635,7 +635,7 @@
         function calculateAlbedoFormula(albedo, albedoReflectorCoeff) {
             if (!albedo || !albedoReflectorCoeff) return '';
             
-            const elements = ['🌋', '🌊', '🌳', '🏖', '🧊', '⛅'];
+            const elements = ['🌋', '🌊', '🌳', '🏜️', '🧊', '⛅'];
             let total = 0;
             
             // Calculer le total
@@ -676,7 +676,7 @@
             formulasHtml += `&nbsp;&nbsp;&nbsp;&nbsp;= (🍰💧🌊 × ⚖️💧 / 1000) / 3700 / (4πR²)<br>`;
             formulasHtml += `🍰🪩🌳 = min(0.5, 🍰🪩🌊 × (1 - T_surface_C / 30)) si T < 30°C et 🍰🪩🌊 > 0.1<br>`;
             formulasHtml += `🍰🪩🧊 = min(0.9, 🍰💧🧊 × 0.9) (fraction eau en glace → couverture surface)<br>`;
-            formulasHtml += `🍰🪩🏖 = 1.0 - (🍰🪩🌋 + 🍰🪩🌊 + 🍰🪩🌳 + 🍰🪩🧊) (surface restante)<br>`;
+            formulasHtml += `🍰🪩🏜️ = 1.0 - (🍰🪩🌋 + 🍰🪩🌊 + 🍰🪩🌳 + 🍰🪩🧊) (surface restante)<br>`;
             formulasHtml += `🍰🪩⛅ = Si moderne : 0.20 + 0.10 × ☁️ (plage 0.20-0.30). Si Hadéen/Archéen : C_max × ☁️<br>`;
             
             return `<div class="formule">${formulasHtml}</div>`;

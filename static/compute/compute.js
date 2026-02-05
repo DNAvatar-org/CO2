@@ -178,14 +178,14 @@ function getEpochDateConfig() {
 
 //Calcule les valeurs du soleil (utilise DATA directement)
 function getSoleil() {
-    // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
     const CONST = window.CONST;
+    if (!DATA || !DATA['📜'] || !window.TIMELINE) return false;
     const epochId = DATA['📜']['🗿'];
     const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
-    const EPOCH = window.TIMELINE[epochIndex];
-    
-    // Mettre à jour DATA directement (source unique de vérité)
+    const EPOCH = epochIndex >= 0 ? window.TIMELINE[epochIndex] : null;
+    if (!EPOCH || EPOCH['🔋☀️'] == null) return false;
+    if (!DATA['☀️']) DATA['☀️'] = {};
     DATA['☀️']['🔋☀️'] = EPOCH['🔋☀️'];
     
     // Calculer la constante solaire à 1 UA depuis la puissance totale
@@ -206,15 +206,14 @@ function getSoleil() {
 
 //Calcule les valeurs du noyau géothermique (utilise DATA directement)
 function getNoyau() {
-    // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
     const CONST = window.CONST;
-    
-    // Récupérer l'époque directement depuis TIMELINE avec l'index depuis DATA
+    if (!DATA || !DATA['📜'] || !window.TIMELINE) return false;
     const epochId = DATA['📜']['🗿'];
     const epochIndex = window.TIMELINE.findIndex(item => item['📅'] === epochId);
-    const EPOCH = window.TIMELINE[epochIndex];
-    
+    const EPOCH = epochIndex >= 0 ? window.TIMELINE[epochIndex] : null;
+    if (!EPOCH) return false;
+    if (!DATA['🌕']) DATA['🌕'] = {};
     // Flux géothermique en W/m² (depuis TIMELINE)
     if (EPOCH['🕰'] && EPOCH['🕰']['💫'] && EPOCH['🕰']['💫']['🔺🧲🌕💫']) {
         const geo = EPOCH['🕰']['💫']['🔺🧲🌕💫'];

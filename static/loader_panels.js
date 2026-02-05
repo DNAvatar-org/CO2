@@ -101,6 +101,13 @@
         if (name === 'visu' && typeof window.dispatchEvent === 'function') {
             window.dispatchEvent(new Event('resize'));
         }
+        // Scie : renvoyer le dernier compute si dispo (calculs visibles sans clic)
+        if (name === 'scie' && window._lastComputePayloadForScie && window._lastComputePayloadForScie.DATA) {
+            var iframe = document.getElementById('scie-iframe');
+            if (iframe && iframe.contentWindow) {
+                try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: window._lastComputePayloadForScie.DATA }, '*'); } catch (e) {}
+            }
+        }
     };
 
     window.isVisuPanelActive = function () {
@@ -143,8 +150,13 @@
                 document.body.appendChild(cb);
             }
         }
+        var lastComputePayload = null;
         if (window.CO2_EVENTS) {
             window.CO2_EVENTS.on('compute:done', function (payload) {
+                if (payload && payload.DATA) {
+                    lastComputePayload = payload;
+                    window._lastComputePayloadForScie = payload;
+                }
                 var iframe = document.getElementById('scie-iframe');
                 if (iframe && iframe.contentWindow && payload && payload.DATA) {
                     try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: payload.DATA }, '*'); } catch (e) {}
@@ -154,11 +166,34 @@
         // Mettre à jour les actions 🕰 (météorite, impact, etc.) après injection du contenu visu
         window.updateEpochActions();
         var scieIframe = document.getElementById('scie-iframe');
+        function sendComputeToScie() {
+            if (lastComputePayload && lastComputePayload.DATA && scieIframe.contentWindow) {
+                try { scieIframe.contentWindow.postMessage({ type: 'compute:done', DATA: lastComputePayload.DATA }, '*'); } catch (e) {}
+            } else if (window.runComputeInParent) {
+                window.runComputeInParent();
+            }
+        }
         scieIframe.addEventListener('load', function () {
             window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });
+            // Décaler pour laisser setEpoch (RAF+RAF+setTimeout) s'exécuter avant runComputeInParent
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    sendComputeToScie();
+                });
+            });
         });
         window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });
+        if (scieIframe.contentDocument && scieIframe.contentDocument.readyState === 'complete') {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    sendComputeToScie();
+                });
+            });
+        }
         initTipeeeRollover();
+        // Forcer resize au chargement : layout, plot et flux se calibrent correctement
+        // (switchTab ne dispatch resize que lors d'un changement d'onglet manuel)
+        window.dispatchEvent(new Event('resize'));
     }
 
     function initTipeeeRollover() {

@@ -43,15 +43,19 @@ Les nuages ne sont pas comptés dans l’EDS IR.
 2. **Chevauchement spectral** : la bande H₂O à 17 µm chevauche la bande CO₂ à 15 µm → effet de masquage.
 3. **Effet de masquage** : si H₂O absorbe trop, le CO₂ ne peut plus influencer le flux sortant.
 
+### Chevauchement spectral — explication
+
+À chaque λ, tau_total = tau_H2O + tau_CO2 + tau_CH4 (Beer-Lambert, additif). L'attribution EDS utilise `(tau_H2O/tau_tot) × flux_absorbé`. Dans les bandes partagées (15–17 µm), si les sections efficaces H2O surestiment l'absorption, H2O "vole" le crédit au CO2. Le facteur `getH2OVaporEDSScale()` (T, P, vapor, CO2) corrige cette sur-estimation sans hack par époque.
+
 ---
 
 ## Corrections proposées
 
 ### A. Réduire l’absorption de la vapeur (priorité) — ✅ Implémenté
 
-- `getH2OVaporEDSScale()` dans `physics.js` — **dérivé de T, P, vapor** (pas de paramètre epoch).
-- Formule : `scale = 0.5 × (288/T)^0.15 × (1/P)^0.05 × min(1, (0.01/vapor)^0.1)` clamp [0.2, 1].
-- Réf Terre (288K, 1 atm, ~1% vapor) → 0.5. Hadéen (T↑, vapor↑) → scale ↓. Glaciation → scale ↑.
+- `getH2OVaporEDSScale()` dans `physics.js` — **dérivé de T, P, vapor, CO2** (pas d'époque).
+- CO2 > 1% : scale = 1.0. Sinon : `scale = 0.5 × (288/T)^0.15 × (1/P)^0.05 × min(1, (0.01/vapor)^0.1)` clamp [0.2, 1].
+- Réf Terre (288K, 1 atm, ~1% vapor) → 0.5. Hadéen/Archéen (CO2 élevé) → 1.0.
 - Appliqué : `kappa_H2O *= getH2OVaporEDSScale()` dans `calculations.js` (3 endroits).
 
 ### B. Nuages comme absorbeurs IR (optionnel, plus tard)

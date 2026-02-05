@@ -9,7 +9,7 @@
 // - epochId Archéen : 🦠 (🌋 réservé actions). Archéen utilise clouds modernes pour ~15°C.
 //
 // FORMULES ALBEDO :
-// 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏖,🧊} + contribution_glace + contribution_nuages
+// 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏜️,🧊} + contribution_glace + contribution_nuages
 //   où contribution_glace = (🪩🍰🧊 - albedo_base) × 🍰💧🧊 × 0.5
 //   et contribution_nuages = albedo × (1 - 🍰🪩⛅) + 🪩🍰⛅ × 🍰🪩⛅
 // 🍰🪩🌋 = volcano_coverage = f(T, flux_geo) : Hadéen=1.0, sinon min(1.0, flux_geo/10000)
@@ -17,7 +17,7 @@
 //   où ocean_volume_m3 = (⚖️💧 × 🍰💧🌊) / 1000
 // 🍰🪩🌳 = forest_coverage = f(T, ocean_coverage) : si T<30°C et ocean>0.1 alors min(0.5, ocean × (1-T/30))
 // 🍰🪩🌍 = land_coverage = max(0, 1.0 - ocean - ice - forest) (continents, prairies, sols humides, albedo ~0.18)
-// 🍰🪩🏖 = desert_coverage = 1.0 - (🌋 + 🌊 + 🌳 + 🌍 + 🧊) (zones arides, albedo ~0.30)
+// 🍰🪩🏜️ = desert_coverage = 1.0 - (🌋 + 🌊 + 🌳 + 🌍 + 🧊) (zones arides, albedo ~0.30)
 // 🍰🪩🧊 = ice_coverage = min(0.9, 🍰💧🧊 × 0.9)
 // 🍰🪩⛅ = cloud_coverage = C_max × ☁️ où C_max ≈ 0.7 et ☁️ = CloudFormationIndex
 
@@ -241,7 +241,7 @@ function calculateAlbedo() {
     // 🔒 volcano_coverage déjà calculé plus haut (ligne ~200)
     
     // 🔒 ÉTAPE 4 : Calculer forêts/déserts/terres depuis l'indice d'humidité climatique (H)
-    // NOUVEAU SYSTÈME : Répartition automatique 🌳 / 🏖 / 🌍 basée sur température et précipitations
+    // NOUVEAU SYSTÈME : Répartition automatique 🌳 / 🏜️ / 🌍 basée sur température et précipitations
     // Les biomes dépendent uniquement de température et pluie, robuste pour d'autres planètes
     //
     // 1. Calculer précipitations annuelles P_ann (mm/an)
@@ -282,8 +282,8 @@ function calculateAlbedo() {
     const forest_potential = DATA['🗻']['🍰🗻🌍'] * temp_factor_forest * humidity_factor_forest * cloud_factor_forest * 0.6;
     const forest_coverage = Math.min(land_available, forest_potential);
     
-    // 🔒 ÉTAPE 7 : Calculer déserts 🏖
-    // FORMULE CORRIGÉE : 🍰🪩🏖 = 🍰🪩🌍_ × (base_aridité + variabilité_régionale)
+    // 🔒 ÉTAPE 7 : Calculer déserts 🏜️
+    // FORMULE CORRIGÉE : 🍰🪩🏜️ = 🍰🪩🌍_ × (base_aridité + variabilité_régionale)
     // Les déserts sont des zones régionales avec conditions locales très différentes de la moyenne globale
     // En 2025 : Sahara a P_ann < 200 mm/an et RH < 0.3, mais moyenne globale P_ann ≈ 2600 mm/an et RH ≈ 0.83
     // Correction : Utiliser un facteur de variabilité régionale pour avoir ~20% de déserts même si moyenne globale est humide
@@ -301,22 +301,22 @@ function calculateAlbedo() {
     const VARIABILITY_FACTOR = 0.6; // 60% des terres disponibles peuvent être arides (pondéré par les facteurs)
     const variability_term = land_available * VARIABILITY_FACTOR * temp_variability * humidity_variability;
     
-    // Si EPOCH['🍰🪩🏖'] est défini (même si = 0.0), l'utiliser directement (override pour cas particuliers comme Corps noir)
+    // Si EPOCH['🍰🪩🏜️'] est défini (même si = 0.0), l'utiliser directement (override pour cas particuliers comme Corps noir)
     // Utiliser ?? au lieu de || car 0.0 est falsy mais est une valeur valide qu'on veut utiliser
-    const desert_coverage = EPOCH['🍰🪩🏖'] ?? Math.min(land_available, desert_base + variability_term);
+    const desert_coverage = EPOCH['🍰🪩🏜️'] ?? Math.min(land_available, desert_base + variability_term);
     
     // 🔒 ÉTAPE 8 : Calculer terres restantes 🌍
-    // FORMULE : 🍰🪩🌍 = 🍰🪩🌍_ - 🍰🪩🌳 - 🍰🪩🏖
+    // FORMULE : 🍰🪩🌍 = 🍰🪩🌍_ - 🍰🪩🌳 - 🍰🪩🏜️
     // 🌍 absorbe automatiquement : steppes, prairies, toundras, montagnes
     const total_land_coverage = Math.max(0, land_available - forest_coverage - desert_coverage);
     
     // 🔒 VÉRIFICATION : Les surfaces SECHES doivent sommer à 1 (sans H2O, sans nuages)
-    // 🍰🪩🌊 + 🍰🪩🌳 + 🍰🪩🧊 + 🍰🪩🏖 + 🍰🪩🌍 + 🍰🪩🌋 = 1
+    // 🍰🪩🌊 + 🍰🪩🌳 + 🍰🪩🧊 + 🍰🪩🏜️ + 🍰🪩🌍 + 🍰🪩🌋 = 1
     // Les nuages ⛅ restent hors somme (fraction optique, pas surface au sol)
     // 🔒 H2O (glace) est calculé séparément pour l'albedo, mais ice_fraction_base est dans la somme des surfaces
     const surface_sum = volcano_coverage + ocean_coverage + forest_coverage + ice_fraction_base + total_land_coverage + desert_coverage;
     if (Math.abs(surface_sum - 1.0) > 0.01) {
-        console.warn(`⚠️ [calculateAlbedo] Somme des surfaces = ${surface_sum.toFixed(4)} (attendu: 1.0) | 🌋=${volcano_coverage.toFixed(3)} 🌊=${ocean_coverage.toFixed(3)} 🌳=${forest_coverage.toFixed(3)} 🧊=${ice_fraction_base.toFixed(3)} 🌍=${total_land_coverage.toFixed(3)} 🏖=${desert_coverage.toFixed(3)}`);
+        console.warn(`⚠️ [calculateAlbedo] Somme des surfaces = ${surface_sum.toFixed(4)} (attendu: 1.0) | 🌋=${volcano_coverage.toFixed(3)} 🌊=${ocean_coverage.toFixed(3)} 🌳=${forest_coverage.toFixed(3)} 🧊=${ice_fraction_base.toFixed(3)} 🌍=${total_land_coverage.toFixed(3)} 🏜️=${desert_coverage.toFixed(3)}`);
     }
     
     // Stocker toutes les surfaces dans DATA['🪩'] (SURFACES SECHES, sans H2O)
@@ -325,7 +325,7 @@ function calculateAlbedo() {
     DATA['🪩']['🍰🪩🌳'] = forest_coverage;
     DATA['🪩']['🍰🪩🧊'] = ice_fraction_base;
     DATA['🪩']['🍰🪩🌍'] = total_land_coverage;
-    DATA['🪩']['🍰🪩🏖'] = desert_coverage;
+    DATA['🪩']['🍰🪩🏜️'] = desert_coverage;
     
     // 🔒 ALBEDO BASE : Calculer depuis les surfaces SECHES uniquement
     // Fusionner les coefficients : EPOCH peut override certains coefficients (ex: Corps noir)
@@ -337,7 +337,7 @@ function calculateAlbedo() {
         weighted_albedo += (isFinite(ocean_coverage) ? ocean_coverage : 0) * albedo_coeff['🪩🍰🌊'];
         weighted_albedo += (isFinite(forest_coverage) ? forest_coverage : 0) * albedo_coeff['🪩🍰🌳'];
         weighted_albedo += (isFinite(total_land_coverage) ? total_land_coverage : 0) * albedo_coeff['🪩🍰🌍'];
-        weighted_albedo += (isFinite(desert_coverage) ? desert_coverage : 0) * albedo_coeff['🪩🍰🏖'];
+        weighted_albedo += (isFinite(desert_coverage) ? desert_coverage : 0) * albedo_coeff['🪩🍰🏜️'];
         weighted_albedo += (isFinite(ice_fraction_base) ? ice_fraction_base : 0) * albedo_coeff['🪩🍰🧊'];
     }
     
@@ -446,7 +446,7 @@ function calculateAlbedo() {
     }
 
     // 🔒 FORMULE ALBEDO CORRIGÉE :
-    // 🍰🪩📿 = 🍰🪩⛅ × 🪩🍰⛅ + Σ(🍰🪩❀ × 🪩🍰❀) | ❀ ∈ { 🌋,🌊,🌳,🏖,🧊 }
+    // 🍰🪩📿 = 🍰🪩⛅ × 🪩🍰⛅ + Σ(🍰🪩❀ × 🪩🍰❀) | ❀ ∈ { 🌋,🌊,🌳,🏜️,🧊 }
     // Les nuages contribuent directement à l'albédo avec leur propre coefficient
     const cloud_albedo_coeff = albedo_coeff['🪩🍰⛅'];
     const cloud_albedo_contribution = cloud_fraction * cloud_albedo_coeff;

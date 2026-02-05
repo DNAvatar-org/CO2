@@ -11,7 +11,7 @@
 // - Added CO2_FORCING_COEFFICIENT=5.35, CO2_REF_PPM=280 (Myhre 1998, évite dilution /10)
 // - Added H2O_SIGMA_1_*, H2O_SIGMA_2_* (HAPI/HITRAN, bandes 6.3 et 17 μm)
 // - Added CH4_SIGMA_1_*, CH4_SIGMA_2_* (HAPI/HITRAN, bandes 7.7 et 3.3 μm)
-// - H2O_VAPOR_EDS_SCALE_BASE + getH2OVaporEDSScale(T,P,vapor) — calibration dynamique par époque
+// - getH2OVaporEDSScale() — formule T,P,vapor,CO2 (pas d'époque), doc/VAPEUR_VS_NUAGES.md
 // ============================================================================
 
 // Initialiser CONST (pointeur vers window.CONST)
@@ -85,8 +85,7 @@ CONST.H2O_SIGMA_1_LOG_PREFACTOR = -21.0;   // bande 6.3 μm (HAPI: -22)
 CONST.H2O_SIGMA_1_EXPONENT = 15.0;
 CONST.H2O_SIGMA_2_LOG_PREFACTOR = -21.0;   // bande 17 μm (HAPI: -23)
 CONST.H2O_SIGMA_2_EXPONENT = 18.0;
-// Base pour getH2OVaporEDSScale(). 0.5 = nickel 1800 (15°C), H2O ~50% EDS, CO2 visible. Réf Schmidt 2010.
-CONST.H2O_VAPOR_EDS_SCALE_BASE = 0.5;
+// Réf Schmidt 2010 : vapeur ~50% EDS. Supprimé : H2O_VAPOR_EDS_SCALE_BASE (remplacé par formule T,P,vapor).
 CONST.LAMBDA_CH4_1 = 7.7e-6;  // Première bande CH₄ (7.7 μm)
 CONST.LAMBDA_CH4_2 = 3.3e-6;  // Deuxième bande CH₄ (3.3 μm)
 // Paramètres section efficace CH₄ (régression HAPI/HITRAN, bandes 7.7 et 3.3 μm)
@@ -111,7 +110,7 @@ CONST['🪩🍰'] = {
     '🪩🍰🌋': 0.05,  // Volcan/magma : très sombre (littérature : ~0.05-0.10)
     '🪩🍰🌊': 0.08,  // Océan : sombre (littérature : 0.05-0.15, moyenne ~0.08)
     '🪩🍰🌳': 0.17,  // Forêt : légèrement réfléchissant (littérature : 0.15-0.20, moyenne ~0.17)
-    '🪩🍰🏖': 0.30,  // Désert : réfléchissant (littérature : ~0.30)
+    '🪩🍰🏜️': 0.30,  // Désert : réfléchissant (littérature : ~0.30)
     '🪩🍰🧊': 0.70,  // Glace : très réfléchissant (littérature : 0.60, neige fraîche 0.75-0.90, moyenne ~0.70)
     '🪩🍰⛅': 0.50,  // Nuages : moyennement réfléchissant (littérature : 0.50-0.80, moyenne ~0.50)
     '🪩🍰🌍': 0.18   // Land/Continents : prairies, sols humides (littérature : 0.15-0.20, moyenne ~0.18)
@@ -182,27 +181,24 @@ function getWaterCycleTempBoundsFromPressure(P_atm) {
 }
 window.getWaterCycleTempBoundsFromPressure = getWaterCycleTempBoundsFromPressure;
 
-// Facteur d'échelle vapeur d'eau (gaz) pour EDS. Dépend de l'époque : 1800/2025 → 0.5 (CO2 visible), Archéen/Hadéen → 1.0.
+// Facteur d'échelle vapeur d'eau (gaz) pour EDS. Calculé depuis T, P, vapor, CO2 (pas d'époque).
+// Réf Schmidt 2010 : vapeur ~50% EDS. Formule corrige sur-estimation (chevauchement H2O/CO2 15-17 µm).
+// CO2 > 1% : atmosphère riche, scale=1. Sinon : scale = 0.5 × f_T × f_P × f_v (saturation, pression).
 function getH2OVaporEDSScale() {
     const DATA = window.DATA;
-    if (!DATA || !DATA['🫧'] || !DATA['📜']) return CONST.H2O_VAPOR_EDS_SCALE_BASE;
+    if (!DATA || !DATA['🫧']) return 0.5;
     const co2_frac = (DATA['🫧']['🍰🫧🏭'] != null && Number.isFinite(DATA['🫧']['🍰🫧🏭'])) ? DATA['🫧']['🍰🫧🏭'] : 0;
-    // Source fiable : TIMELINE[👉]['📅] (🗿 peut être absent dans test_computeRadiativeTransfer)
-    const idx = DATA['📜']['👉'];
-    const epochId = (window.TIMELINE && idx != null && window.TIMELINE[idx]) ? window.TIMELINE[idx]['📅'] : (DATA['📜']['🗿'] || '');
-    if (epochId === '🔥' || epochId === '🦠') return 1.0;
     if (co2_frac > 0.01) return 1.0;
-    return CONST.H2O_VAPOR_EDS_SCALE_BASE;
-    // Ancienne formule dynamique (à réactiver après calibration vapeur/nuages) :
-    // const DATA = window.DATA;
-    // if (!DATA || !DATA['🧮'] || !DATA['🫧'] || !DATA['💧']) return CONST.H2O_VAPOR_EDS_SCALE_BASE;
-    // const T = DATA['🧮']['🧮🌡️'];
-    // const P_atm = (DATA['🫧']['🎈'] != null && Number.isFinite(DATA['🫧']['🎈'])) ? DATA['🫧']['🎈'] : 1;
-    // const vapor = (DATA['💧']['🍰🫧💧'] != null && Number.isFinite(DATA['💧']['🍰🫧💧'])) ? DATA['💧']['🍰🫧💧'] : 0;
-    // const T_ref = 288; const P_ref = 1; const vapor_ref = 0.01;
-    // const f_T = Math.pow(T_ref / Math.max(T, 200), 0.15);
-    // const f_P = Math.pow(P_ref / Math.max(P_atm, 0.1), 0.05);
-    // const f_v = vapor > 1e-8 ? Math.min(1, Math.pow(vapor_ref / Math.max(vapor, 1e-8), 0.1)) : 1;
-    // return Math.max(0.2, Math.min(1, CONST.H2O_VAPOR_EDS_SCALE_BASE * f_T * f_P * f_v));
+    if (!DATA['🧮'] || !DATA['💧']) return 0.5;
+    const T = DATA['🧮']['🧮🌡️'];
+    const P_atm = (DATA['🫧']['🎈'] != null && Number.isFinite(DATA['🫧']['🎈'])) ? DATA['🫧']['🎈'] : 1;
+    const vapor = (DATA['💧']['🍰🫧💧'] != null && Number.isFinite(DATA['💧']['🍰🫧💧'])) ? DATA['💧']['🍰🫧💧'] : 0;
+    const T_ref = 288;
+    const P_ref = 1;
+    const vapor_ref = 0.01;
+    const f_T = Math.pow(T_ref / Math.max(T, 200), 0.15);
+    const f_P = Math.pow(P_ref / Math.max(P_atm, 0.1), 0.05);
+    const f_v = vapor > 1e-8 ? Math.min(1, Math.pow(vapor_ref / Math.max(vapor, 1e-8), 0.1)) : 1;
+    return Math.max(0.2, Math.min(1, 0.5 * f_T * f_P * f_v));
 }
 window.getH2OVaporEDSScale = getH2OVaporEDSScale;

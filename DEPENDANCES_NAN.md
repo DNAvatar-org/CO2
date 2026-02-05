@@ -4,7 +4,7 @@
 - 🍰🧮🌧 (fraction vapeur max)
 - 💭☔ (seuil précipitations)
 - 🍰⚖️💦 (taux précipitation kg/m²/s)
-- 🍰🪩🏖 (couverture désert)
+- 🍰🪩🏜️ (couverture désert)
 - 🍰🪩🌳 (couverture forêt)
 - 🍰🪩🧊 (couverture glace)
 - 🍰🪩🌍 (couverture terres)
@@ -37,9 +37,9 @@ flowchart TD
         land_av["land_available = 1-🍰🗻🌊-🍰🪩🧊"]
         P_ann["P_ann = 🍰🧮🌧×🌊×F_conv×..."]
         a1["🍰🪩🧊 = f(🗻.🏔,🧮🌡️)"]
-        a2["🍰🪩🏖 = EPOCH?? ou f(land_av,P_ann,🍰🫧☔)"]
+        a2["🍰🪩🏜️ = EPOCH?? ou f(land_av,P_ann,🍰🫧☔)"]
         a3["🍰🪩🌳 = f(land_av,🗻.🌍,🧮🌡️,🍰🫧☔,☁️)"]
-        a4["🍰🪩🌍 = land_av - 🌳 - 🏖"]
+        a4["🍰🪩🌍 = land_av - 🌳 - 🏜️"]
     end
 
     T --> P_sat
@@ -95,8 +95,8 @@ flowchart TD
 - **Dépend de** : 🗻.🍰🗻🏔, 🧮🌡️
 - **→ NaN si** : 🧮🌡️ NaN
 
-### 5. 🍰🪩🏖
-- **Calcul** : `EPOCH['🍰🪩🏖'] ?? min(land_available, desert_base + variability_term)`
+### 5. 🍰🪩🏜️
+- **Calcul** : `EPOCH['🍰🪩🏜️'] ?? min(land_available, desert_base + variability_term)`
 - **desert_base** = land_available × precip_factor × humidity_factor
 - **P_ann** = 🍰🧮🌧 × ocean_coverage × F_conv × 200000
 - **Dépend de** : EPOCH override, land_available, 🍰🧮🌧, 🍰🫧☔, 🧮🌡️
@@ -108,9 +108,9 @@ flowchart TD
 - **→ NaN si** : 🍰🫧☔ NaN ou 🧮🌡️ NaN ou ☁️ NaN
 
 ### 7. 🍰🪩🌍
-- **Calcul** : `land_available - 🍰🪩🌳 - 🍰🪩🏖`
-- **Dépend de** : land_available, 🍰🪩🌳, 🍰🪩🏖
-- **→ NaN si** : 🍰🪩🌳 ou 🍰🪩🏖 est NaN
+- **Calcul** : `land_available - 🍰🪩🌳 - 🍰🪩🏜️`
+- **Dépend de** : land_available, 🍰🪩🌳, 🍰🪩🏜️
+- **→ NaN si** : 🍰🪩🌳 ou 🍰🪩🏜️ est NaN
 
 ---
 
@@ -136,15 +136,15 @@ En **phase non-Init**, dans la boucle de convergence :
 
 🎈 ────────► 🍰🧮🌧 (via P_total)
 
-🍰🧮🌧 ────► P_ann ──► 🍰🪩🏖
+🍰🧮🌧 ────► P_ann ──► 🍰🪩🏜️
 🍰🧮🌧 ────► 🍰🫧☔ (via q_sat)
 
-🍰🫧☔ ────► 🍰🪩🏖, 🍰🪩🌳
+🍰🫧☔ ────► 🍰🪩🏜️, 🍰🪩🌳
 💭☔ ───────► 🍰⚖️💦
 
-land_available ──► 🍰🪩🏖, 🍰🪩🌳, 🍰🪩🌍
+land_available ──► 🍰🪩🏜️, 🍰🪩🌳, 🍰🪩🌍
 🍰🪩🌳 ──────────► 🍰🪩🌍
-🍰🪩🏖 ──────────► 🍰🪩🌍
+🍰🪩🏜️ ──────────► 🍰🪩🌍
 ```
 
 **Proposition de diagnostic** : quand 💭☔ ou 🍰⚖️💦 deviennent NaN, logger **DATA['🧮']['🧮🌡️']** et **DATA['📜']['👉']** au tout début de `calculateCloudFormationIndex()`, pour vérifier que la température et l’époque sont bien définis à cet instant.
