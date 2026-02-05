@@ -405,7 +405,6 @@ function updateLabelClasses(label, nodeId = null) {
 // Fonction pour initialiser Three.js pour l'effet planète
 // logoPath = texture text_*.png depuis epochTextures (configOrganigramme) - JAMAIS charsImages !
 function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logoScale, luxSaturation = 1.0, lightDistance = null) {
-    console.log('[initPlanetThreeJS] demande texture:', typeof logoPath === 'string' ? logoPath : '(non-string)', 'epoch:', window.currentEpochName);
     if (typeof THREE === 'undefined') {
         console.error('[initPlanetThreeJS] ❌ Three.js non chargé !');
         return;
@@ -450,10 +449,6 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
     // Pour frôler le cercle avec logoScale 0.95, on augmente : sphereRadius = planetSize * 0.01
     // MAIS : peut-être que Three.js attend le diamètre, donc on multiplie par 2
     const sphereRadius = (planetSize * 0.01) * 2;
-    
-    // DEBUG: Log du rayon calculé
-    const facteur = 0.01 * 2; // Facteur utilisé pour le calcul (x2 pour le diamètre)
-    // Log supprimé (non essentiel)
     
     const sphereSegments = 32; // Précision comme dans planet-test.html
     const lightContrast = 1.5; // Contraste comme dans planet-test.html
@@ -511,7 +506,6 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
                 loadedTexture.wrapS = THREE.RepeatWrapping;
                 loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
                 texture = loadedTexture;
-                console.log('[initPlanetThreeJS] ✅ texture chargée:', textureName, '→', resolvedUrl);
                 createPlanetSphere();
             },
             undefined,
@@ -3211,6 +3205,8 @@ function isBlackBodyEpoch() {
 // Appelée pendant le déroulement de l'algorithme (dichotomie)
 window.updateFluxLabels = function (data) {
     if (!data) return;
+    var fluxDiagram = document.getElementById('flux-diagram');
+    if (!fluxDiagram) return;
 
     // Définir les fonctions helper AVANT l'appel à FluxManager
     // (elles seront utilisées par FluxManager et par la suite dans cette fonction)
@@ -3508,10 +3504,7 @@ window.updateFluxLabels = function (data) {
 
     // Fonction helper pour mettre à jour un label par dataId (utilise maintenant le template)
     const updateLabel = (dataId, value, format = 'auto') => {
-        const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
-        if (labels.length === 0 && dataId === 'solar_flux_absorbed_watts') {
-            console.warn(`[updateLabel] ⚠️ Aucun label trouvé pour dataId="${dataId}"`);
-        }
+        const labels = fluxDiagram.querySelectorAll(`[data-id="${dataId}"]`);
         labels.forEach(label => {
             let formattedValue;
 

@@ -100,6 +100,8 @@
         window.h2oVaporPercent = Math.min(100, Math.max(0, h2o_vapor_frac * 100 + h2o_meteorites));
         window.plotData.lambda_range = spectral.lambda_range;
         window.plotData.lambda_weights = spectral.lambda_weights;
+        var sigma = (window.CONST && window.CONST.STEFAN_BOLTZMANN != null) ? window.CONST.STEFAN_BOLTZMANN : 5.670374419e-8;
+        var T_eff = (spectral.total_flux > 0) ? Math.pow(spectral.total_flux / sigma, 0.25) : T0;
         window.plotData.current = {
             T0: T0,
             temp_surface: T0,
@@ -112,7 +114,7 @@
             upward_flux: spectral.upward_flux,
             z_range: spectral.z_range,
             earth_flux: spectral.earth_flux,
-            effective_temperature: window.getEffectiveTemperatureNoGreenhouse()
+            effective_temperature: T_eff
         };
         window.plotData.temp_surface_c = tempC;
         window.plotData.co2_ppm = co2_ppm;

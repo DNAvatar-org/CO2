@@ -1120,29 +1120,12 @@
                     ? ` (|Δ|=${deltaStr} W/m² &gt; seuil ${seuilStr} W/m²)`
                     : (stopReason === 'converged' ? ` (|Δ|=${deltaStr} W/m² ≤ ${seuilStr} W/m²)` : '');
                 html += `<div class="config-value"><strong>Arrêt:</strong> ${stopLabel}${stopDetail}</div>`;
-                if (window.DEBUG_ANALYSE_DETAIL && window.DETAIL_LOG_TEXT) {
-                    html += '<div class="config-value" style="margin-top:12px;padding:10px;background:rgba(0,0,0,0.25);border-radius:6px;font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;">';
-                    html += '<strong>Détail premiers calculs:</strong><br><pre style="margin:8px 0 0 0;padding:0;">' + (window.DETAIL_LOG_TEXT || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></div>';
-                }
                 html += '</div>';
             }
             
             // Toujours afficher le panneau même si html est vide
             convergenceContent.innerHTML = html || '<div class="config-value">Aucune donnée de convergence disponible</div>';
             convergenceDiv.style.display = 'block';
-            // Log structuré pour analyses (window.DEBUG_ANALYSE = true)
-            if (window.DEBUG_ANALYSE && window.DATA && window.DATA['📊']) {
-                const D = window.DATA;
-                const bins = D['📊'].lambda_range ? D['📊'].lambda_range.length : 0;
-                const layers = D['📊'].z_range ? D['📊'].z_range.length : 0;
-                const P = D['🫧'] && D['🫧']['🎈'] != null ? D['🫧']['🎈'] : null;
-                const delta = D['🧲'] && D['🧲']['🔺🧲'] != null ? D['🧲']['🔺🧲'] : null;
-                const eds = D['📛'] && D['📛']['🧲📛'] != null ? D['📛']['🧲📛'] : null;
-                const T_final = D['🧮'] && D['🧮']['🧮🌡️'] != null ? D['🧮']['🧮🌡️'] : null;
-                const T_cible = D['📅'] && D['📅']['🌡️🧮'] != null ? D['📅']['🌡️🧮'] : null;
-                const epochId = D['📜'] && D['📜']['👉'] != null && window.TIMELINE ? (window.TIMELINE[D['📜']['👉']] && window.TIMELINE[D['📜']['👉']]['📅']) : null;
-                console.log('[ANALYSE] convergence | epoch=' + (epochId || '?') + ' bins=' + bins + ' layers=' + layers + ' P_atm=' + (P != null ? P.toFixed(2) : '?') + ' delta_W=' + (delta != null ? delta.toFixed(2) : '?') + ' EDS=' + (eds != null ? eds.toFixed(2) : '?') + ' T_final_K=' + (T_final != null ? T_final.toFixed(2) : '?') + ' T_cible_K=' + (T_cible != null ? T_cible.toFixed(2) : '?'));
-            }
             } catch (err) {
                 console.error('❌ displayConvergence:', err);
                 const convergenceContent = document.getElementById('convergence-content');
@@ -1303,7 +1286,7 @@
             
             // S'assurer que TIMELINE est chargée
             if (window.TIMELINE) {
-                console.log(`✅ Timeline chargée: ${window.TIMELINE.length} époques`);
+                console.log('✅ Timeline chargée: ' + window.TIMELINE.length + ' époques');
                 // Générer la timeline horizontale
                 generateHorizontalTimeline();
             } else {

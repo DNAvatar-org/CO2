@@ -158,11 +158,6 @@ function calculateAtmosphereComposition() {
         // 🔒 FORMULES CORRIGÉES : Toutes les fractions sont calculées par rapport à ⚖️🫧
         // 🍰🫧🏭 = ⚖️🏭 / ⚖️🫧
         DATA['🫧']['🍰🫧🏭'] = mass_CO2 / atm_mass_total;
-        if (window.DEBUG_ANALYSE) {
-            const frac = mass_CO2 / atm_mass_total;
-            const ppm_equiv = frac * 1e6;
-            console.log('[calculateAtmosphereComposition][calculations_atm.js] CO2_kg=' + mass_CO2.toExponential(2) + ' frac=' + frac.toExponential(4) + ' ppm_equiv=' + ppm_equiv.toFixed(0) + ' epochId=' + (DATA['📜'] && DATA['📜']['🗿'] ? DATA['📜']['🗿'] : '?'));
-        }
         // 🍰🫧⛽ = ⚖️⛽ / ⚖️🫧
         DATA['🫧']['🍰🫧⛽'] = mass_CH4 / atm_mass_total;
         

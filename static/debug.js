@@ -7,22 +7,14 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-// - v1.0.2: pd() PrintDebug global, DEBUG_ANALYSE pour logs structurés
+// - v1.0.2: pd() PrintDebug global
 // ============================================================================
-
-// DEBUG_ANALYSE : activer en console (window.DEBUG_ANALYSE = true) pour logs structurés précision
-window.DEBUG_ANALYSE = window.DEBUG_ANALYSE || false;
-// DEBUG_X0_ALIGN : activer en console (window.DEBUG_X0_ALIGN = true) puis resize pour voir alignement x0 (gradient/logos)
-window.DEBUG_X0_ALIGN = window.DEBUG_X0_ALIGN || false;
-// DEBUG_ANALYSE_DETAIL : logs détaillés uniquement pour les premiers calculs (CYCLE0, Init, 1er CycleEau) — pour transmettre à une autre IA
-window.DEBUG_ANALYSE_DETAIL = window.DEBUG_ANALYSE_DETAIL || false;
 
 // pd() = PrintDebug. Format: [fonction][fichier] message. Lignes répétées → (x n)
 (function () {
     let _pdLast = '';
     let _pdCount = 0;
     window.pd = function (fn, file, msg) {
-        if (!window.DEBUG_ANALYSE) return;
         const line = '[' + fn + '][' + file + '] ' + msg;
         if (line === _pdLast) {
             _pdCount++;
@@ -68,11 +60,10 @@ function logDeltaEquilibre() {
 
 window.logDeltaEquilibre = logDeltaEquilibre;
 
-/** Log détaillé pour les premiers calculs (delta ~+9.8 W/m²) — à transmettre à une autre IA.
- * Appelé depuis calculations_flux.js quand DEBUG_ANALYSE_DETAIL=true et step <= 2.
- * Accumule le texte dans window.DETAIL_LOG_TEXT pour affichage HTML (copie sans debug.js:xx). */
+/** Log détaillé pour les premiers calculs (delta ~+9.8 W/m²).
+ * Accumule le texte dans window.DETAIL_LOG_TEXT pour affichage HTML. */
 function logDetailPremiersCalculs(stepLabel, DATA, CONST, extra) {
-    if (!window.DEBUG_ANALYSE_DETAIL || !DATA) return;
+    if (!DATA) return;
     const lines = [];
     const add = (s) => { lines.push(s); console.log(s); };
     const T_K = DATA['🧮'] && DATA['🧮']['🧮🌡️'];

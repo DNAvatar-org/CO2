@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.6
+// Version 1.0.10
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -13,6 +13,10 @@
 // - v1.0.4: displaylogo: false, showLink: false pour masquer branding Plotly
 // - v1.0.5: drawSpectralVisualization return early si rect invalide (panel masqué) ; switchTab visu → resize
 // - v1.0.6: Bornes H2O/CH4/CO2 alignées via Plotly.c2p (plus de décalage selon largeur div)
+// - v1.0.7: lastGoodYMaxLuminance pendant dichotomie ; width/height explicites pour éviter dezoom
+// - v1.0.8: exponentformat power (pas SI/T) ; pas de resize pendant calcul ; guard targetRect invalide
+// - v1.0.9: échelle ×10¹²/×10¹³/k par époque ; Planck(T_config) à 30% ; valeurs entières ; fixe jusqu'à convergence
+// - v1.0.10: courbe colorée à 65% (dépasse milieu) ; tickformat 1.25 max 5 chars ; séparateur .
 // ============================================================================
 
 // ============================================================================
@@ -22,6 +26,10 @@
 // Marges du graphique Plotly (communes à initPlot et updatePlot)
 // va avec .plot-container-wrapper { padding: 0; !!! Important ne pas changer !!!
 const PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }; // Marges ajustées pour éviter le débordement
+
+// Préserver l'échelle Y pendant l'animation/dichotomie (éviter dezoom entre cycles)
+let lastGoodYMaxLuminance = 40;
+let lastEpochForScale = null; // Reset quand l'époque change
 // Note: Ces marges sont utilisées par Plotly pour positionner le graphique dans le conteneur
 
 // Couleur de la tropopause (bleu vif) - utilisée pour la ligne et l'annotation
@@ -305,16 +313,17 @@ function initPlot() {
         },
         yaxis: {
             title: {
-                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
-                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
+                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹) ×10¹³",
+                font: getPlotlyFont(14, getDefaultTextColor())
             },
             range: [0, 40],
-            fixedrange: true, // Désactiver le zoom
-            side: 'left', // Luminance à gauche
-            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            fixedrange: true,
+            tickformat: ',.0f',
+            side: 'left',
+            tickfont: getPlotlyFont(12, getDefaultTextColor()),
+            titlefont: getPlotlyFont(14, getDefaultTextColor()),
             showgrid: true,
-            gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
+            gridcolor: 'rgba(0, 0, 0, 0.5)',
             gridwidth: 1
         },
         yaxis2: {
@@ -457,10 +466,18 @@ function resizeCanvasToPlot(callback) {
 
         if (targetElement) {
             const targetRect = targetElement.getBoundingClientRect();
-            const marginBottomPx = 75; // PLOT_MARGINS.b - zone sous l'axe pour spectre + bornes
-            const paddingX = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
-
-            // Dimensions : même largeur + padding, hauteur = zone plot + marge sous l'axe
+            if (targetRect.width < 50 || targetRect.height < 50) {
+                resizeCanvasInProgress = false;
+                if (resizeCanvasRetryCount < MAX_RETRY_COUNT) {
+                    resizeCanvasRetryCount++;
+                    setTimeout(() => { resizeCanvasToPlot(callback); }, 150);
+                } else {
+                    resizeCanvasRetryCount = 0;
+                }
+                return;
+            }
+            const marginBottomPx = 75;
+            const paddingX = 5;
             const width = Math.round(targetRect.width) + (paddingX * 2);
             const height = Math.round(targetRect.height) + marginBottomPx;
 
@@ -499,21 +516,6 @@ function resizeCanvasToPlot(callback) {
             // Attendre un peu que Plotly ait fini de redimensionner
             setTimeout(() => {
                 drawAbsorptionBandIndicators();
-                /* Diagnostic x0 : une fois au 1er resize, ou si DEBUG_X0_ALIGN=true */
-                const doLog = (typeof window !== 'undefined' && window.DEBUG_X0_ALIGN) || !window._x0AlignLogged;
-                if (doLog) {
-                    window._x0AlignLogged = true;
-                    const wr = wrapper.getBoundingClientRect();
-                    const tr = targetElement.getBoundingClientRect();
-                    const pc = plotContainer.getBoundingClientRect();
-                    const c2p0 = plotContainer._fullLayout?.xaxis?.c2p?.(0);
-                    const canvasLeftFromWrapper = (tr.left - wr.left) - 5;
-                    const gradient0FromWrapper = canvasLeftFromWrapper + 5;
-                    const logo0FromWrapper = (pc.left - wr.left) + (c2p0 ?? 70);
-                    const canvasComputedLeft = parseFloat(canvas.style.left) || 0;
-                    const ecart = Math.abs(gradient0FromWrapper - logo0FromWrapper);
-                    console.log('[x0 align] targetRect.left-wr:', (tr.left - wr.left).toFixed(1), '| canvas.left:', canvasComputedLeft.toFixed(1), '| gradient0:', gradient0FromWrapper.toFixed(1), '| logo0:', logo0FromWrapper.toFixed(1), '| c2p(0):', c2p0?.toFixed(1), '| ecart:', ecart.toFixed(1) + 'px');
-                }
             }, 50);
 
             resizeCanvasInProgress = false;
@@ -629,10 +631,7 @@ function getPlotlyFont(size, color) {
 // H2O : ~6.3 μm (principale), nombreuses bandes entre 5–8 μm
 function drawAbsorptionBandIndicators() {
     const plotContainerWrapper2 = document.querySelector('.plot-container-wrapper');
-    if (!plotContainerWrapper2) {
-        if (window.DEBUG_X0_ALIGN) console.log('[x0 logos] early return: pas de plot-container-wrapper');
-        return;
-    }
+    if (!plotContainerWrapper2) return;
 
     // Supprimer les anciens indicateurs s'ils existent
     const oldIndicators = plotContainerWrapper2.querySelectorAll('.absorption-band-indicator');
@@ -661,12 +660,6 @@ function drawAbsorptionBandIndicators() {
             const xInPaper = xaxis.c2p(lambda_um);
             return plotLeftFromWrapper + PLOT_MARGINS.l + xInPaper;
         };
-        if ((typeof window !== 'undefined' && window.DEBUG_X0_ALIGN) || !window._x0LogosLogged) {
-            window._x0LogosLogged = true;
-            const x0Pos = getXPosition(0);
-            const c2p0 = xaxis.c2p(0);
-            console.log('[x0 logos] getXPosition(0)=', x0Pos.toFixed(1), '| c2p(0)=', c2p0?.toFixed(1), '| plotLeftFromWrapper=', plotLeftFromWrapper.toFixed(1));
-        }
     } else {
         const graph_max_um = 50;
         const graph_min_um = 0;
@@ -754,12 +747,21 @@ window.updatePlot = function updatePlot(data) {
 
     if (!data.lambda_range) return;
 
-    const lambda_range = data.lambda_range; // ⚡ Nécessaire pour createFluxTrace
+    const lambda_range = data.lambda_range;
+    const epochName = (typeof window !== 'undefined' && window.currentEpochName) ? window.currentEpochName : 'Corps noir';
+    const isHadeen = (epochName === 'Hadéen');
+    const scaleFactor = isHadeen ? 1e15 : (epochName === 'Corps noir' ? 1e12 : 1e13);
+    const scaleLabel = isHadeen ? ' k' : (epochName === 'Corps noir' ? ' ×10¹²' : ' ×10¹³');
+    const scaleY = (y) => y / scaleFactor;
+
+    if (epochName !== lastEpochForScale) {
+        lastEpochForScale = epochName;
+        lastGoodYMaxLuminance = null;
+    }
     const lambda_planck = lambda_range.map(l => l * 1e6); // Convertir en μm
-    // ⚡ CORRECTION : Utiliser lambda_weights si disponible pour normalisation correcte
-    // Le flux est calculé avec delta_lambda = 0.1e-6 dans calculations.js
-    // Chaque point représente une plage de largeur delta_lambda * lambda_weights[j]
-    const delta_lambda_base = 0.1e-6; // Pas de base utilisé dans les calculs (toujours 0.1e-6)
+    // ⚡ Même formule que calculations.js : effective_delta_lambda = (λ_max - λ_min) / (n-1)
+    const lambda_span = lambda_range.length > 1 ? lambda_range[lambda_range.length - 1] - lambda_range[0] : 1e-6;
+    const effective_delta_lambda_base = lambda_range.length > 1 ? lambda_span / (lambda_range.length - 1) : 1e-6;
     if (!data.lambda_weights) {
         console.error('[updatePlot] ❌ ERREUR CRITIQUE : lambda_weights manquant');
         throw new Error('lambda_weights requis dans data');
@@ -792,13 +794,13 @@ window.updatePlot = function updatePlot(data) {
         
         const flux = topFlux
             .map((f, idx) => {
-                // Largeur effective = delta_lambda_base * lambda_weights[j]
                 if (lambda_weights[idx] === undefined) {
                     console.error(`[updatePlot] ❌ ERREUR CRITIQUE : lambda_weights[${idx}] manquant`);
                     throw new Error(`lambda_weights[${idx}] requis`);
                 }
-                const effective_delta_lambda = delta_lambda_base * lambda_weights[idx];
-                return f / effective_delta_lambda / 1e6; // Convertir en W/m²/μm
+                const band_width_m = effective_delta_lambda_base * lambda_weights[idx];
+                const raw = (f / band_width_m) * 1e6;
+                return scaleY(raw);
             });
         // Tooltip : "Courbe d'équilibre d'émission de la terre" pour 0 ppm, sinon avec température
         let hoverText;
@@ -822,19 +824,14 @@ window.updatePlot = function updatePlot(data) {
         };
     }
 
-    // Fonction helper pour créer une trace Planck
     function createPlanckTrace(T, label, color, showInLegend = false, dashPattern = 'dash') {
         const planck = data.lambda_range.map(l => {
             if (typeof window.planckFunction !== 'function') {
                 console.error('[updatePlot] ❌ ERREUR CRITIQUE : planckFunction non disponible');
                 throw new Error('planckFunction requise');
             }
-            const value = Math.PI * window.planckFunction(l, T) / 1e6;
-            // Pour 255K, s'assurer que la valeur est visible même si faible
-            if (T === 255 && value < 0.01) {
-                return 0.01; // Minimum visible
-            }
-            return value;
+            const raw = Math.PI * window.planckFunction(l, T) * 1e6;
+            return scaleY(raw);
         });
         // Utiliser la couleur fournie (noir pour les références, couleur de l'absorption pour la courbe courante)
         const lineColor = color || 'black';
@@ -929,7 +926,7 @@ window.updatePlot = function updatePlot(data) {
         // Courbe pointillée = corps noir à la T° courante (surface), pas T effective
         const color_effective = color_current;
 
-        const planck_current = createPlanckTrace(T_current, `Planck T surface ${data.co2_ppm.toFixed(0)} ppm`, color_effective, false, 'dot');
+        const planck_current = createPlanckTrace(T_effective_display, `Planck T effective ${data.co2_ppm.toFixed(0)} ppm`, color_effective, false, 'dot');
         planck_current.line.width = 2; // En gras
         planck_current.line.color = color_effective; // Même couleur que la courbe pleine
         traces.push(planck_current);
@@ -1185,37 +1182,50 @@ window.updatePlot = function updatePlot(data) {
         annotation_text = `Stratosphère<br>${delta_T_trop_strato.toFixed(1)} K<br>Troposphère`;
     }
 
-    // --- CALCUL DYNAMIQUE DE L'AXE Y (LUMINANCE) ---
-    // Trouver le max Y parmi toutes les traces visibles (hors axe altitude)
-    let y_max_luminance = 40; // Valeur par défaut minimale
+    // --- CALCUL ÉCHELLE Y : courbe colorée pointillée dépasse le milieu (~65%), courbes blanches peuvent dépasser ---
+    const isConverged = (typeof window.spectralConverged !== 'undefined' && window.spectralConverged);
+    let y_max_luminance;
 
-    traces.forEach(trace => {
-        if (trace.y && Array.isArray(trace.y) && trace.visible !== false && trace.yaxis !== 'y2') {
-            // Filtrer les valeurs infinies ou NaN
-            const validY = trace.y.filter(v => isFinite(v) && !isNaN(v));
-            if (validY.length > 0) {
-                const maxTrace = Math.max(...validY);
-                if (maxTrace > y_max_luminance) {
-                    y_max_luminance = maxTrace;
-                }
-            }
-        }
-    });
-
-    // Ajouter une marge de 10% pour ne pas coller au bord haut
-    y_max_luminance = y_max_luminance * 1.1;
-
-    // Arrondir pour faire joli (multiple de 5 ou 10 supérieur)
-    // Si > 100, arrondir au 100 supérieur, sinon au 10
-    if (y_max_luminance > 100) {
-        y_max_luminance = Math.ceil(y_max_luminance / 100) * 100;
+    if (lastGoodYMaxLuminance != null && !isConverged) {
+        y_max_luminance = lastGoodYMaxLuminance;
     } else {
-        y_max_luminance = Math.ceil(y_max_luminance / 5) * 5;
+        let T_est = 255;
+        if (typeof window.getGeologicalPeriodByName === 'function') {
+            const ep = window.getGeologicalPeriodByName(epochName);
+            if (ep && typeof ep['🌡️🧮'] === 'number') T_est = ep['🌡️🧮'];
+        } else if (window.TIMELINE) {
+            const item = window.TIMELINE.find(e => e['📅'] && (e.name === epochName || (e.epochName === epochName)));
+            if (item && typeof item['🌡️🧮'] === 'number') T_est = item['🌡️🧮'];
+        }
+        if (epochName === 'Hadéen' && T_est === 255) T_est = 2450;
+        let maxPlanck = 0;
+        if (typeof window.planckFunction === 'function') {
+            data.lambda_range.forEach(l => {
+                const v = Math.PI * window.planckFunction(l, T_est) * 1e6;
+                if (v > maxPlanck) maxPlanck = v;
+            });
+        }
+        const maxScaled = scaleY(maxPlanck);
+        let y_raw = maxScaled / 0.65;
+        if (y_raw < 5) {
+            y_max_luminance = Math.max(0.5, Math.ceil(y_raw * 2) / 2);
+        } else if (y_raw < 100) {
+            y_max_luminance = Math.max(5, Math.ceil(y_raw / 5) * 5);
+        } else {
+            y_max_luminance = Math.ceil(y_raw / 100) * 100;
+        }
+        lastGoodYMaxLuminance = y_max_luminance;
     }
 
-    // On veut 8 divisions pour s'aligner avec l'axe altitude
     const dtick_luminance = y_max_luminance / 8;
 
+    // Verrouiller width/height depuis le conteneur pour éviter que Plotly "oublie" entre les cycles
+    const plotContainerEl = document.getElementById('plot-container');
+    const plotWrapperEl = document.querySelector('.plot-container-wrapper');
+    const containerEl = plotContainerEl || plotWrapperEl;
+    const w = containerEl ? Math.floor(containerEl.clientWidth) : 0;
+    const h = containerEl ? Math.floor(containerEl.clientHeight) : 0;
+    const useExplicitSize = (w > 0 && h > 0);
 
     // Construire la config yaxis2 séparément pour être sûr
     const yaxis2Config = {
@@ -1244,10 +1254,11 @@ window.updatePlot = function updatePlot(data) {
 
 
     const updateLayout = {
-        autosize: true, // Préserver dimensions (éviter reset à chaque cycle)
-        margin: PLOT_MARGINS, // Marges du graphique (variable commune)
+        autosize: !useExplicitSize,
+        ...(useExplicitSize && { width: w, height: h }),
+        margin: PLOT_MARGINS,
         xaxis: {
-            range: [0, 50], // Commence à 0
+            range: [0, 50],
             fixedrange: true,
             title: {
                 text: "Longueur d'onde (μm)",
@@ -1264,23 +1275,30 @@ window.updatePlot = function updatePlot(data) {
             tickwidth: 0 // Épaisseur des ticks à 0
         },
         yaxis: {
-            range: [0, y_max_luminance], // Dynamique
-            fixedrange: true, // Désactiver le zoom
-            title: {
-                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
-                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
+            range: [0, y_max_luminance],
+            fixedrange: true,
+            tickformat: isHadeen ? ',.0s' : (v) => {
+                const n = Number(v);
+                if (!Number.isFinite(n)) return '';
+                if (n >= 1000) return n.toFixed(0);
+                if (n >= 10) return n.toFixed(1);
+                return n.toFixed(2);
             },
-            side: 'left', // Luminance à gauche
-            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            title: {
+                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)" + scaleLabel,
+                font: getPlotlyFont(14, getDefaultTextColor())
+            },
+            side: 'left',
+            tickfont: getPlotlyFont(12, getDefaultTextColor()),
+            titlefont: getPlotlyFont(14, getDefaultTextColor()),
             showgrid: true,
-            gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
+            gridcolor: 'rgba(0, 0, 0, 0.5)',
             gridwidth: 1,
-            showline: true, // Afficher le trait vertical de l'axe
+            showline: true,
             linecolor: 'rgba(0, 0, 0, 0.5)',
             linewidth: 1,
             mirror: 'ticks',
-            dtick: dtick_luminance, // Synchronisé avec l'altitude (8 divisions)
+            dtick: dtick_luminance,
             tickmode: 'linear'
         },
         yaxis2: yaxis2Config,
@@ -1328,12 +1346,8 @@ window.updatePlot = function updatePlot(data) {
             // Créer le contenu sur 3 lignes
             tempDisplay.innerHTML = `${tempK} K<br>${tempC}°C<br>${tempF}°F`;
 
-            // Utiliser la couleur de la température effective (cyan ou calculée)
-            let color_effective = 'cyan';
-            if (typeof window.tempSurfaceToColor === 'function') {
-                color_effective = window.tempSurfaceToColor(T_effective_display - CONST.KELVIN_TO_CELSIUS);
-            }
-            tempDisplay.style.color = color_effective;
+            // Même couleur que la courbe pointillée (corps noir) pour cohérence visuelle
+            tempDisplay.style.color = color_current;
 
             plotContainer.appendChild(tempDisplay);
         }
@@ -1431,11 +1445,11 @@ window.updatePlot = function updatePlot(data) {
 
 
 
-    Plotly.react('plot-container', traces, updateLayout).then(() => {
-        // Masquer la ligne de l'axe x (trait noir de 0 à 50μm)
+        Plotly.react('plot-container', traces, updateLayout).then(() => {
         hideXAxisLine();
-        // Resize artificiel pour bien caler le spectre après rendu Plotly
-        if (typeof window !== 'undefined' && window.dispatchEvent) {
+        // Ne pas dispatcher resize pendant le calcul : targetRect peut être invalide → spectre au milieu
+        const converged = (typeof window.spectralConverged !== 'undefined' && window.spectralConverged);
+        if (converged && typeof window !== 'undefined' && window.dispatchEvent) {
             window.dispatchEvent(new Event('resize'));
         }
         
@@ -2104,15 +2118,15 @@ function drawSpectralVisualization(canvas, data) {
             tickwidth: 0 // Épaisseur des ticks à 0
         },
         yaxis: {
-            // ... configuration axe Y inchangée ...
             range: [0, 40],
-            fixedrange: true, // Désactiver le zoom
+            fixedrange: true,
+            tickformat: ',.0f',
             title: {
-                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)",
-                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
+                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹) ×10¹³",
+                font: getPlotlyFont(14, getDefaultTextColor())
             },
-            side: 'left', // Luminance à gauche
-            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
+            side: 'left',
+            tickfont: getPlotlyFont(12, getDefaultTextColor()),
             titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%

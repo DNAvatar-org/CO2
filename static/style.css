@@ -369,11 +369,12 @@ h1 {
 
 /* Note sur l'échelle logarithmique - à gauche, très proche de la bande spectrale */
 /* Position basée sur PLOT_MARGINS = { l: 70, r: 70, t: 0, b: 75 } */
+/* Variables pour ajuster taille/position : --infra-note-bottom, --infra-note-left, --infra-note-font-size */
 .infra-note {
     position: absolute;
-    bottom: 45px;
-    left: 90px;
-    font-size: 8px;
+    bottom: var(--infra-note-bottom, 45px);
+    left: var(--infra-note-left, 90px);
+    font-size: var(--infra-note-font-size, 8px);
     font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     z-index: 100;
     pointer-events: none;

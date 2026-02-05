@@ -153,6 +153,31 @@
         }
         var lastComputePayload = null;
         if (window.CO2_EVENTS) {
+            window.CO2_EVENTS.on('compute:progress', function (payload) {
+                if (typeof window.updateFluxLabels !== 'function' || !payload || !window.DATA) return;
+                var DATA = window.DATA;
+                var T0 = payload.T0;
+                var total_flux = payload.total_flux;
+                if (T0 == null || total_flux == null) return;
+                var CONST = window.CONST || { KELVIN_TO_CELSIUS: 273.15 };
+                var h2o_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
+                var h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+                window.h2oVaporPercent = Math.min(100, Math.max(0, h2o_frac * 100 + h2o_meteorites));
+                if (!window.plotData) window.plotData = {};
+                window.plotData.co2_ppm = (DATA['🫧'] && DATA['🫧']['🍰🫧🏭'] != null ? DATA['🫧']['🍰🫧🏭'] : 0) * 1e6;
+                window.plotData.ch4_ppm = (DATA['🫧'] && DATA['🫧']['🍰🫧⛽'] != null ? DATA['🫧']['🍰🫧⛽'] : 0) * 1e6;
+                var fluxData = {
+                    T0: T0,
+                    temp_surface: T0,
+                    temp_surface_c: T0 - CONST.KELVIN_TO_CELSIUS,
+                    total_flux: total_flux,
+                    albedo: DATA['🪩'] && DATA['🪩']['🍰🪩📿'] != null ? DATA['🪩']['🍰🪩📿'] : 0,
+                    cloud_coverage: DATA['🪩'] && DATA['🪩']['☁️'] != null ? DATA['🪩']['☁️'] : 0,
+                    co2_ppm: window.plotData.co2_ppm,
+                    ch4_ppm: window.plotData.ch4_ppm
+                };
+                try { window.updateFluxLabels(fluxData); } catch (e) { console.error('[compute:progress] updateFluxLabels', e); }
+            });
             window.CO2_EVENTS.on('compute:done', function (payload) {
                 if (payload && payload.DATA) {
                     lastComputePayload = payload;

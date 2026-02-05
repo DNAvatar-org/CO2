@@ -96,7 +96,6 @@ function calculateFluxForT0() {
     
     let precisionFactor = window.getPrecisionFactorFromFPS();
     precisionFactor = Number.isFinite(precisionFactor) && precisionFactor > 0 ? Math.min(precisionFactor, 5) : 1;
-    if (precisionFactor > 5 && window.DEBUG_OOM) console.warn('[OOM] precisionFactor plafonné à 5 (était ' + precisionFactor + ') pour limiter le nombre de couches verticales');
 
     // Ajuster delta_z et delta_lambda (toujours à la valeur de base, pas de réduction)
     // Note : delta_z sous tropopause reste constant (pas d'optimisation)
@@ -111,7 +110,6 @@ function calculateFluxForT0() {
     const z_trop_raw = window.calculateTropopauseHeight();
     const limit_std_atmosphere_z = 120000;
     const z_trop_precalc = Math.min(z_trop_raw, Math.min(z_max, limit_std_atmosphere_z));
-    if (z_trop_raw > limit_std_atmosphere_z && window.DEBUG_OOM) console.warn('[OOM] tropopause plafonnée à ' + limit_std_atmosphere_z + ' m (H brut=' + (z_trop_raw / 1000).toFixed(0) + ' km) pour éviter grille OOM');
 
     // Créer la grille lambda avec regroupement adaptatif (sauf si fullSpectre)
     const lambda_range = [];
@@ -156,7 +154,6 @@ function calculateFluxForT0() {
     const delta_z_troposphere = delta_z;
     const raw_stratosphere = (delta_z * 5) / precisionFactor;
     const delta_z_stratosphere = Math.max(100, raw_stratosphere);
-    if (raw_stratosphere < 100 && window.DEBUG_OOM) console.warn('[OOM] delta_z_stratosphere plafonné à 100 m (était ' + raw_stratosphere.toFixed(1) + ' m) pour éviter grille OOM');
     const delta_z_exosphere = (z_max > 120000) ? 5000 : delta_z_stratosphere;
 
     if (z_trop_precalc > 0) {
@@ -209,10 +206,6 @@ function calculateFluxForT0() {
     const num_couches = z_range.length;
     const num_plages_spectre = final_lambda_length;
     const total_cases = num_couches * num_plages_spectre;
-    if (window.DEBUG_OOM && typeof console !== 'undefined') {
-        const estMB = (final_lambda_length * num_couches * 5 * 8) / 1e6;
-        console.log('[OOM] calculateFluxForT0 about to allocate grid', { bins: final_lambda_length, layers: num_couches, estMB: estMB.toFixed(1) + ' MB' });
-    }
     const upward_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const optical_thickness = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
@@ -699,7 +692,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     // Récupérer H2O et CH4 pour le log
     // 🔒 CORRECTION : Utiliser DATA['💧']['🍰🫧💧'] comme source unique de vérité
     const h2o_total = DATA['💧']['🍰🫧💧'] * 100; // Fraction → %
-    const ch4_ppm = (options && options.CH4_fraction) ? options.CH4_fraction * 1e6 : 0;
+    const ch4_ppm = (options && options.CH4_fraction != null) ? options.CH4_fraction * 1e6 : (DATA['🫧']['🍰🫧⛽'] != null ? DATA['🫧']['🍰🫧⛽'] * 1e6 : 0);
     
     // Log supprimé : affichage uniquement du mode (dichotomie/exponentielle) dans la boucle principale
     // if (iteration === 0 || isInitial) {
@@ -890,11 +883,6 @@ function simulateRadiativeTransfer() {
     
     const adjustment = deltaTicTime_per_tic * ticTime;
     const T0_initial = baseTemp + adjustment;
-
-    const _fmt = (v) => (v == null) ? '?' : (typeof v === 'number' && (Math.abs(v) >= 1e3 || (Math.abs(v) < 0.001 && v !== 0)) ? v.toExponential(2) : Number(v).toFixed(4));
-    if (window.DEBUG_ANALYSE) {
-        console.log(`[simulateRadiativeTransfer] prev_T0=${prev_T0.toFixed(1)}K T0_initial=${T0_initial.toFixed(1)}K 🧪=${_fmt(DATA['🫧']['🧪'])} 🍰🫧💧=${_fmt(DATA['💧'] && DATA['💧']['🍰🫧💧'])} 🍰🫧🏭=${_fmt(DATA['🫧']['🍰🫧🏭'])} 🍰🪩📿=${_fmt(DATA['🪩'] && DATA['🪩']['🍰🪩📿'])}`);
-    }
 
     if (T0_initial <= 0) {
         throw new Error(`T0_initial invalide: ${T0_initial}`);
@@ -1098,9 +1086,6 @@ function simulateRadiativeTransfer() {
                         // Maximum d'itérations atteint
                         if (!isCancelled) {
                             // 🔒 Désactiver les logs de debug après convergence
-                            if (typeof window !== 'undefined') {
-                                window.DEBUG_CONVERGENCE = false;
-                            }
                             finalizeResults(final_result, T0_current, DATA['🫧']['🍰🫧🏭'], resolve);
                         }
                         return;
@@ -1162,9 +1147,6 @@ function simulateRadiativeTransfer() {
                     // À 255K, 10K = 37.6 W/m², mais à 2470K, 10K = beaucoup plus grand (≈33000 W/m²)
                     // Il faut recalculer la tolérance avec T0_current pour une précision correcte
                     const tolerance_current = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3) * precision_K;
-                    if (window.DEBUG_ANALYSE) {
-                        console.log('[iterate][calculations.js] iter=' + iter + ' T0_K=' + T0_current.toFixed(2) + ' T0_C=' + (T0_current - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' flux_in=' + total_flux_in.toFixed(2) + ' flux_out=' + final_result.total_flux.toFixed(2) + ' delta=' + delta_equilibre.toFixed(2) + ' tol=' + tolerance_current.toFixed(2));
-                    }
                     
                     // Delta EDS (Effet de Serre) : différence entre corps noir théorique à T0 et émission réelle
                     // Ce delta NE TEND PAS vers 0, c'est l'effet de serre (normal qu'il reste élevé)
@@ -1219,13 +1201,6 @@ function simulateRadiativeTransfer() {
                     // ⚠️ Cette formule linéaire n'est valide que pour de petits ajustements (ΔT << T)
                     // À 100K avec delta_equilibre = -233 W/m², l'ajustement serait -1013K (absurde)
                     // On n'affiche que si l'ajustement est < 100K (approximation valide)
-                    if (T0_current > 50 && Math.abs(T0_adjustment_direct) > 0.01 && Math.abs(T0_adjustment_direct) < 100) {
-                        const sensitivity_factor = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3);
-                        if (window.DEBUG_ANALYSE) {
-                            console.log('[iterate][calculations.js] T0_ajuste=' + T0_ajuste_theorique.toFixed(2) + 'K sens=' + sensitivity_factor.toFixed(2) + 'W/m²/K');
-                        }
-                    }
-                    
                     // 🔒 Mettre à jour la couleur de legend-equilibre avec la température actuelle (pendant les calculs)
                     if (typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function') {
                         const tempC_current = T0_current - CONST.KELVIN_TO_CELSIUS;
@@ -1266,7 +1241,6 @@ function simulateRadiativeTransfer() {
                     
                     if (converged_by_flux || converged_by_temp) {
                         if (converged_by_temp && !converged_by_flux) {
-                            if (window.DEBUG_ANALYSE) console.log(`[DICHOTOMIE] Convergence |ΔT|=${delta_T_convergence.toFixed(2)}K delta=${delta_equilibre.toFixed(2)}W/m²`);
                         }
                         // 🔒 SUPPRIMÉ : logCalculationPhase inutile
 
@@ -1292,9 +1266,6 @@ function simulateRadiativeTransfer() {
                         }));
                         if (!isCancelled) {
                             // 🔒 Désactiver les logs de debug après convergence
-                            if (typeof window !== 'undefined') {
-                                window.DEBUG_CONVERGENCE = false;
-                            }
                             finalizeResults(final_result, T0_current, DATA['🫧']['🍰🫧🏭'], resolve);
                         }
                         return;
@@ -1328,24 +1299,19 @@ function simulateRadiativeTransfer() {
                     
                     // Appliquer l'algorithme selon la phase
                     if (Phase === "Search") {
-                        // Phase="Search" : T0 -= Delta équilibre
+                        // Phase="Search" : incTemp (dT) = -delta / sensitivity
+                        // Formule : dF/dT = 4σT³ => incTemp = -delta_equilibre / (4σT³)
+                        // Si delta>0 (on émet trop) => diminuer T ; si delta<0 => augmenter T
                         old_T0 = T0_current;
-                        // 🔒 CORRECTION : L'ajustement doit être proportionnel, pas direct
-                        // Si delta_equilibre est positif (on émet trop), on doit diminuer T
-                        // Si delta_equilibre est négatif (on émet pas assez), on doit augmenter T
-                        // Relation : dF/dT = 4σT³, donc dT = dF / (4σT³)
                         const STEFAN_BOLTZMANN = CONST.STEFAN_BOLTZMANN;
                         const sensitivity = 4 * STEFAN_BOLTZMANN * Math.pow(T0_current, 3);
-                        let T0_adjustment = -delta_equilibre / sensitivity;
+                        let T0_adjustment = -delta_equilibre / sensitivity; // incTemp
                         // 🔒 Limiter l'ajustement pour éviter des sauts trop importants (max ±50K par itération)
                         const T0_adjustment_unlimited = T0_adjustment;
                         T0_adjustment = Math.max(-50, Math.min(50, T0_adjustment));
                         T0_current = T0_current + T0_adjustment;
                         // 🔒 Protection : éviter les températures négatives ou trop basses
                         T0_current = Math.max(200, T0_current);
-                        if (window.DEBUG_ANALYSE) {
-                            console.log('[Search][calculations.js] T0=' + old_T0.toFixed(2) + '->' + T0_current.toFixed(2) + 'K delta=' + delta_equilibre.toFixed(2) + 'W/m² dT=' + T0_adjustment.toFixed(2) + 'K');
-                        }
                         // 🔒 Mettre à jour DATA['🧮']['🧮🌡️'] AVANT d'appeler calculateFluxForT0()
                         DATA['🧮']['🧮🌡️'] = T0_current;
                         window.calculateH2OParameters();
@@ -1425,7 +1391,6 @@ function simulateRadiativeTransfer() {
                     
                     if (converged_by_flux_check || converged_by_temp_check) {
                         if (converged_by_temp_check && !converged_by_flux_check) {
-                            if (window.DEBUG_ANALYSE) console.log(`[DICHOTOMIE] Convergence |ΔT|=${delta_T_convergence_check.toFixed(2)}K delta=${delta_equilibre.toFixed(2)}W/m²`);
                         }
                         // 🔒 SUPPRIMÉ : logCalculationPhase inutile
 
@@ -1456,9 +1421,6 @@ function simulateRadiativeTransfer() {
                         }
                         if (!isCancelled) {
                             // 🔒 Désactiver les logs de debug après convergence
-                            if (typeof window !== 'undefined') {
-                                window.DEBUG_CONVERGENCE = false;
-                            }
                             finalizeResults(final_result, T0_current, DATA['🫧']['🍰🫧🏭'], resolve);
                         }
                         return;
@@ -1506,9 +1468,7 @@ function simulateRadiativeTransfer() {
                         if (iter > 20) {
                             console.log('[calculations.js] ⚠️ Maximum d\'itérations atteint (20)');
                         } else if (converged_by_temp_final && !converged_by_flux_final) {
-                            if (window.DEBUG_ANALYSE) console.log(`[calculations.js] Convergence |ΔT|=${delta_T_final.toFixed(2)}K delta=${delta_equilibre.toFixed(2)}W/m²`);
                         } else {
-                            if (window.DEBUG_ANALYSE) console.log(`[calculations.js] Convergence delta=${Math.abs(delta_equilibre).toFixed(4)}W/m² T=${T0_current.toFixed(2)}K`);
                         }
                         
                         // 🔒 SUPPRIMÉ : logCalculationPhase inutile
@@ -1535,9 +1495,6 @@ function simulateRadiativeTransfer() {
                         }));
                         if (!isCancelled) {
                             // 🔒 Désactiver les logs de debug après convergence
-                            if (typeof window !== 'undefined') {
-                                window.DEBUG_CONVERGENCE = false;
-                            }
                             finalizeResults(final_result, T0_current, DATA['🫧']['🍰🫧🏭'], resolve);
                         }
                         return;
@@ -1701,9 +1658,6 @@ function simulateRadiativeTransfer() {
 // Fonction pour finaliser les résultats (mode asynchrone)
 function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     const logo = '🏭'; // Emoji CO2 depuis dico.js
-    if (window.DEBUG_ANALYSE) {
-        console.log(`[finalizeResults] T0=${final_T0.toFixed(2)}K flux=${final_result.total_flux.toFixed(2)}W/m²`);
-    }
     // 🔒 Réactiver l'affichage du spectre à la fin des calculs (même si FPS était bas pendant)
     if (typeof window !== 'undefined') {
         window.showSpectralBackground = true;
@@ -1779,9 +1733,6 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     const albedo = window.calculateAlbedo();
     const cloud_coverage = DATA['🪩']['🍰🪩⛅'];
     
-    // Log albedo
-    if (window.DEBUG_ANALYSE) console.log(`[finalizeResults] Albedo: ${(albedo * 100).toFixed(1)}%`);
-
     // Calculer EDS (Effet de Serre) = Flux Surface - Flux Sortant
     const flux_surface = STEFAN_BOLTZMANN * Math.pow(final_T0, 4);
     const eds = flux_surface - total_flux;
@@ -1793,10 +1744,6 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
     const legendEquilibre_f = document.querySelector('.legend-equilibre');
     if (legendEquilibre_f) legendEquilibre_f.style.color = color_final;
     
-    // Log EDS et T° finale
-    if (window.DEBUG_ANALYSE) console.log(`[finalizeResults] EDS: ${eds.toFixed(1)} W/m²`);
-    if (window.DEBUG_ANALYSE) console.log(`[finalizeResults] T° finale: ${final_T0.toFixed(2)}K (${(final_T0 - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C)`);
-
     if (!window.plotData) window.plotData = {};
     window.plotData.temp_surface = final_T0;
     window.plotData.temp_surface_c = final_T0 - CONST.KELVIN_TO_CELSIUS;
@@ -1863,7 +1810,6 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
 // Fonction pour finaliser les résultats (mode synchrone)
 function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, upward_flux, optical_thickness, emitted_flux, absorbed_flux, earth_flux, CO2_fraction) {
     const logo = '🏭'; // Emoji CO2 depuis dico.js
-    if (window.DEBUG_ANALYSE) console.log(`[finalizeResultsSync] T0=${T0.toFixed(2)}K emitted=${emitted_flux.toFixed(2)} absorbed=${absorbed_flux.toFixed(2)}W/m²`);
     // Calculer le flux total au sommet de l'atmosphère
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
 
@@ -1885,9 +1831,6 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     
     const albedo = calculateAlbedo(T0, h2o_enabled, geo_flux);
     const cloud_coverage = DATA['🪩']['🍰🪩⛅'];
-    
-    // Log albedo
-    if (window.DEBUG_ANALYSE) console.log(`[finalizeResults] Albedo: ${(albedo * 100).toFixed(1)}%`);
     
     const tempC_final_sync = T0 - CONST.KELVIN_TO_CELSIUS;
     const color_final_sync = window.tempSurfaceToColor(tempC_final_sync);
@@ -1917,10 +1860,6 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     const flux_surface = STEFAN_BOLTZMANN * Math.pow(T0, 4);
     const eds = flux_surface - total_flux;
     
-    // Log EDS et T° finale
-    if (window.DEBUG_ANALYSE) console.log(`[finalizeResults] EDS: ${eds.toFixed(1)} W/m²`);
-    if (window.DEBUG_ANALYSE) console.log(`[finalizeResultsSync] T° finale: ${T0.toFixed(2)}K (${(T0 - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C)`);
-
     if (!window.plotData) window.plotData = {};
     window.plotData.temp_surface = T0;
     window.plotData.temp_surface_c = T0 - CONST.KELVIN_TO_CELSIUS;

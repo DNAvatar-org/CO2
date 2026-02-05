@@ -1104,7 +1104,6 @@ function updateCO2LevelDirect(co2_fraction) {
     const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
     
     // ⚠️ NOTE: Le nom de la fonction est trompeur - elle gère les 3 gaz (CO2, H2O, CH4), pas seulement CO2
-    console.log(`${logoEDS} [updateCO2LevelDirect@main.js] 🏭=${(co2_fraction * 1e6).toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
     // Annuler tout calcul en cours avant de commencer un nouveau
     cancelCurrentCalculation();
 
@@ -1365,8 +1364,6 @@ window.updateDisplay = function updateDisplay(data) {
     const h2o_total = h2o_percent + h2o_meteorites;
     const ch4_ppm = (data && data.ch4_ppm !== undefined) ? data.ch4_ppm : (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
     
-    console.log(`${logoEDS} [updateDisplay@main.js] 🏭=${co2_ppm.toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
-    
     if (data && data.co2_ppm !== undefined) {
         const ppm = Math.round(data.co2_ppm);
         const co2NumberEl = document.getElementById('co2-number-synthese');
@@ -1519,7 +1516,6 @@ window.updateDisplay = function updateDisplay(data) {
         }
     }
 
-    // === DEBUG: Afficher toutes les valeurs du flux diagram ===
     if (data) {
         // Récupérer l'époque et la date
         let epochName = '--';
@@ -1971,13 +1967,12 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour activer/désactiver la vapeur d'eau
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
-    // 🔒 Log de l'époque au tout début (avant tous les autres logs)
     const logoEpoch = '🕰';
-    console.log(`${logoEpoch} ${epochName}`);
+    console.log(logoEpoch + ' ' + epochName);
     
     // 🔒 Légende des emojis (affichée une seule fois au premier appel)
     if (typeof window !== 'undefined' && !window._logLegendShown) {
-        console.log('📋 Légende: 🕰 Époque | 📛 EDS(Forçage) | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪩 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
+        console.log('📋 Légende: 🕰 Époque | 📛 EDS | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪩 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
         window._logLegendShown = true;
     }
     
@@ -1990,14 +1985,14 @@ function setEpoch(epochName) {
     // Mettre en pause l'animation Three.js lors du changement d'époque
     if (typeof window !== 'undefined') {
         window.threeJSAnimationPaused = true;
-        console.log(`${logoEpoch} ⏸️ [setEpoch@main.js] Three.js pause`);
+        // Three.js pause
     }
     
     // 🔄 Remettre infoTimeMa à 0 lors du changement d'époque
     // IMPORTANT: Doit être fait AVANT l'interprétation du logo pour que ticTime = 0
     if (typeof window !== 'undefined') {
         window.infoTimeMa = 0;
-        console.log(`${logoEpoch} 🔄 [setEpoch@main.js] infoTimeMa=0 epoch=${epochName}`);
+        // infoTimeMa=0
     }
     
     // Log supprimé (non essentiel)
@@ -3011,7 +3006,7 @@ window.setEpoch = setEpoch;
 window.addEventListener('DOMContentLoaded', () => {
     // 🔒 Légende des emojis (affichée une seule fois au démarrage)
     if (typeof window !== 'undefined' && !window._logLegendShown) {
-        console.log('📋 Légende: 🕰 Époque | 📛 EDS(Forçage) | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪩 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
+        console.log('📋 Légende: 🕰 Époque | 📛 EDS | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪩 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
         window._logLegendShown = true;
     }
     

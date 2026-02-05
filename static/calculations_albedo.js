@@ -379,9 +379,6 @@ function calculateAlbedo() {
         // 🔒 calculateCloudFormationIndex() a déjà été appelé plus haut (ligne ~262)
         // On réutilise DATA['🪩']['☁️'] déjà calculé
         const cloud_index = DATA['🪩']['☁️'];
-        if (window.DEBUG_ANALYSE) {
-            console.log('[calculateAlbedo][calculations_albedo.js] cloud_index=' + cloud_index.toFixed(4) + ' epochId=' + (DATA['📜'] && DATA['📜']['🗿'] ? DATA['📜']['🗿'] : '?'));
-        }
         // Calculer C_max et eta_cloud depuis l'époque et les propriétés atmosphériques
         // C_max : plafond physique dépend de l'époque (structure verticale) et de la pression
         // eta_cloud : efficacité optique dépend de l'époque (CCN - Cloud Condensation Nuclei) et de la température
@@ -478,9 +475,6 @@ function calculateAlbedo() {
     // ice_fraction_base est la surface de glace, ice_fraction_stock est la fraction du stock d'eau
     DATA['🪩']['🍰🪩📿'] = final_albedo_with_water;
     DATA['🪩']['🍰🪩⛅'] = isFinite(cloud_fraction) ? cloud_fraction : 0;
-    if (window.DEBUG_ANALYSE) {
-        console.log('[calculateAlbedo][calculations_albedo.js] albedo_final=' + final_albedo_with_water.toFixed(4) + ' cloud_frac=' + (isFinite(cloud_fraction) ? cloud_fraction.toFixed(4) : '0'));
-    }
     return final_albedo;
 }
 
@@ -577,10 +571,10 @@ function updateLevelsConfig() {
         ch4_ppm = ch4_fraction * 1e6;
     }
     
-    // Initialiser H2O depuis EPOCH
+    // Initialiser H2O : ⚖️💧 = eau totale (océans), pas vapeur. Utiliser DATA['💧']['🍰🫧💧'] si dispo, sinon 0.
     let h2o_percent = 0;
-    if (EPOCH['⚖️💧'] > 0) {
-        h2o_percent = (EPOCH['⚖️💧'] / total_atmosphere_mass_kg) * 100;
+    if (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null && DATA['💧']['🍰🫧💧'] > 0) {
+        h2o_percent = DATA['💧']['🍰🫧💧'] * 100;
     }
     
     // Si maximiseData (appel depuis un événement), prendre le max entre la valeur sauvegardée et la valeur par défaut
@@ -603,7 +597,7 @@ function updateLevelsConfig() {
     window.h2oVaporPercent = h2o_percent;
     window.h2oTotalFromMeteorites = 0;
     
-    console.log(`📛 🛠 [updateLevelsConfig@calculations_albedo.js] 🏭=${co2_ppm.toFixed(0)}ppm 💧=${h2o_percent.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
+    console.log('📛 [updateLevelsConfig] 🏭=' + co2_ppm.toFixed(0) + 'ppm 💧=' + h2o_percent.toFixed(1) + '% ⛽=' + ch4_ppm.toFixed(0) + 'ppm');
 }
 
 // Exposer globalement pour utilisation dans main.js
