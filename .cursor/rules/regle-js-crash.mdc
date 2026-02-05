@@ -1,0 +1,32 @@
+---
+description: Pas de typeof/if abusifs - respecter _REGLE_JS_CRASH.md
+globs: "**/*.js"
+alwaysApply: true
+---
+
+# _REGLE_JS_CRASH — Pas de if/typeof abusifs
+
+Référence : `_REGLE_JS_CRASH.md` à la racine du projet.
+
+## Interdictions
+
+- **Aucun** `typeof x !== 'undefined'` pour vérifier l'existence
+- **Aucun** `typeof x === 'function'` avant d'appeler une fonction
+- **Aucun** `||` pour valeurs par défaut
+- **Aucun** `?.` (optional chaining) pour masquer les erreurs
+
+## Correct
+
+```javascript
+const shouldDisplay = window.showDichotomySteps && window.isVisuPanelActive();
+window.displayDichotomyStep(...);
+```
+
+## Incorrect
+
+```javascript
+const shouldDisplay = typeof window !== 'undefined' && window.showDichotomySteps && (typeof window.isVisuPanelActive === 'function' && window.isVisuPanelActive());
+if (typeof window.displayDichotomyStep === 'function') { ... }
+```
+
+Si une valeur n'existe pas → le code doit planter pour rendre le bug visible.

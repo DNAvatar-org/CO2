@@ -3061,7 +3061,7 @@ function generateTimelineFromConfig() {
     const timeline = window.TIMELINE;
 
     // Utiliser le nouveau conteneur vertical, avec fallback sur l'ancien
-    const epochsContainer = document.querySelector('.epochs-container-vertical') || document.querySelector('.epochs-container');
+    const epochsContainer = document.querySelector('.visu_epochs-container') || document.querySelector('.epochs-container');
     if (!epochsContainer) {
         console.warn('Timeline container not found');
         return;

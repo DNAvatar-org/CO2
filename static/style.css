@@ -556,8 +556,8 @@ h1 {
     font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
 
-/* 1. Section Date - frise verticale : 📜 et 📅 empilés (ordre lecture haut/bas) */
-.timeline-date-section {
+/* 1. Section Date - frise verticale (visu_) : 📜 et 📅 empilés (ordre lecture haut/bas) */
+.visu_timeline-date-section {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -602,8 +602,8 @@ h1 {
 
 /* Styles de boutons déplacés dans buttons.css */
 
-/* 2. Zone Horloge (🕰 + actions) */
-.timeline-horloge-section {
+/* 2. Zone Horloge (🕰 + actions) - visu_ */
+.visu_timeline-horloge-section {
     width: 100%;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -614,7 +614,7 @@ h1 {
     padding: 8px 0;
 }
 
-.timeline-horloge-content {
+.visu_timeline-horloge-content {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -682,15 +682,15 @@ h1 {
     transform: scale(0.95);
 }
 
-/* 3. Frise verticale */
-.timeline-frise-vertical {
+/* 3. Frise verticale - visu_ */
+.visu_timeline-frise {
     flex: 1;
     width: 100%;
     overflow-y: auto;
     overflow-x: hidden;
 }
 
-.epochs-container-vertical {
+.visu_epochs-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -701,7 +701,7 @@ h1 {
 /* Ancien style pour compatibilité (peut être supprimé si plus utilisé) */
 .timeline-start-wrapper {
     display: none;
-    /* Masqué car remplacé par timeline-date-section */
+    /* Masqué car remplacé par visu_timeline-date-section */
 }
 
 .timeline-first-line {
@@ -716,12 +716,12 @@ h1 {
 
 .timeline-frise {
     display: none;
-    /* Masqué car remplacé par timeline-frise-vertical */
+    /* Masqué car remplacé par visu_timeline-frise */
 }
 
 .epochs-container {
     display: none;
-    /* Masqué car remplacé par epochs-container-vertical */
+    /* Masqué car remplacé par visu_epochs-container */
 }
 
 .epoch-separator-item {

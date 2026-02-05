@@ -26,8 +26,8 @@
                             <span class="tic-duration" id="tic-duration" style="font-size: 9px; color: var(--muted, #888); margin-top: 1px;"></span>
                         </div>
                         
-                        <!-- 🕰 Horloge avec événements (>> ticTime, Météorite, etc.) -->
-                        <div class="timeline-horloge-display" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
+                        <!-- 🕰 Horloge avec événements (>> ticTime, Météorite, etc.) - scie_ -->
+                        <div class="scie_timeline-horloge-section" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
                             <span class="horloge-icon" style="font-size: 20px;">🕰</span>
                             <div class="timeline-events-logos" id="timeline-events-logos" style="margin-top: 2px; display: flex; align-items: center; gap: 4px;">
                                 <!-- >> ticTime puis logos (météorite, etc.) -->
@@ -40,8 +40,8 @@
                             <button class="icon-button" id="run-stop-btn" onclick="toggleRunStop()" title="Exécuter">▶️</button>
                         </div>
                         
-                        <!-- Boutons d'époques avec graduations intégrées -->
-                        <div class="epochs-container-horizontal" id="epochs-container-horizontal" style="flex: 1; padding-left: 2px; display: flex; align-items: center; gap: 0; flex-wrap: wrap; min-width: 0;">
+                        <!-- Boutons d'époques avec graduations intégrées - scie_ -->
+                        <div class="scie_epochs-container" id="scie_epochs-container" style="flex: 1; padding-left: 2px; display: flex; align-items: center; gap: 0; flex-wrap: wrap; min-width: 0;">
                             <!-- Sera rempli dynamiquement avec boutons et graduations -->
                         </div>
                 </div>
@@ -247,7 +247,7 @@
         // ============================================================================
         var EPOCH_NAME_MAP = { '⚫': 'Corps noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🌿': 'Protérozoïque', '🦕': 'Mésozoïque', '🦴': 'Crétacé', '🦣': 'Cénozoïque', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
         function generateHorizontalTimeline() {
-            const epochsContainer = document.getElementById('epochs-container-horizontal');
+            const epochsContainer = document.getElementById('scie_epochs-container');
             if (!epochsContainer || !window.TIMELINE) return;
             
             epochsContainer.innerHTML = '';
@@ -294,7 +294,7 @@
         // GÉNÉRATION TIMELINE VERTICALE (pour index.html)
         // ============================================================================
         function generateVerticalTimeline() {
-            const epochsContainer = document.querySelector('.epochs-container-vertical') || document.querySelector('.epochs-container');
+            const epochsContainer = document.querySelector('.visu_epochs-container') || document.querySelector('.epochs-container');
             if (!epochsContainer || !window.TIMELINE) return;
             
             epochsContainer.innerHTML = '';

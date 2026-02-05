@@ -346,8 +346,7 @@ const timeline = [
         },
         // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
         // Note: 🍰🪩🏖, 🍰🪩🌳, 🍰🪩🌍 sont maintenant calculés dynamiquement dans calculateAlbedo()
-        // ⚖️🫧 sera calculé automatiquement comme somme de l'air sec (⚖️🏭 + ⚖️⛽ + ⚖️🌫 + ⚖️💨) = ~5.05e18 kg
-        // Note: La vapeur d'eau (~1.3e16 kg) n'est pas incluse dans ⚖️🫧
+        '⚖️🫧': 5.15e18, // Masse atmosphère (air sec ~1 bar, comme Industriel)
         // Simulation parameters - Quantités en kg
         '⚖️🏭': 3.3e15,   // ~420-450 ppm CO2 2025
         '⚖️⛽': 5.5e12,

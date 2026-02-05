@@ -23,7 +23,7 @@ const KEYS = {
     // Cycle de l'eau
     '💧': ['🍰💧🧊', '🍰💧🌊', '🍰🧮🌧', '🍰🫧💧', '🍰🫧☔', '🍰⚖️💦', '💭☔', '⏳☔'],
     // Albédo
-    '🪩': ['🍰🪩📿', '🍰🪩🌋', '🍰🪩🏖', '🍰🪩🌳', '🍰🪩🌊', '🍰🪩🧊', '🍰🪩⛅', '🍰🪩🌍', '☁️'],
+    '🪩': ['🍰🪩📿', '🍰🪩🌋', '🍰🪩🏜️', '🍰🪩🌳', '🍰🪩🌊', '🍰🪩🧊', '🍰🪩⛅', '🍰🪩🌍', '☁️'],
     // Flux radiatif
     '🧲': ['🧲☀️🔽', '🧲🌕🔽', '🧲🌑🔼', '🧲🌈🔼', '🧲🪩🔼', '🔺🧲'],
     // Convergence
@@ -73,7 +73,7 @@ const DESC = {
     '🪩': {
         '🍰🪩📿': 'Albedo total',
         '🍰🪩🌋': 'Volcan',
-        '🍰🪩🏖': 'Désert',
+        '🍰🪩🏜️': 'Désert',
         '🍰🪩🌳': 'Forêt',
         '🍰🪩🌊': 'Océan',
         '🍰🪩🧊': 'Glace',
@@ -221,12 +221,12 @@ const FORM = {
         '🔺⏳': '86400 s (1 jour) - Durée équilibre précipitation'
     },
     '🪩': {
-        '🍰🪩📿': '🍰🪩🌋 × CONST.🪩🍰.🪩🍰🌋 + 🍰🪩🌊 × CONST.🪩🍰.🪩🍰🌊 + 🍰🪩🌳 × CONST.🪩🍰.🪩🍰🌳 + 🍰🪩🏖 × CONST.🪩🍰.🪩🍰🏖 + 🍰🪩🧊 × CONST.🪩🍰.🪩🍰🧊 + 🍰🪩⛅ × CONST.🪩🍰.🪩🍰⛅ + 🍰🪩🌍 × CONST.🪩🍰.🪩🍰🌍',
+        '🍰🪩📿': '🍰🪩🌋 × CONST.🪩🍰.🪩🍰🌋 + 🍰🪩🌊 × CONST.🪩🍰.🪩🍰🌊 + 🍰🪩🌳 × CONST.🪩🍰.🪩🍰🌳 + 🍰🪩🏜️ × CONST.🪩🍰.🪩🍰🏖 + 🍰🪩🧊 × CONST.🪩🍰.🪩🍰🧊 + 🍰🪩⛅ × CONST.🪩🍰.🪩🍰⛅ + 🍰🪩🌍 × CONST.🪩🍰.🪩🍰🌍',
         '🍰🪩🌋': 'volcano_coverage = f(T, flux_geo) : Hadéen=1.0, sinon min(1.0, flux_geo/10000)',
         '🍰🪩🌊': '(🍰💧🌊 × ⚖️💧 / CONST.RHO_WATER) / (📏🌊 × 1000) / (4 × π × (📐 × 1000)²)',
         '🍰🪩🌳': 'min(🍰🪩🌍_, 🗻.🍰🗻🌍 × clamp((🧮🌡️_C - 0)/30, 0, 1) × clamp((🍰🫧☔ - 0.5)/0.3, 0, 1) × clamp((1 - ☁️), 0, 1) × 0.6) où 🍰🪩🌍_ = 1 - 🍰🗻🌊 - 🍰🪩🧊 - Forêts dépendent de température (optimum 0-30°C), humidité relative (RH > 0.5-0.8) et nuages (moins de forêts si trop de nuages)',
-        '🍰🪩🏖': '🍰🪩🌍_ × (base_aridité + variabilité_régionale) où base_aridité = max(0, 1 - min(1, P_ann/1000)) × max(0, 1 - min(1, 🍰🫧☔/0.6)) et variabilité_régionale = 0.6 × max(0.5, min(1, (🧮🌡️_C-5)/10)) × max(0.5, 1-🍰🫧☔×0.6) - Déserts basés sur précipitations (P_ann < 1000 mm/an) et humidité relative (RH < 0.6) avec variabilité régionale',
-        '🍰🪩🌍': 'land_coverage = L - 🍰🪩🌳 - 🍰🪩🏖 où L = terre libre de glace. Absorbe automatiquement : steppes, prairies, toundras, montagnes (albedo ~0.18)',
+        '🍰🪩🏜️': '🍰🪩🌍_ × (base_aridité + variabilité_régionale) où base_aridité = max(0, 1 - min(1, P_ann/1000)) × max(0, 1 - min(1, 🍰🫧☔/0.6)) et variabilité_régionale = 0.6 × max(0.5, min(1, (🧮🌡️_C-5)/10)) × max(0.5, 1-🍰🫧☔×0.6) - Déserts basés sur précipitations (P_ann < 1000 mm/an) et humidité relative (RH < 0.6) avec variabilité régionale',
+        '🍰🪩🌍': 'land_coverage = L - 🍰🪩🌳 - 🍰🪩🏜️ où L = terre libre de glace. Absorbe automatiquement : steppes, prairies, toundras, montagnes (albedo ~0.18)',
         '🍰🪩🧊': 'min(🗻.🍰🗻🏔, 0.46 × (T_no_ice_K - 🧮🌡️) / CONST.T_NO_POLAR_ICE_C) où T_no_ice_K = CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS - Glace polaire basée sur température (10% à 15°C, 0% si T > 20°C)',
         '🍰🪩⛅': '0.20 + 0.15 × ☁️ × 🍰💭',
         '_contribution_glace': 'contribution_glace = (🪩🍰🧊 - albedo_base) × 🍰💧🧊 × 0.5',

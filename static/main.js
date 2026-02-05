@@ -2351,6 +2351,11 @@ function setEpoch(epochName) {
 
     updateTimeline();
 
+    // 🔒 Mettre à jour DATA['⚖️'] (masses) AVANT updateFluxLabels pour que calculateAlbedo ait les bonnes valeurs (océan, etc.)
+    if (typeof window.getMasses === 'function') {
+        window.getMasses();
+    }
+
     // Forcer la mise à jour des labels de flux (Soleil, Noyau, etc.) avec les paramètres de la nouvelle époque
     // Utiliser plotData.current si disponible (résultats du calcul), sinon plotData
     if (typeof window.updateFluxLabels === 'function') {
