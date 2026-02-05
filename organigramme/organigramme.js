@@ -405,6 +405,7 @@ function updateLabelClasses(label, nodeId = null) {
 // Fonction pour initialiser Three.js pour l'effet planète
 // logoPath = texture text_*.png depuis epochTextures (configOrganigramme) - JAMAIS charsImages !
 function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logoScale, luxSaturation = 1.0, lightDistance = null) {
+    console.log('[initPlanetThreeJS] demande texture:', typeof logoPath === 'string' ? logoPath : '(non-string)', 'epoch:', window.currentEpochName);
     if (typeof THREE === 'undefined') {
         console.error('[initPlanetThreeJS] ❌ Three.js non chargé !');
         return;
@@ -489,25 +490,37 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
     
     // Texture - vérifier le protocole (Three.js nécessite HTTP/HTTPS)
     let texture = null;
+    const textureName = (typeof logoPath === 'string' && logoPath) ? logoPath.split('/').pop() : String(logoPath);
     if (window.location.protocol === 'file:') {
         console.error('[initPlanetThreeJS] ❌ ERREUR: Three.js nécessite HTTP/HTTPS !');
+        console.error('[initPlanetThreeJS] texture non chargée:', textureName);
         console.error('⚠️ Utilisez: http://localhost:8000/index.html');
         // Créer quand même la sphère sans texture
         createPlanetSphere();
     } else {
         const textureLoader = new THREE.TextureLoader();
+        let resolvedUrl = logoPath;
+        try {
+            resolvedUrl = new URL(logoPath, window.location.href).href;
+        } catch (e) {
+            console.warn('[initPlanetThreeJS] logoPath invalide pour URL:', logoPath, e);
+        }
         textureLoader.load(
             logoPath,
             function(loadedTexture) {
                 loadedTexture.wrapS = THREE.RepeatWrapping;
                 loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
                 texture = loadedTexture;
+                console.log('[initPlanetThreeJS] ✅ texture chargée:', textureName, '→', resolvedUrl);
                 createPlanetSphere();
             },
             undefined,
             function(error) {
-                console.error('[initPlanetThreeJS] ❌ Erreur chargement texture:', error);
-                // Si la texture n'existe pas, ne rien changer (pas de fallback)
+                console.error('[initPlanetThreeJS] ❌ texture NON chargée:', textureName);
+                console.error('[initPlanetThreeJS] chemin demandé:', logoPath);
+                console.error('[initPlanetThreeJS] URL résolue:', resolvedUrl);
+                console.error('[initPlanetThreeJS] erreur:', error);
+                createPlanetSphere();
             }
         );
     }

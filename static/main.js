@@ -245,10 +245,10 @@ function updateTemperatureDisplay() {
         tempUnitEl.textContent = getTemperatureUnitSymbol(temperatureUnit);
     }
     // Mettre à jour la pression au sol depuis DATA si disponible
-    const pressureValEl = document.getElementById('pressure-value-synthese');
+    const pressureValEl = document.getElementById('pressure-surface-synthese');
     if (pressureValEl && window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) {
         const P = window.DATA['🫧']['🎈'];
-        pressureValEl.textContent = Number.isFinite(P) ? P.toFixed(2) + ' atm' : '-- atm';
+        pressureValEl.textContent = Number.isFinite(P) ? '🎈 ' + P.toFixed(2) + ' atm' : '🎈 -- atm';
     }
 }
 
@@ -1415,8 +1415,8 @@ window.updateDisplay = function updateDisplay(data) {
         if (tempSurfaceEl) {
             tempSurfaceEl.textContent = '--';
         }
-        const pressureValEl = document.getElementById('pressure-value-synthese');
-        if (pressureValEl) pressureValEl.textContent = '-- atm';
+        const pressureValEl = document.getElementById('pressure-surface-synthese');
+        if (pressureValEl) pressureValEl.textContent = '🎈 -- atm';
     }
     if (data && data.temp_eff !== undefined && data.temp_eff > 0) {
         const tempEffEl = document.getElementById('temp-eff-synthese');
@@ -2203,9 +2203,10 @@ function setEpoch(epochName) {
                 
                 oldCell.remove();
                 
-                // Interpréter les valeurs dynamiques de la configuration
-                // logo peut contenir {$ticTime} qui sera remplacé par textureIndex
-                let logoPath = interpretConfigValue(epochConfig.logo);
+                // Interpréter les valeurs dynamiques : texture (text_*.png) si planetEffect, sinon logo (picto)
+                let logoPath = (epochConfig.planetEffect && epochConfig.texture)
+                    ? interpretConfigValue(epochConfig.texture)
+                    : interpretConfigValue(epochConfig.logo);
                 
                 // Si le logo contient encore {$ticTime} après interprétation, c'est une erreur
                 if (typeof logoPath === 'string' && logoPath.includes('{$ticTime}')) {
@@ -3287,8 +3288,10 @@ function updateHadeenTexture() {
     const epochConfig = terreNode.epoch.find(e => e.epochName === 'Hadéen');
     if (!epochConfig) return;
     
-    // Interpréter le logo avec l'interpréteur (remplace {$ticTime})
-    const newLogoPath = interpretConfigValue(epochConfig.logo);
+    // Texture (text_*.png) si planetEffect, sinon logo (picto)
+    const newLogoPath = (epochConfig.planetEffect && epochConfig.texture)
+        ? interpretConfigValue(epochConfig.texture)
+        : interpretConfigValue(epochConfig.logo);
     
     // Interpréter lightDistance aussi
     let lightDistance = epochConfig.lightDistance;

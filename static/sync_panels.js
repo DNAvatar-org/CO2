@@ -90,8 +90,8 @@
         var tempC = T0 - window.CONST.KELVIN_TO_CELSIUS;
         document.getElementById('temp-surface-synthese').textContent = tempC.toFixed(1);
         var P_atm = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
-        var pressureValEl = document.getElementById('pressure-value-synthese');
-        if (pressureValEl) pressureValEl.textContent = (P_atm != null && Number.isFinite(P_atm)) ? P_atm.toFixed(2) + ' atm' : '-- atm';
+        var pressureValEl = document.getElementById('pressure-surface-synthese');
+        if (pressureValEl) pressureValEl.textContent = (P_atm != null && Number.isFinite(P_atm)) ? '🎈 ' + P_atm.toFixed(2) + ' atm' : '🎈 -- atm';
         var co2_ppm = DATA['🫧']['🍰🫧🏭'] * 1e6;
         var ch4_ppm = (DATA['🫧'] && DATA['🫧']['🍰🫧⛽'] != null) ? DATA['🫧']['🍰🫧⛽'] * 1e6 : 0;
         var h2o_vapor_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;

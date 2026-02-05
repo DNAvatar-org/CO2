@@ -430,9 +430,14 @@
     z-index: 10001;
 }
 
+.synthese_Temp .synthese_Temp-row {
+    align-items: center;
+}
+
 .synthese_Temp .thermometer-icon {
     transition: filter 0.3s ease, text-shadow 0.3s ease;
-    display: inline-block;
+    display: flex;
+    align-items: center;
     /* Filtre pour changer uniquement la couleur rouge du thermomètre */
     /* Utilise hue-rotate pour changer la teinte du rouge vers une autre couleur */
     /* Exemples de valeurs : 0deg = rouge, 120deg = vert, 180deg = cyan, 240deg = bleu, 300deg = magenta */
