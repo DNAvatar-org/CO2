@@ -415,7 +415,7 @@
             // Bouton météorite de glace (☄️)
             if (EPOCH['🕰'] && EPOCH['🕰']['☄️']) {
                 const meteorBtn = document.createElement('img');
-                meteorBtn.src = getImagePath('fonts/pics/ice_meteorite.png');
+                meteorBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('☄️')) || getImagePath('fonts/pics/ice_meteorite.png');
                 meteorBtn.alt = 'Météorite';
                 meteorBtn.className = 'timeline-event-logo btn-events';
                 meteorBtn.title = 'Météorite de glace';
@@ -433,7 +433,7 @@
             // Bouton impact majeur
             if (EPOCH['🕰'] && EPOCH['🕰']['🎇']) {
                 const bigImpactBtn = document.createElement('img');
-                bigImpactBtn.src = getImagePath('fonts/pics/big_impact.png');
+                bigImpactBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('🎇')) || getImagePath('fonts/pics/big_impact.png');
                 bigImpactBtn.alt = 'Impact majeur';
                 bigImpactBtn.className = 'timeline-event-logo btn-events';
                 bigImpactBtn.title = 'Impact majeur - Crée la lune';
@@ -769,7 +769,7 @@
             
             // Ajouter le logo si categoryKey fourni (sans objName)
             if (categoryKey) {
-                // Utiliser juste le logo, sans nom de description
+                // Scie : logo (emoji) comme clé de calcul, pas l'image
                 jsonStr = `${categoryKey}=${jsonStr}`;
             } else if (objName) {
                 // Si pas de categoryKey mais objName, utiliser juste objName
@@ -1075,26 +1075,21 @@
                 const T_final_C = T_final_K != null ? T_final_K - CONST.KELVIN_TO_CELSIUS : (last_state && last_state.temperature_C);
                 const Tc = safeNumTempLast(T_final_C);
                 const Tk = safeNumTempLast(T_final_K);
-                html += `<div class="config-value"><strong>Température finale: ${Tc}°C (${Tk}K)</strong></div>`;
+                html += `<div class="config-value"><strong>🌡️ Température finale: ${Tc}°C (${Tk}K)</strong></div>`;
                 const P_atm_val = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
                 html += `<div class="config-value">🎈 Pression au sol: ${(P_atm_val != null && Number.isFinite(P_atm_val)) ? P_atm_val.toFixed(2) + ' atm' : '—'}</div>`;
-                // Disclaimer si T hors fourchette littérature (🌡️📚 = [min_K, max_K])
-                const EPOCH = window.TIMELINE[DATA['📜']['👉']];
-                const litRange = EPOCH['🌡️📚'];
-                if (litRange && litRange.length >= 2) {
-                    const [litMin, litMax] = litRange;
-                    if (T_final_K < litMin || T_final_K > litMax) {
-                        const litMinC = (litMin - CONST.KELVIN_TO_CELSIUS).toFixed(0);
-                        const litMaxC = (litMax - CONST.KELVIN_TO_CELSIUS).toFixed(0);
-                        html += `<div class="config-value" style="margin-top:6px;padding:6px;background:rgba(255,180,0,0.2);border-radius:4px;font-size:11px;"><strong>⚠️ Écart littérature:</strong> T simulée (${Tc}°C) hors fourchette ${litMinC}–${litMaxC}°C. Incertitudes: CO₂ paléo, pressure broadening, CCN, getH2OVaporEDSScale.</div>`;
-                    }
-                }
                 const P_atm = DATA['🫧']['🎈'];
                 const T_boil_K = window.getBoilingPointKFromPressure(P_atm);
-                const T_boil_C = (T_boil_K - CONST.KELVIN_TO_CELSIUS).toFixed(1);
                 const TcNum = T_final_C != null ? Number(T_final_C) : null;
-                const aboveBoil = Number.isFinite(TcNum) && TcNum > T_boil_K - CONST.KELVIN_TO_CELSIUS;
-                html += `<div class="config-value">T_ébullition(🎈=${P_atm.toFixed(2)} atm) = ${T_boil_C}°C ${aboveBoil ? '→ T finale &gt; T_ébullition (eau bout)' : '→ liquide possible'}</div>`;
+                let boilLine = '';
+                if (P_atm < 0.01) {
+                    boilLine = `T_ébullition(🎈=${P_atm.toFixed(2)} atm) = — (pas d'atmosphère, liquide impossible)`;
+                } else {
+                    const T_boil_C = (T_boil_K - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+                    const aboveBoil = Number.isFinite(TcNum) && TcNum > T_boil_K - CONST.KELVIN_TO_CELSIUS;
+                    boilLine = `T_ébullition(🎈=${P_atm.toFixed(2)} atm) = ${T_boil_C}°C ${aboveBoil ? '→ T finale &gt; T_ébullition (eau bout)' : '→ liquide possible'}`;
+                }
+                html += `<div class="config-value">${boilLine}</div>`;
                 const stopReason = DATA['🧮'] && DATA['🧮']['🧮🛑'];
                 const deltaFinal = DATA['🧲'] && DATA['🧲']['🔺🧲'] != null ? Number(DATA['🧲']['🔺🧲']) : NaN;
                 const seuilFinal = DATA['🧮'] && DATA['🧮']['🧲🔬'] != null ? Number(DATA['🧮']['🧲🔬']) : null;

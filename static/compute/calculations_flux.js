@@ -1,7 +1,7 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.39
+// Version 1.2.41
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -31,6 +31,7 @@
 // - computeSearchIncrement: Math.pow(Δ,1/3)=NaN si Δ<0 → sign(Δ)×|Δ|^(1/3)
 // - calcul radiatif N : T affichée = température d'entrée (🧮🌡️⏮), pas la sortie après pas
 // - next_T_C = T atteinte par le pas (Search et Dicho) pour cohérence cycle albédo
+// - Tolérance flux : helper computeToleranceWm2 (source unique), borne min tolMinWm2
 // - Dicho T===T_prev : arrêt seulement si convergé ; sinon élargir bracket pour débloquer
 // - 3 Dicho même sens d'affilée → retour Search + expansion bornes (comme Search)
 // - Crossing (0°C, T_boil) : phase=Search, 🧮🔄🪩++ pour index monotone (éviter cycle 6 puis 1)
@@ -78,6 +79,14 @@
 // window.epoch est utilisé directement (pas de fonction getEpochConfig)
 // On utilise les fonctions globales définies dans compute.js
 
+/** Tolérance flux (W/m²) = max(4σT³×precision_K, tolMinWm2). Source unique, pas de duplication. */
+function computeToleranceWm2(T_K, precision_K) {
+    const CONST = window.CONST;
+    const tolRaw = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(T_K, 3) * precision_K;
+    const tolMin = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.tolMinWm2 != null) ? window.CONFIG_COMPUTE.tolMinWm2 : 0.1;
+    return Math.max(tolRaw, tolMin);
+}
+
 // Calcule T0 initial. Seule différence anim/sans anim : en anim T0 ne s'actualise pas (reste prev_T0) ; sans anim T0 = 🌡️🧮 + 💫.
 function calculateT0() {
     const DATA = window.DATA;
@@ -115,8 +124,7 @@ function calculateT0() {
     // On doit mettre à jour DATA['🧮']['🧮🌡️'] pour que la convergence utilise cette nouvelle valeur
     // Pour la convergence, c'est TOUJOURS DATA['🧮']['🧮🌡️'] qui est utilisé
     DATA['🧮']['🧮🌡️'] = DATA['🧮']['🧮🌡️🚩'];
-    // Tolérance flux (W/m²) = 4σT³ × precision_K (EPOCH['🧲🔬'] en K) — pas une valeur fixe 1 W/m²
-    DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * EPOCH['🧲🔬'];
+    DATA['🧮']['🧲🔬'] = computeToleranceWm2(DATA['🧮']['🧮🌡️'], EPOCH['🧲🔬']);
     
     // Logs désactivés pour réduire la taille
     // console.log(`🌡️ T0 [calculateT0@calculations_flux.js]`);
@@ -247,6 +255,7 @@ function _oomLog(label, extra) {
 }
 
 async function cycleDeLeau(isFirst) {
+    // OBLIGATOIRE : yield event loop pour que le bouton Stop soit cliquable pendant calcul long
     await new Promise(r => setTimeout(r, 0));
     if (window.ABORT_COMPUTE) return { changed: false };
     const DATA = window.DATA;
@@ -426,8 +435,7 @@ async function runRadiatifOnly() {
     DATA['🧲']['🔺🧲'] = delta_equilibre_init;
     const bInit = DATA['📊'] && DATA['📊'].eds_breakdown;
     DATA['📛'] = bInit ? { '🧲📛': bInit.EDS_Wm2, '🍰📛🏭': bInit.CO2.pct, '🍰📛💧': bInit.H2O.pct, '🍰📛⛽': bInit.CH4.pct } : null;
-    // Tolérance flux (W/m²) = 4σT³ × precision_K — à 2500K avec 1K : ~6e6 W/m² (pas 1)
-    DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * EPOCH['🧲🔬'];
+    DATA['🧮']['🧲🔬'] = computeToleranceWm2(DATA['🧮']['🧮🌡️'], EPOCH['🧲🔬']);
 
     DATA['🧮']['🧮☯'] = Math.sign(delta_equilibre_init);
     DATA['🧮']['🧮⚧'] = 'Search';
@@ -477,7 +485,7 @@ async function runRadiatifOnly() {
     while (DATA['🧮']['🧮🔄☀️'] < maxInnerIters && !innerConverged) {
         await new Promise(r => setTimeout(r, 0)); // Laisser le clic Stop être traité
         if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
-        DATA['🧮']['🧲🔬'] = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 3) * EPOCH['🧲🔬'];
+        DATA['🧮']['🧲🔬'] = computeToleranceWm2(DATA['🧮']['🧮🌡️'], EPOCH['🧲🔬']);
         window.calculateH2OParameters();
         window.getEnabledStates();
         window.calculateAlbedo();
@@ -525,7 +533,9 @@ async function runRadiatifOnly() {
                 window._detailLogPhase = false;
             }
             const h2oScaleCyc = (typeof window.getH2OVaporEDSScale === 'function') ? window.getH2OVaporEDSScale().toFixed(3) : '?';
-            console.log('[CycleEau][calculations_flux.js] iter=' + DATA['🧮']['🧮🔄☀️'] + ' phase=' + DATA['🧮']['🧮⚧'] + ' T_C=' + T_C.toFixed(1) + ' flux_in=' + flux_in.toFixed(2) + ' flux_out=' + flux_out.toFixed(2) + ' delta=' + delta.toFixed(2) + ' albedo=' + albedo.toFixed(3) + ' vapor=' + vapor.toExponential(2) + ' cloud=' + (cloudIdx != null ? cloudIdx.toFixed(3) : '?') + ' CO2_frac=' + co2_frac.toExponential(4) + ' bounds=' + bounds + ' tol=' + DATA['🧮']['🧲🔬'].toFixed(2) + ' EDS=' + (eds != null ? eds.toFixed(1) : '?') + ' H2O_scale=' + h2oScaleCyc);
+            const h2oPct = DATA['📛'] ? DATA['📛']['🍰📛💧'] : null;
+            const h2oVs05 = (h2oPct != null && h2oPct < 0.005) ? ' <0.5%' : '';
+            console.log('[CycleEau][calculations_flux.js] iter=' + DATA['🧮']['🧮🔄☀️'] + ' phase=' + DATA['🧮']['🧮⚧'] + ' T_C=' + T_C.toFixed(1) + ' H2O%=' + (h2oPct != null ? (h2oPct * 100).toFixed(1) : '?') + h2oVs05 + ' flux_in=' + flux_in.toFixed(2) + ' flux_out=' + flux_out.toFixed(2) + ' delta=' + delta.toFixed(2) + ' albedo=' + albedo.toFixed(3) + ' vapor=' + vapor.toExponential(2) + ' cloud=' + (cloudIdx != null ? cloudIdx.toFixed(3) : '?') + ' CO2_frac=' + co2_frac.toExponential(4) + ' bounds=' + bounds + ' tol=' + DATA['🧮']['🧲🔬'].toFixed(2) + ' EDS=' + (eds != null ? eds.toFixed(1) : '?') + ' H2O_scale=' + h2oScaleCyc);
         }
         // Phase AVANT mise à jour : pour affichage cohérent (phase utilisée pour le pas précédent)
         const phaseAtInput = DATA['🧮']['🧮⚧'];
@@ -916,6 +926,11 @@ async function runRadiatifOnly() {
         const T_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
         console.log('[max_iter][calculations_flux.js] Non convergé iter=' + DATA['🧮']['🧮🔄☀️'] + ' T_C=' + T_C.toFixed(1) + ' delta=' + DATA['🧲']['🔺🧲'].toFixed(2) + ' tol=' + DATA['🧮']['🧲🔬'].toFixed(2));
     }
+    // Log final (toujours) : T, H2O%, Δ, tol, raison arrêt — pour debug sans DEBUG_ANALYSE
+    const h2oPct = DATA['📛'] ? DATA['📛']['🍰📛💧'] : null;
+    const h2oPctStr = (h2oPct != null && Number.isFinite(h2oPct)) ? (h2oPct * 100).toFixed(1) + '%' : '-';
+    const h2oVs05 = (h2oPct != null && h2oPct < 0.005) ? ' <0.5%' : '';
+    console.log('[runRadiatifOnly][calculations_flux.js] FIN T_C=' + (DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' H2O%=' + h2oPctStr + h2oVs05 + ' delta=' + DATA['🧲']['🔺🧲'].toFixed(2) + ' tol=' + DATA['🧮']['🧲🔬'].toFixed(2) + ' stop=' + (DATA['🧮']['🧮🛑'] || '?'));
     return true;
 }
 

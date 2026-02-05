@@ -50,6 +50,20 @@ const value = (typeof window !== 'undefined' && window.SOMETHING) ? window.SOMET
 const value = window.SOMETHING; // Plantera si n'existe pas
 ```
 
+### 5. IF avec log pour debug : OK. IF avec return : JAMAIS
+```javascript
+// ❌ INTERDIT — le return masque le crash, comportement silencieux
+if (typeof CHARS === 'undefined') {
+    console.error('[createAlphabet] CHARS non défini');
+    return '';  // ← INTERDIT : on ne doit jamais éviter le crash
+}
+
+// ✅ CORRECT — log pour debug, puis le code plante (accès à CHARS)
+if (typeof CHARS === 'undefined') console.error('[createAlphabet] CHARS non défini');
+// ... suite du code qui plantera si CHARS absent
+```
+**Règle** : Un `if` avec log pour diagnostiquer = OK. Un `return`/`continue`/fallback qui évite le crash = INTERDIT. Le crash doit arriver pour rendre le bug visible.
+
 ## ✅ PHILOSOPHIE
 
 **Si une valeur n'existe pas, c'est un BUG. Le code DOIT planter pour que le bug soit visible et corrigé.**
@@ -77,6 +91,21 @@ Même pour les valeurs "optionnelles" comme `document.getElementById()`, si l'é
 2. **Cohérence** : Pas de comportements silencieux différents selon l'état
 3. **Maintenabilité** : Les erreurs sont claires et faciles à corriger
 4. **Fiabilité** : Le code fait exactement ce qu'on attend, ou plante clairement
+
+## 🔧 PHILOSOPHIE COMPLÉMENTAIRE
+
+### Minimiser l'asynchrone
+- Préférer l'ordre synchrone garanti (loader, init) aux `setTimeout` et fallbacks
+- Si un `setTimeout` est nécessaire (DOM, yield event loop), le commenter : `// DOM : ...` ou `// OBLIGATOIRE : ...`
+- Corriger la cause (ordre d'init) plutôt que patcher avec du scotch (`?? 0`, délais arbitraires)
+
+### Source unique, pas de duplication
+- Utiliser `window.CHARS`, `window.CHARS_DESC`, `DATA` — ne pas recréer des constantes locales
+- Exemple : `CHARS_DESC[emoji]` au lieu de `EMOJI_TO_LABEL` dupliqué
+
+### Utiliser l'existant
+- Avant d'ajouter du code : vérifier si la logique existe déjà (alphabet.js, dico.js, CONST, etc.)
+- "Quasi tout est en place, juste à corriger des bugs, pas trop nécessaire d'inventer"
 
 ## 🔴 RAPPEL CONSTANT
 

@@ -113,6 +113,12 @@ body {
     min-width: 25px;
 }
 
+/* Images dans alphabet (entre parenthèses) : un peu plus grosses */
+.legend-item .description img {
+    height: 1.4em;
+    vertical-align: middle;
+}
+
 .legend-item .description {
     font-size: 12px;
     color: #e0e0e0;

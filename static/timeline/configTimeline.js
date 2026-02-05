@@ -117,9 +117,10 @@ const timeline = [
         '📅': '🦠', // Archéen — début (4 Ga) = Archéen précoce
         '▶': 4.0e9,
         '◀': 2.5e9,
-        // 🌡️🧮 : 288 K (15°C cible indicative). Lit. 281–303 K plausible (Charnay 2017, Kienert 2013). Simu ~12.2°C OK (dans fourchette).
+        // 🌡️🧮 : 288 K (15°C cible indicative). Lit. 281–303 K plausible (Charnay 2017, Kienert 2013).
         // 288 K = état stable documenté (Clim. Past 9:1841, Astrobiology 2014). Parcours temporel à venir.
         '🌡️🧮': 288,
+        '🌡️📚': [281, 303], // Fourchette littérature (K) — disclaimer si T simulée hors plage
         '🧲🔬': 0.01,  // Précision stricte (tol ~0.4 W/m²) pour stabilité anim même époque
         '🔋☀️': 3.0624e26, // Puissance totale du soleil (W) - 80% de 3.828e26 W
         '🔋🌕': 1.5e14, // core_power_watts (Puissance géothermique totale ~150 TW)
@@ -378,6 +379,8 @@ window.CONFIG_COMPUTE.maxPreviousLength = 300;  /* Historique convergence : 25 �
 // Tolérances cycle eau (changement albedo/vapor pour relancer tour radiatif)
 window.CONFIG_COMPUTE.cycleTolAlbedo = 1e-4;
 window.CONFIG_COMPUTE.cycleTolVapor = 1e-6;
+// Borne min tolérance flux (W/m²) : le calcul spectral ne peut pas atteindre mieux (~bruit numérique). Évite convergence impossible.
+window.CONFIG_COMPUTE.tolMinWm2 = 0.1;
 // Search : ΔT proportionnel à Δ (formule physique Δ/(4σT³)). Cap max uniquement.
 window.CONFIG_COMPUTE.maxSearchStepK = 100;       // plafond step nominal
 window.CONFIG_COMPUTE.maxSearchStepLargeK = 150;  // plafond quand |Δ| > 10×tolérance10×tolérance
@@ -387,5 +390,5 @@ window.CONFIG_COMPUTE.searchStepScaleMax = 200;
 window.CONFIG_COMPUTE.bornesMinK = 250;   // ~-12°C, inconnue en Init
 window.CONFIG_COMPUTE.bornesMaxK = 4000;  // réaliste surface
 // Pressure broadening : désactivé (empirique √P empirique → résultats pires, T baisse)
-window.CONFIG_COMPUTE.pressureBroadening = false;
+window.CONFIG_COMPUTE.pressureBroadening = true;  // σ_eff = σ × √(P/P_ref), améliore EDS à P>1 bar (Archéen)
 

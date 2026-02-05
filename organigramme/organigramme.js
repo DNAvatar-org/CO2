@@ -10,6 +10,13 @@
 //   - Added custom tooltip system with 0.5s delay
 //   - Added selected/unselected state management for flux buttons and label colors
 
+// ============================================================================
+// PICTO (boutons) vs TEXTURES Three.js - Objets distincts
+// ============================================================================
+// - Pictos : window.charsImages (alphabet.js) → logos des boutons (ex: corps_noir.png)
+// - Textures : window.configOrganigramme.epochTextures (configOrganigramme.js) → text_*.png pour sphères
+// planetEffect=true → texture (Three.js) ; planetEffect=false → picto (charsImages)
+
 // Variables globales pour l'état des boutons (sélectionnés par défaut)
 if (typeof window !== 'undefined') {
     // 🔒 VARIABLES GLOBALES UNIQUES : Seule référence pour l'état des boutons EDS
@@ -396,6 +403,7 @@ function updateLabelClasses(label, nodeId = null) {
 
 // Fonction pour créer une cellule avec un tableau 3x3
 // Fonction pour initialiser Three.js pour l'effet planète
+// logoPath = texture text_*.png depuis epochTextures (configOrganigramme) - JAMAIS charsImages !
 function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logoScale, luxSaturation = 1.0, lightDistance = null) {
     if (typeof THREE === 'undefined') {
         console.error('[initPlanetThreeJS] ❌ Three.js non chargé !');
@@ -499,7 +507,7 @@ function initPlanetThreeJS(canvas, logoPath, planetSize, container, radius, logo
             undefined,
             function(error) {
                 console.error('[initPlanetThreeJS] ❌ Erreur chargement texture:', error);
-                createPlanetSphere();
+                // Si la texture n'existe pas, ne rien changer (pas de fallback)
             }
         );
     }
@@ -2665,29 +2673,28 @@ cellOrder.forEach(nodeId => {
                 // Log supprimé (non essentiel)
             }
             
-            // 🔒 PROTECTION : Ne pas parser les logos en tableau (ils contiennent { text, dataId } qui ne doivent pas être modifiés)
-            // Le parser ne doit modifier que les logos simples (string) qui contiennent des expressions comme {$ticTime}
-            let interpretedLogo = epochConfig.logo;
-            if (typeof window !== 'undefined' && typeof window.interpretConfigValue === 'function') {
-                // Ne parser que si c'est une string (pas un tableau ni un objet)
-                if (typeof epochConfig.logo === 'string') {
-                    // Log supprimé (non essentiel)
-                    interpretedLogo = window.interpretConfigValue(epochConfig.logo);
-                } else {
-                    // Pour les tableaux ou objets, utiliser tel quel (pas de parsing)
-                    interpretedLogo = epochConfig.logo;
+            // Picto (logo) vs texture Three.js : planetEffect utilise texture (text_*.png), sinon picto (charsImages)
+            let logoForCell = epochConfig.logo;
+            let texturePath = null;
+            if (epochConfig.planetEffect) {
+                texturePath = epochConfig.texture || (window.configOrganigramme?.epochTextures && epochConfig.epochName ? window.configOrganigramme.epochTextures[epochConfig.epochName] : null);
+                if (texturePath) {
+                    logoForCell = (typeof window.interpretConfigValue === 'function') ? window.interpretConfigValue(texturePath) : texturePath;
                 }
-            } else {
-                console.warn('[organigramme.js] ⚠️ interpretConfigValue non disponible:', {
-                    window: typeof window,
-                    interpretConfigValue: typeof window?.interpretConfigValue
-                });
+            }
+            if (!texturePath) {
+                if (typeof epochConfig.logo === 'string' && typeof window.interpretConfigValue === 'function') {
+                    logoForCell = window.interpretConfigValue(epochConfig.logo);
+                }
+                if (window.charsImages && window.charsImages[logoForCell]) {
+                    logoForCell = window.charsImages[logoForCell];
+                }
             }
             
             // Créer une configuration fusionnée avec les propriétés de l'époque
             nodeConfig = {
                 ...node,
-                logo: interpretedLogo, // Utiliser le logo interprété
+                logo: logoForCell,
                 radius: epochConfig.radius,
                 fillColor: epochConfig.fillColor,
                 strokeColor: epochConfig.strokeColor,
@@ -2698,15 +2705,26 @@ cellOrder.forEach(nodeId => {
             // Fallback : utiliser la dernière époque du tableau (permet d'alléger les répétitions)
             const lastEpoch = node.epoch[node.epoch.length - 1];
             
-            // Interpréter le logo si nécessaire
-            let interpretedLogo = lastEpoch.logo || node.epoch[0].logo;
-            if (typeof window !== 'undefined' && typeof window.interpretConfigValue === 'function') {
-                interpretedLogo = window.interpretConfigValue(interpretedLogo);
+            let logoForCell = lastEpoch.logo || node.epoch[0].logo;
+            let texturePathLast = null;
+            if (lastEpoch.planetEffect) {
+                texturePathLast = lastEpoch.texture || (window.configOrganigramme?.epochTextures && lastEpoch.epochName ? window.configOrganigramme.epochTextures[lastEpoch.epochName] : null);
+                if (texturePathLast) {
+                    logoForCell = (typeof window.interpretConfigValue === 'function') ? window.interpretConfigValue(texturePathLast) : texturePathLast;
+                }
+            }
+            if (!texturePathLast) {
+                if (typeof logoForCell === 'string' && typeof window.interpretConfigValue === 'function') {
+                    logoForCell = window.interpretConfigValue(logoForCell);
+                }
+                if (window.charsImages && window.charsImages[logoForCell]) {
+                    logoForCell = window.charsImages[logoForCell];
+                }
             }
             
             nodeConfig = {
                 ...node,
-                logo: interpretedLogo,
+                logo: logoForCell,
                 radius: lastEpoch.radius || node.epoch[0].radius,
                 fillColor: lastEpoch.fillColor || node.epoch[0].fillColor,
                 strokeColor: lastEpoch.strokeColor || node.epoch[0].strokeColor,
@@ -3119,10 +3137,22 @@ function generateTimelineFromConfig() {
             button.setAttribute('onclick', `setEpoch('${epochId.replace(/'/g, "\\'")}')`);
             // Ne pas utiliser title natif, utiliser addCustomTooltip à la place
 
-            // Le logo est maintenant directement l'emoji '📅'
-            button.textContent = epochId;
-            // Appliquer les polices emoji standard aux logos
-            button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+            // getDisplayForPicto : image si dans charsImages, sinon picto (transparent si on ajoute des images)
+            const display = (typeof window.getDisplayForPicto === 'function') ? window.getDisplayForPicto(epochId) : { type: 'text', value: epochId };
+            if (display.type === 'image') {
+                const img = document.createElement('img');
+                img.src = display.value;
+                img.alt = (window.CHARS_DESC && window.CHARS_DESC[epochId]) ? window.CHARS_DESC[epochId] : epochId;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                img.style.objectPosition = 'center';
+                img.style.display = 'block';
+                button.appendChild(img);
+            } else {
+                button.textContent = display.value;
+                button.style.fontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+            }
 
             epochsContainer.appendChild(button);
 

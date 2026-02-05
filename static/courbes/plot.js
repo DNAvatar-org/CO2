@@ -284,6 +284,7 @@ function initPlot() {
     }
 
     const layout = {
+        autosize: true, // Éviter reset width/height à chaque Plotly.react (cycle)
         xaxis: {
             title: {
                 text: "Longueur d'onde (μm)",
@@ -693,25 +694,34 @@ function drawAbsorptionBandIndicators() {
     const LAMBDA_CH4_1_UM = (CONST.LAMBDA_CH4_1 != null) ? CONST.LAMBDA_CH4_1 * 1e6 : 7.7;
     const LAMBDA_CO2_UM = (CONST.LAMBDA_CO2_CENTER != null) ? CONST.LAMBDA_CO2_CENTER * 1e6 : 15;
     const absorptionBands = [
-        { lambda: LAMBDA_H2O_1_UM, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
-        { lambda: LAMBDA_H2O_2_UM, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
-        { lambda: LAMBDA_CH4_1_UM, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' },
-        { lambda: 11, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
-        { lambda: LAMBDA_CO2_UM, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
-        { lambda: 23, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' }
+        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' },
+        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
+        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' }
     ];
+
+    const P_atm = (window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) ? window.DATA['🫧']['🎈'] : 1;
+    const widthFactor = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.pressureBroadening) ? Math.min(2, Math.sqrt(Math.max(0.1, P_atm))) : 1;
 
     absorptionBands.forEach(band => {
         const xPos = getXPosition(band.lambda);
+        const halfW = (band.halfWidthUm != null ? band.halfWidthUm : 1) * widthFactor;
+        const xLeft = getXPosition(Math.max(0.1, band.lambda - halfW));
+        const xRight = getXPosition(Math.min(50, band.lambda + halfW));
+        const barWidthPx = Math.max(4, xRight - xLeft);
 
-        // Créer un indicateur
+        // Créer un indicateur (barre de largeur ∝ √P + logo centré)
         const indicator = document.createElement('div');
         indicator.className = 'absorption-band-indicator';
         indicator.style.position = 'absolute';
-        indicator.style.left = `${xPos}px`;
+        indicator.style.left = `${xLeft}px`;
+        indicator.style.width = `${barWidthPx}px`;
         // Juste sous le trait de l'axe (comme les graduations)
         indicator.style.bottom = `${axisMarginBottom + markersOffsetBelowAxis}px`;
-        indicator.style.transform = 'translateX(-50%)'; /* Centrer le logo sur la valeur λ */
+        indicator.style.background = (widthFactor > 1) ? `rgba(135, 206, 250, ${0.15 * (widthFactor - 1)})` : 'transparent';
+        indicator.style.borderRadius = '2px';
         indicator.style.fontSize = '10px';
         indicator.style.zIndex = '101';
         indicator.style.pointerEvents = 'none';
@@ -1234,6 +1244,7 @@ window.updatePlot = function updatePlot(data) {
 
 
     const updateLayout = {
+        autosize: true, // Préserver dimensions (éviter reset à chaque cycle)
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
         xaxis: {
             range: [0, 50], // Commence à 0
@@ -2072,6 +2083,7 @@ function drawSpectralVisualization(canvas, data) {
     }
 
     const updateLayout = {
+        autosize: true, // Préserver dimensions (éviter reset à chaque cycle)
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
         xaxis: {
             // ... configuration axe X inchangée ...

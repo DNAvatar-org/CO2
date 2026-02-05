@@ -90,9 +90,14 @@
         var tempC = T0 - window.CONST.KELVIN_TO_CELSIUS;
         document.getElementById('temp-surface-synthese').textContent = tempC.toFixed(1);
         var P_atm = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
-        var pressureEl = document.getElementById('pressure-surface-synthese');
-        if (pressureEl) pressureEl.textContent = (P_atm != null && Number.isFinite(P_atm)) ? '🎈 ' + P_atm.toFixed(2) + ' atm' : '🎈 -- atm';
+        var pressureValEl = document.getElementById('pressure-value-synthese');
+        if (pressureValEl) pressureValEl.textContent = (P_atm != null && Number.isFinite(P_atm)) ? P_atm.toFixed(2) + ' atm' : '-- atm';
         var co2_ppm = DATA['🫧']['🍰🫧🏭'] * 1e6;
+        var ch4_ppm = (DATA['🫧'] && DATA['🫧']['🍰🫧⛽'] != null) ? DATA['🫧']['🍰🫧⛽'] * 1e6 : 0;
+        var h2o_vapor_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
+        var h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+        window.plotData.ch4_ppm = ch4_ppm;
+        window.h2oVaporPercent = Math.min(100, Math.max(0, h2o_vapor_frac * 100 + h2o_meteorites));
         window.plotData.lambda_range = spectral.lambda_range;
         window.plotData.lambda_weights = spectral.lambda_weights;
         window.plotData.current = {

@@ -245,10 +245,10 @@ function updateTemperatureDisplay() {
         tempUnitEl.textContent = getTemperatureUnitSymbol(temperatureUnit);
     }
     // Mettre à jour la pression au sol depuis DATA si disponible
-    const pressureEl = document.getElementById('pressure-surface-synthese');
-    if (pressureEl && window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) {
+    const pressureValEl = document.getElementById('pressure-value-synthese');
+    if (pressureValEl && window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) {
         const P = window.DATA['🫧']['🎈'];
-        pressureEl.textContent = Number.isFinite(P) ? '🎈 ' + P.toFixed(2) + ' atm' : '🎈 -- atm';
+        pressureValEl.textContent = Number.isFinite(P) ? P.toFixed(2) + ' atm' : '-- atm';
     }
 }
 
@@ -1415,8 +1415,8 @@ window.updateDisplay = function updateDisplay(data) {
         if (tempSurfaceEl) {
             tempSurfaceEl.textContent = '--';
         }
-        const pressureEl = document.getElementById('pressure-surface-synthese');
-        if (pressureEl) pressureEl.textContent = '🎈 -- atm';
+        const pressureValEl = document.getElementById('pressure-value-synthese');
+        if (pressureValEl) pressureValEl.textContent = '-- atm';
     }
     if (data && data.temp_eff !== undefined && data.temp_eff > 0) {
         const tempEffEl = document.getElementById('temp-eff-synthese');

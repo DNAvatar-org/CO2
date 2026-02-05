@@ -159,7 +159,7 @@ sup {
     width: 100%;
     min-width: 0; /* Permet de shrink en dessous de 900px quand l'espace manque */
     max-width: 900px;
-    height: 630px; /* Hauteur fixe imposée */
+    height: 665px; /* Hauteur fixe imposée */
 }
 
 .left-panels {
@@ -294,9 +294,8 @@ h1 {
 }
 
 .plot-container-wrapper {
-    padding: 0 0 20px 0;
-    margin-bottom: 18px;
-    height: 625px;
+    padding: 0 0 0 0;
+    height: 665px;
     /* Même hauteur que #plot-container */
     position: relative;
     overflow: visible;
@@ -341,7 +340,7 @@ h1 {
 /* background géré par plot_bgcolor dans Plotly pour #plot-container .main-svg et svg */
 
 #plot-container {
-    height: 625px;
+    height: 665px;
     /* background géré par paper_bgcolor dans Plotly */
     position: relative !important;
     /* Pour permettre le positionnement absolu du titre */
@@ -547,19 +546,19 @@ h1 {
     display: block;
     /* Divs indépendantes, pas de flex */
 }
-
+/*
 .timeline-display {
     text-align: center;
     padding: 0 0 20px 0;
     margin-bottom: 18px;
     display: flex;
     flex-direction: column;
-    /* gap: 15px; */
     width: 80px;
     align-items: center;
     height: 625px;
     font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
+*/
 
 /* 1. Section Époque (📜) - frise verticale */
 .visu_timeline-epoch-section {
@@ -1708,7 +1707,7 @@ body.mode-dark .plot-overlay-title {
     display: flex;
     flex-direction: column;
     flex: 0 0 auto;
-    height: 625px !important;
+    height: 665px;
     position: relative; /* Pour positionner l'overlay en absolute par rapport à ce conteneur si besoin */
 }
 

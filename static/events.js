@@ -52,7 +52,7 @@ window.updateEpochActions = function () {
     if (currentEpochName === 'Corps noir') {
         // Action 1 : Météorites de glace (augmente la glace à la surface, donc l'albedo)
         const iceMeteorBtn = document.createElement('img');
-        iceMeteorBtn.src = 'fonts/pics/ice_meteorite.png';
+        iceMeteorBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('☄️')) || 'fonts/pics/ice_meteorite.png';
         iceMeteorBtn.alt = 'Météorite de glace';
         iceMeteorBtn.className = 'timeline-event-logo btn-events';
 
@@ -181,7 +181,7 @@ window.updateEpochActions = function () {
 
         // Action 2 : Impact majeur (création de la lune, passe à l'époque suivante)
         const bigImpactBtn = document.createElement('img');
-        bigImpactBtn.src = 'fonts/pics/big_impact.png';
+        bigImpactBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('🎇')) || 'fonts/pics/big_impact.png';
         bigImpactBtn.alt = 'Impact majeur - Crée la lune';
         bigImpactBtn.className = 'timeline-event-logo btn-events';
 
@@ -349,7 +349,7 @@ window.updateEpochActions = function () {
 
         // Action 2 : Apport d'eau supplémentaire (météorites continuent de tomber)
         const waterAdditionBtn = document.createElement('img');
-        waterAdditionBtn.src = 'fonts/pics/ice_meteorite.png';
+        waterAdditionBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('☄️')) || 'fonts/pics/ice_meteorite.png';
 
         // Récupérer la donnée depuis la config (Hadéen)
         // Note: Pour Hadéen, 61.6% d'eau dans l'atmosphère représente :

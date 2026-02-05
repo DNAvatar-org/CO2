@@ -54,7 +54,7 @@ const CHARS = {
     METER: '📏',    // Mètre : règle
     PROPORTION: '🍰', // Proportion : 🍰 🧩
     POWER: '🔋',    // Puissance : batterie (Watts)
-    SUN_ORIGIN: '☀️', // Soleil : soleil
+    SUN_ORIGIN: '☀️', // Soleil
     GEOMETRY_ORIGIN: '🎱', // Géometrie : boule de billard
     SPECTRAL: '🌈', // Spectre : arc-en-ciel
     ATMOSPHERE: '🫧', // Atmosphère : vent
@@ -83,12 +83,20 @@ const CHARS = {
     INDEX_EPOCH: '👉', // Index de l'époque : pointeur
     LOGO_EPOCH: '🗿', // Logo/Nom de l'époque : statue
     TRIPLE_POINT: '┴', // Point triple : pont (P,T au point triple)
+    GLOBE_AFRICA: '🌍',   // Globe Afrique (terre Protérozoïque, Cénozoïque)
+    GLOBE_AMERICAS: '🌎', // Globe Amériques (terre Mésozoïque)
+    GLOBE_ASIA: '🌏',     // Globe Asie (terre Crétacé)
 };
 
-// Objet pour mapper les logos emoji vers les fichiers images
+// Logo (emoji) -> image pour affichage des PICTO (boutons, frise).
+// ⚠️ charsImages ne touche JAMAIS aux textures Three.js !
+// Les textures Three.js (text_*.png) sont dans configOrganigramme.epochTextures.
 const charsImages = {
-    '🎇': 'big_impact.png',  // Big impact utilise une image
-    '⚫': 'fonts/pics/corps_noir.png',  // Corps noir
+    '☀️': 'fonts/pics/sun.png',           // Soleil
+    //'⚫': 'fonts/pics/corps_noir.png',    // Corps noir
+    '🎇': 'fonts/pics/big_impact.png',    // Big impact
+    '☄️': 'fonts/pics/ice_meteorite.png', // Météorite de glace
+    //'🔥': 'fonts/pics/hadeen.png',           // Feu
 };
 
 // ============================================================================
@@ -123,6 +131,7 @@ const CHARS_DESC = {
     '🌋': 'Volcan',
     '🏜️': 'Désert',
     '🌳': 'Forêt',
+    '🌍': 'Continents',
     '🫧': 'Atmosphère',
     '☀️': 'Soleil',
     '🎱': 'Géometrie',
@@ -134,9 +143,9 @@ const CHARS_DESC = {
     '🔬': 'Tolérance (précision)',
     '🚩': 'T0 (t° initiale)',
     '🪩': 'Albédo',
-    '🌕': 'Flux géothermique',
+    '🌕': 'Géothermie',
     '📛': 'EDS (Forçage radiatif)',
-    '🌑': 'Corps noir',
+    '🌑': 'Flux sortant (σT⁴)',
     '☁️': 'Index formation nuageuse [0,1]',
     // Événements
     '💫': 'TicTime (+50 Ma)',
@@ -176,11 +185,7 @@ const CHARS_DESC = {
 // ============================================================================
 
 function createAlphabetHtml() {
-    if (typeof CHARS === 'undefined') {
-        console.error('[createAlphabet] CHARS non défini');
-        return '';
-    }
-    
+    if (typeof CHARS === 'undefined') console.error('[createAlphabet] CHARS non défini');
     // Colonne 1 : Unités
     const charsCol1 = [
         'CARDINAL', 'PROPORTION', 'BOOLEAN', 'METER', 'WEIGHT', 'PRESSURE', 'TEMP', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'GRAVITY', 'ENERGY_FLUX', 'MOLAR_MASS_AIR', 'TRIPLE_POINT'
@@ -213,18 +218,17 @@ function createAlphabetHtml() {
     };
     
     // Fonction helper pour créer une div avec caractère et description
+    // Réf = emoji (toujours en premier, utilisé dans calculs/code). Image = affichage optionnel entre parenthèses.
     const createCharDiv = (charName) => {
         const char = CHARS[charName];
-        // Utiliser la description depuis CHARS_DESC avec l'emoji comme clé
         const description = CHARS_DESC[char] || charName;
         
-        // Si le caractère est vide, ne rien afficher plutôt que le nom
-        if (!char || char === '') {
-            return '';
-        }
+        if (!char || char === '') return '';
         
-        // Format identique à syntaxe : utiliser les classes CSS pour les ellipsis
-        return `<div class="legend-item"><span class="logo">${char}</span><span class="description">${description}</span></div>`;
+        const hasImage = charsImages[char] && (charsImages[char].endsWith('.png') || charsImages[char].endsWith('.svg') || charsImages[char].endsWith('.jpg'));
+        const imgInParens = hasImage ? ' (' + getDisplayChar(char) + ')' : '';
+        
+        return `<div class="legend-item"><span class="logo">${char}</span><span class="description">${description}${imgInParens}</span></div>`;
     };
     
     // Filtrer les divs vides avant de les joindre
@@ -274,14 +278,68 @@ function getLogoKey(...names) {
     return names.map(name => CHARS[name] || '').join('');
 }
 
+// Résout le chemin image (depuis static/compute/ -> ../../fonts/...)
+function resolveImagePath(path) {
+    if (!path) return path;
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) return path;
+    if (typeof window.getImagePath === 'function') return window.getImagePath(path);
+    // Fallback : alphabet.html est dans static/compute/, fonts/ à la racine
+    const base = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
+    const inCompute = base.includes('/static/compute/') || base.includes('static\\compute\\') || base.endsWith('alphabet.html');
+    if (inCompute) {
+        return '../..' + (path.startsWith('/') ? path : '/' + path);
+    }
+    return path;
+}
+
+// Mapping DATA key -> affichage (image path ou emoji). Alt = ref (CHARS).
+function getDisplayChar(dataKey) {
+    const imgPath = charsImages[dataKey];
+    if (imgPath && (imgPath.endsWith('.png') || imgPath.endsWith('.svg') || imgPath.endsWith('.jpg'))) {
+        const src = resolveImagePath(imgPath);
+        const alt = CHARS_DESC[dataKey] || dataKey;
+        return '<img src="' + src + '" alt="' + alt + '" style="height:1.4em;vertical-align:middle">';
+    }
+    return dataKey;
+}
+
+// Retourne l'URL src pour afficher un logo en image (events, timeline, etc.).
+// Source unique : charsImages. Retourne null si pas d'image.
+function getLogoImageSrc(emoji) {
+    const path = charsImages[emoji];
+    if (!path || !(path.endsWith('.png') || path.endsWith('.svg') || path.endsWith('.jpg'))) return null;
+    return resolveImagePath(path);
+}
+
+// Retourne l'affichage pour un picto : image si dans charsImages, sinon le picto.
+// Utilisé pour les boutons (frise, etc.) - transparent si on ajoute des images dans charsImages.
+// Retourne { type: 'image', value: src } ou { type: 'text', value: picto }
+function getDisplayForPicto(picto) {
+    const src = getLogoImageSrc(picto);
+    if (src) return { type: 'image', value: src };
+    return { type: 'text', value: picto };
+}
+
 // ============================================================================
 // EXPOSITION GLOBALE
 // ============================================================================
 
 window.CHARS = CHARS;
+window.LOGOS = CHARS; // Alias pour compatibilité (configOrganigramme, organigramme)
 window.CHARS_DESC = CHARS_DESC;
 window.charsImages = charsImages;
 window.createAlphabetHtml = createAlphabetHtml;
 window.getLogo = getLogo;
 window.getLogoKey = getLogoKey;
+window.getDisplayChar = getDisplayChar;
+window.getLogoImageSrc = getLogoImageSrc;
+window.getDisplayForPicto = getDisplayForPicto;
+// Init graphique : remplir [data-char] depuis CHARS (visu, etc.)
+window.initCharsForDisplay = function () {
+    if (!window.CHARS) return;
+    document.querySelectorAll('[data-char]').forEach(function (el) {
+        var key = el.getAttribute('data-char');
+        if (key && window.CHARS[key]) el.textContent = window.CHARS[key];
+    });
+};
 

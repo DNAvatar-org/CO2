@@ -54,8 +54,10 @@ Les nuages ne sont pas comptés dans l’EDS IR.
 ### A. Réduire l’absorption de la vapeur (priorité) — ✅ Implémenté
 
 - `getH2OVaporEDSScale()` dans `physics.js` — **dérivé de T, P, vapor, CO2** (pas d'époque).
-- CO2 > 1% : scale = 1.0. Sinon : `scale = 0.5 × (288/T)^0.15 × (1/P)^0.05 × min(1, (0.01/vapor)^0.1)` clamp [0.2, 1].
-- Réf Terre (288K, 1 atm, ~1% vapor) → 0.5. Hadéen/Archéen (CO2 élevé) → 1.0.
+- **CO2 > 1%** : scale = 1.0 (atmosphère riche, ex. Hadéen).
+- **CO2 ≤ 1%** : `scale = 0.5 × f_T × f_P × f_v` clamp [0.2, 1] — corrige chevauchement H2O/CO2 15–17 µm.
+- Réf Terre (288K, 1 atm, ~1% vapor) → ~0.5. Archéen (CO2 ~0.8%, 8000 ppm) → ~0.48 (scale ~0.5, pas 1.0).
+- **Impact Archéen** : avec scale ~0.48, T simulée ~8°C (fourchette basse lit. 8–30°C). Avec scale=1.0 (CO2>1%), on obtiendrait ~15°C — la convergence à 15°C était conditionnelle (CO2 élevé ou tuning).
 - Appliqué : `kappa_H2O *= getH2OVaporEDSScale()` dans `calculations.js` (3 endroits).
 
 ### B. Nuages comme absorbeurs IR (optionnel, plus tard)

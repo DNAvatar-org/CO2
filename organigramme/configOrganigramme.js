@@ -19,6 +19,28 @@
 // Constante locale pour utiliser CHARS
 const LOGOS = window.CHARS;
 
+// ============================================================================
+// TEXTURES Three.js (fonts/pics/text_*.png) - UNIQUEMENT pour initPlanetThreeJS
+// ============================================================================
+// ⚠️ charsImages (alphabet.js) ne touche JAMAIS aux textures !
+// Inventaire fonts/pics/text_*.png (utilisés par initPlanetThreeJS uniquement) :
+// ticTime=0 par défaut → textures finissant par 0 (text_*0.png)
+const TEXTURES_THREEJS = [
+    'fonts/pics/text_noir0.png',
+    'fonts/pics/text_hadeen0.png', 'fonts/pics/text_hadeen1.png', 'fonts/pics/text_hadeen2.png',
+    'fonts/pics/text_hadeen3.png', 'fonts/pics/text_hadeen4.png', 'fonts/pics/text_hadeen5.png',
+    'fonts/pics/text_hadeen6.png', 'fonts/pics/text_hadeen7.png', 'fonts/pics/text_hadeen8.png', 'fonts/pics/text_hadeen9.png',
+    'fonts/pics/text_archeen0.png', 'fonts/pics/text_archeen1.png', 'fonts/pics/text_archeen2.png',
+    'fonts/pics/text_today0.png', 'fonts/pics/text_chaud.png', 'fonts/pics/text_mesozoique0.png'
+];
+// epochName -> chemin (expressions {$ticTime} interprétées à l'exécution, ticTime=0 → index 0)
+const epochTextures = {
+    'Corps noir': 'fonts/pics/text_noir0.png',
+    'Hadéen': 'fonts/pics/text_hadeen{$ticTime}.png',
+    'Archéen': 'fonts/pics/text_archeen{$ticTime/3}.png',
+    'Aujourd\'hui': 'fonts/pics/text_today0.png'
+};
+
 // Configuration de base
 const radius = 40; // Cercles plus petits (par défaut)
 const centerX = 183; // Centre horizontal du diagramme (328px / 2)
@@ -102,11 +124,11 @@ const ARROW_Z_INDEX = {
 // Explication : La Terre est une sphère. Vu du Soleil, seule la face éclairée est visible (disque de rayon R, surface = πR²)
 // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
 const nodes = [
-    { id: 'soleil', logo: ['🌞',{ text: '3.8×10<sup><b>26</b></sup> W ', dataId: 'solar_power_total' }], align: 'zorder', x: centerX - 140, y: centerY - 155, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, strokeStyle: 'solid', left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, zIndex: 12, logoScale: 1.0, logoOffsetY: 1 },
+    { id: 'soleil', logo: [LOGOS.SUN_ORIGIN, { text: '3.8×10<sup><b>26</b></sup> W ', dataId: 'solar_power_total' }], align: 'zorder', x: centerX - 140, y: centerY - 155, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, strokeStyle: 'solid', left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, zIndex: 12, logoScale: 1.0, logoOffsetY: 1 },
 
     { id: 'geometrie', logo: 'fonts/pics/geometrie.png', x: centerX + 65, y: centerY - 155, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 0, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: ['Géométrie'], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 13, logoScale: 0.8 },
 
-    { id: 'espace1', logo: '🛰', logoScale: 0.5, x: centerX + 150, y: centerY - 170, radius: 50, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null, zIndex: 14 },
+    { id: 'espace1', logo: LOGOS.SATELLITE, logoScale: 0.5, x: centerX + 150, y: centerY - 170, radius: 50, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'Espace<br>Observation', radiation: null, zIndex: 14 },
 
     { id: 'albedo', logo: '', planetEffect: false, x: centerX + 0.7, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
 
@@ -183,7 +205,8 @@ const nodes = [
         epoch: [
             {
                 epochName: 'Corps noir',
-                logo: 'fonts/pics/text_noir.png',//'fonts/pics/corps_noir.png',
+                logo: LOGOS.CORPS_NOIR, // Picto (charsImages → corps_noir.png)
+                texture: 'fonts/pics/text_noir0.png', // Texture Three.js
                 planetEffect: true,
                 luxSaturation: 1.0,
                 lightDistance: '7-{$ticTime}/3', // Expression interprétée dynamiquement
@@ -194,7 +217,8 @@ const nodes = [
             },
             {
                 epochName: 'Hadéen',
-                logo: 'fonts/pics/text_hadeen{$ticTime}.png', // Sera remplacé dynamiquement selon textureIndex
+                logo: LOGOS.HADEEN, // Picto
+                texture: 'fonts/pics/text_hadeen{$ticTime}.png', // Texture Three.js
                 planetEffect: true,
                 luxSaturation: 3.0,
                 lightDistance: 0, // 0 = éclairage interne (PointLight au centre)
@@ -207,7 +231,8 @@ const nodes = [
             },
             {
                 epochName: 'Archéen',
-                logo: 'fonts/pics/text_archeen{$ticTime/3}.png', // $ticTime/3 sera arrondi automatiquement pour les images
+                logo: LOGOS.ARCHEEN, // Picto
+                texture: 'fonts/pics/text_archeen{$ticTime/3}.png', // Texture Three.js
                 radius: radiusTerre,
                 fillColor: 'rgba(255, 140, 0, 0.3)', // Orange/jaune : début de l'oxygène mais encore réductrice
                 strokeColor: '#ff8c00',
@@ -216,7 +241,7 @@ const nodes = [
             },
             {
                 epochName: 'Protérozoïque',
-                logo: '🌍',
+                logo: LOGOS.GLOBE_AFRICA,
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 191, 255, 0.3)', // Cyan/bleu clair : Grande Oxydation, apparition de l'oxygène
                 strokeColor: '#00bfff',
@@ -224,7 +249,7 @@ const nodes = [
             },
             {
                 epochName: 'Mésozoïque',
-                logo: '🌎',
+                logo: LOGOS.GLOBE_AMERICAS,
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 200, 255, 0.3)',
                 strokeColor: '#00c8ff',
@@ -232,7 +257,7 @@ const nodes = [
             },
             {
                 epochName: 'Crétacé',
-                logo: '🌏',
+                logo: LOGOS.GLOBE_ASIA,
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 200, 255, 0.3)',
                 strokeColor: '#00c8ff',
@@ -240,7 +265,7 @@ const nodes = [
             },
             {
                 epochName: 'Cénozoïque',
-                logo: '🌍',
+                logo: LOGOS.GLOBE_AFRICA,
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 200, 255, 0.3)',
                 strokeColor: '#00c8ff',
@@ -248,7 +273,8 @@ const nodes = [
             },
             {
                 epochName: 'Aujourd\'hui',
-                logo: 'fonts/pics/text_today.png',
+                logo: LOGOS.MODERN, // Picto
+                texture: 'fonts/pics/text_today0.png', // Texture Three.js
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 200, 255, 0.3)',
                 strokeColor: '#00eeff',
@@ -267,9 +293,9 @@ const nodes = [
         logoOffsetY: 7
     },
 
-    { id: 'espace2', logo: '🛰', logoScale: 0.5, x: centerX + 150, y: centerY + 310, radius: 50, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
+    { id: 'espace2', logo: LOGOS.SATELLITE, logoScale: 0.5, x: centerX + 150, y: centerY + 310, radius: 50, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
     //📛
-    { id: 'reemis', logo: '🛡', zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
+    { id: 'reemis', logo: LOGOS.EDS, zIndex: 25, x: centerX, y: earthCenterY + 160, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
 
     { id: 'co2', type: 'button', logo: LOGOS.CO2, logoOffsetY: 0, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
@@ -297,6 +323,6 @@ const arcs = [
 
 // Exposer la configuration globalement pour accès depuis main.js
 // Note: timeline est maintenant chargée depuis static/timeline/configTimeline.js
-window.configOrganigramme = { nodes, arcs };
+window.configOrganigramme = { nodes, arcs, epochTextures, TEXTURES_THREEJS };
 // La timeline sera ajoutée par static/timeline/configTimeline.js si elle est chargée après
 // Timeline est maintenant directement dans window.timeline

@@ -154,7 +154,7 @@
                 globalTooltipTimeout = null;
             }
 
-            // Délai avant d'afficher (dès le premier rollover)
+            // UX : TOOLTIP_DELAY avant affichage (éviter flash au survol rapide)
             globalTooltipTimeout = setTimeout(() => {
                 const tooltip = getOrCreateGlobalTooltip();
                 tooltip.innerHTML = text; // Mettre à jour le contenu

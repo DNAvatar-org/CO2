@@ -15,6 +15,7 @@
         const syntheseEds = document.querySelector('.synthese_EdS');
         
         if (!edsCell || !syntheseEds) {
+            // DOM : cell-effetSerre / synthese_EdS pas encore injectés (visu_radiatif.html). Retry 100ms.
             setTimeout(integrateSyntheseEds, 100);
             return;
         }
@@ -63,7 +64,7 @@
         syntheseEds.remove();
     }
     
-    // Attendre que le DOM et l'organigramme soient chargés
+    // DOM : organigramme génère nodes/arrows dynamiquement. 500ms pour laisser generateNodes/Arrows finir.
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(integrateSyntheseEds, 500);

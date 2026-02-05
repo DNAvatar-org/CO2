@@ -116,6 +116,7 @@
     };
 
     function initAfterLoad() {
+        if (typeof window.initCharsForDisplay === 'function') window.initCharsForDisplay();
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             window.configOrganigramme.timeline = window.TIMELINE.map(function (item) {
                 if (item['📅']) {
@@ -203,6 +204,7 @@
             var isHovered = false;
             button.addEventListener('mouseenter', function () {
                 isHovered = true;
+                // UX : 500ms avant affichage hover (éviter flash au survol rapide)
                 hoverTimeout = setTimeout(function () {
                     if (isHovered) button.classList.add('hover-active');
                 }, 500);

@@ -256,6 +256,7 @@ const FORM = {
 
 // ============================================================================
 // OBJET DATA (initialisé avec 0.0, structure hiérarchique 2 niveaux)
+// Source unique d'init : chargé avant main.js (loader_panels). Garantit DATA['🪩'], DATA['💧'], etc. avant setEpoch/updateFluxLabels.
 // ============================================================================
 const DATA = {};
 // Parcourir KEYS pour créer DATA avec valeurs par défaut (structure hiérarchique)

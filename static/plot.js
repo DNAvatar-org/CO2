@@ -278,6 +278,7 @@ function initPlot() {
     }
 
     const layout = {
+        autosize: true, // Éviter reset width/height à chaque Plotly.react (cycle)
         xaxis: {
             title: {
                 text: "Longueur d'onde (μm)",
@@ -1208,6 +1209,7 @@ window.updatePlot = function updatePlot(data) {
 
 
     const updateLayout = {
+        autosize: true, // Préserver dimensions (éviter reset à chaque cycle)
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
         xaxis: {
             range: [0, 50], // Commence à 0
@@ -2073,6 +2075,7 @@ function drawSpectralVisualization(canvas, data) {
     }
 
     const updateLayout = {
+        autosize: true, // Préserver dimensions (éviter reset à chaque cycle)
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
         xaxis: {
             // ... configuration axe X inchangée ...
