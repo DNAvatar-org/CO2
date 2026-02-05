@@ -35,9 +35,8 @@
         if (screenWidth < 1000) {
             // Changer la direction du container en colonne
             container.style.flexDirection = 'column';
-            // La colonne right reste à 999px de large
-            rightColumn.style.width = '999px';
-            rightColumn.style.maxWidth = '999px';
+            rightColumn.style.width = '100%';
+            rightColumn.style.maxWidth = '900px';
         } else {
             // Direction normale en ligne
             container.style.flexDirection = 'row';

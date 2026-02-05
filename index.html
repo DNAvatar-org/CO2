@@ -108,7 +108,7 @@
         body { padding: 22px 20px 20px 20px !important; height: 100vh; overflow: hidden; } /* marge pour onglets, pas de scroll page */
         .tab-panel { display: none; flex: 1; min-height: 0; }
         .tab-panel.active { display: block; flex: 1; min-height: 0; }
-        #visu-panel { padding-top: 8px; overflow: auto; }
+        #visu-panel { padding-top: 8px; overflow: auto; overflow-x: hidden; } /* Pas de scroll horizontal : le graph se réduit */
         #scie-panel { overflow: hidden; }
         #scie-panel.active { display: flex !important; flex-direction: column; flex: 1; min-height: 0; }
         #scie-panel iframe { flex: 1; min-height: 0; width: 100%; border: none; }

@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.5
+// Version 1.0.6
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -12,6 +12,7 @@
 // - v1.0.3: Resize artificiel après Plotly.react, spectre +1px, bornes -5px
 // - v1.0.4: displaylogo: false, showLink: false pour masquer branding Plotly
 // - v1.0.5: drawSpectralVisualization return early si rect invalide (panel masqué) ; switchTab visu → resize
+// - v1.0.6: Bornes H2O/CH4/CO2 alignées via Plotly.c2p (plus de décalage selon largeur div)
 // ============================================================================
 
 // ============================================================================
@@ -412,6 +413,10 @@ function debouncedResizeCanvas() {
     }
     // Augmenter le délai pour laisser le temps au layout de se stabiliser (scrollbar)
     resizeTimeout = setTimeout(() => {
+        const plotEl = document.getElementById('plot-container');
+        if (plotEl && typeof Plotly !== 'undefined') {
+            Plotly.Plots.resize(plotEl);
+        }
         // Force recalculation of position and redraw via callback
         resizeCanvasToPlot(() => {
             // Redessiner la visualisation spectrale si on a des données
@@ -493,6 +498,21 @@ function resizeCanvasToPlot(callback) {
             // Attendre un peu que Plotly ait fini de redimensionner
             setTimeout(() => {
                 drawAbsorptionBandIndicators();
+                /* Diagnostic x0 : une fois au 1er resize, ou si DEBUG_X0_ALIGN=true */
+                const doLog = (typeof window !== 'undefined' && window.DEBUG_X0_ALIGN) || !window._x0AlignLogged;
+                if (doLog) {
+                    window._x0AlignLogged = true;
+                    const wr = wrapper.getBoundingClientRect();
+                    const tr = targetElement.getBoundingClientRect();
+                    const pc = plotContainer.getBoundingClientRect();
+                    const c2p0 = plotContainer._fullLayout?.xaxis?.c2p?.(0);
+                    const canvasLeftFromWrapper = (tr.left - wr.left) - 5;
+                    const gradient0FromWrapper = canvasLeftFromWrapper + 5;
+                    const logo0FromWrapper = (pc.left - wr.left) + (c2p0 ?? 70);
+                    const canvasComputedLeft = parseFloat(canvas.style.left) || 0;
+                    const ecart = Math.abs(gradient0FromWrapper - logo0FromWrapper);
+                    console.log('[x0 align] targetRect.left-wr:', (tr.left - wr.left).toFixed(1), '| canvas.left:', canvasComputedLeft.toFixed(1), '| gradient0:', gradient0FromWrapper.toFixed(1), '| logo0:', logo0FromWrapper.toFixed(1), '| c2p(0):', c2p0?.toFixed(1), '| ecart:', ecart.toFixed(1) + 'px');
+                }
             }, 50);
 
             resizeCanvasInProgress = false;
@@ -608,7 +628,10 @@ function getPlotlyFont(size, color) {
 // H2O : ~6.3 μm (principale), nombreuses bandes entre 5–8 μm
 function drawAbsorptionBandIndicators() {
     const plotContainerWrapper2 = document.querySelector('.plot-container-wrapper');
-    if (!plotContainerWrapper2) return;
+    if (!plotContainerWrapper2) {
+        if (window.DEBUG_X0_ALIGN) console.log('[x0 logos] early return: pas de plot-container-wrapper');
+        return;
+    }
 
     // Supprimer les anciens indicateurs s'ils existent
     const oldIndicators = plotContainerWrapper2.querySelectorAll('.absorption-band-indicator');
@@ -618,39 +641,41 @@ function drawAbsorptionBandIndicators() {
     const plotContainer = document.getElementById('plot-container');
     if (!canvas || !plotContainer || typeof Plotly === 'undefined') return;
 
-    // Utiliser Plotly pour convertir les coordonnées de données en pixels
-    // Cela garantit que les logos sont alignés avec les bonnes graduations
-    const graph_max_um = 50;
-    const graph_min_um = 0;
-    // Bornes juste sous le trait de l'axe (margin b: 75)
+    // Utiliser l'API interne Plotly (c2p) pour convertir données → pixels
+    // Évite le décalage des bornes H2O/CH4/CO2 quand la largeur de la div change
     const axisMarginBottom = 75; // PLOT_MARGINS.b
-    const markersOffsetBelowAxis = -15; // px sous l'axe (bottom plus petit = plus bas, -5px vs avant)
+    const markersOffsetBelowAxis = -15; // px sous l'axe
 
-    // Récupérer les dimensions du graphique Plotly
     const plotRect = plotContainer.getBoundingClientRect();
     const wrapperRect = plotContainerWrapper2.getBoundingClientRect();
+    const plotLeftFromWrapper = plotRect.left - wrapperRect.left;
 
-    // Utiliser Plotly pour obtenir la position X réelle d'une valeur de données
-    // La fonction getBoundingClientRect() nous donne la position du conteneur
-    // Plotly a des marges : PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }
-    const PLOT_MARGINS_LOCAL = { l: 70, r: 75, t: 0, b: 75 };
-
-    // Fonction helper pour calculer la position X d'une longueur d'onde
-    // Utiliser la même logique que Plotly pour mapper les données aux pixels
-    const getXPosition = (lambda_um) => {
-        // Normaliser la valeur entre 0 et 1 dans la plage [0, 50]
-        const normalizedX = (lambda_um - graph_min_um) / (graph_max_um - graph_min_um);
-
-        // Largeur du graphique Plotly (sans les marges)
+    // Fonction helper : utilise Plotly._fullLayout.xaxis.c2p si dispo, sinon fallback
+    let getXPosition;
+    const gd = plotContainer;
+    const xaxis = gd._fullLayout && gd._fullLayout.xaxis;
+    if (xaxis && typeof xaxis.c2p === 'function') {
+        /* c2p retourne des coord. relatives à la zone de tracé (cartesian), pas au conteneur → ajouter marge gauche */
+        getXPosition = (lambda_um) => {
+            const xInPaper = xaxis.c2p(lambda_um);
+            return plotLeftFromWrapper + PLOT_MARGINS.l + xInPaper;
+        };
+        if ((typeof window !== 'undefined' && window.DEBUG_X0_ALIGN) || !window._x0LogosLogged) {
+            window._x0LogosLogged = true;
+            const x0Pos = getXPosition(0);
+            const c2p0 = xaxis.c2p(0);
+            console.log('[x0 logos] getXPosition(0)=', x0Pos.toFixed(1), '| c2p(0)=', c2p0?.toFixed(1), '| plotLeftFromWrapper=', plotLeftFromWrapper.toFixed(1));
+        }
+    } else {
+        const graph_max_um = 50;
+        const graph_min_um = 0;
+        const PLOT_MARGINS_LOCAL = { l: 70, r: 75 };
         const plotWidth = plotRect.width - PLOT_MARGINS_LOCAL.l - PLOT_MARGINS_LOCAL.r;
-
-        // Position X dans le graphique Plotly (depuis la marge gauche)
-        const xInPlot = normalizedX * plotWidth;
-
-        // Position X relative au wrapper (marge gauche + position dans le graphique)
-        const plotLeft = plotRect.left - wrapperRect.left;
-        return plotLeft + PLOT_MARGINS_LOCAL.l + xInPlot;
-    };
+        getXPosition = (lambda_um) => {
+            const normalizedX = (lambda_um - graph_min_um) / (graph_max_um - graph_min_um);
+            return plotLeftFromWrapper + PLOT_MARGINS_LOCAL.l + normalizedX * plotWidth;
+        };
+    }
 
     // Indicateurs de bandes d'absorption
     // Utiliser la référence unique des logos depuis configOrganigramme.js
@@ -686,7 +711,7 @@ function drawAbsorptionBandIndicators() {
         indicator.style.left = `${xPos}px`;
         // Juste sous le trait de l'axe (comme les graduations)
         indicator.style.bottom = `${axisMarginBottom + markersOffsetBelowAxis}px`;
-        indicator.style.transform = 'translateY(0)';
+        indicator.style.transform = 'translateX(-50%)'; /* Centrer le logo sur la valeur λ */
         indicator.style.fontSize = '10px';
         indicator.style.zIndex = '101';
         indicator.style.pointerEvents = 'none';

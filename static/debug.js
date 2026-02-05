@@ -12,6 +12,8 @@
 
 // DEBUG_ANALYSE : activer en console (window.DEBUG_ANALYSE = true) pour logs structurés précision
 window.DEBUG_ANALYSE = window.DEBUG_ANALYSE || false;
+// DEBUG_X0_ALIGN : activer en console (window.DEBUG_X0_ALIGN = true) puis resize pour voir alignement x0 (gradient/logos)
+window.DEBUG_X0_ALIGN = window.DEBUG_X0_ALIGN || false;
 // DEBUG_ANALYSE_DETAIL : logs détaillés uniquement pour les premiers calculs (CYCLE0, Init, 1er CycleEau) — pour transmettre à une autre IA
 window.DEBUG_ANALYSE_DETAIL = window.DEBUG_ANALYSE_DETAIL || false;
 
@@ -92,7 +94,7 @@ function logDetailPremiersCalculs(stepLabel, DATA, CONST, extra) {
     add('ALBEDO: total=' + (albedo != null ? albedo.toFixed(4) : '?'));
     if (DATA['🪩']) {
         const w = DATA['🪩'];
-        add('  surfaces: volcano=' + (w['🍰🪩🌋'] != null ? w['🍰🪩🌋'].toFixed(3) : '?') + ' ocean=' + (w['🍰🪩🌊'] != null ? w['🍰🪩🌊'].toFixed(3) : '?') + ' forest=' + (w['🍰🪩🌳'] != null ? w['🍰🪩🌳'].toFixed(3) : '?') + ' land=' + (w['🍰🪩🌍'] != null ? w['🍰🪩🌍'].toFixed(3) : '?') + ' desert=' + (w['🍰🪩🏖'] != null ? w['🍰🪩🏖'].toFixed(3) : '?') + ' ice=' + (w['🍰🪩🧊'] != null ? w['🍰🪩🧊'].toFixed(3) : '?'));
+        add('  surfaces: volcano=' + (w['🍰🪩🌋'] != null ? w['🍰🪩🌋'].toFixed(3) : '?') + ' ocean=' + (w['🍰🪩🌊'] != null ? w['🍰🪩🌊'].toFixed(3) : '?') + ' forest=' + (w['🍰🪩🌳'] != null ? w['🍰🪩🌳'].toFixed(3) : '?') + ' land=' + (w['🍰🪩🌍'] != null ? w['🍰🪩🌍'].toFixed(3) : '?') + ' desert=' + (w['🍰🪩🏜️'] != null ? w['🍰🪩🏜️'].toFixed(3) : '?') + ' ice=' + (w['🍰🪩🧊'] != null ? w['🍰🪩🧊'].toFixed(3) : '?'));
         add('  clouds: cloud_frac=' + (w['🍰🪩⛅'] != null ? w['🍰🪩⛅'].toFixed(3) : '?') + ' cloud_index=' + (w['☁️'] != null ? w['☁️'].toFixed(3) : '?'));
     }
     if (DATA['💧']) {

@@ -120,7 +120,8 @@ sup {
     gap: 15px;
     /* Espacement entre les colonnes */
     width: 100%;
-    /* Prendre toute la largeur disponible */
+    max-width: 100%; /* Empêche overflow → scrollbar, force le graph à se réduire */
+    min-width: 0; /* Indispensable : permet au flex child de shrink */
     flex: 1;
     /* Prendre tout l'espace disponible pour pousser le footer en bas */
 }
@@ -156,6 +157,8 @@ sup {
     gap: 15px;
     flex: 1 1 auto;
     width: 100%;
+    min-width: 0; /* Permet de shrink en dessous de 900px quand l'espace manque */
+    max-width: 900px;
     height: 630px; /* Hauteur fixe imposée */
 }
 
@@ -301,8 +304,9 @@ h1 {
     flex-direction: column;
     gap: 0px;
     width: 100%;
+    min-width: 0; /* Indispensable : permet au flex child de shrink pour que le plot resize */
     flex: 1 1 100%;
-    min-width: 100%;
+    max-width: 900px;
     font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
 
@@ -556,15 +560,28 @@ h1 {
     font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
 
-/* 1. Section Date - frise verticale (visu_) : 📜 et 📅 empilés (ordre lecture haut/bas) */
-.visu_timeline-date-section {
+/* 1. Section Époque (📜) - frise verticale */
+.visu_timeline-epoch-section {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
     margin-top: 15px;
+    margin-bottom: 8px;
     width: 100%;
+}
+
+/* 2. Section Date (📅) - trait en haut comme horloge-section */
+.visu_timeline-date-section {
+    width: 100%;
+    margin-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0;
 }
 
 .timeline-date-display {
@@ -572,13 +589,6 @@ h1 {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-}
-
-.timeline-separator {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.4);
-    margin: 2px 0;
-    line-height: 1;
 }
 
 .timeline-hourglass {

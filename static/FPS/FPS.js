@@ -416,8 +416,7 @@ if (typeof window !== 'undefined') {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initFPS);
     } else {
-        // Attendre un peu pour que le CSS soit appliqué
-        setTimeout(initFPS, 100);
+        initFPS(); /* Synchrone : évite que updateFPS (main.js) appelle restyle avant init → crash */
     }
     
     // Exposer les fonctions globalement
