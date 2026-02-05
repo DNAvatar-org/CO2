@@ -294,8 +294,8 @@ h1 {
 }
 
 .plot-container-wrapper {
-    padding: 0;
-    /* padding-bottom: 15px !important; */
+    padding: 0 0 20px 0;
+    margin-bottom: 18px;
     height: 625px;
     /* Même hauteur que #plot-container */
     position: relative;
@@ -550,7 +550,8 @@ h1 {
 
 .timeline-display {
     text-align: center;
-    padding: 0px 0px;
+    padding: 0 0 20px 0;
+    margin-bottom: 18px;
     display: flex;
     flex-direction: column;
     /* gap: 15px; */

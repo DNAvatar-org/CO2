@@ -89,6 +89,9 @@
         var T0 = DATA['🧮']['🧮🌡️'];
         var tempC = T0 - window.CONST.KELVIN_TO_CELSIUS;
         document.getElementById('temp-surface-synthese').textContent = tempC.toFixed(1);
+        var P_atm = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
+        var pressureEl = document.getElementById('pressure-surface-synthese');
+        if (pressureEl) pressureEl.textContent = (P_atm != null && Number.isFinite(P_atm)) ? '🎈 ' + P_atm.toFixed(2) + ' atm' : '🎈 -- atm';
         var co2_ppm = DATA['🫧']['🍰🫧🏭'] * 1e6;
         window.plotData.lambda_range = spectral.lambda_range;
         window.plotData.lambda_weights = spectral.lambda_weights;

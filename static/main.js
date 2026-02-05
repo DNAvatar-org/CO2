@@ -244,6 +244,12 @@ function updateTemperatureDisplay() {
     if (tempUnitEl) {
         tempUnitEl.textContent = getTemperatureUnitSymbol(temperatureUnit);
     }
+    // Mettre à jour la pression au sol depuis DATA si disponible
+    const pressureEl = document.getElementById('pressure-surface-synthese');
+    if (pressureEl && window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) {
+        const P = window.DATA['🫧']['🎈'];
+        pressureEl.textContent = Number.isFinite(P) ? '🎈 ' + P.toFixed(2) + ' atm' : '🎈 -- atm';
+    }
 }
 
 // ============================================================================
@@ -1409,6 +1415,8 @@ window.updateDisplay = function updateDisplay(data) {
         if (tempSurfaceEl) {
             tempSurfaceEl.textContent = '--';
         }
+        const pressureEl = document.getElementById('pressure-surface-synthese');
+        if (pressureEl) pressureEl.textContent = '🎈 -- atm';
     }
     if (data && data.temp_eff !== undefined && data.temp_eff > 0) {
         const tempEffEl = document.getElementById('temp-eff-synthese');
@@ -2039,11 +2047,10 @@ function setEpoch(epochName) {
     window.currentEpochName = epochName;
     
     // 🔒 INITIALISER DATA['📜']['👉'] et DATA['📜']['🗿'] pour que calculations_albedo.js puisse accéder à l'époque
-    // Trouver l'index de l'époque dans TIMELINE
+    // DATA est initialisé par dico.js (toutes clés à 0). Ne pas écraser avec {} — ordre synchrone garanti par loader_panels.
     if (typeof window.TIMELINE !== 'undefined') {
-        // Initialiser DATA s'il n'existe pas
         if (typeof window.DATA === 'undefined') {
-            window.DATA = {};
+            window.DATA = {}; // Edge case : dico.js non chargé (ordre scripts cassé)
         }
         if (!window.DATA['📜']) {
             window.DATA['📜'] = {};
@@ -2167,8 +2174,9 @@ function setEpoch(epochName) {
     // Modifier la configuration du noeud terre et recréer la cellule
     const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
     if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
-        // Trouver la configuration de l'époque courante
-        const epochConfig = terreNode.epoch.find(e => e.epochName === epochName);
+        // Trouver la configuration : config utilise epochName (ex: 'Corps noir'), pas l'emoji (ex: '⚫')
+        const configEpochName = epoch.name || epochName;
+        const epochConfig = terreNode.epoch.find(e => e.epochName === configEpochName);
 
         if (epochConfig) {
             // Recréer la cellule terre avec la configuration de l'époque
@@ -3008,11 +3016,10 @@ window.addEventListener('DOMContentLoaded', () => {
     
     // Attendre que le DOM soit complètement rendu avant de lancer les calculs
     // Utiliser requestAnimationFrame pour s'assurer que le navigateur a eu le temps de rendre
-    requestAnimationFrame(() => {
-        // Double RAF pour s'assurer que le rendu est terminé
         requestAnimationFrame(() => {
-            // Petit délai supplémentaire pour laisser le temps au navigateur de finaliser le rendu
-            setTimeout(() => {
+            requestAnimationFrame(() => {
+                // DOM : 200ms pour laisser navigateur finaliser le rendu avant init listeners FPS
+                setTimeout(() => {
                 // 🔒 Écouter les événements FPS pour contrôler précision, affichage et animation
                 window.addEventListener('fpsLevelChanged', (event) => {
                     const { fps, level, precisionFactor } = event.detail;
@@ -3235,7 +3242,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Initialiser les event listeners sur les boutons du flux
     if (typeof window.initFluxButtonListeners === 'function') {
-        // Attendre un peu pour que les boutons soient créés
+        // DOM : boutons flux créés par organigramme (injection HTML asynchrone). 100ms pour injection.
         setTimeout(() => {
             window.initFluxButtonListeners();
         }, 100);
@@ -3253,7 +3260,7 @@ window.addEventListener('DOMContentLoaded', () => {
         syntheseTempEl.addEventListener('click', cycleTemperatureUnit);
     }
 
-    // Initialiser l'horloge au chargement
+    // Initialiser l'horloge au chargement (même batch que initFluxButtonListeners)
     setTimeout(() => {
         const infoTimeDisplay = document.getElementById('info-time');
         if (infoTimeDisplay) {
