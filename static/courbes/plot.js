@@ -750,8 +750,8 @@ window.updatePlot = function updatePlot(data) {
     const lambda_range = data.lambda_range;
     const epochName = (typeof window !== 'undefined' && window.currentEpochName) ? window.currentEpochName : 'Corps noir';
     const isHadeen = (epochName === 'Hadéen');
-    const scaleFactor = isHadeen ? 1e15 : (epochName === 'Corps noir' ? 1e12 : 1e13);
-    const scaleLabel = isHadeen ? ' k' : (epochName === 'Corps noir' ? ' ×10¹²' : ' ×10¹³');
+    const scaleFactor = (epochName === 'Corps noir' ? 1e12 : 1e13);
+    const scaleLabel = (epochName === 'Corps noir' ? ' ×10¹²' : ' ×10¹³');
     const scaleY = (y) => y / scaleFactor;
 
     if (epochName !== lastEpochForScale) {
@@ -1277,9 +1277,10 @@ window.updatePlot = function updatePlot(data) {
         yaxis: {
             range: [0, y_max_luminance],
             fixedrange: true,
-            tickformat: isHadeen ? ',.0s' : (v) => {
+            tickformat: (v) => {
                 const n = Number(v);
                 if (!Number.isFinite(n)) return '';
+                if (isHadeen) return (n / 1000).toFixed(1) + 'K';
                 if (n >= 1000) return n.toFixed(0);
                 if (n >= 10) return n.toFixed(1);
                 return n.toFixed(2);

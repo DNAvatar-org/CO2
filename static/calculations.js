@@ -778,16 +778,13 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
         });
 
     // Mettre à jour les labels du flux pendant le calcul (temp_surface_c pour légende couleur)
-    window.updateFluxLabels({
-            T0: T0_test,
-            temp_surface: T0_test,
-            temp_surface_c: temp_surface_c,
-            total_flux: result.total_flux,
-            albedo: albedo,
-            cloud_coverage: cloud_coverage,
-            co2_ppm: CO2_fraction * 1e6,
-            ch4_ppm: ch4_ppm
-        });
+    // DATA est déjà à jour : updateFluxLabels() lit depuis DATA (event cycleCalcul)
+    DATA['📊'] = DATA['📊'] || {};
+    DATA['📊'].total_flux = result.total_flux;
+    if (window.CO2_EVENTS) window.CO2_EVENTS.emit('cycleCalcul');
+    if (typeof window.updateFluxLabels === 'function') {
+        window.updateFluxLabels('cycleCalcul');
+    }
 
     // 🔒 Mettre à jour la couleur avec la température actuelle (à chaque étape de dichotomie)
     const color_current = window.tempSurfaceToColor(temp_surface_c);
@@ -1550,7 +1547,7 @@ function simulateRadiativeTransfer() {
                             geo_flux: geo_flux,
                             planet_radius: (options && options.planet_radius) ? options.planet_radius : 6371000
                         };
-                        window.updateFluxLabels(fluxData);
+                        window.updateFluxLabels('cycleCalcul');
                         if (typeof window.updateLegend === 'function') {
                             window.updateLegend(fluxData);
                         }

@@ -123,7 +123,7 @@
         window.showSpectralBackground = true;
         window.updatePlot(window.plotData);
         window.updateSpectralVisualization(window.plotData.current);
-        window.updateFluxLabels(window.plotData);
+        window.updateFluxLabels('ProcessFinished');
     }
 
     function projectToScie(DATA) {

@@ -2364,7 +2364,7 @@ function setEpoch(epochName) {
     // Utiliser plotData.current si disponible (résultats du calcul), sinon plotData
     if (typeof window.updateFluxLabels === 'function') {
         const dataForLabels = (window.plotData && window.plotData.current) ? window.plotData : (window.plotData || {});
-        window.updateFluxLabels(dataForLabels);
+        window.updateFluxLabels('ProcessFinished');
     }
 
     // Appliquer les conditions initiales
@@ -2873,7 +2873,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
             // Utiliser plotData.current si disponible (résultats du calcul), sinon plotData
             if (typeof window.updateFluxLabels === 'function') {
                 const dataForLabels = (window.plotData && window.plotData.current) ? window.plotData : (window.plotData || {});
-                window.updateFluxLabels(dataForLabels);
+                window.updateFluxLabels('ProcessFinished');
             }
             
             // Mettre à jour la visualisation spectrale après un délai

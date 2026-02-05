@@ -58,13 +58,20 @@ function getGeologicalPeriodByName(periodName) {
     );
 
     if (epoch) {
-        // Calculer le flux géothermique unifié
-        const flux = computeFluxFromEpoch(epoch);
-        
-        return {
+        // Mapper les clés TIMELINE (🔋🌕, 📐, ⚖️🫧, 🍎, 🧲🌕) vers les noms attendus par computeFluxFromEpoch et updateFluxLabels
+        const epochWithMappings = {
             ...epoch,
+            geothermal_flux: (typeof epoch.geothermal_flux === 'number') ? epoch.geothermal_flux : epoch['🧲🌕'],
+            core_power_watts: (typeof epoch.core_power_watts === 'number') ? epoch.core_power_watts : epoch['🔋🌕'],
+            planet_radius: (typeof epoch.planet_radius === 'number') ? epoch.planet_radius : (epoch['📐'] != null ? epoch['📐'] * 1000 : undefined),
+            total_atmosphere_mass_kg: (typeof epoch.total_atmosphere_mass_kg === 'number') ? epoch.total_atmosphere_mass_kg : epoch['⚖️🫧'],
+            gravity: (typeof epoch.gravity === 'number') ? epoch.gravity : epoch['🍎']
+        };
+        const flux = computeFluxFromEpoch(epochWithMappings);
+        return {
+            ...epochWithMappings,
             core_temperature_k: epoch.core_temperature, // Legacy compat
-            geothermal_flux: flux // Injecter le flux calculé
+            geothermal_flux: (typeof flux === 'number' && flux > 0) ? flux : epochWithMappings.geothermal_flux
         };
     }
     return null;

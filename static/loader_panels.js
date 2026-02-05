@@ -153,30 +153,13 @@
         }
         var lastComputePayload = null;
         if (window.CO2_EVENTS) {
+            window.CO2_EVENTS.on('cycleCalcul', function () {
+                if (typeof window.updateFluxLabels === 'function') {
+                    try { window.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
+                }
+            });
             window.CO2_EVENTS.on('compute:progress', function (payload) {
-                if (typeof window.updateFluxLabels !== 'function' || !payload || !window.DATA) return;
-                var DATA = window.DATA;
-                var T0 = payload.T0;
-                var total_flux = payload.total_flux;
-                if (T0 == null || total_flux == null) return;
-                var CONST = window.CONST || { KELVIN_TO_CELSIUS: 273.15 };
-                var h2o_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
-                var h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
-                window.h2oVaporPercent = Math.min(100, Math.max(0, h2o_frac * 100 + h2o_meteorites));
-                if (!window.plotData) window.plotData = {};
-                window.plotData.co2_ppm = (DATA['🫧'] && DATA['🫧']['🍰🫧🏭'] != null ? DATA['🫧']['🍰🫧🏭'] : 0) * 1e6;
-                window.plotData.ch4_ppm = (DATA['🫧'] && DATA['🫧']['🍰🫧⛽'] != null ? DATA['🫧']['🍰🫧⛽'] : 0) * 1e6;
-                var fluxData = {
-                    T0: T0,
-                    temp_surface: T0,
-                    temp_surface_c: T0 - CONST.KELVIN_TO_CELSIUS,
-                    total_flux: total_flux,
-                    albedo: DATA['🪩'] && DATA['🪩']['🍰🪩📿'] != null ? DATA['🪩']['🍰🪩📿'] : 0,
-                    cloud_coverage: DATA['🪩'] && DATA['🪩']['☁️'] != null ? DATA['🪩']['☁️'] : 0,
-                    co2_ppm: window.plotData.co2_ppm,
-                    ch4_ppm: window.plotData.ch4_ppm
-                };
-                try { window.updateFluxLabels(fluxData); } catch (e) { console.error('[compute:progress] updateFluxLabels', e); }
+                if (payload && window.DATA && window.CO2_EVENTS) window.CO2_EVENTS.emit('cycleCalcul');
             });
             window.CO2_EVENTS.on('compute:done', function (payload) {
                 if (payload && payload.DATA) {
@@ -192,6 +175,31 @@
         // Mettre à jour les actions 🕰 (météorite, impact, etc.) après injection du contenu visu
         window.updateEpochActions();
         var scieIframe = document.getElementById('scie-iframe');
+        window.addEventListener('message', function (event) {
+            if (event.data && event.data.type === 'cycleCalcul') {
+                var iframe = document.getElementById('scie-iframe');
+                var fromOurIframe = iframe && event.source === iframe.contentWindow;
+                if (fromOurIframe && event.data.DATA && window.DATA) {
+                    var src = event.data.DATA;
+                    ['🧮', '🪩', '🫧', '💧', '📛', '📜', '📊'].forEach(function (k) {
+                        if (src[k]) {
+                            if (!window.DATA[k]) window.DATA[k] = {};
+                            Object.keys(src[k]).forEach(function (k2) { window.DATA[k][k2] = src[k][k2]; });
+                        }
+                    });
+                    if (event.data.h2oVaporPercent != null) window.h2oVaporPercent = event.data.h2oVaporPercent;
+                    window.waterVaporEnabled = window.h2oVaporPercent > 0;
+                    var epochId = (window.DATA['📜'] && window.DATA['📜']['🗿']) || '⚫';
+                    if (epochId && window.configOrganigramme && window.configOrganigramme.timeline) {
+                        var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === epochId; });
+                        if (ep) window.currentEpochName = ep.name;
+                    }
+                    if (typeof window.updateFluxLabels === 'function') {
+                        try { window.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
+                    }
+                }
+            }
+        });
         function sendComputeToScie() {
             if (lastComputePayload && lastComputePayload.DATA && scieIframe.contentWindow) {
                 try { scieIframe.contentWindow.postMessage({ type: 'compute:done', DATA: lastComputePayload.DATA }, '*'); } catch (e) {}

@@ -1,7 +1,7 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.41
+// Version 1.2.42
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -58,6 +58,7 @@
 // - v1.2.37 : Search step : clamp explicite 80 K pour T>2000 K (Hadéen) pour éviter oscillation
 // - v1.2.38 : initForConfig : T_epoch si |T_solver-T_epoch|≤20K (1800 OK), T réelle si transition extrême (Corps noir→Archéen)
 // - v1.2.39 : cycleDeLeau : guard _lastCycleRef undefined avant accès albedo/vapor (runComputeInParent crossing)
+// - v1.2.42 : postMessage compute:progress iframe→parent pour actualiser organigramme (core_flux_wm, atm_height_km, h2o, albedo)
 // ============================================================================
 
 // ============================================================================
@@ -390,6 +391,7 @@ async function runRadiatifOnly() {
     DATA['🧲']['🔺🧲'] = delta_equilibre_init;
     const bInit = DATA['📊'] && DATA['📊'].eds_breakdown;
     DATA['📛'] = bInit ? { '🧲📛': bInit.EDS_Wm2, '🍰📛🏭': bInit.CO2.pct, '🍰📛💧': bInit.H2O.pct, '🍰📛⛽': bInit.CH4.pct } : null;
+    if (DATA['📛']) window.calculateH2OGreenhouseForcing();
     DATA['🧮']['🧲🔬'] = computeToleranceWm2(DATA['🧮']['🧮🌡️'], EPOCH['🧲🔬']);
 
     DATA['🧮']['🧮☯'] = Math.sign(delta_equilibre_init);
@@ -463,6 +465,7 @@ async function runRadiatifOnly() {
         DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
         const b = DATA['📊'] && DATA['📊'].eds_breakdown;
         DATA['📛'] = b ? { '🧲📛': b.EDS_Wm2, '🍰📛🏭': b.CO2.pct, '🍰📛💧': b.H2O.pct, '🍰📛⛽': b.CH4.pct } : null;
+        if (DATA['📛']) window.calculateH2OGreenhouseForcing();
         // Phase AVANT mise à jour : pour affichage cohérent (phase utilisée pour le pas précédent)
         const phaseAtInput = DATA['🧮']['🧮⚧'];
 
@@ -619,6 +622,7 @@ async function runRadiatifOnly() {
             DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
             const bCross = DATA['📊'] && DATA['📊'].eds_breakdown;
             DATA['📛'] = bCross ? { '🧲📛': bCross.EDS_Wm2, '🍰📛🏭': bCross.CO2.pct, '🍰📛💧': bCross.H2O.pct, '🍰📛⛽': bCross.CH4.pct } : null;
+            if (DATA['📛']) window.calculateH2OGreenhouseForcing();
             // Même bloc Dicho/bounds qu'en flux normal : sinon snapshot incohérent (☯, [🔽,🔼])
             if (DATA['🧮']['🧮⚧'] === 'Search' && DATA['🧮']['🧮🔄☀️'] > 0) {
             if (DATA['🧲']['🔺🧲'] > 0) {
@@ -735,6 +739,7 @@ async function runRadiatifOnly() {
         DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
         const bPost = DATA['📊'] && DATA['📊'].eds_breakdown;
         DATA['📛'] = bPost ? { '🧲📛': bPost.EDS_Wm2, '🍰📛🏭': bPost.CO2.pct, '🍰📛💧': bPost.H2O.pct, '🍰📛⛽': bPost.CH4.pct } : null;
+        if (DATA['📛']) window.calculateH2OGreenhouseForcing();
         // Ne pas mettre à jour ☯ si changement de signe (Δ×☯<0) : garder ☯ pour détecter le passage en Dicho au tour suivant
         const signChangePost = (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0);
         if (!signChangePost) DATA['🧮']['🧮☯'] = Math.sign(DATA['🧲']['🔺🧲']);
@@ -802,8 +807,9 @@ async function runRadiatifOnly() {
         const maxPrevious = window.CONFIG_COMPUTE.maxPreviousLength;
         if (DATA['🧮']['previous'].length > maxPrevious) DATA['🧮']['previous'].splice(0, DATA['🧮']['previous'].length - maxPrevious);
 
+        var payload = { iteration: DATA['🧮']['🧮🔄☀️'] - 1, T0: DATA['🧮']['🧮🌡️'], total_flux: spectral_result.total_flux, phase: phaseForStep };
         if (window.CO2_EVENTS) {
-            window.CO2_EVENTS.emit('compute:progress', { iteration: DATA['🧮']['🧮🔄☀️'] - 1, T0: DATA['🧮']['🧮🌡️'], total_flux: spectral_result.total_flux, phase: phaseForStep });
+            window.CO2_EVENTS.emit('compute:progress', payload);
         }
         var showSteps = window.showDichotomySteps && window.isVisuPanelActive();
         if (showSteps) {
@@ -816,25 +822,22 @@ async function runRadiatifOnly() {
                 });
             });
         } else {
+            var h2o_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
+            var h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+            var h2oVaporPercent = Math.min(100, Math.max(0, h2o_frac * 100 + h2o_meteorites));
+            window.h2oVaporPercent = h2oVaporPercent;
+            if (window.plotData) {
+                window.plotData.ch4_ppm = (DATA['🫧']['🍰🫧⛽'] != null ? DATA['🫧']['🍰🫧⛽'] : 0) * 1e6;
+            }
+            DATA['📊'] = DATA['📊'] || {};
+            DATA['📊'].total_flux = spectral_result.total_flux;
+            if (window !== window.top) {
+                var dataSubset = { '🧮': DATA['🧮'], '🪩': DATA['🪩'], '🫧': DATA['🫧'], '💧': DATA['💧'], '📛': DATA['📛'], '📜': DATA['📜'], '📊': DATA['📊'] };
+                window.parent.postMessage({ type: 'cycleCalcul', DATA: dataSubset, h2oVaporPercent: window.h2oVaporPercent }, '*');
+            }
+            if (window.CO2_EVENTS) window.CO2_EVENTS.emit('cycleCalcul');
             if (typeof window.updateFluxLabels === 'function') {
-                const h2o_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
-                const h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
-                window.h2oVaporPercent = Math.min(100, Math.max(0, h2o_frac * 100 + h2o_meteorites));
-                if (window.plotData) {
-                    window.plotData.ch4_ppm = (DATA['🫧']['🍰🫧⛽'] != null ? DATA['🫧']['🍰🫧⛽'] : 0) * 1e6;
-                }
-                const T0 = DATA['🧮']['🧮🌡️'];
-                const fluxData = {
-                    T0: T0,
-                    temp_surface: T0,
-                    temp_surface_c: T0 - CONST.KELVIN_TO_CELSIUS,
-                    total_flux: spectral_result.total_flux,
-                    albedo: DATA['🪩']['🍰🪩📿'],
-                    cloud_coverage: DATA['🪩']['☁️'] != null ? DATA['🪩']['☁️'] : 0,
-                    co2_ppm: DATA['🫧']['🍰🫧🏭'] * 1e6,
-                    ch4_ppm: (DATA['🫧']['🍰🫧⛽'] != null ? DATA['🫧']['🍰🫧⛽'] : 0) * 1e6
-                };
-                window.updateFluxLabels(fluxData);
+                window.updateFluxLabels('cycleCalcul');
             }
             await new Promise(r => setTimeout(r, 0));
         }

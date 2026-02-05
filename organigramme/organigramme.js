@@ -323,20 +323,6 @@ function shouldLabelBeGray(text, nodeId, cell = null) {
 
     if (!hasUnit) return false;
 
-    // Extraire la valeur numérique (peut être "0", "0.00", "0.0", etc.)
-    // Supprimer les balises HTML et extraire les nombres
-    const textWithoutHTML = textStr.replace(/<[^>]*>/g, '').trim();
-    // Chercher un nombre (peut être négatif, avec décimales)
-    // Pattern amélioré pour capturer "0.00", "0.0", "0", etc.
-    const numberMatch = textWithoutHTML.match(/(-?\d+\.?\d*)/);
-    if (numberMatch) {
-        const value = parseFloat(numberMatch[1]);
-        // Si la valeur est 0 (ou très proche de 0), mettre en gris
-        if (Math.abs(value) < 0.001) {
-            return true;
-        }
-    }
-
     // Vérifier si c'est un bouton inactif
     if (nodeId) {
         const node = nodes.find(n => n.id === nodeId);
@@ -382,13 +368,13 @@ function updateLabelClasses(label, nodeId = null) {
     // Retirer les classes existantes
     label.classList.remove('watt-per-m2', 'watt-or-kelvin', 'zero-value', 'percent-label', 'ppm-label');
 
-    // Vérifier si la valeur doit être grise (0 ou négligeable)
+    // Vérifier si le bouton est inactif (gris uniquement dans ce cas)
     if (shouldLabelBeGray(text)) {
         label.classList.add('zero-value');
-        return; // Priorité au gris
+        return;
     }
 
-    // Sinon, si le texte contient W/m² ou W/m2, appliquer la classe orange
+    // Si le texte contient W/m² ou W/m2, appliquer la classe orange
     // PRIORITÉ : Vérifier d'abord W/m²
     if (text && (text.includes('W/m²') || text.includes('W/m2'))) {
         // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
@@ -1290,7 +1276,7 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
 
                 // Mettre à jour les couleurs des étiquettes
                 if (typeof window.updateFluxLabels === 'function') {
-                    window.updateFluxLabels(window.plotData || {});
+                    window.updateFluxLabels('ProcessFinished');
                 }
                 
                 // Mettre à jour le tooltip du bouton
@@ -3201,13 +3187,52 @@ function isBlackBodyEpoch() {
 }
 
 
-// Fonction pour mettre à jour les labels du flux avec les valeurs calculées
-// Appelée pendant le déroulement de l'algorithme (dichotomie)
-window.updateFluxLabels = function (data) {
-    if (!data) return;
+// Fonction pour mettre à jour les labels du flux
+// Paramètre : eventId (configLoaded | cycleAlbedo | cycleH2O | cycleCalcul | ProcessFinished)
+// Switch/case : chaque case pointe les variables à modifier, valeurs depuis DATA
+window.updateFluxLabels = function (eventId) {
     var fluxDiagram = document.getElementById('flux-diagram');
     if (!fluxDiagram) return;
+    var D = window.DATA;
+    var CONST = window.CONST;
+    var T0_num, total_flux_num, albedo_num, cloud_coverage_num, co2_ppm_num, ch4_ppm_num, forcing_H2O;
+    var epochId, hasNoAtmosphere, h2o_enabled, isCO2_eds, isCH4_eds, isH2O_eds, isAlbedo;
 
+    switch (eventId) {
+        case 'configLoaded':
+            window.FluxManager.updateAllFluxes(window.currentEpochName);
+            return;
+        case 'cycleAlbedo':
+        case 'cycleH2O':
+        case 'cycleCalcul':
+        case 'ProcessFinished':
+            epochId = D['📜']['🗿'];
+            var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === epochId; });
+            if (ep) window.currentEpochName = ep.name;
+            window.h2oVaporPercent = Math.min(100, Math.max(0, D['💧']['🍰🫧💧'] * 100 + window.h2oTotalFromMeteorites));
+            window.waterVaporEnabled = window.h2oVaporPercent > 0;
+            window.plotData.co2_ppm = D['🫧']['🍰🫧🏭'] * 1e6;
+            window.plotData.ch4_ppm = D['🫧']['🍰🫧⛽'] * 1e6;
+            T0_num = D['🧮']['🧮🌡️'];
+            total_flux_num = D['📊'].total_flux;
+            albedo_num = D['🪩']['🍰🪩📿'];
+            cloud_coverage_num = D['🪩']['☁️'];
+            co2_ppm_num = D['🫧']['🍰🫧🏭'] * 1e6;
+            ch4_ppm_num = D['🫧']['🍰🫧⛽'] * 1e6;
+            forcing_H2O = D['📛']['📛💧'];
+            isCO2_eds = window.isCO2_eds;
+            isCH4_eds = window.isCH4_eds;
+            isH2O_eds = window.isH2O_eds;
+            isAlbedo = window.isAlbedo;
+            h2o_enabled = window.waterVaporEnabled;
+            hasNoAtmosphere = (function () {
+                var epoch = window.getGeologicalPeriodByName(window.currentEpochName);
+                return epoch.total_atmosphere_mass_kg === 0 || epoch.total_atmosphere_mass_kg === undefined;
+            })();
+            break;
+        default:
+            return;
+    }
     // Définir les fonctions helper AVANT l'appel à FluxManager
     // (elles seront utilisées par FluxManager et par la suite dans cette fonction)
     
@@ -3577,28 +3602,11 @@ window.updateFluxLabels = function (data) {
             const isForcingTotal = dataId === 'forcing_total';
             const isForcingTotalOnAlbedoButton = isForcingTotal && isAlbedoButtonLabel;
             
-            // Si la valeur est 0 (ou très proche de 0), appliquer le style gris
-            const isZero = Math.abs(numericValue) < 0.001;
-            
-            // 🔒 CORRECTION : forcing_total (EDS) ne doit pas être grisé sauf si vraiment sur le bouton albedo ET bouton inactif
-            // L'EDS existe toujours physiquement, même si les boutons sont inactifs
+            // 🔒 Gris uniquement si bouton inactif, pas si valeur = 0
             if (isForcingTotal && !isForcingTotalOnAlbedoButton) {
-                // forcing_total sur la flèche : toujours afficher avec la bonne couleur (pas de gris)
-                if (!isZero && valueType === 'watt_per_m2') {
-                    label.classList.add('watt-per-m2');
-                } else if (isZero) {
-                    label.classList.add('zero-value');
-                }
+                if (valueType === 'watt_per_m2') label.classList.add('watt-per-m2');
             } else if (!isButtonActive && !isForcingTotal) {
-                // Si le bouton est inactif (et ce n'est pas forcing_total), forcer le style gris
                 label.classList.add('zero-value');
-            } else if (isZero) {
-                // Valeur à 0 et bouton actif : appliquer le style "zero-value" (gris)
-                label.classList.add('zero-value');
-                // Appliquer co2-label seulement pour co2_percent (pas pour co2_forcing_wm qui utilise la couleur selon l'unité)
-                if (dataId === 'co2_percent') {
-                    label.classList.add('co2-label');
-                }
             } else {
                 // Valeur non nulle et bouton actif : appliquer la couleur selon l'unité
                 if (valueType === 'watt_per_m2') {
@@ -3634,56 +3642,6 @@ window.updateFluxLabels = function (data) {
         window.FluxManager.updateAllFluxes(window.currentEpochName);
     }
 
-    // 🔒 Récupérer les valeurs depuis data.current si disponible (résultats du calcul), sinon depuis data directement
-    const currentData = (data.current && typeof data.current === 'object') ? data.current : data;
-
-    // Récupérer les valeurs calculées (avec vérifications pour null/undefined)
-    const T0 = (currentData.T0 !== null && currentData.T0 !== undefined) ? currentData.T0 : 
-               (currentData.temp_surface !== null && currentData.temp_surface !== undefined) ? currentData.temp_surface : 
-               (data.T0 !== null && data.T0 !== undefined) ? data.T0 : 
-               (data.temp_surface !== null && data.temp_surface !== undefined) ? data.temp_surface : 0;
-    const total_flux = (currentData.total_flux !== null && currentData.total_flux !== undefined) ? currentData.total_flux : 
-                       (data.total_flux !== null && data.total_flux !== undefined) ? data.total_flux : 0;
-    let albedo = (currentData.albedo !== null && currentData.albedo !== undefined) ? currentData.albedo : 
-                 (data.albedo !== null && data.albedo !== undefined) ? data.albedo : 0;
-    // Récupérer les valeurs depuis plotData (valeurs d'époque) si disponibles, sinon depuis data
-    const cloud_coverage = (currentData.cloud_coverage !== null && currentData.cloud_coverage !== undefined) ? currentData.cloud_coverage : 
-                           (data.cloud_coverage !== null && data.cloud_coverage !== undefined) ? data.cloud_coverage : 0;
-    // Utiliser plotData pour les valeurs d'époque (CO2, CH4, H2O)
-    const plotData_co2 = (typeof window !== 'undefined' && window.plotData && window.plotData.co2_ppm !== undefined) ? window.plotData.co2_ppm : 0;
-    const plotData_ch4 = (typeof window !== 'undefined' && window.plotData && window.plotData.ch4_ppm !== undefined) ? window.plotData.ch4_ppm : 0;
-    const co2_ppm = (data.co2_ppm !== null && data.co2_ppm !== undefined) ? data.co2_ppm : plotData_co2;
-    const ch4_ppm = (data.ch4_ppm !== null && data.ch4_ppm !== undefined) ? data.ch4_ppm : plotData_ch4;
-    // 🔒 UTILISER UNIQUEMENT LES VARIABLES GLOBALES UNIQUES (seule référence)
-    // Ces variables sont mises à jour UNIQUEMENT au clic sur les boutons
-    const isCO2_eds = typeof window !== 'undefined' ? (window.isCO2_eds !== undefined ? window.isCO2_eds : true) : true;
-    const isCH4_eds = typeof window !== 'undefined' ? (window.isCH4_eds !== undefined ? window.isCH4_eds : true) : true;
-    const isH2O_eds = typeof window !== 'undefined' ? (window.isH2O_eds !== undefined ? window.isH2O_eds : true) : true;
-    const isAlbedo = typeof window !== 'undefined' ? (window.isAlbedo !== undefined ? window.isAlbedo : true) : true;
-    
-    // H2O : vérifier si la vapeur d'eau est disponible (physique)
-    const h2o_enabled = typeof window !== 'undefined' && window.waterVaporEnabled;
-
-    // Vérifier que toutes les valeurs numériques sont bien des nombres (pas de fallback)
-    if (T0 === null || T0 === undefined || isNaN(Number(T0))) {
-        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : T0 manquant ou invalide');
-        throw new Error('T0 (température de surface) requise');
-    }
-    if (total_flux === null || total_flux === undefined || isNaN(Number(total_flux))) {
-        console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : total_flux manquant ou invalide');
-        throw new Error('total_flux requis');
-    }
-    
-    const T0_num = Number(T0);
-    const total_flux_num = Number(total_flux);
-    // 🔒 PRIORITÉ : Utiliser data.current.albedo (résultats du calcul) si disponible, sinon data.albedo
-    // Note: albedo vient déjà de currentData.albedo (qui est data.current si disponible), donc on peut l'utiliser directement
-    // Mais on vérifie aussi data.current.albedo explicitement pour être sûr
-    const albedoValue = (data.current && data.current.albedo !== undefined) ? data.current.albedo : albedo;
-    let albedo_num = (albedoValue !== null && albedoValue !== undefined) ? Number(albedoValue) : 0;
-    let cloud_coverage_num = (cloud_coverage !== null && cloud_coverage !== undefined) ? Number(cloud_coverage) : 0;
-    const co2_ppm_num = (co2_ppm !== null && co2_ppm !== undefined) ? Number(co2_ppm) : 0;
-    const ch4_ppm_num = (ch4_ppm !== null && ch4_ppm !== undefined) ? Number(ch4_ppm) : 0;
 
     // Récupérer les constantes mises à jour par FluxManager (fallback depuis DATA si appel avant setEpoch)
     if (typeof window.SOLAR_CONSTANT === 'undefined' || window.SOLAR_CONSTANT === null) {
@@ -3704,14 +3662,6 @@ window.updateFluxLabels = function (data) {
 
     // Détecter le mode "Corps noir" : basé sur les propriétés physiques de l'époque
     const isCorpsNoir = isBlackBodyEpoch();
-
-    // En mode "corps noir" (pas d'atmosphère), utiliser data.albedo s'il est défini (peut avoir de la glace des météorites)
-    // Sinon, forcer l'albedo à 0 (pas d'atmosphère, pas d'eau, pas de glace)
-    const hasNoAtmosphere = (typeof window !== 'undefined' && window.currentEpochName) ? 
-        (() => {
-            const epoch = window.getGeologicalPeriodByName(window.currentEpochName);
-            return epoch && (epoch.total_atmosphere_mass_kg === 0 || epoch.total_atmosphere_mass_kg === undefined);
-        })() : false;
     
     // 🔒 SUPPRESSION : Ne plus forcer l'albedo à 0 en Corps noir
     // L'albedo doit être affiché selon l'état du bouton albedo (checked/unchecked), pas selon hasNoAtmosphere
@@ -3731,7 +3681,7 @@ window.updateFluxLabels = function (data) {
     // L'albedo doit être affiché selon l'état du bouton albedo (checked/unchecked), pas selon hasNoAtmosphere
     // L'albedo peut être > 0 même en Corps noir si de la glace est ajoutée via météorites
     
-    if (albedo_num === 0 || albedo === null || albedo === undefined) {
+    if (albedo_num === 0) {
         // Si albedo_num est 0 ou data.albedo n'est pas défini, recalculer avec le flux géothermique
         let geo_flux = null;
         if (typeof window !== 'undefined' && window.currentEpochName) {
@@ -3846,37 +3796,10 @@ window.updateFluxLabels = function (data) {
         ? window.calculateCH4Forcing(ch4_ppm_num * 1e-6)
         : 0;
 
-    // Calculer les paramètres H2O (vapeur + nuages) avec la nouvelle fonction
-    const h2o_vapor_percent = (typeof window !== 'undefined' ? window.h2oVaporPercent : undefined) ?? 0;
-    const h2o_from_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
-    const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites; // Total = base + météorites
-    let h2o_params = null;
-    let forcing_H2O = 0;
-
-    // 🔒 CORRECTION : Calculer forcing_H2O même si le bouton est inactif (pour debug/diagnostic)
-    // Mais l'afficher seulement si le bouton est actif
-    if (h2o_total_percent > 0) {
-        // Calculer avec la température actuelle et le pourcentage TOTAL (base + météorites)
-        h2o_params = window.calculateH2OParameters(T0_num, h2o_total_percent, cloud_coverage_num);
-        forcing_H2O = h2o_params.greenhouse_forcing;
-        
-        // Mettre à jour cloud_coverage avec la valeur calculée (si pas forcée)
-        if (cloud_coverage_num === 0 || cloud_coverage_num === null) {
-            cloud_coverage_num = h2o_params.cloud_coverage;
-        }
-        
-        // 🔒 CORRECTION : Calculer forcing_H2O même si isH2O_eds est false (pour debug)
-        // Mais l'afficher seulement si isH2O_eds est true
-        // Le forçage est calculé physiquement, mais l'affichage dépend du bouton
-
-        // Log désactivé pour réduire le bruit (trop répétitif)
-        // console.log('[H2O PARAMS]', {
-        //     vapor_percent: h2o_vapor_percent,
-        //     cloud_coverage: cloud_coverage_num,
-        //     greenhouse_forcing: forcing_H2O,
-        //     cloud_albedo_contribution: h2o_params.cloud_albedo_contribution
-        // });
-    }
+    // Paramètres H2O (vapeur + météorites) — forcing_H2O vient du switch (DATA['📛']['📛💧'])
+    const h2o_vapor_percent = window.h2oVaporPercent;
+    const h2o_from_meteorites = window.h2oTotalFromMeteorites;
+    const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
     // 🔒 CORRECTION : Le forçage albédo est actif seulement si isAlbedo est true
     // En mode corps noir, on peut avoir un forçage albedo si il y a de la glace des météorites
     const forcing_Albedo = (!isAlbedo) ? 0 : (typeof window !== 'undefined' && typeof window.calculateAlbedoForcing === 'function'
@@ -4099,7 +4022,7 @@ window.updateFluxLabels = function (data) {
     forcing_total = 0;
 
     // Albedo -> Espace2 : flux éjecté = flux sortant au sommet (résultat direct du transfert radiatif)
-    let flux_ejected = total_flux > 0 ? total_flux : (surface_flux_emitted - forcing_total);
+    let flux_ejected = total_flux_num > 0 ? total_flux_num : (surface_flux_emitted - forcing_total);
     
     // Calculer la surface de la planète (utilisée pour les conversions W/m² <-> W totaux)
     const R = 6371000; // Rayon Terre en m (par défaut)
@@ -4341,16 +4264,10 @@ window.updateFluxLabels = function (data) {
 
     // H2O : afficher le pourcentage TOTAL d'eau (base + météorites)
     // Séparé de la couverture nuageuse (qui affecte l'albedo)
-    // 🔒 Utiliser h2o_total_percent (base + météorites) qui est déjà calculé ci-dessus
     let h2o_display_value = 0;
-    if (h2o_params && h2o_params.vapor_fraction !== undefined) {
-        // Si h2o_params est disponible, utiliser la fraction de vapeur + glace (total)
-        const h2o_total_fraction = (h2o_params.vapor_fraction || 0) + (h2o_params.ice_fraction || 0);
-        h2o_display_value = h2o_total_fraction * 100;
-    } else if (h2o_total_percent > 0) {
+    if (h2o_total_percent > 0) {
         h2o_display_value = h2o_total_percent;
-    } else if (window.DATA?.['💧']?.['🍰🫧💧'] != null) {
-        // DATA['💧']['🍰🫧💧'] initialisé par dico.js (0), recalculé par calculateH2OParameters. Fraction 0-1 → %
+    } else if (window.DATA && window.DATA['💧'] && window.DATA['💧']['🍰🫧💧'] != null) {
         h2o_display_value = Math.min(100, window.DATA['💧']['🍰🫧💧'] * 100);
     }
 
@@ -4361,7 +4278,7 @@ window.updateFluxLabels = function (data) {
     // Le forçage H2O doit être 0 si h2o_enabled est false (pas d'eau dans l'atmosphère)
     // OU si isH2O_eds est false (bouton désactivé)
     // Utiliser directement forcing_H2O qui est déjà calculé avec les bonnes conditions
-    const forcing_H2O_final = (h2o_enabled && isH2O_eds) ? forcing_H2O : 0;
+    const forcing_H2O_final = (h2o_enabled && isH2O_eds) ? (Number(forcing_H2O) || 0) : 0;
     updateLabel('h2o_percent', h2o_percent);
     updateLabel('h2o_forcing_wm', forcing_H2O_final);
 
@@ -4380,6 +4297,12 @@ window.updateFluxLabels = function (data) {
     const passing_albedo_percent = (1 - albedo_num) * 100;
     // S'assurer que le résultat est correct (0% si albedo = 1, 100% si albedo = 0)
     updateLabel('passing_albedo_percent', passing_albedo_percent);
+
+    var debugIds = ['core_flux_wm', 'atm_height_km', 'co2_percent', 'co2_forcing_wm', 'ch4_percent', 'ch4_forcing_wm', 'h2o_percent', 'h2o_forcing_wm', 'albedo_percents'];
+    debugIds.forEach(function (id) {
+        var el = fluxDiagram.querySelector('[data-id="' + id + '"]');
+        if (el) console.log('[updateFluxLabels] ' + id + ' →', el.textContent.trim().substring(0, 60));
+    });
 
     // Ne plus forcer automatiquement le bouton albedo en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%
@@ -4490,10 +4413,8 @@ window.updateFields = function(fieldIdsOrValues, values = null) {
     return Object.keys(fieldsToUpdate).length; // Retourner le nombre de champs mis à jour
 };
 
-// Exposer les fonctions globalement
+// Exposer les fonctions globalement (updateFluxLabels déjà assigné à window ligne 3207)
 if (typeof window !== 'undefined') {
-    window.updateFluxLabels = updateFluxLabels;
-
         // Initialiser les variables globales UNIQUES selon l'état initial des cellules (boutons du flux)
         // Les boutons du flux sont des cellules, pas des boutons HTML
         const cellCO2_init = document.getElementById('cell-co2');
