@@ -1520,9 +1520,9 @@ window.updateDisplay = function updateDisplay(data) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
                 epochName = currentEpoch.name || window.currentEpochName;
-                // Formater la date depuis startYears
-                if (currentEpoch.startYears !== undefined) {
-                    const years = currentEpoch.startYears;
+                // Formater la date depuis startYears ou ▶
+                const years = currentEpoch.startYears ?? currentEpoch['▶'];
+                if (years != null && Number.isFinite(years)) {
                     epochDate = formatYears(years);
                 } else if (window.configOrganigramme && window.configOrganigramme.timeline) {
                     const timelineEpoch = window.configOrganigramme.timeline.find(item =>
@@ -1796,39 +1796,22 @@ function updateLegend(data) {
 
     // Ajouter les légendes pour les courbes d'équilibre (corps noir pointillé et courbe réelle pleine)
     const equilibreCurvesContainer = document.getElementById('legend-equilibre-curves');
-    if (equilibreCurvesContainer && data && data.current && data.current.effective_temperature) {
+    const T_surface = (data && data.temp_surface !== undefined) ? data.temp_surface : (data && data.current && data.current.T0 !== undefined) ? data.current.T0 : (data && data.temp_surface_c !== undefined) ? data.temp_surface_c + CONST.KELVIN_TO_CELSIUS : null;
+    if (equilibreCurvesContainer && data && T_surface != null) {
         equilibreCurvesContainer.innerHTML = '';
 
-        const T = data.current.effective_temperature;
-        const tempC = (T - CONST.KELVIN_TO_CELSIUS).toFixed(0);
-        const tempF = ((T - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(0);
+        const T = T_surface;
+        const tempC = (T - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+        const tempF = ((T - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
 
-        // 🔒 Calculer la couleur dynamique basée sur la température de surface (pour harmoniser avec le plot)
-        // Utiliser la MÊME logique que dans plot.js : window.currentBlackBodyColor (priorité 1), puis temp_surface_c
+        // 🔒 Calculer la couleur dynamique basée sur la température de surface (cohérence avec le plot)
+        // Priorité : temp_surface_c (donnée réelle) > current > window.currentBlackBodyColor
+        const tempSurfaceC = T - CONST.KELVIN_TO_CELSIUS;
         let dynamicColor = 'cyan';
-        // Priorité 1 : window.currentBlackBodyColor (couleur anticipée avec t0, mise à jour dans setEpoch)
-        if (typeof window !== 'undefined' && window.currentBlackBodyColor) {
+        if (typeof window.tempSurfaceToColor === 'function') {
+            dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
+        } else if (typeof window !== 'undefined' && window.currentBlackBodyColor) {
             dynamicColor = window.currentBlackBodyColor;
-        }
-        // Priorité 2 : temp_surface_c (comme dans plot.js)
-        else if (data && typeof data.temp_surface_c === 'number') {
-            if (typeof window.tempSurfaceToColor === 'function') {
-                dynamicColor = window.tempSurfaceToColor(data.temp_surface_c);
-            }
-        }
-        // Priorité 3 : temp_surface (calculé depuis T0)
-        else if (data.current && typeof data.current.temp_surface === 'number') {
-            const tempSurfaceC = data.current.temp_surface - CONST.KELVIN_TO_CELSIUS;
-            if (typeof window.tempSurfaceToColor === 'function') {
-                dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
-            }
-        }
-        // Priorité 4 : T0 (fallback)
-        else if (data.current && typeof data.current.T0 === 'number') {
-            const tempSurfaceC = data.current.T0 - CONST.KELVIN_TO_CELSIUS;
-            if (typeof window.tempSurfaceToColor === 'function') {
-                dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
-            }
         }
 
         // Créer deux éléments de légende : un pour le corps noir (pointillé 'dot') et un pour la courbe réelle (pleine 'solid')
@@ -2316,13 +2299,13 @@ function setEpoch(epochName) {
     }
 
     // Stocker le début de l'époque pour référence (affichage de la date de début)
-    currentEpochStartYears = epoch.startYears;
+    currentEpochStartYears = epoch.startYears ?? epoch['▶'];
 
-    // Mettre à jour la date de début affichée
+    // Mettre à jour la date de début affichée (▶ = début en années dans config)
     const epochStartTimeDisplay = document.getElementById('epoch-start-time');
     if (epochStartTimeDisplay) {
-        const formattedYears = formatYears(epoch.startYears);
-        epochStartTimeDisplay.textContent = formattedYears;
+        const years = epoch.startYears ?? epoch['▶'];
+        epochStartTimeDisplay.textContent = formatYears(years);
     }
 
     // Afficher le nom de l'époque dans la timeline

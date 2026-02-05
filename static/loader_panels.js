@@ -103,6 +103,11 @@
         }
     };
 
+    window.isVisuPanelActive = function () {
+        var visu = document.getElementById('visu-panel');
+        return visu && visu.classList.contains('active');
+    };
+
     function initAfterLoad() {
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             window.configOrganigramme.timeline = window.TIMELINE.map(function (item) {
@@ -117,7 +122,10 @@
                         '🦴': 'Paléozoïque', '🦣': 'Cénozoïque', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
                     };
                     if (epochNameMap[epochId]) epochName = epochNameMap[epochId];
-                    return { ...item, type: 'epoch', name: epochName, id: epochId };
+                    // ▶ = début (années), ◀ = fin → startYears, endYears pour getGeologicalPeriodByName et formatYears
+                    const startYears = item['▶'] != null ? item['▶'] : item.startYears;
+                    const endYears = item['◀'] != null ? item['◀'] : item.endYears;
+                    return { ...item, type: 'epoch', name: epochName, id: epochId, startYears, endYears };
                 }
                 return { ...item, type: 'separator' };
             });
@@ -143,6 +151,8 @@
                 }
             });
         }
+        // Mettre à jour les actions 🕰 (météorite, impact, etc.) après injection du contenu visu
+        window.updateEpochActions();
         var scieIframe = document.getElementById('scie-iframe');
         scieIframe.addEventListener('load', function () {
             window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });

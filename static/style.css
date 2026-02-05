@@ -556,43 +556,62 @@ h1 {
     font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
 
-/* 1. Section Date */
+/* 1. Section Date - frise verticale : 📜 et 📅 empilés (ordre lecture haut/bas) */
 .timeline-date-section {
     display: flex;
     flex-direction: column;
     align-items: center;
-    height: 45px;
+    justify-content: center;
+    gap: 4px;
     margin-top: 15px;
     width: 100%;
 }
 
+.timeline-date-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-separator {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 2px 0;
+    line-height: 1;
+}
+
 .timeline-hourglass {
-    font-size: 20px;
+    font-size: 18px;
     display: block;
 }
 
 .epoch-start-time {
-    font-size: 14px;
+    font-size: 10px;
     display: block;
     font-weight: bold;
+    margin-top: 2px;
 }
 
 .timeline-display .info-time {
-    font-size: 12px;
+    font-size: 10px;
     font-weight: bold;
-    display: inline-block;
+    display: block;
+    margin-top: 2px;
 }
 
 /* Styles de boutons déplacés dans buttons.css */
 
-/* 2. Zone Horloge horizontale */
+/* 2. Zone Horloge (🕰 + actions) */
 .timeline-horloge-section {
     width: 100%;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset, 0 -1px 0 rgba(255, 255, 255, 0.1) inset;
     display: flex;
-    height: 90px;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
 }
 
 .timeline-horloge-content {
@@ -620,15 +639,15 @@ h1 {
     display: flex;
     flex-direction: row;
     align-items: center;
-    flex-wrap: nowrap;
     justify-content: center;
+    gap: 4px;
     width: 100%;
+    margin-top: 4px;
 }
 
 .timeline-event-logo {
-    width: 40px;
-    /* Même taille que les boutons d'époques */
-    height: 40px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
     cursor: pointer;
     opacity: 0.7;
@@ -674,9 +693,9 @@ h1 {
 .epochs-container-vertical {
     display: flex;
     flex-direction: column;
-    /* gap: 8px; */
     align-items: center;
-    padding: 10px 0;
+    gap: 2px;
+    padding: 6px 0;
 }
 
 /* Ancien style pour compatibilité (peut être supprimé si plus utilisé) */
@@ -726,24 +745,21 @@ h1 {
     font-weight: normal;
 }
 
-/* Boutons de la frise chronologique - Style unique pour tous */
+/* Boutons de la frise chronologique - compact comme horizontale (sans noms) */
 .epoch-btn {
-    font-size: 24px;
+    font-size: 22px;
     font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
     background: none !important;
-    /* Pas de fond */
     border: none !important;
-    /* Pas de border */
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer !important;
-    /* Curseur main au survol */
-    padding: 5px;
+    padding: 2px;
     transition: filter 0.3s ease, text-shadow 0.3s ease;
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     position: relative;
     /* Par défaut : noir et blanc sans glow (glow uniquement pour selected) */
     filter: grayscale(100%);

@@ -893,7 +893,23 @@ async function runRadiatifOnly() {
         const maxPrevious = window.CONFIG_COMPUTE.maxPreviousLength;
         if (DATA['🧮']['previous'].length > maxPrevious) DATA['🧮']['previous'].splice(0, DATA['🧮']['previous'].length - maxPrevious);
         _oomLog('after push', { previousLen: DATA['🧮']['previous'].length });
-        await new Promise(r => setTimeout(r, 0)); // Yield pour afficher cette étape avant la suivante
+
+        if (window.CO2_EVENTS) {
+            window.CO2_EVENTS.emit('compute:progress', { iteration: DATA['🧮']['🧮🔄☀️'] - 1, T0: DATA['🧮']['🧮🌡️'], total_flux: spectral_result.total_flux, phase: phaseForStep });
+        }
+        var showSteps = window.showDichotomySteps && window.isVisuPanelActive();
+        if (showSteps) {
+            window.displayDichotomyStep(DATA['🫧']['🍰🫧🏭'], DATA['🧮']['🧮🌡️'], spectral_result, DATA['🧮']['🧮🔄☀️'] - 1, false);
+            await new Promise(function (resolve) {
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        setTimeout(resolve, 50);
+                    });
+                });
+            });
+        } else {
+            await new Promise(r => setTimeout(r, 0));
+        }
     }
     if (!DATA['🧮']['🧮🛑']) DATA['🧮']['🧮🛑'] = 'max_iter';
     if (window.DEBUG_ANALYSE && DATA['🧮']['🧮🛑'] === 'max_iter') {

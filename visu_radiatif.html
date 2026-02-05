@@ -51,16 +51,21 @@
         <div id="calculation-overlay" class="calculation-overlay" style="display: none;">
             <div class="calculation-text">Calculs d'équilibre radiatifs en cours<br><span id="calculation-dots"></span></div>
         </div>
+        <!-- Frise verticale : 📜 et 📅 empilés (haut/bas) avec séparateur -->
         <div class="timeline-date-section">
-            <span class="timeline-hourglass">📅</span>
-            <span class="epoch-start-time" id="epoch-start-time">-5000 Ma</span>
+            <div class="timeline-date-display">
+                <span class="timeline-hourglass">📜</span>
+                <span class="epoch-start-time" id="epoch-start-time">-5000 Ma</span>
+            </div>
+            <span class="timeline-separator">—</span>
+            <div class="timeline-date-display">
+                <span class="timeline-hourglass">📅</span>
+                <span class="info-time" id="info-time">+0 Ma</span>
+            </div>
         </div>
         <div class="timeline-horloge-section">
             <div class="timeline-horloge-content">
-                <div class="timeline-horloge-line1">
-                    <span class="horloge-icon">🕰</span>
-                    <span class="info-time" id="info-time">+0 Ma</span>
-                </div>
+                <span class="horloge-icon">🕰</span>
                 <div class="timeline-events-logos" id="timeline-events-logos"></div>
             </div>
         </div>

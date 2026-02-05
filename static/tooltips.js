@@ -1,5 +1,5 @@
 // File: tooltips.js - Système centralisé de tooltips
-// Desc: Gestion unifiée des tooltips avec délai de 0.5s et styles cohérents
+// Desc: Gestion unifiée des tooltips avec délai configurable (200ms par défaut)
 // Version 1.0.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
@@ -13,7 +13,7 @@
     // ============================================================================
     // CONFIGURATION
     // ============================================================================
-    const TOOLTIP_DELAY = 500; // 0.5 secondes (500ms)
+    const TOOLTIP_DELAY = 10; // 0.2 secondes (200ms) - apparition plus rapide
     const TOOLTIP_FADE_OUT = 200; // Durée du fade-out en ms
 
     // ============================================================================
@@ -154,7 +154,7 @@
                 globalTooltipTimeout = null;
             }
 
-            // Délai de 0.5s avant d'afficher (dès le premier rollover)
+            // Délai avant d'afficher (dès le premier rollover)
             globalTooltipTimeout = setTimeout(() => {
                 const tooltip = getOrCreateGlobalTooltip();
                 tooltip.innerHTML = text; // Mettre à jour le contenu
@@ -176,7 +176,7 @@
 
                 tooltip.style.opacity = '1';
                 tooltip.style.visibility = 'visible';
-            }, TOOLTIP_DELAY); // 0.5 secondes
+            }, TOOLTIP_DELAY);
         };
 
         // Ajouter les événements

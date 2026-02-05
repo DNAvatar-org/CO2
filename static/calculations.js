@@ -784,10 +784,11 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             cloud_coverage: cloud_coverage
         });
 
-    // Mettre à jour les labels du flux pendant le calcul
+    // Mettre à jour les labels du flux pendant le calcul (temp_surface_c pour légende couleur)
     window.updateFluxLabels({
             T0: T0_test,
             temp_surface: T0_test,
+            temp_surface_c: temp_surface_c,
             total_flux: result.total_flux,
             albedo: albedo,
             cloud_coverage: cloud_coverage,
@@ -822,8 +823,15 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
         temp_surface_c: temp_surface_c // Température de surface en °C pour mise à jour de la couleur en temps réel
     };
 
-    // Mettre à jour le graphique
+    // Mettre à jour le graphique et la légende (K, °C, °F + couleur)
     window.updatePlot(tempPlotData);
+    if (typeof window.updateLegend === 'function') {
+        window.updateLegend(tempPlotData);
+    }
+
+    if (window.CO2_EVENTS) {
+        window.CO2_EVENTS.emit('compute:progress', { iteration, T0: T0_test, total_flux: result.total_flux, phase: 'dichotomy' });
+    }
 
     // Mettre à jour la visualisation spectrale
     setTimeout(() => {
@@ -980,9 +988,7 @@ function simulateRadiativeTransfer() {
         }
     }
 
-    // Vérifier si on doit afficher les étapes (seulement pour les calculs interactifs)
-    // 🔒 Le bouton "anim" contrôle directement window.showDichotomySteps
-    const shouldDisplaySteps = typeof window !== 'undefined' && window.showDichotomySteps;
+    const shouldDisplaySteps = window.showDichotomySteps && window.isVisuPanelActive();
 
     if (shouldDisplaySteps) {
         // Créer un lambda_range temporaire pour afficher les courbes Planck avant la dichotomie
@@ -993,7 +999,7 @@ function simulateRadiativeTransfer() {
         }
 
         // Afficher les courbes Planck de référence avant la dichotomie
-        if (typeof window !== 'undefined' && window.updatePlot && typeof window.PLANCK_TEMPERATURES !== 'undefined') {
+        {
             // Créer lambda_weights pour temp_lambda_range (poids unitaire pour pas constant)
             const temp_lambda_weights = temp_lambda_range.map(() => 1.0);
             
@@ -1100,7 +1106,7 @@ function simulateRadiativeTransfer() {
                         return;
                     }
 
-                    const shouldDisplaySteps = window.showDichotomySteps;
+                    const shouldDisplaySteps = window.showDichotomySteps && window.isVisuPanelActive();
                     DATA['🧮']['🧮🌡️'] = T0_current;
                     window.calculateH2OParameters();
                     // Toujours recalculer pour avoir les valeurs à jour (le delta doit changer avec T0_current)
@@ -1477,7 +1483,7 @@ function simulateRadiativeTransfer() {
                     
                     // Afficher chaque étape de la dichotomie seulement si demandé
                     // 🔒 Vérifier shouldDisplaySteps à chaque itération (peut changer via bouton anim)
-                    const shouldDisplayStepsIter = typeof window !== 'undefined' && window.showDichotomySteps;
+                    const shouldDisplayStepsIter = window.showDichotomySteps && window.isVisuPanelActive();
                     
                     // 🔒 Vérifier conditions de sortie AVANT de dessiner (pour éviter de dessiner inutilement)
                     // 🔒 IMPORTANT : tolerance_current est pour la convergence (delta_equilibre), pas pour delta_aire
@@ -1574,18 +1580,23 @@ function simulateRadiativeTransfer() {
                         const co2_ppm = DATA['🫧']['🍰🫧🏭'] * 1e6;
                         const ch4_ppm = DATA['🫧']['🍰🫧⛽'] * 1e6;
 
-                        // Mettre à jour les labels avec les valeurs actuelles
-                        window.updateFluxLabels({
+                        // Mettre à jour les labels et la légende (K, °C, °F + couleur)
+                        const fluxData = {
                             T0: T0_current,
                             temp_surface: T0_current,
+                            temp_surface_c: T0_current - CONST.KELVIN_TO_CELSIUS,
                             total_flux: final_result.total_flux,
                             albedo: albedo,
                             cloud_coverage: cloud_coverage,
                             co2_ppm: co2_ppm,
                             ch4_ppm: ch4_ppm,
-                            geo_flux: geo_flux, // Passer geo_flux explicitement
+                            geo_flux: geo_flux,
                             planet_radius: (options && options.planet_radius) ? options.planet_radius : 6371000
-                        });
+                        };
+                        window.updateFluxLabels(fluxData);
+                        if (typeof window.updateLegend === 'function') {
+                            window.updateLegend(fluxData);
+                        }
                     }
 
                     // 🔒 Vérification de convergence déjà faite plus haut (après incrément et dessin)
