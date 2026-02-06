@@ -380,7 +380,7 @@ window.CONFIG_COMPUTE.maxPreviousLength = 300;  /* Historique convergence : 25 �
 window.CONFIG_COMPUTE.cycleTolAlbedo = 1e-4;
 window.CONFIG_COMPUTE.cycleTolVapor = 1e-6;
 // Borne min tolérance flux (W/m²) : le calcul spectral ne peut pas atteindre mieux (~bruit numérique). Évite convergence impossible.
-window.CONFIG_COMPUTE.tolMinWm2 = 0.1;
+window.CONFIG_COMPUTE.tolMinWm2 = 0.05;
 // Search : ΔT proportionnel à Δ (formule physique Δ/(4σT³)). Cap max uniquement.
 window.CONFIG_COMPUTE.maxSearchStepK = 100;       // plafond step nominal
 window.CONFIG_COMPUTE.maxSearchStepLargeK = 150;  // plafond quand |Δ| > 10×tolérance10×tolérance

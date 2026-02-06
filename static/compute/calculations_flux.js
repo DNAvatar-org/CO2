@@ -204,16 +204,22 @@ function updateConvergenceBounds() {
     }
 }
 
-/** Calcule l'incrément Search en K. ΔT ∝ |Δ|^(1/pow), signe = signe(Δ).
- * pow = 2 + DT/1500 avec DT = |T - T_cible| (tuning par époque).
- * Hadéen (T>2000K): cap 80 K pour éviter oscillation (équilibre bande étroite ~2250°C). */
+/** Calcule l'incrément Search en K.
+ * Formule physique : ΔT = Δ/(4σT³) (linéarisation Stefan-Boltzmann, dF/dT = 4σT³).
+ * Hadéen (T>2000K): cap 80 K pour éviter oscillation.
+ *
+ * Formules patch (commentées) :
+ * - const DT = Math.abs(T_K - DATA['📅']['🌡️🧮']);
+ * - const pow = 2 + DT / 1500.0;
+ * - res = Math.sign(delta) * Math.pow(Math.abs(delta), 1 / pow);
+ */
 function computeSearchIncrement() {
     const DATA = window.DATA;
+    const CONST = window.CONST;
     const delta = DATA['🧲']['🔺🧲'];
     const T_K = DATA['🧮']['🧮🌡️'];
-    const DT = Math.abs(T_K - DATA['📅']['🌡️🧮']);
-    const pow = 2 + DT / 1500.0;
-    let res = Math.sign(delta) * Math.pow(Math.abs(delta), 1 / pow);
+    const sigmaT3 = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(T_K, 3);
+    let res = delta / sigmaT3;
     if (T_K > 2000) {
         const cap = 80;
         if (Math.abs(res) > cap) res = Math.sign(res) * cap;

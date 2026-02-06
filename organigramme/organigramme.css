@@ -140,10 +140,13 @@
     width: max-content;
 }
 
-/* Label albedo_percents : line-height spécifique et alignement en haut */
+/* Label albedo_percents : fond sombre, texte blanc, pas de contour */
 .flux-label[data-id="albedo_percents"] {
     line-height: 20px;
-    align-self: flex-start; /* Aligner en haut du conteneur flex */
+    align-self: flex-start;
+    color: #fff;
+    background: rgba(10, 14, 39, 0.7);
+    border: 1px solid rgba(255, 255, 255, 1.0);
 }
 
 /* Labels des boutons en gris */
