@@ -21,13 +21,15 @@
 :root {
     /* Variable pour la couleur de base - s'adapte automatiquement si changée */
     --base-color: green;
+    /* Hauteur max contenu visu-panel : s'adapte au viewport pour éviter scrollbar/zone violette (desktop) */
+    --visu-h: min(665px, calc(100vh - 165px));
 }
 
 body {
     font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;
     background: url('../fond.png') center center / cover no-repeat fixed;
     min-height: 100vh;
-    padding: 20px;
+    padding: 20px 10px 0 10px;
     color: var(--base-color);
     position: relative;
     display: flex;
@@ -117,7 +119,7 @@ sup {
     flex-direction: row;
     align-items: stretch;
     /* Étirer les colonnes pour avoir la même hauteur */
-    gap: 15px;
+    gap: 5px;
     /* Espacement entre les colonnes */
     width: 100%;
     max-width: 100%; /* Empêche overflow → scrollbar, force le graph à se réduire */
@@ -126,17 +128,44 @@ sup {
     /* Prendre tout l'espace disponible pour pousser le footer en bas */
 }
 
+/* Dans visu-panel : éviter que .container s'étire (px en trop en bas de la scrollbar) */
+#visu-panel .container {
+    flex: 0 0 auto;
+    min-height: min-content;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* Clipper le margin overflow (zone violette) sans modifier le plot ; layout mobile (width < 1000) inchangé */
+#visu-panel .right-column {
+    overflow: hidden;
+}
+
+/* Desktop (width >= 1000) : min-height pour s'adapter au viewport, stretch pour aller jusqu'en bas de l'organigramme */
+@media (min-width: 1000px) {
+    #visu-panel .right-column {
+        min-height: var(--visu-h);
+        height: auto;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #visu-panel .left-timeline { min-height: var(--visu-h); height: auto; }
+    #visu-panel #plot-container { height: 100%; }
+    #visu-panel .plot-container-wrapper { flex: 1 1 0; min-height: 0; height: auto; }
+    #visu-panel .timeline-display { flex: 1; min-height: 0; height: auto; }
+}
+
 .left-column {
     display: flex;
     flex-direction: row;
-    gap: 15px;
+    gap: 5px;
     flex: 0 0 auto;
 }
 
 .left-left {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 5px;
     flex: 0 0 auto;
 }
 
@@ -295,7 +324,7 @@ h1 {
 
 .plot-container-wrapper {
     padding: 0 0 0 0;
-    height: 665px;
+    height: 649px;
     /* Même hauteur que #plot-container */
     position: relative;
     overflow: visible;
@@ -1490,6 +1519,7 @@ h1 {
 
 .credits-footer {
     margin-top: auto;
+    margin-bottom: 0;
     /* Pousser le footer en bas */
     padding: 10px 20px;
     background: rgba(255, 255, 255, 0.05);
@@ -1721,7 +1751,7 @@ body.mode-dark .plot-overlay-title {
     /* gap: 15px; */
     width: 80px;
     align-items: center;
-    height: 100% !important; /* Remplir le parent */
+    height: 649px; /* Remplir le parent */
     font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     position: relative; /* Pour l'overlay */
 }

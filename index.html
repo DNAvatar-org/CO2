@@ -78,9 +78,9 @@
     <style>
         /* Onglets : vert si selected, gris si non-selected, rollovers colorés (comme epoch-btn/ergo-button) */
         .tabs-bar {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-            display: flex; gap: 4px; padding: 0 12px 0 12px; align-items: flex-start;
-            min-height: 20px; margin: 0;
+            position: fixed; top: 0; left: 0; z-index: 1000;
+            display: flex; gap: 2px; padding: 0 0 0 10px; align-items: flex-start;
+            min-height: 20px; margin: 0; 
         }
         .tabs-bar button {
             padding: 4px 14px 6px; height: 20px; line-height: 1; font-size: 12px;
@@ -105,10 +105,10 @@
             border-right: 1px solid rgba(255,255,255,0.12);
             box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 0 rgba(255,255,255,0.08);
         }
-        body { padding: 22px 20px 20px 20px !important; height: 100vh; overflow: hidden; } /* marge pour onglets, pas de scroll page */
+        body { height: 100vh; overflow: hidden; } /* marge pour onglets, pas de scroll page */
         .tab-panel { display: none; flex: 1; min-height: 0; }
         .tab-panel.active { display: block; flex: 1; min-height: 0; }
-        #visu-panel { padding-top: 8px; overflow: auto; overflow-x: hidden; } /* Pas de scroll horizontal : le graph se réduit */
+        #visu-panel { overflow: auto; overflow-x: hidden; margin: 5px 0 0 0; display: flex; flex-direction: column; } /* 5px spacing sous tabs-bar, pas de margin-bottom (zone violette) */
         #scie-panel { overflow: hidden; }
         #scie-panel.active { display: flex !important; flex-direction: column; flex: 1; min-height: 0; }
         #scie-panel iframe { flex: 1; min-height: 0; width: 100%; border: none; }
