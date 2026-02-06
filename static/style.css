@@ -412,7 +412,7 @@ h1 {
     color: white;
     /* Changé en blanc */
     /* background: rgba(255, 255, 255, 0); /* Fond blanc transparent */
-    padding: 2px 4px;
+    padding: 0 4px;
     /* Petit padding pour que le fond entoure le texte */
     border-radius: 2px;
     /* Coins légèrement arrondis */
@@ -1303,11 +1303,11 @@ h1 {
 
 
 
-/* Curseur pointer uniquement sur le graphique Plotly (pas sur la div conteneur) */
+/* Curseur flèche (default) sur le graphique Plotly, pas main-bouton */
 #plot-container .plotly,
 #plot-container .js-plotly-plot,
 #plot-container svg {
-    cursor: pointer;
+    cursor: default;
 }
 
 #plot-container {
@@ -1329,6 +1329,7 @@ h1 {
 
 #plot-container .main-svg {
     top: 0 !important;
+    cursor: default;
 }
 
 /* Masquer le branding Plotly (logo + tooltip "Produced with Plotly.js") */

@@ -27,9 +27,7 @@
         // Mettre à jour le lien de licence dans le footer
         document.addEventListener('DOMContentLoaded', function () {
             const licenseLink = document.getElementById('license-link');
-            if (licenseLink && typeof window.getLicenseURL === 'function') {
-                licenseLink.href = window.getLicenseURL();
-            }
+            if (licenseLink) licenseLink.href = window.getLicenseURL();
         });
     </script>
     <script src="static/lib/plotly-2.26.0.min.js"></script>
@@ -136,7 +134,7 @@
     <footer class="credits-footer">
         <div class="credits-content">
             <div class="credits-line">
-                © 2025 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> -
+                <font size="3">©</font>2026 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> -
                 <button class="btn tipeee-btn" id="tipeee-donation"
                     onclick="window.open(window.getTipeeeURL(), '_blank', 'noopener,noreferrer')"
                     title="Offrez moi un café">☕</button>
@@ -149,10 +147,13 @@
             </div>
             <div class="credits-line">
                 <span class="credits-doc-label">Doc :</span>
-                <a href="#" onclick="event.preventDefault(); if(typeof openPageModal === 'function') { openPageModal('./static/compute/alphabet.html', '🔡 Alphabet'); }">🔡 Alphabet</a> |
-                <a href="#" onclick="event.preventDefault(); if(typeof openPageModal === 'function') { openPageModal('./static/compute/dico.html', '📖 Dictionnaire'); }">📖 Dictionnaire</a> |
-                <a href="#" onclick="event.preventDefault(); if(typeof openPageModal === 'function') { openPageModal('./equation.html', '📐 Équations', null, 'tall'); }">📐 Équations</a> |
-                <a href="#" onclick="event.preventDefault(); if(typeof openPageModal === 'function') { openPageModal('./Algorithmes.html', '🧮 Algorithmes', null, 'tall'); }">🧮 Algorithmes</a> |
+                <a href="#" onclick="event.preventDefault(); openPageModal('./static/compute/alphabet.html', '🔡 Alphabet');">🔡 Alphabet</a> |
+                <a href="#" onclick="event.preventDefault(); openPageModal('./static/compute/dico.html', '📖 Dictionnaire');">📖 Dictionnaire</a>
+            </div>
+            <div class="credits-line">
+                <span class="credits-doc-label"></span>Physique :</span>
+                <a href="#" onclick="event.preventDefault(); openPageModal('./equation.html', '📐 Équations', null, 'tall');">📐 Équations</a> |
+                <a href="#" onclick="event.preventDefault(); openPageModal('./Algorithmes.html', '🧮 Algorithmes', null, 'tall');">🧮 Algorithmes</a> |
                 <a href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>
             </div>
             <div class="credits-line">
