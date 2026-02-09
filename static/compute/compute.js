@@ -34,28 +34,16 @@
 function getEnabledStates() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
-    
-    // Chercher tous les boutons ergonomiques (ergo-button-cell ou flux-button-cell)
-    const allCells = Array.from(document.querySelectorAll('.ergo-button-cell, .flux-button-cell'));
-    
-    // Fonction helper pour trouver un bouton par son logo
-    function findButtonByLogo(logo) {
-        for (const cell of allCells) {
-            const circle = cell.querySelector('.ergo-button-circle');
-            if (circle && circle.textContent.includes(logo)) {
-                return cell;
-            }
-        }
-        return null;
-    }
-    
-    const h2oCell = findButtonByLogo('💧');
+
+    // Source unique : organigramme flux-button-cell (cell-co2, cell-methane, cell-h2o, cell-albedo-btn)
+    const co2Cell = document.getElementById('cell-co2');
+    const ch4Cell = document.getElementById('cell-methane');
+    const h2oCell = document.getElementById('cell-h2o');
+    const albedoCell = document.getElementById('cell-albedo-btn');
+
     DATA['🔘']['🔘💧📛'] = h2oCell ? h2oCell.classList.contains('checked') : true;
-    const ch4Cell = findButtonByLogo('⛽');
     DATA['🔘']['🔘⛽📛'] = ch4Cell ? ch4Cell.classList.contains('checked') : true;
-    const co2Cell = findButtonByLogo('🏭');
     DATA['🔘']['🔘🏭📛'] = co2Cell ? co2Cell.classList.contains('checked') : true;
-    const albedoCell = findButtonByLogo('🪩');
     DATA['🔘']['🔘🪩'] = albedoCell ? albedoCell.classList.contains('checked') : true;
     // Source unique visu : plot-anim-toggle (index.html charge visu_radiatif.html)
     const animBtn = document.getElementById('plot-anim-toggle');

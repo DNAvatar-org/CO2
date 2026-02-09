@@ -1278,7 +1278,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 if (typeof window.updateFluxLabels === 'function') {
                     window.updateFluxLabels('ProcessFinished');
                 }
-                
+
+                // Relancer le cycle avec la nouvelle donnée (getEnabledStates lit depuis le DOM)
+                if (typeof window.runComputeInParent === 'function') {
+                    window.runComputeInParent();
+                }
+
                 // Mettre à jour le tooltip du bouton
                 updateButtonTooltip(parentCell, circleBg);
             } else {
