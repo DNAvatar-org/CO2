@@ -687,12 +687,12 @@ function drawAbsorptionBandIndicators() {
     const LAMBDA_CH4_1_UM = (CONST.LAMBDA_CH4_1 != null) ? CONST.LAMBDA_CH4_1 * 1e6 : 7.7;
     const LAMBDA_CO2_UM = (CONST.LAMBDA_CO2_CENTER != null) ? CONST.LAMBDA_CO2_CENTER * 1e6 : 15;
     const absorptionBands = [
-        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
-        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', color: 'rgb(135, 206, 250)' },
-        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' },
-        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
-        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', color: 'rgb(135, 206, 250)' },
-        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', color: 'rgb(135, 206, 250)' }
+        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', minMax: 'Min', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', minMax: 'Max', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Min', color: 'rgb(135, 206, 250)' },
+        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Min', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Max', color: 'rgb(135, 206, 250)' },
+        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Max', color: 'rgb(135, 206, 250)' }
     ];
 
     const P_atm = (window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) ? window.DATA['🫧']['🎈'] : 1;
@@ -705,6 +705,8 @@ function drawAbsorptionBandIndicators() {
         const xRight = getXPosition(Math.min(50, band.lambda + halfW));
         const barWidthPx = Math.max(4, xRight - xLeft);
 
+        const altText = `${band.minMax} captation ${band.label} : ${Number(band.lambda).toFixed(2)} μm, largeur ${halfW.toFixed(2)} μm`;
+
         // Créer un indicateur (barre de largeur ∝ √P + logo centré)
         const indicator = document.createElement('div');
         indicator.className = 'absorption-band-indicator';
@@ -716,8 +718,9 @@ function drawAbsorptionBandIndicators() {
         indicator.style.background = (widthFactor > 1) ? `rgba(135, 206, 250, ${0.15 * (widthFactor - 1)})` : 'transparent';
         indicator.style.borderRadius = '2px';
         indicator.style.fontSize = '10px';
-        indicator.style.zIndex = '101';
-        indicator.style.pointerEvents = 'none';
+        indicator.style.zIndex = '1000';
+        indicator.style.pointerEvents = 'auto';
+        indicator.style.cursor = 'default';
         indicator.style.display = 'flex';
         indicator.style.alignItems = 'center';
         indicator.style.justifyContent = 'center';
@@ -727,15 +730,12 @@ function drawAbsorptionBandIndicators() {
         indicator.style.height = '12px';
         indicator.style.lineHeight = '12px';
 
-        // Utiliser le PNG pour CH4, emoji pour les autres
-        // Pas de label, juste le logo
-        // Forcer l'alignement vertical identique pour tous les logos
+        // Utiliser le PNG pour CH4, emoji pour les autres ; alt = molécule + valeur (dépend de P)
         if (band.logoImg) {
-            indicator.innerHTML = `<img src="${band.logoImg}" style="width: 12px; height: 12px; display: block; margin: 0 auto; object-fit: contain; vertical-align: middle;" alt="${band.label}">`;
+            indicator.innerHTML = `<img src="${band.logoImg}" alt="${altText}" title="${altText}" style="width: 12px; height: 12px; display: block; margin: 0 auto; object-fit: contain; vertical-align: middle;">`;
         } else {
-            // Pour les emojis, forcer la même hauteur et alignement
             indicator.style.fontSize = '12px';
-            indicator.innerHTML = `${band.logo}`;
+            indicator.innerHTML = `<span role="img" aria-label="${altText}" title="${altText}">${band.logo}</span>`;
         }
 
         plotContainerWrapper2.appendChild(indicator);

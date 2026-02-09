@@ -127,10 +127,6 @@ function calculateT0() {
     DATA['🧮']['🧮🌡️'] = DATA['🧮']['🧮🌡️🚩'];
     DATA['🧮']['🧲🔬'] = computeToleranceWm2(DATA['🧮']['🧮🌡️'], EPOCH['🧲🔬']);
     
-    // Logs désactivés pour réduire la taille
-    // console.log(`🌡️ T0 [calculateT0@calculations_flux.js]`);
-    // console.log(`T0 initial: ${DATA['🧮']['🧮🌡️'].toFixed(2)}K`);
-    
     return true;
 }
 
@@ -158,10 +154,16 @@ function initForConfig() {
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     const T_solver_init = DATA['🧮']['🧮🌡️'];
     const T_epoch = EPOCH['🌡️🧮'] + DATA['📜']['🔺🌡️💫'] * DATA['📜']['📿💫'];
-    // Transition extrême (ex: Corps noir -18°C→Archéen) : cycle eau avec T réelle pour Δ cohérent Init/iter
-    // Cas normal (ex: 1800) : T_epoch pour éviter régression (22°C au lieu de 15°C)
-    if (Math.abs(T_solver_init - T_epoch) > 20) DATA['🧮']['🧮🌡️'] = T_solver_init;
-    else DATA['🧮']['🧮🌡️'] = T_epoch;
+    const animEnabled = DATA['🔘'] && DATA['🔘']['🔘🎬'];
+    // Mode anim : toujours garder T_solver_init (convergence depuis T° courante)
+    // Mode sans anim : transition extrême → T réelle ; cas normal → T_epoch pour éviter régression
+    if (animEnabled) {
+        DATA['🧮']['🧮🌡️'] = T_solver_init;
+    } else if (Math.abs(T_solver_init - T_epoch) > 20) {
+        DATA['🧮']['🧮🌡️'] = T_solver_init;
+    } else {
+        DATA['🧮']['🧮🌡️'] = T_epoch;
+    }
     window.calculateAtmosphereComposition();
     if (window.calculateGeologySurfaces) window.calculateGeologySurfaces();
     // Partition eau une fois avec T0 de la config (cache invalidé pour forcer le recalcul)
@@ -204,14 +206,10 @@ function updateConvergenceBounds() {
     }
 }
 
-/** Calcule l'incrément Search en K.
+/** Calcule l'incrément Search (incTemp) en K.
  * Formule physique : ΔT = Δ/(4σT³) (linéarisation Stefan-Boltzmann, dF/dT = 4σT³).
- * Hadéen (T>2000K): cap 80 K pour éviter oscillation.
- *
- * Formules patch (commentées) :
- * - const DT = Math.abs(T_K - DATA['📅']['🌡️🧮']);
- * - const pow = 2 + DT / 1500.0;
- * - res = Math.sign(delta) * Math.pow(Math.abs(delta), 1 / pow);
+ * Cap max : CONFIG_COMPUTE.maxSearchStepK (100 K). Si |Δ| > largeDeltaFactor×tol : maxSearchStepLargeK (150 K).
+ * Hadéen (T>2000K) : cap 80 K pour éviter oscillation.
  */
 function computeSearchIncrement() {
     const DATA = window.DATA;
@@ -220,10 +218,13 @@ function computeSearchIncrement() {
     const T_K = DATA['🧮']['🧮🌡️'];
     const sigmaT3 = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(T_K, 3);
     let res = delta / sigmaT3;
-    if (T_K > 2000) {
-        const cap = 80;
-        if (Math.abs(res) > cap) res = Math.sign(res) * cap;
+    const tol = DATA['🧮']['🧲🔬'];
+    let cap = window.CONFIG_COMPUTE.maxSearchStepK;
+    if (Math.abs(delta) > window.CONFIG_COMPUTE.largeDeltaFactor * tol) {
+        cap = window.CONFIG_COMPUTE.maxSearchStepLargeK;
     }
+    if (T_K > 2000) cap = Math.min(80, cap);
+    if (Math.abs(res) > cap) res = Math.sign(res) * cap;
     return res;
 }
 
@@ -581,10 +582,8 @@ async function runRadiatifOnly() {
         // Init : pas de déplacement (snapshot seul). Search/Dicho : déplacement ici (increment ou milieu bracket).
         let T_next_K = null;
         if (DATA['🧮']['🧮⚧'] === 'Search') {
-            let increment = computeSearchIncrement();
+            const increment = computeSearchIncrement();
             const T_curr_S = DATA['🧮']['🧮🌡️'];
-            // Hadéen (T>2000K) : clamp explicite 80 K pour éviter oscillation (équilibre bande étroite)
-            if (T_curr_S > 2000 && Math.abs(increment) > 80) increment = Math.sign(increment) * 80;
             T_next_K = T_curr_S + increment;
             // Garde : Δ>0 ⇒ T augmente, Δ<0 ⇒ T diminue (éviter T_next opposé au sens de Δ)
             if ((DATA['🧲']['🔺🧲'] > 0 && T_next_K < T_curr_S) || (DATA['🧲']['🔺🧲'] < 0 && T_next_K > T_curr_S)) {
@@ -849,11 +848,6 @@ async function runRadiatifOnly() {
         }
     }
     if (!DATA['🧮']['🧮🛑']) DATA['🧮']['🧮🛑'] = 'max_iter';
-    // Log final : T, H2O%, Δ, tol, raison arrêt
-    const h2oPct = DATA['📛'] ? DATA['📛']['🍰📛💧'] : null;
-    const h2oPctStr = (h2oPct != null && Number.isFinite(h2oPct)) ? (h2oPct * 100).toFixed(1) + '%' : '-';
-    const h2oVs05 = (h2oPct != null && h2oPct < 0.005) ? ' <0.5%' : '';
-    console.log('[runRadiatifOnly] FIN T_C=' + (DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS).toFixed(1) + ' H2O%=' + h2oPctStr + h2oVs05 + ' delta=' + DATA['🧲']['🔺🧲'].toFixed(2) + ' stop=' + (DATA['🧮']['🧮🛑'] || '?'));
     return true;
 }
 

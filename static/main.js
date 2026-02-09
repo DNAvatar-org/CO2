@@ -660,26 +660,17 @@ function calculateInitialData() {
     initPlot();
     document.getElementById('status').textContent = 'Initialisation...';
 
-    // Créer une grille lambda pour les courbes Planck
+    // Créer une grille lambda cohérente avec le compute (calculations.js utilise DATA['🧮']['🔬🌈'])
     const lambda_min = 0.1e-6;
     const lambda_max = 100e-6;
-    const delta_lambda = 0.1e-6;
     plotData.lambda_range = [];
     plotData.lambda_weights = []; // ⚡ Nécessaire pour updatePlot
-    // ⚡ CORRECTION : Créer exactement le bon nombre de points (comme dans calculations.js)
-    // Calculer le nombre exact : (lambda_max - lambda_min) / delta_lambda + 1 = 1000 points
-    const expected_points = Math.floor((lambda_max - lambda_min) / delta_lambda) + 1;
+    const expected_points = Math.max(2, Math.min(window.CONFIG_COMPUTE.maxSpectralBinsConvergence, 10000));
+    const effective_delta = expected_points > 1 ? (lambda_max - lambda_min) / (expected_points - 1) : (lambda_max - lambda_min);
     for (let i = 0; i < expected_points; i++) {
-        let lambda;
-        if (i === expected_points - 1) {
-            // Dernier élément : forcer lambda_max exactement pour éviter les erreurs d'arrondi
-            lambda = lambda_max;
-        } else {
-            // Autres éléments : calcul normal
-            lambda = lambda_min + i * delta_lambda;
-        }
+        const lambda = (i === expected_points - 1) ? lambda_max : lambda_min + i * effective_delta;
         plotData.lambda_range.push(lambda);
-        plotData.lambda_weights.push(1.0); // Poids unitaire pour pas constant
+        plotData.lambda_weights.push(1.0);
     }
     // Vérification
     if (plotData.lambda_range.length !== expected_points) {
@@ -3003,7 +2994,8 @@ function toggleReferencePanel() {
 window.toggleReferencePanel = toggleReferencePanel;
 window.setEpoch = setEpoch;
 
-window.addEventListener('DOMContentLoaded', () => {
+function runMainInit() {
+    if (typeof window.pd === 'function') window.pd('runMainInit', 'main.js', 'enter readyState=' + document.readyState);
     // 🔒 Légende des emojis (affichée une seule fois au démarrage)
     if (typeof window !== 'undefined' && !window._logLegendShown) {
         console.log('📋 Légende: 🕰 Époque | 📛 EDS | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪩 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
@@ -3118,18 +3110,9 @@ window.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 
-                // 🔒 INITIALISER l'époque en appelant setEpoch("Corps noir") AVANT calculateInitialData
-                // Cela garantit que toutes les variables globales (précision, isAnim, etc.) sont initialisées depuis la config
-                // Pas de set de base avec ||, mais bien un changement d'époque complet
-                // Le log "🕰 Corps noir" sera affiché au début de setEpoch
-                if (typeof window.setEpoch === 'function') {
-                    window.setEpoch('Corps noir');
-                } else {
-                    // Fallback si setEpoch n'est pas encore disponible
-                    window.currentEpochName = 'Corps noir';
-                    const logoEpoch = '🕰';
-                    console.log(`${logoEpoch} Corps noir`);
-                }
+                // 🔒 Clic automatique sur Corps noir : selected + calculs (bouton doit exister)
+                const corpsNoirBtn = document.querySelector('.epoch-btn[data-epoch="⚫"]');
+                corpsNoirBtn.click();
                 
                 // Écouter l'événement 'calculationConverged' pour activer l'animation de la planète
                 window.addEventListener('calculationConverged', () => {
@@ -3269,7 +3252,13 @@ window.addEventListener('DOMContentLoaded', () => {
             }, 200); // Délai de 200ms pour laisser le temps au DOM de se construire
         });
     });
-});
+}
+// DOMContentLoaded peut déjà être passé (loader charge scripts après fetch) → exécuter immédiatement si tel est le cas
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', runMainInit);
+} else {
+    runMainInit();
+}
 
 // Fonction pour mettre à jour la texture Hadéen selon infoTimeMa
 function updateHadeenTexture() {

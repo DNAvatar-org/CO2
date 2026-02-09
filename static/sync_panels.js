@@ -147,6 +147,7 @@
         DATA['🧮']['previous'] = [];
         DATA['🧮']['🧮🔄🌊'] = 0;
         DATA['🧮']['🧮🔄🪩'] = 0;
+        if (window.pd) window.pd('runComputeInParent', 'sync_panels.js', 'epochId=' + epochId + ' anim=' + DATA['🔘']['🔘🎬'] + ' T_init=' + DATA['🧮']['🧮🌡️']);
         if (!DATA['🔘']['🔘🎬']) {
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
         } else if (!DATA['🧮']['🧮🌡️'] || DATA['🧮']['🧮🌡️'] <= 0) {

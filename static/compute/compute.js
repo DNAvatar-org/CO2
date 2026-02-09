@@ -57,9 +57,9 @@ function getEnabledStates() {
     DATA['🔘']['🔘🏭📛'] = co2Cell ? co2Cell.classList.contains('checked') : true;
     const albedoCell = findButtonByLogo('🪩');
     DATA['🔘']['🔘🪩'] = albedoCell ? albedoCell.classList.contains('checked') : true;
-    // Chercher le bouton animation par son ID (anim-toggle)
-    const animBtn = document.getElementById('anim-toggle');
-    DATA['🔘']['🔘🎬'] = animBtn ? animBtn.classList.contains('selected') : false;
+    // Source unique visu : plot-anim-toggle (index.html charge visu_radiatif.html)
+    const animBtn = document.getElementById('plot-anim-toggle');
+    DATA['🔘']['🔘🎬'] = animBtn.classList.contains('selected');
     
     // Retourner true car DATA a été modifié
     return true;

@@ -441,6 +441,13 @@ h1 {
     z-index: 1 !important;
 }
 
+/* Bornes absorption (H2O, CH4, CO2) : rollover + alt au-dessus du spectre */
+.absorption-band-indicator {
+    pointer-events: auto !important;
+    z-index: 1000 !important;
+    cursor: default;
+}
+
 /* Courbes (tracés) */
 #plot-container .plotlayer,
 #plot-container .cartesianlayer,
@@ -624,6 +631,8 @@ h1 {
 .timeline-hourglass {
     font-size: 18px;
     display: block;
+    cursor: default;
+    user-select: text;
 }
 
 .epoch-start-time {
@@ -673,6 +682,8 @@ h1 {
 .horloge-icon {
     font-size: 20px;
     display: block;
+    cursor: default;
+    user-select: text;
 }
 
 .timeline-events-logos {
@@ -1522,7 +1533,7 @@ h1 {
     margin-top: auto;
     margin-bottom: 0;
     /* Pousser le footer en bas */
-    padding: 10px 20px;
+    padding-bottom: 5px;
     background: rgba(255, 255, 255, 0.05);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     text-align: center;

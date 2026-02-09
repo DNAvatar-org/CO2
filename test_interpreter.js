@@ -136,8 +136,8 @@ console.log('\n📝 TEST 5: Remise à zéro');
 window.infoTimeMa = 0;
 const test5 = interpretConfigValue('fonts/pics/text_hadeen{$ticTime}.png');
 console.assert(test5 === 'fonts/pics/text_hadeen0.png', '❌ Test 5 échoué');
-
 console.log('\n' + '='.repeat(60));
 console.log('✅ TOUS LES TESTS PASSÉS !');
 console.log('='.repeat(60));
+
 
