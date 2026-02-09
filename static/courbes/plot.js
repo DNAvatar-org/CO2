@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.10
+// Version 1.0.14
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -17,6 +17,12 @@
 // - v1.0.8: exponentformat power (pas SI/T) ; pas de resize pendant calcul ; guard targetRect invalide
 // - v1.0.9: échelle ×10¹²/×10¹³/k par époque ; Planck(T_config) à 30% ; valeurs entières ; fixe jusqu'à convergence
 // - v1.0.10: courbe colorée à 65% (dépasse milieu) ; tickformat 1.25 max 5 chars ; séparateur .
+// - v1.0.11: Pendant dichotomie, garder width/height du canvas (pas rect) pour éviter saut barre spectre
+// - v1.0.11: Pendant dichotomie, réappliquer top/left depuis _lastTop/_lastLeft (éviter saut Y si échelle change)
+// - v1.0.11: Toujours resizeCanvasToPlot après Plotly.react (relayout peut bouger même si échelle fixe)
+// - v1.0.12: MutationObserver sur plot-container appelle resizeCanvasToPlot quand Plotly modifie le DOM
+// - v1.0.13: updatePlotAltitudeAxis(atm_height_km) pour mettre à jour yaxis2 à chaque cycle
+// - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
 // ============================================================================
 
 // ============================================================================
@@ -444,11 +450,21 @@ function debouncedResizeCanvas() {
 // Flag pour éviter les appels multiples simultanés
 let resizeCanvasInProgress = false;
 let resizeCanvasRetryCount = 0;
+let resizeCanvasPendingCallback = null; // Si appel bloqué, retry après fin
 const MAX_RETRY_COUNT = 5;
 
 function resizeCanvasToPlot(callback) {
-    // Éviter les appels multiples simultanés
+    // Si déjà en cours : planifier retry pour ne pas perdre les mises à jour (anim)
     if (resizeCanvasInProgress) {
+        resizeCanvasPendingCallback = callback;
+        if (!resizeCanvasToPlot._pendingTimer) {
+            resizeCanvasToPlot._pendingTimer = setTimeout(() => {
+                resizeCanvasToPlot._pendingTimer = null;
+                const cb = resizeCanvasPendingCallback;
+                resizeCanvasPendingCallback = null;
+                if (cb) resizeCanvasToPlot(cb);
+            }, 50); // Après le double rAF du resize en cours (~33ms)
+        }
         return;
     }
 
@@ -458,8 +474,9 @@ function resizeCanvasToPlot(callback) {
 
     resizeCanvasInProgress = true;
 
-    // Attendre un peu que Plotly ait fini de rendre
-    setTimeout(() => {
+    // requestAnimationFrame : capturer le DOM après le paint de Plotly (plus réactif que setTimeout 100ms)
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
         // Trouver spécifiquement ".nsewdrag.drag.cursor-pointer" pour calibrer le canvas
         const targetElement = plotContainer.querySelector('.nsewdrag.drag.cursor-pointer');
         const wrapper = plotContainer.parentElement;
@@ -482,41 +499,55 @@ function resizeCanvasToPlot(callback) {
             const height = Math.round(targetRect.height) + marginBottomPx;
 
             // Positionner le canvas : même Y, left - 5px pour être derrière le 0
+            let leftPx;
+            let topPx;
             if (wrapper) {
                 const wrapperRect = wrapper.getBoundingClientRect();
-                const left = Math.round((targetRect.left - wrapperRect.left) - paddingX);
-                const top = Math.round(targetRect.top - wrapperRect.top); // Même Y
-
-                canvas.style.setProperty('left', left + 'px', 'important');
-                canvas.style.setProperty('top', top + 'px', 'important');
-                canvas.style.removeProperty('transform');
+                leftPx = Math.round((targetRect.left - wrapperRect.left) - paddingX);
+                topPx = Math.round(targetRect.top - wrapperRect.top); // Même Y
             } else {
                 const plotRect = plotContainer.getBoundingClientRect();
-                const left = Math.round((targetRect.left - plotRect.left) - paddingX);
-                const top = Math.round(targetRect.top - plotRect.top); // Même Y
-
-                canvas.style.setProperty('left', left + 'px', 'important');
-                canvas.style.setProperty('top', top + 'px', 'important');
+                leftPx = Math.round((targetRect.left - plotRect.left) - paddingX);
+                topPx = Math.round(targetRect.top - plotRect.top); // Même Y
+            } 
+            // Pendant la dichotomie : ne pas modifier top/left (targetRect change à chaque cycle).
+            // Garder _lastTop/_lastLeft pour éviter que le spectre bouge.
+            const skipReposition = window.calculationInProgress;
+            if (typeof window.pd === 'function') {
+                window.pd('resizeCanvasToPlot', 'plot.js', '[BUG] spectre topPx=' + topPx + ' leftPx=' + leftPx + ' skipReposition=' + skipReposition);
+            }
+            if (!skipReposition) {
+                canvas.style.setProperty('left', leftPx + 'px', 'important');
+                canvas.style.setProperty('top', topPx + 'px', 'important');
                 canvas.style.removeProperty('transform');
             }
+            canvas._lastTop = (skipReposition ? canvas._lastTop : (topPx + 'px'));
+            canvas._lastLeft = (skipReposition ? canvas._lastLeft : (leftPx + 'px'));
 
-            canvas.style.width = width + 'px';
-            canvas.style.height = height + 'px';
-            canvas.width = width;
-            canvas.height = height;
+            const dimsUnchanged = (canvas._lastWidth === width && canvas._lastHeight === height && canvas._lastLeftPx === leftPx && canvas._lastTopPx === topPx);
+
+            if (!skipReposition) {
+                canvas._lastWidth = width;
+                canvas._lastHeight = height;
+                canvas._lastLeftPx = leftPx;
+                canvas._lastTopPx = topPx;
+            }
+            const useWidth = skipReposition ? (canvas._lastWidth || width) : width;
+            const useHeight = skipReposition ? (canvas._lastHeight || height) : height;
+
+            if (!skipReposition && !dimsUnchanged) {
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+                canvas.width = width;
+                canvas.height = height;
+                setTimeout(() => { drawAbsorptionBandIndicators(); }, 50);
+            }
             canvas.style.setProperty('z-index', '1', 'important');
 
-            // Redessiner la bande de spectre immédiatement après le resize
             const rect = canvas.getBoundingClientRect();
-            const displayHeight = Math.floor(rect.height) || height;
-            const resFactor = displayHeight / height;
-            drawSpectrumBarOnlyWithSize(width, height, resFactor);
-
-            // Replacer les logos EDS (indicateurs de bandes d'absorption) après le resize
-            // Attendre un peu que Plotly ait fini de redimensionner
-            setTimeout(() => {
-                drawAbsorptionBandIndicators();
-            }, 50);
+            const displayHeight = Math.floor(rect.height) || useHeight;
+            const resFactor = displayHeight / useHeight;
+            drawSpectrumBarOnlyWithSize(useWidth, useHeight, resFactor);
 
             resizeCanvasInProgress = false;
             resizeCanvasRetryCount = 0; // Réinitialiser le compteur en cas de succès
@@ -524,6 +555,16 @@ function resizeCanvasToPlot(callback) {
             // Exécuter le callback (redessin complet) si fourni
             if (callback && typeof callback === 'function') {
                 callback();
+            }
+            // Si un appel a été bloqué pendant qu'on travaillait, le traiter maintenant
+            if (resizeCanvasPendingCallback) {
+                const cb = resizeCanvasPendingCallback;
+                resizeCanvasPendingCallback = null;
+                if (resizeCanvasToPlot._pendingTimer) {
+                    clearTimeout(resizeCanvasToPlot._pendingTimer);
+                    resizeCanvasToPlot._pendingTimer = null;
+                }
+                resizeCanvasToPlot(cb);
             }
         } else {
             // Fallback : réessayer après un délai (limité pour éviter les boucles infinies)
@@ -538,8 +579,36 @@ function resizeCanvasToPlot(callback) {
                 resizeCanvasRetryCount = 0;
             }
         }
-    }, 100);
+        });
+    });
 }
+
+/**
+ * Met à jour l'axe altitude (yaxis2) du plot à la fin du calcul. Appelé depuis updateFluxLabels(ProcessFinished).
+ * Pendant la convergence : ne pas appeler (la barre reste stable).
+ * À la fin : range + tickvals pour plus de précision en bas (0–200 km) quand l'échelle est grande.
+ */
+window.updatePlotAltitudeAxis = function (atm_height_km) {
+    const plotContainer = document.getElementById('plot-container');
+    if (!plotContainer || typeof Plotly === 'undefined') return;
+    const z_max = Number(atm_height_km);
+    if (!Number.isFinite(z_max) || z_max < 0) return;
+    const rangeMax = Math.max(1, Math.ceil(z_max * 1.05));
+    const relayout = { 'yaxis2.range': [0, rangeMax] };
+    if (rangeMax > 500) {
+        const tickvals = [0, 50, 100, 200, 400, 600, 800, 1000, 1200, 1500, 1800].filter(v => v <= rangeMax);
+        if (tickvals[tickvals.length - 1] < rangeMax) tickvals.push(Math.round(rangeMax));
+        relayout['yaxis2.tickmode'] = 'array';
+        relayout['yaxis2.tickvals'] = tickvals;
+    } else {
+        relayout['yaxis2.tickmode'] = 'linear';
+        relayout['yaxis2.dtick'] = rangeMax / 8;
+    }
+    Plotly.relayout(plotContainer, relayout);
+    if (typeof window.pd === 'function') {
+        window.pd('updatePlotAltitudeAxis', 'plot.js', '[BUG] barre stratosphere/axe altitude atm_height_km=' + atm_height_km);
+    }
+};
 
 // Ajouter l'écouteur d'événement resize
 if (typeof window !== 'undefined') {
@@ -1102,11 +1171,22 @@ window.updatePlot = function updatePlot(data) {
         });
     }
     // ⚠️ IMPORTANT : Ne pas écraser z_max_km si on a détecté "pas d'atmosphère"
+    // Pendant la convergence (calculationInProgress) : garder une échelle FIXE pour éviter que la barre
+    // bouge à chaque cycle. data.z_range varie (300→1830 km). On fixe au premier appel de la dichotomie.
+    const isDichotomy = typeof window !== 'undefined' && window.calculationInProgress;
     if (has_atmosphere) {
-        if (data.z_range && data.z_range.length > 0) {
-            const z_max = data.z_range[data.z_range.length - 1];
-            z_max_km = z_max / 1000;
+        if (isDichotomy) {
+            if (window._dichotomyZMaxKm != null && Number.isFinite(window._dichotomyZMaxKm)) {
+                z_max_km = window._dichotomyZMaxKm;
+            } else {
+                window._dichotomyZMaxKm = z_max_km; // Premier appel : figer l'échelle
+            }
         } else {
+            window._dichotomyZMaxKm = null; // Reset à la fin
+            if (data.z_range && data.z_range.length > 0) {
+                const z_max = data.z_range[data.z_range.length - 1];
+                z_max_km = z_max / 1000;
+            } else {
             // z_range non disponible (init) — configOrganigramme/currentEpochName déjà validés en entrée
             const currentEpoch = window.configOrganigramme.timeline.find(e =>
                 e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
@@ -1146,6 +1226,7 @@ window.updatePlot = function updatePlot(data) {
                 const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use_fallback, molar_mass, gravity);
                 z_max_km = props.z_max / 1000;
             }
+        }
         }
     } else {
     }
@@ -1448,11 +1529,13 @@ window.updatePlot = function updatePlot(data) {
 
         Plotly.react('plot-container', traces, updateLayout).then(() => {
         hideXAxisLine();
-        // Ne pas dispatcher resize pendant le calcul : targetRect peut être invalide → spectre au milieu
-        const converged = (typeof window.spectralConverged !== 'undefined' && window.spectralConverged);
-        if (converged && typeof window !== 'undefined' && window.dispatchEvent) {
-            window.dispatchEvent(new Event('resize'));
-        }
+        // Toujours repositionner après Plotly : le plot peut bouger (relayout) même si l'échelle est fixe
+        resizeCanvasToPlot(() => {
+            const c = document.getElementById('spectral-visualization');
+            if (c && c._lastData) {
+                requestAnimationFrame(() => drawSpectralVisualization(c, c._lastData));
+            }
+        });
         
         // Mettre à jour le DOM de l'annotation tropopause pour réduire l'espacement
         // Plotly crée les annotations dans le DOM après le rendu
@@ -1487,14 +1570,12 @@ window.updatePlot = function updatePlot(data) {
         const plotContainerWrapper = document.querySelector('.plot-container-wrapper');
 
         if (plotContainer && canvas && plotContainerWrapper && !plotContainer._plotlyObserver) {
-            let debounceTimer = null;
-            // Observer les modifications du DOM dans plot-container-wrapper
+            let rafId = null;
+            // Observer plot-container uniquement (pas le wrapper) pour éviter boucle quand on modifie le canvas
             const plotlyObserver = new MutationObserver(() => {
-                // Debounce pour éviter les boucles infinies
-                if (debounceTimer) {
-                    clearTimeout(debounceTimer);
-                }
-                debounceTimer = setTimeout(() => {
+                if (rafId) cancelAnimationFrame(rafId);
+                rafId = requestAnimationFrame(() => {
+                    rafId = null;
                     if (canvas && canvas.parentElement && plotContainerWrapper) {
                         // S'assurer que le canvas est AVANT plot-container dans le DOM (ordre de rendu)
                         if (canvas.nextSibling !== plotContainer && canvas.parentElement === plotContainerWrapper) {
@@ -1506,10 +1587,12 @@ window.updatePlot = function updatePlot(data) {
                         if (currentZIndex !== '1' && currentZIndex !== 'auto') {
                             canvas.style.setProperty('z-index', '1', 'important');
                         }
+                        // Ne pas appeler resizeCanvasToPlot ici : drawAbsorptionBandIndicators modifie
+                        // plot-container → boucle MutationObserver → clignotement
                     }
-                }, 50); // Debounce de 50ms
+                });
             });
-            plotlyObserver.observe(plotContainerWrapper, {
+            plotlyObserver.observe(plotContainer, {
                 childList: true,
                 subtree: true,
                 attributes: true,
@@ -1891,15 +1974,29 @@ function drawSpectralVisualization(canvas, data) {
     
     const ctx = canvas.getContext('2d');
 
-    // Utiliser la taille réelle du canvas visible à l'écran (pas une taille fixe)
-    // Si le panel visu est masqué (onglet Scientifique), rect est 0 → sortir sans erreur
     const rect = canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) {
+    const isDichotomy = typeof window !== 'undefined' && window.calculationInProgress;
+    let width;
+    let height;
+    if (isDichotomy) {
+        if (canvas._lastTop != null && canvas._lastLeft != null) {
+            canvas.style.setProperty('top', canvas._lastTop, 'important');
+            canvas.style.setProperty('left', canvas._lastLeft, 'important');
+        }
+        if (canvas.width > 0 && canvas.height > 0) {
+            width = canvas.width;
+            height = canvas.height;
+        } else {
+            canvas._lastData = data;
+            return;
+        }
+    } else if (!rect.width || !rect.height) {
         canvas._lastData = data;
         return;
+    } else {
+        width = Math.floor(rect.width);
+        height = Math.floor(rect.height);
     }
-    let width = Math.floor(rect.width);
-    let height = Math.floor(rect.height);
 
     // Ajuster la résolution du canvas pour correspondre à la taille visible
     // Réduire la résolution si retina (devicePixelRatio > 1) pour améliorer les performances
@@ -1909,8 +2006,7 @@ function drawSpectralVisualization(canvas, data) {
     }
     const devicePixelRatio = window.devicePixelRatio;
 
-    // Réduire drastiquement la résolution pendant la dichotomie (/4 des 2 dimensions = /16)
-    const isDichotomy = typeof window !== 'undefined' && window.calculationInProgress;
+    // isDichotomy déjà défini plus haut (éviter recalcul)
 
     // Adapter la précision en fonction du FPS et de l'état de convergence
     // Le canvas écoute l'événement 'calculationConverged' pour savoir quand augmenter la précision
@@ -1928,7 +2024,7 @@ function drawSpectralVisualization(canvas, data) {
 
     let resolutionFactor;
     if (isDichotomy) {
-        resolutionFactor = 4; // Pendant la dichotomie, toujours très basse résolution
+        resolutionFactor = 4; // Pendant la dichotomie (utilisé pour spectrumBarHeight)
     } else if (isConverged && precisionTarget === 'max') {
         // Convergence atteinte ET précision cible = max : précision maximale (pixel par pixel)
         resolutionFactor = 1; // Précision maximale (1 pixel = 1 pixel), même sur retina
@@ -1950,22 +2046,24 @@ function drawSpectralVisualization(canvas, data) {
         resolutionFactor = devicePixelRatio > 1 ? 2 : 1; // Haute précision (retina/2 ou 1)
     }
 
-    // Réduire la résolution pour améliorer les performances
-    width = Math.floor(width / resolutionFactor);
-    height = Math.floor(height / resolutionFactor);
+    if (!isDichotomy) {
+        // Réduire la résolution pour améliorer les performances (hors anim)
+        width = Math.floor(width / resolutionFactor);
+        height = Math.floor(height / resolutionFactor);
 
-    const displayWidth = width;
-    const displayHeight = height;
+        // Ajuster la taille interne du canvas si nécessaire
+        if (canvas.width !== width || canvas.height !== height) {
+            canvas.width = width;
+            canvas.height = height;
+        }
 
-    // Ajuster la taille interne du canvas si nécessaire
-    if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
-        canvas.width = displayWidth;
-        canvas.height = displayHeight;
+        // Ajuster le style pour que le canvas s'affiche à la bonne taille (upscale si nécessaire)
+        canvas.style.width = (width * resolutionFactor) + 'px';
+        canvas.style.height = (height * resolutionFactor) + 'px';
+    } else {
+        width = canvas.width;
+        height = canvas.height;
     }
-
-    // Ajuster le style pour que le canvas s'affiche à la bonne taille (upscale si nécessaire)
-    canvas.style.width = (width * resolutionFactor) + 'px';
-    canvas.style.height = (height * resolutionFactor) + 'px';
 
     // La barre doit toujours faire 20px en pixels d'affichage
     // Le canvas interne est réduit, puis agrandi par CSS avec resolutionFactor
@@ -1974,11 +2072,12 @@ function drawSpectralVisualization(canvas, data) {
     const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
     const axisMarginB = 75; // PLOT_MARGINS.b - zone sous l'axe (spectre + bornes)
 
-    // Nettoyer le canvas
-    ctx.clearRect(0, 0, width, height);
-
     // Zone de visualisation : jusqu'à l'axe (pas dans la marge)
     const visualizationHeight = height - axisMarginB;
+    const spectrumBarY = height - axisMarginB - 1; // Barre collée sous l'axe
+
+    // Nettoyer le canvas SANS la barre spectrale (éviter clignotement)
+    ctx.clearRect(0, 0, width, spectrumBarY);
 
     const upward_flux = data.upward_flux;
     // earth_flux est optionnel (peut être null)

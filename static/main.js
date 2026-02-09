@@ -40,6 +40,7 @@ if (typeof window !== 'undefined') {
     
     // Flag pour contrôler l'affichage des phases de debug
     window.isDebugPhases = false; // Désactiver les logs de phase pour nettoyer // Mettre à false pour désactiver les logs de phases
+    window.calculationInProgress = false; // Exposé pour plot.js (resizeCanvasToPlot skipReposition pendant dichotomie)
 }
 
 var CONST = window.CONST; /* var pour éviter redeclaration avec plot.js */
@@ -276,6 +277,7 @@ function getAvailableButtons(yearsAgo) {
 // Fonction pour désactiver tous les boutons
 function disableButtons() {
     calculationInProgress = true;
+    window.calculationInProgress = true;
     // Réinitialiser les flags de convergence
     if (typeof window !== 'undefined') {
         window.calculationConverged = false;
@@ -308,6 +310,7 @@ function disableButtons() {
 // Fonction pour réactiver les boutons selon l'époque géologique
 function enableButtons() {
     calculationInProgress = false;
+    window.calculationInProgress = false;
     
     // Activer l'animation de la planète après la fin des calculs
     // Chercher toutes les textures de planète et retirer la classe "paused"

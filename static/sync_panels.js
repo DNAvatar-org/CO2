@@ -148,13 +148,17 @@
         DATA['🧮']['🧮🔄🌊'] = 0;
         DATA['🧮']['🧮🔄🪩'] = 0;
         if (window.pd) window.pd('runComputeInParent', 'sync_panels.js', 'epochId=' + epochId + ' anim=' + DATA['🔘']['🔘🎬'] + ' T_init=' + DATA['🧮']['🧮🌡️']);
+        window.calculationInProgress = true; // Pour plot.js resizeCanvasToPlot (skipReposition pendant dichotomie)
         if (!DATA['🔘']['🔘🎬']) {
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
         } else if (!DATA['🧮']['🧮🌡️'] || DATA['🧮']['🧮🌡️'] <= 0) {
             var adj = (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'] + adj;
         }
-        if (!window.initForConfig()) return;
+        if (!window.initForConfig()) {
+            window.calculationInProgress = false;
+            return;
+        }
         // S'assurer que FluxManager a SOLAR_CONSTANT et GEOTHERMAL_FLUX (requis par updateFluxLabels)
         var epochId = DATA['📜']['🗿'];
         if (window.FluxManager && window.getGeologicalPeriodByName) {
@@ -162,11 +166,15 @@
             window.FluxManager.updateAllFluxes(epochId);
         }
         window.computeRadiativeTransfer().then(function (result) {
+            window.calculationInProgress = false;
             if (result === null) return;
             window.CO2_EVENTS.emit('compute:done', { DATA: window.DATA, result: result });
             projectToVisu(window.DATA);
             projectToScie(window.DATA);
-        }).catch(function (e) { console.error('[runComputeInParent]', e); });
+        }).catch(function (e) {
+            window.calculationInProgress = false;
+            console.error('[runComputeInParent]', e);
+        });
     };
 
     function initSyncPanels() {

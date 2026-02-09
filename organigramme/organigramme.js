@@ -4241,6 +4241,12 @@ window.updateFluxLabels = function (eventId) {
     // txtF est maintenant un objet avec dataId: 'atm_height_km' dans la config
     updateLabel('atm_height_km', `${atm_height_km.toFixed(0)} km`, 'text');
 
+    // Mettre à jour l'axe altitude du plot UNIQUEMENT à la fin (ProcessFinished).
+    // Pendant la convergence (cycleCalcul), ne pas toucher pour éviter que la barre bouge.
+    if (eventId === 'ProcessFinished' && typeof window.updatePlotAltitudeAxis === 'function') {
+        window.updatePlotAltitudeAxis(atm_height_km);
+    }
+
     // Réémis : forçage radiatif total
     updateLabel('forcing_total', forcing_total);
 
@@ -4297,12 +4303,6 @@ window.updateFluxLabels = function (eventId) {
     const passing_albedo_percent = (1 - albedo_num) * 100;
     // S'assurer que le résultat est correct (0% si albedo = 1, 100% si albedo = 0)
     updateLabel('passing_albedo_percent', passing_albedo_percent);
-
-    var debugIds = ['core_flux_wm', 'atm_height_km', 'co2_percent', 'co2_forcing_wm', 'ch4_percent', 'ch4_forcing_wm', 'h2o_percent', 'h2o_forcing_wm', 'albedo_percents'];
-    debugIds.forEach(function (id) {
-        var el = fluxDiagram.querySelector('[data-id="' + id + '"]');
-        if (el) console.log('[updateFluxLabels] ' + id + ' →', el.textContent.trim().substring(0, 60));
-    });
 
     // Ne plus forcer automatiquement le bouton albedo en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%
