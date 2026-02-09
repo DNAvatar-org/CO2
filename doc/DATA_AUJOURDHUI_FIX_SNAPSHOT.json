@@ -1,0 +1,11 @@
+{
+  "_comment": "Template : coller la sortie Aujourd'hui 2025 depuis la branche fix/regression-convergence-T (git checkout fix/regression-convergence-T). Comparer avec doc/DATA_AUJOURDHUI_2025_SNAPSHOT.json",
+  "_instructions": "1. git checkout fix/regression-convergence-T 2. Lancer app, sélectionner Aujourd'hui 3. Copier JSON affiché (ou console copyPayload) 4. Remplacer ce fichier",
+  "_date": "À remplir",
+  "config": { "epoch": "📱 2025", "Ma": 0 },
+  "convergence": { "T_finale_C": null, "T_finale_K": null, "cible_K": 288.8 },
+  "📛": { "🧲📛": null, "🍰📛🏭": null, "🍰📛💧": null, "🍰📛⛽": null },
+  "getH2OVaporEDSScale": null,
+  "💧": { "🍰🫧💧": null },
+  "🫧": { "🍰🫧🏭": null }
+}

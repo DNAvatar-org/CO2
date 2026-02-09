@@ -1,9 +1,10 @@
 // File: calculations.js - Calculs de transfert radiatif
 // Desc: Module de calculs radiatifs
-// Version 1.0.2
+// Version 1.0.3
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Logs: v1.0.2 - kappa_H2O × H2O_VAPOR_EDS_SCALE (évite masquage CO2, doc/VAPEUR_VS_NUAGES.md)
+// Logs: v1.0.3 - Attribution EDS Schmidt 2010 : transfert overlap/2 de H2O vers CO2 à chaque (couche,λ), total 100%
 
 
 function temperatureAtZ(z) {
@@ -368,14 +369,16 @@ function calculateFluxForT0() {
                 emitted_flux[i][j] = em_flux;
                 absorbed_flux[i][j] = abs_flux;
 
-                // Attribution EDS par gaz (tau_i/tau × flux absorbé)
+                // Attribution EDS : Schmidt 2010 "split the difference" sur chevauchement H2O–CO2 (lit. ~50% H2O).
+                // overlap = min(τ_H2O, τ_CO2). On transfère overlap/2 de H2O vers CO2 : H2O perd overlap/2, CO2 gagne overlap/2 (total = 100%).
                 const tau_CO2 = Math.max(0, kappa_CO2 * delta_z_real);
                 const tau_H2O = Math.max(0, kappa_H2O * delta_z_real);
                 const tau_CH4 = Math.max(0, kappa_CH4 * delta_z_real);
                 const tau_tot = tau_CO2 + tau_H2O + tau_CH4;
                 if (tau_tot > 1e-20) {
-                    sum_blocked_CO2 += (tau_CO2 / tau_tot) * abs_flux;
-                    sum_blocked_H2O += (tau_H2O / tau_tot) * abs_flux;
+                    const overlap_H2O_CO2 = Math.min(tau_H2O, tau_CO2);
+                    sum_blocked_H2O += ((tau_H2O - overlap_H2O_CO2 * 0.5) / tau_tot) * abs_flux;
+                    sum_blocked_CO2 += ((tau_CO2 + overlap_H2O_CO2 * 0.5) / tau_tot) * abs_flux;
                     sum_blocked_CH4 += (tau_CH4 / tau_tot) * abs_flux;
                 }
             }
@@ -458,14 +461,15 @@ function calculateFluxForT0() {
                 emitted_flux[i][j] = em_flux;
                 absorbed_flux[i][j] = abs_flux;
 
-                // Attribution EDS par gaz (tau_i/tau × flux absorbé)
+                // Attribution EDS : Schmidt "split the difference" H2O–CO2 (H2O perd overlap/2, CO2 gagne overlap/2)
                 const tau_CO2_s = Math.max(0, kappa_CO2 * delta_z_real);
                 const tau_H2O_s = Math.max(0, kappa_H2O * delta_z_real);
                 const tau_CH4_s = Math.max(0, kappa_CH4 * delta_z_real);
                 const tau_tot_s = tau_CO2_s + tau_H2O_s + tau_CH4_s;
                 if (tau_tot_s > 1e-20) {
-                    sum_blocked_CO2 += (tau_CO2_s / tau_tot_s) * abs_flux;
-                    sum_blocked_H2O += (tau_H2O_s / tau_tot_s) * abs_flux;
+                    const overlap_H2O_CO2_s = Math.min(tau_H2O_s, tau_CO2_s);
+                    sum_blocked_H2O += ((tau_H2O_s - overlap_H2O_CO2_s * 0.5) / tau_tot_s) * abs_flux;
+                    sum_blocked_CO2 += ((tau_CO2_s + overlap_H2O_CO2_s * 0.5) / tau_tot_s) * abs_flux;
                     sum_blocked_CH4 += (tau_CH4_s / tau_tot_s) * abs_flux;
                 }
             }

@@ -1078,8 +1078,10 @@
                 const breakdown = DATA['📛'];
                 if (breakdown) {
                     const fmt = (v) => (v != null && Number.isFinite(v)) ? v.toFixed(2) : '—';
+                    const h2oScale = window.getH2OVaporEDSScale();
                     html += '<div class="config-value convergence-breakdown-block" style="margin-top:10px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;">';
                     html += '<strong>EDS (effet de serre)</strong>: 🧲📛 = ' + fmt(breakdown['🧲📛']) + ' W/m²<br>';
+                    html += '<em>getH2OVaporEDSScale</em> = ' + (Number.isFinite(h2oScale) ? h2oScale.toFixed(3) : '—') + ' (κ_H₂O×scale)<br>';
                     html += '<strong>Répartition par gaz</strong> (🍰📛 ∈ [0, 1]):<br>';
                     if (breakdown['🍰📛🏭'] != null && breakdown['🍰📛🏭'] > 0) html += `&nbsp;• CO₂: ${fmt(breakdown['🍰📛🏭'])}<br>`;
                     if (breakdown['🍰📛💧'] != null && breakdown['🍰📛💧'] > 0) html += `&nbsp;• H₂O: ${fmt(breakdown['🍰📛💧'])}<br>`;

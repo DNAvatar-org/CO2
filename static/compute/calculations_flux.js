@@ -1,7 +1,7 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.42
+// Version 1.2.43
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -59,6 +59,7 @@
 // - v1.2.38 : initForConfig : T_epoch si |T_solver-T_epoch|≤20K (1800 OK), T réelle si transition extrême (Corps noir→Archéen)
 // - v1.2.39 : cycleDeLeau : guard _lastCycleRef undefined avant accès albedo/vapor (runComputeInParent crossing)
 // - v1.2.42 : postMessage compute:progress iframe→parent pour actualiser organigramme (core_flux_wm, atm_height_km, h2o, albedo)
+// - v1.2.43 : logEdsBreakdownWithScale() — log getH2OVaporEDSScale + répartition CO2/H2O/CH4% à chaque EDS breakdown
 // ============================================================================
 
 // ============================================================================
@@ -79,6 +80,16 @@
 // Fonctions getAnimState() et getEpochDateConfig() : définies dans compute.js (chargé avant ce fichier)
 // window.epoch est utilisé directement (pas de fonction getEpochConfig)
 // On utilise les fonctions globales définies dans compute.js
+
+/** Log EDS breakdown + getH2OVaporEDSScale pour debug (valeur H₂O vs scale). */
+function logEdsBreakdownWithScale() {
+    const scale = window.getH2OVaporEDSScale();
+    const b = window.DATA && window.DATA['📛'];
+    const co2 = b && b['🍰📛🏭'] != null ? (b['🍰📛🏭'] * 100).toFixed(1) : '—';
+    const h2o = b && b['🍰📛💧'] != null ? (b['🍰📛💧'] * 100).toFixed(1) : '—';
+    const ch4 = b && b['🍰📛⛽'] != null ? (b['🍰📛⛽'] * 100).toFixed(1) : '—';
+    console.log('[logEdsBreakdownWithScale][calculations_flux.js] getH2OVaporEDSScale=' + (Number.isFinite(scale) ? scale.toFixed(3) : '?') + ' | Répartition CO2%=' + co2 + ' H2O%=' + h2o + ' CH4%=' + ch4);
+}
 
 /** Tolérance flux (W/m²) = max(4σT³×precision_K, tolMinWm2). Source unique, pas de duplication. */
 function computeToleranceWm2(T_K, precision_K) {
@@ -223,7 +234,7 @@ function computeSearchIncrement() {
     if (Math.abs(delta) > window.CONFIG_COMPUTE.largeDeltaFactor * tol) {
         cap = window.CONFIG_COMPUTE.maxSearchStepLargeK;
     }
-    if (T_K > 2000) cap = Math.min(80, cap);
+    cap = Math.min(window.CONFIG_COMPUTE.maxSearchStepLargeK, cap);
     if (Math.abs(res) > cap) res = Math.sign(res) * cap;
     return res;
 }
@@ -398,7 +409,7 @@ async function runRadiatifOnly() {
     DATA['🧲']['🔺🧲'] = delta_equilibre_init;
     const bInit = DATA['📊'] && DATA['📊'].eds_breakdown;
     DATA['📛'] = bInit ? { '🧲📛': bInit.EDS_Wm2, '🍰📛🏭': bInit.CO2.pct, '🍰📛💧': bInit.H2O.pct, '🍰📛⛽': bInit.CH4.pct } : null;
-    if (DATA['📛']) window.calculateH2OGreenhouseForcing();
+    if (DATA['📛']) { window.calculateH2OGreenhouseForcing(); logEdsBreakdownWithScale(); }
     DATA['🧮']['🧲🔬'] = computeToleranceWm2(DATA['🧮']['🧮🌡️'], EPOCH['🧲🔬']);
 
     DATA['🧮']['🧮☯'] = Math.sign(delta_equilibre_init);
@@ -472,7 +483,7 @@ async function runRadiatifOnly() {
         DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
         const b = DATA['📊'] && DATA['📊'].eds_breakdown;
         DATA['📛'] = b ? { '🧲📛': b.EDS_Wm2, '🍰📛🏭': b.CO2.pct, '🍰📛💧': b.H2O.pct, '🍰📛⛽': b.CH4.pct } : null;
-        if (DATA['📛']) window.calculateH2OGreenhouseForcing();
+        if (DATA['📛']) { window.calculateH2OGreenhouseForcing(); logEdsBreakdownWithScale(); }
         // Phase AVANT mise à jour : pour affichage cohérent (phase utilisée pour le pas précédent)
         const phaseAtInput = DATA['🧮']['🧮⚧'];
 
@@ -627,7 +638,7 @@ async function runRadiatifOnly() {
             DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
             const bCross = DATA['📊'] && DATA['📊'].eds_breakdown;
             DATA['📛'] = bCross ? { '🧲📛': bCross.EDS_Wm2, '🍰📛🏭': bCross.CO2.pct, '🍰📛💧': bCross.H2O.pct, '🍰📛⛽': bCross.CH4.pct } : null;
-            if (DATA['📛']) window.calculateH2OGreenhouseForcing();
+            if (DATA['📛']) { window.calculateH2OGreenhouseForcing(); logEdsBreakdownWithScale(); }
             // Même bloc Dicho/bounds qu'en flux normal : sinon snapshot incohérent (☯, [🔽,🔼])
             if (DATA['🧮']['🧮⚧'] === 'Search' && DATA['🧮']['🧮🔄☀️'] > 0) {
             if (DATA['🧲']['🔺🧲'] > 0) {
@@ -744,7 +755,7 @@ async function runRadiatifOnly() {
         DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
         const bPost = DATA['📊'] && DATA['📊'].eds_breakdown;
         DATA['📛'] = bPost ? { '🧲📛': bPost.EDS_Wm2, '🍰📛🏭': bPost.CO2.pct, '🍰📛💧': bPost.H2O.pct, '🍰📛⛽': bPost.CH4.pct } : null;
-        if (DATA['📛']) window.calculateH2OGreenhouseForcing();
+        if (DATA['📛']) { window.calculateH2OGreenhouseForcing(); logEdsBreakdownWithScale(); }
         // Ne pas mettre à jour ☯ si changement de signe (Δ×☯<0) : garder ☯ pour détecter le passage en Dicho au tour suivant
         const signChangePost = (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0);
         if (!signChangePost) DATA['🧮']['🧮☯'] = Math.sign(DATA['🧲']['🔺🧲']);
