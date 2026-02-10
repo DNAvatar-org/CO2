@@ -45,9 +45,9 @@ function getEnabledStates() {
     DATA['🔘']['🔘⛽📛'] = ch4Cell ? ch4Cell.classList.contains('checked') : true;
     DATA['🔘']['🔘🏭📛'] = co2Cell ? co2Cell.classList.contains('checked') : true;
     DATA['🔘']['🔘🪩'] = albedoCell ? albedoCell.classList.contains('checked') : true;
-    // Source unique visu : plot-anim-toggle (index.html charge visu_radiatif.html)
-    const animBtn = document.getElementById('plot-anim-toggle');
-    DATA['🔘']['🔘🎬'] = animBtn.classList.contains('selected');
+    // Source unique visu : plot-anim-toggle (index.html) ou anim-toggle (test_computeRadiativeTransfer.html)
+    const animBtn = document.getElementById('plot-anim-toggle') || document.getElementById('anim-toggle');
+    DATA['🔘']['🔘🎬'] = animBtn ? animBtn.classList.contains('selected') : (DATA['🔘']['🔘🎬'] != null ? DATA['🔘']['🔘🎬'] : true);
     
     // Retourner true car DATA a été modifié
     return true;

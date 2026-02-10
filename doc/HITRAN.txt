@@ -1,0 +1,37 @@
+Formules pour scaler T et P (générales pour H₂O, CO₂, CH₄)
+Les équations sont les mêmes pour ces gaz, avec des nuances (H₂O a plus de self-broadening). Tu as besoin de :
+
+La fonction de partition Q(T) : HITRAN fournit des polynômes ou tables interpolables (ex. Q(T) ≈ a + b T + c T²... pour chaque isotopologue). Interpolation linéaire/log suffit pour Q entre points.
+Lineshape : Typiquement Voigt (Lorentz + Doppler), calculable en JS.
+
+
+Intensité de ligne S(T) (cm⁻¹ / (molécule·cm⁻²)) :$$S(T) = S(T_\mathrm{ref}) \cdot \frac{Q(T_\mathrm{ref})}{Q(T)} \cdot \exp\left( -c_2 E'' \left( \frac{1}{T} - \frac{1}{T_\mathrm{ref}} \right) \right) \cdot \frac{1 - \exp\left( -c_2 \nu_{ij} / T \right)}{1 - \exp\left( -c_2 \nu_{ij} / T_\mathrm{ref} \right)}$$
+c₂ = hc / k ≈ 1.4388 cm·K (constante).
+E'' : Énergie de l'état bas (de HITRAN).
+ν_ij : Position de la ligne.
+À haut T (>1000 K), ajoute hot bands de HITEMP (lignes supplémentaires).
+Perte si interpolé ? Minime ; cette eq. est exacte (dérivée Boltzmann).
+
+Broadening (largeur demi-hauteur) γ(T, P) (cm⁻¹ / atm) :
+Pour air-broadening (typique atmos) : γ_air(T) = γ_air(T_ref) · (T_ref / T)^n_air
+Pour self-broadening (important pour H₂O humide) : γ_self(T) = γ_self(T_ref) · (T_ref / T)^n_self
+Total : γ_L = P · [X_self · γ_self(T) + X_air · γ_air(T)] où X = fractions molaires (X_air ≈1 - X_self).
+n_air/self : Exposant T-dépendance (0.5-0.8 typique, de HITRAN).
+Shift pression : δ(P) = P · δ_ref (linéaire en P, faible T-dépendance souvent négligée).
+
+Cross-section σ(λ, T, P) (cm² / molécule) ou coefficient d'absorption k(λ) = n · σ(λ) :
+Somme sur lignes i : k(λ) = ∑ S_i(T) · f(λ - ν_i - δ P, γ_L, γ_D) où f est la lineshape (ex. Voigt).
+γ_D (Doppler) = (ν_i / c) · √(2 k T ln2 / M) ≈ 3.58e-7 · ν_i · √(T / M) (M masse molaire).
+Pas d'eq. simple pour simuler tout ; HITRAN donne les params, tu appliques.
+
+
+Spécificités par molécule : Plus simple pour CO₂/CH₄ ?
+
+H₂O : Plus complexe (millions de lignes, forte T-dépendance via hot bands/continuum). Self-broadening dominant en bas atmos (γ_self ~5x γ_air). Continuum (MT_CKD model) séparé, pas dans lignes – ajoute un fond continu empirique. Pour haut T (jusqu'à 2300°C), HITEMP indispensable (inclut rotations/vibrations excitées). Interpolation des params ? Pas besoin ; eq. exactes. Mais fichier gros – subset à bandes clés (6.3 µm, 17 µm comme ta formule).
+CO₂ : Plus simple – moins de lignes actives à room T, bandes bien isolées (15 µm dominante). Hot bands pour haut T (HITEMP a +lignes). T-dépendance forte pour intensité (E'' élevé pour certaines). P-linéaire clair. Oui, interpolable sans perte via eq. (pads approximants pour n_air dans papers).
+CH₄ : Intermédiaire – polyads complexes, mais eq. identiques. Broadening par H₂/He/CO₂ pour planètes (nouveautés HITRAN2024). À haut T, plus de lignes, mais fichier plus petit (0.4 GB HITEMP). Semi-empirique pour manquants (Padé approximants pour γ(T)).
+
+Conseils pour ton implémentation web/JS
+
+Télécharge subset : Sur hitran.org, filtre par molécule/bande/ν_min-max (ex. 12-18 µm pour overlap CO₂-H₂O). Compressé bz2 → ~Mo. Parse en JS (lignes texte fixes 160 chars).
+Calcule dynamiquement : Charge lignes en array, pour un T/P donné, loop sur lignes proches de λ (±5-10 γ), applique scalings, somme Voigt (libs JS comme numeric.js pour convolutions).

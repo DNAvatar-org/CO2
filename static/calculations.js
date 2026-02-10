@@ -1,10 +1,12 @@
 // File: calculations.js - Calculs de transfert radiatif
 // Desc: Module de calculs radiatifs
-// Version 1.0.3
+// Version 1.0.5
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Logs: v1.0.2 - kappa_H2O × H2O_VAPOR_EDS_SCALE (évite masquage CO2, doc/VAPEUR_VS_NUAGES.md)
 // Logs: v1.0.3 - Attribution EDS Schmidt 2010 : transfert overlap/2 de H2O vers CO2 à chaque (couche,λ), total 100%
+// Logs: v1.0.4 - Nuages EDS : τ_cloud (corps gris) ∝ 🍰🪩⛅ (albédo), réparti troposphère ; eds_breakdown.Clouds
+// Logs: v1.0.5 - CLOUD_LW_TAU_REF = 1 (lit. Stephens 1978, Chylek 1982 : τ overcast ~ 0.5–2 ; ref=1 → τ=coverage)
 
 
 function temperatureAtZ(z) {
@@ -25,8 +27,9 @@ function temperatureAtZ(z) {
 
 function crossSectionCO2(wavelength) {
     const CONST = window.CONST;
-    const exponent = CONST.CO2_SIGMA_LOG_PREFACTOR - CONST.CO2_SIGMA_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_CO2_CENTER) / CONST.LAMBDA_CO2_CENTER);
-    return Math.pow(10, exponent);
+    const T_ref = window.HITRAN.T_REF_K;
+    const P_ref = CONST.STANDARD_ATMOSPHERE_PA;
+    return window.HITRAN.crossSectionCO2FromLines(wavelength, T_ref, P_ref);
 }
 
 function waterVaporMixingRatio(z, r0_override = null) {
@@ -41,9 +44,9 @@ function waterVaporMixingRatio(z, r0_override = null) {
 
 function crossSectionH2O(wavelength) {
     const CONST = window.CONST;
-    const sigma1 = Math.pow(10, CONST.H2O_SIGMA_1_LOG_PREFACTOR - CONST.H2O_SIGMA_1_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_H2O_1) / CONST.LAMBDA_H2O_1));
-    const sigma2 = Math.pow(10, CONST.H2O_SIGMA_2_LOG_PREFACTOR - CONST.H2O_SIGMA_2_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_H2O_2) / CONST.LAMBDA_H2O_2));
-    return Math.max(sigma1, sigma2);
+    const T_ref = window.HITRAN.T_REF_K;
+    const P_ref = CONST.STANDARD_ATMOSPHERE_PA;
+    return window.HITRAN.crossSectionH2OFromLines(wavelength, T_ref, P_ref);
 }
 
 function waterVaporFractionAtZ(z) {
@@ -61,12 +64,12 @@ function waterVaporFractionAtZ(z) {
 // MÉTHANE (CH4)
 // ============================================================================
 
-// Section efficace d'absorption CH4 (approximation)
+// Section efficace CH4 à partir des lignes HITRAN (hitran.js + hitran_lines_CH4.js)
 function crossSectionCH4(wavelength) {
     const CONST = window.CONST;
-    const sigma1 = Math.pow(10, CONST.CH4_SIGMA_1_LOG_PREFACTOR - CONST.CH4_SIGMA_1_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_CH4_1) / CONST.LAMBDA_CH4_1));
-    const sigma2 = Math.pow(10, CONST.CH4_SIGMA_2_LOG_PREFACTOR - CONST.CH4_SIGMA_2_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_CH4_2) / CONST.LAMBDA_CH4_2));
-    return Math.max(sigma1, sigma2);
+    const T_ref = window.HITRAN.T_REF_K;
+    const P_ref = CONST.STANDARD_ATMOSPHERE_PA;
+    return window.HITRAN.crossSectionCH4FromLines(wavelength, T_ref, P_ref);
 }
 
 function methaneFractionAtZ(z) {
@@ -211,7 +214,7 @@ function calculateFluxForT0() {
     const optical_thickness = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const absorbed_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
-    let sum_blocked_CO2 = 0, sum_blocked_H2O = 0, sum_blocked_CH4 = 0;
+    let sum_blocked_CO2 = 0, sum_blocked_H2O = 0, sum_blocked_CH4 = 0, sum_blocked_clouds = 0;
 
     // Log du calcul spectral (désactivé pour réduire la taille des logs)
     // console.log(`📊 [calculateFluxForT0@calculations.js] Calcul spectral:`);
@@ -253,6 +256,15 @@ function calculateFluxForT0() {
             break;
         }
     }
+
+    // Nuages EDS : couplage avec albédo (🍰🪩⛅ déjà calculé par calculateAlbedo / calculateCloudFormationIndex).
+    // Absorption LW corps gris : τ_cloud total = cloud_coverage × CLOUD_LW_TAU_REF, réparti sur la troposphère.
+    // Réf. scientifique : ε = 1 − exp(−τ) avec τ ∝ LWP (Stephens 1978, J. Atmos. Sci. 35, 2123 ; Chylek & Ramaswamy 1982, J. Atmos. Sci. 39, 171).
+    // En broadband LW, τ effectif overcast typique ~ 0.5–2 (émissivité ~0.4–0.9). On prend ref=1 : overcast → τ=1 (ε≈0.63), 30% couverture → τ=0.3.
+    const cloud_coverage = (DATA['🪩'] != null && DATA['🪩']['🍰🪩⛅'] != null && Number.isFinite(DATA['🪩']['🍰🪩⛅'])) ? DATA['🪩']['🍰🪩⛅'] : 0;
+    const CLOUD_LW_TAU_REF = 1; // τ_total = coverage × ref. Lit. : τ overcast ~ 1–2 → ref = 1 (évite surévaluation type ref=5).
+    const tau_cloud_total = Math.max(0, cloud_coverage * CLOUD_LW_TAU_REF);
+    const tau_cloud_per_layer = i_trop > 0 ? tau_cloud_total / i_trop : 0;
 
     // ⚡ OPTIMISATION : Précalculer B_λ(T_trop) pour toutes les λ (après tropopause)
     const planck_trop = lambda_range.map(lambda =>
@@ -332,15 +344,15 @@ function calculateFluxForT0() {
             const kappa_H2O = kappa_H2O_raw * h2o_eds_scale;
             const kappa_CH4 = isFinite(n_CH4) && isFinite(cross_section_CH4[j]) ? cross_section_CH4[j] * sigma_broad * n_CH4 : 0;
 
-            // Coefficient d'absorption total (CO2 + H2O + CH4)
+            // Coefficient d'absorption total (CO2 + H2O + CH4) + nuages (corps gris, même τ pour toutes les λ)
             const kappa = kappa_CO2 + kappa_H2O + kappa_CH4;
+            const tau_cloud_layer = tau_cloud_per_layer;
 
-            const tau_raw = kappa * delta_z_real;
+            const tau_raw = kappa * delta_z_real + tau_cloud_layer;
             optical_thickness[i][j] = (Number.isFinite(tau_raw) && tau_raw >= 0) ? Math.min(tau_raw, TAU_EFF_MAX) : 0;
 
-            // 🔒 Corps noir = pas d'absorption (CO2=0 ET H2O réellement absent ET CH4 réellement absent)
-            // Vérifier les valeurs réelles, pas seulement les boutons
-            const has_absorption = (DATA['🫧']['🍰🫧🏭'] > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
+            // 🔒 Corps noir = pas d'absorption (gaz + nuages)
+            const has_absorption = (DATA['🫧']['🍰🫧🏭'] > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10) || (tau_cloud_layer > 1e-10);
             if (!has_absorption) {
                 // Pas d'absorption : corps noir pur, flux passe sans modification (clamp pour éviter overflow en somme)
                 upward_flux[i][j] = Math.max(-MAX_FLUX_PER_BAND, Math.min(MAX_FLUX_PER_BAND, flux_in[j]));
@@ -369,17 +381,17 @@ function calculateFluxForT0() {
                 emitted_flux[i][j] = em_flux;
                 absorbed_flux[i][j] = abs_flux;
 
-                // Attribution EDS : Schmidt 2010 "split the difference" sur chevauchement H2O–CO2 (lit. ~50% H2O).
-                // overlap = min(τ_H2O, τ_CO2). On transfère overlap/2 de H2O vers CO2 : H2O perd overlap/2, CO2 gagne overlap/2 (total = 100%).
+                // Attribution EDS : Schmidt H2O–CO2 + nuages (⛅) corps gris.
                 const tau_CO2 = Math.max(0, kappa_CO2 * delta_z_real);
                 const tau_H2O = Math.max(0, kappa_H2O * delta_z_real);
                 const tau_CH4 = Math.max(0, kappa_CH4 * delta_z_real);
-                const tau_tot = tau_CO2 + tau_H2O + tau_CH4;
+                const tau_tot = tau_CO2 + tau_H2O + tau_CH4 + tau_cloud_layer;
                 if (tau_tot > 1e-20) {
                     const overlap_H2O_CO2 = Math.min(tau_H2O, tau_CO2);
                     sum_blocked_H2O += ((tau_H2O - overlap_H2O_CO2 * 0.5) / tau_tot) * abs_flux;
                     sum_blocked_CO2 += ((tau_CO2 + overlap_H2O_CO2 * 0.5) / tau_tot) * abs_flux;
                     sum_blocked_CH4 += (tau_CH4 / tau_tot) * abs_flux;
+                    sum_blocked_clouds += (tau_cloud_layer / tau_tot) * abs_flux;
                 }
             }
 
@@ -497,14 +509,15 @@ function calculateFluxForT0() {
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
     const earth_flux_total = earth_flux.reduce((sum, val) => sum + val, 0);
     const EDS = earth_flux_total - total_flux;
-    const sum_blocked = sum_blocked_CO2 + sum_blocked_H2O + sum_blocked_CH4;
-    // pct ∈ [0, 1] (répartition absorption brute par gaz ; pas contribution nette EDS)
+    const sum_blocked = sum_blocked_CO2 + sum_blocked_H2O + sum_blocked_CH4 + sum_blocked_clouds;
+    // pct ∈ [0, 1] (répartition absorption brute par gaz + nuages)
     const pct = (v) => (sum_blocked > 1e-20 && Number.isFinite(v)) ? v / sum_blocked : 0;
     const eds_breakdown = {
         EDS_Wm2: EDS,
         CO2: { pct: pct(sum_blocked_CO2) },
         H2O: { pct: pct(sum_blocked_H2O) },
-        CH4: { pct: pct(sum_blocked_CH4) }
+        CH4: { pct: pct(sum_blocked_CH4) },
+        Clouds: { pct: pct(sum_blocked_clouds) }
     };
 
     // Log du delta (flux sortant - flux entrant initial)

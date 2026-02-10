@@ -7,10 +7,7 @@
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-// - Added CO2_SIGMA_*, CO2_SIGMA_EXPONENT (HAPI/HITRAN regression)
-// - Added CO2_FORCING_COEFFICIENT=5.35, CO2_REF_PPM=280 (Myhre 1998, évite dilution /10)
-// - Added H2O_SIGMA_1_*, H2O_SIGMA_2_* (HAPI/HITRAN, bandes 6.3 et 17 μm)
-// - Added CH4_SIGMA_1_*, CH4_SIGMA_2_* (HAPI/HITRAN, bandes 7.7 et 3.3 μm)
+// - CO2_FORCING_COEFFICIENT=5.35, CO2_REF_PPM=280 (Myhre 1998). Sections efficaces : hitran.js + lignes HITRAN.
 // - getH2OVaporEDSScale() — formule T,P,vapor,CO2 (pas d'époque), doc/VAPEUR_VS_NUAGES.md
 // ============================================================================
 
@@ -69,30 +66,15 @@ CONST.EVAPORATION_T_SCALE = 20;  // Facteur d'échelle température-évaporation
 
 // Forçage radiatif CO₂ (Myhre et al. 1998, IPCC)
 // ΔF_CO2 = CO2_FORCING_COEFFICIENT × ln(C/C₀) en W/m²
-// Vérifier qu'il n'est pas dilué par un facteur 10 (0.535 serait faux)
 CONST.CO2_FORCING_COEFFICIENT = 5.35;  // W/m² (standard, ne pas diviser par 10)
 CONST.CO2_REF_PPM = 280;  // ppm pré-industriel (référence C₀)
 
-// Constantes de longueur d'onde pour les bandes d'absorption (m)
-CONST.LAMBDA_CO2_CENTER = 15.0e-6;  // Centre de bande CO₂ (15 μm)
-// Paramètres section efficace CO₂ (régression HAPI/HITRAN, bande 15 μm)
-CONST.CO2_SIGMA_LOG_PREFACTOR = -21.921;  // log10(σ_peak) en m²/molécule
-CONST.CO2_SIGMA_EXPONENT = 112.89;        // largeur bande : σ = 10^(prefactor - exponent × |Δλ/λ0|)
-CONST.LAMBDA_H2O_1 = 6.3e-6;  // Première bande H₂O (6.3 μm)
-CONST.LAMBDA_H2O_2 = 17.0e-6;  // Deuxième bande H₂O (17 μm)
-// Paramètres section efficace H₂O (régression HAPI: -22/-23, 12/12 ; valeurs actuelles conservées pour EDS)
-CONST.H2O_SIGMA_1_LOG_PREFACTOR = -21.0;   // bande 6.3 μm (HAPI: -22)
-CONST.H2O_SIGMA_1_EXPONENT = 15.0;
-CONST.H2O_SIGMA_2_LOG_PREFACTOR = -21.0;   // bande 17 μm (HAPI: -23)
-CONST.H2O_SIGMA_2_EXPONENT = 18.0;
-// Réf Schmidt 2010 : vapeur ~50% EDS. Supprimé : H2O_VAPOR_EDS_SCALE_BASE (remplacé par formule T,P,vapor).
-CONST.LAMBDA_CH4_1 = 7.7e-6;  // Première bande CH₄ (7.7 μm)
-CONST.LAMBDA_CH4_2 = 3.3e-6;  // Deuxième bande CH₄ (3.3 μm)
-// Paramètres section efficace CH₄ (régression HAPI/HITRAN, bandes 7.7 et 3.3 μm)
-CONST.CH4_SIGMA_1_LOG_PREFACTOR = -20.0;   // bande 7.7 μm
-CONST.CH4_SIGMA_1_EXPONENT = 16.0;
-CONST.CH4_SIGMA_2_LOG_PREFACTOR = -21.0;   // bande 3.3 μm
-CONST.CH4_SIGMA_2_EXPONENT = 17.0;
+// Longueurs d'onde des bandes d'absorption (m) — affichage plot / marqueurs spectre. Sections efficaces : hitran.js + lignes HITRAN.
+CONST.LAMBDA_CO2_CENTER = 15.0e-6;   // CO₂ 15 μm
+CONST.LAMBDA_H2O_1 = 6.3e-6;         // H₂O 6.3 μm
+CONST.LAMBDA_H2O_2 = 17.0e-6;        // H₂O 17 μm
+CONST.LAMBDA_CH4_1 = 7.7e-6;         // CH₄ 7.7 μm
+CONST.LAMBDA_CH4_2 = 3.3e-6;         // CH₄ 3.3 μm
 
 // Coefficients d'albédo par type de surface (propriétés physiques constantes)
 // Ces valeurs sont des propriétés intrinsèques des matériaux, indépendantes de l'époque
