@@ -426,6 +426,6 @@ window.CONFIG_COMPUTE.plotSmoothSigmaBins = 8.0;//5.6;
 window.CONFIG_COMPUTE.maxPreviousLength = 300;  /* Historique convergence : 25 → 300 pour afficher tout le détail (évite pile LIFO trop petite) */
 // Logs diagnostics
 window.CONFIG_COMPUTE.logIceFixedDiagnostic = true;
-window.CONFIG_COMPUTE.logCloudProxyDiagnostic = false;
+window.CONFIG_COMPUTE.logCloudProxyDiagnostic = true;
 window.CONFIG_COMPUTE.logIrisDiagnostic = false;
 

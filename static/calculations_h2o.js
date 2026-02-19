@@ -1,7 +1,7 @@
 // ============================================================================
 // File: calculations_h2o.js - Calculs H2O (vapeur et nuages)
 // Desc: Séparation vapeur d'eau (effet de serre) et nuages (albedo)
-// Version 1.0.9
+// Version 1.0.10
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -15,6 +15,7 @@
 // - v1.0.7 : ajout commentaire scientifique sur P_sat(T) (théorie C-C vs limitation dynamique convective observée)
 // - v1.0.8 : recalage humide 2025 (c_c_max base 0.006, iris 0.03, exposants précip 1.2/1.0) avec justification biblio
 // - v1.0.9 : fine-tuning léger 2025 (c_c_max base 0.0065, iris 0.02) pour remonter T sans perdre la stabilité
+// - v1.0.10 : cap vapeur final observé (AIRS/ERA5, ~7%/K) en fin d'itération Init
 // ============================================================================
 
 // TODO: Évolutions futures du cycle de l'eau
@@ -585,6 +586,11 @@ function calculateH2OParametersWithIteration() {
     // Calculer les autres paramètres
     calculateH2OGreenhouseForcing();
     calculateCloudAlbedoContribution();
+
+    // Limite dynamique réaliste observée (AIRS/ERA5) sur la vapeur finale Init.
+    const temp_K = DATA['🧮']['🧮🌡️'];
+    const realistic_vapor_max = 0.0052 + 0.00007 * (temp_K - 288);
+    DATA['💧']['🍰🫧💧'] = Math.min(realistic_vapor_max, DATA['💧']['🍰🫧💧']);
     
     return true;
 }

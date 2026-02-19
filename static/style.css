@@ -23,6 +23,8 @@
     --base-color: green;
     /* Hauteur max contenu visu-panel : s'adapte au viewport pour éviter scrollbar/zone violette (desktop) */
     --visu-h: min(665px, calc(100vh - 165px));
+    /* Hauteur utile des panneaux glass alignés en bas (desktop) */
+    --visu-panel-content-h: calc(var(--visu-h) - 16px);
 }
 
 body {
@@ -167,6 +169,28 @@ sup {
     flex-direction: column;
     gap: 5px;
     flex: 0 0 auto;
+}
+
+/* Alignement bas des panneaux (desktop) :
+   title-container + gap + flux-diagram = timeline-display = plot-container-wrapper */
+@media (min-width: 1000px) {
+    #visu-panel .title-container {
+        flex: 0 0 70px;
+    }
+    #visu-panel .flux-diagram-wrapper {
+        /* Organigramme : occuper tout l'espace restant sous le titre */
+        flex: 0 0 calc(var(--visu-panel-content-h) - 55px);
+        height: calc(var(--visu-panel-content-h) - 55px);
+        min-height: 0;
+    }
+    #visu-panel .flux-diagram {
+        height: 100%;
+        min-height: 0;
+    }
+    #visu-panel .timeline-display,
+    #visu-panel .plot-container-wrapper {
+        height: var(--visu-panel-content-h);
+    }
 }
 
 .left-timeline {
@@ -324,7 +348,7 @@ h1 {
 
 .plot-container-wrapper {
     padding: 0 0 0 0;
-    height: 649px;
+    height: var(--visu-panel-content-h);
     /* Même hauteur que #plot-container */
     position: relative;
     overflow: visible;
@@ -1750,7 +1774,7 @@ body.mode-dark .plot-overlay-title {
     display: flex;
     flex-direction: column;
     flex: 0 0 auto;
-    height: 665px;
+    height: var(--visu-panel-content-h);
     position: relative; /* Pour positionner l'overlay en absolute par rapport à ce conteneur si besoin */
 }
 
@@ -1763,7 +1787,7 @@ body.mode-dark .plot-overlay-title {
     /* gap: 15px; */
     width: 80px;
     align-items: center;
-    height: 649px; /* Remplir le parent */
+    height: var(--visu-panel-content-h); /* Remplir le parent (dynamique viewport) */
     font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     position: relative; /* Pour l'overlay */
 }

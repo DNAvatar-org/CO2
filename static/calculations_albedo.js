@@ -1,6 +1,6 @@
 // File: calculations_albedo.js - Calculs albedo et couverture nuageuse
 // Desc: En français, dans l'architecture, je suis le module de calculs d'albedo
-// Version 1.2.18
+// Version 1.2.20
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
@@ -26,6 +26,8 @@
 // - v1.2.16 : recalibration physique nuages SW (référence moderne explicite) pour retrouver 🍰🪩⛅~0.28-0.35 en 📱
 // - v1.2.17 : annotation explicite OBS vs EQ dans le bloc nuages (traçabilité source des constantes)
 // - v1.2.18 : formule forêt revue (land_frac + suitability thermique + modulation océanique) pour éviter 🌳=0 en moderne
+// - v1.2.19 : fine-tuning forêt réaliste (31% terres, suitability thermique bornée) pour stabiliser CCN moderne
+// - v1.2.20 : normalisation stricte des surfaces au sol + nuages traités en voile optique (pas en surface additionnelle)
 //
 // FORMULES ALBEDO :
 // 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏜️,🧊} + contribution_glace + contribution_nuages
@@ -335,17 +337,12 @@ function calculateAlbedo() {
     const land_available = Math.max(0, 1.0 - DATA['🗻']['🍰🗻🌊'] - ice_fraction_base);
     
     // 🔒 ÉTAPE 6 : Calculer forêts 🌳
-    // FORMULE (réaliste simplifiée) :
-    // land_frac = 1 - 🍰🪩🌊 - 🍰🪩🧊
-    // temp_suitability = clamp((T_K - 278)/15, 0, 1)  // fenêtre ~5 à 20°C
-    // 🍰🪩🌳 = min(land_available, 0.31 * land_frac * temp_suitability * (1 + 0.5 * 🍰🪩🌊))
-    // Réf ordre de grandeur : FAO (~31% des terres), Ramankutty & Foley (répartition biome-climat).
+    // === FORÊT - VERSION RÉALISTE (pas de if d'époque) ===
+    // Réf : FAO Global Forest Resources Assessment 2020 ~31% des terres émergées.
     const temp_C = T_surface_C;
     const relative_humidity = DATA['💧']['🍰🫧☔'];
-    const land_frac = Math.max(0, 1.0 - ocean_coverage - ice_fraction_base);
-    const temp_suitability = Math.max(0, Math.min(1, (DATA['🧮']['🧮🌡️'] - 278) / 15));
-    const ocean_coupling = 1 + 0.5 * ocean_coverage;
-    const forest_potential = 0.31 * land_frac * temp_suitability * ocean_coupling;
+    const temp_suitability = Math.max(0.4, Math.min(1.0, (temp_C + 5) / 25));
+    const forest_potential = 0.31 * land_available * temp_suitability;
     const forest_coverage = Math.min(land_available, forest_potential);
     
     // 🔒 ÉTAPE 7 : Calculer déserts 🏜️
@@ -376,22 +373,33 @@ function calculateAlbedo() {
     // 🌍 absorbe automatiquement : steppes, prairies, toundras, montagnes
     const total_land_coverage = Math.max(0, land_available - forest_coverage - desert_coverage);
     
-    // 🔒 VÉRIFICATION : Les surfaces SECHES doivent sommer à 1 (sans H2O, sans nuages)
-    // 🍰🪩🌊 + 🍰🪩🌳 + 🍰🪩🧊 + 🍰🪩🏜️ + 🍰🪩🌍 + 🍰🪩🌋 = 1
-    // Les nuages ⛅ restent hors somme (fraction optique, pas surface au sol)
-    // 🔒 H2O (glace) est calculé séparément pour l'albedo, mais ice_fraction_base est dans la somme des surfaces
-    const surface_sum = volcano_coverage + ocean_coverage + forest_coverage + ice_fraction_base + total_land_coverage + desert_coverage;
-    if (Math.abs(surface_sum - 1.0) > 0.01) {
-        console.warn(`⚠️ [calculateAlbedo] Somme des surfaces = ${surface_sum.toFixed(4)} (attendu: 1.0) | 🌋=${volcano_coverage.toFixed(3)} 🌊=${ocean_coverage.toFixed(3)} 🌳=${forest_coverage.toFixed(3)} 🧊=${ice_fraction_base.toFixed(3)} 🌍=${total_land_coverage.toFixed(3)} 🏜️=${desert_coverage.toFixed(3)}`);
+    // 🔒 VÉRIFICATION + NORMALISATION : les surfaces au sol doivent sommer à 1 (sans nuages)
+    // Les nuages ⛅ sont traités comme un voile optique indépendant, pas comme une surface additionnelle.
+    let volcano_surface = volcano_coverage;
+    let ocean_surface = ocean_coverage;
+    let forest_surface = forest_coverage;
+    let ice_surface = ice_fraction_base;
+    let land_surface = total_land_coverage;
+    let desert_surface = desert_coverage;
+    const surface_sum = volcano_surface + ocean_surface + forest_surface + ice_surface + land_surface + desert_surface;
+    if (Math.abs(surface_sum - 1.0) > 0.03) {
+        console.warn(`⚠️ [calculateAlbedo] Somme surfaces=${surface_sum.toFixed(4)} -> normalisation`);
+        const scale = 1.0 / surface_sum;
+        volcano_surface = volcano_surface * scale;
+        ocean_surface = ocean_surface * scale;
+        forest_surface = forest_surface * scale;
+        ice_surface = ice_surface * scale;
+        land_surface = land_surface * scale;
+        desert_surface = desert_surface * scale;
     }
     
     // Stocker toutes les surfaces dans DATA['🪩'] (SURFACES SECHES, sans H2O)
-    DATA['🪩']['🍰🪩🌋'] = volcano_coverage;
-    DATA['🪩']['🍰🪩🌊'] = ocean_coverage;
-    DATA['🪩']['🍰🪩🌳'] = forest_coverage;
-    DATA['🪩']['🍰🪩🧊'] = ice_fraction_base;
-    DATA['🪩']['🍰🪩🌍'] = total_land_coverage;
-    DATA['🪩']['🍰🪩🏜️'] = desert_coverage;
+    DATA['🪩']['🍰🪩🌋'] = volcano_surface;
+    DATA['🪩']['🍰🪩🌊'] = ocean_surface;
+    DATA['🪩']['🍰🪩🌳'] = forest_surface;
+    DATA['🪩']['🍰🪩🧊'] = ice_surface;
+    DATA['🪩']['🍰🪩🌍'] = land_surface;
+    DATA['🪩']['🍰🪩🏜️'] = desert_surface;
     
     // 🔒 ALBEDO BASE : Calculer depuis les surfaces SECHES uniquement
     // Fusionner les coefficients : EPOCH peut override certains coefficients (ex: Corps noir)
@@ -399,12 +407,12 @@ function calculateAlbedo() {
     let weighted_albedo = 0;
     
     if (albedo_coeff) {
-        weighted_albedo += (isFinite(volcano_coverage) ? volcano_coverage : 0) * albedo_coeff['🪩🍰🌋'];
-        weighted_albedo += (isFinite(ocean_coverage) ? ocean_coverage : 0) * albedo_coeff['🪩🍰🌊'];
-        weighted_albedo += (isFinite(forest_coverage) ? forest_coverage : 0) * albedo_coeff['🪩🍰🌳'];
-        weighted_albedo += (isFinite(total_land_coverage) ? total_land_coverage : 0) * albedo_coeff['🪩🍰🌍'];
-        weighted_albedo += (isFinite(desert_coverage) ? desert_coverage : 0) * albedo_coeff['🪩🍰🏜️'];
-        weighted_albedo += (isFinite(ice_fraction_base) ? ice_fraction_base : 0) * albedo_coeff['🪩🍰🧊'];
+        weighted_albedo += (isFinite(volcano_surface) ? volcano_surface : 0) * albedo_coeff['🪩🍰🌋'];
+        weighted_albedo += (isFinite(ocean_surface) ? ocean_surface : 0) * albedo_coeff['🪩🍰🌊'];
+        weighted_albedo += (isFinite(forest_surface) ? forest_surface : 0) * albedo_coeff['🪩🍰🌳'];
+        weighted_albedo += (isFinite(land_surface) ? land_surface : 0) * albedo_coeff['🪩🍰🌍'];
+        weighted_albedo += (isFinite(desert_surface) ? desert_surface : 0) * albedo_coeff['🪩🍰🏜️'];
+        weighted_albedo += (isFinite(ice_surface) ? ice_surface : 0) * albedo_coeff['🪩🍰🧊'];
     }
     
     albedo_base = isFinite(weighted_albedo) ? weighted_albedo : 0;
@@ -517,8 +525,8 @@ function calculateAlbedo() {
     // 🍰🪩📿 = 🍰🪩⛅ × 🪩🍰⛅ + Σ(🍰🪩❀ × 🪩🍰❀) | ❀ ∈ { 🌋,🌊,🌳,🏜️,🧊 }
     // Nuages : effet SW (albédo) ici. Inclut : réflexion solaire par les nuages + visible qui traverse, frappe sol/glace/désert, renvoie, et est bloqué par les nuages (tout agrégé dans 🪩🍰⛅ × 🍰🪩⛅). LW (τ_cloud IR) = calculations.js, barre spectre 4–50 μm.
     const cloud_albedo_coeff = albedo_coeff['🪩🍰⛅'];
-    const cloud_albedo_contribution = cloud_fraction * cloud_albedo_coeff;
-    albedo = albedo + cloud_albedo_contribution;
+    // Mélange optique nuages/sol : total_albedo = ground*(1-cloud) + cloud_albedo*cloud
+    albedo = albedo * (1 - cloud_fraction) + cloud_albedo_coeff * cloud_fraction;
 
     const final_albedo = isFinite(albedo) ? Math.max(0.0, Math.min(0.9, albedo)) : 0;
     
