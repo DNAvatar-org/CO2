@@ -102,7 +102,12 @@ function logDetailPremiersCalculs(stepLabel, DATA, CONST, extra) {
     }
     if (DATA['📛']) {
         const b = DATA['📛'];
-        add('EDS: total=' + (b['🧲📛'] != null ? b['🧲📛'].toFixed(1) : '?') + ' CO2%=' + (b['🍰📛🏭'] != null ? (b['🍰📛🏭'] * 100).toFixed(1) : '?') + ' H2O%=' + (b['🍰📛💧'] != null ? (b['🍰📛💧'] * 100).toFixed(1) : '?') + ' CH4%=' + (b['🍰📛⛽'] != null ? (b['🍰📛⛽'] * 100).toFixed(1) : '?'));
+        const eds = b['🧲📛'] != null ? b['🧲📛'] : 0;
+        const co2W = b['🍰📛🏭'] != null ? (eds * b['🍰📛🏭']).toFixed(2) : '?';
+        const h2oW = b['🍰📛💧'] != null ? (eds * b['🍰📛💧']).toFixed(2) : '?';
+        const ch4W = b['🍰📛⛽'] != null ? (eds * b['🍰📛⛽']).toFixed(2) : '?';
+        const cloudW = b['🍰📛⛅'] != null ? (eds * b['🍰📛⛅']).toFixed(2) : '?';
+        add('EDS W/m²: total=' + (eds > 0 ? eds.toFixed(2) : '?') + ' CO2=' + co2W + ' H2O=' + h2oW + ' CH4=' + ch4W + ' Nuages=' + cloudW + ' (%=part EDS)');
     }
     if (typeof window.getH2OVaporEDSScale === 'function') {
         add('H2O_VAPOR_EDS_SCALE=' + window.getH2OVaporEDSScale().toFixed(3));

@@ -30,7 +30,7 @@ UNITÉS:
 💧  H₂O
 ⛽  CH₄
 🏭  CO₂
-🌫  O₂
+🫁  O₂
 🧊  Glace
 ⛅  Nuages
 🌊  Océan
@@ -50,7 +50,7 @@ CALCULS:
 🚩  T0 (t° initiale)
 🪩  Albédo
 🌕  Flux géothermique
-📛  EDS (Forçage radiatif)
+📛  EDS (effet de serre)
 🌑  Corps noir
 ☁️  Index formation nuageuse [0,1]
 
@@ -117,7 +117,7 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🍰🫧💧  Prop.Rad.EDS H₂O atm.
 🍰🫧🏭  CO₂
 🍰🫧⛽  CH₄
-🍰🫧🌫  O₂
+🍰🫧🫁  O₂
 🍰🫧💨  N₂
 🍰🫧📿🌈  Σ(🍰🫧❀🌈) pour ❀∈{🏭,⛽,💧}
 🍰🫧🏭🌈  Capacité radiative IR de CO₂
@@ -130,7 +130,7 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 ⚖️🫧  Masse atmosphère sec
 ⚖️🏭  Masse CO₂
 ⚖️⛽  Masse CH₄
-⚖️🌫  Masse O₂
+⚖️🫁  Masse O₂
 ⚖️💨  Masse N₂
 
 💧 CYCLE DE L'EAU:
@@ -176,10 +176,10 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🔋🌕  Puissance du noyau
 
 📛 EDS (FORÇAGE RADIATIF):
-📛💧  Forçage radiatif H2O
-📛🏭  Forçage radiatif CO2
-📛⛽  Forçage radiatif CH4
-📿📛  Forçage radiatif total (EDS)
+📛💧  ΔF H2O affichage (convention)
+📛🏭  ΔF CO2 affichage (convention)
+📛⛽  ΔF CH4 affichage (convention)
+📿📛  ΔF total affichage (convention)
 
 🗻 GÉOLOGIE (SURFACES GÉOLOGIQUES):
 🍰🗻🌊  Surface océanique potentielle (bassin océanique, géologie)
@@ -238,7 +238,7 @@ PARTIE 3: FORMULES DE CALCUL
 🧪 = Masse molaire (kg/mol)
 📏🫧🧿 = Ligne de Kármán
 📏🫧🛩 = Tropopause
-🍰🫧❀ = Proportion radiative EDS - ∀ ❀ ∈ {🏭, ⛽, 🌫, 💨}
+🍰🫧❀ = Proportion radiative EDS - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨}
 🍰🫧💧 = Proportion radiative EDS de H₂O dans l'atmosphère
 🍰🫧❀🌈 = Capacité radiative IR de ❀ - ∀ ❀ ∈ {🏭, ⛽, 💧}
 🍰🫧📿🌈 = Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, ⛽, 💧} (pour normalisation)
@@ -282,9 +282,9 @@ Note: 🗻 = Géologie (Couche A) : surfaces fixes déterminées par la géologi
       indépendantes des stocks d'eau
 
 ⚖️ MASSES:
-⚖️❀ = Masse ❀ - ∀ ❀ ∈ {🏭, ⛽, 🌫, 💨}
+⚖️❀ = Masse ❀ - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨}
 ⚖️💧 = Masse H2O totale
-⚖️🫧 = Masse atmosphère sec = ⚖️🏭 + ⚖️⛽ + ⚖️🌫 + ⚖️💨 (sans vapeur d'eau)
+⚖️🫧 = Masse atmosphère sec = ⚖️🏭 + ⚖️⛽ + ⚖️🫁 + ⚖️💨 (sans vapeur d'eau)
 
 💎 CONSTANTES:
 🎈┴💧 = Pression au point triple de l'eau (611.2 Pa)
@@ -298,7 +298,7 @@ NOTES IMPORTANTES
   aux calculs et ne sont pas affichées dans l'interface utilisateur
 
 - Les formules avec ❀ utilisent des variables génériques pour les gaz:
-  ❀ ∈ {🏭, ⛽, 🌫, 💨} pour CO₂, CH₄, O₂, N₂
+  ❀ ∈ {🏭, ⛽, 🫁, 💨} pour CO₂, CH₄, O₂, N₂
   ❀ ∈ {🏭, ⛽, 💧} pour les capacités radiatives IR
 
 - En équilibre radiatif: 🧲🌈🔼 ≈ 🧲☀️🔽 + 🧲🌕🔽

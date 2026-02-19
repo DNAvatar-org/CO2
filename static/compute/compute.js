@@ -34,32 +34,20 @@
 function getEnabledStates() {
     // Utiliser DATA directement (pas de paramètres)
     const DATA = window.DATA;
-    
-    // Chercher tous les boutons ergonomiques (ergo-button-cell ou flux-button-cell)
-    const allCells = Array.from(document.querySelectorAll('.ergo-button-cell, .flux-button-cell'));
-    
-    // Fonction helper pour trouver un bouton par son logo
-    function findButtonByLogo(logo) {
-        for (const cell of allCells) {
-            const circle = cell.querySelector('.ergo-button-circle');
-            if (circle && circle.textContent.includes(logo)) {
-                return cell;
-            }
-        }
-        return null;
-    }
-    
-    const h2oCell = findButtonByLogo('💧');
+
+    // Source unique : organigramme flux-button-cell (cell-co2, cell-methane, cell-h2o, cell-albedo-btn)
+    const co2Cell = document.getElementById('cell-co2');
+    const ch4Cell = document.getElementById('cell-methane');
+    const h2oCell = document.getElementById('cell-h2o');
+    const albedoCell = document.getElementById('cell-albedo-btn');
+
     DATA['🔘']['🔘💧📛'] = h2oCell ? h2oCell.classList.contains('checked') : true;
-    const ch4Cell = findButtonByLogo('⛽');
     DATA['🔘']['🔘⛽📛'] = ch4Cell ? ch4Cell.classList.contains('checked') : true;
-    const co2Cell = findButtonByLogo('🏭');
     DATA['🔘']['🔘🏭📛'] = co2Cell ? co2Cell.classList.contains('checked') : true;
-    const albedoCell = findButtonByLogo('🪩');
     DATA['🔘']['🔘🪩'] = albedoCell ? albedoCell.classList.contains('checked') : true;
-    // Source unique visu : plot-anim-toggle (index.html charge visu_radiatif.html)
-    const animBtn = document.getElementById('plot-anim-toggle');
-    DATA['🔘']['🔘🎬'] = animBtn.classList.contains('selected');
+    // Source unique visu : plot-anim-toggle (index.html) ou anim-toggle (test_computeRadiativeTransfer.html)
+    const animBtn = document.getElementById('plot-anim-toggle') || document.getElementById('anim-toggle');
+    DATA['🔘']['🔘🎬'] = animBtn ? animBtn.classList.contains('selected') : (DATA['🔘']['🔘🎬'] != null ? DATA['🔘']['🔘🎬'] : true);
     
     // Retourner true car DATA a été modifié
     return true;
@@ -87,7 +75,7 @@ function getMasses() {
     DATA['⚖️']['⚖️🏭'] = isFinite(EPOCH['⚖️🏭']) ? EPOCH['⚖️🏭'] : 0;
     DATA['⚖️']['⚖️⛽'] = isFinite(EPOCH['⚖️⛽']) ? EPOCH['⚖️⛽'] : 0;
     DATA['⚖️']['⚖️💧'] = h2o_kg;
-    DATA['⚖️']['⚖️🌫'] = isFinite(EPOCH['⚖️🌫']) ? EPOCH['⚖️🌫'] : 0;
+    DATA['⚖️']['⚖️🫁'] = isFinite(EPOCH['⚖️🫁']) ? EPOCH['⚖️🫁'] : 0;
     DATA['⚖️']['⚖️💨'] = isFinite(EPOCH['⚖️💨']) ? EPOCH['⚖️💨'] : 0;  // N2 depuis EPOCH
     
     // ⚖️🫧 = masse atmosphérique totale (air sec, sans vapeur d'eau)
@@ -96,11 +84,11 @@ function getMasses() {
         DATA['⚖️']['⚖️🫧'] = EPOCH['⚖️🫧'];
         // Si ⚖️💨 non défini, N₂ implicite = reste pour atteindre ⚖️🫧 (évite M_dry faux → vapeur/albédo erronés)
         if (!isFinite(EPOCH['⚖️💨']) || EPOCH['⚖️💨'] === undefined) {
-            DATA['⚖️']['⚖️💨'] = Math.max(0, DATA['⚖️']['⚖️🫧'] - (DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫']));
+            DATA['⚖️']['⚖️💨'] = Math.max(0, DATA['⚖️']['⚖️🫧'] - (DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🫁']));
         }
     } else {
         // ⚖️🫧 = somme de tous les gaz atmosphériques (CO2, CH4, O2, N2)
-        DATA['⚖️']['⚖️🫧'] = DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫'] + DATA['⚖️']['⚖️💨'];
+        DATA['⚖️']['⚖️🫧'] = DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🫁'] + DATA['⚖️']['⚖️💨'];
     }
     
     // Logs désactivés pour réduire la taille

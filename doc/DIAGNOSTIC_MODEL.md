@@ -1,14 +1,16 @@
 # Diagnostic modèle radiatif — Points à traiter
 
-## 1. Chevauchement spectral H₂O/CO₂ (Band Saturation)
+## 1. Affichage 📛 (H2O % / CO₂ %) vs Schmidt 2010
 
-**Problème** : H2O 93%, CO2 2% au lieu de ~50% / ~20% (Schmidt 2010).
+**Ce n'est pas un problème** : ce n'est pas la même grandeur. Notre affichage (🍰📛💧, 🍰📛🏭) = tau-ratio (part τ_X/τ_tot) ; Schmidt = attribution marginale (effet retrait sur G). Comparer 4 % à 20 % = confusion d'indicateur, pas un bug. Voir doc/VAPEUR_VS_NUAGES.md.
+
+**Note (définition)** : Les 50 % / 20 % de Schmidt sont une **attribution marginale** (effet de retrait de chaque absorbeur sur G), pas la même grandeur que notre affichage **tau-ratio** (🍰📛💧, 🍰📛🏭). Comparer 4 % (nous) à 20 % (Schmidt) serait une confusion d’indicateur ; voir doc/VAPEUR_VS_NUAGES.md.
 
 **Cause** : Bande H₂O 17 µm chevauche CO₂ 15 µm. L'attribution `(tau_H2O/tau_tot) × flux_absorbé` donne trop de crédit à H₂O si ses sections efficaces surestiment l'absorption.
 
-**Correction actuelle** : `getH2OVaporEDSScale()` (T, P, vapor, CO2) — formule physique, pas de hack par époque.
+**Correction actuelle** : `getH2OVaporEDSScale()` (T, P, vapor, CO2) — formule physique, pas de hack par époque. Partage overlap H2O–CO2 "split the difference" dans calculations.js.
 
-**Correction idéale** : Modéliser explicitement le chevauchement (attribution marginale par λ, ou correlated-k).
+**Correction idéale** : Modéliser explicitement le chevauchement (attribution marginale par λ, ou correlated-k) ; ou expériences retrait/ajout pour afficher un % type Schmidt en plus du tau-ratio.
 
 ---
 

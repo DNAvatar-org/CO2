@@ -1,12 +1,31 @@
 // File: calculations_albedo.js - Calculs albedo et couverture nuageuse
 // Desc: En français, dans l'architecture, je suis le module de calculs d'albedo
-// Version 1.2.0
+// Version 1.2.18
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
 // - epochId Archéen : 🦠 (🌋 réservé actions). Archéen utilise clouds modernes pour ~15°C.
+// - 🍰⚖️💦 : formule P = W/τ (litt. 8–10 j), ⏳☔ = 1/τ_global ; rampe (RH−💭☔)/0,2 ; ref. Nature Rev. Earth Env. 2021, HESS 2017, GPCP ~2,7 mm/j.
+// - v1.2.1 : rampe douce 🍰🪩🧊 en Search/Dicho (premières itérations) pour éviter saut de bassin albédo/glace
+// - v1.2.2 : verrou optionnel glace initiale pendant Search du premier bassin (🧮🔄🌊=0) pour stabiliser le point fixe froid
+// - v1.2.3 : retrait gardes défensives CONFIG_COMPUTE sur rampe glace (règle crash)
+// - v1.2.4 : héritage glaciaire pondéré par durée d'époque (blend une fois/époque entre glace héritée et glace d'équilibre à T_config)
+// - v1.2.5 : expose une glace d'époque figée (_iceEpochFixedState) pour bloquer le recalcul glace dans le solver radiatif
+// - v1.2.6 : rampe glace renforcée au début Search (0.001 pendant 10 itérations), puis step nominal
+// - v1.2.7 : verrou glace par époque en phase solver (Search/Dicho) via _iceEpochFixedState (anti-bistabilité)
+// - v1.2.8 : proxy CCN continu (O2, T, CO2) pour 🍰🪩⛅ sans if d'époque + refs CERES/MODIS/FYSP en commentaires
+// - v1.2.9 : proxy CCN enrichi (O2 + biomasse + facteur anthropique) + efficacité optique type Twomey
+// - v1.2.10 : facteur anthropique progressif (1900→1980 puis déclin SO2) + sulfate_proxy ; commentaires justificatifs littérature
+// - v1.2.11 : log updateLevelsConfig clarifié (vapeur init UI vs état cycle eau) + ajout masse totale H2O
+// - v1.2.12 : priorité verrou glace d'époque sur _iceCoverageLock (évite 🧊=0.09 quand _iceEpochFixedState=0.022)
+// - v1.2.13 : séparation verrou glace albédo (🍰🪩🧊) du verrou glace eau (🍰💧🧊) + log proxy nuages optionnel
+// - v1.2.14 : calibration CCN normalisée sur un référentiel moderne (eta_cloud ~1 en 📱), logs cloud-proxy enrichis
+// - v1.2.15 : nuages SW "version physique" (CCN+pression+oxydation+température), doc scientifique intégrée en commentaires
+// - v1.2.16 : recalibration physique nuages SW (référence moderne explicite) pour retrouver 🍰🪩⛅~0.28-0.35 en 📱
+// - v1.2.17 : annotation explicite OBS vs EQ dans le bloc nuages (traçabilité source des constantes)
+// - v1.2.18 : formule forêt revue (land_frac + suitability thermique + modulation océanique) pour éviter 🌳=0 en moderne
 //
 // FORMULES ALBEDO :
 // 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏜️,🧊} + contribution_glace + contribution_nuages
@@ -65,35 +84,19 @@ function calculateGeologySurfaces() {
 // ============================================================================
 // FONCTION : CALCULER L'INDEX DE FORMATION NUAGEUSE (☁️)
 // ============================================================================
-// 🔒 REFONTE NUAGES : Les nuages ne sont pas un réservoir d'eau, mais un phénomène optique + dynamique
 // ☁️ = CloudFormationIndex ∈ [0, 1] : potentiel de condensation (ni masse ni surface)
 //
-// FORMULE EXPLICITE :
-// ☁️ = clamp((🍰🫧💧 / CONST.H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + CONST.ALPHA_OCEAN × 🍰🪩🌊) × CONST.SCALE_CLOUD, 0, 1)
+// FORMULE RÉELLE (implémentée) — Schéma Sundqvist 1989 :
+// ☁️ = (1 - Math.pow(1 - min(🍰🫧☔, 1), 0.6)) × 🍰💭
+//   où 🍰🫧☔ = humidité relative (q/q_sat), 🍰💭 = CCN (0.3–1.0).
+// À HR=98.9% : ☁️ ≈ 0.93 × 🍰💭. ☁️ n'utilise PAS 🍰🫧💧🌈 (cap. rad. IR, calculée ailleurs).
 //
-// Où :
-//   CONST.H2O_VAPOR_REF = 0.01 (1%, référence Terre tempérée)
-//   CONST.ALPHA_OCEAN = 0.3 (effet océan / convection)
-//   f(T_surface, 📏🫧🛩) = fonction thermodynamique (température + tropopause)
-//
-// Exemple Terre moderne (2025) :
-//   🍰🫧💧 = 0.0108 (1.08%), CONST.H2O_VAPOR_REF = 0.01 (1%) → vapor_ratio = 1.075
-//   T = 288K (15°C), 📏🫧🛩 = 8.45 km → f(T, 📏🫧🛩) ≈ 0.771
-//   🍰🪩🌊 = 0.71 → ocean_effect = 1 + 0.3 × 0.71 = 1.213
-//   CONST.SCALE_CLOUD = 0.4
-//   ☁️ = clamp(1.075 × 0.771 × 1.213 × 0.4, 0, 1) = clamp(0.402, 0, 1) = 0.402
+// Note : L'ancienne formule (🍰🫧💧/H2O_VAPOR_REF × f(T) × ...) n'est plus utilisée.
 
 function calculateCloudFormationIndex() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    // 🔒 FORMULE : ☁️ = clamp((🍰🫧💧 / CONST.H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + CONST.ALPHA_OCEAN × 🍰🪩🌊) × CONST.SCALE_CLOUD, 0, 1)
-    // où :
-    //   🍰🫧💧 = fraction massique de vapeur d'eau dans l'atmosphère
-    //   CONST.H2O_VAPOR_REF = 0.01 (1%, référence Terre tempérée)
-    //   f(T_surface, 📏🫧🛩) = fonction thermodynamique (température + tropopause)
-    //   CONST.ALPHA_OCEAN = 0.3 (effet océan / convection)
-    //   🍰🪩🌊 = couverture océanique
-    
+
     const h2o_vapor_fraction = DATA['💧']['🍰🫧💧'];
     const h2o_vapor_ref = CONST.H2O_VAPOR_REF;
     const T_surface_K = DATA['🧮']['🧮🌡️'];
@@ -128,8 +131,8 @@ function calculateCloudFormationIndex() {
     DATA['💧']['💭☔'] = precip_threshold;
 
     // 🔒 CALCUL DE 🍰💭 (CCN - Efficacité condensation nuageuse)
-    // FORMULE : 🍰💭 = clamp(0.4 + 0.6 × (⚖️🌫 / 1.08e18 + ⚖️⛽ / 5.2e12), 0.3, 1.0)
-    const O2_mass = DATA['⚖️']['⚖️🌫'];
+    // FORMULE : 🍰💭 = clamp(0.4 + 0.6 × (⚖️🫁 / 1.08e18 + ⚖️⛽ / 5.2e12), 0.3, 1.0)
+    const O2_mass = DATA['⚖️']['⚖️🫁'];
     const CH4_mass = DATA['⚖️']['⚖️⛽'];
     const O2_ratio = O2_mass / 1.08e18;
     const CH4_ratio = CH4_mass / 5.2e12;
@@ -147,28 +150,29 @@ function calculateCloudFormationIndex() {
     // Stocker dans DATA
     DATA['🪩']['☁️'] = clamped_index;
     
-    // 🔒 CALCUL DE ⏳☔ (Inverse du temps de vie moyen de la vapeur excédentaire)
-    // ⏳☔ = 1 / τ_vapeur où τ_vapeur est le temps de vie moyen de la vapeur excédentaire (en s)
-    // Plus ⏳☔ est grand, plus la vapeur excédentaire est rapidement précipitée
-    // FORMULE : ⏳☔ = 5e-4 s⁻¹ (inverse d'un temps de vie de ~2000 s ≈ 33 min)
-    DATA['💧']['⏳☔'] = 5e-4;
+    // 🔒 CALCUL DE ⏳☔ (Inverse du temps de résidence global de la vapeur)
+    // Littérature : temps de résidence vapeur ~8–10 j (Nature Rev. Earth Env. 2021; HESS 2017).
+    // Relation : P = W/τ → taux précipitation (kg/m²/s) = colonne vapeur (kg/m²) / τ (s).
+    // ⏳☔ = 1/τ_global (s⁻¹) pour cohérence avec le bilan eau et ~2,7 mm/j global (GPCP).
+    const TAU_VAPOR_GLOBAL_S = 10 * 86400; // 10 j (litt. 8–10 j)
+    const inv_tau_global = 1 / TAU_VAPOR_GLOBAL_S;
+    DATA['💧']['⏳☔'] = inv_tau_global;
     
     // 🔒 INITIALISATION DE 🔺⏳ (Pas de temps fixe = 1 jour)
     // FORMULE : 🔺⏳ = 86400 s (1 jour)
     DATA['📅']['🔺⏳'] = 86400;
     
-    // 🔒 CALCUL DE 🍰⚖️💦 (Précipitation critiques en kg/m²/s)
-    // 🍰⚖️💦 représente la fraction massique de vapeur d'eau retirée par seconde quand l'humidité relative dépasse le seuil critique
-    // FORMULE : 🍰⚖️💦 = max(0, (🍰🫧☔ - 💭☔) × 🍰🫧💧 × ⏳☔) × (masse_vapeur_par_m²)
-    // Unités : (sans dimension) × (sans dimension) × (s⁻¹) × (kg/m²) = kg/m²/s
-    const rh_excess = relative_humidity - precip_threshold;
-    const fraction_rate = Math.max(0, rh_excess * h2o_vapor_fraction * DATA['💧']['⏳☔']); // s⁻¹ (fraction par seconde)
-    // Convertir en kg/m²/s : multiplier par la masse de vapeur par m²
+    // 🔒 CALCUL DE 🍰⚖️💦 (Taux de précipitation en kg/m²/s)
+    // Formule littérature : P = W/τ (colonne vapeur / temps résidence). Quand RH > 💭☔, on applique
+    // ce taux ; rampe lisse (RH - 💭☔)/0.2 pour éviter discontinuité au seuil.
+    // Réf. : GPCP ~2,7 mm/j ; τ ~10 j → P ≈ W/(10×86400) ≈ 2,5–3 mm/j pour W ~25 kg/m².
     const atm_mass_total = DATA['⚖️']['⚖️🫧'];
     const planet_radius_km = window.TIMELINE[DATA['📜']['👉']]['📐'];
     const planet_surface_m2 = 4 * Math.PI * Math.pow(planet_radius_km * 1000, 2);
-    const vapor_mass_per_m2 = (DATA['💧']['🍰🫧💧'] * atm_mass_total) / planet_surface_m2; // kg/m²
-    const precipitation_rate = fraction_rate * vapor_mass_per_m2; // kg/m²/s
+    const vapor_mass_per_m2 = (DATA['💧']['🍰🫧💧'] * atm_mass_total) / planet_surface_m2; // kg/m² (W)
+    const rh_excess = relative_humidity - precip_threshold;
+    const ramp = rh_excess <= 0 ? 0 : Math.min(1, rh_excess / 0.2);
+    const precipitation_rate = ramp * (vapor_mass_per_m2 / TAU_VAPOR_GLOBAL_S); // kg/m²/s
     DATA['💧']['🍰⚖️💦'] = precipitation_rate;
 
     return clamped_index;
@@ -189,6 +193,26 @@ function calculateAlbedo() {
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     const T_surface_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
     const phase = DATA['🧮']['🧮⚧'];
+    const epochId = DATA['📜']['🗿'];
+
+    // Héritage glaciaire vs réinitialisation géologique :
+    // époques courtes → forte inertie (glace héritée), époques longues → proche équilibre à T_config.
+    function calcGlaceEquilibre(T_K) {
+        const T_no_ice_K = CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS;
+        const stock_factor = Math.max(0, (T_no_ice_K - T_K) / CONST.T_NO_POLAR_ICE_C);
+        return Math.max(0, Math.min(1, 0.1 * stock_factor));
+    }
+    if (!window._iceDurationBlendState || window._iceDurationBlendState.epochId !== epochId) {
+        const duree_ans = Math.abs(EPOCH['▶'] - EPOCH['◀']);
+        const tau_glace_ans = window.CONFIG_COMPUTE.tauGlaceAns;
+        const fraction_fonte = Math.max(0, Math.min(1, duree_ans / tau_glace_ans));
+        const glace_heritee = DATA['💧']['🍰💧🧊'];
+        const glace_equilibre = calcGlaceEquilibre(EPOCH['🌡️🧮']);
+        DATA['💧']['🍰💧🧊'] = Math.max(0, Math.min(1, glace_heritee * (1 - fraction_fonte) + glace_equilibre * fraction_fonte));
+        window._iceDurationBlendState = { epochId: epochId };
+        window._iceEpochFixedWaterState = { epochId: epochId, value: DATA['💧']['🍰💧🧊'] };
+        window._iceEpochFixedState = window._iceEpochFixedWaterState; // compat
+    }
     // 🔒 ÉTAPE 1 : Calculer les surfaces géologiques (fixes, déterminées par la géologie)
     calculateGeologySurfaces();
     
@@ -236,7 +260,47 @@ function calculateAlbedo() {
     const temp_K = DATA['🧮']['🧮🌡️'];
     const T_no_ice_K = CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS;
     const ice_temp_factor = Math.max(0, (T_no_ice_K - temp_K) / CONST.T_NO_POLAR_ICE_C);
-    const ice_fraction_base = Math.min(DATA['🗻']['🍰🗻🏔'], 0.46 * ice_temp_factor);
+    const ice_fraction_target = Math.min(DATA['🗻']['🍰🗻🏔'], 0.46 * ice_temp_factor);
+    let ice_fraction_base = ice_fraction_target;
+    if (!window._iceCoverageRampState || window._iceCoverageRampState.epochId !== epochId) {
+        window._iceCoverageRampState = { epochId: epochId, value: ice_fraction_target };
+    }
+    const isConvergencePhase = (phase === 'Search' || phase === 'Dicho');
+    // === VERROU GLACE PAR ÉPOQUE (anti-bistabilité) ===
+    const albedoFixedState = window._iceEpochFixedAlbedoState || window._iceEpochFixedState;
+    const hasEpochIceLock = isConvergencePhase && albedoFixedState && albedoFixedState.epochId === epochId;
+    if (hasEpochIceLock) {
+        ice_fraction_base = Math.max(0, Math.min(DATA['🗻']['🍰🗻🏔'], albedoFixedState.value));
+        // Option douce (Cénozoïque) :
+        // ice_fraction_base = 0.85 * albedoFixedState.value + 0.15 * ice_fraction_target;
+    }
+    const freezeIceDuringSearch = window.CONFIG_COMPUTE.freezePolarIceDuringSearch !== false;
+    const waterPass = (DATA['🧮'] && DATA['🧮']['🧮🔄🌊'] != null) ? DATA['🧮']['🧮🔄🌊'] : 0;
+    const lock = window._iceCoverageLock;
+    if (!hasEpochIceLock && freezeIceDuringSearch && isConvergencePhase && waterPass === 0 && lock && lock.epochId === epochId) {
+        ice_fraction_base = Math.max(0, Math.min(DATA['🗻']['🍰🗻🏔'], lock.value));
+    }
+    const iterRadiatif = (DATA['🧮'] && DATA['🧮']['🧮🔄☀️'] != null) ? DATA['🧮']['🧮🔄☀️'] : 0;
+    const rampIters = (window.CONFIG_COMPUTE.iceCoverageRampIters != null && Number.isFinite(window.CONFIG_COMPUTE.iceCoverageRampIters))
+        ? Math.max(0, window.CONFIG_COMPUTE.iceCoverageRampIters)
+        : 12;
+    const rampMaxStep = (window.CONFIG_COMPUTE.iceCoverageRampMaxStep != null && Number.isFinite(window.CONFIG_COMPUTE.iceCoverageRampMaxStep))
+        ? Math.max(0, window.CONFIG_COMPUTE.iceCoverageRampMaxStep)
+        : 0.004;
+    const rampEarlyIters = (window.CONFIG_COMPUTE.iceCoverageRampEarlyIters != null && Number.isFinite(window.CONFIG_COMPUTE.iceCoverageRampEarlyIters))
+        ? Math.max(0, window.CONFIG_COMPUTE.iceCoverageRampEarlyIters)
+        : 10;
+    const rampMaxStepEarly = (window.CONFIG_COMPUTE.iceCoverageRampMaxStepEarly != null && Number.isFinite(window.CONFIG_COMPUTE.iceCoverageRampMaxStepEarly))
+        ? Math.max(0, window.CONFIG_COMPUTE.iceCoverageRampMaxStepEarly)
+        : 0.001;
+    const rampStepActive = iterRadiatif < rampEarlyIters ? rampMaxStepEarly : rampMaxStep;
+    if (isConvergencePhase && iterRadiatif < rampIters && !hasEpochIceLock && !(freezeIceDuringSearch && waterPass === 0 && lock && lock.epochId === epochId)) {
+        const prevIce = window._iceCoverageRampState.value;
+        const deltaIce = ice_fraction_target - prevIce;
+        const deltaIceClamped = Math.max(-rampStepActive, Math.min(rampStepActive, deltaIce));
+        ice_fraction_base = Math.max(0, Math.min(DATA['🗻']['🍰🗻🏔'], prevIce + deltaIceClamped));
+    }
+    window._iceCoverageRampState.value = ice_fraction_base;
     
     // 🔒 volcano_coverage déjà calculé plus haut (ligne ~200)
     
@@ -271,15 +335,17 @@ function calculateAlbedo() {
     const land_available = Math.max(0, 1.0 - DATA['🗻']['🍰🗻🌊'] - ice_fraction_base);
     
     // 🔒 ÉTAPE 6 : Calculer forêts 🌳
-    // FORMULE : 🍰🪩🌳 = min(🍰🪩🌍_, 🗻.🍰🗻🌍 × clamp((🧮🌡️_C - 0) / 30, 0, 1) × clamp((🍰🫧☔ - 0.5) / 0.3, 0, 1) × clamp((1 - ☁️), 0, 1) × 0.6)
-    // Dépend de : température (optimum 0-30°C), humidité relative (RH > 0.5-0.8), nuages (moins de forêts si trop de nuages)
+    // FORMULE (réaliste simplifiée) :
+    // land_frac = 1 - 🍰🪩🌊 - 🍰🪩🧊
+    // temp_suitability = clamp((T_K - 278)/15, 0, 1)  // fenêtre ~5 à 20°C
+    // 🍰🪩🌳 = min(land_available, 0.31 * land_frac * temp_suitability * (1 + 0.5 * 🍰🪩🌊))
+    // Réf ordre de grandeur : FAO (~31% des terres), Ramankutty & Foley (répartition biome-climat).
     const temp_C = T_surface_C;
     const relative_humidity = DATA['💧']['🍰🫧☔'];
-    const cloud_index = DATA['🪩']['☁️'];
-    const temp_factor_forest = Math.max(0, Math.min(1, (temp_C - 0) / 30)); // Optimum thermique 0-30°C
-    const humidity_factor_forest = Math.max(0, Math.min(1, (relative_humidity - 0.5) / 0.3)); // Besoin RH > 0.5-0.8
-    const cloud_factor_forest = Math.max(0, Math.min(1, 1 - cloud_index)); // Moins de forêts si trop de nuages
-    const forest_potential = DATA['🗻']['🍰🗻🌍'] * temp_factor_forest * humidity_factor_forest * cloud_factor_forest * 0.6;
+    const land_frac = Math.max(0, 1.0 - ocean_coverage - ice_fraction_base);
+    const temp_suitability = Math.max(0, Math.min(1, (DATA['🧮']['🧮🌡️'] - 278) / 15));
+    const ocean_coupling = 1 + 0.5 * ocean_coverage;
+    const forest_potential = 0.31 * land_frac * temp_suitability * ocean_coupling;
     const forest_coverage = Math.min(land_available, forest_potential);
     
     // 🔒 ÉTAPE 7 : Calculer déserts 🏜️
@@ -379,61 +445,66 @@ function calculateAlbedo() {
         // 🔒 calculateCloudFormationIndex() a déjà été appelé plus haut (ligne ~262)
         // On réutilise DATA['🪩']['☁️'] déjà calculé
         const cloud_index = DATA['🪩']['☁️'];
-        // Calculer C_max et eta_cloud depuis l'époque et les propriétés atmosphériques
-        // C_max : plafond physique dépend de l'époque (structure verticale) et de la pression
-        // eta_cloud : efficacité optique dépend de l'époque (CCN - Cloud Condensation Nuclei) et de la température
-        
-        const epochId = DATA['📜']['🗿'];  // ID de l'époque (🔥, 🌋, 🌊, etc.)
-        
-        // Facteur dynamique f_dyn selon l'époque (structure verticale)
-        // Hadéen : nuages hauts dominants → couverture optique moindre
-        let f_dyn = 1.0;  // Moderne (par défaut)
-        if (epochId === '🔥') {
-            // Hadéen : 0.4 - 0.6
-            f_dyn = 0.5;
-        } else if (epochId === '🦠') {
-            // Archéen : clouds modernes (f_dyn=1) pour ~15°C ; 🌋 réservé actions
-            f_dyn = 1.0;
-        }
-        // Ajustement par pression (plus de pression = plus de nuages possibles)
-        const P0_atm = DATA['🫧']['🎈'];  // Pression au sol (en atmosphères)
-        const P_ref_atm = 1.0;  // Pression de référence (1 atm = Terre standard)
-        const pressure_factor = Math.min(1.5, Math.max(0.5, P0_atm / P_ref_atm));  // Facteur de pression (clampé)
-        const C_max_base = 0.65;  // Base moderne
-        const C_max = C_max_base * f_dyn * pressure_factor;  // Plafond physique ajusté par époque et pression
-        
-        // Facteur CCN (Cloud Condensation Nuclei) selon l'époque
-        // Hadéen : peu de CCN (poussières volcaniques) → efficacité optique faible
-        // Archéen : CCN modérés → efficacité modérée
-        // Moderne : CCN abondants (aérosols, pollution) → efficacité maximale
-        let f_CCN = 1.0;  // Moderne (par défaut)
-        if (epochId === '🔥') {
-            // Hadéen : 0.15 - 0.30
-            f_CCN = 0.225;
-        } else if (epochId === '🦠') {
-            // Archéen : idem, clouds modernes
-            f_CCN = 1.0;
-        }
-        const eta_0 = 0.40;  // Base moderne
-        // Ajustement température (plus chaud = nuages plus efficaces optiquement)
-        const T_surface_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
-        const temp_factor_optique = Math.min(1.2, Math.max(0.7, 1.0 + (T_surface_C - 15) / 100));  // Ajustement température
-        const eta_cloud = eta_0 * f_CCN * temp_factor_optique;  // Efficacité optique ajustée par époque et température
-        
-        // Calculer la couverture nuageuse optique depuis l'index
-        // 🍰🪩⛅ = couverture optique effective (pas un ratio de masse ni un index normalisé)
-        // Pour 1800 (moderne) : 🍰🪩⛅ devrait être entre 0.20 et 0.30
-        // Formule corrigée : 🍰🪩⛅ = C_max × ☁️ où C_max est le plafond physique
-        // Pour moderne : C_max = 0.65, ☁️ ≈ 1.0 → 🍰🪩⛅ ≈ 0.65 (trop élevé)
-        // Correction : 🍰🪩⛅ = 0.20 + (0.30 - 0.20) × ☁️ pour obtenir 0.20-0.30
-        // Mais on garde C_max pour les autres époques (Hadéen, Archéen)
-        // Pour moderne : 🍰🪩⛅ = 0.20 + 0.10 × ☁️ (si ☁️ = 1.0 → 0.30, si ☁️ = 0.0 → 0.20)
-        if (epochId === '🔥') {
-            // Hadéen seul : C_max × ☁️ ; Archéen (🦠) utilise formule moderne ci-dessous
-            cloud_fraction = C_max * cloud_index;
-        } else {
-            // Moderne : 🍰🪩⛅ entre 0.20 et 0.30 selon ☁️
-            cloud_fraction = 0.20 + 0.10 * cloud_index;
+        // ====================== NUAGES - VERSION PHYSIQUE (pas de patch arbitraire) ======================
+        // Références synthèse :
+        // - Goldblatt & Zahnle (2011), Climate of the Past, FYSP : baisse low-clouds/CCN -> +10 à +25 W/m².
+        // - Wolf & Toon (2013), Feulner et al. (2012) : GCM Archéen, faible CCN -> nuages SW moins réfléchissants.
+        // - CERES EBAF + MODIS (2000-2025) : fraction optique SW effective moderne ~0.28-0.35.
+        // - Twomey + AR6 aérosols : hausse CCN (SO2, VOCs, anthropique) -> albédo nuageux +10 à +30%.
+        // Cette paramétrisation vise donc une efficacité basse en atmosphère peu oxydée/peu biotique,
+        // et une efficacité proche/modérément au-dessus de 1 en moderne.
+
+        // 1) Proxy CCN (conservé)
+        // [OBS/CALIB] 0.15 et 0.85 calibrés pour rester dans les ordres de grandeur littérature FYSP/Twomey.
+        const o2_frac = (DATA['🫧']['🍰🫧🫁'] != null && Number.isFinite(DATA['🫧']['🍰🫧🫁'])) ? DATA['🫧']['🍰🫧🫁'] : 0.0;
+        const forest_frac = (DATA['🪩']['🍰🪩🌳'] != null && Number.isFinite(DATA['🪩']['🍰🪩🌳'])) ? DATA['🪩']['🍰🪩🌳'] : 0.0;
+        const biomass_proxy = 1.0 + 4.0 * forest_frac;
+        const year = (EPOCH['▶'] != null && Number.isFinite(EPOCH['▶'])) ? EPOCH['▶'] : 2025;
+        let anthro_factor = 1.0;
+        if (year >= 1900) anthro_factor = 1.0 + 0.25 * Math.min(1, (year - 1900) / 80);
+        if (year > 1980) anthro_factor = anthro_factor * (1 - 0.15 * Math.min(1, (year - 1980) / 40));
+        const ccn_proxy = 0.15 + 0.85 * o2_frac * biomass_proxy * anthro_factor;
+        // [OBS/CALIB] Référence moderne explicite : O2=21%, biomasse efficace ~3%, anthro courant.
+        // On compare les époques en relatif, plutôt qu'en absolu, pour éviter d'écraser le moderne.
+        const ccn_ref_modern = 0.15 + 0.85 * 0.21 * (1.0 + 4.0 * 0.03) * anthro_factor;
+        const ccn_ratio = ccn_proxy / ccn_ref_modern;
+
+        // 2) Facteurs physiques d'efficacité nuageuse
+        // [EQ] Forme analytique simple (pression/oxydation/température) pour la microphysique effective.
+        const pressure_factor = Math.min(1.2, DATA['🫧']['🎈']);
+        const oxidation_factor = Math.min(1.0, 0.3 + 4.0 * o2_frac);
+        const temp_factor = Math.max(0.6, Math.min(1.3, DATA['🧮']['🧮🌡️'] / 288));
+
+        // 3) Efficacité optique réelle (Twomey + microphysique)
+        // Centrage moderne autour de 1.0-1.2 ; états pauvres en CCN en dessous.
+        // [OBS/CALIB] 1.10 et 0.45 choisis pour reproduire la plage moderne observée de couverture optique SW effective.
+        let cloud_optical_efficiency = 1.10 + 0.45 * (ccn_ratio - 1.0);
+        // Oxydation déjà partiellement portée par ccn_proxy : on la garde mais en pondération douce.
+        // [EQ] Pondération douce pour limiter la double comptabilisation.
+        const oxidation_soft_factor = 0.85 + 0.15 * oxidation_factor;
+        cloud_optical_efficiency = cloud_optical_efficiency * pressure_factor * oxidation_soft_factor * temp_factor;
+
+        // 4) Couverture optique SW effective (impact albédo)
+        // [EQ] Fermeture diagnostique : cloud_index (dynamique) -> fraction optique efficace.
+        cloud_fraction = (0.19 + 0.11 * cloud_index) * cloud_optical_efficiency;
+
+        // Limites physiques
+        cloud_fraction = Math.max(0, Math.min(0.75, cloud_fraction));
+        if (window.CONFIG_COMPUTE.logCloudProxyDiagnostic) {
+            console.log('[cloud-proxy] epoch=' + epochId
+                + ' T_C=' + T_surface_C.toFixed(2)
+                + ' cloud_idx=' + cloud_index.toFixed(3)
+                + ' o2=' + o2_frac.toFixed(3)
+                + ' forest=' + forest_frac.toFixed(3)
+                + ' ccn=' + ccn_proxy.toFixed(3)
+                + ' ccn_ref=' + ccn_ref_modern.toFixed(3)
+                + ' ccn_ratio=' + ccn_ratio.toFixed(3)
+                + ' anthro=' + anthro_factor.toFixed(3)
+                + ' press=' + pressure_factor.toFixed(3)
+                + ' oxy=' + oxidation_factor.toFixed(3)
+                + ' temp=' + temp_factor.toFixed(3)
+                + ' opt=' + cloud_optical_efficiency.toFixed(3)
+                + ' cloud_frac=' + cloud_fraction.toFixed(3));
         }
         
         // Stocker la couverture nuageuse dans DATA['🪩']
@@ -444,7 +515,7 @@ function calculateAlbedo() {
 
     // 🔒 FORMULE ALBEDO CORRIGÉE :
     // 🍰🪩📿 = 🍰🪩⛅ × 🪩🍰⛅ + Σ(🍰🪩❀ × 🪩🍰❀) | ❀ ∈ { 🌋,🌊,🌳,🏜️,🧊 }
-    // Les nuages contribuent directement à l'albédo avec leur propre coefficient
+    // Nuages : effet SW (albédo) ici. Inclut : réflexion solaire par les nuages + visible qui traverse, frappe sol/glace/désert, renvoie, et est bloqué par les nuages (tout agrégé dans 🪩🍰⛅ × 🍰🪩⛅). LW (τ_cloud IR) = calculations.js, barre spectre 4–50 μm.
     const cloud_albedo_coeff = albedo_coeff['🪩🍰⛅'];
     const cloud_albedo_contribution = cloud_fraction * cloud_albedo_coeff;
     albedo = albedo + cloud_albedo_contribution;
@@ -597,7 +668,8 @@ function updateLevelsConfig() {
     window.h2oVaporPercent = h2o_percent;
     window.h2oTotalFromMeteorites = 0;
     
-    console.log('📛 [updateLevelsConfig] 🏭=' + co2_ppm.toFixed(0) + 'ppm 💧=' + h2o_percent.toFixed(1) + '% ⛽=' + ch4_ppm.toFixed(0) + 'ppm');
+    const h2o_total_kg = (DATA['⚖️'] && DATA['⚖️']['⚖️💧'] != null && Number.isFinite(DATA['⚖️']['⚖️💧'])) ? DATA['⚖️']['⚖️💧'] : 0;
+    console.log('📛 [updateLevelsConfig] 🏭=' + co2_ppm.toFixed(0) + 'ppm 🍰🫧💧(initUI)=' + h2o_percent.toFixed(1) + '% ⛽=' + ch4_ppm.toFixed(0) + 'ppm ⚖️💧=' + h2o_total_kg.toExponential(2) + 'kg');
 }
 
 // Exposer globalement pour utilisation dans main.js

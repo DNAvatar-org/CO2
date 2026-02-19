@@ -1278,7 +1278,12 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                 if (typeof window.updateFluxLabels === 'function') {
                     window.updateFluxLabels('ProcessFinished');
                 }
-                
+
+                // Relancer le cycle avec la nouvelle donnée (getEnabledStates lit depuis le DOM)
+                if (typeof window.runComputeInParent === 'function') {
+                    window.runComputeInParent();
+                }
+
                 // Mettre à jour le tooltip du bouton
                 updateButtonTooltip(parentCell, circleBg);
             } else {
@@ -3211,15 +3216,19 @@ window.updateFluxLabels = function (eventId) {
             if (ep) window.currentEpochName = ep.name;
             window.h2oVaporPercent = Math.min(100, Math.max(0, D['💧']['🍰🫧💧'] * 100 + window.h2oTotalFromMeteorites));
             window.waterVaporEnabled = window.h2oVaporPercent > 0;
-            window.plotData.co2_ppm = D['🫧']['🍰🫧🏭'] * 1e6;
-            window.plotData.ch4_ppm = D['🫧']['🍰🫧⛽'] * 1e6;
+            // ppm CO2/CH4 = fraction molaire × 1e6 (co2KgToFraction/ch4KgToFraction), pas fraction massique × 1e6
+            const atm_kg = D['⚖️']['⚖️🫧'];
+            const M_air = D['🫧']['🧪'];
+            window.plotData.co2_ppm = window.co2KgToFraction(D['⚖️']['⚖️🏭'], atm_kg, M_air) * 1e6;
+            window.plotData.ch4_ppm = window.ch4KgToFraction(D['⚖️']['⚖️⛽'], atm_kg, M_air) * 1e6;
             T0_num = D['🧮']['🧮🌡️'];
             total_flux_num = D['📊'].total_flux;
             albedo_num = D['🪩']['🍰🪩📿'];
             cloud_coverage_num = D['🪩']['☁️'];
-            co2_ppm_num = D['🫧']['🍰🫧🏭'] * 1e6;
-            ch4_ppm_num = D['🫧']['🍰🫧⛽'] * 1e6;
-            forcing_H2O = D['📛']['📛💧'];
+            co2_ppm_num = window.co2KgToFraction(D['⚖️']['⚖️🏭'], atm_kg, M_air) * 1e6;
+            ch4_ppm_num = window.ch4KgToFraction(D['⚖️']['⚖️⛽'], atm_kg, M_air) * 1e6;
+            // Part EDS vapeur (W/m²) = 🧲📛💧 ; 🔺📛💧 = ΔF H₂O (formule ln), autre grandeur
+            forcing_H2O = D['📛']['🧲📛💧'];
             isCO2_eds = window.isCO2_eds;
             isCH4_eds = window.isCH4_eds;
             isH2O_eds = window.isH2O_eds;
@@ -3791,12 +3800,12 @@ window.updateFluxLabels = function (eventId) {
     const forcing_CO2 = (isCO2_eds && co2_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCO2Forcing === 'function'
         ? window.calculateCO2Forcing(co2_ppm_num * 1e-6)
         : 0;
-    // CH4 : calculer le forçage radiatif (bande d'absorption à ~7.7 μm et pic à ~23 μm)
+    // CH4 : calculer le diagnostic ΔF (convention affichage, bande ~7.7 μm)
     const forcing_CH4 = (isCH4_eds && ch4_ppm_num > 0) && typeof window !== 'undefined' && typeof window.calculateCH4Forcing === 'function'
         ? window.calculateCH4Forcing(ch4_ppm_num * 1e-6)
         : 0;
 
-    // Paramètres H2O (vapeur + météorites) — forcing_H2O vient du switch (DATA['📛']['📛💧'])
+    // Paramètres H2O (vapeur + météorites) — forcing_H2O = part EDS vapeur (🧲📛💧). Nuages EDS = 🧲📛⛅ (à brancher sur nouveau nœud).
     const h2o_vapor_percent = window.h2oVaporPercent;
     const h2o_from_meteorites = window.h2oTotalFromMeteorites;
     const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
@@ -4247,7 +4256,7 @@ window.updateFluxLabels = function (eventId) {
         window.updatePlotAltitudeAxis(atm_height_km);
     }
 
-    // Réémis : forçage radiatif total
+    // Réémis : EDS total (W/m²)
     updateLabel('forcing_total', forcing_total);
 
     // Boutons

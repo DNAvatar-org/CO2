@@ -74,6 +74,10 @@
     <script src="../static/timeline/timeline.js"></script>
     <script src="../static/events.js"></script>
     <script src="../static/physics.js"></script>
+    <script src="../static/data/hitran_lines_CO2.js"></script>
+    <script src="../static/data/hitran_lines_H2O.js"></script>
+    <script src="../static/data/hitran_lines_CH4.js"></script>
+    <script src="../static/hitran.js"></script>
     <script src="../static/climate.js"></script>
     <script src="../static/FPS/FPS.js"></script>
     <script src="../static/calculations.js"></script>
@@ -336,6 +340,30 @@
                 if (!window.DATA['📜']) window.DATA['📜'] = {};
                 window.DATA['📜']['📿💫'] = 0;
                 updateTimelineDisplay();
+            }
+            // Lancer le calcul radiatif pour cette époque (initForConfig + computeRadiativeTransfer + affichage)
+            runComputeAfterEpochChange();
+        }
+        
+        // Exécute le calcul radiatif après changement d'époque (sans toucher au bouton ▶️/⏹)
+        async function runComputeAfterEpochChange() {
+            if (!window.initForConfig || !window.computeRadiativeTransfer) return;
+            initializeGlobals();
+            var DATA = window.DATA;
+            if (!DATA || !DATA['🔘']) return;
+            if (!DATA['🔘']['🔘🎬']) DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
+            if (!window.initForConfig()) { console.error('[selectEpoch] initForConfig a échoué'); return; }
+            DATA['🧮']['previous'] = [];
+            DATA['🧮']['🧮🔄🌊'] = 0;
+            DATA['🧮']['🧮🔄🪩'] = 0;
+            try {
+                var result = await window.computeRadiativeTransfer();
+                if (window.displayConvergence) window.displayConvergence();
+                if (result !== null) displayResults(result);
+                else displayResults(null);
+                displayConvergence();
+            } catch (e) {
+                console.error('[selectEpoch] computeRadiativeTransfer:', e);
             }
         }
         
@@ -1036,13 +1064,15 @@
                         const h2oVs05 = (h2oPctVal != null && Number.isFinite(h2oPctVal)) ? (h2oPctVal < 0.005 ? ' <0.5%' : '') : '';
                         html += `<div class="iteration-header">🌈 calcul radiatif ${iterLabel} @${T}°C : Albedo: ${albedo} H2O%: ${h2oPctStr}${h2oVs05} => Δ: ${delta} W/m² .. ⚧: ${phase} & ☯: ${yinYangStr} => arrêt |Δ|≤${seuilStr} W/m²: ${arretOk}${dichoBounds}${nextTSuffix}</div>`;
                         html += '<div class="convergence-details-block">';
-                        if (DATA['🧮']) {
-                            const m = { ...DATA['🧮'] };
+                        // Afficher le snapshot de cette itération (state.data_snapshot), pas DATA global (état final)
+                        const snap = state.data_snapshot || {};
+                        if (snap['🧮']) {
+                            const m = { ...snap['🧮'] };
                             delete m.previous;
                             html += json2html(m, '', '', null, '🧮');
                         }
-                        if (DATA['🧲']) html += json2html(DATA['🧲'], '', '', null, '🧲');
-                        if (DATA['📛']) html += json2html(DATA['📛'], '', '', null, '📛');
+                        if (snap['🧲']) html += json2html(snap['🧲'], '', '', null, '🧲');
+                        if (snap['📛']) html += json2html(snap['📛'], '', '', null, '📛');
                         html += '</div>';
                         } catch (stateErr) {
                             console.warn('État de convergence ignoré (données invalides):', stateErr);
@@ -1057,11 +1087,19 @@
                 if (breakdown) {
                     const fmt = (v) => (v != null && Number.isFinite(v)) ? v.toFixed(2) : '—';
                     html += '<div class="config-value convergence-breakdown-block" style="margin-top:10px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;">';
+                    const h2oScale = window.getH2OVaporEDSScale ? window.getH2OVaporEDSScale() : null;
                     html += '<strong>EDS (effet de serre)</strong>: 🧲📛 = ' + fmt(breakdown['🧲📛']) + ' W/m²<br>';
-                    html += '<strong>Répartition par gaz</strong> (🍰📛 ∈ [0, 1]):<br>';
+                    if (h2oScale != null && Number.isFinite(h2oScale)) html += 'Pondération vapeur d\'eau pour l\'EDS : ' + h2oScale.toFixed(3) + '<br>';
+                    html += '<em>Attribution</em> : part par τ (τ_X/τ_tot) ; overlap H₂O–CO₂ partagé de façon réaliste (Schmidt 2010 « split the difference »).<br>';
+                    html += '<strong>Répartition (en W/m² retournés par EDS, normalisé, 🍰📛 ∈ [0, 1])</strong>:<br>';
                     if (breakdown['🍰📛🏭'] != null && breakdown['🍰📛🏭'] > 0) html += `&nbsp;• CO₂: ${fmt(breakdown['🍰📛🏭'])}<br>`;
                     if (breakdown['🍰📛💧'] != null && breakdown['🍰📛💧'] > 0) html += `&nbsp;• H₂O: ${fmt(breakdown['🍰📛💧'])}<br>`;
                     if (breakdown['🍰📛⛽'] != null && breakdown['🍰📛⛽'] > 0) html += `&nbsp;• CH₄: ${fmt(breakdown['🍰📛⛽'])}<br>`;
+                    if (breakdown['🍰📛⛅'] != null) {
+                        const nv = breakdown['🍰📛⛅'];
+                        const nvStr = (nv != null && Number.isFinite(nv)) ? (nv < 0.01 ? '&lt; 0,01' : nv.toFixed(2)) : '—';
+                        html += `&nbsp;• Nuages (⛅): ${nvStr}<br>`;
+                    }
                     html += '</div>';
                 }
 
@@ -1217,16 +1255,29 @@
             }
         });
         
+        // Log état chargement JS (ressources nécessaires au calcul radiatif)
+        function logJsLoadState() {
+            var parts = ['[JS load]'];
+            parts.push('CONST=' + (window.CONST ? 'ok' : 'MANQUANT'));
+            parts.push('HITRAN=' + (window.HITRAN ? 'ok' : 'MANQUANT'));
+            parts.push('HITRAN_LINES_CO2=' + (window.HITRAN_LINES_CO2 ? window.HITRAN_LINES_CO2.length + ' lignes' : 'MANQUANT'));
+            parts.push('HITRAN_LINES_H2O=' + (window.HITRAN_LINES_H2O ? window.HITRAN_LINES_H2O.length + ' lignes' : 'MANQUANT'));
+            parts.push('HITRAN_LINES_CH4=' + (window.HITRAN_LINES_CH4 ? window.HITRAN_LINES_CH4.length + ' lignes' : 'MANQUANT'));
+            parts.push('calculateFluxForT0=' + (typeof window.calculateFluxForT0 === 'function' ? 'ok' : 'MANQUANT'));
+            parts.push('DATA=' + (window.DATA ? 'ok' : 'MANQUANT'));
+            parts.push('TIMELINE=' + (window.TIMELINE ? window.TIMELINE.length + ' époques' : 'MANQUANT'));
+            console.log(parts.join(' '));
+        }
+        logJsLoadState();
+        
         // Initialiser au chargement
         window.addEventListener('DOMContentLoaded', function() {
-            // Les contenus Alphabet et Dico sont maintenant chargés via iframe (alphabet.html et dico.html)
-            console.log('📄 Page de test chargée');
+            console.log('📄 Page de test chargée (DOMContentLoaded)');
+            logJsLoadState();
             console.log('🔧 Initialisation des variables globales...');
             
-            // S'assurer que TIMELINE est chargée
             if (window.TIMELINE) {
-                console.log(`✅ Timeline chargée: ${window.TIMELINE.length} époques`);
-                // Générer la timeline horizontale
+                console.log('✅ Timeline chargée: ' + window.TIMELINE.length + ' époques');
                 generateHorizontalTimeline();
             } else {
                 console.error('❌ Timeline non chargée');

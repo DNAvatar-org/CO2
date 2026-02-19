@@ -23,11 +23,11 @@
 
 **Relation :** `🌤` est calculé **depuis** `🍰🪩⛅` (cloud coverage) qui est lui-même calculé depuis `☁️` (CloudFormationIndex) dans `calculateCloudFormationIndex()`
 
-## 3. 🌴 Greenhouse forcing
+## 3. 🌴 Diagnostic ΔF H2O (convention affichage)
 
 **Réponse :** C'est l'**effet de serre** de la vapeur d'eau (H2O), **pas** les arbres.
 
-- **Forçage radiatif** : capacité de H2O à absorber le rayonnement infrarouge émis par la surface terrestre
+- **Diagnostic ΔF** (convention affichage, climate.js) : formule type α×ln(C/C₀) pour H2O. Pas utilisé pour le calcul de T.
 - Formule logarithmique : `ΔF = 6.0 × ln(C/C₀)` où C est la concentration de H2O
 - **Feedback positif** : plus il fait chaud → plus de vapeur → plus d'effet de serre → encore plus chaud
 - À 2450K avec 0% H2O → `🌴=0` (pas de vapeur, pas d'effet de serre)
@@ -36,7 +36,7 @@
 
 Le calcul **spectral** (par longueur d'onde) est dans `static/calculations.js` dans `calculateFluxForT0()`.
 
-`computeRadiativeTransfer()` et `simulateRadiativeTransfer()` utilisent tous deux `calculateFluxForT0()` (calcul spectral complet dans `calculations.js`). La formule logarithmique `calculateH2OGreenhouseForcing()` est dans `climate.js` pour le forçage simplifié (vue Visuel).
+`computeRadiativeTransfer()` et `simulateRadiativeTransfer()` utilisent tous deux `calculateFluxForT0()` (calcul spectral complet dans `calculations.js`). La formule logarithmique `calculateH2OGreenhouseForcing()` est dans `climate.js` pour le diagnostic ΔF (affichage, vue Visuel).
 
 ## 5. Pourquoi h2o est calculé 2 fois ?
 

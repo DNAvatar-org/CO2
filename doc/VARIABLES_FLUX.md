@@ -10,9 +10,9 @@
 - `window.methaneEnabled` : boolean (CH4 activé/désactivé)
 
 ### Fonctions de calcul
-- `window.calculateCO2Forcing(CO2_fraction)` : Forçage radiatif CO2 (W/m²)
-- `window.calculateH2OForcing(h2o_enabled, cloud_coverage)` : Forçage radiatif H2O (W/m²)
-- `window.calculateAlbedoForcing(albedo)` : Forçage radiatif albedo (W/m²)
+- `window.calculateCO2Forcing(CO2_fraction)` : Diagnostic ΔF CO2 (W/m², convention affichage, climate.js)
+- `window.calculateH2OForcing(h2o_enabled, cloud_coverage)` : Diagnostic ΔF H2O (W/m², convention affichage)
+- `window.calculateAlbedoForcing(albedo)` : Diagnostic ΔF albédo (W/m², convention affichage)
 - `window.calculateSolarFluxAbsorbed(T_surface_K, h2o_enabled)` : Flux solaire absorbé (W/m²)
 
 ## Variables dans plotData

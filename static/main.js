@@ -708,7 +708,7 @@ function calculateInitialData() {
 }
 
 function updateCO2Level(state) {
-    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
     const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
@@ -766,7 +766,7 @@ function updateCO2Level(state) {
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperatureAtZ(0);
             const temp_surface_c = temp_surface - CONST.KELVIN_TO_CELSIUS;
-            // Calculer ΔT° à partir du forçage radiatif (calibration)
+            // Calculer ΔT° (calibration)
             // ΔT° = différence par rapport à 255K (sans CO2)
             // On calcule d'abord les forçages, puis on calcule delta_temp
             // (sera calculé après les forçages)
@@ -1086,7 +1086,7 @@ function cancelCurrentCalculation() {
 // Elle met à jour CO2 explicitement, mais utilise aussi H2O et CH4 depuis plotData/window
 // TODO: Renommer en updateEDSLevels ou updateLevelsDirect pour refléter qu'elle utilise les 3 gaz
 function updateCO2LevelDirect(co2_fraction) {
-    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
     const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
@@ -1207,7 +1207,7 @@ function updateCO2LevelDirect(co2_fraction) {
             // Note: Les 15°C réels incluent aussi vapeur d'eau, nuages, etc. - ce modèle ne prend que le CO2
             const temp_surface = temperatureAtZ(0);
             const temp_surface_c = temp_surface - CONST.KELVIN_TO_CELSIUS;
-            // Calculer ΔT° à partir du forçage radiatif (calibration)
+            // Calculer ΔT° (calibration)
             // ΔT° = différence par rapport à 255K (sans CO2)
             // On calcule d'abord les forçages, puis on calcule delta_temp
             // (sera calculé après les forçages)
@@ -1346,7 +1346,7 @@ function updateCO2LevelDirect(co2_fraction) {
 
 // Exposer updateDisplay globalement pour être accessible depuis calculations.js
 window.updateDisplay = function updateDisplay(data) {
-    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
     const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
@@ -2611,7 +2611,7 @@ function setEpoch(epochName) {
 
 // Fonction pour mettre à jour le niveau H2O directement (similaire à updateCO2LevelDirect)
 function updateH2OLevelDirect(h2o_total_percent) {
-    const logoEDS = '📛'; // Forçage radiatif (EDS)
+    const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
     const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
@@ -3351,3 +3351,73 @@ function updateHadeenTexture() {
 // Exposer updateHadeenTexture et interpretConfigValue globalement
 window.updateHadeenTexture = updateHadeenTexture;
 window.interpretConfigValue = interpretConfigValue;
+
+/** Debug : run par epoch, log entrée (config epoch) + sortie (convergence) dans fichier txt. */
+window.runDebugLogMode = function () {
+    console.log('[runDebugLogMode] appele');
+    var timeline = window.TIMELINE;
+    if (!timeline || !Array.isArray(timeline)) {
+        console.error('[runDebugLogMode] TIMELINE absent');
+        return;
+    }
+    var epochs = timeline.filter(function (e) { return e && e['📅']; });
+    if (epochs.length === 0) {
+        console.error('[runDebugLogMode] Aucune époque');
+        return;
+    }
+    var btn = document.getElementById('plot-debug-log');
+    if (btn) btn.disabled = true;
+    var logLines = [];
+    logLines.push('# Debug log - run par epoch');
+    logLines.push('# Date: ' + new Date().toISOString());
+    logLines.push('');
+
+    function getConvergenceContentFromIframe() {
+        var iframe = document.getElementById('scie-iframe');
+        if (!iframe || !iframe.contentDocument) return '(iframe non accessible)';
+        var el = iframe.contentDocument.getElementById('convergence-content');
+        return el ? (el.innerText || el.textContent || el.innerHTML || '(vide)') : '(convergence-content absent)';
+    }
+
+    function next(i) {
+        if (i >= epochs.length) {
+            var blob = new Blob([logLines.join('\n')], { type: 'text/plain;charset=utf-8' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'debug_convergence_' + new Date().toISOString().slice(0, 19).replace(/[:-]/g, '') + '.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            if (btn) btn.disabled = false;
+            console.log('[runDebugLogMode] Fichier téléchargé');
+            return;
+        }
+        var epoch = epochs[i];
+        var epochId = epoch['📅'];
+        logLines.push('=== EPOCH ' + (i + 1) + '/' + epochs.length + ' : ' + epochId + ' ===');
+        logLines.push('');
+        logLines.push('--- Entrée : config epoch (JS) ---');
+        try {
+            logLines.push(JSON.stringify(epoch, null, 2));
+        } catch (e) {
+            logLines.push('(erreur stringify: ' + e.message + ')');
+        }
+        logLines.push('');
+        if (typeof window.setEpoch === 'function') window.setEpoch(epochId);
+        var run = window.runComputeInParent ? window.runComputeInParent() : Promise.resolve(null);
+        (run && typeof run.then === 'function' ? run : Promise.resolve(run)).then(function () {
+            return new Promise(function (r) { setTimeout(r, 200); });
+        }).then(function () {
+            logLines.push('--- Convergence (contenu panel) ---');
+            logLines.push(getConvergenceContentFromIframe());
+            logLines.push('');
+            logLines.push('');
+            next(i + 1);
+        }).catch(function (e) {
+            logLines.push('--- Erreur ---');
+            logLines.push(String(e && e.message ? e.message : e));
+            logLines.push('');
+            next(i + 1);
+        });
+    }
+    next(0);
+};

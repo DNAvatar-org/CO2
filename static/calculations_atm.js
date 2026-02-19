@@ -1,6 +1,6 @@
 // File: calculations_atm.js - Calculs composition atmosphérique
 // Desc: En français, dans l'architecture, je suis le module de calculs atmosphériques
-// Version 1.1.2
+// Version 1.1.4
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
@@ -9,6 +9,8 @@
 // - Fix: use DATA['🧮']['🧮🌡️'] in calculateAtmosphereProperties (was typo 🌡️)
 // - Suppression logs calculateMolarMassAir
 // - co2KgToFraction, ch4KgToFraction (masse kg → fraction molaire pour updateLevelsConfig)
+// - updateAtmosphereHeightFromCurrentT() : met à jour 📏🫧🧿 et 📏🫧🛩 depuis T courante (même grille verticale cold/warm start)
+// - v1.1.4 : 🎈 inclut vapeur d'eau : P = (⚖️🫧 + masse_vapeur) × 🍎 / (4π×R²), masse_vapeur = ⚖️🫧×🍰🫧💧/(1−🍰🫧💧)
 //
 // ============================================================================
 // CALCUL DE PRESSION ET STRUCTURE ATMOSPHÉRIQUE
@@ -90,10 +92,10 @@ function calculateMolarMassAir() {
     const DATA = window.DATA;
     const CONST = window.CONST;
     // 🔒 UTILISER LES FRACTIONS ACTUELLES (après renormalisation avec H2O), pas les masses de l'époque
-    // Les fractions sont déjà normalisées : 🍰🫧🏭 + 🍰🫧⛽ + 🍰🫧🌫 + 🍰🫧💨 + 🍰🫧💧 = 1.0
+    // Les fractions sont déjà normalisées : 🍰🫧🏭 + 🍰🫧⛽ + 🍰🫧🫁 + 🍰🫧💨 + 🍰🫧💧 = 1.0
     const frac_CO2 = DATA['🫧']['🍰🫧🏭'] || 0;
     const frac_CH4 = DATA['🫧']['🍰🫧⛽'] || 0;
-    const frac_O2 = DATA['🫧']['🍰🫧🌫'] || 0;
+    const frac_O2 = DATA['🫧']['🍰🫧🫁'] || 0;
     const frac_N2 = DATA['🫧']['🍰🫧💨'] || 0;
     const frac_H2O = DATA['💧']['🍰🫧💧'] || 0;
     // Masse molaire moyenne pondérée par les fractions molaires (approximation : fractions volumiques ≈ fractions molaires)
@@ -109,23 +111,26 @@ function calculateMolarMassAir() {
     return true;
 }
 
-//Calcule la pression atmosphérique (utilise DATA directement)
+// Calcule la pression atmosphérique (utilise DATA directement).
+// P = (masse totale × 🍎) / (4π × R²) ; masse totale = air sec (⚖️🫧) + vapeur d'eau.
+// Vapeur : 🍰🫧💧 = fraction massique vapeur ⇒ masse_vapeur = ⚖️🫧 × 🍰🫧💧 / (1 − 🍰🫧💧).
+// → 🎈 ~0.988–0.995 atm (2025) au lieu de ~0.976 si on ignorait la vapeur (📏🫧🛩, Clausius-Clapeyron cohérents).
 function calculatePressureAtm() {
-    // console.log(`🫧 [calculatePressureAtm@calculations_atm.js]`);
     const DATA = window.DATA;
     const CONST = window.CONST;
     const EPOCH = DATA['📅'];
     const planet_radius_m = EPOCH['📐'] * 1000;
     const surface_area = 4 * Math.PI * Math.pow(planet_radius_m, 2);
-    // 🔒 CORRECTION : Utiliser DATA['⚖️']['⚖️🫧'] au lieu de EPOCH['⚖️🫧']
-    // car ⚖️🫧 est calculé dans getMasses() et stocké dans DATA
-    const atm_mass = DATA['⚖️']['⚖️🫧'];
+    const atm_mass_dry = DATA['⚖️']['⚖️🫧'];
+    const frac_vapor = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
+    const denom = Math.max(1e-10, 1 - frac_vapor);
+    const mass_vapor = (frac_vapor > 0 && frac_vapor < 1) ? (atm_mass_dry * frac_vapor / denom) : 0;
+    const atm_mass_total = atm_mass_dry + mass_vapor;
     const gravity = EPOCH['🍎'];
-    const pressure_pa = (atm_mass * gravity) / surface_area;
-    
-    // Éviter NaN si surface_area = 0 ou si pressure_pa est invalide
+    const pressure_pa = (atm_mass_total * gravity) / surface_area;
+
     DATA['🫧']['🎈'] = (surface_area > 0 && isFinite(pressure_pa) && pressure_pa > 0) ? pressure_pa / CONST.STANDARD_ATMOSPHERE_PA : 0;
-    
+
     return true;
 }
 
@@ -137,21 +142,21 @@ function calculatePressureAtm() {
 function calculateAtmosphereComposition() {
     const DATA = window.DATA;
     // 🔒 CORRECTION : Les fractions sont calculées par rapport à ⚖️🫧 (masse atmosphérique totale)
-    // ⚖️🫧 = ⚖️🏭 + ⚖️⛽ + ⚖️🌫 + ⚖️💨 (air sec, sans vapeur d'eau pour l'instant)
+    // ⚖️🫧 = ⚖️🏭 + ⚖️⛽ + ⚖️🫁 + ⚖️💨 (air sec, sans vapeur d'eau pour l'instant)
     // La vapeur d'eau sera ajoutée après dans calculateWaterPartition()
     const atm_mass_total = DATA['⚖️']['⚖️🫧'];
     
     // 🔒 Protection contre undefined/NaN : traiter comme 0
     const mass_CO2 = isFinite(DATA['⚖️']['⚖️🏭']) ? DATA['⚖️']['⚖️🏭'] : 0;
     const mass_CH4 = isFinite(DATA['⚖️']['⚖️⛽']) ? DATA['⚖️']['⚖️⛽'] : 0;
-    const mass_O2 = isFinite(DATA['⚖️']['⚖️🌫']) ? DATA['⚖️']['⚖️🌫'] : 0;
+    const mass_O2 = isFinite(DATA['⚖️']['⚖️🫁']) ? DATA['⚖️']['⚖️🫁'] : 0;
     const mass_N2 = isFinite(DATA['⚖️']['⚖️💨']) ? DATA['⚖️']['⚖️💨'] : 0;
     
     // 🔒 GESTION CAS SANS ATMOSPHÈRE (corps noir, etc.) : toutes les fractions à 0
     if (atm_mass_total <= 0) {
         DATA['🫧']['🍰🫧🏭'] = 0;
         DATA['🫧']['🍰🫧⛽'] = 0;
-        DATA['🫧']['🍰🫧🌫'] = 0;
+        DATA['🫧']['🍰🫧🫁'] = 0;
         DATA['🫧']['🍰🫧💨'] = 0;
         DATA['💧']['🍰🫧💧'] = 0;
     } else {
@@ -161,8 +166,8 @@ function calculateAtmosphereComposition() {
         // 🍰🫧⛽ = ⚖️⛽ / ⚖️🫧
         DATA['🫧']['🍰🫧⛽'] = mass_CH4 / atm_mass_total;
         
-        // 🍰🫧🌫 = ⚖️🌫 / ⚖️🫧
-        DATA['🫧']['🍰🫧🌫'] = mass_O2 / atm_mass_total;
+        // 🍰🫧🫁 = ⚖️🫁 / ⚖️🫧
+        DATA['🫧']['🍰🫧🫁'] = mass_O2 / atm_mass_total;
         
         // 🍰🫧💨 = ⚖️💨 / ⚖️🫧
         DATA['🫧']['🍰🫧💨'] = mass_N2 / atm_mass_total;
@@ -173,10 +178,10 @@ function calculateAtmosphereComposition() {
     DATA['💧']['🍰🫧💧'] = 0;
         
     // Vérifier que la somme des fractions de l'air sec = 1.0 (avec tolérance)
-    const total_fraction_dry = DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🌫'] + DATA['🫧']['🍰🫧💨'];
+    const total_fraction_dry = DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🫁'] + DATA['🫧']['🍰🫧💨'];
     if (Math.abs(total_fraction_dry - 1.0) > 0.01) {
         // Ajuster N2 pour que la somme de l'air sec = 1.0
-        DATA['🫧']['🍰🫧💨'] = Math.max(0, 1.0 - (DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🌫']));
+        DATA['🫧']['🍰🫧💨'] = Math.max(0, 1.0 - (DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🫁']));
     }
     
     const props = window.calculateAtmosphereProperties();
@@ -187,6 +192,17 @@ function calculateAtmosphereComposition() {
     DATA['🫧']['📏🫧🧿'] = altitude / 1000;  // Altitude max en km
     DATA['🫧']['📏🫧🛩'] = tropopause / 1000;  // Tropopause en km
     
+    return true;
+}
+
+/** Met à jour 📏🫧🧿 et 📏🫧🛩 à partir de la T courante (DATA['🧮']['🧮🌡️']).
+ *  À appeler au début de chaque pas radiatif pour que cold start et warm start
+ *  aient la même grille verticale à même T (évite Δ différent à 15,8°C). */
+function updateAtmosphereHeightFromCurrentT() {
+    const props = window.calculateAtmosphereProperties();
+    const tropopause_m = calculateTropopauseHeight();
+    window.DATA['🫧']['📏🫧🧿'] = props.z_max / 1000;
+    window.DATA['🫧']['📏🫧🛩'] = tropopause_m / 1000;
     return true;
 }
 
@@ -207,12 +223,10 @@ function pressureAtZ(z) {
     const DATA = window.DATA;
     const CONST = window.CONST;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
-    
     if (DATA['⚖️']['⚖️🫧'] === 0) return 0;
-    
-    const P0 = (DATA['⚖️']['⚖️🫧'] * EPOCH['🍎']) / (4 * Math.PI * Math.pow(EPOCH['📐'] * 1000, 2));
+    const P0_pa = (DATA['🫧']['🎈'] != null && DATA['🫧']['🎈'] > 0) ? DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA : (DATA['⚖️']['⚖️🫧'] * EPOCH['🍎']) / (4 * Math.PI * Math.pow(EPOCH['📐'] * 1000, 2));
     const H = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (DATA['🫧']['🧪'] * EPOCH['🍎']);
-    return P0 * Math.exp(-z / H);
+    return P0_pa * Math.exp(-z / H);
 }
 
 function airNumberDensityAtZ(z) {
@@ -240,6 +254,7 @@ window.calculateAtmosphereProperties = calculateAtmosphereProperties;
 window.calculateMolarMassAir = calculateMolarMassAir;
 window.calculatePressureAtm = calculatePressureAtm;
 window.calculateAtmosphereComposition = calculateAtmosphereComposition;
+window.updateAtmosphereHeightFromCurrentT = updateAtmosphereHeightFromCurrentT;
 window.calculateTropopauseHeight = calculateTropopauseHeight;
 window.pressureAtZ = pressureAtZ;
 window.airNumberDensityAtZ = airNumberDensityAtZ;

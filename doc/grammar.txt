@@ -13,7 +13,7 @@
 💧 H2O
 ⛽ CH4
 🏭 CO2
-🌫 O2
+🫁 O2
 🧊 Glace
 ⛅ Nuages
 🌊 Océan
@@ -36,7 +36,7 @@
 🚩 T0 (température initiale)
 🪩 Albédo
 🌕 Flux géothermique
-📛 EDS (Forçage radiatif)
+📛 EDS (effet de serre)
 
 -- evenements
 📜 Config

@@ -1,9 +1,20 @@
 // File: calculations.js - Calculs de transfert radiatif
 // Desc: Module de calculs radiatifs
-// Version 1.0.2
+// Version 1.0.13
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Logs: v1.0.2 - kappa_H2O × H2O_VAPOR_EDS_SCALE (évite masquage CO2, doc/VAPEUR_VS_NUAGES.md)
+// Logs: v1.0.3 - Attribution EDS Schmidt 2010 : transfert overlap/2 de H2O vers CO2 à chaque (couche,λ), total 100%
+// Logs: v1.0.4 - Nuages EDS : τ_cloud (corps gris) ∝ 🍰🪩⛅ (albédo), réparti troposphère ; eds_breakdown.Clouds
+// Logs: v1.0.5 - CLOUD_LW_TAU_REF = 1 (lit. Stephens 1978, Chylek 1982 : τ overcast ~ 0.5–2 ; ref=1 → τ=coverage)
+// Logs: v1.0.6 - Attribution EDS : part par τ, overlap H2O–CO2 partagé réaliste (Schmidt), doc + commentaires
+// Logs: v1.0.7 - Stratosphère delta_z_real = z_range[i]-z_range[i-1] ; commentaires pas spectral HITRAN, pas / n_layers
+// Logs: v1.0.8 - τ nuages LW : ☁️ (CloudFormationIndex) + CLOUD_LW_TAU_REF (10→1.5, évite runaway H₂O)
+// Logs: v1.0.9 - Attribution EDS nuages en contribution marginale (gaz + nuages découplés) pour éviter l'écrasement par τ_H2O dominant
+// Logs: v1.0.10 - Attribution EDS par absorption propre de composant (1-exp(-τ_i)) avec normalisation globale ; nuages non écrasés par τ_tot
+// Logs: v1.0.11 - Diagnostic aliasing CO2 bande 15µm (13–17µm) : table sigma/kappa + ratio modèle/théorie
+// Logs: v1.0.12 - Grille spectrale λ adaptative (zones CO2/CH4/H2O densifiées) + lambda_weights non-uniformes
+// Logs: v1.0.13 - retrait gardes défensives CONFIG_COMPUTE sur les derniers ajouts (règle crash)
 
 
 function temperatureAtZ(z) {
@@ -24,8 +35,9 @@ function temperatureAtZ(z) {
 
 function crossSectionCO2(wavelength) {
     const CONST = window.CONST;
-    const exponent = CONST.CO2_SIGMA_LOG_PREFACTOR - CONST.CO2_SIGMA_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_CO2_CENTER) / CONST.LAMBDA_CO2_CENTER);
-    return Math.pow(10, exponent);
+    const T_ref = window.HITRAN.T_REF_K;
+    const P_ref = CONST.STANDARD_ATMOSPHERE_PA;
+    return window.HITRAN.crossSectionCO2FromLines(wavelength, T_ref, P_ref);
 }
 
 function waterVaporMixingRatio(z, r0_override = null) {
@@ -40,9 +52,9 @@ function waterVaporMixingRatio(z, r0_override = null) {
 
 function crossSectionH2O(wavelength) {
     const CONST = window.CONST;
-    const sigma1 = Math.pow(10, CONST.H2O_SIGMA_1_LOG_PREFACTOR - CONST.H2O_SIGMA_1_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_H2O_1) / CONST.LAMBDA_H2O_1));
-    const sigma2 = Math.pow(10, CONST.H2O_SIGMA_2_LOG_PREFACTOR - CONST.H2O_SIGMA_2_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_H2O_2) / CONST.LAMBDA_H2O_2));
-    return Math.max(sigma1, sigma2);
+    const T_ref = window.HITRAN.T_REF_K;
+    const P_ref = CONST.STANDARD_ATMOSPHERE_PA;
+    return window.HITRAN.crossSectionH2OFromLines(wavelength, T_ref, P_ref);
 }
 
 function waterVaporFractionAtZ(z) {
@@ -60,12 +72,12 @@ function waterVaporFractionAtZ(z) {
 // MÉTHANE (CH4)
 // ============================================================================
 
-// Section efficace d'absorption CH4 (approximation)
+// Section efficace CH4 à partir des lignes HITRAN (hitran.js + hitran_lines_CH4.js)
 function crossSectionCH4(wavelength) {
     const CONST = window.CONST;
-    const sigma1 = Math.pow(10, CONST.CH4_SIGMA_1_LOG_PREFACTOR - CONST.CH4_SIGMA_1_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_CH4_1) / CONST.LAMBDA_CH4_1));
-    const sigma2 = Math.pow(10, CONST.CH4_SIGMA_2_LOG_PREFACTOR - CONST.CH4_SIGMA_2_EXPONENT * Math.abs((wavelength - CONST.LAMBDA_CH4_2) / CONST.LAMBDA_CH4_2));
-    return Math.max(sigma1, sigma2);
+    const T_ref = window.HITRAN.T_REF_K;
+    const P_ref = CONST.STANDARD_ATMOSPHERE_PA;
+    return window.HITRAN.crossSectionCH4FromLines(wavelength, T_ref, P_ref);
 }
 
 function methaneFractionAtZ(z) {
@@ -82,13 +94,18 @@ function evaporationRate() {
 }
 
 
+// Transfert radiatif : physique uniquement (pas de calcul relatif type forçage radiatif).
+// Flux entrants/sortants absolus : π B_λ(T), τ = κ×Δz (HITRAN), transmission = exp(-τ), Kirchhoff.
+// Convergence = équilibre flux_entrant (solaire absorbé + géothermique) vs flux_sortant (OLR).
+// Les "forcing" (calculateCO2Forcing, etc.) sont calculés ailleurs pour affichage uniquement (climate.js).
 function calculateFluxForT0() {
     const DATA = window.DATA;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     // 🔒 Partition eau déjà mise à jour par le caller (calculateH2OParameters avant chaque calculateFluxForT0 dans la boucle radiatif)
     DATA['📊'] = {};
     
-    const delta_z = 50;
+    // Credence ~70%. Plage lit. 20–100 m (LBL 20–50 m, GCM ~100 m). 30 m (après fix delta_z_real → épaisseur réelle par couche).
+    const delta_z = 30;
     const lambda_min = 0.1e-6;
     const lambda_max = 100e-6;
     const delta_lambda = 0.1e-6;
@@ -115,38 +132,111 @@ function calculateFluxForT0() {
     const lambda_range = [];
     const lambda_weights = []; // Poids pour les moyennes pondérées
 
-    // 💧 Résolution spectrale : DATA['🧮']['🔬🌈'] = target (entrée) puis lambda_range.length (sortie)
+    // 💧 Résolution spectrale : DATA['🧮']['🔬🌈'] = target (entrée) puis lambda_range.length (sortie). Aujourd'hui N fixe (maxSpectralBinsConvergence) ; évolution possible : N_min (HITRAN) + N_max (CONFIG), N = clamp(…, N_min, N_max), FPS bas → ne pas descendre sous N_min.
+    // Credence ~70%. Plage lit. bins λ : 100–1000+ (LBL 200–500 typique). 150 = bas de plage ; augmenter si EDS insuffisant.
     const lambda_span = lambda_max - lambda_min;
 
     {
-        const expected_points = Math.max(2, Math.min(DATA['🧮']['🔬🌈'], 10000));
-        const effective_delta = lambda_span / (expected_points - 1);
+        let expected_points = Math.max(2, Math.min(DATA['🧮']['🔬🌈'], 10000));
+        const nMinHITRAN = window.CONFIG_COMPUTE.spectralBinsMinFromHITRAN != null && Number.isFinite(window.CONFIG_COMPUTE.spectralBinsMinFromHITRAN) ? window.CONFIG_COMPUTE.spectralBinsMinFromHITRAN : 0;
+        if (nMinHITRAN > 0) expected_points = Math.max(expected_points, Math.min(nMinHITRAN, 10000));
+        expected_points = Math.max(24, expected_points); // 8 régions × min 3 bins
 
-        // Créer exactement le bon nombre de points, en forçant lambda_max comme dernier élément
-        for (let i = 0; i < expected_points; i++) {
-            let lambda;
-            if (i === expected_points - 1) {
-                lambda = lambda_max;
-            } else {
-                lambda = lambda_min + i * effective_delta;
+        function buildAdaptiveLambdaGrid(totalBins) {
+            const regions = [
+                [0.1e-6, 4.0e-6, 0.05],
+                [4.0e-6, 4.6e-6, 0.10],
+                [4.6e-6, 7.0e-6, 0.05],
+                [7.0e-6, 8.0e-6, 0.10],
+                [8.0e-6, 12.0e-6, 0.08],
+                [12.0e-6, 17.0e-6, 0.25],
+                [17.0e-6, 25.0e-6, 0.15],
+                [25.0e-6, 100.0e-6, 0.22]
+            ];
+            const filtered = regions.map(r => [Math.max(lambda_min, r[0]), Math.min(lambda_max, r[1]), r[2]]).filter(r => r[1] > r[0]);
+            if (filtered.length === 0) return [];
+            const weightSum = filtered.reduce((s, r) => s + r[2], 0);
+            const normalized = filtered.map(r => [r[0], r[1], r[2] / weightSum]);
+            // On construit des bins "bruts" avec points partagés aux jonctions.
+            // Après suppression du premier point de chaque région (sauf la 1re),
+            // on doit retomber exactement à totalBins.
+            const overlap = normalized.length - 1;
+            const rawTarget = totalBins + overlap;
+            const bins = normalized.map(r => Math.max(3, Math.round(rawTarget * r[2])));
+            let allocated = bins.reduce((s, n) => s + n, 0);
+            while (allocated < rawTarget) {
+                let idx = 0;
+                let best = -1;
+                for (let i = 0; i < normalized.length; i++) {
+                    const score = normalized[i][2] / bins[i];
+                    if (score > best) {
+                        best = score;
+                        idx = i;
+                    }
+                }
+                bins[idx]++;
+                allocated++;
             }
-            lambda_range.push(lambda);
-            lambda_weights.push(1.0);
+            while (allocated > rawTarget) {
+                let idx = -1;
+                let best = -1;
+                for (let i = 0; i < normalized.length; i++) {
+                    if (bins[i] <= 3) continue;
+                    const score = bins[i] / normalized[i][2];
+                    if (score > best) {
+                        best = score;
+                        idx = i;
+                    }
+                }
+                if (idx < 0) break;
+                bins[idx]--;
+                allocated--;
+            }
+            const lambda = [];
+            for (let i = 0; i < normalized.length; i++) {
+                const lmin = normalized[i][0];
+                const lmax = normalized[i][1];
+                const nBins = bins[i];
+                const step = (lmax - lmin) / (nBins - 1);
+                for (let j = 0; j < nBins; j++) {
+                    const lam = (j === nBins - 1) ? lmax : (lmin + j * step);
+                    if (i > 0 && j === 0) continue; // point de jonction déjà pris par la région précédente
+                    lambda.push(lam);
+                }
+            }
+            if (lambda.length !== totalBins) {
+                console.error('[buildAdaptiveLambdaGrid] ❌ longueur invalide: ' + lambda.length + ' attendu=' + totalBins);
+                throw new Error('buildAdaptiveLambdaGrid longueur invalide');
+            }
+            if (Math.abs(lambda[lambda.length - 1] - lambda_max) > 1e-12) {
+                lambda[lambda.length - 1] = lambda_max;
+            }
+            return lambda;
         }
-        if (lambda_range.length !== expected_points) {
-            console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE: lambda_range.length (${lambda_range.length}) != expected (${expected_points})`);
-            throw new Error(`lambda_range.length (${lambda_range.length}) != expected (${expected_points})`);
+
+        const adaptive_lambda = buildAdaptiveLambdaGrid(expected_points);
+        for (let i = 0; i < adaptive_lambda.length; i++) lambda_range.push(adaptive_lambda[i]);
+        const base_delta = lambda_range.length > 1 ? (lambda_range[lambda_range.length - 1] - lambda_range[0]) / (lambda_range.length - 1) : lambda_span;
+        for (let i = 0; i < lambda_range.length; i++) {
+            let local_delta;
+            if (lambda_range.length === 1) {
+                local_delta = lambda_span;
+            } else if (i === 0) {
+                local_delta = lambda_range[1] - lambda_range[0];
+            } else if (i === lambda_range.length - 1) {
+                local_delta = lambda_range[i] - lambda_range[i - 1];
+            } else {
+                local_delta = (lambda_range[i + 1] - lambda_range[i - 1]) * 0.5;
+            }
+            lambda_weights.push(local_delta / base_delta);
         }
-        if (Math.abs(lambda_range[lambda_range.length - 1] - lambda_max) > effective_delta * 0.0001) {
-            console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE: dernier élément != lambda_max`);
-            throw new Error(`Dernier élément lambda_range != lambda_max`);
-        }
-        
-        // Log pour debug
     }
 
     // Largeur de bin réelle pour l'intégration : Σ π B_λ Δλ doit utiliser le pas de la grille, pas delta_lambda fixe
     // Sinon avec 50 bins (pas ~2 µm) on multipliait par 0.1 µm → flux total ~20× trop faible (visible/IR mal compté)
+    // Idéal LBL : pas spectral piloté par HITRAN (largeur de raie γ_L, γ_D par raie) ; ici grille fixe N bins (🔬🌈).
+    // Choix d'évolution : dériver pas max ou N min depuis HITRAN (🔬🌈 gardé mais idéalement rempli par HITRAN). HITRAN : précision par raie,
+    // pas identique pour les 3 gaz (CO2, H2O, CH4 ont chacun leurs γ_L, γ_D). Nuages EDS : corps gris, pas de λ (τ uniforme) ; leur effet SW (albédo) est dans calculateAlbedo (🍰🪩⛅ × 🪩🍰⛅).
     const effective_delta_lambda = lambda_range.length > 1 ? (lambda_range[lambda_range.length - 1] - lambda_range[0]) / (lambda_range.length - 1) : lambda_span;
 
     // Créer la grille z à partir des hauteurs calculées (📏🫧🧿, tropopause). Si tout à 0 → z_max=1e-6, tropo=0 → une couche en une passe.
@@ -210,7 +300,7 @@ function calculateFluxForT0() {
     const optical_thickness = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const emitted_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
     const absorbed_flux = Array(z_range.length).fill(0).map(() => Array(final_lambda_length).fill(0));
-    let sum_blocked_CO2 = 0, sum_blocked_H2O = 0, sum_blocked_CH4 = 0;
+    let sum_blocked_CO2 = 0, sum_blocked_H2O = 0, sum_blocked_CH4 = 0, sum_blocked_clouds = 0;
 
     // Log du calcul spectral (désactivé pour réduire la taille des logs)
     // console.log(`📊 [calculateFluxForT0@calculations.js] Calcul spectral:`);
@@ -253,6 +343,15 @@ function calculateFluxForT0() {
         }
     }
 
+    // Nuages EDS : ☁️ × τ_ref. τ_LW ∝ CCN (🍰💭) : plus de noyaux → gouttelettes plus petites → τ plus grand.
+    // Calibré : 🍰💭=1.0 → τ_ref=2.6 ; 🍰💭=0.4 → τ_ref=1.04.
+    // Réf. : Stephens 1978 (τ overcast 0.5–2) ; Chylek & Ramaswamy 1982 (idem) ; Liou 1986 (stratus 5–20, cirrus 0.1–2) ; Loeb et al. 2018 CERES (CRE_LW ~27 W/m²).
+    const cloud_index = (DATA['🪩'] != null && DATA['🪩']['☁️'] != null && Number.isFinite(DATA['🪩']['☁️'])) ? DATA['🪩']['☁️'] : 0;
+    const ccn = (DATA['🫧'] != null && DATA['🫧']['🍰💭'] != null && Number.isFinite(DATA['🫧']['🍰💭'])) ? DATA['🫧']['🍰💭'] : 1;
+    const CLOUD_LW_TAU_REF = 2.6 * ccn;
+    const tau_cloud_total = Math.max(0, cloud_index * CLOUD_LW_TAU_REF);
+    const tau_cloud_per_layer = i_trop > 0 ? tau_cloud_total / i_trop : 0;
+
     // ⚡ OPTIMISATION : Précalculer B_λ(T_trop) pour toutes les λ (après tropopause)
     const planck_trop = lambda_range.map(lambda =>
                 window.planckFunction(lambda, T_trop)
@@ -263,7 +362,43 @@ function calculateFluxForT0() {
     const cross_section_H2O = lambda_range.map(lambda => crossSectionH2O(lambda));
     const cross_section_CH4 = lambda_range.map(lambda => crossSectionCH4(lambda));
 
-    const h2o_eds_scale = window.getH2OVaporEDSScale ? window.getH2OVaporEDSScale() : 1;
+    // DIAGNOSTIC CO2 (temporaire) : vérifier l'échantillonnage de la bande 15 µm.
+    // Activé seulement en mode diagnostic pour éviter un bruit excessif en exécution normale.
+    if (window.CONFIG_COMPUTE.logEdsDiagnostic) {
+        const diag_co2 = [];
+        const n_co2_surface = window.airNumberDensityAtZ(0) * DATA['🫧']['🍰🫧🏭'];
+        for (let j = 0; j < lambda_range.length; j++) {
+            const lambda = lambda_range[j];
+            if (lambda >= 13e-6 && lambda <= 17e-6) {
+                const sigma = cross_section_CO2[j];
+                const kappa = sigma * n_co2_surface;
+                diag_co2.push({
+                    lambda_um: (lambda * 1e6).toFixed(3),
+                    sigma: sigma.toExponential(3),
+                    n_CO2: n_co2_surface.toExponential(3),
+                    kappa: kappa.toExponential(3)
+                });
+            }
+        }
+        console.table(diag_co2);
+        const sigma_co2_max_theorique = 1e-22; // m², ordre de grandeur pic 15 µm
+        const kappa_co2_theorique = sigma_co2_max_theorique * n_co2_surface;
+        let sigma_co2_max_modele = 0;
+        for (let j = 0; j < lambda_range.length; j++) {
+            const lambda = lambda_range[j];
+            if (lambda >= 13e-6 && lambda <= 17e-6 && cross_section_CO2[j] > sigma_co2_max_modele) {
+                sigma_co2_max_modele = cross_section_CO2[j];
+            }
+        }
+        const kappa_co2_modele = sigma_co2_max_modele * n_co2_surface;
+        const ratio_modele_theorie = kappa_co2_theorique > 0 ? (kappa_co2_modele / kappa_co2_theorique) : 0;
+        console.log('[DIAG CO2] kappa_max modèle @15µm : ' + kappa_co2_modele.toExponential(3) + ' m⁻¹');
+        console.log('[DIAG CO2] kappa_max théorique @15µm : ' + kappa_co2_theorique.toExponential(3) + ' m⁻¹');
+        console.log('[DIAG CO2] ratio modèle/théorie : ' + ratio_modele_theorie.toFixed(3));
+        console.log('[DIAG CO2] bins dans bande 13-17µm : ' + diag_co2.length + ' (sur ' + lambda_range.length + ' total)');
+    }
+
+    const h2o_eds_scale = window.getH2OVaporEDSScale();
 
     // h2o_enabled et ch4_enabled sont déjà lus depuis DATA au début de la fonction
 
@@ -287,7 +422,7 @@ function calculateFluxForT0() {
     // Logs désactivés pour réduire la taille
     
     // ⚡ OPTIMISATION : Boucle avant tropopause (T varie avec z)
-    const usePressureBroadening = window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.pressureBroadening;
+    const usePressureBroadening = window.CONFIG_COMPUTE.pressureBroadening;
     const P_REF = CONST.STANDARD_ATMOSPHERE_PA;
     for (let i = 0; i < i_trop; i++) {
         const z = z_range[i];
@@ -301,9 +436,8 @@ function calculateFluxForT0() {
         const P_z = usePressureBroadening && window.pressureAtZ ? window.pressureAtZ(z) : P_REF;
         const pressureBroadening = usePressureBroadening ? Math.min(2.0, Math.sqrt(Math.max(1, P_z) / P_REF)) : 1.0;
 
-        // ⚠️ IMPORTANT : Sous tropopause, on garde delta_z constant = 50m (PAS D'OPTIMISATION)
-        // On utilise directement delta_z_troposphere, pas de calcul de delta_z_real
-        const delta_z_real = delta_z_troposphere;
+        // Épaisseur réelle de la couche i → τ cohérent quel que soit delta_z (convergence quand précision augmente).
+        const delta_z_real = (i + 1 < z_range.length) ? (z_range[i + 1] - z_range[i]) : delta_z_troposphere;
 
         // Vérifier que flux_in et upward_flux[i] ont la bonne longueur avant la boucle
         if (flux_in.length !== lambda_range.length) {
@@ -331,15 +465,15 @@ function calculateFluxForT0() {
             const kappa_H2O = kappa_H2O_raw * h2o_eds_scale;
             const kappa_CH4 = isFinite(n_CH4) && isFinite(cross_section_CH4[j]) ? cross_section_CH4[j] * sigma_broad * n_CH4 : 0;
 
-            // Coefficient d'absorption total (CO2 + H2O + CH4)
+            // Coefficient d'absorption total (CO2 + H2O + CH4) + nuages (corps gris, même τ pour toutes les λ)
             const kappa = kappa_CO2 + kappa_H2O + kappa_CH4;
+            const tau_cloud_layer = tau_cloud_per_layer;
 
-            const tau_raw = kappa * delta_z_real;
+            const tau_raw = kappa * delta_z_real + tau_cloud_layer;
             optical_thickness[i][j] = (Number.isFinite(tau_raw) && tau_raw >= 0) ? Math.min(tau_raw, TAU_EFF_MAX) : 0;
 
-            // 🔒 Corps noir = pas d'absorption (CO2=0 ET H2O réellement absent ET CH4 réellement absent)
-            // Vérifier les valeurs réelles, pas seulement les boutons
-            const has_absorption = (DATA['🫧']['🍰🫧🏭'] > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10);
+            // 🔒 Corps noir = pas d'absorption (gaz + nuages)
+            const has_absorption = (DATA['🫧']['🍰🫧🏭'] > 0) || (n_H2O > 1e-10) || (n_CH4 > 1e-10) || (tau_cloud_layer > 1e-10);
             if (!has_absorption) {
                 // Pas d'absorption : corps noir pur, flux passe sans modification (clamp pour éviter overflow en somme)
                 upward_flux[i][j] = Math.max(-MAX_FLUX_PER_BAND, Math.min(MAX_FLUX_PER_BAND, flux_in[j]));
@@ -368,16 +502,17 @@ function calculateFluxForT0() {
                 emitted_flux[i][j] = em_flux;
                 absorbed_flux[i][j] = abs_flux;
 
-                // Attribution EDS par gaz (tau_i/tau × flux absorbé)
+                // Attribution EDS (diagnostic) :
+                // contribution "propre" de chaque composant = flux_in * (1 - exp(-τ_i)).
+                // Puis normalisation globale en fin de calcul.
+                // Objectif : éviter que 🍰📛⛅ soit mécaniquement écrasé par τ_tot quand H2O domine.
                 const tau_CO2 = Math.max(0, kappa_CO2 * delta_z_real);
                 const tau_H2O = Math.max(0, kappa_H2O * delta_z_real);
                 const tau_CH4 = Math.max(0, kappa_CH4 * delta_z_real);
-                const tau_tot = tau_CO2 + tau_H2O + tau_CH4;
-                if (tau_tot > 1e-20) {
-                    sum_blocked_CO2 += (tau_CO2 / tau_tot) * abs_flux;
-                    sum_blocked_H2O += (tau_H2O / tau_tot) * abs_flux;
-                    sum_blocked_CH4 += (tau_CH4 / tau_tot) * abs_flux;
-                }
+                sum_blocked_CO2 += flux_in[j] * (1 - Math.exp(-tau_CO2));
+                sum_blocked_H2O += flux_in[j] * (1 - Math.exp(-tau_H2O));
+                sum_blocked_CH4 += flux_in[j] * (1 - Math.exp(-tau_CH4));
+                sum_blocked_clouds += flux_in[j] * (1 - Math.exp(-tau_cloud_layer));
             }
 
             flux_in[j] = upward_flux[i][j];
@@ -395,8 +530,8 @@ function calculateFluxForT0() {
         const P_z_s = usePressureBroadening && window.pressureAtZ ? window.pressureAtZ(z) : P_REF;
         const pressureBroadening_s = usePressureBroadening ? Math.min(2.0, Math.sqrt(Math.max(1, P_z_s) / P_REF)) : 1.0;
 
-        // ⚡ OPTIMISATION : Calculer delta_z réel pour cette couche (précision grossière au-dessus)
-        const delta_z_real = i > i_trop ? z - z_range[i - 1] : delta_z_stratosphere;
+        // Épaisseur réelle de la couche i (z_range[i-1] → z_range[i]) : cohérent avec troposphère, pas de pas fixe stratosphère.
+        const delta_z_real = i > 0 ? (z_range[i] - z_range[i - 1]) : delta_z_stratosphere;
 
         // Vérifier que flux_in et upward_flux[i] ont la bonne longueur avant la boucle
         if (flux_in.length !== lambda_range.length) {
@@ -458,16 +593,13 @@ function calculateFluxForT0() {
                 emitted_flux[i][j] = em_flux;
                 absorbed_flux[i][j] = abs_flux;
 
-                // Attribution EDS par gaz (tau_i/tau × flux absorbé)
+                // Attribution EDS (diagnostic) : absorption propre par composant (sans nuages en stratosphère).
                 const tau_CO2_s = Math.max(0, kappa_CO2 * delta_z_real);
                 const tau_H2O_s = Math.max(0, kappa_H2O * delta_z_real);
                 const tau_CH4_s = Math.max(0, kappa_CH4 * delta_z_real);
-                const tau_tot_s = tau_CO2_s + tau_H2O_s + tau_CH4_s;
-                if (tau_tot_s > 1e-20) {
-                    sum_blocked_CO2 += (tau_CO2_s / tau_tot_s) * abs_flux;
-                    sum_blocked_H2O += (tau_H2O_s / tau_tot_s) * abs_flux;
-                    sum_blocked_CH4 += (tau_CH4_s / tau_tot_s) * abs_flux;
-                }
+                sum_blocked_CO2 += flux_in[j] * (1 - Math.exp(-tau_CO2_s));
+                sum_blocked_H2O += flux_in[j] * (1 - Math.exp(-tau_H2O_s));
+                sum_blocked_CH4 += flux_in[j] * (1 - Math.exp(-tau_CH4_s));
             }
 
             flux_in[j] = upward_flux[i][j];
@@ -490,17 +622,19 @@ function calculateFluxForT0() {
     if (!upward_flux || upward_flux.length === 0 || !upward_flux[upward_flux.length - 1]) {
         throw new Error('[calculateFluxForT0] upward_flux est vide ou invalide');
     }
+    // OLR = somme sur λ du flux au sommet ; pas de division par n_layers (propagation couche par couche, pas moyenne).
     const total_flux = upward_flux[upward_flux.length - 1].reduce((sum, val) => sum + val, 0);
     const earth_flux_total = earth_flux.reduce((sum, val) => sum + val, 0);
     const EDS = earth_flux_total - total_flux;
-    const sum_blocked = sum_blocked_CO2 + sum_blocked_H2O + sum_blocked_CH4;
-    // pct ∈ [0, 1] (répartition absorption brute par gaz ; pas contribution nette EDS)
+    const sum_blocked = sum_blocked_CO2 + sum_blocked_H2O + sum_blocked_CH4 + sum_blocked_clouds;
+    // pct ∈ [0, 1] : répartition relative des contributions bloquées (gaz + nuages marginaux).
     const pct = (v) => (sum_blocked > 1e-20 && Number.isFinite(v)) ? v / sum_blocked : 0;
     const eds_breakdown = {
         EDS_Wm2: EDS,
         CO2: { pct: pct(sum_blocked_CO2) },
         H2O: { pct: pct(sum_blocked_H2O) },
-        CH4: { pct: pct(sum_blocked_CH4) }
+        CH4: { pct: pct(sum_blocked_CH4) },
+        Clouds: { pct: pct(sum_blocked_clouds) }
     };
 
     // Log du delta (flux sortant - flux entrant initial)
@@ -518,6 +652,11 @@ function calculateFluxForT0() {
     const top_flux_total = top_flux.reduce((sum, f) => sum + f, 0);
 
     // 🔒 Stocker les résultats dans DATA (crash si DATA['📊'] n'existe pas)
+    if (!DATA['📊']) throw new Error('[calculateFluxForT0] DATA[📊] requis avant écriture');
+    if (window.HITRAN && window.HITRAN.getSpectralBinBoundsFromHITRAN) {
+        const bounds = window.HITRAN.getSpectralBinBoundsFromHITRAN(lambda_min, lambda_max, window.HITRAN.T_REF_K || 296, CONST.STANDARD_ATMOSPHERE_PA);
+        if (bounds) DATA['📊'].hitranBinBounds = bounds;
+    }
     DATA['📊'].total_flux = total_flux;
     DATA['📊'].eds_breakdown = eds_breakdown;
     DATA['📊'].lambda_range = lambda_range;
@@ -528,10 +667,15 @@ function calculateFluxForT0() {
     DATA['📊'].emitted_flux = emitted_flux;
     DATA['📊'].absorbed_flux = absorbed_flux;
     DATA['📊'].earth_flux = earth_flux;
-    
+    DATA['📊'].delta_z = delta_z;
+
     // Mettre à jour les résolutions dans DATA['🧮'] (crash si DATA['🧮'] n'existe pas)
     DATA['🧮']['🔬🌈'] = lambda_range.length;
     DATA['🧮']['🔬🫧'] = z_range.length;
+
+    if (window.CONFIG_COMPUTE.logEdsDiagnostic) {
+        console.log('[EDS] scale=' + h2o_eds_scale + ' bins=' + lambda_range.length + ' n_layers=' + z_range.length + ' OLR=' + total_flux.toFixed(2) + ' EDS=' + EDS.toFixed(2));
+    }
 
     return true; // Succès
 }
@@ -606,7 +750,7 @@ function calculateRadiativeCapacities() {
     const cross_section_CO2 = DATA['📊'].lambda_range.map(lambda => crossSectionCO2(lambda));
     const cross_section_H2O = DATA['📊'].lambda_range.map(lambda => crossSectionH2O(lambda));
     const cross_section_CH4 = DATA['📊'].lambda_range.map(lambda => crossSectionCH4(lambda));
-    const h2o_eds_scale_cap = window.getH2OVaporEDSScale ? window.getH2OVaporEDSScale() : 1;
+    const h2o_eds_scale_cap = window.getH2OVaporEDSScale();
     
     // Initialiser les intégrales pondérées
     let integral_H2O = 0;
@@ -737,12 +881,12 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     const albedo = result.albedo;
     const cloud_coverage = result.cloud_coverage;
 
-    // Calculer les forçages radiatifs séparés
+    // Convention affichage uniquement (pas utilisé dans le calcul radiatif) : ΔF CO2/H2O/albedo pour labels.
     const forcing_CO2 = window.calculateCO2Forcing(CO2_fraction);
     const forcing_H2O = window.calculateH2OForcing(h2o_enabled, cloud_coverage);
     const forcing_Albedo = (albedo !== null) ? window.calculateAlbedoForcing(albedo) : 0;
 
-    // Forçage total
+    // Forçage total (affichage)
     const forcing_total = forcing_CO2 + forcing_H2O + forcing_Albedo;
 
     // Calculer ΔT° = différence de température par rapport à la référence (255K sans CO2)

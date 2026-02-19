@@ -1,7 +1,7 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.42
+// Version 1.2.58
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -59,6 +59,21 @@
 // - v1.2.38 : initForConfig : T_epoch si |T_solver-T_epoch|≤20K (1800 OK), T réelle si transition extrême (Corps noir→Archéen)
 // - v1.2.39 : cycleDeLeau : guard _lastCycleRef undefined avant accès albedo/vapor (runComputeInParent crossing)
 // - v1.2.42 : postMessage compute:progress iframe→parent pour actualiser organigramme (core_flux_wm, atm_height_km, h2o, albedo)
+// - v1.2.43 : logEdsBreakdownWithScale() — log getH2OVaporEDSScale + répartition CO2/H2O/CH4% à chaque EDS breakdown
+// - v1.2.44 : retrait logEdsBreakdownWithScale (verbeux) ; logConvergenceT() une seule fois à la convergence (T°C, albedo, flux, Δ, EDS %) ; CLOUD_LW_TAU_REF = 1 (calculations.js) selon lit. Stephens 1978 / Chylek 1982 — voir FORMULES_FLUX.md § τ nuages LW
+// - v1.2.45 : commentaire arrêt convergence : 🔺🧲 = résidu (pas 0) ; 🧲🔬 = 4σT³×precision_K → plus T haute, plus tol grande → T cesse d’augmenter
+// - v1.2.47 : updateAtmosphereHeightFromCurrentT() au début de chaque pas radiatif : même 📏🫧🧿 à 15,8°C en cold/warm start (Δ cohérent)
+// - v1.2.48 : maxWaterAlbedoCyclesAtInit (5 par défaut) : converger météo à T_init avant premier flux pour même Δ qu'en cold start
+// - v1.2.49 : data_snapshot Init/Search/Dicho/converged : ajout 🫧 (🍰🫧📿🌈) pour affichage correct dans debug (évite 0.000 vs 0.023–0.030)
+// - v1.2.50 : reset _iceCoverageRampState dans initForConfig (nouveau run/epoch démarre sans inertie glace résiduelle)
+// - v1.2.51 : initForConfig fixe _iceCoverageLock (🍰🪩🧊 initial) pour stabiliser Search sur bassin froid (waterPass=0)
+// - v1.2.52 : reset _iceDurationBlendState/_iceEpochFixedState au début d'époque (glace d'époque recalculée une fois puis figée en solver)
+// - v1.2.53 : spin-up climatologique paramétrable avant solver (climateSpinupCycles) avec snapshots CycleEau visibles
+// - v1.2.54 : spin-up pondéré par quantités (⚖️🫧, ⚖️💧) pour neutralité corps noir sans if d'époque
+// - v1.2.55 : initForConfig fixe _iceEpochFixedState en fin d'init (formule glace + override EPOCH.ice_fixed)
+// - v1.2.56 : vérif cohérence glace (logs DATA vs EPOCH) ; continuité DATA par défaut, override epoch optionnel via config
+// - v1.2.57 : continuité glace nettoyée physiquement (atm/eau/hautes terres) + log raw/effective pour éviter faux diagnostics
+// - v1.2.58 : séparation verrous glace eau/albédo (_iceEpochFixedWaterState vs _iceEpochFixedAlbedoState) + log double
 // ============================================================================
 
 // ============================================================================
@@ -79,6 +94,66 @@
 // Fonctions getAnimState() et getEpochDateConfig() : définies dans compute.js (chargé avant ce fichier)
 // window.epoch est utilisé directement (pas de fonction getEpochConfig)
 // On utilise les fonctions globales définies dans compute.js
+
+/** Log EDS breakdown + getH2OVaporEDSScale pour debug (valeur H₂O vs scale). */
+/** Log unique à la convergence : 1) W/m² (flux in/out, Δ, EDS total + par composant) ; 2) T°C, albedo, % EDS. */
+function logConvergenceT() {
+    const DATA = window.DATA;
+    const CONST = window.CONST;
+    if (!DATA || !DATA['🧮'] || !DATA['🧲']) return;
+    const T_K = DATA['🧮']['🧮🌡️'];
+    const T_C = (T_K - CONST.KELVIN_TO_CELSIUS).toFixed(2);
+    const fluxIn = (DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽']).toFixed(2);
+    const fluxOut = (DATA['🧲']['🧲🌈🔼']).toFixed(2);
+    const delta = DATA['🧲']['🔺🧲'] != null ? DATA['🧲']['🔺🧲'].toFixed(3) : '—';
+    const albedo = DATA['🪩'] && DATA['🪩']['🍰🪩📿'] != null ? (DATA['🪩']['🍰🪩📿'] * 100).toFixed(1) : '—';
+    const b = DATA['📛'];
+    const edsTotal = b && b['🧲📛'] != null ? b['🧲📛'] : 0;
+    const co2Pct = b && b['🍰📛🏭'] != null ? (b['🍰📛🏭'] * 100).toFixed(1) : '—';
+    const h2oPct = b && b['🍰📛💧'] != null ? (b['🍰📛💧'] * 100).toFixed(1) : '—';
+    const ch4Pct = b && b['🍰📛⛽'] != null ? (b['🍰📛⛽'] * 100).toFixed(1) : '—';
+    const cloudsPct = b && b['🍰📛⛅'] != null ? (b['🍰📛⛅'] * 100).toFixed(1) : '—';
+    const co2Wm2 = b && b['🧲📛🏭'] != null ? Number(b['🧲📛🏭']).toFixed(2) : (b && b['🍰📛🏭'] != null ? (edsTotal * b['🍰📛🏭']).toFixed(2) : '—');
+    const h2oWm2 = b && b['🧲📛💧'] != null ? Number(b['🧲📛💧']).toFixed(2) : (b && b['🍰📛💧'] != null ? (edsTotal * b['🍰📛💧']).toFixed(2) : '—');
+    const ch4Wm2 = b && b['🧲📛⛽'] != null ? Number(b['🧲📛⛽']).toFixed(2) : (b && b['🍰📛⛽'] != null ? (edsTotal * b['🍰📛⛽']).toFixed(2) : '—');
+    const cloudsWm2 = b && b['🧲📛⛅'] != null ? Number(b['🧲📛⛅']).toFixed(2) : (b && b['🍰📛⛅'] != null ? (edsTotal * b['🍰📛⛅']).toFixed(2) : '—');
+    if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logEdsDiagnostic) {
+        console.log('[convergence] T=' + T_C + '°C Δ=' + delta + ' EDS=' + edsTotal.toFixed(1) + ' CO2%=' + co2Pct + ' H2O%=' + h2oPct);
+    }
+    const deltaNum = DATA['🧲']['🔺🧲'] != null ? Number(DATA['🧲']['🔺🧲']) : NaN;
+    if (Number.isFinite(deltaNum)) {
+        const tol = DATA['🧮']['🧲🔬'];
+        const sens = (tol != null && Math.abs(deltaNum) <= tol) ? 'équilibre (|Δ|≤tol)' : (deltaNum < 0 ? 'trop de sortie → refroidir' : (deltaNum > 0 ? 'pas assez de sortie → réchauffer' : 'équilibre'));
+        if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[convergence] ' + delta + ' ' + sens);
+    }
+}
+
+/** Construit l'objet DATA['📛'] : EDS total (🧲📛), parts [0,1] (🍰📛❀), W/m² par composant (🧲📛❀). */
+function buildEdsBreakdown(b) {
+    if (!b || b.EDS_Wm2 == null) return null;
+    const E = b.EDS_Wm2;
+    const pCloud = b.Clouds != null ? b.Clouds.pct : 0;
+    return {
+        '🧲📛': E,
+        '🍰📛🏭': b.CO2.pct,
+        '🍰📛💧': b.H2O.pct,
+        '🍰📛⛽': b.CH4.pct,
+        '🍰📛⛅': pCloud,
+        '🧲📛🏭': E * b.CO2.pct,
+        '🧲📛💧': E * b.H2O.pct,
+        '🧲📛⛽': E * b.CH4.pct,
+        '🧲📛⛅': E * pCloud
+    };
+}
+
+/** Snapshot 📛 pour output convergence (sans 🔺📛💧). */
+function snapshotEdsForConvergence() {
+    const DATA = window.DATA;
+    if (!DATA['📛']) return null;
+    const snap = JSON.parse(JSON.stringify(DATA['📛']));
+    delete snap['🔺📛💧'];
+    return snap;
+}
 
 /** Tolérance flux (W/m²) = max(4σT³×precision_K, tolMinWm2). Source unique, pas de duplication. */
 function computeToleranceWm2(T_K, precision_K) {
@@ -152,6 +227,7 @@ function initForConfig() {
     getEpochDateConfig();
     if (!calculateT0()) return false;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    const epochId = DATA['📜']['🗿'];
     const T_solver_init = DATA['🧮']['🧮🌡️'];
     const T_epoch = EPOCH['🌡️🧮'] + DATA['📜']['🔺🌡️💫'] * DATA['📜']['📿💫'];
     const animEnabled = DATA['🔘'] && DATA['🔘']['🔘🎬'];
@@ -164,6 +240,10 @@ function initForConfig() {
     } else {
         DATA['🧮']['🧮🌡️'] = T_epoch;
     }
+    window._iceDurationBlendState = null;
+    window._iceEpochFixedState = null; // legacy
+    window._iceEpochFixedWaterState = null;
+    window._iceEpochFixedAlbedoState = null;
     window.calculateAtmosphereComposition();
     if (window.calculateGeologySurfaces) window.calculateGeologySurfaces();
     // Partition eau une fois avec T0 de la config (cache invalidé pour forcer le recalcul)
@@ -176,9 +256,59 @@ function initForConfig() {
     if (phasePrev === 'Init') DATA['🧮']['🧮⚧'] = phasePrev;
     window.getEnabledStates();
     window.calculateAlbedo();
+    // Verrou glaciaire pour tout le solver de cette époque
+    const ice_data_raw = (DATA['💧'] && DATA['💧']['🍰💧🧊'] != null && Number.isFinite(DATA['💧']['🍰💧🧊']))
+        ? DATA['💧']['🍰💧🧊']
+        : 0;
+    const highlands_max = (DATA['🗻'] && DATA['🗻']['🍰🗻🏔'] != null && Number.isFinite(DATA['🗻']['🍰🗻🏔']))
+        ? Math.max(0, DATA['🗻']['🍰🗻🏔'])
+        : 0;
+    const hasAtmWaterSupport = (DATA['⚖️'] && DATA['⚖️']['⚖️🫧'] > 0 && DATA['⚖️']['⚖️💧'] > 0);
+    const ice_data_continuity = hasAtmWaterSupport
+        ? Math.max(0, Math.min(highlands_max, ice_data_raw))
+        : 0;
+    const ice_temp_factor = Math.max(0, (CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS - EPOCH['🌡️🧮']) / CONST.T_NO_POLAR_ICE_C);
+    const ice_fixed_epoch = EPOCH['ice_fixed'];
+    const ice_formula_epoch = Math.max(0, Math.min(highlands_max, 0.46 * ice_temp_factor));
+    const useEpochOverride = window.CONFIG_COMPUTE.useEpochIceFixedOverride === true;
+    const ice_fixed_value = (useEpochOverride && ice_fixed_epoch != null && Number.isFinite(ice_fixed_epoch))
+        ? ice_fixed_epoch
+        : ice_data_continuity;
+    const albedo_ice_raw = (DATA['🪩'] && DATA['🪩']['🍰🪩🧊'] != null && Number.isFinite(DATA['🪩']['🍰🪩🧊']))
+        ? DATA['🪩']['🍰🪩🧊']
+        : ice_formula_epoch;
+    const albedo_ice_effective = Math.max(0, Math.min(highlands_max, albedo_ice_raw));
+    window._iceEpochFixedWaterState = {
+        epochId: epochId,
+        value: Math.max(0, Math.min(highlands_max, ice_fixed_value))
+    };
+    window._iceEpochFixedAlbedoState = {
+        epochId: epochId,
+        value: albedo_ice_effective
+    };
+    window._iceEpochFixedState = window._iceEpochFixedWaterState; // compat
+    if (window.CONFIG_COMPUTE.logIceFixedDiagnostic) {
+        console.log('[ice-lock] epoch=' + epochId
+            + ' DATA_raw=' + ice_data_raw.toFixed(3)
+            + ' DATA_effective=' + ice_data_continuity.toFixed(3)
+            + ' ALBEDO_raw=' + albedo_ice_raw.toFixed(3)
+            + ' ALBEDO_effective=' + albedo_ice_effective.toFixed(3)
+            + ' EPOCH_ice_fixed=' + (ice_fixed_epoch != null && Number.isFinite(ice_fixed_epoch) ? Number(ice_fixed_epoch).toFixed(3) : 'n/a')
+            + ' EPOCH_formula=' + ice_formula_epoch.toFixed(3)
+            + ' highlands=' + highlands_max.toFixed(3)
+            + ' atm_water=' + (hasAtmWaterSupport ? '1' : '0')
+            + ' selected_water=' + window._iceEpochFixedWaterState.value.toFixed(3)
+            + ' selected_albedo=' + window._iceEpochFixedAlbedoState.value.toFixed(3)
+            + ' source=' + ((useEpochOverride && ice_fixed_epoch != null && Number.isFinite(ice_fixed_epoch)) ? 'EPOCH' : 'DATA'));
+    }
     DATA['🧮']['🧮🌡️'] = T_solver_init;
     DATA['🧮']['🔬🌈'] = window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
     window._lastCycleRef = { albedo: DATA['🪩']['🍰🪩📿'], vapor: DATA['💧']['🍰🫧💧'] };
+    window._iceCoverageRampState = null;
+    window._iceCoverageLock = {
+        epochId: DATA['📜']['🗿'],
+        value: DATA['🪩']['🍰🪩🧊']
+    };
     return true;
 }
 
@@ -223,7 +353,7 @@ function computeSearchIncrement() {
     if (Math.abs(delta) > window.CONFIG_COMPUTE.largeDeltaFactor * tol) {
         cap = window.CONFIG_COMPUTE.maxSearchStepLargeK;
     }
-    if (T_K > 2000) cap = Math.min(80, cap);
+    cap = Math.min(window.CONFIG_COMPUTE.maxSearchStepLargeK, cap);
     if (Math.abs(res) > cap) res = Math.sign(res) * cap;
     return res;
 }
@@ -328,20 +458,70 @@ async function runRadiatifOnly() {
         DATA['🧮']['🧮🔄🪩'] = 0;
     }
 
+    // Spin-up climatologique : cycles fixes eau/albédo avant solver, visibles dans la scie CycleEau.
+    // Objectif : converger météo locale (vapeur/nuages/albédo) avec glace verrouillée avant la boucle radiative.
+    const climateSpinupCycles = (window.CONFIG_COMPUTE.climateSpinupCycles != null && Number.isFinite(window.CONFIG_COMPUTE.climateSpinupCycles))
+        ? Math.max(0, Math.floor(window.CONFIG_COMPUTE.climateSpinupCycles))
+        : 0;
+    const atmMassRef = (window.CONFIG_COMPUTE.climateSpinupAtmMassRefKg != null && Number.isFinite(window.CONFIG_COMPUTE.climateSpinupAtmMassRefKg))
+        ? Math.max(1, window.CONFIG_COMPUTE.climateSpinupAtmMassRefKg)
+        : 1.0e18;
+    const waterMassRef = (window.CONFIG_COMPUTE.climateSpinupWaterMassRefKg != null && Number.isFinite(window.CONFIG_COMPUTE.climateSpinupWaterMassRefKg))
+        ? Math.max(1, window.CONFIG_COMPUTE.climateSpinupWaterMassRefKg)
+        : 1.0e20;
+    const atmMass = (DATA['⚖️'] && DATA['⚖️']['⚖️🫧'] != null && Number.isFinite(DATA['⚖️']['⚖️🫧'])) ? Math.max(0, DATA['⚖️']['⚖️🫧']) : 0;
+    const waterMass = (DATA['⚖️'] && DATA['⚖️']['⚖️💧'] != null && Number.isFinite(DATA['⚖️']['⚖️💧'])) ? Math.max(0, DATA['⚖️']['⚖️💧']) : 0;
+    const spinupWeightAtm = Math.max(0, Math.min(1, atmMass / atmMassRef));
+    const spinupWeightWater = Math.max(0, Math.min(1, waterMass / waterMassRef));
+    const climateSpinupCyclesEffective = Math.max(0, Math.round(climateSpinupCycles * spinupWeightAtm * spinupWeightWater));
+    const maxWaterAlbedoAtInit = (window.CONFIG_COMPUTE.maxWaterAlbedoCyclesAtInit != null) ? window.CONFIG_COMPUTE.maxWaterAlbedoCyclesAtInit : 1;
     if (currentWaterPass === 0) {
-        DATA['🧮']['previous'].push({
-            innerIter: null,
-            albedoIter: 0,
-            waterIter: 0,
-            phase: 'CycleEau',
-            data_snapshot: {
-                '🧮': { '🧮🌡️': DATA['🧮']['🧮🌡️'] },
-                '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
-                '💧': JSON.parse(JSON.stringify(DATA['💧'])),
-                '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
+        if (climateSpinupCyclesEffective > 0) {
+            const phasePrevSpinup = DATA['🧮']['🧮⚧'];
+            DATA['🧮']['🧮⚧'] = 'Search';
+            for (let w = 0; w < climateSpinupCyclesEffective; w++) {
+                await window.cycleDeLeau(false);
+                const T_C_init = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+                if (window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[spinup] CycleEau #' + (w + 1) + ' @' + T_C_init.toFixed(1) + '°C');
+                DATA['🧮']['previous'].push({
+                    innerIter: null,
+                    albedoIter: w,
+                    waterIter: 0,
+                    phase: 'CycleEau',
+                    data_snapshot: {
+                        '🧮': { '🧮🌡️': DATA['🧮']['🧮🌡️'] },
+                        '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
+                        '💧': JSON.parse(JSON.stringify(DATA['💧'])),
+                        '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
+                    }
+                });
+                if (window.ABORT_COMPUTE) return null;
             }
-        });
-    } else if (currentWaterPass > 0 && (currentWaterPass > 1 || !window._fromCrossing)) {
+            DATA['🧮']['🧮⚧'] = phasePrevSpinup;
+        } else {
+            for (let w = 0; w < maxWaterAlbedoAtInit; w++) {
+                const resInit = await window.cycleDeLeau(false);
+                const T_C_init = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+                if (window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[cycle] Init @' + T_C_init.toFixed(1) + '°C');
+                DATA['🧮']['previous'].push({
+                    innerIter: null,
+                    albedoIter: w,
+                    waterIter: 0,
+                    phase: 'CycleEau',
+                    data_snapshot: {
+                        '🧮': { '🧮🌡️': DATA['🧮']['🧮🌡️'] },
+                        '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
+                        '💧': JSON.parse(JSON.stringify(DATA['💧'])),
+                        '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
+                    }
+                });
+                if (!resInit.changed) break;
+                if (window.ABORT_COMPUTE) return null;
+            }
+        }
+    }
+
+    if (currentWaterPass > 0 && (currentWaterPass > 1 || !window._fromCrossing)) {
         DATA['🧮']['previous'].push({
             innerIter: null,
             albedoIter: DATA['🧮']['🧮🔄🪩'],
@@ -395,9 +575,15 @@ async function runRadiatifOnly() {
     DATA['🧲']['🧲🌑🔼'] = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 4);
     DATA['🧲']['🧲🌈🔼'] = flux_sortant_effectif_init;
     DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * DATA['🪩']['🍰🪩📿'];
+    // À l'équilibre TOA : flux_entrant = flux_sortant ⇒ 🔺🧲 ≈ 0 ; sinon 🧲🌈🔼 (OLR) ou flux solaire incohérent. Voir doc/SENS_CONVERGENCE_ET_VALEURS.md §2.1.
     DATA['🧲']['🔺🧲'] = delta_equilibre_init;
+    const h2oScale = window.getH2OVaporEDSScale();
+    const bins = DATA['🧮']['🔬🌈'];
+    const nLayers = DATA['🧮']['🔬🫧'];
+    const deltaZ = (DATA['📊'] && DATA['📊'].delta_z != null) ? DATA['📊'].delta_z : '—';
+    if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[Init] OLR=' + flux_sortant_effectif_init.toFixed(2) + ' Δ=' + delta_equilibre_init.toFixed(2));
     const bInit = DATA['📊'] && DATA['📊'].eds_breakdown;
-    DATA['📛'] = bInit ? { '🧲📛': bInit.EDS_Wm2, '🍰📛🏭': bInit.CO2.pct, '🍰📛💧': bInit.H2O.pct, '🍰📛⛽': bInit.CH4.pct } : null;
+    DATA['📛'] = buildEdsBreakdown(bInit);
     if (DATA['📛']) window.calculateH2OGreenhouseForcing();
     DATA['🧮']['🧲🔬'] = computeToleranceWm2(DATA['🧮']['🧮🌡️'], EPOCH['🧲🔬']);
 
@@ -408,6 +594,7 @@ async function runRadiatifOnly() {
     DATA['🧮']['🧮🌡️⏮'] = DATA['🧮']['🧮🌡️'];
     DATA['🧮']['🧲🔺⏮'] = delta_equilibre_init;
     DATA['📅']['🔺⏳'] = 86400 * 10;
+    DATA['🧮']['🧮🛑'] = ''; // Réinit pour que le snapshot Init n'affiche pas l'ancien 'converged'
 
     // Init : snapshot INPUT (T avant increment), puis DATA = OUTPUT (T + increment)
     const incInit = computeSearchIncrement();
@@ -426,16 +613,21 @@ async function runRadiatifOnly() {
         data_snapshot: {
             '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
             '🧲': JSON.parse(JSON.stringify(DATA['🧲'])),
+            '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
             '🪩': JSON.parse(JSON.stringify(DATA['🪩'])),
-            '📛': DATA['📛'] ? JSON.parse(JSON.stringify(DATA['📛'])) : null
+            '📛': snapshotEdsForConvergence()
         }
     });
+    if (Number.isFinite(delta_equilibre_init)) {
+        const sensInit = delta_equilibre_init < 0 ? 'trop de sortie → refroidir' : (delta_equilibre_init > 0 ? 'pas assez de sortie → réchauffer' : 'équilibre');
+        if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[Init] ' + sensInit);
+    }
     DATA['🧮']['🧮🌡️'] = T_init_K + incInit;
     if (DATA['🧮']['🧮🔄🪩'] != null) DATA['🧮']['🧮🔄🪩']++; // Cycle eau s'incrémente à Init (premier cycle après = 1)
     try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
     await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console afficher Init
 
-    const maxInnerIters = CONST.maxRadiatifIters;
+    const maxInnerIters = window.CONFIG_COMPUTE.maxRadiatifIters;
     let innerConverged = false;
     DATA['🧮']['🧮🛑'] = null;
     let dichoSameDirCount = 0;
@@ -443,24 +635,56 @@ async function runRadiatifOnly() {
     while (DATA['🧮']['🧮🔄☀️'] < maxInnerIters && !innerConverged) {
         await new Promise(r => setTimeout(r, 0)); // Laisser le clic Stop être traité
         if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
+        // Mettre à jour hauteur atmosphère (📏🫧🧿, 📏🫧🛩) depuis T courante : même grille verticale à 15,8°C en cold/warm start
+        window.updateAtmosphereHeightFromCurrentT();
         DATA['🧮']['🧲🔬'] = computeToleranceWm2(DATA['🧮']['🧮🌡️'], EPOCH['🧲🔬']);
-        window.calculateH2OParameters();
-        window.getEnabledStates();
-        window.calculateAlbedo();
-        // Snapshot cycle eau après calculateCloudFormationIndex : index affichage (0, 1, 2...)
-        if (DATA['🧮']['🧮🔄🪩'] == null) DATA['🧮']['🧮🔄🪩'] = DATA['🧮']['🧮🔄🌊'];
-        DATA['🧮']['previous'].push({
-            innerIter: null,
-            albedoIter: DATA['🧮']['🧮🔄🪩'],
-            waterIter: DATA['🧮']['🧮🔄🌊'],
-            phase: 'CycleEau',
-            data_snapshot: {
-                '🧮': { '🧮🌡️': DATA['🧮']['🧮🌡️'] },
-                '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
-                '💧': JSON.parse(JSON.stringify(DATA['💧'])),
-                '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
+        // Météo : 2 ou N cycles eau/albédo par pas radiatif ; un snapshot CycleEau par cycle pour affichage
+        const maxWaterAlbedo = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxWaterAlbedoCyclesPerStep != null) ? window.CONFIG_COMPUTE.maxWaterAlbedoCyclesPerStep : 1;
+        if (maxWaterAlbedo <= 1) {
+            window.calculateH2OParameters();
+            window.getEnabledStates();
+            window.calculateAlbedo();
+            if (DATA['🧮']['🧮🔄🪩'] == null) DATA['🧮']['🧮🔄🪩'] = DATA['🧮']['🧮🔄🌊'];
+            const T_C_oneStep = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+            const albedoOneStep = (DATA['🪩']['🍰🪩📿'] != null) ? (DATA['🪩']['🍰🪩📿'] * 100).toFixed(2) : '-';
+            const h2oOneStep = (DATA['💧']['🍰🫧💧'] != null) ? (DATA['💧']['🍰🫧💧'] * 100).toFixed(2) : '-';
+            if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[cycle] radiatif @' + T_C_oneStep.toFixed(1) + '°C');
+            DATA['🧮']['previous'].push({
+                innerIter: null,
+                albedoIter: DATA['🧮']['🧮🔄🪩'],
+                waterIter: DATA['🧮']['🧮🔄🌊'],
+                phase: 'CycleEau',
+                data_snapshot: {
+                    '🧮': { '🧮🌡️': DATA['🧮']['🧮🌡️'] },
+                    '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
+                    '💧': JSON.parse(JSON.stringify(DATA['💧'])),
+                    '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
+                }
+            });
+        } else {
+            const baseAlbedoIter = (DATA['🧮']['🧮🔄🪩'] != null ? DATA['🧮']['🧮🔄🪩'] : 0) * maxWaterAlbedo;
+            for (let w = 0; w < maxWaterAlbedo; w++) {
+                const res = await window.cycleDeLeau(false);
+                const T_C_step = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
+                const albedoPctStep = (DATA['🪩']['🍰🪩📿'] != null) ? (DATA['🪩']['🍰🪩📿'] * 100).toFixed(2) : '-';
+                const h2oPctStep = (DATA['💧']['🍰🫧💧'] != null) ? (DATA['💧']['🍰🫧💧'] * 100).toFixed(2) : '-';
+                if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[cycle] radiatif w=' + w + ' @' + T_C_step.toFixed(1) + '°C');
+                DATA['🧮']['previous'].push({
+                    innerIter: null,
+                    albedoIter: baseAlbedoIter + w,
+                    waterIter: DATA['🧮']['🧮🔄🌊'],
+                    phase: 'CycleEau',
+                    data_snapshot: {
+                        '🧮': { '🧮🌡️': DATA['🧮']['🧮🌡️'] },
+                        '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
+                        '💧': JSON.parse(JSON.stringify(DATA['💧'])),
+                        '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
+                    }
+                });
+                if (!res.changed) break;
+                if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
             }
-        });
+        }
         window.calculateFluxForT0();
         window.calculateRadiativeCapacities();
         const spectral_result = window.getSpectralResultFromDATA();
@@ -469,9 +693,10 @@ async function runRadiatifOnly() {
         DATA['🧲']['🧲🌑🔼'] = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['🧮🌡️'], 4);
         DATA['🧲']['🧲🌈🔼'] = spectral_result.total_flux;
         DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * DATA['🪩']['🍰🪩📿'];
+        // 🔺🧲 = entrant − sortant ; équilibre ⇒ ≈ 0. Si |🔺🧲| > tol mais converged, vérifier tol ou état affiché (doc §2.1).
         DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
         const b = DATA['📊'] && DATA['📊'].eds_breakdown;
-        DATA['📛'] = b ? { '🧲📛': b.EDS_Wm2, '🍰📛🏭': b.CO2.pct, '🍰📛💧': b.H2O.pct, '🍰📛⛽': b.CH4.pct } : null;
+        DATA['📛'] = buildEdsBreakdown(b);
         if (DATA['📛']) window.calculateH2OGreenhouseForcing();
         // Phase AVANT mise à jour : pour affichage cohérent (phase utilisée pour le pas précédent)
         const phaseAtInput = DATA['🧮']['🧮⚧'];
@@ -541,6 +766,7 @@ async function runRadiatifOnly() {
         try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
         await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console à jour après chaque itération
 
+        // Arrêt quand |Δ| ≤ tol : 🔺🧲 = résidu (pas 0). 🧲🔬 = max(4σT³×precision_K, tolMinWm2) → plus T est haute, plus tol est grande → on accepte un résidu plus grand et la T° cesse d’augmenter.
         if (Math.abs(DATA['🧲']['🔺🧲']) <= DATA['🧮']['🧲🔬']) {
             innerConverged = true;
             DATA['🧮']['🧮🛑'] = 'converged';
@@ -548,8 +774,9 @@ async function runRadiatifOnly() {
             const data_snapshot_conv = {
                 '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
                 '🧲': JSON.parse(JSON.stringify(DATA['🧲'])),
+                '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
                 '🪩': JSON.parse(JSON.stringify(DATA['🪩'])),
-                '📛': DATA['📛'] ? JSON.parse(JSON.stringify(DATA['📛'])) : null
+                '📛': snapshotEdsForConvergence()
             };
             const pushConv = {
                 innerIter: DATA['🧮']['🧮🔄☀️'],
@@ -569,6 +796,7 @@ async function runRadiatifOnly() {
                 pushConv.dichoT_high_C = DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS;
             }
             DATA['🧮']['previous'].push(pushConv);
+            logConvergenceT(); // Log unique à la convergence pour régler T° (cible ~15°C)
         }
         if (innerConverged) break;
 
@@ -626,7 +854,7 @@ async function runRadiatifOnly() {
             DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * DATA['🪩']['🍰🪩📿'];
             DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
             const bCross = DATA['📊'] && DATA['📊'].eds_breakdown;
-            DATA['📛'] = bCross ? { '🧲📛': bCross.EDS_Wm2, '🍰📛🏭': bCross.CO2.pct, '🍰📛💧': bCross.H2O.pct, '🍰📛⛽': bCross.CH4.pct } : null;
+            DATA['📛'] = buildEdsBreakdown(bCross);
             if (DATA['📛']) window.calculateH2OGreenhouseForcing();
             // Même bloc Dicho/bounds qu'en flux normal : sinon snapshot incohérent (☯, [🔽,🔼])
             if (DATA['🧮']['🧮⚧'] === 'Search' && DATA['🧮']['🧮🔄☀️'] > 0) {
@@ -654,8 +882,9 @@ async function runRadiatifOnly() {
             const data_snapshot = {
                 '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
                 '🧲': JSON.parse(JSON.stringify(DATA['🧲'])),
+                '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
                 '🪩': JSON.parse(JSON.stringify(DATA['🪩'])),
-                '📛': DATA['📛'] ? JSON.parse(JSON.stringify(DATA['📛'])) : null
+                '📛': snapshotEdsForConvergence()
             };
             const pushPayload = {
                 innerIter: DATA['🧮']['🧮🔄☀️'] - 1,
@@ -729,10 +958,19 @@ async function runRadiatifOnly() {
         }
         DATA['🧮']['🧮🔄☀️']++;
 
-        // Recalculer flux et Δ à la nouvelle T pour afficher (T_new, Δ_new) cohérent
-        window.calculateH2OParameters();
-        window.getEnabledStates();
-        window.calculateAlbedo();
+        // Recalculer flux et Δ à la nouvelle T pour afficher (T_new, Δ_new) cohérent (météo : 2 ou 4 cycles si config)
+        const maxWaterAlbedoPost = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxWaterAlbedoCyclesPerStep != null) ? window.CONFIG_COMPUTE.maxWaterAlbedoCyclesPerStep : 1;
+        if (maxWaterAlbedoPost <= 1) {
+            window.calculateH2OParameters();
+            window.getEnabledStates();
+            window.calculateAlbedo();
+        } else {
+            for (let w = 0; w < maxWaterAlbedoPost; w++) {
+                const resPost = await window.cycleDeLeau(false);
+                if (!resPost.changed) break;
+                if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
+            }
+        }
         window.calculateFluxForT0();
         window.calculateRadiativeCapacities();
         const spectral_after = window.getSpectralResultFromDATA();
@@ -743,7 +981,7 @@ async function runRadiatifOnly() {
         DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * DATA['🪩']['🍰🪩📿'];
         DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
         const bPost = DATA['📊'] && DATA['📊'].eds_breakdown;
-        DATA['📛'] = bPost ? { '🧲📛': bPost.EDS_Wm2, '🍰📛🏭': bPost.CO2.pct, '🍰📛💧': bPost.H2O.pct, '🍰📛⛽': bPost.CH4.pct } : null;
+        DATA['📛'] = buildEdsBreakdown(bPost);
         if (DATA['📛']) window.calculateH2OGreenhouseForcing();
         // Ne pas mettre à jour ☯ si changement de signe (Δ×☯<0) : garder ☯ pour détecter le passage en Dicho au tour suivant
         const signChangePost = (DATA['🧮']['🧮☯'] !== 0 && DATA['🧲']['🔺🧲'] * DATA['🧮']['🧮☯'] < 0);
@@ -784,8 +1022,9 @@ async function runRadiatifOnly() {
         const data_snapshot = {
             '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
             '🧲': JSON.parse(JSON.stringify(DATA['🧲'])),
+            '🫧': JSON.parse(JSON.stringify(DATA['🫧'])),
             '🪩': JSON.parse(JSON.stringify(DATA['🪩'])),
-            '📛': DATA['📛'] ? JSON.parse(JSON.stringify(DATA['📛'])) : null
+            '📛': snapshotEdsForConvergence()
         };
         // T affichée = température d'entrée du calcul radiatif (avant le pas), pas la sortie
         const T_input_iter = DATA['🧮']['🧮🌡️⏮'];
@@ -837,7 +1076,7 @@ async function runRadiatifOnly() {
             DATA['📊'] = DATA['📊'] || {};
             DATA['📊'].total_flux = spectral_result.total_flux;
             if (window !== window.top) {
-                var dataSubset = { '🧮': DATA['🧮'], '🪩': DATA['🪩'], '🫧': DATA['🫧'], '💧': DATA['💧'], '📛': DATA['📛'], '📜': DATA['📜'], '📊': DATA['📊'] };
+                var dataSubset = { '🧮': DATA['🧮'], '🪩': DATA['🪩'], '🫧': DATA['🫧'], '💧': DATA['💧'], '📛': snapshotEdsForConvergence(), '📜': DATA['📜'], '📊': DATA['📊'] };
                 window.parent.postMessage({ type: 'cycleCalcul', DATA: dataSubset, h2oVaporPercent: window.h2oVaporPercent }, '*');
             }
             if (window.CO2_EVENTS) window.CO2_EVENTS.emit('cycleCalcul');
@@ -859,4 +1098,5 @@ window.cycleDeLeau = cycleDeLeau;
 window.updateConvergenceBounds = updateConvergenceBounds;
 window.computeRadiativeTransfer = computeRadiativeTransfer;
 window.newDate = newDate;
+window.snapshotEdsForConvergence = snapshotEdsForConvergence;
 

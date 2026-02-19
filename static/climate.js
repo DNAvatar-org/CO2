@@ -1,13 +1,18 @@
 // ============================================================================
-// File: climate.js - Forçages radiatifs et climatologie
-// Desc: En français, dans l'architecture, je suis le module de climatologie
-// Version 1.0.0
+// File: climate.js - Forçages radiatifs (convention affichage) et climatologie
+// Desc: ΔF = diagnostic conventionnel (terrestre / contemporain), pas utilisé pour le calcul de T. EDS/OLR = physique (calculations.js).
+// Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
-// Logs:
+// Logs: v1.0.1 - Constantes ΔF CO2/CH4 ici (convention affichage), plus dans physics.js.
 // ============================================================================
+
+// Convention ΔF CO₂ (Myhre 1998, IPCC) — affichage uniquement, pas de calcul T.
+// ΔF = α×ln(C/C₀) : diagnostic relatif à une référence, concept terrestre/contemporain.
+const CONVENTION_CO2_FORCING_COEFF = 5.35;  // W/m². Plage lit. 4.0–6.5.
+const CONVENTION_CO2_REF_PPM = 280;         // ppm pré-ind. (C₀). Convention IPCC.
 
 // Constantes climatiques
 // ✅ SCIENTIFIQUEMENT CERTAIN : Valeur mesurée par satellites (variations ~1361-1366 W/m² selon cycle solaire)
@@ -57,23 +62,14 @@ function getEffectiveTemperatureNoGreenhouse() {
     return T_eff;
 }
 
-// Fonction pour calculer le forçage radiatif du CO2
-// ✅ SCIENTIFIQUEMENT CERTAIN :
-// - La formule ΔF = 5.35 × ln(C/C₀) est la formule standard de Myhre et al. (1998)
-// - Cette formule est acceptée par l'IPCC et utilisée dans tous les modèles climatiques
-// - Le coefficient 5.35 W/m² est une valeur mesurée et validée expérimentalement
-// - La référence pré-industrielle de 280 ppm est une valeur paléoclimatique bien établie
-// - Constante depuis physics.js pour éviter dilution par facteur 10 (0.535 serait faux)
+// ΔF CO₂ (convention affichage) : ΔF = α×ln(C/C₀). Pas utilisé pour T finale.
 function calculateCO2Forcing(CO2_fraction) {
-    const coeff = (typeof window !== 'undefined' && window.CONST && window.CONST.CO2_FORCING_COEFFICIENT != null)
-        ? window.CONST.CO2_FORCING_COEFFICIENT : 5.35;
-    const CO2_ref = (typeof window !== 'undefined' && window.CONST && window.CONST.CO2_REF_PPM != null)
-        ? window.CONST.CO2_REF_PPM * 1e-6 : 280e-6;
     if (CO2_fraction <= 0) return 0;
-    return coeff * Math.log(Math.max(CO2_fraction, CO2_ref) / CO2_ref); // W/m² (formule de Myhre et al. 1998)
+    const CO2_ref = CONVENTION_CO2_REF_PPM * 1e-6;
+    return CONVENTION_CO2_FORCING_COEFF * Math.log(Math.max(CO2_fraction, CO2_ref) / CO2_ref);
 }
 
-// Fonction pour calculer le forçage radiatif du CH4 (méthane)
+// Fonction pour calculer le diagnostic ΔF CH4 (méthane, convention affichage)
 // ✅ SCIENTIFIQUEMENT CERTAIN :
 // - La formule ΔF = 0.036 * (√M - √M₀) est la formule standard pour le CH4 (Myhre et al. 1998)
 // - Cette formule est acceptée par l'IPCC et utilisée dans tous les modèles climatiques
@@ -91,7 +87,7 @@ function calculateCH4Forcing(CH4_fraction) {
     return 0.036 * (Math.sqrt(Math.max(CH4_ppb, CH4_ref_ppb)) - Math.sqrt(CH4_ref_ppb)); // W/m²
 }
 
-// Fonction pour calculer le forçage radiatif de H2O (vapeur d'eau)
+// Fonction pour calculer le diagnostic ΔF H2O (vapeur d'eau, convention affichage)
 // 
 // ⚠️ IMPORTANT : DISTINCTION ENTRE VAPEUR D'EAU ET NUAGES ⚠️
 // 
@@ -122,7 +118,7 @@ function calculateCH4Forcing(CH4_fraction) {
 // 
 // @param {boolean} h2o_enabled - Si true, la vapeur d'eau est activée (présence d'eau dans l'atmosphère)
 // @param {number} cloud_coverage - Couverture nuageuse (0 à 1, 0% à 100%)
-// @returns {number} Forçage radiatif total H2O (W/m²) = vapeur + nuages
+// @returns {number} Diagnostic ΔF total H2O (W/m², convention affichage) = vapeur + nuages
 function calculateH2OForcing(h2o_enabled, cloud_coverage) {
     if (!h2o_enabled) return 0;
     // Forçage de base de la vapeur d'eau (présence d'eau gazeuse dans l'atmosphère)
@@ -130,7 +126,7 @@ function calculateH2OForcing(h2o_enabled, cloud_coverage) {
     const base_forcing = 15; // W/m² - réduit pour éviter l'emballement
     
     // Contribution supplémentaire des nuages (gouttelettes condensées)
-    // Les nuages ajoutent un forçage radiatif supplémentaire (effet IR > effet albedo dans ce modèle simplifié)
+    // Les nuages ajoutent un terme ΔF supplémentaire (effet IR > effet albedo dans ce modèle simplifié)
     const cloud_forcing_max = 5; // Contribution maximale des nuages (W/m²)
     const cloud_forcing = Math.min(cloud_forcing_max, cloud_coverage * cloud_forcing_max);
     
@@ -138,7 +134,7 @@ function calculateH2OForcing(h2o_enabled, cloud_coverage) {
     return base_forcing + cloud_forcing; // W/m²
 }
 
-// Fonction pour calculer le forçage radiatif de l'albedo
+// Fonction pour calculer le diagnostic ΔF de l'albedo (convention affichage)
 // ✅ SCIENTIFIQUEMENT CERTAIN :
 // - Le forçage albedo est : ΔF_albedo = -S/4 * ΔA où S est la constante solaire et ΔA est le changement d'albedo
 // - Référence : albedo de référence de l'époque courante (albedo_base)

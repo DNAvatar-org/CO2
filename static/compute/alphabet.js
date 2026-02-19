@@ -1,6 +1,6 @@
 // File: static/compute/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.0
+// Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -18,8 +18,9 @@ const CHARS = {
     FLUX_START: '▶', // Flux start : flèche droite (valeur de départ)
     FLUX_END: '◀', // Flux end : flèche gauche (valeur de fin)
     ENERGY_FLUX: '🧲', // Energy flux : sources chaudes (W/m²)
-    O2: '🌫',       // O2 : brouillard/air
+    O2: '🫁',       // O2 : poumons (affichage)
     N2: '💨',       // N2 : vent (azote/air)
+    SULFATE: '🫁',  // Aérosols sulfate (proxy CCN/optique nuageuse)
     WEIGHT: '⚖️',   // Poids : balance (masse)
     DENSITY: '💨',  // Densité : vent
     ALTITUDE: '🧿', // Altitude : galaxie (Ligne de Kármán, frontière atmosphère/espace)
@@ -29,7 +30,7 @@ const CHARS = {
     CLOUD_ALBEDO: '🌤', // Cloud albedo contribution : soleil avec nuage
     MAX_VAPOR: '🌧', // Max vapor fraction : pluie
     ALBEDO: '🪩',   // Albédo : miroir
-    EDS: '📛',      // EDS : Forçage radiatif (Radiative Forcing)
+    EDS: '📛',      // EDS (effet de serre) ; ΔF = convention affichage
     TEMP: '🌡️',     // TEMP : Température
     PHASE: '⚧',     // Phase : symbole transgenre (phase de convergence)
     T0: '🚩',        // T0 : drapeau (température initiale)
@@ -124,7 +125,8 @@ const CHARS_DESC = {
     '💧': 'H₂O',
     '⛽': 'CH₄',
     '🏭': 'CO₂',
-    '🌫': 'O₂',
+    '🫁': 'O₂',
+    '🫁': 'SO₄²⁻ (aérosols sulfate)',
     '🧊': 'Glace',
     '⛅': 'Nuages',
     '🌊': 'Océan',
@@ -144,7 +146,7 @@ const CHARS_DESC = {
     '🚩': 'T0 (t° initiale)',
     '🪩': 'Albédo',
     '🌕': 'Géothermie',
-    '📛': 'EDS (Forçage radiatif)',
+    '📛': 'EDS (effet de serre)',
     '🌑': 'Flux sortant (σT⁴)',
     '☁️': 'Index formation nuageuse [0,1]',
     // Événements
@@ -193,7 +195,7 @@ function createAlphabetHtml() {
     
     // Colonne 2 : Éléments
     const charsCol2 = [
-        'H2O', 'CH4', 'CO2', 'O2', 'N2', 'ICE', 'CLOUD', 'OCEAN', 'VOLCANO', 'DESERT', 'FOREST', 'ATMOSPHERE', 'SUN_ORIGIN', 'SPECTRAL'
+        'H2O', 'CH4', 'CO2', 'O2', 'N2', 'SULFATE', 'ICE', 'CLOUD', 'OCEAN', 'VOLCANO', 'DESERT', 'FOREST', 'ATMOSPHERE', 'SUN_ORIGIN', 'SPECTRAL'
     ];
     
     // Colonne 3 : Calculs

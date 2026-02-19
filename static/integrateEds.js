@@ -32,7 +32,7 @@
         factors.forEach(factor => factor.remove());
         
         // Extraire le contenu de synthese_EdS et l'ajouter directement au rectangle
-        // Retirer le trait séparateur, la ligne "Forç:" (forçage radiatif) et l'en-tête "(W/m²)"
+        // Retirer le trait séparateur, la ligne "Forç:" (diagnostic ΔF affichage) et l'en-tête "(W/m²)"
         while (syntheseEds.firstChild) {
             const child = syntheseEds.firstChild;
             // Ignorer le trait séparateur (info-separator-line), la ligne forçage total (forcing-total-row)
