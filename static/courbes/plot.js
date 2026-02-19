@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.20
+// Version 1.0.22
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -29,6 +29,8 @@
 // - v1.0.18: retrait garde CONFIG_COMPUTE défensive sur lissage (règle crash, pas fallback silencieux)
 // - v1.0.19: plotSmoothSigmaBins obligatoire (accès direct, pas de garde/fallback)
 // - v1.0.20: lissage visuel par moyenne glissante centrée (fenêtre en bins via plotSmoothSigmaBins, ex 20)
+// - v1.0.21: indicateurs d'absorption en crochets colorés [ ] (plus de bande transparente arrondie)
+// - v1.0.22: nuages full-span (logo + crochets) décalés au-dessus de l'axe spectral
 // ============================================================================
 
 // ============================================================================
@@ -713,7 +715,8 @@ function drawAbsorptionBandIndicators() {
     // Utiliser l'API interne Plotly (c2p) pour convertir données → pixels
     // Évite le décalage des bornes H2O/CH4/CO2 quand la largeur de la div change
     const axisMarginBottom = 75; // PLOT_MARGINS.b
-    const markersOffsetBelowAxis = -15; // px sous l'axe
+    const markersOffsetBelowAxis = -15; // px sous l'axe (bandes moléculaires)
+    const markerOffsetAboveAxis = 4; // px au-dessus de l'axe (bande nuages full-span)
 
     const plotRect = plotContainer.getBoundingClientRect();
     const wrapperRect = plotContainerWrapper2.getBoundingClientRect();
@@ -758,14 +761,14 @@ function drawAbsorptionBandIndicators() {
     const LAMBDA_CH4_1_UM = (CONST.LAMBDA_CH4_1 != null) ? CONST.LAMBDA_CH4_1 * 1e6 : 7.7;
     const LAMBDA_CO2_UM = (CONST.LAMBDA_CO2_CENTER != null) ? CONST.LAMBDA_CO2_CENTER * 1e6 : 15;
     const absorptionBands = [
-        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', minMax: 'Min', color: 'rgb(135, 206, 250)' },
-        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', minMax: 'Max', color: 'rgb(135, 206, 250)' },
-        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Min', color: 'rgb(135, 206, 250)' },
-        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Min', color: 'rgb(135, 206, 250)' },
-        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Max', color: 'rgb(135, 206, 250)' },
-        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Max', color: 'rgb(135, 206, 250)' },
+        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', minMax: 'Min', color: 'rgb(89, 194, 255)' },
+        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', minMax: 'Max', color: 'rgb(89, 194, 255)' },
+        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Min', color: 'rgb(255, 170, 73)' },
+        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Min', color: 'rgb(255, 112, 112)' },
+        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Max', color: 'rgb(255, 112, 112)' },
+        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Max', color: 'rgb(255, 170, 73)' },
         // Nuages EDS : corps gris (tout le LW 4–50 μm). Un seul indicateur full span suffit (ils couvrent tout le spectre). SW = calculateAlbedo.
-        { lambda: 27, halfWidthUm: 23, logo: LOGOS.CLOUDS, logoImg: null, label: 'Nuages', minMax: 'LW', color: 'rgba(180, 180, 200, 0.4)', fullSpan: true }
+        { lambda: 27, halfWidthUm: 23, logo: LOGOS.CLOUDS, logoImg: null, label: 'Nuages', minMax: 'LW', color: 'rgb(185, 185, 205)', fullSpan: true }
     ];
 
     const P_atm = (window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) ? window.DATA['🫧']['🎈'] : 1;
@@ -775,22 +778,23 @@ function drawAbsorptionBandIndicators() {
         const halfW = (band.halfWidthUm != null ? band.halfWidthUm : 1) * (band.fullSpan ? 1 : widthFactor);
         const xLeft = getXPosition(band.fullSpan ? 4 : Math.max(0.1, band.lambda - halfW));
         const xRight = getXPosition(band.fullSpan ? 50 : Math.min(50, band.lambda + halfW));
-        const barWidthPx = Math.max(4, xRight - xLeft);
+        const barWidthPx = Math.max(22, xRight - xLeft);
 
         const altText = band.fullSpan
             ? `Nuages EDS (corps gris) : absorption sur tout le spectre LW 4–50 μm (pas de longueur d'onde)`
             : `${band.minMax} captation ${band.label} : ${Number(band.lambda).toFixed(2)} μm, largeur ${halfW.toFixed(2)} μm`;
 
-        // Créer un indicateur (barre de largeur ∝ √P + logo centré)
+        // Créer un indicateur de plage [ ... ] + logo centré (sans fond, pour éviter l'artefact visuel)
         const indicator = document.createElement('div');
         indicator.className = 'absorption-band-indicator';
         indicator.style.position = 'absolute';
         indicator.style.left = `${xLeft}px`;
         indicator.style.width = `${barWidthPx}px`;
         // Juste sous le trait de l'axe (comme les graduations)
-        indicator.style.bottom = `${axisMarginBottom + markersOffsetBelowAxis}px`;
-        indicator.style.background = band.fullSpan ? (band.color || 'rgba(180, 180, 200, 0.35)') : ((widthFactor > 1) ? `rgba(135, 206, 250, ${0.15 * (widthFactor - 1)})` : 'transparent');
-        indicator.style.borderRadius = band.fullSpan ? '4px' : '2px';
+        const markerOffset = band.fullSpan ? markerOffsetAboveAxis : markersOffsetBelowAxis;
+        indicator.style.bottom = `${axisMarginBottom + markerOffset}px`;
+        indicator.style.background = 'transparent';
+        indicator.style.borderRadius = '0';
         indicator.style.fontSize = '10px';
         indicator.style.zIndex = '1000';
         indicator.style.pointerEvents = 'auto';
@@ -805,12 +809,14 @@ function drawAbsorptionBandIndicators() {
         indicator.style.lineHeight = '12px';
 
         // Utiliser le PNG pour CH4, emoji pour les autres ; alt = molécule + valeur (dépend de P)
+        let logoHTML = '';
         if (band.logoImg) {
-            indicator.innerHTML = `<img src="${band.logoImg}" alt="${altText}" title="${altText}" style="width: 12px; height: 12px; display: block; margin: 0 auto; object-fit: contain; vertical-align: middle;">`;
+            logoHTML = `<img src="${band.logoImg}" alt="${altText}" title="${altText}" style="width: 12px; height: 12px; display: block; margin: 0 auto; object-fit: contain; vertical-align: middle;">`;
         } else {
             indicator.style.fontSize = '12px';
-            indicator.innerHTML = `<span role="img" aria-label="${altText}" title="${altText}">${band.logo}</span>`;
+            logoHTML = `<span role="img" aria-label="${altText}" title="${altText}">${band.logo}</span>`;
         }
+        indicator.innerHTML = `<span aria-hidden="true" style="position:absolute; left:0; top:50%; transform:translateY(-50%); color:${band.color}; font-weight:700; font-size:12px; line-height:12px;">[</span><span style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">${logoHTML}</span><span aria-hidden="true" style="position:absolute; right:0; top:50%; transform:translateY(-50%); color:${band.color}; font-weight:700; font-size:12px; line-height:12px;">]</span>`;
 
         plotContainerWrapper2.appendChild(indicator);
     });

@@ -179,8 +179,8 @@ sup {
     }
     #visu-panel .flux-diagram-wrapper {
         /* Organigramme : occuper tout l'espace restant sous le titre */
-        flex: 0 0 calc(var(--visu-panel-content-h) - 55px);
-        height: calc(var(--visu-panel-content-h) - 55px);
+        flex: 0 0 calc(var(--visu-panel-content-h) - 35px);
+        height: calc(var(--visu-panel-content-h) - 35px);
         min-height: 0;
     }
     #visu-panel .flux-diagram {
