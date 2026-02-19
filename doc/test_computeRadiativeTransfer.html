@@ -1087,11 +1087,19 @@
                 if (breakdown) {
                     const fmt = (v) => (v != null && Number.isFinite(v)) ? v.toFixed(2) : '—';
                     html += '<div class="config-value convergence-breakdown-block" style="margin-top:10px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;">';
+                    const h2oScale = window.getH2OVaporEDSScale ? window.getH2OVaporEDSScale() : null;
                     html += '<strong>EDS (effet de serre)</strong>: 🧲📛 = ' + fmt(breakdown['🧲📛']) + ' W/m²<br>';
-                    html += '<strong>Répartition par gaz</strong> (🍰📛 ∈ [0, 1]):<br>';
+                    if (h2oScale != null && Number.isFinite(h2oScale)) html += 'Pondération vapeur d\'eau pour l\'EDS : ' + h2oScale.toFixed(3) + '<br>';
+                    html += '<em>Attribution</em> : part par τ (τ_X/τ_tot) ; overlap H₂O–CO₂ partagé de façon réaliste (Schmidt 2010 « split the difference »).<br>';
+                    html += '<strong>Répartition (en W/m² retournés par EDS, normalisé, 🍰📛 ∈ [0, 1])</strong>:<br>';
                     if (breakdown['🍰📛🏭'] != null && breakdown['🍰📛🏭'] > 0) html += `&nbsp;• CO₂: ${fmt(breakdown['🍰📛🏭'])}<br>`;
                     if (breakdown['🍰📛💧'] != null && breakdown['🍰📛💧'] > 0) html += `&nbsp;• H₂O: ${fmt(breakdown['🍰📛💧'])}<br>`;
                     if (breakdown['🍰📛⛽'] != null && breakdown['🍰📛⛽'] > 0) html += `&nbsp;• CH₄: ${fmt(breakdown['🍰📛⛽'])}<br>`;
+                    if (breakdown['🍰📛⛅'] != null) {
+                        const nv = breakdown['🍰📛⛅'];
+                        const nvStr = (nv != null && Number.isFinite(nv)) ? (nv < 0.01 ? '&lt; 0,01' : nv.toFixed(2)) : '—';
+                        html += `&nbsp;• Nuages (⛅): ${nvStr}<br>`;
+                    }
                     html += '</div>';
                 }
 

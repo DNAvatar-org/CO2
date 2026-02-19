@@ -1,14 +1,16 @@
 // ============================================================================
 // File: physics.js - Constantes et lois physiques fondamentales
 // Desc: En français, dans l'architecture, je suis le module de physique fondamentale
-// Version 2.0.2
+// Version 2.0.3
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
-// - CO2_FORCING_COEFFICIENT=5.35, CO2_REF_PPM=280 (Myhre 1998). Sections efficaces : hitran.js + lignes HITRAN.
+// - Sections efficaces : hitran.js + lignes HITRAN. ΔF = convention affichage → climate.js, pas ici.
 // - getH2OVaporEDSScale() — formule T,P,vapor,CO2 (pas d'époque), doc/VAPEUR_VS_NUAGES.md
+// - Convention : Credence (%) + Plage lit. / écart-type en commentaire pour params tunables (éviter patch en aveugle). v2.0.3.
+// - getH2OVaporEDSScale : 1.0→0.70 pour CO2≥400 ppm (cible EDS_H₂O ~72 W/m², lit. ~75).
 // ============================================================================
 
 // Initialiser CONST (pointeur vers window.CONST)
@@ -49,8 +51,7 @@ CONST.T_ICE_TRANSITION_RANGE_C = 20;  // Zone de transition liquide-glace (en °
 // Constantes de conversion température
 CONST.KELVIN_TO_CELSIUS = 273.15;  // Conversion Kelvin → Celsius (K = °C + 273.15)
 
-// Convergence radiatif : nombre max d'itérations (lu depuis config si dispo)
-CONST.maxRadiatifIters = window.CONFIG_COMPUTE.maxRadiatifIters;
+// Nombre max d'itérations radiatif : CONFIG_COMPUTE.maxRadiatifIters uniquement (pas de copie dans CONST).
 
 // Constantes pour l'eau
 CONST.RHO_WATER = 1000;  // Densité de l'eau (kg/m³)
@@ -64,10 +65,8 @@ CONST.EVAPORATION_E0 = 0.001;  // Taux d'évaporation de base (kg/(m²·s))
 CONST.EVAPORATION_T_REF = 288;  // Température de référence pour l'évaporation (K, 15°C)
 CONST.EVAPORATION_T_SCALE = 20;  // Facteur d'échelle température-évaporation (K)
 
-// Forçage radiatif CO₂ (Myhre et al. 1998, IPCC)
-// ΔF_CO2 = CO2_FORCING_COEFFICIENT × ln(C/C₀) en W/m²
-CONST.CO2_FORCING_COEFFICIENT = 5.35;  // W/m² (standard, ne pas diviser par 10)
-CONST.CO2_REF_PPM = 280;  // ppm pré-industriel (référence C₀)
+// ΔF = convention terrestre / affichage uniquement (climate.js), pas utilisé pour le calcul de T.
+// Constantes et formules ΔF → climate.js (cosmétique / diagnostic). Ici : physique uniquement (EDS, OLR, σ, etc.).
 
 // Longueurs d'onde des bandes d'absorption (m) — affichage plot / marqueurs spectre. Sections efficaces : hitran.js + lignes HITRAN.
 CONST.LAMBDA_CO2_CENTER = 15.0e-6;   // CO₂ 15 μm
@@ -77,33 +76,22 @@ CONST.LAMBDA_CH4_1 = 7.7e-6;         // CH₄ 7.7 μm
 CONST.LAMBDA_CH4_2 = 3.3e-6;         // CH₄ 3.3 μm
 
 // Coefficients d'albédo par type de surface (propriétés physiques constantes)
-// Ces valeurs sont des propriétés intrinsèques des matériaux, indépendantes de l'époque
-// Références littérature :
-// - Albedo moyen Terre actuelle : ~0.31 (31%)
-// - Neige fraîche : 0.75-0.90
-// - Glace : 0.60
-// - Nuages : 0.50-0.80
-// - Forêt de feuillus : 0.15-0.20
-// - Cultures : 0.15-0.25
-// - Mer/Océan : 0.05-0.15
-// - Déserts : ~0.30
-// - Zones urbaines : 0.1-0.2
+// Credence globale: ~90%. Plage lit. par surface ci‑dessous (écart-type ~0.03–0.08 selon type).
 CONST['🪩🍰'] = {
-    '🪩🍰🌋': 0.05,  // Volcan/magma : très sombre (littérature : ~0.05-0.10)
-    '🪩🍰🌊': 0.08,  // Océan : sombre (littérature : 0.05-0.15, moyenne ~0.08)
-    '🪩🍰🌳': 0.17,  // Forêt : légèrement réfléchissant (littérature : 0.15-0.20, moyenne ~0.17)
-    '🪩🍰🏜️': 0.30,  // Désert : réfléchissant (littérature : ~0.30)
-    '🪩🍰🧊': 0.70,  // Glace : très réfléchissant (littérature : 0.60, neige fraîche 0.75-0.90, moyenne ~0.70)
-    '🪩🍰⛅': 0.50,  // Nuages : moyennement réfléchissant (littérature : 0.50-0.80, moyenne ~0.50)
-    '🪩🍰🌍': 0.18   // Land/Continents : prairies, sols humides (littérature : 0.15-0.20, moyenne ~0.18)
+    '🪩🍰🌋': 0.05,  // Volcan. Plage lit.: 0.05–0.10. Credence ~85%.
+    '🪩🍰🌊': 0.08,  // Océan. Plage lit.: 0.05–0.15. Credence ~90%.
+    '🪩🍰🌳': 0.17,  // Forêt. Plage lit.: 0.15–0.20. Credence ~90%.
+    '🪩🍰🏜️': 0.30,  // Désert. Plage lit.: 0.28–0.35. Credence ~95%.
+    '🪩🍰🧊': 0.70,  // Glace. Plage lit.: 0.60–0.90 (neige fraîche plus haute). Credence ~90%.
+    '🪩🍰⛅': 0.50,  // Nuages. Plage lit.: 0.50–0.80. Credence ~80%.
+    '🪩🍰🌍': 0.18   // Land. Plage lit.: 0.15–0.25. Credence ~85%.
 };
 
 // Constantes pour le calcul de l'index de formation nuageuse (☁️)
 // ☁️ = clamp((🍰🫧💧 / H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + ALPHA_OCEAN × 🍰🪩🌊) × SCALE_CLOUD, 0, 1)
-// 🔒 CORRECTION : H2O_VAPOR_REF = 0.01 (1%)
-// Sur Terre moderne : 🍰🫧💧 ≈ 0.011 (1.1%), vapor_ratio ≈ 1.1, T_factor ≈ 0.77, ocean_effect ≈ 1.21
-// Produit = 1.1 × 0.77 × 1.21 ≈ 1.0 → trop élevé, besoin d'un facteur d'échelle
-// Pour obtenir ☁️ ≈ 0.4 : SCALE_CLOUD ≈ 0.4
+// Credence H2O_VAPOR_REF: ~80%. Plage lit.: 0.008–0.015 (Terre tempérée 0.5–1.5% vapeur).
+// Credence ALPHA_OCEAN: ~60%. Plage lit.: 0.2–0.5 (paramètre empirique convection/océan).
+// Credence SCALE_CLOUD: ~50%. Plage lit.: 0.3–0.6 (ajusté pour ☁️ ~0.4–0.6 ; pas de σ litt. direct).
 CONST.H2O_VAPOR_REF = 0.01;  // 🍰🫧💧_ref = 0.01 (1%, Terre tempérée, référence pour ratio vapeur)
 CONST.ALPHA_OCEAN = 0.3;    // α = 0.3 (effet océan / convection sur formation nuageuse)
 CONST.SCALE_CLOUD = 0.4;    // Facteur d'échelle pour ajuster ☁️ dans la plage 0.3-0.5
@@ -165,12 +153,16 @@ window.getWaterCycleTempBoundsFromPressure = getWaterCycleTempBoundsFromPressure
 
 // Facteur d'échelle vapeur d'eau (gaz) pour EDS. Calculé depuis T, P, vapor, CO2 (pas d'époque).
 // Réf Schmidt 2010 : vapeur ~50% EDS. Formule corrige sur-estimation (chevauchement H2O/CO2 15-17 µm).
-// CO2 > 1% : atmosphère riche, scale=1. Sinon : scale = 0.5 × f_T × f_P × f_v (saturation, pression).
+// CO2 ≥ 400 ppm : scale = 0.70 (lit. EDS_H₂O ~75 W/m² vs tau-ratio ~103 → réduction 38%).
+// CO2 < 400 ppm : scale = 0.5 × f_T × f_P × f_v (saturation, pression).
+//
+// --- Credence et plage ---
+// Credence: ~60%. 0.70 cible EDS_H₂O ≈ 72 W/m² à T=15°C (lit. ~75). Plage lit. 0.3–1.0.
 function getH2OVaporEDSScale() {
     const DATA = window.DATA;
     if (!DATA || !DATA['🫧']) return 0.5;
     const co2_frac = (DATA['🫧']['🍰🫧🏭'] != null && Number.isFinite(DATA['🫧']['🍰🫧🏭'])) ? DATA['🫧']['🍰🫧🏭'] : 0;
-    if (co2_frac > 0.01) return 1.0;
+    if (co2_frac >= 0.0004) return 0.70; // 400 ppm : scale 0.70 → EDS_H₂O ≈ 72 W/m² (lit. ~75)
     if (!DATA['🧮'] || !DATA['💧']) return 0.5;
     const T = DATA['🧮']['🧮🌡️'];
     const P_atm = (DATA['🫧']['🎈'] != null && Number.isFinite(DATA['🫧']['🎈'])) ? DATA['🫧']['🎈'] : 1;

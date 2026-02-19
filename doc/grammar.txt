@@ -36,7 +36,7 @@
 🚩 T0 (température initiale)
 🪩 Albédo
 🌕 Flux géothermique
-📛 EDS (Forçage radiatif)
+📛 EDS (effet de serre)
 
 -- evenements
 📜 Config

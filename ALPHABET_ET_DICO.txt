@@ -50,7 +50,7 @@ CALCULS:
 🚩  T0 (t° initiale)
 🪩  Albédo
 🌕  Flux géothermique
-📛  EDS (Forçage radiatif)
+📛  EDS (effet de serre)
 🌑  Corps noir
 ☁️  Index formation nuageuse [0,1]
 
@@ -176,10 +176,10 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🔋🌕  Puissance du noyau
 
 📛 EDS (FORÇAGE RADIATIF):
-📛💧  Forçage radiatif H2O
-📛🏭  Forçage radiatif CO2
-📛⛽  Forçage radiatif CH4
-📿📛  Forçage radiatif total (EDS)
+📛💧  ΔF H2O affichage (convention)
+📛🏭  ΔF CO2 affichage (convention)
+📛⛽  ΔF CH4 affichage (convention)
+📿📛  ΔF total affichage (convention)
 
 🗻 GÉOLOGIE (SURFACES GÉOLOGIQUES):
 🍰🗻🌊  Surface océanique potentielle (bassin océanique, géologie)

@@ -1,10 +1,12 @@
 // File: static/compute/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
-// Version 1.0.0
+// Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: [January 2025]
+// Logs:
+// - v1.0.1: KEYS/DESC 📛 + 🍰📛⛅ (EDS nuages), DESC 🧲📛/🍰📛❀
 
 // ============================================================================
 // OBJET KEYS (toutes les clés regroupées) - Utilise directement les emojis
@@ -24,7 +26,7 @@ const KEYS = {
     '💧': ['🍰💧🧊', '🍰💧🌊', '🍰🧮🌧', '🍰🫧💧', '🍰🫧☔', '🍰⚖️💦', '💭☔', '⏳☔'],
     // Albédo
     '🪩': ['🍰🪩📿', '🍰🪩🌋', '🍰🪩🏜️', '🍰🪩🌳', '🍰🪩🌊', '🍰🪩🧊', '🍰🪩⛅', '🍰🪩🌍', '☁️'],
-    // Flux radiatif
+    // Flux (W/m²) ; ΔF = convention affichage (climate.js), pas calcul T
     '🧲': ['🧲☀️🔽', '🧲🌕🔽', '🧲🌑🔼', '🧲🌈🔼', '🧲🪩🔼', '🔺🧲'],
     // Convergence
     '🧮': ['🧮🌡️', '🧮⚧', '🧮☯', '🧲🔬', '🔬🌈', '🔬🫧', '🧮🔄', '🧮🔄☀️', '🧮🔄🌊'],
@@ -32,8 +34,8 @@ const KEYS = {
     '☀️': ['🧲☀️', '🧲☀️🎱', '🔋☀️'],
     // Noyau
     '🌕': ['🧲🌕', '🔋🌕'],
-    // EDS breakdown (🧲📛=EDS W/m², 🍰📛🏭/🍰📛💧/🍰📛⛽=répartition ∈ [0,1])
-    '📛': ['🧲📛', '🍰📛🏭', '🍰📛💧', '🍰📛⛽'],
+    // EDS breakdown (🧲📛, 🍰📛❀, 🧲📛❀) ; 🔺📛❀ = diagnostic ΔF (convention affichage, pas calcul T)
+    '📛': ['🧲📛', '🧲📛🏭', '🧲📛💧', '🧲📛⛽', '🧲📛⛅', '🍰📛🏭', '🍰📛💧', '🍰📛⛽', '🍰📛⛅', '🔺📛💧', '🔺📛🏭', '🔺📛⛽', '🔺📿📛'],
     // Géologie (Surfaces géologiques - Couche A)
     '🗻': ['🍰🗻🌊', '🍰🗻🏔', '🍰🗻🌍'],
     // Constantes physiques
@@ -114,8 +116,8 @@ const DESC = {
         '🍰🫧☔': 'Humidité relative moyenne [0,1]',
         '☁️': 'Index de formation nuageuse [0,1]',
         '💭☔': 'Seuil critique précipitations [0.7,0.9]',
-        '⏳☔': '1/dt(vie vapeur excé) (s⁻¹)',
-        '🍰⚖️💦': 'Précipitation critiques (kg/m²/s)',
+        '⏳☔': '1/τ_global (s⁻¹), τ ~10 j litt.',
+        '🍰⚖️💦': 'Taux précipitation (kg/m²/s), P=W/τ',
     },
     '🧲': {
         '🧲☀️🔽': 'Flux solaire absorbé',
@@ -141,10 +143,19 @@ const DESC = {
         '🔋🌕': 'Puissance du noyau',
     },
     '📛': {
-        '📛💧': 'Forçage radiatif H2O',
-        '📛🏭': 'Forçage radiatif CO2',
-        '📛⛽': 'Forçage radiatif CH4',
-        '📿📛': 'Forçage radiatif total (EDS)',
+        '🧲📛': 'EDS (effet de serre) W/m² = 🧲🌑🔼 − 🧲🌈🔼. OLR = 🧲🌈🔼 = flux IR sortant au sommet ; EDS = flux « bloqué » par l’atmosphère. EDS insuffisant ⟺ OLR trop élevé (même T surface).',
+        '🧲📛🏭': 'EDS CO₂ W/m² (part retenue par CO₂)',
+        '🧲📛💧': 'EDS H₂O W/m² (part retenue par vapeur)',
+        '🧲📛⛽': 'EDS CH₄ W/m² (part retenue par CH₄)',
+        '🧲📛⛅': 'EDS nuages W/m² (part retenue par nuages)',
+        '🍰📛🏭': 'Part EDS CO₂ [0,1]',
+        '🍰📛💧': 'Part EDS H₂O (vapeur) [0,1]',
+        '🍰📛⛽': 'Part EDS CH₄ [0,1]',
+        '🍰📛⛅': 'Part EDS nuages [0,1]',
+        '🔺📛💧': 'ΔF H₂O affichage (W/m², convention)',
+        '🔺📛🏭': 'ΔF CO₂ affichage (W/m², convention)',
+        '🔺📛⛽': 'ΔF CH₄ affichage (W/m², convention)',
+        '🔺📿📛': 'ΔF total affichage (W/m², convention)',
     },
     '🗻': {
         '🍰🗻🌊': 'Surface océanique potentielle (bassin océanique, géologie)',
@@ -163,7 +174,7 @@ const FORM = {
         '🧲🌑🔼': 'σ × T⁴ = Flux émis par la surface (corps noir théorique à température T). Formule: 🧲🌑🔼 = σT⁴ où σ = 5.670374419e-8 W/(m²·K⁴). Pour T=303.5K: ≈501 W/m². ⚠️ Ce n\'est PAS le flux qui sort au sommet (c\'est 🧲🌈🔼). ⚠️ Ne pas comparer directement à 🧲☀️🔽+🧲🌕🔽 car l\'effet de serre fait que la surface émet plus que ce qui sort.',
         '🧲🌈🔼': 'Σ[λ=0.1→100μm] I_λ(z_max) × Δλ = Aire sous courbe spectrale réelle (émission au sommet atmosphère). Δλ = (λ_max−λ_min)/(N−1) = pas réel de la grille (effective_delta_lambda), pas 0.1 μm fixe. Transfert radiatif: τ_λ(z), transmission exp(-τ), émission (1-exp(-τ))×π×B_λ(T). Intégration: 🧲🌈🔼 = Σ[λ] upward_flux[z_max][λ]. En équilibre: 🧲🌈🔼 ≈ 🧲☀️🔽+🧲🌕🔽',
         '🧲🪩🔼': '🧲☀️🎱 - 🧲☀️🔽 = 🧲☀️🎱 × 🍰🪩📿 = Flux réfléchi par albedo',
-        '🔺🧲': '🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 = Delta équilibre radiatif (flux entrant - flux sortant). Δ>0→réchauffer, Δ<0→refroidir. En équilibre: 🔺🧲 ≈ 0',
+        '🔺🧲': '🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 = déséquilibre flux (entrant - sortant). Δ>0→réchauffer, Δ<0→refroidir. En équilibre: 🔺🧲 ≈ 0',
         '_explication_equilibre': 'Corps noir (70% soleil): 🧲☀️🔽 devrait être ~238 W/m² (pas 341.50) → équilibre à T≈255K',
         '_temperature_equilibre_corps_noir': 'T_équilibre = (S/4σ)^(1/4) = (952/4σ)^(1/4) ≈ 255K (-18°C) pour corps noir pur (S=70% actuel)',
         '_bug_flux_solaire': 'BUG: Si 🧲☀️🔽=341.50 W/m² au lieu de 238 W/m² → code utilise soleil actuel (100%) au lieu de 70%',
@@ -214,8 +225,8 @@ const FORM = {
         '🍰🫧☔': 'clamp(🍰🫧💧 / ((CONST.M_H2O / 🧪) × 🍰🧮🌧), 0, 1) [Clausius-Clapeyron] - Humidité relative globale (q / q_sat en fraction massique)',
         '☁️': '(1 - Math.pow(1 - min(🍰🫧☔, 1), 0.6)) × 🍰💭 - Schéma Sundqvist classique (couverture nuageuse à partir de RH) × (🍰💭) – nuages plus minces = optiquement moins actifs',
         '💭☔': 'clamp(0.75 + 0.05 × (🧮🌡️ - CONST.EVAPORATION_T_REF) / CONST.EVAPORATION_T_SCALE, 0.7, 0.95) - Seuil critique précipitations [0.7,0.9]',
-        '⏳☔': '5e-4 s⁻¹ - Inverse du temps de vie moyen de la vapeur excédentaire (1/τ_vapeur, où τ_vapeur ≈ 2000 s)',
-        '🍰⚖️💦': 'max(0, (🍰🫧☔ - 💭☔) × 🍰🫧💧 × ⏳☔) × (masse_vapeur_par_m²) - Précipitation critiques (kg/m²/s)'
+        '⏳☔': '1/τ_global (s⁻¹), τ_global = 10 j (litt. 8–10 j, Nature Rev. Earth Env. 2021; HESS 2017)',
+        '🍰⚖️💦': 'W/τ_global × ramp(RH−💭☔, 0.2) quand RH > 💭☔ ; W = masse_vapeur_par_m² (kg/m²) ; P = W/τ (litt. ~2,7 mm/j GPCP) - Taux précipitation (kg/m²/s)'
     },
     '📅': {
         '🔺⏳': '86400 s (1 jour) - Durée équilibre précipitation'
@@ -346,7 +357,7 @@ function createDicoHtml() {
         },
         {
             logo: '🧲',
-            name: 'Flux radiatif'
+            name: 'Flux (W/m²)'
         }
     ];
     

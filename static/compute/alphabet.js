@@ -29,7 +29,7 @@ const CHARS = {
     CLOUD_ALBEDO: '🌤', // Cloud albedo contribution : soleil avec nuage
     MAX_VAPOR: '🌧', // Max vapor fraction : pluie
     ALBEDO: '🪩',   // Albédo : miroir
-    EDS: '📛',      // EDS : Forçage radiatif (Radiative Forcing)
+    EDS: '📛',      // EDS (effet de serre) ; ΔF = convention affichage
     TEMP: '🌡️',     // TEMP : Température
     PHASE: '⚧',     // Phase : symbole transgenre (phase de convergence)
     T0: '🚩',        // T0 : drapeau (température initiale)
@@ -144,7 +144,7 @@ const CHARS_DESC = {
     '🚩': 'T0 (t° initiale)',
     '🪩': 'Albédo',
     '🌕': 'Géothermie',
-    '📛': 'EDS (Forçage radiatif)',
+    '📛': 'EDS (effet de serre)',
     '🌑': 'Flux sortant (σT⁴)',
     '☁️': 'Index formation nuageuse [0,1]',
     // Événements

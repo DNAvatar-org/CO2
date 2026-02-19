@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.14
+// Version 1.0.19
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -23,6 +23,11 @@
 // - v1.0.12: MutationObserver sur plot-container appelle resizeCanvasToPlot quand Plotly modifie le DOM
 // - v1.0.13: updatePlotAltitudeAxis(atm_height_km) pour mettre à jour yaxis2 à chaque cycle
 // - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
+// - v1.0.16: Indicateur nuages EDS (corps gris) sur barre spectre : fullSpan 4–50 μm, LOGOS.CLOUDS
+// - v1.0.15: remove misleading pd() [BUG] traces in updatePlotAltitudeAxis and resizeCanvasToPlot
+// - v1.0.17: lissage gaussien visuel du flux (createFluxTrace) ; ne touche pas aux intégrales/OLR
+// - v1.0.18: retrait garde CONFIG_COMPUTE défensive sur lissage (règle crash, pas fallback silencieux)
+// - v1.0.19: plotSmoothSigmaBins obligatoire (accès direct, pas de garde/fallback)
 // ============================================================================
 
 // ============================================================================
@@ -513,9 +518,6 @@ function resizeCanvasToPlot(callback) {
             // Pendant la dichotomie : ne pas modifier top/left (targetRect change à chaque cycle).
             // Garder _lastTop/_lastLeft pour éviter que le spectre bouge.
             const skipReposition = window.calculationInProgress;
-            if (typeof window.pd === 'function') {
-                window.pd('resizeCanvasToPlot', 'plot.js', '[BUG] spectre topPx=' + topPx + ' leftPx=' + leftPx + ' skipReposition=' + skipReposition);
-            }
             if (!skipReposition) {
                 canvas.style.setProperty('left', leftPx + 'px', 'important');
                 canvas.style.setProperty('top', topPx + 'px', 'important');
@@ -605,9 +607,6 @@ window.updatePlotAltitudeAxis = function (atm_height_km) {
         relayout['yaxis2.dtick'] = rangeMax / 8;
     }
     Plotly.relayout(plotContainer, relayout);
-    if (typeof window.pd === 'function') {
-        window.pd('updatePlotAltitudeAxis', 'plot.js', '[BUG] barre stratosphere/axe altitude atm_height_km=' + atm_height_km);
-    }
 };
 
 // Ajouter l'écouteur d'événement resize
@@ -740,16 +739,18 @@ function drawAbsorptionBandIndicators() {
         };
     }
 
-    // Indicateurs de bandes d'absorption
+    // Indicateurs de bandes d'absorption (H2O, CO2, CH4 = bandes spectrales ; nuages = corps gris, tout le LW)
     // Utiliser la référence unique des logos depuis configOrganigramme.js
     const LOGOS = typeof window !== 'undefined' && window.LOGOS ? window.LOGOS : {
         CO2: '🏭',
         CH4: '⛽',
         H2O: '💧',
-        ALBEDO: '🪩'
+        ALBEDO: '🪩',
+        CLOUDS: '☁️'
     };
+    if (!LOGOS.CLOUDS) LOGOS.CLOUDS = '☁️';
 
-    // H2O : 6.3 μm et 17 μm ; CO2 : 11 μm et 15 μm ; CH4 : 7.7 μm et 23 μm
+    // H2O : 6.3 μm et 17 μm ; CO2 : 11 μm et 15 μm ; CH4 : 7.7 μm et 23 μm ; Nuages EDS : corps gris (tout LW 4–50 μm)
     const CONST = window.CONST || {};
     const LAMBDA_H2O_1_UM = (CONST.LAMBDA_H2O_1 != null) ? CONST.LAMBDA_H2O_1 * 1e6 : 6.3;
     const LAMBDA_H2O_2_UM = (CONST.LAMBDA_H2O_2 != null) ? CONST.LAMBDA_H2O_2 * 1e6 : 17;
@@ -761,20 +762,23 @@ function drawAbsorptionBandIndicators() {
         { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Min', color: 'rgb(135, 206, 250)' },
         { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Min', color: 'rgb(135, 206, 250)' },
         { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Max', color: 'rgb(135, 206, 250)' },
-        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Max', color: 'rgb(135, 206, 250)' }
+        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Max', color: 'rgb(135, 206, 250)' },
+        // Nuages EDS : corps gris (tout le LW 4–50 μm). Un seul indicateur full span suffit (ils couvrent tout le spectre). SW = calculateAlbedo.
+        { lambda: 27, halfWidthUm: 23, logo: LOGOS.CLOUDS, logoImg: null, label: 'Nuages', minMax: 'LW', color: 'rgba(180, 180, 200, 0.4)', fullSpan: true }
     ];
 
     const P_atm = (window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) ? window.DATA['🫧']['🎈'] : 1;
-    const widthFactor = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.pressureBroadening) ? Math.min(2, Math.sqrt(Math.max(0.1, P_atm))) : 1;
+    const widthFactor = window.CONFIG_COMPUTE.pressureBroadening ? Math.min(2, Math.sqrt(Math.max(0.1, P_atm))) : 1;
 
     absorptionBands.forEach(band => {
-        const xPos = getXPosition(band.lambda);
-        const halfW = (band.halfWidthUm != null ? band.halfWidthUm : 1) * widthFactor;
-        const xLeft = getXPosition(Math.max(0.1, band.lambda - halfW));
-        const xRight = getXPosition(Math.min(50, band.lambda + halfW));
+        const halfW = (band.halfWidthUm != null ? band.halfWidthUm : 1) * (band.fullSpan ? 1 : widthFactor);
+        const xLeft = getXPosition(band.fullSpan ? 4 : Math.max(0.1, band.lambda - halfW));
+        const xRight = getXPosition(band.fullSpan ? 50 : Math.min(50, band.lambda + halfW));
         const barWidthPx = Math.max(4, xRight - xLeft);
 
-        const altText = `${band.minMax} captation ${band.label} : ${Number(band.lambda).toFixed(2)} μm, largeur ${halfW.toFixed(2)} μm`;
+        const altText = band.fullSpan
+            ? `Nuages EDS (corps gris) : absorption sur tout le spectre LW 4–50 μm (pas de longueur d'onde)`
+            : `${band.minMax} captation ${band.label} : ${Number(band.lambda).toFixed(2)} μm, largeur ${halfW.toFixed(2)} μm`;
 
         // Créer un indicateur (barre de largeur ∝ √P + logo centré)
         const indicator = document.createElement('div');
@@ -784,8 +788,8 @@ function drawAbsorptionBandIndicators() {
         indicator.style.width = `${barWidthPx}px`;
         // Juste sous le trait de l'axe (comme les graduations)
         indicator.style.bottom = `${axisMarginBottom + markersOffsetBelowAxis}px`;
-        indicator.style.background = (widthFactor > 1) ? `rgba(135, 206, 250, ${0.15 * (widthFactor - 1)})` : 'transparent';
-        indicator.style.borderRadius = '2px';
+        indicator.style.background = band.fullSpan ? (band.color || 'rgba(180, 180, 200, 0.35)') : ((widthFactor > 1) ? `rgba(135, 206, 250, ${0.15 * (widthFactor - 1)})` : 'transparent');
+        indicator.style.borderRadius = band.fullSpan ? '4px' : '2px';
         indicator.style.fontSize = '10px';
         indicator.style.zIndex = '1000';
         indicator.style.pointerEvents = 'auto';
@@ -871,6 +875,23 @@ window.updatePlot = function updatePlot(data) {
                 const raw = (f / band_width_m) * 1e6;
                 return scaleY(raw);
             });
+
+        // Lissage visuel uniquement (affichage), sans impact sur les calculs physiques.
+        function gaussianSmooth(values, sigmaBins) {
+            const kernel = [-2, -1, 0, 1, 2].map(function (x) { return Math.exp(-(x * x) / (2 * sigmaBins * sigmaBins)); });
+            const ksum = kernel.reduce(function (a, b) { return a + b; }, 0);
+            return values.map(function (_, i) {
+                let sum = 0;
+                for (let ki = 0; ki < kernel.length; ki++) {
+                    const j = Math.max(0, Math.min(values.length - 1, i + ki - 2));
+                    sum += kernel[ki] * values[j];
+                }
+                return sum / ksum;
+            });
+        }
+        const smoothEnabled = window.CONFIG_COMPUTE.plotSmoothEnable;
+        const smoothSigma = window.CONFIG_COMPUTE.plotSmoothSigmaBins;
+        const fluxDisplay = smoothEnabled ? gaussianSmooth(flux, smoothSigma) : flux;
         // Tooltip : "Courbe d'équilibre d'émission de la terre" pour 0 ppm, sinon avec température
         let hoverText;
         if (co2_ppm === 0) {
@@ -884,7 +905,7 @@ window.updatePlot = function updatePlot(data) {
 
         return {
             x: lambda_planck,
-            y: flux,
+            y: fluxDisplay,
             type: 'scatter',
             mode: 'lines',
             name: label,

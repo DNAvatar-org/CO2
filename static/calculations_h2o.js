@@ -88,46 +88,24 @@ function calculateMaxH2OVaporFraction() {
     return true;
 }
 
-//Calcule le forçage radiatif de la vapeur d'eau :: Basé sur des formules empiriques de la littérature
+// Calcule 🔺📛💧 = ΔF H₂O (W/m²), effet changement q_ref→q. Pas part EDS (🧲📛💧).
 function calculateH2OGreenhouseForcing() {
-    // console.log(`💧 [calculateH2OGreenhouseForcing@calculations_h2o.js]`);
     const DATA = window.DATA;
     if (!DATA['📛']) DATA['📛'] = {};
     const h2o_vapor_fraction = DATA['💧']['🍰🫧💧'];
     const temp_K = DATA['🧮']['🧮🌡️'];
-    
+
     if (h2o_vapor_fraction <= 0) {
-        DATA['📛']['📛💧'] = 0;
+        DATA['📛']['🔺📛💧'] = 0;
         return true;
     }
 
-    // Formule basée sur la littérature (similaire à CO2 mais adaptée pour H2O)
-    // L'effet de serre de H2O est logarithmique avec la concentration
-    // et dépend de la température (feedback positif)
-
-    // Référence : concentration très basse (comme CO2 utilise 280 ppm)
-    // Utiliser 100 ppm (0.01%) comme référence - concentration typique dans une atmosphère très sèche
-    // Les concentrations atmosphériques réalistes vont de quelques ppm à ~2-3% max (saturation)
-    const H2O_REF_FRACTION = 100e-6; // 100 ppm = 0.01% (référence basse, comme CO2 à 280 ppm)
-
-    // Coefficient : H2O est ~1.5-2x plus efficace que CO2 (5.35 W/m²)
-    // Basé sur la littérature : H2O absorbe mieux dans l'IR que CO2
-    // Utiliser 6.0 W/m² comme coefficient (plus conservateur pour éviter les amplifications excessives)
-    const H2O_FORCING_COEFFICIENT = 6.0; // W/m² (réduit de 8.0 à 6.0 pour éviter les amplifications)
-
-    // Forçage de base : formule logarithmique standard (comme CO2)
-    // ΔF = α * ln(C/C₀) où C est la concentration et C₀ la référence
-    // Fonctionne pour des concentrations réalistes (de quelques ppm à quelques %)
+    const H2O_REF_FRACTION = 100e-6; // 100 ppm (référence basse)
+    const H2O_FORCING_COEFFICIENT = 6.0; // W/m² (α, ordre de grandeur litt. H2O vs CO2 5.35)
     const base_forcing = H2O_FORCING_COEFFICIENT * Math.log(Math.max(h2o_vapor_fraction, H2O_REF_FRACTION) / H2O_REF_FRACTION);
+    const temp_factor = Math.min(temp_K / 288, 1.2);
 
-    // Feedback température : effet amplifié à haute température (feedback positif)
-    // Plus il fait chaud, plus il y a de vapeur, plus l'effet de serre est fort
-    // Formule continue : normalisation à 288K (15°C, température de référence terrestre)
-    // À basse température, l'effet est réduit car moins de vapeur peut exister
-    // Réduire l'amplification pour éviter les rétroactions trop fortes
-    const temp_factor = Math.min(temp_K / 288, 1.2); // Limiter à 1.2 pour éviter les amplifications excessives
-
-    DATA['📛']['📛💧'] = Math.max(base_forcing * temp_factor, 0);
+    DATA['📛']['🔺📛💧'] = Math.max(base_forcing * temp_factor, 0); // W/m²
     return true;
 }
 

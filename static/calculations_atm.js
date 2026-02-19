@@ -1,6 +1,6 @@
 // File: calculations_atm.js - Calculs composition atmosphérique
 // Desc: En français, dans l'architecture, je suis le module de calculs atmosphériques
-// Version 1.1.2
+// Version 1.1.4
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
@@ -9,6 +9,8 @@
 // - Fix: use DATA['🧮']['🧮🌡️'] in calculateAtmosphereProperties (was typo 🌡️)
 // - Suppression logs calculateMolarMassAir
 // - co2KgToFraction, ch4KgToFraction (masse kg → fraction molaire pour updateLevelsConfig)
+// - updateAtmosphereHeightFromCurrentT() : met à jour 📏🫧🧿 et 📏🫧🛩 depuis T courante (même grille verticale cold/warm start)
+// - v1.1.4 : 🎈 inclut vapeur d'eau : P = (⚖️🫧 + masse_vapeur) × 🍎 / (4π×R²), masse_vapeur = ⚖️🫧×🍰🫧💧/(1−🍰🫧💧)
 //
 // ============================================================================
 // CALCUL DE PRESSION ET STRUCTURE ATMOSPHÉRIQUE
@@ -109,23 +111,26 @@ function calculateMolarMassAir() {
     return true;
 }
 
-//Calcule la pression atmosphérique (utilise DATA directement)
+// Calcule la pression atmosphérique (utilise DATA directement).
+// P = (masse totale × 🍎) / (4π × R²) ; masse totale = air sec (⚖️🫧) + vapeur d'eau.
+// Vapeur : 🍰🫧💧 = fraction massique vapeur ⇒ masse_vapeur = ⚖️🫧 × 🍰🫧💧 / (1 − 🍰🫧💧).
+// → 🎈 ~0.988–0.995 atm (2025) au lieu de ~0.976 si on ignorait la vapeur (📏🫧🛩, Clausius-Clapeyron cohérents).
 function calculatePressureAtm() {
-    // console.log(`🫧 [calculatePressureAtm@calculations_atm.js]`);
     const DATA = window.DATA;
     const CONST = window.CONST;
     const EPOCH = DATA['📅'];
     const planet_radius_m = EPOCH['📐'] * 1000;
     const surface_area = 4 * Math.PI * Math.pow(planet_radius_m, 2);
-    // 🔒 CORRECTION : Utiliser DATA['⚖️']['⚖️🫧'] au lieu de EPOCH['⚖️🫧']
-    // car ⚖️🫧 est calculé dans getMasses() et stocké dans DATA
-    const atm_mass = DATA['⚖️']['⚖️🫧'];
+    const atm_mass_dry = DATA['⚖️']['⚖️🫧'];
+    const frac_vapor = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
+    const denom = Math.max(1e-10, 1 - frac_vapor);
+    const mass_vapor = (frac_vapor > 0 && frac_vapor < 1) ? (atm_mass_dry * frac_vapor / denom) : 0;
+    const atm_mass_total = atm_mass_dry + mass_vapor;
     const gravity = EPOCH['🍎'];
-    const pressure_pa = (atm_mass * gravity) / surface_area;
-    
-    // Éviter NaN si surface_area = 0 ou si pressure_pa est invalide
+    const pressure_pa = (atm_mass_total * gravity) / surface_area;
+
     DATA['🫧']['🎈'] = (surface_area > 0 && isFinite(pressure_pa) && pressure_pa > 0) ? pressure_pa / CONST.STANDARD_ATMOSPHERE_PA : 0;
-    
+
     return true;
 }
 
@@ -190,6 +195,17 @@ function calculateAtmosphereComposition() {
     return true;
 }
 
+/** Met à jour 📏🫧🧿 et 📏🫧🛩 à partir de la T courante (DATA['🧮']['🧮🌡️']).
+ *  À appeler au début de chaque pas radiatif pour que cold start et warm start
+ *  aient la même grille verticale à même T (évite Δ différent à 15,8°C). */
+function updateAtmosphereHeightFromCurrentT() {
+    const props = window.calculateAtmosphereProperties();
+    const tropopause_m = calculateTropopauseHeight();
+    window.DATA['🫧']['📏🫧🧿'] = props.z_max / 1000;
+    window.DATA['🫧']['📏🫧🛩'] = tropopause_m / 1000;
+    return true;
+}
+
 // ============================================================================
 // EXPOSITION GLOBALE
 // ============================================================================
@@ -207,12 +223,10 @@ function pressureAtZ(z) {
     const DATA = window.DATA;
     const CONST = window.CONST;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
-    
     if (DATA['⚖️']['⚖️🫧'] === 0) return 0;
-    
-    const P0 = (DATA['⚖️']['⚖️🫧'] * EPOCH['🍎']) / (4 * Math.PI * Math.pow(EPOCH['📐'] * 1000, 2));
+    const P0_pa = (DATA['🫧']['🎈'] != null && DATA['🫧']['🎈'] > 0) ? DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA : (DATA['⚖️']['⚖️🫧'] * EPOCH['🍎']) / (4 * Math.PI * Math.pow(EPOCH['📐'] * 1000, 2));
     const H = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (DATA['🫧']['🧪'] * EPOCH['🍎']);
-    return P0 * Math.exp(-z / H);
+    return P0_pa * Math.exp(-z / H);
 }
 
 function airNumberDensityAtZ(z) {
@@ -240,6 +254,7 @@ window.calculateAtmosphereProperties = calculateAtmosphereProperties;
 window.calculateMolarMassAir = calculateMolarMassAir;
 window.calculatePressureAtm = calculatePressureAtm;
 window.calculateAtmosphereComposition = calculateAtmosphereComposition;
+window.updateAtmosphereHeightFromCurrentT = updateAtmosphereHeightFromCurrentT;
 window.calculateTropopauseHeight = calculateTropopauseHeight;
 window.pressureAtZ = pressureAtZ;
 window.airNumberDensityAtZ = airNumberDensityAtZ;

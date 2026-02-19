@@ -1,6 +1,6 @@
 // File: hitran.js - Formules HITRAN (Q(T), S(T), γ(T,P), Voigt)
 // Desc: En français, module de calcul LBL selon doc/HITRAN.txt (sections efficaces à partir des lignes).
-// Version 1.1.0
+// Version 1.1.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -8,6 +8,8 @@
 // Logs:
 // - Initial: Q(T), S(T), γ_air/γ_self, γ_L total, γ_D, Voigt (réf. doc/HITRAN.txt).
 // - v1.1: crossSectionCO2/H2O/CH4FromLines(λ,T,P), getLinesInRange, données window.HITRAN_LINES_*.
+// - v1.2: getSpectralBinBoundsFromHITRAN(λ_min,λ_max,T,P) → { stepMax_m, nMin } pour bornes bins.
+// - v1.1.1: partitionFunctionQ(T,molecule) approx par molécule (CO2/H2O/CH4), crossSectionFromLines passe molecule
 
 (function (global) {
     'use strict';
@@ -18,9 +20,10 @@
     }
 
     // --- Constantes HITRAN (doc/HITRAN.txt) ---
+    // Credence T_ref/P_ref: ~90%. Plage lit. T_ref 273–300 K (HITRAN 296 K standard) ; P_ref 0.5–2 atm.
     var HITRAN_C2_CMK = 1.4388;           // c₂ = hc/k ≈ 1.4388 cm·K
-    var HITRAN_T_REF_K = 296;             // T_ref typique HITRAN (K)
-    var HITRAN_P_REF_ATM = 1;             // 1 atm
+    var HITRAN_T_REF_K = 296;             // T_ref typique HITRAN (K). Plage lit. 273–300 K.
+    var HITRAN_P_REF_ATM = 1;             // 1 atm. Plage lit. 0.5–2 atm.
     var PA_PER_ATM = 101325;
     var SQRT_LN2 = Math.sqrt(Math.LN2);
     var SQRT_PI = Math.sqrt(Math.PI);
@@ -49,10 +52,14 @@
     }
 
     /**
-     * Fonction de partition Q(T). HITRAN fournit polynômes/tables.
-     * Placeholder : retourne 1 (sera remplacé par tables ou formules par isotopologue quand lignes chargées).
+     * Fonction de partition Q(T) (approximation compacte par molécule).
+     * Suffisant pour 200–400 K et diagnostic ; évite le placeholder Q=1 constant.
      */
-    function partitionFunctionQ(T_K) {
+    function partitionFunctionQ(T_K, molecule) {
+        var x = T_K / HITRAN_T_REF_K;
+        if (molecule === 'CO2') return 286.09 * x;
+        if (molecule === 'H2O') return 174.58 * Math.pow(x, 1.5);
+        if (molecule === 'CH4') return 590.40 * Math.pow(x, 1.5);
         return 1;
     }
 
@@ -195,11 +202,11 @@
      * lines = tableau de lignes { nu, sw, elower, gamma_air, gamma_self, n_air, delta_air }.
      * X_self = fraction molaire du gaz (0 pour CO2/CH4 en air, >0 pour H2O humide). n_self non dans JSON → on utilise n_air.
      */
-    function crossSectionFromLines(lines, lambda_m, T_K, P_Pa, M_kg_mol, X_self) {
+    function crossSectionFromLines(lines, lambda_m, T_K, P_Pa, M_kg_mol, X_self, molecule) {
         var nu_cm = wavelengthToWavenumber(lambda_m);
         var inRange = getLinesInRange(lines, nu_cm, HALF_WINDOW_CM);
-        var Q_ref = partitionFunctionQ(HITRAN_T_REF_K);
-        var Q_T = partitionFunctionQ(T_K);
+        var Q_ref = partitionFunctionQ(HITRAN_T_REF_K, molecule);
+        var Q_T = partitionFunctionQ(T_K, molecule);
         var P_atm = pressurePaToAtm(P_Pa);
         var X_air = 1 - X_self;
         var sum_cm2 = 0;
@@ -218,19 +225,60 @@
 
     function crossSectionCO2FromLines(lambda_m, T_K, P_Pa) {
         var lines = getSortedLines("CO2");
-        return crossSectionFromLines(lines, lambda_m, T_K, P_Pa, CONST.M_CO2, 0);
+        return crossSectionFromLines(lines, lambda_m, T_K, P_Pa, CONST.M_CO2, 0, 'CO2');
     }
 
     function crossSectionH2OFromLines(lambda_m, T_K, P_Pa, X_self) {
         var lines = getSortedLines("H2O");
         var x = X_self;
         if (x === undefined) x = 0;
-        return crossSectionFromLines(lines, lambda_m, T_K, P_Pa, CONST.M_H2O, x);
+        return crossSectionFromLines(lines, lambda_m, T_K, P_Pa, CONST.M_H2O, x, 'H2O');
     }
 
     function crossSectionCH4FromLines(lambda_m, T_K, P_Pa) {
         var lines = getSortedLines("CH4");
-        return crossSectionFromLines(lines, lambda_m, T_K, P_Pa, CONST.M_CH4, 0);
+        return crossSectionFromLines(lines, lambda_m, T_K, P_Pa, CONST.M_CH4, 0, 'CH4');
+    }
+
+    /**
+     * Bornes min/max de bins spectaux dérivées des largeurs de raie HITRAN (CO2, H2O, CH4).
+     * Parcourt les lignes dans [lambda_min_m, lambda_max_m], estime la largeur (γ_L + γ_D) en cm⁻¹,
+     * convertit en Δλ (m), garde le min → step_max_m. N_min = span / step_max_m.
+     * T_K, P_Pa : référence pour γ (ex. 296 K, 1 atm). Retourne { stepMax_m, nMin } ou null si lignes indisponibles.
+     */
+    function getSpectralBinBoundsFromHITRAN(lambda_min_m, lambda_max_m, T_K, P_Pa) {
+        if (!CONST || !global.HITRAN_LINES_CO2) return null;
+        var nu_max_cm = wavelengthToWavenumber(lambda_min_m);
+        var nu_min_cm = wavelengthToWavenumber(lambda_max_m);
+        if (nu_min_cm >= nu_max_cm) return null;
+        var P_atm = pressurePaToAtm(P_Pa);
+        var step_min_m = Infinity;
+        var gases = [
+            { key: 'CO2', M: CONST.M_CO2, X_self: 0 },
+            { key: 'H2O', M: CONST.M_H2O, X_self: 0.01 },
+            { key: 'CH4', M: CONST.M_CH4, X_self: 0 }
+        ];
+        for (var g = 0; g < gases.length; g++) {
+            var lines = getSortedLines(gases[g].key);
+            if (!lines || lines.length === 0) continue;
+            var X_air = 1 - gases[g].X_self;
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                if (line.nu < nu_min_cm || line.nu > nu_max_cm) continue;
+                var g_air_T = gammaLorentzAir(T_K, line.gamma_air, line.n_air, HITRAN_T_REF_K);
+                var g_self_T = gammaLorentzSelf(T_K, line.gamma_self, line.n_air, HITRAN_T_REF_K);
+                var gamma_L = gammaLorentzTotal(P_atm, g_air_T, g_self_T, gases[g].X_self, X_air);
+                var gamma_D = gammaDoppler(line.nu, T_K, gases[g].M);
+                var halfWidth_cm = gamma_L + gamma_D;
+                var lambda_m = wavenumberToWavelength(line.nu);
+                var delta_lambda_m = 100 * lambda_m * lambda_m * halfWidth_cm;
+                if (delta_lambda_m > 0 && delta_lambda_m < step_min_m) step_min_m = delta_lambda_m;
+            }
+        }
+        if (!isFinite(step_min_m) || step_min_m <= 0) return null;
+        var span_m = lambda_max_m - lambda_min_m;
+        var nMin = Math.max(2, Math.ceil(span_m / step_min_m));
+        return { stepMax_m: step_min_m, nMin: nMin };
     }
 
     // Export global (pas de optional chaining, pas de return dans garde)
@@ -255,5 +303,6 @@
     global.HITRAN.crossSectionCO2FromLines = crossSectionCO2FromLines;
     global.HITRAN.crossSectionH2OFromLines = crossSectionH2OFromLines;
     global.HITRAN.crossSectionCH4FromLines = crossSectionCH4FromLines;
+    global.HITRAN.getSpectralBinBoundsFromHITRAN = getSpectralBinBoundsFromHITRAN;
 
 })(typeof window !== 'undefined' ? window : this);

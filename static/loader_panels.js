@@ -64,6 +64,10 @@
         const sciePanel = document.getElementById('scie-panel');
         if (visuPanel) visuPanel.innerHTML = results[0];
         if (sciePanel) sciePanel.innerHTML = results[1];
+        var wrapper = document.querySelector('.plot-container-wrapper');
+        var ctrl = document.querySelector('.plot-controls');
+        var dbg = document.getElementById('plot-debug-log');
+        console.log('[debug bouton] apres injection: plot-controls=' + !!ctrl + ' plot-debug-log=' + !!dbg + ' wrapper=' + !!wrapper + ' wrapperKids=' + (wrapper ? wrapper.children.length : 0));
         return loadScriptsSequentially(SCRIPTS);
     }).then(function () {
         if (document.readyState === 'loading') {
@@ -119,6 +123,23 @@
         return visu && visu.classList.contains('active');
     };
 
+    function ensurePlotDebugButton() {
+        var ctrl = document.querySelector('.plot-controls');
+        var dbg = document.getElementById('plot-debug-log');
+        var anim = document.getElementById('plot-anim-toggle');
+        console.log('[debug bouton] initAfterLoad: plot-controls=' + !!ctrl + ' plot-debug-log=' + !!dbg + ' plot-anim=' + !!anim);
+        if (ctrl && !dbg && anim) {
+            var btn = document.createElement('button');
+            btn.className = 'icon-button';
+            btn.id = 'plot-debug-log';
+            btn.title = 'Debug : run par epoch, log dans fichier txt';
+            btn.textContent = '\uD83D\uDCC3';
+            btn.onclick = function () { if (typeof window.runDebugLogMode === 'function') window.runDebugLogMode(); };
+            ctrl.appendChild(btn);
+            console.log('[debug bouton] bouton cree manuellement');
+        }
+    }
+
     function initAfterLoad() {
         if (typeof window.initCharsForDisplay === 'function') window.initCharsForDisplay();
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
@@ -155,6 +176,10 @@
                 document.body.appendChild(cb);
             }
         }
+        ensurePlotDebugButton();
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () { ensurePlotDebugButton(); });
+        });
         var lastComputePayload = null;
         if (window.CO2_EVENTS) {
             window.CO2_EVENTS.on('cycleCalcul', function () {

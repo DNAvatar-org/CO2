@@ -125,7 +125,7 @@ Cette température effective correspond à la température d'un corps noir qui �
 
 ## 6. Forçage Radiatif
 
-Le forçage radiatif est la différence de flux total entre deux scénarios :
+Le diagnostic ΔF (convention affichage, climate.js) est la différence de flux total entre deux scénarios :
 
 $$\Delta F = F_{\text{total}}(f_{\text{CO}_2}) - F_{\text{total}}(f_{\text{CO}_2, \text{ref}})$$
 
@@ -141,6 +141,6 @@ $$\Delta T = T_{\text{eff}}(f_{\text{CO}_2}) - T_{\text{eff}}(f_{\text{CO}_2, \t
 
 - Toutes les intégrales sur les longueurs d'onde sont discrétisées avec un pas $\Delta \lambda$
 - Toutes les intégrales sur l'altitude sont discrétisées avec un pas $\Delta z$
-- Le modèle suppose un équilibre radiatif : le flux total sortant doit égaler le flux total entrant (loi de conservation de l'énergie)
+- Le modèle suppose un équilibre : le flux total sortant doit égaler le flux total entrant (loi de conservation de l'énergie)
 - Chaque courbe de flux observée correspond à une température effective unique, déterminée par la loi de Stefan-Boltzmann
 

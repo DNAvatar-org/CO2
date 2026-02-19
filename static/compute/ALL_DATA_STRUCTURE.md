@@ -27,7 +27,7 @@ window.DATA = {
     // Albédo (valeurs 0-1)
     '🪩': { ... },
     
-    // Flux radiatifs (W/m²)
+    // Flux (W/m²)
     '🧲': { ... },
     
     // Paramètres de convergence
@@ -39,7 +39,7 @@ window.DATA = {
     // Valeurs géothermiques (noyau)
     '🌕': { ... },
     
-    // EDS (Forçage radiatif)
+    // EDS (breakdown par gaz ; ΔF = convention affichage)
     '📛': { ... },
     
     // Géologie (Surfaces géologiques - Couche A)
@@ -150,8 +150,8 @@ Albédo (valeurs 0-1) et couvertures de surface.
 
 **Note importante** : `🍰🪩⛅` est calculé depuis `☁️` (CloudFormationIndex) : `🍰🪩⛅ = C_max × ☁️` où `C_max ≈ 0.7` (plafond planétaire).
 
-### `DATA['🧲']` - Flux radiatif
-Flux radiatifs en W/m².
+### `DATA['🧲']` - Flux (W/m²)
+Flux en W/m² (entrant, sortant, déséquilibre).
 
 ```javascript
 '🧲': {
@@ -200,15 +200,15 @@ Valeurs géothermiques (noyau).
 }
 ```
 
-### `DATA['📛']` - EDS (Forçage radiatif)
-Forçage radiatif des gaz à effet de serre.
+### `DATA['📛']` - EDS (breakdown par gaz)
+EDS en W/m² et parts par gaz ; 🔺📛❀ = diagnostic ΔF (convention affichage, climate.js).
 
 ```javascript
 '📛': {
-    '📛💧': number,  // Forçage radiatif H2O
-    '📛🏭': number,  // Forçage radiatif CO2
-    '📛⛽': number,  // Forçage radiatif CH4
-    '📿📛': number   // Forçage radiatif total (EDS)
+    '🔺📛💧': number,  // ΔF H₂O affichage (W/m², convention)
+    '🔺📛🏭': number,  // ΔF CO₂ affichage (W/m², convention)
+    '🔺📛⛽': number,  // ΔF CH₄ affichage (W/m², convention)
+    '🔺📿📛': number   // ΔF total affichage (W/m², convention)
 }
 ```
 

@@ -372,13 +372,25 @@ window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
 window.CONFIG_COMPUTE.maxRadiatifIters = 101;
 // Plafond T en Search (K). 2373 = lave complète (~2100°C), réaliste pour surface (au-delà = vaporisation). null = pas de plafond (test).
 window.CONFIG_COMPUTE.maxSearchT_K = null;
-// Bins spectaux (150 = bonne précision calcul). OOM évité par plafond tropopause/couches dans calculations.js.
-window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 150;
+// Bins spectaux (N utilisé). 500 = courbe propre ; 100 donne courbe moins précise et convergence ~1.2°C (artefact). 🔬🌈 dans [N_min, N_max].
+// N_min : optionnel (spectralBinsMinFromHITRAN). Réf. scripts/hitran_spectral_bin_bounds.py.
+window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 500;
+window.CONFIG_COMPUTE.spectralBinsMinFromHITRAN = null;  // ex. 150 si HITRAN a donné nMin=150 ; null = pas de clamp
+// Log diagnostic EDS (h2o_eds_scale, bins, delta_z, n_layers, earth_flux, OLR, EDS) à chaque calculateFluxForT0.
+window.CONFIG_COMPUTE.logEdsDiagnostic = false;
+// Lissage visuel du spectre (affichage uniquement, pas la physique/OLR)
+window.CONFIG_COMPUTE.plotSmoothEnable = true;
+window.CONFIG_COMPUTE.plotSmoothSigmaBins = 2.8;
 window.CONFIG_COMPUTE.maxPreviousLength = 300;  /* Historique convergence : 25 → 300 pour afficher tout le détail (évite pile LIFO trop petite) */
 
 // Tolérances cycle eau (changement albedo/vapor pour relancer tour radiatif)
 window.CONFIG_COMPUTE.cycleTolAlbedo = 1e-4;
 window.CONFIG_COMPUTE.cycleTolVapor = 1e-6;
+// Cycles eau/albédo par pas radiatif. 1 = résultat dépend du chemin (-18°C→~15.8°C, 15°C→autre) incohérent. 2+ = même équilibre (~24°C) quel que soit le point de départ, cohérent. 2–4 : cold start → ~15.8°C. Trop (ex. 20) sur-relaxe l’albédo à chaque T → équilibre chaud ~24°C.
+// maxWaterAlbedoCyclesPerStep peut changer les résultats (précision/convergence), à garder en tête pour comparaisons.
+window.CONFIG_COMPUTE.maxWaterAlbedoCyclesPerStep = 1;
+// Cycles eau/albédo à l'Init uniquement (T fixe) : jusqu'à stabilisation ou cap. 1 = un seul cycle (Δ Init ≠ équilibre à même T). 5+ = converger météo à T_init pour même Δ qu'à 15,8°C en cold start.
+window.CONFIG_COMPUTE.maxWaterAlbedoCyclesAtInit = 1;
 // Borne min tolérance flux (W/m²) : le calcul spectral ne peut pas atteindre mieux (~bruit numérique). Évite convergence impossible.
 window.CONFIG_COMPUTE.tolMinWm2 = 0.05;
 // Search : ΔT proportionnel à Δ (formule physique Δ/(4σT³)). Cap max uniquement.

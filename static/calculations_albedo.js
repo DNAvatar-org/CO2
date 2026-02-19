@@ -1,12 +1,16 @@
 // File: calculations_albedo.js - Calculs albedo et couverture nuageuse
 // Desc: En français, dans l'architecture, je suis le module de calculs d'albedo
-// Version 1.2.0
+// Version 1.2.3
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
 // - epochId Archéen : 🦠 (🌋 réservé actions). Archéen utilise clouds modernes pour ~15°C.
+// - 🍰⚖️💦 : formule P = W/τ (litt. 8–10 j), ⏳☔ = 1/τ_global ; rampe (RH−💭☔)/0,2 ; ref. Nature Rev. Earth Env. 2021, HESS 2017, GPCP ~2,7 mm/j.
+// - v1.2.1 : rampe douce 🍰🪩🧊 en Search/Dicho (premières itérations) pour éviter saut de bassin albédo/glace
+// - v1.2.2 : verrou optionnel glace initiale pendant Search du premier bassin (🧮🔄🌊=0) pour stabiliser le point fixe froid
+// - v1.2.3 : retrait gardes défensives CONFIG_COMPUTE sur rampe glace (règle crash)
 //
 // FORMULES ALBEDO :
 // 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏜️,🧊} + contribution_glace + contribution_nuages
@@ -65,35 +69,19 @@ function calculateGeologySurfaces() {
 // ============================================================================
 // FONCTION : CALCULER L'INDEX DE FORMATION NUAGEUSE (☁️)
 // ============================================================================
-// 🔒 REFONTE NUAGES : Les nuages ne sont pas un réservoir d'eau, mais un phénomène optique + dynamique
 // ☁️ = CloudFormationIndex ∈ [0, 1] : potentiel de condensation (ni masse ni surface)
 //
-// FORMULE EXPLICITE :
-// ☁️ = clamp((🍰🫧💧 / CONST.H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + CONST.ALPHA_OCEAN × 🍰🪩🌊) × CONST.SCALE_CLOUD, 0, 1)
+// FORMULE RÉELLE (implémentée) — Schéma Sundqvist 1989 :
+// ☁️ = (1 - Math.pow(1 - min(🍰🫧☔, 1), 0.6)) × 🍰💭
+//   où 🍰🫧☔ = humidité relative (q/q_sat), 🍰💭 = CCN (0.3–1.0).
+// À HR=98.9% : ☁️ ≈ 0.93 × 🍰💭. ☁️ n'utilise PAS 🍰🫧💧🌈 (cap. rad. IR, calculée ailleurs).
 //
-// Où :
-//   CONST.H2O_VAPOR_REF = 0.01 (1%, référence Terre tempérée)
-//   CONST.ALPHA_OCEAN = 0.3 (effet océan / convection)
-//   f(T_surface, 📏🫧🛩) = fonction thermodynamique (température + tropopause)
-//
-// Exemple Terre moderne (2025) :
-//   🍰🫧💧 = 0.0108 (1.08%), CONST.H2O_VAPOR_REF = 0.01 (1%) → vapor_ratio = 1.075
-//   T = 288K (15°C), 📏🫧🛩 = 8.45 km → f(T, 📏🫧🛩) ≈ 0.771
-//   🍰🪩🌊 = 0.71 → ocean_effect = 1 + 0.3 × 0.71 = 1.213
-//   CONST.SCALE_CLOUD = 0.4
-//   ☁️ = clamp(1.075 × 0.771 × 1.213 × 0.4, 0, 1) = clamp(0.402, 0, 1) = 0.402
+// Note : L'ancienne formule (🍰🫧💧/H2O_VAPOR_REF × f(T) × ...) n'est plus utilisée.
 
 function calculateCloudFormationIndex() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    // 🔒 FORMULE : ☁️ = clamp((🍰🫧💧 / CONST.H2O_VAPOR_REF) × f(T_surface, 📏🫧🛩) × (1 + CONST.ALPHA_OCEAN × 🍰🪩🌊) × CONST.SCALE_CLOUD, 0, 1)
-    // où :
-    //   🍰🫧💧 = fraction massique de vapeur d'eau dans l'atmosphère
-    //   CONST.H2O_VAPOR_REF = 0.01 (1%, référence Terre tempérée)
-    //   f(T_surface, 📏🫧🛩) = fonction thermodynamique (température + tropopause)
-    //   CONST.ALPHA_OCEAN = 0.3 (effet océan / convection)
-    //   🍰🪩🌊 = couverture océanique
-    
+
     const h2o_vapor_fraction = DATA['💧']['🍰🫧💧'];
     const h2o_vapor_ref = CONST.H2O_VAPOR_REF;
     const T_surface_K = DATA['🧮']['🧮🌡️'];
@@ -147,28 +135,29 @@ function calculateCloudFormationIndex() {
     // Stocker dans DATA
     DATA['🪩']['☁️'] = clamped_index;
     
-    // 🔒 CALCUL DE ⏳☔ (Inverse du temps de vie moyen de la vapeur excédentaire)
-    // ⏳☔ = 1 / τ_vapeur où τ_vapeur est le temps de vie moyen de la vapeur excédentaire (en s)
-    // Plus ⏳☔ est grand, plus la vapeur excédentaire est rapidement précipitée
-    // FORMULE : ⏳☔ = 5e-4 s⁻¹ (inverse d'un temps de vie de ~2000 s ≈ 33 min)
-    DATA['💧']['⏳☔'] = 5e-4;
+    // 🔒 CALCUL DE ⏳☔ (Inverse du temps de résidence global de la vapeur)
+    // Littérature : temps de résidence vapeur ~8–10 j (Nature Rev. Earth Env. 2021; HESS 2017).
+    // Relation : P = W/τ → taux précipitation (kg/m²/s) = colonne vapeur (kg/m²) / τ (s).
+    // ⏳☔ = 1/τ_global (s⁻¹) pour cohérence avec le bilan eau et ~2,7 mm/j global (GPCP).
+    const TAU_VAPOR_GLOBAL_S = 10 * 86400; // 10 j (litt. 8–10 j)
+    const inv_tau_global = 1 / TAU_VAPOR_GLOBAL_S;
+    DATA['💧']['⏳☔'] = inv_tau_global;
     
     // 🔒 INITIALISATION DE 🔺⏳ (Pas de temps fixe = 1 jour)
     // FORMULE : 🔺⏳ = 86400 s (1 jour)
     DATA['📅']['🔺⏳'] = 86400;
     
-    // 🔒 CALCUL DE 🍰⚖️💦 (Précipitation critiques en kg/m²/s)
-    // 🍰⚖️💦 représente la fraction massique de vapeur d'eau retirée par seconde quand l'humidité relative dépasse le seuil critique
-    // FORMULE : 🍰⚖️💦 = max(0, (🍰🫧☔ - 💭☔) × 🍰🫧💧 × ⏳☔) × (masse_vapeur_par_m²)
-    // Unités : (sans dimension) × (sans dimension) × (s⁻¹) × (kg/m²) = kg/m²/s
-    const rh_excess = relative_humidity - precip_threshold;
-    const fraction_rate = Math.max(0, rh_excess * h2o_vapor_fraction * DATA['💧']['⏳☔']); // s⁻¹ (fraction par seconde)
-    // Convertir en kg/m²/s : multiplier par la masse de vapeur par m²
+    // 🔒 CALCUL DE 🍰⚖️💦 (Taux de précipitation en kg/m²/s)
+    // Formule littérature : P = W/τ (colonne vapeur / temps résidence). Quand RH > 💭☔, on applique
+    // ce taux ; rampe lisse (RH - 💭☔)/0.2 pour éviter discontinuité au seuil.
+    // Réf. : GPCP ~2,7 mm/j ; τ ~10 j → P ≈ W/(10×86400) ≈ 2,5–3 mm/j pour W ~25 kg/m².
     const atm_mass_total = DATA['⚖️']['⚖️🫧'];
     const planet_radius_km = window.TIMELINE[DATA['📜']['👉']]['📐'];
     const planet_surface_m2 = 4 * Math.PI * Math.pow(planet_radius_km * 1000, 2);
-    const vapor_mass_per_m2 = (DATA['💧']['🍰🫧💧'] * atm_mass_total) / planet_surface_m2; // kg/m²
-    const precipitation_rate = fraction_rate * vapor_mass_per_m2; // kg/m²/s
+    const vapor_mass_per_m2 = (DATA['💧']['🍰🫧💧'] * atm_mass_total) / planet_surface_m2; // kg/m² (W)
+    const rh_excess = relative_humidity - precip_threshold;
+    const ramp = rh_excess <= 0 ? 0 : Math.min(1, rh_excess / 0.2);
+    const precipitation_rate = ramp * (vapor_mass_per_m2 / TAU_VAPOR_GLOBAL_S); // kg/m²/s
     DATA['💧']['🍰⚖️💦'] = precipitation_rate;
 
     return clamped_index;
@@ -236,7 +225,33 @@ function calculateAlbedo() {
     const temp_K = DATA['🧮']['🧮🌡️'];
     const T_no_ice_K = CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS;
     const ice_temp_factor = Math.max(0, (T_no_ice_K - temp_K) / CONST.T_NO_POLAR_ICE_C);
-    const ice_fraction_base = Math.min(DATA['🗻']['🍰🗻🏔'], 0.46 * ice_temp_factor);
+    const ice_fraction_target = Math.min(DATA['🗻']['🍰🗻🏔'], 0.46 * ice_temp_factor);
+    let ice_fraction_base = ice_fraction_target;
+    const epochId = DATA['📜']['🗿'];
+    if (!window._iceCoverageRampState || window._iceCoverageRampState.epochId !== epochId) {
+        window._iceCoverageRampState = { epochId: epochId, value: ice_fraction_target };
+    }
+    const isConvergencePhase = (phase === 'Search' || phase === 'Dicho');
+    const freezeIceDuringSearch = window.CONFIG_COMPUTE.freezePolarIceDuringSearch !== false;
+    const waterPass = (DATA['🧮'] && DATA['🧮']['🧮🔄🌊'] != null) ? DATA['🧮']['🧮🔄🌊'] : 0;
+    const lock = window._iceCoverageLock;
+    if (freezeIceDuringSearch && isConvergencePhase && waterPass === 0 && lock && lock.epochId === epochId) {
+        ice_fraction_base = Math.max(0, Math.min(DATA['🗻']['🍰🗻🏔'], lock.value));
+    }
+    const iterRadiatif = (DATA['🧮'] && DATA['🧮']['🧮🔄☀️'] != null) ? DATA['🧮']['🧮🔄☀️'] : 0;
+    const rampIters = (window.CONFIG_COMPUTE.iceCoverageRampIters != null && Number.isFinite(window.CONFIG_COMPUTE.iceCoverageRampIters))
+        ? Math.max(0, window.CONFIG_COMPUTE.iceCoverageRampIters)
+        : 12;
+    const rampMaxStep = (window.CONFIG_COMPUTE.iceCoverageRampMaxStep != null && Number.isFinite(window.CONFIG_COMPUTE.iceCoverageRampMaxStep))
+        ? Math.max(0, window.CONFIG_COMPUTE.iceCoverageRampMaxStep)
+        : 0.004;
+    if (isConvergencePhase && iterRadiatif < rampIters && !(freezeIceDuringSearch && waterPass === 0 && lock && lock.epochId === epochId)) {
+        const prevIce = window._iceCoverageRampState.value;
+        const deltaIce = ice_fraction_target - prevIce;
+        const deltaIceClamped = Math.max(-rampMaxStep, Math.min(rampMaxStep, deltaIce));
+        ice_fraction_base = Math.max(0, Math.min(DATA['🗻']['🍰🗻🏔'], prevIce + deltaIceClamped));
+    }
+    window._iceCoverageRampState.value = ice_fraction_base;
     
     // 🔒 volcano_coverage déjà calculé plus haut (ligne ~200)
     
@@ -444,7 +459,7 @@ function calculateAlbedo() {
 
     // 🔒 FORMULE ALBEDO CORRIGÉE :
     // 🍰🪩📿 = 🍰🪩⛅ × 🪩🍰⛅ + Σ(🍰🪩❀ × 🪩🍰❀) | ❀ ∈ { 🌋,🌊,🌳,🏜️,🧊 }
-    // Les nuages contribuent directement à l'albédo avec leur propre coefficient
+    // Nuages : effet SW (albédo) ici. Inclut : réflexion solaire par les nuages + visible qui traverse, frappe sol/glace/désert, renvoie, et est bloqué par les nuages (tout agrégé dans 🪩🍰⛅ × 🍰🪩⛅). LW (τ_cloud IR) = calculations.js, barre spectre 4–50 μm.
     const cloud_albedo_coeff = albedo_coeff['🪩🍰⛅'];
     const cloud_albedo_contribution = cloud_fraction * cloud_albedo_coeff;
     albedo = albedo + cloud_albedo_contribution;

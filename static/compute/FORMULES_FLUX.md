@@ -1,6 +1,6 @@
-# Formules détaillées des flux radiatifs (🧲)
+# Formules détaillées des flux (🧲)
 
-Documentation complète des formules de calcul pour chaque flux radiatif dans `DATA['🧲']`.
+Documentation complète des formules de calcul pour chaque flux dans `DATA['🧲']`.
 
 ## Valeurs d'exemple
 
@@ -11,7 +11,7 @@ Documentation complète des formules de calcul pour chaque flux radiatif dans `D
     '🧲🌑🔼': 501.45,  // Flux sortant (σT⁴)
     '🧲🌈🔼': 219.67,  // Courbe spectrale (flux au sommet atmosphère)
     '🧲🪩🔼': 35.69,   // Flux réfléchi par albedo
-    '🔺🧲': -85.01     // Delta équilibre radiatif
+    '🔺🧲': -85.01     // Déséquilibre flux (entrant - sortant)
 }
 ```
 
@@ -123,7 +123,7 @@ const flux_sortant_surface = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['�
 - Aire sous courbe spectrale réelle (émission au sommet atmosphère, après transfert radiatif couche par couche avec concentrations atmosphériques)
 - Calculé via transfert radiatif spectral : pour chaque couche z et chaque λ, calcul de l'épaisseur optique τ_λ(z) avec concentrations CO₂, CH₄, H₂O, O₂, N₂, puis transmission exp(-τ) et émission (1-exp(-τ))×π×B_λ(T)
 - Intégration finale au sommet : `🧲🌈🔼 = Σ[λ] upward_flux[z_max][λ] × Δλ`
-- **En équilibre radiatif :** `🧲🌈🔼 ≈ 🧲☀️🔽 + 🧲🌕🔽`
+- **En équilibre :** `🧲🌈🔼 ≈ 🧲☀️🔽 + 🧲🌕🔽`
 
 **Exemple avec valeurs réelles :**
 ```
@@ -132,7 +132,7 @@ const flux_sortant_surface = CONST.STEFAN_BOLTZMANN * Math.pow(DATA['🧮']['�
 
 **Code source :** `calculations.js:calculateFluxForT0()`
 - Calcul spectral avec intégration sur λ ∈ [0.1μm, 100μm]
-- Transfert radiatif couche par couche avec absorption/émission
+- Transfert couche par couche avec absorption/émission
 - Résultat : `spectral_result.total_flux` (flux au sommet)
 
 **Relation avec l'effet de serre :**
@@ -178,7 +178,7 @@ const albedo_flux = solar_flux_incident * albedo_value;
 
 ---
 
-## 6. 🔺🧲 - Delta équilibre radiatif
+## 6. 🔺🧲 - Déséquilibre flux
 
 **Formule :**
 ```
@@ -186,9 +186,9 @@ const albedo_flux = solar_flux_incident * albedo_value;
 ```
 
 **Détail :**
-- Delta équilibre radiatif (flux entrant - flux sortant)
+- Déséquilibre flux (flux entrant - flux sortant)
 - Différence entre flux entrant total et flux sortant (au sommet)
-- **En équilibre radiatif :** `🔺🧲 ≈ 0`
+- **En équilibre :** `🔺🧲 ≈ 0`
 - **Si `🔺🧲 > 0`** : la planète reçoit plus d'énergie qu'elle n'en perd → réchauffement
 - **Si `🔺🧲 < 0`** : la planète perd plus d'énergie qu'elle n'en reçoit → refroidissement
 
@@ -257,7 +257,7 @@ EDS = 🧲🌑🔼 - 🧲🌈🔼
     = 281.78 W/m²
 ```
 
-### 3. Équilibre radiatif
+### 3. Équilibre flux
 ```
 En équilibre : 🧲🌈🔼 = 🧲☀️🔽 + 🧲🌕🔽
              219.67 ≈ 304.68 (pas encore à l'équilibre)
@@ -283,6 +283,37 @@ T_surface = (🧲🌑🔼 / σ)^(1/4)
           = (501.45 / 5.670374419e-8)^(1/4)
           ≈ 303.5 K (30.35°C)
 ```
+
+---
+
+## Répartition EDS (📛)
+
+**🧲📛** = EDS total (W/m²) = 🧲🌑🔼 − 🧲🌈🔼
+
+**Répartition (en W/m² retournés par EDS, normalisé, 🍰📛 ∈ [0, 1])** (Σ = 1) :
+
+| Symbole   | Signification        | Exemple |
+|-----------|----------------------|---------|
+| 🍰📛🏭     | Part EDS CO₂         | ~0.02   |
+| 🍰📛💧     | Part EDS H₂O (vapeur)| ~0.92   |
+| 🍰📛⛽     | Part EDS CH₄         | ~0.06   |
+| 🍰📛⛅     | Part EDS nuages      | ~0.01   |
+
+- **🍰📛⛅** : part de l’effet de serre due à l’absorption IR des nuages (corps gris, τ_nuage par couche ; même couverture 🍰🪩⛅ que l’albédo).
+- **🔺📛💧** : ΔF H₂O affichage (W/m², convention), distinct de la répartition EDS.
+- **Comparaison littérature** : Ces parts (tau-ratio avec partage overlap H2O–CO2) ne sont pas directement comparables aux % d’attribution Schmidt (expériences retrait/ajout) ; voir doc/VAPEUR_VS_NUAGES.md.
+
+---
+
+## τ nuages LW (épaisseur optique IR)
+
+**Formule utilisée :** `τ_cloud_total = CLOUD_LW_TAU_REF × 🍰🪩⛅` (corps gris, réparti sur la troposphère).
+
+**Justification scientifique :**
+
+- **Émissivité IR des nuages d'eau :** ε = 1 − exp(−τ), avec τ ∝ LWP (liquid water path). Références : Stephens (1978), *Radiation Profiles in Extended Water Clouds. II: Parameterization Schemes*, J. Atmos. Sci. **35**, 2123 ; Chylek & Ramaswamy (1982), *Simple Approximation for Infrared Emissivity of Water Clouds*, J. Atmos. Sci. **39**, 171 (ε = 1 − exp(−βkW), β ≈ 1.66).
+- **τ broadband LW typique** pour nuages overcast : plage ~ 0,5–2 (émissivité effective ~ 0,4–0,9). On ne dispose pas de LWP dans le modèle, seulement de la couverture nuageuse 🍰🪩⛅ (0–1).
+- **Choix CLOUD_LW_TAU_REF = 1 :** τ_total = couverture × 1. Ainsi, couverture 100 % → τ = 1 (ε ≈ 0,63) ; 30 % → τ = 0,3. Cohérent avec la littérature (τ overcast ~ 1–2). Une valeur ref = 5 donnerait τ_overcast = 5 (ε ≈ 0,99), trop opaque pour un modèle simplifié.
 
 ---
 

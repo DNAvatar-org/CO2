@@ -2,7 +2,7 @@
 
 ## Vocabulaire
 
-**Forçage radiatif** = perturbation du bilan énergétique (W/m²). Mesure un *changement* par rapport à une référence.
+**Diagnostic ΔF** (convention affichage, climate.js) = différence de flux (W/m²) par rapport à une référence. Pas utilisé pour le calcul de T.
 
 ## Deux mécanismes distincts
 
@@ -19,7 +19,7 @@
 
 ## `forcing_Albedo` dans le code
 
-Ce n’est **pas** l’albédo lui-même, mais le **forçage radiatif dû à un changement d’albédo** :
+Ce n’est **pas** l’albédo lui-même, mais le **diagnostic ΔF (convention affichage) dû à un changement d’albédo** :
 
 ```
 ΔF_albedo = −(S/4) × (A − A_ref)
@@ -42,4 +42,4 @@ Le facteur `getH2OVaporEDSScale()` (physics.js) est calculé dynamiquement depui
 |-------------|-------------------------------|-------|
 | Albédo      | Ce qui ne chauffe pas (réflexion) | 0–1   |
 | EDS         | Ce qui réchauffe (gaz IR)     | W/m²  |
-| forcing_Albedo | Changement d’albédo vs référence | W/m²  |
+| forcing_Albedo | Diagnostic ΔF albédo (affichage, convention) | W/m²  |

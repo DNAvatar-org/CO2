@@ -32,7 +32,7 @@ Donc la vapeur ne se « répartit pas en 2 morceaux » : il y a **deux contribut
 - **Bandes** : 6.3 µm et 17 µm (`crossSectionH2O`)
 - **Contribution EDS** : via `sum_blocked_H2O` (tau_H2O / tau_tot × flux absorbé)
 
-### 2. Nuages — hors EDS IR
+### 2. Nuages — EDS IR (ajout ultérieur)
 
 - **Variables** : `DATA['🪩']['☁️']` (index formation), `DATA['🪩']['🍰🪩⛅']` (couverture)
 - **Calcul** : `calculateCloudFormationIndex()` → `calculateAlbedo()`
@@ -77,9 +77,30 @@ Donc **4 % (nous) et 20 % (Schmidt) ne sont pas le même indicateur** : l’un e
 - **Approche Schmidt** : on mesure l’effet **réel** de chaque acteur : « retirer le CO₂ fait baisser G de combien ? » → nombre directement interprétable (sensibilité au CO₂).  
 - **En résumé** : les expériences retrait/ajout ne « corrigent » pas la physique ; elles **définissent** un % cohérent (contribution marginale). On pourra plus tard **implémenter les mêmes expériences** (colonnes sans CO₂, sans H₂O, etc.) pour : (1) afficher ce %-là en plus du tau-ratio ; (2) **vérifier** si notre physique est correcte (comparer ΔG à la littérature quand on retire le CO₂ — si notre ΔG est du même ordre que Schmidt, le calcul de T et des flux est cohérent ; si le % tau-ratio reste à 4 %, c’est la définition qui diffère, pas forcément le code).
 
+### Attribution EDS : les trois notions (τ, overlap, références)
+
+Trois choix conceptuels, souvent confondus :
+
+| Notion | Description | Qui l’utilise |
+|--------|-------------|----------------|
+| **1. Attribution par τ** | À chaque (couche, λ), on répartit le flux absorbé proportionnellement aux épaisseurs optiques : part_X = τ_X/τ_tot. Pas de proportion en moles seules : c’est τ = σ×n×Δz qui compte (σ = section efficace, n = densité). | **Nous** (et toute méthode « tau-weighted »). |
+| **2. Overlap H₂O–CO₂ (bande 15–17 µm)** | Dans la plage où H₂O et CO₂ absorbent ensemble, il faut décider à qui « attribuer » cette absorption. Deux options classiques : **(A)** tout attribuer au CO₂ (bande 15 µm = bande CO₂) → **KT97** (Kiehl & Trenberth 1997, BAMS) ; **(B)** partager l’overlap de façon neutre (« split the difference » : chacun reçoit la moitié du crédit de la partie commune) → **Schmidt et al. 2010**, JGR. | **Nous** : (B) partage réaliste (Schmidt). **KT97** : (A) bande 15 µm → 100 % CO₂. |
+| **3. Définition du % affiché** | **(A)** Part locale de l’absorption = τ_X/τ_tot (une seule passe). **(B)** Contribution marginale = « si on retire le gaz, de combien baisse G ? » (expériences retrait/ajout). | **Nous** : (A). **Schmidt** : (B) → leurs ~20 % CO₂, ~50 % H₂O. |
+
+**Clarification Schmidt vs KT97**
+
+- **Schmidt 2010** ne met **pas** 100 % de l’overlap sur le CO₂. Ils appliquent « split the difference » sur les chevauchements (comme nous). Leur ~20 % CO₂ vient des **expériences** (retrait CO₂ → ΔG), pas d’une attribution par bande.
+- **KT97** : répartition **par bande spectrale** ; la bande 15 µm est comptée **entièrement** comme CO₂ (même où H₂O absorbe) → d’où ~32 W/m² CO₂ dans leur décomposition. C’est la méthode « 100 % CO₂ sur la bande commune ».
+
+**Notre choix actuel (implémenté)**
+
+- Attribution **par τ** (τ_X/τ_tot) à chaque (couche, λ).
+- Overlap H₂O–CO₂ : **partage réaliste** (split the difference, Schmidt 2010) — on ne favorise ni H₂O ni CO₂ sur la plage commune.
+- Affichage : **répartition réaliste** (probabilité proportionnelle à τ après partage de l’overlap). Réf. Schmidt et al. 2010, J. Geophys. Res., doi:10.1029/2010JD014287 ; KT97 BAMS 1997 pour la comparaison bande 15 µm.
+
 ### Notre méthode actuelle vs littérature
 
-Ancienne méthode : `(tau_i/tau_tot) × flux_absorbé` → tout le crédit du chevauchement au gaz dominant → H2O% ~90 %. **Correction (alignée littérature)** : à chaque (couche, λ), chevauchement H2O–CO2 = min(τ_H2O, τ_CO2) ; on **transfère** overlap/2 de H2O vers CO2 ("split the difference", Schmidt/KT97) : H2O += (τ_H2O − overlap/2)/τ_tot × abs_flux, CO2 += (τ_CO2 + overlap/2)/τ_tot × abs_flux. Total = 100 %. Implémenté dans `calculations.js`. **Pourquoi H2O% reste ~88 % et pas ~50 % ?** Le transfert "split the difference" ne déplace que le **chevauchement** = min(τ_H2O, τ_CO2) à chaque λ. Quand τ_H2O ≫ τ_CO2 (souvent le cas), overlap = τ_CO2 est petit → on ne peut transférer que peu de crédit vers CO2. Schmidt 2010 obtient ~50 % en (1) faisant des **expériences GCM** (retrait de chaque absorbeur, pas un ratio τ par λ) et (2) en incluant les **nuages** (~25 %) dans l’EDS ; notre EDS ne compte que les gaz (vapeur, CO₂, CH₄). Pour s’approcher davantage de la littérature il faudrait soit des expériences "sans H2O / sans CO2" (plusieurs colonnes), soit modéliser l’absorption IR des nuages.
+Ancienne méthode : `(tau_i/tau_tot) × flux_absorbé` → tout le crédit du chevauchement au gaz dominant → H2O% ~90 %. **Correction (alignée Schmidt)** : à chaque (couche, λ), chevauchement H2O–CO2 = min(τ_H2O, τ_CO2) ; on partage l’overlap (« split the difference ») : H2O += (τ_H2O − overlap/2)/τ_tot × abs_flux, CO2 += (τ_CO2 + overlap/2)/τ_tot × abs_flux. Total = 100 %. Implémenté dans `calculations.js`. **Pourquoi H2O% reste élevé (~63–88 %) et pas ~50 % ?** Le partage ne concerne que le **chevauchement** = min(τ_H2O, τ_CO2) à chaque λ. Quand τ_H2O ≫ τ_CO2 (souvent le cas), overlap = τ_CO2 est petit → on ne transfère que peu de crédit vers CO2. Schmidt 2010 obtient ~50 % H₂O en (1) faisant des **expériences GCM** (retrait de chaque absorbeur) et (2) en incluant les **nuages** (~25 %) dans l’EDS ; notre EDS ne compte que les gaz (vapeur, CO₂, CH₄). Pour s’approcher de la littérature il faudrait soit des expériences "sans H2O / sans CO2", soit modéliser l’absorption IR des nuages.
 
 ---
 
@@ -129,4 +150,4 @@ Ancienne méthode : `(tau_i/tau_tot) × flux_absorbé` → tout le crédit du ch
 | `static/calculations.js` | `kappa_H2O`, `waterVaporFractionAtZ`, `eds_breakdown` |
 | `static/physics.js` | `H2O_SIGMA_*`, `LAMBDA_H2O_*` |
 | `static/calculations_albedo.js` | Nuages → albédo uniquement |
-| `static/climate.js` | `calculateH2OForcing` (vapeur + nuages en forçage simplifié, pas spectral) |
+| `static/climate.js` | `calculateH2OForcing` (diagnostic ΔF affichage, vapeur + nuages, pas spectral) |
