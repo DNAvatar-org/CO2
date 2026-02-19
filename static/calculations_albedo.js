@@ -1,6 +1,6 @@
 // File: calculations_albedo.js - Calculs albedo et couverture nuageuse
 // Desc: En français, dans l'architecture, je suis le module de calculs d'albedo
-// Version 1.2.3
+// Version 1.2.5
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
@@ -11,6 +11,8 @@
 // - v1.2.1 : rampe douce 🍰🪩🧊 en Search/Dicho (premières itérations) pour éviter saut de bassin albédo/glace
 // - v1.2.2 : verrou optionnel glace initiale pendant Search du premier bassin (🧮🔄🌊=0) pour stabiliser le point fixe froid
 // - v1.2.3 : retrait gardes défensives CONFIG_COMPUTE sur rampe glace (règle crash)
+// - v1.2.4 : héritage glaciaire pondéré par durée d'époque (blend une fois/époque entre glace héritée et glace d'équilibre à T_config)
+// - v1.2.5 : expose une glace d'époque figée (_iceEpochFixedState) pour bloquer le recalcul glace dans le solver radiatif
 //
 // FORMULES ALBEDO :
 // 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏜️,🧊} + contribution_glace + contribution_nuages
@@ -178,6 +180,25 @@ function calculateAlbedo() {
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     const T_surface_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
     const phase = DATA['🧮']['🧮⚧'];
+    const epochId = DATA['📜']['🗿'];
+
+    // Héritage glaciaire vs réinitialisation géologique :
+    // époques courtes → forte inertie (glace héritée), époques longues → proche équilibre à T_config.
+    function calcGlaceEquilibre(T_K) {
+        const T_no_ice_K = CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS;
+        const stock_factor = Math.max(0, (T_no_ice_K - T_K) / CONST.T_NO_POLAR_ICE_C);
+        return Math.max(0, Math.min(1, 0.1 * stock_factor));
+    }
+    if (!window._iceDurationBlendState || window._iceDurationBlendState.epochId !== epochId) {
+        const duree_ans = Math.abs(EPOCH['▶'] - EPOCH['◀']);
+        const tau_glace_ans = window.CONFIG_COMPUTE.tauGlaceAns;
+        const fraction_fonte = Math.max(0, Math.min(1, duree_ans / tau_glace_ans));
+        const glace_heritee = DATA['💧']['🍰💧🧊'];
+        const glace_equilibre = calcGlaceEquilibre(EPOCH['🌡️🧮']);
+        DATA['💧']['🍰💧🧊'] = Math.max(0, Math.min(1, glace_heritee * (1 - fraction_fonte) + glace_equilibre * fraction_fonte));
+        window._iceDurationBlendState = { epochId: epochId };
+        window._iceEpochFixedState = { epochId: epochId, value: DATA['💧']['🍰💧🧊'] };
+    }
     // 🔒 ÉTAPE 1 : Calculer les surfaces géologiques (fixes, déterminées par la géologie)
     calculateGeologySurfaces();
     
@@ -227,7 +248,6 @@ function calculateAlbedo() {
     const ice_temp_factor = Math.max(0, (T_no_ice_K - temp_K) / CONST.T_NO_POLAR_ICE_C);
     const ice_fraction_target = Math.min(DATA['🗻']['🍰🗻🏔'], 0.46 * ice_temp_factor);
     let ice_fraction_base = ice_fraction_target;
-    const epochId = DATA['📜']['🗿'];
     if (!window._iceCoverageRampState || window._iceCoverageRampState.epochId !== epochId) {
         window._iceCoverageRampState = { epochId: epochId, value: ice_fraction_target };
     }

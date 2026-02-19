@@ -1,12 +1,13 @@
 // ============================================================================
 // File: calculations_h2o.js - Calculs H2O (vapeur et nuages)
 // Desc: Séparation vapeur d'eau (effet de serre) et nuages (albedo)
-// Version 1.0.1
+// Version 1.0.2
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [November 2025]
 // - v1.0.1 : M_dry depuis masses (air sec) au lieu de M_air (dépendance circulaire) ; clamp 🍰🫧💧≤1
+// - v1.0.2 : glace figée pendant Search/Dicho via _iceEpochFixedState (séparation échelles de temps)
 // ============================================================================
 
 // TODO: Évolutions futures du cycle de l'eau
@@ -269,12 +270,20 @@ function calculateWaterPartition() {
     // À 1 atm : -2°C, à 2 atm : ~-3°C (approximation linéaire)
     const T_freeze_adjusted = T_FREEZE_SEAWATER - (pressure_atm - 1) * 1.0; // -1°C par atm supplémentaire
     
-    // Si température < point de congélation ajusté : toute l'eau restante est glace
-    // Si température >= point de congélation ajusté : glace aux pôles seulement
-    if (DATA['🧮']['🧮🌡️'] < T_freeze_adjusted) {
+    const phase = DATA['🧮']['🧮⚧'];
+    const fixedIceState = window._iceEpochFixedState;
+    const lockIceInSolver = (phase === 'Search' || phase === 'Dicho') && fixedIceState && fixedIceState.epochId === DATA['📜']['🗿'];
+    // Search/Dicho : glace figée à l'échelle époque (millénaires), vapeur/nuages restent dynamiques (jours).
+    if (lockIceInSolver) {
+        const fixed_ice_fraction = Math.max(0, Math.min(remaining_after_vapor, fixedIceState.value));
+        DATA['💧']['🍰💧🧊'] = fixed_ice_fraction;
+        DATA['💧']['🍰💧🌊'] = Math.max(0, remaining_after_vapor - fixed_ice_fraction);
+    } else if (DATA['🧮']['🧮🌡️'] < T_freeze_adjusted) {
+        // Si température < point de congélation ajusté : toute l'eau restante est glace
         DATA['💧']['🍰💧🧊'] = remaining_after_vapor;
         DATA['💧']['🍰💧🌊'] = 0;
     } else {
+        // Si température >= point de congélation ajusté : glace aux pôles seulement
         DATA['💧']['🍰💧🧊'] = polar_ice_fraction;
         DATA['💧']['🍰💧🌊'] = Math.max(0, remaining_after_vapor - polar_ice_fraction);
     }
@@ -283,7 +292,7 @@ function calculateWaterPartition() {
     // T_FREEZE_SEAWATER et T_freeze_adjusted déjà déclarés plus haut, réutiliser
     const pressure_atm_transition = DATA['🫧']['🎈'];
     // T_freeze_adjusted déjà calculé ligne 206, réutiliser cette valeur
-    if (DATA['🧮']['🧮🌡️'] > T_freeze_adjusted - CONST.T_ICE_TRANSITION_RANGE_C && DATA['🧮']['🧮🌡️'] < T_freeze_adjusted) {
+    if (!lockIceInSolver && DATA['🧮']['🧮🌡️'] > T_freeze_adjusted - CONST.T_ICE_TRANSITION_RANGE_C && DATA['🧮']['🧮🌡️'] < T_freeze_adjusted) {
         const transition_factor = (DATA['🧮']['🧮🌡️'] - (CONST.T0_WATER - CONST.T_ICE_TRANSITION_RANGE_C)) / CONST.T_ICE_TRANSITION_RANGE_C;
         const ice_before = DATA['💧']['🍰💧🧊'];
         const liquid_before = DATA['💧']['🍰💧🌊'];
