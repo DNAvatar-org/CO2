@@ -1,13 +1,20 @@
 // ============================================================================
 // File: calculations_h2o.js - Calculs H2O (vapeur et nuages)
 // Desc: Séparation vapeur d'eau (effet de serre) et nuages (albedo)
-// Version 1.0.2
+// Version 1.0.9
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [November 2025]
 // - v1.0.1 : M_dry depuis masses (air sec) au lieu de M_air (dépendance circulaire) ; clamp 🍰🫧💧≤1
 // - v1.0.2 : glace figée pendant Search/Dicho via _iceEpochFixedState (séparation échelles de temps)
+// - v1.0.3 : cap vapeur global réaliste (0.55% masse) sur calcul direct + itératif pour limiter sur-EDS H2O
+// - v1.0.4 : annotations explicites OBS vs EQ sur le cap vapeur et la fermeture de partition H2O
+// - v1.0.5 : précipitation quadratique vs vapeur + cap vapeur dynamique C-C + feedback Iris simplifié
+// - v1.0.6 : Iris calibré (0.07/10K) + précipitation convective temp/humidité (CMIP-like) + log Iris optionnel
+// - v1.0.7 : ajout commentaire scientifique sur P_sat(T) (théorie C-C vs limitation dynamique convective observée)
+// - v1.0.8 : recalage humide 2025 (c_c_max base 0.006, iris 0.03, exposants précip 1.2/1.0) avec justification biblio
+// - v1.0.9 : fine-tuning léger 2025 (c_c_max base 0.0065, iris 0.02) pour remonter T sans perdre la stabilité
 // ============================================================================
 
 // TODO: Évolutions futures du cycle de l'eau
@@ -46,6 +53,14 @@ if (typeof window !== 'undefined') window.stringifyScientificForLog = (o) => str
 //Calcule la pression de vapeur saturante selon l'équation de Clausius-Clapeyron
 // Formule: P_sat = P₀ × exp((L_v / R_v) × (1/T₀ - 1/T))
 // Optionnel: L_v peut être ajusté avec la température: L_v = 2.501e6 - 2300 × (T - CONST.KELVIN_TO_CELSIUS)
+// NOTE PHYSIQUE (OBS vs EQ):
+// - La formule P_sat(T) est thermodynamiquement correcte.
+// - Dans l'atmosphère réelle, la vapeur ne suit pas exactement cette courbe partout :
+//   1) la condensation se produit à une température effective souvent plus basse que la surface
+//      (lapse rate + niveau de condensation libre),
+//   2) la convection exporte l'humidité en altitude, puis pertes par précipitation et/ou vers la stratosphère.
+// - Résultat observé (AIRS, ERA5, CMIP6): la vapeur augmente typiquement d'environ 6.5-7% par degré C,
+//   proche de Clausius-Clapeyron mais bridée par la dynamique convective.
 function calculateSaturatedVaporPressure() {
     const DATA = window.DATA;
     const CONST = window.CONST;
@@ -234,19 +249,19 @@ function calculateWaterPartition() {
     // 🔒 TOUJOURS recalculer depuis les masses pour éviter l'accumulation d'erreurs
     const mass_CO2 = DATA['⚖️']['⚖️🏭'];
     const mass_CH4 = DATA['⚖️']['⚖️⛽'];
-    const mass_O2 = DATA['⚖️']['⚖️🌫'];
+    const mass_O2 = DATA['⚖️']['⚖️🫁'];
     const mass_N2 = DATA['⚖️']['⚖️💨'];
     
     // Calculer les fractions de l'air sec depuis les masses, puis multiplier par dry_air_fraction
     if (atm_mass_total > 0) {
         DATA['🫧']['🍰🫧🏭'] = (mass_CO2 / atm_mass_total) * dry_air_fraction;
         DATA['🫧']['🍰🫧⛽'] = (mass_CH4 / atm_mass_total) * dry_air_fraction;
-        DATA['🫧']['🍰🫧🌫'] = (mass_O2 / atm_mass_total) * dry_air_fraction;
+        DATA['🫧']['🍰🫧🫁'] = (mass_O2 / atm_mass_total) * dry_air_fraction;
         DATA['🫧']['🍰🫧💨'] = (mass_N2 / atm_mass_total) * dry_air_fraction;
     } else {
         DATA['🫧']['🍰🫧🏭'] = 0;
         DATA['🫧']['🍰🫧⛽'] = 0;
-        DATA['🫧']['🍰🫧🌫'] = 0;
+        DATA['🫧']['🍰🫧🫁'] = 0;
         DATA['🫧']['🍰🫧💨'] = 0;
     }
     
@@ -271,7 +286,7 @@ function calculateWaterPartition() {
     const T_freeze_adjusted = T_FREEZE_SEAWATER - (pressure_atm - 1) * 1.0; // -1°C par atm supplémentaire
     
     const phase = DATA['🧮']['🧮⚧'];
-    const fixedIceState = window._iceEpochFixedState;
+    const fixedIceState = window._iceEpochFixedWaterState || window._iceEpochFixedState;
     const lockIceInSolver = (phase === 'Search' || phase === 'Dicho') && fixedIceState && fixedIceState.epochId === DATA['📜']['🗿'];
     // Search/Dicho : glace figée à l'échelle époque (millénaires), vapeur/nuages restent dynamiques (jours).
     if (lockIceInSolver) {
@@ -357,7 +372,16 @@ function calculatePrecipitationFeedback() {
     const precipitation_rate = DATA['💧']['🍰⚖️💦'];
     const cloud_index = DATA['🪩']['☁️'];
 
-    // 2. Mise à jour 🍰🫧💧 = 🍰🫧💧 - (🍰⚖️💦 × Surface × 🔺⏳) / ⚖️🫧
+    // 2. Précipitations convectives renforcées (quasi-equilibrium convection)
+    // [OBS/CALIB] Sensibilité convective modérée :
+    // - Clausius-Clapeyron ~6.5-7%/K (Held & Soden 2006; IPCC AR6 WGI Ch.8)
+    // - réponse précip globale plus lente que q_sat ; on adoucit l'exposant pour éviter sur-assèchement.
+    const temp_factor_precip = Math.pow(Math.max(0, DATA['🧮']['🧮🌡️'] / 288), 1.2);
+    const humidity_ratio_precip = relative_humidity > 0 ? relative_humidity / 0.7 : 0;
+    const humidity_factor_precip = Math.pow(Math.max(0, humidity_ratio_precip), 1.0);
+    const precip_rate_enhanced = precipitation_rate * temp_factor_precip * humidity_factor_precip;
+
+    // 3. Mise à jour 🍰🫧💧 = 🍰⚖️💦 × Surface × 🔺⏳ / ⚖️🫧
     // VÉRIFICATION HOMOGÉNÉITÉ :
     // 🍰⚖️💦 : kg/m²/s (taux de précipitation)
     // Surface : m²
@@ -369,12 +393,12 @@ function calculatePrecipitationFeedback() {
     let precipitation_loss_fraction = 0;
     
     // Calculer la perte de précipitation (sans if, crash si valeurs manquantes selon REGLE_JS_CRASH.md)
-    const has_precipitation = precipitation_rate > 0 && DATA['📅']['🔺⏳'] > 0 && atm_mass_total > 0;
+    const has_precipitation = precip_rate_enhanced > 0 && DATA['📅']['🔺⏳'] > 0 && atm_mass_total > 0;
     if (has_precipitation) {
         const EPOCH = window.TIMELINE[DATA['📜']['👉']];
         const planet_radius_km = EPOCH['📐'];
         const planet_surface_m2 = 4 * Math.PI * Math.pow(planet_radius_km * 1000, 2);
-        const precipitation_mass_kg = precipitation_rate * planet_surface_m2 * DATA['📅']['🔺⏳'];
+        const precipitation_mass_kg = precip_rate_enhanced * planet_surface_m2 * DATA['📅']['🔺⏳'];
         precipitation_loss_fraction = precipitation_mass_kg / atm_mass_total;
         
         DATA['💧']['🍰🫧💧'] = Math.max(0, vapor_before - precipitation_loss_fraction);
@@ -438,7 +462,7 @@ function calculateH2OParametersWithIteration() {
     const M_H2O = CONST.M_H2O;
     const m_CO2 = DATA['⚖️']['⚖️🏭'] || 0;
     const m_CH4 = DATA['⚖️']['⚖️⛽'] || 0;
-    const m_O2 = DATA['⚖️']['⚖️🌫'] || 0;
+    const m_O2 = DATA['⚖️']['⚖️🫁'] || 0;
     const m_N2 = DATA['⚖️']['⚖️💨'] || 0;
     const M_dry = atm_mass_total > 0
         ? (m_CO2 * CONST.M_CO2 + m_CH4 * CONST.M_CH4 + m_O2 * CONST.M_O2 + m_N2 * CONST.M_N2) / atm_mass_total
@@ -446,7 +470,27 @@ function calculateH2OParametersWithIteration() {
     const mass_ratio = M_dry > 0 ? M_H2O / M_dry : 0;
     const max_vapor_mass_fraction = max_vapor_fraction * mass_ratio;
     const available_water_fraction = atm_mass_total > 0 ? DATA['⚖️']['⚖️💧'] / atm_mass_total : 0;
-    let vapor_potentielle = Math.min(1, Math.min(max_vapor_mass_fraction, available_water_fraction));
+    const vapor_raw = Math.min(max_vapor_mass_fraction, available_water_fraction);
+    // [OBS/CALIB] Limite dynamique C-C (approx) : +0.0007 par K autour de 288K.
+    // Bornée à >=0 pour éviter toute inversion physique en climat froid.
+    // Fine-tuning calibré 2025 : base légèrement relevée pour éviter le biais froid résiduel.
+    // Base 0.0065 reste dans l'ordre de grandeur ERA5/AIRS (vapeur massique globale ~0.5-0.8%).
+    const c_c_max = Math.max(0, 0.0065 + 0.0007 * (DATA['🧮']['🧮🌡️'] - 288));
+    // [EQ] Fermeture numérique : vapeur potentielle = min(cap_obs_dynamique, contrainte thermodynamique, eau disponible).
+    let vapor_potentielle = Math.min(c_c_max, vapor_raw);
+    // [OBS/CALIB] Feedback Iris simplifié :
+    // Lindzen et al. 2001 (hypothèse initiale forte), Mauritsen & Stevens 2015 (réévaluation plus modérée),
+    // Sherwood et al. 2020 (contraintes ECS) -> amplitude prudente.
+    // Fine-tuning calibré 2025 : iris atténué pour ne pas sur-assécher la basse troposphère.
+    const iris_strength = 0.02;
+    const iris_factor_raw = 1.0 + iris_strength * (DATA['🧮']['🧮🌡️'] - 288) / 10.0;
+    const iris_factor = Math.max(0.7, iris_factor_raw);
+    vapor_potentielle = vapor_potentielle / iris_factor;
+    if (window.CONFIG_COMPUTE.logIrisDiagnostic) {
+        console.log('[Iris] T=' + (DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS).toFixed(1)
+            + 'C iris_factor=' + iris_factor.toFixed(3)
+            + ' vapor=' + vapor_potentielle.toFixed(5));
+    }
     
     // 🔒 INITIALISATION : Commencer avec la vapeur potentielle
     DATA['💧']['🍰🫧💧'] = vapor_potentielle;
@@ -479,16 +523,22 @@ function calculateH2OParametersWithIteration() {
         const precipitation_rate = DATA['💧']['🍰⚖️💦'] || 0;
         const cloud_index = DATA['🪩']['☁️'];
 
+        // [OBS/CALIB] Précipitations convectives renforcées (température + humidité relative), version adoucie.
+        const temp_factor_precip_inner = Math.pow(Math.max(0, DATA['🧮']['🧮🌡️'] / 288), 1.2);
+        const humidity_ratio_precip_inner = relative_humidity > 0 ? relative_humidity / 0.7 : 0;
+        const humidity_factor_precip_inner = Math.pow(Math.max(0, humidity_ratio_precip_inner), 1.0);
+        const precip_rate_enhanced_inner = precipitation_rate * temp_factor_precip_inner * humidity_factor_precip_inner;
+
         // 🔒 ÉTAPE 3 : Mise à jour 🍰🫧💧 = 🍰🫧💧 - (🍰⚖️💦 × Surface × 🔺⏳) / ⚖️🫧
         const vapor_before_precipitation = DATA['💧']['🍰🫧💧'];
         let precipitation_loss_fraction = 0;
         // Calculer la perte de précipitation (sans if, crash si valeurs manquantes selon REGLE_JS_CRASH.md)
-        const has_precipitation_inner = precipitation_rate > 0 && DATA['📅']['🔺⏳'] > 0 && atm_mass_total > 0;
+        const has_precipitation_inner = precip_rate_enhanced_inner > 0 && DATA['📅']['🔺⏳'] > 0 && atm_mass_total > 0;
         if (has_precipitation_inner) {
             const EPOCH = window.TIMELINE[DATA['📜']['👉']];
             const planet_radius_km = EPOCH['📐'];
             const planet_surface_m2 = 4 * Math.PI * Math.pow(planet_radius_km * 1000, 2); // Surface en m²
-            const precipitation_mass_kg = precipitation_rate * planet_surface_m2 * DATA['📅']['🔺⏳']; // Masse précipitée en kg
+            const precipitation_mass_kg = precip_rate_enhanced_inner * planet_surface_m2 * DATA['📅']['🔺⏳']; // Masse précipitée en kg
             precipitation_loss_fraction = precipitation_mass_kg / atm_mass_total; // Fraction massique précipitée
             
             DATA['💧']['🍰🫧💧'] = Math.max(0, vapor_before_precipitation - precipitation_loss_fraction);
@@ -559,7 +609,7 @@ window.calculateH2OParameters = function () {
     window.calculatePressureAtm();
     const T = DATA['🧮']['🧮🌡️'];
     const P = DATA['🫧']['🎈'];
-    const sum_f = DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🌫'] + DATA['🫧']['🍰🫧💨'] + DATA['💧']['🍰🫧💧'];
+    const sum_f = DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🫁'] + DATA['🫧']['🍰🫧💨'] + DATA['💧']['🍰🫧💧'];
     const fractionsOk = sum_f > 0.5 && Math.abs(sum_f - 1) < 0.01;
     const cache = window._lastH2OParamsCache;
     if (fractionsOk && cache &&
@@ -578,7 +628,7 @@ window.calculateH2OParameters = function () {
     // 🔒 M_dry depuis masses (air sec) : évite dépendance circulaire avec 🍰🫧💧 (M_air = f(🍰🫧💧) → 🍰🫧💧 = f(M_air))
     const m_CO2 = DATA['⚖️']['⚖️🏭'] || 0;
     const m_CH4 = DATA['⚖️']['⚖️⛽'] || 0;
-    const m_O2 = DATA['⚖️']['⚖️🌫'] || 0;
+    const m_O2 = DATA['⚖️']['⚖️🫁'] || 0;
     const m_N2 = DATA['⚖️']['⚖️💨'] || 0;
     const M_dry = atm_mass_total > 0
         ? (m_CO2 * CONST.M_CO2 + m_CH4 * CONST.M_CH4 + m_O2 * CONST.M_O2 + m_N2 * CONST.M_N2) / atm_mass_total
@@ -587,10 +637,27 @@ window.calculateH2OParameters = function () {
     const max_vapor_mass_fraction = max_vapor_fraction * mass_ratio;
     const available_water_fraction = atm_mass_total > 0 ? DATA['⚖️']['⚖️💧'] / atm_mass_total : 0;
     const vapor_raw = Math.min(max_vapor_mass_fraction, available_water_fraction);
-    const vapor_result = Math.min(1, vapor_raw);
-    if (vapor_raw > 1 && typeof console !== 'undefined') {
+    // [OBS/CALIB] Limite dynamique C-C (approx) : +0.0007 par K autour de 288K.
+    // Bornée à >=0 pour éviter toute inversion physique en climat froid.
+    // Fine-tuning calibré 2025 : base légèrement relevée pour éviter le biais froid résiduel.
+    // Base 0.0065 reste dans l'ordre de grandeur ERA5/AIRS (vapeur massique globale ~0.5-0.8%).
+    const c_c_max = Math.max(0, 0.0065 + 0.0007 * (DATA['🧮']['🧮🌡️'] - 288));
+    // [EQ] Fermeture numérique : vapeur effective = min(cap_obs_dynamique, contrainte thermodynamique, eau disponible).
+    let vapor_result = Math.min(c_c_max, vapor_raw);
+    // [OBS/CALIB] Feedback Iris simplifié (amplitude prudente, littérature contrastée).
+    // Fine-tuning calibré 2025 : iris atténué pour ne pas sur-assécher la basse troposphère.
+    const iris_strength = 0.02;
+    const iris_factor_raw = 1.0 + iris_strength * (DATA['🧮']['🧮🌡️'] - 288) / 10.0;
+    const iris_factor = Math.max(0.7, iris_factor_raw);
+    vapor_result = vapor_result / iris_factor;
+    if (window.CONFIG_COMPUTE.logIrisDiagnostic) {
+        console.log('[Iris] T=' + (T - CONST.KELVIN_TO_CELSIUS).toFixed(1)
+            + 'C iris_factor=' + iris_factor.toFixed(3)
+            + ' vapor=' + vapor_result.toFixed(5));
+    }
+    if (vapor_raw > c_c_max && typeof console !== 'undefined') {
         const who = (max_vapor_mass_fraction <= available_water_fraction) ? 'max_vapor_mass_frac' : 'available_water_frac';
-        console.warn('[calculateH2OParameters][calculations_h2o.js] 🍰🫧💧 clamp 1: raw=' + vapor_raw.toFixed(4) + ' T=' + T.toFixed(1) + 'K M_dry=' + (M_dry != null ? M_dry.toFixed(4) : '?') + ' mass_ratio=' + (mass_ratio != null ? mass_ratio.toFixed(4) : '?') + ' limiter=' + who);
+        console.warn('[calculateH2OParameters][calculations_h2o.js] 🍰🫧💧 cap dynamique C-C: raw=' + vapor_raw.toFixed(4) + ' cap=' + c_c_max.toFixed(4) + ' T=' + T.toFixed(1) + 'K M_dry=' + (M_dry != null ? M_dry.toFixed(4) : '?') + ' mass_ratio=' + (mass_ratio != null ? mass_ratio.toFixed(4) : '?') + ' limiter=' + who);
     }
     DATA['💧']['🍰🫧💧'] = vapor_result;
 

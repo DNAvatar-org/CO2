@@ -49,7 +49,7 @@ const timeline = [
         '⚖️🏭': 0, // co2_kg (Quantité de CO2 en kg)
         '⚖️⛽': 0, // ch4_kg (Quantité de CH4 en kg)
         '⚖️💧': 0, // h2o_kg (Quantité totale d'eau en kg)
-        '⚖️🌫': 0, // o2_kg (Quantité de O2 en kg)
+        '⚖️🫁': 0, // o2_kg (Quantité de O2 en kg)
         // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
         // Événements interactifs
@@ -91,7 +91,7 @@ const timeline = [
         '⚖️🏭': 5.15e17, // co2_kg (~10% de l'atmosphère moderne)
         '⚖️⛽': 5.15e15, // ch4_kg (~1000 ppm)
         '⚖️💧': 2.1e20, // h2o_kg (~15% de 1.4e21 kg)
-        '⚖️🌫': 0, // o2_kg
+        '⚖️🫁': 0, // o2_kg
         // Note: Les % (co2_ppm, ch4_ppm, h2o_vapor_percent) seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés via calculations_h2o.js et calculations_atm.js
         magma_coverage: 1.0, // Spécifique Hadéen - TODO: trouver logo combo
@@ -140,7 +140,7 @@ const timeline = [
         '⚖️🏭': 8.0e16, // co2_kg (~40000 ppm, calibré équilibre ~15°C, commit 5ecb155)
         '⚖️⛽': 2.0e15, // ch4_kg (~800 ppm, lit. 100–10000 ppm)
         '⚖️💧': 1.8e21, // h2o_kg (~129% actuel, litt. Harvard océans +26%)
-        '⚖️🌫': 0, // o2_kg
+        '⚖️🫁': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
@@ -175,7 +175,7 @@ const timeline = [
         '⚖️🏭': 4.7e16,  // co2_kg (~6000 ppm, milieu de fourchette lit. 5–9k ppm)
         '⚖️⛽': 2.85e14,  // ch4_kg (~100 ppm, lit. 100–300 ppm)
         '⚖️💧': 1.19e21, // h2o_kg (~85% de 1.4e21 kg)
-        '⚖️🌫': 0,       // o2_kg (GOE ~2.4 Ga puis O2 bas pendant le Protérozoïque)
+        '⚖️🫁': 0,       // o2_kg (GOE ~2.4 Ga puis O2 bas pendant le Protérozoïque)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
@@ -210,7 +210,7 @@ const timeline = [
         '⚖️🏭': 1.2875e16, // co2_kg (~2500 ppm)
         '⚖️⛽': 4.12e13, // ch4_kg (~8 ppm)
         '⚖️💧': 1.33e21, // h2o_kg (~95% de 1.4e21 kg)
-        '⚖️🌫': 0, // o2_kg
+        '⚖️🫁': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
@@ -245,7 +245,7 @@ const timeline = [
         '⚖️🏭': 1.545e16, // co2_kg (~3000 ppm)
         '⚖️⛽': 5.15e13, // ch4_kg (~10 ppm)
         '⚖️💧': 1.372e21, // h2o_kg (~98% de 1.4e21 kg)
-        '⚖️🌫': 0, // o2_kg
+        '⚖️🫁': 0, // o2_kg
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
@@ -261,6 +261,7 @@ const timeline = [
         '◀': 0,
         // 🌡️🧮 : ~288–295 K (lit. Cénozoïque). Refroidissement → 1800 via baisse CO2 (lit. Anagnostou Nature 2016).
         '🌡️🧮': 291,
+        'ice_fixed': 0.085, // Verrou glace initial solver (~8.5% polaire simplifié)
         '🧲🔬': 0.1,
         '🔋☀️': 3.80886e26, // Puissance totale du soleil (W) - 99.5% de 3.828e26 W
         '🔋🌕': 5.0e13, // core_power_watts (Puissance géothermique totale ~50 TW)
@@ -280,7 +281,7 @@ const timeline = [
         '⚖️🏭': 5.15e15, // co2_kg (~1000 ppm, Paléocène/Eocène — baisse CO2 explique refroidissement → 1800)
         '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm)
         '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
-        '⚖️🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
+        '⚖️🫁': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
         '🕰': {
@@ -315,7 +316,7 @@ const timeline = [
         '⚖️🏭': 1.443e15, // co2_kg (~280 ppm, niveau pré-industriel)
         '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm, niveau pré-industriel)
         '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
-        '⚖️🌫': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
+        '⚖️🫁': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
         '⚖️💨': 3.97e18, // n2_kg (~78% de l'atmosphère moderne, calculé comme reste pour atteindre 5.15e18)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
@@ -352,7 +353,7 @@ const timeline = [
         '⚖️🏭': 3.3e15,   // ~420-450 ppm CO2 2025
         '⚖️⛽': 5.5e12,
         '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
-        '⚖️🌫': 1.18e18, // O2 ~23% masse air sec
+        '⚖️🫁': 1.18e18, // O2 ~23% masse air sec
         '⚖️💨': 3.97e18, // n2_kg (~78% de l'atmosphère moderne, calculé comme reste pour atteindre 5.15e18)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
@@ -368,41 +369,63 @@ const timeline = [
 window.TIMELINE = timeline;
 
 // Paramètres de calcul (convergence radiatif)
+// Convention de source :
+// - [OBS/CALIB] : valeur issue d'observations/littérature ou calibration sur observations
+// - [EQ/NUM]    : valeur de schéma numérique, solveur ou stratégie de convergence
 window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
-window.CONFIG_COMPUTE.maxRadiatifIters = 101;
-// Plafond T en Search (K). 2373 = lave complète (~2100°C), réaliste pour surface (au-delà = vaporisation). null = pas de plafond (test).
-window.CONFIG_COMPUTE.maxSearchT_K = null;
+
+// ===================== [OBS/CALIB] =====================
 // Bins spectaux (N utilisé). 500 = courbe propre ; 100 donne courbe moins précise et convergence ~1.2°C (artefact). 🔬🌈 dans [N_min, N_max].
 // N_min : optionnel (spectralBinsMinFromHITRAN). Réf. scripts/hitran_spectral_bin_bounds.py.
-window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 500;
-window.CONFIG_COMPUTE.spectralBinsMinFromHITRAN = null;  // ex. 150 si HITRAN a donné nMin=150 ; null = pas de clamp
-// Log diagnostic EDS (h2o_eds_scale, bins, delta_z, n_layers, earth_flux, OLR, EDS) à chaque calculateFluxForT0.
+window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 500;            // [OBS/CALIB]
+window.CONFIG_COMPUTE.spectralBinsMinFromHITRAN = null;            // [OBS/CALIB]
+// Pondération physique du spin-up : cycles_effectifs = cycles × f(⚖️🫧) × f(⚖️💧)
+window.CONFIG_COMPUTE.climateSpinupAtmMassRefKg = 1.0e18;          // [OBS/CALIB]
+window.CONFIG_COMPUTE.climateSpinupWaterMassRefKg = 1.0e20;        // [OBS/CALIB]
+// Temps caractéristique fonte calotte pour l'héritage glaciaire (ans)
+window.CONFIG_COMPUTE.tauGlaceAns = 50000;                         // [OBS/CALIB]
+// Pressure broadening (spectroscopie) : σ_eff = σ × √(P/P_ref), utile à P>1 bar.
+window.CONFIG_COMPUTE.pressureBroadening = true;                   // [OBS/CALIB]
+
+// ===================== [EQ/NUM] =====================
+window.CONFIG_COMPUTE.maxRadiatifIters = 101;                      // [EQ/NUM]
+// Plafond T en Search (K). null = pas de plafond (test).
+window.CONFIG_COMPUTE.maxSearchT_K = null;                         // [EQ/NUM]
+// Tolérances cycle eau (changement albedo/vapor pour relancer tour radiatif)
+window.CONFIG_COMPUTE.cycleTolAlbedo = 1e-4;                       // [EQ/NUM]
+window.CONFIG_COMPUTE.cycleTolVapor = 1e-6;                        // [EQ/NUM]
+// Spin-up climatologique avant solver radiatif (cycles eau/albédo à glace verrouillée)
+window.CONFIG_COMPUTE.climateSpinupCycles = 8;                     // [EQ/NUM]
+// Cycles eau/albédo par pas radiatif
+window.CONFIG_COMPUTE.maxWaterAlbedoCyclesPerStep = 2;             // [EQ/NUM]
+// Cycles eau/albédo à l'Init uniquement (T fixe)
+window.CONFIG_COMPUTE.maxWaterAlbedoCyclesAtInit = 1;              // [EQ/NUM]
+// Rampe glace en convergence : step nominal et step renforcé sur les premières itérations Search
+window.CONFIG_COMPUTE.iceCoverageRampMaxStep = 0.004;              // [EQ/NUM]
+window.CONFIG_COMPUTE.iceCoverageRampEarlyIters = 10;              // [EQ/NUM]
+window.CONFIG_COMPUTE.iceCoverageRampMaxStepEarly = 0.001;         // [EQ/NUM]
+// Cohérence glace : true = override explicite EPOCH['ice_fixed'] si défini.
+window.CONFIG_COMPUTE.useEpochIceFixedOverride = true;             // [EQ/NUM]
+// Borne min tolérance flux (W/m²) : évite convergence impossible sous bruit numérique.
+window.CONFIG_COMPUTE.tolMinWm2 = 0.05;                            // [EQ/NUM]
+// Search : ΔT proportionnel à Δ (formule Δ/(4σT³)). Cap max uniquement.
+window.CONFIG_COMPUTE.maxSearchStepK = 100;                        // [EQ/NUM]
+window.CONFIG_COMPUTE.maxSearchStepLargeK = 150;                   // [EQ/NUM]
+window.CONFIG_COMPUTE.largeDeltaFactor = 10;                       // [EQ/NUM]
+window.CONFIG_COMPUTE.searchStepScaleMax = 200;                    // [EQ/NUM]
+// Bornes dichotomie Init
+window.CONFIG_COMPUTE.bornesMinK = 250;                            // [EQ/NUM]
+window.CONFIG_COMPUTE.bornesMaxK = 4000;                           // [EQ/NUM]
+
+// ===================== [OUTIL/DEBUG/UI] =====================
+// Log diagnostic EDS (h2o_eds_scale, bins, delta_z, n_layers, earth_flux, OLR, EDS)
 window.CONFIG_COMPUTE.logEdsDiagnostic = false;
 // Lissage visuel du spectre (affichage uniquement, pas la physique/OLR)
 window.CONFIG_COMPUTE.plotSmoothEnable = true;
-window.CONFIG_COMPUTE.plotSmoothSigmaBins = 2.8;
+window.CONFIG_COMPUTE.plotSmoothSigmaBins = 8.0;//5.6;
 window.CONFIG_COMPUTE.maxPreviousLength = 300;  /* Historique convergence : 25 → 300 pour afficher tout le détail (évite pile LIFO trop petite) */
-
-// Tolérances cycle eau (changement albedo/vapor pour relancer tour radiatif)
-window.CONFIG_COMPUTE.cycleTolAlbedo = 1e-4;
-window.CONFIG_COMPUTE.cycleTolVapor = 1e-6;
-// Cycles eau/albédo par pas radiatif. 1 = résultat dépend du chemin (-18°C→~15.8°C, 15°C→autre) incohérent. 2+ = même équilibre (~24°C) quel que soit le point de départ, cohérent. 2–4 : cold start → ~15.8°C. Trop (ex. 20) sur-relaxe l’albédo à chaque T → équilibre chaud ~24°C.
-// maxWaterAlbedoCyclesPerStep peut changer les résultats (précision/convergence), à garder en tête pour comparaisons.
-window.CONFIG_COMPUTE.maxWaterAlbedoCyclesPerStep = 1;
-// Cycles eau/albédo à l'Init uniquement (T fixe) : jusqu'à stabilisation ou cap. 1 = un seul cycle (Δ Init ≠ équilibre à même T). 5+ = converger météo à T_init pour même Δ qu'à 15,8°C en cold start.
-window.CONFIG_COMPUTE.maxWaterAlbedoCyclesAtInit = 1;
-// Borne min tolérance flux (W/m²) : le calcul spectral ne peut pas atteindre mieux (~bruit numérique). Évite convergence impossible.
-window.CONFIG_COMPUTE.tolMinWm2 = 0.05;
-// Temps caractéristique fonte calotte pour pondérer l'héritage glaciaire selon durée d'époque (ans)
-window.CONFIG_COMPUTE.tauGlaceAns = 50000;
-// Search : ΔT proportionnel à Δ (formule physique Δ/(4σT³)). Cap max uniquement.
-window.CONFIG_COMPUTE.maxSearchStepK = 100;       // plafond step nominal
-window.CONFIG_COMPUTE.maxSearchStepLargeK = 150;  // plafond quand |Δ| > 10×tolérance10×tolérance
-window.CONFIG_COMPUTE.largeDeltaFactor = 10;
-window.CONFIG_COMPUTE.searchStepScaleMax = 200;
-// Bornes dichotomie Init
-window.CONFIG_COMPUTE.bornesMinK = 250;   // ~-12°C, inconnue en Init
-window.CONFIG_COMPUTE.bornesMaxK = 4000;  // réaliste surface
-// Pressure broadening : désactivé (empirique √P empirique → résultats pires, T baisse)
-window.CONFIG_COMPUTE.pressureBroadening = true;  // σ_eff = σ × √(P/P_ref), améliore EDS à P>1 bar (Archéen)
+// Logs diagnostics
+window.CONFIG_COMPUTE.logIceFixedDiagnostic = true;
+window.CONFIG_COMPUTE.logCloudProxyDiagnostic = false;
+window.CONFIG_COMPUTE.logIrisDiagnostic = false;
 
