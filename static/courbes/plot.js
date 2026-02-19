@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.19
+// Version 1.0.20
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -28,6 +28,7 @@
 // - v1.0.17: lissage gaussien visuel du flux (createFluxTrace) ; ne touche pas aux intégrales/OLR
 // - v1.0.18: retrait garde CONFIG_COMPUTE défensive sur lissage (règle crash, pas fallback silencieux)
 // - v1.0.19: plotSmoothSigmaBins obligatoire (accès direct, pas de garde/fallback)
+// - v1.0.20: lissage visuel par moyenne glissante centrée (fenêtre en bins via plotSmoothSigmaBins, ex 20)
 // ============================================================================
 
 // ============================================================================
@@ -877,21 +878,27 @@ window.updatePlot = function updatePlot(data) {
             });
 
         // Lissage visuel uniquement (affichage), sans impact sur les calculs physiques.
-        function gaussianSmooth(values, sigmaBins) {
-            const kernel = [-2, -1, 0, 1, 2].map(function (x) { return Math.exp(-(x * x) / (2 * sigmaBins * sigmaBins)); });
-            const ksum = kernel.reduce(function (a, b) { return a + b; }, 0);
+        // Fenêtre centrée en nombre de bins (ex: 20 = moyenne sur 20 points).
+        function movingAverageSmooth(values, windowBinsRaw) {
+            const n = values.length;
+            const windowBins = Math.max(1, Math.round(windowBinsRaw));
+            const before = Math.floor((windowBins - 1) / 2);
+            const after = windowBins - 1 - before;
             return values.map(function (_, i) {
+                const start = Math.max(0, i - before);
+                const end = Math.min(n - 1, i + after);
                 let sum = 0;
-                for (let ki = 0; ki < kernel.length; ki++) {
-                    const j = Math.max(0, Math.min(values.length - 1, i + ki - 2));
-                    sum += kernel[ki] * values[j];
+                let count = 0;
+                for (let j = start; j <= end; j++) {
+                    sum += values[j];
+                    count++;
                 }
-                return sum / ksum;
+                return sum / count;
             });
         }
         const smoothEnabled = window.CONFIG_COMPUTE.plotSmoothEnable;
-        const smoothSigma = window.CONFIG_COMPUTE.plotSmoothSigmaBins;
-        const fluxDisplay = smoothEnabled ? gaussianSmooth(flux, smoothSigma) : flux;
+        const smoothWindowBins = window.CONFIG_COMPUTE.plotSmoothSigmaBins;
+        const fluxDisplay = smoothEnabled ? movingAverageSmooth(flux, smoothWindowBins) : flux;
         // Tooltip : "Courbe d'équilibre d'émission de la terre" pour 0 ppm, sinon avec température
         let hoverText;
         if (co2_ppm === 0) {

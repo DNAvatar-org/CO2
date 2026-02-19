@@ -19,9 +19,9 @@ const KEYS = {
     // Date Époque
     '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
-    '⚖️': ['⚖️💧', '⚖️🫧', '⚖️🏭', '⚖️⛽', '⚖️🌫', '⚖️💨'],
+    '⚖️': ['⚖️💧', '⚖️🫧', '⚖️🏭', '⚖️⛽', '⚖️🫁', '⚖️💨'],
     // Composition atmosphérique
-    '🫧': ['🎈', '🧪', '📏🫧🧿', '📏🫧🛩', '🍰🫧🏭', '🍰🫧⛽', '🍰🫧🌫', '🍰🫧💨', '🍰🫧📿🌈', '🍰🫧🏭🌈', '🍰🫧💧🌈', '🍰🫧⛽🌈', '🍰💭'],
+    '🫧': ['🎈', '🧪', '📏🫧🧿', '📏🫧🛩', '🍰🫧🏭', '🍰🫧⛽', '🍰🫧🫁', '🍰🫧💨', '🍰🫧📿🌈', '🍰🫧🏭🌈', '🍰🫧💧🌈', '🍰🫧⛽🌈', '🍰💭'],
     // Cycle de l'eau
     '💧': ['🍰💧🧊', '🍰💧🌊', '🍰🧮🌧', '🍰🫧💧', '🍰🫧☔', '🍰⚖️💦', '💭☔', '⏳☔'],
     // Albédo
@@ -87,10 +87,10 @@ const DESC = {
         '🧪': '!Masse molaire (kg/mol)',
         '📏🫧🧿': 'Ligne de Kármán',
         '📏🫧🛩': 'Tropopause',
-        '🍰🫧❀': 'Prop.Rad.EDS<sub>❀∈{🏭, ⛽, 🌫, 💨}</sub>',
+        '🍰🫧❀': 'Prop.Rad.EDS<sub>❀∈{🏭, ⛽, 🫁, 💨}</sub>',
         '🍰🫧🏭': '!CO₂',
         '🍰🫧⛽': '!CH₄',
-        '🍰🫧🌫': '!O₂',
+        '🍰🫧🫁': '!O₂ (🫁) [clé historique 🫁]',
         '🍰🫧💨': '!N₂',
         '🍰🫧❀🌈': 'Cap.Rad.IR<sub>❀∈{🏭, ⛽, 💧}</sub>',
         '🍰🫧📿🌈': 'Σ(🍰🫧❀🌈)<sub>❀∈{🏭,⛽,💧}</sub>',
@@ -100,12 +100,12 @@ const DESC = {
         '🍰💭': 'CCN - Eff.Cond nuageuse [0.3,1.0]',
     },
     '⚖️': {
-        '⚖️❀': 'Masse<sub>❀∈{🏭, ⛽, 🌫, 💨}</sub>',
+        '⚖️❀': 'Masse<sub>❀∈{🏭, ⛽, 🫁, 💨}</sub>',
         '⚖️💧': 'Masse H₂O totale',
         '⚖️🫧': 'Masse atmosphère sec',
         '⚖️🏭': '!Masse CO₂',
         '⚖️⛽': '!Masse CH₄',
-        '⚖️🌫': '!Masse O₂',
+        '⚖️🫁': '!Masse O₂ (🫁) [clé historique 🫁]',
         '⚖️💨': '!Masse N₂',
     },
     '💧': {
@@ -212,10 +212,10 @@ const FORM = {
         '🧪': '!Masse molaire (kg/mol)',
         '📏🫧🧿': 'H × ln(P₀ / P_limit) où H = RT/(Mg) [von Kármán] - Ligne de Kármán (altitude où P = 0.01 Pa)',
         '📏🫧🛩': 'RT/(Mg) [équation hydrostatique] - Tropopause (échelle de hauteur atmosphérique)',
-        '🍰🫧❀': 'Proportion radiative EDS - ∀ ❀ ∈ {🏭, ⛽, 🌫, 💨}',
+        '🍰🫧❀': 'Proportion radiative EDS - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨}',
         '🍰🫧❀🌈': 'Capacité radiative IR de ❀ - ∀ ❀ ∈ {🏭, ⛽, 💧}',
         '🍰🫧📿🌈': 'Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, ⛽, 💧} (pour normalisation)',
-        '🍰💭': 'clamp(0.4 + 0.6 × (⚖️🌫 / 1.08e18 + ⚖️⛽ / 5.2e12), 0.3, 1.0) - CCN - Eff.Cond nuageuse [0.3,1.0]'
+        '🍰💭': 'clamp(0.4 + 0.6 × (⚖️🫁 / 1.08e18 + ⚖️⛽ / 5.2e12), 0.3, 1.0) - CCN - Eff.Cond nuageuse [0.3,1.0]'
     },
     '💧': {
         '🍰💧🧊': 'Si T < ❄️ alors toute l\'eau restante (après vapeur) est glace, sinon glace polaire (10% à 0°C → 0% à 20°C) - ❄️ = 271.15K - (P-1)×1.0',
@@ -259,9 +259,9 @@ const FORM = {
         '_note': '🗻 = Géologie (Couche A) : surfaces fixes déterminées par la géologie/relief, indépendantes des stocks d\'eau'
     },
     '⚖️': {
-        '⚖️❀': 'Masse ❀ - ∀ ❀ ∈ {🏭, ⛽, 🌫, 💨}',
+        '⚖️❀': 'Masse ❀ - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨}',
         '⚖️💧': 'Masse H2O totale',
-        '⚖️🫧': 'Masse atmosphère sec = ⚖️🏭 + ⚖️⛽ + ⚖️🌫 + ⚖️💨 (sans vapeur d\'eau)'
+        '⚖️🫧': 'Masse atmosphère sec = ⚖️🏭 + ⚖️⛽ + ⚖️🫁 + ⚖️💨 (sans vapeur d\'eau)'
     }
 };
 

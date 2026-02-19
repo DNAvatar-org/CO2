@@ -77,11 +77,11 @@ GlyphInfo("Unicode", 57352)
 # Note: Il faudra importer manuellement le glyphe SVG pour 🌕
 # ou utiliser Select(57352) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🌫 -> U+E009 (athmosphere)
+# Emoji: 🫁 -> U+E009 (athmosphere)
 NewGlyph(57353)
 Select(57353)
 GlyphInfo("Unicode", 57353)
-# Note: Il faudra importer manuellement le glyphe SVG pour 🌫
+# Note: Il faudra importer manuellement le glyphe SVG pour 🫁
 # ou utiliser Select(57353) puis Paste() après avoir copié l'emoji depuis une autre police
 
 # Emoji: 📛 -> U+E00A (for)

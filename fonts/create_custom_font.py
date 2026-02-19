@@ -40,7 +40,7 @@ def extract_emojis_from_codebase():
         '🛰': 'space',
         '🌍': 'surface',
         '🌕': 'core',
-        '🌫': 'atmosphere',
+        '🫁': 'atmosphere',
         '🌵': 'co2',
         '💧': 'h2o',
         '⛽': 'methane',

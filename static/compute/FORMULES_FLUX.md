@@ -317,6 +317,16 @@ T_surface = (🧲🌑🔼 / σ)^(1/4)
 
 ---
 
+## Couverture nuageuse optique SW (albédo)
+
+- Dans `calculateAlbedo()`, la couverture optique efficace `🍰🪩⛅` est pilotée par `☁️` (CloudFormationIndex) et un proxy CCN continu (oxygène, température, CO₂), puis bornée physiquement.
+- Cible moderne/industrielle (`📱`, `🚂`, fin `🦣`) : ordre de grandeur ~0.28–0.40 selon `☁️`, cohérent avec une couverture *optiquement efficace* inférieure à la fraction brute de pixels nuageux.
+- Références d’ordre de grandeur :
+  - **CERES/MODIS (2000–2020s)** : cloud fraction globale de surface ~0.67–0.68, mais effet SW effectif porté par une fraction optique plus faible (nuages bas/moyens les plus réfléchissants).
+  - **FYSP (Hadéen/Archéen)** : rôle critique de la microphysique nuageuse (CCN) et de la répartition low/high clouds ; baisse des low clouds peut apporter un forçage positif de l’ordre 10–25 W/m² selon hypothèses (Goldblatt & Zahnle 2011; Feulner 2012; Wolf & Toon 2013).
+
+---
+
 ## Constantes utilisées
 
 - **σ (Stefan-Boltzmann)** : `5.670374419e-8` W/(m²·K⁴)

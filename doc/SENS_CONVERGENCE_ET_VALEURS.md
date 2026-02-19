@@ -143,7 +143,7 @@ Ordre du pipeline. Référence littérature : COMPARAISON_LITTERATURE_16C.md, fl
 | **🫧** | 🧪 | 0,029 | ~0,029 kg/mol (Wikipedia, Allen) | OK |
 | **🫧** | 📏🫧🛩 | 8,454 km | 6–10 km (pôles), 16–18 km (équateur), échelle ~8,5 km | OK |
 | **🫧** | 🍰🫧🏭 | 6,348e-4 (fraction massique) → ~420 ppmv | ~412 ppm actuel (NOAA) ; litt. en ppmv | OK (époque 2025) |
-| **🫧** | 🍰🫧🌫, 🍰🫧💨 | 0,227 ; 0,764 | O₂ ~21 %, N₂ ~78 % | OK |
+| **🫧** | 🍰🫧🫁, 🍰🫧💨 | 0,227 ; 0,764 | O₂ ~21 %, N₂ ~78 % | OK |
 | **🪩** | 🍰🪩📿 | 0,30 (30 %) | ~0,29 (29 %) (Stephens, EPIC) | OK |
 | **🪩** | ☁️ | 0,618 (61,8 %) | ~60–70 % (ISCCP) | OK |
 | **🧲** | 🧲☀️🔽 | 238,267 W/m² | ~238 (S/4×(1−albédo)) | OK |

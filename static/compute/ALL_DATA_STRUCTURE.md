@@ -96,8 +96,8 @@ Masses en kg.
     '⚖️🏭': number,  // Masse CO2
     '⚖️⛽': number,  // Masse CH4
     '⚖️💧': number,  // Masse H2O
-    '⚖️🌫': number,  // Masse O2
-    '⚖️🫧': number   // Masse atmosphère (kg) = ⚖️🏭 + ⚖️⛽ + ⚖️🌫 + ⚖️💨
+    '⚖️🫁': number,  // Masse O2
+    '⚖️🫧': number   // Masse atmosphère (kg) = ⚖️🏭 + ⚖️⛽ + ⚖️🫁 + ⚖️💨
 }
 ```
 
@@ -113,7 +113,7 @@ Composition atmosphérique (fractions et propriétés).
     '🍰🫧🏭': number,    // CO2 (fraction)
     '🍰🫧💧': number,    // H2O - Proportion radiative EDS de H₂O dans l'atmosphère (pas un stock global)
     '🍰🫧⛽': number,    // CH4 (fraction)
-    '🍰🫧🌫': number,   // O2 (fraction)
+    '🍰🫧🫁': number,   // O2 (fraction)
     '🍰🫧💨': number,    // N2 (fraction)
     '☁️': number         // CloudFormationIndex - Potentiel de condensation (ni masse ni surface, mais index de formation nuageuse) ∈ [0, 1]
 }

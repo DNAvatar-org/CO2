@@ -234,7 +234,7 @@ if sourceFont then
     end
 end
 
-# Emoji: 🌫 -> U+E00A (athmosphere)
+# Emoji: 🫁 -> U+E00A (athmosphere)
 Select(57354)
 CreateGlyph()
 GlyphInfo("Unicode", 57354)
@@ -247,9 +247,9 @@ if sourceFont then
         Copy()
         Select(57354)
         Paste()
-        Print("✅ Copié 🌫 (athmosphere) depuis la source")
+        Print("✅ Copié 🫁 (athmosphere) depuis la source")
     else
-        Print("⚠️  Glyphe 1F32B non trouvé dans la source pour 🌫")
+        Print("⚠️  Glyphe 1F32B non trouvé dans la source pour 🫁")
     end
 end
 

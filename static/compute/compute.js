@@ -75,7 +75,7 @@ function getMasses() {
     DATA['⚖️']['⚖️🏭'] = isFinite(EPOCH['⚖️🏭']) ? EPOCH['⚖️🏭'] : 0;
     DATA['⚖️']['⚖️⛽'] = isFinite(EPOCH['⚖️⛽']) ? EPOCH['⚖️⛽'] : 0;
     DATA['⚖️']['⚖️💧'] = h2o_kg;
-    DATA['⚖️']['⚖️🌫'] = isFinite(EPOCH['⚖️🌫']) ? EPOCH['⚖️🌫'] : 0;
+    DATA['⚖️']['⚖️🫁'] = isFinite(EPOCH['⚖️🫁']) ? EPOCH['⚖️🫁'] : 0;
     DATA['⚖️']['⚖️💨'] = isFinite(EPOCH['⚖️💨']) ? EPOCH['⚖️💨'] : 0;  // N2 depuis EPOCH
     
     // ⚖️🫧 = masse atmosphérique totale (air sec, sans vapeur d'eau)
@@ -84,11 +84,11 @@ function getMasses() {
         DATA['⚖️']['⚖️🫧'] = EPOCH['⚖️🫧'];
         // Si ⚖️💨 non défini, N₂ implicite = reste pour atteindre ⚖️🫧 (évite M_dry faux → vapeur/albédo erronés)
         if (!isFinite(EPOCH['⚖️💨']) || EPOCH['⚖️💨'] === undefined) {
-            DATA['⚖️']['⚖️💨'] = Math.max(0, DATA['⚖️']['⚖️🫧'] - (DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫']));
+            DATA['⚖️']['⚖️💨'] = Math.max(0, DATA['⚖️']['⚖️🫧'] - (DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🫁']));
         }
     } else {
         // ⚖️🫧 = somme de tous les gaz atmosphériques (CO2, CH4, O2, N2)
-        DATA['⚖️']['⚖️🫧'] = DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🌫'] + DATA['⚖️']['⚖️💨'];
+        DATA['⚖️']['⚖️🫧'] = DATA['⚖️']['⚖️🏭'] + DATA['⚖️']['⚖️⛽'] + DATA['⚖️']['⚖️🫁'] + DATA['⚖️']['⚖️💨'];
     }
     
     // Logs désactivés pour réduire la taille

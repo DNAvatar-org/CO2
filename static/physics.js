@@ -1,7 +1,7 @@
 // ============================================================================
 // File: physics.js - Constantes et lois physiques fondamentales
 // Desc: En français, dans l'architecture, je suis le module de physique fondamentale
-// Version 2.0.3
+// Version 2.0.5
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See https://commonsclause.com/ for full terms.
@@ -11,6 +11,8 @@
 // - getH2OVaporEDSScale() — formule T,P,vapor,CO2 (pas d'époque), doc/VAPEUR_VS_NUAGES.md
 // - Convention : Credence (%) + Plage lit. / écart-type en commentaire pour params tunables (éviter patch en aveugle). v2.0.3.
 // - getH2OVaporEDSScale : 1.0→0.70 pour CO2≥400 ppm (cible EDS_H₂O ~72 W/m², lit. ~75).
+// - v2.0.4 : atténuation thermique h2o_eds_scale (5–10%) au-dessus de 20°C pour limiter la sur-rétroaction chaude
+// - v2.0.5 : règle simple h2o_eds_scale = 0.92 si T>290K, sinon 1.0
 // ============================================================================
 
 // Initialiser CONST (pointeur vers window.CONST)
@@ -160,19 +162,8 @@ window.getWaterCycleTempBoundsFromPressure = getWaterCycleTempBoundsFromPressure
 // Credence: ~60%. 0.70 cible EDS_H₂O ≈ 72 W/m² à T=15°C (lit. ~75). Plage lit. 0.3–1.0.
 function getH2OVaporEDSScale() {
     const DATA = window.DATA;
-    if (!DATA || !DATA['🫧']) return 0.5;
-    const co2_frac = (DATA['🫧']['🍰🫧🏭'] != null && Number.isFinite(DATA['🫧']['🍰🫧🏭'])) ? DATA['🫧']['🍰🫧🏭'] : 0;
-    if (co2_frac >= 0.0004) return 0.70; // 400 ppm : scale 0.70 → EDS_H₂O ≈ 72 W/m² (lit. ~75)
-    if (!DATA['🧮'] || !DATA['💧']) return 0.5;
+    if (!DATA || !DATA['🧮']) return 1.0;
     const T = DATA['🧮']['🧮🌡️'];
-    const P_atm = (DATA['🫧']['🎈'] != null && Number.isFinite(DATA['🫧']['🎈'])) ? DATA['🫧']['🎈'] : 1;
-    const vapor = (DATA['💧']['🍰🫧💧'] != null && Number.isFinite(DATA['💧']['🍰🫧💧'])) ? DATA['💧']['🍰🫧💧'] : 0;
-    const T_ref = 288;
-    const P_ref = 1;
-    const vapor_ref = 0.01;
-    const f_T = Math.pow(T_ref / Math.max(T, 200), 0.15);
-    const f_P = Math.pow(P_ref / Math.max(P_atm, 0.1), 0.05);
-    const f_v = vapor > 1e-8 ? Math.min(1, Math.pow(vapor_ref / Math.max(vapor, 1e-8), 0.1)) : 1;
-    return Math.max(0.2, Math.min(1, 0.5 * f_T * f_P * f_v));
+    return (T > 290) ? 0.92 : 1.0; // -8% au-dessus de 17°C
 }
 window.getH2OVaporEDSScale = getH2OVaporEDSScale;

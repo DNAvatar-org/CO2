@@ -33,7 +33,7 @@ Comparaison des variables du modèle (cycle eau, atmosphère, albédo) à **16,1
 | **📏🫧🛩** | Tropopause (km) | 8,513 | 6–10 km (pôles), 16–18 km (équateur); échelle de hauteur ~8,5 km | Wikipedia Tropopause; Scale height ~8,5 km |
 | **🍰🫧🏭** | Fraction CO₂ | 6,34×10⁻⁴ | ~412 ppm (0,0412 %) | Wikipedia, NOAA |
 | **🍰🫧⛽** | Fraction CH₄ | 1,06×10⁻⁶ | ~1,8 ppm | Wikipedia |
-| **🍰🫧🌫** | Fraction O₂ | 0,227 (22,7 %) | 20,95 % (volume) | Wikipedia Atmosphere of Earth |
+| **🍰🫧🫁** | Fraction O₂ | 0,227 (22,7 %) | 20,95 % (volume) | Wikipedia Atmosphere of Earth |
 | **🍰🫧💨** | Fraction N₂ | 0,763 (76,3 %) | 78,08 % | Id. |
 | **🍰🫧📿🌈** | Capacité radiative IR totale (norm.) | 0,867 | — | Indicateur modèle (0–1) |
 | **🍰🫧🏭🌈** | Capacité radiative IR CO₂ (⟨1−e⁻τ⟩ pondérée IR) | 0,060 | — | Pas une « part EDS » ; attribution type Schmidt = 🍰📛🏭 (📛) |
