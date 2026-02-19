@@ -1,6 +1,6 @@
 // File: organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.2
+// Version 1.0.7
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -9,6 +9,11 @@
 //   - Initial version: extraction du code de génération du diagramme depuis demo_flux_energetique_01.html
 //   - Added custom tooltip system with 0.5s delay
 //   - Added selected/unselected state management for flux buttons and label colors
+//   - v1.0.3: halo du cercle albedo piloté par la composition atmosphérique (+ fallback palette IR)
+//   - v1.0.4: affichage albédo organigramme verrouillé à 0 en absence d'atmosphère (évite valeurs héritées)
+//   - v1.0.5: updateLabel applique la valeur sur tous les labels data-id (évite valeurs fantômes sur doublons DOM)
+//   - v1.0.6: logs diagnostics détaillés sur le pipeline d'affichage albedo_percent (écriture, overwrite, abort)
+//   - v1.0.7: bloquer le fallback calculateAlbedo en absence d'atmosphère (évite 2.1% affiché en ⚫)
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -3195,6 +3200,91 @@ function isBlackBodyEpoch() {
 // Fonction pour mettre à jour les labels du flux
 // Paramètre : eventId (configLoaded | cycleAlbedo | cycleH2O | cycleCalcul | ProcessFinished)
 // Switch/case : chaque case pointe les variables à modifier, valeurs depuis DATA
+function parseRgbString(rgbText) {
+    if (typeof rgbText !== 'string') {
+        return null;
+    }
+    const match = rgbText.match(/rgb\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/i);
+    if (!match) {
+        return null;
+    }
+    const r = Math.max(0, Math.min(255, Number(match[1])));
+    const g = Math.max(0, Math.min(255, Number(match[2])));
+    const b = Math.max(0, Math.min(255, Number(match[3])));
+    return [r, g, b];
+}
+
+function pickInfraFallbackColor() {
+    let fallback = [120, 180, 255];
+    if (typeof window !== 'undefined' && window.infraTextColors && window.infraTextColors.length > 0) {
+        const midIdx = Math.floor(window.infraTextColors.length / 2);
+        const parsed = parseRgbString(window.infraTextColors[midIdx]);
+        if (parsed) {
+            fallback = parsed;
+        }
+    }
+    return fallback;
+}
+
+function computeAtmosphericHaloRgb(D) {
+    const atmMass = D['⚖️']['⚖️🫧'];
+    if (!(atmMass > 0)) {
+        return [0, 0, 0];
+    }
+
+    const fO2 = Number(D['🫧']['🍰🫧🫁']);
+    const fCO2 = Number(D['🫧']['🍰🫧🏭']);
+    const fCH4 = Number(D['🫧']['🍰🫧⛽']);
+    const fN2 = Number(D['🫧']['🍰🫧💨']);
+    const fH2O = Number(D['💧']['🍰🫧💧']);
+
+    const wO2 = Number.isFinite(fO2) ? Math.max(0, fO2) : 0;
+    const wCO2 = Number.isFinite(fCO2) ? Math.max(0, fCO2) : 0;
+    const wCH4 = Number.isFinite(fCH4) ? Math.max(0, fCH4) : 0;
+    const wN2 = Number.isFinite(fN2) ? Math.max(0, fN2) : 0;
+    const wH2O = Number.isFinite(fH2O) ? Math.max(0, fH2O) : 0;
+    const wSum = wO2 + wCO2 + wCH4 + wN2 + wH2O;
+
+    if (!(wSum > 0)) {
+        return [0, 0, 0];
+    }
+
+    // Couleurs dominantes par gaz (O2=bleu, vide=noir géré ci-dessus)
+    let r = (wO2 * 80 + wCO2 * 255 + wCH4 * 255 + wN2 * 150 + wH2O * 95) / wSum;
+    let g = (wO2 * 175 + wCO2 * 95 + wCH4 * 170 + wN2 * 165 + wH2O * 210) / wSum;
+    let b = (wO2 * 255 + wCO2 * 95 + wCH4 * 70 + wN2 * 210 + wH2O * 255) / wSum;
+
+    const spread = Math.max(r, g, b) - Math.min(r, g, b);
+    if (spread < 25) {
+        const ir = pickInfraFallbackColor();
+        r = ir[0];
+        g = ir[1];
+        b = ir[2];
+    }
+
+    return [Math.round(r), Math.round(g), Math.round(b)];
+}
+
+function updateAlbedoHaloFromComposition(D) {
+    const cellAlbedo = document.getElementById('cell-albedo');
+    if (cellAlbedo) {
+        const circle = cellAlbedo.querySelector('.flux-circle-bg');
+        if (circle) {
+            const haloRgb = computeAtmosphericHaloRgb(D);
+            const isVacuum = haloRgb[0] === 0 && haloRgb[1] === 0 && haloRgb[2] === 0;
+            if (isVacuum) {
+                circle.style.backgroundColor = 'rgba(0, 0, 0, 0.45)';
+                circle.style.borderColor = 'rgba(40, 40, 40, 0.8)';
+                circle.style.boxShadow = 'none';
+            } else {
+                circle.style.backgroundColor = `rgba(${haloRgb[0]}, ${haloRgb[1]}, ${haloRgb[2]}, 0.24)`;
+                circle.style.borderColor = `rgba(${haloRgb[0]}, ${haloRgb[1]}, ${haloRgb[2]}, 0.92)`;
+                circle.style.boxShadow = `0 0 20px 3px rgba(${haloRgb[0]}, ${haloRgb[1]}, ${haloRgb[2]}, 0.45)`;
+            }
+        }
+    }
+}
+
 window.updateFluxLabels = function (eventId) {
     var fluxDiagram = document.getElementById('flux-diagram');
     if (!fluxDiagram) return;
@@ -3202,6 +3292,14 @@ window.updateFluxLabels = function (eventId) {
     var CONST = window.CONST;
     var T0_num, total_flux_num, albedo_num, cloud_coverage_num, co2_ppm_num, ch4_ppm_num, forcing_H2O;
     var epochId, hasNoAtmosphere, h2o_enabled, isCO2_eds, isCH4_eds, isH2O_eds, isAlbedo;
+    const logAlbedoUi = function (msg) {
+        if (typeof window !== 'undefined' && typeof window.pd === 'function') {
+            window.pd('updateFluxLabels', 'organigramme.js', '❌ ' + msg);
+        } else {
+            console.log('❌ [updateFluxLabels][organigramme.js] ' + msg);
+        }
+    };
+    logAlbedoUi('enter eventId=' + eventId);
 
     switch (eventId) {
         case 'configLoaded':
@@ -3238,6 +3336,14 @@ window.updateFluxLabels = function (eventId) {
                 var epoch = window.getGeologicalPeriodByName(window.currentEpochName);
                 return epoch.total_atmosphere_mass_kg === 0 || epoch.total_atmosphere_mass_kg === undefined;
             })();
+            if (hasNoAtmosphere) {
+                albedo_num = 0;
+            }
+            logAlbedoUi('state epochId=' + epochId
+                + ' hasNoAtmosphere=' + hasNoAtmosphere
+                + ' DATA_albedo=' + (D['🪩'] && D['🪩']['🍰🪩📿'] != null ? D['🪩']['🍰🪩📿'] : 'n/a')
+                + ' ui_albedo_num=' + albedo_num);
+            updateAlbedoHaloFromComposition(D);
             break;
         default:
             return;
@@ -3538,7 +3644,10 @@ window.updateFluxLabels = function (eventId) {
 
     // Fonction helper pour mettre à jour un label par dataId (utilise maintenant le template)
     const updateLabel = (dataId, value, format = 'auto') => {
-        const labels = fluxDiagram.querySelectorAll(`[data-id="${dataId}"]`);
+        const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
+        if (dataId === 'albedo_percent') {
+            logAlbedoUi('updateLabel start dataId=albedo_percent labels=' + labels.length + ' raw=' + value);
+        }
         labels.forEach(label => {
             let formattedValue;
 
@@ -3551,6 +3660,9 @@ window.updateFluxLabels = function (eventId) {
             }
 
             label.innerHTML = formattedValue;
+            if (dataId === 'albedo_percent') {
+                logAlbedoUi('updateLabel write dataId=albedo_percent formatted=' + formattedValue);
+            }
 
             // Détecter automatiquement le type pour la couleur
             const valueType = detectValueType(formattedValue);
@@ -3690,7 +3802,7 @@ window.updateFluxLabels = function (eventId) {
     // L'albedo doit être affiché selon l'état du bouton albedo (checked/unchecked), pas selon hasNoAtmosphere
     // L'albedo peut être > 0 même en Corps noir si de la glace est ajoutée via météorites
     
-    if (albedo_num === 0) {
+    if (!hasNoAtmosphere && albedo_num === 0) {
         // Si albedo_num est 0 ou data.albedo n'est pas défini, recalculer avec le flux géothermique
         let geo_flux = null;
         if (typeof window !== 'undefined' && window.currentEpochName) {
@@ -3878,7 +3990,7 @@ window.updateFluxLabels = function (eventId) {
     const land_cov = Math.round((window.DATA?.['🪩']?.['🍰🪩🌍'] ?? 0) * 100);
 
     if (hasNoAtmosphere) {
-        const ice_cov_corps_noir = Math.round(ice_coverage * 100);
+        const ice_cov_corps_noir = 0;
         const components = [
             { emoji: window.CHARS.VOLCANO, coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
             { emoji: window.CHARS.OCEAN, coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
@@ -3958,12 +4070,14 @@ window.updateFluxLabels = function (eventId) {
     // Récupérer le flux géothermique de l'époque courante (doit être défini)
     let geothermie_value;
     if (typeof window === 'undefined' || !window.currentEpochName || typeof window.getGeologicalPeriodByName !== 'function') {
+        logAlbedoUi('abort geothermie: epoch courante indisponible');
         console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : Impossible de récupérer l\'époque courante');
         throw new Error('Époque courante requise pour calculer le flux géothermique');
     }
     
     const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
     if (!currentEpoch) {
+        logAlbedoUi('abort geothermie: currentEpoch introuvable name=' + window.currentEpochName);
         console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : Époque non trouvée:', window.currentEpochName);
         throw new Error(`Époque "${window.currentEpochName}" non trouvée`);
     }
@@ -4005,12 +4119,14 @@ window.updateFluxLabels = function (eventId) {
         // Calculer depuis la puissance du noyau et la surface de la planète
         const radius = currentEpoch.planet_radius;
         if (!radius || radius <= 0) {
+            logAlbedoUi('abort geothermie: planet_radius invalide');
             console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : planet_radius invalide pour calculer le flux géothermique');
             throw new Error('planet_radius requis pour calculer le flux géothermique depuis core_power_watts');
         }
         const surface = 4 * Math.PI * Math.pow(radius, 2);
         geothermie_value = currentEpoch.core_power_watts / surface;
     } else {
+        logAlbedoUi('abort geothermie: geothermal_flux/core_power_watts manquant');
         console.error('[updateFluxLabels] ❌ ERREUR CRITIQUE : Impossible de déterminer le flux géothermique depuis l\'époque');
         throw new Error('geothermal_flux ou core_power_watts requis dans l\'époque');
     }
@@ -4299,11 +4415,13 @@ window.updateFluxLabels = function (eventId) {
 
     // Albédo
     const albedo_percent_value = albedo_num * 100;
+    logAlbedoUi('pre-write albedo_percent value=' + albedo_percent_value);
     updateLabel('albedo_percent', albedo_percent_value);
     updateLabel('albedo_forcing', forcing_Albedo);
     // Les labels du bouton albedo utilisent forcing_total et albedo_percent
     // albedo_percent : pourcentage total d'albedo (somme des %), pas le détail
     updateLabel('albedo_percent', albedo_percent_value);
+    logAlbedoUi('post-write albedo_percent value=' + albedo_percent_value);
 
     // passing_albedo_percent : pourcentage qui passe (1 - albedo_percent)
     // Sur la flèche geometrie -> albedo
