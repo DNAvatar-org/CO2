@@ -1,6 +1,6 @@
 // File: organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.8
+// Version 1.0.13
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -15,6 +15,11 @@
 //   - v1.0.6: logs diagnostics détaillés sur le pipeline d'affichage albedo_percent (écriture, overwrite, abort)
 //   - v1.0.7: bloquer le fallback calculateAlbedo en absence d'atmosphère (évite 2.1% affiché en ⚫)
 //   - v1.0.8: albedo_percents affiche le proxy sulfate 🌫 sur la ligne nuages (source DATA['🫧']['🍰🫧🌫'])
+//   - v1.0.9: albedo_percents affiche 🌫 sur une ligne dédiée (plus lisible que suffixe sur ⛅)
+//   - v1.0.10: 🌫 rebranché sous ⛅ avec texte court (impact CCN), pas de ligne séparée
+//   - v1.0.11: ordre breakdown albédo = ciel d'abord, séparateur horizontal, puis surfaces sol
+//   - v1.0.12: albedo_percents affiche les couvertures avec 1 décimale (lecture plus stable)
+//   - v1.0.13: centrage de la fenetre albedo_percents dans la zone right (sans recentrer son contenu)
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -1490,13 +1495,18 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             // [2,1] = Right (droite)
             if (col === 2 && row === 1 && right && right.length > 0) {
                 const labelContainer = document.createElement('div');
+                const hasAlbedoPercents = right.some(labelData => getLabelDataId(labelData) === 'albedo_percents');
                 labelContainer.style.display = 'flex';
                 labelContainer.style.flexDirection = 'column';
                 labelContainer.style.gap = '5px';
-                labelContainer.style.alignItems = 'flex-start'; // À droite (col === 2)
+                // Centrer la fenetre albedo_percents dans sa case (axe X), sans toucher son contenu texte
+                labelContainer.style.alignItems = hasAlbedoPercents ? 'center' : 'flex-start'; // À droite (col === 2)
                 labelContainer.style.justifyContent = 'center'; // Centrer verticalement dans la ligne centrale
                 labelContainer.style.position = 'relative'; // Créer un stacking context
                 labelContainer.style.zIndex = Z_NODE_INTERNAL.LABEL; // TOUJOURS au-dessus des flèches
+                if (hasAlbedoPercents) {
+                    labelContainer.style.width = '100%';
+                }
 
                 right.forEach(labelData => {
                     const text = getLabelText(labelData);
@@ -3899,7 +3909,7 @@ window.updateFluxLabels = function (eventId) {
     }
     
     // 🔒 CORRECTION : Calculer cloud_percent dans tous les cas (sauf si forcé à 0 par corps noir)
-    cloud_percent = Math.round(cloud_coverage_num * 100);
+    cloud_percent = parseFloat((cloud_coverage_num * 100).toFixed(1));
     
     // 🔒 CORRECTION : Si on a utilisé h2oIceFractionFromCalculation, ne pas écraser cloud_percent si pas d'atmosphère
     if (hasNoAtmosphere && (typeof window === 'undefined' || window.h2oIceFractionFromCalculation === undefined)) {
@@ -3966,22 +3976,37 @@ window.updateFluxLabels = function (eventId) {
             ? window.DATA['🫧']['🍰🫧🌫']
             : 0;
         const sulfate_pct = (sulfate_frac * 100).toFixed(2);
+        const sulfate_ccn_boost_pct = (Math.min(0.35, sulfate_frac * 500) * 100).toFixed(1);
         components.forEach(comp => {
             comp.weight = (comp.coverage / 100) * parseFloat(comp.albedo);
         });
-        components.sort((a, b) => b.weight - a.weight);
-        return components.map(comp => {
-            const coverage_int = Math.min(99, Math.round(comp.coverage));
+        const cloudComp = components.find(comp => comp.emoji === window.CHARS.CLOUD);
+        const groundComps = components
+            .filter(comp => comp.emoji !== window.CHARS.CLOUD)
+            .sort((a, b) => b.weight - a.weight);
+
+        const renderComp = (comp) => {
+            const coverage_pct = Math.max(0, Math.min(100, Number(comp.coverage)));
+            const coverage_display = coverage_pct.toFixed(1);
             const label = window.CHARS_DESC[comp.emoji] || comp.emoji;
-            const titleAttr = `title="${label} : ${coverage_int}% couverture × albedo ${comp.albedo}"`;
+            const titleAttr = `title="${label} : ${coverage_display}% couverture × albedo ${comp.albedo}"`;
             const isImage = comp.emoji && (comp.emoji.includes('.png') || comp.emoji.includes('.jpg') || comp.emoji.includes('.svg'));
             if (isImage) {
-                return `<span ${titleAttr} style="cursor: help;"><img src="${comp.emoji}" alt="${label}"> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
+                return `<span ${titleAttr} style="cursor: help;"><img src="${comp.emoji}" alt="${label}"> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
             } else {
-                const sulfateHint = (comp.emoji === window.CHARS.CLOUD) ? ` <span style="font-size: 0.75em;">(🌫${sulfate_pct}%)</span>` : '';
-                return `<span ${titleAttr} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span>${sulfateHint}</span>`;
+                if (comp.emoji === window.CHARS.CLOUD) {
+                    const cloudTitle = `title="Nuages : ${coverage_display}% couverture × albedo ${comp.albedo}. Proxy sulfate: ${sulfate_pct}% masse atm, impact CCN +${sulfate_ccn_boost_pct}%."`;
+                    return `<span ${cloudTitle} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span><br><span style="font-size: 0.8em;">↳ 🌫 CCN +${sulfate_ccn_boost_pct}%</span></span>`;
+                }
+                return `<span ${titleAttr} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
             }
-        }).join('<br>');
+        };
+
+        const cloudLine = cloudComp ? renderComp(cloudComp) : '';
+        const groundLines = groundComps.map(renderComp).join('<br>');
+        const separator = '<span style="display:block;border-top:1px solid rgba(255,255,255,0.35);margin:2px 0;"></span>';
+        if (cloudLine && groundLines) return cloudLine + '<br>' + separator + groundLines;
+        return cloudLine || groundLines;
     };
 
     // Constantes physiques d'albedo (utilisées partout, pas dans la config)
@@ -3993,7 +4018,7 @@ window.updateFluxLabels = function (eventId) {
     const ALBEDO_CLOUD = 0.40;   // Albedo des nuages
     const ALBEDO_LAND = 0.18;    // Albedo continents (prairies, sols humides)
 
-    const land_cov = Math.round((window.DATA?.['🪩']?.['🍰🪩🌍'] ?? 0) * 100);
+    const land_cov = parseFloat((((window.DATA?.['🪩']?.['🍰🪩🌍'] ?? 0) * 100)).toFixed(1));
 
     if (hasNoAtmosphere) {
         const ice_cov_corps_noir = 0;
@@ -4011,12 +4036,12 @@ window.updateFluxLabels = function (eventId) {
         const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
         if (currentEpoch) {
             const w = window.DATA?.['🪩'] ?? {};
-            const magma_cov = Math.round((w['🍰🪩🌋'] ?? currentEpoch.magma_coverage ?? 0) * 100);
-            const ocean_cov = Math.round((w['🍰🪩🌊'] ?? currentEpoch.ocean_coverage ?? 0) * 100);
-            const forest_cov = Math.round((w['🍰🪩🌳'] ?? currentEpoch.forest_coverage ?? 0) * 100);
-            const desert_cov = Math.round((w['🍰🪩🏜️'] ?? currentEpoch.desert_coverage ?? 0) * 100);
-            const ice_cov = Math.round((w['🍰🪩🧊'] ?? ice_coverage) * 100);
-            const cloud_cov = (w['🍰🪩⛅'] != null) ? Math.round(w['🍰🪩⛅'] * 100) : Math.round(cloud_percent);
+            const magma_cov = parseFloat((((w['🍰🪩🌋'] ?? currentEpoch.magma_coverage ?? 0) * 100)).toFixed(1));
+            const ocean_cov = parseFloat((((w['🍰🪩🌊'] ?? currentEpoch.ocean_coverage ?? 0) * 100)).toFixed(1));
+            const forest_cov = parseFloat((((w['🍰🪩🌳'] ?? currentEpoch.forest_coverage ?? 0) * 100)).toFixed(1));
+            const desert_cov = parseFloat((((w['🍰🪩🏜️'] ?? currentEpoch.desert_coverage ?? 0) * 100)).toFixed(1));
+            const ice_cov = parseFloat((((w['🍰🪩🧊'] ?? ice_coverage) * 100)).toFixed(1));
+            const cloud_cov = (w['🍰🪩⛅'] != null) ? parseFloat((w['🍰🪩⛅'] * 100).toFixed(1)) : parseFloat(cloud_percent.toFixed(1));
 
             const magma_alb = ALBEDO_MAGMA.toFixed(2);
             const ocean_alb = ALBEDO_OCEAN.toFixed(2);
@@ -4036,8 +4061,8 @@ window.updateFluxLabels = function (eventId) {
             ];
             albedoBreakdown = createAlbedoComponents(components);
         } else {
-            const final_cloud_percent = Math.round(cloud_percent);
-            const final_ice_percent = Math.round(ice_coverage * 100);
+            const final_cloud_percent = parseFloat(cloud_percent.toFixed(1));
+            const final_ice_percent = parseFloat((ice_coverage * 100).toFixed(1));
             const components = [
                 { emoji: window.CHARS.VOLCANO, coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
                 { emoji: window.CHARS.OCEAN, coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },
@@ -4050,8 +4075,8 @@ window.updateFluxLabels = function (eventId) {
             albedoBreakdown = createAlbedoComponents(components);
         }
     } else {
-        const final_cloud_percent = Math.round(cloud_percent);
-        const final_ice_percent = Math.round(ice_coverage * 100);
+        const final_cloud_percent = parseFloat(cloud_percent.toFixed(1));
+        const final_ice_percent = parseFloat((ice_coverage * 100).toFixed(1));
         const components = [
             { emoji: window.CHARS.VOLCANO, coverage: 0, albedo: ALBEDO_MAGMA.toFixed(2) },
             { emoji: window.CHARS.OCEAN, coverage: 0, albedo: ALBEDO_OCEAN.toFixed(2) },

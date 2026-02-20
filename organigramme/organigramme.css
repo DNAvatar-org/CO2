@@ -1,6 +1,6 @@
 /* File: organigramme.css - Styles pour le diagramme de flux énergétique */
 /* Desc: Feuille de style CSS pour l'organigramme de flux énergétique */
-/* Version 1.0.1 */
+/* Version 1.0.3 */
 /* © 2025 DNAvatar.org - Arnaud Maignan */
 /* Licensed under Apache License 2.0 with Commons Clause. */
 /* See LICENSE_HEADER.txt for full terms. */
@@ -8,6 +8,8 @@
 /* Logs: */
 /*   - Initial version: extraction des styles CSS depuis demo_flux_energetique_01.html */
 /*   - Added custom tooltip styles with 0.5s delay */
+/*   - v1.0.2: élargissement léger du bloc gauche (diagramme) */
+/*   - v1.0.3: centrage horizontal du label albedo_percents dans sa case */
 
 .controle-simulation {
     padding: 0 !important;
@@ -28,7 +30,7 @@
 }
 
 .flux-diagram {
-    width: 370px;
+    width: 395px;
     height: 574px;
     position: relative;
     border-radius: 10px;
@@ -143,7 +145,7 @@
 /* Label albedo_percents : fond sombre, texte blanc, pas de contour */
 .flux-label[data-id="albedo_percents"] {
     line-height: 20px;
-    align-self: flex-start;
+    align-self: center;
     color: #fff;
     background: rgba(10, 14, 39, 0.7);
     border: 1px solid rgba(255, 255, 255, 1.0);
