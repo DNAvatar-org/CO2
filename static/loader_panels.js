@@ -1,12 +1,14 @@
 // File: loader_panels.js - Charge visu_radiatif.html et scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts applicatifs
-// Version 1.0.0
+// Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: 2025-02-03
 
 (function () {
     'use strict';
     const SCRIPTS = [
+        'static/tuning/model_tuning.js',
+        'static/tuning/model_tuning_biblio.js',
         'static/timeline/configTimeline.js',
         'static/compute/alphabet.js',
         'static/compute/dico.js',

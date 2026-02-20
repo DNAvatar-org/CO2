@@ -1,6 +1,6 @@
 // File: calculations_albedo.js - Calculs albedo et couverture nuageuse
 // Desc: En français, dans l'architecture, je suis le module de calculs d'albedo
-// Version 1.2.22
+// Version 1.2.24
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
@@ -30,6 +30,8 @@
 // - v1.2.20 : normalisation stricte des surfaces au sol + nuages traités en voile optique (pas en surface additionnelle)
 // - v1.2.21 : retour calculateAlbedo aligné sur DATA['🪩']['🍰🪩📿'] (final_albedo_with_water) pour cohérence solveur/UI
 // - v1.2.22 : SO₄²⁻ branché dans proxy CCN via DATA (⚖️🌫, 🍰🫧🌫) + log cloud-proxy enrichi
+// - v1.2.23 : coefficients cloud SW externalisés vers static/tuning/model_tuning.js (iso-résultats)
+// - v1.2.24 : fallback synchrone cloud tuning si window.TUNING absent
 //
 // FORMULES ALBEDO :
 // 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏜️,🧊} + contribution_glace + contribution_nuages
@@ -454,6 +456,36 @@ function calculateAlbedo() {
     // Les nuages saturent vite : au-delà d'un certain seuil d'humidité, c'est l'optique — pas l'eau — qui limite leur effet
     let cloud_fraction = 0;
     if (DATA['🔘']['🔘💧📛'] && DATA['💧']['🍰🫧💧'] > 0) {
+        const CLOUD_TUNING = (window.TUNING && window.TUNING.CLOUD_SW)
+            ? window.TUNING.CLOUD_SW
+            : {
+                CCN_BASE: 0.15,
+                CCN_O2_WEIGHT: 0.85,
+                BIOMASS_GAIN: 4.0,
+                ANTHRO_RISE_START_YEAR: 1900,
+                ANTHRO_RISE_WINDOW_YEARS: 80,
+                ANTHRO_RISE_MAX: 0.25,
+                ANTHRO_DECAY_START_YEAR: 1980,
+                ANTHRO_DECAY_WINDOW_YEARS: 40,
+                ANTHRO_DECAY_MAX: 0.15,
+                SULFATE_BOOST_SCALE: 500,
+                SULFATE_BOOST_MAX: 0.35,
+                MODERN_REF_O2: 0.21,
+                MODERN_REF_FOREST: 0.03,
+                PRESSURE_FACTOR_MAX: 1.2,
+                OXIDATION_BASE: 0.3,
+                OXIDATION_O2_GAIN: 4.0,
+                TEMP_FACTOR_MIN: 0.6,
+                TEMP_FACTOR_MAX: 1.3,
+                TEMP_FACTOR_REF_K: 288,
+                OPTICAL_EFF_BASE: 1.10,
+                OPTICAL_EFF_CCN_GAIN: 0.45,
+                OXIDATION_SOFT_BASE: 0.85,
+                OXIDATION_SOFT_GAIN: 0.15,
+                CLOUD_FRACTION_BASE: 0.19,
+                CLOUD_FRACTION_INDEX_GAIN: 0.11,
+                CLOUD_FRACTION_MAX: 0.75
+            };
         // 🔒 calculateCloudFormationIndex() a déjà été appelé plus haut (ligne ~262)
         // On réutilise DATA['🪩']['☁️'] déjà calculé
         const cloud_index = DATA['🪩']['☁️'];
@@ -471,39 +503,43 @@ function calculateAlbedo() {
         const o2_frac = (DATA['🫧']['🍰🫧🫁'] != null && Number.isFinite(DATA['🫧']['🍰🫧🫁'])) ? DATA['🫧']['🍰🫧🫁'] : 0.0;
         const sulfate_frac = (DATA['🫧']['🍰🫧🌫'] != null && Number.isFinite(DATA['🫧']['🍰🫧🌫'])) ? DATA['🫧']['🍰🫧🌫'] : 0.0;
         const forest_frac = (DATA['🪩']['🍰🪩🌳'] != null && Number.isFinite(DATA['🪩']['🍰🪩🌳'])) ? DATA['🪩']['🍰🪩🌳'] : 0.0;
-        const biomass_proxy = 1.0 + 4.0 * forest_frac;
+        const biomass_proxy = 1.0 + CLOUD_TUNING.BIOMASS_GAIN * forest_frac;
         const year = (EPOCH['▶'] != null && Number.isFinite(EPOCH['▶'])) ? EPOCH['▶'] : 2025;
         let anthro_factor = 1.0;
-        if (year >= 1900) anthro_factor = 1.0 + 0.25 * Math.min(1, (year - 1900) / 80);
-        if (year > 1980) anthro_factor = anthro_factor * (1 - 0.15 * Math.min(1, (year - 1980) / 40));
-        const sulfate_boost = 1.0 + Math.min(0.35, sulfate_frac * 500);
-        const ccn_proxy = (0.15 + 0.85 * o2_frac * biomass_proxy * anthro_factor) * sulfate_boost;
+        if (year >= CLOUD_TUNING.ANTHRO_RISE_START_YEAR) {
+            anthro_factor = 1.0 + CLOUD_TUNING.ANTHRO_RISE_MAX * Math.min(1, (year - CLOUD_TUNING.ANTHRO_RISE_START_YEAR) / CLOUD_TUNING.ANTHRO_RISE_WINDOW_YEARS);
+        }
+        if (year > CLOUD_TUNING.ANTHRO_DECAY_START_YEAR) {
+            anthro_factor = anthro_factor * (1 - CLOUD_TUNING.ANTHRO_DECAY_MAX * Math.min(1, (year - CLOUD_TUNING.ANTHRO_DECAY_START_YEAR) / CLOUD_TUNING.ANTHRO_DECAY_WINDOW_YEARS));
+        }
+        const sulfate_boost = 1.0 + Math.min(CLOUD_TUNING.SULFATE_BOOST_MAX, sulfate_frac * CLOUD_TUNING.SULFATE_BOOST_SCALE);
+        const ccn_proxy = (CLOUD_TUNING.CCN_BASE + CLOUD_TUNING.CCN_O2_WEIGHT * o2_frac * biomass_proxy * anthro_factor) * sulfate_boost;
         // [OBS/CALIB] Référence moderne explicite : O2=21%, biomasse efficace ~3%, anthro courant.
         // On compare les époques en relatif, plutôt qu'en absolu, pour éviter d'écraser le moderne.
-        const ccn_ref_modern = 0.15 + 0.85 * 0.21 * (1.0 + 4.0 * 0.03) * anthro_factor;
+        const ccn_ref_modern = CLOUD_TUNING.CCN_BASE + CLOUD_TUNING.CCN_O2_WEIGHT * CLOUD_TUNING.MODERN_REF_O2 * (1.0 + CLOUD_TUNING.BIOMASS_GAIN * CLOUD_TUNING.MODERN_REF_FOREST) * anthro_factor;
         const ccn_ratio = ccn_proxy / ccn_ref_modern;
 
         // 2) Facteurs physiques d'efficacité nuageuse
         // [EQ] Forme analytique simple (pression/oxydation/température) pour la microphysique effective.
-        const pressure_factor = Math.min(1.2, DATA['🫧']['🎈']);
-        const oxidation_factor = Math.min(1.0, 0.3 + 4.0 * o2_frac);
-        const temp_factor = Math.max(0.6, Math.min(1.3, DATA['🧮']['🧮🌡️'] / 288));
+        const pressure_factor = Math.min(CLOUD_TUNING.PRESSURE_FACTOR_MAX, DATA['🫧']['🎈']);
+        const oxidation_factor = Math.min(1.0, CLOUD_TUNING.OXIDATION_BASE + CLOUD_TUNING.OXIDATION_O2_GAIN * o2_frac);
+        const temp_factor = Math.max(CLOUD_TUNING.TEMP_FACTOR_MIN, Math.min(CLOUD_TUNING.TEMP_FACTOR_MAX, DATA['🧮']['🧮🌡️'] / CLOUD_TUNING.TEMP_FACTOR_REF_K));
 
         // 3) Efficacité optique réelle (Twomey + microphysique)
         // Centrage moderne autour de 1.0-1.2 ; états pauvres en CCN en dessous.
         // [OBS/CALIB] 1.10 et 0.45 choisis pour reproduire la plage moderne observée de couverture optique SW effective.
-        let cloud_optical_efficiency = 1.10 + 0.45 * (ccn_ratio - 1.0);
+        let cloud_optical_efficiency = CLOUD_TUNING.OPTICAL_EFF_BASE + CLOUD_TUNING.OPTICAL_EFF_CCN_GAIN * (ccn_ratio - 1.0);
         // Oxydation déjà partiellement portée par ccn_proxy : on la garde mais en pondération douce.
         // [EQ] Pondération douce pour limiter la double comptabilisation.
-        const oxidation_soft_factor = 0.85 + 0.15 * oxidation_factor;
+        const oxidation_soft_factor = CLOUD_TUNING.OXIDATION_SOFT_BASE + CLOUD_TUNING.OXIDATION_SOFT_GAIN * oxidation_factor;
         cloud_optical_efficiency = cloud_optical_efficiency * pressure_factor * oxidation_soft_factor * temp_factor;
 
         // 4) Couverture optique SW effective (impact albédo)
         // [EQ] Fermeture diagnostique : cloud_index (dynamique) -> fraction optique efficace.
-        cloud_fraction = (0.19 + 0.11 * cloud_index) * cloud_optical_efficiency;
+        cloud_fraction = (CLOUD_TUNING.CLOUD_FRACTION_BASE + CLOUD_TUNING.CLOUD_FRACTION_INDEX_GAIN * cloud_index) * cloud_optical_efficiency;
 
         // Limites physiques
-        cloud_fraction = Math.max(0, Math.min(0.75, cloud_fraction));
+        cloud_fraction = Math.max(0, Math.min(CLOUD_TUNING.CLOUD_FRACTION_MAX, cloud_fraction));
         if (window.CONFIG_COMPUTE.logCloudProxyDiagnostic) {
             console.log('[cloud-proxy] epoch=' + epochId
                 + ' T_C=' + T_surface_C.toFixed(2)

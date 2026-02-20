@@ -1,7 +1,7 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.58
+// Version 1.2.61
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -75,6 +75,8 @@
 // - v1.2.57 : continuité glace nettoyée physiquement (atm/eau/hautes terres) + log raw/effective pour éviter faux diagnostics
 // - v1.2.58 : séparation verrous glace eau/albédo (_iceEpochFixedWaterState vs _iceEpochFixedAlbedoState) + log double
 // - v1.2.59 : spin-up eau/albédo : sortie anticipée si cycleDeLeau(false) ne change plus l'état (évite tours inutiles)
+// - v1.2.60 : paramètres solveur de tuning centralisé (static/tuning/model_tuning.js), sans changement de résultat
+// - v1.2.61 : fallback synchrone local si window.TUNING absent (évite crash runtime)
 // ============================================================================
 
 // ============================================================================
@@ -159,8 +161,16 @@ function snapshotEdsForConvergence() {
 /** Tolérance flux (W/m²) = max(4σT³×precision_K, tolMinWm2). Source unique, pas de duplication. */
 function computeToleranceWm2(T_K, precision_K) {
     const CONST = window.CONST;
+    const SOLVER_TUNING = (window.TUNING && window.TUNING.SOLVER)
+        ? window.TUNING.SOLVER
+        : {
+            TOL_MIN_WM2: 0.05,
+            MAX_SEARCH_STEP_K: 100,
+            MAX_SEARCH_STEP_LARGE_K: 150,
+            LARGE_DELTA_FACTOR: 10
+        };
     const tolRaw = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(T_K, 3) * precision_K;
-    const tolMin = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.tolMinWm2 != null) ? window.CONFIG_COMPUTE.tolMinWm2 : 0.1;
+    const tolMin = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.tolMinWm2 != null) ? window.CONFIG_COMPUTE.tolMinWm2 : SOLVER_TUNING.TOL_MIN_WM2;
     return Math.max(tolRaw, tolMin);
 }
 
@@ -345,16 +355,27 @@ function updateConvergenceBounds() {
 function computeSearchIncrement() {
     const DATA = window.DATA;
     const CONST = window.CONST;
+    const SOLVER_TUNING = (window.TUNING && window.TUNING.SOLVER)
+        ? window.TUNING.SOLVER
+        : {
+            TOL_MIN_WM2: 0.05,
+            MAX_SEARCH_STEP_K: 100,
+            MAX_SEARCH_STEP_LARGE_K: 150,
+            LARGE_DELTA_FACTOR: 10
+        };
     const delta = DATA['🧲']['🔺🧲'];
     const T_K = DATA['🧮']['🧮🌡️'];
     const sigmaT3 = 4 * CONST.STEFAN_BOLTZMANN * Math.pow(T_K, 3);
     let res = delta / sigmaT3;
     const tol = DATA['🧮']['🧲🔬'];
-    let cap = window.CONFIG_COMPUTE.maxSearchStepK;
-    if (Math.abs(delta) > window.CONFIG_COMPUTE.largeDeltaFactor * tol) {
-        cap = window.CONFIG_COMPUTE.maxSearchStepLargeK;
+    const capSearch = (window.CONFIG_COMPUTE.maxSearchStepK != null) ? window.CONFIG_COMPUTE.maxSearchStepK : SOLVER_TUNING.MAX_SEARCH_STEP_K;
+    const capSearchLarge = (window.CONFIG_COMPUTE.maxSearchStepLargeK != null) ? window.CONFIG_COMPUTE.maxSearchStepLargeK : SOLVER_TUNING.MAX_SEARCH_STEP_LARGE_K;
+    const largeDeltaFactor = (window.CONFIG_COMPUTE.largeDeltaFactor != null) ? window.CONFIG_COMPUTE.largeDeltaFactor : SOLVER_TUNING.LARGE_DELTA_FACTOR;
+    let cap = capSearch;
+    if (Math.abs(delta) > largeDeltaFactor * tol) {
+        cap = capSearchLarge;
     }
-    cap = Math.min(window.CONFIG_COMPUTE.maxSearchStepLargeK, cap);
+    cap = Math.min(capSearchLarge, cap);
     if (Math.abs(res) > cap) res = Math.sign(res) * cap;
     return res;
 }

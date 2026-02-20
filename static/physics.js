@@ -1,7 +1,7 @@
 // ============================================================================
 // File: physics.js - Constantes et lois physiques fondamentales
 // Desc: En français, dans l'architecture, je suis le module de physique fondamentale
-// Version 2.0.5
+// Version 2.0.6
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See https://commonsclause.com/ for full terms.
@@ -13,6 +13,7 @@
 // - getH2OVaporEDSScale : 1.0→0.70 pour CO2≥400 ppm (cible EDS_H₂O ~72 W/m², lit. ~75).
 // - v2.0.4 : atténuation thermique h2o_eds_scale (5–10%) au-dessus de 20°C pour limiter la sur-rétroaction chaude
 // - v2.0.5 : règle simple h2o_eds_scale = 0.92 si T>290K, sinon 1.0
+// - v2.0.6 : essai calibration 2025 (EDS H2O) : h2o_eds_scale = 0.92 en base, sans branchement epoch
 // ============================================================================
 
 // Initialiser CONST (pointeur vers window.CONST)
@@ -163,7 +164,6 @@ window.getWaterCycleTempBoundsFromPressure = getWaterCycleTempBoundsFromPressure
 function getH2OVaporEDSScale() {
     const DATA = window.DATA;
     if (!DATA || !DATA['🧮']) return 1.0;
-    const T = DATA['🧮']['🧮🌡️'];
-    return (T > 290) ? 0.92 : 1.0; // -8% au-dessus de 17°C
+    return 0.92; // -8% global, essai #1 pour réduire 🔺🧲 moderne
 }
 window.getH2OVaporEDSScale = getH2OVaporEDSScale;

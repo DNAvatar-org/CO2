@@ -1,12 +1,14 @@
 // File: static/timeline/configTimeline.js - Configuration de la timeline (chronologie des époques)
 // Desc: Données de configuration pour la timeline et les événements interactifs
-// Version 1.2.1
+// Version 1.2.3
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
 // - v1.2.1: add sulfate proxy mass ⚖️🌫 for 🚂/📱 and disable verbose debug flags
+// - v1.2.2: paramètres solveur issus de static/tuning/model_tuning.js (source unique tuning)
+// - v1.2.3: fallback synchrone des paramètres solveur si window.TUNING non chargé
 //
 // ============================================================================
 // DÉFINITION DE LA CHRONOLOGIE (TIMELINE)
@@ -409,12 +411,20 @@ window.CONFIG_COMPUTE.iceCoverageRampEarlyIters = 10;              // [EQ/NUM]
 window.CONFIG_COMPUTE.iceCoverageRampMaxStepEarly = 0.001;         // [EQ/NUM]
 // Cohérence glace : true = override explicite EPOCH['ice_fixed'] si défini.
 window.CONFIG_COMPUTE.useEpochIceFixedOverride = true;             // [EQ/NUM]
+const SOLVER_TUNING = (window.TUNING && window.TUNING.SOLVER)
+    ? window.TUNING.SOLVER
+    : {
+        TOL_MIN_WM2: 0.05,
+        MAX_SEARCH_STEP_K: 100,
+        MAX_SEARCH_STEP_LARGE_K: 150,
+        LARGE_DELTA_FACTOR: 10
+    };
 // Borne min tolérance flux (W/m²) : évite convergence impossible sous bruit numérique.
-window.CONFIG_COMPUTE.tolMinWm2 = 0.05;                            // [EQ/NUM]
+window.CONFIG_COMPUTE.tolMinWm2 = SOLVER_TUNING.TOL_MIN_WM2; // [EQ/NUM]
 // Search : ΔT proportionnel à Δ (formule Δ/(4σT³)). Cap max uniquement.
-window.CONFIG_COMPUTE.maxSearchStepK = 100;                        // [EQ/NUM]
-window.CONFIG_COMPUTE.maxSearchStepLargeK = 150;                   // [EQ/NUM]
-window.CONFIG_COMPUTE.largeDeltaFactor = 10;                       // [EQ/NUM]
+window.CONFIG_COMPUTE.maxSearchStepK = SOLVER_TUNING.MAX_SEARCH_STEP_K; // [EQ/NUM]
+window.CONFIG_COMPUTE.maxSearchStepLargeK = SOLVER_TUNING.MAX_SEARCH_STEP_LARGE_K; // [EQ/NUM]
+window.CONFIG_COMPUTE.largeDeltaFactor = SOLVER_TUNING.LARGE_DELTA_FACTOR; // [EQ/NUM]
 window.CONFIG_COMPUTE.searchStepScaleMax = 200;                    // [EQ/NUM]
 // Bornes dichotomie Init
 window.CONFIG_COMPUTE.bornesMinK = 250;                            // [EQ/NUM]

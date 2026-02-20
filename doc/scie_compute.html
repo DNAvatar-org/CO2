@@ -52,6 +52,11 @@
             <h2>📋 Configuration <button class="toggle-button" onclick="toggleConfig()">Formules +</button></h2>
             <div id="config-content"></div>
         </div>
+
+        <div id="fine-tuning" class="results replied">
+            <h2>🧩 Fine-tuning (littérature) <button class="toggle-button" onclick="runFineTuningTrials(); return false;">Essais min/moy/max</button></h2>
+            <div id="fine-tuning-content"></div>
+        </div>
         
         <div id="convergence" class="results replied convergence-cycles-hidden">
             <h2>⚙ Convergence : —°C <span class="convergence-buttons"><button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">Cycles +</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">Détails +</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">Formules +</button></span></h2>
@@ -69,6 +74,9 @@
     <script src="../static/debug.js"></script>
     <script src="../static/compute/alphabet.js"></script>
     <script src="../static/compute/dico.js"></script>
+    <script src="../static/tuning/model_tuning.js"></script>
+    <script src="../static/tuning/model_tuning_biblio.js"></script>
+    <script src="../static/tuning/fine_tuning_bounds.js"></script>
     <script src="../organigramme/configOrganigramme.js"></script>
     <script src="../static/timeline/configTimeline.js"></script>
     <script src="../static/timeline/timeline.js"></script>
@@ -857,6 +865,284 @@
             });
         }
         
+        function formatTuningValue(value) {
+            if (typeof value === 'number') {
+                if (!Number.isFinite(value)) return String(value);
+                if (Number.isInteger(value)) return String(value);
+                if (Math.abs(value) >= 1000 || (Math.abs(value) > 0 && Math.abs(value) < 0.001)) return value.toExponential(3);
+                return parseFloat(value.toFixed(6)).toString();
+            }
+            if (typeof value === 'string') return value;
+            if (typeof value === 'boolean') return value ? 'true' : 'false';
+            return String(value);
+        }
+
+        function renderTuningParamLine(logo, key, value, label) {
+            const pretty = formatTuningValue(value);
+            return `<div class="config-value">${logo} <strong>${key}</strong> = ${pretty}${label ? ` — ${label}` : ''}</div>`;
+        }
+
+        function renderBiblioLines(logo, title, biblioObj) {
+            let html = `<div class="config-section"><div class="config-value"><strong>${logo} ${title}</strong></div>`;
+            if (!biblioObj || Object.keys(biblioObj).length === 0) {
+                html += `<div class="config-value">— aucune source renseignée</div></div>`;
+                return html;
+            }
+            Object.keys(biblioObj).forEach(function (k) {
+                const entry = biblioObj[k];
+                const src = entry && entry.source ? entry.source : 'n/a';
+                const effect = entry && entry.effect_on_warming_when_increased ? entry.effect_on_warming_when_increased : 'n/a';
+                const val = entry ? formatTuningValue(entry.value) : 'n/a';
+                html += `<div class="config-value">• ${k} = ${val} | source: ${src} | effet: ${effect}</div>`;
+            });
+            html += `</div>`;
+            return html;
+        }
+
+        function getFineTuningTargets() {
+            if (!window.FINE_TUNING_BOUNDS || !Array.isArray(window.FINE_TUNING_BOUNDS.targets)) return [];
+            if (!window.TUNING) return [];
+            return window.FINE_TUNING_BOUNDS.targets.filter(function (target) {
+                return !!(target && target.group && target.key && window.TUNING[target.group] && window.TUNING[target.group][target.key] != null);
+            });
+        }
+
+        function getFineTuningThreeValues(target) {
+            const min = Number(target.min);
+            const max = Number(target.max);
+            const avg = (min + max) / 2;
+            return [
+                { label: 'min', value: min },
+                { label: 'moy', value: avg },
+                { label: 'max', value: max }
+            ];
+        }
+
+        function setFineTuningValue(target, value) {
+            window.TUNING[target.group][target.key] = value;
+        }
+
+        function getFineTuningBaryPercent() {
+            if (window.FINE_TUNING_BARY_PERCENT == null || !Number.isFinite(Number(window.FINE_TUNING_BARY_PERCENT))) {
+                window.FINE_TUNING_BARY_PERCENT = 50;
+            }
+            return Number(window.FINE_TUNING_BARY_PERCENT);
+        }
+
+        function setFineTuningBaryPercent(percentRaw) {
+            const p = Number(percentRaw);
+            const bounded = Math.max(0, Math.min(100, Number.isFinite(p) ? p : 50));
+            window.FINE_TUNING_BARY_PERCENT = bounded;
+            return bounded;
+        }
+
+        function getFineTuningBaryValue(target, baryPercent) {
+            const min = Number(target.min);
+            const max = Number(target.max);
+            const alpha = baryPercent / 100;
+            return min + (max - min) * alpha;
+        }
+
+        function applyFineTuningBaryAll(percentRaw, refreshPanel) {
+            const targets = getFineTuningTargets();
+            if (!targets.length) return;
+            const bary = setFineTuningBaryPercent(percentRaw);
+            for (let i = 0; i < targets.length; i++) {
+                const target = targets[i];
+                const value = getFineTuningBaryValue(target, bary);
+                setFineTuningValue(target, value);
+            }
+            if (refreshPanel !== false) displayFineTuning();
+        }
+
+        function applyFineTuningBaryAllAndRun(percentRaw) {
+            applyFineTuningBaryAll(percentRaw, true);
+            if (window.FINE_TUNING_RUNNING === true || window.COMPUTE_RUNNING === true) return;
+            if (typeof runTest === 'function') runTest();
+        }
+
+        function onFineTuningBaryInput(percentRaw) {
+            const bary = setFineTuningBaryPercent(percentRaw);
+            const valueLabel = document.getElementById('fine-tuning-bary-value');
+            if (valueLabel) valueLabel.textContent = bary.toFixed(0) + '%';
+        }
+
+        function getInitRadiatifMetrics() {
+            const DATA = window.DATA;
+            const previous = (DATA && DATA['🧮'] && Array.isArray(DATA['🧮']['previous'])) ? DATA['🧮']['previous'] : [];
+            for (let i = 0; i < previous.length; i++) {
+                const state = previous[i];
+                if (!state) continue;
+                if (state.innerIter === -1) {
+                    const T_init = (state.temperature_C != null && Number.isFinite(Number(state.temperature_C))) ? Number(state.temperature_C) : NaN;
+                    const delta_init = (state.delta_equilibre != null && Number.isFinite(Number(state.delta_equilibre))) ? Number(state.delta_equilibre) : NaN;
+                    return { T_init_C: T_init, delta_init: delta_init };
+                }
+            }
+            return { T_init_C: NaN, delta_init: NaN };
+        }
+
+        async function runSingleFineTuningCompute() {
+            initializeGlobals();
+            const DATA = window.DATA;
+            if (!DATA || !DATA['🧮'] || !DATA['🔘']) throw new Error('DATA incomplet');
+            DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
+            if (window.initForConfig && !window.initForConfig()) {
+                throw new Error('initForConfig a échoué');
+            }
+            DATA['🧮']['previous'] = [];
+            DATA['🧮']['🧮🔄🌊'] = 0;
+            DATA['🧮']['🧮🔄🪩'] = 0;
+            const result = await window.computeRadiativeTransfer();
+            displayResults(result);
+            displayConvergence();
+            return result;
+        }
+
+        async function runFineTuningTrials() {
+            if (window.FINE_TUNING_RUNNING === true) return;
+            const targets = getFineTuningTargets();
+            if (!targets.length) {
+                console.error('❌ Fine-tuning: aucune cible valide');
+                return;
+            }
+            window.FINE_TUNING_RUNNING = true;
+            setRunStopButtonRunning(true);
+            const originalValues = {};
+            targets.forEach(function (target) {
+                originalValues[target.group + '.' + target.key] = window.TUNING[target.group][target.key];
+            });
+            const DATA = window.DATA;
+            const animWasEnabled = (DATA && DATA['🔘'] && DATA['🔘']['🔘🎬'] === true);
+            if (DATA && DATA['🔘']) DATA['🔘']['🔘🎬'] = false;
+            const animToggle = document.getElementById('anim-toggle');
+            if (animToggle) animToggle.classList.remove('selected');
+            const animCheckbox = document.getElementById('plot-anim-toggle-checkbox');
+            if (animCheckbox) animCheckbox.checked = false;
+            window.FINE_TUNING_TRIALS = [];
+            try {
+                for (let t = 0; t < targets.length; t++) {
+                    const target = targets[t];
+                    const trials = getFineTuningThreeValues(target);
+                    for (let i = 0; i < trials.length; i++) {
+                        const trial = trials[i];
+                        setFineTuningValue(target, trial.value);
+                        await runSingleFineTuningCompute();
+                        const initMetrics = getInitRadiatifMetrics();
+                        const DATA = window.DATA;
+                        const T_final_K = (DATA && DATA['🧮' ] && DATA['🧮']['🧮🌡️'] != null) ? Number(DATA['🧮']['🧮🌡️']) : NaN;
+                        const T_final_C = Number.isFinite(T_final_K) ? T_final_K - 273.15 : NaN;
+                        window.FINE_TUNING_TRIALS.push({
+                            label: trial.label,
+                            param_group: target.group,
+                            param_key: target.key,
+                            param_value: trial.value,
+                            min: target.min,
+                            max: target.max,
+                            note: target.note || '',
+                            T_init_C: initMetrics.T_init_C,
+                            delta_init: initMetrics.delta_init,
+                            T_final_C: T_final_C
+                        });
+                        console.log('[fine-tuning trial]'
+                            + ' ' + trial.label
+                            + ' ' + target.group + '.' + target.key + '=' + formatTuningValue(trial.value)
+                            + ' | Init: T=' + (Number.isFinite(initMetrics.T_init_C) ? initMetrics.T_init_C.toFixed(1) : 'n/a') + '°C'
+                            + ', 🔺🧲=' + (Number.isFinite(initMetrics.delta_init) ? initMetrics.delta_init.toFixed(3) : 'n/a')
+                            + ' | Final: T=' + (Number.isFinite(T_final_C) ? T_final_C.toFixed(1) : 'n/a') + '°C');
+                    }
+                }
+            } catch (err) {
+                console.error('❌ Fine-tuning trials:', err);
+            } finally {
+                if (DATA && DATA['🔘']) DATA['🔘']['🔘🎬'] = animWasEnabled;
+                if (animToggle) {
+                    if (animWasEnabled) animToggle.classList.add('selected');
+                    else animToggle.classList.remove('selected');
+                }
+                if (animCheckbox) animCheckbox.checked = animWasEnabled;
+                targets.forEach(function (target) {
+                    const k = target.group + '.' + target.key;
+                    setFineTuningValue(target, originalValues[k]);
+                });
+                window.FINE_TUNING_RUNNING = false;
+                setRunStopButtonRunning(false);
+                displayFineTuning();
+            }
+        }
+
+        function displayFineTuning() {
+            const tuningDiv = document.getElementById('fine-tuning');
+            const tuningContent = document.getElementById('fine-tuning-content');
+            if (!tuningDiv || !tuningContent) return;
+
+            const solverCfg = window.CONFIG_COMPUTE ? window.CONFIG_COMPUTE : {};
+            const cloud = (window.TUNING && window.TUNING.CLOUD_SW) ? window.TUNING.CLOUD_SW : {};
+            const biblio = window.TUNING_BIBLIO ? window.TUNING_BIBLIO : {};
+
+            let html = '';
+
+            html += `<div class="config-section"><div class="config-value"><strong>🧮 Solveur (🔬)</strong></div>`;
+            html += renderTuningParamLine('🔬', 'TOL_MIN_WM2', solverCfg.tolMinWm2, "tolérance flux minimale");
+            html += renderTuningParamLine('🔺🧲', 'LARGE_DELTA_FACTOR', solverCfg.largeDeltaFactor, "seuil grand delta");
+            html += renderTuningParamLine('🌡️', 'MAX_SEARCH_STEP_K', solverCfg.maxSearchStepK, "pas Search max");
+            html += renderTuningParamLine('🌡️', 'MAX_SEARCH_STEP_LARGE_K', solverCfg.maxSearchStepLargeK, "pas Search large");
+            html += `</div>`;
+
+            html += `<div class="config-section"><div class="config-value"><strong>☁️ Nuages SW / CCN (🪩, ⛅, 🌫)</strong></div>`;
+            html += renderTuningParamLine('☁️', 'CLOUD_FRACTION_BASE', cloud.CLOUD_FRACTION_BASE, "base fraction nuageuse");
+            html += renderTuningParamLine('☁️', 'CLOUD_FRACTION_INDEX_GAIN', cloud.CLOUD_FRACTION_INDEX_GAIN, "gain vs index ☁️");
+            html += renderTuningParamLine('⛅', 'CLOUD_FRACTION_MAX', cloud.CLOUD_FRACTION_MAX, "borne physique max");
+            html += renderTuningParamLine('🌫', 'SULFATE_BOOST_SCALE', cloud.SULFATE_BOOST_SCALE, "gain sulfate proxy");
+            html += renderTuningParamLine('🌫', 'SULFATE_BOOST_MAX', cloud.SULFATE_BOOST_MAX, "cap sulfate");
+            html += renderTuningParamLine('🫁', 'CCN_O2_WEIGHT', cloud.CCN_O2_WEIGHT, "poids oxygène dans CCN");
+            html += renderTuningParamLine('🌳', 'BIOMASS_GAIN', cloud.BIOMASS_GAIN, "gain biomasse");
+            html += renderTuningParamLine('🧪', 'OPTICAL_EFF_BASE', cloud.OPTICAL_EFF_BASE, "base efficacité optique");
+            html += renderTuningParamLine('🧪', 'OPTICAL_EFF_CCN_GAIN', cloud.OPTICAL_EFF_CCN_GAIN, "sensibilité optique au CCN");
+            html += renderTuningParamLine('🎈', 'PRESSURE_FACTOR_MAX', cloud.PRESSURE_FACTOR_MAX, "borne facteur pression");
+            html += renderTuningParamLine('🌡️', 'TEMP_FACTOR_REF_K', cloud.TEMP_FACTOR_REF_K, "référence thermique");
+            html += `</div>`;
+
+            html += renderBiblioLines('📚', 'Biblio CLOUD_SW', biblio.CLOUD_SW);
+            html += renderBiblioLines('📚', 'Biblio SOLVER', biblio.SOLVER);
+
+            const targets = getFineTuningTargets();
+            if (targets.length) {
+                const bary = getFineTuningBaryPercent();
+                html += `<div class="config-section">`;
+                html += `<div class="config-value"><strong>🎚️ Jauge barycentre global (min→max)</strong></div>`;
+                html += `<div class="config-value">`;
+                html += `<input id="fine-tuning-bary-slider" type="range" min="0" max="100" step="1" value="${bary.toFixed(0)}" oninput="onFineTuningBaryInput(this.value)">`;
+                html += ` <span id="fine-tuning-bary-value">${bary.toFixed(0)}%</span>`;
+                html += ` <button class="toggle-button" onclick="applyFineTuningBaryAllAndRun(document.getElementById('fine-tuning-bary-slider').value); return false;">Appliquer partout</button>`;
+                html += `</div>`;
+                html += `</div>`;
+
+                html += `<div class="config-section"><div class="config-value"><strong>🎯 Plages actives (convergence live)</strong></div>`;
+                for (let t = 0; t < targets.length; t++) {
+                    const target = targets[t];
+                    const currentValue = (window.TUNING && window.TUNING[target.group]) ? window.TUNING[target.group][target.key] : null;
+                    html += `<div class="config-value">paramètre: ${target.group}.${target.key} | bornes: [${formatTuningValue(target.min)} ; ${formatTuningValue(target.max)}] | actif: ${formatTuningValue(currentValue)}${target.note ? ` | ${target.note}` : ''}${target.source ? ` | source: ${target.source}` : ''}${target.effect ? ` | effet: ${target.effect}` : ''}</div>`;
+                    const rows = (Array.isArray(window.FINE_TUNING_TRIALS) ? window.FINE_TUNING_TRIALS : []).filter(function (row) {
+                        return row.param_group === target.group && row.param_key === target.key;
+                    });
+                    if (rows.length > 0) {
+                        for (let i = 0; i < rows.length; i++) {
+                            const row = rows[i];
+                            const tInit = Number.isFinite(row.T_init_C) ? row.T_init_C.toFixed(1) : 'n/a';
+                            const dInit = Number.isFinite(row.delta_init) ? row.delta_init.toFixed(3) : 'n/a';
+                            const tFinal = Number.isFinite(row.T_final_C) ? row.T_final_C.toFixed(1) : 'n/a';
+                            html += `<div class="config-value">• ${row.label} | ${row.param_key}=${formatTuningValue(row.param_value)} | Init: T=${tInit}°C, 🔺🧲=${dInit} | Final: T=${tFinal}°C</div>`;
+                        }
+                    }
+                }
+                html += `</div>`;
+            }
+
+            tuningContent.innerHTML = html;
+            tuningDiv.style.display = 'block';
+        }
+
         function displayResults(result) {
             const DATA = window.DATA;
             const CONST = window.CONST;
@@ -895,6 +1181,7 @@
 
             configContent.innerHTML = html;
             configDiv.style.display = 'block';
+            displayFineTuning();
             
             // 🔒 Ne pas appeler displayConvergence() ici pour éviter les boucles infinies
             // displayConvergence() sera appelé séparément si nécessaire
@@ -1016,12 +1303,16 @@
                         if (state.innerIter == null) return; // Init et radiatif uniquement
                         if (state.data_snapshot && state.data_snapshot['🪩']) {
                             const compactAlbedo = formatJSONCompact(state.data_snapshot['🪩']).replace(/"/g, "'");
+                            const sulfateFrac = (state.data_snapshot['🫧'] && state.data_snapshot['🫧']['🍰🫧🌫'] != null && Number.isFinite(state.data_snapshot['🫧']['🍰🫧🌫']))
+                                ? state.data_snapshot['🫧']['🍰🫧🌫']
+                                : 0;
+                            const sulfateBoostPct = (Math.min(0.35, sulfateFrac * 500) * 100).toFixed(1);
                             const prevState = states[idx - 1];
                             const T_alb = safeNumTemp(
                                 (state.innerIter === -1) ? state.temperature_C
                                     : (prevState && prevState.next_T_C != null ? prevState.next_T_C : state.temperature_C),
                                 '-');
-                            html += `<div class="iteration-header convergence-cycle"><strong>🪩 cycle albédo ${albedoIter}</strong> @${T_alb}°C :<span class="convergence-inline-json"> ${compactAlbedo}</span></div>`;
+                            html += `<div class="iteration-header convergence-cycle"><strong>🪩 cycle albédo ${albedoIter}</strong> @${T_alb}°C :<span class="convergence-inline-json"> ${compactAlbedo}</span> <span class="convergence-inline-json">| 🌫 CCN +${sulfateBoostPct}%</span></div>`;
                         }
                         const innerIter = state.innerIter;
                         const T = safeNumTemp(state.temperature_C, '-');
