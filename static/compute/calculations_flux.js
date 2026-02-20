@@ -74,6 +74,7 @@
 // - v1.2.56 : vérif cohérence glace (logs DATA vs EPOCH) ; continuité DATA par défaut, override epoch optionnel via config
 // - v1.2.57 : continuité glace nettoyée physiquement (atm/eau/hautes terres) + log raw/effective pour éviter faux diagnostics
 // - v1.2.58 : séparation verrous glace eau/albédo (_iceEpochFixedWaterState vs _iceEpochFixedAlbedoState) + log double
+// - v1.2.59 : spin-up eau/albédo : sortie anticipée si cycleDeLeau(false) ne change plus l'état (évite tours inutiles)
 // ============================================================================
 
 // ============================================================================
@@ -480,7 +481,7 @@ async function runRadiatifOnly() {
             const phasePrevSpinup = DATA['🧮']['🧮⚧'];
             DATA['🧮']['🧮⚧'] = 'Search';
             for (let w = 0; w < climateSpinupCyclesEffective; w++) {
-                await window.cycleDeLeau(false);
+                const resSpinup = await window.cycleDeLeau(false);
                 const T_C_init = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
                 if (window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[spinup] CycleEau #' + (w + 1) + ' @' + T_C_init.toFixed(1) + '°C');
                 DATA['🧮']['previous'].push({
@@ -495,6 +496,7 @@ async function runRadiatifOnly() {
                         '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
                     }
                 });
+                if (!resSpinup.changed) break;
                 if (window.ABORT_COMPUTE) return null;
             }
             DATA['🧮']['🧮⚧'] = phasePrevSpinup;

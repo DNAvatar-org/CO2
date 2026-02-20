@@ -1,6 +1,6 @@
 // File: calculations_atm.js - Calculs composition atmosphérique
 // Desc: En français, dans l'architecture, je suis le module de calculs atmosphériques
-// Version 1.1.4
+// Version 1.1.5
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
@@ -11,6 +11,7 @@
 // - co2KgToFraction, ch4KgToFraction (masse kg → fraction molaire pour updateLevelsConfig)
 // - updateAtmosphereHeightFromCurrentT() : met à jour 📏🫧🧿 et 📏🫧🛩 depuis T courante (même grille verticale cold/warm start)
 // - v1.1.4 : 🎈 inclut vapeur d'eau : P = (⚖️🫧 + masse_vapeur) × 🍎 / (4π×R²), masse_vapeur = ⚖️🫧×🍰🫧💧/(1−🍰🫧💧)
+// - v1.1.5 : add sulfate proxy fraction 🍰🫧🌫 from DATA['⚖️']['⚖️🌫'] (separate from dry-air renormalization)
 //
 // ============================================================================
 // CALCUL DE PRESSION ET STRUCTURE ATMOSPHÉRIQUE
@@ -151,6 +152,7 @@ function calculateAtmosphereComposition() {
     const mass_CH4 = isFinite(DATA['⚖️']['⚖️⛽']) ? DATA['⚖️']['⚖️⛽'] : 0;
     const mass_O2 = isFinite(DATA['⚖️']['⚖️🫁']) ? DATA['⚖️']['⚖️🫁'] : 0;
     const mass_N2 = isFinite(DATA['⚖️']['⚖️💨']) ? DATA['⚖️']['⚖️💨'] : 0;
+    const mass_SULFATE = isFinite(DATA['⚖️']['⚖️🌫']) ? DATA['⚖️']['⚖️🌫'] : 0;
     
     // 🔒 GESTION CAS SANS ATMOSPHÈRE (corps noir, etc.) : toutes les fractions à 0
     if (atm_mass_total <= 0) {
@@ -158,6 +160,7 @@ function calculateAtmosphereComposition() {
         DATA['🫧']['🍰🫧⛽'] = 0;
         DATA['🫧']['🍰🫧🫁'] = 0;
         DATA['🫧']['🍰🫧💨'] = 0;
+        DATA['🫧']['🍰🫧🌫'] = 0;
         DATA['💧']['🍰🫧💧'] = 0;
     } else {
         // 🔒 FORMULES CORRIGÉES : Toutes les fractions sont calculées par rapport à ⚖️🫧
@@ -171,6 +174,8 @@ function calculateAtmosphereComposition() {
         
         // 🍰🫧💨 = ⚖️💨 / ⚖️🫧
         DATA['🫧']['🍰🫧💨'] = mass_N2 / atm_mass_total;
+        // 🍰🫧🌫 = ⚖️🌫 / ⚖️🫧 (proxy CCN ; hors renormalisation air sec)
+        DATA['🫧']['🍰🫧🌫'] = mass_SULFATE / atm_mass_total;
     }
         
     // H2O atmosphérique (vapeur) : sera calculé dans calculateWaterPartition()

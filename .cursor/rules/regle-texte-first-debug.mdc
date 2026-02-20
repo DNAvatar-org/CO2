@@ -1,0 +1,29 @@
+---
+description: Mode texte-first pour debug et vérifications
+alwaysApply: true
+---
+
+# _REGLE_TEXTE_FIRST — Minimiser le coût des vérifications
+
+Objectif: réduire le coût (tokens/temps) des sessions en privilégiant les vérifications textuelles.
+
+## Priorité d'exécution
+
+1. Vérifier d'abord via code et données:
+   - `ReadFile`, `rg`, logs console, valeurs `DATA`.
+2. N'utiliser les actions navigateur lourdes qu'en dernier recours:
+   - screenshots, snapshots fréquents, interactions UI répétées.
+
+## Règles pratiques
+
+- Par défaut, adopter une stratégie **texte-first**.
+- Ne pas faire de capture/snapshot si une preuve texte suffit.
+- Si une vérification visuelle est indispensable:
+  - faire le minimum d'actions,
+  - limiter à 1 capture pertinente par point à vérifier.
+- Éviter les boucles de vérification UI redondantes quand l'état est stable.
+
+## Exceptions légitimes
+
+- Validation d'un rendu purement visuel (mise en page, chevauchement, style).
+- Vérification d'un état UI non observable dans les logs/objets.

@@ -1,6 +1,6 @@
 // File: static/compute/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.1
+// Version 1.0.2
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -20,7 +20,7 @@ const CHARS = {
     ENERGY_FLUX: '🧲', // Energy flux : sources chaudes (W/m²)
     O2: '🫁',       // O2 : poumons (affichage)
     N2: '💨',       // N2 : vent (azote/air)
-    SULFATE: '🫁',  // Aérosols sulfate (proxy CCN/optique nuageuse)
+    SULFATE: '🌫',  // Aérosols sulfate (proxy CCN/optique nuageuse)
     WEIGHT: '⚖️',   // Poids : balance (masse)
     DENSITY: '💨',  // Densité : vent
     ALTITUDE: '🧿', // Altitude : galaxie (Ligne de Kármán, frontière atmosphère/espace)
@@ -126,7 +126,7 @@ const CHARS_DESC = {
     '⛽': 'CH₄',
     '🏭': 'CO₂',
     '🫁': 'O₂',
-    '🫁': 'SO₄²⁻ (aérosols sulfate)',
+    '🌫': 'SO₄²⁻ (aérosols sulfate)',
     '🧊': 'Glace',
     '⛅': 'Nuages',
     '🌊': 'Océan',

@@ -1,6 +1,6 @@
 // File: calculations_albedo.js - Calculs albedo et couverture nuageuse
 // Desc: En français, dans l'architecture, je suis le module de calculs d'albedo
-// Version 1.2.20
+// Version 1.2.22
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
@@ -28,6 +28,8 @@
 // - v1.2.18 : formule forêt revue (land_frac + suitability thermique + modulation océanique) pour éviter 🌳=0 en moderne
 // - v1.2.19 : fine-tuning forêt réaliste (31% terres, suitability thermique bornée) pour stabiliser CCN moderne
 // - v1.2.20 : normalisation stricte des surfaces au sol + nuages traités en voile optique (pas en surface additionnelle)
+// - v1.2.21 : retour calculateAlbedo aligné sur DATA['🪩']['🍰🪩📿'] (final_albedo_with_water) pour cohérence solveur/UI
+// - v1.2.22 : SO₄²⁻ branché dans proxy CCN via DATA (⚖️🌫, 🍰🫧🌫) + log cloud-proxy enrichi
 //
 // FORMULES ALBEDO :
 // 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏜️,🧊} + contribution_glace + contribution_nuages
@@ -133,12 +135,14 @@ function calculateCloudFormationIndex() {
     DATA['💧']['💭☔'] = precip_threshold;
 
     // 🔒 CALCUL DE 🍰💭 (CCN - Efficacité condensation nuageuse)
-    // FORMULE : 🍰💭 = clamp(0.4 + 0.6 × (⚖️🫁 / 1.08e18 + ⚖️⛽ / 5.2e12), 0.3, 1.0)
+    // FORMULE : 🍰💭 = clamp(0.4 + 0.5×(⚖️🫁/1.08e18 + ⚖️⛽/5.2e12) + 0.1×(⚖️🌫/1e14), 0.3, 1.0)
     const O2_mass = DATA['⚖️']['⚖️🫁'];
     const CH4_mass = DATA['⚖️']['⚖️⛽'];
+    const SULFATE_mass = DATA['⚖️']['⚖️🌫'];
     const O2_ratio = O2_mass / 1.08e18;
     const CH4_ratio = CH4_mass / 5.2e12;
-    const ccn_efficiency = Math.max(0.3, Math.min(1.0, 0.4 + 0.6 * (O2_ratio + CH4_ratio)));
+    const SULFATE_ratio = SULFATE_mass / 1.0e14;
+    const ccn_efficiency = Math.max(0.3, Math.min(1.0, 0.4 + 0.5 * (O2_ratio + CH4_ratio) + 0.1 * SULFATE_ratio));
     DATA['🫧']['🍰💭'] = ccn_efficiency;
     
     // 🔒 FORMULE SUNDQVIST : ☁️ = (1 - Math.pow(1 - min(🍰🫧☔, 1), 0.6)) × 🍰💭
@@ -465,13 +469,15 @@ function calculateAlbedo() {
         // 1) Proxy CCN (conservé)
         // [OBS/CALIB] 0.15 et 0.85 calibrés pour rester dans les ordres de grandeur littérature FYSP/Twomey.
         const o2_frac = (DATA['🫧']['🍰🫧🫁'] != null && Number.isFinite(DATA['🫧']['🍰🫧🫁'])) ? DATA['🫧']['🍰🫧🫁'] : 0.0;
+        const sulfate_frac = (DATA['🫧']['🍰🫧🌫'] != null && Number.isFinite(DATA['🫧']['🍰🫧🌫'])) ? DATA['🫧']['🍰🫧🌫'] : 0.0;
         const forest_frac = (DATA['🪩']['🍰🪩🌳'] != null && Number.isFinite(DATA['🪩']['🍰🪩🌳'])) ? DATA['🪩']['🍰🪩🌳'] : 0.0;
         const biomass_proxy = 1.0 + 4.0 * forest_frac;
         const year = (EPOCH['▶'] != null && Number.isFinite(EPOCH['▶'])) ? EPOCH['▶'] : 2025;
         let anthro_factor = 1.0;
         if (year >= 1900) anthro_factor = 1.0 + 0.25 * Math.min(1, (year - 1900) / 80);
         if (year > 1980) anthro_factor = anthro_factor * (1 - 0.15 * Math.min(1, (year - 1980) / 40));
-        const ccn_proxy = 0.15 + 0.85 * o2_frac * biomass_proxy * anthro_factor;
+        const sulfate_boost = 1.0 + Math.min(0.35, sulfate_frac * 500);
+        const ccn_proxy = (0.15 + 0.85 * o2_frac * biomass_proxy * anthro_factor) * sulfate_boost;
         // [OBS/CALIB] Référence moderne explicite : O2=21%, biomasse efficace ~3%, anthro courant.
         // On compare les époques en relatif, plutôt qu'en absolu, pour éviter d'écraser le moderne.
         const ccn_ref_modern = 0.15 + 0.85 * 0.21 * (1.0 + 4.0 * 0.03) * anthro_factor;
@@ -507,6 +513,8 @@ function calculateAlbedo() {
                 + ' ccn=' + ccn_proxy.toFixed(3)
                 + ' ccn_ref=' + ccn_ref_modern.toFixed(3)
                 + ' ccn_ratio=' + ccn_ratio.toFixed(3)
+                + ' so4=' + sulfate_frac.toExponential(2)
+                + ' so4_boost=' + sulfate_boost.toFixed(3)
                 + ' anthro=' + anthro_factor.toFixed(3)
                 + ' press=' + pressure_factor.toFixed(3)
                 + ' oxy=' + oxidation_factor.toFixed(3)
@@ -554,7 +562,7 @@ function calculateAlbedo() {
     // ice_fraction_base est la surface de glace, ice_fraction_stock est la fraction du stock d'eau
     DATA['🪩']['🍰🪩📿'] = final_albedo_with_water;
     DATA['🪩']['🍰🪩⛅'] = isFinite(cloud_fraction) ? cloud_fraction : 0;
-    return final_albedo;
+    return final_albedo_with_water;
 }
 
 function calculateCloudCoverage() {

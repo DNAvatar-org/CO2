@@ -1,12 +1,14 @@
 // File: static/compute/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
-// Version 1.0.1
+// Version 1.0.3
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: [January 2025]
 // Logs:
 // - v1.0.1: KEYS/DESC 📛 + 🍰📛⛅ (EDS nuages), DESC 🧲📛/🍰📛❀
+// - v1.0.2: FORM sync with runtime code for 🎈 (dry+vapor mass) and 🍰🪩⛅ (cloud optical proxy)
+// - v1.0.3: add sulfate keys in DATA (⚖️🌫, 🍰🫧🌫) + CCN formula mention sulfate term
 
 // ============================================================================
 // OBJET KEYS (toutes les clés regroupées) - Utilise directement les emojis
@@ -19,9 +21,9 @@ const KEYS = {
     // Date Époque
     '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
-    '⚖️': ['⚖️💧', '⚖️🫧', '⚖️🏭', '⚖️⛽', '⚖️🫁', '⚖️💨'],
+    '⚖️': ['⚖️💧', '⚖️🫧', '⚖️🏭', '⚖️⛽', '⚖️🫁', '⚖️🌫', '⚖️💨'],
     // Composition atmosphérique
-    '🫧': ['🎈', '🧪', '📏🫧🧿', '📏🫧🛩', '🍰🫧🏭', '🍰🫧⛽', '🍰🫧🫁', '🍰🫧💨', '🍰🫧📿🌈', '🍰🫧🏭🌈', '🍰🫧💧🌈', '🍰🫧⛽🌈', '🍰💭'],
+    '🫧': ['🎈', '🧪', '📏🫧🧿', '📏🫧🛩', '🍰🫧🏭', '🍰🫧⛽', '🍰🫧🫁', '🍰🫧🌫', '🍰🫧💨', '🍰🫧📿🌈', '🍰🫧🏭🌈', '🍰🫧💧🌈', '🍰🫧⛽🌈', '🍰💭'],
     // Cycle de l'eau
     '💧': ['🍰💧🧊', '🍰💧🌊', '🍰🧮🌧', '🍰🫧💧', '🍰🫧☔', '🍰⚖️💦', '💭☔', '⏳☔'],
     // Albédo
@@ -91,6 +93,7 @@ const DESC = {
         '🍰🫧🏭': '!CO₂',
         '🍰🫧⛽': '!CH₄',
         '🍰🫧🫁': '!O₂ (🫁) [clé historique 🫁]',
+        '🍰🫧🌫': 'SO₄²⁻ (🌫) - proxy CCN',
         '🍰🫧💨': '!N₂',
         '🍰🫧❀🌈': 'Cap.Rad.IR<sub>❀∈{🏭, ⛽, 💧}</sub>',
         '🍰🫧📿🌈': 'Σ(🍰🫧❀🌈)<sub>❀∈{🏭,⛽,💧}</sub>',
@@ -100,12 +103,13 @@ const DESC = {
         '🍰💭': 'CCN - Eff.Cond nuageuse [0.3,1.0]',
     },
     '⚖️': {
-        '⚖️❀': 'Masse<sub>❀∈{🏭, ⛽, 🫁, 💨}</sub>',
+        '⚖️❀': 'Masse<sub>❀∈{🏭, ⛽, 🫁, 💨}</sub> (+ ⚖️🌫 proxy sulfate)',
         '⚖️💧': 'Masse H₂O totale',
         '⚖️🫧': 'Masse atmosphère sec',
         '⚖️🏭': '!Masse CO₂',
         '⚖️⛽': '!Masse CH₄',
         '⚖️🫁': '!Masse O₂ (🫁) [clé historique 🫁]',
+        '⚖️🌫': 'Masse SO₄²⁻ (🌫) [proxy CCN]',
         '⚖️💨': '!Masse N₂',
     },
     '💧': {
@@ -208,14 +212,15 @@ const FORM = {
         '🔋🌕': 'Puissance totale du noyau (W)'
     },
     '🫧': {
-        '🎈': '(⚖️🫧 × 🍎) / (4 × π × 📐²) / CONST.STANDARD_ATMOSPHERE_PA [pression hydrostatique] - Pression atmosphérique',
+        '🎈': 'P = ((⚖️🫧 + m_vapeur) × 🍎) / (4π×(📐×1000)²) / CONST.STANDARD_ATMOSPHERE_PA, avec m_vapeur = ⚖️🫧×🍰🫧💧/(1-🍰🫧💧) - Pression atmosphérique (air sec + vapeur)',
         '🧪': '!Masse molaire (kg/mol)',
         '📏🫧🧿': 'H × ln(P₀ / P_limit) où H = RT/(Mg) [von Kármán] - Ligne de Kármán (altitude où P = 0.01 Pa)',
         '📏🫧🛩': 'RT/(Mg) [équation hydrostatique] - Tropopause (échelle de hauteur atmosphérique)',
         '🍰🫧❀': 'Proportion radiative EDS - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨}',
         '🍰🫧❀🌈': 'Capacité radiative IR de ❀ - ∀ ❀ ∈ {🏭, ⛽, 💧}',
         '🍰🫧📿🌈': 'Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, ⛽, 💧} (pour normalisation)',
-        '🍰💭': 'clamp(0.4 + 0.6 × (⚖️🫁 / 1.08e18 + ⚖️⛽ / 5.2e12), 0.3, 1.0) - CCN - Eff.Cond nuageuse [0.3,1.0]'
+        '🍰🫧🌫': '⚖️🌫 / ⚖️🫧 (proxy sulfate pour microphysique nuageuse, hors normalisation air sec)',
+        '🍰💭': 'clamp(0.4 + 0.5×(⚖️🫁/1.08e18 + ⚖️⛽/5.2e12) + 0.1×(⚖️🌫/1.0e14), 0.3, 1.0) - CCN - Eff.Cond nuageuse [0.3,1.0]'
     },
     '💧': {
         '🍰💧🧊': 'Si T < ❄️ alors toute l\'eau restante (après vapeur) est glace, sinon glace polaire (10% à 0°C → 0% à 20°C) - ❄️ = 271.15K - (P-1)×1.0',
@@ -239,7 +244,7 @@ const FORM = {
         '🍰🪩🏜️': '🍰🪩🌍_ × (base_aridité + variabilité_régionale) où base_aridité = max(0, 1 - min(1, P_ann/1000)) × max(0, 1 - min(1, 🍰🫧☔/0.6)) et variabilité_régionale = 0.6 × max(0.5, min(1, (🧮🌡️_C-5)/10)) × max(0.5, 1-🍰🫧☔×0.6) - Déserts basés sur précipitations (P_ann < 1000 mm/an) et humidité relative (RH < 0.6) avec variabilité régionale',
         '🍰🪩🌍': 'land_coverage = L - 🍰🪩🌳 - 🍰🪩🏜️ où L = terre libre de glace. Absorbe automatiquement : steppes, prairies, toundras, montagnes (albedo ~0.18)',
         '🍰🪩🧊': 'min(🗻.🍰🗻🏔, 0.46 × (T_no_ice_K - 🧮🌡️) / CONST.T_NO_POLAR_ICE_C) où T_no_ice_K = CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS - Glace polaire basée sur température (10% à 15°C, 0% si T > 20°C)',
-        '🍰🪩⛅': '0.20 + 0.15 × ☁️ × 🍰💭',
+        '🍰🪩⛅': 'cloud_fraction = clamp((0.19 + 0.11×☁️) × cloud_optical_efficiency, 0, 0.75), avec cloud_optical_efficiency = (1.10 + 0.45×(ccn_ratio-1)) × pressure_factor × oxidation_soft_factor × temp_factor',
         '_contribution_glace': 'contribution_glace = (🪩🍰🧊 - albedo_base) × 🍰💧🧊 × 0.5',
         '_contribution_nuages': 'contribution_nuages = albedo × (1 - 🍰🪩⛅) + 🪩🍰⛅ × 🍰🪩⛅'
     },
@@ -259,9 +264,9 @@ const FORM = {
         '_note': '🗻 = Géologie (Couche A) : surfaces fixes déterminées par la géologie/relief, indépendantes des stocks d\'eau'
     },
     '⚖️': {
-        '⚖️❀': 'Masse ❀ - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨}',
+        '⚖️❀': 'Masse ❀ - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨} (+ ⚖️🌫 proxy sulfate)',
         '⚖️💧': 'Masse H2O totale',
-        '⚖️🫧': 'Masse atmosphère sec = ⚖️🏭 + ⚖️⛽ + ⚖️🫁 + ⚖️💨 (sans vapeur d\'eau)'
+        '⚖️🫧': 'Masse atmosphère sec = ⚖️🏭 + ⚖️⛽ + ⚖️🫁 + ⚖️💨 (sans vapeur d\'eau ; ⚖️🌫 = proxy CCN séparé)'
     }
 };
 

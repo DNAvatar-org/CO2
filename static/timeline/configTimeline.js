@@ -1,11 +1,12 @@
 // File: static/timeline/configTimeline.js - Configuration de la timeline (chronologie des époques)
 // Desc: Données de configuration pour la timeline et les événements interactifs
-// Version 1.2.0
+// Version 1.2.1
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
+// - v1.2.1: add sulfate proxy mass ⚖️🌫 for 🚂/📱 and disable verbose debug flags
 //
 // ============================================================================
 // DÉFINITION DE LA CHRONOLOGIE (TIMELINE)
@@ -317,6 +318,7 @@ const timeline = [
         '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm, niveau pré-industriel)
         '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
         '⚖️🫁': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
+        '⚖️🌫': 4.0e13, // sulfate_kg (proxy CCN pré-industriel)
         '⚖️💨': 3.97e18, // n2_kg (~78% de l'atmosphère moderne, calculé comme reste pour atteindre 5.15e18)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
@@ -354,6 +356,7 @@ const timeline = [
         '⚖️⛽': 5.5e12,
         '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
         '⚖️🫁': 1.18e18, // O2 ~23% masse air sec
+        '⚖️🌫': 8.0e13, // sulfate_kg (proxy CCN moderne)
         '⚖️💨': 3.97e18, // n2_kg (~78% de l'atmosphère moderne, calculé comme reste pour atteindre 5.15e18)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
@@ -425,7 +428,7 @@ window.CONFIG_COMPUTE.plotSmoothEnable = true;
 window.CONFIG_COMPUTE.plotSmoothSigmaBins = 8.0;//5.6;
 window.CONFIG_COMPUTE.maxPreviousLength = 300;  /* Historique convergence : 25 → 300 pour afficher tout le détail (évite pile LIFO trop petite) */
 // Logs diagnostics
-window.CONFIG_COMPUTE.logIceFixedDiagnostic = true;
-window.CONFIG_COMPUTE.logCloudProxyDiagnostic = true;
+window.CONFIG_COMPUTE.logIceFixedDiagnostic = false;
+window.CONFIG_COMPUTE.logCloudProxyDiagnostic = false;
 window.CONFIG_COMPUTE.logIrisDiagnostic = false;
 

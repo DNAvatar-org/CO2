@@ -1,7 +1,7 @@
 // ============================================================================
 // File: calculations_h2o.js - Calculs H2O (vapeur et nuages)
 // Desc: Séparation vapeur d'eau (effet de serre) et nuages (albedo)
-// Version 1.0.10
+// Version 1.0.11
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -16,6 +16,7 @@
 // - v1.0.8 : recalage humide 2025 (c_c_max base 0.006, iris 0.03, exposants précip 1.2/1.0) avec justification biblio
 // - v1.0.9 : fine-tuning léger 2025 (c_c_max base 0.0065, iris 0.02) pour remonter T sans perdre la stabilité
 // - v1.0.10 : cap vapeur final observé (AIRS/ERA5, ~7%/K) en fin d'itération Init
+// - v1.0.11 : propagation sulfate proxy 🍰🫧🌫 depuis ⚖️🌫 dans la composition atmosphérique avec vapeur
 // ============================================================================
 
 // TODO: Évolutions futures du cycle de l'eau
@@ -251,6 +252,7 @@ function calculateWaterPartition() {
     const mass_CO2 = DATA['⚖️']['⚖️🏭'];
     const mass_CH4 = DATA['⚖️']['⚖️⛽'];
     const mass_O2 = DATA['⚖️']['⚖️🫁'];
+    const mass_SULFATE = DATA['⚖️']['⚖️🌫'];
     const mass_N2 = DATA['⚖️']['⚖️💨'];
     
     // Calculer les fractions de l'air sec depuis les masses, puis multiplier par dry_air_fraction
@@ -258,11 +260,13 @@ function calculateWaterPartition() {
         DATA['🫧']['🍰🫧🏭'] = (mass_CO2 / atm_mass_total) * dry_air_fraction;
         DATA['🫧']['🍰🫧⛽'] = (mass_CH4 / atm_mass_total) * dry_air_fraction;
         DATA['🫧']['🍰🫧🫁'] = (mass_O2 / atm_mass_total) * dry_air_fraction;
+        DATA['🫧']['🍰🫧🌫'] = (mass_SULFATE / atm_mass_total) * dry_air_fraction;
         DATA['🫧']['🍰🫧💨'] = (mass_N2 / atm_mass_total) * dry_air_fraction;
     } else {
         DATA['🫧']['🍰🫧🏭'] = 0;
         DATA['🫧']['🍰🫧⛽'] = 0;
         DATA['🫧']['🍰🫧🫁'] = 0;
+        DATA['🫧']['🍰🫧🌫'] = 0;
         DATA['🫧']['🍰🫧💨'] = 0;
     }
     

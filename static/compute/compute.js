@@ -1,12 +1,13 @@
 // ============================================================================
 // File: static/compute/compute.js - Module de calcul de transfert radiatif
 // Desc: En français, dans l'architecture, je suis le module principal de calcul de transfert radiatif
-// Version 1.0.0
+// Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [January 2025]
 // Logs:
+// - v1.0.1: add sulfate mass key ⚖️🌫 in DATA init from epoch (proxy CCN, separate from dry-air mass)
 // ============================================================================
 
 // ============================================================================
@@ -77,6 +78,7 @@ function getMasses() {
     DATA['⚖️']['⚖️💧'] = h2o_kg;
     DATA['⚖️']['⚖️🫁'] = isFinite(EPOCH['⚖️🫁']) ? EPOCH['⚖️🫁'] : 0;
     DATA['⚖️']['⚖️💨'] = isFinite(EPOCH['⚖️💨']) ? EPOCH['⚖️💨'] : 0;  // N2 depuis EPOCH
+    DATA['⚖️']['⚖️🌫'] = isFinite(EPOCH['⚖️🌫']) ? EPOCH['⚖️🌫'] : 0;  // Sulfate (proxy CCN), séparé de l'air sec
     
     // ⚖️🫧 = masse atmosphérique totale (air sec, sans vapeur d'eau)
     // Si EPOCH définit ⚖️🫧, l'utiliser, sinon calculer comme somme des gaz

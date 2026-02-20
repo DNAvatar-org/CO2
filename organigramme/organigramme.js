@@ -1,6 +1,6 @@
 // File: organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.7
+// Version 1.0.8
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -14,6 +14,7 @@
 //   - v1.0.5: updateLabel applique la valeur sur tous les labels data-id (évite valeurs fantômes sur doublons DOM)
 //   - v1.0.6: logs diagnostics détaillés sur le pipeline d'affichage albedo_percent (écriture, overwrite, abort)
 //   - v1.0.7: bloquer le fallback calculateAlbedo en absence d'atmosphère (évite 2.1% affiché en ⚫)
+//   - v1.0.8: albedo_percents affiche le proxy sulfate 🌫 sur la ligne nuages (source DATA['🫧']['🍰🫧🌫'])
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -3961,6 +3962,10 @@ window.updateFluxLabels = function (eventId) {
     let albedoBreakdown = '';
 
     const createAlbedoComponents = (components) => {
+        const sulfate_frac = (window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🍰🫧🌫'] != null && Number.isFinite(window.DATA['🫧']['🍰🫧🌫']))
+            ? window.DATA['🫧']['🍰🫧🌫']
+            : 0;
+        const sulfate_pct = (sulfate_frac * 100).toFixed(2);
         components.forEach(comp => {
             comp.weight = (comp.coverage / 100) * parseFloat(comp.albedo);
         });
@@ -3973,7 +3978,8 @@ window.updateFluxLabels = function (eventId) {
             if (isImage) {
                 return `<span ${titleAttr} style="cursor: help;"><img src="${comp.emoji}" alt="${label}"> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
             } else {
-                return `<span ${titleAttr} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
+                const sulfateHint = (comp.emoji === window.CHARS.CLOUD) ? ` <span style="font-size: 0.75em;">(🌫${sulfate_pct}%)</span>` : '';
+                return `<span ${titleAttr} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_int}% <span style="font-size: 0.8em;">x${comp.albedo}</span>${sulfateHint}</span>`;
             }
         }).join('<br>');
     };
