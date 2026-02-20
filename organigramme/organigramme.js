@@ -1,6 +1,6 @@
 // File: organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.13
+// Version 1.0.16
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -20,6 +20,9 @@
 //   - v1.0.11: ordre breakdown albédo = ciel d'abord, séparateur horizontal, puis surfaces sol
 //   - v1.0.12: albedo_percents affiche les couvertures avec 1 décimale (lecture plus stable)
 //   - v1.0.13: centrage de la fenetre albedo_percents dans la zone right (sans recentrer son contenu)
+//   - v1.0.14: label sous 🪩 pour barycentre fine-tuning cloud (🧩🔺n%🔻)
+//   - v1.0.15: format bary sous 🪩 sur une ligne: 🔺🧩🔻 n%
+//   - v1.0.16: format bary sous 🪩 sur 2 lignes (🔺🧩🔻 puis n%), style texte standard
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -1412,8 +1415,14 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
             // [1,2] = Bottom (bas)
             if (col === 1 && row === 2 && bottom && bottom.length > 0) {
                 const labelContainer = document.createElement('div');
-                // Si 2 éléments, aligner en haut pour entourer le trait du cercle, sinon centrer
-                labelContainer.className = 'flux-label-container ' + (bottom.length === 2 ? 'flux-label-container-top' : 'flux-label-container-center');
+                const hasFineTuningBary = bottom.some(labelData => getLabelDataId(labelData) === 'fine_tuning_cloud_bary');
+                // fine_tuning_cloud_bary: aligner en bas pour préserver le gap avec 🪩
+                // Sinon, comportement historique: 2 éléments en haut, 1 élément centré.
+                if (hasFineTuningBary) {
+                    labelContainer.className = 'flux-label-container flux-label-container-bottom';
+                } else {
+                    labelContainer.className = 'flux-label-container ' + (bottom.length === 2 ? 'flux-label-container-top' : 'flux-label-container-center');
+                }
 
                 bottom.forEach(labelData => {
                     const text = getLabelText(labelData);
@@ -1421,6 +1430,10 @@ function createCell(x, y, radius, fillColor, strokeColor, logo, left = [], right
                     const label = document.createElement('div');
                     label.className = 'flux-label';
                     if (dataId) label.setAttribute('data-id', dataId);
+                    if (dataId === 'fine_tuning_cloud_bary') {
+                        // Décaler légèrement vers le bas pour conserver un espace visuel propre sous 🪩
+                        label.style.marginTop = '6px';
+                    }
                     // Si c'est un bouton, ajouter la classe buttonData
                     if (nodeId) {
                         const node = nodes.find(n => n.id === nodeId);
@@ -4461,6 +4474,12 @@ window.updateFluxLabels = function (eventId) {
     const passing_albedo_percent = (1 - albedo_num) * 100;
     // S'assurer que le résultat est correct (0% si albedo = 1, 100% si albedo = 0)
     updateLabel('passing_albedo_percent', passing_albedo_percent);
+
+    // Afficher le barycentre fine-tuning CLOUD_SW sous le bouton 🪩 (source: sync:tuning)
+    const baryByGroup = window.FINE_TUNING_BARY_PERCENT_BY_GROUP;
+    const cloudBaryRaw = (baryByGroup && baryByGroup.CLOUD_SW != null) ? Number(baryByGroup.CLOUD_SW) : 50;
+    const cloudBary = Number.isFinite(cloudBaryRaw) ? Math.max(0, Math.min(100, cloudBaryRaw)) : 50;
+    updateLabel('fine_tuning_cloud_bary', `🔺🧩🔻<br>${cloudBary.toFixed(0)}%`, 'text');
 
     // Ne plus forcer automatiquement le bouton albedo en off/gris
     // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%

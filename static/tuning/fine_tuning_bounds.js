@@ -1,6 +1,6 @@
 // File: fine_tuning_bounds.js - Bornes de fine-tuning min/max
 // Desc: En français, dans l'architecture, je définis les bornes d'essais (min, moyenne, max) pour calibrer sans sortir des plages visées.
-// Version 1.2.0
+// Version 1.3.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -9,6 +9,7 @@
 // - v1.0.0: cible CLOUD_SW.CLOUD_FRACTION_BASE avec 3 points d'essai (min/moy/max)
 // - v1.1.0: plusieurs paramètres CLOUD_SW avec bornes min/max pour essais batch
 // - v1.2.0: biblio intégrée dans chaque target (source + effet + référence)
+// - v1.3.0: couverture complète biblio CLOUD_SW + SOLVER (toutes entrées avec bornes)
 
 window.FINE_TUNING_BOUNDS = {
     targets: [
@@ -22,6 +23,17 @@ window.FINE_TUNING_BOUNDS = {
             source: 'CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne',
             effect: 'negative',
             biblio_ref: 'CLOUD_FRACTION_BASE'
+        },
+        {
+            group: 'CLOUD_SW',
+            key: 'CLOUD_FRACTION_INDEX_GAIN',
+            min: 0.08,
+            max: 0.14,
+            unit: 'ratio',
+            note: 'gain index nuageux',
+            source: 'Sundqvist (1989) + ajustement interne cloud_index -> fraction optique',
+            effect: 'negative',
+            biblio_ref: 'CLOUD_FRACTION_INDEX_GAIN'
         },
         {
             group: 'CLOUD_SW',
@@ -55,6 +67,72 @@ window.FINE_TUNING_BOUNDS = {
             source: 'Proxy sulfate interne SO4(2-) pour microphysique nuageuse',
             effect: 'negative',
             biblio_ref: 'SULFATE_BOOST_SCALE'
+        },
+        {
+            group: 'CLOUD_SW',
+            key: 'SULFATE_BOOST_MAX',
+            min: 0.20,
+            max: 0.45,
+            unit: 'ratio',
+            note: 'plafond du boost sulfate',
+            source: 'Borne numerique de securite (evite emballement du proxy)',
+            effect: 'negative',
+            biblio_ref: 'SULFATE_BOOST_MAX'
+        },
+        {
+            group: 'CLOUD_SW',
+            key: 'TEMP_FACTOR_REF_K',
+            min: 282,
+            max: 294,
+            unit: 'K',
+            note: 'référence thermique nuages SW',
+            source: 'Reference climat moderne (~15C)',
+            effect: 'mixed',
+            biblio_ref: 'TEMP_FACTOR_REF_K'
+        },
+        {
+            group: 'SOLVER',
+            key: 'TOL_MIN_WM2',
+            min: 0.03,
+            max: 0.10,
+            unit: 'W/m²',
+            note: 'tolérance flux minimale',
+            source: 'Choix numerique de convergence (stabilite/temps de calcul)',
+            effect: 'neutral_on_physics',
+            biblio_ref: 'TOL_MIN_WM2'
+        },
+        {
+            group: 'SOLVER',
+            key: 'MAX_SEARCH_STEP_K',
+            min: 60,
+            max: 140,
+            unit: 'K',
+            note: 'pas Search max',
+            source: 'Choix numerique solveur Search',
+            effect: 'neutral_on_physics',
+            biblio_ref: 'MAX_SEARCH_STEP_K'
+        },
+        {
+            group: 'SOLVER',
+            key: 'MAX_SEARCH_STEP_LARGE_K',
+            min: 100,
+            max: 200,
+            unit: 'K',
+            note: 'pas Search large',
+            source: 'Choix numerique solveur Search (grands deltas)',
+            effect: 'neutral_on_physics',
+            biblio_ref: 'MAX_SEARCH_STEP_LARGE_K'
+        },
+        {
+            group: 'SOLVER',
+            key: 'LARGE_DELTA_FACTOR',
+            min: 6,
+            max: 16,
+            unit: 'ratio',
+            note: 'seuil bascule grand delta',
+            source: 'Seuil de bascule vers cap large du pas Search',
+            effect: 'neutral_on_physics',
+            biblio_ref: 'LARGE_DELTA_FACTOR'
         }
     ]
 };

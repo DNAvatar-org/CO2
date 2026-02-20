@@ -54,7 +54,7 @@
         </div>
 
         <div id="fine-tuning" class="results replied">
-            <h2>🧩 Fine-tuning (littérature) <button class="toggle-button" onclick="runFineTuningTrials(); return false;">Essais min/moy/max</button></h2>
+            <h2>🧩 Fine-tuning 🪩</h2>
             <div id="fine-tuning-content"></div>
         </div>
         
@@ -882,19 +882,100 @@
             return `<div class="config-value">${logo} <strong>${key}</strong> = ${pretty}${label ? ` — ${label}` : ''}</div>`;
         }
 
-        function renderBiblioLines(logo, title, biblioObj) {
-            let html = `<div class="config-section"><div class="config-value"><strong>${logo} ${title}</strong></div>`;
+        function getTuningLineLogo(groupKey, key) {
+            if (groupKey === 'SOLVER') {
+                if (key === 'TOL_MIN_WM2') return '🔬';
+                if (key === 'LARGE_DELTA_FACTOR') return '🔺🧲';
+                if (key === 'MAX_SEARCH_STEP_K' || key === 'MAX_SEARCH_STEP_LARGE_K') return '🌡️';
+                return '🧮';
+            }
+            if (groupKey === 'CLOUD_SW') {
+                if (key.indexOf('SULFATE') === 0) return '🌫';
+                if (key.indexOf('CLOUD_') === 0) return '☁️';
+                if (key.indexOf('OPTICAL_') === 0) return '🧪';
+                if (key.indexOf('TEMP_') === 0) return '🌡️';
+                return '⛅';
+            }
+            return '•';
+        }
+
+        function getFineTuningValue(target) {
+            if (!target || !window.TUNING) return null;
+            if (target.group === 'SOLVER') {
+                if (!window.TUNING.SOLVER) return null;
+                return window.TUNING.SOLVER[target.key];
+            }
+            if (!window.TUNING[target.group]) return null;
+            return window.TUNING[target.group][target.key];
+        }
+
+        function syncSolverConfigFromTuning() {
+            if (!window.CONFIG_COMPUTE || !window.TUNING || !window.TUNING.SOLVER) return;
+            const solver = window.TUNING.SOLVER;
+            window.CONFIG_COMPUTE.tolMinWm2 = solver.TOL_MIN_WM2;
+            window.CONFIG_COMPUTE.maxSearchStepK = solver.MAX_SEARCH_STEP_K;
+            window.CONFIG_COMPUTE.maxSearchStepLargeK = solver.MAX_SEARCH_STEP_LARGE_K;
+            window.CONFIG_COMPUTE.largeDeltaFactor = solver.LARGE_DELTA_FACTOR;
+        }
+
+        function renderBiblioLines(logo, title, groupKey, biblioObj) {
+            const groupTargets = getFineTuningTargetsByGroup(groupKey);
+            const bary = getFineTuningBaryPercent(groupKey);
+            let controlsHtml = '';
+            if (groupTargets.length) {
+                controlsHtml = ` <span style="margin-left:8px;">🎚️</span>
+                    <input id="fine-tuning-bary-slider-${groupKey}" type="range" min="0" max="100" step="1" value="${bary.toFixed(0)}" oninput="onFineTuningBaryInput('${groupKey}', this.value)">
+                    <span id="fine-tuning-bary-value-${groupKey}">${bary.toFixed(0)}%</span>
+                    <button class="toggle-button" onclick="applyFineTuningBaryGroupAndRun('${groupKey}', document.getElementById('fine-tuning-bary-slider-${groupKey}').value); return false;">▶️</button>`;
+            }
+            let html = `<div class="config-section"><div class="config-value"><strong>${logo} ${title}</strong>${controlsHtml}</div>`;
             if (!biblioObj || Object.keys(biblioObj).length === 0) {
                 html += `<div class="config-value">— aucune source renseignée</div></div>`;
                 return html;
             }
+            const targets = getFineTuningTargets();
+            const targetByKey = {};
+            for (let i = 0; i < targets.length; i++) {
+                const t = targets[i];
+                targetByKey[t.group + '.' + t.key] = t;
+            }
             Object.keys(biblioObj).forEach(function (k) {
                 const entry = biblioObj[k];
                 const src = entry && entry.source ? entry.source : 'n/a';
-                const effect = entry && entry.effect_on_warming_when_increased ? entry.effect_on_warming_when_increased : 'n/a';
-                const val = entry ? formatTuningValue(entry.value) : 'n/a';
-                html += `<div class="config-value">• ${k} = ${val} | source: ${src} | effet: ${effect}</div>`;
+                const target = targetByKey[groupKey + '.' + k];
+                const activeVal = target ? getFineTuningValue(target) : (entry ? entry.value : null);
+                const minStr = target ? formatTuningValue(target.min) : 'n/a';
+                const maxStr = target ? formatTuningValue(target.max) : 'n/a';
+                html += `<div class="config-value">${logo} ${k} 🔻 : ${formatTuningValue(activeVal)} [${minStr} , ${maxStr}] #${src}</div>`;
             });
+            html += `</div>`;
+            return html;
+        }
+
+        function renderMergedCategory(groupKey, titleLabel, titleIcon, showHeader) {
+            const groupTargets = getFineTuningTargetsByGroup(groupKey);
+            if (!groupTargets.length) return '';
+            const bary = getFineTuningBaryPercent(groupKey);
+            let controlsHtml = '';
+            if (groupKey === 'SOLVER') {
+                controlsHtml = `<span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px;">
+                    <input id="fine-tuning-bary-slider-${groupKey}" type="range" min="0" max="100" step="1" value="${bary.toFixed(0)}" oninput="onFineTuningBaryInput('${groupKey}', this.value)">
+                    <span id="fine-tuning-bary-value-${groupKey}">${bary.toFixed(0)}%</span>
+                    <button class="toggle-button" onclick="applyFineTuningBaryGroupAndRun('${groupKey}', document.getElementById('fine-tuning-bary-slider-${groupKey}').value); return false;">▶️</button>
+                </span>`;
+            }
+            let html = `<div class="config-section">`;
+            if (showHeader !== false) {
+                html += `<div class="config-value" style="display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:nowrap;">
+                    <strong style="white-space:nowrap;">${titleIcon} ${titleLabel} 🎚️</strong>${controlsHtml}
+                </div>`;
+            }
+            for (let i = 0; i < groupTargets.length; i++) {
+                const target = groupTargets[i];
+                const logo = getTuningLineLogo(groupKey, target.key);
+                const activeVal = getFineTuningValue(target);
+                html += `<div class="config-value">${logo} ${target.key} 🔻 ${formatTuningValue(activeVal)} [${formatTuningValue(target.min)} , ${formatTuningValue(target.max)}]${target.note ? ` — ${target.note}` : ''}${target.source ? ` #${target.source}` : ''}</div>`;
+            }
             html += `</div>`;
             return html;
         }
@@ -903,7 +984,7 @@
             if (!window.FINE_TUNING_BOUNDS || !Array.isArray(window.FINE_TUNING_BOUNDS.targets)) return [];
             if (!window.TUNING) return [];
             return window.FINE_TUNING_BOUNDS.targets.filter(function (target) {
-                return !!(target && target.group && target.key && window.TUNING[target.group] && window.TUNING[target.group][target.key] != null);
+                return !!(target && target.group && target.key && getFineTuningValue(target) != null);
             });
         }
 
@@ -919,20 +1000,32 @@
         }
 
         function setFineTuningValue(target, value) {
+            if (target.group === 'SOLVER') {
+                if (!window.TUNING.SOLVER) return;
+                window.TUNING.SOLVER[target.key] = value;
+                syncSolverConfigFromTuning();
+                return;
+            }
             window.TUNING[target.group][target.key] = value;
         }
 
-        function getFineTuningBaryPercent() {
-            if (window.FINE_TUNING_BARY_PERCENT == null || !Number.isFinite(Number(window.FINE_TUNING_BARY_PERCENT))) {
-                window.FINE_TUNING_BARY_PERCENT = 50;
+        function getFineTuningBaryPercent(groupKey) {
+            if (!window.FINE_TUNING_BARY_PERCENT_BY_GROUP) {
+                window.FINE_TUNING_BARY_PERCENT_BY_GROUP = { CLOUD_SW: 50, SOLVER: 50 };
             }
-            return Number(window.FINE_TUNING_BARY_PERCENT);
+            if (window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey] == null || !Number.isFinite(Number(window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey]))) {
+                window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey] = 50;
+            }
+            return Number(window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey]);
         }
 
-        function setFineTuningBaryPercent(percentRaw) {
+        function setFineTuningBaryPercent(groupKey, percentRaw) {
             const p = Number(percentRaw);
             const bounded = Math.max(0, Math.min(100, Number.isFinite(p) ? p : 50));
-            window.FINE_TUNING_BARY_PERCENT = bounded;
+            if (!window.FINE_TUNING_BARY_PERCENT_BY_GROUP) {
+                window.FINE_TUNING_BARY_PERCENT_BY_GROUP = { CLOUD_SW: 50, SOLVER: 50 };
+            }
+            window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey] = bounded;
             return bounded;
         }
 
@@ -943,27 +1036,66 @@
             return min + (max - min) * alpha;
         }
 
-        function applyFineTuningBaryAll(percentRaw, refreshPanel) {
+        function getFineTuningTargetsByGroup(groupKey) {
             const targets = getFineTuningTargets();
+            return targets.filter(function (target) { return target.group === groupKey; });
+        }
+
+        function getFineTuningBaryByGroupSnapshot() {
+            return {
+                CLOUD_SW: getFineTuningBaryPercent('CLOUD_SW'),
+                SOLVER: getFineTuningBaryPercent('SOLVER')
+            };
+        }
+
+        function applyFineTuningBaryGroup(groupKey, percentRaw, refreshPanel) {
+            const targets = getFineTuningTargetsByGroup(groupKey);
             if (!targets.length) return;
-            const bary = setFineTuningBaryPercent(percentRaw);
+            const bary = setFineTuningBaryPercent(groupKey, percentRaw);
             for (let i = 0; i < targets.length; i++) {
                 const target = targets[i];
                 const value = getFineTuningBaryValue(target, bary);
                 setFineTuningValue(target, value);
             }
+            syncSolverConfigFromTuning();
             if (refreshPanel !== false) displayFineTuning();
         }
 
-        function applyFineTuningBaryAllAndRun(percentRaw) {
-            applyFineTuningBaryAll(percentRaw, true);
+        function applyFineTuningBaryAll(percentRaw, refreshPanel) {
+            const targets = getFineTuningTargets();
+            if (!targets.length) return;
+            applyFineTuningBaryGroup('CLOUD_SW', percentRaw, false);
+            applyFineTuningBaryGroup('SOLVER', percentRaw, false);
+            syncSolverConfigFromTuning();
+            if (refreshPanel !== false) displayFineTuning();
+        }
+
+        function applyFineTuningBaryGroupAndRun(groupKey, percentRaw) {
+            applyFineTuningBaryGroup(groupKey, percentRaw, true);
             if (window.FINE_TUNING_RUNNING === true || window.COMPUTE_RUNNING === true) return;
+            if (window !== window.top) {
+                const targets = getFineTuningTargetsByGroup(groupKey);
+                const updates = targets.map(function (target) {
+                    return {
+                        group: target.group,
+                        key: target.key,
+                        value: getFineTuningValue(target)
+                    };
+                });
+                const payload = {
+                    baryByGroup: getFineTuningBaryByGroupSnapshot(),
+                    updates: updates,
+                    run: true
+                };
+                window.parent.postMessage({ type: 'sync:tuning', payload: payload }, '*');
+                return;
+            }
             if (typeof runTest === 'function') runTest();
         }
 
-        function onFineTuningBaryInput(percentRaw) {
-            const bary = setFineTuningBaryPercent(percentRaw);
-            const valueLabel = document.getElementById('fine-tuning-bary-value');
+        function onFineTuningBaryInput(groupKey, percentRaw) {
+            const bary = setFineTuningBaryPercent(groupKey, percentRaw);
+            const valueLabel = document.getElementById('fine-tuning-bary-value-' + groupKey);
             if (valueLabel) valueLabel.textContent = bary.toFixed(0) + '%';
         }
 
@@ -1075,69 +1207,25 @@
             const tuningDiv = document.getElementById('fine-tuning');
             const tuningContent = document.getElementById('fine-tuning-content');
             if (!tuningDiv || !tuningContent) return;
-
-            const solverCfg = window.CONFIG_COMPUTE ? window.CONFIG_COMPUTE : {};
-            const cloud = (window.TUNING && window.TUNING.CLOUD_SW) ? window.TUNING.CLOUD_SW : {};
-            const biblio = window.TUNING_BIBLIO ? window.TUNING_BIBLIO : {};
+            const cloudBary = getFineTuningBaryPercent('CLOUD_SW');
+            const fineTitle = tuningDiv.querySelector('h2');
+            if (fineTitle) {
+                fineTitle.style.display = 'flex';
+                fineTitle.style.alignItems = 'center';
+                fineTitle.style.justifyContent = 'flex-start';
+                fineTitle.style.flexWrap = 'nowrap';
+                fineTitle.style.gap = '8px';
+                fineTitle.innerHTML = `🧩 Fine-tuning 🪩
+                    <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">🔺
+                        <input id="fine-tuning-bary-slider-CLOUD_SW-header" type="range" min="0" max="100" step="1" value="${cloudBary.toFixed(0)}" oninput="onFineTuningBaryInput('CLOUD_SW', this.value); var v=document.getElementById('fine-tuning-bary-value-CLOUD_SW-header'); if(v) v.textContent=this.value + '%';">
+                        <span id="fine-tuning-bary-value-CLOUD_SW-header">${cloudBary.toFixed(0)}%</span>
+                        <button class="toggle-button" onclick="applyFineTuningBaryGroupAndRun('CLOUD_SW', document.getElementById('fine-tuning-bary-slider-CLOUD_SW-header').value); return false;">▶️</button>🔻
+                    </span>`;
+            }
 
             let html = '';
-
-            html += `<div class="config-section"><div class="config-value"><strong>🧮 Solveur (🔬)</strong></div>`;
-            html += renderTuningParamLine('🔬', 'TOL_MIN_WM2', solverCfg.tolMinWm2, "tolérance flux minimale");
-            html += renderTuningParamLine('🔺🧲', 'LARGE_DELTA_FACTOR', solverCfg.largeDeltaFactor, "seuil grand delta");
-            html += renderTuningParamLine('🌡️', 'MAX_SEARCH_STEP_K', solverCfg.maxSearchStepK, "pas Search max");
-            html += renderTuningParamLine('🌡️', 'MAX_SEARCH_STEP_LARGE_K', solverCfg.maxSearchStepLargeK, "pas Search large");
-            html += `</div>`;
-
-            html += `<div class="config-section"><div class="config-value"><strong>☁️ Nuages SW / CCN (🪩, ⛅, 🌫)</strong></div>`;
-            html += renderTuningParamLine('☁️', 'CLOUD_FRACTION_BASE', cloud.CLOUD_FRACTION_BASE, "base fraction nuageuse");
-            html += renderTuningParamLine('☁️', 'CLOUD_FRACTION_INDEX_GAIN', cloud.CLOUD_FRACTION_INDEX_GAIN, "gain vs index ☁️");
-            html += renderTuningParamLine('⛅', 'CLOUD_FRACTION_MAX', cloud.CLOUD_FRACTION_MAX, "borne physique max");
-            html += renderTuningParamLine('🌫', 'SULFATE_BOOST_SCALE', cloud.SULFATE_BOOST_SCALE, "gain sulfate proxy");
-            html += renderTuningParamLine('🌫', 'SULFATE_BOOST_MAX', cloud.SULFATE_BOOST_MAX, "cap sulfate");
-            html += renderTuningParamLine('🫁', 'CCN_O2_WEIGHT', cloud.CCN_O2_WEIGHT, "poids oxygène dans CCN");
-            html += renderTuningParamLine('🌳', 'BIOMASS_GAIN', cloud.BIOMASS_GAIN, "gain biomasse");
-            html += renderTuningParamLine('🧪', 'OPTICAL_EFF_BASE', cloud.OPTICAL_EFF_BASE, "base efficacité optique");
-            html += renderTuningParamLine('🧪', 'OPTICAL_EFF_CCN_GAIN', cloud.OPTICAL_EFF_CCN_GAIN, "sensibilité optique au CCN");
-            html += renderTuningParamLine('🎈', 'PRESSURE_FACTOR_MAX', cloud.PRESSURE_FACTOR_MAX, "borne facteur pression");
-            html += renderTuningParamLine('🌡️', 'TEMP_FACTOR_REF_K', cloud.TEMP_FACTOR_REF_K, "référence thermique");
-            html += `</div>`;
-
-            html += renderBiblioLines('📚', 'Biblio CLOUD_SW', biblio.CLOUD_SW);
-            html += renderBiblioLines('📚', 'Biblio SOLVER', biblio.SOLVER);
-
-            const targets = getFineTuningTargets();
-            if (targets.length) {
-                const bary = getFineTuningBaryPercent();
-                html += `<div class="config-section">`;
-                html += `<div class="config-value"><strong>🎚️ Jauge barycentre global (min→max)</strong></div>`;
-                html += `<div class="config-value">`;
-                html += `<input id="fine-tuning-bary-slider" type="range" min="0" max="100" step="1" value="${bary.toFixed(0)}" oninput="onFineTuningBaryInput(this.value)">`;
-                html += ` <span id="fine-tuning-bary-value">${bary.toFixed(0)}%</span>`;
-                html += ` <button class="toggle-button" onclick="applyFineTuningBaryAllAndRun(document.getElementById('fine-tuning-bary-slider').value); return false;">Appliquer partout</button>`;
-                html += `</div>`;
-                html += `</div>`;
-
-                html += `<div class="config-section"><div class="config-value"><strong>🎯 Plages actives (convergence live)</strong></div>`;
-                for (let t = 0; t < targets.length; t++) {
-                    const target = targets[t];
-                    const currentValue = (window.TUNING && window.TUNING[target.group]) ? window.TUNING[target.group][target.key] : null;
-                    html += `<div class="config-value">paramètre: ${target.group}.${target.key} | bornes: [${formatTuningValue(target.min)} ; ${formatTuningValue(target.max)}] | actif: ${formatTuningValue(currentValue)}${target.note ? ` | ${target.note}` : ''}${target.source ? ` | source: ${target.source}` : ''}${target.effect ? ` | effet: ${target.effect}` : ''}</div>`;
-                    const rows = (Array.isArray(window.FINE_TUNING_TRIALS) ? window.FINE_TUNING_TRIALS : []).filter(function (row) {
-                        return row.param_group === target.group && row.param_key === target.key;
-                    });
-                    if (rows.length > 0) {
-                        for (let i = 0; i < rows.length; i++) {
-                            const row = rows[i];
-                            const tInit = Number.isFinite(row.T_init_C) ? row.T_init_C.toFixed(1) : 'n/a';
-                            const dInit = Number.isFinite(row.delta_init) ? row.delta_init.toFixed(3) : 'n/a';
-                            const tFinal = Number.isFinite(row.T_final_C) ? row.T_final_C.toFixed(1) : 'n/a';
-                            html += `<div class="config-value">• ${row.label} | ${row.param_key}=${formatTuningValue(row.param_value)} | Init: T=${tInit}°C, 🔺🧲=${dInit} | Final: T=${tFinal}°C</div>`;
-                        }
-                    }
-                }
-                html += `</div>`;
-            }
+            html += renderMergedCategory('CLOUD_SW', 'CLOUD_SW', '☁️', false);
+            html += renderMergedCategory('SOLVER', 'Solveur', '🧮', true);
 
             tuningContent.innerHTML = html;
             tuningDiv.style.display = 'block';
@@ -1579,6 +1667,22 @@
                     Object.keys(DATA).forEach(k => { window.DATA[k] = DATA[k]; });
                     if (typeof displayResults === 'function') displayResults(window.DATA);
                     if (typeof displayConvergence === 'function') displayConvergence();
+                }
+            }
+            if (event.data && event.data.type === 'sync:tuning') {
+                const p = event.data.payload;
+                if (p && p.updates && Array.isArray(p.updates) && window.TUNING) {
+                    p.updates.forEach(function (u) {
+                        if (!u || !u.group || !u.key) return;
+                        if (!window.TUNING[u.group]) return;
+                        window.TUNING[u.group][u.key] = u.value;
+                    });
+                    syncSolverConfigFromTuning();
+                    if (p.baryByGroup) {
+                        if (p.baryByGroup.CLOUD_SW != null) setFineTuningBaryPercent('CLOUD_SW', p.baryByGroup.CLOUD_SW);
+                        if (p.baryByGroup.SOLVER != null) setFineTuningBaryPercent('SOLVER', p.baryByGroup.SOLVER);
+                    }
+                    displayFineTuning();
                 }
             }
         });

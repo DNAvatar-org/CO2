@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.5
+// Version 1.1.7
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -11,6 +11,8 @@
 // - v1.1.4: runComputeInParent init DATA[📅]/[📜] si race avec setEpoch ; guard initForConfig false
 // - v1.1.5: runComputeInParent appelle getEnabledStates() avant calcul (source de vérité anim = bouton visu)
 // - v1.1.5: appel direct getEnabledStates() sans typeof (règle _REGLE_JS_CRASH)
+// - v1.1.6: event sync:tuning (bary + updates) pour appliquer tuning sur parent/visu puis run unique
+// - v1.1.7: support baryByGroup (CLOUD_SW/SOLVER) pour jauges séparées
 
 (function () {
     'use strict';
@@ -39,6 +41,38 @@
                 ticTime: window.SYNC_STATE.ticTime
             }
         }, '*');
+    }
+
+    function syncTuningToScie(payload) {
+        var iframe = getIframe();
+        iframe.contentWindow.postMessage({
+            type: 'sync:tuning',
+            payload: payload
+        }, '*');
+    }
+
+    function applyTuningPayload(payload) {
+        if (!payload || !payload.updates || !Array.isArray(payload.updates)) return;
+        if (!window.TUNING) return;
+        payload.updates.forEach(function (u) {
+            if (!u || !u.group || !u.key) return;
+            if (!window.TUNING[u.group]) return;
+            window.TUNING[u.group][u.key] = u.value;
+        });
+        if (window.TUNING.SOLVER && window.CONFIG_COMPUTE) {
+            window.CONFIG_COMPUTE.tolMinWm2 = window.TUNING.SOLVER.TOL_MIN_WM2;
+            window.CONFIG_COMPUTE.maxSearchStepK = window.TUNING.SOLVER.MAX_SEARCH_STEP_K;
+            window.CONFIG_COMPUTE.maxSearchStepLargeK = window.TUNING.SOLVER.MAX_SEARCH_STEP_LARGE_K;
+            window.CONFIG_COMPUTE.largeDeltaFactor = window.TUNING.SOLVER.LARGE_DELTA_FACTOR;
+        }
+        if (payload.baryPercent != null) {
+            window.FINE_TUNING_BARY_PERCENT = payload.baryPercent;
+        }
+        if (payload.baryByGroup) {
+            window.FINE_TUNING_BARY_PERCENT_BY_GROUP = window.FINE_TUNING_BARY_PERCENT_BY_GROUP || {};
+            if (payload.baryByGroup.CLOUD_SW != null) window.FINE_TUNING_BARY_PERCENT_BY_GROUP.CLOUD_SW = payload.baryByGroup.CLOUD_SW;
+            if (payload.baryByGroup.SOLVER != null) window.FINE_TUNING_BARY_PERCENT_BY_GROUP.SOLVER = payload.baryByGroup.SOLVER;
+        }
     }
 
     function applyToVisu(payload, fromScie) {
@@ -199,12 +233,23 @@
             applyToVisu(p, true);
             window.runComputeInParent();
         });
+        window.addEventListener('message', function (event) {
+            if (!event.data || event.data.type !== 'sync:tuning') return;
+            var p = event.data.payload;
+            applyTuningPayload(p);
+            if (p && p.run === true) window.runComputeInParent();
+        });
 
         window.CO2_EVENTS.on('sync:state', function (payload) {
             if (payload.epochId !== undefined) window.SYNC_STATE.epochId = payload.epochId;
             if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
             if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
             syncToScie(payload);
+        });
+        window.CO2_EVENTS.on('sync:tuning', function (payload) {
+            applyTuningPayload(payload);
+            syncTuningToScie(payload);
+            if (payload && payload.run === true) window.runComputeInParent();
         });
     }
 
