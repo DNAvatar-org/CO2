@@ -1,15 +1,10 @@
-/* File: organigramme.css - Styles pour le diagramme de flux énergétique */
-/* Desc: Feuille de style CSS pour l'organigramme de flux énergétique */
-/* Version 1.0.3 */
-/* © 2025 DNAvatar.org - Arnaud Maignan */
-/* Licensed under Apache License 2.0 with Commons Clause. */
-/* See LICENSE_HEADER.txt for full terms. */
-/* Date: [June 08, 2025] [HH:MM UTC+1] */
-/* Logs: */
-/*   - Initial version: extraction des styles CSS depuis demo_flux_energetique_01.html */
-/*   - Added custom tooltip styles with 0.5s delay */
-/*   - v1.0.2: élargissement léger du bloc gauche (diagramme) */
-/*   - v1.0.3: centrage horizontal du label albedo_percents dans sa case */
+// File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
+// Desc: Feuille de style CSS pour l'organigramme de flux énergétique
+// Version 1.0.4
+// © 2025 DNAvatar.org - Arnaud Maignan
+// Licensed under Apache License 2.0 with Commons Clause.
+// See LICENSE_HEADER.txt for full terms.
+// Logs: v1.0.4 grille albedo (flux-grid-item top/bottom, #cell-albedo-btn overflow)
 
 .controle-simulation {
     padding: 0 !important;
@@ -106,6 +101,17 @@
 .flux-grid-item-right {
     justify-content: flex-start;
 }
+
+/* Ligne du haut (row 0) : aligner le contenu en haut de la cellule (0.0% en top, pas en bottom) */
+.flux-grid-item-top {
+    align-items: flex-start;
+}
+
+/* Ligne du bas (row 2) : aligner le contenu en haut de la cellule pour que le 50% ne chevauche pas la boule à facette */
+.flux-grid-item-bottom {
+    align-items: flex-start;
+}
+
 .flux-circle {
     width: 80px;
     height: 80px;
@@ -345,6 +351,11 @@
 .flux-button-cell.unselected .flux-circle-bg:hover {
     /* Si non sélectionné : swap vers couleur, contour reste blanc */
     filter: grayscale(0%) !important;
+}
+
+/* Albédo (boule à facette) : ne pas rogner le cercle pour voir la boule en entier */
+#cell-albedo-btn .flux-circle-bg {
+    overflow: visible;
 }
 
 /* Bouton checked : couleur avec contour vert (identique à epoch-btn.selected) */
