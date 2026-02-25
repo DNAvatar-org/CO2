@@ -15,6 +15,7 @@
 // Logs: v1.0.11 - Diagnostic aliasing CO2 bande 15µm (13–17µm) : table sigma/kappa + ratio modèle/théorie
 // Logs: v1.0.12 - Grille spectrale λ adaptative (zones CO2/CH4/H2O densifiées) + lambda_weights non-uniformes
 // Logs: v1.0.13 - retrait gardes défensives CONFIG_COMPUTE sur les derniers ajouts (règle crash)
+// Logs: v1.0.14 - Grille λ : retour aux bornes d'origine (calculs spectraux inchangés)
 
 
 function temperatureAtZ(z) {
@@ -143,6 +144,7 @@ function calculateFluxForT0() {
         expected_points = Math.max(24, expected_points); // 8 régions × min 3 bins
 
         function buildAdaptiveLambdaGrid(totalBins) {
+            // Grille d'origine (bornes fixes) : utilisée pour les calculs spectraux ; HITRAN sert aux sections efficaces, pas aux bornes ici.
             const regions = [
                 [0.1e-6, 4.0e-6, 0.05],
                 [4.0e-6, 4.6e-6, 0.10],

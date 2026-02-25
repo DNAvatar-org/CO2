@@ -10,6 +10,7 @@
 // - v1.1: crossSectionCO2/H2O/CH4FromLines(λ,T,P), getLinesInRange, données window.HITRAN_LINES_*.
 // - v1.2: getSpectralBinBoundsFromHITRAN(λ_min,λ_max,T,P) → { stepMax_m, nMin } pour bornes bins.
 // - v1.1.1: partitionFunctionQ(T,molecule) approx par molécule (CO2/H2O/CH4), crossSectionFromLines passe molecule
+// - v1.3: getSpectralRegionBoundsFromHITRAN(λ_min,λ_max) → { bounds_m, weights } pour grille adaptative (bornes = plages réelles des lignes).
 
 (function (global) {
     'use strict';
@@ -281,6 +282,65 @@
         return { stepMax_m: step_min_m, nMin: nMin };
     }
 
+    /**
+     * Bornes de régions spectrales dérivées des plages réelles des lignes HITRAN (CO2, H2O, CH4).
+     * Chaque gaz donne un intervalle [min λ, max λ] où il a des lignes ; on fusionne et trie pour obtenir
+     * une liste de bornes. Les poids sont proportionnels au nombre de lignes dans chaque région (plus de lignes → résolution plus fine).
+     * Retourne { bounds_m: number[], weights: number[] } ou null si lignes indisponibles.
+     */
+    function getSpectralRegionBoundsFromHITRAN(lambda_min_m, lambda_max_m) {
+        if (!global.HITRAN_LINES_CO2) return null;
+        var nu_max_cm = wavelengthToWavenumber(lambda_min_m);
+        var nu_min_cm = wavelengthToWavenumber(lambda_max_m);
+        if (nu_min_cm >= nu_max_cm) return null;
+        var endpoints = [lambda_min_m, lambda_max_m];
+        var gases = ['CO2', 'H2O', 'CH4'];
+        for (var g = 0; g < gases.length; g++) {
+            var lines = getSortedLines(gases[g]);
+            if (!lines || lines.length === 0) continue;
+            var nu_min = Infinity;
+            var nu_max = -Infinity;
+            for (var i = 0; i < lines.length; i++) {
+                var nu = lines[i].nu;
+                if (nu < nu_min_cm || nu > nu_max_cm) continue;
+                if (nu < nu_min) nu_min = nu;
+                if (nu > nu_max) nu_max = nu;
+            }
+            if (!isFinite(nu_min) || !isFinite(nu_max)) continue;
+            var lam_min = wavenumberToWavelength(nu_max);
+            var lam_max = wavenumberToWavelength(nu_min);
+            endpoints.push(lam_min);
+            endpoints.push(lam_max);
+        }
+        endpoints.sort(function (a, b) { return a - b; });
+        var bounds_m = [endpoints[0]];
+        for (var j = 1; j < endpoints.length; j++) {
+            if (endpoints[j] - bounds_m[bounds_m.length - 1] > 1e-12) bounds_m.push(endpoints[j]);
+        }
+        if (bounds_m.length < 2) return null;
+        var nRegions = bounds_m.length - 1;
+        var weights = [];
+        for (var r = 0; r < nRegions; r++) {
+            var r_min = bounds_m[r];
+            var r_max = bounds_m[r + 1];
+            var nu_r_max = wavelengthToWavenumber(r_min);
+            var nu_r_min = wavelengthToWavenumber(r_max);
+            var count = 0;
+            for (var g = 0; g < gases.length; g++) {
+                var lines = getSortedLines(gases[g]);
+                if (!lines) continue;
+                for (var i = 0; i < lines.length; i++) {
+                    var nu = lines[i].nu;
+                    if (nu >= nu_r_min && nu <= nu_r_max) count++;
+                }
+            }
+            weights.push(count > 0 ? count : 1);
+        }
+        var sumW = weights.reduce(function (s, w) { return s + w; }, 0);
+        for (var r = 0; r < weights.length; r++) weights[r] = weights[r] / sumW;
+        return { bounds_m: bounds_m, weights: weights };
+    }
+
     // Export global (pas de optional chaining, pas de return dans garde)
     global.HITRAN = global.HITRAN || {};
     global.HITRAN.C2_CMK = HITRAN_C2_CMK;
@@ -304,5 +364,6 @@
     global.HITRAN.crossSectionH2OFromLines = crossSectionH2OFromLines;
     global.HITRAN.crossSectionCH4FromLines = crossSectionCH4FromLines;
     global.HITRAN.getSpectralBinBoundsFromHITRAN = getSpectralBinBoundsFromHITRAN;
+    global.HITRAN.getSpectralRegionBoundsFromHITRAN = getSpectralRegionBoundsFromHITRAN;
 
 })(typeof window !== 'undefined' ? window : this);

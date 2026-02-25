@@ -31,6 +31,8 @@
 // - v1.0.20: lissage visuel par moyenne glissante centrée (fenêtre en bins via plotSmoothSigmaBins, ex 20)
 // - v1.0.21: indicateurs d'absorption en crochets colorés [ ] (plus de bande transparente arrondie)
 // - v1.0.22: nuages full-span (logo + crochets) décalés au-dessus de l'axe spectral
+// - v1.0.23: [ ] sur la même ligne que le picto ( [ logo ] )
+// - v1.0.24: [ ] alignés sur les bornes de bins (SPECTRAL_GRID_BOUNDS_UM) = bandes code bar du fond
 // ============================================================================
 
 // ============================================================================
@@ -754,6 +756,17 @@ function drawAbsorptionBandIndicators() {
     };
     if (!LOGOS.CLOUDS) LOGOS.CLOUDS = '☁️';
 
+    // Bornes des bins de la grille spectrale (calculations.js buildAdaptiveLambdaGrid) — les [ ] alignés dessus = bandes "code bar" du fond.
+    const SPECTRAL_GRID_BOUNDS_UM = [0.1, 4, 4.6, 7, 8, 12, 17, 25, 50];
+    function getGridSegmentForLambda(lambda_um) {
+        for (let i = 0; i < SPECTRAL_GRID_BOUNDS_UM.length - 1; i++) {
+            if (lambda_um >= SPECTRAL_GRID_BOUNDS_UM[i] && lambda_um <= SPECTRAL_GRID_BOUNDS_UM[i + 1]) {
+                return [SPECTRAL_GRID_BOUNDS_UM[i], SPECTRAL_GRID_BOUNDS_UM[i + 1]];
+            }
+        }
+        return null;
+    }
+
     // H2O : 6.3 μm et 17 μm ; CO2 : 11 μm et 15 μm ; CH4 : 7.7 μm et 23 μm ; Nuages EDS : corps gris (tout LW 4–50 μm)
     const CONST = window.CONST || {};
     const LAMBDA_H2O_1_UM = (CONST.LAMBDA_H2O_1 != null) ? CONST.LAMBDA_H2O_1 * 1e6 : 6.3;
@@ -775,14 +788,29 @@ function drawAbsorptionBandIndicators() {
     const widthFactor = window.CONFIG_COMPUTE.pressureBroadening ? Math.min(2, Math.sqrt(Math.max(0.1, P_atm))) : 1;
 
     absorptionBands.forEach(band => {
-        const halfW = (band.halfWidthUm != null ? band.halfWidthUm : 1) * (band.fullSpan ? 1 : widthFactor);
-        const xLeft = getXPosition(band.fullSpan ? 4 : Math.max(0.1, band.lambda - halfW));
-        const xRight = getXPosition(band.fullSpan ? 50 : Math.min(50, band.lambda + halfW));
+        let leftUm;
+        let rightUm;
+        if (band.fullSpan) {
+            leftUm = 4;
+            rightUm = 50;
+        } else {
+            const segment = getGridSegmentForLambda(band.lambda);
+            if (segment) {
+                leftUm = segment[0];
+                rightUm = segment[1];
+            } else {
+                const halfW = (band.halfWidthUm != null ? band.halfWidthUm : 1) * widthFactor;
+                leftUm = Math.max(0.1, band.lambda - halfW);
+                rightUm = Math.min(50, band.lambda + halfW);
+            }
+        }
+        const xLeft = getXPosition(leftUm);
+        const xRight = getXPosition(rightUm);
         const barWidthPx = Math.max(22, xRight - xLeft);
 
         const altText = band.fullSpan
             ? `Nuages EDS (corps gris) : absorption sur tout le spectre LW 4–50 μm (pas de longueur d'onde)`
-            : `${band.minMax} captation ${band.label} : ${Number(band.lambda).toFixed(2)} μm, largeur ${halfW.toFixed(2)} μm`;
+            : `${band.minMax} captation ${band.label} : ${Number(band.lambda).toFixed(2)} μm, bin [${leftUm.toFixed(1)}–${rightUm.toFixed(1)}] μm`;
 
         // Créer un indicateur de plage [ ... ] + logo centré (sans fond, pour éviter l'artefact visuel)
         const indicator = document.createElement('div');
@@ -804,7 +832,6 @@ function drawAbsorptionBandIndicators() {
         indicator.style.justifyContent = 'center';
         indicator.style.color = band.color;
         indicator.style.textShadow = '0 0 2px rgba(0, 0, 0, 0.8)';
-        // Forcer la même hauteur pour tous les conteneurs
         indicator.style.height = '12px';
         indicator.style.lineHeight = '12px';
 
@@ -816,6 +843,7 @@ function drawAbsorptionBandIndicators() {
             indicator.style.fontSize = '12px';
             logoHTML = `<span role="img" aria-label="${altText}" title="${altText}">${band.logo}</span>`;
         }
+        // [ ] et picto sur la même ligne : [ logo ]
         indicator.innerHTML = `<span aria-hidden="true" style="position:absolute; left:0; top:50%; transform:translateY(-50%); color:${band.color}; font-weight:700; font-size:12px; line-height:12px;">[</span><span style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">${logoHTML}</span><span aria-hidden="true" style="position:absolute; right:0; top:50%; transform:translateY(-50%); color:${band.color}; font-weight:700; font-size:12px; line-height:12px;">]</span>`;
 
         plotContainerWrapper2.appendChild(indicator);
