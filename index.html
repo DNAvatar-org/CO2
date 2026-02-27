@@ -123,8 +123,8 @@
         <button class="fps-toggle" id="fps-toggle" title="Réduire/Agrandir"></button>
         <div id="fps-chart"></div>
     </div>
-    <div id="visu-panel" class="tab-panel active"><p style="padding:20px;color:#888;">Chargement visu_radiatif.html…</p></div>
-    <div id="scie-panel" class="tab-panel"><p style="padding:20px;color:#888;">Chargement scie_radiatif.html…</p></div>
+    <div id="visu-panel" class="tab-panel active"><p style="padding:20px;color:#888;">Chargement…</p></div>
+    <div id="scie-panel" class="tab-panel"><p style="padding:20px;color:#888;">Chargement…</p></div>
 
     <!-- Zone pour les boutons de debug (sera remplie par debug.js) -->
     <div class="bottom-info">
@@ -152,8 +152,8 @@
             </div>
             <div class="credits-line">
                 <span class="credits-doc-label"></span>Physique :</span>
-                <a href="#" onclick="event.preventDefault(); openPageModal('./equation.html', '📐 Équations', null, 'tall');">📐 Équations</a> |
-                <a href="#" onclick="event.preventDefault(); openPageModal('./Algorithmes.html', '🧮 Algorithmes', null, 'tall');">🧮 Algorithmes</a> |
+                <a href="#" onclick="event.preventDefault(); openPageModal('html/equation.html', '📐 Équations', null, 'tall');">📐 Équations</a> |
+                <a href="#" onclick="event.preventDefault(); openPageModal('html/Algorithmes.html', '🧮 Algorithmes', null, 'tall');">🧮 Algorithmes</a> |
                 <a href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>
             </div>
             <div class="credits-line">
@@ -167,7 +167,7 @@
         </div>
     </footer>
 
-    <!-- Loader : fetch visu_radiatif.html + scie_radiatif.html, injection dans les panels, puis chargement des scripts -->
+    <!-- Loader : fetch html/visu_radiatif.html + html/scie_radiatif.html, injection dans les panels, puis chargement des scripts -->
     <script src="static/loader_panels.js"></script>
 </body>
 

@@ -1,6 +1,6 @@
 // File: static/timeline/configTimeline.js - Configuration de la timeline (chronologie des époques)
 // Desc: Données de configuration pour la timeline et les événements interactifs
-// Version 1.2.3
+// Version 1.2.4
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -9,6 +9,7 @@
 // - v1.2.1: add sulfate proxy mass ⚖️🌫 for 🚂/📱 and disable verbose debug flags
 // - v1.2.2: paramètres solveur issus de static/tuning/model_tuning.js (source unique tuning)
 // - v1.2.3: fallback synchrone des paramètres solveur si window.TUNING non chargé
+// - v1.2.4: 🦴 = Paléozoïque (541–252 Ma), ordre chrono Protérozoïque → Paléozoïque → Mésozoïque → Cénozoïque
 //
 // ============================================================================
 // DÉFINITION DE LA CHRONOLOGIE (TIMELINE)
@@ -188,8 +189,38 @@ const timeline = [
             }
         }
     },
+    // 🦴 = Paléozoïque (541–252 Ma) : même niveau que Mésozoïque/Cénozoïque (ères), zéro chevauchement.
+    // Ordre chronologique : … Protérozoïque → Paléozoïque → Mésozoïque → Cénozoïque …
     {
-        '📅': '🦕', // Mésozoïque
+        '📅': '🦴', // Paléozoïque (541–252 Ma)
+        '▶': 541e6,
+        '◀': 252e6,
+        // 🌡️🧮 : ~285–295 K (lit. Paléozoïque : Ordovicien–Dévonien chaud, Carbonifère–Permien glaciations)
+        '🌡️🧮': 290,
+        '🧲🔬': 0.01,
+        '🔋☀️': 3.6e26, // Puissance soleil (~94% actuel)
+        '🔋🌕': 6.5e13, // core_power_watts
+        '📐': 6371,
+        '🍎': 9.81,
+        '📏🌊': 3.6, // Profondeur océans (Paléozoïque)
+        '🐚': 1.0,
+        '🗻': {
+            '🍰🗻🌊': 0.78,
+            '🍰🗻🏔': 0.06,
+            '🍰🗻🌍': 0.16
+        },
+        '⚖️🫧': 5.15e18,
+        // CO2 Paléozoïque : élevé début (Ordovicien–Dévonien), plus bas Carbonifère–Permien ; valeur représentative
+        '⚖️🏭': 1.2e16,  // co2_kg (~2300 ppm)
+        '⚖️⛽': 3e13,
+        '⚖️💧': 1.3e21,
+        '⚖️🫁': 0,
+        '🕰': {
+            '☄️': { '🔺⚖️💧☄️': 1.0e18 }
+        }
+    },
+    {
+        '📅': '🦕', // Mésozoïque (252–66 Ma)
         '▶': 252e6,
         '◀': 66e6,
         // 🌡️🧮 : ~295–305 K (lit. Mésozoïque)
@@ -201,61 +232,18 @@ const timeline = [
         '🍎': 9.81, // Gravité en m/s²
         '📏🌊': 3.7, // Profondeur moyenne océans en km (Mésozoïque)
         '🐚': 1.0, // Facteur relief sous-marin
-        // Surfaces géologiques (Couche A - géologie/relief)
         '🗻': {
-            '🍰🗻🌊': 0.71, // Surface océanique potentielle (71% - distribution moderne)
-            '🍰🗻🏔': 0.09, // Hautes terres (9% - relief moderne)
-            '🍰🗻🌍': 0.20  // Terres basses (20% - continents modernes)
+            '🍰🗻🌊': 0.71,
+            '🍰🗻🏔': 0.09,
+            '🍰🗻🌍': 0.20
         },
-        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️🫧': 5.15e18, // Masse atmosphère (Atmosphère standard ~1 bar)
-        // Simulation parameters - Quantités en kg
+        '⚖️🫧': 5.15e18,
         '⚖️🏭': 1.2875e16, // co2_kg (~2500 ppm)
-        '⚖️⛽': 4.12e13, // ch4_kg (~8 ppm)
-        '⚖️💧': 1.33e21, // h2o_kg (~95% de 1.4e21 kg)
-        '⚖️🫁': 0, // o2_kg
-        // Note: Les % seront calculés via calculations_atm.js
-        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
+        '⚖️⛽': 4.12e13,
+        '⚖️💧': 1.33e21,
+        '⚖️🫁': 0,
         '🕰': {
-            '☄️': {
-                '🔺⚖️💧☄️': 1.0e18, // water_added_kg
-                // deltaTemp: -1.5 // Inutile, déclenche aussi 📿💫++
-            }
-        }
-    },
-    {
-        '📅': '🦴', // Crétacé
-        '▶': 145e6,
-        '◀': 66e6,
-        // 🌡️🧮 : ~298–305 K (serre chaude, lit. Crétacé)
-        '🌡️🧮': 301,
-        '🧲🔬': 0.01,
-        '🔋☀️': 3.78972e26, // Puissance totale du soleil (W) - 99% de 3.828e26 W
-        '🔋🌕': 5.5e13, // core_power_watts (Puissance géothermique totale ~55 TW)
-        '📐': 6371, // Rayon de la planète en km
-        '🍎': 9.81, // Gravité en m/s²
-        '📏🌊': 3.7, // Profondeur moyenne océans en km (Crétacé)
-        '🐚': 1.0, // Facteur relief sous-marin
-        // Surfaces géologiques (Couche A - géologie/relief)
-        '🗻': {
-            '🍰🗻🌊': 0.71, // Surface océanique potentielle (71% - distribution moderne)
-            '🍰🗻🏔': 0.09, // Hautes terres (9% - relief moderne)
-            '🍰🗻🌍': 0.20  // Terres basses (20% - continents modernes)
-        },
-        // Note: molar_mass_air sera calculé depuis les composants (n2_kg, o2_kg, co2_kg, ch4_kg) via calculations.js
-        '⚖️🫧': 5.15e18, // Masse atmosphère (Atmosphère standard ~1 bar)
-        // Simulation parameters - Quantités en kg
-        '⚖️🏭': 1.545e16, // co2_kg (~3000 ppm)
-        '⚖️⛽': 5.15e13, // ch4_kg (~10 ppm)
-        '⚖️💧': 1.372e21, // h2o_kg (~98% de 1.4e21 kg)
-        '⚖️🫁': 0, // o2_kg
-        // Note: Les % seront calculés via calculations_atm.js
-        // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement
-        '🕰': {
-            '☄️': {
-                '🔺⚖️💧☄️': 1.0e18, // water_added_kg
-                // deltaTemp: -1 // Inutile, déclenche aussi 📿💫++
-            }
+            '☄️': { '🔺⚖️💧☄️': 1.0e18 }
         }
     },
     {
@@ -382,8 +370,14 @@ window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
 // ===================== [OBS/CALIB] =====================
 // Bins spectaux (N utilisé). 500 = courbe propre ; 100 donne courbe moins précise et convergence ~1.2°C (artefact). 🔬🌈 dans [N_min, N_max].
 // N_min : optionnel (spectralBinsMinFromHITRAN). Réf. scripts/hitran_spectral_bin_bounds.py.
-window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 500;            // [OBS/CALIB]
+// 2000 = courbe spectrale lisse. Réduire à 1000 si crash Brave code 5 (RAM).
+window.CONFIG_COMPUTE.maxSpectralBinsConvergence = 2000;            // [OBS/CALIB]
+window.CONFIG_COMPUTE.initSpectralBinsConvergence = 200;            // [OBS/CALIB] N initial (anim : 200 → … → max ; passe finale à max après convergence)
+// spectralMaxMB : si défini, pas de passe finale à maxBins si grille dépasserait ce seuil (évite Brave code 5). Ex. 25.
+window.CONFIG_COMPUTE.spectralMaxMB = null;                         // [OBS/CALIB] null = pas de plafond ; 25 = skip passe finale si > 25 MB
 window.CONFIG_COMPUTE.spectralBinsMinFromHITRAN = null;            // [OBS/CALIB]
+// true = répartition homogène (poids ∝ largeur région → même densité bins/μm partout) ; false = grille d'origine (converge bien).
+window.CONFIG_COMPUTE.spectralGridHomogeneous = true;             // [OBS/CALIB]
 // Pondération physique du spin-up : cycles_effectifs = cycles × f(⚖️🫧) × f(⚖️💧)
 window.CONFIG_COMPUTE.climateSpinupAtmMassRefKg = 1.0e18;          // [OBS/CALIB]
 window.CONFIG_COMPUTE.climateSpinupWaterMassRefKg = 1.0e20;        // [OBS/CALIB]
@@ -436,7 +430,8 @@ window.CONFIG_COMPUTE.logEdsDiagnostic = false;
 // Lissage visuel du spectre (affichage uniquement, pas la physique/OLR)
 window.CONFIG_COMPUTE.plotSmoothEnable = true;
 window.CONFIG_COMPUTE.plotSmoothSigmaBins = 8.0;//5.6;
-window.CONFIG_COMPUTE.maxPreviousLength = 300;  /* Historique convergence : 25 → 300 pour afficher tout le détail (évite pile LIFO trop petite) */
+// Nombre max d'étapes affichées dans le panel "Convergence" (Init + cycles eau + pas Search/Dicho). Pas utilisé par le calcul, uniquement pour l'affichage. Garder petit = moins de RAM.
+window.CONFIG_COMPUTE.maxPreviousLength = 10;
 // Logs diagnostics
 window.CONFIG_COMPUTE.logIceFixedDiagnostic = false;
 window.CONFIG_COMPUTE.logCloudProxyDiagnostic = false;

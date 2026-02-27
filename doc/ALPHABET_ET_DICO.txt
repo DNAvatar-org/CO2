@@ -1,7 +1,7 @@
 ================================================================================
 ALPHABET ET DICO - Référence complète
 ================================================================================
-Fichier généré depuis alphabet.js et dico.js
+Synchro: static/compute/alphabet.js (CHARS, CHARS_DESC) et dico.js (KEYS, DESC, FORM).
 Date: 2025
 
 ================================================================================
@@ -31,12 +31,14 @@ UNITÉS:
 ⛽  CH₄
 🏭  CO₂
 🫁  O₂
+🌫  SO₄²⁻ (aérosols sulfate)
 🧊  Glace
 ⛅  Nuages
 🌊  Océan
 🌋  Volcan
 🏜️  Désert
 🌳  Forêt
+🌍  Continents
 🫧  Atmosphère
 ☀️  Soleil
 🎱  Géometrie
@@ -74,7 +76,7 @@ CALCULS:
 🦠  Archéen
 🌿  Protérozoïque
 🦕  Mésozoïque
-🦴  Crétacé
+🦴  Paléozoïque
 🦣  Cénozoïque
 🚂  1800
 📱  2025
@@ -108,21 +110,23 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 📅 DATE ÉPOQUE:
 🌡️🧮  t° attendue
 📿💫  Nombre de ticTime
+🔺⏳  Durée équilibre précipitation (s)
 
 🫧 ATMOSPHÈRE:
 🎈  Pression atmosphérique
 🧪  Masse molaire (kg/mol)
 📏🫧🧿  Ligne de Kármán
 📏🫧🛩  Tropopause
-🍰🫧💧  Prop.Rad.EDS H₂O atm.
 🍰🫧🏭  CO₂
 🍰🫧⛽  CH₄
 🍰🫧🫁  O₂
+🍰🫧🌫  SO₄²⁻ (proxy CCN)
 🍰🫧💨  N₂
 🍰🫧📿🌈  Σ(🍰🫧❀🌈) pour ❀∈{🏭,⛽,💧}
 🍰🫧🏭🌈  Capacité radiative IR de CO₂
 🍰🫧💧🌈  Cap.Rad.IR H₂O atm.
 🍰🫧⛽🌈  Capacité radiative IR de CH₄
+🍰💭  CCN - Eff.Cond nuageuse [0.3,1.0]
 ☁️  Index formation nuageuse [0,1]
 
 ⚖️ MASSES:
@@ -137,6 +141,11 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🍰💧🧊  Glace
 🍰💧🌊  Océan
 🍰🧮🌧  Fraction de vapeur max
+🍰🫧💧  Fraction massique vapeur
+🍰🫧☔  Humidité relative [0,1]
+💭☔  Seuil critique précipitations [0.7,0.9]
+⏳☔  1/τ_global (s⁻¹), τ ~10 j
+🍰⚖️💦  Taux précipitation (kg/m²/s)
 
 🪩 ALBÉDO:
 🍰🪩📿  Albedo total
@@ -164,7 +173,10 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🔬🌈  Résolution spectrale (🔺λ)
 🔬🫧  Résolution atm. (🔺z)
 🧮🔄  Complexité O(🔬🌈×🔬🫧)
+🧮🔄☀️  Cycle radiatif (crossings 0°C/T_boil)
+🧮🔄🌊  Cycle eau (0=init, 1+=après crossing)
 🧮🌡️🚩  T° initiale (T0)
+🧮🛑  Raison arrêt (converged|max_iter|abort|crash|max_water)
 
 ☀️ SOLEIL:
 🧲☀️  Flux solaire à 1 UA
@@ -176,10 +188,11 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🔋🌕  Puissance du noyau
 
 📛 EDS (FORÇAGE RADIATIF):
-📛💧  ΔF H2O affichage (convention)
-📛🏭  ΔF CO2 affichage (convention)
-📛⛽  ΔF CH4 affichage (convention)
-📿📛  ΔF total affichage (convention)
+🧲📛  EDS total (W/m²) ; répartition en 🍰📛 (CO₂, H₂O, CH₄, ⛅)
+🔺📛💧  ΔF H₂O affichage (convention W/m²)
+🔺📛🏭  ΔF CO₂ affichage (convention)
+🔺📛⛽  ΔF CH₄ affichage (convention)
+🔺📿📛  ΔF total affichage (convention)
 
 🗻 GÉOLOGIE (SURFACES GÉOLOGIQUES):
 🍰🗻🌊  Surface océanique potentielle (bassin océanique, géologie)
@@ -242,7 +255,9 @@ PARTIE 3: FORMULES DE CALCUL
 🍰🫧💧 = Proportion radiative EDS de H₂O dans l'atmosphère
 🍰🫧❀🌈 = Capacité radiative IR de ❀ - ∀ ❀ ∈ {🏭, ⛽, 💧}
 🍰🫧📿🌈 = Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, ⛽, 💧} (pour normalisation)
-☁️ = clamp(🍰🫧💧🌈 × 🍰🧮🌧 × (📏🫧🛩 / 📏🫧🧿), 0, 1) - Potentiel de condensation nuageuse
+🍰🫧🌫 = ⚖️🌫 / ⚖️🫧 (proxy sulfate microphysique nuageuse)
+🍰💭 = clamp(0.4 + 0.5×(⚖️🫁/1.08e18 + ⚖️⛽/5.2e12) + 0.1×(⚖️🌫/1e14), 0.3, 1.0) - CCN
+☁️ = (1 - (1 - min(🍰🫧☔, 1))^0.6) × 🍰💭 - Sundqvist (RH) × CCN
 
 💧 CYCLE DE L'EAU:
 🍰💧🧊 = Si T < ❄️ alors toute l'eau restante (après vapeur) est glace, sinon glace polaire
@@ -267,9 +282,9 @@ PARTIE 3: FORMULES DE CALCUL
 🍰🪩🌍 = land_coverage = L - 🍰🪩🌳 - 🍰🪩🏜️ où L = terre libre de glace
            Absorbe automatiquement : steppes, prairies, toundras, montagnes (albedo ~0.18)
 🍰🪩🧊 = ice_coverage = min(0.9, 🍰💧🧊 × 0.9)
-🍰🪩⛅ = cloud_coverage = C_max × η_cloud × ☁️
-           où C_max = 0.65 (plafond physique), η_cloud = 0.40 (efficacité optique), ☁️ = CloudFormationIndex
-           Fraction optique moyenne vue par le Soleil, pas proportion de surface au sol
+🍰🪩⛅ = clamp((0.19 + 0.11×☁️) × cloud_optical_efficiency, 0, 0.75)
+           cloud_optical_efficiency = (1.10 + 0.45×(ccn_ratio-1)) × pressure_factor × oxidation_soft_factor × temp_factor
+           Fraction optique moyenne vue par le Soleil (voir doc SCIE_CONVERGENCE_DOC.txt § fine-tuning nuages)
 
 🗻 GÉOLOGIE:
 🍰🗻🌊 = Surface océanique potentielle (bassin océanique) = f(époque)
@@ -309,6 +324,10 @@ NOTES IMPORTANTES
   🧲🌑🔼 > 🧲🌈🔼
   La surface émet plus (σT⁴) que ce qui sort au sommet, car l'atmosphère
   absorbe et réémet une partie du rayonnement
+
+- Algorithme de convergence: la vue Scie (calculations_flux.js) utilise
+  Search puis Dicho avec cycles eau/albédo, pas seulement une dichotomie
+  classique. Voir doc/SCIE_CONVERGENCE_DOC.txt et html/Algorithmes.html.
 
 ================================================================================
 FIN DU FICHIER

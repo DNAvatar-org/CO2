@@ -663,12 +663,18 @@ function calculateInitialData() {
     initPlot();
     document.getElementById('status').textContent = 'Initialisation...';
 
-    // Créer une grille lambda cohérente avec le compute (calculations.js utilise DATA['🧮']['🔬🌈'])
+    // Créer une grille lambda cohérente avec le compute. Si plotData.current a déjà un flux (ex. après runComputeInParent), garder sa résolution pour éviter topFlux/lambda incohérents.
     const lambda_min = 0.1e-6;
     const lambda_max = 100e-6;
     plotData.lambda_range = [];
     plotData.lambda_weights = []; // ⚡ Nécessaire pour updatePlot
-    const expected_points = Math.max(2, Math.min(window.CONFIG_COMPUTE.maxSpectralBinsConvergence, 10000));
+    const initBins = (window.CONFIG_COMPUTE.initSpectralBinsConvergence != null && Number.isFinite(window.CONFIG_COMPUTE.initSpectralBinsConvergence))
+        ? window.CONFIG_COMPUTE.initSpectralBinsConvergence
+        : window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
+    const currentTopFluxLen = (plotData.current && plotData.current.upward_flux && plotData.current.upward_flux.length > 0)
+        ? plotData.current.upward_flux[plotData.current.upward_flux.length - 1].length
+        : 0;
+    const expected_points = Math.max(2, Math.min(currentTopFluxLen > 0 ? currentTopFluxLen : initBins, 10000));
     const effective_delta = expected_points > 1 ? (lambda_max - lambda_min) / (expected_points - 1) : (lambda_max - lambda_min);
     for (let i = 0; i < expected_points; i++) {
         const lambda = (i === expected_points - 1) ? lambda_max : lambda_min + i * effective_delta;
@@ -750,6 +756,10 @@ function updateCO2Level(state) {
             const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
             console.log(`${logo} [processResult@main.js] T0=${data?.T0?.toFixed(2) || 'N/A'}K flux=${data?.total_flux?.toFixed(2) || 'N/A'}W/m²`);
             plotData.current = data;
+            if (data.lambda_range && data.lambda_weights) {
+                plotData.lambda_range = data.lambda_range;
+                plotData.lambda_weights = data.lambda_weights;
+            }
 
             // Les scénarios de référence sont déjà calculés dans calculateInitialData
             // Juste s'assurer qu'ils sont stockés
@@ -863,20 +873,27 @@ function updateCO2Level(state) {
 
             updateLegend(plotData);
             updatePlot(plotData);
-            // Mettre à jour la visualisation spectrale après un délai pour s'assurer que Plotly a fini
-            setTimeout(() => {
-                const canvas = document.getElementById('spectral-visualization');
-                if (canvas) {
-                    canvas.style.setProperty('display', 'block', 'important');
-                    canvas.style.setProperty('visibility', 'visible', 'important');
-                    canvas.style.setProperty('opacity', '1', 'important');
-                    canvas.style.setProperty('z-index', '10000', 'important');
-                    canvas.style.setProperty('position', 'absolute', 'important');
-                }
-                if (typeof window.updateSpectralVisualization === 'function' && plotData.current) {
+            // Dernier redraw plot + spectre quand le DOM est libre (affichage fin 2000 bins)
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    const fresh = (typeof window.getSpectralResultFromDATA === 'function') ? window.getSpectralResultFromDATA() : null;
+                    if (fresh && fresh.lambda_range && fresh.upward_flux) {
+                        plotData.lambda_range = fresh.lambda_range;
+                        plotData.lambda_weights = fresh.lambda_weights;
+                        plotData.current = fresh;
+                    }
+                    updatePlot(plotData);
+                    const canvas = document.getElementById('spectral-visualization');
+                    if (canvas) {
+                        canvas.style.setProperty('display', 'block', 'important');
+                        canvas.style.setProperty('visibility', 'visible', 'important');
+                        canvas.style.setProperty('opacity', '1', 'important');
+                        canvas.style.setProperty('z-index', '10000', 'important');
+                        canvas.style.setProperty('position', 'absolute', 'important');
+                    }
                     window.updateSpectralVisualization(plotData.current);
-                }
-            }, 200);
+                });
+            });
             document.getElementById('status').textContent = 'Prêt';
             // 🔒 PROTECTION : S'assurer que showSpectralBackground reste à true après les calculs
             if (typeof window !== 'undefined') {
@@ -1191,6 +1208,10 @@ function updateCO2LevelDirect(co2_fraction) {
             }
 
             plotData.current = data;
+            if (data.lambda_range && data.lambda_weights) {
+                plotData.lambda_range = data.lambda_range;
+                plotData.lambda_weights = data.lambda_weights;
+            }
 
             // Les scénarios de référence sont déjà calculés dans calculateInitialData
             // Juste s'assurer qu'ils sont stockés
@@ -1304,20 +1325,27 @@ function updateCO2LevelDirect(co2_fraction) {
 
             updateLegend(plotData);
             updatePlot(plotData);
-            // Mettre à jour la visualisation spectrale après un délai pour s'assurer que Plotly a fini
-            setTimeout(() => {
-                const canvas = document.getElementById('spectral-visualization');
-                if (canvas) {
-                    canvas.style.setProperty('display', 'block', 'important');
-                    canvas.style.setProperty('visibility', 'visible', 'important');
-                    canvas.style.setProperty('opacity', '1', 'important');
-                    canvas.style.setProperty('z-index', '10000', 'important');
-                    canvas.style.setProperty('position', 'absolute', 'important');
-                }
-                if (typeof window.updateSpectralVisualization === 'function' && plotData.current) {
+            // Dernier redraw plot + spectre quand le DOM est libre (affichage fin 2000 bins)
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    const fresh = (typeof window.getSpectralResultFromDATA === 'function') ? window.getSpectralResultFromDATA() : null;
+                    if (fresh && fresh.lambda_range && fresh.upward_flux) {
+                        plotData.lambda_range = fresh.lambda_range;
+                        plotData.lambda_weights = fresh.lambda_weights;
+                        plotData.current = fresh;
+                    }
+                    updatePlot(plotData);
+                    const canvas = document.getElementById('spectral-visualization');
+                    if (canvas) {
+                        canvas.style.setProperty('display', 'block', 'important');
+                        canvas.style.setProperty('visibility', 'visible', 'important');
+                        canvas.style.setProperty('opacity', '1', 'important');
+                        canvas.style.setProperty('z-index', '10000', 'important');
+                        canvas.style.setProperty('position', 'absolute', 'important');
+                    }
                     window.updateSpectralVisualization(plotData.current);
-                }
-            }, 200);
+                });
+            });
             document.getElementById('status').textContent = 'Prêt';
             // 🔒 PROTECTION : S'assurer que showSpectralBackground reste à true après les calculs
             if (typeof window !== 'undefined') {
@@ -2733,6 +2761,10 @@ function updateH2OLevelDirect(h2o_total_percent) {
             }
 
             plotData.current = data;
+            if (data.lambda_range && data.lambda_weights) {
+                plotData.lambda_range = data.lambda_range;
+                plotData.lambda_weights = data.lambda_weights;
+            }
 
             if (!data.T0) {
                 console.error('[updateH2OLevelDirect] ❌ ERREUR - data.T0 manquant');

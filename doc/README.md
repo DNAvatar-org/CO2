@@ -16,7 +16,7 @@
 | **VAPEUR_VS_NUAGES.md** | Distinction vapeur (EDS IR) vs nuages (albédo SW) |
 | **ANALYSE_REBRANCHEMENT_INDEX.md** | Architecture index.html, onglets Visuel/Scientifique |
 | **ANALYSE_PERFORMANCE.html** | Analyse de performance des algorithmes |
-| **scie_compute.html** | Vue scientifique (chargée en iframe depuis index.html) |
+| **html/scie_compute.html** | Vue scientifique (chargée en iframe depuis index.html) |
 | **test_computeRadiativeTransfer.html** | Backup de test (NE PAS TOUCHER) |
 | **DOC_SYNTHESE.md** | Synthèse des mises à jour doc, doublons, ce qui ne peut pas être modifié |
 

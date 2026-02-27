@@ -70,7 +70,7 @@ const CHARS = {
     ARCHEEN: '🦠',  // Archéen : microbe unicellulaire
     PROTEROZOIC: '🌿', // Protérozoïque : plantes primitives
     MESOZOIC: '🦕', // Mésozoïque : dinosaure sauropode
-    CRETACEOUS: '🦴', // Crétacé : os/fossile
+    CRETACEOUS: '🦴', // Paléozoïque (541–252 Ma) : os/fossile
     CENOZOIC: '🦣', // Cénozoïque : mammouth
     TODAY: '🚂',    // 1800 : train (1800)
     MODERN: '📱',   // Moderne : smartphone (2025)
@@ -86,7 +86,7 @@ const CHARS = {
     TRIPLE_POINT: '┴', // Point triple : pont (P,T au point triple)
     GLOBE_AFRICA: '🌍',   // Globe Afrique (terre Protérozoïque, Cénozoïque)
     GLOBE_AMERICAS: '🌎', // Globe Amériques (terre Mésozoïque)
-    GLOBE_ASIA: '🌏',     // Globe Asie (terre Crétacé)
+    GLOBE_ASIA: '🌏',     // Globe Asie (terre Paléozoïque)
 };
 
 // Logo (emoji) -> image pour affichage des PICTO (boutons, frise).
@@ -170,7 +170,7 @@ const CHARS_DESC = {
     '🦠': 'Archéen',
     '🌿': 'Protérozoïque',
     '🦕': 'Mésozoïque',
-    '🦴': 'Crétacé',
+    '🦴': 'Paléozoïque',
     '🦣': 'Cénozoïque',
     '🚂': '1800',
     '📱': '2025',

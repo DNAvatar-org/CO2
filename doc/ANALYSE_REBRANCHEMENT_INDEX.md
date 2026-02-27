@@ -13,7 +13,7 @@
 - **Onglets** : Visuel | Scientifique (tabs-bar)
 - **loader_panels.js** : charge `visu_radiatif.html` et `scie_radiatif.html` dans les panels
 - **visu-panel** : contenu visuel (organigramme, plot, planète, flux)
-- **scie-panel** : iframe vers `doc/scie_compute.html` (config, convergence, timeline horizontale)
+- **scie-panel** : iframe vers `html/scie_compute.html` (config, convergence, timeline horizontale)
 - **event_bus.js** : `compute:done` → slots visu + scie (si implémenté)
 
 ### 1.2 Deux chemins de calcul distincts
@@ -21,7 +21,7 @@
 | Page | Moteur | Fichier | Point d'entrée |
 |------|--------|---------|----------------|
 | **Visuel** (index.html) | `simulateRadiativeTransfer()` | calculations.js | `updateCO2LevelDirect()` / `updateH2OLevelDirect()` |
-| **Scientifique** (doc/scie_compute.html) | `computeRadiativeTransfer()` | calculations_flux.js | `runTest()` → `initForConfig()` + `computeRadiativeTransfer()` |
+| **Scientifique** (html/scie_compute.html) | `computeRadiativeTransfer()` | calculations_flux.js | `runTest()` → `initForConfig()` + `computeRadiativeTransfer()` |
 
 ### 1.2 Flux index.html (actuel)
 
@@ -38,7 +38,7 @@ updateCO2LevelDirect(co2_fraction)
   → updatePlot(), updateLegend(), updateFluxLabels(), etc.
 ```
 
-### 1.3 Flux Scientifique (doc/scie_compute.html)
+### 1.3 Flux Scientifique (html/scie_compute.html)
 
 ```
 runTest()
@@ -51,7 +51,7 @@ runTest()
   → displayResults()
 ```
 
-**Note** : `doc/test_computeRadiativeTransfer.html` est un backup (NE PAS TOUCHER). La vue scientifique active est `doc/scie_compute.html` chargée en iframe.
+**Note** : `doc/test_computeRadiativeTransfer.html` est un backup (NE PAS TOUCHER). La vue scientifique active est `html/scie_compute.html` chargée en iframe.
 
 ### 1.4 Format attendu par processResult (index.html)
 
@@ -95,7 +95,7 @@ Les deux chemins utilisent :
 - `physics.js` : CONST
 - `configTimeline.js` : TIMELINE
 
-**doc/scie_compute.html** charge ces scripts avec des chemins relatifs depuis `doc/` (ex: `../static/calculations.js`).
+**html/scie_compute.html** charge ces scripts avec des chemins relatifs depuis `doc/` (ex: `../static/calculations.js`).
 
 ---
 
@@ -162,7 +162,7 @@ Les deux chemins utilisent :
 
 ## 6. Points de vigilance
 
-### 6.1 doc/scie_compute.html (vue Scientifique)
+### 6.1 html/scie_compute.html (vue Scientifique)
 
 - **Ne charge pas main.js** → aucune modification dans main.js ne l'affecte
 - **Charge** : debug.js, alphabet.js, dico.js, configOrganigramme.js, configTimeline.js, timeline.js, events.js, physics.js, climate.js, FPS.js, calculations.js, calculations_h2o.js, calculations_albedo.js, calculations_atm.js, compute.js, calculations_flux.js
@@ -204,7 +204,7 @@ L'ordre est correct : `calculations_flux` est chargé avant `main.js`.
 
 - [ ] Vérifier comment les sliders CO2/H2O/CH4 modifient les données (ppm vs masses)
 - [ ] Vérifier que getMasses() / calculateAtmosphereComposition() peuvent utiliser des valeurs "overridées" depuis plotData
-- [ ] Tester doc/scie_compute.html après toute modification de calculations_flux.js ou compute.js
+- [ ] Tester html/scie_compute.html après toute modification de calculations_flux.js ou compute.js
 - [ ] S'assurer que calculateFluxForT0 (calculations.js) et calculateFluxForT0 (calculations_flux.js ?) sont la même fonction — ils appellent tous deux window.calculateFluxForT0 qui est dans calculations.js
 
 ---
@@ -284,7 +284,7 @@ index.html
 
 - **doc/test_computeRadiativeTransfer.html** : backup, NE PAS TOUCHER.
 - **Visuel** : contenu dans `visu_radiatif.html`, injecté dans `#visu-panel`.
-- **Scientifique** : `doc/scie_compute.html` chargé en iframe dans `#scie-panel`.
+- **Scientifique** : `html/scie_compute.html` chargé en iframe dans `#scie-panel`.
 - **Frise** : présente sur les 2 vues → attention aux collisions d’IDs. Une seule frise, noms explicites.
 - **Moteur** : émet des events ; les 2 panneaux écoutent et se mettent à jour en parallèle.
 
@@ -294,8 +294,8 @@ index.html
 |---------|------|
 | `index.html` | Container, onglets, chargement des 2 panneaux |
 | `visu_radiatif.html` | Fragment HTML panneau Visuel |
-| `scie_radiatif.html` | Fragment avec iframe vers doc/scie_compute.html |
-| `doc/scie_compute.html` | Vue scientifique (config, convergence, timeline) |
+| `scie_radiatif.html` | Fragment avec iframe vers html/scie_compute.html |
+| `html/scie_compute.html` | Vue scientifique (config, convergence, timeline) |
 | `static/loader_panels.js` | Charge visu + scie, scripts applicatifs |
 | `static/event_bus.js` | Bus compute:done vers slots visu + scie |
 
@@ -303,6 +303,6 @@ index.html
 
 1. ✅ Structure index.html avec onglets + 2 divs.
 2. ✅ Contenu visuel dans visu_radiatif.html, injecté dans #visu-panel.
-3. ✅ #scie-panel avec iframe vers doc/scie_compute.html.
+3. ✅ #scie-panel avec iframe vers html/scie_compute.html.
 4. Brancher le moteur sur le bus d’events.
 5. ✅ Slots visu + scie sur compute:done.

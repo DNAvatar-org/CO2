@@ -1,11 +1,12 @@
 // File: tooltips.js - Système centralisé de tooltips
-// Desc: Gestion unifiée des tooltips avec délai configurable (200ms par défaut)
-// Version 1.0.0
+// Desc: Gestion unifiée des tooltips (délai 0 = immédiat)
+// Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
+// - TOOLTIP_DELAY=0 (immédiat), texte dynamique via data-tooltip/title au show
 
 (function() {
     'use strict';
@@ -13,7 +14,7 @@
     // ============================================================================
     // CONFIGURATION
     // ============================================================================
-    const TOOLTIP_DELAY = 10; // 0.2 secondes (200ms) - apparition plus rapide
+    const TOOLTIP_DELAY = 0; // Immédiat (tooltip générique sans attente 2s)
     const TOOLTIP_FADE_OUT = 200; // Durée du fade-out en ms
 
     // ============================================================================
@@ -157,7 +158,9 @@
             // UX : TOOLTIP_DELAY avant affichage (éviter flash au survol rapide)
             globalTooltipTimeout = setTimeout(() => {
                 const tooltip = getOrCreateGlobalTooltip();
-                tooltip.innerHTML = text; // Mettre à jour le contenu
+                // Texte dynamique : data-tooltip / title mis à jour (ex. updateLabel) pris en compte à l'affichage
+                const displayText = (element.getAttribute && (element.getAttribute('data-tooltip') || element.getAttribute('title'))) || text;
+                tooltip.innerHTML = displayText || text; // Mettre à jour le contenu
 
                 // 🔒 Utiliser la position actuelle de la souris (dernier événement stocké ou position actuelle)
                 let positionEvent = lastMouseEvent;

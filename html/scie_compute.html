@@ -93,6 +93,11 @@
     <script src="../static/calculations_albedo.js"></script>
     <script src="../static/calculations_atm.js"></script>
     <script src="../static/compute/compute.js"></script>
+    <!-- Hooks convergence définis avant calculations_flux.js (éviter if (window.xxx) dans le flux) -->
+    <script>
+        window.clearConvergenceTrace = function () {};
+        window.appendConvergenceStep = function () {};
+    </script>
     <script src="../static/compute/calculations_flux.js"></script>
     
     <script>
@@ -1302,6 +1307,108 @@
             }
             return diff;
         }
+
+        const safeNumTempConv = (v, def) => { if (v == null) return def; const n = Number(v); if (!Number.isFinite(n)) return def; return n.toFixed(1); };
+        const safeNumConv = (v, def) => { if (v == null) return def; const n = Number(v); if (!Number.isFinite(n)) return def; return (Math.abs(n) >= 1e3 || (Math.abs(n) < 1e-2 && n !== 0)) ? n.toExponential(3) : n.toFixed(3); };
+        const safeNumDeltaConv = (v, def) => {
+            if (v == null) return def;
+            const n = Number(v);
+            if (!Number.isFinite(n)) return def;
+            const a = Math.abs(n);
+            if (a >= 1e6) return (n < 0 ? '-' : '') + (a / 1e6).toFixed(1) + 'e6';
+            if (a >= 1e3) return (n < 0 ? '-' : '') + (a / 1e3).toFixed(1) + 'e3';
+            if (a < 1e-2 && n !== 0) return n.toExponential(2);
+            return n.toFixed(2);
+        };
+
+        function buildStepHtml(state) {
+            const DATA = window.DATA;
+            const CONST = window.CONST || { KELVIN_TO_CELSIUS: 273.15 };
+            if (!state) return '';
+            const waterIter = (state.waterIter != null) ? state.waterIter : ((state.waterPass != null) ? state.waterPass : 0);
+            const albedoIter = (state.albedoIter != null) ? state.albedoIter : ((state.waterPass != null) ? state.waterPass : 0);
+            if (state.phase === 'CycleEau') {
+                const T_cycle = safeNumTempConv((state.data_snapshot && state.data_snapshot['🧮'] && state.data_snapshot['🧮']['🧮🌡️'] != null) ? state.data_snapshot['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS : (DATA && DATA['🧮']) ? DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS : null, '-');
+                const compactEau = (state.data_snapshot && state.data_snapshot['💧']) ? formatJSONCompact(state.data_snapshot['💧']).replace(/"/g, "'") : '';
+                let h = `<div class="iteration-header convergence-cycle"><strong>💧 cycle de l'eau ${albedoIter}</strong> @${T_cycle}°C :${compactEau ? `<span class="convergence-inline-json"> ${compactEau}</span>` : ''}</div>`;
+                if (state.data_snapshot) {
+                    h += '<div class="convergence-cycle-eau-block convergence-cycle">';
+                    ['🫧', '💧'].forEach(cat => { if (state.data_snapshot[cat]) h += json2html(state.data_snapshot[cat], '', '', null, cat); });
+                    h += '</div>';
+                }
+                return h;
+            }
+            if (state.phase === 'CycleEauCrossing') {
+                const T_trans = safeNumTempConv(state.T_transition_C, '-');
+                const P_atm = (state.P_atm != null) ? Number(state.P_atm).toFixed(2) : '-';
+                const compactEau = (state.data_snapshot && state.data_snapshot['💧']) ? formatJSONCompact(state.data_snapshot['💧']).replace(/"/g, "'") : '';
+                let h = `<div class="iteration-header convergence-cycle"><strong>💧┴ = ${T_trans}°C [🎈=${P_atm} atm]</strong> :${compactEau ? `<span class="convergence-inline-json"> ${compactEau}</span>` : ''}</div>`;
+                if (state.data_snapshot) {
+                    h += '<div class="convergence-cycle-eau-block convergence-cycle">';
+                    ['🫧', '💧'].forEach(cat => { if (state.data_snapshot[cat]) h += json2html(state.data_snapshot[cat], '', '', null, cat); });
+                    h += '</div>';
+                }
+                return h;
+            }
+            if (state.innerIter == null) return '';
+            let html = '';
+            if (state.data_snapshot && state.data_snapshot['🪩']) {
+                const compactAlbedo = formatJSONCompact(state.data_snapshot['🪩']).replace(/"/g, "'");
+                const sulfateFrac = (state.data_snapshot['🫧'] && state.data_snapshot['🫧']['🍰🫧🌫'] != null && Number.isFinite(state.data_snapshot['🫧']['🍰🫧🌫'])) ? state.data_snapshot['🫧']['🍰🫧🌫'] : 0;
+                const sulfateBoostPct = (Math.min(0.35, sulfateFrac * 500) * 100).toFixed(1);
+                const T_alb = safeNumTempConv(state.innerIter === -1 ? state.temperature_C : (state.next_T_C != null ? state.next_T_C : state.temperature_C), '-');
+                html += `<div class="iteration-header convergence-cycle"><strong>🪩 cycle albédo ${albedoIter}</strong> @${T_alb}°C :<span class="convergence-inline-json"> ${compactAlbedo}</span> <span class="convergence-inline-json">| 🌫 CCN +${sulfateBoostPct}%</span></div>`;
+            }
+            const innerIter = state.innerIter;
+            const T = safeNumTempConv(state.temperature_C, '-');
+            const albedo = safeNumConv(state.albedo, '-');
+            const phase = (state.phase != null) ? String(state.phase) : '-';
+            const delta = safeNumDeltaConv(state.delta_equilibre, '-');
+            const m = (state.data_snapshot && state.data_snapshot['🧮']) ? state.data_snapshot['🧮'] : {};
+            const yy = (state.yinYang != null) ? Number(state.yinYang) : ((state.delta_equilibre != null) ? Math.sign(Number(state.delta_equilibre)) : 0);
+            const yinYangStr = (yy === 1) ? '+' : (yy === -1) ? '−' : '0';
+            const iterLabel = (innerIter === -1) ? 'Init' : (innerIter + 1);
+            const T_low_K = m['🧮🌡️🔽'];
+            const T_high_K = m['🧮🌡️🔼'];
+            const dichoBounds = (T_low_K != null && T_high_K != null) ? ` [🔽: ${safeNumTempConv(T_low_K - CONST.KELVIN_TO_CELSIUS, '-')}°C, 🔼: ${safeNumTempConv(T_high_K - CONST.KELVIN_TO_CELSIUS, '-')}°C]` : '';
+            const seuil = (m['🧲🔬'] != null) ? m['🧲🔬'] : null;
+            const seuilStr = seuil != null ? safeNumConv(seuil, '-') : '-';
+            const deltaVal = state.delta_equilibre != null ? Number(state.delta_equilibre) : NaN;
+            const arretOk = (Number.isFinite(deltaVal) && seuil != null && Math.abs(deltaVal) <= seuil) ? 'oui' : 'non';
+            let nextT = (state.next_T_C != null && Number.isFinite(state.next_T_C)) ? state.next_T_C.toFixed(1) : '';
+            if (!nextT && phase === 'Dicho' && T_low_K != null && T_high_K != null && Number.isFinite(T_low_K) && Number.isFinite(T_high_K)) nextT = ((T_low_K + T_high_K) / 2 - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+            if (!nextT && state.dichoT_low_C != null && state.dichoT_high_C != null) nextT = ((state.dichoT_low_C + state.dichoT_high_C) / 2).toFixed(1);
+            const nextTSuffix = nextT ? ` => ${nextT}°C` : '';
+            const b = state.data_snapshot && state.data_snapshot['📛'];
+            const h2oPctVal = (b && b['🍰📛💧'] != null) ? Number(b['🍰📛💧']) : null;
+            const h2oPctStr = (h2oPctVal != null && Number.isFinite(h2oPctVal)) ? (h2oPctVal * 100).toFixed(1) + '%' : '-';
+            const h2oVs05 = (h2oPctVal != null && Number.isFinite(h2oPctVal) && h2oPctVal < 0.005) ? ' <0.5%' : '';
+            html += `<div class="iteration-header">🌈 calcul radiatif ${iterLabel} @${T}°C : Albedo: ${albedo} H2O%: ${h2oPctStr}${h2oVs05} => Δ: ${delta} W/m² .. ⚧: ${phase} & ☯: ${yinYangStr} => arrêt |Δ|≤${seuilStr} W/m²: ${arretOk}${dichoBounds}${nextTSuffix}</div>`;
+            html += '<div class="convergence-details-block">';
+            const snap = state.data_snapshot || {};
+            if (snap['🧮']) { const mCopy = { ...snap['🧮'] }; delete mCopy.previous; html += json2html(mCopy, '', '', null, '🧮'); }
+            if (snap['🧲']) html += json2html(snap['🧲'], '', '', null, '🧲');
+            if (snap['📛']) html += json2html(snap['📛'], '', '', null, '📛');
+            html += '</div>';
+            return html;
+        }
+
+        function clearConvergenceTrace() {
+            const convergenceContent = document.getElementById('convergence-content');
+            if (!convergenceContent) return;
+            convergenceContent.innerHTML = '<div id="convergence-steps"></div><div id="convergence-final"></div>';
+        }
+
+        function appendConvergenceStep(state) {
+            const stepsEl = document.getElementById('convergence-steps');
+            if (!stepsEl) {
+                clearConvergenceTrace();
+                const stepsEl2 = document.getElementById('convergence-steps');
+                if (stepsEl2) stepsEl2.insertAdjacentHTML('beforeend', buildStepHtml(state));
+                return;
+            }
+            stepsEl.insertAdjacentHTML('beforeend', buildStepHtml(state));
+        }
         
         function displayConvergence() {
             try {
@@ -1331,201 +1438,63 @@
                 convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <span class="convergence-buttons"><button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">${cyclesButtonText}</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">${detailsButtonText}</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">${formulesButtonText}</button></span>`;
             }
             
+            if (!document.getElementById('convergence-steps')) convergenceContent.innerHTML = '<div id="convergence-steps"></div><div id="convergence-final"></div>';
+            const finalEl = document.getElementById('convergence-final');
+            if (!finalEl) return;
+            const safeNumTempLast = (v) => { if (v == null) return '—'; const n = Number(v); if (!Number.isFinite(n)) return '—'; return n.toFixed(1); };
             let html = '';
-            
-            // Afficher les détails de convergence si disponible (exclure Init = Configuration)
-            // Par cycle eau : 🫧, 💧, 🪩 une fois. À chaque calcul radiatif : 🧮 et 🧲 uniquement.
-            const history = Array.isArray(DATA['🧮']['previous']) ? DATA['🧮']['previous'] : [];
-            if (Array.isArray(history) && history.length > 0) {
-                const iterations_to_show = history.filter(s => s.phase !== 'Init' || s.innerIter === -1);
-                const radiatif_only = iterations_to_show.filter(s => s.innerIter != null);
-                const last_state = radiatif_only.length ? radiatif_only[radiatif_only.length - 1] : (iterations_to_show[iterations_to_show.length - 1] || history[history.length - 1]);
-
-                // Ordre = ordre d'écriture (temps CPU), pas de tri ni regroupement
-                const states = iterations_to_show;
-                const safeNumTemp = (v, def) => { if (v == null) return def; const n = Number(v); if (!Number.isFinite(n)) return def; return n.toFixed(1); };
-                const safeNum = (v, def) => { if (v == null) return def; const n = Number(v); if (!Number.isFinite(n)) return def; return (Math.abs(n) >= 1e3 || (Math.abs(n) < 1e-2 && n !== 0)) ? n.toExponential(3) : n.toFixed(3); };
-                const safeNumDelta = (v, def) => {
-                    if (v == null) return def;
-                    const n = Number(v);
-                    if (!Number.isFinite(n)) return def;
-                    const a = Math.abs(n);
-                    if (a >= 1e6) return (n < 0 ? '-' : '') + (a / 1e6).toFixed(1) + 'e6';
-                    if (a >= 1e3) return (n < 0 ? '-' : '') + (a / 1e3).toFixed(1) + 'e3';
-                    if (a < 1e-2 && n !== 0) return n.toExponential(2);
-                    return n.toFixed(2);
-                };
-                states.forEach((state, idx) => {
-                    try {
-                        if (!state) return;
-                        const waterIter = (state.waterIter != null) ? state.waterIter : ((state.waterPass != null) ? state.waterPass : 0);
-                        const albedoIter = (state.albedoIter != null) ? state.albedoIter : ((state.waterPass != null) ? state.waterPass : 0);
-                        if (state.phase === 'CycleEau') {
-                            const cycleState = state;
-                            const T_cycle = safeNumTemp((cycleState.data_snapshot && cycleState.data_snapshot['🧮'] && cycleState.data_snapshot['🧮']['🧮🌡️'] != null) ? cycleState.data_snapshot['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS : DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS, '-');
-                            const compactEau = (cycleState.data_snapshot && cycleState.data_snapshot['💧']) ? formatJSONCompact(cycleState.data_snapshot['💧']).replace(/"/g, "'") : '';
-                            html += `<div class="iteration-header convergence-cycle"><strong>💧 cycle de l'eau ${albedoIter}</strong> @${T_cycle}°C :${compactEau ? `<span class="convergence-inline-json"> ${compactEau}</span>` : ''}</div>`;
-                            if (cycleState.data_snapshot) {
-                                html += '<div class="convergence-cycle-eau-block convergence-cycle">';
-                                ['🫧', '💧'].forEach(cat => {
-                                    if (cycleState.data_snapshot[cat]) html += json2html(cycleState.data_snapshot[cat], '', '', null, cat);
-                                });
-                                html += '</div>';
-                            }
-                            return;
-                        }
-                        if (state.phase === 'CycleEauCrossing') {
-                            const T_trans = (state.T_transition_C != null) ? safeNumTemp(state.T_transition_C, '-') : '-';
-                            const P_atm = (state.P_atm != null) ? Number(state.P_atm).toFixed(2) : '-';
-                            const compactEau = (state.data_snapshot && state.data_snapshot['💧']) ? formatJSONCompact(state.data_snapshot['💧']).replace(/"/g, "'") : '';
-                            html += `<div class="iteration-header convergence-cycle"><strong>💧┴ = ${T_trans}°C [🎈=${P_atm} atm]</strong> :${compactEau ? `<span class="convergence-inline-json"> ${compactEau}</span>` : ''}</div>`;
-                            if (state.data_snapshot) {
-                                html += '<div class="convergence-cycle-eau-block convergence-cycle">';
-                                ['🫧', '💧'].forEach(cat => {
-                                    if (state.data_snapshot[cat]) html += json2html(state.data_snapshot[cat], '', '', null, cat);
-                                });
-                                html += '</div>';
-                            }
-                            return;
-                        }
-                        if (state.innerIter == null) return; // Init et radiatif uniquement
-                        if (state.data_snapshot && state.data_snapshot['🪩']) {
-                            const compactAlbedo = formatJSONCompact(state.data_snapshot['🪩']).replace(/"/g, "'");
-                            const sulfateFrac = (state.data_snapshot['🫧'] && state.data_snapshot['🫧']['🍰🫧🌫'] != null && Number.isFinite(state.data_snapshot['🫧']['🍰🫧🌫']))
-                                ? state.data_snapshot['🫧']['🍰🫧🌫']
-                                : 0;
-                            const sulfateBoostPct = (Math.min(0.35, sulfateFrac * 500) * 100).toFixed(1);
-                            const prevState = states[idx - 1];
-                            const T_alb = safeNumTemp(
-                                (state.innerIter === -1) ? state.temperature_C
-                                    : (prevState && prevState.next_T_C != null ? prevState.next_T_C : state.temperature_C),
-                                '-');
-                            html += `<div class="iteration-header convergence-cycle"><strong>🪩 cycle albédo ${albedoIter}</strong> @${T_alb}°C :<span class="convergence-inline-json"> ${compactAlbedo}</span> <span class="convergence-inline-json">| 🌫 CCN +${sulfateBoostPct}%</span></div>`;
-                        }
-                        const innerIter = state.innerIter;
-                        const T = safeNumTemp(state.temperature_C, '-');
-                        const albedo = safeNum(state.albedo, '-');
-                        const phase = (state.phase != null) ? String(state.phase) : '-';
-                        const delta = safeNumDelta(state.delta_equilibre, '-');
-                        const m = state.data_snapshot['🧮'] || {};
-                        // ☯ = ancien signe (stocké au push) : permet de voir le changement de signe qui déclenche Dicho
-                        const yy = (state.yinYang != null) ? Number(state.yinYang) : ((state.delta_equilibre != null) ? Math.sign(Number(state.delta_equilibre)) : 0);
-                        const yinYangStr = (yy === 1) ? '+' : (yy === -1) ? '−' : '0';
-                        const iterLabel = (innerIter === -1) ? 'Init' : (innerIter + 1);
-                        const T_low_K = m['🧮🌡️🔽'];
-                        const T_high_K = m['🧮🌡️🔼'];
-                        const dichoBounds = (T_low_K != null && T_high_K != null)
-                            ? ` [🔽: ${safeNumTemp(T_low_K - CONST.KELVIN_TO_CELSIUS, '-')}°C, 🔼: ${safeNumTemp(T_high_K - CONST.KELVIN_TO_CELSIUS, '-')}°C]`
-                            : '';
-                        const seuil = (m['🧲🔬'] != null) ? m['🧲🔬'] : null;
-                        const seuilStr = seuil != null ? safeNum(seuil, '-') : '-';
-                        const deltaVal = state.delta_equilibre != null ? Number(state.delta_equilibre) : NaN;
-                        const arretOk = (Number.isFinite(deltaVal) && seuil != null && Math.abs(deltaVal) <= seuil) ? 'oui' : 'non';
-                                const nextState = states[idx + 1];
-                        // Init : next_T_C = T actuelle (pas de déplacement). Sinon : nextState ou state.next_T_C.
-                                let nextT = (phase === 'Init' && state.next_T_C != null && Number.isFinite(state.next_T_C))
-                            ? state.next_T_C.toFixed(1)
-                            : (nextState && nextState.temperature_C != null && Number.isFinite(nextState.temperature_C))
-                                ? nextState.temperature_C.toFixed(1)
-                                : (state.next_T_C != null && Number.isFinite(state.next_T_C) ? state.next_T_C.toFixed(1) : '');
-                        if (!nextT && phase === 'Dicho') {
-                            if (T_low_K != null && T_high_K != null && Number.isFinite(T_low_K) && Number.isFinite(T_high_K))
-                                nextT = ((T_low_K + T_high_K) / 2 - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-                            else if (state.dichoT_low_C != null && state.dichoT_high_C != null)
-                                nextT = ((state.dichoT_low_C + state.dichoT_high_C) / 2).toFixed(1);
-                        }
-                        const nextTSuffix = nextT ? ` => ${nextT}°C` : '';
-                        const b = state.data_snapshot && state.data_snapshot['📛'];
-                        const h2oPctVal = (b && b['🍰📛💧'] != null) ? Number(b['🍰📛💧']) : null;
-                        const h2oPctStr = (h2oPctVal != null && Number.isFinite(h2oPctVal)) ? (h2oPctVal * 100).toFixed(1) + '%' : '-';
-                        const h2oVs05 = (h2oPctVal != null && Number.isFinite(h2oPctVal)) ? (h2oPctVal < 0.005 ? ' <0.5%' : '') : '';
-                        html += `<div class="iteration-header">🌈 calcul radiatif ${iterLabel} @${T}°C : Albedo: ${albedo} H2O%: ${h2oPctStr}${h2oVs05} => Δ: ${delta} W/m² .. ⚧: ${phase} & ☯: ${yinYangStr} => arrêt |Δ|≤${seuilStr} W/m²: ${arretOk}${dichoBounds}${nextTSuffix}</div>`;
-                        html += '<div class="convergence-details-block">';
-                        // Afficher le snapshot de cette itération (state.data_snapshot), pas DATA global (état final)
-                        const snap = state.data_snapshot || {};
-                        if (snap['🧮']) {
-                            const m = { ...snap['🧮'] };
-                            delete m.previous;
-                            html += json2html(m, '', '', null, '🧮');
-                        }
-                        if (snap['🧲']) html += json2html(snap['🧲'], '', '', null, '🧲');
-                        if (snap['📛']) html += json2html(snap['📛'], '', '', null, '📛');
-                        html += '</div>';
-                        } catch (stateErr) {
-                            console.warn('État de convergence ignoré (données invalides):', stateErr);
-                        }
-                    });
-
-                // Afficher la température finale (dernier calcul radiatif) — T° toujours en décimal, 1 décimale
-                const safeNumLast = (v) => { if (v == null) return '—'; const n = Number(v); if (!Number.isFinite(n)) return '—'; return (Math.abs(n) >= 1e3 || (Math.abs(n) < 1e-2 && n !== 0)) ? n.toExponential(3) : n.toFixed(3); };
-                const safeNumTempLast = (v) => { if (v == null) return '—'; const n = Number(v); if (!Number.isFinite(n)) return '—'; return n.toFixed(1); };
-                // Breakdown EDS par gaz (📛)
-                const breakdown = DATA['📛'];
-                if (breakdown) {
-                    const fmt = (v) => (v != null && Number.isFinite(v)) ? v.toFixed(2) : '—';
-                    const h2oScale = window.getH2OVaporEDSScale();
-                    html += '<div class="config-value convergence-breakdown-block" style="margin-top:10px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;">';
-                    html += '<strong>EDS (effet de serre)</strong>: 🧲📛 = ' + fmt(breakdown['🧲📛']) + ' W/m²<br>';
-                    html += 'Pondération vapeur d\'eau pour l\'EDS : ' + (Number.isFinite(h2oScale) ? h2oScale.toFixed(3) : '—') + '<br>';
-                    html += '<em>Attribution</em> : part par τ (τ_X/τ_tot) ; overlap H₂O–CO₂ partagé de façon réaliste (Schmidt 2010 « split the difference »).<br>';
-                    html += '<strong>Répartition (en W/m² retournés par EDS, normalisé, 🍰📛 ∈ [0, 1])</strong>:<br>';
-                    if (breakdown['🍰📛🏭'] != null && breakdown['🍰📛🏭'] > 0) html += `&nbsp;• CO₂: ${fmt(breakdown['🍰📛🏭'])}<br>`;
-                    if (breakdown['🍰📛💧'] != null && breakdown['🍰📛💧'] > 0) html += `&nbsp;• H₂O: ${fmt(breakdown['🍰📛💧'])}<br>`;
-                    if (breakdown['🍰📛⛽'] != null && breakdown['🍰📛⛽'] > 0) html += `&nbsp;• CH₄: ${fmt(breakdown['🍰📛⛽'])}<br>`;
-                    if (breakdown['🍰📛⛅'] != null) {
-                        const nv = breakdown['🍰📛⛅'];
-                        const nvStr = (nv != null && Number.isFinite(nv)) ? (nv < 0.01 ? '&lt; 0,01' : nv.toFixed(2)) : '—';
-                        html += `&nbsp;• Nuages (⛅): ${nvStr}<br>`;
-                    }
-                    html += '</div>';
-                }
-
-                html += '<div class="config-value convergence-final-block">';
-                // Température finale = DATA (état convergé), pas last_state (dernier push avant break)
-                const T_final_K = DATA['🧮'] && DATA['🧮']['🧮🌡️'] != null ? DATA['🧮']['🧮🌡️'] : (last_state && last_state.temperature_K);
-                const T_final_C = T_final_K != null ? T_final_K - CONST.KELVIN_TO_CELSIUS : (last_state && last_state.temperature_C);
-                const Tc = safeNumTempLast(T_final_C);
-                const Tk = safeNumTempLast(T_final_K);
-                html += `<div class="config-value"><strong>🌡️ Température finale: ${Tc}°C (${Tk}K)</strong></div>`;
-                const P_atm_val = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
-                html += `<div class="config-value">🎈 Pression au sol: ${(P_atm_val != null && Number.isFinite(P_atm_val)) ? P_atm_val.toFixed(2) + ' atm' : '—'}</div>`;
-                const P_atm = DATA['🫧']['🎈'];
-                const T_boil_K = window.getBoilingPointKFromPressure(P_atm);
-                const TcNum = T_final_C != null ? Number(T_final_C) : null;
-                let boilLine = '';
-                if (P_atm < 0.01) {
-                    boilLine = `T_ébullition(🎈=${P_atm.toFixed(2)} atm) = — (pas d'atmosphère, liquide impossible)`;
-                } else {
-                    const T_boil_C = (T_boil_K - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-                    const aboveBoil = Number.isFinite(TcNum) && TcNum > T_boil_K - CONST.KELVIN_TO_CELSIUS;
-                    boilLine = `T_ébullition(🎈=${P_atm.toFixed(2)} atm) = ${T_boil_C}°C ${aboveBoil ? '→ T finale &gt; T_ébullition (eau bout)' : '→ liquide possible'}`;
-                }
-                html += `<div class="config-value">${boilLine}</div>`;
-                const stopReason = DATA['🧮'] && DATA['🧮']['🧮🛑'];
-                const deltaFinal = DATA['🧲'] && DATA['🧲']['🔺🧲'] != null ? Number(DATA['🧲']['🔺🧲']) : NaN;
-                const seuilFinal = DATA['🧮'] && DATA['🧮']['🧲🔬'] != null ? Number(DATA['🧮']['🧲🔬']) : null;
-                const stopLabels = { converged: 'Convergence |Δ|≤seuil', max_iter: 'Max itérations radiatives', abort: 'Arrêt manuel', crash: 'Crash algo', max_water: 'Max cycles eau' };
-                const stopLabel = (stopReason && stopLabels[stopReason]) ? stopLabels[stopReason] : (stopReason || '—');
-                const absDelta = Number.isFinite(deltaFinal) ? Math.abs(deltaFinal) : NaN;
-                const deltaStr = Number.isFinite(absDelta) ? (absDelta >= 1e3 || (absDelta < 1e-2 && absDelta !== 0) ? absDelta.toExponential(2) : absDelta.toFixed(2) + '') : '—';
-                const seuilStr = seuilFinal != null ? (Math.abs(seuilFinal) >= 1e3 || (Math.abs(seuilFinal) < 1e-2 && seuilFinal !== 0) ? seuilFinal.toExponential(2) : seuilFinal.toFixed(2) + '') : '—';
-                const stopDetail = (stopReason === 'max_iter' && Number.isFinite(deltaFinal) && seuilFinal != null)
-                    ? ` (|Δ|=${deltaStr} W/m² &gt; seuil ${seuilStr} W/m²)`
-                    : (stopReason === 'converged' ? ` (|Δ|=${deltaStr} W/m² ≤ ${seuilStr} W/m²)` : '');
-                html += `<div class="config-value"><strong>Arrêt:</strong> ${stopLabel}${stopDetail}</div>`;
+            const breakdown = DATA['📛'];
+            if (breakdown) {
+                const fmt = (v) => (v != null && Number.isFinite(v)) ? v.toFixed(2) : '—';
+                const h2oScale = window.getH2OVaporEDSScale();
+                html += '<div class="config-value convergence-breakdown-block" style="margin-top:10px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;">';
+                html += '<strong>EDS (effet de serre)</strong>: 🧲📛 = ' + fmt(breakdown['🧲📛']) + ' W/m²<br>';
+                html += 'Pondération vapeur d\'eau pour l\'EDS : ' + (Number.isFinite(h2oScale) ? h2oScale.toFixed(3) : '—') + '<br>';
+                html += '<em>Attribution</em> : part par τ (τ_X/τ_tot) ; overlap H₂O–CO₂ partagé réaliste (Schmidt 2010 « split the difference »).<br>';
+                html += '<strong>Répartition (en W/m² retournés par EDS, normalisé, 🍰📛 ∈ [0, 1])</strong>:<br>';
+                if (breakdown['🍰📛🏭'] != null && breakdown['🍰📛🏭'] > 0) html += `&nbsp;• CO₂: ${fmt(breakdown['🍰📛🏭'])}<br>`;
+                if (breakdown['🍰📛💧'] != null && breakdown['🍰📛💧'] > 0) html += `&nbsp;• H₂O: ${fmt(breakdown['🍰📛💧'])}<br>`;
+                if (breakdown['🍰📛⛽'] != null && breakdown['🍰📛⛽'] > 0) html += `&nbsp;• CH₄: ${fmt(breakdown['🍰📛⛽'])}<br>`;
+                if (breakdown['🍰📛⛅'] != null) { const nv = breakdown['🍰📛⛅']; const nvStr = (nv != null && Number.isFinite(nv)) ? (nv < 0.01 ? '&lt; 0,01' : nv.toFixed(2)) : '—'; html += `&nbsp;• Nuages (⛅): ${nvStr}<br>`; }
                 html += '</div>';
             }
-            
-            // Toujours afficher le panneau même si html est vide
-            convergenceContent.innerHTML = html || '<div class="config-value">Aucune donnée de convergence disponible</div>';
+            const T_final_K = DATA['🧮']['🧮🌡️'] != null ? DATA['🧮']['🧮🌡️'] : null;
+            const T_final_C = T_final_K != null ? T_final_K - CONST.KELVIN_TO_CELSIUS : null;
+            const Tc = safeNumTempLast(T_final_C);
+            const Tk = safeNumTempLast(T_final_K);
+            html += '<div class="config-value convergence-final-block">';
+            html += `<div class="config-value"><strong>🌡️ Température finale: ${Tc}°C (${Tk}K)</strong></div>`;
+            const P_atm_val = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
+            html += `<div class="config-value">🎈 Pression au sol: ${(P_atm_val != null && Number.isFinite(P_atm_val)) ? P_atm_val.toFixed(2) + ' atm' : '—'}</div>`;
+            const P_atm = DATA['🫧'] && DATA['🫧']['🎈'];
+            const T_boil_K = (typeof window.getBoilingPointKFromPressure === 'function' && P_atm != null) ? window.getBoilingPointKFromPressure(P_atm) : null;
+            const TcNum = T_final_C != null ? Number(T_final_C) : null;
+            if (P_atm != null && P_atm < 0.01) html += `<div class="config-value">T_ébullition(🎈=${P_atm.toFixed(2)} atm) = — (pas d'atmosphère, liquide impossible)</div>`;
+            else if (T_boil_K != null) { const T_boil_C = (T_boil_K - CONST.KELVIN_TO_CELSIUS).toFixed(1); const aboveBoil = Number.isFinite(TcNum) && TcNum > T_boil_K - CONST.KELVIN_TO_CELSIUS; html += `<div class="config-value">T_ébullition(🎈=${P_atm.toFixed(2)} atm) = ${T_boil_C}°C ${aboveBoil ? '→ T finale &gt; T_ébullition (eau bout)' : '→ liquide possible'}</div>`; }
+            const stopReason = DATA['🧮']['🧮🛑'];
+            const deltaFinal = DATA['🧲'] && DATA['🧲']['🔺🧲'] != null ? Number(DATA['🧲']['🔺🧲']) : NaN;
+            const seuilFinal = DATA['🧮'] && DATA['🧮']['🧲🔬'] != null ? Number(DATA['🧮']['🧲🔬']) : null;
+            const stopLabels = { converged: 'Convergence |Δ|≤seuil', max_iter: 'Max itérations radiatives', abort: 'Arrêt manuel', crash: 'Crash algo', max_water: 'Max cycles eau' };
+            const stopLabel = (stopReason && stopLabels[stopReason]) ? stopLabels[stopReason] : (stopReason || '—');
+            const absDelta = Number.isFinite(deltaFinal) ? Math.abs(deltaFinal) : NaN;
+            const deltaStr = Number.isFinite(absDelta) ? (absDelta >= 1e3 || (absDelta < 1e-2 && absDelta !== 0) ? absDelta.toExponential(2) : absDelta.toFixed(2) + '') : '—';
+            const seuilStr = seuilFinal != null ? (Math.abs(seuilFinal) >= 1e3 || (Math.abs(seuilFinal) < 1e-2 && seuilFinal !== 0) ? seuilFinal.toExponential(2) : seuilFinal.toFixed(2) + '') : '—';
+            const stopDetail = (stopReason === 'max_iter' && Number.isFinite(deltaFinal) && seuilFinal != null) ? ` (|Δ|=${deltaStr} W/m² &gt; seuil ${seuilStr} W/m²)` : (stopReason === 'converged' ? ` (|Δ|=${deltaStr} W/m² ≤ ${seuilStr} W/m²)` : '');
+            html += `<div class="config-value"><strong>Arrêt:</strong> ${stopLabel}${stopDetail}</div>`;
+            html += '</div>';
+            finalEl.innerHTML = html;
             convergenceDiv.style.display = 'block';
+            return;
             } catch (err) {
                 console.error('❌ displayConvergence:', err);
                 const convergenceContent = document.getElementById('convergence-content');
                 if (convergenceContent) convergenceContent.innerHTML = `<div class="config-value error">Erreur affichage: ${err.message}</div>`;
             }
         }
-        
+
+        window.clearConvergenceTrace = clearConvergenceTrace;
+        window.appendConvergenceStep = appendConvergenceStep;
+
         // 🔒 Exposer displayConvergence sur window pour que calculations_flux.js puisse l'appeler
         window.displayConvergence = displayConvergence;
         

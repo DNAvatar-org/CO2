@@ -16,6 +16,8 @@
 // Logs: v1.0.12 - Grille spectrale λ adaptative (zones CO2/CH4/H2O densifiées) + lambda_weights non-uniformes
 // Logs: v1.0.13 - retrait gardes défensives CONFIG_COMPUTE sur les derniers ajouts (règle crash)
 // Logs: v1.0.14 - Grille λ : retour aux bornes d'origine (calculs spectraux inchangés)
+// Logs: v1.0.15 - CONFIG_COMPUTE.spectralGridHomogeneous : si true, poids ∝ largeur (répartition homogène)
+// Logs: v1.0.16 - getSpectralResultFromDATA : effective_temperature depuis total_flux (évite crash createPlanckTrace)
 
 
 function temperatureAtZ(z) {
@@ -155,6 +157,13 @@ function calculateFluxForT0() {
                 [17.0e-6, 25.0e-6, 0.15],
                 [25.0e-6, 100.0e-6, 0.22]
             ];
+            // Répartition homogène par défaut (poids = largeur en λ) → même Δλ/bin, bandes visuellement uniformes. Désactiver avec CONFIG spectralGridHomogeneous = false pour forcer plus de bins en IR thermique.
+            const forceNonHomogeneous = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.spectralGridHomogeneous === false);
+            if (!forceNonHomogeneous) {
+                for (let i = 0; i < regions.length; i++) {
+                    regions[i][2] = regions[i][1] - regions[i][0];
+                }
+            }
             const filtered = regions.map(r => [Math.max(lambda_min, r[0]), Math.min(lambda_max, r[1]), r[2]]).filter(r => r[1] > r[0]);
             if (filtered.length === 0) return [];
             const weightSum = filtered.reduce((s, r) => s + r[2], 0);
@@ -684,8 +693,12 @@ function calculateFluxForT0() {
 
 function getSpectralResultFromDATA() {
     const DATA = window.DATA;
+    const CONST = window.CONST;
+    const total_flux = DATA['📊'].total_flux;
+    const effective_temperature = (total_flux > 0 && CONST.STEFAN_BOLTZMANN) ? Math.pow(total_flux / CONST.STEFAN_BOLTZMANN, 0.25) : null;
     return {
-        total_flux: DATA['📊'].total_flux,
+        total_flux,
+        effective_temperature,
         lambda_range: DATA['📊'].lambda_range,
         lambda_weights: DATA['📊'].lambda_weights,
         z_range: DATA['📊'].z_range,

@@ -1,6 +1,6 @@
 # Variables disponibles dans le flux énergétique
 
-**Contexte** : Ce document décrit les variables de la **vue Visuel** (index.html, plotData, organigramme). Pour la vue **Scientifique** (doc/scie_compute.html), les données sont dans `DATA` (voir static/compute/FORMULES_FLUX.md).
+**Contexte** : Ce document décrit les variables de la **vue Visuel** (index.html, plotData, organigramme). Pour la vue **Scientifique** (html/scie_compute.html), les données sont dans `DATA` (voir static/compute/FORMULES_FLUX.md).
 
 ## Variables globales (window)
 

@@ -1,0 +1,110 @@
+================================================================================
+VUE SCIENTIFIQUE — CONVERGENCE ET OUTPUTS (doc pour une autre IA)
+================================================================================
+Source: html/scie_compute.html (iframe dans #scie-panel), static/compute/calculations_flux.js
+Dernière synchro: 2025
+================================================================================
+
+1. CONTEXTE
+-----------
+- La "vue Scientifique" (onglet Scie) affiche la config, le transfert radiatif
+  et la section "Convergence" qui résume le résultat du solveur.
+- Le solveur trouve la température de surface T telle que le flux radiatif
+  entrant ≈ flux sortant (équilibre). Il enchaîne cycles eau, albédo et
+  itérations radiatives (Search puis Dicho).
+
+2. CE QUI EST AFFICHÉ DANS "CONVERGENCE" (scie_convergence)
+----------------------------------------------------------
+- Titre: "⚙ Convergence : XX.XXX°C" (température finale en °C, DATA['🧮']['🧮🌡️']).
+- Boutons: "Cycles +/−", "Détails +/−", "Formules +/−".
+
+2.1 Bloc EDS (effet de serre)
+- 🧲📛 = EDS total (W/m²).
+- Pondération vapeur d'eau pour l'EDS (getH2OVaporEDSScale).
+- Répartition en parts (🍰📛) : CO₂, H₂O, CH₄, Nuages (⛅). Valeurs ∈ [0,1].
+
+2.2 Bloc final
+- 🌡️ Température finale (°C et K).
+- 🎈 Pression au sol (atm).
+- T_ébullition(🎈) : indication si T finale > T_ébullition (eau bout).
+- Arrêt: raison (converged | max_iter | abort | crash | max_water) et
+  détail (|Δ| vs seuil en W/m²).
+
+2.3 Étapes (Cycles) — si "Cycles −"
+- Chaque pas est ajouté via appendConvergenceStep(state).
+- Types de lignes affichées:
+  - "💧 cycle de l'eau N" @ T°C : snapshot compact (vapeur, albédo, ☁️).
+  - "💧┴ = T°C [🎈=P atm]" : franchissement 0°C ou T_ébullition.
+  - "🪩 cycle albédo N" @ T°C : snapshot albédo + optionnel "🌫 CCN +X%".
+  - Lignes "Search" / "Dicho" : phase, T, Δ (🔺🧲), bornes 🔽/🔼.
+- Données par pas: state contient (selon le cas) phase, T_input, next_T_C,
+  delta_equilibre, albedoIter, waterIter, compactEau, compactAlbedo, etc.
+
+3. CLÉS DATA PERTINENTES POUR L'OUTPUT
+--------------------------------------
+- DATA['🧮'] : 🧮🌡️ (T K), 🧮⚧ (phase), 🧮☯ (direction), 🧲🔬 (précision flux),
+  🧮🛑 (raison arrêt), 🧮🔄, 🧮🔄☀️, 🧮🔄🌊 (cycles).
+- DATA['🧲'] : 🔺🧲 (déséquilibre flux), 🧲☀️🔽, 🧲🌕🔽, 🧲🌈🔼, 🧲🌑🔼, etc.
+- DATA['📛'] : 🧲📛, 🍰📛🏭, 🍰📛💧, 🍰📛⛽, 🍰📛⛅ (répartition EDS).
+- DATA['🫧'] : 🎈 (pression atm).
+- DATA['🪩'] : ☁️ (index formation nuageuse), 🍰🪩⛅ (couverture nuageuse).
+
+4. ALGORITHME (RÉSUMÉ)
+----------------------
+- Init: T_epoch, composition, cycle eau (optionnel spin-up) → premier ☁️/🍰🪩⛅.
+- Boucle principale (calculations_flux.js):
+  - Cycle eau: vapeur, précipitations, ☁️, albédo (glace, nuages, biomes).
+  - Calcul radiatif pour T courante → flux, Δ = entrant - sortant.
+  - Phase Search: pas T proportionnel à Δ (cap max), jusqu'à encadrement (Δ change de signe).
+  - Phase Dicho: dichotomie sur [🔽,🔼] jusqu'à |Δ| ≤ seuil (🧲🔬) ou max_iter.
+  - Crossing: si T franchit 0°C ou T_ébullition, redo cycle eau puis repart en Search.
+- Arrêt: converged (|Δ| ≤ seuil), max_iter, max_water (cycles eau), abort, crash.
+
+5. FINE-TUNING SUR LES PARAMÈTRES NUAGEUX
+-----------------------------------------
+Les paramètres réglables pour les nuages (SW = courtes longueurs d'onde,
+albédo nuageux) sont définis dans static/tuning/fine_tuning_bounds.js et
+utilisés dans static/calculations_albedo.js (CLOUD_TUNING, etc.).
+
+5.1 Paramètres CLOUD_SW (bornes min/max pour essais)
+- CLOUD_FRACTION_BASE [0.17, 0.23]: base de la couverture nuageuse SW.
+  Source: CERES EBAF + MODIS (2000-2025). Effet: négatif (plus = plus albédo → refroidissement).
+- CLOUD_FRACTION_INDEX_GAIN [0.08, 0.14]: gain de l'index nuageux (☁️) vers
+  la fraction optique. Source: Sundqvist (1989). Effet: négatif.
+- OPTICAL_EFF_BASE [1.00, 1.20]: efficacité optique de base.
+  Source: Twomey + AR6. Effet: négatif.
+- OPTICAL_EFF_CCN_GAIN [0.30, 0.60]: sensibilité de l'optique au ratio CCN
+  (effet Twomey: plus de CCN → gouttelettes plus petites → plus réfléchissant). Effet: négatif.
+- SULFATE_BOOST_SCALE [300, 700]: facteur d'échelle du proxy sulfate (SO₄²⁻)
+  vers CCN. Source: proxy microphysique nuageuse. Effet: négatif.
+- SULFATE_BOOST_MAX [0.20, 0.45]: plafond du boost sulfate (sécurité numérique).
+- TEMP_FACTOR_REF_K [282, 294]: température de référence (K) pour le facteur
+  thermique nuages SW (~climat moderne). Effet: mixte.
+
+5.2 Formule nuages (rappel)
+- ☁️ = (1 - (1 - min(RH,1))^0.6) × 🍰💭 (Sundqvist × CCN).
+- 🍰💭 (CCN) = clamp(0.4 + 0.5×(O2_ratio + CH4_ratio) + 0.1×SULFATE_ratio, 0.3, 1.0).
+- 🍰🪩⛅ = clamp((CLOUD_FRACTION_BASE + CLOUD_FRACTION_INDEX_GAIN×☁️) × cloud_optical_efficiency, 0, 0.75),
+  avec cloud_optical_efficiency dépendant de ccn_ratio, pression, oxydation, température.
+
+5.3 Solveur (SOLVER)
+- TOL_MIN_WM2 [0.03, 0.10] W/m²: tolérance flux minimale (stabilité vs temps).
+- MAX_SEARCH_STEP_K, MAX_SEARCH_STEP_LARGE_K, LARGE_DELTA_FACTOR: pas Search
+  et seuil de bascule grand pas. Effet: neutre sur la physique, numérique.
+
+6. ALGOS ET NOTES (RÉFÉRENCE PAGES PROJET)
+-------------------------------------------
+- html/Algorithmes.html: décrit de façon pédagogique la dichotomie, les
+  phases (Init, Dichotomie, Finalisation), les rétroactions (H₂O, glace,
+  nuages). La vue Scie utilise en réalité Search puis Dicho (calculations_flux.js),
+  pas uniquement une dichotomie classique; les cycles eau/albédo sont
+  imbriqués avec le solveur radiatif.
+- doc/ALPHABET_ET_DICO.txt: lexique des pictos (alphabet + dico) et formules,
+  synchronisé avec static/compute/alphabet.js et dico.js.
+- static/compute/calculations_flux.js: implémentation du solveur et des
+  appels à appendConvergenceStep / displayConvergence.
+
+================================================================================
+FIN — Document de référence pour interpréter les outputs de la section
+"Convergence" dans la vue Scientifique (scie_convergence).
+================================================================================

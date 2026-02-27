@@ -1,13 +1,13 @@
 @font-face {
     font-family: '04B_03';
-    src: url('../04B_03__.TTF') format('truetype');
+    src: url('../fonts/04B_03__.TTF') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
 
 @font-face {
     font-family: 'ProggyDotted';
-    src: url('../ProggyDotted Regular.ttf') format('truetype');
+    src: url('../fonts/ProggyDotted Regular.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
@@ -29,7 +29,7 @@
 
 body {
     font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;
-    background: url('../fond.png') center center / cover no-repeat fixed;
+    background: url('img/fond.png') center center / cover no-repeat fixed;
     min-height: 100vh;
     padding: 20px 10px 0 10px;
     color: var(--base-color);
@@ -1661,7 +1661,7 @@ body.mode-dark {
     /* Mettre à jour la variable pour le mode dark */
     color: var(--base-color) !important;
     /* Garder l'image de fond */
-    background: url('../fond.png') center center / cover no-repeat fixed !important;
+    background: url('img/fond.png') center center / cover no-repeat fixed !important;
 }
 
 

@@ -163,8 +163,19 @@
         window.spectralPrecisionTarget = 'max';
         window.showSpectralBackground = true;
         window.updatePlot(window.plotData);
-        window.updateSpectralVisualization(window.plotData.current);
         window.updateFluxLabels('ProcessFinished');
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                var fresh = window.getSpectralResultFromDATA();
+                if (fresh && fresh.lambda_range && fresh.upward_flux) {
+                    window.plotData.lambda_range = fresh.lambda_range;
+                    window.plotData.lambda_weights = fresh.lambda_weights;
+                    window.plotData.current = Object.assign({}, window.plotData.current, fresh);
+                }
+                window.updatePlot(window.plotData);
+                window.updateSpectralVisualization(window.plotData.current);
+            });
+        });
     }
 
     function projectToScie(DATA) {
@@ -224,8 +235,26 @@
     };
 
     function initSyncPanels() {
-        if (!window.displayConvergence) window.displayConvergence = function () {};
+        window.displayConvergence = function () {
+            var iframe = document.getElementById('scie-iframe');
+            if (iframe && iframe.contentWindow) {
+                try { iframe.contentWindow.displayConvergence(); } catch (e) {}
+            }
+        };
         window.syncToScie = syncToScie;
+        // Quand le calcul tourne dans le parent, faire exécuter clear/append dans l'iframe scie pour afficher les étapes
+        window.clearConvergenceTrace = function () {
+            var iframe = document.getElementById('scie-iframe');
+            if (iframe && iframe.contentWindow) {
+                try { iframe.contentWindow.clearConvergenceTrace(); } catch (e) {}
+            }
+        };
+        window.appendConvergenceStep = function (payload) {
+            var iframe = document.getElementById('scie-iframe');
+            if (iframe && iframe.contentWindow) {
+                try { iframe.contentWindow.appendConvergenceStep(payload); } catch (e) {}
+            }
+        };
 
         window.addEventListener('message', function (event) {
             if (event.data.type !== 'sync:state') return;

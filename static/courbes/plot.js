@@ -1678,7 +1678,7 @@ window.updatePlot = function updatePlot(data) {
                 canvas.style.setProperty('z-index', '1', 'important');
                 canvas.style.setProperty('position', 'absolute', 'important');
                 // Mettre à jour seulement si on a des données
-                if (data && data.current && typeof window.updateSpectralVisualization === 'function') {
+                if (data && data.current) {
                     window.updateSpectralVisualization(data.current);
                 }
                 // Sinon, garder la dernière visualisation visible (ne rien faire)
@@ -1877,9 +1877,7 @@ if (typeof window !== 'undefined' && window.addEventListener) {
         const canvas = document.getElementById('spectral-visualization');
         if (canvas && canvas._lastData) {
             setTimeout(() => {
-                if (typeof window.updateSpectralVisualization === 'function') {
-                    window.updateSpectralVisualization(canvas._lastData);
-                }
+                window.updateSpectralVisualization(canvas._lastData);
             }, 100);
         }
     });

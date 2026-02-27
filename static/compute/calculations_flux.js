@@ -77,11 +77,23 @@
 // - v1.2.59 : spin-up eau/albédo : sortie anticipée si cycleDeLeau(false) ne change plus l'état (évite tours inutiles)
 // - v1.2.60 : paramètres solveur de tuning centralisé (static/tuning/model_tuning.js), sans changement de résultat
 // - v1.2.61 : fallback synchrone local si window.TUNING absent (évite crash runtime)
+// - v1.2.62 : bins = 980000/(19*|delta|+800) minoré 100 via getBinsFromDelta, init utilise delta précédent ou 0
+// - v1.2.63 : hooks convergence définis ici en no-op (scie_compute.html les remplace si chargé) — évite crash runComputeInParent
+// - v1.2.64 : à la convergence, sync DATA['📊'] avec 🔬🌈 si actualBins !== currentBins (Hadéen 1re iter → rendu 2000 bins)
 // ============================================================================
+
+// No-ops par défaut ; scie_compute.html les remplace par les implé réelles si la page est chargée.
+window.clearConvergenceTrace = function () {};
+window.appendConvergenceStep = function () {};
 
 // ============================================================================
 // FONCTIONS DE CALCUL DE FLUX RADIATIF
 // ============================================================================
+
+/** bins = 1980000/(19*|delta|+800), minoré 100, plafonné maxSpectralBinsConvergence. */
+function getBinsFromDelta(delta) {
+    return Math.min(Math.max(100, Math.floor(1980000 / (19 * Math.abs(Number(delta)) + 800))), window.CONFIG_COMPUTE.maxSpectralBinsConvergence);
+}
 
 // 🔒 VARIABLES GLOBALES : window.enabledStates (créé par getEnabledStates()) remplace isH2O_eds, isCO2_eds, etc.
 // Ces variables sont mises à jour UNIQUEMENT au clic sur les boutons (dans organigramme.js)
@@ -313,7 +325,8 @@ function initForConfig() {
             + ' source=' + ((useEpochOverride && ice_fixed_epoch != null && Number.isFinite(ice_fixed_epoch)) ? 'EPOCH' : 'DATA'));
     }
     DATA['🧮']['🧮🌡️'] = T_solver_init;
-    DATA['🧮']['🔬🌈'] = window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
+    // Premier run : pas de delta → 1e9 donne bins=100 ; run suivant : delta du run précédent
+    DATA['🧮']['🔬🌈'] = getBinsFromDelta((DATA['🧲'] && DATA['🧲']['🔺🧲'] != null) ? DATA['🧲']['🔺🧲'] : 1e9);
     window._lastCycleRef = { albedo: DATA['🪩']['🍰🪩📿'], vapor: DATA['💧']['🍰🫧💧'] };
     window._iceCoverageRampState = null;
     window._iceCoverageLock = {
@@ -424,7 +437,7 @@ async function cycleDeLeau(isFirst) {
 
     if (isFirst) {
         if (!DATA['🧮']['previous']) DATA['🧮']['previous'] = [];
-        DATA['🧮']['previous'].push({
+        const firstCyclePayload = {
             innerIter: null,
             albedoIter: 0,
             waterIter: 0,
@@ -435,7 +448,10 @@ async function cycleDeLeau(isFirst) {
                 '💧': JSON.parse(JSON.stringify(DATA['💧'])),
                 '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
             }
-        });
+        };
+        DATA['🧮']['previous'].push(firstCyclePayload);
+        window.appendConvergenceStep(firstCyclePayload);
+        dropLastStepSnapshot(DATA);
         window._lastCycleRef = { albedo: DATA['🪩']['🍰🪩📿'], vapor: DATA['💧']['🍰🫧💧'] };
         return { changed: false };
     }
@@ -460,6 +476,10 @@ async function cycleDeLeau(isFirst) {
 // 🧮🔄☀️ = cycle radiatif (nombre de crossings). Crossing 0°C/T_boil géré en interne.
 // Sans appel : rejet (utiliser simulateRadiativeTransfer() pour le calcul principal — chemin sans anim).
 // ============================================================================
+function dropLastStepSnapshot(DATA) {
+    const p = DATA['🧮']['previous'];
+    if (p.length && p[p.length - 1]) p[p.length - 1].data_snapshot = null;
+}
 function computeRadiativeTransfer() {
     return runRadiatifOnly();
 }
@@ -472,6 +492,7 @@ async function runRadiatifOnly() {
     const EPOCH = window.TIMELINE[epochIndex];
     const CONST = window.CONST;
     if (!DATA['🧮']['previous']) DATA['🧮']['previous'] = [];
+    window.clearConvergenceTrace();
     if (DATA['🧮']['🧮🔄🌊'] == null) DATA['🧮']['🧮🔄🌊'] = 0;
     const currentWaterPass = DATA['🧮']['🧮🔄🌊'];
     const maxWaterPass = 5;
@@ -505,7 +526,7 @@ async function runRadiatifOnly() {
                 const resSpinup = await window.cycleDeLeau(false);
                 const T_C_init = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
                 if (window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[spinup] CycleEau #' + (w + 1) + ' @' + T_C_init.toFixed(1) + '°C');
-                DATA['🧮']['previous'].push({
+                const spinupPayload = {
                     innerIter: null,
                     albedoIter: w,
                     waterIter: 0,
@@ -516,7 +537,10 @@ async function runRadiatifOnly() {
                         '💧': JSON.parse(JSON.stringify(DATA['💧'])),
                         '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
                     }
-                });
+                };
+                DATA['🧮']['previous'].push(spinupPayload);
+                window.appendConvergenceStep(spinupPayload);
+                dropLastStepSnapshot(DATA);
                 if (!resSpinup.changed) break;
                 if (window.ABORT_COMPUTE) return null;
             }
@@ -526,7 +550,7 @@ async function runRadiatifOnly() {
                 const resInit = await window.cycleDeLeau(false);
                 const T_C_init = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
                 if (window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[cycle] Init @' + T_C_init.toFixed(1) + '°C');
-                DATA['🧮']['previous'].push({
+                const initCyclePayload = {
                     innerIter: null,
                     albedoIter: w,
                     waterIter: 0,
@@ -537,7 +561,10 @@ async function runRadiatifOnly() {
                         '💧': JSON.parse(JSON.stringify(DATA['💧'])),
                         '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
                     }
-                });
+                };
+                DATA['🧮']['previous'].push(initCyclePayload);
+                window.appendConvergenceStep(initCyclePayload);
+                dropLastStepSnapshot(DATA);
                 if (!resInit.changed) break;
                 if (window.ABORT_COMPUTE) return null;
             }
@@ -545,7 +572,7 @@ async function runRadiatifOnly() {
     }
 
     if (currentWaterPass > 0 && (currentWaterPass > 1 || !window._fromCrossing)) {
-        DATA['🧮']['previous'].push({
+        const cycleAfterCrossPayload = {
             innerIter: null,
             albedoIter: DATA['🧮']['🧮🔄🪩'],
             waterIter: DATA['🧮']['🧮🔄🌊'],
@@ -556,7 +583,10 @@ async function runRadiatifOnly() {
                 '💧': JSON.parse(JSON.stringify(DATA['💧'])),
                 '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
             }
-        });
+        };
+        DATA['🧮']['previous'].push(cycleAfterCrossPayload);
+        window.appendConvergenceStep(cycleAfterCrossPayload);
+        dropLastStepSnapshot(DATA);
         window._fromCrossing = false;
     }
 
@@ -619,10 +649,10 @@ async function runRadiatifOnly() {
     DATA['📅']['🔺⏳'] = 86400 * 10;
     DATA['🧮']['🧮🛑'] = ''; // Réinit pour que le snapshot Init n'affiche pas l'ancien 'converged'
 
-    // Init : snapshot INPUT (T avant increment), puis DATA = OUTPUT (T + increment)
     const incInit = computeSearchIncrement();
     const T_init_K = DATA['🧮']['🧮🌡️'];
-    DATA['🧮']['previous'].push({
+    const maxPrevious = window.CONFIG_COMPUTE.maxPreviousLength;
+    const initPayload = {
         innerIter: -1,
         albedoIter: 0,
         waterIter: 0,
@@ -640,7 +670,11 @@ async function runRadiatifOnly() {
             '🪩': JSON.parse(JSON.stringify(DATA['🪩'])),
             '📛': snapshotEdsForConvergence()
         }
-    });
+    };
+    DATA['🧮']['previous'].push(initPayload);
+    window.appendConvergenceStep(initPayload);
+    dropLastStepSnapshot(DATA);
+    if (DATA['🧮']['previous'].length > maxPrevious) DATA['🧮']['previous'].splice(0, DATA['🧮']['previous'].length - maxPrevious);
     if (Number.isFinite(delta_equilibre_init)) {
         const sensInit = delta_equilibre_init < 0 ? 'trop de sortie → refroidir' : (delta_equilibre_init > 0 ? 'pas assez de sortie → réchauffer' : 'équilibre');
         if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[Init] ' + sensInit);
@@ -658,6 +692,7 @@ async function runRadiatifOnly() {
     while (DATA['🧮']['🧮🔄☀️'] < maxInnerIters && !innerConverged) {
         await new Promise(r => setTimeout(r, 0)); // Laisser le clic Stop être traité
         if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
+        DATA['🧮']['🔬🌈'] = getBinsFromDelta(DATA['🧲']['🔺🧲']);
         // Mettre à jour hauteur atmosphère (📏🫧🧿, 📏🫧🛩) depuis T courante : même grille verticale à 15,8°C en cold/warm start
         window.updateAtmosphereHeightFromCurrentT();
         DATA['🧮']['🧲🔬'] = computeToleranceWm2(DATA['🧮']['🧮🌡️'], EPOCH['🧲🔬']);
@@ -672,7 +707,7 @@ async function runRadiatifOnly() {
             const albedoOneStep = (DATA['🪩']['🍰🪩📿'] != null) ? (DATA['🪩']['🍰🪩📿'] * 100).toFixed(2) : '-';
             const h2oOneStep = (DATA['💧']['🍰🫧💧'] != null) ? (DATA['💧']['🍰🫧💧'] * 100).toFixed(2) : '-';
             if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[cycle] radiatif @' + T_C_oneStep.toFixed(1) + '°C');
-            DATA['🧮']['previous'].push({
+            const cyclePayload = {
                 innerIter: null,
                 albedoIter: DATA['🧮']['🧮🔄🪩'],
                 waterIter: DATA['🧮']['🧮🔄🌊'],
@@ -683,7 +718,10 @@ async function runRadiatifOnly() {
                     '💧': JSON.parse(JSON.stringify(DATA['💧'])),
                     '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
                 }
-            });
+            };
+            DATA['🧮']['previous'].push(cyclePayload);
+            window.appendConvergenceStep(cyclePayload);
+            dropLastStepSnapshot(DATA);
         } else {
             const baseAlbedoIter = (DATA['🧮']['🧮🔄🪩'] != null ? DATA['🧮']['🧮🔄🪩'] : 0) * maxWaterAlbedo;
             for (let w = 0; w < maxWaterAlbedo; w++) {
@@ -692,7 +730,7 @@ async function runRadiatifOnly() {
                 const albedoPctStep = (DATA['🪩']['🍰🪩📿'] != null) ? (DATA['🪩']['🍰🪩📿'] * 100).toFixed(2) : '-';
                 const h2oPctStep = (DATA['💧']['🍰🫧💧'] != null) ? (DATA['💧']['🍰🫧💧'] * 100).toFixed(2) : '-';
                 if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logEdsDiagnostic) console.log('[cycle] radiatif w=' + w + ' @' + T_C_step.toFixed(1) + '°C');
-                DATA['🧮']['previous'].push({
+                const cyclePayloadW = {
                     innerIter: null,
                     albedoIter: baseAlbedoIter + w,
                     waterIter: DATA['🧮']['🧮🔄🌊'],
@@ -703,7 +741,10 @@ async function runRadiatifOnly() {
                         '💧': JSON.parse(JSON.stringify(DATA['💧'])),
                         '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
                     }
-                });
+                };
+                DATA['🧮']['previous'].push(cyclePayloadW);
+                window.appendConvergenceStep(cyclePayloadW);
+                dropLastStepSnapshot(DATA);
                 if (!res.changed) break;
                 if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
             }
@@ -786,6 +827,7 @@ async function runRadiatifOnly() {
             return null;
         }
         expandBracketIfInvalid();
+        window.CONVERGENCE_DEBUG = { bins: DATA['🧮']['🔬🌈'], step: DATA['🧮']['🧮🔄☀️'], delta: DATA['🧲']['🔺🧲'] };
         try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
         await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console à jour après chaque itération
 
@@ -793,6 +835,39 @@ async function runRadiatifOnly() {
         if (Math.abs(DATA['🧲']['🔺🧲']) <= DATA['🧮']['🧲🔬']) {
             innerConverged = true;
             DATA['🧮']['🧮🛑'] = 'converged';
+            // Sync DATA['📊'] avec 🔬🌈 : si convergence dès la 1re itération, 📊 peut encore être à 100 bins (init)
+            const currentBins = DATA['🧮']['🔬🌈'];
+            const actualBins = (DATA['📊'] && DATA['📊'].lambda_range) ? DATA['📊'].lambda_range.length : 0;
+            if (actualBins !== currentBins) {
+                window.calculateFluxForT0();
+                window.calculateRadiativeCapacities();
+                const spectral_sync = window.getSpectralResultFromDATA();
+                DATA['🧲']['🧲🌈🔼'] = spectral_sync.total_flux;
+                DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
+                if (DATA['📊'] && DATA['📊'].eds_breakdown) {
+                    DATA['📛'] = buildEdsBreakdown(DATA['📊'].eds_breakdown);
+                    if (DATA['📛']) window.calculateH2OGreenhouseForcing();
+                }
+            }
+            const maxBins = window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
+            const layers = (DATA['📊'] && DATA['📊'].z_range) ? DATA['📊'].z_range.length : 0;
+            const estMBFinal = (maxBins * layers * 5 * 8) / 1e6;
+            const skipFinalPassRAM = (typeof window.CONFIG_COMPUTE.spectralMaxMB === 'number' && estMBFinal > window.CONFIG_COMPUTE.spectralMaxMB);
+            if (DATA['🧮']['🔬🌈'] < maxBins && !skipFinalPassRAM) {
+                // Passe finale à résolution max pour courbe spectrale et EDS précis
+                DATA['🧮']['🔬🌈'] = maxBins;
+                window.calculateFluxForT0();
+                window.calculateRadiativeCapacities();
+                const spectral_final = window.getSpectralResultFromDATA();
+                DATA['🧲']['🧲🌈🔼'] = spectral_final.total_flux;
+                DATA['🧲']['🧲🪩🔼'] = DATA['☀️']['🧲☀️🎱'] * DATA['🪩']['🍰🪩📿'];
+                DATA['🧲']['🔺🧲'] = DATA['🧲']['🧲☀️🔽'] + DATA['🧲']['🧲🌕🔽'] - DATA['🧲']['🧲🌈🔼'];
+                if (DATA['📊'] && DATA['📊'].eds_breakdown) {
+                    DATA['📛'] = buildEdsBreakdown(DATA['📊'].eds_breakdown);
+                    if (DATA['📛']) window.calculateH2OGreenhouseForcing();
+                }
+            }
+            window.CONVERGENCE_DEBUG = { bins: DATA['🧮']['🔬🌈'], step: DATA['🧮']['🧮🔄☀️'], delta: DATA['🧲']['🔺🧲'] };
             // Push état convergé pour cohérence affichage (sinon Arrêt montre Δ final non listé)
             const data_snapshot_conv = {
                 '🧮': (() => { const d = { ...DATA['🧮'] }; delete d.previous; return JSON.parse(JSON.stringify(d)); })(),
@@ -819,6 +894,10 @@ async function runRadiatifOnly() {
                 pushConv.dichoT_high_C = DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS;
             }
             DATA['🧮']['previous'].push(pushConv);
+            window.appendConvergenceStep(pushConv);
+            dropLastStepSnapshot(DATA);
+            const nPrev = window.CONFIG_COMPUTE.maxPreviousLength;
+            if (DATA['🧮']['previous'].length > nPrev) DATA['🧮']['previous'].splice(0, DATA['🧮']['previous'].length - nPrev);
             logConvergenceT(); // Log unique à la convergence pour régler T° (cible ~15°C)
         }
         if (innerConverged) break;
@@ -927,12 +1006,14 @@ async function runRadiatifOnly() {
                 pushPayload.dichoT_high_C = DATA['🧮']['🧮🌡️🔼'] - CONST.KELVIN_TO_CELSIUS;
             }
             DATA['🧮']['previous'].push(pushPayload);
+            window.appendConvergenceStep(pushPayload);
+            dropLastStepSnapshot(DATA);
             if (DATA['🧮']['🧮🔄🪩'] != null) DATA['🧮']['🧮🔄🪩']++;
             const isTboilCross = (T_prev_K < T_boil && T_next_K >= T_boil) || (T_prev_K >= T_boil && T_next_K < T_boil);
             const P_atm = DATA['🫧']['🎈'];
             // À P≈0 atm : pas de liquide, seul solide↔gaz (0°C) a un sens. T_boil=100°C serait faux.
             const T_transition_C = (P_atm < 0.01) ? 0 : (isTboilCross ? (T_boil - CONST.KELVIN_TO_CELSIUS) : 0);
-            DATA['🧮']['previous'].push({
+            const crossingPayload = {
                 innerIter: -0.5,
                 albedoIter: DATA['🧮']['🧮🔄🪩'],
                 waterIter: DATA['🧮']['🧮🔄🌊'],
@@ -946,11 +1027,15 @@ async function runRadiatifOnly() {
                     '💧': JSON.parse(JSON.stringify(DATA['💧'])),
                     '🪩': JSON.parse(JSON.stringify(DATA['🪩']))
                 }
-            });
+            };
+            DATA['🧮']['previous'].push(crossingPayload);
+            window.appendConvergenceStep(crossingPayload);
+            dropLastStepSnapshot(DATA);
             const maxPrevious = window.CONFIG_COMPUTE.maxPreviousLength;
             if (DATA['🧮']['previous'].length > maxPrevious) DATA['🧮']['previous'].splice(0, DATA['🧮']['previous'].length - maxPrevious);
             window._lastH2OParamsCache = null;
             window._fromCrossing = true;
+            window.CONVERGENCE_DEBUG = { bins: DATA['🧮']['🔬🌈'], step: DATA['🧮']['🧮🔄☀️'], delta: DATA['🧲']['🔺🧲'] };
             try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
             await new Promise(r => setTimeout(r, 0));
             if (DATA['🧮']['🧮🔄🌊'] >= maxWaterPass) {
@@ -1070,6 +1155,8 @@ async function runRadiatifOnly() {
         // next_T_C = T atteinte par le pas (Search et Dicho)
         pushPayload.next_T_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
         DATA['🧮']['previous'].push(pushPayload);
+        window.appendConvergenceStep(pushPayload);
+        dropLastStepSnapshot(DATA);
         DATA['🧮']['🧮🔄🪩']++;
         const maxPrevious = window.CONFIG_COMPUTE.maxPreviousLength;
         if (DATA['🧮']['previous'].length > maxPrevious) DATA['🧮']['previous'].splice(0, DATA['🧮']['previous'].length - maxPrevious);

@@ -711,17 +711,33 @@ window.updatePlot = function updatePlot(data) {
 
     if (!data.lambda_range) return;
 
-    const lambda_range = data.lambda_range; // ⚡ Nécessaire pour createFluxTrace
+    // Quand data.current contient un flux spectral, utiliser des lambda de même longueur que topFlux (200 ou 2000 après passe finale).
+    const topFluxLen = (data.current && data.current.upward_flux && data.current.upward_flux.length > 0)
+        ? data.current.upward_flux[data.current.upward_flux.length - 1].length
+        : 0;
+    let useCurrentLambda = (data.current && data.current.lambda_range && data.current.lambda_range.length === topFluxLen && topFluxLen > 0);
+    let lambda_range = useCurrentLambda ? data.current.lambda_range : data.lambda_range;
+    let lambda_weights = (useCurrentLambda && data.current.lambda_weights && data.current.lambda_weights.length === topFluxLen)
+        ? data.current.lambda_weights
+        : data.lambda_weights;
+    // Si topFlux a une autre longueur (ex. 2000 après passe finale) et current n'a pas les bons lambda, prendre la source de vérité DATA['📊'].
+    if (topFluxLen > 0 && lambda_range.length !== topFluxLen && typeof window.getSpectralResultFromDATA === 'function') {
+        const spectral = window.getSpectralResultFromDATA();
+        if (spectral && spectral.lambda_range && spectral.lambda_range.length === topFluxLen && spectral.lambda_weights && spectral.lambda_weights.length === topFluxLen) {
+            lambda_range = spectral.lambda_range;
+            lambda_weights = spectral.lambda_weights;
+        }
+    }
+
     const lambda_planck = lambda_range.map(l => l * 1e6); // Convertir en μm
     // ⚡ CORRECTION : Utiliser lambda_weights si disponible pour normalisation correcte
     // Le flux est calculé avec delta_lambda = 0.1e-6 dans calculations.js
     // Chaque point représente une plage de largeur delta_lambda * lambda_weights[j]
     const delta_lambda_base = 0.1e-6; // Pas de base utilisé dans les calculs (toujours 0.1e-6)
-    if (!data.lambda_weights) {
+    if (!lambda_weights || lambda_weights.length === 0) {
         console.error('[updatePlot] ❌ ERREUR CRITIQUE : lambda_weights manquant');
         throw new Error('lambda_weights requis dans data');
     }
-    const lambda_weights = data.lambda_weights;
 
     // Fonction helper pour créer une trace de flux observé (absorption)
     function createFluxTrace(flux_data, co2_ppm, temp_eff, color, label) {
@@ -730,17 +746,10 @@ window.updatePlot = function updatePlot(data) {
         // Donc on doit diviser par la même valeur pour obtenir W/m²/μm
         const topFlux = flux_data.upward_flux[flux_data.upward_flux.length - 1];
         
-        // Vérifier que les longueurs correspondent
+        // Vérifier que les longueurs correspondent (pas de troncature : incohérence = bug à corriger en amont)
         if (topFlux.length !== lambda_range.length) {
             console.error(`[updatePlot] ❌ ERREUR CRITIQUE : Longueurs incompatibles - topFlux: ${topFlux.length}, lambda_range: ${lambda_range.length}, lambda_weights: ${lambda_weights.length}`);
-            // Ajuster la longueur de topFlux pour correspondre à lambda_range (tronquer ou compléter)
-            if (topFlux.length > lambda_range.length) {
-                console.warn(`[updatePlot] ⚠️ Troncature de topFlux de ${topFlux.length} à ${lambda_range.length} éléments`);
-                topFlux.length = lambda_range.length;
-            } else {
-                console.error(`[updatePlot] ❌ ERREUR : topFlux (${topFlux.length}) < lambda_range (${lambda_range.length})`);
-                throw new Error(`Longueurs incompatibles : topFlux (${topFlux.length}) < lambda_range (${lambda_range.length})`);
-            }
+            throw new Error(`Longueurs incompatibles : topFlux (${topFlux.length}) != lambda_range (${lambda_range.length})`);
         }
         if (lambda_weights.length !== lambda_range.length) {
             console.error(`[updatePlot] ❌ ERREUR CRITIQUE : Longueurs incompatibles - lambda_weights: ${lambda_weights.length}, lambda_range: ${lambda_range.length}`);
@@ -781,7 +790,7 @@ window.updatePlot = function updatePlot(data) {
 
     // Fonction helper pour créer une trace Planck
     function createPlanckTrace(T, label, color, showInLegend = false, dashPattern = 'dash') {
-        const planck = data.lambda_range.map(l => {
+        const planck = lambda_range.map(l => {
             if (typeof window.planckFunction !== 'function') {
                 console.error('[updatePlot] ❌ ERREUR CRITIQUE : planckFunction non disponible');
                 throw new Error('planckFunction requise');
@@ -1479,7 +1488,7 @@ window.updatePlot = function updatePlot(data) {
                 canvas.style.setProperty('z-index', '1', 'important');
                 canvas.style.setProperty('position', 'absolute', 'important');
                 // Mettre à jour seulement si on a des données
-                if (data && data.current && typeof window.updateSpectralVisualization === 'function') {
+                if (data && data.current) {
                     window.updateSpectralVisualization(data.current);
                 }
                 // Sinon, garder la dernière visualisation visible (ne rien faire)
@@ -1674,13 +1683,10 @@ if (typeof window !== 'undefined' && window.addEventListener) {
             window.spectralPrecisionTarget = 'medium';
         }
 
-        // Redessiner avec la nouvelle précision si on a des données
         const canvas = document.getElementById('spectral-visualization');
         if (canvas && canvas._lastData) {
             setTimeout(() => {
-                if (typeof window.updateSpectralVisualization === 'function') {
-                    window.updateSpectralVisualization(canvas._lastData);
-                }
+                window.updateSpectralVisualization(canvas._lastData);
             }, 100);
         }
     });

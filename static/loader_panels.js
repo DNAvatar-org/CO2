@@ -1,4 +1,4 @@
-// File: loader_panels.js - Charge visu_radiatif.html et scie_radiatif.html dans les panels
+// File: loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts applicatifs
 // Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -59,8 +59,8 @@
     }
 
     Promise.all([
-        fetch('visu_radiatif.html').then(function (r) { return r.text(); }),
-        fetch('scie_radiatif.html').then(function (r) { return r.text(); })
+        fetch('html/visu_radiatif.html').then(function (r) { return r.text(); }),
+        fetch('html/scie_radiatif.html').then(function (r) { return r.text(); })
     ]).then(function (results) {
         const visuPanel = document.getElementById('visu-panel');
         const sciePanel = document.getElementById('scie-panel');
@@ -79,7 +79,7 @@
         }
     }).catch(function (err) {
         console.error('[loader_panels]', err);
-        document.getElementById('visu-panel').innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement visu_radiatif.html</p>';
+        document.getElementById('visu-panel').innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement html/visu_radiatif.html</p>';
     });
 
     window.togglePlotAnim = function () {

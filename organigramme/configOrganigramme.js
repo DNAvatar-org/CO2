@@ -257,7 +257,7 @@ const nodes = [
                 strokeSize: 1
             },
             {
-                epochName: 'Crétacé',
+                epochName: 'Paléozoïque',
                 logo: LOGOS.GLOBE_ASIA,
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 200, 255, 0.3)',
@@ -294,7 +294,7 @@ const nodes = [
         logoOffsetY: 7
     },
 
-    { id: 'espace2', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 150, y: centerY + 310, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
+    { id: 'espace2', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 170, y: centerY + 310, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'Espace', radiation: null, zIndex: 14 },
     //📛
     { id: 'reemis', logo: LOGOS.EDS, zIndex: 25, x: centerX, y: earthCenterY + 170, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
 

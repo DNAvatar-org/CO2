@@ -1,10 +1,10 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.17
+// Version 1.0.22
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Logs: v1.0.17 grille albedo (suppression doublons, centrage boule, top/bottom align)
+// Logs: v1.0.22 timeline 🦴 libellé forcé Paléozoïque (évite cache alphabet)
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -183,31 +183,14 @@ function updateButtonTooltip(cell, circleBg) {
   // Déterminer l'état actuel
   const isChecked = cell.classList.contains("checked");
   const stateText = isChecked ? "on" : "off";
-  // Format: "on/off<br>CO2" (saut de ligne HTML pour séparer l'état du nom)
-  const tooltipText = `${stateText}/${isChecked ? "off" : "on"}<br>${baseName}`;
+  // Noms molécules en indice (CO₂, CH₄, H₂O) pour l’alt
+  const baseNameHtml = baseName === "CO2" ? "CO<sub>2</sub>" : baseName === "CH4" ? "CH<sub>4</sub>" : baseName === "H2O" ? "H<sub>2</sub>O" : baseName;
+  const tooltipText = `${stateText}/${isChecked ? "off" : "on"}<br>${baseNameHtml}`;
 
-  // Mettre à jour le tooltip via l'attribut alt ou data-tooltip
-  if (circleBg.hasAttribute("alt")) {
-    circleBg.setAttribute("alt", tooltipText);
-  } else if (circleBg.hasAttribute("data-tooltip")) {
-    circleBg.setAttribute("data-tooltip", tooltipText);
-  } else {
-    // Ajouter l'attribut alt pour que tooltips.js le détecte
-    circleBg.setAttribute("alt", tooltipText);
-  }
-
-  // Si tooltips.js est chargé, forcer la mise à jour
-  if (
-    typeof window !== "undefined" &&
-    typeof window.addTooltip === "function"
-  ) {
-    // Retirer l'ancien tooltip et en ajouter un nouveau
-    const existingTooltip = circleBg.querySelector(".flux-custom-tooltip");
-    if (existingTooltip) {
-      existingTooltip.remove();
-    }
-    window.addTooltip(circleBg, tooltipText);
-  }
+  // aria-label en texte brut (sans HTML) pour lecteurs d’écran ; data-tooltip avec indices pour l’affichage
+  const altText = tooltipText.replace(/<br\s*\/?>/gi, " ").replace(/<sub>|<\/sub>/gi, "");
+  circleBg.setAttribute("aria-label", altText);
+  circleBg.setAttribute("data-tooltip", tooltipText);
 }
 
 // Fonction pour créer un rectangle avec des facteurs
@@ -491,7 +474,7 @@ function initPlanetThreeJS(
   const sphereRadius = planetSize * 0.01 * 2;
 
   const sphereSegments = 32; // Précision comme dans planet-test.html
-  const lightContrast = 1.5; // Contraste comme dans planet-test.html
+  const lightContrast = 1.85; // Contraste éclairci pour astre plus lisible (était 1.5)
   const tiltAngle = 55; // Inclinaison en degrés (comme demandé)
 
   // Scène - fond transparent pour s'intégrer dans le diagramme
@@ -575,8 +558,8 @@ function initPlanetThreeJS(
     );
   }
 
-  // Éclairage : lumière ambiante
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+  // Éclairage : lumière ambiante (intensité augmentée pour éclaircir l’astre globalement)
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
   scene.add(ambientLight);
 
   // Éclairage : lumière directionnelle (comme le soleil) ou point au centre (éclairage interne)
@@ -652,8 +635,8 @@ function initPlanetThreeJS(
   }
   // Ajuster la lumière ambiante (plus faible pour éclairage externe, plus forte pour interne)
   if (!pointLight) {
-    // Éclairage externe : lumière ambiante normale
-    const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
+    // Éclairage externe : lumière ambiante plus forte pour éclaircir l’astre
+    const ambientIntensity = Math.max(0.15, 0.45 - lightContrast * 0.05);
     ambientLight.intensity = ambientIntensity;
   }
   // Pour éclairage interne, l'intensité ambiante est déjà ajustée lors de la création du PointLight
@@ -868,7 +851,7 @@ function updatePlanetLighting() {
 
   const luxSaturation =
     epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
-  const lightContrast = threeJSData.lightContrast || 1.5;
+  const lightContrast = threeJSData.lightContrast || 1.85;
   const sphereRadius = threeJSData.currentRadius || threeJSData.sphereRadius;
 
   // Log supprimé (non essentiel)
@@ -926,7 +909,7 @@ function updatePlanetLighting() {
       // Log supprimé (non essentiel)
 
       if (threeJSData.ambientLight) {
-        const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
+        const ambientIntensity = Math.max(0.15, 0.45 - lightContrast * 0.05);
         threeJSData.ambientLight.intensity = ambientIntensity;
       }
     } else {
@@ -961,7 +944,7 @@ function updatePlanetLighting() {
       threeJSData.directionalLight = directionalLight;
       threeJSData.pointLight = null;
       if (threeJSData.ambientLight) {
-        const ambientIntensity = Math.max(0.05, 0.2 - lightContrast * 0.075);
+        const ambientIntensity = Math.max(0.15, 0.45 - lightContrast * 0.05);
         threeJSData.ambientLight.intensity = ambientIntensity;
       }
     }
@@ -1556,13 +1539,17 @@ function createCell(
         const stateText = isChecked ? "on" : "off";
         // Mapper les noms pour l'affichage
         let displayName = tooltip;
-        if (nodeId === "co2") displayName = "CO2";
-        else if (nodeId === "methane") displayName = "CH4";
-        else if (nodeId === "h2o") displayName = "H2O";
+        if (nodeId === "co2") displayName = "CO<sub>2</sub>";
+        else if (nodeId === "methane") displayName = "CH<sub>4</sub>";
+        else if (nodeId === "h2o") displayName = "H<sub>2</sub>O";
         else if (nodeId === "albedo-btn") displayName = "Albedo";
-        // Format: "on/off<br>CO2" (saut de ligne HTML)
+        // Format: "on/off<br>CO₂" (saut de ligne HTML, indices pour molécules)
         tooltipText = `${stateText}/${isChecked ? "off" : "on"}<br>${displayName}`;
       }
+      // Alt / a11y sur le logo EDS : aria-label et data-tooltip pour tooltip et lecteurs d’écran
+      const altText = tooltipText.replace(/<br\s*\/?>/gi, " ").replace(/<sub>|<\/sub>/gi, "");
+      circleBg.setAttribute("aria-label", altText);
+      circleBg.setAttribute("data-tooltip", tooltipText);
       addCustomTooltip(circleBg, tooltipText);
 
       // Pour les boutons, mettre à jour le tooltip quand l'état change
@@ -1681,7 +1668,8 @@ function createCell(
           label.className = "flux-label";
           if (dataId) label.setAttribute("data-id", dataId);
           if (dataId === "fine_tuning_cloud_bary") {
-            label.setAttribute("aria-label", "Fine Tuning");
+            label.setAttribute("aria-label", "Réglage barycentre nuages : 50 %. Glisser pour ajuster.");
+            label.setAttribute("data-tooltip", "Réglage barycentre nuages (albédo). Pourcentage du curseur ; glisser pour ajuster.");
             label.style.marginTop = "6px";
           }
 
@@ -1708,6 +1696,10 @@ function createCell(
           label.style.position = "relative"; // Créer un stacking context
           label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
           labelContainer.appendChild(label);
+          if ((dataId === "fine_tuning_cloud_bary") && typeof window.addTooltipFromAttribute === "function" && !label.hasAttribute("data-tooltip-initialized")) {
+            window.addTooltipFromAttribute(label);
+            label.setAttribute("data-tooltip-initialized", "true");
+          }
         });
 
         gridItem.appendChild(labelContainer);
@@ -1786,6 +1778,7 @@ function createCell(
           // Patch spécifique pour albedo_percents : margin-top pour aligner en haut du logo
           if (dataId === "albedo_percents") {
             label.style.marginTop = "115px";
+            label.setAttribute("data-tooltip", "Détail albédo : couverture et coefficient par type (nuages, océan, glace, etc.).");
           }
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
@@ -1819,6 +1812,10 @@ function createCell(
           }
 
           labelContainer.appendChild(label);
+          if ((dataId === "albedo_percents") && typeof window.addTooltipFromAttribute === "function" && !label.hasAttribute("data-tooltip-initialized")) {
+            window.addTooltipFromAttribute(label);
+            label.setAttribute("data-tooltip-initialized", "true");
+          }
         });
 
                 gridItem.appendChild(labelContainer);
@@ -3688,6 +3685,11 @@ function generateTimelineFromConfig() {
         "onclick",
         `setEpoch('${epochId.replace(/'/g, "\\'")}')`,
       );
+      // Libellé timeline : 🦴 = Paléozoïque (forcé ici pour éviter cache alphabet.js)
+      const epochLabel =
+        epochId === "🦴"
+          ? "Paléozoïque"
+          : (window.CHARS_DESC && window.CHARS_DESC[epochId]) || epochId;
       // Ne pas utiliser title natif, utiliser addCustomTooltip à la place
 
       // getDisplayForPicto : image si dans charsImages, sinon picto (transparent si on ajoute des images)
@@ -3698,10 +3700,7 @@ function generateTimelineFromConfig() {
       if (display.type === "image") {
         const img = document.createElement("img");
         img.src = display.value;
-        img.alt =
-          window.CHARS_DESC && window.CHARS_DESC[epochId]
-            ? window.CHARS_DESC[epochId]
-            : epochId;
+        img.alt = epochLabel;
         img.style.width = "100%";
         img.style.height = "100%";
         img.style.objectFit = "contain";
@@ -3716,14 +3715,9 @@ function generateTimelineFromConfig() {
 
       epochsContainer.appendChild(button);
 
-      // Ajouter le tooltip personnalisé avec description depuis DESC
-      // Le title est maintenant dans DESC, pas dans item.title
-      if (
-        typeof window !== "undefined" &&
-        window.CHARS_DESC &&
-        window.CHARS_DESC[epochId]
-      ) {
-        addCustomTooltip(button, window.CHARS_DESC[epochId]);
+      // Ajouter le tooltip personnalisé (epochLabel = Paléozoïque pour 🦴)
+      if (typeof window !== "undefined" && epochLabel) {
+        addCustomTooltip(button, epochLabel);
       }
     } else {
       // Séparateur automatique (détecté par '◀' et '▶')
@@ -3878,14 +3872,15 @@ window.updateFluxLabels = function (eventId) {
     isCH4_eds,
     isH2O_eds,
     isAlbedo;
-  const logAlbedoUi = function (msg) {
-    if (typeof window !== "undefined" && typeof window.pd === "function") {
-      window.pd("updateFluxLabels", "organigramme.js", "❌ " + msg);
+  if (typeof window !== "undefined" && window.CONVERGENCE_DEBUG) {
+    const d = window.CONVERGENCE_DEBUG;
+    const deltaStr = (d.delta != null && Number.isFinite(Number(d.delta))) ? Number(d.delta).toFixed(3) : "—";
+    if (typeof window.pd === "function") {
+      window.pd("updateFluxLabels", "organigramme.js", "bins=" + (d.bins != null ? d.bins : "—") + " step=" + (d.step != null ? d.step : "—") + " delta=" + deltaStr);
     } else {
-      console.log("❌ [updateFluxLabels][organigramme.js] " + msg);
+      console.log("[updateFluxLabels] bins=" + (d.bins != null ? d.bins : "—") + " step=" + (d.step != null ? d.step : "—") + " delta=" + deltaStr);
     }
-  };
-  logAlbedoUi("enter eventId=" + eventId);
+  }
 
   switch (eventId) {
     case "configLoaded":
@@ -3937,16 +3932,6 @@ window.updateFluxLabels = function (eventId) {
       if (hasNoAtmosphere) {
         albedo_num = 0;
       }
-      logAlbedoUi(
-        "state epochId=" +
-          epochId +
-          " hasNoAtmosphere=" +
-          hasNoAtmosphere +
-          " DATA_albedo=" +
-          (D["🪩"] && D["🪩"]["🍰🪩📿"] != null ? D["🪩"]["🍰🪩📿"] : "n/a") +
-          " ui_albedo_num=" +
-          albedo_num,
-      );
       updateAlbedoHaloFromComposition(D);
       break;
     default:
@@ -4284,14 +4269,6 @@ window.updateFluxLabels = function (eventId) {
   // Fonction helper pour mettre à jour un label par dataId (utilise maintenant le template)
   const updateLabel = (dataId, value, format = "auto") => {
     const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
-    if (dataId === "albedo_percent") {
-      logAlbedoUi(
-        "updateLabel start dataId=albedo_percent labels=" +
-          labels.length +
-          " raw=" +
-          value,
-      );
-    }
     labels.forEach((label) => {
       let formattedValue;
 
@@ -4304,12 +4281,14 @@ window.updateFluxLabels = function (eventId) {
       }
 
       label.innerHTML = formattedValue;
-      if (dataId === "albedo_percent") {
-        logAlbedoUi(
-          "updateLabel write dataId=albedo_percent formatted=" + formattedValue,
-        );
+      if (dataId === "fine_tuning_cloud_bary") {
+        const pctMatch = typeof formattedValue === "string" && formattedValue.match(/(\d+(?:\.\d+)?)\s*%/);
+        const pct = pctMatch ? pctMatch[1] : "50";
+        const tooltipText = "Réglage barycentre nuages : " + pct + " %. Glisser pour ajuster.";
+        label.setAttribute("aria-label", tooltipText);
+        label.setAttribute("data-tooltip", tooltipText);
+        label.removeAttribute("title");
       }
-
       // Détecter automatiquement le type pour la couleur
       const valueType = detectValueType(formattedValue);
 
@@ -5350,13 +5329,9 @@ window.updateFluxLabels = function (eventId) {
 
   // Albédo
   const albedo_percent_value = albedo_num * 100;
-  logAlbedoUi("pre-write albedo_percent value=" + albedo_percent_value);
   updateLabel("albedo_percent", albedo_percent_value);
   updateLabel("albedo_forcing", forcing_Albedo);
-  // Les labels du bouton albedo utilisent forcing_total et albedo_percent
-  // albedo_percent : pourcentage total d'albedo (somme des %), pas le détail
   updateLabel("albedo_percent", albedo_percent_value);
-  logAlbedoUi("post-write albedo_percent value=" + albedo_percent_value);
 
   // passing_albedo_percent : pourcentage qui passe (1 - albedo_percent)
   // Sur la flèche geometrie -> albedo
