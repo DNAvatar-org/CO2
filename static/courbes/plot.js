@@ -433,12 +433,20 @@ function initPlot() {
 // Fonction pour redimensionner le canvas pour correspondre à la zone de plot Plotly
 // Debounce pour éviter trop d'appels lors du resize
 let resizeTimeout = null;
+const RESIZE_DEBOUNCE_MS = 1000;
+// Fonction qui contient l'appel setTimeout(resizeEvent) — log à l'entrée pour tracer les appels
 function debouncedResizeCanvas() {
+    if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'entered (contains setTimeout resizeEvent)');
+    else console.log('[debouncedResizeCanvas] entered (contains setTimeout resizeEvent)');
     if (resizeTimeout) {
         clearTimeout(resizeTimeout);
+        if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'clearTimeout (reschedule)');
+        else console.log('[debouncedResizeCanvas] clearTimeout (reschedule)');
     }
-    // Augmenter le délai pour laisser le temps au layout de se stabiliser (scrollbar)
-    resizeTimeout = setTimeout(() => {
+    resizeTimeout = setTimeout(function resizeEvent() {
+        if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'resizeEvent fired');
+        else console.log('[debouncedResizeCanvas] resizeEvent fired');
+        resizeTimeout = null;
         const plotEl = document.getElementById('plot-container');
         if (plotEl && typeof Plotly !== 'undefined') {
             Plotly.Plots.resize(plotEl);
@@ -454,7 +462,9 @@ function debouncedResizeCanvas() {
                 });
             }
         });
-    }, 300); // 300ms pour être sûr que le resize est fini
+    }, RESIZE_DEBOUNCE_MS);
+    if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'setTimeout(resizeEvent, ' + RESIZE_DEBOUNCE_MS + ') scheduled');
+    else console.log('[debouncedResizeCanvas] setTimeout(resizeEvent, ' + RESIZE_DEBOUNCE_MS + ') scheduled');
 }
 
 // Flag pour éviter les appels multiples simultanés
@@ -617,6 +627,8 @@ window.updatePlotAltitudeAxis = function (atm_height_km) {
 // Ajouter l'écouteur d'événement resize
 if (typeof window !== 'undefined') {
     window.addEventListener('resize', debouncedResizeCanvas);
+    if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'resize listener attached');
+    else console.log('[courbes/plot.js] resize listener attached');
 }
 
 // Fonction pour dessiner uniquement la bande de spectre de 15px (sans données)
@@ -1031,7 +1043,7 @@ window.updatePlot = function updatePlot(data) {
         // Pour l'affichage dans le graphique, utiliser la même température que les courbes (cohérence totale)
         T_current_display = T_current;
 
-        // Récupérer la température effective pour l'affichage cyan (bas de la courbe d'émission)
+        // Température effective (sommet atm.) pour affichage cyan uniquement ; courbes = T surface (cohérence organigramme)
         T_effective_display = data.current.effective_temperature;
 
         // Déterminer la couleur selon la température terrestre (T° Terrestre)
@@ -1054,10 +1066,10 @@ window.updatePlot = function updatePlot(data) {
         trace_absorption.showlegend = false; // Pas dans la légende
         traces.push(trace_absorption);
 
-        // Courbe pointillée = corps noir à la T° courante (surface), pas T effective
+        // Courbe pointillée = corps noir à la T° surface (cohérence avec organigramme et tooltip)
         const color_effective = color_current;
 
-        const planck_current = createPlanckTrace(T_effective_display, `Planck T effective ${data.co2_ppm.toFixed(0)} ppm`, color_effective, false, 'dot');
+        const planck_current = createPlanckTrace(T_current_display, `Planck T surface ${data.co2_ppm.toFixed(0)} ppm`, color_effective, false, 'dot');
         planck_current.line.width = 2; // En gras
         planck_current.line.color = color_effective; // Même couleur que la courbe pleine
         traces.push(planck_current);
@@ -1084,17 +1096,20 @@ window.updatePlot = function updatePlot(data) {
 
     // 4. Ajouter une ligne horizontale pour la tropopause (calculée dynamiquement)
     // Calculer la tropopause en fonction de T0 (température de surface)
-    // ⚠️ T0 peut être indisponible lors de l'initialisation (affichage des courbes Planck uniquement)
+    // T0 = température de surface (cohérence organigramme / légende) pour tropopause et annotations
     let T0;
     let has_temperature = false;
-    if (data.current && data.current.effective_temperature !== undefined) {
-        T0 = data.current.effective_temperature;
+    if (data.temp_surface !== undefined) {
+        T0 = data.temp_surface;
         has_temperature = true;
     } else if (data.temp_surface_c !== undefined) {
         T0 = data.temp_surface_c + CONST.KELVIN_TO_CELSIUS;
         has_temperature = true;
-    } else if (data.temp_surface !== undefined) {
-        T0 = data.temp_surface;
+    } else if (data.current && data.current.T0 !== undefined) {
+        T0 = data.current.T0;
+        has_temperature = true;
+    } else if (data.current && data.current.effective_temperature !== undefined) {
+        T0 = data.current.effective_temperature;
         has_temperature = true;
     }
 
@@ -1466,29 +1481,23 @@ window.updatePlot = function updatePlot(data) {
         ]
     };
 
-    // Afficher uniquement la température effective (cyan) - bas de la courbe d'émission
-    // La température de surface est déjà affichée dans le flux diagram (synthese_Temp)
-    // Donc on n'affiche que la température effective ici
+    // Afficher la température effective (sommet) avec label pour éviter confusion avec T surface (organigramme)
     if (T_effective_display) {
         const plotContainer = document.getElementById('plot-container');
         if (plotContainer) {
-            // Supprimer l'ancien affichage s'il existe
             const oldTempDisplay = plotContainer.querySelector('.temp-display-cyan');
             if (oldTempDisplay) {
                 oldTempDisplay.remove();
             }
 
-            // Créer un nouvel élément pour afficher la température effective
             const tempDisplay = document.createElement('div');
             tempDisplay.className = 'temp-display-cyan';
 
-            // Calculer les températures
             const tempK = T_effective_display.toFixed(1);
             const tempC = (T_effective_display - CONST.KELVIN_TO_CELSIUS).toFixed(1);
             const tempF = ((T_effective_display - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
 
-            // Créer le contenu sur 3 lignes
-            tempDisplay.innerHTML = `${tempK} K<br>${tempC}°C<br>${tempF}°F`;
+            tempDisplay.innerHTML = `T eff.<br>${tempK} K<br>${tempC}°C<br>${tempF}°F`;
 
             // Même couleur que la courbe pointillée (corps noir) pour cohérence visuelle
             tempDisplay.style.color = color_current;
@@ -1905,6 +1914,11 @@ window.updateSpectralVisualization = function (data) {
         return;
     }
     if (!data || !data.upward_flux || !data.lambda_range || !data.z_range) {
+        return;
+    }
+    // Fond radiatif uniquement à la fin (bins = maxSpectralBinsConvergence)
+    const maxBins = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxSpectralBinsConvergence) || 2000;
+    if (data.lambda_range.length < maxBins) {
         return;
     }
 

@@ -936,12 +936,12 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
             cloud_coverage: cloud_coverage
         });
 
-    // Mettre à jour les labels du flux pendant le calcul (temp_surface_c pour légende couleur)
-    // DATA est déjà à jour : updateFluxLabels() lit depuis DATA (event cycleCalcul)
+    // Mettre à jour les labels du flux pendant le calcul (sauf si FPS dans zone rouge : courbe toujours affichée)
     DATA['📊'] = DATA['📊'] || {};
     DATA['📊'].total_flux = result.total_flux;
     if (window.CO2_EVENTS) window.CO2_EVENTS.emit('cycleCalcul');
-    if (typeof window.updateFluxLabels === 'function') {
+    const fpsOk = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
+    if (fpsOk && typeof window.updateFluxLabels === 'function') {
         window.updateFluxLabels('cycleCalcul');
     }
 
@@ -972,7 +972,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
         temp_surface_c: temp_surface_c // Température de surface en °C pour mise à jour de la couleur en temps réel
     };
 
-    // Mettre à jour le graphique et la légende (K, °C, °F + couleur)
+    // Courbe à chaque cycle (toujours mettre à jour)
     window.updatePlot(tempPlotData);
     if (typeof window.updateLegend === 'function') {
         window.updateLegend(tempPlotData);
@@ -982,7 +982,7 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
         window.CO2_EVENTS.emit('compute:progress', { iteration, T0: T0_test, total_flux: result.total_flux, phase: 'dichotomy' });
     }
 
-    // Mettre à jour la visualisation spectrale
+    // Visualisation spectrale à chaque cycle (canvas visible, fond radiatif seulement si bins >= 2000)
     setTimeout(() => {
         const canvas = document.getElementById('spectral-visualization');
         if (canvas) {
@@ -1706,7 +1706,10 @@ function simulateRadiativeTransfer() {
                             geo_flux: geo_flux,
                             planet_radius: (options && options.planet_radius) ? options.planet_radius : 6371000
                         };
-                        window.updateFluxLabels('cycleCalcul');
+                        const fpsOkInner = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
+                        if (fpsOkInner && typeof window.updateFluxLabels === 'function') {
+                            window.updateFluxLabels('cycleCalcul');
+                        }
                         if (typeof window.updateLegend === 'function') {
                             window.updateLegend(fluxData);
                         }
@@ -1923,7 +1926,8 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
         temp_surface_c: final_T0 - CONST.KELVIN_TO_CELSIUS // 🔒 Température de surface (°C) - nécessaire pour updateH2OLevelDirect
     };
 
-    window.showSpectralBackground = true;
+    const maxBinsFinal = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxSpectralBinsConvergence) || 2000;
+    window.showSpectralBackground = !!(lambda_range && lambda_range.length >= maxBinsFinal);
     window.spectralConverged = true;
     window.spectralPrecisionTarget = 'max';
     
@@ -1945,7 +1949,6 @@ function finalizeResults(final_result, final_T0, CO2_fraction, resolve) {
                 lambda_range: lambda_range,
                 z_range: z_range
             };
-            window.showSpectralBackground = true;
             window.updateSpectralVisualization(spectralData);
             setTimeout(() => {
                 const canvasCheck = document.getElementById('spectral-visualization');
@@ -2021,7 +2024,8 @@ function finalizeResultsSync(result, T0, lambda_range, lambda_weights, z_range, 
     window.plotData.temp_surface_c = T0 - CONST.KELVIN_TO_CELSIUS;
     DATA['🧮']['🧮🌡️'] = T0;
 
-    window.showSpectralBackground = true;
+    const maxBinsSync = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxSpectralBinsConvergence) || 2000;
+    window.showSpectralBackground = !!(lambda_range && lambda_range.length >= maxBinsSync);
     window.spectralConverged = true;
     window.spectralPrecisionTarget = 'max';
     setTimeout(() => {

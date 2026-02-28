@@ -78,23 +78,33 @@
         document.getElementById('visu-panel').innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement html/visu_radiatif.html</p>';
     });
 
+    // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque
     window.togglePlotAnim = function () {
-        var animButton = document.getElementById('plot-anim-toggle');
-        if (animButton) {
-            var isSelected = animButton.classList.contains('selected');
-            animButton.classList.toggle('selected');
-            var cb = document.getElementById('plot-anim-toggle-checkbox');
-            if (!cb) {
-                cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.id = 'plot-anim-toggle-checkbox';
-                cb.style.display = 'none';
-                document.body.appendChild(cb);
-            }
-            cb.checked = !isSelected;
-            cb.dispatchEvent(new Event('change', { bubbles: true }));
-            window.syncToScie({ animEnabled: !isSelected });
+        if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎬'] = true;
+        var cb = document.getElementById('plot-anim-toggle-checkbox');
+        if (cb) cb.checked = true;
+        window.syncToScie({ animEnabled: true });
+        if (window.DATA && window.DATA['📜'] && typeof window.TIMELINE !== 'undefined' && window.TIMELINE.length) {
+            var cur = window.DATA['📜']['👉'];
+            if (typeof cur !== 'number') cur = 0;
+            var idx = cur + 1;
+            while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
+            if (idx >= window.TIMELINE.length) idx = 0;
+            while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
+            var nextItem = window.TIMELINE[idx];
+            var nextId = nextItem['📅'];
+            var nextName = nextItem.name || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
+            if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
         }
+    };
+
+    // Clic sur un bouton époque = sans animation
+    window.setEpochFromEpochButton = function (epochId) {
+        if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎬'] = false;
+        var cb = document.getElementById('plot-anim-toggle-checkbox');
+        if (cb) cb.checked = false;
+        window.syncToScie({ animEnabled: false });
+        if (typeof window.setEpoch === 'function') window.setEpoch(epochId);
     };
 
     window.switchTab = function (name) {
@@ -159,7 +169,8 @@
         var lastComputePayload = null;
         if (window.CO2_EVENTS) {
             window.CO2_EVENTS.on('cycleCalcul', function () {
-                if (typeof window.updateFluxLabels === 'function') {
+                const fpsOk = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
+                if (fpsOk && typeof window.updateFluxLabels === 'function') {
                     try { window.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
                 }
             });
@@ -199,7 +210,8 @@
                         var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === epochId; });
                         if (ep) window.currentEpochName = ep.name;
                     }
-                    if (typeof window.updateFluxLabels === 'function') {
+                    const fpsOk = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
+                    if (fpsOk && typeof window.updateFluxLabels === 'function') {
                         try { window.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
                     }
                 }

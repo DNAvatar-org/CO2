@@ -574,26 +574,11 @@ function updateFPS() {
             window.fps = fps;
         }
 
-        // Mettre à jour le graphique FPS
+        // Mettre à jour le graphique FPS (précision 0% → 0.0x, 100% → 2.0x)
         if (typeof window !== 'undefined' && typeof window.updateFPSDisplay === 'function') {
-            // Récupérer la précision actuelle
-            let precisionFactor = 1.0;
-            if (typeof window !== 'undefined' && typeof getPrecisionFactorFromFPS === 'function') {
-                precisionFactor = getPrecisionFactorFromFPS();
-            } else if (typeof window !== 'undefined' && window.fps) {
-                // Calculer approximativement la précision selon le FPS
-                const currentFPS = window.fps;
-                if (currentFPS < 20) {
-                    precisionFactor = 0.5;
-                } else if (currentFPS < 25) {
-                    precisionFactor = 0.75;
-                } else if (currentFPS > 55) {
-                    precisionFactor = 2.0;
-                } else {
-                    precisionFactor = 1.0;
-                }
-            }
-
+            const precisionFactor = (typeof getPrecisionFactorFromFPS === 'function')
+                ? getPrecisionFactorFromFPS()
+                : 0;
             window.updateFPSDisplay(fps, precisionFactor);
         }
     }
@@ -2042,8 +2027,13 @@ function setEpoch(epochName) {
         btn.classList.remove('selected');
     });
 
-    // Sélectionner le bouton cliqué
-    const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochName}"]`);
+    // data-epoch sur le DOM = id (emoji), pas le nom ; résoudre pour sélectionner le bon bouton
+    const epochNameToEmojiForButton = {
+        'Corps noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Mésozoïque': '🦕',
+        'Paléozoïque': '🦴', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
+    };
+    const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
+    const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochIdForButton}"]`);
     if (clickedButton) {
         clickedButton.classList.add('selected');
     }
@@ -2633,7 +2623,7 @@ function setEpoch(epochName) {
     if (window.CO2_EVENTS) {
         const epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || epoch.id || epochName;
         const ticTime = (window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'] != null) ? window.DATA['📜']['📿💫'] : 0;
-        const animEnabled = (document.getElementById('plot-anim-toggle') && document.getElementById('plot-anim-toggle').classList.contains('selected')) || window.isAnim;
+        const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎬']) || window.isAnim;
         window.CO2_EVENTS.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime });
     }
 }
@@ -3056,8 +3046,7 @@ function runMainInit() {
                     // Contrôler l'affichage selon le niveau FPS
                     // 🔒 Le bouton "anim" contrôle directement showDichotomySteps, on ne le modifie pas ici
                     // On contrôle seulement l'animation de la planète selon le FPS
-                    const animToggle = document.getElementById('plot-anim-toggle');
-                    const animEnabled = animToggle && animToggle.checked;
+                    const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎬']);
                     
                     if (level === 'warning' || level === 'aïe' || level === 'lent') {
                         // FPS bas : arrêter l'animation de la planète (même si anim activé, on arrête pour performance)
@@ -3087,32 +3076,19 @@ function runMainInit() {
                     window.fpsPrecisionFactor = 1.0; // Précision par défaut
                 }
                 
-                // Initialiser le bouton anim (désactivé par défaut, contrôle directement showDichotomySteps)
-                const animToggle = document.getElementById('plot-anim-toggle-checkbox') || document.getElementById('plot-anim-toggle');
-                if (animToggle) {
-                    if (typeof window !== 'undefined') {
-                        window.isAnim = animToggle.checked === true;
-                        window.showDichotomySteps = window.isAnim;
-                    }
-                    
-                    animToggle.addEventListener('change', (e) => {
+                // Anim : source de vérité = DATA['🔘']['🔘🎬'] (bouton animation = bouton normal, pas toggle)
+                const animCb = document.getElementById('plot-anim-toggle-checkbox');
+                if (typeof window !== 'undefined') {
+                    window.isAnim = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎬']) || false;
+                    window.showDichotomySteps = window.isAnim;
+                }
+                if (animCb) {
+                    animCb.addEventListener('change', (e) => {
                         const enabled = e.target.checked;
-                        if (typeof window !== 'undefined') {
-                            // 🔒 Mettre à jour la variable globale unique (seule référence)
+                        if (typeof window !== 'undefined' && window.DATA && window.DATA['🔘']) {
+                            window.DATA['🔘']['🔘🎬'] = enabled;
                             window.isAnim = enabled;
                             window.showDichotomySteps = enabled;
-                            
-                            // Mettre à jour le bouton visuel si présent
-                            const animButton = document.getElementById('plot-anim-toggle');
-                            if (animButton && animButton.classList) {
-                                if (enabled) {
-                                    animButton.classList.add('selected');
-                                } else {
-                                    animButton.classList.remove('selected');
-                                }
-                            }
-                            
-                            // Si on désactive, arrêter aussi l'animation de la planète
                             if (!enabled) {
                                 window.threeJSAnimationPaused = true;
                             } else if (window.fpsLevel && window.fpsLevel !== 'warning' && window.fpsLevel !== 'aïe' && window.fpsLevel !== 'lent') {

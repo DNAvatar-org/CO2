@@ -1190,7 +1190,8 @@ async function runRadiatifOnly() {
                 window.parent.postMessage({ type: 'cycleCalcul', DATA: dataSubset, h2oVaporPercent: window.h2oVaporPercent }, '*');
             }
             if (window.CO2_EVENTS) window.CO2_EVENTS.emit('cycleCalcul');
-            if (typeof window.updateFluxLabels === 'function') {
+            const fpsOk = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
+            if (fpsOk && typeof window.updateFluxLabels === 'function') {
                 window.updateFluxLabels('cycleCalcul');
             }
             await new Promise(r => setTimeout(r, 0));

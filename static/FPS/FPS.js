@@ -20,26 +20,27 @@ const X_STEP = 10; // Step de 10px en X (chaque pixel = même durée)
 const PIXEL_DURATION = 0.1; // 100ms par pixel (10 pixels par seconde à 60 FPS)
 
 // Seuils de précision
-const FPSalert = 25;  // Seuil d'alerte (FPS bas)
+const FPSalert = 25;  // Seuil d'alerte (FPS bas) — sous cette valeur : pas de plot du flux (courbe toujours affichée)
 const FPSmin = 20;     // FPS minimum acceptable
 const FPSmax = 55;     // FPS maximum (bonne performance)
 
+// Précision 0% = 0.0x, 100% = 2.0x (source unique pour l'affichage panneau FPS)
+const PRECISION_PERCENT_DEFAULT = 0;
+if (typeof window !== 'undefined' && window.precisionPercent === undefined) {
+    window.precisionPercent = PRECISION_PERCENT_DEFAULT;
+}
+
 function getPrecisionFactorFromFPS() {
-    if (window.fpsPrecisionFactor !== undefined) {
-        return window.fpsPrecisionFactor;
+    // Précision pilotée par % : 0% → 0.0x, 100% → 2.0x
+    if (typeof window !== 'undefined' && typeof window.precisionPercent === 'number') {
+        return Math.max(0, Math.min(2, (window.precisionPercent / 100) * 2));
     }
-    const currentFPS = window.fps;
-    if (currentFPS < FPSmin) {
-        return 0.5;
-    } else if (currentFPS > FPSmax) {
-        return 2.0;
-    } else if (currentFPS < FPSalert) {
-        return 0.75;
-    }
-    return 1.0;
+    return 0;
 }
 
 window.getPrecisionFactorFromFPS = getPrecisionFactorFromFPS;
+window.FPSalert = FPSalert;
+window.FPSmin = FPSmin;
 
 // Variables pour le système de ping
 let t0 = null; // Temps du ping précédent (sera réinitialisé quand le ping arrive)
@@ -94,19 +95,16 @@ function initFPSChart() {
             side: 'left'
         },
         yaxis2: {
-            type: 'log', // Échelle logarithmique pour la précision
-            range: [Math.log10(0.5), Math.log10(2.5)], // Plotly log range utilise log10 des valeurs
+            type: 'linear',
+            range: [0, 2.5],
             overlaying: 'y',
             side: 'right',
             showgrid: false,
-            tickfont: { color: '#888888', size: 9 }, // Gris
-            title: {
-                text: '', // Pas de titre sur l'axe
-                font: { color: '#888888', size: 10 } // Gris
-            },
+            tickfont: { color: '#888888', size: 9 },
+            title: { text: '', font: { color: '#888888', size: 10 } },
             tickmode: 'array',
-            tickvals: [0.5, 0.75, 1.0, 1.5, 2.0, 2.5],
-            ticktext: ['0.5x', '0.75x', '1.0x', '1.5x', '2.0x', '2.5x']
+            tickvals: [0, 0.5, 1.0, 1.5, 2.0],
+            ticktext: ['0.0x', '0.5x', '1.0x', '1.5x', '2.0x']
         },
         annotations: [
             {
@@ -148,7 +146,7 @@ function initFPSChart() {
             line: { color: '#888888', width: 2 }, // Gris
             yaxis: 'y2'
         },
-        // Barres horizontales pour les seuils FPS
+        // Barres horizontales : rouge = zone FPS où le flux n'est pas mis à jour (courbe toujours affichée)
         {
             x: [0, MAX_HISTORY * X_STEP],
             y: [FPSmin, FPSmin],
@@ -161,12 +159,12 @@ function initFPSChart() {
             hoverinfo: 'skip'
         },
         {
-            x: [0, MAX_HISTORY],
+            x: [0, MAX_HISTORY * X_STEP],
             y: [FPSalert, FPSalert],
             type: 'scatter',
             mode: 'lines',
             name: 'FPSalert',
-            line: { color: 'rgba(255, 165, 0, 0.3)', width: 1, dash: 'dash' },
+            line: { color: 'rgba(255, 0, 0, 0.5)', width: 1, dash: 'dot' },
             yaxis: 'y',
             showlegend: false,
             hoverinfo: 'skip'
@@ -287,40 +285,22 @@ function ping(dt) {
         window.fps = fps;
     }
     
-    // 🔒 Déterminer le niveau de performance FPS
+    // 🔒 Déterminer le niveau de performance FPS (pour événement uniquement)
     let fpsLevel = 'warning';
-    let precisionFactor = 1.0;
-    
-    if (fps > 60) {
-        fpsLevel = 'ultra';
-        precisionFactor = 2.0;
-    } else if (fps > 30) {
-        fpsLevel = 'rapide';
-        precisionFactor = 1.0;
-    } else if (fps > 20) {
-        fpsLevel = 'lent';
-        precisionFactor = 0.75;
-    } else if (fps > 10) {
-        fpsLevel = 'aïe';
-        precisionFactor = 0.5;
-    } else {
-        fpsLevel = 'warning';
-        precisionFactor = 0.5;
-    }
-    
-    // 🔒 Émettre un événement FPS avec le niveau et la précision
+    if (fps > 60) fpsLevel = 'ultra';
+    else if (fps > 30) fpsLevel = 'rapide';
+    else if (fps > 20) fpsLevel = 'lent';
+    else if (fps > 10) fpsLevel = 'aïe';
+
+    const precisionFactor = getPrecisionFactorFromFPS(); // 0% → 0.0x, 100% → 2.0x
+
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
         const fpsEvent = new CustomEvent('fpsLevelChanged', {
-            detail: {
-                fps: fps,
-                level: fpsLevel,
-                precisionFactor: precisionFactor
-            }
+            detail: { fps: fps, level: fpsLevel, precisionFactor: precisionFactor }
         });
         window.dispatchEvent(fpsEvent);
     }
-    
-    // Accumuler les valeurs dans le buffer
+
     fpsBuffer.push(fps);
     precisionBuffer.push(precisionFactor);
     accumulatedTime += dt;

@@ -106,8 +106,6 @@
         }
         if (payload.animEnabled !== undefined) {
             window.SYNC_STATE.animEnabled = payload.animEnabled;
-            var animToggle = document.getElementById('plot-anim-toggle');
-            if (animToggle) animToggle.classList.toggle('selected', payload.animEnabled);
             var animCb = document.getElementById('plot-anim-toggle-checkbox');
             if (animCb) animCb.checked = payload.animEnabled;
             if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎬'] = payload.animEnabled;
@@ -158,10 +156,13 @@
             effective_temperature: T_eff
         };
         window.plotData.temp_surface_c = tempC;
+        window.plotData.temp_surface = T0;
         window.plotData.co2_ppm = co2_ppm;
         window.spectralConverged = true;
         window.spectralPrecisionTarget = 'max';
-        window.showSpectralBackground = true;
+        var maxBins = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxSpectralBinsConvergence) || 2000;
+        window.showSpectralBackground = !!(spectral.lambda_range && spectral.lambda_range.length >= maxBins);
+        // Dernier cycle : toujours mettre à jour plot + spectre (pas de garde FPS)
         window.updatePlot(window.plotData);
         window.updateFluxLabels('ProcessFinished');
         requestAnimationFrame(function () {
@@ -171,6 +172,15 @@
                     window.plotData.lambda_range = fresh.lambda_range;
                     window.plotData.lambda_weights = fresh.lambda_weights;
                     window.plotData.current = Object.assign({}, window.plotData.current, fresh);
+                    // Source unique T surface : garder T0/temp_surface_c depuis DATA (éviter décalage avec organigramme)
+                    var T0Data = window.DATA && window.DATA['🧮'] && window.DATA['🧮']['🧮🌡️'];
+                    if (T0Data != null && typeof T0Data === 'number') {
+                        window.plotData.current.T0 = T0Data;
+                        window.plotData.current.temp_surface = T0Data;
+                        window.plotData.current.temp_surface_c = T0Data - window.CONST.KELVIN_TO_CELSIUS;
+                        window.plotData.temp_surface_c = window.plotData.current.temp_surface_c;
+                        window.plotData.temp_surface = T0Data;
+                    }
                 }
                 window.updatePlot(window.plotData);
                 window.updateSpectralVisualization(window.plotData.current);
@@ -182,6 +192,7 @@
         getIframe().contentWindow.postMessage({ type: 'compute:done', DATA: DATA }, '*');
     }
 
+    // Main thread réservé GUI/DOM ; calcul cycles pourrait être déporté dans static/workers/compute_worker.js
     window.runComputeInParent = function () {
         var DATA = window.DATA;
         if (!DATA || !DATA['🧮'] || !DATA['🔘']) return Promise.resolve(null);

@@ -3707,7 +3707,7 @@ function generateTimelineFromConfig() {
       button.setAttribute("data-epoch", epochId);
       button.setAttribute(
         "onclick",
-        `setEpoch('${epochId.replace(/'/g, "\\'")}')`,
+        `setEpochFromEpochButton('${epochId.replace(/'/g, "\\'")}')`,
       );
       // Libellé timeline : 🦴 = Paléozoïque (forcé ici pour éviter cache alphabet.js)
       const epochLabel =
@@ -3938,10 +3938,12 @@ window.updateFluxLabels = function (eventId) {
   if (typeof window !== "undefined" && window.CONVERGENCE_DEBUG) {
     const d = window.CONVERGENCE_DEBUG;
     const deltaStr = (d.delta != null && Number.isFinite(Number(d.delta))) ? Number(d.delta).toFixed(3) : "—";
+    const fpsStr = (typeof window.fps === "number" && Number.isFinite(window.fps)) ? window.fps.toFixed(1) : "—";
+    const msg = "bins=" + (d.bins != null ? d.bins : "—") + " step=" + (d.step != null ? d.step : "—") + " delta=" + deltaStr + " fps=" + fpsStr;
     if (typeof window.pd === "function") {
-      window.pd("updateFluxLabels", "organigramme.js", "bins=" + (d.bins != null ? d.bins : "—") + " step=" + (d.step != null ? d.step : "—") + " delta=" + deltaStr);
+      window.pd("updateFluxLabels", "organigramme.js", msg);
     } else {
-      console.log("[updateFluxLabels] bins=" + (d.bins != null ? d.bins : "—") + " step=" + (d.step != null ? d.step : "—") + " delta=" + deltaStr);
+      console.log("[updateFluxLabels] " + msg);
     }
   }
 

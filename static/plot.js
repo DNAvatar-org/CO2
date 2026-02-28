@@ -406,6 +406,7 @@ function debouncedResizeCanvas() {
     }
     // Augmenter le délai pour laisser le temps au layout de se stabiliser (scrollbar)
     resizeTimeout = setTimeout(() => {
+        if (window.pd) window.pd('debouncedResizeCanvas', 'plot.js', 'eventResize');
         // Force recalculation of position and redraw via callback
         resizeCanvasToPlot(() => {
             // Redessiner la visualisation spectrale si on a des données
@@ -417,7 +418,7 @@ function debouncedResizeCanvas() {
                 });
             }
         });
-    }, 300); // 300ms pour être sûr que le resize est fini
+    }, 1000); // sizeEvent 1000ms
 }
 
 // Flag pour éviter les appels multiples simultanés

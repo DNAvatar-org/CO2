@@ -46,9 +46,8 @@ function getEnabledStates() {
     DATA['🔘']['🔘⛽📛'] = ch4Cell ? ch4Cell.classList.contains('checked') : true;
     DATA['🔘']['🔘🏭📛'] = co2Cell ? co2Cell.classList.contains('checked') : true;
     DATA['🔘']['🔘🪩'] = albedoCell ? albedoCell.classList.contains('checked') : true;
-    // Source unique visu : plot-anim-toggle (index.html) ou anim-toggle (test_computeRadiativeTransfer.html)
-    const animBtn = document.getElementById('plot-anim-toggle') || document.getElementById('anim-toggle');
-    DATA['🔘']['🔘🎬'] = animBtn ? animBtn.classList.contains('selected') : (DATA['🔘']['🔘🎬'] != null ? DATA['🔘']['🔘🎬'] : true);
+    // Anim : source de vérité = DATA (bouton animation est normal, pas on/off)
+    DATA['🔘']['🔘🎬'] = DATA['🔘']['🔘🎬'] != null ? DATA['🔘']['🔘🎬'] : false;
     
     // Retourner true car DATA a été modifié
     return true;
