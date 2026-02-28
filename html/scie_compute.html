@@ -34,9 +34,9 @@
                             </div>
                         </div>
                         
-                        <!-- Boutons 🎬 ▶️ sur 2 lignes : à droite des actions, à gauche de la frise -->
+                        <!-- Boutons 🎞 ▶️ sur 2 lignes : à droite des actions, à gauche de la frise -->
                         <div class="controls-buttons-stack">
-                            <button class="icon-button selected" id="anim-toggle" onclick="toggleAnim()" title="Animation">🎬</button>
+                            <button class="icon-button selected" id="anim-toggle" onclick="toggleAnim()" title="Animation">🎞</button>
                             <button class="icon-button" id="run-stop-btn" onclick="toggleRunStop()" title="Exécuter">▶️</button>
                         </div>
                         
@@ -1656,6 +1656,21 @@
             }
         });
         
+        // Envoyer le tuning initial (100 %) au parent pour que le 1er compute affiche 16.4°C sans clic scie
+        function sendInitialTuningToParent() {
+            if (window.parent === window) return;
+            if (typeof getFineTuningTargets !== 'function' || typeof getFineTuningBaryByGroupSnapshot !== 'function') return;
+            var targets = getFineTuningTargets();
+            if (!targets.length) return;
+            var updates = targets.map(function (t) {
+                return { group: t.group, key: t.key, value: getFineTuningValue(t) };
+            });
+            window.parent.postMessage({
+                type: 'sync:tuning',
+                payload: { updates: updates, baryByGroup: getFineTuningBaryByGroupSnapshot(), run: true }
+            }, '*');
+        }
+
         // Initialiser au chargement
         window.addEventListener('DOMContentLoaded', function() {
             // Les contenus Alphabet et Dico sont maintenant chargés via iframe (alphabet.html et dico.html)
@@ -1670,6 +1685,8 @@
             } else {
                 console.error('❌ Timeline non chargée');
             }
+            // Tuning 100 % vers parent pour 1er compute (16.4°C) sans clic
+            sendInitialTuningToParent();
         });
     </script>
 </body>

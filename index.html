@@ -66,7 +66,7 @@
             }
         };
     </script>
-    <script id="MathJax-script" async src="static/lib/mathjax-tex-mml-chtml.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <link rel="stylesheet" href="static/style.css">
     <link rel="stylesheet" href="static/buttons/ergo_button.css">
     <link rel="stylesheet" href="static/buttons/buttons.css">
@@ -136,10 +136,11 @@
                 <font size="3">©</font>2026 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> -
                 <button class="btn tipeee-btn" id="tipeee-donation"
                     onclick="window.open(window.getTipeeeURL(), '_blank', 'noopener,noreferrer')"
-                    title="Offrez moi un café">☕</button>
-                <span class="credits-territory" style="display:inline-block; margin-left:8px; vertical-align:middle; line-height:1.3; text-align:left;">
-                    La carte c'est le territoire.<br>Le territoire c'est le code.
-                </span>
+                    title="Offrez moi un café">
+                    <span class="tipeee-btn-cup">☕</span>
+                    <span class="credits-nonA" aria-hidden="true" title="Non-A (Van Vogt 1945)">\( \bar{A} \)</span>
+                    <span class="credits-territory">La carte c'est le territoire.<br>Le territoire c'est le code.</span>
+                </button>
             </div>
             <div class="credits-line">
                 GitHub : <a href="https://github.com/DNAvatar-org/CO2" target="_blank" rel="noopener noreferrer">CO2</a>
@@ -158,6 +159,7 @@
                 <a href="#" onclick="event.preventDefault(); openPageModal('html/Algorithmes.html', '🧮 Algorithmes', null, 'tall');">🧮 Algorithmes</a> |
                 <a href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>
             </div>
+            <!--
             <div class="credits-line">
                 Inspiration: <a href="https://sciencetonnante.wordpress.com/" target="_blank"
                     rel="noopener noreferrer">Science étonnante</a> |
@@ -166,6 +168,7 @@
                 <a href="https://github.com/scienceetonnante/RadiativeForcing" target="_blank"
                     rel="noopener noreferrer">GitHub: RadiativeForcing</a>
             </div>
+            -->
         </div>
     </footer>
 

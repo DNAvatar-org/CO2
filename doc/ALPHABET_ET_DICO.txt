@@ -46,7 +46,7 @@ UNITÉS:
 
 CALCULS:
 🧮  Calculs O(🧲🔬x🔬🌈x🔬🫧)
-🎬  Animation
+🎞  Animation
 🔺  Delta (*)
 🔬  Tolérance (précision)
 🚩  T0 (t° initiale)
@@ -98,7 +98,7 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🔘⛽📛  CH₄ EDS on/off
 🔘🏭📛  CO₂ EDS on/off
 🔘🪩  Albedo on/off
-🔘🎬  Animation on/off
+🔘🎞  Animation on/off
 
 📜 CONFIG ÉVÉNEMENTS:
 🌡️🧮  t° attendu (t° config)

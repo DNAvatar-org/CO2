@@ -28,7 +28,7 @@
 
 -- calculs
 🧮 Compute
-🎬 Animation
+🎞 Animation
 ⚧ Phase (None/Search/Dicho)
 🔬 Tolérance (précision)
 🔺 signeDeltaFirst

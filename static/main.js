@@ -2262,6 +2262,7 @@ function setEpoch(epochName) {
                     terreNode.top,
                     terreNode.bottom,
                     terreNode.tooltip,
+                    terreNode.ariaLabel || null,
                     terreNode.radiation,
                     null, // rectangleOptions
                     null, // fillImage
@@ -3361,6 +3362,7 @@ function updateHadeenTexture() {
             terreNode.top,
             terreNode.bottom,
             terreNode.tooltip,
+            terreNode.ariaLabel || null,
             terreNode.radiation,
             null, // rectangleOptions
             null, // fillImage

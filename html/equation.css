@@ -1,13 +1,24 @@
 /* File: equation.css - Styles pour les équations, définitions et constantes
- * Desc: Styles spécifiques pour l'affichage des formules mathématiques, définitions et constantes
- * Version 1.0.0
+ * Desc: Styles spécifiques pour equation.html (formules, définitions, constantes)
+ * Version 1.1.0
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
  * See LICENSE_HEADER.txt for full terms.
  * Date: [November 17, 2025] [10:45 UTC+1]
  * Logs:
- *   - Initial extraction from style.css
+ *   - v1.0.0: extraction depuis style.css
+ *   - v1.1.0: réorganisation en sections (containers, formules, définitions, constantes)
+ *
+ * Sections:
+ *   1. Containers communs
+ *   2. Formules (colonnes, catégories, items, MathJax)
+ *   3. Définitions (grille, items, symboles, MathJax)
+ *   4. Constantes (grille, items, symboles, noms, MathJax)
  */
+
+/* =============================================================================
+   1. Containers communs
+   ============================================================================= */
 
 .formulas-container,
 .definitions-container,
@@ -15,12 +26,16 @@
     padding: 12px;
     background: white;
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     gap: 10px;
     margin-bottom: 15px;
 }
+
+/* =============================================================================
+   2. Formules
+   ============================================================================= */
 
 .formulas-title {
     font-size: 10px;
@@ -53,6 +68,26 @@
 
 .formula-column-wide {
     width: 600px;
+}
+
+.formula-category {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background: #f0f0f0;
+    border-radius: 6px;
+    border-left: 4px solid #667eea;
+    height: fit-content;
+}
+
+.formula-category-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #ddd;
 }
 
 .formula-category-content {
@@ -94,25 +129,9 @@
     margin: 4px 0;
 }
 
-.formula-category {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px;
-    background: #f0f0f0;
-    border-radius: 6px;
-    border-left: 4px solid #667eea;
-    height: fit-content;
-}
-
-.formula-category-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 4px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid #ddd;
-}
+/* =============================================================================
+   3. Définitions
+   ============================================================================= */
 
 .definitions-title {
     font-size: 10px;
@@ -152,6 +171,10 @@
     font-size: 16px !important;
 }
 
+/* =============================================================================
+   4. Constantes
+   ============================================================================= */
+
 .constants-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -187,4 +210,3 @@
     color: #555;
     min-width: 140px;
 }
-

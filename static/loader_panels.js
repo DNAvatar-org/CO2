@@ -1,8 +1,9 @@
 // File: loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts applicatifs
-// Version 1.0.1
+// Version 1.0.2
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: 2025-02-03
+// Logs: v1.0.2 délai 250ms avant 1er compute pour laisser scie envoyer sync:tuning 100% (16.4°C sans clic)
 
 (function () {
     'use strict';
@@ -213,10 +214,10 @@
         }
         scieIframe.addEventListener('load', function () {
             window.syncToScie({ epochId: '⚫', animEnabled: false, ticTime: 0 });
-            // Décaler pour laisser setEpoch (RAF+RAF+setTimeout) s'exécuter avant runComputeInParent
+            // Décaler pour laisser setEpoch + laisser scie envoyer sync:tuning 100 % (sinon pas 16.4°C au 1er affichage)
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
-                    sendComputeToScie();
+                    setTimeout(function () { sendComputeToScie(); }, 250);
                 });
             });
         });
@@ -224,7 +225,7 @@
         if (scieIframe.contentDocument && scieIframe.contentDocument.readyState === 'complete') {
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
-                    sendComputeToScie();
+                    setTimeout(function () { sendComputeToScie(); }, 250);
                 });
             });
         }

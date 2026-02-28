@@ -24,7 +24,7 @@ const CHARS = {
     WEIGHT: '⚖️',   // Poids : balance (masse)
     DENSITY: '💨',  // Densité : vent
     ALTITUDE: '🧿', // Altitude : galaxie (Ligne de Kármán, frontière atmosphère/espace)
-    ANIMATION: '🎬', // Animation : caméra
+    ANIMATION: '🎞', // Animation : film
     TROPOPAUSE: '🛩', // Tropopause : avion
     GREENHOUSE_FORCING: '♻', // Greenhouse forcing : recyclage
     CLOUD_ALBEDO: '🌤', // Cloud albedo contribution : soleil avec nuage
@@ -141,7 +141,7 @@ const CHARS_DESC = {
     '🌈': 'Spectre',
     // Calculs
     '🧮': 'Calculs O(🧲🔬x🔬🌈x🔬🫧)',
-    '🎬': 'Animation',
+    '🎞': 'Animation',
     '🔺': 'Delta (*)',
     '🔬': 'Tolérance (précision)',
     '🚩': 'T0 (t° initiale)',

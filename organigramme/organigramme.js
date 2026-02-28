@@ -1,10 +1,10 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.22
+// Version 1.0.26
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Logs: v1.0.22 timeline 🦴 libellé forcé Paléozoïque (évite cache alphabet)
+// Logs: v1.0.26 albedo: \\bar{A} dans le footer (entre tasse et speech), plus dans [1,1]
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -972,6 +972,7 @@ function createCell(
   top = [],
   bottom = [],
   tooltip = null,
+  ariaLabel = null,
   radiationOptions = null,
   rectangleOptions = null,
   fillImage = null,
@@ -1263,6 +1264,7 @@ function createCell(
         // Forcer la désactivation des pseudo-éléments qui créent la sphère blanche
         planetContainer.style.setProperty("--before-display", "none");
         planetContainer.style.setProperty("--after-display", "none");
+        planetContainer.style.pointerEvents = "none"; // Survol/tooltip sur circleBg, pas sur le canvas
 
         // Calculer la taille du canvas Three.js
         const planetSize = radius * 2 * logoScale;
@@ -1274,6 +1276,7 @@ function createCell(
         canvas.style.width = "100%";
         canvas.style.height = "100%";
         canvas.style.display = "block";
+        canvas.style.pointerEvents = "none"; // Survol/tooltip sur circleBg
         planetContainer.appendChild(canvas);
 
         // Récupérer luxSaturation et lightDistance depuis la config de l'époque (si disponible)
@@ -1371,6 +1374,7 @@ function createCell(
         }
 
         logoSpan.appendChild(planetContainer);
+        logoSpan.style.pointerEvents = "none"; // Survol/tooltip sur circleBg (case centrale)
       } else {
         // Image normale sans effet planète
         const img = document.createElement("img");
@@ -1547,7 +1551,7 @@ function createCell(
         tooltipText = `${stateText}/${isChecked ? "off" : "on"}<br>${displayName}`;
       }
       // Alt / a11y sur le logo EDS : aria-label et data-tooltip pour tooltip et lecteurs d’écran
-      const altText = tooltipText.replace(/<br\s*\/?>/gi, " ").replace(/<sub>|<\/sub>/gi, "");
+      const altText = (ariaLabel && ariaLabel.trim()) ? ariaLabel : tooltipText.replace(/<br\s*\/?>/gi, " ").replace(/<sub>|<\/sub>/gi, "");
       circleBg.setAttribute("aria-label", altText);
       circleBg.setAttribute("data-tooltip", tooltipText);
       addCustomTooltip(circleBg, tooltipText);
@@ -1602,7 +1606,6 @@ function createCell(
       gridItem.style.zIndex = Z_NODE_INTERNAL.LABEL; // Étiquettes TOUJOURS au-dessus de tout (flèches max ~26)
 
       // [1,1] = Vide (le logo est dans le cercle en arrière-plan)
-      // Les autres cases contiennent les étiquettes
       // [1,0] = Top (haut)
       if (col === 1 && row === 0 && top && top.length > 0) {
         const labelContainer = document.createElement("div");
@@ -3239,6 +3242,7 @@ cellOrder.forEach((nodeId) => {
         ? [nodeConfig.bottom]
         : [],
     nodeConfig.tooltip || null,
+    nodeConfig.ariaLabel || null,
     null, // No radiations here, we'll create them later (step 8)
     nodeConfig.rectangle || null,
     nodeConfig.fillImage || null,
@@ -3370,6 +3374,7 @@ nodes.forEach((node) => {
         ? [node.bottom]
         : [],
     node.tooltip || null,
+    node.ariaLabel || null,
     null, // No radiations here, we'll create them later (step 8)
     node.rectangle || null,
     node.fillImage || null,
@@ -3673,8 +3678,27 @@ function generateTimelineFromConfig() {
   // Vider le conteneur
   epochsContainer.innerHTML = "";
 
-  // Générer les éléments depuis la config
-  timeline.forEach((item) => {
+  // Formater une date : X Ma si >= 1 Ma, sinon année seule (ex. 1800, 2025)
+  function formatDateMa(years) {
+    if (years == null || !Number.isFinite(years)) return "";
+    const absY = Math.abs(years);
+    if (absY < 1e6) return String(Math.round(years));
+    const millions = absY / 1e6;
+    return millions.toFixed(0) + " Ma";
+  }
+
+  function createVerticalDateItem(dateStr) {
+    const dateItem = document.createElement("div");
+    dateItem.className = "epoch-date-item epoch-date-item-vertical";
+    const dateSpan = document.createElement("span");
+    dateSpan.className = "epoch-date";
+    dateSpan.textContent = dateStr;
+    dateItem.appendChild(dateSpan);
+    return dateItem;
+  }
+
+  // Générer les éléments depuis la config : boutons + entre chaque paire une date centrée (sans trait)
+  timeline.forEach((item, i) => {
     if (item["📅"]) {
       // Créer un bouton d'époque
       const button = document.createElement("button");
@@ -3719,16 +3743,17 @@ function generateTimelineFromConfig() {
       if (typeof window !== "undefined" && epochLabel) {
         addCustomTooltip(button, epochLabel);
       }
+
+      // Entre deux époques : date = début de l'époque suivante (▶) → 34 Ma, 1800, 2025
+      if (i < timeline.length - 1) {
+        const boundaryYears = timeline[i + 1]["▶"];
+        const dateStr = formatDateMa(boundaryYears);
+        const dateItem = createVerticalDateItem(dateStr);
+        epochsContainer.appendChild(dateItem);
+      }
     } else {
-      // Séparateur automatique (détecté par '◀' et '▶')
-      const dateItem = document.createElement("div");
-      dateItem.className = "epoch-date-item";
-
-      const date = document.createElement("span");
-      date.className = "epoch-date";
-      date.textContent = item.date;
-
-      dateItem.appendChild(date);
+      // Séparateur explicite (item sans 📅 avec .date)
+      const dateItem = createVerticalDateItem(item.date);
       epochsContainer.appendChild(dateItem);
     }
   });
@@ -3853,28 +3878,41 @@ function updateAlbedoHaloFromComposition(D) {
   }
 }
 
-// Alt détaillé (facteurs + bornes) pour fine_tuning_cloud_bary. detailOnly=true = uniquement le détail (pas l'intro du tooltip).
+// Picto par clé CLOUD_SW pour alt finetuning (une entrée par target)
+var _finetuningAltPicto = {
+  CLOUD_FRACTION_BASE: "☁️",
+  CLOUD_FRACTION_INDEX_GAIN: "☁️",
+  OPTICAL_EFF_BASE: "🧪",
+  OPTICAL_EFF_CCN_GAIN: "🧪",
+  SULFATE_BOOST_SCALE: "🌫",
+  SULFATE_BOOST_MAX: "🌫",
+  TEMP_FACTOR_REF_K: "🌡️"
+};
+
+// Alt détaillé (paramètres CLOUD_SW + bornes) pour fine_tuning_cloud_bary. SOLVER = autre jauge, exclu.
+// detailOnly=true = uniquement le détail. Sans passage à la ligne (une ligne, séparateur espace).
+// Fallback fixe quand FINE_TUNING_BOUNDS non chargé (visu ne charge pas fine_tuning_bounds.js).
+var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne ☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique 🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne 🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN) 🌫 [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse 🌫 [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy) 🌡️ [282 , 294] — référence thermique nuages SW #Reference climat moderne (~15C)";
+
 function getFineTuningDetailAlt(pctStr, detailOnly) {
   const pct = pctStr != null ? pctStr + "%" : "100%";
   const bounds = window.FINE_TUNING_BOUNDS;
   if (!bounds || !bounds.targets || !Array.isArray(bounds.targets)) {
-    const full = "Réglage barycentre nuages (albédo). " + pct + ". Facteurs : CLOUD_SW, SOLVER (bornes dans fine_tuning_bounds.js).";
-    return detailOnly ? "Facteurs : CLOUD_SW, SOLVER (bornes dans fine_tuning_bounds.js)." : full;
+    const intro = "Réglage barycentre nuages (albédo). " + pct + ".";
+    return detailOnly ? _finetuningAltFallback : intro + " " + _finetuningAltFallback;
   }
-  const intro = "Réglage barycentre nuages (albédo). " + pct + ".";
-  const lines = [];
-  let group = "";
+  const parts = [];
   bounds.targets.forEach(function (t) {
-    if (t.group !== group) {
-      group = t.group;
-      lines.push(group + " :");
-    }
-    const minMax = (typeof t.min === "number" && typeof t.max === "number")
-      ? t.min + "–" + t.max
-      : (t.min + "–" + t.max);
-    lines.push("  " + t.key + " " + minMax + (t.unit ? " " + t.unit : ""));
+    if (t.group !== "CLOUD_SW") return;
+    const picto = _finetuningAltPicto[t.key] || "☁️";
+    const minStr = (typeof t.min === "number") ? t.min : String(t.min);
+    const maxStr = (typeof t.max === "number") ? t.max : String(t.max);
+    const note = t.note || "";
+    const ref = t.source || t.biblio_ref || "";
+    parts.push(picto + " [" + minStr + " , " + maxStr + "] — " + note + (ref ? " #" + ref : ""));
   });
-  const detail = lines.join(" ");
+  const detail = parts.length ? parts.join(" ") : _finetuningAltFallback;
+  const intro = "Réglage barycentre nuages (albédo). " + pct + ".";
   return detailOnly ? detail : intro + " " + detail;
 }
 
@@ -3915,6 +3953,7 @@ window.updateFluxLabels = function (eventId) {
     case "cycleH2O":
     case "cycleCalcul":
     case "ProcessFinished":
+      if (!D["📊"] || typeof D["📊"].total_flux !== "number") return;
       epochId = D["📜"]["🗿"];
       var ep = window.configOrganigramme.timeline.find(function (e) {
         return e.type === "epoch" && e.id === epochId;
@@ -4309,7 +4348,7 @@ window.updateFluxLabels = function (eventId) {
       if (dataId === "fine_tuning_cloud_bary") {
         const pctMatch = typeof formattedValue === "string" && formattedValue.match(/(\d+(?:\.\d+)?)\s*%/);
         const pct = pctMatch ? pctMatch[1] : "100";
-        label.setAttribute("data-tooltip", "Réglage barycentre nuages (albédo). " + pct + " %.");
+        label.setAttribute("data-tooltip", "Réglage barycentre nuages (albédo).");
         label.setAttribute("aria-label", getFineTuningDetailAlt(pct, true));
         label.removeAttribute("title");
       }

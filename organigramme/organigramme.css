@@ -84,12 +84,12 @@
 #cell-espace2 .flux-circle-bg,
 #cell-reemis .flux-circle-bg {
     pointer-events: auto;
-    cursor: help;
+    cursor: default;
 }
-/* Curseur "?" générique sur tout élément avec tooltip/alt dans le diagramme */
+/* Curseur par défaut sur les éléments avec tooltip (tooltip seul, pas alt) */
 #flux-diagram [data-tooltip-initialized="true"],
 #flux-diagram [data-tooltip]:not([data-tooltip=""]) {
-    cursor: help;
+    cursor: default;
 }
 .flux-circle-bg:hover {
     transform: scale(1.3);
@@ -304,6 +304,22 @@
 /* Alignement en haut pour entourer le trait du cercle (2 éléments) - pour bottom */
 .flux-label-container-top {
     justify-content: flex-start !important;
+}
+
+/* A bar (albédo moyen) entre logo et les 2 lignes — LaTeX \bar{A} (MathJax) */
+.flux-albedo-bar-container {
+    pointer-events: none;
+    color: var(--base-color, #fff);
+}
+.flux-albedo-bar {
+    font-size: 18px;
+    line-height: 1.2;
+    color: var(--base-color, #fff);
+}
+.flux-albedo-bar-container .MathJax,
+.flux-albedo-bar-container [class*="mjx"] {
+    color: inherit !important;
+    font-size: 18px !important;
 }
 
 /* Style pour les cellules de boutons */
