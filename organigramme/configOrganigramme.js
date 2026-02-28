@@ -21,25 +21,26 @@
 const LOGOS = window.CHARS;
 
 // ============================================================================
-// TEXTURES Three.js (fonts/pics/text_*.png) - UNIQUEMENT pour initPlanetThreeJS
+// TEXTURES Three.js — CO2/fonds/*.png par dates (la carte c'est le territoire)
 // ============================================================================
 // ⚠️ charsImages (alphabet.js) ne touche JAMAIS aux textures !
-// Inventaire fonts/pics/text_*.png (utilisés par initPlanetThreeJS uniquement) :
-// ticTime=0 par défaut → textures finissant par 0 (text_*0.png)
+// Inventaire fonds/ : 5000Ma.png, 4500Ma.png, … 2300Ma.png, 00225Ma.png, 00150Ma.png, 00100Ma.png, 001800a.png, 002025a.png
+// ticTime=0 par défaut → index 0
 const TEXTURES_THREEJS = [
-    'fonts/pics/text_noir0.png',
-    'fonts/pics/text_hadeen0.png', 'fonts/pics/text_hadeen1.png', 'fonts/pics/text_hadeen2.png',
-    'fonts/pics/text_hadeen3.png', 'fonts/pics/text_hadeen4.png', 'fonts/pics/text_hadeen5.png',
-    'fonts/pics/text_hadeen6.png', 'fonts/pics/text_hadeen7.png', 'fonts/pics/text_hadeen8.png', 'fonts/pics/text_hadeen9.png',
-    'fonts/pics/text_archeen0.png', 'fonts/pics/text_archeen1.png', 'fonts/pics/text_archeen2.png',
-    'fonts/pics/text_today0.png', 'fonts/pics/text_chaud.png', 'fonts/pics/text_mesozoique0.png'
+    'fonds/5000Ma.png',
+    'fonds/4500Ma.png', 'fonds/4100Ma.png', 'fonds/3700Ma.png', 'fonds/3300Ma.png', 'fonds/2900Ma.png',
+    'fonds/2500Ma.png', 'fonds/2300Ma.png', 'fonds/00225Ma.png', 'fonds/00150Ma.png', 'fonds/00100Ma.png',
+    'fonds/00200Ma.png', 'fonds/001800a.png', 'fonds/002025a.png'
 ];
-// epochName -> chemin (expressions {$ticTime} interprétées à l'exécution, ticTime=0 → index 0)
+// epochName -> chemin (Hadéen/Archéen : {$ticTime} → index; 1800/2025 : fichier par date)
 const epochTextures = {
-    'Corps noir': 'fonts/pics/text_noir0.png',
-    'Hadéen': 'fonts/pics/text_hadeen{$ticTime}.png',
-    'Archéen': 'fonts/pics/text_archeen{$ticTime/3}.png',
-    'Aujourd\'hui': 'fonts/pics/text_today0.png'
+    'Corps noir': 'fonds/5000Ma.png',
+    'Hadéen': 'fonds/4500Ma.png',
+    'Archéen': 'fonds/3900Ma.png',
+    'Mésozoïque': 'fonds/00200Ma.png',
+    'Industriel': 'fonds/001800a.png',
+    'Aujourd\'hui': 'fonds/002025a.png',
+    'EOT (33,9 Ma)': 'fonds/002025a.png'
 };
 
 // Configuration de base
@@ -207,7 +208,7 @@ const nodes = [
             {
                 epochName: 'Corps noir',
                 logo: LOGOS.CORPS_NOIR, // Picto (charsImages → corps_noir.png)
-                texture: 'fonts/pics/text_noir0.png', // Texture Three.js
+                texture: 'fonds/5000Ma.png', // Texture Three.js
                 planetEffect: true,
                 luxSaturation: 1.0,
                 lightDistance: '7-{$ticTime}/3', // Expression interprétée dynamiquement
@@ -219,7 +220,7 @@ const nodes = [
             {
                 epochName: 'Hadéen',
                 logo: LOGOS.HADEEN, // Picto
-                texture: 'fonts/pics/text_hadeen{$ticTime}.png', // Texture Three.js
+                texture: 'fonds/4500Ma.png', // Texture Three.js (par date ; ticTime → fonds/XXXXMa.png à brancher si besoin)
                 planetEffect: true,
                 luxSaturation: 3.0,
                 lightDistance: 0, // 0 = éclairage interne (PointLight au centre)
@@ -233,7 +234,7 @@ const nodes = [
             {
                 epochName: 'Archéen',
                 logo: LOGOS.ARCHEEN, // Picto
-                texture: 'fonts/pics/text_archeen{$ticTime/3}.png', // Texture Three.js
+                texture: 'fonds/3900Ma.png', // Texture Three.js (par date)
                 radius: radiusTerre,
                 fillColor: 'rgba(255, 140, 0, 0.3)', // Orange/jaune : début de l'oxygène mais encore réductrice
                 strokeColor: '#ff8c00',
@@ -251,10 +252,12 @@ const nodes = [
             {
                 epochName: 'Mésozoïque',
                 logo: LOGOS.GLOBE_AMERICAS,
+                texture: 'fonds/00200Ma.png',
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 200, 255, 0.3)',
                 strokeColor: '#00c8ff',
-                strokeSize: 1
+                strokeSize: 1,
+                planetEffect: true
             },
             {
                 epochName: 'Paléozoïque',
@@ -273,9 +276,19 @@ const nodes = [
                 strokeSize: 1
             },
             {
+                epochName: 'Industriel',
+                logo: LOGOS.TODAY,
+                texture: 'fonds/001800a.png',
+                radius: radiusTerre,
+                fillColor: 'rgba(0, 200, 255, 0.3)',
+                strokeColor: '#00c8ff',
+                strokeSize: 1,
+                planetEffect: true
+            },
+            {
                 epochName: 'Aujourd\'hui',
                 logo: LOGOS.MODERN, // Picto
-                texture: 'fonts/pics/text_today0.png', // Texture Three.js
+                texture: 'fonds/002025a.png', // Texture Three.js
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 200, 255, 0.3)',
                 strokeColor: '#00eeff',

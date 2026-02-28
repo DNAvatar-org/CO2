@@ -78,6 +78,7 @@ CALCULS:
 🦕  Mésozoïque
 🦴  Paléozoïque
 🦣  Cénozoïque
+🏔  EOT (33,9 Ma)
 🚂  1800
 📱  2025
 🕰  Événements

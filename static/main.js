@@ -631,8 +631,9 @@ let plotData = {
     temp_surface: 0 // Température de surface initialisée à 0
 };
 
-// Exposer plotData sur window pour que calculations.js puisse y accéder
+// Exposer plotData sur window pour que calculations.js et events.js y accèdent
 window.plotData = plotData;
+window.PLOT_PANEL_READY = true; // Module plot chargé (events.js utilise ce flag en blocs)
 
 // Valeurs de référence pour les boutons
 const CO2_STATES = {

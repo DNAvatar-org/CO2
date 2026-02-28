@@ -72,6 +72,7 @@ const CHARS = {
     MESOZOIC: '🦕', // Mésozoïque : dinosaure sauropode
     CRETACEOUS: '🦴', // Paléozoïque (541–252 Ma) : os/fossile
     CENOZOIC: '🦣', // Cénozoïque : mammouth
+    EOT: '🏔',      // EOT (33,9 Ma) : montagnes (Transition Éocène-Oligocène)
     TODAY: '🚂',    // 1800 : train (1800)
     MODERN: '📱',   // Moderne : smartphone (2025)
     EVENTS: '🕰',   // Événements : horloge
@@ -172,6 +173,7 @@ const CHARS_DESC = {
     '🦕': 'Mésozoïque',
     '🦴': 'Paléozoïque',
     '🦣': 'Cénozoïque',
+    '🏔': 'La Grande Coupure',
     '🚂': '1800',
     '📱': '2025',
     '🕰': 'Événements',
@@ -210,7 +212,7 @@ function createAlphabetHtml() {
     
     // Colonne 5 : Époques et autres logos
     const charsCol5 = [
-        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'MESOZOIC', 'CRETACEOUS', 'CENOZOIC', 'TODAY', 'MODERN'
+        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'MESOZOIC', 'CRETACEOUS', 'CENOZOIC', 'EOT', 'TODAY', 'MODERN'
     ];
     
     // Descriptions personnalisées pour certains caractères

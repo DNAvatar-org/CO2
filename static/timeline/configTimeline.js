@@ -220,7 +220,7 @@ const timeline = [
         }
     },
     {
-        '📅': '🦕', // Mésozoïque (252–66 Ma)
+        '📅': '🦕', // Mésozoïque (252–66 Ma) — texture fonds/00200Ma.png (ancien 250Ma), événement 50 Ma
         '▶': 252e6,
         '◀': 66e6,
         // 🌡️🧮 : ~295–305 K (lit. Mésozoïque)
@@ -243,7 +243,8 @@ const timeline = [
         '⚖️💧': 1.33e21,
         '⚖️🫁': 0,
         '🕰': {
-            '☄️': { '🔺⚖️💧☄️': 1.0e18 }
+            '💫': { '🔺🌡️💫': -2, '🔺⏳': 86400, '🔺🧲🌕💫': { '▶': 0, '◀': 0 } }, // Événement 50 Ma
+            '🎇': { '⏩': '🦣' } // Big impact (K-Pg) → Cénozoïque
         }
     },
     {
@@ -282,6 +283,29 @@ const timeline = [
             }
         }
     },
+    // Transition Éocène-Oligocène (EOT) — 33,9 Ma : passage Serre → Glacière (avant 1800). Logo 🏔 (alphabet).
+    {
+        '📅': '🏔',
+        '▶': 33.9e6,
+        '◀': 23e6,
+        '🌡️🧮': 285,
+        '🧲🔬': 0.05,
+        '🔋☀️': 3.82e26,
+        '🔋🌕': 4.6e13,
+        '📐': 6371,
+        '🍎': 9.81,
+        '📏🌊': 3.7,
+        '🐚': 1.0,
+        '🗻': { '🍰🗻🌊': 0.71, '🍰🗻🏔': 0.09, '🍰🗻🌍': 0.20 },
+        '⚖️🫧': 5.15e18,
+        '⚖️🏭': 2.06e15,
+        '⚖️⛽': 3.6e12,
+        '⚖️💧': 1.4e21,
+        '⚖️🫁': 1.08e18,
+        '⚖️🌫': 1e12,
+        '⚖️💨': 3.97e18,
+        '🕰': {}
+    },
     {
         '📅': '🚂', // 1800
         '▶': 1800,
@@ -308,7 +332,7 @@ const timeline = [
         '⚖️⛽': 3.605e12, // ch4_kg (~0.7 ppm, niveau pré-industriel)
         '⚖️💧': 1.4e21, // h2o_kg (100% de 1.4e21 kg)
         '⚖️🫁': 1.0815e18, // o2_kg (~21% de l'atmosphère moderne)
-        '⚖️🌫': 4.0e13, // sulfate_kg (proxy CCN pré-industriel)
+        '⚖️🌫': 1.5e12, // sulfate_kg (CCN naturels uniquement : sel marin, aérosols volcaniques ; pas de pollution industrielle en 1800)
         '⚖️💨': 3.97e18, // n2_kg (~78% de l'atmosphère moderne, calculé comme reste pour atteindre 5.15e18)
         // Note: Les % seront calculés via calculations_atm.js
         // Note: cloud_coverage, ocean_coverage, ice_coverage seront calculés dynamiquement

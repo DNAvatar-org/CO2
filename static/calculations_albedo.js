@@ -512,7 +512,10 @@ function calculateAlbedo() {
         if (year > CLOUD_TUNING.ANTHRO_DECAY_START_YEAR) {
             anthro_factor = anthro_factor * (1 - CLOUD_TUNING.ANTHRO_DECAY_MAX * Math.min(1, (year - CLOUD_TUNING.ANTHRO_DECAY_START_YEAR) / CLOUD_TUNING.ANTHRO_DECAY_WINDOW_YEARS));
         }
-        const sulfate_boost = 1.0 + Math.min(CLOUD_TUNING.SULFATE_BOOST_MAX, sulfate_frac * CLOUD_TUNING.SULFATE_BOOST_SCALE);
+        // 1800 et avant : pollution industrielle (sulfates) quasi nulle ; CCN naturels uniquement (sel marin, aérosols volcaniques). Pas de boost sulfate.
+        const sulfate_boost = (year >= CLOUD_TUNING.ANTHRO_RISE_START_YEAR)
+            ? (1.0 + Math.min(CLOUD_TUNING.SULFATE_BOOST_MAX, sulfate_frac * CLOUD_TUNING.SULFATE_BOOST_SCALE))
+            : 1.0;
         const ccn_proxy = (CLOUD_TUNING.CCN_BASE + CLOUD_TUNING.CCN_O2_WEIGHT * o2_frac * biomass_proxy * anthro_factor) * sulfate_boost;
         // [OBS/CALIB] Référence moderne explicite : O2=21%, biomasse efficace ~3%, anthro courant.
         // On compare les époques en relatif, plutôt qu'en absolu, pour éviter d'écraser le moderne.
