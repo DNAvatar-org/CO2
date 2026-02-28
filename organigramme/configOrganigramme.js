@@ -24,13 +24,13 @@ const LOGOS = window.CHARS;
 // TEXTURES Three.js — CO2/fonds/*.png par dates (la carte c'est le territoire)
 // ============================================================================
 // ⚠️ charsImages (alphabet.js) ne touche JAMAIS aux textures !
-// Inventaire fonds/ : 5000Ma.png, 4500Ma.png, … 2300Ma.png, 00225Ma.png, 00150Ma.png, 00100Ma.png, 001800a.png, 002025a.png
+// Inventaire fonds/ : 5000Ma.png, … 00200Ma.png, 00066Ma.png, 001800a.png, 002025a.png
 // ticTime=0 par défaut → index 0
 const TEXTURES_THREEJS = [
     'fonds/5000Ma.png',
     'fonds/4500Ma.png', 'fonds/4100Ma.png', 'fonds/3700Ma.png', 'fonds/3300Ma.png', 'fonds/2900Ma.png',
     'fonds/2500Ma.png', 'fonds/2300Ma.png', 'fonds/00225Ma.png', 'fonds/00150Ma.png', 'fonds/00100Ma.png',
-    'fonds/00200Ma.png', 'fonds/001800a.png', 'fonds/002025a.png'
+    'fonds/00200Ma.png', 'fonds/00066Ma.png', 'fonds/001800a.png', 'fonds/002025a.png'
 ];
 // epochName -> chemin (Hadéen/Archéen : {$ticTime} → index; 1800/2025 : fichier par date)
 const epochTextures = {
@@ -38,6 +38,7 @@ const epochTextures = {
     'Hadéen': 'fonds/4500Ma.png',
     'Archéen': 'fonds/3900Ma.png',
     'Mésozoïque': 'fonds/00200Ma.png',
+    'Cénozoïque': 'fonds/00066Ma.png',
     'Industriel': 'fonds/001800a.png',
     'Aujourd\'hui': 'fonds/002025a.png',
     'EOT (33,9 Ma)': 'fonds/002025a.png'
@@ -270,10 +271,12 @@ const nodes = [
             {
                 epochName: 'Cénozoïque',
                 logo: LOGOS.GLOBE_AFRICA,
+                texture: 'fonds/00066Ma.png',
                 radius: radiusTerre,
                 fillColor: 'rgba(0, 200, 255, 0.3)',
                 strokeColor: '#00c8ff',
-                strokeSize: 1
+                strokeSize: 1,
+                planetEffect: true
             },
             {
                 epochName: 'Industriel',
@@ -317,7 +320,7 @@ const nodes = [
 
     { id: 'h2o', type: 'button', logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'albedo-btn', type: 'button', logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.75, y: earthCenterY - circleMiddleRadius * 0.85, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [{ text: '🧩🔺50%🔻', dataId: 'fine_tuning_cloud_bary' }], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
+    { id: 'albedo-btn', type: 'button', logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.75, y: earthCenterY - circleMiddleRadius * 0.85, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [{ text: '🧩🔺100%🔻', dataId: 'fine_tuning_cloud_bary' }], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
 ];
 
 // Définition du graphe : arcs (flèches)

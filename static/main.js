@@ -3144,9 +3144,8 @@ function runMainInit() {
                     });
                 }
                 
-                // 🔒 Clic automatique sur Corps noir : selected + calculs (bouton doit exister)
                 const corpsNoirBtn = document.querySelector('.epoch-btn[data-epoch="⚫"]');
-                corpsNoirBtn.click();
+                if (corpsNoirBtn) corpsNoirBtn.click();
                 
                 // Écouter l'événement 'calculationConverged' pour activer l'animation de la planète
                 window.addEventListener('calculationConverged', () => {

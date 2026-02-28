@@ -1652,7 +1652,7 @@ function createCell(
         const hasFineTuningBary = bottom.some(
           (labelData) => getLabelDataId(labelData) === "fine_tuning_cloud_bary",
         );
-        // fine_tuning_cloud_bary: flux-label-container-top pour aligner le 50% en haut de la case
+        // fine_tuning_cloud_bary: flux-label-container-top pour aligner le % en haut de la case
         labelContainer.className =
           hasFineTuningBary
             ? "flux-label-container flux-label-container-top"
@@ -1668,8 +1668,8 @@ function createCell(
           label.className = "flux-label";
           if (dataId) label.setAttribute("data-id", dataId);
           if (dataId === "fine_tuning_cloud_bary") {
-            label.setAttribute("aria-label", "Réglage barycentre nuages : 50 %. Glisser pour ajuster.");
-            label.setAttribute("data-tooltip", "Réglage barycentre nuages (albédo). Pourcentage du curseur ; glisser pour ajuster.");
+            label.setAttribute("aria-label", getFineTuningDetailAlt(null, true));
+            label.setAttribute("data-tooltip", "Réglage barycentre nuages (albédo).");
             label.style.marginTop = "6px";
           }
 
@@ -3853,6 +3853,31 @@ function updateAlbedoHaloFromComposition(D) {
   }
 }
 
+// Alt détaillé (facteurs + bornes) pour fine_tuning_cloud_bary. detailOnly=true = uniquement le détail (pas l'intro du tooltip).
+function getFineTuningDetailAlt(pctStr, detailOnly) {
+  const pct = pctStr != null ? pctStr + "%" : "100%";
+  const bounds = window.FINE_TUNING_BOUNDS;
+  if (!bounds || !bounds.targets || !Array.isArray(bounds.targets)) {
+    const full = "Réglage barycentre nuages (albédo). " + pct + ". Facteurs : CLOUD_SW, SOLVER (bornes dans fine_tuning_bounds.js).";
+    return detailOnly ? "Facteurs : CLOUD_SW, SOLVER (bornes dans fine_tuning_bounds.js)." : full;
+  }
+  const intro = "Réglage barycentre nuages (albédo). " + pct + ".";
+  const lines = [];
+  let group = "";
+  bounds.targets.forEach(function (t) {
+    if (t.group !== group) {
+      group = t.group;
+      lines.push(group + " :");
+    }
+    const minMax = (typeof t.min === "number" && typeof t.max === "number")
+      ? t.min + "–" + t.max
+      : (t.min + "–" + t.max);
+    lines.push("  " + t.key + " " + minMax + (t.unit ? " " + t.unit : ""));
+  });
+  const detail = lines.join(" ");
+  return detailOnly ? detail : intro + " " + detail;
+}
+
 window.updateFluxLabels = function (eventId) {
   var fluxDiagram = document.getElementById("flux-diagram");
   if (!fluxDiagram) return;
@@ -4283,10 +4308,9 @@ window.updateFluxLabels = function (eventId) {
       label.innerHTML = formattedValue;
       if (dataId === "fine_tuning_cloud_bary") {
         const pctMatch = typeof formattedValue === "string" && formattedValue.match(/(\d+(?:\.\d+)?)\s*%/);
-        const pct = pctMatch ? pctMatch[1] : "50";
-        const tooltipText = "Réglage barycentre nuages : " + pct + " %. Glisser pour ajuster.";
-        label.setAttribute("aria-label", tooltipText);
-        label.setAttribute("data-tooltip", tooltipText);
+        const pct = pctMatch ? pctMatch[1] : "100";
+        label.setAttribute("data-tooltip", "Réglage barycentre nuages (albédo). " + pct + " %.");
+        label.setAttribute("aria-label", getFineTuningDetailAlt(pct, true));
         label.removeAttribute("title");
       }
       // Détecter automatiquement le type pour la couleur
@@ -5346,13 +5370,13 @@ window.updateFluxLabels = function (eventId) {
   const cloudBaryRaw =
     baryByGroup && baryByGroup.CLOUD_SW != null
       ? Number(baryByGroup.CLOUD_SW)
-      : 50;
+      : 100;
   const cloudBary = Number.isFinite(cloudBaryRaw)
     ? Math.max(0, Math.min(100, cloudBaryRaw))
-    : 50;
+    : 100;
   updateLabel(
     "fine_tuning_cloud_bary",
-    `🔺🧩🔻<br>${cloudBary.toFixed(0)}%`,
+    `🔺🧩<br><span style="white-space:nowrap">${cloudBary.toFixed(0)}%</span>`,
     "text",
   );
 

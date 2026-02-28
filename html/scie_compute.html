@@ -1016,19 +1016,19 @@
 
         function getFineTuningBaryPercent(groupKey) {
             if (!window.FINE_TUNING_BARY_PERCENT_BY_GROUP) {
-                window.FINE_TUNING_BARY_PERCENT_BY_GROUP = { CLOUD_SW: 50, SOLVER: 50 };
+                window.FINE_TUNING_BARY_PERCENT_BY_GROUP = { CLOUD_SW: 100, SOLVER: 100 };
             }
             if (window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey] == null || !Number.isFinite(Number(window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey]))) {
-                window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey] = 50;
+                window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey] = 100;
             }
             return Number(window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey]);
         }
 
         function setFineTuningBaryPercent(groupKey, percentRaw) {
             const p = Number(percentRaw);
-            const bounded = Math.max(0, Math.min(100, Number.isFinite(p) ? p : 50));
+            const bounded = Math.max(0, Math.min(100, Number.isFinite(p) ? p : 100));
             if (!window.FINE_TUNING_BARY_PERCENT_BY_GROUP) {
-                window.FINE_TUNING_BARY_PERCENT_BY_GROUP = { CLOUD_SW: 50, SOLVER: 50 };
+                window.FINE_TUNING_BARY_PERCENT_BY_GROUP = { CLOUD_SW: 100, SOLVER: 100 };
             }
             window.FINE_TUNING_BARY_PERCENT_BY_GROUP[groupKey] = bounded;
             return bounded;

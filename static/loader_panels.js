@@ -65,10 +65,6 @@
         const sciePanel = document.getElementById('scie-panel');
         if (visuPanel) visuPanel.innerHTML = results[0];
         if (sciePanel) sciePanel.innerHTML = results[1];
-        var wrapper = document.querySelector('.plot-container-wrapper');
-        var ctrl = document.querySelector('.plot-controls');
-        var dbg = document.getElementById('plot-debug-log');
-        console.log('[debug bouton] apres injection: plot-controls=' + !!ctrl + ' plot-debug-log=' + !!dbg + ' wrapper=' + !!wrapper + ' wrapperKids=' + (wrapper ? wrapper.children.length : 0));
         return loadScriptsSequentially(SCRIPTS);
     }).then(function () {
         if (document.readyState === 'loading') {
@@ -149,21 +145,16 @@
         }
         var animButton = document.getElementById('plot-anim-toggle');
         if (animButton) {
-            animButton.classList.add('selected');
             var cb = document.getElementById('plot-anim-toggle-checkbox');
             if (!cb) {
                 cb = document.createElement('input');
                 cb.type = 'checkbox';
                 cb.id = 'plot-anim-toggle-checkbox';
-                cb.checked = true;
+                cb.checked = false;
                 cb.style.display = 'none';
                 document.body.appendChild(cb);
             }
         }
-        ensurePlotDebugButton();
-        requestAnimationFrame(function () {
-            requestAnimationFrame(function () { ensurePlotDebugButton(); });
-        });
         var lastComputePayload = null;
         if (window.CO2_EVENTS) {
             window.CO2_EVENTS.on('cycleCalcul', function () {

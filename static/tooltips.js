@@ -1,12 +1,13 @@
 // File: tooltips.js - Système centralisé de tooltips
 // Desc: Gestion unifiée des tooltips (délai 0 = immédiat)
-// Version 1.0.1
+// Version 1.0.2
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See LICENSE_HEADER.txt for full terms.
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // Logs:
 // - TOOLTIP_DELAY=0 (immédiat), texte dynamique via data-tooltip/title au show
+// - aria-label/alt affiché après 2s dans élément séparé (style fond clair, vrai alt)
 
 (function() {
     'use strict';
@@ -14,7 +15,8 @@
     // ============================================================================
     // CONFIGURATION
     // ============================================================================
-    const TOOLTIP_DELAY = 0; // Immédiat (tooltip générique sans attente 2s)
+    const TOOLTIP_DELAY = 0; // Immédiat (tooltip court)
+    const TOOLTIP_ALT_DELAY = 2000; // Délai avant d'afficher le détail (aria-label/alt) en ms
     const TOOLTIP_FADE_OUT = 200; // Durée du fade-out en ms
 
     // ============================================================================
@@ -44,6 +46,13 @@
             line-height: 1.5;
             word-wrap: break-word;
         }
+        /* Alt = détail (aria-label), style type tooltip natif du navigateur */
+        .flux-custom-tooltip-alt {
+            background: #f5f5dc !important;
+            color: #1a1a1a !important;
+            border: 1px solid #999 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+        }
     `;
 
     // Injecter les styles dans le document
@@ -60,7 +69,9 @@
     // SINGLETON TOOLTIP ELEMENT
     // ============================================================================
     let globalTooltipElement = null;
+    let globalAltTooltipElement = null; // Détail (aria-label), style fond clair "vrai alt"
     let globalTooltipTimeout = null;
+    let globalTooltipAltTimeout = null; // Timeout pour afficher le détail après 2s
 
     // Créer l'élément tooltip global (singleton)
     function getOrCreateGlobalTooltip() {
@@ -72,15 +83,33 @@
         return globalTooltipElement;
     }
 
-    // Fonction pour cacher le tooltip global
+    // Créer l'élément alt global (détail, style natif)
+    function getOrCreateGlobalAltTooltip() {
+        if (!globalAltTooltipElement) {
+            globalAltTooltipElement = document.createElement('div');
+            globalAltTooltipElement.className = 'flux-custom-tooltip flux-custom-tooltip-alt';
+            document.body.appendChild(globalAltTooltipElement);
+        }
+        return globalAltTooltipElement;
+    }
+
+    // Fonction pour cacher le tooltip global (court + alt)
     function hideGlobalTooltip() {
         if (globalTooltipTimeout) {
             clearTimeout(globalTooltipTimeout);
             globalTooltipTimeout = null;
         }
+        if (globalTooltipAltTimeout) {
+            clearTimeout(globalTooltipAltTimeout);
+            globalTooltipAltTimeout = null;
+        }
         if (globalTooltipElement) {
             globalTooltipElement.style.opacity = '0';
             globalTooltipElement.style.visibility = 'hidden';
+        }
+        if (globalAltTooltipElement) {
+            globalAltTooltipElement.style.opacity = '0';
+            globalAltTooltipElement.style.visibility = 'hidden';
         }
     }
 
@@ -90,9 +119,10 @@
     /**
      * Ajoute un tooltip personnalisé à un élément
      * @param {HTMLElement} element - L'élément auquel ajouter le tooltip
-     * @param {string} text - Le texte du tooltip (peut contenir du HTML)
+     * @param {string} text - Texte court (affiché en premier)
+     * @param {string} [longText] - Texte détaillé (affiché après TOOLTIP_ALT_DELAY)
      */
-    function addTooltip(element, text) {
+    function addTooltip(element, text, longText) {
         if (!element || !text || text.trim() === '') return; // Ne pas créer de tooltip si le texte est vide
 
         // Injecter les styles si nécessaire
@@ -155,12 +185,18 @@
                 globalTooltipTimeout = null;
             }
 
+            // Annuler un éventuel délai alt précédent
+            if (globalTooltipAltTimeout) {
+                clearTimeout(globalTooltipAltTimeout);
+                globalTooltipAltTimeout = null;
+            }
             // UX : TOOLTIP_DELAY avant affichage (éviter flash au survol rapide)
             globalTooltipTimeout = setTimeout(() => {
                 const tooltip = getOrCreateGlobalTooltip();
                 // Texte dynamique : data-tooltip / title mis à jour (ex. updateLabel) pris en compte à l'affichage
                 const displayText = (element.getAttribute && (element.getAttribute('data-tooltip') || element.getAttribute('title'))) || text;
-                tooltip.innerHTML = displayText || text; // Mettre à jour le contenu
+                const detailText = (element.getAttribute && (element.getAttribute('aria-label') || element.getAttribute('alt'))) || longText;
+                tooltip.innerHTML = displayText || text; // Mettre à jour le contenu (court)
 
                 // 🔒 Utiliser la position actuelle de la souris (dernier événement stocké ou position actuelle)
                 let positionEvent = lastMouseEvent;
@@ -179,6 +215,36 @@
 
                 tooltip.style.opacity = '1';
                 tooltip.style.visibility = 'visible';
+
+                // Après TOOLTIP_ALT_DELAY, afficher le détail dans l'élément "alt" (fond clair, vrai alt)
+                if (detailText && detailText.trim() !== '' && detailText !== (displayText || text)) {
+                    globalTooltipAltTimeout = setTimeout(() => {
+                        const currentDetail = element.getAttribute('aria-label') || element.getAttribute('alt');
+                        if (currentDetail && tooltip.style.visibility === 'visible') {
+                            const altEl = getOrCreateGlobalAltTooltip();
+                            altEl.innerHTML = currentDetail.replace(/\n/g, '<br>');
+                            const ev = lastMouseEvent || { clientX: element.getBoundingClientRect().left + element.getBoundingClientRect().width / 2, clientY: element.getBoundingClientRect().top };
+                            const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+                            const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+                            const offsetX = 15;
+                            const offsetY = -15;
+                            const mouseY = ev.clientY;
+                            const wouldOverflowTop = (mouseY + offsetY) < 70;
+                            altEl.style.left = (ev.clientX + offsetX + scrollX) + 'px';
+                            // Alterner : tooltip court au-dessus → alt en dessous ; tooltip en dessous → alt au-dessus
+                            if (wouldOverflowTop) {
+                                altEl.style.top = (mouseY + offsetY + scrollY) + 'px';
+                                altEl.style.transform = 'translate(0, -100%)';
+                            } else {
+                                altEl.style.top = (mouseY - offsetY + scrollY) + 'px';
+                                altEl.style.transform = 'translate(0, 0)';
+                            }
+                            altEl.style.opacity = '1';
+                            altEl.style.visibility = 'visible';
+                        }
+                        globalTooltipAltTimeout = null;
+                    }, TOOLTIP_ALT_DELAY);
+                }
             }, TOOLTIP_DELAY);
         };
 
@@ -192,13 +258,26 @@
             lastMouseEvent = null; // Réinitialiser
         });
         element.addEventListener('mousemove', (e) => {
-            // Toujours mettre à jour la dernière position de la souris
             lastMouseEvent = e;
-            
-            // Si le tooltip est déjà visible, mettre à jour sa position immédiatement
             const tooltip = getOrCreateGlobalTooltip();
+            const altEl = globalAltTooltipElement;
             if (tooltip && tooltip.style.visibility === 'visible') {
                 positionTooltip(e);
+            }
+            if (altEl && altEl.style.visibility === 'visible') {
+                const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+                const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+                const offsetX = 15;
+                const offsetY = -15;
+                const wouldOverflowTop = (e.clientY + offsetY) < 70;
+                altEl.style.left = (e.clientX + offsetX + scrollX) + 'px';
+                if (wouldOverflowTop) {
+                    altEl.style.top = (e.clientY + offsetY + scrollY) + 'px';
+                    altEl.style.transform = 'translate(0, -100%)';
+                } else {
+                    altEl.style.top = (e.clientY - offsetY + scrollY) + 'px';
+                    altEl.style.transform = 'translate(0, 0)';
+                }
             }
         });
     }
@@ -208,18 +287,17 @@
      * @param {HTMLElement} element - L'élément à traiter
      */
     function addTooltipFromAttribute(element) {
-        let text = element.getAttribute('data-tooltip') || element.getAttribute('alt') || element.getAttribute('title');
+        const shortText = element.getAttribute('data-tooltip') || element.getAttribute('title');
+        const longText = element.getAttribute('aria-label') || element.getAttribute('alt');
+        const text = shortText || longText;
         
         if (text && text.trim() !== '') {
-            // Remplacer les retours à la ligne par <br>
-            text = text.replace(/\n/g, '<br>');
-            
             // Nettoyer le title par défaut pour éviter le tooltip natif du navigateur
             if (element.hasAttribute('title')) {
                 element.removeAttribute('title');
             }
-            
-            addTooltip(element, text);
+            // Court en premier ; détail (aria-label/alt) après 2s si présent
+            addTooltip(element, (shortText || text).replace(/\n/g, '<br>'), longText ? longText.replace(/\n/g, '<br>') : null);
         }
     }
 
