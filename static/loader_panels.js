@@ -37,7 +37,6 @@
         'static/courbes/plot.js',
         'static/layout.js',
         'static/integrateEds.js',
-        'static/debug.js',
         'static/events.js',
         'static/timeline/timeline.js',
         'static/main.js'
@@ -124,23 +123,6 @@
         var visu = document.getElementById('visu-panel');
         return visu && visu.classList.contains('active');
     };
-
-    function ensurePlotDebugButton() {
-        var ctrl = document.querySelector('.plot-controls');
-        var dbg = document.getElementById('plot-debug-log');
-        var anim = document.getElementById('plot-anim-toggle');
-        console.log('[debug bouton] initAfterLoad: plot-controls=' + !!ctrl + ' plot-debug-log=' + !!dbg + ' plot-anim=' + !!anim);
-        if (ctrl && !dbg && anim) {
-            var btn = document.createElement('button');
-            btn.className = 'icon-button';
-            btn.id = 'plot-debug-log';
-            btn.title = 'Debug : run par epoch, log dans fichier txt';
-            btn.textContent = '\uD83D\uDCC3';
-            btn.onclick = function () { if (typeof window.runDebugLogMode === 'function') window.runDebugLogMode(); };
-            ctrl.appendChild(btn);
-            console.log('[debug bouton] bouton cree manuellement');
-        }
-    }
 
     function initAfterLoad() {
         if (typeof window.initCharsForDisplay === 'function') window.initCharsForDisplay();
@@ -239,7 +221,7 @@
             }
         }
         scieIframe.addEventListener('load', function () {
-            window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });
+            window.syncToScie({ epochId: '⚫', animEnabled: false, ticTime: 0 });
             // Décaler pour laisser setEpoch (RAF+RAF+setTimeout) s'exécuter avant runComputeInParent
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
@@ -247,7 +229,7 @@
                 });
             });
         });
-        window.syncToScie({ epochId: '⚫', animEnabled: true, ticTime: 0 });
+        window.syncToScie({ epochId: '⚫', animEnabled: false, ticTime: 0 });
         if (scieIframe.contentDocument && scieIframe.contentDocument.readyState === 'complete') {
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {

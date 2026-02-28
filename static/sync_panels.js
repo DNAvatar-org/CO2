@@ -19,7 +19,7 @@
 
     window.SYNC_STATE = {
         epochId: '⚫',
-        animEnabled: true,
+        animEnabled: false,
         ticTime: 0
     };
 

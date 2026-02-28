@@ -3086,14 +3086,12 @@ function runMainInit() {
                     window.fpsPrecisionFactor = 1.0; // Précision par défaut
                 }
                 
-                // Initialiser le bouton anim (activé par défaut, contrôle directement showDichotomySteps)
-                // Vérifier d'abord le checkbox caché, puis le bouton (pour compatibilité)
+                // Initialiser le bouton anim (désactivé par défaut, contrôle directement showDichotomySteps)
                 const animToggle = document.getElementById('plot-anim-toggle-checkbox') || document.getElementById('plot-anim-toggle');
                 if (animToggle) {
-                    // 🔒 Initialiser window.isAnim depuis le bouton (variable globale unique)
                     if (typeof window !== 'undefined') {
-                        window.isAnim = animToggle.checked !== false; // true par défaut
-                        window.showDichotomySteps = window.isAnim; // Synchroniser avec showDichotomySteps
+                        window.isAnim = animToggle.checked === true;
+                        window.showDichotomySteps = window.isAnim;
                     }
                     
                     animToggle.addEventListener('change', (e) => {

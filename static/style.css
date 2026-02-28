@@ -685,6 +685,7 @@ h1 {
     flex-direction: column;
     align-items: center;
     padding: 8px 0;
+    height: 85px;
 }
 
 .visu_timeline-horloge-content {

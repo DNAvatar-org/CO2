@@ -28,7 +28,7 @@ if (typeof window !== "undefined") {
   // Mises à jour UNIQUEMENT quand l'utilisateur change les boutons UI
   // La boucle principale utilise ces valeurs, ne relit PAS la config
   window.convergencePrecision_K = 0.1; // Précision de convergence en K (par défaut 0.1°)
-  window.isAnim = true; // État du bouton anim (par défaut activé)
+  window.isAnim = false; // État du bouton anim (par défaut désactivé)
 
   // Variables legacy (à supprimer progressivement, gardées pour compatibilité temporaire)
   window.useCO2 = true;
