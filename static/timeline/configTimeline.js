@@ -10,6 +10,7 @@
 // - v1.2.2: paramètres solveur issus de static/tuning/model_tuning.js (source unique tuning)
 // - v1.2.3: fallback synchrone des paramètres solveur si window.TUNING non chargé
 // - v1.2.4: 🦴 = Paléozoïque (541–252 Ma), ordre chrono Protérozoïque → Paléozoïque → Mésozoïque → Cénozoïque
+// - v1.2.5: baryByGroupDefault (CLOUD_SW/SCIENCE/SOLVER %) pour init DATA['🎚️'].baryByGroup dans initDATA.js
 //
 // ============================================================================
 // DÉFINITION DE LA CHRONOLOGIE (TIMELINE)
@@ -253,7 +254,7 @@ const timeline = [
         '◀': 0,
         // 🌡️🧮 : ~288–295 K (lit. Cénozoïque). Refroidissement → 1800 via baisse CO2 (lit. Anagnostou Nature 2016).
         '🌡️🧮': 291,
-        'ice_fixed': 0.085, // Verrou glace initial solver (~8.5% polaire simplifié)
+        // Override glace (patch debug) : flag OVERRIDES.useEpochIceFixed (boolean) + valeur OVERRIDES['⛄'] (ex. 0.085).
         '🧲🔬': 0.1,
         '🔋☀️': 3.80886e26, // Puissance totale du soleil (W) - 99.5% de 3.828e26 W
         '🔋🌕': 5.0e13, // core_power_watts (Puissance géothermique totale ~50 TW)
@@ -391,6 +392,9 @@ window.TIMELINE = timeline;
 // - [EQ/NUM]    : valeur de schéma numérique, solveur ou stratégie de convergence
 window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
 
+// Valeurs par défaut des jauges fine-tuning (% ). Utilisées uniquement à l'init de DATA['🎚️'].baryByGroup (initDATA.js). DATA seule ref ensuite.
+window.CONFIG_COMPUTE.baryByGroupDefault = { CLOUD_SW: 100, SCIENCE: 100, SOLVER: 0 };
+
 // ===================== [OBS/CALIB] =====================
 // Bins spectaux (N utilisé). 500 = courbe propre ; 100 donne courbe moins précise et convergence ~1.2°C (artefact). 🔬🌈 dans [N_min, N_max].
 // N_min : optionnel (spectralBinsMinFromHITRAN). Réf. scripts/hitran_spectral_bin_bounds.py.
@@ -402,9 +406,11 @@ window.CONFIG_COMPUTE.spectralMaxMB = null;                         // [OBS/CALI
 window.CONFIG_COMPUTE.spectralBinsMinFromHITRAN = null;            // [OBS/CALIB]
 // true = répartition homogène (poids ∝ largeur région → même densité bins/μm partout) ; false = grille d'origine (converge bien).
 window.CONFIG_COMPUTE.spectralGridHomogeneous = true;             // [OBS/CALIB]
-// Pondération physique du spin-up : cycles_effectifs = cycles × f(⚖️🫧) × f(⚖️💧)
-window.CONFIG_COMPUTE.climateSpinupAtmMassRefKg = 1.0e18;          // [OBS/CALIB]
-window.CONFIG_COMPUTE.climateSpinupWaterMassRefKg = 1.0e20;        // [OBS/CALIB]
+// Pondération physique du spin-up : cycles_effectifs = cycles × f(⚖️🫧) × f(⚖️💧). Refs confirmés >= 1 au set.
+var CLIMATE_SPINUP_ATM_MASS_REF_KG = 1e18;
+var CLIMATE_SPINUP_WATER_MASS_REF_KG = 1e20;
+window.CONFIG_COMPUTE.climateSpinupAtmMassRefKg = Math.max(1, CLIMATE_SPINUP_ATM_MASS_REF_KG);   // [OBS/CALIB]
+window.CONFIG_COMPUTE.climateSpinupWaterMassRefKg = Math.max(1, CLIMATE_SPINUP_WATER_MASS_REF_KG); // [OBS/CALIB]
 // Temps caractéristique fonte calotte pour l'héritage glaciaire (ans)
 window.CONFIG_COMPUTE.tauGlaceAns = 50000;                         // [OBS/CALIB]
 // Pressure broadening (spectroscopie) : σ_eff = σ × √(P/P_ref), utile à P>1 bar.
@@ -417,8 +423,8 @@ window.CONFIG_COMPUTE.maxSearchT_K = null;                         // [EQ/NUM]
 // Tolérances cycle eau (changement albedo/vapor pour relancer tour radiatif)
 window.CONFIG_COMPUTE.cycleTolAlbedo = 1e-4;                       // [EQ/NUM]
 window.CONFIG_COMPUTE.cycleTolVapor = 1e-6;                        // [EQ/NUM]
-// Spin-up climatologique avant solver radiatif (cycles eau/albédo à glace verrouillée)
-window.CONFIG_COMPUTE.climateSpinupCycles = 8;                     // [EQ/NUM]
+// Spin-up climatologique avant solver radiatif (cycles eau/albédo à glace verrouillée). Confirmé >= 0 entier.
+window.CONFIG_COMPUTE.climateSpinupCycles = Math.max(0, Math.floor(8)); // [EQ/NUM]
 // Cycles eau/albédo par pas radiatif
 window.CONFIG_COMPUTE.maxWaterAlbedoCyclesPerStep = 2;             // [EQ/NUM]
 // Cycles eau/albédo à l'Init uniquement (T fixe)
@@ -427,8 +433,13 @@ window.CONFIG_COMPUTE.maxWaterAlbedoCyclesAtInit = 1;              // [EQ/NUM]
 window.CONFIG_COMPUTE.iceCoverageRampMaxStep = 0.004;              // [EQ/NUM]
 window.CONFIG_COMPUTE.iceCoverageRampEarlyIters = 10;              // [EQ/NUM]
 window.CONFIG_COMPUTE.iceCoverageRampMaxStepEarly = 0.001;         // [EQ/NUM]
-// Cohérence glace : true = override explicite EPOCH['ice_fixed'] si défini.
-window.CONFIG_COMPUTE.useEpochIceFixedOverride = true;             // [EQ/NUM]
+
+// Catégorie à part : overrides debug/patch (pas dans CONFIG_COMPUTE).
+window.OVERRIDES = window.OVERRIDES || {};
+// true = utiliser OVERRIDES['⛄'] (valeur override glace). Valeur ex. Cénozoïque : 0.085.
+window.OVERRIDES.useEpochIceFixed = true;
+window.OVERRIDES['⛄'] = 0.085;
+
 const SOLVER_TUNING = (window.TUNING && window.TUNING.SOLVER)
     ? window.TUNING.SOLVER
     : {
@@ -454,8 +465,6 @@ window.CONFIG_COMPUTE.logEdsDiagnostic = false;
 // Lissage visuel du spectre (affichage uniquement, pas la physique/OLR)
 window.CONFIG_COMPUTE.plotSmoothEnable = true;
 window.CONFIG_COMPUTE.plotSmoothSigmaBins = 8.0;//5.6;
-// Nombre max d'étapes affichées dans le panel "Convergence" (Init + cycles eau + pas Search/Dicho). Pas utilisé par le calcul, uniquement pour l'affichage. Garder petit = moins de RAM.
-window.CONFIG_COMPUTE.maxPreviousLength = 10;
 // Logs diagnostics
 window.CONFIG_COMPUTE.logIceFixedDiagnostic = false;
 window.CONFIG_COMPUTE.logCloudProxyDiagnostic = false;
