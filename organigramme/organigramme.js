@@ -5406,15 +5406,9 @@ window.updateFluxLabels = function (eventId) {
   // S'assurer que le résultat est correct (0% si albedo = 1, 100% si albedo = 0)
   updateLabel("passing_albedo_percent", passing_albedo_percent);
 
-  // Afficher le barycentre fine-tuning CLOUD_SW sous le bouton 🪩 (source: sync:tuning)
-  const baryByGroup = window.FINE_TUNING_BARY_PERCENT_BY_GROUP;
-  const cloudBaryRaw =
-    baryByGroup && baryByGroup.CLOUD_SW != null
-      ? Number(baryByGroup.CLOUD_SW)
-      : 100;
-  const cloudBary = Number.isFinite(cloudBaryRaw)
-    ? Math.max(0, Math.min(100, cloudBaryRaw))
-    : 100;
+  // Afficher le barycentre fine-tuning CLOUD_SW sous le bouton 🪩 (source: DATA['🎚️'].baryByGroup)
+  const cloudBaryRaw = Number(window.DATA['🎚️'].baryByGroup.CLOUD_SW);
+  const cloudBary = Number.isFinite(cloudBaryRaw) ? Math.max(0, Math.min(100, cloudBaryRaw)) : 0;
   updateLabel(
     "fine_tuning_cloud_bary",
     `🔺🧩<br><span style="white-space:nowrap">${cloudBary.toFixed(0)}%</span>`,

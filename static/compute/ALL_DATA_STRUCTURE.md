@@ -290,7 +290,7 @@ window.FORM = {
 
 2. **Pas de fallback** : Ne pas utiliser `||` pour les valeurs par défaut. L'application doit planter si une valeur est `undefined`.
 
-3. **Initialisation** : `DATA` est initialisé automatiquement dans `dico.js` avec des valeurs par défaut (0.0 pour les nombres, false pour les booléens, '' pour les strings).
+3. **Initialisation** : `DATA` est initialisé dans `initDATA.js` (chargé après `dico.js`) à partir de `KEYS`, avec des valeurs par défaut (0.0 pour les nombres, false pour les booléens, '' pour les strings), puis `DATA['🎚️']` (baryByGroup, CLOUD_SW, SOLVER).
 
 4. **Mise à jour** : Les valeurs sont mises à jour par les fonctions de calcul (ex: `calculateAtmosphereComposition()`, `calculateAlbedo()`, etc.).
 

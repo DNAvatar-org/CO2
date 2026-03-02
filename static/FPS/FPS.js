@@ -12,8 +12,8 @@
 // Historique des valeurs (pour les courbes)
 const fpsHistory = [];
 const precisionHistory = [];
-const MAX_HISTORY = 100; // Nombre de points à garder en mémoire
-const X_STEP = 10; // Step de 10px en X (chaque pixel = même durée)
+const MAX_HISTORY = 100;
+const X_SECONDS_PER_POINT = 1.0; // En mode timer : 1 point = 1 s ; X en float (secondes)
 
 // Durée minimale par pixel (en secondes)
 // Si stepX = 10px et on veut 1 pixel toutes les 100ms, alors PIXEL_DURATION = 0.1
@@ -69,30 +69,28 @@ function initFPSChart() {
         return;
     }
     
-    // Configuration initiale du graphique
     const layout = {
         autosize: true,
-        margin: { l: 15, r: 25, t: 0, b: 0 }, /* Marges réduites : droite et bas à 5px pour que le 0 commence en bas */
-        paper_bgcolor: 'rgba(0,0,0,0.9)', // Fond noir
-        plot_bgcolor: 'rgba(0,0,0,0.9)', // Fond noir
+        margin: { l: 42, r: 42, t: 8, b: 8 },
+        paper_bgcolor: 'rgba(0,0,0,0.9)',
+        plot_bgcolor: 'rgba(0,0,0,0.9)',
         xaxis: {
-            range: [0, MAX_HISTORY * X_STEP],
+            range: [0, MAX_HISTORY * X_SECONDS_PER_POINT],
             showgrid: true,
             gridcolor: 'rgba(255, 255, 255, 0.1)',
             showticklabels: false,
             zeroline: false,
-            dtick: X_STEP // Step de 10px en X
+            dtick: 0.5,
+            fixedrange: true
         },
         yaxis: {
-            range: [0, 80], // 0 à 80 FPS (augmenté pour que 60 soit plus bas, sous le bouton)
+            range: [0, 80],
             showgrid: true,
             gridcolor: 'rgba(255, 255, 255, 0.1)',
             tickfont: { color: 'white', size: 10 },
-            title: {
-                text: '', // Pas de titre sur l'axe
-                font: { color: 'white', size: 11 }
-            },
-            side: 'left'
+            title: { text: '', font: { color: 'white', size: 11 } },
+            side: 'left',
+            fixedrange: true
         },
         yaxis2: {
             type: 'linear',
@@ -122,11 +120,12 @@ function initFPSChart() {
                 text: 'Précision',
                 xref: 'paper',
                 yref: 'paper',
-                x: 0.98, // En haut à droite
-                y: 0.98, // Proche du haut
+                x: 0.98,
+                y: 0.5,
                 xanchor: 'right',
-                yanchor: 'top',
-                font: { color: '#888888', size: 12 }, // Gris
+                yanchor: 'middle',
+                textangle: -90,
+                font: { color: '#888888', size: 12 },
                 showarrow: false
             }
         ],
@@ -146,9 +145,8 @@ function initFPSChart() {
             line: { color: '#888888', width: 2 }, // Gris
             yaxis: 'y2'
         },
-        // Barres horizontales : rouge = zone FPS où le flux n'est pas mis à jour (courbe toujours affichée)
         {
-            x: [0, MAX_HISTORY * X_STEP],
+            x: [0, MAX_HISTORY * X_SECONDS_PER_POINT],
             y: [FPSmin, FPSmin],
             type: 'scatter',
             mode: 'lines',
@@ -159,7 +157,7 @@ function initFPSChart() {
             hoverinfo: 'skip'
         },
         {
-            x: [0, MAX_HISTORY * X_STEP],
+            x: [0, MAX_HISTORY * X_SECONDS_PER_POINT],
             y: [FPSalert, FPSalert],
             type: 'scatter',
             mode: 'lines',
@@ -170,7 +168,7 @@ function initFPSChart() {
             hoverinfo: 'skip'
         },
         {
-            x: [0, MAX_HISTORY],
+            x: [0, MAX_HISTORY * X_SECONDS_PER_POINT],
             y: [FPSmax, FPSmax],
             type: 'scatter',
             mode: 'lines',
@@ -212,10 +210,9 @@ function updateFPSChart(fps, precision) {
         precisionHistory.shift();
     }
     
-    // Créer les tableaux de coordonnées X avec step de 10px
-    const xData = Array.from({ length: fpsHistory.length }, (_, i) => i * X_STEP);
-    // Décaler la courbe FPS de 1px à droite
-    const xDataFPS = xData.map(x => x + 1);
+    // X en float (secondes) : 1 point = 1 s en mode timer
+    const xData = Array.from({ length: fpsHistory.length }, (_, i) => (i + 0) * X_SECONDS_PER_POINT);
+    const xDataFPS = Array.from({ length: fpsHistory.length }, (_, i) => (i + 0.1) * X_SECONDS_PER_POINT);
     
     // Mettre à jour les traces (Précision trace 0, FPS trace 4 pour qu'elle soit au-dessus)
     // Utiliser restyle pour mettre à jour seulement les traces nécessaires
@@ -225,9 +222,13 @@ function updateFPSChart(fps, precision) {
     }, [0]); // Mettre à jour la trace 0 (Précision)
     
     Plotly.restyle('fps-chart', {
-        x: [xDataFPS], // Courbe FPS décalée de 1px à droite
+        x: [xDataFPS],
         y: [fpsHistory]
-    }, [4]); // Mettre à jour la trace 4 (FPS)
+    }, [4]);
+
+    const xMax = fpsHistory.length === 0 ? 10 : Math.max(fpsHistory.length * X_SECONDS_PER_POINT, 5);
+    Plotly.relayout('fps-chart', { 'xaxis.range': [0, xMax] });
+    Plotly.restyle('fps-chart', { x: [[0, xMax], [0, xMax], [0, xMax]] }, [1, 2, 3]);
 }
 
 // Arrêter le timer d'une seconde quand le système de ping est utilisé

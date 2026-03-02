@@ -39,7 +39,7 @@ function temperatureAtZ(z) {
 function crossSectionCO2(wavelength) {
     const CONST = window.CONST;
     const T_ref = window.HITRAN.T_REF_K;
-    const P_ref = CONST.STANDARD_ATMOSPHERE_PA;
+    const P_ref = CONV.STANDARD_ATMOSPHERE_PA;
     return window.HITRAN.crossSectionCO2FromLines(wavelength, T_ref, P_ref);
 }
 
@@ -56,7 +56,7 @@ function waterVaporMixingRatio(z, r0_override = null) {
 function crossSectionH2O(wavelength) {
     const CONST = window.CONST;
     const T_ref = window.HITRAN.T_REF_K;
-    const P_ref = CONST.STANDARD_ATMOSPHERE_PA;
+    const P_ref = CONV.STANDARD_ATMOSPHERE_PA;
     return window.HITRAN.crossSectionH2OFromLines(wavelength, T_ref, P_ref);
 }
 
@@ -79,7 +79,7 @@ function waterVaporFractionAtZ(z) {
 function crossSectionCH4(wavelength) {
     const CONST = window.CONST;
     const T_ref = window.HITRAN.T_REF_K;
-    const P_ref = CONST.STANDARD_ATMOSPHERE_PA;
+    const P_ref = CONV.STANDARD_ATMOSPHERE_PA;
     return window.HITRAN.crossSectionCH4FromLines(wavelength, T_ref, P_ref);
 }
 
@@ -93,7 +93,7 @@ function methaneFractionAtZ(z) {
 function evaporationRate() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    return CONST.EVAPORATION_E0 * Math.exp((DATA['🧮']['🧮🌡️'] - CONST.EVAPORATION_T_REF) / CONST.EVAPORATION_T_SCALE);
+    return EARTH.EVAPORATION_E0 * Math.exp((DATA['🧮']['🧮🌡️'] - EARTH.EVAPORATION_T_REF) / EARTH.EVAPORATION_T_SCALE);
 }
 
 
@@ -331,7 +331,7 @@ function calculateFluxForT0() {
             console.error(`[calculateFluxForT0] ❌ ERREUR CRITIQUE: lambda_weights[${idx}] manquant pour lambda_range[${idx}] = ${lambda}`);
             throw new Error(`lambda_weights[${idx}] requis`);
         }
-        const B = window.planckFunction(lambda, T_surf_flux);
+        const B = PHYS.planckFunction(lambda, T_surf_flux);
         return Math.PI * B * effective_delta_lambda * lambda_weights[idx];
     });
 
@@ -365,7 +365,7 @@ function calculateFluxForT0() {
 
     // ⚡ OPTIMISATION : Précalculer B_λ(T_trop) pour toutes les λ (après tropopause)
     const planck_trop = lambda_range.map(lambda =>
-                window.planckFunction(lambda, T_trop)
+                PHYS.planckFunction(lambda, T_trop)
     );
 
     // ⚡ OPTIMISATION : Précalculer les sections efficaces (dépendent uniquement de λ)
@@ -409,7 +409,7 @@ function calculateFluxForT0() {
         console.log('[DIAG CO2] bins dans bande 13-17µm : ' + diag_co2.length + ' (sur ' + lambda_range.length + ' total)');
     }
 
-    const h2o_eds_scale = window.getH2OVaporEDSScale();
+    const h2o_eds_scale = EARTH.H2O_EDS_SCALE;
 
     // h2o_enabled et ch4_enabled sont déjà lus depuis DATA au début de la fonction
 
@@ -434,7 +434,7 @@ function calculateFluxForT0() {
     
     // ⚡ OPTIMISATION : Boucle avant tropopause (T varie avec z)
     const usePressureBroadening = window.CONFIG_COMPUTE.pressureBroadening;
-    const P_REF = CONST.STANDARD_ATMOSPHERE_PA;
+    const P_REF = CONV.STANDARD_ATMOSPHERE_PA;
     for (let i = 0; i < i_trop; i++) {
         const z = z_range[i];
         const T = DATA['🧮']['🧮🌡️'] + Gamma * z; // Calcul direct, sans appel à temperature()
@@ -502,7 +502,7 @@ function calculateFluxForT0() {
 
                 // 2. Flux émis
                 // F_émis = (1 - exp(-tau)) × π × B_λ(T_couche) × Δλ × poids (Δλ = pas réel de la grille)
-                const em_flux = emissivity * Math.PI * window.planckFunction(lambda, T) * effective_delta_lambda * lambda_weights[j];
+                const em_flux = emissivity * Math.PI * PHYS.planckFunction(lambda, T) * effective_delta_lambda * lambda_weights[j];
 
                 // 3. Flux sortant + clamp pour éviter overflow de la somme totale
                 let out = flux_in[j] * transmission + em_flux;
@@ -665,7 +665,7 @@ function calculateFluxForT0() {
     // 🔒 Stocker les résultats dans DATA (crash si DATA['📊'] n'existe pas)
     if (!DATA['📊']) throw new Error('[calculateFluxForT0] DATA[📊] requis avant écriture');
     if (window.HITRAN && window.HITRAN.getSpectralBinBoundsFromHITRAN) {
-        const bounds = window.HITRAN.getSpectralBinBoundsFromHITRAN(lambda_min, lambda_max, window.HITRAN.T_REF_K || 296, CONST.STANDARD_ATMOSPHERE_PA);
+        const bounds = window.HITRAN.getSpectralBinBoundsFromHITRAN(lambda_min, lambda_max, window.HITRAN.T_REF_K || 296, CONV.STANDARD_ATMOSPHERE_PA);
         if (bounds) DATA['📊'].hitranBinBounds = bounds;
     }
     DATA['📊'].total_flux = total_flux;
@@ -765,7 +765,7 @@ function calculateRadiativeCapacities() {
     const cross_section_CO2 = DATA['📊'].lambda_range.map(lambda => crossSectionCO2(lambda));
     const cross_section_H2O = DATA['📊'].lambda_range.map(lambda => crossSectionH2O(lambda));
     const cross_section_CH4 = DATA['📊'].lambda_range.map(lambda => crossSectionCH4(lambda));
-    const h2o_eds_scale_cap = window.getH2OVaporEDSScale();
+    const h2o_eds_scale_cap = EARTH.H2O_EDS_SCALE;
     
     // Initialiser les intégrales pondérées
     let integral_H2O = 0;
@@ -776,7 +776,7 @@ function calculateRadiativeCapacities() {
     const Gamma = -0.0065; // Gradient de température, K/m
     const airNumberDensity = (z) => {
         const T = DATA['🧮']['🧮🌡️'] + Gamma * z;
-        const P = DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA * Math.exp(-z / (CONST.R_GAS * T / (EPOCH['🍎'] * CONST.molar_mass_air_ref)));
+        const P = DATA['🫧']['🎈'] * CONV.STANDARD_ATMOSPHERE_PA * Math.exp(-z / (CONST.R_GAS * T / (EPOCH['🍎'] * CONV.molar_mass_air_ref)));
         return P / (CONST.BOLTZMANN_KB * T);
     };
     

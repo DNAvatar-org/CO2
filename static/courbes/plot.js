@@ -969,11 +969,11 @@ window.updatePlot = function updatePlot(data) {
 
     function createPlanckTrace(T, label, color, showInLegend = false, dashPattern = 'dash') {
         const planck = data.lambda_range.map(l => {
-            if (typeof window.planckFunction !== 'function') {
+            if (typeof PHYS.planckFunction !== 'function') {
                 console.error('[updatePlot] ❌ ERREUR CRITIQUE : planckFunction non disponible');
                 throw new Error('planckFunction requise');
             }
-            const raw = Math.PI * window.planckFunction(l, T) * 1e6;
+            const raw = Math.PI * PHYS.planckFunction(l, T) * 1e6;
             return scaleY(raw);
         });
         // Utiliser la couleur fournie (noir pour les références, couleur de l'absorption pour la courbe courante)
@@ -1357,9 +1357,9 @@ window.updatePlot = function updatePlot(data) {
         }
         if (epochName === 'Hadéen' && T_est === 255) T_est = 2450;
         let maxPlanck = 0;
-        if (typeof window.planckFunction === 'function') {
+        if (typeof PHYS.planckFunction === 'function') {
             data.lambda_range.forEach(l => {
-                const v = Math.PI * window.planckFunction(l, T_est) * 1e6;
+                const v = Math.PI * PHYS.planckFunction(l, T_est) * 1e6;
                 if (v > maxPlanck) maxPlanck = v;
             });
         }
@@ -2231,7 +2231,7 @@ function drawSpectralVisualization(canvas, data) {
     }
 
 
-    const P0 = window.CONST.STANDARD_ATMOSPHERE_PA; // Pression au niveau de la mer en Pa
+    const P0 = CONV.STANDARD_ATMOSPHERE_PA; // Pression au niveau de la mer en Pa
 
     // ... suite du code de rendu canvas ...
 

@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.7
+// Version 1.1.8
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -13,6 +13,7 @@
 // - v1.1.5: appel direct getEnabledStates() sans typeof (règle _REGLE_JS_CRASH)
 // - v1.1.6: event sync:tuning (bary + updates) pour appliquer tuning sur parent/visu puis run unique
 // - v1.1.7: support baryByGroup (CLOUD_SW/SOLVER) pour jauges séparées
+// - v1.1.8: source unique tuning dans DATA[🎚️]; applyTuningPayload écrit DATA[🎚️]; runComputeInParent sync TUNING depuis DATA[🎚️]
 
 (function () {
     'use strict';
@@ -51,46 +52,43 @@
         }, '*');
     }
 
+    // DATA['🎚️'] seule ref : payload contient baryByGroup + CLOUD_SW + SOLVER (remplissage complet depuis iframe).
     function applyTuningPayload(payload) {
-        if (!payload || !payload.updates || !Array.isArray(payload.updates)) return;
-        if (!window.TUNING) return;
+        var T = window.DATA['🎚️'];
+        T.baryByGroup.CLOUD_SW = payload.baryByGroup.CLOUD_SW;
+        T.baryByGroup.SCIENCE = payload.baryByGroup.SCIENCE;
+        T.baryByGroup.SOLVER = payload.baryByGroup.SOLVER;
+        T.CLOUD_SW = Object.assign({}, payload.CLOUD_SW);
+        T.SOLVER = Object.assign({}, payload.SOLVER);
         payload.updates.forEach(function (u) {
-            if (!u || !u.group || !u.key) return;
-            if (!window.TUNING[u.group]) return;
-            window.TUNING[u.group][u.key] = u.value;
+            T[u.group][u.key] = u.value;
         });
-        if (window.TUNING.SOLVER && window.CONFIG_COMPUTE) {
-            window.CONFIG_COMPUTE.tolMinWm2 = window.TUNING.SOLVER.TOL_MIN_WM2;
-            window.CONFIG_COMPUTE.maxSearchStepK = window.TUNING.SOLVER.MAX_SEARCH_STEP_K;
-            window.CONFIG_COMPUTE.maxSearchStepLargeK = window.TUNING.SOLVER.MAX_SEARCH_STEP_LARGE_K;
-            window.CONFIG_COMPUTE.largeDeltaFactor = window.TUNING.SOLVER.LARGE_DELTA_FACTOR;
-        }
-        if (payload.baryPercent != null) {
-            window.FINE_TUNING_BARY_PERCENT = payload.baryPercent;
-        }
-        if (payload.baryByGroup) {
-            window.FINE_TUNING_BARY_PERCENT_BY_GROUP = window.FINE_TUNING_BARY_PERCENT_BY_GROUP || {};
-            if (payload.baryByGroup.CLOUD_SW != null) window.FINE_TUNING_BARY_PERCENT_BY_GROUP.CLOUD_SW = payload.baryByGroup.CLOUD_SW;
-            if (payload.baryByGroup.SOLVER != null) window.FINE_TUNING_BARY_PERCENT_BY_GROUP.SOLVER = payload.baryByGroup.SOLVER;
-        }
+        syncTuningFromData();
+    }
+
+    // DATA source → TUNING et CONFIG_COMPUTE dérivés.
+    function syncTuningFromData() {
+        var T = window.DATA['🎚️'];
+        window.TUNING.CLOUD_SW = Object.assign({}, T.CLOUD_SW);
+        window.TUNING.SOLVER = Object.assign({}, T.SOLVER);
+        window.CONFIG_COMPUTE.tolMinWm2 = T.SOLVER.TOL_MIN_WM2;
+        window.CONFIG_COMPUTE.maxSearchStepK = T.SOLVER.MAX_SEARCH_STEP_K;
+        window.CONFIG_COMPUTE.maxSearchStepLargeK = T.SOLVER.MAX_SEARCH_STEP_LARGE_K;
+        window.CONFIG_COMPUTE.largeDeltaFactor = T.SOLVER.LARGE_DELTA_FACTOR;
     }
 
     function applyToVisu(payload, fromScie) {
         var visuPanel = document.getElementById('visu-panel');
-        if (!payload) return;
-
         if (payload.epochId !== undefined) {
             window.SYNC_STATE.epochId = payload.epochId;
             if (!fromScie) {
                 if (typeof window.setEpoch === 'function') window.setEpoch(payload.epochId);
             } else {
                 var idx = window.TIMELINE ? window.TIMELINE.findIndex(function (item) { return item['📅'] === payload.epochId; }) : -1;
-                if (window.DATA && idx >= 0) {
+                if (idx >= 0) {
                     window.DATA['📅'] = window.TIMELINE[idx];
-                    if (window.DATA['📜']) {
-                        window.DATA['📜']['👉'] = idx;
-                        window.DATA['📜']['🗿'] = payload.epochId;
-                    }
+                    window.DATA['📜']['👉'] = idx;
+                    window.DATA['📜']['🗿'] = payload.epochId;
                     if (window.configOrganigramme && window.configOrganigramme.timeline) {
                         var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === payload.epochId; });
                         if (ep) window.currentEpochName = ep.name;
@@ -108,22 +106,23 @@
             window.SYNC_STATE.animEnabled = payload.animEnabled;
             var animCb = document.getElementById('plot-anim-toggle-checkbox');
             if (animCb) animCb.checked = payload.animEnabled;
-            if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎬'] = payload.animEnabled;
+            window.DATA['🔘']['🔘🎬'] = payload.animEnabled;
             window.isAnim = payload.animEnabled;
         }
         if (payload.ticTime !== undefined) {
             window.SYNC_STATE.ticTime = payload.ticTime;
             window.infoTimeMa = payload.ticTime * 50;
-            if (window.DATA && window.DATA['📜']) window.DATA['📜']['📿💫'] = payload.ticTime;
+            window.DATA['📜']['📿💫'] = payload.ticTime;
             var infoTime = document.getElementById('info-time');
             if (infoTime) infoTime.textContent = '+' + (payload.ticTime * 50).toFixed(0) + ' Ma';
         }
     }
 
     function projectToVisu(DATA) {
+        var CONST = window.CONST;
         var spectral = window.getSpectralResultFromDATA();
         var T0 = DATA['🧮']['🧮🌡️'];
-        var tempC = T0 - window.CONST.KELVIN_TO_CELSIUS;
+        var tempC = T0 - CONST.KELVIN_TO_CELSIUS;
         document.getElementById('temp-surface-synthese').textContent = tempC.toFixed(1);
         var P_atm = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
         var pressureValEl = document.getElementById('pressure-surface-synthese');
@@ -139,7 +138,7 @@
         window.h2oVaporPercent = Math.min(100, Math.max(0, h2o_vapor_frac * 100 + h2o_meteorites));
         window.plotData.lambda_range = spectral.lambda_range;
         window.plotData.lambda_weights = spectral.lambda_weights;
-        var sigma = (window.CONST && window.CONST.STEFAN_BOLTZMANN != null) ? window.CONST.STEFAN_BOLTZMANN : 5.670374419e-8;
+        var sigma = (CONST && CONST.STEFAN_BOLTZMANN != null) ? CONST.STEFAN_BOLTZMANN : 5.670374419e-8;
         var T_eff = (spectral.total_flux > 0) ? Math.pow(spectral.total_flux / sigma, 0.25) : T0;
         window.plotData.current = {
             T0: T0,
@@ -177,7 +176,7 @@
                     if (T0Data != null && typeof T0Data === 'number') {
                         window.plotData.current.T0 = T0Data;
                         window.plotData.current.temp_surface = T0Data;
-                        window.plotData.current.temp_surface_c = T0Data - window.CONST.KELVIN_TO_CELSIUS;
+                        window.plotData.current.temp_surface_c = T0Data - CONST.KELVIN_TO_CELSIUS;
                         window.plotData.temp_surface_c = window.plotData.current.temp_surface_c;
                         window.plotData.temp_surface = T0Data;
                     }
@@ -195,7 +194,7 @@
     // Main thread réservé GUI/DOM ; calcul cycles pourrait être déporté dans static/workers/compute_worker.js
     window.runComputeInParent = function () {
         var DATA = window.DATA;
-        if (!DATA || !DATA['🧮'] || !DATA['🔘']) return Promise.resolve(null);
+        syncTuningFromData();
         // Source de vérité pour anim : bouton visu (plot-anim-toggle). Rafraîchir DATA['🔘'] avant le calcul
         // pour que sans animation on parte bien de 🌡️🧮 (ex. 288.8 K), pas de 255 K.
         window.getEnabledStates();
@@ -274,10 +273,10 @@
             window.runComputeInParent();
         });
         window.addEventListener('message', function (event) {
-            if (!event.data || event.data.type !== 'sync:tuning') return;
+            if (event.data.type !== 'sync:tuning') return;
             var p = event.data.payload;
             applyTuningPayload(p);
-            if (p && p.run === true) window.runComputeInParent();
+            if (p.run === true) window.runComputeInParent();
         });
 
         window.CO2_EVENTS.on('sync:state', function (payload) {
@@ -289,7 +288,7 @@
         window.CO2_EVENTS.on('sync:tuning', function (payload) {
             applyTuningPayload(payload);
             syncTuningToScie(payload);
-            if (payload && payload.run === true) window.runComputeInParent();
+            if (payload.run === true) window.runComputeInParent();
         });
     }
 

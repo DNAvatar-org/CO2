@@ -81,6 +81,7 @@ const CHARS = {
     PLANET_RADIUS: '📐', // Rayon de la planète : équerre
     GRAVITY: '🍎',  // Gravité : pomme (gravité)
     MOLAR_MASS_AIR: '🧪', // Masse molaire de l'air : flacon (chimie)
+    ALEMBIC: '⚗',  // Alembic (chimie / science)
     PRESSURE: '🎈', // Pression : ballon (pression)
     INDEX_EPOCH: '👉', // Index de l'époque : pointeur
     LOGO_EPOCH: '🗿', // Logo/Nom de l'époque : statue
@@ -181,7 +182,8 @@ const CHARS_DESC = {
     '📅': 'Date (Ma)',
     '📐': 'Rayon planète',
     '🍎': 'Gravité (m/s²)',
-    '┴': 'Point triple (🎈,🌡️)'
+    '┴': 'Point triple (🎈,🌡️)',
+    '⚗': 'Alembic (chimie / science)'
 };
 
 // ============================================================================
@@ -192,7 +194,7 @@ function createAlphabetHtml() {
     if (typeof CHARS === 'undefined') console.error('[createAlphabet] CHARS non défini');
     // Colonne 1 : Unités
     const charsCol1 = [
-        'CARDINAL', 'PROPORTION', 'BOOLEAN', 'METER', 'WEIGHT', 'PRESSURE', 'TEMP', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'GRAVITY', 'ENERGY_FLUX', 'MOLAR_MASS_AIR', 'TRIPLE_POINT'
+        'CARDINAL', 'PROPORTION', 'BOOLEAN', 'METER', 'WEIGHT', 'PRESSURE', 'TEMP', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'GRAVITY', 'ENERGY_FLUX', 'MOLAR_MASS_AIR', 'ALEMBIC', 'TRIPLE_POINT'
     ];
     
     // Colonne 2 : Éléments
@@ -231,8 +233,9 @@ function createAlphabetHtml() {
         
         const hasImage = charsImages[char] && (charsImages[char].endsWith('.png') || charsImages[char].endsWith('.svg') || charsImages[char].endsWith('.jpg'));
         const imgInParens = hasImage ? ' (' + getDisplayChar(char) + ')' : '';
+        const logoClass = char === '⚗' ? 'logo logo-alembic' : 'logo';
         
-        return `<div class="legend-item"><span class="logo">${char}</span><span class="description">${description}${imgInParens}</span></div>`;
+        return `<div class="legend-item"><span class="${logoClass}">${char}</span><span class="description">${description}${imgInParens}</span></div>`;
     };
     
     // Filtrer les divs vides avant de les joindre

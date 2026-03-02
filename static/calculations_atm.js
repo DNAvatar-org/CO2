@@ -108,7 +108,7 @@ function calculateMolarMassAir() {
                    frac_H2O * CONST.M_H2O;
     
     // Si pas d'atmosphère, utiliser la valeur de référence
-    DATA['🫧']['🧪'] = M_air > 0 ? M_air : CONST.molar_mass_air_ref;
+    DATA['🫧']['🧪'] = M_air > 0 ? M_air : CONV.molar_mass_air_ref;
     return true;
 }
 
@@ -130,7 +130,7 @@ function calculatePressureAtm() {
     const gravity = EPOCH['🍎'];
     const pressure_pa = (atm_mass_total * gravity) / surface_area;
 
-    DATA['🫧']['🎈'] = (surface_area > 0 && isFinite(pressure_pa) && pressure_pa > 0) ? pressure_pa / CONST.STANDARD_ATMOSPHERE_PA : 0;
+    DATA['🫧']['🎈'] = (surface_area > 0 && isFinite(pressure_pa) && pressure_pa > 0) ? pressure_pa / CONV.STANDARD_ATMOSPHERE_PA : 0;
 
     return true;
 }
@@ -229,7 +229,7 @@ function pressureAtZ(z) {
     const CONST = window.CONST;
     const EPOCH = window.TIMELINE[DATA['📜']['👉']];
     if (DATA['⚖️']['⚖️🫧'] === 0) return 0;
-    const P0_pa = (DATA['🫧']['🎈'] != null && DATA['🫧']['🎈'] > 0) ? DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA : (DATA['⚖️']['⚖️🫧'] * EPOCH['🍎']) / (4 * Math.PI * Math.pow(EPOCH['📐'] * 1000, 2));
+    const P0_pa = (DATA['🫧']['🎈'] != null && DATA['🫧']['🎈'] > 0) ? DATA['🫧']['🎈'] * CONV.STANDARD_ATMOSPHERE_PA : (DATA['⚖️']['⚖️🫧'] * EPOCH['🍎']) / (4 * Math.PI * Math.pow(EPOCH['📐'] * 1000, 2));
     const H = (CONST.R_GAS * DATA['🧮']['🧮🌡️']) / (DATA['🫧']['🧪'] * EPOCH['🍎']);
     return P0_pa * Math.exp(-z / H);
 }
@@ -243,7 +243,7 @@ function airNumberDensityAtZ(z) {
 function co2KgToFraction(co2_kg, total_atm_kg, molar_mass_air) {
     const CONST = window.CONST;
     if (!total_atm_kg || total_atm_kg <= 0) return 0;
-    const M_air = molar_mass_air && molar_mass_air > 0 ? molar_mass_air : CONST.molar_mass_air_ref;
+    const M_air = molar_mass_air && molar_mass_air > 0 ? molar_mass_air : CONV.molar_mass_air_ref;
     return (co2_kg * M_air) / (total_atm_kg * CONST.M_CO2);
 }
 
@@ -251,10 +251,21 @@ function co2KgToFraction(co2_kg, total_atm_kg, molar_mass_air) {
 function ch4KgToFraction(ch4_kg, total_atm_kg, molar_mass_air) {
     const CONST = window.CONST;
     if (!total_atm_kg || total_atm_kg <= 0) return 0;
-    const M_air = molar_mass_air && molar_mass_air > 0 ? molar_mass_air : CONST.molar_mass_air_ref;
+    const M_air = molar_mass_air && molar_mass_air > 0 ? molar_mass_air : CONV.molar_mass_air_ref;
     return (ch4_kg * M_air) / (total_atm_kg * CONST.M_CH4);
 }
 
+var ATM = window.ATM = window.ATM || {};
+ATM.calculateAtmosphereProperties = calculateAtmosphereProperties;
+ATM.calculateMolarMassAir = calculateMolarMassAir;
+ATM.calculatePressureAtm = calculatePressureAtm;
+ATM.calculateAtmosphereComposition = calculateAtmosphereComposition;
+ATM.updateAtmosphereHeightFromCurrentT = updateAtmosphereHeightFromCurrentT;
+ATM.calculateTropopauseHeight = calculateTropopauseHeight;
+ATM.pressureAtZ = pressureAtZ;
+ATM.airNumberDensityAtZ = airNumberDensityAtZ;
+ATM.co2KgToFraction = co2KgToFraction;
+ATM.ch4KgToFraction = ch4KgToFraction;
 window.calculateAtmosphereProperties = calculateAtmosphereProperties;
 window.calculateMolarMassAir = calculateMolarMassAir;
 window.calculatePressureAtm = calculatePressureAtm;

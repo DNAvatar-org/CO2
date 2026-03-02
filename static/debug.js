@@ -109,8 +109,8 @@ function logDetailPremiersCalculs(stepLabel, DATA, CONST, extra) {
         const cloudW = b['🍰📛⛅'] != null ? (eds * b['🍰📛⛅']).toFixed(2) : '?';
         add('EDS W/m²: total=' + (eds > 0 ? eds.toFixed(2) : '?') + ' CO2=' + co2W + ' H2O=' + h2oW + ' CH4=' + ch4W + ' Nuages=' + cloudW + ' (%=part EDS)');
     }
-    if (typeof window.getH2OVaporEDSScale === 'function') {
-        add('H2O_VAPOR_EDS_SCALE=' + window.getH2OVaporEDSScale().toFixed(3));
+    if (EARTH && EARTH.H2O_EDS_SCALE != null) {
+        add('H2O_VAPOR_EDS_SCALE=' + Number(EARTH.H2O_EDS_SCALE).toFixed(3));
     }
     if (DATA['☀️']) add('SOLAIRE: flux_top=' + (DATA['☀️']['🧲☀️🎱'] != null ? DATA['☀️']['🧲☀️🎱'].toFixed(2) : '?') + ' W/m²');
     if (DATA['🌕']) add('GEO: flux=' + (DATA['🌕']['🧲🌕'] != null ? DATA['🌕']['🧲🌕'].toFixed(2) : '?') + ' W/m²');

@@ -15,6 +15,7 @@ Référence : `_REGLE_JS_CRASH.md` à la racine du projet.
 - **Aucun** `||` pour valeurs par défaut
 - **Aucun** `?.` (optional chaining) pour masquer les erreurs
 - **Aucun** `return` dans un if de garde — le return masque le crash. Log OK, return jamais.
+- **Aucun** `Number.isFinite(x)` / `isFinite(x)` pour “sécuriser” une valeur avant calcul (ex. lecture DATA). Si la valeur est invalide → crash. Voir regle-data-territoire.
 
 ## Philosophie
 

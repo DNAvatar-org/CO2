@@ -113,6 +113,13 @@ body {
     min-width: 25px;
 }
 
+/* ⚗ Alembic : rendu mis en valeur (comme page utf8) */
+.legend-item .logo.logo-alembic {
+    font-size: 1.85em;
+    line-height: 1;
+    filter: drop-shadow(0 0 1px rgba(74, 158, 255, 0.4));
+}
+
 /* Images dans alphabet (entre parenthèses) : un peu plus grosses */
 .legend-item .description img {
     height: 1.4em;

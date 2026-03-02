@@ -150,7 +150,7 @@ function getEpochDateConfig() {
     DATA['📜']['🔺⚖️💧☄️'] = water_added_kg || 0;               // Masse d'eau ajoutée / météorite
     DATA['📜']['📿💫'] = ticTime || 0;                     // Nombre de ticTime
     DATA['📜']['🔺🌡️💫'] = deltaTicTime_per_tic || 0;     // Delta température / ticTime
-    DATA['📜']['🧲🔬'] = EPOCH['🧲🔬'];                    // Précision de convergence
+    DATA['📜']['🧲🔬'] = (typeof EPOCH['🧲🔬'] === 'number' && Number.isFinite(EPOCH['🧲🔬'])) ? EPOCH['🧲🔬'] : 0.01;  // Précision convergence (K) ; défaut 0.01 si époque sans 🧲🔬
     DATA['📜']['👉'] = epochIndex;                         // Index de l'époque
     DATA['📜']['🗿'] = epochId;                            // Logo de l'époque (emoji)
     
@@ -180,7 +180,7 @@ function getSoleil() {
     // Calculer la constante solaire à 1 UA depuis la puissance totale
     // Relation: P = S * 4πr² où P est la puissance totale, S est la constante solaire, r = 1 UA = 1.496e11 m
     // Donc: S = P / (4π * (1 UA)²)
-    DATA['☀️']['🧲☀️'] = DATA['☀️']['🔋☀️'] / (4 * Math.PI * CONST.AU_M * CONST.AU_M);
+    DATA['☀️']['🧲☀️'] = DATA['☀️']['🔋☀️'] / (4 * Math.PI * CONV.AU_M * CONV.AU_M);
     
     // Flux solaire à 1 UA / 4 (moyenne sphérique, AVANT albedo)
     // 🎱 représente la géométrie (division par 4 pour la moyenne sphérique)
@@ -240,12 +240,19 @@ function getNoyau() {
 // ============================================================================
 // EXPOSITION GLOBALE
 // ============================================================================
+var COMPUTE = window.COMPUTE = window.COMPUTE || {};
+COMPUTE.getEpochDateConfig = getEpochDateConfig;
+COMPUTE.getDateConfig = getEpochDateConfig;
+COMPUTE.getMasses = getMasses;
+COMPUTE.getEnabledStates = getEnabledStates;
+COMPUTE.getSoleil = getSoleil;
+COMPUTE.getNoyau = getNoyau;
 window.getEpochDateConfig = getEpochDateConfig;
-window.getDateConfig = getEpochDateConfig; // Alias pour compatibilité
-window.getMasses = getMasses; // Exposer getMasses
-window.getEnabledStates = getEnabledStates; // Exposer getEnabledStates
-window.getSoleil = getSoleil; // Exposer getSoleil
-window.getNoyau = getNoyau; // Exposer getNoyau
+window.getDateConfig = getEpochDateConfig;
+window.getMasses = getMasses;
+window.getEnabledStates = getEnabledStates;
+window.getSoleil = getSoleil;
+window.getNoyau = getNoyau;
 // T0 est dans DATA['🧮']['🧮🌡️'], pas besoin de window.T0
 // getLogo et getLogoKey sont exposés par alphabet.js
 

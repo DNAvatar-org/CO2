@@ -792,11 +792,11 @@ window.updatePlot = function updatePlot(data) {
     // Fonction helper pour créer une trace Planck
     function createPlanckTrace(T, label, color, showInLegend = false, dashPattern = 'dash') {
         const planck = lambda_range.map(l => {
-            if (typeof window.planckFunction !== 'function') {
+            if (typeof PHYS.planckFunction !== 'function') {
                 console.error('[updatePlot] ❌ ERREUR CRITIQUE : planckFunction non disponible');
                 throw new Error('planckFunction requise');
             }
-            const value = Math.PI * window.planckFunction(l, T) / 1e6;
+            const value = Math.PI * PHYS.planckFunction(l, T) / 1e6;
             // Pour 255K, s'assurer que la valeur est visible même si faible
             if (T === 255 && value < 0.01) {
                 return 0.01; // Minimum visible
@@ -2013,7 +2013,7 @@ function drawSpectralVisualization(canvas, data) {
     }
 
 
-    const P0 = window.CONST.STANDARD_ATMOSPHERE_PA; // Pression au niveau de la mer en Pa
+    const P0 = CONV.STANDARD_ATMOSPHERE_PA; // Pression au niveau de la mer en Pa
 
     // ... suite du code de rendu canvas ...
 

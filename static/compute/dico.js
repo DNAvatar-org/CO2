@@ -9,6 +9,9 @@
 // - v1.0.1: KEYS/DESC 📛 + 🍰📛⛅ (EDS nuages), DESC 🧲📛/🍰📛❀
 // - v1.0.2: FORM sync with runtime code for 🎈 (dry+vapor mass) and 🍰🪩⛅ (cloud optical proxy)
 // - v1.0.3: add sulfate keys in DATA (⚖️🌫, 🍰🫧🌫) + CCN formula mention sulfate term
+// - v1.0.4: DATA['🎚️'] init ici (source unique) ; baryByGroup depuis CONFIG_COMPUTE.baryByGroupDefault, DATA seule ref
+// - v1.0.5: SOLVER init avec TOL_MIN_WM2/MAX_SEARCH_STEP_K/etc. (éviter tol=NaN si compute avant fillDataTuningFromBary)
+// - v1.0.6: init DATA déplacée dans initDATA.js (chargé après dico.js) ; KEYS exposé pour initDATA
 
 // ============================================================================
 // OBJET KEYS (toutes les clés regroupées) - Utilise directement les emojis
@@ -212,7 +215,7 @@ const FORM = {
         '🔋🌕': 'Puissance totale du noyau (W)'
     },
     '🫧': {
-        '🎈': 'P = ((⚖️🫧 + m_vapeur) × 🍎) / (4π×(📐×1000)²) / CONST.STANDARD_ATMOSPHERE_PA, avec m_vapeur = ⚖️🫧×🍰🫧💧/(1-🍰🫧💧) - Pression atmosphérique (air sec + vapeur)',
+        '🎈': 'P = ((⚖️🫧 + m_vapeur) × 🍎) / (4π×(📐×1000)²) / CONV.STANDARD_ATMOSPHERE_PA, avec m_vapeur = ⚖️🫧×🍰🫧💧/(1-🍰🫧💧) - Pression atmosphérique (air sec + vapeur)',
         '🧪': '!Masse molaire (kg/mol)',
         '📏🫧🧿': 'H × ln(P₀ / P_limit) où H = RT/(Mg) [von Kármán] - Ligne de Kármán (altitude où P = 0.01 Pa)',
         '📏🫧🛩': 'RT/(Mg) [équation hydrostatique] - Tropopause (échelle de hauteur atmosphérique)',
@@ -229,7 +232,7 @@ const FORM = {
         '🍰🫧💧': 'max(0, min(🍰🧮🌧 × (CONST.M_H2O / 🧪), ⚖️💧 / ⚖️🫧) - (🍰⚖️💦 × (4 × π × (📐 × 1000)²) × 🔺⏳) / ⚖️🫧) - Fraction massique de vapeur',
         '🍰🫧☔': 'clamp(🍰🫧💧 / ((CONST.M_H2O / 🧪) × 🍰🧮🌧), 0, 1) [Clausius-Clapeyron] - Humidité relative globale (q / q_sat en fraction massique)',
         '☁️': '(1 - Math.pow(1 - min(🍰🫧☔, 1), 0.6)) × 🍰💭 - Schéma Sundqvist classique (couverture nuageuse à partir de RH) × (🍰💭) – nuages plus minces = optiquement moins actifs',
-        '💭☔': 'clamp(0.75 + 0.05 × (🧮🌡️ - CONST.EVAPORATION_T_REF) / CONST.EVAPORATION_T_SCALE, 0.7, 0.95) - Seuil critique précipitations [0.7,0.9]',
+        '💭☔': 'clamp(0.75 + 0.05 × (🧮🌡️ - EARTH.EVAPORATION_T_REF) / EARTH.EVAPORATION_T_SCALE, 0.7, 0.95) - Seuil critique précipitations [0.7,0.9]',
         '⏳☔': '1/τ_global (s⁻¹), τ_global = 10 j (litt. 8–10 j, Nature Rev. Earth Env. 2021; HESS 2017)',
         '🍰⚖️💦': 'W/τ_global × ramp(RH−💭☔, 0.2) quand RH > 💭☔ ; W = masse_vapeur_par_m² (kg/m²) ; P = W/τ (litt. ~2,7 mm/j GPCP) - Taux précipitation (kg/m²/s)'
     },
@@ -243,7 +246,7 @@ const FORM = {
         '🍰🪩🌳': 'min(🍰🪩🌍_, 🗻.🍰🗻🌍 × clamp((🧮🌡️_C - 0)/30, 0, 1) × clamp((🍰🫧☔ - 0.5)/0.3, 0, 1) × clamp((1 - ☁️), 0, 1) × 0.6) où 🍰🪩🌍_ = 1 - 🍰🗻🌊 - 🍰🪩🧊 - Forêts dépendent de température (optimum 0-30°C), humidité relative (RH > 0.5-0.8) et nuages (moins de forêts si trop de nuages)',
         '🍰🪩🏜️': '🍰🪩🌍_ × (base_aridité + variabilité_régionale) où base_aridité = max(0, 1 - min(1, P_ann/1000)) × max(0, 1 - min(1, 🍰🫧☔/0.6)) et variabilité_régionale = 0.6 × max(0.5, min(1, (🧮🌡️_C-5)/10)) × max(0.5, 1-🍰🫧☔×0.6) - Déserts basés sur précipitations (P_ann < 1000 mm/an) et humidité relative (RH < 0.6) avec variabilité régionale',
         '🍰🪩🌍': 'land_coverage = L - 🍰🪩🌳 - 🍰🪩🏜️ où L = terre libre de glace. Absorbe automatiquement : steppes, prairies, toundras, montagnes (albedo ~0.18)',
-        '🍰🪩🧊': 'min(🗻.🍰🗻🏔, 0.46 × (T_no_ice_K - 🧮🌡️) / CONST.T_NO_POLAR_ICE_C) où T_no_ice_K = CONST.T_NO_POLAR_ICE_C + CONST.KELVIN_TO_CELSIUS - Glace polaire basée sur température (10% à 15°C, 0% si T > 20°C)',
+        '🍰🪩🧊': 'min(🗻.🍰🗻🏔, EARTH.ICE_FORMULA_MAX_FRACTION × (T_NO_POLAR_ICE_K - 🧮🌡️) / T_NO_POLAR_ICE_RANGE_K) - Glace polaire (0% si T > T_NO_POLAR_ICE_K)',
         '🍰🪩⛅': 'cloud_fraction = clamp((0.19 + 0.11×☁️) × cloud_optical_efficiency, 0, 0.75), avec cloud_optical_efficiency = (1.10 + 0.45×(ccn_ratio-1)) × pressure_factor × oxidation_soft_factor × temp_factor',
         '_contribution_glace': 'contribution_glace = (🪩🍰🧊 - albedo_base) × 🍰💧🧊 × 0.5',
         '_contribution_nuages': 'contribution_nuages = albedo × (1 - 🍰🪩⛅) + 🪩🍰⛅ × 🍰🪩⛅'
@@ -270,41 +273,13 @@ const FORM = {
     }
 };
 
-// ============================================================================
-// OBJET DATA (initialisé avec 0.0, structure hiérarchique 2 niveaux)
-// Source unique d'init : chargé avant main.js (loader_panels). Garantit DATA['🪩'], DATA['💧'], etc. avant setEpoch/updateFluxLabels.
-// ============================================================================
-const DATA = {};
-// Parcourir KEYS pour créer DATA avec valeurs par défaut (structure hiérarchique)
-for (const categoryKey in KEYS) {
-    const category = KEYS[categoryKey];
-    DATA[categoryKey] = {};
-    
-    // KEYS peut être un tableau ou un objet
-    const keysArray = Array.isArray(category) ? category : Object.values(category);
-    
-    for (const fullKey of keysArray) {
-        // Déterminer le type par défaut selon l'emoji
-        if (fullKey.startsWith('🔘')) {
-            DATA[categoryKey][fullKey] = false;  // Booléens (états activés)
-        } else if (fullKey.includes('⚧')) {
-            DATA[categoryKey][fullKey] = '';  // String (phase)
-        } else if (fullKey.includes('☯')) {
-            DATA[categoryKey][fullKey] = 0;  // Number (signe/direction)
-        } else if (fullKey === '🔺🧲🌕💫') {
-            DATA[categoryKey][fullKey] = { '▶': 0, '◀': 0 };  // Object (delta flux géothermique ticTime)
-        } else {
-            DATA[categoryKey][fullKey] = 0.0;  // Numbers
-        }
-    }
-}
 
 // ============================================================================
 // FONCTION : CRÉER LE DICO (utilise DATA directement, pas de paramètres)
 // ============================================================================
 function createDicoHtml() {
-    if (typeof window === 'undefined' || !window.DATA || !window.DESC) {
-        console.error('[createDico] DATA ou DESC non défini');
+    if (typeof window === 'undefined') {
+        console.error('[createDico] window non défini');
         return '';
     }
     
@@ -421,12 +396,9 @@ function createDicoHtml() {
 }
 
 // ============================================================================
-// EXPOSITION GLOBALE (uniquement DESC, DATA - KEYS n'est pas exporté)
+// EXPOSITION GLOBALE (DESC, FORM, createDicoHtml ; KEYS pour initDATA.js ; DATA par initDATA.js)
 // ============================================================================
-if (typeof window !== 'undefined') {
-    window.DESC = DESC;
-    window.DATA = DATA;
-    window.FORM = FORM;
-    window.createDicoHtml = createDicoHtml;
-    //window.createDico = createDicoHtml; // Alias pour compatibilité
-}
+window.KEYS = KEYS;
+window.DESC = DESC;
+window.FORM = FORM;
+window.createDicoHtml = createDicoHtml;

@@ -2055,11 +2055,8 @@ function setEpoch(epochName) {
     window.currentEpochName = epochName;
     
     // 🔒 INITIALISER DATA['📜']['👉'] et DATA['📜']['🗿'] pour que calculations_albedo.js puisse accéder à l'époque
-    // DATA est initialisé par dico.js (toutes clés à 0). Ne pas écraser avec {} — ordre synchrone garanti par loader_panels.
+    // DATA existe toujours (dico.js, ordre synchrone).
     if (typeof window.TIMELINE !== 'undefined') {
-        if (typeof window.DATA === 'undefined') {
-            window.DATA = {}; // Edge case : dico.js non chargé (ordre scripts cassé)
-        }
         if (!window.DATA['📜']) {
             window.DATA['📜'] = {};
         }

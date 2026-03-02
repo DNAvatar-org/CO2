@@ -1,7 +1,7 @@
 // ============================================================================
 // File: calculations_h2o.js - Calculs H2O (vapeur et nuages)
 // Desc: Séparation vapeur d'eau (effet de serre) et nuages (albedo)
-// Version 1.0.11
+// Version 1.0.12
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -17,6 +17,7 @@
 // - v1.0.9 : fine-tuning léger 2025 (c_c_max base 0.0065, iris 0.02) pour remonter T sans perdre la stabilité
 // - v1.0.10 : cap vapeur final observé (AIRS/ERA5, ~7%/K) en fin d'itération Init
 // - v1.0.11 : propagation sulfate proxy 🍰🫧🌫 depuis ⚖️🌫 dans la composition atmosphérique avec vapeur
+// - v1.0.12 : sans atmosphère (⚖️🫧=0) avec ⚖️💧>0 (Corps noir météorites) : 🍰💧🧊=1 si T<0°C, sinon 🍰💧🌊=1 (didactique)
 // ============================================================================
 
 // TODO: Évolutions futures du cycle de l'eau
@@ -87,7 +88,7 @@ function calculateSaturatedVaporPressure() {
 // P_atm en atm ; retourne T_boil en K. P_sat(T_boil) = P_total ⇒ 1/T_boil = 1/T0 - (R_v/L_v)*ln(P_total/P0).
 function getBoilingPointKFromPressure(P_atm) {
     const CONST = window.CONST;
-    const P_total_Pa = P_atm * CONST.STANDARD_ATMOSPHERE_PA;
+    const P_total_Pa = P_atm * CONV.STANDARD_ATMOSPHERE_PA;
     if (P_total_Pa <= 0) return CONST.T_BOIL;
     const ln_P = Math.log(P_total_Pa / CONST.P0_WATER);
     const inv_T = 1 / CONST.T0_WATER - (CONST.RV_WATER / CONST.L_VAPORIZATION) * ln_P;
@@ -100,7 +101,7 @@ function calculateMaxH2OVaporFraction() {
     const DATA = window.DATA;
     const CONST = window.CONST;
     const P_sat = calculateSaturatedVaporPressure();
-    const P_total = DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA;
+    const P_total = DATA['🫧']['🎈'] * CONV.STANDARD_ATMOSPHERE_PA;
     DATA['💧']['🍰🧮🌧'] = Math.min(P_sat / P_total, 1.0);
     
     return true;
@@ -143,12 +144,26 @@ function calculateCloudAlbedoContribution() {
 function calculateWaterPartition() {
     const DATA = window.DATA;
     const CONST = window.CONST;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    const STATE = window.STATE;
+    const ALBEDO = window.ALBEDO;
 
     if (DATA['⚖️']['⚖️🫧'] == 0) {
-        DATA['💧']['🍰💧🧊'] = 0;
-        DATA['💧']['🍰💧🌊'] = 0;
         DATA['💧']['🍰🧮🌧'] = 0;
         DATA['💧']['🍰🫧💧'] = 0;
+        if (DATA['⚖️']['⚖️💧'] == null || DATA['⚖️']['⚖️💧'] <= 0) {
+            DATA['💧']['🍰💧🧊'] = 0;
+            DATA['💧']['🍰💧🌊'] = 0;
+            return true;
+        }
+        // Corps noir (ou sans atmosphère) avec eau météorites : toute l'eau en glace si T < 0°C, sinon océan (didactique)
+        if (DATA['🧮']['🧮🌡️'] < CONST.T0_WATER) {
+            DATA['💧']['🍰💧🧊'] = 1;
+            DATA['💧']['🍰💧🌊'] = 0;
+        } else {
+            DATA['💧']['🍰💧🧊'] = 0;
+            DATA['💧']['🍰💧🌊'] = 1;
+        }
         return true;
     }
     
@@ -157,7 +172,7 @@ function calculateWaterPartition() {
     const h2o_total_fraction = DATA['⚖️']['⚖️💧'] / DATA['⚖️']['⚖️🫧'];
     
     // 🔒 ÉTAPE 1 : Obtenir les surfaces géologiques (doit être calculé avant)
-    window.calculateGeologySurfaces();
+    ALBEDO.calculateGeologySurfaces();
 
     // Pas d'atmosphère : pas de vapeur, mais on peut avoir de la glace si T < 0°C
     const hasNoAtmosphere = DATA['🫧']['🧪'] === 0 || DATA['🫧']['🎈'] === 0 || DATA['🫧']['🎈'] <= 0;
@@ -187,7 +202,7 @@ function calculateWaterPartition() {
 
     // Calculer la pression de vapeur saturante
     const P_sat = calculateSaturatedVaporPressure();
-    const P_total = DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA;
+    const P_total = DATA['🫧']['🎈'] * CONV.STANDARD_ATMOSPHERE_PA;
     const max_vapor_fraction = P_total > 0 ? Math.min(P_sat / P_total, 1.0) : 0;
 
     // Stocker la fraction molaire maximale (🍰🧮🌧)
@@ -195,12 +210,8 @@ function calculateWaterPartition() {
 
     // 🔒 ÉTAPE 2 : Déterminer la glace selon la température ET les surfaces disponibles
     // La glace est limitée par les hautes terres disponibles (géologie)
-    const temp_C = DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS;
-    const has_polar_ice = temp_C < CONST.T_NO_POLAR_ICE_C;
-    
-    // Calculer la fraction de glace souhaitée selon le climat
-    // À 0°C : ~10% de glace (calottes polaires), à T_NO_POLAR_ICE_C : 0% de glace
-    const polar_ice_fraction_climate = has_polar_ice ? Math.max(0, Math.min(0.10, (CONST.T_NO_POLAR_ICE_C - temp_C) / CONST.T_NO_POLAR_ICE_C * 0.10)) : 0;
+    const has_polar_ice = DATA['🧮']['🧮🌡️'] < EARTH.T_NO_POLAR_ICE_K;
+    const polar_ice_fraction_climate = has_polar_ice ? Math.max(0, Math.min(0.10, (EARTH.T_NO_POLAR_ICE_K - DATA['🧮']['🧮🌡️']) / EARTH.T_NO_POLAR_ICE_RANGE_K * 0.10)) : 0;
     
     // 🔒 CONTRAINTE GÉOLOGIQUE : La glace ne peut pas dépasser les hautes terres disponibles
     // polar_ice_fraction est une fraction de surface, limitée par highlands_fraction
@@ -291,7 +302,7 @@ function calculateWaterPartition() {
     const T_freeze_adjusted = T_FREEZE_SEAWATER - (pressure_atm - 1) * 1.0; // -1°C par atm supplémentaire
     
     const phase = DATA['🧮']['🧮⚧'];
-    const fixedIceState = window._iceEpochFixedWaterState || window._iceEpochFixedState;
+    const fixedIceState = STATE.iceEpochFixedWaterState || STATE.iceEpochFixedState;
     const lockIceInSolver = (phase === 'Search' || phase === 'Dicho') && fixedIceState && fixedIceState.epochId === DATA['📜']['🗿'];
     // Search/Dicho : glace figée à l'échelle époque (millénaires), vapeur/nuages restent dynamiques (jours).
     if (lockIceInSolver) {
@@ -310,10 +321,10 @@ function calculateWaterPartition() {
 
     // Transition liquide-glace (zone de transition entre -20°C et point de congélation ajusté)
     // T_FREEZE_SEAWATER et T_freeze_adjusted déjà déclarés plus haut, réutiliser
-    const pressure_atm_transition = DATA['🫧']['🎈'];
+    // const pressure_atm_transition = DATA['🫧']['🎈']; // inutilisé (nettoyage)
     // T_freeze_adjusted déjà calculé ligne 206, réutiliser cette valeur
-    if (!lockIceInSolver && DATA['🧮']['🧮🌡️'] > T_freeze_adjusted - CONST.T_ICE_TRANSITION_RANGE_C && DATA['🧮']['🧮🌡️'] < T_freeze_adjusted) {
-        const transition_factor = (DATA['🧮']['🧮🌡️'] - (CONST.T0_WATER - CONST.T_ICE_TRANSITION_RANGE_C)) / CONST.T_ICE_TRANSITION_RANGE_C;
+    if (!lockIceInSolver && DATA['🧮']['🧮🌡️'] > T_freeze_adjusted - EARTH.T_ICE_TRANSITION_RANGE_K && DATA['🧮']['🧮🌡️'] < T_freeze_adjusted) {
+        const transition_factor = (DATA['🧮']['🧮🌡️'] - (CONST.T0_WATER - EARTH.T_ICE_TRANSITION_RANGE_K)) / EARTH.T_ICE_TRANSITION_RANGE_K;
         const ice_before = DATA['💧']['🍰💧🧊'];
         const liquid_before = DATA['💧']['🍰💧🌊'];
         // Convertir une partie de la glace en liquide selon la température
@@ -367,15 +378,16 @@ function calculateWaterPartition() {
 function calculatePrecipitationFeedback() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    
+    const ALBEDO = window.ALBEDO;
+
     // 1. Calculer 🍰🫧☔, 💭☔, ⏳☔, 🍰⚖️💦 (via calculateCloudFormationIndex)
-    window.calculateCloudFormationIndex();
+    ALBEDO.calculateCloudFormationIndex();
     
     const relative_humidity = DATA['💧']['🍰🫧☔'];
-    const precip_threshold = DATA['💧']['💭☔'];
-    const precip_time_constant = DATA['💧']['⏳☔'];
+    // const precip_threshold = DATA['💧']['💭☔']; // inutilisé (nettoyage)
+    // const precip_time_constant = DATA['💧']['⏳☔']; // inutilisé (nettoyage)
     const precipitation_rate = DATA['💧']['🍰⚖️💦'];
-    const cloud_index = DATA['🪩']['☁️'];
+    // const cloud_index = DATA['🪩']['☁️']; // inutilisé (nettoyage)
 
     // 2. Précipitations convectives renforcées (quasi-equilibrium convection)
     // [OBS/CALIB] Sensibilité convective modérée :
@@ -435,30 +447,32 @@ function calculatePrecipitationFeedback() {
 function calculateH2OParametersWithIteration() {
     const DATA = window.DATA;
     const CONST = window.CONST;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    const ALBEDO = window.ALBEDO;
+    const ATM = window.ATM;
+    const COMPUTE = window.COMPUTE;
     const phase = DATA['🧮']['🧮⚧'];
     const isInit = phase === 'Init';
     const EFFICIENCY_CONDENSATION = 0.9; // Efficacité de condensation (0.8-1.0)
     const MAX_ITERATIONS = 5;
     const TOLERANCE = 0.001;
     
-    // 🔒 ACCÉLÉRATION DE CONVERGENCE : Utiliser 🔺⏳×10 au début, puis revenir à 1 jour
-    // Au début : 🔺⏳ = 86400 × 10 = 864000 s (10 jours) pour accélérer
-    // Après convergence partielle : 🔺⏳ = 86400 s (1 jour)
-    const ACCELERATION_FACTOR = 10;
+    // 🔒 ACCÉLÉRATION : 🔺⏳ = SECONDS_PER_DAY × DELTA_T_ACCELERATION_DAYS (tuning 8–10 j) au début, puis 1 jour
+    const acceleration_days = DATA['🎚️'].SOLVER.DELTA_T_ACCELERATION_DAYS;
     const ACCELERATION_THRESHOLD = 0.01; // Seuil pour passer de ×10 à ×1
     
     if (!isInit) {
         // En phase non-Init, utiliser l'ancien calcul
-        return window.calculateH2OParameters();
+        return H2O.calculateH2OParameters();
     }
     
     // 🔒 ÉTAPE 1 : Préparer les calculs de base
-    window.getMasses();
-    window.calculatePressureAtm();
+    COMPUTE.getMasses();
+    ATM.calculatePressureAtm();
     
     // 🔒 ÉTAPE 2 : Calculer 🍰🧮🌧 (saturation via T et P)
     const P_sat = calculateSaturatedVaporPressure();
-    const P_total = DATA['🫧']['🎈'] * CONST.STANDARD_ATMOSPHERE_PA;
+    const P_total = DATA['🫧']['🎈'] * CONV.STANDARD_ATMOSPHERE_PA;
     const max_vapor_fraction = P_total > 0 ? Math.min(P_sat / P_total, 1.0) : 0;
     DATA['💧']['🍰🧮🌧'] = max_vapor_fraction;
     
@@ -471,7 +485,7 @@ function calculateH2OParametersWithIteration() {
     const m_N2 = DATA['⚖️']['⚖️💨'] || 0;
     const M_dry = atm_mass_total > 0
         ? (m_CO2 * CONST.M_CO2 + m_CH4 * CONST.M_CH4 + m_O2 * CONST.M_O2 + m_N2 * CONST.M_N2) / atm_mass_total
-        : CONST.molar_mass_air_ref;
+        : CONV.molar_mass_air_ref;
     const mass_ratio = M_dry > 0 ? M_H2O / M_dry : 0;
     const max_vapor_mass_fraction = max_vapor_fraction * mass_ratio;
     const available_water_fraction = atm_mass_total > 0 ? DATA['⚖️']['⚖️💧'] / atm_mass_total : 0;
@@ -491,11 +505,6 @@ function calculateH2OParametersWithIteration() {
     const iris_factor_raw = 1.0 + iris_strength * (DATA['🧮']['🧮🌡️'] - 288) / 10.0;
     const iris_factor = Math.max(0.7, iris_factor_raw);
     vapor_potentielle = vapor_potentielle / iris_factor;
-    if (window.CONFIG_COMPUTE.logIrisDiagnostic) {
-        console.log('[Iris] T=' + (DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS).toFixed(1)
-            + 'C iris_factor=' + iris_factor.toFixed(3)
-            + ' vapor=' + vapor_potentielle.toFixed(5));
-    }
     
     // 🔒 INITIALISATION : Commencer avec la vapeur potentielle
     DATA['💧']['🍰🫧💧'] = vapor_potentielle;
@@ -512,7 +521,7 @@ function calculateH2OParametersWithIteration() {
                 use_acceleration = false; // Passer à 🔺⏳ normal (1 jour)
             }
         }
-        DATA['📅']['🔺⏳'] = use_acceleration ? 86400 * ACCELERATION_FACTOR : 86400;
+        DATA['📅']['🔺⏳'] = use_acceleration ? CONV.SECONDS_PER_DAY * acceleration_days : CONV.SECONDS_PER_DAY;
         
         // 🔒 ÉTAPE 1 : Calculer 🍰🫧☔ (RH) depuis la vapeur actuelle
         const q_sat = mass_ratio * max_vapor_fraction;
@@ -522,11 +531,11 @@ function calculateH2OParametersWithIteration() {
         
         // 🔒 ÉTAPE 2 : Calculer 💭☔, ⏳☔, 🍰⚖️💦 (via calculateCloudFormationIndex)
         // ⚠️ IMPORTANT : calculateCloudFormationIndex() calcule 💭☔, ⏳☔, 🍰⚖️💦
-        window.calculateCloudFormationIndex();
-        const precip_threshold = DATA['💧']['💭☔'] || 0;
-        const precip_time_constant = DATA['💧']['⏳☔'] || 0;
+        ALBEDO.calculateCloudFormationIndex();
+        // const precip_threshold = DATA['💧']['💭☔'] || 0; // inutilisé (nettoyage)
+        // const precip_time_constant = DATA['💧']['⏳☔'] || 0; // inutilisé (nettoyage)
         const precipitation_rate = DATA['💧']['🍰⚖️💦'] || 0;
-        const cloud_index = DATA['🪩']['☁️'];
+        // const cloud_index = DATA['🪩']['☁️']; // inutilisé (nettoyage)
 
         // [OBS/CALIB] Précipitations convectives renforcées (température + humidité relative), version adoucie.
         const temp_factor_precip_inner = Math.pow(Math.max(0, DATA['🧮']['🧮🌡️'] / 288), 1.2);
@@ -603,9 +612,15 @@ function calculateH2OParametersWithIteration() {
 const WATER_PARTITION_DELTA_T_K = 5;
 const WATER_PARTITION_DELTA_P_ATM = 1;
 
+var H2O = window.H2O = window.H2O || {};
+
 //Fonction principale : calcule tous les paramètres H2O
-window.calculateH2OParameters = function () {
+H2O.calculateH2OParameters = function () {
     const DATA = window.DATA;
+    const EPOCH = window.TIMELINE[DATA['📜']['👉']];
+    const ALBEDO = window.ALBEDO;
+    const ATM = window.ATM;
+    const COMPUTE = window.COMPUTE;
     const phase = DATA['🧮']['🧮⚧'];
     const isInit = phase === 'Init';
 
@@ -615,13 +630,13 @@ window.calculateH2OParameters = function () {
     }
 
     // En phase non-Init : recalcul seulement si (T, P) a changé de façon significative
-    window.getMasses();
-    window.calculatePressureAtm();
+    COMPUTE.getMasses();
+    ATM.calculatePressureAtm();
     const T = DATA['🧮']['🧮🌡️'];
     const P = DATA['🫧']['🎈'];
     const sum_f = DATA['🫧']['🍰🫧🏭'] + DATA['🫧']['🍰🫧⛽'] + DATA['🫧']['🍰🫧🫁'] + DATA['🫧']['🍰🫧💨'] + DATA['💧']['🍰🫧💧'];
     const fractionsOk = sum_f > 0.5 && Math.abs(sum_f - 1) < 0.01;
-    const cache = window._lastH2OParamsCache;
+    const cache = H2O._lastH2OParamsCache;
     if (fractionsOk && cache &&
         Math.abs(T - cache.T) <= WATER_PARTITION_DELTA_T_K &&
         Math.abs(P - cache.P) <= WATER_PARTITION_DELTA_P_ATM) return true;
@@ -630,7 +645,7 @@ window.calculateH2OParameters = function () {
     // Sinon en anim, quand T change (dichotomie), on garde une 🍰🫧💧 obsolète → somme≠1, 🧪 faux
     const CONST = window.CONST;
     const P_sat = calculateSaturatedVaporPressure();
-    const P_total = P * CONST.STANDARD_ATMOSPHERE_PA;
+    const P_total = P * CONV.STANDARD_ATMOSPHERE_PA;
     const max_vapor_fraction = P_total > 0 ? Math.min(P_sat / P_total, 1.0) : 0;
     DATA['💧']['🍰🧮🌧'] = max_vapor_fraction;
     const atm_mass_total = DATA['⚖️']['⚖️🫧'];
@@ -642,7 +657,7 @@ window.calculateH2OParameters = function () {
     const m_N2 = DATA['⚖️']['⚖️💨'] || 0;
     const M_dry = atm_mass_total > 0
         ? (m_CO2 * CONST.M_CO2 + m_CH4 * CONST.M_CH4 + m_O2 * CONST.M_O2 + m_N2 * CONST.M_N2) / atm_mass_total
-        : CONST.molar_mass_air_ref;
+        : CONV.molar_mass_air_ref;
     const mass_ratio = M_dry > 0 ? M_H2O / M_dry : 0;
     const max_vapor_mass_fraction = max_vapor_fraction * mass_ratio;
     const available_water_fraction = atm_mass_total > 0 ? DATA['⚖️']['⚖️💧'] / atm_mass_total : 0;
@@ -672,12 +687,13 @@ window.calculateH2OParameters = function () {
     DATA['💧']['🍰🫧💧'] = vapor_result;
 
     calculateWaterPartition();
-    window.calculateMolarMassAir();
+    ATM.calculateMolarMassAir();
     calculateH2OGreenhouseForcing();
     calculateCloudAlbedoContribution();
-    window._lastH2OParamsCache = { T, P };
+    H2O._lastH2OParamsCache = { T, P };
     return true;
 };
+window.calculateH2OParameters = H2O.calculateH2OParameters;
 
 // Exposer uniquement les fonctions utilisées ailleurs (calculations.js, main.js, calculations_albedo.js)
 // Note: Ces fonctions sont déjà appelées dans calculateH2OParameters, donc les exposer permet de les réutiliser sans recalculer

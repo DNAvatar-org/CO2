@@ -1,9 +1,9 @@
 // File: loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
-// Desc: Fetch + injection avant chargement des scripts applicatifs
-// Version 1.0.2
+// Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
+// Version 1.1.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: 2025-02-03
-// Logs: v1.0.2 délai 250ms avant 1er compute pour laisser scie envoyer sync:tuning 100% (16.4°C sans clic)
+// Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique (listing vert par module chargé)
 
 (function () {
     'use strict';
@@ -13,6 +13,7 @@
         'static/timeline/configTimeline.js',
         'static/compute/alphabet.js',
         'static/compute/dico.js',
+        'static/compute/initDATA.js',
         'organigramme/configOrganigramme.js',
         'static/event_bus.js',
         'static/compute/compute.js',
@@ -43,31 +44,69 @@
         'static/main.js'
     ];
 
-    function loadScript(src) {
+    var loaderListEl = document.getElementById('app-loader-list');
+    var loaderOverlay = document.getElementById('app-loader');
+    var loaderItems = [];
+
+    function labelFromPath(path) {
+        var i = path.lastIndexOf('/');
+        return i >= 0 ? path.slice(i + 1) : path;
+    }
+
+    function initLoaderUI() {
+        if (!loaderListEl) return;
+        var li = document.createElement('li');
+        li.setAttribute('data-phase', 'html');
+        li.textContent = 'HTML visu + scie';
+        loaderListEl.appendChild(li);
+        loaderItems.push({ el: li, phase: 'html' });
+        SCRIPTS.forEach(function (src) {
+            li = document.createElement('li');
+            li.setAttribute('data-src', src);
+            li.textContent = labelFromPath(src);
+            loaderListEl.appendChild(li);
+            loaderItems.push({ el: li, src: src });
+        });
+    }
+
+    function setLoaded(index) {
+        if (loaderItems[index] && loaderItems[index].el) loaderItems[index].el.classList.add('loaded');
+    }
+
+    function hideLoader() {
+        if (loaderOverlay) loaderOverlay.classList.add('hidden');
+    }
+
+    function loadScript(src, index) {
         return new Promise(function (resolve, reject) {
-            const s = document.createElement('script');
+            var s = document.createElement('script');
             s.src = src;
-            s.onload = resolve;
+            s.onload = function () { setLoaded(index); resolve(); };
             s.onerror = reject;
             document.body.appendChild(s);
         });
     }
 
-    function loadScriptsSequentially(list) {
+    function loadScriptsSequentially(list, startIndex) {
+        var i = startIndex || 0;
         if (list.length === 0) return Promise.resolve();
-        return loadScript(list[0]).then(function () { return loadScriptsSequentially(list.slice(1)); });
+        return loadScript(list[0], i).then(function () { return loadScriptsSequentially(list.slice(1), i + 1); });
     }
+
+    initLoaderUI();
 
     Promise.all([
         fetch('html/visu_radiatif.html').then(function (r) { return r.text(); }),
         fetch('html/scie_radiatif.html').then(function (r) { return r.text(); })
     ]).then(function (results) {
-        const visuPanel = document.getElementById('visu-panel');
-        const sciePanel = document.getElementById('scie-panel');
+        setLoaded(0);
+        var visuPanel = document.getElementById('visu-panel');
+        var sciePanel = document.getElementById('scie-panel');
         if (visuPanel) visuPanel.innerHTML = results[0];
         if (sciePanel) sciePanel.innerHTML = results[1];
-        return loadScriptsSequentially(SCRIPTS);
+        return loadScriptsSequentially(SCRIPTS, 1);
     }).then(function () {
+        hideLoader();
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initAfterLoad);
         } else {
@@ -75,7 +114,9 @@
         }
     }).catch(function (err) {
         console.error('[loader_panels]', err);
-        document.getElementById('visu-panel').innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement html/visu_radiatif.html</p>';
+        if (loaderOverlay) loaderOverlay.classList.add('hidden');
+        var v = document.getElementById('visu-panel');
+        if (v) v.innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement</p>';
     });
 
     // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque
