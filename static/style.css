@@ -1564,7 +1564,6 @@ h1 {
     font-size: 12px;
 }
 
-
 .credits-footer {
     margin-top: auto;
     margin-bottom: 0;
@@ -1594,7 +1593,7 @@ h1 {
     margin-right: 0px;
     margin-left: 6px;
     vertical-align: middle;
-    font-size: 0.7em;
+    font-size: 1em;
 }
 
 .credits-nonA .mjx-container,
@@ -1670,20 +1669,9 @@ h1 {
     transition: filter 0.3s ease;
 }
 
-.credits-footer .tipeee-btn .credits-nonA,
 .credits-footer .tipeee-btn .credits-territory {
     color: #00ff00;
     text-shadow: none;
-}
-
-.credits-footer .tipeee-btn .credits-nonA .mjx-container,
-.credits-footer .tipeee-btn .credits-nonA .mjx-math,
-.credits-footer .tipeee-btn .credits-nonA [class*="mjx-"] {
-    color: inherit !important;
-    fill: currentColor !important;
-}
-
-.credits-footer .tipeee-btn .credits-territory {
     display: inline-block;
     font-size: 10px;
     line-height: 1.3;
@@ -1693,7 +1681,7 @@ h1 {
     font-weight: 300;
 }
 
-/* Rollover : seule la tasse passe en couleur, nonA et speech restent verts */
+/* Rollover : seule la tasse passe en couleur, Ā et texte restent verts */
 .credits-footer .tipeee-btn.hover-active {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);

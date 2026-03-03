@@ -73,6 +73,7 @@
     <link rel="stylesheet" href="static/FPS/FPS.css">
     <link rel="stylesheet" href="organigramme/organigramme.css">
     <link rel="stylesheet" href="static/planet-effect.css">
+    <link rel="stylesheet" href="static/logo-nonA/logo-nonA.css">
     <style>
         /* Onglets : vert si selected, gris si non-selected, rollovers colorés (comme epoch-btn/ergo-button) */
         .tabs-bar {
@@ -104,11 +105,11 @@
             box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 0 rgba(255,255,255,0.08);
         }
         body { height: 100vh; overflow: hidden; } /* marge pour onglets, pas de scroll page */
-        .tab-panel { display: none; flex: 1; min-height: 0; }
-        .tab-panel.active { display: block; flex: 1; min-height: 0; }
-        #visu-panel { overflow: auto; overflow-x: hidden; margin: 5px 0 0 0; display: flex; flex-direction: column; } /* 5px spacing sous tabs-bar, pas de margin-bottom (zone violette) */
-        #scie-panel { overflow: hidden; }
-        #scie-panel.active { display: flex !important; flex-direction: column; flex: 1; min-height: 0; }
+        .tab-panel { flex: 1; min-height: 0; }
+        .tab-panel:not(.active) { display: none !important; } /* hidden simple : un seul panel visible */
+        .tab-panel.active { display: flex; flex-direction: column; min-height: 0; }
+        #visu-panel.active { overflow: auto; overflow-x: hidden; margin: 5px 0 0 0; }
+        #scie-panel.active { overflow: hidden; }
         #scie-panel iframe { flex: 1; min-height: 0; width: 100%; border: none; }
         .credits-footer { flex-shrink: 0; }
         /* Loader graphique : listing des modules, vert = chargé */
@@ -157,7 +158,7 @@
                     onclick="window.open(window.getTipeeeURL(), '_blank', 'noopener,noreferrer')"
                     title="Offrez moi un café">
                     <span class="tipeee-btn-cup">☕</span>
-                    <span class="credits-nonA" aria-hidden="true" title="Non-A (Van Vogt 1945)">\( \bar{A} \)</span>
+                    <span class="logo-nonA" aria-hidden="true" title="Non-A"><span class="char">Ā</span></span>
                     <span class="credits-territory">La carte c'est le territoire.<br>Le territoire c'est le code.</span>
                 </button>
             </div>
