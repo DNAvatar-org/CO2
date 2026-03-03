@@ -58,7 +58,7 @@ window.DATA = {
     '🔘⛽📛': boolean,  // CH4 EDS on/off
     '🔘🏭📛': boolean,  // CO2 EDS on/off
     '🔘🪩': boolean,    // Albedo on/off
-    '🔘🎬': boolean     // Animation on/off
+    '🔘🎞': boolean     // Animation on/off
 }
 ```
 

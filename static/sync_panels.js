@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.8
+// Version 1.1.13
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -13,6 +13,11 @@
 // - v1.1.5: appel direct getEnabledStates() sans typeof (règle _REGLE_JS_CRASH)
 // - v1.1.6: event sync:tuning (bary + updates) pour appliquer tuning sur parent/visu puis run unique
 // - v1.1.7: support baryByGroup (CLOUD_SW/SOLVER) pour jauges séparées
+// - v1.1.13: runComputeInParent normalise entrée (getMasses + h2oTotalFromMeteorites=0) pour même résultat visu vs scie
+// - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
+// - v1.1.11: applyStateFromScie/applyTuningFromScie exposés ; messages sync:state/sync:tuning passent par shell
+// - v1.1.10: displayConvergence/clearConvergenceTrace/appendConvergenceStep passent par shell.dataInput ; compute:done aussi
+// - v1.1.9: shell.registerPanelApi visu/scie + setCurrentPanel(active) dans initSyncPanels ; dispatch prêt pour dataInput
 // - v1.1.8: source unique tuning dans DATA[🎚️]; applyTuningPayload écrit DATA[🎚️]; runComputeInParent sync TUNING depuis DATA[🎚️]
 
 (function () {
@@ -106,7 +111,7 @@
             window.SYNC_STATE.animEnabled = payload.animEnabled;
             var animCb = document.getElementById('plot-anim-toggle-checkbox');
             if (animCb) animCb.checked = payload.animEnabled;
-            window.DATA['🔘']['🔘🎬'] = payload.animEnabled;
+            window.DATA['🔘']['🔘🎞'] = payload.animEnabled;
             window.isAnim = payload.animEnabled;
         }
         if (payload.ticTime !== undefined) {
@@ -212,14 +217,17 @@
         DATA['🧮']['previous'] = [];
         DATA['🧮']['🧮🔄🌊'] = 0;
         DATA['🧮']['🧮🔄🪩'] = 0;
+        // Même état entrée visu/scie : masses époque courante + h2oTotalFromMeteorites=0 (comme après setEpoch/updateLevelsConfig)
+        if (window.getMasses) window.getMasses();
+        window.h2oTotalFromMeteorites = 0;
         window.calculationInProgress = true; // Pour plot.js resizeCanvasToPlot (skipReposition pendant dichotomie)
-        if (!DATA['🔘']['🔘🎬']) {
+        if (!DATA['🔘']['🔘🎞']) {
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
         } else if (!DATA['🧮']['🧮🌡️'] || DATA['🧮']['🧮🌡️'] <= 0) {
             var adj = (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'] + adj;
         }
-        if (window.pd) window.pd('runComputeInParent', 'sync_panels.js', 'epochId=' + epochId + ' anim=' + DATA['🔘']['🔘🎬'] + ' T_init=' + DATA['🧮']['🧮🌡️']);
+        if (window.pd) window.pd('runComputeInParent', 'sync_panels.js', 'epochId=' + epochId + ' anim=' + DATA['🔘']['🔘🎞'] + ' T_init=' + DATA['🧮']['🧮🌡️']);
         if (!window.initForConfig()) {
             window.calculationInProgress = false;
             return Promise.resolve(null);
@@ -233,9 +241,15 @@
         return window.computeRadiativeTransfer().then(function (result) {
             window.calculationInProgress = false;
             if (result === null) return null;
+            // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
             window.CO2_EVENTS.emit('compute:done', { DATA: window.DATA, result: result });
             projectToVisu(window.DATA);
-            projectToScie(window.DATA);
+            // dataInput = envoi immédiat au panel actif (iframe scie si c'est l'onglet visible)
+            if (window.shell && window.shell.dataInput) {
+                window.shell.dataInput({ type: 'compute:done', DATA: window.DATA });
+            } else {
+                projectToScie(window.DATA);
+            }
             return result;
         }).catch(function (e) {
             window.calculationInProgress = false;
@@ -245,38 +259,88 @@
     };
 
     function initSyncPanels() {
+        // Dispatch via shell vers current (visu ou scie) ; fallback direct iframe si pas de shell
         window.displayConvergence = function () {
-            var iframe = document.getElementById('scie-iframe');
+            if (window.shell && window.shell.dataInput) {
+                window.shell.dataInput({ type: 'displayConvergence' });
+                return;
+            }
+            var iframe = getIframe();
             if (iframe && iframe.contentWindow) {
                 try { iframe.contentWindow.displayConvergence(); } catch (e) {}
             }
         };
         window.syncToScie = syncToScie;
-        // Quand le calcul tourne dans le parent, faire exécuter clear/append dans l'iframe scie pour afficher les étapes
         window.clearConvergenceTrace = function () {
-            var iframe = document.getElementById('scie-iframe');
+            if (window.shell && window.shell.dataInput) {
+                window.shell.dataInput({ type: 'clearConvergenceTrace' });
+                return;
+            }
+            var iframe = getIframe();
             if (iframe && iframe.contentWindow) {
                 try { iframe.contentWindow.clearConvergenceTrace(); } catch (e) {}
             }
         };
         window.appendConvergenceStep = function (payload) {
-            var iframe = document.getElementById('scie-iframe');
+            if (window.shell && window.shell.dataInput) {
+                window.shell.dataInput({ type: 'convergenceStep', data: payload });
+                return;
+            }
+            var iframe = getIframe();
             if (iframe && iframe.contentWindow) {
                 try { iframe.contentWindow.appendConvergenceStep(payload); } catch (e) {}
             }
         };
 
+        // Shell : enregistrer les APIs panel pour dispatch via shell.dataInput (migration progressive)
+        if (window.shell) {
+            window.shell.registerPanelApi('scie', {
+                dataInput: function (payload) {
+                    var iframe = getIframe();
+                    if (!iframe || !iframe.contentWindow) return;
+                    if (payload.type === 'convergenceStep') iframe.contentWindow.appendConvergenceStep(payload.data);
+                    else if (payload.type === 'displayConvergence') iframe.contentWindow.displayConvergence();
+                    else if (payload.type === 'clearConvergenceTrace') iframe.contentWindow.clearConvergenceTrace();
+                    else if (payload.type === 'compute:done') iframe.contentWindow.postMessage({ type: 'compute:done', DATA: payload.DATA }, '*');
+                }
+            });
+            window.shell.registerPanelApi('visu', {
+                dataInput: function (payload) {
+                    if (window.visuDataInput) window.visuDataInput(payload);
+                }
+            });
+            var visuEl = document.getElementById('visu-panel');
+            var activeVisu = visuEl && visuEl.classList.contains('active');
+            window.shell.setCurrentPanel(activeVisu ? 'visu' : 'scie');
+        }
+
+        // API appelée par shell quand scie envoie sync:state (epoch/anim/tic + tuning pour même conditions run scie/visu)
+        window.applyStateFromScie = function (p) {
+            applyToVisu(p, true);
+            if (p.tuning) applyTuningPayload(p.tuning);
+            window.runComputeInParent();
+        };
+        window.applyTuningFromScie = function (p) {
+            applyTuningPayload(p);
+            syncTuningToScie(p);
+            if (p.run === true) window.runComputeInParent();
+        };
+
         window.addEventListener('message', function (event) {
             if (event.data.type !== 'sync:state') return;
             var p = event.data.payload;
-            applyToVisu(p, true);
-            window.runComputeInParent();
+            if (window.shell && window.shell.applyStateFromScie) window.shell.applyStateFromScie(p);
+            else {
+                applyToVisu(p, true);
+                if (p.tuning) applyTuningPayload(p.tuning);
+                window.runComputeInParent();
+            }
         });
         window.addEventListener('message', function (event) {
             if (event.data.type !== 'sync:tuning') return;
             var p = event.data.payload;
-            applyTuningPayload(p);
-            if (p.run === true) window.runComputeInParent();
+            if (window.shell && window.shell.applyTuningFromScie) window.shell.applyTuningFromScie(p);
+            else { applyTuningPayload(p); syncTuningToScie(p); if (p.run === true) window.runComputeInParent(); }
         });
 
         window.CO2_EVENTS.on('sync:state', function (payload) {

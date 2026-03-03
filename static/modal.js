@@ -1,11 +1,14 @@
 // File: modal.js - Système de modale/alerte personnalisée
 // Desc: Module pour afficher des alertes avec texte sélectionnable et pages HTML dans des popups
 // Version 1.1.0
+// Date: [June 08, 2025] [HH:MM UTC+1]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
-// See LICENSE_HEADER.txt for full terms.
-// Date: [June 08, 2025] [HH:MM UTC+1]
-// Logs:
+// See https://commonsclause.com/ for full terms.
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 //   - Added openPageModal function to display HTML pages in iframe popups
 
 (function(global) {

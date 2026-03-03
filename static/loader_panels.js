@@ -22,6 +22,7 @@
         'static/modal.js',
         'static/patterns.js',
         'static/physics.js',
+        'static/log_display.js',
         'static/data/hitran_lines_CO2.js',
         'static/data/hitran_lines_H2O.js',
         'static/data/hitran_lines_CH4.js',
@@ -34,7 +35,9 @@
         'static/calculations_h2o.js',
         'static/calculations.js',
         'static/compute/calculations_flux.js',
+        'static/scie_convergence.js',
         'static/sync_panels.js',
+        'static/shell.js',
         'static/FPS/FPS.js',
         'static/courbes/plot.js',
         'static/layout.js',
@@ -119,33 +122,53 @@
         if (v) v.innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement</p>';
     });
 
-    // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque
+    // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque (via shell)
     window.togglePlotAnim = function () {
-        if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎬'] = true;
+        if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = true;
         var cb = document.getElementById('plot-anim-toggle-checkbox');
         if (cb) cb.checked = true;
-        window.syncToScie({ animEnabled: true });
-        if (window.DATA && window.DATA['📜'] && typeof window.TIMELINE !== 'undefined' && window.TIMELINE.length) {
-            var cur = window.DATA['📜']['👉'];
-            if (typeof cur !== 'number') cur = 0;
-            var idx = cur + 1;
-            while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
-            if (idx >= window.TIMELINE.length) idx = 0;
-            while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
-            var nextItem = window.TIMELINE[idx];
-            var nextId = nextItem['📅'];
-            var nextName = nextItem.name || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
-            if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
+        if (window.shell && window.shell.setState) {
+            window.shell.setState({ animEnabled: true });
+            if (window.DATA && window.DATA['📜'] && typeof window.TIMELINE !== 'undefined' && window.TIMELINE.length) {
+                var cur = window.DATA['📜']['👉'];
+                if (typeof cur !== 'number') cur = 0;
+                var idx = cur + 1;
+                while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
+                if (idx >= window.TIMELINE.length) idx = 0;
+                while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
+                var nextItem = window.TIMELINE[idx];
+                var nextId = nextItem['📅'];
+                var nextName = nextItem.name || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
+                window.shell.setEpoch(nextName);
+            }
+        } else {
+            window.syncToScie({ animEnabled: true });
+            if (window.DATA && window.DATA['📜'] && typeof window.TIMELINE !== 'undefined' && window.TIMELINE.length) {
+                var cur = window.DATA['📜']['👉'];
+                if (typeof cur !== 'number') cur = 0;
+                var idx = cur + 1;
+                while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
+                if (idx >= window.TIMELINE.length) idx = 0;
+                while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
+                var nextItem = window.TIMELINE[idx];
+                var nextId = nextItem['📅'];
+                var nextName = nextItem.name || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
+                if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
+            }
         }
     };
 
-    // Clic sur un bouton époque = sans animation
+    // Clic sur un bouton époque = sans animation (via shell)
     window.setEpochFromEpochButton = function (epochId) {
-        if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎬'] = false;
+        if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = false;
         var cb = document.getElementById('plot-anim-toggle-checkbox');
         if (cb) cb.checked = false;
-        window.syncToScie({ animEnabled: false });
-        if (typeof window.setEpoch === 'function') window.setEpoch(epochId);
+        if (window.shell && window.shell.setState) {
+            window.shell.setState({ animEnabled: false, epochId: epochId });
+        } else {
+            window.syncToScie({ animEnabled: false });
+            if (typeof window.setEpoch === 'function') window.setEpoch(epochId);
+        }
     };
 
     window.switchTab = function (name) {
@@ -155,14 +178,27 @@
         var btn = document.getElementById('tab-' + name);
         if (panel) panel.classList.add('active');
         if (btn) btn.classList.add('active');
-        if (name === 'visu' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(new Event('resize'));
+        if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel(name);
+        if (name === 'visu') {
+            console.log('[shell] switchTab(visu) -> resize + projectToVisu (retour vers visu)');
+            if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('resize'));
+            if (window.DATA && window.DATA['🧮'] && typeof window.projectToVisu === 'function') window.projectToVisu(window.DATA);
         }
-        // Scie : renvoyer le dernier compute si dispo (calculs visibles sans clic)
-        if (name === 'scie' && window._lastComputePayloadForScie && window._lastComputePayloadForScie.DATA) {
+        if (name === 'scie') {
+            console.log('[shell] switchTab(scie) -> sync:state, compute:done, restoreConvergenceToScie (ouverture onglet scie)');
             var iframe = document.getElementById('scie-iframe');
             if (iframe && iframe.contentWindow) {
-                try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: window._lastComputePayloadForScie.DATA }, '*'); } catch (e) {}
+                var epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || (window.SYNC_STATE && window.SYNC_STATE.epochId) || '⚫';
+                var animEnabled = (window.SYNC_STATE && window.SYNC_STATE.animEnabled !== undefined) ? window.SYNC_STATE.animEnabled : false;
+                var ticTime = (window.SYNC_STATE && window.SYNC_STATE.ticTime !== undefined) ? window.SYNC_STATE.ticTime : 0;
+                try {
+                    iframe.contentWindow.postMessage({ type: 'sync:state', payload: { epochId: epochId, animEnabled: animEnabled, ticTime: ticTime } }, '*');
+                } catch (e) {}
+                var dataToSend = (window.DATA && window.DATA['🧮']) ? window.DATA : (window._lastComputePayloadForScie && window._lastComputePayloadForScie.DATA) ? window._lastComputePayloadForScie.DATA : null;
+                if (dataToSend) {
+                    try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: dataToSend }, '*'); } catch (e) {}
+                }
+                if (window.shell && window.shell.restoreConvergenceToScie) window.shell.restoreConvergenceToScie();
             }
         }
     };
@@ -223,10 +259,7 @@
                     lastComputePayload = payload;
                     window._lastComputePayloadForScie = payload;
                 }
-                var iframe = document.getElementById('scie-iframe');
-                if (iframe && iframe.contentWindow && payload && payload.DATA) {
-                    try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: payload.DATA }, '*'); } catch (e) {}
-                }
+                // Envoi vers panel actif via shell.dataInput (sync_panels/runComputeInParent) ; plus de postMessage ici
             });
         }
         // Mettre à jour les actions 🕰 (météorite, impact, etc.) après injection du contenu visu

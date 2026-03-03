@@ -1,11 +1,14 @@
 // File: calculations_albedo.js - Calculs albedo et couverture nuageuse
 // Desc: En français, dans l'architecture, je suis le module de calculs d'albedo
-// Version 1.2.26
+// Version 1.2.27
+// Date: [June 08, 2025] [HH:MM UTC+1]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
-// See LICENSE_HEADER.txt for full terms.
-// Date: [June 08, 2025] [HH:MM UTC+1]
-// Logs:
+// See https://commonsclause.com/ for full terms.
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // - epochId Archéen : 🦠 (🌋 réservé actions). Archéen utilise clouds modernes pour ~15°C.
 // - 🍰⚖️💦 : formule P = W/τ (litt. 8–10 j), ⏳☔ = 1/τ_global ; rampe (RH−💭☔)/0,2 ; ref. Nature Rev. Earth Env. 2021, HESS 2017, GPCP ~2,7 mm/j.
 // - v1.2.1 : rampe douce 🍰🪩🧊 en Search/Dicho (premières itérations) pour éviter saut de bassin albédo/glace
@@ -33,6 +36,7 @@
 // - v1.2.23 : coefficients cloud SW externalisés vers static/tuning/model_tuning.js (iso-résultats)
 // - v1.2.24 : fallback synchrone cloud tuning si window.TUNING absent
 // - v1.2.25 : Corps noir avec ⚖️💧>0 → ice_cap_surface 0.9 pour 🍰🪩🧊 (glace météorites didactique)
+// - v1.2.27 : ne pas écraser iceEpochFixedWaterState en Search/Dicho (bloc blend glace) pour reproductibilité visu vs scie
 // - v1.2.26 : source unique CLOUD_SW : lecture DATA['🎚️'].CLOUD_SW en priorité (pas variable dupliquée)
 //
 // FORMULES ALBEDO :
@@ -163,7 +167,10 @@ function calculateAlbedo() {
         const stock_factor = Math.max(0, (EARTH.T_NO_POLAR_ICE_K - T_K) / EARTH.T_NO_POLAR_ICE_RANGE_K);
         return Math.max(0, Math.min(1, 0.1 * stock_factor));
     }
-    if (!STATE.iceDurationBlendState || STATE.iceDurationBlendState.epochId !== DATA['📜']['🗿']) {
+    // Ne pas écraser le verrou glace posé par initForConfig en phase Search/Dicho (reproductibilité visu vs scie)
+    const inSolverPhase = (DATA['🧮']['🧮⚧'] === 'Search' || DATA['🧮']['🧮⚧'] === 'Dicho');
+    const epochLockAlreadySet = STATE.iceEpochFixedWaterState && STATE.iceEpochFixedWaterState.epochId === DATA['📜']['🗿'];
+    if ((!STATE.iceDurationBlendState || STATE.iceDurationBlendState.epochId !== DATA['📜']['🗿']) && !(inSolverPhase && epochLockAlreadySet)) {
         const duree_ans = Math.abs(EPOCH['▶'] - EPOCH['◀']);
         const fraction_fonte = Math.max(0, Math.min(1, duree_ans / CONFIG_COMPUTE.tauGlaceAns));
         const glace_equilibre = calcGlaceEquilibre(EPOCH['🌡️🧮']);

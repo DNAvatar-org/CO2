@@ -1,11 +1,20 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
  * Version 1.2.0
+ * Date: [January 2025]
+* logs :
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
- * See LICENSE_HEADER.txt for full terms.
- * Date: [January 2025]
- * Logs:
+* See https://commonsclause.com/ for full terms.
+* Ā unit : non Aristotelicisme via UTF8.
+* "La carte c'est le territoire, le territoire c'est le code."
+* UTF8 est la sémantique pour CODE & UI
+* Ā unit : non Aristotelicisme via UTF8.
+* "La carte c'est le territoire, le territoire c'est le code."
+* UTF8 est la sémantique pour CODE & UI
+* Ā unit : non Aristotelicisme via UTF8.
+* "La carte c'est le territoire, le territoire c'est le code."
+* UTF8 est la sémantique pour CODE & UI
  *   - Initial version: extraction de updateEpochActions depuis main.js
  *   - Corps noir météorite: config via 🕰.☄️, id époque DATA['📜']['🗿'], getEpochDateConfig + runComputeInParent + 📿💫
  *   - switch(epochId) ⚫/🔥/default; config unique ▶/◀/🔺🧲🌕💫; getEpochConfigById; applyHadeenFluxFromConfig; plus de corps-noir/hadeen

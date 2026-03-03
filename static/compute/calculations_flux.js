@@ -1,12 +1,16 @@
 // ============================================================================
 // File: static/compute/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.65
+// Version 1.2.66
+// Date: [January 2025]
+// Logs:
+// - v1.2.66: calculateT0 nouveau run (previous vide) toujours T0=époque ; reset 🧮🌡️🔽/🔼 et lastInitPayload pour convergence reproductible visu/scie
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [January 2025]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // - Init atmosphere from epoch T (🌡️🧮) in both anim/non-anim so same equilibrium (Hadéen)
 // - Phase Init cycle eau : utiliser T_epoch (pas T_solver) pour mêmes conditions initiales anim/sans anim
 // - Cycle 1 : même calculs anim/sans anim (T_epoch + composition + H2O + albedo), une seule séquence, ref supprimée
@@ -172,16 +176,17 @@ function computeToleranceWm2(T_K, precision_K) {
     return Math.max(tolRaw, SOLVER_TUNING.TOL_MIN_WM2);
 }
 
-// Calcule T0 initial. Seule différence anim/sans anim : en anim T0 ne s'actualise pas (reste prev_T0) ; sans anim T0 = 🌡️🧮 + 💫.
+// Calcule T0 initial. Nouveau run (previous vide) : toujours T0 = époque. En anim en cours (previous non vide) : garder T actuelle.
 function calculateT0() {
     const DATA = window.DATA;
     const CONST = window.CONST;
+    const isNewRun = !DATA['🧮']['previous'] || DATA['🧮']['previous'].length === 0;
 
-    if (DATA['🔘']['🔘🎬']) {
-        DATA['🧮']['🧮🌡️🚩'] = DATA['🧮']['🧮🌡️']; // anim : garder T0 actuel
+    if (DATA['🔘']['🔘🎞'] && !isNewRun) {
+        DATA['🧮']['🧮🌡️🚩'] = DATA['🧮']['🧮🌡️']; // anim en cours : garder T0 actuel
     } else {
-        const adjustment = DATA['📜']['🔺🌡️💫'] * DATA['📜']['📿💫'];
-        DATA['🧮']['🧮🌡️🚩'] = DATA['📅']['🌡️🧮'] + adjustment; // sans anim : T0 = config époque
+        const adjustment = (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
+        DATA['🧮']['🧮🌡️🚩'] = DATA['📅']['🌡️🧮'] + adjustment; // nouveau run ou sans anim : T0 = config époque
     }
     
     if (DATA['🧮']['🧮🌡️🚩'] <= 0) {
@@ -195,6 +200,9 @@ function calculateT0() {
     DATA['🧮']['🧮⚧'] = 'Init'; // Phase d'initialisation
     DATA['🧮']['🧮☯'] = 0;
     DATA['🧮']['🧮🔄'] = 0; // Réinitialiser le compteur d'itérations
+    delete DATA['🧮']['🧮🌡️🔽'];
+    delete DATA['🧮']['🧮🌡️🔼'];
+    DATA['🧮']['lastInitPayload'] = null;
     DATA['🧲']['🧲☀️🔽'] = 0;
     DATA['🧲']['🧲🌕🔽'] = 0;
     DATA['🧲']['🧲🌑🔼'] = 0;
@@ -204,8 +212,8 @@ function calculateT0() {
     DATA['📛'] = null; // breakdown EDS par gaz (tau_i/tau dans calculateFluxForT0)
 
     // IMPORTANT: On met toujours à jour DATA['🧮']['🧮🌡️'] avec la valeur calculée
-    // Si animation activée (🔘🎬 = true) : T0_base a été lu depuis DATA['🧮']['🧮🌡️'] (ligne 43)
-    // Si animation désactivée (🔘🎬 = false) : T0 = DATA['📅']['🌡️🧮'] + adjustment (ligne 47)
+    // Si animation activée (🔘🎞 = true) : T0_base a été lu depuis DATA['🧮']['🧮🌡️'] (ligne 43)
+    // Si animation désactivée (🔘🎞 = false) : T0 = DATA['📅']['🌡️🧮'] + adjustment (ligne 47)
     // On doit mettre à jour DATA['🧮']['🧮🌡️'] pour que la convergence utilise cette nouvelle valeur
     // Pour la convergence, c'est TOUJOURS DATA['🧮']['🧮🌡️'] qui est utilisé
     DATA['🧮']['🧮🌡️'] = DATA['🧮']['🧮🌡️🚩'];

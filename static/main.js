@@ -2,11 +2,14 @@
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
 // Version 1.0.0
+// Date: [January 2025]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [January 2025]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // ============================================================================
 
 // ============================================================================
@@ -1625,8 +1628,8 @@ window.updateDisplay = function updateDisplay(data) {
                     const h2o_total_fraction = DATA['⚖️']['⚖️🫧'] > 0 ? (DATA['⚖️']['⚖️💧'] / DATA['⚖️']['⚖️🫧']) : 0;
                     if (h2o_total_fraction > 0) {
                         // 🔒 CORRECTION : calculateWaterPartition() n'a pas de paramètres, elle lit depuis DATA
-                        // Mettre à jour DATA['🧮']['🌡️'] avant d'appeler calculateWaterPartition()
-                        window.DATA['🧮']['🌡️'] = data.temp_surface;
+                        // Mettre à jour DATA['🧮']['🧮🌡️'] avant d'appeler calculateWaterPartition() (source unique, pas de clé 🌡️ redondante)
+                        window.DATA['🧮']['🧮🌡️'] = data.temp_surface;
                         window.calculateWaterPartition();
                         const waterPartition = {
                             vapor_fraction: window.DATA['💧']['🍰🫧💧'],
@@ -1639,8 +1642,8 @@ window.updateDisplay = function updateDisplay(data) {
                     } else {
                         // Même sans eau, appeler calculateWaterPartition pour obtenir 0 partout
                         // 🔒 CORRECTION : calculateWaterPartition() n'a pas de paramètres, elle lit depuis DATA
-                        // Mettre à jour DATA['🧮']['🌡️'] avant d'appeler calculateWaterPartition()
-                        window.DATA['🧮']['🌡️'] = data.temp_surface;
+                        // Mettre à jour DATA['🧮']['🧮🌡️'] avant d'appeler calculateWaterPartition() (source unique)
+                        window.DATA['🧮']['🧮🌡️'] = data.temp_surface;
                         window.calculateWaterPartition();
                         const waterPartition = {
                             vapor_fraction: window.DATA['💧']['🍰🫧💧'],
@@ -2620,7 +2623,7 @@ function setEpoch(epochName) {
     if (window.CO2_EVENTS) {
         const epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || epoch.id || epochName;
         const ticTime = (window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'] != null) ? window.DATA['📜']['📿💫'] : 0;
-        const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎬']) || window.isAnim;
+        const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']) || window.isAnim;
         window.CO2_EVENTS.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime });
     }
 }
@@ -3043,7 +3046,7 @@ function runMainInit() {
                     // Contrôler l'affichage selon le niveau FPS
                     // 🔒 Le bouton "anim" contrôle directement showDichotomySteps, on ne le modifie pas ici
                     // On contrôle seulement l'animation de la planète selon le FPS
-                    const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎬']);
+                    const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']);
                     
                     if (level === 'warning' || level === 'aïe' || level === 'lent') {
                         // FPS bas : arrêter l'animation de la planète (même si anim activé, on arrête pour performance)
@@ -3073,17 +3076,17 @@ function runMainInit() {
                     window.fpsPrecisionFactor = 1.0; // Précision par défaut
                 }
                 
-                // Anim : source de vérité = DATA['🔘']['🔘🎬'] (bouton animation = bouton normal, pas toggle)
+                // Anim : source de vérité = DATA['🔘']['🔘🎞'] (bouton animation = bouton normal, pas toggle)
                 const animCb = document.getElementById('plot-anim-toggle-checkbox');
                 if (typeof window !== 'undefined') {
-                    window.isAnim = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎬']) || false;
+                    window.isAnim = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']) || false;
                     window.showDichotomySteps = window.isAnim;
                 }
                 if (animCb) {
                     animCb.addEventListener('change', (e) => {
                         const enabled = e.target.checked;
                         if (typeof window !== 'undefined' && window.DATA && window.DATA['🔘']) {
-                            window.DATA['🔘']['🔘🎬'] = enabled;
+                            window.DATA['🔘']['🔘🎞'] = enabled;
                             window.isAnim = enabled;
                             window.showDichotomySteps = enabled;
                             if (!enabled) {

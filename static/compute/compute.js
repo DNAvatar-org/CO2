@@ -2,11 +2,14 @@
 // File: static/compute/compute.js - Module de calcul de transfert radiatif
 // Desc: En français, dans l'architecture, je suis le module principal de calcul de transfert radiatif
 // Version 1.0.1
+// Date: [January 2025]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [January 2025]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // - v1.0.1: add sulfate mass key ⚖️🌫 in DATA init from epoch (proxy CCN, separate from dry-air mass)
 // ============================================================================
 
@@ -47,7 +50,7 @@ function getEnabledStates() {
     DATA['🔘']['🔘🏭📛'] = co2Cell ? co2Cell.classList.contains('checked') : true;
     DATA['🔘']['🔘🪩'] = albedoCell ? albedoCell.classList.contains('checked') : true;
     // Anim : source de vérité = DATA (bouton animation est normal, pas on/off)
-    DATA['🔘']['🔘🎬'] = DATA['🔘']['🔘🎬'] != null ? DATA['🔘']['🔘🎬'] : false;
+    DATA['🔘']['🔘🎞'] = DATA['🔘']['🔘🎞'] != null ? DATA['🔘']['🔘🎞'] : false;
     
     // Retourner true car DATA a été modifié
     return true;

@@ -1,11 +1,14 @@
 // File: model_tuning.js - Parametres de fine-tuning du modele
 // Desc: En francais, dans l'architecture, je suis la source unique des coefficients empiriques/calibres.
 // Version 1.0.0
+// Date: [June 08, 2025] [HH:MM UTC+1]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
-// See LICENSE_HEADER.txt for full terms.
-// Date: [June 08, 2025] [HH:MM UTC+1]
-// Logs:
+// See https://commonsclause.com/ for full terms.
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // - v1.0.0: extraction des coefficients calibres cloud SW + solveur numerique depuis calculations_albedo.js/configTimeline.js
 
 window.TUNING = window.TUNING || {};

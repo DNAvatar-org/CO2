@@ -1,11 +1,14 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
 // Version 1.1.1
+// Date: [June 08, 2025] [HH:MM UTC+1]
+// logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [June 08, 2025] [HH:MM UTC+1]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 //   - Initial version: extraction des données de configuration depuis organigramme.js
 //   - Added dataId mapping for dynamic label updates
 //   - v1.1.1: albedo-btn affiche le barycentre fine-tuning cloud sous 🪩 (🧩🔺n%🔻)

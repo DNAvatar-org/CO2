@@ -2,11 +2,14 @@
 // File: climate.js - Forçages radiatifs (convention affichage) et climatologie
 // Desc: ΔF = diagnostic conventionnel (terrestre / contemporain), pas utilisé pour le calcul de T. EDS/OLR = physique (calculations.js).
 // Version 1.0.1
+// Date: [January 2025]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [January 2025]
-// Logs: v1.0.1 - Constantes ΔF CO2/CH4 ici (convention affichage), plus dans physics.js.
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // ============================================================================
 
 // Convention ΔF CO₂ (Myhre 1998, IPCC) — affichage uniquement, pas de calcul T.

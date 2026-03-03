@@ -1,11 +1,14 @@
 // File: tooltips.js - Système centralisé de tooltips
 // Desc: Gestion unifiée des tooltips (délai 0 = immédiat)
 // Version 1.0.2
+// Date: [June 08, 2025] [HH:MM UTC+1]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
-// See LICENSE_HEADER.txt for full terms.
-// Date: [June 08, 2025] [HH:MM UTC+1]
-// Logs:
+// See https://commonsclause.com/ for full terms.
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // - TOOLTIP_DELAY=0 (immédiat), texte dynamique via data-tooltip/title au show
 // - aria-label/alt affiché après 2s dans élément séparé (style fond clair, vrai alt)
 

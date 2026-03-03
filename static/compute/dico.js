@@ -1,11 +1,14 @@
 // File: static/compute/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
 // Version 1.0.3
+// Date: [January 2025]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
-// See LICENSE_HEADER.txt for full terms.
-// Date: [January 2025]
-// Logs:
+// See https://commonsclause.com/ for full terms.
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // - v1.0.1: KEYS/DESC 📛 + 🍰📛⛅ (EDS nuages), DESC 🧲📛/🍰📛❀
 // - v1.0.2: FORM sync with runtime code for 🎈 (dry+vapor mass) and 🍰🪩⛅ (cloud optical proxy)
 // - v1.0.3: add sulfate keys in DATA (⚖️🌫, 🍰🫧🌫) + CCN formula mention sulfate term
@@ -18,7 +21,7 @@
 // ============================================================================
 const KEYS = {
     // États activés
-    '🔘': ['🔘💧📛', '🔘⛽📛', '🔘🏭📛', '🔘🪩', '🔘🎬'],
+    '🔘': ['🔘💧📛', '🔘⛽📛', '🔘🏭📛', '🔘🪩', '🔘🎞'],
     // Configuration de date / Événements
     '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫','🧲🔬'],
     // Date Époque
@@ -57,7 +60,7 @@ const DESC = {
         '🔘⛽📛': 'CH₄ EDS on/off',
         '🔘🏭📛': 'CO₂ EDS on/off',
         '🔘🪩': 'Albedo on/off',
-        '🔘🎬': 'Animation on/off',
+        '🔘🎞': 'Animation on/off',
     },
     '📜': {
         '🌡️🧮': 't° attendu (t° config)',

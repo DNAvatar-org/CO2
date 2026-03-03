@@ -72,6 +72,7 @@
 
     <!-- Charger les dépendances dans l'ordre (chemins depuis doc/) -->
     <script src="../static/debug.js"></script>
+    <script src="../static/log_display.js"></script>
     <script src="../static/compute/alphabet.js"></script>
     <script src="../static/compute/dico.js"></script>
     <script src="../static/compute/initDATA.js"></script>
@@ -94,6 +95,7 @@
     <script src="../static/calculations_albedo.js"></script>
     <script src="../static/calculations_atm.js"></script>
     <script src="../static/compute/compute.js"></script>
+    <script src="../static/scie_convergence.js"></script>
     <!-- Hooks convergence définis avant calculations_flux.js (éviter if (window.xxx) dans le flux) -->
     <script>
         window.clearConvergenceTrace = function () {};
@@ -153,7 +155,7 @@
             return window.LOGOS[name] || '';
         }
         
-        // Synchronisation parent ↔ iframe (epoch, anim, ticTime)
+        // Synchronisation parent ↔ iframe (epoch, anim, ticTime, tuning pour reproductibilité run scie vs visu)
         function emitSyncToParent() {
             if (window === window.top) return;
             const DATA = window.DATA;
@@ -161,7 +163,17 @@
             const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
             const animBtn = document.getElementById('anim-toggle');
             const animEnabled = animBtn ? animBtn.classList.contains('selected') : true;
-            window.parent.postMessage({ type: 'sync:state', payload: { epochId, animEnabled, ticTime } }, '*');
+            const payload = { epochId, animEnabled, ticTime };
+            if (DATA && DATA['🎚️']) {
+                const T = DATA['🎚️'];
+                payload.tuning = {
+                    baryByGroup: { CLOUD_SW: T.baryByGroup.CLOUD_SW, SCIENCE: T.baryByGroup.SCIENCE, SOLVER: T.baryByGroup.SOLVER },
+                    CLOUD_SW: T.CLOUD_SW,
+                    SOLVER: T.SOLVER,
+                    updates: []
+                };
+            }
+            window.parent.postMessage({ type: 'sync:state', payload: payload }, '*');
         }
         
         // Intercepter console.log pour afficher dans la page
@@ -554,9 +566,9 @@
             }
             plotAnimToggleCheckbox.checked = animEnabled;
             
-            // Mettre à jour DATA['🔘']['🔘🎬'] avec l'état d'animation
+            // Mettre à jour DATA['🔘']['🔘🎞'] avec l'état d'animation
             if (!window.DATA['🔘']) window.DATA['🔘'] = {};
-            window.DATA['🔘']['🔘🎬'] = animEnabled;
+            window.DATA['🔘']['🔘🎞'] = animEnabled;
         }
         
         function setRunStopButtonRunning(running) {
@@ -595,7 +607,7 @@
                 const DATA = window.DATA;
                 let result = null;
                 const dateConfig = window.getEpochDateConfig ? window.getEpochDateConfig() : null;
-                if (!DATA['🔘']['🔘🎬']) {
+                if (!DATA['🔘']['🔘🎞']) {
                     DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
                 }
 
@@ -1099,6 +1111,19 @@
             applyFineTuningBaryGroup(groupKey, percentRaw, true);
         }
 
+        // Désactiver le clic sur la bande des jauges fine tuning / solveur : seul le glissement du bouton bleu change la valeur
+        document.addEventListener('mousedown', function (e) {
+            var el = e.target;
+            if (el.type !== 'range' || !el.id || el.id.indexOf('fine-tuning-bary-slider') !== 0) return;
+            var r = el.getBoundingClientRect();
+            var min = parseFloat(el.min) || 0;
+            var max = parseFloat(el.max) || 100;
+            var val = parseFloat(el.value) || min;
+            var pct = (max > min) ? (val - min) / (max - min) : 0;
+            var thumbX = r.left + pct * r.width;
+            if (Math.abs(e.clientX - thumbX) > 15) e.preventDefault();
+        }, true);
+
         function getInitRadiatifMetrics() {
             const DATA = window.DATA;
             const init = (DATA['🧮'] && DATA['🧮']['lastInitPayload']) ? DATA['🧮']['lastInitPayload'] : null;
@@ -1125,15 +1150,14 @@
 
         async function runFineTuningTrials() {
             const targets = getFineTuningTargets();
-            window.FINE_TUNING_RUNNING = true;
             setRunStopButtonRunning(true);
             const originalValues = {};
             targets.forEach(function (target) {
                 originalValues[target.group + '.' + target.key] = window.DATA['🎚️'][target.group][target.key];
             });
             const DATA = window.DATA;
-            const animWasEnabled = DATA['🔘']['🔘🎬'] === true;
-            DATA['🔘']['🔘🎬'] = false;
+            const animWasEnabled = DATA['🔘']['🔘🎞'] === true;
+            DATA['🔘']['🔘🎞'] = false;
             const animToggle = document.getElementById('anim-toggle');
             if (animToggle) animToggle.classList.remove('selected');
             const animCheckbox = document.getElementById('plot-anim-toggle-checkbox');
@@ -1174,7 +1198,7 @@
             } catch (err) {
                 console.error('❌ Fine-tuning trials:', err);
             } finally {
-                DATA['🔘']['🔘🎬'] = animWasEnabled;
+                DATA['🔘']['🔘🎞'] = animWasEnabled;
                 if (animToggle) {
                     if (animWasEnabled) animToggle.classList.add('selected');
                     else animToggle.classList.remove('selected');
@@ -1184,7 +1208,6 @@
                     const k = target.group + '.' + target.key;
                     setFineTuningValue(target, originalValues[k]);
                 });
-                window.FINE_TUNING_RUNNING = false;
                 setRunStopButtonRunning(false);
                 displayFineTuning();
             }
@@ -1293,91 +1316,6 @@
                 }
             }
             return diff;
-        }
-
-        const safeNumTempConv = (v, def) => { if (v == null) return def; const n = Number(v); if (!Number.isFinite(n)) return def; return n.toFixed(1); };
-        const safeNumConv = (v, def) => { if (v == null) return def; const n = Number(v); if (!Number.isFinite(n)) return def; return (Math.abs(n) >= 1e3 || (Math.abs(n) < 1e-2 && n !== 0)) ? n.toExponential(3) : n.toFixed(3); };
-        const safeNumDeltaConv = (v, def) => {
-            if (v == null) return def;
-            const n = Number(v);
-            if (!Number.isFinite(n)) return def;
-            const a = Math.abs(n);
-            if (a >= 1e6) return (n < 0 ? '-' : '') + (a / 1e6).toFixed(1) + 'e6';
-            if (a >= 1e3) return (n < 0 ? '-' : '') + (a / 1e3).toFixed(1) + 'e3';
-            if (a < 1e-2 && n !== 0) return n.toExponential(2);
-            return n.toFixed(2);
-        };
-
-        function buildStepHtml(state) {
-            const DATA = window.DATA;
-            const CONST = window.CONST || { KELVIN_TO_CELSIUS: 273.15 };
-            if (!state) return '';
-            const waterIter = (state.waterIter != null) ? state.waterIter : ((state.waterPass != null) ? state.waterPass : 0);
-            const albedoIter = (state.albedoIter != null) ? state.albedoIter : ((state.waterPass != null) ? state.waterPass : 0);
-            if (state.phase === 'CycleEau') {
-                const T_cycle = safeNumTempConv((state.data_snapshot && state.data_snapshot['🧮'] && state.data_snapshot['🧮']['🧮🌡️'] != null) ? state.data_snapshot['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS : (DATA && DATA['🧮']) ? DATA['🧮']['🧮🌡️'] - CONST.KELVIN_TO_CELSIUS : null, '-');
-                const compactEau = (state.data_snapshot && state.data_snapshot['💧']) ? formatJSONCompact(state.data_snapshot['💧']).replace(/"/g, "'") : '';
-                let h = `<div class="iteration-header convergence-cycle"><strong>💧 cycle de l'eau ${albedoIter}</strong> @${T_cycle}°C :${compactEau ? `<span class="convergence-inline-json"> ${compactEau}</span>` : ''}</div>`;
-                if (state.data_snapshot) {
-                    h += '<div class="convergence-cycle-eau-block convergence-cycle">';
-                    ['🫧', '💧'].forEach(cat => { if (state.data_snapshot[cat]) h += json2html(state.data_snapshot[cat], '', '', null, cat); });
-                    h += '</div>';
-                }
-                return h;
-            }
-            if (state.phase === 'CycleEauCrossing') {
-                const T_trans = safeNumTempConv(state.T_transition_C, '-');
-                const P_atm = (state.P_atm != null) ? Number(state.P_atm).toFixed(2) : '-';
-                const compactEau = (state.data_snapshot && state.data_snapshot['💧']) ? formatJSONCompact(state.data_snapshot['💧']).replace(/"/g, "'") : '';
-                let h = `<div class="iteration-header convergence-cycle"><strong>💧┴ = ${T_trans}°C [🎈=${P_atm} atm]</strong> :${compactEau ? `<span class="convergence-inline-json"> ${compactEau}</span>` : ''}</div>`;
-                if (state.data_snapshot) {
-                    h += '<div class="convergence-cycle-eau-block convergence-cycle">';
-                    ['🫧', '💧'].forEach(cat => { if (state.data_snapshot[cat]) h += json2html(state.data_snapshot[cat], '', '', null, cat); });
-                    h += '</div>';
-                }
-                return h;
-            }
-            if (state.innerIter == null) return '';
-            let html = '';
-            if (state.data_snapshot && state.data_snapshot['🪩']) {
-                const compactAlbedo = formatJSONCompact(state.data_snapshot['🪩']).replace(/"/g, "'");
-                const sulfateFrac = (state.data_snapshot['🫧'] && state.data_snapshot['🫧']['🍰🫧🌫'] != null && Number.isFinite(state.data_snapshot['🫧']['🍰🫧🌫'])) ? state.data_snapshot['🫧']['🍰🫧🌫'] : 0;
-                const sulfateBoostPct = (Math.min(0.35, sulfateFrac * 500) * 100).toFixed(1);
-                const T_alb = safeNumTempConv(state.innerIter === -1 ? state.temperature_C : (state.next_T_C != null ? state.next_T_C : state.temperature_C), '-');
-                html += `<div class="iteration-header convergence-cycle"><strong>🪩 cycle albédo ${albedoIter}</strong> @${T_alb}°C :<span class="convergence-inline-json"> ${compactAlbedo}</span> <span class="convergence-inline-json">| 🌫 CCN +${sulfateBoostPct}%</span></div>`;
-            }
-            const innerIter = state.innerIter;
-            const T = safeNumTempConv(state.temperature_C, '-');
-            const albedo = safeNumConv(state.albedo, '-');
-            const phase = (state.phase != null) ? String(state.phase) : '-';
-            const delta = safeNumDeltaConv(state.delta_equilibre, '-');
-            const m = (state.data_snapshot && state.data_snapshot['🧮']) ? state.data_snapshot['🧮'] : {};
-            const yy = (state.yinYang != null) ? Number(state.yinYang) : ((state.delta_equilibre != null) ? Math.sign(Number(state.delta_equilibre)) : 0);
-            const yinYangStr = (yy === 1) ? '+' : (yy === -1) ? '−' : '0';
-            const iterLabel = (innerIter === -1) ? 'Init' : (innerIter + 1);
-            const T_low_K = m['🧮🌡️🔽'];
-            const T_high_K = m['🧮🌡️🔼'];
-            const dichoBounds = (T_low_K != null && T_high_K != null) ? ` [🔽: ${safeNumTempConv(T_low_K - CONST.KELVIN_TO_CELSIUS, '-')}°C, 🔼: ${safeNumTempConv(T_high_K - CONST.KELVIN_TO_CELSIUS, '-')}°C]` : '';
-            const seuil = (m['🧲🔬'] != null) ? m['🧲🔬'] : null;
-            const seuilStr = seuil != null ? safeNumConv(seuil, '-') : '-';
-            const deltaVal = state.delta_equilibre != null ? Number(state.delta_equilibre) : NaN;
-            const arretOk = (Number.isFinite(deltaVal) && seuil != null && Math.abs(deltaVal) <= seuil) ? 'oui' : 'non';
-            let nextT = (state.next_T_C != null && Number.isFinite(state.next_T_C)) ? state.next_T_C.toFixed(1) : '';
-            if (!nextT && phase === 'Dicho' && T_low_K != null && T_high_K != null && Number.isFinite(T_low_K) && Number.isFinite(T_high_K)) nextT = ((T_low_K + T_high_K) / 2 - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-            if (!nextT && state.dichoT_low_C != null && state.dichoT_high_C != null) nextT = ((state.dichoT_low_C + state.dichoT_high_C) / 2).toFixed(1);
-            const nextTSuffix = nextT ? ` => ${nextT}°C` : '';
-            const b = state.data_snapshot && state.data_snapshot['📛'];
-            const h2oPctVal = (b && b['🍰📛💧'] != null) ? Number(b['🍰📛💧']) : null;
-            const h2oPctStr = (h2oPctVal != null && Number.isFinite(h2oPctVal)) ? (h2oPctVal * 100).toFixed(1) + '%' : '-';
-            const h2oVs05 = (h2oPctVal != null && Number.isFinite(h2oPctVal) && h2oPctVal < 0.005) ? ' <0.5%' : '';
-            html += `<div class="iteration-header">🌈 calcul radiatif ${iterLabel} @${T}°C : Albedo: ${albedo} H2O%: ${h2oPctStr}${h2oVs05} => Δ: ${delta} W/m² .. ⚧: ${phase} & ☯: ${yinYangStr} => arrêt |Δ|≤${seuilStr} W/m²: ${arretOk}${dichoBounds}${nextTSuffix}</div>`;
-            html += '<div class="convergence-details-block">';
-            const snap = state.data_snapshot || {};
-            if (snap['🧮']) { const mCopy = { ...snap['🧮'] }; delete mCopy.previous; html += json2html(mCopy, '', '', null, '🧮'); }
-            if (snap['🧲']) html += json2html(snap['🧲'], '', '', null, '🧲');
-            if (snap['📛']) html += json2html(snap['📛'], '', '', null, '📛');
-            html += '</div>';
-            return html;
         }
 
         function clearConvergenceTrace() {
@@ -1609,7 +1547,7 @@
                         document.body.appendChild(cb);
                     }
                     cb.checked = p.animEnabled;
-                    if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎬'] = p.animEnabled;
+                    if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = p.animEnabled;
                 }
                 if (p.ticTime !== undefined && window.DATA && window.DATA['📜']) {
                     window.DATA['📜']['📿💫'] = p.ticTime;
@@ -1620,9 +1558,25 @@
                 var DATA = event.data.DATA;
                 if (DATA && window !== window.top) {
                     Object.keys(DATA).forEach(function (k) { window.DATA[k] = DATA[k]; });
-                    window.DATA['🎚️'].baryByGroup.SOLVER = 0;
+                    // Ne pas réinitialiser baryByGroup.SOLVER : conserver le réglage utilisateur (ex. 100%)
                     fillDataTuningFromBary();
                     displayResults(window.DATA);
+                    displayConvergence();
+                }
+            }
+            if (event.data && event.data.type === 'convergence:clear') {
+                clearConvergenceTrace();
+            }
+            if (event.data && event.data.type === 'convergence:append') {
+                var step = event.data.step;
+                if (step) appendConvergenceStep(step);
+            }
+            if (event.data && event.data.type === 'convergence:restore') {
+                var stepsHtml = event.data.stepsHtml;
+                if (Array.isArray(stepsHtml) && stepsHtml.length > 0) {
+                    clearConvergenceTrace();
+                    var stepsEl = document.getElementById('convergence-steps');
+                    if (stepsEl) stepsHtml.forEach(function (html) { stepsEl.insertAdjacentHTML('beforeend', html); });
                     displayConvergence();
                 }
             }

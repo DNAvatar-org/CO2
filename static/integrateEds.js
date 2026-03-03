@@ -1,11 +1,14 @@
 // File: integrateEds.js - Intégration de synthese_EdS dans le rectangle Effet de Serre
 // Desc: Déplace le contenu de synthese_EdS dans le flux-cellRect d'effetSerre
 // Version 1.0.0
+// Date: [November 18, 2025] [HH:MM UTC+1]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [November 18, 2025] [HH:MM UTC+1]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 
 (function() {
     'use strict';

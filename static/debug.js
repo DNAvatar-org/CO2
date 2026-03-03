@@ -2,11 +2,14 @@
 // File: debug.js - Interface de debug pour le style
 // Desc: En français, dans l'architecture, je suis le module d'interface de debug
 // Version 1.0.2
+// Date: [January 2025]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [January 2025]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // - v1.0.2: pd() PrintDebug global
 // ============================================================================
 

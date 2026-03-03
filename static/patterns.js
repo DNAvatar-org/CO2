@@ -1,11 +1,14 @@
 // File: patterns.js - Gestion des patterns de traits pour les courbes
 // Desc: Définit l'ordre complet des patterns et les fonctions associées
 // Version 1.1.0
+// Date: [January 2025]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [January 2025]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 
 // Ordre complet des patterns : dot (0, réservé), dash (1), dashdot (2), longdash (3), longdashdot (4), solid (5, réservé)
 window.DASH_PATTERNS = ['dot', 'dash', 'dashdot', 'longdash', 'longdashdot', 'solid'];

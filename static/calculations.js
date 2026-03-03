@@ -1030,7 +1030,7 @@ function simulateRadiativeTransfer() {
     const prev_T0 = window.plotData.temp_surface;
     
     const t0_config = EPOCH['🌡️🧮'];
-    const animEnabled = DATA['🔘']['🔘🎬'];
+    const animEnabled = DATA['🔘']['🔘🎞'];
     const baseTemp = animEnabled ? (prev_T0 > 0 ? prev_T0 : t0_config) : t0_config;
     
     const meteoriteCount = DATA['📜']['📿☄️'];

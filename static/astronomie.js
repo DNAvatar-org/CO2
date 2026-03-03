@@ -1,11 +1,14 @@
 // File: astronomie.js - Cycles de Milankovitch
 // Desc: Calcul des paramètres astronomiques (excentricité, obliquité, précession) pour l'effet Milankovitch
 // Version 2.0.0
+// Date: [January 2025]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [January 2025]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 
 /**
  * CONSTANTES ASTRONOMIQUES

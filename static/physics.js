@@ -2,11 +2,14 @@
 // File: physics.js - Constantes et lois physiques fondamentales
 // Desc: En français, dans l'architecture, je suis le module de physique fondamentale
 // Version 2.0.7
+// Date: [January 2025]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See https://commonsclause.com/ for full terms.
-// Date: [January 2025]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // - Sections efficaces : hitran.js + lignes HITRAN. ΔF = convention affichage → climate.js, pas ici.
 // - getH2OVaporEDSScale() — formule T,P,vapor,CO2 (pas d'époque), doc/VAPEUR_VS_NUAGES.md
 // - Convention : Credence (%) + Plage lit. / écart-type en commentaire pour params tunables (éviter patch en aveugle). v2.0.3.
@@ -84,6 +87,16 @@ EARTH.T_ICE_TRANSITION_RANGE_K = 20;
 EARTH.EVAPORATION_E0 = 0.001;
 EARTH.EVAPORATION_T_REF = 288;
 EARTH.EVAPORATION_T_SCALE = 20;
+/** Cap vapeur dynamique (approx Clausius-Clapeyron, calibrage ERA5/AIRS). calculations_h2o.js : c_c_max = BASE + SLOPE × (T - EVAPORATION_T_REF). */
+EARTH.H2O_VAPOR_CAP_BASE = 0.0065;       // fraction massique vapeur à T_ref (~0.5–0.8 %)
+EARTH.H2O_VAPOR_CAP_SLOPE_PER_K = 0.0007; // pente /K
+/** Cap vapeur final Init (AIRS/ERA5 ~7%/K). calculations_h2o.js : realistic_vapor_max = BASE + SLOPE × (T - EVAPORATION_T_REF). */
+EARTH.H2O_VAPOR_REALISTIC_MAX_BASE = 0.0052;
+EARTH.H2O_VAPOR_REALISTIC_MAX_SLOPE_PER_K = 0.00007;
+/** Feedback Iris simplifié (vapeur / iris_factor). Lit. Lindzen 2001, Mauritsen & Stevens 2015, Sherwood 2020 ; calib 2025 amplitude prudente. */
+EARTH.IRIS_STRENGTH = 0.02;   // amplitude (sans dimension, × (T - T_REF) / IRIS_T_SCALE_K)
+EARTH.IRIS_T_SCALE_K = 10;    // échelle thermique (par 10 K)
+EARTH.IRIS_FACTOR_MIN = 0.7;  // plancher iris_factor (évite sur-assèchement)
 EARTH.T_FREEZE_SEAWATER_K = 271.15;
 EARTH.T_WATER_CYCLE_MIN_C = -10;
 EARTH.T_WATER_CYCLE_MAX_C = 150;
@@ -91,9 +104,17 @@ EARTH.T_WATER_CYCLE_FREEZE_K_PER_ATM = 1;
 EARTH.T_WATER_CYCLE_MARGIN_GEL_K = 5;
 EARTH.T_WATER_CYCLE_EVAP_LOW_K = 323.15;
 EARTH.T_WATER_CYCLE_HIGH_K_PER_ATM = 5;
+/** Seuils pour recalcul partition eau (calculations_h2o.js) : recalcul seulement si ΔT > DELTA_T_K ou ΔP > DELTA_P_ATM. */
+EARTH.WATER_PARTITION_DELTA_T_K = 5;
+EARTH.WATER_PARTITION_DELTA_P_ATM = 1;
 EARTH.PRECIP_BASE_RATE = 5e-6;
 EARTH.PRECIP_PRESSURE_SCALE = 5e-6;
 EARTH.PRECIP_CLOUD_SCALE = 1e-6;
+/** Précip convective (calculations_h2o.js) : facteur temp = (T / T_REF)^EXP_T, facteur RH = (RH / RH_REF)^EXP_RH. Lit. Held & Soden 2006, IPCC AR6 ; réponse précip plus lente que C-C. */
+EARTH.PRECIP_CONVECTIVE_T_REF_K = 288;   // T ref (réutilise EVAPORATION_T_REF)
+EARTH.PRECIP_CONVECTIVE_T_EXPONENT = 1.2; // adouci vs C-C (~7%/K) pour éviter sur-assèchement
+EARTH.PRECIP_CONVECTIVE_RH_REF = 0.7;    // seuil RH convective typique (~70 %)
+EARTH.PRECIP_CONVECTIVE_RH_EXPONENT = 1.0; // exposant facteur humidité (calib v1.0.8)
 EARTH.H2O_EDS_SCALE = 0.92;  // Facteur κ_H2O dans EDS (calculations.js), calibration 2025
 EARTH['🪩🍰'] = {
     '🪩🍰🌋': 0.05, '🪩🍰🌊': 0.08, '🪩🍰🌳': 0.17, '🪩🍰🏜️': 0.30,
