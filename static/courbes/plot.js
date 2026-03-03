@@ -1,12 +1,15 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.22
+// Version 1.0.23
+// Date: [January 2025]
+// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Date: [January 2025]
-// Logs:
+// Ā unit : non Aristotelicisme via UTF8.
+// "La carte c'est le territoire, le territoire c'est le code."
+// UTF8 est la sémantique pour CODE & UI
 // - v1.0.1: H2O 17μm borne ajoutée (fallback si CONST absent), bornes repositionnées sous axe
 // - v1.0.2: Bornes et spectre collés juste sous l'axe (bottom 65px, canvas étendu marge 75px)
 // - v1.0.3: Resize artificiel après Plotly.react, spectre +1px, bornes -5px
@@ -23,6 +26,7 @@
 // - v1.0.12: MutationObserver sur plot-container appelle resizeCanvasToPlot quand Plotly modifie le DOM
 // - v1.0.13: updatePlotAltitudeAxis(atm_height_km) pour mettre à jour yaxis2 à chaque cycle
 // - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
+// - v1.0.23: Courbe pointillée corps noir à T effective (pas T surface) pour même fenêtre que courbe pleine
 // - v1.0.16: Indicateur nuages EDS (corps gris) sur barre spectre : fullSpan 4–50 μm, LOGOS.CLOUDS
 // - v1.0.15: remove misleading pd() [BUG] traces in updatePlotAltitudeAxis and resizeCanvasToPlot
 // - v1.0.17: lissage gaussien visuel du flux (createFluxTrace) ; ne touche pas aux intégrales/OLR
@@ -1066,10 +1070,10 @@ window.updatePlot = function updatePlot(data) {
         trace_absorption.showlegend = false; // Pas dans la légende
         traces.push(trace_absorption);
 
-        // Courbe pointillée = corps noir à la T° surface (cohérence avec organigramme et tooltip)
+        // Courbe pointillée = corps noir à la T° effective (même fenêtre que la courbe pleine, plancher thermodynamique)
         const color_effective = color_current;
 
-        const planck_current = createPlanckTrace(T_current_display, `Planck T surface ${data.co2_ppm.toFixed(0)} ppm`, color_effective, false, 'dot');
+        const planck_current = createPlanckTrace(T_effective_display, `Planck effective ${data.co2_ppm.toFixed(0)} ppm`, color_effective, false, 'dot');
         planck_current.line.width = 2; // En gras
         planck_current.line.color = color_effective; // Même couleur que la courbe pleine
         traces.push(planck_current);
@@ -1586,6 +1590,16 @@ window.updatePlot = function updatePlot(data) {
         }
 
         plotContainerWrapper.appendChild(infraText);
+
+        /* Zone sous l'axe (40–50 μm) : CPU / threads (pour futur worker) */
+        let threadsEl = plotContainerWrapper.querySelector('.plot-threads-info');
+        if (!threadsEl) {
+            threadsEl = document.createElement('div');
+            threadsEl.className = 'plot-threads-info';
+            plotContainerWrapper.appendChild(threadsEl);
+        }
+        const n = typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : '?';
+        threadsEl.textContent = 'CPU: ' + n + ' threads';
     }
 
     // Ajouter les indicateurs de bandes d'absorption sur le spectre

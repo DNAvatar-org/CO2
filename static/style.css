@@ -422,6 +422,19 @@ h1 {
 
 /* Note sur l'échelle logarithmique - à gauche, très proche de la bande spectrale */
 /* Position basée sur PLOT_MARGINS = { l: 70, r: 70, t: 0, b: 75 } */
+/* Zone sous l'axe (40–50 μm) : CPU / threads disponibles pour futur worker */
+.plot-threads-info {
+    position: absolute;
+    bottom: 8px;
+    left: 80%;
+    right: 0;
+    font-size: 9px;
+    font-family: 'ProggyDotted', 'Tahoma', sans-serif;
+    z-index: 99;
+    pointer-events: none;
+    color: rgba(255, 255, 255, 0.85);
+}
+
 /* Variables pour ajuster taille/position : --infra-note-bottom, --infra-note-left, --infra-note-font-size */
 .infra-note {
     position: absolute;
