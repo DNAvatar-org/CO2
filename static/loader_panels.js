@@ -37,6 +37,8 @@
         'static/compute/calculations_flux.js',
         'static/scie_convergence.js',
         'static/sync_panels.js',
+        'API_BILAN/api.js',
+        'API_BILAN/receiver.js',
         'static/shell.js',
         'static/FPS/FPS.js',
         'static/courbes/plot.js',

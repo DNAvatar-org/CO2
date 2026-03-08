@@ -1,0 +1,79 @@
+# window.MAJUSCULE — créateur / utilisateurs / description
+# Fonctions par source : window.FUNC_API_BILAN (_API_BILAN) = BilanRadiatifAPI, createReceiver. En tête de fonctions : const MAJ = window.MAJ pour éviter window. dans le corps.
+# DATA contient des données (clés emoji), pas des fonctions.
+# calculations_flux.js expose : calculateT0, initForConfig, cycleDeLeau, updateConvergenceBounds, computeRadiativeTransfer(callback?), newDate, snapshotEdsForConvergence ; hooks no-op : clearConvergenceTrace, appendConvergenceStep.
+
+# ========== SENS 1 : MAJUSCULE [creater] (users) // description ==========
+
+ABORT_COMPUTE [html/scie_compute.html, doc/test_computeRadiativeTransfer.html] (calculations_flux.js) // toggle run/stop
+ALBEDO [static/calculations_albedo.js] (calculations_flux.js, calculations_albedo.js) // calculateAlbedo, calculateCloudFormationIndex, etc.
+ATM [static/calculations_atm.js] (calculations_atm.js) // calcul atmosphère
+CHARS [static/compute/alphabet.js] (organigramme, courbes/plot, main) // logos/clés affichage
+CHARS_DESC [static/compute/alphabet.js] (loader_panels, organigramme, scie_convergence) // descriptions
+COMPUTE [static/compute/compute.js] (calculations_flux.js, compute.js) // API + état
+COMPUTE_RUNNING [html/scie_compute.html] () // flag run
+CONFIG_COMPUTE [static/timeline/configTimeline.js] (calculations_flux, calculations_albedo, sync_panels, main, courbes/plot, API_BILAN) // paramètres calcul
+CONFIG_INIT_SNAPSHOT [html/scie_compute.html] () // snapshot avant run
+CONST [static/physics.js] (calculations_flux, calculations_albedo, calculations_h2o, compute, sync_panels, main, courbes/plot, debug, scie_convergence) // constantes physiques
+CONV [static/physics.js] (calculations_h2o, calculations.js) // conventions unités
+CO2_EVENTS [static/event_bus.js] (sync_panels, loader_panels, main) // bus événements
+DATA [static/compute/initDATA.js] (initDATA, calculations_*, compute, sync_panels, loader_panels, main, courbes/plot, organigramme, debug, scie_convergence, API_BILAN) // état unique calcul/UI
+DASH_PATTERNS [static/patterns.js] (courbes/plot) // styles traits
+DASH_PATTERN_DOT_INDEX [static/patterns.js] (courbes/plot)
+DASH_PATTERN_SOLID_INDEX [static/patterns.js] (courbes/plot)
+DASH_PATTERN_REF_START [static/patterns.js] (courbes/plot)
+DASH_PATTERN_REF_COUNT [static/patterns.js] (courbes/plot)
+DESC [static/compute/dico.js] (dico, scie_convergence) // descriptions clés
+DETAIL_LOG_TEXT [static/debug.js] (debug.js) // log accumulation
+EARTH [static/physics.js] (physics, calculations_albedo, calculations.js) // seuils terrestres
+FINE_TUNING_BOUNDS [static/tuning/fine_tuning_bounds.js] (organigramme) // bornes jauges
+FINE_TUNING_TRIALS [html/scie_compute.html] () // essais
+FORM [static/compute/dico.js] (scie_convergence) // formules champs
+FUNC_API_BILAN [API_BILAN/api.js, API_BILAN/receiver.js] (API_BILAN, index/visu/scie) // source _API_BILAN ; BilanRadiatifAPI, createReceiver
+GEOTHERMAL_FLUX [static/flux_manager.js, organigramme] (flux_manager, organigramme) // flux géothermique
+H2O [static/calculations_h2o.js] (calculations_flux, calculations_h2o) // cycle eau
+KEYS [static/compute/dico.js] (initDATA.js) // schéma catégories → clés
+LOGOS [static/compute/alphabet.js] (main, courbes/plot, organigramme) // alias CHARS
+OVERRIDES [static/timeline/configTimeline.js] (calculations_flux, calculations_albedo) // patches debug
+PHYS [static/physics.js] (calculations_flux, calculations_albedo) // fonctions physique
+PLANCK_TEMPERATURES [static/plot.js, static/courbes/plot.js] (main, courbes/plot) // T ref courbes
+PLOT_PANEL_READY [static/main.js] (main, events) // flag module plot chargé
+SOLAR_CONSTANT [static/flux_manager.js, static/climate.js, organigramme] (climate, courbes/plot, organigramme) // flux solaire
+STATE [static/physics.js] (calculations_albedo) // état solver partagé
+SYNC_STATE [static/sync_panels.js] (sync_panels, loader_panels) // epochId, anim, ticTime
+TEMP_HABITABLE_MIN/MAX/OPTIMAL [static/climate.js] (climate) // seuils habitabilité
+TIMELINE [static/timeline/configTimeline.js] (calculations_flux, compute, sync_panels, loader_panels, main, courbes/plot, organigramme, API_BILAN) // époques
+TIMELINE_UPDATE_INTERVAL [static/timeline/timeline.js] (timeline) // anim
+YEARS_PER_FRAME [static/timeline/timeline.js] (timeline) // anim
+TUNING [static/tuning/model_tuning.js] (configTimeline, sync_panels) // CLOUD_SW, SOLVER
+TUNING_BIBLIO [static/tuning/model_tuning_biblio.js] () // refs
+
+# ========== SENS 2 : Par fichier → MAJUSCULE (creater puis users) ==========
+
+static/compute/alphabet.js   : CHARS, LOGOS, CHARS_DESC (creater)
+static/compute/initDATA.js   : DATA (creater, depuis KEYS)
+static/compute/dico.js       : KEYS, DESC, FORM (creater)
+static/compute/compute.js    : COMPUTE (creater) ; DATA, CONST, TIMELINE, EPOCH (users)
+static/compute/calculations_flux.js : CONFIG_COMPUTE, DATA, CONST, TIMELINE, EPOCH, ALBEDO, ABORT_COMPUTE (users) ; expose window.calculateT0, initForConfig, cycleDeLeau, updateConvergenceBounds, computeRadiativeTransfer(callback?), newDate, snapshotEdsForConvergence
+static/main.js               : CONST, DATA, CONFIG_COMPUTE, LOGOS, PLANCK_TEMPERATURES, PLOT_PANEL_READY, CO2_EVENTS, TIMELINE, YEARS_PER_FRAME (users)
+static/courbes/plot.js       : CONST, DATA, CONFIG_COMPUTE, LOGOS, PLANCK_TEMPERATURES, SOLAR_CONSTANT, TIMELINE (users)
+static/calculations_albedo.js: DATA, CONST, TIMELINE, CONFIG_COMPUTE, ALBEDO, STATE (users) ; ALBEDO (creater)
+static/calculations_atm.js   : ATM (creater) ; DATA (users)
+static/calculations_h2o.js   : H2O (creater) ; DATA, CONST, TIMELINE (users)
+static/sync_panels.js        : SYNC_STATE (creater) ; DATA, CONST, CONFIG_COMPUTE, TIMELINE, TUNING, CO2_EVENTS (users)
+static/loader_panels.js      : DATA, TIMELINE, CHARS_DESC (users)
+static/timeline/configTimeline.js : TIMELINE, CONFIG_COMPUTE, OVERRIDES (creater)
+static/timeline/timeline.js  : YEARS_PER_FRAME, TIMELINE_UPDATE_INTERVAL (creater)
+organigramme/organigramme.js: CHARS, CHARS_DESC, TIMELINE, DATA, FINE_TUNING_BOUNDS, SOLAR_CONSTANT, GEOTHERMAL_FLUX (users)
+static/climate.js            : SOLAR_CONSTANT, TEMP_HABITABLE_* (creater)
+static/flux_manager.js       : SOLAR_CONSTANT, GEOTHERMAL_FLUX (creater)
+static/patterns.js           : DASH_PATTERNS, DASH_PATTERN_* (creater)
+static/physics.js            : CONST, CONV, EARTH, STATE, PHYS (creater)
+static/event_bus.js          : CO2_EVENTS (creater)
+static/tuning/model_tuning.js    : TUNING (creater)
+static/tuning/fine_tuning_bounds.js : FINE_TUNING_BOUNDS (creater)
+static/tuning/model_tuning_biblio.js : TUNING_BIBLIO (creater)
+static/debug.js              : DETAIL_LOG_TEXT (creater) ; DATA, CONST (users)
+static/scie_convergence.js   : FORM, DATA, CONST (users)
+API_BILAN/api.js     : DATA, TIMELINE, SYNC_STATE (users) ; FUNC_API_BILAN (creater = source _API_BILAN)
+API_BILAN/receiver.js : CO2_EVENTS, shell, updateFluxLabels, projectToVisu (users) ; FUNC_API_BILAN.createReceiver (creater)

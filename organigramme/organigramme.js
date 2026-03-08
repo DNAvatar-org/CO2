@@ -248,7 +248,7 @@ function createRectangle(
     logoBg.textContent = fillImage;
     // Appliquer les polices emoji standard aux logos
     logoBg.style.fontFamily =
-      "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+      "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
     rect.appendChild(logoBg);
   } else {
     // Couleur unie
@@ -1225,7 +1225,7 @@ function createCell(
           } else {
             emojiSpan.textContent = display;
             emojiSpan.style.fontFamily =
-              "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+              "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
           }
           emojiSpan.style.display = "block";
           emojiSpan.style.lineHeight = "1";
@@ -1417,7 +1417,7 @@ function createCell(
       } else {
         logoSpan.textContent = display;
         logoSpan.style.fontFamily =
-          "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+          "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
       }
     }
     // Si logo est un tableau, il a déjà été traité ci-dessus
@@ -3737,7 +3737,7 @@ function generateTimelineFromConfig() {
       } else {
         button.textContent = display.value;
         button.style.fontFamily =
-          "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+          "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
       }
 
       epochsContainer.appendChild(button);

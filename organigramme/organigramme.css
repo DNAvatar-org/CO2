@@ -525,7 +525,7 @@
 /* Boutons dans le flux-diagram */
 .flux-diagram .btn {
     font-size: 24px;
-    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    font-family: var(--font-emoji);
     background: none !important; /* Pas de fond */
     border: none !important; /* Pas de border */
     border-radius: 50%;

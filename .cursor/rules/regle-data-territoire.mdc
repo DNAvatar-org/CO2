@@ -1,0 +1,36 @@
+---
+description: DATA = territoire unique ; lecture directe, pas de isFinite/guard. Synchrone.
+globs: "**/*.js"
+alwaysApply: true
+---
+
+# _REGLE_DATA_TERRITOIRE — DATA = carte = territoire
+
+La matrice des calculs est dans DATA ; les clés (emojis) ont le même sens que l’interface. Pas de couche “sécurité” qui masque les bugs.
+
+## Règles
+
+1. **Source unique** : tout état métier lisible/écritable passe par `DATA` (ou CONST pour constantes). Pas de duplication dans `window.TUNING` / `window.CONFIG_COMPUTE` pour les valeurs utilisées en calcul — les initialiser dans DATA (ex. initDATA.js pour 🎚️.CLOUD_SW, SOLVER).
+
+2. **Lecture directe** : utiliser `DATA['🫧']['🍰🫧🫁']`, `DATA['🎚️'].CLOUD_SW`, etc. directement dans les formules. Pas de variable intermédiaire “gardée” (ex. `const x = (v != null && Number.isFinite(v)) ? v : 0`).
+
+3. **Interdictions** :
+   - Pas de `Number.isFinite(...)` ni `!= null` pour “sécuriser” une lecture DATA avant calcul.
+   - Pas de `isFinite(x) ? x : defaultValue` — si la valeur est invalide, le code doit crasher.
+   - Pas de variables qui ne font que recopier une clé DATA avec garde (ex. `o2_frac`, `sulfate_frac` quand c’est juste DATA lu avec un fallback).
+
+4. **Synchrone** : pas de `setTimeout` / fallbacks pour “attendre” que DATA soit prêt ; ordre d’init par scripts (voir regle-sync-scripts).
+
+## Correct
+
+```javascript
+const biomass_proxy = 1.0 + CLOUD_TUNING.BIOMASS_GAIN * DATA['🪩']['🍰🪩🌳'];
+albedo = albedo * (1 - cloud_fraction) + albedo_coeff['🪩🍰⛅'] * cloud_fraction;
+```
+
+## Incorrect
+
+```javascript
+const o2_frac = (DATA['🫧']['🍰🫧🫁'] != null && Number.isFinite(DATA['🫧']['🍰🫧🫁'])) ? DATA['🫧']['🍰🫧🫁'] : 0.0;
+const x = isFinite(DATA['X']) ? DATA['X'] : def;
+```

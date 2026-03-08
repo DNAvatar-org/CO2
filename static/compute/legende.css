@@ -1,12 +1,13 @@
-# File: static/compute/legende.css - Styles pour lexique et syntaxe
-# Desc: Styles CSS communs pour l'affichage des légendes (lexique et syntaxe)
-# Version 1.0.0
-# Copyright 2025 DNAvatar.org - Arnaud Maignan
-# Licensed under Apache License 2.0 with Commons Clause.
-# See LICENSE_HEADER.txt for full terms.
-# Date: [January 2025]
-# Logs:
-#   - Initial version: fusion de lexique.html et syntaxe.css
+/* File: static/compute/legende.css - Styles pour lexique et syntaxe
+   Desc: Styles CSS communs pour l'affichage des légendes (lexique et syntaxe)
+   Version 1.0.1
+   Copyright 2025 DNAvatar.org - Arnaud Maignan
+   Licensed under Apache License 2.0 with Commons Clause.
+   See LICENSE_HEADER.txt for full terms.
+   Date: [January 2025]
+   Logs:
+   - Initial version: fusion de lexique.html et syntaxe.css
+   - Polices emoji déplacées dans static/emoji-fonts.css (racine), .logo / var(--font-emoji) */
 
 /* ============================================================================
    RESET & BASE
@@ -105,6 +106,7 @@ body {
     font-size: 15px;
     min-width: 50px;
     flex-shrink: 0;
+    font-family: var(--font-emoji);
 }
 
 /* Pour lexique : logos simples (1 emoji) */

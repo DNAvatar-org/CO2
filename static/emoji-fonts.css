@@ -1,0 +1,28 @@
+/* File: static/emoji-fonts.css - Polices emoji (source unique à la racine)
+   Desc: Chargement Noto + EmojiFont et classe .logo pour tous les usages (dico, algo, signature, etc.).
+   Version 1.0.0
+   Copyright 2025 DNAvatar.org - Arnaud Maignan
+   Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
+   Date: 2025-02-25
+   Logs:
+   - Initial: une seule définition, ordre Apple > Noto > EmojiFont > Segoe. */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap');
+
+@font-face {
+    font-family: 'EmojiFont';
+    src: local('Apple Color Emoji'),
+         local('Segoe UI Emoji'),
+         local('Noto Color Emoji'),
+         local('Android Emoji'),
+         local('EmojiOne Color'),
+         local('Twemoji Mozilla');
+}
+
+:root {
+    --font-emoji: 'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif;
+}
+
+.logo {
+    font-family: var(--font-emoji);
+}

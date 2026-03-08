@@ -1,0 +1,179 @@
+# Liste window.MAJUSCULE — créateur / remplisseur
+# Format: MAJUSCULE / + creater / ++ filler
+# Fichier: window_MAJUSCULE_creater_filler.txt
+
+ABORT_COMPUTE
+ + creater: html/scie_compute.html (591, 603), doc/test_computeRadiativeTransfer.html (578, 586)
+ ++ filler: même fichier (toggle true/false)
+
+ALBEDO
+ + creater: static/calculations_albedo.js (544)
+ ++ filler: même fichier — calculateAlbedo, calculateCloudCoverage, calculateCloudFormationIndex, calculateSolarFluxAbsorbed, calculateGeologySurfaces
+
+ATM
+ + creater: static/calculations_atm.js (261)
+ ++ filler: même fichier (fonctions calcul atmosphère)
+
+CHARS
+ + creater: static/compute/alphabet.js (338)
+ ++ filler: même fichier (objet exporté)
+
+CHARS_DESC
+ + creater: static/compute/alphabet.js (340)
+ ++ filler: même fichier (objet exporté)
+
+COMPUTE
+ + creater: static/compute/compute.js (246)
+ ++ filler: même fichier (API + état interne)
+
+COMPUTE_RUNNING
+ + creater: html/scie_compute.html (577), doc/test_computeRadiativeTransfer.html (566)
+ ++ filler: même fichier (true/false selon run)
+
+CONFIG_COMPUTE
+ + creater: static/timeline/configTimeline.js (396)
+ ++ filler: configTimeline.js (399-474) — baryByGroupDefault, bins, spinup, solver, logs, etc.
+ ++ filler: static/sync_panels.js (52-96) — tolMinWm2, maxSearchStep*, largeDeltaFactor depuis DATA['🎚️']
+
+CONFIG_INIT_SNAPSHOT
+ + creater: html/scie_compute.html (604), doc/test_computeRadiativeTransfer.html (587)
+ ++ filler: même fichier (snapshot avant run / null après)
+
+CONST
+ + creater: static/physics.js (25)
+ ++ filler: même fichier (28-59) — Planck, R_GAS, masses molaires, T0_WATER, etc.
+
+CONV
+ + creater: static/physics.js (63)
+ ++ filler: même fichier (64-76) — AU, atm, tau vapeur, refs O2/CH4/CCN, etc.
+
+CO2_EVENTS
+ + creater: static/event_bus.js (21)
+ ++ filler: même fichier (objet { on, off, emit })
+
+DATA
+ + creater: static/compute/initDATA.js (58)
+ ++ filler: initDATA.js — structure depuis KEYS + DATA['🎚️']
+ ++ filler: static/calculations_h2o.js — cycle eau, fractions, 📛
+ ++ filler: static/calculations_albedo.js — albédos, glace, géologie, nuages
+ ++ filler: static/calculations_atm.js — composition atm
+ ++ filler: static/compute/calculations_flux.js, compute.js — résultats calcul radiatif
+ ++ filler: static/sync_panels.js — DATA['🎚️'] via applyTuningPayload
+ ++ filler: static/loader_panels.js — 🔘🎞, 👉, etc.
+ ++ filler: UI dico (createDicoHtml → handlers sur champs)
+ ++ filler: doc/test_*.html — window.DATA = {} si absent
+
+DASH_PATTERNS
+ + creater: static/patterns.js (14)
+ ++ filler: même fichier (tableau)
+
+DASH_PATTERN_DOT_INDEX
+ + creater: static/patterns.js (17)
+ ++ filler: même fichier (0)
+
+DASH_PATTERN_SOLID_INDEX
+ + creater: static/patterns.js (18)
+ ++ filler: même fichier (5)
+
+DASH_PATTERN_REF_START
+ + creater: static/patterns.js (21)
+ ++ filler: même fichier (1)
+
+DASH_PATTERN_REF_COUNT
+ + creater: static/patterns.js (22)
+ ++ filler: même fichier (4)
+
+DESC
+ + creater: static/compute/dico.js (405)
+ ++ filler: même fichier (descriptions par clé)
+
+DETAIL_LOG_TEXT
+ + creater: static/debug.js (123)
+ ++ filler: même fichier (concaténation lignes de log)
+
+EARTH
+ + creater: static/physics.js (81)
+ ++ filler: même fichier (82-119) — seuils glace, évaporation, iris, précip, albédos 🪩🍰
+
+FINE_TUNING_BOUNDS
+ + creater: static/tuning/fine_tuning_bounds.js (19)
+ ++ filler: même fichier (objet littéral)
+
+FINE_TUNING_TRIALS
+ + creater: html/scie_compute.html (1165)
+ ++ filler: même fichier (tableau essais)
+
+FORM
+ + creater: static/compute/dico.js (406)
+ ++ filler: même fichier (formules / types champs)
+
+GEOTHERMAL_FLUX
+ + creater: static/flux_manager.js (66), organigramme/organigramme.js (4494, 4500 fallback)
+ ++ filler: flux_manager (valeur calculée), organigramme (fallback si absent)
+
+H2O
+ + creater: static/calculations_h2o.js (545)
+ ++ filler: même fichier (fonctions cycle eau)
+
+KEYS
+ + creater: static/compute/dico.js (404)
+ ++ filler: même fichier (objet catégories → clés)
+
+LOGOS
+ + creater: static/compute/alphabet.js (339, alias CHARS)
+ ++ filler: même fichier
+
+OVERRIDES
+ + creater: static/timeline/configTimeline.js (441)
+ ++ filler: même fichier (443-444) — useEpochIceFixed, ['⛄']
+
+PHYS
+ + creater: static/physics.js (128)
+ ++ filler: même fichier (fonctions exposées)
+
+PLANCK_TEMPERATURES
+ + creater: static/plot.js (49), static/courbes/plot.js (85)
+ ++ filler: même fichier (tableau [180, 225, 255, 275, 300, 315])
+
+PLOT_PANEL_READY
+ + creater: static/main.js (624)
+ ++ filler: même fichier (true quand module plot chargé)
+
+SOLAR_CONSTANT
+ + creater: static/flux_manager.js (26), static/climate.js (178), organigramme/organigramme.js (4490 fallback)
+ ++ filler: flux_manager, climate (valeur), organigramme (fallback)
+
+STATE
+ + creater: static/physics.js (125)
+ ++ filler: static/calculations_albedo.js — iceDurationBlendState, iceEpochFixedState, iceCoverageRampState, etc.
+
+SYNC_STATE
+ + creater: static/sync_panels.js (27)
+ ++ filler: même fichier (27-31 init), (52-54 epochId, animEnabled, ticTime dans syncToScie)
+
+TEMP_HABITABLE_MIN
+TEMP_HABITABLE_MAX
+TEMP_HABITABLE_OPTIMAL
+ + creater: static/climate.js (179-181)
+ ++ filler: même fichier
+
+TIMELINE
+ + creater: static/timeline/configTimeline.js (390)
+ ++ filler: même fichier (tableau timeline défini au-dessus)
+
+TIMELINE_UPDATE_INTERVAL
+ + creater: static/timeline/timeline.js (201)
+ ++ filler: même fichier
+
+YEARS_PER_FRAME
+ + creater: static/timeline/timeline.js (198)
+ ++ filler: même fichier
+
+TUNING
+ + creater: static/tuning/model_tuning.js (14)
+ ++ filler: model_tuning.js (17-51) — TUNING.CLOUD_SW, TUNING.SOLVER
+ ++ filler: static/sync_panels.js (92-96) — recopie depuis DATA['🎚️']
+
+TUNING_BIBLIO
+ + creater: static/tuning/model_tuning_biblio.js (14)
+ ++ filler: même fichier (objet littéral)

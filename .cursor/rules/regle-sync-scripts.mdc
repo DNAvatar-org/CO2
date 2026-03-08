@@ -1,0 +1,29 @@
+---
+description: Pas d'asynchrone ; ordre de chargement par scripts séparés
+alwaysApply: true
+---
+
+# _REGLE_SYNC_SCRIPTS — Synchrone et ordre de chargement explicite
+
+Objectif: éviter l'asynchrone dans le code métier ; garantir l'ordre de chargement par des JS séparés.
+
+## Règles
+
+1. **Pas d'asynchrone** dans le code applicatif :
+   - Pas de `setTimeout` / `setInterval` pour ordonner l'exécution.
+   - Pas d'`async`/`await` ni de `.then()` ajoutés pour la logique métier (sauf contraintes existantes type `computeRadiativeTransfer` qui retourne une Promise).
+   - Privilégier l'init synchrone et l'ordre d'appel direct.
+
+2. **Ordre de chargement** :
+   - Utiliser des **fichiers JS séparés** et des balises `<script src="...">` dans l'ordre voulu.
+   - Ne pas mettre `async` ni `defer` sur les scripts métier (ordre garanti par l'ordre des balises).
+   - Exemple : `model_tuning.js` → `configTimeline.js` → `calculations_flux.js` (déjà en place dans scie_compute.html).
+
+3. **Si une dépendance doit être disponible avant un module** :
+   - Ajouter un script qui définit cette dépendance, chargé avant le module qui l'utilise.
+   - Éviter les vérifications du type "attendre que X soit chargé" via Promise/setTimeout.
+
+## Exceptions
+
+- MathJax / libs externes en CDN peuvent rester en `async` si nécessaire.
+- Code existant qui expose une Promise (ex. `runComputeInParent`, `computeRadiativeTransfer`) : ne pas refactoriser en sync si cela impose un changement d'architecture majeur.
