@@ -21,8 +21,8 @@
 :root {
     /* Variable pour la couleur de base - s'adapte automatiquement si changée */
     --base-color: green;
-    /* Hauteur max contenu visu-panel : s'adapte au viewport pour éviter scrollbar/zone violette (desktop) */
-    --visu-h: min(665px, calc(100vh - 165px));
+    /* Hauteur max contenu visu-panel : remplit jusqu'au footer (réserve onglets + footer) */
+    --visu-h: min(665px, calc(100vh - 120px));
     /* Hauteur utile des panneaux glass alignés en bas (desktop) */
     --visu-panel-content-h: calc(var(--visu-h) - 16px);
 }
@@ -848,7 +848,7 @@ h1 {
 /* Boutons de la frise chronologique - compact comme horizontale (sans noms) */
 .epoch-btn {
     font-size: 22px;
-    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    font-family: var(--font-emoji);
     background: none !important;
     border: none !important;
     border-radius: 50%;
@@ -1580,7 +1580,6 @@ h1 {
 .credits-footer {
     margin-top: auto;
     margin-bottom: 0;
-    /* Pousser le footer en bas */
     padding-bottom: 5px;
     background: rgba(255, 255, 255, 0.05);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -1591,36 +1590,15 @@ h1 {
 .credits-content {
     display: flex;
     flex-direction: column;
-    font-size: 10px;
-    line-height: 1.4;
+    align-items: center;
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
-.credits-line {
-    font-weight: 300;
-    font-style: normal;
-}
-
-/* Non-A (non aristotélicien), ref. Van Vogt 1945 */
-.credits-nonA {
-    display: inline-block;
-    margin-right: 0px;
-    margin-left: 6px;
-    vertical-align: middle;
-    font-size: 1em;
-}
-
-.credits-nonA .mjx-container,
-.credits-nonA .mjx-math {
-    display: inline-block !important;
-    margin-right: -10px;
-    line-height: 0;
-    text-indent: -2px;
-    font-weight: bold;
-    font-size: 1em !important;
-}
-
-.credits-nonA .mjx-container [class*="mjx-"] {
-    font-size: inherit !important;
+/* Taille pour les lignes (GitHub, Doc, Physique) */
+.credits-footer .credits-content .credits-row {
+    font-size: 0.7em;
 }
 
 .credits-doc-label {
@@ -1629,7 +1607,8 @@ h1 {
     margin-right: 4px;
 }
 
-.credits-footer a {
+/* Liens des lignes GitHub/Doc/Physique uniquement (pas la signature injectée) */
+.credits-footer .credits-row a {
     text-decoration: none;
     transition: color 0.2s;
     pointer-events: auto !important;
@@ -1638,80 +1617,30 @@ h1 {
     cursor: pointer;
 }
 
-.credits-footer a:hover {
+.credits-footer .credits-row a:hover {
     text-decoration: underline;
 }
 
-.credits-footer strong {
+.credits-footer .credits-row strong {
     font-weight: 500;
 }
 
-/* Bouton Tipeee : contient ☕ + nonA + speech. Zone cliquable = tout le bloc. Contour = tasse seule. */
-.credits-footer .tipeee-btn {
-    width: auto;
-    min-height: 40px;
-    border-radius: 8px;
-    border: none;
-    font-size: 24px;
-    font-weight: bold;
-    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
-    cursor: pointer;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    text-align: left;
-    line-height: 1.3;
-    background: none !important;
-    padding: 6px 10px;
-    margin: 0 1px;
-    vertical-align: middle;
-    white-space: normal;
-    color: #00ff00;
+/* credits-links uniquement : une seule ligne (GitHub | Doc | Physique → utf8) */
+.credits-links {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 0.35em;
 }
-
-.credits-footer .tipeee-btn .tipeee-btn-cup {
-    flex-shrink: 0;
-    width: 35px;
-    font-size: 28px;
-    line-height: 1;
-    filter: grayscale(100%);
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-        0 0 4px rgba(255, 255, 255, 0.7),
-        0 0 6px rgba(255, 255, 255, 0.5);
-    transition: filter 0.3s ease;
-}
-
-.credits-footer .tipeee-btn .credits-territory {
-    color: #00ff00;
-    text-shadow: none;
+.credits-links > .credits-row {
     display: inline-block;
-    font-size: 10px;
-    line-height: 1.3;
-    text-align: left;
-    max-width: 12em;
-    font-family: Tahoma, 'Segoe UI', Roboto, sans-serif;
-    font-weight: 300;
 }
-
-/* Rollover : seule la tasse passe en couleur, Ā et texte restent verts */
-.credits-footer .tipeee-btn.hover-active {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+.credits-links > .credits-row + .credits-row::before {
+    content: " | ";
+    color: inherit;
+    margin-right: 0.35em;
 }
-
-.credits-footer .tipeee-btn.hover-active .tipeee-btn-cup {
-    filter: grayscale(0%);
-}
-
-.credits-footer .tipeee-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-}
-
-
-
 
 /* ==========================================================================
    Space Theme Improvements - Flux Diagram Glow Effects

@@ -6,16 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bilan Radiatif Terrestre</title>
     <script>
-        // Variable globale pour la langue
         window.lang = 'fr';
-
-        // Fonction pour obtenir l'URL Tipeee selon la langue
-        window.getTipeeeURL = function () {
-            return window.lang === 'fr'
-                ? 'https://fr.tipeee.com/dnavatar/'
-                : 'https://en.tipeee.com/dnavatar/';
-        };
-
         // Fonction pour obtenir le lien de licence selon la langue
         window.getLicenseURL = function () {
             // Toujours utiliser le lien officiel pour l'instant
@@ -67,13 +58,24 @@
         };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="stylesheet" href="static/emoji-fonts.css">
     <link rel="stylesheet" href="static/style.css">
     <link rel="stylesheet" href="static/buttons/ergo_button.css">
     <link rel="stylesheet" href="static/buttons/buttons.css">
     <link rel="stylesheet" href="static/FPS/FPS.css">
     <link rel="stylesheet" href="organigramme/organigramme.css">
     <link rel="stylesheet" href="static/planet-effect.css">
-    <link rel="stylesheet" href="static/logo-nonA/logo-nonA.css">
+    <script>
+        (function () {
+            var host = window.location.hostname || '';
+            if (host === 'localhost' || host === '127.0.0.1') {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'static/proggy-local-override.css';
+                document.head.appendChild(link);
+            }
+        })();
+    </script>
     <style>
         /* Onglets : vert si selected, gris si non-selected, rollovers colorés (comme epoch-btn/ergo-button) */
         .tabs-bar {
@@ -152,35 +154,24 @@
 
     <footer class="credits-footer">
         <div class="credits-content">
-            <div class="credits-line">
-                <font size="3">©</font>2026 <a href="https://dnavatar.org" target="_blank" rel="noopener noreferrer">DNAvatar.org</a> -
-                <button class="btn tipeee-btn" id="tipeee-donation"
-                    onclick="window.open(window.getTipeeeURL(), '_blank', 'noopener,noreferrer')"
-                    title="Offrez moi un café">
-                    <span class="tipeee-btn-cup">☕</span>
-                    <span class="logo-nonA" aria-hidden="true" title="Non-A"><span class="char">Ā</span></span>
-                    <span class="credits-territory">La carte c'est le territoire.<br>Le territoire c'est le code.</span>
-                </button>
-            </div>
-            <div class="credits-line">
-                GitHub : <a href="https://github.com/DNAvatar-org/CO2" target="_blank" rel="noopener noreferrer">CO2</a>
-                |
-                <a href="https://commonsclause.com/" target="_blank" rel="noopener noreferrer"
-                    id="license-link">Apache License 2.0</a>
-            </div>
-            <div class="credits-line">
-                <span class="credits-doc-label">Doc :</span>
-                <a href="#" onclick="event.preventDefault(); openPageModal('./static/compute/alphabet.html', '🔡 Alphabet');">🔡 Alphabet</a> |
-                <a href="#" onclick="event.preventDefault(); openPageModal('./static/compute/dico.html', '📖 Dictionnaire');">📖 Dictionnaire</a>
-            </div>
-            <div class="credits-line">
-                <span class="credits-doc-label"></span>Physique :</span>
-                <a href="#" onclick="event.preventDefault(); openPageModal('html/equation.html', '📐 Équations', null, 'tall');">📐 Équations</a> |
-                <a href="#" onclick="event.preventDefault(); openPageModal('html/Algorithmes.html', '🧮 Algorithmes', null, 'tall');">🧮 Algorithmes</a> |
-                <a href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>
+            <div data-tipeee-footer-inject></div>
+            <script src="https://dnavatar.org/pages/logo-nonA/DNAvatar_signature.js"></script>
+            <div class="credits-links">
+                <div class="credits-row">
+                    <span class="credits-doc-label">GitHub :</span> <a href="https://github.com/DNAvatar-org/CO2" target="_blank" rel="noopener noreferrer">CO2</a>&nbsp;|&nbsp;<a href="https://commonsclause.com/" target="_blank" rel="noopener noreferrer"
+                        id="license-link">Apache License 2.0</a>
+                </div>
+                <div class="credits-row">
+                    <span class="credits-doc-label">Doc :</span>
+                    <a href="#" onclick="event.preventDefault(); openPageModal('./static/compute/alphabet.html', '🔡 Alphabet');">🔡 Alphabet</a>&nbsp;|&nbsp;<a href="#" onclick="event.preventDefault(); openPageModal('./static/compute/dico.html', '📖 Dictionnaire');">📖 Dictionnaire</a>
+                </div>
+                <div class="credits-row">
+                    <span class="credits-doc-label">Physique :</span>
+                    <a href="#" onclick="event.preventDefault(); openPageModal('html/equation.html', '📐 Équations', null, 'tall');">📐 Équations</a>&nbsp;|&nbsp;<a href="#" onclick="event.preventDefault(); openPageModal('html/Algorithmes.html', '🧮 Algorithmes', null, 'tall');">🧮 Algorithmes</a>&nbsp;|&nbsp;<a href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>
+                </div>
             </div>
             <!--
-            <div class="credits-line">
+            <div class="credits-row">
                 Inspiration: <a href="https://sciencetonnante.wordpress.com/" target="_blank"
                     rel="noopener noreferrer">Science étonnante</a> |
                 <a href="https://www.youtube.com/watch?v=ewc8FBtEKPs" target="_blank" rel="noopener noreferrer">Vidéo
