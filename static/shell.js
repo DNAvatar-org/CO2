@@ -1,8 +1,10 @@
 // File: shell.js - Dispatch des sorties calcul vers le panel actif (visu ou scie)
-// Desc: En français, dans l'architecture, je suis le shell : toutes les sorties calcul (convergence, texture, logs, etc.)
-//       passent par moi et sont envoyées au panel courant via current.dataInput(payload).
-//       En standalone (visu_ ou scie_ ouvert sans index), le loader charge les mêmes JS et current = cette page.
-//       À terme : thread calculs spectraux + thread UI indépendant ; pas d'async ici sauf si requis.
+// Desc: Couche de routage unique entre moteur de calcul et affichage.
+//       - Entrée calcul → shell : tout (convergenceStep, compute:done, etc.) passe par dataInput(payload)
+//         et est envoyé au panel actif (visu ou scie) via current.dataInput ; buffer convergence pour restauration scie à l'ouverture onglet.
+//       - Entrée utilisateur → shell : setEpoch, runCompute, applyStateFromScie, applyTuningFromScie sont le point d'entrée des boutons
+//         et délèguent à sync_panels (setEpoch, runComputeInParent, etc.).
+//       En standalone (visu_ ou scie_ sans index), current = cette page.
 // Version 1.0.6
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -20,7 +22,7 @@
 (function () {
     'use strict';
 
-    var LOG = function (msg) { console.log('[shell] ' + msg); };
+    var LOG = function () { /* logs désactivés */ };
 
     /** Référence au panel actif (visu ou scie). API : { dataInput: function(payload) {} } */
     var current = null;

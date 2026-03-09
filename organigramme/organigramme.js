@@ -3943,11 +3943,7 @@ window.updateFluxLabels = function (eventId) {
     const deltaStr = (d.delta != null && Number.isFinite(Number(d.delta))) ? Number(d.delta).toFixed(3) : "—";
     const fpsStr = (typeof window.fps === "number" && Number.isFinite(window.fps)) ? window.fps.toFixed(1) : "—";
     const msg = "bins=" + (d.bins != null ? d.bins : "—") + " step=" + (d.step != null ? d.step : "—") + " delta=" + deltaStr + " fps=" + fpsStr;
-    if (typeof window.pd === "function") {
-      window.pd("updateFluxLabels", "organigramme.js", msg);
-    } else {
-      console.log("[updateFluxLabels] " + msg);
-    }
+    if (typeof window.pd === "function") window.pd("updateFluxLabels", "organigramme.js", msg);
   }
 
   switch (eventId) {
@@ -4490,29 +4486,8 @@ window.updateFluxLabels = function (eventId) {
     window.FluxManager.updateAllFluxes(window.currentEpochName);
   }
 
-  // Récupérer les constantes mises à jour par FluxManager (fallback depuis DATA si appel avant setEpoch)
-  if (
-    typeof window.SOLAR_CONSTANT === "undefined" ||
-    window.SOLAR_CONSTANT === null
-  ) {
-    var fallback =
-      window.DATA && window.DATA["☀️"] && window.DATA["☀️"]["🧲☀️🎱"] != null
-        ? window.DATA["☀️"]["🧲☀️🎱"] * 4
-        : 1361;
-    window.SOLAR_CONSTANT = fallback;
-  }
-  if (
-    typeof window.GEOTHERMAL_FLUX === "undefined" ||
-    window.GEOTHERMAL_FLUX === null
-  ) {
-    var geoFallback =
-      window.DATA && window.DATA["🌕"] && window.DATA["🌕"]["🧲🌕"] != null
-        ? window.DATA["🌕"]["🧲🌕"]
-        : 0.087;
-    window.GEOTHERMAL_FLUX = geoFallback;
-  }
-  const SOLAR_CONSTANT = window.SOLAR_CONSTANT;
-  const GEOTHERMIE_FLUX = window.GEOTHERMAL_FLUX;
+  const SOLAR_CONSTANT = CONST.SOLAR_CONSTANT;
+  const GEOTHERMIE_FLUX = D['🌕']['🧲🌕'];
 
   // Pour les calculs de moyenne (si utilisés plus bas)
   const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
@@ -4579,11 +4554,7 @@ window.updateFluxLabels = function (eventId) {
   // 🔒 TOUJOURS utiliser calculateSolarFluxAbsorbed (même en corps noir)
   // La fonction utilise la formule : solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm
   // En corps noir, albedo = 0, donc solar_flux_reflected_wm = 0, donc solar_flux_absorbed_wm = solar_flux_average_wm
-  solar_flux_absorbed =
-    typeof window !== "undefined" &&
-    typeof window.calculateSolarFluxAbsorbed === "function"
-      ? window.calculateSolarFluxAbsorbed(T0_num, h2o_enabled, geo_flux)
-      : SOLAR_FLUX_AVERAGE * (1 - albedo_num); // Fallback si la fonction n'est pas disponible
+  solar_flux_absorbed = window.calculateSolarFluxAbsorbed(T0_num, h2o_enabled, geo_flux);
 
   // Calculer le flux réfléchi avec l'albedo (venant de data.albedo ou recalculé)
   const flux_reflected = SOLAR_FLUX_AVERAGE * albedo_num;
@@ -5285,11 +5256,8 @@ window.updateFluxLabels = function (eventId) {
     arrowLabels.forEach((label) => label.classList.remove("zero-value"));
   }
 
-  // Surface -> Albedo : flux émis par la surface (approximation avec Stefan-Boltzmann)
-  // 🔒 FORMULE TOUJOURS UTILISÉE : flux_emission_surface = σT₀⁴ (pas de cas particulier)
-  // La surface émet toujours selon Stefan-Boltzmann, même sans atmosphère
-  const STEFAN_BOLTZMANN = 5.670374419e-8;
-  const flux_emission_surface = STEFAN_BOLTZMANN * Math.pow(T0_num, 4);
+  // Surface -> Albedo : flux émis par la surface (σT₀⁴, CONST.STEFAN_BOLTZMANN)
+  const flux_emission_surface = window.CONST.STEFAN_BOLTZMANN * Math.pow(T0_num, 4);
 
   // Mettre à jour l'épaisseur de l'atmosphère dans le label de l'arc Terre->Albedo
   // Utiliser calculateAtmosphereProperties pour obtenir la vraie hauteur physique
@@ -5467,23 +5435,16 @@ window.updateFields = function (fieldIdsOrValues, values = null) {
           // Mapper les data-id aux noms de variables possibles
           const varMap = {
             solar_flux_average_wm: () =>
-              window.SOLAR_CONSTANT ? window.SOLAR_CONSTANT / 4 : null,
-            solar_flux_absorbed_wm: () => {
-              if (
-                typeof window.calculateSolarFluxAbsorbed === "function" &&
-                window.plotData
-              ) {
-                const T0 = window.plotData.temp_surface || 0;
-                const h2o_enabled = window.waterVaporEnabled || false;
-                return window.calculateSolarFluxAbsorbed(
-                  T0,
-                  h2o_enabled,
-                  window.GEOTHERMAL_FLUX,
-                );
-              }
-              return null;
-            },
-            core_flux_wm: () => window.GEOTHERMAL_FLUX || null,
+              window.CONST.SOLAR_CONSTANT / 4,
+            solar_flux_absorbed_wm: () =>
+              window.plotData
+                ? window.calculateSolarFluxAbsorbed(
+                    window.plotData.temp_surface,
+                    window.waterVaporEnabled,
+                    window.DATA['🌕']['🧲🌕'],
+                  )
+                : null,
+            core_flux_wm: () => window.DATA['🌕']['🧲🌕'],
             forcing_total: () =>
               window.plotData ? window.plotData.forcing_total : null,
             co2_percent: () =>

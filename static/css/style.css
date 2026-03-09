@@ -1,0 +1,1887 @@
+@font-face {
+    font-family: '04B_03';
+    src: url('../../fonts/04B_03__.TTF') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'ProggyDotted';
+    src: url('../../fonts/ProggyDotted Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Variable pour la couleur de base (vert vif) */
+    --base-color: #00ff00;
+    /* Hauteur visu : titre + marge + zone commune (timeline = plot = organigramme) */
+    --visu-tabs-h: 28px;
+    /* Footer : horizontal = min 50px (peut grandir jusqu'à max), vertical = min 0 (media 999px) */
+    --visu-footer-min-h: 20px;
+    --visu-footer-max-h: 120px;
+    --visu-margin: 8px;
+    --visu-title-h: 70px;
+    --visu-gap: 5px;
+    --visu-reserve: calc(var(--visu-tabs-h) + var(--visu-margin) + var(--visu-footer-min-h));
+    /* Hauteur max du panel visu (pour laisser place au footer) */
+    --visu-panel-max-h: 670px;
+    /* Container : horizontal = 670px, vertical = 670*2 + marge */
+    --visu-container-marge: 80px;
+    --visu-container-h-vertical: calc(var(--visu-panel-max-h) * 2 + var(--visu-container-marge));
+    /* Hauteur max de la zone visu (c’est cette variable qui aligne les 3 divs ; max pour laisser place au footer) */
+    --visu-h-max: 580px;
+    --visu-h: min(var(--visu-h-max), calc(100vh - var(--visu-reserve)));
+    /* Hauteur commune timeline, plot, organigramme (alignés en bas) = visu-h moins titre et gap */
+    --visu-panel-content-h: calc(var(--visu-h) - var(--visu-title-h) - var(--visu-gap));
+}
+
+/* Classe commune panneaux glass — dégradé + bords relief (visu, milankovitch) */
+.divGlass {
+    /*background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0) 100%), rgba(0, 0, 0, 0.35);*/
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    border-top-color: rgba(255, 255, 255, 0.18);
+    border-left-color: rgba(255, 255, 255, 0.12);
+    border-right-color: rgba(0, 0, 0, 0.45);
+    border-bottom-color: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+}
+
+body {
+    font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;
+    background: url('../img/fond.png') center center / cover no-repeat fixed;
+    min-height: 100vh;
+    padding: 20px 10px 0 10px;
+    color: var(--base-color);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Liens : éclaircir pour non visité, foncer pour visité */
+a:link {
+    color: color-mix(in srgb, var(--base-color) 50%, white 50%);
+    /* Éclaircir le vert de 50% (ajout de blanc) pour les liens non visités */
+}
+
+a:visited {
+    color: color-mix(in srgb, var(--base-color) 70%, black 30%);
+    /* Foncer le vert de 30% pour les liens visités */
+}
+
+a:hover {
+    color: var(--base-color);
+    /* Retour à la couleur de base au survol */
+}
+
+a:active {
+    color: color-mix(in srgb, var(--base-color) 50%, black 50%);
+    /* Encore plus foncé au clic */
+}
+
+/* Style pour les exposants */
+sup {
+    vertical-align: baseline;
+    position: relative;
+    top: -0.7em;
+    font-size: 0.65em;
+    line-height: 0;
+}
+
+/* Media query : si width < 340, supprimer la marge de la page */
+@media (max-width: 339px) {
+    body {
+        padding: 0;
+    }
+}
+
+/* Styles FPS déplacés dans static/FPS/FPS.css */
+
+.timeline-display-container {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 12px 16px;
+    border-radius: 5px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    z-index: 1000;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.timeline-label {
+    font-weight: bold;
+}
+
+.timeline-value {
+    font-weight: bold;
+    min-width: 60px;
+}
+
+.timeline-note {
+    font-size: 11px;
+    font-style: italic;
+}
+
+.container {
+    /* max-width: 1400px; */
+    margin: 0 auto;
+    display: flex;
+    /* Flexbox pour répartir les colonnes */
+    flex-direction: row;
+    align-items: stretch;
+    /* Étirer les colonnes pour avoir la même hauteur */
+    gap: 5px;
+    /* Espacement entre les colonnes */
+    width: 100%;
+    max-width: 100%; /* Empêche overflow → scrollbar, force le graph à se réduire */
+    min-width: 0; /* Indispensable : permet au flex child de shrink */
+    flex: 1;
+    /* Prendre tout l'espace disponible pour pousser le footer en bas */
+}
+
+/* Dans visu-panel : hauteur = 100% du panel (déduite du viewport moins onglets/footer) */
+#visu-panel {
+    --visu-h: 100%;
+    --visu-panel-content-h: calc(var(--visu-h) - var(--visu-title-h) - var(--visu-gap));
+}
+/* Dans visu-panel : .container hauteur 100% (desktop = panel 670px), vertical = 670*2+marge en media */
+#visu-panel .container {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* Clipper le margin overflow (zone violette) sans modifier le plot */
+#visu-panel .right-column {
+    overflow: hidden;
+}
+
+/* Flux-diagram, timeline, plot : 100% du parent partout (pas de doublon 999/1000) */
+#visu-panel .flux-diagram-wrapper {
+    flex: 1 1 0;
+    min-height: 0;
+}
+#visu-panel .flux-diagram-wrapper .flux-diagram {
+    height: 100%;
+    min-height: 0;
+}
+#visu-panel .left-timeline {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+}
+#visu-panel .left-timeline .timeline-display,
+#visu-panel .timeline-display {
+    height: 100%;
+    min-height: 0;
+    flex: 1 1 0;
+}
+#visu-panel #plot-container { height: 100%; }
+#visu-panel .plot-container-wrapper {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+}
+
+/* Desktop (width >= 1000) : uniquement ce qui change (right-column colonne, hauteurs explicites) */
+@media (min-width: 1000px) {
+    #visu-panel .right-column {
+        min-height: var(--visu-h);
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+.left-column {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    flex: 0 0 auto;
+    max-height: var(--visu-panel-max-h);
+}
+
+.left-left {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 0 0 auto;
+}
+
+/* Vertical (max-width 999px) : container = 670*2+marge, colonnes majorées 670px */
+/* Mouvement footer : en vertical le footer peut aller à 0 (réserve réduite, plus de place au contenu) */
+@media (max-width: 999px) {
+    :root {
+        --visu-footer-min-h: 0;
+    }
+    #visu-panel .container {
+        height: var(--visu-container-h-vertical);
+        min-height: 0;
+        overflow: visible;
+    }
+    #visu-panel .left-column,
+    #visu-panel .right-column {
+        flex: 0 0 auto;
+        min-height: var(--visu-panel-content-h);
+        max-height: var(--visu-panel-max-h);
+    }
+    #visu-panel .flux-diagram-wrapper {
+        flex: 0 0 auto;
+        height: var(--visu-panel-content-h);
+    }
+    #visu-panel .left-timeline {
+        flex: 1 1 0;
+        min-height: var(--visu-panel-content-h);
+        height: 100%;
+    }
+    #visu-panel .left-left {
+        flex: 0 1 auto;
+        min-height: 0;
+    }
+}
+
+/* Desktop (min-width 1000px) : container = 670px, titre + flux + timeline/plot */
+@media (min-width: 1000px) {
+    #visu-panel .container {
+        height: var(--visu-panel-max-h);
+    }
+    #visu-panel .title-container {
+        flex: 0 0 var(--visu-title-h);
+    }
+    #visu-panel .flux-diagram-wrapper {
+        flex: 0 0 var(--visu-panel-content-h);
+    }
+    #visu-panel .timeline-display {
+        flex: 0 0 var(--visu-panel-content-h);
+    }
+    /* plot-container-wrapper : pas de flex 0 0, garde flex: 1 1 0 + height 100% (comme left-timeline) */
+}
+
+.left-timeline {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+}
+
+.right-column {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 15px;
+    flex: 1 1 auto;
+    max-height: var(--visu-panel-max-h);
+    width: 100%;
+    min-width: 0; /* Permet de shrink en dessous de 900px quand l'espace manque */
+    max-width: 900px;
+    height: var(--visu-h);
+}
+
+.left-panels {
+    background: transparent;
+    border-radius: 20px;
+    padding: 0px;
+    box-shadow: none;
+    display: block;
+    /* Pas de flex colonnes, divs indépendantes */
+}
+
+h1 {
+    margin-bottom: 8px;
+    text-align: center;
+    font-size: 24px;
+    /* font-family: 'Verdana', sans-serif; */
+}
+
+
+.timeline-in-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.timeline-in-title .timeline-label {
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.timeline-in-title .timeline-value {
+    font-weight: bold;
+    min-width: 50px;
+    font-size: 13px;
+}
+
+.timeline-in-title .timeline-separator {
+    margin: 0 4px;
+}
+
+.timeline-in-title .timeline-note {
+    font-size: 10px;
+    font-style: italic;
+    margin-left: 4px;
+}
+
+/* Classe commune : layout/padding ; fond/bords/radius fournis par .divGlass */
+.title-container,
+.timeline-display,
+.button-container,
+.reference-container,
+.plot-container-wrapper {
+    padding: 12px 16px;
+    /* Pas de cursor pointer ici - seulement sur les boutons et le graphique */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.reference-toggle {
+    width: 100%;
+    padding: 12px 16px;
+    background: #667eea;
+    border: none;
+    border-radius: 10px 10px 0 0;
+    cursor: pointer;
+    /* Curseur pointer uniquement pour le toggle */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.reference-toggle:hover {
+    background: #5568d3;
+}
+
+.reference-toggle-icon {
+    transition: transform 0.3s;
+    font-size: 12px;
+}
+
+.reference-container.collapsed .reference-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.reference-content {
+    max-height: 600px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease-out;
+    padding: 15px;
+}
+
+.reference-container.collapsed .reference-content {
+    max-height: 0;
+    padding: 0 15px;
+    overflow: hidden;
+}
+
+.reference-section-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    margin-top: 20px;
+}
+
+.reference-section-title:first-child {
+    margin-top: 0;
+}
+
+.algorithms-container {
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+/* Même logique que #visu-panel .left-timeline : flex + height 100% pour remplir le conteneur */
+.plot-container-wrapper {
+    padding: 0 0 0 0;
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    position: relative;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    width: 100%;
+    min-width: 0; /* Indispensable : permet au flex child de shrink pour que le plot resize */
+    max-width: 900px;
+    font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+}
+
+/* Media query : si width >= 640, plot-container-wrapper a une taille réduite */
+/* Désactivé : la taille est gérée par le layout automatique */
+/* @media (min-width: 640px) {
+    .plot-container-wrapper {
+        width: 320px;
+        max-width: 320px;
+    }
+} */
+
+
+/* Hiérarchie des z-index :
+   - Fond blanc : 0 (par défaut)
+   - Spectre : 1 (au-dessus du fond, en dessous du quadrillage)
+   - Quadrillage : 20
+   - Courbes : 40
+   - Axes : 50 et 51
+   - Titre : 60
+*/
+
+/* Quadrillage (grid) - fond transparent pour voir le canvas en arrière-plan */
+#plot-container .bglayer,
+#plot-container .gridlayer {
+    z-index: 20 !important;
+    background: transparent !important;
+}
+
+/* Fond de Plotly - couleur gérée par PLOT_BACKGROUND_COLOR dans plot.js */
+/* Les règles !important ont été supprimées pour permettre à Plotly de gérer la couleur */
+/* background géré par plot_bgcolor dans Plotly pour #plot-container .main-svg et svg */
+
+#plot-container {
+    height: var(--visu-panel-content-h);
+    /* background géré par paper_bgcolor dans Plotly */
+    position: relative !important;
+    /* Pour permettre le positionnement absolu du titre */
+    margin-top: 0 !important;
+}
+
+.temp-display-cyan {
+    position: absolute;
+    top: 233px;
+    right: 95px;
+    font-size: 12px;
+    z-index: 100;
+    line-height: 1.0;
+    color: cyan;
+}
+
+.temp-display-red {
+    position: absolute;
+    top: 200px;
+    right: 95px;
+    font-size: 12px;
+    z-index: 100;
+    line-height: 1.0;
+    /* La couleur sera définie dynamiquement par JavaScript (color_current) */
+}
+
+/* Note sur l'échelle logarithmique - à gauche, très proche de la bande spectrale */
+/* Position basée sur PLOT_MARGINS = { l: 70, r: 70, t: 0, b: 75 } */
+/* Zone sous l'axe (40–50 μm) : CPU / threads disponibles pour futur worker */
+.plot-threads-info {
+    position: absolute;
+    bottom: 8px;
+    left: 80%;
+    right: 0;
+    font-size: 9px;
+    font-family: 'ProggyDotted', 'Tahoma', sans-serif;
+    z-index: 99;
+    pointer-events: none;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Variables pour ajuster taille/position : --infra-note-bottom, --infra-note-left, --infra-note-font-size */
+.infra-note {
+    position: absolute;
+    bottom: var(--infra-note-bottom, 45px);
+    left: var(--infra-note-left, 90px);
+    font-size: var(--infra-note-font-size, 8px);
+    font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    z-index: 100;
+    pointer-events: none;
+    text-align: left;
+    line-height: 1;
+    color: white;
+    /* Changé en blanc */
+    /* background: rgba(255, 255, 255, 0); /* Fond blanc transparent */
+    padding: 0 4px;
+    /* Petit padding pour que le fond entoure le texte */
+    border-radius: 2px;
+    /* Coins légèrement arrondis */
+}
+
+/* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
+#spectral-visualization {
+    position: absolute !important;
+    /* top et left sont gérés par JavaScript pour un positionnement précis */
+    border: none;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    z-index: 1 !important;
+    /* Au-dessus du fond (0) mais en dessous du quadrillage (20) */
+    background: transparent;
+    pointer-events: none !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    /* Forcer le z-index même si Plotly essaie de le modifier */
+    isolation: isolate !important;
+}
+
+/* Empêcher Plotly de modifier le z-index du canvas */
+#spectral-visualization[style*="z-index"] {
+    z-index: 1 !important;
+}
+
+/* Bornes absorption (H2O, CH4, CO2) : rollover + alt au-dessus du spectre */
+.absorption-band-indicator {
+    pointer-events: auto !important;
+    z-index: 1000 !important;
+    cursor: default;
+}
+
+/* Courbes (tracés) */
+#plot-container .plotlayer,
+#plot-container .cartesianlayer,
+#plot-container .trace {
+    z-index: 40 !important;
+}
+
+/* Masquer UNIQUEMENT la ligne horizontale de l'axe x */
+#plot-container g.xaxis path,
+#plot-container .xaxislayer-below path {
+    stroke: transparent !important;
+    fill: transparent !important;
+    opacity: 0 !important;
+}
+
+/* Garder les labels ET les ticks de l'axe x visibles */
+#plot-container .xaxis text,
+#plot-container .xtitle,
+#plot-container g.xaxis text {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Axes */
+#plot-container .xaxislayer-above,
+#plot-container .yaxislayer-above,
+#plot-container .xaxislayer-above text,
+#plot-container .yaxislayer-above text,
+#plot-container .xtitle,
+#plot-container .ytitle {
+    z-index: 50 !important;
+}
+
+#plot-container .xaxislayer-above {
+    z-index: 51 !important;
+}
+
+/* S'assurer que les titres des axes sont visibles */
+#plot-container .xtitle,
+#plot-container .ytitle,
+#plot-container .g-xtitle,
+#plot-container .g-ytitle,
+#plot-container [class*="xtitle"],
+#plot-container [class*="ytitle"],
+#plot-container .xaxis .axis-title,
+#plot-container .yaxis .axis-title {
+    z-index: 52 !important;
+    pointer-events: none;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Marge en bas pour le titre de l'axe X */
+#plot-container .xtitle,
+#plot-container .g-xtitle,
+#plot-container [class*="xtitle"],
+#plot-container .xaxis .axis-title {
+    margin-bottom: 30px !important;
+}
+
+/* Titre - Positionné en haut à droite du graphique */
+.plot-overlay-title {
+    position: absolute !important;
+    top: 10px !important;
+    right: 80px !important;
+    transform: none !important;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 15px;
+    border-radius: 5px;
+    text-align: right;
+    z-index: 60 !important;
+    pointer-events: none;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+    white-space: nowrap !important;
+    /* Titre sur une seule ligne */
+    color: var(--base-color);
+    /* color: #667eea (bleu) en réserve */
+}
+
+.plot-title {
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 10px;
+    padding: 8px 0;
+}
+
+.title-container {
+    text-align: center;
+    position: relative;
+    z-index: 10;
+    width: 395px;
+    height: var(--visu-title-h);
+    padding-bottom: 4px;
+    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+}
+
+.title-container h1 {
+    margin: 0;
+    position: relative;
+    z-index: 1000;
+}
+
+.title-subtitle {
+    font-size: 10px;
+    margin: 2px 0 0 0;
+    font-weight: normal;
+    line-height: 1.2;
+}
+
+.book-reference {
+    font-size: 11px;
+    font-style: italic;
+    margin-top: 5px;
+    text-align: center;
+}
+
+.book-reference a {
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.book-reference a:hover {
+    text-decoration: underline;
+}
+
+
+.timeline-buttons-wrapper {
+    display: block;
+    /* Divs indépendantes, pas de flex */
+}
+/*
+.timeline-display {
+    text-align: center;
+    padding: 0 0 20px 0;
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    width: 80px;
+    align-items: center;
+    height: 625px;
+    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+}
+*/
+
+/* 1. Section Époque (📜) - frise verticale */
+.visu_timeline-epoch-section {
+    height: 35px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 8px;
+    margin-bottom: 0px;
+    width: 100%;
+}
+
+/* 2. Section Date (📅) - trait en haut comme horloge-section */
+.visu_timeline-date-section {
+    width: 100%;
+    height: 45px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-date-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-hourglass {
+    font-size: 18px;
+    display: block;
+    cursor: default;
+    user-select: text;
+}
+
+.epoch-start-time {
+    font-size: 10px;
+    display: block;
+    font-weight: bold;
+    margin-top: 2px;
+}
+
+.timeline-display .info-time {
+    font-size: 10px;
+    font-weight: bold;
+    display: block;
+    margin-top: 2px;
+}
+
+/* Styles de boutons déplacés dans buttons.css */
+
+/* 2. Zone Horloge (🕰 + actions) - visu_ */
+.visu_timeline-horloge-section {
+    width: 100%;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset, 0 -1px 0 rgba(255, 255, 255, 0.1) inset;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3px 0;
+    height: 75px;
+}
+
+.visu_timeline-horloge-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.timeline-horloge-line1 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.horloge-icon {
+    font-size: 20px;
+    display: block;
+    cursor: default;
+    user-select: text;
+}
+
+.timeline-events-logos {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.timeline-event-logo {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    border: none;
+    /* Pas de border */
+    border-radius: 2px;
+    padding: 0;
+    box-sizing: border-box;
+    /* Support pour les boutons emojis */
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.timeline-event-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.timeline-event-logo:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    /* Pas de border au rollover */
+}
+
+.timeline-event-logo:active {
+    transform: scale(0.95);
+}
+
+/* 3. Frise verticale - visu_ ; pas de scrollbar */
+.visu_timeline-frise {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.visu_epochs-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 0;
+    overflow: hidden;
+}
+
+/* Ancien style pour compatibilité (peut être supprimé si plus utilisé) */
+.timeline-start-wrapper {
+    display: none;
+    /* Masqué car remplacé par visu_timeline-date-section */
+}
+
+.timeline-first-line {
+    display: none;
+    /* Masqué car remplacé */
+}
+
+.epoch-name {
+    display: none;
+    /* Masqué car remplacé */
+}
+
+.timeline-frise {
+    display: none;
+    /* Masqué car remplacé par visu_timeline-frise */
+}
+
+.epochs-container {
+    display: none;
+    /* Masqué car remplacé par visu_epochs-container */
+}
+
+.epoch-separator-item {
+    display: none;
+    /* Ancien style masqué */
+}
+
+.epoch-date-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 0;
+    width: 100%;
+}
+
+/* Timeline verticale : date centrée, sans trait */
+.epoch-date-item-vertical {
+    padding: 2px 0;
+}
+.epoch-date-item-vertical .epoch-date {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.75);
+    white-space: nowrap;
+}
+
+.epoch-date-item .epoch-date {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    font-weight: normal;
+}
+
+/* Boutons de la frise chronologique - compact comme horizontale (sans noms) */
+.epoch-btn {
+    font-size: 22px;
+    font-family: var(--font-emoji);
+    background: none !important;
+    border: none !important;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer !important;
+    padding: 2px;
+    transition: filter 0.3s ease, text-shadow 0.3s ease;
+    width: 32px;
+    height: 32px;
+    position: relative;
+    /* Par défaut : noir et blanc sans glow (glow uniquement pour selected) */
+    filter: grayscale(100%);
+    /* Pas de text-shadow par défaut pour les boutons non sélectionnés */
+    text-shadow: none;
+}
+
+/* Bouton sélectionné : couleur avec contour vert autour du logo */
+.epoch-btn.selected {
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    /* Couleur normale avec blur vert */
+    /* Contour vert autour du logo - ne change pas au rollover */
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+        0 0 4px rgba(0, 255, 0, 0.7),
+        0 0 6px rgba(0, 255, 0, 0.5),
+        0 0 8px rgba(0, 255, 0, 0.3) !important;
+}
+
+/* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
+.epoch-btn:hover {
+    /* Si non sélectionné : swap vers couleur, contour blanc au rollover */
+    filter: grayscale(0%);
+    /* Glow blanc au rollover pour les boutons non sélectionnés */
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+        0 0 4px rgba(255, 255, 255, 0.7),
+        0 0 6px rgba(255, 255, 255, 0.5);
+    cursor: pointer !important;
+    /* Curseur main au survol */
+}
+
+/* Rollover spécifique pour les boutons non sélectionnés : forcer le glow blanc */
+.epoch-btn:not(.selected):hover {
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+        0 0 4px rgba(255, 255, 255, 0.7),
+        0 0 6px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Pour les images dans les boutons (PNG) : utiliser drop-shadow car text-shadow ne marche pas */
+.epoch-btn img {
+    transition: filter 0.3s ease;
+    pointer-events: none; /* Laisse le clic passer au bouton */
+}
+
+.epoch-btn:not(.selected):hover img {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9)) 
+            drop-shadow(0 0 4px rgba(255, 255, 255, 0.7)) !important;
+}
+
+.epoch-btn.selected img {
+    /* Appliquer le glow vert aussi sur l'image quand sélectionné */
+    filter: drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) 
+            drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+}
+
+.epoch-btn.selected:hover {
+    /* Si sélectionné : swap vers noir et blanc, contour reste vert */
+    filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
+        0 0 4px rgba(0, 255, 0, 0.7),
+        0 0 6px rgba(0, 255, 0, 0.5),
+        0 0 8px rgba(0, 255, 0, 0.3) !important;
+    cursor: pointer !important;
+    /* Curseur main au survol */
+}
+
+/* Boutons du flux : même style que les boutons radio mais pour checkboxes */
+
+.epoch-date {
+    font-size: 8px;
+    text-align: center;
+    white-space: nowrap;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.epoch-separator {
+    font-size: 12px;
+    line-height: 1;
+    transform: translateY(-5px);
+}
+
+.left-top,
+.left-mid,
+.left-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.info-unit-header {
+    font-size: 11px;
+    margin-bottom: 8px;
+    padding-right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
+.info-time {
+    font-weight: bold;
+    font-size: 12px;
+    font-style: normal;
+    text-align: left;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Agrandir le sablier ⏳ dans le temps */
+.timeline-hourglass {
+    font-size: 1.5em;
+    /* 1.5x plus gros que le texte normal */
+    line-height: 1;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.info-unit-header .info-unit {
+    text-align: right;
+    font-style: italic;
+    /* Bleu pour (W/m²) */
+}
+
+.info-separator {
+    height: 1px;
+    background-color: rgba(128, 128, 128, 0.5);
+    margin: 8px 0;
+    width: 100%;
+}
+
+/* Ligne de séparation avec "_______" alignée à droite */
+.info-separator-line {
+    display: block !important;
+    text-align: right;
+    margin-bottom: -5px;
+    margin-top: -11px;
+    line-height: 0;
+    /* height: auto; */
+    /* min-height: 0px; */
+}
+
+.info-separator-line .info-forcing {
+    margin-left: 0;
+    /* Pas de margin-left auto car on est déjà aligné à droite */
+}
+
+.forcing-total-row {
+    font-weight: bold;
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 14px;
+    gap: 8px;
+}
+
+.info-row-vertical {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+.info-vertical-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.0;
+    /* Interligne minimal */
+    gap: 0;
+    /* Pas d'espace entre les éléments */
+}
+
+.info-vertical-stack>* {
+    line-height: 1.0;
+    margin: 0;
+    padding: 0;
+}
+
+.info-logo-name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    line-height: 1.0;
+}
+
+.info-logo-name-reverse {
+    flex-direction: row-reverse;
+}
+
+/* Pour CO2 avec row-reverse, inverser les order pour que emoji soit avant label visuellement */
+.info-logo-name-reverse .info-label {
+    order: 0;
+    /* En premier visuellement (mais inversé par row-reverse) */
+}
+
+.info-logo-name-reverse .info-emoji {
+    order: 1;
+    /* En second visuellement (mais inversé par row-reverse) */
+}
+
+/* Alignement optimisé pour les valeurs % et W/m² seulement */
+/* CO2 et H2O : les 2 champs à droite */
+.info-row-co2 .info-vertical-stack,
+.info-row-h2o .info-vertical-stack {
+    display: flex;
+    flex-direction: row;
+    /* Horizontal pour mettre les 2 champs côte à côte */
+    align-items: center;
+    justify-content: flex-end;
+    /* Aligner à droite */
+    gap: 8px;
+}
+
+/* CH4 : un champ au-dessus, l'autre en dessous */
+.info-row-ch4 .info-vertical-stack {
+    display: flex;
+    flex-direction: column;
+    /* Vertical */
+    align-items: center;
+    gap: 2px;
+}
+
+/* .info-vertical-stack .info-label, .info-vertical-stack .info-value, etc. héritent maintenant du body */
+
+.info-label {
+    font-weight: 500;
+    order: 1;
+    /* En second, après l'emoji */
+}
+
+.info-emoji {
+    font-size: 18px;
+    margin: 0 5px 0 0;
+    user-select: none;
+    order: 0;
+    /* En premier, avant le label */
+}
+
+/* Boutons remplaçant les emojis dans le rectangle Effet de Serre */
+.info-emoji-btn {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 18px !important;
+    margin: 0 5px 0 0 !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    order: 0;
+    /* En premier, avant le label */
+}
+
+.info-logo-name-reverse .info-emoji-btn {
+    order: 1;
+    /* En second visuellement (mais inversé par row-reverse) */
+}
+
+.info-value {
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    white-space: pre;
+    /* Préserver les espaces multiples */
+    font-size: 14px;
+    /* Réduire la taille pour mieux rentrer dans la bande */
+    line-height: 1.2;
+}
+
+.info-number {
+    font-weight: 600;
+}
+
+.info-unit {
+    font-weight: 400;
+    margin-left: 2px;
+    min-width: 30px;
+    /* Largeur fixe pour aligner les unités */
+    text-align: left;
+}
+
+/* Style commun pour tous les forçages (CO2, H2O, Alb., Total) */
+.info-forcing {
+    font-weight: 600;
+    font-size: 12px;
+    /* Réduire la taille pour mieux rentrer dans la bande */
+    line-height: 1.2;
+}
+
+/* Wrapper pour grouper button-container et synthese_Temp ensemble */
+.buttons-temp-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    flex: 0 0 auto;
+    height: fit-content;
+}
+
+.button-container {
+    width: fit-content;
+    display: flex;
+    flex-direction: column;
+    /* En vertical */
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    flex: 0 1 auto;
+    height: fit-content;
+}
+
+
+.button-row {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+/* Styles de boutons déplacés dans buttons.css */
+
+
+.legend-container {
+    width: fit-content !important;
+    /* max-width: fit-content !important; */
+    max-width: 260px;
+    position: absolute !important;
+    top: 70px !important;
+    /* Descendu d'une ligne (~20px) depuis 50px */
+    right: 80px !important;
+    padding: 4px 15px !important;
+    /* Réduit le padding vertical pour tasser la légende */
+    border-radius: 5px !important;
+    /*text-align: right !important;
+    /* Aligné à droite comme le titre */
+    color: var(--base-color);
+    /* color: #667eea (bleu) en réserve */
+}
+
+.legend-section {
+    margin-bottom: 10px;
+    width: fit-content;
+    line-height: 1.5;
+    color: white !important;
+}
+
+.legend-section * {
+    color: white !important;
+}
+
+.legend-section:last-child {
+    margin-bottom: 0;
+}
+
+.legend-title {
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--base-color);
+    /* color: #667eea (bleu) en réserve */
+}
+
+.legend-planck-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: fit-content;
+    overflow-x: visible;
+    gap: 0px 33px;
+}
+
+.legend-planck-item {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
+.legend-equilibre {
+    font-size: 11px;
+    /* 🔒 Couleur dynamique appliquée via JavaScript (updateLegend) */
+    text-align: left;
+    line-height: 1.3;
+}
+
+/* 🔒 Couleur dynamique appliquée via JavaScript, pas de couleur fixe ici */
+
+.legend-equilibre sub {
+    font-size: 0.75em;
+    vertical-align: baseline;
+    position: relative;
+    top: 0.2em;
+}
+
+.legend-line-dotted {
+    display: inline-block;
+    width: 30px;
+    height: 2px;
+    border-top: 2px dotted cyan;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+
+.legend-line-solid {
+    display: inline-block;
+    width: 30px;
+    height: 2px;
+    border-top: 2px solid cyan;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+
+#legend-equilibre-curves {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.legend-equilibre-item {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+}
+
+.legend-color-dashed {
+    width: 25px;
+    height: 1px;
+    margin-right: 10px;
+    border-top: 1px dashed;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    flex-shrink: 0;
+}
+
+.legend-pattern {
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.legend-color-solid {
+    width: 25px;
+    height: 2px;
+    margin-right: 10px;
+    border-top: 2px solid;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+}
+
+.legend-text {
+    font-weight: 500;
+    color: white;
+    /*color: var(--base-color); /* color: #667eea (bleu) en réserve */
+}
+
+.legend-formula-container {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+}
+
+.legend-formula {
+    font-size: 10px;
+    text-align: center;
+    color: var(--base-color);
+    /* color: #667eea (bleu) en réserve */
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.legend-item:last-child {
+    margin-bottom: 0;
+}
+
+.legend-color {
+    width: 20px;
+    height: 3px;
+    margin-right: 8px;
+    border-radius: 2px;
+}
+
+.legends-container {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border-left: 4px solid #667eea;
+}
+
+
+
+/* Curseur flèche (default) sur le graphique Plotly, pas main-bouton */
+#plot-container .plotly,
+#plot-container .js-plotly-plot,
+#plot-container svg {
+    cursor: default;
+}
+
+#plot-container {
+    width: 100%;
+    margin-left: 0;
+    /* Suppression du margin-left pour que le texte Stratosph. soit visible */
+    position: relative;
+    z-index: 2;
+    /* Au-dessus du canvas (1) */
+    margin-top: 0 !important;
+    /* Pas de cursor pointer sur le conteneur, seulement sur le graphique */
+}
+
+/* Ajuster le draglayer de Plotly pour supprimer l'espace blanc en haut */
+#plot-container .draglayer {
+    top: 0 !important;
+    margin-top: 0 !important;
+}
+
+#plot-container .main-svg {
+    top: 0 !important;
+    cursor: default;
+}
+
+/* Masquer le branding Plotly (logo + tooltip "Produced with Plotly.js") */
+#plot-container .modebar,
+#plot-container .modebar-container,
+#plot-container a[href*="plotly"] {
+    display: none !important;
+}
+
+.legends-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.legend-formula-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+
+.legend-formula-item {
+    font-size: 10px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: 4px;
+    overflow-x: visible;
+    white-space: nowrap;
+    width: 100%;
+    min-width: 0;
+}
+
+
+
+/* ============================================================================
+   ALGORITHMES & CONVERGENCE
+   ============================================================================ */
+
+.algorithms-content {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.algorithm-section {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
+}
+
+.algorithm-subtitle {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.algorithm-params {
+    font-size: 11px;
+}
+
+.param-item {
+    margin-bottom: 10px;
+    padding: 6px;
+    background: white;
+    border-radius: 4px;
+}
+
+.param-list {
+    margin: 5px 0 0 20px;
+    padding: 0;
+    list-style-type: disc;
+}
+
+.param-list li {
+    margin: 3px 0;
+}
+
+.param-list code {
+    background: #e9ecef;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 10px;
+}
+
+.convergence-phases {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.phase-item {
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+    border-left: 3px solid #4ade80;
+}
+
+.phase-item strong {
+    font-size: 12px;
+}
+
+.phase-item ul {
+    margin: 5px 0 0 20px;
+    padding: 0;
+    list-style-type: disc;
+    font-size: 11px;
+}
+
+.phase-item ul ul {
+    list-style-type: circle;
+    margin-left: 15px;
+}
+
+.interactions-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.interaction-item {
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+    border-left: 3px solid #fbbf24;
+}
+
+.interaction-item strong {
+    font-size: 12px;
+}
+
+.interaction-item ul {
+    margin: 5px 0 0 20px;
+    padding: 0;
+    list-style-type: disc;
+    font-size: 11px;
+}
+
+.convergence-method {
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+    border-left: 3px solid #f87171;
+}
+
+.convergence-method p {
+    margin: 5px 0;
+    font-size: 11px;
+}
+
+/* .convergence-method strong hérite maintenant du body */
+
+.convergence-method ol {
+    margin: 10px 0 10px 20px;
+    padding: 0;
+    font-size: 11px;
+}
+
+.convergence-method ol ul {
+    margin: 5px 0 5px 20px;
+    list-style-type: disc;
+}
+
+.status {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 12px;
+}
+
+/* Footer avec crédits et copyrights */
+/* Section d'informations en bas au-dessus du footer */
+.bottom-info {
+    text-align: center;
+    /* padding: 15px 20px; */
+    margin: 5px auto 2px auto;
+    /* max-width: 1200px; */
+}
+
+.bottom-info .book-reference {
+    margin: 5px 0;
+    font-size: 12px;
+}
+
+.credits-footer {
+    margin-top: auto;
+    margin-bottom: 0;
+    text-align: center;
+    font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Hauteur stable : uniquement px entiers (pas d'em), pas de padding. */
+.credits-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    font-size: 14px;
+    line-height: 21px;
+    flex: 0 0 auto;
+    overflow: hidden;
+    padding-top: 15px;
+}
+
+/* Taille pour les lignes (GitHub, Doc, Physique) — px entiers pour hauteur calculée entière */
+.credits-footer .credits-row {
+    font-size: 10px;
+    line-height: 15px;
+}
+
+.credits-doc-label {
+    color: #00ff00;
+    font-weight: 500;
+    margin-right: 4px;
+}
+
+/* Liens des lignes GitHub/Doc/Physique uniquement (pas la signature injectée) */
+.credits-footer .credits-row a {
+    text-decoration: none;
+    transition: color 0.2s;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+}
+
+.credits-footer .credits-row a:hover {
+    text-decoration: underline;
+}
+
+.credits-footer .credits-row strong {
+    font-weight: 500;
+}
+
+/* credits-links : 3 lignes quand il y a la place ; gaps en px entiers pour hauteur stable */
+.credits-links {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+}
+.credits-links > .credits-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 4px;
+}
+/* En largeur étroite : 3 blocs sur une ligne avec " | " */
+@media (max-width: 700px) {
+    .credits-links {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0 4px;
+    }
+    .credits-links > .credits-row {
+        display: inline-block;
+    }
+    .credits-links > .credits-row + .credits-row::before {
+        content: " | ";
+        color: inherit;
+        margin-right: 4px;
+    }
+}
+/* Peu de place en hauteur (footer réduit) : 3 blocs sur une ligne pour tenir dans la box */
+@container credits-footer (max-height: 80px) {
+    .credits-links {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0 4px;
+    }
+    .credits-links > .credits-row {
+        display: inline-block;
+    }
+    .credits-links > .credits-row + .credits-row::before {
+        content: " | ";
+        color: inherit;
+        margin-right: 4px;
+    }
+}
+
+/* ==========================================================================
+   Space Theme Improvements - Flux Diagram Glow Effects
+   ========================================================================== */
+
+/* Flèches lumineuses */
+
+/* Panneaux visu : style via .divGlass (classe sur plot-container-wrapper, title-container, timeline-display, button-container, reference-container dans le HTML) */
+/* File: static/style.css (Appending missing styles) */
+
+/* Styles for flux labels - Modified to remove bold and !important where not needed */
+.flux-label.watt-or-kelvin {
+    color: #ff4444; /* Rouge pour Watts et Kelvin */
+}
+
+.flux-label.watt-per-m2 {
+    color: #ff9800; /* Orange pour W/m² */
+}
+
+.flux-label.percent-label,
+.flux-label.ppm-label {
+    color: #00bfff; /* Bleu pour % et ppm */
+}
+
+.flux-label.zero-value {
+    color: #888888 !important; /* Gris pour 0 - Prioritaire */
+    opacity: 0.7;
+}
+
+.flux-label.co2-label {
+    color: #4ade80; /* Vert pour défaut/CO2 */
+}
+
+/* Overlay de calcul au-dessus de la timeline */
+.calculation-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    pointer-events: all; /* Capture les clics pour bloquer les éléments dessous */
+    cursor: wait; /* Curseur d'attente pour indiquer que c'est occupé */
+}
+
+.calculation-text {
+    color: #ff4444;
+    font-weight: bold;
+    font-size: 16px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg); /* Tourner à 180° pour lire de bas en haut */
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    /* display: flex; Supprimé pour que <br> fonctionne */
+    width: 60px; /* Largeur fixe pour 2 lignes (Texte + Points) sans saut */
+    text-align: center;
+}
+
+/* #calculation-dots supprimé car plus de style spécifique nécessaire */
+
+/* left-timeline : 100% du parent partout (déjà #visu-panel .left-timeline plus haut) */
+.left-timeline {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* timeline-display : 100% du parent partout ; pas de scrollbar */
+.timeline-display {
+    text-align: center;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    width: 80px;
+    align-items: center;
+    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Boutons icônes (🎬 ▶️ etc.) : même style que epoch-btn - contour vert rollover, vert si selected */
+.icon-button {
+    font-size: 20px;
+    background: none !important;
+    border: none !important;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer !important;
+    padding: 5px;
+    transition: filter 0.3s ease, text-shadow 0.3s ease;
+    width: 40px;
+    height: 40px;
+    position: relative;
+    filter: grayscale(100%);
+    text-shadow: none;
+}
+
+.icon-button:hover {
+    filter: grayscale(0%);
+    text-shadow: 0 0 2px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.7), 0 0 6px rgba(255,255,255,0.5);
+}
+
+.icon-button:not(.selected):hover {
+    text-shadow: 0 0 2px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.7), 0 0 6px rgba(255,255,255,0.5) !important;
+}
+
+.icon-button.selected {
+    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0,255,0,0.8)) drop-shadow(0 0 6px rgba(0,255,0,0.5)) !important;
+    text-shadow: 0 0 2px rgba(0,255,0,0.9), 0 0 4px rgba(0,255,0,0.7), 0 0 6px rgba(0,255,0,0.5), 0 0 8px rgba(0,255,0,0.3) !important;
+}
+
+.icon-button.selected:hover {
+    filter: grayscale(100%) drop-shadow(0 0 3px rgba(0,255,0,0.8)) drop-shadow(0 0 6px rgba(0,255,0,0.5)) !important;
+    text-shadow: 0 0 2px rgba(0,255,0,0.9), 0 0 4px rgba(0,255,0,0.7), 0 0 6px rgba(0,255,0,0.5), 0 0 8px rgba(0,255,0,0.3) !important;
+}
+

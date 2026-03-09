@@ -23,6 +23,14 @@
 (function () {
     'use strict';
 
+    // Stubs pour éviter crash si projectToVisu/runComputeInParent appellent FluxManager avant que organigramme.js ait défini updateFluxLabels / updateLabel (ordre chargement ; organigramme remplace par les vraies fonctions)
+    if (typeof window.updateFluxLabels !== 'function') {
+        window.updateFluxLabels = function () {};
+    }
+    if (typeof window.updateLabel !== 'function') {
+        window.updateLabel = function () {};
+    }
+
     window.SYNC_STATE = {
         epochId: '⚫',
         animEnabled: false,
@@ -227,7 +235,6 @@
             var adj = (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'] + adj;
         }
-        if (window.pd) window.pd('runComputeInParent', 'sync_panels.js', 'epochId=' + epochId + ' anim=' + DATA['🔘']['🔘🎞'] + ' T_init=' + DATA['🧮']['🧮🌡️']);
         if (!window.initForConfig()) {
             window.calculationInProgress = false;
             return Promise.resolve(null);

@@ -1,0 +1,201 @@
+/* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
+   Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
+   Version 1.0.0
+   Copyright 2025 DNAvatar.org - Arnaud Maignan
+   Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
+   Date: 2025-03-08
+   Logs:
+   - Extracted from index.html inline <style>.
+   ============================================================ */
+
+/* --- Onglets (tabs-bar) : Visuel / Scientifique --- */
+.tabs-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    display: flex;
+    gap: 2px;
+    padding: 0 0 0 10px;
+    align-items: flex-start;
+    min-height: 20px;
+    margin: 0;
+}
+.tabs-bar button {
+    padding: 4px 14px 6px;
+    height: 20px;
+    line-height: 1;
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 0 0 10px 10px;
+    color: #888;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: color 0.3s ease, box-shadow 0.3s ease;
+    border-top: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: 1px solid rgb(0, 0, 0);
+    border-right: 1px solid rgb(0, 0, 0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+.tabs-bar button:not(.active) {
+    color: #888;
+}
+.tabs-bar button:not(.active):hover {
+    color: var(--base-color, #00ff00);
+}
+.tabs-bar button.active {
+    color: var(--base-color, #00ff00);
+    background: rgba(255, 255, 255, 0.15);
+    border-left: 1px solid rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.4), inset -1px -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* --- Layout index : body + panels (conteneurs visu / scie) --- */
+body {
+    height: 100vh;
+    overflow: hidden;
+}
+.tab-panel {
+    flex: 0 1 var(--visu-panel-max-h, 670px);
+    min-height: 0;
+    max-height: var(--visu-panel-max-h, 670px);
+}
+.tab-panel:not(.active) {
+    display: none !important;
+}
+.tab-panel.active {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+#visu-panel.active {
+    overflow: hidden;
+    overflow-x: hidden;
+    margin: 5px 0 0 0;
+}
+/* Contenu visu contraint à la hauteur du panel (pas de scrollbar ; footer se réduit, textes s'alignent) */
+#visu-panel.active > * {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Position verticale / télé : scroll sur toute la page, footer visible en bas du scroll */
+@media (max-width: 999px) {
+    body {
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+    .tab-panel.active {
+        flex: 0 0 auto;
+        max-height: none;
+        height: auto;
+    }
+    #visu-panel.active {
+        overflow: visible;
+        overflow-x: hidden;
+    }
+    #visu-panel.active > * {
+        flex: 0 0 auto;
+        min-height: min-content;
+        overflow: visible;
+    }
+}
+
+#scie-panel.active {
+    overflow: hidden;
+}
+#scie-panel iframe {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    border: none;
+}
+#milankovitch-panel.active {
+    overflow: hidden;
+}
+#milankovitch-panel iframe {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    border: none;
+}
+
+/* --- Footer index (credits + lien Milankovitch) --- */
+/* Mouvement du footer : 100 % CSS, aucun calcul JS.
+ * - Écran horizontal (≥1000px) : --visu-footer-min-h = 50px, footer min 50px, peut grandir jusqu'à 110px.
+ * - Écran vertical (≤999px) : --visu-footer-min-h = 0, footer peut aller à 0 ; visible en bas du scroll.
+ * Flex 0 0 auto : ne rétrécit pas, hauteur = contenu (entre min et max) pour que le footer se déplie. */
+.credits-footer {
+    /* flex: 0 0 max-content; */
+    height: var(--visu-footer-max-h);
+    min-height: var(--visu-footer-min-h);
+    max-height: var(--visu-footer-max-h);
+    overflow: hidden;
+    position: relative;
+    container-type: size;
+    container-name: credits-footer;
+}
+/* Lien Milankovitch : même rendu que les lignes credits (CO2, etc.), sans faire baisser la signature */
+.credits-milankovitch {
+    margin-left: 10px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 10px;
+    line-height: 15px;
+}
+.credits-milankovitch a {
+    text-decoration: none;
+}
+/* --- Loader graphique (listing modules, vert = chargé) --- */
+.app-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2147483647;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow: auto;
+}
+.app-loader.hidden {
+    display: none;
+}
+.app-loader-title {
+    color: var(--base-color, #0a0);
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+.app-loader-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 640px;
+    width: 100%;
+    font-family: monospace;
+    font-size: 11px;
+    color: #888;
+    column-count: 2;
+    column-gap: 24px;
+}
+.app-loader-list li {
+    padding: 4px 8px;
+    margin: 2px 0;
+    border-radius: 4px;
+    break-inside: avoid;
+}
+.app-loader-list li.loaded {
+    background: rgba(0, 160, 0, 0.35);
+    color: var(--base-color, #0a0);
+}

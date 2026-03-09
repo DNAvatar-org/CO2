@@ -314,22 +314,23 @@ function initPlot() {
     const layout = {
         autosize: true, // Éviter reset width/height à chaque Plotly.react (cycle)
         xaxis: {
+            anchor: 'y',
+            side: 'bottom',
             title: {
                 text: "Longueur d'onde (μm)",
-                standoff: 20, // Remonté pour être plus proche de l'axe
-                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
+                standoff: 20,
+                font: getPlotlyFont(14, getDefaultTextColor())
             },
-            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            range: [0, 50], // Commence à 0
+            tickfont: getPlotlyFont(12, getDefaultTextColor()),
+            range: [0, 50],
             fixedrange: true,
-            // Valeurs de l'axe X sans couleur imposée (hérite du body)
             showgrid: false,
-            showline: false, // Pas de ligne d'axe
+            showline: false,
             zeroline: false,
-            showticklabels: true, // Garder les valeurs 0, 10, 20, etc.
-            ticks: 'outside', // Garder les ticks mais à l'extérieur
-            ticklen: 0, // Longueur des ticks à 0 pour les cacher
-            tickwidth: 0 // Épaisseur des ticks à 0
+            showticklabels: true,
+            ticks: 'outside',
+            ticklen: 0,
+            tickwidth: 0
         },
         yaxis: {
             title: {
@@ -440,20 +441,18 @@ let resizeTimeout = null;
 const RESIZE_DEBOUNCE_MS = 1000;
 // Fonction qui contient l'appel setTimeout(resizeEvent) — log à l'entrée pour tracer les appels
 function debouncedResizeCanvas() {
-    if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'entered (contains setTimeout resizeEvent)');
-    else console.log('[debouncedResizeCanvas] entered (contains setTimeout resizeEvent)');
-    if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-        if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'clearTimeout (reschedule)');
-        else console.log('[debouncedResizeCanvas] clearTimeout (reschedule)');
-    }
+    if (resizeTimeout) clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(function resizeEvent() {
-        if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'resizeEvent fired');
-        else console.log('[debouncedResizeCanvas] resizeEvent fired');
         resizeTimeout = null;
         const plotEl = document.getElementById('plot-container');
         if (plotEl && typeof Plotly !== 'undefined') {
             Plotly.Plots.resize(plotEl);
+            // Forcer le relayout des axes en verticale (position/marges recalculées)
+            const w = plotEl.offsetWidth;
+            const h = plotEl.offsetHeight;
+            if (w > 0 && h > 0) {
+                Plotly.relayout(plotEl, { width: w, height: h });
+            }
         }
         // Force recalculation of position and redraw via callback
         resizeCanvasToPlot(() => {
@@ -467,8 +466,6 @@ function debouncedResizeCanvas() {
             }
         });
     }, RESIZE_DEBOUNCE_MS);
-    if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'setTimeout(resizeEvent, ' + RESIZE_DEBOUNCE_MS + ') scheduled');
-    else console.log('[debouncedResizeCanvas] setTimeout(resizeEvent, ' + RESIZE_DEBOUNCE_MS + ') scheduled');
 }
 
 // Flag pour éviter les appels multiples simultanés
@@ -631,8 +628,6 @@ window.updatePlotAltitudeAxis = function (atm_height_km) {
 // Ajouter l'écouteur d'événement resize
 if (typeof window !== 'undefined') {
     window.addEventListener('resize', debouncedResizeCanvas);
-    if (window.pd) window.pd('debouncedResizeCanvas', 'courbes/plot.js', 'resize listener attached');
-    else console.log('[courbes/plot.js] resize listener attached');
 }
 
 // Fonction pour dessiner uniquement la bande de spectre de 15px (sans données)
@@ -1208,14 +1203,11 @@ window.updatePlot = function updatePlot(data) {
             if (currentEpoch && typeof currentEpoch.initial_temperature_K === 'number' && currentEpoch.initial_temperature_K > 0) {
                 T0_to_use = currentEpoch.initial_temperature_K;
             } else {
-                // Fallback : estimation basée sur l'intensité solaire (température effective sans effet de serre)
-                const SOLAR_CONSTANT = window.SOLAR_CONSTANT;
-                const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
-                const STEFAN_BOLTZMANN = 5.670374419e-8;
-                // Estimation rapide : T_eff = (S/σ)^0.25 avec albedo = 0.3
+                // Fallback : estimation T_eff = (S/4·(1-A)/σ)^0.25 (CONST = physics.js)
+                const CONST = window.CONST;
                 const albedo_est = 0.3;
-                const flux_absorbed = SOLAR_FLUX_AVERAGE * (1 - albedo_est);
-                T0_to_use = Math.pow(flux_absorbed / STEFAN_BOLTZMANN, 0.25);
+                const flux_absorbed = (CONST.SOLAR_CONSTANT / 4) * (1 - albedo_est);
+                T0_to_use = Math.pow(flux_absorbed / CONST.STEFAN_BOLTZMANN, 0.25);
             }
         }
         const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use, molar_mass_air, gravityVal);
@@ -1294,14 +1286,11 @@ window.updatePlot = function updatePlot(data) {
                     if (currentEpoch && typeof currentEpoch.initial_temperature_K === 'number' && currentEpoch.initial_temperature_K > 0) {
                         T0_to_use_fallback = currentEpoch.initial_temperature_K;
                     } else {
-                        // Fallback : estimation basée sur l'intensité solaire (température effective sans effet de serre)
-                        const SOLAR_CONSTANT = window.SOLAR_CONSTANT;
-                        const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
-                        const STEFAN_BOLTZMANN = 5.670374419e-8;
-                        // Estimation rapide : T_eff = (S/σ)^0.25 avec albedo = 0.3
+                        // Fallback : estimation T_eff = (S/4·(1-A)/σ)^0.25 (CONST = physics.js)
+                        const CONST = window.CONST;
                         const albedo_est = 0.3;
-                        const flux_absorbed = SOLAR_FLUX_AVERAGE * (1 - albedo_est);
-                        T0_to_use_fallback = Math.pow(flux_absorbed / STEFAN_BOLTZMANN, 0.25);
+                        const flux_absorbed = (CONST.SOLAR_CONSTANT / 4) * (1 - albedo_est);
+                        T0_to_use_fallback = Math.pow(flux_absorbed / CONST.STEFAN_BOLTZMANN, 0.25);
                     }
                 }
                 const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use_fallback, molar_mass, gravity);
