@@ -1,9 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.0
+// Version 1.1.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: 2025-02-03
-// Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique (listing vert par module chargé)
+// Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
 
 (function () {
     'use strict';
@@ -101,6 +101,18 @@
 
     initLoaderUI();
 
+    var loaderDone = false;
+    var LOADER_TIMEOUT_MS = 30000;
+    var timeoutId = setTimeout(function () {
+        if (loaderDone) return;
+        loaderDone = true;
+        if (loaderOverlay && !loaderOverlay.classList.contains('hidden')) {
+            loaderOverlay.classList.add('hidden');
+            var v = document.getElementById('visu-panel');
+            if (v) v.innerHTML = '<p style="color:#f00;padding:20px;">Délai dépassé (vérifier réseau ou console).</p>';
+        }
+    }, LOADER_TIMEOUT_MS);
+
     Promise.all([
         fetch('html/visu_radiatif.html').then(function (r) { return r.text(); }),
         fetch('html/scie_radiatif.html').then(function (r) { return r.text(); })
@@ -112,6 +124,8 @@
         if (sciePanel) sciePanel.innerHTML = results[1];
         return loadScriptsSequentially(SCRIPTS, 1);
     }).then(function () {
+        loaderDone = true;
+        clearTimeout(timeoutId);
         hideLoader();
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initAfterLoad);
@@ -119,6 +133,8 @@
             initAfterLoad();
         }
     }).catch(function (err) {
+        loaderDone = true;
+        clearTimeout(timeoutId);
         console.error('[loader_panels]', err);
         if (loaderOverlay) loaderOverlay.classList.add('hidden');
         var v = document.getElementById('visu-panel');

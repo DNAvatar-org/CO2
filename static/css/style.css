@@ -176,13 +176,15 @@ sup {
     --visu-h: 100%;
     --visu-panel-content-h: calc(var(--visu-h) - var(--visu-title-h) - var(--visu-gap));
 }
-/* Dans visu-panel : .container hauteur 100% (desktop = panel 670px), vertical = 670*2+marge en media */
+/* Dans visu-panel : .container hauteur 100%, jamais de scroll interne (overflow visible) */
 #visu-panel .container {
     flex: 1 1 0;
     min-height: 0;
     height: 100%;
     margin-bottom: 0;
     padding-bottom: 0;
+    overflow: visible;
+    overflow-y: visible;
 }
 
 /* Clipper le margin overflow (zone violette) sans modifier le plot */
@@ -242,22 +244,34 @@ sup {
 }
 
 /* Vertical (max-width 999px) : container = 670*2+marge, colonnes majorées 670px */
-/* Mouvement footer : en vertical le footer peut aller à 0 (réserve réduite, plus de place au contenu) */
-/* Vertical (max-width 999px) : footer peut aller à 0, pas les paliers horizontal */
+/* En vertical le footer garde une hauteur min pour rester visible en bas du scroll (body scroll). */
 @media (max-width: 999px) {
     :root {
-        --visu-footer-min-h: 0;
-        --visu-footer-h: var(--visu-footer-min-h);
+        --visu-footer-min-h: 120px;
+        --visu-footer-interm: 120px;
+        --visu-footer-h: 80px;
     }
+    /* Plafond hauteur container = viewport − tabs − footer, pour réduire le gap en bas */
     #visu-panel .container {
         height: var(--visu-container-h-vertical);
+        max-height: calc(100vh - var(--visu-top-total) - var(--visu-footer-min-h) - 20px);
         min-height: 0;
         overflow: visible;
     }
-    #visu-panel .left-column,
+    #visu-panel .left-column {
+        flex: 0 0 auto;
+        height: var(--visu-panel-max-h);
+        min-height: 0;
+        max-height: var(--visu-panel-max-h);
+        overflow: visible;
+    }
     #visu-panel .right-column {
         flex: 0 0 auto;
         min-height: var(--visu-panel-content-h);
+        max-height: var(--visu-panel-max-h);
+    }
+    #visu-panel .plot-container-wrapper {
+        min-height: 0;
         max-height: var(--visu-panel-max-h);
     }
     #visu-panel .flux-diagram-wrapper {
@@ -404,9 +418,10 @@ h1 {
     transform: rotate(-90deg);
 }
 
+/* Pas de scroll interne : seule la barre générale (body) scroll */
 .reference-content {
-    max-height: 600px;
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
     transition: max-height 0.3s ease-out;
     padding: 15px;
 }

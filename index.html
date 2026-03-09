@@ -99,6 +99,9 @@
         <iframe src="html/test_milankovitch.html" title=""></iframe>
     </div>
 
+    <!-- Loader : fetch html/visu_radiatif.html + html/scie_radiatif.html, injection dans les panels, puis chargement des scripts. Placé avant le footer pour ne pas être bloqué par le script externe. -->
+    <script src="static/ui/loader_panels.js"></script>
+
     <div class="bottom-info">
         <!-- Les liens ont été déplacés dans le footer -->
     </div>
@@ -136,9 +139,6 @@
 
         </div>
     </footer>
-
-    <!-- Loader : fetch html/visu_radiatif.html + html/scie_radiatif.html, injection dans les panels, puis chargement des scripts -->
-    <script src="static/ui/loader_panels.js"></script>
 </body>
 
 </html>

@@ -54,10 +54,11 @@
     box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.4), inset -1px -1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* --- Layout index : body + panels (conteneurs visu / scie) --- */
+/* --- Layout index : une seule barre de scroll (body), quelle que soit la taille d'écran --- */
 body {
     height: 100vh;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 .tab-panel {
     flex: 0 1 var(--visu-panel-max-h, 670px);
@@ -72,19 +73,21 @@ body {
     flex-direction: column;
     min-height: 0;
 }
+/* Une seule barre (body) : visu-panel ne crée jamais de scroll interne */
 #visu-panel.active {
     overflow: hidden;
     overflow-x: hidden;
+    overflow-y: hidden;
     margin: 5px 0 0 0;
 }
-/* Contenu visu contraint à la hauteur du panel (pas de scrollbar ; footer se réduit, textes s'alignent) */
 #visu-panel.active > * {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    overflow-y: hidden;
 }
 
-/* Position verticale / télé : scroll sur toute la page, footer visible en bas du scroll */
+/* Position verticale / télé : une seule barre de scroll (body), pas de scroll interne au visu-panel */
 @media (max-width: 999px) {
     body {
         overflow-y: auto;
@@ -97,13 +100,15 @@ body {
         height: auto;
     }
     #visu-panel.active {
-        overflow: visible;
+        overflow: hidden;
         overflow-x: hidden;
+        overflow-y: hidden;
     }
     #visu-panel.active > * {
         flex: 0 0 auto;
         min-height: min-content;
-        overflow: visible;
+        overflow: hidden;
+        overflow-y: hidden;
     }
 }
 
@@ -129,8 +134,7 @@ body {
 /* --- Footer index (credits + lien Milankovitch) --- */
 /* Mouvement du footer : 100 % CSS, aucun calcul JS.
  * - Écran horizontal (≥1000px) : --visu-footer-min-h = 50px, footer min 50px, peut grandir jusqu'à 110px.
- * - Écran vertical (≤999px) : --visu-footer-min-h = 0, footer peut aller à 0 ; visible en bas du scroll.
- * Flex 0 0 auto : ne rétrécit pas, hauteur = contenu (entre min et max) pour que le footer se déplie. */
+ * - Écran vertical (≤999px) : footer min 50px, hauteur auto pour contenu ; visible en bas du scroll. */
 .credits-footer {
     /* Hauteur dynamique : footer se réduit (110→50px) avant que le panel visu rétrécisse */
     height: var(--visu-footer-h);
@@ -140,6 +144,13 @@ body {
     position: relative;
     container-type: size;
     container-name: credits-footer;
+}
+@media (max-width: 999px) {
+    .credits-footer {
+        height: auto;
+        min-height: var(--visu-footer-min-h);
+        max-height: none;
+    }
 }
 /* Lien Milankovitch : même rendu que les lignes credits (CO2, etc.), sans faire baisser la signature */
 .credits-milankovitch {
