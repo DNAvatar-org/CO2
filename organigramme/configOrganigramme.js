@@ -342,7 +342,7 @@ const arcs = [
 
 
 // Exposer la configuration globalement pour accès depuis main.js
-// Note: timeline est maintenant chargée depuis static/timeline/configTimeline.js
+// Note: timeline est chargée depuis API_BILAN/config/configTimeline.js
 window.configOrganigramme = { nodes, arcs, epochTextures, TEXTURES_THREEJS };
-// La timeline sera ajoutée par static/timeline/configTimeline.js si elle est chargée après
+// La timeline sera ajoutée par API_BILAN/config/configTimeline.js si elle est chargée après
 // Timeline est maintenant directement dans window.timeline

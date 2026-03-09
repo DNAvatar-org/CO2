@@ -1,0 +1,336 @@
+================================================================================
+ALPHABET ET DICO - Référence complète
+================================================================================
+Synchro: API_BILAN/data/alphabet.js (CHARS, CHARS_DESC) et API_BILAN/data/dico.js (KEYS, DESC, FORM).
+Date: 2025
+
+================================================================================
+PARTIE 1: ALPHABET (CARACTÈRES DE BASE)
+================================================================================
+
+UNITÉS:
+📿  Cardinal (#)
+🍰  Proportion ([0,1])
+🔘  Calculé (Boolean)
+📏  Longueur (km)
+⚖️  Masse (kg)
+🎈  Pression (atm)
+🌡️  t° (K)
+🔋  Puissance (W)
+🔽  Réception (+)
+🔼  Émission (-)
+🍎  Gravité (m/s²)
+🧲  Flux (W/m²)
+🧪  Masse molaire (kg/mol)
+┴   Point triple (🎈,🌡️)
+⚧  Phase (Init/Search/Dicho)
+☯  Direction Search (+/-)
+
+ÉLÉMENTS:
+💧  H₂O
+⛽  CH₄
+🏭  CO₂
+🫁  O₂
+🌫  SO₄²⁻ (aérosols sulfate)
+🧊  Glace
+⛅  Nuages
+🌊  Océan
+🌋  Volcan
+🏜️  Désert
+🌳  Forêt
+🌍  Continents
+🫧  Atmosphère
+☀️  Soleil
+🎱  Géometrie
+🌈  Spectre
+
+CALCULS:
+🧮  Calculs O(🧲🔬x🔬🌈x🔬🫧)
+🎞  Animation
+🔺  Delta (*)
+🔬  Tolérance (précision)
+🚩  T0 (t° initiale)
+🪩  Albédo
+🌕  Flux géothermique
+📛  EDS (effet de serre)
+🌑  Corps noir
+☁️  Index formation nuageuse [0,1]
+
+ÉVÉNEMENTS:
+💫  TicTime (+50 Ma)
+☄️  Météorite de glace
+🛰  Satellite
+🌧  Saturation H₂O
+🎇  Big impact
+▶  Début
+◀  Fin
+🧿  Ligne de Kármán
+🛩  Tropopause
+
+ÉPOQUES GÉOLOGIQUES:
+📜  Époque (Ma)
+👉  Index
+🗿  Logo
+⚫  Corps noir
+🔥  Hadéen
+🦠  Archéen
+🌿  Protérozoïque
+🦕  Mésozoïque
+🦴  Paléozoïque
+🦣  Cénozoïque
+🏔  EOT (33,9 Ma)
+🚂  1800
+📱  2025
+🕰  Événements
+⏩  Transition
+📅  Date (Ma)
+📐  Rayon planète
+
+AUTRES:
+💨  N₂
+
+================================================================================
+PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
+================================================================================
+
+🔘 ÉTATS ACTIVÉS:
+🔘💧📛  H₂O EDS on/off
+🔘⛽📛  CH₄ EDS on/off
+🔘🏭📛  CO₂ EDS on/off
+🔘🪩  Albedo on/off
+🔘🎞  Animation on/off
+
+📜 CONFIG ÉVÉNEMENTS:
+🌡️🧮  t° attendu (t° config)
+📿☄️  Nombre de météore
+🔺⚖️💧☄️  Masse H₂O / météore
+🔺🌡️💫  Delta t° / ticTime
+🔺🧲🌕💫  Delta Geoth / ticTime
+🧲🔬  Précision Flux
+
+📅 DATE ÉPOQUE:
+🌡️🧮  t° attendue
+📿💫  Nombre de ticTime
+🔺⏳  Durée équilibre précipitation (s)
+
+🫧 ATMOSPHÈRE:
+🎈  Pression atmosphérique
+🧪  Masse molaire (kg/mol)
+📏🫧🧿  Ligne de Kármán
+📏🫧🛩  Tropopause
+🍰🫧🏭  CO₂
+🍰🫧⛽  CH₄
+🍰🫧🫁  O₂
+🍰🫧🌫  SO₄²⁻ (proxy CCN)
+🍰🫧💨  N₂
+🍰🫧📿🌈  Σ(🍰🫧❀🌈) pour ❀∈{🏭,⛽,💧}
+🍰🫧🏭🌈  Capacité radiative IR de CO₂
+🍰🫧💧🌈  Cap.Rad.IR H₂O atm.
+🍰🫧⛽🌈  Capacité radiative IR de CH₄
+🍰💭  CCN - Eff.Cond nuageuse [0.3,1.0]
+☁️  Index formation nuageuse [0,1]
+
+⚖️ MASSES:
+⚖️💧  Masse H₂O totale
+⚖️🫧  Masse atmosphère sec
+⚖️🏭  Masse CO₂
+⚖️⛽  Masse CH₄
+⚖️🫁  Masse O₂
+⚖️💨  Masse N₂
+
+💧 CYCLE DE L'EAU:
+🍰💧🧊  Glace
+🍰💧🌊  Océan
+🍰🧮🌧  Fraction de vapeur max
+🍰🫧💧  Fraction massique vapeur
+🍰🫧☔  Humidité relative [0,1]
+💭☔  Seuil critique précipitations [0.7,0.9]
+⏳☔  1/τ_global (s⁻¹), τ ~10 j
+🍰⚖️💦  Taux précipitation (kg/m²/s)
+
+🪩 ALBÉDO:
+🍰🪩📿  Albedo total
+🍰🪩🌋  Volcan
+🍰🪩🏜️  Désert
+🍰🪩🌳  Forêt
+🍰🪩🌊  Océan
+🍰🪩🧊  Glace
+🍰🪩⛅  Nuages
+🍰🪩🌍  Continents
+
+🧲 FLUX RADIATIF:
+🧲☀️🔽  Flux solaire absorbé
+🧲🌕🔽  Flux géothermique
+🧲🌑🔼  Flux sortant (σT⁴)
+🧲🌈🔼  Courbe spectrale
+🧲🪩🔼  Flux réfléchi
+🔺🧲  Delta flux
+
+🧮 CONVERGENCE:
+🧮🌡️  Temp. (t° courante)
+🧮⚧  Phase (Init/Search/Dicho)
+🧮☯  Direction (+/-)
+🧲🔬  Précision en Flux
+🔬🌈  Résolution spectrale (🔺λ)
+🔬🫧  Résolution atm. (🔺z)
+🧮🔄  Complexité O(🔬🌈×🔬🫧)
+🧮🔄☀️  Cycle radiatif (crossings 0°C/T_boil)
+🧮🔄🌊  Cycle eau (0=init, 1+=après crossing)
+🧮🌡️🚩  T° initiale (T0)
+🧮🛑  Raison arrêt (converged|max_iter|abort|crash|max_water)
+
+☀️ SOLEIL:
+🧲☀️  Flux solaire à 1 UA
+🧲☀️🎱  Flux moyen sphérique
+🔋☀️  Puissance totale du soleil
+
+🌕 NOYAU:
+🧲🌕  Flux géothermique
+🔋🌕  Puissance du noyau
+
+📛 EDS (FORÇAGE RADIATIF):
+🧲📛  EDS total (W/m²) ; répartition en 🍰📛 (CO₂, H₂O, CH₄, ⛅)
+🔺📛💧  ΔF H₂O affichage (convention W/m²)
+🔺📛🏭  ΔF CO₂ affichage (convention)
+🔺📛⛽  ΔF CH₄ affichage (convention)
+🔺📿📛  ΔF total affichage (convention)
+
+🗻 GÉOLOGIE (SURFACES GÉOLOGIQUES):
+🍰🗻🌊  Surface océanique potentielle (bassin océanique, géologie)
+🍰🗻🏔  Surface hautes terres (zones de glace potentielles, géologie)
+🍰🗻🌍  Surface terres basses (zones de forêts/continents, géologie)
+
+💎 CONSTANTES PHYSIQUES:
+🎈┴💧  Pression au point triple de l'eau (611.2 Pa)
+🌡️┴💧  Température au point triple de l'eau (273.15 K, 0°C)
+
+================================================================================
+PARTIE 3: FORMULES DE CALCUL
+================================================================================
+
+🧲 FLUX RADIATIF:
+🧲☀️🔽 = 🧲☀️🎱 × (1 - 🍰🪩📿) = Flux solaire absorbé
+🧲🌕🔽 = Flux géothermique (constant)
+🧲🌑🔼 = σ × T⁴ = Flux émis par la surface (corps noir théorique à température T)
+           Formule: 🧲🌑🔼 = σT⁴ où σ = 5.670374419e-8 W/(m²·K⁴)
+           Pour T=303.5K: ≈501 W/m²
+           ⚠️ Ce n'est PAS le flux qui sort au sommet (c'est 🧲🌈🔼)
+           ⚠️ Ne pas comparer directement à 🧲☀️🔽+🧲🌕🔽 car l'effet de serre fait que la surface émet plus que ce qui sort
+🧲🌈🔼 = Σ[λ=0.1→100μm] I_λ(z_max) × Δλ = Aire sous courbe spectrale réelle
+           (émission au sommet atmosphère, après transfert radiatif couche par couche avec concentrations atmosphériques)
+           Calculé via transfert radiatif spectral: pour chaque couche z et chaque λ, calcul de l'épaisseur optique τ_λ(z)
+           avec concentrations CO₂, CH₄, H₂O, O₂, N₂, puis transmission exp(-τ) et émission (1-exp(-τ))×π×B_λ(T)
+           Intégration finale au sommet: 🧲🌈🔼 = Σ[λ] upward_flux[z_max][λ] × Δλ
+           En équilibre: 🧲🌈🔼 ≈ 🧲☀️🔽+🧲🌕🔽
+🧲🪩🔼 = 🧲☀️🎱 - 🧲☀️🔽 = 🧲☀️🎱 × 🍰🪩📿 = Flux réfléchi par albedo
+🔺🧲 = 🧲☀️🔽 + 🧲🌕🔽 - 🧲🌈🔼 = Delta équilibre radiatif (flux entrant - flux sortant)
+           En équilibre: 🔺🧲 ≈ 0
+
+🧮 CONVERGENCE:
+🧮🌡️ = T° courante (K)
+🧮⚧ = Phase (Init/Search/Dicho)
+🧮☯ = Direction Search (+/-)
+🧲🔬 = Précision en Flux
+🔬🌈 = Résolution spectrale
+🔬🫧 = Résolution atmosphérique
+🧮🔄 = Complexité O(🔬🌈×🔬🫧)
+🧮🌡️🚩 = T° initiale (T0)
+
+☀️ SOLEIL:
+🧲☀️ = 🔋☀️ / (4π × (1 UA)²) = Flux solaire à 1 UA (W/m²)
+🧲☀️🎱 = 🧲☀️ / 4 (Surf.Éclairée/Surf.Tot = πR²/4πR² = 1/4)
+🔋☀️ = Puissance totale du soleil (W)
+
+🌕 NOYAU:
+🧲🌕 = 🔋🌕 / (4π × R²) = Flux géothermique (W/m²), où R = rayon planète (m)
+           Actuellement simplifié : ne tient pas compte de la couverture océanique, température de l'eau,
+           profondeurs, niveau de la mer. TODO: Affiner avec calculs géologiques
+🔋🌕 = Puissance totale du noyau (W)
+
+🫧 ATMOSPHÈRE:
+🎈 = Pression atmosphérique
+🧪 = Masse molaire (kg/mol)
+📏🫧🧿 = Ligne de Kármán
+📏🫧🛩 = Tropopause
+🍰🫧❀ = Proportion radiative EDS - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨}
+🍰🫧💧 = Proportion radiative EDS de H₂O dans l'atmosphère
+🍰🫧❀🌈 = Capacité radiative IR de ❀ - ∀ ❀ ∈ {🏭, ⛽, 💧}
+🍰🫧📿🌈 = Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, ⛽, 💧} (pour normalisation)
+🍰🫧🌫 = ⚖️🌫 / ⚖️🫧 (proxy sulfate microphysique nuageuse)
+🍰💭 = clamp(0.4 + 0.5×(⚖️🫁/1.08e18 + ⚖️⛽/5.2e12) + 0.1×(⚖️🌫/1e14), 0.3, 1.0) - CCN
+☁️ = (1 - (1 - min(🍰🫧☔, 1))^0.6) × 🍰💭 - Sundqvist (RH) × CCN
+
+💧 CYCLE DE L'EAU:
+🍰💧🧊 = Si T < ❄️ alors toute l'eau restante (après vapeur) est glace, sinon glace polaire
+           (10% à 0°C → 0% à 20°C) - ❄️ = 271.15K - (P-1)×1.0
+🍰💧🌊 = Océan
+🍰🧮🌧 = 🎈🌧 / 🎈
+           🎈🌧 = 🎈┴💧 × exp(L_v/R_v × (1/🌡️┴💧 - 1/🧮🌡️)) [Clausius-Clapeyron]
+           🎈┴💧 = 611.2 Pa, 🌡️┴💧 = 273.15 K,
+           L_v = 2.5e6 J/kg (chaleur latente vaporisation H2O)
+           R_v = 461.5 J/(kg·K) = R/M_H2O
+           🧮🌡️ = température actuelle
+
+🪩 ALBÉDO:
+🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏜️,🧊} + contribution_glace + contribution_nuages
+🍰🪩🌋 = volcano_coverage = f(T, flux_geo) : Hadéen=1.0, sinon min(1.0, flux_geo/10000)
+🍰🪩🌊 = ocean_coverage = (ocean_volume_m3 / (📏🌊 × 1000)) × 🐚 / (4π × 📐²)
+           où ocean_volume_m3 = (⚖️💧 × 🍰💧🌊) / 1000
+🍰🪩🌳 = forest_coverage = L × clamp((H - 0.5) / 0.7, 0, 1) où H = indice d'humidité climatique, L = terre libre de glace
+           Forêts apparaissent si H > 0.5
+🍰🪩🏜️ = desert_coverage = L × clamp((0.6 - H) / 0.6, 0, 1) où H = indice d'humidité climatique
+           Déserts apparaissent si H < 0.6 (zones arides, albedo ~0.30)
+🍰🪩🌍 = land_coverage = L - 🍰🪩🌳 - 🍰🪩🏜️ où L = terre libre de glace
+           Absorbe automatiquement : steppes, prairies, toundras, montagnes (albedo ~0.18)
+🍰🪩🧊 = ice_coverage = min(0.9, 🍰💧🧊 × 0.9)
+🍰🪩⛅ = clamp((0.19 + 0.11×☁️) × cloud_optical_efficiency, 0, 0.75)
+           cloud_optical_efficiency = (1.10 + 0.45×(ccn_ratio-1)) × pressure_factor × oxidation_soft_factor × temp_factor
+           Fraction optique moyenne vue par le Soleil (voir doc SCIE_CONVERGENCE_DOC.txt § fine-tuning nuages)
+
+🗻 GÉOLOGIE:
+🍰🗻🌊 = Surface océanique potentielle (bassin océanique) = f(époque)
+           Hadéen=1.0, Archéen=0.80, Moderne=0.71
+🍰🗻🏔 = Surface hautes terres (zones de glace potentielles) = f(époque)
+           Hadéen=0.0, Archéen=0.05, Moderne=0.09
+🍰🗻🌍 = Surface terres basses (zones de forêts/continents) = f(époque)
+           Hadéen=0.0, Archéen=0.15, Moderne=0.20
+Note: 🗻 = Géologie (Couche A) : surfaces fixes déterminées par la géologie/relief,
+      indépendantes des stocks d'eau
+
+⚖️ MASSES:
+⚖️❀ = Masse ❀ - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨}
+⚖️💧 = Masse H2O totale
+⚖️🫧 = Masse atmosphère sec = ⚖️🏭 + ⚖️⛽ + ⚖️🫁 + ⚖️💨 (sans vapeur d'eau)
+
+💎 CONSTANTES:
+🎈┴💧 = Pression au point triple de l'eau (611.2 Pa)
+🌡️┴💧 = Température au point triple de l'eau (273.15 K, 0°C)
+
+================================================================================
+NOTES IMPORTANTES
+================================================================================
+
+- Les clés commençant par "!" dans les descriptions sont des variables internes
+  aux calculs et ne sont pas affichées dans l'interface utilisateur
+
+- Les formules avec ❀ utilisent des variables génériques pour les gaz:
+  ❀ ∈ {🏭, ⛽, 🫁, 💨} pour CO₂, CH₄, O₂, N₂
+  ❀ ∈ {🏭, ⛽, 💧} pour les capacités radiatives IR
+
+- En équilibre radiatif: 🧲🌈🔼 ≈ 🧲☀️🔽 + 🧲🌕🔽
+  Cela signifie que le flux sortant au sommet de l'atmosphère doit égaler
+  le flux entrant (solaire absorbé + géothermique)
+
+- L'effet de serre (EDS) fait que:
+  🧲🌑🔼 > 🧲🌈🔼
+  La surface émet plus (σT⁴) que ce qui sort au sommet, car l'atmosphère
+  absorbe et réémet une partie du rayonnement
+
+- Algorithme de convergence: la vue Scie (API_BILAN/convergence/calculations_flux.js) utilise
+  Search puis Dicho avec cycles eau/albédo, pas seulement une dichotomie
+  classique. Voir doc/API/ALGORITHME_CALCULS.md, doc/SCIE_CONVERGENCE_DOC.txt et html/Algorithmes.html.
+
+================================================================================
+FIN DU FICHIER
+================================================================================
+

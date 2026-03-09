@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cycles de Milankovitch</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <script src="../static/astronomie.js"></script>
+    <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="../static/css/milankovitch.css">
+</head>
+<body class="page-milankovitch">
+    <!-- Ligne 1 : image | titre+params | légende -->
+    <div class="page-row-1">
+        
+        <div class="title-params">
+            <h1>Cycles de Milankovitch</h1>
+            <p class="page-subtitle">Pas utilisé dans la simulation (±1°C max tout les 10 000 ans)</p>
+            <div class="controls divGlass">
+                <div style="display: flex; gap: 20px; align-items: flex-end;">
+                    <div class="control-group">
+                        <label>Date de départ</label>
+                        <input type="number" id="startYear" value="-150000" step="10000">
+                    </div>
+                    <div class="control-group">
+                        <label>Date de fin</label>
+                        <input type="number" id="endYear" value="2026" step="1">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Résolution</label>
+                    <input type="number" id="resolution" value="1000" step="100" min="100">
+                </div>
+                <div class="control-group">
+                    <span>&nbsp;</span>
+                    <button onclick="updateChart()">VALIDER</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legend-cell">
+            <div id="floatingLegend" class="floating-legend divGlass" style="display: none;">
+                <div class="legend-title">Légende</div>
+                <div id="floatingLegendItems"></div>
+            </div>
+        </div>
+        <figure class="milankovitch-figure">
+            <img src="../static/img/milankovitch.png" alt="">
+        </figure>
+    </div>
+    <!-- Ligne 2 : cycle (chart) pleine largeur au bord de la fenêtre -->
+    <div class="cycles-row divGlass">
+        <div id="chart"></div>
+    </div>
+    
+    <script>
+        // 0 = an 0 (J.-C.), ANNEE_AUJOURDHUI = 2026. Pour le calcul Milankovitch : années avant aujourd'hui = ANNEE_AUJOURDHUI - année calendaire.
+            const ANNEE_AUJOURDHUI = 2026;
+            const INSOLATION_TO_DELTA_T = 0.012;
+            
+            function generateData(startYear, endYear, resolution) {
+            const years = [];
+            const eccentricity = [];
+            const obliquity = [];
+            const precession = [];
+            const perihelion = [];
+            const aphelion = [];
+            const insolation65NSummer = [];
+            
+            for (let year = startYear; year <= endYear; year += resolution) {
+                years.push(year);
+                var yearsFromNow = ANNEE_AUJOURDHUI - year;
+                const params = window.astronomie.calculateMilankovitchParameters(yearsFromNow);
+                eccentricity.push(params.eccentricity);
+                obliquity.push(params.obliquity);
+                precession.push(params.precession);
+                perihelion.push(params.distancePerihelion);
+                aphelion.push(params.distanceAphelion);
+                // Insolation 65°N solstice d'été (proxy classique pour glaciations)
+                const ins = window.astronomie.calculateInsolation(params.eccentricity, params.obliquity, params.precession, 65, 90);
+                insolation65NSummer.push(ins);
+            }
+            
+            const meanInsolation = insolation65NSummer.reduce(function(a, b) { return a + b; }, 0) / insolation65NSummer.length;
+            const deltaT_C = insolation65NSummer.map(function(i) { return INSOLATION_TO_DELTA_T * (i - meanInsolation); });
+            
+            return {
+                years,
+                eccentricity,
+                obliquity,
+                precession,
+                perihelion,
+                aphelion,
+                insolation65NSummer,
+                deltaT_C
+            };
+        }
+        
+        var selectedRightIndex = 2;
+        function getVisibleState() {
+            return [true, selectedRightIndex === 0, selectedRightIndex === 1, selectedRightIndex === 2, selectedRightIndex === 2];
+        }
+        var RIGHT_AXES_TITLES = ['Obliquité (°)', 'Précession (°)', 'Distance (UA)'];
+        var RIGHT_AXES_COLORS = ['#1abc9c', '#9b59b6', '#f1c40f'];
+        var RIGHT_AXES_POSITIONS = [0.95, 0.80, 0.55];
+        
+        function buildRightAxesAllVisible() {
+            var ax = {};
+            for (var i = 0; i < 3; i++) {
+                ax['yaxis' + (i + 2)] = { title: RIGHT_AXES_TITLES[i], side: 'right', overlaying: 'y', anchor: 'x', showgrid: false, zeroline: false, color: RIGHT_AXES_COLORS[i], position: RIGHT_AXES_POSITIONS[i], tickfont: { color: RIGHT_AXES_COLORS[i] } };
+            }
+            return ax;
+        }
+        
+        function buildRightAxesFromVisibility(visibleState) {
+            var ax = {};
+            var show = [
+                visibleState[1],
+                visibleState[2],
+                visibleState[3] || visibleState[4]
+            ];
+            for (var i = 0; i < 3; i++) {
+                ax['yaxis' + (i + 2)] = {
+                    title: show[i] ? RIGHT_AXES_TITLES[i] : '',
+                    side: 'right',
+                    overlaying: 'y',
+                    anchor: 'x',
+                    showgrid: false,
+                    zeroline: false,
+                    color: RIGHT_AXES_COLORS[i],
+                    position: RIGHT_AXES_POSITIONS[i],
+                    showticklabels: show[i],
+                    tickfont: show[i] ? { color: RIGHT_AXES_COLORS[i] } : {}
+                };
+            }
+            return ax;
+        }
+        
+        function updateChart() {
+            const startYear = parseInt(document.getElementById('startYear').value);
+            const endYear = parseInt(document.getElementById('endYear').value);
+            const resolution = parseInt(document.getElementById('resolution').value);
+            
+            if (startYear >= endYear) {
+                alert('La période de départ doit être antérieure à la période de fin');
+                return;
+            }
+            
+            const data = generateData(startYear, endYear, resolution);
+            const yearsKa = data.years.map(function(y) { return y / 1000; });
+            
+            const traces = [
+                {
+                    x: yearsKa,
+                    y: data.deltaT_C,
+                    name: 'Incidence T° (ΔT °C)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#e74c3c', width: 2 },
+                    yaxis: 'y',
+                    hovertemplate: 'Année: %{x:.1f} Ka<br>ΔT: %{y:.2f} °C<extra></extra>',
+                    legendgroup: 'deltaT'
+                },
+                {
+                    x: yearsKa,
+                    y: data.obliquity,
+                    name: 'Obliquité (°)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#1abc9c', width: 2, dash: 'dot' },
+                    yaxis: 'y2',
+                    hovertemplate: 'Année: %{x:.1f} Ka<br>Obliquité: %{y:.2f}°<extra></extra>',
+                    visible: selectedRightIndex === 0
+                },
+                {
+                    x: yearsKa,
+                    y: data.precession,
+                    name: 'Précession (°)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#9b59b6', width: 2, dash: 'dot' },
+                    yaxis: 'y3',
+                    hovertemplate: 'Année: %{x:.1f} Ka<br>Précession: %{y:.1f}°<extra></extra>',
+                    visible: selectedRightIndex === 1
+                },
+                {
+                    x: yearsKa,
+                    y: data.perihelion,
+                    name: 'Distance périhélie (UA)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#f1c40f', width: 2, dash: 'dot' },
+                    yaxis: 'y4',
+                    hovertemplate: 'Année: %{x:.1f} Ka<br>Périhélie: %{y:.4f} UA<extra></extra>',
+                    visible: selectedRightIndex === 2
+                },
+                {
+                    x: yearsKa,
+                    y: data.aphelion,
+                    name: 'Distance aphélie (UA)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#f1c40f', width: 2, dash: 'dot' },
+                    yaxis: 'y4',
+                    hovertemplate: 'Année: %{x:.1f} Ka<br>Aphélie: %{y:.4f} UA<extra></extra>',
+                    visible: selectedRightIndex === 2
+                }
+            ];
+            
+            var rightAxes = buildRightAxesFromVisibility(getVisibleState());
+            const chartTitleFont = { color: '#fff', size: 20 };
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: {
+                    title: '',
+                    gridcolor: '#444',
+                    zeroline: false
+                },
+                annotations: [{
+                    text: 'Année x1000',
+                    xref: 'paper',
+                    yref: 'paper',
+                    x: 0.5,
+                    y: -0.07,
+                    xanchor: 'center',
+                    yanchor: 'top',
+                    showarrow: false,
+                    font: { color: '#e0e0e0', size: 12 }
+                }],
+                yaxis: {
+                    title: 'Incidence T° (ΔT °C)',
+                    side: 'left',
+                    anchor: 'x',
+                    gridcolor: '#444',
+                    zeroline: true,
+                    zerolinecolor: '#666',
+                    color: '#e74c3c',
+                    tickfont: { color: '#e74c3c' }
+                },
+                showlegend: false,
+                hovermode: false,
+                margin: { t: 12, r: 60, b: 50, l: 70 }
+            };
+            for (var k in rightAxes) { layout[k] = rightAxes[k]; }
+            
+            var chartDiv = document.getElementById('chart');
+            Plotly.newPlot(chartDiv, traces, layout, {
+                responsive: true,
+                displayModeBar: false
+            });
+            
+            var visibleState = getVisibleState();
+            var legendItems = [
+                { name: traces[0].name, color: traces[0].line.color, traces: [0], radio: false },
+                { name: traces[1].name, color: traces[1].line.color, traces: [1], radio: 0 },
+                { name: traces[2].name, color: traces[2].line.color, traces: [2], radio: 1 },
+                { name: 'Périhelie + Aphélie (UA)', color: traces[3].line.color, traces: [3, 4], radio: 2 }
+            ];
+            var container = document.getElementById('floatingLegendItems');
+            container.innerHTML = '';
+            legendItems.forEach(function(item, idx) {
+                var div = document.createElement('div');
+                var isVisible = item.traces.every(function(t) { return visibleState[t]; });
+                div.className = 'legend-item' + (isVisible ? '' : ' dimmed');
+                div.setAttribute('data-legend-idx', idx);
+                div.innerHTML = '<span class="legend-color" style="background:' + item.color + ';"></span><span>' + item.name + '</span>';
+                div.addEventListener('click', function() {
+                    if (item.radio === false) return;
+                    selectedRightIndex = item.radio;
+                    var newVis = getVisibleState();
+                    Plotly.restyle(chartDiv, { visible: newVis });
+                    Plotly.relayout(chartDiv, buildRightAxesFromVisibility(newVis));
+                    container.querySelectorAll('.legend-item').forEach(function(d) {
+                        var i = parseInt(d.getAttribute('data-legend-idx'), 10);
+                        var vis = legendItems[i].traces.every(function(t) { return newVis[t]; });
+                        d.classList.toggle('dimmed', !vis);
+                    });
+                });
+                container.appendChild(div);
+            });
+            document.getElementById('floatingLegend').style.display = 'block';
+        }
+        
+        // Initialiser le graphique au chargement
+        window.addEventListener('DOMContentLoaded', () => {
+            updateChart();
+        });
+    </script>
+</body>
+</html>
+

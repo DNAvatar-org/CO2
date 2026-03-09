@@ -4,39 +4,35 @@ Ce dossier contient tous les fichiers nécessaires pour créer et utiliser la po
 
 ## Structure
 
+Les **scripts de génération** sont dans **`tools/`** (build_font.sh, create_custom_font.py, generate_font.py, generate_font.sfd, generate_font_auto.sfd). Ce dossier **fonts/** contient les données et sorties :
+
 ```
 fonts/
-├── create_custom_font.py      # Script Python pour extraire les emojis et générer les fichiers
-├── generate_font.sfd          # Script FontForge (version manuelle)
-├── generate_font_auto.sfd     # Script FontForge (version automatique avec copie depuis police système)
-├── build_font.sh              # Script bash pour installer FontForge et générer la police
 ├── README_FONT.md             # Documentation détaillée
 ├── CO2CustomIcons_mapping.json # Mapping des emojis vers les codes PUA
 ├── CO2CustomIcons.css         # CSS avec classes pour utiliser la police
 ├── CO2CustomIcons.ttf         # Police TTF générée (à créer)
-└── CO2CustomIcons.sfd         # Fichier source FontForge (à créer)
+├── CO2CustomIcons.sfd         # Fichier source FontForge (à créer)
+└── pics/                      # Images (icônes époques, etc.)
 ```
 
 ## Utilisation rapide
 
 ### 1. Générer la police automatiquement
 
+À la **racine du projet** :
+
 ```bash
-cd fonts
-./build_font.sh
+./tools/build_font.sh
 ```
 
-Ce script va :
-- Installer FontForge si nécessaire
-- Générer le script FontForge automatique
-- Créer la police TTF avec les emojis copiés depuis une police système
+Ce script va : installer FontForge si nécessaire, lancer tools/create_custom_font.py (écrit le script .sfd dans tools/), puis générer la TTF dans fonts/.
 
 ### 2. Générer manuellement
 
 ```bash
-cd fonts
-python3 create_custom_font.py
-fontforge -script generate_font_auto.sfd
+python3 tools/create_custom_font.py
+cd fonts && fontforge -script ../tools/generate_font_auto.sfd
 ```
 
 ### 3. Utiliser la police dans le projet

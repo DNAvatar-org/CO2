@@ -1,36 +1,27 @@
 # Documentation CO2 / Bilan Radiatif
 
+Documentation centrée sur **config, données, formules, validation** (API / époques / calculs).  
+Docs **projet** (architecture, rangement, refactor, synthèse) : **<code>../projet/</code>**.  
+Docs **autorités** (littérature, validation config) : **<code>doc/autorités/</code>**.
+
 ## Contenu
 
-| Fichier | Description |
-|---------|-------------|
-| **RAPPORT_CONFIG_TIMELINE_VS_LITTERATURE.md** | Synthèse config vs littérature (🌡️🧮, 🔋☀️, masses gaz) |
-| **PARAMETRES_EPOQUES.html** | Paramètres des époques (aligné configTimeline.js) |
+| Fichier / dossier | Description |
+|-------------------|-------------|
+| **API/** | Documentation technique API / modèle : algorithme, convergence, formules, variables, précision, EDS/albédo, vapeur/nuages, debug, plan HITRAN, régression, diagnostic. Voir **API/README.md**. |
+| **autorités/** | Littérature scientifique, validation config (RAPPORT_CONFIG_TIMELINE_VS_LITTERATURE, COMPARAISON_LITTERATURE_16C, VALIDATION_CONFIG_GAZ) |
+| **PARAMETRES_EPOQUES.html** | Paramètres des époques (aligné API_BILAN/config/configTimeline.js) |
 | **EPOQUES_RECAP.md** | Récapitulatif des époques et choix des emojis |
 | **epoquesGeologiques.txt** | Dates de séparation des périodes géologiques |
-| **FORMULES.md** | Formules du modèle de transfert radiatif (Planck, atmosphère) |
-| **VARIABLES_FLUX.md** | Variables du flux énergétique (vue Visuel / plotData) |
 | **grammar.txt** | Lexique unités et éléments (🔘, 📿, 🌡️, etc.) |
-| **PRECISION_CALCULS_RADIATIF.md** | Précision, sections efficaces, pressure broadening |
-| **VALIDATION_CONFIG_GAZ.md** | Traçabilité masses gaz vs littérature |
-| **VAPEUR_VS_NUAGES.md** | Distinction vapeur (EDS IR) vs nuages (albédo SW) |
-| **ANALYSE_REBRANCHEMENT_INDEX.md** | Architecture index.html, onglets Visuel/Scientifique |
-| **ANALYSE_PERFORMANCE.html** | Analyse de performance des algorithmes |
-| **html/scie_compute.html** | Vue scientifique (chargée en iframe depuis index.html) |
+| **ANALYSE_PERFORMANCE.html** | Analyse de performance des algorithmes (+ workers) |
+| **REFS_LITTERATURE_ET_TUNING.md** | Index : littérature vs config, bornes tuning (pointe vers autorités/ et API_BILAN/config) |
 | **test_computeRadiativeTransfer.html** | Backup de test (NE PAS TOUCHER) |
-| **DOC_SYNTHESE.md** | Synthèse des mises à jour doc, doublons, ce qui ne peut pas être modifié |
-
-## Fichiers dans static/compute/
-
-| Fichier | Description |
-|---------|-------------|
-| **FORMULES_FLUX.md** | Formules détaillées des flux (🧲☀️🔽, 🧲🌈🔼, etc.) |
-| **EXPLICATIONS_H2O.md** | Concepts H2O (vapeur, nuages, saturation) |
 
 ## Fichiers supprimés (nettoyage 2025-01)
 
 - SETUP_GITHUB.md — projet RadiativeForcing, chemins obsolètes
-- algo.txt — remplacé par ALGORITHME_CALCULS.md (racine)
+- algo.txt — remplacé par doc/API/ALGORITHME_CALCULS.md
 - logos.txt — chemins obsolètes, infos dans configTimeline
 - mermaid-simulation.html — démo non utilisée
 - patterns-demo.html — démo patterns SVG

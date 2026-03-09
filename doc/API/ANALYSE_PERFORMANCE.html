@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse de Performance - Algorithmes de Calcul Radiatif</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            color: #1e3a8a;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #3b82f6;
+            margin-top: 30px;
+            border-bottom: 2px solid #93c5fd;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #2563eb;
+            margin-top: 20px;
+        }
+        h4 {
+            color: #1d4ed8;
+            margin-top: 15px;
+        }
+        code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #667eea;
+        }
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+        li {
+            margin: 5px 0;
+        }
+        strong {
+            color: #1e3a8a;
+        }
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .recommended {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        hr {
+            border: none;
+            border-top: 2px solid #e5e7eb;
+            margin: 30px 0;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            font-size: 0.9em;
+            color: #6b7280;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Analyse de Performance - Algorithmes de Calcul Radiatif</h1>
+
+    <h2>Vue d'ensemble</h2>
+    <p>Le système de simulation radiatif utilise deux algorithmes principaux en cascade :</p>
+    <ol>
+        <li><strong>Algorithme de convergence (dichotomie)</strong> : trouve la température de surface T₀ qui équilibre le flux radiatif</li>
+        <li><strong>Algorithme de transfert radiatif</strong> : calcule le flux réémis à chaque couche atmosphérique avec tropopause</li>
+    </ol>
+
+    <hr>
+
+    <h2>1. Algorithme de Convergence (Dichotomie)</h2>
+
+    <h3>Localisation</h3>
+    <ul>
+        <li><strong>Fichier</strong> : <code>API_BILAN/radiative/calculations.js</code></li>
+        <li><strong>Fonction</strong> : <code>simulateRadiativeTransfer()</code></li>
+        <li><strong>Moteur principal (convergence cycle eau + dichotomie)</strong> : <code>computeRadiativeTransfer()</code> dans <code>API_BILAN/convergence/calculations_flux.js</code> (vue Scientifique et visu)</li>
+    </ul>
+
+    <h3>Description</h3>
+    <p>Méthode de dichotomie (bisection) pour trouver T₀ telle que :</p>
+    <pre><code>flux_total(T₀) = flux_solaire_absorbé(T₀)</code></pre>
+
+    <h3>Complexité temporelle</h3>
+    <p><strong>O(log₂(1/ε)) × O(transfert_radiatif)</strong></p>
+    <p>Où :</p>
+    <ul>
+        <li><strong>ε</strong> = tolérance = 0.1 W/m²</li>
+        <li><strong>O(transfert_radiatif)</strong> = complexité du calcul de flux (voir section 2)</li>
+    </ul>
+    <p><strong>En pratique</strong> :</p>
+    <ul>
+        <li>Intervalle initial : ±50K autour de T₀_initial</li>
+        <li><code>max_iterations = 20</code> (limite fixe)</li>
+        <li><strong>Complexité réelle</strong> : <strong>O(1)</strong> car limité à 20 itérations maximum</li>
+    </ul>
+
+    <h3>Nombre d'itérations</h3>
+    <ul>
+        <li><strong>Minimum</strong> : ~5-7 itérations (convergence rapide)</li>
+        <li><strong>Maximum</strong> : 20 itérations (limite fixe)</li>
+        <li><strong>Moyenne</strong> : ~10-12 itérations</li>
+    </ul>
+
+    <h3>Coût par itération</h3>
+    <p>Chaque itération appelle <code>calculateFluxForT0()</code> (dans <code>API_BILAN/radiative/calculations.js</code>) qui effectue le calcul complet du transfert radiatif (voir section 2).</p>
+
+    <hr>
+
+    <h2>2. Algorithme de Transfert Radiatif (Flux Réémis)</h2>
+
+    <h3>Localisation</h3>
+    <ul>
+        <li><strong>Fichier</strong> : <code>API_BILAN/radiative/calculations.js</code></li>
+        <li><strong>Fonction</strong> : <code>calculateFluxForT0()</code></li>
+        <li><strong>Boucle principale</strong> : double boucle (troposphère puis stratosphère) sur z_range × lambda_range</li>
+    </ul>
+
+    <h3>Description</h3>
+    <p>Calcule le flux radiatif montant à travers toutes les couches atmosphériques pour chaque longueur d'onde.</p>
+
+    <h3>Structure de la boucle</h3>
+    <pre><code>// Parcourir chaque couche d'altitude
+for (let i = 0; i < z_range.length; i++) {
+    const z = z_range[i];
+    const T = temperature(z, CO2_fraction, T0_test); // ⚠️ Recalcule z_trop à chaque appel !
+    const n_CO2 = airNumberDensity(z, CO2_fraction, T0_test) * CO2_fraction;
+    
+    // Calculer pour chaque longueur d'onde
+    for (let j = 0; j < lambda_range.length; j++) {
+        const lambda = lambda_range[j];
+        // Calculs : absorption, émission, flux sortant
+    }
+}</code></pre>
+
+    <div class="recommended">
+        <h3>✅ Optimisation implémentée : Tropopause</h3>
+        <p><strong>Observation</strong> :</p>
+        <ul>
+            <li><strong>Avant tropopause</strong> : T(z) = T₀ + Γ × z (gradient linéaire) - calculs complets nécessaires</li>
+            <li><strong>Après tropopause</strong> : T(z) = T_trop (constante) - <strong>calculs simplifiables</strong></li>
+        </ul>
+        <p><strong>Problème</strong> :</p>
+        <ul>
+            <li>La tropopause dépend de T₀ : <code>z_trop = f(T₀)</code> (8-17 km selon T₀)</li>
+            <li>T₀ change à chaque itération de dichotomie</li>
+            <li>Donc <code>z_trop</code> change aussi !</li>
+        </ul>
+        <p><strong>✅ Optimisations implémentées</strong> :</p>
+        <ol>
+            <li>✅ Calculer <code>z_trop</code> et <code>T_trop</code> <strong>une seule fois</strong> au début de <code>calculateFluxForT0()</code></li>
+            <li>✅ Séparer la boucle en deux parties : <code>i < i_trop</code> et <code>i >= i_trop</code></li>
+            <li>✅ Après tropopause : T est constante, mais <code>n_CO2</code> et <code>n_H2O</code> varient encore (densité ↓ avec z)</li>
+            <li>✅ Précalculer les fonctions de Planck pour T_trop (une fois par λ, pas par z)</li>
+            <li>✅ Précalculer les sections efficaces CO₂ et H₂O (une fois par λ, pas par couche)</li>
+        </ol>
+    </div>
+
+    <h3>Paramètres de grille (valeurs par défaut)</h3>
+    <table>
+        <tr>
+            <th>Paramètre</th>
+            <th>Valeur</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><code>z_max</code></td>
+            <td>120,000 m</td>
+            <td>Altitude maximale</td>
+        </tr>
+        <tr>
+            <td><code>delta_z</code></td>
+            <td>50 m</td>
+            <td>Pas d'altitude</td>
+        </tr>
+        <tr>
+            <td><code>lambda_min</code></td>
+            <td>0.1 × 10⁻⁶ m</td>
+            <td>Longueur d'onde minimale</td>
+        </tr>
+        <tr>
+            <td><code>lambda_max</code></td>
+            <td>100 × 10⁻⁶ m</td>
+            <td>Longueur d'onde maximale</td>
+        </tr>
+        <tr>
+            <td><code>delta_lambda</code></td>
+            <td>0.1 × 10⁻⁶ m</td>
+            <td>Pas de longueur d'onde</td>
+        </tr>
+    </table>
+
+    <h3>Nombre de points</h3>
+    <p><strong>Couches d'altitude (z_range)</strong> :</p>
+    <pre><code>n_z = z_max / delta_z = 120,000 / 50 = 2,400 couches</code></pre>
+    <p><strong>Longueurs d'onde (lambda_range)</strong> :</p>
+    <pre><code>n_λ = (lambda_max - lambda_min) / delta_lambda
+   = (100e-6 - 0.1e-6) / 0.1e-6
+   = 99.9e-6 / 0.1e-6
+   = 999,000 longueurs d'onde</code></pre>
+    <p><strong>Total de points (x × y)</strong> :</p>
+    <pre><code>N_total = n_z × n_λ = 2,400 × 999,000 ≈ 2.4 × 10⁹ points</code></pre>
+
+    <h3>Complexité temporelle</h3>
+    <p><strong>O(n_z × n_λ) = O(2,400 × 999,000) ≈ O(2.4 × 10⁹)</strong></p>
+    <p><strong>Opérations par point</strong> :</p>
+    <p><strong>Avant tropopause</strong> (z < z_trop, ~8-17 km) :</p>
+    <ul>
+        <li>Calcul de température : T(z) = T₀ + Γ × z → O(1)</li>
+        <li>Calcul de densité CO₂/H₂O : O(1)</li>
+        <li>Calcul de section efficace : O(1)</li>
+        <li>Calcul d'absorption : O(1)</li>
+        <li>Calcul d'émission (Planck) : B_λ(T(z)) → O(1) (T varie)</li>
+        <li>Calcul de flux sortant : O(1)</li>
+        <li><strong>Total</strong> : ~7-8 opérations par point</li>
+    </ul>
+    <p><strong>Après tropopause</strong> (z ≥ z_trop, ~17-120 km) :</p>
+    <ul>
+        <li>Calcul de température : T(z) = T_trop (constante) → O(1) mais <strong>redondant</strong> ⚠️</li>
+        <li>Calcul de densité CO₂/H₂O : O(1) (varie avec z, densité ↓ exponentielle)</li>
+        <li>Calcul de section efficace : O(1)</li>
+        <li>Calcul d'absorption : O(1)</li>
+        <li>Calcul d'émission (Planck) : B_λ(T_trop) → O(1) mais <strong>pourrait être précalculé</strong> ⚠️</li>
+        <li>Calcul de flux sortant : O(1)</li>
+        <li><strong>Total</strong> : ~7-8 opérations par point (mais optimisable)</li>
+    </ul>
+    <p><strong>✅ Optimisations implémentées</strong> :</p>
+    <ul>
+        <li>✅ Précalculer <code>B_λ(T_trop)</code> pour toutes les λ une fois → économie de ~n_λ × n_z_above opérations</li>
+        <li>✅ Éviter le recalcul de <code>z_trop</code> dans <code>temperature()</code> → économie de ~n_z appels</li>
+        <li>✅ Précalculer les sections efficaces CO₂ et H₂O → économie de ~2 × n_z × n_λ appels</li>
+        <li><strong>Gain estimé</strong> : ~15-25% de réduction du temps de calcul</li>
+    </ul>
+    <p><strong>Opérations totales par itération</strong> :</p>
+    <pre><code>N_ops = 2.4 × 10⁹ × 7 ≈ 1.68 × 10¹⁰ opérations</code></pre>
+
+    <h3>Complexité spatiale (mémoire)</h3>
+    <p><strong>Tableaux 2D</strong> :</p>
+    <ul>
+        <li><code>upward_flux[n_z][n_λ]</code> : 2.4 × 10⁹ valeurs</li>
+        <li><code>optical_thickness[n_z][n_λ]</code> : 2.4 × 10⁹ valeurs</li>
+        <li><code>emitted_flux[n_z][n_λ]</code> : 2.4 × 10⁹ valeurs</li>
+        <li><code>absorbed_flux[n_z][n_λ]</code> : 2.4 × 10⁹ valeurs</li>
+    </ul>
+    <p><strong>Total</strong> : ~4 × 2.4 × 10⁹ × 8 bytes ≈ <strong>77 GB</strong> (théorique)</p>
+    <p>En pratique, JavaScript optimise et les tableaux sont alloués dynamiquement.</p>
+
+    <hr>
+
+    <h2>3. Complexité Globale</h2>
+
+    <h3>Complexité totale</h3>
+    <p><strong>O(iterations_dichotomie × n_z × n_λ)</strong></p>
+    <p>Avec :</p>
+    <ul>
+        <li><code>iterations_dichotomie</code> ≈ 10-12 (moyenne)</li>
+        <li><code>n_z</code> = 2,400</li>
+        <li><code>n_λ</code> = 999,000</li>
+    </ul>
+    <p><strong>Complexité pratique</strong> :</p>
+    <pre><code>O(12 × 2,400 × 999,000) ≈ O(2.88 × 10¹⁰)</code></pre>
+
+    <h3>Temps d'exécution estimé</h3>
+    <p><strong>Hypothèses</strong> :</p>
+    <ul>
+        <li>CPU moderne : ~3 GHz = 3 × 10⁹ opérations/seconde</li>
+        <li>Efficacité JavaScript : ~30% (interprétation, GC, etc.)</li>
+        <li>Performance réelle : ~10⁹ opérations/seconde</li>
+    </ul>
+    <p><strong>Temps par calcul complet</strong> :</p>
+    <pre><code>T = (2.88 × 10¹⁰) / (10⁹) ≈ 28.8 secondes</code></pre>
+    <p><strong>En pratique</strong> : 20-40 secondes selon le matériel et les optimisations du navigateur.</p>
+
+    <hr>
+
+    <h2>4. Impact sur le FPS</h2>
+
+    <h3>Calculs par frame</h3>
+    <p>Si le calcul est exécuté de manière synchrone :</p>
+    <ul>
+        <li><strong>FPS</strong> : 0 (blocage total pendant le calcul)</li>
+        <li><strong>Expérience utilisateur</strong> : gel complet de l'interface</li>
+    </ul>
+
+    <h3>Optimisations actuelles</h3>
+    <ol>
+        <li><strong>Callback / récepteur</strong> : l’API émet <code>compute:progress</code> et <code>cycleCalcul</code> ; affichage progressif (organigramme, convergence) pendant le calcul</li>
+        <li><strong>Grille spectrale</strong> : grille λ adaptative (zones CO₂/CH₄/H₂O densifiées) et lambda_weights ; option homogène disponible</li>
+        <li><strong>Tropopause</strong> : calcul unique z_trop / T_trop, boucles troposphère / stratosphère séparées, précalcul Planck et sections efficaces (voir section 2)</li>
+    </ol>
+
+    <h3>Stratégies d'optimisation possibles</h3>
+
+    <h4>A. Réduction de la grille</h4>
+    <ul>
+        <li><strong>delta_z</strong> : 50m → 100m → <strong>n_z</strong> : 2,400 → 1,200 (×2 plus rapide)</li>
+        <li><strong>delta_lambda</strong> : 0.1μm → 0.2μm → <strong>n_λ</strong> : 999,000 → 499,500 (×2 plus rapide)</li>
+        <li><strong>Gain total</strong> : ×4 plus rapide</li>
+    </ul>
+
+    <h4>B. Calcul adaptatif</h4>
+    <ul>
+        <li>Calculer uniquement les longueurs d'onde importantes (bande CO₂ ~15μm)</li>
+        <li>Ignorer les longueurs d'onde où l'absorption est négligeable</li>
+    </ul>
+
+    <h4>C. Parallélisation (Workers)</h4>
+    <ul>
+        <li>Web Workers pour calculer plusieurs bandes spectrales en parallèle (tranches λ)</li>
+        <li>SIMD (si disponible) pour les calculs vectoriels</li>
+    </ul>
+
+    <h4>D. Cache et précalcul</h4>
+    <ul>
+        <li>Mettre en cache les sections efficaces (dépendent uniquement de λ)</li>
+        <li>Précalculer les profils de température pour T₀ courantes</li>
+    </ul>
+
+        <div class="recommended">
+        <h4>E. Optimisation tropopause ⭐ <strong>IMPLÉMENTÉ</strong></h4>
+        <ul>
+            <li>✅ <strong>Calculer z_trop et T_trop une seule fois</strong> au début de <code>calculateFluxForT0()</code></li>
+            <li>✅ <strong>Séparer la boucle</strong> : <code>for (i < i_trop)</code> et <code>for (i >= i_trop)</code></li>
+            <li>✅ <strong>Précalculer B_λ(T_trop)</strong> pour toutes les λ (une fois, pas par couche)</li>
+            <li>✅ <strong>Précalculer sections efficaces</strong> CO₂ et H₂O (une fois, pas par couche)</li>
+            <li><strong>Gain estimé</strong> : ~15-25% de réduction du temps de calcul</li>
+            <li><strong>Complexité</strong> : O(1) pour trouver i_trop, puis deux boucles séparées</li>
+        </ul>
+    </div>
+
+    <hr>
+
+    <h2>5. Workers (API_BILAN/workers/)</h2>
+
+    <h3>Fichiers présents</h3>
+    <ul>
+        <li><strong>API_BILAN/workers/spectral_slice_worker.js</strong> : worker qui calcule une <strong>tranche spectrale</strong> (sous-ensemble de λ). Reçoit <code>lambda_range</code>, <code>layers</code> (z, T, n_CO2, n_H2O, n_CH4, etc.), sections efficaces précalculées, <code>earth_flux</code> ; retourne <code>total_flux_slice</code> et <code>upward_flux</code> pour cette tranche. Constantes (Planck, c, k_B) passées dans le message (depuis <code>window.CONST</code> côté main). Permet en principe de <strong>paralléliser par bandes de longueur d’onde</strong> (plusieurs workers, chacun une tranche λ).</li>
+        <li><strong>API_BILAN/workers/compute_worker.js</strong> : <strong>stub</strong> (envoie <code>ready</code>, sur <code>run</code> répond <code>stub – compute not yet in worker</code>). Prévu pour déporter à terme <code>computeRadiativeTransfer()</code> / cycles de convergence dans un worker, afin de garder le thread principal pour la GUI/DOM.</li>
+    </ul>
+
+    <h3>État actuel</h3>
+    <p>Le calcul radiatif complet (dichotomie + <code>calculateFluxForT0()</code>) s’exécute aujourd’hui sur le <strong>thread principal</strong>. Les workers sont en place pour une évolution future :</p>
+    <ul>
+        <li><strong>spectral_slice_worker</strong> : logique de tranche prête ; reste à brancher depuis <code>API_BILAN/radiative/calculations.js</code> (découper <code>lambda_range</code> en N tranches, lancer N workers, agrégation des résultats).</li>
+        <li><strong>compute_worker</strong> : migration de la boucle de convergence (cycle eau + dichotomie) à faire ; objectif = ne plus bloquer le main thread pendant les 20–40 s de calcul.</li>
+    </ul>
+
+    <hr>
+
+    <h2>6. Recommandations</h2>
+
+    <h3>Pour maintenir un FPS acceptable (>30 FPS)</h3>
+    <ol>
+        <li><strong>Calcul asynchrone obligatoire</strong> : ne jamais bloquer le thread principal</li>
+        <li><strong>Précision adaptative</strong> : 
+            <ul>
+                <li>Pendant le calcul : <code>delta_z = 100m</code>, <code>delta_lambda = 0.2μm</code></li>
+                <li>Après convergence : <code>delta_z = 50m</code>, <code>delta_lambda = 0.1μm</code></li>
+            </ul>
+        </li>
+        <li><strong>Limite de temps par frame</strong> : max 16ms (60 FPS) ou 33ms (30 FPS)</li>
+        <li><strong>Indicateur de progression</strong> : barre de progression pour l'utilisateur</li>
+    </ol>
+
+    <h3>Métriques de performance</h3>
+    <ul>
+        <li><strong>Temps de convergence</strong> : < 5 secondes (objectif)</li>
+        <li><strong>FPS minimum</strong> : > 30 FPS pendant le calcul</li>
+        <li><strong>Mémoire</strong> : < 500 MB (objectif)</li>
+    </ul>
+
+    <hr>
+
+    <h2>7. Résumé</h2>
+    <table>
+        <tr>
+            <th>Algorithme</th>
+            <th>Complexité</th>
+            <th>Points</th>
+            <th>Opérations/Itération</th>
+            <th>Itérations</th>
+        </tr>
+        <tr>
+            <td><strong>Dichotomie</strong></td>
+            <td>O(1)</td>
+            <td>-</td>
+            <td>Appel transfert radiatif</td>
+            <td>10-12 (moy)</td>
+        </tr>
+        <tr>
+            <td><strong>Transfert radiatif</strong></td>
+            <td>O(n_z × n_λ)</td>
+            <td>2.4 × 10⁹</td>
+            <td>1.68 × 10¹⁰</td>
+            <td>1</td>
+        </tr>
+        <tr>
+            <td><strong>Total</strong></td>
+            <td>O(iter × n_z × n_λ)</td>
+            <td>2.4 × 10⁹</td>
+            <td>2.88 × 10¹⁰</td>
+            <td>10-12</td>
+        </tr>
+    </table>
+    <p><strong>Temps estimé</strong> : 15-30 secondes par calcul complet (avec optimisations implémentées)</p>
+    <p><strong>Impact FPS</strong> : Blocage total si synchrone, nécessite mode asynchrone avec découpage.</p>
+    <p><strong>✅ Optimisations actives</strong> : Tropopause optimisée, sections efficaces précalculées.</p>
+    <p><strong>Workers</strong> : <code>API_BILAN/workers/spectral_slice_worker.js</code> (tranche λ prête, non branchée) ; <code>compute_worker.js</code> (stub pour futur déport du calcul).</p>
+
+    <div class="footer">
+        <p><em>Chemins mis à jour : 2025-03-08 (API_BILAN/radiative/, API_BILAN/convergence/)</em><br>
+        <em>Version : 1.1.0</em><br>
+        <em>Auteur : DNAvatar.org - Arnaud Maignan</em></p>
+    </div>
+</body>
+</html>
+

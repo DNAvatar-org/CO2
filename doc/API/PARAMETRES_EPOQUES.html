@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paramètres des Époques Géologiques</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            color: #1e3a8a;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #3b82f6;
+            margin-top: 30px;
+            border-bottom: 2px solid #93c5fd;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #2563eb;
+            margin-top: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        .param-required {
+            background: #fef3c7;
+        }
+        .param-optional {
+            background: #e0f2fe;
+        }
+        .epoch-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .emoji {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Paramètres des Époques Géologiques</h1>
+    
+    <div class="info">
+        <p><strong>Source de vérité</strong> : <code>API_BILAN/config/configTimeline.js</code></p>
+        <p><strong>Validation littérature</strong> : voir <code>doc/autorités/VALIDATION_CONFIG_GAZ.md</code> (masses gaz) et <code>doc/autorités/RAPPORT_CONFIG_TIMELINE_VS_LITTERATURE.md</code> (synthèse).</p>
+    </div>
+
+    <h2>Correspondance configTimeline ↔ paramètres</h2>
+    <table>
+        <tr><th>configTimeline (emoji)</th><th>Paramètre</th><th>Clé</th></tr>
+        <tr><td>📅</td><td>Emoji époque</td><td>Identifiant</td></tr>
+        <tr><td>▶, ◀</td><td>Début, fin (années)</td><td>startYears, endYears</td></tr>
+        <tr><td>🌡️🧮</td><td>Température surface (K)</td><td>temperature_surface</td></tr>
+        <tr><td>⚖️🏭, ⚖️⛽, ⚖️💧, ⚖️🫁</td><td>Masses CO₂, CH₄, H₂O, O₂ (kg)</td><td>co2_kg, ch4_kg, h2o_kg, o2_kg</td></tr>
+        <tr><td>⚖️🫧</td><td>Masse atmosphère (kg)</td><td>—</td></tr>
+        <tr><td>🔋☀️, 🧲🌕</td><td>Puissance solaire, flux géothermique</td><td>—</td></tr>
+        <tr><td>🧲🔬</td><td>Précision convergence (K)</td><td>—</td></tr>
+    </table>
+
+    <h2>Paramètres à définir pour chaque époque</h2>
+    
+    <table>
+        <tr>
+            <th>Paramètre</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Unité/Format</th>
+            <th>Obligatoire</th>
+        </tr>
+        <tr class="param-required">
+            <td><code>name</code></td>
+            <td>string</td>
+            <td>Nom de l'époque</td>
+            <td>ex: "Hadéen", "Archéen"</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>startYears</code></td>
+            <td>number</td>
+            <td>Début de l'époque (années avant maintenant)</td>
+            <td>ex: 4.6e9 (4.6 milliards d'années)</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>endYears</code></td>
+            <td>number</td>
+            <td>Fin de l'époque (années avant maintenant)</td>
+            <td>ex: 4.0e9</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>emoji</code></td>
+            <td>string</td>
+            <td>Emoji représentant l'époque</td>
+            <td>ex: "🌑", "🦠"</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>co2_ppm</code></td>
+            <td>number</td>
+            <td>Concentration de CO₂ dans l'atmosphère</td>
+            <td>ppm (parties par million)</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-required">
+            <td><code>h2o_enabled</code></td>
+            <td>boolean</td>
+            <td>Vapeur d'eau activée (présence d'océans/atmosphère avec H₂O)</td>
+            <td>true/false</td>
+            <td>✅ Oui</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>cloud_coverage</code></td>
+            <td>number</td>
+            <td>Couverture nuageuse moyenne</td>
+            <td>0 à 1 (0% à 100%)</td>
+            <td>⚠️ Optionnel (calculé si absent)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>temperature_surface</code></td>
+            <td>number</td>
+            <td>Température de surface moyenne</td>
+            <td>Kelvin (K) ou Celsius (°C)</td>
+            <td>⚠️ Optionnel (calculé si absent)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>albedo</code></td>
+            <td>number</td>
+            <td>Albédo moyen de la planète</td>
+            <td>0 à 1 (0% à 100%)</td>
+            <td>⚠️ Optionnel (calculé si absent)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>volcanoFactor</code></td>
+            <td>number</td>
+            <td>Facteur multiplicatif pour l'activité volcanique</td>
+            <td>ex: 10.0 (10x plus actif)</td>
+            <td>⚠️ Optionnel (déjà dans GEOLOGICAL_ERAS)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>co2PerVolcano</code></td>
+            <td>number</td>
+            <td>CO₂ émis par volcan (équivalent)</td>
+            <td>ppm par volcan</td>
+            <td>⚠️ Optionnel (déjà dans GEOLOGICAL_ERAS)</td>
+        </tr>
+        <tr class="param-optional">
+            <td><code>description</code></td>
+            <td>string</td>
+            <td>Description textuelle de l'époque</td>
+            <td>Texte libre</td>
+            <td>⚠️ Optionnel (pour documentation)</td>
+        </tr>
+    </table>
+
+    <div class="note">
+        <p><strong>Note</strong> : Les paramètres marqués comme "Optionnel" peuvent être calculés automatiquement par le système si non fournis, mais il est préférable de les définir pour plus de précision historique.</p>
+    </div>
+
+    <h2>Époques à définir</h2>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">⚫</span> Corps noir (5.0–4.5 Ga)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=255 K, ⚖️🫧=0, ⚖️🏭=0. Équilibre corps noir (σT⁴=S/4).</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🔥</span> Hadéen (4.5–4.0 Ga)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=2450 K, ⚖️🫧=5.3×10²⁰ kg, ⚖️🏭=5.15×10¹⁷ kg (~10% atm), ⚖️⛽=5.15×10¹⁵ kg (~1000 ppm), ⚖️💧=2.1×10²⁰ kg. Océan de magma, flux géothermique 2 MW/m².</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🦠</span> Archéen (4.0–2.5 Ga)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=288 K (15°C), ⚖️🫧=1×10¹⁹ kg (~2 bar), ⚖️🏭=8×10¹⁶ kg (~40k ppm), ⚖️⛽=2×10¹⁵ kg (~800 ppm). Lit. 281–303 K (Charnay, Kienert).</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🌿</span> Protérozoïque (2.5 Ga – 541 Ma)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=285 K, ⚖️🏭=4.7×10¹⁶ kg (~6k ppm), ⚖️⛽=2.85×10¹⁴ kg (~100 ppm). Lit. paléosols 2.2 Ga : 8–9k ppm.</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🦕</span> Mésozoïque (252–66 Ma)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=298 K, ⚖️🏭=1.29×10¹⁶ kg (~2500 ppm), ⚖️⛽=4.12×10¹³ kg (~8 ppm). Serre mésozoïque.</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🦴</span> Paléozoïque (541–252 Ma)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=290 K, ⚖️🫧=5.15×10¹⁸ kg, ⚖️🏭=1.2×10¹⁶ kg (~2300 ppm), ⚖️⛽=3×10¹³ kg, ⚖️💧=1.3×10²¹ kg. Lit. Ordovicien–Dévonien chaud, Carbonifère–Permien glaciations.</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🦣</span> Cénozoïque (66 Ma – aujourd'hui)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=291 K, ⚖️🏭=5.15×10¹⁵ kg (~1000 ppm), ⚖️🫁=1.08×10¹⁸ kg (O₂ ~21%). Lit. EECO 1000–1400 ppm.</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🚂</span> 1800 (pré-industriel)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=287 K (14°C), ⚖️🏭=1.443×10¹⁵ kg (~280 ppm), ⚖️⛽=3.605×10¹² kg (~0.7 ppm). IPCC 280±10 ppm.</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">📱</span> 2025</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=288.8 K, ⚖️🏭=3.3×10¹⁵ kg (~420 ppm), ⚖️⛽=5.5×10¹² kg (~1.9 ppm). Observations NOAA.</p>
+    </div>
+
+    <div class="epoch-section">
+        <h3><span class="emoji">🏔</span> Transition Éocène–Oligocène (33.9–23 Ma)</h3>
+        <p><strong>Config actuelle</strong> : 🌡️🧮=285 K, ⚖️🏭=2.06×10¹⁵ kg (~400 ppm), ⚖️⛽=3.6×10¹² kg. Passage serre → glacière.</p>
+    </div>
+
+    <h2>Sources de données recommandées</h2>
+    <ul>
+        <li><strong>CO₂ atmosphérique</strong> : 
+            <ul>
+                <li>Modèles paléoclimatiques (GEOCARB, COPSE, etc.)</li>
+                <li>Proxies géochimiques (isotopes, fossiles)</li>
+                <li>Articles scientifiques sur l'évolution du CO₂</li>
+            </ul>
+        </li>
+        <li><strong>Température</strong> :
+            <ul>
+                <li>Reconstructions paléoclimatiques</li>
+                <li>Proxies de température (isotopes O¹⁸, fossiles)</li>
+                <li>Modèles climatiques rétrospectifs</li>
+            </ul>
+        </li>
+        <li><strong>Albédo et nuages</strong> :
+            <ul>
+                <li>Modèles climatiques paléoclimatiques</li>
+                <li>Estimations basées sur la couverture glaciaire</li>
+                <li>Comparaisons avec exoplanètes similaires</li>
+            </ul>
+        </li>
+    </ul>
+
+    <div class="note">
+        <p><strong>⚠️ Difficulté</strong> : Les données pour les époques très anciennes (Hadéen, Archéen) sont rares et souvent basées sur des modèles théoriques plutôt que des mesures directes. Il faudra probablement faire des approximations raisonnables.</p>
+    </div>
+
+    <h2>Structure réelle (configTimeline.js)</h2>
+    <p>La source de vérité est <code>API_BILAN/config/configTimeline.js</code> : tableau d’objets avec <strong>clés emoji</strong> (📅, ▶, ◀, 🌡️🧮, ⚖️🏭, ⚖️⛽, ⚖️💧, ⚖️🫁, ⚖️🫧, 🔋☀️, 🧲🌕, 🗻, 🕰, etc.). Les ppm / % sont dérivés par <code>calculations_atm.js</code> à partir des masses (kg).</p>
+
+    <div class="info">
+        <p><strong>Validation littérature</strong> : voir <code>doc/REFS_LITTERATURE_ET_TUNING.md</code>, <code>doc/autorités/RAPPORT_CONFIG_TIMELINE_VS_LITTERATURE.md</code> et <code>doc/autorités/VALIDATION_CONFIG_GAZ.md</code>.</p>
+    </div>
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; font-size: 0.9em; color: #6b7280; font-style: italic;">
+        <p><em>Aligné configTimeline.js : 2025-03-09</em><br>
+        <em>Version : 1.1.0</em><br>
+        <em>Auteur : DNAvatar.org - Arnaud Maignan</em></p>
+    </div>
+</body>
+</html>
+

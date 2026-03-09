@@ -58,81 +58,28 @@
         };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <link rel="stylesheet" href="static/emoji-fonts.css">
-    <link rel="stylesheet" href="static/style.css">
-    <link rel="stylesheet" href="static/buttons/ergo_button.css">
-    <link rel="stylesheet" href="static/buttons/buttons.css">
-    <link rel="stylesheet" href="static/FPS/FPS.css">
+    <link rel="stylesheet" href="static/css/emoji-fonts.css">
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="static/css/ergo_button.css">
+    <link rel="stylesheet" href="static/css/buttons.css">
+    <link rel="stylesheet" href="static/css/FPS.css">
     <link rel="stylesheet" href="organigramme/organigramme.css">
-    <link rel="stylesheet" href="static/planet-effect.css">
+    <link rel="stylesheet" href="static/css/planet-effect.css">
+    <link rel="stylesheet" href="static/css/index-shell.css">
     <script>
         (function () {
             var host = window.location.hostname || '';
             if (host === 'localhost' || host === '127.0.0.1') {
                 var link = document.createElement('link');
                 link.rel = 'stylesheet';
-                link.href = 'static/proggy-local-override.css';
+                link.href = 'static/css/proggy-local-override.css';
                 document.head.appendChild(link);
             }
         })();
     </script>
-    <style>
-        /* Onglets : vert si selected, gris si non-selected, rollovers colorés (comme epoch-btn/ergo-button) */
-        .tabs-bar {
-            position: fixed; top: 0; left: 0; z-index: 1000;
-            display: flex; gap: 2px; padding: 0 0 0 10px; align-items: flex-start;
-            min-height: 20px; margin: 0; 
-        }
-        .tabs-bar button {
-            padding: 4px 14px 6px; height: 20px; line-height: 1; font-size: 12px;
-            background: rgba(255,255,255,0.15); border: none; border-radius: 0 0 10px 10px;
-            color: #888; cursor: pointer; box-sizing: border-box;
-            transition: color 0.3s ease, box-shadow 0.3s ease;
-            border-top: none;
-            border-left: 1px solid rgba(255,255,255,0.15);
-            border-bottom: 1px solid rgb(0,0,0);
-            border-right: 1px solid rgb(0,0,0);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2);
-        }
-        /* Non-selected : gris. Rollover : vert (base-color) */
-        .tabs-bar button:not(.active) { color: #888; }
-        .tabs-bar button:not(.active):hover { color: var(--base-color, #00ff00); }
-        /* Selected : vert (base-color) */
-        .tabs-bar button.active {
-            color: var(--base-color, #00ff00);
-            background: rgba(255,255,255,0.15);
-            border-left: 1px solid rgba(0,0,0,0.4);
-            border-bottom: 1px solid rgba(255,255,255,0.12);
-            border-right: 1px solid rgba(255,255,255,0.12);
-            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 0 rgba(255,255,255,0.08);
-        }
-        body { height: 100vh; overflow: hidden; } /* marge pour onglets, pas de scroll page */
-        .tab-panel { flex: 1; min-height: 0; }
-        .tab-panel:not(.active) { display: none !important; } /* hidden simple : un seul panel visible */
-        .tab-panel.active { display: flex; flex-direction: column; min-height: 0; }
-        #visu-panel.active { overflow: auto; overflow-x: hidden; margin: 5px 0 0 0; }
-        #scie-panel.active { overflow: hidden; }
-        #scie-panel iframe { flex: 1; min-height: 0; width: 100%; border: none; }
-        .credits-footer { flex-shrink: 0; }
-        /* Loader graphique : listing des modules, vert = chargé */
-        .app-loader {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 9999; background: rgba(0, 0, 0, 0.85);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 20px; overflow: auto;
-        }
-        .app-loader.hidden { display: none; }
-        .app-loader-title { color: var(--base-color, #0a0); font-size: 14px; margin-bottom: 12px; }
-        .app-loader-list {
-            list-style: none; margin: 0; padding: 0; max-width: 420px; width: 100%;
-            font-family: monospace; font-size: 11px; color: #888;
-        }
-        .app-loader-list li { padding: 4px 8px; margin: 2px 0; border-radius: 4px; }
-        .app-loader-list li.loaded { background: rgba(0, 160, 0, 0.35); color: var(--base-color, #0a0); }
-    </style>
 </head>
 
-<body class="mode-dark no-blur">
+<body class="no-blur">
     <div id="app-loader" class="app-loader" aria-live="polite">
         <div class="app-loader-title">Chargement des modules…</div>
         <ul id="app-loader-list" class="app-loader-list"></ul>
@@ -140,6 +87,7 @@
     <div class="tabs-bar">
         <button id="tab-visu" class="active" onclick="switchTab('visu')">Visuel</button>
         <button id="tab-scie" onclick="switchTab('scie')">Scientifique</button>
+        <button id="tab-milankovitch" onclick="switchTab('milankovitch')">Milankovitch?</button>
     </div>
     <div class="fps-display collapsed" id="fps-display">
         <button class="fps-toggle" id="fps-toggle" title="Réduire/Agrandir"></button>
@@ -147,15 +95,16 @@
     </div>
     <div id="visu-panel" class="tab-panel active"><p style="padding:20px;color:#888;">Chargement…</p></div>
     <div id="scie-panel" class="tab-panel"><p style="padding:20px;color:#888;">Chargement…</p></div>
+    <div id="milankovitch-panel" class="tab-panel">
+        <iframe src="html/test_milankovitch.html" title=""></iframe>
+    </div>
 
     <div class="bottom-info">
         <!-- Les liens ont été déplacés dans le footer -->
     </div>
 
-    <footer class="credits-footer">
+    <footer class="credits-footer divGlass">
         <div class="credits-content">
-            <div data-tipeee-footer-inject></div>
-            <script src="https://dnavatar.org/pages/logo-nonA/DNAvatar_signature.js"></script>
             <div class="credits-links">
                 <div class="credits-row">
                     <span class="credits-doc-label">GitHub :</span> <a href="https://github.com/DNAvatar-org/CO2" target="_blank" rel="noopener noreferrer">CO2</a>&nbsp;|&nbsp;<a href="https://commonsclause.com/" target="_blank" rel="noopener noreferrer"
@@ -169,22 +118,27 @@
                     <span class="credits-doc-label">Physique :</span>
                     <a href="#" onclick="event.preventDefault(); openPageModal('html/equation.html', '📐 Équations', null, 'tall');">📐 Équations</a>&nbsp;|&nbsp;<a href="#" onclick="event.preventDefault(); openPageModal('html/Algorithmes.html', '🧮 Algorithmes', null, 'tall');">🧮 Algorithmes</a>&nbsp;|&nbsp;<a href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>
                 </div>
-            </div>
             <!--
-            <div class="credits-row">
-                Inspiration: <a href="https://sciencetonnante.wordpress.com/" target="_blank"
-                    rel="noopener noreferrer">Science étonnante</a> |
-                <a href="https://www.youtube.com/watch?v=ewc8FBtEKPs" target="_blank" rel="noopener noreferrer">Vidéo
-                    YouTube</a> |
-                <a href="https://github.com/scienceetonnante/RadiativeForcing" target="_blank"
-                    rel="noopener noreferrer">GitHub: RadiativeForcing</a>
-            </div>
+                <div class="credits-row">
+                    Inspiration: <a href="https://sciencetonnante.wordpress.com/" target="_blank"
+                        rel="noopener noreferrer">Science étonnante</a> |
+                    <a href="https://www.youtube.com/watch?v=ewc8FBtEKPs" target="_blank" rel="noopener noreferrer">Vidéo
+                        YouTube</a> |
+                    <a href="https://github.com/scienceetonnante/RadiativeForcing" target="_blank"
+                        rel="noopener noreferrer">GitHub: RadiativeForcing</a>
+                </div>
             -->
+            </div>
+            <div data-tipeee-footer-inject></div>
+            <script src="https://dnavatar.org/pages/logo-nonA/DNAvatar_signature.js"></script>
+
+            
+
         </div>
     </footer>
 
     <!-- Loader : fetch html/visu_radiatif.html + html/scie_radiatif.html, injection dans les panels, puis chargement des scripts -->
-    <script src="static/loader_panels.js"></script>
+    <script src="static/ui/loader_panels.js"></script>
 </body>
 
 </html>

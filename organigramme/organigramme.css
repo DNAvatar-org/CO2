@@ -9,7 +9,6 @@
 .controle-simulation {
     padding: 0 !important;
     height: fit-content;
-    min-height: 630px;
     position: relative;
     overflow: visible;
     border-left: none !important;
@@ -18,21 +17,14 @@
     position: relative;
     width: fit-content;
     height: fit-content;
-    /*
-    margin-bottom: 18px;
-    padding-bottom: 20px;
-    */
 }
 
 .flux-diagram {
     width: 395px;
-    height: 574px;
     position: relative;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(0, 0, 0, 0.1);
     outline: none !important;
     font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    /* border, border-radius, box-shadow, background → .divGlass (style.css) */
 }
 .flux-cell {
     position: absolute;
@@ -462,13 +454,11 @@
 }
 
 /* ==========================================================================
-   Styles supplémentaires pour flux-diagram (depuis style.css)
+   Styles supplémentaires pour flux-diagram (layout uniquement, pas de surcharge divGlass)
    ========================================================================== */
 
 .flux-diagram {
     padding: 10px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
     overflow: hidden;
 }
 
