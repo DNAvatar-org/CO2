@@ -23,13 +23,18 @@
     --base-color: #00ff00;
     /* Hauteur visu : titre + marge + zone commune (timeline = plot = organigramme) */
     --visu-tabs-h: 28px;
-    /* Footer : horizontal = min 50px (peut grandir jusqu'à max), vertical = min 0 (media 999px) */
-    --visu-footer-min-h: 20px;
+    /* Footer : 3 tailles. Déclencheur = divs à 5px près (top + panel 670 + footer + 5 = 100vh). */
+    --visu-footer-min-h: 40px;
+    --visu-footer-interm: 80px;
     --visu-footer-max-h: 120px;
     --visu-margin: 8px;
+    /* Au-dessus du panel : body padding 20px + tabs 28px + margin panel 5px */
+    --visu-top-total: calc(20px + var(--visu-tabs-h) + 5px);
+    /* Footer par défaut ; paliers interm/max quand 100vh >= 808/848 (écart 5px) */
+    --visu-footer-h: var(--visu-footer-min-h);
     --visu-title-h: 70px;
     --visu-gap: 5px;
-    --visu-reserve: calc(var(--visu-tabs-h) + var(--visu-margin) + var(--visu-footer-min-h));
+    --visu-reserve: calc(var(--visu-top-total) + var(--visu-footer-h));
     /* Hauteur max du panel visu (pour laisser place au footer) */
     --visu-panel-max-h: 670px;
     /* Container : horizontal = 670px, vertical = 670*2 + marge */
@@ -40,6 +45,14 @@
     --visu-h: min(var(--visu-h-max), calc(100vh - var(--visu-reserve)));
     /* Hauteur commune timeline, plot, organigramme (alignés en bas) = visu-h moins titre et gap */
     --visu-panel-content-h: calc(var(--visu-h) - var(--visu-title-h) - var(--visu-gap));
+}
+
+/* Paliers footer horizontal : déclencheur = panel et footer à 5px près (53 + 670 + footer + 5 = 100vh) */
+@media (min-width: 1000px) and (min-height: 780px) {
+    :root { --visu-footer-h: var(--visu-footer-interm); }
+}
+@media (min-width: 1000px) and (min-height: 808px) {
+    :root { --visu-footer-h: var(--visu-footer-max-h); }
 }
 
 /* Classe commune panneaux glass — dégradé + bords relief (visu, milankovitch) */
@@ -230,9 +243,11 @@ sup {
 
 /* Vertical (max-width 999px) : container = 670*2+marge, colonnes majorées 670px */
 /* Mouvement footer : en vertical le footer peut aller à 0 (réserve réduite, plus de place au contenu) */
+/* Vertical (max-width 999px) : footer peut aller à 0, pas les paliers horizontal */
 @media (max-width: 999px) {
     :root {
         --visu-footer-min-h: 0;
+        --visu-footer-h: var(--visu-footer-min-h);
     }
     #visu-panel .container {
         height: var(--visu-container-h-vertical);

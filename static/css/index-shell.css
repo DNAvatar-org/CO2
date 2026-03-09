@@ -132,8 +132,8 @@ body {
  * - Écran vertical (≤999px) : --visu-footer-min-h = 0, footer peut aller à 0 ; visible en bas du scroll.
  * Flex 0 0 auto : ne rétrécit pas, hauteur = contenu (entre min et max) pour que le footer se déplie. */
 .credits-footer {
-    /* flex: 0 0 max-content; */
-    height: var(--visu-footer-max-h);
+    /* Hauteur dynamique : footer se réduit (110→50px) avant que le panel visu rétrécisse */
+    height: var(--visu-footer-h);
     min-height: var(--visu-footer-min-h);
     max-height: var(--visu-footer-max-h);
     overflow: hidden;
