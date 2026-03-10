@@ -1766,7 +1766,7 @@ h1 {
         display: inline-block;
     }
     .credits-links > .credits-row + .credits-row::before {
-        content: " | ";
+        content: "\00a0 # ";
         color: inherit;
         margin-right: 4px;
     }
@@ -1783,7 +1783,7 @@ h1 {
         display: inline-block;
     }
     .credits-links > .credits-row + .credits-row::before {
-        content: " | ";
+        content: "\00a0 # ";
         color: inherit;
         margin-right: 4px;
     }
