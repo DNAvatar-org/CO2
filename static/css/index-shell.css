@@ -26,7 +26,7 @@
     height: 20px;
     line-height: 1;
     font-size: 12px;
-    background: rgba(255, 255, 255, 0.15);
+    background: #222;
     border: none;
     border-radius: 0 0 10px 10px;
     color: #888;
@@ -47,7 +47,7 @@
 }
 .tabs-bar button.active {
     color: var(--base-color, #00ff00);
-    background: rgba(255, 255, 255, 0.15);
+    background: #333;
     border-left: 1px solid rgba(0, 0, 0, 0.4);
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     border-right: 1px solid rgba(255, 255, 255, 0.12);
@@ -59,6 +59,11 @@ body {
     height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
+}
+/* Panel scie actif : la page prend la taille du contenu (body peut grandir, scroll = body) */
+body.scie-panel-active {
+    height: auto;
+    min-height: 100vh;
 }
 .tab-panel {
     flex: 0 1 var(--visu-panel-max-h, 670px);
@@ -110,16 +115,51 @@ body {
         overflow: hidden;
         overflow-y: hidden;
     }
+    /* Scie : même méthode qu’en horizontal (iframe hauteur contenu, scroll = body) */
+    #scie-panel.active {
+        overflow: visible;
+        min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
+        max-height: none;
+        display: flex;
+        flex-direction: column;
+    }
+    #scie-panel iframe {
+        flex: 0 0 auto;
+        min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
+        width: 100%;
+        border: none;
+    }
 }
 
+/* Panel Scientifique : même méthode en horizontal et vertical (hauteur = contenu, scroll = body, footer en bas du flux) */
 #scie-panel.active {
-    overflow: hidden;
+    overflow: visible;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
+    max-height: none;
+    display: flex;
+    flex-direction: column;
 }
 #scie-panel iframe {
-    flex: 1;
-    min-height: 0;
+    flex: 0 0 auto;
+    min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
     width: 100%;
     border: none;
+}
+
+/* En horizontal : scie ne suit pas la méthode visu (max 670px), même comportement que scie en vertical */
+@media (min-width: 1000px) {
+    body.scie-panel-active #scie-panel.active {
+        flex: 0 0 auto;
+        height: auto;
+        max-height: none;
+    }
+}
+
+/* Panel scie actif : footer toujours déplié (hauteur max) */
+body.scie-panel-active .credits-footer {
+    height: var(--visu-footer-max-h);
 }
 #milankovitch-panel.active {
     overflow: hidden;

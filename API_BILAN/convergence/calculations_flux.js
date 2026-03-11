@@ -383,8 +383,6 @@ function expandBracketIfInvalid() {
 }
 
 async function cycleDeLeau(isFirst) {
-    // OBLIGATOIRE : yield event loop pour que le bouton Stop soit cliquable pendant calcul long
-    await new Promise(r => setTimeout(r, 0));
     if (window.ABORT_COMPUTE) return { changed: false };
     const DATA = window.DATA;
     const CONST = window.CONST;
@@ -402,13 +400,11 @@ async function cycleDeLeau(isFirst) {
     if (isFirst && phasePrev === 'Init') {
         DATA['🧮']['🧮⚧'] = phasePrev;
     }
-    await new Promise(r => setTimeout(r, 0));
     if (window.ABORT_COMPUTE) return { changed: false };
     COMPUTE.getEnabledStates();
     // Premier cycle : pas de calculatePrecipitationFeedback (comme la 1re itération Search)
     if (!isFirst) window.calculatePrecipitationFeedback();
     ALBEDO.calculateAlbedo();
-    await new Promise(r => setTimeout(r, 0));
     if (window.ABORT_COMPUTE) return { changed: false };
     ALBEDO.calculateCloudFormationIndex();
 
@@ -457,9 +453,7 @@ function dropLastStepSnapshot(DATA) {
     const p = DATA['🧮']['previous'];
     if (p.length && p[p.length - 1]) p[p.length - 1].data_snapshot = null;
 }
-// async : yield event loop pour que le bouton Stop (ABORT_COMPUTE) soit pris en compte pendant calcul long.
 async function computeRadiativeTransfer(callback) {
-    await new Promise(r => setTimeout(r, 0));
     if (window.ABORT_COMPUTE) return null;
     const DATA = window.DATA;
     const CONST = window.CONST;
@@ -644,7 +638,6 @@ async function computeRadiativeTransfer(callback) {
     DATA['🧮']['🧮🌡️'] = T_init_K + incInit;
     if (DATA['🧮']['🧮🔄🪩'] != null) DATA['🧮']['🧮🔄🪩']++; // Cycle eau s'incrémente à Init (premier cycle après = 1)
     try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
-    await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console afficher Init
 
     const maxInnerIters = CONFIG_COMPUTE.maxRadiatifIters;
     let innerConverged = false;
@@ -652,7 +645,6 @@ async function computeRadiativeTransfer(callback) {
     let dichoSameDirCount = 0;
     let lastDichoSign = 0;
     while (DATA['🧮']['🧮🔄☀️'] < maxInnerIters && !innerConverged) {
-        await new Promise(r => setTimeout(r, 0)); // Laisser le clic Stop être traité
         if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
         DATA['🧮']['🔬🌈'] = getBinsFromDelta(DATA['🧲']['🔺🧲']);
         // Mettre à jour hauteur atmosphère (📏🫧🧿, 📏🫧🛩) depuis T courante : même grille verticale à 15,8°C en cold/warm start
@@ -800,7 +792,6 @@ async function computeRadiativeTransfer(callback) {
         expandBracketIfInvalid();
         window.CONVERGENCE_DEBUG = { bins: DATA['🧮']['🔬🌈'], step: DATA['🧮']['🧮🔄☀️'], delta: DATA['🧲']['🔺🧲'] };
         try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
-        await new Promise(r => setTimeout(r, 0)); // Laisser le DOM et la console à jour après chaque itération
 
         // Arrêt quand |Δ| ≤ tol. Si 🧲🔬 NaN (init manquante), fallback 1e-9 pour accepter Δ≈0.
         var tolConv = DATA['🧮']['🧲🔬'];
@@ -1006,14 +997,12 @@ async function computeRadiativeTransfer(callback) {
             window._fromCrossing = true;
             window.CONVERGENCE_DEBUG = { bins: DATA['🧮']['🔬🌈'], step: DATA['🧮']['🧮🔄☀️'], delta: DATA['🧲']['🔺🧲'] };
             try { window.displayConvergence(); } catch (e) { console.warn('displayConvergence:', e); }
-            await new Promise(r => setTimeout(r, 0));
             if (DATA['🧮']['🧮🔄🌊'] >= maxWaterPass) {
                 DATA['🧮']['🧮🛑'] = 'max_water';
                 return true;
             }
             const cycleResult = window.cycleDeLeau ? await window.cycleDeLeau(false) : { changed: false };
             window.displayConvergence();
-            await new Promise(r => setTimeout(r, 0));
             if (window.ABORT_COMPUTE) { DATA['🧮']['🧮🛑'] = 'abort'; return null; }
             DATA['🧮']['🧮🔄🌊']++;
             // Ne pas réinitialiser 🧮🔄🪩 : garder l'index monotone pour affichage
@@ -1136,13 +1125,6 @@ async function computeRadiativeTransfer(callback) {
         var showSteps = window.showDichotomySteps && window.isVisuPanelActive();
         if (showSteps) {
             window.displayDichotomyStep(DATA['🫧']['🍰🫧🏭'], DATA['🧮']['🧮🌡️'], spectral_result, DATA['🧮']['🧮🔄☀️'] - 1, false);
-            await new Promise(function (resolve) {
-                requestAnimationFrame(function () {
-                    requestAnimationFrame(function () {
-                        setTimeout(resolve, 50);
-                    });
-                });
-            });
         } else {
             var h2o_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
             var h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
@@ -1163,7 +1145,6 @@ async function computeRadiativeTransfer(callback) {
             if (fpsOk && typeof window.updateFluxLabels === 'function') {
                 window.updateFluxLabels('cycleCalcul');
             }
-            await new Promise(r => setTimeout(r, 0));
         }
     }
     if (!DATA['🧮']['🧮🛑']) DATA['🧮']['🧮🛑'] = 'max_iter';

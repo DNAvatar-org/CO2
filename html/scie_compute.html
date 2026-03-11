@@ -1410,6 +1410,13 @@
             html += '</div>';
             finalEl.innerHTML = html;
             convergenceDiv.style.display = 'block';
+            if (window.parent !== window) {
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        window.parent.postMessage({ type: 'scie:contentUpdated' }, '*');
+                    });
+                });
+            }
             return;
             } catch (err) {
                 console.error('❌ displayConvergence:', err);
@@ -1448,8 +1455,19 @@
                     container.classList.add('notVisible');
                 });
             }
+            notifyParentResize();
         }
         
+        function notifyParentResize() {
+            if (window.parent !== window) {
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        window.parent.postMessage({ type: 'scie:contentUpdated' }, '*');
+                    });
+                });
+            }
+        }
+
         function toggleConvergence() {
             const convergenceDiv = document.getElementById('convergence');
             const formulesButton = convergenceDiv.querySelector('h2 .toggle-formules');
@@ -1471,6 +1489,7 @@
                     container.classList.add('notVisible');
                 });
             }
+            notifyParentResize();
         }
         
         function toggleConvergenceDetails() {
@@ -1478,12 +1497,14 @@
             const detailsButton = convergenceDiv.querySelector('h2 .toggle-details');
             const detailsVisible = convergenceDiv.classList.toggle('details-visible');
             if (detailsButton) detailsButton.textContent = detailsVisible ? 'Détails −' : 'Détails +';
+            notifyParentResize();
         }
         function toggleCycles() {
             const convergenceDiv = document.getElementById('convergence');
             const btn = convergenceDiv.querySelector('h2 .toggle-cycles');
             const hidden = convergenceDiv.classList.toggle('convergence-cycles-hidden');
             if (btn) btn.textContent = hidden ? 'Cycles +' : 'Cycles −';
+            notifyParentResize();
         }
         
         function toggleLexique() {

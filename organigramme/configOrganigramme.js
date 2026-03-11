@@ -145,7 +145,7 @@ const nodes = [
         radius: radiusAtmosphere,
         fillColor: 'rgba(0, 0, 0, 0)',
         strokeColor: 'rgba(255, 255, 255, 0.5)',
-        strokeSize: 1,
+        strokeSize: 1, strokeStyle: [10, 5, 2, 5, 2, 5],
         left: [], right: [], top: [], bottom: [], tooltip: '',
         radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 },
         zIndex: 10,

@@ -29,7 +29,7 @@
                                     const source = document.createElement('div');
                                     source.className = 'latex-source';
                                     source.textContent = latex;
-                                    source.style.cssText = 'font-size: 9px; color: #666; margin-top: 4px; font-family: monospace; user-select: text; cursor: text; opacity: 0.7;';
+                                    source.style.cssText = 'font-size: 9px; color: rgba(255,255,255,0.6); margin-top: 4px; font-family: monospace; user-select: text; cursor: text; opacity: 0.7;';
                                     item.appendChild(source);
                                 }
                             }
@@ -132,9 +132,8 @@
                     <div class="formula-category-title">🪩 Albédo</div>
                     <div class="formula-item">$$\bar{A} = \sum_{i} A_i \times C_i$$</div>
                     <div class="formula-item" style="font-size: 0.9em; margin-top: 0.5em;">
-                        Où \(A_i\) = albédo du type \(i\) (Océan: 0.08, Forêt: 0.17, Désert: 0.30, Glace: 0.70, Nuages: 0.50)<br>
-                        et \(C_i\) = couverture de surface du type \(i\)<br>
-                        <span style="color: #666;">Albédo moyen Terre actuelle : \(\bar{A} \approx 0.31\) (31 %)</span>
+                        Où albédo du type \(i\) : \(A_i \in \{0{,}08,\ 0{,}17,\ 0{,}30,\ 0{,}70,\ 0{,}50\}\) pour 🌊 Océan, 🌳 Forêt, 🏜️ Désert, 🧊 Glace, ⛅ Nuages ; et \(C_i\) = couverture de surface du type \(i\).<br>
+                        <span style="color: rgba(255,255,255,0.6);">Albédo moyen Terre actuelle : \(\bar{A} \approx 0{,}31\) (31 %)</span>
                     </div>
                 </div>
             </div>

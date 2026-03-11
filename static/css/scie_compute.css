@@ -1,10 +1,17 @@
 /* scie_compute.css - Vue scientifique (iframe) */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html, body { height: 100%; background: #000; }
+/* Pas de scroll interne : hauteur suit le contenu, scroll = barre générale (index) */
+html {
+    min-height: 100%;
+    background: transparent;
+    overflow: hidden;
+}
 body {
+    height: auto;
+    min-height: 0;
     font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;
-    background: #000;
+    background: transparent;
     color: #e0e0e0;
     padding: 8px;
     display: flex;
@@ -134,7 +141,7 @@ body {
 #convergence-content {
     flex: 1;
     min-height: 0;
-    overflow-y: auto; /* scroll interne uniquement, visible si contenu déborde */
+    overflow: visible; /* pas de scroll interne : scroll générale (index) */
 }
 .results h2 { display: flex; justify-content: space-between; align-items: flex-start; font-size: 14px; margin-bottom: 8px; }
 #convergence h2 .convergence-buttons { display: flex; flex-direction: row; align-items: center; gap: 6px; }

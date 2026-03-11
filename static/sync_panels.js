@@ -201,7 +201,11 @@
     }
 
     function projectToScie(DATA) {
-        getIframe().contentWindow.postMessage({ type: 'compute:done', DATA: DATA }, '*');
+        var iframe = getIframe();
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: 'compute:done', DATA: DATA }, '*');
+            setTimeout(function () { if (window.resizeScieIframe) window.resizeScieIframe(); }, 200);
+        }
     }
 
     // Main thread réservé GUI/DOM ; calcul cycles pourrait être déporté dans static/workers/compute_worker.js
@@ -308,7 +312,10 @@
                     if (payload.type === 'convergenceStep') iframe.contentWindow.appendConvergenceStep(payload.data);
                     else if (payload.type === 'displayConvergence') iframe.contentWindow.displayConvergence();
                     else if (payload.type === 'clearConvergenceTrace') iframe.contentWindow.clearConvergenceTrace();
-                    else if (payload.type === 'compute:done') iframe.contentWindow.postMessage({ type: 'compute:done', DATA: payload.DATA }, '*');
+                    else if (payload.type === 'compute:done') {
+                        iframe.contentWindow.postMessage({ type: 'compute:done', DATA: payload.DATA }, '*');
+                        setTimeout(function () { if (window.resizeScieIframe) window.resizeScieIframe(); }, 200);
+                    }
                 }
             });
             window.shell.registerPanelApi('visu', {

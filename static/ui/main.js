@@ -2186,7 +2186,7 @@ function setEpoch(epochName) {
         if (epochConfig) {
             // Recréer la cellule terre avec la configuration de l'époque
             const oldCell = document.getElementById('cell-terre');
-            if (oldCell && typeof window.createCell === 'function') {
+            if (oldCell) {
                 const parent = oldCell.parentElement;
                 
                 // Log supprimé (non essentiel)
@@ -2237,13 +2237,13 @@ function setEpoch(epochName) {
                     window.currentEpochLightDistance = lightDistance;
                 }
 
-                const newCell = window.createCell(
+                const newCell = window.FUNCS_ORGANIGRAMME.createCell(
                     terreNode.x,
                     terreNode.y,
                     epochConfig.radius,
                     epochConfig.fillColor,
                     epochConfig.strokeColor,
-                    logoPath, // Utiliser le logo interprété
+                    logoPath,
                     terreNode.left,
                     terreNode.right,
                     terreNode.top,
@@ -2251,16 +2251,17 @@ function setEpoch(epochName) {
                     terreNode.tooltip,
                     terreNode.ariaLabel || null,
                     terreNode.radiation,
-                    null, // rectangleOptions
-                    null, // fillImage
+                    null,
+                    null,
                     terreNode.id,
                     terreNode.zIndex,
-                    terreNode.logoScale,
-                    terreNode.logoOffsetY,
+                    1, // logoScale (facteur retiré de la config terre)
+                    0, // logoOffsetY
                     epochConfig.strokeSize,
-                    terreNode.strokeStyle || 'solid', // strokeStyle
-                    null, // targetContainer
-                    epochConfig.planetEffect || false // planetEffect
+                    terreNode.strokeStyle || 'solid',
+                    epochConfig.radiusExobase ?? null,
+                    null,
+                    epochConfig.planetEffect || false
                 );
 
                 parent.appendChild(newCell);
@@ -2276,34 +2277,19 @@ function setEpoch(epochName) {
         }
     }
 
-    // Cacher/montrer la sphère albedo (bleutée/blanche qui pulse) selon l'époque
-    // C'est une sphère éclairée en haut à gauche, transparente à 50%, peut-être bleutée mais surtout blanche
-    // Joli effet à garder sous le coude pour d'autres époques, mais pas pour "Corps noir"
+    // Ne plus cacher #cell-albedo en Corps noir : le disque albedo (cercle + stroke) reste visible, couleurs par config (albedo.epoch)
     const cellAlbedo = document.getElementById('cell-albedo');
+    if (typeof console !== 'undefined' && console.log) {
+        console.log('[setEpoch][main.js] epochName=', epochName, ' cell-albedo=', cellAlbedo ? 'found' : 'null', cellAlbedo ? ' display=' + (cellAlbedo.style.display || '') : '');
+    }
     if (cellAlbedo) {
-        if (epochName === 'Corps noir') {
-            // Cacher la sphère albedo en Corps noir (sphère bleutée/blanche qui pulse)
-            cellAlbedo.style.display = 'none';
-        } else {
-            // Afficher la sphère albedo pour les autres époques
-            cellAlbedo.style.display = '';
-        }
+        cellAlbedo.style.display = '';
     }
 
-    // Mettre à jour les radiations du noyau selon l'époque
-    if (typeof window.recreateNoyauRadiation === 'function') {
-        window.recreateNoyauRadiation();
-    }
-
-    // Recréer les radiations de la terre (car le rayon peut avoir changé)
-    if (typeof window.recreateTerreRadiation === 'function') {
-        window.recreateTerreRadiation();
-    }
-
-    // Recalculer les positions des flèches et étiquettes car le rayon de la terre a changé
-    if (typeof window.generateArrows === 'function') {
-        window.generateArrows();
-    }
+    // Mettre à jour les radiations du noyau / terre et flèches (ordre script = organigramme.js avant main.js)
+    window.FUNCS_ORGANIGRAMME.recreateNoyauRadiation();
+    window.FUNCS_ORGANIGRAMME.recreateTerreRadiation();
+    window.FUNCS_ORGANIGRAMME.generateArrows();
 
     disableButtons(); // Désactiver les boutons
 
@@ -3226,18 +3212,13 @@ function runMainInit() {
     // Initialiser l'état des boutons selon l'époque géologique
     enableButtons();
 
-    // Initialiser les event listeners sur les boutons du flux
-    if (typeof window.initFluxButtonListeners === 'function') {
-        // DOM : boutons flux créés par organigramme (injection HTML asynchrone). 100ms pour injection.
-        setTimeout(() => {
-            window.initFluxButtonListeners();
-        }, 100);
-    }
+    // Initialiser les event listeners sur les boutons du flux (DOM : 100ms pour injection organigramme)
+    setTimeout(() => {
+        window.FUNCS_ORGANIGRAMME.initFluxButtonListeners();
+    }, 100);
 
     // Créer les radiations de la terre (doit être fait après l'initialisation car le radius dépend de l'époque)
-    if (typeof window.recreateTerreRadiation === 'function') {
-        window.recreateTerreRadiation();
-    }
+    window.FUNCS_ORGANIGRAMME.recreateTerreRadiation();
 
     // Ajouter un gestionnaire de clic sur la température pour cycler les unités
     const syntheseTempEl = document.querySelector('.synthese_Temp');
@@ -3303,7 +3284,7 @@ function updateHadeenTexture() {
     
     // Recréer la cellule Terre avec la nouvelle texture
     const oldCell = document.getElementById('cell-terre');
-    if (oldCell && typeof window.createCell === 'function') {
+    if (oldCell) {
         // 🔒 Sauvegarder l'angle de rotation AVANT de supprimer la cellule
         // (pour éviter que la terre pivote d'un coup lors du changement de texture)
         const canvas = oldCell.querySelector('canvas');
@@ -3323,13 +3304,13 @@ function updateHadeenTexture() {
         const parent = oldCell.parentElement;
         oldCell.remove();
         
-        const newCell = window.createCell(
+        const newCell = window.FUNCS_ORGANIGRAMME.createCell(
             terreNode.x,
             terreNode.y,
             epochConfig.radius,
             epochConfig.fillColor,
             epochConfig.strokeColor,
-            newLogoPath, // Utiliser le logo interprété
+            newLogoPath,
             terreNode.left,
             terreNode.right,
             terreNode.top,
@@ -3337,15 +3318,16 @@ function updateHadeenTexture() {
             terreNode.tooltip,
             terreNode.ariaLabel || null,
             terreNode.radiation,
-            null, // rectangleOptions
-            null, // fillImage
+            null,
+            null,
             terreNode.id,
             terreNode.zIndex,
-            terreNode.logoScale,
-            terreNode.logoOffsetY,
+            1,
+            0,
             epochConfig.strokeSize,
             terreNode.strokeStyle || 'solid',
-            null, // targetContainer
+            epochConfig.radiusExobase ?? null,
+            null,
             epochConfig.planetEffect || false
         );
         

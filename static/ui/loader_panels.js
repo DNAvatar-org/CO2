@@ -190,9 +190,21 @@
         }
     };
 
+    /** Redimensionne l'iframe scie à la hauteur de son contenu pour une seule barre de scroll (body index). */
+    window.resizeScieIframe = function () {
+        var iframe = document.getElementById('scie-iframe');
+        if (!iframe || !iframe.contentDocument) return;
+        try {
+            var doc = iframe.contentDocument;
+            var h = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight, doc.body.offsetHeight || 0);
+            iframe.style.height = (h + 8) + 'px';
+        } catch (e) {}
+    };
+
     window.switchTab = function (name) {
         document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
         document.querySelectorAll('.tabs-bar button').forEach(function (b) { b.classList.remove('active'); });
+        if (name === 'scie') document.body.classList.add('scie-panel-active'); else document.body.classList.remove('scie-panel-active');
         var panel = document.getElementById(name + '-panel');
         var btn = document.getElementById('tab-' + name);
         if (panel) panel.classList.add('active');
@@ -216,6 +228,7 @@
                     try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: dataToSend }, '*'); } catch (e) {}
                 }
                 if (window.shell && window.shell.restoreConvergenceToScie) window.shell.restoreConvergenceToScie();
+                setTimeout(function () { window.resizeScieIframe(); }, 150);
             }
         }
     };
@@ -283,9 +296,14 @@
         window.updateEpochActions();
         var scieIframe = document.getElementById('scie-iframe');
         window.addEventListener('message', function (event) {
+            var iframe = document.getElementById('scie-iframe');
+            var fromScieIframe = iframe && event.source === iframe.contentWindow;
+            if (fromScieIframe && event.data && event.data.type === 'scie:contentUpdated') {
+                window.resizeScieIframe();
+                return;
+            }
             if (event.data && event.data.type === 'cycleCalcul') {
-                var iframe = document.getElementById('scie-iframe');
-                var fromOurIframe = iframe && event.source === iframe.contentWindow;
+                var fromOurIframe = fromScieIframe;
                 if (fromOurIframe && event.data.DATA && window.DATA) {
                     var src = event.data.DATA;
                     ['🧮', '🪩', '🫧', '💧', '📛', '📜', '📊'].forEach(function (k) {

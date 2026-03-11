@@ -910,11 +910,11 @@ function displayDichotomyStep(CO2_fraction, T0_test, result, iteration, isInitia
     const TEMP_REF_NO_CO2 = 255.0; // Température effective sans CO2 (référence)
     const delta_temp = T0_test - TEMP_REF_NO_CO2;
 
-    // Calculer ΔT° par rapport à la température optimale habitable (15°C = 288K)
-    // ΔT° habitable = T° actuelle - T° optimale habitable
+    // Zone habitable (affichage uniquement)
+    const TEMP_HABITABLE_OPTIMAL = 288; // 15°C
+    const TEMP_HABITABLE_MIN = 253;    // ~ -20°C
+    const TEMP_HABITABLE_MAX = 323;    // ~ 50°C
     const delta_temp_habitable = T0_test - TEMP_HABITABLE_OPTIMAL;
-
-    // Déterminer si la vie est possible (température dans la zone habitable)
     const life_viable = T0_test >= TEMP_HABITABLE_MIN && T0_test <= TEMP_HABITABLE_MAX;
 
     // Mettre à jour les informations à chaque étape

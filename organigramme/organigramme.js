@@ -1135,11 +1135,35 @@ function createCell(
     } else {
       circleBg.style.backgroundColor = fillColor;
     }
-      // Stroke : strokeColor, strokeSize, strokeStyle doivent exister (config)
+      // Stroke : strokeColor, strokeSize, strokeStyle (string ou array pour stroke-dasharray)
       const isTransparent =
         (strokeColor.includes("rgba") && strokeColor.includes(", 0)")) ||
         (strokeColor.includes("rgba") && strokeColor.includes(", 0 )"));
-      if (isTransparent) {
+      const strokeStyleArray = Array.isArray(strokeStyle);
+      if (strokeStyleArray) {
+        circleBg.style.border = "none";
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", "100%");
+        svg.setAttribute("height", "100%");
+        svg.setAttribute("viewBox", `0 0 ${circleSize} ${circleSize}`);
+        svg.setAttribute("class", "flux-circle-stroke-svg");
+        const cx = circleSize / 2;
+        const r = Math.max(0, (circleSize - strokeSize) / 2);
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", cx);
+        circle.setAttribute("cy", cx);
+        circle.setAttribute("r", r);
+        circle.setAttribute("fill", "none");
+        circle.setAttribute("stroke", strokeColor);
+        circle.setAttribute("stroke-width", String(strokeSize));
+        circle.setAttribute("stroke-dasharray", strokeStyle.join(" "));
+        svg.appendChild(circle);
+        circleBg.appendChild(svg);
+        svg.style.position = "absolute";
+        svg.style.left = "0";
+        svg.style.top = "0";
+        svg.style.pointerEvents = "none";
+      } else if (isTransparent) {
         circleBg.style.borderColor = strokeColor;
         circleBg.style.borderWidth = strokeSize + "px";
         circleBg.style.borderStyle = strokeStyle || "solid";

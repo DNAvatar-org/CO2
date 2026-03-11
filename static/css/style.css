@@ -1466,7 +1466,7 @@ h1 {
 .legends-container {
     margin-top: 20px;
     padding: 15px;
-    background: #f8f9fa;
+    background: rgb(47, 47, 47);
     border-radius: 10px;
     border-left: 4px solid #667eea;
 }
@@ -1525,7 +1525,7 @@ h1 {
 .legend-formula-item {
     font-size: 10px;
     padding: 4px 6px;
-    background: white;
+    background: rgb(47, 47, 47);
     border-radius: 4px;
     overflow-x: visible;
     white-space: nowrap;
@@ -1548,7 +1548,7 @@ h1 {
 
 .algorithm-section {
     padding: 10px;
-    background: #f8f9fa;
+    background: rgb(47, 47, 47);
     border-radius: 6px;
     border-left: 3px solid #667eea;
 }
@@ -1568,7 +1568,7 @@ h1 {
 .param-item {
     margin-bottom: 10px;
     padding: 6px;
-    background: white;
+    background: rgb(47, 47, 47);
     border-radius: 4px;
 }
 
@@ -1583,7 +1583,7 @@ h1 {
 }
 
 .param-list code {
-    background: #e9ecef;
+    background: rgb(47, 47, 47);
     padding: 2px 4px;
     border-radius: 3px;
     font-size: 10px;
@@ -1597,7 +1597,7 @@ h1 {
 
 .phase-item {
     padding: 8px;
-    background: white;
+    background: rgb(47, 47, 47);
     border-radius: 4px;
     border-left: 3px solid #4ade80;
 }
@@ -1626,7 +1626,7 @@ h1 {
 
 .interaction-item {
     padding: 8px;
-    background: white;
+    background: rgb(47, 47, 47);
     border-radius: 4px;
     border-left: 3px solid #fbbf24;
 }
@@ -1644,7 +1644,7 @@ h1 {
 
 .convergence-method {
     padding: 8px;
-    background: white;
+    background: rgb(47, 47, 47);
     border-radius: 4px;
     border-left: 3px solid #f87171;
 }
