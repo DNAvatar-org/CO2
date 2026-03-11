@@ -71,6 +71,12 @@
     backdrop-filter: brightness(1.2) contrast(0.9);
     pointer-events: none;
 }
+/* Cercle albedo = séparation symbolique : pas de fill, pas de blur */
+#cell-albedo .flux-circle-bg {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+}
 /* Réactiver pointer-events sur les cercles espace/reemis pour que le tooltip (alt) s’affiche au survol */
 #cell-espace1 .flux-circle-bg,
 #cell-espace2 .flux-circle-bg,
@@ -283,10 +289,6 @@
     z-index: 10000;
 }
 
-/* Alignement centré par défaut */
-.flux-label-container-center {
-    justify-content: center !important;
-}
 
 /* Alignement en bas pour entourer le trait du cercle (2 éléments) - pour top */
 .flux-label-container-bottom {

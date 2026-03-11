@@ -985,6 +985,7 @@ function createCell(
   logoOffsetY = 0,
   strokeSize = 4,
   strokeStyle = "solid",
+  radiusExobase = null,
   targetContainer = null,
   planetEffect = false,
   align = null,
@@ -1028,8 +1029,10 @@ function createCell(
     (bottom && bottom.length > 0);
 
   if (!rectangleOptions) {
-    // Case centrale = max(diamètre du cercle, taille du logo) - s'adapte à la vraie taille
-    const circleDiameter = hasCircle ? radius * 2 : 0;
+    // Case centrale = max(diamètre du cercle, taille du logo). Terre : disque à radiusExobase (atmosphère visible).
+    const circleDiameter = hasCircle
+      ? (nodeId === "terre" && radiusExobase > 0 ? radiusExobase * 2 : radius * 2)
+      : 0;
     // Si cercle visible : logoScale est relatif au diamètre, sinon relatif au radius
     const logoSize = hasCircle
       ? circleDiameter * logoScale
@@ -1091,9 +1094,9 @@ function createCell(
     logo &&
     typeof logo === "string" &&
     (logo.endsWith(".svg") || logo.endsWith(".png"));
-  // Pour les images sans cercle visible, ajuster la taille du cercle avec logoScale
+  // Pour les images sans cercle visible, ajuster la taille du cercle avec logoScale. Terre : disque (fond+stroke) à radiusExobase.
   const circleSize = hasCircle
-    ? radius * 2
+    ? (nodeId === "terre" && radiusExobase > 0 ? radiusExobase * 2 : radius * 2)
     : isImage
       ? radius * 2 * logoScale
       : radius * 2;
@@ -1118,62 +1121,38 @@ function createCell(
     if (nodeId && (nodeId === "espace1" || nodeId === "espace2")) {
       circleBg.classList.add("flux-space-hole");
     }
-    // Si planetEffect est activé, rendre le fond transparent mais garder le stroke visible
-    // Le contenu (canvas Three.js) reste visible
-    if (planetEffect) {
-      circleBg.style.backgroundColor = "transparent"; // Fond transparent
-      // Garder le stroke visible pour voir le radius
-      if (!strokeColor || strokeColor.trim() === "" || strokeSize <= 0) {
-        circleBg.style.border = "none";
-      } else {
-        // Vérifier si la couleur est transparente (alpha = 0)
-        const isTransparent =
-          (strokeColor.includes("rgba") && strokeColor.includes(", 0)")) ||
-          (strokeColor.includes("rgba") && strokeColor.includes(", 0 )"));
-        if (isTransparent) {
-          circleBg.style.border = "none";
-        } else {
-          circleBg.style.borderColor = strokeColor;
-          circleBg.style.borderWidth = strokeSize + "px";
-          circleBg.style.borderStyle = strokeStyle || "solid";
-        }
-      }
-      circleBg.style.boxShadow = "none"; // Pas d'ombre
-      circleBg.style.backdropFilter = "none"; // Pas de filtre
-      // Ne pas mettre opacity: 0 car cela masquerait aussi le contenu (canvas Three.js)
-      circleBg.style.pointerEvents = "auto"; // Garder les clics fonctionnels
+    // Disque (cercle) : fond + stroke. Terre : radiusExobase (visible), sphère Three.js au centre à radius.
+    if (nodeId === "terre" && planetEffect) {
+      // Dégradé radial : de radius/radiusExobase (fillColor) à 100% (fillColor alpha 0)
+      const innerPct = (radius / radiusExobase) * 100;
+      let fillColorOuter = fillColor.replace(/,\s*[\d.]+\)\s*$/, ", 0)");
+      if (fillColorOuter === fillColor) fillColorOuter = "rgba(0,0,0,0)";
+      // farthest-side : 100% = bord du disque (radiusExobase), pas le coin (farthest-corner)
+      const gradientCss = `radial-gradient(circle farthest-side at center, transparent 0%, transparent ${innerPct}%, ${fillColor} ${innerPct}%, ${fillColorOuter} 100%)`;
+      if (typeof pd === "function") pd("[createCell][organigramme.js] gradient radius=" + radius + " radiusExobase=" + radiusExobase + " innerPct=" + innerPct + " fillColor=" + fillColor + " fillColorOuter=" + fillColorOuter + " | " + gradientCss);
+      else console.log("[createCell] gradient radius=" + radius + " radiusExobase=" + radiusExobase + " innerPct=" + innerPct + " fillColor=" + fillColor + " fillColorOuter=" + fillColorOuter + " | " + gradientCss);
+      circleBg.style.background = gradientCss;
     } else {
       circleBg.style.backgroundColor = fillColor;
-      // Toujours créer le cercle, mais rendre la bordure invisible si strokeColor est vide, transparent, ou strokeSize est 0
-      // Le cercle est nécessaire pour que les étiquettes s'éloignent correctement du logo
-      if (!strokeColor || strokeColor.trim() === "" || strokeSize <= 0) {
-        circleBg.style.border = "none";
-      } else {
-        // Vérifier si la couleur est transparente (alpha = 0)
-        const isTransparent =
-          (strokeColor.includes("rgba") && strokeColor.includes(", 0)")) ||
-          (strokeColor.includes("rgba") && strokeColor.includes(", 0 )"));
-        if (isTransparent) {
-          // Bordure transparente mais présente pour l'espacement
-          circleBg.style.borderColor = strokeColor;
-          circleBg.style.borderWidth = strokeSize + "px";
-          circleBg.style.borderStyle = strokeStyle || "solid";
-        } else {
-          if (strokeStyle === "blur") {
-            // Effet de bordure floue avec box-shadow
-            circleBg.style.border = "none";
-            const blurRadius = Math.max(strokeSize * 2, 4); // Rayon de flou proportionnel à l'épaisseur
-            circleBg.style.boxShadow = `0 0 ${blurRadius}px ${strokeSize}px ${strokeColor}`;
-          } else {
-            // Bordure solide classique
-            circleBg.style.borderColor = strokeColor;
-            circleBg.style.borderWidth = strokeSize + "px";
-            circleBg.style.borderStyle = strokeStyle || "solid";
-            circleBg.style.boxShadow = "none"; // S'assurer qu'il n'y a pas de box-shadow si ce n'est pas blur
-          }
-        }
-      }
     }
+      // Stroke : strokeColor, strokeSize, strokeStyle doivent exister (config)
+      const isTransparent =
+        (strokeColor.includes("rgba") && strokeColor.includes(", 0)")) ||
+        (strokeColor.includes("rgba") && strokeColor.includes(", 0 )"));
+      if (isTransparent) {
+        circleBg.style.borderColor = strokeColor;
+        circleBg.style.borderWidth = strokeSize + "px";
+        circleBg.style.borderStyle = strokeStyle || "solid";
+      } else if (strokeStyle === "blur") {
+        circleBg.style.border = "none";
+        const blurRadius = Math.max(strokeSize * 2, 4);
+        circleBg.style.boxShadow = `0 0 ${blurRadius}px ${strokeSize}px ${strokeColor}`;
+      } else {
+        circleBg.style.borderColor = strokeColor;
+        circleBg.style.borderWidth = strokeSize + "px";
+        circleBg.style.borderStyle = strokeStyle || "solid";
+        circleBg.style.boxShadow = "none";
+      }
     // Wrapper le logo dans un span pour appliquer l'offset sans bouger le cercle
     const logoSpan = document.createElement("span");
     logoSpan.style.display = "flex";
@@ -1255,8 +1234,10 @@ function createCell(
         const planetContainer = document.createElement("div");
         planetContainer.className = "planet-container threejs-container";
         planetContainer.style.position = "relative";
-        planetContainer.style.width = "100%";
-        planetContainer.style.height = "100%";
+        // Terre : sphère à radius (pas 100% de la cellule qui est à radiusExobase)
+        const planetSize = radius * 2;
+        planetContainer.style.width = planetSize + "px";
+        planetContainer.style.height = planetSize + "px";
         planetContainer.style.background = "transparent";
         // Désactiver tous les effets CSS qui pourraient créer un halo (box-shadow, mask, etc.)
         planetContainer.style.boxShadow = "none";
@@ -1269,12 +1250,7 @@ function createCell(
         planetContainer.style.setProperty("--after-display", "none");
         planetContainer.style.pointerEvents = "none"; // Survol/tooltip sur circleBg, pas sur le canvas
 
-        // Calculer la taille du canvas Three.js
-        const planetSize = radius * 2 * logoScale;
-
-        // Log supprimé (non essentiel)
-
-        // Créer le canvas pour Three.js
+        // Créer le canvas pour Three.js (planetSize = radius * 2 déjà défini ci-dessus)
         const canvas = document.createElement("canvas");
         canvas.style.width = "100%";
         canvas.style.height = "100%";
@@ -1572,7 +1548,7 @@ function createCell(
         circleBg._tooltipNodeId = nodeId;
         circleBg._tooltipBaseName = tooltip;
       }
-    }
+      }
 
     cell.appendChild(circleBg);
   } else {
@@ -2252,12 +2228,25 @@ function calculatePositions() {
   });
 }
 
-// Fonction helper pour récupérer les propriétés d'un node (gère le cas spécial 'terre' avec tableau epoch)
+// Couleur rgba/rgb → #RRGGBB (opaque) pour stroke = même teinte que fill
+function rgbaToOpaqueHex(cssColor) {
+  if (!cssColor || typeof cssColor !== "string") return null;
+  const rgba = cssColor.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (rgba) {
+    const r = parseInt(rgba[1], 10);
+    const g = parseInt(rgba[2], 10);
+    const b = parseInt(rgba[3], 10);
+    return "#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  }
+  if (/^#[0-9A-Fa-f]{3,8}$/.test(cssColor)) return cssColor;
+  return null;
+}
+
+// Fonction helper pour récupérer les propriétés d'un node (gère 'terre' et 'albedo' avec tableau epoch)
 function getNodeProperty(node, property, defaultValue = null) {
   if (!node) return defaultValue;
 
-  // Cas spécial pour le node 'terre' avec tableau epoch
-  if (node.id === "terre" && node.epoch && Array.isArray(node.epoch)) {
+  if ((node.id === "terre" || node.id === "albedo") && node.epoch && Array.isArray(node.epoch)) {
     const currentEpochName =
       (typeof window !== "undefined" && window.currentEpochName) ||
       "Corps noir";
@@ -3121,9 +3110,25 @@ cellOrder.forEach((nodeId) => {
     }
   }
 
-  // Gérer le cas spécial du node 'terre' avec tableau epoch
+  // Gérer le cas spécial des nodes avec tableau epoch (terre, albedo)
   let nodeConfig = node;
-  if (node.id === "terre" && node.epoch && Array.isArray(node.epoch)) {
+  if (node.id === "albedo" && node.epoch && Array.isArray(node.epoch)) {
+    const currentEpochName =
+      (typeof window !== "undefined" && window.currentEpochName) ||
+      "Corps noir";
+    const epochConfig = node.epoch.find(
+      (e) => e.epochName === currentEpochName,
+    );
+    const ec = epochConfig || node.epoch[node.epoch.length - 1];
+    if (ec) {
+      nodeConfig = {
+        ...node,
+        fillColor: ec.fillColor,
+        strokeColor: ec.strokeColor,
+        strokeSize: ec.strokeSize != null ? ec.strokeSize : 1,
+      };
+    }
+  } else if (node.id === "terre" && node.epoch && Array.isArray(node.epoch)) {
     // Trouver la configuration de l'époque courante
     const currentEpochName =
       (typeof window !== "undefined" && window.currentEpochName) ||
@@ -3176,11 +3181,13 @@ cellOrder.forEach((nodeId) => {
         ...node,
         logo: logoForCell,
         radius: epochConfig.radius,
+        radiusExobase: epochConfig.radiusExobase,
         fillColor: epochConfig.fillColor,
         strokeColor: epochConfig.strokeColor,
         strokeSize: epochConfig.strokeSize,
-        planetEffect: epochConfig.planetEffect || false, // Passer planetEffect si défini
+        planetEffect: epochConfig.planetEffect || false,
       };
+      if (node.id === "terre") nodeConfig.logoScale = 1;
     } else if (node.epoch.length > 0) {
       // Fallback : utiliser la dernière époque du tableau (permet d'alléger les répétitions)
       const lastEpoch = node.epoch[node.epoch.length - 1];
@@ -3216,12 +3223,14 @@ cellOrder.forEach((nodeId) => {
         ...node,
         logo: logoForCell,
         radius: lastEpoch.radius || node.epoch[0].radius,
+        radiusExobase: lastEpoch.radiusExobase || node.epoch[0].radiusExobase,
         fillColor: lastEpoch.fillColor || node.epoch[0].fillColor,
         strokeColor: lastEpoch.strokeColor || node.epoch[0].strokeColor,
         strokeSize: lastEpoch.strokeSize || node.epoch[0].strokeSize,
         planetEffect:
-          lastEpoch.planetEffect || node.epoch[0].planetEffect || false, // Récupérer planetEffect
+          lastEpoch.planetEffect || node.epoch[0].planetEffect || false,
       };
+      if (node.id === "terre") nodeConfig.logoScale = 1;
     }
   }
 
@@ -3255,10 +3264,11 @@ cellOrder.forEach((nodeId) => {
     nodeConfig.logoOffsetY || 0, // Pass the vertical logo offset (default 0)
     nodeConfig.strokeSize !== undefined && nodeConfig.strokeSize !== null
       ? nodeConfig.strokeSize
-      : 4, // Pass the border thickness (default 4px, but allow 0)
-    nodeConfig.strokeStyle || "solid", // Pass the stroke style (default 'solid', can be 'blur')
-    null, // targetContainer (utiliser le flux-diagram par défaut)
-    nodeConfig.planetEffect || false, // Pass planetEffect flag (default false)
+      : 4,
+    nodeConfig.strokeStyle || "solid",
+    nodeConfig.radiusExobase ?? null,
+    null, // targetContainer
+    nodeConfig.planetEffect || false,
   );
 
   createdCells[node.id] = cell;
@@ -3387,11 +3397,12 @@ nodes.forEach((node) => {
     node.logoOffsetY || 0,
     node.strokeSize !== undefined && node.strokeSize !== null
       ? node.strokeSize
-      : 4, // Allow strokeSize: 0
-    node.strokeStyle || "solid", // Pass the stroke style (default 'solid', can be 'blur')
+      : 4,
+    node.strokeStyle || "solid",
+    node.radiusExobase ?? null,
     null, // targetContainer
-    node.planetEffect || false, // planetEffect
-    node.align || null, // align (pour 'zorder' ou autre)
+    node.planetEffect || false,
+    node.align || null,
   );
 
   createdCells[node.id] = cell;
@@ -3861,26 +3872,6 @@ function computeAtmosphericHaloRgb(D) {
   return [Math.round(r), Math.round(g), Math.round(b)];
 }
 
-function updateAlbedoHaloFromComposition(D) {
-  const cellAlbedo = document.getElementById("cell-albedo");
-  if (cellAlbedo) {
-    const circle = cellAlbedo.querySelector(".flux-circle-bg");
-    if (circle) {
-      const haloRgb = computeAtmosphericHaloRgb(D);
-      const isVacuum = haloRgb[0] === 0 && haloRgb[1] === 0 && haloRgb[2] === 0;
-      if (isVacuum) {
-        circle.style.backgroundColor = "rgba(0, 0, 0, 0.45)";
-        circle.style.borderColor = "rgba(40, 40, 40, 0.8)";
-        circle.style.boxShadow = "none";
-      } else {
-        circle.style.backgroundColor = `rgba(${haloRgb[0]}, ${haloRgb[1]}, ${haloRgb[2]}, 0.24)`;
-        circle.style.borderColor = `rgba(${haloRgb[0]}, ${haloRgb[1]}, ${haloRgb[2]}, 0.92)`;
-        circle.style.boxShadow = `0 0 20px 3px rgba(${haloRgb[0]}, ${haloRgb[1]}, ${haloRgb[2]}, 0.45)`;
-      }
-    }
-  }
-}
-
 // Picto par clé CLOUD_SW pour alt finetuning (une entrée par target)
 var _finetuningAltPicto = {
   CLOUD_FRACTION_BASE: "☁️",
@@ -3997,7 +3988,6 @@ window.updateFluxLabels = function (eventId) {
       if (hasNoAtmosphere) {
         albedo_num = 0;
       }
-      updateAlbedoHaloFromComposition(D);
       break;
     default:
       return;
@@ -5778,9 +5768,17 @@ function initFluxButtonListeners() {
   });
 }
 
-// Exposer createCell globalement pour accès depuis main.js
+// Objet global des fonctions organigramme (appels directs, pas de typeof guard)
+window.FUNCS_ORGANIGRAMME = {
+  createCell: createCell,
+  recreateNoyauRadiation: recreateNoyauRadiation,
+  recreateTerreRadiation: recreateTerreRadiation,
+  generateArrows: generateArrows,
+  initFluxButtonListeners: initFluxButtonListeners
+};
+// Rétrocompat (références directes window.xxx)
 window.createCell = createCell;
 window.recreateNoyauRadiation = recreateNoyauRadiation;
 window.recreateTerreRadiation = recreateTerreRadiation;
+window.generateArrows = generateArrows;
 window.initFluxButtonListeners = initFluxButtonListeners;
-window.createCell = createCell; // Exposer createCell pour que setEpoch puisse recréer la Terre

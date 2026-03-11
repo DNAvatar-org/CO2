@@ -136,9 +136,23 @@ const nodes = [
 
     { id: 'espace1', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 150, y: centerY - 170, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'CERES', radiation: null, zIndex: 14 },
 
-    { id: 'albedo', logo: '', planetEffect: false, x: centerX + 0.8, y: earthCenterY + 1.0, radius: radiusAtmosphere, fillColor: 'rgba(0, 200, 255, 0.2)', strokeColor: 'white', strokeSize: 1, left: [], right: [], top: [], bottom: [], tooltip: '', radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 }, zIndex: 10, logoScale: 0.1 },
+    {//albedo cellule — cercle extérieur toujours blanc alpha 0.5, sans fill
+        id: 'albedo',
+        logo: '',
+        planetEffect: false,
+        x: centerX + 0.8,
+        y: earthCenterY + 1.0,
+        radius: radiusAtmosphere,
+        fillColor: 'rgba(0, 0, 0, 0)',
+        strokeColor: 'rgba(255, 255, 255, 0.5)',
+        strokeSize: 1,
+        left: [], right: [], top: [], bottom: [], tooltip: '',
+        radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 },
+        zIndex: 10,
+        logoScale: 0.1
+    },
 
-    {
+    {//noyau cellule
         id: 'noyau',
         logo: [{ text: '4.44 x 10^13 W', dataId: 'core_temperature' }],//'🌕',
         x: centerX - 0.2,
@@ -204,81 +218,86 @@ const nodes = [
         logoOffsetY: 2
     },
 
-    {
+    {//terre cellule
         id: 'terre',
         x: centerX,
         y: earthCenterY,
         epoch: [
             {
                 epochName: 'Corps noir',
-                logo: LOGOS.CORPS_NOIR, // Picto (charsImages → corps_noir.png)
-                texture: 'fonds/5000Ma.png', // Texture Three.js
+                logo: LOGOS.CORPS_NOIR,
+                texture: 'fonds/5000Ma.png',
                 planetEffect: true,
                 luxSaturation: 1.0,
-                lightDistance: '7-{$ticTime}/3', // Expression interprétée dynamiquement
+                lightDistance: '7-{$ticTime}/3',
                 radius: radiusTerre * 0.8,
+                radiusExobase: radiusTerre*0.81 ,
                 fillColor: 'rgba(0, 0, 0, 0)',
-                strokeColor: '#000000',
-                strokeSize: 1
+                strokeColor: '#666666',
+                strokeSize: 0,
             },
             {
                 epochName: 'Hadéen',
-                logo: LOGOS.HADEEN, // Picto
-                texture: 'fonds/4500Ma.png', // Texture Three.js (par date ; ticTime → fonds/XXXXMa.png à brancher si besoin)
+                logo: LOGOS.HADEEN,
+                texture: 'fonds/4500Ma.png',
                 planetEffect: true,
                 luxSaturation: 3.0,
-                lightDistance: 0, // 0 = éclairage interne (PointLight au centre)
-                // textureIndex est calculé automatiquement: window.textureIndex = Math.floor(window.infoTimeMa / 50)
-                // On peut aussi stocker textureIndex directement dans lightDistance (0-9) si on veut forcer une texture
+                lightDistance: 0,
                 radius: radiusTerre * 1.1,
-                fillColor: 'rgba(255, 69, 0, 0.3)',
-                strokeColor: '#ff4500',
-                strokeSize: 1
+                radiusExobase: radiusTerre * 1.6,
+                strokeColor: '#FF4500',
+                fillColor: 'rgba(255, 69, 0, 0.5)',
+                strokeSize: 0,
             },
             {
                 epochName: 'Archéen',
-                logo: LOGOS.ARCHEEN, // Picto
-                texture: 'fonds/2500Ma.png', // Texture Three.js (par date)
+                logo: LOGOS.ARCHEEN,
+                texture: 'fonds/2500Ma.png',
                 radius: radiusTerre,
-                fillColor: 'rgba(255, 140, 0, 0.3)', // Orange/jaune : début de l'oxygène mais encore réductrice
-                strokeColor: '#ff8c00',
-                strokeSize: 1,
-                planetEffect: true // Activer l'effet planète avec rotation lente
+                radiusExobase: radiusTerre * 1.15,
+                fillColor: 'rgba(255, 215, 0, 0.5)',
+                strokeColor: '#FFD700',
+                strokeSize: 0,
+                planetEffect: true
             },
             {
                 epochName: 'Protérozoïque',
                 logo: LOGOS.GLOBE_AFRICA,
                 radius: radiusTerre,
-                fillColor: 'rgba(0, 191, 255, 0.3)', // Cyan/bleu clair : Grande Oxydation, apparition de l'oxygène
-                strokeColor: '#00bfff',
-                strokeSize: 1
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 191, 255, 0.5)',
+                strokeColor: '#00FA9A',
+                strokeSize: 0,
             },
             {
                 epochName: 'Mésozoïque',
                 logo: LOGOS.GLOBE_AMERICAS,
                 texture: 'fonds/00200Ma.png',
                 radius: radiusTerre,
-                fillColor: 'rgba(0, 200, 255, 0.3)',
-                strokeColor: '#00c8ff',
-                strokeSize: 1,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 200, 255, 0.5)',
+                strokeColor: '#00FFFF',
+                strokeSize: 0,
                 planetEffect: true
             },
             {
                 epochName: 'Paléozoïque',
                 logo: LOGOS.GLOBE_ASIA,
                 radius: radiusTerre,
-                fillColor: 'rgba(0, 200, 255, 0.3)',
-                strokeColor: '#00c8ff',
-                strokeSize: 1
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 200, 255, 0.5)',
+                strokeColor: '#00FFFF',
+                strokeSize: 0,
             },
             {
                 epochName: 'Cénozoïque',
                 logo: LOGOS.GLOBE_AFRICA,
                 texture: 'fonds/00066Ma.png',
                 radius: radiusTerre,
-                fillColor: 'rgba(0, 200, 255, 0.3)',
-                strokeColor: '#00c8ff',
-                strokeSize: 1,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 200, 255, 0.5)',
+                strokeColor: '#00FFFF',
+                strokeSize: 0,
                 planetEffect: true
             },
             {
@@ -286,20 +305,22 @@ const nodes = [
                 logo: LOGOS.TODAY,
                 texture: 'fonds/001800a.png',
                 radius: radiusTerre,
-                fillColor: 'rgba(0, 200, 255, 0.3)',
-                strokeColor: '#00c8ff',
-                strokeSize: 1,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 200, 255, 0.5)',
+                strokeColor: '#00FFFF',
+                strokeSize: 0,
                 planetEffect: true
             },
             {
                 epochName: 'Aujourd\'hui',
-                logo: LOGOS.MODERN, // Picto
-                texture: 'fonds/002025a.png', // Texture Three.js
+                logo: LOGOS.MODERN,
+                texture: 'fonds/002025a.png',
                 radius: radiusTerre,
-                fillColor: 'rgba(0, 200, 255, 0.3)',
-                strokeColor: '#00eeff',
-                strokeSize: 1,
-                planetEffect: true // Activer l'effet planète avec rotation lente
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 255, 255, 0.5)',
+                strokeColor: '#E0FFFF',
+                strokeSize: 0,
+                planetEffect: true
             }
         ],
         left: [],
@@ -308,9 +329,7 @@ const nodes = [
         bottom: '',
         tooltip: 'Terre',
         radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' },
-        zIndex: 15,
-        logoScale: 0.9,
-        logoOffsetY: 7
+        zIndex: 15
     },
 
     { id: 'espace2', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 170, y: centerY + 310, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'DSCOVR au L1', radiation: null, zIndex: 14 },
