@@ -38,7 +38,7 @@ function createReceiver(options) {
     var isInIframe = typeof window !== 'undefined' && window !== window.top;
 
     return function (event, payload) {
-        const CO2_EVENTS = window.CO2_EVENTS;
+        const IO_LISTENER = window.IO_LISTENER;
         const shell = window.shell;
         const updateFluxLabels = window.updateFluxLabels;
         const projectToVisu = window.projectToVisu;
@@ -50,7 +50,7 @@ function createReceiver(options) {
             return;
         }
         if (event === 'cycleCalcul') {
-            if (CO2_EVENTS) CO2_EVENTS.emit('compute:progress', payload);
+            if (IO_LISTENER) IO_LISTENER.emit('compute:progress', payload);
             if (!isInIframe && dispatchVisu && typeof updateFluxLabels === 'function') {
                 try { updateFluxLabels('cycleCalcul'); } catch (e) {}
             }
@@ -60,8 +60,8 @@ function createReceiver(options) {
             return;
         }
         if (event === 'ProcessFinished') {
-            if (CO2_EVENTS && payload && payload.DATA) {
-                CO2_EVENTS.emit('compute:done', { DATA: payload.DATA, result: payload.result });
+            if (IO_LISTENER && payload && payload.DATA) {
+                IO_LISTENER.emit('compute:done', { DATA: payload.DATA, result: payload.result });
             }
             if (!isInIframe && typeof projectToVisu === 'function' && payload && payload.DATA) {
                 projectToVisu(payload.DATA);

@@ -1,7 +1,7 @@
 // ============================================================================
 // File: API_BILAN/h2o/calculations_h2o.js - Calculs H2O (vapeur et nuages)
 // Desc: Séparation vapeur d'eau (effet de serre) et nuages (albedo)
-// Version 1.0.13
+// Version 1.0.14
 // Date: [November 2025]
 // logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -22,6 +22,7 @@
 // - v1.0.10 : cap vapeur final observé (AIRS/ERA5, ~7%/K) en fin d'itération Init
 // - v1.0.11 : propagation sulfate proxy 🍰🫧🌫 depuis ⚖️🌫 dans la composition atmosphérique avec vapeur
 // - v1.0.13 : en Search/Dicho pas de cache H2O (recalcul vapeur à T courante) pour reproductibilité albedo_nuages (35.9% vs 35.3%)
+// - v1.0.14 : logs cap vapeur C-C simplifiés en "[cycle] H2O cap @...°C"
 // - v1.0.12 : sans atmosphère (⚖️🫧=0) avec ⚖️💧>0 (Corps noir météorites) : 🍰💧🧊=1 si T<0°C, sinon 🍰💧🌊=1 (didactique)
 // ============================================================================
 
@@ -599,8 +600,8 @@ H2O.calculateH2OParameters = function () {
             + ' vapor=' + vapor_result.toFixed(5));
     }
     if (vapor_raw > c_c_max && typeof console !== 'undefined') {
-        const who = (max_vapor_mass_fraction <= available_water_fraction) ? 'max_vapor_mass_frac' : 'available_water_frac';
-        console.warn('[calculateH2OParameters][calculations_h2o.js] 🍰🫧💧 cap dynamique C-C: raw=' + vapor_raw.toFixed(4) + ' cap=' + c_c_max.toFixed(4) + ' T=' + T.toFixed(1) + 'K M_dry=' + (M_dry != null ? M_dry.toFixed(4) : '?') + ' mass_ratio=' + (mass_ratio != null ? mass_ratio.toFixed(4) : '?') + ' limiter=' + who);
+        const T_C = T - CONST.KELVIN_TO_CELSIUS;
+        console.log('[cycle] H2O cap @' + T_C.toFixed(1) + '°C');
     }
     DATA['💧']['🍰🫧💧'] = vapor_result;
 

@@ -1,16 +1,59 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.0.0
+// Version 1.1.1
 // Date: [January 2025]
-// logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Ā unit : non Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+//
+// - v1.1.1 : retrait precisionFactor/fpsPrecisionFactor (FPS.js v1.2.0 remplace Précision par Mémoire)
+//
+// NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
+//   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
+//      soit à jour avant d'appeler updateSpectralVisualization. Strictement nécessaire.
+//   2. setTimeout(100) dans plot.js/drawSpectralVisualization : le draw canvas 2000 bins
+//      bloque le main thread ; le setTimeout laisse Plotly finir avant de peindre le canvas.
+//      C'est le seul timeout métier autorisé par exception à _REGLE_SYNC_SCRIPTS.
 // ============================================================================
+
+// ============================================================================
+// DRAW FLUX — séquence de dessin différé (1 RAF + setTimeout dans plot.js)
+// Async autorisé par exception : voir NOTE ASYNC en tête de fichier.
+// ============================================================================
+function _drawFluxAndUnpause(plotData) {
+    window.showSpectralBackground = true;
+    requestAnimationFrame(function () {  // 1 RAF : laisse le DOM se mettre à jour
+        const fresh = window.getSpectralResultFromDATA();
+        if (fresh.lambda_range && fresh.upward_flux) {
+            plotData.lambda_range = fresh.lambda_range;
+            plotData.lambda_weights = fresh.lambda_weights;
+            plotData.current = fresh;
+        }
+        updatePlot(plotData);
+        const canvas = document.getElementById('spectral-visualization');
+        if (canvas) {
+            canvas.style.setProperty('display', 'block', 'important');
+            canvas.style.setProperty('visibility', 'visible', 'important');
+            canvas.style.setProperty('opacity', '1', 'important');
+            canvas.style.setProperty('z-index', '10000', 'important');
+            canvas.style.setProperty('position', 'absolute', 'important');
+        }
+        console.log('🎨 [drawFlux] bins=' + (plotData.current && plotData.current.lambda_range ? plotData.current.lambda_range.length : '?'));
+        try {
+            window.updateSpectralVisualization(plotData.current);
+        } catch (err) {
+            console.error('❌ [drawFlux] crash:', err);
+        }
+        // setTimeout(100) dans plot.js encore actif → Earth s'anime après
+        requestAnimationFrame(function () {
+            window.threeJSAnimationPaused = false;
+        });
+    });
+}
 
 // ============================================================================
 // COMPTEUR FPS
@@ -577,12 +620,8 @@ function updateFPS() {
             window.fps = fps;
         }
 
-        // Mettre à jour le graphique FPS (précision 0% → 0.0x, 100% → 2.0x)
-        if (typeof window !== 'undefined' && typeof window.updateFPSDisplay === 'function') {
-            const precisionFactor = (typeof getPrecisionFactorFromFPS === 'function')
-                ? getPrecisionFactorFromFPS()
-                : 0;
-            window.updateFPSDisplay(fps, precisionFactor);
+        if (updateFPSDisplay === 'function') {
+            window.updateFPSDisplay(fps);
         }
     }
 
@@ -728,10 +767,9 @@ function updateCO2Level(state) {
     document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
 
     setTimeout(() => {
-        // Calculer le scénario courant (peut retourner une Promise)
-        if (typeof window.simulateRadiativeTransfer !== 'function') {
-            return;
-        }
+        // Reset du marqueur de résolution intermédiaire (nouveau calcul)
+        const _sv = document.getElementById('spectral-visualization');
+        if (_sv) _sv._lastDrawnBins = 0;
         // Récupérer CH4_fraction depuis plotData (défini par setEpoch ou par défaut 0)
         const ch4_ppm = plotData.ch4_ppm || 0;
         const ch4_fraction = ch4_ppm * 1e-6;
@@ -859,43 +897,9 @@ function updateCO2Level(state) {
 
             updateLegend(plotData);
             updatePlot(plotData);
-            // Dernier redraw plot + spectre quand le DOM est libre (affichage fin 2000 bins)
-            requestAnimationFrame(function () {
-                requestAnimationFrame(function () {
-                    const fresh = (typeof window.getSpectralResultFromDATA === 'function') ? window.getSpectralResultFromDATA() : null;
-                    if (fresh && fresh.lambda_range && fresh.upward_flux) {
-                        plotData.lambda_range = fresh.lambda_range;
-                        plotData.lambda_weights = fresh.lambda_weights;
-                        plotData.current = fresh;
-                    }
-                    updatePlot(plotData);
-                    const canvas = document.getElementById('spectral-visualization');
-                    if (canvas) {
-                        canvas.style.setProperty('display', 'block', 'important');
-                        canvas.style.setProperty('visibility', 'visible', 'important');
-                        canvas.style.setProperty('opacity', '1', 'important');
-                        canvas.style.setProperty('z-index', '10000', 'important');
-                        canvas.style.setProperty('position', 'absolute', 'important');
-                    }
-                    window.updateSpectralVisualization(plotData.current);
-                });
-            });
+            _drawFluxAndUnpause(plotData);
             document.getElementById('status').textContent = 'Prêt';
-            // 🔒 PROTECTION : S'assurer que showSpectralBackground reste à true après les calculs
-            if (typeof window !== 'undefined') {
-                window.showSpectralBackground = true;
-            }
-            // Réinitialiser les flags de convergence après l'affichage final (après un délai pour laisser le temps à la précision max)
-            // 🔒 NE PAS réinitialiser showSpectralBackground (il doit rester à true)
-            setTimeout(() => {
-                if (typeof window !== 'undefined') {
-                    window.spectralConverged = false;
-                    window.spectralPrecisionTarget = 'auto';
-                    // 🔒 S'assurer que showSpectralBackground reste à true même après réinitialisation
-                    window.showSpectralBackground = true;
-                }
-            }, 2000); // Laisser 2 secondes pour la précision maximale
-            enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
+            enableButtons();
         };
 
         if (result instanceof Promise) {
@@ -1128,16 +1132,11 @@ function updateCO2LevelDirect(co2_fraction) {
     }
 
     const timeoutId = setTimeout(() => {
-        // Vérifier si le calcul a été annulé avant de commencer
         if (window.cancelCalculation) {
             return;
         }
-
-        // Calculer le scénario courant (peut retourner une Promise)
-        if (typeof window.simulateRadiativeTransfer !== 'function') {
-            return;
-        }
-        // Récupérer CH4_fraction depuis plotData (défini par setEpoch ou par défaut 0)
+        const _sv2 = document.getElementById('spectral-visualization');
+        if (_sv2) _sv2._lastDrawnBins = 0;
         const ch4_ppm = plotData.ch4_ppm || 0;
         const ch4_fraction = ch4_ppm * 1e-6;
         const result = window.simulateRadiativeTransfer(co2_fraction, {
@@ -1152,8 +1151,8 @@ function updateCO2LevelDirect(co2_fraction) {
             if (window.cancelCalculation) {
                 return;
             }
-            if (window.CO2_EVENTS && data) {
-                window.CO2_EVENTS.emit('compute:done', { DATA: window.DATA, result: data });
+            if (window.IO_LISTENER && data) {
+                window.IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: data });
             }
 
             // Retirer ce timeout de la liste
@@ -1311,43 +1310,9 @@ function updateCO2LevelDirect(co2_fraction) {
 
             updateLegend(plotData);
             updatePlot(plotData);
-            // Dernier redraw plot + spectre quand le DOM est libre (affichage fin 2000 bins)
-            requestAnimationFrame(function () {
-                requestAnimationFrame(function () {
-                    const fresh = (typeof window.getSpectralResultFromDATA === 'function') ? window.getSpectralResultFromDATA() : null;
-                    if (fresh && fresh.lambda_range && fresh.upward_flux) {
-                        plotData.lambda_range = fresh.lambda_range;
-                        plotData.lambda_weights = fresh.lambda_weights;
-                        plotData.current = fresh;
-                    }
-                    updatePlot(plotData);
-                    const canvas = document.getElementById('spectral-visualization');
-                    if (canvas) {
-                        canvas.style.setProperty('display', 'block', 'important');
-                        canvas.style.setProperty('visibility', 'visible', 'important');
-                        canvas.style.setProperty('opacity', '1', 'important');
-                        canvas.style.setProperty('z-index', '10000', 'important');
-                        canvas.style.setProperty('position', 'absolute', 'important');
-                    }
-                    window.updateSpectralVisualization(plotData.current);
-                });
-            });
+            _drawFluxAndUnpause(plotData);
             document.getElementById('status').textContent = 'Prêt';
-            // 🔒 PROTECTION : S'assurer que showSpectralBackground reste à true après les calculs
-            if (typeof window !== 'undefined') {
-                window.showSpectralBackground = true;
-            }
-            // Réinitialiser les flags de convergence après l'affichage final (après un délai pour laisser le temps à la précision max)
-            // 🔒 NE PAS réinitialiser showSpectralBackground (il doit rester à true)
-            setTimeout(() => {
-                if (typeof window !== 'undefined') {
-                    window.spectralConverged = false;
-                    window.spectralPrecisionTarget = 'auto';
-                    // 🔒 S'assurer que showSpectralBackground reste à true même après réinitialisation
-                    window.showSpectralBackground = true;
-                }
-            }, 2000); // Laisser 2 secondes pour la précision maximale
-            enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
+            enableButtons();
         };
 
         if (result instanceof Promise) {
@@ -2603,11 +2568,11 @@ function setEpoch(epochName) {
     }
 
     // Synchroniser l'état avec l'iframe scie (epoch, anim, ticTime)
-    if (window.CO2_EVENTS) {
+    if (window.IO_LISTENER) {
         const epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || epoch.id || epochName;
         const ticTime = (window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'] != null) ? window.DATA['📜']['📿💫'] : 0;
         const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']) || window.isAnim;
-        window.CO2_EVENTS.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime });
+        window.IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime });
     }
 }
 
@@ -2657,14 +2622,11 @@ function updateH2OLevelDirect(h2o_total_percent) {
             return;
         }
 
-        // Calculer le scénario courant (peut retourner une Promise)
-        if (typeof window.simulateRadiativeTransfer !== 'function') {
-            return;
-        }
-        // 🔒 Récupérer CO2_fraction et CH4_fraction depuis plotData (PRÉSERVER les valeurs existantes)
-        const co2_ppm = (plotData.co2_ppm !== undefined && plotData.co2_ppm !== null) ? plotData.co2_ppm : 0;
+        const _sv3 = document.getElementById('spectral-visualization');
+        if (_sv3) _sv3._lastDrawnBins = 0;
+        const co2_ppm = plotData.co2_ppm;
         const co2_fraction = co2_ppm * 1e-6;
-        const ch4_ppm = (plotData.ch4_ppm !== undefined && plotData.ch4_ppm !== null) ? plotData.ch4_ppm : 0;
+        const ch4_ppm = plotData.ch4_ppm;
         const ch4_fraction = ch4_ppm * 1e-6;
         
         // Vérification critique avant le calcul
@@ -2695,8 +2657,8 @@ function updateH2OLevelDirect(h2o_total_percent) {
             if (window.cancelCalculation) {
                 return;
             }
-            if (window.CO2_EVENTS && data) {
-                window.CO2_EVENTS.emit('compute:done', { DATA: window.DATA, result: data });
+            if (window.IO_LISTENER && data) {
+                window.IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: data });
             }
 
             // Retirer ce timeout de la liste
@@ -2872,52 +2834,16 @@ function updateH2OLevelDirect(h2o_total_percent) {
             
             // 🔒 Mettre à jour les labels de flux (y compris h2o_percent) après le calcul
             // Utiliser plotData.current si disponible (résultats du calcul), sinon plotData
-            if (typeof window.updateFluxLabels === 'function') {
-                const dataForLabels = (window.plotData && window.plotData.current) ? window.plotData : (window.plotData || {});
-                window.updateFluxLabels('ProcessFinished');
-            }
-            
-            // Mettre à jour la visualisation spectrale après un délai
-            setTimeout(() => {
-                const canvas = document.getElementById('spectral-visualization');
-                if (canvas) {
-                    canvas.style.setProperty('display', 'block', 'important');
-                    canvas.style.setProperty('visibility', 'visible', 'important');
-                    canvas.style.setProperty('opacity', '1', 'important');
-                    canvas.style.setProperty('z-index', '10000', 'important');
-                    canvas.style.setProperty('position', 'absolute', 'important');
-                }
-                if (typeof window.updateSpectralVisualization === 'function' && plotData.current) {
-                    window.updateSpectralVisualization(plotData.current);
-                }
-            }, 200);
+            window.updateFluxLabels('ProcessFinished');
+            _drawFluxAndUnpause(plotData);
             document.getElementById('status').textContent = 'Prêt';
-            // 🔒 PROTECTION : S'assurer que showSpectralBackground reste à true après les calculs
-            if (typeof window !== 'undefined') {
-                window.showSpectralBackground = true;
-            }
-            // Réinitialiser les flags de convergence après l'affichage final
-            // 🔒 NE PAS réinitialiser showSpectralBackground (il doit rester à true)
-            setTimeout(() => {
-                if (typeof window !== 'undefined') {
-                    window.spectralConverged = false;
-                    window.spectralPrecisionTarget = 'auto';
-                    // 🔒 S'assurer que showSpectralBackground reste à true même après réinitialisation
-                    window.showSpectralBackground = true;
-                }
-            }, 2000);
-            enableButtons(); // Réactiver les boutons quand la courbe est stabilisée
+            enableButtons();
         };
 
-        // Gérer le résultat (Promise ou valeur directe)
-        if (result && typeof result.then === 'function') {
-            result.then(processResult).catch((error) => {
-                console.error('[updateH2OLevelDirect] ❌ ERREUR lors du calcul:', error);
-                enableButtons();
-            });
-        } else {
-            processResult(result);
-        }
+        result.then(processResult).catch((error) => {
+            console.error('[updateH2OLevelDirect] ❌ ERREUR lors du calcul:', error);
+            enableButtons();
+        });
     }, 50);
 
     // Ajouter ce timeout à la liste pour pouvoir l'annuler
@@ -3018,13 +2944,9 @@ function runMainInit() {
             requestAnimationFrame(() => {
                 // DOM : 200ms pour laisser navigateur finaliser le rendu avant init listeners FPS
                 setTimeout(() => {
-                // 🔒 Écouter les événements FPS pour contrôler précision, affichage et animation
                 window.addEventListener('fpsLevelChanged', (event) => {
-                    const { fps, level, precisionFactor } = event.detail;
-                    
-                    // Stocker le niveau et la précision globalement
+                    const { fps, level } = event.detail;
                     window.fpsLevel = level;
-                    window.fpsPrecisionFactor = precisionFactor;
                     
                     // Contrôler l'affichage selon le niveau FPS
                     // 🔒 Le bouton "anim" contrôle directement showDichotomySteps, on ne le modifie pas ici
@@ -3032,32 +2954,18 @@ function runMainInit() {
                     const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']);
                     
                     if (level === 'warning' || level === 'aïe' || level === 'lent') {
-                        // FPS bas : arrêter l'animation de la planète (même si anim activé, on arrête pour performance)
-                        if (typeof window !== 'undefined') {
-                            window.threeJSAnimationPaused = true;
-                        }
+                        // FPS bas : pause Three.js uniquement
+                        window.threeJSAnimationPaused = true;
                     } else {
-                        // FPS correct : relancer l'animation si le bouton anim est activé
-                        if (animEnabled && typeof window !== 'undefined') {
-                            window.threeJSAnimationPaused = false;
-                        }
+                        // FPS correct : relancer si anim activé
+                        if (animEnabled) window.threeJSAnimationPaused = false;
                     }
-                    
-                    // Contrôler l'affichage du fond coloré (spectral visualization)
-                    // Désactiver si FPS < 20
-                    if (level === 'warning' || level === 'aïe') {
-                        window.showSpectralBackground = false;
-                    } else {
-                        window.showSpectralBackground = true;
-                    }
+                    // showSpectralBackground n'est PAS contrôlé par le FPS
+                    // → géré uniquement par les draw sequences (processResult / sync_panels)
                 });
                 
-                // Initialiser les variables globales pour le contrôle FPS
-                if (typeof window !== 'undefined') {
-                    window.showSpectralBackground = true; // Par défaut, afficher le fond coloré
-                    window.fpsLevel = 'rapide'; // Niveau par défaut
-                    window.fpsPrecisionFactor = 1.0; // Précision par défaut
-                }
+                window.fpsLevel = 'rapide';
+                window.showSpectralBackground = true;
                 
                 // Anim : source de vérité = DATA['🔘']['🔘🎞'] (bouton animation = bouton normal, pas toggle)
                 const animCb = document.getElementById('plot-anim-toggle-checkbox');

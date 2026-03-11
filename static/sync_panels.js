@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.13
+// Version 1.1.19
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -14,6 +14,12 @@
 // - v1.1.6: event sync:tuning (bary + updates) pour appliquer tuning sur parent/visu puis run unique
 // - v1.1.7: support baryByGroup (CLOUD_SW/SOLVER) pour jauges séparées
 // - v1.1.13: runComputeInParent normalise entrée (getMasses + h2oTotalFromMeteorites=0) pour même résultat visu vs scie
+// - v1.1.14: projectToVisu fix draw: showSpectralBackground forcé true dans RAF2, RAF3 unpause threeJS, retrait guards abusifs
+// - v1.1.15: reset _lastFinalSig au démarrage d'un calcul pour autoriser 1 FINAL par run (anti-doublon cross-run)
+// - v1.1.16: runComputeInParent passe renderMode (visu_/scie_) à computeRadiativeTransfer; pas de projectToVisu en scie_
+// - v1.1.17: ajout namespace window.VISUALWAIT (computeRenderMode, shouldAwaitDraw, resetDrawAck, markDrawn, isDrawn)
+// - v1.1.18: runComputeInParent force showDichotomySteps depuis DATA['🔘']['🔘🎞'] (visu anim = draws par cycle)
+// - v1.1.19: VISUALWAIT simplifié (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
 // - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
 // - v1.1.11: applyStateFromScie/applyTuningFromScie exposés ; messages sync:state/sync:tuning passent par shell
 // - v1.1.10: displayConvergence/clearConvergenceTrace/appendConvergenceStep passent par shell.dataInput ; compute:done aussi
@@ -35,6 +41,11 @@
         epochId: '⚫',
         animEnabled: false,
         ticTime: 0
+    };
+    window.VISUALWAIT = {
+        computeRenderMode: function () {
+            return window.isVisuPanelActive() ? 'visu_' : 'scie_';
+        }
     };
 
     function getIframe() {
@@ -172,30 +183,37 @@
         window.plotData.co2_ppm = co2_ppm;
         window.spectralConverged = true;
         window.spectralPrecisionTarget = 'max';
-        var maxBins = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxSpectralBinsConvergence) || 2000;
-        window.showSpectralBackground = !!(spectral.lambda_range && spectral.lambda_range.length >= maxBins);
         // Dernier cycle : toujours mettre à jour plot + spectre (pas de garde FPS)
         window.updatePlot(window.plotData);
         window.updateFluxLabels('ProcessFinished');
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {
                 var fresh = window.getSpectralResultFromDATA();
-                if (fresh && fresh.lambda_range && fresh.upward_flux) {
+                if (fresh.lambda_range && fresh.upward_flux) {
                     window.plotData.lambda_range = fresh.lambda_range;
                     window.plotData.lambda_weights = fresh.lambda_weights;
                     window.plotData.current = Object.assign({}, window.plotData.current, fresh);
-                    // Source unique T surface : garder T0/temp_surface_c depuis DATA (éviter décalage avec organigramme)
-                    var T0Data = window.DATA && window.DATA['🧮'] && window.DATA['🧮']['🧮🌡️'];
-                    if (T0Data != null && typeof T0Data === 'number') {
-                        window.plotData.current.T0 = T0Data;
-                        window.plotData.current.temp_surface = T0Data;
-                        window.plotData.current.temp_surface_c = T0Data - CONST.KELVIN_TO_CELSIUS;
-                        window.plotData.temp_surface_c = window.plotData.current.temp_surface_c;
-                        window.plotData.temp_surface = T0Data;
-                    }
+                    var T0Data = window.DATA['🧮']['🧮🌡️'];
+                    window.plotData.current.T0 = T0Data;
+                    window.plotData.current.temp_surface = T0Data;
+                    window.plotData.current.temp_surface_c = T0Data - CONST.KELVIN_TO_CELSIUS;
+                    window.plotData.temp_surface_c = window.plotData.current.temp_surface_c;
+                    window.plotData.temp_surface = T0Data;
                 }
                 window.updatePlot(window.plotData);
-                window.updateSpectralVisualization(window.plotData.current);
+                // Force showSpectralBackground juste avant le draw (résiste au FPS monitor)
+                window.showSpectralBackground = true;
+                var nBins = window.plotData.current.lambda_range.length;
+                console.log('🎨 [drawFlux@sync] bins=' + nBins);
+                try {
+                    window.updateSpectralVisualization(window.plotData.current);
+                } catch (err) {
+                    console.error('❌ [drawFlux@sync] crash:', err);
+                }
+                requestAnimationFrame(function () {
+                    console.log('🌍 [drawFlux@sync] threeJS unpause');
+                    window.threeJSAnimationPaused = false;
+                });
             });
         });
     }
@@ -233,6 +251,7 @@
         if (window.getMasses) window.getMasses();
         window.h2oTotalFromMeteorites = 0;
         window.calculationInProgress = true; // Pour plot.js resizeCanvasToPlot (skipReposition pendant dichotomie)
+        window.showDichotomySteps = DATA['🔘']['🔘🎞'];
         if (!DATA['🔘']['🔘🎞']) {
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
         } else if (!DATA['🧮']['🧮🌡️'] || DATA['🧮']['🧮🌡️'] <= 0) {
@@ -249,12 +268,22 @@
             window.currentEpochName = window.currentEpochName || epochId;
             window.FluxManager.updateAllFluxes(epochId);
         }
-        return window.computeRadiativeTransfer().then(function (result) {
+        // Reset du marqueur de résolution intermédiaire (nouveau calcul = nouvelle série de draws)
+        var _sv = document.getElementById('spectral-visualization');
+        if (_sv) {
+            _sv._lastDrawnBins = 0;
+            _sv._lastFinalSig = null;
+        }
+        var renderMode = window.VISUALWAIT.computeRenderMode();
+        var isVisuMode = renderMode === 'visu_';
+        return window.computeRadiativeTransfer(null, { renderMode: renderMode }).then(function (result) {
             window.calculationInProgress = false;
             if (result === null) return null;
             // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
-            window.CO2_EVENTS.emit('compute:done', { DATA: window.DATA, result: result });
-            projectToVisu(window.DATA);
+            window.IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: result });
+            if (isVisuMode) {
+                projectToVisu(window.DATA);
+            }
             // dataInput = envoi immédiat au panel actif (iframe scie si c'est l'onglet visible)
             if (window.shell && window.shell.dataInput) {
                 window.shell.dataInput({ type: 'compute:done', DATA: window.DATA });
@@ -357,13 +386,13 @@
             else { applyTuningPayload(p); syncTuningToScie(p); if (p.run === true) window.runComputeInParent(); }
         });
 
-        window.CO2_EVENTS.on('sync:state', function (payload) {
+        window.IO_LISTENER.on('sync:state', function (payload) {
             if (payload.epochId !== undefined) window.SYNC_STATE.epochId = payload.epochId;
             if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
             if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
             syncToScie(payload);
         });
-        window.CO2_EVENTS.on('sync:tuning', function (payload) {
+        window.IO_LISTENER.on('sync:tuning', function (payload) {
             applyTuningPayload(payload);
             syncTuningToScie(payload);
             if (payload.run === true) window.runComputeInParent();

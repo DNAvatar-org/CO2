@@ -1,5 +1,5 @@
 // File: API_BILAN/event_bus.js - Bus d'événements API ↔ rendus
-// Desc: Canal pub/sub moteur ↔ UI. Expose window.CO2_EVENTS (on/off/emit). Source unique : DATA.
+// Desc: Canal pub/sub moteur ↔ UI. Expose window.IO_LISTENER (on/off/emit). Source unique : DATA.
 // Version 1.2.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -21,7 +21,7 @@
 (function () {
     'use strict';
     const listeners = {};
-    window.CO2_EVENTS = {
+    window.IO_LISTENER = {
         on: function (name, fn) {
             if (!listeners[name]) listeners[name] = [];
             listeners[name].push(fn);
@@ -33,7 +33,7 @@
         emit: function (name, payload) {
             if (!listeners[name]) return;
             listeners[name].forEach(fn => {
-                try { fn(payload); } catch (e) { console.error('[CO2_EVENTS]', name, e); }
+                try { fn(payload); } catch (e) { console.error('[IO_LISTENER]', name, e); }
             });
         }
     };

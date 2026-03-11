@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.23
+// Version 1.0.27
 // Date: [January 2025]
 // logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -27,6 +27,10 @@
 // - v1.0.13: updatePlotAltitudeAxis(atm_height_km) pour mettre à jour yaxis2 à chaque cycle
 // - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
 // - v1.0.23: Courbe pointillée corps noir à T effective (pas T surface) pour même fenêtre que courbe pleine
+// - v1.0.24: rendu spectral séquencé: non-anim=FINAL seul, anim=chaque cycle; suppression redraw différé doublon depuis updatePlot
+// - v1.0.25: bridge draw ack: publie plot:drawn + met à jour _lastDrawnCycleToken après draw (sync API visu_)
+// - v1.0.26: bridge draw ack branché sur window.VISUALWAIT.markDrawn (fonctions window rangées)
+// - v1.0.27: supprime VISUALWAIT.markDrawn + IO_LISTENER.emit('plot:drawn') — appel direct, pas de pile
 // - v1.0.16: Indicateur nuages EDS (corps gris) sur barre spectre : fullSpan 4–50 μm, LOGOS.CLOUDS
 // - v1.0.15: remove misleading pd() [BUG] traces in updatePlotAltitudeAxis and resizeCanvasToPlot
 // - v1.0.17: lissage gaussien visuel du flux (createFluxTrace) ; ne touche pas aux intégrales/OLR
@@ -1689,11 +1693,8 @@ window.updatePlot = function updatePlot(data) {
                 canvas.style.setProperty('opacity', '1', 'important');
                 canvas.style.setProperty('z-index', '1', 'important');
                 canvas.style.setProperty('position', 'absolute', 'important');
-                // Mettre à jour seulement si on a des données
-                if (data && data.current) {
-                    window.updateSpectralVisualization(data.current);
-                }
-                // Sinon, garder la dernière visualisation visible (ne rien faire)
+                // Pas de redraw ici: updateSpectralVisualization est appelé explicitement
+                // par les étapes de calcul ; éviter d'empiler des draws retardés.
             }
         }, 150);
     });
@@ -1912,18 +1913,35 @@ window.updateSpectralVisualization = function (data) {
     canvas.style.setProperty('visibility', 'visible', 'important');
     canvas.style.setProperty('opacity', '1', 'important');
 
-    // 🔒 showSpectralBackground contrôle seulement le redessin, pas la visibilité
-    if (typeof window !== 'undefined' && window.showSpectralBackground === false) {
+    if (window.showSpectralBackground === false) {
         return;
     }
     if (!data || !data.upward_flux || !data.lambda_range || !data.z_range) {
+        console.log('🎨 [updateSpectralViz@plot] skip: data invalide');
         return;
     }
-    // Fond radiatif uniquement à la fin (bins = maxSpectralBinsConvergence)
-    const maxBins = (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.maxSpectralBinsConvergence) || 2000;
-    if (data.lambda_range.length < maxBins) {
-        return;
+    const maxBins = window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
+    const currentBins = data.lambda_range.length;
+    const isFinal = (currentBins >= maxBins);
+    const isAnimMode = window.DATA['🔘']['🔘🎞'];
+    if (!isAnimMode && !isFinal) {
+        return; // hors animation: n'afficher que le flux final
     }
+    if (!isAnimMode && isFinal) {
+        const finalSig = String(currentBins) + ':' + String(data.upward_flux.length);
+        if (canvas._lastFinalSig === finalSig) {
+            return; // éviter les FINAL doublons
+        }
+        canvas._lastFinalSig = finalSig;
+    }
+    if (isAnimMode && !isFinal) {
+        // En mode animation, afficher chaque cycle intermédiaire, y compris répétitions bins=100.
+        canvas._lastFinalSig = null;
+    }
+    if (isAnimMode && isFinal) {
+        canvas._lastFinalSig = null;
+    }
+    console.log('🎨 [updateSpectralViz@plot] bins=' + currentBins + (isFinal ? ' FINAL' : ' inter'));
 
     // Fonction pour forcer le z-index à 1 (au-dessus du fond mais en dessous des courbes)
     const forceZIndex = (silent = false, source = 'unknown') => {
@@ -2029,15 +2047,11 @@ window.updateSpectralVisualization = function (data) {
     // Ne pas appeler resizeCanvasToPlot ici - elle est déjà appelée au resize et à l'init
     // Le canvas devrait déjà être dimensionné correctement
 
-    // Dessiner la visualisation avec les données
-    const plotContainer = document.getElementById('plot-container');
-    if (plotContainer) {
-        setTimeout(() => {
-            drawSpectralVisualization(canvas, data);
-        }, 100);
-    } else {
-        drawSpectralVisualization(canvas, data);
-    }
+    // Marquer la résolution dessinée (pour la logique intermédiaire premier/suivant)
+    canvas._lastDrawnBins = currentBins;
+
+    // Dessin immédiat : ordre synchrone des étapes de calcul/draw (pas de file setTimeout)
+    drawSpectralVisualization(canvas, data);
 };
 
 function drawSpectralVisualization(canvas, data) {

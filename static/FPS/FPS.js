@@ -1,9 +1,10 @@
 // ============================================================================
-// File: FPS.js - Graphique de performance FPS et précision
+// File: FPS.js - Graphique de performance FPS et mémoire
 // Desc: En français, dans l'architecture, je suis le module de visualisation FPS
-// Version 1.1.2
-// Date: [January 2025]
+// Version 1.2.0
+// Date: [March 08, 2026]
 // logs :
+// - v1.2.0 : remplacement courbe Précision par Mémoire Mo (performance.memory, Chromium) ; retrait getPrecisionFactorFromFPS
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See https://commonsclause.com/ for full terms.
@@ -14,34 +15,18 @@
 
 // Historique des valeurs (pour les courbes)
 const fpsHistory = [];
-const precisionHistory = [];
+const memoryHistory = []; // Mémoire JS heap en Mo (Chromium seulement via performance.memory)
 const MAX_HISTORY = 100;
 const X_SECONDS_PER_POINT = 1.0; // En mode timer : 1 point = 1 s ; X en float (secondes)
 
 // Durée minimale par pixel (en secondes)
-// Si stepX = 10px et on veut 1 pixel toutes les 100ms, alors PIXEL_DURATION = 0.1
 const PIXEL_DURATION = 0.1; // 100ms par pixel (10 pixels par seconde à 60 FPS)
 
-// Seuils de précision
-const FPSalert = 25;  // Seuil d'alerte (FPS bas) — sous cette valeur : pas de plot du flux (courbe toujours affichée)
+// Seuils FPS
+const FPSalert = 25;  // Seuil d'alerte (FPS bas) — courbe toujours affichée
 const FPSmin = 20;     // FPS minimum acceptable
 const FPSmax = 55;     // FPS maximum (bonne performance)
 
-// Précision 0% = 0.0x, 100% = 2.0x (source unique pour l'affichage panneau FPS)
-const PRECISION_PERCENT_DEFAULT = 0;
-if (typeof window !== 'undefined' && window.precisionPercent === undefined) {
-    window.precisionPercent = PRECISION_PERCENT_DEFAULT;
-}
-
-function getPrecisionFactorFromFPS() {
-    // Précision pilotée par % : 0% → 0.0x, 100% → 2.0x
-    if (typeof window !== 'undefined' && typeof window.precisionPercent === 'number') {
-        return Math.max(0, Math.min(2, (window.precisionPercent / 100) * 2));
-    }
-    return 0;
-}
-
-window.getPrecisionFactorFromFPS = getPrecisionFactorFromFPS;
 window.FPSalert = FPSalert;
 window.FPSmin = FPSmin;
 
@@ -50,9 +35,9 @@ let t0 = null; // Temps du ping précédent (sera réinitialisé quand le ping a
 let currentFPS = 0; // FPS actuel calculé depuis dt
 
 // Buffer pour accumuler les valeurs avant d'afficher un pixel
-let fpsBuffer = []; // Buffer des valeurs FPS
-let precisionBuffer = []; // Buffer des valeurs précision
-let accumulatedTime = 0; // Temps accumulé depuis le dernier pixel
+let fpsBuffer = [];
+let memoryBuffer = []; // Buffer des valeurs mémoire (Mo)
+let accumulatedTime = 0;
 
 // État du système de timer d'une seconde
 let timerActive = true; // Le timer d'une seconde est actif par défaut
@@ -97,30 +82,30 @@ function initFPSChart() {
         },
         yaxis2: {
             type: 'linear',
-            range: [0, 2.5],
+            range: [0, 2000],
             overlaying: 'y',
             side: 'right',
             showgrid: false,
-            tickfont: { color: '#888888', size: 9 },
-            title: { text: '', font: { color: '#888888', size: 10 } },
+            tickfont: { color: '#44aaff', size: 9 },
+            title: { text: '', font: { color: '#44aaff', size: 10 } },
             tickmode: 'array',
-            tickvals: [0, 0.5, 1.0, 1.5, 2.0],
-            ticktext: ['0.0x', '0.5x', '1.0x', '1.5x', '2.0x']
+            tickvals: [0, 500, 1000, 1500, 2000],
+            ticktext: ['0', '500', '1G', '1.5G', '2G']
         },
         annotations: [
             {
                 text: 'FPS',
                 xref: 'paper',
                 yref: 'paper',
-                x: 0.02, // En haut à gauche
-                y: 0.98, // Proche du haut
+                x: 0.02,
+                y: 0.98,
                 xanchor: 'left',
                 yanchor: 'top',
                 font: { color: 'white', size: 12 },
                 showarrow: false
             },
             {
-                text: 'Précision',
+                text: 'Mo',
                 xref: 'paper',
                 yref: 'paper',
                 x: 0.98,
@@ -128,7 +113,7 @@ function initFPSChart() {
                 xanchor: 'right',
                 yanchor: 'middle',
                 textangle: -90,
-                font: { color: '#888888', size: 12 },
+                font: { color: '#44aaff', size: 12 },
                 showarrow: false
             }
         ],
@@ -144,8 +129,8 @@ function initFPSChart() {
             y: [],
             type: 'scatter',
             mode: 'lines',
-            name: 'Précision',
-            line: { color: '#888888', width: 2 }, // Gris
+            name: 'Mémoire',
+            line: { color: '#44aaff', width: 1.5 },
             yaxis: 'y2'
         },
         {
@@ -199,30 +184,28 @@ function initFPSChart() {
 }
 
 // Mettre à jour le graphique avec les nouvelles valeurs
-function updateFPSChart(fps, precision) {
+// memMB : mémoire JS heap en Mo (performance.memory.usedJSHeapSize / 1e6, Chromium seulement)
+function updateFPSChart(fps, memMB) {
     const chartDiv = document.getElementById('fps-chart');
     if (!chartDiv) return;
     
-    // Ajouter les nouvelles valeurs à l'historique
     fpsHistory.push(fps);
-    precisionHistory.push(precision);
+    memoryHistory.push(memMB);
     
-    // Limiter la taille de l'historique
     if (fpsHistory.length > MAX_HISTORY) {
         fpsHistory.shift();
-        precisionHistory.shift();
+        memoryHistory.shift();
     }
     
     // X en float (secondes) : 1 point = 1 s en mode timer
     const xData = Array.from({ length: fpsHistory.length }, (_, i) => (i + 0) * X_SECONDS_PER_POINT);
     const xDataFPS = Array.from({ length: fpsHistory.length }, (_, i) => (i + 0.1) * X_SECONDS_PER_POINT);
     
-    // Mettre à jour les traces (Précision trace 0, FPS trace 4 pour qu'elle soit au-dessus)
-    // Utiliser restyle pour mettre à jour seulement les traces nécessaires
+    // Mettre à jour les traces (Mémoire trace 0, FPS trace 4 pour qu'elle soit au-dessus)
     Plotly.restyle('fps-chart', {
         x: [xData],
-        y: [precisionHistory]
-    }, [0]); // Mettre à jour la trace 0 (Précision)
+        y: [memoryHistory]
+    }, [0]); // Mettre à jour la trace 0 (Mémoire)
     
     Plotly.restyle('fps-chart', {
         x: [xDataFPS],
@@ -296,62 +279,44 @@ function ping(dt) {
     else if (fps > 20) fpsLevel = 'lent';
     else if (fps > 10) fpsLevel = 'aïe';
 
-    const precisionFactor = getPrecisionFactorFromFPS(); // 0% → 0.0x, 100% → 2.0x
+    // performance.memory : Chromium seulement (Chrome/Brave). Non disponible sur Firefox/Safari.
+    const memMB = performance.memory ? performance.memory.usedJSHeapSize / 1e6 : 0;
 
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
         const fpsEvent = new CustomEvent('fpsLevelChanged', {
-            detail: { fps: fps, level: fpsLevel, precisionFactor: precisionFactor }
+            detail: { fps: fps, level: fpsLevel }
         });
         window.dispatchEvent(fpsEvent);
     }
 
     fpsBuffer.push(fps);
-    precisionBuffer.push(precisionFactor);
+    memoryBuffer.push(memMB);
     accumulatedTime += dt;
     
-    // Si on a accumulé assez de temps pour un pixel, afficher
     if (accumulatedTime >= PIXEL_DURATION) {
-        // Calculer la moyenne des valeurs accumulées
         const avgFPS = fpsBuffer.reduce((a, b) => a + b, 0) / fpsBuffer.length;
-        const avgPrecision = precisionBuffer.reduce((a, b) => a + b, 0) / precisionBuffer.length;
-        
-        // Mettre à jour le graphique avec la moyenne
-        updateFPSChart(avgFPS, avgPrecision);
-        
-        // Réinitialiser le buffer
+        const avgMem = memoryBuffer.reduce((a, b) => a + b, 0) / memoryBuffer.length;
+        updateFPSChart(avgFPS, avgMem);
         fpsBuffer = [];
-        precisionBuffer = [];
+        memoryBuffer = [];
         accumulatedTime = 0;
     }
 }
 
-// Fonction principale appelée depuis main.js (ancienne méthode, conservée pour compatibilité)
-function updateFPSDisplay(fps, precisionFactor) {
-    updateFPSChart(fps, precisionFactor);
+// Fonction principale appelée depuis main.js
+function updateFPSDisplay(fps) {
+    const memMB = performance.memory ? performance.memory.usedJSHeapSize / 1e6 : 0;
+    updateFPSChart(fps, memMB);
     
-    // 🔒 Émettre aussi l'événement FPS depuis cette fonction (pour compatibilité avec l'ancien système)
-    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-        // Déterminer le niveau selon le FPS
-        let fpsLevel = 'warning';
-        if (fps > 60) {
-            fpsLevel = 'ultra';
-        } else if (fps > 30) {
-            fpsLevel = 'rapide';
-        } else if (fps > 20) {
-            fpsLevel = 'lent';
-        } else if (fps > 10) {
-            fpsLevel = 'aïe';
-        }
-        
-        const fpsEvent = new CustomEvent('fpsLevelChanged', {
-            detail: {
-                fps: fps,
-                level: fpsLevel,
-                precisionFactor: precisionFactor
-            }
-        });
-        window.dispatchEvent(fpsEvent);
-    }
+    let fpsLevel = 'warning';
+    if (fps > 60) fpsLevel = 'ultra';
+    else if (fps > 30) fpsLevel = 'rapide';
+    else if (fps > 20) fpsLevel = 'lent';
+    else if (fps > 10) fpsLevel = 'aïe';
+    
+    window.dispatchEvent(new CustomEvent('fpsLevelChanged', {
+        detail: { fps: fps, level: fpsLevel }
+    }));
 }
 
 // Fonction pour rétracter/étendre la fenêtre FPS

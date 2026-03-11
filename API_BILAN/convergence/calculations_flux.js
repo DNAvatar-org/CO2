@@ -1,10 +1,15 @@
 // ============================================================================
 // File: API_BILAN/convergence/calculations_flux.js - Calculs de flux radiatif
 // Desc: En français, dans l'architecture, je suis le module de calculs de flux radiatif
-// Version 1.2.66
-// Date: [January 2025]
+// Version 1.2.71
+// Date: [March 2026]
 // Logs:
 // - v1.2.66: calculateT0 nouveau run (previous vide) toujours T0=époque ; reset 🧮🌡️🔽/🔼 et lastInitPayload pour convergence reproductible visu/scie
+// - v1.2.68: mode anim: yield 1 frame par cycle (await requestAnimationFrame) pour affichage inter progressif, éviter flush final
+// - v1.2.69: computeRadiativeTransfer(callback, options): renderMode visu_/scie_ + attente bridge draw par cycle (visu_+anim)
+// - v1.2.70: attente draw via window.VISUALWAIT.isDrawn(cycleToken) (globals rangées)
+// - v1.2.71: supprime double émission compute:progress (visu_+anim→displayDichotomyStep direct ; scie_/non-anim→IO_LISTENER seul)
+// - v1.2.72: supprime VISUALWAIT.isDrawn (boucle while morte) ; remplace par await RAF direct après displayDichotomyStep (seul async indispensable)
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -85,6 +90,7 @@
 // - v1.2.63 : hooks convergence définis ici en no-op (scie_compute.html les remplace si chargé) — évite crash runComputeInParent
 // - v1.2.64 : à la convergence, sync DATA['📊'] avec 🔬🌈 si actualBins !== currentBins (Hadéen 1re iter → rendu 2000 bins)
 // - v1.2.65 : source unique SOLVER : lecture DATA['🎚️'].SOLVER en priorité (computeToleranceWm2, computeSearchIncrement)
+// - v1.2.67 : fix mode anim calculateT0 : suppression && !isNewRun (previous=[] à chaque epoch, bloquait toujours la branche anim)
 // ============================================================================
 
 // No-ops par défaut ; scie_compute.html les remplace par les implé réelles si la page est chargée.
@@ -180,13 +186,14 @@ function computeToleranceWm2(T_K, precision_K) {
 function calculateT0() {
     const DATA = window.DATA;
     const CONST = window.CONST;
-    const isNewRun = !DATA['🧮']['previous'] || DATA['🧮']['previous'].length === 0;
-
-    if (DATA['🔘']['🔘🎞'] && !isNewRun) {
-        DATA['🧮']['🧮🌡️🚩'] = DATA['🧮']['🧮🌡️']; // anim en cours : garder T0 actuel
+    // En mode anim : partir toujours de la T0 actuelle du modèle, même si previous est vide (nouveau run).
+    // previous est réinitialisé à [] à chaque epoch (sync_panels.js:237), donc !isNewRun
+    // était toujours false au premier calcul — le mode anim ne fonctionnait jamais.
+    if (DATA['🔘']['🔘🎞']) {
+        DATA['🧮']['🧮🌡️🚩'] = DATA['🧮']['🧮🌡️']; // anim : garder T0 actuel
     } else {
-        const adjustment = (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
-        DATA['🧮']['🧮🌡️🚩'] = DATA['📅']['🌡️🧮'] + adjustment; // nouveau run ou sans anim : T0 = config époque
+        const adjustment = DATA['📜']['🔺🌡️💫'] * DATA['📜']['📿💫'];
+        DATA['🧮']['🧮🌡️🚩'] = DATA['📅']['🌡️🧮'] + adjustment; // sans anim : T0 = config époque
     }
     
     if (DATA['🧮']['🧮🌡️🚩'] <= 0) {
@@ -453,8 +460,10 @@ function dropLastStepSnapshot(DATA) {
     const p = DATA['🧮']['previous'];
     if (p.length && p[p.length - 1]) p[p.length - 1].data_snapshot = null;
 }
-async function computeRadiativeTransfer(callback) {
+async function computeRadiativeTransfer(callback, options) {
     if (window.ABORT_COMPUTE) return null;
+    if (!options) options = {};
+    const renderMode = options.renderMode === 'scie_' ? 'scie_' : 'visu_';
     const DATA = window.DATA;
     const CONST = window.CONST;
     const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
@@ -1119,17 +1128,17 @@ async function computeRadiativeTransfer(callback) {
 
         var payload = { iteration: DATA['🧮']['🧮🔄☀️'] - 1, T0: DATA['🧮']['🧮🌡️'], total_flux: spectral_result.total_flux, phase: phaseForStep };
         if (callback) callback('cycleCalcul', payload);
-        if (window.CO2_EVENTS) {
-            window.CO2_EVENTS.emit('compute:progress', payload);
-        }
         var showSteps = window.showDichotomySteps && window.isVisuPanelActive();
         if (showSteps) {
+            // visu_ + anim : appel direct — pas d'event bus, pas de file
             window.displayDichotomyStep(DATA['🫧']['🍰🫧🏭'], DATA['🧮']['🧮🌡️'], spectral_result, DATA['🧮']['🧮🔄☀️'] - 1, false);
+            // yield 1 frame : seul async indispensable — canvas 2D est sync mais le browser ne repeint qu'entre tasks
+            await new Promise(function (resolve) { requestAnimationFrame(resolve); });
         } else {
+            // scie_ ou sans anim : mise à jour légère (pas de draw spectral)
             var h2o_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
             var h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
-            var h2oVaporPercent = Math.min(100, Math.max(0, h2o_frac * 100 + h2o_meteorites));
-            window.h2oVaporPercent = h2oVaporPercent;
+            window.h2oVaporPercent = Math.min(100, Math.max(0, h2o_frac * 100 + h2o_meteorites));
             if (window.plotData) {
                 window.plotData.ch4_ppm = (DATA['🫧']['🍰🫧⛽'] != null ? DATA['🫧']['🍰🫧⛽'] : 0) * 1e6;
             }
@@ -1140,7 +1149,8 @@ async function computeRadiativeTransfer(callback) {
                 window.parent.postMessage({ type: 'cycleCalcul', DATA: dataSubset, h2oVaporPercent: window.h2oVaporPercent }, '*');
             }
             if (callback) callback('cycleCalcul', { DATA: DATA, h2oVaporPercent: window.h2oVaporPercent });
-            if (window.CO2_EVENTS) window.CO2_EVENTS.emit('cycleCalcul');
+            // Émettre compute:progress une seule fois (chemin scie_/non-anim)
+            if (window.IO_LISTENER) window.IO_LISTENER.emit('compute:progress', payload);
             const fpsOk = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
             if (fpsOk && typeof window.updateFluxLabels === 'function') {
                 window.updateFluxLabels('cycleCalcul');
@@ -1152,12 +1162,12 @@ async function computeRadiativeTransfer(callback) {
 }
 
 // Exposer les fonctions globalement. Aucune n'est dans window.DATA (DATA = données). Pas de window.FUNC.
-// Seul computeRadiativeTransfer accepte un callback optionnel (event, payload). getEpochDateConfig dans compute.js.
+// computeRadiativeTransfer accepte callback optionnel + options ({ renderMode: 'visu_'|'scie_' }). getEpochDateConfig dans compute.js.
 window.calculateT0 = calculateT0;
 window.initForConfig = initForConfig;
 window.cycleDeLeau = cycleDeLeau;
 window.updateConvergenceBounds = updateConvergenceBounds;
-window.computeRadiativeTransfer = computeRadiativeTransfer; // async, optionnel callback(event, payload)
+window.computeRadiativeTransfer = computeRadiativeTransfer; // async (RAF yield indispensable), callback optionnel, options({renderMode})
 window.newDate = newDate;
 window.snapshotEdsForConvergence = snapshotEdsForConvergence;
 

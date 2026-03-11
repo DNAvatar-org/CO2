@@ -1,9 +1,10 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.1
+// Version 1.1.2
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
-// Date: 2025-02-03
+// Date: March 2026
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
+// - v1.1.2: IO_LISTENER.compute:progress: supprime log debug + double receive (compute:progress n'arrive que depuis scie_/non-anim)
 
 (function () {
     'use strict';
@@ -274,17 +275,17 @@
             }
         }
         var lastComputePayload = null;
-        if (window.CO2_EVENTS) {
-            window.CO2_EVENTS.on('cycleCalcul', function () {
+        if (window.IO_LISTENER) {
+            window.IO_LISTENER.on('cycleCalcul', function () {
                 const fpsOk = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
                 if (fpsOk && typeof window.updateFluxLabels === 'function') {
                     try { window.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
                 }
             });
-            window.CO2_EVENTS.on('compute:progress', function (payload) {
-                if (payload && window.DATA && window.CO2_EVENTS) window.CO2_EVENTS.emit('cycleCalcul');
+            window.IO_LISTENER.on('compute:progress', function (payload) {
+                if (payload && window.DATA && window.IO_LISTENER) window.IO_LISTENER.emit('cycleCalcul');
             });
-            window.CO2_EVENTS.on('compute:done', function (payload) {
+            window.IO_LISTENER.on('compute:done', function (payload) {
                 if (payload && payload.DATA) {
                     lastComputePayload = payload;
                     window._lastComputePayloadForScie = payload;
