@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.28
+// Version 1.0.29
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -10,6 +10,7 @@
 // Logs: v1.0.26 albedo: \\bar{A} dans le footer (entre tasse et speech), plus dans [1,1]
 // Logs: v1.0.27 animate(): retrait auto-resume FPS (ne pas écraser threeJSAnimationPaused=true géré par main.js)
 // Logs: v1.0.28 fin chargement Three.js : IO_LISTENER.emit('three:ready', { hasTexture, canvas }) après texture load ou erreur
+// Logs: v1.0.29 Terre : drag souris (rotation), inertie au release (vitesse), smooth barycentre vers rotation par défaut
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -430,6 +431,8 @@ function initPlanetThreeJS(
     console.error("[initPlanetThreeJS] ❌ Three.js non chargé !");
     return;
   }
+  const IO_LISTENER = window.IO_LISTENER;
+  IO_LISTENER.emit("three:runStart", { canvas: canvas });
 
   const width = planetSize;
   const height = planetSize;
@@ -525,7 +528,7 @@ function initPlanetThreeJS(
     console.error("⚠️ Utilisez: http://localhost:8000/index.html");
     createPlanetSphere();
     console.log("[2] texture Three.js (file:)");
-    window.IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
+    IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
   } else {
     const textureLoader = new THREE.TextureLoader();
     let resolvedUrl = logoPath;
@@ -546,7 +549,7 @@ function initPlanetThreeJS(
         texture = loadedTexture;
         createPlanetSphere();
         console.log("[2] texture Three.js");
-        window.IO_LISTENER.emit("three:ready", { hasTexture: true, canvas: canvas });
+        IO_LISTENER.emit("three:ready", { hasTexture: true, canvas: canvas });
       },
       undefined,
       function (error) {
@@ -559,7 +562,7 @@ function initPlanetThreeJS(
         console.error("[initPlanetThreeJS] erreur:", error);
         createPlanetSphere();
         console.log("[2] texture Three.js (sans image)");
-        window.IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
+        IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
       },
     );
   }
@@ -721,14 +724,73 @@ function initPlanetThreeJS(
     // Log supprimé (non essentiel)
   }
 
-  // Animation - rotation continue (pas de pause auto ; toggle manuel sur clic Terre possible)
+  // Ergonomie drag : rotation au drag, inertie à la relâche, puis smooth vers rotation par défaut (barycentre 1 ligne)
+  const dragState = {
+    defaultRotationY: sphere ? sphere.rotation.y : 0,
+    isDragging: false,
+    lastX: 0,
+    lastT: 0,
+    velocityY: 0
+  };
+  canvas._threeJSData.dragState = dragState;
+  const DRAG_SCALE = 0.004;
+  const INERTIA_DECAY = 0.96;
+  const SMOOTH_ALPHA = 0.05;
+
+  function onDragStart(e) {
+    console.log("[Terre drag] mousedown target=" + (e.target && e.target.id ? e.target.id : e.target.tagName) + " currentTarget=" + (e.currentTarget && e.currentTarget.tagName) + " canvas=" + (e.target === canvas));
+    dragState.isDragging = true;
+    dragState.lastX = e.clientX;
+    dragState.lastT = performance.now() / 1000;
+    dragState.velocityY = 0;
+  }
+  function onDragMove(e) {
+    if (!dragState.isDragging || !sphere) return;
+    const t = performance.now() / 1000;
+    const dt = Math.max(0.001, t - dragState.lastT);
+    const deltaX = e.clientX - dragState.lastX;
+    sphere.rotation.y += deltaX * DRAG_SCALE;
+    dragState.velocityY = (deltaX * DRAG_SCALE) / dt;
+    dragState.lastX = e.clientX;
+    dragState.lastT = t;
+  }
+  function onDragEnd() {
+    if (dragState.isDragging) console.log("[Terre drag] mouseup/leave");
+    dragState.isDragging = false;
+  }
+
+  container.style.pointerEvents = "auto";
+  canvas.style.pointerEvents = "auto";
+  canvas.style.position = "relative";
+  canvas.style.zIndex = "1";
+  console.log("[Terre drag] listeners attachés canvas id=" + (canvas.id || "(no id)") + " container.pointerEvents=" + container.style.pointerEvents);
+  canvas.addEventListener("mousedown", onDragStart);
+  window.addEventListener("mousemove", onDragMove);
+  window.addEventListener("mouseup", onDragEnd);
+  window.addEventListener("mouseleave", onDragEnd);
+
+  // Animation - rotation continue ; drag → inertie → smooth vers defaultRotationY
   let animationId = null;
   const speed = 1.0;
 
   function animate() {
     const isPaused = window.threeJSAnimationPaused;
-    if (!isPaused && sphere) {
-      sphere.rotation.y += 0.005 * speed;
+    if (!sphere) {
+      renderer.render(scene, camera);
+      animationId = requestAnimationFrame(animate);
+      return;
+    }
+    if (!isPaused) {
+      dragState.defaultRotationY += 0.005 * speed;
+      if (dragState.isDragging) {
+        // rotation déjà mise à jour dans onDragMove
+      } else if (Math.abs(dragState.velocityY) > 0.0005) {
+        sphere.rotation.y += dragState.velocityY;
+        dragState.velocityY *= INERTIA_DECAY;
+      } else {
+        dragState.velocityY = 0;
+        sphere.rotation.y = sphere.rotation.y * (1 - SMOOTH_ALPHA) + dragState.defaultRotationY * SMOOTH_ALPHA;
+      }
     }
     renderer.render(scene, camera);
     animationId = requestAnimationFrame(animate);
@@ -1192,10 +1254,7 @@ function createCell(
           if (isImgPath) {
             const img = document.createElement("img");
             img.src = display;
-            img.alt =
-              window.CHARS_DESC && window.CHARS_DESC[logoItem]
-                ? window.CHARS_DESC[logoItem]
-                : logoItem;
+            img.alt = "";
             img.style.width = "100%";
             img.style.height = "100%";
             img.style.objectFit = "contain";
@@ -1359,7 +1418,7 @@ function createCell(
         // Image normale sans effet planète
         const img = document.createElement("img");
         img.src = logo;
-        img.alt = nodeId || "logo";
+        img.alt = "";
         img.style.width = "100%";
         img.style.height = "100%";
         img.style.objectFit = "contain";
@@ -1381,10 +1440,7 @@ function createCell(
       if (isImgPathSimple) {
         const img = document.createElement("img");
         img.src = display;
-        img.alt =
-          window.CHARS_DESC && window.CHARS_DESC[logo]
-            ? window.CHARS_DESC[logo]
-            : logo;
+        img.alt = "";
         img.style.width = "100%";
         img.style.height = "100%";
         img.style.objectFit = "contain";
@@ -3693,13 +3749,14 @@ function generateTimelineFromConfig() {
   // Vider le conteneur
   epochsContainer.innerHTML = "";
 
-  // Formater une date : X Ma si >= 1 Ma, sinon année seule (ex. 1800, 2025)
+  // Formater une date : avant présent = -X Ma si >= 1 Ma, sinon année seule (ex. 1800, 2025)
   function formatDateMa(years) {
     if (years == null || !Number.isFinite(years)) return "";
     const absY = Math.abs(years);
     if (absY < 1e6) return String(Math.round(years));
-    const millions = absY / 1e6;
-    return millions.toFixed(0) + " Ma";
+    const millions = (absY / 1e6).toFixed(0);
+    const sign = years > 0 ? "-" : (years < 0 ? "+" : "");
+    return sign + millions + " Ma";
   }
 
   function createVerticalDateItem(dateStr) {
@@ -3739,7 +3796,7 @@ function generateTimelineFromConfig() {
       if (display.type === "image") {
         const img = document.createElement("img");
         img.src = display.value;
-        img.alt = epochLabel;
+        img.alt = "";
         img.style.width = "100%";
         img.style.height = "100%";
         img.style.objectFit = "contain";

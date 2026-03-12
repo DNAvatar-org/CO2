@@ -532,7 +532,7 @@ function resizeCanvasToPlot(callback) {
             } 
             // Pendant la dichotomie : ne pas modifier top/left (targetRect change à chaque cycle).
             // Garder _lastTop/_lastLeft pour éviter que le spectre bouge.
-            const skipReposition = window.calculationInProgress;
+            const skipReposition = window.SYNC_STATE.calculationInProgress;
             if (!skipReposition) {
                 canvas.style.setProperty('left', leftPx + 'px', 'important');
                 canvas.style.setProperty('top', topPx + 'px', 'important');
@@ -559,6 +559,13 @@ function resizeCanvasToPlot(callback) {
                 canvas.height = height;
                 setTimeout(() => { drawAbsorptionBandIndicators(); }, 50);
             }
+            // FLUX = objet (déf pixels, politique axe Y). Propriétés scalaires en camelCase.
+            // Politique Y : (1) Clic action (TicTime/météorite) → events.js pose yAxisRecalcOnNextFinish = true.
+            // (2) Au prochain ProcessFinished, updatePlot force recalc Y (pas lastGoodYMaxLuminance). (3) Courbe trop plate
+            // → optionnel FLUX.minYMaxLuminance (plancher) pour ne pas écraser l'axe ; sinon défaut 0.5.
+            if (!window.FLUX) window.FLUX = {};
+            window.FLUX.plotAxisXPx = Math.max(24, Math.floor(useWidth));
+            window.FLUX.plotAxisYPx = Math.max(24, Math.floor(useHeight));
             canvas.style.setProperty('z-index', '1', 'important');
 
             const rect = canvas.getBoundingClientRect();
@@ -1245,7 +1252,7 @@ window.updatePlot = function updatePlot(data) {
     // ⚠️ IMPORTANT : Ne pas écraser z_max_km si on a détecté "pas d'atmosphère"
     // Pendant la convergence (calculationInProgress) : garder une échelle FIXE pour éviter que la barre
     // bouge à chaque cycle. data.z_range varie (300→1830 km). On fixe au premier appel de la dichotomie.
-    const isDichotomy = typeof window !== 'undefined' && window.calculationInProgress;
+    const isDichotomy = typeof window !== 'undefined' && window.SYNC_STATE.calculationInProgress;
     if (has_atmosphere) {
         if (isDichotomy) {
             if (window._dichotomyZMaxKm != null && Number.isFinite(window._dichotomyZMaxKm)) {
@@ -1332,13 +1339,15 @@ window.updatePlot = function updatePlot(data) {
         annotation_text = `Stratosphère<br>${delta_T_trop_strato.toFixed(1)} K<br>Troposphère`;
     }
 
-    // --- CALCUL ÉCHELLE Y : courbe colorée pointillée dépasse le milieu (~65%), courbes blanches peuvent dépasser ---
+    // --- CALCUL ÉCHELLE Y : courbe ~65% hauteur ; après action (pas nouvelle époque) on recalc au prochain ProcessFinished (FLUX.yAxisRecalcOnNextFinish) ---
     const isConverged = (typeof window.spectralConverged !== 'undefined' && window.spectralConverged);
+    const forceRecalcY = (window.FLUX && window.FLUX.yAxisRecalcOnNextFinish);
     let y_max_luminance;
 
-    if (lastGoodYMaxLuminance != null && !isConverged) {
+    if (lastGoodYMaxLuminance != null && !isConverged && !forceRecalcY) {
         y_max_luminance = lastGoodYMaxLuminance;
     } else {
+        if (forceRecalcY && window.FLUX) window.FLUX.yAxisRecalcOnNextFinish = false;
         let T_est = 255;
         if (typeof window.getGeologicalPeriodByName === 'function') {
             const ep = window.getGeologicalPeriodByName(epochName);
@@ -1364,6 +1373,9 @@ window.updatePlot = function updatePlot(data) {
         } else {
             y_max_luminance = Math.ceil(y_raw / 100) * 100;
         }
+        // Courbe trop plate : plancher optionnel (FLUX.minYMaxLuminance) pour éviter axe Y écrasé
+        const minY = (window.FLUX && typeof window.FLUX.minYMaxLuminance === 'number') ? window.FLUX.minYMaxLuminance : 0.5;
+        y_max_luminance = Math.max(minY, y_max_luminance);
         lastGoodYMaxLuminance = y_max_luminance;
     }
 
@@ -2059,7 +2071,7 @@ function drawSpectralVisualization(canvas, data) {
     const ctx = canvas.getContext('2d');
 
     const rect = canvas.getBoundingClientRect();
-    const isDichotomy = typeof window !== 'undefined' && window.calculationInProgress;
+    const isDichotomy = typeof window !== 'undefined' && window.SYNC_STATE.calculationInProgress;
     let width;
     let height;
     if (isDichotomy) {

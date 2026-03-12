@@ -1,11 +1,13 @@
 // File: scie_convergence.js - Formatage HTML des étapes de convergence (scie)
 // Desc: Module partagé parent + iframe scie : buildStepHtml(state) → fragment HTML pour #convergence-steps.
 //       Utilisé par le shell pour stocker des chaînes HTML au lieu des payloads complets.
-// Version 1.0.0
+// Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: 2025-02-25
+// Logs:
+// - v1.0.1: renomme H2O% en % EDS H2O pour éviter la confusion avec 🍰🫧💧
 // Logs:
 // - v1.0.0: extraction depuis scie_compute.html ; json2html, formatJSONCompact, buildStepHtml
 
@@ -182,7 +184,7 @@
         var h2oPctVal = (b && b['🍰📛💧'] != null) ? Number(b['🍰📛💧']) : null;
         var h2oPctStr = (h2oPctVal != null && Number.isFinite(h2oPctVal)) ? (h2oPctVal * 100).toFixed(1) + '%' : '-';
         var h2oVs05 = (h2oPctVal != null && Number.isFinite(h2oPctVal) && h2oPctVal < 0.005) ? ' <0.5%' : '';
-        html += '<div class="iteration-header">🌈 calcul radiatif ' + iterLabel + ' @' + T + '°C : Albedo: ' + albedo + ' H2O%: ' + h2oPctStr + h2oVs05 + ' => Δ: ' + delta + ' W/m² .. ⚧: ' + phase + ' & ☯: ' + yinYangStr + ' => arrêt |Δ|≤' + seuilStr + ' W/m²: ' + arretOk + dichoBounds + nextTSuffix + '</div>';
+        html += '<div class="iteration-header">🌈 calcul radiatif ' + iterLabel + ' @' + T + '°C : Albedo: ' + albedo + ' % EDS H2O: ' + h2oPctStr + h2oVs05 + ' => Δ: ' + delta + ' W/m² .. ⚧: ' + phase + ' & ☯: ' + yinYangStr + ' => arrêt |Δ|≤' + seuilStr + ' W/m²: ' + arretOk + dichoBounds + nextTSuffix + '</div>';
         html += '<div class="convergence-details-block">';
         var snap = state.data_snapshot || {};
         if (snap['🧮']) {

@@ -1,8 +1,10 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.0
+ * Version 1.0.1
  * Date: [June 08, 2025] [HH:MM UTC+1]
 * logs :
+ * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
+ * - v1.0.2: dates négatives avec signe - (info-time et epoch-start en -X Ma)
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.
@@ -43,6 +45,8 @@ function updateTimeline() {
     const timelineDisplay = document.getElementById('timeline-display');
     const frameDisplay = document.getElementById('frame-display');
     const infoTimeDisplay = document.getElementById('info-time');
+    const epochNameTempDisplay = document.getElementById('epoch-name-temp');
+    const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
 
     const years = timelineFrame * YEARS_PER_FRAME;
 
@@ -60,18 +64,22 @@ function updateTimeline() {
     // Mettre à jour l'horloge dans la zone horloge
     // Toujours utiliser window.infoTimeMa (commence toujours à 0 Ma)
     if (infoTimeDisplay) {
-        const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
-        
         const infoTimeMa = window.infoTimeMa || 0;
         let newText;
-        
-            // Afficher en Ma (millions d'années)
-            const deltaMa = infoTimeMa.toFixed(1).replace(/\.?0+$/, '');
-            newText = `+${deltaMa} Ma`;
+        // Afficher en Ma avec signe : négatif = "-X Ma", zéro = "0 Ma", positif = "+X Ma"
+        const deltaMa = Math.abs(infoTimeMa).toFixed(1).replace(/\.?0+$/, '');
+        const sign = infoTimeMa < 0 ? '-' : (infoTimeMa > 0 ? '+' : '');
+        newText = deltaMa === '0' ? '0 Ma' : `${sign}${deltaMa} Ma`;
         
         // Ne modifier le texte que s'il a changé pour éviter le clignotement
         if (infoTimeDisplay.textContent !== newText) {
             infoTimeDisplay.textContent = newText;
+        }
+        if (epochNameTempDisplay && currentEpoch) {
+            const syntheseLabel = currentEpoch + '\n' + newText;
+            if (epochNameTempDisplay.textContent !== syntheseLabel) {
+                epochNameTempDisplay.textContent = syntheseLabel;
+            }
         }
     }
     

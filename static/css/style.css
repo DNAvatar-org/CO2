@@ -1821,6 +1821,9 @@ h1 {
     color: #4ade80; /* Vert pour défaut/CO2 */
 }
 
+/* Loader calcul : curseur wait sur tout le document (anim + clic direct) */
+html.compute-loading, body.compute-loading { cursor: wait !important; }
+
 /* Overlay de calcul au-dessus de la timeline */
 .calculation-overlay {
     position: absolute;

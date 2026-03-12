@@ -481,10 +481,10 @@
     font-family: 'ProggyDotted';
     justify-content: flex-start;
     gap: 4px;
-    width: 130px;
+    width: 150px;
     position: absolute;
-    bottom: 10px;
-    left: 10px;
+    bottom: 5px;
+    left: 5px;
     padding: 5px 10px;
     z-index: 10001;
 }

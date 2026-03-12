@@ -284,11 +284,13 @@ const nodes = [
             {
                 epochName: 'Paléozoïque',
                 logo: LOGOS.GLOBE_ASIA,
+                texture: 'fonds/00200Ma.png',
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 200, 255, 0.5)',
                 strokeColor: '#00FFFF',
                 strokeSize: 0,
+                planetEffect: true
             },
             {
                 epochName: 'Cénozoïque',

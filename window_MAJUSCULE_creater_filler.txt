@@ -26,13 +26,17 @@ COMPUTE
  + creater: static/compute/compute.js (246)
  ++ filler: même fichier (API + état interne)
 
+COMPUTE_LOADER
+ + creater: static/ui/loader_panels.js (initAfterLoad)
+ ++ filler: même fichier — show(), hide(), avanceTic() (disque creux en cases, masqué sur flux:lastDrawn ou three:runStart)
+
 COMPUTE_RUNNING
  + creater: html/scie_compute.html (577), doc/test_computeRadiativeTransfer.html (566)
  ++ filler: même fichier (true/false selon run)
 
 CONFIG_COMPUTE
  + creater: static/timeline/configTimeline.js (396)
- ++ filler: configTimeline.js (399-474) — baryByGroupDefault, bins, spinup, solver, logs, etc.
+ ++ filler: configTimeline.js (399-474) — baryByGroupDefault, bins, spinup, solver, logs, earthTotalWaterMassKg (1.4e21 kg), etc.
  ++ filler: static/sync_panels.js (52-96) — tolMinWm2, maxSearchStep*, largeDeltaFactor depuis DATA['🎚️']
 
 CONFIG_INIT_SNAPSHOT
@@ -55,6 +59,7 @@ DATA
  + creater: static/compute/initDATA.js (58)
  ++ filler: initDATA.js — structure depuis KEYS + DATA['🎚️']
  ++ filler: static/calculations_h2o.js — cycle eau, fractions, 📛
+ ++ filler: static/timeline/events.js — DATA['💧']['☄️'] = % H2O météorites (source), DATA['📜']['📿💫'] = ticTime (infoTimeMa = 📿💫×50)
  ++ filler: static/calculations_albedo.js — albédos, glace, géologie, nuages
  ++ filler: static/calculations_atm.js — composition atm
  ++ filler: static/compute/calculations_flux.js, compute.js — résultats calcul radiatif
@@ -103,6 +108,10 @@ FINE_TUNING_TRIALS
  + creater: html/scie_compute.html (1165)
  ++ filler: même fichier (tableau essais)
 
+FLUX
+ + creater: static/courbes/plot.js (resizeCanvasToPlot)
+ ++ filler: plot.js — plotAxisXPx, plotAxisYPx (déf en pixels axes X/Y) ; yAxisRecalcOnNextFinish (true avant runComputeInParent depuis action → recalc Y au prochain ProcessFinished) ; minYMaxLuminance (optionnel, plancher si courbe trop plate). events.js — pose yAxisRecalcOnNextFinish avant runComputeInParent (TicTime, météorite). calculations.js (radiative) — cap expected_points + seuils showSpectralBackground via FLUX.plotAxisXPx
+
 FORM
  + creater: static/compute/dico.js (406)
  ++ filler: même fichier (formules / types champs)
@@ -148,8 +157,10 @@ STATE
  ++ filler: static/calculations_albedo.js — iceDurationBlendState, iceEpochFixedState, iceCoverageRampState, etc.
 
 SYNC_STATE
- + creater: static/sync_panels.js (27)
- ++ filler: même fichier (27-31 init), (52-54 epochId, animEnabled, ticTime dans syncToScie)
+ + creater: static/sync_panels.js (41-46)
+ ++ filler: même fichier — epochId, animEnabled, ticTime, calculationInProgress (52-54 syncToScie ; runComputeInParent true/false)
+ ++ filler: static/ui/main.js — disableButtons/enableButtons, guards calcul en cours
+ ++ filler: static/courbes/plot.js — skipReposition, isDichotomy
 
 TEMP_HABITABLE_MIN
 TEMP_HABITABLE_MAX

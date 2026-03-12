@@ -28,6 +28,7 @@
 
 (function () {
     'use strict';
+    const IO_LISTENER = window.IO_LISTENER;
 
     // Stubs pour éviter crash si projectToVisu/runComputeInParent appellent FluxManager avant que organigramme.js ait défini updateFluxLabels / updateLabel (ordre chargement ; organigramme remplace par les vraies fonctions)
     if (typeof window.updateFluxLabels !== 'function') {
@@ -40,7 +41,8 @@
     window.SYNC_STATE = {
         epochId: '⚫',
         animEnabled: false,
-        ticTime: 0
+        ticTime: 0,
+        calculationInProgress: false
     };
     window.VISUALWAIT = {
         computeRenderMode: function () {
@@ -207,6 +209,7 @@
                 } catch (err) {
                     console.error('❌ [drawFlux@sync]', err);
                 }
+                IO_LISTENER.emit('flux:lastDrawn');
             });
         });
     }
@@ -244,36 +247,36 @@
         // Même état entrée visu/scie : masses époque courante + h2oTotalFromMeteorites=0 (comme après setEpoch/updateLevelsConfig)
         if (window.getMasses) window.getMasses();
         window.h2oTotalFromMeteorites = 0;
-        window.calculationInProgress = true; // Pour plot.js resizeCanvasToPlot (skipReposition pendant dichotomie)
+        window.SYNC_STATE.calculationInProgress = true; // Pour plot.js resizeCanvasToPlot (skipReposition pendant dichotomie)
         if (!DATA['🔘']['🔘🎞']) {
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
         } else if (!DATA['🧮']['🧮🌡️'] || DATA['🧮']['🧮🌡️'] <= 0) {
             var adj = (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'] + adj;
         }
-        if (!window.initForConfig()) {
-            window.calculationInProgress = false;
-            return Promise.resolve(null);
-        }
-        // S'assurer que FluxManager a SOLAR_CONSTANT et GEOTHERMAL_FLUX (requis par updateFluxLabels)
-        var epochId = DATA['📜']['🗿'];
-        if (window.FluxManager && window.getGeologicalPeriodByName) {
-            window.currentEpochName = window.currentEpochName || epochId;
-            window.FluxManager.updateAllFluxes(epochId);
-        }
-        // Reset du marqueur de résolution intermédiaire (nouveau calcul = nouvelle série de draws)
-        var _sv = document.getElementById('spectral-visualization');
-        if (_sv) {
-            _sv._lastDrawnBins = 0;
-            _sv._lastFinalSig = null;
-        }
-        var renderMode = window.VISUALWAIT.computeRenderMode();
-        var isVisuMode = renderMode === 'visu_';
-        return window.computeRadiativeTransfer(null, { renderMode: renderMode }).then(function (result) {
-            window.calculationInProgress = false;
+        window.COMPUTE_LOADER.show();
+        function doCompute() {
+            if (!window.initForConfig()) {
+                window.SYNC_STATE.calculationInProgress = false;
+                return Promise.resolve(null);
+            }
+            var epochId = DATA['📜']['🗿'];
+            if (window.FluxManager && window.getGeologicalPeriodByName) {
+                window.currentEpochName = window.currentEpochName || epochId;
+                window.FluxManager.updateAllFluxes(epochId);
+            }
+            var _sv = document.getElementById('spectral-visualization');
+            if (_sv) {
+                _sv._lastDrawnBins = 0;
+                _sv._lastFinalSig = null;
+            }
+            var renderMode = window.VISUALWAIT.computeRenderMode();
+            var isVisuMode = renderMode === 'visu_';
+            return window.computeRadiativeTransfer(null, { renderMode: renderMode }).then(function (result) {
+            window.SYNC_STATE.calculationInProgress = false;
             if (result === null) return null;
             // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
-            window.IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: result });
+            IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: result });
             if (isVisuMode) {
                 projectToVisu(window.DATA);
             }
@@ -285,10 +288,14 @@
             }
             return result;
         }).catch(function (e) {
-            window.calculationInProgress = false;
+            window.SYNC_STATE.calculationInProgress = false;
             console.error('[runComputeInParent]', e);
             throw e;
         });
+        }
+        return new Promise(function (r) {
+            requestAnimationFrame(function () { requestAnimationFrame(r); });
+        }).then(doCompute);
     };
 
     function initSyncPanels() {
@@ -379,13 +386,13 @@
             else { applyTuningPayload(p); syncTuningToScie(p); if (p.run === true) window.runComputeInParent(); }
         });
 
-        window.IO_LISTENER.on('sync:state', function (payload) {
+        IO_LISTENER.on('sync:state', function (payload) {
             if (payload.epochId !== undefined) window.SYNC_STATE.epochId = payload.epochId;
             if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
             if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
             syncToScie(payload);
         });
-        window.IO_LISTENER.on('sync:tuning', function (payload) {
+        IO_LISTENER.on('sync:tuning', function (payload) {
             applyTuningPayload(payload);
             syncTuningToScie(payload);
             if (payload.run === true) window.runComputeInParent();

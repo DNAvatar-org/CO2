@@ -1,6 +1,6 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.5
+// Version 1.1.6
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
@@ -8,6 +8,7 @@
 // - v1.1.3: visu_+anim : compute:progress déclenche displayDichotomyStep puis plot:drawn ; scie_/non-anim garde cycleCalcul léger
 // - v1.1.4: non-anim : avanceTic() sur chaque tic (disque creux en cases) ; show/hideComputeLoader
 // - v1.1.5: clic direct = overlay (texte rouge) + body cursor wait uniquement ; anim = idem + disque creux
+// - v1.1.6: curseur wait via class compute-loading (html+body) pour résister en anim
 // Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
 // Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
 
@@ -297,7 +298,8 @@
                 var loaderEl = document.getElementById('compute-tic-loader');
                 var ring = document.querySelector('#compute-tic-loader .compute-tic-loader__ring');
                 if (overlay) overlay.style.display = 'flex';
-                document.body.style.cursor = 'wait';
+                document.body.classList.add('compute-loading');
+                document.documentElement.classList.add('compute-loading');
                 var anim = window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞'];
                 if (loaderEl) loaderEl.style.display = anim ? 'flex' : 'none';
                 if (ring) ring.style.background = 'conic-gradient(#888 0deg, #888 360deg)';
@@ -305,7 +307,8 @@
             hide: function () {
                 var overlay = document.getElementById('calculation-overlay');
                 if (overlay) overlay.style.display = 'none';
-                document.body.style.cursor = '';
+                document.body.classList.remove('compute-loading');
+                document.documentElement.classList.remove('compute-loading');
             }
         };
         const IO_LISTENER = window.IO_LISTENER;

@@ -1,10 +1,13 @@
 // ============================================================================
 // File: FPS.js - Graphique de performance FPS et mémoire
 // Desc: En français, dans l'architecture, je suis le module de visualisation FPS
-// Version 1.2.0
+// Version 1.2.3
 // Date: [March 08, 2026]
 // logs :
 // - v1.2.0 : remplacement courbe Précision par Mémoire Mo (performance.memory, Chromium) ; retrait getPrecisionFactorFromFPS
+// - v1.2.1 : yaxis2.range adaptatif (max mémoire) pour que la courbe RAM soit visible et défile avec les FPS
+// - v1.2.2 : label "Mo (heap onglet)" — on n'a pas accès à la RAM libre/totale machine, seulement heap JS de l'onglet (Chromium)
+// - v1.2.3 : trace "limite heap" (jsHeapSizeLimit) + annotation valeur en orange (ex. "33 Go") ; "0 (indisponible)" si pas performance.memory
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 
 // See https://commonsclause.com/ for full terms.
@@ -105,7 +108,7 @@ function initFPSChart() {
                 showarrow: false
             },
             {
-                text: 'Mo',
+                text: 'Mo (heap onglet)',
                 xref: 'paper',
                 yref: 'paper',
                 x: 0.98,
@@ -113,7 +116,18 @@ function initFPSChart() {
                 xanchor: 'right',
                 yanchor: 'middle',
                 textangle: -90,
-                font: { color: '#44aaff', size: 12 },
+                font: { color: '#44aaff', size: 11 },
+                showarrow: false
+            },
+            {
+                text: '',
+                xref: 'x',
+                yref: 'y2',
+                x: 0,
+                y: 0,
+                xanchor: 'left',
+                yanchor: 'middle',
+                font: { color: 'rgba(255, 165, 0, 1)', size: 10 },
                 showarrow: false
             }
         ],
@@ -121,17 +135,27 @@ function initFPSChart() {
         hovermode: false
     };
     
-    // Traces initiales (vides)
-    // Ordre important : Plotly dessine les traces dans l'ordre, donc la dernière est au-dessus
+    // Traces : 0=Heap JS (onglet), 1=limite heap (frontière au-delà de laquelle le navigateur peut mettre en pause / crasher)
     const traces = [
         {
             x: [],
             y: [],
             type: 'scatter',
             mode: 'lines',
-            name: 'Mémoire',
+            name: 'Heap JS (onglet)',
             line: { color: '#44aaff', width: 1.5 },
             yaxis: 'y2'
+        },
+        {
+            x: [0, MAX_HISTORY * X_SECONDS_PER_POINT],
+            y: [0, 0],
+            type: 'scatter',
+            mode: 'lines',
+            name: 'limite heap',
+            line: { color: 'rgba(255, 165, 0, 0.8)', width: 1, dash: 'dash' },
+            yaxis: 'y2',
+            showlegend: false,
+            hoverinfo: 'name+y'
         },
         {
             x: [0, MAX_HISTORY * X_SECONDS_PER_POINT],
@@ -202,19 +226,38 @@ function updateFPSChart(fps, memMB) {
     const xDataFPS = Array.from({ length: fpsHistory.length }, (_, i) => (i + 0.1) * X_SECONDS_PER_POINT);
     
     // Mettre à jour les traces (Mémoire trace 0, FPS trace 4 pour qu'elle soit au-dessus)
+    const xMax = fpsHistory.length === 0 ? 10 : Math.max(fpsHistory.length * X_SECONDS_PER_POINT, 5);
+    const maxMem = memoryHistory.length ? Math.max.apply(null, memoryHistory) : 0;
+    const limitMo = performance.memory ? performance.memory.jsHeapSizeLimit / 1e6 : 0;
+    const y2Max = Math.max(100, Math.ceil((maxMem || 50) * 1.2), limitMo ? Math.ceil(limitMo * 1.05) : 0);
+    const limitLabel = limitMo >= 1024
+        ? (limitMo / 1024).toFixed(1) + ' Go'
+        : limitMo > 0
+            ? Math.round(limitMo) + ' Mo'
+            : '0 (indisponible)';
+
     Plotly.restyle('fps-chart', {
         x: [xData],
         y: [memoryHistory]
-    }, [0]); // Mettre à jour la trace 0 (Mémoire)
-    
+    }, [0]);
+    Plotly.restyle('fps-chart', {
+        x: [[0, xMax]],
+        y: [[limitMo || 0, limitMo || 0]]
+    }, [1]);
     Plotly.restyle('fps-chart', {
         x: [xDataFPS],
         y: [fpsHistory]
-    }, [4]);
+    }, [5]);
 
-    const xMax = fpsHistory.length === 0 ? 10 : Math.max(fpsHistory.length * X_SECONDS_PER_POINT, 5);
-    Plotly.relayout('fps-chart', { 'xaxis.range': [0, xMax] });
-    Plotly.restyle('fps-chart', { x: [[0, xMax], [0, xMax], [0, xMax]] }, [1, 2, 3]);
+    Plotly.relayout('fps-chart', {
+        'xaxis.range': [0, xMax],
+        'yaxis2.range': [0, y2Max],
+        'annotations[2].text': limitLabel,
+        'annotations[2].x': xMax,
+        'annotations[2].y': limitMo || 0,
+        'annotations[2].xanchor': 'right'
+    });
+    Plotly.restyle('fps-chart', { x: [[0, xMax], [0, xMax], [0, xMax]] }, [2, 3, 4]);
 }
 
 // Arrêter le timer d'une seconde quand le système de ping est utilisé
@@ -279,7 +322,7 @@ function ping(dt) {
     else if (fps > 20) fpsLevel = 'lent';
     else if (fps > 10) fpsLevel = 'aïe';
 
-    // performance.memory : Chromium seulement (Chrome/Brave). Non disponible sur Firefox/Safari.
+    // performance.memory : heap JS de cet onglet uniquement (Chromium). Pas d'accès RAM libre/totale machine.
     const memMB = performance.memory ? performance.memory.usedJSHeapSize / 1e6 : 0;
 
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {

@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.1
+// Version 1.1.2
 // Date: [January 2025]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -11,6 +11,7 @@
 // UTF8 est la sémantique pour CODE & UI
 //
 // - v1.1.1 : retrait precisionFactor/fpsPrecisionFactor (FPS.js v1.2.0 remplace Précision par Mémoire)
+// - v1.1.2 : updateHadeenTexture : nouvelle cellule insérée derrière l'ancienne, retrait ancienne au three:ready (évite disparition texture)
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -61,7 +62,6 @@ let fpsTimerActive = true; // État du timer d'une seconde
 // ============================================================================
 // GESTION DES BOUTONS (désactivation pendant les calculs)
 // ============================================================================
-let calculationInProgress = false; // État du calcul en cours
 
 // ============================================================================
 // SYSTÈME DE VOLCANS (effet sur H2O et glace)
@@ -81,7 +81,7 @@ if (typeof window !== 'undefined') {
     
     // Flag pour contrôler l'affichage des phases de debug
     window.isDebugPhases = false; // Désactiver les logs de phase pour nettoyer // Mettre à false pour désactiver les logs de phases
-    window.calculationInProgress = false; // Exposé pour plot.js (resizeCanvasToPlot skipReposition pendant dichotomie)
+    window.SYNC_STATE.calculationInProgress = false; // Exposé pour plot.js (resizeCanvasToPlot skipReposition pendant dichotomie)
 }
 
 var CONST = window.CONST; /* var pour éviter redeclaration avec plot.js */
@@ -317,8 +317,7 @@ function getAvailableButtons(yearsAgo) {
 
 // Fonction pour désactiver tous les boutons
 function disableButtons() {
-    calculationInProgress = true;
-    window.calculationInProgress = true;
+    window.SYNC_STATE.calculationInProgress = true;
     // Réinitialiser les flags de convergence
     if (typeof window !== 'undefined') {
         window.calculationConverged = false;
@@ -350,8 +349,7 @@ function disableButtons() {
 
 // Fonction pour réactiver les boutons selon l'époque géologique
 function enableButtons() {
-    calculationInProgress = false;
-    window.calculationInProgress = false;
+    window.SYNC_STATE.calculationInProgress = false;
     
     // Activer l'animation de la planète après la fin des calculs
     // Chercher toutes les textures de planète et retirer la classe "paused"
@@ -896,7 +894,7 @@ function updateCO2Level(state) {
 }
 
 function setIceberg() {
-    if (calculationInProgress) return; // Bloquer si calcul en cours
+    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
     // Forcer à 0 ppm
     currentState = 0;
     plotData.co2_ppm = 0;
@@ -906,14 +904,14 @@ function setIceberg() {
 }
 
 function setPreindustrial() {
-    if (calculationInProgress) return; // Bloquer si calcul en cours
+    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
     incrementTimeline(); // +100 ans
     disableButtons(); // Désactiver les boutons
     updateCO2Level(1); // 280 ppm
 }
 
 function setCurrent() {
-    if (calculationInProgress) return; // Bloquer si calcul en cours
+    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
     incrementTimeline(); // +100 ans
     disableButtons(); // Désactiver les boutons
     updateCO2Level(2); // 420 ppm
@@ -921,7 +919,7 @@ function setCurrent() {
 
 // Fonction pour ajouter du CO2 via une comète/météorite de glace
 function addCometCO2() {
-    if (calculationInProgress) return; // Bloquer si calcul en cours
+    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
 
     const COMET_CO2_ADDITION = 0.1; // +0.1 ppm par comète
     const COMET_H2O_ADDITION = 0.1; // +0.1% H2O par comète
@@ -966,7 +964,7 @@ function addCometCO2() {
 }
 
 function divideCO2() {
-    if (calculationInProgress) return; // Bloquer si calcul en cours
+    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
     // Diviser le CO2 actuel par 2
     const current_ppm = plotData.co2_ppm;
     const new_ppm = current_ppm / 2;
@@ -991,7 +989,7 @@ function divideCO2() {
 }
 
 function multiplyCO2() {
-    if (calculationInProgress) return; // Bloquer si calcul en cours
+    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
 
     // ⚠️ MODIFICATION POUR GAMEPLAY : Un volcan ajoute une quantité de CO2 selon l'époque géologique
     // Au début de la Terre (Hadéen/Archéen), les volcans étaient beaucoup plus gros et nombreux
@@ -1078,6 +1076,7 @@ function cancelCurrentCalculation() {
 // Elle met à jour CO2 explicitement, mais utilise aussi H2O et CH4 depuis plotData/window
 // TODO: Renommer en updateEDSLevels ou updateLevelsDirect pour refléter qu'elle utilise les 3 gaz
 function updateCO2LevelDirect(co2_fraction) {
+    const IO_LISTENER = window.IO_LISTENER;
     const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
@@ -1124,9 +1123,7 @@ function updateCO2LevelDirect(co2_fraction) {
             if (window.cancelCalculation) {
                 return;
             }
-            if (window.IO_LISTENER && data) {
-                window.IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: data });
-            }
+            if (data) IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: data });
 
             // Retirer ce timeout de la liste
             const index = currentCalculationTimeouts.indexOf(timeoutId);
@@ -1470,10 +1467,11 @@ window.updateDisplay = function updateDisplay(data) {
             const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
             if (currentEpoch) {
                 epochName = currentEpoch.name || window.currentEpochName;
-                // Formater la date depuis startYears ou ▶
+                // Formater la date depuis startYears ou ▶ (avant présent = afficher avec -)
                 const years = currentEpoch.startYears ?? currentEpoch['▶'];
                 if (years != null && Number.isFinite(years)) {
-                    epochDate = formatYears(years);
+                    const yearsForDisplay = years > 0 ? -years : years;
+                    epochDate = formatYears(yearsForDisplay);
                 } else if (window.configOrganigramme && window.configOrganigramme.timeline) {
                     const timelineEpoch = window.configOrganigramme.timeline.find(item =>
                         item.type === 'epoch' && (item.id === window.currentEpochName || item.name === window.currentEpochName)
@@ -1913,6 +1911,7 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour activer/désactiver la vapeur d'eau
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
+    const IO_LISTENER = window.IO_LISTENER;
     console.log('[1] config', epochName);
     // 🔒 Cacher le tooltip immédiatement lors du changement d'époque
     // Empêche le tooltip de rester affiché après le changement
@@ -1929,7 +1928,7 @@ function setEpoch(epochName) {
     
     // Log supprimé (non essentiel)
     
-    if (calculationInProgress) {
+    if (window.SYNC_STATE.calculationInProgress) {
         cancelCurrentCalculation();
         enableButtons();
     }
@@ -2211,11 +2210,13 @@ function setEpoch(epochName) {
     // Stocker le début de l'époque pour référence (affichage de la date de début)
     currentEpochStartYears = epoch.startYears ?? epoch['▶'];
 
-    // Mettre à jour la date de début affichée (▶ = début en années dans config)
+    // Mettre à jour la date de début affichée (▶ = début en années dans config, "avant présent" = afficher avec -)
     const epochStartTimeDisplay = document.getElementById('epoch-start-time');
     if (epochStartTimeDisplay) {
         const years = epoch.startYears ?? epoch['▶'];
-        epochStartTimeDisplay.textContent = formatYears(years);
+        // Les années de début d'époque sont "avant présent" : afficher avec un - (ex. -5000 Ma)
+        const yearsForDisplay = (typeof years === 'number' && years > 0) ? -years : years;
+        epochStartTimeDisplay.textContent = formatYears(yearsForDisplay);
     }
 
     // Afficher le nom de l'époque dans la timeline
@@ -2512,17 +2513,16 @@ function setEpoch(epochName) {
     }
 
     // Synchroniser l'état avec l'iframe scie (epoch, anim, ticTime)
-    if (window.IO_LISTENER) {
-        const epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || epoch.id || epochName;
-        const ticTime = (window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'] != null) ? window.DATA['📜']['📿💫'] : 0;
-        const animEnabled = window.DATA['🔘']['🔘🎞'];
-        window.IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime });
-    }
+    const epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || epoch.id || epochName;
+    const ticTime = (window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'] != null) ? window.DATA['📜']['📿💫'] : 0;
+    const animEnabled = window.DATA['🔘']['🔘🎞'];
+    IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime });
 }
 
 
 // Fonction pour mettre à jour le niveau H2O directement (similaire à updateCO2LevelDirect)
 function updateH2OLevelDirect(h2o_total_percent) {
+    const IO_LISTENER = window.IO_LISTENER;
     const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
@@ -2596,9 +2596,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
             if (window.cancelCalculation) {
                 return;
             }
-            if (window.IO_LISTENER && data) {
-                window.IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: data });
-            }
+            if (data) IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: data });
 
             // Retirer ce timeout de la liste
             const index = currentCalculationTimeouts.indexOf(timeoutId);
@@ -2793,7 +2791,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
 window.updateH2OLevelDirect = updateH2OLevelDirect;
 
 function toggleWaterVapor() {
-    if (calculationInProgress) return; // Bloquer si calcul en cours
+    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
 
     // Vérifier si on est en époque Corps noir (tout désactivé)
     const btnH2O = document.getElementById('btn-h2o');
@@ -3019,6 +3017,7 @@ if (document.readyState === 'loading') {
 
 // Fonction pour mettre à jour la texture Hadéen selon infoTimeMa
 function updateHadeenTexture() {
+    const IO_LISTENER = window.IO_LISTENER;
     const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
     if (currentEpoch !== 'Hadéen') return;
     
@@ -3052,27 +3051,25 @@ function updateHadeenTexture() {
     }
     
     // Recréer la cellule Terre avec la nouvelle texture
+    // 🔒 Ne pas enlever l'ancienne cellule avant que la nouvelle texture soit prête :
+    // on insère la nouvelle derrière l'ancienne, on attend three:ready, puis on retire l'ancienne
+    // pour éviter que la texture disparaisse (flash noir) pendant le chargement.
     const oldCell = document.getElementById('cell-terre');
     if (oldCell) {
-        // 🔒 Sauvegarder l'angle de rotation AVANT de supprimer la cellule
-        // (pour éviter que la terre pivote d'un coup lors du changement de texture)
+        IO_LISTENER.emit('three:runStart');
+        // 🔒 Sauvegarder l'angle de rotation AVANT tout changement
         const canvas = oldCell.querySelector('canvas');
         let savedRotationY = 0;
         if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
             savedRotationY = canvas._threeJSData.sphere.rotation.y;
-            // 🔒 Stocker dans window pour que initPlanetThreeJS puisse le récupérer
-            // (pour éviter que la terre pivote d'un coup lors du changement de texture)
             if (typeof window !== 'undefined') {
                 window.savedPlanetRotationY = savedRotationY;
             }
         } else if (typeof window !== 'undefined' && window.savedPlanetRotationY !== undefined) {
-            // Si pas de sphere mais qu'on a déjà une rotation sauvegardée, la conserver
             savedRotationY = window.savedPlanetRotationY;
         }
         
         const parent = oldCell.parentElement;
-        oldCell.remove();
-        
         const newCell = window.FUNCS_ORGANIGRAMME.createCell(
             terreNode.x,
             terreNode.y,
@@ -3099,8 +3096,25 @@ function updateHadeenTexture() {
             null,
             epochConfig.planetEffect || false
         );
-        
-        parent.appendChild(newCell);
+        // Mettre la nouvelle cellule derrière l'ancienne : l'ancienne texture reste visible
+        // jusqu'à ce que la nouvelle soit chargée (three:ready).
+        parent.insertBefore(newCell, oldCell);
+        const newCanvas = newCell.querySelector('canvas');
+        var timeoutId = null;
+        var onThreeReady = function (payload) {
+            if (payload && payload.canvas === newCanvas) {
+                IO_LISTENER.off('three:ready', onThreeReady);
+                if (timeoutId !== null) clearTimeout(timeoutId);
+                if (oldCell.parentElement) oldCell.remove();
+            }
+        };
+        IO_LISTENER.on('three:ready', onThreeReady);
+        // Secours si three:ready n'est jamais émis (ex. file: protocol)
+        timeoutId = setTimeout(function () {
+            timeoutId = null;
+            IO_LISTENER.off('three:ready', onThreeReady);
+            if (oldCell.parentElement) oldCell.remove();
+        }, 3000);
     }
 }
 
