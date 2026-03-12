@@ -40,6 +40,7 @@ const epochTextures = {
     'Corps noir': 'fonds/5000Ma.png',
     'Hadéen': 'fonds/4500Ma.png',
     'Archéen': 'fonds/2500Ma.png',
+    'Protérozoïque': 'fonds/2300Ma.png',
     'Mésozoïque': 'fonds/00200Ma.png',
     'Cénozoïque': 'fonds/00066Ma.png',
     'Industriel': 'fonds/001800a.png',
@@ -264,11 +265,13 @@ const nodes = [
             {
                 epochName: 'Protérozoïque',
                 logo: LOGOS.GLOBE_AFRICA,
+                texture: 'fonds/2300Ma.png',
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 191, 255, 0.5)',
                 strokeColor: '#00FA9A',
                 strokeSize: 0,
+                planetEffect: true
             },
             {
                 epochName: 'Mésozoïque',

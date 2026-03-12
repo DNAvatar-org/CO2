@@ -1952,8 +1952,8 @@ function setEpoch(epochName) {
 
     // data-epoch sur le DOM = id (emoji), pas le nom ; résoudre pour sélectionner le bon bouton
     const epochNameToEmojiForButton = {
-        'Corps noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Mésozoïque': '🦕',
-        'Paléozoïque': '🦴', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
+        'Corps noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🌿',
+        'Paléozoïque': '🦴', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
     const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochIdForButton}"]`);
@@ -1989,8 +1989,9 @@ function setEpoch(epochName) {
             'Corps noir': '⚫',
             'Hadéen': '🔥',
             'Archéen': '🦠',
-            'Mésozoïque': '🦕',
+            'Protérozoïque': '🌿',
             'Paléozoïque': '🦴',
+            'Mésozoïque': '🦕',
             'Cénozoïque': '🦣',
             'Industriel': '🚂',
             'Aujourd\'hui': '📱'
