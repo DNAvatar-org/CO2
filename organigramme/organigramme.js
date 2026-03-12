@@ -59,13 +59,15 @@ if (typeof window !== "undefined") {
         return value;
       }
 
-      // S'assurer que window.infoTimeMa est défini (initialiser à 0 si nécessaire)
-      if (typeof window.infoTimeMa === "undefined") {
-        window.infoTimeMa = 0;
+      // ticTime = infoTimeMa / stepMa — stepMa lu directement depuis la config du bouton cliqué
+      // Exception init : 🔘🕰 = '' avant le premier clic → ticTime = 0
+      let ticTime = 0;
+      if (window.DATA['📜']['🔘🕰'] !== '') {
+          const _epochId_org = window.DATA['📜']['🗿'];
+          const _epoch_org = window.TIMELINE[window.TIMELINE.findIndex(item => item['📅'] === _epochId_org)];
+          const stepMa = _epoch_org['🕰'][window.DATA['📜']['🔘🕰']]['🔺⏳'];
+          ticTime = Math.floor(window.infoTimeMa / stepMa);
       }
-
-      // Calculer ticTime = infoTimeMa / 50
-      const ticTime = Math.floor((window.infoTimeMa || 0) / 50);
 
       // Détecter si c'est un chemin d'image (pour arrondir automatiquement les résultats)
       const isImagePath = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(value);
@@ -527,7 +529,7 @@ function initPlanetThreeJS(
     console.error("[initPlanetThreeJS] texture non chargée:", textureName);
     console.error("⚠️ Utilisez: http://localhost:8000/index.html");
     createPlanetSphere();
-    console.log("[2] texture Three.js (file:)");
+    console.log("[2] texture Three.js (retour file:)");
     IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
   } else {
     const textureLoader = new THREE.TextureLoader();
@@ -541,6 +543,7 @@ function initPlanetThreeJS(
         e,
       );
     }
+    console.log("[2] texture Three.js (lancement)");
     textureLoader.load(
       logoPath,
       function (loadedTexture) {
@@ -548,7 +551,7 @@ function initPlanetThreeJS(
         loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
         texture = loadedTexture;
         createPlanetSphere();
-        console.log("[2] texture Three.js");
+        console.log("[2] texture Three.js (retour)");
         IO_LISTENER.emit("three:ready", { hasTexture: true, canvas: canvas });
       },
       undefined,
@@ -561,7 +564,7 @@ function initPlanetThreeJS(
         console.error("[initPlanetThreeJS] URL résolue:", resolvedUrl);
         console.error("[initPlanetThreeJS] erreur:", error);
         createPlanetSphere();
-        console.log("[2] texture Three.js (sans image)");
+        console.log("[2] texture Three.js (retour sans image)");
         IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
       },
     );
@@ -3196,14 +3199,6 @@ cellOrder.forEach((nodeId) => {
 
     if (epochConfig) {
       // Interpréter le logo si nécessaire (peut contenir {$ticTime} ou expressions)
-      // IMPORTANT: S'assurer que infoTimeMa est à 0 pour les nouvelles époques
-      if (
-        typeof window !== "undefined" &&
-        typeof window.infoTimeMa === "undefined"
-      ) {
-        window.infoTimeMa = 0;
-        // Log supprimé (non essentiel)
-      }
 
       // Picto (logo) vs texture Three.js : planetEffect utilise texture (text_*.png), sinon picto (charsImages)
       let logoForCell = epochConfig.logo;
@@ -4043,9 +4038,7 @@ window.updateFluxLabels = function (eventId) {
           epoch.total_atmosphere_mass_kg === undefined
         );
       })();
-      if (hasNoAtmosphere) {
-        albedo_num = 0;
-      }
+      // cycleCalcul / ProcessFinished : garder l'albédo calculé (DATA['🪩']['🍰🪩📿']), ne pas écraser
       break;
     default:
       return;
@@ -4394,6 +4387,7 @@ window.updateFluxLabels = function (eventId) {
       }
 
       label.innerHTML = formattedValue;
+      console.log("[DOM maj]", dataId, "→", typeof formattedValue === "string" && formattedValue.length > 40 ? formattedValue.slice(0, 40) + "…" : formattedValue);
       if (dataId === "fine_tuning_cloud_bary") {
         const pctMatch = typeof formattedValue === "string" && formattedValue.match(/(\d+(?:\.\d+)?)\s*%/);
         const pct = pctMatch ? pctMatch[1] : "100";

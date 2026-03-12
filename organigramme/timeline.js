@@ -64,7 +64,7 @@ function updateTimeline() {
     // Mettre à jour l'horloge dans la zone horloge
     // Toujours utiliser window.infoTimeMa (commence toujours à 0 Ma)
     if (infoTimeDisplay) {
-        const infoTimeMa = window.infoTimeMa || 0;
+        const infoTimeMa = window.infoTimeMa;
         let newText;
         // Afficher en Ma avec signe : négatif = "-X Ma", zéro = "0 Ma", positif = "+X Ma"
         const deltaMa = Math.abs(infoTimeMa).toFixed(1).replace(/\.?0+$/, '');
@@ -83,34 +83,34 @@ function updateTimeline() {
         }
     }
     
-    // Calculer textureIndex = infoTimeMa / 50 (variable globale pour simplifier)
-    // Chaque texture = 50Ma : 0-49Ma = 0, 50-99Ma = 1, ..., 450-499Ma = 9
-    if (typeof window !== 'undefined') {
-        window.textureIndex = Math.floor((window.infoTimeMa || 0) / 50);
-        
-        // Détecter les changements pour déclencher les mises à jour
-        const currentTicTime = window.textureIndex;
-        const currentIceLevel = window.h2oIceFractionFromCalculation !== undefined ? window.h2oIceFractionFromCalculation : 0;
-        
-        // Détecter changement de texture (ticTime)
-        window.isTextChange = (window.lastTicTime !== undefined && window.lastTicTime !== currentTicTime);
-        if (window.isTextChange || window.lastTicTime === undefined) {
-            window.lastTicTime = currentTicTime;
-        }
-        
-        // Détecter changement de glace
-        window.isIceChange = (window.lastIceLevel !== undefined && Math.abs(window.lastIceLevel - currentIceLevel) > 0.001);
-        if (window.isIceChange || window.lastIceLevel === undefined) {
-            window.lastIceLevel = currentIceLevel;
-        }
-        
-        // Si changement de texture (ticTime) ou de glace, mettre à jour Three.js
-        if (window.isTextChange && typeof window.updateHadeenTexture === 'function') {
-            window.updateHadeenTexture();
-        } else if (window.isIceChange && typeof window.updatePlanetLighting === 'function') {
-            // Mettre à jour l'éclairage Three.js si la glace change (affecte lightDistance)
-            window.updatePlanetLighting();
-        }
+    // textureIndex = infoTimeMa / stepMa — stepMa lu directement depuis la config du bouton cliqué
+    // Exception init : 🔘🕰 = '' avant le premier clic → textureIndex = 0 (infoTimeMa = 0 aussi)
+    if (window.DATA['📜']['🔘🕰'] === '') {
+        window.textureIndex = 0;
+    } else {
+        const _epochId_tl = window.DATA['📜']['🗿'];
+        const _epoch_tl = window.TIMELINE[window.TIMELINE.findIndex(item => item['📅'] === _epochId_tl)];
+        const stepMa = _epoch_tl['🕰'][window.DATA['📜']['🔘🕰']]['🔺⏳'];
+        window.textureIndex = Math.floor(window.infoTimeMa / stepMa);
+    }
+
+    const currentTicTime = window.textureIndex;
+    const currentIceLevel = window.h2oIceFractionFromCalculation;
+
+    window.isTextChange = (window.lastTicTime !== undefined && window.lastTicTime !== currentTicTime);
+    if (window.isTextChange || window.lastTicTime === undefined) {
+        window.lastTicTime = currentTicTime;
+    }
+
+    window.isIceChange = (window.lastIceLevel !== undefined && Math.abs(window.lastIceLevel - currentIceLevel) > 0.001);
+    if (window.isIceChange || window.lastIceLevel === undefined) {
+        window.lastIceLevel = currentIceLevel;
+    }
+
+    if (window.isTextChange) {
+        window.updateHadeenTexture();
+    } else if (window.isIceChange) {
+        window.updatePlanetLighting();
     }
 
     // 🔒 DÉSACTIVÉ : Ne plus incrémenter automatiquement de +10 ans toutes les secondes

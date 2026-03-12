@@ -357,7 +357,7 @@ function enableButtons() {
     planetTextures.forEach(texture => {
         texture.classList.remove('paused');
     });
-    const currentYears = (window.timelineFrame || 0) * (window.YEARS_PER_FRAME || 10);
+    const currentYears = window.timelineFrame * window.YEARS_PER_FRAME;
     const available = getAvailableButtons(currentYears);
 
     const buttons = [
@@ -415,7 +415,7 @@ function enableButtons() {
 /**
  * Interprète une valeur de configuration en remplaçant les variables dynamiques
  * Variables supportées:
- * - {$ticTime} : remplacé par Math.floor(window.infoTimeMa / 50)
+ * - {$ticTime} : remplacé par Math.floor(window.infoTimeMa / DATA['📜']['🔺⏳'])
  * 
  * Expressions mathématiques supportées:
  * - '10-{$ticTime}' : calculé comme 10 - ticTime
@@ -441,13 +441,15 @@ function interpretConfigValue(value) {
         return value;
     }
     
-    // S'assurer que window.infoTimeMa est défini (initialiser à 0 si nécessaire)
-    if (typeof window.infoTimeMa === 'undefined') {
-        window.infoTimeMa = 0;
+    // ticTime = infoTimeMa / stepMa — stepMa lu directement depuis la config du bouton cliqué
+    // Exception init : 🔘🕰 = '' avant le premier clic → ticTime = 0
+    let ticTime = 0;
+    if (window.DATA['📜']['🔘🕰'] !== '') {
+        const _epochId_icv = window.DATA['📜']['🗿'];
+        const _epoch_icv = window.TIMELINE[window.TIMELINE.findIndex(item => item['📅'] === _epochId_icv)];
+        const stepMa = _epoch_icv['🕰'][window.DATA['📜']['🔘🕰']]['🔺⏳'];
+        ticTime = Math.floor(window.infoTimeMa / stepMa);
     }
-    
-    // Calculer ticTime = infoTimeMa / 50
-    const ticTime = Math.floor((window.infoTimeMa || 0) / 50);
 
     // Détecter si c'est un chemin d'image (pour arrondir automatiquement les résultats)
     const isImagePath = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(value);
@@ -994,8 +996,8 @@ function multiplyCO2() {
     // ⚠️ MODIFICATION POUR GAMEPLAY : Un volcan ajoute une quantité de CO2 selon l'époque géologique
     // Au début de la Terre (Hadéen/Archéen), les volcans étaient beaucoup plus gros et nombreux
     // Calculer l'époque actuelle selon le temps écoulé
-    const currentYears = (window.timelineFrame || 0) * (window.YEARS_PER_FRAME || 10);
-    const era = (window.getGeologicalEra || function () { return { volcanoFactor: 1.0, co2PerVolcano: 150 }; })(currentYears);
+    const currentYears = window.timelineFrame * window.YEARS_PER_FRAME;
+    const era = window.getGeologicalEra(currentYears);
 
     // CO2 par volcan selon l'époque (plus gros au début)
     // ⚠️ MODIFICATION : Réduire l'effet du volcan pour le gameplay
@@ -1912,6 +1914,27 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
     const IO_LISTENER = window.IO_LISTENER;
+    // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
+    const epochNameToEmojiForButton = {
+        'Corps noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🌿',
+        'Paléozoïque': '🦴', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
+    };
+    const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
+    if (window.DATA['📜'] && window.DATA['📜']['🗿'] === epochIdForButton) {
+        const allEpochButtons = document.querySelectorAll('.epoch-btn');
+        allEpochButtons.forEach(btn => btn.classList.remove('selected'));
+        const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochIdForButton}"]`);
+        if (clickedButton) clickedButton.classList.add('selected');
+        // TicTime à 0 au clic époque (même si même époque)
+        window.infoTimeMa = 0;
+        window.timelineFrame = 0;
+        window.SYNC_STATE.ticTime = 0;
+        window.syncToScie({ ticTime: 0 });
+        document.getElementById('info-time').textContent = '+0 Ma';
+        window.updateTimeline();
+        console.log('[3] DOM organigramme');
+        return;
+    }
     console.log('[1] config', epochName);
     // 🔒 Cacher le tooltip immédiatement lors du changement d'époque
     // Empêche le tooltip de rester affiché après le changement
@@ -1923,7 +1946,10 @@ function setEpoch(epochName) {
     // IMPORTANT: Doit être fait AVANT l'interprétation du logo pour que ticTime = 0
     if (typeof window !== 'undefined') {
         window.infoTimeMa = 0;
-        // infoTimeMa=0
+        // Nouvelle époque : reset compteurs boutons et dernier bouton cliqué
+        window.DATA['📜']['📿☄️'] = 0;
+        window.DATA['📜']['📿💫'] = 0;
+        window.DATA['📜']['🔘🕰'] = '';
     }
     
     // Log supprimé (non essentiel)
@@ -1949,13 +1975,6 @@ function setEpoch(epochName) {
     allEpochButtons.forEach(btn => {
         btn.classList.remove('selected');
     });
-
-    // data-epoch sur le DOM = id (emoji), pas le nom ; résoudre pour sélectionner le bon bouton
-    const epochNameToEmojiForButton = {
-        'Corps noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🌿',
-        'Paléozoïque': '🦴', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
-    };
-    const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
     const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochIdForButton}"]`);
     if (clickedButton) {
         clickedButton.classList.add('selected');
@@ -2037,8 +2056,7 @@ function setEpoch(epochName) {
 
     // 🔒 Anticiper la couleur avec t0 dès le clic sur l'époque (AVANT les calculs)
     if (typeof epoch.t0 === 'number' && epoch.t0 > 0 && typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
-        // Calculer ticTime = infoTimeMa / 50 (pour ajustement temporel)
-        const ticTime = (typeof window.infoTimeMa !== 'undefined') ? Math.floor((window.infoTimeMa || 0) / 50) : 0;
+        const ticTime = 0; // infoTimeMa = 0 à chaque setEpoch
         
         // Calculer la température initiale
         const T0_anticipated = epoch.t0;
@@ -2253,7 +2271,11 @@ function setEpoch(epochName) {
     if (infoTimeDisplay) {
         infoTimeDisplay.textContent = '+0 Ma';
     }
-    
+
+    // TicTime à 0 et sync vers scie pour que l’iframe ait ticTime=0
+    window.SYNC_STATE.ticTime = 0;
+    window.syncToScie({ ticTime: 0 });
+
     // Note: infoTimeMa a déjà été remis à 0 au début de setEpoch (avant l'interprétation du logo)
     
     // Vérifier les événements automatiques après le changement d'époque
@@ -2517,7 +2539,7 @@ function setEpoch(epochName) {
     const epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || epoch.id || epochName;
     const ticTime = (window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'] != null) ? window.DATA['📜']['📿💫'] : 0;
     const animEnabled = window.DATA['🔘']['🔘🎞'];
-    IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime });
+    IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime, run: true });
 }
 
 
@@ -3057,6 +3079,7 @@ function updateHadeenTexture() {
     // pour éviter que la texture disparaisse (flash noir) pendant le chargement.
     const oldCell = document.getElementById('cell-terre');
     if (oldCell) {
+        console.log('[recreateTerre] three:runStart (sans canvas) — caller: ' + (new Error().stack.split('\n')[2] || '?').trim());
         IO_LISTENER.emit('three:runStart');
         // 🔒 Sauvegarder l'angle de rotation AVANT tout changement
         const canvas = oldCell.querySelector('canvas');
@@ -3109,7 +3132,7 @@ function updateHadeenTexture() {
                 if (oldCell.parentElement) oldCell.remove();
             }
         };
-        IO_LISTENER.on('three:ready', onThreeReady);
+        IO_LISTENER.on('three:ready', onThreeReady, 'main.js');
         // Secours si three:ready n'est jamais émis (ex. file: protocol)
         timeoutId = setTimeout(function () {
             timeoutId = null;

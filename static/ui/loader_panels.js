@@ -1,6 +1,6 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.6
+// Version 1.1.7
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
@@ -9,6 +9,7 @@
 // - v1.1.4: non-anim : avanceTic() sur chaque tic (disque creux en cases) ; show/hideComputeLoader
 // - v1.1.5: clic direct = overlay (texte rouge) + body cursor wait uniquement ; anim = idem + disque creux
 // - v1.1.6: curseur wait via class compute-loading (html+body) pour résister en anim
+// - v1.1.7: scheduleInitialCompute() appelé systématiquement en fin initAfterLoad pour garantir [4] après [3]
 // Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
 // Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
 
@@ -184,15 +185,15 @@
         }
     };
 
-    // Clic sur un bouton époque = sans animation (via shell)
+    // Clic sur un bouton époque = sans animation (via shell) ; ticTime remis à 0
     window.setEpochFromEpochButton = function (epochId) {
         if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = false;
         var cb = document.getElementById('plot-anim-toggle-checkbox');
         if (cb) cb.checked = false;
         if (window.shell && window.shell.setState) {
-            window.shell.setState({ animEnabled: false, epochId: epochId });
+            window.shell.setState({ animEnabled: false, epochId: epochId, ticTime: 0 });
         } else {
-            window.syncToScie({ animEnabled: false });
+            window.syncToScie({ animEnabled: false, ticTime: 0 });
             if (typeof window.setEpoch === 'function') window.setEpoch(epochId);
         }
     };
@@ -313,11 +314,15 @@
         };
         const IO_LISTENER = window.IO_LISTENER;
         IO_LISTENER.on('cycleCalcul', function () {
-                const fpsOk = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
-                if (fpsOk && typeof window.updateFluxLabels === 'function') {
+                var D = window.DATA;
+                var albedoIn = (D && D['🪩']) ? D['🪩']['🍰🪩📿'] : null;
+                console.log('[loader_panels] cycleCalcul input albedo=', albedoIn);
+                if (typeof window.updateFluxLabels === 'function') {
                     try { window.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
                 }
-            });
+                var el = document.querySelector('[data-id="albedo_percent"]');
+                console.log('[loader_panels] cycleCalcul DOM albedo_percent=', el ? el.textContent : '(élément absent)');
+            }, 'loader_panels');
         IO_LISTENER.on('compute:progress', function (payload) {
                 /*
                  * ============================================================
@@ -349,20 +354,24 @@
                     return;
                 }
                 IO_LISTENER.emit('cycleCalcul');
-            });
+            }, 'loader_panels');
         IO_LISTENER.on('compute:done', function (payload) {
+                var albedoIn = (payload && payload.DATA && payload.DATA['🪩']) ? payload.DATA['🪩']['🍰🪩📿'] : null;
+                console.log('[loader_panels] compute:done input albedo=', albedoIn);
                 if (payload && payload.DATA) {
                     lastComputePayload = payload;
                     window._lastComputePayloadForScie = payload;
+                    // Mettre à jour le DOM visu (comme setEpoch après getMasses) pour que les labels reflètent DATA après une action (météorite, tic, etc.)
+                    window.updateFluxLabels('ProcessFinished');
                 }
                 // Envoi vers panel actif via shell.dataInput (sync_panels/runComputeInParent) ; plus de postMessage ici
-            });
+            }, 'loader_panels');
         IO_LISTENER.on('flux:lastDrawn', function () {
                 window.COMPUTE_LOADER.hide();
-            });
+            }, 'loader_panels');
         IO_LISTENER.on('three:runStart', function () {
                 window.COMPUTE_LOADER.hide();
-            });
+            }, 'loader_panels');
         // Mettre à jour les actions 🕰 (météorite, impact, etc.) après injection du contenu visu
         window.updateEpochActions();
         var scieIframe = document.getElementById('scie-iframe');
@@ -404,23 +413,24 @@
                 window.runComputeInParent();
             }
         }
-        scieIframe.addEventListener('load', function () {
+        var initialComputeScheduled = false;
+        function scheduleInitialCompute() {
+            if (initialComputeScheduled) return;
+            initialComputeScheduled = true;
             window.syncToScie({ epochId: '⚫', animEnabled: false, ticTime: 0 });
-            // Décaler pour laisser setEpoch + laisser scie envoyer sync:tuning 100 % (sinon pas 16.4°C au 1er affichage)
-            requestAnimationFrame(function () {
-                requestAnimationFrame(function () {
-                    setTimeout(function () { sendComputeToScie(); }, 250);
-                });
-            });
-        });
-        window.syncToScie({ epochId: '⚫', animEnabled: false, ticTime: 0 });
-        if (scieIframe.contentDocument && scieIframe.contentDocument.readyState === 'complete') {
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
                     setTimeout(function () { sendComputeToScie(); }, 250);
                 });
             });
         }
+        scieIframe.addEventListener('load', scheduleInitialCompute);
+        window.syncToScie({ epochId: '⚫', animEnabled: false, ticTime: 0 });
+        if (scieIframe.contentDocument && scieIframe.contentDocument.readyState === 'complete') {
+            scheduleInitialCompute();
+        }
+        // Garantir [4] après [3] : déclencher le 1er calcul même si l'iframe n'a pas encore émis load (évite de le rater)
+        scheduleInitialCompute();
         initTipeeeRollover();
         // Forcer resize au chargement : layout, plot et flux se calibrent correctement
         // (switchTab ne dispatch resize que lors d'un changement d'onglet manuel)

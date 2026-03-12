@@ -113,13 +113,12 @@ window.updateEpochActions = function () {
             window.isIceChange = true;
             window.lastIceLevel = undefined;
 
-            DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
-            window.infoTimeMa = DATA['📜']['📿💫'] * 50;
-            window.getEpochDateConfig();
+            DATA['📜']['📿☄️'] += 1; // compteur dédié ☄️ (incrément direct, pas dérivé)
+            window.infoTimeMa += epochConfig['🕰']['☄️']['🔺⏳'];
             window.getNoyau();
             if (!window.FLUX) window.FLUX = {};
             window.FLUX.yAxisRecalcOnNextFinish = true; // même époque, nouvel équilibre → recalc Y au prochain ProcessFinished
-            window.runComputeInParent();
+            window.IO_LISTENER.emit('config:applyThenCompute', { button: '☄️' });
 
             window.updateTimeline();
             checkDateEvents();
@@ -228,8 +227,8 @@ window.updateEpochActions = function () {
             window.h2oTotalFromMeteorites = newH2O; // compat lecteurs
             window.h2oIceFractionFromCalculation = undefined;
 
-            DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
-            window.infoTimeMa = Math.min(450, DATA['📜']['📿💫'] * 50);
+            DATA['📜']['📿☄️'] += 1; // compteur dédié ☄️ (incrément direct, pas dérivé)
+            window.infoTimeMa = Math.min(450, window.infoTimeMa + epochHadeen['🕰']['☄️']['🔺⏳']);
             applyHadeenFluxFromConfig();
             if (!window.FLUX) window.FLUX = {};
             window.FLUX.yAxisRecalcOnNextFinish = true;
@@ -257,13 +256,12 @@ window.updateEpochActions = function () {
             window.addCustomTooltip(ticBtn, window.CHARS_DESC['💫']);
             ticBtn.addEventListener('click', () => {
                 const D = window.DATA;
-                D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
-                window.infoTimeMa = D['📜']['📿💫'] * 50;
-                window.getEpochDateConfig();
+                D['📜']['📿💫'] += 1; // compteur dédié 💫 (init à 0 dans configOrganigramme, reset dans setEpoch)
+                window.infoTimeMa = D['📜']['📿💫'] * epoch['🕰']['💫']['🔺⏳'];
                 window.getNoyau();
                 if (!window.FLUX) window.FLUX = {};
                 window.FLUX.yAxisRecalcOnNextFinish = true;
-                window.runComputeInParent();
+                window.IO_LISTENER.emit('config:applyThenCompute', { button: '💫' });
             });
             eventsLogos.appendChild(ticBtn);
             // Météorite de glace : uniquement Corps noir (⚫) et Hadéen (🔥), gérés dans leurs case
