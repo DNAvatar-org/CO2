@@ -620,9 +620,7 @@ function updateFPS() {
             window.fps = fps;
         }
 
-        if (updateFPSDisplay === 'function') {
-            window.updateFPSDisplay(fps);
-        }
+        window.updateFPSDisplay(fps);
     }
 
     requestAnimationFrame(updateFPS);

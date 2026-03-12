@@ -1,4 +1,4 @@
-/* Local font for ProggyDotted to avoid CORS when loading from external origin. */
+/* ProggyDotted : static/fonts/ (rep de travail = CO2/fonts/, à ne pas utiliser en prod). */
 @font-face {
     font-family: 'ProggyDotted';
     src: url('../fonts/ProggyDotted Regular.ttf') format('truetype');

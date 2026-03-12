@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.26
+// Version 1.0.27
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -8,6 +8,7 @@
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
 // Logs: v1.0.26 albedo: \\bar{A} dans le footer (entre tasse et speech), plus dans [1,1]
+// Logs: v1.0.27 animate(): retrait auto-resume FPS (ne pas écraser threeJSAnimationPaused=true géré par main.js)
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -718,40 +719,26 @@ function initPlanetThreeJS(
     // Log supprimé (non essentiel)
   }
 
+  // Three.js démarre en statique ; la rotation est débloquée après le dessin du flux final
+  window.threeJSAnimationPaused = true;
+
   // Animation - rotation lente (comme dans planet-test.html)
   let animationId = null;
   const speed = 1.0; // Vitesse normale comme dans planet-test.html
 
   function animate() {
-    // 🔒 Garde-fou FPS : si <30 fps arrêter l'anim, si >60 fps mettre l'anim
+    // Garde-fou FPS : si <30 fps, pause forcée uniquement
     const currentFPS =
       typeof window !== "undefined" && window.fps ? window.fps : 60;
-    const isPausedByFPS = currentFPS < 30;
-    const shouldResumeByFPS = currentFPS >= 60;
+    if (currentFPS < 30 && typeof window !== "undefined") {
+      window.threeJSAnimationPaused = true;
+    }
+    // Pas d'auto-resume : c'est main.js (après draw du flux) qui débloque
 
-    // Utiliser la variable globale pour contrôler l'animation
     const isPaused =
       (typeof window !== "undefined" && window.threeJSAnimationPaused) || false;
-
-    // Si FPS < 30, forcer la pause
-    if (isPausedByFPS) {
-      if (typeof window !== "undefined") {
-        window.threeJSAnimationPaused = true;
-      }
-    }
-    // Si FPS >= 60 et qu'on n'est pas en pause manuelle, reprendre automatiquement
-    else if (shouldResumeByFPS && isPaused) {
-      if (typeof window !== "undefined") {
-        window.threeJSAnimationPaused = false;
-        // Log supprimé (non essentiel)
-      }
-    }
-
-    // Animer seulement si pas en pause
-    const finalIsPaused =
-      (typeof window !== "undefined" && window.threeJSAnimationPaused) || false;
-    if (!finalIsPaused && sphere) {
-      sphere.rotation.y += 0.005 * speed; // Incrément comme dans planet-test.html
+    if (!isPaused && sphere) {
+      sphere.rotation.y += 0.005 * speed;
     }
     renderer.render(scene, camera);
     animationId = requestAnimationFrame(animate);
