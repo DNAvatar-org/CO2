@@ -74,36 +74,36 @@
     <!-- Charger les dépendances dans l'ordre (chemins depuis doc/) -->
     <script src="../static/debug.js"></script>
     <script src="../static/compute/scie_/log_display.js"></script>
-    <script src="../API_BILAN/data/alphabet.js"></script>
-    <script src="../API_BILAN/data/dico.js"></script>
-    <script src="../API_BILAN/data/initDATA.js"></script>
-    <script src="../API_BILAN/config/model_tuning.js"></script>
-    <script src="../API_BILAN/config/model_tuning_biblio.js"></script>
-    <script src="../API_BILAN/config/fine_tuning_bounds.js"></script>
+    <script src="../../API_BILAN/data/alphabet.js"></script>
+    <script src="../../API_BILAN/data/dico.js"></script>
+    <script src="../../API_BILAN/data/initDATA.js"></script>
+    <script src="../../API_BILAN/config/model_tuning.js"></script>
+    <script src="../../API_BILAN/config/model_tuning_biblio.js"></script>
+    <script src="../../API_BILAN/config/fine_tuning_bounds.js"></script>
     <script src="../organigramme/configOrganigramme.js"></script>
-    <script src="../API_BILAN/config/configTimeline.js"></script>
+    <script src="../../API_BILAN/config/configTimeline.js"></script>
     <script src="../organigramme/timeline.js"></script>
     <script src="../static/timeline/events.js"></script>
-    <script src="../API_BILAN/physics/physics.js"></script>
-    <script src="../API_BILAN/data/hitran_lines_CO2.js"></script>
-    <script src="../API_BILAN/data/hitran_lines_H2O.js"></script>
-    <script src="../API_BILAN/data/hitran_lines_CH4.js"></script>
-    <script src="../API_BILAN/spectroscopy/hitran.js"></script>
-    <script src="../API_BILAN/physics/climate.js"></script>
+    <script src="../../API_BILAN/physics/physics.js"></script>
+    <script src="../../API_BILAN/data/hitran_lines_CO2.js"></script>
+    <script src="../../API_BILAN/data/hitran_lines_H2O.js"></script>
+    <script src="../../API_BILAN/data/hitran_lines_CH4.js"></script>
+    <script src="../../API_BILAN/spectroscopy/hitran.js"></script>
+    <script src="../../API_BILAN/physics/climate.js"></script>
     <script src="../static/FPS/FPS.js"></script>
-    <script src="../API_BILAN/radiative/calculations.js"></script>
-    <script src="../API_BILAN/workers/worker_pool.js"></script>
-    <script src="../API_BILAN/h2o/calculations_h2o.js"></script>
-    <script src="../API_BILAN/albedo/calculations_albedo.js"></script>
-    <script src="../API_BILAN/atmosphere/calculations_atm.js"></script>
-    <script src="../API_BILAN/convergence/compute.js"></script>
+    <script src="../../API_BILAN/radiative/calculations.js"></script>
+    <script src="../../API_BILAN/workers/worker_pool.js"></script>
+    <script src="../../API_BILAN/h2o/calculations_h2o.js"></script>
+    <script src="../../API_BILAN/albedo/calculations_albedo.js"></script>
+    <script src="../../API_BILAN/atmosphere/calculations_atm.js"></script>
+    <script src="../../API_BILAN/convergence/compute.js"></script>
     <script src="../static/compute/scie_/scie_convergence.js"></script>
     <!-- Hooks convergence définis avant calculations_flux.js (éviter if (window.xxx) dans le flux) -->
     <script>
         window.clearConvergenceTrace = function () {};
         window.appendConvergenceStep = function () {};
     </script>
-    <script src="../API_BILAN/convergence/calculations_flux.js"></script>
+    <script src="../../API_BILAN/convergence/calculations_flux.js"></script>
     
     <script>
         // Vérifier ressources critiques (ex: dico.js manquant → ERR_SOCKET_NOT_CONNECTED)
