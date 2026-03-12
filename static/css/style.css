@@ -1854,6 +1854,33 @@ h1 {
     text-align: center;
 }
 
+/* Loader tic : disque creux en cases (anim) */
+.compute-tic-loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    margin-right: 14px; /* marge depuis le bord droit de la timeline */
+}
+.compute-tic-loader__ring {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    position: relative;
+    background: conic-gradient(#888 0deg, #888 360deg);
+    transition: background 0.1s ease-out;
+}
+.compute-tic-loader__ring::after {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+}
+.calculation-overlay .calculation-text {
+    margin-right: 0;
+}
+
 /* #calculation-dots supprimé car plus de style spécifique nécessaire */
 
 /* left-timeline : 100% du parent partout (déjà #visu-panel .left-timeline plus haut) */

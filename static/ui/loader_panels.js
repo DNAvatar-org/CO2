@@ -1,11 +1,13 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.3
+// Version 1.1.5
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
 // - v1.1.2: IO_LISTENER.compute:progress: supprime log debug + double receive (compute:progress n'arrive que depuis scie_/non-anim)
 // - v1.1.3: visu_+anim : compute:progress déclenche displayDichotomyStep puis plot:drawn ; scie_/non-anim garde cycleCalcul léger
+// - v1.1.4: non-anim : avanceTic() sur chaque tic (disque creux en cases) ; show/hideComputeLoader
+// - v1.1.5: clic direct = overlay (texte rouge) + body cursor wait uniquement ; anim = idem + disque creux
 // Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
 // Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
 
@@ -278,14 +280,42 @@
             }
         }
         var lastComputePayload = null;
-        if (window.IO_LISTENER) {
-            window.IO_LISTENER.on('cycleCalcul', function () {
+        var COMPUTE_TIC_SEGMENTS = 12;
+        var _computeTicIndex = 0;
+        window.COMPUTE_LOADER = {
+            avanceTic: function () {
+                var ring = document.querySelector('#compute-tic-loader .compute-tic-loader__ring');
+                if (!ring) return;
+                _computeTicIndex = (_computeTicIndex + 1) % COMPUTE_TIC_SEGMENTS;
+                var filledDeg = _computeTicIndex * (360 / COMPUTE_TIC_SEGMENTS);
+                ring.style.background = 'conic-gradient(#22c55e 0deg, #22c55e ' + filledDeg + 'deg, #888 ' + filledDeg + 'deg, #888 360deg)';
+                ring.offsetHeight;
+            },
+            show: function () {
+                _computeTicIndex = 0;
+                var overlay = document.getElementById('calculation-overlay');
+                var loaderEl = document.getElementById('compute-tic-loader');
+                var ring = document.querySelector('#compute-tic-loader .compute-tic-loader__ring');
+                if (overlay) overlay.style.display = 'flex';
+                document.body.style.cursor = 'wait';
+                var anim = window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞'];
+                if (loaderEl) loaderEl.style.display = anim ? 'flex' : 'none';
+                if (ring) ring.style.background = 'conic-gradient(#888 0deg, #888 360deg)';
+            },
+            hide: function () {
+                var overlay = document.getElementById('calculation-overlay');
+                if (overlay) overlay.style.display = 'none';
+                document.body.style.cursor = '';
+            }
+        };
+        const IO_LISTENER = window.IO_LISTENER;
+        IO_LISTENER.on('cycleCalcul', function () {
                 const fpsOk = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
                 if (fpsOk && typeof window.updateFluxLabels === 'function') {
                     try { window.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
                 }
             });
-            window.IO_LISTENER.on('compute:progress', function (payload) {
+        IO_LISTENER.on('compute:progress', function (payload) {
                 /*
                  * ============================================================
                  * BRIDGE UI du flux spectral
@@ -310,20 +340,26 @@
                  * - on garde le chemin léger emit('cycleCalcul')
                  * ============================================================
                  */
+                window.COMPUTE_LOADER.avanceTic();
                 if (window.isVisuPanelActive() && window.DATA['🔘']['🔘🎞'] && payload.result) {
                     window.displayDichotomyStep(payload.CO2_fraction, payload.T0, payload.result, payload.iteration, payload.isInitial);
                     return;
                 }
-                window.IO_LISTENER.emit('cycleCalcul');
+                IO_LISTENER.emit('cycleCalcul');
             });
-            window.IO_LISTENER.on('compute:done', function (payload) {
+        IO_LISTENER.on('compute:done', function (payload) {
                 if (payload && payload.DATA) {
                     lastComputePayload = payload;
                     window._lastComputePayloadForScie = payload;
                 }
                 // Envoi vers panel actif via shell.dataInput (sync_panels/runComputeInParent) ; plus de postMessage ici
             });
-        }
+        IO_LISTENER.on('flux:lastDrawn', function () {
+                window.COMPUTE_LOADER.hide();
+            });
+        IO_LISTENER.on('three:runStart', function () {
+                window.COMPUTE_LOADER.hide();
+            });
         // Mettre à jour les actions 🕰 (météorite, impact, etc.) après injection du contenu visu
         window.updateEpochActions();
         var scieIframe = document.getElementById('scie-iframe');
