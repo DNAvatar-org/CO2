@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.19
+// Version 1.1.21
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -19,7 +19,9 @@
 // - v1.1.16: runComputeInParent passe renderMode (visu_/scie_) à computeRadiativeTransfer; pas de projectToVisu en scie_
 // - v1.1.17: ajout namespace window.VISUALWAIT (computeRenderMode, shouldAwaitDraw, resetDrawAck, markDrawn, isDrawn)
 // - v1.1.18: runComputeInParent force showDichotomySteps depuis DATA['🔘']['🔘🎞'] (visu anim = draws par cycle)
-// - v1.1.19: VISUALWAIT simplifié (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
+// - v1.1.19: VISUALWAIT simplifié
+// - v1.1.20: un seul calcul (config:applyThenCompute) ; refresh visu = updateFluxLabels après compute:done (visu ou scie)
+// - v1.1.21: guard calculationInProgress en tête de runComputeInParent (évite double appel sendComputeToScie + config:applyThenCompute) (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
 // - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
 // - v1.1.11: applyStateFromScie/applyTuningFromScie exposés ; messages sync:state/sync:tuning passent par shell
 // - v1.1.10: displayConvergence/clearConvergenceTrace/appendConvergenceStep passent par shell.dataInput ; compute:done aussi
@@ -141,6 +143,11 @@
             var infoTime = document.getElementById('info-time');
             if (infoTime) infoTime.textContent = '+' + (payload.ticTime * 50).toFixed(0) + ' Ma';
         }
+        if (fromScie && payload.h2oTotalFromMeteorites !== undefined) {
+            window.h2oTotalFromMeteorites = payload.h2oTotalFromMeteorites;
+            if (!window.DATA['💧']) window.DATA['💧'] = {};
+            window.DATA['💧']['☄️'] = payload.h2oTotalFromMeteorites;
+        }
     }
 
     function projectToVisu(DATA) {
@@ -224,11 +231,18 @@
 
     // Main thread réservé GUI/DOM ; calcul cycles pourrait être déporté dans static/workers/compute_worker.js
     window.runComputeInParent = function () {
-        console.log('[4] calculs');
+        if (window.SYNC_STATE.calculationInProgress) {
+            console.log('[4] bloqué calculationInProgress=true');
+            return Promise.resolve(null);
+        }
+        window.SYNC_STATE.calculationInProgress = true;
+        console.log('[4] calculs (appel)');
         var DATA = window.DATA;
+        // Rendre 📜 cohérent en premier (📿☄️, 🔺⚖️💧☄️) avant tout calcul — sinon ⚖️💧 reste 0
+        window.getEpochDateConfig();
+        window.h2oTotalFromMeteorites = 0;
         syncTuningFromData();
         // Source de vérité pour anim : bouton visu (plot-anim-toggle). Rafraîchir DATA['🔘'] avant le calcul
-        // pour que sans animation on parte bien de 🌡️🧮 (ex. 288.8 K), pas de 255 K.
         window.getEnabledStates();
         // S'assurer que DATA['📅'] et DATA['📜'] sont initialisés (race avec setEpoch au chargement)
         var epochId = (DATA['📜'] && DATA['📜']['🗿']) || (window.SYNC_STATE && window.SYNC_STATE.epochId) || '⚫';
@@ -239,15 +253,13 @@
             DATA['📜']['👉'] = idx;
             DATA['📜']['🗿'] = epochId;
         } else {
+            window.SYNC_STATE.calculationInProgress = false;
             return Promise.resolve(null); // TIMELINE non prêt ou époque invalide
         }
         DATA['🧮']['previous'] = [];
         DATA['🧮']['🧮🔄🌊'] = 0;
         DATA['🧮']['🧮🔄🪩'] = 0;
-        // Même état entrée visu/scie : masses époque courante + h2oTotalFromMeteorites=0 (comme après setEpoch/updateLevelsConfig)
-        if (window.getMasses) window.getMasses();
-        window.h2oTotalFromMeteorites = 0;
-        window.SYNC_STATE.calculationInProgress = true; // Pour plot.js resizeCanvasToPlot (skipReposition pendant dichotomie)
+        // calculationInProgress déjà mis à true en tête pour éviter double entrée (sendComputeToScie + config:applyThenCompute)
         if (!DATA['🔘']['🔘🎞']) {
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
         } else if (!DATA['🧮']['🧮🌡️'] || DATA['🧮']['🧮🌡️'] <= 0) {
@@ -274,13 +286,15 @@
             var isVisuMode = renderMode === 'visu_';
             return window.computeRadiativeTransfer(null, { renderMode: renderMode }).then(function (result) {
             window.SYNC_STATE.calculationInProgress = false;
+            console.log('[4] calculs (retour)');
             if (result === null) return null;
             // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
             IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: result });
-            if (isVisuMode) {
-                projectToVisu(window.DATA);
-            }
-            // dataInput = envoi immédiat au panel actif (iframe scie si c'est l'onglet visible)
+            if (isVisuMode) projectToVisu(window.DATA);
+            // Rafraîchir les labels visu (albédo, flux, T°) après chaque calcul pour que l’onglet Visuel affiche le bon état
+            window.updateFluxLabels('ProcessFinished');
+            var albedoEl = document.querySelector('[data-id="albedo_percent"]');
+            console.log('[sync_panels] après ProcessFinished DOM albedo_percent=', albedoEl ? albedoEl.textContent : '(élément absent)');
             if (window.shell && window.shell.dataInput) {
                 window.shell.dataInput({ type: 'compute:done', DATA: window.DATA });
             } else {
@@ -299,6 +313,13 @@
     };
 
     function initSyncPanels() {
+        // Point d'entrée unique : config (📿☄️, ⚖️💧) puis calcul. Émis par visu (events.js) et par scie (sync:state).
+        IO_LISTENER.on('config:applyThenCompute', function (payload) {
+            window.DATA['📜']['🔘🕰'] = payload.button;
+            window.getEpochDateConfig();
+            window.runComputeInParent();
+        }, 'sync_panels');
+
         // Dispatch via shell vers current (visu ou scie) ; fallback direct iframe si pas de shell
         window.displayConvergence = function () {
             if (window.shell && window.shell.dataInput) {
@@ -357,11 +378,12 @@
             window.shell.setCurrentPanel(activeVisu ? 'visu' : 'scie');
         }
 
-        // API appelée par shell quand scie envoie sync:state (epoch/anim/tic + tuning pour même conditions run scie/visu)
+        // API appelée par shell quand scie envoie sync:state → appliquer DATA puis même chemin que visu
         window.applyStateFromScie = function (p) {
             applyToVisu(p, true);
             if (p.tuning) applyTuningPayload(p.tuning);
-            window.runComputeInParent();
+            // Synchro scie→visu : pas de clic bouton, on conserve le 🔘🕰 courant
+            IO_LISTENER.emit('config:applyThenCompute', { button: window.DATA['📜']['🔘🕰'] });
         };
         window.applyTuningFromScie = function (p) {
             applyTuningPayload(p);
@@ -376,7 +398,8 @@
             else {
                 applyToVisu(p, true);
                 if (p.tuning) applyTuningPayload(p.tuning);
-                window.runComputeInParent();
+                // Synchro scie→visu : pas de clic bouton, on conserve le 🔘🕰 courant
+                IO_LISTENER.emit('config:applyThenCompute', { button: window.DATA['📜']['🔘🕰'] });
             }
         });
         window.addEventListener('message', function (event) {
@@ -391,12 +414,18 @@
             if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
             if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
             syncToScie(payload);
-        });
+            console.log('[sync:state] run=' + payload.run + ' calculationInProgress=' + window.SYNC_STATE.calculationInProgress);
+            if (payload.run === true) {
+                // Nouvelle époque : annuler le calcul précédent (setEpoch impose un nouveau run)
+                window.SYNC_STATE.calculationInProgress = false;
+                window.runComputeInParent();
+            }
+        }, 'sync_panels');
         IO_LISTENER.on('sync:tuning', function (payload) {
             applyTuningPayload(payload);
             syncTuningToScie(payload);
             if (payload.run === true) window.runComputeInParent();
-        });
+        }, 'sync_panels');
     }
 
     if (document.readyState === 'loading') {

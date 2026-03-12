@@ -74,29 +74,11 @@
     <!-- Charger les dépendances dans l'ordre (chemins depuis doc/) -->
     <script src="../static/debug.js"></script>
     <script src="../static/compute/scie_/log_display.js"></script>
-    <script src="../../API_BILAN/data/alphabet.js"></script>
-    <script src="../../API_BILAN/data/dico.js"></script>
-    <script src="../../API_BILAN/data/initDATA.js"></script>
-    <script src="../../API_BILAN/config/model_tuning.js"></script>
-    <script src="../../API_BILAN/config/model_tuning_biblio.js"></script>
-    <script src="../../API_BILAN/config/fine_tuning_bounds.js"></script>
+    <script src="../../API_BILAN/configsAll.js"></script>
     <script src="../organigramme/configOrganigramme.js"></script>
-    <script src="../../API_BILAN/config/configTimeline.js"></script>
     <script src="../organigramme/timeline.js"></script>
     <script src="../static/timeline/events.js"></script>
-    <script src="../../API_BILAN/physics/physics.js"></script>
-    <script src="../../API_BILAN/data/hitran_lines_CO2.js"></script>
-    <script src="../../API_BILAN/data/hitran_lines_H2O.js"></script>
-    <script src="../../API_BILAN/data/hitran_lines_CH4.js"></script>
-    <script src="../../API_BILAN/spectroscopy/hitran.js"></script>
-    <script src="../../API_BILAN/physics/climate.js"></script>
-    <script src="../static/FPS/FPS.js"></script>
-    <script src="../../API_BILAN/radiative/calculations.js"></script>
-    <script src="../../API_BILAN/workers/worker_pool.js"></script>
-    <script src="../../API_BILAN/h2o/calculations_h2o.js"></script>
-    <script src="../../API_BILAN/albedo/calculations_albedo.js"></script>
-    <script src="../../API_BILAN/atmosphere/calculations_atm.js"></script>
-    <script src="../../API_BILAN/convergence/compute.js"></script>
+    <script src="../../API_BILAN/physicsAll.js"></script>
     <script src="../static/compute/scie_/scie_convergence.js"></script>
     <!-- Hooks convergence définis avant calculations_flux.js (éviter if (window.xxx) dans le flux) -->
     <script>
@@ -104,6 +86,7 @@
         window.appendConvergenceStep = function () {};
     </script>
     <script src="../../API_BILAN/convergence/calculations_flux.js"></script>
+    <script src="../static/FPS/FPS.js"></script>
     
     <script>
         // Vérifier ressources critiques (ex: dico.js manquant → ERR_SOCKET_NOT_CONNECTED)
@@ -165,7 +148,8 @@
             const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
             const animBtn = document.getElementById('anim-toggle');
             const animEnabled = animBtn ? animBtn.classList.contains('selected') : true;
-            const payload = { epochId, animEnabled, ticTime };
+            const h2oTotalFromMeteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+            const payload = { epochId, animEnabled, ticTime, h2oTotalFromMeteorites };
             if (DATA && DATA['🎚️']) {
                 const T = DATA['🎚️'];
                 payload.tuning = {
@@ -442,32 +426,39 @@
                 ticBtn.textContent = '>>';
                 ticBtn.title = 'Avancer d\'un tic (refroidissement, flux géothermique)';
                 ticBtn.addEventListener('click', () => {
-                    if (typeof window !== 'undefined' && window.DATA && window.DATA['📜']) {
-                        window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
-                        if (typeof window.getEpochDateConfig === 'function') window.getEpochDateConfig();
-                        if (typeof window.getNoyau === 'function') window.getNoyau();
-                        updateTimelineDisplay();
-                        emitSyncToParent();
-                    }
+                    window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
+                    window.getEpochDateConfig();
+                    window.getNoyau();
+                    updateTimelineDisplay();
+                    emitSyncToParent();
                 });
                 eventsLogos.appendChild(ticBtn);
             }
             
-            // Bouton météorite de glace (☄️)
+            // Bouton météorite (☄️) — Corps noir : 📿💫 = nb météorites (getEpochDateConfig surcharge 📿☄️=📿💫). Hadéen : % eau → h2oTotalFromMeteorites.
             if (EPOCH['🕰'] && EPOCH['🕰']['☄️']) {
                 const meteorBtn = document.createElement('img');
                 meteorBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('☄️')) || getImagePath('fonts/pics/ice_meteorite.png');
                 meteorBtn.alt = '';
                 meteorBtn.className = 'timeline-event-logo btn-events';
                 meteorBtn.title = 'Météorite de glace';
+                const mass_kg = EPOCH['🕰']['☄️']['🔺⚖️💧☄️'];
                 meteorBtn.addEventListener('click', () => {
-                    if (typeof window !== 'undefined' && window.DATA) {
+                    if (!EPOCH['🕰']['💫']) {
                         window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
-                        if (typeof window.getEpochDateConfig === 'function') window.getEpochDateConfig();
-                        if (typeof window.getNoyau === 'function') window.getNoyau();
-                        updateTimelineDisplay();
-                        emitSyncToParent();
+                    } else {
+                        const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
+                        if (!window.DATA['💧']) window.DATA['💧'] = {};
+                        const currentH2O = window.DATA['💧']['☄️'] != null ? window.DATA['💧']['☄️'] : 0;
+                        const newH2O = Math.min(100, currentH2O + (mass_kg / earthTotalWaterKg) * 100);
+                        window.DATA['💧']['☄️'] = newH2O;
+                        window.h2oTotalFromMeteorites = newH2O;
+                        window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
                     }
+                    window.getEpochDateConfig();
+                    window.getNoyau();
+                    updateTimelineDisplay();
+                    emitSyncToParent();
                 });
                 eventsLogos.appendChild(meteorBtn);
             }
