@@ -104,9 +104,6 @@ window.updateEpochActions = function () {
         window.addCustomTooltip(iceMeteorBtn, 'Météorite de glace<br>' + mass_added_txt);
 
         iceMeteorBtn.addEventListener('click', () => {
-            window.threeJSAnimationPaused = true;
-            console.log('[events.js] ⏸️ Animation Three.js mise en pause (météorite glace)');
-
             const currentH2O = window.h2oTotalFromMeteorites != null ? window.h2oTotalFromMeteorites : 0;
             const EARTH_TOTAL_WATER_MASS_KG = 1.4e21;
             const mass_kg = (epochConfig && epochConfig['🕰'] && epochConfig['🕰']['☄️'])
@@ -154,8 +151,6 @@ window.updateEpochActions = function () {
         window.addCustomTooltip(bigImpactBtn, 'Impact majeur - Crée la lune');
 
         bigImpactBtn.addEventListener('click', () => {
-            window.threeJSAnimationPaused = true;
-            console.log('[events.js] ⏸️ Animation Three.js mise en pause (impact majeur)');
             window.hideTooltip();
 
             const h2o_base = window.h2oVaporPercent != null ? window.h2oVaporPercent : 0;
@@ -184,8 +179,6 @@ window.updateEpochActions = function () {
         window.addCustomTooltip(timeAdvanceBtn, window.CHARS_DESC['💫']);
 
         timeAdvanceBtn.addEventListener('click', () => {
-            window.threeJSAnimationPaused = true;
-            console.log('[events.js] ⏸️ Animation Three.js mise en pause (avancer temps)');
             // Sauvegarder l'angle de rotation AVANT de mettre à jour la texture
             const cellTerre = document.getElementById('cell-terre');
             if (cellTerre) {
@@ -227,9 +220,6 @@ window.updateEpochActions = function () {
         waterAdditionBtn.alt = 'Météorite de glace';
         waterAdditionBtn.className = 'timeline-event-logo btn-events';
         waterAdditionBtn.addEventListener('click', () => {
-            window.threeJSAnimationPaused = true;
-            console.log('[events.js] ⏸️ Animation Three.js mise en pause (météorite glace Hadéen)');
-
             const currentH2O = window.h2oTotalFromMeteorites != null ? window.h2oTotalFromMeteorites : 0;
             const EARTH_TOTAL_WATER_MASS_KG = 1.4e21;
             const mass_kg_h = (epochHadeen && epochHadeen['🕰'] && epochHadeen['🕰']['☄️']) ? epochHadeen['🕰']['☄️']['🔺⚖️💧☄️'] : 1e18;

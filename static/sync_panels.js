@@ -131,7 +131,6 @@
             var animCb = document.getElementById('plot-anim-toggle-checkbox');
             if (animCb) animCb.checked = payload.animEnabled;
             window.DATA['🔘']['🔘🎞'] = payload.animEnabled;
-            window.isAnim = payload.animEnabled;
         }
         if (payload.ticTime !== undefined) {
             window.SYNC_STATE.ticTime = payload.ticTime;
@@ -203,17 +202,11 @@
                 window.updatePlot(window.plotData);
                 // Force showSpectralBackground juste avant le draw (résiste au FPS monitor)
                 window.showSpectralBackground = true;
-                var nBins = window.plotData.current.lambda_range.length;
-                console.log('🎨 [drawFlux@sync] bins=' + nBins);
                 try {
                     window.updateSpectralVisualization(window.plotData.current);
                 } catch (err) {
-                    console.error('❌ [drawFlux@sync] crash:', err);
+                    console.error('❌ [drawFlux@sync]', err);
                 }
-                requestAnimationFrame(function () {
-                    console.log('🌍 [drawFlux@sync] threeJS unpause');
-                    window.threeJSAnimationPaused = false;
-                });
             });
         });
     }
@@ -228,6 +221,7 @@
 
     // Main thread réservé GUI/DOM ; calcul cycles pourrait être déporté dans static/workers/compute_worker.js
     window.runComputeInParent = function () {
+        console.log('[4] calculs');
         var DATA = window.DATA;
         syncTuningFromData();
         // Source de vérité pour anim : bouton visu (plot-anim-toggle). Rafraîchir DATA['🔘'] avant le calcul
@@ -251,7 +245,6 @@
         if (window.getMasses) window.getMasses();
         window.h2oTotalFromMeteorites = 0;
         window.calculationInProgress = true; // Pour plot.js resizeCanvasToPlot (skipReposition pendant dichotomie)
-        window.showDichotomySteps = DATA['🔘']['🔘🎞'];
         if (!DATA['🔘']['🔘🎞']) {
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
         } else if (!DATA['🧮']['🧮🌡️'] || DATA['🧮']['🧮🌡️'] <= 0) {

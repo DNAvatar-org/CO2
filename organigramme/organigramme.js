@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.27
+// Version 1.0.28
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -9,6 +9,7 @@
 // UTF8 est la sémantique pour CODE & UI
 // Logs: v1.0.26 albedo: \\bar{A} dans le footer (entre tasse et speech), plus dans [1,1]
 // Logs: v1.0.27 animate(): retrait auto-resume FPS (ne pas écraser threeJSAnimationPaused=true géré par main.js)
+// Logs: v1.0.28 fin chargement Three.js : IO_LISTENER.emit('three:ready', { hasTexture, canvas }) après texture load ou erreur
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -27,12 +28,8 @@ if (typeof window !== "undefined") {
   window.isH2O_eds = true;
   window.isAlbedo = true;
 
-  // 🔒 VARIABLES GLOBALES UNIQUES : Précision de convergence et état anim
-  // Initialisées depuis la config UNIQUEMENT au changement d'époque (setEpoch)
-  // Mises à jour UNIQUEMENT quand l'utilisateur change les boutons UI
-  // La boucle principale utilise ces valeurs, ne relit PAS la config
-  window.convergencePrecision_K = 0.1; // Précision de convergence en K (par défaut 0.1°)
-  window.isAnim = false; // État du bouton anim (par défaut désactivé)
+  // Source unique UI : CONFIG_COMPUTE pour la précision, DATA['🔘']['🔘🎞'] pour l'animation.
+  window.CONFIG_COMPUTE.convergencePrecisionK = 0.1;
 
   // Variables legacy (à supprimer progressivement, gardées pour compatibilité temporaire)
   window.useCO2 = true;
@@ -526,8 +523,9 @@ function initPlanetThreeJS(
     );
     console.error("[initPlanetThreeJS] texture non chargée:", textureName);
     console.error("⚠️ Utilisez: http://localhost:8000/index.html");
-    // Créer quand même la sphère sans texture
     createPlanetSphere();
+    console.log("[2] texture Three.js (file:)");
+    window.IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
   } else {
     const textureLoader = new THREE.TextureLoader();
     let resolvedUrl = logoPath;
@@ -547,6 +545,8 @@ function initPlanetThreeJS(
         loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
         texture = loadedTexture;
         createPlanetSphere();
+        console.log("[2] texture Three.js");
+        window.IO_LISTENER.emit("three:ready", { hasTexture: true, canvas: canvas });
       },
       undefined,
       function (error) {
@@ -558,6 +558,8 @@ function initPlanetThreeJS(
         console.error("[initPlanetThreeJS] URL résolue:", resolvedUrl);
         console.error("[initPlanetThreeJS] erreur:", error);
         createPlanetSphere();
+        console.log("[2] texture Three.js (sans image)");
+        window.IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
       },
     );
   }
@@ -719,24 +721,12 @@ function initPlanetThreeJS(
     // Log supprimé (non essentiel)
   }
 
-  // Three.js démarre en statique ; la rotation est débloquée après le dessin du flux final
-  window.threeJSAnimationPaused = true;
-
-  // Animation - rotation lente (comme dans planet-test.html)
+  // Animation - rotation continue (pas de pause auto ; toggle manuel sur clic Terre possible)
   let animationId = null;
-  const speed = 1.0; // Vitesse normale comme dans planet-test.html
+  const speed = 1.0;
 
   function animate() {
-    // Garde-fou FPS : si <30 fps, pause forcée uniquement
-    const currentFPS =
-      typeof window !== "undefined" && window.fps ? window.fps : 60;
-    if (currentFPS < 30 && typeof window !== "undefined") {
-      window.threeJSAnimationPaused = true;
-    }
-    // Pas d'auto-resume : c'est main.js (après draw du flux) qui débloque
-
-    const isPaused =
-      (typeof window !== "undefined" && window.threeJSAnimationPaused) || false;
+    const isPaused = window.threeJSAnimationPaused;
     if (!isPaused && sphere) {
       sphere.rotation.y += 0.005 * speed;
     }
@@ -1117,7 +1107,7 @@ function createCell(
       // farthest-side : 100% = bord du disque (radiusExobase), pas le coin (farthest-corner)
       const gradientCss = `radial-gradient(circle farthest-side at center, transparent 0%, transparent ${innerPct}%, ${fillColor} ${innerPct}%, ${fillColorOuter} 100%)`;
       if (typeof pd === "function") pd("[createCell][organigramme.js] gradient radius=" + radius + " radiusExobase=" + radiusExobase + " innerPct=" + innerPct + " fillColor=" + fillColor + " fillColorOuter=" + fillColorOuter + " | " + gradientCss);
-      else console.log("[createCell] gradient radius=" + radius + " radiusExobase=" + radiusExobase + " innerPct=" + innerPct + " fillColor=" + fillColor + " fillColorOuter=" + fillColorOuter + " | " + gradientCss);
+      else { /* gradient ok */ }
       circleBg.style.background = gradientCss;
     } else {
       circleBg.style.backgroundColor = fillColor;

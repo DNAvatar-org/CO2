@@ -1,10 +1,13 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.2
+// Version 1.1.3
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
 // - v1.1.2: IO_LISTENER.compute:progress: supprime log debug + double receive (compute:progress n'arrive que depuis scie_/non-anim)
+// - v1.1.3: visu_+anim : compute:progress déclenche displayDichotomyStep puis plot:drawn ; scie_/non-anim garde cycleCalcul léger
+// Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
+// Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
 
 (function () {
     'use strict';
@@ -283,7 +286,35 @@
                 }
             });
             window.IO_LISTENER.on('compute:progress', function (payload) {
-                if (payload && window.DATA && window.IO_LISTENER) window.IO_LISTENER.emit('cycleCalcul');
+                /*
+                 * ============================================================
+                 * BRIDGE UI du flux spectral
+                 * ============================================================
+                 * Ce listener est le maillon UI du bridge anim+visu_.
+                 *
+                 * Entrée :
+                 * - compute:progress émis par calculations_flux.js avec
+                 *   un payload contenant result + CO2_fraction + iteration
+                 *
+                 * Rôle :
+                 * - en visu_ + anim : dessiner IMMÉDIATEMENT ce cycle via
+                 *   displayDichotomyStep(...)
+                 * - ne PAS remplacer par un simple emit('cycleCalcul')
+                 * - ne PAS retirer payload.result du contrat
+                 *
+                 * Sortie :
+                 * - displayDichotomyStep() finira par émettre plot:drawn
+                 * - c'est cet ack qui débloque la reprise du calcul côté API
+                 *
+                 * Hors visu_ + anim :
+                 * - on garde le chemin léger emit('cycleCalcul')
+                 * ============================================================
+                 */
+                if (window.isVisuPanelActive() && window.DATA['🔘']['🔘🎞'] && payload.result) {
+                    window.displayDichotomyStep(payload.CO2_fraction, payload.T0, payload.result, payload.iteration, payload.isInitial);
+                    return;
+                }
+                window.IO_LISTENER.emit('cycleCalcul');
             });
             window.IO_LISTENER.on('compute:done', function (payload) {
                 if (payload && payload.DATA) {

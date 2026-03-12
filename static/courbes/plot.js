@@ -113,11 +113,6 @@ window.tempSurfaceToColor = function (tempC) {
     }
 };
 
-// Activer l'affichage des étapes de dichotomie par défaut
-if (typeof window !== 'undefined') {
-    window.showDichotomySteps = true;
-}
-
 // Fonction de couleur basée sur la température (palette avec couleurs très distinctes)
 // Exposer globalement pour être accessible depuis main.js
 window.tempToColor = function tempToColor(temp, temp_min = 180, temp_max = 315) {
@@ -1917,7 +1912,6 @@ window.updateSpectralVisualization = function (data) {
         return;
     }
     if (!data || !data.upward_flux || !data.lambda_range || !data.z_range) {
-        console.log('🎨 [updateSpectralViz@plot] skip: data invalide');
         return;
     }
     const maxBins = window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
@@ -1941,7 +1935,6 @@ window.updateSpectralVisualization = function (data) {
     if (isAnimMode && isFinal) {
         canvas._lastFinalSig = null;
     }
-    console.log('🎨 [updateSpectralViz@plot] bins=' + currentBins + (isFinal ? ' FINAL' : ' inter'));
 
     // Fonction pour forcer le z-index à 1 (au-dessus du fond mais en dessous des courbes)
     const forceZIndex = (silent = false, source = 'unknown') => {

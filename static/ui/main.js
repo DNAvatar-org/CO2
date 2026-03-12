@@ -42,16 +42,11 @@ function _drawFluxAndUnpause(plotData) {
             canvas.style.setProperty('z-index', '10000', 'important');
             canvas.style.setProperty('position', 'absolute', 'important');
         }
-        console.log('🎨 [drawFlux] bins=' + (plotData.current && plotData.current.lambda_range ? plotData.current.lambda_range.length : '?'));
         try {
             window.updateSpectralVisualization(plotData.current);
         } catch (err) {
-            console.error('❌ [drawFlux] crash:', err);
+            console.error('❌ [drawFlux]', err);
         }
-        // setTimeout(100) dans plot.js encore actif → Earth s'anime après
-        requestAnimationFrame(function () {
-            window.threeJSAnimationPaused = false;
-        });
     });
 }
 
@@ -722,11 +717,6 @@ function calculateInitialData() {
     // Ne pas calculer les scénarios de référence (280ppm et 420ppm)
     // Commencer directement à 0 ppm par défaut sans calculer
 
-    // Activer l'affichage des étapes de dichotomie pour les calculs interactifs
-    if (typeof window !== 'undefined') {
-        window.showDichotomySteps = true;
-    }
-
     // Afficher les courbes de référence (Planck uniquement)
     updateLegend(plotData);
     updatePlot(plotData);
@@ -759,8 +749,6 @@ function updateCO2Level(state) {
     const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
     const h2o_total = h2o_percent + h2o_meteorites;
     const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
-    
-    console.log(`${logoEDS} [updateCO2Level@main.js] 🏭=${plotData.co2_ppm.toFixed(0)}ppm 💧=${h2o_total.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
 
     document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
 
@@ -776,7 +764,6 @@ function updateCO2Level(state) {
         });
         const processResult = (data) => {
             const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-            console.log(`${logo} [processResult@main.js] T0=${data?.T0?.toFixed(2) || 'N/A'}K flux=${data?.total_flux?.toFixed(2) || 'N/A'}W/m²`);
             plotData.current = data;
             if (data.lambda_range && data.lambda_weights) {
                 plotData.lambda_range = data.lambda_range;
@@ -1115,19 +1102,8 @@ function updateCO2LevelDirect(co2_fraction) {
 
     document.getElementById('status').textContent = `Calcul pour ${plotData.co2_ppm.toFixed(0)} ppm...`;
 
-    // Activer l'affichage des étapes de dichotomie pour le calcul courant
-    // 🔒 Vérifier le bouton anim pour s'assurer que showDichotomySteps est correct
-    // Vérifier d'abord le checkbox caché, puis le bouton
-    const animToggleCheck = typeof document !== 'undefined' 
-        ? (document.getElementById('plot-anim-toggle-checkbox') || document.getElementById('plot-anim-toggle'))
-        : null;
-    const animEnabledCheck = animToggleCheck && animToggleCheck.checked;
-    
-    if (typeof window !== 'undefined') {
-        // Le bouton anim contrôle directement showDichotomySteps
-        window.showDichotomySteps = animEnabledCheck !== false; // true par défaut si bouton pas encore initialisé
-        window.cancelCalculation = false; // Réinitialiser le flag d'annulation
-    }
+    // Le flag anim vit dans DATA['🔘']['🔘🎞'] ; ici on ne garde que l'annulation locale
+    window.cancelCalculation = false;
 
     const timeoutId = setTimeout(() => {
         if (window.cancelCalculation) {
@@ -1144,7 +1120,6 @@ function updateCO2LevelDirect(co2_fraction) {
 
         const processResult = (data) => {
             const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-            console.log(`${logo} [processResult@main.js] T0=${data?.T0?.toFixed(2) || 'N/A'}K flux=${data?.total_flux?.toFixed(2) || 'N/A'}W/m²`);
             // Vérifier si le calcul a été annulé
             if (window.cancelCalculation) {
                 return;
@@ -1938,25 +1913,11 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour activer/désactiver la vapeur d'eau
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
-    const logoEpoch = '🕰';
-    console.log(logoEpoch + ' ' + epochName);
-    
-    // 🔒 Légende des emojis (affichée une seule fois au premier appel)
-    if (typeof window !== 'undefined' && !window._logLegendShown) {
-        console.log('📋 Légende: 🕰 Époque | 📛 EDS | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪩 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
-        window._logLegendShown = true;
-    }
-    
+    console.log('[1] config', epochName);
     // 🔒 Cacher le tooltip immédiatement lors du changement d'époque
     // Empêche le tooltip de rester affiché après le changement
     if (typeof window !== 'undefined' && typeof window.hideTooltip === 'function') {
         window.hideTooltip();
-    }
-    
-    // Mettre en pause l'animation Three.js lors du changement d'époque
-    if (typeof window !== 'undefined') {
-        window.threeJSAnimationPaused = true;
-        // Three.js pause
     }
     
     // 🔄 Remettre infoTimeMa à 0 lors du changement d'époque
@@ -2056,34 +2017,21 @@ function setEpoch(epochName) {
         }
     }
     
-    // 🔒 INITIALISER les variables globales uniques depuis la config UNIQUEMENT au changement d'époque
-    // Si l'utilisateur a déjà modifié ces valeurs, elles ne seront pas écrasées (mais au changement d'époque, on repart de la config)
-    if (typeof window !== 'undefined') {
-        // Initialiser la précision de convergence depuis la config de l'époque
-        if (typeof epoch.precision === 'number' && epoch.precision > 0) {
-            window.convergencePrecision_K = epoch.precision;
-            // 🔒 Mettre à jour le bouton radio correspondant (sélectionner celui qui correspond à la précision de la config)
-            const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
-            let found = false;
-            precisionRadios.forEach(radio => {
-                if (Math.abs(parseFloat(radio.value) - epoch.precision) < 0.01) {
-                    radio.checked = true;
-                    found = true;
-                } else {
-                    radio.checked = false;
-                }
-            });
-            if (found) {
-                console.log(`${logoEpoch} 🛠 [setEpoch@main.js] 🎚=${window.convergencePrecision_K}° 🔘 selected`);
+    // Source unique de précision UI : CONFIG_COMPUTE.convergencePrecisionK
+    if (typeof epoch.precision === 'number' && epoch.precision > 0) {
+        window.CONFIG_COMPUTE.convergencePrecisionK = epoch.precision;
+        const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
+        let found = false;
+        precisionRadios.forEach(radio => {
+            if (Math.abs(parseFloat(radio.value) - epoch.precision) < 0.01) {
+                radio.checked = true;
+                found = true;
             } else {
-                console.warn(`${logoEpoch} 🛠 ⚠️ [setEpoch@main.js] 🎚=${window.convergencePrecision_K}° => Aucun bouton radio`);
+                radio.checked = false;
             }
-        }
-        
-        // Initialiser isAnim depuis la config (par défaut true, peut être modifié par l'utilisateur)
-        // Note: isAnim n'est pas dans la config, donc on garde la valeur actuelle ou true par défaut
-        if (window.isAnim === undefined) {
-            window.isAnim = true;
+        });
+        if (!found) {
+            console.warn(`${logoEpoch} 🛠 ⚠️ [setEpoch@main.js] 🎚=${window.CONFIG_COMPUTE.convergencePrecisionK}° => Aucun bouton radio`);
         }
     }
 
@@ -2242,19 +2190,17 @@ function setEpoch(epochName) {
 
     // Ne plus cacher #cell-albedo en Corps noir : le disque albedo (cercle + stroke) reste visible, couleurs par config (albedo.epoch)
     const cellAlbedo = document.getElementById('cell-albedo');
-    if (typeof console !== 'undefined' && console.log) {
-        console.log('[setEpoch][main.js] epochName=', epochName, ' cell-albedo=', cellAlbedo ? 'found' : 'null', cellAlbedo ? ' display=' + (cellAlbedo.style.display || '') : '');
-    }
     if (cellAlbedo) {
         cellAlbedo.style.display = '';
     }
 
-    // Mettre à jour les radiations du noyau / terre et flèches (ordre script = organigramme.js avant main.js)
+    // [3] DOM organigramme (halos, values, flèches)
     window.FUNCS_ORGANIGRAMME.recreateNoyauRadiation();
     window.FUNCS_ORGANIGRAMME.recreateTerreRadiation();
     window.FUNCS_ORGANIGRAMME.generateArrows();
+    console.log('[3] DOM organigramme');
 
-    disableButtons(); // Désactiver les boutons
+    disableButtons();
 
     // Réinitialiser timelineFrame à 0 pour chaque nouvelle époque
     // Les années ajoutées par les actions seront comptées depuis 0
@@ -2569,7 +2515,7 @@ function setEpoch(epochName) {
     if (window.IO_LISTENER) {
         const epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || epoch.id || epochName;
         const ticTime = (window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'] != null) ? window.DATA['📜']['📿💫'] : 0;
-        const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']) || window.isAnim;
+        const animEnabled = window.DATA['🔘']['🔘🎞'];
         window.IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime });
     }
 }
@@ -2586,7 +2532,6 @@ function updateH2OLevelDirect(h2o_total_percent) {
     const co2_ppm = (plotData && plotData.co2_ppm !== undefined) ? plotData.co2_ppm : 0;
     const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
     
-    console.log(`${logoEDS} [updateH2OLevelDirect@main.js] 🏭=${co2_ppm.toFixed(0)}ppm 💧=${h2o_total_percent.toFixed(1)}% ⛽=${ch4_ppm.toFixed(0)}ppm`);
     // Annuler tout calcul en cours avant de commencer un nouveau
     cancelCurrentCalculation();
 
@@ -2608,11 +2553,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
 
     document.getElementById('status').textContent = `Calcul pour ${h2o_total_percent.toFixed(1)}% H2O...`;
 
-    // Activer l'affichage des étapes de dichotomie pour le calcul courant
-    if (typeof window !== 'undefined') {
-        window.showDichotomySteps = true;
-        window.cancelCalculation = false; // Réinitialiser le flag d'annulation
-    }
+    window.cancelCalculation = false; // Réinitialiser le flag d'annulation
 
     const timeoutId = setTimeout(() => {
         // Vérifier si le calcul a été annulé avant de commencer
@@ -2931,8 +2872,7 @@ window.setEpoch = setEpoch;
 function runMainInit() {
     if (typeof window.pd === 'function') window.pd('runMainInit', 'main.js', 'enter readyState=' + document.readyState);
     // 🔒 Légende des emojis (affichée une seule fois au démarrage)
-    if (typeof window !== 'undefined' && !window._logLegendShown) {
-        console.log('📋 Légende: 🕰 Époque | 📛 EDS | 🏭 CO2 | 💧 H2O | ⛽ CH4 | 🪩 Albédo | 🧊 Glace | ⛅ Nuages | 🛠 Config | 🎚 Précision | ⏸️ Pause | 🔄 Reset | ✅ OK | ⚠️ Warning | ❌ Error');
+    if (!window._logLegendShown) {
         window._logLegendShown = true;
     }
     
@@ -2951,13 +2891,7 @@ function runMainInit() {
                     // On contrôle seulement l'animation de la planète selon le FPS
                     const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']);
                     
-                    if (level === 'warning' || level === 'aïe' || level === 'lent') {
-                        // FPS bas : pause Three.js uniquement
-                        window.threeJSAnimationPaused = true;
-                    } else {
-                        // FPS correct : relancer si anim activé
-                        if (animEnabled) window.threeJSAnimationPaused = false;
-                    }
+                    // Three.js n'est plus piloté par le FPS (rotation continue)
                     // showSpectralBackground n'est PAS contrôlé par le FPS
                     // → géré uniquement par les draw sequences (processResult / sync_panels)
                 });
@@ -2965,46 +2899,33 @@ function runMainInit() {
                 window.fpsLevel = 'rapide';
                 window.showSpectralBackground = true;
                 
-                // Anim : source de vérité = DATA['🔘']['🔘🎞'] (bouton animation = bouton normal, pas toggle)
+                // Source unique anim : DATA['🔘']['🔘🎞']
                 const animCb = document.getElementById('plot-anim-toggle-checkbox');
-                if (typeof window !== 'undefined') {
-                    window.isAnim = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']) || false;
-                    window.showDichotomySteps = window.isAnim;
-                }
                 if (animCb) {
                     animCb.addEventListener('change', (e) => {
                         const enabled = e.target.checked;
-                        if (typeof window !== 'undefined' && window.DATA && window.DATA['🔘']) {
-                            window.DATA['🔘']['🔘🎞'] = enabled;
-                            window.isAnim = enabled;
-                            window.showDichotomySteps = enabled;
-                            if (!enabled) {
-                                window.threeJSAnimationPaused = true;
-                            } else if (window.fpsLevel && window.fpsLevel !== 'warning' && window.fpsLevel !== 'aïe' && window.fpsLevel !== 'lent') {
-                                // Si on réactive et que le FPS est correct, relancer l'animation
-                                window.threeJSAnimationPaused = false;
-                            }
-                        }
+                        window.DATA['🔘']['🔘🎞'] = enabled;
+                        if (!enabled) window.threeJSAnimationPaused = true;
+                        else window.threeJSAnimationPaused = false;
                     });
                 }
                 
                 // 🔒 Initialiser la précision de convergence depuis les radio buttons (variable globale unique)
                 const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
-                if (precisionRadios.length > 0 && typeof window !== 'undefined') {
+                if (precisionRadios.length > 0) {
                     // Trouver le bouton radio checked
                     const checkedRadio = Array.from(precisionRadios).find(r => r.checked);
                     if (checkedRadio && checkedRadio.value) {
-                        window.convergencePrecision_K = parseFloat(checkedRadio.value);
+                        window.CONFIG_COMPUTE.convergencePrecisionK = parseFloat(checkedRadio.value);
                     }
                     
                     // Écouter les changements pour mettre à jour la variable globale unique
                     precisionRadios.forEach(radio => {
                         radio.addEventListener('change', (e) => {
-                            if (e.target.checked && typeof window !== 'undefined') {
+                            if (e.target.checked) {
                                 // 🔒 Mettre à jour la variable globale unique (seule référence)
                                 // Si l'utilisateur change la précision, la config ne doit plus être prise en compte
-                                window.convergencePrecision_K = parseFloat(e.target.value);
-                                console.log(`[UI] Précision convergence modifiée: ${window.convergencePrecision_K}K`);
+                                window.CONFIG_COMPUTE.convergencePrecisionK = parseFloat(e.target.value);
                             }
                         });
                     });
@@ -3013,59 +2934,10 @@ function runMainInit() {
                 const corpsNoirBtn = document.querySelector('.epoch-btn[data-epoch="⚫"]');
                 if (corpsNoirBtn) corpsNoirBtn.click();
                 
-                // Écouter l'événement 'calculationConverged' pour activer l'animation de la planète
                 window.addEventListener('calculationConverged', () => {
-        // 🔒 Attendre que le FPS revienne à >=60FPS avant de relancer l'animation
-        // Le garde-fou dans animate() gère aussi <30FPS pour arrêter automatiquement
-        let attempts = 0;
-        const maxAttempts = 100; // Maximum 10 secondes (100 * 100ms)
-        
-        const checkFPSAndResume = () => {
-            attempts++;
-            const currentFPS = (typeof window !== 'undefined' && window.fps) ? window.fps : 0;
-            
-            if (currentFPS >= 60) {
-                // FPS >= 60 : relancer l'animation Three.js
-                if (typeof window !== 'undefined') {
-                    window.threeJSAnimationPaused = false;
-                    console.log('[main.js] ▶️ Animation Three.js relancée (FPS:', currentFPS.toFixed(1), ')');
-                }
-            } else if (currentFPS < 30) {
-                // FPS < 30 : s'assurer que l'animation est bien arrêtée
-                if (typeof window !== 'undefined') {
-                    window.threeJSAnimationPaused = true;
-                    console.log('[main.js] ⏸️ Animation Three.js arrêtée (FPS trop bas:', currentFPS.toFixed(1), ')');
-                    }
-                // Ne plus réessayer si FPS trop bas
-                return;
-            } else if (attempts < maxAttempts) {
-                // FPS entre 30 et 60 : réessayer dans 100ms
-                setTimeout(checkFPSAndResume, 100);
-                        } else {
-                // Timeout : forcer la reprise si FPS > 30 (même si < 60)
-                if (currentFPS > 30) {
-                if (typeof window !== 'undefined') {
-                        window.threeJSAnimationPaused = false;
-                        console.log('[main.js] ▶️ Animation Three.js relancée (timeout, FPS:', currentFPS.toFixed(1), ')');
-                    }
-                }
-            }
-        };
-        
-        // Vérifier le FPS immédiatement et continuer à vérifier si nécessaire
-        setTimeout(checkFPSAndResume, 100);
-        
-        // Activer l'animation de la planète après la convergence des calculs
-        const planetTextures = document.querySelectorAll('.planet-texture[data-planet-texture="true"]');
-        planetTextures.forEach(texture => {
-            texture.classList.remove('paused');
-        });
-    });
-    
-    // 🔒 S'assurer que currentEpochName est initialisé avant calculateInitialData
-    if (typeof window.currentEpochName === 'undefined') {
-        window.currentEpochName = 'Corps noir';
-    }
+                    const planetTextures = document.querySelectorAll('.planet-texture[data-planet-texture="true"]');
+                    planetTextures.forEach(function (texture) { texture.classList.remove('paused'); });
+                });
     
     calculateInitialData();
     // Initialiser l'horloge (mais NE PAS la démarrer automatiquement)
@@ -3074,9 +2946,7 @@ function runMainInit() {
     // Fonction updateEpochActions est maintenant dans events.js
 
     // Mettre à jour les actions au chargement
-    if (typeof window.updateEpochActions === 'function') {
-        window.updateEpochActions();
-    }
+    window.updateEpochActions();
 
     // 🔒 setEpoch("Corps noir") a déjà été appelé plus haut (avant calculateInitialData)
     // Ici on fait juste les initialisations complémentaires si nécessaire
@@ -3085,17 +2955,10 @@ function runMainInit() {
     // Initialiser le nom de l'époque dans la div de température
     const epochNameTempDisplay = document.getElementById('epoch-name-temp');
     if (epochNameTempDisplay) {
-        // Récupérer le nom depuis la timeline de configOrganigramme
-        let displayName = 'Corps noir';
-        if (window.configOrganigramme && window.configOrganigramme.timeline) {
-            const timelineEpoch = window.configOrganigramme.timeline.find(item =>
-                item.type === 'epoch' && item.id === 'corps-noir'
-            );
-            if (timelineEpoch) {
-                displayName = timelineEpoch.name;
-            }
-        }
-        epochNameTempDisplay.textContent = displayName;
+        const timelineEpoch = window.configOrganigramme.timeline.find(item =>
+            item.type === 'epoch' && item.id === '⚫'
+        );
+        epochNameTempDisplay.textContent = timelineEpoch.name;
     }
 
     // Initialiser le nom de l'époque au chargement
