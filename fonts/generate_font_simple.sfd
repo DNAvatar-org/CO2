@@ -108,7 +108,7 @@ NewGlyph()
 GlyphInfo("Unicode", 0xE00F)
 GlyphInfo("Name", "arch")
 
-# Emoji: 🌿 -> U+E010 (prot)
+# Emoji: 🥟 -> U+E010 (prot)
 Select(0xE010)
 NewGlyph()
 GlyphInfo("Unicode", 0xE010)

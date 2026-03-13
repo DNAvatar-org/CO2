@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.21
+// Version 1.1.22
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -21,6 +21,7 @@
 // - v1.1.18: runComputeInParent force showDichotomySteps depuis DATA['🔘']['🔘🎞'] (visu anim = draws par cycle)
 // - v1.1.19: VISUALWAIT simplifié
 // - v1.1.20: un seul calcul (config:applyThenCompute) ; refresh visu = updateFluxLabels après compute:done (visu ou scie)
+// - v1.1.22: [4]/[X] logs utilisent _logStep/_logStepEnd (console.groupCollapsed) si définis
 // - v1.1.21: guard calculationInProgress en tête de runComputeInParent (évite double appel sendComputeToScie + config:applyThenCompute) (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
 // - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
 // - v1.1.11: applyStateFromScie/applyTuningFromScie exposés ; messages sync:state/sync:tuning passent par shell
@@ -253,11 +254,14 @@
     // Main thread réservé GUI/DOM ; calcul cycles pourrait être déporté dans static/workers/compute_worker.js
     window.runComputeInParent = function () {
         if (window.SYNC_STATE.calculationInProgress) {
-            console.log('[4] bloqué calculationInProgress=true');
-            return Promise.resolve(null);
+        if (window._logStep) window._logStep('[X] bloqué calculationInProgress=true');
+        else console.log('[4] bloqué calculationInProgress=true');
+        if (window._logStepEnd) window._logStepEnd();
+        return Promise.resolve(null);
         }
         window.SYNC_STATE.calculationInProgress = true;
-        console.log('[4] calculs (appel)');
+        if (window._logStep) window._logStep('[4] calculs (appel)');
+        else console.log('[4] calculs (appel)');
         var DATA = window.DATA;
         // Rendre 📜 cohérent en premier (📿☄️, 🔺⚖️💧☄️) avant tout calcul — sinon ⚖️💧 reste 0
         window.getEpochDateConfig();
@@ -307,7 +311,9 @@
             var isVisuMode = renderMode === 'visu_';
             return window.computeRadiativeTransfer(null, { renderMode: renderMode }).then(function (result) {
             window.SYNC_STATE.calculationInProgress = false;
-            console.log('[4] calculs (retour)');
+            if (window._logStep) window._logStep('[4] calculs (retour)');
+            else console.log('[4] calculs (retour)');
+            if (window._logStepEnd) window._logStepEnd();
             if (result === null) return null;
             // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
             IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: result });

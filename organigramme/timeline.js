@@ -1,6 +1,6 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.9
+ * Version 1.0.10
  * Date: [June 08, 2025] [HH:MM UTC+1]
 * logs :
  * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
@@ -12,6 +12,7 @@
  * - v1.0.7: lecture des dates réelles de la frise sans effacer les boutons epoch-btn
  * - v1.0.8: padding 10px conteneur ; curseurs alignés sur centre du texte (.epoch-date) au lieu de la div
  * - v1.0.9: const DATA = window.DATA, const TIMELINE = window.TIMELINE en tête des fonctions (cf window_MAJUSCULE_creater_filler.txt)
+ * - v1.0.10: fix crash _ticCfg undefined (findIndex=-1 ou clé 🔘🕰 absente de 🕰)
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.
@@ -330,9 +331,14 @@ function updateTimeline() {
         window.textureIndex = 0;
     } else {
         const _epochId_tl = DATA['📜']['🗿'];
-        const _epoch_tl = TIMELINE[TIMELINE.findIndex(item => item['📅'] === _epochId_tl)];
-        const stepMa = _epoch_tl['🕰'][DATA['📜']['🔘🕰']]['🔺⏳'];
-        window.textureIndex = Math.floor(window.infoTimeMa / stepMa);
+        const _idx_tl = TIMELINE.findIndex(item => item['📅'] === _epochId_tl);
+        const _epoch_tl = _idx_tl >= 0 ? TIMELINE[_idx_tl] : null;
+        const _ticKey = DATA['📜']['🔘🕰'];
+        const _ticCfg = _epoch_tl && _epoch_tl['🕰'] && _epoch_tl['🕰'][_ticKey];
+        if (_ticCfg) {
+            window.textureIndex = Math.floor(window.infoTimeMa / _ticCfg['🔺⏳']);
+        }
+        if (!_ticCfg) console.error('[updateTimeline][timeline.js] _ticCfg undefined epochId=' + _epochId_tl + ' ticKey=' + _ticKey);
     }
 
     const currentTicTime = window.textureIndex;

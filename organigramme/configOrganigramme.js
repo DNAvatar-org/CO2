@@ -1,6 +1,6 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.2
+// Version 1.1.3
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
@@ -13,6 +13,7 @@
 //   - Added dataId mapping for dynamic label updates
 //   - v1.1.1: albedo-btn affiche le barycentre fine-tuning cloud sous 🪩 (🧩🔺n%🔻)
 //   - v1.1.2: [1] config (époque initiale) avant build organigramme pour ordre synchrone 1 → 2 texture
+//   - v1.1.3: [1] log via _logStep (console.groupCollapsed) si défini
 
 // ============================================================================
 // RÉFÉRENCE DES LOGOS (déplacée vers alphabet.js)
@@ -383,5 +384,6 @@ if (window.DATA && window.TIMELINE && window.TIMELINE.length) {
     window.DATA['📜']['📿💫'] = 0;    // compteur dédié bouton 💫 (init à 0)
     window.DATA['📜']['🔺⚖️💧☄️'] = 0; // masse H₂O par météorite (init à 0, rempli par getEpochDateConfig)
     window.currentEpochName = firstId === '⚫' ? 'Corps Noir' : (window.CHARS_DESC && window.CHARS_DESC[firstId]) || firstId;
-    console.log('[1] config', firstId);
+    if (window._logStep) window._logStep('[1] config ' + firstId);
+    else console.log('[1] config', firstId);
 }

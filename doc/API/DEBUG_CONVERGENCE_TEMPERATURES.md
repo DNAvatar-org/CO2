@@ -7,7 +7,7 @@
 | ⚫ Corps noir | -18.1°C | 255 K (~-18°C) | OK |
 | 🔥 Hadéen | 2211.5°C | 2450 K (~2177°C) | OK (proche) |
 | 🦠 Archéen | **-2.1°C** | **288 K (15°C)** | **-17°C** |
-| 🌿 Protérozoïque | 1.4°C | 285 K (12°C) | -10.6°C |
+| 🥟 Protérozoïque | 1.4°C | 285 K (12°C) | -10.6°C |
 | 🦕 Mésozoïque | 4.5°C | 285 K (12°C) | -7.5°C |
 | 🦴 Paléozoïque | 5.6°C | 285 K (12°C) | -6.4°C |
 | 🦣 Cénozoïque | 4.4°C | 285 K (12°C) | -7.6°C |

@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.2
+// Version 1.1.3
 // Date: [January 2025]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -12,6 +12,7 @@
 //
 // - v1.1.1 : retrait precisionFactor/fpsPrecisionFactor (FPS.js v1.2.0 remplace Précision par Mémoire)
 // - v1.1.2 : updateHadeenTexture : nouvelle cellule insérée derrière l'ancienne, retrait ancienne au three:ready (évite disparition texture)
+// - v1.1.3 : setEpoch : même pattern insertBefore+three:ready si planetEffect ; _logStep helper console.groupCollapsed
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -50,6 +51,21 @@ function _drawFluxAndUnpause(plotData) {
         }
     });
 }
+
+// ============================================================================
+// LOG STEPS — groupCollapsed pliés, fermeture avant ouverture du suivant
+// ============================================================================
+window._openLogGroup = null;
+/** Ouvre un nouveau groupe collapsé ; ferme le précédent s'il est encore ouvert. */
+window._logStep = function (label) {
+    if (window._openLogGroup !== null) { console.groupEnd(); window._openLogGroup = null; }
+    console.groupCollapsed(label);
+    window._openLogGroup = label;
+};
+/** Ferme le groupe courant (si ouvert) sans en ouvrir un nouveau. */
+window._logStepEnd = function () {
+    if (window._openLogGroup !== null) { console.groupEnd(); window._openLogGroup = null; }
+};
 
 // ============================================================================
 // COMPTEUR FPS
@@ -1383,32 +1399,6 @@ window.updateDisplay = function updateDisplay(data) {
         }
     }
 
-    // Afficher ΔT° habitable et indicateur de viabilité
-    if (data && data.delta_temp_habitable !== undefined) {
-        const deltaTempHabitableEl = document.getElementById('delta-temp-habitable');
-        if (deltaTempHabitableEl) {
-            deltaTempHabitableEl.textContent = `${' '.repeat(5)}${data.delta_temp_habitable >= 0 ? '+' : ''}${data.delta_temp_habitable.toFixed(2)}K`;
-        }
-
-        // Indicateur de viabilité
-        const lifeIndicatorEl = document.getElementById('life-indicator');
-        if (lifeIndicatorEl) {
-            if (data.life_viable) {
-                lifeIndicatorEl.textContent = '🌱'; // Vie possible
-            } else {
-                lifeIndicatorEl.textContent = '💀'; // Vie impossible
-            }
-        }
-    } else {
-        const deltaTempHabitableEl = document.getElementById('delta-temp-habitable');
-        if (deltaTempHabitableEl) {
-            deltaTempHabitableEl.textContent = '--';
-        }
-        const lifeIndicatorEl = document.getElementById('life-indicator');
-        if (lifeIndicatorEl) {
-            lifeIndicatorEl.textContent = '--';
-        }
-    }
     // Mettre à jour les forçages séparés (sans unité, elle est en haut)
     // CO2 : toujours avec + (même si 0)
     const forcingCO2El = document.getElementById('forcing-co2-synthese');
@@ -1916,7 +1906,7 @@ function setEpoch(epochName) {
     const IO_LISTENER = window.IO_LISTENER;
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
     const epochNameToEmojiForButton = {
-        'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🌿',
+        'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🥟',
         'Paléozoïque': '🦴', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
@@ -1932,10 +1922,13 @@ function setEpoch(epochName) {
         window.syncToScie({ ticTime: 0 });
         document.getElementById('info-time').textContent = '+0 Ma';
         window.updateTimeline();
-        console.log('[3] DOM organigramme');
+        if (window._logStep) window._logStep('[3] DOM organigramme (même époque)');
+        else console.log('[3] DOM organigramme');
+        if (window._logStepEnd) window._logStepEnd();
         return;
     }
-    console.log('[1] config', epochName);
+    if (window._logStep) window._logStep('[1] config ' + epochName);
+    else console.log('[1] config', epochName);
     // 🔒 Cacher le tooltip immédiatement lors du changement d'époque
     // Empêche le tooltip de rester affiché après le changement
     if (typeof window !== 'undefined' && typeof window.hideTooltip === 'function') {
@@ -2008,7 +2001,7 @@ function setEpoch(epochName) {
             'Corps Noir': '⚫',
             'Hadéen': '🔥',
             'Archéen': '🦠',
-            'Protérozoïque': '🌿',
+            'Protérozoïque': '🥟',
             'Paléozoïque': '🦴',
             'Mésozoïque': '🦕',
             'Cénozoïque': '🦣',
@@ -2135,8 +2128,6 @@ function setEpoch(epochName) {
                     savedRotationY = window.savedPlanetRotationY;
                 }
                 
-                oldCell.remove();
-                
                 // Interpréter les valeurs dynamiques : texture (text_*.png) si planetEffect, sinon logo (picto)
                 let logoPath = (epochConfig.planetEffect && epochConfig.texture)
                     ? interpretConfigValue(epochConfig.texture)
@@ -2149,10 +2140,8 @@ function setEpoch(epochName) {
                 
                 // Interpréter lightDistance (peut contenir des expressions comme "10-{$ticTime}" ou "7-{$ticTime}/2")
                 let lightDistance = epochConfig.lightDistance;
-                // Log supprimé (non essentiel)
                 if (typeof lightDistance === 'string' || (typeof lightDistance !== 'number' && lightDistance !== null && lightDistance !== undefined)) {
                     lightDistance = interpretConfigValue(lightDistance);
-                    // Log supprimé (non essentiel)
                 }
                 
                 // Si isIceChange, diminuer lightDistance de 1
@@ -2193,9 +2182,30 @@ function setEpoch(epochName) {
                     epochConfig.planetEffect || false
                 );
 
-                parent.appendChild(newCell);
-                
-                // Log supprimé (non essentiel)
+                if (epochConfig.planetEffect) {
+                    // 🔒 Pas de trou : nouvelle cellule insérée DERRIÈRE l'ancienne, ancienne retirée au three:ready
+                    IO_LISTENER.emit('three:runStart');
+                    parent.insertBefore(newCell, oldCell);
+                    const newCanvas = newCell.querySelector('canvas');
+                    var _swapTimeoutId = null;
+                    var _onThreeReady = function (payload) {
+                        if (payload && payload.canvas === newCanvas) {
+                            IO_LISTENER.off('three:ready', _onThreeReady);
+                            if (_swapTimeoutId !== null) clearTimeout(_swapTimeoutId);
+                            if (oldCell.parentElement) oldCell.remove();
+                        }
+                    };
+                    IO_LISTENER.on('three:ready', _onThreeReady, 'main.js:setEpoch');
+                    _swapTimeoutId = setTimeout(function () {
+                        _swapTimeoutId = null;
+                        IO_LISTENER.off('three:ready', _onThreeReady);
+                        if (oldCell.parentElement) oldCell.remove();
+                    }, 3000);
+                } else {
+                    // Pas de Three.js : swap direct sans attente
+                    oldCell.remove();
+                    parent.appendChild(newCell);
+                }
                 
                 // Remettre l'animation en pause lors du changement d'époque (les calculs vont commencer)
                 const planetTextures = newCell.querySelectorAll('.planet-texture[data-planet-texture="true"]');
@@ -2216,7 +2226,9 @@ function setEpoch(epochName) {
     window.FUNCS_ORGANIGRAMME.recreateNoyauRadiation();
     window.FUNCS_ORGANIGRAMME.recreateTerreRadiation();
     window.FUNCS_ORGANIGRAMME.generateArrows();
-    console.log('[3] DOM organigramme');
+    if (window._logStep) window._logStep('[3] DOM organigramme');
+    else console.log('[3] DOM organigramme');
+    if (window._logStepEnd) window._logStepEnd();
 
     disableButtons();
 

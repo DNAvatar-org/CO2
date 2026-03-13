@@ -21,7 +21,7 @@ Voir **VALIDATION_CONFIG_GAZ.md** (même dossier) pour la traçabilité détaill
 | Corps noir ⚫ | 255 | ~255 K (σT⁴ = S/4) | Équilibre corps noir |
 | Hadéen 🔥 | 2450 | 2000–2500 K (océan magma) | Formation planétaire |
 | Archéen 🦠 | 288 | 281–303 K plausible (Charnay 2017, Kienert 2013) | Clim. Past 9:1841 ; Astrobiology 2014 |
-| Protérozoïque 🌿 | 285 | ~280–290 K | Lit. Protérozoïque |
+| Protérozoïque 🥟 | 285 | ~280–290 K | Lit. Protérozoïque |
 | Mésozoïque 🦕 | 298 | ~295–305 K | Lit. Mésozoïque |
 | Paléozoïque 🦴 | 290 | ~285–295 K (Ordovicien–Permien) | Lit. Paléozoïque |
 | Cénozoïque 🦣 | 291 | 288–295 K, refroidissement | Anagnostou Nature 2016 |

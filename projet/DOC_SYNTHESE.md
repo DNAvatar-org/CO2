@@ -7,7 +7,7 @@
 | **README.md** | Tableau contenu corrigé, ajout scie_compute.html, test_computeRadiativeTransfer, référence static/compute/ |
 | **ANALYSE_REBRANCHEMENT_INDEX.md** | Architecture actuelle (visu_radiatif, scie_radiatif, loader_panels), chemins doc/scie_compute.html |
 | **VARIABLES_FLUX.md** | Contexte : vue Visuel vs Scientifique, renvoi vers FORMULES_FLUX.md |
-| **EPOQUES_RECAP.md** | Tableau emojis configTimeline (⚫🔥🦠🌿🦕🦴🦣🚂📱), source de vérité |
+| **EPOQUES_RECAP.md** | Tableau emojis configTimeline (⚫🔥🦠🥟🦕🦴🦣🚂📱), source de vérité |
 | **PRECISION_CALCULS_RADIATIF.md** | Fichiers concernés (calculations_flux.js), scripts HITRAN absents |
 | **static/compute/FORMULES_FLUX.md** | Convention Δ : flux_entrant - flux_sortant (correction) |
 

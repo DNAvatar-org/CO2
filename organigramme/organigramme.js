@@ -529,7 +529,9 @@ function initPlanetThreeJS(
     console.error("[initPlanetThreeJS] texture non chargée:", textureName);
     console.error("⚠️ Utilisez: http://localhost:8000/index.html");
     createPlanetSphere();
-    console.log("[2] texture Three.js (retour file:)");
+    if (window._logStep) window._logStep("[2] texture Three.js (retour file:)");
+    else console.log("[2] texture Three.js (retour file:)");
+    if (window._logStepEnd) window._logStepEnd();
     IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
   } else {
     const textureLoader = new THREE.TextureLoader();
@@ -543,7 +545,8 @@ function initPlanetThreeJS(
         e,
       );
     }
-    console.log("[2] texture Three.js (lancement)");
+    if (window._logStep) window._logStep("[2] texture Three.js (lancement)");
+    else console.log("[2] texture Three.js (lancement)");
     textureLoader.load(
       logoPath,
       function (loadedTexture) {
@@ -551,7 +554,9 @@ function initPlanetThreeJS(
         loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
         texture = loadedTexture;
         createPlanetSphere();
-        console.log("[2] texture Three.js (retour)");
+        if (window._logStep) window._logStep("[2] texture Three.js (retour)");
+        else console.log("[2] texture Three.js (retour)");
+        if (window._logStepEnd) window._logStepEnd();
         IO_LISTENER.emit("three:ready", { hasTexture: true, canvas: canvas });
       },
       undefined,
@@ -564,7 +569,9 @@ function initPlanetThreeJS(
         console.error("[initPlanetThreeJS] URL résolue:", resolvedUrl);
         console.error("[initPlanetThreeJS] erreur:", error);
         createPlanetSphere();
-        console.log("[2] texture Three.js (retour sans image)");
+        if (window._logStep) window._logStep("[2] texture Three.js (retour sans image)");
+        else console.log("[2] texture Three.js (retour sans image)");
+        if (window._logStepEnd) window._logStepEnd();
         IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
       },
     );
@@ -3830,6 +3837,11 @@ function generateTimelineFromConfig() {
       epochsContainer.appendChild(dateItem);
     }
   });
+
+  // Borne finale : 2100 (après la dernière époque)
+  if (timeline.length > 0) {
+    epochsContainer.appendChild(createVerticalDateItem("2100"));
+  }
 }
 
 // Fonction helper pour déterminer si l'époque actuelle est un "corps noir"

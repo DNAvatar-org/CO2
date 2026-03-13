@@ -74,7 +74,7 @@ CALCULS:
 ⚫  Corps noir
 🔥  Hadéen
 🦠  Archéen
-🌿  Protérozoïque
+🥟  Protérozoïque
 🦕  Mésozoïque
 🦴  Paléozoïque
 🦣  Cénozoïque

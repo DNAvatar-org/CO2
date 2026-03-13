@@ -257,7 +257,7 @@
                         epochName = window.CHARS_DESC[epochId];
                     }
                     const epochNameMap = {
-                        '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🌿': 'Protérozoïque',
+                        '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque',
                         '🦴': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
                     };
                     if (epochNameMap[epochId]) epochName = epochNameMap[epochId];

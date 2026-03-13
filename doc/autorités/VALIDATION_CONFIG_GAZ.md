@@ -50,7 +50,7 @@ Avec :
 
 ---
 
-### 2.3 Protérozoïque (🌿)
+### 2.3 Protérozoïque (🥟)
 
 | Gaz | Config (kg) | Config (ppm équiv.) | Littérature | Références |
 |-----|-------------|---------------------|-------------|------------|
