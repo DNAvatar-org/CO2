@@ -842,7 +842,7 @@ function updatePlanetLighting() {
 
   // Récupérer la config de l'époque courante
   const currentEpochName =
-    (typeof window !== "undefined" && window.currentEpochName) || "Corps noir";
+    (typeof window !== "undefined" && window.currentEpochName) || "Corps Noir";
   const terreNode = window.configOrganigramme.nodes.find(
     (n) => n.id === "terre",
   );
@@ -1348,7 +1348,7 @@ function createCell(
               terreNode.epoch &&
               Array.isArray(terreNode.epoch)
             ) {
-              const currentEpochName = window.currentEpochName || "Corps noir";
+              const currentEpochName = window.currentEpochName || "Corps Noir";
               const epochConfig = terreNode.epoch.find(
                 (e) => e.epochName === currentEpochName,
               );
@@ -2309,7 +2309,7 @@ function getNodeProperty(node, property, defaultValue = null) {
   if ((node.id === "terre" || node.id === "albedo") && node.epoch && Array.isArray(node.epoch)) {
     const currentEpochName =
       (typeof window !== "undefined" && window.currentEpochName) ||
-      "Corps noir";
+      "Corps Noir";
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
     );
@@ -3175,7 +3175,7 @@ cellOrder.forEach((nodeId) => {
   if (node.id === "albedo" && node.epoch && Array.isArray(node.epoch)) {
     const currentEpochName =
       (typeof window !== "undefined" && window.currentEpochName) ||
-      "Corps noir";
+      "Corps Noir";
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
     );
@@ -3192,7 +3192,7 @@ cellOrder.forEach((nodeId) => {
     // Trouver la configuration de l'époque courante
     const currentEpochName =
       (typeof window !== "undefined" && window.currentEpochName) ||
-      "Corps noir";
+      "Corps Noir";
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
     );
@@ -3504,7 +3504,7 @@ cellOrder.forEach((nodeId) => {
   if (nodeId === "noyau" && Array.isArray(node.radiation)) {
     const currentEpochName =
       (typeof window !== "undefined" && window.currentEpochName) ||
-      "Corps noir";
+      "Corps Noir";
     let epochRadiation = node.radiation.find(
       (r) => r.epochName === currentEpochName,
     );
@@ -3762,6 +3762,12 @@ function generateTimelineFromConfig() {
     dateSpan.textContent = dateStr;
     dateItem.appendChild(dateSpan);
     return dateItem;
+  }
+
+  // Début de la frise : -5000 Ma (au-dessus de ⚫)
+  const firstEpoch = timeline[0];
+  if (firstEpoch && firstEpoch["📅"]) {
+    epochsContainer.appendChild(createVerticalDateItem("-5000 Ma"));
   }
 
   // Générer les éléments depuis la config : boutons + entre chaque paire une date centrée (sans trait)
@@ -4387,7 +4393,6 @@ window.updateFluxLabels = function (eventId) {
       }
 
       label.innerHTML = formattedValue;
-      console.log("[DOM maj]", dataId, "→", typeof formattedValue === "string" && formattedValue.length > 40 ? formattedValue.slice(0, 40) + "…" : formattedValue);
       if (dataId === "fine_tuning_cloud_bary") {
         const pctMatch = typeof formattedValue === "string" && formattedValue.match(/(\d+(?:\.\d+)?)\s*%/);
         const pct = pctMatch ? pctMatch[1] : "100";
@@ -4534,7 +4539,7 @@ window.updateFluxLabels = function (eventId) {
   // Pour les calculs de moyenne (si utilisés plus bas)
   const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
 
-  // Détecter le mode "Corps noir" : basé sur les propriétés physiques de l'époque
+  // Détecter le mode "Corps Noir" : basé sur les propriétés physiques de l'époque
   const isCorpsNoir = isBlackBodyEpoch();
 
   // 🔒 SUPPRESSION : Ne plus forcer l'albedo à 0 en Corps noir
@@ -5630,7 +5635,7 @@ function recreateNoyauRadiation() {
 
   // Trouver la configuration de l'époque courante
   const currentEpochName =
-    (typeof window !== "undefined" && window.currentEpochName) || "Corps noir";
+    (typeof window !== "undefined" && window.currentEpochName) || "Corps Noir";
   let epochRadiation = noyauNode.radiation.find(
     (r) => r.epochName === currentEpochName,
   );
@@ -5716,7 +5721,7 @@ function recreateTerreRadiation() {
   if (Array.isArray(radiationOptions)) {
     const currentEpochName =
       (typeof window !== "undefined" && window.currentEpochName) ||
-      "Corps noir";
+      "Corps Noir";
     let epochRadiation = radiationOptions.find(
       (r) => r.epochName === currentEpochName,
     );

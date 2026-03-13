@@ -38,7 +38,7 @@ const TEXTURES_THREEJS = [
 ];
 // epochName -> chemin (Hadéen/Archéen : {$ticTime} → index; 1800/2025 : fichier par date)
 const epochTextures = {
-    'Corps noir': 'fonds/5000Ma.png',
+    'Corps Noir': 'fonds/5000Ma.png',
     'Hadéen': 'fonds/4500Ma.png',
     'Archéen': 'fonds/2500Ma.png',
     'Protérozoïque': 'fonds/2300Ma.png',
@@ -171,7 +171,7 @@ const nodes = [
         tooltip: 'Noyau - Géothermie',
         radiation: [
             {
-                epochName: 'Corps noir',
+                epochName: 'Corps Noir',
                 numCircles: 0,
                 maxRadius: 0,
                 strokeSize: 0,
@@ -227,7 +227,7 @@ const nodes = [
         y: earthCenterY,
         epoch: [
             {
-                epochName: 'Corps noir',
+                epochName: 'Corps Noir',
                 logo: LOGOS.CORPS_NOIR,
                 texture: 'fonds/5000Ma.png',
                 planetEffect: true,
@@ -382,6 +382,6 @@ if (window.DATA && window.TIMELINE && window.TIMELINE.length) {
     window.DATA['📜']['📿☄️'] = 0;    // compteur dédié bouton ☄️ (init à 0)
     window.DATA['📜']['📿💫'] = 0;    // compteur dédié bouton 💫 (init à 0)
     window.DATA['📜']['🔺⚖️💧☄️'] = 0; // masse H₂O par météorite (init à 0, rempli par getEpochDateConfig)
-    window.currentEpochName = firstId === '⚫' ? 'Corps noir' : (window.CHARS_DESC && window.CHARS_DESC[firstId]) || firstId;
+    window.currentEpochName = firstId === '⚫' ? 'Corps Noir' : (window.CHARS_DESC && window.CHARS_DESC[firstId]) || firstId;
     console.log('[1] config', firstId);
 }

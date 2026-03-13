@@ -32,7 +32,7 @@ window.updateEpochActions = function () {
 
     eventsLogos.innerHTML = ''; // Vider les boutons existants
 
-    const currentEpochName = window.currentEpochName || 'Corps noir';
+    const currentEpochName = window.currentEpochName || 'Corps Noir';
     const getEpochConfigById = (id) => (window.configOrganigramme && window.configOrganigramme.timeline)
         ? window.configOrganigramme.timeline.find(e => e.type === 'epoch' && e.id === id) : null;
 
@@ -267,7 +267,7 @@ window.updateEpochActions = function () {
             // Météorite de glace : uniquement Corps noir (⚫) et Hadéen (🔥), gérés dans leurs case
             if (epoch['🕰']['🎇'] && epoch['🕰']['🎇']['⏩']) {
                 const targetId = epoch['🕰']['🎇']['⏩'];
-                const idToName = { '⚫': 'Corps noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🦕': 'Mésozoïque', '🦴': 'Paléozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+                const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🦕': 'Mésozoïque', '🦴': 'Paléozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
                 const targetName = idToName[targetId] || targetId;
                 const bigImpactBtn = document.createElement('img');
                 bigImpactBtn.src = window.getLogoImageSrc('🎇') || getImagePath('fonts/pics/big_impact.png');
@@ -289,7 +289,7 @@ window.updateEpochActions = function () {
 function checkDateEvents() {
     const currentEpoch = window.currentEpochName || '';
     const infoTimeMa = window.infoTimeMa || 0;
-    if (currentEpoch !== 'Corps noir' || infoTimeMa <= 500) return;
+    if (currentEpoch !== 'Corps Noir' || infoTimeMa <= 500) return;
 
     window.hideTooltip();
     const h2o_base = window.h2oVaporPercent != null ? window.h2oVaporPercent : 0;

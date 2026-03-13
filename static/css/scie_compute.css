@@ -50,6 +50,8 @@ body {
     display: flex; align-items: center; gap: 5px; font-size: 11px; color: #e0e0e0; white-space: nowrap;
     width: 72px; min-width: 72px; flex-shrink: 0;
 }
+/* 📜 Époque : prend la largeur dispo pour le nom d'époque (logo 🕰 supprimé) */
+.scie_timeline-epoch-section { flex: 1; min-width: 80px; width: auto; }
 .scie_timeline-horloge-section { width: 90px; min-width: 90px; }
 .timeline-hourglass, .horloge-icon { font-size: 12px; }
 

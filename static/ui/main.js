@@ -1544,7 +1544,7 @@ window.updateDisplay = function updateDisplay(data) {
                 // Calculer la couverture de glace (similaire à organigramme.js)
                 // Calculer la couverture de glace (incluant la glace additionnelle des météorites)
                 let ice_cov = 0;
-                const isCorpsNoir = window.currentEpochName === 'Corps noir';
+                const isCorpsNoir = window.currentEpochName === 'Corps Noir';
                 const h2o_enabled = (typeof window !== 'undefined' && window.waterVaporEnabled !== undefined)
                     ? window.waterVaporEnabled
                     : (currentEpoch.h2o_enabled !== false);
@@ -1766,7 +1766,7 @@ function updateLegend(data) {
 
         // Créer deux éléments de légende : un pour le corps noir (pointillé 'dot') et un pour la courbe réelle (pleine 'solid')
         const patterns = [
-            { name: 'dot', label: 'Corps noir' },
+            { name: 'dot', label: 'Corps Noir' },
             { name: 'solid', label: 'Courbe réelle' }
         ];
 
@@ -1916,7 +1916,7 @@ function setEpoch(epochName) {
     const IO_LISTENER = window.IO_LISTENER;
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
     const epochNameToEmojiForButton = {
-        'Corps noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🌿',
+        'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🌿',
         'Paléozoïque': '🦴', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
@@ -1991,7 +1991,7 @@ function setEpoch(epochName) {
     }
 
     // 🔒 Stocker l'ancienne époque AVANT de la changer
-    const previousEpoch = (typeof window.currentEpochName !== 'undefined') ? window.currentEpochName : 'Corps noir';
+    const previousEpoch = (typeof window.currentEpochName !== 'undefined') ? window.currentEpochName : 'Corps Noir';
 
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
@@ -2005,7 +2005,7 @@ function setEpoch(epochName) {
         // Trouver l'index de l'époque par son emoji (id) ou son nom
         // Mapper le nom de l'époque vers l'emoji si nécessaire
         const epochNameToEmojiMap = {
-            'Corps noir': '⚫',
+            'Corps Noir': '⚫',
             'Hadéen': '🔥',
             'Archéen': '🦠',
             'Protérozoïque': '🌿',
@@ -2241,12 +2241,7 @@ function setEpoch(epochName) {
     // Afficher le nom de l'époque dans la timeline
     const epochNameDisplay = document.getElementById('epoch-name');
     if (epochNameDisplay) {
-        // Pour "Corps noir", utiliser un nom plus descriptif
-        let displayName = epoch.name;
-        if (epoch.name === 'Corps noir') {
-            displayName = 'État initial';
-        }
-        epochNameDisplay.textContent = displayName;
+        epochNameDisplay.textContent = epoch.name;
     }
 
     // Afficher le nom de l'époque dans la div de température
@@ -2299,7 +2294,7 @@ function setEpoch(epochName) {
 
     // Appliquer les conditions initiales
     // En époque "Corps noir", tout est désactivé (température ~206.1K, pas de noyau différencié)
-    const isCorpsNoir = epoch.name === 'Corps noir';
+    const isCorpsNoir = epoch.name === 'Corps Noir';
     const tempK = isCorpsNoir ? 0 : null; // 0K = corps noir (pas de noyau différencié)
 
     // Gérer la géothermie (noyau) : off (gris) seulement si 0K (corps noir), sinon on
@@ -2982,10 +2977,10 @@ function runMainInit() {
         epochNameTempDisplay.textContent = timelineEpoch.name;
     }
 
-    // Initialiser le nom de l'époque au chargement
+    // Initialiser le nom de l'époque au chargement (même nom que l'époque chargée, ex. Corps Noir)
     const epochNameDisplay = document.getElementById('epoch-name');
     if (epochNameDisplay) {
-        epochNameDisplay.textContent = 'État initial';
+        epochNameDisplay.textContent = window.currentEpochName || 'Corps Noir';
     }
 
     // Initialiser les boutons du flux en époque Corps noir (tout désactivé)

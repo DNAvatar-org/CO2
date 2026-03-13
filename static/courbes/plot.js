@@ -873,10 +873,10 @@ window.updatePlot = function updatePlot(data) {
     if (!data.lambda_range) return;
 
     const lambda_range = data.lambda_range;
-    const epochName = (typeof window !== 'undefined' && window.currentEpochName) ? window.currentEpochName : 'Corps noir';
+    const epochName = window.currentEpochName;
     const isHadeen = (epochName === 'Hadéen');
-    const scaleFactor = (epochName === 'Corps noir' ? 1e12 : 1e13);
-    const scaleLabel = (epochName === 'Corps noir' ? ' ×10¹²' : ' ×10¹³');
+    const scaleFactor = (epochName === 'Corps Noir' ? 1e12 : 1e13);
+    const scaleLabel = (epochName === 'Corps Noir' ? ' ×10¹²' : ' ×10¹³');
     const scaleY = (y) => y / scaleFactor;
 
     if (epochName !== lastEpochForScale) {
@@ -1123,7 +1123,7 @@ window.updatePlot = function updatePlot(data) {
     let z_trop_km;
     let delta_T_trop_strato = null; // Différence de température entre tropopause et stratosphère
     if (has_temperature) {
-        if (window.currentEpochName === 'Corps noir') {
+        if (window.currentEpochName === 'Corps Noir') {
             z_trop_m = 0;
             z_trop_km = 0;
         } else {

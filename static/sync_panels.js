@@ -105,6 +105,27 @@
         window.CONFIG_COMPUTE.largeDeltaFactor = T.SOLVER.LARGE_DELTA_FACTOR;
     }
 
+    // Applique payload sync:state au DATA du contexte courant (sans DOM). Utilisé avant runComputeInParent quand run:true.
+    function applyStateToData(payload) {
+        if (!window.DATA['📜']) window.DATA['📜'] = {};
+        if (payload.epochId !== undefined) {
+            var idx = window.TIMELINE ? window.TIMELINE.findIndex(function (item) { return item['📅'] === payload.epochId; }) : -1;
+            if (idx >= 0) {
+                window.DATA['📅'] = window.TIMELINE[idx];
+                window.DATA['📜']['👉'] = idx;
+                window.DATA['📜']['🗿'] = payload.epochId;
+                if (window.configOrganigramme && window.configOrganigramme.timeline) {
+                    var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === payload.epochId; });
+                    if (ep) window.currentEpochName = ep.name;
+                }
+            }
+        }
+        if (payload.ticTime !== undefined) {
+            window.infoTimeMa = payload.ticTime * 50;
+            window.DATA['📜']['📿💫'] = payload.ticTime;
+        }
+    }
+
     function applyToVisu(payload, fromScie) {
         var visuPanel = document.getElementById('visu-panel');
         if (payload.epochId !== undefined) {
@@ -416,7 +437,9 @@
             syncToScie(payload);
             console.log('[sync:state] run=' + payload.run + ' calculationInProgress=' + window.SYNC_STATE.calculationInProgress);
             if (payload.run === true) {
-                // Nouvelle époque : annuler le calcul précédent (setEpoch impose un nouveau run)
+                // Appliquer l'état au DATA du contexte courant (parent) avant le calcul, sinon 🔬🌈/📿💫 non initialisés → NaN
+                applyStateToData(payload);
+                window.getEpochDateConfig();
                 window.SYNC_STATE.calculationInProgress = false;
                 window.runComputeInParent();
             }

@@ -14,22 +14,16 @@
                 
                 <!-- Timeline horizontale (une seule ligne) -->
                 <div class="timeline-horizontal-container">
-                        <!-- 📜 Époque avec date -->
-                        <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
-                            <span class="timeline-hourglass" style="font-size: 20px;">📜</span>
+                        <!-- Époque : nom + date début + ticTime (+0 Ma) et durée 1 tic (sans 📅) -->
+                        <div class="scie_timeline-epoch-section timeline-date-display" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 10px; border-right: 1px solid #444; flex: 1; min-width: 0;">
+                            <span id="epoch-name" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">Corps Noir</span>
                             <span class="epoch-start-time" id="epoch-start-time" style="font-size: 10px; margin-top: 2px;">-5000 Ma</span>
-                        </div>
-                        
-                        <!-- 📅 Date avec ticTime (Ma) + durée 1 tic -->
-                        <div class="timeline-date-display" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
-                            <span class="timeline-hourglass" style="font-size: 20px;">📅</span>
                             <span class="info-time" id="info-time" style="font-size: 10px; margin-top: 2px;">+0 Ma</span>
                             <span class="tic-duration" id="tic-duration" style="font-size: 9px; color: var(--muted, #888); margin-top: 1px;"></span>
                         </div>
                         
-                        <!-- 🕰 Horloge avec événements (>> ticTime, Météorite, etc.) - scie_ -->
+                        <!-- Événements (>> ticTime, Météorite, etc.) sans logo 🕰 -->
                         <div class="scie_timeline-horloge-section" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
-                            <span class="horloge-icon" style="font-size: 20px;">🕰</span>
                             <div class="timeline-events-logos" id="timeline-events-logos" style="margin-top: 2px; display: flex; align-items: center; gap: 4px;">
                                 <!-- >> ticTime puis logos (météorite, etc.) -->
                             </div>
@@ -261,7 +255,7 @@
         // GÉNÉRATION TIMELINE HORIZONTALE
         // 3 lignes : noms (entre les |), | logos, dates (sous les |)
         // ============================================================================
-        var EPOCH_NAME_MAP = { '⚫': 'Corps noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🌿': 'Protérozoïque', '🦕': 'Mésozoïque', '🦴': 'Crétacé', '🦣': 'Cénozoïque', '🏔': 'Grande Coupure', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+        var EPOCH_NAME_MAP = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🌿': 'Protérozoïque', '🦕': 'Mésozoïque', '🦴': 'Crétacé', '🦣': 'Cénozoïque', '🏔': 'Grande Coupure', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
         function generateHorizontalTimeline() {
             const epochsContainer = document.getElementById('scie_epochs-container');
             if (!epochsContainer || !window.TIMELINE) return;
@@ -299,7 +293,7 @@
             
             epochsContainer.appendChild(rowEmojis);
             
-            // Sélectionner Corps noir (⚫) par défaut
+            // Sélectionner Corps Noir (⚫) par défaut
             const defaultEpoch = epochItems.find(item => item['📅'] === '⚫') || epochItems[0];
             if (defaultEpoch) {
                 selectEpoch(defaultEpoch['📅']);
@@ -485,7 +479,7 @@
             if (selectedBtn) {
                 epochId = selectedBtn.getAttribute('data-epoch');
             } else {
-                epochId = '⚫'; // Par défaut : Corps noir
+                epochId = '⚫'; // Par défaut : Corps Noir
             }
             
             // Trouver l'index de l'époque dans TIMELINE

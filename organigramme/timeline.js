@@ -68,8 +68,7 @@ function updateTimeline() {
         let newText;
         // Afficher en Ma avec signe : négatif = "-X Ma", zéro = "0 Ma", positif = "+X Ma"
         const deltaMa = Math.abs(infoTimeMa).toFixed(1).replace(/\.?0+$/, '');
-        const sign = infoTimeMa < 0 ? '-' : (infoTimeMa > 0 ? '+' : '');
-        newText = deltaMa === '0' ? '0 Ma' : `${sign}${deltaMa} Ma`;
+        newText = '+' + deltaMa + ' Ma';
         
         // Ne modifier le texte que s'il a changé pour éviter le clignotement
         if (infoTimeDisplay.textContent !== newText) {
@@ -81,6 +80,22 @@ function updateTimeline() {
                 epochNameTempDisplay.textContent = syntheseLabel;
             }
         }
+    }
+
+    // Curseurs ⏴ ⏵ sur la frise verticale : hauteur = date réelle (-5000 Ma = 0%, 0 Ma = 100%)
+    const cursorLeft = document.getElementById('timeline-cursor-left');
+    const cursorRight = document.getElementById('timeline-cursor-right');
+    if (cursorLeft && cursorRight && window.DATA['📜'] && window.TIMELINE) {
+        const idx = window.DATA['📜']['👉'];
+        const epoch = window.TIMELINE[idx];
+        const startMa = -(epoch['▶'] / 1e6);
+        const currentMa = startMa + window.infoTimeMa;
+        const RANGE_MA = 5000;
+        let topPct = ((currentMa + RANGE_MA) / RANGE_MA) * 100;
+        if (topPct < 0) topPct = 0;
+        if (topPct > 100) topPct = 100;
+        cursorLeft.style.top = topPct + '%';
+        cursorRight.style.top = topPct + '%';
     }
     
     // textureIndex = infoTimeMa / stepMa — stepMa lu directement depuis la config du bouton cliqué

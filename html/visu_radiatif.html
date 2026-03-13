@@ -55,26 +55,22 @@
                 <div class="compute-tic-loader__ring"></div>
             </div>
         </div>
-        <!-- Frise verticale : 📜 époque et 📅 date en divs séparées (trait en haut de la date) -->
+        <!-- Frise verticale : époque (nom + date) et 📅 date ; événements sans 🕰 -->
         <div class="visu_timeline-epoch-section">
-            <div class="timeline-date-display">
-                <span class="timeline-hourglass" aria-label="Epoque">📜</span>
+            <div class="timeline-date-display visu_timeline-epoch-name-wrap">
+                <span id="epoch-name" class="visu_epoch-name" aria-label="Nom de l'époque">Corps Noir</span>
                 <span class="epoch-start-time" id="epoch-start-time">-5000 Ma</span>
-            </div>
-        </div>
-        <div class="visu_timeline-date-section">
-            <div class="timeline-date-display">
-                <span class="timeline-hourglass" aria-label="Date">📅</span>
                 <span class="info-time" id="info-time">+0 Ma</span>
             </div>
         </div>
         <div class="visu_timeline-horloge-section">
             <div class="visu_timeline-horloge-content">
-                <span class="horloge-icon" aria-label="Evenements">🕰</span>
                 <div class="timeline-events-logos" id="timeline-events-logos"></div>
             </div>
         </div>
-        <div class="visu_timeline-frise">
+        <div class="visu_timeline-frise visu_timeline-frise-with-cursors">
+            <span class="timeline-cursor timeline-cursor-left" id="timeline-cursor-left" aria-hidden="true">⏵</span>
+            <span class="timeline-cursor timeline-cursor-right" id="timeline-cursor-right" aria-hidden="true">⏴</span>
             <div class="visu_epochs-container"></div>
         </div>
     </div>
