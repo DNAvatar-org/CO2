@@ -899,18 +899,28 @@ h1 {
     font-size: 14px;
     pointer-events: none;
     z-index: 2;
-    transform: translateY(-50%);
+    transform: translateY(calc(-50% + 8px)); /* +8px = descente 5px par rapport à l’ancien +3px */
 }
 .timeline-cursor-left { left: 0; }
 .timeline-cursor-right { right: 0; }
 
 .visu_epochs-container {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 0 0 6px 0;
+    padding: 10px;
     overflow: hidden;
+}
+
+/* Ligne de l’échelle d’époque (date en Ma) — même div que les curseurs pour alignement y0 */
+.epoch-scale-row {
+    flex-shrink: 0;
+    padding: 2px 0;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.75);
+    white-space: nowrap;
 }
 
 /* Ancien style pour compatibilité (peut être supprimé si plus utilisé) */

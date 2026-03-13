@@ -1340,6 +1340,14 @@ window.updatePlot = function updatePlot(data) {
     }
 
     // --- CALCUL ÉCHELLE Y : courbe ~65% hauteur ; après action (pas nouvelle époque) on recalc au prochain ProcessFinished (FLUX.yAxisRecalcOnNextFinish) ---
+    // Si la courbe réelle est <20% du max actuel (changement d'ordre de grandeur), recalculer l'échelle
+    let maxYInTraces = 0;
+    traces.forEach(t => {
+        if (t.yaxis !== 'y2') {
+            t.y.forEach(v => { if (v > maxYInTraces) maxYInTraces = v; });
+        }
+    });
+    const minY = (window.FLUX && typeof window.FLUX.minYMaxLuminance === 'number') ? window.FLUX.minYMaxLuminance : 0.5;
     const isConverged = (typeof window.spectralConverged !== 'undefined' && window.spectralConverged);
     const forceRecalcY = (window.FLUX && window.FLUX.yAxisRecalcOnNextFinish);
     let y_max_luminance;
@@ -1373,9 +1381,12 @@ window.updatePlot = function updatePlot(data) {
         } else {
             y_max_luminance = Math.ceil(y_raw / 100) * 100;
         }
-        // Courbe trop plate : plancher optionnel (FLUX.minYMaxLuminance) pour éviter axe Y écrasé
-        const minY = (window.FLUX && typeof window.FLUX.minYMaxLuminance === 'number') ? window.FLUX.minYMaxLuminance : 0.5;
         y_max_luminance = Math.max(minY, y_max_luminance);
+        lastGoodYMaxLuminance = y_max_luminance;
+    }
+    // Ordre de grandeur : données <20% du max de l'échelle → recalculer l'échelle
+    if (maxYInTraces < 0.2 * y_max_luminance) {
+        y_max_luminance = Math.max(minY, maxYInTraces / 0.65);
         lastGoodYMaxLuminance = y_max_luminance;
     }
 

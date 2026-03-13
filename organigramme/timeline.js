@@ -1,10 +1,17 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.1
+ * Version 1.0.9
  * Date: [June 08, 2025] [HH:MM UTC+1]
 * logs :
  * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
  * - v1.0.2: dates négatives avec signe - (info-time et epoch-start en -X Ma)
+ * - v1.0.3: échelle d’époque construite depuis TIMELINE ; curseurs > .. < positionnés par calcul (alignés y0 sur zone texte)
+ * - v1.0.4: calcul Y des curseurs via getBoundingClientRect ; conteneur d’échelle étiré sur toute la frise
+ * - v1.0.5: logs de géométrie pour -5000 Ma, 2050 et curseurs ; retour à un espacement fixe du conteneur
+ * - v1.0.6: logs de diagnostic ajoutés avant calcul pour identifier l’étape qui bloque la frise
+ * - v1.0.7: lecture des dates réelles de la frise sans effacer les boutons epoch-btn
+ * - v1.0.8: padding 10px conteneur ; curseurs alignés sur centre du texte (.epoch-date) au lieu de la div
+ * - v1.0.9: const DATA = window.DATA, const TIMELINE = window.TIMELINE en tête des fonctions (cf window_MAJUSCULE_creater_filler.txt)
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.
@@ -40,7 +47,201 @@ window.infoTimeMa = 0; // Temps écoulé depuis le début de l'époque (en milli
 window.lastTicTime = undefined; // Dernière valeur de ticTime (infoTimeMa / 50)
 window.lastIceLevel = undefined; // Dernière valeur de h2oIceFractionFromCalculation
 
+/** Décalage vertical (px) des curseurs ⏵ ⏴ : positif = descendre, négatif = monter. À ajuster à l’œil. */
+const TIMELINE_CURSOR_OFFSET_PX = 2;
+
+if (typeof window.pd === 'undefined') {
+    window.pd = function (message) {
+        console.log(message);
+    };
+}
+
+function pdOnce(key, message) {
+    if (!window._pdOnceFlags) {
+        window._pdOnceFlags = {};
+    }
+    if (!window._pdOnceFlags[key]) {
+        window._pdOnceFlags[key] = true;
+        window.pd(message);
+    }
+}
+
+/** Libellé d’une date de l’échelle : "-5000 Ma" ou "2025", "2050" pour les années récentes */
+function formatScaleLabel(ma) {
+    if (ma < -0.0005) {
+        return Math.round(ma) + ' Ma';
+    }
+    return String(Math.round(ma * 1e6));
+}
+
+function ensureTimelineCursor(container, id, className, symbol) {
+    let cursor = document.getElementById(id);
+    if (!cursor) {
+        cursor = document.createElement('span');
+        cursor.id = id;
+        cursor.className = 'timeline-cursor ' + className;
+        cursor.setAttribute('aria-hidden', 'true');
+        cursor.textContent = symbol;
+        container.appendChild(cursor);
+        pdOnce('timeline-create-' + id, '❌ [ensureTimelineCursor][timeline.js] created ' + id);
+    }
+    return cursor;
+}
+
+function parseTimelineDateText(text) {
+    const trimmed = text.trim();
+    if (trimmed.endsWith('Ma')) {
+        return Number(trimmed.replace('Ma', '').trim());
+    }
+    return Number(trimmed) / 1e6;
+}
+
+function getTimelineDateEntries(container) {
+    const dateSpans = container.querySelectorAll('.epoch-date-item-vertical .epoch-date');
+    const entries = [];
+    for (let i = 0; i < dateSpans.length; i++) {
+        const span = dateSpans[i];
+        const item = span.closest('.epoch-date-item-vertical');
+        const text = span.textContent.trim();
+        const ma = parseTimelineDateText(text);
+        entries.push({
+            item: item,
+            span: span,
+            text: text,
+            ma: ma,
+        });
+    }
+    return entries;
+}
+
+/** Prépare la frise existante : conserve les boutons, enlève seulement nos anciennes lignes de debug, et garantit les curseurs. */
+function buildEpochScale() {
+    const TIMELINE = window.TIMELINE;
+    const container = document.querySelector('.visu_epochs-container');
+    if (!container || !TIMELINE) {
+        pdOnce(
+            'timeline-build-missing',
+            '❌ [buildEpochScale][timeline.js] missing container=' + !!container +
+            ' timeline=' + !!TIMELINE
+        );
+        return;
+    }
+    const oldScaleRows = container.querySelectorAll('.epoch-scale-row');
+    for (let i = 0; i < oldScaleRows.length; i++) {
+        oldScaleRows[i].remove();
+    }
+    const cursorLeft = ensureTimelineCursor(container, 'timeline-cursor-left', 'timeline-cursor-left', '⏵');
+    const cursorRight = ensureTimelineCursor(container, 'timeline-cursor-right', 'timeline-cursor-right', '⏴');
+    container.appendChild(cursorLeft);
+    container.appendChild(cursorRight);
+    const entries = getTimelineDateEntries(container);
+    window._epochScaleBuilt = true;
+    if (entries.length === 0) {
+        pdOnce('timeline-build-empty', '❌ [buildEpochScale][timeline.js] rows=0');
+    } else {
+        pdOnce(
+            'timeline-build-ok',
+            '❌ [buildEpochScale][timeline.js] rows=' + entries.length +
+            ' first=' + entries[0].text +
+            ' last=' + entries[entries.length - 1].text
+        );
+    }
+}
+
+/** Position Y (px) du centre du texte, relatif au padding-edge du conteneur. rows = .epoch-date (span). */
+function getCursorTopPx(container, rows, scaleMa, currentMa) {
+    const containerRect = container.getBoundingClientRect();
+    const paddingTop = parseFloat(getComputedStyle(container).paddingTop) || 0;
+
+    function toPaddingTop(rect) {
+        return (rect.top - containerRect.top) + rect.height / 2 - paddingTop;
+    }
+
+    if (currentMa <= scaleMa[0]) {
+        return toPaddingTop(rows[0].getBoundingClientRect());
+    }
+    if (currentMa >= scaleMa[scaleMa.length - 1]) {
+        return toPaddingTop(rows[rows.length - 1].getBoundingClientRect());
+    }
+
+    let i = 0;
+    for (; i < scaleMa.length - 1; i++) {
+        if (currentMa >= scaleMa[i] && currentMa <= scaleMa[i + 1]) {
+            break;
+        }
+    }
+
+    const r0 = rows[i].getBoundingClientRect();
+    const r1 = rows[i + 1].getBoundingClientRect();
+    const ma0 = scaleMa[i];
+    const ma1 = scaleMa[i + 1];
+    const t = (ma1 === ma0) ? 0 : (currentMa - ma0) / (ma1 - ma0);
+    const center0 = toPaddingTop(r0);
+    const center1 = toPaddingTop(r1);
+    return center0 + t * (center1 - center0);
+}
+
+function logTimelineGeometry() {
+    const container = document.querySelector('.visu_epochs-container');
+    const frise = document.querySelector('.visu_timeline-frise-with-cursors');
+    const cursorLeft = document.getElementById('timeline-cursor-left');
+    const cursorRight = document.getElementById('timeline-cursor-right');
+    if (!container) {
+        pdOnce('timeline-geometry-no-container', '❌ [logTimelineGeometry][timeline.js] missing container=false');
+        return;
+    }
+    const entries = getTimelineDateEntries(container);
+    let rowStartEntry = null;
+    for (let i = 0; i < entries.length; i++) {
+        if (entries[i].text === '-5000 Ma') {
+            rowStartEntry = entries[i];
+            break;
+        }
+    }
+    const rowEndEntry = entries[entries.length - 1];
+
+    if (!frise || !rowStartEntry || !rowEndEntry || !cursorLeft || !cursorRight) {
+        pdOnce(
+            'timeline-geometry-missing',
+            '❌ [logTimelineGeometry][timeline.js] missing container=' + !!container +
+            ' frise=' + !!frise +
+            ' rowStart=' + !!rowStartEntry +
+            ' rowEnd=' + !!rowEndEntry +
+            ' left=' + !!cursorLeft +
+            ' right=' + !!cursorRight
+        );
+        return;
+    }
+
+    const friseRect = frise.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const rowStartRect = rowStartEntry.item.getBoundingClientRect();
+    const rowStartTextRect = rowStartEntry.span.getBoundingClientRect();
+    const rowEndRect = rowEndEntry.item.getBoundingClientRect();
+    const rowEndTextRect = rowEndEntry.span.getBoundingClientRect();
+    const cursorLeftRect = cursorLeft.getBoundingClientRect();
+    const cursorRightRect = cursorRight.getBoundingClientRect();
+
+    const message =
+        '❌ [logTimelineGeometry][timeline.js] ' +
+        'frise(top=' + friseRect.top.toFixed(1) + ',h=' + friseRect.height.toFixed(1) + ') ' +
+        'container(top=' + containerRect.top.toFixed(1) + ',h=' + containerRect.height.toFixed(1) + ') ' +
+        '-5000div(top=' + rowStartRect.top.toFixed(1) + ',h=' + rowStartRect.height.toFixed(1) + ',cy=' + (rowStartRect.top + rowStartRect.height / 2).toFixed(1) + ',rel=' + ((rowStartRect.top - containerRect.top) + rowStartRect.height / 2).toFixed(1) + ') ' +
+        '-5000txt(top=' + rowStartTextRect.top.toFixed(1) + ',h=' + rowStartTextRect.height.toFixed(1) + ',cy=' + (rowStartTextRect.top + rowStartTextRect.height / 2).toFixed(1) + ') ' +
+        'lastDiv(top=' + rowEndRect.top.toFixed(1) + ',h=' + rowEndRect.height.toFixed(1) + ',cy=' + (rowEndRect.top + rowEndRect.height / 2).toFixed(1) + ',txt=' + rowEndEntry.text + ') ' +
+        'lastTxt(top=' + rowEndTextRect.top.toFixed(1) + ',h=' + rowEndTextRect.height.toFixed(1) + ',cy=' + (rowEndTextRect.top + rowEndTextRect.height / 2).toFixed(1) + ') ' +
+        'leftCursor(top=' + cursorLeftRect.top.toFixed(1) + ',h=' + cursorLeftRect.height.toFixed(1) + ',cy=' + (cursorLeftRect.top + cursorLeftRect.height / 2).toFixed(1) + ',styleTop=' + cursorLeft.style.top + ') ' +
+        'rightCursor(top=' + cursorRightRect.top.toFixed(1) + ',h=' + cursorRightRect.height.toFixed(1) + ',cy=' + (cursorRightRect.top + cursorRightRect.height / 2).toFixed(1) + ',styleTop=' + cursorRight.style.top + ')';
+
+    if (window._timelineGeomLastMessage !== message) {
+        window._timelineGeomLastMessage = message;
+        window.pd(message);
+    }
+}
+
 function updateTimeline() {
+    const DATA = window.DATA;
+    const TIMELINE = window.TIMELINE;
     // Mettre à jour l'affichage (toujours, même si timelineRunning = false)
     const timelineDisplay = document.getElementById('timeline-display');
     const frameDisplay = document.getElementById('frame-display');
@@ -82,30 +283,55 @@ function updateTimeline() {
         }
     }
 
-    // Curseurs ⏴ ⏵ sur la frise verticale : hauteur = date réelle (-5000 Ma = 0%, 0 Ma = 100%)
+    // Curseurs ⏴ ⏵ : même div que les dates d’époque, positionnement par calcul (y0 aligné sur la zone texte)
     const cursorLeft = document.getElementById('timeline-cursor-left');
     const cursorRight = document.getElementById('timeline-cursor-right');
-    if (cursorLeft && cursorRight && window.DATA['📜'] && window.TIMELINE) {
-        const idx = window.DATA['📜']['👉'];
-        const epoch = window.TIMELINE[idx];
-        const startMa = -(epoch['▶'] / 1e6);
-        const currentMa = startMa + window.infoTimeMa;
-        const RANGE_MA = 5000;
-        let topPct = ((currentMa + RANGE_MA) / RANGE_MA) * 100;
-        if (topPct < 0) topPct = 0;
-        if (topPct > 100) topPct = 100;
-        cursorLeft.style.top = topPct + '%';
-        cursorRight.style.top = topPct + '%';
+    const container = document.querySelector('.visu_epochs-container');
+    if (!container || !DATA['📜'] || !TIMELINE) {
+        pdOnce(
+            'timeline-update-missing',
+            '❌ [updateTimeline][timeline.js] missing container=' + !!container +
+            ' data=' + !!DATA['📜'] +
+            ' timeline=' + !!TIMELINE
+        );
+    } else {
+        if (!window._epochScaleBuilt || !cursorLeft || !cursorRight) {
+            buildEpochScale();
+        }
+        const cursorLeft2 = document.getElementById('timeline-cursor-left');
+        const cursorRight2 = document.getElementById('timeline-cursor-right');
+        const entries = getTimelineDateEntries(container);
+        if (!cursorLeft2 || !cursorRight2) {
+            pdOnce('timeline-cursors-still-missing', '❌ [updateTimeline][timeline.js] cursors still missing after build');
+        } else if (entries.length === 0) {
+            pdOnce('timeline-rows-empty', '❌ [updateTimeline][timeline.js] rows.length=0');
+        } else {
+            const scaleMa = [];
+            const textRows = [];
+            for (let r = 0; r < entries.length; r++) {
+                scaleMa.push(entries[r].ma);
+                textRows.push(entries[r].span);
+            }
+            const idx = DATA['📜']['👉'];
+            const epoch = TIMELINE[idx];
+            const startMa = -(epoch['▶'] / 1e6);
+            const currentMa = startMa + window.infoTimeMa;
+            const topPx = getCursorTopPx(container, textRows, scaleMa, currentMa) + TIMELINE_CURSOR_OFFSET_PX;
+            cursorLeft2.style.setProperty('top', topPx + 'px');
+            cursorRight2.style.setProperty('top', topPx + 'px');
+            cursorLeft2.setAttribute('data-timeline-top', String(Math.round(topPx)));
+            logTimelineGeometry();
+        }
     }
     
     // textureIndex = infoTimeMa / stepMa — stepMa lu directement depuis la config du bouton cliqué
     // Exception init : 🔘🕰 = '' avant le premier clic → textureIndex = 0 (infoTimeMa = 0 aussi)
-    if (window.DATA['📜']['🔘🕰'] === '') {
+    if (DATA['📜']['🔘🕰'] === '') {
         window.textureIndex = 0;
     } else {
-        const _epochId_tl = window.DATA['📜']['🗿'];
-        const _epoch_tl = window.TIMELINE[window.TIMELINE.findIndex(item => item['📅'] === _epochId_tl)];
-        const stepMa = _epoch_tl['🕰'][window.DATA['📜']['🔘🕰']]['🔺⏳'];
+        const _epochId_tl = DATA['📜']['🗿'];
+        const _epoch_tl = TIMELINE[TIMELINE.findIndex(item => item['📅'] === _epochId_tl)];
+        const stepMa = _epoch_tl['🕰'][DATA['📜']['🔘🕰']]['🔺⏳'];
         window.textureIndex = Math.floor(window.infoTimeMa / stepMa);
     }
 
