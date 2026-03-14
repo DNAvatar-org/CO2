@@ -9,6 +9,10 @@
     <div class="title-container divGlass">
         <h1>Bilan Radiatif Terrestre</h1>
         <p class="title-subtitle">Base de la météorologie</p>
+        <div class="title-toolbar">
+            <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Animation">🎞</button>
+            <div class="timeline-events-logos" id="timeline-events-logos"></div>
+        </div>
         <div class="synthese_Temp synthese_Temp-two-cols">
             <div class="synthese_Temp-col synthese_Temp-col-left">
                 <div class="visu_timeline-epoch-section">
@@ -32,9 +36,6 @@
     </div>
 
     <div class="plot-container-wrapper divGlass" style="position: relative;">
-        <div class="plot-controls" style="position: absolute; bottom: 10px; left: 10px; z-index: 100; display: flex; flex-direction: row; gap: 6px; align-items: center;">
-            <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Animation">🎞</button>
-        </div>
         <div id="plot-container">
             <div class="plot-overlay-title">Courbes d'émission du rayonnement<br>d'un corps (noir ou la terre)</div>
             <div class="legend-container" id="legend-container">
@@ -60,12 +61,7 @@
                 <div class="compute-tic-loader__ring"></div>
             </div>
         </div>
-        <!-- Frise verticale : événements ; nom époque + dates déplacés dans synthese_Temp -->
-        <div class="visu_timeline-horloge-section">
-            <div class="visu_timeline-horloge-content">
-                <div class="timeline-events-logos" id="timeline-events-logos"></div>
-            </div>
-        </div>
+        <!-- Frise verticale ; 🎞 + event logos déplacés dans title-toolbar -->
         <div class="visu_timeline-frise visu_timeline-frise-with-cursors">
             <div class="visu_epochs-container">
                 <span class="timeline-cursor timeline-cursor-left" id="timeline-cursor-left" aria-hidden="true">⏵</span>
