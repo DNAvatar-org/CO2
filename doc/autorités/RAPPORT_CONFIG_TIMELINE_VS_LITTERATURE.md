@@ -23,7 +23,7 @@ Voir **VALIDATION_CONFIG_GAZ.md** (même dossier) pour la traçabilité détaill
 | Archéen 🦠 | 288 | 281–303 K plausible (Charnay 2017, Kienert 2013) | Clim. Past 9:1841 ; Astrobiology 2014 |
 | Protérozoïque 🥟 | 285 | ~280–290 K | Lit. Protérozoïque |
 | Mésozoïque 🦕 | 298 | ~295–305 K | Lit. Mésozoïque |
-| Paléozoïque 🦴 | 290 | ~285–295 K (Ordovicien–Permien) | Lit. Paléozoïque |
+| Paléozoïque 🌿 | 290 | ~285–295 K (Ordovicien–Permien) | Lit. Paléozoïque |
 | Cénozoïque 🦣 | 291 | 288–295 K, refroidissement | Anagnostou Nature 2016 |
 | 1800 🚂 | 287 | ~14°C pré-industriel | IPCC |
 | 2025 📱 | 288.8 | Record chaud 2025 | Observations |
@@ -36,7 +36,7 @@ Voir **VALIDATION_CONFIG_GAZ.md** (même dossier) pour la traçabilité détaill
 | Hadéen | 75 % | Faint Young Sun |
 | Archéen | 80 % | Faint Young Sun |
 | Protérozoïque | 90 % | Évolution stellaire |
-| Paléozoïque 🦴 | ~94 % | Évolution stellaire |
+| Paléozoïque 🌿 | ~94 % | Évolution stellaire |
 | Mésozoïque 🦕 | 98 % | — |
 | Cénozoïque → 2025 | 99.5–100 % | Valeur actuelle 3.828×10²⁶ W |
 

@@ -120,7 +120,7 @@ NewGlyph()
 GlyphInfo("Unicode", 0xE011)
 GlyphInfo("Name", "m")
 
-# Emoji: 🦴 -> U+E012 (cr)
+# Emoji: 🌿 -> U+E012 (cr)
 Select(0xE012)
 NewGlyph()
 GlyphInfo("Unicode", 0xE012)

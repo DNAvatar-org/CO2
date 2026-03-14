@@ -424,7 +424,7 @@ if sourceFont then
     end
 end
 
-# Emoji: 🦴 -> U+E014 (cr)
+# Emoji: 🌿 -> U+E014 (cr)
 Select(57364)
 CreateGlyph()
 GlyphInfo("Unicode", 57364)
@@ -437,9 +437,9 @@ if sourceFont then
         Copy()
         Select(57364)
         Paste()
-        Print("✅ Copié 🦴 (cr) depuis la source")
+        Print("✅ Copié 🌿 (cr) depuis la source")
     else
-        Print("⚠️  Glyphe 1F9B4 non trouvé dans la source pour 🦴")
+        Print("⚠️  Glyphe 1F9B4 non trouvé dans la source pour 🌿")
     end
 end
 

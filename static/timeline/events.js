@@ -287,7 +287,7 @@ window.updateEpochActions = function () {
             // Météorite de glace : uniquement Corps noir (⚫) et Hadéen (🔥), gérés dans leurs case
             if (epoch['🕰']['🎇'] && epoch['🕰']['🎇']['⏩']) {
                 const targetId = epoch['🕰']['🎇']['⏩'];
-                const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🦕': 'Mésozoïque', '🦴': 'Paléozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+                const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🦕': 'Mésozoïque', '🌿': 'Paléozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
                 const targetName = idToName[targetId] || targetId;
                 const bigImpactBtn = document.createElement('img');
                 bigImpactBtn.src = window.getLogoImageSrc('🎇') || getImagePath('fonts/pics/big_impact.png');

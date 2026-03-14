@@ -35,7 +35,7 @@ def extract_emojis_from_codebase():
         '🌿': 'proterozoic',
         '❄️': 'cryogenian',
         '🦕': 'mesozoic',
-        '🦴': 'cretaceous',
+        '🌿': 'cretaceous',
         '🦣': 'cenozoic',
         '🌈': 'today',
         # Diagramme de flux

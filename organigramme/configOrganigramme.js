@@ -29,20 +29,20 @@ const LOGOS = window.CHARS;
 // TEXTURES Three.js — CO2/fonds/*.png par dates (la carte c'est le territoire)
 // ============================================================================
 // ⚠️ charsImages (alphabet.js) ne touche JAMAIS aux textures !
-// Inventaire fonds/ : 5000Ma.png, … 00200Ma.png, 00066Ma.png, 001800a.png, 002025a.png
+// Inventaire fonds/ : 5 chiffres pour Ma (05000Ma.png, 04500Ma.png…) = même format que getPlanetTexturePathFromEpoch
 // ticTime=0 par défaut → index 0
 const TEXTURES_THREEJS = [
-    'fonds/5000Ma.png',
-    'fonds/4500Ma.png', 'fonds/4100Ma.png', 'fonds/3700Ma.png', 'fonds/3300Ma.png', 'fonds/2900Ma.png',
-    'fonds/2500Ma.png', 'fonds/2300Ma.png', 'fonds/00225Ma.png', 'fonds/00150Ma.png', 'fonds/00100Ma.png',
+    'fonds/05000Ma.png',
+    'fonds/04500Ma.png', 'fonds/04100Ma.png', 'fonds/03700Ma.png', 'fonds/03300Ma.png', 'fonds/02900Ma.png',
+    'fonds/02500Ma.png', 'fonds/02300Ma.png', 'fonds/00225Ma.png', 'fonds/00150Ma.png', 'fonds/00100Ma.png',
     'fonds/00200Ma.png', 'fonds/00066Ma.png', 'fonds/001800a.png', 'fonds/002025a.png'
 ];
 // epochName -> chemin (Hadéen/Archéen : {$ticTime} → index; 1800/2025 : fichier par date)
 const epochTextures = {
-    'Corps Noir': 'fonds/5000Ma.png',
-    'Hadéen': 'fonds/4500Ma.png',
-    'Archéen': 'fonds/2500Ma.png',
-    'Protérozoïque': 'fonds/2300Ma.png',
+    'Corps Noir': 'fonds/05000Ma.png',
+    'Hadéen': 'fonds/04500Ma.png',
+    'Archéen': 'fonds/02500Ma.png',
+    'Protérozoïque': 'fonds/02300Ma.png',
     'Mésozoïque': 'fonds/00200Ma.png',
     'Cénozoïque': 'fonds/00066Ma.png',
     'Industriel': 'fonds/001800a.png',
@@ -230,7 +230,6 @@ const nodes = [
             {
                 epochName: 'Corps Noir',
                 logo: LOGOS.CORPS_NOIR,
-                texture: 'fonds/5000Ma.png',
                 planetEffect: true,
                 luxSaturation: 1.0,
                 lightDistance: '7-{$ticTime}/3',
@@ -243,7 +242,6 @@ const nodes = [
             {
                 epochName: 'Hadéen',
                 logo: LOGOS.HADEEN,
-                texture: 'fonds/4500Ma.png',
                 planetEffect: true,
                 luxSaturation: 3.0,
                 lightDistance: 0,
@@ -256,7 +254,6 @@ const nodes = [
             {
                 epochName: 'Archéen',
                 logo: LOGOS.ARCHEEN,
-                texture: 'fonds/2500Ma.png',
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.15,
                 fillColor: 'rgba(255, 215, 0, 0.5)',
@@ -267,7 +264,6 @@ const nodes = [
             {
                 epochName: 'Protérozoïque',
                 logo: LOGOS.GLOBE_AFRICA,
-                texture: 'fonds/2300Ma.png',
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 191, 255, 0.5)',
@@ -278,7 +274,6 @@ const nodes = [
             {
                 epochName: 'Mésozoïque',
                 logo: LOGOS.GLOBE_AMERICAS,
-                texture: 'fonds/00200Ma.png',
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 200, 255, 0.5)',
@@ -289,7 +284,6 @@ const nodes = [
             {
                 epochName: 'Paléozoïque',
                 logo: LOGOS.GLOBE_ASIA,
-                texture: 'fonds/00200Ma.png',
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 200, 255, 0.5)',
@@ -300,7 +294,6 @@ const nodes = [
             {
                 epochName: 'Cénozoïque',
                 logo: LOGOS.GLOBE_AFRICA,
-                texture: 'fonds/00066Ma.png',
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 200, 255, 0.5)',
@@ -311,7 +304,6 @@ const nodes = [
             {
                 epochName: 'Industriel',
                 logo: LOGOS.TODAY,
-                texture: 'fonds/001800a.png',
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 200, 255, 0.5)',
@@ -322,7 +314,6 @@ const nodes = [
             {
                 epochName: 'Aujourd\'hui',
                 logo: LOGOS.MODERN,
-                texture: 'fonds/002025a.png',
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 255, 255, 0.5)',

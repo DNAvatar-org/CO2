@@ -72,7 +72,7 @@ Avec :
 
 ---
 
-### 2.5 Crétacé (🦴)
+### 2.5 Crétacé (🌿)
 
 | Gaz | Config (kg) | Config (ppm équiv.) | Littérature | Références |
 |-----|-------------|---------------------|-------------|------------|

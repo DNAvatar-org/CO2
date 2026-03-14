@@ -9,7 +9,7 @@
 | 🦠 Archéen | **-2.1°C** | **288 K (15°C)** | **-17°C** |
 | 🥟 Protérozoïque | 1.4°C | 285 K (12°C) | -10.6°C |
 | 🦕 Mésozoïque | 4.5°C | 285 K (12°C) | -7.5°C |
-| 🦴 Paléozoïque | 5.6°C | 285 K (12°C) | -6.4°C |
+| 🌿 Paléozoïque | 5.6°C | 285 K (12°C) | -6.4°C |
 | 🦣 Cénozoïque | 4.4°C | 285 K (12°C) | -7.6°C |
 | 🚂 Industriel | 2.2°C | 285 K (12°C) | -9.8°C |
 | 📱 Aujourd'hui | **4.1°C** | **288 K (15.7°C)** | **-11.6°C** |

@@ -76,7 +76,7 @@ CALCULS:
 🦠  Archéen
 🥟  Protérozoïque
 🦕  Mésozoïque
-🦴  Paléozoïque
+🌿  Paléozoïque
 🦣  Cénozoïque
 🏔  EOT (33,9 Ma)
 🚂  1800

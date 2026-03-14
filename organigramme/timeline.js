@@ -85,7 +85,6 @@ function ensureTimelineCursor(container, id, className, symbol) {
         cursor.setAttribute('aria-hidden', 'true');
         cursor.textContent = symbol;
         container.appendChild(cursor);
-        pdOnce('timeline-create-' + id, '❌ [ensureTimelineCursor][timeline.js] created ' + id);
     }
     return cursor;
 }
@@ -139,16 +138,6 @@ function buildEpochScale() {
     container.appendChild(cursorRight);
     const entries = getTimelineDateEntries(container);
     window._epochScaleBuilt = true;
-    if (entries.length === 0) {
-        pdOnce('timeline-build-empty', '❌ [buildEpochScale][timeline.js] rows=0');
-    } else {
-        pdOnce(
-            'timeline-build-ok',
-            '❌ [buildEpochScale][timeline.js] rows=' + entries.length +
-            ' first=' + entries[0].text +
-            ' last=' + entries[entries.length - 1].text
-        );
-    }
 }
 
 /** Position Y (px) du centre du texte, relatif au padding-edge du conteneur. rows = .epoch-date (span).
@@ -331,6 +320,7 @@ function updateTimeline() {
     } else if (window.isIceChange) {
         window.updatePlanetLighting();
     }
+    window.updatePlanetTextureFromDate && window.updatePlanetTextureFromDate();
 
     // 🔒 DÉSACTIVÉ : Ne plus incrémenter automatiquement de +10 ans toutes les secondes
     // L'incrémentation se fait uniquement lors des clics sur boutons (météorite glace, etc.)

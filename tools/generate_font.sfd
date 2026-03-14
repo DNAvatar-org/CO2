@@ -147,11 +147,11 @@ GlyphInfo("Unicode", 57362)
 # Note: Il faudra importer manuellement le glyphe SVG pour 🦕
 # ou utiliser Select(57362) puis Paste() après avoir copié l'emoji depuis une autre police
 
-# Emoji: 🦴 -> U+E013 (cr)
+# Emoji: 🌿 -> U+E013 (cr)
 NewGlyph(57363)
 Select(57363)
 GlyphInfo("Unicode", 57363)
-# Note: Il faudra importer manuellement le glyphe SVG pour 🦴
+# Note: Il faudra importer manuellement le glyphe SVG pour 🌿
 # ou utiliser Select(57363) puis Paste() après avoir copié l'emoji depuis une autre police
 
 # Emoji: 🦣 -> U+E014 (c)
