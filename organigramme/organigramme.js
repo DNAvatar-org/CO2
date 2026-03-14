@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.29
+// Version 1.0.31
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -11,6 +11,8 @@
 // Logs: v1.0.27 animate(): retrait auto-resume FPS (ne pas écraser threeJSAnimationPaused=true géré par main.js)
 // Logs: v1.0.28 fin chargement Three.js : IO_LISTENER.emit('three:ready', { hasTexture, canvas }) après texture load ou erreur
 // Logs: v1.0.29 Terre : drag souris (rotation), inertie au release (vitesse), smooth barycentre vers rotation par défaut
+// Logs: v1.0.30 Drag Terre désactivé (pointerEvents=none), logs [texture] chargement lancé/OK/erreur
+// Logs: v1.0.31 updatePlanetTextureFromDate : pause Three.js avant load texture ; play au compute:done (loader_panels)
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -418,6 +420,20 @@ function updateLabelClasses(label, nodeId = null) {
   // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
 }
 
+/** Chemin texture planète depuis époque + temps écoulé. Ex. Protérozoïque -2500 Ma +100 Ma → -2400 Ma → fonds/02400Ma.png ; 1800+100 ans → fonds/001900a.png */
+function getPlanetTexturePathFromEpoch(startYears, infoTimeMa) {
+  const infoMa = Number(infoTimeMa) || 0;
+  if (startYears >= 1e6) {
+    const currentMa = -startYears / 1e6 + infoMa;
+    const absMa = Math.round(Math.abs(currentMa));
+    const padded = String(absMa).padStart(5, "0");
+    return "fonds/" + padded + "Ma.png";
+  }
+  const currentYear = Math.round(startYears + infoMa * 1e6);
+  const padded = String(currentYear).padStart(6, "0");
+  return "fonds/" + padded + "a.png";
+}
+
 // Fonction pour créer une cellule avec un tableau 3x3
 // Fonction pour initialiser Three.js pour l'effet planète
 // logoPath = texture text_*.png depuis epochTextures (configOrganigramme) - JAMAIS charsImages !
@@ -525,10 +541,10 @@ function initPlanetThreeJS(
       ? logoPath.split("/").pop()
       : String(logoPath);
   if (window.location.protocol === "file:") {
+    console.log("🖼️ [texture] chargement erreur (file:):", textureName);
     console.error(
       "[initPlanetThreeJS] ❌ ERREUR: Three.js nécessite HTTP/HTTPS !",
     );
-    console.error("[initPlanetThreeJS] texture non chargée:", textureName);
     console.error("⚠️ Utilisez: http://localhost:8000/index.html");
     createPlanetSphere();
     if (window._logStep) window._logStep("[2] texture Three.js (retour file:)");
@@ -547,32 +563,24 @@ function initPlanetThreeJS(
         e,
       );
     }
-    if (window._logStep) window._logStep("[2] texture Three.js (lancement)");
-    else console.log("[2] texture Three.js (lancement)");
     textureLoader.load(
       logoPath,
       function (loadedTexture) {
         loadedTexture.wrapS = THREE.RepeatWrapping;
         loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
         texture = loadedTexture;
+        if (typeof window !== "undefined") window._lastPlanetTexturePath = logoPath;
         createPlanetSphere();
+        console.log("🖼️ [texture] chargement OK:", textureName);
         if (window._logStep) window._logStep("[2] texture Three.js (retour)");
-        else console.log("[2] texture Three.js (retour)");
         if (window._logStepEnd) window._logStepEnd();
         IO_LISTENER.emit("three:ready", { hasTexture: true, canvas: canvas });
       },
       undefined,
       function (error) {
-        console.error(
-          "[initPlanetThreeJS] ❌ texture NON chargée:",
-          textureName,
-        );
-        console.error("[initPlanetThreeJS] chemin demandé:", logoPath);
-        console.error("[initPlanetThreeJS] URL résolue:", resolvedUrl);
-        console.error("[initPlanetThreeJS] erreur:", error);
+        console.log("🖼️ [texture] chargement erreur:", textureName);
         createPlanetSphere();
         if (window._logStep) window._logStep("[2] texture Three.js (retour sans image)");
-        else console.log("[2] texture Three.js (retour sans image)");
         if (window._logStepEnd) window._logStepEnd();
         IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
       },
@@ -738,76 +746,27 @@ function initPlanetThreeJS(
     // Log supprimé (non essentiel)
   }
 
-  // Ergonomie drag : rotation au drag, inertie à la relâche, puis smooth vers rotation par défaut (barycentre 1 ligne)
-  const dragState = {
-    defaultRotationY: sphere ? sphere.rotation.y : 0,
-    isDragging: false,
-    lastX: 0,
-    lastT: 0,
-    velocityY: 0
-  };
-  canvas._threeJSData.dragState = dragState;
-  const DRAG_SCALE = 0.004;
-  const INERTIA_DECAY = 0.96;
-  const SMOOTH_ALPHA = 0.05;
-
-  function onDragStart(e) {
-    console.log("[Terre drag] mousedown target=" + (e.target && e.target.id ? e.target.id : e.target.tagName) + " currentTarget=" + (e.currentTarget && e.currentTarget.tagName) + " canvas=" + (e.target === canvas));
-    dragState.isDragging = true;
-    dragState.lastX = e.clientX;
-    dragState.lastT = performance.now() / 1000;
-    dragState.velocityY = 0;
-  }
-  function onDragMove(e) {
-    if (!dragState.isDragging || !sphere) return;
-    const t = performance.now() / 1000;
-    const dt = Math.max(0.001, t - dragState.lastT);
-    const deltaX = e.clientX - dragState.lastX;
-    sphere.rotation.y += deltaX * DRAG_SCALE;
-    dragState.velocityY = (deltaX * DRAG_SCALE) / dt;
-    dragState.lastX = e.clientX;
-    dragState.lastT = t;
-  }
-  function onDragEnd() {
-    if (dragState.isDragging) console.log("[Terre drag] mouseup/leave");
-    dragState.isDragging = false;
-  }
-
-  container.style.pointerEvents = "auto";
-  canvas.style.pointerEvents = "auto";
+  // Drag désactivé : angles par défaut uniquement (pas de listeners)
+  let rotationY = sphere ? sphere.rotation.y : 0;
+  container.style.pointerEvents = "none";
+  canvas.style.pointerEvents = "none";
   canvas.style.position = "relative";
   canvas.style.zIndex = "1";
-  console.log("[Terre drag] listeners attachés canvas id=" + (canvas.id || "(no id)") + " container.pointerEvents=" + container.style.pointerEvents);
-  canvas.addEventListener("mousedown", onDragStart);
-  window.addEventListener("mousemove", onDragMove);
-  window.addEventListener("mouseup", onDragEnd);
-  window.addEventListener("mouseleave", onDragEnd);
 
-  // Animation - rotation continue ; drag → inertie → smooth vers defaultRotationY
-  let animationId = null;
   const speed = 1.0;
-
   function animate() {
     const isPaused = window.threeJSAnimationPaused;
     if (!sphere) {
       renderer.render(scene, camera);
-      animationId = requestAnimationFrame(animate);
+      requestAnimationFrame(animate);
       return;
     }
     if (!isPaused) {
-      dragState.defaultRotationY += 0.005 * speed;
-      if (dragState.isDragging) {
-        // rotation déjà mise à jour dans onDragMove
-      } else if (Math.abs(dragState.velocityY) > 0.0005) {
-        sphere.rotation.y += dragState.velocityY;
-        dragState.velocityY *= INERTIA_DECAY;
-      } else {
-        dragState.velocityY = 0;
-        sphere.rotation.y = sphere.rotation.y * (1 - SMOOTH_ALPHA) + dragState.defaultRotationY * SMOOTH_ALPHA;
-      }
+      rotationY += 0.005 * speed;
+      sphere.rotation.y = rotationY;
     }
     renderer.render(scene, camera);
-    animationId = requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
   }
   animate();
 
@@ -1016,6 +975,49 @@ if (typeof window !== "undefined") {
   window.updatePlanetLighting = updatePlanetLighting;
 }
 
+/** Met à jour la texture de la planète (terre) selon l’époque et infoTimeMa. Appelé à chaque updateTimeline pour que chaque action qui avance le temps change la texture. */
+function updatePlanetTextureFromDate() {
+  const cellTerre = document.getElementById("cell-terre");
+  if (!cellTerre) return;
+  const canvas = cellTerre.querySelector("canvas");
+  if (!canvas || !canvas._threeJSData || !canvas._threeJSData.sphere) return;
+  const DATA = window.DATA;
+  const TIMELINE = window.TIMELINE;
+  if (!DATA || !DATA["📜"] || DATA["📜"]["👉"] == null || !TIMELINE || !TIMELINE.length) return;
+  const idx = DATA["📜"]["👉"];
+  const epoch = TIMELINE[idx];
+  if (!epoch || epoch["▶"] == null) return;
+  const startYears = epoch["▶"];
+  const infoTimeMa = typeof window.infoTimeMa === "number" ? window.infoTimeMa : 0;
+  const path = getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
+  if (path === window._lastPlanetTexturePath) return;
+  window._lastPlanetTexturePath = path;
+  const sphere = canvas._threeJSData.sphere;
+  const textureName = path.split("/").pop() || path;
+  // Pause Three.js pour que l'angle ne change pas entre 2 textures ; play au compute:done (loader_panels, main.js)
+  if (typeof window !== "undefined") window.threeJSAnimationPaused = true;
+  const loader = new THREE.TextureLoader();
+  loader.load(
+    path,
+    function (loadedTexture) {
+      loadedTexture.wrapS = THREE.RepeatWrapping;
+      loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
+      const oldMap = sphere.material && sphere.material.map;
+      if (oldMap) oldMap.dispose();
+      sphere.material.map = loadedTexture;
+      console.log("🖼️ [texture] chargement OK:", textureName);
+    },
+    undefined,
+    function () {
+      console.log("🖼️ [texture] chargement erreur:", textureName);
+    }
+  );
+}
+if (typeof window !== "undefined") {
+  window.updatePlanetTextureFromDate = updatePlanetTextureFromDate;
+  window.getPlanetTexturePathFromEpoch = getPlanetTexturePathFromEpoch;
+}
+
 function createCell(
   x,
   y,
@@ -1176,14 +1178,12 @@ function createCell(
     }
     // Disque (cercle) : fond + stroke. Terre : radiusExobase (visible), sphère Three.js au centre à radius.
     if (nodeId === "terre" && planetEffect) {
-      // Dégradé radial : de radius/radiusExobase (fillColor) à 100% (fillColor alpha 0)
+      // Dégradé radial : centre (trou) rempli avec fillColor 0.5 alpha, puis dégradé vers bord (alpha 0)
       const innerPct = (radius / radiusExobase) * 100;
       let fillColorOuter = fillColor.replace(/,\s*[\d.]+\)\s*$/, ", 0)");
       if (fillColorOuter === fillColor) fillColorOuter = "rgba(0,0,0,0)";
-      // farthest-side : 100% = bord du disque (radiusExobase), pas le coin (farthest-corner)
-      const gradientCss = `radial-gradient(circle farthest-side at center, transparent 0%, transparent ${innerPct}%, ${fillColor} ${innerPct}%, ${fillColorOuter} 100%)`;
-      if (typeof pd === "function") pd("[createCell][organigramme.js] gradient radius=" + radius + " radiusExobase=" + radiusExobase + " innerPct=" + innerPct + " fillColor=" + fillColor + " fillColorOuter=" + fillColorOuter + " | " + gradientCss);
-      else { /* gradient ok */ }
+      // Centre 0% → innerPct% : même fillColor (0.5 alpha), plus de trou transparent
+      const gradientCss = `radial-gradient(circle farthest-side at center, ${fillColor} 0%, ${fillColor} ${innerPct}%, ${fillColorOuter} 100%)`;
       circleBg.style.background = gradientCss;
     } else {
       circleBg.style.backgroundColor = fillColor;
@@ -1322,14 +1322,14 @@ function createCell(
         // Forcer la désactivation des pseudo-éléments qui créent la sphère blanche
         planetContainer.style.setProperty("--before-display", "none");
         planetContainer.style.setProperty("--after-display", "none");
-        planetContainer.style.pointerEvents = "auto"; // Drag Terre : recevoir les événements souris
+        planetContainer.style.pointerEvents = "none";
 
         // Créer le canvas pour Three.js (planetSize = radius * 2 déjà défini ci-dessus)
         const canvas = document.createElement("canvas");
         canvas.style.width = "100%";
         canvas.style.height = "100%";
         canvas.style.display = "block";
-        canvas.style.pointerEvents = "auto"; // Drag Terre : ne pas bloquer la souris
+        canvas.style.pointerEvents = "none";
         planetContainer.appendChild(canvas);
 
         // Récupérer luxSaturation et lightDistance depuis la config de l'époque (si disponible)
@@ -1427,7 +1427,7 @@ function createCell(
         }
 
         logoSpan.appendChild(planetContainer);
-        logoSpan.style.pointerEvents = "auto"; // Terre : laisser passer la souris vers le canvas (drag)
+        logoSpan.style.pointerEvents = "none";
       } else {
         // Image normale sans effet planète
         const img = document.createElement("img");
@@ -3200,7 +3200,8 @@ cellOrder.forEach((nodeId) => {
       };
     }
   } else if (node.id === "terre" && node.epoch && Array.isArray(node.epoch)) {
-    // Trouver la configuration de l'époque courante
+    const interpretConfigValue = window.interpretConfigValue || (function (v) { return v; });
+    const charsImages = window.charsImages;
     const currentEpochName =
       (typeof window !== "undefined" && window.currentEpochName) ||
       "Corps Noir";
@@ -3209,34 +3210,27 @@ cellOrder.forEach((nodeId) => {
     );
 
     if (epochConfig) {
-      // Interpréter le logo si nécessaire (peut contenir {$ticTime} ou expressions)
-
-      // Picto (logo) vs texture Three.js : planetEffect utilise texture (text_*.png), sinon picto (charsImages)
+      // Picto (logo) vs texture Three.js : planetEffect = texture calculée depuis époque + infoTimeMa
       let logoForCell = epochConfig.logo;
-      let texturePath = null;
       if (epochConfig.planetEffect) {
-        texturePath =
-          epochConfig.texture ||
-          (window.configOrganigramme?.epochTextures && epochConfig.epochName
-            ? window.configOrganigramme.epochTextures[epochConfig.epochName]
-            : null);
-        if (texturePath) {
-          logoForCell =
-            typeof window.interpretConfigValue === "function"
-              ? window.interpretConfigValue(texturePath)
-              : texturePath;
-        }
-      }
-      if (!texturePath) {
-        if (
-          typeof epochConfig.logo === "string" &&
-          typeof window.interpretConfigValue === "function"
-        ) {
-          logoForCell = window.interpretConfigValue(epochConfig.logo);
-        }
-        if (window.charsImages && window.charsImages[logoForCell]) {
-          logoForCell = window.charsImages[logoForCell];
-        }
+        const idx =
+          typeof window.DATA !== "undefined" &&
+          window.DATA["📜"] &&
+          window.DATA["📜"]["👉"] != null
+            ? window.DATA["📜"]["👉"]
+            : 0;
+        const timelineEpoch =
+          window.TIMELINE && window.TIMELINE[idx] ? window.TIMELINE[idx] : null;
+        const startYears = timelineEpoch
+          ? timelineEpoch["▶"]
+          : (epochConfig["▶"] != null
+              ? epochConfig["▶"]
+              : 2.5e9);
+        const infoTimeMa = typeof window.infoTimeMa === "number" ? window.infoTimeMa : 0;
+        logoForCell = getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
+      } else {
+        logoForCell = typeof epochConfig.logo === "string" ? interpretConfigValue(epochConfig.logo) : epochConfig.logo;
+        if (charsImages && charsImages[logoForCell]) logoForCell = charsImages[logoForCell];
       }
 
       // Créer une configuration fusionnée avec les propriétés de l'époque
@@ -3252,34 +3246,25 @@ cellOrder.forEach((nodeId) => {
       };
       if (node.id === "terre") nodeConfig.logoScale = 1;
     } else if (node.epoch.length > 0) {
-      // Fallback : utiliser la dernière époque du tableau (permet d'alléger les répétitions)
+      // Fallback : dernière époque du tableau ; si planetEffect, texture = getPlanetTexturePathFromEpoch(▶, infoTimeMa)
       const lastEpoch = node.epoch[node.epoch.length - 1];
 
       let logoForCell = lastEpoch.logo || node.epoch[0].logo;
-      let texturePathLast = null;
       if (lastEpoch.planetEffect) {
-        texturePathLast =
-          lastEpoch.texture ||
-          (window.configOrganigramme?.epochTextures && lastEpoch.epochName
-            ? window.configOrganigramme.epochTextures[lastEpoch.epochName]
-            : null);
-        if (texturePathLast) {
-          logoForCell =
-            typeof window.interpretConfigValue === "function"
-              ? window.interpretConfigValue(texturePathLast)
-              : texturePathLast;
-        }
-      }
-      if (!texturePathLast) {
-        if (
-          typeof logoForCell === "string" &&
-          typeof window.interpretConfigValue === "function"
-        ) {
-          logoForCell = window.interpretConfigValue(logoForCell);
-        }
-        if (window.charsImages && window.charsImages[logoForCell]) {
-          logoForCell = window.charsImages[logoForCell];
-        }
+        const idx =
+          typeof window.DATA !== "undefined" &&
+          window.DATA["📜"] &&
+          window.DATA["📜"]["👉"] != null
+            ? window.DATA["📜"]["👉"]
+            : 0;
+        const timelineEpoch =
+          window.TIMELINE && window.TIMELINE[idx] ? window.TIMELINE[idx] : null;
+        const startYears = timelineEpoch ? timelineEpoch["▶"] : 2.5e9;
+        const infoTimeMa = typeof window.infoTimeMa === "number" ? window.infoTimeMa : 0;
+        logoForCell = getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
+      } else {
+        logoForCell = typeof logoForCell === "string" ? interpretConfigValue(logoForCell) : logoForCell;
+        if (charsImages && charsImages[logoForCell]) logoForCell = charsImages[logoForCell];
       }
 
       nodeConfig = {
@@ -3793,9 +3778,9 @@ function generateTimelineFromConfig() {
         "onclick",
         `setEpochFromEpochButton('${epochId.replace(/'/g, "\\'")}')`,
       );
-      // Libellé timeline : 🦴 = Paléozoïque (forcé ici pour éviter cache alphabet.js)
+      // Libellé timeline : 🌿 = Paléozoïque (forcé ici pour éviter cache alphabet.js)
       const epochLabel =
-        epochId === "🦴"
+        epochId === "🌿"
           ? "Paléozoïque"
           : (window.CHARS_DESC && window.CHARS_DESC[epochId]) || epochId;
       // Ne pas utiliser title natif, utiliser addCustomTooltip à la place
@@ -3823,7 +3808,7 @@ function generateTimelineFromConfig() {
 
       epochsContainer.appendChild(button);
 
-      // Ajouter le tooltip personnalisé (epochLabel = Paléozoïque pour 🦴)
+      // Ajouter le tooltip personnalisé (epochLabel = Paléozoïque pour 🌿)
       if (typeof window !== "undefined" && epochLabel) {
         addCustomTooltip(button, epochLabel);
       }

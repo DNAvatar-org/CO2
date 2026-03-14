@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.4
+// Version 1.1.6
 // Date: [March 2025]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -15,6 +15,7 @@
 // - v1.1.3 : setEpoch : même pattern insertBefore+three:ready si planetEffect ; _logStep helper console.groupCollapsed
 // - v1.1.4 : const MAJUSCULE = window.MAJUSCULE en entrée de chaque fonction (données vivantes, comme imports)
 // - v1.1.5 : updateDisplay bloc albedo : logosOrEmpty au lieu de const LOGOS = LOGOS (TDZ) ; pas de window.MAJUSCULE hors init
+// - v1.1.6 : Three.js pause avant changement texture (setEpoch/updateHadeenTexture), play au compute:done (loader_panels)
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -1943,7 +1944,7 @@ function setEpoch(epochName) {
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
     const epochNameToEmojiForButton = {
         'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🥟',
-        'Paléozoïque': '🦴', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
+        'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
     if (DATA['📜'] && DATA['📜']['🗿'] === epochIdForButton) {
@@ -1953,6 +1954,7 @@ function setEpoch(epochName) {
         if (clickedButton) clickedButton.classList.add('selected');
         // TicTime à 0 au clic époque (même si même époque)
         window.infoTimeMa = 0;
+        window._lastPlanetTexturePath = null;
         window.timelineFrame = 0;
         SYNC_STATE.ticTime = 0;
         window.syncToScie({ ticTime: 0 });
@@ -1975,6 +1977,7 @@ function setEpoch(epochName) {
     // IMPORTANT: Doit être fait AVANT l'interprétation du logo pour que ticTime = 0
     if (typeof window !== 'undefined') {
         window.infoTimeMa = 0;
+        window._lastPlanetTexturePath = null;
         // Nouvelle époque : reset compteurs boutons et dernier bouton cliqué
         DATA['📜']['📿☄️'] = 0;
         DATA['📜']['📿💫'] = 0;
@@ -2038,7 +2041,7 @@ function setEpoch(epochName) {
             'Hadéen': '🔥',
             'Archéen': '🦠',
             'Protérozoïque': '🥟',
-            'Paléozoïque': '🦴',
+            'Paléozoïque': '🌿',
             'Mésozoïque': '🦕',
             'Cénozoïque': '🦣',
             'Industriel': '🚂',
@@ -2164,10 +2167,17 @@ function setEpoch(epochName) {
                     savedRotationY = window.savedPlanetRotationY;
                 }
                 
-                // Interpréter les valeurs dynamiques : texture (text_*.png) si planetEffect, sinon logo (picto)
-                let logoPath = (epochConfig.planetEffect && epochConfig.texture)
-                    ? interpretConfigValue(epochConfig.texture)
-                    : interpretConfigValue(epochConfig.logo);
+                // planetEffect = texture calculée (getPlanetTexturePathFromEpoch) ; sinon logo (picto) interprété
+                let logoPath;
+                if (epochConfig.planetEffect && typeof window.getPlanetTexturePathFromEpoch === 'function') {
+                    const idx = DATA['📜'] && DATA['📜']['👉'] != null ? DATA['📜']['👉'] : 0;
+                    const tlEpoch = TIMELINE && TIMELINE[idx] ? TIMELINE[idx] : null;
+                    const startYears = tlEpoch && tlEpoch['▶'] != null ? tlEpoch['▶'] : 2.5e9;
+                    const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
+                    logoPath = window.getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
+                } else {
+                    logoPath = interpretConfigValue(epochConfig.logo);
+                }
                 
                 // Si le logo contient encore {$ticTime} après interprétation, c'est une erreur
                 if (typeof logoPath === 'string' && logoPath.includes('{$ticTime}')) {
@@ -2220,6 +2230,8 @@ function setEpoch(epochName) {
 
                 if (epochConfig.planetEffect) {
                     // 🔒 Pas de trou : nouvelle cellule insérée DERRIÈRE l'ancienne, ancienne retirée au three:ready
+                    // Pause Three.js pour que l'angle ne change pas entre 2 textures ; play au compute:done (loader_panels)
+                    window.threeJSAnimationPaused = true;
                     IO_LISTENER.emit('three:runStart');
                     parent.insertBefore(newCell, oldCell);
                     const newCanvas = newCell.querySelector('canvas');
@@ -2571,7 +2583,7 @@ function setEpoch(epochName) {
 
 // Fonction pour mettre à jour le niveau H2O directement (similaire à updateCO2LevelDirect)
 function updateH2OLevelDirect(h2o_total_percent) {
-    const IO_LISTENER = IO_LISTENER;
+    const IO_LISTENER = window.IO_LISTENER;
     const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && LOGOS && LOGOS.H2O) ? LOGOS.H2O : '💧';
@@ -2921,6 +2933,12 @@ function runMainInit() {
     const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
     const FUNCS_ORGANIGRAMME = window.FUNCS_ORGANIGRAMME;
     if (typeof window.pd === 'function') window.pd('runMainInit', 'main.js', 'enter readyState=' + document.readyState);
+    // Play Three.js après flux:lastDrawn (toujours play pour la planète, DATA['🔘']['🔘🎞'] = autre chose)
+    window.IO_LISTENER.on('flux:lastDrawn', function () {
+        window.threeJSAnimationPaused = false;
+        window.updateThreePlayIndicator();
+        console.log('[main.js][flux:lastDrawn] Three.js play');
+    }, 'main.js:threePlay');
     // 🔒 Légende des emojis (affichée une seule fois au démarrage)
     if (!window._logLegendShown) {
         window._logLegendShown = true;
@@ -2949,16 +2967,25 @@ function runMainInit() {
                 window.fpsLevel = 'rapide';
                 window.showSpectralBackground = true;
                 
-                // Source unique anim : DATA['🔘']['🔘🎞']
+                // Indicateur 🎬 uniquement quand play (pas de symbole pause)
+                window.updateThreePlayIndicator = function () {
+                    var el = document.getElementById('three-play-indicator');
+                    if (!el) {
+                        var flux = document.getElementById('flux-diagram');
+                        el = document.createElement('span');
+                        el.id = 'three-play-indicator';
+                        el.setAttribute('aria-hidden', 'true');
+                        el.style.cssText = 'position:absolute;top:4px;right:4px;font-size:1.2em;z-index:9999;pointer-events:none;';
+                        flux.style.position = flux.style.position || 'relative';
+                        flux.appendChild(el);
+                    }
+                    el.textContent = window.threeJSAnimationPaused ? '' : '🎬';
+                };
                 const animCb = document.getElementById('plot-anim-toggle-checkbox');
-                if (animCb) {
-                    animCb.addEventListener('change', (e) => {
-                        const enabled = e.target.checked;
-                        DATA['🔘']['🔘🎞'] = enabled;
-                        if (!enabled) window.threeJSAnimationPaused = true;
-                        else window.threeJSAnimationPaused = false;
-                    });
-                }
+                animCb.addEventListener('change', (e) => {
+                    DATA['🔘']['🔘🎞'] = e.target.checked;
+                });
+                window.updateThreePlayIndicator();
                 
                 // 🔒 Initialiser la précision de convergence depuis les radio buttons (variable globale unique)
                 const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
@@ -3071,10 +3098,19 @@ function updateHadeenTexture() {
     const epochConfig = terreNode.epoch.find(e => e.epochName === 'Hadéen');
     if (!epochConfig) return;
     
-    // Texture (text_*.png) si planetEffect, sinon logo (picto)
-    const newLogoPath = (epochConfig.planetEffect && epochConfig.texture)
-        ? interpretConfigValue(epochConfig.texture)
-        : interpretConfigValue(epochConfig.logo);
+    // planetEffect = texture calculée (getPlanetTexturePathFromEpoch) ; sinon logo (picto)
+    let newLogoPath;
+    if (epochConfig.planetEffect && typeof window.getPlanetTexturePathFromEpoch === 'function') {
+        const DATA = window.DATA;
+        const TIMELINE = window.TIMELINE;
+        const idx = DATA && DATA['📜'] && DATA['📜']['👉'] != null ? DATA['📜']['👉'] : 0;
+        const tlEpoch = TIMELINE && TIMELINE[idx] ? TIMELINE[idx] : null;
+        const startYears = tlEpoch && tlEpoch['▶'] != null ? tlEpoch['▶'] : 4.5e9;
+        const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
+        newLogoPath = window.getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
+    } else {
+        newLogoPath = interpretConfigValue(epochConfig.logo);
+    }
     
     // Interpréter lightDistance aussi
     let lightDistance = epochConfig.lightDistance;
@@ -3100,6 +3136,8 @@ function updateHadeenTexture() {
     const oldCell = document.getElementById('cell-terre');
     if (oldCell) {
         console.log('[recreateTerre] three:runStart (sans canvas) — caller: ' + (new Error().stack.split('\n')[2] || '?').trim());
+        // Pause Three.js pour que l'angle ne change pas entre 2 textures ; play au three:ready uniquement
+        window.threeJSAnimationPaused = true;
         IO_LISTENER.emit('three:runStart');
         // 🔒 Sauvegarder l'angle de rotation AVANT tout changement
         const canvas = oldCell.querySelector('canvas');
