@@ -476,14 +476,14 @@
 .synthese_Temp {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    font-family: 'ProggyDotted';
+    /* align-items: center; */
+    /* font-family: 'ProggyDotted'; */
     justify-content: flex-start;
     gap: 4px;
-    width: 150px;
-    position: absolute;
-    bottom: 5px;
-    left: 5px;
+    width: 190px;
+    position: relative;
+    top: -25px;
+    left: 100px;
     padding: 5px 10px;
     z-index: 10001;
 }
@@ -493,19 +493,95 @@
 }
 
 .synthese_Temp .thermometer-icon {
+    font-size: 25px;
+    line-height: 1;
+    margin-right: 10px;
+    display: inline-flex;
     transition: filter 0.3s ease, text-shadow 0.3s ease;
+}
+
+.synthese_Temp-temp-line {
     display: flex;
     align-items: center;
-    /* Filtre pour changer uniquement la couleur rouge du thermomètre */
-    /* Utilise hue-rotate pour changer la teinte du rouge vers une autre couleur */
-    /* Exemples de valeurs : 0deg = rouge, 120deg = vert, 180deg = cyan, 240deg = bleu, 300deg = magenta */
-    /* Pour changer en bleu : hue-rotate(240deg) */
-    /* Pour changer en vert : hue-rotate(120deg) */
-    /* Pour changer en cyan : hue-rotate(180deg) */
-    /* Pour changer en jaune : hue-rotate(60deg) */
-    /* Pour changer en violet : hue-rotate(300deg) */
-    /* Décommentez et ajustez la valeur selon la couleur souhaitée : */
-    /* filter: hue-rotate(240deg); */
+    font-size: 15px;
+    line-height: 1.2;
+}
+.synthese_Temp-temp-line #temp-unit-synthese {
+    font-size: 18px;
+}
+
+.synthese_Temp-pressure {
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+/* synthese_Temp : variante 2 colonnes (sans coupler à #visu-panel .title-container) */
+.synthese_Temp.synthese_Temp-two-cols {
+    position: relative;
+    width: 270px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+}
+.synthese_Temp-two-cols .synthese_Temp-col-left {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 140px;
+}
+.synthese_Temp-two-cols .synthese_Temp-sep {
+    width: 1px;
+    min-height: 36px;
+    background: rgba(255, 255, 255, 0.25);
+    flex-shrink: 0;
+}
+.synthese_Temp-two-cols .synthese_Temp-col-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding-left: 10px;
+}
+.synthese_Temp .visu_timeline-epoch-section {
+    min-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    width: 100%;
+}
+.synthese_Temp .visu_timeline-epoch-name-wrap {
+    text-align: right;
+    margin-right: 10px;
+}
+
+.visu_epoch-name {
+    font-size: 15px;
+    /* font-weight: 600; */
+    display: block;
+    margin-top: 2px;
+    width: 100%;
+    word-break: break-word;
+}
+
+/* Bloc epoch (3 lignes) : ex timeline-date-display / epoch-start-time / info-time, noms en synthese_epoch-* */
+.synthese_epoch-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+}
+.synthese_epoch-start {
+    font-size: 10px;
+    display: block;
+    margin-top: 2px;
+    width: 100%;
+}
+.synthese_epoch-info {
+    font-size: 10px;
+    display: block;
+    margin-top: 2px;
+    width: 100%;
 }
 
 .controle-simulation-title {

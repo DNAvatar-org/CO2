@@ -199,8 +199,6 @@ function updateTimeline() {
     const timelineDisplay = document.getElementById('timeline-display');
     const frameDisplay = document.getElementById('frame-display');
     const infoTimeDisplay = document.getElementById('info-time');
-    const epochNameTempDisplay = document.getElementById('epoch-name-temp');
-    const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
 
     const years = timelineFrame * YEARS_PER_FRAME;
 
@@ -232,12 +230,6 @@ function updateTimeline() {
         }
         if (infoTimeDisplay.textContent !== newText) {
             infoTimeDisplay.textContent = newText;
-        }
-        if (epochNameTempDisplay && currentEpoch) {
-            const syntheseLabel = currentEpoch + '\n' + newText;
-            if (epochNameTempDisplay.textContent !== syntheseLabel) {
-                epochNameTempDisplay.textContent = syntheseLabel;
-            }
         }
     }
 

@@ -2286,27 +2286,10 @@ function setEpoch(epochName) {
         epochStartTimeDisplay.textContent = formatYears(yearsForDisplay);
     }
 
-    // Afficher le nom de l'époque dans la timeline
+    // Afficher le nom de l'époque (dans synthese_Temp divGlass)
     const epochNameDisplay = document.getElementById('epoch-name');
     if (epochNameDisplay) {
         epochNameDisplay.textContent = epoch.name;
-    }
-
-    // Afficher le nom de l'époque dans la div de température
-    const epochNameTempDisplay = document.getElementById('epoch-name-temp');
-    if (epochNameTempDisplay) {
-        // Récupérer le nom depuis la timeline de configOrganigramme
-        let displayName = epoch.name;
-        if (window.configOrganigramme && window.configOrganigramme.timeline) {
-            // Chercher l'epoch dans la timeline par nom (plus fiable que par id)
-            const timelineEpoch = window.configOrganigramme.timeline.find(item =>
-                item.type === 'epoch' && item.name === epochName
-            );
-            if (timelineEpoch) {
-                displayName = timelineEpoch.name;
-            }
-        }
-        epochNameTempDisplay.textContent = displayName;
     }
 
     // Réinitialiser "+0 Ma" quand on clique sur une époque
@@ -3018,15 +3001,6 @@ function runMainInit() {
     // 🔒 setEpoch("Corps noir") a déjà été appelé plus haut (avant calculateInitialData)
     // Ici on fait juste les initialisations complémentaires si nécessaire
     // (setEpoch a déjà initialisé les variables globales et sélectionné le bouton)
-
-    // Initialiser le nom de l'époque dans la div de température
-    const epochNameTempDisplay = document.getElementById('epoch-name-temp');
-    if (epochNameTempDisplay) {
-        const timelineEpoch = window.configOrganigramme.timeline.find(item =>
-            item.type === 'epoch' && item.id === '⚫'
-        );
-        epochNameTempDisplay.textContent = timelineEpoch.name;
-    }
 
     // Initialiser le nom de l'époque au chargement (même nom que l'époque chargée, ex. Corps Noir)
     const epochNameDisplay = document.getElementById('epoch-name');

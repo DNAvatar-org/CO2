@@ -32,7 +32,7 @@
     --visu-top-total: calc(20px + var(--visu-tabs-h) + 5px);
     /* Footer par défaut ; paliers interm/max quand 100vh >= 808/848 (écart 5px) */
     --visu-footer-h: var(--visu-footer-min-h);
-    --visu-title-h: 70px;
+    --visu-title-h: 110px;
     --visu-gap: 5px;
     --visu-reserve: calc(var(--visu-top-total) + var(--visu-footer-h));
     /* Hauteur max du panel visu (pour laisser place au footer) */
@@ -287,6 +287,20 @@ sup {
         flex: 0 1 auto;
         min-height: 0;
     }
+}
+
+/* Titre visu : colonne (titre, sous-titre, synthese_Temp empilés), texte à gauche */
+#visu-panel .title-container {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 4px;
+    text-align: left;
+}
+#visu-panel .title-container{
+    margin: 0;
+    font-size: 13px;
+    font-weight: normal;
 }
 
 /* Desktop (min-width 1000px) : container = 670px, titre + flux + timeline/plot */
@@ -705,7 +719,8 @@ h1 {
     font-size: 10px;
     margin: 2px 0 0 0;
     font-weight: normal;
-    line-height: 1.2;
+    line-height: 1.0;
+    width: 100px;
 }
 
 .book-reference {
@@ -743,59 +758,13 @@ h1 {
 }
 */
 
-/* 1. Section Époque (📜) - nom + date, toute la largeur (logo 🕰 supprimé) */
-.visu_timeline-epoch-section {
-    min-height: 45px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-top: 8px;
-    margin-bottom: 0px;
-    width: 100%;
-}
-.visu_timeline-epoch-name-wrap { width: 100%; text-align: center; }
-.visu_epoch-name { font-size: 12px; font-weight: 600; display: block; margin-top: 2px; width: 100%; word-break: break-word; }
 
-/* 2. Section Date (📅) - trait en haut comme horloge-section */
-.visu_timeline-date-section {
-    width: 100%;
-    height: 45px;
-    padding-top: 7px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.timeline-date-display {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
 
 .timeline-hourglass {
     font-size: 18px;
     display: block;
     cursor: default;
     user-select: text;
-}
-
-.epoch-start-time {
-    font-size: 10px;
-    display: block;
-    font-weight: bold;
-    margin-top: 2px;
-}
-
-.timeline-display .info-time {
-    font-size: 10px;
-    font-weight: bold;
-    display: block;
-    margin-top: 2px;
 }
 
 /* Styles de boutons déplacés dans buttons.css */

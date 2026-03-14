@@ -8,22 +8,27 @@
 
     <div class="title-container divGlass">
         <h1>Bilan Radiatif Terrestre</h1>
-        <p class="title-subtitle">Base de la météorologie<br>Comprendre les incidences de chaque facteur</p>
+        <p class="title-subtitle">Base de la météorologie</p>
+        <div class="synthese_Temp synthese_Temp-two-cols">
+            <div class="synthese_Temp-col synthese_Temp-col-left">
+                <div class="visu_timeline-epoch-section">
+                    <div class="synthese_epoch-row visu_timeline-epoch-name-wrap">
+                        <span id="epoch-name" class="visu_epoch-name" aria-label="Nom de l'époque">Corps Noir</span>
+                        <span class="synthese_epoch-start" id="epoch-start-time">-5000 Ma</span>
+                        <span class="synthese_epoch-info" id="info-time">+0 Ma</span>
+                    </div>
+                </div>
+            </div>
+            <div class="synthese_Temp-sep" aria-hidden="true"></div>
+            <div class="synthese_Temp-col synthese_Temp-col-right">
+                <div class="synthese_Temp-temp-line"><span class="thermometer-icon">🌡️</span> <span id="temp-surface-synthese">--</span><span id="temp-unit-synthese">°C</span></div>
+                <div id="pressure-surface-synthese" class="synthese_Temp-pressure">🎈 -- atm</div>
+            </div>
+        </div>
     </div>
 
     <div class="flux-diagram-wrapper">
-        <div class="flux-diagram divGlass" id="flux-diagram">
-            <div class="synthese_Temp divGlass">
-                <div id="epoch-name-temp" style="font-size: 12px; font-weight: bold; line-height: 1.2; text-align: center; width: 100%; white-space: pre-line;"></div>
-                <div class="synthese_Temp-row" style="display: flex; align-items: center; gap: 8px;">
-                    <div class="thermometer-icon" style="font-size: 32px; line-height: 1; display: flex; align-items: center;">🌡️</div>
-                    <div style="font-size: 16px; font-weight: bold; line-height: 1.2; display: flex; align-items: center;">
-                        <span id="temp-surface-synthese">--</span><span id="temp-unit-synthese" style="font-size: 18px;">°C</span>
-                    </div>
-                </div>
-                <div id="pressure-surface-synthese" style="font-size: 14px; line-height: 1.2;">🎈 -- atm</div>
-            </div>
-        </div>
+        <div class="flux-diagram divGlass" id="flux-diagram"></div>
     </div>
 
     <div class="plot-container-wrapper divGlass" style="position: relative;">
@@ -55,14 +60,7 @@
                 <div class="compute-tic-loader__ring"></div>
             </div>
         </div>
-        <!-- Frise verticale : époque (nom + date) et 📅 date ; événements sans 🕰 -->
-        <div class="visu_timeline-epoch-section">
-            <div class="timeline-date-display visu_timeline-epoch-name-wrap">
-                <span id="epoch-name" class="visu_epoch-name" aria-label="Nom de l'époque">Corps Noir</span>
-                <span class="epoch-start-time" id="epoch-start-time">-5000 Ma</span>
-                <span class="info-time" id="info-time">+0 Ma</span>
-            </div>
-        </div>
+        <!-- Frise verticale : événements ; nom époque + dates déplacés dans synthese_Temp -->
         <div class="visu_timeline-horloge-section">
             <div class="visu_timeline-horloge-content">
                 <div class="timeline-events-logos" id="timeline-events-logos"></div>
