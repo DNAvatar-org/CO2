@@ -152,7 +152,8 @@ function buildEpochScale() {
 }
 
 /** Position Y (px) du centre du texte, relatif au padding-edge du conteneur. rows = .epoch-date (span).
- * Échelle : Ma négatives, fin = 2100 (-0.0021) ; 1800 (-0.0018) est avant la fin. Donc "à la fin" = currentMa <= scaleMa[last]. */
+ * Échelle : Ma négatives, fin = 2100 (-0.0021). Quand currentMa tombe sur un point (ex. 2000 = -0.002),
+ * on prend le segment le plus récent qui le contient (ex. [2000,2100]) pour que le curseur soit sur la bonne ligne. */
 function getCursorTopPx(container, rows, scaleMa, currentMa) {
     const containerRect = container.getBoundingClientRect();
     const paddingTop = parseFloat(getComputedStyle(container).paddingTop) || 0;
@@ -161,20 +162,27 @@ function getCursorTopPx(container, rows, scaleMa, currentMa) {
         return (rect.top - containerRect.top) + rect.height / 2 - paddingTop;
     }
 
+    // Échelle : scaleMa[0] = plus ancien (-5000), scaleMa[last] = plus récent (-0.0021 = 2100). Valeurs en Ma négatifs.
     if (currentMa <= scaleMa[0]) {
         return toPaddingTop(rows[0].getBoundingClientRect());
     }
-    if (currentMa <= scaleMa[scaleMa.length - 1]) {
+    // Dernière ligne uniquement quand on est exactement sur la fin (2100). Pas "currentMa <= scaleMa[last]" : ça serait vrai pour -4500 aussi.
+    const lastMa = scaleMa[scaleMa.length - 1];
+    if (Math.abs(currentMa - lastMa) < 1e-9) {
         return toPaddingTop(rows[rows.length - 1].getBoundingClientRect());
     }
 
-    let i = 0;
-    for (; i < scaleMa.length - 1; i++) {
+    // Parcourir de la fin vers le début : sur une borne (ex. 2000) on prend [2000,2100] → curseur sur 2000
+    let i = scaleMa.length - 2;
+    for (; i >= 0; i--) {
         const maMin = Math.min(scaleMa[i], scaleMa[i + 1]);
         const maMax = Math.max(scaleMa[i], scaleMa[i + 1]);
         if (currentMa >= maMin && currentMa <= maMax) {
             break;
         }
+    }
+    if (i < 0) {
+        i = 0;
     }
 
     const r0 = rows[i].getBoundingClientRect();

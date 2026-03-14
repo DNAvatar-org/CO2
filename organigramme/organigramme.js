@@ -3844,11 +3844,10 @@ function generateTimelineFromConfig() {
     }
   });
 
-  // Borne finale : début (▶) de la dernière époque pour que 1800/2000 se placent correctement (plus de Ma)
+  // Borne finale de la frise : toujours 2100 (📱 a ▶=2000, on affiche 2000 entre 🚂 et 📱 puis 2100 en bas)
   if (timeline.length > 0) {
-    const lastEpoch = timeline[timeline.length - 1];
-    const lastStart = lastEpoch["📅"] && lastEpoch["▶"] != null ? lastEpoch["▶"] : 2100;
-    epochsContainer.appendChild(createVerticalDateItem(formatDateMa(lastStart)));
+    const lastScaleYear = 2100;
+    epochsContainer.appendChild(createVerticalDateItem(formatDateMa(lastScaleYear)));
   }
 }
 
