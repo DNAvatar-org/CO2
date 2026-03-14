@@ -1,3 +1,11 @@
+ORDRE IMPERATIF de codage
+0) Les objets window.MAJUSCULE sont des données vivantes ; il faut les lire à chaque entrée de fonction (comme des imports)
+1) les fonctions commencent par une liste de const MAJUSCULE=window.MAJUSCULE
+2) les window.minuscule sont suspect, car ils sont sensés etre rangés dans un objet window.MAJUSCULE
+3) donc, toute trace de window.* devient suspect !!!
+4) lit .cursor/*.mdc
+
+
 # Liste window.MAJUSCULE — créateur / remplisseur
 # Format: MAJUSCULE / + creater / ++ filler
 # Fichier: window_MAJUSCULE_creater_filler.txt

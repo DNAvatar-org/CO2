@@ -19,6 +19,8 @@
 // - Textures : window.configOrganigramme.epochTextures (configOrganigramme.js) → text_*.png pour sphères
 // planetEffect=true → texture (Three.js) ; planetEffect=false → picto (charsImages)
 
+// Pas de const DATA/TIMELINE ici (évite redeclaration avec main.js) — utiliser window.DATA / window.TIMELINE
+
 // Variables globales pour l'état des boutons (sélectionnés par défaut)
 if (typeof window !== "undefined") {
   // 🔒 VARIABLES GLOBALES UNIQUES : Seule référence pour l'état des boutons EDS
@@ -29,7 +31,7 @@ if (typeof window !== "undefined") {
   window.isH2O_eds = true;
   window.isAlbedo = true;
 
-  // Source unique UI : CONFIG_COMPUTE pour la précision, DATA['🔘']['🔘🎞'] pour l'animation.
+  // Source unique UI : CONFIG_COMPUTE pour la précision, window.DATA['🔘']['🔘🎞'] pour l'animation.
   window.CONFIG_COMPUTE.convergencePrecisionK = 0.1;
 
   // Variables legacy (à supprimer progressivement, gardées pour compatibilité temporaire)
@@ -667,18 +669,20 @@ function initPlanetThreeJS(
     // Si un nouveau rayon est fourni, recalculer sphereRadius
     let currentSphereRadius = newRadius !== null ? newRadius : sphereRadius;
 
+    const wasUpdating = !!sphere;
     if (sphere) {
       scene.remove(sphere);
       if (sphere.geometry) sphere.geometry.dispose();
       if (sphere.material) sphere.material.dispose();
     }
 
-    // Ajuster la distance de la caméra pour que la sphère remplisse le container
-    // Utiliser la même distance fixe basée sur planetSize (pas sur le rayon)
-    const distance = planetSize / 30.5; // Distance fixe basée sur la taille du container
-    camera.position.set(0, 0, distance);
-    camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
+    // Ne réinitialiser la caméra que lors de la première création (pas au changement de texture / autre événement)
+    if (!wasUpdating) {
+      const distance = planetSize / 30.5;
+      camera.position.set(0, 0, distance);
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+    }
 
     // Ajuster la position de la lumière (seulement si c'est une DirectionalLight)
     if (directionalLight) {
@@ -1318,14 +1322,14 @@ function createCell(
         // Forcer la désactivation des pseudo-éléments qui créent la sphère blanche
         planetContainer.style.setProperty("--before-display", "none");
         planetContainer.style.setProperty("--after-display", "none");
-        planetContainer.style.pointerEvents = "none"; // Survol/tooltip sur circleBg, pas sur le canvas
+        planetContainer.style.pointerEvents = "auto"; // Drag Terre : recevoir les événements souris
 
         // Créer le canvas pour Three.js (planetSize = radius * 2 déjà défini ci-dessus)
         const canvas = document.createElement("canvas");
         canvas.style.width = "100%";
         canvas.style.height = "100%";
         canvas.style.display = "block";
-        canvas.style.pointerEvents = "none"; // Survol/tooltip sur circleBg
+        canvas.style.pointerEvents = "auto"; // Drag Terre : ne pas bloquer la souris
         planetContainer.appendChild(canvas);
 
         // Récupérer luxSaturation et lightDistance depuis la config de l'époque (si disponible)
@@ -1423,7 +1427,7 @@ function createCell(
         }
 
         logoSpan.appendChild(planetContainer);
-        logoSpan.style.pointerEvents = "none"; // Survol/tooltip sur circleBg (case centrale)
+        logoSpan.style.pointerEvents = "auto"; // Terre : laisser passer la souris vers le canvas (drag)
       } else {
         // Image normale sans effet planète
         const img = document.createElement("img");
@@ -3824,9 +3828,11 @@ function generateTimelineFromConfig() {
         addCustomTooltip(button, epochLabel);
       }
 
-      // Entre deux époques : date = début de l'époque suivante (▶) → 34 Ma, 1800, 2025
+      // Entre deux époques : date = début de l'époque suivante (▶) → 34 Ma, 1800, 2000, 2100
+      // Dernière paire (Industriel → Aujourd'hui) : afficher 2000 entre les deux, borne finale = 2100
       if (i < timeline.length - 1) {
-        const boundaryYears = timeline[i + 1]["▶"];
+        const isLastPair = i === timeline.length - 2;
+        const boundaryYears = isLastPair ? 2000 : timeline[i + 1]["▶"];
         const dateStr = formatDateMa(boundaryYears);
         const dateItem = createVerticalDateItem(dateStr);
         epochsContainer.appendChild(dateItem);
@@ -3838,9 +3844,11 @@ function generateTimelineFromConfig() {
     }
   });
 
-  // Borne finale : 2100 (après la dernière époque)
+  // Borne finale : début (▶) de la dernière époque pour que 1800/2000 se placent correctement (plus de Ma)
   if (timeline.length > 0) {
-    epochsContainer.appendChild(createVerticalDateItem("2100"));
+    const lastEpoch = timeline[timeline.length - 1];
+    const lastStart = lastEpoch["📅"] && lastEpoch["▶"] != null ? lastEpoch["▶"] : 2100;
+    epochsContainer.appendChild(createVerticalDateItem(formatDateMa(lastStart)));
   }
 }
 
@@ -4017,6 +4025,9 @@ window.updateFluxLabels = function (eventId) {
     case "cycleCalcul":
     case "ProcessFinished":
       if (!D["📊"] || typeof D["📊"].total_flux !== "number") return;
+      if (!window.plotData) {
+        window.plotData = { lambda_range: null, current: null, co2_ppm: 0, ch4_ppm: 0, temp_surface: 0 };
+      }
       epochId = D["📜"]["🗿"];
       var ep = window.configOrganigramme.timeline.find(function (e) {
         return e.type === "epoch" && e.id === epochId;
@@ -4056,7 +4067,7 @@ window.updateFluxLabels = function (eventId) {
           epoch.total_atmosphere_mass_kg === undefined
         );
       })();
-      // cycleCalcul / ProcessFinished : garder l'albédo calculé (DATA['🪩']['🍰🪩📿']), ne pas écraser
+      // cycleCalcul / ProcessFinished : garder l'albédo calculé (window.DATA['🪩']['🍰🪩📿']), ne pas écraser
       break;
     default:
       return;
@@ -5436,7 +5447,7 @@ window.updateFluxLabels = function (eventId) {
   // S'assurer que le résultat est correct (0% si albedo = 1, 100% si albedo = 0)
   updateLabel("passing_albedo_percent", passing_albedo_percent);
 
-  // Afficher le barycentre fine-tuning CLOUD_SW sous le bouton 🪩 (source: DATA['🎚️'].baryByGroup)
+  // Afficher le barycentre fine-tuning CLOUD_SW sous le bouton 🪩 (source: window.DATA['🎚️'].baryByGroup)
   const cloudBaryRaw = Number(window.DATA['🎚️'].baryByGroup.CLOUD_SW);
   const cloudBary = Number.isFinite(cloudBaryRaw) ? Math.max(0, Math.min(100, cloudBaryRaw)) : 0;
   updateLabel(

@@ -1,8 +1,8 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.3
-// Date: [January 2025]
+// Version 1.1.4
+// Date: [March 2025]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -13,6 +13,8 @@
 // - v1.1.1 : retrait precisionFactor/fpsPrecisionFactor (FPS.js v1.2.0 remplace Précision par Mémoire)
 // - v1.1.2 : updateHadeenTexture : nouvelle cellule insérée derrière l'ancienne, retrait ancienne au three:ready (évite disparition texture)
 // - v1.1.3 : setEpoch : même pattern insertBefore+three:ready si planetEffect ; _logStep helper console.groupCollapsed
+// - v1.1.4 : const MAJUSCULE = window.MAJUSCULE en entrée de chaque fonction (données vivantes, comme imports)
+// - v1.1.5 : updateDisplay bloc albedo : logosOrEmpty au lieu de const LOGOS = LOGOS (TDZ) ; pas de window.MAJUSCULE hors init
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -21,7 +23,8 @@
 //      bloque le main thread ; le setTimeout laisse Plotly finir avant de peindre le canvas.
 //      C'est le seul timeout métier autorisé par exception à _REGLE_SYNC_SCRIPTS.
 // ============================================================================
-
+// MAJUSCULE : const MAJUSCULE = window.MAJUSCULE en entrée de chaque fonction (comme imports).
+// Données vivantes, lues à chaque appel. Pas de const au niveau fichier (évite redéclaration si script 2×).
 // ============================================================================
 // DRAW FLUX — séquence de dessin différé (1 RAF + setTimeout dans plot.js)
 // Async autorisé par exception : voir NOTE ASYNC en tête de fichier.
@@ -87,20 +90,19 @@ let fpsTimerActive = true; // État du timer d'une seconde
 let volcanoH2OBonus = 0; // Bonus H2O en % (0 à 100)
 let volcanoIceReduction = 0; // Réduction de glace en % (0 à 100)
 
-// Exposer globalement pour les calculs
+// Exposer globalement pour les calculs (const en entrée = lecture courante window)
 if (typeof window !== 'undefined') {
-    window.volcanoH2OBonus = 0;
-    window.volcanoIceReduction = 0;
-    window.fps = 0; // Exposer le FPS pour l'optimisation de la visualisation spectrale
-    window.methaneEnabled = true; // CH4 activé par défaut
-    window.h2oTotalFromMeteorites = 0; // Eau totale ajoutée par les météorites (en pourcentage 0-100)
-    
-    // Flag pour contrôler l'affichage des phases de debug
-    window.isDebugPhases = false; // Désactiver les logs de phase pour nettoyer // Mettre à false pour désactiver les logs de phases
-    window.SYNC_STATE.calculationInProgress = false; // Exposé pour plot.js (resizeCanvasToPlot skipReposition pendant dichotomie)
+    (function () {
+        const SYNC_STATE = window.SYNC_STATE;
+        window.volcanoH2OBonus = 0;
+        window.volcanoIceReduction = 0;
+        window.fps = 0; // Exposer le FPS pour l'optimisation de la visualisation spectrale
+        window.methaneEnabled = true; // CH4 activé par défaut
+        window.h2oTotalFromMeteorites = 0; // Eau totale ajoutée par les météorites (en pourcentage 0-100)
+        window.isDebugPhases = false;
+        SYNC_STATE.calculationInProgress = false; // Exposé pour plot.js (resizeCanvasToPlot skipReposition pendant dichotomie)
+    })();
 }
-
-var CONST = window.CONST; /* var pour éviter redeclaration avec plot.js */
 
 // ============================================================================
 // UNITÉ DE TEMPÉRATURE (cycle °C → °F → K)
@@ -109,6 +111,7 @@ let temperatureUnit = 'C'; // 'C', 'F', ou 'K'
 let currentTempCelsius = null; // Stocker la température en Celsius
 
 function convertTemperature(tempC, unit) {
+    const CONST = window.CONST;
     if (tempC === null || tempC === undefined) return null;
     switch (unit) {
         case 'C':
@@ -202,6 +205,8 @@ function getTemperatureGlowColor(tempC) {
 }
 
 function updateTemperatureDisplay() {
+    const CONST = window.CONST;
+    const DATA = window.DATA;
     const tempSurfaceEl = document.getElementById('temp-surface-synthese');
     const tempUnitEl = document.getElementById('temp-unit-synthese');
     const syntheseTempEl = document.querySelector('.synthese_Temp');
@@ -304,8 +309,8 @@ function updateTemperatureDisplay() {
     }
     // Mettre à jour la pression au sol depuis DATA si disponible
     const pressureValEl = document.getElementById('pressure-surface-synthese');
-    if (pressureValEl && window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) {
-        const P = window.DATA['🫧']['🎈'];
+    if (pressureValEl && DATA && DATA['🫧'] && DATA['🫧']['🎈'] != null) {
+        const P = DATA['🫧']['🎈'];
         pressureValEl.textContent = Number.isFinite(P) ? '🎈 ' + P.toFixed(2) + ' atm' : '🎈 -- atm';
     }
 }
@@ -333,7 +338,8 @@ function getAvailableButtons(yearsAgo) {
 
 // Fonction pour désactiver tous les boutons
 function disableButtons() {
-    window.SYNC_STATE.calculationInProgress = true;
+    const SYNC_STATE = window.SYNC_STATE;
+    SYNC_STATE.calculationInProgress = true;
     // Réinitialiser les flags de convergence
     if (typeof window !== 'undefined') {
         window.calculationConverged = false;
@@ -365,7 +371,9 @@ function disableButtons() {
 
 // Fonction pour réactiver les boutons selon l'époque géologique
 function enableButtons() {
-    window.SYNC_STATE.calculationInProgress = false;
+    const SYNC_STATE = window.SYNC_STATE;
+    const YEARS_PER_FRAME = window.YEARS_PER_FRAME;
+    SYNC_STATE.calculationInProgress = false;
     
     // Activer l'animation de la planète après la fin des calculs
     // Chercher toutes les textures de planète et retirer la classe "paused"
@@ -373,7 +381,7 @@ function enableButtons() {
     planetTextures.forEach(texture => {
         texture.classList.remove('paused');
     });
-    const currentYears = window.timelineFrame * window.YEARS_PER_FRAME;
+    const currentYears = window.timelineFrame * YEARS_PER_FRAME;
     const available = getAvailableButtons(currentYears);
 
     const buttons = [
@@ -442,6 +450,8 @@ function enableButtons() {
  * @returns {number|string} - Valeur interprétée (nombre si expression mathématique, chaîne sinon)
  */
 function interpretConfigValue(value) {
+    const DATA = window.DATA;
+    const TIMELINE = window.TIMELINE;
     // Pas besoin d'interprétation pour les nombres
     if (typeof value === 'number') {
         return value;
@@ -460,10 +470,10 @@ function interpretConfigValue(value) {
     // ticTime = infoTimeMa / stepMa — stepMa lu directement depuis la config du bouton cliqué
     // Exception init : 🔘🕰 = '' avant le premier clic → ticTime = 0
     let ticTime = 0;
-    if (window.DATA['📜']['🔘🕰'] !== '') {
-        const _epochId_icv = window.DATA['📜']['🗿'];
-        const _epoch_icv = window.TIMELINE[window.TIMELINE.findIndex(item => item['📅'] === _epochId_icv)];
-        const stepMa = _epoch_icv['🕰'][window.DATA['📜']['🔘🕰']]['🔺⏳'];
+    if (DATA['📜']['🔘🕰'] !== '') {
+        const _epochId_icv = DATA['📜']['🗿'];
+        const _epoch_icv = TIMELINE[TIMELINE.findIndex(item => item['📅'] === _epochId_icv)];
+        const stepMa = _epoch_icv['🕰'][DATA['📜']['🔘🕰']]['🔺⏳'];
         ticTime = Math.floor(window.infoTimeMa / stepMa);
     }
 
@@ -685,6 +695,7 @@ let cache_280ppm = null;
 let cache_420ppm = null;
 
 function calculateInitialData() {
+    const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
     // 🔒 S'assurer que plotData est exposé sur window et initialisé
     if (typeof window.plotData === 'undefined') {
         window.plotData = plotData;
@@ -702,9 +713,9 @@ function calculateInitialData() {
     const lambda_max = 100e-6;
     plotData.lambda_range = [];
     plotData.lambda_weights = []; // ⚡ Nécessaire pour updatePlot
-    const initBins = (window.CONFIG_COMPUTE.initSpectralBinsConvergence != null && Number.isFinite(window.CONFIG_COMPUTE.initSpectralBinsConvergence))
-        ? window.CONFIG_COMPUTE.initSpectralBinsConvergence
-        : window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
+    const initBins = (CONFIG_COMPUTE.initSpectralBinsConvergence != null && Number.isFinite(CONFIG_COMPUTE.initSpectralBinsConvergence))
+        ? CONFIG_COMPUTE.initSpectralBinsConvergence
+        : CONFIG_COMPUTE.maxSpectralBinsConvergence;
     const currentTopFluxLen = (plotData.current && plotData.current.upward_flux && plotData.current.upward_flux.length > 0)
         ? plotData.current.upward_flux[plotData.current.upward_flux.length - 1].length
         : 0;
@@ -743,10 +754,14 @@ function calculateInitialData() {
 }
 
 function updateCO2Level(state) {
+    const DATA = window.DATA;
+    const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
+    const LOGOS = window.LOGOS;
+    const CONST = window.CONST;
     const logoEDS = '📛'; // EDS (effet de serre)
-    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
-    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    const logoCO2 = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && LOGOS && LOGOS.H2O) ? LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '⛽';
     
     currentState = state;
     // Gérer explicitement le cas state = 0 (0 ppm) car 0 est falsy en JavaScript
@@ -760,9 +775,9 @@ function updateCO2Level(state) {
     }
     plotData.co2_ppm = co2_fraction * 1e6;
     
-    // Récupérer les valeurs H2O et CH4 depuis plotData pour le log
+    // H2O : vapeur (window) + météorites dérivé de TIMELINE (🔺⚖️💧☄️ = water_added_kg dans config)
     const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
-    const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+    const h2o_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
     const h2o_total = h2o_percent + h2o_meteorites;
     const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
 
@@ -779,7 +794,7 @@ function updateCO2Level(state) {
             CH4_fraction: ch4_fraction
         });
         const processResult = (data) => {
-            const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+            const logo = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
             plotData.current = data;
             if (data.lambda_range && data.lambda_weights) {
                 plotData.lambda_range = data.lambda_range;
@@ -828,7 +843,7 @@ function updateCO2Level(state) {
                 h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
 
                 // Ajouter l'eau totale des météorites
-                const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+                const h2o_from_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
                 const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
 
                 // Calculer la répartition vapeur/glace selon la température
@@ -912,7 +927,8 @@ function updateCO2Level(state) {
 }
 
 function setIceberg() {
-    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
+    const SYNC_STATE = window.SYNC_STATE;
+    if (SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
     // Forcer à 0 ppm
     currentState = 0;
     plotData.co2_ppm = 0;
@@ -922,14 +938,16 @@ function setIceberg() {
 }
 
 function setPreindustrial() {
-    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
+    const SYNC_STATE = window.SYNC_STATE;
+    if (SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
     incrementTimeline(); // +100 ans
     disableButtons(); // Désactiver les boutons
     updateCO2Level(1); // 280 ppm
 }
 
 function setCurrent() {
-    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
+    const SYNC_STATE = window.SYNC_STATE;
+    if (SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
     incrementTimeline(); // +100 ans
     disableButtons(); // Désactiver les boutons
     updateCO2Level(2); // 420 ppm
@@ -937,7 +955,8 @@ function setCurrent() {
 
 // Fonction pour ajouter du CO2 via une comète/météorite de glace
 function addCometCO2() {
-    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
+    const SYNC_STATE = window.SYNC_STATE;
+    if (SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
 
     const COMET_CO2_ADDITION = 0.1; // +0.1 ppm par comète
     const COMET_H2O_ADDITION = 0.1; // +0.1% H2O par comète
@@ -982,7 +1001,8 @@ function addCometCO2() {
 }
 
 function divideCO2() {
-    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
+    const SYNC_STATE = window.SYNC_STATE;
+    if (SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
     // Diviser le CO2 actuel par 2
     const current_ppm = plotData.co2_ppm;
     const new_ppm = current_ppm / 2;
@@ -1007,12 +1027,14 @@ function divideCO2() {
 }
 
 function multiplyCO2() {
-    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
+    const SYNC_STATE = window.SYNC_STATE;
+    const YEARS_PER_FRAME = window.YEARS_PER_FRAME;
+    if (SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
 
     // ⚠️ MODIFICATION POUR GAMEPLAY : Un volcan ajoute une quantité de CO2 selon l'époque géologique
     // Au début de la Terre (Hadéen/Archéen), les volcans étaient beaucoup plus gros et nombreux
     // Calculer l'époque actuelle selon le temps écoulé
-    const currentYears = window.timelineFrame * window.YEARS_PER_FRAME;
+    const currentYears = window.timelineFrame * YEARS_PER_FRAME;
     const era = window.getGeologicalEra(currentYears);
 
     // CO2 par volcan selon l'époque (plus gros au début)
@@ -1094,15 +1116,19 @@ function cancelCurrentCalculation() {
 // Elle met à jour CO2 explicitement, mais utilise aussi H2O et CH4 depuis plotData/window
 // TODO: Renommer en updateEDSLevels ou updateLevelsDirect pour refléter qu'elle utilise les 3 gaz
 function updateCO2LevelDirect(co2_fraction) {
+    const DATA = window.DATA;
+    const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
     const IO_LISTENER = window.IO_LISTENER;
+    const LOGOS = window.LOGOS;
+    const CONST = window.CONST;
     const logoEDS = '📛'; // EDS (effet de serre)
-    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
-    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    const logoCO2 = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && LOGOS && LOGOS.H2O) ? LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '⛽';
     
-    // Récupérer les valeurs H2O et CH4 depuis plotData/window (déjà initialisées par updateLevelsConfig)
+    // H2O : vapeur (window) + météorites depuis TIMELINE (DATA['📜'])
     const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
-    const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+    const h2o_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
     const h2o_total = h2o_percent + h2o_meteorites;
     const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
     
@@ -1136,12 +1162,12 @@ function updateCO2LevelDirect(co2_fraction) {
         currentCalculationPromise = result;
 
         const processResult = (data) => {
-            const logo = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
+            const logo = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
             // Vérifier si le calcul a été annulé
             if (window.cancelCalculation) {
                 return;
             }
-            if (data) IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: data });
+            if (data) IO_LISTENER.emit('compute:done', { DATA: DATA, result: data });
 
             // Retirer ce timeout de la liste
             const index = currentCalculationTimeouts.indexOf(timeoutId);
@@ -1228,7 +1254,7 @@ function updateCO2LevelDirect(co2_fraction) {
                 h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
 
                 // Ajouter l'eau totale des météorites
-                const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+                const h2o_from_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
                 const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
 
                 // Calculer la répartition vapeur/glace selon la température
@@ -1313,15 +1339,18 @@ function updateCO2LevelDirect(co2_fraction) {
 
 // Exposer updateDisplay globalement pour être accessible depuis calculations.js
 window.updateDisplay = function updateDisplay(data) {
+    const DATA = window.DATA;
+    const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
+    const LOGOS = window.LOGOS;
     const logoEDS = '📛'; // EDS (effet de serre)
-    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
-    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    const logoCO2 = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && LOGOS && LOGOS.H2O) ? LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '⛽';
     
     // Récupérer les valeurs pour le log
     const co2_ppm = (data && data.co2_ppm !== undefined) ? data.co2_ppm : 0;
     const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
-    const h2o_meteorites = (typeof window !== 'undefined' && window.h2oTotalFromMeteorites !== undefined) ? window.h2oTotalFromMeteorites : 0;
+    const h2o_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
     const h2o_total = h2o_percent + h2o_meteorites;
     const ch4_ppm = (data && data.ch4_ppm !== undefined) ? data.ch4_ppm : (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
     
@@ -1549,17 +1578,16 @@ window.updateDisplay = function updateDisplay(data) {
                 // 🔒 PRIORITÉ 2 : Recalculer avec calculateWaterPartition si pas de valeur disponible
                 else if (data.temp_surface !== undefined && typeof window !== 'undefined' && typeof window.calculateWaterPartition === 'function') {
                     // 🔒 CORRECTION : calculateWaterPartition() lit directement depuis DATA, pas besoin de calculer h2o_total_percent
-                    const DATA = window.DATA;
                     const h2o_total_fraction = DATA['⚖️']['⚖️🫧'] > 0 ? (DATA['⚖️']['⚖️💧'] / DATA['⚖️']['⚖️🫧']) : 0;
                     if (h2o_total_fraction > 0) {
                         // 🔒 CORRECTION : calculateWaterPartition() n'a pas de paramètres, elle lit depuis DATA
                         // Mettre à jour DATA['🧮']['🧮🌡️'] avant d'appeler calculateWaterPartition() (source unique, pas de clé 🌡️ redondante)
-                        window.DATA['🧮']['🧮🌡️'] = data.temp_surface;
+                        DATA['🧮']['🧮🌡️'] = data.temp_surface;
                         window.calculateWaterPartition();
                         const waterPartition = {
-                            vapor_fraction: window.DATA['💧']['🍰🫧💧'],
-                            ice_fraction: window.DATA['💧']['🍰💧🧊'],
-                            liquid_fraction: window.DATA['💧']['🍰💧🌊']
+                            vapor_fraction: DATA['💧']['🍰🫧💧'],
+                            ice_fraction: DATA['💧']['🍰💧🧊'],
+                            liquid_fraction: DATA['💧']['🍰💧🌊']
                         };
                         ice_coverage = waterPartition.ice_fraction || 0;
                         // Mettre à jour pour les prochains appels
@@ -1568,12 +1596,12 @@ window.updateDisplay = function updateDisplay(data) {
                         // Même sans eau, appeler calculateWaterPartition pour obtenir 0 partout
                         // 🔒 CORRECTION : calculateWaterPartition() n'a pas de paramètres, elle lit depuis DATA
                         // Mettre à jour DATA['🧮']['🧮🌡️'] avant d'appeler calculateWaterPartition() (source unique)
-                        window.DATA['🧮']['🧮🌡️'] = data.temp_surface;
+                        DATA['🧮']['🧮🌡️'] = data.temp_surface;
                         window.calculateWaterPartition();
                         const waterPartition = {
-                            vapor_fraction: window.DATA['💧']['🍰🫧💧'],
-                            ice_fraction: window.DATA['💧']['🍰💧🧊'],
-                            liquid_fraction: window.DATA['💧']['🍰💧🌊']
+                            vapor_fraction: DATA['💧']['🍰🫧💧'],
+                            ice_fraction: DATA['💧']['🍰💧🧊'],
+                            liquid_fraction: DATA['💧']['🍰💧🌊']
                         };
                         ice_coverage = waterPartition.ice_fraction || 0;
                         window.h2oIceFractionFromCalculation = ice_coverage;
@@ -1608,15 +1636,16 @@ window.updateDisplay = function updateDisplay(data) {
                 const desert_alb = (currentEpoch.desert_albedo || 0.30).toFixed(2);
                 const ice_alb = (currentEpoch.ice_albedo || 0.70).toFixed(2);
 
-                const LOGOS = (typeof window !== 'undefined' && window.LOGOS) ? window.LOGOS : {};
-                const desert_icon = LOGOS.DESERT || 'fonts/pics/desert.png';
+                // Défaut albedo logos (ordre fixe, synchrone) ; fusion avec LOGOS une seule fois
+                const ALBEDO_LOGO_DEFAULT = { CLOUD: '⛅', VOLCANO: '🌋', OCEAN: '🌊', FOREST: '🌳', DESERT: 'fonts/pics/desert.png', ICE: '🧊' };
+                const logosForAlbedo = Object.assign({}, ALBEDO_LOGO_DEFAULT, LOGOS);
                 albedoComponents = [
-                    { emoji: LOGOS.CLOUD || '⛅', coverage: cloud_cov, albedo: cloud_alb },
-                    { emoji: LOGOS.VOLCANO || '🌋', coverage: magma_cov, albedo: magma_alb },
-                    { emoji: LOGOS.OCEAN || '🌊', coverage: ocean_cov, albedo: ocean_alb },
-                    { emoji: LOGOS.FOREST || '🌳', coverage: forest_cov, albedo: forest_alb },
-                    { emoji: desert_icon, coverage: desert_cov, albedo: desert_alb },
-                    { emoji: LOGOS.ICE || '🧊', coverage: ice_cov, albedo: ice_alb }
+                    { emoji: logosForAlbedo.CLOUD, coverage: cloud_cov, albedo: cloud_alb },
+                    { emoji: logosForAlbedo.VOLCANO, coverage: magma_cov, albedo: magma_alb },
+                    { emoji: logosForAlbedo.OCEAN, coverage: ocean_cov, albedo: ocean_alb },
+                    { emoji: logosForAlbedo.FOREST, coverage: forest_cov, albedo: forest_alb },
+                    { emoji: logosForAlbedo.DESERT, coverage: desert_cov, albedo: desert_alb },
+                    { emoji: logosForAlbedo.ICE, coverage: ice_cov, albedo: ice_alb }
                 ];
             }
         }
@@ -1624,21 +1653,23 @@ window.updateDisplay = function updateDisplay(data) {
 }
 
 function updateLegend(data) {
+    const CONST = window.CONST;
+    const PLANCK_TEMPERATURES = window.PLANCK_TEMPERATURES;
     // Créer la légende avec les motifs de traits
     const grid = document.getElementById('legend-planck-grid');
-    if (grid && window.PLANCK_TEMPERATURES) {
+    if (grid && PLANCK_TEMPERATURES) {
         grid.innerHTML = '';
 
         // Configuration de la grille : déjà définie dans le CSS
 
         // Trier les températures par ordre croissant
-        const sortedTemps = [...window.PLANCK_TEMPERATURES].sort((a, b) => a - b);
-        const totalCount = window.PLANCK_TEMPERATURES.length;
+        const sortedTemps = [...PLANCK_TEMPERATURES].sort((a, b) => a - b);
+        const totalCount = PLANCK_TEMPERATURES.length;
 
         // Créer un élément pour chaque température
         sortedTemps.forEach((T, sortedIndex) => {
             // Trouver l'index original pour obtenir le bon motif
-            const originalIndex = window.PLANCK_TEMPERATURES.indexOf(T);
+            const originalIndex = PLANCK_TEMPERATURES.indexOf(T);
             // Utiliser la fonction commune pour obtenir le pattern (même que dans plot.js)
             // IMPORTANT: utiliser originalIndex pour correspondre avec plot.js
             const dashPattern = typeof window.getReferencePattern === 'function'
@@ -1903,14 +1934,19 @@ function getDashStyleForPattern(pattern) {
 // Fonction pour activer/désactiver la vapeur d'eau
 // Fonction pour appliquer les conditions initiales d'une époque géologique
 function setEpoch(epochName) {
+    const DATA = window.DATA;
+    const TIMELINE = window.TIMELINE;
+    const SYNC_STATE = window.SYNC_STATE;
     const IO_LISTENER = window.IO_LISTENER;
+    const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
+    const FUNCS_ORGANIGRAMME = window.FUNCS_ORGANIGRAMME;
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
     const epochNameToEmojiForButton = {
         'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🥟',
         'Paléozoïque': '🦴', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
-    if (window.DATA['📜'] && window.DATA['📜']['🗿'] === epochIdForButton) {
+    if (DATA['📜'] && DATA['📜']['🗿'] === epochIdForButton) {
         const allEpochButtons = document.querySelectorAll('.epoch-btn');
         allEpochButtons.forEach(btn => btn.classList.remove('selected'));
         const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochIdForButton}"]`);
@@ -1918,7 +1954,7 @@ function setEpoch(epochName) {
         // TicTime à 0 au clic époque (même si même époque)
         window.infoTimeMa = 0;
         window.timelineFrame = 0;
-        window.SYNC_STATE.ticTime = 0;
+        SYNC_STATE.ticTime = 0;
         window.syncToScie({ ticTime: 0 });
         document.getElementById('info-time').textContent = '+0 Ma';
         window.updateTimeline();
@@ -1940,14 +1976,14 @@ function setEpoch(epochName) {
     if (typeof window !== 'undefined') {
         window.infoTimeMa = 0;
         // Nouvelle époque : reset compteurs boutons et dernier bouton cliqué
-        window.DATA['📜']['📿☄️'] = 0;
-        window.DATA['📜']['📿💫'] = 0;
-        window.DATA['📜']['🔘🕰'] = '';
+        DATA['📜']['📿☄️'] = 0;
+        DATA['📜']['📿💫'] = 0;
+        DATA['📜']['🔘🕰'] = '';
     }
     
     // Log supprimé (non essentiel)
     
-    if (window.SYNC_STATE.calculationInProgress) {
+    if (SYNC_STATE.calculationInProgress) {
         cancelCurrentCalculation();
         enableButtons();
     }
@@ -1991,9 +2027,9 @@ function setEpoch(epochName) {
     
     // 🔒 INITIALISER DATA['📜']['👉'] et DATA['📜']['🗿'] pour que calculations_albedo.js puisse accéder à l'époque
     // DATA existe toujours (dico.js, ordre synchrone).
-    if (typeof window.TIMELINE !== 'undefined') {
-        if (!window.DATA['📜']) {
-            window.DATA['📜'] = {};
+    if (typeof TIMELINE !== 'undefined') {
+        if (!DATA['📜']) {
+            DATA['📜'] = {};
         }
         // Trouver l'index de l'époque par son emoji (id) ou son nom
         // Mapper le nom de l'époque vers l'emoji si nécessaire
@@ -2011,7 +2047,7 @@ function setEpoch(epochName) {
         // epoch.id devrait être défini depuis getGeologicalPeriodByName (timeline transformée)
         // Sinon, utiliser le mapping ou le nom directement
         const epochId = epoch.id || epochNameToEmojiMap[epochName] || epochName;
-        const epochIndex = window.TIMELINE.findIndex(item => {
+        const epochIndex = TIMELINE.findIndex(item => {
             if (item['📅']) {
                 return item['📅'] === epochId;
             }
@@ -2020,10 +2056,10 @@ function setEpoch(epochName) {
         });
         
         if (epochIndex >= 0) {
-            window.DATA['📜']['👉'] = epochIndex;
-            window.DATA['📜']['🗿'] = epochId;
+            DATA['📜']['👉'] = epochIndex;
+            DATA['📜']['🗿'] = epochId;
             // Initialiser aussi DATA['📅'] avec l'objet epoch complet
-            window.DATA['📅'] = window.TIMELINE[epochIndex];
+            DATA['📅'] = TIMELINE[epochIndex];
         } else {
             console.error(`[setEpoch] ⚠️ Époque ${epochName} (${epochId}) non trouvée dans TIMELINE`);
         }
@@ -2031,7 +2067,7 @@ function setEpoch(epochName) {
     
     // Source unique de précision UI : CONFIG_COMPUTE.convergencePrecisionK
     if (typeof epoch.precision === 'number' && epoch.precision > 0) {
-        window.CONFIG_COMPUTE.convergencePrecisionK = epoch.precision;
+        CONFIG_COMPUTE.convergencePrecisionK = epoch.precision;
         const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
         let found = false;
         precisionRadios.forEach(radio => {
@@ -2043,7 +2079,7 @@ function setEpoch(epochName) {
             }
         });
         if (!found) {
-            console.warn(`${logoEpoch} 🛠 ⚠️ [setEpoch@main.js] 🎚=${window.CONFIG_COMPUTE.convergencePrecisionK}° => Aucun bouton radio`);
+            console.warn(`${logoEpoch} 🛠 ⚠️ [setEpoch@main.js] 🎚=${CONFIG_COMPUTE.convergencePrecisionK}° => Aucun bouton radio`);
         }
     }
 
@@ -2155,7 +2191,7 @@ function setEpoch(epochName) {
                     window.currentEpochLightDistance = lightDistance;
                 }
 
-                const newCell = window.FUNCS_ORGANIGRAMME.createCell(
+                const newCell = FUNCS_ORGANIGRAMME.createCell(
                     terreNode.x,
                     terreNode.y,
                     epochConfig.radius,
@@ -2223,9 +2259,9 @@ function setEpoch(epochName) {
     }
 
     // [3] DOM organigramme (halos, values, flèches)
-    window.FUNCS_ORGANIGRAMME.recreateNoyauRadiation();
-    window.FUNCS_ORGANIGRAMME.recreateTerreRadiation();
-    window.FUNCS_ORGANIGRAMME.generateArrows();
+    FUNCS_ORGANIGRAMME.recreateNoyauRadiation();
+    FUNCS_ORGANIGRAMME.recreateTerreRadiation();
+    FUNCS_ORGANIGRAMME.generateArrows();
     if (window._logStep) window._logStep('[3] DOM organigramme');
     else console.log('[3] DOM organigramme');
     if (window._logStepEnd) window._logStepEnd();
@@ -2280,7 +2316,7 @@ function setEpoch(epochName) {
     }
 
     // TicTime à 0 et sync vers scie pour que l’iframe ait ticTime=0
-    window.SYNC_STATE.ticTime = 0;
+    SYNC_STATE.ticTime = 0;
     window.syncToScie({ ticTime: 0 });
 
     // Note: infoTimeMa a déjà été remis à 0 au début de setEpoch (avant l'interprétation du logo)
@@ -2543,20 +2579,20 @@ function setEpoch(epochName) {
     }
 
     // Synchroniser l'état avec l'iframe scie (epoch, anim, ticTime)
-    const epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || epoch.id || epochName;
-    const ticTime = (window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'] != null) ? window.DATA['📜']['📿💫'] : 0;
-    const animEnabled = window.DATA['🔘']['🔘🎞'];
+    const epochId = (DATA && DATA['📜'] && DATA['📜']['🗿']) || epoch.id || epochName;
+    const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
+    const animEnabled = DATA['🔘']['🔘🎞'];
     IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime, run: true });
 }
 
 
 // Fonction pour mettre à jour le niveau H2O directement (similaire à updateCO2LevelDirect)
 function updateH2OLevelDirect(h2o_total_percent) {
-    const IO_LISTENER = window.IO_LISTENER;
+    const IO_LISTENER = IO_LISTENER;
     const logoEDS = '📛'; // EDS (effet de serre)
-    const logoCO2 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CO2) ? window.LOGOS.CO2 : '🏭';
-    const logoH2O = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.H2O) ? window.LOGOS.H2O : '💧';
-    const logoCH4 = (typeof window !== 'undefined' && window.LOGOS && window.LOGOS.CH4) ? window.LOGOS.CH4 : '⛽';
+    const logoCO2 = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
+    const logoH2O = (typeof window !== 'undefined' && LOGOS && LOGOS.H2O) ? LOGOS.H2O : '💧';
+    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '⛽';
     
     // Récupérer CO2 et CH4 depuis plotData
     const co2_ppm = (plotData && plotData.co2_ppm !== undefined) ? plotData.co2_ppm : 0;
@@ -2626,7 +2662,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
             if (window.cancelCalculation) {
                 return;
             }
-            if (data) IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: data });
+            if (data) IO_LISTENER.emit('compute:done', { DATA: DATA, result: data });
 
             // Retirer ce timeout de la liste
             const index = currentCalculationTimeouts.indexOf(timeoutId);
@@ -2718,7 +2754,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
                 h2o_vapor_percent = (typeof window.h2oVaporPercent !== 'undefined') ? window.h2oVaporPercent : 0;
 
                 // Ajouter l'eau totale des météorites
-                const h2o_from_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+                const h2o_from_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
                 const h2o_total_percent_calc = h2o_vapor_percent + h2o_from_meteorites;
 
                 // Calculer la répartition vapeur/glace selon la température
@@ -2821,7 +2857,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
 window.updateH2OLevelDirect = updateH2OLevelDirect;
 
 function toggleWaterVapor() {
-    if (window.SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
+    if (SYNC_STATE.calculationInProgress) return; // Bloquer si calcul en cours
 
     // Vérifier si on est en époque Corps noir (tout désactivé)
     const btnH2O = document.getElementById('btn-h2o');
@@ -2898,6 +2934,9 @@ window.toggleReferencePanel = toggleReferencePanel;
 window.setEpoch = setEpoch;
 
 function runMainInit() {
+    const DATA = window.DATA;
+    const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
+    const FUNCS_ORGANIGRAMME = window.FUNCS_ORGANIGRAMME;
     if (typeof window.pd === 'function') window.pd('runMainInit', 'main.js', 'enter readyState=' + document.readyState);
     // 🔒 Légende des emojis (affichée une seule fois au démarrage)
     if (!window._logLegendShown) {
@@ -2917,7 +2956,7 @@ function runMainInit() {
                     // Contrôler l'affichage selon le niveau FPS
                     // 🔒 Le bouton "anim" contrôle directement showDichotomySteps, on ne le modifie pas ici
                     // On contrôle seulement l'animation de la planète selon le FPS
-                    const animEnabled = (window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']);
+                    const animEnabled = (DATA && DATA['🔘'] && DATA['🔘']['🔘🎞']);
                     
                     // Three.js n'est plus piloté par le FPS (rotation continue)
                     // showSpectralBackground n'est PAS contrôlé par le FPS
@@ -2932,7 +2971,7 @@ function runMainInit() {
                 if (animCb) {
                     animCb.addEventListener('change', (e) => {
                         const enabled = e.target.checked;
-                        window.DATA['🔘']['🔘🎞'] = enabled;
+                        DATA['🔘']['🔘🎞'] = enabled;
                         if (!enabled) window.threeJSAnimationPaused = true;
                         else window.threeJSAnimationPaused = false;
                     });
@@ -2944,7 +2983,7 @@ function runMainInit() {
                     // Trouver le bouton radio checked
                     const checkedRadio = Array.from(precisionRadios).find(r => r.checked);
                     if (checkedRadio && checkedRadio.value) {
-                        window.CONFIG_COMPUTE.convergencePrecisionK = parseFloat(checkedRadio.value);
+                        CONFIG_COMPUTE.convergencePrecisionK = parseFloat(checkedRadio.value);
                     }
                     
                     // Écouter les changements pour mettre à jour la variable globale unique
@@ -2953,7 +2992,7 @@ function runMainInit() {
                             if (e.target.checked) {
                                 // 🔒 Mettre à jour la variable globale unique (seule référence)
                                 // Si l'utilisateur change la précision, la config ne doit plus être prise en compte
-                                window.CONFIG_COMPUTE.convergencePrecisionK = parseFloat(e.target.value);
+                                CONFIG_COMPUTE.convergencePrecisionK = parseFloat(e.target.value);
                             }
                         });
                     });
@@ -3011,11 +3050,11 @@ function runMainInit() {
 
     // Initialiser les event listeners sur les boutons du flux (DOM : 100ms pour injection organigramme)
     setTimeout(() => {
-        window.FUNCS_ORGANIGRAMME.initFluxButtonListeners();
+        FUNCS_ORGANIGRAMME.initFluxButtonListeners();
     }, 100);
 
     // Créer les radiations de la terre (doit être fait après l'initialisation car le radius dépend de l'époque)
-    window.FUNCS_ORGANIGRAMME.recreateTerreRadiation();
+    FUNCS_ORGANIGRAMME.recreateTerreRadiation();
 
     // Ajouter un gestionnaire de clic sur la température pour cycler les unités
     const syntheseTempEl = document.querySelector('.synthese_Temp');
@@ -3101,7 +3140,7 @@ function updateHadeenTexture() {
         }
         
         const parent = oldCell.parentElement;
-        const newCell = window.FUNCS_ORGANIGRAMME.createCell(
+        const newCell = FUNCS_ORGANIGRAMME.createCell(
             terreNode.x,
             terreNode.y,
             epochConfig.radius,
@@ -3155,8 +3194,9 @@ window.interpretConfigValue = interpretConfigValue;
 
 /** Debug : run par epoch, log entrée (config epoch) + sortie (convergence) dans fichier txt. */
 window.runDebugLogMode = function () {
+    const TIMELINE = window.TIMELINE;
     console.log('[runDebugLogMode] appele');
-    var timeline = window.TIMELINE;
+    var timeline = TIMELINE;
     if (!timeline || !Array.isArray(timeline)) {
         console.error('[runDebugLogMode] TIMELINE absent');
         return;
@@ -3217,8 +3257,8 @@ window.runDebugLogMode = function () {
             logLines.push('--- Erreur ---');
             logLines.push(String(e && e.message ? e.message : e));
             logLines.push('');
-            next(i + 1);
-        });
+        next(i + 1);
+    });
     }
     next(0);
 };

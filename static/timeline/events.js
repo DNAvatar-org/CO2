@@ -20,6 +20,7 @@
  *   - switch(epochId) ⚫/🔥/default; config unique ▶/◀/🔺🧲🌕💫; getEpochConfigById; applyHadeenFluxFromConfig; plus de corps-noir/hadeen
  *   - TicTime logo comme action pour toutes les époques; météorite de glace uniquement Corps noir (⚫) et Hadéen (🔥)
  *   - ⚫ sans TicTime (Météorite + Impact uniquement); default (Archéen+) TicTime affiché sans condition 🕰.💫
+ *   - v1.2.3: 💫 alt/tooltip = vraie valeur (formatStepLabel), tooltip une seule ligne (plus de <br>)
  */
 
 // Core globals requis : addCustomTooltip, hideTooltip, setEpoch, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
@@ -50,6 +51,13 @@ window.updateEpochActions = function () {
         const progress = Math.min(1, Math.max(0, elapsed / totalDuration));
         const logFlux = (1 - progress) * Math.log(fluxStart) + progress * Math.log(fluxEnd);
         ep.geothermal_flux = Math.exp(logFlux);
+    };
+
+    // Échelle récente (1800, 2100) : afficher +N ans ; sinon +X Ma
+    const formatStepLabel = (stepMa) => {
+        if (stepMa == null || !Number.isFinite(stepMa)) return '';
+        if (stepMa < 0.001) return '+' + Math.round(stepMa * 1e6) + ' ans';
+        return '+' + stepMa + ' Ma';
     };
 
     // Fonction utilitaire pour formater la masse
@@ -174,11 +182,12 @@ window.updateEpochActions = function () {
         // Action 1 : TicTime (pour tous) — avancer dans le temps (refroidissement progressif)
         const epochHadeenTic = getEpochConfigById('🔥');
         const stepMaHadeenTic = epochHadeenTic['🕰']['💫']['🔺⏳'];
+        const stepLabelHadeen = formatStepLabel(stepMaHadeenTic);
         const timeAdvanceBtn = document.createElement('button');
         timeAdvanceBtn.textContent = window.CHARS.TIC_TIME;
         timeAdvanceBtn.className = 'timeline-event-logo btn-events';
-        timeAdvanceBtn.alt = '+' + stepMaHadeenTic + ' Ma';
-        window.addCustomTooltip(timeAdvanceBtn, (window.CHARS_DESC['💫'] || '') + '<br>+' + stepMaHadeenTic + ' Ma par clic');
+        timeAdvanceBtn.alt = stepLabelHadeen;
+        window.addCustomTooltip(timeAdvanceBtn, (window.CHARS_DESC['💫'] || '') + ' (' + stepLabelHadeen + ' par clic)');
 
         timeAdvanceBtn.addEventListener('click', () => {
             if (!window.FLUX) window.FLUX = {};
@@ -258,12 +267,13 @@ window.updateEpochActions = function () {
             const getImagePath = (p) => (p.startsWith('http') || p.startsWith('/')) ? p : (p.indexOf('fonts/') === 0 ? '../' + p : 'fonts/pics/' + p.split(/[/\\]/).pop());
             // TicTime pour Archéen et toutes les époques suivantes (pas conditionné à 🕰.💫)
             const stepMaDefault = epoch['🕰']['💫']['🔺⏳'];
+            const stepLabelDefault = formatStepLabel(stepMaDefault);
             const ticBtn = document.createElement('button');
             ticBtn.type = 'button';
             ticBtn.className = 'icon-button btn-events timeline-event-logo';
             ticBtn.textContent = window.CHARS.TIC_TIME;
-            ticBtn.alt = '+' + stepMaDefault + ' Ma';
-            window.addCustomTooltip(ticBtn, (window.CHARS_DESC['💫'] || '') + '<br>+' + stepMaDefault + ' Ma par clic');
+            ticBtn.alt = stepLabelDefault;
+            window.addCustomTooltip(ticBtn, (window.CHARS_DESC['💫'] || '') + ' (' + stepLabelDefault + ' par clic)');
             ticBtn.addEventListener('click', () => {
                 const D = window.DATA;
                 D['📜']['📿💫'] += 1; // compteur dédié 💫 (init à 0 dans configOrganigramme, reset dans setEpoch)

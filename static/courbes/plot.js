@@ -615,6 +615,7 @@ function resizeCanvasToPlot(callback) {
 window.updatePlotAltitudeAxis = function (atm_height_km) {
     const plotContainer = document.getElementById('plot-container');
     if (!plotContainer || typeof Plotly === 'undefined') return;
+    if (!plotContainer._fullLayout) return;
     const z_max = Number(atm_height_km);
     if (!Number.isFinite(z_max) || z_max < 0) return;
     const rangeMax = Math.max(1, Math.ceil(z_max * 1.05));

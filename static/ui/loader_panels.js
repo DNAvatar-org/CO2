@@ -149,6 +149,11 @@
         if (v) v.innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement</p>';
     });
 
+    // Mapping 📅 → nom d'époque (pour togglePlotAnim : raw TIMELINE n'a pas .name)
+    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '🦴': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+    function nextEpochName(nextItem, nextId) {
+        return nextItem.name || EPOCH_ID_TO_NAME[nextId] || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
+    }
     // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque (via shell)
     window.togglePlotAnim = function () {
         if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = true;
@@ -165,7 +170,7 @@
                 while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
                 var nextItem = window.TIMELINE[idx];
                 var nextId = nextItem['📅'];
-                var nextName = nextItem.name || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
+                var nextName = nextEpochName(nextItem, nextId);
                 window.shell.setEpoch(nextName);
             }
         } else {
@@ -179,7 +184,7 @@
                 while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
                 var nextItem = window.TIMELINE[idx];
                 var nextId = nextItem['📅'];
-                var nextName = nextItem.name || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
+                var nextName = nextEpochName(nextItem, nextId);
                 if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
             }
         }

@@ -173,6 +173,9 @@
     }
 
     function projectToVisu(DATA) {
+        if (!window.plotData) {
+            window.plotData = { lambda_range: null, current: null, co2_ppm: 0, ch4_ppm: 0, temp_surface: 0 };
+        }
         var CONST = window.CONST;
         var spectral = window.getSpectralResultFromDATA();
         var T0 = DATA['🧮']['🧮🌡️'];
