@@ -1,7 +1,7 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.2
- * Date: [January 2025]
+ * Version 1.2.4
+ * Date: [March 14, 2026]
 * logs :
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
@@ -21,6 +21,9 @@
  *   - TicTime logo comme action pour toutes les époques; météorite de glace uniquement Corps noir (⚫) et Hadéen (🔥)
  *   - ⚫ sans TicTime (Météorite + Impact uniquement); default (Archéen+) TicTime affiché sans condition 🕰.💫
  *   - v1.2.3: 💫 alt/tooltip = vraie valeur (formatStepLabel), tooltip une seule ligne (plus de <br>)
+ *   - v1.2.3: Hadeen ticTime handler : check transition (infoTimeMa>=500) AVANT updateHadeenTexture/updateCO2Level
+ *   - v1.2.4: DATA[📜][bary] = infoTimeMa/500 après chaque tic Hadéen (interpolation visuelle radius/exobase/noyau)
+ *             (runComputeInParent est async/rAF — setEpoch doit passer en premier pour eviter double computation et ordre cassé)
  */
 
 // Core globals requis : addCustomTooltip, hideTooltip, setEpoch, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
@@ -197,14 +200,27 @@ window.updateEpochActions = function () {
             if (cellTerre) {
                 const canvas = cellTerre.querySelector('canvas');
                 if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
-                    const savedRotationY = canvas._threeJSData.sphere.rotation.y;
-                    window.savedPlanetRotationY = savedRotationY;
-                    // Log supprimé (non essentiel)
+                    window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
                 }
             }
-            
+
             window.infoTimeMa = (window.infoTimeMa || 0) + stepMaHadeenTic;
             if (window.infoTimeMa > 500) window.infoTimeMa = 500;
+            // bary Hadéen : [0,1[ selon avancée dans l'époque (500 Ma = fin Hadéen = début Archéen)
+            window.DATA['📜']['bary'] = window.infoTimeMa / 500;
+            console.log('[EVT Hadéen] ticTime infoTimeMa=' + window.infoTimeMa + ' bary=' + window.DATA['📜']['bary'].toFixed(2) + ' transition=' + (window.infoTimeMa >= 500));
+
+            // Transition vers Archéen : TOUJOURS avant updateHadeenTexture/updateCO2Level.
+            // runComputeInParent() est async (rAF x2) : si on l'appelle avant setEpoch,
+            // la computation se programme avec la mauvaise époque et [4] apparaît avant [1].
+            if (window.infoTimeMa >= 500) {
+                console.log('[EVT Hadéen] → transition Archéen : setEpoch en premier, skip updateHadeenTexture');
+                window.setEpoch('Archéen');
+                return;
+            }
+
+            // Pas de transition : màj normale Hadéen
+            console.log('[EVT Hadéen] → pas de transition, màj Hadéen (updateTimeline + texture + compute)');
             window.updateTimeline();
             window.updateHadeenTexture();
             applyHadeenFluxFromConfig();
@@ -213,7 +229,6 @@ window.updateEpochActions = function () {
                 window.updateCO2LevelDirect(current_co2_fraction);
             }
             checkDateEvents();
-            if (window.infoTimeMa >= 500) window.setEpoch('Archéen');
         });
         eventsLogos.appendChild(timeAdvanceBtn);
 

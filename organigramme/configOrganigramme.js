@@ -1,7 +1,7 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.3
-// Date: [June 08, 2025] [HH:MM UTC+1]
+// Version 1.1.6
+// Date: [March 14, 2026] [HH:MM UTC+1]
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -14,6 +14,9 @@
 //   - v1.1.1: albedo-btn affiche le barycentre fine-tuning cloud sous 🪩 (🧩🔺n%🔻)
 //   - v1.1.2: [1] config (époque initiale) avant build organigramme pour ordre synchrone 1 → 2 texture
 //   - v1.1.3: [1] log via _logStep (console.groupCollapsed) si défini
+//   - v1.1.4: baryEpochs + getEffectiveNodesConfig(epochName, bary) pour interpolation graphique (appliqué via IO_LISTENER côté CO2)
+//   - v1.1.5: bary=1 → config époque suivante (bary=0 d'après) ; interpolation fillColor/strokeColor (parseRgba/parseHex/interpolateColor)
+//   - v1.1.6: baryEpochs Hadeen end-state = Archeen start (bary in [0,1[ ; frontiere coherente)
 
 // ============================================================================
 // RÉFÉRENCE DES LOGOS (déplacée vers alphabet.js)
@@ -359,9 +362,115 @@ const arcs = [
 
 
 
+// Barycentre graphique : valeurs de fin (bary=1) = époque suivante (bary=0 d'après). Interpolation visuelle côté CO2 via IO_LISTENER.
+const baryEpochs = {
+    // Hadéen → Archéen : bary in [0,1[ ; end-state = Archéen start (cohérence frontière)
+    'Hadéen': {
+        terre: { radius: radiusTerre, radiusExobase: radiusTerre * 1.15, fillColor: 'rgba(255, 215, 0, 0.5)', strokeColor: '#FFD700' },
+        noyau: { radiation: { numCircles: 6, maxRadius: 70 } }
+    },
+    'Archéen': {
+        terre: { radius: 85, radiusExobase: 103.5, fillColor: 'rgba(0, 191, 255, 0.5)', strokeColor: '#00FA9A' },
+        noyau: { radiation: { numCircles: 4, maxRadius: 60 } }
+    }
+};
+
+function interpolateNum(startVal, endVal, bary) {
+    if (typeof endVal !== 'number' || !Number.isFinite(endVal)) return startVal;
+    const s = (typeof startVal === 'number' && Number.isFinite(startVal)) ? startVal : endVal;
+    const t = Math.max(0, Math.min(1, Number(bary) || 0));
+    return s + t * (endVal - s);
+}
+
+function parseRgba(str) {
+    if (typeof str !== 'string') return null;
+    const m = str.trim().match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/i);
+    if (m) return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10), m[4] != null ? parseFloat(m[4]) : 1];
+    return null;
+}
+
+function parseHex(str) {
+    if (typeof str !== 'string') return null;
+    const s = str.trim().replace(/^#/, '');
+    if (s.length === 6) return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
+    if (s.length === 3) return [parseInt(s[0] + s[0], 16), parseInt(s[1] + s[1], 16), parseInt(s[2] + s[2], 16)];
+    return null;
+}
+
+function interpolateColor(startStr, endStr, t) {
+    if (t >= 1) return endStr;
+    if (t <= 0) return startStr;
+    const startRgba = parseRgba(startStr);
+    const endRgba = parseRgba(endStr);
+    if (startRgba && endRgba) {
+        const a = startRgba.length > 3 ? startRgba[3] : 1;
+        const b = endRgba.length > 3 ? endRgba[3] : 1;
+        return 'rgba(' + Math.round(startRgba[0] + t * (endRgba[0] - startRgba[0])) + ',' +
+            Math.round(startRgba[1] + t * (endRgba[1] - startRgba[1])) + ',' +
+            Math.round(startRgba[2] + t * (endRgba[2] - startRgba[2])) + ',' +
+            (a + t * (b - a)).toFixed(2) + ')';
+    }
+    const startHex = parseHex(startStr);
+    const endHex = parseHex(endStr);
+    if (startHex && endHex) {
+        const r = Math.round(startHex[0] + t * (endHex[0] - startHex[0]));
+        const g = Math.round(startHex[1] + t * (endHex[1] - startHex[1]));
+        const b = Math.round(startHex[2] + t * (endHex[2] - startHex[2]));
+        return '#' + [r, g, b].map(function (x) { return ('0' + Math.max(0, Math.min(255, x)).toString(16)).slice(-2); }).join('');
+    }
+    return t >= 0.5 ? endStr : startStr;
+}
+
+function getEffectiveNodesConfig(epochName, bary) {
+    if (!epochName || !baryEpochs[epochName]) return nodes;
+    const b = baryEpochs[epochName];
+    const t = Math.max(0, Math.min(1, Number(bary) || 0));
+    const out = nodes.map(function (node) {
+        const endNode = b[node.id];
+        if (!endNode) return node;
+        if (node.epoch && Array.isArray(node.epoch)) {
+            const idx = node.epoch.findIndex(function (e) { return e.epochName === epochName; });
+            if (idx < 0) return node;
+            const entry = node.epoch[idx];
+            const nextEntry = node.epoch[idx + 1];
+            const endFlat = endNode.radius !== undefined || endNode.fillColor ? endNode : null;
+            if (endFlat) {
+                const interp = {};
+                for (const k in entry) interp[k] = entry[k];
+                if (t >= 1 && nextEntry) {
+                    for (const k in nextEntry) interp[k] = nextEntry[k];
+                } else {
+                    if (typeof endFlat.radius === 'number') interp.radius = interpolateNum(entry.radius, endFlat.radius, t);
+                    if (typeof endFlat.radiusExobase === 'number') interp.radiusExobase = interpolateNum(entry.radiusExobase, endFlat.radiusExobase, t);
+                    if (endFlat.fillColor != null) interp.fillColor = interpolateColor(entry.fillColor || '', endFlat.fillColor, t);
+                    if (endFlat.strokeColor != null) interp.strokeColor = interpolateColor(entry.strokeColor || '', endFlat.strokeColor, t);
+                }
+                return { ...node, epoch: node.epoch.map(function (e) { return e.epochName === epochName ? interp : e; }) };
+            }
+        }
+        if (node.radiation && Array.isArray(node.radiation) && endNode.radiation) {
+            const idx = node.radiation.findIndex(function (r) { return r.epochName === epochName; });
+            if (idx < 0) return node;
+            const entry = node.radiation[idx];
+            const nextEntry = node.radiation[idx + 1];
+            const endR = endNode.radiation;
+            const interp = { ...entry };
+            if (t >= 1 && nextEntry) {
+                for (const k in nextEntry) interp[k] = nextEntry[k];
+            } else {
+                if (typeof endR.numCircles === 'number') interp.numCircles = Math.round(interpolateNum(entry.numCircles, endR.numCircles, t));
+                if (typeof endR.maxRadius === 'number') interp.maxRadius = interpolateNum(entry.maxRadius, endR.maxRadius, t);
+            }
+            return { ...node, radiation: node.radiation.map(function (r) { return r.epochName === epochName ? interp : r; }) };
+        }
+        return node;
+    });
+    return out;
+}
+
 // Exposer la configuration globalement pour accès depuis main.js
 // Note: timeline est chargée depuis API_BILAN/config/configTimeline.js
-window.configOrganigramme = { nodes, arcs, epochTextures, TEXTURES_THREEJS };
+window.configOrganigramme = { nodes, arcs, epochTextures, TEXTURES_THREEJS, baryEpochs, getEffectiveNodesConfig };
 // La timeline sera ajoutée par loader_panels initAfterLoad (configOrganigramme.timeline = TIMELINE.map(...))
 // [1] config : époque initiale AVANT build organigramme (ordre synchrone 1 → 2 lancement texture)
 if (window.DATA && window.TIMELINE && window.TIMELINE.length) {

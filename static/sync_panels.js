@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.22
+// Version 1.1.26
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -22,6 +22,10 @@
 // - v1.1.19: VISUALWAIT simplifié
 // - v1.1.20: un seul calcul (config:applyThenCompute) ; refresh visu = updateFluxLabels après compute:done (visu ou scie)
 // - v1.1.22: [4]/[X] logs utilisent _logStep/_logStepEnd (console.groupCollapsed) si définis
+// - v1.1.23: debug logs config:applyThenCompute + runComputeInParent (trace appelant [X])
+// - v1.1.24: fix "un nextEpoch en trop" — applyToVisu(fromScie) ne réécrit pas 📿💫/infoTimeMa ; config:applyThenCompute appelle setEpoch si transition
+// - v1.1.25: log [4] calculs (effectif) dans doCompute (après rAF) pour tracer le vrai début de calcul vs le scheduling
+// - v1.1.26: [4] effectif groupe reste ouvert jusqu'à [4] retour (suppr _logStepEnd prématuré)
 // - v1.1.21: guard calculationInProgress en tête de runComputeInParent (évite double appel sendComputeToScie + config:applyThenCompute) (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
 // - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
 // - v1.1.11: applyStateFromScie/applyTuningFromScie exposés ; messages sync:state/sync:tuning passent par shell
@@ -160,10 +164,14 @@
         }
         if (payload.ticTime !== undefined) {
             window.SYNC_STATE.ticTime = payload.ticTime;
-            window.infoTimeMa = payload.ticTime * 50;
-            window.DATA['📜']['📿💫'] = payload.ticTime;
-            var infoTime = document.getElementById('info-time');
-            if (infoTime) infoTime.textContent = '+' + (payload.ticTime * 50).toFixed(0) + ' Ma';
+            // fromScie : la scie renvoie son ticTime en écho → ne pas écraser la position temporelle du parent
+            // (le parent est source de vérité pour 📿💫/infoTimeMa ; l'écho scie crée une race condition)
+            if (!fromScie) {
+                window.infoTimeMa = payload.ticTime * 50;
+                window.DATA['📜']['📿💫'] = payload.ticTime;
+                var infoTime = document.getElementById('info-time');
+                if (infoTime) infoTime.textContent = '+' + (payload.ticTime * 50).toFixed(0) + ' Ma';
+            }
         }
         if (fromScie && payload.h2oTotalFromMeteorites !== undefined) {
             window.h2oTotalFromMeteorites = payload.h2oTotalFromMeteorites;
@@ -256,10 +264,14 @@
 
     // Main thread réservé GUI/DOM ; calcul cycles pourrait être déporté dans static/workers/compute_worker.js
     window.runComputeInParent = function () {
+        var _epRun = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
+        var _ticRun = window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'];
+        console.log('[DBG sync_panels] runComputeInParent epoch=' + _epRun + ' 📿💫=' + _ticRun + ' locked=' + window.SYNC_STATE.calculationInProgress);
         if (window.SYNC_STATE.calculationInProgress) {
         if (window._logStep) window._logStep('[X] bloqué calculationInProgress=true');
         else console.log('[4] bloqué calculationInProgress=true');
         if (window._logStepEnd) window._logStepEnd();
+        console.trace('[DBG] ⬆ stack de l\'appelant bloqué [X]');
         return Promise.resolve(null);
         }
         window.SYNC_STATE.calculationInProgress = true;
@@ -296,6 +308,12 @@
         }
         window.COMPUTE_LOADER.show();
         function doCompute() {
+            // Log : moment réel où la computation commence (après les 2× requestAnimationFrame)
+            var _epEff = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
+            console.log('[DBG sync_panels] doCompute (effectif après rAF) epoch=' + _epEff);
+            if (window._logStep) window._logStep('[4] calculs (effectif)');
+            else console.log('[4] calculs (effectif)');
+            // groupe [4] reste ouvert — fermé à [4] calculs (retour)
             if (!window.initForConfig()) {
                 window.SYNC_STATE.calculationInProgress = false;
                 return Promise.resolve(null);
@@ -314,6 +332,7 @@
             var isVisuMode = renderMode === 'visu_';
             return window.computeRadiativeTransfer(null, { renderMode: renderMode }).then(function (result) {
             window.SYNC_STATE.calculationInProgress = false;
+            if (window._logStepEnd) window._logStepEnd(); // ferme groupe [4] effectif
             if (window._logStep) window._logStep('[4] calculs (retour)');
             else console.log('[4] calculs (retour)');
             if (window._logStepEnd) window._logStepEnd();
@@ -345,8 +364,23 @@
     function initSyncPanels() {
         // Point d'entrée unique : config (📿☄️, ⚖️💧) puis calcul. Émis par visu (events.js) et par scie (sync:state).
         IO_LISTENER.on('config:applyThenCompute', function (payload) {
+            var _epBefore = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
+            var _ticBefore = window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'];
+            console.log('[DBG sync_panels] config:applyThenCompute btn=' + payload.button + ' epoch=' + _epBefore + ' 📿💫=' + _ticBefore);
             window.DATA['📜']['🔘🕰'] = payload.button;
             window.getEpochDateConfig();
+            var _epAfter = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
+            var _ticAfter = window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'];
+            console.log('[DBG sync_panels] après getEpochDateConfig epoch=' + _epAfter + ' 📿💫=' + _ticAfter + ((_epBefore !== _epAfter) ? ' ⚡TRANSITION' : ''));
+            // Si getEpochDateConfig a détecté une transition d'époque, déléguer à setEpoch pour mettre
+            // à jour l'UI (boutons, texture, currentEpochName) — évite le "nextEpoch en trop" visible
+            if (_epAfter !== _epBefore && typeof window.setEpoch === 'function') {
+                var _epochIdToName = {'⚫':'Corps Noir','🔥':'Hadéen','🦠':'Archéen','🥟':'Protérozoïque','🌿':'Paléozoïque','🦕':'Mésozoïque','🦣':'Cénozoïque','🏔':'EOT (33,9 Ma)','🚂':'Industriel','📱':"Aujourd'hui"};
+                var _newEpochName = _epochIdToName[_epAfter] || _epAfter;
+                console.log('[DBG sync_panels] ⚡ transition → setEpoch(' + _newEpochName + ')');
+                window.setEpoch(_newEpochName);
+                return;
+            }
             window.runComputeInParent();
         }, 'sync_panels');
 

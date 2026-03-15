@@ -1,8 +1,8 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.6
-// Date: [March 2025]
+// Version 1.1.12
+// Date: [March 14, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -16,6 +16,12 @@
 // - v1.1.4 : const MAJUSCULE = window.MAJUSCULE en entrée de chaque fonction (données vivantes, comme imports)
 // - v1.1.5 : updateDisplay bloc albedo : logosOrEmpty au lieu de const LOGOS = LOGOS (TDZ) ; pas de window.MAJUSCULE hors init
 // - v1.1.6 : Three.js pause avant changement texture (setEpoch/updateHadeenTexture), play au compute:done (loader_panels)
+// - v1.1.7 : debug logs setEpoch (trace appelant [3]) + log début appel
+// - v1.1.8 : fix "un nextEpoch en trop" — message scie ne réécrit plus DATA[📿💫] du parent ; bary:changed passe keepTimeMa:true ; setEpoch early-return respecte keepTimeMa
+// - v1.1.9 : applyBaryToGraphiqueOnly : early-return ne bloque plus sur !baryEpochs[epoch] ; +generateArrows +cellAlbedo (parité avec setEpoch full body)
+// - v1.1.10 : setEpoch : restauration log [2] (supprimé) ; events.js Hadéen handler réordonné (voir events.js v1.2.3)
+// - v1.1.11 : setEpoch stocke _lastPlanetTexturePath=logoPath ; applyBaryToGraphiqueOnly skip si même path (fix double Three.js)
+// - v1.1.12 : updateHadeenTexture utilise getEffectiveNodesConfig(bary) pour radius/exobase/colors interpolés + stocke _lastPlanetTexturePath
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -1932,36 +1938,119 @@ function getDashStyleForPattern(pattern) {
 
 // Les fonctions createDashPatternSVG et getDashArray sont maintenant dans patterns.js
 
+// Applique le bary au graphique (visu uniquement) : log 🎨 + recrée cellule terre + noyau. Appelé après compute:done via IO_LISTENER.
+function applyBaryToGraphiqueOnly() {
+    if (window !== window.top) return;
+    const DATA = window.DATA;
+    const TIMELINE = window.TIMELINE;
+    const IO_LISTENER = window.IO_LISTENER;
+    const FUNCS_ORGANIGRAMME = window.FUNCS_ORGANIGRAMME;
+    const epochName = window.currentEpochName;
+    const bary = DATA['📜']['bary'] || 0;
+    const effectiveNodes = window.configOrganigramme.getEffectiveNodesConfig(epochName, bary);
+    const terreNode = effectiveNodes.find(n => n.id === 'terre');
+    const noyauNode = effectiveNodes.find(n => n.id === 'noyau');
+    const terreEpochEntry = terreNode.epoch.find(e => e.epochName === epochName);
+    const noyauRadEntry = noyauNode.radiation.find(r => r.epochName === epochName);
+    console.groupCollapsed('🎨 Graphique (visu) bary=' + bary + ' r=' + terreEpochEntry.radius + ' exobase=' + terreEpochEntry.radiusExobase + ' noyau.maxR=' + (noyauRadEntry && noyauRadEntry.maxRadius));
+    console.groupEnd();
+    const epochConfig = terreEpochEntry;
+    const oldCell = document.getElementById('cell-terre');
+    const parent = oldCell.parentElement;
+    const canvas = oldCell.querySelector('canvas');
+    if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
+    let logoPath;
+    if (epochConfig.planetEffect) {
+        logoPath = window.getPlanetTexturePathFromEpoch(TIMELINE[DATA['📜']['👉']]['▶'], window.infoTimeMa);
+        if (logoPath === window._lastPlanetTexturePath) {
+            // Même texture déjà chargée (setEpoch vient de créer la cellule) → pas de recréation
+            FUNCS_ORGANIGRAMME.recreateNoyauRadiation();
+            FUNCS_ORGANIGRAMME.recreateTerreRadiation();
+            FUNCS_ORGANIGRAMME.generateArrows();
+            document.getElementById('cell-albedo').style.display = '';
+            return;
+        }
+        window._lastPlanetTexturePath = logoPath;
+    } else {
+        logoPath = interpretConfigValue(epochConfig.logo);
+    }
+    let lightDistance = epochConfig.lightDistance;
+    if (typeof lightDistance === 'string') lightDistance = interpretConfigValue(lightDistance);
+    if (window.isIceChange && typeof lightDistance === 'number') lightDistance = Math.max(0, lightDistance - 1);
+    window.currentEpochLuxSaturation = epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
+    window.currentEpochLightDistance = lightDistance;
+    window.threeJSAnimationPaused = true;
+    IO_LISTENER.emit('three:runStart');
+    const newCell = FUNCS_ORGANIGRAMME.createCell(
+        terreNode.x, terreNode.y, epochConfig.radius, epochConfig.fillColor, epochConfig.strokeColor,
+        logoPath, terreNode.left, terreNode.right, terreNode.top, terreNode.bottom, terreNode.tooltip, terreNode.ariaLabel || null,
+        terreNode.radiation, null, null, terreNode.id, terreNode.zIndex, 1, 0, epochConfig.strokeSize, terreNode.strokeStyle || 'solid',
+        epochConfig.radiusExobase ?? null, null, epochConfig.planetEffect || false
+    );
+    if (epochConfig.planetEffect) {
+        parent.insertBefore(newCell, oldCell);
+        const newCanvas = newCell.querySelector('canvas');
+        var _onThreeReady = function (payload) {
+            if (payload && payload.canvas === newCanvas) {
+                IO_LISTENER.off('three:ready', _onThreeReady);
+                if (oldCell.parentElement) oldCell.remove();
+            }
+        };
+        IO_LISTENER.on('three:ready', _onThreeReady, 'main.js:applyBaryOnly');
+        setTimeout(function () {
+            IO_LISTENER.off('three:ready', _onThreeReady);
+            if (oldCell.parentElement) oldCell.remove();
+        }, 3000);
+    } else {
+        oldCell.remove();
+        parent.appendChild(newCell);
+    }
+    newCell.querySelectorAll('.planet-texture[data-planet-texture="true"]').forEach(t => t.classList.add('paused'));
+    FUNCS_ORGANIGRAMME.recreateNoyauRadiation();
+    FUNCS_ORGANIGRAMME.recreateTerreRadiation();
+    FUNCS_ORGANIGRAMME.generateArrows();
+    document.getElementById('cell-albedo').style.display = '';
+}
+
 // Fonction pour activer/désactiver la vapeur d'eau
 // Fonction pour appliquer les conditions initiales d'une époque géologique
-function setEpoch(epochName) {
+function setEpoch(epochName, options) {
     const DATA = window.DATA;
     const TIMELINE = window.TIMELINE;
     const SYNC_STATE = window.SYNC_STATE;
     const IO_LISTENER = window.IO_LISTENER;
     const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
     const FUNCS_ORGANIGRAMME = window.FUNCS_ORGANIGRAMME;
+    // Étape bary graphique après compute:done (IO_LISTENER) — applique bary + log 🎨 sans changer d'époque
+    if (options && options.applyBaryOnly) {
+        applyBaryToGraphiqueOnly();
+        return;
+    }
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
     const epochNameToEmojiForButton = {
         'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🥟',
         'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
+    console.log('[DBG setEpoch] appelé avec=' + epochName + ' (id=' + epochIdForButton + ') DATA[🗿]=' + (DATA['📜'] && DATA['📜']['🗿']) + ' 📿💫=' + (DATA['📜'] && DATA['📜']['📿💫']) + ' currentEpochName=' + window.currentEpochName);
     if (DATA['📜'] && DATA['📜']['🗿'] === epochIdForButton) {
         const allEpochButtons = document.querySelectorAll('.epoch-btn');
         allEpochButtons.forEach(btn => btn.classList.remove('selected'));
         const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochIdForButton}"]`);
         if (clickedButton) clickedButton.classList.add('selected');
-        // TicTime à 0 au clic époque (même si même époque)
-        window.infoTimeMa = 0;
-        window._lastPlanetTexturePath = null;
-        window.timelineFrame = 0;
-        SYNC_STATE.ticTime = 0;
-        window.syncToScie({ ticTime: 0 });
-        document.getElementById('info-time').textContent = '+0 Ma';
+        // TicTime à 0 uniquement si clic utilisateur sur l'époque (keepTimeMa:true = appel programmatique, ne pas reset)
+        if (!(options && options.keepTimeMa)) {
+            window.infoTimeMa = 0;
+            window._lastPlanetTexturePath = null;
+            window.timelineFrame = 0;
+            SYNC_STATE.ticTime = 0;
+            window.syncToScie({ ticTime: 0 });
+            document.getElementById('info-time').textContent = '+0 Ma';
+        }
         window.updateTimeline();
         if (window._logStep) window._logStep('[3] DOM organigramme (même époque)');
         else console.log('[3] DOM organigramme');
+        console.trace('[DBG] ⬆ stack de l\'appelant [3] — qui a appelé setEpoch(' + epochName + ') ?');
         if (window._logStepEnd) window._logStepEnd();
         return;
     }
@@ -1981,11 +2070,14 @@ function setEpoch(epochName) {
         // Nouvelle époque : reset compteurs boutons et dernier bouton cliqué
         DATA['📜']['📿☄️'] = 0;
         DATA['📜']['📿💫'] = 0;
+        DATA['📜']['bary'] = 0;
         DATA['📜']['🔘🕰'] = '';
     }
     
-    // Log supprimé (non essentiel)
-    
+    if (window._logStep) window._logStep('[2] reset epoch (infoTimeMa→0, tics→0)');
+    else console.log('[2] reset epoch');
+    if (window._logStepEnd) window._logStepEnd();
+
     if (SYNC_STATE.calculationInProgress) {
         cancelCurrentCalculation();
         enableButtons();
@@ -2136,12 +2228,27 @@ function setEpoch(epochName) {
         window.updateEpochActions();
     }
 
-    // Mettre à jour le logo de la Terre avec l'image de l'époque
-    // Modifier la configuration du noeud terre et recréer la cellule
-    const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
+    // Mettre à jour le logo de la Terre avec l'image de l'époque (bary appliqué aux data graphiques si défini)
+    const bary = (DATA['📜'] && DATA['📜']['bary'] != null && Number.isFinite(DATA['📜']['bary'])) ? DATA['📜']['bary'] : 0;
+    const effectiveNodes = (window.configOrganigramme.getEffectiveNodesConfig && window.configOrganigramme.getEffectiveNodesConfig(epoch.name || epochName, bary)) || window.configOrganigramme.nodes;
+    const terreNode = effectiveNodes.find(n => n.id === 'terre');
+    const configEpochName = epoch.name || epochName;
+    // Log graphique (visu uniquement, pas scie_) : bary + toutes les valeurs effectives
+    if (window === window.top && window.configOrganigramme.baryEpochs && window.configOrganigramme.baryEpochs[configEpochName]) {
+        const noyauNode = effectiveNodes.find(function (n) { return n.id === 'noyau'; });
+        const terreEpochEntry = terreNode && terreNode.epoch ? terreNode.epoch.find(function (e) { return e.epochName === configEpochName; }) : null;
+        const noyauRadEntry = noyauNode && Array.isArray(noyauNode.radiation) ? noyauNode.radiation.find(function (r) { return r.epochName === configEpochName; }) : null;
+        const graphiqueValues = {
+            bary: bary,
+            terre: terreEpochEntry ? { radius: terreEpochEntry.radius, radiusExobase: terreEpochEntry.radiusExobase, fillColor: terreEpochEntry.fillColor, strokeColor: terreEpochEntry.strokeColor, strokeSize: terreEpochEntry.strokeSize, planetEffect: terreEpochEntry.planetEffect } : null,
+            noyau: noyauRadEntry ? { numCircles: noyauRadEntry.numCircles, maxRadius: noyauRadEntry.maxRadius, openingAngle: noyauRadEntry.openingAngle, color: noyauRadEntry.color } : null
+        };
+        console.groupCollapsed('🎨 Graphique (visu) — bary + valeurs effectives');
+        console.log('bary', bary);
+        console.log('valeurs effectives', graphiqueValues);
+        console.groupEnd();
+    }
     if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
-        // Trouver la configuration : config utilise epochName (ex: 'Corps noir'), pas l'emoji (ex: '⚫')
-        const configEpochName = epoch.name || epochName;
         const epochConfig = terreNode.epoch.find(e => e.epochName === configEpochName);
 
         if (epochConfig) {
@@ -2178,6 +2285,7 @@ function setEpoch(epochName) {
                 } else {
                     logoPath = interpretConfigValue(epochConfig.logo);
                 }
+                window._lastPlanetTexturePath = logoPath;
                 
                 // Si le logo contient encore {$ticTime} après interprétation, c'est une erreur
                 if (typeof logoPath === 'string' && logoPath.includes('{$ticTime}')) {
@@ -2573,11 +2681,12 @@ function setEpoch(epochName) {
         window.updateCO2LevelDirect(co2_fraction_from_config);
     }
 
-    // Synchroniser l'état avec l'iframe scie (epoch, anim, ticTime)
+    // Synchroniser l'état avec l'iframe scie (epoch, anim, ticTime, bary pour graphique)
     const epochId = (DATA && DATA['📜'] && DATA['📜']['🗿']) || epoch.id || epochName;
     const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
     const animEnabled = DATA['🔘']['🔘🎞'];
-    IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime, run: true });
+    const barySync = (DATA && DATA['📜'] && DATA['📜']['bary'] != null && Number.isFinite(DATA['📜']['bary'])) ? DATA['📜']['bary'] : undefined;
+    IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime, bary: barySync, run: true });
 }
 
 
@@ -2939,6 +3048,31 @@ function runMainInit() {
         window.updateThreePlayIndicator();
         console.log('[main.js][flux:lastDrawn] Three.js play');
     }, 'main.js:threePlay');
+
+    // Recevoir sync:state depuis l'iframe scie (bary → appliquer au graphique via configOrganigramme.getEffectiveNodesConfig)
+    window.addEventListener('message', function (e) {
+        if (!e.data || e.data.type !== 'sync:state' || !e.data.payload) return;
+        const p = e.data.payload;
+        if (!window.DATA) return;
+        if (!window.DATA['📜']) window.DATA['📜'] = {};
+        // NE PAS écraser DATA['📿💫'] depuis la réponse scie : le parent est seul source de vérité
+        // (sinon race condition : scie envoie ticTime:0 → reset du compteur parent → "un nextEpoch en trop")
+        if (p.bary !== undefined && Number.isFinite(p.bary)) {
+            window.DATA['📜']['bary'] = p.bary;
+            if (window.IO_LISTENER) window.IO_LISTENER.emit('bary:changed', { bary: p.bary, epochId: p.epochId });
+        }
+    });
+    window.IO_LISTENER.on('bary:changed', function (arg) {
+        // keepTimeMa:true → early-return ne réinitialise pas infoTimeMa (le bary ne change pas la position temporelle)
+        if (window.currentEpochName && typeof window.setEpoch === 'function') window.setEpoch(window.currentEpochName, { keepTimeMa: true });
+    }, 'main.js:baryGraphique');
+    // Après compute:done : appliquer bary au graphique (visu) + log 🎨
+    window.IO_LISTENER.on('compute:done', function () {
+        if (window === window.top && window.currentEpochName && typeof window.setEpoch === 'function') {
+            console.log('[main.js] 🎨 bary:apply (après compute:done)');
+            window.setEpoch(window.currentEpochName, { applyBaryOnly: true });
+        }
+    }, 'main.js:baryAfterCompute');
     // 🔒 Légende des emojis (affichée une seule fois au démarrage)
     if (!window._logLegendShown) {
         window._logLegendShown = true;
@@ -3088,8 +3222,9 @@ if (document.readyState === 'loading') {
 // Fonction pour mettre à jour la texture Hadéen selon infoTimeMa
 function updateHadeenTexture() {
     const IO_LISTENER = window.IO_LISTENER;
-    const currentEpoch = (typeof window !== 'undefined' && window.currentEpochName) || '';
-    if (currentEpoch !== 'Hadéen') return;
+    const DATA = window.DATA;
+    const TIMELINE = window.TIMELINE;
+    if (window.currentEpochName !== 'Hadéen') return;
     
     // Récupérer la config de l'époque et interpréter le logo
     const terreNode = window.configOrganigramme.nodes.find(n => n.id === 'terre');
@@ -3097,24 +3232,24 @@ function updateHadeenTexture() {
     
     const epochConfig = terreNode.epoch.find(e => e.epochName === 'Hadéen');
     if (!epochConfig) return;
-    
+
+    // Valeurs bary-interpolées (radius, exobase, fillColor, strokeColor convergent vers Archéen)
+    const _bary = DATA['📜']['bary'];
+    const effectiveNodes = window.configOrganigramme.getEffectiveNodesConfig('Hadéen', _bary);
+    const effectiveTerre = effectiveNodes.find(n => n.id === 'terre');
+    const effectiveEpoch = effectiveTerre.epoch.find(e => e.epochName === 'Hadéen');
+
     // planetEffect = texture calculée (getPlanetTexturePathFromEpoch) ; sinon logo (picto)
     let newLogoPath;
-    if (epochConfig.planetEffect && typeof window.getPlanetTexturePathFromEpoch === 'function') {
-        const DATA = window.DATA;
-        const TIMELINE = window.TIMELINE;
-        const idx = DATA && DATA['📜'] && DATA['📜']['👉'] != null ? DATA['📜']['👉'] : 0;
-        const tlEpoch = TIMELINE && TIMELINE[idx] ? TIMELINE[idx] : null;
-        const startYears = tlEpoch && tlEpoch['▶'] != null ? tlEpoch['▶'] : 4.5e9;
-        const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
-        newLogoPath = window.getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
+    if (epochConfig.planetEffect) {
+        newLogoPath = window.getPlanetTexturePathFromEpoch(TIMELINE[DATA['📜']['👉']]['▶'], window.infoTimeMa);
     } else {
         newLogoPath = interpretConfigValue(epochConfig.logo);
     }
-    
-    // Interpréter lightDistance aussi
+
+    // Interpréter lightDistance
     let lightDistance = epochConfig.lightDistance;
-    if (typeof lightDistance === 'string' || (typeof lightDistance !== 'number' && lightDistance !== null && lightDistance !== undefined)) {
+    if (typeof lightDistance === 'string') {
         lightDistance = interpretConfigValue(lightDistance);
     }
     
@@ -3155,9 +3290,9 @@ function updateHadeenTexture() {
         const newCell = FUNCS_ORGANIGRAMME.createCell(
             terreNode.x,
             terreNode.y,
-            epochConfig.radius,
-            epochConfig.fillColor,
-            epochConfig.strokeColor,
+            effectiveEpoch.radius,
+            effectiveEpoch.fillColor,
+            effectiveEpoch.strokeColor,
             newLogoPath,
             terreNode.left,
             terreNode.right,
@@ -3172,12 +3307,13 @@ function updateHadeenTexture() {
             terreNode.zIndex,
             1,
             0,
-            epochConfig.strokeSize,
+            effectiveEpoch.strokeSize,
             terreNode.strokeStyle || 'solid',
-            epochConfig.radiusExobase ?? null,
+            effectiveEpoch.radiusExobase ?? null,
             null,
-            epochConfig.planetEffect || false
+            effectiveEpoch.planetEffect || false
         );
+        window._lastPlanetTexturePath = newLogoPath;
         // Mettre la nouvelle cellule derrière l'ancienne : l'ancienne texture reste visible
         // jusqu'à ce que la nouvelle soit chargée (three:ready).
         parent.insertBefore(newCell, oldCell);
