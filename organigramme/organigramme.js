@@ -731,7 +731,7 @@ function initPlanetThreeJS(
     // Restaurer l'angle de rotation Y sauvegardé (pour garder la continuité)
     if (savedRotationY !== undefined && savedRotationY !== null) {
       sphere.rotation.y = savedRotationY;
-      // Log supprimé (non essentiel)
+      rotationY = savedRotationY; // synchro boucle animate() (sinon elle écrase au frame suivant)
     }
     scene.add(sphere);
 

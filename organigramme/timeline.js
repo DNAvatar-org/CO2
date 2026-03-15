@@ -76,15 +76,17 @@ function formatScaleLabel(ma) {
     return String(Math.round(ma * 1e6));
 }
 
-function ensureTimelineCursor(container, id, className, symbol) {
+function ensureTimelineCursor(container, id, symbol) {
     let cursor = document.getElementById(id);
     if (!cursor) {
         cursor = document.createElement('span');
         cursor.id = id;
-        cursor.className = 'timeline-cursor ' + className;
+        cursor.className = 'timeline-cursor';
         cursor.setAttribute('aria-hidden', 'true');
         cursor.textContent = symbol;
-        container.appendChild(cursor);
+        container.insertBefore(cursor, container.firstChild);
+    } else if (cursor.parentNode === container && cursor !== container.firstChild) {
+        container.insertBefore(cursor, container.firstChild);
     }
     return cursor;
 }
@@ -132,10 +134,7 @@ function buildEpochScale() {
     for (let i = 0; i < oldScaleRows.length; i++) {
         oldScaleRows[i].remove();
     }
-    const cursorLeft = ensureTimelineCursor(container, 'timeline-cursor-left', 'timeline-cursor-left', '⏵');
-    const cursorRight = ensureTimelineCursor(container, 'timeline-cursor-right', 'timeline-cursor-right', '⏴');
-    container.appendChild(cursorLeft);
-    container.appendChild(cursorRight);
+    ensureTimelineCursor(container, 'timeline-cursor', '⏵ ———— ⏴');
     const entries = getTimelineDateEntries(container);
     window._epochScaleBuilt = true;
 }
@@ -231,8 +230,7 @@ function updateTimeline() {
     }
 
     // Curseurs ⏴ ⏵ : même div que les dates d’époque, positionnement par calcul (y0 aligné sur la zone texte)
-    const cursorLeft = document.getElementById('timeline-cursor-left');
-    const cursorRight = document.getElementById('timeline-cursor-right');
+    const cursor = document.getElementById('timeline-cursor');
     const container = document.querySelector('.visu_epochs-container');
     if (!container || !window.DATA['📜'] || !window.TIMELINE) {
         pdOnce(
@@ -242,14 +240,13 @@ function updateTimeline() {
             ' timeline=' + !!window.TIMELINE
         );
     } else {
-        if (!window._epochScaleBuilt || !cursorLeft || !cursorRight) {
+        if (!window._epochScaleBuilt || !cursor) {
             buildEpochScale();
         }
-        const cursorLeft2 = document.getElementById('timeline-cursor-left');
-        const cursorRight2 = document.getElementById('timeline-cursor-right');
+        const cursor2 = document.getElementById('timeline-cursor');
         const entries = getTimelineDateEntries(container);
-        if (!cursorLeft2 || !cursorRight2) {
-            pdOnce('timeline-cursors-still-missing', '❌ [updateTimeline][timeline.js] cursors still missing after build');
+        if (!cursor2) {
+            pdOnce('timeline-cursors-still-missing', '❌ [updateTimeline][timeline.js] cursor still missing after build');
         } else if (entries.length === 0) {
             pdOnce('timeline-rows-empty', '❌ [updateTimeline][timeline.js] rows.length=0');
         } else {
@@ -266,9 +263,8 @@ function updateTimeline() {
             const startMa = -(epoch['▶'] / 1e6);
             const currentMa = startMa + window.infoTimeMa;
             const topPx = getCursorTopPx(container, textRows, scaleMa, currentMa) + TIMELINE_CURSOR_OFFSET_PX;
-            cursorLeft2.style.setProperty('top', topPx + 'px');
-            cursorRight2.style.setProperty('top', topPx + 'px');
-            cursorLeft2.setAttribute('data-timeline-top', String(Math.round(topPx)));
+            cursor2.style.setProperty('top', topPx + 'px');
+            cursor2.setAttribute('data-timeline-top', String(Math.round(topPx)));
             logTimelineGeometry();
             // Debug curseurs >..< pour époques récentes (1800, 2100)
             const epochId = epoch['📅'];

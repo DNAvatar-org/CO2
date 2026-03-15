@@ -781,14 +781,16 @@ h1 {
 }
 .timeline-cursor {
     position: absolute;
-    color: #2ecc71;
+    left: -2px;
+    right: 0;
+    text-align: center;
+    color: rgba(0, 255, 0, 0.5);
     font-size: 14px;
+    font-weight: normal;
     pointer-events: none;
-    z-index: 2;
+    z-index: 0;
     transform: translateY(calc(-50% + 8px)); /* +8px = descente 5px par rapport à l’ancien +3px */
 }
-.timeline-cursor-left { left: 0; }
-.timeline-cursor-right { right: 0; }
 
 .visu_epochs-container {
     position: relative;

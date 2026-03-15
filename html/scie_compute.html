@@ -140,10 +140,12 @@
             const DATA = window.DATA;
             const epochId = (DATA && DATA['📜'] && DATA['📜']['🗿']) || '⚫';
             const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
+            const bary = (DATA && DATA['📜'] && DATA['📜']['bary'] != null && Number.isFinite(DATA['📜']['bary'])) ? DATA['📜']['bary'] : undefined;
             const animBtn = document.getElementById('anim-toggle');
             const animEnabled = animBtn ? animBtn.classList.contains('selected') : true;
             const h2oTotalFromMeteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
             const payload = { epochId, animEnabled, ticTime, h2oTotalFromMeteorites };
+            if (bary !== undefined) payload.bary = bary;
             if (DATA && DATA['🎚️']) {
                 const T = DATA['🎚️'];
                 payload.tuning = {
@@ -429,7 +431,7 @@
                 eventsLogos.appendChild(ticBtn);
             }
             
-            // Bouton météorite (☄️) — Corps noir : 📿💫 = nb météorites (getEpochDateConfig surcharge 📿☄️=📿💫). Hadéen : % eau → h2oTotalFromMeteorites.
+            // Bouton météorite (☄️) — incrémente 📿☄️ (pas 📿💫). Hadéen : % eau → h2oTotalFromMeteorites.
             if (EPOCH['🕰'] && EPOCH['🕰']['☄️']) {
                 const meteorBtn = document.createElement('img');
                 meteorBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('☄️')) || getImagePath('fonts/pics/ice_meteorite.png');
@@ -438,16 +440,14 @@
                 meteorBtn.title = 'Météorite de glace';
                 const mass_kg = EPOCH['🕰']['☄️']['🔺⚖️💧☄️'];
                 meteorBtn.addEventListener('click', () => {
-                    if (!EPOCH['🕰']['💫']) {
-                        window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
-                    } else {
+                    window.DATA['📜']['📿☄️'] = (window.DATA['📜']['📿☄️'] || 0) + 1;
+                    if (EPOCH['🕰']['💫']) {
                         const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
                         if (!window.DATA['💧']) window.DATA['💧'] = {};
                         const currentH2O = window.DATA['💧']['☄️'] != null ? window.DATA['💧']['☄️'] : 0;
                         const newH2O = Math.min(100, currentH2O + (mass_kg / earthTotalWaterKg) * 100);
                         window.DATA['💧']['☄️'] = newH2O;
                         window.h2oTotalFromMeteorites = newH2O;
-                        window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
                     }
                     window.getEpochDateConfig();
                     window.getNoyau();
