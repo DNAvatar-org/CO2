@@ -1,6 +1,6 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.6
+// Version 1.1.8
 // Date: [March 14, 2026] [HH:MM UTC+1]
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
@@ -17,6 +17,8 @@
 //   - v1.1.4: baryEpochs + getEffectiveNodesConfig(epochName, bary) pour interpolation graphique (appliqué via IO_LISTENER côté CO2)
 //   - v1.1.5: bary=1 → config époque suivante (bary=0 d'après) ; interpolation fillColor/strokeColor (parseRgba/parseHex/interpolateColor)
 //   - v1.1.6: baryEpochs Hadeen end-state = Archeen start (bary in [0,1[ ; frontiere coherente)
+//   - v1.1.7: LABEL_POSITIONS txtDD (avant début flèche) et txtFF (après bout flèche) pour arcs
+//   - v1.1.8: TEXTURES_THREEJS dérivé des dates (TEXTURE_DATES_MA / TEXTURE_DATES_YEAR) ; epochTextures supprimé (chemin = getPlanetTexturePathFromEpoch)
 
 // ============================================================================
 // RÉFÉRENCE DES LOGOS (déplacée vers alphabet.js)
@@ -32,26 +34,15 @@ const LOGOS = window.CHARS;
 // TEXTURES Three.js — CO2/fonds/*.png par dates (la carte c'est le territoire)
 // ============================================================================
 // ⚠️ charsImages (alphabet.js) ne touche JAMAIS aux textures !
-// Inventaire fonds/ : 5 chiffres pour Ma (05000Ma.png, 04500Ma.png…) = même format que getPlanetTexturePathFromEpoch
-// ticTime=0 par défaut → index 0
+// Le chemin texture se déduit toujours de la date : getPlanetTexturePathFromEpoch(▶, infoTimeMa) (organigramme.js).
+// Liste pour préchargement éventuel : dérivée des dates (Ma ou années), pas des noms d’époques.
+// Convention : 5 chiffres + "Ma.png" (ex. 05000Ma.png) ou 6 chiffres + "a.png" (ex. 001800a.png).
+const TEXTURE_DATES_MA = [5000, 4500, 4100, 3700, 3300, 2900, 2500, 2300, 225, 150, 100, 200, 66];
+const TEXTURE_DATES_YEAR = [1800, 2025];
 const TEXTURES_THREEJS = [
-    'fonds/05000Ma.png',
-    'fonds/04500Ma.png', 'fonds/04100Ma.png', 'fonds/03700Ma.png', 'fonds/03300Ma.png', 'fonds/02900Ma.png',
-    'fonds/02500Ma.png', 'fonds/02300Ma.png', 'fonds/00225Ma.png', 'fonds/00150Ma.png', 'fonds/00100Ma.png',
-    'fonds/00200Ma.png', 'fonds/00066Ma.png', 'fonds/001800a.png', 'fonds/002025a.png'
+    ...TEXTURE_DATES_MA.map((ma) => "fonds/" + String(ma).padStart(5, "0") + "Ma.png"),
+    ...TEXTURE_DATES_YEAR.map((y) => "fonds/" + String(y).padStart(6, "0") + "a.png"),
 ];
-// epochName -> chemin (Hadéen/Archéen : {$ticTime} → index; 1800/2025 : fichier par date)
-const epochTextures = {
-    'Corps Noir': 'fonds/05000Ma.png',
-    'Hadéen': 'fonds/04500Ma.png',
-    'Archéen': 'fonds/02500Ma.png',
-    'Protérozoïque': 'fonds/02300Ma.png',
-    'Mésozoïque': 'fonds/00200Ma.png',
-    'Cénozoïque': 'fonds/00066Ma.png',
-    'Industriel': 'fonds/001800a.png',
-    'Aujourd\'hui': 'fonds/002025a.png',
-    'EOT (33,9 Ma)': 'fonds/002025a.png'
-};
 
 // Configuration de base
 const radius = 40; // Cercles plus petits (par défaut)
@@ -91,9 +82,10 @@ const Z_NODE_INTERNAL = {
 
 // Constantes de positionnement des étiquettes sur les flèches
 const LABEL_POSITIONS = {
-    txtD: 0.2,      // 5% - Début de la flèche
-    txtF: 0.93,      // 93% - Fin de la flèche
-    txtF_albedo: 1.15 // 115% - Exception pour albedo (petite flèche jaune)
+    txtDD: -0.1,       // Avant le début de la flèche (départ)
+    txtD: 0.2,      // 20% - Début de la flèche
+    txtF: 0.93,     // 93% - Fin de la flèche
+    txtFF: 1.1,    // Après le bout de la flèche (arrivée)
 };
 
 // Z-index spécifiques pour chaque nœud
@@ -143,6 +135,7 @@ const nodes = [
     { id: 'espace1', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 150, y: centerY - 170, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'CERES', radiation: null, zIndex: 14 },
 
     {//albedo cellule — cercle extérieur toujours blanc alpha 0.5, sans fill
+        // Astuce direction flèche : centre décentré (x,y + petit offset) pour que le vecteur albedo→espace1 donne la bonne direction (sinon même centre que terre = ambiguïté). Voir aussi noyau (centerX - 0.2, earthCenterY - 0.1).
         id: 'albedo',
         logo: '',
         planetEffect: false,
@@ -159,7 +152,7 @@ const nodes = [
         logoScale: 0.1
     },
 
-    {//noyau cellule
+    {//noyau cellule — centre décentré (x-0.2, y-0.1) pour direction des flèches, même astuce que albedo (voir commentaire albedo).
         id: 'noyau',
         logo: [{ text: '4.44 x 10^13 W', dataId: 'core_temperature' }],//'🌕',
         x: centerX - 0.2,
@@ -344,19 +337,22 @@ const nodes = [
 
     { id: 'h2o', type: 'button', logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'albedo-btn', type: 'button', logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.75, y: earthCenterY - circleMiddleRadius * 0.85, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [{ text: '🧩🔺100%🔻', dataId: 'fine_tuning_cloud_bary' }], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
+    { id: 'albedo-btn', type: 'button', logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [{ text: '🧩🔺100%🔻', dataId: 'fine_tuning_cloud_bary' }], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
 ];
 
 // Définition du graphe : arcs (flèches)
 // Les labels peuvent être des strings (statiques) ou des objets avec { text, dataId } (dynamiques)
 const arcs = [
-    { from: 'soleil', to: 'geometrie', zIndex: 10, label: { name: { text: '1UA', dataId: 'distance_1ua' }, txtD: '', txtF: '' }},
-    { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_average_wm' }, txtF:  { text: '0%', dataId: 'passing_albedo_percent' }} },
-    { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: [ { text: '0×10<sup><b>17</b></sup> W', dataId: 'solar_flux_absorbed_watts' }, { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'solar_flux_absorbed_wm' } ] } },
-    { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' } },
+    { from: 'soleil', to: 'geometrie', zIndex: 10, label: { name: { text: '1UA', dataId: 'distance_1ua' }, txtD: '', txtF: '' }, color: '#ffff00'},
+    { from: 'geometrie', to: 'albedo', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_average_wm' }, txtF: ''}, color: '#ffff00' },//{ text: '0%', dataId: 'passing_albedo_percent' }
+    { from: 'geometrie', to: 'terre', zIndex: 10, label: { name: '', txtF: [ { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'solar_flux_absorbed_wm' }], txtFF: [ { text: '0×10<sup><b>17</b></sup> W', dataId: 'solar_flux_absorbed_watts' } ]}, color: '#ffff00' },
+    
+    // Flèche grise (réfléchi → CERES). Direction = vecteur albedo→espace1 : albedo (centerX+0.8, earthCenterY+1), espace1 (centerX+150, centerY-170) → angle ≈ -61° (à 60° au-dessus de l’horizontale). Pour décaler : fromCenterOffset: { x, y } sur l’arc.
+    { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' }, color: '#bbbb99' },
     { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'core_flux_wm' }, txtF: '' }, color: '#ff0000' },
-    { from: 'terre', to: 'albedo', zIndex: 22, label: { name: { text: '0×10<sup><b>17</b></sup> W', dataId: 'surface_flux_emitted_watts' }, txtF: { text: '0 km', dataId: 'atm_height_km' }, txtD: { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'surface_flux_emitted_wm' } }, color: 'red' },//tout doit etre retourné
-    { from: 'albedo', to: 'espace2', zIndex: 22, label: { name: { text: '0×10<sup><b>17</b></sup> W', dataId: 'flux_ejected_watts' } }, color: '#ff5500' },
+    // Astuce centre décentré : le nœud 'albedo' a (x+0.8, y+1) pour que la flèche ROUGE terre→albedo ait la bonne direction. Vecteur = (idDep.x, idDep.y)→(idDest.x, idDest.y) dans organigramme.js.
+    { from: 'terre', to: 'albedo', zIndex: 22, label: { name: '', txtDD: { text: '0×10<sup><b>17</b></sup> W', dataId: 'surface_flux_emitted_watts' }, txtF: { text: '0 km', dataId: 'atm_height_km' }, txtD: { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'surface_flux_emitted_wm' } }, color: 'red' },
+    { from: 'albedo', to: 'espace2', zIndex: 22, label: { name: { text: '0×10<sup><b>17</b></sup> W', dataId: 'flux_ejected_watts' } }, color: '#ff0000' },
     { from: 'reemis', to: 'terre', zIndex: 26, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'forcing_total' }, txtD: '' }, color: '#ff0000' },
 ];
 
@@ -470,7 +466,7 @@ function getEffectiveNodesConfig(epochName, bary) {
 
 // Exposer la configuration globalement pour accès depuis main.js
 // Note: timeline est chargée depuis API_BILAN/config/configTimeline.js
-window.configOrganigramme = { nodes, arcs, epochTextures, TEXTURES_THREEJS, baryEpochs, getEffectiveNodesConfig };
+window.configOrganigramme = { nodes, arcs, TEXTURES_THREEJS, baryEpochs, getEffectiveNodesConfig };
 // La timeline sera ajoutée par loader_panels initAfterLoad (configOrganigramme.timeline = TIMELINE.map(...))
 // [1] config : époque initiale AVANT build organigramme (ordre synchrone 1 → 2 lancement texture)
 if (window.DATA && window.TIMELINE && window.TIMELINE.length) {

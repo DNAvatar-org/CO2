@@ -18,7 +18,7 @@
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
 // ============================================================================
 // - Pictos : window.charsImages (alphabet.js) → logos des boutons (ex: corps_noir.png)
-// - Textures : window.configOrganigramme.epochTextures (configOrganigramme.js) → text_*.png pour sphères
+// - Textures : chemin déduit de la date via getPlanetTexturePathFromEpoch(▶, infoTimeMa) ; liste préload : configOrganigramme.TEXTURES_THREEJS
 // planetEffect=true → texture (Three.js) ; planetEffect=false → picto (charsImages)
 
 // Pas de const DATA/TIMELINE ici (évite redeclaration avec main.js) — utiliser window.DATA / window.TIMELINE
@@ -436,7 +436,7 @@ function getPlanetTexturePathFromEpoch(startYears, infoTimeMa) {
 
 // Fonction pour créer une cellule avec un tableau 3x3
 // Fonction pour initialiser Three.js pour l'effet planète
-// logoPath = texture text_*.png depuis epochTextures (configOrganigramme) - JAMAIS charsImages !
+// logoPath = texture fonds/*.png déduite de la date (getPlanetTexturePathFromEpoch) - JAMAIS charsImages !
 function initPlanetThreeJS(
   canvas,
   logoPath,
@@ -2031,6 +2031,20 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
   // Récupérer la taille depuis labelObj.size
   const labelSize = labelObj.size || null;
 
+  // txtDD : avant le début de la flèche (ratio 0 ou LABEL_POSITIONS.txtDD)
+  if (labelObj.txtDD) {
+    const percent = LABEL_POSITIONS.txtDD != null ? LABEL_POSITIONS.txtDD : 0;
+    const posX = x1 + (x2 - x1) * percent;
+    const posY = y1 + (y2 - y1) * percent;
+    if (Array.isArray(labelObj.txtDD)) {
+      labelObj.txtDD.forEach((labelData, index) => {
+        createLabel(labelData, posX, posY, false, labelSize, "txtDD");
+      });
+    } else {
+      createLabel(labelObj.txtDD, posX, posY, false, labelSize, "txtDD");
+    }
+  }
+
   // txtD : au début de la flèche (LABEL_POSITIONS.txtD)
   if (labelObj.txtD) {
     const pos1X = x1 + (x2 - x1) * LABEL_POSITIONS.txtD;
@@ -2081,16 +2095,23 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
         createLabel(labelData, pos2X, pos2Y, false, labelSize, "txtF");
       });
     } else {
-      // txtF est un objet unique ou une chaîne
-      // Exception pour 'albedo_percents' (petite flèche jaune)
-      const dataId = getLabelDataId(labelObj.txtF);
-      if (dataId === "albedo_percents") {
-        percent = LABEL_POSITIONS.txtF_albedo; // Pousser encore plus loin pour celle-ci
-      }
-
       const pos2X = x1 + (x2 - x1) * percent;
       const pos2Y = y1 + (y2 - y1) * percent;
       createLabel(labelObj.txtF, pos2X, pos2Y, false, labelSize, "txtF");
+    }
+  }
+
+  // txtFF : après le bout de la flèche (LABEL_POSITIONS.txtFF > 1)
+  if (labelObj.txtFF) {
+    const percent = LABEL_POSITIONS.txtFF != null ? LABEL_POSITIONS.txtFF : 1.05;
+    const posX = x1 + (x2 - x1) * percent;
+    const posY = y1 + (y2 - y1) * percent;
+    if (Array.isArray(labelObj.txtFF)) {
+      labelObj.txtFF.forEach((labelData, index) => {
+        createLabel(labelData, posX, posY, false, labelSize, "txtFF");
+      });
+    } else {
+      createLabel(labelObj.txtFF, posX, posY, false, labelSize, "txtFF");
     }
   }
 
@@ -2441,10 +2462,13 @@ function generateArrows() {
 
     if (!idDep || !idDest) return;
 
-    // Vecteur depuis le centre du départ vers le centre de la destination
+    // Centre effectif du nœud départ : avec option fromCenterOffset sur l'arc on décale le point utilisé pour la direction (sans bouger le nœud).
+    const fromX = idDep.x + (arc.fromCenterOffset ? arc.fromCenterOffset.x : 0);
+    const fromY = idDep.y + (arc.fromCenterOffset ? arc.fromCenterOffset.y : 0);
+    // Vecteur depuis ce centre vers la destination (détermine la direction de la flèche).
     const Vect = {
-      x: idDest.x - idDep.x,
-      y: idDest.y - idDep.y,
+      x: idDest.x - fromX,
+      y: idDest.y - fromY,
     };
 
     // Normaliser le vecteur
@@ -4154,6 +4178,46 @@ window.updateFluxLabels = function (eventId) {
         labelPath = "txtD";
         break;
       }
+      // Vérifier txtDD (avant le début de la flèche)
+      if (
+        arc.label.txtDD &&
+        typeof arc.label.txtDD === "object" &&
+        arc.label.txtDD.dataId === dataId
+      ) {
+        template = arc.label.txtDD.text;
+        labelPath = "txtDD";
+        break;
+      }
+      if (Array.isArray(arc.label.txtDD)) {
+        for (const item of arc.label.txtDD) {
+          if (typeof item === "object" && item.dataId === dataId) {
+            template = item.text;
+            labelPath = "txtDD";
+            break;
+          }
+        }
+        if (template) break;
+      }
+      // Vérifier txtFF (après le bout de la flèche)
+      if (
+        arc.label.txtFF &&
+        typeof arc.label.txtFF === "object" &&
+        arc.label.txtFF.dataId === dataId
+      ) {
+        template = arc.label.txtFF.text;
+        labelPath = "txtFF";
+        break;
+      }
+      if (Array.isArray(arc.label.txtFF)) {
+        for (const item of arc.label.txtFF) {
+          if (typeof item === "object" && item.dataId === dataId) {
+            template = item.text;
+            labelPath = "txtFF";
+            break;
+          }
+        }
+        if (template) break;
+      }
     }
 
     // Si pas de template trouvé, chercher dans les nœuds (pour les boutons)
@@ -4540,11 +4604,33 @@ window.updateFluxLabels = function (eventId) {
     window.FluxManager.updateAllFluxes(window.currentEpochName);
   }
 
-  const SOLAR_CONSTANT = CONST.SOLAR_CONSTANT;
-  const GEOTHERMIE_FLUX = D['🌕']['🧲🌕'];
+  // Source prioritaire pour le flux solaire : DATA['☀️'] (rempli par époque), sinon CONST
+  const soleilData = typeof window !== "undefined" && window.DATA && window.DATA["☀️"];
+  const SOLAR_CONSTANT =
+    soleilData && Number.isFinite(soleilData["🧲☀️"])
+      ? soleilData["🧲☀️"]
+      : CONST.SOLAR_CONSTANT;
+  const GEOTHERMIE_FLUX = D["🌕"]["🧲🌕"];
 
-  // Pour les calculs de moyenne (si utilisés plus bas)
-  const SOLAR_FLUX_AVERAGE = SOLAR_CONSTANT / 4;
+  // Pour les calculs de moyenne (si utilisés plus bas) : 🧲☀️🎱 = S/4
+  const SOLAR_FLUX_AVERAGE =
+    soleilData && Number.isFinite(soleilData["🧲☀️🎱"])
+      ? soleilData["🧲☀️🎱"]
+      : SOLAR_CONSTANT / 4;
+
+  // Mettre à jour les labels Soleil / Géométrie depuis DATA['☀️'] pour que l’affichage suive l’époque
+  if (soleilData) {
+    if (Number.isFinite(soleilData["🧲☀️"])) {
+      updateLabel("solar_1UA_mw", soleilData["🧲☀️"]);
+      if (window.CONST) window.CONST.SOLAR_CONSTANT = soleilData["🧲☀️"];
+    }
+    if (Number.isFinite(soleilData["🔋☀️"])) {
+      updateLabel("solar_power_total", soleilData["🔋☀️"]);
+      const SOLAR_SURFACE_AREA = 6.09e18;
+      const solarSurfaceFluxMW = soleilData["🔋☀️"] / SOLAR_SURFACE_AREA / 1e6;
+      updateLabel("solar_surface_mw", solarSurfaceFluxMW);
+    }
+  }
 
   // Détecter le mode "Corps Noir" : basé sur les propriétés physiques de l'époque
   const isCorpsNoir = isBlackBodyEpoch();
