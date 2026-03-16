@@ -260,6 +260,16 @@
 .flux-arrow>div {
     filter: drop-shadow(0 0 2px #667eea);
 }
+
+/* ⚗ unselected : masquer textes (flux-label) et logos CO2 / H2O / CH4 ; garder les flèches */
+/* Exclure avec :not() les labels W/m² et W/K pour les afficher quand même */
+#flux-diagram.hide-organigram-arrows .flux-label:not(.watt-per-m2):not(.watt-or-kelvin),
+#flux-diagram.hide-organigram-arrows #cell-co2,
+#flux-diagram.hide-organigram-arrows #cell-methane,
+#flux-diagram.hide-organigram-arrows #cell-h2o {
+    visibility: hidden;
+}
+
 .flux-rectangle {
     border-radius: 8px;
     display: flex;
@@ -493,7 +503,7 @@
 }
 
 .synthese_Temp .thermometer-icon {
-    font-size: 25px;
+    font-size: 20px;
     line-height: 1;
     margin-right: 10px;
     display: inline-flex;
@@ -517,6 +527,7 @@
 
 /* synthese_Temp : variante 2 colonnes (sans coupler à #visu-panel .title-container) */
 .synthese_Temp.synthese_Temp-two-cols {
+    font-family: 'ProggyDotted';
     position: relative;
     width: 270px;
     display: flex;
@@ -557,7 +568,6 @@
 
 .visu_epoch-name {
     font-size: 17px;
-    font-family: 'ProggyDotted';
     font-style: italic;
     display: block;
     margin-top: 2px;

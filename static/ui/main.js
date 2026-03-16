@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.12
+// Version 1.1.14
 // Date: [March 14, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -22,6 +22,8 @@
 // - v1.1.10 : setEpoch : restauration log [2] (supprimé) ; events.js Hadéen handler réordonné (voir events.js v1.2.3)
 // - v1.1.11 : setEpoch stocke _lastPlanetTexturePath=logoPath ; applyBaryToGraphiqueOnly skip si même path (fix double Three.js)
 // - v1.1.12 : updateHadeenTexture utilise getEffectiveNodesConfig(bary) pour radius/exobase/colors interpolés + stocke _lastPlanetTexturePath
+// - v1.1.13 : setEpoch "même époque" seulement si currentEpochName===epochName (fix transition ticTime → [1][2][4] exécutés)
+// - v1.1.14 : suppression court-circuit "même époque" — rechargement complet à chaque setEpoch
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -2033,27 +2035,6 @@ function setEpoch(epochName, options) {
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
     console.log('[DBG setEpoch] appelé avec=' + epochName + ' (id=' + epochIdForButton + ') DATA[🗿]=' + (DATA['📜'] && DATA['📜']['🗿']) + ' 📿💫=' + (DATA['📜'] && DATA['📜']['📿💫']) + ' currentEpochName=' + window.currentEpochName);
-    if (DATA['📜'] && DATA['📜']['🗿'] === epochIdForButton) {
-        const allEpochButtons = document.querySelectorAll('.epoch-btn');
-        allEpochButtons.forEach(btn => btn.classList.remove('selected'));
-        const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochIdForButton}"]`);
-        if (clickedButton) clickedButton.classList.add('selected');
-        // TicTime à 0 uniquement si clic utilisateur sur l'époque (keepTimeMa:true = appel programmatique, ne pas reset)
-        if (!(options && options.keepTimeMa)) {
-            window.infoTimeMa = 0;
-            window._lastPlanetTexturePath = null;
-            window.timelineFrame = 0;
-            SYNC_STATE.ticTime = 0;
-            window.syncToScie({ ticTime: 0 });
-            document.getElementById('info-time').textContent = '+0 Ma';
-        }
-        window.updateTimeline();
-        if (window._logStep) window._logStep('[3] DOM organigramme (même époque)');
-        else console.log('[3] DOM organigramme');
-        console.trace('[DBG] ⬆ stack de l\'appelant [3] — qui a appelé setEpoch(' + epochName + ') ?');
-        if (window._logStepEnd) window._logStepEnd();
-        return;
-    }
     if (window._logStep) window._logStep('[1] config ' + epochName);
     else console.log('[1] config', epochName);
     // 🔒 Cacher le tooltip immédiatement lors du changement d'époque
@@ -3101,26 +3082,36 @@ function runMainInit() {
                 window.fpsLevel = 'rapide';
                 window.showSpectralBackground = true;
                 
-                // Indicateur 🎬 uniquement quand play (pas de symbole pause)
+                // Bouton ⚗ à la place de 🎬 : afficher/masquer flèches et textes de l'organigramme (même police que utf8)
+                window.organigramArrowsVisible = true;
                 window.updateThreePlayIndicator = function () {
                     var el = document.getElementById('three-play-indicator');
                     if (!el) {
                         var flux = document.getElementById('flux-diagram');
-                        el = document.createElement('span');
+                        el = document.createElement('button');
                         el.id = 'three-play-indicator';
-                        el.setAttribute('aria-hidden', 'true');
-                        el.style.cssText = 'position:absolute;top:4px;right:4px;font-size:1.2em;z-index:9999;pointer-events:none;';
+                        el.type = 'button';
+                        el.className = 'icon-button selected';
+                        el.title = 'Afficher ou masquer les flèches et textes de l\'organigramme';
+                        el.setAttribute('aria-label', 'Afficher ou masquer les flèches et textes de l\'organigramme');
+                        el.style.cssText = 'position:absolute;top:4px;right:4px;font-size:1.2em;z-index:9999;cursor:pointer;background:transparent;border:none;padding:2px;font-family:var(--font-emoji);';
+                        el.textContent = '⚗';
                         flux.style.position = flux.style.position || 'relative';
                         flux.appendChild(el);
+                        el.addEventListener('click', function () {
+                            window.organigramArrowsVisible = !window.organigramArrowsVisible;
+                            var diagram = document.getElementById('flux-diagram');
+                            if (diagram) diagram.classList.toggle('hide-organigram-arrows', !window.organigramArrowsVisible);
+                            el.classList.toggle('selected', window.organigramArrowsVisible);
+                        });
                     }
-                    el.textContent = window.threeJSAnimationPaused ? '' : '🎬';
                 };
                 const animCb = document.getElementById('plot-anim-toggle-checkbox');
                 animCb.addEventListener('change', (e) => {
                     DATA['🔘']['🔘🎞'] = e.target.checked;
                 });
                 window.updateThreePlayIndicator();
-                
+
                 // 🔒 Initialiser la précision de convergence depuis les radio buttons (variable globale unique)
                 const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
                 if (precisionRadios.length > 0) {

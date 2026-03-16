@@ -895,7 +895,7 @@
             if (groupKey === 'SCIENCE') {
                 if (key === 'CLOUD_FRACTION_INDEX_GAIN') return '☁️';
                 if (key === 'OPTICAL_EFF_CCN_GAIN') return '🧪';
-                return '⚗';
+                return '🔬';
             }
             if (groupKey === 'CLOUD_SW') {
                 if (key.indexOf('SULFATE') === 0) return '🌫';
@@ -1225,7 +1225,7 @@
 
             let html = '';
             html += renderMergedCategory('CLOUD_SW', 'CLOUD_SW', '☁️', false);
-            html += renderMergedCategory('SCIENCE', 'Science', '⚗', true);
+            html += renderMergedCategory('SCIENCE', 'Science', '🔬', true);
             html += renderMergedCategory('SOLVER', 'Solveur', '🧮', true);
 
             tuningContent.innerHTML = html;
