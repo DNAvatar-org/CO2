@@ -15,13 +15,12 @@
    ========================================================================== */
 
 :root {
-    /* Couleurs pour l'animation event-logo-pulse-img */
+    /* Couleurs pour l'animation event-logo-pulse-img (météorite / boutons SCENARIO) — glow rouge */
     --event-pulse-black: rgba(0, 0, 0, 1);
-    --event-pulse-white-min: rgba(255, 255, 255, 0.5);
-    --event-pulse-white-mid: rgba(0, 255, 255, 0.7);
-    --event-pulse-white-max: rgba(255, 255, 255, 0.4);
-    --event-pulse-white-shadow-min: rgba(255, 255, 255, 0.3);
-    --event-pulse-white-shadow-max: rgba(0, 255, 255, 0.4);
+    --event-pulse-red-min: rgba(255, 80, 80, 0.6);
+    --event-pulse-red-mid: rgba(255, 0, 0, 0.95);
+    --event-pulse-red-shadow-min: rgba(255, 60, 60, 0.4);
+    --event-pulse-red-shadow-max: rgba(255, 0, 0, 0.85);
 }
 
 /* ==========================================================================
@@ -139,10 +138,8 @@
 
 /* Classe pour les boutons événements avec contour blur blanc pulsant */
 .timeline-event-logo.btn-events {
-    /* Contour blur blanc pulsant - très léger, max 3px */
-    /* Pour les images (img) et les boutons (button) */
-    /* Le filtre initial est défini dans l'animation, pas ici pour éviter les conflits */
-    animation: event-logo-pulse-img 2s ease-in-out infinite !important;
+    /* Contour blur blanc pulsant - bien visible (météorite / SCENARIO) */
+    animation: event-logo-pulse-img 1.6s ease-in-out infinite !important;
 }
 
 /* Pour les boutons texte/emoji uniquement */
@@ -154,9 +151,9 @@
 
 /* Pour les images enfants (si le bouton contient une image) */
 .timeline-event-logo.btn-events img {
-    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.4)) 
-            drop-shadow(0 0 2px rgba(255, 255, 255, 0.2)) !important;
-    animation: event-logo-pulse-img 2s ease-in-out infinite !important;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5)) 
+            drop-shadow(0 0 6px rgba(255, 255, 255, 0.3)) !important;
+    animation: event-logo-pulse-img 1.6s ease-in-out infinite !important;
 }
 
 .timeline-event-logo.btn-events:hover {
@@ -198,17 +195,17 @@
     }
 }
 
-/* Animation de pulse pour les images dans les boutons événements - contour noir 1px + glow blanc 3px = 4px total */
+/* Animation de pulse pour les images dans les boutons événements (météorite etc.) - glow rouge */
 @keyframes event-logo-pulse-img {
     0%, 100% {
         filter: drop-shadow(0 0 0px var(--event-pulse-black)) 
-                drop-shadow(0 0 1px var(--event-pulse-white-min)) 
-                drop-shadow(0 0 2px var(--event-pulse-white-shadow-min));
+                drop-shadow(0 0 3px var(--event-pulse-red-min)) 
+                drop-shadow(0 0 5px var(--event-pulse-red-shadow-min));
     }
     50% {
         filter: drop-shadow(0 0 0px var(--event-pulse-black)) 
-                drop-shadow(0 0 2px var(--event-pulse-white-mid)) 
-                drop-shadow(0 0 3px var(--event-pulse-white-shadow-max));
+                drop-shadow(0 0 6px var(--event-pulse-red-mid)) 
+                drop-shadow(0 0 10px var(--event-pulse-red-shadow-max));
     }
 }
 

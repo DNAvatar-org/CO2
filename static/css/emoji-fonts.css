@@ -19,8 +19,9 @@
          local('Twemoji Mozilla');
 }
 
+/* Symboles / Dingbats (ex. ✈ U+2708) : souvent absents des polices emoji colorées ; fallback pour rendu correct (cf. utf8-display). */
 :root {
-    --font-emoji: 'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif;
+    --font-emoji: 'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Symbola', 'Apple Symbols', sans-serif;
 }
 
 .logo {

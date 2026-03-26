@@ -1,10 +1,24 @@
 // File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.8
+// Version 1.0.22
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Logs: v1.0.8 un seul tooltip (pas title), cursor help sur tous les alt
+// Logs: v1.0.9 bloc CONFIGURATION + ⚗ (titres alignés timeline SCENARIO/EPOQUES)
+// Logs: v1.0.10 .organigram-config-heading : 04B_03, marge bas, pas de trait (hors .flux-diagram)
+// Logs: v1.0.11 organigram-config-wrap : largeur min (fit-content), collé bord gauche
+// Logs: v1.0.12 commentaire : libellé CONFIG.
+// Logs: v1.0.13 commentaire : PILOTAGE (titre au-dessus du bouton ⚗, main.js)
+// Logs: v1.0.14 organigram-config-row + albedo_percent à droite de ⚗
+// Logs: v1.0.15 fine_tuning_cloud_bary dans wrap (style badge + tooltip)
+// Logs: v1.0.16 hide-organigram-arrows : exclure #organigram-config-wrap (badges PILOTAGE visibles)
+// Logs: v1.0.17 badges PILOTAGE (% albédo, 🧩 nuages) visibles seulement si ⚗ selected (ON)
+// Logs: v1.0.18 badges PILOTAGE : override visibility hidden de hide-organigram-arrows quand ⚗ est selected
+// Logs: v1.0.19 albedo_percent hors PILOTAGE — CSS 🧩 nuages seul dans le wrap
+// Logs: v1.0.20 PILOTAGE : wrap align-items flex-start ; ligne ⚗ justify-content flex-start
+// Logs: v1.0.21 badge 🧩 : 2 lignes + panneau alt (2s) au-dessus à droite
+// Logs: v1.0.22 panneau alt nuages : classe --fixed (viewport), plus de absolute dans le badge
 
 .controle-simulation {
     padding: 0 !important;
@@ -25,6 +39,116 @@
     outline: none !important;
     font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     /* border, border-radius, box-shadow, background → .divGlass (style.css) */
+}
+
+/* PILOTAGE + ⚗ : largeur = contenu, bord gauche organigramme */
+#organigram-config-wrap {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    width: fit-content;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: visible;
+}
+/* O(f(1)) — police timeline, pas .flux-diagram */
+.organigram-config-heading {
+    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    font-size: 12px;
+    font-weight: lighter;
+    text-align: left;
+    align-self: flex-start;
+    width: auto;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: block;
+    margin: 0 0 6px 0;
+    padding: 0;
+    border: none;
+    white-space: nowrap;
+}
+.organigram-config-heading::before,
+.organigram-config-heading::after {
+    content: none;
+    display: none;
+}
+/* Ligne ⚗ + % albédo (O(1) layout) */
+#organigram-config-wrap .organigram-config-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+#organigram-config-wrap #three-play-indicator {
+    position: static;
+    flex-shrink: 0;
+    font-size: 45px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 2px;
+    font-family: var(--font-emoji);
+}
+/* Badge barycentre nuages (PILOTAGE, si ⚗ ON) */
+#organigram-config-wrap .organigram-fine-tuning-bary-badge {
+    position: relative;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 5px 8px;
+    font-size: 13px;
+    line-height: 1.25;
+    text-align: center;
+    white-space: normal;
+    overflow: visible;
+    pointer-events: auto;
+    cursor: help;
+    user-select: none;
+    background: rgba(10, 14, 39, 0.88);
+    border: 1px solid rgb(173, 216, 230);
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+#organigram-config-wrap .organigram-bary-face {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+#organigram-config-wrap .organigram-bary-puzzle {
+    font-size: 17px;
+    line-height: 1;
+}
+#organigram-config-wrap .organigram-bary-pct {
+    white-space: nowrap;
+    font-size: 12px;
+    line-height: 1.2;
+}
+/* Panneau alt détaillé nuages : append sur body, position fixed (getBoundingClientRect) */
+.organigram-fine-tuning-alt-panel--fixed {
+    position: fixed;
+    min-width: 180px;
+    max-height: 42vh;
+    overflow-y: auto;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 10px;
+    line-height: 1.4;
+    color: rgb(220, 235, 255);
+    background: rgba(8, 12, 28, 0.97);
+    border: 1px solid rgb(135, 206, 250);
+    border-radius: 8px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+    z-index: 100050;
+    pointer-events: none;
+    box-sizing: border-box;
 }
 .flux-cell {
     position: absolute;
@@ -269,6 +393,16 @@
 #flux-diagram.hide-organigram-arrows #cell-h2o {
     visibility: hidden;
 }
+/* PILOTAGE : 🧩 nuages — affiché seulement si ⚗ ON (.selected) */
+#organigram-config-wrap .organigram-fine-tuning-bary-badge {
+    display: none;
+}
+#organigram-config-wrap #three-play-indicator.selected ~ .organigram-fine-tuning-bary-badge {
+    display: block;
+    visibility: visible !important;
+    pointer-events: auto;
+    cursor: help;
+}
 
 .flux-rectangle {
     border-radius: 8px;
@@ -486,13 +620,11 @@
 .synthese_Temp {
     display: flex;
     flex-direction: column;
-    /* align-items: center; */
-    /* font-family: 'ProggyDotted'; */
     justify-content: flex-start;
     gap: 4px;
     width: 190px;
     position: relative;
-    top: -65px;
+    top: -30px;
     left: 100px;
     padding: 5px 10px;
     z-index: 10001;
@@ -504,6 +636,7 @@
 
 .synthese_Temp .thermometer-icon {
     font-size: 20px;
+    font-style: normal;
     line-height: 1;
     margin-right: 10px;
     display: inline-flex;
@@ -527,7 +660,14 @@
 
 /* synthese_Temp : variante 2 colonnes (sans coupler à #visu-panel .title-container) */
 .synthese_Temp.synthese_Temp-two-cols {
+    color: rgb(135, 206, 250);
+    border-color: rgb(173, 216, 230);
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 5px;
+    padding: 0px;
     font-family: 'ProggyDotted';
+    font-style: italic;
     position: relative;
     width: 270px;
     display: flex;
@@ -568,7 +708,6 @@
 
 .visu_epoch-name {
     font-size: 17px;
-    font-style: italic;
     display: block;
     margin-top: 2px;
     width: 100%;
@@ -595,7 +734,93 @@
     width: 100%;
 }
 
-/* Barre sous le sous-titre : 🎞 + boutons événements timeline sur une ligne */
+/* Bloc SCENARIO en haut de la timeline : titre centré, 2 boutons (🎞 + ☄️|🎇|💫) sur une ligne, trait de séparation avec la frise */
+.timeline-action-bar {
+    padding: 6px 0 8px;
+    margin-bottom: 0;
+}
+.timeline-action-buttons {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+}
+/* Bouton animation 🎞 en indice top-right du bouton main (centré) : plus sur la même ligne */
+.timeline-action-buttons #plot-anim-toggle {
+    position: absolute;
+    bottom: -10px;
+    right: -10px;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
+    padding: 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.timeline-action-title, .visu_epochs-title{
+    font-size: 12px;
+    font-weight: lighter;
+}
+
+.visu_epochs-title {
+    display: block;
+    padding-top: 10px;
+    position: relative;
+}
+/* Trait au-dessus de EPOQUES (::before pour visibilité fiable sur fond noir) */
+.visu_epochs-title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.15);
+}
+.timeline-action-bar .timeline-events-logos {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+.timeline-action-bar .timeline-event-logo {
+    margin-left: -15px;
+    width: 65px;
+    height: 65px;
+    min-width: 65px;
+    min-height: 65px;
+    padding: 0;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 35px;
+    line-height: 1;
+    object-fit: contain;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    border: none;
+}
+.timeline-action-bar .timeline-event-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.timeline-action-bar .timeline-event-logo:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+.timeline-action-bar .timeline-event-logo:active {
+    transform: scale(0.95);
+}
+
+/* Barre sous le sous-titre (title-container) */
 .title-toolbar {
     display: flex;
     flex-direction: row;

@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.31
+// Version 1.0.36
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -13,6 +13,11 @@
 // Logs: v1.0.29 Terre : drag souris (rotation), inertie au release (vitesse), smooth barycentre vers rotation par défaut
 // Logs: v1.0.30 Drag Terre désactivé (pointerEvents=none), logs [texture] chargement lancé/OK/erreur
 // Logs: v1.0.31 updatePlanetTextureFromDate : pause Three.js avant load texture ; play au compute:done (loader_panels)
+// Logs: v1.0.32 albedoBreakdown : figé pendant cycleCalcul/cycleAlbedo/cycleH2O, mis à jour uniquement à ProcessFinished (cohérence badge vs détail)
+// Logs: v1.0.33 getFineTuningDetailAlt exposé sur window (badge nuages dans organigram-config-wrap)
+// Logs: v1.0.34 fine_tuning_cloud_bary : 🧩 ligne + 🔺%🔻 ; panneau alt détaillé après 2s en haut-droite du badge
+// Logs: v1.0.35 pas de panneau si alt détail = tooltip court ; panneau fixed body + reposition scroll/resize
+// Logs: v1.0.36 badge 🧩 : retour au système central tooltips.js (court + alt après 2s), sans 3e panneau custom
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -3928,7 +3933,7 @@ function computeAtmosphericHaloRgb(D) {
 
   const fO2 = Number(D["🫧"]["🍰🫧🫁"]);
   const fCO2 = Number(D["🫧"]["🍰🫧🏭"]);
-  const fCH4 = Number(D["🫧"]["🍰🫧⛽"]);
+  const fCH4 = Number(D["🫧"]["🍰🫧🐄"]);
   const fN2 = Number(D["🫧"]["🍰🫧💨"]);
   const fH2O = Number(D["💧"]["🍰🫧💧"]);
 
@@ -3965,15 +3970,15 @@ var _finetuningAltPicto = {
   CLOUD_FRACTION_INDEX_GAIN: "☁️",
   OPTICAL_EFF_BASE: "🧪",
   OPTICAL_EFF_CCN_GAIN: "🧪",
-  SULFATE_BOOST_SCALE: "🌫",
-  SULFATE_BOOST_MAX: "🌫",
+  SULFATE_BOOST_SCALE: "✈",
+  SULFATE_BOOST_MAX: "✈",
   TEMP_FACTOR_REF_K: "🌡️"
 };
 
 // Alt détaillé (paramètres CLOUD_SW + bornes) pour fine_tuning_cloud_bary. SOLVER = autre jauge, exclu.
 // detailOnly=true = uniquement le détail. Sans passage à la ligne (une ligne, séparateur espace).
 // Fallback fixe quand FINE_TUNING_BOUNDS non chargé (visu ne charge pas fine_tuning_bounds.js).
-var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne ☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique 🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne 🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN) 🌫 [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse 🌫 [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy) 🌡️ [282 , 294] — référence thermique nuages SW #Reference climat moderne (~15C)";
+var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne ☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique 🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne 🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN) ✈ [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse ✈ [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy) 🌡️ [282 , 294] — référence thermique nuages SW #Reference climat moderne (~15C)";
 
 function getFineTuningDetailAlt(pctStr, detailOnly) {
   const pct = pctStr != null ? pctStr + "%" : "100%";
@@ -3997,11 +4002,18 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
   return detailOnly ? detail : intro + " " + detail;
 }
 
+if (typeof window !== "undefined") {
+  window.getFineTuningDetailAlt = getFineTuningDetailAlt;
+}
+
 window.updateFluxLabels = function (eventId) {
+  const DATA = window.DATA;
+  const CONST = window.CONST;
+  const EARTH = window.EARTH;
+  const CHARS = window.CHARS;
+  const CHARS_DESC = window.CHARS_DESC;
   var fluxDiagram = document.getElementById("flux-diagram");
   if (!fluxDiagram) return;
-  var D = window.DATA;
-  var CONST = window.CONST;
   var T0_num,
     total_flux_num,
     albedo_num,
@@ -4032,37 +4044,37 @@ window.updateFluxLabels = function (eventId) {
     case "cycleH2O":
     case "cycleCalcul":
     case "ProcessFinished":
-      if (!D["📊"] || typeof D["📊"].total_flux !== "number") return;
+      if (!DATA["📊"] || typeof DATA["📊"].total_flux !== "number") return;
       if (!window.plotData) {
         window.plotData = { lambda_range: null, current: null, co2_ppm: 0, ch4_ppm: 0, temp_surface: 0 };
       }
-      epochId = D["📜"]["🗿"];
+      epochId = DATA["📜"]["🗿"];
       var ep = window.configOrganigramme.timeline.find(function (e) {
         return e.type === "epoch" && e.id === epochId;
       });
       if (ep) window.currentEpochName = ep.name;
       window.h2oVaporPercent = Math.min(
         100,
-        Math.max(0, D["💧"]["🍰🫧💧"] * 100 + window.h2oTotalFromMeteorites),
+        Math.max(0, DATA["💧"]["🍰🫧💧"] * 100 + window.h2oTotalFromMeteorites),
       );
       window.waterVaporEnabled = window.h2oVaporPercent > 0;
       // ppm CO2/CH4 = fraction molaire × 1e6 (co2KgToFraction/ch4KgToFraction), pas fraction massique × 1e6
-      const atm_kg = D["⚖️"]["⚖️🫧"];
-      const M_air = D["🫧"]["🧪"];
+      const atm_kg = DATA["⚖️"]["⚖️🫧"];
+      const M_air = DATA["🫧"]["🧪"];
       window.plotData.co2_ppm =
-        window.co2KgToFraction(D["⚖️"]["⚖️🏭"], atm_kg, M_air) * 1e6;
+        window.co2KgToFraction(DATA["⚖️"]["⚖️🏭"], atm_kg, M_air) * 1e6;
       window.plotData.ch4_ppm =
-        window.ch4KgToFraction(D["⚖️"]["⚖️⛽"], atm_kg, M_air) * 1e6;
-      T0_num = D["🧮"]["🧮🌡️"];
-      total_flux_num = D["📊"].total_flux;
-      albedo_num = D["🪩"]["🍰🪩📿"];
-      cloud_coverage_num = D["🪩"]["☁️"];
+        window.ch4KgToFraction(DATA["⚖️"]["⚖️🐄"], atm_kg, M_air) * 1e6;
+      T0_num = DATA["🧮"]["🧮🌡️"];
+      total_flux_num = DATA["📊"].total_flux;
+      albedo_num = DATA["🪩"]["🍰🪩📿"];
+      cloud_coverage_num = DATA["🪩"]["☁️"];
       co2_ppm_num =
-        window.co2KgToFraction(D["⚖️"]["⚖️🏭"], atm_kg, M_air) * 1e6;
+        window.co2KgToFraction(DATA["⚖️"]["⚖️🏭"], atm_kg, M_air) * 1e6;
       ch4_ppm_num =
-        window.ch4KgToFraction(D["⚖️"]["⚖️⛽"], atm_kg, M_air) * 1e6;
+        window.ch4KgToFraction(DATA["⚖️"]["⚖️🐄"], atm_kg, M_air) * 1e6;
       // Part EDS vapeur (W/m²) = 🧲📛💧 ; 🔺📛💧 = ΔF H₂O (formule ln), autre grandeur
-      forcing_H2O = D["📛"]["🧲📛💧"];
+      forcing_H2O = DATA["📛"]["🧲📛💧"];
       isCO2_eds = window.isCO2_eds;
       isCH4_eds = window.isCH4_eds;
       isH2O_eds = window.isH2O_eds;
@@ -4449,27 +4461,47 @@ window.updateFluxLabels = function (eventId) {
     return result;
   };
 
+  const FINE_TUNING_TOOLTIP_SHORT = "Réglage barycentre nuages (albédo).";
+
   // Fonction helper pour mettre à jour un label par dataId (utilise maintenant le template)
   const updateLabel = (dataId, value, format = "auto") => {
     const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
     labels.forEach((label) => {
       let formattedValue;
 
-      // Si format est 'text', utiliser la valeur directement (pas de template)
-      if (format === "text" && typeof value === "string") {
-        formattedValue = value;
-      } else {
-        // Sinon, utiliser le template depuis la config
-        formattedValue = formatValueFromTemplate(dataId, value);
-      }
-
-      label.innerHTML = formattedValue;
       if (dataId === "fine_tuning_cloud_bary") {
-        const pctMatch = typeof formattedValue === "string" && formattedValue.match(/(\d+(?:\.\d+)?)\s*%/);
-        const pct = pctMatch ? pctMatch[1] : "100";
-        label.setAttribute("data-tooltip", "Réglage barycentre nuages (albédo).");
-        label.setAttribute("aria-label", getFineTuningDetailAlt(pct, true));
+        let pctStr;
+        if (typeof value === "number" && Number.isFinite(value)) {
+          pctStr = String(Math.round(Math.max(0, Math.min(100, value))));
+        } else if (format === "text" && typeof value === "string") {
+          const m = value.replace(/<[^>]*>/g, " ").match(/(\d+(?:\.\d+)?)\s*%/);
+          pctStr = m ? String(Math.round(parseFloat(m[1], 10))) : "100";
+        } else {
+          const tmp =
+            format === "text" && typeof value === "string"
+              ? value
+              : formatValueFromTemplate(dataId, value);
+          const m = String(tmp).replace(/<[^>]*>/g, " ").match(/(\d+(?:\.\d+)?)\s*%/);
+          pctStr = m ? String(Math.round(parseFloat(m[1], 10))) : "100";
+        }
+        formattedValue = pctStr + "%";
+        const detail = getFineTuningDetailAlt(pctStr, true);
+        label.innerHTML =
+          '<div class="organigram-bary-face">' +
+          '<div class="organigram-bary-puzzle">🧩</div>' +
+          '<div class="organigram-bary-pct">🔺' +
+          pctStr +
+          "%🔻</div></div>";
+        label.setAttribute("data-tooltip", FINE_TUNING_TOOLTIP_SHORT);
+        label.setAttribute("aria-label", detail || FINE_TUNING_TOOLTIP_SHORT);
         label.removeAttribute("title");
+      } else {
+        if (format === "text" && typeof value === "string") {
+          formattedValue = value;
+        } else {
+          formattedValue = formatValueFromTemplate(dataId, value);
+        }
+        label.innerHTML = formattedValue;
       }
       // Détecter automatiquement le type pour la couleur
       const valueType = detectValueType(formattedValue);
@@ -4610,7 +4642,7 @@ window.updateFluxLabels = function (eventId) {
     soleilData && Number.isFinite(soleilData["🧲☀️"])
       ? soleilData["🧲☀️"]
       : CONST.SOLAR_CONSTANT;
-  const GEOTHERMIE_FLUX = D["🌕"]["🧲🌕"];
+  const GEOTHERMIE_FLUX = DATA["🌕"]["🧲🌕"];
 
   // Pour les calculs de moyenne (si utilisés plus bas) : 🧲☀️🎱 = S/4
   const SOLAR_FLUX_AVERAGE =
@@ -4839,19 +4871,20 @@ window.updateFluxLabels = function (eventId) {
   updateLabel("solar_flux_average_wm", SOLAR_FLUX_AVERAGE);
 
   // Géométrie -> Surface : breakdown albedo détaillé
+  // Uniquement à ProcessFinished : pendant les cycles (cycleCalcul), la couverture glace
+  // est encore au début du ramp (≈0%) alors que le badge albédo reflète déjà
+  // la contribution_glace → incohérence visuelle transitoire. On fige le breakdown
+  // jusqu'à l'état convergé final.
+  if (eventId !== "ProcessFinished") {
+    // Flux post-albedo (hors breakdown) : continuer sans toucher albedo_percents
+  } else {
   // Récupérer les valeurs de l'époque courante
   // Toujours afficher le magma (volcans) même si couverture à 0%
   // Classer par ordre décroissant de pondération (couverture × albedo)
   let albedoBreakdown = "";
 
   const createAlbedoComponents = (components) => {
-    const sulfate_frac =
-      window.DATA &&
-      window.DATA["🫧"] &&
-      window.DATA["🫧"]["🍰🫧🌫"] != null &&
-      Number.isFinite(window.DATA["🫧"]["🍰🫧🌫"])
-        ? window.DATA["🫧"]["🍰🫧🌫"]
-        : 0;
+    const sulfate_frac = DATA["🫧"]["🍰🫧✈"];
     const sulfate_pct = (sulfate_frac * 100).toFixed(2);
     const sulfate_ccn_boost_pct = (
       Math.min(0.35, sulfate_frac * 500) * 100
@@ -4860,17 +4893,20 @@ window.updateFluxLabels = function (eventId) {
       comp.weight = (comp.coverage / 100) * parseFloat(comp.albedo);
     });
     const cloudComp = components.find(
-      (comp) => comp.emoji === window.CHARS.CLOUD,
+      (comp) => comp.emoji === CHARS.CLOUD,
     );
     const groundComps = components
-      .filter((comp) => comp.emoji !== window.CHARS.CLOUD)
+      .filter((comp) => comp.emoji !== CHARS.CLOUD)
       .sort((a, b) => b.weight - a.weight);
 
     const renderComp = (comp) => {
       const coverage_pct = Math.max(0, Math.min(100, Number(comp.coverage)));
       const coverage_display = coverage_pct.toFixed(1);
-      const label = window.CHARS_DESC[comp.emoji] || comp.emoji;
-      const titleAttr = `title="${label} : ${coverage_display}% couverture × albedo ${comp.albedo}"`;
+      const label = CHARS_DESC[comp.emoji] || comp.emoji;
+      const landCorpsNoirNote = (comp.emoji === "🌍" && parseFloat(comp.albedo) === 0)
+        ? " (corps noir : albédo terre = 0)"
+        : "";
+      const titleAttr = `title="${label} : ${coverage_display}% couverture × albedo ${comp.albedo}${landCorpsNoirNote}"`;
       const isImage =
         comp.emoji &&
         (comp.emoji.includes(".png") ||
@@ -4879,9 +4915,9 @@ window.updateFluxLabels = function (eventId) {
       if (isImage) {
         return `<span ${titleAttr} style="cursor: help;"><img src="${comp.emoji}" alt="${label}"> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
       } else {
-        if (comp.emoji === window.CHARS.CLOUD) {
+        if (comp.emoji === CHARS.CLOUD) {
           const cloudTitle = `title="Nuages : ${coverage_display}% couverture × albedo ${comp.albedo}. Proxy sulfate: ${sulfate_pct}% masse atm, impact CCN +${sulfate_ccn_boost_pct}%."`;
-          return `<span ${cloudTitle} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span><br><span style="font-size: 0.8em;">↳ 🌫 CCN +${sulfate_ccn_boost_pct}%</span></span>`;
+          return `<span ${cloudTitle} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span><br><span style="font-size: 0.8em;">↳ <span class="logo">✈</span> CCN +${sulfate_ccn_boost_pct}%</span></span>`;
         }
         return `<span ${titleAttr} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
       }
@@ -4896,53 +4932,52 @@ window.updateFluxLabels = function (eventId) {
     return cloudLine || groundLines;
   };
 
-  // Constantes physiques d'albedo (utilisées partout, pas dans la config)
-  const ALBEDO_MAGMA = 0.05; // Albedo du magma/lave
-  const ALBEDO_OCEAN = 0.08; // Albedo de l'océan
-  const ALBEDO_FOREST = 0.12; // Albedo de la forêt
-  const ALBEDO_DESERT = 0.3; // Albedo du désert
-  const ALBEDO_ICE = 0.7; // Albedo de la glace
-  const ALBEDO_CLOUD = 0.4; // Albedo des nuages
-  const ALBEDO_LAND = 0.18; // Albedo continents (prairies, sols humides)
+  // Albedo : même source que l'API (EARTH['🪩🍰'] + override époque)
+  const currentEpochAlbedo = window.getGeologicalPeriodByName(window.currentEpochName);
+  const albedoCoeff = {
+    ...EARTH["🪩🍰"],
+    ...currentEpochAlbedo["🪩🍰"],
+  };
 
   const land_cov = parseFloat(
-    ((window.DATA?.["🪩"]?.["🍰🪩🌍"] ?? 0) * 100).toFixed(1),
+    (DATA["🪩"]["🍰🪩🌍"] * 100).toFixed(1),
   );
 
   if (hasNoAtmosphere) {
-    const ice_cov_corps_noir = 0;
+    const ice_cov_corps_noir = parseFloat((DATA["🪩"]["🍰🪩🧊"] * 100).toFixed(1));
+    const land_cov_corps_noir = parseFloat((DATA["🪩"]["🍰🪩🌍"] * 100).toFixed(1));
     const components = [
       {
-        emoji: window.CHARS.VOLCANO,
+        emoji: CHARS.VOLCANO,
         coverage: 0,
-        albedo: ALBEDO_MAGMA.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🌋"].toFixed(2),
       },
       {
-        emoji: window.CHARS.OCEAN,
+        emoji: CHARS.OCEAN,
         coverage: 0,
-        albedo: ALBEDO_OCEAN.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🌊"].toFixed(2),
       },
       {
-        emoji: window.CHARS.FOREST,
+        emoji: CHARS.FOREST,
         coverage: 0,
-        albedo: ALBEDO_FOREST.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🌳"].toFixed(2),
       },
       {
-        emoji: window.CHARS.DESERT,
+        emoji: CHARS.DESERT,
         coverage: 0,
-        albedo: ALBEDO_DESERT.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🏜️"].toFixed(2),
       },
       {
-        emoji: window.CHARS.ICE,
+        emoji: CHARS.ICE,
         coverage: ice_cov_corps_noir,
-        albedo: ALBEDO_ICE.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🧊"].toFixed(2),
       },
       {
-        emoji: window.CHARS.CLOUD,
+        emoji: CHARS.CLOUD,
         coverage: 0,
-        albedo: ALBEDO_CLOUD.toFixed(2),
+        albedo: albedoCoeff["🪩🍰⛅"].toFixed(2),
       },
-      { emoji: "🌍", coverage: 0, albedo: ALBEDO_LAND.toFixed(2) },
+      { emoji: "🌍", coverage: land_cov_corps_noir, albedo: albedoCoeff["🪩🍰🌍"].toFixed(2) },
     ];
     albedoBreakdown = createAlbedoComponents(components);
   } else if (window.currentEpochName) {
@@ -4950,50 +4985,46 @@ window.updateFluxLabels = function (eventId) {
       window.currentEpochName,
     );
     if (currentEpoch) {
-      const w = window.DATA?.["🪩"] ?? {};
       const magma_cov = parseFloat(
-        ((w["🍰🪩🌋"] ?? currentEpoch.magma_coverage ?? 0) * 100).toFixed(1),
+        (DATA["🪩"]["🍰🪩🌋"] * 100).toFixed(1),
       );
       const ocean_cov = parseFloat(
-        ((w["🍰🪩🌊"] ?? currentEpoch.ocean_coverage ?? 0) * 100).toFixed(1),
+        (DATA["🪩"]["🍰🪩🌊"] * 100).toFixed(1),
       );
       const forest_cov = parseFloat(
-        ((w["🍰🪩🌳"] ?? currentEpoch.forest_coverage ?? 0) * 100).toFixed(1),
+        (DATA["🪩"]["🍰🪩🌳"] * 100).toFixed(1),
       );
       const desert_cov = parseFloat(
-        ((w["🍰🪩🏜️"] ?? currentEpoch.desert_coverage ?? 0) * 100).toFixed(1),
+        (DATA["🪩"]["🍰🪩🏜️"] * 100).toFixed(1),
       );
       const ice_cov = parseFloat(
-        ((w["🍰🪩🧊"] ?? ice_coverage) * 100).toFixed(1),
+        (DATA["🪩"]["🍰🪩🧊"] * 100).toFixed(1),
       );
-      const cloud_cov =
-        w["🍰🪩⛅"] != null
-          ? parseFloat((w["🍰🪩⛅"] * 100).toFixed(1))
-          : parseFloat(cloud_percent.toFixed(1));
+      const cloud_cov = parseFloat((DATA["🪩"]["🍰🪩⛅"] * 100).toFixed(1));
 
-      const magma_alb = ALBEDO_MAGMA.toFixed(2);
-      const ocean_alb = ALBEDO_OCEAN.toFixed(2);
-      const forest_alb = ALBEDO_FOREST.toFixed(2);
-      const desert_alb = ALBEDO_DESERT.toFixed(2);
-      const ice_alb = ALBEDO_ICE.toFixed(2);
-      const cloud_alb = ALBEDO_CLOUD.toFixed(2);
+      const magma_alb = albedoCoeff["🪩🍰🌋"].toFixed(2);
+      const ocean_alb = albedoCoeff["🪩🍰🌊"].toFixed(2);
+      const forest_alb = albedoCoeff["🪩🍰🌳"].toFixed(2);
+      const desert_alb = albedoCoeff["🪩🍰🏜️"].toFixed(2);
+      const ice_alb = albedoCoeff["🪩🍰🧊"].toFixed(2);
+      const cloud_alb = albedoCoeff["🪩🍰⛅"].toFixed(2);
 
       const components = [
-        { emoji: window.CHARS.VOLCANO, coverage: magma_cov, albedo: magma_alb },
-        { emoji: window.CHARS.OCEAN, coverage: ocean_cov, albedo: ocean_alb },
+        { emoji: CHARS.VOLCANO, coverage: magma_cov, albedo: magma_alb },
+        { emoji: CHARS.OCEAN, coverage: ocean_cov, albedo: ocean_alb },
         {
-          emoji: window.CHARS.FOREST,
+          emoji: CHARS.FOREST,
           coverage: forest_cov,
           albedo: forest_alb,
         },
         {
-          emoji: window.CHARS.DESERT,
+          emoji: CHARS.DESERT,
           coverage: desert_cov,
           albedo: desert_alb,
         },
-        { emoji: window.CHARS.ICE, coverage: ice_cov, albedo: ice_alb },
-        { emoji: window.CHARS.CLOUD, coverage: cloud_cov, albedo: cloud_alb },
-        { emoji: "🌍", coverage: land_cov, albedo: ALBEDO_LAND.toFixed(2) },
+        { emoji: CHARS.ICE, coverage: ice_cov, albedo: ice_alb },
+        { emoji: CHARS.CLOUD, coverage: cloud_cov, albedo: cloud_alb },
+        { emoji: "🌍", coverage: land_cov, albedo: albedoCoeff["🪩🍰🌍"].toFixed(2) },
       ];
       albedoBreakdown = createAlbedoComponents(components);
     } else {
@@ -5001,36 +5032,36 @@ window.updateFluxLabels = function (eventId) {
       const final_ice_percent = parseFloat((ice_coverage * 100).toFixed(1));
       const components = [
         {
-          emoji: window.CHARS.VOLCANO,
+          emoji: CHARS.VOLCANO,
           coverage: 0,
-          albedo: ALBEDO_MAGMA.toFixed(2),
+          albedo: albedoCoeff["🪩🍰🌋"].toFixed(2),
         },
         {
-          emoji: window.CHARS.OCEAN,
+          emoji: CHARS.OCEAN,
           coverage: 0,
-          albedo: ALBEDO_OCEAN.toFixed(2),
+          albedo: albedoCoeff["🪩🍰🌊"].toFixed(2),
         },
         {
-          emoji: window.CHARS.FOREST,
+          emoji: CHARS.FOREST,
           coverage: 0,
-          albedo: ALBEDO_FOREST.toFixed(2),
+          albedo: albedoCoeff["🪩🍰🌳"].toFixed(2),
         },
         {
-          emoji: window.CHARS.DESERT,
+          emoji: CHARS.DESERT,
           coverage: 0,
-          albedo: ALBEDO_DESERT.toFixed(2),
+          albedo: albedoCoeff["🪩🍰🏜️"].toFixed(2),
         },
         {
-          emoji: window.CHARS.ICE,
+          emoji: CHARS.ICE,
           coverage: final_ice_percent,
-          albedo: ALBEDO_ICE.toFixed(2),
+          albedo: albedoCoeff["🪩🍰🧊"].toFixed(2),
         },
         {
-          emoji: window.CHARS.CLOUD,
+          emoji: CHARS.CLOUD,
           coverage: final_cloud_percent,
-          albedo: ALBEDO_CLOUD.toFixed(2),
+          albedo: albedoCoeff["🪩🍰⛅"].toFixed(2),
         },
-        { emoji: "🌍", coverage: land_cov, albedo: ALBEDO_LAND.toFixed(2) },
+        { emoji: "🌍", coverage: land_cov, albedo: albedoCoeff["🪩🍰🌍"].toFixed(2) },
       ];
       albedoBreakdown = createAlbedoComponents(components);
     }
@@ -5039,40 +5070,41 @@ window.updateFluxLabels = function (eventId) {
     const final_ice_percent = parseFloat((ice_coverage * 100).toFixed(1));
     const components = [
       {
-        emoji: window.CHARS.VOLCANO,
+        emoji: CHARS.VOLCANO,
         coverage: 0,
-        albedo: ALBEDO_MAGMA.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🌋"].toFixed(2),
       },
       {
-        emoji: window.CHARS.OCEAN,
+        emoji: CHARS.OCEAN,
         coverage: 0,
-        albedo: ALBEDO_OCEAN.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🌊"].toFixed(2),
       },
       {
-        emoji: window.CHARS.FOREST,
+        emoji: CHARS.FOREST,
         coverage: 0,
-        albedo: ALBEDO_FOREST.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🌳"].toFixed(2),
       },
       {
-        emoji: window.CHARS.DESERT,
+        emoji: CHARS.DESERT,
         coverage: 0,
-        albedo: ALBEDO_DESERT.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🏜️"].toFixed(2),
       },
       {
-        emoji: window.CHARS.ICE,
+        emoji: CHARS.ICE,
         coverage: final_ice_percent,
-        albedo: ALBEDO_ICE.toFixed(2),
+        albedo: albedoCoeff["🪩🍰🧊"].toFixed(2),
       },
       {
-        emoji: window.CHARS.CLOUD,
+        emoji: CHARS.CLOUD,
         coverage: final_cloud_percent,
-        albedo: ALBEDO_CLOUD.toFixed(2),
+        albedo: albedoCoeff["🪩🍰⛅"].toFixed(2),
       },
-      { emoji: "🌍", coverage: land_cov, albedo: ALBEDO_LAND.toFixed(2) },
+      { emoji: "🌍", coverage: land_cov, albedo: albedoCoeff["🪩🍰🌍"].toFixed(2) },
     ];
     albedoBreakdown = createAlbedoComponents(components);
   }
   updateLabel("albedo_percents", albedoBreakdown, "text");
+  } // fin if (eventId === 'ProcessFinished') pour le breakdown albedo
   // Flux qui passe (solar_flux_average - flux_reflected = flux qui arrive à la surface)
   // En mode corps-noir : albedo = 0, donc tout passe (340.25 W/m²)
   const flux_passed = solar_flux_absorbed; // C'est le flux qui arrive à la surface après albédo
@@ -5520,11 +5552,7 @@ window.updateFluxLabels = function (eventId) {
   // Afficher le barycentre fine-tuning CLOUD_SW sous le bouton 🪩 (source: window.DATA['🎚️'].baryByGroup)
   const cloudBaryRaw = Number(window.DATA['🎚️'].baryByGroup.CLOUD_SW);
   const cloudBary = Number.isFinite(cloudBaryRaw) ? Math.max(0, Math.min(100, cloudBaryRaw)) : 0;
-  updateLabel(
-    "fine_tuning_cloud_bary",
-    `🔺🧩<br><span style="white-space:nowrap">${cloudBary.toFixed(0)}%</span>`,
-    "text",
-  );
+  updateLabel("fine_tuning_cloud_bary", cloudBary);
 
   // Ne plus forcer automatiquement le bouton albedo en off/gris
   // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%

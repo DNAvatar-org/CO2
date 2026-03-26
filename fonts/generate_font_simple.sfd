@@ -30,7 +30,7 @@ NewGlyph()
 GlyphInfo("Unicode", 0xE002)
 GlyphInfo("Name", "h2o")
 
-# Emoji: ⛽ -> U+E003 (m)
+# Emoji: 🐄 -> U+E003 (m)
 Select(0xE003)
 NewGlyph()
 GlyphInfo("Unicode", 0xE003)

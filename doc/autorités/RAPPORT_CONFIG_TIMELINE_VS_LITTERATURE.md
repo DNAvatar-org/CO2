@@ -12,7 +12,7 @@
 
 ### 1.1 Masses de gaz (CO₂, CH₄, O₂)
 
-Voir **VALIDATION_CONFIG_GAZ.md** (même dossier) pour la traçabilité détaillée des masses `⚖️🏭`, `⚖️⛽`, `⚖️🫁` par époque.
+Voir **VALIDATION_CONFIG_GAZ.md** (même dossier) pour la traçabilité détaillée des masses `⚖️🏭`, `⚖️🐄`, `⚖️🫁` par époque.
 
 ### 1.2 Température de surface (🌡️🧮)
 

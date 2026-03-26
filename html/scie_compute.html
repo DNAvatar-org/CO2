@@ -898,7 +898,7 @@
                 return '🔬';
             }
             if (groupKey === 'CLOUD_SW') {
-                if (key.indexOf('SULFATE') === 0) return '🌫';
+                if (key.indexOf('SULFATE') === 0) return '✈';
                 if (key.indexOf('CLOUD_') === 0) return '☁️';
                 if (key.indexOf('OPTICAL_') === 0) return '🧪';
                 if (key.indexOf('TEMP_') === 0) return '🌡️';
@@ -1366,7 +1366,7 @@
                 html += '<strong>Répartition (en W/m² retournés par EDS, normalisé, 🍰📛 ∈ [0, 1])</strong>:<br>';
                 if (breakdown['🍰📛🏭'] != null && breakdown['🍰📛🏭'] > 0) html += `&nbsp;• CO₂: ${fmt(breakdown['🍰📛🏭'])}<br>`;
                 if (breakdown['🍰📛💧'] != null && breakdown['🍰📛💧'] > 0) html += `&nbsp;• H₂O: ${fmt(breakdown['🍰📛💧'])}<br>`;
-                if (breakdown['🍰📛⛽'] != null && breakdown['🍰📛⛽'] > 0) html += `&nbsp;• CH₄: ${fmt(breakdown['🍰📛⛽'])}<br>`;
+                if (breakdown['🍰📛🐄'] != null && breakdown['🍰📛🐄'] > 0) html += `&nbsp;• CH₄: ${fmt(breakdown['🍰📛🐄'])}<br>`;
                 if (breakdown['🍰📛⛅'] != null) { const nv = breakdown['🍰📛⛅']; const nvStr = (nv != null && Number.isFinite(nv)) ? (nv < 0.01 ? '&lt; 0,01' : nv.toFixed(2)) : '—'; html += `&nbsp;• Nuages (⛅): ${nvStr}<br>`; }
                 html += '</div>';
             }

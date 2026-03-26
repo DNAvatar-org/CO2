@@ -1,6 +1,6 @@
 # Validation des masses de gaz (config vs littérature)
 
-**Objectif** : Documenter la traçabilité des valeurs `⚖️🏭` (CO₂), `⚖️⛽` (CH₄), `⚖️🫁` (O₂) dans `configTimeline.js` par rapport à la littérature paléoclimatique.
+**Objectif** : Documenter la traçabilité des valeurs `⚖️🏭` (CO₂), `⚖️🐄` (CH₄), `⚖️🫁` (O₂) dans `configTimeline.js` par rapport à la littérature paléoclimatique.
 
 **Date** : 2025-01-31
 
@@ -137,7 +137,7 @@ Avec :
 
 | Fichier | Rôle |
 |---------|------|
-| `static/timeline/configTimeline.js` | Source des masses `⚖️🏭`, `⚖️⛽`, `⚖️🫁` |
+| `static/timeline/configTimeline.js` | Source des masses `⚖️🏭`, `⚖️🐄`, `⚖️🫁` |
 | `static/calculations_atm.js` | `calculateAtmosphereComposition()` : fractions = mass_gas / mass_atm |
 | `static/compute/compute.js` | `getMasses()` : lit config → DATA |
 

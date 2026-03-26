@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.14
+// Version 1.1.25
 // Date: [March 14, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -24,6 +24,17 @@
 // - v1.1.12 : updateHadeenTexture utilise getEffectiveNodesConfig(bary) pour radius/exobase/colors interpolés + stocke _lastPlanetTexturePath
 // - v1.1.13 : setEpoch "même époque" seulement si currentEpochName===epochName (fix transition ticTime → [1][2][4] exécutés)
 // - v1.1.14 : suppression court-circuit "même époque" — rechargement complet à chaque setEpoch
+// - v1.1.15 : titre CONFIGURATION (styles SCENARIO/EPOQUES) au-dessus du bouton organigramme
+// - v1.1.16 : classe organigram-config-heading (font timeline 04B_03, marge bas, sans trait)
+// - v1.1.17 : libellé organigramme « CONFIG. » (plus court)
+// - v1.1.18 : libellé organigramme « PILOTAGE » (remplace CONFIG.)
+// - v1.1.19 : badge albedo_percent (#organigram-config-wrap, à droite de ⚗)
+// - v1.1.20 : badge fine_tuning_cloud_bary (🧩 nuages) dans la même ligne — retiré du bouton albédo
+// - v1.1.21 : updateThreePlayIndicator idempotent — recrée wrap/⚗/%/🧩 si partiellement absents
+// - v1.1.22 : garde updateEpochActions si events.js pas encore chargé
+// - v1.1.23 : albedo_percent retiré du PILOTAGE — de retour sur le bouton albédo (configOrganigramme)
+// - v1.1.24 : bouton ⚗ sans title natif ni alt détaillé distinct (évite 2e tooltip après 2s)
+// - v1.1.25 : bouton ⚗ garde tooltip court + alt détaillé après 2s via aria-label long (sans title natif)
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -770,7 +781,7 @@ function updateCO2Level(state) {
     const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && LOGOS && LOGOS.H2O) ? LOGOS.H2O : '💧';
-    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '⛽';
+    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '🐄';
     
     currentState = state;
     // Gérer explicitement le cas state = 0 (0 ppm) car 0 est falsy en JavaScript
@@ -1133,7 +1144,7 @@ function updateCO2LevelDirect(co2_fraction) {
     const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && LOGOS && LOGOS.H2O) ? LOGOS.H2O : '💧';
-    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '⛽';
+    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '🐄';
     
     // H2O : vapeur (window) + météorites depuis TIMELINE (DATA['📜'])
     const h2o_percent = (typeof window !== 'undefined' && window.h2oVaporPercent !== undefined) ? window.h2oVaporPercent : 0;
@@ -1354,7 +1365,7 @@ window.updateDisplay = function updateDisplay(data) {
     const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && LOGOS && LOGOS.H2O) ? LOGOS.H2O : '💧';
-    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '⛽';
+    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '🐄';
     
     // Récupérer les valeurs pour le log
     const co2_ppm = (data && data.co2_ppm !== undefined) ? data.co2_ppm : 0;
@@ -2677,7 +2688,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
     const logoEDS = '📛'; // EDS (effet de serre)
     const logoCO2 = (typeof window !== 'undefined' && LOGOS && LOGOS.CO2) ? LOGOS.CO2 : '🏭';
     const logoH2O = (typeof window !== 'undefined' && LOGOS && LOGOS.H2O) ? LOGOS.H2O : '💧';
-    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '⛽';
+    const logoCH4 = (typeof window !== 'undefined' && LOGOS && LOGOS.CH4) ? LOGOS.CH4 : '🐄';
     
     // Récupérer CO2 et CH4 depuis plotData
     const co2_ppm = (plotData && plotData.co2_ppm !== undefined) ? plotData.co2_ppm : 0;
@@ -3082,28 +3093,78 @@ function runMainInit() {
                 window.fpsLevel = 'rapide';
                 window.showSpectralBackground = true;
                 
-                // Bouton ⚗ à la place de 🎬 : afficher/masquer flèches et textes de l'organigramme (même police que utf8)
-                window.organigramArrowsVisible = true;
+                // Bouton ⚗ : afficher/masquer détails (flèches, textes) et boutons d'action de l'organigramme — off par défaut
+                window.organigramArrowsVisible = false;
                 window.updateThreePlayIndicator = function () {
+                    var flux = document.getElementById('flux-diagram');
+                    if (!flux) return;
+                    var wrap = document.getElementById('organigram-config-wrap');
+                    if (!wrap) {
+                        wrap = document.createElement('div');
+                        wrap.id = 'organigram-config-wrap';
+                        flux.appendChild(wrap);
+                    }
+                    var cfgTitle = wrap.querySelector('.organigram-config-heading');
+                    if (!cfgTitle) {
+                        cfgTitle = document.createElement('span');
+                        cfgTitle.className = 'organigram-config-heading';
+                        wrap.appendChild(cfgTitle);
+                    }
+                    cfgTitle.textContent = 'PILOTAGE';
+
+                    var cfgRow = wrap.querySelector('.organigram-config-row');
+                    if (!cfgRow) {
+                        cfgRow = document.createElement('div');
+                        cfgRow.className = 'organigram-config-row';
+                        wrap.appendChild(cfgRow);
+                    }
+
                     var el = document.getElementById('three-play-indicator');
                     if (!el) {
-                        var flux = document.getElementById('flux-diagram');
                         el = document.createElement('button');
                         el.id = 'three-play-indicator';
-                        el.type = 'button';
-                        el.className = 'icon-button selected';
-                        el.title = 'Afficher ou masquer les flèches et textes de l\'organigramme';
-                        el.setAttribute('aria-label', 'Afficher ou masquer les flèches et textes de l\'organigramme');
-                        el.style.cssText = 'position:absolute;top:4px;right:4px;font-size:1.2em;z-index:9999;cursor:pointer;background:transparent;border:none;padding:2px;font-family:var(--font-emoji);';
-                        el.textContent = '⚗';
-                        flux.style.position = flux.style.position || 'relative';
-                        flux.appendChild(el);
+                    }
+                    el.type = 'button';
+                    el.className = 'icon-button' + (window.organigramArrowsVisible ? ' selected' : '');
+                    el.setAttribute('data-tooltip', 'Détails et actions');
+                    el.setAttribute('aria-label', 'Afficher ou masquer les détails et les boutons d\'action de l\'organigramme');
+                    el.removeAttribute('title');
+                    el.textContent = '⚗';
+
+                    var staleAlb = cfgRow.querySelector('.organigram-albedo-percent-badge');
+                    if (staleAlb) staleAlb.remove();
+
+                    var baryFt = cfgRow.querySelector('.organigram-fine-tuning-bary-badge');
+                    if (!baryFt) {
+                        baryFt = document.createElement('div');
+                        baryFt.className = 'flux-label buttonData percent-label organigram-fine-tuning-bary-badge';
+                        baryFt.setAttribute('data-id', 'fine_tuning_cloud_bary');
+                        baryFt.setAttribute('data-tooltip', 'Réglage barycentre nuages (albédo).');
+                        baryFt.innerHTML = '🧩🔺100%🔻';
+                    }
+                    if (typeof window.getFineTuningDetailAlt === 'function') {
+                        baryFt.setAttribute('aria-label', window.getFineTuningDetailAlt(null, true));
+                    } else {
+                        baryFt.setAttribute('aria-label', 'Réglage barycentre nuages (albédo).');
+                    }
+                    if (typeof window.addTooltipFromAttribute === 'function' && !baryFt.hasAttribute('data-tooltip-initialized')) {
+                        window.addTooltipFromAttribute(baryFt);
+                        baryFt.setAttribute('data-tooltip-initialized', 'true');
+                    }
+
+                    cfgRow.appendChild(el);
+                    cfgRow.appendChild(baryFt);
+
+                    var diagram = document.getElementById('flux-diagram');
+                    if (diagram) diagram.classList.toggle('hide-organigram-arrows', !window.organigramArrowsVisible);
+                    if (el.dataset.boundClick !== '1') {
                         el.addEventListener('click', function () {
                             window.organigramArrowsVisible = !window.organigramArrowsVisible;
-                            var diagram = document.getElementById('flux-diagram');
-                            if (diagram) diagram.classList.toggle('hide-organigram-arrows', !window.organigramArrowsVisible);
+                            var diagramEl = document.getElementById('flux-diagram');
+                            if (diagramEl) diagramEl.classList.toggle('hide-organigram-arrows', !window.organigramArrowsVisible);
                             el.classList.toggle('selected', window.organigramArrowsVisible);
                         });
+                        el.dataset.boundClick = '1';
                     }
                 };
                 const animCb = document.getElementById('plot-anim-toggle-checkbox');
@@ -3148,7 +3209,9 @@ function runMainInit() {
     // Fonction updateEpochActions est maintenant dans events.js
 
     // Mettre à jour les actions au chargement
-    window.updateEpochActions();
+    if (typeof window.updateEpochActions === 'function') {
+        window.updateEpochActions();
+    }
 
     // 🔒 setEpoch("Corps noir") a déjà été appelé plus haut (avant calculateInitialData)
     // Ici on fait juste les initialisations complémentaires si nécessaire

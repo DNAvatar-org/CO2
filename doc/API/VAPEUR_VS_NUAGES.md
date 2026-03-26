@@ -122,7 +122,7 @@ Ancienne méthode : `(tau_i/tau_tot) × flux_absorbé` → tout le crédit du ch
 - **EDS** : absorption **LW** (IR). Aujourd’hui les nuages ne sont **pas** dans le transfert radiatif IR → **nouveau calcul** (κ_nuage, τ_nuage par couche/λ, ou corps gris par couche).
 
 **Nouveau champ EDS**
-- Oui : ajouter un champ **nuages** dans le breakdown EDS (ex. `🍰📛⛅` pour « part EDS nuages »). Logo : **⛅** (nuage) — déjà utilisé en albédo (🍰🪩⛅) ; en EDS on aurait 🍰📛⛅ = pct nuages dans l’EDS. Structure actuelle : 📛 = { 🧲📛, 🍰📛🏭, 🍰📛💧, 🍰📛⛽ } ; à étendre avec 🍰📛⛅ quand l’absorption IR nuages sera implémentée.
+- Oui : ajouter un champ **nuages** dans le breakdown EDS (ex. `🍰📛⛅` pour « part EDS nuages »). Logo : **⛅** (nuage) — déjà utilisé en albédo (🍰🪩⛅) ; en EDS on aurait 🍰📛⛅ = pct nuages dans l’EDS. Structure actuelle : 📛 = { 🧲📛, 🍰📛🏭, 🍰📛💧, 🍰📛🐄 } ; à étendre avec 🍰📛⛅ quand l’absorption IR nuages sera implémentée.
 
 **Problème des parts (Schmidt vs nous)**
 - **Schmidt** : vapeur ~50 %, nuages ~25 %, CO₂ ~20 %, autres ~5 % (total 100 %).

@@ -11,7 +11,7 @@
 // UTF8 est la sémantique pour CODE & UI
 // - v1.0.1: KEYS/DESC 📛 + 🍰📛⛅ (EDS nuages), DESC 🧲📛/🍰📛❀
 // - v1.0.2: FORM sync with runtime code for 🎈 (dry+vapor mass) and 🍰🪩⛅ (cloud optical proxy)
-// - v1.0.3: add sulfate keys in DATA (⚖️🌫, 🍰🫧🌫) + CCN formula mention sulfate term
+// - v1.0.3: add sulfate keys in DATA (⚖️✈, 🍰🫧✈) + CCN formula mention sulfate term
 // - v1.0.4: DATA['🎚️'] init ici (source unique) ; baryByGroup depuis CONFIG_COMPUTE.baryByGroupDefault, DATA seule ref
 // - v1.0.5: SOLVER init avec TOL_MIN_WM2/MAX_SEARCH_STEP_K/etc. (éviter tol=NaN si compute avant fillDataTuningFromBary)
 // - v1.0.6: init DATA déplacée dans initDATA.js (chargé après dico.js) ; KEYS exposé pour initDATA
@@ -21,15 +21,15 @@
 // ============================================================================
 const KEYS = {
     // États activés
-    '🔘': ['🔘💧📛', '🔘⛽📛', '🔘🏭📛', '🔘🪩', '🔘🎞'],
+    '🔘': ['🔘💧📛', '🔘🐄📛', '🔘🏭📛', '🔘🪩', '🔘🎞'],
     // Configuration de date / Événements
     '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔘🕰', '🧲🔬'],
     // Date Époque
     '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
-    '⚖️': ['⚖️💧', '⚖️🫧', '⚖️🏭', '⚖️⛽', '⚖️🫁', '⚖️🌫', '⚖️💨'],
+    '⚖️': ['⚖️💧', '⚖️🫧', '⚖️🏭', '⚖️🐄', '⚖️🫁', '⚖️✈', '⚖️💨'],
     // Composition atmosphérique
-    '🫧': ['🎈', '🧪', '📏🫧🧿', '📏🫧🛩', '🍰🫧🏭', '🍰🫧⛽', '🍰🫧🫁', '🍰🫧🌫', '🍰🫧💨', '🍰🫧📿🌈', '🍰🫧🏭🌈', '🍰🫧💧🌈', '🍰🫧⛽🌈', '🍰💭'],
+    '🫧': ['🎈', '🧪', '📏🫧🧿', '📏🫧🛩', '🍰🫧🏭', '🍰🫧🐄', '🍰🫧🫁', '🍰🫧✈', '🍰🫧💨', '🍰🫧📿🌈', '🍰🫧🏭🌈', '🍰🫧💧🌈', '🍰🫧🐄🌈', '🍰💭'],
     // Cycle de l'eau
     '💧': ['🍰💧🧊', '🍰💧🌊', '🍰🧮🌧', '🍰🫧💧', '🍰🫧☔', '🍰⚖️💦', '💭☔', '⏳☔'],
     // Albédo
@@ -43,7 +43,7 @@ const KEYS = {
     // Noyau
     '🌕': ['🧲🌕', '🔋🌕'],
     // EDS breakdown (🧲📛, 🍰📛❀, 🧲📛❀) ; 🔺📛❀ = diagnostic ΔF (convention affichage, pas calcul T)
-    '📛': ['🧲📛', '🧲📛🏭', '🧲📛💧', '🧲📛⛽', '🧲📛⛅', '🍰📛🏭', '🍰📛💧', '🍰📛⛽', '🍰📛⛅', '🔺📛💧', '🔺📛🏭', '🔺📛⛽', '🔺📿📛'],
+    '📛': ['🧲📛', '🧲📛🏭', '🧲📛💧', '🧲📛🐄', '🧲📛⛅', '🍰📛🏭', '🍰📛💧', '🍰📛🐄', '🍰📛⛅', '🔺📛💧', '🔺📛🏭', '🔺📛🐄', '🔺📿📛'],
     // Géologie (Surfaces géologiques - Couche A)
     '🗻': ['🍰🗻🌊', '🍰🗻🏔', '🍰🗻🌍'],
     // Constantes physiques
@@ -57,7 +57,7 @@ const KEYS = {
 const DESC = {
     '🔘': {
         '🔘💧📛': 'H₂O EDS on/off',
-        '🔘⛽📛': 'CH₄ EDS on/off',
+        '🔘🐄📛': 'CH₄ EDS on/off',
         '🔘🏭📛': 'CO₂ EDS on/off',
         '🔘🪩': 'Albedo on/off',
         '🔘🎞': 'Animation on/off',
@@ -96,27 +96,27 @@ const DESC = {
         '🧪': '!Masse molaire (kg/mol)',
         '📏🫧🧿': 'Ligne de Kármán',
         '📏🫧🛩': 'Tropopause',
-        '🍰🫧❀': 'Prop.Rad.EDS<sub>❀∈{🏭, ⛽, 🫁, 💨}</sub>',
+        '🍰🫧❀': 'Prop.Rad.EDS<sub>❀∈{🏭, 🐄, 🫁, 💨}</sub>',
         '🍰🫧🏭': '!CO₂',
-        '🍰🫧⛽': '!CH₄',
+        '🍰🫧🐄': '!CH₄',
         '🍰🫧🫁': '!O₂ (🫁) [clé historique 🫁]',
-        '🍰🫧🌫': 'SO₄²⁻ (🌫) - proxy CCN',
+        '🍰🫧✈': 'SO₄²⁻ (✈) - proxy CCN',
         '🍰🫧💨': '!N₂',
-        '🍰🫧❀🌈': 'Cap.Rad.IR<sub>❀∈{🏭, ⛽, 💧}</sub>',
-        '🍰🫧📿🌈': 'Σ(🍰🫧❀🌈)<sub>❀∈{🏭,⛽,💧}</sub>',
+        '🍰🫧❀🌈': 'Cap.Rad.IR<sub>❀∈{🏭, 🐄, 💧}</sub>',
+        '🍰🫧📿🌈': 'Σ(🍰🫧❀🌈)<sub>❀∈{🏭,🐄,💧}</sub>',
         '🍰🫧🏭🌈': '!Capacité radiative IR de CO₂',
         '🍰🫧💧🌈': 'Cap.Rad.IR H₂O atm.',
-        '🍰🫧⛽🌈': '!Capacité radiative IR de CH₄',
+        '🍰🫧🐄🌈': '!Capacité radiative IR de CH₄',
         '🍰💭': 'CCN - Eff.Cond nuageuse [0.3,1.0]',
     },
     '⚖️': {
-        '⚖️❀': 'Masse<sub>❀∈{🏭, ⛽, 🫁, 💨}</sub> (+ ⚖️🌫 proxy sulfate)',
+        '⚖️❀': 'Masse<sub>❀∈{🏭, 🐄, 🫁, 💨}</sub> (+ ⚖️✈ proxy sulfate)',
         '⚖️💧': 'Masse H₂O totale',
         '⚖️🫧': 'Masse atmosphère sec',
         '⚖️🏭': '!Masse CO₂',
-        '⚖️⛽': '!Masse CH₄',
+        '⚖️🐄': '!Masse CH₄',
         '⚖️🫁': '!Masse O₂ (🫁) [clé historique 🫁]',
-        '⚖️🌫': 'Masse SO₄²⁻ (🌫) [proxy CCN]',
+        '⚖️✈': 'Masse SO₄²⁻ (✈) [proxy CCN]',
         '⚖️💨': '!Masse N₂',
     },
     '💧': {
@@ -157,15 +157,15 @@ const DESC = {
         '🧲📛': 'EDS (effet de serre) W/m² = 🧲🌑🔼 − 🧲🌈🔼. OLR = 🧲🌈🔼 = flux IR sortant au sommet ; EDS = flux « bloqué » par l’atmosphère. EDS insuffisant ⟺ OLR trop élevé (même T surface).',
         '🧲📛🏭': 'EDS CO₂ W/m² (part retenue par CO₂)',
         '🧲📛💧': 'EDS H₂O W/m² (part retenue par vapeur)',
-        '🧲📛⛽': 'EDS CH₄ W/m² (part retenue par CH₄)',
+        '🧲📛🐄': 'EDS CH₄ W/m² (part retenue par CH₄)',
         '🧲📛⛅': 'EDS nuages W/m² (part retenue par nuages)',
         '🍰📛🏭': 'Part EDS CO₂ [0,1]',
         '🍰📛💧': 'Part EDS H₂O (vapeur) [0,1]',
-        '🍰📛⛽': 'Part EDS CH₄ [0,1]',
+        '🍰📛🐄': 'Part EDS CH₄ [0,1]',
         '🍰📛⛅': 'Part EDS nuages [0,1]',
         '🔺📛💧': 'ΔF H₂O affichage (W/m², convention)',
         '🔺📛🏭': 'ΔF CO₂ affichage (W/m², convention)',
-        '🔺📛⛽': 'ΔF CH₄ affichage (W/m², convention)',
+        '🔺📛🐄': 'ΔF CH₄ affichage (W/m², convention)',
         '🔺📿📛': 'ΔF total affichage (W/m², convention)',
     },
     '🗻': {
@@ -223,11 +223,11 @@ const FORM = {
         '🧪': '!Masse molaire (kg/mol)',
         '📏🫧🧿': 'H × ln(P₀ / P_limit) où H = RT/(Mg) [von Kármán] - Ligne de Kármán (altitude où P = 0.01 Pa)',
         '📏🫧🛩': 'RT/(Mg) [équation hydrostatique] - Tropopause (échelle de hauteur atmosphérique)',
-        '🍰🫧❀': 'Proportion radiative EDS - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨}',
-        '🍰🫧❀🌈': 'Capacité radiative IR de ❀ - ∀ ❀ ∈ {🏭, ⛽, 💧}',
-        '🍰🫧📿🌈': 'Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, ⛽, 💧} (pour normalisation)',
-        '🍰🫧🌫': '⚖️🌫 / ⚖️🫧 (proxy sulfate pour microphysique nuageuse, hors normalisation air sec)',
-        '🍰💭': 'clamp(0.4 + 0.5×(⚖️🫁/1.08e18 + ⚖️⛽/5.2e12) + 0.1×(⚖️🌫/1.0e14), 0.3, 1.0) - CCN - Eff.Cond nuageuse [0.3,1.0]'
+        '🍰🫧❀': 'Proportion radiative EDS - ∀ ❀ ∈ {🏭, 🐄, 🫁, 💨}',
+        '🍰🫧❀🌈': 'Capacité radiative IR de ❀ - ∀ ❀ ∈ {🏭, 🐄, 💧}',
+        '🍰🫧📿🌈': 'Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, 🐄, 💧} (pour normalisation)',
+        '🍰🫧✈': '⚖️✈ / ⚖️🫧 (proxy sulfate pour microphysique nuageuse, hors normalisation air sec)',
+        '🍰💭': 'clamp(0.4 + 0.5×(⚖️🫁/1.08e18 + ⚖️🐄/5.2e12) + 0.1×(⚖️✈/1.0e14), 0.3, 1.0) - CCN - Eff.Cond nuageuse [0.3,1.0]'
     },
     '💧': {
         '🍰💧🧊': 'Si T < ❄️ alors toute l\'eau restante (après vapeur) est glace, sinon glace polaire (10% à 0°C → 0% à 20°C) - ❄️ = 271.15K - (P-1)×1.0',
@@ -271,9 +271,9 @@ const FORM = {
         '_note': '🗻 = Géologie (Couche A) : surfaces fixes déterminées par la géologie/relief, indépendantes des stocks d\'eau'
     },
     '⚖️': {
-        '⚖️❀': 'Masse ❀ - ∀ ❀ ∈ {🏭, ⛽, 🫁, 💨} (+ ⚖️🌫 proxy sulfate)',
+        '⚖️❀': 'Masse ❀ - ∀ ❀ ∈ {🏭, 🐄, 🫁, 💨} (+ ⚖️✈ proxy sulfate)',
         '⚖️💧': 'Masse H2O totale',
-        '⚖️🫧': 'Masse atmosphère sec = ⚖️🏭 + ⚖️⛽ + ⚖️🫁 + ⚖️💨 (sans vapeur d\'eau ; ⚖️🌫 = proxy CCN séparé)'
+        '⚖️🫧': 'Masse atmosphère sec = ⚖️🏭 + ⚖️🐄 + ⚖️🫁 + ⚖️💨 (sans vapeur d\'eau ; ⚖️✈ = proxy CCN séparé)'
     }
 };
 

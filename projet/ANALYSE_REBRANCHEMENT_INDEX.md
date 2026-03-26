@@ -114,13 +114,13 @@ Les deux chemins utilisent :
 | Source (index) | Cible (DATA) | Comment |
 |----------------|--------------|---------|
 | plotData.co2_ppm | DATA['⚖️']['⚖️🏭'] ou DATA['🫧']['🍰🫧🏭'] | Convertir ppm → masse ou fraction avant initForConfig |
-| plotData.ch4_ppm | DATA['⚖️']['⚖️⛽'] ou DATA['🫧']['🍰🫧⛽'] | Idem |
+| plotData.ch4_ppm | DATA['⚖️']['⚖️🐄'] ou DATA['🫧']['🍰🫧🐄'] | Idem |
 | h2oVaporPercent + h2oTotalFromMeteorites | DATA['⚖️']['⚖️💧'] | getMasses lit EPOCH ; override possible si on modifie EPOCH ou DATA avant getMasses |
 | DATA['📜']['👉'], DATA['📜']['🗿'] | setEpoch initialise | Déjà fait dans setEpoch |
 
 **Option A** : Modifier `getMasses()` pour accepter un override depuis plotData (si co2_ppm défini, convertir en masse et écraser EPOCH['⚖️🏭']).
 
-**Option B** : Appeler `getMasses()` puis `calculateAtmosphereComposition()`, puis **écraser** `DATA['🫧']['🍰🫧🏭']` et `DATA['🫧']['🍰🫧⛽']` avec les fractions issues de plotData avant `initForConfig()`.
+**Option B** : Appeler `getMasses()` puis `calculateAtmosphereComposition()`, puis **écraser** `DATA['🫧']['🍰🫧🏭']` et `DATA['🫧']['🍰🫧🐄']` avec les fractions issues de plotData avant `initForConfig()`.
 
 ---
 

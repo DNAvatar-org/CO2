@@ -1,6 +1,6 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.8
+// Version 1.1.13
 // Date: [March 14, 2026] [HH:MM UTC+1]
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
@@ -19,6 +19,11 @@
 //   - v1.1.6: baryEpochs Hadeen end-state = Archeen start (bary in [0,1[ ; frontiere coherente)
 //   - v1.1.7: LABEL_POSITIONS txtDD (avant début flèche) et txtFF (après bout flèche) pour arcs
 //   - v1.1.8: TEXTURES_THREEJS dérivé des dates (TEXTURE_DATES_MA / TEXTURE_DATES_YEAR) ; epochTextures supprimé (chemin = getPlanetTexturePathFromEpoch)
+//   - v1.1.9: ACTION_BY_EPOCH (date → 2e bouton ☄️|🎇|💫) pour barre ACTION en haut de la timeline
+//   - v1.1.10: ACTION_BY_DATE (plages fromMa/toMa, fromYear/toYear) + getActionForDate(startYears, infoTimeMa) — entrée = date, pas epoch
+//   - v1.1.11: albedo_percent retiré du bouton albedo — affiché dans #organigram-config-wrap (main.js)
+//   - v1.1.12: fine_tuning_cloud_bary retiré du bouton albedo — même bandeau (main.js)
+//   - v1.1.13: albedo_percent de retour en top du bouton albédo (grille [1,2])
 
 // ============================================================================
 // RÉFÉRENCE DES LOGOS (déplacée vers alphabet.js)
@@ -337,7 +342,7 @@ const nodes = [
 
     { id: 'h2o', type: 'button', logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'albedo-btn', type: 'button', logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [{ text: '🧩🔺100%🔻', dataId: 'fine_tuning_cloud_bary' }], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
+    { id: 'albedo-btn', type: 'button', logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
 ];
 
 // Définition du graphe : arcs (flèches)
@@ -464,9 +469,42 @@ function getEffectiveNodesConfig(epochName, bary) {
     return out;
 }
 
+// Deuxième bouton ACTION en haut de la timeline : entrée = date (clé = même date que les images fonds/NNNNNa.png ou NNNNNMa.png).
+// Clé = Ma (5000, 4900, … 33, 66, 150, 250, 500, …) ou année (1800, 2025). Valeur = '☄️' | '🎇' | '💫'.
+// Tu remplis les valeurs après ; défaut si clé absente = '💫'.
+const ACTION_BY_DATE = {
+    // Ma (cf. fonds/05000Ma.png …)
+    5000: '☄️', 4900: '💫', 4800: '☄️', 4700: '💫', 4600: '🎇',
+    4500: '☄️', 4400: '💫', 4300: '☄️', 4200: '💫', 4100: '☄️',
+    4000: '💫', 3500: '💫', 3000: '💫', 2500: '💫', 2000: '💫',
+    1500: '💫', 1000: '💫', 500: '💫', 250: '💫', 150: '💫',
+    66: '💫', 33: '💫',
+    // Années (cf. fonds/001800a.png, 002025a.png)
+    1800: '💫', 2025: '💫'
+};
+
+/** Retourne la date courante (même calcul que la texture) : Ma ou année selon startYears. */
+function getCurrentDateKey(startYears, infoTimeMa) {
+    const info = Number(infoTimeMa) || 0;
+    if (startYears >= 1e6) {
+        return Math.round(startYears / 1e6 - info);
+    }
+    return Math.round(startYears + info * 1e6);
+}
+
+/** Retourne '☄️' | '🎇' | '💫' pour la date courante (startYears, infoTimeMa). Lookup ACTION_BY_DATE[dateKey]. */
+function getActionForDate(startYears, infoTimeMa) {
+    const key = getCurrentDateKey(startYears, infoTimeMa);
+    const action = (window.configOrganigramme && window.configOrganigramme.ACTION_BY_DATE) ? window.configOrganigramme.ACTION_BY_DATE[key] : undefined;
+    return (action === '☄️' || action === '🎇' || action === '💫') ? action : '💫';
+}
+
 // Exposer la configuration globalement pour accès depuis main.js
 // Note: timeline est chargée depuis API_BILAN/config/configTimeline.js
-window.configOrganigramme = { nodes, arcs, TEXTURES_THREEJS, baryEpochs, getEffectiveNodesConfig };
+window.configOrganigramme = {
+    nodes, arcs, TEXTURES_THREEJS, baryEpochs, getEffectiveNodesConfig,
+    ACTION_BY_DATE, getCurrentDateKey, getActionForDate
+};
 // La timeline sera ajoutée par loader_panels initAfterLoad (configOrganigramme.timeline = TIMELINE.map(...))
 // [1] config : époque initiale AVANT build organigramme (ordre synchrone 1 → 2 lancement texture)
 if (window.DATA && window.TIMELINE && window.TIMELINE.length) {

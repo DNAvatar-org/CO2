@@ -120,7 +120,7 @@ if sourceFont then
     end
 end
 
-# Emoji: ⛽ -> U+E004 (m)
+# Emoji: 🐄 -> U+E004 (m)
 Select(57348)
 CreateGlyph()
 GlyphInfo("Unicode", 57348)
@@ -133,9 +133,9 @@ if sourceFont then
         Copy()
         Select(57348)
         Paste()
-        Print("✅ Copié ⛽ (m) depuis la source")
+        Print("✅ Copié 🐄 (m) depuis la source")
     else
-        Print("⚠️  Glyphe 26FD non trouvé dans la source pour ⛽")
+        Print("⚠️  Glyphe 26FD non trouvé dans la source pour 🐄")
     end
 end
 

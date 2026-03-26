@@ -155,10 +155,10 @@
         var html = '';
         if (state.data_snapshot && state.data_snapshot['🪩']) {
             var compactAlbedo = formatJSONCompact(state.data_snapshot['🪩']).replace(/"/g, "'");
-            var sulfateFrac = (state.data_snapshot['🫧'] && state.data_snapshot['🫧']['🍰🫧🌫'] != null && Number.isFinite(state.data_snapshot['🫧']['🍰🫧🌫'])) ? state.data_snapshot['🫧']['🍰🫧🌫'] : 0;
+            var sulfateFrac = (state.data_snapshot['🫧'] && state.data_snapshot['🫧']['🍰🫧✈'] != null && Number.isFinite(state.data_snapshot['🫧']['🍰🫧✈'])) ? state.data_snapshot['🫧']['🍰🫧✈'] : 0;
             var sulfateBoostPct = (Math.min(0.35, sulfateFrac * 500) * 100).toFixed(1);
             var T_alb = safeNumTempConv(state.innerIter === -1 ? state.temperature_C : (state.next_T_C != null ? state.next_T_C : state.temperature_C), '-');
-            html += '<div class="iteration-header convergence-cycle"><strong>🪩 cycle albédo ' + albedoIter + '</strong> @' + T_alb + '°C :<span class="convergence-inline-json"> ' + compactAlbedo + '</span> <span class="convergence-inline-json">| 🌫 CCN +' + sulfateBoostPct + '%</span></div>';
+            html += '<div class="iteration-header convergence-cycle"><strong>🪩 cycle albédo ' + albedoIter + '</strong> @' + T_alb + '°C :<span class="convergence-inline-json"> ' + compactAlbedo + '</span> <span class="convergence-inline-json">| ✈ CCN +' + sulfateBoostPct + '%</span></div>';
         }
         var innerIter = state.innerIter;
         var T = safeNumTempConv(state.temperature_C, '-');

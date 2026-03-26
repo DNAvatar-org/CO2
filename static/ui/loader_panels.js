@@ -1,6 +1,6 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.7
+// Version 1.1.8
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
@@ -10,6 +10,7 @@
 // - v1.1.5: clic direct = overlay (texte rouge) + body cursor wait uniquement ; anim = idem + disque creux
 // - v1.1.6: curseur wait via class compute-loading (html+body) pour résister en anim
 // - v1.1.7: scheduleInitialCompute() appelé systématiquement en fin initAfterLoad pour garantir [4] après [3]
+// - v1.1.8: garde updateEpochActions si events.js pas encore chargé
 // Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
 // Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
 
@@ -154,11 +155,23 @@
     function nextEpochName(nextItem, nextId) {
         return nextItem.name || EPOCH_ID_TO_NAME[nextId] || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
     }
-    // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque (via shell)
+    // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque (via shell). Transition en animation du curseur timeline puis setEpoch.
     window.togglePlotAnim = function () {
+        if (typeof window.hideTooltip === 'function') window.hideTooltip();
         if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = true;
         var cb = document.getElementById('plot-anim-toggle-checkbox');
         if (cb) cb.checked = true;
+        var applyNextEpoch = function (idx, nextName, useShell) {
+            if (typeof window.animateTimelineCursorToEpoch === 'function') {
+                window.animateTimelineCursorToEpoch(idx, 400, function () {
+                    if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextName);
+                    else if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
+                });
+            } else {
+                if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextName);
+                else if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
+            }
+        };
         if (window.shell && window.shell.setState) {
             window.shell.setState({ animEnabled: true });
             if (window.DATA && window.DATA['📜'] && typeof window.TIMELINE !== 'undefined' && window.TIMELINE.length) {
@@ -171,7 +184,7 @@
                 var nextItem = window.TIMELINE[idx];
                 var nextId = nextItem['📅'];
                 var nextName = nextEpochName(nextItem, nextId);
-                window.shell.setEpoch(nextName);
+                applyNextEpoch(idx, nextName, true);
             }
         } else {
             window.syncToScie({ animEnabled: true });
@@ -185,7 +198,7 @@
                 var nextItem = window.TIMELINE[idx];
                 var nextId = nextItem['📅'];
                 var nextName = nextEpochName(nextItem, nextId);
-                if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
+                applyNextEpoch(idx, nextName, false);
             }
         }
     };
@@ -378,7 +391,9 @@
                 window.COMPUTE_LOADER.hide();
             }, 'loader_panels');
         // Mettre à jour les actions 🕰 (météorite, impact, etc.) après injection du contenu visu
-        window.updateEpochActions();
+        if (typeof window.updateEpochActions === 'function') {
+            window.updateEpochActions();
+        }
         var scieIframe = document.getElementById('scie-iframe');
         window.addEventListener('message', function (event) {
             var iframe = document.getElementById('scie-iframe');

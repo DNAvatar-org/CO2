@@ -1,6 +1,6 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.11
+ * Version 1.0.13
  * Date: [June 08, 2025] [HH:MM UTC+1]
 * logs :
  * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
@@ -14,6 +14,8 @@
  * - v1.0.9: const DATA = DATA, const TIMELINE = TIMELINE en tête des fonctions (cf window_MAJUSCULE_creater_filler.txt)
  * - v1.0.10: fix crash _ticCfg undefined (findIndex=-1 ou clé 🔘🕰 absente de 🕰)
  * - v1.0.11: info-time en (+N ans) pour époques récentes (▶<1e6), sinon (+X Ma)
+ * - v1.0.12: animation curseur timeline vers époque suivante (main action 🎞) : getTimelineCursorTopForEpochIndex, animateTimelineCursorToEpoch
+ * - v1.0.13: garde updateEpochActions si events.js pas encore chargé
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.
@@ -188,6 +190,47 @@ function logTimelineGeometry() {
     return;
 }
 
+/** Retourne la position top (px) du curseur pour le début de l'époque à l'index donné (sans changer DATA). */
+function getTimelineCursorTopForEpochIndex(epochIdx) {
+    const TIMELINE = window.TIMELINE;
+    const container = document.querySelector('.visu_epochs-container');
+    if (!container || !TIMELINE || epochIdx < 0 || epochIdx >= TIMELINE.length) return null;
+    const epoch = TIMELINE[epochIdx];
+    if (!epoch || epoch['📅'] == null) return null;
+    const entries = getTimelineDateEntries(container);
+    if (!entries.length) return null;
+    const scaleMa = [];
+    const textRows = [];
+    for (let r = 0; r < entries.length; r++) {
+        scaleMa.push(entries[r].ma);
+        textRows.push(entries[r].span);
+    }
+    const startMa = -(epoch['▶'] / 1e6);
+    return getCursorTopPx(container, textRows, scaleMa, startMa) + TIMELINE_CURSOR_OFFSET_PX;
+}
+
+/** Anime le curseur de la timeline vers l'époque à l'index donné, puis appelle callback (synchrone à la fin de l'animation). */
+window.animateTimelineCursorToEpoch = function (epochIdx, durationMs, callback) {
+    const targetTop = getTimelineCursorTopForEpochIndex(epochIdx);
+    const cursor = document.getElementById('timeline-cursor');
+    if (targetTop == null || !cursor) {
+        if (typeof callback === 'function') callback();
+        return;
+    }
+    const duration = durationMs > 0 ? durationMs : 400;
+    window._timelineCursorAnimating = true;
+    cursor.style.transition = 'top ' + (duration / 1000) + 's ease-out';
+    cursor.style.setProperty('top', targetTop + 'px');
+    cursor.setAttribute('data-timeline-top', String(Math.round(targetTop)));
+    const onEnd = function () {
+        cursor.removeEventListener('transitionend', onEnd);
+        cursor.style.transition = '';
+        window._timelineCursorAnimating = false;
+        if (typeof callback === 'function') callback();
+    };
+    cursor.addEventListener('transitionend', onEnd);
+};
+
 function updateTimeline() {
     const DATA = window.DATA;
     const TIMELINE = window.TIMELINE;
@@ -263,8 +306,10 @@ function updateTimeline() {
             const startMa = -(epoch['▶'] / 1e6);
             const currentMa = startMa + window.infoTimeMa;
             const topPx = getCursorTopPx(container, textRows, scaleMa, currentMa) + TIMELINE_CURSOR_OFFSET_PX;
-            cursor2.style.setProperty('top', topPx + 'px');
-            cursor2.setAttribute('data-timeline-top', String(Math.round(topPx)));
+            if (!window._timelineCursorAnimating) {
+                cursor2.style.setProperty('top', topPx + 'px');
+                cursor2.setAttribute('data-timeline-top', String(Math.round(topPx)));
+            }
             logTimelineGeometry();
             // Debug curseurs >..< pour époques récentes (1800, 2100)
             const epochId = epoch['📅'];
@@ -283,7 +328,7 @@ function updateTimeline() {
         }
     }
 
-    // textureIndex = infoTimeMa / stepMa — stepMa lu depuis la config du bouton cliqué
+    // textureIndex = infoTimeMa / stepMa — stepMa lu depuis la config du bouton cliqué (fallback si époque sans 🕰[ticKey], ex. Corps noir + 💫)
     if (window.DATA['📜']['🔘🕰'] === '') {
         window.textureIndex = 0;
     } else {
@@ -292,10 +337,8 @@ function updateTimeline() {
         const _epoch_tl = _idx_tl >= 0 ? window.TIMELINE[_idx_tl] : null;
         const _ticKey = window.DATA['📜']['🔘🕰'];
         const _ticCfg = _epoch_tl && _epoch_tl['🕰'] && _epoch_tl['🕰'][_ticKey];
-        if (_ticCfg) {
-            window.textureIndex = Math.floor(window.infoTimeMa / _ticCfg['🔺⏳']);
-        }
-        if (!_ticCfg) console.error('[updateTimeline][timeline.js] _ticCfg undefined epochId=' + _epochId_tl + ' ticKey=' + _ticKey);
+        const stepMa = _ticCfg && typeof _ticCfg['🔺⏳'] === 'number' ? _ticCfg['🔺⏳'] : 100;
+        window.textureIndex = stepMa > 0 ? Math.floor(window.infoTimeMa / stepMa) : 0;
     }
 
     const currentTicTime = window.textureIndex;
@@ -317,6 +360,17 @@ function updateTimeline() {
         window.updatePlanetLighting();
     }
     window.updatePlanetTextureFromDate && window.updatePlanetTextureFromDate();
+
+    // Mettre à jour le 2e bouton (☄️|🎇|💫) quand la date courante change (ACTION_BY_DATE)
+    const idx = window.DATA['📜']['👉'];
+    const epoch = window.TIMELINE[idx];
+    const actionKey = window.configOrganigramme.getActionForDate(epoch['▶'], window.infoTimeMa);
+    if (window._lastEpochActionKey !== actionKey) {
+        window._lastEpochActionKey = actionKey;
+        if (typeof window.updateEpochActions === 'function') {
+            window.updateEpochActions();
+        }
+    }
 
     // 🔒 DÉSACTIVÉ : Ne plus incrémenter automatiquement de +10 ans toutes les secondes
     // L'incrémentation se fait uniquement lors des clics sur boutons (météorite glace, etc.)

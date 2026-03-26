@@ -105,13 +105,13 @@ Ordre du pipeline. Référence littérature : COMPARAISON_LITTERATURE_16C.md, fl
 | 1 | 🧲📛 | 159,960 | EDS = 🧲🌑🔼 − 🧲🌈🔼 ≈ 162 | Petit écart arrondi. |
 | 2 | 🍰📛🏭 | 0,038 (3,8 %) | **Notre** part τ (CO2). Schmidt ~19 % = attribution G (autre méthode) | Pas directement comparable ; 3,8 % cohérent avec τ_CO2 ≪ τ_H2O dans notre modèle. |
 | 3 | 🍰📛💧 | 0,884 (88,4 %) | **Notre** part τ (H2O). Schmidt ~50 % = attribution G | Idem : définition différente ; facteur vapeur (h2o_eds_scale) et nuages récemment ajoutés peuvent augmenter la part H2O. |
-| 4 | 🍰📛⛽ | 0,076 (7,6 %) | CH₄ trace | OK. |
+| 4 | 🍰📛🐄 | 0,076 (7,6 %) | CH₄ trace | OK. |
 | 5 | 🍰📛⛅ | 0,003 (0,3 %) | Nuages (récemment ajoutés en EDS) | À confronter à tau_cloud et couverture. |
 | 6 | 🔺📛💧 | 27,086 W/m² | **Diagnostic ΔF H₂O** (affichage, convention) : α×ln(q/q_ref)×temp_factor. Pas l’EDS : EDS = flux bloqué actuel (état) ; ΔF = convention affichage (grandeur différente, même unité). | Indicatif ; pas à comparer à 🧲📛💧 (part EDS H₂O en W/m²). |
 
 ### 3.4 Autres blocs (🫧, 💧, 🪩)
 
-- **🫧** : 🍰🫧📿🌈, 🍰🫧🏭🌈, 🍰🫧💧🌈, 🍰🫧⛽🌈 = 0 → soit calcul EDS/spectral pas encore fait à cet instant, soit remplis ailleurs ; 📛 montre bien une répartition (CO₂/H₂O/CH₄/nuages).
+- **🫧** : 🍰🫧📿🌈, 🍰🫧🏭🌈, 🍰🫧💧🌈, 🍰🫧🐄🌈 = 0 → soit calcul EDS/spectral pas encore fait à cet instant, soit remplis ailleurs ; 📛 montre bien une répartition (CO₂/H₂O/CH₄/nuages).
 - **💧** : cohérent avec litt. (précipitation P=W/τ ~2,1 mm/j).
 - **🪩** : albédo 0,30 cohérent ~0,29 Terre.
 
@@ -168,7 +168,7 @@ Snapshot typique à convergence (époque 2025) :
 
 - **🧮** : 🧮🌡️=288,8 K (15,65°C), 🧮🛑='converged', 🧲🔺⏮=5,927
 - **🧲** : 🧲☀️🔽=238,27, 🧲🌕🔽=0,09, 🧲🌑🔼=394,46, **🧲🌈🔼=232,43**, **🔺🧲=5,93**
-- **📛** (output convergence sans 🔺📛💧) : 🧲📛=159,96 ; 🧲📛🏭=6,04, 🧲📛💧=141,37, 🧲📛⛽=12,14, 🧲📛⛅=0,42
+- **📛** (output convergence sans 🔺📛💧) : 🧲📛=159,96 ; 🧲📛🏭=6,04, 🧲📛💧=141,37, 🧲📛🐄=12,14, 🧲📛⛅=0,42
 
 | Variable | Modèle 2025 | Litt. 2025 | Verdict |
 |----------|-------------|------------|---------|
@@ -180,7 +180,7 @@ Snapshot typique à convergence (époque 2025) :
 | 🍰🫧🏭 → ppmv | ~420 ppmv | ~412 ppm (NOAA) | OK |
 | 🍰🪩📿, ☁️ | 30 %, 62 % | ~29 %, 60–70 % | OK |
 
-**EDS W/m² par composant (🧲📛🏭, 🧲📛💧, 🧲📛⛽, 🧲📛⛅) vs littérature** :
+**EDS W/m² par composant (🧲📛🏭, 🧲📛💧, 🧲📛🐄, 🧲📛⛅) vs littérature** :
 
 Même grandeur physique : flux (W/m²) retenus / réémis vers la surface. La différence 6 vs 32 W/m² (CO₂) vient de la **méthode d’attribution** : nous on répartit le flux absorbé à chaque (couche, λ) par τ_i/τ_tot (tau-ratio) ; KT97 donne des contributions type clear-sky ou marginale (effet retrait d’un gaz). Quand τ_H₂O ≫ τ_CO₂ sur beaucoup de longueurs d’onde, le tau-ratio donne peu au CO₂ ; une mesure marginale (« retirer le CO₂ ») donne un effet plus grand.
 
@@ -188,7 +188,7 @@ Même grandeur physique : flux (W/m²) retenus / réémis vers la surface. La di
 |-----------|---------------------|--------------------|------|
 | 🧲📛🏭 (CO₂) | ~6 | KT97 clear-sky : CO₂ ~32 | Écart : notre attribution tau-ratio (τ_CO₂/τ_tot) donne peu car τ_H₂O ≫ τ_CO₂ ; KT97 ~32 = ordre de grandeur contribution marginale/clear-sky. |
 | 🧲📛💧 (H₂O) | ~141 | KT97 clear-sky : H₂O ~75 ; total G ~155 | Nous 141, litt. 75–155. H₂O dominant, cohérent. |
-| 🧲📛⛽ (CH₄) | ~12 | Trace, quelques W/m² | OK ordre de grandeur. |
+| 🧲📛🐄 (CH₄) | ~12 | Trace, quelques W/m² | OK ordre de grandeur. |
 | 🧲📛⛅ (nuages) | ~0,4 | KT97 : nuages ~+30 W/m² sur G | Nous τ nuages faible (0,3 %) ; litt. nuages ~20–30 % de G. À confronter si on augmente τ_cloud. |
 
 **Pourquoi 6 W/m² (nous) vs 32 W/m² (KT97) pour le CO₂ ? — Même flux, répartition différente**

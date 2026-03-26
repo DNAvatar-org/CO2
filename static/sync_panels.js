@@ -196,7 +196,7 @@
         var atm_kg = DATA['⚖️']['⚖️🫧'];
         var M_air = DATA['🫧']['🧪'];
         var co2_ppm = window.co2KgToFraction(DATA['⚖️']['⚖️🏭'], atm_kg, M_air) * 1e6;
-        var ch4_ppm = window.ch4KgToFraction(DATA['⚖️']['⚖️⛽'], atm_kg, M_air) * 1e6;
+        var ch4_ppm = window.ch4KgToFraction(DATA['⚖️']['⚖️🐄'], atm_kg, M_air) * 1e6;
         var h2o_vapor_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
         var h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
         window.plotData.ch4_ppm = ch4_ppm;
@@ -280,7 +280,7 @@
         var DATA = window.DATA;
         // Rendre 📜 cohérent en premier (📿☄️, 🔺⚖️💧☄️) avant tout calcul — sinon ⚖️💧 reste 0
         window.getEpochDateConfig();
-        window.h2oTotalFromMeteorites = 0;
+        // Ne pas réinitialiser h2oTotalFromMeteorites ici (conservé après clic météorite ; reset dans setEpoch au changement d'époque)
         syncTuningFromData();
         // Source de vérité pour anim : bouton visu (plot-anim-toggle). Rafraîchir DATA['🔘'] avant le calcul
         window.getEnabledStates();
@@ -342,6 +342,7 @@
             if (isVisuMode) projectToVisu(window.DATA);
             // Rafraîchir les labels visu (albédo, flux, T°) après chaque calcul pour que l’onglet Visuel affiche le bon état
             window.updateFluxLabels('ProcessFinished');
+            if (typeof window.updateTimeline === 'function') window.updateTimeline();
             var albedoEl = document.querySelector('[data-id="albedo_percent"]');
             console.log('[sync_panels] après ProcessFinished DOM albedo_percent=', albedoEl ? albedoEl.textContent : '(élément absent)');
             if (window.shell && window.shell.dataInput) {

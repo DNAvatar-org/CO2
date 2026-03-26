@@ -767,7 +767,7 @@ function drawAbsorptionBandIndicators() {
     // Utiliser la référence unique des logos depuis configOrganigramme.js
     const LOGOS = typeof window !== 'undefined' && window.LOGOS ? window.LOGOS : {
         CO2: '🏭',
-        CH4: '⛽',
+        CH4: '🐄',
         H2O: '💧',
         ALBEDO: '🪩',
         CLOUDS: '☁️'

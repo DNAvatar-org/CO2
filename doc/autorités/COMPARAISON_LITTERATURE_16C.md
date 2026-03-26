@@ -32,13 +32,13 @@ Comparaison des variables du modèle (cycle eau, atmosphère, albédo) à **16,1
 | **📏🫧🧿** | « Ligne de Kármán » (altitude P = 0,01 Pa) (km) | 140 | Kármán = 100 km; niveau 0,01 Pa plus haut (thermosphère) | Wikipedia Scale height; Kármán line |
 | **📏🫧🛩** | Tropopause (km) | 8,513 | 6–10 km (pôles), 16–18 km (équateur); échelle de hauteur ~8,5 km | Wikipedia Tropopause; Scale height ~8,5 km |
 | **🍰🫧🏭** | Fraction CO₂ | 6,34×10⁻⁴ | ~412 ppm (0,0412 %) | Wikipedia, NOAA |
-| **🍰🫧⛽** | Fraction CH₄ | 1,06×10⁻⁶ | ~1,8 ppm | Wikipedia |
+| **🍰🫧🐄** | Fraction CH₄ | 1,06×10⁻⁶ | ~1,8 ppm | Wikipedia |
 | **🍰🫧🫁** | Fraction O₂ | 0,227 (22,7 %) | 20,95 % (volume) | Wikipedia Atmosphere of Earth |
 | **🍰🫧💨** | Fraction N₂ | 0,763 (76,3 %) | 78,08 % | Id. |
 | **🍰🫧📿🌈** | Capacité radiative IR totale (norm.) | 0,867 | — | Indicateur modèle (0–1) |
 | **🍰🫧🏭🌈** | Capacité radiative IR CO₂ (⟨1−e⁻τ⟩ pondérée IR) | 0,060 | — | Pas une « part EDS » ; attribution type Schmidt = 🍰📛🏭 (📛) |
 | **🍰🫧💧🌈** | Capacité radiative IR H₂O | 0,623 | H₂O dominant effet de serre IR | Littérature EDS |
-| **🍰🫧⛽🌈** | Capacité radiative IR CH₄ | 0,185 | — | Trace gas |
+| **🍰🫧🐄🌈** | Capacité radiative IR CH₄ | 0,185 | — | Trace gas |
 | **🍰💭** | CCN / efficacité condensation nuageuse | 1,000 | — | Paramètre 0,3–1,0 |
 
 **Synthèse atmosphère :**  

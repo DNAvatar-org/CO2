@@ -9,10 +9,7 @@
     <div class="title-container divGlass">
         <h1>Bilan Radiatif Terrestre</h1>
         <p class="title-subtitle">Base de la météorologie</p>
-        <div class="title-toolbar">
-            <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Animation">🎞</button>
-            <div class="timeline-events-logos" id="timeline-events-logos"></div>
-        </div>
+        <div class="title-toolbar"></div>
         <div class="synthese_Temp synthese_Temp-two-cols">
             <div class="synthese_Temp-col synthese_Temp-col-left">
                 <div class="visu_timeline-epoch-section">
@@ -61,8 +58,15 @@
                 <div class="compute-tic-loader__ring"></div>
             </div>
         </div>
-        <!-- Frise verticale ; 🎞 + event logos déplacés dans title-toolbar -->
+        <div class="timeline-action-bar">
+            <span class="timeline-action-title">SCENARIO</span>
+            <div class="timeline-action-buttons">
+                <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Prochaine époque" aria-label="Prochaine époque">🎞</button>
+                <div class="timeline-events-logos" id="timeline-events-logos"></div>
+            </div>
+        </div>
         <div class="visu_timeline-frise visu_timeline-frise-with-cursors">
+            <span class="visu_epochs-title">EPOQUES</span>
             <div class="visu_epochs-container">
                 <span class="timeline-cursor" id="timeline-cursor" aria-hidden="true">⏵ ———— ⏴</span>
             </div>

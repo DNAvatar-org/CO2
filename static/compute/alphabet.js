@@ -16,7 +16,7 @@
 // Source unique de référence pour tous les caractères (logos) utilisés dans l'application
 const CHARS = {
     CO2: '🏭',      // CO2 : usine (émissions industrielles)
-    CH4: '⛽',       // CH4 : pompe à essence (combustibles fossiles, pets de vache)
+    CH4: '🐄',       // CH4 : pompe à essence (combustibles fossiles, pets de vache)
     H2O: '💧',      // H2O : goutte d'eau
     GEOTHERMAL_FLUX: '🌕', // Geothermal flux : lune (flux géothermique)
     FLUX_START: '▶', // Flux start : flèche droite (valeur de départ)
@@ -24,7 +24,7 @@ const CHARS = {
     ENERGY_FLUX: '🧲', // Energy flux : sources chaudes (W/m²)
     O2: '🫁',       // O2 : poumons (affichage)
     N2: '💨',       // N2 : vent (azote/air)
-    SULFATE: '🌫',  // Aérosols sulfate (proxy CCN/optique nuageuse)
+    SULFATE: '✈',  // Aérosols sulfate (proxy CCN/optique nuageuse)
     WEIGHT: '⚖️',   // Poids : balance (masse)
     DENSITY: '💨',  // Densité : vent
     ALTITUDE: '🧿', // Altitude : galaxie (Ligne de Kármán, frontière atmosphère/espace)
@@ -129,10 +129,10 @@ const CHARS_DESC = {
     '☯': 'Direction Search (+/-)',
     // Éléments
     '💧': 'H₂O',
-    '⛽': 'CH₄',
+    '🐄': 'CH₄',
     '🏭': 'CO₂',
     '🫁': 'O₂',
-    '🌫': 'SO₄²⁻ (aérosols sulfate)',
+    '✈': 'SO₄²⁻ (aérosols sulfate)',
     '🧊': 'Glace',
     '⛅': 'Nuages',
     '🌊': 'Océan',
@@ -156,7 +156,7 @@ const CHARS_DESC = {
     '🌑': 'Flux sortant (σT⁴)',
     '☁️': 'Index formation nuageuse [0,1]',
     // Événements
-    '💫': 'TicTime (+50 Ma)',
+    '💫': 'TicTime',
     '☄️': 'Météorite de glace',
     '🛰': 'Satellite',
     '🌧': 'Saturation H₂O',
@@ -223,7 +223,7 @@ function createAlphabetHtml() {
     
     // Descriptions personnalisées pour certains caractères
     const customDescriptions = {
-        'TIC_TIME': 'TicTime (+50 Ma)',
+        'TIC_TIME': 'TicTime',
         'T0': 'T0 (t° initiale)'
     };
     

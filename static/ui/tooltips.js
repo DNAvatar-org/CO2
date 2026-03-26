@@ -1,6 +1,6 @@
 // File: tooltips.js - Système centralisé de tooltips
 // Desc: Gestion unifiée des tooltips (délai 0 = immédiat)
-// Version 1.0.2
+// Version 1.0.4
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -11,6 +11,8 @@
 // UTF8 est la sémantique pour CODE & UI
 // - TOOLTIP_DELAY=0 (immédiat), texte dynamique via data-tooltip/title au show
 // - aria-label/alt affiché après 2s dans élément séparé (style fond clair, vrai alt)
+// - v1.0.3: position fixed corrigée — ne plus ajouter scrollX/scrollY aux coordonnées viewport
+// - v1.0.4: tooltip alt jaune priorise le haut si dépassement bas écran (mesure réelle)
 
 (function() {
     'use strict';
@@ -150,15 +152,12 @@
                 mouseY = rect.top;
             }
 
-            const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-            const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
             // Offset pour éviter que le tooltip soit sous la souris (15px à droite et 15px au-dessus)
             const offsetX = 15;
             const offsetY = -15;
 
             // Position horizontale : à droite de la souris
-            tooltip.style.left = (mouseX + offsetX + scrollX) + 'px';
+            tooltip.style.left = (mouseX + offsetX) + 'px';
 
             // Vérifier si le tooltip dépasserait en haut de l'écran
             const estimatedTooltipHeight = 50;
@@ -166,13 +165,58 @@
 
             if (wouldOverflowTop) {
                 // Positionner en bas de la souris
-                tooltip.style.top = (mouseY - offsetY + scrollY) + 'px';
+                tooltip.style.top = (mouseY - offsetY) + 'px';
                 tooltip.style.transform = 'translate(0, 0)';
             } else {
                 // Positionner au-dessus de la souris (comportement par défaut)
-                tooltip.style.top = (mouseY + offsetY + scrollY) + 'px';
+                tooltip.style.top = (mouseY + offsetY) + 'px';
                 tooltip.style.transform = 'translate(0, -100%)';
             }
+        };
+
+        const positionAltTooltip = (altEl, e) => {
+            if (!altEl) return;
+
+            let mouseX, mouseY;
+            if (e && e.clientX !== undefined && e.clientY !== undefined) {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            } else {
+                const rect = element.getBoundingClientRect();
+                mouseX = rect.left + rect.width / 2;
+                mouseY = rect.top;
+            }
+
+            const offsetX = 15;
+            const offsetY = -15;
+            const margin = 8;
+            const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+
+            altEl.style.left = (mouseX + offsetX) + 'px';
+            altEl.style.visibility = 'hidden';
+            altEl.style.opacity = '0';
+            altEl.style.display = 'block';
+            altEl.style.transform = 'translate(0, 0)';
+
+            const altHeight = altEl.offsetHeight || 70;
+            const topAbove = mouseY + offsetY - altHeight;
+            const topBelow = mouseY - offsetY;
+            const overflowBottomBelow = topBelow + altHeight > viewportH - margin;
+            const fitsAbove = topAbove >= margin;
+
+            if (overflowBottomBelow && fitsAbove) {
+                altEl.style.top = (mouseY + offsetY) + 'px';
+                altEl.style.transform = 'translate(0, -100%)';
+            } else if (topAbove < margin) {
+                altEl.style.top = (mouseY - offsetY) + 'px';
+                altEl.style.transform = 'translate(0, 0)';
+            } else {
+                altEl.style.top = (mouseY + offsetY) + 'px';
+                altEl.style.transform = 'translate(0, -100%)';
+            }
+
+            altEl.style.opacity = '1';
+            altEl.style.visibility = 'visible';
         };
 
         // Afficher le tooltip
@@ -227,23 +271,7 @@
                             const altEl = getOrCreateGlobalAltTooltip();
                             altEl.innerHTML = currentDetail.replace(/\n/g, '<br>');
                             const ev = lastMouseEvent || { clientX: element.getBoundingClientRect().left + element.getBoundingClientRect().width / 2, clientY: element.getBoundingClientRect().top };
-                            const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-                            const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-                            const offsetX = 15;
-                            const offsetY = -15;
-                            const mouseY = ev.clientY;
-                            const wouldOverflowTop = (mouseY + offsetY) < 70;
-                            altEl.style.left = (ev.clientX + offsetX + scrollX) + 'px';
-                            // Alterner : tooltip court au-dessus → alt en dessous ; tooltip en dessous → alt au-dessus
-                            if (wouldOverflowTop) {
-                                altEl.style.top = (mouseY + offsetY + scrollY) + 'px';
-                                altEl.style.transform = 'translate(0, -100%)';
-                            } else {
-                                altEl.style.top = (mouseY - offsetY + scrollY) + 'px';
-                                altEl.style.transform = 'translate(0, 0)';
-                            }
-                            altEl.style.opacity = '1';
-                            altEl.style.visibility = 'visible';
+                            positionAltTooltip(altEl, ev);
                         }
                         globalTooltipAltTimeout = null;
                     }, TOOLTIP_ALT_DELAY);
@@ -268,19 +296,7 @@
                 positionTooltip(e);
             }
             if (altEl && altEl.style.visibility === 'visible') {
-                const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-                const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-                const offsetX = 15;
-                const offsetY = -15;
-                const wouldOverflowTop = (e.clientY + offsetY) < 70;
-                altEl.style.left = (e.clientX + offsetX + scrollX) + 'px';
-                if (wouldOverflowTop) {
-                    altEl.style.top = (e.clientY + offsetY + scrollY) + 'px';
-                    altEl.style.transform = 'translate(0, -100%)';
-                } else {
-                    altEl.style.top = (e.clientY - offsetY + scrollY) + 'px';
-                    altEl.style.transform = 'translate(0, 0)';
-                }
+                positionAltTooltip(altEl, e);
             }
         });
     }

@@ -48,7 +48,7 @@ def extract_emojis_from_codebase():
         '🫁': 'atmosphere',
         '🌵': 'co2',
         '💧': 'h2o',
-        '⛽': 'methane',
+        '🐄': 'methane',
         '🔂': 'reemitted',
         '📛': 'radiative_forcing',
         # Boutons
