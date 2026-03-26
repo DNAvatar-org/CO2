@@ -102,7 +102,9 @@
             <div class="constant-item"><span class="constant-symbol">\(\Gamma\)</span> <span class="constant-name">Gradient de température</span> = -0.0065 K/m</div>
             <div class="constant-item"><span class="constant-symbol">\(z_{\text{trop}}\)</span> <span class="constant-name">Hauteur tropopause</span> = 11000 m</div>
             <div class="constant-item"><span class="constant-symbol">\(\lambda_0\)</span> <span class="constant-name">Centre bande CO₂</span> = 15×10⁻⁶ m</div>
-            <div class="constant-item"><span class="constant-symbol">\(S_0\)</span> <span class="constant-name">Constante solaire</span> = 1366 W/m²</div>
+            <div class="constant-item"><span class="constant-symbol">\(S_0\)</span> <span class="constant-name">Constante solaire</span> = 1361 W/m² (Kopp & Lean 2011, TSIS-1)</div>
+            <div class="constant-item"><span class="constant-symbol">\(L_\odot\)</span> <span class="constant-name">Luminosité solaire</span> = 3.828×10²⁶ W (IAU 2015 Résolution B3)</div>
+            <div class="constant-item"><span class="constant-symbol">\(t_\odot\)</span> <span class="constant-name">Âge du Soleil</span> = 4.57 Ga</div>
             <div class="constant-item"><span class="constant-symbol">\(A\)</span> <span class="constant-name">Albédo</span> = 0.3</div>
             <div class="constant-item"><span class="constant-symbol">\(\lambda\)</span> <span class="constant-name">Sensibilité climatique</span> = 0.8 K/(W/m²)</div>
             <div class="constant-item"><span class="constant-symbol">\(z_{\text{trop,ref}}\)</span> <span class="constant-name">Tropopause référence</span> = 11000 m</div>
@@ -126,6 +128,18 @@
                 <div class="formula-category">
                     <div class="formula-category-title">🎱 Géométrie</div>
                     <div class="formula-item">$$F_{\text{solaire}} = S_0 \frac{1 - A}{4}$$</div>
+                </div>
+
+                <div class="formula-category">
+                    <div class="formula-category-title">☀️ Luminosité solaire — Gough (1981)</div>
+                    <div class="formula-item">$$L(t) = \frac{L_\odot}{1 + \frac{2}{5} \cdot \frac{t}{t_\odot}}$$</div>
+                    <div class="formula-item" style="font-size: 0.85em; opacity: 0.8;">
+                        où \(t\) = temps avant le présent (années), \(L_\odot = 3.828 \times 10^{26}\) W (IAU 2015), \(t_\odot = 4.57\) Ga.<br>
+                        Réf : Gough, D.O. (1981) <em>Solar Physics</em> 74:21–34. Confirmé par Bahcall et al. (2001) <em>ApJ</em> 555:990.<br>
+                        Exemples : Archéen (−4.0 Ga) → 74.1 % ; Protérozoïque (−2.5 Ga) → 82.0 % ; aujourd'hui → 100 %.<br>
+                        🔒 Formule hyperbolique — NE PAS remplacer par une interpolation linéaire.
+                    </div>
+                    <div class="formula-item">$$S(t) = \frac{L(t)}{4\pi \cdot \text{UA}^2} \quad;\quad \bar{S}(t) = \frac{S(t)}{4}$$</div>
                 </div>
                 
                 <div class="formula-category">

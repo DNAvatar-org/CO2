@@ -606,7 +606,6 @@
 
                 // 2. Pas de cycle eau en entrée. Réinit indices pour nouveau test
                 DATA['🧮']['previous'] = [];
-                DATA['🧮']['lastInitPayload'] = null;
                 DATA['🧮']['🧮🔄🌊'] = 0;
                 DATA['🧮']['🧮🔄🪩'] = 0;
                 if (window.ABORT_COMPUTE) { /* skip loop */ } else {
@@ -1109,11 +1108,11 @@
         }, true);
 
         function getInitRadiatifMetrics() {
-            const DATA = window.DATA;
-            const init = (DATA['🧮'] && DATA['🧮']['lastInitPayload']) ? DATA['🧮']['lastInitPayload'] : null;
+            const trace = window.getConvergenceTrace ? window.getConvergenceTrace() : [];
+            const init = trace.length > 0 ? trace[0] : null;
             if (!init) return { T_init_C: NaN, delta_init: NaN };
-            const T_init = (init.temperature_C != null && Number.isFinite(Number(init.temperature_C))) ? Number(init.temperature_C) : NaN;
-            const delta_init = (init.delta_equilibre != null && Number.isFinite(Number(init.delta_equilibre))) ? Number(init.delta_equilibre) : NaN;
+            const T_init = Number.isFinite(init.temperature_C) ? init.temperature_C : NaN;
+            const delta_init = Number.isFinite(init.delta_equilibre) ? init.delta_equilibre : NaN;
             return { T_init_C: T_init, delta_init: delta_init };
         }
 
@@ -1123,7 +1122,6 @@
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
             if (!window.initForConfig()) throw new Error('initForConfig a échoué');
             DATA['🧮']['previous'] = [];
-            DATA['🧮']['lastInitPayload'] = null;
             DATA['🧮']['🧮🔄🌊'] = 0;
             DATA['🧮']['🧮🔄🪩'] = 0;
             const result = await window.computeRadiativeTransfer();
