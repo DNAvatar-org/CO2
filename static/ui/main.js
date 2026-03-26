@@ -2170,43 +2170,23 @@ function setEpoch(epochName, options) {
         }
     }
 
-    // 🔒 Anticiper la couleur avec t0 dès le clic sur l'époque (AVANT les calculs)
-    if (typeof epoch.t0 === 'number' && epoch.t0 > 0 && typeof window !== 'undefined' && typeof window.tempSurfaceToColor === 'function' && typeof window.updateBlackBodyColor === 'function') {
-        const ticTime = 0; // infoTimeMa = 0 à chaque setEpoch
-        
-        // Calculer la température initiale
-        const T0_anticipated = epoch.t0;
-        const tempC_anticipated = T0_anticipated - CONST.KELVIN_TO_CELSIUS;
-        const color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
-        window.updateBlackBodyColor(color_anticipated);
-        
-        // Mettre à jour legend-equilibre avec la couleur anticipée
-        const legendEquilibre = typeof document !== 'undefined' ? document.querySelector('.legend-equilibre') : null;
-        if (legendEquilibre) {
-            legendEquilibre.style.color = color_anticipated;
-        }
-        
-        // 🔒 FORCER la mise à jour immédiate du plot et de la légende avec la couleur anticipée
-        // (même si les données ne sont pas encore mises à jour, la couleur doit changer tout de suite)
-        const currentPlotData = (typeof window !== 'undefined' && window.plotData) ? window.plotData : plotData;
-        if (typeof window.updatePlot === 'function' && currentPlotData) {
-            // Créer un plotData temporaire avec la température anticipée pour forcer la couleur
-            const tempPlotData = {
-                ...currentPlotData,
-                temp_surface: T0_anticipated,
-                temp_surface_c: tempC_anticipated
-            };
-            window.updatePlot(tempPlotData);
-        }
-        if (typeof window.updateLegend === 'function' && currentPlotData) {
-            // Créer un plotData temporaire avec la température anticipée pour forcer la couleur
-            const tempPlotData = {
-                ...currentPlotData,
-                temp_surface: T0_anticipated,
-                temp_surface_c: tempC_anticipated
-            };
-            window.updateLegend(tempPlotData);
-        }
+    // Anticiper la couleur avec 🌡️🧮 dès le clic sur l'époque (AVANT les calculs)
+    var T0_anticipated = epoch['🌡️🧮'];
+    var tempC_anticipated = T0_anticipated - CONST.KELVIN_TO_CELSIUS;
+    var color_anticipated = window.tempSurfaceToColor(tempC_anticipated);
+    window.updateBlackBodyColor(color_anticipated);
+
+    var legendEquilibre = document.querySelector('.legend-equilibre');
+    if (legendEquilibre) legendEquilibre.style.color = color_anticipated;
+
+    var currentPlotData = window.plotData || plotData;
+    if (currentPlotData) {
+        var tempPlotData = Object.assign({}, currentPlotData, {
+            temp_surface: T0_anticipated,
+            temp_surface_c: tempC_anticipated
+        });
+        window.updatePlot(tempPlotData);
+        window.updateLegend(tempPlotData);
     }
 
     // 🔒 RÉINITIALISER l'eau totale des météorites lors du changement d'époque

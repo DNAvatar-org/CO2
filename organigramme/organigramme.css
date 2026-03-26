@@ -747,11 +747,12 @@
     justify-content: center;
     gap: 0;
 }
-/* Bouton animation 🎞 en indice top-right du bouton main (centré) : plus sur la même ligne */
+/* Bouton animation 🎞 au-dessus du bouton scénario (z-index supérieur pour éviter clic accidentel sur scénario) */
 .timeline-action-buttons #plot-anim-toggle {
     position: absolute;
-    bottom: -10px;
+    bottom: -5px;
     right: -10px;
+    z-index: 2;
     width: 26px;
     height: 26px;
     min-width: 26px;

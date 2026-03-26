@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.26
+// Version 1.1.27
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -25,6 +25,7 @@
 // - v1.1.23: debug logs config:applyThenCompute + runComputeInParent (trace appelant [X])
 // - v1.1.24: fix "un nextEpoch en trop" — applyToVisu(fromScie) ne réécrit pas 📿💫/infoTimeMa ; config:applyThenCompute appelle setEpoch si transition
 // - v1.1.25: log [4] calculs (effectif) dans doCompute (après rAF) pour tracer le vrai début de calcul vs le scheduling
+// - v1.1.27: action:nextEpoch depuis scie → togglePlotAnim() dans parent (🎞 = prochaine époque, pas toggle on/off)
 // - v1.1.26: [4] effectif groupe reste ouvert jusqu'à [4] retour (suppr _logStepEnd prématuré)
 // - v1.1.21: guard calculationInProgress en tête de runComputeInParent (évite double appel sendComputeToScie + config:applyThenCompute) (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
 // - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
@@ -472,6 +473,10 @@
             var p = event.data.payload;
             if (window.shell && window.shell.applyTuningFromScie) window.shell.applyTuningFromScie(p);
             else { applyTuningPayload(p); syncTuningToScie(p); if (p.run === true) window.runComputeInParent(); }
+        });
+        window.addEventListener('message', function (event) {
+            if (event.data.type !== 'action:nextEpoch') return;
+            window.togglePlotAnim();
         });
 
         IO_LISTENER.on('sync:state', function (payload) {

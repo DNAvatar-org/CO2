@@ -72,7 +72,18 @@
     <script src="../organigramme/configOrganigramme.js"></script>
     <script src="../organigramme/timeline.js"></script>
     <script src="../static/timeline/events.js"></script>
-    <script src="../../API_BILAN/physicsAll.js"></script>
+    <script src="../../API_BILAN/physics/physics.js"></script>
+    <script src="../../API_BILAN/data/hitran_lines_CO2.js"></script>
+    <script src="../../API_BILAN/data/hitran_lines_H2O.js"></script>
+    <script src="../../API_BILAN/data/hitran_lines_CH4.js"></script>
+    <script src="../../API_BILAN/spectroscopy/hitran.js"></script>
+    <script src="../../API_BILAN/physics/climate.js"></script>
+    <script src="../../API_BILAN/radiative/calculations.js"></script>
+    <script src="../../API_BILAN/workers/worker_pool.js"></script>
+    <script src="../../API_BILAN/h2o/calculations_h2o.js"></script>
+    <script src="../../API_BILAN/albedo/calculations_albedo.js"></script>
+    <script src="../../API_BILAN/atmosphere/calculations_atm.js"></script>
+    <script src="../../API_BILAN/convergence/compute.js"></script>
     <script src="../static/compute/scie_/scie_convergence.js"></script>
     <!-- Hooks convergence définis avant calculations_flux.js (éviter if (window.xxx) dans le flux) -->
     <script>
@@ -169,25 +180,11 @@
         }
         
         function toggleAnim() {
-            const animButton = document.getElementById('anim-toggle');
-            if (animButton) {
-                const isSelected = animButton.classList.contains('selected');
-                if (isSelected) {
-                    animButton.classList.remove('selected');
-                } else {
-                    animButton.classList.add('selected');
-                }
-                // Créer ou mettre à jour plot-anim-toggle-checkbox pour compatibilité avec compute.js
-                let plotAnimToggleCheckbox = document.getElementById('plot-anim-toggle-checkbox');
-                if (!plotAnimToggleCheckbox) {
-                    plotAnimToggleCheckbox = document.createElement('input');
-                    plotAnimToggleCheckbox.type = 'checkbox';
-                    plotAnimToggleCheckbox.id = 'plot-anim-toggle-checkbox';
-                    plotAnimToggleCheckbox.style.display = 'none';
-                    document.body.appendChild(plotAnimToggleCheckbox);
-                }
-                plotAnimToggleCheckbox.checked = !isSelected;
-                emitSyncToParent();
+            // 🎞 = "prochaine époque en animation" (comme visu) — pas un toggle on/off
+            if (window !== window.top) {
+                window.parent.postMessage({ type: 'action:nextEpoch' }, '*');
+            } else if (typeof window.togglePlotAnim === 'function') {
+                window.togglePlotAnim();
             }
         }
         
