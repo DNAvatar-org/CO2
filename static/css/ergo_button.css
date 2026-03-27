@@ -16,11 +16,11 @@
 
 :root {
     /* Couleurs pour l'animation event-logo-pulse-img (météorite / boutons SCENARIO) — glow rouge */
-    --event-pulse-black: rgba(0, 0, 0, 1);
-    --event-pulse-red-min: rgba(255, 80, 80, 0.6);
-    --event-pulse-red-mid: rgba(255, 0, 0, 0.95);
-    --event-pulse-red-shadow-min: rgba(255, 60, 60, 0.4);
-    --event-pulse-red-shadow-max: rgba(255, 0, 0, 0.85);
+    --event-pulse-in: rgba(0, 0, 0, 1);
+    --event-pulse-out-min: rgba(80, 255, 226, 0.6);
+    --event-pulse-out-mid: rgba(255, 255, 0, 0.95);
+    --event-pulse-out-shadow-min: rgba(60, 248, 255, 0.4);
+    --event-pulse-out-shadow-max: rgba(251, 255, 0, 0.85);
 }
 
 /* ==========================================================================
@@ -198,14 +198,14 @@
 /* Animation de pulse pour les images dans les boutons événements (météorite etc.) - glow rouge */
 @keyframes event-logo-pulse-img {
     0%, 100% {
-        filter: drop-shadow(0 0 0px var(--event-pulse-black)) 
-                drop-shadow(0 0 3px var(--event-pulse-red-min)) 
-                drop-shadow(0 0 5px var(--event-pulse-red-shadow-min));
+        filter: drop-shadow(0 0 0px var(--event-pulse-in)) 
+                drop-shadow(0 0 3px var(--event-pulse-out-min)) 
+                drop-shadow(0 0 5px var(--event-pulse-out-shadow-min));
     }
     50% {
-        filter: drop-shadow(0 0 0px var(--event-pulse-black)) 
-                drop-shadow(0 0 6px var(--event-pulse-red-mid)) 
-                drop-shadow(0 0 10px var(--event-pulse-red-shadow-max));
+        filter: drop-shadow(0 0 0px var(--event-pulse-in)) 
+                drop-shadow(0 0 6px var(--event-pulse-out-mid)) 
+                drop-shadow(0 0 10px var(--event-pulse-out-shadow-max));
     }
 }
 

@@ -1,6 +1,6 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.13
+// Version 1.1.14
 // Date: [March 14, 2026] [HH:MM UTC+1]
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
@@ -23,6 +23,7 @@
 //   - v1.1.10: ACTION_BY_DATE (plages fromMa/toMa, fromYear/toYear) + getActionForDate(startYears, infoTimeMa) — entrée = date, pas epoch
 //   - v1.1.11: albedo_percent retiré du bouton albedo — affiché dans #organigram-config-wrap (main.js)
 //   - v1.1.12: fine_tuning_cloud_bary retiré du bouton albedo — même bandeau (main.js)
+//   - v1.1.14: 'EOT (33,9 Ma)' (🏔) ajouté dans terre.epoch et noyau.radiation
 //   - v1.1.13: albedo_percent de retour en top du bouton albédo (grille [1,2])
 
 // ============================================================================
@@ -216,6 +217,15 @@ const nodes = [
                 openingAngle: 0,
                 rotation: 0,
                 color: '#ff9800'
+            },
+            {
+                epochName: 'EOT (33,9 Ma)',
+                numCircles: 1,
+                maxRadius: 30,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
             }
         ],
         zIndex: 20,
@@ -294,6 +304,16 @@ const nodes = [
             },
             {
                 epochName: 'Cénozoïque',
+                logo: LOGOS.GLOBE_AFRICA,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 200, 255, 0.5)',
+                strokeColor: '#00FFFF',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'EOT (33,9 Ma)',
                 logo: LOGOS.GLOBE_AFRICA,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,

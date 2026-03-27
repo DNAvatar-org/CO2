@@ -2053,7 +2053,7 @@ function setEpoch(epochName, options) {
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
     const epochNameToEmojiForButton = {
         'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🥟',
-        'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
+        'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'EOT (33,9 Ma)': '🏔', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
     console.log('[DBG setEpoch] appelé avec=' + epochName + ' (id=' + epochIdForButton + ') DATA[🗿]=' + (DATA['📜'] && DATA['📜']['🗿']) + ' 📿💫=' + (DATA['📜'] && DATA['📜']['📿💫']) + ' currentEpochName=' + window.currentEpochName);
@@ -2139,6 +2139,7 @@ function setEpoch(epochName, options) {
             'Paléozoïque': '🌿',
             'Mésozoïque': '🦕',
             'Cénozoïque': '🦣',
+            'EOT (33,9 Ma)': '🏔',
             'Industriel': '🚂',
             'Aujourd\'hui': '📱'
         };
