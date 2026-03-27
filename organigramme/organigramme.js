@@ -172,7 +172,7 @@ if (typeof window !== "undefined") {
 
 // Fonction pour ajouter un tooltip personnalisé avec délai de 0.5s
 // 🔒 Utiliser le système centralisé de tooltips (tooltips.js)
-function addCustomTooltip(element, text) {
+window.addCustomTooltip = function addCustomTooltip(element, text) {
   // Déléguer à la fonction centralisée
   if (
     typeof window !== "undefined" &&
@@ -185,7 +185,7 @@ function addCustomTooltip(element, text) {
       "[organigramme.js] tooltips.js non chargé, tooltip non affiché",
     );
   }
-}
+};
 
 // Fonction pour mettre à jour le tooltip d'un bouton selon son état
 function updateButtonTooltip(cell, circleBg) {

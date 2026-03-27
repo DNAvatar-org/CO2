@@ -5,11 +5,12 @@
 //       - Entrée utilisateur → shell : setEpoch, runCompute, applyStateFromScie, applyTuningFromScie sont le point d'entrée des boutons
 //         et délèguent à sync_panels (setEpoch, runComputeInParent, etc.).
 //       En standalone (visu_ ou scie_ sans index), current = cette page.
-// Version 1.0.7
+// Version 1.0.8
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: 2025-02-25
+// Logs: v1.0.8 resolveEpochIdForTimeline — syncToScie/setState utilisent 📅 (emoji), pas le nom français (fix 🎞 Hadéen)
 // Logs: v1.0.7 setState → setEpoch(payload.epochId, { forceResetTics }) si payload.forceResetTics (bouton époque)
 // Logs:
 // - v1.0.6: convergence:clear et convergence:append toujours envoyés à scie (cycles à jour même quand current=visu)
@@ -34,21 +35,51 @@
     /** Trace des étapes de convergence (cycles, détails, formules) pour affichage différé dans scie au switch onglet. */
     var convergenceSteps = [];
 
+    /** TIMELINE['📅'] = emoji ; les libellés français (ex. Hadéen) doivent être résolus avant syncToScie / applyStateToData. */
+    function resolveEpochIdForTimeline(raw) {
+        if (raw == null || raw === '') return raw;
+        var T = window.TIMELINE;
+        if (T && T.length) {
+            var i;
+            for (i = 0; i < T.length; i++) {
+                if (T[i]['📅'] === raw) return raw;
+            }
+        }
+        var nameToEmoji = {
+            'Corps Noir': '⚫',
+            'Hadéen': '🔥',
+            'Archéen': '🦠',
+            'Protérozoïque': '🥟',
+            'Paléozoïque': '🌿',
+            'Mésozoïque': '🦕',
+            'Cénozoïque': '🦣',
+            'Industriel': '🚂',
+            'Aujourd\'hui': '📱',
+            'EOT (33,9 Ma)': '🏔'
+        };
+        return nameToEmoji[raw] !== undefined ? nameToEmoji[raw] : raw;
+    }
+    window.resolveEpochIdForTimeline = resolveEpochIdForTimeline;
+
     /** Actions boutons : point d'entrée unique. syncToScie/setEpoch/runComputeInParent sont dans sync_panels. */
-    function setEpoch(epochId) {
-        if (window.setEpoch) window.setEpoch(epochId);
-        if (window.syncToScie) window.syncToScie({ epochId: epochId });
+    function setEpoch(epochId, options) {
+        var resolved = resolveEpochIdForTimeline(epochId);
+        if (window.setEpoch) window.setEpoch(resolved, options);
+        if (window.syncToScie) window.syncToScie({ epochId: resolved });
     }
     function setState(payload) {
+        var syncPayload = payload;
         if (payload.epochId !== undefined && window.setEpoch) {
-            window.setEpoch(payload.epochId, payload.forceResetTics ? { forceResetTics: true } : undefined);
+            var resolved = resolveEpochIdForTimeline(payload.epochId);
+            window.setEpoch(resolved, payload.forceResetTics ? { forceResetTics: true } : undefined);
+            syncPayload = Object.assign({}, payload, { epochId: resolved });
         }
         if (window.SYNC_STATE) {
-            if (payload.epochId !== undefined) window.SYNC_STATE.epochId = payload.epochId;
+            if (syncPayload.epochId !== undefined) window.SYNC_STATE.epochId = syncPayload.epochId;
             if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
             if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
         }
-        if (window.syncToScie) window.syncToScie(payload);
+        if (window.syncToScie) window.syncToScie(syncPayload);
     }
     function runCompute() {
         if (window.runComputeInParent) window.runComputeInParent();

@@ -1135,6 +1135,9 @@ function cancelCurrentCalculation() {
     if (typeof window !== 'undefined') {
         window.cancelCalculation = true;
     }
+
+    // Déverrouiller pour permettre un nouveau calcul
+    if (window.SYNC_STATE) window.SYNC_STATE.calculationInProgress = false;
 }
 
 // Fonction pour mettre à jour les niveaux EDS (CO2, H2O, CH4) et lancer le calcul
@@ -2332,7 +2335,22 @@ function setEpoch(epochName, options) {
                     epochConfig.planetEffect || false
                 );
 
+                // --- continueSetEpoch : étapes [3] et [4], appelées APRÈS le chargement texture ---
+                var _continueSetEpochCalled = false;
+                var continueSetEpoch = function () {
+                    if (_continueSetEpochCalled) return;
+                    _continueSetEpochCalled = true;
+                    // 🔓 Déverrouiller : texture chargée, [3]+[4] peuvent s'exécuter
+                    window._epochTextureLoading = false;
+                    // Remettre l'animation en pause lors du changement d'époque (les calculs vont commencer)
+                    var planetTextures = newCell.querySelectorAll('.planet-texture[data-planet-texture="true"]');
+                    planetTextures.forEach(function (texture) { texture.classList.add('paused'); });
+                    _continueSetEpochBody();
+                };
+
                 if (epochConfig.planetEffect) {
+                    // 🔒 Verrouiller : bloquer runComputeInParent tant que texture pas chargée
+                    window._epochTextureLoading = true;
                     // 🔒 Pas de trou : nouvelle cellule insérée DERRIÈRE l'ancienne, ancienne retirée au three:ready
                     // Pause Three.js pour que l'angle ne change pas entre 2 textures ; play au compute:done (loader_panels)
                     window.threeJSAnimationPaused = true;
@@ -2345,6 +2363,9 @@ function setEpoch(epochName, options) {
                             IO_LISTENER.off('three:ready', _onThreeReady);
                             if (_swapTimeoutId !== null) clearTimeout(_swapTimeoutId);
                             if (oldCell.parentElement) oldCell.remove();
+                            if (window._logStep) window._logStep('[2] texture Three.js (retour)');
+                            if (window._logStepEnd) window._logStepEnd();
+                            continueSetEpoch();
                         }
                     };
                     IO_LISTENER.on('three:ready', _onThreeReady, 'main.js:setEpoch');
@@ -2352,24 +2373,28 @@ function setEpoch(epochName, options) {
                         _swapTimeoutId = null;
                         IO_LISTENER.off('three:ready', _onThreeReady);
                         if (oldCell.parentElement) oldCell.remove();
+                        continueSetEpoch();
                     }, 3000);
                 } else {
                     // Pas de Three.js : swap direct sans attente
                     oldCell.remove();
                     parent.appendChild(newCell);
+                    continueSetEpoch();
                 }
-                
-                // Remettre l'animation en pause lors du changement d'époque (les calculs vont commencer)
-                const planetTextures = newCell.querySelectorAll('.planet-texture[data-planet-texture="true"]');
-                planetTextures.forEach(texture => {
-                    texture.classList.add('paused');
-                });
+                // ⚠️ RETURN — les étapes [3]+[4] sont dans continueSetEpoch, appelé après texture
+                return;
             }
         }
     }
 
+    // Pas de cellule terre ou pas d'epochConfig : continuer directement
+    _continueSetEpochBody();
+    return;
+
+    function _continueSetEpochBody() {
+
     // Ne plus cacher #cell-albedo en Corps noir : le disque albedo (cercle + stroke) reste visible, couleurs par config (albedo.epoch)
-    const cellAlbedo = document.getElementById('cell-albedo');
+    var cellAlbedo = document.getElementById('cell-albedo');
     if (cellAlbedo) {
         cellAlbedo.style.display = '';
     }
@@ -2416,7 +2441,8 @@ function setEpoch(epochName, options) {
             infoTimeDisplay.textContent = '+0 Ma';
         }
         SYNC_STATE.ticTime = 0;
-        window.syncToScie({ ticTime: 0 });
+        SYNC_STATE.epochId = epochIdForButton;
+        window.syncToScie({ ticTime: 0, epochId: epochIdForButton });
     } else {
         var _ticScie = (DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
         SYNC_STATE.ticTime = _ticScie;
@@ -2683,18 +2709,17 @@ function setEpoch(epochName, options) {
     }
 
     // Lancer le calcul avec les nouvelles conditions
-    // Utiliser les valeurs depuis plotData (mises à jour par updateLevelsConfig ci-dessus)
     const co2_fraction_from_config = (plotData && plotData.co2_ppm !== undefined) ? plotData.co2_ppm * 1e-6 : 0;
-    if (typeof window.updateCO2LevelDirect === 'function') {
-        window.updateCO2LevelDirect(co2_fraction_from_config);
-    }
+    window.updateCO2LevelDirect(co2_fraction_from_config);
 
     // Synchroniser l'état avec l'iframe scie (epoch, anim, ticTime, bary pour graphique)
     const epochId = (DATA && DATA['📜'] && DATA['📜']['🗿']) || epoch.id || epochName;
     const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
     const animEnabled = DATA['🔘']['🔘🎞'];
     const barySync = (DATA && DATA['📜'] && DATA['📜']['bary'] != null && Number.isFinite(DATA['📜']['bary'])) ? DATA['📜']['bary'] : undefined;
-    IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime, bary: barySync, run: true });
+    IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime, bary: barySync });
+
+    } // fin _continueSetEpochBody
 }
 
 

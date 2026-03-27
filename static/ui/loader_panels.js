@@ -1,9 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.10
+// Version 1.1.11
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
-// Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
+// Logs: v1.1.11 togglePlotAnim — setEpoch avec 📅 (emoji) pour alignement shell/sync ; v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
 // - v1.1.2: IO_LISTENER.compute:progress: supprime log debug + double receive (compute:progress n'arrive que depuis scie_/non-anim)
 // - v1.1.3: visu_+anim : compute:progress déclenche displayDichotomyStep puis plot:drawn ; scie_/non-anim garde cycleCalcul léger
 // - v1.1.4: non-anim : avanceTic() sur chaque tic (disque creux en cases) ; show/hideComputeLoader
@@ -152,26 +152,22 @@
         if (v) v.innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement</p>';
     });
 
-    // Mapping 📅 → nom d'époque (pour togglePlotAnim : raw TIMELINE n'a pas .name)
-    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
-    function nextEpochName(nextItem, nextId) {
-        return nextItem.name || EPOCH_ID_TO_NAME[nextId] || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
-    }
     // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque (via shell). Transition en animation du curseur timeline puis setEpoch.
     window.togglePlotAnim = function () {
         if (typeof window.hideTooltip === 'function') window.hideTooltip();
         if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = true;
         var cb = document.getElementById('plot-anim-toggle-checkbox');
         if (cb) cb.checked = true;
-        var applyNextEpoch = function (idx, nextName, useShell) {
+        // nextId = TIMELINE[i]['📅'] (emoji) — source unique pour setEpoch / getGeologicalPeriodByName(id) / syncToScie
+        var applyNextEpoch = function (idx, nextId, useShell) {
             if (typeof window.animateTimelineCursorToEpoch === 'function') {
                 window.animateTimelineCursorToEpoch(idx, 400, function () {
-                    if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextName);
-                    else if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
+                    if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextId);
+                    else if (typeof window.setEpoch === 'function') window.setEpoch(nextId);
                 });
             } else {
-                if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextName);
-                else if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
+                if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextId);
+                else if (typeof window.setEpoch === 'function') window.setEpoch(nextId);
             }
         };
         if (window.shell && window.shell.setState) {
@@ -185,8 +181,7 @@
                 while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
                 var nextItem = window.TIMELINE[idx];
                 var nextId = nextItem['📅'];
-                var nextName = nextEpochName(nextItem, nextId);
-                applyNextEpoch(idx, nextName, true);
+                applyNextEpoch(idx, nextId, true);
             }
         } else {
             window.syncToScie({ animEnabled: true });
@@ -199,8 +194,7 @@
                 while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
                 var nextItem = window.TIMELINE[idx];
                 var nextId = nextItem['📅'];
-                var nextName = nextEpochName(nextItem, nextId);
-                applyNextEpoch(idx, nextName, false);
+                applyNextEpoch(idx, nextId, false);
             }
         }
     };
@@ -409,7 +403,7 @@
                 var fromOurIframe = fromScieIframe;
                 if (fromOurIframe && event.data.DATA && window.DATA) {
                     var src = event.data.DATA;
-                    ['🧮', '🪩', '🫧', '💧', '📛', '📜', '📊'].forEach(function (k) {
+                    ['🧮', '🪩', '🫧', '💧', '📛', '📊'].forEach(function (k) {
                         if (src[k]) {
                             if (!window.DATA[k]) window.DATA[k] = {};
                             Object.keys(src[k]).forEach(function (k2) { window.DATA[k][k2] = src[k][k2]; });

@@ -1,10 +1,11 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.30
+// Version 1.1.31
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
 // Logs:
+// - v1.1.31: applyStateToData + runComputeInParent — résolution nom→📅 (emoji) via resolveEpochIdForTimeline (cohérence 🎞 / scie)
 // - v1.1.1: passage global _REGLE_JS_CRASH (pas de if abusifs, pas de fallbacks)
 // - v1.1.2: T0 init quand anim+T<=0 ; displayConvergence no-op parent ; _lastCycleRef guard
 // - v1.1.3: Guards null pour plot-anim-toggle, plot-anim-toggle-checkbox, info-time, visuPanel, DATA
@@ -118,13 +119,16 @@
     function applyStateToData(payload) {
         if (!window.DATA['📜']) window.DATA['📜'] = {};
         if (payload.epochId !== undefined) {
-            var idx = window.TIMELINE ? window.TIMELINE.findIndex(function (item) { return item['📅'] === payload.epochId; }) : -1;
+            var epochIdNorm = (typeof window.resolveEpochIdForTimeline === 'function')
+                ? window.resolveEpochIdForTimeline(payload.epochId)
+                : payload.epochId;
+            var idx = window.TIMELINE ? window.TIMELINE.findIndex(function (item) { return item['📅'] === epochIdNorm; }) : -1;
             if (idx >= 0) {
                 window.DATA['📅'] = window.TIMELINE[idx];
                 window.DATA['📜']['👉'] = idx;
-                window.DATA['📜']['🗿'] = payload.epochId;
+                window.DATA['📜']['🗿'] = epochIdNorm;
                 if (window.configOrganigramme && window.configOrganigramme.timeline) {
-                    var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === payload.epochId; });
+                    var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === epochIdNorm; });
                     if (ep) window.currentEpochName = ep.name;
                 }
             }
@@ -281,7 +285,12 @@
     window.runComputeInParent = function () {
         var _epRun = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
         var _ticRun = window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'];
-        console.log('[DBG sync_panels] runComputeInParent epoch=' + _epRun + ' 📿💫=' + _ticRun + ' locked=' + window.SYNC_STATE.calculationInProgress);
+        console.log('[DBG sync_panels] runComputeInParent epoch=' + _epRun + ' 📿💫=' + _ticRun + ' locked=' + window.SYNC_STATE.calculationInProgress + ' textureLoading=' + !!window._epochTextureLoading);
+        // 🔒 Attendre que la texture soit chargée avant de calculer (pipeline séquentiel [2]→[3]→[4])
+        if (window._epochTextureLoading) {
+            console.log('[4] bloqué — texture en cours de chargement');
+            return Promise.resolve(null);
+        }
         if (window.SYNC_STATE.calculationInProgress) {
         if (window._logStep) window._logStep('[X] bloqué calculationInProgress=true');
         else console.log('[4] bloqué calculationInProgress=true');
@@ -300,7 +309,8 @@
         // Source de vérité pour anim : bouton visu (plot-anim-toggle). Rafraîchir DATA['🔘'] avant le calcul
         window.getEnabledStates();
         // S'assurer que DATA['📅'] et DATA['📜'] sont initialisés (race avec setEpoch au chargement)
-        var epochId = (DATA['📜'] && DATA['📜']['🗿']) || (window.SYNC_STATE && window.SYNC_STATE.epochId) || '⚫';
+        var rawEpochId = (DATA['📜'] && DATA['📜']['🗿']) || (window.SYNC_STATE && window.SYNC_STATE.epochId) || '⚫';
+        var epochId = (typeof window.resolveEpochIdForTimeline === 'function') ? window.resolveEpochIdForTimeline(rawEpochId) : rawEpochId;
         var idx = window.TIMELINE ? window.TIMELINE.findIndex(function (item) { return item['📅'] === epochId; }) : -1;
         if (idx >= 0) {
             DATA['📅'] = window.TIMELINE[idx];
@@ -520,7 +530,6 @@
                 // Appliquer l'état au DATA du contexte courant (parent) avant le calcul, sinon 🔬🌈/📿💫 non initialisés → NaN
                 applyStateToData(payload);
                 window.getEpochDateConfig();
-                window.SYNC_STATE.calculationInProgress = false;
                 window.runComputeInParent();
             }
         }, 'sync_panels');
