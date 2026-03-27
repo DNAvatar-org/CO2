@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.25
+// Version 1.1.27
 // Date: [March 14, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -35,6 +35,9 @@
 // - v1.1.23 : albedo_percent retiré du PILOTAGE — de retour sur le bouton albédo (configOrganigramme)
 // - v1.1.24 : bouton ⚗ sans title natif ni alt détaillé distinct (évite 2e tooltip après 2s)
 // - v1.1.25 : bouton ⚗ garde tooltip court + alt détaillé après 2s via aria-label long (sans title natif)
+// - v1.1.26 : badge 🧩 compact sur 3 lignes + mini-slider 4ch ; réglage CLOUD_SW en visu_ (compute au relâchement)
+// - v1.1.27 : badge 🧩 court = "Flou scientifique" ; détail uniquement dans l'alt déplié
+// - v1.1.28 : badge 🧩 sorti de #organigram-config-wrap — enfant direct de #flux-diagram (sibling du wrap)
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -3114,13 +3117,13 @@ function runMainInit() {
                     var staleAlb = cfgRow.querySelector('.organigram-albedo-percent-badge');
                     if (staleAlb) staleAlb.remove();
 
-                    var baryFt = cfgRow.querySelector('.organigram-fine-tuning-bary-badge');
+                    var baryFt = flux.querySelector('.organigram-fine-tuning-bary-badge');
                     if (!baryFt) {
                         baryFt = document.createElement('div');
                         baryFt.className = 'flux-label buttonData percent-label organigram-fine-tuning-bary-badge';
                         baryFt.setAttribute('data-id', 'fine_tuning_cloud_bary');
-                        baryFt.setAttribute('data-tooltip', 'Réglage barycentre nuages (albédo).');
-                        baryFt.innerHTML = '🧩🔺100%🔻';
+                        baryFt.setAttribute('data-tooltip', 'Flou scientifique');
+                        baryFt.innerHTML = '<div class="organigram-bary-face"><div class="organigram-bary-icons">🔺🧩🔻</div><div class="organigram-bary-pct">100%</div></div><input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="100" aria-label="Réglage fin barycentre nuages">';
                     }
                     if (typeof window.getFineTuningDetailAlt === 'function') {
                         baryFt.setAttribute('aria-label', window.getFineTuningDetailAlt(null, true));
@@ -3133,7 +3136,7 @@ function runMainInit() {
                     }
 
                     cfgRow.appendChild(el);
-                    cfgRow.appendChild(baryFt);
+                    flux.appendChild(baryFt);
 
                     var diagram = document.getElementById('flux-diagram');
                     if (diagram) diagram.classList.toggle('hide-organigram-arrows', !window.organigramArrowsVisible);
@@ -3152,6 +3155,33 @@ function runMainInit() {
                     DATA['🔘']['🔘🎞'] = e.target.checked;
                 });
                 window.updateThreePlayIndicator();
+                if (document.body && document.body.dataset.ftBarySliderBound !== '1') {
+                    document.body.addEventListener('input', function (e) {
+                        var el = e.target;
+                        if (!el || !el.classList || !el.classList.contains('organigram-bary-mini-slider')) return;
+                        var raw = Number(el.value);
+                        var pct = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : 100;
+                        if (window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].baryByGroup) {
+                            window.DATA['🎚️'].baryByGroup.CLOUD_SW = pct;
+                        }
+                        if (typeof window.applyTuningPayload === 'function') {
+                            window.applyTuningPayload({ CLOUD_SW: pct });
+                        }
+                        if (typeof window.updateFluxLabels === 'function') {
+                            window.updateFluxLabels(window.currentEventId || null);
+                        }
+                    });
+                    document.body.addEventListener('change', function (e) {
+                        var el = e.target;
+                        if (!el || !el.classList || !el.classList.contains('organigram-bary-mini-slider')) return;
+                        if (typeof window.runComputeInParent === 'function' && document.getElementById('scie-iframe')) {
+                            window.runComputeInParent();
+                        } else if (typeof calculateInitialData === 'function') {
+                            calculateInitialData();
+                        }
+                    });
+                    document.body.dataset.ftBarySliderBound = '1';
+                }
 
                 // 🔒 Initialiser la précision de convergence depuis les radio buttons (variable globale unique)
                 const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');

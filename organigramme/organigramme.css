@@ -1,6 +1,6 @@
-// File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
+/* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.22
+// Version 1.0.25
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -19,6 +19,10 @@
 // Logs: v1.0.20 PILOTAGE : wrap align-items flex-start ; ligne ⚗ justify-content flex-start
 // Logs: v1.0.21 badge 🧩 : 2 lignes + panneau alt (2s) au-dessus à droite
 // Logs: v1.0.22 panneau alt nuages : classe --fixed (viewport), plus de absolute dans le badge
+// Logs: v1.0.23 hide-organigram-arrows : labels sans unité connue (vert) toujours visibles — liste explicite des classes à masquer
+// Logs: v1.0.24 badge 🧩 compact en 3 lignes (🔺🧩🔻 / % / mini-slider 4ch)
+// Logs: v1.0.25 badge 🧩 sorti de #organigram-config-wrap — enfant direct de #flux-diagram, position absolute, sélecteurs simplifiés
+*/
 
 .controle-simulation {
     padding: 0 !important;
@@ -97,14 +101,17 @@
     padding: 2px;
     font-family: var(--font-emoji);
 }
-/* Badge barycentre nuages (PILOTAGE, si ⚗ ON) */
-#organigram-config-wrap .organigram-fine-tuning-bary-badge {
-    position: relative;
+/* Badge barycentre nuages (PILOTAGE, si ⚗ ON) — enfant direct de #flux-diagram */
+.organigram-fine-tuning-bary-badge {
+    position: absolute;
+    bottom: 10px;
+    left: 80px;
+    z-index: 9999;
     flex-shrink: 0;
     margin: 0;
-    padding: 5px 8px;
-    font-size: 13px;
-    line-height: 1.25;
+    padding: 2px 4px;
+    font-size: 11px;
+    line-height: 1.05;
     text-align: center;
     white-space: normal;
     overflow: visible;
@@ -116,20 +123,35 @@
     border-radius: 6px;
     box-sizing: border-box;
 }
-#organigram-config-wrap .organigram-bary-face {
+.organigram-bary-face {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 1px;
 }
-#organigram-config-wrap .organigram-bary-puzzle {
-    font-size: 17px;
+.organigram-bary-icons {
+    font-size: 18px;
     line-height: 1;
 }
-#organigram-config-wrap .organigram-bary-pct {
+.organigram-bary-pct {
     white-space: nowrap;
-    font-size: 12px;
-    line-height: 1.2;
+    font-size: 11px;
+    line-height: 1;
+    margin: 0;
+}
+
+/* Mini-jauge : visible uniquement dans le badge */
+.organigram-bary-mini-slider {
+    display: none;
+}
+.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider {
+    display: block;
+    width: 7ch;
+    height: 10px;
+    margin: 5px auto 5px;
+    padding: 0;
+    pointer-events: auto;
+    cursor: ew-resize;
 }
 /* Panneau alt détaillé nuages : append sur body, position fixed (getBoundingClientRect) */
 .organigram-fine-tuning-alt-panel--fixed {
@@ -386,22 +408,20 @@
 }
 
 /* ⚗ unselected : masquer textes (flux-label) et logos CO2 / H2O / CH4 ; garder les flèches */
-/* Exclure avec :not() les labels W/m² et W/K pour les afficher quand même */
-#flux-diagram.hide-organigram-arrows .flux-label:not(.watt-per-m2):not(.watt-or-kelvin),
+/* Garder visibles : W/m² (orange), W/K (rouge), et labels sans unité connue (vert) */
+#flux-diagram.hide-organigram-arrows .flux-label.percent-label,
+#flux-diagram.hide-organigram-arrows .flux-label.ppm-label,
+#flux-diagram.hide-organigram-arrows .flux-label.co2-label,
+#flux-diagram.hide-organigram-arrows .flux-label.zero-value,
+#flux-diagram.hide-organigram-arrows .flux-label.buttonData,
 #flux-diagram.hide-organigram-arrows #cell-co2,
 #flux-diagram.hide-organigram-arrows #cell-methane,
 #flux-diagram.hide-organigram-arrows #cell-h2o {
     visibility: hidden;
 }
-/* PILOTAGE : 🧩 nuages — affiché seulement si ⚗ ON (.selected) */
-#organigram-config-wrap .organigram-fine-tuning-bary-badge {
+/* PILOTAGE : 🧩 nuages — masqué si ⚗ OFF (hide-organigram-arrows sur #flux-diagram) */
+#flux-diagram.hide-organigram-arrows > .organigram-fine-tuning-bary-badge {
     display: none;
-}
-#organigram-config-wrap #three-play-indicator.selected ~ .organigram-fine-tuning-bary-badge {
-    display: block;
-    visibility: visible !important;
-    pointer-events: auto;
-    cursor: help;
 }
 
 .flux-rectangle {

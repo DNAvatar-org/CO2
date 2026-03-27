@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.36
+// Version 1.0.39
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -18,6 +18,9 @@
 // Logs: v1.0.34 fine_tuning_cloud_bary : 🧩 ligne + 🔺%🔻 ; panneau alt détaillé après 2s en haut-droite du badge
 // Logs: v1.0.35 pas de panneau si alt détail = tooltip court ; panneau fixed body + reposition scroll/resize
 // Logs: v1.0.36 badge 🧩 : retour au système central tooltips.js (court + alt après 2s), sans 3e panneau custom
+// Logs: v1.0.37 fine_tuning_cloud_bary : tooltip court explicite (instantané %) + détail multi-lignes lisible
+// Logs: v1.0.38 badge 🧩 en 2 lignes compactes (🔺🧩🔻 / %), mini-slider intégré pour réglage visu_
+// Logs: v1.0.39 tooltip instantané simplifié : "Flou scientifique" (le détail reste uniquement dans l'alt déplié)
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -1727,7 +1730,7 @@ function createCell(
           if (dataId) label.setAttribute("data-id", dataId);
           if (dataId === "fine_tuning_cloud_bary") {
             label.setAttribute("aria-label", getFineTuningDetailAlt(null, true));
-            label.setAttribute("data-tooltip", "Réglage barycentre nuages (albédo).");
+            label.setAttribute("data-tooltip", getFineTuningShortTooltip("100"));
             label.style.marginTop = "6px";
           }
 
@@ -3976,9 +3979,13 @@ var _finetuningAltPicto = {
 };
 
 // Alt détaillé (paramètres CLOUD_SW + bornes) pour fine_tuning_cloud_bary. SOLVER = autre jauge, exclu.
-// detailOnly=true = uniquement le détail. Sans passage à la ligne (une ligne, séparateur espace).
+// detailOnly=true = uniquement le détail. Avec retours à la ligne pour un texte lisible.
 // Fallback fixe quand FINE_TUNING_BOUNDS non chargé (visu ne charge pas fine_tuning_bounds.js).
-var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne ☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique 🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne 🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN) ✈ [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse ✈ [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy) 🌡️ [282 , 294] — référence thermique nuages SW #Reference climat moderne (~15C)";
+var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne\n☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique\n🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne\n🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN)\n✈ [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse\n✈ [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy)\n🌡️ [282 , 294] — référence thermique nuages SW #Reference climat moderne (~15C)";
+
+function getFineTuningShortTooltip(pctStr) {
+  return "Flou scientifique";
+}
 
 function getFineTuningDetailAlt(pctStr, detailOnly) {
   const pct = pctStr != null ? pctStr + "%" : "100%";
@@ -3997,9 +4004,9 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
     const ref = t.source || t.biblio_ref || "";
     parts.push(picto + " [" + minStr + " , " + maxStr + "] — " + note + (ref ? " #" + ref : ""));
   });
-  const detail = parts.length ? parts.join(" ") : _finetuningAltFallback;
+  const detail = parts.length ? parts.join("\n") : _finetuningAltFallback;
   const intro = "Réglage barycentre nuages (albédo). " + pct + ".";
-  return detailOnly ? detail : intro + " " + detail;
+  return detailOnly ? detail : intro + "\n" + detail;
 }
 
 if (typeof window !== "undefined") {
@@ -4461,7 +4468,7 @@ window.updateFluxLabels = function (eventId) {
     return result;
   };
 
-  const FINE_TUNING_TOOLTIP_SHORT = "Réglage barycentre nuages (albédo).";
+  const FINE_TUNING_TOOLTIP_SHORT = getFineTuningShortTooltip("100");
 
   // Fonction helper pour mettre à jour un label par dataId (utilise maintenant le template)
   const updateLabel = (dataId, value, format = "auto") => {
@@ -4488,11 +4495,14 @@ window.updateFluxLabels = function (eventId) {
         const detail = getFineTuningDetailAlt(pctStr, true);
         label.innerHTML =
           '<div class="organigram-bary-face">' +
-          '<div class="organigram-bary-puzzle">🧩</div>' +
-          '<div class="organigram-bary-pct">🔺' +
+          '<div class="organigram-bary-icons">🔺🧩🔻</div>' +
+          '<div class="organigram-bary-pct">' +
           pctStr +
-          "%🔻</div></div>";
-        label.setAttribute("data-tooltip", FINE_TUNING_TOOLTIP_SHORT);
+          '%</div></div>' +
+          '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' +
+          pctStr +
+          '" aria-label="Réglage fin barycentre nuages">';
+        label.setAttribute("data-tooltip", getFineTuningShortTooltip(pctStr));
         label.setAttribute("aria-label", detail || FINE_TUNING_TOOLTIP_SHORT);
         label.removeAttribute("title");
       } else {
