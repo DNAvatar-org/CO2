@@ -104,6 +104,7 @@ const charsImages = {
     '🎇': 'fonts/pics/big_impact.png',    // Big impact
     '☄️': 'fonts/pics/ice_meteorite.png', // Météorite de glace
     //'🔥': 'fonts/pics/hadeen.png',           // Feu
+    '🐄': 'fonts/pics/ch4.png',           // CH4 (vache → picto custom)
 };
 
 // ============================================================================

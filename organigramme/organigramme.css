@@ -101,6 +101,8 @@
     border: none;
     padding: 2px;
     font-family: var(--font-emoji);
+    /* Même animation que bouton SCENARIO (event-logo-pulse-img dans ergo_button.css) */
+    animation: event-logo-pulse-img 1.6s ease-in-out infinite;
 }
 /* Badge barycentre nuages (PILOTAGE, si ⚗ ON) — enfant direct de #flux-diagram */
 .organigram-fine-tuning-bary-badge {
@@ -140,8 +142,7 @@
     font-size: 11px;
     line-height: 1;
     margin: 0;
-    /* Même animation que bouton SCENARIO (event-logo-pulse-img dans ergo_button.css) */
-    animation: event-logo-pulse-img 1.6s ease-in-out infinite;
+    
 }
 
 /* Mini-jauge : visible uniquement dans le badge */
@@ -156,6 +157,8 @@
     padding: 0;
     pointer-events: auto;
     cursor: ew-resize;
+    /* Même animation que bouton SCENARIO (event-logo-pulse-img dans ergo_button.css) */
+    animation: event-logo-pulse-img 1.6s ease-in-out infinite;
 }
 /* Panneau alt détaillé nuages : append sur body, position fixed (getBoundingClientRect) */
 .organigram-fine-tuning-alt-panel--fixed {
