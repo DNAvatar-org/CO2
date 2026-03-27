@@ -1,6 +1,6 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.8
+// Version 1.1.9
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
@@ -11,6 +11,7 @@
 // - v1.1.6: curseur wait via class compute-loading (html+body) pour résister en anim
 // - v1.1.7: scheduleInitialCompute() appelé systématiquement en fin initAfterLoad pour garantir [4] après [3]
 // - v1.1.8: garde updateEpochActions si events.js pas encore chargé
+// - v1.1.9: fine_tuning_bounds.js + tuning.js après initDATA (FINE_TUNING_BOUNDS + fillDataTuningFromBary côté visu_)
 // Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
 // Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
 
@@ -23,6 +24,8 @@
         'static/compute/alphabet.js',
         'static/compute/dico.js',
         '../API_BILAN/data/initDATA.js',
+        '../API_BILAN/config/fine_tuning_bounds.js',
+        '../API_BILAN/tuning.js',
         'organigramme/configOrganigramme.js',
         '../API_BILAN/event_bus.js',
         '../API_BILAN/convergence/compute.js',

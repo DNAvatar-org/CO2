@@ -1074,6 +1074,8 @@
             applyFineTuningBaryGroup(groupKey, percentRaw, true);
             if (window !== window.top) {
                 var T = window.DATA['🎚️'];
+                console.log('[DBG scie] fine-tuning play clicked group=' + groupKey + ' percentRaw=' + percentRaw + ' bary.CLOUD_SW=' + T.baryByGroup.CLOUD_SW);
+                if (typeof window.pd === 'function') window.pd('applyFineTuningBaryGroupAndRun', 'scie_compute.html', 'group=' + groupKey + ' percentRaw=' + percentRaw + ' bary.CLOUD_SW=' + T.baryByGroup.CLOUD_SW);
             window.parent.postMessage({
                 type: 'sync:tuning',
                 payload: {
@@ -1198,6 +1200,36 @@
                 setRunStopButtonRunning(false);
                 displayFineTuning();
             }
+        }
+
+        // Mise à jour des seules jauges DOM depuis DATA (pas de innerHTML) — sync parent↔scie sans clignotement.
+        function syncFineTuningSlidersFromBary() {
+            var bg = window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].baryByGroup;
+            if (!bg) return false;
+            var groups = ['CLOUD_SW', 'SCIENCE', 'SOLVER'];
+            var updated = false;
+            for (var gi = 0; gi < groups.length; gi++) {
+                var gk = groups[gi];
+                var raw = Number(bg[gk]);
+                var v = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : 100;
+                var el = document.getElementById('fine-tuning-bary-slider-' + gk);
+                if (el) {
+                    el.value = String(v);
+                    updated = true;
+                }
+                var span = document.getElementById('fine-tuning-bary-value-' + gk);
+                if (span) span.textContent = v + '%';
+            }
+            var hEl = document.getElementById('fine-tuning-bary-slider-CLOUD_SW-header');
+            if (hEl) {
+                var cb = Number(bg.CLOUD_SW);
+                cb = Number.isFinite(cb) ? Math.max(0, Math.min(100, Math.round(cb))) : 100;
+                hEl.value = String(cb);
+                updated = true;
+                var hSpan = document.getElementById('fine-tuning-bary-value-CLOUD_SW-header');
+                if (hSpan) hSpan.textContent = cb + '%';
+            }
+            return updated;
         }
 
         function displayFineTuning() {
@@ -1590,12 +1622,15 @@
             }
             if (event.data && event.data.type === 'sync:tuning') {
                 var p = event.data.payload;
+                if (!p || !p.baryByGroup) return;
                 var bg = window.DATA['🎚️'].baryByGroup;
-                bg.CLOUD_SW = p.baryByGroup.CLOUD_SW;
-                bg.SCIENCE = p.baryByGroup.SCIENCE;
-                bg.SOLVER = p.baryByGroup.SOLVER;
+                if (p.baryByGroup.CLOUD_SW !== undefined) bg.CLOUD_SW = p.baryByGroup.CLOUD_SW;
+                if (p.baryByGroup.SCIENCE !== undefined) bg.SCIENCE = p.baryByGroup.SCIENCE;
+                if (p.baryByGroup.SOLVER !== undefined) bg.SOLVER = p.baryByGroup.SOLVER;
                 fillDataTuningFromBary();
-                displayFineTuning();
+                if (!syncFineTuningSlidersFromBary()) {
+                    displayFineTuning();
+                }
             }
         });
         

@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.27
+// Version 1.1.30
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -26,6 +26,9 @@
 // - v1.1.24: fix "un nextEpoch en trop" — applyToVisu(fromScie) ne réécrit pas 📿💫/infoTimeMa ; config:applyThenCompute appelle setEpoch si transition
 // - v1.1.25: log [4] calculs (effectif) dans doCompute (après rAF) pour tracer le vrai début de calcul vs le scheduling
 // - v1.1.27: action:nextEpoch depuis scie → togglePlotAnim() dans parent (🎞 = prochaine époque, pas toggle on/off)
+// - v1.1.28: run scie_ émet flux:lastDrawn après compute:done (débloque fin de calcul rouge côté visu)
+// - v1.1.29: debug run complet: source d'appel + payload tuning + état DATA avant runComputeInParent
+// - v1.1.30: applyTuningPayload appelle fillDataTuningFromBary si dispo (interpolation depuis bary + FINE_TUNING_BOUNDS)
 // - v1.1.26: [4] effectif groupe reste ouvert jusqu'à [4] retour (suppr _logStepEnd prématuré)
 // - v1.1.21: guard calculationInProgress en tête de runComputeInParent (évite double appel sendComputeToScie + config:applyThenCompute) (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
 // - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
@@ -50,7 +53,8 @@
         epochId: '⚫',
         animEnabled: false,
         ticTime: 0,
-        calculationInProgress: false
+        calculationInProgress: false,
+        lastRunRequestSource: 'unknown'
     };
     window.VISUALWAIT = {
         computeRenderMode: function () {
@@ -89,12 +93,18 @@
     // DATA['🎚️'] seule ref : payload contient baryByGroup + CLOUD_SW + SOLVER (remplissage complet depuis iframe).
     function applyTuningPayload(payload) {
         var T = window.DATA['🎚️'];
-        T.baryByGroup.CLOUD_SW = payload.baryByGroup.CLOUD_SW;
-        T.baryByGroup.SCIENCE = payload.baryByGroup.SCIENCE;
-        T.baryByGroup.SOLVER = payload.baryByGroup.SOLVER;
-        T.CLOUD_SW = Object.assign({}, payload.CLOUD_SW);
-        T.SOLVER = Object.assign({}, payload.SOLVER);
-        payload.updates.forEach(function (u) {
+        if (payload.baryByGroup) {
+            if (payload.baryByGroup.CLOUD_SW !== undefined) T.baryByGroup.CLOUD_SW = payload.baryByGroup.CLOUD_SW;
+            if (payload.baryByGroup.SCIENCE !== undefined) T.baryByGroup.SCIENCE = payload.baryByGroup.SCIENCE;
+            if (payload.baryByGroup.SOLVER !== undefined) T.baryByGroup.SOLVER = payload.baryByGroup.SOLVER;
+        }
+        if (typeof window.fillDataTuningFromBary === 'function') {
+            window.fillDataTuningFromBary();
+        } else {
+            T.CLOUD_SW = Object.assign({}, T.CLOUD_SW, payload.CLOUD_SW || {});
+            T.SOLVER = Object.assign({}, T.SOLVER, payload.SOLVER || {});
+        }
+        (payload.updates || []).forEach(function (u) {
             T[u.group][u.key] = u.value;
         });
         syncTuningFromData();
@@ -267,6 +277,11 @@
     window.runComputeInParent = function () {
         var _epRun = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
         var _ticRun = window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'];
+        var _srcRun = window.SYNC_STATE && window.SYNC_STATE.lastRunRequestSource ? window.SYNC_STATE.lastRunRequestSource : 'unknown';
+        var _baryRun = window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].baryByGroup ? window.DATA['🎚️'].baryByGroup.CLOUD_SW : 'n/a';
+        var _albRun = window.DATA && window.DATA['🪩'] ? window.DATA['🪩']['🍰🪩📿'] : 'n/a';
+        console.log('[DBG sync_panels] runComputeInParent source=' + _srcRun + ' CLOUD_SW_bary=' + _baryRun + ' albedo=' + _albRun);
+        if (typeof window.pd === 'function') window.pd('runComputeInParent', 'sync_panels.js', 'source=' + _srcRun + ' CLOUD_SW_bary=' + _baryRun + ' albedo=' + _albRun);
         console.log('[DBG sync_panels] runComputeInParent epoch=' + _epRun + ' 📿💫=' + _ticRun + ' locked=' + window.SYNC_STATE.calculationInProgress);
         if (window.SYNC_STATE.calculationInProgress) {
         if (window._logStep) window._logStep('[X] bloqué calculationInProgress=true');
@@ -341,6 +356,9 @@
             // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
             IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: result });
             if (isVisuMode) projectToVisu(window.DATA);
+            // En mode scie_ (pas de draw visu), émettre l'ack de fin pour libérer l'UI
+            // (loader/timeline rouge "calcul en cours" et reprise Three.js).
+            if (!isVisuMode) IO_LISTENER.emit('flux:lastDrawn');
             // Rafraîchir les labels visu (albédo, flux, T°) après chaque calcul pour que l’onglet Visuel affiche le bon état
             window.updateFluxLabels('ProcessFinished');
             if (typeof window.updateTimeline === 'function') window.updateTimeline();
@@ -471,6 +489,9 @@
         window.addEventListener('message', function (event) {
             if (event.data.type !== 'sync:tuning') return;
             var p = event.data.payload;
+            window.SYNC_STATE.lastRunRequestSource = 'scie:message:sync:tuning';
+            console.log('[DBG sync_panels] message sync:tuning run=' + p.run + ' bary.CLOUD_SW=' + (p && p.baryByGroup ? p.baryByGroup.CLOUD_SW : 'n/a'));
+            if (typeof window.pd === 'function') window.pd('onMessageSyncTuning', 'sync_panels.js', 'run=' + p.run + ' bary.CLOUD_SW=' + (p && p.baryByGroup ? p.baryByGroup.CLOUD_SW : 'n/a'));
             if (window.shell && window.shell.applyTuningFromScie) window.shell.applyTuningFromScie(p);
             else { applyTuningPayload(p); syncTuningToScie(p); if (p.run === true) window.runComputeInParent(); }
         });
@@ -494,6 +515,9 @@
             }
         }, 'sync_panels');
         IO_LISTENER.on('sync:tuning', function (payload) {
+            window.SYNC_STATE.lastRunRequestSource = 'visu:IO_LISTENER:sync:tuning';
+            console.log('[DBG sync_panels] IO sync:tuning run=' + payload.run + ' bary.CLOUD_SW=' + (payload && payload.baryByGroup ? payload.baryByGroup.CLOUD_SW : 'n/a'));
+            if (typeof window.pd === 'function') window.pd('onSyncTuning', 'sync_panels.js', 'run=' + payload.run + ' bary.CLOUD_SW=' + (payload && payload.baryByGroup ? payload.baryByGroup.CLOUD_SW : 'n/a'));
             applyTuningPayload(payload);
             syncTuningToScie(payload);
             if (payload.run === true) window.runComputeInParent();

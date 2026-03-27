@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.39
+// Version 1.0.40
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -21,6 +21,7 @@
 // Logs: v1.0.37 fine_tuning_cloud_bary : tooltip court explicite (instantané %) + détail multi-lignes lisible
 // Logs: v1.0.38 badge 🧩 en 2 lignes compactes (🔺🧩🔻 / %), mini-slider intégré pour réglage visu_
 // Logs: v1.0.39 tooltip instantané simplifié : "Flou scientifique" (le détail reste uniquement dans l'alt déplié)
+// Logs: v1.0.40 fine_tuning_cloud_bary : mise à jour douce (pct + slider) sans innerHTML si mini-slider déjà présent
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -4493,15 +4494,22 @@ window.updateFluxLabels = function (eventId) {
         }
         formattedValue = pctStr + "%";
         const detail = getFineTuningDetailAlt(pctStr, true);
-        label.innerHTML =
-          '<div class="organigram-bary-face">' +
-          '<div class="organigram-bary-icons">🔺🧩🔻</div>' +
-          '<div class="organigram-bary-pct">' +
-          pctStr +
-          '%</div></div>' +
-          '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' +
-          pctStr +
-          '" aria-label="Réglage fin barycentre nuages">';
+        const existingSlider = label.querySelector(".organigram-bary-mini-slider");
+        const pctEl = label.querySelector(".organigram-bary-pct");
+        if (existingSlider && pctEl) {
+          pctEl.textContent = pctStr + "%";
+          existingSlider.value = pctStr;
+        } else {
+          label.innerHTML =
+            '<div class="organigram-bary-face">' +
+            '<div class="organigram-bary-icons">🔺🧩🔻</div>' +
+            '<div class="organigram-bary-pct">' +
+            pctStr +
+            "%</div></div>" +
+            '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' +
+            pctStr +
+            '" aria-label="Réglage fin barycentre nuages">';
+        }
         label.setAttribute("data-tooltip", getFineTuningShortTooltip(pctStr));
         label.setAttribute("aria-label", detail || FINE_TUNING_TOOLTIP_SHORT);
         label.removeAttribute("title");
