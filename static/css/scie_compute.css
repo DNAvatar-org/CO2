@@ -1,4 +1,5 @@
 /* scie_compute.css - Vue scientifique (iframe) */
+/* v1.1.0: scie_timeline-epoch-section fit-content ; scie_epochs-container flex:1 — frise occupe le reste ; pas de >> en scie (HTML) */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* Pas de scroll interne : hauteur suit le contenu, scroll = barre générale (index) */
@@ -43,23 +44,45 @@ body {
 }
 .controls-left { flex: 1; min-width: 0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
 
-.timeline-horizontal-container { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; width: 100%; padding: 0; }
+.timeline-horizontal-container { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; width: 100%; padding: 0; min-width: 0; overflow-x: auto; }
 .controls-buttons-stack { display: flex; flex-direction: column; gap: 2px; width: 32px; min-width: 32px; flex-shrink: 0; padding-right: 2px; }
 
 .timeline-date-display, .scie_timeline-horloge-section {
     display: flex; align-items: center; gap: 5px; font-size: 11px; color: #e0e0e0; white-space: nowrap;
     width: 72px; min-width: 72px; flex-shrink: 0;
 }
-/* 📜 Époque : prend la largeur dispo pour le nom d'époque (logo 🕰 supprimé) */
-.scie_timeline-epoch-section { flex: 1; min-width: 80px; width: auto; }
-.scie_timeline-horloge-section { width: 90px; min-width: 90px; }
+/* Bloc nom + dates : largeur au contenu ; la frise (.scie_epochs-container) prend le reste */
+.scie_timeline-epoch-section {
+    flex: 0 0 auto;
+    width: fit-content;
+    max-width: 42%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0 10px;
+    border-right: 1px solid #444;
+    font-size: 11px;
+    color: #e0e0e0;
+}
+.scie_timeline-horloge-section { width: 90px; min-width: 90px; flex-shrink: 0; }
 .timeline-hourglass, .horloge-icon { font-size: 12px; }
 
 .epoch-date-item-horizontal { display: inline-flex; align-items: center; font-size: 9px; color: #888; padding: 0 5px; margin: 0 2px; }
 .epoch-date-horizontal { font-size: 9px; color: #aaa; white-space: nowrap; }
 
-.scie_epochs-container { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
-.epochs-row-emojis { display: flex; flex-direction: row; align-items: flex-start; gap: 0; flex-wrap: wrap; }
+.scie_epochs-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    flex: 1 1 0;
+    min-width: 0;
+    padding-left: 2px;
+}
+.epochs-row-emojis { display: flex; flex-direction: row; align-items: flex-start; gap: 0; flex-wrap: wrap; width: 100%; min-width: 0; }
 
 .epoch-cell-horizontal {
     display: grid;

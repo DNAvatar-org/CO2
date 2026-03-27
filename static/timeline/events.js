@@ -1,6 +1,6 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.4
+ * Version 1.2.7
  * Date: [March 14, 2026]
 * logs :
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -24,6 +24,8 @@
  *   - v1.2.3: Hadeen ticTime handler : check transition (infoTimeMa>=500) AVANT updateHadeenTexture/updateCO2Level
  *   - v1.2.4: DATA[📜][bary] = infoTimeMa/500 après chaque tic Hadéen (interpolation visuelle radius/exobase/noyau)
  *   - v1.2.5: 2 boutons uniquement (🎞 + un selon date) ; ACTION_BY_DATE + getActionForDate(startYears, infoTimeMa) ; bloc ACTION en haut timeline
+ *   - v1.2.6: scie_ réutilise ce module ; pont parent (scie_parent_bridge.js) — pas de duplication dans scie_compute.html
+ *   - v1.2.7: updateEpochActions — getActionForDate avec getEffectiveInfoTimeMaFromData si dispo (aligné timeline + textures)
  */
 
 // Core globals requis : addCustomTooltip, hideTooltip, setEpoch, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
@@ -43,7 +45,9 @@ window.updateEpochActions = function () {
     const epochId = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'] != null ? window.DATA['📜']['🗿'] : '';
     const timelineEpoch = getEpochConfigById(epochId);
     const startYears = timelineEpoch && timelineEpoch['▶'] != null ? timelineEpoch['▶'] : 5e9;
-    const infoTimeMa = (window.infoTimeMa != null ? window.infoTimeMa : 0);
+    const infoTimeMa = (typeof window.getEffectiveInfoTimeMaFromData === 'function')
+        ? window.getEffectiveInfoTimeMaFromData()
+        : (window.infoTimeMa != null ? window.infoTimeMa : 0);
     const getActionForDate = (window.configOrganigramme && window.configOrganigramme.getActionForDate) || (() => '💫');
     const actionId = getActionForDate(startYears, infoTimeMa);
 

@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.36
+// Version 1.0.38
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -18,6 +18,25 @@
 // Logs: v1.0.34 fine_tuning_cloud_bary : 🧩 ligne + 🔺%🔻 ; panneau alt détaillé après 2s en haut-droite du badge
 // Logs: v1.0.35 pas de panneau si alt détail = tooltip court ; panneau fixed body + reposition scroll/resize
 // Logs: v1.0.36 badge 🧩 : retour au système central tooltips.js (court + alt après 2s), sans 3e panneau custom
+// Logs: v1.0.37 flux-label-plain : libellés hors unité (Effet de Serre, 1UA, km, Observation, Géométrie…) toujours visibles si hide-organigram-arrows
+// Logs: v1.0.38 updatePlanetTextureFromDate : getEffectiveInfoTimeMaFromData (timeline) pour ne pas repasser texture début d’époque (lune) si window.infoTimeMa=0
+
+// ============================================================================
+// Libellés « texte » vs valeurs formatées (W/m², %, ppm) — visibilité hors PILOTAGE
+// ============================================================================
+function stripHtmlForFluxDetect(s) {
+  return String(s || "").replace(/<[^>]*>/g, " ");
+}
+/** true si le contenu n’est pas une valeur principalement W/m², W, % ou ppm (cf. detectValueType dans updateFluxLabels) */
+function isFluxLabelPlainContent(text) {
+  const t = stripHtmlForFluxDetect(text);
+  if (!t.trim()) return false;
+  if (t.includes("W/m²") || t.includes("W/m2") || t.includes("MW/m²") || t.includes("MW/m2")) return false;
+  if (t.includes("MW") || (t.includes(" W") && !t.includes("W/m²") && !t.includes("W/m2"))) return false;
+  if (t.includes("%")) return false;
+  if (t.includes("ppm")) return false;
+  return true;
+}
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -404,6 +423,7 @@ function updateLabelClasses(label, nodeId = null) {
     "zero-value",
     "percent-label",
     "ppm-label",
+    "flux-label-plain",
   );
 
   // Vérifier si le bouton est inactif (gris uniquement dans ce cas)
@@ -421,6 +441,8 @@ function updateLabelClasses(label, nodeId = null) {
   // Si le texte contient " W" ou " K" (avec espace avant), appliquer la classe rouge
   else if (text && (text.includes(" W") || text.includes(" K"))) {
     label.classList.add("watt-or-kelvin");
+  } else if (isFluxLabelPlainContent(text)) {
+    label.classList.add("flux-label-plain");
   }
   // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
 }
@@ -993,7 +1015,12 @@ function updatePlanetTextureFromDate() {
   const epoch = TIMELINE[idx];
   if (!epoch || epoch["▶"] == null) return;
   const startYears = epoch["▶"];
-  const infoTimeMa = typeof window.infoTimeMa === "number" ? window.infoTimeMa : 0;
+  const infoTimeMa =
+    typeof window.getEffectiveInfoTimeMaFromData === "function"
+      ? window.getEffectiveInfoTimeMaFromData()
+      : typeof window.infoTimeMa === "number"
+        ? window.infoTimeMa
+        : 0;
   const path = getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
   if (path === window._lastPlanetTexturePath) return;
   window._lastPlanetTexturePath = path;
@@ -1694,6 +1721,8 @@ function createCell(
           // Cela capture aussi "×10... W"
           else if (text && (text.includes(" W") || text.includes(" K"))) {
             label.classList.add("watt-or-kelvin");
+          } else if (text && isFluxLabelPlainContent(text)) {
+            label.classList.add("flux-label-plain");
           }
           // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
           label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -1748,6 +1777,8 @@ function createCell(
           // Cela capture aussi "×10... W"
           else if (text && (text.includes(" W") || text.includes(" K"))) {
             label.classList.add("watt-or-kelvin");
+          } else if (text && isFluxLabelPlainContent(text)) {
+            label.classList.add("flux-label-plain");
           }
           // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
           label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -1796,6 +1827,8 @@ function createCell(
           // Cela capture aussi "×10... W"
           else if (text && (text.includes(" W") || text.includes(" K"))) {
             label.classList.add("watt-or-kelvin");
+          } else if (text && isFluxLabelPlainContent(text)) {
+            label.classList.add("flux-label-plain");
           }
           // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
           label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -1855,6 +1888,8 @@ function createCell(
           // Cela capture aussi "×10... W"
           else if (text && (text.includes(" W") || text.includes(" K"))) {
             label.classList.add("watt-or-kelvin");
+          } else if (text && isFluxLabelPlainContent(text)) {
+            label.classList.add("flux-label-plain");
           }
           // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
           label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
@@ -1999,6 +2034,14 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
       shouldLabelBeGray(text, null, null)
     ) {
       label.classList.add("zero-value");
+    }
+    if (
+      !label.classList.contains("zero-value") &&
+      !label.classList.contains("watt-per-m2") &&
+      !label.classList.contains("watt-or-kelvin") &&
+      isFluxLabelPlainContent(text)
+    ) {
+      label.classList.add("flux-label-plain");
     }
     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
     label.style.position = "absolute";
@@ -4514,6 +4557,7 @@ window.updateFluxLabels = function (eventId) {
         "co2-label",
         "percent-label",
         "ppm-label",
+        "flux-label-plain",
       );
 
       // Exception : albedo_percents (breakdown détaillé) ne doit jamais être grisé
@@ -4622,6 +4666,22 @@ window.updateFluxLabels = function (eventId) {
           // co2_forcing_wm utilise uniquement la couleur selon l'unité (watt-per-m2 pour orange)
         }
       } // fin else (albedo_percents)
+
+      if (dataId === "albedo_percents" || dataId === "fine_tuning_cloud_bary") {
+        /* détail albédo / badge nuages : pas flux-label-plain */
+      } else if (label.classList.contains("zero-value")) {
+        /* valeurs grisées : masquées hors PILOTAGE comme les autres chiffres */
+      } else if (
+        label.classList.contains("watt-per-m2") ||
+        label.classList.contains("watt-or-kelvin") ||
+        label.classList.contains("percent-label") ||
+        label.classList.contains("ppm-label") ||
+        label.classList.contains("co2-label")
+      ) {
+        /* valeurs par unité */
+      } else if (formattedValue !== undefined && isFluxLabelPlainContent(formattedValue)) {
+        label.classList.add("flux-label-plain");
+      }
     });
   };
 

@@ -1,11 +1,12 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.0.0
+   Version 1.0.1
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
    Logs:
    - Extracted from index.html inline <style>.
+   - v1.0.1: #milankovitch-panel aligné sur #scie-panel (max-height:none, min-height viewport, iframe min-height) — iframe n’était pas dimensionnée (≈150px), body/graph bloqués en haut
    ============================================================ */
 
 /* --- Onglets (tabs-bar) : Visuel / Scientifique --- */
@@ -60,8 +61,9 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
 }
-/* Panel scie actif : la page prend la taille du contenu (body peut grandir, scroll = body) */
-body.scie-panel-active {
+/* Panel scie / milankovitch actif : la page prend la taille du contenu (body peut grandir, scroll = body) */
+body.scie-panel-active,
+body.milankovitch-panel-active {
     height: auto;
     min-height: 100vh;
 }
@@ -129,6 +131,19 @@ body.scie-panel-active {
         width: 100%;
         border: none;
     }
+    #milankovitch-panel.active {
+        overflow: visible;
+        min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
+        max-height: none;
+        display: flex;
+        flex-direction: column;
+    }
+    #milankovitch-panel iframe {
+        flex: 0 0 auto;
+        min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
+        width: 100%;
+        border: none;
+    }
 }
 
 /* Panel Scientifique : même méthode en horizontal et vertical (hauteur = contenu, scroll = body, footer en bas du flux) */
@@ -161,12 +176,19 @@ body.scie-panel-active {
 body.scie-panel-active .credits-footer {
     height: var(--visu-footer-max-h);
 }
+/* Même logique que #scie-panel : sans min-height explicite l’iframe reste ~150px → contenu Milankovitch coincé en haut */
 #milankovitch-panel.active {
-    overflow: hidden;
+    overflow: visible;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
+    max-height: none;
+    display: flex;
+    flex-direction: column;
 }
 #milankovitch-panel iframe {
-    flex: 1;
-    min-height: 0;
+    flex: 1 1 auto;
+    min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
     width: 100%;
     border: none;
 }

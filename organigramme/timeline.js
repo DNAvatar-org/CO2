@@ -1,6 +1,6 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.13
+ * Version 1.0.17
  * Date: [June 08, 2025] [HH:MM UTC+1]
 * logs :
  * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
@@ -16,6 +16,10 @@
  * - v1.0.11: info-time en (+N ans) pour époques récentes (▶<1e6), sinon (+X Ma)
  * - v1.0.12: animation curseur timeline vers époque suivante (main action 🎞) : getTimelineCursorTopForEpochIndex, animateTimelineCursorToEpoch
  * - v1.0.13: garde updateEpochActions si events.js pas encore chargé
+ * - v1.0.14: updateTimeline — curseurs ⏴⏵ seulement si .visu_epochs-container (évite log missing container en iframe scie)
+ * - v1.0.15: [DBG timeline] log quand #info-time change (infoTimeMa + libellé) — diagnostic +0 Ma vs getEpochDateConfig
+ * - v1.0.16: retrait log [DBG timeline] (fix sync_panels + setEpoch #info-time)
+ * - v1.0.17: getEffectiveInfoTimeMaFromData (Σ 📿×🔺⏳ comme compute) pour #info-time, curseur, textureIndex — évite +0 Ma / lune si window.infoTimeMa désync
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.
@@ -68,6 +72,36 @@ function pdOnce(key, message) {
         window._pdOnceFlags[key] = true;
         window.pd(message);
     }
+}
+
+/** Même agrégat Ma que getEpochDateConfig (Σ 📿[tic]×🔺⏳). Si window.infoTimeMa est désynchronisé, l’UI et updatePlanetTextureFromDate restent alignés sur DATA. */
+function getEffectiveInfoTimeMaFromData() {
+    const DATA = window.DATA;
+    const TIMELINE = window.TIMELINE;
+    if (!DATA || !DATA['📜'] || !TIMELINE) {
+        return (typeof window.infoTimeMa === 'number' && Number.isFinite(window.infoTimeMa)) ? window.infoTimeMa : 0;
+    }
+    const idx = DATA['📜']['👉'];
+    const epoch = (idx != null && idx >= 0 && TIMELINE[idx]) ? TIMELINE[idx] : null;
+    if (!epoch || !epoch['🕰']) {
+        return (typeof window.infoTimeMa === 'number' && Number.isFinite(window.infoTimeMa)) ? window.infoTimeMa : 0;
+    }
+    var sum = 0;
+    var hasTicStep = false;
+    var keys = Object.keys(epoch['🕰']);
+    var ki;
+    for (ki = 0; ki < keys.length; ki++) {
+        var tk = keys[ki];
+        if (tk === '🔀' || tk === '◀') continue;
+        var cfg = epoch['🕰'][tk];
+        if (cfg && typeof cfg['🔺⏳'] === 'number' && Number.isFinite(cfg['🔺⏳'])) {
+            hasTicStep = true;
+            var c = DATA['📜']['📿' + tk];
+            sum += (c != null && Number.isFinite(c)) ? c * cfg['🔺⏳'] : 0;
+        }
+    }
+    if (hasTicStep) return sum;
+    return (typeof window.infoTimeMa === 'number' && Number.isFinite(window.infoTimeMa)) ? window.infoTimeMa : 0;
 }
 
 /** Libellé d’une date de l’échelle : "-5000 Ma" ou "2025", "2050" pour les années récentes */
@@ -234,6 +268,7 @@ window.animateTimelineCursorToEpoch = function (epochIdx, durationMs, callback) 
 function updateTimeline() {
     const DATA = window.DATA;
     const TIMELINE = window.TIMELINE;
+    const infoTimeMaForUi = getEffectiveInfoTimeMaFromData();
     // Mettre à jour l'affichage (toujours, même si timelineRunning = false)
     const timelineDisplay = document.getElementById('timeline-display');
     const frameDisplay = document.getElementById('frame-display');
@@ -255,7 +290,7 @@ function updateTimeline() {
     // Mettre à jour l'horloge dans la zone horloge
     // Échelle adaptée : en 1800/2100 afficher (+N ans), sinon (+X Ma)
     if (infoTimeDisplay) {
-        const infoTimeMa = window.infoTimeMa;
+        const infoTimeMa = infoTimeMaForUi;
         const idx = window.DATA['📜'] && window.DATA['📜']['👉'] != null ? window.DATA['📜']['👉'] : -1;
         const epoch = idx >= 0 && window.TIMELINE && window.TIMELINE[idx] ? window.TIMELINE[idx] : null;
         const isRecentEpoch = epoch && typeof epoch['▶'] === 'number' && epoch['▶'] < 1e6;
@@ -272,17 +307,10 @@ function updateTimeline() {
         }
     }
 
-    // Curseurs ⏴ ⏵ : même div que les dates d’époque, positionnement par calcul (y0 aligné sur la zone texte)
+    // Curseurs ⏴ ⏵ : vue visu uniquement (.visu_epochs-container). Iframe scie (frise horizontale) : pas de curseurs → pas de log d’erreur.
     const cursor = document.getElementById('timeline-cursor');
     const container = document.querySelector('.visu_epochs-container');
-    if (!container || !window.DATA['📜'] || !window.TIMELINE) {
-        pdOnce(
-            'timeline-update-missing',
-            '❌ [updateTimeline][timeline.js] missing container=' + !!container +
-            ' data=' + !!window.DATA['📜'] +
-            ' timeline=' + !!window.TIMELINE
-        );
-    } else {
+    if (container && window.DATA['📜'] && window.TIMELINE) {
         if (!window._epochScaleBuilt || !cursor) {
             buildEpochScale();
         }
@@ -304,7 +332,7 @@ function updateTimeline() {
             const idx = window.DATA['📜']['👉'];
             const epoch = window.TIMELINE[idx];
             const startMa = -(epoch['▶'] / 1e6);
-            const currentMa = startMa + window.infoTimeMa;
+            const currentMa = startMa + infoTimeMaForUi;
             const topPx = getCursorTopPx(container, textRows, scaleMa, currentMa) + TIMELINE_CURSOR_OFFSET_PX;
             if (!window._timelineCursorAnimating) {
                 cursor2.style.setProperty('top', topPx + 'px');
@@ -338,7 +366,7 @@ function updateTimeline() {
         const _ticKey = window.DATA['📜']['🔘🕰'];
         const _ticCfg = _epoch_tl && _epoch_tl['🕰'] && _epoch_tl['🕰'][_ticKey];
         const stepMa = _ticCfg && typeof _ticCfg['🔺⏳'] === 'number' ? _ticCfg['🔺⏳'] : 100;
-        window.textureIndex = stepMa > 0 ? Math.floor(window.infoTimeMa / stepMa) : 0;
+        window.textureIndex = stepMa > 0 ? Math.floor(infoTimeMaForUi / stepMa) : 0;
     }
 
     const currentTicTime = window.textureIndex;
@@ -364,7 +392,7 @@ function updateTimeline() {
     // Mettre à jour le 2e bouton (☄️|🎇|💫) quand la date courante change (ACTION_BY_DATE)
     const idx = window.DATA['📜']['👉'];
     const epoch = window.TIMELINE[idx];
-    const actionKey = window.configOrganigramme.getActionForDate(epoch['▶'], window.infoTimeMa);
+    const actionKey = window.configOrganigramme.getActionForDate(epoch['▶'], infoTimeMaForUi);
     if (window._lastEpochActionKey !== actionKey) {
         window._lastEpochActionKey = actionKey;
         if (typeof window.updateEpochActions === 'function') {
@@ -469,6 +497,7 @@ if (typeof window !== 'undefined') {
     
     // Exposer les fonctions
     window.updateTimeline = updateTimeline;
+    window.getEffectiveInfoTimeMaFromData = getEffectiveInfoTimeMaFromData;
     window.incrementTimeline = incrementTimeline;
     window.startTimeline = startTimeline;
     window.pauseTimeline = pauseTimeline;

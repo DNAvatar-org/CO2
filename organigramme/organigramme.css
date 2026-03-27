@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.22
+// Version 1.0.24
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -19,6 +19,8 @@
 // Logs: v1.0.20 PILOTAGE : wrap align-items flex-start ; ligne ⚗ justify-content flex-start
 // Logs: v1.0.21 badge 🧩 : 2 lignes + panneau alt (2s) au-dessus à droite
 // Logs: v1.0.22 panneau alt nuages : classe --fixed (viewport), plus de absolute dans le badge
+// Logs: v1.0.23 hide-organigram-arrows : exclure .co2-label (libellé % CO₂ vert visible même sans ⚗)
+// Logs: v1.0.24 remplacé par .flux-label-plain (libellés sans W/m², %, ppm — défini dans organigramme.js)
 
 .controle-simulation {
     padding: 0 !important;
@@ -385,9 +387,9 @@
     filter: drop-shadow(0 0 2px #667eea);
 }
 
-/* ⚗ unselected : masquer textes (flux-label) et logos CO2 / H2O / CH4 ; garder les flèches */
-/* Exclure avec :not() les labels W/m² et W/K pour les afficher quand même */
-#flux-diagram.hide-organigram-arrows .flux-label:not(.watt-per-m2):not(.watt-or-kelvin),
+/* ⚗ unselected : masquer valeurs chiffrées (flux-label) et logos CO2 / H2O / CH4 ; garder flèches */
+/* Exclure : W/m², W/K, et libellés « texte » (.flux-label-plain) — Effet de Serre, 1UA, km, Observation, Géométrie… */
+#flux-diagram.hide-organigram-arrows .flux-label:not(.watt-per-m2):not(.watt-or-kelvin):not(.flux-label-plain),
 #flux-diagram.hide-organigram-arrows #cell-co2,
 #flux-diagram.hide-organigram-arrows #cell-methane,
 #flux-diagram.hide-organigram-arrows #cell-h2o {

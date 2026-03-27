@@ -5,11 +5,12 @@
 //       - Entrée utilisateur → shell : setEpoch, runCompute, applyStateFromScie, applyTuningFromScie sont le point d'entrée des boutons
 //         et délèguent à sync_panels (setEpoch, runComputeInParent, etc.).
 //       En standalone (visu_ ou scie_ sans index), current = cette page.
-// Version 1.0.6
+// Version 1.0.7
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: 2025-02-25
+// Logs: v1.0.7 setState → setEpoch(payload.epochId, { forceResetTics }) si payload.forceResetTics (bouton époque)
 // Logs:
 // - v1.0.6: convergence:clear et convergence:append toujours envoyés à scie (cycles à jour même quand current=visu)
 // - v1.0.5: logs [shell] setCurrentPanel, dataInput (convergenceStep/clear/compute:done), restoreConvergenceToScie, switchTab(visu/scie) pour tracer A/R
@@ -39,7 +40,9 @@
         if (window.syncToScie) window.syncToScie({ epochId: epochId });
     }
     function setState(payload) {
-        if (payload.epochId !== undefined && window.setEpoch) window.setEpoch(payload.epochId);
+        if (payload.epochId !== undefined && window.setEpoch) {
+            window.setEpoch(payload.epochId, payload.forceResetTics ? { forceResetTics: true } : undefined);
+        }
         if (window.SYNC_STATE) {
             if (payload.epochId !== undefined) window.SYNC_STATE.epochId = payload.epochId;
             if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;

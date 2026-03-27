@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.27
+// Version 1.1.30
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -26,6 +26,9 @@
 // - v1.1.24: fix "un nextEpoch en trop" — applyToVisu(fromScie) ne réécrit pas 📿💫/infoTimeMa ; config:applyThenCompute appelle setEpoch si transition
 // - v1.1.25: log [4] calculs (effectif) dans doCompute (après rAF) pour tracer le vrai début de calcul vs le scheduling
 // - v1.1.27: action:nextEpoch depuis scie → togglePlotAnim() dans parent (🎞 = prochaine époque, pas toggle on/off)
+// - v1.1.28: config:applyThenCompute — garde payload.button ; après setEpoch (transition) si aucun calcul démarré → runComputeInParent (fix météorite ☄️ / visu_)
+// - v1.1.29: runComputeInParent — snapshot 📿☄️ avant les 2×RAF ; restauré dans doCompute si même époque et valeur réduite (robuste aux resets parasites entre frames)
+// - v1.1.30: applyStateToData / applyToVisu(!scie) — ne plus faire infoTimeMa=ticTime×50 (ticTime=📿💫 seul) ; getEpochDateConfig() pour somme 📿×🔺⏳ (☄️ + 💫)
 // - v1.1.26: [4] effectif groupe reste ouvert jusqu'à [4] retour (suppr _logStepEnd prématuré)
 // - v1.1.21: guard calculationInProgress en tête de runComputeInParent (évite double appel sendComputeToScie + config:applyThenCompute) (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
 // - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
@@ -127,8 +130,12 @@
             }
         }
         if (payload.ticTime !== undefined) {
-            window.infoTimeMa = payload.ticTime * 50;
             window.DATA['📜']['📿💫'] = payload.ticTime;
+            if (typeof window.getEpochDateConfig === 'function') {
+                window.getEpochDateConfig();
+            } else {
+                window.infoTimeMa = payload.ticTime * 50;
+            }
         }
     }
 
@@ -168,10 +175,17 @@
             // fromScie : la scie renvoie son ticTime en écho → ne pas écraser la position temporelle du parent
             // (le parent est source de vérité pour 📿💫/infoTimeMa ; l'écho scie crée une race condition)
             if (!fromScie) {
-                window.infoTimeMa = payload.ticTime * 50;
                 window.DATA['📜']['📿💫'] = payload.ticTime;
+                if (typeof window.getEpochDateConfig === 'function') {
+                    window.getEpochDateConfig();
+                } else {
+                    window.infoTimeMa = payload.ticTime * 50;
+                }
                 var infoTime = document.getElementById('info-time');
-                if (infoTime) infoTime.textContent = '+' + (payload.ticTime * 50).toFixed(0) + ' Ma';
+                if (infoTime && typeof window.infoTimeMa === 'number' && Number.isFinite(window.infoTimeMa)) {
+                    var _dm = Math.abs(window.infoTimeMa).toFixed(1).replace(/\.?0+$/, '');
+                    infoTime.textContent = '+' + _dm + ' Ma';
+                }
             }
         }
         if (fromScie && payload.h2oTotalFromMeteorites !== undefined) {
@@ -307,11 +321,19 @@
             var adj = (DATA['📜']['🔺🌡️💫'] || 0) * (DATA['📜']['📿💫'] || 0);
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'] + adj;
         }
+        // Snapshot 📿☄️ (et epoch) avant le yield async (2×RAF) — restauré dans doCompute si reset parasite entre frames
+        var _savedMeteorTics = (DATA['📜'] && DATA['📜']['📿☄️'] != null && Number.isFinite(DATA['📜']['📿☄️'])) ? DATA['📜']['📿☄️'] : 0;
+        var _savedEpochForMeteor = epochId;
         window.COMPUTE_LOADER.show();
         function doCompute() {
             // Log : moment réel où la computation commence (après les 2× requestAnimationFrame)
             var _epEff = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
             console.log('[DBG sync_panels] doCompute (effectif après rAF) epoch=' + _epEff);
+            // Restaurer 📿☄️ si effacé entre les RAF (même époque, valeur réduite)
+            if (_savedMeteorTics > 0 && _epEff === _savedEpochForMeteor && (DATA['📜']['📿☄️'] == null || DATA['📜']['📿☄️'] < _savedMeteorTics)) {
+                DATA['📜']['📿☄️'] = _savedMeteorTics;
+                console.log('[DBG sync_panels] doCompute — 📿☄️ restauré à ' + _savedMeteorTics + ' (reset parasite détecté)');
+            }
             if (window._logStep) window._logStep('[4] calculs (effectif)');
             else console.log('[4] calculs (effectif)');
             // groupe [4] reste ouvert — fermé à [4] calculs (retour)
@@ -366,9 +388,14 @@
     function initSyncPanels() {
         // Point d'entrée unique : config (📿☄️, ⚖️💧) puis calcul. Émis par visu (events.js) et par scie (sync:state).
         IO_LISTENER.on('config:applyThenCompute', function (payload) {
+            if (!payload || payload.button === undefined || payload.button === null) {
+                console.warn('[sync_panels] config:applyThenCompute ignoré — payload.button manquant');
+                return;
+            }
             var _epBefore = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
             var _ticBefore = window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'];
             console.log('[DBG sync_panels] config:applyThenCompute btn=' + payload.button + ' epoch=' + _epBefore + ' 📿💫=' + _ticBefore);
+            if (!window.DATA['📜']) window.DATA['📜'] = {};
             window.DATA['📜']['🔘🕰'] = payload.button;
             window.getEpochDateConfig();
             var _epAfter = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
@@ -381,6 +408,10 @@
                 var _newEpochName = _epochIdToName[_epAfter] || _epAfter;
                 console.log('[DBG sync_panels] ⚡ transition → setEpoch(' + _newEpochName + ')');
                 window.setEpoch(_newEpochName);
+                // setEpoch émet en fin sync:state run:true → runComputeInParent. Si setEpoch sort tôt (epoch introuvable) ou chaîne incomplète, aucun calcul — relancer ici (fix ☄️ visu_/iframe).
+                if (!window.SYNC_STATE.calculationInProgress) {
+                    window.runComputeInParent();
+                }
                 return;
             }
             window.runComputeInParent();

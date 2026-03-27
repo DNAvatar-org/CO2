@@ -1,6 +1,6 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.8
+// Version 1.1.10
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
@@ -11,6 +11,8 @@
 // - v1.1.6: curseur wait via class compute-loading (html+body) pour résister en anim
 // - v1.1.7: scheduleInitialCompute() appelé systématiquement en fin initAfterLoad pour garantir [4] après [3]
 // - v1.1.8: garde updateEpochActions si events.js pas encore chargé
+// - v1.1.9: switchTab — body.milankovitch-panel-active (cohérence index-shell hauteur avec onglet Milankovitch)
+// - v1.1.10: setEpochFromEpochButton — forceResetTics via shell.setState (re-clic même époque remet les tics à 0)
 // Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
 // Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
 
@@ -209,10 +211,10 @@
         var cb = document.getElementById('plot-anim-toggle-checkbox');
         if (cb) cb.checked = false;
         if (window.shell && window.shell.setState) {
-            window.shell.setState({ animEnabled: false, epochId: epochId, ticTime: 0 });
+            window.shell.setState({ animEnabled: false, epochId: epochId, ticTime: 0, forceResetTics: true });
         } else {
             window.syncToScie({ animEnabled: false, ticTime: 0 });
-            if (typeof window.setEpoch === 'function') window.setEpoch(epochId);
+            if (typeof window.setEpoch === 'function') window.setEpoch(epochId, { forceResetTics: true });
         }
     };
 
@@ -231,6 +233,7 @@
         document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
         document.querySelectorAll('.tabs-bar button').forEach(function (b) { b.classList.remove('active'); });
         if (name === 'scie') document.body.classList.add('scie-panel-active'); else document.body.classList.remove('scie-panel-active');
+        if (name === 'milankovitch') document.body.classList.add('milankovitch-panel-active'); else document.body.classList.remove('milankovitch-panel-active');
         var panel = document.getElementById(name + '-panel');
         var btn = document.getElementById('tab-' + name);
         if (panel) panel.classList.add('active');

@@ -15,7 +15,7 @@
                 <!-- Timeline horizontale (une seule ligne) -->
                 <div class="timeline-horizontal-container">
                         <!-- Époque : nom + date début + ticTime (+0 Ma) et durée 1 tic (sans 📅) -->
-                        <div class="scie_timeline-epoch-section timeline-date-display" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 10px; border-right: 1px solid #444; flex: 1; min-width: 0;">
+                        <div class="scie_timeline-epoch-section">
                             <span id="epoch-name" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">Corps Noir</span>
                             <span class="epoch-start-time" id="epoch-start-time" style="font-size: 10px; margin-top: 2px;">-5000 Ma</span>
                             <span class="info-time" id="info-time" style="font-size: 10px; margin-top: 2px;">+0 Ma</span>
@@ -36,7 +36,7 @@
                         </div>
                         
                         <!-- Boutons d'époques avec graduations intégrées - scie_ -->
-                        <div class="scie_epochs-container" id="scie_epochs-container" style="flex: 1; padding-left: 2px; display: flex; align-items: center; gap: 0; flex-wrap: wrap; min-width: 0;">
+                        <div class="scie_epochs-container" id="scie_epochs-container">
                             <!-- Sera rempli dynamiquement avec boutons et graduations -->
                         </div>
                 </div>
@@ -70,8 +70,28 @@
     <script src="../static/compute/scie_/log_display.js"></script>
     <script src="../../API_BILAN/configsAll.js"></script>
     <script src="../organigramme/configOrganigramme.js"></script>
+    <script>
+    (function initScieOrganigrammeTimeline() {
+        if (!window.configOrganigramme || !window.TIMELINE) return;
+        window.configOrganigramme.timeline = window.TIMELINE.map(function (item) {
+            if (item['📅']) {
+                var epochId = item['📅'];
+                var epochName = epochId;
+                if (typeof window.CHARS_DESC !== 'undefined' && window.CHARS_DESC[epochId]) epochName = window.CHARS_DESC[epochId];
+                var epochNameMap = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+                if (epochNameMap[epochId]) epochName = epochNameMap[epochId];
+                var startYears = item['▶'] != null ? item['▶'] : item.startYears;
+                var endYears = item['◀'] != null ? item['◀'] : item.endYears;
+                return Object.assign({}, item, { type: 'epoch', name: epochName, id: epochId, startYears: startYears, endYears: endYears });
+            }
+            return Object.assign({}, item, { type: 'separator' });
+        });
+    })();
+    </script>
     <script src="../organigramme/timeline.js"></script>
+    <script src="../static/compute/alphabet.js"></script>
     <script src="../static/timeline/events.js"></script>
+    <script src="../static/timeline/scie_parent_bridge.js"></script>
     <script src="../../API_BILAN/physics/physics.js"></script>
     <script src="../../API_BILAN/data/hitran_lines_CO2.js"></script>
     <script src="../../API_BILAN/data/hitran_lines_H2O.js"></script>
@@ -361,12 +381,17 @@
         }
         
         // Mettre à jour l'affichage de la timeline (📅 date en Ma, 1 tic = X Ma)
-        function updateTimelineDisplay() {
+        window.updateTimelineDisplay = function updateTimelineDisplay() {
             const infoTimeDisplay = document.getElementById('info-time');
             const ticDurationEl = document.getElementById('tic-duration');
             const epochStartTime = document.getElementById('epoch-start-time');
+            const epochNameEl = document.getElementById('epoch-name');
             const DATA = window.DATA;
             const EPOCH = (DATA && DATA['📜'] != null && window.TIMELINE) ? window.TIMELINE[DATA['📜']['👉']] : null;
+            if (epochNameEl && EPOCH && EPOCH['📅']) {
+                const eid = EPOCH['📅'];
+                epochNameEl.textContent = (EPOCH_NAME_MAP[eid] || (window.CHARS_DESC && window.CHARS_DESC[eid]) || eid);
+            }
             const durationMa = (DATA && DATA['📜'] && DATA['📜']['🔺⏳'] != null) ? DATA['📜']['🔺⏳'] : 50;
             const tic = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
             if (infoTimeDisplay && DATA && DATA['📜']) {
@@ -393,80 +418,7 @@
             }
         }
         
-        // Mettre à jour les événements selon l'époque (version simplifiée de events.js)
-        function updateEpochActions() {
-            const eventsLogos = document.getElementById('timeline-events-logos');
-            if (!eventsLogos) return;
-            
-            eventsLogos.innerHTML = '';
-            
-            const DATA = window.DATA;
-            let EPOCH = DATA['📅'];
-            if (!EPOCH && window.DATA && window.DATA['📜'] && window.DATA['📜']['👉'] !== undefined && window.TIMELINE) {
-                EPOCH = window.TIMELINE[window.DATA['📜']['👉']];
-                if (!DATA['📅']) {
-                    DATA['📅'] = EPOCH;
-                }
-            }
-            
-            if (!EPOCH || !EPOCH['🕰']) return;
-            
-            // Bouton >> avancer ticTime (💫) — affiché si l'époque a 💫
-            if (EPOCH['🕰']['💫']) {
-                const ticBtn = document.createElement('button');
-                ticBtn.type = 'button';
-                ticBtn.className = 'icon-button btn-events';
-                ticBtn.textContent = '>>';
-                ticBtn.title = 'Avancer d\'un tic (refroidissement, flux géothermique)';
-                ticBtn.addEventListener('click', () => {
-                    window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
-                    window.getEpochDateConfig();
-                    window.getNoyau();
-                    updateTimelineDisplay();
-                    emitSyncToParent();
-                });
-                eventsLogos.appendChild(ticBtn);
-            }
-            
-            // Bouton météorite (☄️) — incrémente 📿☄️ (pas 📿💫). Hadéen : % eau → h2oTotalFromMeteorites.
-            if (EPOCH['🕰'] && EPOCH['🕰']['☄️']) {
-                const meteorBtn = document.createElement('img');
-                meteorBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('☄️')) || getImagePath('fonts/pics/ice_meteorite.png');
-                meteorBtn.alt = '';
-                meteorBtn.className = 'timeline-event-logo btn-events';
-                meteorBtn.title = 'Météorite de glace';
-                const mass_kg = EPOCH['🕰']['☄️']['🔺⚖️💧☄️'];
-                meteorBtn.addEventListener('click', () => {
-                    window.DATA['📜']['📿☄️'] = (window.DATA['📜']['📿☄️'] || 0) + 1;
-                    if (EPOCH['🕰']['💫']) {
-                        const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
-                        if (!window.DATA['💧']) window.DATA['💧'] = {};
-                        const currentH2O = window.DATA['💧']['☄️'] != null ? window.DATA['💧']['☄️'] : 0;
-                        const newH2O = Math.min(100, currentH2O + (mass_kg / earthTotalWaterKg) * 100);
-                        window.DATA['💧']['☄️'] = newH2O;
-                        window.h2oTotalFromMeteorites = newH2O;
-                    }
-                    window.getEpochDateConfig();
-                    window.getNoyau();
-                    updateTimelineDisplay();
-                    emitSyncToParent();
-                });
-                eventsLogos.appendChild(meteorBtn);
-            }
-            
-            // Bouton impact majeur
-            if (EPOCH['🕰'] && EPOCH['🕰']['🎇']) {
-                const bigImpactBtn = document.createElement('img');
-                bigImpactBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('🎇')) || getImagePath('fonts/pics/big_impact.png');
-                bigImpactBtn.alt = '';
-                bigImpactBtn.className = 'timeline-event-logo btn-events';
-                bigImpactBtn.title = 'Impact majeur - Crée la lune';
-                bigImpactBtn.addEventListener('click', () => {
-                    selectEpoch(EPOCH['🕰']['🎇']['⏩']);
-                });
-                eventsLogos.appendChild(bigImpactBtn);
-            }
-        }
+        // Boutons d’action : même logique que visu_ (events.js updateEpochActions) — un seul bouton selon ACTION_BY_DATE + getActionForDate ; IO_LISTENER via scie_parent_bridge.js
         
         // Initialiser les variables globales nécessaires
         function initializeGlobals() {

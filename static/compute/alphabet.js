@@ -1,14 +1,20 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.2
+// Version 1.0.3
 // Date: [January 2025]
 // logs :
+// - v1.0.3: IIFE + __alphabetModuleLoaded (évite SyntaxError CHARS redeclared si double chargement) ; resolveImagePath pour pages sous /html/*.html → ../fonts/
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Ā unit : non Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+
+(function () {
+    'use strict';
+    if (typeof window !== 'undefined' && window.__alphabetModuleLoaded) return;
+    if (typeof window !== 'undefined') window.__alphabetModuleLoaded = true;
 
 // ============================================================================
 // DÉFINITION DES CARACTÈRES (CHARS)
@@ -289,16 +295,20 @@ function getLogoKey(...names) {
     return names.map(name => CHARS[name] || '').join('');
 }
 
-// Résout le chemin image (depuis static/compute/ -> ../../fonts/...)
+// Résout le chemin image (depuis static/compute/ -> ../../fonts/... ; depuis html/*.html -> ../fonts/...)
 function resolveImagePath(path) {
     if (!path) return path;
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) return path;
     if (typeof window.getImagePath === 'function') return window.getImagePath(path);
-    // Fallback : alphabet.html est dans static/compute/, fonts/ à la racine
     const base = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
     const inCompute = base.includes('/static/compute/') || base.includes('static\\compute\\') || base.endsWith('alphabet.html');
     if (inCompute) {
         return '../..' + (path.startsWith('/') ? path : '/' + path);
+    }
+    // scie_compute.html, etc. : page sous CO2/html/ → fonts/ est CO2/fonts/ (un niveau au-dessus)
+    const inHtmlFolder = /\/html\//.test(base) && /\.html$/i.test(base);
+    if (inHtmlFolder) {
+        return '../' + (path.startsWith('/') ? path.slice(1) : path);
     }
     return path;
 }
@@ -353,4 +363,6 @@ window.initCharsForDisplay = function () {
         if (key && window.CHARS[key]) el.textContent = window.CHARS[key];
     });
 };
+
+})();
 

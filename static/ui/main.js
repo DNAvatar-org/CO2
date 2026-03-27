@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.25
+// Version 1.1.31
 // Date: [March 14, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -18,6 +18,11 @@
 // - v1.1.6 : Three.js pause avant changement texture (setEpoch/updateHadeenTexture), play au compute:done (loader_panels)
 // - v1.1.7 : debug logs setEpoch (trace appelant [3]) + log début appel
 // - v1.1.8 : fix "un nextEpoch en trop" — message scie ne réécrit plus DATA[📿💫] du parent ; bary:changed passe keepTimeMa:true ; setEpoch early-return respecte keepTimeMa
+// - v1.1.27 : setEpoch — keepTimeMa enfin traité (applyBaryToGraphiqueOnly + return) ; sinon bary:changed remettait infoTimeMa à 0 (☄️ +0 Ma). updateH2OLevelDirect : ne pas relancer runComputeInParent si calculationInProgress
+// - v1.1.28 : setEpoch — reset tics (📿☄️/📿💫) seulement si id époque change ou forceResetTics ; évite d’effacer le tic météorite si setEpoch est rappelé pour la même époque
+// - v1.1.29 : setEpoch — shouldResetTics exige prevEpochId connu (≠ null) ; sinon null !== ⚫ resettait encore les compteurs
+// - v1.1.30 : setEpoch — #info-time + sync ticTime→scie seulement si shouldResetTics ; sinon garder affichage tics (☄️) et sync 📿💫 réel
+// - v1.1.31 : applyBaryToGraphiqueOnly — epochName depuis DATA[📜][🗿] (emoji→nom) en priorité sur currentEpochName (évite texture ⚫ après passage 🔥)
 // - v1.1.9 : applyBaryToGraphiqueOnly : early-return ne bloque plus sur !baryEpochs[epoch] ; +generateArrows +cellAlbedo (parité avec setEpoch full body)
 // - v1.1.10 : setEpoch : restauration log [2] (supprimé) ; events.js Hadéen handler réordonné (voir events.js v1.2.3)
 // - v1.1.11 : setEpoch stocke _lastPlanetTexturePath=logoPath ; applyBaryToGraphiqueOnly skip si même path (fix double Three.js)
@@ -35,6 +40,7 @@
 // - v1.1.23 : albedo_percent retiré du PILOTAGE — de retour sur le bouton albédo (configOrganigramme)
 // - v1.1.24 : bouton ⚗ sans title natif ni alt détaillé distinct (évite 2e tooltip après 2s)
 // - v1.1.25 : bouton ⚗ garde tooltip court + alt détaillé après 2s via aria-label long (sans title natif)
+// - v1.1.26 : applyBaryToGraphiqueOnly résout emoji→nom d'époque (terreNode.epoch utilise Industriel, pas 🚂) — fix compute:done en scie_
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -1958,13 +1964,24 @@ function applyBaryToGraphiqueOnly() {
     const TIMELINE = window.TIMELINE;
     const IO_LISTENER = window.IO_LISTENER;
     const FUNCS_ORGANIGRAMME = window.FUNCS_ORGANIGRAMME;
-    const epochName = window.currentEpochName;
+    const rawEpochName = window.currentEpochName;
+    const EMOJI_TO_EPOCH_NAME = {
+        '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque',
+        '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)',
+        '🚂': 'Industriel', '📱': 'Aujourd\'hui'
+    };
+    const idFromData = DATA['📜'] && DATA['📜']['🗿'];
+    const epochNameFromData = (idFromData != null && EMOJI_TO_EPOCH_NAME[idFromData]) ? EMOJI_TO_EPOCH_NAME[idFromData] : null;
+    const epochNameFromCurrent = (rawEpochName && EMOJI_TO_EPOCH_NAME[rawEpochName]) ? EMOJI_TO_EPOCH_NAME[rawEpochName] : rawEpochName;
+    const epochName = epochNameFromData || epochNameFromCurrent;
     const bary = DATA['📜']['bary'] || 0;
     const effectiveNodes = window.configOrganigramme.getEffectiveNodesConfig(epochName, bary);
     const terreNode = effectiveNodes.find(n => n.id === 'terre');
     const noyauNode = effectiveNodes.find(n => n.id === 'noyau');
+    if (!terreNode || !terreNode.epoch || !noyauNode || !noyauNode.radiation) return;
     const terreEpochEntry = terreNode.epoch.find(e => e.epochName === epochName);
     const noyauRadEntry = noyauNode.radiation.find(r => r.epochName === epochName);
+    if (!terreEpochEntry) return;
     console.groupCollapsed('🎨 Graphique (visu) bary=' + bary + ' r=' + terreEpochEntry.radius + ' exobase=' + terreEpochEntry.radiusExobase + ' noyau.maxR=' + (noyauRadEntry && noyauRadEntry.maxRadius));
     console.groupEnd();
     const epochConfig = terreEpochEntry;
@@ -2034,8 +2051,10 @@ function setEpoch(epochName, options) {
     const IO_LISTENER = window.IO_LISTENER;
     const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
     const FUNCS_ORGANIGRAMME = window.FUNCS_ORGANIGRAMME;
-    // Étape bary graphique après compute:done (IO_LISTENER) — applique bary + log 🎨 sans changer d'époque
-    if (options && options.applyBaryOnly) {
+    // Étape bary graphique : sans réinitialiser infoTimeMa / compteurs tics
+    // - applyBaryOnly : après compute:done (IO_LISTENER)
+    // - keepTimeMa : bary:changed (message scie / iframe) — v1.1.8 prévu mais non câblé jusqu’à v1.1.27 (sinon ☄️ → +0 Ma après recalcul)
+    if (options && (options.applyBaryOnly || options.keepTimeMa)) {
         applyBaryToGraphiqueOnly();
         return;
     }
@@ -2045,6 +2064,10 @@ function setEpoch(epochName, options) {
         'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
+    const prevEpochIdForTics = (DATA['📜'] && DATA['📜']['🗿'] != null) ? DATA['📜']['🗿'] : null;
+    // null !== '⚫' était true → reset abusif quand 🗿 pas encore posé ; ne reset que si id connue et différente (ou forceResetTics)
+    const shouldResetTics = (options && options.forceResetTics === true)
+        || (prevEpochIdForTics != null && prevEpochIdForTics !== epochIdForButton);
     console.log('[DBG setEpoch] appelé avec=' + epochName + ' (id=' + epochIdForButton + ') DATA[🗿]=' + (DATA['📜'] && DATA['📜']['🗿']) + ' 📿💫=' + (DATA['📜'] && DATA['📜']['📿💫']) + ' currentEpochName=' + window.currentEpochName);
     if (window._logStep) window._logStep('[1] config ' + epochName);
     else console.log('[1] config', epochName);
@@ -2054,16 +2077,17 @@ function setEpoch(epochName, options) {
         window.hideTooltip();
     }
     
-    // 🔄 Remettre infoTimeMa à 0 lors du changement d'époque
-    // IMPORTANT: Doit être fait AVANT l'interprétation du logo pour que ticTime = 0
+    // 🔄 Remettre infoTimeMa / compteurs tics seulement si changement d'époque (id) ou clic bouton époque (forceResetTics)
+    // Sinon un 2e setEpoch('⚫') alors que DATA['🗿'] est déjà ⚫ effaçait 📿☄️ après un clic météorite (config +100 Ma)
     if (typeof window !== 'undefined') {
-        window.infoTimeMa = 0;
-        window._lastPlanetTexturePath = null;
-        // Nouvelle époque : reset compteurs boutons et dernier bouton cliqué
-        DATA['📜']['📿☄️'] = 0;
-        DATA['📜']['📿💫'] = 0;
-        DATA['📜']['bary'] = 0;
-        DATA['📜']['🔘🕰'] = '';
+        if (shouldResetTics) {
+            window.infoTimeMa = 0;
+            window._lastPlanetTexturePath = null;
+            DATA['📜']['📿☄️'] = 0;
+            DATA['📜']['📿💫'] = 0;
+            DATA['📜']['bary'] = 0;
+            DATA['📜']['🔘🕰'] = '';
+        }
     }
     
     if (window._logStep) window._logStep('[2] reset epoch (infoTimeMa→0, tics→0)');
@@ -2384,17 +2408,29 @@ function setEpoch(epochName, options) {
         epochNameDisplay.textContent = epoch.name;
     }
 
-    // Réinitialiser "+0 Ma" quand on clique sur une époque
+    // Réinitialiser "+0 Ma" / ticTime→scie seulement si reset des tics (changement d’époque ou bouton époque).
+    // Sinon ne pas forcer #info-time à +0 Ma ni ticTime=0 : sync:state utilisait 📿💫 seul et écrasait l’affichage ☄️ (+100 Ma).
     const infoTimeDisplay = document.getElementById('info-time');
-    if (infoTimeDisplay) {
-        infoTimeDisplay.textContent = '+0 Ma';
+    if (shouldResetTics) {
+        if (infoTimeDisplay) {
+            infoTimeDisplay.textContent = '+0 Ma';
+        }
+        SYNC_STATE.ticTime = 0;
+        window.syncToScie({ ticTime: 0 });
+    } else {
+        var _ticScie = (DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
+        SYNC_STATE.ticTime = _ticScie;
+        window.syncToScie({ ticTime: _ticScie });
+        if (typeof window.getEpochDateConfig === 'function') {
+            window.getEpochDateConfig();
+        }
+        if (infoTimeDisplay && typeof window.infoTimeMa === 'number' && Number.isFinite(window.infoTimeMa)) {
+            var _dMa = Math.abs(window.infoTimeMa).toFixed(1).replace(/\.?0+$/, '');
+            infoTimeDisplay.textContent = '+' + _dMa + ' Ma';
+        }
     }
 
-    // TicTime à 0 et sync vers scie pour que l’iframe ait ticTime=0
-    SYNC_STATE.ticTime = 0;
-    window.syncToScie({ ticTime: 0 });
-
-    // Note: infoTimeMa a déjà été remis à 0 au début de setEpoch (avant l'interprétation du logo)
+    // Note: si shouldResetTics, infoTimeMa a déjà été remis à 0 au début de setEpoch (avant l'interprétation du logo)
     
     // Vérifier les événements automatiques après le changement d'époque
     if (typeof checkDateEvents === 'function') {
@@ -2689,6 +2725,9 @@ function updateH2OLevelDirect(h2o_total_percent) {
     }
 
     if (typeof window.runComputeInParent === 'function' && document.getElementById('scie-iframe')) {
+        if (window.SYNC_STATE && window.SYNC_STATE.calculationInProgress) {
+            return;
+        }
         window.runComputeInParent();
         return;
     }
