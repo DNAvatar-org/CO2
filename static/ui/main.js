@@ -38,6 +38,7 @@
 // - v1.1.26 : badge 🧩 compact sur 3 lignes + mini-slider 4ch ; réglage CLOUD_SW en visu_ (compute au relâchement)
 // - v1.1.27 : badge 🧩 court = "Flou scientifique" ; détail uniquement dans l'alt déplié
 // - v1.1.28 : badge 🧩 sorti de #organigram-config-wrap — enfant direct de #flux-diagram (sibling du wrap)
+// - v1.1.29 : input slider bary — mise à jour directe .organigram-bary-pct (plus d'updateFluxLabels qui détache le slider)
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -3167,9 +3168,11 @@ function runMainInit() {
                         if (typeof window.applyTuningPayload === 'function') {
                             window.applyTuningPayload({ CLOUD_SW: pct });
                         }
-                        if (typeof window.updateFluxLabels === 'function') {
-                            window.updateFluxLabels(window.currentEventId || null);
-                        }
+                        // Mise à jour directe du texte % dans le badge (sans updateFluxLabels/updateLabel
+                        // qui remplacerait innerHTML et détacherait le slider — cassant les events suivants)
+                        document.querySelectorAll('[data-id="fine_tuning_cloud_bary"] .organigram-bary-pct').forEach(function (el) {
+                            el.textContent = pct + '%';
+                        });
                     });
                     document.body.addEventListener('change', function (e) {
                         var el = e.target;

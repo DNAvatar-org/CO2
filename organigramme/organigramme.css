@@ -130,8 +130,8 @@
     gap: 1px;
 }
 .organigram-bary-icons {
-    font-size: 18px;
-    line-height: 1;
+    font-size: 20px;
+    line-height: 1.5;
 }
 .organigram-bary-pct {
     white-space: nowrap;
@@ -147,8 +147,8 @@
 .organigram-fine-tuning-bary-badge .organigram-bary-mini-slider {
     display: block;
     width: 7ch;
-    height: 10px;
-    margin: 5px auto 5px;
+    height: 5px;
+    margin: 8px auto 8px;
     padding: 0;
     pointer-events: auto;
     cursor: ew-resize;
