@@ -1091,7 +1091,12 @@
 
         function onFineTuningBaryInput(groupKey, percentRaw) {
             setFineTuningBaryPercent(groupKey, percentRaw);
-            applyFineTuningBaryGroup(groupKey, percentRaw, true);
+            // Important: ne pas re-render le panneau pendant le drag, sinon le slider est recréé et le glissement s'arrête.
+            applyFineTuningBaryGroup(groupKey, percentRaw, false);
+            var valueEl = document.getElementById('fine-tuning-bary-value-' + groupKey);
+            if (valueEl) valueEl.textContent = Math.round(Number(percentRaw)) + '%';
+            var valueHeaderEl = document.getElementById('fine-tuning-bary-value-' + groupKey + '-header');
+            if (valueHeaderEl) valueHeaderEl.textContent = Math.round(Number(percentRaw)) + '%';
         }
 
         // Désactiver le clic sur la bande des jauges fine tuning / solveur : seul le glissement du bouton bleu change la valeur

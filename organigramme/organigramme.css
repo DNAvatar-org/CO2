@@ -661,10 +661,12 @@
 /* synthese_Temp : variante 2 colonnes (sans coupler à #visu-panel .title-container) */
 .synthese_Temp.synthese_Temp-two-cols {
     color: rgb(135, 206, 250);
+    /*
     border-color: rgb(173, 216, 230);
     border-width: 1px;
     border-style: solid;
     border-radius: 5px;
+    */
     padding: 0px;
     font-family: 'ProggyDotted';
     font-style: italic;
