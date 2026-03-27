@@ -2333,6 +2333,7 @@ function setEpoch(epochName, options) {
                             IO_LISTENER.off('three:ready', _onThreeReady);
                             if (_swapTimeoutId !== null) clearTimeout(_swapTimeoutId);
                             if (oldCell.parentElement) oldCell.remove();
+                            window.threeJSAnimationPaused = false;
                         }
                     };
                     IO_LISTENER.on('three:ready', _onThreeReady, 'main.js:setEpoch');
@@ -3554,6 +3555,7 @@ function updateHadeenTexture() {
                 IO_LISTENER.off('three:ready', onThreeReady);
                 if (timeoutId !== null) clearTimeout(timeoutId);
                 if (oldCell.parentElement) oldCell.remove();
+                window.threeJSAnimationPaused = false;
             }
         };
         IO_LISTENER.on('three:ready', onThreeReady, 'main.js');
