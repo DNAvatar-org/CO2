@@ -304,7 +304,10 @@ function updateTimeline() {
             const idx = window.DATA['📜']['👉'];
             const epoch = window.TIMELINE[idx];
             const startMa = -(epoch['▶'] / 1e6);
-            const currentMa = startMa + window.infoTimeMa;
+            // Époques forward (▶ < ◀, CE years : 1800→2025) : les dates croissantes = plus négatives en Ma convention
+            // → soustraire infoTimeMa pour monter la jauge. Époques géologiques : addition standard.
+            const isForwardEpoch = (epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀']);
+            const currentMa = isForwardEpoch ? startMa - window.infoTimeMa : startMa + window.infoTimeMa;
             const topPx = getCursorTopPx(container, textRows, scaleMa, currentMa) + TIMELINE_CURSOR_OFFSET_PX;
             if (!window._timelineCursorAnimating) {
                 cursor2.style.setProperty('top', topPx + 'px');

@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.40
+// Version 1.0.41
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -22,6 +22,7 @@
 // Logs: v1.0.38 badge 🧩 en 2 lignes compactes (🔺🧩🔻 / %), mini-slider intégré pour réglage visu_
 // Logs: v1.0.39 tooltip instantané simplifié : "Flou scientifique" (le détail reste uniquement dans l'alt déplié)
 // Logs: v1.0.40 fine_tuning_cloud_bary : mise à jour douce (pct + slider) sans innerHTML si mini-slider déjà présent
+// Logs: v1.0.41 Three.js planet : logs pointerdown/pointermove/pointerup sur le container (pour debug drag futur)
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -508,7 +509,9 @@ function initPlanetThreeJS(
 
   const sphereSegments = 32; // Précision comme dans planet-test.html
   const lightContrast = 1.85; // Contraste éclairci pour astre plus lisible (était 1.5)
-  const tiltAngle = 55; // Inclinaison en degrés (comme demandé)
+  let tiltAngle = (typeof window !== 'undefined' && window.savedPlanetTiltAngle !== undefined)
+    ? window.savedPlanetTiltAngle
+    : -53; // Inclinaison en degrés — persistée entre changements de texture
 
   // Scène - fond transparent pour s'intégrer dans le diagramme
   const scene = new THREE.Scene();
@@ -761,6 +764,34 @@ function initPlanetThreeJS(
   canvas.style.pointerEvents = "none";
   canvas.style.position = "relative";
   canvas.style.zIndex = "1";
+
+  // Logs press/move/release via document (pointer-events:none empêche la détection sur container/canvas)
+  // On filtre par hit-test : coordonnées dans le bounding rect du canvas
+  let _dragActive = false;
+  function _inCanvas(e) {
+    const r = canvas.getBoundingClientRect();
+    return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  }
+  function _onDocDown(e) {
+    if (!_inCanvas(e)) return;
+    _dragActive = true;
+    document.body.style.userSelect = 'none';
+  }
+  function _onDocMove(e) {
+    if (!_dragActive) return;
+    tiltAngle += e.movementY * 1.0;
+    if (typeof window !== 'undefined') window.savedPlanetTiltAngle = tiltAngle;
+    if (sphere) sphere.rotation.x = (tiltAngle * Math.PI) / 180;
+  }
+  function _onDocUp(e) {
+    if (!_dragActive) return;
+    _dragActive = false;
+    document.body.style.userSelect = '';
+  }
+  document.addEventListener('pointerdown', _onDocDown);
+  document.addEventListener('pointermove', _onDocMove);
+  document.addEventListener('pointerup', _onDocUp);
+  document.addEventListener('pointercancel', _onDocUp);
 
   const speed = 1.0;
   function animate() {
