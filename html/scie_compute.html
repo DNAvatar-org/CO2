@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vue scientifique</title>
     <link href="../static/css/style.css" rel="stylesheet">
+    <link href="../static/css/emoji-fonts.css" rel="stylesheet">
     <link href="../static/css/scie_compute.css" rel="stylesheet">
 </head>
 <body>
@@ -15,7 +16,7 @@
                 <!-- Timeline horizontale (une seule ligne) -->
                 <div class="timeline-horizontal-container">
                         <!-- Époque : nom + date début + ticTime (+0 Ma) et durée 1 tic (sans 📅) -->
-                        <div class="scie_timeline-epoch-section timeline-date-display" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 10px; border-right: 1px solid #444; flex: 1; min-width: 0;">
+                        <div class="scie_timeline-epoch-section timeline-date-display" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 10px; border-right: 1px solid #444; width: fit-content; flex-shrink: 0;">
                             <span id="epoch-name" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">Corps Noir</span>
                             <span class="epoch-start-time" id="epoch-start-time" style="font-size: 10px; margin-top: 2px;">-5000 Ma</span>
                             <span class="info-time" id="info-time" style="font-size: 10px; margin-top: 2px;">+0 Ma</span>
@@ -49,12 +50,12 @@
         </div>
 
         <div id="fine-tuning" class="results replied divGlass">
-            <h2>🧩 Fine-tuning 🪩</h2>
-            <div id="fine-tuning-content"></div>
+            <h2>🧩 Fine-tuning 🪩 <button class="toggle-button" id="fine-tuning-toggle" onclick="toggleFineTuning()" style="margin-left:auto">+</button></h2>
+            <div id="fine-tuning-content" style="display:none;"></div>
         </div>
         
         <div id="convergence" class="results replied convergence-cycles-hidden divGlass">
-            <h2>⚙ Convergence : —°C <span class="convergence-buttons"><button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">Cycles +</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">Détails +</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">Formules +</button></span></h2>
+            <h2>⚙ Convergence : —°C <span class="convergence-buttons"><button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">Cycles +</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">Bilan +</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">Formules +</button></span></h2>
             <div id="convergence-content"></div>
         </div>
         
@@ -146,11 +147,18 @@
         }
         
         // Synchronisation parent ↔ iframe (epoch, anim, ticTime, tuning pour reproductibilité run scie vs visu)
+        // Retourne la clé tic active de l'époque : '🛢' si 📱 (émissions), '💫' sinon
+        function getTicKey(ep) {
+            return (ep && ep['🕰'] && ep['🕰']['🛢']) ? '🛢' : '💫';
+        }
+
         function emitSyncToParent() {
             if (window === window.top) return;
             const DATA = window.DATA;
             const epochId = (DATA && DATA['📜'] && DATA['📜']['🗿']) || '⚫';
-            const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
+            const _ep = (window.TIMELINE && DATA['📜'] && DATA['📜']['👉'] != null) ? window.TIMELINE[DATA['📜']['👉']] : null;
+            const _ticKey = '📿' + getTicKey(_ep);
+            const ticTime = (DATA && DATA['📜'] && DATA['📜'][_ticKey] != null) ? DATA['📜'][_ticKey] : 0;
             const bary = (DATA && DATA['📜'] && DATA['📜']['bary'] != null && Number.isFinite(DATA['📜']['bary'])) ? DATA['📜']['bary'] : undefined;
             const animBtn = document.getElementById('anim-toggle');
             const animEnabled = animBtn ? animBtn.classList.contains('selected') : true;
@@ -355,41 +363,68 @@
             if (typeof window !== 'undefined' && window.DATA) {
                 if (!window.DATA['📜']) window.DATA['📜'] = {};
                 window.DATA['📜']['📿💫'] = 0;
+                window.DATA['📜']['📿🛢'] = 0;
                 updateTimelineDisplay();
             }
             emitSyncToParent();
         }
         
-        // Mettre à jour l'affichage de la timeline (📅 date en Ma, 1 tic = X Ma)
+        // Mettre à jour l'affichage de la timeline (📅 date courante, début époque, nom)
         function updateTimelineDisplay() {
             const infoTimeDisplay = document.getElementById('info-time');
             const ticDurationEl = document.getElementById('tic-duration');
             const epochStartTime = document.getElementById('epoch-start-time');
+            const epochNameEl = document.getElementById('epoch-name');
             const DATA = window.DATA;
             const EPOCH = (DATA && DATA['📜'] != null && window.TIMELINE) ? window.TIMELINE[DATA['📜']['👉']] : null;
-            const durationMa = (DATA && DATA['📜'] && DATA['📜']['🔺⏳'] != null) ? DATA['📜']['🔺⏳'] : 50;
-            const tic = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
-            if (infoTimeDisplay && DATA && DATA['📜']) {
-                if (EPOCH && EPOCH['🕰'] && EPOCH['🕰']['💫']) {
-                    const startMa = (EPOCH['▶'] || 0) / 1e6;
-                    const dateMa = startMa - tic * durationMa;
-                    infoTimeDisplay.textContent = `${dateMa.toFixed(0)} Ma`;
+            if (!EPOCH || !DATA) return;
+
+            // Detect time direction
+            const epochEnd = typeof EPOCH['◀'] === 'number' ? EPOCH['◀'] : null;
+            const isForward = EPOCH['▶'] != null && epochEnd != null && EPOCH['▶'] < epochEnd;
+
+            // Nom d'époque
+            if (epochNameEl) {
+                const eId = (DATA['📜'] && DATA['📜']['🗿']) || (EPOCH && EPOCH['📅']);
+                epochNameEl.textContent = EPOCH_NAME_MAP[eId] || eId || '';
+            }
+
+            // Date courante — source unique : DATA['📜']['📅'] (mis à jour par getEpochDateConfig)
+            // Fallback sur EPOCH['▶'] si 📅 pas encore calculé (avant premier getEpochDateConfig)
+            const dateYears = (DATA['📜'] && DATA['📜']['📅'] != null)
+                ? DATA['📜']['📅']
+                : (EPOCH['▶'] != null ? EPOCH['▶'] : null);
+            if (infoTimeDisplay) {
+                if (dateYears != null) {
+                    if (isForward) {
+                        infoTimeDisplay.textContent = Math.round(dateYears) + ' CE';
+                    } else {
+                        infoTimeDisplay.textContent = (dateYears / 1e6).toFixed(0) + ' Ma';
+                    }
                 } else {
-                    const infoTimeMa = tic * durationMa;
-                    infoTimeDisplay.textContent = `+${infoTimeMa.toFixed(0)} Ma`;
+                    infoTimeDisplay.textContent = '...';
                 }
             }
+
+            // Date de début d'époque (EPOCH['▶'])
+            if (epochStartTime && EPOCH['▶'] != null) {
+                if (isForward) {
+                    epochStartTime.textContent = Math.round(EPOCH['▶']) + ' CE';
+                } else {
+                    epochStartTime.textContent = (EPOCH['▶'] / 1e6).toFixed(0) + ' Ma';
+                }
+            }
+
+            // Durée d'un tic (💫 géologique ou 🛢 scénario)
             if (ticDurationEl) {
-                if (EPOCH && EPOCH['🕰'] && EPOCH['🕰']['💫']) {
-                    ticDurationEl.textContent = `1 tic = ${durationMa} Ma`;
+                const ticK = getTicKey(EPOCH);
+                const ticCfg = EPOCH['🕰'] && EPOCH['🕰'][ticK];
+                if (ticCfg && ticCfg['🔺⏳'] != null) {
+                    ticDurationEl.textContent = `1 tic = ${ticCfg['🔺⏳']} Ma`;
                     ticDurationEl.style.display = '';
                 } else {
                     ticDurationEl.style.display = 'none';
                 }
-            }
-            if (epochStartTime && DATA && EPOCH) {
-                const epochStart = (EPOCH['▶'] || 0) / 1e6;
-                epochStartTime.textContent = `${epochStart.toFixed(0)} Ma`;
             }
         }
         
@@ -411,20 +446,58 @@
             
             if (!EPOCH || !EPOCH['🕰']) return;
             
-            // Bouton >> avancer ticTime (💫) — affiché si l'époque a 💫
-            if (EPOCH['🕰']['💫']) {
+            // Bouton avancer tic — 🛢 si époque 📱 (hasEmissions), >> sinon
+            // Clé tic : '🛢' pour 📱, '💫' pour géologiques
+            const _ticK = getTicKey(EPOCH);
+            if (EPOCH['🕰'][_ticK]) {
+                const hasEmissions = EPOCH['🏭📊'] && Array.isArray(EPOCH['🏭📊'].tranches);
+                const _ctrK = '📿' + _ticK; // '📿🛢' ou '📿💫'
                 const ticBtn = document.createElement('button');
                 ticBtn.type = 'button';
                 ticBtn.className = 'icon-button btn-events';
-                ticBtn.textContent = '>>';
-                ticBtn.title = 'Avancer d\'un tic (refroidissement, flux géothermique)';
-                ticBtn.addEventListener('click', () => {
-                    window.DATA['📜']['📿💫'] = (window.DATA['📜']['📿💫'] || 0) + 1;
-                    window.getEpochDateConfig();
-                    window.getNoyau();
-                    updateTimelineDisplay();
-                    emitSyncToParent();
-                });
+
+                if (hasEmissions) {
+                    ticBtn.textContent = '🛢';
+                    // Calcule le tooltip : tranche + Gt depuis la position courante
+                    const buildTip = () => {
+                        const tics = (window.DATA['📜'] && window.DATA['📜'][_ctrK] != null) ? window.DATA['📜'][_ctrK] : 0;
+                        const dtYr = (EPOCH['🕰'][_ticK]['🔺⏳'] || 0) * 1e6;
+                        const curYr = (EPOCH['▶'] || 0) + tics * dtYr;
+                        const nextYr = curYr + dtYr;
+                        const tranches = EPOCH['🏭📊'].tranches;
+                        let trancheLabel = '';
+                        for (let i = 0; i < tranches.length; i++) {
+                            const tr = tranches[i];
+                            if (curYr < tr.to && nextYr > tr.from) {
+                                const overlap = Math.min(nextYr, tr.to) - Math.max(curYr, tr.from);
+                                const span = tr.to - tr.from;
+                                const gt = span > 0 ? Math.round(tr.Gt * overlap / span) : tr.Gt;
+                                trancheLabel += (trancheLabel ? ' + ' : '') + gt + ' Gt';
+                            }
+                        }
+                        const yr0 = Math.round(curYr), yr1 = Math.round(nextYr);
+                        return `${yr0}→${yr1} : ${trancheLabel || '?'} CO₂ (+${Math.round(dtYr)} ans)`;
+                    };
+                    ticBtn.title = buildTip();
+                    ticBtn.addEventListener('click', () => {
+                        window.DATA['📜'][_ctrK] = (window.DATA['📜'][_ctrK] || 0) + 1;
+                        window.getEpochDateConfig();
+                        window.getNoyau();
+                        ticBtn.title = buildTip();
+                        updateTimelineDisplay();
+                        emitSyncToParent();
+                    });
+                } else {
+                    ticBtn.textContent = '>>';
+                    ticBtn.title = 'Avancer d\'un tic (refroidissement, flux géothermique)';
+                    ticBtn.addEventListener('click', () => {
+                        window.DATA['📜'][_ctrK] = (window.DATA['📜'][_ctrK] || 0) + 1;
+                        window.getEpochDateConfig();
+                        window.getNoyau();
+                        updateTimelineDisplay();
+                        emitSyncToParent();
+                    });
+                }
                 eventsLogos.appendChild(ticBtn);
             }
             
@@ -512,6 +585,7 @@
             
             // Initialiser les valeurs dans DATA
             window.DATA['📜']['📿💫'] = 0;
+            window.DATA['📜']['📿🛢'] = 0;
             // IMPORTANT: Si animation activée, on NE TOUCHE PAS à DATA['🧮']['🧮🌡️']
             // On garde la température actuelle pour continuité entre époques
             // Note: getEpochDateConfig() sera appelé plus tard et initialisera DATA['📅']['🌡️🧮']
@@ -1232,6 +1306,15 @@
             return updated;
         }
 
+        function toggleFineTuning() {
+            const content = document.getElementById('fine-tuning-content');
+            const btn = document.getElementById('fine-tuning-toggle');
+            if (!content || !btn) return;
+            const isOpen = content.style.display !== 'none';
+            content.style.display = isOpen ? 'none' : 'block';
+            btn.textContent = isOpen ? '+' : '−';
+        }
+
         function displayFineTuning() {
             const tuningDiv = document.getElementById('fine-tuning');
             const tuningContent = document.getElementById('fine-tuning-content');
@@ -1245,14 +1328,18 @@
                 fineTitle.style.display = 'flex';
                 fineTitle.style.alignItems = 'center';
                 fineTitle.style.justifyContent = 'flex-start';
-                fineTitle.style.flexWrap = 'nowrap';
+                fineTitle.style.flexWrap = 'wrap';
                 fineTitle.style.gap = '8px';
+                // Conserver l'état du bouton plie/déplie (ne pas l'écraser)
+                const toggleBtn = document.getElementById('fine-tuning-toggle');
+                const isOpen = tuningContent.style.display !== 'none';
                 fineTitle.innerHTML = `🧩 Fine-tuning 🪩
                     <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">🔺
                         <input id="fine-tuning-bary-slider-CLOUD_SW-header" type="range" min="0" max="100" step="1" value="${cloudBary.toFixed(0)}" oninput="onFineTuningBaryInput('CLOUD_SW', this.value); var v=document.getElementById('fine-tuning-bary-value-CLOUD_SW-header'); if(v) v.textContent=this.value + '%';">
                         <span id="fine-tuning-bary-value-CLOUD_SW-header">${cloudBary.toFixed(0)}%</span>
                         <button class="toggle-button" onclick="applyFineTuningBaryGroupAndRun('CLOUD_SW', document.getElementById('fine-tuning-bary-slider-CLOUD_SW-header').value); return false;">▶️</button>🔻
-                    </span>`;
+                    </span>
+                    <button class="toggle-button" id="fine-tuning-toggle" onclick="toggleFineTuning()" style="margin-left:auto">${isOpen ? '−' : '+'}</button>`;
             }
 
             let html = '';
@@ -1262,6 +1349,7 @@
 
             tuningContent.innerHTML = html;
             tuningDiv.style.display = 'block';
+            // Ne pas toucher à tuningContent.style.display — respecter l'état plié/déplié actuel
         }
 
         function displayResults(result) {
@@ -1277,17 +1365,28 @@
             const epochId = DATA['📜']['🗿'];
             const epochName = window.CHARS_DESC[epochId] || epochId;
             
-            // Calculer la date actuelle (📅) : EPOCH['▶'] - ticTime effect
-            const ticTimeMa = DATA['📜']['📿💫'] * 50;
-            const currentDateMa = (EPOCH['▶'] / 1e6) - ticTimeMa;
-            const currentDateStr = currentDateMa >= 0 ? `-${currentDateMa.toFixed(0)}Ma` : `${Math.abs(currentDateMa).toFixed(0)}Ma`;
+            // Calculer la date actuelle depuis DATA['📜']['📅'] (source unique — getEpochDateConfig)
+            const epochEndD = typeof EPOCH['◀'] === 'number' ? EPOCH['◀'] : null;
+            const isForwardD = EPOCH['▶'] != null && epochEndD != null && EPOCH['▶'] < epochEndD;
+            const dateYearsD = (DATA['📜'] && DATA['📜']['📅'] != null) ? DATA['📜']['📅'] : null;
+            let currentDateStr;
+            if (dateYearsD != null) {
+                if (isForwardD) {
+                    currentDateStr = Math.round(dateYearsD) + ' CE';
+                } else {
+                    currentDateStr = (dateYearsD / 1e6).toFixed(0) + ' Ma';
+                }
+            } else {
+                currentDateStr = '?';
+            }
             
             // Mettre à jour le titre avec le nom de l'époque et la description
             const configTitle = configDiv.querySelector('h2');
             if (configTitle) {
                 const button = configTitle.querySelector('.toggle-button');
                 const buttonText = button ? button.textContent : 'Formules +';
-                configTitle.innerHTML = `📋 Configuration : ${epochId} ${epochName} | 📅: ${currentDateStr} <button class="toggle-button" onclick="toggleConfig()">${buttonText}</button>`;
+                const epochLabel = isForwardD ? Math.round(EPOCH['▶']) : epochName;
+                configTitle.innerHTML = `📋 Configuration : ${epochId} ${epochLabel} | 📅: ${currentDateStr} <button class="toggle-button" onclick="toggleConfig()">${buttonText}</button>`;
             }
             
             let html = '';
@@ -1299,7 +1398,7 @@
             html += json2html(DATA['⚖️'], null, null, null, '⚖️');
             html += json2html(DATA['🌕'] || {}, null, null, null, '🌕');
             html += json2html(DATA['☀️'] || {}, null, null, null, '☀️');
-            html += json2html(DATA['🎚️'], null, null, null, '🎚️');
+            // 🎚️ (fine-tuning CLOUD_SW/SOLVER) affiché dans la section dédiée 🧩 — pas dans la config brute
 
             configContent.innerHTML = html;
             configDiv.style.display = 'block';
@@ -1340,16 +1439,25 @@
         function clearConvergenceTrace() {
             const convergenceContent = document.getElementById('convergence-content');
             if (!convergenceContent) return;
-            convergenceContent.innerHTML = '<div id="convergence-steps"></div><div id="convergence-final"></div>';
+            // Pas d'injection ici : _co2ProfileLog n'est pas encore écrit (timing)
+            // → injection au premier appendConvergenceStep()
+            convergenceContent.innerHTML = '<div id="convergence-co2-header"></div><div id="convergence-steps"></div><div id="convergence-final"></div>';
         }
 
         function appendConvergenceStep(state) {
-            const stepsEl = document.getElementById('convergence-steps');
+            // Injection 🏭📊 au premier step (après que getEpochDateConfig a écrit _co2ProfileLog)
+            if (!window._co2ProfileLogInjected && window._co2ProfileLog) {
+                const headerEl = document.getElementById('convergence-co2-header');
+                if (headerEl) {
+                    headerEl.innerHTML = `<div class="iteration-header" style="color:#8cf;margin-bottom:4px;">${window._co2ProfileLog}</div>`;
+                    window._co2ProfileLogInjected = true;
+                }
+            }
+            let stepsEl = document.getElementById('convergence-steps');
             if (!stepsEl) {
                 clearConvergenceTrace();
-                const stepsEl2 = document.getElementById('convergence-steps');
-                if (stepsEl2) stepsEl2.insertAdjacentHTML('beforeend', buildStepHtml(state));
-                return;
+                stepsEl = document.getElementById('convergence-steps');
+                if (!stepsEl) return;
             }
             stepsEl.insertAdjacentHTML('beforeend', buildStepHtml(state));
         }
@@ -1376,7 +1484,7 @@
                 const formulesButton = convergenceTitle.querySelector('.toggle-formules');
                 const formulesButtonText = formulesButton ? formulesButton.textContent : 'Formules +';
                 const detailsVisible = convergenceDiv.classList.contains('details-visible');
-                const detailsButtonText = detailsVisible ? 'Détails −' : 'Détails +';
+                const detailsButtonText = detailsVisible ? 'Bilan −' : 'Bilan +';
                 const cyclesHidden = convergenceDiv.classList.contains('convergence-cycles-hidden');
                 const cyclesButtonText = cyclesHidden ? 'Cycles +' : 'Cycles −';
                 convergenceTitle.innerHTML = `⚙ Convergence : ${temp_C}°C <span class="convergence-buttons"><button class="toggle-button toggle-cycles" onclick="toggleCycles(); return false;">${cyclesButtonText}</button><button class="toggle-button toggle-details" onclick="toggleConvergenceDetails(); return false;">${detailsButtonText}</button><button class="toggle-button toggle-formules" onclick="toggleConvergence()">${formulesButtonText}</button></span>`;
@@ -1458,7 +1566,7 @@
             const isReplied = configDiv.classList.contains('replied');
             if (isReplied) {
                 configDiv.classList.remove('replied');
-                button.textContent = 'Results −';
+                button.textContent = 'Formules −';
                 // Quand on déplie, afficher les formules si elles existent
                 formuleContainers.forEach(container => {
                     container.classList.remove('notVisible');
@@ -1494,7 +1602,7 @@
             const isReplied = convergenceDiv.classList.contains('replied');
             if (isReplied) {
                 convergenceDiv.classList.remove('replied');
-                if (formulesButton) formulesButton.textContent = 'Results −';
+                if (formulesButton) formulesButton.textContent = 'Formules −';
                 formuleContainers.forEach(container => {
                     container.classList.remove('notVisible');
                     container.classList.add('visible');
@@ -1514,7 +1622,7 @@
             const convergenceDiv = document.getElementById('convergence');
             const detailsButton = convergenceDiv.querySelector('h2 .toggle-details');
             const detailsVisible = convergenceDiv.classList.toggle('details-visible');
-            if (detailsButton) detailsButton.textContent = detailsVisible ? 'Détails −' : 'Détails +';
+            if (detailsButton) detailsButton.textContent = detailsVisible ? 'Bilan −' : 'Bilan +';
             notifyParentResize();
         }
         function toggleCycles() {
@@ -1591,6 +1699,11 @@
                 }
                 if (p.ticTime !== undefined && window.DATA && window.DATA['📜']) {
                     window.DATA['📜']['📿💫'] = p.ticTime;
+                    // Aussi mettre à jour 📿🛢 si l'époque courante utilise 🛢
+                    const _epSync = (window.TIMELINE && window.DATA['📜']['👉'] != null) ? window.TIMELINE[window.DATA['📜']['👉']] : null;
+                    if (_epSync && _epSync['🕰'] && _epSync['🕰']['🛢']) {
+                        window.DATA['📜']['📿🛢'] = p.ticTime;
+                    }
                     updateTimelineDisplay();
                 }
             }

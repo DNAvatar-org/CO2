@@ -44,6 +44,15 @@ window.updateEpochActions = function () {
     const timelineEpoch = getEpochConfigById(epochId);
     const startYears = timelineEpoch && timelineEpoch['▶'] != null ? timelineEpoch['▶'] : 5e9;
     const infoTimeMa = (window.infoTimeMa != null ? window.infoTimeMa : 0);
+
+    // 🎞 "prochaine époque" invisible si l'époque a un scénario d'émissions 🏭📊 (📱 et futurs)
+    // ⚠️ On ne peut PAS utiliser ▶ >= 2000 : les époques géologiques ont ▶ = 5e9, 4.5e9… (années écoulées, >> 2000)
+    const animToggleBtn = document.getElementById('plot-anim-toggle');
+    if (animToggleBtn) {
+        const _tlEpochVis = window.TIMELINE ? window.TIMELINE.find(function(e) { return e['📅'] === epochId; }) : null;
+        const _hasEmissions = _tlEpochVis && _tlEpochVis['🏭📊'] && Array.isArray(_tlEpochVis['🏭📊'].tranches);
+        animToggleBtn.style.visibility = _hasEmissions ? 'hidden' : '';
+    }
     const getActionForDate = (window.configOrganigramme && window.configOrganigramme.getActionForDate) || (() => '💫');
     const actionId = getActionForDate(startYears, infoTimeMa);
 
@@ -193,20 +202,43 @@ window.updateEpochActions = function () {
         });
         eventsLogos.appendChild(bigImpactBtn);
     } else {
-        // 💫 TicTime (ACTION_BY_DATE = 💫 ; afficher même si l’époque n’a pas 🕰['💫'], avec pas par défaut)
+        // 💫/🛢 TicTime — détection dynamique : 🛢 pour 📱 (scénario émissions), 💫 pour géologiques
         const epoch = window.configOrganigramme && window.configOrganigramme.timeline
             ? window.configOrganigramme.timeline.find(e => e.type === 'epoch' && (e.name === currentEpochName || e.id === epochId))
             : null;
-        const ticCfg = epoch && epoch['🕰'] && epoch['🕰']['💫'] ? epoch['🕰']['💫'] : null;
+        // Cherche la clé tic active (🛢 ou 💫) dans l'époque TIMELINE réelle
+        const _tlEpoch = window.TIMELINE ? window.TIMELINE.find(e => e['📅'] === epochId) : null;
+        const _ticKey = (_tlEpoch && _tlEpoch['🕰'] && _tlEpoch['🕰']['🛢']) ? '🛢' : '💫';
+        const ticCfg = _tlEpoch && _tlEpoch['🕰'] && _tlEpoch['🕰'][_ticKey] ? _tlEpoch['🕰'][_ticKey] : null;
         const stepMa = ticCfg && typeof ticCfg['🔺⏳'] === 'number' ? ticCfg['🔺⏳'] : 100;
+        const _ctrKey = '📿' + _ticKey; // '📿🛢' ou '📿💫'
         {
             const stepLabel = formatStepLabel(stepMa);
             const ticBtn = document.createElement('button');
             ticBtn.type = 'button';
             ticBtn.className = 'icon-button btn-events timeline-event-logo';
-            ticBtn.textContent = window.CHARS.TIC_TIME;
-            ticBtn.alt = stepLabel;
-            window.addCustomTooltip(ticBtn, (window.CHARS_DESC['💫'] || '') + ' (' + stepLabel + ' par clic)');
+            ticBtn.textContent = _ticKey; // '🛢' pour 📱, '💫' pour géologiques
+            // Calcule le label Gt pour le prochain tic (🛢) ou le pas Ma (💫)
+            const buildGtAlt = () => {
+                if (_tlEpoch && _tlEpoch['🏭📊'] && Array.isArray(_tlEpoch['🏭📊'].tranches)) {
+                    const tics = (window.DATA && window.DATA['📜'] && window.DATA['📜'][_ctrKey] != null) ? window.DATA['📜'][_ctrKey] : 0;
+                    const dtYr = stepMa * 1e6;
+                    const curYr = (_tlEpoch['▶'] || 0) + tics * dtYr;
+                    const nextYr = curYr + dtYr;
+                    let totalGt = 0;
+                    for (const tr of _tlEpoch['🏭📊'].tranches) {
+                        if (curYr < tr.to && nextYr > tr.from) {
+                            const overlap = Math.min(nextYr, tr.to) - Math.max(curYr, tr.from);
+                            const span = tr.to - tr.from;
+                            totalGt += span > 0 ? tr.Gt * overlap / span : tr.Gt;
+                        }
+                    }
+                    if (totalGt > 0) return '+' + Math.round(totalGt) + ' Gt CO\u2082';
+                }
+                return stepLabel;
+            };
+            ticBtn.alt = buildGtAlt();
+            window.addCustomTooltip(ticBtn, ticBtn.alt + ' (' + stepLabel + ' par clic)');
             if (epochId === '🔥') {
                 ticBtn.addEventListener('click', () => {
                     window.hideTooltip();
@@ -239,13 +271,16 @@ window.updateEpochActions = function () {
                 ticBtn.addEventListener('click', () => {
                     window.hideTooltip();
                     const D = window.DATA;
-                    if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
-                    D['📜']['📿💫'] += 1;
+                    // Incrémente le bon counter (📿🛢 ou 📿💫) selon l'époque
+                    if (D['📜'][_ctrKey] == null || !Number.isFinite(D['📜'][_ctrKey])) D['📜'][_ctrKey] = 0;
+                    D['📜'][_ctrKey] += 1;
                     window.infoTimeMa += stepMa;
+                    ticBtn.alt = buildGtAlt(); // met à jour le label Gt pour la prochaine période
+                    if (window.addCustomTooltip) window.addCustomTooltip(ticBtn, ticBtn.alt + ' (' + stepLabel + ' par clic)');
                     window.getNoyau();
                     if (!window.FLUX) window.FLUX = {};
                     window.FLUX.yAxisRecalcOnNextFinish = true;
-                    window.IO_LISTENER.emit('config:applyThenCompute', { button: '💫' });
+                    window.IO_LISTENER.emit('config:applyThenCompute', { button: _ticKey });
                     window.updateTimeline();
                 });
             }

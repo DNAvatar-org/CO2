@@ -40,7 +40,8 @@ const CHARS = {
     T0: '🚩',        // T0 : drapeau (température initiale)
     DIRECTION: '☯', // Direction : yin-yang (direction du delta)
     BIG_IMPACT: '🎇', // Big impact : feu d'artifice (événement d'impact majeur)
-    TIC_TIME: '💫', // TicTime : étoile (événement d'avancement temporel)
+    TIC_TIME: '💫',      // TicTime : étoile (événement d'avancement temporel)
+    EMISSIONS: '🛢',     // Scénario émissions CO₂ (époque moderne, remplace 💫 pour 📱)
     SATELLITE: '🛰', // Satellite : satellite (événement)
     FLUX_CN: '🌑', // Flux sortant : lune noire (rayonnement corps noir sortant)
     TOLERANCE: '🔬', // Tolérance : précision pour le test d'arrêt
@@ -158,6 +159,7 @@ const CHARS_DESC = {
     '☁️': 'Index formation nuageuse [0,1]',
     // Événements
     '💫': 'TicTime',
+    '🛢': 'Scénario émissions',
     '☄️': 'Météorite de glace',
     '🛰': 'Satellite',
     '🌧': 'Saturation H₂O',

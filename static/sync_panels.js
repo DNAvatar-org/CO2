@@ -137,8 +137,12 @@
             }
         }
         if (payload.ticTime !== undefined) {
-            window.infoTimeMa = payload.ticTime * 50;
+            var _stEp = window.TIMELINE && window.DATA['📜'] && window.DATA['📜']['👉'] != null ? window.TIMELINE[window.DATA['📜']['👉']] : null;
+            var _stTicKey = (_stEp && _stEp['🕰'] && _stEp['🕰']['🛢']) ? '🛢' : '💫';
+            var _stStep = (_stEp && _stEp['🕰'] && _stEp['🕰'][_stTicKey] && typeof _stEp['🕰'][_stTicKey]['🔺⏳'] === 'number') ? _stEp['🕰'][_stTicKey]['🔺⏳'] : 50;
+            window.infoTimeMa = payload.ticTime * _stStep;
             window.DATA['📜']['📿💫'] = payload.ticTime;
+            if (_stTicKey === '🛢') window.DATA['📜']['📿🛢'] = payload.ticTime;
         }
     }
 
@@ -178,10 +182,22 @@
             // fromScie : la scie renvoie son ticTime en écho → ne pas écraser la position temporelle du parent
             // (le parent est source de vérité pour 📿💫/infoTimeMa ; l'écho scie crée une race condition)
             if (!fromScie) {
-                window.infoTimeMa = payload.ticTime * 50;
+                var _avEp = window.TIMELINE && window.DATA['📜'] && window.DATA['📜']['👉'] != null ? window.TIMELINE[window.DATA['📜']['👉']] : null;
+                var _avTicKey = (_avEp && _avEp['🕰'] && _avEp['🕰']['🛢']) ? '🛢' : '💫';
+                var _avStep = (_avEp && _avEp['🕰'] && _avEp['🕰'][_avTicKey] && typeof _avEp['🕰'][_avTicKey]['🔺⏳'] === 'number') ? _avEp['🕰'][_avTicKey]['🔺⏳'] : 50;
+                window.infoTimeMa = payload.ticTime * _avStep;
                 window.DATA['📜']['📿💫'] = payload.ticTime;
+                if (_avTicKey === '🛢') window.DATA['📜']['📿🛢'] = payload.ticTime;
                 var infoTime = document.getElementById('info-time');
-                if (infoTime) infoTime.textContent = '+' + (payload.ticTime * 50).toFixed(0) + ' Ma';
+                if (infoTime) {
+                    if (_avTicKey === '🛢') {
+                        // Époque forward (📱) : afficher l'année CE
+                        var _avYr = Math.round((_avEp['▶'] || 0) + payload.ticTime * _avStep * 1e6);
+                        infoTime.textContent = _avYr + ' CE';
+                    } else {
+                        infoTime.textContent = '+' + (payload.ticTime * _avStep).toFixed(0) + ' Ma';
+                    }
+                }
             }
         }
         if (fromScie && payload.h2oTotalFromMeteorites !== undefined) {
