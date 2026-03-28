@@ -7,23 +7,37 @@
     <div class="right-column" id="right-column"></div>
 
     <div class="title-container divGlass">
-        <h1>Bilan Radiatif Terrestre</h1>
-        <p class="title-subtitle">Base de la météorologie</p>
-        <div class="title-toolbar"></div>
-        <div class="synthese_Temp synthese_Temp-two-cols">
-            <div class="synthese_Temp-col synthese_Temp-col-left">
-                <div class="visu_timeline-epoch-section">
-                    <div class="synthese_epoch-row visu_timeline-epoch-name-wrap">
-                        <span id="epoch-name" class="visu_epoch-name" aria-label="Nom de l'époque">Corps Noir</span>
-                        <span class="synthese_epoch-start" id="epoch-start-time">-5000 Ma</span>
-                        <span class="synthese_epoch-info" id="info-time">+0 Ma</span>
+        <div class="title-header-row">
+            <h1>Bilan Radiatif Terrestre</h1>
+            <span class="title-subtitle">Base de la météorologie</span>
+        </div>
+        <div class="title-content-row">
+            <div class="title-toolbar">
+                <div class="timeline-action-bar">
+                    <div class="timeline-action-title-row">
+                        <span class="timeline-action-title">SCENARIO</span>
+                        <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Prochaine époque" aria-label="Prochaine époque">🎞</button>
+                    </div>
+                    <div class="timeline-action-buttons">
+                        <div class="timeline-events-logos" id="timeline-events-logos"></div>
                     </div>
                 </div>
             </div>
-            <div class="synthese_Temp-sep" aria-hidden="true"></div>
-            <div class="synthese_Temp-col synthese_Temp-col-right">
-                <div class="synthese_Temp-temp-line"><span class="thermometer-icon">🌡️</span> <span id="temp-surface-synthese">--</span><span id="temp-unit-synthese">°C</span></div>
-                <div id="pressure-surface-synthese" class="synthese_Temp-pressure">🎈 -- atm</div>
+            <div class="synthese_Temp synthese_Temp-two-cols">
+                <div class="synthese_Temp-col synthese_Temp-col-left">
+                    <div class="visu_timeline-epoch-section">
+                        <div class="synthese_epoch-row visu_timeline-epoch-name-wrap">
+                            <span id="epoch-name" class="visu_epoch-name" aria-label="Nom de l'époque">Corps Noir</span>
+                            <span class="synthese_epoch-start" id="epoch-start-time">-5000 Ma</span>
+                            <span class="synthese_epoch-info" id="info-time">+0 Ma</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="synthese_Temp-sep" aria-hidden="true"></div>
+                <div class="synthese_Temp-col synthese_Temp-col-right">
+                    <div class="synthese_Temp-temp-line"><span class="thermometer-icon">🌡️</span> <span id="temp-surface-synthese">--</span><span id="temp-unit-synthese">°C</span></div>
+                    <div id="pressure-surface-synthese" class="synthese_Temp-pressure">🎈 -- atm</div>
+                </div>
             </div>
         </div>
     </div>
@@ -56,13 +70,6 @@
             <div class="calculation-text">Calculs d'équilibre radiatifs en cours</div>
             <div id="compute-tic-loader" class="compute-tic-loader" aria-hidden="true">
                 <div class="compute-tic-loader__ring"></div>
-            </div>
-        </div>
-        <div class="timeline-action-bar">
-            <span class="timeline-action-title">SCENARIO</span>
-            <div class="timeline-action-buttons">
-                <button class="icon-button" id="plot-anim-toggle" onclick="togglePlotAnim()" title="Prochaine époque" aria-label="Prochaine époque">🎞</button>
-                <div class="timeline-events-logos" id="timeline-events-logos"></div>
             </div>
         </div>
         <div class="visu_timeline-frise visu_timeline-frise-with-cursors">

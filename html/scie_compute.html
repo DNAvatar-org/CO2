@@ -24,10 +24,11 @@
                         </div>
                         
                         <!-- Événements (>> ticTime, Météorite, etc.) sans logo 🕰 -->
-                        <div class="scie_timeline-horloge-section" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
+                        <div class="scie_timeline-horloge-section" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 10px; border-right: 1px solid #444;">
                             <div class="timeline-events-logos" id="timeline-events-logos" style="margin-top: 2px; display: flex; align-items: center; gap: 4px;">
                                 <!-- >> ticTime puis logos (météorite, etc.) -->
                             </div>
+                            <span id="co2-action-log" style="font-size: 9px; color: var(--muted, #888); margin-top: 2px; white-space: nowrap;"></span>
                         </div>
                         
                         <!-- Boutons 🎞 ▶️ sur 2 lignes : à droite des actions, à gauche de la frise -->
@@ -147,18 +148,19 @@
         }
         
         // Synchronisation parent ↔ iframe (epoch, anim, ticTime, tuning pour reproductibilité run scie vs visu)
-        // Retourne la clé tic active de l'époque : '🛢' si 📱 (émissions), '💫' sinon
+        // Retourne la clé tic active : '🛢' si year-indexed (📱) ou clé '🛢' présente, '💫' sinon
         function getTicKey(ep) {
-            return (ep && ep['🕰'] && ep['🕰']['🛢']) ? '🛢' : '💫';
+            if (!ep || !ep['🕰']) return '💫';
+            if (Object.keys(ep['🕰']).some(function(k) { return !isNaN(Number(k)); })) return '🛢';
+            return (ep['🕰']['🛢']) ? '🛢' : '💫';
         }
 
         function emitSyncToParent() {
             if (window === window.top) return;
             const DATA = window.DATA;
             const epochId = (DATA && DATA['📜'] && DATA['📜']['🗿']) || '⚫';
-            const _ep = (window.TIMELINE && DATA['📜'] && DATA['📜']['👉'] != null) ? window.TIMELINE[DATA['📜']['👉']] : null;
-            const _ticKey = '📿' + getTicKey(_ep);
-            const ticTime = (DATA && DATA['📜'] && DATA['📜'][_ticKey] != null) ? DATA['📜'][_ticKey] : 0;
+            // 📿💫 = compteur de temps universel (barycentre + affichage)
+            const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
             const bary = (DATA && DATA['📜'] && DATA['📜']['bary'] != null && Number.isFinite(DATA['📜']['bary'])) ? DATA['📜']['bary'] : undefined;
             const animBtn = document.getElementById('anim-toggle');
             const animEnabled = animBtn ? animBtn.classList.contains('selected') : true;
@@ -359,11 +361,14 @@
             // Mettre à jour les actions (boutons d'événements)
             updateEpochActions();
             
-            // Réinitialiser le temps
+            // Réinitialiser le temps et les accumulateurs
             if (typeof window !== 'undefined' && window.DATA) {
                 if (!window.DATA['📜']) window.DATA['📜'] = {};
                 window.DATA['📜']['📿💫'] = 0;
-                window.DATA['📜']['📿🛢'] = 0;
+                window.DATA['📜']['🔺⚖️🏭'] = 0;
+                window.DATA['📜']['🔺⚖️💧'] = 0;
+                const logEl = document.getElementById('co2-action-log');
+                if (logEl) logEl.textContent = '';
                 updateTimelineDisplay();
             }
             emitSyncToParent();
@@ -446,48 +451,69 @@
             
             if (!EPOCH || !EPOCH['🕰']) return;
             
-            // Bouton avancer tic — 🛢 si époque 📱 (hasEmissions), >> sinon
-            // Clé tic : '🛢' pour 📱, '💫' pour géologiques
-            const _ticK = getTicKey(EPOCH);
-            if (EPOCH['🕰'][_ticK]) {
-                const hasEmissions = EPOCH['🏭📊'] && Array.isArray(EPOCH['🏭📊'].tranches);
-                const _ctrK = '📿' + _ticK; // '📿🛢' ou '📿💫'
-                const ticBtn = document.createElement('button');
-                ticBtn.type = 'button';
-                ticBtn.className = 'icon-button btn-events';
+            // 📱 year-indexed : boutons par tranche d'année (⛽, 🛢, 🛳…)
+            // Géologique : bouton >> (💫) ou 🛢 string-key
+            const isYearIndexed = EPOCH['🕰'] && Object.keys(EPOCH['🕰']).some(k => !isNaN(Number(k)));
 
-                if (hasEmissions) {
-                    ticBtn.textContent = '🛢';
-                    // Calcule le tooltip : tranche + Gt depuis la position courante
-                    const buildTip = () => {
-                        const tics = (window.DATA['📜'] && window.DATA['📜'][_ctrK] != null) ? window.DATA['📜'][_ctrK] : 0;
-                        const dtYr = (EPOCH['🕰'][_ticK]['🔺⏳'] || 0) * 1e6;
-                        const curYr = (EPOCH['▶'] || 0) + tics * dtYr;
-                        const nextYr = curYr + dtYr;
-                        const tranches = EPOCH['🏭📊'].tranches;
-                        let trancheLabel = '';
-                        for (let i = 0; i < tranches.length; i++) {
-                            const tr = tranches[i];
-                            if (curYr < tr.to && nextYr > tr.from) {
-                                const overlap = Math.min(nextYr, tr.to) - Math.max(curYr, tr.from);
-                                const span = tr.to - tr.from;
-                                const gt = span > 0 ? Math.round(tr.Gt * overlap / span) : tr.Gt;
-                                trancheLabel += (trancheLabel ? ' + ' : '') + gt + ' Gt';
-                            }
-                        }
-                        const yr0 = Math.round(curYr), yr1 = Math.round(nextYr);
-                        return `${yr0}→${yr1} : ${trancheLabel || '?'} CO₂ (+${Math.round(dtYr)} ans)`;
-                    };
-                    ticBtn.title = buildTip();
-                    ticBtn.addEventListener('click', () => {
-                        window.DATA['📜'][_ctrK] = (window.DATA['📜'][_ctrK] || 0) + 1;
-                        window.getEpochDateConfig();
-                        window.getNoyau();
-                        ticBtn.title = buildTip();
-                        updateTimelineDisplay();
-                        emitSyncToParent();
-                    });
-                } else {
+            if (isYearIndexed) {
+                // Trouver le bucket actif (clé année ≤ année courante)
+                const curYr = Math.round(DATA['📜']['📅'] != null ? DATA['📜']['📅'] : (EPOCH['▶'] || 2000));
+                const yearKeys = Object.keys(EPOCH['🕰'])
+                    .filter(k => !isNaN(Number(k)))
+                    .map(Number)
+                    .sort((a, b) => a - b);
+                const activeYr = yearKeys.filter(y => y <= curYr).pop() ?? yearKeys[0];
+                const actions = EPOCH['🕰'][activeYr];
+
+                if (actions) {
+                    for (const [emoji, cfg] of Object.entries(actions)) {
+                        const co2kg = cfg['🔺⚖️🏭'] || 0;
+                        const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
+                        const yr0 = Math.round(curYr);
+                        const yr1 = Math.round(curYr + dtYr);
+
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'icon-button btn-events';
+                        btn.textContent = emoji;
+                        btn.title = `${yr0}→${yr1} : +${co2kg.toExponential(2)} kg CO₂`;
+
+                        btn.addEventListener('click', () => {
+                            const D = window.DATA;
+                            // 1. CO₂ : delta pending consommé par getMasses() (pas de cumul)
+                            D['📜']['🔺⚖️🏭'] = co2kg;
+                            // 2. Temps avance (📿💫 = compteur universel, barycentre + date)
+                            D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
+                            // 3. Physique
+                            window.getEpochDateConfig();
+                            window.getNoyau();
+                            // 4. Log
+                            const ppmAfter = (D['⚖️'] && D['⚖️']['⚖️🫧'] > 0)
+                                ? Math.round((D['⚖️']['⚖️🏭'] * 0.029 / (D['⚖️']['⚖️🫧'] * 0.04401)) * 1e6)
+                                : '?';
+                            const logMsg = `[${emoji}] ${yr0}→${yr1} +${co2kg.toExponential(2)} kg → ⚖️🏭=${D['⚖️']['⚖️🏭'].toExponential(3)} kg (~${ppmAfter} ppm)`;
+                            console.log(logMsg);
+                            window._lastCO2ActionLog = logMsg;
+                            const logEl = document.getElementById('co2-action-log');
+                            if (logEl) logEl.textContent = logMsg;
+                            // 5. Affichage + sync
+                            updateTimelineDisplay();
+                            emitSyncToParent();
+                            // 6. Re-render boutons (nouvelle année peut débloquer de nouveaux boutons)
+                            updateEpochActions();
+                        });
+
+                        eventsLogos.appendChild(btn);
+                    }
+                }
+            } else {
+                // Géologique — bouton >> ou 🛢 string-key
+                const _ticK = getTicKey(EPOCH);
+                const _ctrK = '📿' + _ticK;
+                if (EPOCH['🕰'][_ticK]) {
+                    const ticBtn = document.createElement('button');
+                    ticBtn.type = 'button';
+                    ticBtn.className = 'icon-button btn-events';
                     ticBtn.textContent = '>>';
                     ticBtn.title = 'Avancer d\'un tic (refroidissement, flux géothermique)';
                     ticBtn.addEventListener('click', () => {
@@ -497,11 +523,11 @@
                         updateTimelineDisplay();
                         emitSyncToParent();
                     });
+                    eventsLogos.appendChild(ticBtn);
                 }
-                eventsLogos.appendChild(ticBtn);
             }
             
-            // Bouton météorite (☄️) — incrémente 📿☄️ (pas 📿💫). Hadéen : % eau → h2oTotalFromMeteorites.
+            // Bouton météorite (☄️) — accumule eau dans 🔺⚖️💧, avance 📿💫
             if (EPOCH['🕰'] && EPOCH['🕰']['☄️']) {
                 const meteorBtn = document.createElement('img');
                 meteorBtn.src = (window.getLogoImageSrc && window.getLogoImageSrc('☄️')) || getImagePath('fonts/pics/ice_meteorite.png');
@@ -510,15 +536,17 @@
                 meteorBtn.title = 'Météorite de glace';
                 const mass_kg = EPOCH['🕰']['☄️']['🔺⚖️💧☄️'];
                 meteorBtn.addEventListener('click', () => {
-                    window.DATA['📜']['📿☄️'] = (window.DATA['📜']['📿☄️'] || 0) + 1;
-                    if (EPOCH['🕰']['💫']) {
-                        const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
-                        if (!window.DATA['💧']) window.DATA['💧'] = {};
-                        const currentH2O = window.DATA['💧']['☄️'] != null ? window.DATA['💧']['☄️'] : 0;
-                        const newH2O = Math.min(100, currentH2O + (mass_kg / earthTotalWaterKg) * 100);
-                        window.DATA['💧']['☄️'] = newH2O;
-                        window.h2oTotalFromMeteorites = newH2O;
-                    }
+                    const D = window.DATA;
+                    // Eau s'accumule directement (survit aux rappels getMasses)
+                    D['📜']['🔺⚖️💧'] = (D['📜']['🔺⚖️💧'] || 0) + mass_kg;
+                    // Temps avance (📿💫 = compteur universel)
+                    D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
+                    // Pourcentage pour affichage (compat)
+                    const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
+                    if (!D['💧']) D['💧'] = {};
+                    D['💧']['☄️'] = Math.min(100, ((D['📜']['🔺⚖️💧'] || 0) / earthTotalWaterKg) * 100);
+                    window.h2oTotalFromMeteorites = D['💧']['☄️'];
+                    // Physique
                     window.getEpochDateConfig();
                     window.getNoyau();
                     updateTimelineDisplay();
@@ -585,7 +613,8 @@
             
             // Initialiser les valeurs dans DATA
             window.DATA['📜']['📿💫'] = 0;
-            window.DATA['📜']['📿🛢'] = 0;
+            window.DATA['📜']['🔺⚖️🏭'] = 0;
+            window.DATA['📜']['🔺⚖️💧'] = 0;
             // IMPORTANT: Si animation activée, on NE TOUCHE PAS à DATA['🧮']['🧮🌡️']
             // On garde la température actuelle pour continuité entre époques
             // Note: getEpochDateConfig() sera appelé plus tard et initialisera DATA['📅']['🌡️🧮']
@@ -1699,11 +1728,6 @@
                 }
                 if (p.ticTime !== undefined && window.DATA && window.DATA['📜']) {
                     window.DATA['📜']['📿💫'] = p.ticTime;
-                    // Aussi mettre à jour 📿🛢 si l'époque courante utilise 🛢
-                    const _epSync = (window.TIMELINE && window.DATA['📜']['👉'] != null) ? window.TIMELINE[window.DATA['📜']['👉']] : null;
-                    if (_epSync && _epSync['🕰'] && _epSync['🕰']['🛢']) {
-                        window.DATA['📜']['📿🛢'] = p.ticTime;
-                    }
                     updateTimelineDisplay();
                 }
             }

@@ -50,7 +50,7 @@ window.updateEpochActions = function () {
     const animToggleBtn = document.getElementById('plot-anim-toggle');
     if (animToggleBtn) {
         const _tlEpochVis = window.TIMELINE ? window.TIMELINE.find(function(e) { return e['📅'] === epochId; }) : null;
-        const _hasEmissions = _tlEpochVis && _tlEpochVis['🏭📊'] && Array.isArray(_tlEpochVis['🏭📊'].tranches);
+        const _hasEmissions = _tlEpochVis && _tlEpochVis['🕰'] && Object.keys(_tlEpochVis['🕰']).some(function(k) { return !isNaN(Number(k)); });
         animToggleBtn.style.visibility = _hasEmissions ? 'hidden' : '';
     }
     const getActionForDate = (window.configOrganigramme && window.configOrganigramme.getActionForDate) || (() => '💫');
@@ -137,8 +137,10 @@ window.updateEpochActions = function () {
                 window.h2oIceFractionFromCalculation = undefined;
                 window.isIceChange = true;
                 window.lastIceLevel = undefined;
-                DATA['📜']['📿☄️'] += 1;
+                DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
+                DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
                 window.infoTimeMa += stepMa;
+                window.getEpochDateConfig();
                 window.getNoyau();
                 if (!window.FLUX) window.FLUX = {};
                 window.FLUX.yAxisRecalcOnNextFinish = true;
@@ -160,7 +162,8 @@ window.updateEpochActions = function () {
                     DATA['💧']['☄️'] = newH2O;
                     window.h2oTotalFromMeteorites = newH2O;
                     window.h2oIceFractionFromCalculation = undefined;
-                    DATA['📜']['📿☄️'] += 1;
+                    DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
+                    DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
                     window.infoTimeMa = Math.min(500, window.infoTimeMa + stepMa);
                     applyHadeenFluxFromConfig();
                     if (!window.FLUX) window.FLUX = {};
@@ -202,89 +205,117 @@ window.updateEpochActions = function () {
         });
         eventsLogos.appendChild(bigImpactBtn);
     } else {
-        // 💫/🛢 TicTime — détection dynamique : 🛢 pour 📱 (scénario émissions), 💫 pour géologiques
-        const epoch = window.configOrganigramme && window.configOrganigramme.timeline
-            ? window.configOrganigramme.timeline.find(e => e.type === 'epoch' && (e.name === currentEpochName || e.id === epochId))
-            : null;
-        // Cherche la clé tic active (🛢 ou 💫) dans l'époque TIMELINE réelle
+        // TicTime — détection format 🕰 (year-indexed 📱 vs géologique 💫)
         const _tlEpoch = window.TIMELINE ? window.TIMELINE.find(e => e['📅'] === epochId) : null;
-        const _ticKey = (_tlEpoch && _tlEpoch['🕰'] && _tlEpoch['🕰']['🛢']) ? '🛢' : '💫';
-        const ticCfg = _tlEpoch && _tlEpoch['🕰'] && _tlEpoch['🕰'][_ticKey] ? _tlEpoch['🕰'][_ticKey] : null;
-        const stepMa = ticCfg && typeof ticCfg['🔺⏳'] === 'number' ? ticCfg['🔺⏳'] : 100;
-        const _ctrKey = '📿' + _ticKey; // '📿🛢' ou '📿💫'
-        {
-            const stepLabel = formatStepLabel(stepMa);
-            const ticBtn = document.createElement('button');
-            ticBtn.type = 'button';
-            ticBtn.className = 'icon-button btn-events timeline-event-logo';
-            ticBtn.textContent = _ticKey; // '🛢' pour 📱, '💫' pour géologiques
-            // Calcule le label Gt pour le prochain tic (🛢) ou le pas Ma (💫)
-            const buildGtAlt = () => {
-                if (_tlEpoch && _tlEpoch['🏭📊'] && Array.isArray(_tlEpoch['🏭📊'].tranches)) {
-                    const tics = (window.DATA && window.DATA['📜'] && window.DATA['📜'][_ctrKey] != null) ? window.DATA['📜'][_ctrKey] : 0;
-                    const dtYr = stepMa * 1e6;
-                    const curYr = (_tlEpoch['▶'] || 0) + tics * dtYr;
-                    const nextYr = curYr + dtYr;
-                    let totalGt = 0;
-                    for (const tr of _tlEpoch['🏭📊'].tranches) {
-                        if (curYr < tr.to && nextYr > tr.from) {
-                            const overlap = Math.min(nextYr, tr.to) - Math.max(curYr, tr.from);
-                            const span = tr.to - tr.from;
-                            totalGt += span > 0 ? tr.Gt * overlap / span : tr.Gt;
-                        }
-                    }
-                    if (totalGt > 0) return '+' + Math.round(totalGt) + ' Gt CO\u2082';
+        const _isYearIndexed = _tlEpoch && _tlEpoch['🕰'] && Object.keys(_tlEpoch['🕰']).some(k => !isNaN(Number(k)));
+
+        if (_isYearIndexed) {
+            // 📱 year-indexed : boutons par tranche d'année (⛽, 🛢, 🛳…)
+            eventsLogos.classList.add('year-indexed');
+            const D = window.DATA;
+            const curYr = Math.round((D['📜'] && D['📜']['📅'] != null) ? D['📜']['📅'] : (_tlEpoch['▶'] || 2000));
+            const yearKeys = Object.keys(_tlEpoch['🕰'])
+                .filter(k => !isNaN(Number(k)))
+                .map(Number)
+                .sort((a, b) => a - b);
+            const activeYr = yearKeys.filter(y => y <= curYr).pop() ?? yearKeys[0];
+            const actions = _tlEpoch['🕰'][activeYr];
+
+            if (actions) {
+                for (const [emoji, cfg] of Object.entries(actions)) {
+                    const co2kg = cfg['🔺⚖️🏭'] || 0;
+                    const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
+                    const yr0 = Math.round(curYr);
+                    const yr1 = Math.round(curYr + dtYr);
+                    const co2Gt = Math.round(co2kg / 1e12);
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'icon-button btn-events timeline-event-logo btn-year-indexed';
+                    btn.textContent = emoji;
+                    const altText = emoji + ' ' + yr0 + '\u2192' + yr1 + ' +' + co2Gt + ' Gt CO\u2082';
+                    btn.alt = altText;
+                    if (window.addCustomTooltip) window.addCustomTooltip(btn, altText);
+
+                    btn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        const D = window.DATA;
+                        // CO₂ : delta pending consommé par getMasses()
+                        D['📜']['🔺⚖️🏭'] = co2kg;
+                        // Temps (📿💫 = compteur universel)
+                        D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
+                        // Physique
+                        window.getEpochDateConfig();
+                        window.getNoyau();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        window.IO_LISTENER.emit('config:applyThenCompute', { button: emoji });
+                        window.updateTimeline();
+                        // Re-render (nouvelle année → nouveaux boutons)
+                        window.updateEpochActions();
+                    });
+
+                    eventsLogos.appendChild(btn);
                 }
-                return stepLabel;
-            };
-            ticBtn.alt = buildGtAlt();
-            window.addCustomTooltip(ticBtn, ticBtn.alt + ' (' + stepLabel + ' par clic)');
-            if (epochId === '🔥') {
-                ticBtn.addEventListener('click', () => {
-                    window.hideTooltip();
-                    if (!window.FLUX) window.FLUX = {};
-                    window.FLUX.yAxisRecalcOnNextFinish = true;
-                    const cellTerre = document.getElementById('cell-terre');
-                    if (cellTerre) {
-                        const canvas = cellTerre.querySelector('canvas');
-                        if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
-                            window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
-                        }
-                    }
-                    window.infoTimeMa = (window.infoTimeMa || 0) + stepMa;
-                    if (window.infoTimeMa > 500) window.infoTimeMa = 500;
-                    window.DATA['📜']['bary'] = window.infoTimeMa / 500;
-                    if (window.infoTimeMa >= 500) {
-                        window.setEpoch('Archéen');
-                        return;
-                    }
-                    window.updateTimeline();
-                    window.updateHadeenTexture();
-                    applyHadeenFluxFromConfig();
-                    if (window.PLOT_PANEL_READY) {
-                        const current_co2_fraction = window.plotData.co2_ppm * 1e-6;
-                        window.updateCO2LevelDirect(current_co2_fraction);
-                    }
-                    checkDateEvents();
-                });
-            } else {
-                ticBtn.addEventListener('click', () => {
-                    window.hideTooltip();
-                    const D = window.DATA;
-                    // Incrémente le bon counter (📿🛢 ou 📿💫) selon l'époque
-                    if (D['📜'][_ctrKey] == null || !Number.isFinite(D['📜'][_ctrKey])) D['📜'][_ctrKey] = 0;
-                    D['📜'][_ctrKey] += 1;
-                    window.infoTimeMa += stepMa;
-                    ticBtn.alt = buildGtAlt(); // met à jour le label Gt pour la prochaine période
-                    if (window.addCustomTooltip) window.addCustomTooltip(ticBtn, ticBtn.alt + ' (' + stepLabel + ' par clic)');
-                    window.getNoyau();
-                    if (!window.FLUX) window.FLUX = {};
-                    window.FLUX.yAxisRecalcOnNextFinish = true;
-                    window.IO_LISTENER.emit('config:applyThenCompute', { button: _ticKey });
-                    window.updateTimeline();
-                });
             }
-            eventsLogos.appendChild(ticBtn);
+        } else {
+            // Géologique — bouton >> (💫), compteur 📿💫 universel
+            const ticCfg = _tlEpoch && _tlEpoch['🕰'] && _tlEpoch['🕰']['💫'] ? _tlEpoch['🕰']['💫'] : null;
+            const stepMa = ticCfg && typeof ticCfg['🔺⏳'] === 'number' ? ticCfg['🔺⏳'] : 100;
+            {
+                const stepLabel = formatStepLabel(stepMa);
+                const ticBtn = document.createElement('button');
+                ticBtn.type = 'button';
+                ticBtn.className = 'icon-button btn-events timeline-event-logo';
+                ticBtn.textContent = '💫';
+                ticBtn.alt = stepLabel;
+                window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
+                if (epochId === '🔥') {
+                    ticBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        const cellTerre = document.getElementById('cell-terre');
+                        if (cellTerre) {
+                            const canvas = cellTerre.querySelector('canvas');
+                            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
+                                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
+                            }
+                        }
+                        window.infoTimeMa = (window.infoTimeMa || 0) + stepMa;
+                        if (window.infoTimeMa > 500) window.infoTimeMa = 500;
+                        window.DATA['📜']['bary'] = window.infoTimeMa / 500;
+                        if (window.infoTimeMa >= 500) {
+                            window.setEpoch('Archéen');
+                            return;
+                        }
+                        window.updateTimeline();
+                        window.updateHadeenTexture();
+                        applyHadeenFluxFromConfig();
+                        if (window.PLOT_PANEL_READY) {
+                            const current_co2_fraction = window.plotData.co2_ppm * 1e-6;
+                            window.updateCO2LevelDirect(current_co2_fraction);
+                        }
+                        checkDateEvents();
+                    });
+                } else {
+                    ticBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        const D = window.DATA;
+                        // 📿💫 = compteur universel
+                        if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
+                        D['📜']['📿💫'] += 1;
+                        window.infoTimeMa += stepMa;
+                        window.getEpochDateConfig();
+                        window.getNoyau();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '💫' });
+                        window.updateTimeline();
+                    });
+                }
+                eventsLogos.appendChild(ticBtn);
+            }
         }
     }
 };

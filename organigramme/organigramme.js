@@ -198,12 +198,9 @@ function updateButtonTooltip(cell, circleBg) {
 
   if (!nodeId || !baseName) return;
 
-  // Déterminer l'état actuel
-  const isChecked = cell.classList.contains("checked");
-  const stateText = isChecked ? "on" : "off";
-  // Noms molécules en indice (CO₂, CH₄, H₂O) pour l’alt
+  // Noms molécules en indice (CO₂, CH₄, H₂O) pour l’alt — display-only, juste le nom
   const baseNameHtml = baseName === "CO2" ? "CO<sub>2</sub>" : baseName === "CH4" ? "CH<sub>4</sub>" : baseName === "H2O" ? "H<sub>2</sub>O" : baseName;
-  const tooltipText = `${stateText}/${isChecked ? "off" : "on"}<br>${baseNameHtml}`;
+  const tooltipText = baseNameHtml;
 
   // aria-label en texte brut (sans HTML) pour lecteurs d’écran ; data-tooltip avec indices pour l’affichage
   const altText = tooltipText.replace(/<br\s*\/?>/gi, " ").replace(/<sub>|<\/sub>/gi, "");
@@ -1541,6 +1538,7 @@ function createCell(
       // Vérifier si c'est un bouton (cellule parente a la classe flux-button-cell)
       const parentCell = circleBg.closest(".flux-button-cell");
       if (parentCell) {
+        if (parentCell.classList.contains("flux-display-only")) return; // display-only, pas de toggle
         // C'est un bouton : toggle la classe checked directement sur la cellule
         const isChecked = parentCell.classList.contains("checked");
         if (isChecked) {
@@ -3390,11 +3388,13 @@ cellOrder.forEach((nodeId) => {
   // Il détecte automatiquement si c'est un bouton via la classe flux-button-cell
   if (node.type === "button") {
     cell.classList.add("flux-button-cell");
-    // Ajouter la classe checked par défaut pour que les boutons soient sélectionnés
     cell.classList.add("checked");
     cell.style.pointerEvents = "auto";
+    if (node.readOnly) {
+      cell.classList.add("flux-display-only");
+      cell.style.cursor = "default";
+    }
 
-    // Hide the original HTML button if it exists
     const originalButton = document.getElementById(node.id);
     if (originalButton) {
       originalButton.style.display = "none";
@@ -3522,19 +3522,22 @@ nodes.forEach((node) => {
   // If it's a button, add the CSS class and click event
   if (node.type === "button") {
     cell.classList.add("flux-button-cell");
-    // Ajouter la classe checked par défaut pour que les boutons soient sélectionnés
     cell.classList.add("checked");
     cell.style.pointerEvents = "auto";
+    if (node.readOnly) {
+      cell.classList.add("flux-display-only");
+      cell.style.cursor = "default";
+    }
 
-    // Add a click handler to the cell
-    cell.addEventListener("click", function () {
-      const originalButton = document.getElementById(node.id);
-      if (originalButton) {
-        originalButton.click();
-      }
-    });
+    if (!node.readOnly) {
+      cell.addEventListener("click", function () {
+        const originalButton = document.getElementById(node.id);
+        if (originalButton) {
+          originalButton.click();
+        }
+      });
+    }
 
-    // Hide the original HTML button if it exists
     const originalButton = document.getElementById(node.id);
     if (originalButton) {
       originalButton.style.display = "none";
@@ -5731,7 +5734,7 @@ if (typeof window !== "undefined") {
   const cellAlbedo_init = document.getElementById("cell-albedo-btn");
 
   if (typeof window !== "undefined") {
-    // Les boutons sont activés par défaut (voir createCell ligne 1822)
+    // Les boutons sont activés par défaut (checked à la création)
     // 🔒 Initialiser les variables globales UNIQUES (seule référence)
     window.isCO2_eds = cellCO2_init
       ? cellCO2_init.classList.contains("checked")
