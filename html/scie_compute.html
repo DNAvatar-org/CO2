@@ -456,27 +456,55 @@
             const isYearIndexed = EPOCH['🕰'] && Object.keys(EPOCH['🕰']).some(k => !isNaN(Number(k)));
 
             if (isYearIndexed) {
-                // Trouver le bucket actif (clé année ≤ année courante)
-                const curYr = Math.round(DATA['📜']['📅'] != null ? DATA['📜']['📅'] : (EPOCH['▶'] || 2000));
+                // 📅 hors fenêtre [▶,◀] (résidu géologique) → ▶+📿💫×pas, sinon ▶ — même logique que events.js
                 const yearKeys = Object.keys(EPOCH['🕰'])
                     .filter(k => !isNaN(Number(k)))
                     .map(Number)
                     .sort((a, b) => a - b);
-                const activeYr = yearKeys.filter(y => y <= curYr).pop() ?? yearKeys[0];
+                const epochStart = (EPOCH['▶'] != null && Number.isFinite(EPOCH['▶'])) ? EPOCH['▶'] : (yearKeys[0] || 2000);
+                const epochEnd = (EPOCH['◀'] != null && Number.isFinite(EPOCH['◀'])) ? EPOCH['◀'] : (yearKeys[yearKeys.length - 1] || 2100);
+                const winLo = epochStart - 0.5;
+                const winHi = epochEnd + 200;
+                const rawYr = (DATA['📜']['📅'] != null && Number.isFinite(DATA['📜']['📅'])) ? DATA['📜']['📅'] : epochStart;
+                let curYrForBucket = rawYr;
+                if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) {
+                    const k0 = yearKeys[0];
+                    const firstActs = (k0 != null) ? (EPOCH['🕰'][k0] || EPOCH['🕰'][String(k0)]) : null;
+                    const firstCfg = firstActs && typeof firstActs === 'object' ? Object.values(firstActs)[0] : null;
+                    const stepYr = (firstCfg && typeof firstCfg['🔺⏳'] === 'number') ? firstCfg['🔺⏳'] * 1e6 : 25;
+                    const tic = (DATA['📜'] && Number.isFinite(DATA['📜']['📿💫'])) ? DATA['📜']['📿💫'] : 0;
+                    curYrForBucket = epochStart + tic * stepYr;
+                    if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) curYrForBucket = epochStart;
+                }
+                let activeYr = yearKeys[0];
+                if (yearKeys.length && Number.isFinite(curYrForBucket)) {
+                    if (curYrForBucket < yearKeys[0]) {
+                        activeYr = yearKeys[0];
+                    } else {
+                        for (let i = 0; i < yearKeys.length; i++) {
+                            const yStart = yearKeys[i];
+                            const yEnd = (i + 1 < yearKeys.length) ? yearKeys[i + 1] : Infinity;
+                            if (curYrForBucket >= yStart && curYrForBucket < yEnd) {
+                                activeYr = yStart;
+                                break;
+                            }
+                        }
+                    }
+                }
                 const actions = EPOCH['🕰'][activeYr];
 
                 if (actions) {
                     for (const [emoji, cfg] of Object.entries(actions)) {
                         const co2kg = cfg['🔺⚖️🏭'] || 0;
                         const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
-                        const yr0 = Math.round(curYr);
-                        const yr1 = Math.round(curYr + dtYr);
+                        const dtYrDisp = Math.round(dtYr);
+                        const gtDisp = Math.round(co2kg / 1e9);
 
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.className = 'icon-button btn-events';
                         btn.textContent = emoji;
-                        btn.title = `${yr0}→${yr1} : +${co2kg.toExponential(2)} kg CO₂`;
+                        btn.title = '+' + dtYrDisp + 'ans +' + gtDisp + 'Gt CO2';
 
                         btn.addEventListener('click', () => {
                             const D = window.DATA;
@@ -491,7 +519,7 @@
                             const ppmAfter = (D['⚖️'] && D['⚖️']['⚖️🫧'] > 0)
                                 ? Math.round((D['⚖️']['⚖️🏭'] * 0.029 / (D['⚖️']['⚖️🫧'] * 0.04401)) * 1e6)
                                 : '?';
-                            const logMsg = `[${emoji}] ${yr0}→${yr1} +${co2kg.toExponential(2)} kg → ⚖️🏭=${D['⚖️']['⚖️🏭'].toExponential(3)} kg (~${ppmAfter} ppm)`;
+                            const logMsg = `[${emoji}] +${dtYrDisp}ans +${gtDisp}Gt (${co2kg.toExponential(2)} kg) → ⚖️🏭=${D['⚖️']['⚖️🏭'].toExponential(3)} kg (~${ppmAfter} ppm)`;
                             console.log(logMsg);
                             window._lastCO2ActionLog = logMsg;
                             const logEl = document.getElementById('co2-action-log');

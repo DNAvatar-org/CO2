@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.41
+// Version 1.0.42
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -23,6 +23,7 @@
 // Logs: v1.0.39 tooltip instantané simplifié : "Flou scientifique" (le détail reste uniquement dans l'alt déplié)
 // Logs: v1.0.40 fine_tuning_cloud_bary : mise à jour douce (pct + slider) sans innerHTML si mini-slider déjà présent
 // Logs: v1.0.41 Three.js planet : logs pointerdown/pointermove/pointerup sur le container (pour debug drag futur)
+// Logs: v1.0.42 bouton époque 📱 (image) : alt accessibilité = "2000"
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -3860,7 +3861,7 @@ function generateTimelineFromConfig() {
       if (display.type === "image") {
         const img = document.createElement("img");
         img.src = display.value;
-        img.alt = "";
+        img.alt = epochId === "📱" ? "2000" : "";
         img.style.width = "100%";
         img.style.height = "100%";
         img.style.objectFit = "contain";

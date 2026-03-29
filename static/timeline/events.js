@@ -1,7 +1,7 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.4
- * Date: [March 14, 2026]
+ * Version 1.2.8
+ * Date: [Mar 29, 2026]
 * logs :
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
@@ -24,6 +24,9 @@
  *   - v1.2.3: Hadeen ticTime handler : check transition (infoTimeMa>=500) AVANT updateHadeenTexture/updateCO2Level
  *   - v1.2.4: DATA[📜][bary] = infoTimeMa/500 après chaque tic Hadéen (interpolation visuelle radius/exobase/noyau)
  *   - v1.2.5: 2 boutons uniquement (🎞 + un selon date) ; ACTION_BY_DATE + getActionForDate(startYears, infoTimeMa) ; bloc ACTION en haut timeline
+ *   - v1.2.6: 📱 year-indexed — bucket UI par intervalle [y, y_next) sur 📅 brut (sans Math.round) pour éviter ⛽+🛢 alors qu’on est encore < 2025
+ *   - v1.2.7: 📱 tooltips year-indexed depuis 🔺⏳/🔺⚖️🏭 (+Nans +MGt CO2, co2kg/1e9) — plus de yr0→yr1 depuis 📅 (échelle géologique hors 📱)
+ *   - v1.2.8: 📱 bucket scénario — 📅 hors [▶,◀] (résidu géologique) → année via ▶+📿💫×pas, sinon repli ▶ ; évite bucket 2075 (350Gt+🛢) au lieu de 2000 (850Gt)
  */
 
 // Core globals requis : addCustomTooltip, hideTooltip, setEpoch, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
@@ -211,31 +214,61 @@ window.updateEpochActions = function () {
 
         if (_isYearIndexed) {
             // 📱 year-indexed : boutons par tranche d'année (⛽, 🛢, 🛳…)
+            // Année pour buckets : 📅 seulement s’il est dans [▶, ◀] (ère moderne) ; sinon ▶ + 📿💫×pas (comme physicsAll) puis repli ▶
+            // Sinon un 📅 géologique (≫2100) tombait dans [2075,∞) → ⛽ 350Gt + 🛢 au lieu du scénario 2000 (850Gt, ⛽ seul)
             eventsLogos.classList.add('year-indexed');
             const D = window.DATA;
-            const curYr = Math.round((D['📜'] && D['📜']['📅'] != null) ? D['📜']['📅'] : (_tlEpoch['▶'] || 2000));
             const yearKeys = Object.keys(_tlEpoch['🕰'])
                 .filter(k => !isNaN(Number(k)))
                 .map(Number)
                 .sort((a, b) => a - b);
-            const activeYr = yearKeys.filter(y => y <= curYr).pop() ?? yearKeys[0];
+            const epochStart = (_tlEpoch['▶'] != null && Number.isFinite(_tlEpoch['▶'])) ? _tlEpoch['▶'] : (yearKeys[0] || 2000);
+            const epochEnd = (_tlEpoch['◀'] != null && Number.isFinite(_tlEpoch['◀'])) ? _tlEpoch['◀'] : (yearKeys[yearKeys.length - 1] || 2100);
+            const winLo = epochStart - 0.5;
+            const winHi = epochEnd + 200;
+            const rawYr = (D['📜'] && D['📜']['📅'] != null && Number.isFinite(D['📜']['📅'])) ? D['📜']['📅'] : epochStart;
+            let curYrForBucket = rawYr;
+            if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) {
+                const k0 = yearKeys[0];
+                const firstActs = (k0 != null) ? (_tlEpoch['🕰'][k0] || _tlEpoch['🕰'][String(k0)]) : null;
+                const firstCfg = firstActs && typeof firstActs === 'object' ? Object.values(firstActs)[0] : null;
+                const stepYr = (firstCfg && typeof firstCfg['🔺⏳'] === 'number') ? firstCfg['🔺⏳'] * 1e6 : 25;
+                const tic = (D['📜'] && Number.isFinite(D['📜']['📿💫'])) ? D['📜']['📿💫'] : 0;
+                curYrForBucket = epochStart + tic * stepYr;
+                if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) curYrForBucket = epochStart;
+            }
+            let activeYr = yearKeys[0];
+            if (yearKeys.length && Number.isFinite(curYrForBucket)) {
+                if (curYrForBucket < yearKeys[0]) {
+                    activeYr = yearKeys[0];
+                } else {
+                    for (let i = 0; i < yearKeys.length; i++) {
+                        const yStart = yearKeys[i];
+                        const yEnd = (i + 1 < yearKeys.length) ? yearKeys[i + 1] : Infinity;
+                        if (curYrForBucket >= yStart && curYrForBucket < yEnd) {
+                            activeYr = yStart;
+                            break;
+                        }
+                    }
+                }
+            }
             const actions = _tlEpoch['🕰'][activeYr];
 
             if (actions) {
                 for (const [emoji, cfg] of Object.entries(actions)) {
                     const co2kg = cfg['🔺⚖️🏭'] || 0;
                     const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
-                    const yr0 = Math.round(curYr);
-                    const yr1 = Math.round(curYr + dtYr);
-                    const co2Gt = Math.round(co2kg / 1e12);
+                    const dtYrDisp = Math.round(dtYr);
+                    // Gt d’affichage : co2kg/1e9 (ex. 850e9 kg → 850 Gt) — /1e12 donnait ~0 pour ces deltas
+                    const gtDisp = Math.round(co2kg / 1e9);
 
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'icon-button btn-events timeline-event-logo btn-year-indexed';
                     btn.textContent = emoji;
-                    const altText = emoji + ' ' + yr0 + '\u2192' + yr1 + ' +' + co2Gt + ' Gt CO\u2082';
+                    const altText = '+' + dtYrDisp + 'ans +' + gtDisp + 'Gt CO2';
                     btn.alt = altText;
-                    if (window.addCustomTooltip) window.addCustomTooltip(btn, altText);
+                    if (window.addCustomTooltip) window.addCustomTooltip(btn, emoji + ' ' + altText);
 
                     btn.addEventListener('click', () => {
                         window.hideTooltip();

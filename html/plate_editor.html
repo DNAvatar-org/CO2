@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Plaques Tectoniques — Editeur</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #111;
+            color: #ccc;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ─── Panneau gauche ─── */
+        .sidebar {
+            width: 260px;
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 10px;
+            overflow-y: auto;
+        }
+        .sidebar h2 {
+            font-size: 14px;
+            color: #7fdbca;
+            border-bottom: 1px solid #333;
+            padding-bottom: 6px;
+        }
+
+        /* Plaques */
+        .plate-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .plate-item:hover { background: #2a2a2a; }
+        .plate-item.selected { background: #2a3a4a; outline: 1px solid #5599cc; }
+        .plate-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        /* Controles rotation */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        .control-row label {
+            width: 60px;
+            text-align: right;
+            color: #999;
+        }
+        .control-row input[type="range"] {
+            flex: 1;
+            accent-color: #5599cc;
+        }
+        .control-row .val {
+            width: 40px;
+            text-align: right;
+            font-family: monospace;
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        /* Epoques */
+        .epoch-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .epoch-btn {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #ccc;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .epoch-btn:hover { background: #3a3a3a; }
+        .epoch-btn.active { background: #2a4a3a; border-color: #5a9; }
+
+        /* Boutons */
+        .btn {
+            background: #2a3a4a;
+            border: 1px solid #5599cc;
+            color: #7fdbca;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+        }
+        .btn:hover { background: #3a4a5a; }
+
+        /* ─── Zone 3D ─── */
+        .viewport {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .viewport-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            font-size: 13px;
+        }
+        #globe-container {
+            flex: 1;
+            position: relative;
+        }
+        #globe-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* ─── Panneau bas : previews ─── */
+        .preview-bar {
+            display: flex;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #1a1a1a;
+            border-top: 1px solid #333;
+            align-items: flex-start;
+        }
+        .preview-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .preview-box span {
+            font-size: 10px;
+            color: #888;
+        }
+        .preview-box canvas {
+            border: 1px solid #333;
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <h2>PLAQUES</h2>
+    <div id="plate-list"></div>
+
+    <h2>ROTATION</h2>
+    <div class="controls" id="rotation-controls">
+        <div class="control-row">
+            <label>Axe lat</label>
+            <input type="range" id="ctrl-rotLat" min="-90" max="90" value="0" step="1">
+            <span class="val" id="val-rotLat">0</span>
+        </div>
+        <div class="control-row">
+            <label>Axe lon</label>
+            <input type="range" id="ctrl-rotLon" min="-180" max="180" value="0" step="1">
+            <span class="val" id="val-rotLon">0</span>
+        </div>
+        <div class="control-row">
+            <label>Angle</label>
+            <input type="range" id="ctrl-rotDeg" min="-180" max="180" value="0" step="1">
+            <span class="val" id="val-rotDeg">0</span>
+        </div>
+        <div class="control-row">
+            <label>Hauteur</label>
+            <input type="range" id="ctrl-height" min="0" max="100" value="50" step="1">
+            <span class="val" id="val-height">0.50</span>
+        </div>
+    </div>
+
+    <h2>EPOQUE</h2>
+    <div class="epoch-bar" id="epoch-bar"></div>
+
+    <button class="btn" id="btn-save">Sauver position</button>
+    <button class="btn" id="btn-reset">Reset moderne</button>
+    <button class="btn" id="btn-export">Exporter JSON</button>
+</div>
+
+<!-- Viewport -->
+<div class="viewport">
+    <div class="viewport-header">
+        <span id="status-text">Plaque : aucune</span>
+        <span style="flex:1"></span>
+        <label style="font-size: 12px; color: #888;">
+            <input type="checkbox" id="chk-wireframe"> Wireframe
+        </label>
+        <label style="font-size: 12px; color: #888;">
+            <input type="checkbox" id="chk-heightmap"> Heightmap
+        </label>
+    </div>
+    <div id="globe-container">
+        <canvas id="globe-canvas"></canvas>
+    </div>
+    <div class="preview-bar">
+        <div class="preview-box">
+            <span>Heightmap</span>
+            <canvas id="preview-height" width="256" height="128"></canvas>
+        </div>
+        <div class="preview-box">
+            <span>Biome</span>
+            <canvas id="preview-biome" width="256" height="128"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="../static/lib/three.min.js"></script>
+<script src="../static/plates/plates_data.js"></script>
+<script src="../static/plates/plate_renderer.js"></script>
+<script>
+(function() {
+    'use strict';
+
+    const PLATES = window.PLATES;
+    const POSITIONS = window.PLATE_POSITIONS;
+    const PR = window.PlateRenderer;
+
+    const EPOCH_LIST = ['🌿500', '🌿350', '🦕250', '🦕150', '🦣', '🐊', '⛰', '🏔', '❄️', '📱'];
+    let currentEpoch = '📱';
+    let selectedPlate = null;
+
+    // ─── Three.js setup ───
+    const container = document.getElementById('globe-container');
+    const canvas = document.getElementById('globe-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111111);
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    camera.position.set(0, 0, 3.2);
+
+    // Lumières
+    scene.add(new THREE.AmbientLight(0x404040));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(5, 3, 5);
+    scene.add(dirLight);
+
+    // Sphère océan
+    const sphereGeo = new THREE.SphereGeometry(1, 64, 32);
+    const biomeTex = new THREE.DataTexture(
+        new Uint8Array(512 * 256 * 4), 512, 256, THREE.RGBAFormat
+    );
+    biomeTex.needsUpdate = true;
+    biomeTex.wrapS = THREE.RepeatWrapping;
+    biomeTex.offset.x = 0.5;
+    const sphereMat = new THREE.MeshPhongMaterial({ map: biomeTex });
+    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+    scene.add(sphere);
+
+    // Lignes des plaques (wireframe overlay)
+    const plateLines = {};
+
+    function createPlateLines(id, vertices, color) {
+        const points = [];
+        for (const [lat, lon] of vertices) {
+            const v = PR.latLonToVec3(lat, -lon); // flip lon pour correspondre à la convention UV Three.js
+            points.push(new THREE.Vector3(v.x * 1.002, v.y * 1.002, v.z * 1.002));
+        }
+        // Fermer le polygone
+        if (points.length > 0) points.push(points[0].clone());
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        const mat = new THREE.LineBasicMaterial({ color: new THREE.Color(color), linewidth: 2 });
+        const line = new THREE.LineLoop(geo, mat);
+        scene.add(line);
+        return line;
+    }
+
+    function updatePlateLines() {
+        const positions = getPositionsForEpoch(currentEpoch);
+        for (const [id, plate] of Object.entries(PLATES)) {
+            if (plateLines[id]) {
+                scene.remove(plateLines[id]);
+                plateLines[id].geometry.dispose();
+            }
+            const pos = positions[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 };
+            const rotatedVerts = plate.vertices.map(([lat, lon]) =>
+                PR.rotatePoint(lat, lon, pos.rotLat, pos.rotLon, pos.rotDeg)
+            );
+            plateLines[id] = createPlateLines(id, rotatedVerts,
+                id === selectedPlate ? '#ffff00' : plate.color);
+        }
+    }
+
+    // ─── Orbit controls (simple) ───
+    let isDragging = false;
+    let prevMouse = { x: 0, y: 0 };
+    let rotX = 0.3, rotY = 0;
+
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        prevMouse = { x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - prevMouse.x;
+        const dy = e.clientY - prevMouse.y;
+        rotY += dx * 0.005;
+        rotX += dy * 0.005;
+        rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
+        prevMouse = { x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener('mouseup', () => { isDragging = false; });
+    canvas.addEventListener('mouseleave', () => { isDragging = false; });
+    canvas.addEventListener('wheel', (e) => {
+        camera.position.z = Math.max(1.5, Math.min(8, camera.position.z + e.deltaY * 0.002));
+        e.preventDefault();
+    }, { passive: false });
+
+    // ─── Positions helper ───
+    function getPositionsForEpoch(epoch) {
+        return POSITIONS[epoch] || POSITIONS['📱'] || {};
+    }
+
+    function ensureEpochPositions(epoch) {
+        if (!POSITIONS[epoch]) {
+            // Copier depuis moderne
+            POSITIONS[epoch] = {};
+            const ref = POSITIONS['📱'] || {};
+            for (const id of Object.keys(PLATES)) {
+                POSITIONS[epoch][id] = Object.assign({}, ref[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 });
+            }
+        }
+    }
+
+    // ─── UI : liste des plaques ───
+    const plateListEl = document.getElementById('plate-list');
+    for (const [id, plate] of Object.entries(PLATES)) {
+        const el = document.createElement('div');
+        el.className = 'plate-item';
+        el.dataset.id = id;
+        el.innerHTML = '<div class="plate-swatch" style="background:' + plate.color + '"></div>' +
+            '<span>' + plate.name + ' (' + id + ')</span>';
+        el.addEventListener('click', () => selectPlate(id));
+        plateListEl.appendChild(el);
+    }
+
+    function selectPlate(id) {
+        selectedPlate = id;
+        document.querySelectorAll('.plate-item').forEach(el => {
+            el.classList.toggle('selected', el.dataset.id === id);
+        });
+        document.getElementById('status-text').textContent = 'Plaque : ' + PLATES[id].name;
+        // Charger les sliders
+        ensureEpochPositions(currentEpoch);
+        const pos = POSITIONS[currentEpoch][id] || { rotLat: 0, rotLon: 0, rotDeg: 0 };
+        document.getElementById('ctrl-rotLat').value = pos.rotLat;
+        document.getElementById('ctrl-rotLon').value = pos.rotLon;
+        document.getElementById('ctrl-rotDeg').value = pos.rotDeg;
+        document.getElementById('val-rotLat').textContent = pos.rotLat;
+        document.getElementById('val-rotLon').textContent = pos.rotLon;
+        document.getElementById('val-rotDeg').textContent = pos.rotDeg;
+        // Hauteur
+        const h = PLATES[id].height;
+        document.getElementById('ctrl-height').value = Math.round(h * 100);
+        document.getElementById('val-height').textContent = h.toFixed(2);
+        updatePlateLines();
+    }
+
+    // ─── UI : sliders ───
+    ['rotLat', 'rotLon', 'rotDeg'].forEach(key => {
+        const slider = document.getElementById('ctrl-' + key);
+        const valEl = document.getElementById('val-' + key);
+        slider.addEventListener('input', () => {
+            valEl.textContent = slider.value;
+            if (!selectedPlate) return;
+            ensureEpochPositions(currentEpoch);
+            if (!POSITIONS[currentEpoch][selectedPlate]) {
+                POSITIONS[currentEpoch][selectedPlate] = { rotLat: 0, rotLon: 0, rotDeg: 0 };
+            }
+            POSITIONS[currentEpoch][selectedPlate][key] = parseInt(slider.value);
+            scheduleUpdate();
+        });
+    });
+
+    document.getElementById('ctrl-height').addEventListener('input', function () {
+        const v = parseInt(this.value) / 100;
+        document.getElementById('val-height').textContent = v.toFixed(2);
+        if (!selectedPlate) return;
+        PLATES[selectedPlate].height = v;
+        scheduleUpdate();
+    });
+
+    // ─── UI : epoques ───
+    const epochBar = document.getElementById('epoch-bar');
+    EPOCH_LIST.forEach(e => {
+        const btn = document.createElement('button');
+        btn.className = 'epoch-btn' + (e === currentEpoch ? ' active' : '');
+        btn.textContent = e;
+        btn.addEventListener('click', () => {
+            currentEpoch = e;
+            window._currentEpoch = e;
+            document.querySelectorAll('.epoch-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (selectedPlate) selectPlate(selectedPlate);
+            scheduleUpdate();
+        });
+        epochBar.appendChild(btn);
+    });
+
+    // ─── UI : boutons ───
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        if (!selectedPlate) return;
+        ensureEpochPositions(currentEpoch);
+        POSITIONS[currentEpoch][selectedPlate] = { rotLat: 0, rotLon: 0, rotDeg: 0 };
+        selectPlate(selectedPlate);
+        scheduleUpdate();
+    });
+
+    document.getElementById('btn-save').addEventListener('click', () => {
+        // Juste feedback visuel (déjà sauvé en mémoire)
+        document.getElementById('btn-save').textContent = 'Sauvé !';
+        setTimeout(() => { document.getElementById('btn-save').textContent = 'Sauver position'; }, 1000);
+    });
+
+    document.getElementById('btn-export').addEventListener('click', () => {
+        const json = JSON.stringify(POSITIONS, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'plate_positions.json';
+        a.click();
+    });
+
+    document.getElementById('chk-wireframe').addEventListener('change', function () {
+        for (const line of Object.values(plateLines)) {
+            line.visible = this.checked;
+        }
+    });
+
+    // ─── Rendu heightmap + biome ───
+    const HW = 512, HH = 256;
+    let updatePending = false;
+
+    function scheduleUpdate() {
+        if (updatePending) return;
+        updatePending = true;
+        requestAnimationFrame(() => {
+            updatePending = false;
+            updateMaps();
+        });
+    }
+
+    function updateMaps() {
+        const positions = getPositionsForEpoch(currentEpoch);
+        const heightmap = PR.renderHeightmap(HW, HH, PLATES, positions);
+
+        // Preview heightmap (grayscale)
+        const grayData = PR.heightmapToGrayscale(heightmap, HW, HH);
+        const cvH = document.getElementById('preview-height');
+        const ctxH = cvH.getContext('2d');
+        const imgH = ctxH.createImageData(HW, HH);
+        imgH.data.set(grayData);
+        ctxH.putImageData(imgH, 0, 0);
+
+        // Preview biome
+        const biomeData = PR.heightmapToBiome(heightmap, HW, HH, {
+            iceFraction: (currentEpoch === '❄️' || currentEpoch === '📱') ? 0.085 : 0,
+            vegetation: 0.3
+        });
+        const cvB = document.getElementById('preview-biome');
+        const ctxB = cvB.getContext('2d');
+        const imgB = ctxB.createImageData(HW, HH);
+        imgB.data.set(biomeData);
+        ctxB.putImageData(imgB, 0, 0);
+
+        // Mettre à jour la texture 3D (flip vertical pour aligner avec UV SphereGeometry)
+        const showHeightmap = document.getElementById('chk-heightmap').checked;
+        const texData = showHeightmap ? grayData : biomeData;
+        const rowSize = HW * 4;
+        const flipped = new Uint8Array(texData.length);
+        for (let row = 0; row < HH; row++) {
+            flipped.set(texData.subarray(row * rowSize, (row + 1) * rowSize), (HH - 1 - row) * rowSize);
+        }
+        biomeTex.image = { data: flipped, width: HW, height: HH };
+        biomeTex.needsUpdate = true;
+
+        updatePlateLines();
+    }
+
+    document.getElementById('chk-heightmap').addEventListener('change', scheduleUpdate);
+
+    // ─── Animation ───
+    function resize() {
+        const rect = container.getBoundingClientRect();
+        renderer.setSize(rect.width, rect.height);
+        camera.aspect = rect.width / rect.height;
+        camera.updateProjectionMatrix();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        sphere.rotation.x = rotX;
+        sphere.rotation.y = rotY;
+        // Faire tourner les lignes aussi
+        for (const line of Object.values(plateLines)) {
+            line.rotation.x = rotX;
+            line.rotation.y = rotY;
+        }
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    updateMaps();
+    // Activer wireframe par défaut
+    document.getElementById('chk-wireframe').checked = true;
+    animate();
+
+})();
+</script>
+</body>
+</html>
