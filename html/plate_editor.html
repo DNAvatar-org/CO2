@@ -116,6 +116,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
+            min-height: 0;
         }
         .viewport-header {
             display: flex;
@@ -125,10 +126,14 @@
             background: #1a1a1a;
             border-bottom: 1px solid #333;
             font-size: 13px;
+            flex-shrink: 0;
         }
+        /* Globe : occupe tout l’espace vertical restant (entre barre d’outils et aperçus bas de page) */
         #globe-container {
-            flex: 1;
+            flex: 1 1 auto;
             position: relative;
+            min-height: 100px;
+            min-width: 0;
         }
         #globe-canvas {
             width: 100%;
@@ -136,20 +141,26 @@
             display: block;
         }
 
-        /* ─── Panneau bas : previews ─── */
+        /* ─── Bas de page : deux aperçus (sous la 3D, taille un peu plus confortable) ─── */
         .preview-bar {
+            flex: 0 0 auto;
+            flex-shrink: 0;
             display: flex;
-            gap: 8px;
-            padding: 8px 12px;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 10px 12px;
             background: #1a1a1a;
             border-top: 1px solid #333;
-            align-items: flex-start;
+            align-items: flex-end;
+            align-content: flex-end;
+            justify-content: center;
         }
         .preview-box {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2px;
+            gap: 3px;
+            flex: 0 0 auto;
         }
         .preview-box span {
             font-size: 10px;
@@ -158,6 +169,33 @@
         .preview-box canvas {
             border: 1px solid #333;
             image-rendering: pixelated;
+            max-width: min(560px, 54vw);
+            max-height: 240px;
+            width: auto;
+            height: auto;
+            display: block;
+        }
+        .band-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+            justify-content: center;
+            max-width: min(560px, 54vw);
+            font-size: 9px;
+            color: #777;
+            line-height: 1.2;
+        }
+        .band-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .band-legend i {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            border: 1px solid #444;
+            flex-shrink: 0;
         }
     </style>
 </head>
@@ -168,17 +206,17 @@
     <h2>PLAQUES</h2>
     <div id="plate-list"></div>
 
-    <h2>ROTATION</h2>
+    <h2>POSITION</h2>
     <div class="controls" id="rotation-controls">
         <div class="control-row">
-            <label>Axe lat</label>
-            <input type="range" id="ctrl-rotLat" min="-90" max="90" value="0" step="1">
-            <span class="val" id="val-rotLat">0</span>
+            <label>↕ Lat</label>
+            <input type="range" id="ctrl-dLat" min="-90" max="90" value="0" step="1">
+            <span class="val" id="val-dLat">0</span>
         </div>
         <div class="control-row">
-            <label>Axe lon</label>
-            <input type="range" id="ctrl-rotLon" min="-180" max="180" value="0" step="1">
-            <span class="val" id="val-rotLon">0</span>
+            <label>↔ Lon</label>
+            <input type="range" id="ctrl-dLon" min="-180" max="180" value="0" step="1">
+            <span class="val" id="val-dLon">0</span>
         </div>
         <div class="control-row">
             <label>Angle</label>
@@ -195,9 +233,20 @@
     <h2>EPOQUE</h2>
     <div class="epoch-bar" id="epoch-bar"></div>
 
+    <h2>NIVEAU MER</h2>
+    <div class="controls">
+        <div class="control-row">
+            <label>Seuil</label>
+            <input type="range" id="ctrl-seaLevel" min="0" max="100" value="25" step="1">
+            <span class="val" id="val-seaLevel">0.25</span>
+        </div>
+    </div>
+
     <button class="btn" id="btn-save">Sauver position</button>
     <button class="btn" id="btn-reset">Reset moderne</button>
     <button class="btn" id="btn-export">Exporter JSON</button>
+    <button class="btn" id="btn-export-png">Exporter PNGs</button>
+    <button class="btn" id="btn-regen">Regénérer images</button>
 </div>
 
 <!-- Viewport -->
@@ -217,12 +266,13 @@
     </div>
     <div class="preview-bar">
         <div class="preview-box">
-            <span>Heightmap</span>
-            <canvas id="preview-height" width="256" height="128"></canvas>
+            <span>Heightmap + bandes (α)</span>
+            <canvas id="preview-height" width="512" height="256"></canvas>
+            <div class="band-legend" id="band-legend"></div>
         </div>
         <div class="preview-box">
             <span>Biome</span>
-            <canvas id="preview-biome" width="256" height="128"></canvas>
+            <canvas id="preview-biome" width="512" height="256"></canvas>
         </div>
     </div>
 </div>
@@ -230,6 +280,7 @@
 <script src="../static/lib/three.min.js"></script>
 <script src="../static/plates/plates_data.js"></script>
 <script src="../static/plates/plate_renderer.js"></script>
+<script src="../static/plates/albedo_test_epochs.js"></script>
 <script>
 (function() {
     'use strict';
@@ -241,6 +292,55 @@
     const EPOCH_LIST = ['🌿500', '🌿350', '🦕250', '🦕150', '🦣', '🐊', '⛰', '🏔', '❄️', '📱'];
     let currentEpoch = '📱';
     let selectedPlate = null;
+    let seaLevel = 0.25;
+
+    const HW = 512, HH = 256;
+
+    // ─── Images des plaques (Float32Array par plaque) ───
+    const plateImages = {};
+    /** Luminance 0–255 alignée sur l’export PNG (seuil texture pôles, ex. 30) */
+    const plateTextureLuma = {};
+    let imagesReady = false;
+
+    function refreshPlateTextureLuma(id) {
+        const img = plateImages[id];
+        if (!img || !PLATES[id]) return;
+        const maxH = PLATES[id].height;
+        const cv = PR.plateImageToCanvas(img, HW, HH, maxH);
+        const d = cv.getContext('2d').getImageData(0, 0, HW, HH).data;
+        const u = new Uint8Array(HW * HH);
+        for (let i = 0; i < u.length; i++) u[i] = d[i * 4];
+        plateTextureLuma[id] = u;
+    }
+
+    function refreshAllPlateTextureLuma() {
+        for (const id of Object.keys(PLATES)) refreshPlateTextureLuma(id);
+    }
+
+    function buildPolarTextureMasks(positions) {
+        function rotLuma(id) {
+            const u = plateTextureLuma[id];
+            if (!u) return null;
+            const p = positions[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 };
+            return PR.rotatePlateUint8(u, HW, HH, p.rotLat, p.rotLon, p.rotDeg);
+        }
+        const anR = rotLuma('AN');
+        const northLayers = [rotLuma('NA'), rotLuma('EU'), rotLuma('AS')].filter(Boolean);
+        let northMax = null;
+        if (northLayers.length === 1) {
+            northMax = northLayers[0];
+        } else if (northLayers.length > 1) {
+            northMax = new Uint8Array(HW * HH);
+            for (let i = 0; i < northMax.length; i++) {
+                let m = northLayers[0][i];
+                for (let k = 1; k < northLayers.length; k++) {
+                    if (northLayers[k][i] > m) m = northLayers[k][i];
+                }
+                northMax[i] = m;
+            }
+        }
+        return { anSouthLumaRot: anR, northLumaRotMax: northMax };
+    }
 
     // ─── Three.js setup ───
     const container = document.getElementById('globe-container');
@@ -252,13 +352,11 @@
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
     camera.position.set(0, 0, 3.2);
 
-    // Lumières
     scene.add(new THREE.AmbientLight(0x404040));
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
     dirLight.position.set(5, 3, 5);
     scene.add(dirLight);
 
-    // Sphère océan
     const sphereGeo = new THREE.SphereGeometry(1, 64, 32);
     const biomeTex = new THREE.DataTexture(
         new Uint8Array(512 * 256 * 4), 512, 256, THREE.RGBAFormat
@@ -270,16 +368,15 @@
     const sphere = new THREE.Mesh(sphereGeo, sphereMat);
     scene.add(sphere);
 
-    // Lignes des plaques (wireframe overlay)
+    // Wireframe
     const plateLines = {};
 
     function createPlateLines(id, vertices, color) {
         const points = [];
         for (const [lat, lon] of vertices) {
-            const v = PR.latLonToVec3(lat, -lon); // flip lon pour correspondre à la convention UV Three.js
+            const v = PR.latLonToVec3(lat, -lon);
             points.push(new THREE.Vector3(v.x * 1.002, v.y * 1.002, v.z * 1.002));
         }
-        // Fermer le polygone
         if (points.length > 0) points.push(points[0].clone());
         const geo = new THREE.BufferGeometry().setFromPoints(points);
         const mat = new THREE.LineBasicMaterial({ color: new THREE.Color(color), linewidth: 2 });
@@ -291,34 +388,22 @@
     function updatePlateLines() {
         const positions = getPositionsForEpoch(currentEpoch);
         for (const [id, plate] of Object.entries(PLATES)) {
-            if (plateLines[id]) {
-                scene.remove(plateLines[id]);
-                plateLines[id].geometry.dispose();
-            }
+            if (plateLines[id]) { scene.remove(plateLines[id]); plateLines[id].geometry.dispose(); }
             const pos = positions[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 };
-            const rotatedVerts = plate.vertices.map(([lat, lon]) =>
-                PR.rotatePoint(lat, lon, pos.rotLat, pos.rotLon, pos.rotDeg)
-            );
-            plateLines[id] = createPlateLines(id, rotatedVerts,
-                id === selectedPlate ? '#ffff00' : plate.color);
+            const rv = plate.vertices.map(([lat, lon]) => PR.rotatePoint(lat, lon, pos.rotLat, pos.rotLon, pos.rotDeg));
+            plateLines[id] = createPlateLines(id, rv, id === selectedPlate ? '#ffff00' : plate.color);
         }
+        const wfOn = document.getElementById('chk-wireframe').checked;
+        for (const line of Object.values(plateLines)) line.visible = wfOn;
     }
 
-    // ─── Orbit controls (simple) ───
-    let isDragging = false;
-    let prevMouse = { x: 0, y: 0 };
-    let rotX = 0.3, rotY = 0;
-
-    canvas.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        prevMouse = { x: e.clientX, y: e.clientY };
-    });
+    // ─── Orbit controls ───
+    let isDragging = false, prevMouse = { x: 0, y: 0 }, rotX = 0.3, rotY = 0;
+    canvas.addEventListener('mousedown', (e) => { isDragging = true; prevMouse = { x: e.clientX, y: e.clientY }; });
     canvas.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
-        const dx = e.clientX - prevMouse.x;
-        const dy = e.clientY - prevMouse.y;
-        rotY += dx * 0.005;
-        rotX += dy * 0.005;
+        rotY += (e.clientX - prevMouse.x) * 0.005;
+        rotX += (e.clientY - prevMouse.y) * 0.005;
         rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
         prevMouse = { x: e.clientX, y: e.clientY };
     });
@@ -329,19 +414,13 @@
         e.preventDefault();
     }, { passive: false });
 
-    // ─── Positions helper ───
-    function getPositionsForEpoch(epoch) {
-        return POSITIONS[epoch] || POSITIONS['📱'] || {};
-    }
-
+    // ─── Helpers ───
+    function getPositionsForEpoch(epoch) { return POSITIONS[epoch] || POSITIONS['📱'] || {}; }
     function ensureEpochPositions(epoch) {
         if (!POSITIONS[epoch]) {
-            // Copier depuis moderne
             POSITIONS[epoch] = {};
             const ref = POSITIONS['📱'] || {};
-            for (const id of Object.keys(PLATES)) {
-                POSITIONS[epoch][id] = Object.assign({}, ref[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 });
-            }
+            for (const id of Object.keys(PLATES)) POSITIONS[epoch][id] = Object.assign({}, ref[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 });
         }
     }
 
@@ -351,55 +430,68 @@
         const el = document.createElement('div');
         el.className = 'plate-item';
         el.dataset.id = id;
-        el.innerHTML = '<div class="plate-swatch" style="background:' + plate.color + '"></div>' +
-            '<span>' + plate.name + ' (' + id + ')</span>';
+        el.innerHTML = '<div class="plate-swatch" style="background:' + plate.color + '"></div><span>' + plate.name + ' (' + id + ')</span>';
         el.addEventListener('click', () => selectPlate(id));
         plateListEl.appendChild(el);
     }
 
     function selectPlate(id) {
         selectedPlate = id;
-        document.querySelectorAll('.plate-item').forEach(el => {
-            el.classList.toggle('selected', el.dataset.id === id);
-        });
+        document.querySelectorAll('.plate-item').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
         document.getElementById('status-text').textContent = 'Plaque : ' + PLATES[id].name;
-        // Charger les sliders
         ensureEpochPositions(currentEpoch);
         const pos = POSITIONS[currentEpoch][id] || { rotLat: 0, rotLon: 0, rotDeg: 0 };
-        document.getElementById('ctrl-rotLat').value = pos.rotLat;
-        document.getElementById('ctrl-rotLon').value = pos.rotLon;
+        document.getElementById('ctrl-dLat').value = pos.rotLat;
+        document.getElementById('ctrl-dLon').value = pos.rotLon;
         document.getElementById('ctrl-rotDeg').value = pos.rotDeg;
-        document.getElementById('val-rotLat').textContent = pos.rotLat;
-        document.getElementById('val-rotLon').textContent = pos.rotLon;
+        document.getElementById('val-dLat').textContent = pos.rotLat;
+        document.getElementById('val-dLon').textContent = pos.rotLon;
         document.getElementById('val-rotDeg').textContent = pos.rotDeg;
-        // Hauteur
         const h = PLATES[id].height;
         document.getElementById('ctrl-height').value = Math.round(h * 100);
         document.getElementById('val-height').textContent = h.toFixed(2);
         updatePlateLines();
     }
 
-    // ─── UI : sliders ───
-    ['rotLat', 'rotLon', 'rotDeg'].forEach(key => {
-        const slider = document.getElementById('ctrl-' + key);
-        const valEl = document.getElementById('val-' + key);
+    // ─── UI : position (Lat/Lon = axes de rotation ; Angle = rotDeg) — ids HTML ctrl-dLat / ctrl-dLon ───
+    [
+        { key: 'rotLat', ctrl: 'ctrl-dLat', val: 'val-dLat' },
+        { key: 'rotLon', ctrl: 'ctrl-dLon', val: 'val-dLon' },
+        { key: 'rotDeg', ctrl: 'ctrl-rotDeg', val: 'val-rotDeg' }
+    ].forEach(({ key, ctrl, val }) => {
+        const slider = document.getElementById(ctrl);
+        const valEl = document.getElementById(val);
+        if (!slider || !valEl) return;
         slider.addEventListener('input', () => {
             valEl.textContent = slider.value;
             if (!selectedPlate) return;
             ensureEpochPositions(currentEpoch);
-            if (!POSITIONS[currentEpoch][selectedPlate]) {
-                POSITIONS[currentEpoch][selectedPlate] = { rotLat: 0, rotLon: 0, rotDeg: 0 };
-            }
-            POSITIONS[currentEpoch][selectedPlate][key] = parseInt(slider.value);
+            if (!POSITIONS[currentEpoch][selectedPlate]) POSITIONS[currentEpoch][selectedPlate] = { rotLat: 0, rotLon: 0, rotDeg: 0 };
+            POSITIONS[currentEpoch][selectedPlate][key] = parseInt(slider.value, 10);
             scheduleUpdate();
         });
     });
 
+    // Hauteur → regénère l'image de la plaque
     document.getElementById('ctrl-height').addEventListener('input', function () {
         const v = parseInt(this.value) / 100;
         document.getElementById('val-height').textContent = v.toFixed(2);
         if (!selectedPlate) return;
         PLATES[selectedPlate].height = v;
+        // Regénérer l'image de cette plaque
+        setStatus('Regénération ' + selectedPlate + '...');
+        setTimeout(() => {
+            plateImages[selectedPlate] = PR.generatePlateImage(PLATES[selectedPlate], HW, HH);
+            refreshPlateTextureLuma(selectedPlate);
+            setStatus('OK');
+            scheduleUpdate();
+        }, 10);
+    });
+
+    // Niveau de la mer
+    document.getElementById('ctrl-seaLevel').addEventListener('input', function () {
+        seaLevel = parseInt(this.value) / 100;
+        document.getElementById('val-seaLevel').textContent = seaLevel.toFixed(2);
         scheduleUpdate();
     });
 
@@ -414,6 +506,17 @@
             window._currentEpoch = e;
             document.querySelectorAll('.epoch-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            const row = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[e];
+            if (row && typeof window.biomeParamsFromAlbedoTest === 'function') {
+                const bp = window.biomeParamsFromAlbedoTest(row, e);
+                if (bp.seaLevel != null) {
+                    seaLevel = bp.seaLevel;
+                    const sl = document.getElementById('ctrl-seaLevel');
+                    const vl = document.getElementById('val-seaLevel');
+                    if (sl) sl.value = String(Math.round(seaLevel * 100));
+                    if (vl) vl.textContent = seaLevel.toFixed(2);
+                }
+            }
             if (selectedPlate) selectPlate(selectedPlate);
             scheduleUpdate();
         });
@@ -430,7 +533,6 @@
     });
 
     document.getElementById('btn-save').addEventListener('click', () => {
-        // Juste feedback visuel (déjà sauvé en mémoire)
         document.getElementById('btn-save').textContent = 'Sauvé !';
         setTimeout(() => { document.getElementById('btn-save').textContent = 'Sauver position'; }, 1000);
     });
@@ -444,51 +546,128 @@
         a.click();
     });
 
-    document.getElementById('chk-wireframe').addEventListener('change', function () {
-        for (const line of Object.values(plateLines)) {
-            line.visible = this.checked;
+    // Export PNGs — un PNG grayscale par plaque
+    document.getElementById('btn-export-png').addEventListener('click', () => {
+        for (const [id, img] of Object.entries(plateImages)) {
+            const maxH = PLATES[id].height;
+            const cv = PR.plateImageToCanvas(img, HW, HH, maxH);
+            const a = document.createElement('a');
+            a.href = cv.toDataURL('image/png');
+            a.download = 'plate_' + id + '.png';
+            a.click();
         }
     });
 
-    // ─── Rendu heightmap + biome ───
-    const HW = 512, HH = 256;
+    // Regénérer toutes les images depuis les polygones
+    document.getElementById('btn-regen').addEventListener('click', () => {
+        generateAllPlateImages();
+    });
+
+    document.getElementById('chk-wireframe').addEventListener('change', function () {
+        for (const line of Object.values(plateLines)) line.visible = this.checked;
+    });
+    document.getElementById('chk-heightmap').addEventListener('change', scheduleUpdate);
+
+    // ─── Pipeline image-based ───
     let updatePending = false;
 
+    function setStatus(txt) { document.getElementById('status-text').textContent = txt; }
+
     function scheduleUpdate() {
-        if (updatePending) return;
+        if (!imagesReady || updatePending) return;
         updatePending = true;
-        requestAnimationFrame(() => {
-            updatePending = false;
-            updateMaps();
-        });
+        requestAnimationFrame(() => { updatePending = false; updateMaps(); });
     }
 
     function updateMaps() {
         const positions = getPositionsForEpoch(currentEpoch);
-        const heightmap = PR.renderHeightmap(HW, HH, PLATES, positions);
+        const polarMasks = buildPolarTextureMasks(positions);
 
-        // Preview heightmap (grayscale)
+        // Composition : rotation + addition de toutes les plaques
+        const heightmap = PR.composePlates(plateImages, positions, HW, HH);
+
+        // Preview heightmap
         const grayData = PR.heightmapToGrayscale(heightmap, HW, HH);
+
+        const albedoRow = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[currentEpoch];
+        const baseBio = albedoRow && typeof window.biomeParamsFromAlbedoTest === 'function'
+            ? window.biomeParamsFromAlbedoTest(albedoRow, currentEpoch)
+            : {};
+
+        const bandParams = Object.assign({}, baseBio, { seaLevel: seaLevel });
+
+        // DEBUG biome bands
+        let maxH_dbg = 0;
+        for (let i = 0; i < heightmap.length; i++) if (heightmap[i] > maxH_dbg) maxH_dbg = heightmap[i];
+        const lr = Math.max(0.01, maxH_dbg - seaLevel);
+        let land0 = 0, land1 = 0, land2 = 0, land3 = 0, sea0 = 0;
+        for (let i = 0; i < heightmap.length; i++) {
+            const lH = Math.min(1, Math.max(0, (heightmap[i] - seaLevel) / lr));
+            if (heightmap[i] < seaLevel) sea0++;
+            else if (lH < 0.3) land0++;
+            else if (lH < 0.5) land1++;
+            else if (lH < 0.72) land2++;
+            else land3++;
+        }
+        console.log('[biome] epoch=' + currentEpoch +
+            ' seaLevel=' + seaLevel.toFixed(3) + ' maxH=' + maxH_dbg.toFixed(3) +
+            ' tropEdge=' + (baseBio.tropicalEdge||'?').toFixed(1) +
+            ' aridSpan=' + (baseBio.aridSpan||'?').toFixed(1) +
+            ' tempEnd=' + (baseBio.temperateEnd||'?').toFixed(1) +
+            ' mountLo=' + (baseBio.mountLandBlendLo||'?') +
+            ' mountHi=' + (baseBio.mountLandBlendHi||'?'));
+        console.log('[biome] landH distribution: sea=' + sea0 + ' <0.3=' + land0 + ' 0.3-0.5=' + land1 + ' 0.5-0.72=' + land2 + ' >0.72=' + land3);
+
+        const bandOv = PR.heightmapToClimateBandOverlay(heightmap, HW, HH, bandParams);
+        const compH = new Uint8ClampedArray(HW * HH * 4);
+        for (let i = 0; i < HW * HH; i++) {
+            const p = i * 4;
+            const g = grayData[p];
+            const a = bandOv[p + 3] / 255;
+            const inv = 1 - a;
+            compH[p] = Math.round(g * inv + bandOv[p] * a);
+            compH[p + 1] = Math.round(g * inv + bandOv[p + 1] * a);
+            compH[p + 2] = Math.round(g * inv + bandOv[p + 2] * a);
+            compH[p + 3] = 255;
+        }
         const cvH = document.getElementById('preview-height');
+        if (cvH.width !== HW || cvH.height !== HH) { cvH.width = HW; cvH.height = HH; }
         const ctxH = cvH.getContext('2d');
         const imgH = ctxH.createImageData(HW, HH);
-        imgH.data.set(grayData);
+        imgH.data.set(compH);
         ctxH.putImageData(imgH, 0, 0);
 
-        // Preview biome
-        const biomeData = PR.heightmapToBiome(heightmap, HW, HH, {
-            iceFraction: (currentEpoch === '❄️' || currentEpoch === '📱') ? 0.085 : 0,
-            vegetation: 0.3
-        });
+        const leg = document.getElementById('band-legend');
+        if (leg && baseBio.biomeTropicalRgb) {
+            const t = baseBio.biomeTropicalRgb;
+            const a = baseBio.biomeAridRgb;
+            const te = baseBio.biomeTemperateRgb;
+            const b = baseBio.biomeBorealRgb;
+            leg.innerHTML = [
+                ['Tropical', t],
+                ['Aride', a],
+                ['Tempéré', te],
+                ['Boréal', b]
+            ].map(([name, rgb]) => '<span><i style="background:rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')"></i>' + name + '</span>').join('');
+        } else if (leg) {
+            leg.innerHTML = '';
+        }
+
+        const biomeData = PR.heightmapToBiome(heightmap, HW, HH, Object.assign({}, baseBio, {
+            seaLevel: seaLevel,
+            anSouthLumaRot: polarMasks.anSouthLumaRot,
+            northLumaRotMax: polarMasks.northLumaRotMax
+        }));
         const cvB = document.getElementById('preview-biome');
+        if (cvB.width !== HW || cvB.height !== HH) { cvB.width = HW; cvB.height = HH; }
         const ctxB = cvB.getContext('2d');
         const imgB = ctxB.createImageData(HW, HH);
         imgB.data.set(biomeData);
         ctxB.putImageData(imgB, 0, 0);
 
-        // Mettre à jour la texture 3D (flip vertical pour aligner avec UV SphereGeometry)
-        const showHeightmap = document.getElementById('chk-heightmap').checked;
-        const texData = showHeightmap ? grayData : biomeData;
+        // Texture 3D (flip vertical pour UV Three.js)
+        const showHM = document.getElementById('chk-heightmap').checked;
+        const texData = showHM ? grayData : biomeData;
         const rowSize = HW * 4;
         const flipped = new Uint8Array(texData.length);
         for (let row = 0; row < HH; row++) {
@@ -500,7 +679,63 @@
         updatePlateLines();
     }
 
-    document.getElementById('chk-heightmap').addEventListener('change', scheduleUpdate);
+    // ─── Génération des images de plaques ───
+    // Asynchrone plaque par plaque pour ne pas bloquer l'UI
+
+    function generateAllPlateImages() {
+        imagesReady = false;
+        const ids = Object.keys(PLATES);
+        let idx = 0;
+        setStatus('Génération 0/' + ids.length + '...');
+
+        function next() {
+            if (idx >= ids.length) {
+                imagesReady = true;
+                refreshAllPlateTextureLuma();
+                setStatus('Prêt (' + ids.length + ' plaques)');
+                scheduleUpdate();
+                return;
+            }
+            const id = ids[idx];
+            setStatus('Génération ' + (idx + 1) + '/' + ids.length + ' : ' + PLATES[id].name + '...');
+            idx++;
+            setTimeout(() => {
+                plateImages[id] = PR.generatePlateImage(PLATES[id], HW, HH);
+                next();
+            }, 10);
+        }
+        next();
+    }
+
+    // ─── Chargement : essayer les PNG, sinon générer ───
+
+    function tryLoadPNGs() {
+        const ids = Object.keys(PLATES);
+        let loaded = 0, failed = false;
+        setStatus('Chargement PNGs...');
+
+        ids.forEach(id => {
+            const url = '../static/plates/img/plate_' + id + '.png';
+            PR.loadPlateImageFromURL(url, HW, HH, PLATES[id].height)
+                .then(pack => {
+                    plateImages[id] = pack.heightmap;
+                    plateTextureLuma[id] = pack.luma;
+                    loaded++;
+                    if (loaded === ids.length && !failed) {
+                        imagesReady = true;
+                        setStatus('PNGs chargés (' + ids.length + ')');
+                        scheduleUpdate();
+                    }
+                })
+                .catch(() => {
+                    if (!failed) {
+                        failed = true;
+                        setStatus('PNGs non trouvés, génération...');
+                        generateAllPlateImages();
+                    }
+                });
+        });
+    }
 
     // ─── Animation ───
     function resize() {
@@ -514,20 +749,34 @@
         requestAnimationFrame(animate);
         sphere.rotation.x = rotX;
         sphere.rotation.y = rotY;
-        // Faire tourner les lignes aussi
-        for (const line of Object.values(plateLines)) {
-            line.rotation.x = rotX;
-            line.rotation.y = rotY;
-        }
+        for (const line of Object.values(plateLines)) { line.rotation.x = rotX; line.rotation.y = rotY; }
         renderer.render(scene, camera);
     }
 
     window.addEventListener('resize', resize);
     resize();
-    updateMaps();
-    // Activer wireframe par défaut
-    document.getElementById('chk-wireframe').checked = true;
+    if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(function () { resize(); }).observe(container);
+    }
+    document.getElementById('chk-wireframe').checked = false;
     animate();
+
+    (function syncSeaLevelFromAlbedo() {
+        const row = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[currentEpoch];
+        if (row && typeof window.biomeParamsFromAlbedoTest === 'function') {
+            const bp = window.biomeParamsFromAlbedoTest(row, currentEpoch);
+            if (bp.seaLevel != null) {
+                seaLevel = bp.seaLevel;
+                const sl = document.getElementById('ctrl-seaLevel');
+                const vl = document.getElementById('val-seaLevel');
+                if (sl) sl.value = String(Math.round(seaLevel * 100));
+                if (vl) vl.textContent = seaLevel.toFixed(2);
+            }
+        }
+    })();
+
+    // Lancer le chargement
+    tryLoadPNGs();
 
 })();
 </script>

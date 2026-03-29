@@ -3,6 +3,9 @@
 // hauteur : 0 = fond océanique, 0.5 = continent moyen, 0.7 = plateau élevé
 // Les contours sont fermés (dernier point rejoint le premier)
 // Coordonnées : lat [-90, 90], lon [-180, 180]
+//
+// Europe (EU) et Asie (AS) sont séparées : zones où les polygones se chevauchent donnent une altitude
+// cumulée dans plate_renderer (somme des h — ex. Alpes EU+AS, collision himalayenne IN+AS).
 
 window.PLATES = {
 
@@ -45,9 +48,9 @@ window.PLATES = {
     },
 
     'EU': {
-        name: 'Eurasie',
-        height: 0.50,
-        color: '#6B8E23',
+        name: 'Europe',
+        height: 0.48,
+        color: '#5D9C3A',
         vertices: [
             // Ibérie
             [36, -8], [37, -9], [43, -9], [44, -2],
@@ -67,16 +70,30 @@ window.PLATES = {
             // Baltique → Pologne → Ukraine
             [55, 18], [54, 18], [52, 14], [50, 14],
             [48, 17], [47, 20], [46, 22],
-            // Balkans → Turquie
-            [44, 23], [42, 25], [41, 29], [41, 32],
-            [42, 35], [42, 40],
+            // Balkans → Turquie occidentale (limite plaque Asie au Caucase)
+            [44, 23], [42, 25], [41, 29], [41, 32], [42, 35],
+            // Fermeture : mer Noire / Méditerranée orientale → Atlantique (sans traverser l’Asie)
+            [44, 28], [42, 22], [40, 16], [39, 10], [38, 4],
+            [37, -2], [36, -8]
+        ]
+    },
+
+    'AS': {
+        name: 'Asie',
+        height: 0.50,
+        color: '#3D8B6E',
+        vertices: [
+            // Bordure ouest (nord → Caucase) puis saillie vers les Alpes : chevauchement avec EU → surélévation type collision
+            [72, 32], [70, 48], [64, 56], [56, 58], [50, 52],
+            [52, 18], [50, 12], [48, 8], [46, 7], [45, 11],
+            [46, 15], [48, 18], [50, 22], [48, 32], [45, 42],
             // Caucase → Caspienne
             [42, 44], [43, 48], [42, 52],
-            // Asie Centrale
+            // Asie centrale
             [40, 53], [38, 57], [37, 60], [35, 62],
             // Iran → Pakistan
             [33, 58], [30, 61], [28, 63], [25, 63],
-            // Inde du nord (bordure himalayenne)
+            // Nord de l’Inde (bordure himalayenne — chevauchement avec IN)
             [28, 68], [28, 75], [28, 80], [27, 85], [28, 88],
             // Birmanie → Indochine
             [26, 90], [22, 97], [20, 100], [18, 100],
@@ -97,16 +114,16 @@ window.PLATES = {
             [60, 163], [62, 165], [65, 170],
             // Tchoukotka
             [67, 175], [66, 180],
-            // Côte nord sibérienne (ouest)
+            // Côte nord sibérienne
             [72, 175], [74, 165], [73, 145], [72, 130],
             [71, 120], [70, 100],
             // Arctique sibérien
             [72, 80], [73, 70], [72, 55], [70, 50],
             [69, 45], [68, 40], [70, 35],
-            // Nouvelle-Zemble → Scandinavie arctique
+            // Retour Arctique vers bordure ouest
             [72, 53], [76, 60], [77, 68],
-            [75, 55], [73, 45], [71, 40],
-            [70, 32], [69, 30]
+            [75, 55], [73, 45], [71, 38],
+            [72, 32]
         ]
     },
 
@@ -337,6 +354,7 @@ window.PLATE_POSITIONS = {
     '📱': {
         'AF': { rotLat: 0, rotLon: 0, rotDeg: 0 },
         'EU': { rotLat: 0, rotLon: 0, rotDeg: 0 },
+        'AS': { rotLat: 0, rotLon: 0, rotDeg: 0 },
         'NA': { rotLat: 0, rotLon: 0, rotDeg: 0 },
         'SA': { rotLat: 0, rotLon: 0, rotDeg: 0 },
         'AN': { rotLat: 0, rotLon: 0, rotDeg: 0 },
@@ -349,6 +367,7 @@ window.PLATE_POSITIONS = {
     '❄️': {
         'AF': { rotLat: 0, rotLon: 0, rotDeg: 0 },
         'EU': { rotLat: 0, rotLon: 0, rotDeg: 0 },
+        'AS': { rotLat: 0, rotLon: 0, rotDeg: 0 },
         'NA': { rotLat: 0, rotLon: 1, rotDeg: 1 },
         'SA': { rotLat: 0, rotLon: 0, rotDeg: 1 },
         'AN': { rotLat: 0, rotLon: 0, rotDeg: 0 },
@@ -361,6 +380,7 @@ window.PLATE_POSITIONS = {
     '🏔': {
         'AF': { rotLat: 0, rotLon: 0, rotDeg: 0 },
         'EU': { rotLat: 2, rotLon: 2, rotDeg: 1 },
+        'AS': { rotLat: 2, rotLon: 2, rotDeg: 1 },
         'NA': { rotLat: 2, rotLon: 3, rotDeg: 2 },
         'SA': { rotLat: 0, rotLon: 0, rotDeg: 3 },
         'AN': { rotLat: 1, rotLon: 0, rotDeg: 1 },
@@ -373,6 +393,7 @@ window.PLATE_POSITIONS = {
     '⛰': {
         'AF': { rotLat: 0, rotLon: 0, rotDeg: 0 },
         'EU': { rotLat: 2, rotLon: 2, rotDeg: 2 },
+        'AS': { rotLat: 2, rotLon: 2, rotDeg: 2 },
         'NA': { rotLat: 2, rotLon: 3, rotDeg: 3 },
         'SA': { rotLat: 0, rotLon: 0, rotDeg: 4 },
         'AN': { rotLat: 2, rotLon: 0, rotDeg: 2 },
@@ -385,6 +406,7 @@ window.PLATE_POSITIONS = {
     '🐊': {
         'AF': { rotLat: 0,  rotLon: 0,  rotDeg: 0 },
         'EU': { rotLat: 3,  rotLon: 3,  rotDeg: 3 },
+        'AS': { rotLat: 3,  rotLon: 3,  rotDeg: 3 },
         'NA': { rotLat: 3,  rotLon: 5,  rotDeg: 6 },
         'SA': { rotLat: 0,  rotLon: 0,  rotDeg: 8 },
         'AN': { rotLat: 5,  rotLon: 0,  rotDeg: 4 },
@@ -397,6 +419,7 @@ window.PLATE_POSITIONS = {
     '🦣': {
         'AF': { rotLat: 0,  rotLon: 0,   rotDeg: 0 },
         'EU': { rotLat: 5,  rotLon: 5,   rotDeg: 5 },
+        'AS': { rotLat: 5,  rotLon: 5,   rotDeg: 5 },
         'NA': { rotLat: 5,  rotLon: 10,  rotDeg: 10 },
         'SA': { rotLat: 0,  rotLon: 0,   rotDeg: 15 },
         'AN': { rotLat: 10, rotLon: 0,   rotDeg: 8 },
@@ -409,6 +432,7 @@ window.PLATE_POSITIONS = {
     '🦕150': {
         'AF': { rotLat: 0,  rotLon: 0,   rotDeg: 2 },
         'EU': { rotLat: 10, rotLon: 0,   rotDeg: 10 },
+        'AS': { rotLat: 10, rotLon: 0,   rotDeg: 10 },
         'NA': { rotLat: 10, rotLon: 0,   rotDeg: 20 },
         'SA': { rotLat: 0,  rotLon: 0,   rotDeg: 30 },
         'AN': { rotLat: 20, rotLon: 0,   rotDeg: 15 },
@@ -421,6 +445,7 @@ window.PLATE_POSITIONS = {
     '🦕250': {
         'AF': { rotLat: 0,  rotLon: 0,   rotDeg: 5 },
         'EU': { rotLat: 10, rotLon: 0,   rotDeg: 15 },
+        'AS': { rotLat: 10, rotLon: 0,   rotDeg: 15 },
         'NA': { rotLat: 10, rotLon: 0,   rotDeg: 35 },
         'SA': { rotLat: 0,  rotLon: 0,   rotDeg: 50 },
         'AN': { rotLat: 20, rotLon: 0,   rotDeg: 25 },
@@ -433,6 +458,7 @@ window.PLATE_POSITIONS = {
     '🌿350': {
         'AF': { rotLat: -10, rotLon: 0,   rotDeg: 20 },
         'EU': { rotLat: 30,  rotLon: 10,  rotDeg: -30 },
+        'AS': { rotLat: 30,  rotLon: 10,  rotDeg: -30 },
         'NA': { rotLat: 30,  rotLon: -20, rotDeg: -25 },
         'SA': { rotLat: -5,  rotLon: 30,  rotDeg: 25 },
         'AN': { rotLat: -20, rotLon: 10,  rotDeg: 15 },
@@ -445,6 +471,7 @@ window.PLATE_POSITIONS = {
     '🌿500': {
         'AF': { rotLat: -20, rotLon: -10, rotDeg: 40 },
         'EU': { rotLat: 30,  rotLon: 30,  rotDeg: -60 },
+        'AS': { rotLat: 30,  rotLon: 30,  rotDeg: -60 },
         'NA': { rotLat: 45,  rotLon: -60, rotDeg: -50 },
         'SA': { rotLat: -10, rotLon: 20,  rotDeg: 30 },
         'AN': { rotLat: -30, rotLon: 0,   rotDeg: 20 },
