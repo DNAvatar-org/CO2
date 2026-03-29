@@ -65,21 +65,22 @@ Avec :
 
 | Gaz | Config (kg) | Config (ppm équiv.) | Littérature | Références |
 |-----|-------------|---------------------|-------------|------------|
-| CO₂ | 1.2875×10¹⁶ | ~2500 ppm | 150–650 ppm (Crétacé précoce) à 2500+ ppm (serre chaude) ; fourchette large selon proxies | Wang et al. Earth-Sci. Rev. 2014 ; Royer et al. GSA Today |
+| CO₂ | 1.2875×10¹⁶ | ~2500 ppm | 150–650 ppm (bas Mésozoïque) à 2500+ ppm (serre chaude) ; fourchette large selon proxies | Wang et al. Earth-Sci. Rev. 2014 ; Royer et al. GSA Today |
 | CH₄ | 4.12×10¹³ | ~8 ppm | Faible (pas de marais étendus) | — |
 
 **Validation** : 2500 ppm cohérent avec serre mésozoïque.
 
 ---
 
-### 2.5 Crétacé (🌿)
+### 2.5 Paléozoïque (🌿)
 
 | Gaz | Config (kg) | Config (ppm équiv.) | Littérature | Références |
 |-----|-------------|---------------------|-------------|------------|
-| CO₂ | 1.545×10¹⁶ | ~3000 ppm | 150–650 ppm (Crétacé précoce) ; 500–1500 ppm (Crétacé moyen) ; pics jusqu’à 2000+ ppm | Wang et al. 2014 ; Royer ; Early Cretaceous pedogenic carbonates (China) |
-| CH₄ | 5.15×10¹³ | ~10 ppm | Faible | — |
+| CO₂ | 1.2×10¹⁶ | ~2300 ppm | Forte variabilité (Ordovicien–Dévonien élevé, Carbonifère–Permien plus bas) ; valeurs représentatives usuelles en serre | Royer et al. GSA Today ; compilations Phanérozoïque |
+| CH₄ | 3×10¹³ | ~6 ppm | Modéré | — |
+| O₂ | 1.0815×10¹⁸ | ~21 % (équiv.) | Config = masse O₂ type « moderne » (approximation modèle) | — |
 
-**Validation** : 3000 ppm dans la fourchette haute (serre crétacée).
+**Validation** : ~2300 ppm cohérent avec une phase paléozoïque chaude (valeur indicative, pas le Permo-Carbonifère glacé).
 
 ---
 
@@ -126,7 +127,7 @@ Avec :
 | Rosing et al. Geology 2004 | CO₂ Archéen, paléosols |
 | Rye et al. Nature 1995 | CO₂ < 2.2 Ga, paléosols |
 | Kaufman et al. Nature 2003 | CO₂ Protérozoïque, microfossiles |
-| Wang et al. Earth-Sci. Rev. 2014 | CO₂ Crétacé, tendances |
+| Wang et al. Earth-Sci. Rev. 2014 | CO₂ Mésozoïque, tendances |
 | Etheridge et al. JGR 1996 | CO₂ 1000 ans, carottes glace |
 | IPCC TAR WG1 | 280 ppm pré-industriel |
 | CenCO2PIP Consortium Science 2024 | Synthèse CO₂ 66 Ma |

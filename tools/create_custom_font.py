@@ -8,6 +8,7 @@
 # Date: [January 2025]
 # Logs:
 #   - Initial creation: extract emojis and create TTF font
+#   - 🌿 → paleozoic, 🥟 → proterozoic ; ❄️ → quaternary (noms glyphes police)
 
 import re
 import json
@@ -32,10 +33,10 @@ def extract_emojis_from_codebase():
         '⚫': 'black_body',
         '🌕': 'hadean',
         '🦠': 'archean',
-        '🌿': 'proterozoic',
-        '❄️': 'cryogenian',
+        '🥟': 'proterozoic',
+        '🌿': 'paleozoic',
+        '❄️': 'quaternary',
         '🦕': 'mesozoic',
-        '🌿': 'cretaceous',
         '🦣': 'cenozoic',
         '🌈': 'today',
         # Diagramme de flux

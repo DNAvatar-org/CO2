@@ -181,7 +181,7 @@ window.updateEpochActions = function () {
     } else if (actionId === '🎇') {
         const epochConfig = getEpochConfigById(epochId);
         const targetFromConfig = epochConfig && epochConfig['🕰'] && epochConfig['🕰']['🎇'] && epochConfig['🕰']['🎇']['⏩'];
-        const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🦕': 'Mésozoïque', '🌿': 'Paléozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+        const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🦕': 'Mésozoïque', '🌿': 'Paléozoïque', '🦣': 'Cénozoïque', '🐊': 'Terre étouffe (PETM)', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
         const targetName = targetFromConfig ? (idToName[epochConfig['🕰']['🎇']['⏩']] || epochConfig['🕰']['🎇']['⏩']) : 'Hadéen';
         const bigImpactBtn = document.createElement('img');
         bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';

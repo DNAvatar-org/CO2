@@ -1,7 +1,7 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.14
-// Date: [March 14, 2026] [HH:MM UTC+1]
+// Version 1.1.16
+// Date: [Mar 29, 2026] [14:00 UTC+1]
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -23,7 +23,8 @@
 //   - v1.1.10: ACTION_BY_DATE (plages fromMa/toMa, fromYear/toYear) + getActionForDate(startYears, infoTimeMa) — entrée = date, pas epoch
 //   - v1.1.11: albedo_percent retiré du bouton albedo — affiché dans #organigram-config-wrap (main.js)
 //   - v1.1.12: fine_tuning_cloud_bary retiré du bouton albedo — même bandeau (main.js)
-//   - v1.1.14: 'EOT (33,9 Ma)' (🏔) ajouté dans terre.epoch et noyau.radiation
+//   - v1.1.14: EOT / 🏔 dans terre.epoch et noyau.radiation ; v1.1.15: 🐊 ⛰ + libellé « Grande Coupure »
+//   - v1.1.16: ❄️ Quaternaire (2 Ma) — terre + noyau + TEXTURE_DATES_MA / ACTION_BY_DATE
 //   - v1.1.13: albedo_percent de retour en top du bouton albédo (grille [1,2])
 
 // ============================================================================
@@ -43,7 +44,7 @@ const LOGOS = window.CHARS;
 // Le chemin texture se déduit toujours de la date : getPlanetTexturePathFromEpoch(▶, infoTimeMa) (organigramme.js).
 // Liste pour préchargement éventuel : dérivée des dates (Ma ou années), pas des noms d’époques.
 // Convention : 5 chiffres + "Ma.png" (ex. 05000Ma.png) ou 6 chiffres + "a.png" (ex. 001800a.png).
-const TEXTURE_DATES_MA = [5000, 4500, 4100, 3700, 3300, 2900, 2500, 2300, 225, 150, 100, 200, 66];
+const TEXTURE_DATES_MA = [5000, 4500, 4100, 3700, 3300, 2900, 2500, 2300, 225, 150, 100, 200, 66, 50, 35, 33, 2];
 const TEXTURE_DATES_YEAR = [1800, 2025];
 const TEXTURES_THREEJS = [
     ...TEXTURE_DATES_MA.map((ma) => "fonds/" + String(ma).padStart(5, "0") + "Ma.png"),
@@ -219,9 +220,45 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'EOT (33,9 Ma)',
+                epochName: 'Cénozoïque',
+                numCircles: 2,
+                maxRadius: 50,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Terre étouffe (PETM)',
+                numCircles: 2,
+                maxRadius: 52,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Prélude glaciaire',
+                numCircles: 2,
+                maxRadius: 45,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Grande Coupure',
                 numCircles: 1,
                 maxRadius: 30,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Quaternaire',
+                numCircles: 2,
+                maxRadius: 38,
                 strokeSize: 0,
                 openingAngle: 0,
                 rotation: 0,
@@ -313,12 +350,42 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'EOT (33,9 Ma)',
+                epochName: 'Terre étouffe (PETM)',
                 logo: LOGOS.GLOBE_AFRICA,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 200, 255, 0.5)',
                 strokeColor: '#00FFFF',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Prélude glaciaire',
+                logo: LOGOS.GLOBE_AFRICA,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 200, 255, 0.5)',
+                strokeColor: '#00FFFF',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Grande Coupure',
+                logo: LOGOS.GLOBE_AFRICA,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 200, 255, 0.5)',
+                strokeColor: '#00FFFF',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Quaternaire',
+                logo: LOGOS.GLOBE_AFRICA,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(180, 220, 255, 0.5)',
+                strokeColor: '#B0E0E6',
                 strokeSize: 0,
                 planetEffect: true
             },
@@ -498,7 +565,7 @@ const ACTION_BY_DATE = {
     4500: '☄️', 4400: '💫', 4300: '☄️', 4200: '💫', 4100: '☄️',
     4000: '💫', 3500: '💫', 3000: '💫', 2500: '💫', 2000: '💫',
     1500: '💫', 1000: '💫', 500: '💫', 250: '💫', 150: '💫',
-    66: '💫', 33: '💫',
+    66: '💫', 50: '💫', 35: '💫', 33: '💫', 2: '💫',
     // Années (cf. fonds/001800a.png, 002025a.png)
     1800: '💫', 2025: '💫'
 };

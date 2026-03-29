@@ -154,7 +154,7 @@
     });
 
     // Mapping 📅 → nom d'époque (pour togglePlotAnim : raw TIMELINE n'a pas .name)
-    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Terre étouffe (PETM)', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
     function nextEpochName(nextItem, nextId) {
         return nextItem.name || EPOCH_ID_TO_NAME[nextId] || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
     }
@@ -279,7 +279,7 @@
                     }
                     const epochNameMap = {
                         '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque',
-                        '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🏔': 'EOT (33,9 Ma)', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
+                        '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Terre étouffe (PETM)', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
                     };
                     if (epochNameMap[epochId]) epochName = epochNameMap[epochId];
                     // ▶ = début (années), ◀ = fin → startYears, endYears pour getGeologicalPeriodByName et formatYears

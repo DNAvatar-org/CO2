@@ -3880,8 +3880,8 @@ function generateTimelineFromConfig() {
         addCustomTooltip(button, epochLabel);
       }
 
-      // Entre deux époques : date = début de l'époque suivante (▶) → 34 Ma, 1800, 2000, 2100
-      // Dernière paire (Industriel → Aujourd'hui) : afficher 2000 entre les deux, borne finale = 2100
+      // Entre deux époques : date = début de l'époque suivante (▶)
+      // Dernière paire (avant-dernière époque → 📱) : afficher 2000 entre les deux, borne finale = 2100
       if (i < timeline.length - 1) {
         const isLastPair = i === timeline.length - 2;
         const boundaryYears = isLastPair ? 2000 : timeline[i + 1]["▶"];
@@ -3896,7 +3896,7 @@ function generateTimelineFromConfig() {
     }
   });
 
-  // Borne finale de la frise : toujours 2100 (📱 a ▶=2000, on affiche 2000 entre 🚂 et 📱 puis 2100 en bas)
+  // Borne finale de la frise : toujours 2100 (📱 a ▶=2000, on affiche 2000 entre l’époque précédente et 📱 puis 2100 en bas)
   if (timeline.length > 0) {
     const lastScaleYear = 2100;
     epochsContainer.appendChild(createVerticalDateItem(formatDateMa(lastScaleYear)));

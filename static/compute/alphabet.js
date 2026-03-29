@@ -81,9 +81,12 @@ const CHARS = {
     ARCHEEN: '🦠',  // Archéen : microbe unicellulaire
     PROTEROZOIC: '🥟', // Protérozoïque : plantes primitives
     MESOZOIC: '🦕', // Mésozoïque : dinosaure sauropode
-    CRETACEOUS: '🌿', // Paléozoïque (541–252 Ma) : os/fossile
+    PALEOZOIC: '🌿', // Paléozoïque (500–250 Ma en timeline) : os/fossile
     CENOZOIC: '🦣', // Cénozoïque : mammouth
-    EOT: '🏔',      // EOT (33,9 Ma) : montagnes (Transition Éocène-Oligocène)
+    PETM_HOUSE: '🐊', // Terre étouffe / PETM (50–35 Ma)
+    PRELUDE_ICE: '⛰', // Prélude glaciaire (35–33 Ma)
+    EOT: '🏔',      // Grande Coupure (~33 Ma)
+    QUATERNARY: '❄️', // Quaternaire (~2 Ma)
     TODAY: '🚂',    // 1800 : train (1800)
     MODERN: '📱',   // Moderne : smartphone (2025)
     EVENTS: '🕰',   // Événements : horloge
@@ -187,7 +190,10 @@ const CHARS_DESC = {
     '🦕': 'Mésozoïque',
     '🌿': 'Paléozoïque',
     '🦣': 'Cénozoïque',
-    '🏔': 'La Grande Coupure',
+    '🐊': 'Terre étouffe (PETM)',
+    '⛰': 'Prélude glaciaire',
+    '🏔': 'Grande Coupure',
+    '❄️': 'Quaternaire',
     '🚂': '1800',
     '📱': '2025',
     '🕰': 'Événements',
@@ -227,7 +233,7 @@ function createAlphabetHtml() {
     
     // Colonne 5 : Époques et autres logos
     const charsCol5 = [
-        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'MESOZOIC', 'CRETACEOUS', 'CENOZOIC', 'EOT', 'TODAY', 'MODERN'
+        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'MESOZOIC', 'PALEOZOIC', 'CENOZOIC', 'PETM_HOUSE', 'PRELUDE_ICE', 'EOT', 'QUATERNARY', 'TODAY', 'MODERN'
     ];
     
     // Descriptions personnalisées pour certains caractères

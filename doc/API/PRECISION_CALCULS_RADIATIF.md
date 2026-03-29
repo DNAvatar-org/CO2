@@ -225,7 +225,7 @@ Ils ne contribuent pas à l’EDS → correct de ne pas les inclure dans le tran
 | **Concentration** | Nulle si O2 = 0 ; ~0,01–0,1 ppm (troposphère) si O2 présent. |
 | **Contribution EDS** | ~5–10 % du total (~10–20 W/m²) quand O2 est présent. |
 | **HITRAN xsc** | ✅ **Présent** — chercher `ozone` ou `O3` |
-| **Verdict** | **Négligeable** pour Hadéen, Archéen, Protérozoïque, Mésozoïque, Crétacé (O2 absent ou très bas). **À envisager** pour Cénozoïque, 1800, 2025 (O2 ~21 %). |
+| **Verdict** | **Négligeable** pour Hadéen, Archéen, Protérozoïque, Mésozoïque, Paléozoïque (O2 absent ou très bas selon config). **À envisager** pour Cénozoïque, 1800, 2025 (O2 ~21 %). |
 
 ### 10.4 Synthèse par période
 
@@ -234,7 +234,7 @@ Ils ne contribuent pas à l’EDS → correct de ne pas les inclure dans le tran
 | Hadéen | ✓ | ✓ | ✓ | 0 | 0 | Rien à ajouter |
 | Archéen | ✓ | ✓ | ✓ | ~0 | 0 | Rien à ajouter |
 | Protérozoïque | ✓ | ✓ | ✓ | ~0 | 0 | Rien à ajouter |
-| Mésozoïque, Crétacé | ✓ | ✓ | ✓ | ~0 | 0 | Rien à ajouter |
+| Mésozoïque, Paléozoïque | ✓ | ✓ | ✓ | ~0 | 0 | Rien à ajouter |
 | Cénozoïque, 1800, 2025 | ✓ | ✓ | ✓ | ~0,3 ppm | ~0,05 ppm | **O3** : gain potentiel ~1–2°C si ajouté |
 
 ### 10.5 Priorités

@@ -53,9 +53,13 @@
             'Paléozoïque': '🌿',
             'Mésozoïque': '🦕',
             'Cénozoïque': '🦣',
+            'Terre étouffe (PETM)': '🐊',
+            'Prélude glaciaire': '⛰',
+            'Grande Coupure': '🏔',
+            'EOT (33,9 Ma)': '🏔',
+            'Quaternaire': '❄️',
             'Industriel': '🚂',
-            'Aujourd\'hui': '📱',
-            'EOT (33,9 Ma)': '🏔'
+            'Aujourd\'hui': '📱'
         };
         return nameToEmoji[raw] !== undefined ? nameToEmoji[raw] : raw;
     }
