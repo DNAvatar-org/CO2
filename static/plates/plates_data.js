@@ -346,10 +346,8 @@ window.PLATES = {
     }
 };
 
-// Positions par époque : rotation de chaque plaque
-// rotLat, rotLon = pôle de rotation (axe), rotDeg = angle en degrés
-// Position 📱 = référence (rotation 0)
-window.PLATE_POSITIONS = {
+// PLATE_POSITIONS déplacé dans plate_positions.js
+window.PLATE_POSITIONS = window.PLATE_POSITIONS || {
     // ─── Moderne ───
     '📱': {
         'AF': { rotLat: 0, rotLon: 0, rotDeg: 0 },

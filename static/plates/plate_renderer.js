@@ -185,8 +185,50 @@
         return img;
     }
 
-    // ─── Rotation d'une image de plaque ───
-    // Inverse-projection : pour chaque pixel de sortie, échantillonner la source
+    // ─── Translation simple d'une image de plaque (dLat/dLon) ───
+    // dLat > 0 = nord, dLon > 0 = est. Wrap longitude, clamp latitude.
+
+    function translatePlateImage(src, width, height, dLat, dLon) {
+        if (dLat === 0 && dLon === 0) return src;
+        var dst = new Float32Array(width * height);
+        var dyPx = Math.round(dLat / 180 * height);
+        var dxPx = Math.round(dLon / 360 * width);
+        for (var py = 0; py < height; py++) {
+            var srcY = py + dyPx;
+            if (srcY < 0 || srcY >= height) continue;
+            for (var px = 0; px < width; px++) {
+                var srcX = ((px - dxPx) % width + width) % width;
+                dst[py * width + px] = src[srcY * width + srcX];
+            }
+        }
+        return dst;
+    }
+
+    function translatePlateUint8(src, width, height, dLat, dLon) {
+        if (dLat === 0 && dLon === 0) return src;
+        var dst = new Uint8Array(width * height);
+        var dyPx = Math.round(dLat / 180 * height);
+        var dxPx = Math.round(dLon / 360 * width);
+        for (var py = 0; py < height; py++) {
+            var srcY = py + dyPx;
+            if (srcY < 0 || srcY >= height) continue;
+            for (var px = 0; px < width; px++) {
+                var srcX = ((px - dxPx) % width + width) % width;
+                dst[py * width + px] = src[srcY * width + srcX];
+            }
+        }
+        return dst;
+    }
+
+    function translatePoint(lat, lon, dLat, dLon) {
+        var newLat = Math.max(-90, Math.min(90, lat + dLat));
+        var newLon = lon + dLon;
+        while (newLon > 180) newLon -= 360;
+        while (newLon < -180) newLon += 360;
+        return [newLat, newLon];
+    }
+
+    // ─── Rotation d'une image de plaque (Rodrigues, conservé) ───
 
     function rotatePlateImage(src, width, height, rotLat, rotLon, rotDeg) {
         if (rotLat === 0 && rotLon === 0 && rotDeg === 0) return src;
@@ -230,18 +272,186 @@
         return dst;
     }
 
+    // ─── Centroïde sphérique d'un polygone ───
+    // vertices: [[lat,lon], ...] → {lat, lon} moyenne cartésienne → re-projetée
+
+    function computeCentroid(vertices) {
+        var sx = 0, sy = 0, sz = 0;
+        for (var i = 0; i < vertices.length; i++) {
+            var v = latLonToVec3(vertices[i][0], vertices[i][1]);
+            sx += v.x; sy += v.y; sz += v.z;
+        }
+        var n = vertices.length || 1;
+        var ll = vec3ToLatLon({ x: sx / n, y: sy / n, z: sz / n });
+        return { lat: ll[0], lon: ll[1] };
+    }
+
+    // ─── Déplacement d'un point : great-circle centroid→cible + rotation propre ───
+    // centroidFrom = {lat,lon} du centroïde original de la plaque
+    // dLat, dLon = décalage souhaité (UI)
+    // rotDeg = rotation propre autour du centroïde déplacé
+    //
+    // Méthode : une seule rotation R₁ qui envoie centroidFrom → centroidTo,
+    // puis rotation R₂ autour de centroidTo d'angle rotDeg.
+    // R₁ : axe = cross(vecFrom, vecTo), angle = angle entre les deux.
+    // Si from≈to, R₁ = identité.
+
+    function movePlatePoint(lat, lon, centroidFrom, dLat, dLon, rotDeg) {
+        var cToLat = centroidFrom.lat + dLat;
+        var cToLon = centroidFrom.lon + dLon;
+        // clamp target latitude
+        if (cToLat > 90) cToLat = 90;
+        if (cToLat < -90) cToLat = -90;
+        // wrap target longitude
+        while (cToLon > 180) cToLon -= 360;
+        while (cToLon < -180) cToLon += 360;
+
+        var result = [lat, lon];
+
+        // R₁ : great-circle from centroidFrom to centroidTo
+        var vFrom = latLonToVec3(centroidFrom.lat, centroidFrom.lon);
+        var vTo = latLonToVec3(cToLat, cToLon);
+
+        // cross product = axis of rotation
+        var cx = vFrom.y * vTo.z - vFrom.z * vTo.y;
+        var cy = vFrom.z * vTo.x - vFrom.x * vTo.z;
+        var cz = vFrom.x * vTo.y - vFrom.y * vTo.x;
+        var crossLen = Math.sqrt(cx * cx + cy * cy + cz * cz);
+
+        if (crossLen > 1e-12) {
+            // angle between the two vectors
+            var dot = vFrom.x * vTo.x + vFrom.y * vTo.y + vFrom.z * vTo.z;
+            var angleDeg = Math.acos(Math.max(-1, Math.min(1, dot))) / DEG2RAD;
+            // axis in lat/lon
+            var axisLL = vec3ToLatLon({ x: cx / crossLen, y: cy / crossLen, z: cz / crossLen });
+            result = rotatePoint(result[0], result[1], axisLL[0], axisLL[1], angleDeg);
+        }
+
+        // R₂ : rotation propre autour du centroïde déplacé
+        if (rotDeg && rotDeg !== 0) {
+            result = rotatePoint(result[0], result[1], cToLat, cToLon, rotDeg);
+        }
+
+        return result;
+    }
+
+    // ─── Déplacement d'une image Float32 entière ───
+
+    function movePlateImage(src, width, height, centroidFrom, dLat, dLon, rotDeg) {
+        if (dLat === 0 && dLon === 0 && (!rotDeg || rotDeg === 0)) return src;
+        var dst = new Float32Array(width * height);
+        // Précalcul du centroïde cible et de la rotation inverse
+        var cToLat = Math.max(-90, Math.min(90, centroidFrom.lat + dLat));
+        var cToLon = centroidFrom.lon + dLon;
+        while (cToLon > 180) cToLon -= 360;
+        while (cToLon < -180) cToLon += 360;
+
+        // Axe et angle R₁ inverse (cible→source)
+        var vFrom = latLonToVec3(centroidFrom.lat, centroidFrom.lon);
+        var vTo = latLonToVec3(cToLat, cToLon);
+        var cx = vFrom.y * vTo.z - vFrom.z * vTo.y;
+        var cy = vFrom.z * vTo.x - vFrom.x * vTo.z;
+        var cz = vFrom.x * vTo.y - vFrom.y * vTo.x;
+        var crossLen = Math.sqrt(cx * cx + cy * cy + cz * cz);
+        var hasR1 = crossLen > 1e-12;
+        var r1AxisLat, r1AxisLon, r1Angle;
+        if (hasR1) {
+            var dot = vFrom.x * vTo.x + vFrom.y * vTo.y + vFrom.z * vTo.z;
+            r1Angle = Math.acos(Math.max(-1, Math.min(1, dot))) / DEG2RAD;
+            var axLL = vec3ToLatLon({ x: cx / crossLen, y: cy / crossLen, z: cz / crossLen });
+            r1AxisLat = axLL[0];
+            r1AxisLon = axLL[1];
+        }
+
+        for (var py = 0; py < height; py++) {
+            var lat = 90 - (py + 0.5) / height * 180;
+            for (var px = 0; px < width; px++) {
+                var lon = (px + 0.5) / width * 360 - 180;
+                // Inverse : R₂⁻¹ puis R₁⁻¹
+                var pt = [lat, lon];
+                if (rotDeg && rotDeg !== 0) {
+                    pt = rotatePoint(pt[0], pt[1], cToLat, cToLon, -rotDeg);
+                }
+                if (hasR1) {
+                    pt = rotatePoint(pt[0], pt[1], r1AxisLat, r1AxisLon, -r1Angle);
+                }
+                var srcY = (90 - pt[0]) / 180 * height;
+                var srcX = (pt[1] + 180) / 360 * width;
+                srcX = ((srcX % width) + width) % width;
+                srcY = Math.max(0, Math.min(height - 1, srcY));
+                var si = Math.floor(srcY) * width + Math.floor(srcX);
+                dst[py * width + px] = src[Math.min(si, src.length - 1)];
+            }
+        }
+        return dst;
+    }
+
+    // ─── Même chose pour Uint8 (texture luma) ───
+
+    function movePlateUint8(src, width, height, centroidFrom, dLat, dLon, rotDeg) {
+        if (dLat === 0 && dLon === 0 && (!rotDeg || rotDeg === 0)) return src;
+        var dst = new Uint8Array(width * height);
+        var cToLat = Math.max(-90, Math.min(90, centroidFrom.lat + dLat));
+        var cToLon = centroidFrom.lon + dLon;
+        while (cToLon > 180) cToLon -= 360;
+        while (cToLon < -180) cToLon += 360;
+
+        var vFrom = latLonToVec3(centroidFrom.lat, centroidFrom.lon);
+        var vTo = latLonToVec3(cToLat, cToLon);
+        var cx = vFrom.y * vTo.z - vFrom.z * vTo.y;
+        var cy = vFrom.z * vTo.x - vFrom.x * vTo.z;
+        var cz = vFrom.x * vTo.y - vFrom.y * vTo.x;
+        var crossLen = Math.sqrt(cx * cx + cy * cy + cz * cz);
+        var hasR1 = crossLen > 1e-12;
+        var r1AxisLat, r1AxisLon, r1Angle;
+        if (hasR1) {
+            var dot = vFrom.x * vTo.x + vFrom.y * vTo.y + vFrom.z * vTo.z;
+            r1Angle = Math.acos(Math.max(-1, Math.min(1, dot))) / DEG2RAD;
+            var axLL = vec3ToLatLon({ x: cx / crossLen, y: cy / crossLen, z: cz / crossLen });
+            r1AxisLat = axLL[0];
+            r1AxisLon = axLL[1];
+        }
+
+        for (var py = 0; py < height; py++) {
+            var lat = 90 - (py + 0.5) / height * 180;
+            for (var px = 0; px < width; px++) {
+                var lon = (px + 0.5) / width * 360 - 180;
+                var pt = [lat, lon];
+                if (rotDeg && rotDeg !== 0) {
+                    pt = rotatePoint(pt[0], pt[1], cToLat, cToLon, -rotDeg);
+                }
+                if (hasR1) {
+                    pt = rotatePoint(pt[0], pt[1], r1AxisLat, r1AxisLon, -r1Angle);
+                }
+                var srcY = (90 - pt[0]) / 180 * height;
+                var srcX = (pt[1] + 180) / 360 * width;
+                srcX = ((srcX % width) + width) % width;
+                srcY = Math.max(0, Math.min(height - 1, srcY));
+                var si = Math.floor(srcY) * width + Math.floor(srcX);
+                dst[py * width + px] = src[Math.min(si, src.length - 1)];
+            }
+        }
+        return dst;
+    }
+
     // ─── Composition de toutes les plaques ───
     // plateImages: { id: Float32Array }
-    // positions: { id: { rotLat, rotLon, rotDeg } }
-    // Retourne Float32Array (somme de toutes les plaques rotées)
+    // positions: { id: { dLat, dLon, rotDeg } }
+    // plates: window.PLATES (pour les vertices → centroïde)
+    // Retourne Float32Array (somme de toutes les plaques)
 
-    function composePlates(plateImages, positions, width, height) {
+    function composePlates(plateImages, positions, width, height, plates) {
         var result = new Float32Array(width * height);
         for (var id in plateImages) {
             if (!plateImages.hasOwnProperty(id)) continue;
-            var pos = positions[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 };
-            var rotated = rotatePlateImage(plateImages[id], width, height,
-                pos.rotLat, pos.rotLon, pos.rotDeg);
+            var pos = positions[id] || { dLat: 0, dLon: 0, rotDeg: 0 };
+            var dLat = pos.dLat || 0;
+            var dLon = pos.dLon || 0;
+            var rotDeg = pos.rotDeg || 0;
+            var centroid = (plates && plates[id] && plates[id].vertices)
+                ? computeCentroid(plates[id].vertices)
+                : { lat: 0, lon: 0 };
+            var rotated = movePlateImage(plateImages[id], width, height, centroid, dLat, dLon, rotDeg);
             for (var i = 0; i < result.length; i++) {
                 result[i] += rotated[i];
             }
@@ -413,9 +623,17 @@
 
                 if (h < seaLevel) {
                     var depth = Math.min(1, (seaLevel - h) / Math.max(0.01, seaLevel));
-                    r = Math.round(5 + (1 - depth) * 30);
-                    g = Math.round(20 + (1 - depth) * 60);
-                    b = Math.round(80 + (1 - depth) * 80);
+                    var oxS = (px + 0.5) / width * 360 - 180;
+                    var onxS = oxS * perlinScale * 1.4;
+                    var onyS = lat * perlinScale * 1.4;
+                    // Couche 1 : grandes masses d'eau (courants, dorsales)
+                    var nOc1 = fbm2(onxS + 200.5, onyS + 130.3, perm, 2);
+                    // Couche 2 : détail fin (surface)
+                    var nOc2 = fbm2(onxS * 5.5 + 310.7, onyS * 5.5 + 270.1, perm, 2);
+                    var ocTex = nOc1 * 0.22 + nOc2 * 0.12;
+                    r = Math.round(Math.min(255, Math.max(0, (5 + (1 - depth) * 30) * (1 + ocTex))));
+                    g = Math.round(Math.min(255, Math.max(0, (20 + (1 - depth) * 60) * (1 + ocTex))));
+                    b = Math.round(Math.min(255, Math.max(0, (80 + (1 - depth) * 80) * (1 + ocTex * 0.4))));
                     if (!usePolarPlateTexture && northIceCapFromLat != null && lat > northIceCapFromLat) {
                         var bIceN = smoothstepBio(northIceCapFromLat, 88, lat);
                         r = Math.round(r * (1 - bIceN) + 248 * bIceN);
@@ -518,6 +736,24 @@
                     var r0 = wTr * cTr + wAr * cAr + wTe * cTr2 + wBo * cBr;
                     var g0 = wTr * cTg + wAr * cAg + wTe * cTg2 + wBo * cBg;
                     var b0 = wTr * cTb + wAr * cAb + wTe * cTb2 + wBo * cBb;
+
+                    // ── Texture fine par biome ──
+                    // Tropical : blobs denses, variation de canopée
+                    var nxT = nx * 6.5, nyT = ny * 6.5;
+                    var tTr = fbm2(nxT + 50.3, nyT + 31.7, perm, 2);
+                    // Aride : dunes allongées est-ouest
+                    var tAr = fbm2(nx * 2.5 + 80.1, ny * 9.0 + 44.2, perm, 2);
+                    // Tempéré : prairie — allongé horizontalement, doux
+                    var tTe = fbm2(nx * 2.0 + 21.4, ny * 6.0 + 73.6, perm, 2);
+                    // Boréal : cailloux — haute fréq ridgée, abs() = bords nets entre galets
+                    var tBo_raw = fbm2(nx * 10.5 + 112.5, ny * 10.5 + 91.3, perm, 3);
+                    var tBo = (Math.abs(tBo_raw) - 0.28) * 1.6;
+                    // Pondération par biome dominant → bruit composite
+                    var texN = wTr * tTr * 0.38 + wAr * tAr * 0.45 + wTe * tTe * 0.22 + wBo * tBo * 0.48;
+                    var tex = 1 + texN;
+                    r0 = Math.min(255, Math.max(0, r0 * tex));
+                    g0 = Math.min(255, Math.max(0, g0 * tex));
+                    b0 = Math.min(255, Math.max(0, b0 * tex));
 
                     // PNG #888888 = 136 = PLATE_GRAY_PEAK : au-dessus = montagne (gris-vert → marron → jaune → blanc)
                     var grayEquiv;
@@ -941,8 +1177,15 @@
         rotatePoint: rotatePoint,
         pointInPolygon3D: pointInPolygon3D,
         generatePlateImage: generatePlateImage,
+        translatePlateImage: translatePlateImage,
+        translatePlateUint8: translatePlateUint8,
+        translatePoint: translatePoint,
         rotatePlateImage: rotatePlateImage,
         rotatePlateUint8: rotatePlateUint8,
+        computeCentroid: computeCentroid,
+        movePlatePoint: movePlatePoint,
+        movePlateImage: movePlateImage,
+        movePlateUint8: movePlateUint8,
         composePlates: composePlates,
         heightmapToBiome: heightmapToBiome,
         heightmapToClimateBandOverlay: heightmapToClimateBandOverlay,

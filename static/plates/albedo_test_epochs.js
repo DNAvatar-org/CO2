@@ -123,9 +123,9 @@
     /**
      * 4 bandes (RVB 0–255) : biome, overlay, légende. La répartition latitudinale = tropicalEdge, aridSpan, temperateEnd, edgeBlendDeg, climateLatNoiseMul.
      */
-    var CLIMATE_BAND_TROPICAL_RGB = [15, 110, 25];
+    var CLIMATE_BAND_TROPICAL_RGB = [10, 100, 20];
     var CLIMATE_BAND_ARID_RGB = [250, 200, 0];
-    var CLIMATE_BAND_TEMPERATE_RGB = [125, 220, 130];
+    var CLIMATE_BAND_TEMPERATE_RGB = [100, 160, 40];
     var CLIMATE_BAND_BOREAL_RGB = [140, 140, 100];
 
     /**

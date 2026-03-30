@@ -278,6 +278,7 @@
 </div>
 
 <script src="../static/lib/three.min.js"></script>
+<script src="../static/plates/plate_positions.js"></script>
 <script src="../static/plates/plates_data.js"></script>
 <script src="../static/plates/plate_renderer.js"></script>
 <script src="../static/plates/albedo_test_epochs.js"></script>
@@ -321,8 +322,10 @@
         function rotLuma(id) {
             const u = plateTextureLuma[id];
             if (!u) return null;
-            const p = positions[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 };
-            return PR.rotatePlateUint8(u, HW, HH, p.rotLat, p.rotLon, p.rotDeg);
+            const p = positions[id] || { dLat: 0, dLon: 0, rotDeg: 0 };
+            const centroid = PLATES[id] && PLATES[id].vertices
+                ? PR.computeCentroid(PLATES[id].vertices) : { lat: 0, lon: 0 };
+            return PR.movePlateUint8(u, HW, HH, centroid, p.dLat || 0, p.dLon || 0, p.rotDeg || 0);
         }
         const anR = rotLuma('AN');
         const northLayers = [rotLuma('NA'), rotLuma('EU'), rotLuma('AS')].filter(Boolean);
@@ -389,8 +392,12 @@
         const positions = getPositionsForEpoch(currentEpoch);
         for (const [id, plate] of Object.entries(PLATES)) {
             if (plateLines[id]) { scene.remove(plateLines[id]); plateLines[id].geometry.dispose(); }
-            const pos = positions[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 };
-            const rv = plate.vertices.map(([lat, lon]) => PR.rotatePoint(lat, lon, pos.rotLat, pos.rotLon, pos.rotDeg));
+            const pos = positions[id] || { dLat: 0, dLon: 0, rotDeg: 0 };
+            const centroid = plate.vertices
+                ? PR.computeCentroid(plate.vertices) : { lat: 0, lon: 0 };
+            const rv = plate.vertices.map(([lat, lon]) =>
+                PR.movePlatePoint(lat, lon, centroid, pos.dLat || 0, pos.dLon || 0, pos.rotDeg || 0)
+            );
             plateLines[id] = createPlateLines(id, rv, id === selectedPlate ? '#ffff00' : plate.color);
         }
         const wfOn = document.getElementById('chk-wireframe').checked;
@@ -420,7 +427,7 @@
         if (!POSITIONS[epoch]) {
             POSITIONS[epoch] = {};
             const ref = POSITIONS['📱'] || {};
-            for (const id of Object.keys(PLATES)) POSITIONS[epoch][id] = Object.assign({}, ref[id] || { rotLat: 0, rotLon: 0, rotDeg: 0 });
+            for (const id of Object.keys(PLATES)) POSITIONS[epoch][id] = Object.assign({}, ref[id] || { dLat: 0, dLon: 0, rotDeg: 0 });
         }
     }
 
@@ -440,13 +447,13 @@
         document.querySelectorAll('.plate-item').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
         document.getElementById('status-text').textContent = 'Plaque : ' + PLATES[id].name;
         ensureEpochPositions(currentEpoch);
-        const pos = POSITIONS[currentEpoch][id] || { rotLat: 0, rotLon: 0, rotDeg: 0 };
-        document.getElementById('ctrl-dLat').value = pos.rotLat;
-        document.getElementById('ctrl-dLon').value = pos.rotLon;
-        document.getElementById('ctrl-rotDeg').value = pos.rotDeg;
-        document.getElementById('val-dLat').textContent = pos.rotLat;
-        document.getElementById('val-dLon').textContent = pos.rotLon;
-        document.getElementById('val-rotDeg').textContent = pos.rotDeg;
+        const pos = POSITIONS[currentEpoch][id] || { dLat: 0, dLon: 0, rotDeg: 0 };
+        document.getElementById('ctrl-dLat').value = pos.dLat || 0;
+        document.getElementById('ctrl-dLon').value = pos.dLon || 0;
+        document.getElementById('ctrl-rotDeg').value = pos.rotDeg || 0;
+        document.getElementById('val-dLat').textContent = pos.dLat || 0;
+        document.getElementById('val-dLon').textContent = pos.dLon || 0;
+        document.getElementById('val-rotDeg').textContent = pos.rotDeg || 0;
         const h = PLATES[id].height;
         document.getElementById('ctrl-height').value = Math.round(h * 100);
         document.getElementById('val-height').textContent = h.toFixed(2);
@@ -455,8 +462,8 @@
 
     // ─── UI : position (Lat/Lon = axes de rotation ; Angle = rotDeg) — ids HTML ctrl-dLat / ctrl-dLon ───
     [
-        { key: 'rotLat', ctrl: 'ctrl-dLat', val: 'val-dLat' },
-        { key: 'rotLon', ctrl: 'ctrl-dLon', val: 'val-dLon' },
+        { key: 'dLat',   ctrl: 'ctrl-dLat',   val: 'val-dLat' },
+        { key: 'dLon',   ctrl: 'ctrl-dLon',   val: 'val-dLon' },
         { key: 'rotDeg', ctrl: 'ctrl-rotDeg', val: 'val-rotDeg' }
     ].forEach(({ key, ctrl, val }) => {
         const slider = document.getElementById(ctrl);
@@ -466,7 +473,7 @@
             valEl.textContent = slider.value;
             if (!selectedPlate) return;
             ensureEpochPositions(currentEpoch);
-            if (!POSITIONS[currentEpoch][selectedPlate]) POSITIONS[currentEpoch][selectedPlate] = { rotLat: 0, rotLon: 0, rotDeg: 0 };
+            if (!POSITIONS[currentEpoch][selectedPlate]) POSITIONS[currentEpoch][selectedPlate] = { dLat: 0, dLon: 0, rotDeg: 0 };
             POSITIONS[currentEpoch][selectedPlate][key] = parseInt(slider.value, 10);
             scheduleUpdate();
         });
@@ -507,7 +514,15 @@
             document.querySelectorAll('.epoch-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             const row = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[e];
-            if (row && typeof window.biomeParamsFromAlbedoTest === 'function') {
+            // seaLevel override depuis plate_positions.js
+            const posEpoch = window.PLATE_POSITIONS && window.PLATE_POSITIONS[e];
+            if (posEpoch && posEpoch.seaLevel != null) {
+                seaLevel = posEpoch.seaLevel;
+                const sl = document.getElementById('ctrl-seaLevel');
+                const vl = document.getElementById('val-seaLevel');
+                if (sl) sl.value = String(Math.round(seaLevel * 100));
+                if (vl) vl.textContent = seaLevel.toFixed(2);
+            } else if (row && typeof window.biomeParamsFromAlbedoTest === 'function') {
                 const bp = window.biomeParamsFromAlbedoTest(row, e);
                 if (bp.seaLevel != null) {
                     seaLevel = bp.seaLevel;
@@ -527,7 +542,7 @@
     document.getElementById('btn-reset').addEventListener('click', () => {
         if (!selectedPlate) return;
         ensureEpochPositions(currentEpoch);
-        POSITIONS[currentEpoch][selectedPlate] = { rotLat: 0, rotLon: 0, rotDeg: 0 };
+        POSITIONS[currentEpoch][selectedPlate] = { dLat: 0, dLon: 0, rotDeg: 0 };
         selectPlate(selectedPlate);
         scheduleUpdate();
     });
@@ -584,7 +599,7 @@
         const polarMasks = buildPolarTextureMasks(positions);
 
         // Composition : rotation + addition de toutes les plaques
-        const heightmap = PR.composePlates(plateImages, positions, HW, HH);
+        const heightmap = PR.composePlates(plateImages, positions, HW, HH, PLATES);
 
         // Preview heightmap
         const grayData = PR.heightmapToGrayscale(heightmap, HW, HH);
@@ -762,16 +777,18 @@
     animate();
 
     (function syncSeaLevelFromAlbedo() {
+        const posEpoch = window.PLATE_POSITIONS && window.PLATE_POSITIONS[currentEpoch];
         const row = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[currentEpoch];
-        if (row && typeof window.biomeParamsFromAlbedoTest === 'function') {
-            const bp = window.biomeParamsFromAlbedoTest(row, currentEpoch);
-            if (bp.seaLevel != null) {
-                seaLevel = bp.seaLevel;
-                const sl = document.getElementById('ctrl-seaLevel');
-                const vl = document.getElementById('val-seaLevel');
-                if (sl) sl.value = String(Math.round(seaLevel * 100));
-                if (vl) vl.textContent = seaLevel.toFixed(2);
-            }
+        const overrideSL = posEpoch && posEpoch.seaLevel != null ? posEpoch.seaLevel : null;
+        const albedoSL = (row && typeof window.biomeParamsFromAlbedoTest === 'function')
+            ? window.biomeParamsFromAlbedoTest(row, currentEpoch).seaLevel : null;
+        const sl = overrideSL != null ? overrideSL : albedoSL;
+        if (sl != null) {
+            seaLevel = sl;
+            const slEl = document.getElementById('ctrl-seaLevel');
+            const vl = document.getElementById('val-seaLevel');
+            if (slEl) slEl.value = String(Math.round(seaLevel * 100));
+            if (vl) vl.textContent = seaLevel.toFixed(2);
         }
     })();
 
