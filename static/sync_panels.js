@@ -1,6 +1,6 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.30
+// Version 1.1.31
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -29,6 +29,7 @@
 // - v1.1.28: run scie_ émet flux:lastDrawn après compute:done (débloque fin de calcul rouge côté visu)
 // - v1.1.29: debug run complet: source d'appel + payload tuning + état DATA avant runComputeInParent
 // - v1.1.30: applyTuningPayload appelle fillDataTuningFromBary si dispo (interpolation depuis bary + FINE_TUNING_BOUNDS)
+// - v1.1.31: _epochIdToName 🐊 « Hyperthermie éocène »
 // - v1.1.26: [4] effectif groupe reste ouvert jusqu'à [4] retour (suppr _logStepEnd prématuré)
 // - v1.1.21: guard calculationInProgress en tête de runComputeInParent (évite double appel sendComputeToScie + config:applyThenCompute) (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
 // - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
@@ -411,7 +412,7 @@
             // Si getEpochDateConfig a détecté une transition d'époque, déléguer à setEpoch pour mettre
             // à jour l'UI (boutons, texture, currentEpochName) — évite le "nextEpoch en trop" visible
             if (_epAfter !== _epBefore && typeof window.setEpoch === 'function') {
-                var _epochIdToName = {'⚫':'Corps Noir','🔥':'Hadéen','🦠':'Archéen','🥟':'Protérozoïque','🌿':'Paléozoïque','🦕':'Mésozoïque','🦣':'Cénozoïque','🐊':'Terre étouffe (PETM)','⛰':'Prélude glaciaire','🏔':'Grande Coupure','❄️':'Quaternaire','🚂':'Industriel','📱':"Aujourd'hui"};
+                var _epochIdToName = {'⚫':'Corps Noir','🔥':'Hadéen','🦠':'Archéen','🥟':'Protérozoïque','🌿':'Paléozoïque','🦕':'Mésozoïque','🦣':'Cénozoïque','🐊':'Hyperthermie éocène','⛰':'Prélude glaciaire','🏔':'Grande Coupure','❄️':'Quaternaire','🚂':'Industriel','📱':"Aujourd'hui"};
                 var _newEpochName = _epochIdToName[_epAfter] || _epAfter;
                 console.log('[DBG sync_panels] ⚡ transition → setEpoch(' + _newEpochName + ')');
                 window.setEpoch(_newEpochName);

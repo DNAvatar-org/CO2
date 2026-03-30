@@ -1,13 +1,20 @@
 /**
  * Données provisoires : cycles albédo (sortie type calculateAlbedo) par époque
  * de l’éditeur de plaques. À remplacer par lecture API / physicsAll quand câblé.
- *
- * Manque : 🌿350 Ma — aucune ligne fournie ; copie Paléozoïque 500 Ma (placeholder).
+ * Clés = même 📅 que DATA / TIMELINE (une entrée par logo, pas de 🦕150 / 🌿500 dans le nom).
  * Non utilisés pour les bandes ici : 🍰🪩📿 (albédo moyen planète), 🍰🪩🌋 (0 partout),
  * 🍰🪩⛅ / ☁️ (nuages — pas de calque nuage sur la texture sol/océan de l’éditeur).
+ *
+ * RVB des 4 bandes climatiques : TextureBiomes.defaultRgb dans texture.js (charger texture.js avant ce fichier).
  */
 (function () {
     'use strict';
+
+    var TBio = window.TextureBiomes;
+    if (!TBio || !TBio.defaultRgb) {
+        throw new Error('albedo_test_epochs.js : charger texture.js avant ce script (TextureBiomes.defaultRgb).');
+    }
+    var DEF_RGB = TBio.defaultRgb;
 
     var ROW_500MA = {
         '🍰🪩📿': 0.211,
@@ -21,31 +28,25 @@
         '☁️': 0.417
     };
 
+    var ROW_MESOZOIC = {
+        '🍰🪩📿': 0.205,
+        '🍰🪩🌋': 0,
+        '🍰🪩🏜️': 0.114,
+        '🍰🪩🌳': 0.092,
+        '🍰🪩🌊': 0.705,
+        '🍰🪩🧊': 0,
+        '🍰🪩⛅': 0.219,
+        '🍰🪩🌍': 0.09,
+        '☁️': 0.417
+    };
+
     window.ALBEDO_TEST_EPOCHS = {
-        '🌿500': ROW_500MA,
-        '🌿350': Object.assign({}, ROW_500MA),
-        '🦕250': {
-            '🍰🪩📿': 0.205,
-            '🍰🪩🌋': 0,
-            '🍰🪩🏜️': 0.114,
-            '🍰🪩🌳': 0.092,
-            '🍰🪩🌊': 0.705,
-            '🍰🪩🧊': 0,
-            '🍰🪩⛅': 0.219,
-            '🍰🪩🌍': 0.09,
-            '☁️': 0.417
-        },
-        '🦕150': {
-            '🍰🪩📿': 0.205,
-            '🍰🪩🌋': 0,
-            '🍰🪩🏜️': 0.114,
-            '🍰🪩🌳': 0.092,
-            '🍰🪩🌊': 0.705,
-            '🍰🪩🧊': 0,
-            '🍰🪩⛅': 0.219,
-            '🍰🪩🌍': 0.09,
-            '☁️': 0.417
-        },
+        '⚫': Object.assign({}, ROW_500MA),
+        '🔥': Object.assign({}, ROW_500MA),
+        '🦠': Object.assign({}, ROW_500MA),
+        '🥟': Object.assign({}, ROW_500MA),
+        '🌿': Object.assign({}, ROW_500MA),
+        '🦕': Object.assign({}, ROW_MESOZOIC),
         '🦣': {
             '🍰🪩📿': 0.276,
             '🍰🪩🌋': 0,
@@ -121,12 +122,12 @@
     var CAL_POLAR_TEX_THRESHOLD = 46;
 
     /**
-     * 4 bandes (RVB 0–255) : biome, overlay, légende. La répartition latitudinale = tropicalEdge, aridSpan, temperateEnd, edgeBlendDeg, climateLatNoiseMul.
+     * Alias vers texture.js — une seule source (éditer TextureBiomes.defaultRgb ou TEXTURES 🌴🏜️🌾🌲).
      */
-    var CLIMATE_BAND_TROPICAL_RGB = [10, 100, 20];
-    var CLIMATE_BAND_ARID_RGB = [250, 200, 0];
-    var CLIMATE_BAND_TEMPERATE_RGB = [100, 160, 40];
-    var CLIMATE_BAND_BOREAL_RGB = [140, 140, 100];
+    var CLIMATE_BAND_TROPICAL_RGB = DEF_RGB.tropical;
+    var CLIMATE_BAND_ARID_RGB = DEF_RGB.arid;
+    var CLIMATE_BAND_TEMPERATE_RGB = DEF_RGB.temperate;
+    var CLIMATE_BAND_BOREAL_RGB = DEF_RGB.boreal;
 
     /**
      * Heuristiques pour l’éditeur (heightmapToBiome) — pas une inversion physique exacte.
@@ -247,11 +248,11 @@
     }
 
     window.biomeParamsFromAlbedoTest = biomeParamsFromAlbedoTest;
-    /** Mêmes tableaux que CLIMATE_BAND_* — édition console puis rafraîchir l’époque. */
+    /** Mêmes références que TextureBiomes.defaultRgb — édition console puis rafraîchir l’époque. */
     window.BILAN_CLIMATE_BAND_RGB = {
-        tropical: CLIMATE_BAND_TROPICAL_RGB,
-        arid: CLIMATE_BAND_ARID_RGB,
-        temperate: CLIMATE_BAND_TEMPERATE_RGB,
-        boreal: CLIMATE_BAND_BOREAL_RGB
+        tropical: DEF_RGB.tropical,
+        arid: DEF_RGB.arid,
+        temperate: DEF_RGB.temperate,
+        boreal: DEF_RGB.boreal
     };
 })();

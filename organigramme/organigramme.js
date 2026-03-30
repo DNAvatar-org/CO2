@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.42
+// Version 1.0.43
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -24,6 +24,7 @@
 // Logs: v1.0.40 fine_tuning_cloud_bary : mise à jour douce (pct + slider) sans innerHTML si mini-slider déjà présent
 // Logs: v1.0.41 Three.js planet : logs pointerdown/pointermove/pointerup sur le container (pour debug drag futur)
 // Logs: v1.0.42 bouton époque 📱 (image) : alt accessibilité = "2000"
+// Logs: v1.0.43 flux-label-plain-metric + updateLabelClasses sur grille ; toggle OBSERVATIONS (hide-organigram-observation-metrics) dans main.js
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -388,6 +389,24 @@ function shouldLabelBeGray(text, nodeId, cell = null) {
   return false;
 }
 
+/** Libellés « verts » (base) — masquables par toggle OBSERVATIONS (main.js). O(n) sur le nœud label. */
+function syncFluxLabelPlainMetric(label) {
+  if (!label) return;
+  label.classList.remove("flux-label-plain-metric");
+  if (label.getAttribute("data-id") === "albedo_percents") return;
+  if (
+    !label.classList.contains("watt-per-m2") &&
+    !label.classList.contains("watt-or-kelvin") &&
+    !label.classList.contains("zero-value") &&
+    !label.classList.contains("percent-label") &&
+    !label.classList.contains("ppm-label") &&
+    !label.classList.contains("co2-label") &&
+    !label.classList.contains("buttonData")
+  ) {
+    label.classList.add("flux-label-plain-metric");
+  }
+}
+
 // Fonction pour mettre à jour les classes CSS d'un label après modification dynamique
 function updateLabelClasses(label, nodeId = null) {
   if (!label) return;
@@ -395,6 +414,7 @@ function updateLabelClasses(label, nodeId = null) {
   // Exception : albedo_percents (breakdown détaillé) ne doit jamais être grisé
   if (label.getAttribute("data-id") === "albedo_percents") {
     label.classList.remove("zero-value");
+    syncFluxLabelPlainMetric(label);
     return;
   }
 
@@ -407,11 +427,13 @@ function updateLabelClasses(label, nodeId = null) {
     "zero-value",
     "percent-label",
     "ppm-label",
+    "flux-label-plain-metric",
   );
 
   // Vérifier si le bouton est inactif (gris uniquement dans ce cas)
   if (shouldLabelBeGray(text)) {
     label.classList.add("zero-value");
+    syncFluxLabelPlainMetric(label);
     return;
   }
 
@@ -425,7 +447,12 @@ function updateLabelClasses(label, nodeId = null) {
   else if (text && (text.includes(" W") || text.includes(" K"))) {
     label.classList.add("watt-or-kelvin");
   }
+  // MW (ex. « 1.2 MW » sans « W » seul) — même style que W/K
+  else if (text && text.includes("MW")) {
+    label.classList.add("watt-or-kelvin");
+  }
   // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
+  syncFluxLabelPlainMetric(label);
 }
 
 /** Chemin texture planète depuis époque + temps écoulé. Ex. Protérozoïque -2500 Ma +100 Ma → -2400 Ma → fonds/02400Ma.png ; 1800+100 ans → fonds/001900a.png */
@@ -1718,19 +1745,8 @@ function createCell(
               label.classList.add("buttonData");
             }
           }
-          // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
-          // PRIORITÉ : Vérifier d'abord W/m² pour ne pas qu'il soit capturé comme " W"
-          if (text && (text.includes("W/m²") || text.includes("W/m2"))) {
-            // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
-            label.classList.add("watt-per-m2");
-          }
-          // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
-          // Cela capture aussi "×10... W"
-          else if (text && (text.includes(" W") || text.includes(" K"))) {
-            label.classList.add("watt-or-kelvin");
-          }
-          // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
           label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+          updateLabelClasses(label, nodeId);
           label.style.position = "relative"; // Créer un stacking context
           label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
           labelContainer.appendChild(label);
@@ -1772,19 +1788,8 @@ function createCell(
               label.classList.add("buttonData");
             }
           }
-          // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
-          // PRIORITÉ : Vérifier d'abord W/m² pour ne pas qu'il soit capturé comme " W"
-          if (text && (text.includes("W/m²") || text.includes("W/m2"))) {
-            // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
-            label.classList.add("watt-per-m2");
-          }
-          // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
-          // Cela capture aussi "×10... W"
-          else if (text && (text.includes(" W") || text.includes(" K"))) {
-            label.classList.add("watt-or-kelvin");
-          }
-          // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
           label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+          updateLabelClasses(label, nodeId);
           label.style.position = "relative"; // Créer un stacking context
           label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
           labelContainer.appendChild(label);
@@ -1820,19 +1825,8 @@ function createCell(
               label.classList.add("buttonData");
             }
           }
-          // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
-          // PRIORITÉ : Vérifier d'abord W/m² pour ne pas qu'il soit capturé comme " W"
-          if (text && (text.includes("W/m²") || text.includes("W/m2"))) {
-            // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
-            label.classList.add("watt-per-m2");
-          }
-          // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
-          // Cela capture aussi "×10... W"
-          else if (text && (text.includes(" W") || text.includes(" K"))) {
-            label.classList.add("watt-or-kelvin");
-          }
-          // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
           label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+          updateLabelClasses(label, nodeId);
           label.style.position = "relative"; // Créer un stacking context
           label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
           labelContainer.appendChild(label);
@@ -1879,19 +1873,8 @@ function createCell(
               label.classList.add("buttonData");
             }
           }
-          // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2
-          // PRIORITÉ : Vérifier d'abord W/m² pour ne pas qu'il soit capturé comme " W"
-          if (text && (text.includes("W/m²") || text.includes("W/m2"))) {
-            // Toujours appliquer la couleur orange pour W/m² (plus de gris automatique)
-            label.classList.add("watt-per-m2");
-          }
-          // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
-          // Cela capture aussi "×10... W"
-          else if (text && (text.includes(" W") || text.includes(" K"))) {
-            label.classList.add("watt-or-kelvin");
-          }
-          // Les couleurs seront appliquées dynamiquement par updateFluxLabels selon l'état des boutons
           label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+          updateLabelClasses(label, nodeId);
           label.style.position = "relative"; // Créer un stacking context
           label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
 
@@ -1997,44 +1980,8 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
     const label = document.createElement("div");
     label.className = "flux-label"; // Tous les textes des flèches
     if (dataId) label.setAttribute("data-id", dataId);
-    // Exception : albedo_percents (breakdown détaillé) ne doit jamais être grisé
-    if (dataId === "albedo_percents") {
-      // Ne pas ajouter zero-value, le détail est toujours informatif
-    }
-    // Cas spécial : label albedo (contient "Albédo:" et des emojis)
-    else if (
-      text &&
-      text.includes("Albédo:") &&
-      (text.includes("⛅") || text.includes("❄️"))
-    ) {
-      if (shouldLabelBeGray(text, null, null)) {
-        label.classList.add("zero-value");
-      }
-    }
-    // Sinon, si le texte contient W/m² ou W/m2, ajouter la classe watt-per-m2 (sauf si valeur 0)
-    // PRIORITÉ : Vérifier d'abord W/m²
-    if (text && (text.includes("W/m²") || text.includes("W/m2"))) {
-      if (shouldLabelBeGray(text, null, null)) {
-        // Valeur à 0 : ajouter zero-value pour forcer le gris
-        label.classList.add("zero-value");
-      } else {
-        label.classList.add("watt-per-m2");
-      }
-    }
-    // Si le texte contient " W" ou " K" (avec espace avant), ajouter la classe rouge
-    else if (text && (text.includes(" W") || text.includes(" K"))) {
-      label.classList.add("watt-or-kelvin");
-    }
-    // Si le texte contient % et valeur 0, s'assurer qu'il est gris (sauf albedo_percents)
-    if (
-      dataId !== "albedo_percents" &&
-      text &&
-      text.includes("%") &&
-      shouldLabelBeGray(text, null, null)
-    ) {
-      label.classList.add("zero-value");
-    }
     label.innerHTML = text; // Utiliser innerHTML pour interpréter les balises <br>
+    updateLabelClasses(label, null);
     label.style.position = "absolute";
     label.style.left = posX + "px";
     // Décalage vertical : 0 pour tout le monde (centré sur la flèche)
@@ -4567,6 +4514,7 @@ window.updateFluxLabels = function (eventId) {
         "co2-label",
         "percent-label",
         "ppm-label",
+        "flux-label-plain-metric",
       );
 
       // Exception : albedo_percents (breakdown détaillé) ne doit jamais être grisé
@@ -4675,6 +4623,7 @@ window.updateFluxLabels = function (eventId) {
           // co2_forcing_wm utilise uniquement la couleur selon l'unité (watt-per-m2 pour orange)
         }
       } // fin else (albedo_percents)
+      syncFluxLabelPlainMetric(label);
     });
   };
 

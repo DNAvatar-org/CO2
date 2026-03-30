@@ -1,6 +1,6 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.8
+ * Version 1.2.9
  * Date: [Mar 29, 2026]
 * logs :
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -27,6 +27,7 @@
  *   - v1.2.6: 📱 year-indexed — bucket UI par intervalle [y, y_next) sur 📅 brut (sans Math.round) pour éviter ⛽+🛢 alors qu’on est encore < 2025
  *   - v1.2.7: 📱 tooltips year-indexed depuis 🔺⏳/🔺⚖️🏭 (+Nans +MGt CO2, co2kg/1e9) — plus de yr0→yr1 depuis 📅 (échelle géologique hors 📱)
  *   - v1.2.8: 📱 bucket scénario — 📅 hors [▶,◀] (résidu géologique) → année via ▶+📿💫×pas, sinon repli ▶ ; évite bucket 2075 (350Gt+🛢) au lieu de 2000 (850Gt)
+ *   - v1.2.9: idToName 🐊 « Hyperthermie éocène »
  */
 
 // Core globals requis : addCustomTooltip, hideTooltip, setEpoch, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
@@ -184,7 +185,7 @@ window.updateEpochActions = function () {
     } else if (actionId === '🎇') {
         const epochConfig = getEpochConfigById(epochId);
         const targetFromConfig = epochConfig && epochConfig['🕰'] && epochConfig['🕰']['🎇'] && epochConfig['🕰']['🎇']['⏩'];
-        const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🦕': 'Mésozoïque', '🌿': 'Paléozoïque', '🦣': 'Cénozoïque', '🐊': 'Terre étouffe (PETM)', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+        const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🦕': 'Mésozoïque', '🌿': 'Paléozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
         const targetName = targetFromConfig ? (idToName[epochConfig['🕰']['🎇']['⏩']] || epochConfig['🕰']['🎇']['⏩']) : 'Hadéen';
         const bigImpactBtn = document.createElement('img');
         bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';

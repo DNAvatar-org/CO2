@@ -3,16 +3,28 @@
 // Composition = rotation + addition pixel par pixel
 // Niveau de la mer = seuil réglable
 // v1.2.1 — biome : 4 bandes ; climateLatNoiseMul + params albédo pour la répartition latitudinale
+// v1.2.2 — seaLevel≤0 : pas de biomes/océan/montagnes/glace ; RGB = luminance normalisée du heightmap (texture PNG composée)
+// v1.2.3 — ⚫ corps noir : seaLevel≤0 + blackBodyPrimitive → texture procédurale (perlin, rayures, cratères) ; glace 5000→4500 Ma (primitiveIceT)
+// v1.2.4 — Perlin/fBm + TEXTURES['⚫'] dans texture.js (charger texture.js avant ce fichier)
+// v1.2.5 — couleurs + texture fine des 4 biomes = TextureBiomes dans texture.js
 //
 // Pipeline :
 //   1. generatePlateImage(plate, w, h) → Float32Array (une fois)
 //   2. composePlates(plateImages, positions, w, h) → Float32Array
-//   3. heightmapToBiome(composed, w, h, {seaLevel, ...}) → Uint8ClampedArray RGBA
+//   3. heightmapToBiome(composed, w, h, {seaLevel, ...}) → Uint8ClampedArray RGBA (si seaLevel≤0 → PNG ou TEXTURES['⚫'] via texture.js)
 
 (function () {
     'use strict';
 
     var DEG2RAD = Math.PI / 180;
+    var TN = window.TextureNoise;
+    var TB = window.TextureBiomes;
+    if (!TN || typeof TN.fbm2 !== 'function' || !window.TEXTURES || typeof window.TEXTURES['⚫'] !== 'function') {
+        throw new Error('plate_renderer.js : charger texture.js avant ce script (TextureNoise + TEXTURES[⚫]).');
+    }
+    if (!TB || typeof TB.landRgbBand !== 'function' || typeof TB.compositeLandFineTexture !== 'function') {
+        throw new Error('plate_renderer.js : texture.js doit exposer TextureBiomes (biomes terre).');
+    }
     // PNG : [LOW, PEAK] ↔ float [0, maxH] ; (PEAK, 255] ↔ jusqu’à maxH * (1 + SUPER_MUL) — les blancs au-delà de #888 comptent
     var PLATE_GRAY_LOW = 28;
     var PLATE_GRAY_PEAK = 136;
@@ -459,74 +471,55 @@
         return result;
     }
 
-    // ─── Perlin 2D + fBm (O(pixels × octaves), seed reproductible) ───
+    /** Délègue à texture.js — TEXTURES['⚫'] */
+    function heightmapToBlackBodyPrimitive(width, height, params) {
+        return window.TEXTURES['⚫'](width, height, params);
+    }
 
-    function _fade(t) {
-        return t * t * t * (t * (t * 6 - 15) + 10);
-    }
-    function _lerp(a, b, t) {
-        return a + t * (b - a);
-    }
-    function _grad2(h, x, y) {
-        h &= 3;
-        return (h & 1 ? -x : x) + (h & 2 ? -2 * y : 2 * y);
-    }
-    function makePermutation512(seed) {
-        var p = new Uint8Array(256);
+    // ─── Mode texture seule (seaLevel ≤ 0) : globe = luminance du heightmap composé (PNG), sans sémantique plaques ───
+    function heightmapToPngTextureOnly(heightmap, width, height) {
+        var rgba = new Uint8ClampedArray(width * height * 4);
+        var maxH = 0;
         var i;
-        for (i = 0; i < 256; i++) p[i] = i;
-        var s = (seed >>> 0) || 1;
-        for (i = 255; i > 0; i--) {
-            s = (s * 1664525 + 1013904223) >>> 0;
-            var j = s % (i + 1);
-            var t = p[i];
-            p[i] = p[j];
-            p[j] = t;
+        for (i = 0; i < heightmap.length; i++) if (heightmap[i] > maxH) maxH = heightmap[i];
+        var inv = maxH > 1e-12 ? 1 / maxH : 0;
+        for (i = 0; i < heightmap.length; i++) {
+            var t = Math.min(1, Math.max(0, heightmap[i] * inv));
+            var v = Math.round(t * 255);
+            var pi = i * 4;
+            rgba[pi] = v;
+            rgba[pi + 1] = v;
+            rgba[pi + 2] = v;
+            rgba[pi + 3] = 255;
         }
-        var out = new Uint8Array(512);
-        for (i = 0; i < 256; i++) {
-            out[i] = out[i + 256] = p[i];
-        }
-        return out;
-    }
-    function perlin2(x, y, perm) {
-        var xi = Math.floor(x) & 255;
-        var yi = Math.floor(y) & 255;
-        var xf = x - Math.floor(x);
-        var yf = y - Math.floor(y);
-        var u = _fade(xf);
-        var v = _fade(yf);
-        var aa = perm[xi] + yi;
-        var ab = aa + 1;
-        var ba = perm[xi + 1] + yi;
-        var bb = ba + 1;
-        return _lerp(
-            _lerp(_grad2(perm[aa], xf, yf), _grad2(perm[ba], xf - 1, yf), u),
-            _lerp(_grad2(perm[ab], xf, yf - 1), _grad2(perm[bb], xf - 1, yf - 1), u),
-            v
-        );
-    }
-    function fbm2(x, y, perm, octaves) {
-        octaves = octaves || 3;
-        var f = 0;
-        var amp = 1;
-        var norm = 0;
-        var i;
-        for (i = 0; i < octaves; i++) {
-            f += amp * perlin2(x, y, perm);
-            norm += amp;
-            x *= 2;
-            y *= 2;
-            amp *= 0.5;
-        }
-        return norm > 0 ? f / norm : 0;
+        return rgba;
     }
 
     // ─── Biome : heightmap composée → RGBA ───
 
     function heightmapToBiome(heightmap, width, height, params) {
         params = params || {};
-        var seaLevel = params.seaLevel != null ? params.seaLevel : 0.25;
+        var seaLevel = params.seaLevel != null ? Number(params.seaLevel) : 0.25;
+        if (seaLevel <= 0) {
+            if (params.blackBodyPrimitive) {
+                var iceTbb = params.primitiveIceT != null
+                    ? Math.max(0, Math.min(1, Number(params.primitiveIceT)))
+                    : NaN;
+                if (iceTbb !== iceTbb) {
+                    var maRef = params.epochRefMa;
+                    if (maRef != null && maRef >= 4500 && maRef <= 5000) {
+                        iceTbb = (5000 - maRef) / 500;
+                    } else {
+                        iceTbb = 0;
+                    }
+                }
+                return heightmapToBlackBodyPrimitive(width, height, {
+                    perlinSeed: params.perlinSeed != null ? params.perlinSeed : 137,
+                    primitiveIceT: iceTbb
+                });
+            }
+            return heightmapToPngTextureOnly(heightmap, width, height);
+        }
         var iceFraction = params.iceFraction != null ? params.iceFraction : 0;
         var vegetation = params.vegetation != null ? params.vegetation : 0.3;
         var isHadean = params.isHadean || false;
@@ -591,7 +584,7 @@
         var ms = params.mountRgbSnow;
         var mountRgbSnow = (ms && ms.length >= 3) ? ms : [252, 251, 255];
 
-        var perm = makePermutation512(perlinSeed);
+        var perm = TN.makePermutation512(perlinSeed);
 
         var rgba = new Uint8ClampedArray(width * height * 4);
 
@@ -627,9 +620,9 @@
                     var onxS = oxS * perlinScale * 1.4;
                     var onyS = lat * perlinScale * 1.4;
                     // Couche 1 : grandes masses d'eau (courants, dorsales)
-                    var nOc1 = fbm2(onxS + 200.5, onyS + 130.3, perm, 2);
+                    var nOc1 = TN.fbm2(onxS + 200.5, onyS + 130.3, perm, 2);
                     // Couche 2 : détail fin (surface)
-                    var nOc2 = fbm2(onxS * 5.5 + 310.7, onyS * 5.5 + 270.1, perm, 2);
+                    var nOc2 = TN.fbm2(onxS * 5.5 + 310.7, onyS * 5.5 + 270.1, perm, 2);
                     var ocTex = nOc1 * 0.22 + nOc2 * 0.12;
                     r = Math.round(Math.min(255, Math.max(0, (5 + (1 - depth) * 30) * (1 + ocTex))));
                     g = Math.round(Math.min(255, Math.max(0, (20 + (1 - depth) * 60) * (1 + ocTex))));
@@ -654,8 +647,8 @@
                     );
                     var nx = lon * perlinScale;
                     var ny = lat * perlinScale;
-                    var n = fbm2(nx + 1.7, ny - 0.9, perm, perlinOct);
-                    var nEdge = fbm2(nx * 1.85 + 9.2, ny * 1.4 - 3.1, perm, 2);
+                    var n = TN.fbm2(nx + 1.7, ny - 0.9, perm, perlinOct);
+                    var nEdge = TN.fbm2(nx * 1.85 + 9.2, ny * 1.4 - 3.1, perm, 2);
                     var L = Math.abs(latW) + n * perlinAmpDeg * climateLatNoiseMul;
 
                     // Calcul anticipé de landH pour le boost aridity intérieur
@@ -679,77 +672,29 @@
                     var wBo = fA * fT * fB;
 
                     var veg = vegetation;
-                    var dry = 1 - veg * 0.5;
-                    var bt = params.biomeTropicalRgb;
-                    var ba = params.biomeAridRgb;
-                    var bte = params.biomeTemperateRgb;
-                    var bb = params.biomeBorealRgb;
-                    var cTr;
-                    var cTg;
-                    var cTb;
-                    if (bt && bt.length >= 3) {
-                        cTr = Math.round(bt[0]);
-                        cTg = Math.round(bt[1]);
-                        cTb = Math.round(bt[2]);
-                    } else {
-                        cTr = Math.round(40 + (1 - veg) * 120);
-                        cTg = Math.round(100 + veg * 60);
-                        cTb = Math.round(30 + (1 - veg) * 30);
-                    }
-                    var cAr;
-                    var cAg;
-                    var cAb;
-                    if (ba && ba.length >= 3) {
-                        cAr = Math.round(ba[0]);
-                        cAg = Math.round(ba[1]);
-                        cAb = Math.round(ba[2]);
-                    } else {
-                        cAr = Math.round(180 * dry + 80 * (1 - dry));
-                        cAg = Math.round(160 * dry + 120 * (1 - dry));
-                        cAb = Math.round(100 * dry + 50 * (1 - dry));
-                    }
-                    var cTr2;
-                    var cTg2;
-                    var cTb2;
-                    if (bte && bte.length >= 3) {
-                        cTr2 = Math.round(bte[0]);
-                        cTg2 = Math.round(bte[1]);
-                        cTb2 = Math.round(bte[2]);
-                    } else {
-                        cTr2 = Math.round(80 + (1 - veg) * 60);
-                        cTg2 = Math.round(120 + veg * 40);
-                        cTb2 = Math.round(50 + (1 - veg) * 20);
-                    }
-                    var cBr;
-                    var cBg;
-                    var cBb;
-                    if (bb && bb.length >= 3) {
-                        cBr = Math.round(bb[0]);
-                        cBg = Math.round(bb[1]);
-                        cBb = Math.round(bb[2]);
-                    } else {
-                        cBr = Math.round(120 + (1 - veg) * 40);
-                        cBg = Math.round(130 + veg * 20);
-                        cBb = 100;
-                    }
+                    var trRgb = TB.landRgbBand('tropical', params.biomeTropicalRgb, veg);
+                    var arRgb = TB.landRgbBand('arid', params.biomeAridRgb, veg);
+                    var teRgb = TB.landRgbBand('temperate', params.biomeTemperateRgb, veg);
+                    var boRgb = TB.landRgbBand('boreal', params.biomeBorealRgb, veg);
+                    var cTr = trRgb[0];
+                    var cTg = trRgb[1];
+                    var cTb = trRgb[2];
+                    var cAr = arRgb[0];
+                    var cAg = arRgb[1];
+                    var cAb = arRgb[2];
+                    var cTr2 = teRgb[0];
+                    var cTg2 = teRgb[1];
+                    var cTb2 = teRgb[2];
+                    var cBr = boRgb[0];
+                    var cBg = boRgb[1];
+                    var cBb = boRgb[2];
 
                     var r0 = wTr * cTr + wAr * cAr + wTe * cTr2 + wBo * cBr;
                     var g0 = wTr * cTg + wAr * cAg + wTe * cTg2 + wBo * cBg;
                     var b0 = wTr * cTb + wAr * cAb + wTe * cTb2 + wBo * cBb;
 
-                    // ── Texture fine par biome ──
-                    // Tropical : blobs denses, variation de canopée
-                    var nxT = nx * 6.5, nyT = ny * 6.5;
-                    var tTr = fbm2(nxT + 50.3, nyT + 31.7, perm, 2);
-                    // Aride : dunes allongées est-ouest
-                    var tAr = fbm2(nx * 2.5 + 80.1, ny * 9.0 + 44.2, perm, 2);
-                    // Tempéré : prairie — allongé horizontalement, doux
-                    var tTe = fbm2(nx * 2.0 + 21.4, ny * 6.0 + 73.6, perm, 2);
-                    // Boréal : cailloux — haute fréq ridgée, abs() = bords nets entre galets
-                    var tBo_raw = fbm2(nx * 10.5 + 112.5, ny * 10.5 + 91.3, perm, 3);
-                    var tBo = (Math.abs(tBo_raw) - 0.28) * 1.6;
-                    // Pondération par biome dominant → bruit composite
-                    var texN = wTr * tTr * 0.38 + wAr * tAr * 0.45 + wTe * tTe * 0.22 + wBo * tBo * 0.48;
+                    // ── Texture fine par biome (TextureBiomes / TEXTURES 🌴🏜️🌾🌲) ──
+                    var texN = TB.compositeLandFineTexture(wTr, wAr, wTe, wBo, nx, ny, perm, TN.fbm2);
                     var tex = 1 + texN;
                     r0 = Math.min(255, Math.max(0, r0 * tex));
                     g0 = Math.min(255, Math.max(0, g0 * tex));
@@ -816,7 +761,7 @@
                     g = Math.round(Math.min(255, Math.max(0, g)));
                     b = Math.round(Math.min(255, Math.max(0, b)));
 
-                    var iceN = fbm2(nx * 0.55 + 30, ny * 0.55 + 11, perm, 2) * 6;
+                    var iceN = TN.fbm2(nx * 0.55 + 30, ny * 0.55 + 11, perm, 2) * 6;
                     var iceTh = iceLatThreshold + iceN;
                     if (!disableSymmetricPolarIce && iceLatThreshold < 500 && L > iceTh - 4) {
                         var blendI = smoothstepBio(iceTh - 4, iceTh + 14, L);
@@ -848,9 +793,9 @@
                     var tDisk = 0;
                     if (lat >= northPolarLatFloor && lat > 0) {
                         var latFadeNorth = smoothstepBio(northIceLatFadeLo, northIceLatFadeHi, lat);
-                        var spA = 0.5 + 0.5 * fbm2(lonPx * 0.086 + 18.3, lat * 0.098 - 3.7, perm, 4);
-                        var spB = 0.5 + 0.5 * fbm2(lonPx * 0.168 + 6.1, lat * 0.152 + 1.4, perm, 3);
-                        var spC = 0.5 + 0.5 * fbm2(lonPx * 0.034 - 22, lat * 0.041 + 9.2, perm, 2);
+                        var spA = 0.5 + 0.5 * TN.fbm2(lonPx * 0.086 + 18.3, lat * 0.098 - 3.7, perm, 4);
+                        var spB = 0.5 + 0.5 * TN.fbm2(lonPx * 0.168 + 6.1, lat * 0.152 + 1.4, perm, 3);
+                        var spC = 0.5 + 0.5 * TN.fbm2(lonPx * 0.034 - 22, lat * 0.041 + 9.2, perm, 2);
                         var speckleRaw = northIceSpeckleMin +
                             (northIceSpeckleMax - northIceSpeckleMin) * (0.38 * spA + 0.35 * spB + 0.27 * spC);
                         var wMouton = smoothstepBio(
@@ -869,7 +814,7 @@
                         if (nLm && nLm.length === width * height) {
                             var nxf = lonPx * 0.062 + 1.8;
                             var nyf = lat * 0.078 - 0.6;
-                            var wobN = fbm2(nxf, nyf, perm, 3) * northEdgeWarpAmp;
+                            var wobN = TN.fbm2(nxf, nyf, perm, 3) * northEdgeWarpAmp;
                             wobN += 2.6 * Math.sin(lonPx * DEG2RAD * 2.05);
                             wobN += 1.5 * Math.sin((lonPx * 0.017 + lat * 0.031) * 2.5);
                             var edgeN = northEdgeBaseLat + wobN;
@@ -896,8 +841,8 @@
                         if (params.northPoleDiskEnable !== false) {
                             var dfx = lonPx * 0.11 + 31.2;
                             var dfy = lat * 0.095 + 6.8;
-                            var diskFr = fbm2(dfx, dfy, perm, 3) * northPoleDiskFractAmp;
-                            diskFr += 0.95 * fbm2(lonPx * 0.22 - 8, lat * 0.2 + 2.1, perm, 2);
+                            var diskFr = TN.fbm2(dfx, dfy, perm, 3) * northPoleDiskFractAmp;
+                            diskFr += 0.95 * TN.fbm2(lonPx * 0.22 - 8, lat * 0.2 + 2.1, perm, 2);
                             var poleBoundary = northPoleDiskBaseLat + diskFr;
                             var blendS = northPoleDiskBlendSouth;
                             var blendN = northPoleDiskBlendNorth;
@@ -934,7 +879,10 @@
      */
     function heightmapToClimateBandOverlay(heightmap, width, height, params) {
         params = params || {};
-        var seaLevel = params.seaLevel != null ? params.seaLevel : 0.25;
+        var seaLevel = params.seaLevel != null ? Number(params.seaLevel) : 0.25;
+        if (seaLevel <= 0) {
+            return new Uint8ClampedArray(width * height * 4);
+        }
         var vegetation = params.vegetation != null ? params.vegetation : 0.3;
         var isHadean = params.isHadean || false;
         var alpha = params.climateBandOverlayAlpha != null ? params.climateBandOverlayAlpha : 0.42;
@@ -953,7 +901,7 @@
         var edgeBlendDeg = params.edgeBlendDeg != null ? params.edgeBlendDeg : 7;
         var climateLatNoiseMul = params.climateLatNoiseMul != null ? params.climateLatNoiseMul : 1;
 
-        var perm = makePermutation512(perlinSeed);
+        var perm = TN.makePermutation512(perlinSeed);
         var rgba = new Uint8ClampedArray(width * height * 4);
 
         function smoothstepBio(e0, e1, x) {
@@ -979,8 +927,8 @@
                 );
                 var nx = lon * perlinScale;
                 var ny = lat * perlinScale;
-                var n = fbm2(nx + 1.7, ny - 0.9, perm, perlinOct);
-                var nEdge = fbm2(nx * 1.85 + 9.2, ny * 1.4 - 3.1, perm, 2);
+                var n = TN.fbm2(nx + 1.7, ny - 0.9, perm, perlinOct);
+                var nEdge = TN.fbm2(nx * 1.85 + 9.2, ny * 1.4 - 3.1, perm, 2);
                 var L = Math.abs(latW) + n * perlinAmpDeg * climateLatNoiseMul;
 
                 var e1 = tropicalEdge + nEdge * 4.5;
@@ -998,59 +946,22 @@
                 var wBo = fA * fT * fB;
 
                 var veg = vegetation;
-                var dry = 1 - veg * 0.5;
-                var bt = params.biomeTropicalRgb;
-                var ba = params.biomeAridRgb;
-                var bte = params.biomeTemperateRgb;
-                var bb = params.biomeBorealRgb;
-                var cTr;
-                var cTg;
-                var cTb;
-                if (bt && bt.length >= 3) {
-                    cTr = Math.round(bt[0]);
-                    cTg = Math.round(bt[1]);
-                    cTb = Math.round(bt[2]);
-                } else {
-                    cTr = Math.round(40 + (1 - veg) * 120);
-                    cTg = Math.round(100 + veg * 60);
-                    cTb = Math.round(30 + (1 - veg) * 30);
-                }
-                var cAr;
-                var cAg;
-                var cAb;
-                if (ba && ba.length >= 3) {
-                    cAr = Math.round(ba[0]);
-                    cAg = Math.round(ba[1]);
-                    cAb = Math.round(ba[2]);
-                } else {
-                    cAr = Math.round(180 * dry + 80 * (1 - dry));
-                    cAg = Math.round(160 * dry + 120 * (1 - dry));
-                    cAb = Math.round(100 * dry + 50 * (1 - dry));
-                }
-                var cTr2;
-                var cTg2;
-                var cTb2;
-                if (bte && bte.length >= 3) {
-                    cTr2 = Math.round(bte[0]);
-                    cTg2 = Math.round(bte[1]);
-                    cTb2 = Math.round(bte[2]);
-                } else {
-                    cTr2 = Math.round(80 + (1 - veg) * 60);
-                    cTg2 = Math.round(120 + veg * 40);
-                    cTb2 = Math.round(50 + (1 - veg) * 20);
-                }
-                var cBr;
-                var cBg;
-                var cBb;
-                if (bb && bb.length >= 3) {
-                    cBr = Math.round(bb[0]);
-                    cBg = Math.round(bb[1]);
-                    cBb = Math.round(bb[2]);
-                } else {
-                    cBr = Math.round(120 + (1 - veg) * 40);
-                    cBg = Math.round(130 + veg * 20);
-                    cBb = 100;
-                }
+                var trRgbO = TB.landRgbBand('tropical', params.biomeTropicalRgb, veg);
+                var arRgbO = TB.landRgbBand('arid', params.biomeAridRgb, veg);
+                var teRgbO = TB.landRgbBand('temperate', params.biomeTemperateRgb, veg);
+                var boRgbO = TB.landRgbBand('boreal', params.biomeBorealRgb, veg);
+                var cTr = trRgbO[0];
+                var cTg = trRgbO[1];
+                var cTb = trRgbO[2];
+                var cAr = arRgbO[0];
+                var cAg = arRgbO[1];
+                var cAb = arRgbO[2];
+                var cTr2 = teRgbO[0];
+                var cTg2 = teRgbO[1];
+                var cTb2 = teRgbO[2];
+                var cBr = boRgbO[0];
+                var cBg = boRgbO[1];
+                var cBb = boRgbO[2];
 
                 var im = 0; var wm = wTr;
                 if (wAr > wm) { im = 1; wm = wAr; }
@@ -1169,6 +1080,56 @@
         });
     }
 
+    // ─── Antialiasing : box blur séparable sur RGBA ───
+    // radius = 1 → 3x3, radius = 2 → 5x5
+    // Préserve le canal alpha. Wrap longitude (X), clamp latitude (Y).
+
+    function blurRGBA(src, width, height, radius) {
+        if (!radius || radius < 1) return src;
+        radius = Math.round(radius);
+        var len = width * height * 4;
+        var tmp = new Uint8ClampedArray(len);
+        var dst = new Uint8ClampedArray(len);
+        var size = 2 * radius + 1;
+
+        // Passe horizontale : src → tmp
+        for (var py = 0; py < height; py++) {
+            for (var px = 0; px < width; px++) {
+                var r = 0, g = 0, b = 0, a = 0;
+                for (var k = -radius; k <= radius; k++) {
+                    // wrap longitude
+                    var sx = ((px + k) % width + width) % width;
+                    var si = (py * width + sx) * 4;
+                    r += src[si]; g += src[si + 1]; b += src[si + 2]; a += src[si + 3];
+                }
+                var di = (py * width + px) * 4;
+                tmp[di]     = r / size;
+                tmp[di + 1] = g / size;
+                tmp[di + 2] = b / size;
+                tmp[di + 3] = a / size;
+            }
+        }
+
+        // Passe verticale : tmp → dst
+        for (var py2 = 0; py2 < height; py2++) {
+            for (var px2 = 0; px2 < width; px2++) {
+                var r2 = 0, g2 = 0, b2 = 0, a2 = 0;
+                for (var k2 = -radius; k2 <= radius; k2++) {
+                    // clamp latitude
+                    var sy = Math.max(0, Math.min(height - 1, py2 + k2));
+                    var si2 = (sy * width + px2) * 4;
+                    r2 += tmp[si2]; g2 += tmp[si2 + 1]; b2 += tmp[si2 + 2]; a2 += tmp[si2 + 3];
+                }
+                var di2 = (py2 * width + px2) * 4;
+                dst[di2]     = r2 / size;
+                dst[di2 + 1] = g2 / size;
+                dst[di2 + 2] = b2 / size;
+                dst[di2 + 3] = a2 / size;
+            }
+        }
+        return dst;
+    }
+
     // ─── Export ───
 
     window.PlateRenderer = {
@@ -1188,11 +1149,13 @@
         movePlateUint8: movePlateUint8,
         composePlates: composePlates,
         heightmapToBiome: heightmapToBiome,
+        heightmapToPngTextureOnly: heightmapToPngTextureOnly,
         heightmapToClimateBandOverlay: heightmapToClimateBandOverlay,
         heightmapToGrayscale: heightmapToGrayscale,
         plateImageToCanvas: plateImageToCanvas,
         canvasToPlateImage: canvasToPlateImage,
-        loadPlateImageFromURL: loadPlateImageFromURL
+        loadPlateImageFromURL: loadPlateImageFromURL,
+        blurRGBA: blurRGBA
     };
 
 })();

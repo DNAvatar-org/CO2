@@ -1,6 +1,6 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.26
+// Version 1.0.30
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -23,6 +23,10 @@
 // Logs: v1.0.24 badge 🧩 compact en 3 lignes (🔺🧩🔻 / % / mini-slider 4ch)
 // Logs: v1.0.25 badge 🧩 sorti de #organigram-config-wrap — enfant direct de #flux-diagram, position absolute, sélecteurs simplifiés
 // Logs: v1.0.26 badge 🧩 : animation de bordure pulsante rouge-noir (même esprit que SCENARIO event-logo-pulse-img)
+// Logs: v1.0.27 observation_title : même font/size que PILOTAGE (.organigram-config-heading)
+// Logs: v1.0.28 OBSERVATIONS : wrap #observation-config-wrap (main.js) ; hide-organigram-observation-metrics + .flux-label-plain-metric
+// Logs: v1.0.29 hide-organigram-observation-metrics : masquer aussi .flux-arrow (🛰 OFF)
+// Logs: v1.0.30 hide-organigram-observation-metrics : pictos #cell-geometrie, #cell-reemis (EDS), #cell-albedo-btn (.flux-circle-bg > span)
 */
 
 .controle-simulation {
@@ -102,6 +106,48 @@
     padding: 2px;
     font-family: var(--font-emoji);
     /* Même animation que bouton SCENARIO (event-logo-pulse-img dans ergo_button.css) */
+    animation: event-logo-pulse-img 1.6s ease-in-out infinite;
+}
+
+/* OBSERVATIONS + 🛰 (satellite) — même typo titre que PILOTAGE, coin haut-droit */
+#observation-config-wrap {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    left: auto;
+    bottom: auto;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+    width: fit-content;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: visible;
+}
+#observation-config-wrap .organigram-config-heading {
+    text-align: right;
+    align-self: flex-end;
+}
+#observation-config-wrap .organigram-config-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    margin-right: 25px;
+    flex-wrap: wrap;
+}
+#observation-config-wrap #observation-metrics-toggle {
+    position: static;
+    flex-shrink: 0;
+    font-size: 45px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 2px;
+    font-family: var(--font-emoji);
     animation: event-logo-pulse-img 1.6s ease-in-out infinite;
 }
 /* Badge barycentre nuages (PILOTAGE, si ⚗ ON) — enfant direct de #flux-diagram */
@@ -429,6 +475,23 @@
 /* PILOTAGE : 🧩 nuages — masqué si ⚗ OFF (hide-organigram-arrows sur #flux-diagram) */
 #flux-diagram.hide-organigram-arrows > .organigram-fine-tuning-bary-badge {
     display: none;
+}
+
+/* 🛰 OFF : masquer W/m², MW/W/K, zéros, libellés verts (.flux-label-plain-metric) — pas le bandeau OBSERVATIONS */
+#flux-diagram.hide-organigram-observation-metrics .flux-label.watt-per-m2,
+#flux-diagram.hide-organigram-observation-metrics .flux-label.watt-or-kelvin,
+#flux-diagram.hide-organigram-observation-metrics .flux-label.zero-value,
+#flux-diagram.hide-organigram-observation-metrics .flux-label.flux-label-plain-metric {
+    visibility: hidden;
+}
+#flux-diagram.hide-organigram-observation-metrics .flux-arrow {
+    visibility: hidden;
+}
+/* Pictos centraux (logo dans le cercle) — pas le cercle / grille de labels */
+#flux-diagram.hide-organigram-observation-metrics #cell-geometrie .flux-circle-bg > span,
+#flux-diagram.hide-organigram-observation-metrics #cell-reemis .flux-circle-bg > span,
+#flux-diagram.hide-organigram-observation-metrics #cell-albedo-btn .flux-circle-bg > span {
+    visibility: hidden;
 }
 
 .flux-rectangle {

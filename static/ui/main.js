@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.35
+// Version 1.1.38
 // Date: [March 27, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -46,6 +46,9 @@
 // - v1.1.33 : trace setters DATA['🎚️'] (bary CLOUD_SW + CLOUD_FRACTION_BASE) + set explicite CLOUD_FRACTION_BASE au slider
 // - v1.1.34 : payload mini-slider reconstruit depuis bary+FINE_TUNING_BOUNDS (source DATA), puis réinjecté avant run
 // - v1.1.35 : création badge 🧩 — % et slider alignés sur DATA['🎚️'].baryByGroup.CLOUD_SW (plus de 100% figé jusqu'à updateFluxLabels)
+// - v1.1.36 : wrap OBSERVATIONS (titre + 🛰) comme PILOTAGE ; toggle hide-organigram-observation-metrics sur #flux-diagram
+// - v1.1.37 : booléens window.organigramObservation*PictoHidden (géométrie, EDS/reemis, albédo-btn) synchronisés au 🛰
+// - v1.1.38 : libellé d’époque 🐊 → « Hyperthermie éocène » (plus « Terre étouffe (PETM) »)
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM
@@ -2053,7 +2056,7 @@ function setEpoch(epochName, options) {
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
     const epochNameToEmojiForButton = {
         'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🥟',
-        'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Terre étouffe (PETM)': '🐊', 'Prélude glaciaire': '⛰', 'Grande Coupure': '🏔', 'EOT (33,9 Ma)': '🏔', 'Quaternaire': '❄️', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
+        'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Hyperthermie éocène': '🐊', 'Prélude glaciaire': '⛰', 'Grande Coupure': '🏔', 'EOT (33,9 Ma)': '🏔', 'Quaternaire': '❄️', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
     console.log('[DBG setEpoch] appelé avec=' + epochName + ' (id=' + epochIdForButton + ') DATA[🗿]=' + (DATA['📜'] && DATA['📜']['🗿']) + ' 📿💫=' + (DATA['📜'] && DATA['📜']['📿💫']) + ' currentEpochName=' + window.currentEpochName);
@@ -2139,7 +2142,7 @@ function setEpoch(epochName, options) {
             'Paléozoïque': '🌿',
             'Mésozoïque': '🦕',
             'Cénozoïque': '🦣',
-            'Terre étouffe (PETM)': '🐊',
+            'Hyperthermie éocène': '🐊',
             'Prélude glaciaire': '⛰',
             'Grande Coupure': '🏔',
             'EOT (33,9 Ma)': '🏔',
@@ -3035,6 +3038,7 @@ function runMainInit() {
     window.IO_LISTENER.on('flux:lastDrawn', function () {
         window.threeJSAnimationPaused = false;
         window.updateThreePlayIndicator();
+        if (typeof window.updateObservationIndicator === 'function') window.updateObservationIndicator();
         console.log('[main.js][flux:lastDrawn] Three.js play');
     }, 'main.js:threePlay');
 
@@ -3092,6 +3096,65 @@ function runMainInit() {
                 
                 // Bouton ⚗ : afficher/masquer détails (flèches, textes) et boutons d'action de l'organigramme — off par défaut
                 window.organigramArrowsVisible = false;
+                /** Métriques / libellés verts visibles par défaut ; OFF = classe hide-organigram-observation-metrics */
+                window.organigramObservationMetricsVisible = true;
+                /** true = pictogramme masqué (🛰 OFF) — #cell-geometrie, #cell-reemis (EDS), #cell-albedo-btn */
+                window.organigramObservationGeometriePictoHidden = false;
+                window.organigramObservationEdsPictoHidden = false;
+                window.organigramObservationAlbedoBtnPictoHidden = false;
+                window.syncOrganigramObservationPictoHiddenFlags = function () {
+                    var h = !window.organigramObservationMetricsVisible;
+                    window.organigramObservationGeometriePictoHidden = h;
+                    window.organigramObservationEdsPictoHidden = h;
+                    window.organigramObservationAlbedoBtnPictoHidden = h;
+                };
+                window.updateObservationIndicator = function () {
+                    var fluxObs = document.getElementById('flux-diagram');
+                    if (!fluxObs) return;
+                    var wrapObs = document.getElementById('observation-config-wrap');
+                    if (!wrapObs) {
+                        wrapObs = document.createElement('div');
+                        wrapObs.id = 'observation-config-wrap';
+                        fluxObs.appendChild(wrapObs);
+                    }
+                    var obsTitle = wrapObs.querySelector('.organigram-config-heading');
+                    if (!obsTitle) {
+                        obsTitle = document.createElement('span');
+                        obsTitle.className = 'organigram-config-heading';
+                        wrapObs.appendChild(obsTitle);
+                    }
+                    obsTitle.textContent = 'OBSERVATIONS';
+                    var obsRow = wrapObs.querySelector('.organigram-config-row');
+                    if (!obsRow) {
+                        obsRow = document.createElement('div');
+                        obsRow.className = 'organigram-config-row';
+                        wrapObs.appendChild(obsRow);
+                    }
+                    var obsBtn = document.getElementById('observation-metrics-toggle');
+                    if (!obsBtn) {
+                        obsBtn = document.createElement('button');
+                        obsBtn.id = 'observation-metrics-toggle';
+                        obsBtn.type = 'button';
+                        obsRow.appendChild(obsBtn);
+                    }
+                    obsBtn.className = 'icon-button' + (window.organigramObservationMetricsVisible ? ' selected' : '');
+                    obsBtn.setAttribute('data-tooltip', 'Mesures, flèches, pictos clés');
+                    obsBtn.setAttribute('aria-label', 'Afficher ou masquer mesures, flèches, pictos Géométrie, EDS et Albédo sur le diagramme');
+                    obsBtn.removeAttribute('title');
+                    obsBtn.textContent = '🛰';
+                    fluxObs.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
+                    window.syncOrganigramObservationPictoHiddenFlags();
+                    if (obsBtn.dataset.boundClick !== '1') {
+                        obsBtn.addEventListener('click', function () {
+                            window.organigramObservationMetricsVisible = !window.organigramObservationMetricsVisible;
+                            var fd = document.getElementById('flux-diagram');
+                            if (fd) fd.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
+                            obsBtn.classList.toggle('selected', window.organigramObservationMetricsVisible);
+                            window.syncOrganigramObservationPictoHiddenFlags();
+                        });
+                        obsBtn.dataset.boundClick = '1';
+                    }
+                };
                 window.updateThreePlayIndicator = function () {
                     var flux = document.getElementById('flux-diagram');
                     if (!flux) return;
@@ -3175,6 +3238,7 @@ function runMainInit() {
                     DATA['🔘']['🔘🎞'] = e.target.checked;
                 });
                 window.updateThreePlayIndicator();
+                window.updateObservationIndicator();
                 if (document.body && document.body.dataset.ftBarySliderBound !== '1') {
                     function interpolateFromBaryToSnapshot() {
                         var T = window.DATA && window.DATA['🎚️'] ? window.DATA['🎚️'] : null;

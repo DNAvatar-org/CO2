@@ -1,7 +1,7 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.16
-// Date: [Mar 29, 2026] [14:00 UTC+1]
+// Version 1.1.18
+// Date: [Mar 29, 2026] [17:00 UTC+1]
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -25,6 +25,8 @@
 //   - v1.1.12: fine_tuning_cloud_bary retiré du bouton albedo — même bandeau (main.js)
 //   - v1.1.14: EOT / 🏔 dans terre.epoch et noyau.radiation ; v1.1.15: 🐊 ⛰ + libellé « Grande Coupure »
 //   - v1.1.16: ❄️ Quaternaire (2 Ma) — terre + noyau + TEXTURE_DATES_MA / ACTION_BY_DATE
+//   - v1.1.17: espace1 — titre OBSERVATIONS déplacé vers main.js (wrap comme PILOTAGE), plus de top sur le nœud satellite
+//   - v1.1.18: 🐊 epochName « Hyperthermie éocène » (remplace Terre étouffe (PETM))
 //   - v1.1.13: albedo_percent de retour en top du bouton albédo (grille [1,2])
 
 // ============================================================================
@@ -139,7 +141,7 @@ const nodes = [
 
     { id: 'geometrie', logo: 'fonts/pics/geometrie.png', x: centerX + 65, y: centerY - 155, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 0, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: ['Géométrie'], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 13, logoScale: 0.8 },
 
-    { id: 'espace1', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 150, y: centerY - 170, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: '', bottom: '', tooltip: 'CERES', radiation: null, zIndex: 14 },
+    { id: 'espace1', logo: '', logoScale: 1.2, x: centerX + 150, y: centerY - 170, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: [], bottom: '', tooltip: 'CERES', radiation: null, zIndex: 14 },
 
     {//albedo cellule — cercle extérieur toujours blanc alpha 0.5, sans fill
         // Astuce direction flèche : centre décentré (x,y + petit offset) pour que le vecteur albedo→espace1 donne la bonne direction (sinon même centre que terre = ambiguïté). Voir aussi noyau (centerX - 0.2, earthCenterY - 0.1).
@@ -229,7 +231,7 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'Terre étouffe (PETM)',
+                epochName: 'Hyperthermie éocène',
                 numCircles: 2,
                 maxRadius: 52,
                 strokeSize: 0,
@@ -350,7 +352,7 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'Terre étouffe (PETM)',
+                epochName: 'Hyperthermie éocène',
                 logo: LOGOS.GLOBE_AFRICA,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,

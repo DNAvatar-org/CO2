@@ -1,8 +1,3 @@
-// Positions des plaques par époque — clés = TIMELINE[].📅 (identique DATA['📜']['🗿'] / API_BILAN).
-// dLat > 0 = nord, dLon > 0 = est, rotDeg = rotation propre. seaLevel au niveau époque.
-// Source de vérité test : img/plate_positions.json (fusion au chargement éditeur).
-
-window.PLATE_POSITIONS = 
 {
   "📱": {
     "seaLevel": 0.25,
@@ -484,54 +479,6 @@ window.PLATE_POSITIONS =
       "rotDeg": 87
     }
   },
-  "⚫": {
-    "seaLevel": 0,
-    "AF": {
-      "dLat": 0,
-      "dLon": 0,
-      "rotDeg": 0
-    },
-    "EU": {
-      "dLat": 0,
-      "dLon": 0,
-      "rotDeg": 0
-    },
-    "AS": {
-      "dLat": 0,
-      "dLon": 0,
-      "rotDeg": 0
-    },
-    "NA": {
-      "dLat": 0,
-      "dLon": 0,
-      "rotDeg": 0
-    },
-    "SA": {
-      "dLat": 0,
-      "dLon": 0,
-      "rotDeg": 0
-    },
-    "AN": {
-      "dLat": 0,
-      "dLon": 0,
-      "rotDeg": 0
-    },
-    "AU": {
-      "dLat": 0,
-      "dLon": 0,
-      "rotDeg": 0
-    },
-    "IN": {
-      "dLat": 0,
-      "dLon": 0,
-      "rotDeg": 0
-    },
-    "AR": {
-      "dLat": 0,
-      "dLon": 0,
-      "rotDeg": 0
-    }
-  },
   "🔥": {
     "seaLevel": 0,
     "AF": {
@@ -579,5 +526,53 @@ window.PLATE_POSITIONS =
       "dLon": 0,
       "rotDeg": 0
     }
+  },
+  "⚫": {
+    "seaLevel": 0,
+    "AF": {
+      "dLat": 0,
+      "dLon": 0,
+      "rotDeg": 0
+    },
+    "EU": {
+      "dLat": 0,
+      "dLon": 0,
+      "rotDeg": 0
+    },
+    "AS": {
+      "dLat": 0,
+      "dLon": 0,
+      "rotDeg": 0
+    },
+    "NA": {
+      "dLat": 0,
+      "dLon": 0,
+      "rotDeg": 0
+    },
+    "SA": {
+      "dLat": 0,
+      "dLon": 0,
+      "rotDeg": 0
+    },
+    "AN": {
+      "dLat": 0,
+      "dLon": 0,
+      "rotDeg": 0
+    },
+    "AU": {
+      "dLat": 0,
+      "dLon": 0,
+      "rotDeg": 0
+    },
+    "IN": {
+      "dLat": 0,
+      "dLon": 0,
+      "rotDeg": 0
+    },
+    "AR": {
+      "dLat": 0,
+      "dLon": 0,
+      "rotDeg": 0
+    }
   }
-};
+}

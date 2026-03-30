@@ -1,6 +1,6 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.3
+// Version 1.0.4
 // Date: [January 2025]
 // logs :
 // - v1.0.3: IIFE + __alphabetModuleLoaded (évite SyntaxError CHARS redeclared si double chargement) ; resolveImagePath pour pages sous /html/*.html → ../fonts/
@@ -83,7 +83,7 @@ const CHARS = {
     MESOZOIC: '🦕', // Mésozoïque : dinosaure sauropode
     PALEOZOIC: '🌿', // Paléozoïque (500–250 Ma en timeline) : os/fossile
     CENOZOIC: '🦣', // Cénozoïque : mammouth
-    PETM_HOUSE: '🐊', // Terre étouffe / PETM (50–35 Ma)
+    PETM_HOUSE: '🐊', // Hyperthermie éocène (50–35 Ma)
     PRELUDE_ICE: '⛰', // Prélude glaciaire (35–33 Ma)
     EOT: '🏔',      // Grande Coupure (~33 Ma)
     QUATERNARY: '❄️', // Quaternaire (~2 Ma)
@@ -190,7 +190,7 @@ const CHARS_DESC = {
     '🦕': 'Mésozoïque',
     '🌿': 'Paléozoïque',
     '🦣': 'Cénozoïque',
-    '🐊': 'Terre étouffe (PETM)',
+    '🐊': 'Hyperthermie éocène',
     '⛰': 'Prélude glaciaire',
     '🏔': 'Grande Coupure',
     '❄️': 'Quaternaire',

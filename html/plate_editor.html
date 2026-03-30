@@ -94,9 +94,19 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.2;
+        }
+        .epoch-btn .epoch-date {
+            font-size: 9px;
+            color: #888;
+            letter-spacing: 0.02em;
         }
         .epoch-btn:hover { background: #3a3a3a; }
         .epoch-btn.active { background: #2a4a3a; border-color: #5a9; }
+        .epoch-btn.active .epoch-date { color: #9db; }
 
         /* Boutons */
         .btn {
@@ -197,6 +207,41 @@
             border: 1px solid #444;
             flex-shrink: 0;
         }
+        .interp-gauge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        .interp-gauge .seg-bound {
+            font-size: 22px;
+            line-height: 1;
+            min-width: 32px;
+            text-align: center;
+            user-select: none;
+        }
+        .interp-gauge input[type="range"] {
+            flex: 1;
+            min-width: 80px;
+            accent-color: #5599cc;
+        }
+        .btn-seg {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-seg:hover { background: #333; color: #ccc; }
+        .interp-hint {
+            font-size: 10px;
+            color: #666;
+            margin: 6px 0 0 0;
+            line-height: 1.35;
+        }
     </style>
 </head>
 <body>
@@ -232,6 +277,15 @@
 
     <h2>EPOQUE</h2>
     <div class="epoch-bar" id="epoch-bar"></div>
+    <h2 style="margin-top:10px">TRANSITION</h2>
+    <div class="interp-gauge" id="interp-gauge">
+        <button type="button" class="btn-seg" id="btn-seg-prev" title="Segment précédent">◀</button>
+        <span class="seg-bound" id="seg-bound-left" aria-hidden="true">?</span>
+        <input type="range" id="ctrl-segment-u" min="0" max="1000" value="0" step="1" title="Interpolation entre les deux bornes">
+        <span class="seg-bound" id="seg-bound-right" aria-hidden="true">?</span>
+        <button type="button" class="btn-seg" id="btn-seg-next" title="Segment suivant">▶</button>
+    </div>
+    <p class="interp-hint">Jauge toujours active : d’une période TIMELINE à la suivante (pas de saut vers 0 Ma). Positions plaques interpolées entre les logos affichés. Tranche ⚫→🔥 : blanchiment glace sur toute la jauge (~500 Ma). Le <strong>seuil mer</strong> est mis à jour quand tu bouges la jauge ; tu peux encore l’ajuster à la main.</p>
 
     <h2>NIVEAU MER</h2>
     <div class="controls">
@@ -242,8 +296,8 @@
         </div>
     </div>
 
-    <button class="btn" id="btn-save">Sauver position</button>
-    <button class="btn" id="btn-reset">Reset moderne</button>
+    <button class="btn" id="btn-copy-epoch">Copier époque</button>
+    <button class="btn" id="btn-paste-epoch" disabled>Coller époque</button>
     <button class="btn" id="btn-export">Exporter JSON</button>
     <button class="btn" id="btn-export-png">Exporter PNGs</button>
     <button class="btn" id="btn-regen">Regénérer images</button>
@@ -279,7 +333,9 @@
 
 <script src="../static/lib/three.min.js"></script>
 <script src="../static/plates/plate_positions.js"></script>
+<script src="../static/plates/plate_positions_interp.js"></script>
 <script src="../static/plates/plates_data.js"></script>
+<script src="../static/plates/texture.js"></script>
 <script src="../static/plates/plate_renderer.js"></script>
 <script src="../static/plates/albedo_test_epochs.js"></script>
 <script>
@@ -290,7 +346,185 @@
     const POSITIONS = window.PLATE_POSITIONS;
     const PR = window.PlateRenderer;
 
-    const EPOCH_LIST = ['🌿500', '🌿350', '🦕250', '🦕150', '🦣', '🐊', '⛰', '🏔', '❄️', '📱'];
+    /** Même ordre que `timeline` dans API_BILAN/config/configTimeline.js (📅 = clé DATA). Pas de 🚂 (hors frise). */
+    const TIMELINE_EPOCH_IDS = ['⚫', '🔥', '🦠', '🥟', '🌿', '🦕', '🦣', '🐊', '⛰', '🏔', '❄️', '📱'];
+    /**
+     * Repère Ma avant présent — aligné sur API_BILAN/config/configTimeline.js (▶/◀ en années / 1e6).
+     * ⚫ 5 Ga → 5000 Ma ; 🔥 début Hadéen 4,5 Ga ; 🦠 début Archéen 4 Ga ; 🌿 début Paléozoïque 500 Ma ; 🦕 Méso 250 Ma.
+     */
+    const EPOCH_TO_MA = {
+        '📱': 0,
+        '❄️': 2,
+        '🏔': 28,
+        '⛰': 34,
+        '🐊': 50,
+        '🦣': 66,
+        '🦕': 250,
+        '🌿': 500,
+        '🥟': 1500,
+        '🦠': 4000,
+        '🔥': 4500,
+        '⚫': 5000
+    };
+    function epochBarSubLabel(key) {
+        const ma = EPOCH_TO_MA[key];
+        if (ma == null) return '';
+        if (key === '📱') return '0 Ma';
+        if (ma >= 1000) {
+            var ga = ma / 1000;
+            var gs = ga >= 10 ? String(Math.round(ga)) : (Math.round(ga * 10) / 10).toString().replace(/\.0$/, '');
+            return '~' + gs + ' Ga';
+        }
+        return '~' + Math.round(ma) + ' Ma';
+    }
+    function orderedEpochKeys() {
+        const keys = Object.keys(POSITIONS);
+        const seen = new Set();
+        const out = [];
+        for (let i = 0; i < TIMELINE_EPOCH_IDS.length; i++) {
+            const k = TIMELINE_EPOCH_IDS[i];
+            if (keys.indexOf(k) >= 0) {
+                out.push(k);
+                seen.add(k);
+            }
+        }
+        const rest = keys.filter(function (k) { return !seen.has(k); });
+        rest.sort(function (a, b) {
+            const ma = EPOCH_TO_MA;
+            const da = (ma[a] != null ? ma[a] : 1e9) - (ma[b] != null ? ma[b] : 1e9);
+            return da !== 0 ? da : a.localeCompare(b);
+        });
+        return out.concat(rest);
+    }
+
+    function buildTimelineSegments() {
+        const list = orderedEpochKeys();
+        const out = [];
+        for (let i = 0; i < list.length - 1; i++) {
+            const left = list[i];
+            const right = list[i + 1];
+            const maL = EPOCH_TO_MA[left];
+            const maR = EPOCH_TO_MA[right];
+            if (maL == null || maR == null) continue;
+            out.push({ left: left, right: right, maLeft: maL, maRight: maR });
+        }
+        return out;
+    }
+
+    function blendAlbedoRows(rowL, rowR, t) {
+        if (!rowL) return rowR ? Object.assign({}, rowR) : {};
+        if (!rowR) return Object.assign({}, rowL);
+        const keys = new Set([].concat(Object.keys(rowL), Object.keys(rowR)));
+        const o = {};
+        keys.forEach(function (k) {
+            const a = rowL[k];
+            const b = rowR[k];
+            if (typeof a === 'number' && typeof b === 'number') {
+                o[k] = a + (b - a) * t;
+            } else {
+                o[k] = t < 0.5 ? a : b;
+            }
+        });
+        return o;
+    }
+
+    let segmentIndex = 0;
+    let segmentU = 0;
+
+    function clampSegmentIndex() {
+        const segs = buildTimelineSegments();
+        if (segmentIndex >= segs.length) segmentIndex = Math.max(0, segs.length - 1);
+        if (segmentIndex < 0) segmentIndex = 0;
+    }
+
+    function getSegmentT() {
+        return segmentU / 1000;
+    }
+
+    function syncSeaSliderFromValue(sl) {
+        seaLevel = sl;
+        const sEl = document.getElementById('ctrl-seaLevel');
+        const vEl = document.getElementById('val-seaLevel');
+        if (sEl) sEl.value = String(Math.round(seaLevel * 100));
+        if (vEl) vEl.textContent = seaLevel.toFixed(2);
+    }
+
+    function syncSegmentGaugeLabels() {
+        const segs = buildTimelineSegments();
+        const elL = document.getElementById('seg-bound-left');
+        const elR = document.getElementById('seg-bound-right');
+        const prevB = document.getElementById('btn-seg-prev');
+        const nextB = document.getElementById('btn-seg-next');
+        const slider = document.getElementById('ctrl-segment-u');
+        if (!elL || !elR || !slider) return;
+        if (!segs.length) {
+            elL.textContent = '—';
+            elR.textContent = '—';
+            slider.disabled = true;
+            if (prevB) prevB.disabled = true;
+            if (nextB) nextB.disabled = true;
+            return;
+        }
+        clampSegmentIndex();
+        const s = segs[segmentIndex];
+        elL.textContent = s.left;
+        elR.textContent = s.right;
+        slider.disabled = false;
+        if (prevB) prevB.disabled = segmentIndex <= 0;
+        if (nextB) nextB.disabled = segmentIndex >= segs.length - 1;
+    }
+
+    function syncSegmentFromEpochKey(e) {
+        const segs = buildTimelineSegments();
+        if (!segs.length) return;
+        const list = orderedEpochKeys();
+        const i = list.indexOf(e);
+        if (i < 0) return;
+        if (i === 0) {
+            segmentIndex = 0;
+            segmentU = 0;
+        } else {
+            const si = segs.findIndex(function (s) { return s.right === e; });
+            if (si >= 0) {
+                segmentIndex = si;
+                segmentU = 1000;
+            } else {
+                segmentIndex = Math.min(segs.length - 1, Math.max(0, i - 1));
+                segmentU = 1000;
+            }
+        }
+        clampSegmentIndex();
+        const su = document.getElementById('ctrl-segment-u');
+        if (su) su.value = String(segmentU);
+        syncSegmentGaugeLabels();
+        syncSeaFromSegmentMix();
+    }
+
+    function syncSeaFromSegmentMix() {
+        const segs = buildTimelineSegments();
+        if (!segs.length || typeof window.interpolatePlatePositionsBetweenKeys !== 'function') return;
+        clampSegmentIndex();
+        const s = segs[segmentIndex];
+        if (!s) return;
+        const mix = window.interpolatePlatePositionsBetweenKeys(POSITIONS, s.left, s.right, getSegmentT());
+        if (mix && mix.seaLevel != null) {
+            syncSeaSliderFromValue(mix.seaLevel);
+        }
+    }
+
+    function advanceSegment(delta) {
+        const segs = buildTimelineSegments();
+        if (!segs.length) return;
+        segmentIndex = Math.max(0, Math.min(segs.length - 1, segmentIndex + delta));
+        segmentU = 0;
+        const su = document.getElementById('ctrl-segment-u');
+        if (su) su.value = '0';
+        syncSegmentGaugeLabels();
+        syncSeaFromSegmentMix();
+        if (selectedPlate) selectPlate(selectedPlate);
+        scheduleUpdate();
+    }
+
     let currentEpoch = '📱';
     let selectedPlate = null;
     let seaLevel = 0.25;
@@ -348,7 +582,7 @@
     // ─── Three.js setup ───
     const container = document.getElementById('globe-container');
     const canvas = document.getElementById('globe-canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false });
     renderer.setPixelRatio(window.devicePixelRatio);
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x111111);
@@ -389,7 +623,7 @@
     }
 
     function updatePlateLines() {
-        const positions = getPositionsForEpoch(currentEpoch);
+        const positions = getSnapshotTransforms().plateMap;
         for (const [id, plate] of Object.entries(PLATES)) {
             if (plateLines[id]) { scene.remove(plateLines[id]); plateLines[id].geometry.dispose(); }
             const pos = positions[id] || { dLat: 0, dLon: 0, rotDeg: 0 };
@@ -423,6 +657,35 @@
 
     // ─── Helpers ───
     function getPositionsForEpoch(epoch) { return POSITIONS[epoch] || POSITIONS['📱'] || {}; }
+
+    function getSnapshotTransforms() {
+        const segs = buildTimelineSegments();
+        if (!segs.length || typeof window.interpolatePlatePositionsBetweenKeys !== 'function') {
+            return {
+                plateMap: getPositionsForEpoch(currentEpoch),
+                snap: null,
+                segment: null,
+                t: 0
+            };
+        }
+        clampSegmentIndex();
+        const s = segs[segmentIndex];
+        const t = getSegmentT();
+        const mix = window.interpolatePlatePositionsBetweenKeys(POSITIONS, s.left, s.right, t);
+        if (!mix) {
+            return {
+                plateMap: getPositionsForEpoch(currentEpoch),
+                snap: null,
+                segment: s,
+                t: t
+            };
+        }
+        const plateMap = {};
+        for (const id of Object.keys(PLATES)) {
+            plateMap[id] = mix[id] ? Object.assign({}, mix[id]) : { dLat: 0, dLon: 0, rotDeg: 0 };
+        }
+        return { plateMap: plateMap, snap: mix, segment: s, t: t };
+    }
     function ensureEpochPositions(epoch) {
         if (!POSITIONS[epoch]) {
             POSITIONS[epoch] = {};
@@ -447,7 +710,13 @@
         document.querySelectorAll('.plate-item').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
         document.getElementById('status-text').textContent = 'Plaque : ' + PLATES[id].name;
         ensureEpochPositions(currentEpoch);
-        const pos = POSITIONS[currentEpoch][id] || { dLat: 0, dLon: 0, rotDeg: 0 };
+        const stPl = getSnapshotTransforms();
+        let pos;
+        if (stPl.snap && stPl.segment) {
+            pos = stPl.snap[id] ? stPl.snap[id] : { dLat: 0, dLon: 0, rotDeg: 0 };
+        } else {
+            pos = POSITIONS[currentEpoch][id] || { dLat: 0, dLon: 0, rotDeg: 0 };
+        }
         document.getElementById('ctrl-dLat').value = pos.dLat || 0;
         document.getElementById('ctrl-dLon').value = pos.dLon || 0;
         document.getElementById('ctrl-rotDeg').value = pos.rotDeg || 0;
@@ -502,54 +771,107 @@
         scheduleUpdate();
     });
 
-    // ─── UI : epoques ───
+    // ─── UI : époques — une clé = un logo TIMELINE (📅), sans suffixe chiffré ───
     const epochBar = document.getElementById('epoch-bar');
-    EPOCH_LIST.forEach(e => {
-        const btn = document.createElement('button');
-        btn.className = 'epoch-btn' + (e === currentEpoch ? ' active' : '');
-        btn.textContent = e;
-        btn.addEventListener('click', () => {
-            currentEpoch = e;
-            window._currentEpoch = e;
-            document.querySelectorAll('.epoch-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const row = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[e];
-            // seaLevel override depuis plate_positions.js
-            const posEpoch = window.PLATE_POSITIONS && window.PLATE_POSITIONS[e];
-            if (posEpoch && posEpoch.seaLevel != null) {
-                seaLevel = posEpoch.seaLevel;
+    function applyEpochSeaLevelAndMa(e) {
+        const row = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[e];
+        const posEpoch = window.PLATE_POSITIONS && window.PLATE_POSITIONS[e];
+        if (posEpoch && posEpoch.seaLevel != null) {
+            seaLevel = posEpoch.seaLevel;
+            const sl = document.getElementById('ctrl-seaLevel');
+            const vl = document.getElementById('val-seaLevel');
+            if (sl) sl.value = String(Math.round(seaLevel * 100));
+            if (vl) vl.textContent = seaLevel.toFixed(2);
+        } else if (row && typeof window.biomeParamsFromAlbedoTest === 'function') {
+            const bp = window.biomeParamsFromAlbedoTest(row, e);
+            if (bp.seaLevel != null) {
+                seaLevel = bp.seaLevel;
                 const sl = document.getElementById('ctrl-seaLevel');
                 const vl = document.getElementById('val-seaLevel');
                 if (sl) sl.value = String(Math.round(seaLevel * 100));
                 if (vl) vl.textContent = seaLevel.toFixed(2);
-            } else if (row && typeof window.biomeParamsFromAlbedoTest === 'function') {
-                const bp = window.biomeParamsFromAlbedoTest(row, e);
-                if (bp.seaLevel != null) {
-                    seaLevel = bp.seaLevel;
-                    const sl = document.getElementById('ctrl-seaLevel');
-                    const vl = document.getElementById('val-seaLevel');
-                    if (sl) sl.value = String(Math.round(seaLevel * 100));
-                    if (vl) vl.textContent = seaLevel.toFixed(2);
-                }
             }
-            if (selectedPlate) selectPlate(selectedPlate);
-            scheduleUpdate();
+        }
+    }
+    function onEpochButtonClick(e) {
+        currentEpoch = e;
+        window._currentEpoch = e;
+        document.querySelectorAll('.epoch-btn').forEach(function (b) {
+            b.classList.toggle('active', b.getAttribute('data-epoch') === e);
         });
-        epochBar.appendChild(btn);
-    });
+        applyEpochSeaLevelAndMa(e);
+        syncSegmentFromEpochKey(e);
+        if (selectedPlate) selectPlate(selectedPlate);
+        scheduleUpdate();
+    }
+    function rebuildEpochBar() {
+        epochBar.innerHTML = '';
+        const list = orderedEpochKeys();
+        if (list.indexOf(currentEpoch) < 0 && list.length) currentEpoch = list[0];
+        list.forEach(function (e) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'epoch-btn' + (e === currentEpoch ? ' active' : '');
+            btn.setAttribute('data-epoch', e);
+            btn.textContent = '';
+            const icon = document.createElement('span');
+            icon.textContent = e;
+            btn.appendChild(icon);
+            const sub = epochBarSubLabel(e);
+            if (sub) {
+                const dateEl = document.createElement('span');
+                dateEl.className = 'epoch-date';
+                dateEl.textContent = sub;
+                btn.appendChild(dateEl);
+            }
+            btn.addEventListener('click', function () { onEpochButtonClick(e); });
+            epochBar.appendChild(btn);
+        });
+        syncSegmentGaugeLabels();
+    }
+    rebuildEpochBar();
+    syncSegmentFromEpochKey(currentEpoch);
 
-    // ─── UI : boutons ───
-    document.getElementById('btn-reset').addEventListener('click', () => {
-        if (!selectedPlate) return;
-        ensureEpochPositions(currentEpoch);
-        POSITIONS[currentEpoch][selectedPlate] = { dLat: 0, dLon: 0, rotDeg: 0 };
-        selectPlate(selectedPlate);
+    document.getElementById('btn-seg-prev').addEventListener('click', function () {
+        advanceSegment(-1);
+    });
+    document.getElementById('btn-seg-next').addEventListener('click', function () {
+        advanceSegment(1);
+    });
+    document.getElementById('ctrl-segment-u').addEventListener('input', function () {
+        segmentU = parseInt(this.value, 10) || 0;
+        syncSeaFromSegmentMix();
+        if (selectedPlate) selectPlate(selectedPlate);
         scheduleUpdate();
     });
 
-    document.getElementById('btn-save').addEventListener('click', () => {
-        document.getElementById('btn-save').textContent = 'Sauvé !';
-        setTimeout(() => { document.getElementById('btn-save').textContent = 'Sauver position'; }, 1000);
+    // ─── UI : boutons copier / coller époque ───
+    let _epochClipboard = null;
+
+    document.getElementById('btn-copy-epoch').addEventListener('click', () => {
+        const src = POSITIONS[currentEpoch] || {};
+        _epochClipboard = {};
+        for (const id of Object.keys(PLATES)) {
+            const p = src[id] || { dLat: 0, dLon: 0, rotDeg: 0 };
+            _epochClipboard[id] = Object.assign({}, p);
+        }
+        const btn = document.getElementById('btn-copy-epoch');
+        btn.textContent = 'Copié ✓';
+        setTimeout(() => { btn.textContent = 'Copier époque'; }, 1200);
+        document.getElementById('btn-paste-epoch').disabled = false;
+    });
+
+    document.getElementById('btn-paste-epoch').addEventListener('click', () => {
+        if (!_epochClipboard) return;
+        ensureEpochPositions(currentEpoch);
+        for (const id of Object.keys(PLATES)) {
+            if (_epochClipboard[id]) POSITIONS[currentEpoch][id] = Object.assign({}, _epochClipboard[id]);
+        }
+        if (selectedPlate) selectPlate(selectedPlate);
+        scheduleUpdate();
+        const btn = document.getElementById('btn-paste-epoch');
+        btn.textContent = 'Collé ✓';
+        setTimeout(() => { btn.textContent = 'Coller époque'; }, 1200);
     });
 
     document.getElementById('btn-export').addEventListener('click', () => {
@@ -595,7 +917,8 @@
     }
 
     function updateMaps() {
-        const positions = getPositionsForEpoch(currentEpoch);
+        const st = getSnapshotTransforms();
+        const positions = st.plateMap;
         const polarMasks = buildPolarTextureMasks(positions);
 
         // Composition : rotation + addition de toutes les plaques
@@ -604,28 +927,41 @@
         // Preview heightmap
         const grayData = PR.heightmapToGrayscale(heightmap, HW, HH);
 
-        const albedoRow = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[currentEpoch];
+        const seg = st.segment;
+        const t = st.t;
+        let albedoRow = null;
+        let bioEpochKey = currentEpoch;
+        if (seg && window.ALBEDO_TEST_EPOCHS) {
+            const rowL = window.ALBEDO_TEST_EPOCHS[seg.left];
+            const rowR = window.ALBEDO_TEST_EPOCHS[seg.right];
+            albedoRow = blendAlbedoRows(rowL, rowR, t);
+            bioEpochKey = seg.left + '|' + seg.right;
+        }
+        if (!albedoRow) {
+            albedoRow = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[currentEpoch];
+        }
         const baseBio = albedoRow && typeof window.biomeParamsFromAlbedoTest === 'function'
-            ? window.biomeParamsFromAlbedoTest(albedoRow, currentEpoch)
+            ? window.biomeParamsFromAlbedoTest(albedoRow, bioEpochKey)
             : {};
 
-        const bandParams = Object.assign({}, baseBio, { seaLevel: seaLevel });
+        const renderSea = seaLevel;
+        const bandParams = Object.assign({}, baseBio, { seaLevel: renderSea });
 
         // DEBUG biome bands
         let maxH_dbg = 0;
         for (let i = 0; i < heightmap.length; i++) if (heightmap[i] > maxH_dbg) maxH_dbg = heightmap[i];
-        const lr = Math.max(0.01, maxH_dbg - seaLevel);
+        const lr = Math.max(0.01, maxH_dbg - renderSea);
         let land0 = 0, land1 = 0, land2 = 0, land3 = 0, sea0 = 0;
         for (let i = 0; i < heightmap.length; i++) {
-            const lH = Math.min(1, Math.max(0, (heightmap[i] - seaLevel) / lr));
-            if (heightmap[i] < seaLevel) sea0++;
+            const lH = Math.min(1, Math.max(0, (heightmap[i] - renderSea) / lr));
+            if (heightmap[i] < renderSea) sea0++;
             else if (lH < 0.3) land0++;
             else if (lH < 0.5) land1++;
             else if (lH < 0.72) land2++;
             else land3++;
         }
         console.log('[biome] epoch=' + currentEpoch +
-            ' seaLevel=' + seaLevel.toFixed(3) + ' maxH=' + maxH_dbg.toFixed(3) +
+            ' seaLevel=' + renderSea.toFixed(3) + ' maxH=' + maxH_dbg.toFixed(3) +
             ' tropEdge=' + (baseBio.tropicalEdge||'?').toFixed(1) +
             ' aridSpan=' + (baseBio.aridSpan||'?').toFixed(1) +
             ' tempEnd=' + (baseBio.temperateEnd||'?').toFixed(1) +
@@ -668,11 +1004,17 @@
             leg.innerHTML = '';
         }
 
-        const biomeData = PR.heightmapToBiome(heightmap, HW, HH, Object.assign({}, baseBio, {
-            seaLevel: seaLevel,
+        const epochRefMa = EPOCH_TO_MA[currentEpoch];
+        const isBlackBodySeg = seg && seg.left === '⚫' && seg.right === '🔥';
+        const biomeRaw = PR.heightmapToBiome(heightmap, HW, HH, Object.assign({}, baseBio, {
+            seaLevel: renderSea,
+            epochRefMa: epochRefMa,
+            blackBodyPrimitive: !!isBlackBodySeg,
+            primitiveIceT: isBlackBodySeg ? t : undefined,
             anSouthLumaRot: polarMasks.anSouthLumaRot,
             northLumaRotMax: polarMasks.northLumaRotMax
         }));
+        const biomeData = biomeRaw;
         const cvB = document.getElementById('preview-biome');
         if (cvB.width !== HW || cvB.height !== HH) { cvB.width = HW; cvB.height = HH; }
         const ctxB = cvB.getContext('2d');
@@ -776,7 +1118,7 @@
     document.getElementById('chk-wireframe').checked = false;
     animate();
 
-    (function syncSeaLevelFromAlbedo() {
+    function syncSeaLevelFromAlbedo() {
         const posEpoch = window.PLATE_POSITIONS && window.PLATE_POSITIONS[currentEpoch];
         const row = window.ALBEDO_TEST_EPOCHS && window.ALBEDO_TEST_EPOCHS[currentEpoch];
         const overrideSL = posEpoch && posEpoch.seaLevel != null ? posEpoch.seaLevel : null;
@@ -790,10 +1132,37 @@
             if (slEl) slEl.value = String(Math.round(seaLevel * 100));
             if (vl) vl.textContent = seaLevel.toFixed(2);
         }
-    })();
+    }
+    syncSeaLevelFromAlbedo();
+
+    // ─── Chargement plate_positions.json (priorité sur le .js) ───
+    const JSON_URL = '../static/plates/img/plate_positions.json';
+    fetch(JSON_URL)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(data => {
+            // Merger chaque époque du JSON dans POSITIONS
+            for (const epoch of Object.keys(data)) {
+                if (!POSITIONS[epoch]) POSITIONS[epoch] = {};
+                const src = data[epoch];
+                // seaLevel au niveau époque
+                if (src.seaLevel != null) POSITIONS[epoch].seaLevel = src.seaLevel;
+                // positions par plaque
+                for (const id of Object.keys(PLATES)) {
+                    if (src[id]) POSITIONS[epoch][id] = Object.assign({}, src[id]);
+                }
+            }
+            setStatus('Positions JSON chargées');
+            syncSeaLevelFromAlbedo();
+            rebuildEpochBar();
+            applyEpochSeaLevelAndMa(currentEpoch);
+            syncSegmentFromEpochKey(currentEpoch);
+            if (selectedPlate) selectPlate(selectedPlate);
+            scheduleUpdate();
+        })
+        .catch(() => setStatus('plate_positions.json absent, utilisation .js'))
+        .finally(() => tryLoadPNGs());
 
     // Lancer le chargement
-    tryLoadPNGs();
 
 })();
 </script>

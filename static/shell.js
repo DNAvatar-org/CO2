@@ -5,11 +5,12 @@
 //       - Entrée utilisateur → shell : setEpoch, runCompute, applyStateFromScie, applyTuningFromScie sont le point d'entrée des boutons
 //         et délèguent à sync_panels (setEpoch, runComputeInParent, etc.).
 //       En standalone (visu_ ou scie_ sans index), current = cette page.
-// Version 1.0.8
+// Version 1.0.9
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: 2025-02-25
+// Logs: v1.0.9 epochNameToId 🐊 « Hyperthermie éocène »
 // Logs: v1.0.8 resolveEpochIdForTimeline — syncToScie/setState utilisent 📅 (emoji), pas le nom français (fix 🎞 Hadéen)
 // Logs: v1.0.7 setState → setEpoch(payload.epochId, { forceResetTics }) si payload.forceResetTics (bouton époque)
 // Logs:
@@ -53,7 +54,7 @@
             'Paléozoïque': '🌿',
             'Mésozoïque': '🦕',
             'Cénozoïque': '🦣',
-            'Terre étouffe (PETM)': '🐊',
+            'Hyperthermie éocène': '🐊',
             'Prélude glaciaire': '⛰',
             'Grande Coupure': '🏔',
             'EOT (33,9 Ma)': '🏔',

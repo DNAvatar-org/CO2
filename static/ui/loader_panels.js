@@ -1,6 +1,6 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.9
+// Version 1.1.10
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
@@ -11,6 +11,7 @@
 // - v1.1.6: curseur wait via class compute-loading (html+body) pour résister en anim
 // - v1.1.7: scheduleInitialCompute() appelé systématiquement en fin initAfterLoad pour garantir [4] après [3]
 // - v1.1.8: garde updateEpochActions si events.js pas encore chargé
+// - v1.1.10: EPOCH_ID_TO_NAME 🐊 « Hyperthermie éocène »
 // - v1.1.9: fine_tuning_bounds.js + tuning.js après initDATA (FINE_TUNING_BOUNDS + fillDataTuningFromBary côté visu_)
 // Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
 // Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
@@ -154,7 +155,7 @@
     });
 
     // Mapping 📅 → nom d'époque (pour togglePlotAnim : raw TIMELINE n'a pas .name)
-    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Terre étouffe (PETM)', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
     function nextEpochName(nextItem, nextId) {
         return nextItem.name || EPOCH_ID_TO_NAME[nextId] || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
     }
@@ -279,7 +280,7 @@
                     }
                     const epochNameMap = {
                         '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque',
-                        '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Terre étouffe (PETM)', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
+                        '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
                     };
                     if (epochNameMap[epochId]) epochName = epochNameMap[epochId];
                     // ▶ = début (années), ◀ = fin → startYears, endYears pour getGeologicalPeriodByName et formatYears

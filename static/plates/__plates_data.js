@@ -90,7 +90,7 @@ window.PLATE_POSITIONS = {
 
     // ─── TRIAS/PERMIEN (-250 Ma) : PANGÉE ───
     // On regroupe tout le monde autour de l'Afrique (0,0)
-    '🦕250': {
+    '🦕': {
         'AF': {rotLat:0, rotLon:0, rotDeg:0},
         'SA': {rotLat:0, rotLon:0, rotDeg:-3},  // Collé à gauche de l'Afrique
         'LAU': {rotLat:35, rotLon:-30, rotDeg:25}, // Collé au nord-ouest
@@ -103,22 +103,8 @@ window.PLATE_POSITIONS = {
         'AR': {rotLat:10, rotLon:25, rotDeg:0}
     },
 
-    // ─── CARBONIFÈRE (-350 Ma) : Collision Laurentia-Baltica (Laurussia) ───
-    '🌿350': {
-        'LAU': {rotLat:10, rotLon:-20, rotDeg:40},
-        'BAL': {rotLat:15, rotLon:-10, rotDeg:35}, // Baltica et Laurentia sont presque soudées
-        'AF': {rotLat:-30, rotLon:10, rotDeg:20},  // Le Gondwana remonte vers le Nord
-        'SA': {rotLat:-30, rotLon:0, rotDeg:15},
-        'IN': {rotLat:-50, rotLon:30, rotDeg:30},
-        'AN': {rotLat:-70, rotLon:0, rotDeg:0},
-        'AU': {rotLat:-40, rotLon:60, rotDeg:20},
-        'SIB': {rotLat:30, rotLon:80, rotDeg:110}, // Toujours isolée
-        'EU_S': {rotLat:10, rotLon:40, rotDeg:0}, 'AR': {rotLat:0, rotLon:0, rotDeg:0}
-    },
-
-    // ─── ORDOVICIEN (-500 Ma) : Éclatement total ───
-    // Le Gondwana est au pôle Sud, les autres sont des îles éparpillées
-    '🌿500': {
+    // ─── Paléozoïque (TIMELINE 🌿) : repère Ordovicien — Gondwana au pôle, îles éparses ───
+    '🌿': {
         'AF': {rotLat:-90, rotLon:0, rotDeg:0},   // Pôle Sud
         'SA': {rotLat:-90, rotLon:0, rotDeg:0},   // Soudé au Gondwana
         'AN': {rotLat:-90, rotLon:0, rotDeg:0},   // Soudé au Gondwana
