@@ -155,7 +155,7 @@
     });
 
     // Mapping 📅 → nom d'époque (pour togglePlotAnim : raw TIMELINE n'a pas .name)
-    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
     function nextEpochName(nextItem, nextId) {
         return nextItem.name || EPOCH_ID_TO_NAME[nextId] || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
     }
@@ -271,15 +271,24 @@
     function initAfterLoad() {
         if (typeof window.initCharsForDisplay === 'function') window.initCharsForDisplay();
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
+            if (window.DEBUG_TIMELINE_HIDDEN) {
+                try {
+                    var dbg = window.TIMELINE
+                        .filter(function (it) { return it && it['📅']; })
+                        .map(function (it) { return it['📅'] + ':' + (it.hidden ? 'hidden' : 'show'); })
+                        .join(', ');
+                    window.pd('❌ [initAfterLoad][loader_panels.js] TIMELINE epochs=' + dbg);
+                } catch (e) {}
+            }
             window.configOrganigramme.timeline = window.TIMELINE.map(function (item) {
-                if (item['📅']) {
+                if (item && item['📅'] && !item.hidden) {
                     const epochId = item['📅'];
                     let epochName = epochId;
                     if (typeof window.CHARS_DESC !== 'undefined' && window.CHARS_DESC[epochId]) {
                         epochName = window.CHARS_DESC[epochId];
                     }
                     const epochNameMap = {
-                        '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque',
+                        '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige',
                         '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
                     };
                     if (epochNameMap[epochId]) epochName = epochNameMap[epochId];

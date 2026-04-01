@@ -1,7 +1,7 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.9
- * Date: [Mar 29, 2026]
+ * Version 1.2.10
+ * Date: [Apr 01, 2026]
 * logs :
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
@@ -28,6 +28,7 @@
  *   - v1.2.7: 📱 tooltips year-indexed depuis 🔺⏳/🔺⚖️🏭 (+Nans +MGt CO2, co2kg/1e9) — plus de yr0→yr1 depuis 📅 (échelle géologique hors 📱)
  *   - v1.2.8: 📱 bucket scénario — 📅 hors [▶,◀] (résidu géologique) → année via ▶+📿💫×pas, sinon repli ▶ ; évite bucket 2075 (350Gt+🛢) au lieu de 2000 (850Gt)
  *   - v1.2.9: idToName 🐊 « Hyperthermie éocène »
+ *   - v1.2.10: idToName 🥟 Protérozoïque ; check fin d'époque dans handler 💫 → setEpoch(suivant) auto
  */
 
 // Core globals requis : addCustomTooltip, hideTooltip, setEpoch, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
@@ -185,7 +186,7 @@ window.updateEpochActions = function () {
     } else if (actionId === '🎇') {
         const epochConfig = getEpochConfigById(epochId);
         const targetFromConfig = epochConfig && epochConfig['🕰'] && epochConfig['🕰']['🎇'] && epochConfig['🕰']['🎇']['⏩'];
-        const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🦕': 'Mésozoïque', '🌿': 'Paléozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+        const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
         const targetName = targetFromConfig ? (idToName[epochConfig['🕰']['🎇']['⏩']] || epochConfig['🕰']['🎇']['⏩']) : 'Hadéen';
         const bigImpactBtn = document.createElement('img');
         bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
@@ -340,6 +341,20 @@ window.updateEpochActions = function () {
                         if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
                         D['📜']['📿💫'] += 1;
                         window.infoTimeMa += stepMa;
+                        // Fin d'époque : si infoTimeMa dépasse la durée (▶→◀), basculer sur l'époque suivante
+                        if (_tlEpoch && _tlEpoch['▶'] != null && _tlEpoch['◀'] != null && _tlEpoch['▶'] > _tlEpoch['◀']) {
+                            const epochDurMa = (_tlEpoch['▶'] - _tlEpoch['◀']) / 1e6;
+                            if (window.infoTimeMa >= epochDurMa) {
+                                window.infoTimeMa = epochDurMa;
+                                const _eToN = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+                                const _idxCur = window.TIMELINE ? window.TIMELINE.findIndex(function(e) { return e['📅'] === epochId; }) : -1;
+                                if (_idxCur >= 0 && _idxCur + 1 < window.TIMELINE.length) {
+                                    const _nextId = window.TIMELINE[_idxCur + 1]['📅'];
+                                    window.setEpoch(_eToN[_nextId] || _nextId);
+                                    return;
+                                }
+                            }
+                        }
                         window.getEpochDateConfig();
                         window.getNoyau();
                         if (!window.FLUX) window.FLUX = {};

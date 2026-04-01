@@ -80,8 +80,9 @@ const CHARS = {
     HADEEN: '🔥',   // Hadéen : feu/lave
     ARCHEEN: '🦠',  // Archéen : microbe unicellulaire
     PROTEROZOIC: '🥟', // Protérozoïque : plantes primitives
+    SNOWBALL: '⛄',  // Boule de neige (750–600 Ma) : Snowball Earth
     MESOZOIC: '🦕', // Mésozoïque : dinosaure sauropode
-    PALEOZOIC: '🌿', // Paléozoïque (500–250 Ma en timeline) : os/fossile
+    PALEOZOIC: '🌿', // Paléozoïque (600–250 Ma en timeline) : os/fossile
     CENOZOIC: '🦣', // Cénozoïque : mammouth
     PETM_HOUSE: '🐊', // Hyperthermie éocène (50–35 Ma)
     PRELUDE_ICE: '⛰', // Prélude glaciaire (35–33 Ma)
@@ -187,6 +188,7 @@ const CHARS_DESC = {
     '🔥': 'Hadéen',
     '🦠': 'Archéen',
     '🥟': 'Protérozoïque',
+    '⛄': 'Boule de neige',
     '🦕': 'Mésozoïque',
     '🌿': 'Paléozoïque',
     '🦣': 'Cénozoïque',
@@ -233,7 +235,7 @@ function createAlphabetHtml() {
     
     // Colonne 5 : Époques et autres logos
     const charsCol5 = [
-        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'MESOZOIC', 'PALEOZOIC', 'CENOZOIC', 'PETM_HOUSE', 'PRELUDE_ICE', 'EOT', 'QUATERNARY', 'TODAY', 'MODERN'
+        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'SNOWBALL', 'MESOZOIC', 'PALEOZOIC', 'CENOZOIC', 'PETM_HOUSE', 'PRELUDE_ICE', 'EOT', 'QUATERNARY', 'TODAY', 'MODERN'
     ];
     
     // Descriptions personnalisées pour certains caractères

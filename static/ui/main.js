@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.38
+// Version 1.1.40
 // Date: [March 27, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -18,6 +18,8 @@
 // - v1.1.6 : Three.js pause avant changement texture (setEpoch/updateHadeenTexture), play au compute:done (loader_panels)
 // - v1.1.7 : debug logs setEpoch (trace appelant [3]) + log début appel
 // - v1.1.8 : fix "un nextEpoch en trop" — message scie ne réécrit plus DATA[📿💫] du parent ; bary:changed passe keepTimeMa:true ; setEpoch early-return respecte keepTimeMa
+// - v1.1.39 : selection timeline supports epoch-text (hidden epochs) like epoch-btn
+// - v1.1.40 : setEpoch fallback resolves hidden epochs from TIMELINE when geology lookup fails
 // - v1.1.9 : applyBaryToGraphiqueOnly : early-return ne bloque plus sur !baryEpochs[epoch] ; +generateArrows +cellAlbedo (parité avec setEpoch full body)
 // - v1.1.10 : setEpoch : restauration log [2] (supprimé) ; events.js Hadéen handler réordonné (voir events.js v1.2.3)
 // - v1.1.11 : setEpoch stocke _lastPlanetTexturePath=logoPath ; applyBaryToGraphiqueOnly skip si même path (fix double Three.js)
@@ -1977,8 +1979,22 @@ function applyBaryToGraphiqueOnly() {
     const effectiveNodes = window.configOrganigramme.getEffectiveNodesConfig(epochName, bary);
     const terreNode = effectiveNodes.find(n => n.id === 'terre');
     const noyauNode = effectiveNodes.find(n => n.id === 'noyau');
-    const terreEpochEntry = terreNode.epoch.find(e => e.epochName === epochName);
-    const noyauRadEntry = noyauNode.radiation.find(r => r.epochName === epochName);
+    if (!terreNode || !terreNode.epoch || !Array.isArray(terreNode.epoch)) {
+        console.warn('❌ [applyBaryToGraphiqueOnly][main.js] terreNode/epoch manquant, skip');
+        return;
+    }
+    if (!noyauNode || !noyauNode.radiation || !Array.isArray(noyauNode.radiation)) {
+        console.warn('❌ [applyBaryToGraphiqueOnly][main.js] noyauNode/radiation manquant, skip');
+        return;
+    }
+    // Certaines époques UI (ex. ⛄ Boule de neige) n'ont pas d'entrée dédiée dans terre.epoch :
+    // fallback sur la dernière entrée connue pour éviter un crash.
+    const terreEpochEntry = terreNode.epoch.find(e => e.epochName === epochName) || terreNode.epoch[terreNode.epoch.length - 1];
+    const noyauRadEntry = noyauNode.radiation.find(r => r.epochName === epochName) || noyauNode.radiation[noyauNode.radiation.length - 1];
+    if (!terreEpochEntry) {
+        console.warn('❌ [applyBaryToGraphiqueOnly][main.js] terreEpochEntry introuvable, skip epoch=' + epochName);
+        return;
+    }
     console.groupCollapsed('🎨 Graphique (visu) bary=' + bary + ' r=' + terreEpochEntry.radius + ' exobase=' + terreEpochEntry.radiusExobase + ' noyau.maxR=' + (noyauRadEntry && noyauRadEntry.maxRadius));
     console.groupEnd();
     const epochConfig = terreEpochEntry;
@@ -2101,11 +2117,11 @@ function setEpoch(epochName, options) {
     }
 
     // Gérer la sélection unique (boutons radio)
-    const allEpochButtons = document.querySelectorAll('.epoch-btn');
+    const allEpochButtons = document.querySelectorAll('.epoch-btn, .epoch-text');
     allEpochButtons.forEach(btn => {
         btn.classList.remove('selected');
     });
-    const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochIdForButton}"]`);
+    const clickedButton = document.querySelector(`.epoch-btn[data-epoch="${epochIdForButton}"], .epoch-text[data-epoch="${epochIdForButton}"]`);
     if (clickedButton) {
         clickedButton.classList.add('selected');
     }
@@ -2115,10 +2131,13 @@ function setEpoch(epochName, options) {
         return;
     }
 
-    const epoch = window.getGeologicalPeriodByName(epochName) || window.getGeologicalPeriodByName(epochIdForButton);
-    if (!epoch) {
-        return;
+    // Certaines époques internes (hidden=true, ex: "hystérésis") peuvent ne pas exister côté "geology.js".
+    // Fallback vers l'objet TIMELINE (source de vérité) pour éviter "selected OK" mais config/labels restés sur l'époque précédente.
+    let epoch = window.getGeologicalPeriodByName(epochName) || window.getGeologicalPeriodByName(epochIdForButton);
+    if (!epoch && Array.isArray(TIMELINE)) {
+        epoch = TIMELINE.find(it => it && it['📅'] === epochIdForButton) || null;
     }
+    if (!epoch) return;
 
     // 🔒 Stocker l'ancienne époque AVANT de la changer
     const previousEpoch = (typeof window.currentEpochName !== 'undefined') ? window.currentEpochName : 'Corps Noir';
@@ -3649,7 +3668,7 @@ window.runDebugLogMode = function () {
         console.error('[runDebugLogMode] TIMELINE absent');
         return;
     }
-    var epochs = timeline.filter(function (e) { return e && e['📅']; });
+    var epochs = timeline.filter(function (e) { return e && e['📅'] && !e.hidden; });
     if (epochs.length === 0) {
         console.error('[runDebugLogMode] Aucune époque');
         return;

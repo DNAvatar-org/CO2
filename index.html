@@ -108,6 +108,73 @@
         <!-- Les liens ont été déplacés dans le footer -->
     </div>
 
+    <!-- Bouton caché : déclenché par le nœud 🗺 de l'organigramme -->
+    <button id="credits-paleomap" style="display:none" onclick="document.getElementById('dlg-credits').showModal()"></button>
+
+    <!-- Dialog crédits — synchrone, pas d'iframe -->
+    <dialog id="dlg-credits" style="
+        border:none; border-radius:10px; padding:0; max-width:420px; width:92vw;
+        background:#1a1a1a; color:#e8e8e8; box-shadow:0 8px 32px rgba(0,0,0,0.7);
+    ">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 10px;border-bottom:1px solid #333;">
+            <span style="font-size:1.05em;font-weight:600;">🗺 Crédits</span>
+            <button onclick="document.getElementById('dlg-credits').close()" style="
+                background:none;border:none;color:#aaa;font-size:1.3em;cursor:pointer;line-height:1;padding:0 4px;
+            ">✕</button>
+        </div>
+        <div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:14px;font-size:0.88em;line-height:1.55;">
+
+            <div>
+                <div style="font-weight:600;margin-bottom:4px;">🌍 Données paléogéographiques</div>
+                <div>
+                    <a href="https://www.earthbyte.org/paleomap-paleoatlas-for-gplates/" target="_blank" rel="noopener noreferrer"
+                       style="color:#7cb9ff;">PALEOMAP PaleoAtlas for GPlates</a>
+                </div>
+                <div style="margin-top:3px;">C.R. Scotese &amp; N. Wright (2018), PALEOMAP Project</div>
+                <div style="margin-top:3px;">
+                    Licence
+                    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer"
+                       style="color:#7cb9ff;">CC BY 4.0</a>
+                    — attribution requise : <em>PALEOMAP / C.R. Scotese</em>
+                </div>
+            </div>
+
+            <div>
+                <div style="font-weight:600;margin-bottom:4px;">💻 Code source</div>
+                <div>
+                    <a href="https://github.com/DNAvatar-org/API_BILAN" target="_blank" rel="noopener noreferrer"
+                       style="color:#7cb9ff;">API_BILAN</a>
+                    — Apache License 2.0 +
+                    <a href="https://commonsclause.com/" target="_blank" rel="noopener noreferrer"
+                       style="color:#7cb9ff;">Commons Clause</a>
+                </div>
+            </div>
+
+            <div>
+                <div style="font-weight:600;margin-bottom:4px;">📚 Documentation</div>
+                <div>
+                    <a href="#" onclick="event.preventDefault();document.getElementById('dlg-credits').close();openPageModal('./static/compute/alphabet.html','🔡 Alphabet');" style="color:#7cb9ff;">🔡 Alphabet</a>
+                    &nbsp;|&nbsp;
+                    <a href="#" onclick="event.preventDefault();document.getElementById('dlg-credits').close();openPageModal('./static/compute/dico.html','📖 Dictionnaire');" style="color:#7cb9ff;">📖 Dictionnaire</a>
+                </div>
+            </div>
+
+            <div>
+                <div style="font-weight:600;margin-bottom:4px;">🔬 Physique</div>
+                <div>
+                    <a href="#" onclick="event.preventDefault();document.getElementById('dlg-credits').close();openPageModal('html/equation.html','📐 Équations',null,'tall');" style="color:#7cb9ff;">📐 Équations</a>
+                    &nbsp;|&nbsp;
+                    <a href="#" onclick="event.preventDefault();document.getElementById('dlg-credits').close();openPageModal('html/Algorithmes.html','🧮 Algorithmes',null,'tall');" style="color:#7cb9ff;">🧮 Algorithmes</a>
+                </div>
+            </div>
+
+        </div>
+    </dialog>
+    <style>
+        #dlg-credits::backdrop { background: rgba(0,0,0,0.55); }
+        #dlg-credits a:hover { text-decoration: underline; }
+    </style>
+
     <footer class="credits-footer divGlass">
         <div class="credits-content">
             <div class="credits-links">

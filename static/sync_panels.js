@@ -412,7 +412,7 @@
             // Si getEpochDateConfig a détecté une transition d'époque, déléguer à setEpoch pour mettre
             // à jour l'UI (boutons, texture, currentEpochName) — évite le "nextEpoch en trop" visible
             if (_epAfter !== _epBefore && typeof window.setEpoch === 'function') {
-                var _epochIdToName = {'⚫':'Corps Noir','🔥':'Hadéen','🦠':'Archéen','🥟':'Protérozoïque','🌿':'Paléozoïque','🦕':'Mésozoïque','🦣':'Cénozoïque','🐊':'Hyperthermie éocène','⛰':'Prélude glaciaire','🏔':'Grande Coupure','❄️':'Quaternaire','🚂':'Industriel','📱':"Aujourd'hui"};
+                var _epochIdToName = {'⚫':'Corps Noir','🔥':'Hadéen','🦠':'Archéen','🥟':'Protérozoïque','⛄':'Boule de neige','🌿':'Paléozoïque','🦕':'Mésozoïque','🦣':'Cénozoïque','🐊':'Hyperthermie éocène','⛰':'Prélude glaciaire','🏔':'Grande Coupure','❄️':'Quaternaire','🚂':'Industriel','📱':"Aujourd'hui"};
                 var _newEpochName = _epochIdToName[_epAfter] || _epAfter;
                 console.log('[DBG sync_panels] ⚡ transition → setEpoch(' + _newEpochName + ')');
                 window.setEpoch(_newEpochName);

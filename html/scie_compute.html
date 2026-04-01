@@ -215,7 +215,15 @@
         // ============================================================================
         
         // Créer un bouton d'époque (utilitaire partagé)
-        function createEpochButton(epochId, orientation) {
+        // hidden=true => rendu texte (epoch-text) mais cliquable.
+        function createEpochButton(epochId, orientation, isHidden) {
+            if (isHidden) {
+                const el = document.createElement('button');
+                el.className = orientation === 'horizontal' ? 'epoch-text-horizontal' : 'epoch-text';
+                el.setAttribute('data-epoch', epochId);
+                el.textContent = epochId;
+                return el;
+            }
             const button = document.createElement('button');
             button.className = orientation === 'horizontal' ? 'epoch-btn-horizontal' : 'epoch-btn';
             button.setAttribute('data-epoch', epochId);
@@ -264,7 +272,7 @@
         // GÉNÉRATION TIMELINE HORIZONTALE
         // 3 lignes : noms (entre les |), | logos, dates (sous les |)
         // ============================================================================
-        var EPOCH_NAME_MAP = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+        var EPOCH_NAME_MAP = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
         function generateHorizontalTimeline() {
             const epochsContainer = document.getElementById('scie_epochs-container');
             if (!epochsContainer || !window.TIMELINE) return;
@@ -274,7 +282,7 @@
             const rowEmojis = document.createElement('div');
             rowEmojis.className = 'epochs-row-emojis';
             
-            const epochItems = window.TIMELINE.filter(item => item['📅']);
+            const epochItems = window.TIMELINE.filter(item => item && item['📅']);
             
             epochItems.forEach((item, index) => {
                 const cell = document.createElement('div');
@@ -286,8 +294,8 @@
                 const sep = document.createElement('span');
                 sep.className = 'epoch-separator';
                 sep.textContent = '|';
-                const button = createEpochButton(item['📅'], 'horizontal');
-                button.onclick = () => selectEpoch(item['📅']);
+                const button = createEpochButton(item['📅'], 'horizontal', !!item.hidden);
+                if (!item.hidden) button.onclick = () => selectEpoch(item['📅']);
                 const dateSpan = document.createElement('span');
                 dateSpan.className = 'epoch-date-under';
                 dateSpan.textContent = formatDateMa(item['▶']);
@@ -303,7 +311,7 @@
             epochsContainer.appendChild(rowEmojis);
             
             // Sélectionner Corps Noir (⚫) par défaut
-            const defaultEpoch = epochItems.find(item => item['📅'] === '⚫') || epochItems[0];
+            const defaultEpoch = epochItems.find(item => item['📅'] === '⚫') || epochItems.find(item => !item.hidden) || epochItems[0];
             if (defaultEpoch) {
                 selectEpoch(defaultEpoch['📅']);
             }
@@ -320,10 +328,11 @@
             
             window.TIMELINE.forEach(item => {
                 if (item['📅']) {
-                    // Créer le bouton d'époque
-                    const button = createEpochButton(item['📅'], 'vertical');
-                    button.setAttribute('onclick', `setEpoch('${item['📅'].replace(/'/g, "\\'")}')`);
-                    epochsContainer.appendChild(button);
+                    const el = createEpochButton(item['📅'], 'vertical', !!item.hidden);
+                    if (!item.hidden && el && el.setAttribute) {
+                        el.setAttribute('onclick', `setEpoch('${item['📅'].replace(/'/g, "\\'")}')`);
+                    }
+                    epochsContainer.appendChild(el);
                 } else if (item.date) {
                     // Séparateur/graduation (comme dans generateTimelineFromConfig)
                     const graduation = createGraduation(item.date, 'vertical');
@@ -348,11 +357,9 @@
             window.DATA['📜']['🗿'] = epochId; // Logo de l'époque (emoji), pas la description
             
             // Mettre à jour les boutons
-            document.querySelectorAll('.epoch-btn-horizontal').forEach(btn => {
+            document.querySelectorAll('.epoch-btn-horizontal, .epoch-text-horizontal').forEach(btn => {
                 btn.classList.remove('selected');
-                if (btn.getAttribute('data-epoch') === epochId) {
-                    btn.classList.add('selected');
-                }
+                if (btn.getAttribute('data-epoch') === epochId) btn.classList.add('selected');
             });
             
             // Mettre à jour la date de l'époque (depuis '▶')

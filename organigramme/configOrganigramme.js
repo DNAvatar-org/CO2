@@ -431,7 +431,9 @@ const nodes = [
 
     { id: 'h2o', type: 'button', readOnly: true, logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' }
+    { id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+
+    { id: 'credits-paleomap', type: 'button', readOnly: false, logo: '🗺',  x: centerX + 170, y: centerY + 180, radius: 18, logoScale: 1.1, fillColor: 'rgba(30,30,30,0.55)', strokeColor: 'rgba(180,180,180,0.4)', strokeSize: 1, left: [], right: [], top: [{ text: 'PALEOMAP'}], bottom: [{ text: 'C.R. Scotese'}], tooltip: 'Crédits cartographiques', zIndex: 200 }
 ];
 
 // Définition du graphe : arcs (flèches)
@@ -566,7 +568,7 @@ const ACTION_BY_DATE = {
     5000: '☄️', 4900: '💫', 4800: '☄️', 4700: '💫', 4600: '🎇',
     4500: '☄️', 4400: '💫', 4300: '☄️', 4200: '💫', 4100: '☄️',
     4000: '💫', 3500: '💫', 3000: '💫', 2500: '💫', 2000: '💫',
-    1500: '💫', 1000: '💫', 500: '💫', 250: '💫', 150: '💫',
+    1500: '💫', 1000: '💫', 750: '💫', 600: '💫', 500: '💫', 250: '💫', 150: '💫',
     66: '💫', 50: '💫', 35: '💫', 33: '💫', 2: '💫',
     // Années (cf. fonds/001800a.png, 002025a.png)
     1800: '💫', 2025: '💫'

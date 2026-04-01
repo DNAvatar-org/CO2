@@ -77,7 +77,16 @@
          * @param {string} epochName - Nom ou ID de l'époque
          */
         updateAllFluxes: function (epochName) {
-            const epoch = window.getGeologicalPeriodByName(epochName);
+            // Certaines époques internes (hidden=true, ex: hystérésis) peuvent ne pas exister côté getGeologicalPeriodByName.
+            // Fallback vers window.TIMELINE (source brute) pour éviter null.solar_intensity.
+            let epoch = (typeof window.getGeologicalPeriodByName === 'function') ? window.getGeologicalPeriodByName(epochName) : null;
+            if (!epoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
+                epoch = window.TIMELINE.find(e => e && e['📅'] && (e['📅'] === epochName || e.name === epochName || e.id === epochName)) || null;
+            }
+            if (!epoch) {
+                console.error('[FluxManager] ❌ ERREUR CRITIQUE : Époque non trouvée:', epochName);
+                throw new Error(`Époque "${epochName}" non trouvée`);
+            }
             const solarIntensity = epoch.solar_intensity != null ? epoch.solar_intensity : 1.0;
             const geothermalFlux = epoch.core_temperature === 0 ? 0 : (epoch.geothermal_flux != null ? epoch.geothermal_flux : 0.087);
             const planetRadius = epoch.planet_radius != null ? epoch.planet_radius : 6371000;

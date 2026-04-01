@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.27
+// Version 1.0.28
 // Date: [January 2025]
 // logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -28,6 +28,7 @@
 // - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
 // - v1.0.23: Courbe pointillée corps noir à T effective (pas T surface) pour même fenêtre que courbe pleine
 // - v1.0.24: rendu spectral séquencé: non-anim=FINAL seul, anim=chaque cycle; suppression redraw différé doublon depuis updatePlot
+// - v1.0.28: hidden epoch support (ex: hystérésis) fallback to window.TIMELINE when configOrganigramme.timeline is filtered
 // - v1.0.25: bridge draw ack: publie plot:drawn + met à jour _lastDrawnCycleToken après draw (sync API visu_)
 // - v1.0.26: bridge draw ack branché sur window.VISUALWAIT.markDrawn (fonctions window rangées)
 // - v1.0.27: supprime VISUALWAIT.markDrawn + IO_LISTENER.emit('plot:drawn') — appel direct, pas de pile
@@ -1167,9 +1168,16 @@ window.updatePlot = function updatePlot(data) {
     let scale_height_m;
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
-    const currentEpoch = window.configOrganigramme.timeline.find(e =>
-        e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
-    );
+    // configOrganigramme.timeline peut filtrer les epochs hidden=true (ex: hystérésis).
+    // On doit tout de même pouvoir résoudre la config physique depuis window.TIMELINE (source brute).
+    let currentEpoch = window.configOrganigramme && window.configOrganigramme.timeline
+        ? window.configOrganigramme.timeline.find(e =>
+            e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+        )
+        : null;
+    if (!currentEpoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
+        currentEpoch = window.TIMELINE.find(e => e && e['📅'] && (e['📅'] === window.currentEpochName || e.name === window.currentEpochName || e.id === window.currentEpochName)) || null;
+    }
     if (!currentEpoch) {
         console.error('[updatePlot] ❌ ERREUR CRITIQUE : Époque non trouvée:', window.currentEpochName);
         throw new Error(`Époque '${window.currentEpochName}' non trouvée dans timeline`);
@@ -1268,9 +1276,14 @@ window.updatePlot = function updatePlot(data) {
                 z_max_km = z_max / 1000;
             } else {
             // z_range non disponible (init) — configOrganigramme/currentEpochName déjà validés en entrée
-            const currentEpoch = window.configOrganigramme.timeline.find(e =>
-                e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
-            );
+            let currentEpoch = window.configOrganigramme && window.configOrganigramme.timeline
+                ? window.configOrganigramme.timeline.find(e =>
+                    e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+                )
+                : null;
+            if (!currentEpoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
+                currentEpoch = window.TIMELINE.find(e => e && e['📅'] && (e['📅'] === window.currentEpochName || e.name === window.currentEpochName || e.id === window.currentEpochName)) || null;
+            }
             if (currentEpoch) {
                 const total_atmosphere_mass_kg = currentEpoch['⚖️🫧']; // Nom plus explicite
 
@@ -2253,9 +2266,14 @@ function drawSpectralVisualization(canvas, data) {
     // On a besoin de la masse totale pour ça, qu'on peut trouver dans configOrganigramme
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
-    const currentEpoch = window.configOrganigramme.timeline.find(e =>
-        e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
-    );
+    let currentEpoch = window.configOrganigramme && window.configOrganigramme.timeline
+        ? window.configOrganigramme.timeline.find(e =>
+            e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+        )
+        : null;
+    if (!currentEpoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
+        currentEpoch = window.TIMELINE.find(e => e && e['📅'] && (e['📅'] === window.currentEpochName || e.name === window.currentEpochName || e.id === window.currentEpochName)) || null;
+    }
     const total_mass = currentEpoch['⚖️🫧'];
     if (total_mass === 0 || total_mass === undefined) {
         has_atmosphere = false;

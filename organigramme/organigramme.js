@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.43
+// Version 1.0.47
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -25,6 +25,10 @@
 // Logs: v1.0.41 Three.js planet : logs pointerdown/pointermove/pointerup sur le container (pour debug drag futur)
 // Logs: v1.0.42 bouton époque 📱 (image) : alt accessibilité = "2000"
 // Logs: v1.0.43 flux-label-plain-metric + updateLabelClasses sur grille ; toggle OBSERVATIONS (hide-organigram-observation-metrics) dans main.js
+// Logs: v1.0.44 timeline hidden epoch rendered as epoch-text (date-like font/height), not epoch-btn
+// Logs: v1.0.45 updateFluxLabels: fallback epoch resolve for hidden epochs (avoid null.total_atmosphere_mass_kg)
+// Logs: v1.0.46 updateFluxLabels: albedoCoeff fallback epoch resolve for hidden epochs (avoid null['🪩🍰'])
+// Logs: v1.0.47 updateFluxLabels: define logAlbedoUi helper (fix ReferenceError)
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -3784,12 +3788,12 @@ function generateTimelineFromConfig() {
   // Générer les éléments depuis la config : boutons + entre chaque paire une date centrée (sans trait)
   timeline.forEach((item, i) => {
     if (item["📅"]) {
-      // Créer un bouton d'époque
-      const button = document.createElement("button");
-      button.className = "epoch-btn";
       const epochId = item["📅"];
-      button.setAttribute("data-epoch", epochId);
-      button.setAttribute(
+      const isHidden = !!item.hidden;
+      const el = document.createElement("button");
+      el.className = isHidden ? "epoch-text" : "epoch-btn";
+      el.setAttribute("data-epoch", epochId);
+      el.setAttribute(
         "onclick",
         `setEpochFromEpochButton('${epochId.replace(/'/g, "\\'")}')`,
       );
@@ -3805,7 +3809,7 @@ function generateTimelineFromConfig() {
         typeof window.getDisplayForPicto === "function"
           ? window.getDisplayForPicto(epochId)
           : { type: "text", value: epochId };
-      if (display.type === "image") {
+      if (!isHidden && display.type === "image") {
         const img = document.createElement("img");
         img.src = display.value;
         img.alt = epochId === "📱" ? "2000" : "";
@@ -3814,19 +3818,19 @@ function generateTimelineFromConfig() {
         img.style.objectFit = "contain";
         img.style.objectPosition = "center";
         img.style.display = "block";
-        button.appendChild(img);
+        el.appendChild(img);
       } else {
-        button.textContent = display.value;
-        button.style.fontFamily =
-          "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
+        el.textContent = display.value;
+        if (!isHidden) {
+          el.style.fontFamily =
+            "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
+        }
       }
 
-      epochsContainer.appendChild(button);
+      epochsContainer.appendChild(el);
 
       // Ajouter le tooltip personnalisé (epochLabel = Paléozoïque pour 🌿)
-      if (typeof window !== "undefined" && epochLabel) {
-        addCustomTooltip(button, epochLabel);
-      }
+      if (typeof window !== "undefined" && epochLabel) addCustomTooltip(el, epochLabel);
 
       // Entre deux époques : date = début de l'époque suivante (▶)
       // Dernière paire (avant-dernière époque → 📱) : afficher 2000 entre les deux, borne finale = 2100
@@ -4002,6 +4006,15 @@ window.updateFluxLabels = function (eventId) {
   const EARTH = window.EARTH;
   const CHARS = window.CHARS;
   const CHARS_DESC = window.CHARS_DESC;
+  function logAlbedoUi(msg) {
+    try {
+      if (typeof window !== "undefined" && typeof window.pd === "function") {
+        // Supporte pd(msg) ou pd(fn,file,msg) selon implémentation existante
+        if (window.pd.length >= 3) window.pd("updateFluxLabels", "organigramme.js", msg);
+        else window.pd("❌ [updateFluxLabels][organigramme.js] " + msg);
+      }
+    } catch (e) {}
+  }
   var fluxDiagram = document.getElementById("flux-diagram");
   if (!fluxDiagram) return;
   var T0_num,
@@ -4071,7 +4084,27 @@ window.updateFluxLabels = function (eventId) {
       isAlbedo = window.isAlbedo;
       h2o_enabled = window.waterVaporEnabled;
       hasNoAtmosphere = (function () {
-        var epoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        // Certaines époques internes (hidden=true, ex: hystérésis) peuvent ne pas exister côté getGeologicalPeriodByName.
+        // Fallback vers TIMELINE (source brute) pour accéder à total_atmosphere_mass_kg.
+        var epoch =
+          typeof window.getGeologicalPeriodByName === "function"
+            ? window.getGeologicalPeriodByName(window.currentEpochName)
+            : null;
+        if (!epoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
+          epoch =
+            window.TIMELINE.find(function (e) {
+              return (
+                e &&
+                e["📅"] &&
+                (e["📅"] === window.currentEpochName ||
+                  e.name === window.currentEpochName ||
+                  e.id === window.currentEpochName ||
+                  (window.CHARS_DESC &&
+                    window.CHARS_DESC[e["📅"]] === window.currentEpochName))
+              );
+            }) || null;
+        }
+        if (!epoch) return false;
         return (
           epoch.total_atmosphere_mass_kg === 0 ||
           epoch.total_atmosphere_mass_kg === undefined
@@ -4935,10 +4968,31 @@ window.updateFluxLabels = function (eventId) {
   };
 
   // Albedo : même source que l'API (EARTH['🪩🍰'] + override époque)
-  const currentEpochAlbedo = window.getGeologicalPeriodByName(window.currentEpochName);
+  // Certaines époques internes (hidden=true, ex: hystérésis) peuvent ne pas exister côté getGeologicalPeriodByName.
+  // Fallback vers TIMELINE pour éviter null['🪩🍰'].
+  let currentEpochAlbedo =
+    typeof window.getGeologicalPeriodByName === "function"
+      ? window.getGeologicalPeriodByName(window.currentEpochName)
+      : null;
+  if (!currentEpochAlbedo && window.TIMELINE && Array.isArray(window.TIMELINE)) {
+    currentEpochAlbedo =
+      window.TIMELINE.find(function (e) {
+        return (
+          e &&
+          e["📅"] &&
+          (e["📅"] === window.currentEpochName ||
+            e.name === window.currentEpochName ||
+            e.id === window.currentEpochName ||
+            (window.CHARS_DESC &&
+              window.CHARS_DESC[e["📅"]] === window.currentEpochName))
+        );
+      }) || null;
+  }
   const albedoCoeff = {
     ...EARTH["🪩🍰"],
-    ...currentEpochAlbedo["🪩🍰"],
+    ...(currentEpochAlbedo && currentEpochAlbedo["🪩🍰"]
+      ? currentEpochAlbedo["🪩🍰"]
+      : {}),
   };
 
   const land_cov = parseFloat(
@@ -5132,9 +5186,23 @@ window.updateFluxLabels = function (eventId) {
     );
   }
 
-  const currentEpoch = window.getGeologicalPeriodByName(
-    window.currentEpochName,
-  );
+  // Certaines époques internes (hidden=true, ex: hystérésis) peuvent ne pas exister côté getGeologicalPeriodByName.
+  // Fallback vers TIMELINE (source brute) pour éviter "Époque non trouvée" uniquement sur hidden epochs.
+  let currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+  if (!currentEpoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
+    currentEpoch =
+      window.TIMELINE.find(function (e) {
+        return (
+          e &&
+          e["📅"] &&
+          (e["📅"] === window.currentEpochName ||
+            e.name === window.currentEpochName ||
+            e.id === window.currentEpochName ||
+            (window.CHARS_DESC &&
+              window.CHARS_DESC[e["📅"]] === window.currentEpochName))
+        );
+      }) || null;
+  }
   if (!currentEpoch) {
     logAlbedoUi(
       "abort geothermie: currentEpoch introuvable name=" +
