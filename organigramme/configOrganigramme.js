@@ -1,8 +1,9 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.27
-// Date: [Apr 15, 2026] [12:00 UTC+1]
+// Version 1.1.32
+// Date: [Apr 15, 2026] [18:30 UTC+1]
 // logs :
+// - v1.1.32: terre.epoch + noyau.radiation — epochName « hysteresis 1 » (TIMELINE hidden) ; sinon setEpoch ne recrée pas #cell-terre (rayon bloqué sur Corps noir)
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -33,6 +34,10 @@
 //   - v1.1.24: nœud domSlot timeline-scenario-anim (#plot-anim-toggle button créé par organigramme, plus dans visu_radiatif)
 //   - v1.1.25: domSlot logos + 🎞 dans #flux-diagram (x/y directs, pas de wrapper ; hors title-container)
 //   - v1.1.26: domSlot timeline-scenario-logos : slotEventLogoPx (côté picto px) + slotMinWidth (zone min)
+//   - v1.1.31: [0] organigramme 📜 init — _logStepEnd() tout de suite (sinon tout le chargement s’empile dans le groupe [0])
+//   - v1.1.30: commentaire radiation — angleInit n’altère pas l’état final (= openingAngle)
+//   - v1.1.29: commentaire radiation — openingAngle seul toujours OK (ex. reemis)
+//   - v1.1.28: radiation — angleInit / angleFinal (ouverture découpée, même unité que openingAngle), radius alias maxRadius, angleAnimMs (organigramme.js)
 //   - v1.1.27: methane logoOffsetY 2 + logoScale 0.4 (createCell applique le scale au PNG charsImages)
 //   - v1.1.18: 🐊 epochName « Hyperthermie éocène » (remplace Terre étouffe (PETM))
 //   - v1.1.13: albedo_percent de retour en top du bouton albédo (grille [1,2])
@@ -68,6 +73,8 @@ const centerY = 215; // Centre vertical du diagramme (640px / 2)
 const earthCenterY = centerY + 100; // Centre vertical de la Terre et éléments concentriques
 const arrowMarginTop = 10; // Marge en haut des flèches
 const arrowMarginBottom = 15; // Marge en bas des flèches
+// --- nœud.radiation (organigramme.js) : openingAngle / angleFinal = état **final** (° masqués ; visible = 360 − valeur). angleInit = état **de départ** (animation seulement) ; au repos après angleAnimMs le rendu = finale, identique à une config sans angleInit.
+//     radius = alias maxRadius si absent. Si angleFinal et openingAngle diffèrent, angleFinal prime.
 const cellHeight = 110;
 const cellHalfHeight = cellHeight / 2; // 55px
 
@@ -221,6 +228,15 @@ const nodes = [
                 color: '#ff9800'
             },
             {
+                epochName: 'hysteresis 1',
+                numCircles: 3,
+                maxRadius: 70,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
                 epochName: 'Mésozoïque',
                 numCircles: 2,
                 maxRadius: 50,
@@ -321,6 +337,16 @@ const nodes = [
             },
             {
                 epochName: 'Protérozoïque',
+                logo: LOGOS.GLOBE_AFRICA,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(0, 191, 255, 0.5)',
+                strokeColor: '#00FA9A',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'hysteresis 1',
                 logo: LOGOS.GLOBE_AFRICA,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
@@ -431,7 +457,7 @@ const nodes = [
 
     { id: 'espace2', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 170, y: centerY + 310, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'DSCOVR au L1', radiation: null, zIndex: 14 },
     //📛
-    { id: 'reemis', logo: LOGOS.EDS, zIndex: 25, x: centerX, y: earthCenterY + 170, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 75, openingAngle: 310, color: 'red', strokeSize: 2 } },
+    { id: 'reemis', logo: LOGOS.EDS, zIndex: 25, x: centerX+70, y: earthCenterY + 170, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } },
 
     { id: 'co2', type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
@@ -650,10 +676,11 @@ if (window.DATA && window.TIMELINE && window.TIMELINE.length) {
     window.DATA['📜']['📿💫'] = 0;    // compteur dédié bouton 💫 (init à 0)
     window.DATA['📜']['🔺⚖️💧☄️'] = 0; // masse H₂O par météorite (init à 0, rempli par getEpochDateConfig)
     window.currentEpochName = firstId === '⚫' ? 'Corps Noir' : (window.CHARS_DESC && window.CHARS_DESC[firstId]) || firstId;
-    // [0] = init DATA['📜'] seulement ; [1] config réservé à setEpoch (main.js) pour un seul groupe « officiel »
-    // Groupe laissé ouvert : le prochain _logStep (ex. [1] config dans setEpoch) referme — pas de _logStepEnd ici (évite fermeture « depuis un autre fichier »)
+    // [0] = init DATA['📜'] ; fermer le groupe tout de suite (sinon tout console.log jusqu'au setEpoch s'affiche dans [0])
     if (window._logStep) {
         window._logStep('[0] organigramme 📜 init ' + firstId);
+        console.log('[0] currentEpochName=', window.currentEpochName);
+        if (window._logStepEnd) window._logStepEnd();
     } else if (typeof console !== 'undefined' && console.debug) {
         console.debug('[configOrganigramme] 📜 init', firstId);
     }
