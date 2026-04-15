@@ -1,12 +1,12 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.20
-// Date: [Mar 29, 2026] [17:00 UTC+1]
+// Version 1.1.27
+// Date: [Apr 15, 2026] [12:00 UTC+1]
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Ā unit : non Aristotelicisme via UTF8.
+// ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
 //   - Initial version: extraction des données de configuration depuis organigramme.js
@@ -28,6 +28,12 @@
 //   - v1.1.16: ❄️ Quaternaire (2 Ma) — terre + noyau + TEXTURE_DATES_MA / ACTION_BY_DATE
 //   - v1.1.17: espace1 — titre OBSERVATIONS déplacé vers main.js (wrap comme PILOTAGE), plus de top sur le nœud satellite
 //   - v1.1.20: 🐊 epochName « Éocène » (titre court)
+//   - v1.1.22: retrait domSlot timeline — logos + 🎞 dans visu_radiatif.html (.title-scenario-row)
+//   - v1.1.23: nœud domSlot timeline-scenario-logos seul (#timeline-events-logos créé/déplacé par organigramme, plus dans visu_radiatif)
+//   - v1.1.24: nœud domSlot timeline-scenario-anim (#plot-anim-toggle button créé par organigramme, plus dans visu_radiatif)
+//   - v1.1.25: domSlot logos + 🎞 dans #flux-diagram (x/y directs, pas de wrapper ; hors title-container)
+//   - v1.1.26: domSlot timeline-scenario-logos : slotEventLogoPx (côté picto px) + slotMinWidth (zone min)
+//   - v1.1.27: methane logoOffsetY 2 + logoScale 0.4 (createCell applique le scale au PNG charsImages)
 //   - v1.1.18: 🐊 epochName « Hyperthermie éocène » (remplace Terre étouffe (PETM))
 //   - v1.1.13: albedo_percent de retour en top du bouton albédo (grille [1,2])
 
@@ -429,11 +435,44 @@ const nodes = [
 
     { id: 'co2', type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'methane', type: 'button', readOnly: true, logo: LOGOS.CH4, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'ch4_percent' }, { text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CH₄', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+    { id: 'methane', type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'ch4_percent' }, { text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
     { id: 'h2o', type: 'button', readOnly: true, logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
-    { id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+    /* domSlot : logos + 🎞 dans #flux-diagram — positionnés directement (pas de wrapper) ; absents de visu_radiatif.html */
+    {
+        id: 'timeline-scenario-logos',
+        type: 'domSlot',
+        mountId: 'timeline-events-logos',
+        appendParentSelector: '#flux-diagram',
+        x: centerX,
+        y: earthCenterY - circleMiddleRadius * 1.4,
+        zIndex: 220,
+        slotMinWidth: 500,
+        slotEventLogoPx: 100,
+        domClass: 'timeline-events-logos'
+    },
+
+    { // 🎞
+        id: 'timeline-scenario-anim',
+        type: 'button',
+        readOnly: true,
+        logo: '🎞',
+        x: centerX - 100,
+        y: earthCenterY + circleMiddleRadius * 1.8,
+        zIndex: 221,
+        radius: 15,
+        logoScale: 0.8,
+        left: [],
+        right: [],
+        top: [],
+        bottom: [],
+        tooltip: 'Prochaine époque',
+        fillColor: 'rgba(255, 255, 255, 0.7)',
+        strokeColor: 'rgba(0, 0, 0, 0)'
+    },
+
+    { id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.9, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
 
     { id: 'credits-paleomap', type: 'button', readOnly: false, logo: '🗺',  x: centerX + 170, y: centerY + 180, radius: 18, logoScale: 1.1, fillColor: 'rgba(30,30,30,0.55)', strokeColor: 'rgba(180,180,180,0.4)', strokeSize: 1, left: [], right: [], top: [{ text: 'PALEOMAP'}], bottom: [{ text: 'C.R. Scotese'}], tooltip: 'Crédits cartographiques', zIndex: 200 }
 ];

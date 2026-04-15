@@ -1,6 +1,6 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.35
+// Version 1.0.52
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -30,6 +30,23 @@
 // Logs: v1.0.31 PALEOMAP / C.R. Scotese (organigramme seul) : teinte & contour type .ppm-label ; visibles si ⚗/🛰 OFF
 // Logs: v1.0.33 commentaires : DETAILS (ex PILOTAGE, titre main.js) ; OBSERVATIONS fermées par défaut
 // Logs: v1.0.35 albédo sans vert : règles #cell-albedo-btn après .flux-button-cell.checked/selected (cascade)
+// Logs: v1.0.36 visu_radiatif : barre scénario une ligne (logos + 🎞 compact à droite), sans libellé SCENARIO — DETAILS/organigramme inchangés
+// Logs: v1.0.37 nœuds domSlot dans #flux-diagram (obsolète — retiré v1.0.42)
+// Logs: v1.0.38 badge 🧩 (flou) : top explicite au-dessus du nœud reemis (EDS), plus bottom:auto — évite remontée visuelle en haut du graphe
+// Logs: v1.0.39 badge 🧩 dans .title-container (#title-flou-scientifique-slot) ; sans border ; masqué si .flou-scientifique--hidden (⚗ OFF)
+// Logs: v1.0.40 CO₂ / CH₄ / H₂O : halo blanc comme albédo — retrait contour vert (checked/selected)
+// Logs: v1.0.41 title-content-row : 2 col — Flou scientifique à gauche, synthèse cyan à droite (visu_radiatif)
+// Logs: v1.0.42 retrait .flux-dom-slot ; barre logos + 🎞 : .title-scenario-row + .timeline-scenario-toolbar (visu_radiatif)
+// Logs: v1.0.43 logos + 🎞 dans #flux-diagram (domSlot direct) ; .title-scenario-row → #flux-diagram > #timeline-events-logos
+// Logs: v1.0.44 flou-scientifique toujours visible (retrait flou-scientifique--hidden) ; bary-face row (icônes | jauge | %)
+// Logs: v1.0.45 badge flou 2 colonnes : [icônes+jauge à gauche] | [% à droite] ; badge flex-row sans border
+// Logs: v1.0.46 .flux-label.organigram-fine-tuning-bary-badge border:none !important ; jauge 10ch / min 72px / h 8px
+// Logs: v1.0.47 jauge intermédiaire 8ch / min 60px / h 6px ; .organigram-bary-pct vert (#4ade80)
+// Logs: v1.0.48 jauge plus compacte 6ch / min 48px / h 5px (entre 4ch et 8ch)
+// Logs: v1.0.49 mini-jauge flou : piste + curseur verts (#4ade80) ; curseur losange (clip-path) ; retrait pulse rouge SCENARIO
+// Logs: v1.0.52 .plot-container-wrapper.hide-organigram-* : marqueurs spectraux (plot.js) grayscale + opacity 0.3 — sync classes avec #flux-diagram (main.js)
+// Logs: v1.0.51 #timeline-events-logos : var(--slot-event-logo-px, 65px) pour tuiles + variante .btn-year-indexed (ratio46/65)
+// Logs: v1.0.50 range Firefox : ::-moz-focus-outer border 0 (contour parasite)
 // Logs: v1.0.34 🛰 OFF : masquer seul picto Géométrie ; EDS (reemis) + albédo (btn) toujours visibles ; albédo sans halo vert (halo blanc)
 // Logs: v1.0.32 retrait .credits-paleomap-badge (dialogue index — hors périmètre organigramme)
 */
@@ -53,6 +70,61 @@
     outline: none !important;
     font-family: 'Tahoma', 'Roboto', 'Verdana', sans-serif;
     /* border, border-radius, box-shadow, background → .divGlass (style.css) */
+}
+
+/* Logos de scénario dans #flux-diagram (domSlot direct, x/y absolus depuis configOrganigramme) */
+#flux-diagram > #timeline-events-logos {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    box-sizing: border-box;
+}
+#flux-diagram > #timeline-events-logos.year-indexed {
+    gap: 8px;
+    justify-content: center;
+}
+#flux-diagram > #timeline-events-logos .timeline-event-logo {
+    margin-left: -15px;
+    --_slot-logo: var(--slot-event-logo-px, 65px);
+    width: var(--_slot-logo);
+    height: var(--_slot-logo);
+    min-width: var(--_slot-logo);
+    min-height: var(--_slot-logo);
+    padding: 0;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--_slot-logo) * 35 / 65);
+    line-height: 1;
+    object-fit: contain;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    border: none;
+}
+#flux-diagram > #timeline-events-logos .timeline-event-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+#flux-diagram > #timeline-events-logos .timeline-event-logo:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+#flux-diagram > #timeline-events-logos .timeline-event-logo:active {
+    transform: scale(0.95);
+}
+#flux-diagram > #timeline-events-logos .timeline-event-logo.btn-year-indexed {
+    width: calc(var(--_slot-logo) * 46 / 65);
+    height: calc(var(--_slot-logo) * 46 / 65);
+    min-width: calc(var(--_slot-logo) * 46 / 65);
+    min-height: calc(var(--_slot-logo) * 46 / 65);
+    font-size: calc(var(--_slot-logo) * 26 / 65);
+    margin-left: 0;
 }
 
 /* DETAILS + ⚗ : largeur = contenu, bord gauche organigramme */
@@ -155,61 +227,126 @@
     font-family: var(--font-emoji);
     animation: event-logo-pulse-img 1.6s ease-in-out infinite;
 }
-/* Badge barycentre nuages (DETAILS, si ⚗ ON) — enfant direct de #flux-diagram */
+/* Barre titre visu : Flou scientifique (gauche) + synthèse cyan (droite) */
+.title-content-row.title-content-row--flou-et-resultat {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+    box-sizing: border-box;
+}
+/* Emplacement Flou scientifique (🧩) — rempli par main.js ; colonne gauche */
+.title-flou-scientifique-slot {
+    padding: 20px 0px 0 0;
+}
+.title-content-row.title-content-row--flou-et-resultat .synthese_Temp.synthese_Temp-two-cols {
+    flex: 1 1 auto;
+    margin-left: auto;
+    width: auto;
+    max-width: 58%;
+    left: 0;
+    top: 0;
+    justify-content: flex-end;
+}
+/* Badge barycentre nuages (Flou scientifique) — sans bordure (.flux-label impose 1px ; surcharge ici) ; 2 colonnes : [icônes+jauge] | [%] */
+.flux-label.organigram-fine-tuning-bary-badge {
+    border: none !important;
+    outline: none;
+    box-shadow: none;
+}
 .organigram-fine-tuning-bary-badge {
-    position: absolute;
-    bottom: 10px;
-    left: 80px;
-    z-index: 9999;
-    flex-shrink: 0;
-    margin: 0;
-    padding: 2px 4px;
-    font-size: 11px;
-    line-height: 1.05;
-    text-align: center;
-    white-space: normal;
-    overflow: visible;
+    display: flex;
+    gap: 6px;
     pointer-events: auto;
     cursor: help;
     user-select: none;
-    background: rgba(10, 14, 39, 0.88);
-    border: 1px solid rgba(0, 0, 0, 0.6);
-    border-radius: 6px;
-    box-sizing: border-box;
-    
 }
+/* Colonne gauche : icônes + jauge alignées à gauche */
 .organigram-bary-face {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 1px;
+    align-items: flex-start;
+    gap: 2px;
 }
 .organigram-bary-icons {
-    font-size: 20px;
-    line-height: 1.5;
+    font-size: 16px;
+    line-height: 1;
+}
+/* Colonne droite : % seul (vert — pas l’héritage cyan de .percent-label) */
+.organigram-fine-tuning-bary-badge .organigram-bary-pct {
+    color: rgb(74, 222, 128);
 }
 .organigram-bary-pct {
     white-space: nowrap;
     font-size: 11px;
     line-height: 1;
     margin: 0;
-    
+    flex-shrink: 0;
+    align-self: center;
 }
-
 /* Mini-jauge : visible uniquement dans le badge */
 .organigram-bary-mini-slider {
     display: none;
 }
 .organigram-fine-tuning-bary-badge .organigram-bary-mini-slider {
     display: block;
-    width: 7ch;
-    height: 5px;
-    margin: 8px auto 8px;
+    width: 6ch;
+    min-width: 48px;
+    height: 14px;
+    margin: 0;
     padding: 0;
+    flex-shrink: 0;
     pointer-events: auto;
     cursor: ew-resize;
-    /* Même animation que bouton SCENARIO (event-logo-pulse-img dans ergo_button.css) */
-    animation: event-logo-pulse-img 1.6s ease-in-out infinite;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    box-sizing: border-box;
+}
+/* Piste (verte) */
+.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-webkit-slider-runnable-track {
+    height: 4px;
+    background: rgba(74, 222, 128, 0.38);
+    border-radius: 0;
+}
+.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-moz-range-track {
+    height: 4px;
+    background: rgba(74, 222, 128, 0.38);
+    border-radius: 0;
+}
+.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-moz-range-progress {
+    height: 4px;
+    background: rgba(74, 222, 128, 0.72);
+    border-radius: 0;
+}
+/* Curseur : losange (carré 45° via clip-path), pas un rond */
+.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    margin-top: -3px;
+    box-sizing: border-box;
+    background: rgb(74, 222, 128);
+    border: none;
+    border-radius: 0;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    box-shadow: 0 0 2px rgba(34, 197, 94, 0.65);
+}
+.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    box-sizing: border-box;
+    background: rgb(74, 222, 128);
+    border: none;
+    border-radius: 0;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    box-shadow: 0 0 2px rgba(34, 197, 94, 0.65);
+}
+.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-moz-focus-outer {
+    border: 0;
 }
 /* Panneau alt détaillé nuages : append sur body, position fixed (getBoundingClientRect) */
 .organigram-fine-tuning-alt-panel--fixed {
@@ -477,10 +614,7 @@
 #flux-diagram.hide-organigram-arrows #cell-h2o {
     visibility: hidden;
 }
-/* DETAILS : 🧩 nuages — masqué si ⚗ OFF (hide-organigram-arrows sur #flux-diagram) */
-#flux-diagram.hide-organigram-arrows > .organigram-fine-tuning-bary-badge {
-    display: none;
-}
+/* 🧩 Flou scientifique : toujours visible (pas de .flou-scientifique--hidden) */
 
 /* 🗺 Crédits — toujours visible quelles que soient les classes du flux-diagram */
 #cell-credits-paleomap {
@@ -513,6 +647,15 @@
 /* Picto Géométrie seul masqué si 🛰 OFF — EDS (flammes reemis) + boule albédo (btn) toujours visibles */
 #flux-diagram.hide-organigram-observation-metrics #cell-geometrie .flux-circle-bg > span {
     visibility: hidden;
+}
+
+/* Courbes (visu_) : mêmes noms hide-organigram-* que #flux-diagram — appliqués sur .plot-container-wrapper par main.js syncPlotContainerOrganigramHideClasses */
+.plot-container-wrapper.hide-organigram-arrows .absorption-band-indicator,
+.plot-container-wrapper.hide-organigram-arrows .spectral-eds-marker,
+.plot-container-wrapper.hide-organigram-observation-metrics .absorption-band-indicator,
+.plot-container-wrapper.hide-organigram-observation-metrics .spectral-eds-marker {
+    filter: grayscale(1);
+    opacity: 0.3;
 }
 
 .flux-rectangle {
@@ -710,6 +853,36 @@
                  0 0 6px rgba(255, 255, 255, 0.5) !important;
 }
 
+/* CO₂ / CH₄ / H₂O : pas de halo vert (même traitement que #cell-albedo-btn) */
+#cell-co2.flux-button-cell.checked .flux-circle-bg,
+#cell-co2.flux-button-cell.selected .flux-circle-bg,
+#cell-methane.flux-button-cell.checked .flux-circle-bg,
+#cell-methane.flux-button-cell.selected .flux-circle-bg,
+#cell-h2o.flux-button-cell.checked .flux-circle-bg,
+#cell-h2o.flux-button-cell.selected .flux-circle-bg {
+    filter: grayscale(0%) !important;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5) !important;
+}
+#cell-co2.flux-button-cell.checked .flux-circle-bg:hover,
+#cell-co2.flux-button-cell.selected .flux-circle-bg:hover,
+#cell-methane.flux-button-cell.checked .flux-circle-bg:hover,
+#cell-methane.flux-button-cell.selected .flux-circle-bg:hover,
+#cell-h2o.flux-button-cell.checked .flux-circle-bg:hover,
+#cell-h2o.flux-button-cell.selected .flux-circle-bg:hover {
+    filter: grayscale(100%) !important;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Étiquettes ppm/% à côté des gaz : même ton que .percent-label (plus de vert CO₂) */
+#cell-co2 .flux-label.co2-label {
+    color: rgb(135, 206, 250);
+    border-color: rgb(173, 216, 230);
+}
+
 /* État unselected : gris (par défaut) */
 .flux-button-cell.unselected .flux-circle-bg {
     filter: grayscale(100%);
@@ -859,10 +1032,52 @@
     width: 100%;
 }
 
-/* Bloc SCENARIO : ligne 1 = titre + 🎞, ligne 2 = boutons actions */
+/* Bloc actions scénario (visu) : par défaut colonne ; variante .timeline-action-bar-compact = une ligne */
 .timeline-action-bar {
     display: flex;
     flex-direction: column;
+}
+.timeline-action-bar.timeline-action-bar-compact {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.timeline-scenario-toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.timeline-scenario-toolbar .timeline-events-logos {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.timeline-scenario-toolbar .timeline-events-logos.year-indexed {
+    justify-content: flex-start;
+}
+#plot-anim-toggle.plot-anim-toggle--aside {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 .timeline-action-bar .timeline-action-title-row {
     display: flex;
@@ -958,12 +1173,12 @@
     margin-left: 0;
 }
 
-/* Barre SCENARIO dans title-content-row */
+/* Barre actions dans title-content-row (alignée au contenu, pas centrée sur toute la largeur) */
 .title-toolbar {
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     flex-shrink: 0;
 }
 .title-toolbar .timeline-events-logos {

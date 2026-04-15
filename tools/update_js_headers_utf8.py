@@ -9,7 +9,7 @@ Règle (déduite du user) pour chaque fichier .js :
   - Remplacer 'See LICENSE_HEADER.txt for full terms.' par
     'See https://commonsclause.com/ for full terms.' si besoin.
   - Vérifier / insérer les lignes suivantes si absentes :
-    // Ā unit : non Aristotelicisme via UTF8.
+    // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
     // "La carte c'est le territoire, le territoire c'est le code."
     // UTF8 est la sémantique pour CODE & UI
   - Corriger l'éventuelle faute 'Aristolicisme' -> 'Aristotelicisme'.
@@ -21,7 +21,7 @@ import pathlib
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 MOTTO_LINES = [
-    "// Ā unit : non Aristotelicisme via UTF8.\n",
+    "// ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.\n",
     '// "La carte c\'est le territoire, le territoire c\'est le code."\n',
     "// UTF8 est la sémantique pour CODE & UI\n",
 ]

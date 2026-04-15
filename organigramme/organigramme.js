@@ -1,10 +1,10 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.53
+// Version 1.0.62
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Ā unit : non Aristotelicisme via UTF8.
+// ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
 // Logs: v1.0.26 albedo: \\bar{A} dans le footer (entre tasse et speech), plus dans [1,1]
@@ -33,8 +33,17 @@
 // Logs: v1.0.49 détail albédo : 🎾 + libellé lave (surface) ; ligne ⚽ 🍰⚽ voile SW stratosphérique
 // Logs: v1.0.50 DATA/CONST 🍰🪩🎾 🪩🍰🎾 (ex-🍰🪩🌋 / 🪩🍰🌋) pour cohérence clés lave
 // Logs: v1.0.51 détail voile : lecture 🍰🪩⚽ (fallback 🍰⚽), titre 🍰🪩⚽
-// Logs: v1.0.53 updateFluxLabels : pdTrace au lieu de pd (plus de ❌ factice sur traces UI)
 // Logs: v1.0.52 voile : 🍰⚽ = obstruction (affichage %) ; 🍰🪩⚽ = 1−🍰⚽
+// Logs: v1.0.53 updateFluxLabels : pdTrace au lieu de pd (plus de ❌ factice sur traces UI)
+// Logs: v1.0.54 Terre Three.js : inclinaison par défaut ≈ obliquité actuelle −23,44° (ex −53°) si savedPlanetTiltAngle absent
+// Logs: v1.0.55 var nodes/arcs avant calculatePositions ; nœuds type domSlot (montage #timeline-events-logos + #plot-anim-toggle dans le flux)
+// Logs: v1.0.56 organigramNodes/organigramArcs + cfgNodes/cfgArcs dans calculatePositions (fix Identifier nodes already declared) ; pas de remplacement sur .nodes.find
+// Logs: v1.0.57 retrait branche domSlot — logos + 🎞 statiques dans visu_radiatif (.title-scenario-row)
+// Logs: v1.0.58 domSlot timeline-scenario-logos : mountOrganigramDomSlots (crée #timeline-events-logos, parent depuis config appendParentSelector)
+// Logs: v1.0.59 mountOrganigramDomSlots : domTag/domClass/domAttrs/domInnerHTML/domOnclick ; nœud timeline-scenario-anim (plot-anim-toggle, hors visu_radiatif)
+// Logs: v1.0.62 createCell : logoScale sur span raster (charsImages / chemin img) ; logoOffsetY en px CSS pour raster, × logoScale pour emoji
+// Logs: v1.0.61 mountOrganigramDomSlots : slotEventLogoPx → CSS --slot-event-logo-px (taille tuiles .timeline-event-logo sous #mountId)
+// Logs: v1.0.60 mountOrganigramDomSlots : x/y/zIndex/slotMinWidth appliqués directement sur l'élément (pas de wrapper) ; domSlots dans #flux-diagram
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -371,7 +380,7 @@ function shouldLabelBeGray(text, nodeId, cell = null) {
 
   // Vérifier si c'est un bouton inactif
   if (nodeId) {
-    const node = nodes.find((n) => n.id === nodeId);
+    const node = organigramNodes.find((n) => n.id === nodeId);
     if (node && node.type === "button") {
       // Vérifier si la cellule a la classe 'checked' (bouton actif)
       if (cell) {
@@ -546,7 +555,7 @@ function initPlanetThreeJS(
   const lightContrast = 1.85; // Contraste éclairci pour astre plus lisible (était 1.5)
   let tiltAngle = (typeof window !== 'undefined' && window.savedPlanetTiltAngle !== undefined)
     ? window.savedPlanetTiltAngle
-    : -53; // Inclinaison en degrés — persistée entre changements de texture
+    : -23.44; // Obliquité actuelle ~23,44° (signe conservé vs ancien −53° pour le rendu texture) ; persistée dans savedPlanetTiltAngle
 
   // Scène - fond transparent pour s'intégrer dans le diagramme
   const scene = new THREE.Scene();
@@ -1320,6 +1329,7 @@ function createCell(
     logoSpan.style.width = "100%";
     logoSpan.style.height = "100%";
     logoSpan.style.zIndex = Z_NODE_INTERNAL.LOGO;
+    let logoSpanUsesRasterGraphic = false;
 
     // isImage est déjà défini plus haut (ligne 376)
 
@@ -1341,6 +1351,7 @@ function createCell(
               display.endsWith(".jpg"));
           const emojiSpan = document.createElement("span");
           if (isImgPath) {
+            logoSpanUsesRasterGraphic = true;
             const img = document.createElement("img");
             img.src = display;
             img.alt = "";
@@ -1504,6 +1515,7 @@ function createCell(
         logoSpan.appendChild(planetContainer);
         logoSpan.style.pointerEvents = "none";
       } else {
+        logoSpanUsesRasterGraphic = true;
         // Image normale sans effet planète
         const img = document.createElement("img");
         img.src = logo;
@@ -1515,8 +1527,7 @@ function createCell(
         img.style.display = "block";
         logoSpan.appendChild(img);
       }
-      // Pour les images, logoScale est déjà appliqué via circleSize (ligne 377)
-      // logoSpan reste à 100% de circleBg, donc l'image s'adapte automatiquement
+      // logoScale sur le span : voir apply raster ci-dessous (charsImages + chemins directs)
     } else if (!Array.isArray(logo)) {
       // Sinon c'est un emoji/texte simple (pas un tableau)
       // Logo (image) : charsImages. Alt = ref (logo)
@@ -1527,6 +1538,7 @@ function createCell(
           display.endsWith(".svg") ||
           display.endsWith(".jpg"));
       if (isImgPathSimple) {
+        logoSpanUsesRasterGraphic = true;
         const img = document.createElement("img");
         img.src = display;
         img.alt = "";
@@ -1544,11 +1556,20 @@ function createCell(
     }
     // Si logo est un tableau, il a déjà été traité ci-dessus
 
-    // Appliquer logoOffsetY uniquement aux emojis (pas aux images)
-    // Le patch pour descendre les emojis ne doit pas s'appliquer aux images
-    if (logoOffsetY !== 0 && !isImage) {
-      const scaledLogoOffsetY = logoOffsetY * logoScale;
-      logoSpan.style.transform = `translateY(${scaledLogoOffsetY}px)`;
+    if (
+      logoSpanUsesRasterGraphic &&
+      Number.isFinite(logoScale) &&
+      logoScale > 0
+    ) {
+      const d = Math.min(circleSize, Math.max(1, circleSize * logoScale));
+      logoSpan.style.width = d + "px";
+      logoSpan.style.height = d + "px";
+    }
+    if (logoOffsetY !== 0) {
+      const offsetPx = logoSpanUsesRasterGraphic
+        ? logoOffsetY
+        : logoOffsetY * logoScale;
+      logoSpan.style.transform = `translateY(${offsetPx}px)`;
     }
     circleBg.appendChild(logoSpan);
     // Taille du logo : si cercle visible, relatif au diamètre; sinon relatif au radius
@@ -1576,6 +1597,16 @@ function createCell(
       // Vérifier si c'est un bouton (cellule parente a la classe flux-button-cell)
       const parentCell = circleBg.closest(".flux-button-cell");
       if (parentCell) {
+        // 🎞 Animation timeline : bouton readOnly mais action explicite attendue (togglePlotAnim)
+        if (
+          parentCell.id === "cell-timeline-scenario-anim" ||
+          nodeId === "timeline-scenario-anim"
+        ) {
+          if (typeof window !== "undefined" && typeof window.togglePlotAnim === "function") {
+            window.togglePlotAnim();
+          }
+          return;
+        }
         if (parentCell.classList.contains("flux-display-only")) return; // display-only, pas de toggle
         // 🗺 Crédits PALEOMAP : le cercle déclenchait runCompute (toggle « fantôme ») ; même action que le bouton HTML #credits-paleomap
         if (parentCell.id === "cell-credits-paleomap" || nodeId === "credits-paleomap") {
@@ -1761,7 +1792,7 @@ function createCell(
           if (dataId) label.setAttribute("data-id", dataId);
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
-            const node = nodes.find((n) => n.id === nodeId);
+            const node = organigramNodes.find((n) => n.id === nodeId);
             if (node && node.type === "button") {
               label.classList.add("buttonData");
             }
@@ -1804,7 +1835,7 @@ function createCell(
 
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
-            const node = nodes.find((n) => n.id === nodeId);
+            const node = organigramNodes.find((n) => n.id === nodeId);
             if (node && node.type === "button") {
               label.classList.add("buttonData");
             }
@@ -1841,7 +1872,7 @@ function createCell(
           if (dataId) label.setAttribute("data-id", dataId);
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
-            const node = nodes.find((n) => n.id === nodeId);
+            const node = organigramNodes.find((n) => n.id === nodeId);
             if (node && node.type === "button") {
               label.classList.add("buttonData");
             }
@@ -1889,7 +1920,7 @@ function createCell(
           }
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
-            const node = nodes.find((n) => n.id === nodeId);
+            const node = organigramNodes.find((n) => n.id === nodeId);
             if (node && node.type === "button") {
               label.classList.add("buttonData");
             }
@@ -2275,21 +2306,27 @@ function createArc(
 
 // Fonction pour calculer les positions Y automatiquement
 function calculatePositions() {
-  // Récupérer nodes depuis window.configOrganigramme (défini dans configOrganigramme.js)
-  const nodes =
+  // O(1) — copies locales (noms cfg* pour éviter tout conflit avec organigramNodes au niveau script)
+  const cfgNodes =
     typeof window !== "undefined" &&
     window.configOrganigramme &&
     window.configOrganigramme.nodes
       ? window.configOrganigramme.nodes
       : [];
-  if (nodes.length === 0) {
+  const cfgArcs =
+    typeof window !== "undefined" &&
+    window.configOrganigramme &&
+    window.configOrganigramme.arcs
+      ? window.configOrganigramme.arcs
+      : [];
+  if (cfgNodes.length === 0) {
     console.warn(
       "[calculatePositions] ⚠️ WARNING - nodes non disponible, positions non calculées",
     );
     return;
   }
   const nodeMap = {};
-  nodes.forEach((node) => (nodeMap[node.id] = node));
+  cfgNodes.forEach((node) => (nodeMap[node.id] = node));
 
   // Fonction récursive pour calculer les positions
   function calculateY(nodeId, visited = new Set()) {
@@ -2302,7 +2339,7 @@ function calculatePositions() {
     if (node.y !== null) return node.y;
 
     // Trouver tous les arcs entrants
-    const incomingArcs = arcs.filter((arc) => arc.to === nodeId);
+    const incomingArcs = cfgArcs.filter((arc) => arc.to === nodeId);
     let maxY = node.y || 50;
 
     if (incomingArcs.length > 0) {
@@ -2320,7 +2357,7 @@ function calculatePositions() {
   }
 
   // Calculer toutes les positions
-  nodes.forEach((node) => {
+  cfgNodes.forEach((node) => {
     if (node.y === null) {
       calculateY(node.id, new Set());
     }
@@ -2385,7 +2422,7 @@ function generateArrows() {
     });
   }
 
-  arcs.forEach((arc) => {
+  organigramArcs.forEach((arc) => {
     // Mise à jour dynamique de la hauteur de l'atmosphère (Terre -> Albedo)
     if (arc.from === "terre" && arc.to === "albedo" && arc.label) {
       let atm_height_km = 0;
@@ -2464,8 +2501,8 @@ function generateArrows() {
       }
     }
 
-    const idDep = nodes.find((n) => n.id === arc.from);
-    const idDest = nodes.find((n) => n.id === arc.to);
+    const idDep = organigramNodes.find((n) => n.id === arc.from);
+    const idDest = organigramNodes.find((n) => n.id === arc.to);
 
     if (!idDep || !idDest) return;
 
@@ -3051,6 +3088,71 @@ function generateArrows() {
   });
 }
 
+// Références graphe — noms dédiés (évite conflit « nodes » si config + organigramme fusionnés ou double déclaration)
+var organigramNodes =
+  window.configOrganigramme && window.configOrganigramme.nodes
+    ? window.configOrganigramme.nodes
+    : [];
+var organigramArcs =
+  window.configOrganigramme && window.configOrganigramme.arcs
+    ? window.configOrganigramme.arcs
+    : [];
+
+/** Nœuds type domSlot : crée ou reparente #mountId dans appendParentSelector.
+ *  Propriétés config : mountId, appendParentSelector,
+ *  x?, y?, zIndex?, slotMinWidth? (minWidth px), slotEventLogoPx? (côté tuile logo px → --slot-event-logo-px),
+ *  domTag? (défaut 'div'), domClass?, domAttrs?, domInnerHTML?, domOnclick? (nom de fonction window).
+ *  O(n) sur organigramNodes. */
+function mountOrganigramDomSlots(createdCellsMap) {
+  if (!Array.isArray(organigramNodes) || organigramNodes.length === 0) return;
+  organigramNodes.forEach((node) => {
+    if (node.type !== "domSlot") return;
+    const mountId = node.mountId;
+    if (!mountId || typeof document === "undefined") return;
+    const parentSel =
+      typeof node.appendParentSelector === "string"
+        ? node.appendParentSelector
+        : "#flux-diagram";
+    const parent =
+      document.querySelector(parentSel) ||
+      document.getElementById("flux-diagram");
+    if (!parent) return;
+    let el = document.getElementById(mountId);
+    if (!el) {
+      const tag = typeof node.domTag === "string" && node.domTag ? node.domTag : "div";
+      el = document.createElement(tag);
+      el.id = mountId;
+      if (typeof node.domClass === "string" && node.domClass) el.className = node.domClass;
+      if (node.domAttrs && typeof node.domAttrs === "object") {
+        Object.keys(node.domAttrs).forEach((attr) => el.setAttribute(attr, node.domAttrs[attr]));
+      }
+      if (typeof node.domInnerHTML === "string") el.innerHTML = node.domInnerHTML;
+      if (typeof node.domOnclick === "string" && typeof window[node.domOnclick] === "function") {
+        el.addEventListener("click", window[node.domOnclick]);
+      }
+    } else if (el.parentNode) {
+      el.parentNode.removeChild(el);
+    }
+    // Positionnement absolu direct (x/y en config) — aucun wrapper intermédiaire
+    if (node.x != null || node.y != null) {
+      el.style.position = "absolute";
+      if (node.x != null) el.style.left = node.x + "px";
+      if (node.y != null) el.style.top = node.y + "px";
+      el.style.transform = "translate(-50%, -50%)";
+      el.style.pointerEvents = "auto";
+    }
+    if (node.zIndex != null) el.style.zIndex = String(node.zIndex);
+    if (node.slotMinWidth != null) el.style.minWidth = node.slotMinWidth + "px";
+    if (node.slotEventLogoPx != null && Number.isFinite(Number(node.slotEventLogoPx))) {
+      el.style.setProperty("--slot-event-logo-px", Number(node.slotEventLogoPx) + "px");
+    }
+    parent.appendChild(el);
+    if (createdCellsMap && typeof createdCellsMap === "object") {
+      createdCellsMap[node.id] = el;
+    }
+  });
+}
+
 // Initialisation du diagramme
 // Calculer les positions
 calculatePositions();
@@ -3072,9 +3174,11 @@ const cellOrder = [
 const createdCells = {};
 const mainContainer = document.getElementById("flux-diagram");
 
+mountOrganigramDomSlots(createdCells);
+
 // Étape 1-7 : Créer les cellules dans l'ordre spécifié
 cellOrder.forEach((nodeId) => {
-  const node = nodes.find((n) => n.id === nodeId);
+  const node = organigramNodes.find((n) => n.id === nodeId);
   if (!node) return;
 
   // Ignorer effetSerre car c'est un rectangle, pas une cellule circulaire
@@ -3086,12 +3190,12 @@ cellOrder.forEach((nodeId) => {
   // Si rotation n'est pas défini, calculer l'angle depuis les flèches sortantes
   if (radiationOptions && radiationOptions.rotation === undefined) {
     // Trouver tous les arcs qui partent de ce nœud
-    const outgoingArcs = arcs.filter((arc) => arc.from === node.id);
+    const outgoingArcs = organigramArcs.filter((arc) => arc.from === node.id);
     if (outgoingArcs.length > 0) {
       // Calculer les angles de toutes les flèches sortantes
       const angles = [];
       outgoingArcs.forEach((arc) => {
-        const destNode = nodes.find((n) => n.id === arc.to);
+        const destNode = organigramNodes.find((n) => n.id === arc.to);
         if (destNode) {
           const dx = destNode.x - node.x;
           const dy = destNode.y - node.y;
@@ -3165,7 +3269,7 @@ cellOrder.forEach((nodeId) => {
 
   if (radiationOptions && radiationOptions.maxRadius === null) {
     if (node.id === "geometrie") {
-      const albedoNode = nodes.find((n) => n.id === "albedo");
+      const albedoNode = organigramNodes.find((n) => n.id === "albedo");
       if (albedoNode) {
         // Calculer la vraie distance euclidienne entre les centres
         const dx = albedoNode.x - node.x;
@@ -3174,7 +3278,7 @@ cellOrder.forEach((nodeId) => {
       }
     } else if (node.id === "soleil") {
       // Pour le soleil, calculer jusqu'à geometrie
-      const geometrieNode = nodes.find((n) => n.id === "geometrie");
+      const geometrieNode = organigramNodes.find((n) => n.id === "geometrie");
       if (geometrieNode) {
         // Calculer la vraie distance euclidienne entre les centres
         const dx = geometrieNode.x - node.x;
@@ -3183,7 +3287,7 @@ cellOrder.forEach((nodeId) => {
       }
     } else if (node.id === "reemis") {
       // Pour reemis, avec openingAngle 270° (vers le bas), calculer jusqu'à effetSerre
-      const effetSerreNode = nodes.find((n) => n.id === "effetSerre");
+      const effetSerreNode = organigramNodes.find((n) => n.id === "effetSerre");
       if (effetSerreNode) {
         // Calculer la vraie distance euclidienne entre les centres
         const dx = effetSerreNode.x - node.x;
@@ -3372,12 +3476,14 @@ cellOrder.forEach((nodeId) => {
 });
 
 // Create other nodes that are not in cellOrder (including buttons)
-nodes.forEach((node) => {
+organigramNodes.forEach((node) => {
   // Ignore those already created in cellOrder
   if (cellOrder.includes(node.id)) return;
 
   // Ignore effetSerre because it's a rectangle, not a circular cell
   if (node.id === "effetSerre") return;
+
+  if (node.type === "domSlot") return;
 
   // If it's a button, set defaults only if not already defined
   if (node.type === "button") {
@@ -3403,11 +3509,11 @@ nodes.forEach((node) => {
 
   // If rotation is not defined, calculate the angle from outgoing arrows
   if (radiationOptions && radiationOptions.rotation === undefined) {
-    const outgoingArcs = arcs.filter((arc) => arc.from === node.id);
+    const outgoingArcs = organigramArcs.filter((arc) => arc.from === node.id);
     if (outgoingArcs.length > 0) {
       const angles = [];
       outgoingArcs.forEach((arc) => {
-        const destNode = nodes.find((n) => n.id === arc.to);
+        const destNode = organigramNodes.find((n) => n.id === arc.to);
         if (destNode) {
           const dx = destNode.x - node.x;
           const dy = destNode.y - node.y;
@@ -3522,7 +3628,7 @@ mainContainer.appendChild(radiationContainer);
 
 // Créer toutes les radiations dans l'ordre des cellules
 cellOrder.forEach((nodeId) => {
-  const node = nodes.find((n) => n.id === nodeId);
+  const node = organigramNodes.find((n) => n.id === nodeId);
   if (!node || !node.radiation) return;
 
   // Sauter la terre : ses radiations seront créées via recreateTerreRadiation()
@@ -3632,7 +3738,7 @@ function calculateTextPositionLeftOfCircle(
   // I will proceed with the original function body for `calculateTextPositionLeftOfCircle`.
   // The instruction to store `window.currentEpochName` will be noted as needing a `setEpoch` function.
 
-  const node = nodes.find((n) => n.id === nodeId);
+  const node = organigramNodes.find((n) => n.id === nodeId);
   if (!node) {
     return { x: 0, y: 0 };
   }
@@ -3664,7 +3770,7 @@ function poseBoutonSurCercle(
   offsetRadius = 0,
   totalRadiusOverride = null,
 ) {
-  const node = nodes.find((n) => n.id === nodeId);
+  const node = organigramNodes.find((n) => n.id === nodeId);
   if (!node) {
     console.warn(`poseBoutonSurCercle: node ${nodeId} not found`);
     return { x: 0, y: 0 };
@@ -5428,7 +5534,7 @@ window.updateFluxLabels = function (eventId) {
   if (noyauCell) {
     const noyauLogo = noyauCell.querySelector(".flux-circle-bg span");
     if (noyauLogo) {
-      const noyauNode = nodes.find((n) => n.id === "noyau");
+      const noyauNode = organigramNodes.find((n) => n.id === "noyau");
       // Si le logo est vide, le rendre invisible
       // 🔒 CORRECTION : Vérifier que logo est une string avant d'appeler trim (peut être un tableau)
       const isLogoEmpty =
@@ -5450,7 +5556,7 @@ window.updateFluxLabels = function (eventId) {
     // Ajuster la couleur du cercle du noyau selon la température (saturation/brightness)
     const noyauCircle = noyauCell.querySelector(".flux-circle-bg");
     if (noyauCircle) {
-      const noyauNode = nodes.find((n) => n.id === "noyau");
+      const noyauNode = organigramNodes.find((n) => n.id === "noyau");
       if (noyauNode) {
         // Vérifier si le noyau doit être invisible (strokeSize: 0 ou strokeColor transparent)
         const isTransparent =
@@ -5810,7 +5916,7 @@ if (typeof window !== "undefined") {
 
 // Fonction pour recréer les radiations du noyau selon l'époque courante
 function recreateNoyauRadiation() {
-  const noyauNode = nodes.find((n) => n.id === "noyau");
+  const noyauNode = organigramNodes.find((n) => n.id === "noyau");
   if (!noyauNode || !Array.isArray(noyauNode.radiation)) return;
 
   // Trouver la configuration de l'époque courante
@@ -5883,7 +5989,7 @@ function recreateNoyauRadiation() {
 
 // Fonction pour recréer les radiations de la terre
 function recreateTerreRadiation() {
-  const terreNode = nodes.find((n) => n.id === "terre");
+  const terreNode = organigramNodes.find((n) => n.id === "terre");
   if (!terreNode || !terreNode.radiation) return;
 
   // Supprimer l'ancien groupe de radiations de la terre

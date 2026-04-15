@@ -1,6 +1,6 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.14
+ * Version 1.0.15
  * Date: [June 08, 2025] [HH:MM UTC+1]
 * logs :
  * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
@@ -16,7 +16,8 @@
  * - v1.0.11: info-time en (+N ans) pour époques récentes (▶<1e6), sinon (+X Ma)
  * - v1.0.12: animation curseur timeline vers époque suivante (main action 🎞) : getTimelineCursorTopForEpochIndex, animateTimelineCursorToEpoch
  * - v1.0.13: garde updateEpochActions si events.js pas encore chargé
- * - v1.0.14: pdOnce → pdTrace(fn,file,msg) ; plus de ❌ sur état attendu (scie sans .visu_epochs-container)
+ * - v1.0.14: pdOnce → pdTrace(fn,file,msg) ; diagnostic timeline sans erreur factice (scie sans .visu_epochs-container)
+ * - v1.0.15: PALEOMAP (#cell-credits-paleomap) visible seulement si date courante ∈ [−750, −2] Ma (0 Ma exclu)
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.
@@ -75,6 +76,36 @@ function pdOnce(key, fn, file, msg) {
         window._pdOnceFlags[key] = true;
         if (typeof window.pdTrace === 'function') window.pdTrace(fn, file, msg);
     }
+}
+
+/** Même convention que updateTimeline (curseur frise) : Ma négatifs, ▶ en années (config), infoTimeMa en Ma. */
+function getTimelineCurrentMa() {
+    const DATA = window.DATA;
+    const TIMELINE = window.TIMELINE;
+    if (!DATA || !DATA['📜'] || !TIMELINE || !TIMELINE.length) return null;
+    const idx = DATA['📜']['👉'];
+    if (idx == null || idx < 0 || !TIMELINE[idx]) return null;
+    const epoch = TIMELINE[idx];
+    if (epoch['▶'] == null) return null;
+    const startMa = -(epoch['▶'] / 1e6);
+    const isForwardEpoch = epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀'];
+    const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
+    return isForwardEpoch ? startMa - infoTimeMa : startMa + infoTimeMa;
+}
+
+const PALEOMAP_CREDITS_MIN_MA = -750;
+const PALEOMAP_CREDITS_MAX_MA = -2;
+
+function updatePaleomapCreditsVisibility() {
+    const cell = document.getElementById('cell-credits-paleomap');
+    if (!cell) return;
+    const ma = getTimelineCurrentMa();
+    if (ma == null || !Number.isFinite(ma)) {
+        cell.style.display = 'none';
+        return;
+    }
+    const show = ma >= PALEOMAP_CREDITS_MIN_MA && ma <= PALEOMAP_CREDITS_MAX_MA;
+    cell.style.display = show ? '' : 'none';
 }
 
 /** Libellé d’une date de l’échelle : "-5000 Ma" ou "2025", "2050" pour les années récentes */
@@ -136,7 +167,7 @@ function buildEpochScale() {
             'timeline-build-missing',
             'buildEpochScale',
             'timeline.js',
-            'missing container=' + !!container + ' timeline=' + !!TIMELINE + ' (normal si page scie_ sans frise visu)'
+            'missing container=' + !!container + ' timeline=' + !!TIMELINE
         );
         return;
     }
@@ -288,7 +319,7 @@ function updateTimeline() {
             'timeline-update-missing',
             'updateTimeline',
             'timeline.js',
-            'missing container=' + !!container + ' data=' + !!window.DATA['📜'] + ' timeline=' + !!window.TIMELINE + ' (normal si page scie_ sans .visu_epochs-container)'
+            'missing container=' + !!container + ' data=' + !!window.DATA['📜'] + ' timeline=' + !!window.TIMELINE
         );
     } else {
         if (!window._epochScaleBuilt || !cursor) {
@@ -385,6 +416,8 @@ function updateTimeline() {
             window.updateEpochActions();
         }
     }
+
+    updatePaleomapCreditsVisibility();
 
     // 🔒 DÉSACTIVÉ : Ne plus incrémenter automatiquement de +10 ans toutes les secondes
     // L'incrémentation se fait uniquement lors des clics sur boutons (météorite glace, etc.)
@@ -487,6 +520,8 @@ if (typeof window !== 'undefined') {
     window.startTimeline = startTimeline;
     window.pauseTimeline = pauseTimeline;
     window.formatYears = formatYears;
+    window.getTimelineCurrentMa = getTimelineCurrentMa;
+    window.updatePaleomapCreditsVisibility = updatePaleomapCreditsVisibility;
 }
 
 // Fonction pour réinitialiser la timeline

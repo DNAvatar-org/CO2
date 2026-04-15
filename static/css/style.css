@@ -393,7 +393,7 @@ h1 {
 .button-container,
 .reference-container,
 .plot-container-wrapper {
-    padding: 5px 0px 0px 8px;
+    padding: 5px 5px 0px 5px;
     /* Pas de cursor pointer ici - seulement sur les boutons et le graphique */
     display: flex;
     justify-content: space-between;
@@ -520,6 +520,31 @@ h1 {
     position: relative !important;
     /* Pour permettre le positionnement absolu du titre */
     margin-top: 0 !important;
+}
+
+/* Bloc T sol + T eff + logos (plot.js v1.0.31) — remplace l’ancien seul .temp-display-cyan */
+.plot-temp-readouts {
+    position: absolute;
+    top: 165px;
+    right: 88px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+    font-size: 12px;
+    line-height: 1.05;
+    text-align: right;
+    pointer-events: none;
+    font-family: 'ProggyDotted', 'Tahoma', sans-serif;
+}
+
+.plot-temp-block {
+    line-height: 1.05;
+}
+
+/* .plot-temp-logo retiré des readouts (EDS/Soleil sur l’axe λ via .spectral-eds-sun-markers dans plot.js) */
+.spectral-eds-marker img {
+    vertical-align: bottom;
 }
 
 .temp-display-cyan {
@@ -713,7 +738,7 @@ h1 {
     flex-direction: row;
     align-items: flex-start;
     flex-wrap: nowrap;
-    margin-right: 10px;
+    margin-bottom: 20px;
 }
 .title-content-row {
     display: flex;

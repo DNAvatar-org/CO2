@@ -1,13 +1,13 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.30
-// Date: [January 2025]
+// Version 1.0.46
+// Date: [April 15, 2026]
 // logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Ā unit : non Aristotelicisme via UTF8.
+// ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
 // - v1.0.1: H2O 17μm borne ajoutée (fallback si CONST absent), bornes repositionnées sous axe
@@ -28,6 +28,22 @@
 // - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
 // - v1.0.23: Courbe pointillée corps noir à T effective (pas T surface) pour même fenêtre que courbe pleine
 // - v1.0.24: rendu spectral séquencé: non-anim=FINAL seul, anim=chaque cycle; suppression redraw différé doublon depuis updatePlot
+// - v1.0.46: fin drawAbsorptionBandIndicators : syncPlotContainerOrganigramHideClasses (classes hide-* sur .plot-container-wrapper alignées #flux-diagram)
+// - v1.0.45: époque Corps Noir : indicateurs spectraux [ ] + marqueurs EDS/Terre en grayscale + opacity 0.3 (traitement « invisibles » provisoire)
+// - v1.0.44: bandes CH₄ : couleur crochets + fond alpha rgb(0,118,114) #007672
+// - v1.0.43: bandes [ ] : crochets derrière le picto (z-index) ; tailles défaut img/emoji 18 px (comme avant grossissement)
+// - v1.0.42: bandes [ ] : PNG (charsImages) plus grands que UTF‑8 ; tailles via CONFIG_COMPUTE spectralBandLogoImgPx / EmojiPx / ImgPxByEmoji
+// - v1.0.41: bande Nuages EDS (fullSpan) : Y juste au-dessus du marqueur spectral EDS (même λ CONFIG) ; repli haut graphe si pas de Y EDS
+// - v1.0.40: visu_ bandes spectrales : si image définie (charsImages), rendu image partout (CH4/CO2/H2O/nuages), sinon emoji
+// - v1.0.39: marqueur espace = Terre (logo continents 🌍) pas Soleil ; EDS Δ/4 ; nuages en haut du graphe + z-index au-dessus d’EDS
+// - v1.0.38: Soleil Y = ½·Planck(T_eff) à λ (milieu y=0 et courbe espace) ; EDS Y = Y_sol + (Y_eff−Y_sol)/3 sur l’axe luminance
+// - v1.0.37: marqueurs EDS/Soleil ×2 ; EDS à 2/3 entre Planck(sol) et Planck(T_eff) ; Soleil à mi-intervalle (y/2) entre les deux
+// - v1.0.36: bandes spectrales : logos ×1,5 (18px) ; fond rgba entre [ ] à la couleur des crochets
+// - v1.0.35: indicateurs [ ] : Y = moyenne Planck(T sol) et Planck(T_eff espace) au λ centre (milieu des 2 courbes) ; repli si incomplet
+// - v1.0.34: indicateurs [ ] bandes H₂O/CH₄/CO₂/nuages : Y = Planck(T sol) au λ centre de la bande (fallback bottom si axe pas prêt)
+// - v1.0.33: EDS/Soleil à λ configurable (défaut 10 μm) ; Y = Planck(T sol) et Planck(T_eff) à cette λ (coords axe Plotly)
+// - v1.0.32: EDS + Soleil (image ☀️ charsImages) sur l’axe ~12 μm ; CONFIG_COMPUTE spectralBandIndicatorLiftPx pour monter les [ ]
+// - v1.0.31: encadrés T sol / T eff avec logos 📛 (EDS) et ☀️ sous les valeurs (style .plot-temp-readouts)
 // - v1.0.30: corps noir Planck à T_surface (tirets), couleur = même logique que courbe spectrale (tempSurfaceToColor / currentBlackBodyColor)
 // - v1.0.29: tooltip OLR (courbe pleine) = T_eff comme corps noir pointillé (∫ cohérent), pas T_surface (évite ~4°C vs ~−29°C)
 // - v1.0.28: hidden epoch support (ex: hysteresis 1) fallback to window.TIMELINE when configOrganigramme.timeline is filtered
@@ -728,7 +744,7 @@ function drawAbsorptionBandIndicators() {
     if (!plotContainerWrapper2) return;
 
     // Supprimer les anciens indicateurs s'ils existent
-    const oldIndicators = plotContainerWrapper2.querySelectorAll('.absorption-band-indicator');
+    const oldIndicators = plotContainerWrapper2.querySelectorAll('.absorption-band-indicator, .spectral-eds-sun-markers, .spectral-eds-marker');
     oldIndicators.forEach(ind => ind.remove());
 
     const canvas = document.getElementById('spectral-visualization');
@@ -740,10 +756,22 @@ function drawAbsorptionBandIndicators() {
     const axisMarginBottom = 75; // PLOT_MARGINS.b
     const markersOffsetBelowAxis = -15; // px sous l'axe (bandes moléculaires)
     const markerOffsetAboveAxis = 4; // px au-dessus de l'axe (bande nuages full-span)
+    // Monter toute la rangée [ ] (CONFIG_COMPUTE.spectralBandIndicatorLiftPx, défaut plot si absent)
+    const bracketLiftPx = (window.CONFIG_COMPUTE && Number.isFinite(Number(window.CONFIG_COMPUTE.spectralBandIndicatorLiftPx)))
+        ? Number(window.CONFIG_COMPUTE.spectralBandIndicatorLiftPx)
+        : 14;
 
     const plotRect = plotContainer.getBoundingClientRect();
     const wrapperRect = plotContainerWrapper2.getBoundingClientRect();
     const plotLeftFromWrapper = plotRect.left - wrapperRect.left;
+
+    const isCorpsNoirSpectral =
+        typeof window !== 'undefined' && window.currentEpochName === 'Corps Noir';
+    function applyCorpsNoirSpectralGhostStyle(el) {
+        if (!el || !isCorpsNoirSpectral) return;
+        el.style.filter = 'grayscale(1)';
+        el.style.opacity = '0.3';
+    }
 
     // Fonction helper : utilise Plotly._fullLayout.xaxis.c2p si dispo, sinon fallback
     let getXPosition;
@@ -776,6 +804,10 @@ function drawAbsorptionBandIndicators() {
         CLOUDS: '☁️'
     };
     if (!LOGOS.CLOUDS) LOGOS.CLOUDS = '☁️';
+    const getLogoImageSrc = (typeof window !== 'undefined' && typeof window.getLogoImageSrc === 'function')
+        ? window.getLogoImageSrc
+        : null;
+    const resolveLogoImg = (logo) => (getLogoImageSrc ? getLogoImageSrc(logo) : null);
 
     // Bornes des bins de la grille spectrale (calculations.js buildAdaptiveLambdaGrid) — les [ ] alignés dessus = bandes "code bar" du fond.
     const SPECTRAL_GRID_BOUNDS_UM = [0.1, 4, 4.6, 7, 8, 12, 17, 25, 50];
@@ -795,18 +827,135 @@ function drawAbsorptionBandIndicators() {
     const LAMBDA_CH4_1_UM = (CONST.LAMBDA_CH4_1 != null) ? CONST.LAMBDA_CH4_1 * 1e6 : 7.7;
     const LAMBDA_CO2_UM = (CONST.LAMBDA_CO2_CENTER != null) ? CONST.LAMBDA_CO2_CENTER * 1e6 : 15;
     const absorptionBands = [
-        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', minMax: 'Min', color: 'rgb(89, 194, 255)' },
-        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: null, label: 'H₂O', minMax: 'Max', color: 'rgb(89, 194, 255)' },
-        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Min', color: 'rgb(255, 170, 73)' },
-        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Min', color: 'rgb(255, 112, 112)' },
-        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: null, label: 'CO₂', minMax: 'Max', color: 'rgb(255, 112, 112)' },
-        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: null, label: 'CH₄', minMax: 'Max', color: 'rgb(255, 170, 73)' },
+        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', minMax: 'Min', color: 'rgb(89, 194, 255)' },
+        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', minMax: 'Max', color: 'rgb(89, 194, 255)' },
+        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', minMax: 'Min', color: 'rgb(0, 255, 153)' },
+        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', minMax: 'Min', color: 'rgb(255, 112, 112)' },
+        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', minMax: 'Max', color: 'rgb(255, 112, 112)' },
+        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', minMax: 'Max', color: 'rgb(0, 255, 153)' },
         // Nuages EDS : corps gris (tout le LW 4–50 μm). Un seul indicateur full span suffit (ils couvrent tout le spectre). SW = calculateAlbedo.
-        { lambda: 27, halfWidthUm: 23, logo: LOGOS.CLOUDS, logoImg: null, label: 'Nuages', minMax: 'LW', color: 'rgb(185, 185, 205)', fullSpan: true }
+        { lambda: 27, halfWidthUm: 23, logo: LOGOS.CLOUDS, logoImg: resolveLogoImg(LOGOS.CLOUDS), label: 'Nuages', minMax: 'LW', color: 'rgb(185, 185, 205)', fullSpan: true }
     ];
 
     const P_atm = (window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) ? window.DATA['🫧']['🎈'] : 1;
     const widthFactor = window.CONFIG_COMPUTE.pressureBroadening ? Math.min(2, Math.sqrt(Math.max(0.1, P_atm))) : 1;
+
+    const PHYS = window.PHYS;
+    const pdPlot = window.plotData;
+    let TSurf = null;
+    if (pdPlot) {
+        if (pdPlot.temp_surface != null && Number.isFinite(pdPlot.temp_surface)) TSurf = pdPlot.temp_surface;
+        else if (pdPlot.temp_surface_c != null && Number.isFinite(pdPlot.temp_surface_c) && CONST.KELVIN_TO_CELSIUS != null) {
+            TSurf = pdPlot.temp_surface_c + CONST.KELVIN_TO_CELSIUS;
+        }
+    }
+    const Teff = (pdPlot && pdPlot.current && pdPlot.current.effective_temperature != null && Number.isFinite(pdPlot.current.effective_temperature))
+        ? pdPlot.current.effective_temperature : null;
+
+    const epNamePlot = window.currentEpochName;
+    const scaleFactorPlot = (epNamePlot === 'Corps Noir' ? 1e12 : 1e13);
+    function scaleYLocal(raw) {
+        return raw / scaleFactorPlot;
+    }
+
+    function scaledYToWrapperTopPx(yScaled) {
+        const ya = gd._fullLayout && gd._fullLayout.yaxis;
+        if (!ya || yScaled == null || !Number.isFinite(yScaled)) return null;
+        const r = ya.range;
+        if (!r || r.length < 2) return null;
+        const lo = Math.min(r[0], r[1]);
+        const hi = Math.max(r[0], r[1]);
+        if (hi <= lo) return null;
+        const t = (hi - yScaled) / (hi - lo);
+        const len = ya._length;
+        const off = ya._offset;
+        if (!Number.isFinite(len) || len <= 0 || !Number.isFinite(off)) return null;
+        const yFromTopPlotDiv = off + t * len;
+        return (plotRect.top - wrapperRect.top) + yFromTopPlotDiv;
+    }
+
+    function clampYToAxisRange(yScaled) {
+        const ya = gd._fullLayout && gd._fullLayout.yaxis;
+        if (!ya || yScaled == null || !Number.isFinite(yScaled) || !ya.range) return yScaled;
+        const lo = Math.min(ya.range[0], ya.range[1]);
+        const hi = Math.max(ya.range[0], ya.range[1]);
+        return Math.max(lo, Math.min(hi, yScaled));
+    }
+
+    function planckScaledYAtLambdaUm(lambdaUm, T_K) {
+        if (!PHYS || typeof PHYS.planckFunction !== 'function' || T_K == null || !Number.isFinite(T_K)) return null;
+        const lamM = Number(lambdaUm) * 1e-6;
+        if (!Number.isFinite(lamM) || lamM <= 0) return null;
+        const raw = Math.PI * PHYS.planckFunction(lamM, T_K) * 1e6;
+        return scaleYLocal(raw);
+    }
+
+    /** Borne haute de l’axe y luminance (pixel « haut » du tracé via scaledYToWrapperTopPx) */
+    function yAxisLuminanceHi() {
+        const ya = gd._fullLayout && gd._fullLayout.yaxis;
+        if (!ya || !ya.range || ya.range.length < 2) return null;
+        return Math.max(ya.range[0], ya.range[1]);
+    }
+
+    const bandRowBottomPx = axisMarginBottom + markersOffsetBelowAxis + bracketLiftPx;
+    const fallbackTopFromWrapperTop = Math.max(0, (plotRect.top - wrapperRect.top) + (plotRect.height * 0.28));
+
+    /** rgb(r,g,b) → rgba(...,a) pour fond entre crochets */
+    function bracketRgbToRgba(rgbStr, alpha) {
+        if (!rgbStr || typeof rgbStr !== 'string') return `rgba(120, 120, 130, ${alpha})`;
+        const m = rgbStr.trim().match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)\s*$/i);
+        if (m) return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
+        return rgbStr;
+    }
+
+    const bracketFs = 18;
+    const rowH = 18;
+    const fillBetweenAlpha = 0.26;
+    const CFG_SPEC = window.CONFIG_COMPUTE || {};
+    const spectralBandLogoImgPxDefault = Number.isFinite(Number(CFG_SPEC.spectralBandLogoImgPx))
+        ? Number(CFG_SPEC.spectralBandLogoImgPx)
+        : 18;
+    const spectralBandLogoEmojiPx = Number.isFinite(Number(CFG_SPEC.spectralBandLogoEmojiPx))
+        ? Number(CFG_SPEC.spectralBandLogoEmojiPx)
+        : 18;
+    const spectralBandLogoImgPxByEmoji = CFG_SPEC.spectralBandLogoImgPxByEmoji;
+    function spectralBandImgPxForLogo(logoChar) {
+        if (spectralBandLogoImgPxByEmoji && logoChar != null
+            && Object.prototype.hasOwnProperty.call(spectralBandLogoImgPxByEmoji, logoChar)) {
+            const v = Number(spectralBandLogoImgPxByEmoji[logoChar]);
+            if (Number.isFinite(v) && v > 0) {
+                return v;
+            }
+        }
+        return spectralBandLogoImgPxDefault;
+    }
+
+    const lambdaEdsSunUm = Math.max(0.1, Math.min(50, (window.CONFIG_COMPUTE && Number.isFinite(Number(window.CONFIG_COMPUTE.spectralEdsSunLambdaUm)))
+        ? Number(window.CONFIG_COMPUTE.spectralEdsSunLambdaUm)
+        : 10));
+    const stackLiftPx = (window.CONFIG_COMPUTE && Number.isFinite(Number(window.CONFIG_COMPUTE.spectralEdsSunStackLiftPx)))
+        ? Number(window.CONFIG_COMPUTE.spectralEdsSunStackLiftPx)
+        : 26;
+    const ySurfScaledEds = (TSurf != null) ? planckScaledYAtLambdaUm(lambdaEdsSunUm, TSurf) : null;
+    const yEffScaledEds = (Teff != null) ? planckScaledYAtLambdaUm(lambdaEdsSunUm, Teff) : null;
+    let yEdsScaledForBands = null;
+    if (ySurfScaledEds != null && Number.isFinite(ySurfScaledEds)) {
+        if (yEffScaledEds != null && Number.isFinite(yEffScaledEds)) {
+            yEdsScaledForBands = ySurfScaledEds + (1 / 4) * (yEffScaledEds - ySurfScaledEds);
+        } else {
+            yEdsScaledForBands = ySurfScaledEds;
+        }
+    }
+    let topEdsForCloudBand = null;
+    if (yEdsScaledForBands != null) {
+        const yEdsClampedBands = clampYToAxisRange(yEdsScaledForBands);
+        topEdsForCloudBand = scaledYToWrapperTopPx(yEdsClampedBands);
+        if (topEdsForCloudBand == null) {
+            topEdsForCloudBand = (plotRect.top - wrapperRect.top) + Math.max(8, plotRect.height - bandRowBottomPx - stackLiftPx - 40);
+        }
+    }
+    const edsSpectralMarkerFontPx = 30;
+    const cloudBandAboveEdsGapPx = 6;
 
     absorptionBands.forEach(band => {
         let leftUm;
@@ -829,6 +978,11 @@ function drawAbsorptionBandIndicators() {
         const xRight = getXPosition(rightUm);
         const barWidthPx = Math.max(22, xRight - xLeft);
 
+        const logoEmojiPx = spectralBandLogoEmojiPx;
+        const logoImgPx = band.logoImg ? spectralBandImgPxForLogo(band.logo) : logoEmojiPx;
+        const rowBand = Math.max(rowH, band.logoImg ? logoImgPx : logoEmojiPx);
+        const bracketFsBand = Math.max(bracketFs, Math.min(24, Math.round(rowBand * 0.95)));
+
         const altText = band.fullSpan
             ? `Nuages EDS (corps gris) : absorption sur tout le spectre LW 4–50 μm (pas de longueur d'onde)`
             : `${band.minMax} captation ${band.label} : ${Number(band.lambda).toFixed(2)} μm, bin [${leftUm.toFixed(1)}–${rightUm.toFixed(1)}] μm`;
@@ -839,13 +993,57 @@ function drawAbsorptionBandIndicators() {
         indicator.style.position = 'absolute';
         indicator.style.left = `${xLeft}px`;
         indicator.style.width = `${barWidthPx}px`;
-        // Juste sous le trait de l'axe (comme les graduations)
-        const markerOffset = band.fullSpan ? markerOffsetAboveAxis : markersOffsetBelowAxis;
-        indicator.style.bottom = `${axisMarginBottom + markerOffset}px`;
+        // Y : nuages = exception (LW plein spectre) → tout en haut du graphe ; autres = milieu Planck(sol)/Planck(eff) au λ centre
+        const lambdaCenterUm = (leftUm + rightUm) / 2;
+        let topBand = null;
+        if (band.fullSpan) {
+            if (topEdsForCloudBand != null && Number.isFinite(topEdsForCloudBand)) {
+                const halfEds = edsSpectralMarkerFontPx / 2;
+                const halfRow = rowBand / 2;
+                topBand = topEdsForCloudBand - halfEds - cloudBandAboveEdsGapPx - halfRow;
+            } else {
+                const yHi = yAxisLuminanceHi();
+                if (yHi != null) {
+                    const yClamped = clampYToAxisRange(yHi);
+                    const px = scaledYToWrapperTopPx(yClamped);
+                    if (px != null && Number.isFinite(px)) {
+                        topBand = px - 6;
+                    }
+                }
+                if (topBand == null || !Number.isFinite(topBand)) {
+                    topBand = Math.max(0, (plotRect.top - wrapperRect.top) + 2);
+                }
+            }
+        } else {
+            const ySol = (TSurf != null) ? planckScaledYAtLambdaUm(lambdaCenterUm, TSurf) : null;
+            const yEspace = (Teff != null) ? planckScaledYAtLambdaUm(lambdaCenterUm, Teff) : null;
+            let yMid = null;
+            if (ySol != null && yEspace != null) {
+                yMid = (ySol + yEspace) / 2;
+            } else if (ySol != null) {
+                yMid = ySol;
+            } else if (yEspace != null) {
+                yMid = yEspace;
+            }
+            if (yMid != null) {
+                const yClamped = clampYToAxisRange(yMid);
+                topBand = scaledYToWrapperTopPx(yClamped);
+            }
+        }
+        if (topBand != null && Number.isFinite(topBand)) {
+            indicator.style.top = `${topBand}px`;
+            indicator.style.bottom = 'auto';
+            indicator.style.transform = 'translateY(-50%)';
+        } else {
+            const markerOffset = band.fullSpan ? markerOffsetAboveAxis : (markersOffsetBelowAxis + bracketLiftPx);
+            indicator.style.bottom = `${axisMarginBottom + markerOffset}px`;
+            indicator.style.top = '';
+            indicator.style.transform = '';
+        }
         indicator.style.background = 'transparent';
-        indicator.style.borderRadius = '0';
-        indicator.style.fontSize = '10px';
-        indicator.style.zIndex = '1000';
+        indicator.style.borderRadius = '4px';
+        indicator.style.fontSize = `${bracketFsBand}px`;
+        indicator.style.zIndex = band.fullSpan ? '1005' : '1000';
         indicator.style.pointerEvents = 'auto';
         indicator.style.cursor = 'default';
         indicator.style.display = 'flex';
@@ -853,22 +1051,111 @@ function drawAbsorptionBandIndicators() {
         indicator.style.justifyContent = 'center';
         indicator.style.color = band.color;
         indicator.style.textShadow = '0 0 2px rgba(0, 0, 0, 0.8)';
-        indicator.style.height = '12px';
-        indicator.style.lineHeight = '12px';
+        indicator.style.height = `${rowBand}px`;
+        indicator.style.lineHeight = `${rowBand}px`;
 
-        // Utiliser le PNG pour CH4, emoji pour les autres ; alt = molécule + valeur (dépend de P)
+        const fillRgba = bracketRgbToRgba(band.color, fillBetweenAlpha);
+        // PNG (charsImages) : taille CONFIG (défaut > emoji) ; emoji : spectralBandLogoEmojiPx
         let logoHTML = '';
         if (band.logoImg) {
-            logoHTML = `<img src="${band.logoImg}" alt="${altText}" title="${altText}" style="width: 12px; height: 12px; display: block; margin: 0 auto; object-fit: contain; vertical-align: middle;">`;
+            logoHTML = `<img src="${band.logoImg}" alt="${altText}" title="${altText}" style="width: ${logoImgPx}px; height: ${logoImgPx}px; display: block; margin: 0 auto; object-fit: contain; vertical-align: middle;">`;
         } else {
-            indicator.style.fontSize = '12px';
-            logoHTML = `<span role="img" aria-label="${altText}" title="${altText}">${band.logo}</span>`;
+            logoHTML = `<span role="img" aria-label="${altText}" title="${altText}" style="font-size:${logoEmojiPx}px;line-height:${rowBand}px;">${band.logo}</span>`;
         }
-        // [ ] et picto sur la même ligne : [ logo ]
-        indicator.innerHTML = `<span aria-hidden="true" style="position:absolute; left:0; top:50%; transform:translateY(-50%); color:${band.color}; font-weight:700; font-size:12px; line-height:12px;">[</span><span style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">${logoHTML}</span><span aria-hidden="true" style="position:absolute; right:0; top:50%; transform:translateY(-50%); color:${band.color}; font-weight:700; font-size:12px; line-height:12px;">]</span>`;
+        // [ ] sous le picto : crochets z-index 0 ; bloc fond+picto z-index 2 (picto au-dessus du fond)
+        indicator.innerHTML = `<span aria-hidden="true" style="position:absolute;left:0;top:50%;transform:translateY(-50%);color:${band.color};font-weight:700;font-size:${bracketFsBand}px;line-height:${rowBand}px;z-index:0;">[</span>` +
+            `<span style="position:relative;z-index:2;display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:${rowBand}px;">` +
+            `<span aria-hidden="true" style="position:absolute;left:6px;right:6px;top:50%;transform:translateY(-50%);height:${rowBand}px;background:${fillRgba};border-radius:3px;z-index:0;pointer-events:none;"></span>` +
+            `<span style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;">${logoHTML}</span></span>` +
+            `<span aria-hidden="true" style="position:absolute;right:0;top:50%;transform:translateY(-50%);color:${band.color};font-weight:700;font-size:${bracketFsBand}px;line-height:${rowBand}px;z-index:0;">]</span>`;
 
+        applyCorpsNoirSpectralGhostStyle(indicator);
         plotContainerWrapper2.appendChild(indicator);
     });
+
+    // EDS + Terre (λ fixe spectralEdsSunUm) : Y EDS = sol + Δ/4 ; Y Terre = ½·Planck(T_eff) (échelle traces, sémantique Y inversée vs « ciel »)
+    let edsSunColor = getDefaultTextColor();
+    if (typeof window !== 'undefined' && window.currentBlackBodyColor) {
+        edsSunColor = window.currentBlackBodyColor;
+    } else if (typeof window !== 'undefined' && window.plotData && typeof window.plotData.temp_surface_c === 'number' && typeof window.tempSurfaceToColor === 'function') {
+        edsSunColor = window.tempSurfaceToColor(window.plotData.temp_surface_c);
+    }
+
+    const xAxisMark = getXPosition(lambdaEdsSunUm);
+
+    const ySurfScaled = ySurfScaledEds;
+    const yEffScaled = yEffScaledEds;
+    /** EDS : près de Planck(sol) ; descend d’un quart de l’écart sol ↔ espace sur l’axe Y */
+    const yEdsScaled = yEdsScaledForBands;
+    /** Soleil : 0,5 × ordonnée Planck(T_eff) à ce λ (= milieu entre y=0 et courbe espace, « y/2 ») */
+    let ySunScaled = null;
+    if (yEffScaled != null && Number.isFinite(yEffScaled)) {
+        ySunScaled = yEffScaled / 2;
+    }
+
+    function placeSpectralMarker(extraClass, titleText, topPx) {
+        const topUse = (topPx != null && Number.isFinite(topPx)) ? topPx : fallbackTopFromWrapperTop;
+        const el = document.createElement('div');
+        el.className = `spectral-eds-marker ${extraClass}`;
+        el.style.position = 'absolute';
+        el.style.left = `${xAxisMark}px`;
+        el.style.top = `${topUse}px`;
+        el.style.transform = 'translate(-50%, -50%)';
+        el.style.zIndex = '1001';
+        el.style.pointerEvents = 'none';
+        el.style.lineHeight = '1';
+        el.title = titleText;
+        return el;
+    }
+
+    if (yEdsScaled != null) {
+        const yEdsClamped = clampYToAxisRange(yEdsScaled);
+        let topEds = scaledYToWrapperTopPx(yEdsClamped);
+        if (topEds == null) {
+            topEds = (plotRect.top - wrapperRect.top) + Math.max(8, plotRect.height - bandRowBottomPx - stackLiftPx - 40);
+        }
+        const divEds = placeSpectralMarker('spectral-eds-marker--eds', 'EDS — Planck(sol) + (Planck(eff)−Planck(sol))/4 à ' + lambdaEdsSunUm + ' μm', topEds);
+        divEds.style.fontSize = edsSpectralMarkerFontPx + 'px';
+        divEds.style.color = edsSunColor;
+        divEds.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
+        divEds.style.textShadow = '0 0 2px rgba(0,0,0,0.85)';
+        divEds.textContent = (window.LOGOS && window.LOGOS.EDS) || (window.CHARS && window.CHARS.EDS) || '📛';
+        applyCorpsNoirSpectralGhostStyle(divEds);
+        plotContainerWrapper2.appendChild(divEds);
+    }
+
+    if (ySunScaled != null) {
+        const ySunClamped = clampYToAxisRange(ySunScaled);
+        let topSun = scaledYToWrapperTopPx(ySunClamped);
+        if (topSun == null) {
+            topSun = (plotRect.top - wrapperRect.top) + Math.max(8, plotRect.height - bandRowBottomPx - 8);
+        }
+        const divEarth = placeSpectralMarker('spectral-eds-marker--earth', 'Terre (émission vue de l’espace) — ½·Planck(T_eff) à ' + lambdaEdsSunUm + ' μm ; axe Y sémantique inversé vs intuition « ciel »', topSun);
+        const earthEmoji = (window.LOGOS && window.LOGOS.GLOBE_AFRICA) || (window.LOGOS && window.LOGOS.GLOBE_AMERICAS) || (window.LOGOS && window.LOGOS.GLOBE_ASIA) || '🌍';
+        const earthSrc = (typeof window.getLogoImageSrc === 'function') ? window.getLogoImageSrc(earthEmoji) : null;
+        if (earthSrc) {
+            const img = document.createElement('img');
+            img.src = earthSrc;
+            img.alt = 'Terre';
+            img.width = 40;
+            img.height = 40;
+            img.style.display = 'block';
+            img.style.objectFit = 'contain';
+            img.style.filter = 'drop-shadow(0 0 1px rgba(0,0,0,0.9))';
+            divEarth.appendChild(img);
+        } else {
+            divEarth.style.fontSize = '32px';
+            divEarth.style.color = edsSunColor;
+            divEarth.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
+            divEarth.textContent = earthEmoji;
+        }
+        applyCorpsNoirSpectralGhostStyle(divEarth);
+        plotContainerWrapper2.appendChild(divEarth);
+    }
+
+    if (typeof window.syncPlotContainerOrganigramHideClasses === 'function') {
+        window.syncPlotContainerOrganigramHideClasses();
+    }
 }
 
 window.updatePlot = function updatePlot(data) {
@@ -1515,28 +1802,41 @@ window.updatePlot = function updatePlot(data) {
         ]
     };
 
-    // Afficher la température effective (sommet) avec label pour éviter confusion avec T surface (organigramme)
-    if (T_effective_display) {
-        const plotContainer = document.getElementById('plot-container');
-        if (plotContainer) {
-            const oldTempDisplay = plotContainer.querySelector('.temp-display-cyan');
-            if (oldTempDisplay) {
-                oldTempDisplay.remove();
+    // T sol + T eff (texte seul en coin) — EDS / Soleil : voir drawAbsorptionBandIndicators sur l’axe λ (défaut 12 μm)
+    const plotContainerForTemps = document.getElementById('plot-container');
+    if (plotContainerForTemps) {
+        const oldReadouts = plotContainerForTemps.querySelector('.plot-temp-readouts');
+        const oldCyan = plotContainerForTemps.querySelector('.temp-display-cyan');
+        if (oldReadouts) oldReadouts.remove();
+        if (oldCyan) oldCyan.remove();
+
+        const hasSurf = T_current_display != null && Number.isFinite(T_current_display);
+        const hasEff = T_effective_display != null && Number.isFinite(T_effective_display);
+        if (hasSurf || hasEff) {
+            const wrap = document.createElement('div');
+            wrap.className = 'plot-temp-readouts';
+
+            if (hasSurf) {
+                const surf = document.createElement('div');
+                surf.className = 'plot-temp-block plot-temp-block--surface';
+                surf.style.color = color_current;
+                const tsK = T_current_display.toFixed(1);
+                const tsC = (T_current_display - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+                const tsF = ((T_current_display - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
+                surf.innerHTML = `T sol.<br>${tsK} K<br>${tsC}°C<br>${tsF}°F`;
+                wrap.appendChild(surf);
             }
-
-            const tempDisplay = document.createElement('div');
-            tempDisplay.className = 'temp-display-cyan';
-
-            const tempK = T_effective_display.toFixed(1);
-            const tempC = (T_effective_display - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-            const tempF = ((T_effective_display - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
-
-            tempDisplay.innerHTML = `T eff.<br>${tempK} K<br>${tempC}°C<br>${tempF}°F`;
-
-            // Même couleur que la courbe pointillée (corps noir) pour cohérence visuelle
-            tempDisplay.style.color = color_current;
-
-            plotContainer.appendChild(tempDisplay);
+            if (hasEff) {
+                const eff = document.createElement('div');
+                eff.className = 'plot-temp-block plot-temp-block--eff';
+                eff.style.color = color_current;
+                const teK = T_effective_display.toFixed(1);
+                const teC = (T_effective_display - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+                const teF = ((T_effective_display - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
+                eff.innerHTML = `T eff.<br>${teK} K<br>${teC}°C<br>${teF}°F`;
+                wrap.appendChild(eff);
+            }
+            plotContainerForTemps.appendChild(wrap);
         }
     }
 

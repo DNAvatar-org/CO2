@@ -2,8 +2,8 @@
 <!--
 # File: CO2/html/scie_compute.html
 # Logs:
-# - Titres boutons hyst (pas TIMELINE) : hysteresis 1 −725 Ma, hysteresis 2 −34 Ma (captions + title)
-# - Boutons hyst : glyphes 🥟⛄ / 🐊🏔 + dates -725 Ma / -34 Ma ; hysteresis 2 hidden TIMELINE = epoch-text comme h1
+# - Titres boutons hyst : début d’intervalle TIMELINE (▶), pas le milieu — hysteresis 1 −750 Ma, hysteresis 2 −35 Ma
+# - Boutons hyst : glyphes 🥟⛄ / 🐊🏔 + captions −750 Ma / −35 Ma ; hysteresis 2 hidden TIMELINE = epoch-text comme h1
 # - Panneau Hystérésis : runs hysteresis 1 / hysteresis 2 uniquement (⛄ 🏔 inchangés ailleurs) ; sync parent = visu + play
 # - Frise époques retirée (époque par défaut ⚫ au load) ; #hysteresis : ligne1 [titre+boutons | jauges], ligne2 logs
 # - Hystérésis : titre 🧲 + negative|positive ; bouton ↑↓ après Jauges (searchSign)
@@ -78,13 +78,13 @@
                         <button type="button" class="toggle-button" id="hyst-literature-preset" onclick="applyHysteresisLiteraturePreset(); return false;" title="Applique HYSTERESIS_LITERATURE_PRESET (FINE_TUNING_BOUNDS groupe HYSTERESIS + TUNING_BIBLIO)">Preset lit. +</button>
                     </div>
                     <div class="hyst-epoch-row hyst-epoch-row--tight">
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1" title="hysteresis 1 — 🥟 · ⛄ (~725 Ma)" onclick="scieRunEpochLikeVisuTimeline('hysteresis 1')">
+                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1" title="hysteresis 1 — 🥟 · ⛄ (début ▶ −750 Ma)" onclick="scieRunEpochLikeVisuTimeline('hysteresis 1')">
                             <span class="hyst-epoch-glyphs" aria-hidden="true">🥟⛄</span>
-                            <span class="hyst-epoch-caption hyst-epoch-date">-725Ma</span>
+                            <span class="hyst-epoch-caption hyst-epoch-date">-750Ma</span>
                         </button>
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h2" title="hysteresis 2 — 🐊 · 🏔 (~34 Ma)" onclick="scieRunEpochLikeVisuTimeline('hysteresis 2')">
+                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h2" title="hysteresis 2 — 🐊 · 🏔 (début ▶ −35 Ma)" onclick="scieRunEpochLikeVisuTimeline('hysteresis 2')">
                             <span class="hyst-epoch-glyphs" aria-hidden="true">🐊🏔</span>
-                            <span class="hyst-epoch-caption hyst-epoch-date">-34Ma</span>
+                            <span class="hyst-epoch-caption hyst-epoch-date">-35Ma</span>
                         </button>
                     </div>
                 </div>

@@ -1,15 +1,16 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.6
-// Date: [January 2025]
+// Version 1.0.7
+// Date: [April 15, 2026]
 // logs :
+// - v1.0.7: charsImages CH4 -> fonts/pics/ch4_2.png (picto texte)
 // - v1.0.6: CHARS_DESC 🐊 « Éocène »
 // - v1.0.5: CHARS_DESC 🎾 Lave, ⚽ voile SW ; VOLCANO 🌋 inchangé (actions)
 // - v1.0.3: IIFE + __alphabetModuleLoaded (évite SyntaxError CHARS redeclared si double chargement) ; resolveImagePath pour pages sous /html/*.html → ../fonts/
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Ā unit : non Aristotelicisme via UTF8.
+// ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
 
@@ -118,7 +119,7 @@ const charsImages = {
     '🎇': 'fonts/pics/big_impact.png',    // Big impact
     '☄️': 'fonts/pics/ice_meteorite.png', // Météorite de glace
     //'🔥': 'fonts/pics/hadeen.png',           // Feu
-    '🐄': 'fonts/pics/ch4.png',           // CH4 (vache → picto custom)
+    '🐄': 'fonts/pics/ch4_2.png',         // CH4 (picto texte ; spectre + organigramme)
 };
 
 // ============================================================================

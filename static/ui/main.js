@@ -1,15 +1,17 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.48
-// Date: [March 27, 2026]
+// Version 1.1.50
+// Date: [Apr 15, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
-// Ā unit : non Aristotelicisme via UTF8.
+// ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
 //
+// - v1.1.50 : syncPlotContainerOrganigramHideClasses — memes hide-organigram-* sur .plot-container-wrapper que #flux-diagram (spectre plot.js)
+// - v1.1.49 : badge Flou scientifique (🧩) dans #title-flou-scientifique-slot (.title-container), plus dans #flux-diagram
 // - v1.1.48 : légende équilibre — ligne « Corps noir (sol) » tirets (Planck T_surface, plot.js v1.0.30)
 // - v1.1.47 : légende équilibre — Corps noir (pointillé) = T_eff ; Courbe réelle (pleine) = T_surface (cohérence ∫ / plot.js tooltip)
 // - v1.1.1 : retrait precisionFactor/fpsPrecisionFactor (FPS.js v1.2.0 remplace Précision par Mémoire)
@@ -3130,6 +3132,14 @@ function runMainInit() {
                     window.organigramObservationEdsPictoHidden = h;
                     window.organigramObservationAlbedoBtnPictoHidden = h;
                 };
+                /** Memes noms de classe que #flux-diagram (DETAILS / OBSERVATIONS) pour .plot-container-wrapper — styles spectraux organigramme.css */
+                window.syncPlotContainerOrganigramHideClasses = function () {
+                    var fd = document.getElementById('flux-diagram');
+                    var plotWrap = document.querySelector('.plot-container-wrapper');
+                    if (!fd || !plotWrap) return;
+                    plotWrap.classList.toggle('hide-organigram-arrows', fd.classList.contains('hide-organigram-arrows'));
+                    plotWrap.classList.toggle('hide-organigram-observation-metrics', fd.classList.contains('hide-organigram-observation-metrics'));
+                };
                 window.updateObservationIndicator = function () {
                     var fluxObs = document.getElementById('flux-diagram');
                     if (!fluxObs) return;
@@ -3166,6 +3176,7 @@ function runMainInit() {
                     obsBtn.textContent = '🛰';
                     fluxObs.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
                     window.syncOrganigramObservationPictoHiddenFlags();
+                    window.syncPlotContainerOrganigramHideClasses();
                     if (obsBtn.dataset.boundClick !== '1') {
                         obsBtn.addEventListener('click', function () {
                             window.organigramObservationMetricsVisible = !window.organigramObservationMetricsVisible;
@@ -3173,6 +3184,7 @@ function runMainInit() {
                             if (fd) fd.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
                             obsBtn.classList.toggle('selected', window.organigramObservationMetricsVisible);
                             window.syncOrganigramObservationPictoHiddenFlags();
+                            window.syncPlotContainerOrganigramHideClasses();
                         });
                         obsBtn.dataset.boundClick = '1';
                     }
@@ -3216,7 +3228,11 @@ function runMainInit() {
                     var staleAlb = cfgRow.querySelector('.organigram-albedo-percent-badge');
                     if (staleAlb) staleAlb.remove();
 
-                    var baryFt = flux.querySelector('.organigram-fine-tuning-bary-badge');
+                    var flouSlot = document.getElementById('title-flou-scientifique-slot');
+                    var baryFt = flouSlot && flouSlot.querySelector('.organigram-fine-tuning-bary-badge');
+                    if (!baryFt) {
+                        baryFt = flux.querySelector('.organigram-fine-tuning-bary-badge');
+                    }
                     if (!baryFt) {
                         baryFt = document.createElement('div');
                         baryFt.className = 'flux-label buttonData percent-label organigram-fine-tuning-bary-badge';
@@ -3228,7 +3244,7 @@ function runMainInit() {
                             var rawB = Number(Tft.baryByGroup.CLOUD_SW);
                             pctFromData = Number.isFinite(rawB) ? Math.max(0, Math.min(100, Math.round(rawB))) : 0;
                         }
-                        baryFt.innerHTML = '<div class="organigram-bary-face"><div class="organigram-bary-icons">🔺🧩🔻</div><div class="organigram-bary-pct">' + pctFromData + '%</div></div><input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' + pctFromData + '" aria-label="Réglage fin barycentre nuages">';
+                        baryFt.innerHTML = '<div class="organigram-bary-face"><div class="organigram-bary-icons">🔺🧩🔻</div><input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' + pctFromData + '" aria-label="Réglage fin barycentre nuages"></div><div class="organigram-bary-pct">' + pctFromData + '%</div>';
                     }
                     if (typeof window.getFineTuningDetailAlt === 'function') {
                         baryFt.setAttribute('aria-label', window.getFineTuningDetailAlt(null, true));
@@ -3241,16 +3257,22 @@ function runMainInit() {
                     }
 
                     cfgRow.appendChild(el);
-                    flux.appendChild(baryFt);
+                    if (flouSlot) {
+                        flouSlot.appendChild(baryFt);
+                    } else {
+                        flux.appendChild(baryFt);
+                    }
 
                     var diagram = document.getElementById('flux-diagram');
                     if (diagram) diagram.classList.toggle('hide-organigram-arrows', !window.organigramArrowsVisible);
+                    window.syncPlotContainerOrganigramHideClasses();
                     if (el.dataset.boundClick !== '1') {
                         el.addEventListener('click', function () {
                             window.organigramArrowsVisible = !window.organigramArrowsVisible;
                             var diagramEl = document.getElementById('flux-diagram');
                             if (diagramEl) diagramEl.classList.toggle('hide-organigram-arrows', !window.organigramArrowsVisible);
                             el.classList.toggle('selected', window.organigramArrowsVisible);
+                            window.syncPlotContainerOrganigramHideClasses();
                         });
                         el.dataset.boundClick = '1';
                     }
