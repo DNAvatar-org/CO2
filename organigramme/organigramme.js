@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.47
+// Version 1.0.53
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -29,6 +29,12 @@
 // Logs: v1.0.45 updateFluxLabels: fallback epoch resolve for hidden epochs (avoid null.total_atmosphere_mass_kg)
 // Logs: v1.0.46 updateFluxLabels: albedoCoeff fallback epoch resolve for hidden epochs (avoid null['🪩🍰'])
 // Logs: v1.0.47 updateFluxLabels: define logAlbedoUi helper (fix ReferenceError)
+// Logs: v1.0.48 🗺 credits-paleomap : clic sur le cercle ouvre dlg-credits (pas toggle / runCompute comme les boutons EDS)
+// Logs: v1.0.49 détail albédo : 🎾 + libellé lave (surface) ; ligne ⚽ 🍰⚽ voile SW stratosphérique
+// Logs: v1.0.50 DATA/CONST 🍰🪩🎾 🪩🍰🎾 (ex-🍰🪩🌋 / 🪩🍰🌋) pour cohérence clés lave
+// Logs: v1.0.51 détail voile : lecture 🍰🪩⚽ (fallback 🍰⚽), titre 🍰🪩⚽
+// Logs: v1.0.53 updateFluxLabels : pdTrace au lieu de pd (plus de ❌ factice sur traces UI)
+// Logs: v1.0.52 voile : 🍰⚽ = obstruction (affichage %) ; 🍰🪩⚽ = 1−🍰⚽
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts
@@ -1571,6 +1577,17 @@ function createCell(
       const parentCell = circleBg.closest(".flux-button-cell");
       if (parentCell) {
         if (parentCell.classList.contains("flux-display-only")) return; // display-only, pas de toggle
+        // 🗺 Crédits PALEOMAP : le cercle déclenchait runCompute (toggle « fantôme ») ; même action que le bouton HTML #credits-paleomap
+        if (parentCell.id === "cell-credits-paleomap" || nodeId === "credits-paleomap") {
+          const creditsBtn = document.getElementById("credits-paleomap");
+          if (creditsBtn) {
+            creditsBtn.click();
+          } else {
+            const dlg = document.getElementById("dlg-credits");
+            if (dlg && typeof dlg.showModal === "function") dlg.showModal();
+          }
+          return;
+        }
         // C'est un bouton : toggle la classe checked directement sur la cellule
         const isChecked = parentCell.classList.contains("checked");
         if (isChecked) {
@@ -4008,10 +4025,8 @@ window.updateFluxLabels = function (eventId) {
   const CHARS_DESC = window.CHARS_DESC;
   function logAlbedoUi(msg) {
     try {
-      if (typeof window !== "undefined" && typeof window.pd === "function") {
-        // Supporte pd(msg) ou pd(fn,file,msg) selon implémentation existante
-        if (window.pd.length >= 3) window.pd("updateFluxLabels", "organigramme.js", msg);
-        else window.pd("❌ [updateFluxLabels][organigramme.js] " + msg);
+      if (typeof window !== "undefined" && typeof window.pdTrace === "function") {
+        window.pdTrace("updateFluxLabels", "organigramme.js", msg);
       }
     } catch (e) {}
   }
@@ -4031,12 +4046,12 @@ window.updateFluxLabels = function (eventId) {
     isCH4_eds,
     isH2O_eds,
     isAlbedo;
-  if (typeof window !== "undefined" && window.CONVERGENCE_DEBUG) {
+  if (window.CONVERGENCE_DEBUG && window.DEBUG_CONVERGENCE_BINS === true) {
     const d = window.CONVERGENCE_DEBUG;
     const deltaStr = (d.delta != null && Number.isFinite(Number(d.delta))) ? Number(d.delta).toFixed(3) : "—";
     const fpsStr = (typeof window.fps === "number" && Number.isFinite(window.fps)) ? window.fps.toFixed(1) : "—";
     const msg = "bins=" + (d.bins != null ? d.bins : "—") + " step=" + (d.step != null ? d.step : "—") + " delta=" + deltaStr + " fps=" + fpsStr;
-    if (typeof window.pd === "function") window.pd("updateFluxLabels", "organigramme.js", msg);
+    if (typeof window.pdTrace === "function") window.pdTrace("updateFluxLabels", "organigramme.js", msg);
   }
 
   switch (eventId) {
@@ -4084,27 +4099,7 @@ window.updateFluxLabels = function (eventId) {
       isAlbedo = window.isAlbedo;
       h2o_enabled = window.waterVaporEnabled;
       hasNoAtmosphere = (function () {
-        // Certaines époques internes (hidden=true, ex: hystérésis) peuvent ne pas exister côté getGeologicalPeriodByName.
-        // Fallback vers TIMELINE (source brute) pour accéder à total_atmosphere_mass_kg.
-        var epoch =
-          typeof window.getGeologicalPeriodByName === "function"
-            ? window.getGeologicalPeriodByName(window.currentEpochName)
-            : null;
-        if (!epoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
-          epoch =
-            window.TIMELINE.find(function (e) {
-              return (
-                e &&
-                e["📅"] &&
-                (e["📅"] === window.currentEpochName ||
-                  e.name === window.currentEpochName ||
-                  e.id === window.currentEpochName ||
-                  (window.CHARS_DESC &&
-                    window.CHARS_DESC[e["📅"]] === window.currentEpochName))
-              );
-            }) || null;
-        }
-        if (!epoch) return false;
+        var epoch = window.getGeologicalPeriodByName(window.currentEpochName);
         return (
           epoch.total_atmosphere_mass_kg === 0 ||
           epoch.total_atmosphere_mass_kg === undefined
@@ -4958,41 +4953,35 @@ window.updateFluxLabels = function (eventId) {
       }
     };
 
+    const wAlb = DATA["🪩"];
+    let obsFrac = NaN;
+    if (wAlb && Number.isFinite(wAlb["🍰⚽"])) {
+      obsFrac = wAlb["🍰⚽"];
+    } else if (wAlb && Number.isFinite(wAlb["🍰🪩⚽"])) {
+      obsFrac = 1 - wAlb["🍰🪩⚽"];
+    }
+    const veilFrac = Number.isFinite(obsFrac)
+      ? Math.max(0, Math.min(0.95, obsFrac))
+      : 0;
+    const veilLine =
+      veilFrac > 1e-6
+        ? `<span style="font-size:0.85em;opacity:0.92;" title="🍰⚽ obstruction (🍰🪩⚽ = 1−🍰⚽ transmission) — SW stratosphérique, hors CCN">⚽ ${(veilFrac * 100).toFixed(1)}% ciel voilé (SW)</span>`
+        : "";
     const cloudLine = cloudComp ? renderComp(cloudComp) : "";
+    const cloudSection = [cloudLine, veilLine].filter(Boolean).join("<br>");
     const groundLines = groundComps.map(renderComp).join("<br>");
     const separator =
       '<span style="display:block;border-top:1px solid rgba(255,255,255,0.35);margin:2px 0;"></span>';
-    if (cloudLine && groundLines)
-      return cloudLine + "<br>" + separator + groundLines;
-    return cloudLine || groundLines;
+    if (cloudSection && groundLines)
+      return cloudSection + "<br>" + separator + groundLines;
+    return cloudSection || groundLines;
   };
 
   // Albedo : même source que l'API (EARTH['🪩🍰'] + override époque)
-  // Certaines époques internes (hidden=true, ex: hystérésis) peuvent ne pas exister côté getGeologicalPeriodByName.
-  // Fallback vers TIMELINE pour éviter null['🪩🍰'].
-  let currentEpochAlbedo =
-    typeof window.getGeologicalPeriodByName === "function"
-      ? window.getGeologicalPeriodByName(window.currentEpochName)
-      : null;
-  if (!currentEpochAlbedo && window.TIMELINE && Array.isArray(window.TIMELINE)) {
-    currentEpochAlbedo =
-      window.TIMELINE.find(function (e) {
-        return (
-          e &&
-          e["📅"] &&
-          (e["📅"] === window.currentEpochName ||
-            e.name === window.currentEpochName ||
-            e.id === window.currentEpochName ||
-            (window.CHARS_DESC &&
-              window.CHARS_DESC[e["📅"]] === window.currentEpochName))
-        );
-      }) || null;
-  }
+  const currentEpochAlbedo = window.getGeologicalPeriodByName(window.currentEpochName);
   const albedoCoeff = {
     ...EARTH["🪩🍰"],
-    ...(currentEpochAlbedo && currentEpochAlbedo["🪩🍰"]
-      ? currentEpochAlbedo["🪩🍰"]
-      : {}),
+    ...currentEpochAlbedo["🪩🍰"],
   };
 
   const land_cov = parseFloat(
@@ -5004,9 +4993,9 @@ window.updateFluxLabels = function (eventId) {
     const land_cov_corps_noir = parseFloat((DATA["🪩"]["🍰🪩🌍"] * 100).toFixed(1));
     const components = [
       {
-        emoji: CHARS.VOLCANO,
+        emoji: "🎾",
         coverage: 0,
-        albedo: albedoCoeff["🪩🍰🌋"].toFixed(2),
+        albedo: albedoCoeff["🪩🍰🎾"].toFixed(2),
       },
       {
         emoji: CHARS.OCEAN,
@@ -5042,7 +5031,7 @@ window.updateFluxLabels = function (eventId) {
     );
     if (currentEpoch) {
       const magma_cov = parseFloat(
-        (DATA["🪩"]["🍰🪩🌋"] * 100).toFixed(1),
+        (DATA["🪩"]["🍰🪩🎾"] * 100).toFixed(1),
       );
       const ocean_cov = parseFloat(
         (DATA["🪩"]["🍰🪩🌊"] * 100).toFixed(1),
@@ -5058,7 +5047,7 @@ window.updateFluxLabels = function (eventId) {
       );
       const cloud_cov = parseFloat((DATA["🪩"]["🍰🪩⛅"] * 100).toFixed(1));
 
-      const magma_alb = albedoCoeff["🪩🍰🌋"].toFixed(2);
+      const magma_alb = albedoCoeff["🪩🍰🎾"].toFixed(2);
       const ocean_alb = albedoCoeff["🪩🍰🌊"].toFixed(2);
       const forest_alb = albedoCoeff["🪩🍰🌳"].toFixed(2);
       const desert_alb = albedoCoeff["🪩🍰🏜️"].toFixed(2);
@@ -5066,7 +5055,7 @@ window.updateFluxLabels = function (eventId) {
       const cloud_alb = albedoCoeff["🪩🍰⛅"].toFixed(2);
 
       const components = [
-        { emoji: CHARS.VOLCANO, coverage: magma_cov, albedo: magma_alb },
+        { emoji: "🎾", coverage: magma_cov, albedo: magma_alb },
         { emoji: CHARS.OCEAN, coverage: ocean_cov, albedo: ocean_alb },
         {
           emoji: CHARS.FOREST,
@@ -5088,9 +5077,9 @@ window.updateFluxLabels = function (eventId) {
       const final_ice_percent = parseFloat((ice_coverage * 100).toFixed(1));
       const components = [
         {
-          emoji: CHARS.VOLCANO,
+          emoji: "🎾",
           coverage: 0,
-          albedo: albedoCoeff["🪩🍰🌋"].toFixed(2),
+          albedo: albedoCoeff["🪩🍰🎾"].toFixed(2),
         },
         {
           emoji: CHARS.OCEAN,
@@ -5126,9 +5115,9 @@ window.updateFluxLabels = function (eventId) {
     const final_ice_percent = parseFloat((ice_coverage * 100).toFixed(1));
     const components = [
       {
-        emoji: CHARS.VOLCANO,
+        emoji: "🎾",
         coverage: 0,
-        albedo: albedoCoeff["🪩🍰🌋"].toFixed(2),
+        albedo: albedoCoeff["🪩🍰🎾"].toFixed(2),
       },
       {
         emoji: CHARS.OCEAN,
@@ -5186,7 +5175,7 @@ window.updateFluxLabels = function (eventId) {
     );
   }
 
-  // Certaines époques internes (hidden=true, ex: hystérésis) peuvent ne pas exister côté getGeologicalPeriodByName.
+  // Certaines époques internes (hidden=true, ex: hysteresis 1) peuvent ne pas exister côté getGeologicalPeriodByName.
   // Fallback vers TIMELINE (source brute) pour éviter "Époque non trouvée" uniquement sur hidden epochs.
   let currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
   if (!currentEpoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {

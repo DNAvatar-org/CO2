@@ -1,5 +1,7 @@
 # RadiativeForcing
 
+**Conventions de code** (même règles que tout le dépôt : `window.MAJUSCULE`, une référence locale en entrée de fonction, audit `window.minuscule`, règles Cursor) : [README racine](../README.md#conventions-code) · détail inventaire : [window_MAJUSCULE_creater_filler.txt](window_MAJUSCULE_creater_filler.txt).
+
 A simplified toy-model to simulate radiative transfer in the atmosphere and compute EDS (effet de serre) and flux balance as a function of CO2 amount.
 
 I created it for my science outreach video (in French)

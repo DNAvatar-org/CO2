@@ -1,12 +1,14 @@
 /* scie_compute.css - Vue scientifique (iframe) */
+/* v1.1.1: html overflow-y auto — scroll document si contenu long (ex. logs hystérésis sans scroll interne) */
 /* v1.1.0: scie_timeline-epoch-section fit-content ; scie_epochs-container flex:1 — frise occupe le reste ; pas de >> en scie (HTML) */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* Pas de scroll interne : hauteur suit le contenu, scroll = barre générale (index) */
+/* Hauteur suit le contenu ; scroll sur le document (iframe ou page), pas de zone scroll dédiée aux logs hystérésis */
 html {
     min-height: 100%;
     background: transparent;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 body {
     height: auto;
@@ -157,6 +159,14 @@ body {
     margin-top: 12px;
     padding: 12px;
     /* style glass via .divGlass sur l’élément */
+}
+#hysteresis {
+    flex-shrink: 0;
+    overflow: visible;
+}
+#hysteresis .hyst-search-log {
+    max-height: none;
+    overflow: visible;
 }
 #config { flex-shrink: 0; }
 #convergence {

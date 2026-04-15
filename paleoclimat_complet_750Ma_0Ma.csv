@@ -1,0 +1,25 @@
+Age_Ma,Temp_C,CO2_ppm,CH4_ppb,H2O_vap,CCN,Commentaire,
+-750,25,4000,1000,1.2,Moyen,"Avant Snowball Earth, gaz à effet de serre très élevés.",
+-720,-40,200,100,0.2,Bas,Hystérésis 1 , Glaciation Sturtienne (Snowball). CCN bas (peu de bio-activité).
+-690,22,5000,1500,1.1,Moyen,"Map92a : Déglaciation brutale, effet de serre massif (volcanisme).",
+-600,10,1000,500,0.8,Moyen,Map90a , Glaciation Gaskiers / Ediacarien moyen.
+-540,22,4500,1000,1.2,Haut,Explosion Cambrienne. CCN en hausse avec la diversification biologique.,
+-480,20,3500,800,1.1,Moyen,Ordovicien inférieur chaud.,
+-461,16,2500,600,0.9,Moyen,"Map80a : Début du refroidissement, chute graduelle CO2.",
+-460,18,2800,700,1.0,Moyen,Intermède légèrement plus doux avant le choc.,
+-450,10,1500,400,0.7,Bas,Glaciation Hirnantienne , chute brutale CO2 et T°.
+-445,8,1200,300,0.6,Bas,Pic de froid Hirnantien.,
+-440,14,2000,500,0.8,Moyen,Fin de la glace au Sud. Remontée des températures.,
+-400,22,2000,800,1.1,Haut,"Dévonien : 'Greenhouse', apparition des premières forêts (CCN biogéniques).",
+-370,20,1500,700,1.0,Haut,Pas de glace visible.,
+-360,16,1200,500,0.8,Moyen,Refroidissement ponctuel (crises biologiques).,
+-350,19,1400,600,1.0,Haut,Stabilisation post-crise.,
+-330,14,600,400,0.7,Haut,"Début Karoo : Expansion des forêts, chute massive du CO2.",
+-280,12,300,300,0.6,Haut,Maximum Karoo , CO2 au plus bas historique.
+-250,28,3000,2000,1.5,Bas,"Limite P/T : Réchauffement catastrophique, anoxie.",
+-100,24,1200,1000,1.3,Moyen,Crétacé , Pas de glaces aux pôles.
+-56,26,2000,3000,1.4,Haut,PETM , Pic de méthane (CH4) probable via clathrates.
+-40,18,600,600,1.0,Moyen,"Refroidissement global, retour de la glace au Sud.",
+-34,15,450,500,0.8,Moyen,"Hystérésis 2 : Passage Eocène-Oligocène, calotte Antarctique.",
+-4,13,350,450,0.7,Moyen,"Glace au Nord, cycles de Milankovitch actifs.",
+0,15,420,1800,1.0,Haut,Actuel (anthropocène inclus pour les gaz).,

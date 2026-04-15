@@ -1,8 +1,10 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.4
+// Version 1.0.6
 // Date: [January 2025]
 // logs :
+// - v1.0.6: CHARS_DESC 🐊 « Éocène »
+// - v1.0.5: CHARS_DESC 🎾 Lave, ⚽ voile SW ; VOLCANO 🌋 inchangé (actions)
 // - v1.0.3: IIFE + __alphabetModuleLoaded (évite SyntaxError CHARS redeclared si double chargement) ; resolveImagePath pour pages sous /html/*.html → ../fonts/
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -84,8 +86,9 @@ const CHARS = {
     MESOZOIC: '🦕', // Mésozoïque : dinosaure sauropode
     PALEOZOIC: '🌿', // Paléozoïque (600–250 Ma en timeline) : os/fossile
     CENOZOIC: '🦣', // Cénozoïque : mammouth
-    PETM_HOUSE: '🐊', // Hyperthermie éocène (50–35 Ma)
-    PRELUDE_ICE: '⛰', // Prélude glaciaire (35–33 Ma)
+    PETM_HOUSE: '🐊', // Éocène (50–35 Ma), pic thermique type PETM
+    HYSTERESIS_1: 'hysteresis 1',
+    PRELUDE_ICE: 'hysteresis 2',
     EOT: '🏔',      // Grande Coupure (~33 Ma)
     QUATERNARY: '❄️', // Quaternaire (~2 Ma)
     TODAY: '🚂',    // 1800 : train (1800)
@@ -148,7 +151,9 @@ const CHARS_DESC = {
     '🧊': 'Glace',
     '⛅': 'Nuages',
     '🌊': 'Océan',
-    '🌋': 'Volcan',
+    '🌋': 'Volcan (événement)',
+    '🎾': 'Lave',
+    '⚽': 'Voile SW stratosphérique',
     '🏜️': 'Désert',
     '🌳': 'Forêt',
     '🌍': 'Continents',
@@ -192,8 +197,10 @@ const CHARS_DESC = {
     '🦕': 'Mésozoïque',
     '🌿': 'Paléozoïque',
     '🦣': 'Cénozoïque',
-    '🐊': 'Hyperthermie éocène',
-    '⛰': 'Prélude glaciaire',
+    '🐊': 'Éocène',
+    '⛰': 'Montagne (relief)',
+    'hysteresis 1': 'hysteresis 1',
+    'hysteresis 2': 'hysteresis 2',
     '🏔': 'Grande Coupure',
     '❄️': 'Quaternaire',
     '🚂': '1800',
@@ -235,7 +242,7 @@ function createAlphabetHtml() {
     
     // Colonne 5 : Époques et autres logos
     const charsCol5 = [
-        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'SNOWBALL', 'MESOZOIC', 'PALEOZOIC', 'CENOZOIC', 'PETM_HOUSE', 'PRELUDE_ICE', 'EOT', 'QUATERNARY', 'TODAY', 'MODERN'
+        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'SNOWBALL', 'MESOZOIC', 'PALEOZOIC', 'CENOZOIC', 'PETM_HOUSE', 'HYSTERESIS_1', 'PRELUDE_ICE', 'EOT', 'QUATERNARY', 'TODAY', 'MODERN'
     ];
     
     // Descriptions personnalisées pour certains caractères

@@ -1,6 +1,6 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.13
+ * Version 1.0.14
  * Date: [June 08, 2025] [HH:MM UTC+1]
 * logs :
  * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
@@ -16,6 +16,7 @@
  * - v1.0.11: info-time en (+N ans) pour époques récentes (▶<1e6), sinon (+X Ma)
  * - v1.0.12: animation curseur timeline vers époque suivante (main action 🎞) : getTimelineCursorTopForEpochIndex, animateTimelineCursorToEpoch
  * - v1.0.13: garde updateEpochActions si events.js pas encore chargé
+ * - v1.0.14: pdOnce → pdTrace(fn,file,msg) ; plus de ❌ sur état attendu (scie sans .visu_epochs-container)
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.
@@ -54,19 +55,25 @@ window.lastIceLevel = undefined; // Dernière valeur de h2oIceFractionFromCalcul
 /** Décalage vertical (px) des curseurs ⏵ ⏴ : positif = descendre, négatif = monter. À ajuster à l’œil. */
 const TIMELINE_CURSOR_OFFSET_PX = 2;
 
+if (typeof window.pdTrace === 'undefined') {
+    window.pdTrace = function (fn, file, msg) {
+        console.log('🔍 [' + fn + '][' + file + '] ' + msg);
+    };
+}
 if (typeof window.pd === 'undefined') {
-    window.pd = function (message) {
-        console.log(message);
+    window.pd = function (fn, file, msg) {
+        console.error('❌ [' + fn + '][' + file + '] ' + msg);
     };
 }
 
-function pdOnce(key, message) {
+/** Log diagnostic une fois par clé (pdTrace, pas pd — ce n’est pas une erreur). */
+function pdOnce(key, fn, file, msg) {
     if (!window._pdOnceFlags) {
         window._pdOnceFlags = {};
     }
     if (!window._pdOnceFlags[key]) {
         window._pdOnceFlags[key] = true;
-        window.pd(message);
+        if (typeof window.pdTrace === 'function') window.pdTrace(fn, file, msg);
     }
 }
 
@@ -127,8 +134,9 @@ function buildEpochScale() {
     if (!container || !TIMELINE) {
         pdOnce(
             'timeline-build-missing',
-            '❌ [buildEpochScale][timeline.js] missing container=' + !!container +
-            ' timeline=' + !!TIMELINE
+            'buildEpochScale',
+            'timeline.js',
+            'missing container=' + !!container + ' timeline=' + !!TIMELINE + ' (normal si page scie_ sans frise visu)'
         );
         return;
     }
@@ -278,9 +286,9 @@ function updateTimeline() {
     if (!container || !window.DATA['📜'] || !window.TIMELINE) {
         pdOnce(
             'timeline-update-missing',
-            '❌ [updateTimeline][timeline.js] missing container=' + !!container +
-            ' data=' + !!window.DATA['📜'] +
-            ' timeline=' + !!window.TIMELINE
+            'updateTimeline',
+            'timeline.js',
+            'missing container=' + !!container + ' data=' + !!window.DATA['📜'] + ' timeline=' + !!window.TIMELINE + ' (normal si page scie_ sans .visu_epochs-container)'
         );
     } else {
         if (!window._epochScaleBuilt || !cursor) {
@@ -289,9 +297,9 @@ function updateTimeline() {
         const cursor2 = document.getElementById('timeline-cursor');
         const entries = getTimelineDateEntries(container);
         if (!cursor2) {
-            pdOnce('timeline-cursors-still-missing', '❌ [updateTimeline][timeline.js] cursor still missing after build');
+            pdOnce('timeline-cursors-still-missing', 'updateTimeline', 'timeline.js', 'cursor still missing after build');
         } else if (entries.length === 0) {
-            pdOnce('timeline-rows-empty', '❌ [updateTimeline][timeline.js] rows.length=0');
+            pdOnce('timeline-rows-empty', 'updateTimeline', 'timeline.js', 'rows.length=0');
         } else {
             const scaleMa = [];
             const textRows = [];
@@ -320,10 +328,13 @@ function updateTimeline() {
             if (epochId === '📱' || epochId === '🚂' || (typeof epochStartYears === 'number' && epochStartYears >= 1800)) {
                 if (!window._lastCursorDebug || window._lastCursorDebug !== epochStartYears) {
                     window._lastCursorDebug = epochStartYears;
-                    window.pd('[timeline.js] curseurs >..< epochId=' + epochId + ' epochStartYears(▶)=' + epochStartYears +
-                        ' startMa=' + startMa.toFixed(6) + ' currentMa=' + currentMa.toFixed(6) +
-                        ' scaleMa[0]=' + scaleMa[0].toFixed(6) + ' scaleMa[last]=' + scaleMa[scaleMa.length - 1].toFixed(6) +
-                        ' scaleTexts=' + scaleTexts.join(',') + ' topPx=' + topPx.toFixed(1) + ' idx=' + idx);
+                    if (typeof window.pdTrace === 'function') {
+                        window.pdTrace('curseurs', 'timeline.js',
+                            'epochId=' + epochId + ' epochStartYears(▶)=' + epochStartYears +
+                            ' startMa=' + startMa.toFixed(6) + ' currentMa=' + currentMa.toFixed(6) +
+                            ' scaleMa[0]=' + scaleMa[0].toFixed(6) + ' scaleMa[last]=' + scaleMa[scaleMa.length - 1].toFixed(6) +
+                            ' scaleTexts=' + scaleTexts.join(',') + ' topPx=' + topPx.toFixed(1) + ' idx=' + idx);
+                    }
                 }
             } else {
                 window._lastCursorDebug = null;

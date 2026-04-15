@@ -1,12 +1,13 @@
 // File: scie_convergence.js - Formatage HTML des étapes de convergence (scie)
 // Desc: Module partagé parent + iframe scie : buildStepHtml(state) → fragment HTML pour #convergence-steps.
 //       Utilisé par le shell pour stocker des chaînes HTML au lieu des payloads complets.
-// Version 1.0.1
+// Version 1.0.2
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: 2025-02-25
 // Logs:
+// - v1.0.2: export scieFormatJSONCompact pour logs hystérésis (💧🪩 instantanés)
 // - v1.0.1: renomme H2O% en % EDS H2O pour éviter la confusion avec 🍰🫧💧
 // Logs:
 // - v1.0.0: extraction depuis scie_compute.html ; json2html, formatJSONCompact, buildStepHtml
@@ -129,7 +130,7 @@
             var h = '<div class="iteration-header convergence-cycle"><strong>💧 cycle de l\'eau ' + albedoIter + '</strong> @' + T_cycle + '°C :' + (compactEau ? '<span class="convergence-inline-json"> ' + compactEau + '</span>' : '') + '</div>';
             if (state.data_snapshot) {
                 h += '<div class="convergence-cycle-eau-block convergence-cycle">';
-                ['🫧', '💧'].forEach(function (cat) {
+                ['🫧', '💧', '⚖️', '🌊'].forEach(function (cat) {
                     if (state.data_snapshot[cat]) h += json2htmlConvergence(state.data_snapshot[cat], null, cat);
                 });
                 h += '</div>';
@@ -143,7 +144,7 @@
             h = '<div class="iteration-header convergence-cycle"><strong>💧┴ = ' + T_trans + '°C [🎈=' + P_atm + ' atm]</strong> :' + (compactEau ? '<span class="convergence-inline-json"> ' + compactEau + '</span>' : '') + '</div>';
             if (state.data_snapshot) {
                 h += '<div class="convergence-cycle-eau-block convergence-cycle">';
-                ['🫧', '💧'].forEach(function (cat) {
+                ['🫧', '💧', '⚖️', '🌊'].forEach(function (cat) {
                     if (state.data_snapshot[cat]) h += json2htmlConvergence(state.data_snapshot[cat], null, cat);
                 });
                 h += '</div>';
@@ -204,4 +205,5 @@
 
     window.buildStepHtmlForConvergence = buildStepHtml;
     window.buildStepHtml = buildStepHtml;
+    window.scieFormatJSONCompact = formatJSONCompact;
 })();

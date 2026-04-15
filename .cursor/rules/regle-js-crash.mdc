@@ -39,3 +39,8 @@ const value = window.SOMETHING;
 if (typeof CHARS === 'undefined') { console.error('...'); return ''; }  // return = masque
 const value = obj?.prop ?? 0;  // masque le bug
 ```
+
+## Voir aussi
+
+- `regle-branchement-crash-first.mdc` — pas de `if` de garde + `return` ; `switch` / états ; DOM direct.
+- `regle-window-majuscule-inventaire.mdc` — `window.MAJUSCULE` + fichier `window_MAJUSCULE_creater_filler.txt`.

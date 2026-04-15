@@ -1,6 +1,6 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.30
+// Version 1.0.35
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -26,7 +26,12 @@
 // Logs: v1.0.27 observation_title : même font/size que PILOTAGE (.organigram-config-heading)
 // Logs: v1.0.28 OBSERVATIONS : wrap #observation-config-wrap (main.js) ; hide-organigram-observation-metrics + .flux-label-plain-metric
 // Logs: v1.0.29 hide-organigram-observation-metrics : masquer aussi .flux-arrow (🛰 OFF)
-// Logs: v1.0.30 hide-organigram-observation-metrics : pictos #cell-geometrie, #cell-reemis (EDS), #cell-albedo-btn (.flux-circle-bg > span)
+// Logs: v1.0.30 hide-organigram-observation-metrics : picto #cell-geometrie (.flux-circle-bg > span) ; reemis + albedo-btn toujours visibles (v1.0.34)
+// Logs: v1.0.31 PALEOMAP / C.R. Scotese (organigramme seul) : teinte & contour type .ppm-label ; visibles si ⚗/🛰 OFF
+// Logs: v1.0.33 commentaires : DETAILS (ex PILOTAGE, titre main.js) ; OBSERVATIONS fermées par défaut
+// Logs: v1.0.35 albédo sans vert : règles #cell-albedo-btn après .flux-button-cell.checked/selected (cascade)
+// Logs: v1.0.34 🛰 OFF : masquer seul picto Géométrie ; EDS (reemis) + albédo (btn) toujours visibles ; albédo sans halo vert (halo blanc)
+// Logs: v1.0.32 retrait .credits-paleomap-badge (dialogue index — hors périmètre organigramme)
 */
 
 .controle-simulation {
@@ -50,7 +55,7 @@
     /* border, border-radius, box-shadow, background → .divGlass (style.css) */
 }
 
-/* PILOTAGE + ⚗ : largeur = contenu, bord gauche organigramme */
+/* DETAILS + ⚗ : largeur = contenu, bord gauche organigramme */
 #organigram-config-wrap {
     position: absolute;
     bottom: 10px;
@@ -109,7 +114,7 @@
     animation: event-logo-pulse-img 1.6s ease-in-out infinite;
 }
 
-/* OBSERVATIONS + 🛰 (satellite) — même typo titre que PILOTAGE, coin haut-droit */
+/* OBSERVATIONS + 🛰 (satellite) — même typo titre que DETAILS, coin haut-droit */
 #observation-config-wrap {
     position: absolute;
     top: 10px;
@@ -150,7 +155,7 @@
     font-family: var(--font-emoji);
     animation: event-logo-pulse-img 1.6s ease-in-out infinite;
 }
-/* Badge barycentre nuages (PILOTAGE, si ⚗ ON) — enfant direct de #flux-diagram */
+/* Badge barycentre nuages (DETAILS, si ⚗ ON) — enfant direct de #flux-diagram */
 .organigram-fine-tuning-bary-badge {
     position: absolute;
     bottom: 10px;
@@ -472,7 +477,7 @@
 #flux-diagram.hide-organigram-arrows #cell-h2o {
     visibility: hidden;
 }
-/* PILOTAGE : 🧩 nuages — masqué si ⚗ OFF (hide-organigram-arrows sur #flux-diagram) */
+/* DETAILS : 🧩 nuages — masqué si ⚗ OFF (hide-organigram-arrows sur #flux-diagram) */
 #flux-diagram.hide-organigram-arrows > .organigram-fine-tuning-bary-badge {
     display: none;
 }
@@ -481,6 +486,18 @@
 #cell-credits-paleomap {
     visibility: visible !important;
     opacity: 1 !important;
+}
+
+/* Libellés PALEOMAP / Scotese : même style que les ppm (cyan / bordure claire) */
+#cell-credits-paleomap .flux-label {
+    color: rgb(135, 206, 250) !important;
+    border-color: rgb(173, 216, 230) !important;
+}
+
+/* Reste visible si ⚗ masque les autres .buttonData / .flux-label-plain-metric */
+#flux-diagram.hide-organigram-arrows #cell-credits-paleomap .flux-label,
+#flux-diagram.hide-organigram-observation-metrics #cell-credits-paleomap .flux-label {
+    visibility: visible !important;
 }
 
 /* 🛰 OFF : masquer W/m², MW/W/K, zéros, libellés verts (.flux-label-plain-metric) — pas le bandeau OBSERVATIONS */
@@ -493,10 +510,8 @@
 #flux-diagram.hide-organigram-observation-metrics .flux-arrow {
     visibility: hidden;
 }
-/* Pictos centraux (logo dans le cercle) — pas le cercle / grille de labels */
-#flux-diagram.hide-organigram-observation-metrics #cell-geometrie .flux-circle-bg > span,
-#flux-diagram.hide-organigram-observation-metrics #cell-reemis .flux-circle-bg > span,
-#flux-diagram.hide-organigram-observation-metrics #cell-albedo-btn .flux-circle-bg > span {
+/* Picto Géométrie seul masqué si 🛰 OFF — EDS (flammes reemis) + boule albédo (btn) toujours visibles */
+#flux-diagram.hide-organigram-observation-metrics #cell-geometrie .flux-circle-bg > span {
     visibility: hidden;
 }
 
@@ -677,6 +692,22 @@
                  0 0 4px rgba(0, 255, 0, 0.7),
                  0 0 6px rgba(0, 255, 0, 0.5),
                  0 0 8px rgba(0, 255, 0, 0.3) !important;
+}
+
+/* Albédo (après règles checked/selected) : halo blanc uniquement, pas de drop-shadow / text-shadow verts */
+#cell-albedo-btn.flux-button-cell.checked .flux-circle-bg,
+#cell-albedo-btn.flux-button-cell.selected .flux-circle-bg {
+    filter: grayscale(0%) !important;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5) !important;
+}
+#cell-albedo-btn.flux-button-cell.checked .flux-circle-bg:hover,
+#cell-albedo-btn.flux-button-cell.selected .flux-circle-bg:hover {
+    filter: grayscale(100%) !important;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5) !important;
 }
 
 /* État unselected : gris (par défaut) */

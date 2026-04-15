@@ -1,8 +1,11 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.10
+// Version 1.1.14
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
+// Logs: v1.1.14 EPOCH_ID_TO_NAME 🐊 « Éocène »
+// Logs: v1.1.13 DEBUG_TIMELINE_HIDDEN → pdTrace (TIMELINE epochs)
+// Logs: v1.1.12 scie_hysteresis_search.js avant sync_panels (window.HYSTERESIS parent pour hystUnlockIce)
 // Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
 // - v1.1.2: IO_LISTENER.compute:progress: supprime log debug + double receive (compute:progress n'arrive que depuis scie_/non-anim)
 // - v1.1.3: visu_+anim : compute:progress déclenche displayDichotomyStep puis plot:drawn ; scie_/non-anim garde cycleCalcul léger
@@ -11,7 +14,8 @@
 // - v1.1.6: curseur wait via class compute-loading (html+body) pour résister en anim
 // - v1.1.7: scheduleInitialCompute() appelé systématiquement en fin initAfterLoad pour garantir [4] après [3]
 // - v1.1.8: garde updateEpochActions si events.js pas encore chargé
-// - v1.1.10: EPOCH_ID_TO_NAME 🐊 « Hyperthermie éocène »
+// - v1.1.10: EPOCH_ID_TO_NAME 🐊 « Éocène »
+// - v1.1.11: retrait onglet Hysteresis (switchTab ne gère plus hysteresis-panel-active)
 // - v1.1.9: fine_tuning_bounds.js + tuning.js après initDATA (FINE_TUNING_BOUNDS + fillDataTuningFromBary côté visu_)
 // Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
 // Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
@@ -19,6 +23,7 @@
 (function () {
     'use strict';
     const SCRIPTS = [
+        'static/debug.js',
         '../API_BILAN/config/model_tuning.js',
         '../API_BILAN/config/model_tuning_biblio.js',
         '../API_BILAN/config/configTimeline.js',
@@ -46,9 +51,11 @@
         'organigramme/organigramme.js',
         '../API_BILAN/geology/calculations_geology.js',
         '../API_BILAN/h2o/calculations_h2o.js',
+        '../API_BILAN/co2/calculations_co2.js',
         '../API_BILAN/radiative/calculations.js',
         '../API_BILAN/convergence/calculations_flux.js',
         'static/compute/scie_/scie_convergence.js',
+        'static/compute/scie_/scie_hysteresis_search.js',
         'static/sync_panels.js',
         '../API_BILAN/callback_stack.js',
         '../API_BILAN/api.js',
@@ -155,7 +162,7 @@
     });
 
     // Mapping 📅 → nom d'époque (pour togglePlotAnim : raw TIMELINE n'a pas .name)
-    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Éocène', 'hysteresis 1': 'hysteresis 1', 'hysteresis 2': 'hysteresis 2', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
     function nextEpochName(nextItem, nextId) {
         return nextItem.name || EPOCH_ID_TO_NAME[nextId] || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
     }
@@ -258,7 +265,8 @@
                     try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: dataToSend }, '*'); } catch (e) {}
                 }
                 if (window.shell && window.shell.restoreConvergenceToScie) window.shell.restoreConvergenceToScie();
-                setTimeout(function () { window.resizeScieIframe(); }, 150);
+                // Synchrone: éviter setTimeout (debug/trace plus lisible, pas d'effet de bord timing).
+                window.resizeScieIframe();
             }
         }
     };
@@ -270,6 +278,8 @@
 
     function initAfterLoad() {
         if (typeof window.initCharsForDisplay === 'function') window.initCharsForDisplay();
+        // Crash-first: le traceur DOIT exister si debug.js est chargé.
+        window.installFunctionTraces();
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             if (window.DEBUG_TIMELINE_HIDDEN) {
                 try {
@@ -277,11 +287,13 @@
                         .filter(function (it) { return it && it['📅']; })
                         .map(function (it) { return it['📅'] + ':' + (it.hidden ? 'hidden' : 'show'); })
                         .join(', ');
-                    window.pd('❌ [initAfterLoad][loader_panels.js] TIMELINE epochs=' + dbg);
+                    if (typeof window.pdTrace === 'function') window.pdTrace('initAfterLoad', 'loader_panels.js', 'TIMELINE epochs=' + dbg);
                 } catch (e) {}
             }
+            // Crash-first: toutes les époques doivent exister côté configOrganigramme.timeline.
+            // Le masquage UI se fait côté rendu (CSS/DOM), pas en supprimant des données de la source unique.
             window.configOrganigramme.timeline = window.TIMELINE.map(function (item) {
-                if (item && item['📅'] && !item.hidden) {
+                if (item && item['📅']) {
                     const epochId = item['📅'];
                     let epochName = epochId;
                     if (typeof window.CHARS_DESC !== 'undefined' && window.CHARS_DESC[epochId]) {
@@ -289,7 +301,7 @@
                     }
                     const epochNameMap = {
                         '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige',
-                        '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Hyperthermie éocène', '⛰': 'Prélude glaciaire', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
+                        '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Éocène', 'hysteresis 1': 'hysteresis 1', 'hysteresis 2': 'hysteresis 2', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
                     };
                     if (epochNameMap[epochId]) epochName = epochNameMap[epochId];
                     // ▶ = début (années), ◀ = fin → startYears, endYears pour getGeologicalPeriodByName et formatYears
@@ -418,6 +430,11 @@
             if (event.data && event.data.type === 'cycleCalcul') {
                 var fromOurIframe = fromScieIframe;
                 if (fromOurIframe && event.data.DATA && window.DATA) {
+                    // Crash-first: si l'iframe scie_ tente d'injecter DATA pendant un calcul parent,
+                    // on veut le voir immédiatement (sinon divergence silencieuse search vs index).
+                    if (window.SYNC_STATE && window.SYNC_STATE.calculationInProgress) {
+                        throw new Error('❌ [loader_panels.js] cycleCalcul reçu depuis scie_ pendant calculationInProgress=true (écrasement DATA probable)');
+                    }
                     var src = event.data.DATA;
                     ['🧮', '🪩', '🫧', '💧', '📛', '📜', '📊'].forEach(function (k) {
                         if (src[k]) {

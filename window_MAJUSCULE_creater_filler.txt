@@ -3,7 +3,7 @@ ORDRE IMPERATIF de codage
 1) les fonctions commencent par une liste de const MAJUSCULE=window.MAJUSCULE
 2) les window.minuscule sont suspect, car ils sont sensés etre rangés dans un objet window.MAJUSCULE
 3) donc, toute trace de window.* devient suspect !!!
-4) lit .cursor/*.mdc
+4) lit CO2/.cursor/rules/*.mdc (regle-js-crash, regle-data-territoire, regle-sync-scripts, regle-window-majuscule-inventaire, regle-branchement-crash-first, …)
 
 
 # Liste window.MAJUSCULE — créateur / remplisseur
@@ -44,8 +44,9 @@ COMPUTE_RUNNING
 
 CONFIG_COMPUTE
  + creater: static/timeline/configTimeline.js (396)
- ++ filler: configTimeline.js (399-474) — baryByGroupDefault, bins, spinup, solver, logs, earthTotalWaterMassKg (1.4e21 kg), etc.
+ ++ filler: configTimeline.js (399-474) — baryByGroupDefault, bins, spinup, solver, logs, earthTotalWaterMassKg (1.4e21 kg), co2OceanPartitionInRadiativeConvergence (défaut false, pompe mer hors convergence naturelle)
  ++ filler: static/sync_panels.js (52-96) — tolMinWm2, maxSearchStep*, largeDeltaFactor depuis DATA['🎚️']
+ ++ filler: API_BILAN/co2/calculations_co2.js — calculateCO2Partition NO-OP si flag false ou HYSTERESIS.active
 
 CONFIG_INIT_SNAPSHOT
  + creater: html/scie_compute.html (604), doc/test_computeRadiativeTransfer.html (587)
@@ -127,6 +128,10 @@ FORM
 GEOTHERMAL_FLUX
  + creater: static/flux_manager.js (66), organigramme/organigramme.js (4494, 4500 fallback)
  ++ filler: flux_manager (valeur calculée), organigramme (fallback si absent)
+
+HYSTERESIS
+ + creater: CO2/static/compute/scie_/scie_hysteresis_search.js (window.HYSTERESIS)
+ ++ filler: même fichier — active, phase init/search/dicho, adaptateur ⚖️🏭, logs, clear boutons, runTest (top) ; onParentComputeDone + emitParentHysteresisContinue + syncIframeTimelineCo2FromData (iframe) ; CO2/html/search_scie.html + scie_compute.html (#hyst-search-log visible, compute:done) ; static/sync_panels.js hysteresisTimelineCo2Kg
 
 H2O
  + creater: static/calculations_h2o.js (545)

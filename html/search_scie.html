@@ -1,22 +1,21 @@
 <!DOCTYPE html>
 <!--
-# File: CO2/html/scie_compute.html
+# File: CO2/html/search_scie.html (copie scie_compute)
 # Logs:
-# - Titres boutons hyst (pas TIMELINE) : hysteresis 1 −725 Ma, hysteresis 2 −34 Ma (captions + title)
-# - Boutons hyst : glyphes 🥟⛄ / 🐊🏔 + dates -725 Ma / -34 Ma ; hysteresis 2 hidden TIMELINE = epoch-text comme h1
-# - Panneau Hystérésis : runs hysteresis 1 / hysteresis 2 uniquement (⛄ 🏔 inchangés ailleurs) ; sync parent = visu + play
-# - Frise époques retirée (époque par défaut ⚫ au load) ; #hysteresis : ligne1 [titre+boutons | jauges], ligne2 logs
-# - Hystérésis : titre 🧲 + negative|positive ; bouton ↑↓ après Jauges (searchSign)
-# - Logs hyst : 1er + dernier pas instantané 💧🪩 (scie_hysteresis_search + scieFormatJSONCompact)
-# - fillDataTuningFromBary : getFineTuningTargets() (ignore HYSTERESIS sans DATA['🎚️'].HYSTERESIS)
-# - GREY seaIce UI min 1000 → 1 K moteur ; Preset lit. + (HYSTERESIS_LITERATURE_PRESET) ; FINE_TUNING_BOUNDS groupe HYSTERESIS
-# - Hystérésis : 🔘🎞 ON (scieEnableAnimForHystSync + sync:state animEnabled true) pour continuité 🧮🌡️
+# - Titres boutons hyst (pas TIMELINE) : h1 −725 Ma, h2 −34 Ma — aligné scie_compute
+# - Boutons hyst : 🥟⛄ / 🐊🏔 + -725 Ma / -34 Ma (aligné scie_compute)
+# - Aligné scie_compute : hysteresis 1 / hysteresis 2 (ids TIMELINE)
+# - Frise époques retirée (époque par défaut ⚫ au load) ; bloc #hysteresis : ligne1 = [titre+boutons | jauges], ligne2 = logs
+# - Hystérésis : titre + negative|positive ; ↑↓ après Jauges
+# - fillDataTuningFromBary : getFineTuningTargets() (évite cible HYSTERESIS sans 🎚️)
+# - GREY seaIce UI 1000–6000 (1–6 K) ; Preset lit. + ; FINE_TUNING_BOUNDS HYSTERESIS (configsAll)
+# - Hystérésis : 🔘🎞 ON (scieEnableAnimForHystSync + sync:state animEnabled true)
 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vue scientifique</title>
+    <title>search_scie — copie scie_compute</title>
     <link href="../static/css/style.css" rel="stylesheet">
     <link href="../static/css/emoji-fonts.css" rel="stylesheet">
     <link href="../static/css/scie_compute.css" rel="stylesheet">
@@ -24,7 +23,6 @@
         #hysteresis .hyst-grid-line1 { display: flex; flex-direction: row; align-items: center; gap: 16px 24px; flex-wrap: wrap; }
         #hysteresis .hyst-col-epochs { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; padding-left: 4px; }
         #hysteresis .hyst-title-line { display: flex; flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap; }
-        /* Annule .results h2 { justify-content: space-between } qui écarte « Hystérésis » et le badge mode */
         #hysteresis .hyst-title-line h2 { margin: 0; display: inline-flex; align-items: baseline; justify-content: flex-start; gap: 0.35em; flex-wrap: wrap; }
         #hysteresis .hyst-col-gauges { flex: 1 1 260px; min-width: min(100%, 220px); }
         #hysteresis .hyst-search-log { margin: 10px 0 0 0; padding: 8px; font-size: 11px; opacity: 0.92; white-space: pre-wrap; font-family: monospace; background: rgba(0,0,0,0.15); border-radius: 6px; width: 100%; box-sizing: border-box; overflow: visible; max-height: none; }
@@ -264,7 +262,6 @@
             window.parent.postMessage({ type: 'sync:state', payload: payload }, '*');
         }
 
-        /** Comme clic époque sur timeline visu (sans anim) + ▶️ : une sync parent → config:applyThenCompute ; standalone → runTest. */
         function scieDisableAnimLikeVisu() {
             var animBtn = document.getElementById('anim-toggle');
             if (animBtn) animBtn.classList.remove('selected');
@@ -273,7 +270,6 @@
             if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = false;
         }
 
-        /** Hystérésis : parent doit recevoir 🔘🎞=true (continuité T, pas reset 📅🌡️🧮 à chaque pas). */
         function scieEnableAnimForHystSync() {
             var animBtn = document.getElementById('anim-toggle');
             if (animBtn) animBtn.classList.add('selected');

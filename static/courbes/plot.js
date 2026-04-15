@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.28
+// Version 1.0.30
 // Date: [January 2025]
 // logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -28,7 +28,9 @@
 // - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
 // - v1.0.23: Courbe pointillée corps noir à T effective (pas T surface) pour même fenêtre que courbe pleine
 // - v1.0.24: rendu spectral séquencé: non-anim=FINAL seul, anim=chaque cycle; suppression redraw différé doublon depuis updatePlot
-// - v1.0.28: hidden epoch support (ex: hystérésis) fallback to window.TIMELINE when configOrganigramme.timeline is filtered
+// - v1.0.30: corps noir Planck à T_surface (tirets), couleur = même logique que courbe spectrale (tempSurfaceToColor / currentBlackBodyColor)
+// - v1.0.29: tooltip OLR (courbe pleine) = T_eff comme corps noir pointillé (∫ cohérent), pas T_surface (évite ~4°C vs ~−29°C)
+// - v1.0.28: hidden epoch support (ex: hysteresis 1) fallback to window.TIMELINE when configOrganigramme.timeline is filtered
 // - v1.0.25: bridge draw ack: publie plot:drawn + met à jour _lastDrawnCycleToken après draw (sync API visu_)
 // - v1.0.26: bridge draw ack branché sur window.VISUALWAIT.markDrawn (fonctions window rangées)
 // - v1.0.27: supprime VISUALWAIT.markDrawn + IO_LISTENER.emit('plot:drawn') — appel direct, pas de pile
@@ -952,13 +954,13 @@ window.updatePlot = function updatePlot(data) {
         const smoothEnabled = window.CONFIG_COMPUTE.plotSmoothEnable;
         const smoothWindowBins = window.CONFIG_COMPUTE.plotSmoothSigmaBins;
         const fluxDisplay = smoothEnabled ? movingAverageSmooth(flux, smoothWindowBins) : flux;
-        // Tooltip : "Courbe d'équilibre d'émission de la terre" pour 0 ppm, sinon avec température
+        // Tooltip : 0 ppm = libellé générique ; sinon T_eff = température du corps noir de même ∫ que cette OLR (cohérent avec courbe pointillée)
         let hoverText;
         if (co2_ppm === 0) {
             hoverText = "Courbe d'équilibre d'émission de la terre";
         } else if (temp_eff) {
             const tempC = (temp_eff - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-            hoverText = `Courbe d'équilibre d'émission de la terre (${temp_eff.toFixed(1)} K, ${tempC}°C)`;
+            hoverText = `OLR spectrale (même aire ∫ que corps noir pointillé), T_eff ${temp_eff.toFixed(1)} K (${tempC}°C)`;
         } else {
             hoverText = "Courbe d'équilibre d'émission de la terre";
         }
@@ -1068,7 +1070,22 @@ window.updatePlot = function updatePlot(data) {
             else if (Math.abs(data.co2_ppm - 420) < 1) color_current = 'gray';
         }
 
-        const trace_absorption = createFluxTrace(data.current, data.co2_ppm, T_current, color_current,
+        // Corps noir au sol : Planck(T_surface), tirets — même couleur dynamique que la courbe spectrale (pas les étalons blancs)
+        const _teffForDup = T_effective_display;
+        const _skipSurfacePlanckDup = (_teffForDup != null && Number.isFinite(_teffForDup) && Number.isFinite(T_surface)
+            && Math.abs(T_surface - _teffForDup) <= 0.25);
+        if (Number.isFinite(T_surface) && !_skipSurfacePlanckDup) {
+            const planck_surface = createPlanckTrace(T_surface, `Planck sol ${data.co2_ppm.toFixed(0)} ppm`, color_current, false, 'dash');
+            planck_surface.line.width = 2;
+            const tempCSurf = (T_surface - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+            planck_surface.hovertemplate = `Corps noir au sol : ${T_surface.toFixed(1)} K (${tempCSurf}°C)<extra></extra>`;
+            traces.push(planck_surface);
+        }
+
+        const tempHoverOlrEquiv = (T_effective_display != null && Number.isFinite(T_effective_display))
+            ? T_effective_display
+            : T_current;
+        const trace_absorption = createFluxTrace(data.current, data.co2_ppm, tempHoverOlrEquiv, color_current,
             `${data.co2_ppm.toFixed(0)} ppm (absorption)`);
         trace_absorption.showlegend = false; // Pas dans la légende
         traces.push(trace_absorption);
@@ -1168,16 +1185,9 @@ window.updatePlot = function updatePlot(data) {
     let scale_height_m;
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
-    // configOrganigramme.timeline peut filtrer les epochs hidden=true (ex: hystérésis).
-    // On doit tout de même pouvoir résoudre la config physique depuis window.TIMELINE (source brute).
-    let currentEpoch = window.configOrganigramme && window.configOrganigramme.timeline
-        ? window.configOrganigramme.timeline.find(e =>
-            e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
-        )
-        : null;
-    if (!currentEpoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
-        currentEpoch = window.TIMELINE.find(e => e && e['📅'] && (e['📅'] === window.currentEpochName || e.name === window.currentEpochName || e.id === window.currentEpochName)) || null;
-    }
+    const currentEpoch = window.configOrganigramme.timeline.find(e =>
+        e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+    );
     if (!currentEpoch) {
         console.error('[updatePlot] ❌ ERREUR CRITIQUE : Époque non trouvée:', window.currentEpochName);
         throw new Error(`Époque '${window.currentEpochName}' non trouvée dans timeline`);
@@ -1276,14 +1286,9 @@ window.updatePlot = function updatePlot(data) {
                 z_max_km = z_max / 1000;
             } else {
             // z_range non disponible (init) — configOrganigramme/currentEpochName déjà validés en entrée
-            let currentEpoch = window.configOrganigramme && window.configOrganigramme.timeline
-                ? window.configOrganigramme.timeline.find(e =>
-                    e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
-                )
-                : null;
-            if (!currentEpoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
-                currentEpoch = window.TIMELINE.find(e => e && e['📅'] && (e['📅'] === window.currentEpochName || e.name === window.currentEpochName || e.id === window.currentEpochName)) || null;
-            }
+            const currentEpoch = window.configOrganigramme.timeline.find(e =>
+                e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+            );
             if (currentEpoch) {
                 const total_atmosphere_mass_kg = currentEpoch['⚖️🫧']; // Nom plus explicite
 
@@ -2266,14 +2271,9 @@ function drawSpectralVisualization(canvas, data) {
     // On a besoin de la masse totale pour ça, qu'on peut trouver dans configOrganigramme
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
-    let currentEpoch = window.configOrganigramme && window.configOrganigramme.timeline
-        ? window.configOrganigramme.timeline.find(e =>
-            e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
-        )
-        : null;
-    if (!currentEpoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
-        currentEpoch = window.TIMELINE.find(e => e && e['📅'] && (e['📅'] === window.currentEpochName || e.name === window.currentEpochName || e.id === window.currentEpochName)) || null;
-    }
+    const currentEpoch = window.configOrganigramme.timeline.find(e =>
+        e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+    );
     const total_mass = currentEpoch['⚖️🫧'];
     if (total_mass === 0 || total_mass === undefined) {
         has_atmosphere = false;

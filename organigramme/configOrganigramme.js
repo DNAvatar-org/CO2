@@ -1,6 +1,6 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.18
+// Version 1.1.20
 // Date: [Mar 29, 2026] [17:00 UTC+1]
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
@@ -13,6 +13,7 @@
 //   - Added dataId mapping for dynamic label updates
 //   - v1.1.1: albedo-btn affiche le barycentre fine-tuning cloud sous 🪩 (🧩🔺n%🔻)
 //   - v1.1.2: [1] config (époque initiale) avant build organigramme pour ordre synchrone 1 → 2 texture
+//   - v1.1.19: [0] organigramme 📜 init (+ _logStepEnd) — [1] config uniquement dans setEpoch ; _logStep depuis debug.js
 //   - v1.1.3: [1] log via _logStep (console.groupCollapsed) si défini
 //   - v1.1.4: baryEpochs + getEffectiveNodesConfig(epochName, bary) pour interpolation graphique (appliqué via IO_LISTENER côté CO2)
 //   - v1.1.5: bary=1 → config époque suivante (bary=0 d'après) ; interpolation fillColor/strokeColor (parseRgba/parseHex/interpolateColor)
@@ -26,6 +27,7 @@
 //   - v1.1.14: EOT / 🏔 dans terre.epoch et noyau.radiation ; v1.1.15: 🐊 ⛰ + libellé « Grande Coupure »
 //   - v1.1.16: ❄️ Quaternaire (2 Ma) — terre + noyau + TEXTURE_DATES_MA / ACTION_BY_DATE
 //   - v1.1.17: espace1 — titre OBSERVATIONS déplacé vers main.js (wrap comme PILOTAGE), plus de top sur le nœud satellite
+//   - v1.1.20: 🐊 epochName « Éocène » (titre court)
 //   - v1.1.18: 🐊 epochName « Hyperthermie éocène » (remplace Terre étouffe (PETM))
 //   - v1.1.13: albedo_percent de retour en top du bouton albédo (grille [1,2])
 
@@ -231,7 +233,7 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'Hyperthermie éocène',
+                epochName: 'Éocène',
                 numCircles: 2,
                 maxRadius: 52,
                 strokeSize: 0,
@@ -240,7 +242,7 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'Prélude glaciaire',
+                epochName: 'hysteresis 2',
                 numCircles: 2,
                 maxRadius: 45,
                 strokeSize: 0,
@@ -352,7 +354,7 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'Hyperthermie éocène',
+                epochName: 'Éocène',
                 logo: LOGOS.GLOBE_AFRICA,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
@@ -362,7 +364,7 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'Prélude glaciaire',
+                epochName: 'hysteresis 2',
                 logo: LOGOS.GLOBE_AFRICA,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
@@ -597,7 +599,7 @@ window.configOrganigramme = {
     ACTION_BY_DATE, getCurrentDateKey, getActionForDate
 };
 // La timeline sera ajoutée par loader_panels initAfterLoad (configOrganigramme.timeline = TIMELINE.map(...))
-// [1] config : époque initiale AVANT build organigramme (ordre synchrone 1 → 2 lancement texture)
+// [0] organigramme : init DATA['📜'] / currentEpochName AVANT build (setEpoch ouvre seul le groupe [1] config)
 if (window.DATA && window.TIMELINE && window.TIMELINE.length) {
     var firstEpoch = window.TIMELINE[0];
     var firstId = firstEpoch['📅'];
@@ -609,6 +611,11 @@ if (window.DATA && window.TIMELINE && window.TIMELINE.length) {
     window.DATA['📜']['📿💫'] = 0;    // compteur dédié bouton 💫 (init à 0)
     window.DATA['📜']['🔺⚖️💧☄️'] = 0; // masse H₂O par météorite (init à 0, rempli par getEpochDateConfig)
     window.currentEpochName = firstId === '⚫' ? 'Corps Noir' : (window.CHARS_DESC && window.CHARS_DESC[firstId]) || firstId;
-    if (window._logStep) window._logStep('[1] config ' + firstId);
-    else console.log('[1] config', firstId);
+    // [0] = init DATA['📜'] seulement ; [1] config réservé à setEpoch (main.js) pour un seul groupe « officiel »
+    // Groupe laissé ouvert : le prochain _logStep (ex. [1] config dans setEpoch) referme — pas de _logStepEnd ici (évite fermeture « depuis un autre fichier »)
+    if (window._logStep) {
+        window._logStep('[0] organigramme 📜 init ' + firstId);
+    } else if (typeof console !== 'undefined' && console.debug) {
+        console.debug('[configOrganigramme] 📜 init', firstId);
+    }
 }

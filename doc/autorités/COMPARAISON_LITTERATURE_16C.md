@@ -55,7 +55,7 @@ Comparaison des variables du modèle (cycle eau, atmosphère, albédo) à **16,1
 | Variable modèle | Signification | Valeur @16,1°C | Littérature / Terre | Références |
 |-----------------|---------------|----------------|---------------------|------------|
 | **🍰🪩📿** | Albédo planétaire total | 0,292 (29,2 %) | ~0,29 (29 %) | Stephens et al.; Frontiers EPIC; Earth’s albedo ~0,29 |
-| **🍰🪩🌋** | Volcan | 0 | — | — |
+| **🍰🪩🎾** | Lave (surface magmatique) | 0 | — | — |
 | **🍰🪩🏜️** | Désert | 0,071 | Albédo désert ~0,25–0,40 | — |
 | **🍰🪩🌳** | Forêt | 0,025 | — | — |
 | **🍰🪩🌊** | Océan | 0,71 | Poids surface océan dans moyenne | — |

@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.40
+// Version 1.1.48
 // Date: [March 27, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -10,6 +10,8 @@
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
 //
+// - v1.1.48 : légende équilibre — ligne « Corps noir (sol) » tirets (Planck T_surface, plot.js v1.0.30)
+// - v1.1.47 : légende équilibre — Corps noir (pointillé) = T_eff ; Courbe réelle (pleine) = T_surface (cohérence ∫ / plot.js tooltip)
 // - v1.1.1 : retrait precisionFactor/fpsPrecisionFactor (FPS.js v1.2.0 remplace Précision par Mémoire)
 // - v1.1.2 : updateHadeenTexture : nouvelle cellule insérée derrière l'ancienne, retrait ancienne au three:ready (évite disparition texture)
 // - v1.1.3 : setEpoch : même pattern insertBefore+three:ready si planetEffect ; _logStep helper console.groupCollapsed
@@ -19,6 +21,10 @@
 // - v1.1.7 : debug logs setEpoch (trace appelant [3]) + log début appel
 // - v1.1.8 : fix "un nextEpoch en trop" — message scie ne réécrit plus DATA[📿💫] du parent ; bary:changed passe keepTimeMa:true ; setEpoch early-return respecte keepTimeMa
 // - v1.1.39 : selection timeline supports epoch-text (hidden epochs) like epoch-btn
+// - v1.1.44 : setEpoch(..., { keepTimeMa: true }) — applyBaryToGraphiqueOnly + return (évite 2e sync:state run + 2e [4] après bary iframe)
+// - v1.1.43 : traces runMainInit / mini-slider / bary → pdTrace (pd = erreurs uniquement)
+// - v1.1.42 : _logStep / _logStepEnd déplacés vers debug.js v1.0.6 (ordre avant configOrganigramme — [1] config = groupe dès le load)
+// - v1.1.41 : applyBaryToGraphiqueOnly — retrait groupe 🎨 vide (groupCollapsed+End) ; log ligne unique si DEBUG_SYNC_PANELS
 // - v1.1.40 : setEpoch fallback resolves hidden epochs from TIMELINE when geology lookup fails
 // - v1.1.9 : applyBaryToGraphiqueOnly : early-return ne bloque plus sur !baryEpochs[epoch] ; +generateArrows +cellAlbedo (parité avec setEpoch full body)
 // - v1.1.10 : setEpoch : restauration log [2] (supprimé) ; events.js Hadéen handler réordonné (voir events.js v1.2.3)
@@ -50,6 +56,8 @@
 // - v1.1.35 : création badge 🧩 — % et slider alignés sur DATA['🎚️'].baryByGroup.CLOUD_SW (plus de 100% figé jusqu'à updateFluxLabels)
 // - v1.1.36 : wrap OBSERVATIONS (titre + 🛰) comme PILOTAGE ; toggle hide-organigram-observation-metrics sur #flux-diagram
 // - v1.1.37 : booléens window.organigramObservation*PictoHidden (géométrie, EDS/reemis, albédo-btn) synchronisés au 🛰
+// - v1.1.46 : organigramme titre « DETAILS » (ex PILOTAGE) ; OBSERVATIONS fermées par défaut (🛰 off → surtout Terre visible)
+// - v1.1.45 : libellé 🐊 → « Éocène » (titre court)
 // - v1.1.38 : libellé d’époque 🐊 → « Hyperthermie éocène » (plus « Terre étouffe (PETM) »)
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
@@ -91,20 +99,7 @@ function _drawFluxAndUnpause(plotData) {
     });
 }
 
-// ============================================================================
-// LOG STEPS — groupCollapsed pliés, fermeture avant ouverture du suivant
-// ============================================================================
-window._openLogGroup = null;
-/** Ouvre un nouveau groupe collapsé ; ferme le précédent s'il est encore ouvert. */
-window._logStep = function (label) {
-    if (window._openLogGroup !== null) { console.groupEnd(); window._openLogGroup = null; }
-    console.groupCollapsed(label);
-    window._openLogGroup = label;
-};
-/** Ferme le groupe courant (si ouvert) sans en ouvrir un nouveau. */
-window._logStepEnd = function () {
-    if (window._openLogGroup !== null) { console.groupEnd(); window._openLogGroup = null; }
-};
+// _logStep / _logStepEnd : voir static/debug.js v1.0.6 (définis avant configOrganigramme.js)
 
 // ============================================================================
 // COMPTEUR FPS
@@ -1807,13 +1802,13 @@ function updateLegend(data) {
     if (equilibreCurvesContainer && data && T_surface != null) {
         equilibreCurvesContainer.innerHTML = '';
 
-        const T = T_surface;
-        const tempC = (T - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-        const tempF = ((T - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
+        const T_eff_legend = (data.current && data.current.effective_temperature != null && Number.isFinite(data.current.effective_temperature))
+            ? data.current.effective_temperature
+            : T_surface;
 
         // 🔒 Calculer la couleur dynamique basée sur la température de surface (cohérence avec le plot)
         // Priorité : temp_surface_c (donnée réelle) > current > window.currentBlackBodyColor
-        const tempSurfaceC = T - CONST.KELVIN_TO_CELSIUS;
+        const tempSurfaceC = T_surface - CONST.KELVIN_TO_CELSIUS;
         let dynamicColor = 'cyan';
         if (typeof window.tempSurfaceToColor === 'function') {
             dynamicColor = window.tempSurfaceToColor(tempSurfaceC);
@@ -1821,20 +1816,32 @@ function updateLegend(data) {
             dynamicColor = window.currentBlackBodyColor;
         }
 
-        // Créer deux éléments de légende : un pour le corps noir (pointillé 'dot') et un pour la courbe réelle (pleine 'solid')
-        const patterns = [
-            { name: 'dot', label: 'Corps Noir' },
-            { name: 'solid', label: 'Courbe réelle' }
-        ];
+        // Légende : T_eff (points), [Planck au sol tirets si T_eff ≠ T_surface], OLR spectrale (pleine)
+        const _showPlanckSolLegend = (T_eff_legend == null || !Number.isFinite(T_eff_legend)
+            || Math.abs(T_surface - T_eff_legend) > 0.25);
+        const patterns = _showPlanckSolLegend
+            ? [
+                { name: 'dot', label: 'Corps Noir (T_eff)' },
+                { name: 'dash', label: 'Corps noir (sol)' },
+                { name: 'solid', label: 'Courbe réelle' }
+            ]
+            : [
+                { name: 'dot', label: 'Corps Noir (T_eff)' },
+                { name: 'solid', label: 'Courbe réelle' }
+            ];
 
         patterns.forEach((patternInfo) => {
             const item = document.createElement('div');
             item.className = 'legend-equilibre-item';
 
+            const T = patternInfo.name === 'dot' ? T_eff_legend : T_surface;
+            const tempC = (T - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+            const tempF = ((T - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
+
             // Créer le SVG avec le pattern approprié (couleur dynamique)
             const dashArray = typeof window.getDashArray === 'function'
                 ? window.getDashArray(patternInfo.name)
-                : (patternInfo.name === 'dot' ? '1,3' : 'none');
+                : (patternInfo.name === 'dot' ? '1,3' : patternInfo.name === 'dash' ? '6,4' : 'none');
             const dashAttr = dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : '';
             const patternSVG = `<svg width="50" height="5" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
                 <line x1="2" y1="2.5" x2="48" y2="2.5" stroke="${dynamicColor}" stroke-width="2" ${dashAttr}/>
@@ -1995,8 +2002,9 @@ function applyBaryToGraphiqueOnly() {
         console.warn('❌ [applyBaryToGraphiqueOnly][main.js] terreEpochEntry introuvable, skip epoch=' + epochName);
         return;
     }
-    console.groupCollapsed('🎨 Graphique (visu) bary=' + bary + ' r=' + terreEpochEntry.radius + ' exobase=' + terreEpochEntry.radiusExobase + ' noyau.maxR=' + (noyauRadEntry && noyauRadEntry.maxRadius));
-    console.groupEnd();
+    if (window.DEBUG_SYNC_PANELS === true) {
+        console.log('[DBG applyBaryToGraphiqueOnly] bary=' + bary + ' r=' + terreEpochEntry.radius + ' exobase=' + terreEpochEntry.radiusExobase + ' noyau.maxR=' + (noyauRadEntry && noyauRadEntry.maxRadius));
+    }
     const epochConfig = terreEpochEntry;
     const oldCell = document.getElementById('cell-terre');
     const parent = oldCell.parentElement;
@@ -2069,10 +2077,15 @@ function setEpoch(epochName, options) {
         applyBaryToGraphiqueOnly();
         return;
     }
+    // Iframe scie renvoie le bary (message sync:state) → bary:changed ; ne pas refaire un setEpoch complet ni relancer un calcul.
+    if (options && options.keepTimeMa === true) {
+        applyBaryToGraphiqueOnly();
+        return;
+    }
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
     const epochNameToEmojiForButton = {
         'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🥟',
-        'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Hyperthermie éocène': '🐊', 'Prélude glaciaire': '⛰', 'Grande Coupure': '🏔', 'EOT (33,9 Ma)': '🏔', 'Quaternaire': '❄️', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
+        'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Éocène': '🐊', 'Hyperthermie éocène': '🐊', 'Prélude glaciaire': 'hysteresis 2', 'hysteresis 1': 'hysteresis 1', 'hysteresis 2': 'hysteresis 2', 'Grande Coupure': '🏔', 'EOT (33,9 Ma)': '🏔', 'Quaternaire': '❄️', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
     };
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
     console.log('[DBG setEpoch] appelé avec=' + epochName + ' (id=' + epochIdForButton + ') DATA[🗿]=' + (DATA['📜'] && DATA['📜']['🗿']) + ' 📿💫=' + (DATA['📜'] && DATA['📜']['📿💫']) + ' currentEpochName=' + window.currentEpochName);
@@ -2126,21 +2139,11 @@ function setEpoch(epochName, options) {
         clickedButton.classList.add('selected');
     }
 
-    // Récupérer les conditions de l'époque depuis geology.js
-    if (typeof window.getGeologicalPeriodByName !== 'function') {
-        return;
-    }
-
-    // Certaines époques internes (hidden=true, ex: "hystérésis") peuvent ne pas exister côté "geology.js".
-    // Fallback vers l'objet TIMELINE (source de vérité) pour éviter "selected OK" mais config/labels restés sur l'époque précédente.
-    let epoch = window.getGeologicalPeriodByName(epochName) || window.getGeologicalPeriodByName(epochIdForButton);
-    if (!epoch && Array.isArray(TIMELINE)) {
-        epoch = TIMELINE.find(it => it && it['📅'] === epochIdForButton) || null;
-    }
-    if (!epoch) return;
+    // Récupérer les conditions de l'époque depuis geology.js (crash-first: si absent, l'erreur doit être visible)
+    const epoch = window.getGeologicalPeriodByName(epochName) || window.getGeologicalPeriodByName(epochIdForButton);
 
     // 🔒 Stocker l'ancienne époque AVANT de la changer
-    const previousEpoch = (typeof window.currentEpochName !== 'undefined') ? window.currentEpochName : 'Corps Noir';
+    const previousEpoch = window.currentEpochName;
 
     // Stocker le nom de l'époque globalement pour updateFluxLabels
     window.currentEpochName = epochName;
@@ -2161,8 +2164,11 @@ function setEpoch(epochName, options) {
             'Paléozoïque': '🌿',
             'Mésozoïque': '🦕',
             'Cénozoïque': '🦣',
+            'Éocène': '🐊',
             'Hyperthermie éocène': '🐊',
-            'Prélude glaciaire': '⛰',
+            'Prélude glaciaire': 'hysteresis 2',
+            'hysteresis 1': 'hysteresis 1',
+            'hysteresis 2': 'hysteresis 2',
             'Grande Coupure': '🏔',
             'EOT (33,9 Ma)': '🏔',
             'Quaternaire': '❄️',
@@ -2685,12 +2691,9 @@ function setEpoch(epochName, options) {
         plotData.epoch_cloud_coverage = epoch.cloud_coverage;
     }
 
-    // Lancer le calcul avec les nouvelles conditions
-    // Utiliser les valeurs depuis plotData (mises à jour par updateLevelsConfig ci-dessus)
-    const co2_fraction_from_config = (plotData && plotData.co2_ppm !== undefined) ? plotData.co2_ppm * 1e-6 : 0;
-    if (typeof window.updateCO2LevelDirect === 'function') {
-        window.updateCO2LevelDirect(co2_fraction_from_config);
-    }
+    // ⚠️ Important : ne PAS déclencher un calcul ici.
+    // Le calcul est déclenché une seule fois via emit('sync:state', run:true) plus bas,
+    // sinon on lance 2 runs (updateCO2LevelDirect → runComputeInParent, puis sync:state → runComputeInParent).
 
     // Synchroniser l'état avec l'iframe scie (epoch, anim, ticTime, bary pour graphique)
     const epochId = (DATA && DATA['📜'] && DATA['📜']['🗿']) || epoch.id || epochName;
@@ -3052,7 +3055,7 @@ function runMainInit() {
     const DATA = window.DATA;
     const CONFIG_COMPUTE = window.CONFIG_COMPUTE;
     const FUNCS_ORGANIGRAMME = window.FUNCS_ORGANIGRAMME;
-    if (typeof window.pd === 'function') window.pd('runMainInit', 'main.js', 'enter readyState=' + document.readyState);
+    if (typeof window.pdTrace === 'function') window.pdTrace('runMainInit', 'main.js', 'enter readyState=' + document.readyState);
     // Play Three.js après flux:lastDrawn (toujours play pour la planète, DATA['🔘']['🔘🎞'] = autre chose)
     window.IO_LISTENER.on('flux:lastDrawn', function () {
         window.threeJSAnimationPaused = false;
@@ -3115,12 +3118,12 @@ function runMainInit() {
                 
                 // Bouton ⚗ : afficher/masquer détails (flèches, textes) et boutons d'action de l'organigramme — off par défaut
                 window.organigramArrowsVisible = false;
-                /** Métriques / libellés verts visibles par défaut ; OFF = classe hide-organigram-observation-metrics */
-                window.organigramObservationMetricsVisible = true;
+                /** Métriques / libellés verts : par défaut masqués (🛰 off) pour ne montrer que la Terre ; ON = hide-organigram-observation-metrics retirée */
+                window.organigramObservationMetricsVisible = false;
                 /** true = pictogramme masqué (🛰 OFF) — #cell-geometrie, #cell-reemis (EDS), #cell-albedo-btn */
-                window.organigramObservationGeometriePictoHidden = false;
-                window.organigramObservationEdsPictoHidden = false;
-                window.organigramObservationAlbedoBtnPictoHidden = false;
+                window.organigramObservationGeometriePictoHidden = true;
+                window.organigramObservationEdsPictoHidden = true;
+                window.organigramObservationAlbedoBtnPictoHidden = true;
                 window.syncOrganigramObservationPictoHiddenFlags = function () {
                     var h = !window.organigramObservationMetricsVisible;
                     window.organigramObservationGeometriePictoHidden = h;
@@ -3189,7 +3192,7 @@ function runMainInit() {
                         cfgTitle.className = 'organigram-config-heading';
                         wrap.appendChild(cfgTitle);
                     }
-                    cfgTitle.textContent = 'PILOTAGE';
+                    cfgTitle.textContent = 'DETAILS';
 
                     var cfgRow = wrap.querySelector('.organigram-config-row');
                     if (!cfgRow) {
@@ -3297,7 +3300,7 @@ function runMainInit() {
                                     baryVal = v;
                                     console.log('[DBG SET][DATA.🎚️.baryByGroup.CLOUD_SW] <=', v);
                                     console.trace('[DBG TRACE][SET baryByGroup.CLOUD_SW]');
-                                    if (typeof window.pd === 'function') window.pd('set:baryByGroup.CLOUD_SW', 'main.js', 'value=' + v);
+                                    if (typeof window.pdTrace === 'function') window.pdTrace('set:baryByGroup.CLOUD_SW', 'main.js', 'value=' + v);
                                 }
                             });
                         } catch (e) {
@@ -3313,7 +3316,7 @@ function runMainInit() {
                                     cloudBaseVal = v;
                                     console.log('[DBG SET][DATA.🎚️.CLOUD_SW.CLOUD_FRACTION_BASE] <=', v, 'bary=', T.baryByGroup && T.baryByGroup.CLOUD_SW);
                                     console.trace('[DBG TRACE][SET CLOUD_FRACTION_BASE]');
-                                    if (typeof window.pd === 'function') window.pd('set:CLOUD_FRACTION_BASE', 'main.js', 'value=' + v + ' bary=' + (T.baryByGroup && T.baryByGroup.CLOUD_SW));
+                                    if (typeof window.pdTrace === 'function') window.pdTrace('set:CLOUD_FRACTION_BASE', 'main.js', 'value=' + v + ' bary=' + (T.baryByGroup && T.baryByGroup.CLOUD_SW));
                                 }
                             });
                         } catch (e2) {
@@ -3349,7 +3352,7 @@ function runMainInit() {
                                 var alpha0 = pct / 100;
                                 T.CLOUD_SW.CLOUD_FRACTION_BASE = min0 + (max0 - min0) * alpha0;
                                 console.log('[DBG main] forceApplyCloudSwBary direct-set CLOUD_FRACTION_BASE=' + T.CLOUD_SW.CLOUD_FRACTION_BASE + ' (min=' + min0 + ', max=' + max0 + ', pct=' + pct + ')');
-                                if (typeof window.pd === 'function') window.pd('forceApplyCloudSwBary', 'main.js', 'CLOUD_FRACTION_BASE=' + T.CLOUD_SW.CLOUD_FRACTION_BASE + ' pct=' + pct);
+                                if (typeof window.pdTrace === 'function') window.pdTrace('forceApplyCloudSwBary', 'main.js', 'CLOUD_FRACTION_BASE=' + T.CLOUD_SW.CLOUD_FRACTION_BASE + ' pct=' + pct);
                             }
                         }
                         if (typeof window.fillDataTuningFromBary === 'function') {
@@ -3403,7 +3406,7 @@ function runMainInit() {
                         var pct = forceApplyCloudSwBary(el.value);
                         var payload = buildCloudSwTuningPayload(false);
                         console.log('[DBG main] visu mini-slider input pct=' + pct + ' run=false');
-                        if (typeof window.pd === 'function') window.pd('miniSliderInput', 'main.js', 'pct=' + pct + ' run=false');
+                        if (typeof window.pdTrace === 'function') window.pdTrace('miniSliderInput', 'main.js', 'pct=' + pct + ' run=false');
                         if (payload && typeof window.applyTuningFromScie === 'function') {
                             if (window.SYNC_STATE) window.SYNC_STATE.lastRunRequestSource = 'visu:mini-slider:input';
                             window.applyTuningFromScie(payload);
@@ -3420,10 +3423,10 @@ function runMainInit() {
                         var pct = forceApplyCloudSwBary(el.value);
                         var payload = buildCloudSwTuningPayload(true);
                         console.log('[DBG main] visu mini-slider change pct=' + pct + ' run=true');
-                        if (typeof window.pd === 'function') window.pd('miniSliderChange', 'main.js', 'pct=' + pct + ' run=true');
+                        if (typeof window.pdTrace === 'function') window.pdTrace('miniSliderChange', 'main.js', 'pct=' + pct + ' run=true');
                         if (payload) {
                             console.log('[DBG main] visu mini-slider payload bary=' + payload.baryByGroup.CLOUD_SW + ' CLOUD_FRACTION_BASE=' + payload.CLOUD_SW.CLOUD_FRACTION_BASE);
-                            if (typeof window.pd === 'function') window.pd('miniSliderChange', 'main.js', 'payload.bary=' + payload.baryByGroup.CLOUD_SW + ' CLOUD_FRACTION_BASE=' + payload.CLOUD_SW.CLOUD_FRACTION_BASE);
+                            if (typeof window.pdTrace === 'function') window.pdTrace('miniSliderChange', 'main.js', 'payload.bary=' + payload.baryByGroup.CLOUD_SW + ' CLOUD_FRACTION_BASE=' + payload.CLOUD_SW.CLOUD_FRACTION_BASE);
                         }
                         if (payload && typeof window.applyTuningFromScie === 'function') {
                             if (window.SYNC_STATE) window.SYNC_STATE.lastRunRequestSource = 'visu:mini-slider:change';
