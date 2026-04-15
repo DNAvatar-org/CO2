@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.46
+// Version 1.0.55
 // Date: [April 15, 2026]
 // logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -28,6 +28,14 @@
 // - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
 // - v1.0.23: Courbe pointillée corps noir à T effective (pas T surface) pour même fenêtre que courbe pleine
 // - v1.0.24: rendu spectral séquencé: non-anim=FINAL seul, anim=chaque cycle; suppression redraw différé doublon depuis updatePlot
+// - v1.0.55: paire H₂O (6.3 / 17 μm) — écart vertical entre marqueurs > taille police (spectralPairGroup + pairGapPx)
+// - v1.0.54: bandes partageant le même bin grille (ex. H₂O 17 μm + CO₂15 μm → [12,17]) — décalage vertical empilé pour voir les deux pictos
+// - v1.0.53: fond alpha entre [ ] = même couleur que crochets (band.color hex/rgb) ; repli Hz2RGB si color vide
+// - v1.0.52: spectralIndicatorsGhostActive — fantôme marqueurs spectraux UNIQUEMENT si époque « Corps Noir » (ne pas réintroduire hide-* : grisait Hadéen/Archéen/etc.)
+// - v1.0.51: annule v1.0.50 — (historique) Corps Noir OU hide-* ; supplanté par v1.0.52 pour logos [ ] / EDS / Terre sur le graphe
+// - v1.0.49: fond entre crochets des plages spectrales = Hz2RGB (wavelengthToColorReal au λ centre) ; band.color reste crochets/texte
+// - v1.0.48: fantôme spectre via classe .organigram-picto-inactived (organigramme.css) ; retrait inline filter/opacity
+// - v1.0.47: fantôme spectre en inline (Corps Noir OU hide-organigram-* sur #flux-diagram) + updateSpectralBandIndicatorsGhostOnly (main.js)
 // - v1.0.46: fin drawAbsorptionBandIndicators : syncPlotContainerOrganigramHideClasses (classes hide-* sur .plot-container-wrapper alignées #flux-diagram)
 // - v1.0.45: époque Corps Noir : indicateurs spectraux [ ] + marqueurs EDS/Terre en grayscale + opacity 0.3 (traitement « invisibles » provisoire)
 // - v1.0.44: bandes CH₄ : couleur crochets + fond alpha rgb(0,118,114) #007672
@@ -739,6 +747,30 @@ function getPlotlyFont(size, color) {
 // CO2 : ~15 μm (principale), pic à ~11 μm
 // CH4 : ~7.7 μm (principale), pic à ~23 μm
 // H2O : ~6.3 μm (principale), nombreuses bandes entre 5–8 μm
+/**
+ * Marqueurs spectraux sur le graphe ([ ], EDS, Terre) : .organigram-picto-inactived seulement en époque « Corps Noir ».
+ *
+ * NE PAS réintroduire hide-organigram-* ici : avec DETAILS / OBSERVATIONS off par défaut, ça forçait gris+alpha sur Hadéen, Archéen, etc.
+ * Le picto Géométrie sur #flux-diagram reste géré par organigramme.css (hide-organigram-observation-metrics), pas par cette fonction.
+ */
+function spectralIndicatorsGhostActive() {
+    return typeof window !== 'undefined' && window.currentEpochName === 'Corps Noir';
+}
+
+function applySpectralIndicatorsGhostStyle(el) {
+    if (!el) return;
+    const on = spectralIndicatorsGhostActive();
+    el.classList.toggle('organigram-picto-inactived', on);
+    el.style.removeProperty('filter');
+    el.style.removeProperty('opacity');
+}
+
+window.updateSpectralBandIndicatorsGhostOnly = function updateSpectralBandIndicatorsGhostOnly() {
+    const wrap = document.querySelector('.plot-container-wrapper');
+    if (!wrap) return;
+    wrap.querySelectorAll('.absorption-band-indicator, .spectral-eds-marker').forEach(applySpectralIndicatorsGhostStyle);
+};
+
 function drawAbsorptionBandIndicators() {
     const plotContainerWrapper2 = document.querySelector('.plot-container-wrapper');
     if (!plotContainerWrapper2) return;
@@ -764,14 +796,6 @@ function drawAbsorptionBandIndicators() {
     const plotRect = plotContainer.getBoundingClientRect();
     const wrapperRect = plotContainerWrapper2.getBoundingClientRect();
     const plotLeftFromWrapper = plotRect.left - wrapperRect.left;
-
-    const isCorpsNoirSpectral =
-        typeof window !== 'undefined' && window.currentEpochName === 'Corps Noir';
-    function applyCorpsNoirSpectralGhostStyle(el) {
-        if (!el || !isCorpsNoirSpectral) return;
-        el.style.filter = 'grayscale(1)';
-        el.style.opacity = '0.3';
-    }
 
     // Fonction helper : utilise Plotly._fullLayout.xaxis.c2p si dispo, sinon fallback
     let getXPosition;
@@ -827,13 +851,14 @@ function drawAbsorptionBandIndicators() {
     const LAMBDA_CH4_1_UM = (CONST.LAMBDA_CH4_1 != null) ? CONST.LAMBDA_CH4_1 * 1e6 : 7.7;
     const LAMBDA_CO2_UM = (CONST.LAMBDA_CO2_CENTER != null) ? CONST.LAMBDA_CO2_CENTER * 1e6 : 15;
     const absorptionBands = [
-        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', minMax: 'Min', color: 'rgb(89, 194, 255)' },
-        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', minMax: 'Max', color: 'rgb(89, 194, 255)' },
-        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', minMax: 'Min', color: 'rgb(0, 255, 153)' },
-        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', minMax: 'Min', color: 'rgb(255, 112, 112)' },
-        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', minMax: 'Max', color: 'rgb(255, 112, 112)' },
-        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', minMax: 'Max', color: 'rgb(0, 255, 153)' },
-        // Nuages EDS : corps gris (tout le LW 4–50 μm). Un seul indicateur full span suffit (ils couvrent tout le spectre). SW = calculateAlbedo.
+        // color = crochets + fond alpha entre [ ] (v1.0.53) ; si '' → repli Hz2RGB au λ centre
+        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', minMax: 'Min', color: '#0099ff', spectralPairGroup: 'h2o', spectralPairIndex: 0 },
+        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', minMax: 'Max', color: '#0099ff', spectralPairGroup: 'h2o', spectralPairIndex: 1 },
+        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', minMax: 'Min', color: '#00ff99' },
+        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', minMax: 'Min', color: '#ffff00' },
+        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', minMax: 'Max', color: '#ffff00' },
+        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', minMax: 'Max', color: '#00ff99' },
+        // Nuages EDS : LW 4–50 μm. SW = calculateAlbedo.
         { lambda: 27, halfWidthUm: 23, logo: LOGOS.CLOUDS, logoImg: resolveLogoImg(LOGOS.CLOUDS), label: 'Nuages', minMax: 'LW', color: 'rgb(185, 185, 205)', fullSpan: true }
     ];
 
@@ -900,12 +925,52 @@ function drawAbsorptionBandIndicators() {
     const bandRowBottomPx = axisMarginBottom + markersOffsetBelowAxis + bracketLiftPx;
     const fallbackTopFromWrapperTop = Math.max(0, (plotRect.top - wrapperRect.top) + (plotRect.height * 0.28));
 
-    /** rgb(r,g,b) → rgba(...,a) pour fond entre crochets */
+    /** rgb(r,g,b) → rgba(...,a) (utilisé ailleurs si besoin ; fond des plages = bandFillRgbaFromLambdaUm) */
     function bracketRgbToRgba(rgbStr, alpha) {
         if (!rgbStr || typeof rgbStr !== 'string') return `rgba(120, 120, 130, ${alpha})`;
         const m = rgbStr.trim().match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)\s*$/i);
         if (m) return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
         return rgbStr;
+    }
+
+    /** Repli : fond entre [ ] quand band.color absente ou non parsable (Hz2RGB au λ centre). */
+    function bandFillRgbaFromLambdaUm(lambdaUm, alpha) {
+        const lamM = Number(lambdaUm) * 1e-6;
+        if (!Number.isFinite(lamM) || lamM <= 0) return `rgba(120, 120, 130, ${alpha})`;
+        const [r, g, b] = wavelengthToColorReal(lamM);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    /** Fond alpha aligné sur la couleur des crochets (#hex ou rgb) ; sinon bandFillRgbaFromLambdaUm(λ). */
+    function bandBracketColorToFillRgba(colorStr, alpha, lambdaUmFallback) {
+        if (colorStr && typeof colorStr === 'string') {
+            const s = colorStr.trim();
+            if (s.length) {
+                if (s[0] === '#') {
+                    const hex = s.slice(1);
+                    let r; let g; let b;
+                    if (hex.length === 3) {
+                        r = parseInt(hex[0] + hex[0], 16);
+                        g = parseInt(hex[1] + hex[1], 16);
+                        b = parseInt(hex[2] + hex[2], 16);
+                    } else if (hex.length === 6) {
+                        r = parseInt(hex.slice(0, 2), 16);
+                        g = parseInt(hex.slice(2, 4), 16);
+                        b = parseInt(hex.slice(4, 6), 16);
+                    } else {
+                        return bandFillRgbaFromLambdaUm(lambdaUmFallback, alpha);
+                    }
+                    if ([r, g, b].every((x) => Number.isFinite(x))) {
+                        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                    }
+                }
+                const m = s.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)\s*$/i);
+                if (m) {
+                    return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
+                }
+            }
+        }
+        return bandFillRgbaFromLambdaUm(lambdaUmFallback, alpha);
     }
 
     const bracketFs = 18;
@@ -957,7 +1022,8 @@ function drawAbsorptionBandIndicators() {
     const edsSpectralMarkerFontPx = 30;
     const cloudBandAboveEdsGapPx = 6;
 
-    absorptionBands.forEach(band => {
+    /** Étendue μm alignée sur la grille spectrale (ou plein spectre si fullSpan). */
+    function absorptionBandGridExtents(band) {
         let leftUm;
         let rightUm;
         if (band.fullSpan) {
@@ -974,6 +1040,24 @@ function drawAbsorptionBandIndicators() {
                 rightUm = Math.min(50, band.lambda + halfW);
             }
         }
+        return { leftUm, rightUm };
+    }
+
+    function absorptionBandStackKey(band, leftUm, rightUm) {
+        return band.fullSpan ? 'fullSpan' : String(leftUm) + '-' + String(rightUm);
+    }
+
+    const spectralBandStackStepPx = 28;
+    const stackTotals = Object.create(null);
+    absorptionBands.forEach(band => {
+        const { leftUm, rightUm } = absorptionBandGridExtents(band);
+        const k = absorptionBandStackKey(band, leftUm, rightUm);
+        stackTotals[k] = (stackTotals[k] || 0) + 1;
+    });
+    const stackIndexNext = Object.create(null);
+
+    absorptionBands.forEach(band => {
+        const { leftUm, rightUm } = absorptionBandGridExtents(band);
         const xLeft = getXPosition(leftUm);
         const xRight = getXPosition(rightUm);
         const barWidthPx = Math.max(22, xRight - xLeft);
@@ -993,8 +1077,8 @@ function drawAbsorptionBandIndicators() {
         indicator.style.position = 'absolute';
         indicator.style.left = `${xLeft}px`;
         indicator.style.width = `${barWidthPx}px`;
-        // Y : nuages = exception (LW plein spectre) → tout en haut du graphe ; autres = milieu Planck(sol)/Planck(eff) au λ centre
-        const lambdaCenterUm = (leftUm + rightUm) / 2;
+        // Y : nuages = exception ; sinon Planck au λ de la bande (pas au milieu du bin — évite même hauteur pour 15 vs 17 μm)
+        const lambdaPhysicsUm = band.fullSpan ? (leftUm + rightUm) / 2 : band.lambda;
         let topBand = null;
         if (band.fullSpan) {
             if (topEdsForCloudBand != null && Number.isFinite(topEdsForCloudBand)) {
@@ -1015,8 +1099,8 @@ function drawAbsorptionBandIndicators() {
                 }
             }
         } else {
-            const ySol = (TSurf != null) ? planckScaledYAtLambdaUm(lambdaCenterUm, TSurf) : null;
-            const yEspace = (Teff != null) ? planckScaledYAtLambdaUm(lambdaCenterUm, Teff) : null;
+            const ySol = (TSurf != null) ? planckScaledYAtLambdaUm(lambdaPhysicsUm, TSurf) : null;
+            const yEspace = (Teff != null) ? planckScaledYAtLambdaUm(lambdaPhysicsUm, Teff) : null;
             let yMid = null;
             if (ySol != null && yEspace != null) {
                 yMid = (ySol + yEspace) / 2;
@@ -1031,6 +1115,15 @@ function drawAbsorptionBandIndicators() {
             }
         }
         if (topBand != null && Number.isFinite(topBand)) {
+            const sk = absorptionBandStackKey(band, leftUm, rightUm);
+            const st = stackTotals[sk] || 1;
+            let si = stackIndexNext[sk] || 0;
+            stackIndexNext[sk] = si + 1;
+            topBand += (si - (st - 1) / 2) * spectralBandStackStepPx;
+            if (band.spectralPairGroup === 'h2o' && (band.spectralPairIndex === 0 || band.spectralPairIndex === 1)) {
+                const pairGapPx = Math.max(bracketFsBand, rowBand, bracketFs) + 2;
+                topBand += (band.spectralPairIndex - 0.5) * pairGapPx;
+            }
             indicator.style.top = `${topBand}px`;
             indicator.style.bottom = 'auto';
             indicator.style.transform = 'translateY(-50%)';
@@ -1054,7 +1147,7 @@ function drawAbsorptionBandIndicators() {
         indicator.style.height = `${rowBand}px`;
         indicator.style.lineHeight = `${rowBand}px`;
 
-        const fillRgba = bracketRgbToRgba(band.color, fillBetweenAlpha);
+        const fillRgba = bandBracketColorToFillRgba(band.color, fillBetweenAlpha, lambdaPhysicsUm);
         // PNG (charsImages) : taille CONFIG (défaut > emoji) ; emoji : spectralBandLogoEmojiPx
         let logoHTML = '';
         if (band.logoImg) {
@@ -1069,7 +1162,7 @@ function drawAbsorptionBandIndicators() {
             `<span style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;">${logoHTML}</span></span>` +
             `<span aria-hidden="true" style="position:absolute;right:0;top:50%;transform:translateY(-50%);color:${band.color};font-weight:700;font-size:${bracketFsBand}px;line-height:${rowBand}px;z-index:0;">]</span>`;
 
-        applyCorpsNoirSpectralGhostStyle(indicator);
+        applySpectralIndicatorsGhostStyle(indicator);
         plotContainerWrapper2.appendChild(indicator);
     });
 
@@ -1120,7 +1213,7 @@ function drawAbsorptionBandIndicators() {
         divEds.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
         divEds.style.textShadow = '0 0 2px rgba(0,0,0,0.85)';
         divEds.textContent = (window.LOGOS && window.LOGOS.EDS) || (window.CHARS && window.CHARS.EDS) || '📛';
-        applyCorpsNoirSpectralGhostStyle(divEds);
+        applySpectralIndicatorsGhostStyle(divEds);
         plotContainerWrapper2.appendChild(divEds);
     }
 
@@ -1149,7 +1242,7 @@ function drawAbsorptionBandIndicators() {
             divEarth.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
             divEarth.textContent = earthEmoji;
         }
-        applyCorpsNoirSpectralGhostStyle(divEarth);
+        applySpectralIndicatorsGhostStyle(divEarth);
         plotContainerWrapper2.appendChild(divEarth);
     }
 
