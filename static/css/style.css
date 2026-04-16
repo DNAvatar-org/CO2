@@ -19,8 +19,12 @@
 }
 
 :root {
-    /* Variable pour la couleur de base (vert vif) */
-    --base-color: #00ff00;
+    /* Palette rétro 80s */
+    --retro-base: rgb(255, 255, 0);       /* vert vif — interactif / clicable */
+    --retro-clicable: rgb(0, 255, 0);   /* rouge — état sélectionné fort */
+    --retro-off: #a5a5a5; /* gris  — inactif / non-clicable */
+    /* Alias historique (ne pas briser l'existant) */
+    --base-color: var(--retro-base);
     /* Hauteur visu : titre + marge + zone commune (timeline = plot = organigramme) */
     --visu-tabs-h: 28px;
     /* Footer : 3 tailles. Déclencheur = divs à 5px près (top + panel 670 + footer + 5 = 100vh). */
@@ -752,11 +756,13 @@ h1 {
     position: relative;
     z-index: 1000;
     flex-shrink: 0;
+    color: var(--retro-base);
 }
 .title-subtitle {
     font-size: 9px;
     font-weight: normal;
-    opacity: 0.6;
+    color: var(--retro-base);
+    opacity: 0.85;
     line-height: 1.3;
     text-align: right;
     flex-shrink: 1;
@@ -827,7 +833,7 @@ h1 {
     left: -2px;
     right: 0;
     text-align: center;
-    color: rgba(0, 255, 0, 0.5);
+    color: var(--retro-clicable);
     font-size: 14px;
     font-weight: normal;
     pointer-events: none;
@@ -899,13 +905,13 @@ h1 {
 }
 .epoch-date-item-vertical .epoch-date {
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--retro-off);
     white-space: nowrap;
 }
 
 .epoch-date-item .epoch-date {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--retro-off);
     white-space: nowrap;
     font-weight: normal;
     line-height: 0.9em;
@@ -933,15 +939,13 @@ h1 {
     text-shadow: none;
 }
 
-/* Bouton sélectionné : couleur avec contour vert autour du logo */
+/* Bouton sélectionné : contour --retro-clicable */
 .epoch-btn.selected {
-    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
-    /* Couleur normale avec blur vert */
-    /* Contour vert autour du logo - ne change pas au rollover */
-    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-        0 0 4px rgba(0, 255, 0, 0.7),
-        0 0 6px rgba(0, 255, 0, 0.5),
-        0 0 8px rgba(0, 255, 0, 0.3) !important;
+    filter: grayscale(0%) drop-shadow(0 0 3px color-mix(in srgb, var(--retro-clicable) 80%, transparent)) drop-shadow(0 0 6px color-mix(in srgb, var(--retro-clicable) 50%, transparent)) !important;
+    text-shadow: 0 0 2px color-mix(in srgb, var(--retro-clicable) 90%, transparent),
+        0 0 4px color-mix(in srgb, var(--retro-clicable) 70%, transparent),
+        0 0 6px color-mix(in srgb, var(--retro-clicable) 50%, transparent),
+        0 0 8px color-mix(in srgb, var(--retro-clicable) 30%, transparent) !important;
 }
 
 /* Rollover : swap de rendu sur la couleur (inverse le grayscale), le contour ne change pas */
@@ -975,20 +979,17 @@ h1 {
 }
 
 .epoch-btn.selected img {
-    /* Appliquer le glow vert aussi sur l'image quand sélectionné */
-    filter: drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) 
-            drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--retro-clicable) 80%, transparent))
+            drop-shadow(0 0 6px color-mix(in srgb, var(--retro-clicable) 50%, transparent)) !important;
 }
 
 .epoch-btn.selected:hover {
-    /* Si sélectionné : swap vers noir et blanc, contour reste vert */
-    filter: grayscale(100%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
-    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-        0 0 4px rgba(0, 255, 0, 0.7),
-        0 0 6px rgba(0, 255, 0, 0.5),
-        0 0 8px rgba(0, 255, 0, 0.3) !important;
+    filter: grayscale(100%) drop-shadow(0 0 3px color-mix(in srgb, var(--retro-clicable) 80%, transparent)) drop-shadow(0 0 6px color-mix(in srgb, var(--retro-clicable) 50%, transparent)) !important;
+    text-shadow: 0 0 2px color-mix(in srgb, var(--retro-clicable) 90%, transparent),
+        0 0 4px color-mix(in srgb, var(--retro-clicable) 70%, transparent),
+        0 0 6px color-mix(in srgb, var(--retro-clicable) 50%, transparent),
+        0 0 8px color-mix(in srgb, var(--retro-clicable) 30%, transparent) !important;
     cursor: pointer !important;
-    /* Curseur main au survol */
 }
 
 /* Boutons du flux : même style que les boutons radio mais pour checkboxes */
@@ -999,12 +1000,13 @@ h1 {
     white-space: nowrap;
     font-weight: 500;
     line-height: 1;
+    color: var(--retro-off);
 }
 
 /* Epoch texte (non cliquable) : mix entre epoch-date (typo/hauteur) et selected de epoch-btn */
 .epoch-text {
     font-size: 8px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--retro-off);
     white-space: nowrap;
     font-weight: 500;
     line-height: 1;
@@ -1018,10 +1020,10 @@ h1 {
     border: none !important;
 }
 .epoch-text.selected {
-    filter: grayscale(0%) drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) drop-shadow(0 0 6px rgba(0, 255, 0, 0.5)) !important;
-    text-shadow: 0 0 2px rgba(0, 255, 0, 0.9),
-        0 0 4px rgba(0, 255, 0, 0.7),
-        0 0 6px rgba(0, 255, 0, 0.5) !important;
+    filter: grayscale(0%) drop-shadow(0 0 3px color-mix(in srgb, var(--retro-clicable) 80%, transparent)) drop-shadow(0 0 6px color-mix(in srgb, var(--retro-clicable) 50%, transparent)) !important;
+    text-shadow: 0 0 2px color-mix(in srgb, var(--retro-clicable) 90%, transparent),
+        0 0 4px color-mix(in srgb, var(--retro-clicable) 70%, transparent),
+        0 0 6px color-mix(in srgb, var(--retro-clicable) 50%, transparent) !important;
 }
 .epoch-text:hover {
     text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),

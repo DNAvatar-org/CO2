@@ -3717,7 +3717,7 @@ cellOrder.forEach((nodeId) => {
   if (node.type === "button") {
     cell.classList.add("flux-button-cell");
     cell.classList.add("checked");
-    cell.style.pointerEvents = "auto";
+    // pointer-events géré par CSS (.flux-button-cell none / .flux-circle-bg auto) — pas d'inline
     if (node.readOnly) {
       cell.classList.add("flux-display-only");
       cell.style.cursor = "default";
@@ -3856,7 +3856,7 @@ organigramNodes.forEach((node) => {
   if (node.type === "button") {
     cell.classList.add("flux-button-cell");
     cell.classList.add("checked");
-    cell.style.pointerEvents = "auto";
+    // pointer-events géré par CSS (.flux-button-cell none / .flux-circle-bg auto) — pas d'inline
     if (node.readOnly) {
       cell.classList.add("flux-display-only");
       cell.style.cursor = "default";

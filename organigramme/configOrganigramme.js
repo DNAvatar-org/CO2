@@ -477,19 +477,19 @@ const nodes = [
     },
     // EDS : angleInit anime l’ouverture masquée 210→340 (secteur visible 150°→20°), pas la direction. Orienter le faisceau → rotation (explicite ou auto depuis l’arc reemis→terre si rotation omis).
     {//📛 reemis
-     id: 'reemis', logo: LOGOS.EDS, zIndex: 25, x: centerX+60, y: earthCenterY + 170, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } 
+     id: 'reemis', logo: LOGOS.EDS, zIndex: 25, x: centerX+ circleMiddleRadius*1.5 * Math.cos(Math.PI/2-0.25), y: earthCenterY + circleMiddleRadius*1.5 * Math.sin(Math.PI/2-0.25), radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } 
     },
 
     {//co2
-    id: 'co2', type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'co2', type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI+0.3), left: [], right: [], top: [{ text: '0 ppm', dataId: 'co2_percent' }], bottom: [{ text: '0 W/m²', dataId: 'co2_forcing_wm' }], tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//methane
-    id: 'methane', type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'ch4_percent' }, { text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
-},
+    id: 'methane', type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI/2+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI/2+0.3), left: [{ text: '0 ppm', dataId: 'ch4_percent' }], right: [], top: '', bottom: [{ text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+    },
 
     {//h2o
-    id: 'h2o', type: 'button', readOnly: true, logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'h2o', type: 'button', readOnly: true, logo: LOGOS.H2O, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI*3/4+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI*3/4+0.3), left: [{ text: '0%', dataId: 'h2o_percent' }], right: [], top: '', bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
     },//end h2o
 
     {//domSlot action
@@ -498,8 +498,8 @@ const nodes = [
         mountId: 'timeline-events-logos',
         appendParentSelector: '#flux-diagram',
         top: [{ text: 'EVENEMENT', className: 'organigram-config-heading' }],
-        x: centerX - circleMiddleRadius * 0.4,
-        y: earthCenterY - circleMiddleRadius * 1.4,
+        x: centerX + circleMiddleRadius*1.4 * Math.cos(Math.PI*5/4+0.3),
+        y: earthCenterY + circleMiddleRadius*1.4 * Math.sin(Math.PI*5/4+0.3),
         zIndex: 220,
         slotMinWidth: 500,
         slotEventLogoPx: 100,
@@ -526,7 +526,7 @@ const nodes = [
     },
 
     {//albedo-btn
-     id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.9, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+     id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.62, y: earthCenterY - circleMiddleRadius * 1.15, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//credits-paleomap

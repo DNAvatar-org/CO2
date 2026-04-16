@@ -348,6 +348,15 @@ function updateTemperatureDisplay() {
             thermometerIcon.style.setProperty('text-shadow', '', 'important');
         }
     }
+    // Couleur dynamique (tempSurfaceToColor) sur la colonne droite : T° + pression
+    const syntheseTempColRight = syntheseTempEl ? syntheseTempEl.querySelector('.synthese_Temp-col-right') : null;
+    if (syntheseTempColRight) {
+        if (currentTempCelsius !== null && typeof window.tempSurfaceToColor === 'function') {
+            syntheseTempColRight.style.color = window.tempSurfaceToColor(currentTempCelsius);
+        } else {
+            syntheseTempColRight.style.color = '';
+        }
+    }
     if (tempUnitEl) {
         tempUnitEl.textContent = getTemperatureUnitSymbol(temperatureUnit);
     }
