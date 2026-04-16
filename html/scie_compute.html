@@ -2253,6 +2253,23 @@
             initScieHysteresisGauges();
         });
     </script>
+    <script>
+    /* DEBUG TEMPORAIRE — pile Z complète au clic (elementsFromPoint inclut pointer-events:none) */
+    document.addEventListener('click', function(e) {
+        var all = document.elementsFromPoint(e.clientX, e.clientY);
+        console.group('🖱 CLICK @ ' + e.clientX + ',' + e.clientY);
+        all.forEach(function(el, i) {
+            var pe = window.getComputedStyle(el).pointerEvents;
+            console.log(
+                i + ' | pe=' + pe + ' | ' +
+                el.tagName.toLowerCase() +
+                (el.id ? '#' + el.id : '') +
+                (el.className && typeof el.className === 'string' ? '.' + el.className.trim().replace(/\s+/g, '.') : '')
+            );
+        });
+        console.groupEnd();
+    }, true);
+    </script>
 </body>
 </html>
 

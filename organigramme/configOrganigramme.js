@@ -1,8 +1,13 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.32
-// Date: [Apr 15, 2026] [18:30 UTC+1]
+// Version 1.1.37
+// Date: [Apr 16, 2026] [12:00 UTC+1]
 // logs :
+// - v1.1.37: SKIP + EVENEMENT — className organigram-config-heading (typo 04B_03 sans cadre, blanc cassé, comme DETAILS/OBSERVATIONS)
+// - v1.1.36: SKIP — classe organigram-config-heading (même typo/cadre que DETAILS) ; domSlot centre = hauteur dérivée de slotEventLogoPx (plus slotMinWidth−200)
+// - v1.1.35: SKIP — dataId plot_anim_skip (classes flux via updateLabelClasses) ; domSlot logos = coque flux 3×3 (plus #timeline-action-block)
+// - v1.1.34: timeline-scenario-anim — logo ['🎞',{text:SKIP}] (ordre DOM : SKIP au-dessus) ; id #plot-anim-toggle + icon-button ; ACTION au-dessus du domSlot logos
+// - v1.1.33: doc radiation — openingAngle = secteur masqué (px linéaires, pas log) ; angleInit ≠ orientation ; astuce albedo = centre (x,y)
 // - v1.1.32: terre.epoch + noyau.radiation — epochName « hysteresis 1 » (TIMELINE hidden) ; sinon setEpoch ne recrée pas #cell-terre (rayon bloqué sur Corps noir)
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -73,8 +78,13 @@ const centerY = 215; // Centre vertical du diagramme (640px / 2)
 const earthCenterY = centerY + 100; // Centre vertical de la Terre et éléments concentriques
 const arrowMarginTop = 10; // Marge en haut des flèches
 const arrowMarginBottom = 15; // Marge en bas des flèches
-// --- nœud.radiation (organigramme.js) : openingAngle / angleFinal = état **final** (° masqués ; visible = 360 − valeur). angleInit = état **de départ** (animation seulement) ; au repos après angleAnimMs le rendu = finale, identique à une config sans angleInit.
-//     radius = alias maxRadius si absent. Si angleFinal et openingAngle diffèrent, angleFinal prime.
+// --- nœud.radiation (organigramme.js, setArcClipPath / resolveRadiationArcParams) :
+//     • Pas d’échelle log sur les arcs : rayons = pixels linéaires (node.radius → maxRadius par cercle).
+//     • openingAngle / angleFinal = angle **masqué** (découpé au clip) ; secteur **visible** = 360° − cette valeur (ex. 345 → faisceau ~15°).
+//     • rotation (°) = orientation du secteur visible (0 = droite, sens trigo comme atan2 des flèches sortantes).
+//     • angleInit = même grandeur que openingAngle (**ouverture masquée** au 1er frame), uniquement pour animer vers openingAngle ; ce n’est **pas** un déphasage / bearing supplémentaire. Au repos = rendu identique à une config sans angleInit.
+//     • Direction des flèches quand plusieurs cibles : si rotation absente, calcul auto (moyenne des arcs sortants). **Albédo** : l’« astuce » directionnelle est surtout le **centre** (x,y) légèrement décalé par rapport à la Terre, pas angleInit.
+//     • radius = alias maxRadius si absent. Si angleFinal et openingAngle diffèrent, angleFinal prime.
 const cellHeight = 110;
 const cellHalfHeight = cellHeight / 2; // 55px
 
@@ -152,11 +162,17 @@ const ARROW_Z_INDEX = {
 // Explication : La Terre est une sphère. Vu du Soleil, seule la face éclairée est visible (disque de rayon R, surface = πR²)
 // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
 const nodes = [
-    { id: 'soleil', logo: [LOGOS.SUN_ORIGIN, { text: '3.8×10<sup><b>26</b></sup> W ', dataId: 'solar_power_total' }], align: 'zorder', x: centerX - 140, y: centerY - 155, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, strokeStyle: 'solid', left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, zIndex: 12, logoScale: 1.0, logoOffsetY: 1 },
+    {//soleil
+     id: 'soleil', logo: [LOGOS.SUN_ORIGIN, { text: '3.8×10<sup><b>26</b></sup> W ', dataId: 'solar_power_total' }], align: 'zorder', x: centerX - 140, y: centerY - 155, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, strokeStyle: 'solid', left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, zIndex: 12, logoScale: 1.0, logoOffsetY: 1 
+    },
 
-    { id: 'geometrie', logo: 'fonts/pics/geometrie.png', x: centerX + 65, y: centerY - 155, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 0, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: ['Géométrie'], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 13, logoScale: 0.8 },
+    {//geometrie
+     id: 'geometrie', logo: 'fonts/pics/geometrie.png', x: centerX + 65, y: centerY - 155, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 0, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: ['Géométrie'], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 13, logoScale: 0.8 
+    },
 
-    { id: 'espace1', logo: '', logoScale: 1.2, x: centerX + 150, y: centerY - 170, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: [], bottom: '', tooltip: 'CERES', radiation: null, zIndex: 14 },
+    {//espace1
+     id: 'espace1', logo: '', logoScale: 1.2, x: centerX + 150, y: centerY - 170, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: [], bottom: '', tooltip: 'CERES', radiation: null, zIndex: 14 
+    },
 
     {//albedo cellule — cercle extérieur toujours blanc alpha 0.5, sans fill
         // Astuce direction flèche : centre décentré (x,y + petit offset) pour que le vecteur albedo→espace1 donne la bonne direction (sinon même centre que terre = ambiguïté). Voir aussi noyau (centerX - 0.2, earthCenterY - 0.1).
@@ -171,6 +187,7 @@ const nodes = [
         strokeSize: 1, 
         strokeStyle: [10, 5, 2, 5, 2, 5],
         left: [], right: [], top: [], bottom: [], tooltip: '',
+        // Radiation « large » en rayon : maxRadius grand + 8 cercles ; en angle le clip ne laisse que 360−345 = 15° visibles (faisceau étroit).
         radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white', rotation: 299 },
         zIndex: 10,
         logoScale: 0.1
@@ -455,23 +472,33 @@ const nodes = [
         zIndex: 15
     },
 
-    { id: 'espace2', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 170, y: centerY + 310, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [{ text: 'Observation', dataId: 'observation_label' }], right: [], top: '', bottom: '', tooltip: 'DSCOVR au L1', radiation: null, zIndex: 14 },
-    //📛
-    { id: 'reemis', logo: LOGOS.EDS, zIndex: 25, x: centerX+70, y: earthCenterY + 170, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } },
+    {//espace2
+     id: 'espace2', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 170, y: centerY + 310, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: '', right: [], top: '', bottom: '', tooltip: 'DSCOVR au L1', radiation: null, zIndex: 14 
+    },
+    // EDS : angleInit anime l’ouverture masquée 210→340 (secteur visible 150°→20°), pas la direction. Orienter le faisceau → rotation (explicite ou auto depuis l’arc reemis→terre si rotation omis).
+    {//📛 reemis
+     id: 'reemis', logo: LOGOS.EDS, zIndex: 25, x: centerX+60, y: earthCenterY + 170, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } 
+    },
 
-    { id: 'co2', type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+    {//co2
+    id: 'co2', type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY - circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'co2_percent' }, { text: '0 W/m²', dataId: 'co2_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+    },
 
-    { id: 'methane', type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'ch4_percent' }, { text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+    {//methane
+    id: 'methane', type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, x: centerX - circleMiddleRadius * 0.7, y: earthCenterY + circleMiddleRadius * 0.7, left: [{ text: '0 ppm', dataId: 'ch4_percent' }, { text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], right: [], top: '', bottom: '', tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+},
 
-    { id: 'h2o', type: 'button', readOnly: true, logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+    {//h2o
+    id: 'h2o', type: 'button', readOnly: true, logo: LOGOS.H2O, x: centerX - circleMiddleRadius, y: earthCenterY, left: [], right: [], top: [{ text: '0%', dataId: 'h2o_percent' }], bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+    },//end h2o
 
-    /* domSlot : logos + 🎞 dans #flux-diagram — positionnés directement (pas de wrapper) ; absents de visu_radiatif.html */
-    {
+    {//domSlot action
         id: 'timeline-scenario-logos',
         type: 'domSlot',
         mountId: 'timeline-events-logos',
         appendParentSelector: '#flux-diagram',
-        x: centerX,
+        top: [{ text: 'EVENEMENT', className: 'organigram-config-heading' }],
+        x: centerX - circleMiddleRadius * 0.4,
         y: earthCenterY - circleMiddleRadius * 1.4,
         zIndex: 220,
         slotMinWidth: 500,
@@ -479,7 +506,7 @@ const nodes = [
         domClass: 'timeline-events-logos'
     },
 
-    { // 🎞
+    { // 🎞 + SKIP (cellule id #plot-anim-toggle, classe icon-button, animation organigramme.css)
         id: 'timeline-scenario-anim',
         type: 'button',
         readOnly: true,
@@ -491,16 +518,20 @@ const nodes = [
         logoScale: 0.8,
         left: [],
         right: [],
-        top: [],
+        top: [{ text: 'SKIP', dataId: 'plot_anim_skip', className: 'organigram-config-heading' }],
         bottom: [],
-        tooltip: 'Prochaine époque',
+        tooltip: 'Prochaine époque (SKIP)',
         fillColor: 'rgba(255, 255, 255, 0.7)',
         strokeColor: 'rgba(0, 0, 0, 0)'
     },
 
-    { id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.9, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' },
+    {//albedo-btn
+     id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.69, y: earthCenterY - circleMiddleRadius * 1.2, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 20, logoScale: 0.9, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+    },
 
-    { id: 'credits-paleomap', type: 'button', readOnly: false, logo: '🗺',  x: centerX + 170, y: centerY + 180, radius: 18, logoScale: 1.1, fillColor: 'rgba(30,30,30,0.55)', strokeColor: 'rgba(180,180,180,0.4)', strokeSize: 1, left: [], right: [], top: [{ text: 'PALEOMAP'}], bottom: [{ text: 'C.R. Scotese'}], tooltip: 'Crédits cartographiques', zIndex: 200 }
+    {//credits-paleomap
+     id: 'credits-paleomap', type: 'button', readOnly: false, logo: '🗺',  x: centerX + 170, y: centerY + 180, radius: 18, logoScale: 1.1, fillColor: 'rgba(30,30,30,0.55)', strokeColor: 'rgba(180,180,180,0.4)', strokeSize: 1, left: [], right: [], top: [{ text: 'PALEOMAP'}], bottom: [{ text: 'C.R. Scotese'}], tooltip: 'Crédits cartographiques', zIndex: 200 
+    }
 ];
 
 // Définition du graphe : arcs (flèches)

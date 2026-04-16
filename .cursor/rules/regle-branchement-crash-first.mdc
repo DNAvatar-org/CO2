@@ -1,0 +1,36 @@
+---
+description: Pas de if de garde + return ; accès directs ; switch / ternaires pour états ; crash visible en console
+globs: "**/*.js"
+alwaysApply: true
+---
+
+# _REGLE_BRANCHEMENT_CRASH_FIRST — Visibilité des bugs
+
+Complète [`regle-js-crash.mdc`](regle-js-crash.mdc) et [`regle-data-territoire.mdc`](regle-data-territoire.mdc). Objectif : **aucun silence** quand une prérequis manque ; la console doit montrer une **exception avec stack**.
+
+## Interdictions (gardes qui masquent)
+
+- **`if (!… ) return;`** (ou équivalent) pour « éviter le crash » sur DATA, DOM, `window`, adaptateur, iframe — **interdit**.
+- Early return du type **`if (window === window.top) return`** sans que l’appelant garantisse déjà le contexte — **interdit** (si le chemin ne doit pas s’exécuter, ne pas l’appeler ; sinon laisser planter).
+- **Fallbacks** silencieux : `|| valeurParDéfaut`, `??`, `?.` pour masquer une absence — déjà interdits dans regle-js-crash ; ne pas les réintroduire sous forme de `if`.
+
+## Règle « if + log » (seul cas toléré pour existence)
+
+- Un `if` **uniquement** pour **`console.error` / trace debug**, **sans** `return` qui court-circuite, reste aligné avec regle-js-crash. Pas pour avaliser la suite du calcul.
+
+## Branchement de logique (métier / machine à états)
+
+- Préférer **`switch (phase)`**, **`switch (true)` + `case`**, **ternaires** ou **expressions** (`&&` pour effet de bord documenté) plutôt que **longues cascades `if/else`** mélangeant garde et algorithme.
+- Distinction : un test qui encode une **condition physique** ou une **étape d’algo** n’est pas une « garde » ; en revanche **`if (!adapter)` puis return** = garde → **non**.
+
+## Accès DOM et config
+
+- **`document.getElementById('…')`** utilisé **directement** si le layout est garanti par la page (comme pour DATA) : absence = **TypeError** lisible, pas de branche « élément absent ».
+
+## Modules sensibles (ex. hystérésis, boucles externes)
+
+- Même philosophie : pas de dédup / skip silencieux par **`if (déjàVu) return`** sans que le produit le spécifie ; en cas de doute, laisser **double exécution visible** ou faire valider le comportement.
+
+## Preprompt court (à réutiliser)
+
+> Pas de garde `if` + `return` sur prérequis. Lecture directe DATA / DOM / `window.MAJUSCULE`. Si invalide → crash console. Machine à états : `switch` ou équivalent, pas de silences.

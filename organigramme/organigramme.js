@@ -1,12 +1,18 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.62
+// Version 1.0.69
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.71 createCell : gridItem appendé seulement si children.length > 0 (coins + centre vides jamais créés)
+// Logs: v1.0.70 mountOrganigramDomSlots : slotMinWidth sur el (#timeline-events-logos), pas sur shell — shell taille naturelle, logos overflow:visible
+// Logs: v1.0.69 domSlot coque : centre hauteur ~slotEventLogoPx (côtés élargis si slotMinWidth) ; ACTION/SKIP = organigram-config-heading ; pas buttonData sur titres ; syncFluxLabelPlainMetric exempte ce heading
+// Logs: v1.0.68 domSlot timeline-events-logos : coque flux-cell 3×3 (#cell-timeline-scenario-logos) ; retrait #timeline-action-block ; transform centrage comme createCell
+// Logs: v1.0.67 createCell : updateLabelClasses sur span logo { text, dataId } (ex. SKIP plot_anim_skip)
+// Logs: v1.0.66 fine_tuning_cloud_bary fallback innerHTML : même grille 2 colonnes que main.js (🔺🌡️🔻. + jauge | 🧩 . + %)
 // Logs: v1.0.26 albedo: \\bar{A} dans le footer (entre tasse et speech), plus dans [1,1]
 // Logs: v1.0.27 animate(): retrait auto-resume FPS (ne pas écraser threeJSAnimationPaused=true géré par main.js)
 // Logs: v1.0.28 fin chargement Three.js : IO_LISTENER.emit('three:ready', { hasTexture, canvas }) après texture load ou erreur
@@ -41,6 +47,9 @@
 // Logs: v1.0.57 retrait branche domSlot — logos + 🎞 statiques dans visu_radiatif (.title-scenario-row)
 // Logs: v1.0.58 domSlot timeline-scenario-logos : mountOrganigramDomSlots (crée #timeline-events-logos, parent depuis config appendParentSelector)
 // Logs: v1.0.59 mountOrganigramDomSlots : domTag/domClass/domAttrs/domInnerHTML/domOnclick ; nœud timeline-scenario-anim (plot-anim-toggle, hors visu_radiatif)
+// Logs: v1.0.65 🎞 SKIP + clignotement + id #plot-anim-toggle ; domSlot logos dans #timeline-action-block + titre ACTION
+// Logs: v1.0.64 runRadiationOpeningAnimation :1er rAF avant t0 pour laisser le navigateur peindre angleInit (lerp ne démarre qu’au frame suivant)
+// Logs: v1.0.63 radiation : angleInit / angleFinal / radius (alias maxRadius) + angleAnimMs ; openingAngle reste synonyme de angleFinal si angleFinal absent
 // Logs: v1.0.62 createCell : logoScale sur span raster (charsImages / chemin img) ; logoOffsetY en px CSS pour raster, × logoScale pour emoji
 // Logs: v1.0.61 mountOrganigramDomSlots : slotEventLogoPx → CSS --slot-event-logo-px (taille tuiles .timeline-event-logo sous #mountId)
 // Logs: v1.0.60 mountOrganigramDomSlots : x/y/zIndex/slotMinWidth appliqués directement sur l'élément (pas de wrapper) ; domSlots dans #flux-diagram
@@ -412,6 +421,7 @@ function shouldLabelBeGray(text, nodeId, cell = null) {
 function syncFluxLabelPlainMetric(label) {
   if (!label) return;
   label.classList.remove("flux-label-plain-metric");
+  if (label.classList.contains("organigram-config-heading")) return;
   if (label.getAttribute("data-id") === "albedo_percents") return;
   if (
     !label.classList.contains("watt-per-m2") &&
@@ -1102,6 +1112,15 @@ if (typeof window !== "undefined") {
   window.getPlanetTexturePathFromEpoch = getPlanetTexturePathFromEpoch;
 }
 
+function labelDataUsesOrganigramConfigHeading(labelData) {
+  return (
+    labelData &&
+    typeof labelData === "object" &&
+    typeof labelData.className === "string" &&
+    labelData.className.indexOf("organigram-config-heading") !== -1
+  );
+}
+
 function createCell(
   x,
   y,
@@ -1143,7 +1162,10 @@ function createCell(
 
   // Ajouter un ID si fourni
   if (nodeId) {
-    cell.id = "cell-" + nodeId;
+    cell.id =
+      nodeId === "timeline-scenario-anim"
+        ? "plot-anim-toggle"
+        : "cell-" + nodeId;
   }
 
   // Z-index géré par CSS via les sélecteurs #cell-{nodeId}
@@ -1378,10 +1400,26 @@ function createCell(
           textSpan.innerHTML = logoItem.text; // Utiliser innerHTML pour supporter HTML (ex: <sup>)
           textSpan.style.display = "block";
           textSpan.style.lineHeight = "1";
-          textSpan.style.fontSize = "0.4em"; // Plus petit que l'emoji
+          if (
+            !(
+              logoItem.className &&
+              typeof logoItem.className === "string" &&
+              logoItem.className.includes("plot-anim-skip-label")
+            )
+          ) {
+            textSpan.style.fontSize = "0.4em"; // Plus petit que l'emoji
+          }
+          if (logoItem.className && typeof logoItem.className === "string") {
+            textSpan.className = logoItem.className;
+          }
           if (logoItem.dataId) {
             textSpan.setAttribute("data-id", logoItem.dataId);
-            textSpan.className = "flux-label"; // Pour que updateFluxLabels puisse le mettre à jour
+            if (!textSpan.className) {
+              textSpan.className = "flux-label"; // Pour que updateFluxLabels puisse le mettre à jour
+            } else {
+              textSpan.classList.add("flux-label");
+            }
+            updateLabelClasses(textSpan, nodeId);
           }
           logoSpan.appendChild(textSpan);
         }
@@ -1599,7 +1637,7 @@ function createCell(
       if (parentCell) {
         // 🎞 Animation timeline : bouton readOnly mais action explicite attendue (togglePlotAnim)
         if (
-          parentCell.id === "cell-timeline-scenario-anim" ||
+          parentCell.id === "plot-anim-toggle" ||
           nodeId === "timeline-scenario-anim"
         ) {
           if (typeof window !== "undefined" && typeof window.togglePlotAnim === "function") {
@@ -1789,11 +1827,23 @@ function createCell(
           const dataId = getLabelDataId(labelData);
           const label = document.createElement("div");
           label.className = "flux-label";
+          if (
+            labelData &&
+            typeof labelData === "object" &&
+            typeof labelData.className === "string" &&
+            labelData.className.trim()
+          ) {
+            label.classList.add(...labelData.className.trim().split(/\s+/));
+          }
           if (dataId) label.setAttribute("data-id", dataId);
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
             const node = organigramNodes.find((n) => n.id === nodeId);
-            if (node && node.type === "button") {
+            if (
+              node &&
+              node.type === "button" &&
+              !labelDataUsesOrganigramConfigHeading(labelData)
+            ) {
               label.classList.add("buttonData");
             }
           }
@@ -1826,6 +1876,14 @@ function createCell(
           const dataId = getLabelDataId(labelData);
           const label = document.createElement("div");
           label.className = "flux-label";
+          if (
+            labelData &&
+            typeof labelData === "object" &&
+            typeof labelData.className === "string" &&
+            labelData.className.trim()
+          ) {
+            label.classList.add(...labelData.className.trim().split(/\s+/));
+          }
           if (dataId) label.setAttribute("data-id", dataId);
           if (dataId === "fine_tuning_cloud_bary") {
             label.setAttribute("aria-label", getFineTuningDetailAlt(null, true));
@@ -1836,7 +1894,11 @@ function createCell(
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
             const node = organigramNodes.find((n) => n.id === nodeId);
-            if (node && node.type === "button") {
+            if (
+              node &&
+              node.type === "button" &&
+              !labelDataUsesOrganigramConfigHeading(labelData)
+            ) {
               label.classList.add("buttonData");
             }
           }
@@ -1869,11 +1931,23 @@ function createCell(
           const dataId = getLabelDataId(labelData);
           const label = document.createElement("div");
           label.className = "flux-label";
+          if (
+            labelData &&
+            typeof labelData === "object" &&
+            typeof labelData.className === "string" &&
+            labelData.className.trim()
+          ) {
+            label.classList.add(...labelData.className.trim().split(/\s+/));
+          }
           if (dataId) label.setAttribute("data-id", dataId);
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
             const node = organigramNodes.find((n) => n.id === nodeId);
-            if (node && node.type === "button") {
+            if (
+              node &&
+              node.type === "button" &&
+              !labelDataUsesOrganigramConfigHeading(labelData)
+            ) {
               label.classList.add("buttonData");
             }
           }
@@ -1911,6 +1985,14 @@ function createCell(
           const dataId = getLabelDataId(labelData);
           const label = document.createElement("div");
           label.className = "flux-label";
+          if (
+            labelData &&
+            typeof labelData === "object" &&
+            typeof labelData.className === "string" &&
+            labelData.className.trim()
+          ) {
+            label.classList.add(...labelData.className.trim().split(/\s+/));
+          }
           if (dataId) label.setAttribute("data-id", dataId);
 
           // Patch spécifique pour albedo_percents : margin-top pour aligner en haut du logo
@@ -1921,7 +2003,11 @@ function createCell(
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
             const node = organigramNodes.find((n) => n.id === nodeId);
-            if (node && node.type === "button") {
+            if (
+              node &&
+              node.type === "button" &&
+              !labelDataUsesOrganigramConfigHeading(labelData)
+            ) {
               label.classList.add("buttonData");
             }
           }
@@ -1947,8 +2033,10 @@ function createCell(
 
                 gridItem.appendChild(labelContainer);
             }
-      // Les 4 coins sont vides (pas de contenu)
-      cell.appendChild(gridItem);
+      // N'ajouter le gridItem que s'il a du contenu (coins vides et centre jamais créés)
+      if (gridItem.children.length > 0) {
+        cell.appendChild(gridItem);
+      }
         }
     }
 
@@ -2236,6 +2324,123 @@ function createSphere(cx, cy, r, opacity, container = null) {
   return sphere;
 }
 
+// radiation (config) : angleFinal = ouverture cible (même sémantique que openingAngle) ; angleInit = 1er rendu ;
+// radius = alias de maxRadius si maxRadius absent. angleAnimMs = durée lerp init→final (0 = saut instantané).
+function normalizeRadiationOptionAliases(radiationOptions) {
+  if (
+    !radiationOptions ||
+    typeof radiationOptions !== "object" ||
+    Array.isArray(radiationOptions)
+  ) {
+    return;
+  }
+  if (
+    radiationOptions.openingAngle === undefined &&
+    radiationOptions.angleFinal !== undefined
+  ) {
+    radiationOptions.openingAngle = radiationOptions.angleFinal;
+  }
+  if (
+    radiationOptions.maxRadius === undefined &&
+    radiationOptions.radius !== undefined
+  ) {
+    radiationOptions.maxRadius = radiationOptions.radius;
+  }
+}
+
+// openingAngle : angle « découpé » (masqué) ; secteur visible = 360 − openingAngle (cf. commentaires createArc historiques)
+function setArcClipPath(arc, r, openingAngle, rotation) {
+  const visibleAngle = 360 - openingAngle;
+  const startAngleMath = rotation - visibleAngle / 2;
+  const clipPoints = [];
+  const centerX = r;
+  const centerY = r;
+  clipPoints.push(`${centerX}px ${centerY}px`);
+  const numPoints = 32;
+  for (let i = 0; i <= numPoints; i++) {
+    const angle =
+      ((startAngleMath + (visibleAngle * i) / numPoints) * Math.PI) / 180;
+    const x = centerX + r * Math.cos(angle);
+    const y = centerY + r * Math.sin(angle);
+    clipPoints.push(`${x}px ${y}px`);
+  }
+  arc.style.clipPath = `polygon(${clipPoints.join(", ")})`;
+}
+
+function runRadiationOpeningAnimation(
+  arc,
+  r,
+  openingInit,
+  openingFinal,
+  rotation,
+  durationMs,
+) {
+  if (openingInit === openingFinal || durationMs <= 0) {
+    setArcClipPath(arc, r, openingFinal, rotation);
+    return;
+  }
+  setArcClipPath(arc, r, openingInit, rotation);
+  function easeOutQuad(t) {
+    return 1 - (1 - t) * (1 - t);
+  }
+  requestAnimationFrame(() => {
+    const t0 = performance.now();
+    function frame(now) {
+      const u = Math.min(1, (now - t0) / durationMs);
+      const opening =
+        openingInit + (openingFinal - openingInit) * easeOutQuad(u);
+      setArcClipPath(arc, r, opening, rotation);
+      if (u < 1) {
+        requestAnimationFrame(frame);
+      }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+function resolveRadiationArcParams(radiationOptions, legacyDefaults = {}) {
+  normalizeRadiationOptionAliases(radiationOptions);
+  const numCircles =
+    radiationOptions.numCircles ?? legacyDefaults.numCircles ?? 8;
+  const maxR =
+    radiationOptions.maxRadius !== undefined &&
+    radiationOptions.maxRadius !== null
+      ? radiationOptions.maxRadius
+      : radiationOptions.radius;
+  const openingLegacy = radiationOptions.openingAngle;
+  const angleFinal = radiationOptions.angleFinal;
+  const openingFinal =
+    angleFinal !== undefined
+      ? angleFinal
+      : openingLegacy !== undefined
+        ? openingLegacy
+        : legacyDefaults.openingAngle !== undefined
+          ? legacyDefaults.openingAngle
+          : 270;
+  const openingInit =
+    radiationOptions.angleInit !== undefined
+      ? radiationOptions.angleInit
+      : openingFinal;
+  const angleAnimMs =
+    radiationOptions.angleAnimMs !== undefined
+      ? radiationOptions.angleAnimMs
+      : 480;
+  const rotation = radiationOptions.rotation ?? legacyDefaults.rotation ?? 270;
+  const color = radiationOptions.color ?? legacyDefaults.color ?? "#ff9800";
+  const strokeSize =
+    radiationOptions.strokeSize ?? legacyDefaults.strokeSize ?? 2;
+  return {
+    numCircles,
+    maxRadius: maxR,
+    openingInit,
+    openingFinal,
+    angleAnimMs,
+    rotation,
+    color,
+    strokeSize,
+  };
+}
+
 // Fonction pour créer un arc de cercle (comme createSphere mais avec ouverture)
 // Le paramètre container peut être un élément DOM ou undefined (cherchera le container par défaut)
 function createArc(
@@ -2268,34 +2473,8 @@ function createArc(
   // Pas besoin de border ici, défini en CSS avec currentColor
   arc.style.opacity = opacity;
 
-  // Calculer le clip-path pour masquer l'ouverture
-  // openingAngle est l'angle d'ouverture (ex: 270°)
-  // rotation est l'angle de départ de l'ouverture (0° = droite, 90° = haut, 180° = gauche, 270° = bas)
-  // Si openingAngle = 270° et rotation = 270°, alors 270° sont ouverts vers le bas, l'arc visible de 90° est en haut
-  const visibleAngle = 360 - openingAngle;
-  // L'arc visible commence à rotation - (visibleAngle / 2) et se termine à rotation + (visibleAngle / 2)
-  // Mais on doit convertir en coordonnées mathématiques (0° = droite, sens anti-horaire)
-  const startAngleMath = rotation - visibleAngle / 2;
-
-  // Créer un clip-path polygon pour masquer l'ouverture
-  const clipPoints = [];
-  const centerX = r;
-  const centerY = r;
-
-  // Point central
-  clipPoints.push(`${centerX}px ${centerY}px`);
-
-  // Points autour du cercle pour créer le masque (arc visible en bas)
-  const numPoints = 32;
-  for (let i = 0; i <= numPoints; i++) {
-    const angle =
-      ((startAngleMath + (visibleAngle * i) / numPoints) * Math.PI) / 180;
-    const x = centerX + r * Math.cos(angle);
-    const y = centerY + r * Math.sin(angle);
-    clipPoints.push(`${x}px ${y}px`);
-  }
-
-  arc.style.clipPath = `polygon(${clipPoints.join(", ")})`;
+  // openingAngle : secteur masqué ; rotation : axe du secteur visible (0° = droite, 90° = haut, …)
+  setArcClipPath(arc, r, openingAngle, rotation);
 
   container.appendChild(arc);
   return arc;
@@ -3133,22 +3312,95 @@ function mountOrganigramDomSlots(createdCellsMap) {
     } else if (el.parentNode) {
       el.parentNode.removeChild(el);
     }
-    // Positionnement absolu direct (x/y en config) — aucun wrapper intermédiaire
-    if (node.x != null || node.y != null) {
-      el.style.position = "absolute";
-      if (node.x != null) el.style.left = node.x + "px";
-      if (node.y != null) el.style.top = node.y + "px";
-      el.style.transform = "translate(-50%, -50%)";
-      el.style.pointerEvents = "auto";
+    let mountEl = el;
+    if (mountId === "timeline-events-logos") {
+      const legacyBlock = document.getElementById("timeline-action-block");
+      if (legacyBlock) {
+        legacyBlock.remove();
+      }
+      let shell = document.getElementById("cell-timeline-scenario-logos");
+      if (!shell) {
+        const slotLogoPx = Number(node.slotEventLogoPx);
+        const shellRadius =
+          Number.isFinite(slotLogoPx) && slotLogoPx > 0
+            ? Math.max(28, Math.round(slotLogoPx / 2))
+            : 40;
+        shell = createCell(
+          node.x,
+          node.y,
+          shellRadius,
+          "rgba(255, 255, 255, 0)",
+          "rgba(0, 0, 0, 0)",
+          "",
+          Array.isArray(node.left) ? node.left : [],
+          Array.isArray(node.right) ? node.right : [],
+          Array.isArray(node.top)
+            ? node.top
+            : node.top && node.top !== ""
+              ? [node.top]
+              : [],
+          Array.isArray(node.bottom)
+            ? node.bottom
+            : node.bottom && node.bottom !== ""
+              ? [node.bottom]
+              : [],
+          null,
+          null,
+          null,
+          null,
+          null,
+          node.id,
+          node.zIndex != null ? node.zIndex : null,
+          1,
+          0,
+          0,
+          "solid",
+          null,
+          parent,
+          false,
+          null,
+        );
+        shell.classList.add("flux-cell--scenario-logos-shell");
+      }
+      const circle = shell.querySelector(".flux-circle-bg");
+      if (circle) {
+        circle.innerHTML = "";
+        circle.appendChild(el);
+      }
+      mountEl = shell;
+      el.style.position = "";
+      el.style.left = "";
+      el.style.top = "";
+      el.style.transform = "";
+      // slotMinWidth sur el (#timeline-events-logos) pas sur le shell — le shell garde sa taille naturelle, les logos débordent en overflow:visible
+      if (node.slotMinWidth != null) {
+        el.style.minWidth = node.slotMinWidth + "px";
+      }
     }
-    if (node.zIndex != null) el.style.zIndex = String(node.zIndex);
-    if (node.slotMinWidth != null) el.style.minWidth = node.slotMinWidth + "px";
+    if (node.zIndex != null) mountEl.style.zIndex = String(node.zIndex);
+    if (node.slotMinWidth != null && mountId !== "timeline-events-logos") {
+      el.style.minWidth = node.slotMinWidth + "px";
+    }
     if (node.slotEventLogoPx != null && Number.isFinite(Number(node.slotEventLogoPx))) {
       el.style.setProperty("--slot-event-logo-px", Number(node.slotEventLogoPx) + "px");
     }
-    parent.appendChild(el);
+    if (node.x != null || node.y != null) {
+      mountEl.style.position = "absolute";
+      if (node.x != null) mountEl.style.left = node.x + "px";
+      if (node.y != null) mountEl.style.top = node.y + "px";
+      if (mountId === "timeline-events-logos") {
+        const topRowH = 18;
+        const bottomRowH = 40;
+        const vOff = (topRowH - bottomRowH) / 2;
+        mountEl.style.transform = `translate(-50%, calc(-50% - ${vOff}px))`;
+      } else {
+        mountEl.style.transform = "translate(-50%, -50%)";
+      }
+      // pointer-events géré par CSS (inline "auto" écraserait les règles #id du CSS)
+    }
+    parent.appendChild(mountEl);
     if (createdCellsMap && typeof createdCellsMap === "object") {
-      createdCellsMap[node.id] = el;
+      createdCellsMap[node.id] = mountEl;
     }
   });
 }
@@ -3186,6 +3438,9 @@ cellOrder.forEach((nodeId) => {
 
   // Calculer maxRadius si nécessaire
   let radiationOptions = node.radiation;
+  if (radiationOptions && !Array.isArray(radiationOptions)) {
+    normalizeRadiationOptionAliases(radiationOptions);
+  }
 
   // Si rotation n'est pas défini, calculer l'angle depuis les flèches sortantes
   if (radiationOptions && radiationOptions.rotation === undefined) {
@@ -3506,6 +3761,9 @@ organigramNodes.forEach((node) => {
 
   // Calculate maxRadius if necessary (same logic as for cellOrder)
   let radiationOptions = node.radiation;
+  if (radiationOptions && !Array.isArray(radiationOptions)) {
+    normalizeRadiationOptionAliases(radiationOptions);
+  }
 
   // If rotation is not defined, calculate the angle from outgoing arrows
   if (radiationOptions && radiationOptions.rotation === undefined) {
@@ -3603,6 +3861,9 @@ organigramNodes.forEach((node) => {
       cell.classList.add("flux-display-only");
       cell.style.cursor = "default";
     }
+    if (node.id === "timeline-scenario-anim") {
+      cell.classList.add("icon-button");
+    }
 
     if (!node.readOnly) {
       cell.addEventListener("click", function () {
@@ -3670,14 +3931,20 @@ cellOrder.forEach((nodeId) => {
     }
   }
 
-  let {
-    numCircles = 8,
+  const radParams = resolveRadiationArcParams(radiationOptions, {
+    openingAngle: 270,
+    rotation: 270,
+  });
+  const {
+    numCircles,
     maxRadius,
-    openingAngle = 270,
-    rotation = 270,
-    color = "#ff9800",
-    strokeSize = 2,
-  } = radiationOptions;
+    openingInit,
+    openingFinal,
+    angleAnimMs,
+    rotation,
+    color,
+    strokeSize,
+  } = radParams;
 
   if (maxRadius !== null && maxRadius !== undefined && maxRadius > 0) {
     const radiationGroup = document.createElement("div");
@@ -3695,11 +3962,25 @@ cellOrder.forEach((nodeId) => {
         node.y,
         arcRadius,
         0.3 + progress * 0.2,
-        openingAngle,
+        openingInit,
         rotation,
         radiationGroup,
       );
       arc.style.border = `${strokeSize}px dashed ${color}`;
+      if (openingInit !== openingFinal) {
+        if (angleAnimMs > 0) {
+          runRadiationOpeningAnimation(
+            arc,
+            arcRadius,
+            openingInit,
+            openingFinal,
+            rotation,
+            angleAnimMs,
+          );
+        } else {
+          setArcClipPath(arc, arcRadius, openingFinal, rotation);
+        }
+      }
     }
   }
 });
@@ -4617,14 +4898,19 @@ window.updateFluxLabels = function (eventId) {
           existingSlider.value = pctStr;
         } else {
           label.innerHTML =
-            '<div class="organigram-bary-face">' +
-            '<div class="organigram-bary-icons">🔺🧩🔻</div>' +
-            '<div class="organigram-bary-pct">' +
-            pctStr +
-            "%</div></div>" +
+            '<div class="organigram-bary-face organigram-bary-face--two-cols">' +
+            '<div class="organigram-bary-col organigram-bary-col-left">' +
+            '<div class="organigram-bary-icons">🔺🌡️🔻</div>' +
+            '<div class="organigram-bary-line-slider">' +
             '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' +
             pctStr +
-            '" aria-label="Réglage fin barycentre nuages">';
+            '" aria-label="Réglage fin barycentre nuages">' +
+            "</div></div>" +
+            '<div class="organigram-bary-col organigram-bary-col-right">' +
+            '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +
+            '<span class="organigram-bary-pct">' +
+            pctStr +
+            "%</span></div></div>";
         }
         label.setAttribute("data-tooltip", getFineTuningShortTooltip(pctStr));
         label.setAttribute("aria-label", detail || FINE_TUNING_TOOLTIP_SHORT);
@@ -5933,6 +6219,13 @@ function recreateNoyauRadiation() {
 
   if (!epochRadiation) return;
 
+  normalizeRadiationOptionAliases(epochRadiation);
+  const effMaxNoyau =
+    epochRadiation.maxRadius !== undefined &&
+    epochRadiation.maxRadius !== null
+      ? epochRadiation.maxRadius
+      : epochRadiation.radius;
+
   // Supprimer l'ancien groupe de radiations
   const oldRadiationGroup = document.querySelector(
     '.flux-radiation-group[data-node="noyau"]',
@@ -5942,7 +6235,7 @@ function recreateNoyauRadiation() {
   }
 
   // Si numCircles = 0, ne pas créer de radiations
-  if (epochRadiation.numCircles === 0 || epochRadiation.maxRadius === 0) {
+  if (epochRadiation.numCircles === 0 || effMaxNoyau === 0) {
     return;
   }
 
@@ -5959,16 +6252,20 @@ function recreateNoyauRadiation() {
 
   radiationContainer.appendChild(radiationGroup);
 
-  // Créer les cercles de radiation
+  const radParams = resolveRadiationArcParams(epochRadiation, {
+    openingAngle: 0,
+    rotation: 0,
+  });
   const {
     numCircles,
     maxRadius,
-    openingAngle = 0,
-    rotation = 0,
-    color = "#ff9800",
-    strokeSize = 2,
-  } = epochRadiation;
-  // Utiliser getNodeProperty pour récupérer le radius (gère le cas spécial 'terre' avec epoch)
+    openingInit,
+    openingFinal,
+    angleAnimMs,
+    rotation,
+    color,
+    strokeSize,
+  } = radParams;
   const noyauRadius = noyauNode.radius || 30;
 
   for (let i = 1; i <= numCircles; i++) {
@@ -5979,11 +6276,25 @@ function recreateNoyauRadiation() {
       noyauNode.y,
       arcRadius,
       0.3 + progress * 0.2,
-      openingAngle,
+      openingInit,
       rotation,
       radiationGroup,
     );
     arc.style.border = `${strokeSize}px dashed ${color}`;
+    if (openingInit !== openingFinal) {
+      if (angleAnimMs > 0) {
+        runRadiationOpeningAnimation(
+          arc,
+          arcRadius,
+          openingInit,
+          openingFinal,
+          rotation,
+          angleAnimMs,
+        );
+      } else {
+        setArcClipPath(arc, arcRadius, openingFinal, rotation);
+      }
+    }
   }
 }
 
@@ -6021,14 +6332,20 @@ function recreateTerreRadiation() {
     }
   }
 
+  const radParams = resolveRadiationArcParams(radiationOptions, {
+    openingAngle: 270,
+    rotation: 270,
+  });
   const {
-    numCircles = 8,
+    numCircles,
     maxRadius,
-    openingAngle = 270,
-    rotation = 270,
-    color = "#ff9800",
-    strokeSize = 2,
-  } = radiationOptions;
+    openingInit,
+    openingFinal,
+    angleAnimMs,
+    rotation,
+    color,
+    strokeSize,
+  } = radParams;
 
   if (!maxRadius || maxRadius <= 0) return;
 
@@ -6058,11 +6375,25 @@ function recreateTerreRadiation() {
       terreY,
       arcRadius,
       0.3 + progress * 0.2,
-      openingAngle,
+      openingInit,
       rotation,
       radiationGroup,
     );
     arc.style.border = `${strokeSize}px dashed ${color}`;
+    if (openingInit !== openingFinal) {
+      if (angleAnimMs > 0) {
+        runRadiationOpeningAnimation(
+          arc,
+          arcRadius,
+          openingInit,
+          openingFinal,
+          rotation,
+          angleAnimMs,
+        );
+      } else {
+        setArcClipPath(arc, arcRadius, openingFinal, rotation);
+      }
+    }
   }
 }
 

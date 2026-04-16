@@ -1,0 +1,32 @@
+---
+description: window.MAJUSCULE — données vivantes, inventaire obligatoire dans window_MAJUSCULE_creater_filler.txt
+globs: "**/*.{js,html,ts}"
+alwaysApply: true
+---
+
+# _REGLE_WINDOW_MAJUSCULE — Globals et inventaire
+
+**Source de vérité** : [`CO2/window_MAJUSCULE_creater_filler.txt`](../../window_MAJUSCULE_creater_filler.txt) (ordre impératif + liste créateur / remplisseur). Rappel aussi : [README racine — conventions](../../../README.md#conventions-code).
+
+## Règles impératives (à respecter dans tout nouveau code)
+
+0. Les objets **`window.NOM_EN_MAJUSCULE`** sont des **données vivantes** : les relire à **chaque entrée de fonction** (comme des imports), pas une seule fois à l’init globale.
+1. En tête de fonction : une liste de liaisons du type **`const DATA = window.DATA`**, **`const TIMELINE = window.TIMELINE`**, etc. — une ligne par MAJUSCULE utilisée dans le corps.
+2. **`window.` + identifiant commençant par une minuscule** : suspect par défaut ; regrouper sous un objet MAJUSCULE sauf exception documentée (voir `CO2/doc/regex_window_minuscule.md`).
+3. Toute exposition d’un **nouveau** `window.MAJUSCULE` ou changement majeur de créateur/filler : **mettre à jour** `window_MAJUSCULE_creater_filler.txt` selon le format ci‑dessous.
+
+## Format d’entrée dans l’inventaire
+
+```
+MAJUSCULE
+ + creater: chemin/fichier.js (ligne ou symbole)
+ ++ filler: chemin — rôle court (qui écrit / lit)
+```
+
+- **creater** : fichier qui **assigne** la première fois `window.MAJUSCULE`.
+- **filler** : fichiers qui **mutent** ou **consomment** cet objet (un `++ filler:` par ligne si besoin).
+
+## Pour l’assistant / preprompt
+
+- Avant d’ajouter une globale partagée : vérifier si une **MAJUSCULE existante** peut porter la donnée.
+- Après création ou déplacement : **éditer** `window_MAJUSCULE_creater_filler.txt` dans le même changement logique que le code.

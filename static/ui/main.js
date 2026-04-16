@@ -1,7 +1,7 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.50
+// Version 1.1.63
 // Date: [Apr 15, 2026]
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -10,6 +10,17 @@
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
 //
+// - v1.1.63 : badge flou — icônes 🔺🌡️🔻 + 🧩 (sans points) ; grille 1fr + justify space-between sur les lignes d’icônes
+// - v1.1.62 : badge flou — grille 2 colonnes : gauche 🔺🌡️🔻. + jauge (largeur = ligne icônes) ; droite 🧩 . + % sous puzzle
+// - v1.1.61 : badge flou titre — mini-jauge (range) sur la ligne % à la place des tirets « ------ »
+// - v1.1.60 : #title-flou-scientifique-slot — libellé 🔺🌡️🔻. 🧩 . + ligne ------ % (badge flou scientifique)
+// - v1.1.59 : resolveOrganigramTerreEpochName — switch (true) + in ; applyBary : accès direct DATA['📜']['🗿'] ; retrait if window.top (regle-branchement-crash-first)
+// - v1.1.58 : setEpoch / applyBaryToGraphiqueOnly — alias terre.epoch / noyau.radiation : Boule de neige (TIMELINE) -> Protérozoïque (config organigramme), sinon pas de recréation Three.js
+// - v1.1.57 : log [visu pictos] — marqueurs spectraux graphe = .organigram-picto-inactived seulement Corps Noir (plot.js v1.0.52) ; Géométrie = CSS hide-*
+// - v1.1.54 : runMainInit — garde si #plot-anim-toggle-checkbox absent (addEventListener sur null)
+// - v1.1.53 : [1] config — console.log visibilité pictos (hide-organigram-* + .organigram-picto-inactived)
+// - v1.1.52 : setEpoch fin — syncPlotContainerOrganigramHideClasses (retrait .organigram-picto-inactived sur [ ] plot hors Corps Noir)
+// - v1.1.51 : syncPlotContainerOrganigramHideClasses appelle updateSpectralBandIndicatorsGhostOnly (fantôme spectre hors Corps Noir)
 // - v1.1.50 : syncPlotContainerOrganigramHideClasses — memes hide-organigram-* sur .plot-container-wrapper que #flux-diagram (spectre plot.js)
 // - v1.1.49 : badge Flou scientifique (🧩) dans #title-flou-scientifique-slot (.title-container), plus dans #flux-diagram
 // - v1.1.48 : légende équilibre — ligne « Corps noir (sol) » tirets (Planck T_surface, plot.js v1.0.30)
@@ -1976,9 +1987,27 @@ function getDashStyleForPattern(pattern) {
 
 // Les fonctions createDashPatternSVG et getDashArray sont maintenant dans patterns.js
 
-// Applique le bary au graphique (visu uniquement) : log 🎨 + recrée cellule terre + noyau. Appelé après compute:done via IO_LISTENER.
+/**
+ * TIMELINE (name / id) vs terre.epoch[].epochName : ex. Boule de neige / emoji neige sans entrée dédiée dans configOrganigramme.
+ * Sans alias, setEpoch ne recrée pas #cell-terre (Three.js reste sur l'époque précédente).
+ */
+function resolveOrganigramTerreEpochName(epochDisplayName, epochEmojiId) {
+    var ORGANIGRAM_TERRE_EPOCH_ALIAS = {
+        'Boule de neige': 'Protérozoïque',
+        '\u26c4': 'Protérozoïque'
+    };
+    switch (true) {
+        case epochDisplayName in ORGANIGRAM_TERRE_EPOCH_ALIAS:
+            return ORGANIGRAM_TERRE_EPOCH_ALIAS[epochDisplayName];
+        case epochEmojiId in ORGANIGRAM_TERRE_EPOCH_ALIAS:
+            return ORGANIGRAM_TERRE_EPOCH_ALIAS[epochEmojiId];
+        default:
+            return epochDisplayName;
+    }
+}
+
+// Applique le bary au graphique (visu uniquement) : log + recrée cellule terre + noyau. Appelé après compute:done via IO_LISTENER.
 function applyBaryToGraphiqueOnly() {
-    if (window !== window.top) return;
     const DATA = window.DATA;
     const TIMELINE = window.TIMELINE;
     const IO_LISTENER = window.IO_LISTENER;
@@ -1996,10 +2025,9 @@ function applyBaryToGraphiqueOnly() {
         console.warn('❌ [applyBaryToGraphiqueOnly][main.js] noyauNode/radiation manquant, skip');
         return;
     }
-    // Certaines époques UI (ex. ⛄ Boule de neige) n'ont pas d'entrée dédiée dans terre.epoch :
-    // fallback sur la dernière entrée connue pour éviter un crash.
-    const terreEpochEntry = terreNode.epoch.find(e => e.epochName === epochName) || terreNode.epoch[terreNode.epoch.length - 1];
-    const noyauRadEntry = noyauNode.radiation.find(r => r.epochName === epochName) || noyauNode.radiation[noyauNode.radiation.length - 1];
+    var terreLookup = resolveOrganigramTerreEpochName(epochName, DATA['📜']['🗿']);
+    const terreEpochEntry = terreNode.epoch.find(e => e.epochName === terreLookup) || terreNode.epoch[terreNode.epoch.length - 1];
+    const noyauRadEntry = noyauNode.radiation.find(r => r.epochName === terreLookup) || noyauNode.radiation[noyauNode.radiation.length - 1];
     if (!terreEpochEntry) {
         console.warn('❌ [applyBaryToGraphiqueOnly][main.js] terreEpochEntry introuvable, skip epoch=' + epochName);
         return;
@@ -2093,6 +2121,18 @@ function setEpoch(epochName, options) {
     console.log('[DBG setEpoch] appelé avec=' + epochName + ' (id=' + epochIdForButton + ') DATA[🗿]=' + (DATA['📜'] && DATA['📜']['🗿']) + ' 📿💫=' + (DATA['📜'] && DATA['📜']['📿💫']) + ' currentEpochName=' + window.currentEpochName);
     if (window._logStep) window._logStep('[1] config ' + epochName);
     else console.log('[1] config', epochName);
+    {
+        const flux = document.getElementById('flux-diagram');
+        const hideArrows = flux && flux.classList.contains('hide-organigram-arrows');
+        const hideObs = flux && flux.classList.contains('hide-organigram-observation-metrics');
+        const corpsNoir = epochName === 'Corps Noir';
+        console.log(
+            '[visu pictos] Pour afficher pictos et mesures : retirer sur #flux-diagram hide-organigram-arrows (DETAILS ON, bouton ⚗) et hide-organigram-observation-metrics (OBSERVATIONS ON, bouton 🛰).',
+            'Etat courant : hide-organigram-arrows=' + hideArrows + ', hide-organigram-observation-metrics=' + hideObs + '.',
+            'Graphe [ ] / EDS / Terre : .organigram-picto-inactived seulement si Corps Noir (pas hide-*). Picto Géométrie organigramme : gris si hide-organigram-observation-metrics (CSS). Corps Noir=' + corpsNoir + '.',
+            'Masquage visibility:hidden des cellules #cell-co2, #cell-methane, #cell-h2o : règles CSS #flux-diagram.hide-organigram-arrows.',
+        );
+    }
     // 🔒 Cacher le tooltip immédiatement lors du changement d'époque
     // Empêche le tooltip de rester affiché après le changement
     if (typeof window !== 'undefined' && typeof window.hideTooltip === 'function') {
@@ -2251,11 +2291,12 @@ function setEpoch(epochName, options) {
     const effectiveNodes = (window.configOrganigramme.getEffectiveNodesConfig && window.configOrganigramme.getEffectiveNodesConfig(epoch.name || epochName, bary)) || window.configOrganigramme.nodes;
     const terreNode = effectiveNodes.find(n => n.id === 'terre');
     const configEpochName = epoch.name || epochName;
+    const terreOrganigramKey = resolveOrganigramTerreEpochName(configEpochName, epoch.id);
     // Log graphique (visu uniquement, pas scie_) : bary + toutes les valeurs effectives
     if (window === window.top && window.configOrganigramme.baryEpochs && window.configOrganigramme.baryEpochs[configEpochName]) {
         const noyauNode = effectiveNodes.find(function (n) { return n.id === 'noyau'; });
-        const terreEpochEntry = terreNode && terreNode.epoch ? terreNode.epoch.find(function (e) { return e.epochName === configEpochName; }) : null;
-        const noyauRadEntry = noyauNode && Array.isArray(noyauNode.radiation) ? noyauNode.radiation.find(function (r) { return r.epochName === configEpochName; }) : null;
+        const terreEpochEntry = terreNode && terreNode.epoch ? terreNode.epoch.find(function (e) { return e.epochName === terreOrganigramKey; }) : null;
+        const noyauRadEntry = noyauNode && Array.isArray(noyauNode.radiation) ? noyauNode.radiation.find(function (r) { return r.epochName === terreOrganigramKey; }) : null;
         const graphiqueValues = {
             bary: bary,
             terre: terreEpochEntry ? { radius: terreEpochEntry.radius, radiusExobase: terreEpochEntry.radiusExobase, fillColor: terreEpochEntry.fillColor, strokeColor: terreEpochEntry.strokeColor, strokeSize: terreEpochEntry.strokeSize, planetEffect: terreEpochEntry.planetEffect } : null,
@@ -2267,7 +2308,7 @@ function setEpoch(epochName, options) {
         console.groupEnd();
     }
     if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
-        const epochConfig = terreNode.epoch.find(e => e.epochName === configEpochName);
+        const epochConfig = terreNode.epoch.find(e => e.epochName === terreOrganigramKey);
 
         if (epochConfig) {
             // Recréer la cellule terre avec la configuration de l'époque
@@ -2702,6 +2743,9 @@ function setEpoch(epochName, options) {
     const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
     const animEnabled = DATA['🔘']['🔘🎞'];
     const barySync = (DATA && DATA['📜'] && DATA['📜']['bary'] != null && Number.isFinite(DATA['📜']['bary'])) ? DATA['📜']['bary'] : undefined;
+    if (typeof window.syncPlotContainerOrganigramHideClasses === 'function') {
+        window.syncPlotContainerOrganigramHideClasses();
+    }
     IO_LISTENER.emit('sync:state', { epochId: epochId, animEnabled: !!animEnabled, ticTime: ticTime, bary: barySync, run: true });
 }
 
@@ -3136,9 +3180,13 @@ function runMainInit() {
                 window.syncPlotContainerOrganigramHideClasses = function () {
                     var fd = document.getElementById('flux-diagram');
                     var plotWrap = document.querySelector('.plot-container-wrapper');
-                    if (!fd || !plotWrap) return;
-                    plotWrap.classList.toggle('hide-organigram-arrows', fd.classList.contains('hide-organigram-arrows'));
-                    plotWrap.classList.toggle('hide-organigram-observation-metrics', fd.classList.contains('hide-organigram-observation-metrics'));
+                    if (fd && plotWrap) {
+                        plotWrap.classList.toggle('hide-organigram-arrows', fd.classList.contains('hide-organigram-arrows'));
+                        plotWrap.classList.toggle('hide-organigram-observation-metrics', fd.classList.contains('hide-organigram-observation-metrics'));
+                    }
+                    if (typeof window.updateSpectralBandIndicatorsGhostOnly === 'function') {
+                        window.updateSpectralBandIndicatorsGhostOnly();
+                    }
                 };
                 window.updateObservationIndicator = function () {
                     var fluxObs = document.getElementById('flux-diagram');
@@ -3233,18 +3281,45 @@ function runMainInit() {
                     if (!baryFt) {
                         baryFt = flux.querySelector('.organigram-fine-tuning-bary-badge');
                     }
+                    var pctFromData = 100;
+                    var TftBary = window.DATA && window.DATA['🎚️'];
+                    if (TftBary && TftBary.baryByGroup) {
+                        var rawBB = Number(TftBary.baryByGroup.CLOUD_SW);
+                        pctFromData = Number.isFinite(rawBB) ? Math.max(0, Math.min(100, Math.round(rawBB))) : 0;
+                    }
+                    function htmlFlouBaryBadge(pct) {
+                        return '<div class="organigram-bary-face organigram-bary-face--two-cols">' +
+                            '<div class="organigram-bary-col organigram-bary-col-left">' +
+                            '<div class="organigram-bary-icons">🔺🌡️🔻</div>' +
+                            '<div class="organigram-bary-line-slider">' +
+                            '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' + pct + '" aria-label="Réglage fin barycentre nuages">' +
+                            '</div></div>' +
+                            '<div class="organigram-bary-col organigram-bary-col-right">' +
+                            '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +
+                            '<span class="organigram-bary-pct">' + pct + '%</span></div>' +
+                            '</div>';
+                    }
                     if (!baryFt) {
                         baryFt = document.createElement('div');
                         baryFt.className = 'flux-label buttonData percent-label organigram-fine-tuning-bary-badge';
                         baryFt.setAttribute('data-id', 'fine_tuning_cloud_bary');
                         baryFt.setAttribute('data-tooltip', 'Flou scientifique');
-                        var pctFromData = 100;
-                        var Tft = window.DATA && window.DATA['🎚️'];
-                        if (Tft && Tft.baryByGroup) {
-                            var rawB = Number(Tft.baryByGroup.CLOUD_SW);
-                            pctFromData = Number.isFinite(rawB) ? Math.max(0, Math.min(100, Math.round(rawB))) : 0;
-                        }
-                        baryFt.innerHTML = '<div class="organigram-bary-face"><div class="organigram-bary-icons">🔺🧩🔻</div><input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' + pctFromData + '" aria-label="Réglage fin barycentre nuages"></div><div class="organigram-bary-pct">' + pctFromData + '%</div>';
+                        baryFt.innerHTML = htmlFlouBaryBadge(pctFromData);
+                    } else if (
+                        !baryFt.querySelector('.organigram-bary-face--two-cols') ||
+                        baryFt.querySelector('.organigram-bary-dash') ||
+                        !baryFt.querySelector('.organigram-bary-col-left .organigram-bary-mini-slider')
+                    ) {
+                        var slLegacy = baryFt.querySelector('.organigram-bary-mini-slider');
+                        var pvLegacy = (slLegacy && Number.isFinite(Number(slLegacy.value))) ? Math.max(0, Math.min(100, Math.round(Number(slLegacy.value)))) : pctFromData;
+                        baryFt.innerHTML = htmlFlouBaryBadge(pvLegacy);
+                        baryFt.removeAttribute('data-tooltip-initialized');
+                    } else {
+                        baryFt.querySelectorAll('.organigram-bary-pct').forEach(function (nodePct) {
+                            nodePct.textContent = pctFromData + '%';
+                        });
+                        var slSync = baryFt.querySelector('.organigram-bary-mini-slider');
+                        if (slSync) slSync.value = String(pctFromData);
                     }
                     if (typeof window.getFineTuningDetailAlt === 'function') {
                         baryFt.setAttribute('aria-label', window.getFineTuningDetailAlt(null, true));
@@ -3278,9 +3353,11 @@ function runMainInit() {
                     }
                 };
                 const animCb = document.getElementById('plot-anim-toggle-checkbox');
-                animCb.addEventListener('change', (e) => {
-                    DATA['🔘']['🔘🎞'] = e.target.checked;
-                });
+                if (animCb) {
+                    animCb.addEventListener('change', (e) => {
+                        DATA['🔘']['🔘🎞'] = e.target.checked;
+                    });
+                }
                 window.updateThreePlayIndicator();
                 window.updateObservationIndicator();
                 if (document.body && document.body.dataset.ftBarySliderBound !== '1') {
