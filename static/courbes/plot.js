@@ -1,7 +1,7 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.55
+// Version 1.0.56
 // Date: [April 15, 2026]
 // logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -28,6 +28,7 @@
 // - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
 // - v1.0.23: Courbe pointillée corps noir à T effective (pas T surface) pour même fenêtre que courbe pleine
 // - v1.0.24: rendu spectral séquencé: non-anim=FINAL seul, anim=chaque cycle; suppression redraw différé doublon depuis updatePlot
+// - v1.0.56: échelle Y spectre — sommet courbe T sol ≈ 3/4 hauteur plot (facteur 0.75 au lieu de 0.65)
 // - v1.0.55: paire H₂O (6.3 / 17 μm) — écart vertical entre marqueurs > taille police (spectralPairGroup + pairGapPx)
 // - v1.0.54: bandes partageant le même bin grille (ex. H₂O 17 μm + CO₂15 μm → [12,17]) — décalage vertical empilé pour voir les deux pictos
 // - v1.0.53: fond alpha entre [ ] = même couleur que crochets (band.color hex/rgb) ; repli Hz2RGB si color vide
@@ -1738,7 +1739,7 @@ window.updatePlot = function updatePlot(data) {
         annotation_text = `Stratosphère<br>${delta_T_trop_strato.toFixed(1)} K<br>Troposphère`;
     }
 
-    // --- CALCUL ÉCHELLE Y : courbe ~65% hauteur ; après action (pas nouvelle époque) on recalc au prochain ProcessFinished (FLUX.yAxisRecalcOnNextFinish) ---
+    // --- CALCUL ÉCHELLE Y : sommet courbe T sol ≈ 3/4 hauteur plot (max données / y_max ≈ 0.75) ; après action (pas nouvelle époque) on recalc au prochain ProcessFinished (FLUX.yAxisRecalcOnNextFinish) ---
     // Si la courbe réelle est <20% du max actuel (changement d'ordre de grandeur), recalculer l'échelle
     let maxYInTraces = 0;
     traces.forEach(t => {
@@ -1772,7 +1773,7 @@ window.updatePlot = function updatePlot(data) {
             });
         }
         const maxScaled = scaleY(maxPlanck);
-        let y_raw = maxScaled / 0.65;
+        let y_raw = maxScaled / 0.75;
         if (y_raw < 5) {
             y_max_luminance = Math.max(0.5, Math.ceil(y_raw * 2) / 2);
         } else if (y_raw < 100) {
@@ -1785,7 +1786,7 @@ window.updatePlot = function updatePlot(data) {
     }
     // Ordre de grandeur : données <20% du max de l'échelle → recalculer l'échelle
     if (maxYInTraces < 0.2 * y_max_luminance) {
-        y_max_luminance = Math.max(minY, maxYInTraces / 0.65);
+        y_max_luminance = Math.max(minY, maxYInTraces / 0.75);
         lastGoodYMaxLuminance = y_max_luminance;
     }
 

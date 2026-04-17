@@ -46,25 +46,10 @@
                 if (T[i]['📅'] === raw) return raw;
             }
         }
-        var nameToEmoji = {
-            'Corps Noir': '⚫',
-            'Hadéen': '🔥',
-            'Archéen': '🦠',
-            'Protérozoïque': '🥟',
-            'Paléozoïque': '🌿',
-            'Mésozoïque': '🦕',
-            'Cénozoïque': '🦣',
-            'Éocène': '🐊',
-            'Hyperthermie éocène': '🐊',
-            'Prélude glaciaire': 'hysteresis 2',
-            'hysteresis 1': 'hysteresis 1',
-            'hysteresis 2': 'hysteresis 2',
-            'Grande Coupure': '🏔',
-            'EOT (33,9 Ma)': '🏔',
-            'Quaternaire': '❄️',
-            'Industriel': '🚂',
-            'Aujourd\'hui': '📱'
-        };
+        // Map name→id depuis CHARS_DESC (source de vérité) + alias
+        var nameToEmoji = Object.entries(window.CHARS_DESC || {}).reduce(function(m, e) { m[e[1]] = e[0]; return m; }, {
+            'Hyperthermie éocène': '🐊', 'Prélude glaciaire': 'hysteresis 2', 'EOT (33,9 Ma)': '🏔'
+        });
         return nameToEmoji[raw] !== undefined ? nameToEmoji[raw] : raw;
     }
     window.resolveEpochIdForTimeline = resolveEpochIdForTimeline;

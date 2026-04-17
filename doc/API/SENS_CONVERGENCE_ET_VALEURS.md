@@ -27,11 +27,17 @@ Donc **`'converged'` = "on a considéré que le bilan était assez proche de zé
 🔺🧲 = flux_entrant − flux_sortant = (🧲☀️🔽 + 🧲🌕🔽) − 🧲🌈🔼
 ```
 
+**Premier pas Search après Init** : le code propose d’abord `ΔT = 🔺🧲 / (4σT³)` (pente corps noir). En atmosphère **grise**, ce pas peut **surestimer** `|ΔT|` (ex. trajet visuel 12 °C → −5 °C alors que T* est proche). Un plafond optionnel **`FIRST_SEARCH_STEP_CAP_K`** (K) sur **ce seul** pas + bornes Init était testé (`calculations_flux.js` v1.2.80+). **Attention** : un plafond trop bas peut **changer le bassin de convergence** (ex. époque actuelle 📱 ~21 °C au lieu de ~15,6 °C hérité). **Défaut actuel : `0` = désactivé** (`DATA['🎚️'].SOLVER.FIRST_SEARCH_STEP_CAP_K`, `configsAll` / `initDATA`). Pour lisser uniquement l’affichage bench paléo, poser une valeur **> 0** (ex. 8–12 K) en connaissance de cause, ou accepter le trajet SB « en V ».
+
 - **🧲☀️🔽** : flux solaire absorbé (W/m²). Litt. Terre ~238 (S/4 × (1−albédo)).
 - **🧲🌕🔽** : flux géothermique (W/m²), négligeable (~0,09).
 - **🧲🌈🔼** : flux sortant au sommet (OLR, W/m²). À l’équilibre doit égaler flux_entrant (~238).
 - **🧲🌑🔼** : σT⁴ (surface corps noir), pas le flux au sommet.
 - **🧲🪩🔼** : flux réfléchi (albédo × incident).
+
+**Affichage (scie / convergence)** : jusqu’à `scie_convergence.js` v1.0.2, la ligne « Albedo: X % » montrait la **fraction** 0–1 avec un suffixe `%` (ex. `0.229 %` au lieu de **22,9 %**). Ce n’était pas une incohérence du bilan radiatif, uniquement un formatage. Corrigé en v1.0.3 (×100). Un **ⓘ** à côté de Δ rappelle la formule à trois termes.
+
+**« EDS H2O: 0,0 % » à l’init** : ce pourcentage est **`🍰📛💧`** = part de H₂O dans la somme des contributions **bloquées** au passage spectral (`sum_blocked_H2O / sum_blocked`, voir `radiative/calculations.js` après la boucle τ). Ce n’est **ni** la fraction molaire de vapeur, **ni** la capacité IR `🍰🫧💧🌈`. À forte CO₂/CH₄, les bandes où H₂O domine peuvent être minoritaires dans cette métrique cumulée → affichage **&lt;0,5 %** possible sans contradiction avec une vapeur non nulle. v1.0.4 : soulignement + `title` explicatif sur la valeur EDS H₂O dans la ligne radiatif.
 
 Si 🔺🧲 = 5,93 alors (238,27 + 0,09) − 🧲🌈🔼 = 5,93 → **🧲🌈🔼 = 232,43**. À l’équilibre il faudrait 🧲🌈🔼 ≈ 238,36. Donc **🧲🌈🔼 est trop faible de 5,93 W/m²** (trop de piégeage IR = flux sortant sous-estimé ou EDS surestimé dans le calcul spectral).
 

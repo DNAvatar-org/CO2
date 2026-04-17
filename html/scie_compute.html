@@ -78,8 +78,8 @@
                         <button type="button" class="toggle-button" id="hyst-literature-preset" onclick="applyHysteresisLiteraturePreset(); return false;" title="Applique HYSTERESIS_LITERATURE_PRESET (FINE_TUNING_BOUNDS groupe HYSTERESIS + TUNING_BIBLIO)">Preset lit. +</button>
                     </div>
                     <div class="hyst-epoch-row hyst-epoch-row--tight">
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1" title="hysteresis 1 — 🥟 · ⛄ (début ▶ −750 Ma)" onclick="scieRunEpochLikeVisuTimeline('hysteresis 1')">
-                            <span class="hyst-epoch-glyphs" aria-hidden="true">🥟⛄</span>
+                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1" title="hysteresis 1a — 🪸 · ☃ (début ▶ −750 Ma)" onclick="scieRunEpochLikeVisuTimeline('hysteresis 1a')">
+                            <span class="hyst-epoch-glyphs" aria-hidden="true">🪸☃</span>
                             <span class="hyst-epoch-caption hyst-epoch-date">-750Ma</span>
                         </button>
                         <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h2" title="hysteresis 2 — 🐊 · 🏔 (début ▶ −35 Ma)" onclick="scieRunEpochLikeVisuTimeline('hysteresis 2')">
@@ -125,6 +125,11 @@
                     <label for="g-strat-veil" title="🍰⚽ voile SW stratosphérique (jauge) : s’ajoute au cumul événements 🌋 (📜🔺🍰⚽). Découplé de 🍰💭.">⚽ voile SW (hyst)<span class="hyst-sens">T°↓</span></label>
                     <input id="g-strat-veil" type="range" min="0" max="100" step="1" value="0" />
                     <span id="g-strat-veil-val" style="font-family:monospace;font-size:12px;">0%</span>
+                </div>
+                <div class="hyst-row">
+                    <label for="g-h2o-eds" title="EARTH.H2O_EDS_SCALE : multiplicateur global de κ_H₂O. Mapping inversé : 0% → 1.00 (κ max, T haute) ; 100% → 0.60 (cible Schmidt 2010 ~75 W/m² EDS H₂O, T basse). Voir FINE_TUNING_BOUNDS.RADIATIVE (baryGroup SCIENCE).">🌈 H₂O_EDS<span class="hyst-sens">T°↓ CO₂↓</span></label>
+                    <input id="g-h2o-eds" type="range" min="0" max="100" step="1" value="100" />
+                    <span id="g-h2o-eds-val" style="font-family:monospace;font-size:12px;">0.60</span>
                 </div>
                 <div id="hyst-info">
                     <div id="hyst-info-gauges"></div>
@@ -284,7 +289,7 @@
 
         function scieRunEpochLikeVisuTimeline(epochId) {
             if (!window.TIMELINE) return;
-            var isHyst = (epochId === 'hysteresis 1' || epochId === 'hysteresis 2');
+            var isHyst = (epochId === 'hysteresis 1a' || epochId === 'hysteresis 1b' || epochId === 'hysteresis 2');
             if (isHyst) scieEnableAnimForHystSync();
             else scieDisableAnimLikeVisu();
             window._scieLastRunWasHystButton = isHyst;
@@ -302,7 +307,7 @@
             var id = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
             var b1 = document.getElementById('hyst-epoch-h1');
             var b2 = document.getElementById('hyst-epoch-h2');
-            if (b1) b1.classList.toggle('selected', id === 'hysteresis 1');
+            if (b1) b1.classList.toggle('selected', id === 'hysteresis 1a' || id === 'hysteresis 1b');
             if (b2) b2.classList.toggle('selected', id === 'hysteresis 2');
         }
         
@@ -399,7 +404,7 @@
         // GÉNÉRATION TIMELINE HORIZONTALE
         // 3 lignes : noms (entre les |), | logos, dates (sous les |)
         // ============================================================================
-        var EPOCH_NAME_MAP = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Éocène', 'hysteresis 1': 'hysteresis 1', 'hysteresis 2': 'hysteresis 2', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
+        var EPOCH_NAME_MAP = window.CHARS_DESC || {};
         function generateHorizontalTimeline() {
             if (!window.TIMELINE) return;
             const epochItems = window.TIMELINE.filter(item => item && item['📅']);
@@ -2021,6 +2026,8 @@
             const gVv = document.getElementById('g-strat-veil-val');
             const gE = document.getElementById('g-co2-eff-pump');
             const gEv = document.getElementById('g-co2-eff-pump-val');
+            const gH = document.getElementById('g-h2o-eds');
+            const gHv = document.getElementById('g-h2o-eds-val');
             const infoEl = document.getElementById('hyst-info-gauges');
             if (gR && Number.isFinite(Number(window.CONFIG_COMPUTE.seaIceTransitionRangeK))) {
                 const rk = window.normalizeSeaIceTransitionRangeKEngine(window.CONFIG_COMPUTE.seaIceTransitionRangeK);
@@ -2034,6 +2041,11 @@
             if (gV && !Number.isFinite(Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01))) gV.value = '0';
             if (gR && !Number.isFinite(Number(window.CONFIG_COMPUTE.seaIceTransitionRangeK))) gR.value = String(window.SEAICE_UI_DEFAULT);
             if (gS && !Number.isFinite(Number(window.CONFIG_COMPUTE.seaIceStrength01))) gS.value = '100';
+            // H2O_EDS_SCALE : mapping inversé slider 0..100 → valeur 1.00..0.60 (convention projet : 100 % = T basse)
+            if (gH && window.EARTH && Number.isFinite(Number(window.EARTH.H2O_EDS_SCALE))) {
+                const vH = Number(window.EARTH.H2O_EDS_SCALE);
+                gH.value = String(Math.max(0, Math.min(100, Math.round(100 * (1.00 - vH) / 0.40))));
+            }
 
             function refreshInfo() {
                 if (infoEl) infoEl.textContent = buildHystInfoLine();
@@ -2041,6 +2053,7 @@
                 if (gSv && gS) gSv.textContent = (Number(gS.value) / 100).toFixed(2);
                 if (gIv && gI) gIv.textContent = (Number(gI.value) / 100).toFixed(2);
                 if (gVv && gV) gVv.textContent = Number(gV.value) + '%';
+                if (gHv && gH) gHv.textContent = (1.00 - 0.40 * (Number(gH.value) / 100)).toFixed(2);
                 if (gE && window.CONFIG_COMPUTE && Number.isFinite(Number(window.CONFIG_COMPUTE.co2OceanEffPump01))) {
                     gE.value = String(Math.round(100 * Number(window.CONFIG_COMPUTE.co2OceanEffPump01)));
                 }
@@ -2068,6 +2081,13 @@
                 const v = Math.max(0, Math.min(1, Number(gE.value) / 100));
                 window.CONFIG_COMPUTE.co2OceanEffPump01 = v;
                 if (gEv) gEv.textContent = v.toFixed(2);
+                refreshInfo();
+            };
+            if (gH) gH.oninput = function () {
+                const vH = Math.max(0.60, Math.min(1.00, 1.00 - 0.40 * (Number(gH.value) / 100)));
+                if (window.EARTH) window.EARTH.H2O_EDS_SCALE = vH;
+                if (window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].RADIATIVE) window.DATA['🎚️'].RADIATIVE.H2O_EDS_SCALE = vH;
+                if (gHv) gHv.textContent = vH.toFixed(2);
                 refreshInfo();
             };
             applyGreyControls();

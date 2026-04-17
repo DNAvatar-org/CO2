@@ -1,8 +1,9 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.15
- * Date: [June 08, 2025] [HH:MM UTC+1]
+ * Version 1.0.16
+ * Date: 2026-04-17
 * logs :
+ * - v1.0.16: getEpochAtTimelineIndex — évite crash epoch undefined (▶) si 👉 hors TIMELINE ou état transitoire (scie_compute)
  * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
  * - v1.0.2: dates négatives avec signe - (info-time et epoch-start en -X Ma)
  * - v1.0.3: échelle d’époque construite depuis TIMELINE ; curseurs > .. < positionnés par calcul (alignés y0 sur zone texte)
@@ -78,15 +79,21 @@ function pdOnce(key, fn, file, msg) {
     }
 }
 
-/** Même convention que updateTimeline (curseur frise) : Ma négatifs, ▶ en années (config), infoTimeMa en Ma. */
-function getTimelineCurrentMa() {
+/** TIMELINE[DATA['📜']['👉']] si index valide ; sinon null (pas de lecture ▶ sur undefined). */
+function getEpochAtTimelineIndex() {
     const DATA = window.DATA;
     const TIMELINE = window.TIMELINE;
     if (!DATA || !DATA['📜'] || !TIMELINE || !TIMELINE.length) return null;
     const idx = DATA['📜']['👉'];
-    if (idx == null || idx < 0 || !TIMELINE[idx]) return null;
+    if (idx == null || idx < 0 || idx >= TIMELINE.length) return null;
     const epoch = TIMELINE[idx];
-    if (epoch['▶'] == null) return null;
+    return epoch || null;
+}
+
+/** Même convention que updateTimeline (curseur frise) : Ma négatifs, ▶ en années (config), infoTimeMa en Ma. */
+function getTimelineCurrentMa() {
+    const epoch = getEpochAtTimelineIndex();
+    if (!epoch || epoch['▶'] == null) return null;
     const startMa = -(epoch['▶'] / 1e6);
     const isForwardEpoch = epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀'];
     const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
@@ -295,8 +302,7 @@ function updateTimeline() {
     // Échelle adaptée : en 1800/2100 afficher (+N ans), sinon (+X Ma)
     if (infoTimeDisplay) {
         const infoTimeMa = window.infoTimeMa;
-        const idx = window.DATA['📜'] && window.DATA['📜']['👉'] != null ? window.DATA['📜']['👉'] : -1;
-        const epoch = idx >= 0 && window.TIMELINE && window.TIMELINE[idx] ? window.TIMELINE[idx] : null;
+        const epoch = getEpochAtTimelineIndex();
         const isRecentEpoch = epoch && typeof epoch['▶'] === 'number' && epoch['▶'] < 1e6;
         let newText;
         if (isRecentEpoch) {
@@ -340,35 +346,40 @@ function updateTimeline() {
                 textRows.push(entries[r].span);
                 scaleTexts.push(entries[r].text);
             }
-            const idx = window.DATA['📜']['👉'];
-            const epoch = window.TIMELINE[idx];
-            const startMa = -(epoch['▶'] / 1e6);
-            // Époques forward (▶ < ◀, CE years : 1800→2025) : les dates croissantes = plus négatives en Ma convention
-            // → soustraire infoTimeMa pour monter la jauge. Époques géologiques : addition standard.
-            const isForwardEpoch = (epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀']);
-            const currentMa = isForwardEpoch ? startMa - window.infoTimeMa : startMa + window.infoTimeMa;
-            const topPx = getCursorTopPx(container, textRows, scaleMa, currentMa) + TIMELINE_CURSOR_OFFSET_PX;
-            if (!window._timelineCursorAnimating) {
-                cursor2.style.setProperty('top', topPx + 'px');
-                cursor2.setAttribute('data-timeline-top', String(Math.round(topPx)));
-            }
-            logTimelineGeometry();
-            // Debug curseurs >..< pour époques récentes (1800, 2100)
-            const epochId = epoch['📅'];
-            const epochStartYears = epoch['▶'];
-            if (epochId === '📱' || epochId === '🚂' || (typeof epochStartYears === 'number' && epochStartYears >= 1800)) {
-                if (!window._lastCursorDebug || window._lastCursorDebug !== epochStartYears) {
-                    window._lastCursorDebug = epochStartYears;
-                    if (typeof window.pdTrace === 'function') {
-                        window.pdTrace('curseurs', 'timeline.js',
-                            'epochId=' + epochId + ' epochStartYears(▶)=' + epochStartYears +
-                            ' startMa=' + startMa.toFixed(6) + ' currentMa=' + currentMa.toFixed(6) +
-                            ' scaleMa[0]=' + scaleMa[0].toFixed(6) + ' scaleMa[last]=' + scaleMa[scaleMa.length - 1].toFixed(6) +
-                            ' scaleTexts=' + scaleTexts.join(',') + ' topPx=' + topPx.toFixed(1) + ' idx=' + idx);
-                    }
-                }
+            const idx = DATA['📜']['👉'];
+            const epoch = getEpochAtTimelineIndex();
+            if (!epoch) {
+                pdOnce('timeline-epoch-missing-cursor', 'updateTimeline', 'timeline.js',
+                    'TIMELINE[' + String(idx) + '] absent ou 👉 hors plage (len=' + String(TIMELINE.length) + ')');
             } else {
-                window._lastCursorDebug = null;
+                const startMa = -(epoch['▶'] / 1e6);
+                // Époques forward (▶ < ◀, CE years : 1800→2025) : les dates croissantes = plus négatives en Ma convention
+                // → soustraire infoTimeMa pour monter la jauge. Époques géologiques : addition standard.
+                const isForwardEpoch = (epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀']);
+                const currentMa = isForwardEpoch ? startMa - window.infoTimeMa : startMa + window.infoTimeMa;
+                const topPx = getCursorTopPx(container, textRows, scaleMa, currentMa) + TIMELINE_CURSOR_OFFSET_PX;
+                if (!window._timelineCursorAnimating) {
+                    cursor2.style.setProperty('top', topPx + 'px');
+                    cursor2.setAttribute('data-timeline-top', String(Math.round(topPx)));
+                }
+                logTimelineGeometry();
+                // Debug curseurs >..< pour époques récentes (1800, 2100)
+                const epochId = epoch['📅'];
+                const epochStartYears = epoch['▶'];
+                if (epochId === '📱' || epochId === '🚂' || (typeof epochStartYears === 'number' && epochStartYears >= 1800)) {
+                    if (!window._lastCursorDebug || window._lastCursorDebug !== epochStartYears) {
+                        window._lastCursorDebug = epochStartYears;
+                        if (typeof window.pdTrace === 'function') {
+                            window.pdTrace('curseurs', 'timeline.js',
+                                'epochId=' + epochId + ' epochStartYears(▶)=' + epochStartYears +
+                                ' startMa=' + startMa.toFixed(6) + ' currentMa=' + currentMa.toFixed(6) +
+                                ' scaleMa[0]=' + scaleMa[0].toFixed(6) + ' scaleMa[last]=' + scaleMa[scaleMa.length - 1].toFixed(6) +
+                                ' scaleTexts=' + scaleTexts.join(',') + ' topPx=' + topPx.toFixed(1) + ' idx=' + idx);
+                        }
+                    }
+                } else {
+                    window._lastCursorDebug = null;
+                }
             }
         }
     }
@@ -407,13 +418,15 @@ function updateTimeline() {
     window.updatePlanetTextureFromDate && window.updatePlanetTextureFromDate();
 
     // Mettre à jour le 2e bouton (☄️|🎇|💫) quand la date courante change (ACTION_BY_DATE)
-    const idx = window.DATA['📜']['👉'];
-    const epoch = window.TIMELINE[idx];
-    const actionKey = window.configOrganigramme.getActionForDate(epoch['▶'], window.infoTimeMa);
-    if (window._lastEpochActionKey !== actionKey) {
-        window._lastEpochActionKey = actionKey;
-        if (typeof window.updateEpochActions === 'function') {
-            window.updateEpochActions();
+    const epochAct = getEpochAtTimelineIndex();
+    const cfgOrg = window.configOrganigramme;
+    if (epochAct && cfgOrg) {
+        const actionKey = cfgOrg.getActionForDate(epochAct['▶'], window.infoTimeMa);
+        if (window._lastEpochActionKey !== actionKey) {
+            window._lastEpochActionKey = actionKey;
+            if (typeof window.updateEpochActions === 'function') {
+                window.updateEpochActions();
+            }
         }
     }
 

@@ -901,7 +901,7 @@ h1 {
 
 /* Timeline verticale : date centrée, sans trait */
 .epoch-date-item-vertical {
-    padding: 2px 0;
+    padding: 0;
 }
 .epoch-date-item-vertical .epoch-date {
     font-size: 10px;
@@ -910,16 +910,16 @@ h1 {
 }
 
 .epoch-date-item .epoch-date {
-    font-size: 11px;
+    font-size: 9px;
     color: var(--retro-off);
     white-space: nowrap;
     font-weight: normal;
-    line-height: 0.9em;
+    line-height: 0.6em;
 }
 
 /* Boutons de la frise chronologique - compact comme horizontale (sans noms) */
 .epoch-btn {
-    font-size: 22px;
+    font-size: 18px;
     font-family: var(--font-emoji);
     background: none !important;
     border: none !important;

@@ -161,10 +161,8 @@
         if (v) v.innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement</p>';
     });
 
-    // Mapping 📅 → nom d'époque (pour togglePlotAnim : raw TIMELINE n'a pas .name)
-    var EPOCH_ID_TO_NAME = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Éocène', 'hysteresis 1': 'hysteresis 1', 'hysteresis 2': 'hysteresis 2', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
     function nextEpochName(nextItem, nextId) {
-        return nextItem.name || EPOCH_ID_TO_NAME[nextId] || (window.CHARS_DESC && window.CHARS_DESC[nextId]) || nextId;
+        return nextItem.name || (typeof window.epochName === 'function' && window.epochName(nextId)) || nextId;
     }
     // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque (via shell). Transition en animation du curseur timeline puis setEpoch.
     window.togglePlotAnim = function () {
@@ -299,9 +297,10 @@
                     if (typeof window.CHARS_DESC !== 'undefined' && window.CHARS_DESC[epochId]) {
                         epochName = window.CHARS_DESC[epochId];
                     }
+                    // epochNameMap : fallback si CHARS_DESC absent — CHARS_DESC est la source de vérité (alphabet.js).
+                    // Entrées couvertes seulement pour les ids non-emoji (strings) et les cas sans CHARS_DESC.
                     const epochNameMap = {
-                        '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige',
-                        '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Éocène', 'hysteresis 1': 'hysteresis 1', 'hysteresis 2': 'hysteresis 2', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui'
+                        'hysteresis 1a': 'Sturtienne', 'hysteresis 1b': 'Sortie Marinoen', 'hysteresis 2': 'Eocène-Oligocène'
                     };
                     if (epochNameMap[epochId]) epochName = epochNameMap[epochId];
                     // ▶ = début (années), ◀ = fin → startYears, endYears pour getGeologicalPeriodByName et formatYears

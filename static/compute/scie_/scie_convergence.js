@@ -1,13 +1,15 @@
 // File: scie_convergence.js - Formatage HTML des étapes de convergence (scie)
 // Desc: Module partagé parent + iframe scie : buildStepHtml(state) → fragment HTML pour #convergence-steps.
 //       Utilisé par le shell pour stocker des chaînes HTML au lieu des payloads complets.
-// Version 1.0.2
+// Version 1.0.4
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: 2025-02-25
 // Logs:
 // - v1.0.2: export scieFormatJSONCompact pour logs hystérésis (💧🪩 instantanés)
+// - v1.0.3: ligne radiatif — albédo en % (×100, fraction DATA) ; hint Δ = ☀️🔽+🌕🔽−🌈🔼 (🌑🔼/🪩🔼 hors bilan)
+// - v1.0.4: titre sur « EDS H2O » — part dans sum_blocked (τ), pas vapeur molaire ni capacités 🌈 ; évite lecture « 0 % = pas d’eau »
 // - v1.0.1: renomme H2O% en % EDS H2O pour éviter la confusion avec 🍰🫧💧
 // Logs:
 // - v1.0.0: extraction depuis scie_compute.html ; json2html, formatJSONCompact, buildStepHtml
@@ -163,7 +165,14 @@
         }
         var innerIter = state.innerIter;
         var T = safeNumTempConv(state.temperature_C, '-');
-        var albedo = safeNumConv(state.albedo, '-');
+        var albedoRaw = state.albedo;
+        var albedoPctStr = '-';
+        if (albedoRaw != null && Number.isFinite(Number(albedoRaw))) {
+            var albedoNum = Number(albedoRaw);
+            albedoPctStr = (albedoNum >= 0 && albedoNum <= 1)
+                ? (albedoNum * 100).toFixed(1) + '%'
+                : albedoNum.toFixed(2) + '%';
+        }
         var phase = (state.phase != null) ? String(state.phase) : '-';
         var delta = safeNumDeltaConv(state.delta_equilibre, '-');
         var m = (state.data_snapshot && state.data_snapshot['🧮']) ? state.data_snapshot['🧮'] : {};
@@ -183,9 +192,13 @@
         var nextTSuffix = nextT ? ' => ' + nextT + '°C' : '';
         var b = state.data_snapshot && state.data_snapshot['📛'];
         var h2oPctVal = (b && b['🍰📛💧'] != null) ? Number(b['🍰📛💧']) : null;
-        var h2oPctStr = (h2oPctVal != null && Number.isFinite(h2oPctVal)) ? (h2oPctVal * 100).toFixed(1) + '%' : '-';
+        var h2oEdsTitle = 'Part H₂O dans la somme des absorptions de bande (EDS τ, sum_blocked_* au passage spectral). Si CO₂/CH₄ dominent les bandes, cette part peut être très faible tout en ayant de la vapeur (voir 🍰🫧💧 et 🍰🫧💧🌈 ailleurs).';
+        var h2oPctStr = (h2oPctVal != null && Number.isFinite(h2oPctVal))
+            ? ('<span style="cursor:help;text-decoration:underline dotted" title="' + h2oEdsTitle + '">' + (h2oPctVal * 100).toFixed(1) + '%</span>')
+            : '-';
         var h2oVs05 = (h2oPctVal != null && Number.isFinite(h2oPctVal) && h2oPctVal < 0.005) ? ' <0.5%' : '';
-        html += '<div class="iteration-header">🌈 calcul radiatif ' + iterLabel + ' @' + T + '°C : Albedo: ' + albedo + ' % EDS H2O: ' + h2oPctStr + h2oVs05 + ' => Δ: ' + delta + ' W/m² .. ⚧: ' + phase + ' & ☯: ' + yinYangStr + ' => arrêt |Δ|≤' + seuilStr + ' W/m²: ' + arretOk + dichoBounds + nextTSuffix + '</div>';
+        var deltaHint = '<span style="cursor:help;opacity:0.75" title="Δ = 🧲☀️🔽+🧲🌕🔽−🧲🌈🔼 (solaire absorbé + lune − OLR au sommet). 🧲🌑🔼 (σT⁴ surface) et 🧲🪩🔼 (SW réfléchi au TOA) sont affichés en diagnostic ; ils ne s’additionnent pas dans Δ (l’albédo est déjà pris en compte dans 🧲☀️🔽).">ⓘ</span>';
+        html += '<div class="iteration-header">🌈 calcul radiatif ' + iterLabel + ' @' + T + '°C : Albédo: ' + albedoPctStr + ' EDS H2O: ' + h2oPctStr + h2oVs05 + ' => Δ: ' + delta + ' W/m² ' + deltaHint + ' .. ⚧: ' + phase + ' & ☯: ' + yinYangStr + ' => arrêt |Δ|≤' + seuilStr + ' W/m²: ' + arretOk + dichoBounds + nextTSuffix + '</div>';
         html += '<div class="convergence-details-block">';
         var snap = state.data_snapshot || {};
         if (snap['🧮']) {

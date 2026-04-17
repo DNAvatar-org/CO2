@@ -187,8 +187,7 @@ window.updateEpochActions = function () {
     } else if (actionId === '🎇') {
         const epochConfig = getEpochConfigById(epochId);
         const targetFromConfig = epochConfig && epochConfig['🕰'] && epochConfig['🕰']['🎇'] && epochConfig['🕰']['🎇']['⏩'];
-        const idToName = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Éocène', 'hysteresis 1': 'hysteresis 1', 'hysteresis 2': 'hysteresis 2', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
-        const targetName = targetFromConfig ? (idToName[epochConfig['🕰']['🎇']['⏩']] || epochConfig['🕰']['🎇']['⏩']) : 'Hadéen';
+        const targetName = targetFromConfig ? (window.epochName(epochConfig['🕰']['🎇']['⏩'])) : 'Hadéen';
         const bigImpactBtn = document.createElement('img');
         bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
         bigImpactBtn.alt = '';
@@ -347,11 +346,10 @@ window.updateEpochActions = function () {
                             const epochDurMa = (_tlEpoch['▶'] - _tlEpoch['◀']) / 1e6;
                             if (window.infoTimeMa >= epochDurMa) {
                                 window.infoTimeMa = epochDurMa;
-                                const _eToN = { '⚫': 'Corps Noir', '🔥': 'Hadéen', '🦠': 'Archéen', '🥟': 'Protérozoïque', '⛄': 'Boule de neige', '🌿': 'Paléozoïque', '🦕': 'Mésozoïque', '🦣': 'Cénozoïque', '🐊': 'Éocène', 'hysteresis 1': 'hysteresis 1', 'hysteresis 2': 'hysteresis 2', '🏔': 'Grande Coupure', '❄️': 'Quaternaire', '🚂': 'Industriel', '📱': 'Aujourd\'hui' };
                                 const _idxCur = window.TIMELINE ? window.TIMELINE.findIndex(function(e) { return e['📅'] === epochId; }) : -1;
                                 if (_idxCur >= 0 && _idxCur + 1 < window.TIMELINE.length) {
                                     const _nextId = window.TIMELINE[_idxCur + 1]['📅'];
-                                    window.setEpoch(_eToN[_nextId] || _nextId);
+                                    window.setEpoch(window.epochName(_nextId));
                                     return;
                                 }
                             }

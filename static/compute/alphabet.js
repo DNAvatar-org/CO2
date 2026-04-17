@@ -1,8 +1,9 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.7
-// Date: [April 15, 2026]
+// Version 1.0.8
+// Date: [April 16, 2026]
 // logs :
+// - v1.0.8: timeline étendue (19 époques) — renames 🥟→🪸, ❄️→🦣, 🦣→🦤, scission 🌿→🪼/🍄/💀 ; nouveaux ⛈ 🐧 🛖 ; hysteresis 1→1a + ajout 1b
 // - v1.0.7: charsImages CH4 -> fonts/pics/ch4_2.png (picto texte)
 // - v1.0.6: CHARS_DESC 🐊 « Éocène »
 // - v1.0.5: CHARS_DESC 🎾 Lave, ⚽ voile SW ; VOLCANO 🌋 inchangé (actions)
@@ -82,18 +83,25 @@ const CHARS = {
     CORPS_NOIR: '⚫', // Corps noir
     HADEEN: '🔥',   // Hadéen : feu/lave
     ARCHEEN: '🦠',  // Archéen : microbe unicellulaire
-    PROTEROZOIC: '🥟', // Protérozoïque : plantes primitives
-    SNOWBALL: '⛄',  // Boule de neige (750–600 Ma) : Snowball Earth
-    MESOZOIC: '🦕', // Mésozoïque : dinosaure sauropode
-    PALEOZOIC: '🌿', // Paléozoïque (600–250 Ma en timeline) : os/fossile
-    CENOZOIC: '🦣', // Cénozoïque : mammouth
+    PROTEROZOIC: '🪸', // Protérozoïque (2500–750 Ma) : corail (multicellularité, eucaryotes)
+    HYSTERESIS_1A: 'hysteresis 1a', // Sturtienne (750–720 Ma) — bascule albédo↓ (id stable, logo ☃)
+    SNOWBALL_ENTRY: '☃', // Entrée Sturtienne (alias affichage hyst 1a)
+    SNOWBALL: '⛄',  // Plein Snowball (720–690 Ma) : accumulation CO₂ sous glace
+    HYSTERESIS_1B: 'hysteresis 1b', // Sortie Marinoen (690–600 Ma) — hyst 1b (id stable, logo ⛈)
+    SNOWBALL_EXIT: '⛈', // Sortie Marinoen (alias affichage hyst 1b) : déglaciation brutale, pluies acides
+    PALEOZOIC_MARINE: '🪼', // Paléozoïque marin (600–420 Ma) : méduse (vie marine, explosion cambrienne)
+    PALEOZOIC_LAND: '🍄', // Paléozoïque terrestre (420–280 Ma) : champignon (Prototaxites, forêts Dévonien)
+    PERMIAN_TRIASSIC: '💀', // Limite P/T (280–250 Ma) : extinction massive
+    MESOZOIC: '🦕', // Mésozoïque (250–66 Ma) : dinosaure sauropode
+    CENOZOIC: '🦤', // Cénozoïque (66–50 Ma) : dodo (recovery post-K/Pg, radiation oiseaux)
     PETM_HOUSE: '🐊', // Éocène (50–35 Ma), pic thermique type PETM
-    HYSTERESIS_1: 'hysteresis 1',
-    PRELUDE_ICE: 'hysteresis 2',
-    EOT: '🏔',      // Grande Coupure (~33 Ma)
-    QUATERNARY: '❄️', // Quaternaire (~2 Ma)
-    TODAY: '🚂',    // 1800 : train (1800)
-    MODERN: '📱',   // Moderne : smartphone (2025)
+    HYSTERESIS_2: 'hysteresis 2', // Eocène-Oligocène (35–33 Ma) — hyst 2 (id stable, logo 🐧)
+    EOCENE_OLIGOCENE: '🐧', // Eocène-Oligocène (alias affichage hyst 2) : calotte Antarctique
+    EOT: '🏔',      // Grande Coupure (33–2 Ma) : Himalaya, altération silicates
+    QUATERNARY: '🦣', // Quaternaire (2 Ma–10 ka) : mammouth (Pléistocène, glaciations)
+    HOLOCENE: '🛖', // Holocène (10 ka–1800) : agriculture, villages
+    TODAY: '🚂',    // Industriel (1800–2000) : train
+    MODERN: '📱',   // Aujourd'hui (2000–2100) : smartphone
     EVENTS: '🕰',   // Événements : horloge
     TRANSITION: '⏩', // Transition : flèche rapide
     DATE: '📅',     // Date : calendrier
@@ -193,19 +201,26 @@ const CHARS_DESC = {
     '⚫': 'Corps noir',
     '🔥': 'Hadéen',
     '🦠': 'Archéen',
-    '🥟': 'Protérozoïque',
-    '⛄': 'Boule de neige',
+    '🪸': 'Protérozoïque',
+    '☃': 'Sturtienne',
+    '⛄': 'Plein Snowball',
+    '⛈': 'Sortie Marinoen',
+    '🪼': 'Paléozoïque marin',
+    '🍄': 'Paléozoïque terrestre',
+    '💀': 'Limite P/T',
     '🦕': 'Mésozoïque',
-    '🌿': 'Paléozoïque',
-    '🦣': 'Cénozoïque',
+    '🦤': 'Cénozoïque',
     '🐊': 'Éocène',
+    '🐧': 'Eocène-Oligocène',
     '⛰': 'Montagne (relief)',
-    'hysteresis 1': 'hysteresis 1',
-    'hysteresis 2': 'hysteresis 2',
+    'hysteresis 1a': 'Sturtienne',
+    'hysteresis 1b': 'Sortie Marinoen',
+    'hysteresis 2': 'Eocène-Oligocène',
     '🏔': 'Grande Coupure',
-    '❄️': 'Quaternaire',
-    '🚂': '1800',
-    '📱': '2025',
+    '🦣': 'Quaternaire',
+    '🛖': 'Holocène',
+    '🚂': 'Industriel',
+    '📱': 'Aujourd\'hui',
     '🕰': 'Événements',
     '⏩': 'Transition',
     '📅': 'Date (Ma)',
@@ -243,7 +258,7 @@ function createAlphabetHtml() {
     
     // Colonne 5 : Époques et autres logos
     const charsCol5 = [
-        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'SNOWBALL', 'MESOZOIC', 'PALEOZOIC', 'CENOZOIC', 'PETM_HOUSE', 'HYSTERESIS_1', 'PRELUDE_ICE', 'EOT', 'QUATERNARY', 'TODAY', 'MODERN'
+        'EPOCH', 'INDEX_EPOCH', 'LOGO_EPOCH', 'CORPS_NOIR', 'HADEEN', 'ARCHEEN', 'PROTEROZOIC', 'SNOWBALL_ENTRY', 'SNOWBALL', 'SNOWBALL_EXIT', 'PALEOZOIC_MARINE', 'PALEOZOIC_LAND', 'PERMIAN_TRIASSIC', 'MESOZOIC', 'CENOZOIC', 'PETM_HOUSE', 'EOCENE_OLIGOCENE', 'EOT', 'QUATERNARY', 'HOLOCENE', 'TODAY', 'MODERN'
     ];
     
     // Descriptions personnalisées pour certains caractères
@@ -367,6 +382,11 @@ function getDisplayForPicto(picto) {
 window.CHARS = CHARS;
 window.LOGOS = CHARS; // Alias pour compatibilité (configOrganigramme, organigramme)
 window.CHARS_DESC = CHARS_DESC;
+// Source unique pour mapper id époque (emoji ou 'hysteresis Xy') → nom français.
+// Remplace les anciennes tables idToName dispersées (events.js, etc.).
+window.epochName = function (id) {
+    return (CHARS_DESC[id] !== undefined) ? CHARS_DESC[id] : id;
+};
 window.charsImages = charsImages;
 window.createAlphabetHtml = createAlphabetHtml;
 window.getLogo = getLogo;

@@ -1,8 +1,11 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.37
+// Version 1.1.38
 // Date: [Apr 16, 2026] [12:00 UTC+1]
 // logs :
+// - v1.1.38: terre.epoch + noyau.radiation — nouvelles époques v1.4.0 timeline : ☃ Sturtienne (hyst 1a), ⛄ Plein Snowball, ⛈ Sortie Marinoen (hyst 1b),
+//            🪼 Paléozoïque marin, 🍄 Paléozoïque terrestre, 💀 Limite P/T, 🛖 Holocène ; renommages 🦤 Cénozoïque, 🐧 Eocène-Oligocène (hyst 2),
+//            🦣 Quaternaire ; Paléozoïque supprimé (scindé) ; hysteresis 1 renommé Sturtienne (CHARS_DESC).
 // - v1.1.37: SKIP + EVENEMENT — className organigram-config-heading (typo 04B_03 sans cadre, blanc cassé, comme DETAILS/OBSERVATIONS)
 // - v1.1.36: SKIP — classe organigram-config-heading (même typo/cadre que DETAILS) ; domSlot centre = hauteur dérivée de slotEventLogoPx (plus slotMinWidth−200)
 // - v1.1.35: SKIP — dataId plot_anim_skip (classes flux via updateLabelClasses) ; domSlot logos = coque flux 3×3 (plus #timeline-action-block)
@@ -245,9 +248,54 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'hysteresis 1',
+                epochName: 'Sturtienne', // hysteresis 1a
                 numCircles: 3,
                 maxRadius: 70,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Plein Snowball',
+                numCircles: 3,
+                maxRadius: 68,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Sortie Marinoen', // hysteresis 1b
+                numCircles: 3,
+                maxRadius: 65,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Paléozoïque marin',
+                numCircles: 2,
+                maxRadius: 58,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Paléozoïque terrestre',
+                numCircles: 2,
+                maxRadius: 55,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Limite P/T',
+                numCircles: 2,
+                maxRadius: 52,
                 strokeSize: 0,
                 openingAngle: 0,
                 rotation: 0,
@@ -281,7 +329,7 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'hysteresis 2',
+                epochName: 'Eocène-Oligocène', // hysteresis 2
                 numCircles: 2,
                 maxRadius: 45,
                 strokeSize: 0,
@@ -302,6 +350,15 @@ const nodes = [
                 epochName: 'Quaternaire',
                 numCircles: 2,
                 maxRadius: 38,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Holocène',
+                numCircles: 1,
+                maxRadius: 32,
                 strokeSize: 0,
                 openingAngle: 0,
                 rotation: 0,
@@ -363,18 +420,38 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'hysteresis 1',
-                logo: LOGOS.GLOBE_AFRICA,
+                epochName: 'Sturtienne', // hysteresis 1a (entrée Snowball)
+                logo: LOGOS.SNOWBALL_ENTRY,
                 radius: radiusTerre,
-                radiusExobase: radiusTerre * 1.08,
-                fillColor: 'rgba(0, 191, 255, 0.5)',
-                strokeColor: '#00FA9A',
+                radiusExobase: radiusTerre * 1.06,
+                fillColor: 'rgba(200, 230, 255, 0.55)',
+                strokeColor: '#B0E0E6',
                 strokeSize: 0,
                 planetEffect: true
             },
             {
-                epochName: 'Mésozoïque',
-                logo: LOGOS.GLOBE_AMERICAS,
+                epochName: 'Plein Snowball',
+                logo: LOGOS.SNOWBALL,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.05,
+                fillColor: 'rgba(230, 245, 255, 0.7)',
+                strokeColor: '#E0FFFF',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Sortie Marinoen', // hysteresis 1b
+                logo: LOGOS.SNOWBALL_EXIT,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(100, 180, 220, 0.5)',
+                strokeColor: '#5FAFD0',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Paléozoïque marin',
+                logo: LOGOS.GLOBE_ASIA,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 200, 255, 0.5)',
@@ -383,8 +460,28 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'Paléozoïque',
+                epochName: 'Paléozoïque terrestre',
                 logo: LOGOS.GLOBE_ASIA,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(80, 200, 160, 0.5)',
+                strokeColor: '#50C8A0',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Limite P/T',
+                logo: LOGOS.PERMIAN_TRIASSIC,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(180, 80, 60, 0.45)',
+                strokeColor: '#B0503C',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Mésozoïque',
+                logo: LOGOS.GLOBE_AMERICAS,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(0, 200, 255, 0.5)',
@@ -413,12 +510,12 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'hysteresis 2',
-                logo: LOGOS.GLOBE_AFRICA,
+                epochName: 'Eocène-Oligocène', // hysteresis 2
+                logo: LOGOS.EOCENE_OLIGOCENE,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,
-                fillColor: 'rgba(0, 200, 255, 0.5)',
-                strokeColor: '#00FFFF',
+                fillColor: 'rgba(150, 200, 240, 0.5)',
+                strokeColor: '#96C8F0',
                 strokeSize: 0,
                 planetEffect: true
             },
@@ -439,6 +536,16 @@ const nodes = [
                 radiusExobase: radiusTerre * 1.08,
                 fillColor: 'rgba(180, 220, 255, 0.5)',
                 strokeColor: '#B0E0E6',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Holocène',
+                logo: LOGOS.GLOBE_AFRICA,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(150, 220, 180, 0.5)',
+                strokeColor: '#96DCB4',
                 strokeSize: 0,
                 planetEffect: true
             },

@@ -4201,11 +4201,8 @@ function generateTimelineFromConfig() {
         "onclick",
         `setEpochFromEpochButton('${epochId.replace(/'/g, "\\'")}')`,
       );
-      // Libellé timeline : 🌿 = Paléozoïque (forcé ici pour éviter cache alphabet.js)
-      const epochLabel =
-        epochId === "🌿"
-          ? "Paléozoïque"
-          : (window.CHARS_DESC && window.CHARS_DESC[epochId]) || epochId;
+      // Libellé timeline : CHARS_DESC est la source de vérité (alphabet.js)
+      const epochLabel = (window.CHARS_DESC && window.CHARS_DESC[epochId]) || epochId;
       // Ne pas utiliser title natif, utiliser addCustomTooltip à la place
 
       // getDisplayForPicto : image si dans charsImages, sinon picto (transparent si on ajoute des images)

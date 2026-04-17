@@ -2122,10 +2122,11 @@ function setEpoch(epochName, options) {
         return;
     }
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
-    const epochNameToEmojiForButton = {
-        'Corps Noir': '⚫', 'Hadéen': '🔥', 'Archéen': '🦠', 'Protérozoïque': '🥟',
-        'Paléozoïque': '🌿', 'Mésozoïque': '🦕', 'Cénozoïque': '🦣', 'Éocène': '🐊', 'Hyperthermie éocène': '🐊', 'Prélude glaciaire': 'hysteresis 2', 'hysteresis 1': 'hysteresis 1', 'hysteresis 2': 'hysteresis 2', 'Grande Coupure': '🏔', 'EOT (33,9 Ma)': '🏔', 'Quaternaire': '❄️', 'Industriel': '🚂', 'Aujourd\'hui': '📱'
-    };
+    // Map name→id inversée depuis CHARS_DESC (source de vérité) + surcharges alias
+    const _cd = window.CHARS_DESC || {};
+    const epochNameToEmojiForButton = Object.entries(_cd).reduce(function(m, e) { m[e[1]] = e[0]; return m; }, {
+        'Hyperthermie éocène': '🐊', 'Prélude glaciaire': 'hysteresis 2', 'EOT (33,9 Ma)': '🏔'
+    });
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
     console.log('[DBG setEpoch] appelé avec=' + epochName + ' (id=' + epochIdForButton + ') DATA[🗿]=' + (DATA['📜'] && DATA['📜']['🗿']) + ' 📿💫=' + (DATA['📜'] && DATA['📜']['📿💫']) + ' currentEpochName=' + window.currentEpochName);
     if (window._logStep) window._logStep('[1] config ' + epochName);
@@ -2206,29 +2207,13 @@ function setEpoch(epochName, options) {
             DATA['📜'] = {};
         }
         // Trouver l'index de l'époque par son emoji (id) ou son nom
-        // Mapper le nom de l'époque vers l'emoji si nécessaire
-        const epochNameToEmojiMap = {
-            'Corps Noir': '⚫',
-            'Hadéen': '🔥',
-            'Archéen': '🦠',
-            'Protérozoïque': '🥟',
-            'Paléozoïque': '🌿',
-            'Mésozoïque': '🦕',
-            'Cénozoïque': '🦣',
-            'Éocène': '🐊',
-            'Hyperthermie éocène': '🐊',
-            'Prélude glaciaire': 'hysteresis 2',
-            'hysteresis 1': 'hysteresis 1',
-            'hysteresis 2': 'hysteresis 2',
-            'Grande Coupure': '🏔',
-            'EOT (33,9 Ma)': '🏔',
-            'Quaternaire': '❄️',
-            'Industriel': '🚂',
-            'Aujourd\'hui': '📱'
-        };
+        // Map name→id depuis CHARS_DESC (source de vérité) + alias
+        const _cdInv = Object.entries(window.CHARS_DESC || {}).reduce(function(m, e) { m[e[1]] = e[0]; return m; }, {
+            'Hyperthermie éocène': '🐊', 'Prélude glaciaire': 'hysteresis 2', 'EOT (33,9 Ma)': '🏔'
+        });
         // epoch.id devrait être défini depuis getGeologicalPeriodByName (timeline transformée)
         // Sinon, utiliser le mapping ou le nom directement
-        const epochId = epoch.id || epochNameToEmojiMap[epochName] || epochName;
+        const epochId = epoch.id || _cdInv[epochName] || epochName;
         const epochIndex = TIMELINE.findIndex(item => {
             if (item['📅']) {
                 return item['📅'] === epochId;

@@ -1,9 +1,10 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.68
+// Version 1.0.69
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
+// Logs: v1.0.69 retrait styles .visu_epochs-title (span EPOQUES supprimé de visu_radiatif.html)
 // Logs: v1.0.8 un seul tooltip (pas title), cursor help sur tous les alt
 // Logs: v1.0.9 bloc CONFIGURATION + ⚗ (titres alignés timeline SCENARIO/EPOQUES)
 // Logs: v1.0.10 .organigram-config-heading : 04B_03, marge bas, pas de trait (hors .flux-diagram)
@@ -1220,26 +1221,10 @@
     align-items: center;
     justify-content: center;
 }
-.timeline-action-title, .visu_epochs-title{
+.timeline-action-title {
     font-size: 12px;
     font-weight: lighter;
     color: var(--retro-base);
-}
-
-.visu_epochs-title {
-    display: block;
-    padding-top: 10px;
-    position: relative;
-}
-/* Trait au-dessus de EPOQUES (::before pour visibilité fiable sur fond noir) */
-.visu_epochs-title::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.15);
 }
 .timeline-action-bar .timeline-events-logos {
     display: flex;
