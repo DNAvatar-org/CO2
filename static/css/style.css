@@ -20,7 +20,7 @@
 
 :root {
     /* Palette rétro 80s */
-    --retro-base: rgb(255, 255, 0);       /* vert vif — interactif / clicable */
+    --retro-base: rgb(128, 255, 0);       /* vert vif — interactif / clicable */
     --retro-clicable: rgb(0, 255, 0);   /* rouge — état sélectionné fort */
     --retro-off: #a5a5a5; /* gris  — inactif / non-clicable */
     /* Alias historique (ne pas briser l'existant) */

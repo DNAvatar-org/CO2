@@ -1,8 +1,9 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.8
-// Date: [April 16, 2026]
+// Version 1.0.9
+// Date: [April 18, 2026]
 // logs :
+// - v1.0.9: CHARS.SULFATE + CHARS_DESC — U+2708 U+FE0F (emoji ✈️, police emoji) ; aligné configsAll
 // - v1.0.8: timeline étendue (19 époques) — renames 🥟→🪸, ❄️→🦣, 🦣→🦤, scission 🌿→🪼/🍄/💀 ; nouveaux ⛈ 🐧 🛖 ; hysteresis 1→1a + ajout 1b
 // - v1.0.7: charsImages CH4 -> fonts/pics/ch4_2.png (picto texte)
 // - v1.0.6: CHARS_DESC 🐊 « Éocène »
@@ -34,7 +35,7 @@ const CHARS = {
     ENERGY_FLUX: '🧲', // Energy flux : sources chaudes (W/m²)
     O2: '🫁',       // O2 : poumons (affichage)
     N2: '💨',       // N2 : vent (azote/air)
-    SULFATE: '✈',  // Aérosols sulfate (proxy CCN/optique nuageuse)
+    SULFATE: '\u2708\uFE0F',  // SO₄ proxy — présentation emoji (U+2708 + VS16)
     WEIGHT: '⚖️',   // Poids : balance (masse)
     DENSITY: '💨',  // Densité : vent
     ALTITUDE: '🧿', // Altitude : galaxie (Ligne de Kármán, frontière atmosphère/espace)

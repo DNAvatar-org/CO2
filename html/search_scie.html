@@ -7,6 +7,7 @@
 # - Aligné scie_compute : hysteresis 1 / hysteresis 2 (ids TIMELINE)
 # - Frise époques retirée (époque par défaut ⚫ au load) ; bloc #hysteresis : ligne1 = [titre+boutons | jauges], ligne2 = logs
 # - Hystérésis : titre + negative|positive ; ↑↓ après Jauges
+# - Fine-tuning : une jauge ATM (☁️+🔬) = même % CLOUD_SW + SCIENCE (aligné scie_compute)
 # - fillDataTuningFromBary : getFineTuningTargets() (évite cible HYSTERESIS sans 🎚️)
 # - GREY seaIce UI 1000–6000 (1–6 K) ; Preset lit. + ; FINE_TUNING_BOUNDS HYSTERESIS (configsAll)
 # - Hystérésis : 🔘🎞 ON (scieEnableAnimForHystSync + sync:state animEnabled true)
@@ -1291,6 +1292,18 @@
             return Number(window.DATA['🎚️'].baryByGroup[groupKey]);
         }
 
+        function getFineTuningUnifiedAtmBaryPercent() {
+            var bg = window.DATA['🎚️'].baryByGroup;
+            var c = Number(bg.CLOUD_SW);
+            var s = Number(bg.SCIENCE);
+            if (!Number.isFinite(c)) c = 50;
+            if (!Number.isFinite(s)) s = 50;
+            c = Math.max(0, Math.min(100, Math.round(c)));
+            s = Math.max(0, Math.min(100, Math.round(s)));
+            if (c === s) return c;
+            return Math.max(0, Math.min(100, Math.round((c + s) / 2)));
+        }
+
         function setFineTuningBaryPercent(groupKey, percentRaw) {
             const p = Number(percentRaw);
             const bounded = Math.max(0, Math.min(100, Number.isFinite(p) ? p : 0));
@@ -1350,6 +1363,12 @@
             if (refreshPanel !== false) displayFineTuning();
         }
 
+        function applyFineTuningBaryAtmUnified(percentRaw, refreshPanel) {
+            applyFineTuningBaryGroup('CLOUD_SW', percentRaw, false);
+            applyFineTuningBaryGroup('SCIENCE', percentRaw, false);
+            if (refreshPanel !== false) displayFineTuning();
+        }
+
         function applyFineTuningBaryAll(percentRaw, refreshPanel) {
             applyFineTuningBaryGroup('CLOUD_SW', percentRaw, false);
             applyFineTuningBaryGroup('SCIENCE', percentRaw, false);
@@ -1359,11 +1378,15 @@
         }
 
         function applyFineTuningBaryGroupAndRun(groupKey, percentRaw) {
-            applyFineTuningBaryGroup(groupKey, percentRaw, true);
+            if (groupKey === 'ATM') {
+                applyFineTuningBaryAtmUnified(percentRaw, true);
+            } else {
+                applyFineTuningBaryGroup(groupKey, percentRaw, true);
+            }
             if (window !== window.top) {
                 var T = window.DATA['🎚️'];
-                console.log('[DBG scie] fine-tuning play clicked group=' + groupKey + ' percentRaw=' + percentRaw + ' bary.CLOUD_SW=' + T.baryByGroup.CLOUD_SW);
-                if (typeof window.pd === 'function') window.pd('applyFineTuningBaryGroupAndRun', 'scie_compute.html', 'group=' + groupKey + ' percentRaw=' + percentRaw + ' bary.CLOUD_SW=' + T.baryByGroup.CLOUD_SW);
+                console.log('[DBG scie] fine-tuning play clicked group=' + groupKey + ' percentRaw=' + percentRaw + ' bary.CLOUD_SW=' + T.baryByGroup.CLOUD_SW + ' SCIENCE=' + T.baryByGroup.SCIENCE);
+                if (typeof window.pd === 'function') window.pd('applyFineTuningBaryGroupAndRun', 'search_scie.html', 'group=' + groupKey + ' percentRaw=' + percentRaw + ' bary.CLOUD_SW=' + T.baryByGroup.CLOUD_SW + ' SCIENCE=' + T.baryByGroup.SCIENCE);
             window.parent.postMessage({
                 type: 'sync:tuning',
                 payload: {
@@ -1380,6 +1403,12 @@
         }
 
         function onFineTuningBaryInput(groupKey, percentRaw) {
+            if (groupKey === 'ATM') {
+                applyFineTuningBaryAtmUnified(percentRaw, false);
+                var valueHeaderAtm = document.getElementById('fine-tuning-bary-value-ATM-header');
+                if (valueHeaderAtm) valueHeaderAtm.textContent = Math.round(Number(percentRaw)) + '%';
+                return;
+            }
             setFineTuningBaryPercent(groupKey, percentRaw);
             // Important: ne pas re-render le panneau pendant le drag, sinon le slider est recréé et le glissement s'arrête.
             applyFineTuningBaryGroup(groupKey, percentRaw, false);
@@ -1508,14 +1537,13 @@
                 var span = document.getElementById('fine-tuning-bary-value-' + gk);
                 if (span) span.textContent = v + '%';
             }
-            var hEl = document.getElementById('fine-tuning-bary-slider-CLOUD_SW-header');
+            var hEl = document.getElementById('fine-tuning-bary-slider-ATM-header');
             if (hEl) {
-                var cb = Number(bg.CLOUD_SW);
-                cb = Number.isFinite(cb) ? Math.max(0, Math.min(100, Math.round(cb))) : 100;
-                hEl.value = String(cb);
+                var atm = getFineTuningUnifiedAtmBaryPercent();
+                hEl.value = String(atm);
                 updated = true;
-                var hSpan = document.getElementById('fine-tuning-bary-value-CLOUD_SW-header');
-                if (hSpan) hSpan.textContent = cb + '%';
+                var hSpan = document.getElementById('fine-tuning-bary-value-ATM-header');
+                if (hSpan) hSpan.textContent = atm + '%';
             }
             return updated;
         }
@@ -1536,7 +1564,7 @@
             applyFineTuningBaryGroup('CLOUD_SW', getFineTuningBaryPercent('CLOUD_SW'), false);
             applyFineTuningBaryGroup('SCIENCE', getFineTuningBaryPercent('SCIENCE'), false);
             applyFineTuningBaryGroup('SOLVER', getFineTuningBaryPercent('SOLVER'), false);
-            const cloudBary = getFineTuningBaryPercent('CLOUD_SW');
+            const atmBary = getFineTuningUnifiedAtmBaryPercent();
             const fineTitle = tuningDiv.querySelector('h2');
             if (fineTitle) {
                 fineTitle.style.display = 'flex';
@@ -1548,10 +1576,10 @@
                 const toggleBtn = document.getElementById('fine-tuning-toggle');
                 const isOpen = tuningContent.style.display !== 'none';
                 fineTitle.innerHTML = `🧩 Fine-tuning 🪩
-                    <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">🔺
-                        <input id="fine-tuning-bary-slider-CLOUD_SW-header" type="range" min="0" max="100" step="1" value="${cloudBary.toFixed(0)}" oninput="onFineTuningBaryInput('CLOUD_SW', this.value); var v=document.getElementById('fine-tuning-bary-value-CLOUD_SW-header'); if(v) v.textContent=this.value + '%';">
-                        <span id="fine-tuning-bary-value-CLOUD_SW-header">${cloudBary.toFixed(0)}%</span>
-                        <button class="toggle-button" onclick="applyFineTuningBaryGroupAndRun('CLOUD_SW', document.getElementById('fine-tuning-bary-slider-CLOUD_SW-header').value); return false;">▶️</button>🔻
+                    <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;" title="Même % pour CLOUD_SW (☁️) et SCIENCE (🔬)">🔺☁️🔬
+                        <input id="fine-tuning-bary-slider-ATM-header" type="range" min="0" max="100" step="1" value="${atmBary.toFixed(0)}" oninput="onFineTuningBaryInput('ATM', this.value); var v=document.getElementById('fine-tuning-bary-value-ATM-header'); if(v) v.textContent=this.value + '%';">
+                        <span id="fine-tuning-bary-value-ATM-header">${atmBary.toFixed(0)}%</span>
+                        <button class="toggle-button" onclick="applyFineTuningBaryGroupAndRun('ATM', document.getElementById('fine-tuning-bary-slider-ATM-header').value); return false;">▶️</button>🔻
                     </span>
                     <button class="toggle-button" id="fine-tuning-toggle" onclick="toggleFineTuning()" style="margin-left:auto">${isOpen ? '−' : '+'}</button>`;
             }
