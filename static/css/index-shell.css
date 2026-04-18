@@ -1,6 +1,6 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.0.2
+   Version 1.0.3
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
@@ -8,6 +8,7 @@
    - Extracted from index.html inline <style>.
    - v1.0.1: #milankovitch-panel aligné sur #scie-panel (max-height:none, min-height viewport, iframe min-height) — iframe n’était pas dimensionnée (≈150px), body/graph bloqués en haut
    - v1.0.2: retrait onglet Hysteresis (#hysteresis-panel, body.hysteresis-panel-active)
+   - v1.0.3: .tabs-bar button text-transform:uppercase (lisibilité police pixel 04B_03)
    ============================================================ */
 
 /* --- Onglets (tabs-bar) : Visuel / Scientifique --- */
@@ -29,6 +30,7 @@
     line-height: 1;
     font-size: 16px;
     font-family: '04B_03', monospace;
+    text-transform: uppercase;
     background: #222;
     border: none;
     border-radius: 0 0 10px 10px;

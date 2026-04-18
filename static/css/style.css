@@ -20,7 +20,7 @@
 
 :root {
     /* Palette rétro 80s */
-    --retro-base: rgb(128, 255, 0);       /* vert vif — interactif / clicable */
+    --retro-base: rgb(0, 200, 255);       /* rgb(128, 255, 0) */
     --retro-clicable: rgb(0, 255, 0);   /* rouge — état sélectionné fort */
     --retro-off: #a5a5a5; /* gris  — inactif / non-clicable */
     /* Alias historique (ne pas briser l'existant) */
@@ -1708,7 +1708,8 @@ h1 {
 }
 
 .credits-doc-label {
-    color: #00ff00;
+    /* v1.x : aligné sur a:visited = var(--base-color) foncé (plus sobre que #00ff00 fluo) */
+    color: color-mix(in srgb, var(--base-color) 70%, black 30%);
     font-weight: 500;
     margin-right: 4px;
 }
