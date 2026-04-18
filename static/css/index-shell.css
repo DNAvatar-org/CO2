@@ -9,6 +9,7 @@
    - v1.0.1: #milankovitch-panel aligné sur #scie-panel (max-height:none, min-height viewport, iframe min-height) — iframe n’était pas dimensionnée (≈150px), body/graph bloqués en haut
    - v1.0.2: retrait onglet Hysteresis (#hysteresis-panel, body.hysteresis-panel-active)
    - v1.0.3: .tabs-bar button text-transform:uppercase (lisibilité police pixel 04B_03)
+   - v1.0.4: #bench-panel / body.bench-panel-active aligné sur #milankovitch-panel (iframe simple standalone)
    ============================================================ */
 
 /* --- Onglets (tabs-bar) : Visuel / Scientifique --- */
@@ -26,9 +27,9 @@
 }
 .tabs-bar button {
     padding: 4px 14px 6px;
-    height: 20px;
+    height: 18px;
     line-height: 1;
-    font-size: 16px;
+    font-size: 12px;
     font-family: '04B_03', monospace;
     text-transform: uppercase;
     background: #222;
@@ -65,8 +66,9 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
 }
-/* Panel scie / milankovitch actif : la page prend la taille du contenu (body peut grandir, scroll = body) */
+/* Panel scie / bench / milankovitch actif : la page prend la taille du contenu (body peut grandir, scroll = body) */
 body.scie-panel-active,
+body.bench-panel-active,
 body.milankovitch-panel-active {
     height: auto;
     min-height: 100vh;
@@ -135,14 +137,16 @@ body.milankovitch-panel-active {
         width: 100%;
         border: none;
     }
-    #milankovitch-panel.active {
+    #milankovitch-panel.active,
+    #bench-panel.active {
         overflow: visible;
         min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
         max-height: none;
         display: flex;
         flex-direction: column;
     }
-    #milankovitch-panel iframe {
+    #milankovitch-panel iframe,
+    #bench-panel iframe {
         flex: 0 0 auto;
         min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
         width: 100%;
@@ -180,8 +184,9 @@ body.milankovitch-panel-active {
 body.scie-panel-active .credits-footer {
     height: var(--visu-footer-max-h);
 }
-/* Même logique que #scie-panel : sans min-height explicite l’iframe reste ~150px → contenu Milankovitch coincé en haut */
-#milankovitch-panel.active {
+/* Même logique que #scie-panel : sans min-height explicite l’iframe reste ~150px → contenu Milankovitch/Bench coincé en haut */
+#milankovitch-panel.active,
+#bench-panel.active {
     overflow: visible;
     flex: 0 0 auto;
     height: auto;
@@ -190,7 +195,8 @@ body.scie-panel-active .credits-footer {
     display: flex;
     flex-direction: column;
 }
-#milankovitch-panel iframe {
+#milankovitch-panel iframe,
+#bench-panel iframe {
     flex: 1 1 auto;
     min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
     width: 100%;

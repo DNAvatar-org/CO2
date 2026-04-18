@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.15
+// Version 1.1.16
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
+// Logs: v1.1.16 onglet Bench (iframe standalone epoch_bench.html) + fetch html/bench_panel.html + registerTab bench (onShow minimal)
 // Logs: v1.1.15 switchTab → proxy API_ONGLETS ; registerTab visu/scie/milankovitch après chargement SCRIPTS
 // Logs: v1.1.14 EPOCH_ID_TO_NAME 🐊 « Éocène »
 // Logs: v1.1.13 DEBUG_TIMELINE_HIDDEN → pdTrace (TIMELINE epochs)
@@ -137,13 +138,16 @@
 
     Promise.all([
         fetch('html/visu_radiatif.html').then(function (r) { return r.text(); }),
-        fetch('html/scie_radiatif.html').then(function (r) { return r.text(); })
+        fetch('html/scie_radiatif.html').then(function (r) { return r.text(); }),
+        fetch('html/bench_panel.html').then(function (r) { return r.text(); })
     ]).then(function (results) {
         setLoaded(0);
         var visuPanel = document.getElementById('visu-panel');
         var sciePanel = document.getElementById('scie-panel');
+        var benchPanel = document.getElementById('bench-panel');
         if (visuPanel) visuPanel.innerHTML = results[0];
         if (sciePanel) sciePanel.innerHTML = results[1];
+        if (benchPanel) benchPanel.innerHTML = results[2];
         return loadScriptsSequentially(SCRIPTS, 1);
     }).then(function () {
         loaderDone = true;
@@ -248,12 +252,14 @@
     // onShow spécifiques aux tabs (factorisation de l'ancien switchTab). Appelés par API_ONGLETS après .active + shell.setCurrentPanel.
     function onShowVisu() {
         document.body.classList.remove('scie-panel-active');
+        document.body.classList.remove('bench-panel-active');
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('visu');
         if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('resize'));
         if (window.DATA && window.DATA['🧮'] && typeof window.projectToVisu === 'function') window.projectToVisu(window.DATA);
     }
     function onShowScie() {
         document.body.classList.add('scie-panel-active');
+        document.body.classList.remove('bench-panel-active');
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('scie');
         var iframe = document.getElementById('scie-iframe');
         if (iframe && iframe.contentWindow) {
@@ -273,7 +279,14 @@
         }
     }
     function onShowMilankovitch() {
+        // Aligné sur l'ancien switchTab (v1.1.15-) : seul scie-panel-active était manipulé ; bench-panel-active retiré pour cohérence.
         document.body.classList.remove('scie-panel-active');
+        document.body.classList.remove('bench-panel-active');
+    }
+    // Bench = iframe standalone (epoch_bench.html) ; pas de listener shell, pas de sync DATA. body.bench-panel-active pour les règles hauteur.
+    function onShowBench() {
+        document.body.classList.remove('scie-panel-active');
+        document.body.classList.add('bench-panel-active');
     }
 
     window.isVisuPanelActive = function () {
@@ -289,6 +302,7 @@
         // Crash-first : API_ONGLETS doit exister (chargé en tête de SCRIPTS).
         window.API_ONGLETS.registerTab({ id: 'visu', buttonId: 'tab-visu', panelId: 'visu-panel', onShow: onShowVisu });
         window.API_ONGLETS.registerTab({ id: 'scie', buttonId: 'tab-scie', panelId: 'scie-panel', onShow: onShowScie });
+        window.API_ONGLETS.registerTab({ id: 'bench', buttonId: 'tab-bench', panelId: 'bench-panel', onShow: onShowBench });
         window.API_ONGLETS.registerTab({ id: 'milankovitch', buttonId: 'tab-milankovitch', panelId: 'milankovitch-panel', onShow: onShowMilankovitch });
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             if (window.DEBUG_TIMELINE_HIDDEN) {
