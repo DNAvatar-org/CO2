@@ -352,9 +352,10 @@ function updateTemperatureDisplay() {
     // Le thermomètre 🌡️ garde sa couleur Wien via style.color !important (cf. plus haut) → pas écrasé.
     if (syntheseTempEl) {
         if (currentTempCelsius !== null && typeof window.tempSurfaceToColor === 'function') {
-            syntheseTempEl.style.color = window.tempSurfaceToColor(currentTempCelsius);
+            // !important pour verrouiller contre le fallback CSS .synthese_Temp.synthese_Temp-two-cols { color: cyan }
+            syntheseTempEl.style.setProperty('color', window.tempSurfaceToColor(currentTempCelsius), 'important');
         } else {
-            syntheseTempEl.style.color = '';
+            syntheseTempEl.style.removeProperty('color');
         }
     }
     if (tempUnitEl) {

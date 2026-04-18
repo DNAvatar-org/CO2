@@ -1,6 +1,6 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.0.3
+   Version 1.0.6
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
@@ -11,6 +11,7 @@
    - v1.0.3: .tabs-bar button text-transform:uppercase (lisibilité police pixel 04B_03)
    - v1.0.4: #bench-panel / body.bench-panel-active aligné sur #milankovitch-panel (iframe simple standalone)
    - v1.0.5: .app-loader-list li.loaded background → color-mix(--base-color 35%, transparent) (au lieu de vert fluo hardcodé)
+   - v1.0.6: réintroduction #hysteresis-panel / body.hysteresis-panel-active (iframe standalone hysteresis_compute.html) aligné sur #bench-panel / #milankovitch-panel
    ============================================================ */
 
 /* --- Onglets (tabs-bar) : Visuel / Scientifique --- */
@@ -67,9 +68,10 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
 }
-/* Panel scie / bench / milankovitch actif : la page prend la taille du contenu (body peut grandir, scroll = body) */
+/* Panel scie / bench / hyst / milankovitch actif : la page prend la taille du contenu (body peut grandir, scroll = body) */
 body.scie-panel-active,
 body.bench-panel-active,
+body.hysteresis-panel-active,
 body.milankovitch-panel-active {
     height: auto;
     min-height: 100vh;
@@ -139,7 +141,8 @@ body.milankovitch-panel-active {
         border: none;
     }
     #milankovitch-panel.active,
-    #bench-panel.active {
+    #bench-panel.active,
+    #hysteresis-panel.active {
         overflow: visible;
         min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
         max-height: none;
@@ -147,7 +150,8 @@ body.milankovitch-panel-active {
         flex-direction: column;
     }
     #milankovitch-panel iframe,
-    #bench-panel iframe {
+    #bench-panel iframe,
+    #hysteresis-panel iframe {
         flex: 0 0 auto;
         min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
         width: 100%;
@@ -185,9 +189,10 @@ body.milankovitch-panel-active {
 body.scie-panel-active .credits-footer {
     height: var(--visu-footer-max-h);
 }
-/* Même logique que #scie-panel : sans min-height explicite l’iframe reste ~150px → contenu Milankovitch/Bench coincé en haut */
+/* Même logique que #scie-panel : sans min-height explicite l’iframe reste ~150px → contenu Milankovitch/Bench/Hyst coincé en haut */
 #milankovitch-panel.active,
-#bench-panel.active {
+#bench-panel.active,
+#hysteresis-panel.active {
     overflow: visible;
     flex: 0 0 auto;
     height: auto;
@@ -197,7 +202,8 @@ body.scie-panel-active .credits-footer {
     flex-direction: column;
 }
 #milankovitch-panel iframe,
-#bench-panel iframe {
+#bench-panel iframe,
+#hysteresis-panel iframe {
     flex: 1 1 auto;
     min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
     width: 100%;
