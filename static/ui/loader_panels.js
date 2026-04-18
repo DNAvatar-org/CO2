@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.14
+// Version 1.1.15
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: March 2026
+// Logs: v1.1.15 switchTab → proxy API_ONGLETS ; registerTab visu/scie/milankovitch après chargement SCRIPTS
 // Logs: v1.1.14 EPOCH_ID_TO_NAME 🐊 « Éocène »
 // Logs: v1.1.13 DEBUG_TIMELINE_HIDDEN → pdTrace (TIMELINE epochs)
 // Logs: v1.1.12 scie_hysteresis_search.js avant sync_panels (window.HYSTERESIS parent pour hystUnlockIce)
@@ -23,6 +24,7 @@
 (function () {
     'use strict';
     const SCRIPTS = [
+        'static/ui/api_onglets.js',
         'static/debug.js',
         '../API_BILAN/config/model_tuning.js',
         '../API_BILAN/config/model_tuning_biblio.js',
@@ -236,38 +238,43 @@
         } catch (e) {}
     };
 
+    // switchTab = proxy vers API_ONGLETS (v1.1.15). Mécanique (classList, body, shell, postMessage) externalisée en onShow/onHide des tabs (enregistrées plus bas, dans initAfterLoad).
     window.switchTab = function (name) {
-        document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
-        document.querySelectorAll('.tabs-bar button').forEach(function (b) { b.classList.remove('active'); });
-        if (name === 'scie') document.body.classList.add('scie-panel-active'); else document.body.classList.remove('scie-panel-active');
-        var panel = document.getElementById(name + '-panel');
-        var btn = document.getElementById('tab-' + name);
-        if (panel) panel.classList.add('active');
-        if (btn) btn.classList.add('active');
-        if ((name === 'visu' || name === 'scie') && window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel(name);
-        if (name === 'visu') {
-            if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('resize'));
-            if (window.DATA && window.DATA['🧮'] && typeof window.projectToVisu === 'function') window.projectToVisu(window.DATA);
-        }
-        if (name === 'scie') {
-            var iframe = document.getElementById('scie-iframe');
-            if (iframe && iframe.contentWindow) {
-                var epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || (window.SYNC_STATE && window.SYNC_STATE.epochId) || '⚫';
-                var animEnabled = (window.SYNC_STATE && window.SYNC_STATE.animEnabled !== undefined) ? window.SYNC_STATE.animEnabled : false;
-                var ticTime = (window.SYNC_STATE && window.SYNC_STATE.ticTime !== undefined) ? window.SYNC_STATE.ticTime : 0;
-                try {
-                    iframe.contentWindow.postMessage({ type: 'sync:state', payload: { epochId: epochId, animEnabled: animEnabled, ticTime: ticTime } }, '*');
-                } catch (e) {}
-                var dataToSend = (window.DATA && window.DATA['🧮']) ? window.DATA : (window._lastComputePayloadForScie && window._lastComputePayloadForScie.DATA) ? window._lastComputePayloadForScie.DATA : null;
-                if (dataToSend) {
-                    try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: dataToSend }, '*'); } catch (e) {}
-                }
-                if (window.shell && window.shell.restoreConvergenceToScie) window.shell.restoreConvergenceToScie();
-                // Synchrone: éviter setTimeout (debug/trace plus lisible, pas d'effet de bord timing).
-                window.resizeScieIframe();
-            }
+        if (window.API_ONGLETS && window.API_ONGLETS.showTab) {
+            window.API_ONGLETS.showTab(name);
         }
     };
+
+    // onShow spécifiques aux tabs (factorisation de l'ancien switchTab). Appelés par API_ONGLETS après .active + shell.setCurrentPanel.
+    function onShowVisu() {
+        document.body.classList.remove('scie-panel-active');
+        if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('visu');
+        if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('resize'));
+        if (window.DATA && window.DATA['🧮'] && typeof window.projectToVisu === 'function') window.projectToVisu(window.DATA);
+    }
+    function onShowScie() {
+        document.body.classList.add('scie-panel-active');
+        if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('scie');
+        var iframe = document.getElementById('scie-iframe');
+        if (iframe && iframe.contentWindow) {
+            var epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || (window.SYNC_STATE && window.SYNC_STATE.epochId) || '⚫';
+            var animEnabled = (window.SYNC_STATE && window.SYNC_STATE.animEnabled !== undefined) ? window.SYNC_STATE.animEnabled : false;
+            var ticTime = (window.SYNC_STATE && window.SYNC_STATE.ticTime !== undefined) ? window.SYNC_STATE.ticTime : 0;
+            try {
+                iframe.contentWindow.postMessage({ type: 'sync:state', payload: { epochId: epochId, animEnabled: animEnabled, ticTime: ticTime } }, '*');
+            } catch (e) {}
+            var dataToSend = (window.DATA && window.DATA['🧮']) ? window.DATA : (window._lastComputePayloadForScie && window._lastComputePayloadForScie.DATA) ? window._lastComputePayloadForScie.DATA : null;
+            if (dataToSend) {
+                try { iframe.contentWindow.postMessage({ type: 'compute:done', DATA: dataToSend }, '*'); } catch (e) {}
+            }
+            if (window.shell && window.shell.restoreConvergenceToScie) window.shell.restoreConvergenceToScie();
+            // Synchrone: éviter setTimeout (debug/trace plus lisible, pas d'effet de bord timing).
+            window.resizeScieIframe();
+        }
+    }
+    function onShowMilankovitch() {
+        document.body.classList.remove('scie-panel-active');
+    }
 
     window.isVisuPanelActive = function () {
         var visu = document.getElementById('visu-panel');
@@ -278,6 +285,11 @@
         if (typeof window.initCharsForDisplay === 'function') window.initCharsForDisplay();
         // Crash-first: le traceur DOIT exister si debug.js est chargé.
         window.installFunctionTraces();
+        // Enregistrement des onglets (v1.1.15). registerTab est idempotent ; showTab s'appuie dessus.
+        // Crash-first : API_ONGLETS doit exister (chargé en tête de SCRIPTS).
+        window.API_ONGLETS.registerTab({ id: 'visu', buttonId: 'tab-visu', panelId: 'visu-panel', onShow: onShowVisu });
+        window.API_ONGLETS.registerTab({ id: 'scie', buttonId: 'tab-scie', panelId: 'scie-panel', onShow: onShowScie });
+        window.API_ONGLETS.registerTab({ id: 'milankovitch', buttonId: 'tab-milankovitch', panelId: 'milankovitch-panel', onShow: onShowMilankovitch });
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             if (window.DEBUG_TIMELINE_HIDDEN) {
                 try {
