@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.17
+// Version 1.1.18
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.18 physics.js avant tuning.js → EARTH dispo pour syncRadiativeConfig au boot (corrige EARTH.H2O_EDS_SCALE resté à 0.6 au lieu de 0.74 côté scie/visu).
 // Logs: v1.1.17 onglet Hystérésis (iframe standalone hysteresis_compute.html) + fetch html/hysteresis_panel.html + registerTab hysteresis (onShow minimal, body.hysteresis-panel-active)
 // Logs: v1.1.16 onglet Bench (iframe standalone epoch_bench.html) + fetch html/bench_panel.html + registerTab bench (onShow minimal)
 // Logs: v1.1.15 switchTab → proxy API_ONGLETS ; registerTab visu/scie/milankovitch après chargement SCRIPTS
@@ -35,6 +36,7 @@
         'static/compute/dico.js',
         '../API_BILAN/data/initDATA.js',
         '../API_BILAN/config/fine_tuning_bounds.js',
+        '../API_BILAN/physics/physics.js',
         '../API_BILAN/tuning.js',
         'organigramme/configOrganigramme.js',
         '../API_BILAN/event_bus.js',
@@ -43,7 +45,6 @@
         'static/ui/tooltips.js',
         'static/ui/modal.js',
         'static/courbes/patterns.js',
-        '../API_BILAN/physics/physics.js',
         'static/compute/visu_/log_display.js',
         '../API_BILAN/data/hitran_lines_CO2.js',
         '../API_BILAN/data/hitran_lines_H2O.js',

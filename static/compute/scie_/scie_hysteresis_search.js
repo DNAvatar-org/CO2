@@ -1,11 +1,12 @@
 // File: scie_hysteresis_search.js - Recherche seuil CO₂ hystérésis scie_
 // Desc: En français, dans l'architecture, je suis window.HYSTERESIS — négatif : scan CO₂×factor chute T failed <½·x₀ ; positif : ÷factor saut T chaud failed >2·x₀ ; dicho 0,5 [min,max]
-// Version 2.1.7
+// Version 2.1.8
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
-// Date: April 02, 2026 16:30 UTC+1
+// Date: April 18, 2026 20:10 UTC+1
 // Logs:
+// - v2.1.8: lectures HYSTERESIS migrées window.TUNING → window.DATA['🎚️'] (source unique live). Fin de window.TUNING (initDATA.js v1.1.0 : DATA['🎚️'] = clone(DEFAULT.TUNING)).
 // - v2.1.7: CONFIG_COMPUTE.logCo2RadiativeDiagnostic → console 🧲📛🏭 + T après chaque pas (onParentComputeDone)
 // - v2.1.6: parent (index) charge ce fichier — garde-fous DOM ; sync:hysteresis active↔parent ; EPOCH depuis TIMELINE si onEpochButton avant selectEpoch
 // - v2.1.5: sync:state hyst → parent animEnabled true (continuité 🧮🌡️ ; pas reset 📅🌡️🧮 à chaque pas)
@@ -189,7 +190,7 @@
             var btn = document.getElementById('hyst-search-sign-btn');
             var modeEl = document.getElementById('hyst-sign-mode');
             var neg = this.searchSign === 'negative';
-            var Ht = window.TUNING && window.TUNING.HYSTERESIS;
+            var Ht = window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].HYSTERESIS;
             var facRaw = Ht && Number(Ht.scanCo2MassFactor);
             var fac = (Number.isFinite(facRaw) && facRaw > 0 && facRaw < 1) ? facRaw : 0.9;
             if (btn) {
@@ -216,7 +217,7 @@
         onEpochButton: function (epochId) {
             var idxEp = timelineIndexForEpoch(epochId);
             var EPOCH = (idxEp >= 0 && window.TIMELINE[idxEp]) ? window.TIMELINE[idxEp] : window.DATA['📅'];
-            var H = window.TUNING.HYSTERESIS;
+            var H = window.DATA['🎚️'].HYSTERESIS;
             this.active = true;
             this.epochId = epochId;
             this.adapter = defaultCo2Adapter(epochId);

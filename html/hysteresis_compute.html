@@ -2,16 +2,20 @@
 <!--
 # File: CO2/html/hysteresis_compute.html - Hystérésis standalone (iframe index)
 # Desc: Dans l'architecture, je suis la page hôte de l'onglet Hystérésis du shell index.html. Iframe autonome : mêmes scripts que scie_compute.html, mais seul le panneau #hysteresis est visible. Globals isolés par iframe (pas de bridge parent sauf postMessage explicite ultérieurement).
-# Version 1.0.0
+# Version 1.0.3
 # Copyright 2025 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
 # Date: April 18, 2026
 # Logs:
 # - v1.0.0: création. Copie de scie_compute.html + masquage CSS de #config / #fine-tuning / #convergence / #results (DOM conservé pour ne pas casser les scripts communs scie_/log_display/scie_convergence qui écrivent dedans).
+# - v1.0.1: STANDALONE strict — override window.parent.postMessage = noop en tête de <body>. Fix : clic sur bouton hyst émettait sync:state → parent.applyStateFromScie → lancement compute principal (fuite cross-frame). Isolation complète ; bridge explicite (postMessage ciblé) possible ultérieurement si besoin.
+# - v1.0.2: scieRunEpochLikeVisuTimeline : retrait du gate `window === window.top` avant runTest() (l'iframe hyst DOIT calculer localement puisque le parent ne répond plus). Fix: clic bouton hyst s'arrêtait après l'affichage du header (selectEpoch OK mais runTest jamais lancé en iframe).
+# - v1.0.3: __SPECTRAL_WORKER_SCRIPT__ = ../../API_BILAN/workers/spectral_slice_worker.js. Fix: dispatch workers bloquait après "⚙️ [workers] dispatch 2000 bins × 2 layers → 9 workers" car chemin par défaut '../API_BILAN/...' depuis CO2/html/ → 404. scie_ n'est pas touché car il délègue au parent (CO2/index.html où le chemin par défaut est valide).
 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <script src="/CO2/static/logs_to_server.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hystérésis</title>
     <link href="../static/css/style.css" rel="stylesheet">
@@ -52,6 +56,22 @@
     </style>
 </head>
 <body>
+    <script>
+        // v1.0.1: STANDALONE — bloquer tout postMessage sortant vers le parent.
+        // Le code inline scie_ (emitSyncToParent, scie:contentUpdated, action:nextEpoch, compute:done relay)
+        // continue de s'exécuter, mais l'iframe ne peut plus déclencher les listeners parent (shell.applyStateFromScie,
+        // loader_panels 'cycleCalcul'), qui lanceraient un compute principal en arrière-plan au moindre clic hyst.
+        // Accès window.parent autres (dimensionnement iframe, etc.) : aucun dans scie_compute.html (cf. grep).
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage = function () {};
+        }
+        // v1.0.3: STANDALONE — fix chemin worker spectral.
+        // worker_pool.js utilise par défaut '../API_BILAN/workers/spectral_slice_worker.js', résolu par rapport au document.
+        // Depuis CO2/html/ ce chemin donne CO2/API_BILAN/... (404) → workers créés mais morts, dispatch await bloque.
+        // En scie_, le calcul est délégué au parent (CO2/index.html où ../API_BILAN/ est valide) donc le bug n'apparait pas.
+        // En hyst standalone, le calcul tourne dans l'iframe → il faut 2 niveaux de remontée depuis CO2/html/.
+        window.__SPECTRAL_WORKER_SCRIPT__ = '../../API_BILAN/workers/spectral_slice_worker.js';
+    </script>
     <div class="container">
         <div id="config" class="results replied divGlass">
             <h2>📋 Configuration <button class="toggle-button" onclick="toggleConfig()">Formules +</button></h2>
@@ -150,7 +170,13 @@
     <!-- Charger les dépendances dans l'ordre (chemins depuis doc/) -->
     <script src="../static/debug.js"></script>
     <script src="../static/compute/scie_/log_display.js"></script>
-    <script src="../../API_BILAN/configsAll.js"></script>
+    <!-- Ex-configsAll.js (bundle retiré v1.2.0) : sources séparées, ordre = dépendances. -->
+    <script src="../../API_BILAN/config/model_tuning_biblio.js"></script>
+    <script src="../../API_BILAN/config/configTimeline.js"></script>
+    <script src="../../CO2/static/compute/alphabet.js"></script>
+    <script src="../../CO2/static/compute/dico.js"></script>
+    <script src="../../API_BILAN/data/initDATA.js"></script>
+    <script src="../../API_BILAN/config/fine_tuning_bounds.js"></script>
     <script src="../organigramme/configOrganigramme.js"></script>
     <script src="../organigramme/timeline.js"></script>
     <script src="../static/timeline/events.js"></script>
@@ -300,7 +326,9 @@
                 window.HYSTERESIS.onEpochButton(epochId);
             }
             selectEpoch(epochId);
-            if (window === window.top && typeof runTest === 'function') runTest();
+            // v1.0.2: STANDALONE — retrait du gate `window === window.top` : l'iframe hyst DOIT lancer runTest() localement
+            // (le parent ne répond plus depuis que postMessage est muté en tête de body).
+            if (typeof runTest === 'function') runTest();
         }
 
         function syncHystEpochButtonsFromData() {
@@ -1200,11 +1228,7 @@
         }
 
         function syncSolverConfigFromData() {
-            var S = window.DATA['🎚️'].SOLVER;
-            window.CONFIG_COMPUTE.tolMinWm2 = S.TOL_MIN_WM2;
-            window.CONFIG_COMPUTE.maxSearchStepK = S.MAX_SEARCH_STEP_K;
-            window.CONFIG_COMPUTE.maxSearchStepLargeK = S.MAX_SEARCH_STEP_LARGE_K;
-            window.CONFIG_COMPUTE.largeDeltaFactor = S.LARGE_DELTA_FACTOR;
+            // No-op : SOLVER n'est plus dans DATA. Source unique = window.CONFIG_COMPUTE (configTimeline.js v1.4.13).
         }
 
         function renderBiblioLines(logo, title, groupKey, biblioObj) {
@@ -1981,7 +2005,8 @@
                     + ' | co2OceanPumpOverride01=' + fmtPump()
                     + ' | co2OceanEffPump01=' + fmtEffPump()
                     + ' | co2OceanRatioRef=' + (Number.isFinite(Number(window.CONFIG_COMPUTE.co2OceanRatioRef)) ? Number(window.CONFIG_COMPUTE.co2OceanRatioRef).toFixed(1) : '50')
-                    + ' | iceAlbedo=' + iceA;
+                    + ' | iceAlbedo=' + iceA
+                    + ' | firstSearchStepCapK=' + window.CONFIG_COMPUTE.firstSearchStepCapK;
             }
             function clamp01(x) { return Math.max(0, Math.min(1, x)); }
             function interp(min, max, pct) {
@@ -1994,17 +2019,9 @@
                 if (sens === '➘') return hi - (hi - lo) * a;
                 return lo + (hi - lo) * a;
             }
+            // Plages UI hystérésis : source unique window.DEFAULT.BOUNDS.HYSTERESIS (initDATA.js v1.1.0).
             function ensureHystTuning() {
-                window.TUNING = window.TUNING || {};
-                if (window.TUNING.HYSTERESIS) return window.TUNING.HYSTERESIS;
-                window.TUNING.HYSTERESIS = {
-                    seaIceTransitionRangeK: { min: 1, max: 6, default: 2.2, sens_threshold: '➘' },
-                    seaIceStrength01: { min: 0.0, max: 1.0, default: 1.0, sens_threshold: '➚' },
-                    co2OceanScale01: { min: 0.0, max: 1.0, default: 0.1, sens_threshold: '➚' },
-                    co2OceanPumpOverride01: { min: 0.0, max: 1.0, default: 1.0, sens_threshold: '➚' },
-                    iceAlbedoCoeff: { min: 0.50, max: 0.90, default: 0.70, sens_threshold: '➚' }
-                };
-                return window.TUNING.HYSTERESIS;
+                return window.DEFAULT.BOUNDS.HYSTERESIS;
             }
             function applyHystSpeed(pct) {
                 const H = ensureHystTuning();

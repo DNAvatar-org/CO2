@@ -15,6 +15,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <script src="/CO2/static/logs_to_server.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>search_scie — copie scie_compute</title>
     <link href="../static/css/style.css" rel="stylesheet">
@@ -149,7 +150,13 @@
     <!-- Charger les dépendances dans l'ordre (chemins depuis doc/) -->
     <script src="../static/debug.js"></script>
     <script src="../static/compute/scie_/log_display.js"></script>
-    <script src="../../API_BILAN/configsAll.js"></script>
+    <!-- Ex-configsAll.js (bundle retiré v1.2.0) : sources séparées, ordre = dépendances. -->
+    <script src="../../API_BILAN/config/model_tuning_biblio.js"></script>
+    <script src="../../API_BILAN/config/configTimeline.js"></script>
+    <script src="../../CO2/static/compute/alphabet.js"></script>
+    <script src="../../CO2/static/compute/dico.js"></script>
+    <script src="../../API_BILAN/data/initDATA.js"></script>
+    <script src="../../API_BILAN/config/fine_tuning_bounds.js"></script>
     <script src="../organigramme/configOrganigramme.js"></script>
     <script src="../organigramme/timeline.js"></script>
     <script src="../static/timeline/events.js"></script>
@@ -1197,11 +1204,7 @@
         }
 
         function syncSolverConfigFromData() {
-            var S = window.DATA['🎚️'].SOLVER;
-            window.CONFIG_COMPUTE.tolMinWm2 = S.TOL_MIN_WM2;
-            window.CONFIG_COMPUTE.maxSearchStepK = S.MAX_SEARCH_STEP_K;
-            window.CONFIG_COMPUTE.maxSearchStepLargeK = S.MAX_SEARCH_STEP_LARGE_K;
-            window.CONFIG_COMPUTE.largeDeltaFactor = S.LARGE_DELTA_FACTOR;
+            // No-op : SOLVER n'est plus dans DATA. Source unique = window.CONFIG_COMPUTE (configTimeline.js v1.4.13).
         }
 
         function renderBiblioLines(logo, title, groupKey, biblioObj) {
@@ -1990,17 +1993,9 @@
                 if (sens === '➘') return hi - (hi - lo) * a;
                 return lo + (hi - lo) * a;
             }
+            // Plages UI hystérésis : source unique window.DEFAULT.BOUNDS.HYSTERESIS (initDATA.js v1.1.0).
             function ensureHystTuning() {
-                window.TUNING = window.TUNING || {};
-                if (window.TUNING.HYSTERESIS) return window.TUNING.HYSTERESIS;
-                window.TUNING.HYSTERESIS = {
-                    seaIceTransitionRangeK: { min: 1, max: 6, default: 2.2, sens_threshold: '➘' },
-                    seaIceStrength01: { min: 0.0, max: 1.0, default: 1.0, sens_threshold: '➚' },
-                    co2OceanScale01: { min: 0.0, max: 1.0, default: 0.1, sens_threshold: '➚' },
-                    co2OceanPumpOverride01: { min: 0.0, max: 1.0, default: 1.0, sens_threshold: '➚' },
-                    iceAlbedoCoeff: { min: 0.50, max: 0.90, default: 0.70, sens_threshold: '➚' }
-                };
-                return window.TUNING.HYSTERESIS;
+                return window.DEFAULT.BOUNDS.HYSTERESIS;
             }
             function applyHystSpeed(pct) {
                 const H = ensureHystTuning();

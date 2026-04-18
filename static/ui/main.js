@@ -3465,12 +3465,7 @@ function runMainInit() {
                                 if (!Number.isFinite(min) || !Number.isFinite(max)) continue;
                                 T[target.group][target.key] = min + (max - min) * alpha;
                             }
-                            if (window.CONFIG_COMPUTE && T.SOLVER) {
-                                window.CONFIG_COMPUTE.tolMinWm2 = T.SOLVER.TOL_MIN_WM2;
-                                window.CONFIG_COMPUTE.maxSearchStepK = T.SOLVER.MAX_SEARCH_STEP_K;
-                                window.CONFIG_COMPUTE.maxSearchStepLargeK = T.SOLVER.MAX_SEARCH_STEP_LARGE_K;
-                                window.CONFIG_COMPUTE.largeDeltaFactor = T.SOLVER.LARGE_DELTA_FACTOR;
-                            }
+                            // v1.2.0 : SOLVER n'est plus dans DATA. Source unique = window.CONFIG_COMPUTE (configTimeline.js v1.4.13).
                         }
                         return pct;
                     }
@@ -3480,16 +3475,13 @@ function runMainInit() {
                         var snap = interpolateFromBaryToSnapshot();
                         if (snap) {
                             T.CLOUD_SW = Object.assign({}, snap.CLOUD_SW);
-                            T.SOLVER = Object.assign({}, snap.SOLVER);
                         }
                         return {
                             baryByGroup: {
                                 CLOUD_SW: T.baryByGroup.CLOUD_SW,
-                                SCIENCE: T.baryByGroup.SCIENCE,
-                                SOLVER: T.baryByGroup.SOLVER
+                                SCIENCE: T.baryByGroup.SCIENCE
                             },
                             CLOUD_SW: Object.assign({}, T.CLOUD_SW),
-                            SOLVER: Object.assign({}, T.SOLVER),
                             updates: [],
                             run: runFlag === true
                         };

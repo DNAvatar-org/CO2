@@ -1,6 +1,7 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.39
+// Version 1.1.41
+// - v1.1.41: retrait recopie DATA → window.TUNING (syncTuningFromData). DATA['🎚️'] = source unique live (initDATA v1.1.0). Miroirs CONFIG_COMPUTE conservés pour legacy.
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
@@ -28,6 +29,7 @@
 // - v1.1.27: action:nextEpoch depuis scie → togglePlotAnim() dans parent (🎞 = prochaine époque, pas toggle on/off)
 // - v1.1.28: run scie_ émet flux:lastDrawn après compute:done (débloque fin de calcul rouge côté visu)
 // - v1.1.29: debug run complet: source d'appel + payload tuning + état DATA avant runComputeInParent
+// - v1.1.40: projectToVisu recolorise .synthese_Temp (setProperty color !important) + appelle updateLegend(plotData) → fix bug Hadéen title cyan persistant + légende figée au timeClic (setEpoch n'étant pas rappelé hors SKIP époque)
 // - v1.1.30: applyTuningPayload appelle fillDataTuningFromBary si dispo (interpolation depuis bary + FINE_TUNING_BOUNDS)
 // - v1.1.31: _epochIdToName 🐊 « Éocène »
 // - v1.1.26: [4] effectif groupe reste ouvert jusqu'à [4] retour (suppr _logStepEnd prématuré)
@@ -99,37 +101,29 @@
         }, '*');
     }
 
-    // DATA['🎚️'] seule ref : payload contient baryByGroup + CLOUD_SW + SOLVER (remplissage complet depuis iframe).
+    // DATA['🎚️'] seule ref : payload contient baryByGroup + CLOUD_SW + HYSTERESIS + RADIATIVE.
+    // SOLVER n'est plus dans DATA (source unique = CONFIG_COMPUTE, configTimeline.js v1.4.13).
     function applyTuningPayload(payload) {
         var T = window.DATA['🎚️'];
         if (payload.baryByGroup) {
             if (payload.baryByGroup.CLOUD_SW !== undefined) T.baryByGroup.CLOUD_SW = payload.baryByGroup.CLOUD_SW;
             if (payload.baryByGroup.SCIENCE !== undefined) T.baryByGroup.SCIENCE = payload.baryByGroup.SCIENCE;
-            if (payload.baryByGroup.SOLVER !== undefined) T.baryByGroup.SOLVER = payload.baryByGroup.SOLVER;
             if (payload.baryByGroup.HYSTERESIS !== undefined) T.baryByGroup.HYSTERESIS = payload.baryByGroup.HYSTERESIS;
         }
         if (typeof window.fillDataTuningFromBary === 'function') {
             window.fillDataTuningFromBary();
         } else {
             T.CLOUD_SW = Object.assign({}, T.CLOUD_SW, payload.CLOUD_SW || {});
-            T.SOLVER = Object.assign({}, T.SOLVER, payload.SOLVER || {});
         }
         (payload.updates || []).forEach(function (u) {
             if (!T[u.group]) T[u.group] = {};
             T[u.group][u.key] = u.value;
         });
-        syncTuningFromData();
     }
 
-    // DATA source → TUNING et CONFIG_COMPUTE dérivés.
+    // v1.1.42 : no-op. SOLVER n'est plus dans DATA ; source unique = window.CONFIG_COMPUTE
+    // (configTimeline.js v1.4.13). Fonction conservée pour compat des appelants.
     function syncTuningFromData() {
-        var T = window.DATA['🎚️'];
-        window.TUNING.CLOUD_SW = Object.assign({}, T.CLOUD_SW);
-        window.TUNING.SOLVER = Object.assign({}, T.SOLVER);
-        window.CONFIG_COMPUTE.tolMinWm2 = T.SOLVER.TOL_MIN_WM2;
-        window.CONFIG_COMPUTE.maxSearchStepK = T.SOLVER.MAX_SEARCH_STEP_K;
-        window.CONFIG_COMPUTE.maxSearchStepLargeK = T.SOLVER.MAX_SEARCH_STEP_LARGE_K;
-        window.CONFIG_COMPUTE.largeDeltaFactor = T.SOLVER.LARGE_DELTA_FACTOR;
     }
 
     // Applique payload sync:state au DATA du contexte courant (sans DOM). Utilisé avant runComputeInParent quand run:true.
@@ -278,8 +272,17 @@
         window.plotData.co2_ppm = co2_ppm;
         window.spectralConverged = true;
         window.spectralPrecisionTarget = 'max';
+        // v1.1.40: resync couleur T° courante (hors chemin setEpoch anticipé).
+        // - updateBlackBodyColor : met à jour la couleur globale des corps noirs (plot).
+        // - .synthese_Temp : title col-left/right → couleur T° sol (sinon reste bloqué sur anticipation ou fallback cyan).
+        // - updateLegend : regénère SVG strokes + textes équilibre avec la nouvelle couleur (sinon timeClic → plot recolore mais légende reste figée).
+        var newColor = window.tempSurfaceToColor(tempC);
+        window.updateBlackBodyColor(newColor);
+        var syntheseTempEl = document.querySelector('.synthese_Temp');
+        if (syntheseTempEl) syntheseTempEl.style.setProperty('color', newColor, 'important');
         // Dernier cycle : toujours mettre à jour plot + spectre (pas de garde FPS)
         window.updatePlot(window.plotData);
+        window.updateLegend(window.plotData);
         window.updateFluxLabels('ProcessFinished');
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {
