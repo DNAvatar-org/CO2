@@ -1,5 +1,6 @@
 /* test_computeRadiativeTransfer.css - BACKUP : NE PAS TOUCHER
    Page de test standalone (frise simple | emoji + date) */
+/* v1.0.1: .convergence-inline-json font-family Verdana/Tahoma/sans-serif (remplace monospace) */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -77,5 +78,5 @@ body {
 #convergence:not(.details-visible) .convergence-details-block { display: none; }
 .convergence-details-block, .convergence-cycle-eau-block { margin-left: 12px; margin-top: 4px; }
 .iteration-header { font-size: 10px; color: #aaa; margin-top: 6px; }
-.convergence-inline-json { font-family: monospace; font-size: 10px; }
+.convergence-inline-json { font-family: Verdana, Tahoma, sans-serif; font-size: 10px; }
 .error { color: #f66; }

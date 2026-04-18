@@ -1,4 +1,5 @@
 /* scie_compute.css - Vue scientifique (iframe) */
+/* v1.1.2: .convergence-inline-json → var(--font-emoji), Verdana/Tahoma/sans-serif (remplace monospace ; virgule cassée corrigée) */
 /* v1.1.1: html overflow-y auto — scroll document si contenu long (ex. logs hystérésis sans scroll interne) */
 /* v1.1.0: scie_timeline-epoch-section fit-content ; scie_epochs-container flex:1 — frise occupe le reste ; pas de >> en scie (HTML) */
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -194,5 +195,5 @@ body {
 #convergence:not(.details-visible) .convergence-details-block { display: none; }
 .convergence-details-block, .convergence-cycle-eau-block { margin-left: 12px; margin-top: 4px; }
 .iteration-header { font-size: 10px; color: #aaa; margin-top: 6px; }
-.convergence-inline-json { font-family: var(--font-emoji), monospace; font-size: 10px; }
+.convergence-inline-json { font-family: var(--font-emoji), Verdana, Tahoma, sans-serif; font-size: 10px; }
 .error { color: #f66; }
