@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.18
+// Version 1.1.19
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.19 workers/worker_pool.js ajouté après hitran.js → scie/visu utilisent les workers (parallèle) comme bench. Retire divergence 0.115 W/m² sur 🧲🌈🔼 (ordre addition float série vs parallèle) → 15.28°C → 15.35°C aligné 📱.
 // Logs: v1.1.18 physics.js avant tuning.js → EARTH dispo pour syncRadiativeConfig au boot (corrige EARTH.H2O_EDS_SCALE resté à 0.6 au lieu de 0.74 côté scie/visu).
 // Logs: v1.1.17 onglet Hystérésis (iframe standalone hysteresis_compute.html) + fetch html/hysteresis_panel.html + registerTab hysteresis (onShow minimal, body.hysteresis-panel-active)
 // Logs: v1.1.16 onglet Bench (iframe standalone epoch_bench.html) + fetch html/bench_panel.html + registerTab bench (onShow minimal)
@@ -50,6 +51,7 @@
         '../API_BILAN/data/hitran_lines_H2O.js',
         '../API_BILAN/data/hitran_lines_CH4.js',
         '../API_BILAN/spectroscopy/hitran.js',
+        '../API_BILAN/workers/worker_pool.js',
         '../API_BILAN/physics/climate.js',
         '../API_BILAN/atmosphere/calculations_atm.js',
         '../API_BILAN/albedo/calculations_albedo.js',
