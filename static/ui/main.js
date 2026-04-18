@@ -348,13 +348,13 @@ function updateTemperatureDisplay() {
             thermometerIcon.style.setProperty('text-shadow', '', 'important');
         }
     }
-    // Couleur dynamique (tempSurfaceToColor) sur la colonne droite : T° + pression
-    const syntheseTempColRight = syntheseTempEl ? syntheseTempEl.querySelector('.synthese_Temp-col-right') : null;
-    if (syntheseTempColRight) {
+    // Couleur dynamique (tempSurfaceToColor) sur tout .synthese_Temp (col-left dates + col-right T°/pression).
+    // Le thermomètre 🌡️ garde sa couleur Wien via style.color !important (cf. plus haut) → pas écrasé.
+    if (syntheseTempEl) {
         if (currentTempCelsius !== null && typeof window.tempSurfaceToColor === 'function') {
-            syntheseTempColRight.style.color = window.tempSurfaceToColor(currentTempCelsius);
+            syntheseTempEl.style.color = window.tempSurfaceToColor(currentTempCelsius);
         } else {
-            syntheseTempColRight.style.color = '';
+            syntheseTempEl.style.color = '';
         }
     }
     if (tempUnitEl) {

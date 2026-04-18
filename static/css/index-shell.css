@@ -10,6 +10,7 @@
    - v1.0.2: retrait onglet Hysteresis (#hysteresis-panel, body.hysteresis-panel-active)
    - v1.0.3: .tabs-bar button text-transform:uppercase (lisibilité police pixel 04B_03)
    - v1.0.4: #bench-panel / body.bench-panel-active aligné sur #milankovitch-panel (iframe simple standalone)
+   - v1.0.5: .app-loader-list li.loaded background → color-mix(--base-color 35%, transparent) (au lieu de vert fluo hardcodé)
    ============================================================ */
 
 /* --- Onglets (tabs-bar) : Visuel / Scientifique --- */
@@ -279,6 +280,7 @@ body.scie-panel-active .credits-footer {
     break-inside: avoid;
 }
 .app-loader-list li.loaded {
-    background: rgba(0, 160, 0, 0.35);
+    /* Fond = couleur de base alpha (cohérent avec --base-color, au lieu du vert fluo hardcodé). */
+    background: color-mix(in srgb, var(--base-color) 35%, transparent);
     color: var(--base-color, #0a0);
 }

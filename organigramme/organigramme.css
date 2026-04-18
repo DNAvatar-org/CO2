@@ -1078,7 +1078,7 @@
 }
 
 /* synthese_Temp : variante 2 colonnes (sans coupler à #visu-panel .title-container) */
-/* couleur dynamique par JS (updateTemperatureDisplay → synthese_Temp-col-right) ; dates via --retro-orange */
+/* couleur dynamique par JS (updateTemperatureDisplay → .synthese_Temp entier, cols L+R) ; thermomètre garde sa couleur Wien !important */
 .synthese_Temp.synthese_Temp-two-cols {
     color: cyan; /* fallback avant premier calcul JS */
     padding: 0px;
