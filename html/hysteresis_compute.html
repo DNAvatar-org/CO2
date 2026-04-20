@@ -2,11 +2,13 @@
 <!--
 # File: CO2/html/hysteresis_compute.html - Hystérésis standalone (iframe index)
 # Desc: Dans l'architecture, je suis la page hôte de l'onglet Hystérésis du shell index.html. Iframe autonome : mêmes scripts que scie_compute.html, mais seul le panneau #hysteresis est visible. Globals isolés par iframe (pas de bridge parent sauf postMessage explicite ultérieurement).
-# Version 1.0.3
+# Version 1.0.5
 # Copyright 2025 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
 # Date: April 18, 2026
 # Logs:
+# - v1.0.5: 3 boutons hyst — libellés 🪸⛄ −735 Ma (run ⛄ ▶ −720), ⛄🪼 −645 Ma (run 1b ▶ −690), 🐊🏔 −34 Ma (run 2 ▶ −35) ; sync sans hyst-epoch-h1.
+# - v1.0.4: panneau hyst — 4 boutons époque (1a, ⛄ Plein Snowball, 1b, hysteresis 2) + isHyst inclut ⛄ ; sync sélection par id ; flex-wrap sur la rangée.
 # - v1.0.0: création. Copie de scie_compute.html + masquage CSS de #config / #fine-tuning / #convergence / #results (DOM conservé pour ne pas casser les scripts communs scie_/log_display/scie_convergence qui écrivent dedans).
 # - v1.0.1: STANDALONE strict — override window.parent.postMessage = noop en tête de <body>. Fix : clic sur bouton hyst émettait sync:state → parent.applyStateFromScie → lancement compute principal (fuite cross-frame). Isolation complète ; bridge explicite (postMessage ciblé) possible ultérieurement si besoin.
 # - v1.0.2: scieRunEpochLikeVisuTimeline : retrait du gate `window === window.top` avant runTest() (l'iframe hyst DOIT calculer localement puisque le parent ne répond plus). Fix: clic bouton hyst s'arrêtait après l'affichage du header (selectEpoch OK mais runTest jamais lancé en iframe).
@@ -38,7 +40,7 @@
         #hysteresis .hyst-sens { font-size: 11px; opacity: 0.75; margin-left: 6px; white-space: nowrap; }
         #hysteresis #hyst-info { font-size: 11px; opacity: 0.85; margin-top: 8px; font-family: monospace; white-space: pre-wrap; }
         #hysteresis .hyst-epoch-row { display: flex; align-items: stretch; flex-wrap: nowrap; margin: 0; }
-        #hysteresis .hyst-epoch-row--tight { gap: 6px; }
+        #hysteresis .hyst-epoch-row--tight { gap: 6px; flex-wrap: wrap; }
         #hysteresis .hyst-sign-swap { min-width: 2.25rem; padding: 6px 10px; font-size: 16px; line-height: 1; align-self: center; display: inline-flex; align-items: center; justify-content: center; }
         #hysteresis #hyst-sign-mode { font-weight: 600; opacity: 0.92; margin-left: 0.15em; }
         #hysteresis .hyst-epoch-btn {
@@ -98,13 +100,17 @@
                         <button type="button" class="toggle-button" id="hyst-literature-preset" onclick="applyHysteresisLiteraturePreset(); return false;" title="Applique HYSTERESIS_LITERATURE_PRESET (FINE_TUNING_BOUNDS groupe HYSTERESIS + TUNING_BIBLIO)">Preset lit. +</button>
                     </div>
                     <div class="hyst-epoch-row hyst-epoch-row--tight">
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1" title="hysteresis 1a — 🪸 · ☃ (début ▶ −750 Ma)" onclick="scieRunEpochLikeVisuTimeline('hysteresis 1a')">
-                            <span class="hyst-epoch-glyphs" aria-hidden="true">🪸☃</span>
-                            <span class="hyst-epoch-caption hyst-epoch-date">-750Ma</span>
+                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-snow" title="Repère visuel −735 Ma. Calcul : époque TIMELINE ⛄ (début ▶ −720 Ma) — baisser le CO₂ pour geler, recherche du seuil hystérésis." onclick="scieRunEpochLikeVisuTimeline('⛄')">
+                            <span class="hyst-epoch-glyphs" aria-hidden="true">🪸⛄</span>
+                            <span class="hyst-epoch-caption hyst-epoch-date">-735Ma</span>
                         </button>
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h2" title="hysteresis 2 — 🐊 · 🏔 (début ▶ −35 Ma)" onclick="scieRunEpochLikeVisuTimeline('hysteresis 2')">
+                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1b" title="Repère visuel −645 Ma (milieu d’intervalle cible). Calcul : hysteresis 1b — Sortie Marinoen (début ▶ −690 Ma), transition vers Paléozoïque marin 🪼." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1b')">
+                            <span class="hyst-epoch-glyphs" aria-hidden="true">⛄🪼</span>
+                            <span class="hyst-epoch-caption hyst-epoch-date">-645Ma</span>
+                        </button>
+                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h2" title="Repère visuel −34 Ma. Calcul : hysteresis 2 — Eocène–Oligocène (début ▶ −35 Ma)." onclick="scieRunEpochLikeVisuTimeline('hysteresis 2')">
                             <span class="hyst-epoch-glyphs" aria-hidden="true">🐊🏔</span>
-                            <span class="hyst-epoch-caption hyst-epoch-date">-35Ma</span>
+                            <span class="hyst-epoch-caption hyst-epoch-date">-34Ma</span>
                         </button>
                     </div>
                 </div>
@@ -197,8 +203,7 @@
     <script src="../static/compute/scie_/scie_hysteresis_search.js"></script>
     <!-- Hooks convergence définis avant calculations_flux.js (éviter if (window.xxx) dans le flux) -->
     <script>
-        window.clearConvergenceTrace = function () {};
-        window.appendConvergenceStep = function () {};
+        // Stubs CONVERGE.clearConvergenceTrace / CONVERGE.appendConvergenceStep : définis par calculations_flux.js.
     </script>
     <script src="../../API_BILAN/convergence/calculations_flux.js"></script>
     <script src="../static/FPS/FPS.js"></script>
@@ -274,7 +279,7 @@
             const animEnabled = animBtn
                 ? animBtn.classList.contains('selected')
                 : !!(DATA && DATA['🔘'] && DATA['🔘']['🔘🎞']);
-            const h2oTotalFromMeteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+            const h2oTotalFromMeteorites = (typeof window.RUNTIME_STATE.h2oTotalFromMeteorites !== 'undefined') ? window.RUNTIME_STATE.h2oTotalFromMeteorites : 0;
             const payload = { epochId, animEnabled, ticTime, h2oTotalFromMeteorites };
             if (bary !== undefined) payload.bary = bary;
             if (DATA && DATA['🎚️']) {
@@ -315,7 +320,7 @@
 
         function scieRunEpochLikeVisuTimeline(epochId) {
             if (!window.TIMELINE) return;
-            var isHyst = (epochId === 'hysteresis 1a' || epochId === 'hysteresis 1b' || epochId === 'hysteresis 2');
+            var isHyst = (epochId === 'hysteresis 1a' || epochId === 'hysteresis 1b' || epochId === 'hysteresis 2' || epochId === '⛄');
             if (isHyst) scieEnableAnimForHystSync();
             else scieDisableAnimLikeVisu();
             window._scieLastRunWasHystButton = isHyst;
@@ -333,10 +338,9 @@
 
         function syncHystEpochButtonsFromData() {
             var id = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
-            var b1 = document.getElementById('hyst-epoch-h1');
-            var b2 = document.getElementById('hyst-epoch-h2');
-            if (b1) b1.classList.toggle('selected', id === 'hysteresis 1a' || id === 'hysteresis 1b');
-            if (b2) b2.classList.toggle('selected', id === 'hysteresis 2');
+            document.getElementById('hyst-epoch-snow').classList.toggle('selected', id === '⛄');
+            document.getElementById('hyst-epoch-h1b').classList.toggle('selected', id === 'hysteresis 1b');
+            document.getElementById('hyst-epoch-h2').classList.toggle('selected', id === 'hysteresis 2');
         }
         
         // Intercepter console.log pour afficher dans la page
@@ -647,8 +651,8 @@
                             // 2. Temps avance (📿💫 = compteur universel, barycentre + date)
                             D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
                             // 3. Physique
-                            window.getEpochDateConfig();
-                            window.getNoyau();
+                            window.COMPUTE.getEpochDateConfig();
+                            window.COMPUTE.getNoyau();
                             // 4. Log
                             const ppmAfter = (D['⚖️'] && D['⚖️']['⚖️🫧'] > 0)
                                 ? Math.round((D['⚖️']['⚖️🏭'] * 0.029 / (D['⚖️']['⚖️🫧'] * 0.04401)) * 1e6)
@@ -685,8 +689,8 @@
                         if (!D['📜']) D['📜'] = {};
                         D['📜']['🔺🍰⚽'] = Math.min(0.95, (D['📜']['🔺🍰⚽'] || 0) + stepVeil);
                         D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
-                        window.getEpochDateConfig();
-                        window.getNoyau();
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
                         updateTimelineDisplay();
                         emitSyncToParent();
                     });
@@ -700,8 +704,8 @@
                     ticBtn.title = 'Avancer d\'un tic (refroidissement, flux géothermique)';
                     ticBtn.addEventListener('click', () => {
                         window.DATA['📜'][_ctrK] = (window.DATA['📜'][_ctrK] || 0) + 1;
-                        window.getEpochDateConfig();
-                        window.getNoyau();
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
                         updateTimelineDisplay();
                         emitSyncToParent();
                     });
@@ -727,10 +731,10 @@
                     const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
                     if (!D['💧']) D['💧'] = {};
                     D['💧']['☄️'] = Math.min(100, ((D['📜']['🔺⚖️💧'] || 0) / earthTotalWaterKg) * 100);
-                    window.h2oTotalFromMeteorites = D['💧']['☄️'];
+                    window.RUNTIME_STATE.h2oTotalFromMeteorites = D['💧']['☄️'];
                     // Physique
-                    window.getEpochDateConfig();
-                    window.getNoyau();
+                    window.COMPUTE.getEpochDateConfig();
+                    window.COMPUTE.getNoyau();
                     updateTimelineDisplay();
                     emitSyncToParent();
                 });
@@ -772,12 +776,6 @@
             window.DATA['📜']['👉'] = epochIndex_final;
             window.DATA['📜']['🗿'] = epochId; // Logo de l'époque (emoji), pas la description
             
-            // Initialiser window.getGeologicalPeriodByName si nécessaire
-            if (!window.getGeologicalPeriodByName) {
-                window.getGeologicalPeriodByName = function(name) {
-                    return window.TIMELINE.find(epoch => epoch['📅'] === name);
-                };
-            }
             
             // Initialiser DATA si nécessaire
             if (!window.DATA['📜']) window.DATA['📜'] = {};
@@ -821,8 +819,8 @@
             }
             
             // Initialiser les états activés
-            if (window.getEnabledStates) {
-                window.getEnabledStates();
+            if (window.COMPUTE && window.COMPUTE.getEnabledStates) {
+                window.COMPUTE.getEnabledStates();
             }
             
             // Créer ou mettre à jour plot-anim-toggle-checkbox pour compatibilité avec compute.js
@@ -881,13 +879,13 @@
                 }
                 const DATA = window.DATA;
                 let result = null;
-                const dateConfig = window.getEpochDateConfig ? window.getEpochDateConfig() : null;
+                const dateConfig = (window.COMPUTE && window.COMPUTE.getEpochDateConfig) ? window.COMPUTE.getEpochDateConfig() : null;
                 if (!DATA['🔘']['🔘🎞']) {
                     DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
                 }
 
                 // 1. Config dès le debug (sans aucun calcul radiatif)
-                if (window.initForConfig && !window.initForConfig()) {
+                if (window.CONVERGE && !window.CONVERGE.initForConfig()) {
                     console.error('❌ initForConfig a échoué');
                     return;
                 }
@@ -902,7 +900,7 @@
                         if (!DATA['🔘']['🔘🎞']) {
                             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
                         }
-                        if (window.initForConfig && !window.initForConfig()) {
+                        if (window.CONVERGE && !window.CONVERGE.initForConfig()) {
                             console.error('❌ initForConfig a échoué (boucle hystérésis)');
                             break;
                         }
@@ -913,7 +911,7 @@
                     DATA['🧮']['🧮🔄🌊'] = 0;
                     DATA['🧮']['🧮🔄🪩'] = 0;
 
-                    result = await window.computeRadiativeTransfer();
+                    result = await window.CONVERGE.computeRadiativeTransfer();
                     if (window.displayConvergence) window.displayConvergence();
 
                     var HYST = window.HYSTERESIS;
@@ -1472,11 +1470,11 @@
             initializeGlobals();
             const DATA = window.DATA;
             DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
-            if (!window.initForConfig()) throw new Error('initForConfig a échoué');
+            if (!window.CONVERGE.initForConfig()) throw new Error('initForConfig a échoué');
             DATA['🧮']['previous'] = [];
             DATA['🧮']['🧮🔄🌊'] = 0;
             DATA['🧮']['🧮🔄🪩'] = 0;
-            const result = await window.computeRadiativeTransfer();
+            const result = await window.CONVERGE.computeRadiativeTransfer();
             displayResults(result);
             displayConvergence();
             return result;
@@ -1789,7 +1787,7 @@
             const P_atm_val = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
             html += `<div class="config-value">🎈 Pression au sol: ${(P_atm_val != null && Number.isFinite(P_atm_val)) ? P_atm_val.toFixed(2) + ' atm' : '—'}</div>`;
             const P_atm = DATA['🫧'] && DATA['🫧']['🎈'];
-            const T_boil_K = (typeof window.getBoilingPointKFromPressure === 'function' && P_atm != null) ? window.getBoilingPointKFromPressure(P_atm) : null;
+            const T_boil_K = (P_atm != null) ? window.H2O.getBoilingPointKFromPressure(P_atm) : null;
             const TcNum = T_final_C != null ? Number(T_final_C) : null;
             if (P_atm != null && P_atm < 0.01) html += `<div class="config-value">T_ébullition(🎈=${P_atm.toFixed(2)} atm) = — (pas d'atmosphère, liquide impossible)</div>`;
             else if (T_boil_K != null) { const T_boil_C = (T_boil_K - CONST.KELVIN_TO_CELSIUS).toFixed(1); const aboveBoil = Number.isFinite(TcNum) && TcNum > T_boil_K - CONST.KELVIN_TO_CELSIUS; html += `<div class="config-value">T_ébullition(🎈=${P_atm.toFixed(2)} atm) = ${T_boil_C}°C ${aboveBoil ? '→ T finale &gt; T_ébullition (eau bout)' : '→ liquide possible'}</div>`; }
@@ -1821,8 +1819,8 @@
             }
         }
 
-        window.clearConvergenceTrace = clearConvergenceTrace;
-        window.appendConvergenceStep = appendConvergenceStep;
+        window.CONVERGE.clearConvergenceTrace = clearConvergenceTrace;
+        window.CONVERGE.appendConvergenceStep = appendConvergenceStep;
 
         // 🔒 Exposer displayConvergence sur window pour que calculations_flux.js puisse l'appeler
         window.displayConvergence = displayConvergence;

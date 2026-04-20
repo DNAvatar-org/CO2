@@ -398,7 +398,7 @@ function updateTimeline() {
     }
 
     const currentTicTime = window.textureIndex;
-    const currentIceLevel = window.h2oIceFractionFromCalculation;
+    const currentIceLevel = window.RUNTIME_STATE.h2oIceFractionFromCalculation;
 
     window.isTextChange = (window.lastTicTime !== undefined && window.lastTicTime !== currentTicTime);
     if (window.isTextChange || window.lastTicTime === undefined) {

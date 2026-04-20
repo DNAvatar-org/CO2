@@ -6,8 +6,8 @@
 
 ### Constantes
 - `window.SOLAR_CONSTANT` : 1366 W/m² (constante solaire) — ou depuis DATA['☀️'] selon époque
-- `window.waterVaporEnabled` : boolean (H2O activé/désactivé)
-- `window.methaneEnabled` : boolean (CH4 activé/désactivé)
+- `window.UI_STATE.waterVaporEnabled` : boolean (H2O activé/désactivé)
+- `window.UI_STATE.methaneEnabled` : boolean (CH4 activé/désactivé)
 
 ### Fonctions de calcul
 - `window.calculateCO2Forcing(CO2_fraction)` : Diagnostic ΔF CO2 (W/m², convention affichage, climate.js)
@@ -79,7 +79,7 @@
 - **top** : `{h2o_percent}%`
   - h2o_percent : calculé depuis vapeur d'eau ou 0 si désactivé
 - **bottom** : `{forcing_H2O} W/m²`
-  - forcing_H2O : `window.calculateH2OForcing(window.waterVaporEnabled, plotData.current.cloud_coverage)`
+  - forcing_H2O : `window.calculateH2OForcing(window.UI_STATE.waterVaporEnabled, plotData.current.cloud_coverage)`
 
 #### Albédo
 - **top** : `{forcing_albedo} W/m²`

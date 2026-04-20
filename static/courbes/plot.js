@@ -1,9 +1,10 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.56
-// Date: [April 15, 2026]
+// Version 1.0.57
+// Date: [April 18, 2026]
 // logs :
+// - v1.0.57: namespace PLOT (source unique) : updatePlot, updateSpectralVisualization, updatePlotAltitudeAxis, tempToColor, tempSurfaceToColor, debugZIndex, debugPlotlyStructure, updateSpectralBandIndicatorsGhostOnly. Migration lectures/écritures UI_STATE/RUNTIME_STATE (fps, showSpectralBackground, spectralConverged, spectralPrecisionTarget, currentEpochName).
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -99,6 +100,9 @@ window.globalFontFamily = 'ProggyDotted'; // Police par défaut pour le graphiqu
 
 var CONST = window.CONST; /* var pour éviter redeclaration avec main.js */
 
+// Namespace PLOT : source unique des fonctions exposées par plot.js.
+var PLOT = window.PLOT = window.PLOT || {};
+
 // Fonction pour obtenir la couleur par défaut du body (vert)
 function getDefaultTextColor() {
     if (typeof window !== 'undefined' && document.body) {
@@ -116,7 +120,7 @@ window.PLANCK_TEMPERATURES = [180, 225, 255, 275, 300, 315];
  * @param {number} tempC - Température en °C
  * @returns {string} Couleur (cyan, jaune, rouge, etc.)
  */
-window.tempSurfaceToColor = function (tempC) {
+PLOT.tempSurfaceToColor = function (tempC) {
     if (tempC <= -20) {
         return 'cyan';
     } else if (tempC < 20) {
@@ -143,7 +147,7 @@ window.tempSurfaceToColor = function (tempC) {
 
 // Fonction de couleur basée sur la température (palette avec couleurs très distinctes)
 // Exposer globalement pour être accessible depuis main.js
-window.tempToColor = function tempToColor(temp, temp_min = 180, temp_max = 315) {
+PLOT.tempToColor = function tempToColor(temp, temp_min = 180, temp_max = 315) {
     // Palette de couleurs très distinctes et contrastées
     const colorMap = {
         180: '#00BFFF',  // Bleu ciel
@@ -193,7 +197,7 @@ window.tempToColor = function tempToColor(temp, temp_min = 180, temp_max = 315) 
 }
 
 // Fonction de debug pour vérifier les z-index
-window.debugZIndex = function () {
+PLOT.debugZIndex = function () {
     const canvas = document.getElementById('spectral-visualization');
     const title = document.querySelector('.plot-overlay-title');
     const plotContainer = document.getElementById('plot-container');
@@ -202,7 +206,7 @@ window.debugZIndex = function () {
 };
 
 // Fonction de debug pour inspecter la structure DOM de Plotly
-window.debugPlotlyStructure = function () {
+PLOT.debugPlotlyStructure = function () {
     const plotContainer = document.getElementById('plot-container');
     if (!plotContainer) {
         return;
@@ -640,7 +644,7 @@ function resizeCanvasToPlot(callback) {
  * Pendant la convergence : ne pas appeler (la barre reste stable).
  * À la fin : range + tickvals pour plus de précision en bas (0–200 km) quand l'échelle est grande.
  */
-window.updatePlotAltitudeAxis = function (atm_height_km) {
+PLOT.updatePlotAltitudeAxis = function (atm_height_km) {
     const plotContainer = document.getElementById('plot-container');
     if (!plotContainer || typeof Plotly === 'undefined') return;
     if (!plotContainer._fullLayout) return;
@@ -755,7 +759,7 @@ function getPlotlyFont(size, color) {
  * Le picto Géométrie sur #flux-diagram reste géré par organigramme.css (hide-organigram-observation-metrics), pas par cette fonction.
  */
 function spectralIndicatorsGhostActive() {
-    return typeof window !== 'undefined' && window.currentEpochName === 'Corps Noir';
+    return typeof window !== 'undefined' && window.RUNTIME_STATE.currentEpochName === 'Corps Noir';
 }
 
 function applySpectralIndicatorsGhostStyle(el) {
@@ -766,7 +770,7 @@ function applySpectralIndicatorsGhostStyle(el) {
     el.style.removeProperty('opacity');
 }
 
-window.updateSpectralBandIndicatorsGhostOnly = function updateSpectralBandIndicatorsGhostOnly() {
+PLOT.updateSpectralBandIndicatorsGhostOnly = function updateSpectralBandIndicatorsGhostOnly() {
     const wrap = document.querySelector('.plot-container-wrapper');
     if (!wrap) return;
     wrap.querySelectorAll('.absorption-band-indicator, .spectral-eds-marker').forEach(applySpectralIndicatorsGhostStyle);
@@ -878,7 +882,7 @@ function drawAbsorptionBandIndicators() {
     const Teff = (pdPlot && pdPlot.current && pdPlot.current.effective_temperature != null && Number.isFinite(pdPlot.current.effective_temperature))
         ? pdPlot.current.effective_temperature : null;
 
-    const epNamePlot = window.currentEpochName;
+    const epNamePlot = window.RUNTIME_STATE.currentEpochName;
     const scaleFactorPlot = (epNamePlot === 'Corps Noir' ? 1e12 : 1e13);
     function scaleYLocal(raw) {
         return raw / scaleFactorPlot;
@@ -1171,8 +1175,8 @@ function drawAbsorptionBandIndicators() {
     let edsSunColor = getDefaultTextColor();
     if (typeof window !== 'undefined' && window.currentBlackBodyColor) {
         edsSunColor = window.currentBlackBodyColor;
-    } else if (typeof window !== 'undefined' && window.plotData && typeof window.plotData.temp_surface_c === 'number' && typeof window.tempSurfaceToColor === 'function') {
-        edsSunColor = window.tempSurfaceToColor(window.plotData.temp_surface_c);
+    } else if (window.plotData && typeof window.plotData.temp_surface_c === 'number') {
+        edsSunColor = PLOT.tempSurfaceToColor(window.plotData.temp_surface_c);
     }
 
     const xAxisMark = getXPosition(lambdaEdsSunUm);
@@ -1252,13 +1256,13 @@ function drawAbsorptionBandIndicators() {
     }
 }
 
-window.updatePlot = function updatePlot(data) {
+PLOT.updatePlot = function updatePlot(data) {
     const traces = [];
 
     if (!data.lambda_range) return;
 
     const lambda_range = data.lambda_range;
-    const epochName = window.currentEpochName;
+    const epochName = window.RUNTIME_STATE.currentEpochName;
     const isHadeen = (epochName === 'Hadéen');
     const scaleFactor = (epochName === 'Corps Noir' ? 1e12 : 1e13);
     const scaleLabel = (epochName === 'Corps Noir' ? ' ×10¹²' : ' ×10¹³');
@@ -1441,9 +1445,8 @@ window.updatePlot = function updatePlot(data) {
         // Cette couleur est mise à jour dans setEpoch avant les calculs, et dans finalizeResults après convergence
         if (typeof window !== 'undefined' && window.currentBlackBodyColor) {
             color_current = window.currentBlackBodyColor;
-        } else if (temp_surface_c !== undefined && typeof window.tempSurfaceToColor === 'function') {
-            // Priorité 2 : Utiliser la température terrestre en °C pour déterminer la couleur
-            color_current = window.tempSurfaceToColor(temp_surface_c);
+        } else if (temp_surface_c !== undefined) {
+            color_current = PLOT.tempSurfaceToColor(temp_surface_c);
         } else {
             // Fallback : utiliser l'ancienne logique basée sur le ppm
             if (data.co2_ppm === 0) color_current = 'cyan';
@@ -1523,22 +1526,18 @@ window.updatePlot = function updatePlot(data) {
     let z_trop_km;
     let delta_T_trop_strato = null; // Différence de température entre tropopause et stratosphère
     if (has_temperature) {
-        if (window.currentEpochName === 'Corps Noir') {
+        if (window.RUNTIME_STATE.currentEpochName === 'Corps Noir') {
             z_trop_m = 0;
             z_trop_km = 0;
         } else {
-            if (typeof window.calculateTropopauseHeight !== 'function') {
-                console.error('[updatePlot] ❌ ERREUR CRITIQUE : calculateTropopauseHeight non disponible');
-                throw new Error('calculateTropopauseHeight requise pour calculer la tropopause');
-            }
-            z_trop_m = window.calculateTropopauseHeight();
+            z_trop_m = window.ATM.calculateTropopauseHeight();
             z_trop_km = z_trop_m / 1000; // Convertir en km
             
             // Calculer la différence de température entre tropopause et stratosphère
             // Gradient de température : Gamma = -0.0065 K/m (par défaut)
             let Gamma = -0.0065;
-            if (typeof window !== 'undefined' && window.currentEpochName && typeof window.getGeologicalPeriodByName === 'function') {
-                const currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+            if (window.RUNTIME_STATE.currentEpochName && window.GEOLOGY) {
+                const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName);
                 if (currentEpoch) {
                     if (typeof currentEpoch.lapse_rate === 'number') {
                         Gamma = currentEpoch.lapse_rate;
@@ -1567,17 +1566,17 @@ window.updatePlot = function updatePlot(data) {
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
     const currentEpoch = window.configOrganigramme.timeline.find(e =>
-        e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+        e.type === 'epoch' && (e.name === window.RUNTIME_STATE.currentEpochName || e.id === window.RUNTIME_STATE.currentEpochName)
     );
     if (!currentEpoch) {
-        console.error('[updatePlot] ❌ ERREUR CRITIQUE : Époque non trouvée:', window.currentEpochName);
-        throw new Error(`Époque '${window.currentEpochName}' non trouvée dans timeline`);
+        console.error('[updatePlot] ❌ ERREUR CRITIQUE : Époque non trouvée:', window.RUNTIME_STATE.currentEpochName);
+        throw new Error(`Époque '${window.RUNTIME_STATE.currentEpochName}' non trouvée dans timeline`);
     }
 
     const total_atmosphere_mass_kg = currentEpoch['⚖️🫧'];
     if (total_atmosphere_mass_kg === undefined) {
-        console.error('[updatePlot] ❌ ERREUR CRITIQUE : ⚖️🫧 non défini pour l\'époque:', window.currentEpochName);
-        throw new Error(`⚖️🫧 non défini pour l'époque '${window.currentEpochName}'`);
+        console.error('[updatePlot] ❌ ERREUR CRITIQUE : ⚖️🫧 non défini pour l\'époque:', window.RUNTIME_STATE.currentEpochName);
+        throw new Error(`⚖️🫧 non défini pour l'époque '${window.RUNTIME_STATE.currentEpochName}'`);
     }
 
     if (total_atmosphere_mass_kg === 0) {
@@ -1586,13 +1585,13 @@ window.updatePlot = function updatePlot(data) {
     } else {
         const gravityVal = currentEpoch.gravity !== undefined ? currentEpoch.gravity : currentEpoch['🍎'];
         if (gravityVal === undefined || gravityVal <= 0) {
-            console.error('[updatePlot] ❌ ERREUR CRITIQUE : gravity non défini pour l\'époque:', window.currentEpochName);
-            throw new Error(`gravity non défini pour l'époque '${window.currentEpochName}'`);
+            console.error('[updatePlot] ❌ ERREUR CRITIQUE : gravity non défini pour l\'époque:', window.RUNTIME_STATE.currentEpochName);
+            throw new Error(`gravity non défini pour l'époque '${window.RUNTIME_STATE.currentEpochName}'`);
         }
         // Calculer molar_mass_air depuis les composants si non défini dans la config
         let molar_mass_air = currentEpoch.molar_mass_air;
-        if (molar_mass_air === undefined && typeof window.calculateMolarMassAir === 'function') {
-            molar_mass_air = window.calculateMolarMassAir(currentEpoch);
+        if (molar_mass_air === undefined) {
+            molar_mass_air = window.ATM.calculateMolarMassAir(currentEpoch);
         }
         // Fallback si toujours undefined ou 0
         if (molar_mass_air === undefined || molar_mass_air === 0) {
@@ -1616,7 +1615,7 @@ window.updatePlot = function updatePlot(data) {
                 T0_to_use = Math.pow(flux_absorbed / CONST.STEFAN_BOLTZMANN, 0.25);
             }
         }
-        const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use, molar_mass_air, gravityVal);
+        const props = window.ATM.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use, molar_mass_air, gravityVal);
         z_max_km = props.z_max / 1000;
         scale_height_m = props.scale_height;
     }
@@ -1668,7 +1667,7 @@ window.updatePlot = function updatePlot(data) {
             } else {
             // z_range non disponible (init) — configOrganigramme/currentEpochName déjà validés en entrée
             const currentEpoch = window.configOrganigramme.timeline.find(e =>
-                e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+                e.type === 'epoch' && (e.name === window.RUNTIME_STATE.currentEpochName || e.id === window.RUNTIME_STATE.currentEpochName)
             );
             if (currentEpoch) {
                 const total_atmosphere_mass_kg = currentEpoch['⚖️🫧']; // Nom plus explicite
@@ -1676,8 +1675,8 @@ window.updatePlot = function updatePlot(data) {
                 const gravity = currentEpoch.gravity !== undefined ? currentEpoch.gravity : (currentEpoch['🍎'] !== undefined ? currentEpoch['🍎'] : 9.81);
 
                 let molar_mass = currentEpoch.molar_mass_air;
-                if (molar_mass === undefined && typeof window.calculateMolarMassAir === 'function') {
-                    molar_mass = window.calculateMolarMassAir(currentEpoch);
+                if (molar_mass === undefined) {
+                    molar_mass = window.ATM.calculateMolarMassAir(currentEpoch);
                 }
                 if (molar_mass === undefined) {
                     if (total_atmosphere_mass_kg > 2.5e19) molar_mass = 0.044;
@@ -1699,7 +1698,7 @@ window.updatePlot = function updatePlot(data) {
                         T0_to_use_fallback = Math.pow(flux_absorbed / CONST.STEFAN_BOLTZMANN, 0.25);
                     }
                 }
-                const props = window.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use_fallback, molar_mass, gravity);
+                const props = window.ATM.calculateAtmosphereProperties(total_atmosphere_mass_kg, T0_to_use_fallback, molar_mass, gravity);
                 z_max_km = props.z_max / 1000;
             }
         }
@@ -1748,7 +1747,7 @@ window.updatePlot = function updatePlot(data) {
         }
     });
     const minY = (window.FLUX && typeof window.FLUX.minYMaxLuminance === 'number') ? window.FLUX.minYMaxLuminance : 0.5;
-    const isConverged = (typeof window.spectralConverged !== 'undefined' && window.spectralConverged);
+    const isConverged = (typeof window.RUNTIME_STATE.spectralConverged !== 'undefined' && window.RUNTIME_STATE.spectralConverged);
     const forceRecalcY = (window.FLUX && window.FLUX.yAxisRecalcOnNextFinish);
     let y_max_luminance;
 
@@ -1757,8 +1756,8 @@ window.updatePlot = function updatePlot(data) {
     } else {
         if (forceRecalcY && window.FLUX) window.FLUX.yAxisRecalcOnNextFinish = false;
         let T_est = 255;
-        if (typeof window.getGeologicalPeriodByName === 'function') {
-            const ep = window.getGeologicalPeriodByName(epochName);
+        if (window.GEOLOGY) {
+            const ep = window.GEOLOGY.getGeologicalPeriodByName(epochName);
             if (ep && typeof ep['🌡️🧮'] === 'number') T_est = ep['🌡️🧮'];
         } else if (window.TIMELINE) {
             const item = window.TIMELINE.find(e => e['📅'] && (e.name === epochName || (e.epochName === epochName)));
@@ -2290,45 +2289,40 @@ function wavelengthToColor(lambda_m, lambda_range_min, lambda_range_max) {
 
 // Variable globale pour suivre l'état de convergence et la précision cible
 if (typeof window !== 'undefined') {
-    window.spectralPrecisionTarget = 'auto'; // 'auto', 'low', 'medium', 'high', 'max'
-    window.spectralConverged = false;
+    window.RUNTIME_STATE.spectralPrecisionTarget = 'auto'; // 'auto', 'low', 'medium', 'high', 'max'
+    window.RUNTIME_STATE.spectralConverged = false;
 }
 
 // Écouter l'événement de convergence pour ajuster la précision
 if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('calculationConverged', (event) => {
         // Convergence atteinte : vérifier le FPS pour décider de la précision finale
-        if (window.fps === undefined) {
-            console.error('[plot.js] ❌ ERREUR CRITIQUE : window.fps non défini');
-            throw new Error('window.fps requis');
-        }
-        const currentFPS = window.fps;
+        const currentFPS = window.RUNTIME_STATE.fps;
         if (currentFPS > 55) {
             // FPS stable : cibler la précision maximale (pixel par pixel)
-            window.spectralConverged = true;
-            window.spectralPrecisionTarget = 'max';
+            window.RUNTIME_STATE.spectralConverged = true;
+            window.RUNTIME_STATE.spectralPrecisionTarget = 'max';
         } else if (currentFPS > 45) {
             // FPS bon : précision haute
-            window.spectralConverged = true;
-            window.spectralPrecisionTarget = 'high';
+            window.RUNTIME_STATE.spectralConverged = true;
+            window.RUNTIME_STATE.spectralPrecisionTarget = 'high';
         } else {
-            // FPS moyen : précision moyenne
-            window.spectralConverged = true;
-            window.spectralPrecisionTarget = 'medium';
+            window.RUNTIME_STATE.spectralConverged = true;
+            window.RUNTIME_STATE.spectralPrecisionTarget = 'medium';
         }
 
         // Redessiner avec la nouvelle précision si on a des données
         const canvas = document.getElementById('spectral-visualization');
         if (canvas && canvas._lastData) {
             setTimeout(() => {
-                window.updateSpectralVisualization(canvas._lastData);
+                PLOT.updateSpectralVisualization(canvas._lastData);
             }, 100);
         }
     });
 }
 
 // Fonction pour créer la visualisation spectrale
-window.updateSpectralVisualization = function (data) {
+PLOT.updateSpectralVisualization = function (data) {
     // 🔒 CORRECTION : Le canvas doit TOUJOURS être visible
     // showSpectralBackground contrôle seulement si on redessine ou non (pas la visibilité)
     const canvas = document.getElementById('spectral-visualization');
@@ -2344,7 +2338,7 @@ window.updateSpectralVisualization = function (data) {
     canvas.style.setProperty('visibility', 'visible', 'important');
     canvas.style.setProperty('opacity', '1', 'important');
 
-    if (window.showSpectralBackground === false) {
+    if (window.RUNTIME_STATE.showSpectralBackground === false) {
         return;
     }
     if (!data || !data.upward_flux || !data.lambda_range || !data.z_range) {
@@ -2487,7 +2481,7 @@ function drawSpectralVisualization(canvas, data) {
     // 🔒 CORRECTION : showSpectralBackground contrôle seulement le redessin, pas la visibilité
     // Le canvas doit toujours être visible, même si showSpectralBackground = false
     // Si false, on ne redessine pas (mais le canvas reste visible avec les dernières données)
-    if (typeof window !== 'undefined' && window.showSpectralBackground === false) {
+    if (typeof window !== 'undefined' && window.RUNTIME_STATE.showSpectralBackground === false) {
         // Ne pas redessiner si FPS trop bas ou anim désactivé (mais canvas reste visible)
         return;
     }
@@ -2530,17 +2524,9 @@ function drawSpectralVisualization(canvas, data) {
 
     // Adapter la précision en fonction du FPS et de l'état de convergence
     // Le canvas écoute l'événement 'calculationConverged' pour savoir quand augmenter la précision
-    if (window.fps === undefined) {
-        console.error('[drawSpectralVisualization] ❌ ERREUR CRITIQUE : window.fps non défini');
-        throw new Error('window.fps requis');
-    }
-    const currentFPS = window.fps;
-    const isConverged = window.spectralConverged !== undefined ? window.spectralConverged : false;
-    if (window.spectralPrecisionTarget === undefined) {
-        console.error('[drawSpectralVisualization] ❌ ERREUR CRITIQUE : window.spectralPrecisionTarget non défini');
-        throw new Error('window.spectralPrecisionTarget requis');
-    }
-    const precisionTarget = window.spectralPrecisionTarget;
+    const currentFPS = window.RUNTIME_STATE.fps;
+    const isConverged = window.RUNTIME_STATE.spectralConverged;
+    const precisionTarget = window.RUNTIME_STATE.spectralPrecisionTarget;
 
     let resolutionFactor;
     if (isDichotomy) {
@@ -2666,13 +2652,13 @@ function drawSpectralVisualization(canvas, data) {
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
     const currentEpoch = window.configOrganigramme.timeline.find(e =>
-        e.type === 'epoch' && (e.name === window.currentEpochName || e.id === window.currentEpochName)
+        e.type === 'epoch' && (e.name === window.RUNTIME_STATE.currentEpochName || e.id === window.RUNTIME_STATE.currentEpochName)
     );
     const total_mass = currentEpoch['⚖️🫧'];
     if (total_mass === 0 || total_mass === undefined) {
         has_atmosphere = false;
     } else {
-        const props = window.calculateAtmosphereProperties();
+        const props = window.ATM.calculateAtmosphereProperties();
         H = props.scale_height;
     }
 

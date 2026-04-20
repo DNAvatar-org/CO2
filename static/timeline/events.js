@@ -43,7 +43,7 @@ window.updateEpochActions = function () {
 
     eventsLogos.innerHTML = '';
 
-    const currentEpochName = window.currentEpochName || 'Corps Noir';
+    const currentEpochName = window.RUNTIME_STATE.currentEpochName || 'Corps Noir';
     const getEpochConfigById = (id) => (window.configOrganigramme && window.configOrganigramme.timeline)
         ? window.configOrganigramme.timeline.find(e => e.type === 'epoch' && e.id === id) : null;
     const epochId = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'] != null ? window.DATA['📜']['🗿'] : '';
@@ -139,21 +139,21 @@ window.updateEpochActions = function () {
                 const h2oToAdd = (mass_kg / earthTotalWaterKg) * 100;
                 const newH2O = Math.min(100, currentH2O + h2oToAdd);
                 DATA['💧']['☄️'] = newH2O;
-                window.h2oTotalFromMeteorites = newH2O;
-                window.h2oIceFractionFromCalculation = undefined;
+                window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
+                window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
                 window.isIceChange = true;
                 window.lastIceLevel = undefined;
                 DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
                 DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
                 window.infoTimeMa += stepMa;
-                window.getEpochDateConfig();
-                window.getNoyau();
+                window.COMPUTE.getEpochDateConfig();
+                window.COMPUTE.getNoyau();
                 if (!window.FLUX) window.FLUX = {};
                 window.FLUX.yAxisRecalcOnNextFinish = true;
                 window.IO_LISTENER.emit('config:applyThenCompute', { button: '☄️' });
                 window.updateTimeline();
                 checkDateEvents();
-                const h2o_total = newH2O + (window.h2oVaporPercent != null ? window.h2oVaporPercent : 0);
+                const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
                 window.updateH2OLevelDirect(h2o_total);
                 });
             } else {
@@ -166,8 +166,8 @@ window.updateEpochActions = function () {
                     h2oToAdd = Math.max(h2oToAdd * 10, 2.1);
                     const newH2O = Math.min(100, currentH2O + h2oToAdd);
                     DATA['💧']['☄️'] = newH2O;
-                    window.h2oTotalFromMeteorites = newH2O;
-                    window.h2oIceFractionFromCalculation = undefined;
+                    window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
+                    window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
                     DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
                     DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
                     window.infoTimeMa = Math.min(500, window.infoTimeMa + stepMa);
@@ -178,7 +178,7 @@ window.updateEpochActions = function () {
                     window.updateHadeenTexture();
                     checkDateEvents();
                     if (window.infoTimeMa >= 500) window.setEpoch('Archéen');
-                    const h2o_total = newH2O + (window.h2oVaporPercent != null ? window.h2oVaporPercent : 0);
+                    const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
                     window.updateH2OLevelDirect(h2o_total);
                 });
             }
@@ -195,17 +195,17 @@ window.updateEpochActions = function () {
         window.addCustomTooltip(bigImpactBtn, 'Impact majeur - Crée la lune');
         bigImpactBtn.addEventListener('click', () => {
             window.hideTooltip();
-            const h2o_base = window.h2oVaporPercent != null ? window.h2oVaporPercent : 0;
-            const h2o_meteorites = window.h2oTotalFromMeteorites != null ? window.h2oTotalFromMeteorites : 0;
-            window.savedH2O = h2o_base + h2o_meteorites;
+            const h2o_base = window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0;
+            const h2o_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites != null ? window.RUNTIME_STATE.h2oTotalFromMeteorites : 0;
+            window.UI_STATE.savedH2O = h2o_base + h2o_meteorites;
             if (window.PLOT_PANEL_READY) {
-                window.savedCO2 = window.plotData.co2_ppm;
-                window.savedCH4 = window.plotData.ch4_ppm;
+                window.UI_STATE.savedCO2 = window.plotData.co2_ppm;
+                window.UI_STATE.savedCH4 = window.plotData.ch4_ppm;
             } else {
-                window.savedCO2 = 0;
-                window.savedCH4 = 0;
+                window.UI_STATE.savedCO2 = 0;
+                window.UI_STATE.savedCH4 = 0;
             }
-            window.maximiseData = true;
+            window.UI_STATE.maximiseData = true;
             window.setEpoch(targetName);
         });
         eventsLogos.appendChild(bigImpactBtn);
@@ -280,8 +280,8 @@ window.updateEpochActions = function () {
                         // Temps (📿💫 = compteur universel)
                         D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
                         // Physique
-                        window.getEpochDateConfig();
-                        window.getNoyau();
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
                         if (!window.FLUX) window.FLUX = {};
                         window.FLUX.yAxisRecalcOnNextFinish = true;
                         window.IO_LISTENER.emit('config:applyThenCompute', { button: emoji });
@@ -354,8 +354,8 @@ window.updateEpochActions = function () {
                                 }
                             }
                         }
-                        window.getEpochDateConfig();
-                        window.getNoyau();
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
                         if (!window.FLUX) window.FLUX = {};
                         window.FLUX.yAxisRecalcOnNextFinish = true;
                         window.IO_LISTENER.emit('config:applyThenCompute', { button: '💫' });
@@ -370,22 +370,22 @@ window.updateEpochActions = function () {
 
 // Fonction pour vérifier les événements automatiques selon la date
 function checkDateEvents() {
-    const currentEpoch = window.currentEpochName || '';
+    const currentEpoch = window.RUNTIME_STATE.currentEpochName || '';
     const infoTimeMa = window.infoTimeMa || 0;
     if (currentEpoch !== 'Corps Noir' || infoTimeMa < 500) return;
 
     window.hideTooltip();
-    const h2o_base = window.h2oVaporPercent != null ? window.h2oVaporPercent : 0;
-    const h2o_meteorites = window.h2oTotalFromMeteorites != null ? window.h2oTotalFromMeteorites : 0;
-    window.savedH2O = h2o_base + h2o_meteorites;
+    const h2o_base = window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0;
+    const h2o_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites != null ? window.RUNTIME_STATE.h2oTotalFromMeteorites : 0;
+    window.UI_STATE.savedH2O = h2o_base + h2o_meteorites;
     if (window.PLOT_PANEL_READY) {
-        window.savedCO2 = window.plotData.co2_ppm;
-        window.savedCH4 = window.plotData.ch4_ppm;
+        window.UI_STATE.savedCO2 = window.plotData.co2_ppm;
+        window.UI_STATE.savedCH4 = window.plotData.ch4_ppm;
     } else {
-        window.savedCO2 = 0;
-        window.savedCH4 = 0;
+        window.UI_STATE.savedCO2 = 0;
+        window.UI_STATE.savedCH4 = 0;
     }
-    window.maximiseData = true;
+    window.UI_STATE.maximiseData = true;
     window.setEpoch('Hadéen');
 }
 

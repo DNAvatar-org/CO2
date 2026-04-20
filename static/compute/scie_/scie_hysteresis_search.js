@@ -1,11 +1,13 @@
 // File: scie_hysteresis_search.js - Recherche seuil CO₂ hystérésis scie_
 // Desc: En français, dans l'architecture, je suis window.HYSTERESIS — négatif : scan CO₂×factor chute T failed <½·x₀ ; positif : ÷factor saut T chaud failed >2·x₀ ; dicho 0,5 [min,max]
-// Version 2.1.8
+// Version 2.1.10
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: April 18, 2026 20:10 UTC+1
 // Logs:
+// - v2.1.10: clearHystEpochButtonsSelected — retrait hyst-epoch-h1 (UI hyst = 3 boutons seulement : snow, h1b, h2).
+// - v2.1.9: clearHystEpochButtonsSelected — retirer .selected sur hyst-epoch-snow (⛄) et hyst-epoch-h1b (hysteresis 1b) en plus de h1 / h2.
 // - v2.1.8: lectures HYSTERESIS migrées window.TUNING → window.DATA['🎚️'] (source unique live). Fin de window.TUNING (initDATA.js v1.1.0 : DATA['🎚️'] = clone(DEFAULT.TUNING)).
 // - v2.1.7: CONFIG_COMPUTE.logCo2RadiativeDiagnostic → console 🧲📛🏭 + T après chaque pas (onParentComputeDone)
 // - v2.1.6: parent (index) charge ce fichier — garde-fous DOM ; sync:hysteresis active↔parent ; EPOCH depuis TIMELINE si onEpochButton avant selectEpoch
@@ -52,7 +54,7 @@
     }
 
     function readCo2Ppm() {
-        return window.co2KgToFraction(
+        return window.ATM.co2KgToFraction(
             window.DATA['⚖️']['⚖️🏭'],
             window.DATA['⚖️']['⚖️🫧'],
             window.DATA['🫧']['🧪']
@@ -75,7 +77,7 @@
             },
             writeXToTimeline: function (x) {
                 window.TIMELINE[timelineIndexForEpoch(epochId)]['⚖️🏭'] = clampX(x);
-                window.getMasses();
+                window.COMPUTE.getMasses();
             },
             readXFromData: function () {
                 return Number(window.DATA['⚖️']['⚖️🏭']);
@@ -180,10 +182,9 @@
         },
 
         clearHystEpochButtonsSelected: function () {
-            var h1 = document.getElementById('hyst-epoch-h1');
-            var h2 = document.getElementById('hyst-epoch-h2');
-            if (h1) h1.classList.remove('selected');
-            if (h2) h2.classList.remove('selected');
+            document.getElementById('hyst-epoch-snow').classList.remove('selected');
+            document.getElementById('hyst-epoch-h1b').classList.remove('selected');
+            document.getElementById('hyst-epoch-h2').classList.remove('selected');
         },
 
         syncSearchSignButtonUI: function () {
@@ -301,7 +302,7 @@
                     animEnabled: true,
                     ticTime: DATA['📜']['📿💫'],
                     hysteresisActive: true,
-                    h2oTotalFromMeteorites: window.h2oTotalFromMeteorites,
+                    h2oTotalFromMeteorites: window.RUNTIME_STATE.h2oTotalFromMeteorites,
                     hysteresisTimelineCo2Kg: this.x,
                     bary: DATA['📜']['bary'],
                     tuning: {

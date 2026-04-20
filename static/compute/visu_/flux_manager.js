@@ -29,9 +29,9 @@
             const solarSurfaceFluxMW = (solarPowerTotal / this.SOLAR_SURFACE_AREA) / 1e6; // MW/m²
 
             // 3. Mise à jour du DOM (Flux Diagram)
-            window.updateLabel('solar_surface_mw', solarSurfaceFluxMW);
-            window.updateLabel('solar_power_total', solarPowerTotal);
-            window.updateLabel('solar_1UA_mw', solarConstant);
+            window.ORG.updateLabel('solar_surface_mw', solarSurfaceFluxMW);
+            window.ORG.updateLabel('solar_power_total', solarPowerTotal);
+            window.ORG.updateLabel('solar_1UA_mw', solarConstant);
 
             // Log désactivé (trop verbeux)
             // if (window.isDebugPhases) {
@@ -53,7 +53,7 @@
             if (!window.DATA['🌕']) window.DATA['🌕'] = {};
             window.DATA['🌕']['🧲🌕'] = flux;
 
-            window.updateLabel('core_flux_wm', flux);
+            window.ORG.updateLabel('core_flux_wm', flux);
         },
 
         /**
@@ -69,7 +69,7 @@
             
             const surface = 4 * Math.PI * Math.pow(radius, 2);
             const totalPower = flux * surface;
-            window.updateLabel('core_temperature', totalPower <= 0 ? 0 : totalPower);
+            window.ORG.updateLabel('core_temperature', totalPower <= 0 ? 0 : totalPower);
         },
 
         /**
@@ -77,7 +77,7 @@
          * @param {string} epochName - Nom ou ID de l'époque
          */
         updateAllFluxes: function (epochName) {
-            const epoch = window.getGeologicalPeriodByName(epochName);
+            const epoch = window.GEOLOGY.getGeologicalPeriodByName(epochName);
             const solarIntensity = epoch.solar_intensity;
             const geothermalFlux = epoch.core_temperature === 0 ? 0 : epoch.geothermal_flux;
             const planetRadius = epoch.planet_radius;

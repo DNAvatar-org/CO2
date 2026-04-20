@@ -1,6 +1,7 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.41
+// Version 1.1.42
+// - v1.1.42: migration namespaces — window.PLOT.updatePlot / updateSpectralVisualization / tempSurfaceToColor + window.ORG.updateFluxLabels + RUNTIME_STATE (currentEpochName, spectralConverged, spectralPrecisionTarget, showSpectralBackground, h2oVaporPercent, h2oTotalFromMeteorites). Retrait stubs updateFluxLabels / updateLabel (ordre chargement contractuel, crash-first).
 // - v1.1.41: retrait recopie DATA → window.TUNING (syncTuningFromData). DATA['🎚️'] = source unique live (initDATA v1.1.0). Miroirs CONFIG_COMPUTE conservés pour legacy.
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -52,13 +53,8 @@
     'use strict';
     const IO_LISTENER = window.IO_LISTENER;
 
-    // Stubs pour éviter crash si projectToVisu/runComputeInParent appellent FluxManager avant que organigramme.js ait défini updateFluxLabels / updateLabel (ordre chargement ; organigramme remplace par les vraies fonctions)
-    if (typeof window.updateFluxLabels !== 'function') {
-        window.updateFluxLabels = function () {};
-    }
-    if (typeof window.updateLabel !== 'function') {
-        window.updateLabel = function () {};
-    }
+    // organigramme.js doit être chargé avant sync_panels.js — contrat d'ordre (loader_panels).
+    // ORG.updateFluxLabels / ORG.updateLabel : source unique, pas de stub.
 
     window.SYNC_STATE = {
         epochId: '⚫',
@@ -110,8 +106,8 @@
             if (payload.baryByGroup.SCIENCE !== undefined) T.baryByGroup.SCIENCE = payload.baryByGroup.SCIENCE;
             if (payload.baryByGroup.HYSTERESIS !== undefined) T.baryByGroup.HYSTERESIS = payload.baryByGroup.HYSTERESIS;
         }
-        if (typeof window.fillDataTuningFromBary === 'function') {
-            window.fillDataTuningFromBary();
+        if (window.TUNING && window.TUNING.fillDataTuningFromBary) {
+            window.TUNING.fillDataTuningFromBary();
         } else {
             T.CLOUD_SW = Object.assign({}, T.CLOUD_SW, payload.CLOUD_SW || {});
         }
@@ -137,7 +133,7 @@
                 window.DATA['📜']['🗿'] = payload.epochId;
                 if (window.configOrganigramme && window.configOrganigramme.timeline) {
                     var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === payload.epochId; });
-                    if (ep) window.currentEpochName = ep.name;
+                    if (ep) window.RUNTIME_STATE.currentEpochName = ep.name;
                 }
             }
         }
@@ -181,7 +177,7 @@
                     window.DATA['📜']['🗿'] = payload.epochId;
                     if (window.configOrganigramme && window.configOrganigramme.timeline) {
                         var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === payload.epochId; });
-                        if (ep) window.currentEpochName = ep.name;
+                        if (ep) window.RUNTIME_STATE.currentEpochName = ep.name;
                     }
                 }
             }
@@ -222,7 +218,7 @@
             }
         }
         if (fromScie && payload.h2oTotalFromMeteorites !== undefined) {
-            window.h2oTotalFromMeteorites = payload.h2oTotalFromMeteorites;
+            window.RUNTIME_STATE.h2oTotalFromMeteorites = payload.h2oTotalFromMeteorites;
             if (!window.DATA['💧']) window.DATA['💧'] = {};
             window.DATA['💧']['☄️'] = payload.h2oTotalFromMeteorites;
         }
@@ -233,7 +229,7 @@
             window.plotData = { lambda_range: null, current: null, co2_ppm: 0, ch4_ppm: 0, temp_surface: 0 };
         }
         var CONST = window.CONST;
-        var spectral = window.getSpectralResultFromDATA();
+        var spectral = window.RADIATIVE.getSpectralResultFromDATA();
         var T0 = DATA['🧮']['🧮🌡️'];
         var tempC = T0 - CONST.KELVIN_TO_CELSIUS;
         document.getElementById('temp-surface-synthese').textContent = tempC.toFixed(1);
@@ -243,12 +239,12 @@
         // ppm CO2/CH4 = fraction molaire × 1e6 (co2KgToFraction/ch4KgToFraction), pas fraction massique × 1e6
         var atm_kg = DATA['⚖️']['⚖️🫧'];
         var M_air = DATA['🫧']['🧪'];
-        var co2_ppm = window.co2KgToFraction(DATA['⚖️']['⚖️🏭'], atm_kg, M_air) * 1e6;
-        var ch4_ppm = window.ch4KgToFraction(DATA['⚖️']['⚖️🐄'], atm_kg, M_air) * 1e6;
+        var co2_ppm = window.ATM.co2KgToFraction(DATA['⚖️']['⚖️🏭'], atm_kg, M_air) * 1e6;
+        var ch4_ppm = window.ATM.ch4KgToFraction(DATA['⚖️']['⚖️🐄'], atm_kg, M_air) * 1e6;
         var h2o_vapor_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
-        var h2o_meteorites = (typeof window.h2oTotalFromMeteorites !== 'undefined') ? window.h2oTotalFromMeteorites : 0;
+        var h2o_meteorites = (typeof window.RUNTIME_STATE.h2oTotalFromMeteorites !== 'undefined') ? window.RUNTIME_STATE.h2oTotalFromMeteorites : 0;
         window.plotData.ch4_ppm = ch4_ppm;
-        window.h2oVaporPercent = Math.min(100, Math.max(0, h2o_vapor_frac * 100 + h2o_meteorites));
+        window.RUNTIME_STATE.h2oVaporPercent = Math.min(100, Math.max(0, h2o_vapor_frac * 100 + h2o_meteorites));
         window.plotData.lambda_range = spectral.lambda_range;
         window.plotData.lambda_weights = spectral.lambda_weights;
         var sigma = (CONST && CONST.STEFAN_BOLTZMANN != null) ? CONST.STEFAN_BOLTZMANN : 5.670374419e-8;
@@ -270,23 +266,23 @@
         window.plotData.temp_surface_c = tempC;
         window.plotData.temp_surface = T0;
         window.plotData.co2_ppm = co2_ppm;
-        window.spectralConverged = true;
-        window.spectralPrecisionTarget = 'max';
+        window.RUNTIME_STATE.spectralConverged = true;
+        window.RUNTIME_STATE.spectralPrecisionTarget = 'max';
         // v1.1.40: resync couleur T° courante (hors chemin setEpoch anticipé).
         // - updateBlackBodyColor : met à jour la couleur globale des corps noirs (plot).
         // - .synthese_Temp : title col-left/right → couleur T° sol (sinon reste bloqué sur anticipation ou fallback cyan).
         // - updateLegend : regénère SVG strokes + textes équilibre avec la nouvelle couleur (sinon timeClic → plot recolore mais légende reste figée).
-        var newColor = window.tempSurfaceToColor(tempC);
+        var newColor = window.PLOT.tempSurfaceToColor(tempC);
         window.updateBlackBodyColor(newColor);
         var syntheseTempEl = document.querySelector('.synthese_Temp');
         if (syntheseTempEl) syntheseTempEl.style.setProperty('color', newColor, 'important');
         // Dernier cycle : toujours mettre à jour plot + spectre (pas de garde FPS)
-        window.updatePlot(window.plotData);
+        window.PLOT.updatePlot(window.plotData);
         window.updateLegend(window.plotData);
-        window.updateFluxLabels('ProcessFinished');
+        window.ORG.updateFluxLabels('ProcessFinished');
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {
-                var fresh = window.getSpectralResultFromDATA();
+                var fresh = window.RADIATIVE.getSpectralResultFromDATA();
                 if (fresh.lambda_range && fresh.upward_flux) {
                     window.plotData.lambda_range = fresh.lambda_range;
                     window.plotData.lambda_weights = fresh.lambda_weights;
@@ -298,11 +294,11 @@
                     window.plotData.temp_surface_c = window.plotData.current.temp_surface_c;
                     window.plotData.temp_surface = T0Data;
                 }
-                window.updatePlot(window.plotData);
+                window.PLOT.updatePlot(window.plotData);
                 // Force showSpectralBackground juste avant le draw (résiste au FPS monitor)
-                window.showSpectralBackground = true;
+                window.RUNTIME_STATE.showSpectralBackground = true;
                 try {
-                    window.updateSpectralVisualization(window.plotData.current);
+                    window.PLOT.updateSpectralVisualization(window.plotData.current);
                 } catch (err) {
                     console.error('❌ [drawFlux@sync]', err);
                 }
@@ -372,11 +368,11 @@
         else console.log('[4] calculs (appel)');
         var DATA = window.DATA;
         // Rendre 📜 cohérent en premier (📿☄️, 🔺⚖️💧☄️) avant tout calcul — sinon ⚖️💧 reste 0
-        window.getEpochDateConfig();
+        window.COMPUTE.getEpochDateConfig();
         // Ne pas réinitialiser h2oTotalFromMeteorites ici (conservé après clic météorite ; reset dans setEpoch au changement d'époque)
         syncTuningFromData();
         // Source de vérité pour anim : bouton visu (plot-anim-toggle). Rafraîchir DATA['🔘'] avant le calcul
-        window.getEnabledStates();
+        window.COMPUTE.getEnabledStates();
         // S'assurer que DATA['📅'] et DATA['📜'] sont initialisés (race avec setEpoch au chargement)
         var epochId = (DATA['📜'] && DATA['📜']['🗿']) || (window.SYNC_STATE && window.SYNC_STATE.epochId) || '⚫';
         var idx = window.TIMELINE ? window.TIMELINE.findIndex(function (item) { return item['📅'] === epochId; }) : -1;
@@ -411,15 +407,15 @@
             if (window._logStep) window._logStep('[4] calculs (effectif)');
             else console.log('[4] calculs (effectif)');
             // groupe [4] reste ouvert — fermé à [4] calculs (retour)
-            if (!window.initForConfig()) {
+            if (!window.CONVERGE.initForConfig()) {
                 window.SYNC_STATE.calculationInProgress = false;
                 if (window._logStepEnd) window._logStepEnd(); // ferme [4] calculs (effectif)
                 return Promise.resolve(null);
             }
             // snapInputs('POST_INIT');
             var epochId = DATA['📜']['🗿'];
-            if (window.FluxManager && window.getGeologicalPeriodByName) {
-                window.currentEpochName = window.currentEpochName || epochId;
+            if (window.FluxManager && window.GEOLOGY) {
+                window.RUNTIME_STATE.currentEpochName = window.RUNTIME_STATE.currentEpochName || epochId;
                 window.FluxManager.updateAllFluxes(epochId);
             }
             var _sv = document.getElementById('spectral-visualization');
@@ -432,7 +428,7 @@
             var renderMode = (!DATA['🔘']['🔘🎞']) ? 'scie_' : window.VISUALWAIT.computeRenderMode();
             // Projection UI: dépend du panel actif, pas du renderMode de calcul.
             var shouldProjectToVisu = (typeof window.isVisuPanelActive === 'function') ? window.isVisuPanelActive() : true;
-            return window.computeRadiativeTransfer(null, { renderMode: renderMode }).then(function (result) {
+            return window.CONVERGE.computeRadiativeTransfer(null, { renderMode: renderMode }).then(function (result) {
             window.SYNC_STATE.calculationInProgress = false;
             if (window._logStepEnd) window._logStepEnd(); // ferme groupe [4] effectif
             if (window._logStep) window._logStep('[4] calculs (retour)');
@@ -448,7 +444,7 @@
             // (loader/timeline rouge "calcul en cours" et reprise Three.js).
             if (!shouldProjectToVisu) IO_LISTENER.emit('flux:lastDrawn');
             // Rafraîchir les labels visu (albédo, flux, T°) après chaque calcul pour que l’onglet Visuel affiche le bon état
-            window.updateFluxLabels('ProcessFinished');
+            window.ORG.updateFluxLabels('ProcessFinished');
             if (typeof window.updateTimeline === 'function') window.updateTimeline();
             var albedoEl = document.querySelector('[data-id="albedo_percent"]');
             console.log('[sync_panels] après ProcessFinished DOM albedo_percent=', albedoEl ? albedoEl.textContent : '(élément absent)');
@@ -478,7 +474,7 @@
             var _ticBefore = window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'];
             if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] config:applyThenCompute btn=' + payload.button + ' epoch=' + _epBefore + ' 📿💫=' + _ticBefore);
             window.DATA['📜']['🔘🕰'] = payload.button;
-            window.getEpochDateConfig();
+            window.COMPUTE.getEpochDateConfig();
             var _epAfter = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
             var _ticAfter = window.DATA && window.DATA['📜'] && window.DATA['📜']['📿💫'];
             if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] après getEpochDateConfig epoch=' + _epAfter + ' 📿💫=' + _ticAfter + ((_epBefore !== _epAfter) ? ' ⚡TRANSITION' : ''));
@@ -505,24 +501,24 @@
             }
         };
         window.syncToScie = syncToScie;
-        window.clearConvergenceTrace = function () {
+        window.CONVERGE.clearConvergenceTrace = function () {
             if (window.shell && window.shell.dataInput) {
                 window.shell.dataInput({ type: 'clearConvergenceTrace' });
                 return;
             }
             var iframe = getIframe();
             if (iframe && iframe.contentWindow) {
-                try { iframe.contentWindow.clearConvergenceTrace(); } catch (e) {}
+                try { iframe.contentWindow.CONVERGE.clearConvergenceTrace(); } catch (e) {}
             }
         };
-        window.appendConvergenceStep = function (payload) {
+        window.CONVERGE.appendConvergenceStep = function (payload) {
             if (window.shell && window.shell.dataInput) {
                 window.shell.dataInput({ type: 'convergenceStep', data: payload });
                 return;
             }
             var iframe = getIframe();
             if (iframe && iframe.contentWindow) {
-                try { iframe.contentWindow.appendConvergenceStep(payload); } catch (e) {}
+                try { iframe.contentWindow.CONVERGE.appendConvergenceStep(payload); } catch (e) {}
             }
         };
 
@@ -631,7 +627,7 @@
                 _lastSyncRunAt = now;
                 // Appliquer l'état au DATA du contexte courant (parent) avant le calcul, sinon 🔬🌈/📿💫 non initialisés → NaN
                 applyStateToData(payload);
-                window.getEpochDateConfig();
+                window.COMPUTE.getEpochDateConfig();
                 window.SYNC_STATE.calculationInProgress = false;
                 window.runComputeInParent();
             }

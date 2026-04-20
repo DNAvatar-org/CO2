@@ -8,7 +8,7 @@ ORDRE IMPERATIF de codage
 # Liste window.MAJUSCULE — créateur / remplisseur
 # Format: MAJUSCULE / + creater / ++ filler
 # Fichier: window_MAJUSCULE_creater_filler.txt
-# Dernière maj: 2026-04-18 (bundle configsAll.js retiré, DEFAULT remplace TUNING)
+# Dernière maj: 2026-04-18 (UI_STATE + RUNTIME_STATE + namespaces API : H2O/ALBEDO/ATM/COMPUTE/CLIMATE/GEOLOGY/CONVERGE/RADIATIVE/TUNING/ORG/PLOT)
 
 # === CONSTANTES PHYSIQUES (immuables, lues comme des imports) ======================
 
@@ -170,9 +170,85 @@ FUNC_API_BILAN
  + creater: API_BILAN/api.js (18) ; receiver.js (81) ; callback_stack.js (36)
  ++ filler: api.js (exposition fonctions)
 
-FUNCS_ORGANIGRAMME
- + creater: CO2/organigramme/organigramme.js (6443)
- ++ filler: même fichier (API organigramme)
+ORG                                          # ex-FUNCS_ORGANIGRAMME (renommé v1.0.72)
+ + creater: CO2/organigramme/organigramme.js
+ ++ filler: même fichier — createCell, recreateNoyauRadiation, recreateTerreRadiation,
+            generateArrows, initFluxButtonListeners, updateFluxLabels, updateFields
+
+PLOT                                          # créé v1.0.57 plot.js
+ + creater: CO2/static/courbes/plot.js
+ ++ filler: même fichier — updatePlot, updateSpectralVisualization, updatePlotAltitudeAxis,
+            tempToColor, tempSurfaceToColor, debugZIndex, debugPlotlyStructure,
+            updateSpectralBandIndicatorsGhostOnly
+
+# === NAMESPACES API_BILAN (fonctions métier groupées) ================================
+
+H2O
+ + creater: API_BILAN/h2o/calculations_h2o.js
+ ++ filler: même fichier — calculateH2OParameters, calculateH2OGreenhouseForcing,
+            calculateCloudAlbedoContribution, calculateWaterPartition,
+            calculatePrecipitationFeedback, getBoilingPointKFromPressure
+
+ALBEDO
+ + creater: API_BILAN/albedo/calculations_albedo.js
+ ++ filler: même fichier — calculateAlbedo, calculateCloudCoverage,
+            calculateCloudFormationIndex, calculateSolarFluxAbsorbed,
+            calculateGeologySurfaces, applyVeilToPlanetaryAlbedo01, updateLevelsConfig
+
+ATM
+ + creater: API_BILAN/atmosphere/calculations_atm.js
+ ++ filler: même fichier — calculateAtmosphereProperties, calculateMolarMassAir,
+            calculatePressureAtm, calculateAtmosphereComposition,
+            updateAtmosphereHeightFromCurrentT, calculateTropopauseHeight,
+            pressureAtZ, airNumberDensityAtZ, co2KgToFraction, ch4KgToFraction
+
+COMPUTE
+ + creater: API_BILAN/convergence/compute.js
+ ++ filler: même fichier — getEpochDateConfig, getDateConfig, getMasses,
+            getEnabledStates, getSoleil, goughLuminosity, getNoyau
+
+CLIMATE
+ + creater: API_BILAN/physics/climate.js
+ ++ filler: même fichier — getEffectiveTemperatureNoGreenhouse, calculateCO2Forcing,
+            calculateCH4Forcing, calculateH2OForcing, calculateAlbedoForcing
+
+GEOLOGY
+ + creater: API_BILAN/geology/calculations_geology.js
+ ++ filler: même fichier — getGeologicalPeriodByName, getGeologicalPeriod,
+            getMoltenCrustFactor, getGeologicalEra, calculateGeothermalFlux
+
+CONVERGE
+ + creater: API_BILAN/convergence/calculations_flux.js
+ ++ filler: même fichier — clearConvergenceTrace, appendConvergenceStep, calculateT0,
+            initForConfig, cycleDeLeau, updateConvergenceBounds,
+            computeRadiativeTransfer, newDate, snapshotEdsForConvergence
+
+RADIATIVE
+ + creater: API_BILAN/radiative/calculations.js
+ ++ filler: même fichier — getSpectralResultFromDATA, calculateRadiativeCapacities,
+            temperatureAtZ, simulateRadiativeTransfer
+
+TUNING                                         # namespace API (pas l'ex-DATA TUNING)
+ + creater: API_BILAN/tuning.js
+ ++ filler: même fichier — applyTuningPayload, fillDataTuningFromBary
+
+# === ETAT UI / RUNTIME (namespaces dédiés — v1.3.0 initDATA.js) ========================
+
+UI_STATE                                       # flags UI (toggles user)
+ + creater: API_BILAN/data/initDATA.js (v1.3.0)
+ ++ filler: même fichier — waterVaporEnabled, methaneEnabled, maximiseData,
+            savedCO2, savedCH4, savedH2O, FPSalert, debugAPI
+ ++ filler: CO2/static/ui/main.js (toggles utilisateur), FPS/FPS.js (FPSalert),
+            timeline/events.js (savedCO2/CH4/H2O + maximiseData)
+
+RUNTIME_STATE                                  # état live d'exécution
+ + creater: API_BILAN/data/initDATA.js (v1.3.0)
+ ++ filler: même fichier — calculationConverged, calculationTimeouts,
+            spectralConverged, spectralPrecisionTarget, showSpectralBackground,
+            h2oVaporPercent, h2oTotalFromMeteorites, h2oIceFractionFromCalculation,
+            currentEpochName, fps, T0_num, volcanoH2OBonus
+ ++ filler: FPS.js (fps), main.js (convergence flags + spectral),
+            convergence/*.js (h2o live), plot.js (spectral)
 
 API_ONGLETS
  + creater: CO2/static/ui/api_onglets.js (62)

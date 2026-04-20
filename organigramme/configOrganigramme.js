@@ -813,11 +813,11 @@ if (window.DATA && window.TIMELINE && window.TIMELINE.length) {
     window.DATA['📜']['📿☄️'] = 0;    // compteur dédié bouton ☄️ (init à 0)
     window.DATA['📜']['📿💫'] = 0;    // compteur dédié bouton 💫 (init à 0)
     window.DATA['📜']['🔺⚖️💧☄️'] = 0; // masse H₂O par météorite (init à 0, rempli par getEpochDateConfig)
-    window.currentEpochName = firstId === '⚫' ? 'Corps Noir' : (window.CHARS_DESC && window.CHARS_DESC[firstId]) || firstId;
+    window.RUNTIME_STATE.currentEpochName = firstId === '⚫' ? 'Corps Noir' : (window.CHARS_DESC && window.CHARS_DESC[firstId]) || firstId;
     // [0] = init DATA['📜'] ; fermer le groupe tout de suite (sinon tout console.log jusqu'au setEpoch s'affiche dans [0])
     if (window._logStep) {
         window._logStep('[0] organigramme 📜 init ' + firstId);
-        console.log('[0] currentEpochName=', window.currentEpochName);
+        console.log('[0] currentEpochName=', window.RUNTIME_STATE.currentEpochName);
         if (window._logStepEnd) window._logStepEnd();
     } else if (typeof console !== 'undefined' && console.debug) {
         console.debug('[configOrganigramme] 📜 init', firstId);

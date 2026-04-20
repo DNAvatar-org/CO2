@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.19
+// Version 1.1.20
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.20 migration window.updateFluxLabels → window.ORG.updateFluxLabels + lectures UI_STATE.FPSalert / RUNTIME_STATE (fps, currentEpochName, h2oVaporPercent). Retrait typeof defensive check sur updateFluxLabels (crash-first : organigramme.js chargé avant).
 // Logs: v1.1.19 workers/worker_pool.js ajouté après hitran.js → scie/visu utilisent les workers (parallèle) comme bench. Retire divergence 0.115 W/m² sur 🧲🌈🔼 (ordre addition float série vs parallèle) → 15.28°C → 15.35°C aligné 📱.
 // Logs: v1.1.18 physics.js avant tuning.js → EARTH dispo pour syncRadiativeConfig au boot (corrige EARTH.H2O_EDS_SCALE resté à 0.6 au lieu de 0.74 côté scie/visu).
 // Logs: v1.1.17 onglet Hystérésis (iframe standalone hysteresis_compute.html) + fetch html/hysteresis_panel.html + registerTab hysteresis (onShow minimal, body.hysteresis-panel-active)
@@ -403,9 +404,7 @@
                 var D = window.DATA;
                 var albedoIn = (D && D['🪩']) ? D['🪩']['🍰🪩📿'] : null;
                 console.log('[loader_panels] cycleCalcul input albedo=', albedoIn);
-                if (typeof window.updateFluxLabels === 'function') {
-                    try { window.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
-                }
+                try { window.ORG.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
                 var el = document.querySelector('[data-id="albedo_percent"]');
                 console.log('[loader_panels] cycleCalcul DOM albedo_percent=', el ? el.textContent : '(élément absent)');
             }, 'loader_panels');
@@ -448,7 +447,7 @@
                     lastComputePayload = payload;
                     window._lastComputePayloadForScie = payload;
                     // Mettre à jour le DOM visu (comme setEpoch après getMasses) pour que les labels reflètent DATA après une action (météorite, tic, etc.)
-                    window.updateFluxLabels('ProcessFinished');
+                    window.ORG.updateFluxLabels('ProcessFinished');
                 }
                 // Envoi vers panel actif via shell.dataInput (sync_panels/runComputeInParent) ; plus de postMessage ici
             }, 'loader_panels');
@@ -485,16 +484,16 @@
                             Object.keys(src[k]).forEach(function (k2) { window.DATA[k][k2] = src[k][k2]; });
                         }
                     });
-                    if (event.data.h2oVaporPercent != null) window.h2oVaporPercent = event.data.h2oVaporPercent;
-                    window.waterVaporEnabled = window.h2oVaporPercent > 0;
+                    if (event.data.h2oVaporPercent != null) window.RUNTIME_STATE.h2oVaporPercent = event.data.h2oVaporPercent;
+                    window.UI_STATE.waterVaporEnabled = window.RUNTIME_STATE.h2oVaporPercent > 0;
                     var epochId = (window.DATA['📜'] && window.DATA['📜']['🗿']) || '⚫';
                     if (epochId && window.configOrganigramme && window.configOrganigramme.timeline) {
                         var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === epochId; });
-                        if (ep) window.currentEpochName = ep.name;
+                        if (ep) window.RUNTIME_STATE.currentEpochName = ep.name;
                     }
-                    const fpsOk = (typeof window.fps === 'number' && window.fps >= (window.FPSalert || 25));
-                    if (fpsOk && typeof window.updateFluxLabels === 'function') {
-                        try { window.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
+                    const fpsOk = (window.RUNTIME_STATE.fps >= window.UI_STATE.FPSalert);
+                    if (fpsOk) {
+                        try { window.ORG.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
                     }
                 }
             }

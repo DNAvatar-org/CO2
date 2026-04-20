@@ -30,7 +30,7 @@ const FPSalert = 25;  // Seuil d'alerte (FPS bas) — courbe toujours affichée
 const FPSmin = 20;     // FPS minimum acceptable
 const FPSmax = 55;     // FPS maximum (bonne performance)
 
-window.FPSalert = FPSalert;
+window.UI_STATE.FPSalert = FPSalert;
 window.FPSmin = FPSmin;
 
 // Variables pour le système de ping
@@ -312,7 +312,7 @@ function ping(dt) {
     
     // Exposer le FPS globalement pour l'optimisation
     if (typeof window !== 'undefined') {
-        window.fps = fps;
+        window.RUNTIME_STATE.fps = fps;
     }
     
     // 🔒 Déterminer le niveau de performance FPS (pour événement uniquement)

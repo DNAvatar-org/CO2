@@ -1,12 +1,14 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.69
+// Version 1.0.73
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.73 fix crash FluxManager.setSolarIntensity : extraction des helpers (detectValueType, formatNumberWithScientific, formatValueFromTemplate, FINE_TUNING_TOOLTIP_SHORT, updateLabel) du closure ORG.updateFluxLabels vers le scope du module ; ORG.updateLabel lié dès le chargement, avant le premier ProcessFinished (sync_panels.doCompute peut appeler FluxManager.updateAllFluxes avant que updateFluxLabels ait lié le closure).
+// Logs: v1.0.72 namespace ORG (source unique) : createCell, recreateNoyauRadiation, recreateTerreRadiation, generateArrows, initFluxButtonListeners, updateFluxLabels, updateFields. Suppression duplicats window.foo. Migration lectures RUNTIME_STATE (currentEpochName, fps, h2oVaporPercent, h2oTotalFromMeteorites, h2oIceFractionFromCalculation, T0_num).
 // Logs: v1.0.71 createCell : gridItem appendé seulement si children.length > 0 (coins + centre vides jamais créés)
 // Logs: v1.0.70 mountOrganigramDomSlots : slotMinWidth sur el (#timeline-events-logos), pas sur shell — shell taille naturelle, logos overflow:visible
 // Logs: v1.0.69 domSlot coque : centre hauteur ~slotEventLogoPx (côtés élargis si slotMinWidth) ; ACTION/SKIP = organigram-config-heading ; pas buttonData sur titres ; syncFluxLabelPlainMetric exempte ce heading
@@ -906,7 +908,7 @@ function updatePlanetLighting() {
 
   // Récupérer la config de l'époque courante
   const currentEpochName =
-    (typeof window !== "undefined" && window.currentEpochName) || "Corps Noir";
+    (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) || "Corps Noir";
   const terreNode = window.configOrganigramme.nodes.find(
     (n) => n.id === "terre",
   );
@@ -1483,7 +1485,7 @@ function createCell(
               terreNode.epoch &&
               Array.isArray(terreNode.epoch)
             ) {
-              const currentEpochName = window.currentEpochName || "Corps Noir";
+              const currentEpochName = window.RUNTIME_STATE.currentEpochName || "Corps Noir";
               const epochConfig = terreNode.epoch.find(
                 (e) => e.epochName === currentEpochName,
               );
@@ -1702,8 +1704,8 @@ function createCell(
         }
 
         // Mettre à jour les couleurs des étiquettes
-        if (typeof window.updateFluxLabels === "function") {
-          window.updateFluxLabels("ProcessFinished");
+        if (typeof window.ORG.updateFluxLabels === "function") {
+          window.ORG.updateFluxLabels("ProcessFinished");
         }
 
         // Relancer le cycle avec la nouvelle donnée (getEnabledStates lit depuis le DOM)
@@ -2563,7 +2565,7 @@ function getNodeProperty(node, property, defaultValue = null) {
 
   if ((node.id === "terre" || node.id === "albedo") && node.epoch && Array.isArray(node.epoch)) {
     const currentEpochName =
-      (typeof window !== "undefined" && window.currentEpochName) ||
+      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
       "Corps Noir";
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
@@ -2612,11 +2614,11 @@ function generateArrows() {
         let gravity = 9.81; // Défaut temporaire, devrait venir de l'époque
         let molar_mass_air = undefined;
 
-        if (window.currentEpochName) {
+        if (window.RUNTIME_STATE.currentEpochName) {
           let currentEpoch = null;
-          if (typeof window.getGeologicalPeriodByName === "function") {
-            currentEpoch = window.getGeologicalPeriodByName(
-              window.currentEpochName,
+          if (window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName) {
+            currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
+              window.RUNTIME_STATE.currentEpochName,
             );
           } else if (
             window.configOrganigramme &&
@@ -2625,15 +2627,15 @@ function generateArrows() {
             currentEpoch = window.configOrganigramme.timeline.find(
               (e) =>
                 e.type === "epoch" &&
-                (e.name === window.currentEpochName ||
-                  e.id === window.currentEpochName),
+                (e.name === window.RUNTIME_STATE.currentEpochName ||
+                  e.id === window.RUNTIME_STATE.currentEpochName),
             );
           } else if (window.TIMELINE) {
             currentEpoch = window.TIMELINE.find(
               (e) =>
-                e["📅"] === window.currentEpochName ||
+                e["📅"] === window.RUNTIME_STATE.currentEpochName ||
                 (window.CHARS_DESC &&
-                  window.CHARS_DESC[e["📅"]] === window.currentEpochName),
+                  window.CHARS_DESC[e["📅"]] === window.RUNTIME_STATE.currentEpochName),
             );
           }
           if (currentEpoch) {
@@ -2644,16 +2646,16 @@ function generateArrows() {
             gravity = currentEpoch.gravity ?? currentEpoch["🍎"] ?? gravity;
             if (currentEpoch.molar_mass_air !== undefined) {
               molar_mass_air = currentEpoch.molar_mass_air;
-            } else if (typeof window.calculateMolarMassAir === "function") {
-              molar_mass_air = window.calculateMolarMassAir(currentEpoch);
+            } else if (window.ATM && window.ATM.calculateMolarMassAir) {
+              molar_mass_air = window.ATM.calculateMolarMassAir(currentEpoch);
             }
           }
         }
 
         // Récupérer T0 si disponible globalement
         const T0 =
-          typeof window.T0_num !== "undefined" && window.T0_num > 0
-            ? window.T0_num
+          typeof window.RUNTIME_STATE.T0_num !== "undefined" && window.RUNTIME_STATE.T0_num > 0
+            ? window.RUNTIME_STATE.T0_num
             : 288;
 
         // Estimation de la masse molaire moyenne (M) si toujours undefined
@@ -2664,7 +2666,7 @@ function generateArrows() {
 
         // Vérifier que T0 est valide (> 0) avant l'appel
         if (T0 > 0 && molar_mass_air > 0) {
-          const props = window.calculateAtmosphereProperties(
+          const props = window.ATM.calculateAtmosphereProperties(
             total_mass,
             T0,
             molar_mass_air,
@@ -3575,7 +3577,7 @@ cellOrder.forEach((nodeId) => {
   let nodeConfig = node;
   if (node.id === "albedo" && node.epoch && Array.isArray(node.epoch)) {
     const currentEpochName =
-      (typeof window !== "undefined" && window.currentEpochName) ||
+      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
       "Corps Noir";
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
@@ -3593,7 +3595,7 @@ cellOrder.forEach((nodeId) => {
     const interpretConfigValue = window.interpretConfigValue || (function (v) { return v; });
     const charsImages = window.charsImages;
     const currentEpochName =
-      (typeof window !== "undefined" && window.currentEpochName) ||
+      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
       "Corps Noir";
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
@@ -3902,7 +3904,7 @@ cellOrder.forEach((nodeId) => {
   // Si le node 'noyau' a un tableau radiation (configuration par époque)
   if (nodeId === "noyau" && Array.isArray(node.radiation)) {
     const currentEpochName =
-      (typeof window !== "undefined" && window.currentEpochName) ||
+      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
       "Corps Noir";
     let epochRadiation = node.radiation.find(
       (r) => r.epochName === currentEpochName,
@@ -3988,8 +3990,9 @@ cellOrder.forEach((nodeId) => {
 // Étape 9 : Générer automatiquement les flèches
 generateArrows();
 
-// Exposer generateArrows globalement pour pouvoir le rappeler lors du changement d'époque
-window.generateArrows = generateArrows;
+// Namespace ORG : source unique des fonctions organigramme (rempli à la fin du module).
+var ORG = window.ORG = window.ORG || {};
+ORG.generateArrows = generateArrows;
 
 /**
  * Calcule la position pour un texte justifié à gauche, aligné sur le bord gauche du cercle albedo
@@ -4009,7 +4012,7 @@ function calculateTextPositionLeftOfCircle(
   // is not in the provided document, and to maintain syntactic correctness,
   // these lines are commented out or adjusted to fit the current function context
   // if they were meant to be here.
-  // Given the instruction "Store epoch name in window.currentEpochName when setEpoch is called",
+  // Given the instruction "Store epoch name in window.RUNTIME_STATE.currentEpochName when setEpoch is called",
   // this code block is not appropriate for `calculateTextPositionLeftOfCircle`.
   // To fulfill the request of "incorporate the change in a way so that the resulting file is syntactically correct",
   // and given the provided snippet is syntactically broken and contextually wrong for this function,
@@ -4017,7 +4020,7 @@ function calculateTextPositionLeftOfCircle(
   // that is not in the provided document.
   // As I cannot add new functions or modify functions not present, and to avoid breaking syntax,
   // I will proceed with the original function body for `calculateTextPositionLeftOfCircle`.
-  // The instruction to store `window.currentEpochName` will be noted as needing a `setEpoch` function.
+  // The instruction to store `window.RUNTIME_STATE.currentEpochName` will be noted as needing a `setEpoch` function.
 
   const node = organigramNodes.find((n) => n.id === nodeId);
   if (!node) {
@@ -4261,12 +4264,12 @@ function generateTimelineFromConfig() {
 function isBlackBodyEpoch() {
   if (
     typeof window === "undefined" ||
-    !window.currentEpochName ||
-    typeof window.getGeologicalPeriodByName !== "function"
+    !window.RUNTIME_STATE.currentEpochName ||
+    !(window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName)
   ) {
     return false;
   }
-  const epoch = window.getGeologicalPeriodByName(window.currentEpochName);
+  const epoch = window.GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName);
   if (!epoch) return false;
 
   // Corps noir = pas de noyau différencié ET pas d'atmosphère
@@ -4401,7 +4404,411 @@ if (typeof window !== "undefined") {
   window.getFineTuningDetailAlt = getFineTuningDetailAlt;
 }
 
-window.updateFluxLabels = function (eventId) {
+// Helpers de formatage/écriture labels extraits au scope du module : ORG.updateLabel doit être disponible dès le chargement pour FluxManager (setSolarIntensity, setGeothermalFlux...), avant le premier cycle de calcul (ProcessFinished). Ils ne dépendent que des arguments et de globals window.* (configOrganigramme, isCO2_eds, ...) — pas du closure de updateFluxLabels.
+const detectValueType = (text) => {
+  if (!text) return null;
+  const textStr = String(text);
+  if (
+    textStr.includes("W/m²") ||
+    textStr.includes("W/m2") ||
+    textStr.includes("MW/m²") ||
+    textStr.includes("MW/m2")
+  )
+    return "watt_per_m2";
+  if (
+    textStr.includes("MW") ||
+    (textStr.includes(" W") &&
+      !textStr.includes("W/m²") &&
+      !textStr.includes("W/m2"))
+  )
+    return "watt";
+  if (textStr.includes("%")) return "percent";
+  if (textStr.includes("ppm")) return "ppm";
+  return null;
+};
+
+const formatNumberWithScientific = (num) => {
+  if (typeof num !== "number" || isNaN(num)) return String(num);
+  if (Math.abs(num) >= 1000) {
+    const exponent = Math.floor(Math.log10(Math.abs(num)));
+    const mantissa = num / Math.pow(10, exponent);
+    return `${mantissa.toFixed(2)}×10<sup><b>${exponent}</b></sup>`;
+  }
+  return num.toFixed(2);
+};
+
+const formatValueFromTemplate = (dataId, value) => {
+  if (!window.configOrganigramme || !window.configOrganigramme.arcs) {
+    return String(value);
+  }
+  let template = null;
+  let labelPath = null;
+  for (const arc of window.configOrganigramme.arcs) {
+    if (!arc.label) continue;
+    if (
+      arc.label.name &&
+      typeof arc.label.name === "object" &&
+      arc.label.name.dataId === dataId
+    ) {
+      template = arc.label.name.text;
+      labelPath = "name";
+      break;
+    }
+    if (arc.label.txtF) {
+      if (Array.isArray(arc.label.txtF)) {
+        for (const txtFItem of arc.label.txtF) {
+          if (typeof txtFItem === "object" && txtFItem.dataId === dataId) {
+            template = txtFItem.text;
+            labelPath = "txtF";
+            break;
+          }
+        }
+        if (template) break;
+      } else if (
+        typeof arc.label.txtF === "object" &&
+        arc.label.txtF.dataId === dataId
+      ) {
+        template = arc.label.txtF.text;
+        labelPath = "txtF";
+        break;
+      }
+    }
+    if (
+      arc.label.txtD &&
+      typeof arc.label.txtD === "object" &&
+      arc.label.txtD.dataId === dataId
+    ) {
+      template = arc.label.txtD.text;
+      labelPath = "txtD";
+      break;
+    }
+    if (
+      arc.label.txtDD &&
+      typeof arc.label.txtDD === "object" &&
+      arc.label.txtDD.dataId === dataId
+    ) {
+      template = arc.label.txtDD.text;
+      labelPath = "txtDD";
+      break;
+    }
+    if (Array.isArray(arc.label.txtDD)) {
+      for (const item of arc.label.txtDD) {
+        if (typeof item === "object" && item.dataId === dataId) {
+          template = item.text;
+          labelPath = "txtDD";
+          break;
+        }
+      }
+      if (template) break;
+    }
+    if (
+      arc.label.txtFF &&
+      typeof arc.label.txtFF === "object" &&
+      arc.label.txtFF.dataId === dataId
+    ) {
+      template = arc.label.txtFF.text;
+      labelPath = "txtFF";
+      break;
+    }
+    if (Array.isArray(arc.label.txtFF)) {
+      for (const item of arc.label.txtFF) {
+        if (typeof item === "object" && item.dataId === dataId) {
+          template = item.text;
+          labelPath = "txtFF";
+          break;
+        }
+      }
+      if (template) break;
+    }
+  }
+  if (!template && window.configOrganigramme.nodes) {
+    for (const node of window.configOrganigramme.nodes) {
+      const searchInArray = (arr) => {
+        if (!Array.isArray(arr)) return null;
+        for (const item of arr) {
+          if (item && typeof item === "object" && item.dataId === dataId) {
+            return item.text;
+          }
+        }
+        return null;
+      };
+      template =
+        searchInArray(node.left) ||
+        searchInArray(node.right) ||
+        searchInArray(node.top) ||
+        searchInArray(node.bottom);
+      if (template) break;
+    }
+  }
+  if (!template) {
+    if (typeof value === "number") {
+      return formatNumberWithScientific(value);
+    }
+    return String(value);
+  }
+  let result = template;
+  if (typeof value === "number") {
+    const hasPpmInTemplate = template.includes("ppm");
+    const hasPercentInTemplate = template.includes("%");
+    let valueToFormat = value;
+    let shouldConvertPpmToPercent = false;
+    let shouldConvertPercentToPpm = false;
+    let shouldConvertWattToMW = false;
+    const hasWattInTemplate =
+      (template.includes(" W") || template.includes(" W ")) &&
+      !template.includes("W/m²") &&
+      !template.includes("W/m2");
+    const hasWattPerM2InTemplate =
+      template.includes("W/m²") || template.includes("W/m2");
+    if (hasWattInTemplate && Math.abs(value) >= 1e5) {
+      if (Math.abs(value) >= 1e9) {
+        shouldConvertWattToMW = true;
+      } else {
+        valueToFormat = value / 1e6;
+        shouldConvertWattToMW = true;
+      }
+    }
+    if (hasWattPerM2InTemplate && Math.abs(value) >= 1e5) {
+      if (Math.abs(value) >= 1e9) {
+        shouldConvertWattToMW = true;
+      } else {
+        valueToFormat = value / 1e6;
+        shouldConvertWattToMW = true;
+      }
+    }
+    const percentDataIds = [
+      "albedo_percent",
+      "h2o_percent",
+      "passing_albedo_percent",
+    ];
+    const isAlreadyInPercent = percentDataIds.includes(dataId);
+    if (hasPercentInTemplate && !hasPpmInTemplate && !isAlreadyInPercent) {
+      valueToFormat = value / 10000;
+      shouldConvertPpmToPercent = true;
+    } else if (hasPpmInTemplate && !hasPercentInTemplate && value > 10000) {
+      valueToFormat = value / 10000;
+      shouldConvertPpmToPercent = true;
+    }
+    const hasBoldInTemplate =
+      template.includes("<sup><b>") || template.includes("<sup> <b>");
+    let formattedValue;
+    if (hasPpmInTemplate || shouldConvertPercentToPpm) {
+      formattedValue =
+        valueToFormat > 0 ? Math.floor(valueToFormat).toString() : "0";
+    } else if (hasPercentInTemplate || shouldConvertPpmToPercent) {
+      formattedValue = valueToFormat.toFixed(1);
+    } else if (shouldConvertWattToMW) {
+      if (Math.abs(value) >= 1e9) {
+        const exponent = Math.floor(Math.log10(Math.abs(value)));
+        const mantissa = value / Math.pow(10, exponent);
+        const mwExponent = exponent - 6;
+        if (hasBoldInTemplate) {
+          formattedValue = `${mantissa.toFixed(2)}×10<sup><b>${mwExponent}</b></sup>`;
+        } else {
+          formattedValue = `${mantissa.toFixed(2)}×10<sup>${mwExponent}</sup>`;
+        }
+      } else {
+        formattedValue = valueToFormat.toFixed(2);
+      }
+    } else {
+      const shouldUseScientific = Math.abs(valueToFormat) >= 1000;
+      if (shouldUseScientific) {
+        const exponent = Math.floor(Math.log10(Math.abs(valueToFormat)));
+        const mantissa = valueToFormat / Math.pow(10, exponent);
+        if (hasBoldInTemplate) {
+          formattedValue = `${mantissa.toFixed(2)}×10<sup><b>${exponent}</b></sup>`;
+        } else {
+          formattedValue = `${mantissa.toFixed(2)}×10<sup>${exponent}</sup>`;
+        }
+      } else {
+        formattedValue = valueToFormat.toFixed(2);
+      }
+    }
+    const numberPattern =
+      /\d+(?:\.\d+)?(?:×10<sup>(?:<b>)?\d+(?:<\/b>)?<\/sup>)?/;
+    if (numberPattern.test(template)) {
+      result = template.replace(numberPattern, formattedValue);
+      if (shouldConvertPpmToPercent) {
+        result = result.replace(/ppm/g, "%");
+      }
+      if (shouldConvertPercentToPpm) {
+        result = result.replace(/%/g, "ppm");
+      }
+      if (shouldConvertWattToMW) {
+        result = result.replace(/W\/m²/g, "MW/m²");
+        result = result.replace(/W\/m2/g, "MW/m2");
+        result = result.replace(/\s+W\b/g, " MW");
+      }
+    } else {
+      result = formattedValue;
+      if (shouldConvertPpmToPercent) {
+        result = result + "%";
+      }
+      if (shouldConvertPercentToPpm) {
+        result = result + "ppm";
+      }
+      if (shouldConvertWattToMW) {
+        if (template.includes("W/m²") || template.includes("W/m2")) {
+          result = result + " MW/m²";
+        } else {
+          result = result + " MW";
+        }
+      }
+    }
+  } else {
+    return String(value);
+  }
+  return result;
+};
+
+const FINE_TUNING_TOOLTIP_SHORT = getFineTuningShortTooltip("100");
+
+const updateLabel = (dataId, value, format = "auto") => {
+  const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
+  labels.forEach((label) => {
+    let formattedValue;
+    if (dataId === "fine_tuning_cloud_bary") {
+      let pctStr;
+      if (typeof value === "number" && Number.isFinite(value)) {
+        pctStr = String(Math.round(Math.max(0, Math.min(100, value))));
+      } else if (format === "text" && typeof value === "string") {
+        const m = value.replace(/<[^>]*>/g, " ").match(/(\d+(?:\.\d+)?)\s*%/);
+        pctStr = m ? String(Math.round(parseFloat(m[1], 10))) : "100";
+      } else {
+        const tmp =
+          format === "text" && typeof value === "string"
+            ? value
+            : formatValueFromTemplate(dataId, value);
+        const m = String(tmp).replace(/<[^>]*>/g, " ").match(/(\d+(?:\.\d+)?)\s*%/);
+        pctStr = m ? String(Math.round(parseFloat(m[1], 10))) : "100";
+      }
+      formattedValue = pctStr + "%";
+      const detail = getFineTuningDetailAlt(pctStr, true);
+      const existingSlider = label.querySelector(".organigram-bary-mini-slider");
+      const pctEl = label.querySelector(".organigram-bary-pct");
+      if (existingSlider && pctEl) {
+        pctEl.textContent = pctStr + "%";
+        existingSlider.value = pctStr;
+      } else {
+        label.innerHTML =
+          '<div class="organigram-bary-face organigram-bary-face--two-cols">' +
+          '<div class="organigram-bary-col organigram-bary-col-left">' +
+          '<div class="organigram-bary-icons">🔺🌡️🔻</div>' +
+          '<div class="organigram-bary-line-slider">' +
+          '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' +
+          pctStr +
+          '" aria-label="Réglage fin barycentre nuages">' +
+          "</div></div>" +
+          '<div class="organigram-bary-col organigram-bary-col-right">' +
+          '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +
+          '<span class="organigram-bary-pct">' +
+          pctStr +
+          "%</span></div></div>";
+      }
+      label.setAttribute("data-tooltip", getFineTuningShortTooltip(pctStr));
+      label.setAttribute("aria-label", detail || FINE_TUNING_TOOLTIP_SHORT);
+      label.removeAttribute("title");
+    } else {
+      if (format === "text" && typeof value === "string") {
+        formattedValue = value;
+      } else {
+        formattedValue = formatValueFromTemplate(dataId, value);
+      }
+      label.innerHTML = formattedValue;
+    }
+    const valueType = detectValueType(formattedValue);
+    label.classList.remove(
+      "watt-per-m2",
+      "watt-or-kelvin",
+      "zero-value",
+      "co2-label",
+      "percent-label",
+      "ppm-label",
+      "flux-label-plain-metric",
+    );
+    if (dataId === "albedo_percents") {
+      // pas de zero-value
+    } else {
+      let numericValue = 0;
+      if (typeof value === "number") {
+        numericValue = value;
+      } else if (typeof value === "string") {
+        const numMatch = value.match(/[\d.]+/);
+        if (numMatch) {
+          numericValue = parseFloat(numMatch[0]);
+        }
+      }
+      const isButtonLabel =
+        dataId === "co2_percent" ||
+        dataId === "co2_forcing_wm" ||
+        dataId === "ch4_percent" ||
+        dataId === "ch4_forcing_wm" ||
+        dataId === "h2o_percent" ||
+        dataId === "h2o_forcing_wm" ||
+        dataId === "albedo_percent" ||
+        dataId === "albedo_forcing";
+      let isButtonActive = true;
+      if (dataId === "co2_percent" || dataId === "co2_forcing_wm") {
+        isButtonActive =
+          typeof window !== "undefined"
+            ? window.isCO2_eds !== undefined
+              ? window.isCO2_eds
+              : true
+            : true;
+      } else if (dataId === "ch4_percent" || dataId === "ch4_forcing_wm") {
+        isButtonActive =
+          typeof window !== "undefined"
+            ? window.isCH4_eds !== undefined
+              ? window.isCH4_eds
+              : true
+            : true;
+      } else if (dataId === "h2o_percent" || dataId === "h2o_forcing_wm") {
+        isButtonActive =
+          typeof window !== "undefined"
+            ? window.isH2O_eds !== undefined
+              ? window.isH2O_eds
+              : true
+            : true;
+      } else if (dataId === "albedo_percent" || dataId === "albedo_forcing") {
+        isButtonActive =
+          typeof window !== "undefined"
+            ? window.isAlbedo !== undefined
+              ? window.isAlbedo
+              : true
+            : true;
+      }
+      const isAlbedoButtonLabel =
+        dataId === "forcing_total" &&
+        label.closest("#cell-albedo-btn") !== null;
+      const isForcingTotal = dataId === "forcing_total";
+      const isForcingTotalOnAlbedoButton =
+        isForcingTotal && isAlbedoButtonLabel;
+      if (isForcingTotal && !isForcingTotalOnAlbedoButton) {
+        if (valueType === "watt_per_m2") label.classList.add("watt-per-m2");
+      } else if (!isButtonActive && !isForcingTotal) {
+        label.classList.add("zero-value");
+      } else {
+        if (valueType === "watt_per_m2") {
+          label.classList.add("watt-per-m2");
+        } else if (valueType === "watt") {
+          label.classList.add("watt-or-kelvin");
+        } else if (valueType === "percent") {
+          label.classList.add("percent-label");
+        } else if (valueType === "ppm") {
+          label.classList.add("ppm-label");
+        }
+        if (dataId === "co2_percent") {
+          label.classList.add("co2-label");
+        }
+      }
+    }
+    syncFluxLabelPlainMetric(label);
+  });
+};
+
+ORG.updateLabel = updateLabel;
+
+ORG.updateFluxLabels = function (eventId) {
   const DATA = window.DATA;
   const CONST = window.CONST;
   const EARTH = window.EARTH;
@@ -4433,14 +4840,14 @@ window.updateFluxLabels = function (eventId) {
   if (window.CONVERGENCE_DEBUG && window.DEBUG_CONVERGENCE_BINS === true) {
     const d = window.CONVERGENCE_DEBUG;
     const deltaStr = (d.delta != null && Number.isFinite(Number(d.delta))) ? Number(d.delta).toFixed(3) : "—";
-    const fpsStr = (typeof window.fps === "number" && Number.isFinite(window.fps)) ? window.fps.toFixed(1) : "—";
+    const fpsStr = window.RUNTIME_STATE.fps.toFixed(1);
     const msg = "bins=" + (d.bins != null ? d.bins : "—") + " step=" + (d.step != null ? d.step : "—") + " delta=" + deltaStr + " fps=" + fpsStr;
     if (typeof window.pdTrace === "function") window.pdTrace("updateFluxLabels", "organigramme.js", msg);
   }
 
   switch (eventId) {
     case "configLoaded":
-      window.FluxManager.updateAllFluxes(window.currentEpochName);
+      window.FluxManager.updateAllFluxes(window.RUNTIME_STATE.currentEpochName);
       return;
     case "cycleAlbedo":
     case "cycleH2O":
@@ -4454,36 +4861,36 @@ window.updateFluxLabels = function (eventId) {
       var ep = window.configOrganigramme.timeline.find(function (e) {
         return e.type === "epoch" && e.id === epochId;
       });
-      if (ep) window.currentEpochName = ep.name;
-      window.h2oVaporPercent = Math.min(
+      if (ep) window.RUNTIME_STATE.currentEpochName = ep.name;
+      window.RUNTIME_STATE.h2oVaporPercent = Math.min(
         100,
-        Math.max(0, DATA["💧"]["🍰🫧💧"] * 100 + window.h2oTotalFromMeteorites),
+        Math.max(0, DATA["💧"]["🍰🫧💧"] * 100 + window.RUNTIME_STATE.h2oTotalFromMeteorites),
       );
-      window.waterVaporEnabled = window.h2oVaporPercent > 0;
+      window.UI_STATE.waterVaporEnabled = window.RUNTIME_STATE.h2oVaporPercent > 0;
       // ppm CO2/CH4 = fraction molaire × 1e6 (co2KgToFraction/ch4KgToFraction), pas fraction massique × 1e6
       const atm_kg = DATA["⚖️"]["⚖️🫧"];
       const M_air = DATA["🫧"]["🧪"];
       window.plotData.co2_ppm =
-        window.co2KgToFraction(DATA["⚖️"]["⚖️🏭"], atm_kg, M_air) * 1e6;
+        window.ATM.co2KgToFraction(DATA["⚖️"]["⚖️🏭"], atm_kg, M_air) * 1e6;
       window.plotData.ch4_ppm =
-        window.ch4KgToFraction(DATA["⚖️"]["⚖️🐄"], atm_kg, M_air) * 1e6;
+        window.ATM.ch4KgToFraction(DATA["⚖️"]["⚖️🐄"], atm_kg, M_air) * 1e6;
       T0_num = DATA["🧮"]["🧮🌡️"];
       total_flux_num = DATA["📊"].total_flux;
       albedo_num = DATA["🪩"]["🍰🪩📿"];
       cloud_coverage_num = DATA["🪩"]["☁️"];
       co2_ppm_num =
-        window.co2KgToFraction(DATA["⚖️"]["⚖️🏭"], atm_kg, M_air) * 1e6;
+        window.ATM.co2KgToFraction(DATA["⚖️"]["⚖️🏭"], atm_kg, M_air) * 1e6;
       ch4_ppm_num =
-        window.ch4KgToFraction(DATA["⚖️"]["⚖️🐄"], atm_kg, M_air) * 1e6;
+        window.ATM.ch4KgToFraction(DATA["⚖️"]["⚖️🐄"], atm_kg, M_air) * 1e6;
       // Part EDS vapeur (W/m²) = 🧲📛💧 ; 🔺📛💧 = ΔF H₂O (formule ln), autre grandeur
       forcing_H2O = DATA["📛"]["🧲📛💧"];
       isCO2_eds = window.isCO2_eds;
       isCH4_eds = window.isCH4_eds;
       isH2O_eds = window.isH2O_eds;
       isAlbedo = window.isAlbedo;
-      h2o_enabled = window.waterVaporEnabled;
+      h2o_enabled = window.UI_STATE.waterVaporEnabled;
       hasNoAtmosphere = (function () {
-        var epoch = window.getGeologicalPeriodByName(window.currentEpochName);
+        var epoch = window.GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName);
         return (
           epoch.total_atmosphere_mass_kg === 0 ||
           epoch.total_atmosphere_mass_kg === undefined
@@ -4494,565 +4901,13 @@ window.updateFluxLabels = function (eventId) {
     default:
       return;
   }
-  // Définir les fonctions helper AVANT l'appel à FluxManager
-  // (elles seront utilisées par FluxManager et par la suite dans cette fonction)
+  // Helpers detectValueType / formatNumberWithScientific / formatValueFromTemplate / FINE_TUNING_TOOLTIP_SHORT / updateLabel définis au scope du module (cf. au-dessus de ORG.updateFluxLabels) pour être disponibles dès le chargement (FluxManager.updateAllFluxes peut être appelé avant le premier ProcessFinished).
 
-  // Fonction pour détecter le type de valeur (W, W/m², %, ppm) pour la couleur
-  const detectValueType = (text) => {
-    if (!text) return null;
-    const textStr = String(text);
-    // Détecter W/m² ou MW/m² (après conversion)
-    if (
-      textStr.includes("W/m²") ||
-      textStr.includes("W/m2") ||
-      textStr.includes("MW/m²") ||
-      textStr.includes("MW/m2")
-    )
-      return "watt_per_m2";
-    // Détecter MW ou W (mais pas W/m² qui est déjà géré ci-dessus)
-    if (
-      textStr.includes("MW") ||
-      (textStr.includes(" W") &&
-        !textStr.includes("W/m²") &&
-        !textStr.includes("W/m2"))
-    )
-      return "watt";
-    if (textStr.includes("%")) return "percent";
-    if (textStr.includes("ppm")) return "ppm";
-    return null;
-  };
-
-  // Fonction pour formater une valeur numérique avec notation scientifique si nécessaire
-  const formatNumberWithScientific = (num) => {
-    if (typeof num !== "number" || isNaN(num)) return String(num);
-
-    // Si le nombre est >= 1000, utiliser notation scientifique (calcul mathématique)
-    if (Math.abs(num) >= 1000) {
-      // Calculer l'exposant mathématiquement
-      const exponent = Math.floor(Math.log10(Math.abs(num)));
-      const mantissa = num / Math.pow(10, exponent);
-      return `${mantissa.toFixed(2)}×10<sup><b>${exponent}</b></sup>`;
-    }
-    // Sinon, afficher avec 2 décimales
-    return num.toFixed(2);
-  };
-
-  // Fonction générique qui lit le template depuis la config et remplace les valeurs
-  const formatValueFromTemplate = (dataId, value) => {
-    // Chercher le template dans la config des arcs
-    if (!window.configOrganigramme || !window.configOrganigramme.arcs) {
-      return String(value);
-    }
-
-    let template = null;
-    let labelPath = null; // 'name', 'txtF', 'txtD'
-
-    // Parcourir tous les arcs pour trouver le dataId
-    for (const arc of window.configOrganigramme.arcs) {
-      if (!arc.label) continue;
-
-      // Vérifier name
-      if (
-        arc.label.name &&
-        typeof arc.label.name === "object" &&
-        arc.label.name.dataId === dataId
-      ) {
-        template = arc.label.name.text;
-        labelPath = "name";
-        break;
-      }
-      // Vérifier txtF (peut être un objet unique ou un tableau d'objets)
-      if (arc.label.txtF) {
-        if (Array.isArray(arc.label.txtF)) {
-          // Si txtF est un tableau, chercher dans chaque élément
-          for (const txtFItem of arc.label.txtF) {
-            if (typeof txtFItem === "object" && txtFItem.dataId === dataId) {
-              template = txtFItem.text;
-              labelPath = "txtF";
-              break;
-            }
-          }
-          if (template) break;
-        } else if (
-          typeof arc.label.txtF === "object" &&
-          arc.label.txtF.dataId === dataId
-        ) {
-          template = arc.label.txtF.text;
-          labelPath = "txtF";
-          break;
-        }
-      }
-      // Vérifier txtD
-      if (
-        arc.label.txtD &&
-        typeof arc.label.txtD === "object" &&
-        arc.label.txtD.dataId === dataId
-      ) {
-        template = arc.label.txtD.text;
-        labelPath = "txtD";
-        break;
-      }
-      // Vérifier txtDD (avant le début de la flèche)
-      if (
-        arc.label.txtDD &&
-        typeof arc.label.txtDD === "object" &&
-        arc.label.txtDD.dataId === dataId
-      ) {
-        template = arc.label.txtDD.text;
-        labelPath = "txtDD";
-        break;
-      }
-      if (Array.isArray(arc.label.txtDD)) {
-        for (const item of arc.label.txtDD) {
-          if (typeof item === "object" && item.dataId === dataId) {
-            template = item.text;
-            labelPath = "txtDD";
-            break;
-          }
-        }
-        if (template) break;
-      }
-      // Vérifier txtFF (après le bout de la flèche)
-      if (
-        arc.label.txtFF &&
-        typeof arc.label.txtFF === "object" &&
-        arc.label.txtFF.dataId === dataId
-      ) {
-        template = arc.label.txtFF.text;
-        labelPath = "txtFF";
-        break;
-      }
-      if (Array.isArray(arc.label.txtFF)) {
-        for (const item of arc.label.txtFF) {
-          if (typeof item === "object" && item.dataId === dataId) {
-            template = item.text;
-            labelPath = "txtFF";
-            break;
-          }
-        }
-        if (template) break;
-      }
-    }
-
-    // Si pas de template trouvé, chercher dans les nœuds (pour les boutons)
-    if (!template && window.configOrganigramme.nodes) {
-      for (const node of window.configOrganigramme.nodes) {
-        // Chercher dans left, right, top, bottom
-        const searchInArray = (arr) => {
-          if (!Array.isArray(arr)) return null;
-          for (const item of arr) {
-            if (item && typeof item === "object" && item.dataId === dataId) {
-              return item.text;
-            }
-          }
-          return null;
-        };
-        template =
-          searchInArray(node.left) ||
-          searchInArray(node.right) ||
-          searchInArray(node.top) ||
-          searchInArray(node.bottom);
-        if (template) break;
-      }
-    }
-
-    // Si pas de template, retourner la valeur formatée simplement
-    if (!template) {
-      if (typeof value === "number") {
-        return formatNumberWithScientific(value);
-      }
-      // Si c'est une string (comme albedoBreakdown), la retourner telle quelle
-      return String(value);
-    }
-
-    // Remplacer les valeurs numériques dans le template
-    // On calcule mathématiquement la notation scientifique, puis on remplace avec une regex simple
-    let result = template;
-
-    if (typeof value === "number") {
-      // Détecter si le template contient "ppm" ou "%"
-      const hasPpmInTemplate = template.includes("ppm");
-      const hasPercentInTemplate = template.includes("%");
-
-      // Logique de conversion :
-      // - Si template contient " W" (watts) et valeur >= 10^6 : convertir en MW (diviser par 10^6)
-      // - Si template contient "%" ET dataId est co2_percent ou ch4_percent : la valeur est en ppm, convertir en % (diviser par 10000)
-      //   Exemple: 1000000 ppm → 100%, 6400 ppm → 0.64%, 0 ppm → 0%
-      // - Si template contient "%" ET dataId est déjà en % (albedo_percent, h2o_percent, passing_albedo_percent) : ne pas convertir
-      // - Si template contient "ppm" et valeur > 10000 : convertir en % (diviser par 10000)
-      // - Si template contient "ppm" et valeur <= 10000 : afficher en ppm (entier)
-      // Note: Les valeurs passées pour co2_percent et ch4_percent sont toujours en ppm
-      //       Les valeurs passées pour albedo_percent, h2o_percent, passing_albedo_percent sont déjà en % (0-100)
-      let valueToFormat = value;
-      let shouldConvertPpmToPercent = false;
-      let shouldConvertPercentToPpm = false;
-      let shouldConvertWattToMW = false;
-
-      // Détecter si le template contient " W" (watts) mais pas "W/m²" ou "W/m2"
-      const hasWattInTemplate =
-        (template.includes(" W") || template.includes(" W ")) &&
-        !template.includes("W/m²") &&
-        !template.includes("W/m2");
-      // Détecter si le template contient "W/m²" ou "W/m2" (watts par m²)
-      const hasWattPerM2InTemplate =
-        template.includes("W/m²") || template.includes("W/m2");
-
-      // Si template contient " W" (sans /m²) et valeur >= 10^5, convertir en MW
-      // Pour les très grandes valeurs (>= 10^9), garder la notation scientifique et soustraire 6 de l'exposant
-      // Pour les valeurs moyennes (10^5 à 10^9), convertir en MW sans notation scientifique
-      // Exemple: 1×10^6 W → 1.00 MW, 1×10^5 W → 0.10 MW
-      if (hasWattInTemplate && Math.abs(value) >= 1e5) {
-        if (Math.abs(value) >= 1e9) {
-          // Très grande valeur : garder notation scientifique, soustraire 6 de l'exposant
-          // Exemple: 3×10^26 W → 3×10^20 MW
-          shouldConvertWattToMW = true;
-          // On ne divise pas maintenant, on le fera lors du formatage en soustrayant 6 de l'exposant
-        } else {
-          // Valeur moyenne (>= 10^5) : convertir en MW sans notation scientifique
-          // Exemple: 1.76×10^6 W → 1.76 MW, 1×10^5 W → 0.10 MW
-          valueToFormat = value / 1e6;
-          shouldConvertWattToMW = true;
-        }
-      }
-
-      // Si template contient "W/m²" et valeur >= 10^5, convertir en MW/m²
-      // Pour les très grandes valeurs (>= 10^9), garder la notation scientifique et soustraire 6 de l'exposant
-      // Pour les valeurs moyennes (10^5 à 10^9), convertir en MW/m² sans notation scientifique
-      // Exemple: 2×10^6 W/m² → 2.00 MW/m², 1.16×10^5 W/m² → 0.12 MW/m²
-      if (hasWattPerM2InTemplate && Math.abs(value) >= 1e5) {
-        if (Math.abs(value) >= 1e9) {
-          // Très grande valeur : garder notation scientifique, soustraire 6 de l'exposant
-          // Exemple: 3×10^26 W/m² → 3×10^20 MW/m²
-          shouldConvertWattToMW = true;
-          // On ne divise pas maintenant, on le fera lors du formatage en soustrayant 6 de l'exposant
-        } else {
-          // Valeur moyenne (>= 10^5) : convertir en MW/m² sans notation scientifique
-          // Exemple: 2.00×10^6 W/m² → 2.00 MW/m², 1.16×10^5 W/m² → 0.12 MW/m²
-          valueToFormat = value / 1e6;
-          shouldConvertWattToMW = true;
-        }
-      }
-
-      // DataId qui sont déjà en % (pas de conversion ppm -> %)
-      const percentDataIds = [
-        "albedo_percent",
-        "h2o_percent",
-        "passing_albedo_percent",
-      ];
-      const isAlreadyInPercent = percentDataIds.includes(dataId);
-
-      if (hasPercentInTemplate && !hasPpmInTemplate && !isAlreadyInPercent) {
-        // Template avec "%" et dataId n'est pas déjà en % : la valeur est en ppm, convertir en %
-        // 0 ppm = 0%, 10000 ppm = 1%, 1000000 ppm = 100%
-        valueToFormat = value / 10000; // Convertir ppm en %
-        shouldConvertPpmToPercent = true; // Pour remplacer "%" par "%" (pas de changement d'unité, juste conversion)
-      } else if (hasPpmInTemplate && !hasPercentInTemplate && value > 10000) {
-        // Template avec "ppm", valeur > 10000 : convertir en %
-        valueToFormat = value / 10000; // Convertir ppm en %
-        shouldConvertPpmToPercent = true; // Pour remplacer "ppm" par "%"
-      }
-
-      // Pour les ppm : jamais de notation scientifique, toujours entier
-      // Pour les % : 1 décimale
-      // Pour le reste : notation scientifique si >= 1000
-
-      // Vérifier si le template contient déjà un <b> dans le <sup> (pour le préserver)
-      const hasBoldInTemplate =
-        template.includes("<sup><b>") || template.includes("<sup> <b>");
-
-      let formattedValue;
-
-      // Cas spécial : ppm (même après conversion) - toujours entier, jamais notation scientifique
-      if (hasPpmInTemplate || shouldConvertPercentToPpm) {
-        formattedValue =
-          valueToFormat > 0 ? Math.floor(valueToFormat).toString() : "0";
-      }
-      // Cas spécial : % (normal ou après conversion ppm -> %)
-      else if (hasPercentInTemplate || shouldConvertPpmToPercent) {
-        formattedValue = valueToFormat.toFixed(1);
-      }
-      // Cas spécial : MW (après conversion W -> MW)
-      else if (shouldConvertWattToMW) {
-        // Si la valeur originale est >= 10^9, utiliser notation scientifique avec exposant réduit de 6
-        if (Math.abs(value) >= 1e9) {
-          const exponent = Math.floor(Math.log10(Math.abs(value)));
-          const mantissa = value / Math.pow(10, exponent);
-          const mwExponent = exponent - 6; // Soustraire 6 pour convertir W -> MW
-          // Préserver le <b> si présent dans le template
-          if (hasBoldInTemplate) {
-            formattedValue = `${mantissa.toFixed(2)}×10<sup><b>${mwExponent}</b></sup>`;
-          } else {
-            formattedValue = `${mantissa.toFixed(2)}×10<sup>${mwExponent}</sup>`;
-          }
-        } else {
-          // Valeur moyenne : format simple en MW
-          formattedValue = valueToFormat.toFixed(2);
-        }
-      }
-      // Cas général : notation scientifique si >= 1000
-      else {
-        const shouldUseScientific = Math.abs(valueToFormat) >= 1000;
-        if (shouldUseScientific) {
-          // Calculer l'exposant mathématiquement
-          const exponent = Math.floor(Math.log10(Math.abs(valueToFormat)));
-          const mantissa = valueToFormat / Math.pow(10, exponent);
-          // Préserver le <b> si présent dans le template
-          if (hasBoldInTemplate) {
-            formattedValue = `${mantissa.toFixed(2)}×10<sup><b>${exponent}</b></sup>`;
-          } else {
-            formattedValue = `${mantissa.toFixed(2)}×10<sup>${exponent}</sup>`;
-          }
-        } else {
-          formattedValue = valueToFormat.toFixed(2);
-        }
-      }
-
-      // Regex simple : détecte un nombre (simple ou avec notation scientifique, avec ou sans <b>)
-      // Pattern flexible : détecte ×10<sup>XX</sup> ou ×10<sup><b>XX</b></sup>
-      // On doit capturer le pattern complet pour le remplacer
-      const numberPattern =
-        /\d+(?:\.\d+)?(?:×10<sup>(?:<b>)?\d+(?:<\/b>)?<\/sup>)?/;
-
-      if (numberPattern.test(template)) {
-        // Remplacer le premier nombre trouvé par la valeur formatée (qui contient déjà le <b>)
-        result = template.replace(numberPattern, formattedValue);
-
-        // Si conversion ppm -> %, remplacer "ppm" par "%" dans le template
-        if (shouldConvertPpmToPercent) {
-          result = result.replace(/ppm/g, "%");
-        }
-        // Si conversion % -> ppm, remplacer "%" par "ppm" dans le template
-        if (shouldConvertPercentToPpm) {
-          result = result.replace(/%/g, "ppm");
-        }
-        // Si conversion W -> MW, remplacer "W/m²" par "MW/m²" ou " W" par " MW" dans le template
-        if (shouldConvertWattToMW) {
-          // D'abord remplacer "W/m²" par "MW/m²" pour préserver l'unité
-          result = result.replace(/W\/m²/g, "MW/m²");
-          result = result.replace(/W\/m2/g, "MW/m2");
-          // Ensuite remplacer " W" (avec espace) par " MW" pour les autres cas
-          result = result.replace(/\s+W\b/g, " MW");
-        }
-      } else {
-        // Aucun nombre trouvé, remplacer tout le template
-        result = formattedValue;
-        // Si conversion ppm -> %, ajouter "%" au lieu de "ppm"
-        if (shouldConvertPpmToPercent) {
-          result = result + "%";
-        }
-        // Si conversion % -> ppm, ajouter "ppm" au lieu de "%"
-        if (shouldConvertPercentToPpm) {
-          result = result + "ppm";
-        }
-        // Si conversion W -> MW, ajouter "MW" ou "MW/m²" selon le template original
-        if (shouldConvertWattToMW) {
-          // Vérifier si le template original contenait "W/m²" pour préserver l'unité
-          if (template.includes("W/m²") || template.includes("W/m2")) {
-            result = result + " MW/m²";
-          } else {
-            result = result + " MW";
-          }
-        }
-      }
-    } else {
-      // Si c'est une string, ne pas remplacer (c'est déjà formaté, comme albedoBreakdown)
-      // Retourner la valeur telle quelle si c'est une string complexe
-      return String(value);
-    }
-
-    return result;
-  };
-
-  const FINE_TUNING_TOOLTIP_SHORT = getFineTuningShortTooltip("100");
-
-  // Fonction helper pour mettre à jour un label par dataId (utilise maintenant le template)
-  const updateLabel = (dataId, value, format = "auto") => {
-    const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
-    labels.forEach((label) => {
-      let formattedValue;
-
-      if (dataId === "fine_tuning_cloud_bary") {
-        let pctStr;
-        if (typeof value === "number" && Number.isFinite(value)) {
-          pctStr = String(Math.round(Math.max(0, Math.min(100, value))));
-        } else if (format === "text" && typeof value === "string") {
-          const m = value.replace(/<[^>]*>/g, " ").match(/(\d+(?:\.\d+)?)\s*%/);
-          pctStr = m ? String(Math.round(parseFloat(m[1], 10))) : "100";
-        } else {
-          const tmp =
-            format === "text" && typeof value === "string"
-              ? value
-              : formatValueFromTemplate(dataId, value);
-          const m = String(tmp).replace(/<[^>]*>/g, " ").match(/(\d+(?:\.\d+)?)\s*%/);
-          pctStr = m ? String(Math.round(parseFloat(m[1], 10))) : "100";
-        }
-        formattedValue = pctStr + "%";
-        const detail = getFineTuningDetailAlt(pctStr, true);
-        const existingSlider = label.querySelector(".organigram-bary-mini-slider");
-        const pctEl = label.querySelector(".organigram-bary-pct");
-        if (existingSlider && pctEl) {
-          pctEl.textContent = pctStr + "%";
-          existingSlider.value = pctStr;
-        } else {
-          label.innerHTML =
-            '<div class="organigram-bary-face organigram-bary-face--two-cols">' +
-            '<div class="organigram-bary-col organigram-bary-col-left">' +
-            '<div class="organigram-bary-icons">🔺🌡️🔻</div>' +
-            '<div class="organigram-bary-line-slider">' +
-            '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' +
-            pctStr +
-            '" aria-label="Réglage fin barycentre nuages">' +
-            "</div></div>" +
-            '<div class="organigram-bary-col organigram-bary-col-right">' +
-            '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +
-            '<span class="organigram-bary-pct">' +
-            pctStr +
-            "%</span></div></div>";
-        }
-        label.setAttribute("data-tooltip", getFineTuningShortTooltip(pctStr));
-        label.setAttribute("aria-label", detail || FINE_TUNING_TOOLTIP_SHORT);
-        label.removeAttribute("title");
-      } else {
-        if (format === "text" && typeof value === "string") {
-          formattedValue = value;
-        } else {
-          formattedValue = formatValueFromTemplate(dataId, value);
-        }
-        label.innerHTML = formattedValue;
-      }
-      // Détecter automatiquement le type pour la couleur
-      const valueType = detectValueType(formattedValue);
-
-      // Réinitialiser toutes les classes de couleur
-      label.classList.remove(
-        "watt-per-m2",
-        "watt-or-kelvin",
-        "zero-value",
-        "co2-label",
-        "percent-label",
-        "ppm-label",
-        "flux-label-plain-metric",
-      );
-
-      // Exception : albedo_percents (breakdown détaillé) ne doit jamais être grisé
-      // Le détail affiche la structure (🌋 0% x0.05, etc.) toujours informative
-      if (dataId === "albedo_percents") {
-        // Pas de zero-value, fin du traitement pour ce label (contenu déjà mis à jour ci-dessus)
-      } else {
-        // Vérifier si la valeur est 0 (ou proche de 0)
-        // Convertir la valeur en nombre si possible (extraire le nombre du formattedValue ou utiliser value)
-        let numericValue = 0;
-        if (typeof value === "number") {
-          numericValue = value;
-        } else if (typeof value === "string") {
-          // Essayer d'extraire un nombre de la string
-          const numMatch = value.match(/[\d.]+/);
-          if (numMatch) {
-            numericValue = parseFloat(numMatch[0]);
-          }
-        }
-
-        // Vérifier si le label est lié à un bouton
-        // Note: forcing_total et albedo_percent sont sur le bouton albedo, mais forcing_total est aussi sur la flèche reemis->terre
-        // On doit vérifier si c'est le label du bouton albedo ou celui de la flèche
-        const isButtonLabel =
-          dataId === "co2_percent" ||
-          dataId === "co2_forcing_wm" ||
-          dataId === "ch4_percent" ||
-          dataId === "ch4_forcing_wm" ||
-          dataId === "h2o_percent" ||
-          dataId === "h2o_forcing_wm" ||
-          dataId === "albedo_percent" ||
-          dataId === "albedo_forcing";
-
-        // 🔒 UTILISER UNIQUEMENT les variables globales uniques pour déterminer l'état des boutons
-        // Récupérer l'état du bouton depuis les variables globales uniques (seule référence)
-        let isButtonActive = true;
-        if (dataId === "co2_percent" || dataId === "co2_forcing_wm") {
-          isButtonActive =
-            typeof window !== "undefined"
-              ? window.isCO2_eds !== undefined
-                ? window.isCO2_eds
-                : true
-              : true;
-        } else if (dataId === "ch4_percent" || dataId === "ch4_forcing_wm") {
-          isButtonActive =
-            typeof window !== "undefined"
-              ? window.isCH4_eds !== undefined
-                ? window.isCH4_eds
-                : true
-              : true;
-        } else if (dataId === "h2o_percent" || dataId === "h2o_forcing_wm") {
-          isButtonActive =
-            typeof window !== "undefined"
-              ? window.isH2O_eds !== undefined
-                ? window.isH2O_eds
-                : true
-              : true;
-        } else if (dataId === "albedo_percent" || dataId === "albedo_forcing") {
-          isButtonActive =
-            typeof window !== "undefined"
-              ? window.isAlbedo !== undefined
-                ? window.isAlbedo
-                : true
-              : true;
-        }
-
-        // Vérifier si forcing_total est sur le bouton albedo (pas sur la flèche)
-        // Le label du bouton albedo est dans la cellule cell-albedo-btn
-        // Vérifier si le label est dans la cellule du bouton albedo
-        const isAlbedoButtonLabel =
-          dataId === "forcing_total" &&
-          label.closest("#cell-albedo-btn") !== null;
-
-        // 🔒 CORRECTION : forcing_total (EDS) ne doit PAS dépendre de l'état des boutons
-        // L'EDS est l'effet de serre réel calculé par le transfert radiatif, qui est toujours valide
-        // Même si les boutons sont inactifs, l'EDS existe physiquement
-        // Exception : si forcing_total est sur le bouton albedo ET que le bouton est inactif,
-        // on peut le griser (mais c'est juste esthétique, l'EDS existe toujours)
-        const isForcingTotal = dataId === "forcing_total";
-        const isForcingTotalOnAlbedoButton =
-          isForcingTotal && isAlbedoButtonLabel;
-
-        // 🔒 Gris uniquement si bouton inactif, pas si valeur = 0
-        if (isForcingTotal && !isForcingTotalOnAlbedoButton) {
-          if (valueType === "watt_per_m2") label.classList.add("watt-per-m2");
-        } else if (!isButtonActive && !isForcingTotal) {
-          label.classList.add("zero-value");
-        } else {
-          // Valeur non nulle et bouton actif : appliquer la couleur selon l'unité
-          if (valueType === "watt_per_m2") {
-            label.classList.add("watt-per-m2");
-          } else if (valueType === "watt") {
-            label.classList.add("watt-or-kelvin");
-          } else if (valueType === "percent") {
-            label.classList.add("percent-label");
-          } else if (valueType === "ppm") {
-            label.classList.add("ppm-label");
-          }
-
-          // Vérifier si c'est un label CO2 pour appliquer la classe spécifique
-          // Pour co2_forcing_wm, ne jamais ajouter co2-label (utiliser uniquement la couleur selon l'unité)
-          // pour éviter que le vert écrase l'orange
-          if (dataId === "co2_percent") {
-            label.classList.add("co2-label");
-          }
-          // co2_forcing_wm utilise uniquement la couleur selon l'unité (watt-per-m2 pour orange)
-        }
-      } // fin else (albedo_percents)
-      syncFluxLabelPlainMetric(label);
-    });
-  };
-
-  // Exposer updateLabel globalement pour que FluxManager puisse l'utiliser
-  if (typeof window !== "undefined") {
-    window.updateLabel = updateLabel;
-  }
 
   // Déléguer la mise à jour des flux d'entrée (Soleil, Noyau) au FluxManager
   // (maintenant que updateLabel est disponible)
-  if (window.FluxManager && window.currentEpochName) {
-    window.FluxManager.updateAllFluxes(window.currentEpochName);
+  if (window.FluxManager && window.RUNTIME_STATE.currentEpochName) {
+    window.FluxManager.updateAllFluxes(window.RUNTIME_STATE.currentEpochName);
   }
 
   // Source prioritaire pour le flux solaire : DATA['☀️'] (rempli par époque), sinon CONST
@@ -5107,19 +4962,16 @@ window.updateFluxLabels = function (eventId) {
   if (!hasNoAtmosphere && albedo_num === 0) {
     // Si albedo_num est 0 ou data.albedo n'est pas défini, recalculer avec le flux géothermique
     let geo_flux = null;
-    if (typeof window !== "undefined" && window.currentEpochName) {
-      const currentEpoch = window.getGeologicalPeriodByName(
-        window.currentEpochName,
+    if (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) {
+      const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
+        window.RUNTIME_STATE.currentEpochName,
       );
       if (currentEpoch && typeof currentEpoch.geothermal_flux === "number") {
         geo_flux = currentEpoch.geothermal_flux;
       }
     }
-    if (
-      typeof window !== "undefined" &&
-      typeof window.calculateAlbedo === "function"
-    ) {
-      albedo_num = window.calculateAlbedo(T0_num, h2o_enabled, geo_flux);
+    if (window.ALBEDO && window.ALBEDO.calculateAlbedo) {
+      albedo_num = window.ALBEDO.calculateAlbedo(T0_num, h2o_enabled, geo_flux);
     }
   }
   // Sinon, utiliser data.albedo qui vient de la simulation (déjà calculé avec tous les paramètres)
@@ -5132,11 +4984,11 @@ window.updateFluxLabels = function (eventId) {
   let geo_flux = null;
   if (
     typeof window !== "undefined" &&
-    window.currentEpochName &&
-    typeof window.getGeologicalPeriodByName === "function"
+    window.RUNTIME_STATE.currentEpochName &&
+    window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName
   ) {
-    const currentEpoch = window.getGeologicalPeriodByName(
-      window.currentEpochName,
+    const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
+      window.RUNTIME_STATE.currentEpochName,
     );
     if (currentEpoch && typeof currentEpoch.geothermal_flux === "number") {
       geo_flux = currentEpoch.geothermal_flux;
@@ -5145,7 +4997,7 @@ window.updateFluxLabels = function (eventId) {
   // 🔒 TOUJOURS utiliser calculateSolarFluxAbsorbed (même en corps noir)
   // La fonction utilise la formule : solar_flux_absorbed_wm = solar_flux_average_wm - solar_flux_reflected_wm
   // En corps noir, albedo = 0, donc solar_flux_reflected_wm = 0, donc solar_flux_absorbed_wm = solar_flux_average_wm
-  solar_flux_absorbed = window.calculateSolarFluxAbsorbed(T0_num, h2o_enabled, geo_flux);
+  solar_flux_absorbed = window.ALBEDO.calculateSolarFluxAbsorbed(T0_num, h2o_enabled, geo_flux);
 
   // Calculer le flux réfléchi avec l'albedo (venant de data.albedo ou recalculé)
   const flux_reflected = SOLAR_FLUX_AVERAGE * albedo_num;
@@ -5158,11 +5010,11 @@ window.updateFluxLabels = function (eventId) {
   // 🔒 PRIORITÉ 1 : Utiliser la valeur calculée par calculateAlbedo (la plus récente et précise)
   if (
     typeof window !== "undefined" &&
-    window.h2oIceFractionFromCalculation !== undefined
+    window.RUNTIME_STATE.h2oIceFractionFromCalculation !== undefined
   ) {
     ice_coverage = Math.min(
       1,
-      Math.max(0, window.h2oIceFractionFromCalculation),
+      Math.max(0, window.RUNTIME_STATE.h2oIceFractionFromCalculation),
     );
   } else if (hasNoAtmosphere) {
     // Corps noir sans glace calculée : pas d'albedo (pas d'atmosphère, pas d'eau)
@@ -5177,9 +5029,9 @@ window.updateFluxLabels = function (eventId) {
 
     // Récupérer le flux géothermique depuis l'époque courante
     let geo_flux = 0.087; // Valeur par défaut (moderne)
-    if (typeof window !== "undefined" && window.currentEpochName) {
-      const currentEpoch = window.getGeologicalPeriodByName(
-        window.currentEpochName,
+    if (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) {
+      const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
+        window.RUNTIME_STATE.currentEpochName,
       );
       if (currentEpoch && typeof currentEpoch.geothermal_flux === "number") {
         geo_flux = currentEpoch.geothermal_flux;
@@ -5224,7 +5076,7 @@ window.updateFluxLabels = function (eventId) {
   if (
     hasNoAtmosphere &&
     (typeof window === "undefined" ||
-      window.h2oIceFractionFromCalculation === undefined)
+      window.RUNTIME_STATE.h2oIceFractionFromCalculation === undefined)
   ) {
     cloud_percent = 0;
   }
@@ -5234,32 +5086,24 @@ window.updateFluxLabels = function (eventId) {
   // Forçages radiatifs
   // 🔒 UTILISER UNIQUEMENT isCO2_eds, isCH4_eds, isH2O_eds, isAlbedo (seule référence)
   const forcing_CO2 =
-    isCO2_eds &&
-    co2_ppm_num > 0 &&
-    typeof window !== "undefined" &&
-    typeof window.calculateCO2Forcing === "function"
-      ? window.calculateCO2Forcing(co2_ppm_num * 1e-6)
+    isCO2_eds && co2_ppm_num > 0 && window.CLIMATE && window.CLIMATE.calculateCO2Forcing
+      ? window.CLIMATE.calculateCO2Forcing(co2_ppm_num * 1e-6)
       : 0;
-  // CH4 : calculer le diagnostic ΔF (convention affichage, bande ~7.7 μm)
   const forcing_CH4 =
-    isCH4_eds &&
-    ch4_ppm_num > 0 &&
-    typeof window !== "undefined" &&
-    typeof window.calculateCH4Forcing === "function"
-      ? window.calculateCH4Forcing(ch4_ppm_num * 1e-6)
+    isCH4_eds && ch4_ppm_num > 0 && window.CLIMATE && window.CLIMATE.calculateCH4Forcing
+      ? window.CLIMATE.calculateCH4Forcing(ch4_ppm_num * 1e-6)
       : 0;
 
   // Paramètres H2O (vapeur + météorites) — forcing_H2O = part EDS vapeur (🧲📛💧). Nuages EDS = 🧲📛⛅ (à brancher sur nouveau nœud).
-  const h2o_vapor_percent = window.h2oVaporPercent;
-  const h2o_from_meteorites = window.h2oTotalFromMeteorites;
+  const h2o_vapor_percent = window.RUNTIME_STATE.h2oVaporPercent;
+  const h2o_from_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites;
   const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
   // 🔒 CORRECTION : Le forçage albédo est actif seulement si isAlbedo est true
   // En mode corps noir, on peut avoir un forçage albedo si il y a de la glace des météorites
   const forcing_Albedo = !isAlbedo
     ? 0
-    : typeof window !== "undefined" &&
-        typeof window.calculateAlbedoForcing === "function"
-      ? window.calculateAlbedoForcing(albedo_num)
+    : (window.CLIMATE && window.CLIMATE.calculateAlbedoForcing)
+      ? window.CLIMATE.calculateAlbedoForcing(albedo_num)
       : 0;
 
   // 🔒 CORRECTION : Le forçage total affiché dans le diagramme (effet de serre) ne doit PAS inclure l'albédo
@@ -5367,7 +5211,7 @@ window.updateFluxLabels = function (eventId) {
   };
 
   // Albedo : même source que l'API (EARTH['🪩🍰'] + override époque)
-  const currentEpochAlbedo = window.getGeologicalPeriodByName(window.currentEpochName);
+  const currentEpochAlbedo = window.GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName);
   const albedoCoeff = {
     ...EARTH["🪩🍰"],
     ...currentEpochAlbedo["🪩🍰"],
@@ -5414,9 +5258,9 @@ window.updateFluxLabels = function (eventId) {
       { emoji: "🌍", coverage: land_cov_corps_noir, albedo: albedoCoeff["🪩🍰🌍"].toFixed(2) },
     ];
     albedoBreakdown = createAlbedoComponents(components);
-  } else if (window.currentEpochName) {
-    const currentEpoch = window.getGeologicalPeriodByName(
-      window.currentEpochName,
+  } else if (window.RUNTIME_STATE.currentEpochName) {
+    const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
+      window.RUNTIME_STATE.currentEpochName,
     );
     if (currentEpoch) {
       const magma_cov = parseFloat(
@@ -5552,8 +5396,8 @@ window.updateFluxLabels = function (eventId) {
   let geothermie_value;
   if (
     typeof window === "undefined" ||
-    !window.currentEpochName ||
-    typeof window.getGeologicalPeriodByName !== "function"
+    !window.RUNTIME_STATE.currentEpochName ||
+    !(window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName)
   ) {
     logAlbedoUi("abort geothermie: epoch courante indisponible");
     console.error(
@@ -5566,31 +5410,31 @@ window.updateFluxLabels = function (eventId) {
 
   // Certaines époques internes (hidden=true, ex: hysteresis 1) peuvent ne pas exister côté getGeologicalPeriodByName.
   // Fallback vers TIMELINE (source brute) pour éviter "Époque non trouvée" uniquement sur hidden epochs.
-  let currentEpoch = window.getGeologicalPeriodByName(window.currentEpochName);
+  let currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName);
   if (!currentEpoch && window.TIMELINE && Array.isArray(window.TIMELINE)) {
     currentEpoch =
       window.TIMELINE.find(function (e) {
         return (
           e &&
           e["📅"] &&
-          (e["📅"] === window.currentEpochName ||
-            e.name === window.currentEpochName ||
-            e.id === window.currentEpochName ||
+          (e["📅"] === window.RUNTIME_STATE.currentEpochName ||
+            e.name === window.RUNTIME_STATE.currentEpochName ||
+            e.id === window.RUNTIME_STATE.currentEpochName ||
             (window.CHARS_DESC &&
-              window.CHARS_DESC[e["📅"]] === window.currentEpochName))
+              window.CHARS_DESC[e["📅"]] === window.RUNTIME_STATE.currentEpochName))
         );
       }) || null;
   }
   if (!currentEpoch) {
     logAlbedoUi(
       "abort geothermie: currentEpoch introuvable name=" +
-        window.currentEpochName,
+        window.RUNTIME_STATE.currentEpochName,
     );
     console.error(
       "[updateFluxLabels] ❌ ERREUR CRITIQUE : Époque non trouvée:",
-      window.currentEpochName,
+      window.RUNTIME_STATE.currentEpochName,
     );
-    throw new Error(`Époque "${window.currentEpochName}" non trouvée`);
+    throw new Error(`Époque "${window.RUNTIME_STATE.currentEpochName}" non trouvée`);
   }
 
   // Récupérer la température du noyau depuis la config de l'époque
@@ -5687,11 +5531,11 @@ window.updateFluxLabels = function (eventId) {
   let planet_radius = R;
   if (
     typeof window !== "undefined" &&
-    window.currentEpochName &&
-    typeof window.getGeologicalPeriodByName === "function"
+    window.RUNTIME_STATE.currentEpochName &&
+    window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName
   ) {
-    const currentEpoch = window.getGeologicalPeriodByName(
-      window.currentEpochName,
+    const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
+      window.RUNTIME_STATE.currentEpochName,
     );
     if (currentEpoch && currentEpoch.planet_radius) {
       planet_radius = currentEpoch.planet_radius;
@@ -5744,11 +5588,11 @@ window.updateFluxLabels = function (eventId) {
     let radius = 6371000; // Défaut Terre
     if (
       typeof window !== "undefined" &&
-      window.currentEpochName &&
-      typeof window.getGeologicalPeriodByName === "function"
+      window.RUNTIME_STATE.currentEpochName &&
+      window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName
     ) {
-      const currentEpoch = window.getGeologicalPeriodByName(
-        window.currentEpochName,
+      const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
+        window.RUNTIME_STATE.currentEpochName,
       );
       if (currentEpoch && currentEpoch.planet_radius) {
         radius = currentEpoch.planet_radius;
@@ -5888,9 +5732,9 @@ window.updateFluxLabels = function (eventId) {
     let gravity = 9.81;
     let molar_mass_air = undefined;
 
-    if (window.currentEpochName) {
-      const currentEpoch = window.getGeologicalPeriodByName(
-        window.currentEpochName,
+    if (window.RUNTIME_STATE.currentEpochName) {
+      const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
+        window.RUNTIME_STATE.currentEpochName,
       );
       if (currentEpoch) {
         if (currentEpoch.total_atmosphere_mass_kg !== undefined)
@@ -5900,7 +5744,7 @@ window.updateFluxLabels = function (eventId) {
           molar_mass_air = currentEpoch.molar_mass_air;
         } else {
           // Calculer depuis les composants de l'époque
-          molar_mass_air = window.calculateMolarMassAir(currentEpoch);
+          molar_mass_air = window.ATM.calculateMolarMassAir(currentEpoch);
         }
       }
     }
@@ -5914,7 +5758,7 @@ window.updateFluxLabels = function (eventId) {
     // On passe T0_num (Température surface), molar_mass_air et gravity pour un calcul physique de H
     // Vérifier que T0_num est valide (> 0) avant l'appel
     if (T0_num > 0 && molar_mass_air > 0) {
-      const props = window.calculateAtmosphereProperties(
+      const props = window.ATM.calculateAtmosphereProperties(
         total_mass,
         T0_num,
         molar_mass_air,
@@ -5932,9 +5776,9 @@ window.updateFluxLabels = function (eventId) {
   // Pendant la convergence (cycleCalcul), ne pas toucher pour éviter que la barre bouge.
   if (
     eventId === "ProcessFinished" &&
-    typeof window.updatePlotAltitudeAxis === "function"
+    typeof window.PLOT.updatePlotAltitudeAxis === "function"
   ) {
-    window.updatePlotAltitudeAxis(atm_height_km);
+    window.PLOT.updatePlotAltitudeAxis(atm_height_km);
   }
 
   // Réémis : EDS total (W/m²)
@@ -6009,7 +5853,7 @@ window.updateFluxLabels = function (eventId) {
 // Fonction pour mettre à jour des champs spécifiques par leurs data-id
 // Prend un tableau d'IDs ou un objet { id: value }
 // Si le tableau est vide, met à jour tous les champs trouvés
-window.updateFields = function (fieldIdsOrValues, values = null) {
+ORG.updateFields = function (fieldIdsOrValues, values = null) {
   // Si values est fourni, fieldIdsOrValues est un tableau d'IDs
   // Sinon, fieldIdsOrValues est un objet { id: value }
   let fieldsToUpdate = {};
@@ -6054,9 +5898,9 @@ window.updateFields = function (fieldIdsOrValues, values = null) {
               window.CONST.SOLAR_CONSTANT / 4,
             solar_flux_absorbed_wm: () =>
               window.plotData
-                ? window.calculateSolarFluxAbsorbed(
+                ? window.ALBEDO.calculateSolarFluxAbsorbed(
                     window.plotData.temp_surface,
-                    window.waterVaporEnabled,
+                    window.UI_STATE.waterVaporEnabled,
                     window.DATA['🌕']['🧲🌕'],
                   )
                 : null,
@@ -6067,7 +5911,7 @@ window.updateFields = function (fieldIdsOrValues, values = null) {
               window.plotData ? window.plotData.co2_ppm : null,
             ch4_percent: () =>
               window.plotData ? window.plotData.ch4_ppm : null,
-            h2o_percent: () => window.h2oVaporPercent || null,
+            h2o_percent: () => window.RUNTIME_STATE.h2oVaporPercent || null,
             albedo_percent: () =>
               window.plotData ? window.plotData.albedo * 100 : null,
           };
@@ -6106,8 +5950,8 @@ window.updateFields = function (fieldIdsOrValues, values = null) {
   Object.keys(fieldsToUpdate).forEach((dataId) => {
     const value = fieldsToUpdate[dataId];
     // Utiliser updateLabel si disponible, sinon mettre à jour directement
-    if (typeof window.updateLabel === "function") {
-      window.updateLabel(dataId, value);
+    if (typeof ORG.updateLabel === "function") {
+      ORG.updateLabel(dataId, value);
     } else {
       // Fallback : mise à jour directe
       const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
@@ -6204,7 +6048,7 @@ function recreateNoyauRadiation() {
 
   // Trouver la configuration de l'époque courante
   const currentEpochName =
-    (typeof window !== "undefined" && window.currentEpochName) || "Corps Noir";
+    (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) || "Corps Noir";
   let epochRadiation = noyauNode.radiation.find(
     (r) => r.epochName === currentEpochName,
   );
@@ -6314,7 +6158,7 @@ function recreateTerreRadiation() {
   // Si c'est un tableau (par époque), trouver la bonne configuration
   if (Array.isArray(radiationOptions)) {
     const currentEpochName =
-      (typeof window !== "undefined" && window.currentEpochName) ||
+      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
       "Corps Noir";
     let epochRadiation = radiationOptions.find(
       (r) => r.epochName === currentEpochName,
@@ -6439,17 +6283,9 @@ function initFluxButtonListeners() {
   });
 }
 
-// Objet global des fonctions organigramme (appels directs, pas de typeof guard)
-window.FUNCS_ORGANIGRAMME = {
-  createCell: createCell,
-  recreateNoyauRadiation: recreateNoyauRadiation,
-  recreateTerreRadiation: recreateTerreRadiation,
-  generateArrows: generateArrows,
-  initFluxButtonListeners: initFluxButtonListeners
-};
-// Rétrocompat (références directes window.xxx)
-window.createCell = createCell;
-window.recreateNoyauRadiation = recreateNoyauRadiation;
-window.recreateTerreRadiation = recreateTerreRadiation;
-window.generateArrows = generateArrows;
-window.initFluxButtonListeners = initFluxButtonListeners;
+// Finalisation namespace ORG : source unique des fonctions organigramme.
+ORG.createCell = createCell;
+ORG.recreateNoyauRadiation = recreateNoyauRadiation;
+ORG.recreateTerreRadiation = recreateTerreRadiation;
+ORG.generateArrows = generateArrows;
+ORG.initFluxButtonListeners = initFluxButtonListeners;

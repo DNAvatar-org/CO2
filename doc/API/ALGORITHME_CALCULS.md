@@ -27,7 +27,7 @@ function simulateRadiativeTransfer(CO2_fraction, options = {}) {
     LABEL_READ_CONFIG:
     {
         // 1.1. Récupérer l'époque actuelle
-        const currentEpochName = window.currentEpochName || 'Corps noir';
+        const currentEpochName = window.RUNTIME_STATE.currentEpochName;
         const currentEpoch = getGeologicalPeriodByName(currentEpochName);
         
         // 1.2. Vérifier si changement d'époque (comparer avec epoch précédente)

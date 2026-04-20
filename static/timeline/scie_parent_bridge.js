@@ -35,12 +35,9 @@
             }
             pw.infoTimeMa = window.infoTimeMa;
             if (window.FLUX) pw.FLUX = window.FLUX;
-            if (window.h2oTotalFromMeteorites !== undefined) pw.h2oTotalFromMeteorites = window.h2oTotalFromMeteorites;
+            if (window.RUNTIME_STATE.h2oTotalFromMeteorites !== undefined) pw.h2oTotalFromMeteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites;
             if (window.isIceChange !== undefined) pw.isIceChange = window.isIceChange;
-            if (window.savedH2O !== undefined) pw.savedH2O = window.savedH2O;
-            if (window.savedCO2 !== undefined) pw.savedCO2 = window.savedCO2;
-            if (window.savedCH4 !== undefined) pw.savedCH4 = window.savedCH4;
-            if (window.maximiseData !== undefined) pw.maximiseData = window.maximiseData;
+            pw.UI_STATE = window.UI_STATE;
         } catch (e) {}
     }
 
@@ -92,7 +89,7 @@
     window.updateEpochActions = function () {
         try {
             if (pw.infoTimeMa != null) window.infoTimeMa = pw.infoTimeMa;
-            if (pw.currentEpochName) window.currentEpochName = pw.currentEpochName;
+            if (pw.currentEpochName) window.RUNTIME_STATE.currentEpochName = pw.currentEpochName;
         } catch (e) {}
         return origUEA.apply(this, arguments);
     };
