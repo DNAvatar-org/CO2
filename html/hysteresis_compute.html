@@ -2003,8 +2003,7 @@
                     + ' | co2OceanPumpOverride01=' + fmtPump()
                     + ' | co2OceanEffPump01=' + fmtEffPump()
                     + ' | co2OceanRatioRef=' + (Number.isFinite(Number(window.CONFIG_COMPUTE.co2OceanRatioRef)) ? Number(window.CONFIG_COMPUTE.co2OceanRatioRef).toFixed(1) : '50')
-                    + ' | iceAlbedo=' + iceA
-                    + ' | firstSearchStepCapK=' + window.CONFIG_COMPUTE.firstSearchStepCapK;
+                    + ' | iceAlbedo=' + iceA;
             }
             function clamp01(x) { return Math.max(0, Math.min(1, x)); }
             function interp(min, max, pct) {

@@ -243,6 +243,8 @@
             this.dichoIter = 0;
             this.seedT_C = Number(EPOCH['🌡️🧮']) - window.CONST.KELVIN_TO_CELSIUS;
             this.tRef_C = this.seedT_C;
+            // 🔧 Fix init hystérésis (reverted / pending) : à réactiver une fois le bug API résolu.
+            // window.DATA['🧮']['🧮🌡️'] = Number(EPOCH['🌡️🧮']);
             this.lastPpm = NaN;
             this.outerIndex = 0;
             this._hystLoggedFirstCycle = false;
