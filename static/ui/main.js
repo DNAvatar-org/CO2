@@ -3257,7 +3257,7 @@ function runMainInit() {
                     var pctFromData = 100;
                     var TftBary = window.DATA && window.DATA['🎚️'];
                     if (TftBary && TftBary.baryByGroup) {
-                        var rawBB = Number(TftBary.baryByGroup.CLOUD_SW);
+                        var rawBB = Number(TftBary.baryByGroup.ATM);
                         pctFromData = Number.isFinite(rawBB) ? Math.max(0, Math.min(100, Math.round(rawBB))) : 0;
                     }
                     function htmlFlouBaryBadge(pct) {
@@ -3405,7 +3405,9 @@ function runMainInit() {
                         var raw = Number(percentRaw);
                         var pct = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : 100;
                         if (!T || !T.baryByGroup) return pct;
+                        T.baryByGroup.ATM = pct;
                         T.baryByGroup.CLOUD_SW = pct;
+                        T.baryByGroup.SCIENCE = pct;
                         var bounds = window.FINE_TUNING_BOUNDS && Array.isArray(window.FINE_TUNING_BOUNDS.targets)
                             ? window.FINE_TUNING_BOUNDS.targets
                             : [];
@@ -3456,8 +3458,10 @@ function runMainInit() {
                         }
                         return {
                             baryByGroup: {
-                                CLOUD_SW: T.baryByGroup.CLOUD_SW,
-                                SCIENCE: T.baryByGroup.SCIENCE
+                                ATM: T.baryByGroup.ATM,
+                                CLOUD_SW: T.baryByGroup.ATM,
+                                SCIENCE: T.baryByGroup.ATM,
+                                HYSTERESIS: T.baryByGroup.HYSTERESIS
                             },
                             CLOUD_SW: Object.assign({}, T.CLOUD_SW),
                             updates: [],

@@ -1,11 +1,15 @@
 // File: scie_hysteresis_search.js - Recherche seuil CO₂ hystérésis scie_
 // Desc: En français, dans l'architecture, je suis window.HYSTERESIS — négatif : scan CO₂×factor chute T failed <½·x₀ ; positif : ÷factor saut T chaud failed >2·x₀ ; dicho 0,5 [min,max]
-// Version 2.1.10
+// Version 2.1.14
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
-// Date: April 18, 2026 20:10 UTC+1
+// Date: April 22, 2026
 // Logs:
+// - v2.1.14: onEpochButton — restauration CO₂ TIMELINE initial entre deux runs. window._hystCo2OrigByEpoch[epochId] mémorise la valeur de config au 1er clic ; les clics suivants restaurent TIMELINE avant readXFromTimeline() → x0 toujours = valeur config initiale (pas la valeur laissée par le run précédent).
+// - v2.1.13: afterRadiativeConverged — détection "déjà sur branche froide/chaude au 1er pas" (|T−seedT| > 20 K) → FAILED immédiat avec message d'aide (ajuster CO₂ initial ou amplification polaire).
+// - v2.1.12: writeAndContinue — couplage CCN-CO₂ : ⚖️✈ = baseline × (x0/xNew)^ccnSulfateCoupling à chaque pas scan. baseline=DATA['⚖️✈'] au démarrage ou 1e12 kg si époque sans sulfates (ex. ⛄). Paramètre DATA['🎚️'].HYSTERESIS.ccnSulfateCoupling (défaut 0.5). Écrit dans TIMELINE avant writeXToTimeline → getMasses() lit valeur mise à jour. onEpochButton: sulfateBaselineKg initialisé.
+// - v2.1.11: onEpochButton — init DATA['🧮']['🧮🌡️'] (+⏮+🚩) depuis EPOCH['🌡️🧮'] à chaque clic bouton hyst. Nécessaire car les 3 boutons hyst forcent 🔘🎞=true (continuité T inter-ticks) ce qui désactive le reset T dans runTest ; sans cet init explicite, le scan démarrait depuis T résiduelle / fallback corps noir (~254 K / -18.5 °C) → branche indéterminée. Chaque epoch hyst pose maintenant sa graine de branche au clic (1a/1b chaude, ⛄ froide, 2 chaude).
 // - v2.1.10: clearHystEpochButtonsSelected — retrait hyst-epoch-h1 (UI hyst = 3 boutons seulement : snow, h1b, h2).
 // - v2.1.9: clearHystEpochButtonsSelected — retirer .selected sur hyst-epoch-snow (⛄) et hyst-epoch-h1b (hysteresis 1b) en plus de h1 / h2.
 // - v2.1.8: lectures HYSTERESIS migrées window.TUNING → window.DATA['🎚️'] (source unique live). Fin de window.TUNING (initDATA.js v1.1.0 : DATA['🎚️'] = clone(DEFAULT.TUNING)).
@@ -231,6 +235,19 @@
             this.maxDichoSteps = (Number.isFinite(Number(H.maxDichoSteps)) && Number(H.maxDichoSteps) > 0) ? Math.floor(Number(H.maxDichoSteps)) : 30;
             this.runSearchSign = this.searchSign === 'positive' ? 'positive' : 'negative';
             this.syncSearchSignButtonUI();
+            // ── CO₂ TIMELINE : restauration valeur de config initiale ─────────────────────────────
+            // Un run précédent peut avoir laissé une valeur modifiée dans TIMELINE[epochId]['⚖️🏭'].
+            // window._hystCo2OrigByEpoch[epochId] est initialisé au 1er clic → restauré aux suivants.
+            // Garantit que x0 = CO₂ initial de l'époque (ex. ⛄ → 9.9e15 kg) à chaque nouveau run.
+            if (!window._hystCo2OrigByEpoch) window._hystCo2OrigByEpoch = {};
+            if (window._hystCo2OrigByEpoch[epochId] == null) {
+                // Premier clic : mémoriser la valeur de config (avant tout scan).
+                window._hystCo2OrigByEpoch[epochId] = Number(window.TIMELINE[idxEp]['⚖️🏭']);
+            } else {
+                // Clics suivants : restaurer TIMELINE → readXFromTimeline() lira la valeur originale.
+                window.TIMELINE[idxEp]['⚖️🏭'] = window._hystCo2OrigByEpoch[epochId];
+            }
+            // ─────────────────────────────────────────────────────────────────────────────────────
             var x0 = clampX(this.adapter.readXFromTimeline());
             this.xBaselineKg = x0;
             this.x = x0;
@@ -243,10 +260,26 @@
             this.dichoIter = 0;
             this.seedT_C = Number(EPOCH['🌡️🧮']) - window.CONST.KELVIN_TO_CELSIUS;
             this.tRef_C = this.seedT_C;
+            // Init T° depuis graine époque (EPOCH.🌡️🧮) — obligatoire pour l'hystérésis :
+            // les 3 boutons hyst forcent 🔘🎞=true (continuité T inter-ticks du scan), ce qui
+            // désactive le reset T de runTest(). Sans init explicite ici, le scan démarre depuis
+            // T résiduelle (ou fallback corps noir ~254 K / -18.5 °C) → branche indéterminée.
+            // Chaque epoch hyst pose sa graine de branche (1a/1b=chaude ~290-312 K, ⛄=froide 239 K, 2=298 K).
+            var seedTK = Number(EPOCH['🌡️🧮']);
+            if (Number.isFinite(seedTK) && seedTK > 0) {
+                window.DATA['🧮']['🧮🌡️'] = seedTK;
+                window.DATA['🧮']['🧮🌡️⏮'] = seedTK;
+                window.DATA['🧮']['🧮🌡️🚩'] = seedTK;
+            }
             this.lastPpm = NaN;
             this.outerIndex = 0;
             this._hystLoggedFirstCycle = false;
             this._hystLastCycleLines = null;
+            // Baseline sulfates au démarrage : si l'époque n'a pas de ⚖️✈ (ex. ⛄), fallback 1e12 kg
+            // (ordre de grandeur volcanique Néoprotérozoïque cohérent avec les époques voisines).
+            var D = window.DATA;
+            this.sulfateBaselineKg = (D && D['⚖️'] && Number.isFinite(Number(D['⚖️']['⚖️✈'])) && Number(D['⚖️']['⚖️✈']) > 0)
+                ? Number(D['⚖️']['⚖️✈']) : 1e12;
             this.resetLog();
             window._scieHystSearchHadActivity = true;
             this.appendLog('📋 Configuration : hysteresis ' + epochId + ' | signe=' + (this.runSearchSign === 'positive' ? 'positif' : 'négatif'));
@@ -364,6 +397,28 @@
                 default:
             }
 
+            // Détection départ sur branche froide (1er pas) : si T est déjà très éloignée de la graine,
+            // la branche chaude n'existe pas à ⚖️🏭₀ — pas de seuil à trouver en descendant.
+            // Seuil : T < seedT − 20°C (froid brutal) pour scan négatif, ou T > seedT + 20°C pour scan positif.
+            var coldThreshDrop = 20;
+            var alreadyCold = !this.runSearchSign !== 'positive'
+                && this.outerIndex === 1
+                && Number.isFinite(this.seedT_C)
+                && T < this.seedT_C - coldThreshDrop;
+            var alreadyHot = this.runSearchSign === 'positive'
+                && this.outerIndex === 1
+                && Number.isFinite(this.seedT_C)
+                && T > this.seedT_C + coldThreshDrop;
+            if (alreadyCold || alreadyHot) {
+                this.appendLog('━━ FAILED : déjà sur branche ' + (alreadyCold ? 'froide' : 'chaude') + ' au départ ━━');
+                this.appendLog('  T=' + T.toFixed(2) + ' °C vs graine=' + this.seedT_C.toFixed(2) + ' °C (écart ' + Math.abs(T - this.seedT_C).toFixed(1) + ' K > seuil ' + coldThreshDrop + ' K)');
+                this.appendLog('  La branche ' + (alreadyCold ? 'chaude' : 'froide') + ' n\'existe pas à ⚖️🏭₀=' + xBefore.toExponential(3) + ' kg.');
+                this.appendLog('  → Ajuster CO₂ initial (⚖️🏭₀), ou réduire polarAmplificationK / midlatAmplificationK.');
+                this._appendHystLastCycleSnapshot();
+                this.deactivate();
+                return false;
+            }
+
             function failHalf() {
                 switch (isPos) {
                     case true:
@@ -383,6 +438,21 @@
                 self.xOld = xBefore;
                 self.x = clampX(xNew);
                 self.appendLog('  → prochain ⚖️🏭=' + self.x.toExponential(3) + ' kg');
+                // Couplage CCN-CO₂ hystérésis : sulfates volcaniques (⚖️✈) varient en sens inverse du CO₂.
+                // Physique ⛄ : rifting Rodinia → SO₂ volcanique ↑ quand CO₂↓ par weathering (Hoffman 1998).
+                // Formula : ⚖️✈ = baseline × (x0/xNew)^coupling. coupling=0.5 (racine, softer) par défaut.
+                // Écrit dans TIMELINE avant writeXToTimeline → getMasses() lit la valeur mise à jour.
+                var H2 = window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].HYSTERESIS;
+                var ccnCoupling = (H2 && Number.isFinite(Number(H2.ccnSulfateCoupling))) ? Number(H2.ccnSulfateCoupling) : 0.5;
+                if (ccnCoupling > 0 && Number.isFinite(self.sulfateBaselineKg) && self.xBaselineKg > 0 && self.x > 0) {
+                    var xRatio = self.x / self.xBaselineKg;
+                    var sulfateNew = self.sulfateBaselineKg * Math.pow(1 / xRatio, ccnCoupling);
+                    var idxS = timelineIndexForEpoch(self.epochId);
+                    if (idxS >= 0 && window.TIMELINE[idxS]) {
+                        window.TIMELINE[idxS]['⚖️✈'] = sulfateNew;
+                    }
+                    self.appendLog('  ⚖️✈=' + sulfateNew.toExponential(3) + ' kg (sulfates ×' + (sulfateNew / self.sulfateBaselineKg).toFixed(3) + ')');
+                }
                 self.adapter.writeXToTimeline(self.x);
                 self.tRef_C = T;
                 self.lastPpm = ppm;

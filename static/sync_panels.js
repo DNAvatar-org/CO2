@@ -102,9 +102,10 @@
     function applyTuningPayload(payload) {
         var T = window.DATA['🎚️'];
         if (payload.baryByGroup) {
-            if (payload.baryByGroup.CLOUD_SW !== undefined) T.baryByGroup.CLOUD_SW = payload.baryByGroup.CLOUD_SW;
-            if (payload.baryByGroup.SCIENCE !== undefined) T.baryByGroup.SCIENCE = payload.baryByGroup.SCIENCE;
-            if (payload.baryByGroup.HYSTERESIS !== undefined) T.baryByGroup.HYSTERESIS = payload.baryByGroup.HYSTERESIS;
+            T.baryByGroup.ATM = payload.baryByGroup.ATM;
+            T.baryByGroup.CLOUD_SW = T.baryByGroup.ATM;
+            T.baryByGroup.SCIENCE = T.baryByGroup.ATM;
+            T.baryByGroup.HYSTERESIS = payload.baryByGroup.HYSTERESIS;
         }
         if (window.TUNING && window.TUNING.fillDataTuningFromBary) {
             window.TUNING.fillDataTuningFromBary();
