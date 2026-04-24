@@ -132,14 +132,14 @@
                     <input id="hyst-threshold" type="range" min="0" max="100" step="1" value="100" />
                     <span id="hyst-threshold-val" style="font-family:monospace;font-size:12px;">100%</span>
                 </div>
-                <p style="font-size:10px;opacity:0.55;margin:12px 0 2px 0;text-transform:uppercase;letter-spacing:0.08em;opacity:0.35;">— Pompe CO₂ océan · co2OceanPartitionInRadiativeConvergence=false → NO-OP —</p>
-                <div class="hyst-row" style="opacity:0.6;">
-                    <label for="hyst-speed" title="Interpole co2OceanScale01 + co2OceanPumpOverride01 (DEFAULT.BOUNDS.HYSTERESIS). Contrôle la vitesse globale de relaxation CO₂ atm↔océan (Henry). NO-OP si co2OceanPartitionInRadiativeConvergence=false (configTimeline.js).">co2OceanScale01 × co2OceanPumpOverride01 — vitesse pompe<span class="hyst-sens">no-op</span></label>
+                <p style="font-size:10px;opacity:0.55;margin:12px 0 2px 0;text-transform:uppercase;letter-spacing:0.08em;">— Pompe CO₂ océan (ACTIVE · Henry × Urey) —</p>
+                <div class="hyst-row">
+                    <label for="hyst-speed" title="Interpole co2OceanScale01 + co2OceanPumpOverride01 (DEFAULT.BOUNDS.HYSTERESIS). Contrôle la vitesse globale de relaxation CO₂ atm↔océan (Henry). Pompe toujours active ; EPOCH['🌊🏭'] module par époque (0 = Urey éteint, 2.0 = Marinoen).">co2OceanScale01 × co2OceanPumpOverride01 — vitesse pompe<span class="hyst-sens">T°↑ CO₂↑ · ACTIF</span></label>
                     <input id="hyst-speed" type="range" min="0" max="100" step="1" value="100" />
                     <span id="hyst-speed-val" style="font-family:monospace;font-size:12px;">100%</span>
                 </div>
-                <div class="hyst-row" style="opacity:0.6;">
-                    <label for="g-co2-eff-pump" title="CONFIG_COMPUTE.co2OceanEffPump01 : fraction du pas vers la masse atmosphérique d’équilibre de Henry à T courant (0=no-op, 1=équilibre immédiat). Masse totale ⚖️🏭+🌊 conservée. NO-OP si co2OceanPartitionInRadiativeConvergence=false ou HYSTERESIS.active=true.">co2OceanEffPump01 — vitesse fine pompe<span class="hyst-sens">no-op</span></label>
+                <div class="hyst-row">
+                    <label for="g-co2-eff-pump" title="CONFIG_COMPUTE.co2OceanEffPump01 : fraction du pas vers la masse atmosphérique d’équilibre de Henry à T courant (0=no-op, 1=équilibre immédiat). Masse totale ⚖️🏭+⚖️🌊🏭 conservée. Modulée par EPOCH['🌊🏭'] (0 = pas d'océan liquide / Urey éteint).">co2OceanEffPump01 — vitesse fine pompe<span class="hyst-sens">T°↑ CO₂↑ · ACTIF</span></label>
                     <input id="g-co2-eff-pump" type="range" min="0" max="100" step="1" value="0" />
                     <span id="g-co2-eff-pump-val" style="font-family:monospace;font-size:12px;">0.00</span>
                 </div>
