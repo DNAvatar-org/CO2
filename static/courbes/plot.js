@@ -1,9 +1,14 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.57
-// Date: [April 18, 2026]
+// Version 1.0.62
+// Date: [April 25, 2026] [22:15 UTC+1]
 // logs :
+// - v1.0.62: FLUX.plotMaxYScienceTraces / plotMaxYPlanckSurfaceSol (snapshot échelle) ; PLOT.logPlotScaleAfterCompute → DEBUG.log si DEBUG_PLOT_LOG (plot_debug.js)
+// - v1.0.61: callback post-react — drawSpectralVisualization seulement si canvas._lastData défini (évite TypeError upward_flux quand aucun flux encore mis en cache)
+// - v1.0.60: window.FLUX initialisé une fois avec PLOT ; accès directs FLUX dans updatePlot/callback (plus de if (!FLUX) / && FLUX)
+// - v1.0.59: indicateurs EDS / bandes après Plotly.react (Y réel) ; FLUX.plotYMaxLuminance ; invalidateSpectralYLuminanceCache ; callback resize — drawSpectral saut si FLUX.skipSpectralFluxRedrawOnce (flux refait par updateSpectralVisualization)
+// - v1.0.58: échelle Y spectre — pic Planck(T sol) tirets ≈ 90% hauteur (Y_AXIS_PEAK_FRACTION_SOL 0.9) ; max Y auto sans courbes Planck ref. blanches ; plancher y_max ≥ max(planck sol)/0.9
 // - v1.0.57: namespace PLOT (source unique) : updatePlot, updateSpectralVisualization, updatePlotAltitudeAxis, tempToColor, tempSurfaceToColor, debugZIndex, debugPlotlyStructure, updateSpectralBandIndicatorsGhostOnly. Migration lectures/écritures UI_STATE/RUNTIME_STATE (fps, showSpectralBackground, spectralConverged, spectralPrecisionTarget, currentEpochName).
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -80,6 +85,9 @@
 // va avec .plot-container-wrapper { padding: 0; !!! Important ne pas changer !!!
 const PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }; // Marges ajustées pour éviter le débordement
 
+/** Pic cible sur l’axe Y (luminance) : Planck(T sol) en tirets colorés ≈ cette fraction de la hauteur utile [0, y_max]. */
+const Y_AXIS_PEAK_FRACTION_SOL = 0.9;
+
 // Préserver l'échelle Y pendant l'animation/dichotomie (éviter dezoom entre cycles)
 let lastGoodYMaxLuminance = 40;
 let lastEpochForScale = null; // Reset quand l'époque change
@@ -102,6 +110,28 @@ var CONST = window.CONST; /* var pour éviter redeclaration avec main.js */
 
 // Namespace PLOT : source unique des fonctions exposées par plot.js.
 var PLOT = window.PLOT = window.PLOT || {};
+window.FLUX = window.FLUX || {};
+
+/** Invalide le cache d’échelle Y (dichotomie / dernier bon max) pour forcer le recalcul au prochain updatePlot (ex. fin de calcul). */
+PLOT.invalidateSpectralYLuminanceCache = function invalidateSpectralYLuminanceCache() {
+    lastGoodYMaxLuminance = null;
+    window.FLUX.yAxisRecalcOnNextFinish = true;
+};
+
+/** Fin de calcul (sync_panels) : écrit dans _logs/plot.txt via DEBUG.log si ?debugPlot=1 (plot_debug.js). */
+PLOT.logPlotScaleAfterCompute = function logPlotScaleAfterCompute() {
+    if (window.DEBUG_PLOT_LOG !== true) return;
+    const F = window.FLUX;
+    const payload = {
+        epoch: window.RUNTIME_STATE.currentEpochName,
+        maxYScienceTraces: F.plotMaxYScienceTraces,
+        maxYPlanckSurfaceSol: F.plotMaxYPlanckSurfaceSol,
+        yMaxLuminanceAxis: F.plotYMaxLuminance,
+        plotAxisYPx: F.plotAxisYPx,
+        plotAxisXPx: F.plotAxisXPx
+    };
+    window.DEBUG.log('[plotScale@finCalcul] ' + JSON.stringify(payload));
+};
 
 // Fonction pour obtenir la couleur par défaut du body (vert)
 function getDefaultTextColor() {
@@ -595,7 +625,6 @@ function resizeCanvasToPlot(callback) {
             // Politique Y : (1) Clic action (TicTime/météorite) → events.js pose yAxisRecalcOnNextFinish = true.
             // (2) Au prochain ProcessFinished, updatePlot force recalc Y (pas lastGoodYMaxLuminance). (3) Courbe trop plate
             // → optionnel FLUX.minYMaxLuminance (plancher) pour ne pas écraser l'axe ; sinon défaut 0.5.
-            if (!window.FLUX) window.FLUX = {};
             window.FLUX.plotAxisXPx = Math.max(24, Math.floor(useWidth));
             window.FLUX.plotAxisYPx = Math.max(24, Math.floor(useHeight));
             canvas.style.setProperty('z-index', '1', 'important');
@@ -1258,6 +1287,7 @@ function drawAbsorptionBandIndicators() {
 
 PLOT.updatePlot = function updatePlot(data) {
     const traces = [];
+    let maxYPlanckSurfaceSol = 0;
 
     if (!data.lambda_range) return;
 
@@ -1463,6 +1493,7 @@ PLOT.updatePlot = function updatePlot(data) {
             planck_surface.line.width = 2;
             const tempCSurf = (T_surface - CONST.KELVIN_TO_CELSIUS).toFixed(1);
             planck_surface.hovertemplate = `Corps noir au sol : ${T_surface.toFixed(1)} K (${tempCSurf}°C)<extra></extra>`;
+            planck_surface.y.forEach((v) => { if (v > maxYPlanckSurfaceSol) maxYPlanckSurfaceSol = v; });
             traces.push(planck_surface);
         }
 
@@ -1738,23 +1769,24 @@ PLOT.updatePlot = function updatePlot(data) {
         annotation_text = `Stratosphère<br>${delta_T_trop_strato.toFixed(1)} K<br>Troposphère`;
     }
 
-    // --- CALCUL ÉCHELLE Y : sommet courbe T sol ≈ 3/4 hauteur plot (max données / y_max ≈ 0.75) ; après action (pas nouvelle époque) on recalc au prochain ProcessFinished (FLUX.yAxisRecalcOnNextFinish) ---
+    // --- CALCUL ÉCHELLE Y : pic Planck(T sol) tirets ≈ Y_AXIS_PEAK_FRACTION_SOL hauteur ; max Y hors Planck ref. blancs (sinon 315 K écrase l’échelle) ; après action on recalc au ProcessFinished (FLUX.yAxisRecalcOnNextFinish) ---
     // Si la courbe réelle est <20% du max actuel (changement d'ordre de grandeur), recalculer l'échelle
     let maxYInTraces = 0;
     traces.forEach(t => {
-        if (t.yaxis !== 'y2') {
-            t.y.forEach(v => { if (v > maxYInTraces) maxYInTraces = v; });
-        }
+        if (t.yaxis === 'y2') return;
+        const lc = t.line && t.line.color;
+        if (typeof lc === 'string' && lc.toLowerCase() === 'white') return;
+        t.y.forEach(v => { if (v > maxYInTraces) maxYInTraces = v; });
     });
-    const minY = (window.FLUX && typeof window.FLUX.minYMaxLuminance === 'number') ? window.FLUX.minYMaxLuminance : 0.5;
+    const minY = Number.isFinite(window.FLUX.minYMaxLuminance) ? window.FLUX.minYMaxLuminance : 0.5;
     const isConverged = (typeof window.RUNTIME_STATE.spectralConverged !== 'undefined' && window.RUNTIME_STATE.spectralConverged);
-    const forceRecalcY = (window.FLUX && window.FLUX.yAxisRecalcOnNextFinish);
+    const forceRecalcY = window.FLUX.yAxisRecalcOnNextFinish;
     let y_max_luminance;
 
     if (lastGoodYMaxLuminance != null && !isConverged && !forceRecalcY) {
         y_max_luminance = lastGoodYMaxLuminance;
     } else {
-        if (forceRecalcY && window.FLUX) window.FLUX.yAxisRecalcOnNextFinish = false;
+        if (forceRecalcY) window.FLUX.yAxisRecalcOnNextFinish = false;
         let T_est = 255;
         if (window.GEOLOGY) {
             const ep = window.GEOLOGY.getGeologicalPeriodByName(epochName);
@@ -1772,7 +1804,7 @@ PLOT.updatePlot = function updatePlot(data) {
             });
         }
         const maxScaled = scaleY(maxPlanck);
-        let y_raw = maxScaled / 0.75;
+        let y_raw = maxScaled / Y_AXIS_PEAK_FRACTION_SOL;
         if (y_raw < 5) {
             y_max_luminance = Math.max(0.5, Math.ceil(y_raw * 2) / 2);
         } else if (y_raw < 100) {
@@ -1785,11 +1817,22 @@ PLOT.updatePlot = function updatePlot(data) {
     }
     // Ordre de grandeur : données <20% du max de l'échelle → recalculer l'échelle
     if (maxYInTraces < 0.2 * y_max_luminance) {
-        y_max_luminance = Math.max(minY, maxYInTraces / 0.75);
+        y_max_luminance = Math.max(minY, maxYInTraces / Y_AXIS_PEAK_FRACTION_SOL);
         lastGoodYMaxLuminance = y_max_luminance;
+    }
+    if (maxYPlanckSurfaceSol > 0) {
+        const yFloorSol = maxYPlanckSurfaceSol / Y_AXIS_PEAK_FRACTION_SOL;
+        if (yFloorSol > y_max_luminance) {
+            y_max_luminance = yFloorSol;
+            lastGoodYMaxLuminance = y_max_luminance;
+        }
     }
 
     const dtick_luminance = y_max_luminance / 8;
+
+    window.FLUX.plotYMaxLuminance = y_max_luminance;
+    window.FLUX.plotMaxYScienceTraces = maxYInTraces;
+    window.FLUX.plotMaxYPlanckSurfaceSol = maxYPlanckSurfaceSol;
 
     // Verrouiller width/height depuis le conteneur pour éviter que Plotly "oublie" entre les cycles
     const plotContainerEl = document.getElementById('plot-container');
@@ -2025,22 +2068,21 @@ PLOT.updatePlot = function updatePlot(data) {
         threadsEl.textContent = 'CPU: ' + n + ' threads';
     }
 
-    // Ajouter les indicateurs de bandes d'absorption sur le spectre
-    drawAbsorptionBandIndicators();
-
-    // Ajouter les indicateurs de bandes d'absorption sur le spectre
-    drawAbsorptionBandIndicators();
-
-    // L'assignation redondante de updateLayout.yaxis2 a été supprimée ici pour respecter la configuration yaxis2Config établie plus haut.
-
-
+    // Indicateurs [ ] / EDS / Terre : après Plotly.react uniquement (gd._fullLayout.yaxis.range = échelle courante ;
+    // un appel avant react plaçait les logos sur l’ancien Y ; si seule l’échelle Y change, dimsUnchanged ne relançait pas drawAbsorptionBandIndicators depuis resizeCanvasToPlot).
 
         Plotly.react('plot-container', traces, updateLayout).then(() => {
         hideXAxisLine();
         // Toujours repositionner après Plotly : le plot peut bouger (relayout) même si l'échelle est fixe
         resizeCanvasToPlot(() => {
+            drawAbsorptionBandIndicators();
+            const skipFluxOnce = window.FLUX.skipSpectralFluxRedrawOnce;
+            if (skipFluxOnce) {
+                window.FLUX.skipSpectralFluxRedrawOnce = false;
+            }
             const c = document.getElementById('spectral-visualization');
-            if (c && c._lastData) {
+            // drawSpectralVisualization exige data.upward_flux : sans _lastData (premier plot / ordre d’appels), updateSpectralVisualization fournira le flux ensuite.
+            if (!skipFluxOnce && c._lastData) {
                 requestAnimationFrame(() => drawSpectralVisualization(c, c._lastData));
             }
         });

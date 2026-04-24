@@ -1,12 +1,13 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.73
+// Version 1.0.74
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.74 getFineTuningDetailAlt : cibles RADIATIVE (SCIENCE) — κ_H₂O + factorTropopause 🛩 [1,05 , 1] ; intro flou scientifique nuages+radiatif
 // Logs: v1.0.73 fix crash FluxManager.setSolarIntensity : extraction des helpers (detectValueType, formatNumberWithScientific, formatValueFromTemplate, FINE_TUNING_TOOLTIP_SHORT, updateLabel) du closure ORG.updateFluxLabels vers le scope du module ; ORG.updateLabel lié dès le chargement, avant le premier ProcessFinished (sync_panels.doCompute peut appeler FluxManager.updateAllFluxes avant que updateFluxLabels ait lié le closure).
 // Logs: v1.0.72 namespace ORG (source unique) : createCell, recreateNoyauRadiation, recreateTerreRadiation, generateArrows, initFluxButtonListeners, updateFluxLabels, updateFields. Suppression duplicats window.foo. Migration lectures RUNTIME_STATE (currentEpochName, fps, h2oVaporPercent, h2oTotalFromMeteorites, h2oIceFractionFromCalculation, T0_num).
 // Logs: v1.0.71 createCell : gridItem appendé seulement si children.length > 0 (coins + centre vides jamais créés)
@@ -4369,10 +4370,16 @@ var _finetuningAltPicto = {
   // TEMP_FACTOR_REF_K retiré : partition Hu & Stamnes (1993) maintenant codée en dur.
 };
 
+// Picto pour cibles groupe RADIATIVE pilotées par jauge SCIENCE (même % ATM que nuages partiels SCIENCE).
+var _finetuningRadiativeSciencePicto = {
+  H2O_EDS_SCALE: "💧",
+  factorTropopause: "🛩"
+};
+
 // Alt détaillé (paramètres CLOUD_SW + bornes) pour fine_tuning_cloud_bary. SOLVER = autre jauge, exclu.
 // detailOnly=true = uniquement le détail. Avec retours à la ligne pour un texte lisible.
 // Fallback fixe quand FINE_TUNING_BOUNDS non chargé (visu ne charge pas fine_tuning_bounds.js).
-var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne\n☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique\n🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne\n🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN)\n✈ [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse\n✈ [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy)";
+var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne\n☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique\n🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne\n🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN)\n✈ [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse\n✈ [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy)\n💧 [1 , 0.6] — multiplicateur global κ_H₂O EDS #Schmidt 2010\n🛩 [1.05 , 1] — extension hauteur tropopause radiative (× RT/Mg) #FACTOR_TROPOPAUSE_RT";
 
 function getFineTuningShortTooltip(pctStr) {
   return "Flou scientifique";
@@ -4382,7 +4389,7 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
   const pct = pctStr != null ? pctStr + "%" : "100%";
   const bounds = window.FINE_TUNING_BOUNDS;
   if (!bounds || !bounds.targets || !Array.isArray(bounds.targets)) {
-    const intro = "Réglage barycentre nuages (albédo). " + pct + ".";
+    const intro = "Flou scientifique (nuages SW + radiatif / jauge Science). " + pct + ".";
     return detailOnly ? _finetuningAltFallback : intro + " " + _finetuningAltFallback;
   }
   const parts = [];
@@ -4395,8 +4402,17 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
     const ref = t.source || t.biblio_ref || "";
     parts.push(picto + " [" + minStr + " , " + maxStr + "] — " + note + (ref ? " #" + ref : ""));
   });
+  bounds.targets.forEach(function (t) {
+    if (t.baryGroup !== "SCIENCE" || t.group === "CLOUD_SW") return;
+    const picto = _finetuningRadiativeSciencePicto[t.key] || "🔬";
+    const minStr = (typeof t.min === "number") ? t.min : String(t.min);
+    const maxStr = (typeof t.max === "number") ? t.max : String(t.max);
+    const note = t.note || "";
+    const ref = t.source || t.biblio_ref || "";
+    parts.push(picto + " [" + minStr + " , " + maxStr + "] — " + note + (ref ? " #" + ref : ""));
+  });
   const detail = parts.length ? parts.join("\n") : _finetuningAltFallback;
-  const intro = "Réglage barycentre nuages (albédo). " + pct + ".";
+  const intro = "Flou scientifique (nuages SW + radiatif / jauge Science). " + pct + ".";
   return detailOnly ? detail : intro + "\n" + detail;
 }
 

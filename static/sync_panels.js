@@ -1,6 +1,9 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.44
+// Version 1.1.47
+// - v1.1.47: projectToVisu — après draw flux, rAF → PLOT.logPlotScaleAfterCompute (DEBUG_PLOT_LOG + _logs/plot.txt)
+// - v1.1.46: projectToVisu — appels directs PLOT.invalidateSpectralYLuminanceCache / FLUX.skipSpectralFluxRedrawOnce (pas de typeof === 'function')
+// - v1.1.45: projectToVisu — invalidateSpectralYLuminanceCache avant 1er updatePlot ; 2e rAF: skipSpectralFluxRedrawOnce + invalidate puis updatePlot (échelle Y finale + overlays sans double draw flux dans le callback ; updateSpectralVisualization assure le canvas flux).
 // - v1.1.44: broadcastTuningToIframes — factorise propagation sync:tuning vers scie + bench + hysteresis (#hysteresis-iframe). Utilisé dans applyTuningFromScie (mini-slider visu_), message listener sync:tuning (écho scie) et IO_LISTENER. Bench & hysteresis reçoivent désormais les changements venant de visu_ et scie_ (hysteresis = écoute seule, postMessage sortant mute v1.0.1).
 // - v1.1.43: syncTuningToBench — IO_LISTENER 'sync:tuning' propage aussi vers l'iframe bench (#bench-iframe). Bench reçoit le payload via postMessage et rafraîchit ses jauges via message listener (epoch_bench.html v1.0.16).
 // - v1.1.42: migration namespaces — window.PLOT.updatePlot / updateSpectralVisualization / tempSurfaceToColor + window.ORG.updateFluxLabels + RUNTIME_STATE (currentEpochName, spectralConverged, spectralPrecisionTarget, showSpectralBackground, h2oVaporPercent, h2oTotalFromMeteorites). Retrait stubs updateFluxLabels / updateLabel (ordre chargement contractuel, crash-first).
@@ -295,6 +298,7 @@
         window.plotData.temp_surface_c = tempC;
         window.plotData.temp_surface = T0;
         window.plotData.co2_ppm = co2_ppm;
+        window.PLOT.invalidateSpectralYLuminanceCache();
         window.RUNTIME_STATE.spectralConverged = true;
         window.RUNTIME_STATE.spectralPrecisionTarget = 'max';
         // v1.1.40: resync couleur T° courante (hors chemin setEpoch anticipé).
@@ -323,6 +327,8 @@
                     window.plotData.temp_surface_c = window.plotData.current.temp_surface_c;
                     window.plotData.temp_surface = T0Data;
                 }
+                window.FLUX.skipSpectralFluxRedrawOnce = true;
+                window.PLOT.invalidateSpectralYLuminanceCache();
                 window.PLOT.updatePlot(window.plotData);
                 // Force showSpectralBackground juste avant le draw (résiste au FPS monitor)
                 window.RUNTIME_STATE.showSpectralBackground = true;
@@ -332,6 +338,9 @@
                     console.error('❌ [drawFlux@sync]', err);
                 }
                 IO_LISTENER.emit('flux:lastDrawn');
+                requestAnimationFrame(function () {
+                    window.PLOT.logPlotScaleAfterCompute();
+                });
             });
         });
     }
