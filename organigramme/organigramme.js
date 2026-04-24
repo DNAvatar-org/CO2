@@ -4365,14 +4365,14 @@ var _finetuningAltPicto = {
   OPTICAL_EFF_BASE: "🧪",
   OPTICAL_EFF_CCN_GAIN: "🧪",
   SULFATE_BOOST_SCALE: "✈",
-  SULFATE_BOOST_MAX: "✈",
-  TEMP_FACTOR_REF_K: "🌡️"
+  SULFATE_BOOST_MAX: "✈"
+  // TEMP_FACTOR_REF_K retiré : partition Hu & Stamnes (1993) maintenant codée en dur.
 };
 
 // Alt détaillé (paramètres CLOUD_SW + bornes) pour fine_tuning_cloud_bary. SOLVER = autre jauge, exclu.
 // detailOnly=true = uniquement le détail. Avec retours à la ligne pour un texte lisible.
 // Fallback fixe quand FINE_TUNING_BOUNDS non chargé (visu ne charge pas fine_tuning_bounds.js).
-var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne\n☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique\n🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne\n🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN)\n✈ [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse\n✈ [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy)\n🌡️ [282 , 294] — référence thermique nuages SW #Reference climat moderne (~15C)";
+var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne\n☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique\n🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne\n🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN)\n✈ [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse\n✈ [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy)";
 
 function getFineTuningShortTooltip(pctStr) {
   return "Flou scientifique";

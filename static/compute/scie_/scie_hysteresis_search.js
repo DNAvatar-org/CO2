@@ -1,11 +1,86 @@
 // File: scie_hysteresis_search.js - Recherche seuil CO₂ hystérésis scie_
 // Desc: En français, dans l'architecture, je suis window.HYSTERESIS — négatif : scan CO₂×factor chute T failed <½·x₀ ; positif : ÷factor saut T chaud failed >2·x₀ ; dicho 0,5 [min,max]
-// Version 2.2.0
+// Version 2.2.9
+//
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// PHYSIQUE DU CYCLE SNOWBALL — référence pour hystérésis 1 (entrée Sturtien) et suite (sortie, R&D).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+//
+// DRAWDOWN pré-snowball (/10 en CO₂, ~5 Myr) — moteur de l'entrée Sturtien :
+// ─────────────────────────────────────────────────────────────────────────────
+//   • Fragmentation de Rodinia (~800-720 Ma) → surface silicate fraîche exposée × 2-3 en zone tropicale humide.
+//   • Franklin LIP à 717 Ma → ~2e6 km³ basalte frais au tropique (cible altération, T haute + pluie).
+//   • Cycle d'Urey accéléré : CaSiO₃ + 2CO₂ + H₂O → Ca²⁺ + 2HCO₃⁻ + SiO₂, puis précipitation carbonate marin.
+//   • ΔF CO₂ = 5.35 × ln(1/10) = -12.3 W/m² → ΔT ≈ -10 K avec sensibilité 0.8 K/(W/m²). Suffit à déclencher le runaway glace-albédo.
+//   • Taux drawdown estimé ~1 ppm/kyr sur 1-10 Myr (compatible paléomag 740→717 Ma).
+//   Réfs : Hoffman & Schrag 2002 ; Mills et al. 2011 ; Goddéris et al. 2017 ; Hoffman 2017 Sci Adv 3:e1600983.
+//
+// BUILDUP pendant snowball (×100-1000 en CO₂, 10-57 Myr) — moteur de la sortie (hysteresis 1b) :
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+//   • SHUTDOWN complet de l'altération silicate pendant snowball (pas d'eau liquide, pas de CO₂ sink) → asymétrie clé.
+//   • Outgassing volcanique continu ~6e12 mol CO₂/an (Protérozoïque ≈ moderne, Catling & Kasting 2017).
+//     Sur 10 Myr : 6e19 mol = 2.6e18 kg CO₂ = +340 000 ppm théoriques ajoutés à l'atmosphère !
+//   • Poussière aérosols volcaniques + érosion éolienne → α snowball 0.62 → 0.45-0.50 après 5-20 Myr.
+//     Gagne ~40 W/m² sans toucher au CO₂ (Abbot & Pierrehumbert 2010).
+//   • CH₄ (océan anoxique sous glace, méthanogenèse forte) monte à 100-1000 ppm → +5-15 W/m² gratis.
+//   • Bilan albédo : terre moderne α=0.30 absorbe 240 W/m² ; snowball hard α=0.62 absorbe 122 W/m² → déficit 118 W/m².
+//   • Seuil déglaciation GCM avec aides ci-dessus : 10 000-100 000 ppm (Pierrehumbert 2004 ; Abbot 2010 ; Hoffman 2017).
+//   Réfs : Pierrehumbert 2004 Nature 429:646 ; Abbot & Pierrehumbert 2010 JGR 115:D03103 ;
+//          Le Hir et al. 2010 EPSL 297:349 ; Catling & Kasting 2017 "Atmospheric Evolution on Inhabited Worlds".
+//
+// SEUILS DE BIFURCATION — où l'algo hystérésis scan doit trouver le point de bascule :
+// ────────────────────────────────────────────────────────────────────────────────────
+//   • Entrée Sturtien (S/S₀=0.94, hysteresis 1a) : seuil 100-300 ppm GCM moderne.
+//     Réfs : Voigt & Marotzke 2010 J. Clim. 23:4305 ; Voigt & Abbot 2012 Clim. Past 8:2079 ;
+//            Yang, Peltier & Hu 2012 J. Clim. 25:2711 ; Hörner et al. 2022 Clim. Past 18:2437.
+//     Pour Budyko-Sellers 0D (notre modèle) : fourchette plus large 100-800 ppm selon tunings
+//     (seaIceTransitionRangeK, polarAmplificationK, CCN, etc.). C'est ce qu'on cherche à caler.
+//   • Sortie Marinoen (hysteresis 1b, ~635 Ma) : seuil déglaciation 0.01-0.12 bar (~10k-120k ppm).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
-// Date: April 23, 2026
+// Date: April 24, 2026
 // Logs:
+// - v2.2.9: Scan hystérésis élargi. (a) scanCo2MassFactor défaut 0.9 → 0.5 : CO₂ /2 par pas au lieu
+//   de -10 % (traversée de 1280 → 128 ppm en ~4 pas au lieu de ~22). (b) Nouveau paramètre
+//   `scanFailRatio` (défaut 0.1) : plancher de la plage en fraction de ⚖️🏭₀. FAILED si xNext < 0.1·x0
+//   (scan−) ou > 10·x0 (scan+), au lieu du ½·x0 / 2·x0 hardcodé. Motivation : seuil snowball GCM
+//   100-300 ppm = 8-24 % de 1280 ppm baseline Sturtien, donc ½·x0 (640 ppm) s'arrêtait trop haut.
+//   Mis à jour : initDATA.js HYSTERESIS defaults, logs start-of-run (plus de "½·⚖️🏭₀" hardcodé),
+//   failHalf() dynamique. Ajout bloc de commentaires PHYSIQUE DU CYCLE SNOWBALL en tête de fichier
+//   (drawdown /10, buildup ×100-1000, seuils bifurcation) avec biblio complète.
+// - v2.2.8: Rebrand bouton ☃ — `hyst-epoch-snow` (onclick '⛄', glyph 🪸⛄) → `hyst-epoch-h1a`
+//   (onclick 'hysteresis 1a', glyph ☃⛄). L'utilisateur attend qu'un clic sur le bouton "neige"
+//   lance la config hysteresis 1a (Sturtienne, T_seed ≈ 18 °C, CO₂ = 1.0e16, highlands 0.08) afin
+//   d'observer la bifurcation depuis la branche chaude quand CO₂ ↓. L'ancien `'⛄'` (Plein Snowball,
+//   T_seed ≈ −61 °C) ne sert pas pour la R&D hystérésis d'entrée Sturtienne. 4 fichiers touchés :
+//   hysteresis_compute.html, scie_compute.html, search_scie.html (bouton + syncHystEpochButtonsFromData),
+//   scie_hysteresis_search.js (clearHystEpochButtonsSelected). Le hook HYSTERESIS_REF_EPOCH_ID reste à null.
+// - v2.2.7: REVERT du routage forcé ☃ (v2.2.4 + v2.2.6). Malentendu sur "prend ☃ comme ref unique" —
+//   c'était une remarque sémantique (l'hystérésis part conceptuellement d'un état chaud pré-snowball),
+//   pas un routage de boutons. Chaque bouton (⛄ / 1b / 2) retrouve sa propre config d'époque.
+//   HYSTERESIS_REF_EPOCH_ID = null désactive le hook de redirection dans les 3 HTML compute.
+//   Le fix FAILED seuils absolus (v2.2.5) est conservé car indépendant du routage.
+// - v2.2.6: (reverté par v2.2.7) redirection déplacée vers scieRunEpochLikeVisuTimeline (HTML) pour
+//   aligner compute + hyst sur la même row TIMELINE. Reste utile si HYSTERESIS_REF_EPOCH_ID un jour ≠ null.
+// - v2.2.5: FAILED "déjà sur branche" — critère basé sur SEUILS ABSOLUS coldBranchT_C / warmBranchT_C,
+//   plus sur delta relatif seedT_C ± 20 K. La graine T_seed peut être agressive (ex. ☃ 39°C) mais la
+//   convergence Picard peut atterrir modérément (ex. 0°C à 989 ppm) SANS être la branche froide cible :
+//   tant que T > coldBranchT_C (−20°C), le scan est légitime et doit continuer (scan CO₂↓ attendu).
+//   FAILED ne se déclenche désormais QUE si T_step1 < coldBranchT_C (scan−) ou > warmBranchT_C (scan+),
+//   i.e. la branche cible est déjà atteinte au CO₂ baseline → pas de bifurcation à trouver.
+//   Bug corrigé : expression `!this.runSearchSign !== 'positive'` (priorité opérateur erronée) →
+//   remplacée par `var negativeScan = this.runSearchSign !== 'positive'`.
+// - v2.2.4: R&D hystérésis — TOUS les boutons hyst (⛄ / 1b / 2) routés vers la config UNIQUE ☃ = 'hysteresis 1b'
+//   (Sortie Marinoen −690 Ma, baseline chaude ~16°C). Rationale utilisateur : la R&D hystérésis doit partir
+//   systématiquement d'un état chaud (T_glob ≥ 16 °C) puis observer la bascule branche chaude → branche froide
+//   lorsque CO₂ ↓ au pas 2. Les configs ⛄ (cold, T_seed ~ −18°C) et h2 (Eocène) ne servent pas pour cette
+//   phase R&D. Pour réactiver le routage par bouton, retirer la ligne `epochId = HYSTERESIS_REF_EPOCH_ID`
+//   dans onEpochButton (cf. HYSTERESIS_REF_EPOCH_ID en tête de fichier).
+// - v2.2.3: revert v2.2.2 (graine T depuis époque précédente) — mauvais diagnostic. Les divergences config ⛄ vs ☃ (highlands 0.15 vs 0.08, CO₂₀ 0.8e16 vs 1.0e16, 🌱 etc.) sont INTENTIONNELLES et font partie des variables testables pour la bifurcation Snowball. L'hystérésis doit émerger du scan lui-même (via la suppression du verrou glace v1.2.53 + blend dt à chaque pas), pas de conditions initiales alignées. Retour à graine T = EPOCH['🌡️🧮'] de l'époque cliquée.
+// - v2.2.2: (reverté par v2.2.3) graine T depuis époque précédente — conceptuellement incorrect pour l'hystérésis.
+// - v2.2.1: init unifié AVANT pas 1 — `this.adapter.writeXToTimeline(x0)` appelé INCONDITIONNELLEMENT pour que BaryAdapter co-évolue les masses secondaires (sulfate, O₂, N₂...) dès le premier compute. Le bloc CCN-CO₂ init (legacy defaultCo2Adapter) est gardé sous `!isBaryAdapter`, et pour BaryAdapter on relit sulfate depuis DATA pour rafraîchir `sulfateBaselineKg`. Élimine l'artefact de boot où ⛄ démarrait avec ⚖️✈=0 (config commentée) → faux pas de bifurcation au pas 2.
 // - v2.2.0: critère scan/dicho remplacé : plus de relatif (T < T_ref - brutalDeltaT_C) → seuils absolus
 //   coldBranchT_C (= DATA['🎚️'].HYSTERESIS.coldBranchHint_C, défaut -5°C) et
 //   warmBranchT_C (= warmBranchHint_C, défaut -5°C). brutalDeltaT_C conservé pour log seulement.
@@ -41,6 +116,12 @@
     var X_ABS_MAX = 5e17;
     /** Garde-fou nombre total d’appels API (scan + dicho) */
     var MAX_OUTER = 200;
+
+    // v2.2.7 — Routage direct bouton → sa propre config. Clic sur ⛄ → recherche hyst ⛄,
+    // clic sur 1b → hyst 1b, clic sur 2 → hyst 2 (comportement historique attendu).
+    // Hook gardé en null pour permettre une future redirection opt-in (R&D param sweep).
+    var HYSTERESIS_REF_EPOCH_ID = null;
+    window.HYSTERESIS_REF_EPOCH_ID = HYSTERESIS_REF_EPOCH_ID;
 
     function clampX(x) {
         return Math.max(X_ABS_MIN, Math.min(X_ABS_MAX, Math.max(X_ABS_MIN, x)));
@@ -117,7 +198,9 @@
         coldBranchT_C: -5,
         /** Seuil absolu branche chaude (log, référence dicho warm). Initialisé depuis DATA['🎚️'].HYSTERESIS.warmBranchHint_C. */
         warmBranchT_C: -5,
-        scanCo2MassFactor: 0.9,
+        scanCo2MassFactor: 0.5,
+        /** Plage de scan en fraction de ⚖️🏭₀. FAILED si xNext < scanFailRatio·x0 (négatif) ou > (1/scanFailRatio)·x0 (positif). */
+        scanFailRatio: 0.1,
         maxDichoSteps: 30,
         /** UI / prochain run : 'negative' (défaut) | 'positive' */
         searchSign: 'negative',
@@ -198,8 +281,52 @@
             }
         },
 
+        /**
+         * Diagnostic par-pas : dump des suspects de rétroaction (nuages / CCN / sulfates / H2O / glace).
+         * Objectif : identifier quel terme fournit le warming positif malgré CO₂↓ pendant pas 2→N.
+         */
+        _appendHystPerStepDiagnostic: function (T_C, xKg, ppm) {
+            var D = window.DATA || {};
+            var HD = window._hystDiag || {};
+            var clouds = D['🪩'] || {};
+            var water = D['💧'] || {};
+            var masses = D['⚖️'] || {};
+            var fx = function (v, n) {
+                return (typeof v === 'number' && isFinite(v)) ? v.toFixed(n == null ? 3 : n) : 'NaN';
+            };
+            var fexp = function (v, n) {
+                return (typeof v === 'number' && isFinite(v)) ? v.toExponential(n == null ? 3 : n) : 'NaN';
+            };
+            // Ligne 1 : CO₂ + sulfates + H2O vapeur + RH
+            this.appendLog('  🔬[diag CO₂] ppm=' + fx(ppm, 1)
+                + ' ⚖️🏭=' + fexp(xKg)
+                + ' ⚖️✈=' + fexp(masses['⚖️✈'])
+                + ' ⚖️💧vap=' + fexp(water['🍰🫧💧'])
+                + ' RH=' + fx(water['🍰🫧☔']));
+            // Ligne 2 : CCN + cloud optical efficiency (suspect n°1 pour le rebond T)
+            this.appendLog('  🔬[diag CCN] ccn_ratio=' + fx(HD.ccnRatio)
+                + ' so4_boost=' + fx(HD.sulfateBoost)
+                + ' anthro=' + fx(HD.anthroFactor)
+                + ' press=' + fx(HD.pressureFactor)
+                + ' temp_f=' + fx(HD.tempFactor)
+                + ' f_liq=' + fx(HD.fLiq)
+                + ' opt_eff=' + fx(HD.cloudOptEff)
+                + ' cloud_idx=' + fx(HD.cloudIndex)
+                + ' cloud_frac=' + fx(HD.cloudFraction));
+            // Ligne 3 : glace + albédo final (T_polaire = T_globale − polarAmplificationK)
+            this.appendLog('  🔬[diag ☀️] T_pol=' + fx(HD.T_polar_C, 2) + '°C'
+                + ' ice_eff=' + fx(HD.iceAlbedoEff)
+                + ' ice_snow=' + fx(HD.iceAlbedoSnowDeep)
+                + ' ice_cold=' + fx(HD.iceAlbedoCold)
+                + ' melt01=' + fx(HD.iceAlbedoMeltProgress01)
+                + ' ice_surf=' + fx(clouds['🍰🪩🧊'])
+                + ' α_base=' + fx(HD.weightedAlbedoBase)
+                + ' α_final=' + fx(HD.finalAlbedo)
+                + ' α_eff=' + fx(HD.aEff));
+        },
+
         clearHystEpochButtonsSelected: function () {
-            document.getElementById('hyst-epoch-snow').classList.remove('selected');
+            document.getElementById('hyst-epoch-h1a').classList.remove('selected');
             document.getElementById('hyst-epoch-h1b').classList.remove('selected');
             document.getElementById('hyst-epoch-h2').classList.remove('selected');
         },
@@ -210,7 +337,7 @@
             var neg = this.searchSign === 'negative';
             var Ht = window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].HYSTERESIS;
             var facRaw = Ht && Number(Ht.scanCo2MassFactor);
-            var fac = (Number.isFinite(facRaw) && facRaw > 0 && facRaw < 1) ? facRaw : 0.9;
+            var fac = (Number.isFinite(facRaw) && facRaw > 0 && facRaw < 1) ? facRaw : 0.5;
             if (btn) {
                 btn.title = neg
                     ? 'Mode négatif (défaut) : CO₂ ↓ ×' + fac + ', chute T — cliquer pour mode positif'
@@ -233,6 +360,10 @@
         },
 
         onEpochButton: function (epochId) {
+            // v2.2.6 — redirect déplacé vers scieRunEpochLikeVisuTimeline (HTML) pour aligner compute + hyst
+            // sur la MÊME row TIMELINE (sinon split-brain : compute lit TIMELINE[⛄], hyst écrit TIMELINE[h1b]).
+            // Ici on lit juste le redirect déjà effectué en amont pour logger le "bouton cliqué → ref".
+            var clickedEpochId = (typeof window._hystClickedEpochId === 'string' && window._hystClickedEpochId) ? window._hystClickedEpochId : epochId;
             var idxEp = timelineIndexForEpoch(epochId);
             var EPOCH = (idxEp >= 0 && window.TIMELINE[idxEp]) ? window.TIMELINE[idxEp] : window.DATA['📅'];
             var H = window.DATA['🎚️'].HYSTERESIS;
@@ -253,7 +384,8 @@
             this.brutalDeltaT_C = (Number.isFinite(Number(H.brutalDeltaT_C)) && Number(H.brutalDeltaT_C) > 0) ? Number(H.brutalDeltaT_C) : 3;
             this.coldBranchT_C = Number.isFinite(Number(H.coldBranchHint_C)) ? Number(H.coldBranchHint_C) : -5;
             this.warmBranchT_C = Number.isFinite(Number(H.warmBranchHint_C)) ? Number(H.warmBranchHint_C) : -5;
-            this.scanCo2MassFactor = (Number.isFinite(Number(H.scanCo2MassFactor)) && Number(H.scanCo2MassFactor) > 0 && Number(H.scanCo2MassFactor) < 1) ? Number(H.scanCo2MassFactor) : 0.9;
+            this.scanCo2MassFactor = (Number.isFinite(Number(H.scanCo2MassFactor)) && Number(H.scanCo2MassFactor) > 0 && Number(H.scanCo2MassFactor) < 1) ? Number(H.scanCo2MassFactor) : 0.5;
+            this.scanFailRatio = (Number.isFinite(Number(H.scanFailRatio)) && Number(H.scanFailRatio) > 0 && Number(H.scanFailRatio) < 1) ? Number(H.scanFailRatio) : 0.1;
             this.maxDichoSteps = (Number.isFinite(Number(H.maxDichoSteps)) && Number(H.maxDichoSteps) > 0) ? Math.floor(Number(H.maxDichoSteps)) : 30;
             this.runSearchSign = this.searchSign === 'positive' ? 'positive' : 'negative';
             this.syncSearchSignButtonUI();
@@ -286,7 +418,7 @@
             // les 3 boutons hyst forcent 🔘🎞=true (continuité T inter-ticks du scan), ce qui
             // désactive le reset T de runTest(). Sans init explicite ici, le scan démarre depuis
             // T résiduelle (ou fallback corps noir ~254 K / -18.5 °C) → branche indéterminée.
-            // Chaque epoch hyst pose sa graine de branche (1a/1b=chaude ~290-312 K, ⛄=froide 239 K, 2=298 K).
+            // Chaque epoch hyst pose sa graine de branche (1a/1b=chaude ~290-312 K, ⛄=290 K, 2=298 K).
             var seedTK = Number(EPOCH['🌡️🧮']);
             if (Number.isFinite(seedTK) && seedTK > 0) {
                 window.DATA['🧮']['🧮🌡️'] = seedTK;
@@ -302,17 +434,55 @@
             var D = window.DATA;
             this.sulfateBaselineKg = (D && D['⚖️'] && Number.isFinite(Number(D['⚖️']['⚖️✈'])) && Number(D['⚖️']['⚖️✈']) > 0)
                 ? Number(D['⚖️']['⚖️✈']) : 1e12;
+            // v2.1.17 : Init de l'état AVANT le pas 1 du scan pour éliminer l'artefact de boot.
+            // Sans cette init, pas 1 tourne avec les masses secondaires non-peuplées (ex. ⛄ : ⚖️✈=0
+            // en config car commenté), puis pas 2 saute brutalement → faux pas de bifurcation
+            // (T chutant 17→7°C juste par le boot sulfate, pas par la physique CO₂).
+            //
+            // ── Branche BaryAdapter (époques avec '🔒' bounds — ex. ⛄) ──
+            // writeXToTimeline(x0) : écrit CO₂=x0, déduit bary depuis bounds CO₂, co-évolue TOUTES
+            // les masses secondaires via writeSecondaryMasses (sulfate, O₂, N₂...), puis getMasses().
+            // Résultat : TIMELINE['⚖️✈'] et DATA['⚖️']['⚖️✈'] peuplés cohéremment avec bary(x0).
+            //
+            // ── Branche defaultCo2Adapter (époques sans bounds) ──
+            // writeXToTimeline(x0) écrit juste CO₂ (no-op car déjà x0). On applique en plus l'init
+            // CCN-CO₂ : à xNew=x0, ratio=1 → sulfateNew=sulfateBaselineKg (évite le boot nul).
+            this.adapter.writeXToTimeline(x0);
+            if (!this.adapter.isBaryAdapter) {
+                var _H2init = D && D['🎚️'] && D['🎚️'].HYSTERESIS;
+                var _ccnCouplingInit = (_H2init && Number.isFinite(Number(_H2init.ccnSulfateCoupling))) ? Number(_H2init.ccnSulfateCoupling) : 0.5;
+                if (_ccnCouplingInit > 0 && Number.isFinite(this.sulfateBaselineKg) && this.sulfateBaselineKg > 0) {
+                    var _idxInit = timelineIndexForEpoch(this.epochId);
+                    if (_idxInit >= 0 && window.TIMELINE[_idxInit]) {
+                        window.TIMELINE[_idxInit]['⚖️✈'] = this.sulfateBaselineKg;
+                    }
+                    if (D && D['⚖️']) D['⚖️']['⚖️✈'] = this.sulfateBaselineKg;
+                }
+            } else {
+                // Après writeXToTimeline, relire sulfate depuis DATA pour mettre à jour baseline.
+                // Pour BaryAdapter ⛄ : bary(x0) ≈ 0.xxx → sulfate ≈ baryToMass([0,5e14], ...) > 0.
+                if (D && D['⚖️'] && Number.isFinite(Number(D['⚖️']['⚖️✈'])) && Number(D['⚖️']['⚖️✈']) > 0) {
+                    this.sulfateBaselineKg = Number(D['⚖️']['⚖️✈']);
+                }
+            }
             this.resetLog();
             window._scieHystSearchHadActivity = true;
+            if (HYSTERESIS_REF_EPOCH_ID && clickedEpochId !== HYSTERESIS_REF_EPOCH_ID) {
+                this.appendLog('🔁 [v2.2.4] Bouton cliqué = ' + clickedEpochId + ' → REDIRECTION ref unique R&D → ' + HYSTERESIS_REF_EPOCH_ID + ' (☃ Sortie Marinoen, chaud ~16°C)');
+            }
             this.appendLog('📋 Configuration : hysteresis ' + epochId + ' | signe=' + (this.runSearchSign === 'positive' ? 'positif' : 'négatif'));
+            var _rNeg = this.scanFailRatio;
+            var _rPos = 1 / _rNeg;
+            var _rNegStr = _rNeg.toFixed(2);
+            var _rPosStr = _rPos.toFixed(0);
             switch (this.runSearchSign) {
                 case 'positive':
                     this.appendLog('  ⚖️🏭₀=' + x0.toExponential(3) + ' kg | scan ÷' + this.scanCo2MassFactor + ' (CO₂↑) jusqu’à T > ' + this.warmBranchT_C + ' °C (branche chaude)');
-                    this.appendLog('  Failed si ⚖️🏭 > 2·⚖️🏭₀ | dicho bary 0,5 | succès |Δ| < ' + this.convergencePpmMass + ' ppm-éq | max ' + this.maxDichoSteps + ' dicho');
+                    this.appendLog('  Failed si ⚖️🏭 > ' + _rPosStr + '·⚖️🏭₀ | dicho bary 0,5 | succès |Δ| < ' + this.convergencePpmMass + ' ppm-éq | max ' + this.maxDichoSteps + ' dicho');
                     break;
                 default:
                     this.appendLog('  ⚖️🏭₀=' + x0.toExponential(3) + ' kg | scan ×' + this.scanCo2MassFactor + ' (CO₂↓) jusqu’à T < ' + this.coldBranchT_C + ' °C (branche froide)');
-                    this.appendLog('  Failed si ⚖️🏭 < ½·⚖️🏭₀ | dicho bary 0,5 | succès |Δ| < ' + this.convergencePpmMass + ' ppm-éq | max ' + this.maxDichoSteps + ' dicho');
+                    this.appendLog('  Failed si ⚖️🏭 < ' + _rNegStr + '·⚖️🏭₀ | dicho bary 0,5 | succès |Δ| < ' + this.convergencePpmMass + ' ppm-éq | max ' + this.maxDichoSteps + ' dicho');
             }
             this.appendLog('━━ 🧲 démarrage (compute:done = un pas) ━━');
             this.appendLog('  (opt.) détail 🧊 : CONFIG_COMPUTE.logIceFractionDiagnostic=true → console / pd() chaîne polar+mer+verrous+surface');
@@ -409,6 +579,7 @@
             this.appendLog('');
             this.appendLog('── 📿🧮=' + this.outerIndex + '  phase=' + this.phase + '  ⚖️🏭=' + xBefore.toExponential(3) + ' kg → 🌡️🧮=' + T.toFixed(2) + ' °C ──');
             this._refreshHystWaterAlbedoSnapshots(T);
+            this._appendHystPerStepDiagnostic(T, xBefore, ppm);
 
             switch (true) {
                 case this.outerIndex >= MAX_OUTER:
@@ -419,37 +590,47 @@
                 default:
             }
 
-            // Détection départ sur branche froide (1er pas) : si T est déjà très éloignée de la graine,
-            // la branche chaude n'existe pas à ⚖️🏭₀ — pas de seuil à trouver en descendant.
-            // Seuil : T < seedT − 20°C (froid brutal) pour scan négatif, ou T > seedT + 20°C pour scan positif.
-            var coldThreshDrop = 20;
-            var alreadyCold = !this.runSearchSign !== 'positive'
+            // v2.2.5 — Détection départ sur branche cible (1er pas) basée sur SEUILS ABSOLUS
+            // (coldBranchT_C / warmBranchT_C), plus delta relatif à seedT_C.
+            // Rationale : la graine T_seed peut être agressive (ex. ☃ 39°C) mais la convergence Picard
+            // peut atterrir modérément chaude (ex. 0°C à 989 ppm) sans que ce soit la branche froide.
+            // Tant que T reste > coldBranchT_C (scan−) ou < warmBranchT_C (scan+), le scan est légitime.
+            // FAILED ne se déclenche que si la branche cible est DÉJÀ atteinte au CO₂ baseline → pas de
+            // seuil d'hystérésis à trouver.
+            // Bug corrigé aussi : `!this.runSearchSign !== 'positive'` → parenthésé correctement via var.
+            var negativeScan = this.runSearchSign !== 'positive';
+            var alreadyCold = negativeScan
                 && this.outerIndex === 1
-                && Number.isFinite(this.seedT_C)
-                && T < this.seedT_C - coldThreshDrop;
-            var alreadyHot = this.runSearchSign === 'positive'
+                && Number.isFinite(this.coldBranchT_C)
+                && T < this.coldBranchT_C;
+            var alreadyHot = !negativeScan
                 && this.outerIndex === 1
-                && Number.isFinite(this.seedT_C)
-                && T > this.seedT_C + coldThreshDrop;
+                && Number.isFinite(this.warmBranchT_C)
+                && T > this.warmBranchT_C;
             if (alreadyCold || alreadyHot) {
-                this.appendLog('━━ FAILED : déjà sur branche ' + (alreadyCold ? 'froide' : 'chaude') + ' au départ ━━');
-                this.appendLog('  T=' + T.toFixed(2) + ' °C vs graine=' + this.seedT_C.toFixed(2) + ' °C (écart ' + Math.abs(T - this.seedT_C).toFixed(1) + ' K > seuil ' + coldThreshDrop + ' K)');
-                this.appendLog('  La branche ' + (alreadyCold ? 'chaude' : 'froide') + ' n\'existe pas à ⚖️🏭₀=' + xBefore.toExponential(3) + ' kg.');
-                this.appendLog('  → Ajuster CO₂ initial (⚖️🏭₀), ou réduire polarAmplificationK / midlatAmplificationK.');
+                this.appendLog('━━ FAILED : branche ' + (alreadyCold ? 'froide' : 'chaude') + ' déjà atteinte au CO₂ baseline ━━');
+                var seuilAbs = alreadyCold ? this.coldBranchT_C : this.warmBranchT_C;
+                this.appendLog('  T=' + T.toFixed(2) + ' °C ' + (alreadyCold ? '<' : '>') + ' seuil ' + (alreadyCold ? 'froid' : 'chaud') + ' ' + seuilAbs + ' °C (graine=' + this.seedT_C.toFixed(2) + ' °C pour info).');
+                this.appendLog('  Pas de bifurcation à trouver : la branche ' + (alreadyCold ? 'chaude' : 'froide') + ' n\'existe pas à ⚖️🏭₀=' + xBefore.toExponential(3) + ' kg.');
+                this.appendLog('  → Ajuster CO₂ initial (⚖️🏭₀), ou réviser polarAmplificationK / midlatAmplificationK / highlands.');
                 this._appendHystLastCycleSnapshot();
                 this.deactivate();
                 return false;
             }
 
             function failHalf() {
+                var rNeg = self.scanFailRatio;
+                var rPos = 1 / rNeg;
+                var rNegStr = (rNeg).toFixed(2);
+                var rPosStr = (rPos).toFixed(0);
                 switch (isPos) {
                     case true:
-                        self.appendLog('━━ FAILED : ⚖️🏭 serait > 2·⚖️🏭₀ — pas de saut chaud trouvé dans la plage ━━');
-                        self.appendLog('  2·⚖️🏭₀=' + (2 * x0).toExponential(3) + ' kg');
+                        self.appendLog('━━ FAILED : ⚖️🏭 serait > ' + rPosStr + '·⚖️🏭₀ — pas de saut chaud trouvé dans la plage ━━');
+                        self.appendLog('  ' + rPosStr + '·⚖️🏭₀=' + (rPos * x0).toExponential(3) + ' kg');
                         break;
                     default:
-                        self.appendLog('━━ FAILED : ⚖️🏭 serait < ½·⚖️🏭₀ — pas de chute brutale trouvée dans la plage ━━');
-                        self.appendLog('  ½·⚖️🏭₀=' + (0.5 * x0).toExponential(3) + ' kg');
+                        self.appendLog('━━ FAILED : ⚖️🏭 serait < ' + rNegStr + '·⚖️🏭₀ — pas de chute brutale trouvée dans la plage ━━');
+                        self.appendLog('  ' + rNegStr + '·⚖️🏭₀=' + (rNeg * x0).toExponential(3) + ' kg');
                 }
                 self._appendHystLastCycleSnapshot();
                 self.deactivate();
@@ -519,7 +700,7 @@
                             }
                             var xNextP = xBefore / fac;
                             switch (true) {
-                                case xNextP > 2 * x0:
+                                case xNextP > (1 / this.scanFailRatio) * x0:
                                     return failHalf();
                                 default:
                             }
@@ -535,7 +716,7 @@
                                     this.appendLog('  [scan−] référence chaude T=' + T.toFixed(2) + ' °C @ ' + xBefore.toExponential(3) + ' kg');
                                     var x1 = xBefore * fac;
                                     switch (true) {
-                                        case x1 < 0.5 * x0:
+                                        case x1 < this.scanFailRatio * x0:
                                             return failHalf();
                                         default:
                                             return writeAndContinue(x1);
@@ -557,7 +738,7 @@
                             }
                             var xNext = xBefore * fac;
                             switch (true) {
-                                case xNext < 0.5 * x0:
+                                case xNext < this.scanFailRatio * x0:
                                     return failHalf();
                                 default:
                             }

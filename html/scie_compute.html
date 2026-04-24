@@ -80,8 +80,8 @@
                         <button type="button" class="toggle-button" id="hyst-literature-preset" onclick="applyHysteresisLiteraturePreset(); return false;" title="Applique HYSTERESIS_LITERATURE_PRESET (FINE_TUNING_BOUNDS groupe HYSTERESIS + TUNING_BIBLIO)">Preset lit. +</button>
                     </div>
                     <div class="hyst-epoch-row hyst-epoch-row--tight">
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-snow" title="Repère visuel −735 Ma. Calcul : époque TIMELINE ⛄ (début ▶ −720 Ma) — baisser le CO₂ pour geler, recherche du seuil hystérésis." onclick="scieRunEpochLikeVisuTimeline('⛄')">
-                            <span class="hyst-epoch-glyphs" aria-hidden="true">🪸⛄</span>
+                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1a" title="Repère visuel ☃ −735 Ma. Calcul : hysteresis 1a — Entrée Sturtienne (début ▶ −750 Ma), baseline chaude (~18 °C) → baisser le CO₂ pour franchir le seuil et geler." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1a')">
+                            <span class="hyst-epoch-glyphs" aria-hidden="true">☃⛄</span>
                             <span class="hyst-epoch-caption hyst-epoch-date">-735Ma</span>
                         </button>
                         <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1b" title="Repère visuel −645 Ma (milieu d’intervalle cible). Calcul : hysteresis 1b — Sortie Marinoen (début ▶ −690 Ma), transition vers Paléozoïque marin 🪼." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1b')">
@@ -299,6 +299,13 @@
         function scieRunEpochLikeVisuTimeline(epochId) {
             if (!window.TIMELINE) return;
             var isHyst = (epochId === 'hysteresis 1a' || epochId === 'hysteresis 1b' || epochId === 'hysteresis 2' || epochId === '⛄');
+            // v2.2.6 — R&D hystérésis : redirection en amont pour aligner compute + hyst sur la même row TIMELINE.
+            if (isHyst && window.HYSTERESIS_REF_EPOCH_ID && epochId !== window.HYSTERESIS_REF_EPOCH_ID) {
+                window._hystClickedEpochId = epochId;
+                epochId = window.HYSTERESIS_REF_EPOCH_ID;
+            } else {
+                window._hystClickedEpochId = null;
+            }
             if (isHyst) scieEnableAnimForHystSync();
             else scieDisableAnimLikeVisu();
             window._scieLastRunWasHystButton = isHyst;
@@ -314,7 +321,7 @@
 
         function syncHystEpochButtonsFromData() {
             var id = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
-            document.getElementById('hyst-epoch-snow').classList.toggle('selected', id === '⛄');
+            document.getElementById('hyst-epoch-h1a').classList.toggle('selected', id === 'hysteresis 1a');
             document.getElementById('hyst-epoch-h1b').classList.toggle('selected', id === 'hysteresis 1b');
             document.getElementById('hyst-epoch-h2').classList.toggle('selected', id === 'hysteresis 2');
         }
@@ -927,9 +934,11 @@
                 }
                 window._scieHystSearchHadActivity = false;
                 setRunStopButtonRunning(false);
+                // [perf] Rebuild unique après HY.deactivate (rendus gatés pendant scan).
+                try { displayResults(null); displayConvergence(); } catch(_) {}
             }
         }
-        
+
         // Fonction pour calculer et afficher la formule de l'albedo
         function calculateAlbedoFormula(albedo, albedoReflectorCoeff) {
             if (!albedo || !albedoReflectorCoeff) return '';
@@ -1615,11 +1624,14 @@
         }
 
         function displayResults(result) {
+            // [perf] Skip le rebuild DOM complet pendant le scan hystérésis (chaque pas = 50+
+            // convergences internes × rebuild plein panneau → renderer Chrome à genoux).
+            if (window.HYSTERESIS && window.HYSTERESIS.active) return;
             const DATA = window.DATA;
             const CONST = window.CONST;
             const configDiv = document.getElementById('config');
             const configContent = document.getElementById('config-content');
-            
+
             if (!configDiv || !configContent) return;
             
             // Récupérer l'époque et le nom depuis DATA
@@ -1707,6 +1719,8 @@
         }
 
         function appendConvergenceStep(state) {
+            // [perf] Skip les insertAdjacentHTML par step interne pendant le scan hystérésis.
+            if (window.HYSTERESIS && window.HYSTERESIS.active) return;
             // Injection 🏭📊 au premier step (après que getEpochDateConfig a écrit _co2ProfileLog)
             if (!window._co2ProfileLogInjected && window._co2ProfileLog) {
                 const headerEl = document.getElementById('convergence-co2-header');
@@ -1725,12 +1739,14 @@
         }
         
         function displayConvergence() {
+            // [perf] Skip le rebuild panneau convergence pendant le scan hystérésis.
+            if (window.HYSTERESIS && window.HYSTERESIS.active) return;
             try {
             const DATA = window.DATA;
             const CONST = window.CONST || { KELVIN_TO_CELSIUS: 273.15 };
             const convergenceDiv = document.getElementById('convergence');
             const convergenceContent = document.getElementById('convergence-content');
-            
+
             if (!convergenceDiv || !convergenceContent) return;
             if (!DATA || !DATA['🧮']) {
                 convergenceContent.innerHTML = '<div class="config-value">Aucune donnée de convergence disponible</div>';
@@ -1970,7 +1986,8 @@
                 return Math.round((u - window.SEAICE_UI_MIN) / window.SEAICE_UI_STEP) * window.SEAICE_UI_STEP + window.SEAICE_UI_MIN;
             }
             function effSeaIceRangeK() {
-                const v = window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.seaIceTransitionRangeK;
+                // Source unique : DATA['🎚️'].HYSTERESIS (initDATA.js + FINE_TUNING_BOUNDS)
+                const v = window.DATA['🎚️'].HYSTERESIS.seaIceTransitionRangeK;
                 return window.normalizeSeaIceTransitionRangeKEngine(v);
             }
             function effSeaIceRangeUi() {
@@ -1990,8 +2007,8 @@
                 const iceA = (window.EARTH && window.EARTH['🪩🍰']) ? Number(window.EARTH['🪩🍰']['🪩🍰🧊']).toFixed(2) : 'n/a';
                 const veilX = Number.isFinite(Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01)) ? Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01).toFixed(2) : '0';
                 return 'seaIceTransitionRangeK=' + effSeaIceRangeUi() + ' (moteur ' + effSeaIceRangeK().toFixed(2) + ' K)'
-                    + ' | seaIceStrength01=' + (Number.isFinite(Number(window.CONFIG_COMPUTE.seaIceStrength01)) ? Number(window.CONFIG_COMPUTE.seaIceStrength01).toFixed(2) : '1')
-                    + ' | iceImpact=' + (Number.isFinite(Number(window.CONFIG_COMPUTE.iceImpactFactor01)) ? Number(window.CONFIG_COMPUTE.iceImpactFactor01).toFixed(2) : '1')
+                    + ' | seaIceStrength01=' + Number(window.DATA['🎚️'].HYSTERESIS.seaIceStrength01).toFixed(2)
+                    + ' | iceImpact=' + Number(window.DATA['🎚️'].HYSTERESIS.iceImpactFactor01).toFixed(2)
                     + ' | ⚽=' + veilX
                     + ' | co2OceanScale01=' + (Number.isFinite(Number(window.CONFIG_COMPUTE.co2OceanScale01)) ? Number(window.CONFIG_COMPUTE.co2OceanScale01).toFixed(2) : '0.10')
                     + ' | co2OceanPumpOverride01=' + fmtPump()
@@ -2030,7 +2047,9 @@
                 if (window.EARTH && window.EARTH['🪩🍰']) {
                     window.EARTH['🪩🍰']['🪩🍰🧊'] = interpSens(H.iceAlbedoCoeff.min, H.iceAlbedoCoeff.max, pct, H.iceAlbedoCoeff.sens_threshold);
                 }
-                window.CONFIG_COMPUTE.co2OceanRatioRef = interp(5, 200, pct);
+                // Borne max 80 : proche du rapport stock océan/atmosphère CO₂ moderne ~50 (Henry, Zeebe & Wolf-Gladrow 2001).
+                // Ancien 200 = 4× trop haut → pompage trop fort, bloque le rebond chaud.
+                window.CONFIG_COMPUTE.co2OceanRatioRef = interp(5, 80, pct);
                 if (window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].baryByGroup) window.DATA['🎚️'].baryByGroup.HYSTERESIS_THRESHOLD = Number(pct);
             }
             function applyGreyControls() {
@@ -2042,9 +2061,10 @@
                 const strengthPct = elS && elS.value !== '' ? Number(elS.value) : 100;
                 const iceImpactPct = elI && elI.value !== '' ? Number(elI.value) : 100;
                 const stratVeilPct = elV && elV.value !== '' ? Number(elV.value) : 0;
-                window.CONFIG_COMPUTE.seaIceTransitionRangeK = window.normalizeSeaIceTransitionRangeKEngine(rawUi / 1000);
-                window.CONFIG_COMPUTE.seaIceStrength01 = Math.max(0, Math.min(1, strengthPct / 100));
-                window.CONFIG_COMPUTE.iceImpactFactor01 = Math.max(0, Math.min(1, iceImpactPct / 100));
+                // Écritures dans la source unique DATA['🎚️'].HYSTERESIS (migration CONFIG_COMPUTE → DATA, regle-data-territoire)
+                window.DATA['🎚️'].HYSTERESIS.seaIceTransitionRangeK = window.normalizeSeaIceTransitionRangeKEngine(rawUi / 1000);
+                window.DATA['🎚️'].HYSTERESIS.seaIceStrength01 = Math.max(0, Math.min(1, strengthPct / 100));
+                window.DATA['🎚️'].HYSTERESIS.iceImpactFactor01 = Math.max(0, Math.min(1, iceImpactPct / 100));
                 window.CONFIG_COMPUTE.hystStratosphericVeilExtra01 = Math.max(0, Math.min(0.95, stratVeilPct / 100));
             }
 
@@ -2065,18 +2085,17 @@
             const gH = document.getElementById('g-h2o-eds');
             const gHv = document.getElementById('g-h2o-eds-val');
             const infoEl = document.getElementById('hyst-info-gauges');
-            if (gR && Number.isFinite(Number(window.CONFIG_COMPUTE.seaIceTransitionRangeK))) {
-                const rk = window.normalizeSeaIceTransitionRangeKEngine(window.CONFIG_COMPUTE.seaIceTransitionRangeK);
-                window.CONFIG_COMPUTE.seaIceTransitionRangeK = rk;
+            // Hydrate sliders depuis source unique DATA['🎚️'].HYSTERESIS (initDATA.js garantit initialisation synchrone avant UI)
+            if (gR) {
+                const rk = window.normalizeSeaIceTransitionRangeKEngine(window.DATA['🎚️'].HYSTERESIS.seaIceTransitionRangeK);
+                window.DATA['🎚️'].HYSTERESIS.seaIceTransitionRangeK = rk;
                 gR.value = String(snapSeaIceUi(Math.round(rk * 1000)));
             }
-            if (gS && Number.isFinite(Number(window.CONFIG_COMPUTE.seaIceStrength01))) gS.value = String(Math.round(100 * Number(window.CONFIG_COMPUTE.seaIceStrength01)));
-            if (gI && Number.isFinite(Number(window.CONFIG_COMPUTE.iceImpactFactor01))) gI.value = String(Math.round(100 * Number(window.CONFIG_COMPUTE.iceImpactFactor01)));
-            if (gI && !Number.isFinite(Number(window.CONFIG_COMPUTE.iceImpactFactor01))) gI.value = '100';
+            if (gS) gS.value = String(Math.round(100 * Number(window.DATA['🎚️'].HYSTERESIS.seaIceStrength01)));
+            if (gI) gI.value = String(Math.round(100 * Number(window.DATA['🎚️'].HYSTERESIS.iceImpactFactor01)));
+            // hystStratosphericVeilExtra01 reste dans CONFIG_COMPUTE (paramètre numérique statique, pas dans DATA['🎚️'])
             if (gV && Number.isFinite(Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01))) gV.value = String(Math.round(100 * Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01)));
             if (gV && !Number.isFinite(Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01))) gV.value = '0';
-            if (gR && !Number.isFinite(Number(window.CONFIG_COMPUTE.seaIceTransitionRangeK))) gR.value = String(window.SEAICE_UI_DEFAULT);
-            if (gS && !Number.isFinite(Number(window.CONFIG_COMPUTE.seaIceStrength01))) gS.value = '100';
             // H2O_EDS_SCALE : mapping inversé slider 0..100 → valeur 1.00..0.60 (convention projet : 100 % = T basse)
             if (gH && window.EARTH && Number.isFinite(Number(window.EARTH.H2O_EDS_SCALE))) {
                 const vH = Number(window.EARTH.H2O_EDS_SCALE);
