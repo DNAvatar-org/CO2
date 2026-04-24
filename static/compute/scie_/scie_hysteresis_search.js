@@ -1,11 +1,20 @@
 // File: scie_hysteresis_search.js - Recherche seuil CO₂ hystérésis scie_
 // Desc: En français, dans l'architecture, je suis window.HYSTERESIS — négatif : scan CO₂×factor chute T failed <½·x₀ ; positif : ÷factor saut T chaud failed >2·x₀ ; dicho 0,5 [min,max]
-// Version 2.1.14
+// Version 2.2.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
-// Date: April 22, 2026
+// Date: April 23, 2026
 // Logs:
+// - v2.2.0: critère scan/dicho remplacé : plus de relatif (T < T_ref - brutalDeltaT_C) → seuils absolus
+//   coldBranchT_C (= DATA['🎚️'].HYSTERESIS.coldBranchHint_C, défaut -5°C) et
+//   warmBranchT_C (= warmBranchHint_C, défaut -5°C). brutalDeltaT_C conservé pour log seulement.
+//   Scan : continue jusqu'à T < coldBranchT_C (vraie branche froide). Dicho : cold = T < coldBranchT_C.
+//   tWarmRef gardé pour log ; ne sert plus de critère.
+// - v2.1.15: onEpochButton — si HYSTERESIS_BARY disponible et époque avec bornes '🔒', utilise BaryAdapter
+//            (co-évolution CH₄/N₂/O₂/H₂O/sulfates depuis bary déduit de CO₂) au lieu de defaultCo2Adapter.
+//            writeAndContinue — skip couplage CCN-CO₂ si adapter.isBaryAdapter (sulfates gérés par bary).
+//            Dépend de scie_hysteresis_bary.js (chargé avant ce fichier dans hysteresis_compute.html).
 // - v2.1.14: onEpochButton — restauration CO₂ TIMELINE initial entre deux runs. window._hystCo2OrigByEpoch[epochId] mémorise la valeur de config au 1er clic ; les clics suivants restaurent TIMELINE avant readXFromTimeline() → x0 toujours = valeur config initiale (pas la valeur laissée par le run précédent).
 // - v2.1.13: afterRadiativeConverged — détection "déjà sur branche froide/chaude au 1er pas" (|T−seedT| > 20 K) → FAILED immédiat avec message d'aide (ajuster CO₂ initial ou amplification polaire).
 // - v2.1.12: writeAndContinue — couplage CCN-CO₂ : ⚖️✈ = baseline × (x0/xNew)^ccnSulfateCoupling à chaque pas scan. baseline=DATA['⚖️✈'] au démarrage ou 1e12 kg si époque sans sulfates (ex. ⛄). Paramètre DATA['🎚️'].HYSTERESIS.ccnSulfateCoupling (défaut 0.5). Écrit dans TIMELINE avant writeXToTimeline → getMasses() lit valeur mise à jour. onEpochButton: sulfateBaselineKg initialisé.
@@ -104,6 +113,10 @@
         epsilonPpm: 1,
         convergencePpmMass: 1,
         brutalDeltaT_C: 3,
+        /** Seuil absolu branche froide : scan → dicho quand T < coldBranchT_C (°C). Initialisé depuis DATA['🎚️'].HYSTERESIS.coldBranchHint_C. */
+        coldBranchT_C: -5,
+        /** Seuil absolu branche chaude (log, référence dicho warm). Initialisé depuis DATA['🎚️'].HYSTERESIS.warmBranchHint_C. */
+        warmBranchT_C: -5,
         scanCo2MassFactor: 0.9,
         maxDichoSteps: 30,
         /** UI / prochain run : 'negative' (défaut) | 'positive' */
@@ -225,12 +238,21 @@
             var H = window.DATA['🎚️'].HYSTERESIS;
             this.active = true;
             this.epochId = epochId;
-            this.adapter = defaultCo2Adapter(epochId);
+            // v2.1.15 : préfère BaryAdapter si HYSTERESIS_BARY disponible et époque avec bornes '🔒'.
+            // BaryAdapter co-évolue CH₄, N₂, O₂, H₂O, sulfates à chaque pas scan (via bary déduit du CO₂).
+            // Fallback : defaultCo2Adapter (CO₂ seul, comportement pré-v2.1.15).
+            if (window.HYSTERESIS_BARY && window.HYSTERESIS_BARY.hasBounds(epochId)) {
+                this.adapter = window.HYSTERESIS_BARY.createBaryAdapter(epochId, clampX);
+            } else {
+                this.adapter = defaultCo2Adapter(epochId);
+            }
             this.phase = 'scan';
             this.epsilon = Number(H.epsilonT_C);
             this.epsilonPpm = Number(H.epsilonPpm);
             this.convergencePpmMass = Number(H.convergencePpmMass);
             this.brutalDeltaT_C = (Number.isFinite(Number(H.brutalDeltaT_C)) && Number(H.brutalDeltaT_C) > 0) ? Number(H.brutalDeltaT_C) : 3;
+            this.coldBranchT_C = Number.isFinite(Number(H.coldBranchHint_C)) ? Number(H.coldBranchHint_C) : -5;
+            this.warmBranchT_C = Number.isFinite(Number(H.warmBranchHint_C)) ? Number(H.warmBranchHint_C) : -5;
             this.scanCo2MassFactor = (Number.isFinite(Number(H.scanCo2MassFactor)) && Number(H.scanCo2MassFactor) > 0 && Number(H.scanCo2MassFactor) < 1) ? Number(H.scanCo2MassFactor) : 0.9;
             this.maxDichoSteps = (Number.isFinite(Number(H.maxDichoSteps)) && Number(H.maxDichoSteps) > 0) ? Math.floor(Number(H.maxDichoSteps)) : 30;
             this.runSearchSign = this.searchSign === 'positive' ? 'positive' : 'negative';
@@ -285,11 +307,11 @@
             this.appendLog('📋 Configuration : hysteresis ' + epochId + ' | signe=' + (this.runSearchSign === 'positive' ? 'positif' : 'négatif'));
             switch (this.runSearchSign) {
                 case 'positive':
-                    this.appendLog('  ⚖️🏭₀=' + x0.toExponential(3) + ' kg | scan ÷' + this.scanCo2MassFactor + ' (CO₂↑) jusqu’à saut T ≥ ' + this.brutalDeltaT_C + ' °C');
+                    this.appendLog('  ⚖️🏭₀=' + x0.toExponential(3) + ' kg | scan ÷' + this.scanCo2MassFactor + ' (CO₂↑) jusqu’à T > ' + this.warmBranchT_C + ' °C (branche chaude)');
                     this.appendLog('  Failed si ⚖️🏭 > 2·⚖️🏭₀ | dicho bary 0,5 | succès |Δ| < ' + this.convergencePpmMass + ' ppm-éq | max ' + this.maxDichoSteps + ' dicho');
                     break;
                 default:
-                    this.appendLog('  ⚖️🏭₀=' + x0.toExponential(3) + ' kg | scan ×' + this.scanCo2MassFactor + ' (CO₂↓) jusqu’à chute T ≥ ' + this.brutalDeltaT_C + ' °C');
+                    this.appendLog('  ⚖️🏭₀=' + x0.toExponential(3) + ' kg | scan ×' + this.scanCo2MassFactor + ' (CO₂↓) jusqu’à T < ' + this.coldBranchT_C + ' °C (branche froide)');
                     this.appendLog('  Failed si ⚖️🏭 < ½·⚖️🏭₀ | dicho bary 0,5 | succès |Δ| < ' + this.convergencePpmMass + ' ppm-éq | max ' + this.maxDichoSteps + ' dicho');
             }
             this.appendLog('━━ 🧲 démarrage (compute:done = un pas) ━━');
@@ -438,6 +460,9 @@
                 self.xOld = xBefore;
                 self.x = clampX(xNew);
                 self.appendLog('  → prochain ⚖️🏭=' + self.x.toExponential(3) + ' kg');
+                // v2.1.15 : couplage CCN-CO₂ désactivé si BaryAdapter actif.
+                // Le BaryAdapter co-évolue les sulfates via bary dans writeXToTimeline → pas de double écriture.
+                if (!self.adapter || !self.adapter.isBaryAdapter) {
                 // Couplage CCN-CO₂ hystérésis : sulfates volcaniques (⚖️✈) varient en sens inverse du CO₂.
                 // Physique ⛄ : rifting Rodinia → SO₂ volcanique ↑ quand CO₂↓ par weathering (Hoffman 1998).
                 // Formula : ⚖️✈ = baseline × (x0/xNew)^coupling. coupling=0.5 (racine, softer) par défaut.
@@ -453,6 +478,7 @@
                     }
                     self.appendLog('  ⚖️✈=' + sulfateNew.toExponential(3) + ' kg (sulfates ×' + (sulfateNew / self.sulfateBaselineKg).toFixed(3) + ')');
                 }
+                } // end if (!adapter.isBaryAdapter) — v2.1.15
                 self.adapter.writeXToTimeline(self.x);
                 self.tRef_C = T;
                 self.lastPpm = ppm;
@@ -478,7 +504,7 @@
                                     }
                                 default:
                             }
-                            var riseScan = T > this.tScanRef + brutal;
+                            var riseScan = T > this.warmBranchT_C;
                             switch (true) {
                                 case riseScan:
                                     this.valueMin = this.xScanWarm;
@@ -486,7 +512,7 @@
                                     this.tWarmRef = this.tScanRef;
                                     this.phase = 'dicho';
                                     this.dichoIter = 0;
-                                    this.appendLog('  [scan+] saut chaud : T ' + this.tScanRef.toFixed(2) + ' → ' + T.toFixed(2) + ' °C → dicho [min,max]=[' + this.valueMin.toExponential(3) + ',' + this.valueMax.toExponential(3) + ']');
+                                    this.appendLog('  [scan+] branche chaude atteinte : T ' + T.toFixed(2) + ' °C > seuil ' + this.warmBranchT_C + ' °C → dicho [min,max]=[' + this.valueMin.toExponential(3) + ',' + this.valueMax.toExponential(3) + ']');
                                     var xMid0p = 0.5 * (this.valueMin + this.valueMax);
                                     return writeAndContinue(xMid0p);
                                 default:
@@ -499,7 +525,7 @@
                             }
                             this.tScanRef = T;
                             this.xScanWarm = xBefore;
-                            this.appendLog('  [scan+] pas de saut chaud (seuil ' + brutal + ' °C) ; réf. T←' + T.toFixed(2) + ' °C');
+                            this.appendLog('  [scan+] pas branche chaude (T=' + T.toFixed(2) + ' °C < seuil ' + this.warmBranchT_C + ' °C) ; réf. T←' + T.toFixed(2) + ' °C');
                             return writeAndContinue(xNextP);
                         default:
                             switch (true) {
@@ -516,7 +542,7 @@
                                     }
                                 default:
                             }
-                            var dropScan = T < this.tScanRef - brutal;
+                            var dropScan = T < this.coldBranchT_C;
                             switch (true) {
                                 case dropScan:
                                     this.valueMax = this.xScanWarm;
@@ -524,7 +550,7 @@
                                     this.tWarmRef = this.tScanRef;
                                     this.phase = 'dicho';
                                     this.dichoIter = 0;
-                                    this.appendLog('  [scan−] chute brutale : T ' + this.tScanRef.toFixed(2) + ' → ' + T.toFixed(2) + ' °C → dicho [min,max]=[' + this.valueMin.toExponential(3) + ',' + this.valueMax.toExponential(3) + ']');
+                                    this.appendLog('  [scan−] branche froide atteinte : T ' + T.toFixed(2) + ' °C < seuil ' + this.coldBranchT_C + ' °C → dicho [min,max]=[' + this.valueMin.toExponential(3) + ',' + this.valueMax.toExponential(3) + ']');
                                     var xMid0 = 0.5 * (this.valueMin + this.valueMax);
                                     return writeAndContinue(xMid0);
                                 default:
@@ -537,7 +563,7 @@
                             }
                             this.tScanRef = T;
                             this.xScanWarm = xBefore;
-                            this.appendLog('  [scan−] pas de chute (seuil ' + brutal + ' °C) ; réf. T←' + T.toFixed(2) + ' °C');
+                            this.appendLog('  [scan−] pas branche froide (T=' + T.toFixed(2) + ' °C ≥ seuil ' + this.coldBranchT_C + ' °C) ; réf. T←' + T.toFixed(2) + ' °C');
                             return writeAndContinue(xNext);
                     }
 
@@ -546,29 +572,29 @@
                     this.appendLog('  [dicho] pas ' + this.dichoIter + ' / ' + this.maxDichoSteps);
                     switch (isPos) {
                         case true:
-                            var hot = T > this.tWarmRef + brutal;
+                            var hot = T > this.warmBranchT_C;
                             switch (true) {
                                 case hot:
                                     this.valueMax = xBefore;
-                                    this.appendLog('  → chaud (T > T_froid+' + brutal + ') : max ← ' + this.valueMax.toExponential(3));
+                                    this.appendLog('  → chaud (T=' + T.toFixed(2) + ' °C > seuil ' + this.warmBranchT_C + ') : max ← ' + this.valueMax.toExponential(3));
                                     break;
                                 default:
                                     this.valueMin = xBefore;
                                     this.tWarmRef = T;
-                                    this.appendLog('  → encore froid : min ← ' + this.valueMin.toExponential(3) + ' , T_froid←' + T.toFixed(2) + ' °C');
+                                    this.appendLog('  → encore froid (T=' + T.toFixed(2) + ' °C ≤ seuil ' + this.warmBranchT_C + ') : min ← ' + this.valueMin.toExponential(3));
                             }
                             break;
                         default:
-                            var cold = T < this.tWarmRef - brutal;
+                            var cold = T < this.coldBranchT_C;
                             switch (true) {
                                 case cold:
                                     this.valueMin = xBefore;
-                                    this.appendLog('  → froid (T < T_chaud−' + brutal + ') : min ← ' + this.valueMin.toExponential(3));
+                                    this.appendLog('  → froid (T=' + T.toFixed(2) + ' °C < seuil ' + this.coldBranchT_C + ') : min ← ' + this.valueMin.toExponential(3));
                                     break;
                                 default:
                                     this.valueMax = xBefore;
                                     this.tWarmRef = T;
-                                    this.appendLog('  → encore chaud : max ← ' + this.valueMax.toExponential(3) + ' , T_chaud←' + T.toFixed(2) + ' °C');
+                                    this.appendLog('  → encore chaud (T=' + T.toFixed(2) + ' °C ≥ seuil ' + this.coldBranchT_C + ') : max ← ' + this.valueMax.toExponential(3));
                             }
                     }
                     var span = Math.abs(this.valueMax - this.valueMin);

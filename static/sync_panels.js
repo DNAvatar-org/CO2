@@ -1,6 +1,8 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.42
+// Version 1.1.44
+// - v1.1.44: broadcastTuningToIframes — factorise propagation sync:tuning vers scie + bench + hysteresis (#hysteresis-iframe). Utilisé dans applyTuningFromScie (mini-slider visu_), message listener sync:tuning (écho scie) et IO_LISTENER. Bench & hysteresis reçoivent désormais les changements venant de visu_ et scie_ (hysteresis = écoute seule, postMessage sortant mute v1.0.1).
+// - v1.1.43: syncTuningToBench — IO_LISTENER 'sync:tuning' propage aussi vers l'iframe bench (#bench-iframe). Bench reçoit le payload via postMessage et rafraîchit ses jauges via message listener (epoch_bench.html v1.0.16).
 // - v1.1.42: migration namespaces — window.PLOT.updatePlot / updateSpectralVisualization / tempSurfaceToColor + window.ORG.updateFluxLabels + RUNTIME_STATE (currentEpochName, spectralConverged, spectralPrecisionTarget, showSpectralBackground, h2oVaporPercent, h2oTotalFromMeteorites). Retrait stubs updateFluxLabels / updateLabel (ordre chargement contractuel, crash-first).
 // - v1.1.41: retrait recopie DATA → window.TUNING (syncTuningFromData). DATA['🎚️'] = source unique live (initDATA v1.1.0). Miroirs CONFIG_COMPUTE conservés pour legacy.
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -95,6 +97,32 @@
             type: 'sync:tuning',
             payload: payload
         }, '*');
+    }
+
+    // v1.1.43 : propage aussi vers l'iframe bench (epoch_bench.html, #bench-iframe dans bench_panel.html).
+    // Le bench rafraîchit ses jauges via listener postMessage (epoch_bench.html v1.0.16).
+    // Ne relance PAS runAllEpochs — l'utilisateur clique ▶️ dans le bench pour recalculer.
+    function syncTuningToBench(payload) {
+        var benchEl = document.getElementById('bench-iframe');
+        if (!benchEl || !benchEl.contentWindow) return;
+        benchEl.contentWindow.postMessage({ type: 'sync:tuning', payload: payload }, '*');
+    }
+
+    // v1.1.44 : propage vers l'iframe hystérésis (hysteresis_compute.html, #hysteresis-iframe).
+    // Hystérésis = onglet "écoute seule" : postMessage sortant parent est neutralisé (v1.0.1 de
+    // hysteresis_compute.html), mais il doit rester synchronisé avec les tuning émis par visu/scie/bench.
+    function syncTuningToHysteresis(payload) {
+        var hystEl = document.getElementById('hysteresis-iframe');
+        if (!hystEl || !hystEl.contentWindow) return;
+        hystEl.contentWindow.postMessage({ type: 'sync:tuning', payload: payload }, '*');
+    }
+
+    // v1.1.44 : broadcast unique. 3 onglets iframe parlent/écoutent (scie, bench) OU écoutent seul (hysteresis).
+    // visu_ n'est pas une iframe → n'a pas besoin de postMessage (applyTuningPayload a déjà écrit DATA['🎚️']).
+    function broadcastTuningToIframes(payload) {
+        syncTuningToScie(payload);
+        syncTuningToBench(payload);
+        syncTuningToHysteresis(payload);
     }
 
     // DATA['🎚️'] seule ref : payload contient baryByGroup + CLOUD_SW + HYSTERESIS + RADIATIVE.
@@ -572,7 +600,7 @@
         };
         window.applyTuningFromScie = function (p) {
             applyTuningPayload(p);
-            syncTuningToScie(p);
+            broadcastTuningToIframes(p); // v1.1.44 : scie + bench + hysteresis
             if (p.run === true) window.runComputeInParent();
         };
 
@@ -606,7 +634,7 @@
             if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] message sync:tuning run=' + p.run + ' bary.CLOUD_SW=' + (p && p.baryByGroup ? p.baryByGroup.CLOUD_SW : 'n/a'));
             if (typeof window.pdTrace === 'function') window.pdTrace('onMessageSyncTuning', 'sync_panels.js', 'run=' + p.run + ' bary.CLOUD_SW=' + (p && p.baryByGroup ? p.baryByGroup.CLOUD_SW : 'n/a'));
             if (window.shell && window.shell.applyTuningFromScie) window.shell.applyTuningFromScie(p);
-            else { applyTuningPayload(p); syncTuningToScie(p); if (p.run === true) window.runComputeInParent(); }
+            else { applyTuningPayload(p); broadcastTuningToIframes(p); if (p.run === true) window.runComputeInParent(); }
         });
         window.addEventListener('message', function (event) {
             if (event.data.type !== 'action:nextEpoch') return;
@@ -638,7 +666,7 @@
             if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] IO sync:tuning run=' + payload.run + ' bary.CLOUD_SW=' + (payload && payload.baryByGroup ? payload.baryByGroup.CLOUD_SW : 'n/a'));
             if (typeof window.pdTrace === 'function') window.pdTrace('onSyncTuning', 'sync_panels.js', 'run=' + payload.run + ' bary.CLOUD_SW=' + (payload && payload.baryByGroup ? payload.baryByGroup.CLOUD_SW : 'n/a'));
             applyTuningPayload(payload);
-            syncTuningToScie(payload);
+            broadcastTuningToIframes(payload); // v1.1.44 : scie + bench + hysteresis
             if (payload.run === true) window.runComputeInParent();
         }, 'sync_panels');
     }

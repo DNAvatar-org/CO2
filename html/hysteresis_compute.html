@@ -2,11 +2,12 @@
 <!--
 # File: CO2/html/hysteresis_compute.html - Hystérésis standalone (iframe index)
 # Desc: Dans l'architecture, je suis la page hôte de l'onglet Hystérésis du shell index.html. Iframe autonome : mêmes scripts que scie_compute.html, mais seul le panneau #hysteresis est visible. Globals isolés par iframe (pas de bridge parent sauf postMessage explicite ultérieurement).
-# Version 1.0.7
+# Version 1.0.8
 # Copyright 2025 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
 # Date: April 22, 2026
 # Logs:
+# - v1.0.8: labels jauges UI clarifiés — titres de sections, HYST THRESHOLD (albédo glace actif + Henry no-op), 🌊 effPump01 (vitesse pompe, no-op si co2OceanPartitionInRadiativeConvergence=false).
 # - v1.0.7: stub window.ORG noop avant calculations_flux.js (organigramme.js absent dans cette page standalone → crash "Cannot read properties of undefined (reading 'updateFluxLabels')" à chaque computeRadiativeTransfer). Même pattern que epoch_bench.html.
 # - v1.0.6: initializeGlobals — priorité à DATA['📜']['🗿'] (posée par selectEpoch/onEpochButton) avant tout querySelector DOM. Fix: clic bouton hyst (⛄ / 1b / 2) tombait en fallback '⚫' Corps Noir car la page hyst n'a pas de .epoch-btn-horizontal (timeline verticale uniquement) → DATA['📅'] écrasé en Corps Noir → convergence à −18.49 °C (blackbody) avec eau/albédo à zéro. Fallback DOM étendu à .hyst-epoch-btn.selected.
 # - v1.0.5: 3 boutons hyst — libellés 🪸⛄ −735 Ma (run ⛄ ▶ −720), ⛄🪼 −645 Ma (run 1b ▶ −690), 🐊🏔 −34 Ma (run 2 ▶ −35) ; sync sans hyst-epoch-h1.
@@ -118,44 +119,48 @@
                 </div>
                 <div class="hyst-col-gauges">
             <div id="hysteresis-content" style="display:none;">
-                <p class="small" style="font-size:11px;opacity:0.8;margin:0 0 8px 0;">Réglages moteur (CONFIG_COMPUTE / EARTH) — prochain ▶️ les appliquera. Curseur à droite : sens typique T°↓ CO₂↓ sauf GREY seaIce UI (T°↑).</p>
+                <p class="small" style="font-size:11px;opacity:0.8;margin:0 0 8px 0;">Réglages moteur (CONFIG_COMPUTE / EARTH) — prochain ▶️ les appliquera. Curseur à droite : sens typique T°↓ CO₂↓ sauf GREY seaIce (T°↑).</p>
+                <p style="font-size:10px;opacity:0.55;margin:4px 0 2px 0;text-transform:uppercase;letter-spacing:0.08em;">— Pompe CO₂ océan · co2OceanPartitionInRadiativeConvergence=false → no-op —</p>
                 <div class="hyst-row">
-                    <label for="hyst-speed">HYST SPEED<span class="hyst-sens">T°↓ CO₂↓</span></label>
+                    <label for="hyst-speed" title="Interpole co2OceanScale01 + co2OceanPumpOverride01 (DEFAULT.BOUNDS.HYSTERESIS). Contrôle la vitesse globale de relaxation CO₂ atm↔océan (Henry). NO-OP si co2OceanPartitionInRadiativeConvergence=false (configTimeline.js).">HYST SPEED — vitesse pompe océan CO₂<span class="hyst-sens">T°↓ CO₂↓ · no-op si pompe OFF</span></label>
                     <input id="hyst-speed" type="range" min="0" max="100" step="1" value="100" />
                     <span id="hyst-speed-val" style="font-family:monospace;font-size:12px;">100%</span>
                 </div>
                 <div class="hyst-row">
-                    <label for="hyst-threshold">HYST THRESHOLD<span class="hyst-sens">T°↓ CO₂↓</span></label>
-                    <input id="hyst-threshold" type="range" min="0" max="100" step="1" value="100" />
-                    <span id="hyst-threshold-val" style="font-family:monospace;font-size:12px;">100%</span>
-                </div>
-                <div class="hyst-row">
-                    <label for="g-co2-eff-pump" title="Pas une fuite de carbone : relaxation atmosphère↔océan vers l’équilibre de Henry. Masse totale ⚖️🏭+🌊 conservée ; effPump01 = fraction du pas vers la masse atmosphérique d’équilibre à T courant. Hors convergence radiative / hystérésis la pompe est neutralisée (voir calculations_co2.js).">🌊 effPump01 CO₂ mer<span class="hyst-sens">T°↓ CO₂↓</span></label>
+                    <label for="g-co2-eff-pump" title="Fraction du pas vers la masse atmosphérique d’équilibre de Henry à T courant (0=no-op, 1=équilibre immédiat). Masse totale ⚖️🏭+🌊 conservée. NO-OP si co2OceanPartitionInRadiativeConvergence=false ou HYSTERESIS.active=true (calculations_co2.js).">🌊 effPump01 — vitesse fine pompe océan<span class="hyst-sens">T°↓ CO₂↓ · no-op si pompe OFF ou hyst actif</span></label>
                     <input id="g-co2-eff-pump" type="range" min="0" max="100" step="1" value="0" />
                     <span id="g-co2-eff-pump-val" style="font-family:monospace;font-size:12px;">0.00</span>
                 </div>
+                <p style="font-size:10px;opacity:0.55;margin:8px 0 2px 0;text-transform:uppercase;letter-spacing:0.08em;">— Seuil bascule · albédo glace ACTIF · ratio Henry no-op si pompe OFF —</p>
                 <div class="hyst-row">
-                    <label for="g-seaice-range" title="Affichage 1000–6000, ÷1000 = largeur transition mer gelée en K (1,0–6,0 K moteur). Voir FINE_TUNING_BOUNDS.targets HYSTERESIS / HYSTERESIS_LITERATURE_PRESET.">GREY seaIce UI<span class="hyst-sens">T°↑ CO₂↑</span></label>
+                    <label for="hyst-threshold" title="Interpole iceAlbedoCoeff (EARTH 🪩🍰🧊, albédo glace 0.50→0.90, ACTIF) + co2OceanRatioRef (rapport Henry CO₂_mer/CO₂_atm 5→200, no-op si pompe désactivée). 100% = conditions Snowball max.">HYST THRESHOLD — albédo glace + ratio Henry<span class="hyst-sens">T°↓ CO₂↓ · albédo ACTIF / Henry no-op</span></label>
+                    <input id="hyst-threshold" type="range" min="0" max="100" step="1" value="100" />
+                    <span id="hyst-threshold-val" style="font-family:monospace;font-size:12px;">100%</span>
+                </div>
+                <p style="font-size:10px;opacity:0.55;margin:8px 0 2px 0;text-transform:uppercase;letter-spacing:0.08em;">— Gel de la mer (rétroaction glace-albédo) —</p>
+                <div class="hyst-row">
+                    <label for="g-seaice-range" title="Affichage 1000–6000, ÷1000 = largeur transition mer gelée en K (1,0–6,0 K moteur). Plus petit = bascule plus nette. Voir FINE_TUNING_BOUNDS.targets HYSTERESIS / HYSTERESIS_LITERATURE_PRESET.">GREY seaIce — largeur rampe gel<span class="hyst-sens">T°↑ CO₂↑</span></label>
                     <input id="g-seaice-range" type="range" min="1000" max="6000" step="10" value="1000" />
                     <span id="g-seaice-range-val" style="font-family:monospace;font-size:12px;">1000</span>
                 </div>
                 <div class="hyst-row">
-                    <label for="g-seaice-strength">GREY seaIceStrength<span class="hyst-sens">T°↓ CO₂↓</span></label>
+                    <label for="g-seaice-strength" title="Multiplicateur de seaIceFrac [0,1]. 1 = rétroaction glace-albédo maximale. 0 = mer ne gèle jamais.">GREY seaIceStrength — intensité gel mer<span class="hyst-sens">T°↓ CO₂↓</span></label>
                     <input id="g-seaice-strength" type="range" min="0" max="100" step="1" value="100" />
                     <span id="g-seaice-strength-val" style="font-family:monospace;font-size:12px;">1.00</span>
                 </div>
                 <div class="hyst-row">
-                    <label for="g-ice-impact">GREY iceImpact<span class="hyst-sens">T°↓ CO₂↓</span></label>
+                    <label for="g-ice-impact" title="Fraction de l'effet albédo de la glace appliquée (iceImpactFactor01). 0 = glace sans effet ; 1 = plein effet. Orthogonal à ice_temp_factor (calottes polaires).">GREY iceImpact — couplage glace→albédo<span class="hyst-sens">T°↓ CO₂↓</span></label>
                     <input id="g-ice-impact" type="range" min="0" max="100" step="1" value="100" />
                     <span id="g-ice-impact-val" style="font-family:monospace;font-size:12px;">1.00</span>
                 </div>
+                <p style="font-size:10px;opacity:0.55;margin:8px 0 2px 0;text-transform:uppercase;letter-spacing:0.08em;">— Radiatif —</p>
                 <div class="hyst-row">
                     <label for="g-strat-veil" title="🍰⚽ voile SW stratosphérique (jauge) : s’ajoute au cumul événements 🌋 (📜🔺🍰⚽). Découplé de 🍰💭.">⚽ voile SW (hyst)<span class="hyst-sens">T°↓</span></label>
                     <input id="g-strat-veil" type="range" min="0" max="100" step="1" value="0" />
                     <span id="g-strat-veil-val" style="font-family:monospace;font-size:12px;">0%</span>
                 </div>
                 <div class="hyst-row">
-                    <label for="g-h2o-eds" title="EARTH.H2O_EDS_SCALE : multiplicateur global de κ_H₂O. Mapping inversé : 0% → 1.00 (κ max, T haute) ; 100% → 0.60 (cible Schmidt 2010 ~75 W/m² EDS H₂O, T basse). Voir FINE_TUNING_BOUNDS.RADIATIVE (baryGroup SCIENCE).">🌈 H₂O_EDS<span class="hyst-sens">T°↓ CO₂↓</span></label>
+                    <label for="g-h2o-eds" title="EARTH.H2O_EDS_SCALE : multiplicateur global de κ_H₂O. Mapping inversé : 0% → 1.00 (κ max, T haute) ; 100% → 0.60 (cible Schmidt 2010 ~75 W/m² EDS H₂O, T basse). Voir FINE_TUNING_BOUNDS.RADIATIVE (baryGroup SCIENCE).">🌈 H₂O_EDS — absorption vapeur<span class="hyst-sens">T°↓ CO₂↓</span></label>
                     <input id="g-h2o-eds" type="range" min="0" max="100" step="1" value="100" />
                     <span id="g-h2o-eds-val" style="font-family:monospace;font-size:12px;">0.60</span>
                 </div>
@@ -202,6 +207,7 @@
     <script src="../../API_BILAN/co2/calculations_co2.js"></script>
     <script src="../../API_BILAN/convergence/compute.js"></script>
     <script src="../static/compute/scie_/scie_convergence.js"></script>
+    <script src="../static/compute/scie_/scie_hysteresis_bary.js"></script>
     <script src="../static/compute/scie_/scie_hysteresis_search.js"></script>
     <!-- Hooks convergence définis avant calculations_flux.js (éviter if (window.xxx) dans le flux) -->
     <script>
