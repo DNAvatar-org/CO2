@@ -2,12 +2,14 @@
 // Desc: Lit les bornes '🔒' de configTimeline.js et convertit bary [0,1] ↔ masse pour chaque gaz.
 //       Fournit createBaryAdapter(epochId) compatible avec HYSTERESIS.adapter (scie_hysteresis_search.js).
 //       Chaque pas scan écrit la masse primaire (CO₂) + co-évolue les masses secondaires (CH₄, N₂, O₂, H₂O, sulfates).
-// Version 1.0.0
+// Version 1.0.1
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
-// Date: April 23, 2026
+// Date: April 25, 2026
 // Logs:
+// - v1.0.1: createBaryAdapter(epochId, clampFn, { co2MaxFactor }) — scale uniquement le max CO₂ (TIMELINE 🔒
+//   inchangé) : onglet hyst R&D hysteresis 1a, pas d’édit configTimeline.
 // - v1.0.0: Step 3 — architecture jauge bary hystérésis. Lit '🔒' per-epoch (configTimeline v1.4.23).
 //           Sémantique : bary=0 → refroidissement max (cools direction), bary=1 → réchauffement max.
 //           Clé primaire : '⚖️🏭' (CO₂). Clés secondaires co-évoluées : '⚖️🐄' CH₄, '⚖️💨' N₂,
@@ -135,17 +137,34 @@
      *
      * @param {string} epochId
      * @param {function} [clampFn]  — clamp(x)→x optionnel (ex. clampX de search.js)
+     * @param {{ co2MaxFactor?: number }} [opts]  — R&D hyst : multiplie seulement max(⚖️🏭) pour le bary (TIMELINE['🔒'] source inchangé).
      * @returns {object} adapter
      */
-    function createBaryAdapter(epochId, clampFn) {
+    function createBaryAdapter(epochId, clampFn, opts) {
+        opts = opts || {};
+        var co2MaxFactor = (Number.isFinite(Number(opts.co2MaxFactor)) && Number(opts.co2MaxFactor) > 0) ? Number(opts.co2MaxFactor) : 1;
         var clamp = (typeof clampFn === 'function') ? clampFn : function (x) { return x; };
 
         function idxEp() { return timelineIndex(epochId); }
+
+        function effectiveCo2Bounds(idx) {
+            var raw = (idx >= 0 && window.TIMELINE && window.TIMELINE[idx] && window.TIMELINE[idx]['🔒'])
+                ? window.TIMELINE[idx]['🔒'][PRIMARY_KEY]
+                : null;
+            if (!raw || !Number.isFinite(raw.min) || !Number.isFinite(raw.max)) {
+                return null;
+            }
+            if (co2MaxFactor === 1) {
+                return raw;
+            }
+            return { min: raw.min, max: raw.max * co2MaxFactor, cools: raw.cools };
+        }
 
         return {
             id: PRIMARY_KEY,
             epochId: epochId,
             isBaryAdapter: true, // ← flag pour scie_hysteresis_search v2.1.15
+            co2MaxFactor: co2MaxFactor,
 
             /** Lit CO₂ kg depuis TIMELINE (comme defaultCo2Adapter). */
             readXFromTimeline: function () {
@@ -163,8 +182,8 @@
                 if (idx < 0) return;
                 // 1. Écrire la masse primaire (CO₂)
                 window.TIMELINE[idx][PRIMARY_KEY] = xClamped;
-                // 2. Déduire le bary depuis les bornes CO₂
-                var co2Bounds = (window.TIMELINE[idx]['🔒'] || {})[PRIMARY_KEY];
+                // 2. Déduire le bary depuis les bornes CO₂ (option co2MaxFactor = max × facteur, hors TIMELINE)
+                var co2Bounds = effectiveCo2Bounds(idx);
                 if (co2Bounds && Number.isFinite(co2Bounds.min) && Number.isFinite(co2Bounds.max)) {
                     var bary01 = massToBary(xClamped, co2Bounds);
                     // 3. Co-évoluer les masses secondaires
@@ -190,7 +209,7 @@
                 var mass = this.readXFromData();
                 var idx = idxEp();
                 if (idx < 0) return 0.5;
-                var b = (window.TIMELINE[idx]['🔒'] || {})[PRIMARY_KEY];
+                var b = effectiveCo2Bounds(idx);
                 if (!b) return 0.5;
                 return massToBary(mass, b);
             }

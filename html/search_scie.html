@@ -2,6 +2,8 @@
 <!--
 # File: CO2/html/search_scie.html (copie scie_compute)
 # Logs:
+# - Bloc config TIMELINE ⛄ (bouton + textarea) — idem scie_compute
+# - fillDataTuningFromBary : RADIATIVE.factorTropopause — idem scie_compute / hysteresis (aligné tuning.js).
 # - runTest: retrait await new Promise(setTimeout) x2 (idem scie_compute).
 # - Boutons hyst (3) : aligné scie_compute — 🪸⛄ −735 Ma (run ⛄ ▶ −720) ; ⛄🪼 −645 Ma (run 1b ▶ −690) ; 🐊🏔 −34 Ma (run 2 ▶ −35).
 # - Aligné scie_compute : ids TIMELINE ⛄ / hysteresis 1b / hysteresis 2
@@ -141,6 +143,10 @@
             </div>
                 </div>
             </div>
+                <div class="hyst-row" style="flex-direction:column;align-items:stretch;max-width:100%;">
+                    <button type="button" class="toggle-button" id="hyst-btn-timeline-snow-export" title="Remplace l’objet { '📅': '⛄', … } dans configTimeline.js : fusion TIMELINE[⛄] + DATA (après un pas convergé, ex. SUCCESS hyst 1a)." onclick="if (window.hystClickExportPleinSnowTimeline) { window.hystClickExportPleinSnowTimeline(); } return false;">📋 Bloc config TIMELINE ⛄</button>
+                    <textarea id="hyst-timeline-snow-export" readonly rows="10" style="width:100%;box-sizing:border-box;font-size:10px;font-family:monospace;opacity:0.95;resize:vertical;min-height:96px;max-height:45vh;" placeholder="Clic sur le bouton : JSON 4 espaces = remplacer tout le bloc // Plein Snowball dans configTimeline.js (TIMELINE), puis recharger."></textarea>
+                </div>
             <pre id="hyst-search-log" class="hyst-search-log"></pre>
         </div>
         
@@ -178,6 +184,7 @@
     <script src="../../API_BILAN/co2/calculations_co2.js"></script>
     <script src="../../API_BILAN/convergence/compute.js"></script>
     <script src="../static/compute/scie_/scie_convergence.js"></script>
+    <script src="../static/compute/scie_/scie_hyst_repro_state.js"></script>
     <script src="../static/compute/scie_/scie_hysteresis_search.js"></script>
     <!-- Hooks convergence définis avant calculations_flux.js (éviter if (window.xxx) dans le flux) -->
     <script>
@@ -1337,16 +1344,35 @@
         }
 
         // Remplissage complet DATA['🎚️'].CLOUD_SW et .SOLVER depuis baryByGroup (jauges => étape 2).
+        // Aligné API_BILAN/tuning.js : RADIATIVE.factorTropopause hors bary (pas de baryByGroup.RADIATIVE).
         function fillDataTuningFromBary() {
             var T = window.DATA['🎚️'];
             var bg = T.baryByGroup;
             var targets = getFineTuningTargets();
             for (var i = 0; i < targets.length; i++) {
                 var target = targets[i];
+                if (target.group === 'RADIATIVE' && target.key === 'factorTropopause') continue;
                 var baryKey = target.baryGroup || target.group;
                 var pct = Number(bg[baryKey]);
+                if (!Number.isFinite(pct)) pct = 0;
                 var val = getFineTuningBaryValue(target, pct);
                 T[target.group][target.key] = val;
+            }
+            if (T.RADIATIVE) {
+                var cc = window.CONFIG_COMPUTE;
+                if (cc && cc.radiativeFactorTropopauseFixed != null && Number.isFinite(cc.radiativeFactorTropopauseFixed)) {
+                    T.RADIATIVE.factorTropopause = cc.radiativeFactorTropopauseFixed;
+                } else {
+                    var tlist = (window.FINE_TUNING_BOUNDS && window.FINE_TUNING_BOUNDS.targets) ? window.FINE_TUNING_BOUNDS.targets : [];
+                    var tFt = null;
+                    for (var ti = 0; ti < tlist.length; ti++) {
+                        if (tlist[ti].group === 'RADIATIVE' && tlist[ti].key === 'factorTropopause') { tFt = tlist[ti]; break; }
+                    }
+                    if (tFt) {
+                        var atmPct = Number.isFinite(Number(bg.ATM)) ? Number(bg.ATM) : 0;
+                        T.RADIATIVE.factorTropopause = getFineTuningBaryValue(tFt, atmPct);
+                    }
+                }
             }
             syncSolverConfigFromData();
         }
@@ -1802,12 +1828,13 @@
             const stopReason = DATA['🧮']['🧮🛑'];
             const deltaFinal = DATA['🧲'] && DATA['🧲']['🔺🧲'] != null ? Number(DATA['🧲']['🔺🧲']) : NaN;
             const seuilFinal = DATA['🧮'] && DATA['🧮']['🧲🔬'] != null ? Number(DATA['🧮']['🧲🔬']) : null;
-            const stopLabels = { converged: 'Convergence |Δ|≤seuil', max_iter: 'Max itérations radiatives', abort: 'Arrêt manuel', crash: 'Crash algo', max_water: 'Max cycles eau' };
+            const stopLabels = { converged: 'Convergence |Δ|≤seuil', max_iter: 'Max itérations radiatives', oscillation: 'Oscillation (pas d’équilibre local unique, ex. yoyo T/Δ sur plusieurs attracteurs)', abort: 'Arrêt manuel', crash: 'Crash algo', max_water: 'Max cycles eau' };
             const stopLabel = (stopReason && stopLabels[stopReason]) ? stopLabels[stopReason] : (stopReason || '—');
             const absDelta = Number.isFinite(deltaFinal) ? Math.abs(deltaFinal) : NaN;
             const deltaStr = Number.isFinite(absDelta) ? (absDelta >= 1e3 || (absDelta < 1e-2 && absDelta !== 0) ? absDelta.toExponential(2) : absDelta.toFixed(2) + '') : '—';
             const seuilStr = seuilFinal != null ? (Math.abs(seuilFinal) >= 1e3 || (Math.abs(seuilFinal) < 1e-2 && seuilFinal !== 0) ? seuilFinal.toExponential(2) : seuilFinal.toFixed(2) + '') : '—';
-            const stopDetail = (stopReason === 'max_iter' && Number.isFinite(deltaFinal) && seuilFinal != null) ? ` (|Δ|=${deltaStr} W/m² &gt; seuil ${seuilStr} W/m²)` : (stopReason === 'converged' ? ` (|Δ|=${deltaStr} W/m² ≤ ${seuilStr} W/m²)` : '');
+            const stopDetailMaxOrOsc = (Number.isFinite(deltaFinal) && seuilFinal != null) ? ` (|Δ|=${deltaStr} W/m² &gt; seuil ${seuilStr} W/m²)` : '';
+            const stopDetail = (stopReason === 'max_iter' || stopReason === 'oscillation') ? stopDetailMaxOrOsc : (stopReason === 'converged' ? ` (|Δ|=${deltaStr} W/m² ≤ ${seuilStr} W/m²)` : '');
             html += `<div class="config-value"><strong>Arrêt:</strong> ${stopLabel}${stopDetail}</div>`;
             html += '</div>';
             finalEl.innerHTML = html;
@@ -2251,6 +2278,8 @@
                     displayConvergence();
                     if (HY && HY.active && typeof HY.onParentComputeDone === 'function') {
                         HY.onParentComputeDone();
+                    } else if (window.HYSTERESIS && typeof window.HYSTERESIS.logEpochCompareBlock === 'function') {
+                        window.HYSTERESIS.logEpochCompareBlock('iframe compute:done');
                     }
                 }
             }

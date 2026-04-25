@@ -1,6 +1,6 @@
 // File: scie_hysteresis_search.js - Recherche seuil CO₂ hystérésis scie_
 // Desc: En français, dans l'architecture, je suis window.HYSTERESIS — négatif : scan CO₂×factor chute T failed <½·x₀ ; positif : ÷factor saut T chaud failed >2·x₀ ; dicho 0,5 [min,max]
-// Version 2.2.9
+// Version 2.2.20
 //
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 // PHYSIQUE DU CYCLE SNOWBALL — référence pour hystérésis 1 (entrée Sturtien) et suite (sortie, R&D).
@@ -40,8 +40,27 @@
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
-// Date: April 24, 2026
+// Date: April 25, 2026
 // Logs:
+// - v2.2.20: writeAndContinue — en dicho+scan négatif, si CO₂↑ (bary, retour côté chaud), reposer T sur EPOCH[🌡️🧮] (~10 °C
+//   1a) pour ne pas laisser Picard sur l’attracteur froid (−60 °C) quand on remonte le CO₂.
+// - v2.2.19: après convergence — [REPRO] (HYST_REPRO_LOG) si logReproComparableState ; logEpochCompareBlock accepte wantRepro seul (sans logEpochCompareToFile)
+// - v2.2.18: hysteresis 1a — marge CO₂ R&D (×1.1) dans cet onglet seulement : x0 + createBaryAdapter(..., { co2MaxFactor: 1.1 }) ;
+//   configTimeline (TIMELINE) reste 8.594e+14 (pas de v1.4.57 dans le fichier).
+// - v2.2.17: ligne T_conv — afficher graine initiale seulement si 📿🧮=1 ; jamais de rappel graine / « T propagée »
+//   sur les pas suivants (journaling minimal ; la T d’entrée est celle sortie du pas précédent).
+// - v2.2.16: T_conv: graine seulement si 📿🧮=1 ; sinon texte T propagé (trop long → v2.2.17 resserre)
+// - v2.2.15: appendLog + logEpochCompareBlock — miroir fichier si CONFIG_COMPUTE.logHystPanelToFile|logEpochCompareToFile (applyFileTopicFromConfig avant DEBUG.log)
+// - v2.2.14: logEpochCompareBlock + _buildHystPerStepDiagnosticLines — mêmes lignes 🔬[diag] que hyst ; avec ?debug=epoch → _logs/epoch.txt
+//   (calcul seul, pas hyst) pour diff hors-ligne vs ?debug=hyst → _logs/hyst.txt. Appel iframe compute:done si !HYSTERESIS.active.
+// - v2.2.13: _appendHystPerStepDiagnostic — ligne 🔬[diag bilan] : Δ, entrée (Sabs+🌕), OLR, phase 🧮⚧, id ép. + EDS CH₄/CO₂ si 📛
+// - v2.2.12: appendLog → `DEBUG.log` si `?debug=hyst` (logs_to_server.js) : fichier `_logs/hyst.txt` côté serveur,
+//   même contenu que le panneau hyst (aligné `?debug=plot` + plot_debug.js → `_logs/plot.txt`).
+// - v2.2.11: afterRadiativeConverged — le journal affiche T_conv (DATA['🧮']['🧮🌡️'] après bilan), pas EPOCH['🌡️🧮'].
+//   Ligne : T_conv=… (graine … °C) pour éviter confusion avec la température visée sur Sturtienne/⛄ (autre ligne TIMELINE
+//   que l’id hyst `hysteresis 1a`, dont la graine vient de TIMELINE['hysteresis 1a']['🌡️🧮']).
+// - v2.2.10: onEpochButton — hysteresis 1b force le run en signe positif (CO₂↑ depuis branche froide vers déglaciation).
+//   hysteresis 1a reste négatif (CO₂↓ depuis branche chaude vers Snowball). Le bouton ↑↓ garde le mode manuel pour les autres cas/R&D.
 // - v2.2.9: Scan hystérésis élargi. (a) scanCo2MassFactor défaut 0.9 → 0.5 : CO₂ /2 par pas au lieu
 //   de -10 % (traversée de 1280 → 128 ppm en ~4 pas au lieu de ~22). (b) Nouveau paramètre
 //   `scanFailRatio` (défaut 0.1) : plancher de la plage en fraction de ⚖️🏭₀. FAILED si xNext < 0.1·x0
@@ -116,6 +135,9 @@
     var X_ABS_MAX = 5e17;
     /** Garde-fou nombre total d’appels API (scan + dicho) */
     var MAX_OUTER = 200;
+    /** Marge haut de plage CO₂ (R&D, onglet hyst) pour hysteresis 1a — TIMELINE / configTimeline inchangés. */
+    var HYST_RND_WARM_CO2_FACTOR_1A = 1.1;
+    window.HYST_RND_WARM_CO2_FACTOR_1A = HYST_RND_WARM_CO2_FACTOR_1A;
 
     // v2.2.7 — Routage direct bouton → sa propre config. Clic sur ⛄ → recherche hyst ⛄,
     // clic sur 1b → hyst 1b, clic sur 2 → hyst 2 (comportement historique attendu).
@@ -229,9 +251,16 @@
         },
 
         appendLog: function (line) {
-            this.logLines.push(String(line));
+            var s = String(line);
+            this.logLines.push(s);
             var logEl = hystLogEl();
             if (logEl) logEl.textContent = this.logLines.join('\n');
+            var C = window.CONFIG_COMPUTE;
+            var hystFile = C && C.logHystPanelToFile === true;
+            var hystUrl = window.DEBUG && window.DEBUG.topic === 'hyst';
+            if ((hystFile || hystUrl) && window.DEBUG && typeof window.DEBUG.logToTopic === 'function') {
+                window.DEBUG.logToTopic('hyst', s);
+            }
         },
 
         _hystFormatCompact: function (obj) {
@@ -282,10 +311,10 @@
         },
 
         /**
-         * Diagnostic par-pas : dump des suspects de rétroaction (nuages / CCN / sulfates / H2O / glace).
-         * Objectif : identifier quel terme fournit le warming positif malgré CO₂↓ pendant pas 2→N.
+         * Mêmes chaînes que _appendHystPerStepDiagnostic (ordre figé pour diff hyst.txt vs epoch.txt).
+         * @returns {string[]}
          */
-        _appendHystPerStepDiagnostic: function (T_C, xKg, ppm) {
+        _buildHystPerStepDiagnosticLines: function (T_C, xKg, ppm) {
             var D = window.DATA || {};
             var HD = window._hystDiag || {};
             var clouds = D['🪩'] || {};
@@ -297,14 +326,13 @@
             var fexp = function (v, n) {
                 return (typeof v === 'number' && isFinite(v)) ? v.toExponential(n == null ? 3 : n) : 'NaN';
             };
-            // Ligne 1 : CO₂ + sulfates + H2O vapeur + RH
-            this.appendLog('  🔬[diag CO₂] ppm=' + fx(ppm, 1)
+            var out = [];
+            out.push('  🔬[diag CO₂] ppm=' + fx(ppm, 1)
                 + ' ⚖️🏭=' + fexp(xKg)
                 + ' ⚖️✈=' + fexp(masses['⚖️✈'])
                 + ' ⚖️💧vap=' + fexp(water['🍰🫧💧'])
                 + ' RH=' + fx(water['🍰🫧☔']));
-            // Ligne 2 : CCN + cloud optical efficiency (suspect n°1 pour le rebond T)
-            this.appendLog('  🔬[diag CCN] ccn_ratio=' + fx(HD.ccnRatio)
+            out.push('  🔬[diag CCN] ccn_ratio=' + fx(HD.ccnRatio)
                 + ' so4_boost=' + fx(HD.sulfateBoost)
                 + ' anthro=' + fx(HD.anthroFactor)
                 + ' press=' + fx(HD.pressureFactor)
@@ -313,8 +341,7 @@
                 + ' opt_eff=' + fx(HD.cloudOptEff)
                 + ' cloud_idx=' + fx(HD.cloudIndex)
                 + ' cloud_frac=' + fx(HD.cloudFraction));
-            // Ligne 3 : glace + albédo final (T_polaire = T_globale − polarAmplificationK)
-            this.appendLog('  🔬[diag ☀️] T_pol=' + fx(HD.T_polar_C, 2) + '°C'
+            out.push('  🔬[diag ☀️] T_pol=' + fx(HD.T_polar_C, 2) + '°C'
                 + ' ice_eff=' + fx(HD.iceAlbedoEff)
                 + ' ice_snow=' + fx(HD.iceAlbedoSnowDeep)
                 + ' ice_cold=' + fx(HD.iceAlbedoCold)
@@ -323,6 +350,77 @@
                 + ' α_base=' + fx(HD.weightedAlbedoBase)
                 + ' α_final=' + fx(HD.finalAlbedo)
                 + ' α_eff=' + fx(HD.aEff));
+            var b = D['🧲'] || {};
+            var dFlux = b['🔺🧲'];
+            var sAbs = b['🧲☀️🔽'];
+            var g = b['🧲🌕🔽'];
+            var olr = b['🧲🌈🔼'];
+            var phase = (D['🧮'] && D['🧮']['🧮⚧'] != null) ? String(D['🧮']['🧮⚧']) : '—';
+            var epId = (D['📜'] && D['📜']['🗿'] != null) ? String(D['📜']['🗿']) : '—';
+            var edsTot = (D['📛'] && D['📛']['🧲📛'] != null) ? fx(D['📛']['🧲📛'], 2) : '—';
+            var edsCo2 = (D['📛'] && D['📛']['🧲📛🏭'] != null) ? fx(D['📛']['🧲📛🏭'], 2) : '—';
+            var edsCh4 = (D['📛'] && D['📛']['🧲📛🐄'] != null) ? fx(D['📛']['🧲📛🐄'], 2) : '—';
+            out.push('  🔬[diag bilan] ep=' + epId
+                + ' |🧮⚧=' + phase
+                + ' | Δ=' + (typeof dFlux === 'number' && isFinite(dFlux) ? dFlux.toFixed(2) : '—') + ' W/m²'
+                + ' | entr=' + (typeof sAbs === 'number' && isFinite(sAbs) && typeof g === 'number' && isFinite(g) ? (sAbs + g).toFixed(1) : '—')
+                + ' (Sabs=' + (typeof sAbs === 'number' && isFinite(sAbs) ? sAbs.toFixed(1) : '—') + ' +🌕=' + (typeof g === 'number' && isFinite(g) ? g.toFixed(1) : '—') + ')'
+                + ' | OLR=' + (typeof olr === 'number' && isFinite(olr) ? olr.toFixed(1) : '—')
+                + ' | EDS=' + edsTot + ' (CO₂=' + edsCo2 + ' CH₄=' + edsCh4 + ') W/m²');
+            return out;
+        },
+
+        /**
+         * Diagnostic par-pas : dump des suspects de rétroaction (nuages / CCN / sulfates / H2O / glace).
+         * Objectif : identifier quel terme fournit le warming positif malgré CO₂↓ pendant pas 2→N.
+         */
+        _appendHystPerStepDiagnostic: function (T_C, xKg, ppm) {
+            var lines = this._buildHystPerStepDiagnosticLines(T_C, xKg, ppm);
+            for (var i = 0; i < lines.length; i++) {
+                this.appendLog(lines[i]);
+            }
+        },
+
+        /**
+         * Fichier _logs/epoch.txt si ?debug=epoch (même schéma 🔬 que hyst) — calcul seul, HYSTERESIS inactive.
+         * @param {string} [tag] contexte (ex. iframe compute:done)
+         */
+        logEpochCompareBlock: function (tag) {
+            if (this.active) {
+                return;
+            }
+            var C = window.CONFIG_COMPUTE;
+            var epochFile = C && C.logEpochCompareToFile === true;
+            var epochUrl = window.DEBUG && window.DEBUG.topic === 'epoch';
+            var wantRepro = C && C.logReproComparableState === true;
+            if (!epochFile && !epochUrl && !wantRepro) {
+                return;
+            }
+            if (!window.DEBUG || typeof window.DEBUG.logToTopic !== 'function') {
+                return;
+            }
+            var L = window.DEBUG.logToTopic;
+            if (epochFile || epochUrl) {
+                var n = (window._radCompareEpochIndex = (window._radCompareEpochIndex || 0) + 1);
+                var T = readTcelsius();
+                var xKg = Number(window.DATA['⚖️'] && window.DATA['⚖️']['⚖️🏭']);
+                var ppm = readCo2Ppm();
+                var epId = (window.DATA['📜'] && window.DATA['📜']['🗿'] != null) ? String(window.DATA['📜']['🗿']) : '—';
+                var st = (window.DATA['🧮'] && window.DATA['🧮']['🧮🛑'] != null) ? String(window.DATA['🧮']['🧮🛑']) : '—';
+                var it = (window.DATA['🧮'] && window.DATA['🧮']['🧮🔄☀️'] != null) ? String(window.DATA['🧮']['🧮🔄☀️']) : '—';
+                L('epoch', '');
+                L('epoch', '── 📿🧮=' + n + '  (fichier epoch)  ep=' + epId
+                    + '  ⚖️🏭=' + (isFinite(xKg) ? xKg.toExponential(3) : 'NaN') + ' kg'
+                    + ' → T_conv=' + T.toFixed(2) + ' °C | 🧮🛑=' + st + ' | innerIter=' + it
+                    + ' | ' + (tag != null && tag !== '' ? String(tag) : 'compute:done') + ' ──');
+                var lines = this._buildHystPerStepDiagnosticLines(T, isFinite(xKg) ? xKg : NaN, ppm);
+                for (var j = 0; j < lines.length; j++) {
+                    L('epoch', lines[j]);
+                }
+            }
+            if (window.HYST_REPRO_LOG && typeof window.HYST_REPRO_LOG.emitToEpochFile === 'function') {
+                window.HYST_REPRO_LOG.emitToEpochFile(L);
+            }
         },
 
         clearHystEpochButtonsSelected: function () {
@@ -373,7 +471,10 @@
             // BaryAdapter co-évolue CH₄, N₂, O₂, H₂O, sulfates à chaque pas scan (via bary déduit du CO₂).
             // Fallback : defaultCo2Adapter (CO₂ seul, comportement pré-v2.1.15).
             if (window.HYSTERESIS_BARY && window.HYSTERESIS_BARY.hasBounds(epochId)) {
-                this.adapter = window.HYSTERESIS_BARY.createBaryAdapter(epochId, clampX);
+                var baryOpt = (epochId === 'hysteresis 1a')
+                    ? { co2MaxFactor: HYST_RND_WARM_CO2_FACTOR_1A }
+                    : undefined;
+                this.adapter = window.HYSTERESIS_BARY.createBaryAdapter(epochId, clampX, baryOpt);
             } else {
                 this.adapter = defaultCo2Adapter(epochId);
             }
@@ -387,6 +488,14 @@
             this.scanCo2MassFactor = (Number.isFinite(Number(H.scanCo2MassFactor)) && Number(H.scanCo2MassFactor) > 0 && Number(H.scanCo2MassFactor) < 1) ? Number(H.scanCo2MassFactor) : 0.5;
             this.scanFailRatio = (Number.isFinite(Number(H.scanFailRatio)) && Number(H.scanFailRatio) > 0 && Number(H.scanFailRatio) < 1) ? Number(H.scanFailRatio) : 0.1;
             this.maxDichoSteps = (Number.isFinite(Number(H.maxDichoSteps)) && Number(H.maxDichoSteps) > 0) ? Math.floor(Number(H.maxDichoSteps)) : 30;
+            switch (epochId) {
+                case 'hysteresis 1b':
+                    this.searchSign = 'positive';
+                    break;
+                case 'hysteresis 1a':
+                    this.searchSign = 'negative';
+                    break;
+            }
             this.runSearchSign = this.searchSign === 'positive' ? 'positive' : 'negative';
             this.syncSearchSignButtonUI();
             // ── CO₂ TIMELINE : restauration valeur de config initiale ─────────────────────────────
@@ -403,6 +512,9 @@
             }
             // ─────────────────────────────────────────────────────────────────────────────────────
             var x0 = clampX(this.adapter.readXFromTimeline());
+            if (epochId === 'hysteresis 1a') {
+                x0 = clampX(x0 * HYST_RND_WARM_CO2_FACTOR_1A);
+            }
             this.xBaselineKg = x0;
             this.x = x0;
             this.xOld = x0;
@@ -577,9 +689,16 @@
             var ppm = readCo2Ppm();
             this.outerIndex++;
             this.appendLog('');
-            this.appendLog('── 📿🧮=' + this.outerIndex + '  phase=' + this.phase + '  ⚖️🏭=' + xBefore.toExponential(3) + ' kg → 🌡️🧮=' + T.toFixed(2) + ' °C ──');
+            var tConvSuffix = (this.outerIndex === 1)
+                ? ' (graine initiale ' + this.seedT_C.toFixed(2) + ' °C, une fois)'
+                : '';
+            this.appendLog('── 📿🧮=' + this.outerIndex + '  phase=' + this.phase + '  ⚖️🏭=' + xBefore.toExponential(3)
+                + ' kg → T_conv=' + T.toFixed(2) + ' °C' + tConvSuffix + ' ──');
             this._refreshHystWaterAlbedoSnapshots(T);
             this._appendHystPerStepDiagnostic(T, xBefore, ppm);
+            if (window.HYST_REPRO_LOG && typeof window.HYST_REPRO_LOG.emitToHystPanel === 'function') {
+                window.HYST_REPRO_LOG.emitToHystPanel(this.appendLog.bind(this), 'hyst:outer');
+            }
 
             switch (true) {
                 case this.outerIndex >= MAX_OUTER:
@@ -610,7 +729,7 @@
             if (alreadyCold || alreadyHot) {
                 this.appendLog('━━ FAILED : branche ' + (alreadyCold ? 'froide' : 'chaude') + ' déjà atteinte au CO₂ baseline ━━');
                 var seuilAbs = alreadyCold ? this.coldBranchT_C : this.warmBranchT_C;
-                this.appendLog('  T=' + T.toFixed(2) + ' °C ' + (alreadyCold ? '<' : '>') + ' seuil ' + (alreadyCold ? 'froid' : 'chaud') + ' ' + seuilAbs + ' °C (graine=' + this.seedT_C.toFixed(2) + ' °C pour info).');
+                this.appendLog('  T=' + T.toFixed(2) + ' °C ' + (alreadyCold ? '<' : '>') + ' seuil ' + (alreadyCold ? 'froid' : 'chaud') + ' ' + seuilAbs + ' °C.');
                 this.appendLog('  Pas de bifurcation à trouver : la branche ' + (alreadyCold ? 'chaude' : 'froide') + ' n\'existe pas à ⚖️🏭₀=' + xBefore.toExponential(3) + ' kg.');
                 this.appendLog('  → Ajuster CO₂ initial (⚖️🏭₀), ou réviser polarAmplificationK / midlatAmplificationK / highlands.');
                 this._appendHystLastCycleSnapshot();
@@ -640,6 +759,17 @@
             function writeAndContinue(xNew) {
                 self.xOld = xBefore;
                 self.x = clampX(xNew);
+                if (self.phase === 'dicho' && !isPos && xNew > xBefore) {
+                    var idxE = timelineIndexForEpoch(self.epochId);
+                    var EP = (idxE >= 0 && window.TIMELINE[idxE]) ? window.TIMELINE[idxE] : null;
+                    var gT = EP && Number(EP['🌡️🧮']);
+                    if (Number.isFinite(gT) && gT > 0 && window.DATA && window.DATA['🧮']) {
+                        window.DATA['🧮']['🧮🌡️'] = gT;
+                        window.DATA['🧮']['🧮🌡️⏮'] = gT;
+                        window.DATA['🧮']['🧮🌡️🚩'] = gT;
+                        self.appendLog('  (dicho−) CO₂↑ : T ← EPOCH[🌡️🧮] = ' + (gT - window.CONST.KELVIN_TO_CELSIUS).toFixed(2) + ' °C (évite reprise depuis attracteur froid)');
+                    }
+                }
                 self.appendLog('  → prochain ⚖️🏭=' + self.x.toExponential(3) + ' kg');
                 // v2.1.15 : couplage CCN-CO₂ désactivé si BaryAdapter actif.
                 // Le BaryAdapter co-évolue les sulfates via bary dans writeXToTimeline → pas de double écriture.
@@ -782,7 +912,7 @@
                     switch (true) {
                         case span < tolKg:
                             this.appendLog('━━ SUCCESS : |max−min|=' + span.toExponential(3) + ' kg < tol 1ppm-éq (' + tolKg.toExponential(3) + ') ━━');
-                            this.appendLog('  bornes ⚖️🏭 min=' + this.valueMin.toExponential(3) + ' max=' + this.valueMax.toExponential(3) + ' kg | 🌡️🧮=' + T.toFixed(2) + ' °C');
+                            this.appendLog('  bornes ⚖️🏭 min=' + this.valueMin.toExponential(3) + ' max=' + this.valueMax.toExponential(3) + ' kg | T_conv=' + T.toFixed(2) + ' °C');
                             this._appendHystLastCycleSnapshot();
                             this.deactivate();
                             return false;

@@ -1,32 +1,86 @@
 // File: scie_convergence.js - Formatage HTML des étapes de convergence (scie)
 // Desc: Module partagé parent + iframe scie : buildStepHtml(state) → fragment HTML pour #convergence-steps.
 //       Utilisé par le shell pour stocker des chaînes HTML au lieu des payloads complets.
-// Version 1.0.4
+// Version 1.0.5
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: 2025-02-25
 // Logs:
+// - v1.0.5: stringifyDataValue — nombres |x|>1e3 ou |x|<1e-3 en toExponential(3) (évite 15000000000000000 en log) ; scieStringifyDataPretty
 // - v1.0.2: export scieFormatJSONCompact pour logs hystérésis (💧🪩 instantanés)
 // - v1.0.3: ligne radiatif — albédo en % (×100, fraction DATA) ; hint Δ = ☀️🔽+🌕🔽−🌈🔼 (🌑🔼/🪩🔼 hors bilan)
 // - v1.0.4: titre sur « EDS H2O » — part dans sum_blocked (τ), pas vapeur molaire ni capacités 🌈 ; évite lecture « 0 % = pas d’eau »
 // - v1.0.1: renomme H2O% en % EDS H2O pour éviter la confusion avec 🍰🫧💧
-// Logs:
 // - v1.0.0: extraction depuis scie_compute.html ; json2html, formatJSONCompact, buildStepHtml
 
 (function () {
     'use strict';
 
-    function formatJSONCompact(obj) {
-        return JSON.stringify(obj, function (key, value) {
-            if (typeof value === 'number') {
-                if (Math.abs(value) > 1000 || (Math.abs(value) < 0.001 && value !== 0)) {
-                    return value.toExponential(3);
-                }
-                return parseFloat(value.toFixed(3));
+    /**
+     * Littéral numérique JSON (notation e) : JSON.stringify omet souvent l’exposant sur les grands entiers
+     * représentables. Utilisé pour [REPRO], export TIMELINE, instantanés 💧/🪩 (hyst / convergence).
+     */
+    function formatNumberForLogJson(n) {
+        if (typeof n !== 'number') return 'null';
+        if (n !== n || n === Infinity || n === -Infinity) return 'null';
+        if (n === 0) return '0';
+        var a = Math.abs(n);
+        if (a > 1e3 || (a < 1e-3 && a !== 0)) return n.toExponential(3);
+        if (Number.isInteger(n) && a < 1e4) return String(n);
+        if (a >= 1e-3 && a <= 1e3) {
+            var s = n.toString();
+            if (s.length > 14) return n.toExponential(3);
+            return s;
+        }
+        return n.toExponential(3);
+    }
+
+    function stringifyDataValue(val, space, depth) {
+        if (val === undefined) return 'undefined';
+        if (val === null) return 'null';
+        if (val === true) return 'true';
+        if (val === false) return 'false';
+        var t = typeof val;
+        if (t === 'number') return formatNumberForLogJson(val);
+        if (t === 'string') return JSON.stringify(val);
+        if (t !== 'object') return JSON.stringify(String(val));
+        if (Array.isArray(val)) {
+            if (val.length === 0) return '[]';
+            if (!space) {
+                return '[' + val.map(function (v) { return stringifyDataValue(v, 0, 0); }).join(',') + ']';
             }
-            return value;
-        });
+            var ind = new Array(depth * space + 1).join(' ');
+            var nxt = new Array((depth + 1) * space + 1).join(' ');
+            var body = val.map(function (v) { return nxt + stringifyDataValue(v, space, depth + 1); });
+            return '[\n' + body.join(',\n') + '\n' + ind + ']';
+        }
+        var keys = Object.keys(val);
+        if (keys.length === 0) return '{}';
+        if (!space) {
+            return '{' + keys.map(function (k) {
+                if (val[k] === undefined) return null;
+                return JSON.stringify(k) + ':' + stringifyDataValue(val[k], 0, 0);
+            }).filter(function (x) { return x != null; }).join(',') + '}';
+        }
+        var indObj = new Array(depth * space + 1).join(' ');
+        var nxtObj = new Array((depth + 1) * space + 1).join(' ');
+        var bodyObj = keys.map(function (k) {
+            if (val[k] === undefined) return null;
+            return nxtObj + JSON.stringify(k) + ': ' + stringifyDataValue(val[k], space, depth + 1);
+        }).filter(function (x) { return x != null; });
+        return '{\n' + bodyObj.join(',\n') + '\n' + indObj + '}';
+    }
+
+    function formatJSONCompact(obj) {
+        if (obj == null) return String(obj);
+        return stringifyDataValue(obj, 0, 0);
+    }
+
+    function stringifyDataPretty(obj, space) {
+        if (obj == null) return String(obj);
+        var s = (space == null || space < 1) ? 4 : space;
+        return stringifyDataValue(obj, s, 0);
     }
 
     function json2htmlConvergence(obj, objName, categoryKey) {
@@ -221,4 +275,5 @@
     window.buildStepHtmlForConvergence = buildStepHtml;
     window.buildStepHtml = buildStepHtml;
     window.scieFormatJSONCompact = formatJSONCompact;
+    window.scieStringifyDataPretty = stringifyDataPretty;
 })();
