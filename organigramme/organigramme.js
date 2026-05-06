@@ -1,12 +1,15 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.89
+// Version 1.0.92
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.92 syncEpochFromTimelinePointer : 👉 source de vérité (réconcilie 🗿 + currentEpochName) ; retrait fallback epoch Hadéen silencieux sur terre/albedo.
+// Logs: v1.0.91 Terre Three.js : drag horizontal inversé au-dessus du pôle sud projeté (clientY < ySud écran).
+// Logs: v1.0.90 Terre Three.js : drag X/Y + inertie ω·dt ; reprise auto-rotation au release (singleton rAF) ; clic Terre sans toggle après drag.
 // Logs: v1.0.89 Terre Three.js : ombre de la sphère sur les cônes (DirectionalLight shadowMap) ; cônes ne projettent pas.
 // Logs: v1.0.88 Terre Three.js : cônes cuivre moins métalliques + HemisphereLight atténué pour cohérence visuelle avec le terminateur du globe.
 // Logs: v1.0.87 Terre Three.js : HemisphereLight.position = direction soleil (comme DirectionalLight), évite cônes éclairés par le « ciel » Y+ par défaut.
@@ -91,6 +94,49 @@ const NON_CHECKABLE_NODE_IDS = new Set(["co2", "methane", "h2o", "albedo-btn"]);
 window.CONFIG_COMPUTE.convergencePrecisionK = 0.1;
 // Variable globale pour contrôler l'animation Three.js (false = animée, true = pause)
 window.threeJSAnimationPaused = false;
+/** Après un drag sur le globe, évite un clic Terre qui ferait toggle pause immédiatement. */
+window.__planetTerreSkipNextClick = false;
+
+/**
+ * Source unique d’époque UI : DATA["📜"]["👉"] + TIMELINE.
+ * Réconcilie DATA["📜"]["🗿"] et RUNTIME_STATE.currentEpochName (👉 fait foi ; évite 🗿 stale après merge iframe / 📜).
+ */
+function syncEpochFromTimelinePointer() {
+  const DATA = window.DATA;
+  const TL = window.TIMELINE;
+  if (!DATA || !DATA["📜"] || DATA["📜"]["👉"] == null) {
+    throw new Error(
+      "[syncEpochFromTimelinePointer] DATA['📜']['👉'] absent",
+    );
+  }
+  const idxRaw = DATA["📜"]["👉"];
+  const idx = typeof idxRaw === "number" ? idxRaw : Number(idxRaw);
+  if (!TL || !Number.isFinite(idx) || idx < 0 || idx >= TL.length) {
+    throw new Error(
+      "[syncEpochFromTimelinePointer] index 👉 hors TIMELINE : " + idxRaw,
+    );
+  }
+  const row = TL[idx];
+  const eid = row["📅"];
+  if (eid === undefined || eid === null) {
+    throw new Error(
+      "[syncEpochFromTimelinePointer] TIMELINE[" + idx + "] sans 📅",
+    );
+  }
+  DATA["📜"]["🗿"] = eid;
+  const name =
+    eid === "⚫"
+      ? "Corps Noir"
+      : (window.CHARS_DESC && window.CHARS_DESC[eid]) || row.name;
+  if (!name || typeof name !== "string") {
+    throw new Error(
+      "[syncEpochFromTimelinePointer] nom d'époque introuvable pour id=" +
+        eid,
+    );
+  }
+  window.RUNTIME_STATE.currentEpochName = name;
+}
+window.syncEpochFromTimelinePointer = syncEpochFromTimelinePointer;
 
 // 🔒 Version de secours de interpretConfigValue (sera remplacée par celle de main.js si elle existe)
 // Cette fonction est nécessaire car organigramme.js est chargé avant main.js
@@ -900,53 +946,137 @@ function initPlanetThreeJS(
     // Log supprimé (non essentiel)
   }
 
-  // Drag désactivé : angles par défaut uniquement (pas de listeners)
+  // Drag : tilt Y + rotation X ; une seule boucle animate() ; inertie puis retour à ω_auto constant.
   let rotationY = sphere ? sphere.rotation.y : 0;
   container.style.pointerEvents = "none";
   canvas.style.pointerEvents = "none";
   canvas.style.position = "relative";
   canvas.style.zIndex = "1";
 
-  // Logs press/move/release via document (pointer-events:none empêche la détection sur container/canvas)
-  // On filtre par hit-test : coordonnées dans le bounding rect du canvas
-  let _dragActive = false;
+  const PLANET_DRAG_ROT_RAD_PER_PX = 0.01;
+  const PLANET_DRAG_CLICK_THRESHOLD_PX = 6;
+  const PLANET_MIN_SPIN_RAD_PER_S = 0.012;
+  const PLANET_INERTIA_DECAY_PER_S = 2.8;
+  const PLANET_MAX_SPIN_RAD_PER_S = 5;
+
+  let _planetDragSession = false;
+  let _lastClientX = 0;
+  let _lastClientY = 0;
+  let _lastMoveTs = 0;
+  let _dragAccumDist = 0;
+  /** rad/s — dernier geste pour relâchement */
+  let _dragOmegaRadPerSec = 0;
+  /** rad/s — roue libre jusqu'à amortissement */
+  let _spinInertiaRadPerSec = 0;
+
   function _inCanvas(e) {
     const r = canvas.getBoundingClientRect();
     return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
   }
+  /** Ordonnée écran du pôle sud (contact sphère, local Y = −R), après tilt + rotation Y. */
+  function _southPoleScreenY() {
+    const R = sphere.geometry.parameters.radius;
+    const p = new THREE.Vector3(0, -R, 0);
+    p.applyMatrix4(sphere.matrixWorld);
+    p.project(camera);
+    const rect = canvas.getBoundingClientRect();
+    return (-p.y * 0.5 + 0.5) * rect.height + rect.top;
+  }
+  /** Au-dessus du pôle sud à l’écran (plus petit clientY) : inverser le sens du drag horizontal. */
+  function _invertHorizDrag(clientY) {
+    return clientY < _southPoleScreenY();
+  }
   function _onDocDown(e) {
     if (!_inCanvas(e)) return;
-    _dragActive = true;
-    document.body.style.userSelect = 'none';
+    _planetDragSession = true;
+    _spinInertiaRadPerSec = 0;
+    _dragOmegaRadPerSec = 0;
+    _dragAccumDist = 0;
+    _lastClientX = e.clientX;
+    _lastClientY = e.clientY;
+    _lastMoveTs = performance.now();
+    document.body.style.userSelect = "none";
   }
   function _onDocMove(e) {
-    if (!_dragActive) return;
-    tiltAngle += e.movementY * 1.0;
+    if (!_planetDragSession || !sphere) return;
+    const now = performance.now();
+    const dx = e.clientX - _lastClientX;
+    const dy = e.clientY - _lastClientY;
+    _lastClientX = e.clientX;
+    _lastClientY = e.clientY;
+    _dragAccumDist += Math.abs(dx) + Math.abs(dy);
+    const dt = now - _lastMoveTs;
+    _lastMoveTs = now;
+
+    const dxEff = _invertHorizDrag(e.clientY) ? -dx : dx;
+    rotationY -= dxEff * PLANET_DRAG_ROT_RAD_PER_PX;
+    tiltAngle += dy * 1.0;
     window.savedPlanetTiltAngle = tiltAngle;
-    if (sphere) sphere.rotation.x = (tiltAngle * Math.PI) / 180;
+    sphere.rotation.x = (tiltAngle * Math.PI) / 180;
+    sphere.rotation.y = rotationY;
+    window.savedPlanetRotationY = rotationY;
+
+    if (dt > 0 && dt < 120) {
+      _dragOmegaRadPerSec =
+        -(dxEff / dt) * PLANET_DRAG_ROT_RAD_PER_PX * 1000;
+    }
   }
-  function _onDocUp(e) {
-    if (!_dragActive) return;
-    _dragActive = false;
-    document.body.style.userSelect = '';
+  function _endPlanetDrag() {
+    if (!_planetDragSession) return;
+    _planetDragSession = false;
+    document.body.style.userSelect = "";
+    if (_dragAccumDist >= PLANET_DRAG_CLICK_THRESHOLD_PX) {
+      window.__planetTerreSkipNextClick = true;
+    }
+    _spinInertiaRadPerSec = Math.max(
+      -PLANET_MAX_SPIN_RAD_PER_S,
+      Math.min(PLANET_MAX_SPIN_RAD_PER_S, _dragOmegaRadPerSec),
+    );
+    if (Math.abs(_spinInertiaRadPerSec) < PLANET_MIN_SPIN_RAD_PER_S) {
+      _spinInertiaRadPerSec = 0;
+    }
+    window.threeJSAnimationPaused = false;
   }
-  document.addEventListener('pointerdown', _onDocDown);
-  document.addEventListener('pointermove', _onDocMove);
-  document.addEventListener('pointerup', _onDocUp);
-  document.addEventListener('pointercancel', _onDocUp);
+  function _onDocUp() {
+    _endPlanetDrag();
+  }
+  document.addEventListener("pointerdown", _onDocDown);
+  document.addEventListener("pointermove", _onDocMove);
+  document.addEventListener("pointerup", _onDocUp);
+  document.addEventListener("pointercancel", _onDocUp);
 
   const speed = 1.0;
+  /** Équivalent ancien +0.005 rad/frame à ~60 Hz → rad/s */
+  const autoOmegaRadPerSec = 0.005 * speed * 60;
+  let _lastAnimTs = performance.now();
   function animate() {
     const isPaused = window.threeJSAnimationPaused;
+    const now = performance.now();
+    const dtSec = Math.min(0.064, Math.max(0, (now - _lastAnimTs) / 1000));
+    _lastAnimTs = now;
+
     if (!sphere) {
       renderer.render(scene, camera);
       requestAnimationFrame(animate);
       return;
     }
-    if (!isPaused) {
-      rotationY += 0.005 * speed;
-      sphere.rotation.y = rotationY;
+
+    if (_planetDragSession) {
+      // rotation / tilt mis à jour dans pointermove
+    } else if (!isPaused) {
+      if (Math.abs(_spinInertiaRadPerSec) >= PLANET_MIN_SPIN_RAD_PER_S) {
+        rotationY += _spinInertiaRadPerSec * dtSec;
+        sphere.rotation.y = rotationY;
+        window.savedPlanetRotationY = rotationY;
+        _spinInertiaRadPerSec *= Math.exp(-PLANET_INERTIA_DECAY_PER_S * dtSec);
+      } else {
+        _spinInertiaRadPerSec = 0;
+        rotationY += autoOmegaRadPerSec * dtSec;
+        sphere.rotation.y = rotationY;
+        window.savedPlanetRotationY = rotationY;
+      }
     }
+
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
   }
@@ -1724,6 +1854,10 @@ function createCell(
 
       // Vérifier si c'est la Terre (toggle animation Three.js)
       if (nodeId === "terre") {
+        if (window.__planetTerreSkipNextClick) {
+          window.__planetTerreSkipNextClick = false;
+          return;
+        }
         window.threeJSAnimationPaused = !window.threeJSAnimationPaused;
         return; // Ne pas copier le logo ni déclencher d'autres actions
       }
@@ -2585,15 +2719,13 @@ function getNodeProperty(node, property, defaultValue = null) {
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
     );
-
-    if (epochConfig && epochConfig.hasOwnProperty(property)) {
+    if (!epochConfig) {
+      throw new Error(
+        `[getNodeProperty] Aucune entrée epoch pour "${currentEpochName}" (node ${node.id})`,
+      );
+    }
+    if (epochConfig.hasOwnProperty(property)) {
       return epochConfig[property];
-    } else if (node.epoch.length > 0) {
-      // Fallback : dernière époque du tableau (permet d'alléger les répétitions)
-      const lastEpoch = node.epoch[node.epoch.length - 1];
-      if (lastEpoch && lastEpoch.hasOwnProperty(property)) {
-        return lastEpoch[property];
-      }
     }
   }
 
@@ -3588,15 +3720,17 @@ cellOrder.forEach((nodeId) => {
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
     );
-    const ec = epochConfig || node.epoch[node.epoch.length - 1];
-    if (ec) {
-      nodeConfig = {
-        ...node,
-        fillColor: ec.fillColor,
-        strokeColor: ec.strokeColor,
-        strokeSize: ec.strokeSize != null ? ec.strokeSize : 1,
-      };
+    if (!epochConfig) {
+      throw new Error(
+        `[organigram cellOrder] albedo : epoch introuvable "${currentEpochName}"`,
+      );
     }
+    nodeConfig = {
+      ...node,
+      fillColor: epochConfig.fillColor,
+      strokeColor: epochConfig.strokeColor,
+      strokeSize: epochConfig.strokeSize != null ? epochConfig.strokeSize : 1,
+    };
   } else if (node.id === "terre" && node.epoch && Array.isArray(node.epoch)) {
     const interpretConfigValue = window.interpretConfigValue || (function (v) { return v; });
     const charsImages = window.charsImages;
@@ -3635,34 +3769,10 @@ cellOrder.forEach((nodeId) => {
         planetEffect: epochConfig.planetEffect || false,
       };
       if (node.id === "terre") nodeConfig.logoScale = 1;
-    } else if (node.epoch.length > 0) {
-      // Fallback : dernière époque du tableau ; si planetEffect, texture = getPlanetTexturePathFromEpoch(▶, infoTimeMa)
-      const lastEpoch = node.epoch[node.epoch.length - 1];
-
-      let logoForCell = lastEpoch.logo || node.epoch[0].logo;
-      if (lastEpoch.planetEffect) {
-        const idx = window.DATA["📜"]["👉"] != null ? window.DATA["📜"]["👉"] : 0;
-        const timelineEpoch = window.TIMELINE[idx] || null;
-        const startYears = timelineEpoch ? timelineEpoch["▶"] : 2.5e9;
-        const infoTimeMa = window.infoTimeMa;
-        logoForCell = getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
-      } else {
-        logoForCell = typeof logoForCell === "string" ? interpretConfigValue(logoForCell) : logoForCell;
-        if (charsImages && charsImages[logoForCell]) logoForCell = charsImages[logoForCell];
-      }
-
-      nodeConfig = {
-        ...node,
-        logo: logoForCell,
-        radius: lastEpoch.radius || node.epoch[0].radius,
-        radiusExobase: lastEpoch.radiusExobase || node.epoch[0].radiusExobase,
-        fillColor: lastEpoch.fillColor || node.epoch[0].fillColor,
-        strokeColor: lastEpoch.strokeColor || node.epoch[0].strokeColor,
-        strokeSize: lastEpoch.strokeSize || node.epoch[0].strokeSize,
-        planetEffect:
-          lastEpoch.planetEffect || node.epoch[0].planetEffect || false,
-      };
-      if (node.id === "terre") nodeConfig.logoScale = 1;
+    } else {
+      throw new Error(
+        `[organigram cellOrder] terre : epoch introuvable "${currentEpochName}"`,
+      );
     }
   }
 
@@ -4792,8 +4902,7 @@ ORG.updateFluxLabels = function (eventId) {
     co2_ppm_num,
     ch4_ppm_num,
     forcing_H2O;
-  var epochId,
-    hasNoAtmosphere,
+  var hasNoAtmosphere,
     h2o_enabled;
   if (window.CONVERGENCE_DEBUG && window.DEBUG_CONVERGENCE_BINS === true) {
     const d = window.CONVERGENCE_DEBUG;
@@ -4805,21 +4914,18 @@ ORG.updateFluxLabels = function (eventId) {
 
   switch (eventId) {
     case "configLoaded":
+      syncEpochFromTimelinePointer();
       window.FluxManager.updateAllFluxes(window.RUNTIME_STATE.currentEpochName);
       return;
     case "cycleAlbedo":
     case "cycleH2O":
     case "cycleCalcul":
     case "ProcessFinished":
+      syncEpochFromTimelinePointer();
       if (!DATA["📊"] || typeof DATA["📊"].total_flux !== "number") return;
       if (!window.plotData) {
         window.plotData = { lambda_range: null, current: null, co2_ppm: 0, ch4_ppm: 0, temp_surface: 0 };
       }
-      epochId = DATA["📜"]["🗿"];
-      var ep = window.configOrganigramme.timeline.find(function (e) {
-        return e.type === "epoch" && e.id === epochId;
-      });
-      if (ep) window.RUNTIME_STATE.currentEpochName = ep.name;
       window.RUNTIME_STATE.h2oVaporPercent = Math.min(
         100,
         Math.max(0, DATA["💧"]["🍰🫧💧"] * 100 + window.RUNTIME_STATE.h2oTotalFromMeteorites),
@@ -5669,45 +5775,47 @@ ORG.updateFluxLabels = function (eventId) {
   // Utiliser calculateAtmosphereProperties pour obtenir la vraie hauteur physique
   let atm_height_km = 0;
   if (!hasNoAtmosphere && T0_num > 0) {
-    // Récupérer la masse atmosphérique et la gravité de l'époque
-    let total_mass = 0;
-    let gravity = 9.81;
-    let molar_mass_air = undefined;
-
-    if (window.RUNTIME_STATE.currentEpochName) {
-      const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
-        window.RUNTIME_STATE.currentEpochName,
+    const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
+      window.RUNTIME_STATE.currentEpochName,
+    );
+    if (!currentEpoch) {
+      throw new Error(
+        "[updateFluxLabels] GEOLOGY sans époque : " +
+          window.RUNTIME_STATE.currentEpochName,
       );
-      if (currentEpoch) {
-        if (currentEpoch.total_atmosphere_mass_kg !== undefined)
-          total_mass = currentEpoch.total_atmosphere_mass_kg;
-        if (currentEpoch.gravity !== undefined) gravity = currentEpoch.gravity;
-        if (currentEpoch.molar_mass_air !== undefined) {
-          molar_mass_air = currentEpoch.molar_mass_air;
-        } else {
-          // Calculer depuis les composants de l'époque
-          molar_mass_air = window.ATM.calculateMolarMassAir(currentEpoch);
-        }
-      }
     }
-
-    // Estimation de la masse molaire moyenne (M) si toujours undefined
-    if (molar_mass_air === undefined || molar_mass_air === 0) {
-      const isMassive = total_mass > 2.5e19;
-      molar_mass_air = isMassive ? 0.044 : 0.029;
-    }
-
-    // On passe T0_num (Température surface), molar_mass_air et gravity pour un calcul physique de H
-    // Vérifier que T0_num est valide (> 0) avant l'appel
-    if (T0_num > 0 && molar_mass_air > 0) {
-      const props = window.ATM.calculateAtmosphereProperties(
-        total_mass,
-        T0_num,
-        molar_mass_air,
-        gravity,
+    if (currentEpoch.total_atmosphere_mass_kg === undefined) {
+      throw new Error(
+        "[updateFluxLabels] total_atmosphere_mass_kg manquant : " +
+          window.RUNTIME_STATE.currentEpochName,
       );
-      atm_height_km = props.z_max / 1000; // Conversion m -> km
     }
+    if (currentEpoch.gravity === undefined) {
+      throw new Error(
+        "[updateFluxLabels] gravity manquant : " +
+          window.RUNTIME_STATE.currentEpochName,
+      );
+    }
+    const total_mass = currentEpoch.total_atmosphere_mass_kg;
+    const gravity = currentEpoch.gravity;
+    let molar_mass_air =
+      currentEpoch.molar_mass_air !== undefined
+        ? currentEpoch.molar_mass_air
+        : window.ATM.calculateMolarMassAir(currentEpoch);
+    if (molar_mass_air == null || !(molar_mass_air > 0)) {
+      throw new Error(
+        "[updateFluxLabels] molar_mass_air invalide pour " +
+          window.RUNTIME_STATE.currentEpochName,
+      );
+    }
+
+    const props = window.ATM.calculateAtmosphereProperties(
+      total_mass,
+      T0_num,
+      molar_mass_air,
+      gravity,
+    );
+    atm_height_km = props.z_max / 1000;
   }
 
   // Mettre à jour le label via updateLabel avec le dataId (évite les doublons)

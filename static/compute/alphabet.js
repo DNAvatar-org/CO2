@@ -1,8 +1,9 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.9
-// Date: [April 18, 2026]
+// Version 1.0.10
+// Date: [May 06, 2026]
 // logs :
+// - v1.0.10: CHARS_DESC ⚫ « Corps Noir » (N majuscule) — même libellé que syncEpochFromTimelinePointer / terre.epoch / GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName).
 // - v1.0.9: CHARS.SULFATE + CHARS_DESC — U+2708 U+FE0F (emoji ✈️, police emoji) ; aligné configsAll
 // - v1.0.8: timeline étendue (19 époques) — renames 🥟→🪸, ❄️→🦣, 🦣→🦤, scission 🌿→🪼/🍄/💀 ; nouveaux ⛈ 🐧 🛖 ; hysteresis 1→1a + ajout 1b
 // - v1.0.7: charsImages CH4 -> fonts/pics/ch4.png (picto texte)
@@ -81,7 +82,7 @@ const CHARS = {
     FLUX_OUT: '🔼', // Flux sortant (émission, -)
     // Époques géologiques
     EPOCH: '📜',    // Époque : parchemin
-    CORPS_NOIR: '⚫', // Corps noir
+    CORPS_NOIR: '⚫', // Corps Noir (libellé UI = CHARS_DESC['⚫'])
     HADEEN: '🔥',   // Hadéen : feu/lave
     ARCHEEN: '🦠',  // Archéen : microbe unicellulaire
     PROTEROZOIC: '🪸', // Protérozoïque (2500–750 Ma) : corail (multicellularité, eucaryotes)
@@ -199,7 +200,7 @@ const CHARS_DESC = {
     '📜': 'Époque (Ma)',
     '👉': 'Index',
     '🗿': 'Logo',
-    '⚫': 'Corps noir',
+    '⚫': 'Corps Noir',
     '🔥': 'Hadéen',
     '🦠': 'Archéen',
     '🪸': 'Protérozoïque',

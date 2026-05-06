@@ -1,9 +1,10 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.65
+// Version 1.0.66
 // Date: [May 06, 2026] [16:00 UTC+1]
 // logs :
+// - v1.0.66: resolvePlotTimelineEpoch — 👉 / 🗿 avant nom UI (fix « Corps Noir » vs CHARS_DESC « Corps noir » dans configOrganigramme.timeline).
 // - v1.0.65: nettoyage crash-first — retrait des gardes `typeof window/...` défensifs autour des APIs UI contractuelles (fonts, logos, sync classes, listeners, état spectral).
 // - v1.0.64: retrait readouts T sol. / T eff. (K °C °F) sur le graphe — températures restent dans le bandeau titre ; légende courbes = main.js updateLegend
 // - v1.0.63: alt zones captation spectre — sans Min/Max ni λ/bin ; molécules « Label captation [a - b] μm » ; nuages « Nuages (corps gris) absorption sur tout le spectre [4 - 50] μm » ; retrait propriété minMax des bandes
@@ -135,6 +136,53 @@ PLOT.logPlotScaleAfterCompute = function logPlotScaleAfterCompute() {
     };
     window.DEBUG.log('[plotScale@finCalcul] ' + JSON.stringify(payload));
 };
+
+/**
+ * Entrée epoch dans configOrganigramme.timeline alignée sur DATA['📜']['👉'] ou 🗿.
+ * Évite l’échec du .find par nom quand CHARS_DESC dit « Corps noir » et RUNTIME_STATE « Corps Noir ».
+ */
+function resolvePlotTimelineEpoch() {
+    const tl = window.configOrganigramme && window.configOrganigramme.timeline;
+    if (!Array.isArray(tl)) {
+        throw new Error('[resolvePlotTimelineEpoch] configOrganigramme.timeline indisponible');
+    }
+    const pr = window.DATA && window.DATA['📜'];
+    if (pr && pr['👉'] != null) {
+        const idxRaw = pr['👉'];
+        const idx = typeof idxRaw === 'number' ? idxRaw : Number(idxRaw);
+        if (Number.isFinite(idx) && idx >= 0 && idx < tl.length) {
+            const row = tl[idx];
+            if (row && row.type === 'epoch') {
+                return row;
+            }
+        }
+    }
+    if (pr && pr['🗿'] != null) {
+        const eid = pr['🗿'];
+        const byId = tl.find(function (e) {
+            return e.type === 'epoch' && e.id === eid;
+        });
+        if (byId) {
+            return byId;
+        }
+    }
+    const name = window.RUNTIME_STATE.currentEpochName;
+    const byName = tl.find(function (e) {
+        if (e.type !== 'epoch') {
+            return false;
+        }
+        if (e.name === name || e.id === name) {
+            return true;
+        }
+        return e.id === '⚫' && name === 'Corps Noir';
+    });
+    if (byName) {
+        return byName;
+    }
+    throw new Error(
+        "[resolvePlotTimelineEpoch] Époque '" + name + "' introuvable dans timeline (👉 / 🗿 / nom)",
+    );
+}
 
 // Fonction pour obtenir la couleur par défaut du body (vert)
 function getDefaultTextColor() {
@@ -1565,13 +1613,7 @@ PLOT.updatePlot = function updatePlot(data) {
     let scale_height_m;
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
-    const currentEpoch = window.configOrganigramme.timeline.find(e =>
-        e.type === 'epoch' && (e.name === window.RUNTIME_STATE.currentEpochName || e.id === window.RUNTIME_STATE.currentEpochName)
-    );
-    if (!currentEpoch) {
-        console.error('[updatePlot] ❌ ERREUR CRITIQUE : Époque non trouvée:', window.RUNTIME_STATE.currentEpochName);
-        throw new Error(`Époque '${window.RUNTIME_STATE.currentEpochName}' non trouvée dans timeline`);
-    }
+    const currentEpoch = resolvePlotTimelineEpoch();
 
     const total_atmosphere_mass_kg = currentEpoch['⚖️🫧'];
     if (total_atmosphere_mass_kg === undefined) {
@@ -1665,10 +1707,7 @@ PLOT.updatePlot = function updatePlot(data) {
                 const z_max = data.z_range[data.z_range.length - 1];
                 z_max_km = z_max / 1000;
             } else {
-            // z_range non disponible (init) — configOrganigramme/currentEpochName déjà validés en entrée
-            const currentEpoch = window.configOrganigramme.timeline.find(e =>
-                e.type === 'epoch' && (e.name === window.RUNTIME_STATE.currentEpochName || e.id === window.RUNTIME_STATE.currentEpochName)
-            );
+            // z_range non disponible (init) — même entrée epoch que le bloc z_max (👉 / TIMELINE)
             if (currentEpoch) {
                 const total_atmosphere_mass_kg = currentEpoch['⚖️🫧']; // Nom plus explicite
 
@@ -2640,9 +2679,7 @@ function drawSpectralVisualization(canvas, data) {
     // On a besoin de la masse totale pour ça, qu'on peut trouver dans configOrganigramme
     let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
 
-    const currentEpoch = window.configOrganigramme.timeline.find(e =>
-        e.type === 'epoch' && (e.name === window.RUNTIME_STATE.currentEpochName || e.id === window.RUNTIME_STATE.currentEpochName)
-    );
+    const currentEpoch = resolvePlotTimelineEpoch();
     const total_mass = currentEpoch['⚖️🫧'];
     if (total_mass === 0 || total_mass === undefined) {
         has_atmosphere = false;

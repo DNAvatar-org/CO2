@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.22
+// Version 1.1.23
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.23: cycleCalcul iframe — syncEpochFromTimelinePointer() après merge 📜 (👉 fait foi, évite 🗿 stale / atmosphère erronée).
 // Logs: v1.1.22: COMPUTE_LOADER — append #organigram-calculation-overlay dans #flux-diagram au show (z au-dessus des cellules) ; replacer dans .flux-diagram-wrapper au hide
 // Logs: v1.1.21: static/courbes/plot_debug.js avant plot.js (?debugPlot=1 → _logs/plot.txt + DEBUG_PLOT_LOG)
 // Logs: v1.1.20 migration window.updateFluxLabels → window.ORG.updateFluxLabels + lectures UI_STATE.FPSalert / RUNTIME_STATE (fps, currentEpochName, h2oVaporPercent). Retrait typeof defensive check sur updateFluxLabels (crash-first : organigramme.js chargé avant).
@@ -508,11 +509,7 @@
                     });
                     if (event.data.h2oVaporPercent != null) window.RUNTIME_STATE.h2oVaporPercent = event.data.h2oVaporPercent;
                     window.UI_STATE.waterVaporEnabled = window.RUNTIME_STATE.h2oVaporPercent > 0;
-                    var epochId = (window.DATA['📜'] && window.DATA['📜']['🗿']) || '⚫';
-                    if (epochId && window.configOrganigramme && window.configOrganigramme.timeline) {
-                        var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === epochId; });
-                        if (ep) window.RUNTIME_STATE.currentEpochName = ep.name;
-                    }
+                    window.syncEpochFromTimelinePointer();
                     const fpsOk = (window.RUNTIME_STATE.fps >= window.UI_STATE.FPSalert);
                     if (fpsOk) {
                         try { window.ORG.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }

@@ -1,6 +1,7 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.47
+// Version 1.1.48
+// - v1.1.48: sync:state / applyToVisu — syncEpochFromTimelinePointer() au lieu de configOrganigramme.timeline.find(ep.name) ; 👉 source de vérité.
 // - v1.1.47: projectToVisu — après draw flux, rAF → PLOT.logPlotScaleAfterCompute (DEBUG_PLOT_LOG + _logs/plot.txt)
 // - v1.1.46: projectToVisu — appels directs PLOT.invalidateSpectralYLuminanceCache / FLUX.skipSpectralFluxRedrawOnce (pas de typeof === 'function')
 // - v1.1.45: projectToVisu — invalidateSpectralYLuminanceCache avant 1er updatePlot ; 2e rAF: skipSpectralFluxRedrawOnce + invalidate puis updatePlot (échelle Y finale + overlays sans double draw flux dans le callback ; updateSpectralVisualization assure le canvas flux).
@@ -163,10 +164,7 @@
                 window.DATA['📅'] = window.TIMELINE[idx];
                 window.DATA['📜']['👉'] = idx;
                 window.DATA['📜']['🗿'] = payload.epochId;
-                if (window.configOrganigramme && window.configOrganigramme.timeline) {
-                    var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === payload.epochId; });
-                    if (ep) window.RUNTIME_STATE.currentEpochName = ep.name;
-                }
+                window.syncEpochFromTimelinePointer();
             }
         }
         if (payload.ticTime !== undefined) {
@@ -207,10 +205,7 @@
                     window.DATA['📅'] = window.TIMELINE[idx];
                     window.DATA['📜']['👉'] = idx;
                     window.DATA['📜']['🗿'] = payload.epochId;
-                    if (window.configOrganigramme && window.configOrganigramme.timeline) {
-                        var ep = window.configOrganigramme.timeline.find(function (e) { return e.type === 'epoch' && e.id === payload.epochId; });
-                        if (ep) window.RUNTIME_STATE.currentEpochName = ep.name;
-                    }
+                    window.syncEpochFromTimelinePointer();
                 }
             }
             if (visuPanel) {

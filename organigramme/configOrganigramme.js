@@ -1,8 +1,9 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.40
-// Date: [May 04, 2026] [12:00 UTC+1]
+// Version 1.1.41
+// Date: [May 06, 2026] [12:00 UTC+1]
 // logs :
+// - v1.1.41: terre Corps Noir — radiusExobase = surface + ε (couche « atmosphère » négligeable, derrière la Terre en z)
 // - v1.1.40: timeline-scenario-anim — fillColor transparent (plus de disque blanc derrière 🎞 SKIP)
 // - v1.1.39: doc timeline-scenario-anim — cellule #plot-anim-toggle = flux-cell + .organigram-logo sur le span 🎞 (plus icon-button / flux-button-cell sur la cellule ; voir organigramme.js v1.0.81)
 // - v1.1.38: terre.epoch + noyau.radiation — nouvelles époques v1.4.0 timeline : ☃ Sturtienne (hyst 1a), ⛄ Plein Snowball, ⛈ Sortie Marinoen (hyst 1b),
@@ -384,7 +385,8 @@ const nodes = [
                 luxSaturation: 1.0,
                 lightDistance: '7-{$ticTime}/3',
                 radius: radiusTerre * 0.8,
-                radiusExobase: radiusTerre*0.81 ,
+                // Exobase ~ surface + ε px : anneau d’atmosphère présent pour la géométrie / flèches, invisible (albédo z < Terre).
+                radiusExobase: radiusTerre * 0.8 + 0.25,
                 fillColor: 'rgba(0, 0, 0, 0)',
                 strokeColor: '#666666',
                 strokeSize: 0,

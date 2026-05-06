@@ -1,9 +1,10 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.74
+// Version 1.1.75
 // Date: [May 06, 2026]
 //
+// - v1.1.75: setEpoch — après DATA['📜']['👉']/🗿, syncEpochFromTimelinePointer() (bouton époque passe id ⚫ ; terre.epoch attend « Corps Noir »).
 // - v1.1.74: légende plot — libellés explicites (.../---/___) + °C en petit au-dessus de chaque style de trait.
 // - v1.1.73: updateLegend — 3 lignes (pointillés / tirets / plein) + libellé texte à droite uniquement ; plus de °C/°F/K ni T sol·eff sur les items ; toujours 3 courbes affichées.
 // - v1.1.72: doc organigram-buttons — wraps DETAILS/OBS uniquement ; SKIP #plot-anim-toggle n'embarque plus cette classe (organigramme.js v1.0.81).
@@ -1997,11 +1998,9 @@ function setEpoch(epochName, options) {
     // 🔒 Stocker l'ancienne époque AVANT de la changer
     const previousEpoch = window.RUNTIME_STATE.currentEpochName;
 
-    // Stocker le nom de l'époque globalement pour updateFluxLabels
-    window.RUNTIME_STATE.currentEpochName = epochName;
-    
     // 🔒 INITIALISER DATA['📜']['👉'] et DATA['📜']['🗿'] pour que calculations_albedo.js puisse accéder à l'époque
     // DATA existe toujours (dico.js, ordre synchrone).
+    // Nom UI (RUNTIME_STATE.currentEpochName) : syncEpochFromTimelinePointer après 👉 — pas epochName brut (ex. bouton → id ⚫ vs « Corps Noir » en config terre.epoch).
     if (typeof TIMELINE !== 'undefined') {
         if (!DATA['📜']) {
             DATA['📜'] = {};
@@ -2027,9 +2026,15 @@ function setEpoch(epochName, options) {
             DATA['📜']['🗿'] = epochId;
             // Initialiser aussi DATA['📅'] avec l'objet epoch complet
             DATA['📅'] = TIMELINE[epochIndex];
+            if (typeof window.syncEpochFromTimelinePointer !== 'function') {
+                throw new Error('[setEpoch] syncEpochFromTimelinePointer manquant (charger organigramme.js avant main.js)');
+            }
+            window.syncEpochFromTimelinePointer();
         } else {
-            console.error(`[setEpoch] ⚠️ Époque ${epochName} (${epochId}) non trouvée dans TIMELINE`);
+            throw new Error(`[setEpoch] Époque ${epochName} (${epochId}) non trouvée dans TIMELINE`);
         }
+    } else {
+        throw new Error('[setEpoch] TIMELINE indéfini');
     }
     
     // Source unique de précision UI : CONFIG_COMPUTE.convergencePrecisionK
