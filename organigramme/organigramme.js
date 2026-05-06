@@ -76,10 +76,10 @@
 // -------- Constantes Three.js terre : canvas + caméra fixés sur le cas le plus gros (Hadéen) --------
 // L'époque la plus volumineuse fixe la taille du canvas et la distance caméra.
 // Pour les autres époques, seul le rayon de la sphère (en unités monde) varie.
-const TERRE_MAX_RADIUS_PX = 99;                                      // = radiusTerre (90) × 1.1 (Hadéen) ; cf. configOrganigramme.js
-const TERRE_AXIS_SCALE    = 1.0;                                     // marge autour de la sphère pour laisser dépasser le cône d'axe nord
-const TERRE_CANVAS_PX     = TERRE_MAX_RADIUS_PX * 2 * TERRE_AXIS_SCALE; // taille du canvas (px), constante pour toutes les époques
-const TERRE_CAMERA_DISTANCE_FACTOR = 1 / 30.5;                       // calibrage historique (sphère Hadéen ≈ 80% de canvas non scalé)
+const TERRE_CANVAS_PX = 234;                                          // facteur #1: taille canvas Three.js
+const TERRE_ORTHO_VISIBLE_DIAMETER_RATIO = 0.44;                      // facteur #2: taille apparente de référence (0..1)
+const TERRE_RADIUS_VISUAL_GAIN = 0.05;                                // 0 = tailles époques neutralisées, 1 = effet complet
+const TERRE_MAX_RADIUS_PX = 99;                                       // référence technique (Hadéen)
 const NON_CHECKABLE_NODE_IDS = new Set(["co2", "methane", "h2o", "albedo-btn"]);
 
 // Source unique UI : CONFIG_COMPUTE pour la précision, window.DATA['🔘']['🔘🎞'] pour l'animation.
@@ -543,11 +543,10 @@ function initPlanetThreeJS(
   // Référence : radiusTerre = 90px, logoScale = 0.95 → planetSize = 171px
   // Dans planet-test.html : rayon 1.5 pour un container de 400px → facteur = 1.5/400 = 0.00375
   // Mais cette formule donne un rayon trop petit. Il faut ajuster.
-  // Test empirique : pour planetSize = 171px, on veut un rayon d'environ 1.5 (comme planet-test.html)
-  // Donc : sphereRadius = planetSize * (1.5 / 171) ≈ planetSize * 0.00877
-  // Pour frôler le cercle avec logoScale 0.95, on augmente : sphereRadius = planetSize * 0.01
-  // MAIS : peut-être que Three.js attend le diamètre, donc on multiplie par 2
-  const sphereRadius = planetSize * 0.01 * 2;
+  // Conversion interne px -> unités monde (constante locale, non exposée en réglage).
+  const sphereScaleWorld = 0.01;
+  const sphereRadius = planetSize * sphereScaleWorld;
+  const maxSphereRadius = TERRE_MAX_RADIUS_PX * sphereScaleWorld;
 
   const sphereSegments = 32; // Précision comme dans planet-test.html
   const lightContrast = 1.85; // Contraste éclairci pour astre plus lisible (était 1.5)
@@ -559,15 +558,22 @@ function initPlanetThreeJS(
   const scene = new THREE.Scene();
   scene.background = null; // Transparent pour s'intégrer dans le diagramme
 
-  // Caméra - distance fixe pour que la sphère remplisse le container
-  // Si on ajuste la distance proportionnellement au rayon, la taille visuelle reste la même
-  // Il faut utiliser une distance fixe basée sur la taille du container
-  const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-  // Distance fixe calculée empiriquement pour que la sphère remplisse le container et frôle le cercle
-  // Distance caméra : FIXE, calibrée sur le canvas constant. Avec ce calibrage, une Terre de
-  // rayon-monde = MAX × 0.02 (= Hadéen) occupe ≈ 80%/axisScale du canvas, soit ~62 % en laissant
-  // une marge pour le cône. Les Terres plus petites (autres époques) occupent proportionnellement moins.
-  const distance = TERRE_CANVAS_PX * TERRE_CAMERA_DISTANCE_FACTOR;
+  // Caméra orthographique : supprime l'effet perspective ("loupe").
+  // Le frustum suit l'overscan canvas pour garder la même taille apparente de la Terre.
+  const epochRatio = sphereRadius / maxSphereRadius;
+  const epochVisualScale = 1 + (epochRatio - 1) * TERRE_RADIUS_VISUAL_GAIN;
+  const orthoHalfHeight =
+    (maxSphereRadius * epochVisualScale) / TERRE_ORTHO_VISIBLE_DIAMETER_RATIO;
+  const orthoHalfWidth = orthoHalfHeight * (width / height);
+  const camera = new THREE.OrthographicCamera(
+    -orthoHalfWidth,
+    orthoHalfWidth,
+    orthoHalfHeight,
+    -orthoHalfHeight,
+    0.1,
+    1000,
+  );
+  const distance = maxSphereRadius * 8;
   camera.position.set(0, 0, distance);
   camera.lookAt(0, 0, 0);
 
@@ -783,7 +789,7 @@ function initPlanetThreeJS(
 
     sphere = new THREE.Mesh(geometry, material);
 
-    // Cône d'axe nord : enfant de la sphère, posé sur le pôle (axe Y local).
+    // Cônes d'axe : enfants de la sphère, posés sur les pôles (axe Y local).
     {
       const coneHeight = sphereRadius * 0.12;
       const coneBaseR = sphereRadius * 0.03;
@@ -793,9 +799,14 @@ function initPlanetThreeJS(
         : "";
       const coneColor = new THREE.Color(retroBase || "#ff4444");
       const coneMat = new THREE.MeshBasicMaterial({ color: coneColor });
-      const cone = new THREE.Mesh(coneGeom, coneMat);
-      cone.position.y = sphereRadius + coneHeight / 2;
-      sphere.add(cone);
+      const coneNorth = new THREE.Mesh(coneGeom, coneMat);
+      coneNorth.position.y = sphereRadius + coneHeight / 2;
+      sphere.add(coneNorth);
+
+      // Sud inversé : pointe au contact de la sphère, base vers l'extérieur.
+      const coneSouth = new THREE.Mesh(coneGeom, coneMat);
+      coneSouth.position.y = -(sphereRadius + coneHeight / 2);
+      sphere.add(coneSouth);
     }
 
     sphere.rotation.x = (tiltAngle * Math.PI) / 180;
