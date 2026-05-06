@@ -590,15 +590,15 @@ const nodes = [
     },
 
     {//co2
-    id: 'co2', type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI+0.3), left: [], right: [], top: [{ text: '0 ppm', dataId: 'co2_percent' }], bottom: [{ text: '0 W/m²', dataId: 'co2_forcing_wm' }], tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'co2', type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI+0.3), left: [], right: [], top: [{ text: '0 ppm', dataId: 'co2_percent' }], bottom: [{ text: '0 W/m²', dataId: 'co2_forcing_wm' }], tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//methane
-    id: 'methane', type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI/2+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI/2+0.3), left: [{ text: '0 ppm', dataId: 'ch4_percent' }], right: [], top: '', bottom: [{ text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'methane', type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI/2+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI/2+0.3), left: [{ text: '0 ppm', dataId: 'ch4_percent' }], right: [], top: '', bottom: [{ text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//h2o
-    id: 'h2o', type: 'button', readOnly: true, logo: LOGOS.H2O, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI*3/4+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI*3/4+0.3), left: [{ text: '0%', dataId: 'h2o_percent' }], right: [], top: '', bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'h2o', type: 'button', readOnly: true, logo: LOGOS.H2O, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI*3/4+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI*3/4+0.3), left: [{ text: '0%', dataId: 'h2o_percent' }], right: [], top: '', bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },//end h2o
 
     {//domSlot action
@@ -637,7 +637,7 @@ const nodes = [
     },
 
     {//albedo-btn
-     id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.62, y: earthCenterY - circleMiddleRadius * 1.15, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'rgba(255, 255, 255, 0.7)', strokeColor: 'rgba(0, 0, 0, 0)' 
+     id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.62, y: earthCenterY - circleMiddleRadius * 1.15, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//credits-paleomap

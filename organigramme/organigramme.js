@@ -1,12 +1,17 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.84
+// Version 1.0.89
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.89 Terre Three.js : ombre de la sphère sur les cônes (DirectionalLight shadowMap) ; cônes ne projettent pas.
+// Logs: v1.0.88 Terre Three.js : cônes cuivre moins métalliques + HemisphereLight atténué pour cohérence visuelle avec le terminateur du globe.
+// Logs: v1.0.87 Terre Three.js : HemisphereLight.position = direction soleil (comme DirectionalLight), évite cônes éclairés par le « ciel » Y+ par défaut.
+// Logs: v1.0.86 createCell : pas de préfixe on/off dans aria-label / data-tooltip pour CO₂ CH₄ H₂O Albédo (logos non togglables).
+// Logs: v1.0.85 Terre Three.js : cônes d'axe cuivre (StandardMaterial), nord pointe vers la Terre, HemisphereLight pour relief.
 // Logs: v1.0.84 Terre Three.js : retrait du vecteur d'axe nord (complexité/clip canvas), retour à la sphère seule.
 // Logs: v1.0.83 Terre Three.js : vecteur axe nord en volume (cylindre + chapeau conique), plus de simple trait plaqué.
 // Logs: v1.0.82 Terre Three.js : ajout d'un vecteur d'axe sortant du pôle nord (toujours visible, suit tilt+rotation)
@@ -489,6 +494,35 @@ function getPlanetTexturePathFromEpoch(startYears, infoTimeMa) {
   return "fonds/" + padded + "a.png";
 }
 
+/**
+ * Ombre portée : la sphère Terre projette sur les cônes d’axe ; les cônes ne projettent pas (castShadow off sur eux).
+ * À utiliser uniquement avec éclairage externe (DirectionalLight).
+ */
+function configureTerreDirectionalShadowAndRenderer(
+  renderer,
+  directionalLight,
+  radiusWorld,
+) {
+  if (!renderer || !directionalLight || !(radiusWorld > 0)) return;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  directionalLight.castShadow = true;
+  directionalLight.shadow.mapSize.width = 1024;
+  directionalLight.shadow.mapSize.height = 1024;
+  directionalLight.shadow.bias = -0.0008;
+  directionalLight.shadow.normalBias = 0.035;
+  const coneProtrusion = radiusWorld * 0.12;
+  const half = radiusWorld + coneProtrusion + radiusWorld * 0.08;
+  const cam = directionalLight.shadow.camera;
+  cam.near = 0.05;
+  cam.far = half * 8;
+  cam.left = -half;
+  cam.right = half;
+  cam.top = half;
+  cam.bottom = -half;
+  cam.updateProjectionMatrix();
+}
+
 // Fonction pour créer une cellule avec un tableau 3x3
 // Fonction pour initialiser Three.js pour l'effet planète
 // logoPath = texture fonds/*.png déduite de la date (getPlanetTexturePathFromEpoch) - JAMAIS charsImages !
@@ -586,6 +620,7 @@ function initPlanetThreeJS(
   renderer.setSize(width, height);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setClearColor(0x000000, 0); // Fond transparent
+  renderer.shadowMap.enabled = false;
 
   // Stocker les références de base maintenant que scene, camera, renderer sont créés
   canvas._threeJSData.scene = scene;
@@ -600,17 +635,14 @@ function initPlanetThreeJS(
   // Texture - vérifier le protocole (Three.js nécessite HTTP/HTTPS)
   let texture = null;
   const textureName = String(logoPath).split("/").pop();
-  if (window.location.protocol === "file:") {
+  const isFileProtocol = window.location.protocol === "file:";
+  if (isFileProtocol) {
     console.log("🖼️ [texture] chargement erreur (file:):", textureName);
     console.error(
       "[initPlanetThreeJS] ❌ ERREUR: Three.js nécessite HTTP/HTTPS !",
     );
     console.error("⚠️ Utilisez: http://localhost:8000/index.html");
-    createPlanetSphere(sphereRadius);
-    if (window._logStep) window._logStep("[2] texture Three.js (retour file:)");
-    else console.log("[2] texture Three.js (retour file:)");
-    if (window._logStepEnd) window._logStepEnd();
-    IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
+    // createPlanetSphere : après les lumières + définition de la fonction (évite TDZ sur directionalLight)
   } else {
     const textureLoader = new THREE.TextureLoader();
     let resolvedUrl = logoPath;
@@ -647,15 +679,23 @@ function initPlanetThreeJS(
     );
   }
 
+  // Direction « soleil » (monde), identique pour DirectionalLight et HemisphereLight — sinon le hemisphère
+  // reste calé sur Y+ par défaut et inverse le clair/obscur des cônes métalliques vs le terminateur du globe.
+  const lightDirection = new THREE.Vector3(-1, 1, 0).normalize();
+
   // Éclairage : lumière ambiante (intensité augmentée pour éclaircir l’astre globalement)
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
   scene.add(ambientLight);
+  // Ciel / sol : axe aligné sur lightDirection pour que le remplissage diffuse suive le même bord éclairé que le soleil.
+  const axisHemisphereLight = new THREE.HemisphereLight(0xffe8d4, 0x5c3d2e, 0.18);
+  axisHemisphereLight.position.copy(lightDirection);
+  scene.add(axisHemisphereLight);
+  canvas._threeJSData.axisHemisphereLight = axisHemisphereLight;
 
   // Éclairage : lumière directionnelle (comme le soleil) ou point au centre (éclairage interne)
   let directionalLight = null;
   let pointLight = null;
   const lightMode = lightDistance === 0 ? "internal" : "external";
-  const lightDirection = new THREE.Vector3(-1, 1, 0).normalize();
 
   switch (lightMode) {
     case "internal":
@@ -684,7 +724,7 @@ function initPlanetThreeJS(
           .multiplyScalar(actualLightDistance);
         directionalLight.position.copy(lightPosition);
       }
-      directionalLight.castShadow = false;
+      scene.add(directionalLight.target);
       scene.add(directionalLight);
       canvas._threeJSData.directionalLight = directionalLight;
       canvas._threeJSData.pointLight = null;
@@ -692,6 +732,14 @@ function initPlanetThreeJS(
       break;
     default:
       throw new Error("Mode de lumière inconnu");
+  }
+
+  if (lightMode === "external" && directionalLight) {
+    configureTerreDirectionalShadowAndRenderer(
+      renderer,
+      directionalLight,
+      sphereRadius,
+    );
   }
 
   // Ajuster le contraste de l'éclairage avec luxSaturation
@@ -724,6 +772,14 @@ function initPlanetThreeJS(
   // Pour éclairage interne, l'intensité ambiante est déjà ajustée lors de la création du PointLight
 
   let sphere = null;
+
+  if (isFileProtocol) {
+    createPlanetSphere(sphereRadius);
+    if (window._logStep) window._logStep("[2] texture Three.js (retour file:)");
+    else console.log("[2] texture Three.js (retour file:)");
+    if (window._logStepEnd) window._logStepEnd();
+    IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
+  }
 
   function disposeObject3D(object3d) {
     if (!object3d) return;
@@ -788,25 +844,31 @@ function initPlanetThreeJS(
     const material = new THREE.MeshStandardMaterial(materialOptions);
 
     sphere = new THREE.Mesh(geometry, material);
+    sphere.castShadow = true;
+    sphere.receiveShadow = false;
 
-    // Cônes d'axe : enfants de la sphère, posés sur les pôles (axe Y local).
+    // Cônes d'axe : pointe au pôle, base vers l'extérieur (nord = rotation miroir du sud).
     {
       const coneHeight = sphereRadius * 0.12;
       const coneBaseR = sphereRadius * 0.03;
       const coneGeom = new THREE.ConeGeometry(coneBaseR, coneHeight, 16);
-      const retroBase = (typeof getComputedStyle !== "undefined")
-        ? getComputedStyle(document.documentElement).getPropertyValue("--retro-base").trim()
-        : "";
-      const coneColor = new THREE.Color(retroBase || "#ff4444");
-      const coneMat = new THREE.MeshBasicMaterial({ color: coneColor });
-      const coneNorth = new THREE.Mesh(coneGeom, coneMat);
-      coneNorth.position.y = sphereRadius + coneHeight / 2;
-      sphere.add(coneNorth);
-
-      // Sud inversé : pointe au contact de la sphère, base vers l'extérieur.
+      const coneMat = new THREE.MeshStandardMaterial({
+        color: 0xb87333,
+        metalness: 0.22,
+        roughness: 0.72,
+      });
       const coneSouth = new THREE.Mesh(coneGeom, coneMat);
       coneSouth.position.y = -(sphereRadius + coneHeight / 2);
+      coneSouth.castShadow = false;
+      coneSouth.receiveShadow = true;
       sphere.add(coneSouth);
+
+      const coneNorth = new THREE.Mesh(coneGeom.clone(), coneMat.clone());
+      coneNorth.rotation.x = Math.PI;
+      coneNorth.position.y = sphereRadius + coneHeight / 2;
+      coneNorth.castShadow = false;
+      coneNorth.receiveShadow = true;
+      sphere.add(coneNorth);
     }
 
     sphere.rotation.x = (tiltAngle * Math.PI) / 180;
@@ -824,6 +886,16 @@ function initPlanetThreeJS(
     canvas._threeJSData.renderer = renderer;
     canvas._threeJSData.updateSphere = createPlanetSphere;
     canvas._threeJSData.currentRadius = currentSphereRadius;
+
+    if (lightMode === "external" && directionalLight) {
+      const r =
+        currentSphereRadius != null ? currentSphereRadius : sphereRadius;
+      configureTerreDirectionalShadowAndRenderer(
+        renderer,
+        directionalLight,
+        r,
+      );
+    }
 
     // Log supprimé (non essentiel)
   }
@@ -980,10 +1052,19 @@ function updatePlanetLighting() {
       if (threeJSData.ambientLight) {
         threeJSData.ambientLight.intensity = 1.5;
       }
+      if (threeJSData.renderer) {
+        threeJSData.renderer.shadowMap.enabled = false;
+      }
     } else {
       // Passer de DirectionalLight à PointLight
       if (threeJSData.directionalLight) {
+        if (threeJSData.directionalLight.target) {
+          threeJSData.scene.remove(threeJSData.directionalLight.target);
+        }
         threeJSData.scene.remove(threeJSData.directionalLight);
+      }
+      if (threeJSData.renderer) {
+        threeJSData.renderer.shadowMap.enabled = false;
       }
       const pointLight = new THREE.PointLight(
         0xffffff,
@@ -1028,6 +1109,11 @@ function updatePlanetLighting() {
         const ambientIntensity = Math.max(0.15, 0.45 - lightContrast * 0.05);
         threeJSData.ambientLight.intensity = ambientIntensity;
       }
+      configureTerreDirectionalShadowAndRenderer(
+        threeJSData.renderer,
+        threeJSData.directionalLight,
+        sphereRadius,
+      );
     } else {
       // Passer de PointLight à DirectionalLight
       if (threeJSData.pointLight) {
@@ -1047,7 +1133,7 @@ function updatePlanetLighting() {
         .clone()
         .multiplyScalar(actualLightDistance);
       directionalLight.position.copy(lightPosition);
-      directionalLight.castShadow = false;
+      threeJSData.scene.add(directionalLight.target);
       threeJSData.scene.add(directionalLight);
 
       const baseDirectionalIntensity = 0.1 + lightContrast * 1.2;
@@ -1063,6 +1149,21 @@ function updatePlanetLighting() {
         const ambientIntensity = Math.max(0.15, 0.45 - lightContrast * 0.05);
         threeJSData.ambientLight.intensity = ambientIntensity;
       }
+      configureTerreDirectionalShadowAndRenderer(
+        threeJSData.renderer,
+        directionalLight,
+        sphereRadius,
+      );
+    }
+  }
+
+  // HemisphereLight : même axe « ciel » que le soleil en mode directionnel ; Y+ par défaut au centre (point).
+  const sunHemiDir = new THREE.Vector3(-1, 1, 0).normalize();
+  if (threeJSData.axisHemisphereLight) {
+    if (threeJSData.directionalLight) {
+      threeJSData.axisHemisphereLight.position.copy(sunHemiDir);
+    } else {
+      threeJSData.axisHemisphereLight.position.set(0, 1, 0);
     }
   }
 
@@ -1689,47 +1790,13 @@ function createCell(
 
     // Ajouter tooltip personnalisé sur le cercle/logo si présent (au lieu de la cellule entière)
     if (tooltip) {
-      // Pour les boutons, afficher "on/off" + nom selon l'état
-      let tooltipText = tooltip;
-      if (
-        nodeId &&
-        (nodeId === "co2" ||
-          nodeId === "methane" ||
-          nodeId === "h2o" ||
-          nodeId === "albedo-btn")
-      ) {
-        // Déterminer l'état initial du bouton
-        const isChecked = cell.classList.contains("checked");
-        const stateText = isChecked ? "on" : "off";
-        // Mapper les noms pour l'affichage
-        let displayName = tooltip;
-        if (nodeId === "co2") displayName = "CO<sub>2</sub>";
-        else if (nodeId === "methane") displayName = "CH<sub>4</sub>";
-        else if (nodeId === "h2o") displayName = "H<sub>2</sub>O";
-        else if (nodeId === "albedo-btn") displayName = "Albedo";
-        // Format: "on/off<br>CO₂" (saut de ligne HTML, indices pour molécules)
-        tooltipText = `${stateText}/${isChecked ? "off" : "on"}<br>${displayName}`;
-      }
+      const tooltipText = tooltip;
       // Alt / a11y sur le logo EDS : aria-label et data-tooltip pour tooltip et lecteurs d’écran
       const altText = (ariaLabel && ariaLabel.trim()) ? ariaLabel : tooltipText.replace(/<br\s*\/?>/gi, " ").replace(/<sub>|<\/sub>/gi, "");
       circleBg.setAttribute("aria-label", altText);
       circleBg.setAttribute("data-tooltip", tooltipText);
       addCustomTooltip(circleBg, tooltipText);
-
-      // Pour les boutons, mettre à jour le tooltip quand l'état change
-      if (
-        nodeId &&
-        (nodeId === "co2" ||
-          nodeId === "methane" ||
-          nodeId === "h2o" ||
-          nodeId === "albedo-btn")
-      ) {
-        // Stocker une référence pour mettre à jour le tooltip
-        circleBg._tooltipElement = circleBg;
-        circleBg._tooltipNodeId = nodeId;
-        circleBg._tooltipBaseName = tooltip;
-      }
-      }
+    }
 
     cell.appendChild(circleBg);
   } else {
