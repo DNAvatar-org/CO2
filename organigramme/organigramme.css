@@ -1,9 +1,13 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.77
+// Version 1.0.81
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
+// Logs: v1.0.81 exceptions : coque EVENEMENT cursor default ; tuiles événements / SKIP / panneaux ⚗🛰 cursor pointer !important (surcharge img[alt] help).
+// Logs: v1.0.80 #visu-panel .flux-circle-bg cursor help !important — surcharge pointer/default/tooltips.js sur tous les logos cercles (dont albédo).
+// Logs: v1.0.79 exceptions albédo/tooltip sous #flux-diagram:not(.hide-organigram-arrows) pour gagner sur les règles suivantes ; override data-tooltip-initialized quand détail masqué.
+// Logs: v1.0.78 hide-organigram-arrows + détail albédo masqué : pointer-events none (visibility:hidden laisse encore les hits ; curseur help inactif).
 // Logs: v1.0.77 SKIP #plot-anim-toggle sans icon-button/.flux-button-cell (.icon-button dans style.css = grayscale sur tout le nœud) ; pulse/hover `.organigram-logo` fusionné (timeline + panneaux + SKIP)
 // Logs: v1.0.76 classe .organigram-buttons sur panneaux #organigram-config-wrap / #observation-config-wrap (main.js) ; layout par id (#plot-anim-toggle SKIP hors de ce jeu depuis v1.0.77)
 // Logs: v1.0.74 SKIP : flux-circle-bg sans grayscale (action directe) ; titres DETAILS/OBS — glow titre au seul survol titre ; EVENEMENT / SKIP — glow titre au survol zone ; pulse logos = event-logo-pulse / event-logo-pulse-img (ergo_button) + hover blanc
@@ -615,6 +619,14 @@
     cursor: default;
     pointer-events: auto;
 }
+/* Albédo / bary nuages : même avec data-tooltip-initialized, pas d’interaction si ⚗ masque le détail (hide-organigram-arrows) */
+#flux-diagram.hide-organigram-arrows .flux-label[data-id="albedo_percents"][data-tooltip-initialized="true"],
+#flux-diagram.hide-organigram-arrows .flux-label[data-id="fine_tuning_cloud_bary"][data-tooltip-initialized="true"],
+#flux-diagram.hide-organigram-arrows .flux-label[data-id="albedo_percents"][data-tooltip]:not([data-tooltip=""]),
+#flux-diagram.hide-organigram-arrows .flux-label[data-id="fine_tuning_cloud_bary"][data-tooltip]:not([data-tooltip=""]) {
+    pointer-events: none;
+    cursor: default;
+}
 .flux-circle-bg:hover {
     transform: scale(1.3);
 }
@@ -907,17 +919,18 @@
     pointer-events: none;
 }
 
-/* Exceptions : labels interactifs (tooltip data-id spécifiques) */
-.flux-label[data-id="albedo_percents"],
-.flux-label[data-id="fine_tuning_cloud_bary"],
-.flux-grid-item:has(.flux-label[data-id="albedo_percents"]),
-.flux-grid-item:has(.flux-label[data-id="fine_tuning_cloud_bary"]) {
+/* Exceptions : labels interactifs (tooltip) — uniquement si détail PILOTAGE visible (⚗ ON : pas hide-organigram-arrows).
+   Sinon visibility:hidden sur .buttonData laisse les hits actifs (spec CSS) + curseur help fantôme. */
+#flux-diagram:not(.hide-organigram-arrows) .flux-label[data-id="albedo_percents"],
+#flux-diagram:not(.hide-organigram-arrows) .flux-label[data-id="fine_tuning_cloud_bary"],
+#flux-diagram:not(.hide-organigram-arrows) .flux-grid-item:has(.flux-label[data-id="albedo_percents"]),
+#flux-diagram:not(.hide-organigram-arrows) .flux-grid-item:has(.flux-label[data-id="fine_tuning_cloud_bary"]) {
     pointer-events: auto;
     cursor: help;
     user-select: none;
 }
-.flux-label-container:has(.flux-label[data-id="albedo_percents"]),
-.flux-label-container:has(.flux-label[data-id="fine_tuning_cloud_bary"]) {
+#flux-diagram:not(.hide-organigram-arrows) .flux-label-container:has(.flux-label[data-id="albedo_percents"]),
+#flux-diagram:not(.hide-organigram-arrows) .flux-label-container:has(.flux-label[data-id="fine_tuning_cloud_bary"]) {
     pointer-events: auto;
     cursor: help;
     user-select: none;
@@ -1438,4 +1451,7 @@ Peut être réactivé plus tard avec une autre couleur ou pour d'autres époques
 }
 */
 
+#visu-panel .flux-circle-bg,#visu-panel img[alt]:not([alt=""]):not(button img),#visu-panel [role="img"][aria-label]:not([aria-label=""]){cursor:help!important;}
+#visu-panel .flux-cell--scenario-logos-shell .flux-circle-bg{cursor:default!important;}
+#visu-panel #timeline-events-logos .organigram-logo,#visu-panel #timeline-events-logos .organigram-logo img,#visu-panel #plot-anim-toggle .organigram-logo,#visu-panel #plot-anim-toggle .organigram-logo img,#visu-panel .organigram-buttons .organigram-logo,#visu-panel .organigram-buttons .organigram-logo img{cursor:pointer!important;}
 

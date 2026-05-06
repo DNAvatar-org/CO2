@@ -1,8 +1,16 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.19
- * Date: [Apr 30, 2026]
+ * Version 1.2.27
+ * Date: [May 06, 2026]
 * logs :
+ *   - v1.2.27: updateEpochActions — lectures directes DATA/configOrganigramme/TIMELINE ; SKIP toggle sans garde whRoot&& redondante sur 🕰.
+ *   - v1.2.26: export tryEpochEndSkipAfterEvent pour timeline.js ; clamp infoTimeMa avec TIMELINE_END_SLACK_MA (timeline.js v1.0.19).
+ *   - v1.2.25: retrait gardes typeof window.* sur helpers timeline (contrat de chargement : timeline.js avant events.js).
+ *   - v1.2.24: Fin d'époque — isPastCurrentEpochEndMa (timeline.js) + TIMELINE_EPOCH_BOUNDS ; clamp infoTimeMa sur |▶−◀|/1e6 ; plus de seuil 500 Ma codé en dur pour 🔥/⚫.
+ *   - v1.2.23: Toute transition d'époque après action événementielle → goNextEpochViaSkip() (togglePlotAnim), plus de setEpoch direct dans ces chemins ; helper centralisé.
+ *   - v1.2.22: Corps Noir fin de temps (≥500 Ma) — même effet que SKIP (togglePlotAnim) au lieu de setEpoch('Hadéen') direct (curseur timeline + 🔘🎞 + époque suivante TIMELINE).
+ *   - v1.2.21: 💫 Hadéen (🔥) — toujours config:applyThenCompute après tic (plus de garde PLOT_PANEL_READY : chaque événement = un run).
+ *   - v1.2.20: clic ☄️ — incrémenter 📿☄️ (pas 📿💫) pour que getMasses fasse ⚖️💧 += 🔺⚖️💧☄️×📿☄️ (albédo glace ⚫).
  *   - v1.2.19: boutons scénario #timeline-events-logos — classe unique organigram-logo (retrait timeline-event-logo + organigram-unified-logo) ; styles organigramme.css.
  *   - v1.2.18: SKIP — classe plot-anim-toggle--scenario-hidden (display:none !important) si 📱 ou 🕰.order.length===1 ; retire visibility inline.
  *   - v1.2.17: SKIP (#plot-anim-toggle) — visibility avant guard eventsLogos ; masqué si 🕰.order.length===1 (sinon visible) ; 📱 year-indexed inchangé.
@@ -13,7 +21,7 @@
 * See https://commonsclause.com/ for full terms.
 
  *   - Initial version: extraction de updateEpochActions depuis main.js
- *   - Corps noir météorite: config via 🕰.☄️, id époque DATA['📜']['🗿'], getEpochDateConfig + runComputeInParent + 📿💫
+ *   - Corps noir météorite: config via 🕰.☄️, id époque DATA['📜']['🗿'], getEpochDateConfig + runComputeInParent + 📿☄️
  *   - switch(epochId) ⚫/🔥/default; config unique ▶/◀/🔺🧲🌕💫; getEpochConfigById; applyHadeenFluxFromConfig; plus de corps-noir/hadeen
  *   - TicTime logo comme action pour toutes les époques; météorite de glace uniquement Corps noir (⚫) et Hadéen (🔥)
  *   - ⚫ sans TicTime (Météorite + Impact uniquement); default (Archéen+) TicTime affiché sans condition 🕰.💫
@@ -32,33 +40,66 @@
  *   - v1.2.14: clic 💫 — si 🕰.💫 définit 🍰⚽, copie dans 📜🔺🍰⚽ (ex. 0) puis _veilTimelinePulseActive=false pour ré-autoriser impulsion racine EPOCH['🔺🍰⚽'] au prochain 📿💫===0
  */
 
-// Core globals requis : addCustomTooltip, hideTooltip, setEpoch, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
+// Core globals requis : addCustomTooltip, hideTooltip, togglePlotAnim (SKIP), getEpochAtTimelineIndex, getCurrentEpochDurationMa, isPastCurrentEpochEndMa, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
 // Module plot optionnel : géré par window.PLOT_PANEL_READY (main.js), accès en blocs if (window.PLOT_PANEL_READY) { ... window.plotData ... }.
+
+/** Transition vers l'époque suivante comme un clic SKIP (#plot-anim-toggle) — loader_panels.togglePlotAnim. */
+function goNextEpochViaSkip() {
+    window.togglePlotAnim();
+}
+
+/** Époques géologiques (▶ > ◀) : borne infoTimeMa ; si dans le slack de fin, snap sur dur (aligné affichage + isPastCurrentEpochEndMa). */
+function clampInfoTimeMaToGeologicEpochDuration() {
+    const epoch = window.getEpochAtTimelineIndex();
+    if (!epoch || epoch['▶'] == null || epoch['◀'] == null) return;
+    if (epoch['▶'] <= epoch['◀']) return;
+    const dur = (epoch['▶'] - epoch['◀']) / 1e6;
+    const slack = window.TIMELINE_END_SLACK_MA != null ? window.TIMELINE_END_SLACK_MA : 0.05;
+    if (window.infoTimeMa >= dur - slack) window.infoTimeMa = dur;
+    else if (window.infoTimeMa > dur) window.infoTimeMa = dur;
+}
+
+/**
+ * Après mise à jour du temps : si la date frise (getTimelineCurrentMa) dépasse la fin d'époque, SKIP.
+ * @param {function} [runPopOrder] appelé avant SKIP si fourni (ex. popOrderAfterAction('💫')).
+ */
+function tryEpochEndSkipAfterEvent(runPopOrder) {
+    clampInfoTimeMaToGeologicEpochDuration();
+    if (!window.isPastCurrentEpochEndMa()) return false;
+    const TIMELINE = window.TIMELINE;
+    const DATA = window.DATA;
+    if (!TIMELINE || !TIMELINE.length || !DATA || !DATA['📜']) return false;
+    const epochId = DATA['📜']['🗿'];
+    const idxCur = TIMELINE.findIndex(function (e) { return e['📅'] === epochId; });
+    if (idxCur < 0 || idxCur + 1 >= TIMELINE.length) return false;
+    if (runPopOrder) runPopOrder();
+    goNextEpochViaSkip();
+    return true;
+}
 
 // Fonction pour mettre à jour les actions disponibles selon l'époque
 // Après 🎞 : ☄️ / 🎇 / 💫 selon 🕰.order (TIMELINE) — une seule action visible (order[0]), queue consommée au clic ; sinon ACTION_BY_DATE ; géologique sans order : 🕰.🌋 + 🕰.💫.
 window.updateEpochActions = function () {
+    window.refreshTimelineEpochBounds();
     const eventsLogos = document.getElementById('timeline-events-logos');
     const animToggleBtn = document.getElementById('plot-anim-toggle');
 
-    const currentEpochName = window.RUNTIME_STATE.currentEpochName || 'Corps Noir';
-    const getEpochConfigById = (id) => (window.configOrganigramme && window.configOrganigramme.timeline)
-        ? window.configOrganigramme.timeline.find(e => e.type === 'epoch' && e.id === id) : null;
-    const epochId = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'] != null ? window.DATA['📜']['🗿'] : '';
+    const currentEpochName = window.RUNTIME_STATE.currentEpochName;
+    const getEpochConfigById = (id) =>
+        window.configOrganigramme.timeline.find((e) => e.type === 'epoch' && e.id === id);
+    const epochId = window.DATA['📜']['🗿'];
     const timelineEpoch = getEpochConfigById(epochId);
-    const startYears = timelineEpoch && timelineEpoch['▶'] != null ? timelineEpoch['▶'] : 5e9;
-    const infoTimeMa = (window.infoTimeMa != null ? window.infoTimeMa : 0);
+    const startYears = timelineEpoch['▶'];
+    const infoTimeMa = window.infoTimeMa;
 
     // 🎞 SKIP : masqué si 📱 (buckets année sous 🕰) ; masqué si une seule action restante dans 🕰.order (length === 1) ; affiché sinon.
-    const _tlEpoch = window.TIMELINE ? window.TIMELINE.find(function(e) { return e['📅'] === epochId; }) : null;
-    const whRoot = _tlEpoch && _tlEpoch['🕰'];
+    const _tlEpoch = window.TIMELINE.find((e) => e['📅'] === epochId);
+    const whRoot = _tlEpoch['🕰'];
     if (animToggleBtn) {
-        const _hasEmissions = whRoot && Object.keys(whRoot).some(function(k) { return !isNaN(Number(k)); });
-        const orderArr = whRoot && Array.isArray(whRoot.order) ? whRoot.order : null;
+        const _hasEmissions = Object.keys(whRoot).some(function(k) { return !isNaN(Number(k)); });
+        const orderArr = Array.isArray(whRoot.order) ? whRoot.order : null;
         const orderedActionCount = orderArr !== null ? orderArr.length : null;
-        const directActionCount = whRoot
-            ? ['☄️', '🎇', '🌋', '💫'].filter(function(k) { return whRoot[k] != null; }).length
-            : 0;
+        const directActionCount = ['☄️', '🎇', '🌋', '💫'].filter(function(k) { return whRoot[k] != null; }).length;
         const actionCount = orderedActionCount !== null ? orderedActionCount : directActionCount;
         const hideSkip = _hasEmissions || actionCount <= 1;
         animToggleBtn.classList.toggle('plot-anim-toggle--scenario-hidden', hideSkip);
@@ -227,19 +268,8 @@ window.updateEpochActions = function () {
                 D['📜']['_veilTimelinePulseActive'] = false;
             }
             window.infoTimeMa += stepMa;
-            if (_tlEpoch['▶'] != null && _tlEpoch['◀'] != null && _tlEpoch['▶'] > _tlEpoch['◀']) {
-                const epochDurMa = (_tlEpoch['▶'] - _tlEpoch['◀']) / 1e6;
-                if (window.infoTimeMa >= epochDurMa) {
-                    window.infoTimeMa = epochDurMa;
-                    const _idxCur = window.TIMELINE.findIndex(e => e['📅'] === epochId);
-                    if (_idxCur >= 0 && _idxCur + 1 < window.TIMELINE.length) {
-                        const _nextId = window.TIMELINE[_idxCur + 1]['📅'];
-                        popOrderAfterAction(buttonKey);
-                        window.setEpoch(window.epochName(_nextId));
-                        return;
-                    }
-                }
-            }
+            clampInfoTimeMaToGeologicEpochDuration();
+            if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction(buttonKey); })) return;
             window.COMPUTE.getEpochDateConfig();
             window.COMPUTE.getNoyau();
             if (!window.FLUX) window.FLUX = {};
@@ -277,7 +307,7 @@ window.updateEpochActions = function () {
                         window.isIceChange = true;
                         window.lastIceLevel = undefined;
                         DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
-                        DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
+                        DATA['📜']['📿☄️'] = (DATA['📜']['📿☄️'] || 0) + 1;
                         window.infoTimeMa += stepMaM;
                         window.COMPUTE.getEpochDateConfig();
                         window.COMPUTE.getNoyau();
@@ -303,15 +333,17 @@ window.updateEpochActions = function () {
                         window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
                         window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
                         DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
-                        DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
-                        window.infoTimeMa = Math.min(500, window.infoTimeMa + stepMaM);
+                        DATA['📜']['📿☄️'] = (DATA['📜']['📿☄️'] || 0) + 1;
+                        const durMaM = window.getCurrentEpochDurationMa();
+                        if (durMaM == null || !Number.isFinite(durMaM)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ☄️ après 🔥');
+                        window.infoTimeMa = Math.min(durMaM, window.infoTimeMa + stepMaM);
                         applyHadeenFluxFromConfig();
                         if (!window.FLUX) window.FLUX = {};
                         window.FLUX.yAxisRecalcOnNextFinish = true;
                         window.updateTimeline();
                         window.updateHadeenTexture();
                         checkDateEvents();
-                        if (window.infoTimeMa >= 500) window.setEpoch('Archéen');
+                        if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction('☄️'); })) return;
                         const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
                         window.updateH2OLevelDirect(h2o_total);
                         popOrderAfterAction('☄️');
@@ -320,7 +352,6 @@ window.updateEpochActions = function () {
                 eventsLogos.appendChild(iceMeteorBtn);
             } else if (act === '🎇') {
                 const targetFromConfig = cfg['⏩'];
-                const targetName = targetFromConfig ? (window.epochName(cfg['⏩'])) : 'Hadéen';
                 const bigImpactBtn = document.createElement('img');
                 bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
                 bigImpactBtn.alt = '';
@@ -341,7 +372,7 @@ window.updateEpochActions = function () {
                         }
                         window.UI_STATE.maximiseData = true;
                         popOrderAfterAction('🎇');
-                        window.setEpoch(targetName);
+                        goNextEpochViaSkip();
                     } else {
                         advanceGeologicTicOrder(window.DATA, cfg['🔺⏳'], '🎇');
                     }
@@ -385,21 +416,20 @@ window.updateEpochActions = function () {
                                 window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
                             }
                         }
+                        const durMaT = window.getCurrentEpochDurationMa();
+                        if (durMaT == null || !Number.isFinite(durMaT)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour 💫 🔥');
                         window.infoTimeMa = (window.infoTimeMa || 0) + stepMaT;
-                        if (window.infoTimeMa > 500) window.infoTimeMa = 500;
-                        window.DATA['📜']['bary'] = window.infoTimeMa / 500;
-                        if (window.infoTimeMa >= 500) {
-                            popOrderAfterAction('💫');
-                            window.setEpoch('Archéen');
-                            return;
-                        }
+                        if (window.infoTimeMa > durMaT) window.infoTimeMa = durMaT;
+                        window.DATA['📜']['bary'] = durMaT > 0 ? window.infoTimeMa / durMaT : 0;
+                        if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction('💫'); })) return;
                         window.updateTimeline();
                         window.updateHadeenTexture();
                         applyHadeenFluxFromConfig();
-                        if (window.PLOT_PANEL_READY) {
-                            const current_co2_fraction = window.plotData.co2_ppm * 1e-6;
-                            window.updateCO2LevelDirect(current_co2_fraction);
-                        }
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '💫' });
                         checkDateEvents();
                         popOrderAfterAction('💫');
                     });
@@ -445,7 +475,7 @@ window.updateEpochActions = function () {
                 window.isIceChange = true;
                 window.lastIceLevel = undefined;
                 DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
-                DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
+                DATA['📜']['📿☄️'] = (DATA['📜']['📿☄️'] || 0) + 1;
                 window.infoTimeMa += stepMa;
                 window.COMPUTE.getEpochDateConfig();
                 window.COMPUTE.getNoyau();
@@ -470,15 +500,17 @@ window.updateEpochActions = function () {
                     window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
                     window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
                     DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
-                    DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
-                    window.infoTimeMa = Math.min(500, window.infoTimeMa + stepMa);
+                    DATA['📜']['📿☄️'] = (DATA['📜']['📿☄️'] || 0) + 1;
+                    const durMaIce = window.getCurrentEpochDurationMa();
+                    if (durMaIce == null || !Number.isFinite(durMaIce)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ☄️ 🔥 (ACTION_BY_DATE)');
+                    window.infoTimeMa = Math.min(durMaIce, window.infoTimeMa + stepMa);
                     applyHadeenFluxFromConfig();
                     if (!window.FLUX) window.FLUX = {};
                     window.FLUX.yAxisRecalcOnNextFinish = true;
                     window.updateTimeline();
                     window.updateHadeenTexture();
                     checkDateEvents();
-                    if (window.infoTimeMa >= 500) window.setEpoch('Archéen');
+                    if (tryEpochEndSkipAfterEvent(null)) return;
                     const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
                     window.updateH2OLevelDirect(h2o_total);
                 });
@@ -486,9 +518,6 @@ window.updateEpochActions = function () {
             eventsLogos.appendChild(iceMeteorBtn);
         }
     } else if (actionId === '🎇') {
-        const epochConfig = getEpochConfigById(epochId);
-        const targetFromConfig = epochConfig && epochConfig['🕰'] && epochConfig['🕰']['🎇'] && epochConfig['🕰']['🎇']['⏩'];
-        const targetName = targetFromConfig ? (window.epochName(epochConfig['🕰']['🎇']['⏩'])) : 'Hadéen';
         const bigImpactBtn = document.createElement('img');
         bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
         bigImpactBtn.alt = '';
@@ -507,7 +536,7 @@ window.updateEpochActions = function () {
                 window.UI_STATE.savedCH4 = 0;
             }
             window.UI_STATE.maximiseData = true;
-            window.setEpoch(targetName);
+            goNextEpochViaSkip();
         });
         eventsLogos.appendChild(bigImpactBtn);
     } else {
@@ -525,18 +554,8 @@ window.updateEpochActions = function () {
                     D['📜']['_veilTimelinePulseActive'] = false;
                 }
                 window.infoTimeMa += stepMa;
-                if (_tlEpoch['▶'] != null && _tlEpoch['◀'] != null && _tlEpoch['▶'] > _tlEpoch['◀']) {
-                    const epochDurMa = (_tlEpoch['▶'] - _tlEpoch['◀']) / 1e6;
-                    if (window.infoTimeMa >= epochDurMa) {
-                        window.infoTimeMa = epochDurMa;
-                        const _idxCur = window.TIMELINE.findIndex(e => e['📅'] === epochId);
-                        if (_idxCur >= 0 && _idxCur + 1 < window.TIMELINE.length) {
-                            const _nextId = window.TIMELINE[_idxCur + 1]['📅'];
-                            window.setEpoch(window.epochName(_nextId));
-                            return;
-                        }
-                    }
-                }
+                clampInfoTimeMaToGeologicEpochDuration();
+                if (tryEpochEndSkipAfterEvent(null)) return;
                 window.COMPUTE.getEpochDateConfig();
                 window.COMPUTE.getNoyau();
                 if (!window.FLUX) window.FLUX = {};
@@ -584,20 +603,20 @@ window.updateEpochActions = function () {
                                 window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
                             }
                         }
+                        const durMaTb = window.getCurrentEpochDurationMa();
+                        if (durMaTb == null || !Number.isFinite(durMaTb)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour 💫 🔥 (ACTION_BY_DATE)');
                         window.infoTimeMa = (window.infoTimeMa || 0) + stepMa;
-                        if (window.infoTimeMa > 500) window.infoTimeMa = 500;
-                        window.DATA['📜']['bary'] = window.infoTimeMa / 500;
-                        if (window.infoTimeMa >= 500) {
-                            window.setEpoch('Archéen');
-                            return;
-                        }
+                        if (window.infoTimeMa > durMaTb) window.infoTimeMa = durMaTb;
+                        window.DATA['📜']['bary'] = durMaTb > 0 ? window.infoTimeMa / durMaTb : 0;
+                        if (tryEpochEndSkipAfterEvent(null)) return;
                         window.updateTimeline();
                         window.updateHadeenTexture();
                         applyHadeenFluxFromConfig();
-                        if (window.PLOT_PANEL_READY) {
-                            const current_co2_fraction = window.plotData.co2_ppm * 1e-6;
-                            window.updateCO2LevelDirect(current_co2_fraction);
-                        }
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '💫' });
                         checkDateEvents();
                     });
                 } else {
@@ -614,8 +633,8 @@ window.updateEpochActions = function () {
 // Fonction pour vérifier les événements automatiques selon la date
 function checkDateEvents() {
     const currentEpoch = window.RUNTIME_STATE.currentEpochName || '';
-    const infoTimeMa = window.infoTimeMa || 0;
-    if (currentEpoch !== 'Corps Noir' || infoTimeMa < 500) return;
+    if (currentEpoch !== 'Corps Noir') return;
+    if (!window.isPastCurrentEpochEndMa()) return;
 
     window.hideTooltip();
     const h2o_base = window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0;
@@ -629,10 +648,12 @@ function checkDateEvents() {
         window.UI_STATE.savedCH4 = 0;
     }
     window.UI_STATE.maximiseData = true;
-    window.setEpoch('Hadéen');
+    goNextEpochViaSkip();
 }
 
 // Exposer checkDateEvents globalement
 window.checkDateEvents = checkDateEvents;
+
+window.tryEpochEndSkipAfterEvent = tryEpochEndSkipAfterEvent;
 
 

@@ -1,12 +1,17 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.92
+// Version 1.0.97
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.97 Terre Three.js : curseur move (croix 4 directions) au survol du canvas ; grabbing pendant press/drag (+ body si sortie du canvas).
+// Logs: v1.0.96 sync img.alt sur cercles tooltips (CH₄/Soleil/EDS…) ; même alt plat que aria-label.
+// Logs: v1.0.95 logAlbedoUiDiagnostic : snapshot JSON (💧/⚖️/🪩/hasNoAtmosphere) → logs/albedoUi.txt ou window.__ALBEDO_UI_LOG.
+// Logs: v1.0.94 ice_coverage sans atm : 💧.🍰💧🧊 avant RUNTIME.h2oIceFractionFromCalculation (évite ~74 % glace à l’init ⚫ sans eau).
+// Logs: v1.0.93 détail albedo_percents sans atm (⚫) : 🧊/🌍 depuis 💧.🍰💧🧊 (stock eau) pas 🪩.🍰🪩🧊 (cap géométrique 100%).
 // Logs: v1.0.92 syncEpochFromTimelinePointer : 👉 source de vérité (réconcilie 🗿 + currentEpochName) ; retrait fallback epoch Hadéen silencieux sur terre/albedo.
 // Logs: v1.0.91 Terre Three.js : drag horizontal inversé au-dessus du pôle sud projeté (clientY < ySud écran).
 // Logs: v1.0.90 Terre Three.js : drag X/Y + inertie ω·dt ; reprise auto-rotation au release (singleton rAF) ; clic Terre sans toggle après drag.
@@ -278,6 +283,10 @@ function updateButtonTooltip(cell, circleBg) {
   const altText = tooltipText.replace(/<br\s*\/?>/gi, " ").replace(/<sub>|<\/sub>/gi, "");
   circleBg.setAttribute("aria-label", altText);
   circleBg.setAttribute("data-tooltip", tooltipText);
+  const plainAlt = altText.replace(/<[^>]*>/g, "").trim();
+  circleBg.querySelectorAll("img").forEach((img) => {
+    img.alt = plainAlt;
+  });
 }
 
 // Fonction pour créer un rectangle avec des facteurs
@@ -949,7 +958,8 @@ function initPlanetThreeJS(
   // Drag : tilt Y + rotation X ; une seule boucle animate() ; inertie puis retour à ω_auto constant.
   let rotationY = sphere ? sphere.rotation.y : 0;
   container.style.pointerEvents = "none";
-  canvas.style.pointerEvents = "none";
+  canvas.style.pointerEvents = "auto";
+  canvas.style.cursor = "move";
   canvas.style.position = "relative";
   canvas.style.zIndex = "1";
 
@@ -996,6 +1006,8 @@ function initPlanetThreeJS(
     _lastClientY = e.clientY;
     _lastMoveTs = performance.now();
     document.body.style.userSelect = "none";
+    canvas.style.cursor = "grabbing";
+    document.body.style.cursor = "grabbing";
   }
   function _onDocMove(e) {
     if (!_planetDragSession || !sphere) return;
@@ -1025,6 +1037,8 @@ function initPlanetThreeJS(
     if (!_planetDragSession) return;
     _planetDragSession = false;
     document.body.style.userSelect = "";
+    canvas.style.cursor = "move";
+    document.body.style.cursor = "";
     if (_dragAccumDist >= PLANET_DRAG_CLICK_THRESHOLD_PX) {
       window.__planetTerreSkipNextClick = true;
     }
@@ -1929,6 +1943,10 @@ function createCell(
       const altText = (ariaLabel && ariaLabel.trim()) ? ariaLabel : tooltipText.replace(/<br\s*\/?>/gi, " ").replace(/<sub>|<\/sub>/gi, "");
       circleBg.setAttribute("aria-label", altText);
       circleBg.setAttribute("data-tooltip", tooltipText);
+      const plainAlt = altText.replace(/<[^>]*>/g, "").trim();
+      circleBg.querySelectorAll("img").forEach((img) => {
+        img.alt = plainAlt;
+      });
       addCustomTooltip(circleBg, tooltipText);
     }
 
@@ -5062,20 +5080,21 @@ ORG.updateFluxLabels = function (eventId) {
   const flux_reflected = SOLAR_FLUX_AVERAGE * albedo_num;
 
   // Calculer la couverture de glace (même logique que calculateAlbedo)
-  // 🔒 CORRECTION : En mode "corps noir", on peut avoir de la glace des météorites
+  // 🔒 Sans atmosphère : la fraction RUNTIME.h2oIceFractionFromCalculation suit le modèle « sphère climat » (forte glace si T<0 °C).
+  //    En ⚫ sans eau (💧.🍰💧🧊=0), cela affichait ~70 %+ de glace par défaut — la source d’affichage reste 💧.🍰💧🧊 (cohérent albedo_percents).
   let ice_coverage = 0;
   let cloud_percent = 0;
 
-  // 🔒 PRIORITÉ 1 : Utiliser la valeur calculée par calculateAlbedo (la plus récente et précise)
-  if (window.RUNTIME_STATE.h2oIceFractionFromCalculation !== undefined) {
+  if (hasNoAtmosphere) {
+    ice_coverage = Math.min(
+      1,
+      Math.max(0, DATA["💧"]["🍰💧🧊"]),
+    );
+  } else if (window.RUNTIME_STATE.h2oIceFractionFromCalculation !== undefined) {
     ice_coverage = Math.min(
       1,
       Math.max(0, window.RUNTIME_STATE.h2oIceFractionFromCalculation),
     );
-  } else if (hasNoAtmosphere) {
-    // Corps noir sans glace calculée : pas d'albedo (pas d'atmosphère, pas d'eau)
-    ice_coverage = 0;
-    cloud_percent = 0;
   } else {
     const T_surface_C = T0_num - 273.15;
     const volcanoIceReduction =
@@ -5128,11 +5147,8 @@ ORG.updateFluxLabels = function (eventId) {
   // 🔒 CORRECTION : Calculer cloud_percent dans tous les cas (sauf si forcé à 0 par corps noir)
   cloud_percent = parseFloat((cloud_coverage_num * 100).toFixed(1));
 
-  // 🔒 CORRECTION : Si on a utilisé h2oIceFractionFromCalculation, ne pas écraser cloud_percent si pas d'atmosphère
-  if (
-    hasNoAtmosphere &&
-    window.RUNTIME_STATE.h2oIceFractionFromCalculation === undefined
-  ) {
+  // Pas de nuages sans atmosphère (indépendamment de RUNTIME.h2oIceFractionFromCalculation).
+  if (hasNoAtmosphere) {
     cloud_percent = 0;
   }
 
@@ -5273,8 +5289,10 @@ ORG.updateFluxLabels = function (eventId) {
   );
 
   if (hasNoAtmosphere) {
-    const ice_cov_corps_noir = parseFloat((DATA["🪩"]["🍰🪩🧊"] * 100).toFixed(1));
-    const land_cov_corps_noir = parseFloat((DATA["🪩"]["🍰🪩🌍"] * 100).toFixed(1));
+    // Couvertures affichées = partition eau (🍰💧🧊), cohérente avec h2o v1.0.25 (cap ~10 %) — pas 🪩.🍰🪩🧊 (peut saturer à 100 %).
+    const ice_stock = DATA["💧"]["🍰💧🧊"];
+    const ice_cov_corps_noir = parseFloat((ice_stock * 100).toFixed(1));
+    const land_cov_corps_noir = parseFloat(((1 - ice_stock) * 100).toFixed(1));
     const components = [
       {
         emoji: "🎾",
@@ -5431,6 +5449,50 @@ ORG.updateFluxLabels = function (eventId) {
       { emoji: "🌍", coverage: land_cov, albedo: albedoCoeff["🪩🍰🌍"].toFixed(2) },
     ];
     albedoBreakdown = createAlbedoComponents(components);
+  }
+  if (window.CONFIG_COMPUTE && window.CONFIG_COMPUTE.logAlbedoUiDiagnostic === true) {
+    var _geo = null;
+    try {
+      _geo = window.GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName);
+    } catch (_e) {
+      _geo = null;
+    }
+    var _traceAlbedoUi = {
+      t: Date.now(),
+      eventId: eventId,
+      currentEpochName: window.RUNTIME_STATE.currentEpochName,
+      epochId: DATA["📜"]["🗿"],
+      hasNoAtmosphere: hasNoAtmosphere,
+      geoAtmKg: _geo ? _geo.total_atmosphere_mass_kg : null,
+      masses: {
+        atm: DATA["⚖️"]["⚖️🫧"],
+        h2o: DATA["⚖️"]["⚖️💧"],
+        meteorTics: DATA["📜"]["📿☄️"],
+        meteorDeltaKg: DATA["📜"]["🔺⚖️💧☄️"],
+      },
+      partition: {
+        vapor: DATA["💧"]["🍰🫧💧"],
+        ice: DATA["💧"]["🍰💧🧊"],
+        liquid: DATA["💧"]["🍰💧🌊"],
+      },
+      albedoGeom01: {
+        ice: DATA["🪩"]["🍰🪩🧊"],
+        land: DATA["🪩"]["🍰🪩🌍"],
+      },
+      runtimeIce01: window.RUNTIME_STATE.h2oIceFractionFromCalculation,
+      T0_K: DATA["🧮"]["🧮🌡️"],
+    };
+    window.__ALBEDO_UI_LOG = window.__ALBEDO_UI_LOG || [];
+    window.__ALBEDO_UI_LOG.push(_traceAlbedoUi);
+    if (window.__ALBEDO_UI_LOG.length > 200) {
+      window.__ALBEDO_UI_LOG.shift();
+    }
+    if (typeof window.debugMirrorConfigLogToFile === "function") {
+      window.debugMirrorConfigLogToFile(
+        "logAlbedoUiDiagnostic",
+        JSON.stringify(_traceAlbedoUi),
+      );
+    }
   }
   updateLabel("albedo_percents", albedoBreakdown, "text");
   } // fin if (eventId === 'ProcessFinished') pour le breakdown albedo

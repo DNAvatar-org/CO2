@@ -18,6 +18,33 @@
     box-sizing: border-box;
 }
 
+/*
+ * Aide au survol : curseur ? pour tout élément porteur d’infobulle (alt / title / aria-label),
+ * hors vrais contrôles cliquables (bouton, lien, image-submit, .icon-button).
+ * CH₄/H₂O/CO₂ en emoji sur le plot : span[role="img"][aria-label] — même traitement que img[alt].
+ */
+img[alt]:not([alt=""]),
+[role="img"][aria-label]:not([aria-label=""]),
+abbr[title]:not([title=""]),
+.container canvas[aria-label]:not([aria-label=""]) {
+    cursor: help;
+}
+button img[alt]:not([alt=""]),
+a img[alt]:not([alt=""]),
+input[type="image"],
+.icon-button img[alt]:not([alt=""]),
+[role="button"] img[alt]:not([alt=""]),
+button [role="img"][aria-label]:not([aria-label=""]),
+a [role="img"][aria-label]:not([aria-label=""]),
+[role="button"] [role="img"][aria-label]:not([aria-label=""]) {
+    cursor: pointer;
+}
+
+/* title natif : même sémantique (fragment visu = .container injecté dans #visu-panel) */
+.container [title]:not([title=""]):not(button):not(a):not(input):not(select):not(textarea):not([role="button"]):not(.icon-button) {
+    cursor: help;
+}
+
 :root {
     /* Palette rétro 80s */
     --retro-base: rgb(0, 200, 255);       /* rgb(128, 255, 0) */

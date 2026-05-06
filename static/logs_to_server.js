@@ -3,12 +3,13 @@
 //       au serveur (serve_site.py) les crashes (window.error, unhandledrejection, 404 assets)
 //       et les console.error/console.warn. A charger EN PREMIER dans <head> de chaque HTML
 //       (avant tout autre script) pour capturer les erreurs d'init.
-// Version 1.1.6
+// Version 1.1.7
 // Copyright 2025-2026 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: April 25, 2026
 // Logs:
+// - v1.1.7: CONFIG_LOG_FILE_TOPIC.logAlbedoUiDiagnostic → topic albedoUi (fichier logs/albedoUi.txt via POST /_log + tools/server.py).
 // - v1.1.6: logToTopic(topic,msg) + debugMirrorConfigLogToFile — chaque clé CONFIG_COMPUTE.log* → _logs/<fichier>.txt
 //   indépendant ; hyst + epoch (et autres) peuvent être true en même temps. Erreurs → errors.txt (serveur).
 //   Retrait applyFileTopicFromConfig (un seul activeTopic) pour hyst/epoch.
@@ -40,7 +41,8 @@
         logIrisDiagnostic: 'iris',
         logCo2PartitionDiagnostic: 'co2Partition',
         logHystPanelToFile: 'hyst',
-        logEpochCompareToFile: 'epoch'
+        logEpochCompareToFile: 'epoch',
+        logAlbedoUiDiagnostic: 'albedoUi'
     };
 
     function enqueue(kind, msg, src, stack, topic) {

@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.23
+// Version 1.1.24
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.24: togglePlotAnim déplacé vers timeline.js (visu inchangé ; scie_compute / html sans loader ont SKIP).
 // Logs: v1.1.23: cycleCalcul iframe — syncEpochFromTimelinePointer() après merge 📜 (👉 fait foi, évite 🗿 stale / atmosphère erronée).
 // Logs: v1.1.22: COMPUTE_LOADER — append #organigram-calculation-overlay dans #flux-diagram au show (z au-dessus des cellules) ; replacer dans .flux-diagram-wrapper au hide
 // Logs: v1.1.21: static/courbes/plot_debug.js avant plot.js (?debugPlot=1 → _logs/plot.txt + DEBUG_PLOT_LOG)
@@ -179,56 +180,7 @@
         if (v) v.innerHTML = '<p style="color:#f00;padding:20px;">Erreur chargement</p>';
     });
 
-    function nextEpochName(nextItem, nextId) {
-        return nextItem.name || (typeof window.epochName === 'function' && window.epochName(nextId)) || nextId;
-    }
-    // Bouton animation = bouton normal (pas on/off) : clic = mode anim + prochaine époque (via shell). Transition en animation du curseur timeline puis setEpoch.
-    window.togglePlotAnim = function () {
-        if (typeof window.hideTooltip === 'function') window.hideTooltip();
-        if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = true;
-        var cb = document.getElementById('plot-anim-toggle-checkbox');
-        if (cb) cb.checked = true;
-        var applyNextEpoch = function (idx, nextName, useShell) {
-            if (typeof window.animateTimelineCursorToEpoch === 'function') {
-                window.animateTimelineCursorToEpoch(idx, 400, function () {
-                    if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextName);
-                    else if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
-                });
-            } else {
-                if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextName);
-                else if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
-            }
-        };
-        if (window.shell && window.shell.setState) {
-            window.shell.setState({ animEnabled: true });
-            if (window.DATA && window.DATA['📜'] && typeof window.TIMELINE !== 'undefined' && window.TIMELINE.length) {
-                var cur = window.DATA['📜']['👉'];
-                if (typeof cur !== 'number') cur = 0;
-                var idx = cur + 1;
-                while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
-                if (idx >= window.TIMELINE.length) idx = 0;
-                while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
-                var nextItem = window.TIMELINE[idx];
-                var nextId = nextItem['📅'];
-                var nextName = nextEpochName(nextItem, nextId);
-                applyNextEpoch(idx, nextName, true);
-            }
-        } else {
-            window.syncToScie({ animEnabled: true });
-            if (window.DATA && window.DATA['📜'] && typeof window.TIMELINE !== 'undefined' && window.TIMELINE.length) {
-                var cur = window.DATA['📜']['👉'];
-                if (typeof cur !== 'number') cur = 0;
-                var idx = cur + 1;
-                while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
-                if (idx >= window.TIMELINE.length) idx = 0;
-                while (idx < window.TIMELINE.length && !window.TIMELINE[idx]['📅']) idx++;
-                var nextItem = window.TIMELINE[idx];
-                var nextId = nextItem['📅'];
-                var nextName = nextEpochName(nextItem, nextId);
-                applyNextEpoch(idx, nextName, false);
-            }
-        }
-    };
+    // togglePlotAnim : définition dans organigramme/timeline.js (source unique ; pages sans ce loader, ex. scie_compute.html).
 
     // Clic sur un bouton époque = sans animation (via shell) ; ticTime remis à 0
     window.setEpochFromEpochButton = function (epochId) {

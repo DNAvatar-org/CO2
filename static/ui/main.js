@@ -1,9 +1,12 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.75
+// Version 1.1.78
 // Date: [May 06, 2026]
 //
+// - v1.1.78: updateHadeenTexture — retrait if(typeof window) / if(oldCell) superflus ; window.ORG.createCell direct.
+// - v1.1.77: updateHadeenTexture — window.ORG.createCell (FUNCS_ORGANIGRAMME n’existe que dans setEpoch ; crash hors scope).
+// - v1.1.76: updateLegend albedoComponents — sans atm : ice_coverage depuis 💧.🍰💧🧊 avant RUNTIME.h2oIceFractionFromCalculation (aligné organigramme.js v1.0.94).
 // - v1.1.75: setEpoch — après DATA['📜']['👉']/🗿, syncEpochFromTimelinePointer() (bouton époque passe id ⚫ ; terre.epoch attend « Corps Noir »).
 // - v1.1.74: légende plot — libellés explicites (.../---/___) + °C en petit au-dessus de chaque style de trait.
 // - v1.1.73: updateLegend — 3 lignes (pointillés / tirets / plein) + libellé texte à droite uniquement ; plus de °C/°F/K ni T sol·eff sur les items ; toujours 3 courbes affichées.
@@ -1619,7 +1622,9 @@ window.updateDisplay = function updateDisplay(data) {
                 // Calculer la couverture de glace (similaire à organigramme.js)
                 // Calculer la couverture de glace (incluant la glace additionnelle des météorites)
                 let ice_cov = 0;
-                const isCorpsNoir = window.RUNTIME_STATE.currentEpochName === 'Corps Noir';
+                const noAtmosphere =
+                    currentEpoch.total_atmosphere_mass_kg === 0 ||
+                    currentEpoch.total_atmosphere_mass_kg === undefined;
                 const h2o_enabled = (typeof window !== 'undefined' && window.UI_STATE.waterVaporEnabled !== undefined)
                     ? window.UI_STATE.waterVaporEnabled
                     : (currentEpoch.h2o_enabled !== false);
@@ -1627,11 +1632,13 @@ window.updateDisplay = function updateDisplay(data) {
                 // Récupérer la glace calculée depuis calculateWaterPartition (si disponible)
                 let ice_coverage = 0;
 
-                // 🔒 PRIORITÉ 1 : Utiliser la valeur calculée par calculateAlbedo (la plus récente et précise)
-                if (typeof window !== 'undefined' && window.RUNTIME_STATE.h2oIceFractionFromCalculation !== undefined) {
+                // Sans atmosphère : même source que H2O partition (💧.🍰💧🧊), pas RUNTIME.h2oIceFractionFromCalculation (fraction climat pleine sphère).
+                if (noAtmosphere) {
+                    ice_coverage = Math.min(1, Math.max(0, DATA['💧']['🍰💧🧊']));
+                } else if (typeof window !== 'undefined' && window.RUNTIME_STATE.h2oIceFractionFromCalculation !== undefined) {
                     ice_coverage = Math.min(1, Math.max(0, window.RUNTIME_STATE.h2oIceFractionFromCalculation));
                 }
-                // 🔒 PRIORITÉ 2 : Recalculer avec calculateWaterPartition si pas de valeur disponible
+                // Recalculer avec calculateWaterPartition si pas de valeur disponible
                 else if (data.temp_surface !== undefined) {
                     // 🔒 CORRECTION : calculateWaterPartition() lit directement depuis DATA, pas besoin de calculer h2o_total_percent
                     const h2o_total_fraction = DATA['⚖️']['⚖️🫧'] > 0 ? (DATA['⚖️']['⚖️💧'] / DATA['⚖️']['⚖️🫧']) : 0;
@@ -3468,36 +3475,28 @@ function updateHadeenTexture() {
         lightDistance = Math.max(0, lightDistance - 1);
     }
     
-    // Stocker les valeurs interprétées pour createCell
-    if (typeof window !== 'undefined') {
-        window.currentEpochLuxSaturation = epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
-        window.currentEpochLightDistance = lightDistance;
-    }
-    
+    window.currentEpochLuxSaturation = epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
+    window.currentEpochLightDistance = lightDistance;
+
     // Recréer la cellule Terre avec la nouvelle texture
     // 🔒 Ne pas enlever l'ancienne cellule avant que la nouvelle texture soit prête :
     // on insère la nouvelle derrière l'ancienne, on attend three:ready, puis on retire l'ancienne
     // pour éviter que la texture disparaisse (flash noir) pendant le chargement.
     const oldCell = document.getElementById('cell-terre');
-    if (oldCell) {
-        console.log('[recreateTerre] three:runStart (sans canvas) — caller: ' + (new Error().stack.split('\n')[2] || '?').trim());
-        // Pause Three.js pour que l'angle ne change pas entre 2 textures ; play au three:ready uniquement
-        window.threeJSAnimationPaused = true;
-        IO_LISTENER.emit('three:runStart');
-        // 🔒 Sauvegarder l'angle de rotation AVANT tout changement
-        const canvas = oldCell.querySelector('canvas');
-        let savedRotationY = 0;
-        if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
-            savedRotationY = canvas._threeJSData.sphere.rotation.y;
-            if (typeof window !== 'undefined') {
-                window.savedPlanetRotationY = savedRotationY;
-            }
-        } else if (typeof window !== 'undefined' && window.savedPlanetRotationY !== undefined) {
-            savedRotationY = window.savedPlanetRotationY;
-        }
-        
-        const parent = oldCell.parentElement;
-        const newCell = FUNCS_ORGANIGRAMME.createCell(
+    console.log('[recreateTerre] three:runStart (sans canvas) — caller: ' + (new Error().stack.split('\n')[2] || '?').trim());
+    window.threeJSAnimationPaused = true;
+    IO_LISTENER.emit('three:runStart');
+    const canvas = oldCell.querySelector('canvas');
+    let savedRotationY = 0;
+    if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
+        savedRotationY = canvas._threeJSData.sphere.rotation.y;
+        window.savedPlanetRotationY = savedRotationY;
+    } else if (window.savedPlanetRotationY !== undefined) {
+        savedRotationY = window.savedPlanetRotationY;
+    }
+
+    const parent = oldCell.parentElement;
+    const newCell = window.ORG.createCell(
             terreNode.x,
             terreNode.y,
             effectiveEpoch.radius,
@@ -3523,28 +3522,24 @@ function updateHadeenTexture() {
             null,
             effectiveEpoch.planetEffect || false
         );
-        window._lastPlanetTexturePath = newLogoPath;
-        // Mettre la nouvelle cellule derrière l'ancienne : l'ancienne texture reste visible
-        // jusqu'à ce que la nouvelle soit chargée (three:ready).
-        parent.insertBefore(newCell, oldCell);
-        const newCanvas = newCell.querySelector('canvas');
-        var timeoutId = null;
-        var onThreeReady = function (payload) {
-            if (payload && payload.canvas === newCanvas) {
-                IO_LISTENER.off('three:ready', onThreeReady);
-                if (timeoutId !== null) clearTimeout(timeoutId);
-                if (oldCell.parentElement) oldCell.remove();
-                window.threeJSAnimationPaused = false;
-            }
-        };
-        IO_LISTENER.on('three:ready', onThreeReady, 'main.js');
-        // Secours si three:ready n'est jamais émis (ex. file: protocol)
-        timeoutId = setTimeout(function () {
-            timeoutId = null;
+    window._lastPlanetTexturePath = newLogoPath;
+    parent.insertBefore(newCell, oldCell);
+    const newCanvas = newCell.querySelector('canvas');
+    var timeoutId = null;
+    var onThreeReady = function (payload) {
+        if (payload && payload.canvas === newCanvas) {
             IO_LISTENER.off('three:ready', onThreeReady);
-            if (oldCell.parentElement) oldCell.remove();
-        }, 3000);
-    }
+            if (timeoutId !== null) clearTimeout(timeoutId);
+            oldCell.remove();
+            window.threeJSAnimationPaused = false;
+        }
+    };
+    IO_LISTENER.on('three:ready', onThreeReady, 'main.js');
+    timeoutId = setTimeout(function () {
+        timeoutId = null;
+        IO_LISTENER.off('three:ready', onThreeReady);
+        oldCell.remove();
+    }, 3000);
 }
 
 // Exposer updateHadeenTexture et interpretConfigValue globalement

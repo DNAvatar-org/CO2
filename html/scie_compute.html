@@ -313,16 +313,16 @@
             } else {
                 window._hystClickedEpochId = null;
             }
-            if (isHyst) scieEnableAnimForHystSync();
-            else scieDisableAnimLikeVisu();
             window._scieLastRunWasHystButton = isHyst;
             if (!isHyst && window.HYSTERESIS && window.HYSTERESIS.active && typeof window.HYSTERESIS.deactivate === 'function') {
                 window.HYSTERESIS.deactivate();
             }
+            selectEpoch(epochId);
             if (isHyst && window.HYSTERESIS && typeof window.HYSTERESIS.onEpochButton === 'function') {
                 window.HYSTERESIS.onEpochButton(epochId);
             }
-            selectEpoch(epochId);
+            if (isHyst) scieEnableAnimForHystSync();
+            else scieDisableAnimLikeVisu();
             if (window === window.top && typeof runTest === 'function') runTest();
         }
 
@@ -449,7 +449,7 @@
                 if (item['📅']) {
                     const el = createEpochButton(item['📅'], 'vertical', !!item.hidden);
                     if (!item.hidden && el && el.setAttribute) {
-                        el.setAttribute('onclick', `setEpoch('${item['📅'].replace(/'/g, "\\'")}')`);
+                        el.setAttribute('onclick', `selectEpoch('${item['📅'].replace(/'/g, "\\'")}')`);
                     }
                     epochsContainer.appendChild(el);
                 } else if (item.date) {
@@ -468,6 +468,13 @@
                 console.error(`[selectEpoch] Époque ${epochId} non trouvée`);
                 return;
             }
+
+            // Clic frise : même contrat que setEpochFromEpochButton (loader_panels) — pas d’anim multi-pas.
+            window.DATA['🔘']['🔘🎞'] = false;
+            window.infoTimeMa = 0;
+            window._timelineEpochEndSkipLatch = false;
+            var _plotAnimCb = document.getElementById('plot-anim-toggle-checkbox');
+            if (_plotAnimCb) _plotAnimCb.checked = false;
             
             // Mettre à jour DATA['📅'] avec l'objet epoch complet (source unique de vérité)
             if (!window.DATA['📜']) window.DATA['📜'] = {};
@@ -501,6 +508,7 @@
             syncHystEpochButtonsFromData();
             emitSyncToParent();
         }
+        window.selectEpoch = selectEpoch;
         
         // Mettre à jour l'affichage de la timeline (📅 date courante, début époque, nom)
         function updateTimelineDisplay() {

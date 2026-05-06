@@ -1,4 +1,4 @@
-<!-- Fragment HTML pour injection dans #visu-panel -->
+<!-- Fragment HTML pour injection dans #visu-panel — infobulles title/aria (curseur aide global style.css) -->
 <div class="container">
     <div class="left-column" id="left-column">
         <div class="left-left" id="left-left"></div>
@@ -8,26 +8,27 @@
 
     <div class="title-container divGlass">
         <div class="title-header-row">
-            <h1>Bilan Radiatif Terrestre</h1>
-            <span class="title-subtitle">Base de la météorologie</span>
+            <h1 title="Bilan radiatif : flux solaires et terrestres, équilibre énergétique de surface">Bilan Radiatif Terrestre</h1>
+            <span class="title-subtitle" title="Le bilan radiatif terrestre conditionne la circulation générale et la météorologie">Base de la météorologie</span>
         </div>
 
         <div class="title-content-row title-content-row--flou-et-resultat">
-            <div id="title-flou-scientifique-slot" class="title-flou-scientifique-slot" aria-label="Flou scientifique"></div>
+            <div id="title-flou-scientifique-slot" class="title-flou-scientifique-slot" aria-label="Flou scientifique" title="Zone « flou scientifique » (ajustements fins pilotage)"></div>
             <div class="synthese_Temp synthese_Temp-two-cols">
                 <div class="synthese_Temp-col synthese_Temp-col-left">
                     <div class="visu_timeline-epoch-section">
                         <div class="synthese_epoch-row visu_timeline-epoch-name-wrap">
-                            <span id="epoch-name" class="visu_epoch-name" aria-label="Nom de l'époque">Corps Noir</span>
-                            <span class="synthese_epoch-start" id="epoch-start-time">-5000 Ma</span>
-                            <span class="synthese_epoch-info" id="info-time">+0 Ma</span>
+                            <span id="epoch-name" class="visu_epoch-name" aria-label="Nom de l'époque" title="Époque géologique / scénario (nom affiché)">Corps Noir</span>
+                            <span class="synthese_epoch-start" id="epoch-start-time" title="Échelle des temps : borne de début (millions d'années)">-5000 Ma</span>
+                            <span class="synthese_epoch-info" id="info-time" title="Écart temporel par rapport au présent (Ma)">+0 Ma</span>
                         </div>
                     </div>
                 </div>
                 <div class="synthese_Temp-sep" aria-hidden="true"></div>
                 <div class="synthese_Temp-col synthese_Temp-col-right">
-                    <div class="synthese_Temp-temp-line"><span class="thermometer-icon">🌡️</span> <span id="temp-surface-synthese">--</span><span id="temp-unit-synthese">°C</span></div>
-                    <div id="pressure-surface-synthese" class="synthese_Temp-pressure">🎈 -- atm</div>
+                    <div class="synthese_Temp-temp-line" title="Synthèse : température de surface">
+                        <span class="thermometer-icon" role="img" aria-label="Température de surface">🌡️</span> <span id="temp-surface-synthese">--</span><span id="temp-unit-synthese">°C</span></div>
+                    <div id="pressure-surface-synthese" class="synthese_Temp-pressure" title="Pression atmosphérique à la surface (synthèse)">🎈 -- atm</div>
                 </div>
             </div>
         </div>
@@ -40,19 +41,19 @@
         </div>
     </div>
 
-    <div class="plot-container-wrapper divGlass" style="position: relative;">
+    <div class="plot-container-wrapper divGlass" style="position: relative;" title="Graphique spectral : luminance / flux en fonction de la longueur d'onde">
         <div id="plot-container">
-            <div class="plot-overlay-title">Spectre d'émission du système Terre-Atmosphère</div>
-            <div class="legend-container" id="legend-container">
+            <div class="plot-overlay-title" title="Tracé spectral : émission et absorption Terre–atmosphère (longueur d’onde μm)">Spectre d'émission du système Terre-Atmosphère</div>
+            <div class="legend-container" id="legend-container" title="Légende : courbes d’équilibre radiatif et références Planck">
                 <div class="legend-equilibre">
                     <div id="legend-equilibre-curves"></div>
                 </div>
             </div>
         </div>
-        <canvas id="spectral-visualization" width="333" height="400"></canvas>
+        <canvas id="spectral-visualization" width="333" height="400" aria-label="Carte spectrale : densité de flux par bande (visualisation canvas, μm)"></canvas>
     </div>
 
-    <div class="timeline-display divGlass">
+    <div class="timeline-display divGlass" title="Frise temporelle : échelle des temps géologiques (Ma) et curseur d’époque">
         <div id="calculation-overlay" class="calculation-overlay" style="display: none;">
             <div class="calculation-text compute-calcul-overlay-text">Calculs d'équilibre radiatifs en cours</div>
             <div id="compute-tic-loader" class="compute-tic-loader" aria-hidden="true">
@@ -66,35 +67,35 @@
         </div>
     </div>
 
-    <div class="synthese_EdS">
-        <div class="info-unit-header">
+    <div class="synthese_EdS" title="Synthèse forçages radiatifs par constituant (ordre de grandeur W/m²)">
+        <div class="info-unit-header" title="Unités : pourcentage de part relative et forçage en watts par mètre carré">
             <span class="controle-simulation-title"></span>
             <span class="info-unit">(W/m²)</span>
         </div>
-        <div class="info-row info-row-vertical info-row-co2">
+        <div class="info-row info-row-vertical info-row-co2" title="CO₂ : part dans le forçage résiduel et contribution radiative (W/m²)">
             <div class="info-vertical-stack">
                 <span class="info-value"><span class="info-number" id="co2-number-synthese">0</span><span class="info-unit">%</span></span>
                 <span class="info-forcing" id="forcing-co2-synthese">W/m²</span>
             </div>
         </div>
-        <div class="info-row info-row-vertical info-row-h2o">
+        <div class="info-row info-row-vertical info-row-h2o" title="H₂O (vapeur) : humidité / cycle et contribution au forçage (W/m²)">
             <div class="info-vertical-stack">
                 <span class="info-value" id="h2o-status-synthese">%</span>
                 <span class="info-forcing" id="forcing-h2o-synthese">W/m²</span>
             </div>
         </div>
-        <div class="info-row info-row-vertical info-row-ch4">
+        <div class="info-row info-row-vertical info-row-ch4" title="CH₄ : méthane — part et contribution radiative (W/m²)">
             <div class="info-vertical-stack">
                 <span class="info-value"><span class="info-number" id="methane-number-synthese">--</span><span class="info-unit">%</span></span>
                 <span class="info-forcing" id="forcing-methane-synthese">W/m²</span>
             </div>
         </div>
-        <div class="info-row info-separator-line">
+        <div class="info-row info-separator-line" aria-hidden="true">
             <span class="info-forcing">_______</span>
         </div>
-        <div class="info-row forcing-total-row">
+        <div class="info-row forcing-total-row" title="Somme des forçages radiatifs affichés (indicateur synthétique)">
             <span class="info-label">Forç:</span>
-            <span class="info-emoji">📛</span>
+            <span class="info-emoji" role="img" aria-label="Forçage radiatif total (symbole)">📛</span>
             <span class="info-forcing" id="forcing-total-synthese">--</span>
         </div>
     </div>

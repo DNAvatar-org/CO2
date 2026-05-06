@@ -1,8 +1,14 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.17
- * Date: 2026-04-26
+ * Version 1.0.23
+ * Date: 2026-05-06
 * logs :
+ * - v1.0.23: effectiveTimelineEndSlackMa — slack 0,05 Ma trop grand pour époques CE (dur ~1e−4 Ma) → faux SKIP immédiat vers 📱 ; min(0,05, dur×1%).
+ * - v1.0.22: window.togglePlotAnim défini ici (source unique) — pages sans loader_panels (ex. scie_compute.html) ; fallback setEpoch / window.selectEpoch.
+ * - v1.0.21: ▶ négatif (🛖 −10⁴ a BP) — timelineDeltaYearsToStartMa ; parseTimelineDateText accepte libellés « −10000 » (Ma curseur).
+ * - v1.0.20: updateEpochActions depuis updateTimeline seulement si configOrganigramme.timeline est déjà fusionné (initAfterLoad) — évite race rAF avant loader_panels.
+ * - v1.0.19: fin d'époque — slack TIMELINE_END_SLACK_MA (arrondi + float) ; SKIP via tryEpochEndSkipAfterEvent dans updateTimeline (latch) si date ≥ fin sans clic.
+ * - v1.0.18: TIMELINE_EPOCH_BOUNDS + getCurrentEpochDurationMa + isPastCurrentEpochEndMa (date frise vs ◀) ; refresh au début de updateTimeline ; export getEpochAtTimelineIndex.
  * - v1.0.17: updateEpochActions — clé de rafraîchissement inclut 🕰.order (TIMELINE) quand défini, sinon getActionForDate.
  * - v1.0.16: getEpochAtTimelineIndex — évite crash epoch undefined (▶) si 👉 hors TIMELINE ou état transitoire (scie_compute)
  * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
@@ -48,6 +54,12 @@ let currentEpochStartYears = null; // Stocker le début de l'époque actuelle po
 
 // Variable globale pour le temps écoulé dans l'époque (commence toujours à 0 Ma)
 window.infoTimeMa = 0; // Temps écoulé depuis le début de l'époque (en millions d'années, Ma)
+
+/** ▶ en années : valeurs positives = magnitude géologique (−|▶|/1e6 Ma) ; valeurs négatives = offset Ma déjà signé (ex. Holocène −10⁴ a → −0,01 Ma). */
+function timelineDeltaYearsToStartMa(deltaYears) {
+    if (deltaYears == null || !Number.isFinite(deltaYears)) return NaN;
+    return deltaYears < 0 ? deltaYears / 1e6 : -(deltaYears / 1e6);
+}
 // textureIndex = infoTimeMa / 50 (calculé automatiquement, chaque texture = 50Ma)
 // Accessible via window.textureIndex ou via epochConfig.lightDistance pour Hadéen
 
@@ -95,10 +107,71 @@ function getEpochAtTimelineIndex() {
 function getTimelineCurrentMa() {
     const epoch = getEpochAtTimelineIndex();
     if (!epoch || epoch['▶'] == null) return null;
-    const startMa = -(epoch['▶'] / 1e6);
+    const startMa = timelineDeltaYearsToStartMa(epoch['▶']);
     const isForwardEpoch = epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀'];
     const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
     return isForwardEpoch ? startMa - infoTimeMa : startMa + infoTimeMa;
+}
+
+/** Tolérance Ma max : géologique long ; pour durées courtes (CE) voir effectiveTimelineEndSlackMa. */
+const TIMELINE_END_SLACK_MA = 0.05;
+
+/**
+ * Slack comparé à la durée d'époque : 0,05 Ma OK si dur ≫ 0,05 ; sinon cap à 1 % de dur (évite « fin d'époque » toujours vraie sur 🚂/📱).
+ */
+function effectiveTimelineEndSlackMa(durMa) {
+    if (durMa == null || !Number.isFinite(durMa) || durMa <= 0) return TIMELINE_END_SLACK_MA;
+    return Math.min(TIMELINE_END_SLACK_MA, durMa * 0.01);
+}
+
+/** Durée |▶−◀| en Ma pour l'époque sous 👉 (toutes conventions ▶/◀). */
+function getCurrentEpochDurationMa() {
+    const epoch = getEpochAtTimelineIndex();
+    if (!epoch || epoch['▶'] == null || epoch['◀'] == null) return null;
+    return Math.abs(epoch['◀'] - epoch['▶']) / 1e6;
+}
+
+/** Liste des bornes par entrée TIMELINE (chargement / chaque updateTimeline) — comparaison avec getTimelineCurrentMa(). */
+function refreshTimelineEpochBounds() {
+    const TIMELINE = window.TIMELINE;
+    if (!TIMELINE || !TIMELINE.length) {
+        window.TIMELINE_EPOCH_BOUNDS = [];
+        return;
+    }
+    window.TIMELINE_EPOCH_BOUNDS = TIMELINE.map(function (row, idx) {
+        if (!row || row['📅'] == null || row['▶'] == null || row['◀'] == null) return null;
+        const startMa = timelineDeltaYearsToStartMa(row['▶']);
+        const endMa = -(row['◀'] / 1e6);
+        const forward = row['▶'] < row['◀'];
+        return { idx: idx, id: row['📅'], startMa: startMa, endMa: endMa, forward: forward };
+    }).filter(Boolean);
+}
+
+/**
+ * Date courante frise au-delà de la fin d'époque (◀) : même règle que le curseur (forward vs géologique).
+ * Géologique : test aussi infoTimeMa ≥ dur − slack (sinon « +500 Ma » à l’écran mais pas encore fin au test Ma strict).
+ */
+function isPastCurrentEpochEndMa() {
+    const epoch = getEpochAtTimelineIndex();
+    if (!epoch || epoch['▶'] == null || epoch['◀'] == null) {
+        return false;
+    }
+    const forward = epoch['▶'] < epoch['◀'];
+    const dur = getCurrentEpochDurationMa();
+    const slack = effectiveTimelineEndSlackMa(dur != null && Number.isFinite(dur) ? dur : null);
+    const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
+    if (!forward && dur != null && Number.isFinite(dur) && infoTimeMa >= dur - slack) {
+        return true;
+    }
+    const currentMa = getTimelineCurrentMa();
+    if (currentMa == null || !Number.isFinite(currentMa)) {
+        return false;
+    }
+    const endMa = -(epoch['◀'] / 1e6);
+    if (forward) {
+        return currentMa <= endMa + slack;
+    }
+    return currentMa >= endMa - slack;
 }
 
 const PALEOMAP_CREDITS_MIN_MA = -750;
@@ -144,8 +217,11 @@ function parseTimelineDateText(text) {
     if (trimmed.endsWith('Ma')) {
         return Number(trimmed.replace('Ma', '').trim());
     }
-    // Années récentes (1800, 2025) : même convention que startMa = -(▶/1e6) pour aligner curseurs
-    return -Number(trimmed) / 1e6;
+    // Années CE positives → −n/1e6 Ma ; années BP signées négatives (ex. −10000) → n/1e6 Ma
+    const n = Number(trimmed);
+    if (!Number.isFinite(n)) return NaN;
+    if (n > 0) return -n / 1e6;
+    return n / 1e6;
 }
 
 function getTimelineDateEntries(container) {
@@ -252,7 +328,7 @@ function getTimelineCursorTopForEpochIndex(epochIdx) {
         scaleMa.push(entries[r].ma);
         textRows.push(entries[r].span);
     }
-    const startMa = -(epoch['▶'] / 1e6);
+    const startMa = timelineDeltaYearsToStartMa(epoch['▶']);
     return getCursorTopPx(container, textRows, scaleMa, startMa) + TIMELINE_CURSOR_OFFSET_PX;
 }
 
@@ -281,6 +357,7 @@ window.animateTimelineCursorToEpoch = function (epochIdx, durationMs, callback) 
 function updateTimeline() {
     const DATA = window.DATA;
     const TIMELINE = window.TIMELINE;
+    refreshTimelineEpochBounds();
     // Mettre à jour l'affichage (toujours, même si timelineRunning = false)
     const timelineDisplay = document.getElementById('timeline-display');
     const frameDisplay = document.getElementById('frame-display');
@@ -353,7 +430,7 @@ function updateTimeline() {
                 pdOnce('timeline-epoch-missing-cursor', 'updateTimeline', 'timeline.js',
                     'TIMELINE[' + String(idx) + '] absent ou 👉 hors plage (len=' + String(TIMELINE.length) + ')');
             } else {
-                const startMa = -(epoch['▶'] / 1e6);
+                const startMa = timelineDeltaYearsToStartMa(epoch['▶']);
                 // Époques forward (▶ < ◀, CE years : 1800→2025) : les dates croissantes = plus négatives en Ma convention
                 // → soustraire infoTimeMa pour monter la jauge. Époques géologiques : addition standard.
                 const isForwardEpoch = (epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀']);
@@ -421,7 +498,8 @@ function updateTimeline() {
     // Mettre à jour les boutons ACTION : 🕰.order (TIMELINE) si présent, sinon date → getActionForDate (organigramme).
     const epochAct = getEpochAtTimelineIndex();
     const cfgOrg = window.configOrganigramme;
-    if (epochAct && cfgOrg) {
+    // Prérequis updateEpochActions : configOrganigramme.timeline = TIMELINE.map(...) vient de loader_panels initAfterLoad (pas encore au 1er tick rAF).
+    if (epochAct && cfgOrg && cfgOrg.timeline) {
         const wh = epochAct['🕰'];
         let sig;
         if (wh && Array.isArray(wh.order) && wh.order.length) {
@@ -439,6 +517,19 @@ function updateTimeline() {
     }
 
     updatePaleomapCreditsVisibility();
+
+    // Frise à la fin d'époque (◀) : même SKIP que les événements — évite d'exiger un clic alors que l'UI affiche déjà +durée Ma.
+    if (window.tryEpochEndSkipAfterEvent && window.isPastCurrentEpochEndMa) {
+        if (window.isPastCurrentEpochEndMa()) {
+            if (!window._timelineEpochEndSkipLatch) {
+                window._timelineEpochEndSkipLatch = true;
+                const ok = window.tryEpochEndSkipAfterEvent(null);
+                if (!ok) window._timelineEpochEndSkipLatch = false;
+            }
+        } else {
+            window._timelineEpochEndSkipLatch = false;
+        }
+    }
 
     // 🔒 DÉSACTIVÉ : Ne plus incrémenter automatiquement de +10 ans toutes les secondes
     // L'incrémentation se fait uniquement lors des clics sur boutons (météorite glace, etc.)
@@ -542,7 +633,70 @@ if (typeof window !== 'undefined') {
     window.pauseTimeline = pauseTimeline;
     window.formatYears = formatYears;
     window.getTimelineCurrentMa = getTimelineCurrentMa;
+    window.getEpochAtTimelineIndex = getEpochAtTimelineIndex;
+    window.getCurrentEpochDurationMa = getCurrentEpochDurationMa;
+    window.refreshTimelineEpochBounds = refreshTimelineEpochBounds;
+    window.isPastCurrentEpochEndMa = isPastCurrentEpochEndMa;
+    window.TIMELINE_END_SLACK_MA = TIMELINE_END_SLACK_MA;
+    window.effectiveTimelineEndSlackMa = effectiveTimelineEndSlackMa;
     window.updatePaleomapCreditsVisibility = updatePaleomapCreditsVisibility;
+
+    /** Nom display pour setEpoch / shell (CHARS_DESC / epochName). */
+    function timelineNextEpochDisplayName(nextItem, nextId) {
+        return nextItem.name || (typeof window.epochName === 'function' && window.epochName(nextId)) || nextId;
+    }
+
+    /**
+     * 🎞 SKIP : anim on + époque suivante TIMELINE (était loader_panels seul → absent sur scie_compute / html sans index).
+     * shell + syncToScie : chemins index ; sinon setEpoch ou selectEpoch (page scie doit exposer window.selectEpoch).
+     */
+    window.togglePlotAnim = function () {
+        if (typeof window.hideTooltip === 'function') window.hideTooltip();
+        window.DATA['🔘']['🔘🎞'] = true;
+        var cb = document.getElementById('plot-anim-toggle-checkbox');
+        if (cb) cb.checked = true;
+
+        var applyNextEpoch = function (idx, nextName, useShell) {
+            var TIMELINE = window.TIMELINE;
+            var nextId = TIMELINE[idx]['📅'];
+            if (typeof window.animateTimelineCursorToEpoch === 'function') {
+                window.animateTimelineCursorToEpoch(idx, 400, function () {
+                    if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextName);
+                    else if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
+                    else window.selectEpoch(nextId);
+                });
+            } else {
+                if (useShell && window.shell && window.shell.setEpoch) window.shell.setEpoch(nextName);
+                else if (typeof window.setEpoch === 'function') window.setEpoch(nextName);
+                else window.selectEpoch(nextId);
+            }
+        };
+
+        var advanceFromTimeline = function (useShell) {
+            var DATA = window.DATA;
+            var TIMELINE = window.TIMELINE;
+            var cur = DATA['📜']['👉'];
+            if (typeof cur !== 'number') cur = 0;
+            var idx = cur + 1;
+            while (idx < TIMELINE.length && !TIMELINE[idx]['📅']) idx++;
+            if (idx >= TIMELINE.length) idx = 0;
+            while (idx < TIMELINE.length && !TIMELINE[idx]['📅']) idx++;
+            var nextItem = TIMELINE[idx];
+            var nextId = nextItem['📅'];
+            var nextName = timelineNextEpochDisplayName(nextItem, nextId);
+            applyNextEpoch(idx, nextName, useShell);
+        };
+
+        if (window.shell && window.shell.setState) {
+            window.shell.setState({ animEnabled: true });
+            advanceFromTimeline(true);
+        } else if (typeof window.syncToScie === 'function') {
+            window.syncToScie({ animEnabled: true });
+            advanceFromTimeline(false);
+        } else {
+            advanceFromTimeline(false);
+        }
+    };
 }
 
 // Fonction pour réinitialiser la timeline

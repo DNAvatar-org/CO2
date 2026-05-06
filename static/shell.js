@@ -5,11 +5,13 @@
 //       - Entrée utilisateur → shell : setEpoch, runCompute, applyStateFromScie, applyTuningFromScie sont le point d'entrée des boutons
 //         et délèguent à sync_panels (setEpoch, runComputeInParent, etc.).
 //       En standalone (visu_ ou scie_ sans index), current = cette page.
-// Version 1.0.10
+// Version 1.0.12
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: 2025-02-25
+// Logs: v1.0.12 setState animEnabled — accès direct DATA['🔘'] (plus de garde && window.DATA).
+// Logs: v1.0.11 setState — applique animEnabled à DATA['🔘']['🔘🎞'] + checkbox (aligné applyToVisu ; clic frise via shell).
 // Logs: v1.0.10 epochNameToId 🐊 « Éocène »
 // Logs: v1.0.8 resolveEpochIdForTimeline — syncToScie/setState utilisent 📅 (emoji), pas le nom français (fix 🎞 Hadéen)
 // Logs: v1.0.7 setState → setEpoch(payload.epochId, { forceResetTics }) si payload.forceResetTics (bouton époque)
@@ -71,6 +73,11 @@
             if (syncPayload.epochId !== undefined) window.SYNC_STATE.epochId = syncPayload.epochId;
             if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
             if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
+        }
+        if (payload.animEnabled !== undefined) {
+            window.DATA['🔘']['🔘🎞'] = payload.animEnabled;
+            var animCb = document.getElementById('plot-anim-toggle-checkbox');
+            if (animCb) animCb.checked = payload.animEnabled;
         }
         if (window.syncToScie) window.syncToScie(syncPayload);
     }
