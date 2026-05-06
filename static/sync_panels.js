@@ -1,6 +1,8 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.48
+// Version 1.1.50
+// - v1.1.50: initSyncPanels après DOM + attente window.shell (scripts loader asynchrones) — sinon registerPanelApi jamais appelé → current=null dans shell.dataInput.
+// - v1.1.49: initSyncPanels — shell.runCompute / applyStateFromScie / applyTuningFromScie = refs window.* (plus de wrappers dans shell.js).
 // - v1.1.48: sync:state / applyToVisu — syncEpochFromTimelinePointer() au lieu de configOrganigramme.timeline.find(ep.name) ; 👉 source de vérité.
 // - v1.1.47: projectToVisu — après draw flux, rAF → PLOT.logPlotScaleAfterCompute (DEBUG_PLOT_LOG + _logs/plot.txt)
 // - v1.1.46: projectToVisu — appels directs PLOT.invalidateSpectralYLuminanceCache / FLUX.skipSpectralFluxRedrawOnce (pas de typeof === 'function')
@@ -608,6 +610,12 @@
             if (p.run === true) window.runComputeInParent();
         };
 
+        if (window.shell) {
+            window.shell.runCompute = window.runComputeInParent;
+            window.shell.applyStateFromScie = window.applyStateFromScie;
+            window.shell.applyTuningFromScie = window.applyTuningFromScie;
+        }
+
         window.addEventListener('message', function (event) {
             if (!event.data || !event.data.type) return;
             if (event.data.type === 'sync:hysteresis') {
@@ -675,9 +683,29 @@
         }, 'sync_panels');
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSyncPanels);
-    } else {
-        initSyncPanels();
+    /** shell.js est chargé après ce fichier (loader séquentiel async) ; sans attente, registerPanelApi ne tourne jamais. */
+    var INIT_SYNC_PANELS_SHELL_WAIT_MAX = 200;
+
+    function deferInitSyncPanels() {
+        function runWhenShellReady(attempt) {
+            var n = attempt || 0;
+            if (!window.shell) {
+                if (n >= INIT_SYNC_PANELS_SHELL_WAIT_MAX) {
+                    throw new Error('[sync_panels] window.shell absent après chargement (vérifier ordre SCRIPTS / loader_panels)');
+                }
+                setTimeout(function () { runWhenShellReady(n + 1); }, 0);
+                return;
+            }
+            initSyncPanels();
+        }
+        function onDomReady() {
+            setTimeout(function () { runWhenShellReady(0); }, 0);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', onDomReady);
+        } else {
+            onDomReady();
+        }
     }
+    deferInitSyncPanels();
 })();

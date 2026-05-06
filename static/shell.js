@@ -2,14 +2,17 @@
 // Desc: Couche de routage unique entre moteur de calcul et affichage.
 //       - Entrée calcul → shell : tout (convergenceStep, compute:done, etc.) passe par dataInput(payload)
 //         et est envoyé au panel actif (visu ou scie) via current.dataInput ; buffer convergence pour restauration scie à l'ouverture onglet.
-//       - Entrée utilisateur → shell : setEpoch, runCompute, applyStateFromScie, applyTuningFromScie sont le point d'entrée des boutons
-//         et délèguent à sync_panels (setEpoch, runComputeInParent, etc.).
+//       - Entrée utilisateur → shell : setEpoch/setState ; runCompute / applyStateFromScie / applyTuningFromScie = mêmes refs que window.*
+//         (assignées dans sync_panels initSyncPanels — pas de wrappers dupliqués ici).
 //       En standalone (visu_ ou scie_ sans index), current = cette page.
-// Version 1.0.12
+// Version 1.0.15
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: 2025-02-25
+// Logs: v1.0.15 runCompute / apply* — corps retirés ; shell.* = refs sync_panels (initSyncPanels).
+// Logs: v1.0.14 setState — clés présentes via hasOwn (!== undefined retiré) ; plus de forceResetTics (non traité par setEpoch@main).
+// Logs: v1.0.13 setState — plus de checkbox (#plot-anim-toggle-checkbox) ni doublon SYNC_STATE ; syncToScie fait SYNC_STATE.
 // Logs: v1.0.12 setState animEnabled — accès direct DATA['🔘'] (plus de garde && window.DATA).
 // Logs: v1.0.11 setState — applique animEnabled à DATA['🔘']['🔘🎞'] + checkbox (aligné applyToVisu ; clic frise via shell).
 // Logs: v1.0.10 epochNameToId 🐊 « Éocène »
@@ -21,7 +24,7 @@
 // - v1.0.4: compute:done toujours envoyé à l'iframe scie pour mise à jour convergence sans aller-retour onglet
 // - v1.0.3: buffer convergence = HTML (buildStepHtmlForConvergence), restore stepsHtml ; dépend de scie_convergence.js
 // - v1.0.2: buffer convergence (steps) pour restauration scie au switch ; getConvergenceTrace, restoreConvergenceToScie
-// - v1.0.1: setEpoch, runCompute, applyStateFromScie, applyTuningFromScie ; tous les boutons passent par le shell
+// - v1.0.1: façade shell vs sync_panels (setEpoch, calcul, apply depuis scie)
 // - v1.0.0: current + dataInput(payload), registerPanelApi, setCurrentPanel ; doc dispatch + standalone
 
 (function () {
@@ -38,6 +41,11 @@
     /** Trace des étapes de convergence (cycles, détails, formules) pour affichage différé dans scie au switch onglet. */
     var convergenceSteps = [];
 
+    /** Payload partiel sync : tester la présence de la clé (distinct d'une valeur undefined explicite). */
+    function ownPayloadKey(o, k) {
+        return Object.prototype.hasOwnProperty.call(o, k);
+    }
+
     /** TIMELINE['📅'] = emoji ; les libellés français (ex. Hadéen) doivent être résolus avant syncToScie / applyStateToData. */
     function resolveEpochIdForTimeline(raw) {
         if (raw == null || raw === '') return raw;
@@ -52,45 +60,27 @@
         var nameToEmoji = Object.entries(window.CHARS_DESC || {}).reduce(function(m, e) { m[e[1]] = e[0]; return m; }, {
             'Hyperthermie éocène': '🐊', 'Prélude glaciaire': 'hysteresis 2', 'EOT (33,9 Ma)': '🏔'
         });
-        return nameToEmoji[raw] !== undefined ? nameToEmoji[raw] : raw;
+        return ownPayloadKey(nameToEmoji, raw) ? nameToEmoji[raw] : raw;
     }
     window.resolveEpochIdForTimeline = resolveEpochIdForTimeline;
 
     /** Actions boutons : point d'entrée unique. syncToScie/setEpoch/runComputeInParent sont dans sync_panels. */
     function setEpoch(epochId, options) {
         var resolved = resolveEpochIdForTimeline(epochId);
-        if (window.setEpoch) window.setEpoch(resolved, options);
-        if (window.syncToScie) window.syncToScie({ epochId: resolved });
+        window.setEpoch(resolved, options);
+        window.syncToScie({ epochId: resolved });
     }
     function setState(payload) {
         var syncPayload = payload;
-        if (payload.epochId !== undefined && window.setEpoch) {
+        if (ownPayloadKey(payload, 'epochId')) {
             var resolved = resolveEpochIdForTimeline(payload.epochId);
-            window.setEpoch(resolved, payload.forceResetTics ? { forceResetTics: true } : undefined);
+            window.setEpoch(resolved);
             syncPayload = Object.assign({}, payload, { epochId: resolved });
         }
-        if (window.SYNC_STATE) {
-            if (syncPayload.epochId !== undefined) window.SYNC_STATE.epochId = syncPayload.epochId;
-            if (payload.animEnabled !== undefined) window.SYNC_STATE.animEnabled = payload.animEnabled;
-            if (payload.ticTime !== undefined) window.SYNC_STATE.ticTime = payload.ticTime;
-        }
-        if (payload.animEnabled !== undefined) {
+        if (ownPayloadKey(payload, 'animEnabled')) {
             window.DATA['🔘']['🔘🎞'] = payload.animEnabled;
-            var animCb = document.getElementById('plot-anim-toggle-checkbox');
-            if (animCb) animCb.checked = payload.animEnabled;
         }
-        if (window.syncToScie) window.syncToScie(syncPayload);
-    }
-    function runCompute() {
-        if (window.runComputeInParent) window.runComputeInParent();
-    }
-    /** État envoyé depuis scie (postMessage sync:state) → appliquer au parent et lancer le calcul. */
-    function applyStateFromScie(payload) {
-        if (window.applyStateFromScie) window.applyStateFromScie(payload);
-    }
-    /** Tuning envoyé depuis scie (postMessage sync:tuning) → appliquer et optionnellement lancer le calcul. */
-    function applyTuningFromScie(payload) {
-        if (window.applyTuningFromScie) window.applyTuningFromScie(payload);
+        window.syncToScie(syncPayload);
     }
 
     /**
@@ -129,7 +119,7 @@
             var html = window.buildStepHtmlForConvergence(payload.data);
             if (html) convergenceSteps.push(html);
             LOG('dataInput convergenceStep buffer=' + convergenceSteps.length + ' -> current=' + cur + ' + postMessage(scie append)');
-            if (current && current.dataInput) current.dataInput(payload);
+            current.dataInput(payload);
             if (scieWin) {
                 try { scieWin.postMessage({ type: 'convergence:append', step: payload.data }, '*'); } catch (e) {}
             }
@@ -138,7 +128,7 @@
         if (payload.type === 'clearConvergenceTrace') {
             convergenceSteps = [];
             LOG('dataInput clearConvergenceTrace buffer=0 -> current=' + cur + ' + postMessage(scie clear)');
-            if (current && current.dataInput) current.dataInput(payload);
+            current.dataInput(payload);
             if (scieWin) {
                 try { scieWin.postMessage({ type: 'convergence:clear' }, '*'); } catch (e) {}
             }
@@ -146,17 +136,17 @@
         }
         if (payload.type === 'compute:done') {
             LOG('dataInput compute:done -> current=' + cur + ' + postMessage(scie)');
-            if (current && current.dataInput) current.dataInput(payload);
-            if (scieWin && payload.DATA) {
+            current.dataInput(payload);
+            if (scieWin) {
                 try { scieWin.postMessage({ type: 'compute:done', DATA: payload.DATA }, '*'); } catch (e) {}
             }
             return;
         }
         if (payload.type === 'displayConvergence' || payload.type === 'convergenceStep') {
-            if (current && current.dataInput) current.dataInput(payload);
+            current.dataInput(payload);
             return;
         }
-        if (current && current.dataInput) current.dataInput(payload);
+        current.dataInput(payload);
     }
 
     /** Retourne la trace des étapes de convergence (tableau de chaînes HTML). */
@@ -191,9 +181,6 @@
         getCurrentPanel: getCurrentPanel,
         setEpoch: setEpoch,
         setState: setState,
-        runCompute: runCompute,
-        applyStateFromScie: applyStateFromScie,
-        applyTuningFromScie: applyTuningFromScie,
         getConvergenceTrace: getConvergenceTrace,
         restoreConvergenceToScie: restoreConvergenceToScie
     };
