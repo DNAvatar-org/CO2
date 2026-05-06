@@ -1,9 +1,11 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.62
-// Date: [April 25, 2026] [22:15 UTC+1]
+// Version 1.0.64
+// Date: [May 06, 2026] [15:00 UTC+1]
 // logs :
+// - v1.0.64: retrait readouts T sol. / T eff. (K °C °F) sur le graphe — températures restent dans le bandeau titre ; légende courbes = main.js updateLegend
+// - v1.0.63: alt zones captation spectre — sans Min/Max ni λ/bin ; molécules « Label captation [a - b] μm » ; nuages « Nuages (corps gris) absorption sur tout le spectre [4 - 50] μm » ; retrait propriété minMax des bandes
 // - v1.0.62: FLUX.plotMaxYScienceTraces / plotMaxYPlanckSurfaceSol (snapshot échelle) ; PLOT.logPlotScaleAfterCompute → DEBUG.log si DEBUG_PLOT_LOG (plot_debug.js)
 // - v1.0.61: callback post-react — drawSpectralVisualization seulement si canvas._lastData défini (évite TypeError upward_flux quand aucun flux encore mis en cache)
 // - v1.0.60: window.FLUX initialisé une fois avec PLOT ; accès directs FLUX dans updatePlot/callback (plus de if (!FLUX) / && FLUX)
@@ -886,14 +888,14 @@ function drawAbsorptionBandIndicators() {
     const LAMBDA_CO2_UM = (CONST.LAMBDA_CO2_CENTER != null) ? CONST.LAMBDA_CO2_CENTER * 1e6 : 15;
     const absorptionBands = [
         // color = crochets + fond alpha entre [ ] (v1.0.53) ; si '' → repli Hz2RGB au λ centre
-        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', minMax: 'Min', color: '#0099ff', spectralPairGroup: 'h2o', spectralPairIndex: 0 },
-        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', minMax: 'Max', color: '#0099ff', spectralPairGroup: 'h2o', spectralPairIndex: 1 },
-        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', minMax: 'Min', color: '#00ff99' },
-        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', minMax: 'Min', color: '#ffff00' },
-        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', minMax: 'Max', color: '#ffff00' },
-        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', minMax: 'Max', color: '#00ff99' },
+        { lambda: LAMBDA_H2O_1_UM, halfWidthUm: 1, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', color: '#0099ff', spectralPairGroup: 'h2o', spectralPairIndex: 0 },
+        { lambda: LAMBDA_H2O_2_UM, halfWidthUm: 1.5, logo: LOGOS.H2O, logoImg: resolveLogoImg(LOGOS.H2O), label: 'H₂O', color: '#0099ff', spectralPairGroup: 'h2o', spectralPairIndex: 1 },
+        { lambda: LAMBDA_CH4_1_UM, halfWidthUm: 1, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', color: '#00ff99' },
+        { lambda: 11, halfWidthUm: 1, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', color: '#ffff00' },
+        { lambda: LAMBDA_CO2_UM, halfWidthUm: 2, logo: LOGOS.CO2, logoImg: resolveLogoImg(LOGOS.CO2), label: 'CO₂', color: '#ffff00' },
+        { lambda: 23, halfWidthUm: 1.5, logo: LOGOS.CH4, logoImg: resolveLogoImg(LOGOS.CH4), label: 'CH₄', color: '#00ff99' },
         // Nuages EDS : LW 4–50 μm. SW = calculateAlbedo.
-        { lambda: 27, halfWidthUm: 23, logo: LOGOS.CLOUDS, logoImg: resolveLogoImg(LOGOS.CLOUDS), label: 'Nuages', minMax: 'LW', color: 'rgb(185, 185, 205)', fullSpan: true }
+        { lambda: 27, halfWidthUm: 23, logo: LOGOS.CLOUDS, logoImg: resolveLogoImg(LOGOS.CLOUDS), label: 'Nuages', color: 'rgb(185, 185, 205)', fullSpan: true }
     ];
 
     const P_atm = (window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) ? window.DATA['🫧']['🎈'] : 1;
@@ -1102,8 +1104,8 @@ function drawAbsorptionBandIndicators() {
         const bracketFsBand = Math.max(bracketFs, Math.min(24, Math.round(rowBand * 0.95)));
 
         const altText = band.fullSpan
-            ? `Nuages EDS (corps gris) : absorption sur tout le spectre LW 4–50 μm (pas de longueur d'onde)`
-            : `${band.minMax} captation ${band.label} : ${Number(band.lambda).toFixed(2)} μm, bin [${leftUm.toFixed(1)}–${rightUm.toFixed(1)}] μm`;
+            ? `Nuages (corps gris) absorption sur tout le spectre [${leftUm} - ${rightUm}] μm`
+            : `${band.label} captation [${leftUm.toFixed(1)} - ${rightUm.toFixed(1)}] μm`;
 
         // Créer un indicateur de plage [ ... ] + logo centré (sans fond, pour éviter l'artefact visuel)
         const indicator = document.createElement('div');
@@ -1118,7 +1120,7 @@ function drawAbsorptionBandIndicators() {
             if (topEdsForCloudBand != null && Number.isFinite(topEdsForCloudBand)) {
                 const halfEds = edsSpectralMarkerFontPx / 2;
                 const halfRow = rowBand / 2;
-                topBand = topEdsForCloudBand - halfEds - cloudBandAboveEdsGapPx - halfRow;
+                topBand = topEdsForCloudBand + halfEds + cloudBandAboveEdsGapPx - halfRow;
             } else {
                 const yHi = yAxisLuminanceHi();
                 if (yHi != null) {
@@ -1419,35 +1421,7 @@ PLOT.updatePlot = function updatePlot(data) {
         };
     }
 
-    // 1. Afficher toutes les courbes Planck de référence
-    if (window.PLANCK_TEMPERATURES) {
-        // Vérifier si getReferencePattern est disponible, sinon utiliser un fallback
-        const getPattern = typeof window.getReferencePattern === 'function'
-            ? window.getReferencePattern
-            : function (index) {
-                // Fallback : utiliser les 4 patterns disponibles directement (ordre : dash, dashdot, longdash, longdashdot)
-                const fallbackPatterns = ['dash', 'dashdot', 'longdash', 'longdashdot'];
-                return fallbackPatterns[index % 4];
-            };
-
-        const totalCount = window.PLANCK_TEMPERATURES.length;
-        window.PLANCK_TEMPERATURES.forEach((T, index) => {
-            const label = `${T}K (${(T - CONST.KELVIN_TO_CELSIUS).toFixed(0)}°C)`;
-            // Utiliser la fonction pour obtenir le pattern
-            const dashPattern = getPattern(index);
-            const planck = createPlanckTrace(T, label, 'white', false, dashPattern); // Blanc
-            // Utiliser la fonction générique pour obtenir l'épaisseur selon le nombre total de courbes
-            if (typeof window.getLineWidth === 'function') {
-                planck.line.width = window.getLineWidth(index, totalCount);
-            } else {
-                // Fallback : très fin pour les 4 premières, plus épais pour les suivantes
-                planck.line.width = index < 4 ? 0.5 : 1.5;
-            }
-            traces.push(planck);
-        });
-    }
-
-    // 2. Afficher les 2 courbes pour le ppm sélectionné (absorption + Planck)
+    // 1. Afficher uniquement les courbes utiles colorées (sans étalons blancs)
     let T_current_display = null; // Pour l'affichage de la température de surface (rouge)
     let T_effective_display = null; // Pour l'affichage de la température effective (cyan)
     let color_current = 'red'; // Par défaut, pour la légende de température
@@ -1519,7 +1493,7 @@ PLOT.updatePlot = function updatePlot(data) {
         }
     }
 
-    // 3. Ajouter une trace invisible pour forcer la création de l'axe yaxis2 (altitude)
+    // 2. Ajouter une trace invisible pour forcer la création de l'axe yaxis2 (altitude)
     // Cette trace est nécessaire car Plotly ne crée un axe que s'il est utilisé par au moins une trace
     traces.push({
         x: [0, 0], // Points invisibles à x=0
@@ -1533,7 +1507,7 @@ PLOT.updatePlot = function updatePlot(data) {
         yaxis: 'y2' // Utiliser l'axe secondaire (altitude)
     });
 
-    // 4. Ajouter une ligne horizontale pour la tropopause (calculée dynamiquement)
+    // 3. Ajouter une ligne horizontale pour la tropopause (calculée dynamiquement)
     // Calculer la tropopause en fonction de T0 (température de surface)
     // T0 = température de surface (cohérence organigramme / légende) pour tropopause et annotations
     let T0;
@@ -1781,6 +1755,7 @@ PLOT.updatePlot = function updatePlot(data) {
     const minY = Number.isFinite(window.FLUX.minYMaxLuminance) ? window.FLUX.minYMaxLuminance : 0.5;
     const isConverged = (typeof window.RUNTIME_STATE.spectralConverged !== 'undefined' && window.RUNTIME_STATE.spectralConverged);
     const forceRecalcY = window.FLUX.yAxisRecalcOnNextFinish;
+    const forcedRecalcThisPass = !!forceRecalcY;
     let y_max_luminance;
 
     if (lastGoodYMaxLuminance != null && !isConverged && !forceRecalcY) {
@@ -1826,6 +1801,11 @@ PLOT.updatePlot = function updatePlot(data) {
             y_max_luminance = yFloorSol;
             lastGoodYMaxLuminance = y_max_luminance;
         }
+    }
+    // Recalage forcé (fin de calcul/changement d'époque) : ancrer explicitement Planck sol à ~90% de la hauteur.
+    if (forcedRecalcThisPass && maxYPlanckSurfaceSol > 0) {
+        y_max_luminance = Math.max(minY, maxYPlanckSurfaceSol / Y_AXIS_PEAK_FRACTION_SOL);
+        lastGoodYMaxLuminance = y_max_luminance;
     }
 
     const dtick_luminance = y_max_luminance / 8;
@@ -1938,42 +1918,13 @@ PLOT.updatePlot = function updatePlot(data) {
         ]
     };
 
-    // T sol + T eff (texte seul en coin) — EDS / Soleil : voir drawAbsorptionBandIndicators sur l’axe λ (défaut 12 μm)
+    // T sol / T eff : valeurs dans le bandeau titre (.synthese_Temp) — pas de bloc sur le graphe (main.js updateLegend pour les styles de courbes)
     const plotContainerForTemps = document.getElementById('plot-container');
     if (plotContainerForTemps) {
         const oldReadouts = plotContainerForTemps.querySelector('.plot-temp-readouts');
         const oldCyan = plotContainerForTemps.querySelector('.temp-display-cyan');
         if (oldReadouts) oldReadouts.remove();
         if (oldCyan) oldCyan.remove();
-
-        const hasSurf = T_current_display != null && Number.isFinite(T_current_display);
-        const hasEff = T_effective_display != null && Number.isFinite(T_effective_display);
-        if (hasSurf || hasEff) {
-            const wrap = document.createElement('div');
-            wrap.className = 'plot-temp-readouts';
-
-            if (hasSurf) {
-                const surf = document.createElement('div');
-                surf.className = 'plot-temp-block plot-temp-block--surface';
-                surf.style.color = color_current;
-                const tsK = T_current_display.toFixed(1);
-                const tsC = (T_current_display - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-                const tsF = ((T_current_display - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
-                surf.innerHTML = `T sol.<br>${tsK} K<br>${tsC}°C<br>${tsF}°F`;
-                wrap.appendChild(surf);
-            }
-            if (hasEff) {
-                const eff = document.createElement('div');
-                eff.className = 'plot-temp-block plot-temp-block--eff';
-                eff.style.color = color_current;
-                const teK = T_effective_display.toFixed(1);
-                const teC = (T_effective_display - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-                const teF = ((T_effective_display - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
-                eff.innerHTML = `T eff.<br>${teK} K<br>${teC}°C<br>${teF}°F`;
-                wrap.appendChild(eff);
-            }
-            plotContainerForTemps.appendChild(wrap);
-        }
     }
 
     // Afficher le texte "via lunettes infrarouge" en bas à droite, au-dessus de la bande spectrale
@@ -1989,6 +1940,10 @@ PLOT.updatePlot = function updatePlot(data) {
         const infraText = document.createElement('div');
         infraText.className = 'infra-note';
         const text = 'via lunettes infrarouge logarithmique';
+        const infraShort = "zoom sur les fréquences réelles pour les rendre visibles";
+        const infraLong = "λ_visible (nm) = 3000 / ((1598.5/(log10(λ_réel×10^6)+2.026) − 30)/100)";
+        infraText.setAttribute('data-tooltip', infraShort);
+        infraText.setAttribute('aria-label', infraLong);
 
         // Utiliser les couleurs précalculées si disponibles, sinon calculer maintenant
         if (!window.infraTextColors) {
@@ -2338,6 +2293,7 @@ if (typeof window !== 'undefined') {
 // Écouter l'événement de convergence pour ajuster la précision
 if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('calculationConverged', (event) => {
+        if (window.FLUX) window.FLUX.yAxisRecalcOnNextFinish = true;
         // Convergence atteinte : vérifier le FPS pour décider de la précision finale
         const currentFPS = window.RUNTIME_STATE.fps;
         if (currentFPS > 55) {

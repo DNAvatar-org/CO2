@@ -1,9 +1,15 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.69
+// Version 1.0.77
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
+// Logs: v1.0.77 SKIP #plot-anim-toggle sans icon-button/.flux-button-cell (.icon-button dans style.css = grayscale sur tout le nœud) ; pulse/hover `.organigram-logo` fusionné (timeline + panneaux + SKIP)
+// Logs: v1.0.76 classe .organigram-buttons sur panneaux #organigram-config-wrap / #observation-config-wrap (main.js) ; layout par id (#plot-anim-toggle SKIP hors de ce jeu depuis v1.0.77)
+// Logs: v1.0.74 SKIP : flux-circle-bg sans grayscale (action directe) ; titres DETAILS/OBS — glow titre au seul survol titre ; EVENEMENT / SKIP — glow titre au survol zone ; pulse logos = event-logo-pulse / event-logo-pulse-img (ergo_button) + hover blanc
+// Logs: v1.0.73 classe unique .organigram-logo (retrait .timeline-event-logo / .organigram-unified-logo sur flux) ; pulse + hover vert --retro-clicable ; plus de grayscale
+// Logs: v1.0.72 #plot-anim-toggle.plot-anim-toggle--scenario-hidden — display none !important (SKIP masqué si order.length===1 ou 📱)
+// Logs: v1.0.71 retrait masque compute-loading sur logos/SKIP — voile #organigram-calculation-overlay (style.css + loader_panels)
 // Logs: v1.0.69 retrait styles .visu_epochs-title (span EPOQUES supprimé de visu_radiatif.html)
 // Logs: v1.0.8 un seul tooltip (pas title), cursor help sur tous les alt
 // Logs: v1.0.9 bloc CONFIGURATION + ⚗ (titres alignés timeline SCENARIO/EPOQUES)
@@ -30,7 +36,7 @@
 // Logs: v1.0.56 ACTION + #timeline-action-block ; #plot-anim-toggle icon-button + SKIP + plot-anim-blink ; sélecteurs #timeline-events-logos descendant
 // Logs: v1.0.68 couleurs rétro : --retro-green (clicable 04B_03) / --retro-orange (dates, non-clicable) ; synthese_Temp-col-right couleur dynamique par JS
 // Logs: v1.0.67 #cell-timeline-scenario-logos : pointer-events none (ID plus spécifique) ; seul .flux-circle-bg auto (contient les logos)
-// Logs: v1.0.66 flux-cell--scenario-logos-shell + circleBg : pointer-events none (shell entier passe au travers) ; seuls #timeline-events-logos et .timeline-event-logo auto
+// Logs: v1.0.66 flux-cell--scenario-logos-shell + circleBg : pointer-events none ; seuls #timeline-events-logos et .organigram-logo en pointer-events auto
 // Logs: v1.0.65 .flux-grid-item + .flux-label : pointer-events none global (cases vides 3×3 ne bloquent plus) ; exceptions data-tooltip + albedo/bary
 // Logs: v1.0.64 #plot-anim-toggle : retrait halo vert checked/selected (action directe, pas toggle) ; text-shadow/box-shadow none sur circleBg
 // Logs: v1.0.63 flux-cell--scenario-logos-shell .flux-grid-item + .flux-label : pointer-events none (gridItems bloquaient clics sur logos domSlot)
@@ -67,6 +73,10 @@
 // Logs: v1.0.32 retrait .credits-paleomap-badge (dialogue index — hors périmètre organigramme)
 */
 
+:root {
+    --slot-event-logo-px: 65px;
+}
+
 .controle-simulation {
     padding: 0 !important;
     height: fit-content;
@@ -88,32 +98,29 @@
     /* border, border-radius, box-shadow, background → .divGlass (style.css) */
 }
 
-/* 🎞 SKIP : action directe (pas un toggle) — pas de halo vert checked/selected, même rendu que les logos EVENEMENT
-   Pulse cyan/jaune sur l'emoji via event-logo-pulse-img (comme ⚗ DETAILS et 🛰 OBSERVATIONS) */
-#plot-anim-toggle.icon-button.flux-cell.flux-button-cell {
-    filter: grayscale(0%) !important;
+/* 🎞 SKIP (#plot-anim-toggle) : flux-cell uniquement — pas icon-button (style.css grise tout le bloc) ni flux-button-cell (grayscale sur .flux-circle-bg organigramme) */
+.flux-diagram #plot-anim-toggle.flux-cell {
+    pointer-events: none;
     border-radius: 0 !important;
     background: none !important;
 }
-#plot-anim-toggle.icon-button.flux-button-cell .flux-circle-bg,
-#plot-anim-toggle.icon-button.flux-button-cell.checked .flux-circle-bg,
-#plot-anim-toggle.icon-button.flux-button-cell.selected .flux-circle-bg {
-    cursor: pointer;
-    filter: grayscale(0%) !important;
-    text-shadow: none !important;
+.flux-diagram #plot-anim-toggle.flux-cell .flux-circle-bg {
+    pointer-events: auto;
+    cursor: pointer !important;
+    filter: none !important;
     box-shadow: none !important;
     overflow: visible !important;
     border-radius: 0 !important;
 }
-#plot-anim-toggle.icon-button.flux-button-cell .flux-circle-bg:hover,
-#plot-anim-toggle.icon-button.flux-button-cell.checked .flux-circle-bg:hover,
-#plot-anim-toggle.icon-button.flux-button-cell.selected .flux-circle-bg:hover {
-    filter: grayscale(0%) !important;
-    text-shadow: none !important;
+.flux-diagram #plot-anim-toggle.flux-cell .flux-circle-bg:hover {
+    filter: none !important;
 }
-#plot-anim-toggle.icon-button.flux-button-cell .flux-circle-bg > span {
-    animation: event-logo-pulse-img 1.6s ease-in-out infinite;
+
+/* Masquage SKIP : events.js — plot-anim-toggle--scenario-hidden */
+.flux-diagram #plot-anim-toggle.plot-anim-toggle--scenario-hidden {
+    display: none !important;
 }
+
 /* Titres ACTION / SKIP : même esprit que DETAILS & OBSERVATIONS (04B_03, pas de boîte .flux-label) */
 #flux-diagram .flux-label.organigram-config-heading {
     background: transparent !important;
@@ -146,12 +153,12 @@
 .flux-cell--scenario-logos-shell .flux-circle-bg:hover {
     transform: translate(-50%, -50%);
 }
-/* Div parente + tous ses descendants insensibles ; seuls les .timeline-event-logo sont cliquables */
+/* Div parente + tous ses descendants insensibles ; seuls les .organigram-logo sont cliquables */
 #cell-timeline-scenario-logos,
 #cell-timeline-scenario-logos * {
     pointer-events: none;
 }
-#cell-timeline-scenario-logos .timeline-event-logo {
+#cell-timeline-scenario-logos .organigram-logo {
     pointer-events: auto;
 }
 
@@ -159,7 +166,7 @@
 #flux-diagram #timeline-events-logos {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: 4px;
     justify-content: center;
@@ -169,7 +176,7 @@
     gap: 8px;
     justify-content: center;
 }
-#flux-diagram #timeline-events-logos .timeline-event-logo {
+#flux-diagram #timeline-events-logos .organigram-logo {
     margin-left: -15px;
     --_slot-logo: var(--slot-event-logo-px, 65px);
     width: var(--_slot-logo);
@@ -185,23 +192,56 @@
     line-height: 1;
     object-fit: contain;
     cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.3s ease, transform 0.2s ease;
+    opacity: 1;
     border: none;
+    transition: transform 0.2s ease, color 0.25s ease, text-shadow 0.25s ease, filter 0.25s ease;
 }
-#flux-diagram #timeline-events-logos .timeline-event-logo img {
+/* Pulse : mêmes keyframes que ergo_button.css — une seule fam. de sélecteurs (événements + panneaux ⚗🛰 + SKIP) */
+#flux-diagram #timeline-events-logos .organigram-logo:not(img),
+#flux-diagram #plot-anim-toggle .organigram-logo:not(img),
+.flux-diagram .organigram-buttons .organigram-logo:not(img) {
+    animation: event-logo-pulse 1.6s ease-in-out infinite;
+}
+#flux-diagram #timeline-events-logos img.organigram-logo,
+#flux-diagram #plot-anim-toggle img.organigram-logo,
+.flux-diagram .organigram-buttons img.organigram-logo {
+    animation: event-logo-pulse-img 1.6s ease-in-out infinite;
+}
+#flux-diagram #timeline-events-logos .organigram-logo img {
     width: 100%;
     height: 100%;
     object-fit: contain;
 }
-#flux-diagram #timeline-events-logos .timeline-event-logo:hover {
-    opacity: 1;
-    transform: scale(1.1);
+#flux-diagram #timeline-events-logos .organigram-logo:hover,
+#flux-diagram .flux-circle-bg:hover #timeline-events-logos .organigram-logo,
+#flux-diagram #plot-anim-toggle .organigram-logo:hover,
+#flux-diagram #plot-anim-toggle .flux-circle-bg:hover .organigram-logo,
+.flux-diagram .organigram-buttons .organigram-logo:hover {
+    transform: scale(1.08);
+    animation: none;
+    filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1))
+            drop-shadow(0 0 2px rgba(255, 255, 255, 0.6))
+            drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
 }
-#flux-diagram #timeline-events-logos .timeline-event-logo:active {
+#flux-diagram #timeline-events-logos .organigram-logo:not(img):hover,
+#flux-diagram #plot-anim-toggle .organigram-logo:not(img):hover,
+.flux-diagram .organigram-buttons .organigram-logo:not(img):hover {
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.6),
+                 0 0 3px rgba(255, 255, 255, 0.4);
+}
+#flux-diagram #timeline-events-logos img.organigram-logo:hover,
+#flux-diagram #plot-anim-toggle img.organigram-logo:hover,
+.flux-diagram .organigram-buttons img.organigram-logo:hover {
+    filter: drop-shadow(0 0 0px rgba(0, 0, 0, 1))
+            drop-shadow(0 0 2px rgba(255, 255, 255, 0.6))
+            drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
+}
+#flux-diagram #timeline-events-logos .organigram-logo:active,
+#flux-diagram #plot-anim-toggle .organigram-logo:active,
+.flux-diagram .organigram-buttons .organigram-logo:active {
     transform: scale(0.95);
 }
-#flux-diagram #timeline-events-logos .timeline-event-logo.btn-year-indexed {
+#flux-diagram #timeline-events-logos .organigram-logo.btn-year-indexed {
     width: calc(var(--_slot-logo) * 46 / 65);
     height: calc(var(--_slot-logo) * 46 / 65);
     min-width: calc(var(--_slot-logo) * 46 / 65);
@@ -210,22 +250,77 @@
     margin-left: 0;
 }
 
-/* DETAILS + ⚗ : largeur = contenu, bord gauche organigramme */
-#organigram-config-wrap {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
+/* SKIP : même lissage hover que les tuiles événements (🎞 est dans .flux-circle-bg, pas sous #timeline-events-logos) */
+#flux-diagram #plot-anim-toggle .organigram-logo {
+    transition: transform 0.2s ease, color 0.25s ease, text-shadow 0.25s ease, filter 0.25s ease;
+}
+
+/* ⚗ 🛰 : boutons avec .organigram-logo — désature annulée (icon-button hors organigramme impose grayscale) ; pulse/hover commun bloc timeline ci-dessus */
+.flux-diagram .organigram-buttons .organigram-logo {
+    transition: transform 0.2s ease, filter 0.25s ease, text-shadow 0.25s ease;
+    filter: none;
+    opacity: 1;
+}
+
+/* Panneaux ⚗ DETAILS / 🛰 OBS — mise en page sur les wrappers (#plot-anim-toggle hors de ce jeu de classes) */
+.flux-diagram > #organigram-config-wrap.organigram-buttons,
+.flux-diagram > #observation-config-wrap.organigram-buttons {
     z-index: 9999;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
     gap: 0;
     width: fit-content;
     max-width: none;
     min-width: 0;
     box-sizing: border-box;
     overflow: visible;
+    pointer-events: auto;
 }
+#organigram-config-wrap.organigram-buttons {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    align-items: flex-start;
+}
+#observation-config-wrap.organigram-buttons {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    left: auto;
+    bottom: auto;
+    align-items: flex-end;
+}
+#organigram-config-wrap.organigram-buttons .organigram-config-row,
+#observation-config-wrap.organigram-buttons .organigram-config-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+}
+#organigram-config-wrap.organigram-buttons .organigram-config-row {
+    justify-content: flex-start;
+    gap: 10px;
+}
+#observation-config-wrap.organigram-buttons .organigram-config-heading {
+    text-align: right;
+    align-self: flex-end;
+}
+#observation-config-wrap.organigram-buttons .organigram-config-row {
+    justify-content: flex-end;
+    margin-right: 25px;
+}
+#organigram-config-wrap.organigram-buttons #three-play-indicator,
+#observation-config-wrap.organigram-buttons #observation-metrics-toggle {
+    position: static;
+    flex-shrink: 0;
+    font-size: 45px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 2px;
+    font-family: var(--font-emoji);
+}
+
 /* O(f(1)) — police timeline, pas .flux-diagram */
 .organigram-config-heading {
     font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
@@ -242,75 +337,35 @@
     padding: 0;
     border: none;
     white-space: nowrap;
+    transition: text-shadow 0.25s ease;
 }
 .organigram-config-heading::before,
 .organigram-config-heading::after {
     content: none;
     display: none;
 }
-/* Ligne ⚗ + % albédo (O(1) layout) */
-#organigram-config-wrap .organigram-config-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-#organigram-config-wrap #three-play-indicator {
-    position: static;
-    flex-shrink: 0;
-    font-size: 45px;
-    cursor: pointer;
-    background: transparent;
-    border: none;
-    padding: 2px;
-    font-family: var(--font-emoji);
-    /* Même animation que bouton SCENARIO (event-logo-pulse-img dans ergo_button.css) */
-    animation: event-logo-pulse-img 1.6s ease-in-out infinite;
-}
 
-/* OBSERVATIONS + 🛰 (satellite) — même typo titre que DETAILS, coin haut-droit */
-#observation-config-wrap {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    left: auto;
-    bottom: auto;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0;
-    width: fit-content;
-    max-width: none;
-    min-width: 0;
-    box-sizing: border-box;
-    overflow: visible;
+/* Titres tableau organigramme : glow blanc commun */
+.flux-diagram .organigram-unified-title {
+    color: var(--retro-clicable) !important;
+    transition: text-shadow 0.25s ease;
 }
-#observation-config-wrap .organigram-config-heading {
-    text-align: right;
-    align-self: flex-end;
+.flux-diagram .organigram-buttons:hover .organigram-unified-title,
+.flux-diagram .organigram-buttons:has(.organigram-logo:hover) .organigram-unified-title,
+.flux-diagram .organigram-buttons .organigram-unified-title:hover,
+.flux-diagram #plot-anim-toggle:hover .organigram-unified-title,
+.flux-diagram #plot-anim-toggle:has(.organigram-logo:hover) .organigram-unified-title {
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5);
 }
-#observation-config-wrap .organigram-config-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-end;
-    margin-right: 25px;
-    flex-wrap: wrap;
+.flux-diagram .flux-cell--scenario-logos-shell:hover .organigram-unified-title {
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
+                 0 0 4px rgba(255, 255, 255, 0.7),
+                 0 0 6px rgba(255, 255, 255, 0.5);
 }
-#observation-config-wrap #observation-metrics-toggle {
-    position: static;
-    flex-shrink: 0;
-    font-size: 45px;
-    cursor: pointer;
-    background: transparent;
-    border: none;
-    padding: 2px;
-    font-family: var(--font-emoji);
-    animation: event-logo-pulse-img 1.6s ease-in-out infinite;
-}
+/* Logos « glow » organigramme : #timeline-events-logos ; panneaux .organigram-buttons ; SKIP #plot-anim-toggle (.organigram-logo) */
+
 /* Barre titre visu : Flou scientifique (gauche) + synthèse cyan (droite) */
 .title-content-row.title-content-row--flou-et-resultat {
     display: flex;

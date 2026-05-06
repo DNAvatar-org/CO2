@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.21
+// Version 1.1.22
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.22: COMPUTE_LOADER — append #organigram-calculation-overlay dans #flux-diagram au show (z au-dessus des cellules) ; replacer dans .flux-diagram-wrapper au hide
 // Logs: v1.1.21: static/courbes/plot_debug.js avant plot.js (?debugPlot=1 → _logs/plot.txt + DEBUG_PLOT_LOG)
 // Logs: v1.1.20 migration window.updateFluxLabels → window.ORG.updateFluxLabels + lectures UI_STATE.FPSalert / RUNTIME_STATE (fps, currentEpochName, h2oVaporPercent). Retrait typeof defensive check sur updateFluxLabels (crash-first : organigramme.js chargé avant).
 // Logs: v1.1.19 workers/worker_pool.js ajouté après hitran.js → scie/visu utilisent les workers (parallèle) comme bench. Retire divergence 0.115 W/m² sur 🧲🌈🔼 (ordre addition float série vs parallèle) → 15.28°C → 15.35°C aligné 📱.
@@ -385,9 +386,19 @@
             show: function () {
                 _computeTicIndex = 0;
                 var overlay = document.getElementById('calculation-overlay');
+                var orgOverlay = document.getElementById('organigram-calculation-overlay');
+                var fluxDiagram = document.getElementById('flux-diagram');
                 var loaderEl = document.getElementById('compute-tic-loader');
                 var ring = document.querySelector('#compute-tic-loader .compute-tic-loader__ring');
                 if (overlay) overlay.style.display = 'flex';
+                /* Dernier enfant de #flux-diagram : au-dessus des cellules (z-index inline) et des labels .flux-label */
+                if (orgOverlay && fluxDiagram && orgOverlay.parentNode !== fluxDiagram) {
+                    fluxDiagram.appendChild(orgOverlay);
+                }
+                if (orgOverlay) {
+                    orgOverlay.style.display = 'flex';
+                    orgOverlay.setAttribute('aria-hidden', 'false');
+                }
                 document.body.classList.add('compute-loading');
                 document.documentElement.classList.add('compute-loading');
                 var anim = window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞'];
@@ -396,7 +407,16 @@
             },
             hide: function () {
                 var overlay = document.getElementById('calculation-overlay');
+                var orgOverlay = document.getElementById('organigram-calculation-overlay');
+                var wrap = document.querySelector('.flux-diagram-wrapper');
                 if (overlay) overlay.style.display = 'none';
+                if (orgOverlay) {
+                    orgOverlay.style.display = 'none';
+                    orgOverlay.setAttribute('aria-hidden', 'true');
+                    if (wrap && orgOverlay.parentNode === document.getElementById('flux-diagram')) {
+                        wrap.appendChild(orgOverlay);
+                    }
+                }
                 document.body.classList.remove('compute-loading');
                 document.documentElement.classList.remove('compute-loading');
             }

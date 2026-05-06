@@ -1,8 +1,10 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.38
-// Date: [Apr 16, 2026] [12:00 UTC+1]
+// Version 1.1.40
+// Date: [May 04, 2026] [12:00 UTC+1]
 // logs :
+// - v1.1.40: timeline-scenario-anim — fillColor transparent (plus de disque blanc derrière 🎞 SKIP)
+// - v1.1.39: doc timeline-scenario-anim — cellule #plot-anim-toggle = flux-cell + .organigram-logo sur le span 🎞 (plus icon-button / flux-button-cell sur la cellule ; voir organigramme.js v1.0.81)
 // - v1.1.38: terre.epoch + noyau.radiation — nouvelles époques v1.4.0 timeline : ☃ Sturtienne (hyst 1a), ⛄ Plein Snowball, ⛈ Sortie Marinoen (hyst 1b),
 //            🪼 Paléozoïque marin, 🍄 Paléozoïque terrestre, 💀 Limite P/T, 🛖 Holocène ; renommages 🦤 Cénozoïque, 🐧 Eocène-Oligocène (hyst 2),
 //            🦣 Quaternaire ; Paléozoïque supprimé (scindé) ; hysteresis 1 renommé Sturtienne (CHARS_DESC).
@@ -604,31 +606,33 @@ const nodes = [
         type: 'domSlot',
         mountId: 'timeline-events-logos',
         appendParentSelector: '#flux-diagram',
-        top: [{ text: 'EVENEMENT', className: 'organigram-config-heading' }],
-        x: centerX + circleMiddleRadius*1.4 * Math.cos(Math.PI*5/4+0.3),
-        y: earthCenterY + circleMiddleRadius*1.4 * Math.sin(Math.PI*5/4+0.3),
+        top: [{ text: 'EVENEMENT', className: 'organigram-config-heading organigram-unified-title' }],
+        x: centerX + circleMiddleRadius*1.5 * Math.cos(Math.PI*5/4),
+        y: earthCenterY + circleMiddleRadius*1.6 * Math.sin(Math.PI*5/4),
         zIndex: 220,
         slotMinWidth: 500,
         slotEventLogoPx: 100,
         domClass: 'timeline-events-logos'
     },
 
-    { // 🎞 + SKIP (cellule id #plot-anim-toggle, classe icon-button, animation organigramme.css)
+    { // 🎞 + SKIP (cellule id #plot-anim-toggle, flux-cell + span .organigram-logo — organigramme.js)
         id: 'timeline-scenario-anim',
         type: 'button',
         readOnly: true,
         logo: '🎞',
-        x: centerX - 100,
-        y: earthCenterY + circleMiddleRadius * 1.8,
+        //x: centerX - 100,
+        //y: earthCenterY + circleMiddleRadius * 1.8,
+        x: centerX + circleMiddleRadius*1.5 * Math.cos(Math.PI*5/4+0.3),
+        y: earthCenterY + circleMiddleRadius*1.45 * Math.sin(Math.PI*5/4),
         zIndex: 221,
         radius: 15,
         logoScale: 0.8,
         left: [],
         right: [],
-        top: [{ text: 'SKIP', dataId: 'plot_anim_skip', className: 'organigram-config-heading' }],
+        top: [{ text: 'SKIP', dataId: 'plot_anim_skip', className: 'organigram-config-heading organigram-unified-title' }],
         bottom: [],
         tooltip: 'Prochaine époque (SKIP)',
-        fillColor: 'rgba(255, 255, 255, 0.7)',
+        fillColor: 'transparent',
         strokeColor: 'rgba(0, 0, 0, 0)'
     },
 
@@ -773,7 +777,7 @@ const ACTION_BY_DATE = {
     5000: '☄️', 4900: '💫', 4800: '☄️', 4700: '💫', 4600: '🎇',
     4500: '☄️', 4400: '💫', 4300: '☄️', 4200: '💫', 4100: '☄️',
     4000: '💫', 3500: '💫', 3000: '💫', 2500: '💫', 2000: '💫',
-    1500: '💫', 1000: '💫', 750: '💫', 600: '💫', 500: '💫', 250: '💫', 150: '💫',
+    1500: '💫', 1000: '💫', 750: '🌋', 720: '💫', 600: '💫', 500: '💫', 250: '💫', 150: '💫',
     66: '💫', 50: '💫', 35: '💫', 33: '💫', 2: '💫',
     // Années (cf. fonds/001800a.png, 002025a.png)
     1800: '💫', 2025: '💫'
@@ -791,8 +795,7 @@ function getCurrentDateKey(startYears, infoTimeMa) {
 /** Retourne '☄️' | '🎇' | '💫' pour la date courante (startYears, infoTimeMa). Lookup ACTION_BY_DATE[dateKey]. */
 function getActionForDate(startYears, infoTimeMa) {
     const key = getCurrentDateKey(startYears, infoTimeMa);
-    const action = (window.configOrganigramme && window.configOrganigramme.ACTION_BY_DATE) ? window.configOrganigramme.ACTION_BY_DATE[key] : undefined;
-    return (action === '☄️' || action === '🎇' || action === '💫') ? action : '💫';
+    return window.configOrganigramme.ACTION_BY_DATE[key];
 }
 
 // Exposer la configuration globalement pour accès depuis main.js

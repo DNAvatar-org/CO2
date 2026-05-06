@@ -5,7 +5,7 @@
 // logs :
 // - v1.0.9: CHARS.SULFATE + CHARS_DESC — U+2708 U+FE0F (emoji ✈️, police emoji) ; aligné configsAll
 // - v1.0.8: timeline étendue (19 époques) — renames 🥟→🪸, ❄️→🦣, 🦣→🦤, scission 🌿→🪼/🍄/💀 ; nouveaux ⛈ 🐧 🛖 ; hysteresis 1→1a + ajout 1b
-// - v1.0.7: charsImages CH4 -> fonts/pics/ch4_2.png (picto texte)
+// - v1.0.7: charsImages CH4 -> fonts/pics/ch4.png (picto texte)
 // - v1.0.6: CHARS_DESC 🐊 « Éocène »
 // - v1.0.5: CHARS_DESC 🎾 Lave, ⚽ voile SW ; VOLCANO 🌋 inchangé (actions)
 // - v1.0.3: IIFE + __alphabetModuleLoaded (évite SyntaxError CHARS redeclared si double chargement) ; resolveImagePath pour pages sous /html/*.html → ../fonts/
@@ -128,7 +128,7 @@ const charsImages = {
     '🎇': 'fonts/pics/big_impact.png',    // Big impact
     '☄️': 'fonts/pics/ice_meteorite.png', // Météorite de glace
     //'🔥': 'fonts/pics/hadeen.png',           // Feu
-    '🐄': 'fonts/pics/ch4_2.png',         // CH4 (picto texte ; spectre + organigramme)
+    '🐄': 'fonts/pics/ch4.png',           // CH4 (picto texte ; spectre + organigramme)
 };
 
 // ============================================================================

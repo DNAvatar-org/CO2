@@ -1,20 +1,17 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.11
- * Date: [Apr 01, 2026]
+ * Version 1.2.19
+ * Date: [Apr 30, 2026]
 * logs :
+ *   - v1.2.19: boutons scénario #timeline-events-logos — classe unique organigram-logo (retrait timeline-event-logo + organigram-unified-logo) ; styles organigramme.css.
+ *   - v1.2.18: SKIP — classe plot-anim-toggle--scenario-hidden (display:none !important) si 📱 ou 🕰.order.length===1 ; retire visibility inline.
+ *   - v1.2.17: SKIP (#plot-anim-toggle) — visibility avant guard eventsLogos ; masqué si 🕰.order.length===1 (sinon visible) ; 📱 year-indexed inchangé.
+ *   - v1.2.16: organigramme 🕰.order — un seul bouton (tête de file) ; shift après action si clé === order[0] ; repli si order vide.
+ *   - v1.2.15: 🕰.order sur TIMELINE — plusieurs boutons dans l’ordre ; SKIP (#plot-anim-toggle) masqué si order.length===1 ; compute ignore la clé order.
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.
-* ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
-* "La carte c'est le territoire, le territoire c'est le code."
-* UTF8 est la sémantique pour CODE & UI
-* ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
-* "La carte c'est le territoire, le territoire c'est le code."
-* UTF8 est la sémantique pour CODE & UI
-* ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
-* "La carte c'est le territoire, le territoire c'est le code."
-* UTF8 est la sémantique pour CODE & UI
+
  *   - Initial version: extraction de updateEpochActions depuis main.js
  *   - Corps noir météorite: config via 🕰.☄️, id époque DATA['📜']['🗿'], getEpochDateConfig + runComputeInParent + 📿💫
  *   - switch(epochId) ⚫/🔥/default; config unique ▶/◀/🔺🧲🌕💫; getEpochConfigById; applyHadeenFluxFromConfig; plus de corps-noir/hadeen
@@ -30,18 +27,19 @@
  *   - v1.2.11: idToName 🐊 « Éocène »
  *   - v1.2.9: idToName 🐊 « Hyperthermie éocène »
  *   - v1.2.10: idToName 🥟 Protérozoïque ; check fin d'époque dans handler 💫 → setEpoch(suivant) auto
+ *   - v1.2.12: géologique — 🕰.🌋 (voile SW 📜🔺🍰⚽) même si ACTION_BY_DATE reste 💫 ; tic 💫 seulement si 🕰.💫 ou pas seulement 🌋
+ *   - v1.2.13: 🌋 + 🔺⏳ (Ma) même chemin temps/fin d’époque que 💫 ; TIMELINE[epochId]['🕰'] accès direct (contrat) ; 📜🔺🍰⚽ non reset par setEpoch → voile survit au changement d’époque
+ *   - v1.2.14: clic 💫 — si 🕰.💫 définit 🍰⚽, copie dans 📜🔺🍰⚽ (ex. 0) puis _veilTimelinePulseActive=false pour ré-autoriser impulsion racine EPOCH['🔺🍰⚽'] au prochain 📿💫===0
  */
 
 // Core globals requis : addCustomTooltip, hideTooltip, setEpoch, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
 // Module plot optionnel : géré par window.PLOT_PANEL_READY (main.js), accès en blocs if (window.PLOT_PANEL_READY) { ... window.plotData ... }.
 
 // Fonction pour mettre à jour les actions disponibles selon l'époque
-// Un seul 2e bouton (après 🎞) : déterminé par configOrganigramme.ACTION_BY_EPOCH[epochId] → '☄️' | '🎇' | '💫'
+// Après 🎞 : ☄️ / 🎇 / 💫 selon 🕰.order (TIMELINE) — une seule action visible (order[0]), queue consommée au clic ; sinon ACTION_BY_DATE ; géologique sans order : 🕰.🌋 + 🕰.💫.
 window.updateEpochActions = function () {
     const eventsLogos = document.getElementById('timeline-events-logos');
-    if (!eventsLogos) return;
-
-    eventsLogos.innerHTML = '';
+    const animToggleBtn = document.getElementById('plot-anim-toggle');
 
     const currentEpochName = window.RUNTIME_STATE.currentEpochName || 'Corps Noir';
     const getEpochConfigById = (id) => (window.configOrganigramme && window.configOrganigramme.timeline)
@@ -51,16 +49,25 @@ window.updateEpochActions = function () {
     const startYears = timelineEpoch && timelineEpoch['▶'] != null ? timelineEpoch['▶'] : 5e9;
     const infoTimeMa = (window.infoTimeMa != null ? window.infoTimeMa : 0);
 
-    // 🎞 "prochaine époque" invisible si l'époque a un scénario d'émissions 🏭📊 (📱 et futurs)
-    // ⚠️ On ne peut PAS utiliser ▶ >= 2000 : les époques géologiques ont ▶ = 5e9, 4.5e9… (années écoulées, >> 2000)
-    const animToggleBtn = document.getElementById('plot-anim-toggle');
+    // 🎞 SKIP : masqué si 📱 (buckets année sous 🕰) ; masqué si une seule action restante dans 🕰.order (length === 1) ; affiché sinon.
+    const _tlEpoch = window.TIMELINE ? window.TIMELINE.find(function(e) { return e['📅'] === epochId; }) : null;
+    const whRoot = _tlEpoch && _tlEpoch['🕰'];
     if (animToggleBtn) {
-        const _tlEpochVis = window.TIMELINE ? window.TIMELINE.find(function(e) { return e['📅'] === epochId; }) : null;
-        const _hasEmissions = _tlEpochVis && _tlEpochVis['🕰'] && Object.keys(_tlEpochVis['🕰']).some(function(k) { return !isNaN(Number(k)); });
-        animToggleBtn.style.visibility = _hasEmissions ? 'hidden' : '';
+        const _hasEmissions = whRoot && Object.keys(whRoot).some(function(k) { return !isNaN(Number(k)); });
+        const orderArr = whRoot && Array.isArray(whRoot.order) ? whRoot.order : null;
+        const orderedActionCount = orderArr !== null ? orderArr.length : null;
+        const directActionCount = whRoot
+            ? ['☄️', '🎇', '🌋', '💫'].filter(function(k) { return whRoot[k] != null; }).length
+            : 0;
+        const actionCount = orderedActionCount !== null ? orderedActionCount : directActionCount;
+        const hideSkip = _hasEmissions || actionCount <= 1;
+        animToggleBtn.classList.toggle('plot-anim-toggle--scenario-hidden', hideSkip);
+        animToggleBtn.style.removeProperty('visibility');
     }
-    const getActionForDate = (window.configOrganigramme && window.configOrganigramme.getActionForDate) || (() => '💫');
-    const actionId = getActionForDate(startYears, infoTimeMa);
+
+    if (!eventsLogos) return;
+
+    eventsLogos.innerHTML = '';
 
     // Applique le flux géothermique Hadéen depuis la config (▶/◀ années, 🔺🧲🌕💫 flux début/fin)
     const applyHadeenFluxFromConfig = () => {
@@ -116,14 +123,308 @@ window.updateEpochActions = function () {
         }
     };
 
-    // Un seul 2e bouton : actionId = ☄️ | 🎇 | 💫 (ACTION_BY_EPOCH)
+    // 📱 Buckets par année (clés numériques sous 🕰), prioritaire sur order / ACTION_BY_DATE
+    if (_tlEpoch && whRoot) {
+        const _isYearIndexed = Object.keys(whRoot).some(function(k) { return !isNaN(Number(k)); });
+        if (_isYearIndexed) {
+            // 📱 year-indexed : boutons par tranche d'année (⛽, 🛢, 🛳…)
+            // Année pour buckets : 📅 seulement s’il est dans [▶, ◀] (ère moderne) ; sinon ▶ + 📿💫×pas (comme physicsAll) puis repli ▶
+            // Sinon un 📅 géologique (≫2100) tombait dans [2075,∞) → ⛽ 350Gt + 🛢 au lieu du scénario 2000 (850Gt, ⛽ seul)
+            eventsLogos.classList.add('year-indexed');
+            const D = window.DATA;
+            const yearKeys = Object.keys(_tlEpoch['🕰'])
+                .filter(k => !isNaN(Number(k)))
+                .map(Number)
+                .sort((a, b) => a - b);
+            const epochStart = (_tlEpoch['▶'] != null && Number.isFinite(_tlEpoch['▶'])) ? _tlEpoch['▶'] : (yearKeys[0] || 2000);
+            const epochEnd = (_tlEpoch['◀'] != null && Number.isFinite(_tlEpoch['◀'])) ? _tlEpoch['◀'] : (yearKeys[yearKeys.length - 1] || 2100);
+            const winLo = epochStart - 0.5;
+            const winHi = epochEnd + 200;
+            const rawYr = (D['📜'] && D['📜']['📅'] != null && Number.isFinite(D['📜']['📅'])) ? D['📜']['📅'] : epochStart;
+            let curYrForBucket = rawYr;
+            if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) {
+                const k0 = yearKeys[0];
+                const firstActs = (k0 != null) ? (_tlEpoch['🕰'][k0] || _tlEpoch['🕰'][String(k0)]) : null;
+                const firstCfg = firstActs && typeof firstActs === 'object' ? Object.values(firstActs)[0] : null;
+                const stepYr = (firstCfg && typeof firstCfg['🔺⏳'] === 'number') ? firstCfg['🔺⏳'] * 1e6 : 25;
+                const tic = (D['📜'] && Number.isFinite(D['📜']['📿💫'])) ? D['📜']['📿💫'] : 0;
+                curYrForBucket = epochStart + tic * stepYr;
+                if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) curYrForBucket = epochStart;
+            }
+            let activeYr = yearKeys[0];
+            if (yearKeys.length && Number.isFinite(curYrForBucket)) {
+                if (curYrForBucket < yearKeys[0]) {
+                    activeYr = yearKeys[0];
+                } else {
+                    for (let i = 0; i < yearKeys.length; i++) {
+                        const yStart = yearKeys[i];
+                        const yEnd = (i + 1 < yearKeys.length) ? yearKeys[i + 1] : Infinity;
+                        if (curYrForBucket >= yStart && curYrForBucket < yEnd) {
+                            activeYr = yStart;
+                            break;
+                        }
+                    }
+                }
+            }
+            const actions = _tlEpoch['🕰'][activeYr];
+
+            if (actions) {
+                for (const [emoji, cfg] of Object.entries(actions)) {
+                    const co2kg = cfg['🔺⚖️🏭'] || 0;
+                    const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
+                    const dtYrDisp = Math.round(dtYr);
+                    // Gt d’affichage : co2kg/1e9 (ex. 850e9 kg → 850 Gt) — /1e12 donnait ~0 pour ces deltas
+                    const gtDisp = Math.round(co2kg / 1e9);
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'icon-button btn-events organigram-logo btn-year-indexed organigram-action-logo';
+                    btn.textContent = emoji;
+                    const altText = '+' + dtYrDisp + 'ans +' + gtDisp + 'Gt CO2';
+                    btn.alt = altText;
+                    if (window.addCustomTooltip) window.addCustomTooltip(btn, emoji + ' ' + altText);
+
+                    btn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        const D = window.DATA;
+                        // CO₂ : delta pending consommé par getMasses()
+                        D['📜']['🔺⚖️🏭'] = co2kg;
+                        // Temps (📿💫 = compteur universel)
+                        D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
+                        // Physique
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        window.IO_LISTENER.emit('config:applyThenCompute', { button: emoji });
+                        window.updateTimeline();
+                        // Re-render (nouvelle année → nouveaux boutons)
+                        window.updateEpochActions();
+                    });
+
+                    eventsLogos.appendChild(btn);
+                }
+            }
+            return;
+        }
+    }
+
+    if (_tlEpoch && whRoot && Array.isArray(whRoot.order) && whRoot.order.length) {
+        const wh = whRoot;
+        const ticCfgRoot = wh['💫'];
+        /** Une entrée consommée dans 🕰.order : un seul shift si la tête correspond à l’action réellement jouée (pas de boucle sur 🔘🕰 à chaque frame). */
+        const popOrderAfterAction = (actedKey) => {
+            const ord = _tlEpoch['🕰'] && _tlEpoch['🕰'].order;
+            if (!Array.isArray(ord) || ord.length === 0) return;
+            if (ord[0] !== actedKey) return;
+            ord.shift();
+        };
+        const advanceGeologicTicOrder = (D, stepMa, buttonKey) => {
+            if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
+            D['📜']['📿💫'] += 1;
+            if (buttonKey === '💫' && ticCfgRoot && Object.prototype.hasOwnProperty.call(ticCfgRoot, '🍰⚽')) {
+                D['📜']['🔺🍰⚽'] = Number(ticCfgRoot['🍰⚽']);
+                D['📜']['_veilTimelinePulseActive'] = false;
+            }
+            window.infoTimeMa += stepMa;
+            if (_tlEpoch['▶'] != null && _tlEpoch['◀'] != null && _tlEpoch['▶'] > _tlEpoch['◀']) {
+                const epochDurMa = (_tlEpoch['▶'] - _tlEpoch['◀']) / 1e6;
+                if (window.infoTimeMa >= epochDurMa) {
+                    window.infoTimeMa = epochDurMa;
+                    const _idxCur = window.TIMELINE.findIndex(e => e['📅'] === epochId);
+                    if (_idxCur >= 0 && _idxCur + 1 < window.TIMELINE.length) {
+                        const _nextId = window.TIMELINE[_idxCur + 1]['📅'];
+                        popOrderAfterAction(buttonKey);
+                        window.setEpoch(window.epochName(_nextId));
+                        return;
+                    }
+                }
+            }
+            window.COMPUTE.getEpochDateConfig();
+            window.COMPUTE.getNoyau();
+            if (!window.FLUX) window.FLUX = {};
+            window.FLUX.yAxisRecalcOnNextFinish = true;
+            window.IO_LISTENER.emit('config:applyThenCompute', { button: buttonKey });
+            popOrderAfterAction(buttonKey);
+            window.updateTimeline();
+        };
+
+        const act = wh.order[0];
+        {
+            const cfg = wh[act];
+            if (act === '☄️') {
+                const mass_kg = cfg['🔺⚖️💧☄️'];
+                const stepMaM = cfg['🔺⏳'];
+                const iceMeteorBtn = document.createElement('img');
+                iceMeteorBtn.src = window.getLogoImageSrc('☄️') || 'fonts/pics/ice_meteorite.png';
+                iceMeteorBtn.alt = '';
+                iceMeteorBtn.className = 'btn-events organigram-logo organigram-action-logo';
+                const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
+                const iceMeteorAlt = 'Météorite de Glace (+' + stepMaM + ' Ma)';
+                window.addCustomTooltip(iceMeteorBtn, 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMaM + ' Ma par clic');
+                iceMeteorBtn.alt = iceMeteorAlt;
+                if (epochId === '⚫') {
+                    iceMeteorBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        const DATA = window.DATA;
+                        const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
+                        const currentH2O = (DATA['💧']['☄️'] != null) ? DATA['💧']['☄️'] : 0;
+                        const h2oToAdd = (mass_kg / earthTotalWaterKg) * 100;
+                        const newH2O = Math.min(100, currentH2O + h2oToAdd);
+                        DATA['💧']['☄️'] = newH2O;
+                        window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
+                        window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
+                        window.isIceChange = true;
+                        window.lastIceLevel = undefined;
+                        DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
+                        DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
+                        window.infoTimeMa += stepMaM;
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '☄️' });
+                        window.updateTimeline();
+                        checkDateEvents();
+                        const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
+                        window.updateH2OLevelDirect(h2o_total);
+                        popOrderAfterAction('☄️');
+                    });
+                } else {
+                    iceMeteorBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        const DATA = window.DATA;
+                        const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
+                        const currentH2O = (DATA['💧']['☄️'] != null) ? DATA['💧']['☄️'] : 0;
+                        let h2oToAdd = (mass_kg / earthTotalWaterKg) * 100;
+                        h2oToAdd = Math.max(h2oToAdd * 10, 2.1);
+                        const newH2O = Math.min(100, currentH2O + h2oToAdd);
+                        DATA['💧']['☄️'] = newH2O;
+                        window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
+                        window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
+                        DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
+                        DATA['📜']['📿💫'] = (DATA['📜']['📿💫'] || 0) + 1;
+                        window.infoTimeMa = Math.min(500, window.infoTimeMa + stepMaM);
+                        applyHadeenFluxFromConfig();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        window.updateTimeline();
+                        window.updateHadeenTexture();
+                        checkDateEvents();
+                        if (window.infoTimeMa >= 500) window.setEpoch('Archéen');
+                        const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
+                        window.updateH2OLevelDirect(h2o_total);
+                        popOrderAfterAction('☄️');
+                    });
+                }
+                eventsLogos.appendChild(iceMeteorBtn);
+            } else if (act === '🎇') {
+                const targetFromConfig = cfg['⏩'];
+                const targetName = targetFromConfig ? (window.epochName(cfg['⏩'])) : 'Hadéen';
+                const bigImpactBtn = document.createElement('img');
+                bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
+                bigImpactBtn.alt = '';
+                bigImpactBtn.className = 'btn-events organigram-logo organigram-action-logo';
+                window.addCustomTooltip(bigImpactBtn, 'Impact majeur - Crée la lune');
+                bigImpactBtn.addEventListener('click', () => {
+                    window.hideTooltip();
+                    if (targetFromConfig) {
+                        const h2o_base = window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0;
+                        const h2o_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites != null ? window.RUNTIME_STATE.h2oTotalFromMeteorites : 0;
+                        window.UI_STATE.savedH2O = h2o_base + h2o_meteorites;
+                        if (window.PLOT_PANEL_READY) {
+                            window.UI_STATE.savedCO2 = window.plotData.co2_ppm;
+                            window.UI_STATE.savedCH4 = window.plotData.ch4_ppm;
+                        } else {
+                            window.UI_STATE.savedCO2 = 0;
+                            window.UI_STATE.savedCH4 = 0;
+                        }
+                        window.UI_STATE.maximiseData = true;
+                        popOrderAfterAction('🎇');
+                        window.setEpoch(targetName);
+                    } else {
+                        advanceGeologicTicOrder(window.DATA, cfg['🔺⏳'], '🎇');
+                    }
+                });
+                eventsLogos.appendChild(bigImpactBtn);
+            } else if (act === '🌋') {
+                const stepVeil = cfg['🔺🍰⚽'];
+                const stepMaVolc = cfg['🔺⏳'];
+                const volcBtn = document.createElement('button');
+                volcBtn.type = 'button';
+                volcBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
+                volcBtn.textContent = '🌋';
+                const pctStr = (stepVeil * 100).toFixed(1);
+                volcBtn.alt = "Hiver volcanique : l'écran de poussière bloque 2% du rayonnement solaire. (+30 Ma)";
+                window.addCustomTooltip(volcBtn, "Hiver volcanique : l'écran de poussière bloque 2% du rayonnement solaire. (+30 Ma)");
+                volcBtn.addEventListener('click', () => {
+                    window.hideTooltip();
+                    const D = window.DATA;
+                    D['📜']['🔺🍰⚽'] = Math.min(0.95, D['📜']['🔺🍰⚽'] + stepVeil);
+                    advanceGeologicTicOrder(D, stepMaVolc, '🌋');
+                });
+                eventsLogos.appendChild(volcBtn);
+            } else if (act === '💫') {
+                const stepMaT = (ticCfgRoot && typeof ticCfgRoot['🔺⏳'] === 'number') ? ticCfgRoot['🔺⏳'] : 100;
+                const stepLabel = formatStepLabel(stepMaT);
+                const ticBtn = document.createElement('button');
+                ticBtn.type = 'button';
+                ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
+                ticBtn.textContent = '💫';
+                ticBtn.alt = stepLabel;
+                window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
+                if (epochId === '🔥') {
+                    ticBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        const cellTerre = document.getElementById('cell-terre');
+                        if (cellTerre) {
+                            const canvas = cellTerre.querySelector('canvas');
+                            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
+                                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
+                            }
+                        }
+                        window.infoTimeMa = (window.infoTimeMa || 0) + stepMaT;
+                        if (window.infoTimeMa > 500) window.infoTimeMa = 500;
+                        window.DATA['📜']['bary'] = window.infoTimeMa / 500;
+                        if (window.infoTimeMa >= 500) {
+                            popOrderAfterAction('💫');
+                            window.setEpoch('Archéen');
+                            return;
+                        }
+                        window.updateTimeline();
+                        window.updateHadeenTexture();
+                        applyHadeenFluxFromConfig();
+                        if (window.PLOT_PANEL_READY) {
+                            const current_co2_fraction = window.plotData.co2_ppm * 1e-6;
+                            window.updateCO2LevelDirect(current_co2_fraction);
+                        }
+                        checkDateEvents();
+                        popOrderAfterAction('💫');
+                    });
+                } else {
+                    ticBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        advanceGeologicTicOrder(window.DATA, stepMaT, '💫');
+                    });
+                }
+                eventsLogos.appendChild(ticBtn);
+            }
+        }
+        return;
+    }
+
+    const getActionForDate = (window.configOrganigramme && window.configOrganigramme.getActionForDate) || (function() { return '💫'; });
+    const actionId = getActionForDate(startYears, infoTimeMa) || '💫';
+
     if (actionId === '☄️') {
         const epochConfig = getEpochConfigById(epochId);
         if (epochConfig && epochConfig['🕰'] && epochConfig['🕰']['☄️']) {
             const iceMeteorBtn = document.createElement('img');
             iceMeteorBtn.src = window.getLogoImageSrc('☄️') || 'fonts/pics/ice_meteorite.png';
             iceMeteorBtn.alt = '';
-            iceMeteorBtn.className = 'timeline-event-logo btn-events';
+            iceMeteorBtn.className = 'btn-events organigram-logo organigram-action-logo';
             const mass_kg = epochConfig['🕰']['☄️']['🔺⚖️💧☄️'];
             const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
             const stepMa = epochConfig['🕰']['☄️']['🔺⏳'];
@@ -191,7 +492,7 @@ window.updateEpochActions = function () {
         const bigImpactBtn = document.createElement('img');
         bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
         bigImpactBtn.alt = '';
-        bigImpactBtn.className = 'timeline-event-logo btn-events';
+        bigImpactBtn.className = 'btn-events organigram-logo organigram-action-logo';
         window.addCustomTooltip(bigImpactBtn, 'Impact majeur - Crée la lune');
         bigImpactBtn.addEventListener('click', () => {
             window.hideTooltip();
@@ -210,98 +511,64 @@ window.updateEpochActions = function () {
         });
         eventsLogos.appendChild(bigImpactBtn);
     } else {
-        // TicTime — détection format 🕰 (year-indexed 📱 vs géologique 💫)
-        const _tlEpoch = window.TIMELINE ? window.TIMELINE.find(e => e['📅'] === epochId) : null;
-        const _isYearIndexed = _tlEpoch && _tlEpoch['🕰'] && Object.keys(_tlEpoch['🕰']).some(k => !isNaN(Number(k)));
+            // Géologique (repli ACTION_BY_DATE) : 🌋 + 💫
+            const wh = whRoot;
+            const volcCfg = wh['🌋'];
+            const ticCfg = wh['💫'];
+            const showTicBtn = (volcCfg == null) || (ticCfg != null);
 
-        if (_isYearIndexed) {
-            // 📱 year-indexed : boutons par tranche d'année (⛽, 🛢, 🛳…)
-            // Année pour buckets : 📅 seulement s’il est dans [▶, ◀] (ère moderne) ; sinon ▶ + 📿💫×pas (comme physicsAll) puis repli ▶
-            // Sinon un 📅 géologique (≫2100) tombait dans [2075,∞) → ⛽ 350Gt + 🛢 au lieu du scénario 2000 (850Gt, ⛽ seul)
-            eventsLogos.classList.add('year-indexed');
-            const D = window.DATA;
-            const yearKeys = Object.keys(_tlEpoch['🕰'])
-                .filter(k => !isNaN(Number(k)))
-                .map(Number)
-                .sort((a, b) => a - b);
-            const epochStart = (_tlEpoch['▶'] != null && Number.isFinite(_tlEpoch['▶'])) ? _tlEpoch['▶'] : (yearKeys[0] || 2000);
-            const epochEnd = (_tlEpoch['◀'] != null && Number.isFinite(_tlEpoch['◀'])) ? _tlEpoch['◀'] : (yearKeys[yearKeys.length - 1] || 2100);
-            const winLo = epochStart - 0.5;
-            const winHi = epochEnd + 200;
-            const rawYr = (D['📜'] && D['📜']['📅'] != null && Number.isFinite(D['📜']['📅'])) ? D['📜']['📅'] : epochStart;
-            let curYrForBucket = rawYr;
-            if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) {
-                const k0 = yearKeys[0];
-                const firstActs = (k0 != null) ? (_tlEpoch['🕰'][k0] || _tlEpoch['🕰'][String(k0)]) : null;
-                const firstCfg = firstActs && typeof firstActs === 'object' ? Object.values(firstActs)[0] : null;
-                const stepYr = (firstCfg && typeof firstCfg['🔺⏳'] === 'number') ? firstCfg['🔺⏳'] * 1e6 : 25;
-                const tic = (D['📜'] && Number.isFinite(D['📜']['📿💫'])) ? D['📜']['📿💫'] : 0;
-                curYrForBucket = epochStart + tic * stepYr;
-                if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) curYrForBucket = epochStart;
-            }
-            let activeYr = yearKeys[0];
-            if (yearKeys.length && Number.isFinite(curYrForBucket)) {
-                if (curYrForBucket < yearKeys[0]) {
-                    activeYr = yearKeys[0];
-                } else {
-                    for (let i = 0; i < yearKeys.length; i++) {
-                        const yStart = yearKeys[i];
-                        const yEnd = (i + 1 < yearKeys.length) ? yearKeys[i + 1] : Infinity;
-                        if (curYrForBucket >= yStart && curYrForBucket < yEnd) {
-                            activeYr = yStart;
-                            break;
+            const advanceGeologicTic = (D, stepMa, buttonKey) => {
+                if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
+                D['📜']['📿💫'] += 1;
+                if (buttonKey === '💫' && ticCfg && Object.prototype.hasOwnProperty.call(ticCfg, '🍰⚽')) {
+                    D['📜']['🔺🍰⚽'] = Number(ticCfg['🍰⚽']);
+                    D['📜']['_veilTimelinePulseActive'] = false;
+                }
+                window.infoTimeMa += stepMa;
+                if (_tlEpoch['▶'] != null && _tlEpoch['◀'] != null && _tlEpoch['▶'] > _tlEpoch['◀']) {
+                    const epochDurMa = (_tlEpoch['▶'] - _tlEpoch['◀']) / 1e6;
+                    if (window.infoTimeMa >= epochDurMa) {
+                        window.infoTimeMa = epochDurMa;
+                        const _idxCur = window.TIMELINE.findIndex(e => e['📅'] === epochId);
+                        if (_idxCur >= 0 && _idxCur + 1 < window.TIMELINE.length) {
+                            const _nextId = window.TIMELINE[_idxCur + 1]['📅'];
+                            window.setEpoch(window.epochName(_nextId));
+                            return;
                         }
                     }
                 }
+                window.COMPUTE.getEpochDateConfig();
+                window.COMPUTE.getNoyau();
+                if (!window.FLUX) window.FLUX = {};
+                window.FLUX.yAxisRecalcOnNextFinish = true;
+                window.IO_LISTENER.emit('config:applyThenCompute', { button: buttonKey });
+                window.updateTimeline();
+            };
+
+            if (volcCfg) {
+                const stepVeil = volcCfg['🔺🍰⚽'];
+                const stepMaVolc = volcCfg['🔺⏳'];
+                const volcBtn = document.createElement('button');
+                volcBtn.type = 'button';
+                volcBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
+                volcBtn.textContent = '🌋';
+                const pctStr = (stepVeil * 100).toFixed(1);
+                volcBtn.alt = "Hiver volcanique : l'écran de poussière bloque 2% du rayonnement solaire. (+30 Ma)";
+                window.addCustomTooltip(volcBtn, "Hiver volcanique : l'écran de poussière bloque 2% du rayonnement solaire. (+30 Ma)");
+                volcBtn.addEventListener('click', () => {
+                    window.hideTooltip();
+                    const D = window.DATA;
+                    D['📜']['🔺🍰⚽'] = Math.min(0.95, D['📜']['🔺🍰⚽'] + stepVeil);
+                    advanceGeologicTic(D, stepMaVolc, '🌋');
+                });
+                eventsLogos.appendChild(volcBtn);
             }
-            const actions = _tlEpoch['🕰'][activeYr];
-
-            if (actions) {
-                for (const [emoji, cfg] of Object.entries(actions)) {
-                    const co2kg = cfg['🔺⚖️🏭'] || 0;
-                    const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
-                    const dtYrDisp = Math.round(dtYr);
-                    // Gt d’affichage : co2kg/1e9 (ex. 850e9 kg → 850 Gt) — /1e12 donnait ~0 pour ces deltas
-                    const gtDisp = Math.round(co2kg / 1e9);
-
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'icon-button btn-events timeline-event-logo btn-year-indexed';
-                    btn.textContent = emoji;
-                    const altText = '+' + dtYrDisp + 'ans +' + gtDisp + 'Gt CO2';
-                    btn.alt = altText;
-                    if (window.addCustomTooltip) window.addCustomTooltip(btn, emoji + ' ' + altText);
-
-                    btn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        const D = window.DATA;
-                        // CO₂ : delta pending consommé par getMasses()
-                        D['📜']['🔺⚖️🏭'] = co2kg;
-                        // Temps (📿💫 = compteur universel)
-                        D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
-                        // Physique
-                        window.COMPUTE.getEpochDateConfig();
-                        window.COMPUTE.getNoyau();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.IO_LISTENER.emit('config:applyThenCompute', { button: emoji });
-                        window.updateTimeline();
-                        // Re-render (nouvelle année → nouveaux boutons)
-                        window.updateEpochActions();
-                    });
-
-                    eventsLogos.appendChild(btn);
-                }
-            }
-        } else {
-            // Géologique — bouton >> (💫), compteur 📿💫 universel
-            const ticCfg = _tlEpoch && _tlEpoch['🕰'] && _tlEpoch['🕰']['💫'] ? _tlEpoch['🕰']['💫'] : null;
-            const stepMa = ticCfg && typeof ticCfg['🔺⏳'] === 'number' ? ticCfg['🔺⏳'] : 100;
-            {
+            if (showTicBtn) {
+                const stepMa = (ticCfg && typeof ticCfg['🔺⏳'] === 'number') ? ticCfg['🔺⏳'] : 100;
                 const stepLabel = formatStepLabel(stepMa);
                 const ticBtn = document.createElement('button');
                 ticBtn.type = 'button';
-                ticBtn.className = 'icon-button btn-events timeline-event-logo';
+                ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
                 ticBtn.textContent = '💫';
                 ticBtn.alt = stepLabel;
                 window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
@@ -336,35 +603,11 @@ window.updateEpochActions = function () {
                 } else {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
-                        const D = window.DATA;
-                        // 📿💫 = compteur universel
-                        if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
-                        D['📜']['📿💫'] += 1;
-                        window.infoTimeMa += stepMa;
-                        // Fin d'époque : si infoTimeMa dépasse la durée (▶→◀), basculer sur l'époque suivante
-                        if (_tlEpoch && _tlEpoch['▶'] != null && _tlEpoch['◀'] != null && _tlEpoch['▶'] > _tlEpoch['◀']) {
-                            const epochDurMa = (_tlEpoch['▶'] - _tlEpoch['◀']) / 1e6;
-                            if (window.infoTimeMa >= epochDurMa) {
-                                window.infoTimeMa = epochDurMa;
-                                const _idxCur = window.TIMELINE ? window.TIMELINE.findIndex(function(e) { return e['📅'] === epochId; }) : -1;
-                                if (_idxCur >= 0 && _idxCur + 1 < window.TIMELINE.length) {
-                                    const _nextId = window.TIMELINE[_idxCur + 1]['📅'];
-                                    window.setEpoch(window.epochName(_nextId));
-                                    return;
-                                }
-                            }
-                        }
-                        window.COMPUTE.getEpochDateConfig();
-                        window.COMPUTE.getNoyau();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '💫' });
-                        window.updateTimeline();
+                        advanceGeologicTic(window.DATA, stepMa, '💫');
                     });
                 }
                 eventsLogos.appendChild(ticBtn);
             }
-        }
     }
 };
 

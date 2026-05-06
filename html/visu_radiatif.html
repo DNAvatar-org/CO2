@@ -35,21 +35,17 @@
 
     <div class="flux-diagram-wrapper">
         <div class="flux-diagram divGlass" id="flux-diagram"></div>
+        <div id="organigram-calculation-overlay" class="organigram-calculation-overlay" style="display: none;" aria-hidden="true">
+            <div class="organigram-calculation-overlay__text compute-calcul-overlay-text">Calculs d'équilibre radiatifs en cours</div>
+        </div>
     </div>
 
     <div class="plot-container-wrapper divGlass" style="position: relative;">
         <div id="plot-container">
-            <div class="plot-overlay-title">Courbes d'émission du rayonnement<br>d'un corps (noir ou la terre)</div>
+            <div class="plot-overlay-title">Spectre d'émission du système Terre-Atmosphère</div>
             <div class="legend-container" id="legend-container">
-                <div class="legend-section">
-                    <div class="legend-planck-grid" id="legend-planck-grid"></div>
-                </div>
                 <div class="legend-equilibre">
-                    <div id="legend-equilibre-curves" style="margin-bottom: 8px;"></div>
-                    Puissance dissipée :<br>
-                    ∫<sub><span class="legend-line-dotted"></span></sub> = ∫<sub><span class="legend-line-solid"></span></sub><br>
-                    soit W/m² = σ·T⁴<br>
-                    <span style="font-size: 0.9em; opacity: 0.9;">[Unité] ∫(W/m²/sr/μm)·d(μm) = W/m²/sr</span>
+                    <div id="legend-equilibre-curves"></div>
                 </div>
             </div>
         </div>
@@ -58,7 +54,7 @@
 
     <div class="timeline-display divGlass">
         <div id="calculation-overlay" class="calculation-overlay" style="display: none;">
-            <div class="calculation-text">Calculs d'équilibre radiatifs en cours</div>
+            <div class="calculation-text compute-calcul-overlay-text">Calculs d'équilibre radiatifs en cours</div>
             <div id="compute-tic-loader" class="compute-tic-loader" aria-hidden="true">
                 <div class="compute-tic-loader__ring"></div>
             </div>

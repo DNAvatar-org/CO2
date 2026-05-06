@@ -1,9 +1,16 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.65
-// Date: [April 18, 2026]
+// Version 1.1.74
+// Date: [May 06, 2026]
 //
+// - v1.1.74: légende plot — libellés explicites (.../---/___) + °C en petit au-dessus de chaque style de trait.
+// - v1.1.73: updateLegend — 3 lignes (pointillés / tirets / plein) + libellé texte à droite uniquement ; plus de °C/°F/K ni T sol·eff sur les items ; toujours 3 courbes affichées.
+// - v1.1.72: doc organigram-buttons — wraps DETAILS/OBS uniquement ; SKIP #plot-anim-toggle n'embarque plus cette classe (organigramme.js v1.0.81).
+// - v1.1.71: wraps DETAILS/OBS — classe organigram-buttons (même jeton que #plot-anim-toggle, organigramme.js).
+// - v1.1.68: toggles ⚗/🛰 — classe unique organigram-logo (homogénéité avec événements timeline, organigramme.css).
+// - v1.1.67: updateLegend — HTML visu_radiatif sans bloc Puissance dissipée / ∫ ; retrait injection SVG + sélecteur couleur allégé (style.css sans .legend-line-*).
+// - v1.1.66: setEpoch — reset 📜._timelineVeilPulse01 / 📜._veilTimelinePulseActive (impulsion voile TIMELINE lue dans compute.js v1.0.14).
 // - v1.1.65 : fix ReferenceError updatePlot — tous les appels directs updatePlot(...) → window.PLOT.updatePlot(...) (plot.js n’expose plus de global homonyme ; ordre loader plot avant main).
 // - v1.1.64 : migration namespaces (PLOT.updatePlot, PLOT.updateSpectralVisualization, PLOT.tempSurfaceToColor, ORG.updateFluxLabels, ORG.createCell…) + UI_STATE (waterVaporEnabled, methaneEnabled, maximiseData, savedCO2/CH4/H2O) + RUNTIME_STATE (calculationConverged, calculationTimeouts, spectralConverged, spectralPrecisionTarget, showSpectralBackground, h2oVaporPercent, h2oTotalFromMeteorites, h2oIceFractionFromCalculation, currentEpochName, fps, volcanoH2OBonus). Retrait typeof===function défensifs (crash-first).
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -1702,117 +1709,6 @@ window.updateDisplay = function updateDisplay(data) {
 
 function updateLegend(data) {
     const CONST = window.CONST;
-    const PLANCK_TEMPERATURES = window.PLANCK_TEMPERATURES;
-    // Créer la légende avec les motifs de traits
-    const grid = document.getElementById('legend-planck-grid');
-    if (grid && PLANCK_TEMPERATURES) {
-        grid.innerHTML = '';
-
-        // Configuration de la grille : déjà définie dans le CSS
-
-        // Trier les températures par ordre croissant
-        const sortedTemps = [...PLANCK_TEMPERATURES].sort((a, b) => a - b);
-        const totalCount = PLANCK_TEMPERATURES.length;
-
-        // Créer un élément pour chaque température
-        sortedTemps.forEach((T, sortedIndex) => {
-            // Trouver l'index original pour obtenir le bon motif
-            const originalIndex = PLANCK_TEMPERATURES.indexOf(T);
-            // Utiliser la fonction commune pour obtenir le pattern (même que dans plot.js)
-            // IMPORTANT: utiliser originalIndex pour correspondre avec plot.js
-            const dashPattern = typeof window.getReferencePattern === 'function'
-                ? window.getReferencePattern(originalIndex)
-                : 'dash'; // Fallback
-
-
-            const item = document.createElement('div');
-            item.className = 'legend-planck-item';
-
-            // Utiliser SVG pour dessiner le pattern (plus fiable que canvas)
-            // Passer l'index original et le totalCount pour calculer le stroke-width correct
-            // 🔒 Les lignes de référence (courbes étalons) restent blanches
-            const patternSVG = typeof window.createDashPatternSVG === 'function'
-                ? window.createDashPatternSVG(dashPattern, originalIndex, totalCount)
-                : `<svg width="50" height="5" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
-                    <line x1="2" y1="2.5" x2="48" y2="2.5" stroke="white" stroke-width="1"/>
-                   </svg>`;
-
-            // Créer un conteneur pour le SVG avec les températures au-dessus et en-dessous
-            const patternContainer = document.createElement('div');
-            patternContainer.style.display = 'inline-block';
-            patternContainer.style.position = 'relative';
-            patternContainer.style.width = '50px';
-            patternContainer.style.height = '5px';
-            patternContainer.style.marginRight = '8px';
-            patternContainer.style.verticalAlign = 'middle';
-
-            // SVG du trait (centré dans le conteneur de 5px)
-            const svgContainer = document.createElement('div');
-            svgContainer.innerHTML = patternSVG;
-            svgContainer.style.position = 'absolute';
-            svgContainer.style.top = '50%';
-            svgContainer.style.left = '0px';
-            svgContainer.style.transform = 'translateY(-35%)';
-
-            // Déterminer quelle unité afficher selon la langue
-            const lang = (typeof window !== 'undefined' && window.lang) ? window.lang : 'fr';
-            const showCelsius = lang === 'fr';
-            const showFahrenheit = lang === 'en';
-
-            // °C au-dessus du trait (si français)
-            if (showCelsius) {
-                const tempCAbove = document.createElement('span');
-                tempCAbove.style.position = 'absolute';
-                tempCAbove.style.top = '-4px';
-                tempCAbove.style.right = '0%';
-                tempCAbove.style.fontSize = '0.8em';
-                tempCAbove.style.lineHeight = '1';
-                tempCAbove.style.textAlign = 'right';
-                tempCAbove.style.whiteSpace = 'nowrap';
-                // 🔒 Les textes des courbes étalons restent blancs
-                tempCAbove.style.color = 'white';
-                tempCAbove.textContent = `${(T - CONST.KELVIN_TO_CELSIUS).toFixed(0)}°C`;
-                patternContainer.appendChild(tempCAbove);
-            }
-
-            // °F en-dessous du trait (si anglais)
-            if (showFahrenheit) {
-                const tempFBelow = document.createElement('span');
-                tempFBelow.style.position = 'absolute';
-                tempFBelow.style.bottom = '-8px';
-                tempFBelow.style.right = '0%';
-                tempFBelow.style.fontSize = '0.8em';
-                tempFBelow.style.lineHeight = '1';
-                tempFBelow.style.textAlign = 'right';
-                tempFBelow.style.whiteSpace = 'nowrap';
-                // 🔒 Les textes des courbes étalons restent blancs
-                tempFBelow.style.color = 'white';
-                const tempF = ((T - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(0);
-                tempFBelow.textContent = `${tempF}°F`;
-                patternContainer.appendChild(tempFBelow);
-            }
-
-            patternContainer.appendChild(svgContainer);
-
-            // K à côté (normal) - toujours afficher .0K même si entier
-            const labelSpan = document.createElement('span');
-            labelSpan.className = 'legend-text';
-            // 🔒 Les textes des courbes étalons restent blancs (géré par CSS)
-            labelSpan.textContent = `${T.toFixed(1)}K`;
-
-            item.appendChild(patternContainer);
-            item.appendChild(labelSpan);
-            grid.appendChild(item);
-        });
-
-        // Forcer le rendu MathJax après insertion
-        if (window.MathJax && window.MathJax.typesetPromise) {
-            setTimeout(() => {
-                window.MathJax.typesetPromise([grid]).catch(() => { });
-            }, 100);
-        }
-    }
-
     // Ajouter les légendes pour les courbes d'équilibre (corps noir pointillé et courbe réelle pleine)
     const equilibreCurvesContainer = document.getElementById('legend-equilibre-curves');
     const T_surface = (data && data.temp_surface !== undefined) ? data.temp_surface : (data && data.current && data.current.T0 !== undefined) ? data.current.T0 : (data && data.temp_surface_c !== undefined) ? data.temp_surface_c + CONST.KELVIN_TO_CELSIUS : null;
@@ -1822,139 +1718,53 @@ function updateLegend(data) {
         const T_eff_legend = (data.current && data.current.effective_temperature != null && Number.isFinite(data.current.effective_temperature))
             ? data.current.effective_temperature
             : T_surface;
-
-        // 🔒 Calculer la couleur dynamique basée sur la température de surface (cohérence avec le plot)
-        // Priorité : temp_surface_c (donnée réelle) > current > window.currentBlackBodyColor
         const tempSurfaceC = T_surface - CONST.KELVIN_TO_CELSIUS;
         const dynamicColor = window.PLOT.tempSurfaceToColor(tempSurfaceC);
 
-        // Légende : T_eff (points), [Planck au sol tirets si T_eff ≠ T_surface], OLR spectrale (pleine)
-        const _showPlanckSolLegend = (T_eff_legend == null || !Number.isFinite(T_eff_legend)
-            || Math.abs(T_surface - T_eff_legend) > 0.25);
-        const patterns = _showPlanckSolLegend
-            ? [
-                { name: 'dot', label: 'Corps Noir (T_eff)' },
-                { name: 'dash', label: 'Corps noir (sol)' },
-                { name: 'solid', label: 'Courbe réelle' }
-            ]
-            : [
-                { name: 'dot', label: 'Corps Noir (T_eff)' },
-                { name: 'solid', label: 'Courbe réelle' }
-            ];
+        const patterns = [
+            { name: 'dot', label: "Corps noir au sol", temperatureK: T_surface },
+            { name: 'dash', label: "Corps noir sortie atmosphère", temperatureK: T_eff_legend },
+            { name: 'solid', label: "Rayonnement réel vers l'espace", temperatureK: T_surface }
+        ];
 
         patterns.forEach((patternInfo) => {
             const item = document.createElement('div');
             item.className = 'legend-equilibre-item';
 
-            const T = patternInfo.name === 'dot' ? T_eff_legend : T_surface;
-            const tempC = (T - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-            const tempF = ((T - CONST.KELVIN_TO_CELSIUS) * 9 / 5 + 32).toFixed(1);
-
-            // Créer le SVG avec le pattern approprié (couleur dynamique)
             const dashArray = typeof window.getDashArray === 'function'
                 ? window.getDashArray(patternInfo.name)
                 : (patternInfo.name === 'dot' ? '1,3' : patternInfo.name === 'dash' ? '6,4' : 'none');
             const dashAttr = dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : '';
-            const patternSVG = `<svg width="50" height="5" style="vertical-align: middle; display: inline-block; margin-right: 8px;">
+            const patternSVG = `<svg width="50" height="5" aria-hidden="true">
                 <line x1="2" y1="2.5" x2="48" y2="2.5" stroke="${dynamicColor}" stroke-width="2" ${dashAttr}/>
             </svg>`;
 
-            // Créer un conteneur pour le SVG avec les températures au-dessus et en-dessous
-            const patternContainer = document.createElement('div');
-            patternContainer.style.display = 'inline-block';
-            patternContainer.style.position = 'relative';
-            patternContainer.style.width = '50px';
-            patternContainer.style.height = '5px';
-            patternContainer.style.marginRight = '8px';
-            patternContainer.style.verticalAlign = 'middle';
+            const lineWrap = document.createElement('div');
+            lineWrap.className = 'legend-equilibre-line';
+            lineWrap.innerHTML = patternSVG;
+            const tempAbove = document.createElement('span');
+            tempAbove.className = 'legend-equilibre-temp';
+            tempAbove.style.color = dynamicColor;
+            tempAbove.textContent = `${(patternInfo.temperatureK - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C`;
+            lineWrap.appendChild(tempAbove);
 
-            // SVG du trait (centré dans le conteneur de 5px)
-            const svgContainer = document.createElement('div');
-            svgContainer.innerHTML = patternSVG;
-            svgContainer.style.position = 'absolute';
-            svgContainer.style.top = '50%';
-            svgContainer.style.left = '0px';
-            svgContainer.style.transform = 'translateY(-35%)';
-
-            // Déterminer quelle unité afficher selon la langue
-            const lang = (typeof window !== 'undefined' && window.lang) ? window.lang : 'fr';
-            const showCelsius = lang === 'fr';
-            const showFahrenheit = lang === 'en';
-
-            // °C au-dessus du trait (si français)
-            if (showCelsius) {
-                const tempCAbove = document.createElement('span');
-                tempCAbove.style.position = 'absolute';
-                tempCAbove.style.top = '-4px';
-                tempCAbove.style.right = '0%';
-                tempCAbove.style.fontSize = '0.8em';
-                tempCAbove.style.lineHeight = '1';
-                tempCAbove.style.textAlign = 'right';
-                tempCAbove.style.whiteSpace = 'nowrap';
-                tempCAbove.style.color = dynamicColor;
-                tempCAbove.textContent = `${tempC}°C`;
-                patternContainer.appendChild(tempCAbove);
-            }
-
-            // °F en-dessous du trait (si anglais)
-            if (showFahrenheit) {
-                const tempFBelow = document.createElement('span');
-                tempFBelow.style.position = 'absolute';
-                tempFBelow.style.bottom = '-8px';
-                tempFBelow.style.right = '0%';
-                tempFBelow.style.fontSize = '0.8em';
-                tempFBelow.style.lineHeight = '1';
-                tempFBelow.style.textAlign = 'right';
-                tempFBelow.style.whiteSpace = 'nowrap';
-                tempFBelow.style.color = dynamicColor;
-                tempFBelow.textContent = `${tempF}°F`;
-                patternContainer.appendChild(tempFBelow);
-            }
-
-            patternContainer.appendChild(svgContainer);
-
-            // K à côté (normal) - toujours afficher .0K même si entier
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
             labelSpan.style.color = dynamicColor;
-            labelSpan.textContent = `${T.toFixed(1)}K`;
+            labelSpan.textContent = patternInfo.label;
 
-            item.appendChild(patternContainer);
+            item.appendChild(lineWrap);
             item.appendChild(labelSpan);
             equilibreCurvesContainer.appendChild(item);
         });
 
-        // Remplacer les spans CSS par des SVG pour harmoniser les pointillés dans l'intégrale
-        const dottedSpan = document.querySelector('.legend-line-dotted');
-        const solidSpan = document.querySelector('.legend-line-solid');
-
-        if (dottedSpan) {
-            // Créer un SVG avec le même pattern que la légende (dot avec stroke-dasharray="1,3")
-            const dashArray = typeof window.getDashArray === 'function' ? window.getDashArray('dot') : '1,3';
-            dottedSpan.innerHTML = `<svg width="30" height="2" style="vertical-align: middle; display: inline-block;">
-                <line x1="0" y1="1" x2="30" y2="1" stroke="${dynamicColor}" stroke-width="2" stroke-dasharray="${dashArray}"/>
-            </svg>`;
-            // Supprimer le style CSS border qui n'est plus nécessaire
-            dottedSpan.style.border = 'none';
-        }
-
-        if (solidSpan) {
-            // Créer un SVG avec une ligne pleine
-            solidSpan.innerHTML = `<svg width="30" height="2" style="vertical-align: middle; display: inline-block;">
-                <line x1="0" y1="1" x2="30" y2="1" stroke="${dynamicColor}" stroke-width="2"/>
-            </svg>`;
-            // Supprimer le style CSS border qui n'est plus nécessaire
-            solidSpan.style.border = 'none';
-        }
-        
         // 🔒 Appliquer la couleur dynamique à tous les textes de la section legend-equilibre
         const legendEquilibre = document.querySelector('.legend-equilibre');
         if (legendEquilibre) {
             // Appliquer la couleur aux textes statiques (hors des éléments déjà colorés)
-            const staticTexts = legendEquilibre.querySelectorAll('br, span:not(.legend-line-dotted):not(.legend-line-solid):not(.legend-equilibre-item *)');
+            const staticTexts = legendEquilibre.querySelectorAll('br, span:not(.legend-equilibre-item *)');
             staticTexts.forEach(el => {
-                // Ne pas appliquer aux éléments qui ont déjà une couleur spécifique
-                if (!el.closest('.legend-equilibre-item') && !el.classList.contains('legend-line-dotted') && !el.classList.contains('legend-line-solid')) {
+                if (!el.closest('.legend-equilibre-item')) {
                     el.style.color = dynamicColor;
                 }
             });
@@ -3168,14 +2978,17 @@ function runMainInit() {
                     if (!wrapObs) {
                         wrapObs = document.createElement('div');
                         wrapObs.id = 'observation-config-wrap';
+                        wrapObs.className = 'organigram-buttons';
                         fluxObs.appendChild(wrapObs);
                     }
+                    wrapObs.classList.add('organigram-buttons');
                     var obsTitle = wrapObs.querySelector('.organigram-config-heading');
                     if (!obsTitle) {
                         obsTitle = document.createElement('span');
-                        obsTitle.className = 'organigram-config-heading';
+                        obsTitle.className = 'organigram-config-heading organigram-unified-title';
                         wrapObs.appendChild(obsTitle);
                     }
+                    obsTitle.classList.add('organigram-unified-title');
                     obsTitle.textContent = 'OBSERVATIONS';
                     var obsRow = wrapObs.querySelector('.organigram-config-row');
                     if (!obsRow) {
@@ -3190,9 +3003,9 @@ function runMainInit() {
                         obsBtn.type = 'button';
                         obsRow.appendChild(obsBtn);
                     }
-                    obsBtn.className = 'icon-button' + (window.organigramObservationMetricsVisible ? ' selected' : '');
-                    obsBtn.setAttribute('data-tooltip', 'Mesures, flèches, pictos clés');
-                    obsBtn.setAttribute('aria-label', 'Afficher ou masquer mesures, flèches, pictos Géométrie, EDS et Albédo sur le diagramme');
+                    obsBtn.className = 'icon-button organigram-logo' + (window.organigramObservationMetricsVisible ? ' selected' : '');
+                    obsBtn.setAttribute('data-tooltip', 'On/Off données chiffrées');
+                    obsBtn.removeAttribute('aria-label');
                     obsBtn.removeAttribute('title');
                     obsBtn.textContent = '🛰';
                     fluxObs.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
@@ -3217,14 +3030,17 @@ function runMainInit() {
                     if (!wrap) {
                         wrap = document.createElement('div');
                         wrap.id = 'organigram-config-wrap';
+                        wrap.className = 'organigram-buttons';
                         flux.appendChild(wrap);
                     }
+                    wrap.classList.add('organigram-buttons');
                     var cfgTitle = wrap.querySelector('.organigram-config-heading');
                     if (!cfgTitle) {
                         cfgTitle = document.createElement('span');
-                        cfgTitle.className = 'organigram-config-heading';
+                        cfgTitle.className = 'organigram-config-heading organigram-unified-title';
                         wrap.appendChild(cfgTitle);
                     }
+                    cfgTitle.classList.add('organigram-unified-title');
                     cfgTitle.textContent = 'DETAILS';
 
                     var cfgRow = wrap.querySelector('.organigram-config-row');
@@ -3240,9 +3056,9 @@ function runMainInit() {
                         el.id = 'three-play-indicator';
                     }
                     el.type = 'button';
-                    el.className = 'icon-button' + (window.organigramArrowsVisible ? ' selected' : '');
-                    el.setAttribute('data-tooltip', 'Détails et actions');
-                    el.setAttribute('aria-label', 'Afficher ou masquer les détails et les boutons d\'action de l\'organigramme');
+                    el.className = 'icon-button organigram-logo' + (window.organigramArrowsVisible ? ' selected' : '');
+                    el.setAttribute('data-tooltip', 'On/Off détails Effet de Serre et Albédo');
+                    el.removeAttribute('aria-label');
                     el.removeAttribute('title');
                     el.textContent = '⚗';
 

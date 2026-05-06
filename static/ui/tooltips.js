@@ -46,7 +46,8 @@
             transition: opacity 0.2s ease, visibility 0.2s ease;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            max-width: 250px;
+            width: max-content;
+            max-width: min(70vw, 720px);
             text-align: left;
             line-height: 1.5;
             word-wrap: break-word;
@@ -199,20 +200,38 @@
             altEl.style.transform = 'translate(0, 0)';
 
             const altHeight = altEl.offsetHeight || 70;
-            const topAbove = mouseY + offsetY - altHeight;
-            const topBelow = mouseY - offsetY;
-            const overflowBottomBelow = topBelow + altHeight > viewportH - margin;
-            const fitsAbove = topAbove >= margin;
-
-            if (overflowBottomBelow && fitsAbove) {
-                altEl.style.top = (mouseY + offsetY) + 'px';
-                altEl.style.transform = 'translate(0, -100%)';
-            } else if (topAbove < margin) {
-                altEl.style.top = (mouseY - offsetY) + 'px';
-                altEl.style.transform = 'translate(0, 0)';
+            const tooltip = globalTooltipElement;
+            const tooltipVisible = tooltip && tooltip.style.visibility === 'visible';
+            if (tooltipVisible) {
+                const tRect = tooltip.getBoundingClientRect();
+                const preferredTop = tRect.bottom + 6;
+                const fitsBelowMain = preferredTop + altHeight <= viewportH - margin;
+                if (fitsBelowMain) {
+                    altEl.style.left = tRect.left + 'px';
+                    altEl.style.top = preferredTop + 'px';
+                    altEl.style.transform = 'translate(0, 0)';
+                } else {
+                    const topAboveMain = tRect.top - 6;
+                    altEl.style.left = tRect.left + 'px';
+                    altEl.style.top = topAboveMain + 'px';
+                    altEl.style.transform = 'translate(0, -100%)';
+                }
             } else {
-                altEl.style.top = (mouseY + offsetY) + 'px';
-                altEl.style.transform = 'translate(0, -100%)';
+                const topAbove = mouseY + offsetY - altHeight;
+                const topBelow = mouseY - offsetY;
+                const overflowBottomBelow = topBelow + altHeight > viewportH - margin;
+                const fitsAbove = topAbove >= margin;
+
+                if (overflowBottomBelow && fitsAbove) {
+                    altEl.style.top = (mouseY + offsetY) + 'px';
+                    altEl.style.transform = 'translate(0, -100%)';
+                } else if (topAbove < margin) {
+                    altEl.style.top = (mouseY - offsetY) + 'px';
+                    altEl.style.transform = 'translate(0, 0)';
+                } else {
+                    altEl.style.top = (mouseY + offsetY) + 'px';
+                    altEl.style.transform = 'translate(0, -100%)';
+                }
             }
 
             altEl.style.opacity = '1';

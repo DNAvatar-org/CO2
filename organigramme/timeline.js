@@ -1,8 +1,9 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.16
- * Date: 2026-04-17
+ * Version 1.0.17
+ * Date: 2026-04-26
 * logs :
+ * - v1.0.17: updateEpochActions — clé de rafraîchissement inclut 🕰.order (TIMELINE) quand défini, sinon getActionForDate.
  * - v1.0.16: getEpochAtTimelineIndex — évite crash epoch undefined (▶) si 👉 hors TIMELINE ou état transitoire (scie_compute)
  * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
  * - v1.0.2: dates négatives avec signe - (info-time et epoch-start en -X Ma)
@@ -417,13 +418,20 @@ function updateTimeline() {
     }
     window.updatePlanetTextureFromDate && window.updatePlanetTextureFromDate();
 
-    // Mettre à jour le 2e bouton (☄️|🎇|💫) quand la date courante change (ACTION_BY_DATE)
+    // Mettre à jour les boutons ACTION : 🕰.order (TIMELINE) si présent, sinon date → getActionForDate (organigramme).
     const epochAct = getEpochAtTimelineIndex();
     const cfgOrg = window.configOrganigramme;
     if (epochAct && cfgOrg) {
-        const actionKey = cfgOrg.getActionForDate(epochAct['▶'], window.infoTimeMa);
-        if (window._lastEpochActionKey !== actionKey) {
-            window._lastEpochActionKey = actionKey;
+        const wh = epochAct['🕰'];
+        let sig;
+        if (wh && Array.isArray(wh.order) && wh.order.length) {
+            sig = (epochAct['📅'] || '') + '|' + wh.order.join(',');
+        } else {
+            const actionKey = cfgOrg.getActionForDate(epochAct['▶'], window.infoTimeMa) || '💫';
+            sig = (epochAct['📅'] || '') + '|' + actionKey;
+        }
+        if (window._lastEpochActionKey !== sig) {
+            window._lastEpochActionKey = sig;
             if (typeof window.updateEpochActions === 'function') {
                 window.updateEpochActions();
             }

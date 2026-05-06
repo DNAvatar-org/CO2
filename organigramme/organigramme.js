@@ -1,12 +1,15 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.76
+// Version 1.0.82
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.82 Terre Three.js : ajout d'un vecteur d'axe sortant du pôle nord (toujours visible, suit tilt+rotation)
+// Logs: v1.0.81 timeline-scenario-anim : sans flux-button-cell ni icon-button (grayscale sur toute la cellule dans style.css) ; classe organigram-buttons retirée ; clic via nodeId
+// Logs: v1.0.77 timeline-scenario-anim placeholder span : classe organigram-logo (unique, alignée events.js / organigramme.css v1.0.73)
 // Logs: v1.0.76 alt 🛩 : fixe 1,0261 (config radiativeFactorTropopauseFixed, hors bary)
 // Logs: v1.0.75 alt fallback 🛩 factorTropopause [1,03 , 1,00] (FINE_TUNING v1.3.9)
 // Logs: v1.0.74 getFineTuningDetailAlt : cibles RADIATIVE (SCIENCE) — κ_H₂O + factorTropopause 🛩 [1,05 , 1] ; intro flou scientifique nuages+radiatif
@@ -743,6 +746,62 @@ function initPlanetThreeJS(
 
   let sphere = null;
 
+  function disposeObject3D(object3d) {
+    if (!object3d) return;
+    object3d.traverse((child) => {
+      if (child.geometry && typeof child.geometry.dispose === "function") {
+        child.geometry.dispose();
+      }
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((mat) => {
+            if (mat && typeof mat.dispose === "function") mat.dispose();
+          });
+        } else if (typeof child.material.dispose === "function") {
+          child.material.dispose();
+        }
+      }
+    });
+  }
+
+  function createNorthPoleAxisVector(currentSphereRadius) {
+    const axisGroup = new THREE.Group();
+    axisGroup.name = "north-pole-axis-vector";
+    const startY = currentSphereRadius;
+    const axisLength = currentSphereRadius * 1.15;
+    const endY = startY + axisLength;
+    const axisColor = 0x7fe7ff;
+
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, startY, 0),
+      new THREE.Vector3(0, endY, 0),
+    ]);
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: axisColor,
+      transparent: true,
+      opacity: 0.95,
+      depthTest: false,
+    });
+    const axisLine = new THREE.Line(lineGeometry, lineMaterial);
+    axisLine.renderOrder = 20;
+    axisGroup.add(axisLine);
+
+    const headRadius = Math.max(currentSphereRadius * 0.07, 0.001);
+    const headHeight = Math.max(currentSphereRadius * 0.2, 0.001);
+    const headGeometry = new THREE.ConeGeometry(headRadius, headHeight, 20);
+    const headMaterial = new THREE.MeshBasicMaterial({
+      color: axisColor,
+      transparent: true,
+      opacity: 0.95,
+      depthTest: false,
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.set(0, endY + headHeight * 0.5, 0);
+    head.renderOrder = 21;
+    axisGroup.add(head);
+    return axisGroup;
+  }
+
   // Fonction pour créer/mettre à jour la sphère
   function createPlanetSphere(newRadius = null) {
     // Si un nouveau rayon est fourni, recalculer sphereRadius
@@ -751,8 +810,7 @@ function initPlanetThreeJS(
     const wasUpdating = !!sphere;
     if (sphere) {
       scene.remove(sphere);
-      if (sphere.geometry) sphere.geometry.dispose();
-      if (sphere.material) sphere.material.dispose();
+      disposeObject3D(sphere);
     }
 
     // Ne réinitialiser la caméra que lors de la première création (pas au changement de texture / autre événement)
@@ -804,6 +862,7 @@ function initPlanetThreeJS(
       sphere.rotation.y = savedRotationY;
       rotationY = savedRotationY; // synchro boucle animate() (sinon elle écrase au frame suivant)
     }
+    sphere.add(createNorthPoleAxisVector(currentSphereRadius));
     scene.add(sphere);
 
     // Stocker les références pour mise à jour ultérieure
@@ -1172,7 +1231,6 @@ function createCell(
         ? "plot-anim-toggle"
         : "cell-" + nodeId;
   }
-
   // Z-index géré par CSS via les sélecteurs #cell-{nodeId}
   // Les z-index inline sont désactivés pour éviter les conflits avec le CSS
   cell.style.zIndex = zIndex !== null ? zIndex : Z_LAYERS.NODE;
@@ -1343,6 +1401,9 @@ function createCell(
       }
     // Wrapper le logo dans un span pour appliquer l'offset sans bouger le cercle
     const logoSpan = document.createElement("span");
+    if (nodeId === "timeline-scenario-anim") {
+      logoSpan.classList.add("organigram-logo");
+    }
     logoSpan.style.display = "flex";
     // 🔒 Gérer l'alignement : 'zorder' = centrer verticalement (flex-direction: column), sinon centrer normalement
     if (align === "zorder") {
@@ -1637,19 +1698,16 @@ function createCell(
         return; // Ne pas copier le logo ni déclencher d'autres actions
       }
 
+      if (nodeId === "timeline-scenario-anim") {
+        if (typeof window !== "undefined" && typeof window.togglePlotAnim === "function") {
+          window.togglePlotAnim();
+        }
+        return;
+      }
+
       // Vérifier si c'est un bouton (cellule parente a la classe flux-button-cell)
       const parentCell = circleBg.closest(".flux-button-cell");
       if (parentCell) {
-        // 🎞 Animation timeline : bouton readOnly mais action explicite attendue (togglePlotAnim)
-        if (
-          parentCell.id === "plot-anim-toggle" ||
-          nodeId === "timeline-scenario-anim"
-        ) {
-          if (typeof window !== "undefined" && typeof window.togglePlotAnim === "function") {
-            window.togglePlotAnim();
-          }
-          return;
-        }
         if (parentCell.classList.contains("flux-display-only")) return; // display-only, pas de toggle
         // 🗺 Crédits PALEOMAP : le cercle déclenchait runCompute (toggle « fantôme ») ; même action que le bouton HTML #credits-paleomap
         if (parentCell.id === "cell-credits-paleomap" || nodeId === "credits-paleomap") {
@@ -3319,54 +3377,50 @@ function mountOrganigramDomSlots(createdCellsMap) {
     }
     let mountEl = el;
     if (mountId === "timeline-events-logos") {
-      const legacyBlock = document.getElementById("timeline-action-block");
-      if (legacyBlock) {
-        legacyBlock.remove();
-      }
-      let shell = document.getElementById("cell-timeline-scenario-logos");
-      if (!shell) {
-        const slotLogoPx = Number(node.slotEventLogoPx);
-        const shellRadius =
-          Number.isFinite(slotLogoPx) && slotLogoPx > 0
-            ? Math.max(28, Math.round(slotLogoPx / 2))
-            : 40;
-        shell = createCell(
-          node.x,
-          node.y,
-          shellRadius,
-          "rgba(255, 255, 255, 0)",
-          "rgba(0, 0, 0, 0)",
-          "",
-          Array.isArray(node.left) ? node.left : [],
-          Array.isArray(node.right) ? node.right : [],
-          Array.isArray(node.top)
-            ? node.top
-            : node.top && node.top !== ""
-              ? [node.top]
-              : [],
-          Array.isArray(node.bottom)
-            ? node.bottom
-            : node.bottom && node.bottom !== ""
-              ? [node.bottom]
-              : [],
-          null,
-          null,
-          null,
-          null,
-          null,
-          node.id,
-          node.zIndex != null ? node.zIndex : null,
-          1,
-          0,
-          0,
-          "solid",
-          null,
-          parent,
-          false,
-          null,
-        );
-        shell.classList.add("flux-cell--scenario-logos-shell");
-      }
+      document
+        .querySelectorAll("#timeline-action-block, #cell-timeline-scenario-logos")
+        .forEach((staleNode) => staleNode.remove());
+      const rootStyles = getComputedStyle(document.documentElement);
+      const slotLogoPx = Number(
+        rootStyles.getPropertyValue("--slot-event-logo-px").trim().replace("px", ""),
+      );
+      const shellRadius = Math.max(28, Math.round(slotLogoPx / 2));
+      const shell = createCell(
+        node.x,
+        node.y,
+        shellRadius,
+        "rgba(255, 255, 255, 0)",
+        "rgba(0, 0, 0, 0)",
+        "",
+        Array.isArray(node.left) ? node.left : [],
+        Array.isArray(node.right) ? node.right : [],
+        Array.isArray(node.top)
+          ? node.top
+          : node.top && node.top !== ""
+            ? [node.top]
+            : [],
+        Array.isArray(node.bottom)
+          ? node.bottom
+          : node.bottom && node.bottom !== ""
+            ? [node.bottom]
+            : [],
+        null,
+        null,
+        null,
+        null,
+        null,
+        node.id,
+        node.zIndex != null ? node.zIndex : null,
+        1,
+        0,
+        0,
+        "solid",
+        null,
+        parent,
+        false,
+        null,
+      );
+      shell.classList.add("flux-cell--scenario-logos-shell");
       const circle = shell.querySelector(".flux-circle-bg");
       if (circle) {
         circle.innerHTML = "";
@@ -3385,9 +3439,6 @@ function mountOrganigramDomSlots(createdCellsMap) {
     if (node.zIndex != null) mountEl.style.zIndex = String(node.zIndex);
     if (node.slotMinWidth != null && mountId !== "timeline-events-logos") {
       el.style.minWidth = node.slotMinWidth + "px";
-    }
-    if (node.slotEventLogoPx != null && Number.isFinite(Number(node.slotEventLogoPx))) {
-      el.style.setProperty("--slot-event-logo-px", Number(node.slotEventLogoPx) + "px");
     }
     if (node.x != null || node.y != null) {
       mountEl.style.position = "absolute";
@@ -3719,7 +3770,7 @@ cellOrder.forEach((nodeId) => {
   // If it's a button, add the CSS class
   // Le gestionnaire de clic est déjà attaché au circleBg dans createCell
   // Il détecte automatiquement si c'est un bouton via la classe flux-button-cell
-  if (node.type === "button") {
+  if (node.type === "button" && node.id !== "timeline-scenario-anim") {
     cell.classList.add("flux-button-cell");
     cell.classList.add("checked");
     // pointer-events géré par CSS (.flux-button-cell none / .flux-circle-bg auto) — pas d'inline
@@ -3859,15 +3910,15 @@ organigramNodes.forEach((node) => {
 
   // If it's a button, add the CSS class and click event
   if (node.type === "button") {
-    cell.classList.add("flux-button-cell");
-    cell.classList.add("checked");
-    // pointer-events géré par CSS (.flux-button-cell none / .flux-circle-bg auto) — pas d'inline
-    if (node.readOnly) {
-      cell.classList.add("flux-display-only");
-      cell.style.cursor = "default";
-    }
-    if (node.id === "timeline-scenario-anim") {
-      cell.classList.add("icon-button");
+    const isTimelineSkip = node.id === "timeline-scenario-anim";
+    if (!isTimelineSkip) {
+      cell.classList.add("flux-button-cell");
+      cell.classList.add("checked");
+      // pointer-events géré par CSS (.flux-button-cell none / .flux-circle-bg auto) — pas d'inline
+      if (node.readOnly) {
+        cell.classList.add("flux-display-only");
+        cell.style.cursor = "default";
+      }
     }
 
     if (!node.readOnly) {
@@ -3880,7 +3931,7 @@ organigramNodes.forEach((node) => {
     }
 
     const originalButton = document.getElementById(node.id);
-    if (originalButton) {
+    if (originalButton && !isTimelineSkip) {
       originalButton.style.display = "none";
     }
   }
