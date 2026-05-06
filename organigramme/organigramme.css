@@ -1011,46 +1011,6 @@
                  0 0 8px color-mix(in srgb, var(--retro-clicable) 30%, transparent) !important;
 }
 
-/* Albédo (après règles checked/selected) : halo blanc uniquement, pas de drop-shadow / text-shadow verts */
-#cell-albedo-btn.flux-button-cell.checked .flux-circle-bg,
-#cell-albedo-btn.flux-button-cell.selected .flux-circle-bg {
-    filter: grayscale(0%) !important;
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                 0 0 4px rgba(255, 255, 255, 0.7),
-                 0 0 6px rgba(255, 255, 255, 0.5) !important;
-}
-#cell-albedo-btn.flux-button-cell.checked .flux-circle-bg:hover,
-#cell-albedo-btn.flux-button-cell.selected .flux-circle-bg:hover {
-    filter: grayscale(100%) !important;
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                 0 0 4px rgba(255, 255, 255, 0.7),
-                 0 0 6px rgba(255, 255, 255, 0.5) !important;
-}
-
-/* CO₂ / CH₄ / H₂O : pas de halo vert (même traitement que #cell-albedo-btn) */
-#cell-co2.flux-button-cell.checked .flux-circle-bg,
-#cell-co2.flux-button-cell.selected .flux-circle-bg,
-#cell-methane.flux-button-cell.checked .flux-circle-bg,
-#cell-methane.flux-button-cell.selected .flux-circle-bg,
-#cell-h2o.flux-button-cell.checked .flux-circle-bg,
-#cell-h2o.flux-button-cell.selected .flux-circle-bg {
-    filter: grayscale(0%) !important;
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                 0 0 4px rgba(255, 255, 255, 0.7),
-                 0 0 6px rgba(255, 255, 255, 0.5) !important;
-}
-#cell-co2.flux-button-cell.checked .flux-circle-bg:hover,
-#cell-co2.flux-button-cell.selected .flux-circle-bg:hover,
-#cell-methane.flux-button-cell.checked .flux-circle-bg:hover,
-#cell-methane.flux-button-cell.selected .flux-circle-bg:hover,
-#cell-h2o.flux-button-cell.checked .flux-circle-bg:hover,
-#cell-h2o.flux-button-cell.selected .flux-circle-bg:hover {
-    filter: grayscale(100%) !important;
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
-                 0 0 4px rgba(255, 255, 255, 0.7),
-                 0 0 6px rgba(255, 255, 255, 0.5) !important;
-}
-
 /* Étiquettes ppm/% à côté des gaz : même ton que .percent-label (plus de vert CO₂) */
 #cell-co2 .flux-label.co2-label {
     color: rgb(135, 206, 250);

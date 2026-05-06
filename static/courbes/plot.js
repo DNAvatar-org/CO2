@@ -1,9 +1,10 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.64
-// Date: [May 06, 2026] [15:00 UTC+1]
+// Version 1.0.65
+// Date: [May 06, 2026] [16:00 UTC+1]
 // logs :
+// - v1.0.65: nettoyage crash-first — retrait des gardes `typeof window/...` défensifs autour des APIs UI contractuelles (fonts, logos, sync classes, listeners, état spectral).
 // - v1.0.64: retrait readouts T sol. / T eff. (K °C °F) sur le graphe — températures restent dans le bandeau titre ; légende courbes = main.js updateLegend
 // - v1.0.63: alt zones captation spectre — sans Min/Max ni λ/bin ; molécules « Label captation [a - b] μm » ; nuages « Nuages (corps gris) absorption sur tout le spectre [4 - 50] μm » ; retrait propriété minMax des bandes
 // - v1.0.62: FLUX.plotMaxYScienceTraces / plotMaxYPlanckSurfaceSol (snapshot échelle) ; PLOT.logPlotScaleAfterCompute → DEBUG.log si DEBUG_PLOT_LOG (plot_debug.js)
@@ -137,7 +138,7 @@ PLOT.logPlotScaleAfterCompute = function logPlotScaleAfterCompute() {
 
 // Fonction pour obtenir la couleur par défaut du body (vert)
 function getDefaultTextColor() {
-    if (typeof window !== 'undefined' && document.body) {
+    if (document.body) {
         const computedStyle = window.getComputedStyle(document.body);
         return computedStyle.color || '#00ff00'; // Vert par défaut si non trouvé
     }
@@ -696,9 +697,7 @@ PLOT.updatePlotAltitudeAxis = function (atm_height_km) {
 };
 
 // Ajouter l'écouteur d'événement resize
-if (typeof window !== 'undefined') {
-    window.addEventListener('resize', debouncedResizeCanvas);
-}
+window.addEventListener('resize', debouncedResizeCanvas);
 
 // Fonction pour dessiner uniquement la bande de spectre de 15px (sans données)
 function drawSpectrumBarOnly() {
@@ -760,7 +759,7 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
 // Fonction helper pour obtenir la famille de police par défaut
 function getDefaultFontFamily() {
     // Utiliser la police globale si définie, sinon fallback
-    if (typeof window !== 'undefined' && window.globalFontFamily) {
+    if (window.globalFontFamily) {
         const font = window.globalFontFamily;
         // Toujours ajouter les fallbacks pour toutes les polices
         return `'${font}', 'Tahoma', 'Roboto', 'Verdana', sans-serif`;
@@ -856,7 +855,7 @@ function drawAbsorptionBandIndicators() {
 
     // Indicateurs de bandes d'absorption (H2O, CO2, CH4 = bandes spectrales ; nuages = corps gris, tout le LW)
     // Utiliser la référence unique des logos depuis configOrganigramme.js
-    const LOGOS = typeof window !== 'undefined' && window.LOGOS ? window.LOGOS : {
+    const LOGOS = window.LOGOS || {
         CO2: '🏭',
         CH4: '🐄',
         H2O: '💧',
@@ -864,9 +863,7 @@ function drawAbsorptionBandIndicators() {
         CLOUDS: '☁️'
     };
     if (!LOGOS.CLOUDS) LOGOS.CLOUDS = '☁️';
-    const getLogoImageSrc = (typeof window !== 'undefined' && typeof window.getLogoImageSrc === 'function')
-        ? window.getLogoImageSrc
-        : null;
+    const getLogoImageSrc = window.getLogoImageSrc;
     const resolveLogoImg = (logo) => (getLogoImageSrc ? getLogoImageSrc(logo) : null);
 
     // Bornes des bins de la grille spectrale (calculations.js buildAdaptiveLambdaGrid) — les [ ] alignés dessus = bandes "code bar" du fond.
@@ -1261,7 +1258,7 @@ function drawAbsorptionBandIndicators() {
         }
         const divEarth = placeSpectralMarker('spectral-eds-marker--earth', 'Terre (émission vue de l’espace) — ½·Planck(T_eff) à ' + lambdaEdsSunUm + ' μm ; axe Y sémantique inversé vs intuition « ciel »', topSun);
         const earthEmoji = (window.LOGOS && window.LOGOS.GLOBE_AFRICA) || (window.LOGOS && window.LOGOS.GLOBE_AMERICAS) || (window.LOGOS && window.LOGOS.GLOBE_ASIA) || '🌍';
-        const earthSrc = (typeof window.getLogoImageSrc === 'function') ? window.getLogoImageSrc(earthEmoji) : null;
+        const earthSrc = window.getLogoImageSrc(earthEmoji);
         if (earthSrc) {
             const img = document.createElement('img');
             img.src = earthSrc;
@@ -1282,9 +1279,7 @@ function drawAbsorptionBandIndicators() {
         plotContainerWrapper2.appendChild(divEarth);
     }
 
-    if (typeof window.syncPlotContainerOrganigramHideClasses === 'function') {
-        window.syncPlotContainerOrganigramHideClasses();
-    }
+    window.syncPlotContainerOrganigramHideClasses();
 }
 
 PLOT.updatePlot = function updatePlot(data) {
@@ -2285,15 +2280,12 @@ function wavelengthToColor(lambda_m, lambda_range_min, lambda_range_max) {
 }
 
 // Variable globale pour suivre l'état de convergence et la précision cible
-if (typeof window !== 'undefined') {
-    window.RUNTIME_STATE.spectralPrecisionTarget = 'auto'; // 'auto', 'low', 'medium', 'high', 'max'
-    window.RUNTIME_STATE.spectralConverged = false;
-}
+window.RUNTIME_STATE.spectralPrecisionTarget = 'auto'; // 'auto', 'low', 'medium', 'high', 'max'
+window.RUNTIME_STATE.spectralConverged = false;
 
 // Écouter l'événement de convergence pour ajuster la précision
-if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('calculationConverged', (event) => {
-        if (window.FLUX) window.FLUX.yAxisRecalcOnNextFinish = true;
+window.addEventListener('calculationConverged', (event) => {
+        window.FLUX.yAxisRecalcOnNextFinish = true;
         // Convergence atteinte : vérifier le FPS pour décider de la précision finale
         const currentFPS = window.RUNTIME_STATE.fps;
         if (currentFPS > 55) {
@@ -2317,7 +2309,6 @@ if (typeof window !== 'undefined' && window.addEventListener) {
             }, 100);
         }
     });
-}
 
 // Fonction pour créer la visualisation spectrale
 PLOT.updateSpectralVisualization = function (data) {

@@ -1,12 +1,14 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.82
+// Version 1.0.84
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.84 Terre Three.js : retrait du vecteur d'axe nord (complexité/clip canvas), retour à la sphère seule.
+// Logs: v1.0.83 Terre Three.js : vecteur axe nord en volume (cylindre + chapeau conique), plus de simple trait plaqué.
 // Logs: v1.0.82 Terre Three.js : ajout d'un vecteur d'axe sortant du pôle nord (toujours visible, suit tilt+rotation)
 // Logs: v1.0.81 timeline-scenario-anim : sans flux-button-cell ni icon-button (grayscale sur toute la cellule dans style.css) ; classe organigram-buttons retirée ; clic via nodeId
 // Logs: v1.0.77 timeline-scenario-anim placeholder span : classe organigram-logo (unique, alignée events.js / organigramme.css v1.0.73)
@@ -71,30 +73,23 @@
 
 // Pas de const DATA/TIMELINE ici (évite redeclaration avec main.js) — utiliser window.DATA / window.TIMELINE
 
-// Variables globales pour l'état des boutons (sélectionnés par défaut)
-if (typeof window !== "undefined") {
-  // 🔒 VARIABLES GLOBALES UNIQUES : Seule référence pour l'état des boutons EDS
-  // Ces variables sont mises à jour UNIQUEMENT au clic sur les boutons
-  // Elles sont utilisées dans TOUS les calculs et logs
-  window.isCO2_eds = true;
-  window.isCH4_eds = true;
-  window.isH2O_eds = true;
-  window.isAlbedo = true;
+// -------- Constantes Three.js terre : canvas + caméra fixés sur le cas le plus gros (Hadéen) --------
+// L'époque la plus volumineuse fixe la taille du canvas et la distance caméra.
+// Pour les autres époques, seul le rayon de la sphère (en unités monde) varie.
+const TERRE_MAX_RADIUS_PX = 99;                                      // = radiusTerre (90) × 1.1 (Hadéen) ; cf. configOrganigramme.js
+const TERRE_AXIS_SCALE    = 1.0;                                     // marge autour de la sphère pour laisser dépasser le cône d'axe nord
+const TERRE_CANVAS_PX     = TERRE_MAX_RADIUS_PX * 2 * TERRE_AXIS_SCALE; // taille du canvas (px), constante pour toutes les époques
+const TERRE_CAMERA_DISTANCE_FACTOR = 1 / 30.5;                       // calibrage historique (sphère Hadéen ≈ 80% de canvas non scalé)
+const NON_CHECKABLE_NODE_IDS = new Set(["co2", "methane", "h2o", "albedo-btn"]);
 
-  // Source unique UI : CONFIG_COMPUTE pour la précision, window.DATA['🔘']['🔘🎞'] pour l'animation.
-  window.CONFIG_COMPUTE.convergencePrecisionK = 0.1;
+// Source unique UI : CONFIG_COMPUTE pour la précision, window.DATA['🔘']['🔘🎞'] pour l'animation.
+window.CONFIG_COMPUTE.convergencePrecisionK = 0.1;
+// Variable globale pour contrôler l'animation Three.js (false = animée, true = pause)
+window.threeJSAnimationPaused = false;
 
-  // Variables legacy (à supprimer progressivement, gardées pour compatibilité temporaire)
-  window.useCO2 = true;
-  window.useCH4 = true;
-  window.useH2O = true;
-  window.useAlbedo = true;
-  // Variable globale pour contrôler l'animation Three.js (false = animée, true = pause)
-  window.threeJSAnimationPaused = false;
-
-  // 🔒 Version de secours de interpretConfigValue (sera remplacée par celle de main.js si elle existe)
-  // Cette fonction est nécessaire car organigramme.js est chargé avant main.js
-  if (typeof window.interpretConfigValue === "undefined") {
+// 🔒 Version de secours de interpretConfigValue (sera remplacée par celle de main.js si elle existe)
+// Cette fonction est nécessaire car organigramme.js est chargé avant main.js
+if (typeof window.interpretConfigValue === "undefined") {
     window.interpretConfigValue = function (value) {
       // Pas besoin d'interprétation pour les nombres
       if (typeof value === "number") {
@@ -191,24 +186,12 @@ if (typeof window !== "undefined") {
       return interpreted;
     };
     // Log supprimé (non essentiel)
-  }
 }
 
 // Fonction pour ajouter un tooltip personnalisé avec délai de 0.5s
 // 🔒 Utiliser le système centralisé de tooltips (tooltips.js)
 function addCustomTooltip(element, text) {
-  // Déléguer à la fonction centralisée
-  if (
-    typeof window !== "undefined" &&
-    typeof window.addTooltip === "function"
-  ) {
-    window.addTooltip(element, text);
-  } else {
-    // Fallback si tooltips.js n'est pas encore chargé
-    console.warn(
-      "[organigramme.js] tooltips.js non chargé, tooltip non affiché",
-    );
-  }
+  window.addTooltip(element, text);
 }
 
 // Fonction pour mettre à jour le tooltip d'un bouton selon son état
@@ -520,14 +503,16 @@ function initPlanetThreeJS(
   lightDistance = null,
 ) {
   if (typeof THREE === "undefined") {
-    console.error("[initPlanetThreeJS] ❌ Three.js non chargé !");
-    return;
+    throw new Error("[initPlanetThreeJS] Three.js non chargé");
   }
   const IO_LISTENER = window.IO_LISTENER;
   IO_LISTENER.emit("three:runStart", { canvas: canvas });
 
-  const width = planetSize;
-  const height = planetSize;
+  // -------- Calibrage Three.js terre : canvas + distance FIXES (calibrés sur Hadéen, le plus gros) --------
+  // Le canvas est dimensionné une fois pour toutes pour accueillir la plus grosse Terre + la marge du cône.
+  // Pour les autres époques, seul le rayon de la sphère (monde) change ; la caméra et le canvas ne bougent pas.
+  const width = TERRE_CANVAS_PX;
+  const height = TERRE_CANVAS_PX;
 
   // Stocker les références dans le canvas pour pouvoir les mettre à jour plus tard
   if (!canvas._threeJSData) {
@@ -539,10 +524,7 @@ function initPlanetThreeJS(
   // Priorité 2: Utiliser la valeur depuis canvas._threeJSData.sphere (si canvas existe encore)
   let savedRotationY = 0;
   // 🔒 Restaurer la rotation sauvegardée si disponible (pour éviter que la terre pivote d'un coup)
-  if (
-    typeof window !== "undefined" &&
-    window.savedPlanetRotationY !== undefined
-  ) {
+  if (window.savedPlanetRotationY !== undefined) {
     savedRotationY = window.savedPlanetRotationY;
     // Log supprimé (non essentiel)
     // NE PAS nettoyer la variable - elle peut être réutilisée pour les changements de texture
@@ -551,9 +533,7 @@ function initPlanetThreeJS(
     savedRotationY = canvas._threeJSData.sphere.rotation.y;
     // Log supprimé (non essentiel)
     // Sauvegarder aussi dans window pour les prochains changements
-    if (typeof window !== "undefined") {
-      window.savedPlanetRotationY = savedRotationY;
-    }
+    window.savedPlanetRotationY = savedRotationY;
   }
 
   // Log supprimé (non essentiel)
@@ -571,7 +551,7 @@ function initPlanetThreeJS(
 
   const sphereSegments = 32; // Précision comme dans planet-test.html
   const lightContrast = 1.85; // Contraste éclairci pour astre plus lisible (était 1.5)
-  let tiltAngle = (typeof window !== 'undefined' && window.savedPlanetTiltAngle !== undefined)
+  let tiltAngle = (window.savedPlanetTiltAngle !== undefined)
     ? window.savedPlanetTiltAngle
     : -23.44; // Obliquité actuelle ~23,44° (signe conservé vs ancien −53° pour le rendu texture) ; persistée dans savedPlanetTiltAngle
 
@@ -584,7 +564,10 @@ function initPlanetThreeJS(
   // Il faut utiliser une distance fixe basée sur la taille du container
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
   // Distance fixe calculée empiriquement pour que la sphère remplisse le container et frôle le cercle
-  const distance = planetSize / 30.5; // Distance fixe basée sur la taille du container
+  // Distance caméra : FIXE, calibrée sur le canvas constant. Avec ce calibrage, une Terre de
+  // rayon-monde = MAX × 0.02 (= Hadéen) occupe ≈ 80%/axisScale du canvas, soit ~62 % en laissant
+  // une marge pour le cône. Les Terres plus petites (autres époques) occupent proportionnellement moins.
+  const distance = TERRE_CANVAS_PX * TERRE_CAMERA_DISTANCE_FACTOR;
   camera.position.set(0, 0, distance);
   camera.lookAt(0, 0, 0);
 
@@ -610,17 +593,14 @@ function initPlanetThreeJS(
 
   // Texture - vérifier le protocole (Three.js nécessite HTTP/HTTPS)
   let texture = null;
-  const textureName =
-    typeof logoPath === "string" && logoPath
-      ? logoPath.split("/").pop()
-      : String(logoPath);
+  const textureName = String(logoPath).split("/").pop();
   if (window.location.protocol === "file:") {
     console.log("🖼️ [texture] chargement erreur (file:):", textureName);
     console.error(
       "[initPlanetThreeJS] ❌ ERREUR: Three.js nécessite HTTP/HTTPS !",
     );
     console.error("⚠️ Utilisez: http://localhost:8000/index.html");
-    createPlanetSphere();
+    createPlanetSphere(sphereRadius);
     if (window._logStep) window._logStep("[2] texture Three.js (retour file:)");
     else console.log("[2] texture Three.js (retour file:)");
     if (window._logStepEnd) window._logStepEnd();
@@ -643,8 +623,8 @@ function initPlanetThreeJS(
         loadedTexture.wrapS = THREE.RepeatWrapping;
         loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
         texture = loadedTexture;
-        if (typeof window !== "undefined") window._lastPlanetTexturePath = logoPath;
-        createPlanetSphere();
+        window._lastPlanetTexturePath = logoPath;
+        createPlanetSphere(sphereRadius);
         console.log("🖼️ [texture] chargement OK:", textureName);
         if (window._logStep) window._logStep("[2] texture Three.js (retour)");
         if (window._logStepEnd) window._logStepEnd();
@@ -653,7 +633,7 @@ function initPlanetThreeJS(
       undefined,
       function (error) {
         console.log("🖼️ [texture] chargement erreur:", textureName);
-        createPlanetSphere();
+        createPlanetSphere(sphereRadius);
         if (window._logStep) window._logStep("[2] texture Three.js (retour sans image)");
         if (window._logStepEnd) window._logStepEnd();
         IO_LISTENER.emit("three:ready", { hasTexture: false, canvas: canvas });
@@ -668,79 +648,72 @@ function initPlanetThreeJS(
   // Éclairage : lumière directionnelle (comme le soleil) ou point au centre (éclairage interne)
   let directionalLight = null;
   let pointLight = null;
+  const lightMode = lightDistance === 0 ? "internal" : "external";
   const lightDirection = new THREE.Vector3(-1, 1, 0).normalize();
 
-  // Si lightDistance est 0, utiliser un PointLight au centre (éclairage interne)
-  // Sinon, utiliser une DirectionalLight (la distance ajuste l'intensité)
-  if (lightDistance !== null && lightDistance === 0) {
-    // Éclairage interne : PointLight au centre avec intensité très élevée
-    pointLight = new THREE.PointLight(
-      0xffffff,
-      lightContrast * luxSaturation * 20,
-    ); // Intensité x20 pour éclairage interne
-    pointLight.position.set(0, 0, 0); // Au centre
-    pointLight.castShadow = false;
-    scene.add(pointLight);
-    // Augmenter drastiquement la lumière ambiante pour l'éclairage interne
-    ambientLight.intensity = 1.5; // Très forte lumière ambiante pour éclairage interne
-    // Log supprimé (non essentiel)
-
-    // Stocker les références des lumières après création
-    canvas._threeJSData.pointLight = pointLight;
-    canvas._threeJSData.directionalLight = null;
-    canvas._threeJSData.ambientLight = ambientLight;
-  } else {
-    // Éclairage externe : DirectionalLight (soleil)
-    // Note: Pour DirectionalLight, la distance n'a pas d'effet visuel (rayons parallèles)
-    // Mais on utilise lightDistance comme facteur d'intensité (plus grand = plus intense)
-    directionalLight = new THREE.DirectionalLight(0xffffff, lightContrast);
-    const defaultDistance = sphereRadius * 3;
-    const actualLightDistance =
-      lightDistance !== null && lightDistance > 0
-        ? lightDistance
-        : defaultDistance;
-    const lightPosition = lightDirection
-      .clone()
-      .multiplyScalar(actualLightDistance);
-    directionalLight.position.copy(lightPosition);
-    directionalLight.castShadow = false;
-    scene.add(directionalLight);
-    // Log supprimé (non essentiel)
-
-    // Stocker les références des lumières après création
-    canvas._threeJSData.directionalLight = directionalLight;
-    canvas._threeJSData.pointLight = null;
-    canvas._threeJSData.ambientLight = ambientLight;
+  switch (lightMode) {
+    case "internal":
+      pointLight = new THREE.PointLight(
+        0xffffff,
+        lightContrast * luxSaturation * 20,
+      );
+      pointLight.position.set(0, 0, 0);
+      pointLight.castShadow = false;
+      scene.add(pointLight);
+      ambientLight.intensity = 1.5;
+      canvas._threeJSData.pointLight = pointLight;
+      canvas._threeJSData.directionalLight = null;
+      canvas._threeJSData.ambientLight = ambientLight;
+      break;
+    case "external":
+      directionalLight = new THREE.DirectionalLight(0xffffff, lightContrast);
+      {
+        const defaultDistance = sphereRadius * 3;
+        const actualLightDistance =
+          lightDistance !== null && lightDistance > 0
+            ? lightDistance
+            : defaultDistance;
+        const lightPosition = lightDirection
+          .clone()
+          .multiplyScalar(actualLightDistance);
+        directionalLight.position.copy(lightPosition);
+      }
+      directionalLight.castShadow = false;
+      scene.add(directionalLight);
+      canvas._threeJSData.directionalLight = directionalLight;
+      canvas._threeJSData.pointLight = null;
+      canvas._threeJSData.ambientLight = ambientLight;
+      break;
+    default:
+      throw new Error("Mode de lumière inconnu");
   }
 
   // Ajuster le contraste de l'éclairage avec luxSaturation
   // luxSaturation contrôle l'intensité de la lumière (soleil ou interne)
   // 0.0 = pas de lumière (pas d'ombre), 1.0 = lumière normale, >1.0 = lumière plus intense
   // lightDistance affecte l'intensité selon la loi en 1/distance² (loi de l'inverse du carré)
-  if (directionalLight) {
-    const baseDirectionalIntensity = 0.1 + lightContrast * 1.2;
-    // Calculer le facteur d'intensité selon la loi en 1/distance²
-    const defaultDistance = sphereRadius * 3;
-    const actualLightDistance =
-      lightDistance !== null && lightDistance > 0
-        ? lightDistance
-        : defaultDistance;
-    // Facteur d'intensité : loi en 1/distance² (plus loin = moins intense)
-    const distanceFactor =
-      (defaultDistance * defaultDistance) /
-      (actualLightDistance * actualLightDistance);
-    directionalLight.intensity =
-      baseDirectionalIntensity * luxSaturation * distanceFactor;
-    // Log supprimé (non essentiel)
-  } else if (pointLight) {
-    // L'intensité du PointLight est déjà ajustée lors de la création
-    pointLight.intensity = lightContrast * luxSaturation * 20;
-  }
-  // Ajuster la lumière ambiante (plus faible pour éclairage externe, plus forte pour interne)
-  if (!pointLight) {
-    // Éclairage externe : lumière ambiante plus forte pour éclaircir l’astre
-    const ambientIntensity = Math.max(0.15, 0.45 - lightContrast * 0.05);
-    ambientLight.intensity = ambientIntensity;
+  switch (lightMode) {
+    case "external": {
+      const baseDirectionalIntensity = 0.1 + lightContrast * 1.2;
+      const defaultDistance = sphereRadius * 3;
+      const actualLightDistance =
+        lightDistance !== null && lightDistance > 0
+          ? lightDistance
+          : defaultDistance;
+      const distanceFactor =
+        (defaultDistance * defaultDistance) /
+        (actualLightDistance * actualLightDistance);
+      directionalLight.intensity =
+        baseDirectionalIntensity * luxSaturation * distanceFactor;
+      const ambientIntensity = Math.max(0.15, 0.45 - lightContrast * 0.05);
+      ambientLight.intensity = ambientIntensity;
+      break;
+    }
+    case "internal":
+      pointLight.intensity = lightContrast * luxSaturation * 20;
+      break;
+    default:
+      throw new Error("Mode de lumière inconnu");
   }
   // Pour éclairage interne, l'intensité ambiante est déjà ajustée lors de la création du PointLight
 
@@ -764,65 +737,18 @@ function initPlanetThreeJS(
     });
   }
 
-  function createNorthPoleAxisVector(currentSphereRadius) {
-    const axisGroup = new THREE.Group();
-    axisGroup.name = "north-pole-axis-vector";
-    const startY = currentSphereRadius;
-    const axisLength = currentSphereRadius * 1.15;
-    const endY = startY + axisLength;
-    const axisColor = 0x7fe7ff;
-
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, startY, 0),
-      new THREE.Vector3(0, endY, 0),
-    ]);
-    const lineMaterial = new THREE.LineBasicMaterial({
-      color: axisColor,
-      transparent: true,
-      opacity: 0.95,
-      depthTest: false,
-    });
-    const axisLine = new THREE.Line(lineGeometry, lineMaterial);
-    axisLine.renderOrder = 20;
-    axisGroup.add(axisLine);
-
-    const headRadius = Math.max(currentSphereRadius * 0.07, 0.001);
-    const headHeight = Math.max(currentSphereRadius * 0.2, 0.001);
-    const headGeometry = new THREE.ConeGeometry(headRadius, headHeight, 20);
-    const headMaterial = new THREE.MeshBasicMaterial({
-      color: axisColor,
-      transparent: true,
-      opacity: 0.95,
-      depthTest: false,
-    });
-    const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.set(0, endY + headHeight * 0.5, 0);
-    head.renderOrder = 21;
-    axisGroup.add(head);
-    return axisGroup;
-  }
-
   // Fonction pour créer/mettre à jour la sphère
   function createPlanetSphere(newRadius = null) {
-    // Si un nouveau rayon est fourni, recalculer sphereRadius
-    let currentSphereRadius = newRadius !== null ? newRadius : sphereRadius;
+    let currentSphereRadius = newRadius;
 
-    const wasUpdating = !!sphere;
-    if (sphere) {
-      scene.remove(sphere);
-      disposeObject3D(sphere);
-    }
+    scene.remove(sphere);
+    disposeObject3D(sphere);
 
-    // Ne réinitialiser la caméra que lors de la première création (pas au changement de texture / autre événement)
-    if (!wasUpdating) {
-      const distance = planetSize / 30.5;
-      camera.position.set(0, 0, distance);
-      camera.lookAt(0, 0, 0);
-      camera.updateProjectionMatrix();
-    }
+    // Caméra déjà positionnée à la création (cf. `distance` plus haut). On ne la touche plus
+    // ici : la distance est figée par le calibrage, seul le rayon de la sphère change suivant l'époque.
 
-    // Ajuster la position de la lumière (seulement si c'est une DirectionalLight)
-    if (directionalLight) {
+    // Ajuster la position de la lumière directionnelle (mode externe)
+    if (lightMode === "external") {
       const actualLightDistance =
         lightDistance !== null && lightDistance !== 0
           ? lightDistance
@@ -856,13 +782,28 @@ function initPlanetThreeJS(
     const material = new THREE.MeshStandardMaterial(materialOptions);
 
     sphere = new THREE.Mesh(geometry, material);
+
+    // Cône d'axe nord : enfant de la sphère, posé sur le pôle (axe Y local).
+    {
+      const coneHeight = sphereRadius * 0.12;
+      const coneBaseR = sphereRadius * 0.03;
+      const coneGeom = new THREE.ConeGeometry(coneBaseR, coneHeight, 16);
+      const retroBase = (typeof getComputedStyle !== "undefined")
+        ? getComputedStyle(document.documentElement).getPropertyValue("--retro-base").trim()
+        : "";
+      const coneColor = new THREE.Color(retroBase || "#ff4444");
+      const coneMat = new THREE.MeshBasicMaterial({ color: coneColor });
+      const cone = new THREE.Mesh(coneGeom, coneMat);
+      cone.position.y = sphereRadius + coneHeight / 2;
+      sphere.add(cone);
+    }
+
     sphere.rotation.x = (tiltAngle * Math.PI) / 180;
     // Restaurer l'angle de rotation Y sauvegardé (pour garder la continuité)
     if (savedRotationY !== undefined && savedRotationY !== null) {
       sphere.rotation.y = savedRotationY;
       rotationY = savedRotationY; // synchro boucle animate() (sinon elle écrase au frame suivant)
     }
-    sphere.add(createNorthPoleAxisVector(currentSphereRadius));
     scene.add(sphere);
 
     // Stocker les références pour mise à jour ultérieure
@@ -898,7 +839,7 @@ function initPlanetThreeJS(
   function _onDocMove(e) {
     if (!_dragActive) return;
     tiltAngle += e.movementY * 1.0;
-    if (typeof window !== 'undefined') window.savedPlanetTiltAngle = tiltAngle;
+    window.savedPlanetTiltAngle = tiltAngle;
     if (sphere) sphere.rotation.x = (tiltAngle * Math.PI) / 180;
   }
   function _onDocUp(e) {
@@ -930,16 +871,9 @@ function initPlanetThreeJS(
 
   // L'animation démarre immédiatement (pas besoin d'attendre calculationConverged pour Three.js)
 
-  // Redimensionnement
-  const resizeObserver = new ResizeObserver(() => {
-    const newWidth = container.clientWidth;
-    const newHeight = container.clientHeight;
-    if (newWidth > 0 && newHeight > 0) {
-      camera.aspect = newWidth / newHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(newWidth, newHeight);
-    }
-  });
+  // Canvas FIXE (TERRE_CANVAS_PX) : pas de redimensionnement ; ResizeObserver gardé en no-op
+  // au cas où on rajoute du responsive plus tard.
+  const resizeObserver = new ResizeObserver(() => {});
   resizeObserver.observe(container);
 }
 
@@ -969,8 +903,7 @@ function updatePlanetLighting() {
   }
 
   // Récupérer la config de l'époque courante
-  const currentEpochName =
-    (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) || "Corps Noir";
+  const currentEpochName = window.RUNTIME_STATE.currentEpochName || "Corps Noir";
   const terreNode = window.configOrganigramme.nodes.find(
     (n) => n.id === "terre",
   );
@@ -998,9 +931,7 @@ function updatePlanetLighting() {
       lightDistance !== null &&
       lightDistance !== undefined)
   ) {
-    if (typeof window.interpretConfigValue === "function") {
-      lightDistance = window.interpretConfigValue(lightDistance);
-    }
+    lightDistance = window.interpretConfigValue(lightDistance);
   }
 
   // 🔒 Convertir en nombre si c'est une chaîne après interprétation
@@ -1022,10 +953,11 @@ function updatePlanetLighting() {
     // Log supprimé (non essentiel)
   }
 
-  const luxSaturation =
-    epochConfig.luxSaturation !== undefined ? epochConfig.luxSaturation : 1.0;
-  const lightContrast = threeJSData.lightContrast || 1.85;
-  const sphereRadius = threeJSData.currentRadius || threeJSData.sphereRadius;
+  // Sources uniques : la config définit luxSaturation, l'init stocke lightContrast et currentRadius
+  // (cf. initPlanetThreeJS / createPlanetSphere). Plus de fallback `||` qui masquerait un oubli amont.
+  const luxSaturation = epochConfig.luxSaturation;
+  const lightContrast = threeJSData.lightContrast;
+  const sphereRadius  = threeJSData.currentRadius;
 
   // Log supprimé (non essentiel)
 
@@ -1129,9 +1061,7 @@ function updatePlanetLighting() {
 }
 
 // Exposer updatePlanetLighting globalement
-if (typeof window !== "undefined") {
-  window.updatePlanetLighting = updatePlanetLighting;
-}
+window.updatePlanetLighting = updatePlanetLighting;
 
 /** Met à jour la texture de la planète (terre) selon l’époque et infoTimeMa. Appelé à chaque updateTimeline pour que chaque action qui avance le temps change la texture. */
 function updatePlanetTextureFromDate() {
@@ -1146,14 +1076,14 @@ function updatePlanetTextureFromDate() {
   const epoch = TIMELINE[idx];
   if (!epoch || epoch["▶"] == null) return;
   const startYears = epoch["▶"];
-  const infoTimeMa = typeof window.infoTimeMa === "number" ? window.infoTimeMa : 0;
+  const infoTimeMa = window.infoTimeMa;
   const path = getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
   if (path === window._lastPlanetTexturePath) return;
   window._lastPlanetTexturePath = path;
   const sphere = canvas._threeJSData.sphere;
   const textureName = path.split("/").pop() || path;
   // Pause Three.js pour que l'angle ne change pas entre 2 textures ; play au compute:done (loader_panels, main.js)
-  if (typeof window !== "undefined") window.threeJSAnimationPaused = true;
+  window.threeJSAnimationPaused = true;
   const loader = new THREE.TextureLoader();
   loader.load(
     path,
@@ -1171,10 +1101,8 @@ function updatePlanetTextureFromDate() {
     }
   );
 }
-if (typeof window !== "undefined") {
-  window.updatePlanetTextureFromDate = updatePlanetTextureFromDate;
-  window.getPlanetTexturePathFromEpoch = getPlanetTexturePathFromEpoch;
-}
+window.updatePlanetTextureFromDate = updatePlanetTextureFromDate;
+window.getPlanetTexturePathFromEpoch = getPlanetTexturePathFromEpoch;
 
 function labelDataUsesOrganigramConfigHeading(labelData) {
   return (
@@ -1514,10 +1442,17 @@ function createCell(
         planetContainer.style.setProperty("--after-display", "none");
         planetContainer.style.pointerEvents = "none";
 
-        // Créer le canvas pour Three.js (planetSize = radius * 2 déjà défini ci-dessus)
+        // Canvas Three.js : taille FIXE (constante module TERRE_CANVAS_PX, calibrée sur Hadéen + marge cône).
+        // Centré sur le planetContainer via transform — robuste face à setSize/ResizeObserver
+        // (qui ne touchent pas left/top/transform).
         const canvas = document.createElement("canvas");
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
+        planetContainer.style.overflow = "visible";
+        canvas.style.position = "absolute";
+        canvas.style.left = "50%";
+        canvas.style.top = "50%";
+        canvas.style.transform = "translate(-50%, -50%)";
+        canvas.style.width = TERRE_CANVAS_PX + "px";
+        canvas.style.height = TERRE_CANVAS_PX + "px";
         canvas.style.display = "block";
         canvas.style.pointerEvents = "none";
         planetContainer.appendChild(canvas);
@@ -1525,11 +1460,7 @@ function createCell(
         // Récupérer luxSaturation et lightDistance depuis la config de l'époque (si disponible)
         let luxSaturation = 1.0; // Valeur par défaut
         let lightDistance = null; // null = distance automatique, 0 = éclairage interne, >0 = distance spécifique
-        if (
-          nodeId === "terre" &&
-          typeof window !== "undefined" &&
-          window.configOrganigramme
-        ) {
+        if (nodeId === "terre" && window.configOrganigramme) {
           // Priorité 1: Utiliser les valeurs interprétées stockées dans window (depuis setEpoch)
           if (window.currentEpochLuxSaturation !== undefined) {
             luxSaturation = window.currentEpochLuxSaturation;
@@ -1567,10 +1498,7 @@ function createCell(
                 ) {
                   // Log supprimé (non essentiel)
                   // Interpréter lightDistance si c'est une chaîne
-                  if (
-                    typeof epochConfig.lightDistance === "string" &&
-                    typeof window.interpretConfigValue === "function"
-                  ) {
+                  if (typeof epochConfig.lightDistance === "string") {
                     lightDistance = window.interpretConfigValue(
                       epochConfig.lightDistance,
                     );
@@ -1589,10 +1517,7 @@ function createCell(
 
         // S'assurer que lightDistance est interprété avant de passer à initPlanetThreeJS
         // Si c'est encore une chaîne, l'interpréter maintenant
-        if (
-          typeof lightDistance === "string" &&
-          typeof window.interpretConfigValue === "function"
-        ) {
+        if (typeof lightDistance === "string") {
           const interpretedLightDistance =
             window.interpretConfigValue(lightDistance);
           // Log supprimé (non essentiel)
@@ -1601,20 +1526,16 @@ function createCell(
 
         // Initialiser Three.js avec éclairage
         // Le chemin de la texture est résolu depuis le document HTML, pas depuis le CSS
-        if (typeof THREE !== "undefined") {
-          initPlanetThreeJS(
-            canvas,
-            logo,
-            planetSize,
-            planetContainer,
-            radius,
-            logoScale,
-            luxSaturation,
-            lightDistance,
-          );
-        } else {
-          console.error("[createCell] ❌ Three.js non chargé !");
-        }
+        initPlanetThreeJS(
+          canvas,
+          logo,
+          planetSize,
+          planetContainer,
+          radius,
+          logoScale,
+          luxSaturation,
+          lightDistance,
+        );
 
         logoSpan.appendChild(planetContainer);
         logoSpan.style.pointerEvents = "none";
@@ -1691,17 +1612,16 @@ function createCell(
 
       // Vérifier si c'est la Terre (toggle animation Three.js)
       if (nodeId === "terre") {
-        if (typeof window !== "undefined") {
-          window.threeJSAnimationPaused = !window.threeJSAnimationPaused;
-          // Log supprimé (non essentiel)
-        }
+        window.threeJSAnimationPaused = !window.threeJSAnimationPaused;
         return; // Ne pas copier le logo ni déclencher d'autres actions
       }
 
       if (nodeId === "timeline-scenario-anim") {
-        if (typeof window !== "undefined" && typeof window.togglePlotAnim === "function") {
-          window.togglePlotAnim();
-        }
+        window.togglePlotAnim();
+        return;
+      }
+
+      if (NON_CHECKABLE_NODE_IDS.has(nodeId)) {
         return;
       }
 
@@ -1728,51 +1648,11 @@ function createCell(
           parentCell.classList.add("checked");
         }
 
-        // Mettre à jour les variables globales UNIQUES et les couleurs
-        const cellId = parentCell.id;
-        let edsVarName = null;
-        let legacyVarName = null;
-        if (cellId === "cell-co2") {
-          edsVarName = "isCO2_eds";
-          legacyVarName = "useCO2";
-        } else if (cellId === "cell-methane") {
-          edsVarName = "isCH4_eds";
-          legacyVarName = "useCH4";
-        } else if (cellId === "cell-h2o") {
-          edsVarName = "isH2O_eds";
-          legacyVarName = "useH2O";
-        } else if (cellId === "cell-albedo-btn") {
-          edsVarName = "isAlbedo";
-          legacyVarName = "useAlbedo";
-        }
-
-        // 🔒 Mettre à jour UNIQUEMENT les variables globales uniques (seule référence)
-        if (edsVarName && typeof window !== "undefined") {
-          window[edsVarName] = !isChecked;
-          // Garder aussi les variables legacy pour compatibilité temporaire
-          if (legacyVarName) {
-            window[legacyVarName] = !isChecked;
-          }
-        }
-
-        // Mettre à jour la classe selected
-        if (!isChecked) {
-          parentCell.classList.add("selected");
-          parentCell.classList.remove("unselected");
-        } else {
-          parentCell.classList.remove("selected");
-          parentCell.classList.add("unselected");
-        }
-
         // Mettre à jour les couleurs des étiquettes
-        if (typeof window.ORG.updateFluxLabels === "function") {
-          window.ORG.updateFluxLabels("ProcessFinished");
-        }
+        window.ORG.updateFluxLabels("ProcessFinished");
 
         // Relancer le cycle avec la nouvelle donnée (getEnabledStates lit depuis le DOM)
-        if (typeof window.runComputeInParent === "function") {
-          window.runComputeInParent();
-        }
+        window.runComputeInParent();
 
         // Mettre à jour le tooltip du bouton
         updateButtonTooltip(parentCell, circleBg);
@@ -1970,7 +1850,7 @@ function createCell(
           label.style.position = "relative"; // Créer un stacking context
           label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
           labelContainer.appendChild(label);
-          if ((dataId === "fine_tuning_cloud_bary") && typeof window.addTooltipFromAttribute === "function" && !label.hasAttribute("data-tooltip-initialized")) {
+          if ((dataId === "fine_tuning_cloud_bary") && !label.hasAttribute("data-tooltip-initialized")) {
             window.addTooltipFromAttribute(label);
             label.setAttribute("data-tooltip-initialized", "true");
           }
@@ -2088,7 +1968,7 @@ function createCell(
           }
 
           labelContainer.appendChild(label);
-          if ((dataId === "albedo_percents") && typeof window.addTooltipFromAttribute === "function" && !label.hasAttribute("data-tooltip-initialized")) {
+          if ((dataId === "albedo_percents") && !label.hasAttribute("data-tooltip-initialized")) {
             window.addTooltipFromAttribute(label);
             label.setAttribute("data-tooltip-initialized", "true");
           }
@@ -2550,13 +2430,11 @@ function createArc(
 function calculatePositions() {
   // O(1) — copies locales (noms cfg* pour éviter tout conflit avec organigramNodes au niveau script)
   const cfgNodes =
-    typeof window !== "undefined" &&
     window.configOrganigramme &&
     window.configOrganigramme.nodes
       ? window.configOrganigramme.nodes
       : [];
   const cfgArcs =
-    typeof window !== "undefined" &&
     window.configOrganigramme &&
     window.configOrganigramme.arcs
       ? window.configOrganigramme.arcs
@@ -2625,9 +2503,7 @@ function getNodeProperty(node, property, defaultValue = null) {
   if (!node) return defaultValue;
 
   if ((node.id === "terre" || node.id === "albedo") && node.epoch && Array.isArray(node.epoch)) {
-    const currentEpochName =
-      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
-      "Corps Noir";
+    const currentEpochName = window.RUNTIME_STATE.currentEpochName || "Corps Noir";
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
     );
@@ -3350,7 +3226,7 @@ function mountOrganigramDomSlots(createdCellsMap) {
   organigramNodes.forEach((node) => {
     if (node.type !== "domSlot") return;
     const mountId = node.mountId;
-    if (!mountId || typeof document === "undefined") return;
+    if (!mountId) return;
     const parentSel =
       typeof node.appendParentSelector === "string"
         ? node.appendParentSelector
@@ -3369,7 +3245,7 @@ function mountOrganigramDomSlots(createdCellsMap) {
         Object.keys(node.domAttrs).forEach((attr) => el.setAttribute(attr, node.domAttrs[attr]));
       }
       if (typeof node.domInnerHTML === "string") el.innerHTML = node.domInnerHTML;
-      if (typeof node.domOnclick === "string" && typeof window[node.domOnclick] === "function") {
+      if (typeof node.domOnclick === "string") {
         el.addEventListener("click", window[node.domOnclick]);
       }
     } else if (el.parentNode) {
@@ -3630,9 +3506,7 @@ cellOrder.forEach((nodeId) => {
   // Gérer le cas spécial des nodes avec tableau epoch (terre, albedo)
   let nodeConfig = node;
   if (node.id === "albedo" && node.epoch && Array.isArray(node.epoch)) {
-    const currentEpochName =
-      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
-      "Corps Noir";
+    const currentEpochName = window.RUNTIME_STATE.currentEpochName || "Corps Noir";
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
     );
@@ -3648,9 +3522,7 @@ cellOrder.forEach((nodeId) => {
   } else if (node.id === "terre" && node.epoch && Array.isArray(node.epoch)) {
     const interpretConfigValue = window.interpretConfigValue || (function (v) { return v; });
     const charsImages = window.charsImages;
-    const currentEpochName =
-      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
-      "Corps Noir";
+    const currentEpochName = window.RUNTIME_STATE.currentEpochName || "Corps Noir";
     const epochConfig = node.epoch.find(
       (e) => e.epochName === currentEpochName,
     );
@@ -3659,20 +3531,14 @@ cellOrder.forEach((nodeId) => {
       // Picto (logo) vs texture Three.js : planetEffect = texture calculée depuis époque + infoTimeMa
       let logoForCell = epochConfig.logo;
       if (epochConfig.planetEffect) {
-        const idx =
-          typeof window.DATA !== "undefined" &&
-          window.DATA["📜"] &&
-          window.DATA["📜"]["👉"] != null
-            ? window.DATA["📜"]["👉"]
-            : 0;
-        const timelineEpoch =
-          window.TIMELINE && window.TIMELINE[idx] ? window.TIMELINE[idx] : null;
+        const idx = window.DATA["📜"]["👉"] != null ? window.DATA["📜"]["👉"] : 0;
+        const timelineEpoch = window.TIMELINE[idx] || null;
         const startYears = timelineEpoch
           ? timelineEpoch["▶"]
           : (epochConfig["▶"] != null
               ? epochConfig["▶"]
               : 2.5e9);
-        const infoTimeMa = typeof window.infoTimeMa === "number" ? window.infoTimeMa : 0;
+        const infoTimeMa = window.infoTimeMa;
         logoForCell = getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
       } else {
         logoForCell = typeof epochConfig.logo === "string" ? interpretConfigValue(epochConfig.logo) : epochConfig.logo;
@@ -3697,16 +3563,10 @@ cellOrder.forEach((nodeId) => {
 
       let logoForCell = lastEpoch.logo || node.epoch[0].logo;
       if (lastEpoch.planetEffect) {
-        const idx =
-          typeof window.DATA !== "undefined" &&
-          window.DATA["📜"] &&
-          window.DATA["📜"]["👉"] != null
-            ? window.DATA["📜"]["👉"]
-            : 0;
-        const timelineEpoch =
-          window.TIMELINE && window.TIMELINE[idx] ? window.TIMELINE[idx] : null;
+        const idx = window.DATA["📜"]["👉"] != null ? window.DATA["📜"]["👉"] : 0;
+        const timelineEpoch = window.TIMELINE[idx] || null;
         const startYears = timelineEpoch ? timelineEpoch["▶"] : 2.5e9;
-        const infoTimeMa = typeof window.infoTimeMa === "number" ? window.infoTimeMa : 0;
+        const infoTimeMa = window.infoTimeMa;
         logoForCell = getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
       } else {
         logoForCell = typeof logoForCell === "string" ? interpretConfigValue(logoForCell) : logoForCell;
@@ -3770,7 +3630,11 @@ cellOrder.forEach((nodeId) => {
   // If it's a button, add the CSS class
   // Le gestionnaire de clic est déjà attaché au circleBg dans createCell
   // Il détecte automatiquement si c'est un bouton via la classe flux-button-cell
-  if (node.type === "button" && node.id !== "timeline-scenario-anim") {
+  if (
+    node.type === "button" &&
+    node.id !== "timeline-scenario-anim" &&
+    !NON_CHECKABLE_NODE_IDS.has(node.id)
+  ) {
     cell.classList.add("flux-button-cell");
     cell.classList.add("checked");
     // pointer-events géré par CSS (.flux-button-cell none / .flux-circle-bg auto) — pas d'inline
@@ -3911,7 +3775,7 @@ organigramNodes.forEach((node) => {
   // If it's a button, add the CSS class and click event
   if (node.type === "button") {
     const isTimelineSkip = node.id === "timeline-scenario-anim";
-    if (!isTimelineSkip) {
+    if (!isTimelineSkip && !NON_CHECKABLE_NODE_IDS.has(node.id)) {
       cell.classList.add("flux-button-cell");
       cell.classList.add("checked");
       // pointer-events géré par CSS (.flux-button-cell none / .flux-circle-bg auto) — pas d'inline
@@ -3957,9 +3821,7 @@ cellOrder.forEach((nodeId) => {
 
   // Si le node 'noyau' a un tableau radiation (configuration par époque)
   if (nodeId === "noyau" && Array.isArray(node.radiation)) {
-    const currentEpochName =
-      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
-      "Corps Noir";
+    const currentEpochName = window.RUNTIME_STATE.currentEpochName || "Corps Noir";
     let epochRadiation = node.radiation.find(
       (r) => r.epochName === currentEpochName,
     );
@@ -4197,11 +4059,7 @@ function positionnerBoutonsSurCercleAlbedo() {
 
 // Fonction pour générer la timeline depuis la configuration
 function generateTimelineFromConfig() {
-  if (
-    typeof window === "undefined" ||
-    !window.TIMELINE ||
-    !Array.isArray(window.TIMELINE)
-  ) {
+  if (!window.TIMELINE || !Array.isArray(window.TIMELINE)) {
     console.warn("Timeline config not found, using default HTML");
     return;
   }
@@ -4263,10 +4121,7 @@ function generateTimelineFromConfig() {
       // Ne pas utiliser title natif, utiliser addCustomTooltip à la place
 
       // getDisplayForPicto : image si dans charsImages, sinon picto (transparent si on ajoute des images)
-      const display =
-        typeof window.getDisplayForPicto === "function"
-          ? window.getDisplayForPicto(epochId)
-          : { type: "text", value: epochId };
+      const display = window.getDisplayForPicto(epochId);
       if (!isHidden && display.type === "image") {
         const img = document.createElement("img");
         img.src = display.value;
@@ -4288,7 +4143,7 @@ function generateTimelineFromConfig() {
       epochsContainer.appendChild(el);
 
       // Ajouter le tooltip personnalisé (epochLabel = Paléozoïque pour 🌿)
-      if (typeof window !== "undefined" && epochLabel) addCustomTooltip(el, epochLabel);
+      if (epochLabel) addCustomTooltip(el, epochLabel);
 
       // Entre deux époques : date = début de l'époque suivante (▶)
       // Dernière paire (avant-dernière époque → 📱) : afficher 2000 entre les deux, borne finale = 2100
@@ -4317,7 +4172,6 @@ function generateTimelineFromConfig() {
 // Basée sur les propriétés physiques, pas sur le nom
 function isBlackBodyEpoch() {
   if (
-    typeof window === "undefined" ||
     !window.RUNTIME_STATE.currentEpochName ||
     !(window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName)
   ) {
@@ -4359,11 +4213,7 @@ function parseRgbString(rgbText) {
 
 function pickInfraFallbackColor() {
   let fallback = [120, 180, 255];
-  if (
-    typeof window !== "undefined" &&
-    window.infraTextColors &&
-    window.infraTextColors.length > 0
-  ) {
+  if (window.infraTextColors && window.infraTextColors.length > 0) {
     const midIdx = Math.floor(window.infraTextColors.length / 2);
     const parsed = parseRgbString(window.infraTextColors[midIdx]);
     if (parsed) {
@@ -4469,11 +4319,9 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
   return detailOnly ? detail : intro + "\n" + detail;
 }
 
-if (typeof window !== "undefined") {
-  window.getFineTuningDetailAlt = getFineTuningDetailAlt;
-}
+window.getFineTuningDetailAlt = getFineTuningDetailAlt;
 
-// Helpers de formatage/écriture labels extraits au scope du module : ORG.updateLabel doit être disponible dès le chargement pour FluxManager (setSolarIntensity, setGeothermalFlux...), avant le premier cycle de calcul (ProcessFinished). Ils ne dépendent que des arguments et de globals window.* (configOrganigramme, isCO2_eds, ...) — pas du closure de updateFluxLabels.
+// Helpers de formatage/écriture labels extraits au scope du module : ORG.updateLabel doit être disponible dès le chargement pour FluxManager (setSolarIntensity, setGeothermalFlux...), avant le premier cycle de calcul (ProcessFinished). Ils ne dépendent que des arguments et de globals window.* (configOrganigramme, etc.) — pas du closure de updateFluxLabels.
 const detectValueType = (text) => {
   if (!text) return null;
   const textStr = String(text);
@@ -4816,36 +4664,7 @@ const updateLabel = (dataId, value, format = "auto") => {
         dataId === "h2o_forcing_wm" ||
         dataId === "albedo_percent" ||
         dataId === "albedo_forcing";
-      let isButtonActive = true;
-      if (dataId === "co2_percent" || dataId === "co2_forcing_wm") {
-        isButtonActive =
-          typeof window !== "undefined"
-            ? window.isCO2_eds !== undefined
-              ? window.isCO2_eds
-              : true
-            : true;
-      } else if (dataId === "ch4_percent" || dataId === "ch4_forcing_wm") {
-        isButtonActive =
-          typeof window !== "undefined"
-            ? window.isCH4_eds !== undefined
-              ? window.isCH4_eds
-              : true
-            : true;
-      } else if (dataId === "h2o_percent" || dataId === "h2o_forcing_wm") {
-        isButtonActive =
-          typeof window !== "undefined"
-            ? window.isH2O_eds !== undefined
-              ? window.isH2O_eds
-              : true
-            : true;
-      } else if (dataId === "albedo_percent" || dataId === "albedo_forcing") {
-        isButtonActive =
-          typeof window !== "undefined"
-            ? window.isAlbedo !== undefined
-              ? window.isAlbedo
-              : true
-            : true;
-      }
+      const isButtonActive = true;
       const isAlbedoButtonLabel =
         dataId === "forcing_total" &&
         label.closest("#cell-albedo-btn") !== null;
@@ -4884,11 +4703,7 @@ ORG.updateFluxLabels = function (eventId) {
   const CHARS = window.CHARS;
   const CHARS_DESC = window.CHARS_DESC;
   function logAlbedoUi(msg) {
-    try {
-      if (typeof window !== "undefined" && typeof window.pdTrace === "function") {
-        window.pdTrace("updateFluxLabels", "organigramme.js", msg);
-      }
-    } catch (e) {}
+    window.pdTrace("updateFluxLabels", "organigramme.js", msg);
   }
   var fluxDiagram = document.getElementById("flux-diagram");
   if (!fluxDiagram) return;
@@ -4901,17 +4716,13 @@ ORG.updateFluxLabels = function (eventId) {
     forcing_H2O;
   var epochId,
     hasNoAtmosphere,
-    h2o_enabled,
-    isCO2_eds,
-    isCH4_eds,
-    isH2O_eds,
-    isAlbedo;
+    h2o_enabled;
   if (window.CONVERGENCE_DEBUG && window.DEBUG_CONVERGENCE_BINS === true) {
     const d = window.CONVERGENCE_DEBUG;
     const deltaStr = (d.delta != null && Number.isFinite(Number(d.delta))) ? Number(d.delta).toFixed(3) : "—";
     const fpsStr = window.RUNTIME_STATE.fps.toFixed(1);
     const msg = "bins=" + (d.bins != null ? d.bins : "—") + " step=" + (d.step != null ? d.step : "—") + " delta=" + deltaStr + " fps=" + fpsStr;
-    if (typeof window.pdTrace === "function") window.pdTrace("updateFluxLabels", "organigramme.js", msg);
+    window.pdTrace("updateFluxLabels", "organigramme.js", msg);
   }
 
   switch (eventId) {
@@ -4953,10 +4764,6 @@ ORG.updateFluxLabels = function (eventId) {
         window.ATM.ch4KgToFraction(DATA["⚖️"]["⚖️🐄"], atm_kg, M_air) * 1e6;
       // Part EDS vapeur (W/m²) = 🧲📛💧 ; 🔺📛💧 = ΔF H₂O (formule ln), autre grandeur
       forcing_H2O = DATA["📛"]["🧲📛💧"];
-      isCO2_eds = window.isCO2_eds;
-      isCH4_eds = window.isCH4_eds;
-      isH2O_eds = window.isH2O_eds;
-      isAlbedo = window.isAlbedo;
       h2o_enabled = window.UI_STATE.waterVaporEnabled;
       hasNoAtmosphere = (function () {
         var epoch = window.GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName);
@@ -4980,7 +4787,7 @@ ORG.updateFluxLabels = function (eventId) {
   }
 
   // Source prioritaire pour le flux solaire : DATA['☀️'] (rempli par époque), sinon CONST
-  const soleilData = typeof window !== "undefined" && window.DATA && window.DATA["☀️"];
+  const soleilData = window.DATA && window.DATA["☀️"];
   const SOLAR_CONSTANT =
     soleilData && Number.isFinite(soleilData["🧲☀️"])
       ? soleilData["🧲☀️"]
@@ -5031,7 +4838,7 @@ ORG.updateFluxLabels = function (eventId) {
   if (!hasNoAtmosphere && albedo_num === 0) {
     // Si albedo_num est 0 ou data.albedo n'est pas défini, recalculer avec le flux géothermique
     let geo_flux = null;
-    if (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) {
+    if (window.RUNTIME_STATE.currentEpochName) {
       const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
         window.RUNTIME_STATE.currentEpochName,
       );
@@ -5052,7 +4859,6 @@ ORG.updateFluxLabels = function (eventId) {
   // Récupérer le flux géothermique pour calculateSolarFluxAbsorbed
   let geo_flux = null;
   if (
-    typeof window !== "undefined" &&
     window.RUNTIME_STATE.currentEpochName &&
     window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName
   ) {
@@ -5077,10 +4883,7 @@ ORG.updateFluxLabels = function (eventId) {
   let cloud_percent = 0;
 
   // 🔒 PRIORITÉ 1 : Utiliser la valeur calculée par calculateAlbedo (la plus récente et précise)
-  if (
-    typeof window !== "undefined" &&
-    window.RUNTIME_STATE.h2oIceFractionFromCalculation !== undefined
-  ) {
+  if (window.RUNTIME_STATE.h2oIceFractionFromCalculation !== undefined) {
     ice_coverage = Math.min(
       1,
       Math.max(0, window.RUNTIME_STATE.h2oIceFractionFromCalculation),
@@ -5092,13 +4895,13 @@ ORG.updateFluxLabels = function (eventId) {
   } else {
     const T_surface_C = T0_num - 273.15;
     const volcanoIceReduction =
-      typeof window !== "undefined" && window.volcanoIceReduction !== undefined
+      window.volcanoIceReduction !== undefined
         ? window.volcanoIceReduction / 100
         : 0; // Réduction en fraction (0 à 1)
 
     // Récupérer le flux géothermique depuis l'époque courante
     let geo_flux = 0.087; // Valeur par défaut (moderne)
-    if (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) {
+    if (window.RUNTIME_STATE.currentEpochName) {
       const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(
         window.RUNTIME_STATE.currentEpochName,
       );
@@ -5144,8 +4947,7 @@ ORG.updateFluxLabels = function (eventId) {
   // 🔒 CORRECTION : Si on a utilisé h2oIceFractionFromCalculation, ne pas écraser cloud_percent si pas d'atmosphère
   if (
     hasNoAtmosphere &&
-    (typeof window === "undefined" ||
-      window.RUNTIME_STATE.h2oIceFractionFromCalculation === undefined)
+    window.RUNTIME_STATE.h2oIceFractionFromCalculation === undefined
   ) {
     cloud_percent = 0;
   }
@@ -5153,13 +4955,12 @@ ORG.updateFluxLabels = function (eventId) {
   const ice_percent = Math.round(ice_coverage * 100);
 
   // Forçages radiatifs
-  // 🔒 UTILISER UNIQUEMENT isCO2_eds, isCH4_eds, isH2O_eds, isAlbedo (seule référence)
   const forcing_CO2 =
-    isCO2_eds && co2_ppm_num > 0 && window.CLIMATE && window.CLIMATE.calculateCO2Forcing
+    co2_ppm_num > 0 && window.CLIMATE && window.CLIMATE.calculateCO2Forcing
       ? window.CLIMATE.calculateCO2Forcing(co2_ppm_num * 1e-6)
       : 0;
   const forcing_CH4 =
-    isCH4_eds && ch4_ppm_num > 0 && window.CLIMATE && window.CLIMATE.calculateCH4Forcing
+    ch4_ppm_num > 0 && window.CLIMATE && window.CLIMATE.calculateCH4Forcing
       ? window.CLIMATE.calculateCH4Forcing(ch4_ppm_num * 1e-6)
       : 0;
 
@@ -5167,11 +4968,8 @@ ORG.updateFluxLabels = function (eventId) {
   const h2o_vapor_percent = window.RUNTIME_STATE.h2oVaporPercent;
   const h2o_from_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites;
   const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
-  // 🔒 CORRECTION : Le forçage albédo est actif seulement si isAlbedo est true
   // En mode corps noir, on peut avoir un forçage albedo si il y a de la glace des météorites
-  const forcing_Albedo = !isAlbedo
-    ? 0
-    : (window.CLIMATE && window.CLIMATE.calculateAlbedoForcing)
+  const forcing_Albedo = (window.CLIMATE && window.CLIMATE.calculateAlbedoForcing)
       ? window.CLIMATE.calculateAlbedoForcing(albedo_num)
       : 0;
 
@@ -5464,7 +5262,6 @@ ORG.updateFluxLabels = function (eventId) {
   // Récupérer le flux géothermique de l'époque courante (doit être défini)
   let geothermie_value;
   if (
-    typeof window === "undefined" ||
     !window.RUNTIME_STATE.currentEpochName ||
     !(window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName)
   ) {
@@ -5599,7 +5396,6 @@ ORG.updateFluxLabels = function (eventId) {
   const R = 6371000; // Rayon Terre en m (par défaut)
   let planet_radius = R;
   if (
-    typeof window !== "undefined" &&
     window.RUNTIME_STATE.currentEpochName &&
     window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName
   ) {
@@ -5656,7 +5452,6 @@ ORG.updateFluxLabels = function (eventId) {
     // Surface = 4 * PI * R²
     let radius = 6371000; // Défaut Terre
     if (
-      typeof window !== "undefined" &&
       window.RUNTIME_STATE.currentEpochName &&
       window.GEOLOGY && window.GEOLOGY.getGeologicalPeriodByName
     ) {
@@ -5843,10 +5638,7 @@ ORG.updateFluxLabels = function (eventId) {
 
   // Mettre à jour l'axe altitude du plot UNIQUEMENT à la fin (ProcessFinished).
   // Pendant la convergence (cycleCalcul), ne pas toucher pour éviter que la barre bouge.
-  if (
-    eventId === "ProcessFinished" &&
-    typeof window.PLOT.updatePlotAltitudeAxis === "function"
-  ) {
+  if (eventId === "ProcessFinished") {
     window.PLOT.updatePlotAltitudeAxis(atm_height_km);
   }
 
@@ -5884,15 +5676,13 @@ ORG.updateFluxLabels = function (eventId) {
     h2o_display_value = Math.min(100, window.DATA["💧"]["🍰🫧💧"] * 100);
   }
 
-  // 🔒 CORRECTION : Utiliser isH2O_eds (seule référence)
-  // Le bouton est actif = on fait les calculs avec la valeur (même si 0%)
+  // Le calcul suit uniquement la présence d'eau (h2o_enabled)
   // Passer un nombre pour que formatValueFromTemplate gère le formatage automatiquement
-  const h2o_percent = h2o_enabled && isH2O_eds ? h2o_display_value : 0;
+  const h2o_percent = h2o_enabled ? h2o_display_value : 0;
   // Le forçage H2O doit être 0 si h2o_enabled est false (pas d'eau dans l'atmosphère)
-  // OU si isH2O_eds est false (bouton désactivé)
   // Utiliser directement forcing_H2O qui est déjà calculé avec les bonnes conditions
   const forcing_H2O_final =
-    h2o_enabled && isH2O_eds ? Number(forcing_H2O) || 0 : 0;
+    h2o_enabled ? Number(forcing_H2O) || 0 : 0;
   updateLabel("h2o_percent", h2o_percent);
   updateLabel("h2o_forcing_wm", forcing_H2O_final);
 
@@ -5955,7 +5745,7 @@ ORG.updateFields = function (fieldIdsOrValues, values = null) {
         let value = null;
 
         // Chercher dans window avec le nom exact
-        if (typeof window !== "undefined" && window[dataId] !== undefined) {
+        if (window[dataId] !== undefined) {
           value = window[dataId];
         }
 
@@ -5999,15 +5789,13 @@ ORG.updateFields = function (fieldIdsOrValues, values = null) {
     // Mode 4 : tableau d'IDs sans valeurs = utiliser les valeurs depuis window/plotData
     fieldIdsOrValues.forEach((id) => {
       let value = null;
-      if (typeof window !== "undefined") {
-        // Chercher directement dans window
-        if (window[id] !== undefined) {
-          value = window[id];
-        }
-        // Chercher dans plotData
-        else if (window.plotData && window.plotData[id] !== undefined) {
-          value = window.plotData[id];
-        }
+      // Chercher directement dans window
+      if (window[id] !== undefined) {
+        value = window[id];
+      }
+      // Chercher dans plotData
+      else if (window.plotData && window.plotData[id] !== undefined) {
+        value = window.plotData[id];
       }
       if (value !== null && value !== undefined) {
         fieldsToUpdate[id] = value;
@@ -6018,96 +5806,22 @@ ORG.updateFields = function (fieldIdsOrValues, values = null) {
   // Mettre à jour chaque champ trouvé
   Object.keys(fieldsToUpdate).forEach((dataId) => {
     const value = fieldsToUpdate[dataId];
-    // Utiliser updateLabel si disponible, sinon mettre à jour directement
-    if (typeof ORG.updateLabel === "function") {
-      ORG.updateLabel(dataId, value);
-    } else {
-      // Fallback : mise à jour directe
-      const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
-      labels.forEach((label) => {
-        label.textContent = String(value);
-      });
-    }
+    ORG.updateLabel(dataId, value);
   });
 
   return Object.keys(fieldsToUpdate).length; // Retourner le nombre de champs mis à jour
 };
 
 // Exposer les fonctions globalement (updateFluxLabels déjà assigné à window ligne 3207)
-if (typeof window !== "undefined") {
-  // Initialiser les variables globales UNIQUES selon l'état initial des cellules (boutons du flux)
-  // Les boutons du flux sont des cellules, pas des boutons HTML
-  const cellCO2_init = document.getElementById("cell-co2");
-  const cellCH4_init = document.getElementById("cell-methane");
-  const cellH2O_init = document.getElementById("cell-h2o");
-  const cellAlbedo_init = document.getElementById("cell-albedo-btn");
 
-  if (typeof window !== "undefined") {
-    // Les boutons sont activés par défaut (checked à la création)
-    // 🔒 Initialiser les variables globales UNIQUES (seule référence)
-    window.isCO2_eds = cellCO2_init
-      ? cellCO2_init.classList.contains("checked")
-      : true;
-    window.isCH4_eds = cellCH4_init
-      ? cellCH4_init.classList.contains("checked")
-      : true;
-    window.isH2O_eds = cellH2O_init
-      ? cellH2O_init.classList.contains("checked")
-      : true;
-    window.isAlbedo = cellAlbedo_init
-      ? cellAlbedo_init.classList.contains("checked")
-      : true;
+window.generateTimelineFromConfig = generateTimelineFromConfig;
 
-    // Garder aussi les variables legacy pour compatibilité temporaire
-    window.useCO2 = window.isCO2_eds;
-    window.useCH4 = window.isCH4_eds;
-    window.useH2O = window.isH2O_eds;
-    window.useAlbedo = window.isAlbedo;
-
-    // Initialiser les classes selected/unselected sur les cellules
-    const buttonMap = [
-      { cellId: "cell-co2", varName: "useCO2" },
-      { cellId: "cell-methane", varName: "useCH4" },
-      { cellId: "cell-h2o", varName: "useH2O" },
-      { cellId: "cell-albedo-btn", varName: "useAlbedo" },
-    ];
-
-    // Mettre à jour les tooltips des boutons selon leur état initial
-    buttonMap.forEach(({ cellId }) => {
-      const cell = document.getElementById(cellId);
-      if (cell) {
-        const circleBg = cell.querySelector(".flux-circle-bg");
-        if (circleBg) {
-          updateButtonTooltip(cell, circleBg);
-        }
-      }
-    });
-
-    buttonMap.forEach(({ cellId, varName }) => {
-      const cell = document.getElementById(cellId);
-      if (cell) {
-        const isChecked = cell.classList.contains("checked");
-        if (isChecked) {
-          cell.classList.add("selected");
-          cell.classList.remove("unselected");
-          window[varName] = true;
-        } else {
-          cell.classList.remove("selected");
-          cell.classList.add("unselected");
-          window[varName] = false;
-        }
-      }
-    });
-  }
-  window.generateTimelineFromConfig = generateTimelineFromConfig;
-
-  // Générer la timeline depuis la config au chargement
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", generateTimelineFromConfig);
-  } else {
-    // DOM déjà chargé, appeler directement
-    generateTimelineFromConfig();
-  }
+// Générer la timeline depuis la config au chargement
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", generateTimelineFromConfig);
+} else {
+  // DOM déjà chargé, appeler directement
+  generateTimelineFromConfig();
 }
 
 // Fonction pour recréer les radiations du noyau selon l'époque courante
@@ -6116,8 +5830,7 @@ function recreateNoyauRadiation() {
   if (!noyauNode || !Array.isArray(noyauNode.radiation)) return;
 
   // Trouver la configuration de l'époque courante
-  const currentEpochName =
-    (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) || "Corps Noir";
+  const currentEpochName = window.RUNTIME_STATE.currentEpochName || "Corps Noir";
   let epochRadiation = noyauNode.radiation.find(
     (r) => r.epochName === currentEpochName,
   );
@@ -6226,9 +5939,7 @@ function recreateTerreRadiation() {
 
   // Si c'est un tableau (par époque), trouver la bonne configuration
   if (Array.isArray(radiationOptions)) {
-    const currentEpochName =
-      (typeof window !== "undefined" && window.RUNTIME_STATE.currentEpochName) ||
-      "Corps Noir";
+    const currentEpochName = window.RUNTIME_STATE.currentEpochName || "Corps Noir";
     let epochRadiation = radiationOptions.find(
       (r) => r.epochName === currentEpochName,
     );
@@ -6309,45 +6020,11 @@ function recreateTerreRadiation() {
 
 // Fonction pour initialiser les event listeners sur les boutons du flux
 function initFluxButtonListeners() {
-  // Mapping des cellules vers leurs variables globales
-  // Les boutons sont des cellules du diagramme, pas des boutons HTML
-  const buttonMap = [
-    { cellId: "cell-co2", varName: "useCO2", nodeId: "co2" },
-    { cellId: "cell-methane", varName: "useCH4", nodeId: "methane" },
-    { cellId: "cell-h2o", varName: "useH2O", nodeId: "h2o" },
-    { cellId: "cell-albedo-btn", varName: "useAlbedo", nodeId: "albedo-btn" },
-  ];
-
-  buttonMap.forEach(({ cellId, varName, nodeId }) => {
-    const cell = document.getElementById(cellId);
-    const circleBg = cell ? cell.querySelector(".flux-circle-bg") : null;
-
-    if (cell && circleBg) {
-      // Initialiser l'état selected/unselected selon l'état checked
-      const isChecked = cell.classList.contains("checked");
-      if (isChecked) {
-        cell.classList.add("selected");
-        cell.classList.remove("unselected");
-      } else {
-        cell.classList.remove("selected");
-        cell.classList.add("unselected");
-      }
-
-      // Initialiser les variables globales UNIQUES
-      if (typeof window !== "undefined") {
-        // Mapping vers les variables uniques
-        let edsVarName = null;
-        if (cellId === "cell-co2") edsVarName = "isCO2_eds";
-        else if (cellId === "cell-methane") edsVarName = "isCH4_eds";
-        else if (cellId === "cell-h2o") edsVarName = "isH2O_eds";
-        else if (cellId === "cell-albedo-btn") edsVarName = "isAlbedo";
-
-        if (edsVarName) {
-          window[edsVarName] = isChecked;
-        }
-        // Garder aussi la variable legacy pour compatibilité temporaire
-        window[varName] = isChecked;
-      }
+  // Les cellules non cliquables (CO2/CH4/H2O/ALBEDO) ne portent plus d'état toggle.
+  document.querySelectorAll(".flux-button-cell .flux-circle-bg").forEach((circleBg) => {
+    const cell = circleBg.closest(".flux-button-cell");
+    if (cell) {
+      updateButtonTooltip(cell, circleBg);
     }
   });
 }
