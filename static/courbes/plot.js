@@ -1,9 +1,10 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.78
+// Version 1.0.79
 // Date: [May 07, 2026] [20:20 UTC+1]
 // logs :
+// - v1.0.79: plages spectrales CO₂ (~15 μm) vs H₂O (~17 μm) — coupure à 15 μm (min/max) pour ne plus superposer le même bin LW [12–17].
 // - v1.0.78: marqueurs Terre/EDS — abscisse λ = pic Wien (2898/T_sol) μm, aligné Planck sol (échelle Y max) ; repli spectralEdsSunLambdaUm si T_sol absent.
 // - v1.0.77: masse atm sèche — COMPUTE.dryAtmosphereMassKgFromComponents(epoch) (⚖️🫧 retiré config TIMELINE).
 // - v1.0.76: swap marqueurs spectraux Terre/EDS (logos + libellés alt/title) sur le graphe.
@@ -1244,6 +1245,16 @@ function drawAbsorptionBandIndicators() {
                 leftUm = Math.max(0.1, band.lambda - halfW);
                 rightUm = Math.min(50, band.lambda + halfW);
             }
+        }
+        // Même bin grille LW [12–17] μm : sans ça CO₂ 15 et H₂O 17 partagent [ ] identiques. Séparation physique à 15 μm.
+        const SPLIT_CO2_H2O_LW_UM = 15;
+        const isCo215 = !band.fullSpan && band.logo === LOGOS.CO2 && Number.isFinite(LAMBDA_CO2_UM) && Math.abs(band.lambda - LAMBDA_CO2_UM) < 1;
+        const isH2oLwSecond = !band.fullSpan && band.logo === LOGOS.H2O && band.spectralPairIndex === 1;
+        if (isCo215) {
+            rightUm = Math.min(rightUm, SPLIT_CO2_H2O_LW_UM);
+        }
+        if (isH2oLwSecond) {
+            leftUm = Math.max(leftUm, SPLIT_CO2_H2O_LW_UM);
         }
         return { leftUm, rightUm };
     }
