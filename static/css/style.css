@@ -811,6 +811,18 @@ h1 {
     flex-shrink: 0;
     color: var(--retro-base);
 }
+.title-app-version {
+    font-size: 10px;
+    font-weight: normal;
+    color: var(--retro-base);
+    opacity: 0.72;
+    line-height: 1.2;
+    align-self: center;
+    flex-shrink: 0;
+    margin: 0 6px 0 8px;
+    white-space: nowrap;
+    font-family: 'ProggyDotted', 'Courier New', monospace;
+}
 .title-subtitle {
     font-size: 9px;
     font-weight: normal;
@@ -820,7 +832,9 @@ h1 {
     text-align: right;
     flex-shrink: 1;
     max-width: 100px;
+    max-height: 25px;
     overflow-wrap: break-word;
+    margin-left: auto;
 }
 
 .book-reference {
