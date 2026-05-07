@@ -1,9 +1,10 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.81
+// Version 1.0.82
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
+// Logs: v1.0.82 barre titre visu — align-items flex-start (synthese + flou) ; .visu_epoch-name 14px — ligne époque moins haute quand nom sur 2 lignes.
 // Logs: v1.0.81 exceptions : coque EVENEMENT cursor default ; tuiles événements / SKIP / panneaux ⚗🛰 cursor pointer !important (surcharge img[alt] help).
 // Logs: v1.0.80 #visu-panel .flux-circle-bg cursor help !important — surcharge pointer/default/tooltips.js sur tous les logos cercles (dont albédo).
 // Logs: v1.0.79 exceptions albédo/tooltip sous #flux-diagram:not(.hide-organigram-arrows) pour gagner sur les règles suivantes ; override data-tooltip-initialized quand détail masqué.
@@ -374,7 +375,7 @@
 .title-content-row.title-content-row--flou-et-resultat {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     width: 100%;
     gap: 8px;
@@ -1153,10 +1154,12 @@
 
 .visu_epoch-name {
     font-size: 17px;
+    line-height: 1.2;
     display: block;
-    margin-top: 2px;
+    margin-top: 0;
     width: 100%;
-    white-space: nowrap;
+    max-width: 100%;
+    /*white-space: nowrap;*/
 }
 
 /* Bloc epoch (3 lignes) : ex timeline-date-display / epoch-start-time / info-time, noms en synthese_epoch-* */

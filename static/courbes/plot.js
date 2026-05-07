@@ -1,9 +1,10 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.66
-// Date: [May 06, 2026] [16:00 UTC+1]
+// Version 1.0.67
+// Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
+// - v1.0.67: absorptionBandAltText — alts [ ] par bande (H₂O/CO₂/CH₄ ×2, nuages) alignées physique ; plus « captation » ambigu.
 // - v1.0.66: resolvePlotTimelineEpoch — 👉 / 🗿 avant nom UI (fix « Corps Noir » vs CHARS_DESC « Corps noir » dans configOrganigramme.timeline).
 // - v1.0.65: nettoyage crash-first — retrait des gardes `typeof window/...` défensifs autour des APIs UI contractuelles (fonts, logos, sync classes, listeners, état spectral).
 // - v1.0.64: retrait readouts T sol. / T eff. (K °C °F) sur le graphe — températures restent dans le bandeau titre ; légende courbes = main.js updateLegend
@@ -1128,6 +1129,29 @@ function drawAbsorptionBandIndicators() {
         return band.fullSpan ? 'fullSpan' : String(leftUm) + '-' + String(rightUm);
     }
 
+    /** Alt accessible des pictos [ ] — distinct par λ ; pas les courbes équilibre (légende updateLegend (t°)). */
+    function absorptionBandAltText(band, leftUm, rightUm) {
+        const lo = leftUm.toFixed(1);
+        const hi = rightUm.toFixed(1);
+        const span = `[${lo} – ${hi}] μm`;
+        if (band.fullSpan) {
+            return `Nuages (corps gris) — absorption LW ${span}`;
+        }
+        if (band.spectralPairGroup === 'h2o') {
+            const hint = band.spectralPairIndex === 0 ? '~6,3 μm' : '~17 μm';
+            return `H₂O — absorption vibration ${hint} ${span}`;
+        }
+        if (band.label === 'CO₂' || band.logo === LOGOS.CO2) {
+            const hint = Math.abs(band.lambda - 11) < 1.5 ? '~11 μm' : '~15 μm';
+            return `CO₂ — absorption ${hint} ${span}`;
+        }
+        if (band.label === 'CH₄' || band.logo === LOGOS.CH4) {
+            const hint = band.lambda < 12 ? '~7,7 μm' : '~23 μm';
+            return `CH₄ — absorption ${hint} ${span}`;
+        }
+        return `${band.label} — absorption spectrale ${span}`;
+    }
+
     const spectralBandStackStepPx = 28;
     const stackTotals = Object.create(null);
     absorptionBands.forEach(band => {
@@ -1148,9 +1172,7 @@ function drawAbsorptionBandIndicators() {
         const rowBand = Math.max(rowH, band.logoImg ? logoImgPx : logoEmojiPx);
         const bracketFsBand = Math.max(bracketFs, Math.min(24, Math.round(rowBand * 0.95)));
 
-        const altText = band.fullSpan
-            ? `Nuages (corps gris) absorption sur tout le spectre [${leftUm} - ${rightUm}] μm`
-            : `${band.label} captation [${leftUm.toFixed(1)} - ${rightUm.toFixed(1)}] μm`;
+        const altText = absorptionBandAltText(band, leftUm, rightUm);
 
         // Créer un indicateur de plage [ ... ] + logo centré (sans fond, pour éviter l'artefact visuel)
         const indicator = document.createElement('div');

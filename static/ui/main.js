@@ -1,9 +1,10 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.78
-// Date: [May 06, 2026]
+// Version 1.1.79
+// Date: [May 07, 2026]
 //
+// - v1.1.79: updateLegend — ordre tirets/pointillés aligné sur plot.js (dash=sol, dot=T_eff) ; libellés « (t°) » ; °C OLR = T_eff ; title/aria sur items.
 // - v1.1.78: updateHadeenTexture — retrait if(typeof window) / if(oldCell) superflus ; window.ORG.createCell direct.
 // - v1.1.77: updateHadeenTexture — window.ORG.createCell (FUNCS_ORGANIGRAMME n’existe que dans setEpoch ; crash hors scope).
 // - v1.1.76: updateLegend albedoComponents — sans atm : ice_coverage depuis 💧.🍰💧🧊 avant RUNTIME.h2oIceFractionFromCalculation (aligné organigramme.js v1.0.94).
@@ -1729,10 +1730,11 @@ function updateLegend(data) {
         const tempSurfaceC = T_surface - CONST.KELVIN_TO_CELSIUS;
         const dynamicColor = window.PLOT.tempSurfaceToColor(tempSurfaceC);
 
+        /* Même ordre et styles que PLOT.updatePlot : dash = Planck(T sol), dot = Planck(T_eff), solid = OLR (hover T_eff). */
         const patterns = [
-            { name: 'dot', label: "Corps noir au sol", temperatureK: T_surface },
-            { name: 'dash', label: "Corps noir sortie atmosphère", temperatureK: T_eff_legend },
-            { name: 'solid', label: "Rayonnement réel vers l'espace", temperatureK: T_surface }
+            { name: 'dash', label: 'Corps noir au sol (t°)', temperatureK: T_surface },
+            { name: 'dot', label: 'Corps noir sortie atmosphère (t°)', temperatureK: T_eff_legend },
+            { name: 'solid', label: 'Rayonnement réel vers l\'espace (t°)', temperatureK: T_eff_legend }
         ];
 
         patterns.forEach((patternInfo) => {
@@ -1753,13 +1755,17 @@ function updateLegend(data) {
             const tempAbove = document.createElement('span');
             tempAbove.className = 'legend-equilibre-temp';
             tempAbove.style.color = dynamicColor;
-            tempAbove.textContent = `${(patternInfo.temperatureK - CONST.KELVIN_TO_CELSIUS).toFixed(1)}°C`;
+            const tempCStr = (patternInfo.temperatureK - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+            tempAbove.textContent = `${tempCStr}°C`;
             lineWrap.appendChild(tempAbove);
 
             const labelSpan = document.createElement('span');
             labelSpan.className = 'legend-text';
             labelSpan.style.color = dynamicColor;
             labelSpan.textContent = patternInfo.label;
+            const a11yLine = `${patternInfo.label} — ${tempCStr} °C`;
+            item.setAttribute('title', a11yLine);
+            item.setAttribute('aria-label', a11yLine);
 
             item.appendChild(lineWrap);
             item.appendChild(labelSpan);

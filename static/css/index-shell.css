@@ -1,6 +1,6 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.0.6
+   Version 1.0.7
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
@@ -11,6 +11,7 @@
    - v1.0.3: .tabs-bar button text-transform:uppercase (lisibilité police pixel 04B_03)
    - v1.0.4: #bench-panel / body.bench-panel-active aligné sur #milankovitch-panel (iframe simple standalone)
    - v1.0.5: .app-loader-list li.loaded background → color-mix(--base-color 35%, transparent) (au lieu de vert fluo hardcodé)
+   - v1.0.7: .credits-footer-utf8 — lien utf8 coin bas-droit du footer (index.html)
    - v1.0.6: réintroduction #hysteresis-panel / body.hysteresis-panel-active (iframe standalone hysteresis_compute.html) aligné sur #bench-panel / #milankovitch-panel
    ============================================================ */
 
@@ -223,6 +224,22 @@ body.scie-panel-active .credits-footer {
     position: relative;
     container-type: size;
     container-name: credits-footer;
+}
+
+/* Lien utf8 : hors du flux centré des crédits, ancré au pied du footer */
+.credits-footer > .credits-footer-utf8 {
+    position: absolute;
+    bottom: 3px;
+    right: 10px;
+    font-size: 10px;
+    line-height: 14px;
+    z-index: 3;
+    text-decoration: none;
+    color: color-mix(in srgb, var(--base-color, #0a0) 65%, #888 35%);
+    pointer-events: auto;
+}
+.credits-footer > .credits-footer-utf8:hover {
+    text-decoration: underline;
 }
 @media (max-width: 999px) {
     .credits-footer {
