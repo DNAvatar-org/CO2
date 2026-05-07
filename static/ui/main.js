@@ -1,9 +1,10 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.83
+// Version 1.1.84
 // Date: [May 07, 2026]
 //
+// - v1.1.84: setEpoch / logs — masse atm sèche via COMPUTE.dryAtmosphereMassKgFromComponents (TIMELINE sans ⚖️🫧).
 // - v1.1.83: updateLegend — libellés 3 courbes via PLOT.LEGEND_* (plot.js, source unique).
 // - v1.1.82: updateLegend — dash = Corps noir au sol (T_surf) ; dot = Corps noir haute atmosphère (T_eff) ; solid = Rayonnement vers l'espace (T_eff) ; aligné plot.js.
 // - v1.1.80: Bandeau titre — plus de clic/curseur « bouton » sur tout .synthese_Temp (époque + dates + pression) ; cycle °C/°F/K uniquement sur .synthese_Temp-temp-line.
@@ -1582,7 +1583,9 @@ window.updateDisplay = function updateDisplay(data) {
             if (window.RUNTIME_STATE.currentEpochName) {
                 const currentEpoch = window.GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName);
                 if (currentEpoch) {
-                    if (currentEpoch['⚖️🫧'] !== undefined) total_mass_log = currentEpoch['⚖️🫧'];
+                    total_mass_log = currentEpoch.total_atmosphere_mass_kg != null
+                        ? currentEpoch.total_atmosphere_mass_kg
+                        : window.COMPUTE.dryAtmosphereMassKgFromComponents(currentEpoch);
                     if (currentEpoch.gravity !== undefined) gravity_log = currentEpoch.gravity;
                     // Calculer molar_mass_air depuis les composants si non défini
                     M_avg_log = window.ATM.calculateMolarMassAir(currentEpoch);
@@ -2345,11 +2348,7 @@ function setEpoch(epochName, options) {
     // 1. CO2
     // 🔒 Convertir les quantités (kg) en ppm pour compatibilité avec le code existant
     // Récupérer la masse atmosphérique totale de l'époque (ou utiliser la valeur moderne par défaut)
-    const total_atmosphere_mass_kg = epoch['⚖️🫧'];
-    if (total_atmosphere_mass_kg === undefined) {
-        console.error("[main] ⚖️🫧 manquant pour calculer la composition, arrêt.", epoch.name);
-        return; // Arrêter le calcul
-    }
+    const total_atmosphere_mass_kg = window.COMPUTE.dryAtmosphereMassKgFromComponents(epoch);
 
     // Calculer molar_mass_air depuis les composants de l'époque si non défini
     let molar_mass_air = epoch.molar_mass_air;
@@ -2411,13 +2410,14 @@ function setEpoch(epochName, options) {
         let h2o_default = epoch.h2o_vapor_percent || 0;
 
         // 🔒 Calculer depuis h2o_kg si disponible et si h2o_vapor_percent n'est pas défini
-        if (h2o_default === 0 && epoch.h2o_kg > 0 && epoch['⚖️🫧'] > 0) {
+        const dryAtmKg = window.COMPUTE.dryAtmosphereMassKgFromComponents(epoch);
+        if (h2o_default === 0 && epoch.h2o_kg > 0 && dryAtmKg > 0) {
             // Estimation fraction molaire
             // H2O = 18 g/mol
             // Reste = 44 g/mol (CO2 dominant) ou 29 (Air)
             // Si Hadéen, reste probablement CO2/N2 lourd
             const mass_h2o = epoch.h2o_kg;
-            const mass_total = epoch['⚖️🫧'];
+            const mass_total = dryAtmKg;
             const mass_rest = Math.max(0, mass_total - mass_h2o);
 
             const mol_h2o = mass_h2o / 18.015;

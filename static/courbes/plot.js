@@ -1,9 +1,10 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.76
+// Version 1.0.77
 // Date: [May 07, 2026] [20:20 UTC+1]
 // logs :
+// - v1.0.77: masse atm sèche — COMPUTE.dryAtmosphereMassKgFromComponents(epoch) (⚖️🫧 retiré config TIMELINE).
 // - v1.0.76: swap marqueurs spectraux Terre/EDS (logos + libellés alt/title) sur le graphe.
 // - v1.0.75: PLOT_LEGEND_CORPS_NOIR_* + PLOT_LEGEND_RAYONNEMENT_ESPACE (source unique légende / hovers 3 courbes) ; hovers alignés sur ces libellés + T°.
 // - v1.0.74: plus de title « Graphique spectral » sur .plot-container-wrapper (rebuts infobulle) ; dlg PALEOMAP inchangé côté plot.
@@ -1756,11 +1757,7 @@ PLOT.updatePlot = function updatePlot(data) {
 
     const currentEpoch = resolvePlotTimelineEpoch();
 
-    const total_atmosphere_mass_kg = currentEpoch['⚖️🫧'];
-    if (total_atmosphere_mass_kg === undefined) {
-        console.error('[updatePlot] ❌ ERREUR CRITIQUE : ⚖️🫧 non défini pour l\'époque:', window.RUNTIME_STATE.currentEpochName);
-        throw new Error(`⚖️🫧 non défini pour l'époque '${window.RUNTIME_STATE.currentEpochName}'`);
-    }
+    const total_atmosphere_mass_kg = window.COMPUTE.dryAtmosphereMassKgFromComponents(currentEpoch);
 
     if (total_atmosphere_mass_kg === 0) {
         has_atmosphere = false;
@@ -1850,7 +1847,7 @@ PLOT.updatePlot = function updatePlot(data) {
             } else {
             // z_range non disponible (init) — même entrée epoch que le bloc z_max (👉 / TIMELINE)
             if (currentEpoch) {
-                const total_atmosphere_mass_kg = currentEpoch['⚖️🫧']; // Nom plus explicite
+                const total_atmosphere_mass_kg = window.COMPUTE.dryAtmosphereMassKgFromComponents(currentEpoch);
 
                 const gravity = currentEpoch.gravity !== undefined ? currentEpoch.gravity : (currentEpoch['🍎'] !== undefined ? currentEpoch['🍎'] : 9.81);
 
@@ -2814,7 +2811,7 @@ function drawSpectralVisualization(canvas, data) {
     let H = 8500; // Échelle de hauteur standard en mètres (environ 8.5 km)
 
     const currentEpoch = resolvePlotTimelineEpoch();
-    const total_mass = currentEpoch['⚖️🫧'];
+    const total_mass = window.COMPUTE.dryAtmosphereMassKgFromComponents(currentEpoch);
     if (total_mass !== 0 && total_mass !== undefined) {
         const props = window.ATM.calculateAtmosphereProperties();
         H = props.scale_height;
