@@ -1,9 +1,10 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.82
+// Version 1.0.83
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
+// Logs: v1.0.83 barre titre — moins de padding flou / offset synthese ; séparateur plus haut ; .visu_epoch-name line-height 1.3 (2e ligne lisible) ; style.css titre h1 compact + --visu-title-h 120px.
 // Logs: v1.0.82 barre titre visu — align-items flex-start (synthese + flou) ; .visu_epoch-name 14px — ligne époque moins haute quand nom sur 2 lignes.
 // Logs: v1.0.81 exceptions : coque EVENEMENT cursor default ; tuiles événements / SKIP / panneaux ⚗🛰 cursor pointer !important (surcharge img[alt] help).
 // Logs: v1.0.80 #visu-panel .flux-circle-bg cursor help !important — surcharge pointer/default/tooltips.js sur tous les logos cercles (dont albédo).
@@ -383,7 +384,7 @@
 }
 /* Emplacement Flou scientifique (🧩) — rempli par main.js ; colonne gauche */
 .title-flou-scientifique-slot {
-    padding: 20px 0px 0 0;
+    padding: 8px 0 0 0;
 }
 .title-content-row.title-content-row--flou-et-resultat .synthese_Temp.synthese_Temp-two-cols {
     flex: 1 1 auto;
@@ -1114,7 +1115,7 @@
     font-family: 'ProggyDotted';
     font-style: italic;
     position: relative;
-    top: 10px;
+    top: 4px;
     left: 20px;
     width: 100%;
     display: flex;
@@ -1129,7 +1130,8 @@
 }
 .synthese_Temp-two-cols .synthese_Temp-sep {
     width: 1px;
-    min-height: 36px;
+    min-height: 48px;
+    align-self: stretch;
     background: rgba(255, 255, 255, 0.25);
     flex-shrink: 0;
 }
@@ -1154,7 +1156,7 @@
 
 .visu_epoch-name {
     font-size: 17px;
-    line-height: 1.2;
+    line-height: 1.3;
     display: block;
     margin-top: 0;
     width: 100%;

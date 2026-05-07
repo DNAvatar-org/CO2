@@ -104,13 +104,20 @@ function getEpochAtTimelineIndex() {
 }
 
 /** Même convention que updateTimeline (curseur frise) : Ma négatifs, ▶ en années (config), infoTimeMa en Ma. */
-function getTimelineCurrentMa() {
+function getTimelineCurrentYears() {
     const epoch = getEpochAtTimelineIndex();
     if (!epoch || epoch['▶'] == null) return null;
-    const startMa = timelineDeltaYearsToStartMa(epoch['▶']);
     const isForwardEpoch = epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀'];
     const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
-    return isForwardEpoch ? startMa - infoTimeMa : startMa + infoTimeMa;
+    const elapsedYears = infoTimeMa * 1e6;
+    return isForwardEpoch ? epoch['▶'] + elapsedYears : epoch['▶'] - elapsedYears;
+}
+
+/** Même convention que updateTimeline (curseur frise) : Ma négatifs, ▶/◀ en années (config), infoTimeMa en Ma. */
+function getTimelineCurrentMa() {
+    const currentYears = getTimelineCurrentYears();
+    if (currentYears == null || !Number.isFinite(currentYears)) return null;
+    return timelineDeltaYearsToStartMa(currentYears);
 }
 
 /** Tolérance Ma max : géologique long ; pour durées courtes (CE) voir effectiveTimelineEndSlackMa. */
@@ -141,7 +148,7 @@ function refreshTimelineEpochBounds() {
     window.TIMELINE_EPOCH_BOUNDS = TIMELINE.map(function (row, idx) {
         if (!row || row['📅'] == null || row['▶'] == null || row['◀'] == null) return null;
         const startMa = timelineDeltaYearsToStartMa(row['▶']);
-        const endMa = -(row['◀'] / 1e6);
+        const endMa = timelineDeltaYearsToStartMa(row['◀']);
         const forward = row['▶'] < row['◀'];
         return { idx: idx, id: row['📅'], startMa: startMa, endMa: endMa, forward: forward };
     }).filter(Boolean);
@@ -163,15 +170,14 @@ function isPastCurrentEpochEndMa() {
     if (!forward && dur != null && Number.isFinite(dur) && infoTimeMa >= dur - slack) {
         return true;
     }
-    const currentMa = getTimelineCurrentMa();
-    if (currentMa == null || !Number.isFinite(currentMa)) {
+    const currentYears = getTimelineCurrentYears();
+    if (currentYears == null || !Number.isFinite(currentYears)) {
         return false;
     }
-    const endMa = -(epoch['◀'] / 1e6);
     if (forward) {
-        return currentMa <= endMa + slack;
+        return currentYears >= epoch['◀'] - (slack * 1e6);
     }
-    return currentMa >= endMa - slack;
+    return currentYears <= epoch['◀'] + (slack * 1e6);
 }
 
 const PALEOMAP_CREDITS_MIN_MA = -750;

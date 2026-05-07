@@ -1,12 +1,13 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.97
+// Version 1.0.98
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.98 fine_tuning_cloud_bary : aria-label mini-jauge = « Flou scientifique » (homogène avec data-tooltip).
 // Logs: v1.0.97 Terre Three.js : curseur move (croix 4 directions) au survol du canvas ; grabbing pendant press/drag (+ body si sortie du canvas).
 // Logs: v1.0.96 sync img.alt sur cercles tooltips (CH₄/Soleil/EDS…) ; même alt plat que aria-label.
 // Logs: v1.0.95 logAlbedoUiDiagnostic : snapshot JSON (💧/⚖️/🪩/hasNoAtmosphere) → logs/albedoUi.txt ou window.__ALBEDO_UI_LOG.
@@ -4812,6 +4813,7 @@ const updateLabel = (dataId, value, format = "auto") => {
       if (existingSlider && pctEl) {
         pctEl.textContent = pctStr + "%";
         existingSlider.value = pctStr;
+        existingSlider.setAttribute("aria-label", "Flou scientifique");
       } else {
         label.innerHTML =
           '<div class="organigram-bary-face organigram-bary-face--two-cols">' +
@@ -4820,7 +4822,7 @@ const updateLabel = (dataId, value, format = "auto") => {
           '<div class="organigram-bary-line-slider">' +
           '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' +
           pctStr +
-          '" aria-label="Réglage fin barycentre nuages">' +
+          '" aria-label="Flou scientifique">' +
           "</div></div>" +
           '<div class="organigram-bary-col organigram-bary-col-right">' +
           '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +

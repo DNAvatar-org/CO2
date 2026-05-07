@@ -1,9 +1,17 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.67
-// Date: [May 07, 2026] [12:00 UTC+1]
+// Version 1.0.76
+// Date: [May 07, 2026] [20:20 UTC+1]
 // logs :
+// - v1.0.76: swap marqueurs spectraux Terre/EDS (logos + libellés alt/title) sur le graphe.
+// - v1.0.75: PLOT_LEGEND_CORPS_NOIR_* + PLOT_LEGEND_RAYONNEMENT_ESPACE (source unique légende / hovers 3 courbes) ; hovers alignés sur ces libellés + T°.
+// - v1.0.74: plus de title « Graphique spectral » sur .plot-container-wrapper (rebuts infobulle) ; dlg PALEOMAP inchangé côté plot.
+// - v1.0.72: axe Y texte « Intensité du rayonnement » seul ; alt0 « Luminance spectrale » ; alt1 jaune « (W·m⁻²·μm⁻¹·sr⁻¹) ×10ⁿ » ; #spectral-tooltip-hit = button + mouseleave wrapper → hideTooltip (rollout).
+// - v1.0.71: carte spectrale — alt0 = « Carte spectrale » (data-tooltip, comme « Flou scientifique ») ; alt1 jaune = détail luminance + échelle ×10ⁿ + λ (plotSpectralCanvasAriaLabel).
+// - v1.0.70: carte spectrale — même schéma que tooltips.js (data-tooltip court + aria-label détail après 2 s) ; calque #spectral-tooltip-hit (pointer-events) ; canvas garde aria-label détail pour lecteurs d’écran.
+// - v1.0.69: titres a11y spectre — `window.RUNTIME_STATE.currentEpochName` direct (plus de chaînage && sur RUNTIME_STATE).
+// - v1.0.68: PLOT_Y_AXIS_LUMINANCE_TITLE_BASE + plotYAxisLuminanceTitleText / plotSpectralCanvasAriaLabel — titre axe Y et aria-label canvas alignés ; retrait updateLayout mort dans drawSpectralVisualization.
 // - v1.0.67: absorptionBandAltText — alts [ ] par bande (H₂O/CO₂/CH₄ ×2, nuages) alignées physique ; plus « captation » ambigu.
 // - v1.0.66: resolvePlotTimelineEpoch — 👉 / 🗿 avant nom UI (fix « Corps Noir » vs CHARS_DESC « Corps noir » dans configOrganigramme.timeline).
 // - v1.0.65: nettoyage crash-first — retrait des gardes `typeof window/...` défensifs autour des APIs UI contractuelles (fonts, logos, sync classes, listeners, état spectral).
@@ -108,6 +116,102 @@ const STRATOSPHERE_ANNOTATION_COLOR = ColorTropo; // Couleur de l'annotation (pa
 // Couleur du fond du graphique (zone où sont dessinées les courbes)
 const PLOT_BACKGROUND_COLOR = 'rgba(255, 255, 255, 0)'; // Fond blanc opaque (100% alpha)
 
+/** Libellés légende + tooltips — 3 courbes spectrales (tirets / pointillés / plein). Même chaînes dans main.js via window.PLOT.LEGEND_*. */
+const PLOT_LEGEND_CORPS_NOIR_SOL = 'Corps noir au sol';
+const PLOT_LEGEND_CORPS_NOIR_HAUTE_ATM = 'Corps noir haute atmosphère';
+const PLOT_LEGEND_RAYONNEMENT_ESPACE = 'Rayonnement vers l\'espace';
+
+/** Libellé luminance spectrale (axe Y Plotly) — partie commune sans facteur d’échelle ×10^n. */
+const PLOT_Y_AXIS_LUMINANCE_TITLE_BASE = 'Intensité du rayonnement';//'Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)';
+
+/** ID du div titre Y luminance (hors SVG Plotly — tooltips.js alt0 / alt1). */
+const PLOT_Y_AXIS_LUMINANCE_TITLE_DOM_ID = 'plot-y-axis-luminance-title';
+
+/** Suffixe d’échelle pour les valeurs affichées sur l’axe Y (cohérent avec scaleFactor 1e12 / 1e13 dans updatePlot). */
+function plotYAxisLuminanceScaleSuffix(epochName) {
+    return epochName === 'Corps Noir' ? ' ×10¹²' : ' ×10¹³';
+}
+
+/** Titre affiché axe Y Plotly (texte de base seul — l’échelle ×10ⁿ est en alt1). epochName conservé pour l’API des appelants. */
+function plotYAxisLuminanceTitleText(epochName) {
+    return PLOT_Y_AXIS_LUMINANCE_TITLE_BASE;
+}
+
+/** alt0 tooltips.js (`data-tooltip`) — bulle sombre immédiate. */
+const PLOT_SPECTRAL_MAP_DATA_TOOLTIP = 'Luminance spectrale';
+
+/** alt1 jaune : unités + facteur d’échelle des grads Y (×10¹² / ×10¹³). */
+function plotSpectralMapYellowAltText(epochName) {
+    return '(W·m⁻²·μm⁻¹·sr⁻¹)' + plotYAxisLuminanceScaleSuffix(epochName);
+}
+
+/** Texte `aria-label` du canvas spectre uniquement (sans doublon avec le titre Y DOM). */
+function plotSpectralCanvasAriaShort() {
+    return 'Carte spectrale sous l’axe : densité par bande d’absorption (λ en micromètres).';
+}
+
+function removeObsoleteSpectralTooltipHit() {
+    var h = document.getElementById('spectral-tooltip-hit');
+    if (h) {
+        h.remove();
+    }
+}
+
+/** Crée le div titre Y si absent (dernier enfant du wrapper pour z-index au-dessus du tracé). */
+function ensurePlotYLuminanceTitleDom(wrapper) {
+    if (!wrapper) return;
+    if (document.getElementById(PLOT_Y_AXIS_LUMINANCE_TITLE_DOM_ID)) return;
+    var el = document.createElement('div');
+    el.id = PLOT_Y_AXIS_LUMINANCE_TITLE_DOM_ID;
+    el.className = 'plot-y-axis-luminance-title';
+    wrapper.appendChild(el);
+}
+
+/** Texte visible, alt0 / alt1, police ; canvas spectre : aria court. */
+function syncPlotYLuminanceTitleDom(epochName) {
+    removeObsoleteSpectralTooltipHit();
+    var wrapper = document.querySelector('.plot-container-wrapper');
+    ensurePlotYLuminanceTitleDom(wrapper);
+    var el = document.getElementById(PLOT_Y_AXIS_LUMINANCE_TITLE_DOM_ID);
+    if (el) {
+        el.textContent = PLOT_Y_AXIS_LUMINANCE_TITLE_BASE;
+        el.style.color = getDefaultTextColor();
+        el.style.fontFamily = getDefaultFontFamily();
+        el.style.fontSize = '14px';
+        el.setAttribute('data-tooltip', PLOT_SPECTRAL_MAP_DATA_TOOLTIP);
+        el.setAttribute('aria-label', plotSpectralMapYellowAltText(epochName));
+        if (typeof window.addTooltipFromAttribute === 'function' && !el.hasAttribute('data-tooltip-initialized')) {
+            window.addTooltipFromAttribute(el);
+            el.setAttribute('data-tooltip-initialized', 'true');
+        }
+    }
+    var canvas = document.getElementById('spectral-visualization');
+    if (canvas) {
+        canvas.setAttribute('aria-label', plotSpectralCanvasAriaShort());
+    }
+}
+
+/** Aligne le titre Y sur la marge gauche (centre de la bande margin.l) et au milieu vertical de la zone de tracé. */
+function positionPlotYLuminanceTitleDom(wrapperRect, targetRect) {
+    var el = document.getElementById(PLOT_Y_AXIS_LUMINANCE_TITLE_DOM_ID);
+    if (!el || !wrapperRect || !targetRect) return;
+    var centerY = Math.round((targetRect.top - wrapperRect.top) + targetRect.height / 2);
+    el.style.left = '17px';
+    el.style.top = centerY + 'px';
+    el.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
+}
+
+/** Quitter le panneau graphe : fermer bulles tooltips.js (même effet que rollout depuis un logo). */
+function bindPlotContainerWrapperTooltipMouseLeave(wrapper) {
+    if (!wrapper || wrapper.dataset.plotTooltipHideOnLeave === '1') return;
+    wrapper.dataset.plotTooltipHideOnLeave = '1';
+    wrapper.addEventListener('mouseleave', function () {
+        if (typeof window.hideTooltip === 'function') {
+            window.hideTooltip();
+        }
+    });
+}
+
 // Police globale - peut être changée via le bouton de debug
 window.globalFontFamily = 'ProggyDotted'; // Police par défaut pour le graphique
 
@@ -115,6 +219,9 @@ var CONST = window.CONST; /* var pour éviter redeclaration avec main.js */
 
 // Namespace PLOT : source unique des fonctions exposées par plot.js.
 var PLOT = window.PLOT = window.PLOT || {};
+PLOT.LEGEND_CORPS_NOIR_SOL = PLOT_LEGEND_CORPS_NOIR_SOL;
+PLOT.LEGEND_CORPS_NOIR_HAUTE_ATM = PLOT_LEGEND_CORPS_NOIR_HAUTE_ATM;
+PLOT.LEGEND_RAYONNEMENT_ESPACE = PLOT_LEGEND_RAYONNEMENT_ESPACE;
 window.FLUX = window.FLUX || {};
 
 /** Invalide le cache d’échelle Y (dichotomie / dernier bon max) pour forcer le recalcul au prochain updatePlot (ex. fin de calcul). */
@@ -404,6 +511,7 @@ function initPlot() {
     // Créer le canvas AVANT Plotly pour qu'il soit en arrière-plan
     const plotContainerWrapper = document.querySelector('.plot-container-wrapper');
     if (plotContainerWrapper) {
+        bindPlotContainerWrapperTooltipMouseLeave(plotContainerWrapper);
         let canvas = document.getElementById('spectral-visualization');
         if (!canvas) {
             canvas = document.createElement('canvas');
@@ -421,6 +529,10 @@ function initPlot() {
             canvas.style.setProperty('z-index', '1', 'important');
             canvas.style.setProperty('position', 'absolute', 'important');
             canvas.style.setProperty('pointer-events', 'none', 'important');
+        }
+        const canvasA11y = document.getElementById('spectral-visualization');
+        if (canvasA11y && plotContainerWrapper) {
+            syncPlotYLuminanceTitleDom(window.RUNTIME_STATE.currentEpochName);
         }
     }
 
@@ -447,12 +559,12 @@ function initPlot() {
         },
         yaxis: {
             title: {
-                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹) ×10¹³",
+                text: '',
                 font: getPlotlyFont(14, getDefaultTextColor())
             },
             range: [0, 40],
             fixedrange: true,
-            tickformat: ',.0f',
+            tickformat: '.2~f',
             side: 'left',
             tickfont: getPlotlyFont(12, getDefaultTextColor()),
             titlefont: getPlotlyFont(14, getDefaultTextColor()),
@@ -626,6 +738,9 @@ function resizeCanvasToPlot(callback) {
                     resizeCanvasRetryCount = 0;
                 }
                 return;
+            }
+            if (wrapper) {
+                positionPlotYLuminanceTitleDom(wrapper.getBoundingClientRect(), targetRect);
             }
             const marginBottomPx = 75;
             const paddingX = 5;
@@ -1310,12 +1425,26 @@ function drawAbsorptionBandIndicators() {
         if (topEds == null) {
             topEds = (plotRect.top - wrapperRect.top) + Math.max(8, plotRect.height - bandRowBottomPx - stackLiftPx - 40);
         }
-        const divEds = placeSpectralMarker('spectral-eds-marker--eds', 'EDS — Planck(sol) + (Planck(eff)−Planck(sol))/4 à ' + lambdaEdsSunUm + ' μm', topEds);
+        const divEds = placeSpectralMarker('spectral-eds-marker--eds', 'Terre (émission vue de l’espace) — Planck(sol) + (Planck(eff)−Planck(sol))/4 à ' + lambdaEdsSunUm + ' μm', topEds);
         divEds.style.fontSize = edsSpectralMarkerFontPx + 'px';
         divEds.style.color = edsSunColor;
         divEds.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
         divEds.style.textShadow = '0 0 2px rgba(0,0,0,0.85)';
-        divEds.textContent = (window.LOGOS && window.LOGOS.EDS) || (window.CHARS && window.CHARS.EDS) || '📛';
+        const earthEmojiSwap = (window.LOGOS && window.LOGOS.GLOBE_AFRICA) || (window.LOGOS && window.LOGOS.GLOBE_AMERICAS) || (window.LOGOS && window.LOGOS.GLOBE_ASIA) || '🌍';
+        const earthSrcSwap = window.getLogoImageSrc(earthEmojiSwap);
+        if (earthSrcSwap) {
+            const imgSwap = document.createElement('img');
+            imgSwap.src = earthSrcSwap;
+            imgSwap.alt = 'Terre';
+            imgSwap.width = 40;
+            imgSwap.height = 40;
+            imgSwap.style.display = 'block';
+            imgSwap.style.objectFit = 'contain';
+            imgSwap.style.filter = 'drop-shadow(0 0 1px rgba(0,0,0,0.9))';
+            divEds.appendChild(imgSwap);
+        } else {
+            divEds.textContent = earthEmojiSwap;
+        }
         applySpectralIndicatorsGhostStyle(divEds);
         plotContainerWrapper2.appendChild(divEds);
     }
@@ -1326,25 +1455,12 @@ function drawAbsorptionBandIndicators() {
         if (topSun == null) {
             topSun = (plotRect.top - wrapperRect.top) + Math.max(8, plotRect.height - bandRowBottomPx - 8);
         }
-        const divEarth = placeSpectralMarker('spectral-eds-marker--earth', 'Terre (émission vue de l’espace) — ½·Planck(T_eff) à ' + lambdaEdsSunUm + ' μm ; axe Y sémantique inversé vs intuition « ciel »', topSun);
-        const earthEmoji = (window.LOGOS && window.LOGOS.GLOBE_AFRICA) || (window.LOGOS && window.LOGOS.GLOBE_AMERICAS) || (window.LOGOS && window.LOGOS.GLOBE_ASIA) || '🌍';
-        const earthSrc = window.getLogoImageSrc(earthEmoji);
-        if (earthSrc) {
-            const img = document.createElement('img');
-            img.src = earthSrc;
-            img.alt = 'Terre';
-            img.width = 40;
-            img.height = 40;
-            img.style.display = 'block';
-            img.style.objectFit = 'contain';
-            img.style.filter = 'drop-shadow(0 0 1px rgba(0,0,0,0.9))';
-            divEarth.appendChild(img);
-        } else {
-            divEarth.style.fontSize = '32px';
-            divEarth.style.color = edsSunColor;
-            divEarth.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
-            divEarth.textContent = earthEmoji;
-        }
+        const divEarth = placeSpectralMarker('spectral-eds-marker--earth', 'EDS — ½·Planck(T_eff) à ' + lambdaEdsSunUm + ' μm ; axe Y sémantique inversé vs intuition « ciel »', topSun);
+        divEarth.style.fontSize = edsSpectralMarkerFontPx + 'px';
+        divEarth.style.color = edsSunColor;
+        divEarth.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
+        divEarth.style.textShadow = '0 0 2px rgba(0,0,0,0.85)';
+        divEarth.textContent = (window.LOGOS && window.LOGOS.EDS) || (window.CHARS && window.CHARS.EDS) || '📛';
         applySpectralIndicatorsGhostStyle(divEarth);
         plotContainerWrapper2.appendChild(divEarth);
     }
@@ -1362,7 +1478,6 @@ PLOT.updatePlot = function updatePlot(data) {
     const epochName = window.RUNTIME_STATE.currentEpochName;
     const isHadeen = (epochName === 'Hadéen');
     const scaleFactor = (epochName === 'Corps Noir' ? 1e12 : 1e13);
-    const scaleLabel = (epochName === 'Corps Noir' ? ' ×10¹²' : ' ×10¹³');
     const scaleY = (y) => y / scaleFactor;
 
     if (epochName !== lastEpochForScale) {
@@ -1439,12 +1554,12 @@ PLOT.updatePlot = function updatePlot(data) {
         // Tooltip : 0 ppm = libellé générique ; sinon T_eff = température du corps noir de même ∫ que cette OLR (cohérent avec courbe pointillée)
         let hoverText;
         if (co2_ppm === 0) {
-            hoverText = "Courbe d'équilibre d'émission de la terre";
+            hoverText = PLOT_LEGEND_RAYONNEMENT_ESPACE;
         } else if (temp_eff) {
             const tempC = (temp_eff - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-            hoverText = `OLR spectrale (même aire ∫ que corps noir pointillé), T_eff ${temp_eff.toFixed(1)} K (${tempC}°C)`;
+            hoverText = `${PLOT_LEGEND_RAYONNEMENT_ESPACE} — ${temp_eff.toFixed(1)} K (${tempC}°C)`;
         } else {
-            hoverText = "Courbe d'équilibre d'émission de la terre";
+            hoverText = PLOT_LEGEND_RAYONNEMENT_ESPACE;
         }
 
         return {
@@ -1531,7 +1646,7 @@ PLOT.updatePlot = function updatePlot(data) {
             const planck_surface = createPlanckTrace(T_surface, `Planck sol ${data.co2_ppm.toFixed(0)} ppm`, color_current, false, 'dash');
             planck_surface.line.width = 2;
             const tempCSurf = (T_surface - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-            planck_surface.hovertemplate = `Corps noir au sol : ${T_surface.toFixed(1)} K (${tempCSurf}°C)<extra></extra>`;
+            planck_surface.hovertemplate = `${PLOT_LEGEND_CORPS_NOIR_SOL} — ${T_surface.toFixed(1)} K (${tempCSurf}°C)<extra></extra>`;
             planck_surface.y.forEach((v) => { if (v > maxYPlanckSurfaceSol) maxYPlanckSurfaceSol = v; });
             traces.push(planck_surface);
         }
@@ -1550,6 +1665,10 @@ PLOT.updatePlot = function updatePlot(data) {
         const planck_current = createPlanckTrace(T_effective_display, `Planck effective ${data.co2_ppm.toFixed(0)} ppm`, color_effective, false, 'dot');
         planck_current.line.width = 2; // En gras
         planck_current.line.color = color_effective; // Même couleur que la courbe pleine
+        if (Number.isFinite(T_effective_display)) {
+            const tempCEff = (T_effective_display - CONST.KELVIN_TO_CELSIUS).toFixed(1);
+            planck_current.hovertemplate = `${PLOT_LEGEND_CORPS_NOIR_HAUTE_ATM} — ${T_effective_display.toFixed(1)} K (${tempCEff}°C)<extra></extra>`;
+        }
         traces.push(planck_current);
         
         // 🔒 Mettre à jour la couleur globale de la courbe du corps noir (accessible partout)
@@ -1794,9 +1913,9 @@ PLOT.updatePlot = function updatePlot(data) {
     
     // Préparer le texte de l'annotation avec la différence de température calculée
     // Plotly n'interprète pas le HTML complexe, on utilise du texte simple avec <br>
-    let annotation_text = 'Stratosphère<br>--<br>Troposphère';
+    let annotation_text = 'Stratosphère<br>Δt° --<br>Troposphère';
     if (annotation_z_trop_km !== null && delta_T_trop_strato !== null) {
-        annotation_text = `Stratosphère<br>${delta_T_trop_strato.toFixed(1)} K<br>Troposphère`;
+        annotation_text = `Stratosphère<br>Δt° ${delta_T_trop_strato.toFixed(1)}K<br>Troposphère`;
     }
 
     // --- CALCUL ÉCHELLE Y : pic Planck(T sol) tirets ≈ Y_AXIS_PEAK_FRACTION_SOL hauteur ; max Y hors Planck ref. blancs (sinon 315 K écrase l’échelle) ; après action on recalc au ProcessFinished (FLUX.yAxisRecalcOnNextFinish) ---
@@ -1928,16 +2047,9 @@ PLOT.updatePlot = function updatePlot(data) {
         yaxis: {
             range: [0, y_max_luminance],
             fixedrange: true,
-            tickformat: (v) => {
-                const n = Number(v);
-                if (!Number.isFinite(n)) return '';
-                if (isHadeen) return (n / 1000).toFixed(1) + 'K';
-                if (n >= 1000) return n.toFixed(0);
-                if (n >= 10) return n.toFixed(1);
-                return n.toFixed(2);
-            },
+            tickformat: '.2~f',
             title: {
-                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹)" + scaleLabel,
+                text: '',
                 font: getPlotlyFont(14, getDefaultTextColor())
             },
             side: 'left',
@@ -2084,6 +2196,10 @@ PLOT.updatePlot = function updatePlot(data) {
 
         Plotly.react('plot-container', traces, updateLayout).then(() => {
         hideXAxisLine();
+        const epochNameUi = window.RUNTIME_STATE.currentEpochName;
+        syncPlotYLuminanceTitleDom(epochNameUi);
+        const wrapSpectral = document.querySelector('.plot-container-wrapper');
+        if (wrapSpectral) wrapSpectral.removeAttribute('title');
         // Toujours repositionner après Plotly : le plot peut bouger (relayout) même si l'échelle est fixe
         resizeCanvasToPlot(() => {
             drawAbsorptionBandIndicators();
@@ -2697,15 +2813,9 @@ function drawSpectralVisualization(canvas, data) {
     // ⚡ CORRECTION : Ajuster H en fonction de la masse atmosphérique si disponible
     let H = 8500; // Échelle de hauteur standard en mètres (environ 8.5 km)
 
-    // Essayer de récupérer H depuis les propriétés atmosphériques globales
-    // On a besoin de la masse totale pour ça, qu'on peut trouver dans configOrganigramme
-    let has_atmosphere = true; // Flag pour détecter le cas "pas d'atmosphère"
-
     const currentEpoch = resolvePlotTimelineEpoch();
     const total_mass = currentEpoch['⚖️🫧'];
-    if (total_mass === 0 || total_mass === undefined) {
-        has_atmosphere = false;
-    } else {
+    if (total_mass !== 0 && total_mass !== undefined) {
         const props = window.ATM.calculateAtmosphereProperties();
         H = props.scale_height;
     }
@@ -2739,101 +2849,6 @@ function drawSpectralVisualization(canvas, data) {
         z_trop_km = window.calculateTropopauseHeight() / 1000;
     }
     */
-
-    const annotation_z_trop_km = window.current_z_trop_km;
-    const delta_T_trop_strato = window.current_delta_T_trop_strato;
-    
-    // Préparer le texte de l'annotation avec la différence de température calculée
-    // Plotly n'interprète pas le HTML complexe, on utilise du texte simple avec <br>
-    let annotation_text = 'Stratosphère<br>--<br>Troposphère';
-    if (annotation_z_trop_km !== null && delta_T_trop_strato !== null) {
-        annotation_text = `Stratosphère<br>${delta_T_trop_strato.toFixed(1)} K<br>Troposphère`;
-    }
-
-    const updateLayout = {
-        autosize: true, // Préserver dimensions (éviter reset à chaque cycle)
-        margin: PLOT_MARGINS, // Marges du graphique (variable commune)
-        xaxis: {
-            // ... configuration axe X inchangée ...
-            range: [0, 50], // Commence à 0
-            fixedrange: true,
-            title: {
-                text: "Longueur d'onde (μm)",
-                standoff: 20, // Remonté pour être plus proche de l'axe
-                font: getPlotlyFont(14, getDefaultTextColor()) // color: '#667eea' (bleu) en réserve
-            },
-            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            showgrid: false,
-            showline: false, // Pas de ligne d'axe
-            zeroline: false,
-            showticklabels: true, // Garder les valeurs 0, 10, 20, etc.
-            ticks: 'outside', // Garder les ticks mais à l'extérieur
-            ticklen: 0, // Longueur des ticks à 0 pour les cacher
-            tickwidth: 0 // Épaisseur des ticks à 0
-        },
-        yaxis: {
-            range: [0, 40],
-            fixedrange: true,
-            tickformat: ',.0f',
-            title: {
-                text: "Luminance spectrale (W·m⁻²·μm⁻¹·sr⁻¹) ×10¹³",
-                font: getPlotlyFont(14, getDefaultTextColor())
-            },
-            side: 'left',
-            tickfont: getPlotlyFont(12, getDefaultTextColor()),
-            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            showgrid: true,
-            gridcolor: 'rgba(0, 0, 0, 0.5)', // Lignes horizontales noires à 50%
-            gridwidth: 1,
-            showline: true, // Afficher le trait vertical de l'axe
-            linecolor: 'rgba(0, 0, 0, 0.5)',
-            linewidth: 1,
-            mirror: 'ticks'
-        },
-        yaxis2: {
-            title: {
-                text: "Altitude (km)",
-                font: getPlotlyFont(14, getDefaultTextColor())
-            },
-            overlaying: 'y',
-            side: 'right', // Altitude à droite
-            range: [0, z_max_km], // ⚡ UTILISATION CORRECTE : z_max_km est défini dans cette portée
-            fixedrange: true, // Désactiver le zoom
-            position: 1, // Position à 1 (droite)
-            // Aligner les ticks avec l'axe Y principal
-            // yaxis: 0-40 (8 divisions de 5)
-            // yaxis2 doit aussi avoir 8 divisions
-            tickmode: 'linear',
-            dtick: z_max_km / 8, // Calculer dynamiquement pour avoir 8 intervalles (alignés avec yaxis)
-            tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-            showline: true,
-            linecolor: 'rgba(0, 0, 0, 0.5)',
-            linewidth: 1,
-            mirror: 'ticks',
-            showgrid: false,
-            zeroline: false,
-            visible: true
-        },
-        plot_bgcolor: PLOT_BACKGROUND_COLOR, // Fond de la zone de dessin (configurable)
-        paper_bgcolor: PLOT_BACKGROUND_COLOR, // Fond du papier (configurable)
-        annotations: [
-            {
-                x: STRATOSPHERE_ANNOTATION_X, // Position X configurable (en coordonnées paper)
-                y: annotation_z_trop_km !== null ? annotation_z_trop_km : 0, // Position de la tropopause (en km, axe altitude)
-                visible: annotation_z_trop_km !== null, // Cacher si pas de tropopause
-                text: annotation_text,
-                showarrow: false,
-                xref: 'paper', // Coordonnées relatives au graphique
-                yref: 'y2', // Utiliser l'axe altitude (droite)
-                xanchor: 'left', // Aligné à gauche du texte (donc à droite de l'axe, séparé des pointillés)
-                yanchor: 'middle',
-                align: 'left', // Justifié à gauche
-                font: getPlotlyFont(9, STRATOSPHERE_ANNOTATION_COLOR), // Couleur configurable
-                visible: has_atmosphere && annotation_z_trop_km !== null // Cacher si pas d'atmosphère ou pas de température
-            },
-        ]
-    };
 
     // Dessiner chaque pixel de la visualisation principale
     // Adapter le pas en Y en fonction du FPS et de la convergence

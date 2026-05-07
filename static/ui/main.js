@@ -1,9 +1,12 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.79
+// Version 1.1.83
 // Date: [May 07, 2026]
 //
+// - v1.1.83: updateLegend — libellés 3 courbes via PLOT.LEGEND_* (plot.js, source unique).
+// - v1.1.82: updateLegend — dash = Corps noir au sol (T_surf) ; dot = Corps noir haute atmosphère (T_eff) ; solid = Rayonnement vers l'espace (T_eff) ; aligné plot.js.
+// - v1.1.80: Bandeau titre — plus de clic/curseur « bouton » sur tout .synthese_Temp (époque + dates + pression) ; cycle °C/°F/K uniquement sur .synthese_Temp-temp-line.
 // - v1.1.79: updateLegend — ordre tirets/pointillés aligné sur plot.js (dash=sol, dot=T_eff) ; libellés « (t°) » ; °C OLR = T_eff ; title/aria sur items.
 // - v1.1.78: updateHadeenTexture — retrait if(typeof window) / if(oldCell) superflus ; window.ORG.createCell direct.
 // - v1.1.77: updateHadeenTexture — window.ORG.createCell (FUNCS_ORGANIGRAMME n’existe que dans setEpoch ; crash hors scope).
@@ -1730,11 +1733,15 @@ function updateLegend(data) {
         const tempSurfaceC = T_surface - CONST.KELVIN_TO_CELSIUS;
         const dynamicColor = window.PLOT.tempSurfaceToColor(tempSurfaceC);
 
-        /* Même ordre et styles que PLOT.updatePlot : dash = Planck(T sol), dot = Planck(T_eff), solid = OLR (hover T_eff). */
+        const PL = window.PLOT;
+        if (PL.LEGEND_CORPS_NOIR_SOL == null || PL.LEGEND_CORPS_NOIR_HAUTE_ATM == null || PL.LEGEND_RAYONNEMENT_ESPACE == null) {
+            throw new Error('[updateLegend] PLOT.LEGEND_* indisponible — plot.js doit précéder updateLegend.');
+        }
+        /* Ordre : --- sol · … haute atmosphère · ___ vers l'espace (comme plot.js : dash, dot, solid). */
         const patterns = [
-            { name: 'dash', label: 'Corps noir au sol (t°)', temperatureK: T_surface },
-            { name: 'dot', label: 'Corps noir sortie atmosphère (t°)', temperatureK: T_eff_legend },
-            { name: 'solid', label: 'Rayonnement réel vers l\'espace (t°)', temperatureK: T_eff_legend }
+            { name: 'dash', label: PL.LEGEND_CORPS_NOIR_SOL, temperatureK: T_surface },
+            { name: 'dot', label: PL.LEGEND_CORPS_NOIR_HAUTE_ATM, temperatureK: T_eff_legend },
+            { name: 'solid', label: PL.LEGEND_RAYONNEMENT_ESPACE, temperatureK: T_eff_legend }
         ];
 
         patterns.forEach((patternInfo) => {
@@ -3099,7 +3106,7 @@ function runMainInit() {
                             '<div class="organigram-bary-col organigram-bary-col-left">' +
                             '<div class="organigram-bary-icons">🔺🌡️🔻</div>' +
                             '<div class="organigram-bary-line-slider">' +
-                            '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' + pct + '" aria-label="Réglage fin barycentre nuages">' +
+                            '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' + pct + '" aria-label="Flou scientifique">' +
                             '</div></div>' +
                             '<div class="organigram-bary-col organigram-bary-col-right">' +
                             '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +
@@ -3126,7 +3133,10 @@ function runMainInit() {
                             nodePct.textContent = pctFromData + '%';
                         });
                         var slSync = baryFt.querySelector('.organigram-bary-mini-slider');
-                        if (slSync) slSync.value = String(pctFromData);
+                        if (slSync) {
+                            slSync.value = String(pctFromData);
+                            slSync.setAttribute('aria-label', 'Flou scientifique');
+                        }
                     }
                     if (typeof window.getFineTuningDetailAlt === 'function') {
                         baryFt.setAttribute('aria-label', window.getFineTuningDetailAlt(null, true));
@@ -3414,11 +3424,12 @@ function runMainInit() {
     // Créer les radiations de la terre (doit être fait après l'initialisation car le radius dépend de l'époque)
     FUNCS_ORGANIGRAMME.recreateTerreRadiation();
 
-    // Ajouter un gestionnaire de clic sur la température pour cycler les unités
-    const syntheseTempEl = document.querySelector('.synthese_Temp');
-    if (syntheseTempEl) {
-        syntheseTempEl.style.cursor = 'pointer';
-        syntheseTempEl.addEventListener('click', cycleTemperatureUnit);
+    // Cycle °C / °F / K : uniquement la ligne thermomètre + valeur (pas tout le bloc époque / dates / pression).
+    const tempLineEl = document.querySelector('.synthese_Temp-temp-line');
+    if (tempLineEl) {
+        tempLineEl.style.cursor = 'pointer';
+        tempLineEl.title = (tempLineEl.title ? tempLineEl.title + ' — ' : '') + 'Clic : unité °C → °F → K';
+        tempLineEl.addEventListener('click', cycleTemperatureUnit);
     }
 
     // Initialiser l'horloge au chargement (même batch que initFluxButtonListeners)
