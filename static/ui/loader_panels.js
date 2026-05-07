@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.25
+// Version 1.1.26
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.26: version bandeau — source window.BILAN_VISU_APP_VERSION dans API_BILAN/api.js (plus d’assignation loader).
 // Logs: v1.1.25: window.BILAN_VISU_APP_VERSION = 1.0.8 + synchro span #title-app-version après injection visu_radiatif.html.
 // Logs: v1.1.24: togglePlotAnim déplacé vers timeline.js (visu inchangé ; scie_compute / html sans loader ont SKIP).
 // Logs: v1.1.23: cycleCalcul iframe — syncEpochFromTimelinePointer() après merge 📜 (👉 fait foi, évite 🗿 stale / atmosphère erronée).
@@ -33,9 +34,6 @@
 
 (function () {
     'use strict';
-
-    /** Version métier exposée dans la console UI et reflétée dans le bandeau visu (voir #title-app-version). */
-    window.BILAN_VISU_APP_VERSION = '1.0.8';
 
     const SCRIPTS = [
         'static/ui/api_onglets.js',
@@ -162,11 +160,7 @@
         var sciePanel = document.getElementById('scie-panel');
         var benchPanel = document.getElementById('bench-panel');
         var hystPanel = document.getElementById('hysteresis-panel');
-        if (visuPanel) {
-            visuPanel.innerHTML = results[0];
-            var titleVer = visuPanel.querySelector('#title-app-version');
-            if (titleVer) titleVer.textContent = 'v' + window.BILAN_VISU_APP_VERSION;
-        }
+        if (visuPanel) visuPanel.innerHTML = results[0];
         if (sciePanel) sciePanel.innerHTML = results[1];
         if (benchPanel) benchPanel.innerHTML = results[2];
         if (hystPanel) hystPanel.innerHTML = results[3];
