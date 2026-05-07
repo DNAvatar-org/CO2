@@ -30,7 +30,7 @@ _LOG_DIR = os.path.join(_SITE_ROOT, "logs")
 # Aligné sur CO2/static/logs_to_server.js CONFIG_LOG_FILE_TOPIC.values()
 _ALLOWED_LOG_TOPICS = frozenset({
     "eds", "iceFixed", "iceFraction", "co2Rad", "cloudProxy", "iris", "co2Partition",
-    "hyst", "epoch", "albedoUi",
+    "hyst", "epoch", "albedoUi", "iceSnapshot", "bench", "rnd",
 })
 
 
@@ -59,6 +59,19 @@ class RadiatifLogHandler(http.server.SimpleHTTPRequestHandler):
                 path = os.path.join(_LOG_DIR, topic + ".txt")
                 with open(path, "w", encoding="utf-8"):
                     pass
+            self.send_response(204)
+            self.end_headers()
+            return
+
+        # F5 client : purge tous les .txt sauf errors.txt (cumulatif cross-session par design).
+        if isinstance(data, dict) and data.get("wipeAll") is True:
+            if os.path.isdir(_LOG_DIR):
+                for fn in os.listdir(_LOG_DIR):
+                    if fn.endswith(".txt") and fn != "errors.txt":
+                        try:
+                            os.remove(os.path.join(_LOG_DIR, fn))
+                        except OSError:
+                            pass
             self.send_response(204)
             self.end_headers()
             return
