@@ -1,9 +1,25 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.79
-// Date: [May 07, 2026] [20:20 UTC+1]
+// Version 1.0.95
+// Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
+// - v1.0.95: bande spectrale — bas (pied, Terre) alpha=1 pleinement visible ; haut reste RGBA joint flux ; α interpole de aTop → 1 vers le bas ; repli sans flux arc-en-ciel α 0.5→1.
+// - v1.0.94: bande spectrale — haut = RGBA exacte de la dernière ligne du flux (getImageData) ; bas = même teinte, alpha→0 ; repli resize sans flux = arc-en-ciel α 0.5→0 ; dernière ligne flux toujours dessinée si yStep>1.
+// - v1.0.93: joint flux↔bande — une seule abscisse `spectrumBarTopY` (fin zone flux = début bande) ; retrait overlap/Y-offset/pont qui désynchronisaient les lignes.
+// - v1.0.92: pont de raccord flux↔bande (1px) juste au-dessus du spectre pour supprimer le trou même quand le flux local est transparent (seuil alpha).
+// - v1.0.91: raccord flux↔bande spectral sans trou horizontal : overlap vertical explicite 2px (SEAM_OVERLAP_PX) sur les deux chemins de rendu.
+// - v1.0.90: fix gradient bande arc-en-ciel (haut 50% -> bas 100%) + suppression rupture 1px au raccord bande/zone plot (spectrumBarY sans -1).
+// - v1.0.89: bande arc-en-ciel en gradient vertical (bas=alpha 100%, haut=alpha 50%) ; rayonnement spectral avec alpha plancher 50%.
+// - v1.0.88: inversion logique demandée — courbes/axe Y gauche et ancrage logo Terre sur y2=0 pilotés par !miroir_flux (au lieu de miroir_flux).
+// - v1.0.87: synchro miroir stricte : tout relayout yaxis2 inclut yaxis (sinon 0 opposés) ; padding 1 graduation sur yaxis en mode miroir pour aligner 0 gauche/droite.
+// - v1.0.86: debug miroir_flux (pd/console) + swap aussi l’axe Y gauche (intensité) via relayout yaxis.range.
+// - v1.0.85: swap 🔃 robuste — relayout yaxis2 seul (plus de redraw complet qui vidait les courbes) ; logo Terre lié à y2=0 seulement en mode miroir ; bouton déplacé bas-gauche + data-tooltip immédiat.
+// - v1.0.84: annule v1.0.83 (recalage canvas spectral) + axe altitude droite piloté par if (miroir_flux) ; PLOT.toggleMiroirFlux() pour swap runtime.
+// - v1.0.83: canvas spectral — top += décalage yaxis2.c2p(0) vs .nsewdrag ; hauteur − même valeur : haut de la carte arc-en-ciel aligné sur le trait 0 km (Terre), bord bas inchangé.
+// - v1.0.82: axe altitude yaxis2 — marge haute une graduation : range [z_max, −step], tickvals ≥ 0 seuls ; « 0 km » et logo 🌍 sur la même bande (plus au bord du haut).
+// - v1.0.81: marqueur 🌍 Terre — aligné sur le 1er cran sous 0 km (dtick ou écart tickvals yaxis2), pas sur 0 (un cran plus bas visuellement).
+// - v1.0.80: axe altitude yaxis2 inversé [z_max, 0] (0 km en haut = sol / logo Terre) ; marqueur 🌍 à altitudeKmToWrapperTopPx(0) ; updatePlotAltitudeAxis cohérent.
 // - v1.0.79: plages spectrales CO₂ (~15 μm) vs H₂O (~17 μm) — coupure à 15 μm (min/max) pour ne plus superposer le même bin LW [12–17].
 // - v1.0.78: marqueurs Terre/EDS — abscisse λ = pic Wien (2898/T_sol) μm, aligné Planck sol (échelle Y max) ; repli spectralEdsSunLambdaUm si T_sol absent.
 // - v1.0.77: masse atm sèche — COMPUTE.dryAtmosphereMassKgFromComponents(epoch) (⚖️🫧 retiré config TIMELINE).
@@ -100,6 +116,66 @@
 // Marges du graphique Plotly (communes à initPlot et updatePlot)
 // va avec .plot-container-wrapper { padding: 0; !!! Important ne pas changer !!!
 const PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }; // Marges ajustées pour éviter le débordement
+
+/** Axe altitude droite « miroir on » : bande vide au-dessus de 0 km (step = pas de graduation). */
+function yaxis2RangeMirrorOnKm(zMaxKm, stepKm) {
+    const zMax = Number(zMaxKm);
+    const step = Number(stepKm);
+    if (!Number.isFinite(zMax) || zMax <= 0 || !Number.isFinite(step) || step <= 0) {
+        return [Math.max(zMax, 0), 0];
+    }
+    return [zMax, -step];
+}
+
+/** Axe altitude droite « miroir off » : sens normal (0 en bas, z_max en haut). */
+function yaxis2RangeMirrorOffKm(zMaxKm) {
+    const zMax = Number(zMaxKm);
+    if (!Number.isFinite(zMax) || zMax <= 0) return [0, 1];
+    return [0, zMax];
+}
+
+/** Source unique du sens d'axe altitude droite (swap runtime via bouton). */
+function yaxis2RangeByMirrorKm(zMaxKm, stepKm) {
+    if (window.RUNTIME_STATE.miroir_flux === true) {
+        return yaxis2RangeMirrorOnKm(zMaxKm, stepKm);
+    }
+    return yaxis2RangeMirrorOffKm(zMaxKm);
+}
+
+/** Axe intensité gauche : miroir_flux=false => inversé ; miroir_flux=true => normal. */
+function yaxisLuminanceRangeByMirror(yMax, stepY) {
+    const yHi = Number(yMax);
+    const step = Number(stepY);
+    // NOTE INTENTIONNELLE (pas un bug) :
+    // Le bouton 🔃 pilote l’inversion via miroir_flux. En mode non-miroir (false),
+    // on affiche l’axe gauche en [max, -step] pour garder la cohérence visuelle
+    // avec l’axe altitude droit et la bande de raccord en bas.
+    if (window.RUNTIME_STATE.miroir_flux !== true) {
+        // Bande vide au-dessus de 0 (comme yaxis2: [z_max, -step]) pour que les 0 ne soient pas au bord
+        // et restent alignables visuellement (même “bande”).
+        if (Number.isFinite(yHi) && yHi > 0 && Number.isFinite(step) && step > 0) {
+            return [yHi, -step];
+        }
+        return [yHi, 0];
+    }
+    return [0, yHi];
+}
+
+/** Graduations affichées ≥ 0 (pas d’étiquettes négatives malgré borne haute −step). */
+function yaxis2TickValsFrom0(zMaxKm, stepKm) {
+    const zMax = Number(zMaxKm);
+    const step = Number(stepKm);
+    if (!Number.isFinite(zMax) || zMax < 0 || !Number.isFinite(step) || step <= 0) return [0];
+    const out = [];
+    for (let i = 0; i * step <= zMax + 1e-9; i++) {
+        out.push(i * step);
+    }
+    const last = out[out.length - 1];
+    if (last < zMax - 1e-6) {
+        out.push(zMax);
+    }
+    return out;
+}
 
 /** Pic cible sur l’axe Y (luminance) : Planck(T sol) en tirets colorés ≈ cette fraction de la hauteur utile [0, y_max]. */
 const Y_AXIS_PEAK_FRACTION_SOL = 0.9;
@@ -226,6 +302,146 @@ PLOT.LEGEND_CORPS_NOIR_SOL = PLOT_LEGEND_CORPS_NOIR_SOL;
 PLOT.LEGEND_CORPS_NOIR_HAUTE_ATM = PLOT_LEGEND_CORPS_NOIR_HAUTE_ATM;
 PLOT.LEGEND_RAYONNEMENT_ESPACE = PLOT_LEGEND_RAYONNEMENT_ESPACE;
 window.FLUX = window.FLUX || {};
+
+function ensureMiroirFluxState() {
+    if (window.RUNTIME_STATE.miroir_flux !== true && window.RUNTIME_STATE.miroir_flux !== false) {
+        window.RUNTIME_STATE.miroir_flux = true; // défaut = axe miroir (comportement actuel)
+    }
+    return window.RUNTIME_STATE.miroir_flux === true;
+}
+
+function debugMiroirFluxLog(context, payload) {
+    const msg = JSON.stringify(payload);
+    if (typeof window.pdTrace === 'function') {
+        window.pdTrace(context, 'plot.js', msg);
+    } else if (typeof window.pd === 'function') {
+        window.pd(context, 'plot.js', msg);
+    } else {
+        console.log('🔍 [' + context + '][plot.js] ' + msg);
+    }
+}
+
+function syncMiroirFluxButtonState() {
+    const btn = document.getElementById('plot-miroir-flux-btn');
+    if (!btn) return;
+    const on = ensureMiroirFluxState();
+    btn.classList.toggle('selected', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const alt0 = on
+        ? "Axe altitude miroir (0 km en haut) — cliquer pour inverser"
+        : "Axe altitude normal (0 km en bas) — cliquer pour inverser";
+    btn.setAttribute('data-tooltip', alt0);
+    btn.setAttribute('aria-label', alt0);
+    btn.removeAttribute('title');
+    if (typeof window.addTooltipFromAttribute === 'function' && !btn.hasAttribute('data-tooltip-initialized')) {
+        window.addTooltipFromAttribute(btn);
+        btn.setAttribute('data-tooltip-initialized', 'true');
+    }
+}
+
+function yaxis2StepKmFromFullLayout(ya2, rangeMax) {
+    if (ya2 && ya2.tickmode === 'array' && Array.isArray(ya2.tickvals) && ya2.tickvals.length >= 2) {
+        const vals = ya2.tickvals.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+        if (vals.length >= 2) {
+            const d = vals[1] - vals[0];
+            if (d > 0) return d;
+        }
+    }
+    if (ya2 && Number.isFinite(ya2.dtick) && ya2.dtick > 0) return ya2.dtick;
+    return Math.max(1, rangeMax / 8);
+}
+
+function yaxis2RangeMaxKmFromFullLayout(ya2) {
+    if (!ya2) return 120;
+    if (Array.isArray(ya2.tickvals) && ya2.tickvals.length > 0) {
+        const vals = ya2.tickvals.filter((v) => Number.isFinite(v));
+        if (vals.length > 0) return Math.max(1, Math.max(...vals));
+    }
+    if (Array.isArray(ya2.range) && ya2.range.length >= 2) {
+        const hi = Math.max(Number(ya2.range[0]), Number(ya2.range[1]));
+        if (Number.isFinite(hi) && hi > 0) return hi;
+    }
+    return 120;
+}
+
+function yaxisLuminanceMaxFromFullLayout(ya) {
+    if (!ya || !Array.isArray(ya.range) || ya.range.length < 2) return 40;
+    const hi = Math.max(Number(ya.range[0]), Number(ya.range[1]));
+    if (Number.isFinite(hi) && hi > 0) return hi;
+    return 40;
+}
+
+function yaxisLuminanceStepFromFullLayout(ya, yMax) {
+    if (ya && Number.isFinite(ya.dtick) && ya.dtick > 0) return ya.dtick;
+    const hi = Number(yMax);
+    if (Number.isFinite(hi) && hi > 0) return hi / 8;
+    return 5;
+}
+
+/** Format tick axe Y luminance : >4 chars => 2 chiffres en eN (sans +). */
+function formatLuminanceTickLabel(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '';
+    const base = Number.isInteger(n) ? String(n) : String(n.toFixed(2)).replace(/\.?0+$/, '');
+    if (base.length <= 4) return base;
+    const s = n.toPrecision(2).replace('e+', 'e');
+    return s;
+}
+
+/** Tickvals/ticktext axe Y luminance (0..yMax, 8 intervalles). */
+function buildLuminanceTicks(yMax) {
+    const hi = Number(yMax);
+    if (!Number.isFinite(hi) || hi <= 0) {
+        return { tickvals: [0], ticktext: ['0'] };
+    }
+    const step = hi / 8;
+    const vals = [];
+    for (let i = 0; i <= 8; i++) {
+        vals.push(i * step);
+    }
+    return {
+        tickvals: vals,
+        ticktext: vals.map(formatLuminanceTickLabel)
+    };
+}
+
+PLOT.toggleMiroirFlux = function toggleMiroirFlux() {
+    const current = ensureMiroirFluxState();
+    window.RUNTIME_STATE.miroir_flux = !current;
+    syncMiroirFluxButtonState();
+    const plotContainer = document.getElementById('plot-container');
+    if (!plotContainer || typeof Plotly === 'undefined' || !plotContainer._fullLayout) return;
+    const ya = plotContainer._fullLayout.yaxis;
+    const ya2 = plotContainer._fullLayout.yaxis2;
+    const yMaxLum = yaxisLuminanceMaxFromFullLayout(ya);
+    const yStepLum = yaxisLuminanceStepFromFullLayout(ya, yMaxLum);
+    const rangeMax = yaxis2RangeMaxKmFromFullLayout(ya2);
+    const stepKm = yaxis2StepKmFromFullLayout(ya2, rangeMax);
+    const mirrorOn = ensureMiroirFluxState();
+    const relayout = {
+        'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
+        'yaxis.ticklabelposition': 'outside',
+        'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, stepKm),
+        'yaxis2.tickmode': mirrorOn ? 'array' : 'linear',
+        'yaxis2.ticklabelposition': 'outside'
+    };
+    if (mirrorOn) {
+        relayout['yaxis2.tickvals'] = yaxis2TickValsFrom0(rangeMax, stepKm);
+        relayout['yaxis2.dtick'] = null;
+    } else {
+        relayout['yaxis2.dtick'] = stepKm;
+        relayout['yaxis2.tickvals'] = null;
+    }
+    debugMiroirFluxLog('toggleMiroirFlux', {
+        miroir_flux: mirrorOn,
+        yaxisRange: relayout['yaxis.range'],
+        yaxis2Range: relayout['yaxis2.range'],
+        yaxis2Tickmode: relayout['yaxis2.tickmode']
+    });
+    Plotly.relayout(plotContainer, relayout).then(function () {
+        drawAbsorptionBandIndicators();
+    });
+};
 
 /** Invalide le cache d’échelle Y (dichotomie / dernier bon max) pour forcer le recalcul au prochain updatePlot (ex. fin de calcul). */
 PLOT.invalidateSpectralYLuminanceCache = function invalidateSpectralYLuminanceCache() {
@@ -511,6 +727,8 @@ function hideXAxisLine() {
 
 // Initialiser le graphique
 function initPlot() {
+    ensureMiroirFluxState();
+    syncMiroirFluxButtonState();
     // Créer le canvas AVANT Plotly pour qu'il soit en arrière-plan
     const plotContainerWrapper = document.querySelector('.plot-container-wrapper');
     if (plotContainerWrapper) {
@@ -539,6 +757,10 @@ function initPlot() {
         }
     }
 
+    const yaxisInitStep = 5;
+    const yInitTicks = buildLuminanceTicks(40);
+    const yaxis2InitStepKm = 15;
+    const yaxis2InitMirrorOn = ensureMiroirFluxState();
     const layout = {
         autosize: true, // Éviter reset width/height à chaque Plotly.react (cycle)
         xaxis: {
@@ -565,7 +787,7 @@ function initPlot() {
                 text: '',
                 font: getPlotlyFont(14, getDefaultTextColor())
             },
-            range: [0, 40],
+            range: yaxisLuminanceRangeByMirror(40, yaxisInitStep),
             fixedrange: true,
             tickformat: '.2~f',
             side: 'left',
@@ -573,7 +795,14 @@ function initPlot() {
             titlefont: getPlotlyFont(14, getDefaultTextColor()),
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)',
-            gridwidth: 1
+            gridwidth: 1,
+            zeroline: false,
+            zerolinecolor: 'rgba(0,0,0,0)',
+            zerolinewidth: 0,
+            tickmode: 'array',
+            tickvals: yInitTicks.tickvals,
+            ticktext: yInitTicks.ticktext,
+            ticklabelposition: 'outside'
         },
         yaxis2: {
             title: {
@@ -583,14 +812,13 @@ function initPlot() {
             },
             overlaying: 'y',
             side: 'right', // Altitude à droite
-            range: [0, 120], // 0 km en bas, 120 km en haut
+            range: yaxis2RangeByMirrorKm(120, yaxis2InitStepKm),
             fixedrange: true, // Désactiver le zoom
             position: 1, // Position à 1 (droite)
-            // Aligner les ticks avec l'axe Y principal
-            // yaxis: 0-40, yaxis2: 0-120 km, facteur = 3
-            // Utiliser le même espacement que yaxis (généralement 5 ou 10)
-            tickmode: 'linear',
-            dtick: 15, // 15 km par tick (correspond à 5 sur yaxis : 5 * 3 = 15)
+            tickmode: yaxis2InitMirrorOn ? 'array' : 'linear',
+            ...(yaxis2InitMirrorOn
+                ? { tickvals: yaxis2TickValsFrom0(120, yaxis2InitStepKm) }
+                : { dtick: yaxis2InitStepKm }),
             tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showticklabels: true,
@@ -600,7 +828,8 @@ function initPlot() {
             mirror: 'ticks',
             showgrid: false, // Pas de grille pour l'axe secondaire
             zeroline: false,
-            visible: true
+            visible: true,
+            ticklabelposition: 'outside'
         },
         showlegend: false,
         margin: PLOT_MARGINS, // Marges du graphique (variable commune)
@@ -850,16 +1079,65 @@ PLOT.updatePlotAltitudeAxis = function (atm_height_km) {
     const z_max = Number(atm_height_km);
     if (!Number.isFinite(z_max) || z_max < 0) return;
     const rangeMax = Math.max(1, Math.ceil(z_max * 1.05));
-    const relayout = { 'yaxis2.range': [0, rangeMax] };
+    const ya = plotContainer._fullLayout.yaxis;
+    const yMaxLum = yaxisLuminanceMaxFromFullLayout(ya);
+    const yStepLum = yaxisLuminanceStepFromFullLayout(ya, yMaxLum);
+    const mirrorOn = ensureMiroirFluxState();
+    let relayout;
     if (rangeMax > 500) {
         const tickvals = [0, 50, 100, 200, 400, 600, 800, 1000, 1200, 1500, 1800].filter(v => v <= rangeMax);
         if (tickvals[tickvals.length - 1] < rangeMax) tickvals.push(Math.round(rangeMax));
-        relayout['yaxis2.tickmode'] = 'array';
-        relayout['yaxis2.tickvals'] = tickvals;
+        const stepPad = tickvals.length >= 2 ? tickvals[1] - tickvals[0] : rangeMax / 8;
+        if (mirrorOn) {
+            relayout = {
+                'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
+                'yaxis.ticklabelposition': 'outside',
+                'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, stepPad),
+                'yaxis2.tickmode': 'array',
+                'yaxis2.tickvals': tickvals,
+                'yaxis2.dtick': null,
+                'yaxis2.ticklabelposition': 'outside'
+            };
+        } else {
+            relayout = {
+                'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
+                'yaxis.ticklabelposition': 'outside',
+                'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, stepPad),
+                'yaxis2.tickmode': 'linear',
+                'yaxis2.dtick': stepPad,
+                'yaxis2.tickvals': null,
+                'yaxis2.ticklabelposition': 'outside'
+            };
+        }
     } else {
-        relayout['yaxis2.tickmode'] = 'linear';
-        relayout['yaxis2.dtick'] = rangeMax / 8;
+        const dt = rangeMax / 8;
+        if (mirrorOn) {
+            relayout = {
+                'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
+                'yaxis.ticklabelposition': 'outside',
+                'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, dt),
+                'yaxis2.tickmode': 'array',
+                'yaxis2.tickvals': yaxis2TickValsFrom0(rangeMax, dt),
+                'yaxis2.dtick': null,
+                'yaxis2.ticklabelposition': 'outside'
+            };
+        } else {
+            relayout = {
+                'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
+                'yaxis.ticklabelposition': 'outside',
+                'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, dt),
+                'yaxis2.tickmode': 'linear',
+                'yaxis2.dtick': dt,
+                'yaxis2.tickvals': null,
+                'yaxis2.ticklabelposition': 'outside'
+            };
+        }
     }
+    debugMiroirFluxLog('updatePlotAltitudeAxis', {
+        miroir_flux: mirrorOn,
+        yaxisRange: relayout['yaxis.range'],
+        yaxis2Range: relayout['yaxis2.range']
+    });
     Plotly.relayout(plotContainer, relayout);
 };
 
@@ -878,7 +1156,8 @@ function drawSpectrumBarOnly() {
 }
 
 // Fonction pour dessiner la bande avec des dimensions spécifiques
-function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
+// seamRowImageData : 1 ligne × width (ImageData du bas du flux) — haut de bande = RGBA joint ; pied (bas visuel) = même RGB, alpha 1 (saturé visible)
+function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1, seamRowImageData = null) {
     const canvas = document.getElementById('spectral-visualization');
     if (!canvas) return;
 
@@ -889,9 +1168,8 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
     const spectrumBarHeight = Math.max(1, Math.floor(20 / resolutionFactor)); // 20px d'affichage
     const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
     const axisMarginB = 75; // PLOT_MARGINS.b - spectre collé juste sous l'axe
-
-    // Barre spectrale : collée juste sous l'axe (dans la marge), +1px pour affiner
-    const spectrumBarY = height - axisMarginB - 1;
+    // Une seule règle avec drawSpectralVisualization : lignes [0, spectrumBarY) = flux, [spectrumBarY, …) = bande
+    const spectrumBarY = height - axisMarginB;
     ctx.clearRect(0, spectrumBarY, width, spectrumBarHeight);
 
     // Plage de l'axe X du graphique : 0 à 50 μm
@@ -901,24 +1179,41 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1) {
     // Calculer effectiveWidth une seule fois
     const effectiveWidth = width - (charWidth * 2);
 
-    // Dessiner la bande de spectre en bas (20px d'affichage) avec alpha=1 pour toutes les couleurs
+    const seamData = seamRowImageData && seamRowImageData.data && seamRowImageData.width >= width
+        ? seamRowImageData.data
+        : null;
+
+    // Gradient vertical : haut (dy petit, proche flux) = α du joint ; bas (dy grand, vers la Terre) = α → 1 (pleine saturation visible)
     for (let x = 0; x < width; x++) {
-        // Mapper la position X à la longueur d'onde (0 à 50 μm)
-        // Compenser le décalage de charWidth de chaque côté
-        // x=0 correspond à lambda_min (0 μm), x=width correspond à lambda_max (50 μm)
-        const normalizedX = Math.max(0, Math.min(1, (x - charWidth) / effectiveWidth)); // 0 à 1
-        const lambda_um = graph_min_um + normalizedX * (graph_max_um - graph_min_um); // 0 à 50 μm
-        const lambda_m = lambda_um * 1e-6; // Convertir en mètres
+        let r;
+        let g;
+        let b;
+        let aTop;
+        if (seamData && seamData.length >= (x + 1) * 4) {
+            const o = x * 4;
+            r = seamData[o];
+            g = seamData[o + 1];
+            b = seamData[o + 2];
+            aTop = seamData[o + 3] / 255;
+        } else {
+            const normalizedX = Math.max(0, Math.min(1, (x - charWidth) / effectiveWidth)); // 0 à 1
+            const lambda_um = graph_min_um + normalizedX * (graph_max_um - graph_min_um); // 0 à 50 μm
+            const lambda_m = lambda_um * 1e-6;
+            const lambda_min = 0.1e-6;
+            const lambda_max = 100e-6;
+            const rgb = wavelengthToColor(lambda_m, lambda_min, lambda_max);
+            r = rgb[0];
+            g = rgb[1];
+            b = rgb[2];
+            aTop = 0.5;
+        }
 
-        // Obtenir la couleur pour cette longueur d'onde (calée sur l'axe X du graphique)
-        // Utiliser une plage par défaut si pas de données
-        const lambda_min = 0.1e-6; // 0.1 μm
-        const lambda_max = 100e-6; // 100 μm
-        const [r, g, b] = wavelengthToColor(lambda_m, lambda_min, lambda_max);
-
-        // Dessiner la bande avec alpha=1 (opacité maximale)
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        ctx.fillRect(x, spectrumBarY, 1, spectrumBarHeight);
+        for (let dy = 0; dy < spectrumBarHeight; dy++) {
+            const tDown = spectrumBarHeight > 1 ? dy / (spectrumBarHeight - 1) : 0;
+            const alphaBand = aTop + (1 - aTop) * tDown;
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alphaBand})`;
+            ctx.fillRect(x, spectrumBarY + dy, 1, 1);
+        }
     }
 
 }
@@ -1105,6 +1400,30 @@ function drawAbsorptionBandIndicators() {
         const lo = Math.min(ya.range[0], ya.range[1]);
         const hi = Math.max(ya.range[0], ya.range[1]);
         return Math.max(lo, Math.min(hi, yScaled));
+    }
+
+    /** Coordonnée Y du wrapper (px depuis le haut) pour une altitude km sur yaxis2 — 0 km = 1ʳᵉ bande sous le bord si range [z_max, −step]. */
+    function altitudeKmToWrapperTopPx(km) {
+        const ya2 = gd._fullLayout && gd._fullLayout.yaxis2;
+        const ya = gd._fullLayout && gd._fullLayout.yaxis;
+        if (!ya2 || !ya || km == null || !Number.isFinite(km)) return null;
+        if (typeof ya2.c2p === 'function') {
+            const yInPlot = ya2.c2p(km);
+            if (!Number.isFinite(yInPlot)) return null;
+            return (plotRect.top - wrapperRect.top) + ya._offset + yInPlot;
+        }
+        const r = ya2.range;
+        if (!r || r.length < 2) return null;
+        const lo = Math.min(r[0], r[1]);
+        const hi = Math.max(r[0], r[1]);
+        if (hi <= lo) return null;
+        const kmClamped = Math.max(lo, Math.min(hi, km));
+        const t = (kmClamped - lo) / (hi - lo);
+        const len = ya._length;
+        const off = ya._offset;
+        if (!Number.isFinite(len) || len <= 0 || !Number.isFinite(off)) return null;
+        const yFromTopPlotDiv = off + t * len;
+        return (plotRect.top - wrapperRect.top) + yFromTopPlotDiv;
     }
 
     function planckScaledYAtLambdaUm(lambdaUm, T_K) {
@@ -1318,21 +1637,27 @@ function drawAbsorptionBandIndicators() {
         const lambdaPhysicsUm = band.fullSpan ? (leftUm + rightUm) / 2 : band.lambda;
         let topBand = null;
         if (band.fullSpan) {
-            if (topEdsForCloudBand != null && Number.isFinite(topEdsForCloudBand)) {
-                const halfEds = edsSpectralMarkerFontPx / 2;
-                const halfRow = rowBand / 2;
-                topBand = topEdsForCloudBand + halfEds + cloudBandAboveEdsGapPx - halfRow;
-            } else {
-                const yHi = yAxisLuminanceHi();
-                if (yHi != null) {
-                    const yClamped = clampYToAxisRange(yHi);
-                    const px = scaledYToWrapperTopPx(yClamped);
-                    if (px != null && Number.isFinite(px)) {
-                        topBand = px - 6;
+            // Nuages : ancrage altitude (pas luminance) pour lisibilité directe sur la ligne stratosphère.
+            const zTropKm = Number(window.current_z_trop_km);
+            const zCloudKm = (Number.isFinite(zTropKm) && zTropKm > 0) ? zTropKm : 2;
+            topBand = altitudeKmToWrapperTopPx(zCloudKm);
+            if (topBand == null || !Number.isFinite(topBand)) {
+                if (topEdsForCloudBand != null && Number.isFinite(topEdsForCloudBand)) {
+                    const halfEds = edsSpectralMarkerFontPx / 2;
+                    const halfRow = rowBand / 2;
+                    topBand = topEdsForCloudBand + halfEds + cloudBandAboveEdsGapPx - halfRow;
+                } else {
+                    const yHi = yAxisLuminanceHi();
+                    if (yHi != null) {
+                        const yClamped = clampYToAxisRange(yHi);
+                        const px = scaledYToWrapperTopPx(yClamped);
+                        if (px != null && Number.isFinite(px)) {
+                            topBand = px - 6;
+                        }
                     }
-                }
-                if (topBand == null || !Number.isFinite(topBand)) {
-                    topBand = Math.max(0, (plotRect.top - wrapperRect.top) + 2);
+                    if (topBand == null || !Number.isFinite(topBand)) {
+                        topBand = Math.max(0, (plotRect.top - wrapperRect.top) + 2);
+                    }
                 }
             }
         } else {
@@ -1439,13 +1764,18 @@ function drawAbsorptionBandIndicators() {
     }
 
     if (yEdsScaled != null) {
-        const yEdsClamped = clampYToAxisRange(yEdsScaled);
-        let topEds = scaledYToWrapperTopPx(yEdsClamped);
+        let topEds = altitudeKmToWrapperTopPx(0);
+        if (topEds == null) {
+            const yEdsClamped = clampYToAxisRange(yEdsScaled);
+            topEds = scaledYToWrapperTopPx(yEdsClamped);
+        }
         if (topEds == null) {
             topEds = (plotRect.top - wrapperRect.top) + Math.max(8, plotRect.height - bandRowBottomPx - stackLiftPx - 40);
         }
-        const divEds = placeSpectralMarker('spectral-eds-marker--eds', 'Terre (émission vue de l’espace) — Planck(sol)+(Planck(eff)−Planck(sol))/4 au pic Wien λ=' + lambdaMarkUm.toFixed(2) + ' μm (T_sol)', topEds);
+        const divEds = placeSpectralMarker('spectral-eds-marker--eds', 'Terre (émission vue de l’espace) — 0 km (axe droit, même bande que la graduation 0) ; Planck(sol)+(Planck(eff)−Planck(sol))/4 au pic Wien λ=' + lambdaMarkUm.toFixed(2) + ' μm (T_sol)', topEds);
         divEds.style.fontSize = edsSpectralMarkerFontPx + 'px';
+        // Terre derrière tous les autres calques (flux/courbes/indicateurs) pour respecter l'ordre d'écriture demandé.
+        divEds.style.zIndex = '0';
         divEds.style.color = edsSunColor;
         divEds.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
         divEds.style.textShadow = '0 0 2px rgba(0,0,0,0.85)';
@@ -1999,6 +2329,7 @@ PLOT.updatePlot = function updatePlot(data) {
     }
 
     const dtick_luminance = y_max_luminance / 8;
+    const yTicks = buildLuminanceTicks(y_max_luminance);
 
     window.FLUX.plotYMaxLuminance = y_max_luminance;
     window.FLUX.plotMaxYScienceTraces = maxYInTraces;
@@ -2013,6 +2344,15 @@ PLOT.updatePlot = function updatePlot(data) {
     const useExplicitSize = (w > 0 && h > 0);
 
     // Construire la config yaxis2 séparément pour être sûr
+    const yaxis2StepKm = has_atmosphere ? (z_max_km / 8) : (z_max_km / 4);
+    const yaxis2MirrorOn = ensureMiroirFluxState();
+    debugMiroirFluxLog('updatePlot', {
+        miroir_flux: yaxis2MirrorOn,
+        y_max_luminance: y_max_luminance,
+        yaxisRange: yaxisLuminanceRangeByMirror(y_max_luminance, dtick_luminance),
+        z_max_km: z_max_km,
+        yaxis2Range: yaxis2RangeByMirrorKm(z_max_km, yaxis2StepKm)
+    });
     const yaxis2Config = {
         title: {
             text: has_atmosphere ? "Altitude (km)" : "Pas d'atmosphère",
@@ -2020,11 +2360,13 @@ PLOT.updatePlot = function updatePlot(data) {
         },
         overlaying: 'y',
         side: 'right', // Altitude à droite
-        range: [0, z_max_km], // Dynamique (très petit si pas d'atmosphère)
+        range: yaxis2RangeByMirrorKm(z_max_km, yaxis2StepKm),
         fixedrange: true, // Désactiver le zoom
         position: 1, // Position à 1 (droite)
-        tickmode: 'linear',
-        dtick: has_atmosphere ? (z_max_km / 8) : (z_max_km / 4),
+        tickmode: yaxis2MirrorOn ? 'array' : 'linear',
+        ...(yaxis2MirrorOn
+            ? { tickvals: yaxis2TickValsFrom0(z_max_km, yaxis2StepKm) }
+            : { dtick: yaxis2StepKm }),
         tickfont: getPlotlyFont(12, getDefaultTextColor()),
         titlefont: getPlotlyFont(14, getDefaultTextColor()),
         showline: true,
@@ -2034,6 +2376,7 @@ PLOT.updatePlot = function updatePlot(data) {
         showgrid: false,
         zeroline: false,
         visible: true,
+        ticklabelposition: 'outside',
         showticklabels: has_atmosphere // Cacher les graduations si pas d'atmosphère
     };
 
@@ -2060,9 +2403,9 @@ PLOT.updatePlot = function updatePlot(data) {
             tickwidth: 0 // Épaisseur des ticks à 0
         },
         yaxis: {
-            range: [0, y_max_luminance],
+            range: yaxisLuminanceRangeByMirror(y_max_luminance, dtick_luminance),
             fixedrange: true,
-            tickformat: '.2~f',
+            tickformat: '',
             title: {
                 text: '',
                 font: getPlotlyFont(14, getDefaultTextColor())
@@ -2073,12 +2416,17 @@ PLOT.updatePlot = function updatePlot(data) {
             showgrid: true,
             gridcolor: 'rgba(0, 0, 0, 0.5)',
             gridwidth: 1,
+            zeroline: false,
+            zerolinecolor: 'rgba(0,0,0,0)',
+            zerolinewidth: 0,
             showline: true,
             linecolor: 'rgba(0, 0, 0, 0.5)',
             linewidth: 1,
             mirror: 'ticks',
-            dtick: dtick_luminance,
-            tickmode: 'linear'
+            tickmode: 'array',
+            tickvals: yTicks.tickvals,
+            ticktext: yTicks.ticktext,
+            ticklabelposition: 'outside'
         },
         yaxis2: yaxis2Config,
         plot_bgcolor: PLOT_BACKGROUND_COLOR, // Fond de la zone de dessin (configurable)
@@ -2758,13 +3106,12 @@ function drawSpectralVisualization(canvas, data) {
     const spectrumBarHeight = Math.max(1, Math.floor(20 / resolutionFactor)); // 20px d'affichage
     const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
     const axisMarginB = 75; // PLOT_MARGINS.b - zone sous l'axe (spectre + bornes)
+    // Joint unique : dernière ligne du flux = spectrumBarTopY - 1, première ligne de la bande = spectrumBarTopY
+    const spectrumBarTopY = height - axisMarginB;
+    const visualizationHeight = spectrumBarTopY;
 
-    // Zone de visualisation : jusqu'à l'axe (pas dans la marge)
-    const visualizationHeight = height - axisMarginB;
-    const spectrumBarY = height - axisMarginB - 1; // Barre collée sous l'axe
-
-    // Nettoyer le canvas SANS la barre spectrale (éviter clignotement)
-    ctx.clearRect(0, 0, width, spectrumBarY);
+    // Nettoyer uniquement la zone flux (la bande est redessinée après par drawSpectrumBarOnlyWithSize)
+    ctx.clearRect(0, 0, width, spectrumBarTopY);
 
     const upward_flux = data.upward_flux;
     // earth_flux est optionnel (peut être null)
@@ -2888,7 +3235,34 @@ function drawSpectralVisualization(canvas, data) {
     // Cache des couleurs par x (la couleur ne dépend que de x, pas de y)
     const colorCache = new Map();
 
-    for (let y = 0; y < visualizationHeight; y += yStep) {
+    const seamLogPayload = {
+        miroir_flux: ensureMiroirFluxState(),
+        width: width,
+        height: height,
+        axisMarginB: axisMarginB,
+        spectrumBarTopY: spectrumBarTopY,
+        visualizationHeight: visualizationHeight
+    };
+    const seamLogSig = JSON.stringify(seamLogPayload);
+    if (canvas._lastSeamLogSig !== seamLogSig) {
+        canvas._lastSeamLogSig = seamLogSig;
+        if (typeof window.pdTrace === 'function') {
+            window.pdTrace('drawSpectralVisualization', 'plot.js', 'seam=' + seamLogSig);
+        } else if (typeof window.pd === 'function') {
+            window.pd('drawSpectralVisualization', 'plot.js', 'seam=' + seamLogSig);
+        } else {
+            console.log('[drawSpectralVisualization][plot.js] seam=' + seamLogSig);
+        }
+    }
+    const fluxRowYs = new Set();
+    for (let yy = 0; yy < visualizationHeight; yy += yStep) {
+        fluxRowYs.add(yy);
+    }
+    if (visualizationHeight > 0) {
+        fluxRowYs.add(visualizationHeight - 1);
+    }
+    const sortedFluxYs = Array.from(fluxRowYs).sort((a, b) => a - b);
+    for (const y of sortedFluxYs) {
         // Calculer l'altitude correspondant à ce pixel Y
         // y=0 (en haut) → z=0 (sol), y=max (en bas) → z=z_max (haute altitude)
         const z_target = y * altitudePerPixel;
@@ -2992,8 +3366,11 @@ function drawSpectralVisualization(canvas, data) {
             // Si le flux est < minFlux (en dessous du percentile 1%), il sera négatif
             // Dans ce cas, ne pas dessiner du tout pour éviter les barres grises
             if (normalized < 0 || flux <= 0) {
-                // Flux en dessous du minimum ou nul : ne pas dessiner
-                continue; // Passer au pixel suivant sans dessiner
+                // Éviter un trou horizontal au raccord : forcer un rendu minimal sur les 2 dernières lignes.
+                if (y < (visualizationHeight - 2)) {
+                    continue; // Passer au pixel suivant sans dessiner
+                }
+                normalized = 0;
             }
 
             // Clamper entre 0 et 1 (sécurité supplémentaire)
@@ -3002,8 +3379,8 @@ function drawSpectralVisualization(canvas, data) {
             // Appliquer une courbe gamma pour améliorer le contraste
             const gamma = 0.6; // Réduire de 0.7 à 0.6 pour mieux voir les faibles valeurs
             const alphaRaw = Math.pow(normalized, gamma);
-            // Alpha minimum de 0, maximum 1.0
-            let alpha = Math.max(0, Math.min(1.0, alphaRaw));
+            // Rayonnement : plancher 50% (commence à 0.5), max 1.0
+            let alpha = Math.max(0.5, Math.min(1.0, alphaRaw));
 
             // Pour l'émission, réduire moins l'alpha avec la densité pour garder les couleurs visibles
             // Appliquer un facteur moins agressif : garder au moins 50% de l'alpha même en haute altitude
@@ -3011,13 +3388,17 @@ function drawSpectralVisualization(canvas, data) {
             const densityFactor = Math.max(0, Math.min(1, densityAlpha));
             alpha = alpha * (0.5 + 0.5 * densityFactor);
 
-            // Clamper l'alpha final entre 0 et 1 (sécurité absolue)
-            alpha = Math.max(0, Math.min(1.0, alpha));
+            // Clamper l'alpha final entre 0.5 et 1.0 (sécurité absolue)
+            alpha = Math.max(0.5, Math.min(1.0, alpha));
 
             // Ne pas dessiner si alpha est trop faible (< 0.05) pour éviter les barres grises
             // Augmenter le seuil pour éliminer complètement les pixels presque transparents
             if (alpha < 0.05) {
-                continue; // Passer au pixel suivant sans dessiner
+                // Même logique de raccord : ne pas laisser la seam vide.
+                if (y < (visualizationHeight - 2)) {
+                    continue; // Passer au pixel suivant sans dessiner
+                }
+                alpha = 0.5;
             }
 
             // Obtenir la couleur pour cette longueur d'onde (calée sur l'axe X du graphique)
@@ -3042,9 +3423,14 @@ function drawSpectralVisualization(canvas, data) {
         }
     }
 
+    const seamY = spectrumBarTopY - 1;
+    const seamRowImageData = seamY >= 0
+        ? ctx.getImageData(0, seamY, width, 1)
+        : null;
+
     // Dessiner la barre de spectre en bas (utilise la fonction dédiée pour éviter la duplication)
     // Passer le resolutionFactor pour que la barre reste à 20px d'affichage
-    drawSpectrumBarOnlyWithSize(width, height, resolutionFactor);
+    drawSpectrumBarOnlyWithSize(width, height, resolutionFactor, seamRowImageData);
 
 }
 

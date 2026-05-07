@@ -1,8 +1,9 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.23
- * Date: 2026-05-06
+ * Version 1.0.24
+ * Date: 2026-05-07
 * logs :
+ * - v1.0.24: window.getTimelineCurrentYears — même date que le curseur pour getPlanetTexturePathFromEpoch (évite 00000Ma.png en fin 🦣 / 🛖 via event).
  * - v1.0.23: effectiveTimelineEndSlackMa — slack 0,05 Ma trop grand pour époques CE (dur ~1e−4 Ma) → faux SKIP immédiat vers 📱 ; min(0,05, dur×1%).
  * - v1.0.22: window.togglePlotAnim défini ici (source unique) — pages sans loader_panels (ex. scie_compute.html) ; fallback setEpoch / window.selectEpoch.
  * - v1.0.21: ▶ négatif (🛖 −10⁴ a BP) — timelineDeltaYearsToStartMa ; parseTimelineDateText accepte libellés « −10000 » (Ma curseur).
@@ -112,6 +113,8 @@ function getTimelineCurrentYears() {
     const elapsedYears = infoTimeMa * 1e6;
     return isForwardEpoch ? epoch['▶'] + elapsedYears : epoch['▶'] - elapsedYears;
 }
+
+window.getTimelineCurrentYears = getTimelineCurrentYears;
 
 /** Même convention que updateTimeline (curseur frise) : Ma négatifs, ▶/◀ en années (config), infoTimeMa en Ma. */
 function getTimelineCurrentMa() {

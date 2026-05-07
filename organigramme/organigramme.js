@@ -1,12 +1,13 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.99
+// Version 1.0.100
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.100 texture fonds — getPlanetTexturePathFromEpoch aligné sur getTimelineCurrentYears() (plus de 00000Ma.png fin 🦣 / événements → 🛖 010000a.png).
 // Logs: v1.0.99 masse atm — fallback COMPUTE.dryAtmosphereMassKgFromComponents si plus de ⚖️🫧 en TIMELINE.
 // Logs: v1.0.98 fine_tuning_cloud_bary : aria-label mini-jauge = « Flou scientifique » (homogène avec data-tooltip).
 // Logs: v1.0.97 Terre Three.js : curseur move (croix 4 directions) au survol du canvas ; grabbing pendant press/drag (+ body si sortie du canvas).
@@ -537,17 +538,65 @@ function updateLabelClasses(label, nodeId = null) {
   syncFluxLabelPlainMetric(label);
 }
 
-/** Chemin texture planète depuis époque + temps écoulé. Ex. Protérozoïque -2500 Ma +100 Ma → -2400 Ma → fonds/02400Ma.png ; 1800+100 ans → fonds/001900a.png */
+/** Même convention que timeline.js timelineDeltaYearsToStartMa — ne pas diverger. */
+function textureDeltaYearsToStartMa(deltaYears) {
+  if (deltaYears == null || !Number.isFinite(deltaYears)) return NaN;
+  return deltaYears < 0 ? deltaYears / 1e6 : -(deltaYears / 1e6);
+}
+
+/**
+ * Chemin fonds/*.png depuis une date « année » absolue (même règle que le curseur : getTimelineCurrentYears).
+ * |année| ≥ 1e6 → grille Ma (5 chiffres) ; sinon → grille années 6 chiffres + a.png (ex. Holocène 10 ka → 010000a.png).
+ */
+function planetTexturePathFromAbsoluteYears(y) {
+  if (y == null || !Number.isFinite(y)) {
+    return "fonds/002025a.png";
+  }
+  const yR = Math.round(Number(y));
+  const yAbs = Math.abs(yR);
+  if (yAbs >= 1e6) {
+    const ma = textureDeltaYearsToStartMa(yR);
+    const absMa = Math.round(Math.abs(ma));
+    if (absMa === 0) {
+      return "fonds/010000a.png";
+    }
+    const padded = String(absMa).padStart(5, "0");
+    return "fonds/" + padded + "Ma.png";
+  }
+  const padded = String(yAbs).padStart(6, "0");
+  return "fonds/" + padded + "a.png";
+}
+
+/**
+ * Chemin texture planète : préfère la date courante frise (▶/◀/infoTimeMa, forward vs géologique) comme updateTimeline.
+ * Fallback : ancienne formule (startYears, infoTimeMa) si pas de contexte timeline.
+ */
 function getPlanetTexturePathFromEpoch(startYears, infoTimeMa) {
+  if (
+    typeof window.getTimelineCurrentYears === "function" &&
+    window.DATA &&
+    window.DATA["📜"] &&
+    window.TIMELINE &&
+    window.TIMELINE.length
+  ) {
+    const cy = window.getTimelineCurrentYears();
+    if (cy != null && Number.isFinite(cy)) {
+      return planetTexturePathFromAbsoluteYears(cy);
+    }
+  }
   const infoMa = Number(infoTimeMa) || 0;
   if (startYears >= 1e6) {
     const currentMa = -startYears / 1e6 + infoMa;
     const absMa = Math.round(Math.abs(currentMa));
+    if (absMa === 0) {
+      return "fonds/010000a.png";
+    }
     const padded = String(absMa).padStart(5, "0");
     return "fonds/" + padded + "Ma.png";
   }
   const currentYear = Math.round(startYears + infoMa * 1e6);
-  const padded = String(currentYear).padStart(6, "0");
+  const absYear = Math.round(Math.abs(currentYear));
+  const padded = String(absYear).padStart(6, "0");
   return "fonds/" + padded + "a.png";
 }
 

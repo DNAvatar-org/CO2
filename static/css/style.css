@@ -699,6 +699,15 @@ h1 {
     opacity: 0 !important;
 }
 
+/* Plotly peut redessiner la ligne d'axe x dans la couche "above" (path.domain) */
+#plot-container .xaxislayer-above path.domain,
+#plot-container .xaxislayer-above path.zeroline,
+#plot-container .xaxislayer-below path.domain {
+    stroke: transparent !important;
+    fill: transparent !important;
+    opacity: 0 !important;
+}
+
 /* Garder les labels ET les ticks de l'axe x visibles */
 #plot-container .xaxis text,
 #plot-container .xtitle,
@@ -745,17 +754,18 @@ h1 {
     margin-bottom: 30px !important;
 }
 
-/* Titre - Positionné en haut à droite du graphique */
+/* Titre - À droite de l’axe Y (aligné sur PLOT_MARGINS.l), texte à gauche */
 .plot-overlay-title {
     position: absolute !important;
     top: 10px !important;
-    right: 80px !important;
+    left: 72px !important;
+    right: auto !important;
     transform: none !important;
     font-size: 14px;
     font-weight: 600;
     padding: 8px 15px;
     border-radius: 5px;
-    text-align: right;
+    text-align: left;
     z-index: 60 !important;
     pointer-events: none;
     visibility: visible !important;
@@ -765,6 +775,22 @@ h1 {
     /* Titre sur une seule ligne */
     color: var(--base-color);
     /* color: #667eea (bleu) en réserve */
+}
+
+.plot-miroir-flux-btn {
+    position: absolute !important;
+    top: auto !important;
+    bottom: 6px !important;
+    left: 8px !important;
+    z-index: 70 !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    pointer-events: auto !important;
 }
 
 .plot-title {
@@ -1357,8 +1383,8 @@ h1 {
     /* max-width: fit-content !important; */
     max-width: 300px;
     position: absolute !important;
-    top: 70px !important;
-    /* Descendu d'une ligne (~20px) depuis 50px */
+    top: 10px !important;
+    /* Même bande verticale que .plot-overlay-title */
     right: 80px !important;
     padding: 4px 15px !important;
     /* Réduit le padding vertical pour tasser la légende */
