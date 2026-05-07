@@ -1,9 +1,10 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.77
+// Version 1.0.78
 // Date: [May 07, 2026] [20:20 UTC+1]
 // logs :
+// - v1.0.78: marqueurs Terre/EDS — abscisse λ = pic Wien (2898/T_sol) μm, aligné Planck sol (échelle Y max) ; repli spectralEdsSunLambdaUm si T_sol absent.
 // - v1.0.77: masse atm sèche — COMPUTE.dryAtmosphereMassKgFromComponents(epoch) (⚖️🫧 retiré config TIMELINE).
 // - v1.0.76: swap marqueurs spectraux Terre/EDS (logos + libellés alt/title) sur le graphe.
 // - v1.0.75: PLOT_LEGEND_CORPS_NOIR_* + PLOT_LEGEND_RAYONNEMENT_ESPACE (source unique légende / hovers 3 courbes) ; hovers alignés sur ces libellés + T°.
@@ -1193,14 +1194,20 @@ function drawAbsorptionBandIndicators() {
         return spectralBandLogoImgPxDefault;
     }
 
-    const lambdaEdsSunUm = Math.max(0.1, Math.min(50, (window.CONFIG_COMPUTE && Number.isFinite(Number(window.CONFIG_COMPUTE.spectralEdsSunLambdaUm)))
+    // Marqueurs 🌍 / EDS : λ en μm au sommet de Planck(T_sol) (loi de Wien sur B_λ) — même courbe que le pic ~90 % hauteur axe Y.
+    const WIEN_LAMBDA_T_PRODUCT_UM_K = 2898;
+    const spectralEdsFallbackUm = Math.max(0.1, Math.min(50, (window.CONFIG_COMPUTE && Number.isFinite(Number(window.CONFIG_COMPUTE.spectralEdsSunLambdaUm)))
         ? Number(window.CONFIG_COMPUTE.spectralEdsSunLambdaUm)
         : 10));
+    let lambdaMarkUm = spectralEdsFallbackUm;
+    if (TSurf != null && Number.isFinite(TSurf) && TSurf > 0) {
+        lambdaMarkUm = Math.max(0.1, Math.min(50, WIEN_LAMBDA_T_PRODUCT_UM_K / TSurf));
+    }
     const stackLiftPx = (window.CONFIG_COMPUTE && Number.isFinite(Number(window.CONFIG_COMPUTE.spectralEdsSunStackLiftPx)))
         ? Number(window.CONFIG_COMPUTE.spectralEdsSunStackLiftPx)
         : 26;
-    const ySurfScaledEds = (TSurf != null) ? planckScaledYAtLambdaUm(lambdaEdsSunUm, TSurf) : null;
-    const yEffScaledEds = (Teff != null) ? planckScaledYAtLambdaUm(lambdaEdsSunUm, Teff) : null;
+    const ySurfScaledEds = (TSurf != null) ? planckScaledYAtLambdaUm(lambdaMarkUm, TSurf) : null;
+    const yEffScaledEds = (Teff != null) ? planckScaledYAtLambdaUm(lambdaMarkUm, Teff) : null;
     let yEdsScaledForBands = null;
     if (ySurfScaledEds != null && Number.isFinite(ySurfScaledEds)) {
         if (yEffScaledEds != null && Number.isFinite(yEffScaledEds)) {
@@ -1385,7 +1392,7 @@ function drawAbsorptionBandIndicators() {
         plotContainerWrapper2.appendChild(indicator);
     });
 
-    // EDS + Terre (λ fixe spectralEdsSunUm) : Y EDS = sol + Δ/4 ; Y Terre = ½·Planck(T_eff) (échelle traces, sémantique Y inversée vs « ciel »)
+    // EDS + Terre (λ = pic Wien T_sol, ci-dessus) : Y EDS = sol + Δ/4 ; Y EDS-logo = ½·Planck(T_eff) (échelle traces, sémantique Y inversée vs « ciel »)
     let edsSunColor = getDefaultTextColor();
     if (typeof window !== 'undefined' && window.currentBlackBodyColor) {
         edsSunColor = window.currentBlackBodyColor;
@@ -1393,7 +1400,7 @@ function drawAbsorptionBandIndicators() {
         edsSunColor = PLOT.tempSurfaceToColor(window.plotData.temp_surface_c);
     }
 
-    const xAxisMark = getXPosition(lambdaEdsSunUm);
+    const xAxisMark = getXPosition(lambdaMarkUm);
 
     const ySurfScaled = ySurfScaledEds;
     const yEffScaled = yEffScaledEds;
@@ -1426,7 +1433,7 @@ function drawAbsorptionBandIndicators() {
         if (topEds == null) {
             topEds = (plotRect.top - wrapperRect.top) + Math.max(8, plotRect.height - bandRowBottomPx - stackLiftPx - 40);
         }
-        const divEds = placeSpectralMarker('spectral-eds-marker--eds', 'Terre (émission vue de l’espace) — Planck(sol) + (Planck(eff)−Planck(sol))/4 à ' + lambdaEdsSunUm + ' μm', topEds);
+        const divEds = placeSpectralMarker('spectral-eds-marker--eds', 'Terre (émission vue de l’espace) — Planck(sol)+(Planck(eff)−Planck(sol))/4 au pic Wien λ=' + lambdaMarkUm.toFixed(2) + ' μm (T_sol)', topEds);
         divEds.style.fontSize = edsSpectralMarkerFontPx + 'px';
         divEds.style.color = edsSunColor;
         divEds.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
@@ -1456,7 +1463,7 @@ function drawAbsorptionBandIndicators() {
         if (topSun == null) {
             topSun = (plotRect.top - wrapperRect.top) + Math.max(8, plotRect.height - bandRowBottomPx - 8);
         }
-        const divEarth = placeSpectralMarker('spectral-eds-marker--earth', 'EDS — ½·Planck(T_eff) à ' + lambdaEdsSunUm + ' μm ; axe Y sémantique inversé vs intuition « ciel »', topSun);
+        const divEarth = placeSpectralMarker('spectral-eds-marker--earth', 'EDS — ½·Planck(T_eff) au pic Wien λ=' + lambdaMarkUm.toFixed(2) + ' μm (aligné T_sol) ; axe Y inversé vs « ciel »', topSun);
         divEarth.style.fontSize = edsSpectralMarkerFontPx + 'px';
         divEarth.style.color = edsSunColor;
         divEarth.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
