@@ -294,6 +294,10 @@
       "dest": "pages/bilan_radiatif/CO2/static/img/fond.png"
     },
     {
+      "src": "static/img/milankovitch.png",
+      "dest": "pages/bilan_radiatif/CO2/static/img/milankovitch.png"
+    },
+    {
       "src": "static/lib/plotly-2.26.0.min.js",
       "dest": "pages/bilan_radiatif/CO2/static/lib/plotly-2.26.0.min.js"
     },

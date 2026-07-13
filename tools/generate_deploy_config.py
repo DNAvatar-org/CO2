@@ -44,6 +44,7 @@ RE_SCRIPT = re.compile(r"""<script[^>]+src=["']([^"']+)["']""", re.I)
 RE_LINK = re.compile(r"""<link[^>]+href=["']([^"']+)["']""", re.I)
 RE_FETCH = re.compile(r"""fetch\(\s*['"]([^'"]+)['"]""")
 RE_IFRAME = re.compile(r"""<iframe[^>]+src=["']([^"']+)["']""", re.I)
+RE_IMG = re.compile(r"""<img[^>]+src=["']([^"']+)["']""", re.I)
 RE_MODAL = re.compile(
     r"""openPageModal\(\s*['"]([^'"]+\.html)['"]""", re.I
 )
@@ -160,7 +161,7 @@ def parse_html_chain(paths: set[str]) -> None:
         if not full.is_file():
             continue
         text = read_text(full)
-        for rx in (RE_SCRIPT, RE_LINK, RE_IFRAME, RE_FETCH, RE_MODAL):
+        for rx in (RE_SCRIPT, RE_LINK, RE_IFRAME, RE_FETCH, RE_MODAL, RE_IMG):
             for m in rx.finditer(text):
                 ref = m.group(1)
                 add_path(paths, ref, full)
