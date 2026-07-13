@@ -1,0 +1,349 @@
+{
+  "endpoint": "https://dnavatar.org/deploy.php",
+  "_layout": "CO2 → www/pages/bilan_radiatif/CO2/. cd CO2 && publish [--full]",
+  "_generated": "tools/generate_deploy_config.py — références runtime, fichiers existants uniquement",
+  "git_root": ".",
+  "files_root": ".",
+  "files": [
+    {
+      "src": "favicon.ico",
+      "dest": "pages/bilan_radiatif/CO2/favicon.ico"
+    },
+    {
+      "src": "favicon64.png",
+      "dest": "pages/bilan_radiatif/CO2/favicon64.png"
+    },
+    {
+      "src": "fonds/-00002Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00002Ma.png"
+    },
+    {
+      "src": "fonds/-00033Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00033Ma.png"
+    },
+    {
+      "src": "fonds/-00035Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00035Ma.png"
+    },
+    {
+      "src": "fonds/-00050Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00050Ma.png"
+    },
+    {
+      "src": "fonds/-00066Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00066Ma.png"
+    },
+    {
+      "src": "fonds/-00100Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00100Ma.png"
+    },
+    {
+      "src": "fonds/-00150Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00150Ma.png"
+    },
+    {
+      "src": "fonds/-002000a.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-002000a.png"
+    },
+    {
+      "src": "fonds/-003000a.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-003000a.png"
+    },
+    {
+      "src": "fonds/-010000a.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-010000a.png"
+    },
+    {
+      "src": "fonds/-02500Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-02500Ma.png"
+    },
+    {
+      "src": "fonds/-04100Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04100Ma.png"
+    },
+    {
+      "src": "fonds/-04500Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04500Ma.png"
+    },
+    {
+      "src": "fonds/-05000Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-05000Ma.png"
+    },
+    {
+      "src": "fonds/_001800a.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/_001800a.png"
+    },
+    {
+      "src": "fonts/pics/big_impact.png",
+      "dest": "pages/bilan_radiatif/CO2/fonts/pics/big_impact.png"
+    },
+    {
+      "src": "fonts/pics/ch4.png",
+      "dest": "pages/bilan_radiatif/CO2/fonts/pics/ch4.png"
+    },
+    {
+      "src": "fonts/pics/corps_noir.png",
+      "dest": "pages/bilan_radiatif/CO2/fonts/pics/corps_noir.png"
+    },
+    {
+      "src": "fonts/pics/geometrie.png",
+      "dest": "pages/bilan_radiatif/CO2/fonts/pics/geometrie.png"
+    },
+    {
+      "src": "fonts/pics/hadeen.png",
+      "dest": "pages/bilan_radiatif/CO2/fonts/pics/hadeen.png"
+    },
+    {
+      "src": "fonts/pics/ice_meteorite.png",
+      "dest": "pages/bilan_radiatif/CO2/fonts/pics/ice_meteorite.png"
+    },
+    {
+      "src": "fonts/pics/sun.png",
+      "dest": "pages/bilan_radiatif/CO2/fonts/pics/sun.png"
+    },
+    {
+      "src": "html/Algorithmes.html",
+      "dest": "pages/bilan_radiatif/CO2/html/Algorithmes.html"
+    },
+    {
+      "src": "html/bench_panel.html",
+      "dest": "pages/bilan_radiatif/CO2/html/bench_panel.html"
+    },
+    {
+      "src": "html/equation.html",
+      "dest": "pages/bilan_radiatif/CO2/html/equation.html"
+    },
+    {
+      "src": "html/hysteresis_compute.html",
+      "dest": "pages/bilan_radiatif/CO2/html/hysteresis_compute.html"
+    },
+    {
+      "src": "html/hysteresis_panel.html",
+      "dest": "pages/bilan_radiatif/CO2/html/hysteresis_panel.html"
+    },
+    {
+      "src": "html/scie_compute.html",
+      "dest": "pages/bilan_radiatif/CO2/html/scie_compute.html"
+    },
+    {
+      "src": "html/scie_radiatif.html",
+      "dest": "pages/bilan_radiatif/CO2/html/scie_radiatif.html"
+    },
+    {
+      "src": "html/test_milankovitch.html",
+      "dest": "pages/bilan_radiatif/CO2/html/test_milankovitch.html"
+    },
+    {
+      "src": "html/visu_radiatif.html",
+      "dest": "pages/bilan_radiatif/CO2/html/visu_radiatif.html"
+    },
+    {
+      "src": "index.html",
+      "dest": "pages/bilan_radiatif/CO2/index.html"
+    },
+    {
+      "src": "organigramme/configOrganigramme.js",
+      "dest": "pages/bilan_radiatif/CO2/organigramme/configOrganigramme.js"
+    },
+    {
+      "src": "organigramme/organigramme.css",
+      "dest": "pages/bilan_radiatif/CO2/organigramme/organigramme.css"
+    },
+    {
+      "src": "organigramme/organigramme.js",
+      "dest": "pages/bilan_radiatif/CO2/organigramme/organigramme.js"
+    },
+    {
+      "src": "organigramme/timeline.js",
+      "dest": "pages/bilan_radiatif/CO2/organigramme/timeline.js"
+    },
+    {
+      "src": "static/FPS/FPS.js",
+      "dest": "pages/bilan_radiatif/CO2/static/FPS/FPS.js"
+    },
+    {
+      "src": "static/astronomie.js",
+      "dest": "pages/bilan_radiatif/CO2/static/astronomie.js"
+    },
+    {
+      "src": "static/compute/alphabet.html",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/alphabet.html"
+    },
+    {
+      "src": "static/compute/alphabet.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/alphabet.js"
+    },
+    {
+      "src": "static/compute/dico.html",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/dico.html"
+    },
+    {
+      "src": "static/compute/dico.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/dico.js"
+    },
+    {
+      "src": "static/compute/scie_/log_display.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/log_display.js"
+    },
+    {
+      "src": "static/compute/scie_/scie_convergence.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/scie_convergence.js"
+    },
+    {
+      "src": "static/compute/scie_/scie_hyst_repro_state.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/scie_hyst_repro_state.js"
+    },
+    {
+      "src": "static/compute/scie_/scie_hysteresis_bary.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/scie_hysteresis_bary.js"
+    },
+    {
+      "src": "static/compute/scie_/scie_hysteresis_search.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/scie_hysteresis_search.js"
+    },
+    {
+      "src": "static/compute/visu_/flux_manager.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/visu_/flux_manager.js"
+    },
+    {
+      "src": "static/compute/visu_/log_display.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/visu_/log_display.js"
+    },
+    {
+      "src": "static/courbes/patterns.js",
+      "dest": "pages/bilan_radiatif/CO2/static/courbes/patterns.js"
+    },
+    {
+      "src": "static/courbes/plot.js",
+      "dest": "pages/bilan_radiatif/CO2/static/courbes/plot.js"
+    },
+    {
+      "src": "static/courbes/plot_debug.js",
+      "dest": "pages/bilan_radiatif/CO2/static/courbes/plot_debug.js"
+    },
+    {
+      "src": "static/css/FPS.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/FPS.css"
+    },
+    {
+      "src": "static/css/algorithmes.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/algorithmes.css"
+    },
+    {
+      "src": "static/css/buttons.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/buttons.css"
+    },
+    {
+      "src": "static/css/emoji-fonts.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/emoji-fonts.css"
+    },
+    {
+      "src": "static/css/equation.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/equation.css"
+    },
+    {
+      "src": "static/css/ergo_button.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/ergo_button.css"
+    },
+    {
+      "src": "static/css/index-shell.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/index-shell.css"
+    },
+    {
+      "src": "static/css/legende.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/legende.css"
+    },
+    {
+      "src": "static/css/milankovitch.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/milankovitch.css"
+    },
+    {
+      "src": "static/css/planet-effect.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/planet-effect.css"
+    },
+    {
+      "src": "static/css/proggy-local-override.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/proggy-local-override.css"
+    },
+    {
+      "src": "static/css/scie_compute.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/scie_compute.css"
+    },
+    {
+      "src": "static/css/style.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/style.css"
+    },
+    {
+      "src": "static/css/test_computeRadiativeTransfer.css",
+      "dest": "pages/bilan_radiatif/CO2/static/css/test_computeRadiativeTransfer.css"
+    },
+    {
+      "src": "static/debug.js",
+      "dest": "pages/bilan_radiatif/CO2/static/debug.js"
+    },
+    {
+      "src": "static/fonts/04B_03__.TTF",
+      "dest": "pages/bilan_radiatif/CO2/static/fonts/04B_03__.TTF"
+    },
+    {
+      "src": "static/fonts/ProggyDotted Regular.ttf",
+      "dest": "pages/bilan_radiatif/CO2/static/fonts/ProggyDotted Regular.ttf"
+    },
+    {
+      "src": "static/img/fond.png",
+      "dest": "pages/bilan_radiatif/CO2/static/img/fond.png"
+    },
+    {
+      "src": "static/lib/plotly-2.26.0.min.js",
+      "dest": "pages/bilan_radiatif/CO2/static/lib/plotly-2.26.0.min.js"
+    },
+    {
+      "src": "static/lib/three.min.js",
+      "dest": "pages/bilan_radiatif/CO2/static/lib/three.min.js"
+    },
+    {
+      "src": "static/logs_to_server.js",
+      "dest": "pages/bilan_radiatif/CO2/static/logs_to_server.js"
+    },
+    {
+      "src": "static/shell.js",
+      "dest": "pages/bilan_radiatif/CO2/static/shell.js"
+    },
+    {
+      "src": "static/site_paths.js",
+      "dest": "pages/bilan_radiatif/CO2/static/site_paths.js"
+    },
+    {
+      "src": "static/sync_panels.js",
+      "dest": "pages/bilan_radiatif/CO2/static/sync_panels.js"
+    },
+    {
+      "src": "static/timeline/events.js",
+      "dest": "pages/bilan_radiatif/CO2/static/timeline/events.js"
+    },
+    {
+      "src": "static/timeline/integrateEds.js",
+      "dest": "pages/bilan_radiatif/CO2/static/timeline/integrateEds.js"
+    },
+    {
+      "src": "static/ui/api_onglets.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/api_onglets.js"
+    },
+    {
+      "src": "static/ui/layout.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/layout.js"
+    },
+    {
+      "src": "static/ui/loader_panels.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/loader_panels.js"
+    },
+    {
+      "src": "static/ui/main.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/main.js"
+    },
+    {
+      "src": "static/ui/modal.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/modal.js"
+    }
+  ]
+}

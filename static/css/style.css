@@ -643,7 +643,8 @@ h1 {
     /* Coins légèrement arrondis */
 }
 
-/* Spectre (visualisation spectrale) - Au-dessus du fond blanc mais en dessous des courbes */
+/* Spectre (bande arc-en-ciel) : z 1 dans le panneau plot — sous quadrillage/courbes (20/40).
+   .plot-container-wrapper suit .flux-diagram-wrapper dans .container → en chevauchement flex, le calque plot (dont ce canvas) couvre le flux ; la Terre (z 32 dans #flux-diagram) reste sous cette bande. */
 #spectral-visualization {
     position: absolute !important;
     /* top et left sont gérés par JavaScript pour un positionnement précis */

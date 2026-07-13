@@ -1,8 +1,10 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.26
+// Version 1.1.28
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.28: tooltips.js via window.SITE_PATHS.INTERFACES (absolu /_interfaces/, pas ../../ relatif page).
+// Logs: v1.1.27: tooltips.js → ../../_interfaces/tooltips.js (code partagé site/_interfaces).
 // Logs: v1.1.26: version bandeau — source window.BILAN_VISU_APP_VERSION dans API_BILAN/api.js (plus d’assignation loader).
 // Logs: v1.1.25: window.BILAN_VISU_APP_VERSION = 1.0.8 + synchro span #title-app-version après injection visu_radiatif.html.
 // Logs: v1.1.24: togglePlotAnim déplacé vers timeline.js (visu inchangé ; scie_compute / html sans loader ont SKIP).
@@ -51,7 +53,7 @@
         '../API_BILAN/event_bus.js',
         '../API_BILAN/convergence/compute.js',
         'static/compute/visu_/flux_manager.js',
-        'static/ui/tooltips.js',
+        window.SITE_PATHS.INTERFACES + 'tooltips.js',
         'static/ui/modal.js',
         'static/courbes/patterns.js',
         'static/compute/visu_/log_display.js',

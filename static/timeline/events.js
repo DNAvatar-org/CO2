@@ -1,8 +1,12 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.27
- * Date: [May 06, 2026]
+ * Version 1.2.30
+ * Date: [May 07, 2026]
 * logs :
+ *   - v1.2.30: 🕰.⛰ — alias tic temps (comme 💫 / 🏔) pour compute + UI order / ACTION_BY_DATE.
+ *   - v1.2.29: 🕰.🏔 — alias du tic temps (même rôle que 💫 pour compute / 📿💫) ; repli ACTION_BY_DATE + 🕰.order ; compteur SKIP inclut 🏔.
+ *   - v1.2.28: clampInfoTimeMaToGeologicEpochDuration — aussi époques forward (▶<◀, ex. 🛖 −10⁴→1800) : |◀−▶|/1e6 + slack
+ *     aligné effectiveTimelineEndSlackMa ; sinon 💫 dépassait 1800 (000500a.png puis années incohérentes sans SKIP anim).
  *   - v1.2.27: updateEpochActions — lectures directes DATA/configOrganigramme/TIMELINE ; SKIP toggle sans garde whRoot&& redondante sur 🕰.
  *   - v1.2.26: export tryEpochEndSkipAfterEvent pour timeline.js ; clamp infoTimeMa avec TIMELINE_END_SLACK_MA (timeline.js v1.0.19).
  *   - v1.2.25: retrait gardes typeof window.* sur helpers timeline (contrat de chargement : timeline.js avant events.js).
@@ -48,13 +52,14 @@ function goNextEpochViaSkip() {
     window.togglePlotAnim();
 }
 
-/** Époques géologiques (▶ > ◀) : borne infoTimeMa ; si dans le slack de fin, snap sur dur (aligné affichage + isPastCurrentEpochEndMa). */
+/** Borne infoTimeMa sur la durée d’ép |◀−▶|/1e6 Ma : forward (🛖, 🚂, 📱…) et géologique (▶>◀). Snap fin dans le slack (aligné isPastCurrentEpochEndMa). */
 function clampInfoTimeMaToGeologicEpochDuration() {
     const epoch = window.getEpochAtTimelineIndex();
     if (!epoch || epoch['▶'] == null || epoch['◀'] == null) return;
-    if (epoch['▶'] <= epoch['◀']) return;
-    const dur = (epoch['▶'] - epoch['◀']) / 1e6;
-    const slack = window.TIMELINE_END_SLACK_MA != null ? window.TIMELINE_END_SLACK_MA : 0.05;
+    const dur = Math.abs(epoch['◀'] - epoch['▶']) / 1e6;
+    if (!Number.isFinite(dur) || dur <= 0) return;
+    const slackFn = typeof window.effectiveTimelineEndSlackMa === 'function' ? window.effectiveTimelineEndSlackMa : null;
+    const slack = slackFn ? slackFn(dur) : (window.TIMELINE_END_SLACK_MA != null ? window.TIMELINE_END_SLACK_MA : 0.05);
     if (window.infoTimeMa >= dur - slack) window.infoTimeMa = dur;
     else if (window.infoTimeMa > dur) window.infoTimeMa = dur;
 }
@@ -99,7 +104,7 @@ window.updateEpochActions = function () {
         const _hasEmissions = Object.keys(whRoot).some(function(k) { return !isNaN(Number(k)); });
         const orderArr = Array.isArray(whRoot.order) ? whRoot.order : null;
         const orderedActionCount = orderArr !== null ? orderArr.length : null;
-        const directActionCount = ['☄️', '🎇', '🌋', '💫'].filter(function(k) { return whRoot[k] != null; }).length;
+        const directActionCount = ['☄️', '🎇', '🌋', '💫', '🏔', '⛰'].filter(function(k) { return whRoot[k] != null; }).length;
         const actionCount = orderedActionCount !== null ? orderedActionCount : directActionCount;
         const hideSkip = _hasEmissions || actionCount <= 1;
         animToggleBtn.classList.toggle('plot-anim-toggle--scenario-hidden', hideSkip);
@@ -131,6 +136,18 @@ window.updateEpochActions = function () {
         if (stepMa == null || !Number.isFinite(stepMa)) return '';
         if (stepMa < 0.001) return '+' + Math.round(stepMa * 1e6) + ' ans';
         return '+' + stepMa + ' Ma';
+    };
+
+    /** Tic temps géologique : 💫 (défaut), ou 🏔 / ⛰ (alias TIMELINE) — même 🔺⏳ / 📿💫 côté compute.js. */
+    const GEologic_TIC_KEYS = ['💫', '🏔', '⛰'];
+    const resolveGeologicTicFromWh = (wh) => {
+        if (!wh || typeof wh !== 'object') return { ticKey: null, ticCfg: null };
+        for (let i = 0; i < GEologic_TIC_KEYS.length; i++) {
+            const k = GEologic_TIC_KEYS[i];
+            const c = wh[k];
+            if (c != null && typeof c === 'object') return { ticKey: k, ticCfg: c };
+        }
+        return { ticKey: null, ticCfg: null };
     };
 
     // Fonction utilitaire pour formater la masse
@@ -252,7 +269,8 @@ window.updateEpochActions = function () {
 
     if (_tlEpoch && whRoot && Array.isArray(whRoot.order) && whRoot.order.length) {
         const wh = whRoot;
-        const ticCfgRoot = wh['💫'];
+        const ticRootResolved = resolveGeologicTicFromWh(wh);
+        const ticCfgRoot = ticRootResolved.ticCfg;
         /** Une entrée consommée dans 🕰.order : un seul shift si la tête correspond à l’action réellement jouée (pas de boucle sur 🔘🕰 à chaque frame). */
         const popOrderAfterAction = (actedKey) => {
             const ord = _tlEpoch['🕰'] && _tlEpoch['🕰'].order;
@@ -263,7 +281,7 @@ window.updateEpochActions = function () {
         const advanceGeologicTicOrder = (D, stepMa, buttonKey) => {
             if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
             D['📜']['📿💫'] += 1;
-            if (buttonKey === '💫' && ticCfgRoot && Object.prototype.hasOwnProperty.call(ticCfgRoot, '🍰⚽')) {
+            if ((buttonKey === '💫' || buttonKey === '🏔' || buttonKey === '⛰') && ticCfgRoot && Object.prototype.hasOwnProperty.call(ticCfgRoot, '🍰⚽')) {
                 D['📜']['🔺🍰⚽'] = Number(ticCfgRoot['🍰⚽']);
                 D['📜']['_veilTimelinePulseActive'] = false;
             }
@@ -440,6 +458,96 @@ window.updateEpochActions = function () {
                     });
                 }
                 eventsLogos.appendChild(ticBtn);
+            } else if (act === '🏔') {
+                const stepMaT = (cfg && typeof cfg['🔺⏳'] === 'number') ? cfg['🔺⏳'] : 100;
+                const stepLabel = formatStepLabel(stepMaT);
+                const ticBtn = document.createElement('button');
+                ticBtn.type = 'button';
+                ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
+                ticBtn.textContent = '🏔';
+                ticBtn.alt = stepLabel;
+                window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
+                if (epochId === '🔥') {
+                    ticBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        const cellTerre = document.getElementById('cell-terre');
+                        if (cellTerre) {
+                            const canvas = cellTerre.querySelector('canvas');
+                            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
+                                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
+                            }
+                        }
+                        const durMaT = window.getCurrentEpochDurationMa();
+                        if (durMaT == null || !Number.isFinite(durMaT)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour 🏔 🔥');
+                        window.infoTimeMa = (window.infoTimeMa || 0) + stepMaT;
+                        if (window.infoTimeMa > durMaT) window.infoTimeMa = durMaT;
+                        window.DATA['📜']['bary'] = durMaT > 0 ? window.infoTimeMa / durMaT : 0;
+                        if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction('🏔'); })) return;
+                        window.updateTimeline();
+                        window.updateHadeenTexture();
+                        applyHadeenFluxFromConfig();
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '🏔' });
+                        checkDateEvents();
+                        popOrderAfterAction('🏔');
+                    });
+                } else {
+                    ticBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        advanceGeologicTicOrder(window.DATA, stepMaT, '🏔');
+                    });
+                }
+                eventsLogos.appendChild(ticBtn);
+            } else if (act === '⛰') {
+                const stepMaT = (cfg && typeof cfg['🔺⏳'] === 'number') ? cfg['🔺⏳'] : 100;
+                const stepLabel = formatStepLabel(stepMaT);
+                const ticBtn = document.createElement('button');
+                ticBtn.type = 'button';
+                ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
+                ticBtn.textContent = '⛰';
+                ticBtn.alt = stepLabel;
+                window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
+                if (epochId === '🔥') {
+                    ticBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        const cellTerre = document.getElementById('cell-terre');
+                        if (cellTerre) {
+                            const canvas = cellTerre.querySelector('canvas');
+                            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
+                                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
+                            }
+                        }
+                        const durMaT = window.getCurrentEpochDurationMa();
+                        if (durMaT == null || !Number.isFinite(durMaT)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ⛰ 🔥');
+                        window.infoTimeMa = (window.infoTimeMa || 0) + stepMaT;
+                        if (window.infoTimeMa > durMaT) window.infoTimeMa = durMaT;
+                        window.DATA['📜']['bary'] = durMaT > 0 ? window.infoTimeMa / durMaT : 0;
+                        if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction('⛰'); })) return;
+                        window.updateTimeline();
+                        window.updateHadeenTexture();
+                        applyHadeenFluxFromConfig();
+                        window.COMPUTE.getEpochDateConfig();
+                        window.COMPUTE.getNoyau();
+                        if (!window.FLUX) window.FLUX = {};
+                        window.FLUX.yAxisRecalcOnNextFinish = true;
+                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '⛰' });
+                        checkDateEvents();
+                        popOrderAfterAction('⛰');
+                    });
+                } else {
+                    ticBtn.addEventListener('click', () => {
+                        window.hideTooltip();
+                        advanceGeologicTicOrder(window.DATA, stepMaT, '⛰');
+                    });
+                }
+                eventsLogos.appendChild(ticBtn);
             }
         }
         return;
@@ -540,16 +648,18 @@ window.updateEpochActions = function () {
         });
         eventsLogos.appendChild(bigImpactBtn);
     } else {
-            // Géologique (repli ACTION_BY_DATE) : 🌋 + 💫
+            // Géologique (repli ACTION_BY_DATE) : 🌋 + tic temps 💫 / 🏔 / ⛰ (config)
             const wh = whRoot;
             const volcCfg = wh['🌋'];
-            const ticCfg = wh['💫'];
+            const ticResolved = resolveGeologicTicFromWh(wh);
+            const ticKey = ticResolved.ticKey;
+            const ticCfg = ticResolved.ticCfg;
             const showTicBtn = (volcCfg == null) || (ticCfg != null);
 
             const advanceGeologicTic = (D, stepMa, buttonKey) => {
                 if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
                 D['📜']['📿💫'] += 1;
-                if (buttonKey === '💫' && ticCfg && Object.prototype.hasOwnProperty.call(ticCfg, '🍰⚽')) {
+                if ((buttonKey === '💫' || buttonKey === '🏔' || buttonKey === '⛰') && ticCfg && Object.prototype.hasOwnProperty.call(ticCfg, '🍰⚽')) {
                     D['📜']['🔺🍰⚽'] = Number(ticCfg['🍰⚽']);
                     D['📜']['_veilTimelinePulseActive'] = false;
                 }
@@ -588,7 +698,7 @@ window.updateEpochActions = function () {
                 const ticBtn = document.createElement('button');
                 ticBtn.type = 'button';
                 ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
-                ticBtn.textContent = '💫';
+                ticBtn.textContent = ticKey || '💫';
                 ticBtn.alt = stepLabel;
                 window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
                 if (epochId === '🔥') {
@@ -604,7 +714,7 @@ window.updateEpochActions = function () {
                             }
                         }
                         const durMaTb = window.getCurrentEpochDurationMa();
-                        if (durMaTb == null || !Number.isFinite(durMaTb)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour 💫 🔥 (ACTION_BY_DATE)');
+                        if (durMaTb == null || !Number.isFinite(durMaTb)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour tic temps 🔥 (ACTION_BY_DATE)');
                         window.infoTimeMa = (window.infoTimeMa || 0) + stepMa;
                         if (window.infoTimeMa > durMaTb) window.infoTimeMa = durMaTb;
                         window.DATA['📜']['bary'] = durMaTb > 0 ? window.infoTimeMa / durMaTb : 0;
@@ -616,13 +726,13 @@ window.updateEpochActions = function () {
                         window.COMPUTE.getNoyau();
                         if (!window.FLUX) window.FLUX = {};
                         window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '💫' });
+                        window.IO_LISTENER.emit('config:applyThenCompute', { button: ticKey || '💫' });
                         checkDateEvents();
                     });
                 } else {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
-                        advanceGeologicTic(window.DATA, stepMa, '💫');
+                        advanceGeologicTic(window.DATA, stepMa, ticKey || '💫');
                     });
                 }
                 eventsLogos.appendChild(ticBtn);

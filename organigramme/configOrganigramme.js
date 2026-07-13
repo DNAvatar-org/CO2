@@ -1,9 +1,13 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.41
-// Date: [May 06, 2026] [12:00 UTC+1]
+// Version 1.1.46
+// Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
-// - v1.1.41: terre Corps Noir — radiusExobase = surface + ε (couche « atmosphère » négligeable, derrière la Terre en z)
+// - v1.1.46: getCurrentDateKey — Number(startYears) avant + info×1e6 (évite concat chaîne «-10000»+8000 pour ACTION / alignement texture).
+// - v1.1.45: z-order Terre > flèches (max arc 30) ; ARROW_LABEL 50 pour lisibilité ; reemis 36 ; noyau 34 — bande spectrale (#spectral-visualization) reste au-dessus (plot après flux au DOM).
+// - v1.1.44: commentaire ACTION_BY_DATE — Ma = fonds/-NNNNNMa.png (plus _NNNNNMa.png).
+// - v1.1.43: TEXTURES_THREEJS — Ma en '-' + 5 ch + Ma.png (même convention organigramme v1.0.102).
+// - v1.1.42: TEXTURES_THREEJS — années signées « _ »/« - » + 6 ch + a.png (préfixe Ma corrigé en v1.1.43).
 // - v1.1.40: timeline-scenario-anim — fillColor transparent (plus de disque blanc derrière 🎞 SKIP)
 // - v1.1.39: doc timeline-scenario-anim — cellule #plot-anim-toggle = flux-cell + .organigram-logo sur le span 🎞 (plus icon-button / flux-button-cell sur la cellule ; voir organigramme.js v1.0.81)
 // - v1.1.38: terre.epoch + noyau.radiation — nouvelles époques v1.4.0 timeline : ☃ Sturtienne (hyst 1a), ⛄ Plein Snowball, ⛈ Sortie Marinoen (hyst 1b),
@@ -69,12 +73,19 @@ const LOGOS = window.CHARS;
 // ⚠️ charsImages (alphabet.js) ne touche JAMAIS aux textures !
 // Le chemin texture se déduit toujours de la date : getPlanetTexturePathFromEpoch(▶, infoTimeMa) (organigramme.js).
 // Liste pour préchargement éventuel : dérivée des dates (Ma ou années), pas des noms d’époques.
-// Convention : 5 chiffres + "Ma.png" (ex. 05000Ma.png) ou 6 chiffres + "a.png" (ex. 001800a.png).
+// Convention : '-' + 5 chiffres + Ma.png (temps géologique) ; années : ('_' si y≥0, '-' si y<0) + 6 chiffres + a.png.
+function fondsTexturePathFromSignedYear(y) {
+    const yR = Math.round(Number(y));
+    const p = String(Math.abs(yR)).padStart(6, "0");
+    const pref = yR < 0 ? "-" : "_";
+    return "fonds/" + pref + p + "a.png";
+}
 const TEXTURE_DATES_MA = [5000, 4500, 4100, 3700, 3300, 2900, 2500, 2300, 225, 150, 100, 200, 66, 50, 35, 33, 2];
-const TEXTURE_DATES_YEAR = [1800, 2025];
+/** Années signées (Holocène BP négatif, CE positif) — aligné getTimelineCurrentYears. */
+const TEXTURE_DATES_YEAR = [-10000, -6500, -3000, -2000, -1000, 1800, 2025];
 const TEXTURES_THREEJS = [
-    ...TEXTURE_DATES_MA.map((ma) => "fonds/" + String(ma).padStart(5, "0") + "Ma.png"),
-    ...TEXTURE_DATES_YEAR.map((y) => "fonds/" + String(y).padStart(6, "0") + "a.png"),
+    ...TEXTURE_DATES_MA.map((ma) => "fonds/-" + String(ma).padStart(5, "0") + "Ma.png"),
+    ...TEXTURE_DATES_YEAR.map((y) => fondsTexturePathFromSignedYear(y)),
 ];
 
 // Configuration de base
@@ -108,8 +119,8 @@ const spacingSizes = {
 // Constantes de Z-Index pour l'architecture en couches
 const Z_LAYERS = {
     ARROW: 10,
-    ARROW_LABEL: 11, // Au-dessus des flèches
-    NODE: 20,        // Conteneur des nœuds (au-dessus des flèches et étiquettes)
+    ARROW_LABEL: 50, // Au-dessus des flèches et de #cell-terre (32) pour les libellés ; sous RADIATION (100).
+    NODE: 20,        // Plancher nœuds « classiques » ; libellés de flèches ARROW_LABEL (50) au-dessus ; Terre 32
     RADIATION: 100,  // Au-dessus des nœuds
     BUTTON: 200      // Au-dessus de tout
 };
@@ -134,10 +145,10 @@ const NODE_Z_INDEX = {
     GEOMETRIE: 13,     // Géométrie (petit nœud)
     ESPACE1: 14,       // Satellite espace1
     ALBEDO: 10,        // Albédo (derrière la Terre)
-    NOYAU: 20,         // Noyau (au centre de la Terre)
-    SURFACE: 15,       // Terre/Surface
+    NOYAU: 34,         // Noyau (au-dessus du globe Terre, sous RADIATION)
+    SURFACE: 32,       // Terre/Surface (au-dessus des flèches, z max arc 30)
     ESPACE2: 14,       // Satellite espace2
-    REEMIS: 25,        // Réémis (devant tout)
+    REEMIS: 36,        // Réémis / EDS (au-dessus du globe Terre)
     // Boutons
     CO2: 200,
     METHANE: 200,
@@ -147,15 +158,15 @@ const NODE_Z_INDEX = {
 
 // Z-index spécifiques pour les flèches (pour gérer les cas où elles doivent passer devant/derrière des nœuds)
 const ARROW_Z_INDEX = {
-    DEFAULT: 10,           // Flèches normales (derrière les nœuds)
+    DEFAULT: 10,           // Flèches normales (derrière #cell-terre z 32)
     SOLEIL_GEOMETRIE: 10,  // Soleil -> Géométrie
     GEOMETRIE_ALBEDO: 10,  // Géométrie -> Albédo (jaune)
     GEOMETRIE_SURFACE: 10, // Géométrie -> Surface (jaune)
     ALBEDO_ESPACE1: 10,    // Albédo -> Espace1 (réfléchi)
-    NOYAU_SURFACE: 22,     // Noyau -> Surface (devant la Terre, z-index 15)
-    SURFACE_ALBEDO: 22,    // Surface -> Albédo (rouge, devant la Terre)
-    ALBEDO_ESPACE2: 22,    // Albédo -> Espace2 (orange, devant la Terre)
-    REEMIS_SURFACE: 26     // Réémis -> Surface (rouge, devant tout)
+    NOYAU_SURFACE: 22,     // Noyau -> Surface (sous le globe Terre z 32)
+    SURFACE_ALBEDO: 22,    // Surface -> Albédo (rouge, sous le globe)
+    ALBEDO_ESPACE2: 22,    // Albédo -> Espace2 (orange, sous le globe)
+    REEMIS_SURFACE: 26     // Réémis -> Surface (rouge, sous le globe et EDS z 36)
 };
 
 // Configuration du rayonnement dynamique du noyau
@@ -368,7 +379,7 @@ const nodes = [
                 color: '#ff9800'
             }
         ],
-        zIndex: 20,
+        zIndex: 34,
         logoScale: 0.8,
         logoOffsetY: 2
     },
@@ -580,7 +591,7 @@ const nodes = [
         bottom: '',
         tooltip: 'Terre',
         radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' },
-        zIndex: 15
+        zIndex: 32
     },
 
     {//espace2
@@ -588,7 +599,7 @@ const nodes = [
     },
     // EDS : angleInit anime l’ouverture masquée 210→340 (secteur visible 150°→20°), pas la direction. Orienter le faisceau → rotation (explicite ou auto depuis l’arc reemis→terre si rotation omis).
     {//📛 reemis
-     id: 'reemis', logo: LOGOS.EDS, zIndex: 25, x: centerX+ circleMiddleRadius*1.5 * Math.cos(Math.PI/2-0.25), y: earthCenterY + circleMiddleRadius*1.5 * Math.sin(Math.PI/2-0.25), radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } 
+     id: 'reemis', logo: LOGOS.EDS, zIndex: 36, x: centerX+ circleMiddleRadius*1.5 * Math.cos(Math.PI/2-0.25), y: earthCenterY + circleMiddleRadius*1.5 * Math.sin(Math.PI/2-0.25), radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } 
     },
 
     {//co2
@@ -771,27 +782,29 @@ function getEffectiveNodesConfig(epochName, bary) {
     return out;
 }
 
-// Deuxième bouton ACTION en haut de la timeline : entrée = date (clé = même date que les images fonds/NNNNNa.png ou NNNNNMa.png).
+// Deuxième bouton ACTION en haut de la timeline : entrée = date (clé = même date que les images fonds/_NNNNNa.png / fonds/-NNNNNa.png ou fonds/-NNNNNMa.png).
 // Clé = Ma (5000, 4900, … 33, 66, 150, 250, 500, …) ou année (1800, 2025). Valeur = '☄️' | '🎇' | '💫'.
 // Tu remplis les valeurs après ; défaut si clé absente = '💫'.
 const ACTION_BY_DATE = {
-    // Ma (cf. fonds/05000Ma.png …)
+    // Ma (cf. fonds/-05000Ma.png …)
     5000: '☄️', 4900: '💫', 4800: '☄️', 4700: '💫', 4600: '🎇',
     4500: '☄️', 4400: '💫', 4300: '☄️', 4200: '💫', 4100: '☄️',
     4000: '💫', 3500: '💫', 3000: '💫', 2500: '💫', 2000: '💫',
     1500: '💫', 1000: '💫', 750: '🌋', 720: '💫', 600: '💫', 500: '💫', 250: '💫', 150: '💫',
     66: '💫', 50: '💫', 35: '💫', 33: '💫', 2: '💫',
-    // Années (cf. fonds/001800a.png, 002025a.png)
+    // Années CE (fonds/_001800a.png, _002025a.png) ; années BP négatives en TIMELINE → fonds/-010000a.png etc.
     1800: '💫', 2025: '💫'
 };
 
 /** Retourne la date courante (même calcul que la texture) : Ma ou année selon startYears. */
 function getCurrentDateKey(startYears, infoTimeMa) {
     const info = Number(infoTimeMa) || 0;
-    if (startYears >= 1e6) {
-        return Math.round(startYears / 1e6 - info);
+    const sy = Number(startYears);
+    if (!Number.isFinite(sy)) return NaN;
+    if (sy >= 1e6) {
+        return Math.round(sy / 1e6 - info);
     }
-    return Math.round(startYears + info * 1e6);
+    return Math.round(sy + info * 1e6);
 }
 
 /** Retourne '☄️' | '🎇' | '💫' pour la date courante (startYears, infoTimeMa). Lookup ACTION_BY_DATE[dateKey]. */

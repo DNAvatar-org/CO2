@@ -1,8 +1,11 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.24
+ * Version 1.0.26
  * Date: 2026-05-07
 * logs :
+ * - v1.0.26: getTimelineCurrentYears — Number(▶/◀/infoTimeMa) avant arithmétique (évite concat chaîne « -10000 »+8000 → an 2000 CE / mauvais fonds).
+ * - v1.0.25: curseur frise = getTimelineCurrentMa() (aligné getTimelineCurrentYears / texture). L’ancien
+ *   startMa ± infoTimeMa pour forward est faux si ▶ < 0 (🛖 Holocène −10⁴ a) → barre figée en haut, PNG suit pourtant la date.
  * - v1.0.24: window.getTimelineCurrentYears — même date que le curseur pour getPlanetTexturePathFromEpoch (évite 00000Ma.png en fin 🦣 / 🛖 via event).
  * - v1.0.23: effectiveTimelineEndSlackMa — slack 0,05 Ma trop grand pour époques CE (dur ~1e−4 Ma) → faux SKIP immédiat vers 📱 ; min(0,05, dur×1%).
  * - v1.0.22: window.togglePlotAnim défini ici (source unique) — pages sans loader_panels (ex. scie_compute.html) ; fallback setEpoch / window.selectEpoch.
@@ -108,10 +111,17 @@ function getEpochAtTimelineIndex() {
 function getTimelineCurrentYears() {
     const epoch = getEpochAtTimelineIndex();
     if (!epoch || epoch['▶'] == null) return null;
-    const isForwardEpoch = epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀'];
-    const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
-    const elapsedYears = infoTimeMa * 1e6;
-    return isForwardEpoch ? epoch['▶'] + elapsedYears : epoch['▶'] - elapsedYears;
+    const startY = Number(epoch['▶']);
+    if (!Number.isFinite(startY)) return null;
+    const endY = epoch['◀'] != null ? Number(epoch['◀']) : NaN;
+    const isForwardEpoch =
+        Number.isFinite(endY) && startY < endY;
+    const rawInfo = window.infoTimeMa;
+    const infoTimeMa = Number(rawInfo);
+    const infoSafe = Number.isFinite(infoTimeMa) ? infoTimeMa : 0;
+    const elapsedYears = infoSafe * 1e6;
+    const cy = isForwardEpoch ? startY + elapsedYears : startY - elapsedYears;
+    return Number.isFinite(cy) ? cy : null;
 }
 
 window.getTimelineCurrentYears = getTimelineCurrentYears;
@@ -440,32 +450,33 @@ function updateTimeline() {
                     'TIMELINE[' + String(idx) + '] absent ou 👉 hors plage (len=' + String(TIMELINE.length) + ')');
             } else {
                 const startMa = timelineDeltaYearsToStartMa(epoch['▶']);
-                // Époques forward (▶ < ◀, CE years : 1800→2025) : les dates croissantes = plus négatives en Ma convention
-                // → soustraire infoTimeMa pour monter la jauge. Époques géologiques : addition standard.
-                const isForwardEpoch = (epoch['▶'] != null && epoch['◀'] != null && epoch['▶'] < epoch['◀']);
-                const currentMa = isForwardEpoch ? startMa - window.infoTimeMa : startMa + window.infoTimeMa;
-                const topPx = getCursorTopPx(container, textRows, scaleMa, currentMa) + TIMELINE_CURSOR_OFFSET_PX;
-                if (!window._timelineCursorAnimating) {
-                    cursor2.style.setProperty('top', topPx + 'px');
-                    cursor2.setAttribute('data-timeline-top', String(Math.round(topPx)));
-                }
-                logTimelineGeometry();
-                // Debug curseurs >..< pour époques récentes (1800, 2100)
-                const epochId = epoch['📅'];
-                const epochStartYears = epoch['▶'];
-                if (epochId === '📱' || epochId === '🚂' || (typeof epochStartYears === 'number' && epochStartYears >= 1800)) {
-                    if (!window._lastCursorDebug || window._lastCursorDebug !== epochStartYears) {
-                        window._lastCursorDebug = epochStartYears;
-                        if (typeof window.pdTrace === 'function') {
-                            window.pdTrace('curseurs', 'timeline.js',
-                                'epochId=' + epochId + ' epochStartYears(▶)=' + epochStartYears +
-                                ' startMa=' + startMa.toFixed(6) + ' currentMa=' + currentMa.toFixed(6) +
-                                ' scaleMa[0]=' + scaleMa[0].toFixed(6) + ' scaleMa[last]=' + scaleMa[scaleMa.length - 1].toFixed(6) +
-                                ' scaleTexts=' + scaleTexts.join(',') + ' topPx=' + topPx.toFixed(1) + ' idx=' + idx);
-                        }
-                    }
+                const currentMa = getTimelineCurrentMa();
+                if (currentMa == null || !Number.isFinite(currentMa)) {
+                    pdOnce('timeline-cursor-current-ma-null', 'updateTimeline', 'timeline.js',
+                        'getTimelineCurrentMa invalide epoch=' + String(epoch['📅']));
                 } else {
-                    window._lastCursorDebug = null;
+                    const topPx = getCursorTopPx(container, textRows, scaleMa, currentMa) + TIMELINE_CURSOR_OFFSET_PX;
+                    if (!window._timelineCursorAnimating) {
+                        cursor2.style.setProperty('top', topPx + 'px');
+                        cursor2.setAttribute('data-timeline-top', String(Math.round(topPx)));
+                    }
+                    logTimelineGeometry();
+                    const epochId = epoch['📅'];
+                    const epochStartYears = epoch['▶'];
+                    if (epochId === '📱' || epochId === '🚂' || (typeof epochStartYears === 'number' && epochStartYears >= 1800)) {
+                        if (!window._lastCursorDebug || window._lastCursorDebug !== epochStartYears) {
+                            window._lastCursorDebug = epochStartYears;
+                            if (typeof window.pdTrace === 'function') {
+                                window.pdTrace('curseurs', 'timeline.js',
+                                    'epochId=' + epochId + ' epochStartYears(▶)=' + epochStartYears +
+                                    ' startMa=' + startMa.toFixed(6) + ' currentMa=' + currentMa.toFixed(6) +
+                                    ' scaleMa[0]=' + scaleMa[0].toFixed(6) + ' scaleMa[last]=' + scaleMa[scaleMa.length - 1].toFixed(6) +
+                                    ' scaleTexts=' + scaleTexts.join(',') + ' topPx=' + topPx.toFixed(1) + ' idx=' + idx);
+                            }
+                        }
+                    } else {
+                        window._lastCursorDebug = null;
+                    }
                 }
             }
         }

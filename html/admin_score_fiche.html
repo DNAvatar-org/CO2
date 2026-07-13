@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<!--
+  File: CO2/html/admin_score_fiche.html — Fiche score (cartouches orange + récap)
+  Desc: Page HTML autonome : non injectée dans index / visu / organigramme. Détail calcul + CSV bruts.
+  Version 1.3.2
+  Copyright 2025-2026 DNAvatar.org - Arnaud Maignan
+  Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
+  Date: May 07, 2026
+  Logs:
+  - v1.3.2: fichier canonique admin_score_fiche.html (nom sans « triangle ») ; pas de SVG géométrie dans cette page.
+  - v1.3.1: cartouches orange, Pop = 100×4/(2+log₁₀ N), récap ◉.
+-->
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/CO2/static/logs_to_server.js"></script>
+    <title>Fiche score — détail calcul</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0f1210;
+            color: #d8e0dc;
+            min-height: 100vh;
+            padding: 18px 22px 40px;
+        }
+        h1 { font-size: 1.12rem; font-weight: 600; margin: 0 0 10px; color: #e8f0ec; }
+        .lead { font-size: 0.82rem; color: #8a9a90; max-width: 48rem; line-height: 1.55; margin-bottom: 14px; }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 18px;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .toolbar button {
+            background: #243028;
+            color: #b0d4c0;
+            border: 1px solid #3d5c4d;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font: inherit;
+        }
+        .toolbar label { font-size: 0.84rem; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+        .inputs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 18px;
+            margin-bottom: 16px;
+            align-items: flex-end;
+        }
+        .inputs label { font-size: 0.76rem; color: #9aa8a0; display: flex; flex-direction: column; gap: 4px; }
+        .inputs input[type="number"], .inputs select {
+            background: #1a2220;
+            border: 1px solid #35403a;
+            color: #e0e8e4;
+            padding: 6px 8px;
+            border-radius: 4px;
+            width: 5.2rem;
+        }
+        .inputs input.text-wide { width: 14rem; }
+        .orange-box {
+            background: rgba(200, 120, 40, 0.14);
+            border: 2px solid #d4872e;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            max-width: 36rem;
+            font-size: 0.92rem;
+            line-height: 1.55;
+        }
+        .orange-box .coef { color: #e8b060; font-weight: 600; }
+        .orange-box strong { color: #fff0e0; }
+        .orange-box.score-total { background: rgba(200, 120, 40, 0.22); font-weight: 600; }
+        .recap {
+            margin-top: 18px;
+            padding: 12px 14px;
+            background: #151a17;
+            border: 1px solid #2a3530;
+            border-radius: 8px;
+            max-width: 36rem;
+            font-size: 0.88rem;
+            line-height: 1.65;
+            color: #b0c4b8;
+        }
+        .csv-note { font-size: 0.72rem; color: #5f7268; margin-top: 14px; max-width: 48rem; }
+    </style>
+</head>
+<body>
+    <h1>Fiche score — calculs (cartouches orange)</h1>
+    <p class="lead">
+        <em>Page isolée</em> : ouvre ce fichier dans le navigateur ; ce n’est pas un onglet du bilan radiatif principal.
+        <strong>Pa = 0,6</strong>, <strong>Po = 0,3</strong>, <strong>Ge = 0,1</strong>. Contribution parrain = <strong>Pa ×</strong> % parrain ;
+        Pop = <strong>Po ×</strong> (100 × <strong>4 / (2 + log₁₀ N)</strong>) en points % ; Genre = <strong>Ge ×</strong> % genre.
+        Si genre inconnu : terme = <strong>Ge × 50</strong>.
+    </p>
+
+    <div class="toolbar">
+        <button type="button" id="btn-reset">Exemple (68, 276, 0)</button>
+        <button type="button" id="btn-csv">CSV (bruts + genre)</button>
+        <label><input type="checkbox" id="genre-unknown" /> Genre inconnu (Ge×50)</label>
+    </div>
+
+    <div class="inputs">
+        <label>% Parrain <input type="number" id="raw-parrain" min="0" max="100" step="0.1" value="68" /></label>
+        <label>N (Pop, log₁₀) <input type="number" id="pop-n" min="1" step="1" value="276" /></label>
+        <label>Genre (0 ou 100) <select id="raw-genre"><option value="0" selected>0 %</option><option value="100">100 %</option></select></label>
+        <label>Ligne récap Parrain <input type="text" class="text-wide" id="recap-parrain-label" value="Jamais parrainé (×1)" /></label>
+    </div>
+
+    <div id="boxes"></div>
+    <div class="recap" id="recap"></div>
+    <p class="csv-note">CSV : <code>parrain_pct,pop_n,genre_unknown,genre_pct</code> — score recalculé au chargement.</p>
+
+    <script>
+(function () {
+    'use strict';
+
+    var PA = 0.6;
+    var PO = 0.3;
+    var GE = 0.1;
+
+    function clampPct(x) {
+        if (!Number.isFinite(x)) return 0;
+        return Math.max(0, Math.min(100, x));
+    }
+
+    function popPctFromN(n) {
+        if (!Number.isFinite(n) || n <= 0) return 0;
+        var den = 2 + Math.log10(n);
+        if (den <= 0) return 0;
+        return 100 * (4 / den);
+    }
+
+    function read() {
+        var par = clampPct(Number(document.getElementById('raw-parrain').value));
+        var n = Number(document.getElementById('pop-n').value);
+        var unk = document.getElementById('genre-unknown').checked;
+        var g = unk ? 50 : clampPct(Number(document.getElementById('raw-genre').value));
+        var popPct = popPctFromN(n);
+        var cPa = PA * par;
+        var cPo = PO * popPct;
+        var cGe = GE * g;
+        var score = cPa + cPo + cGe;
+        return {
+            par: par,
+            n: n,
+            popPct: popPct,
+            g: g,
+            genreUnknown: unk,
+            cPa: cPa,
+            cPo: cPo,
+            cGe: cGe,
+            score: score
+        };
+    }
+
+    function fmtPctMid(x) {
+        var r = Math.round(x);
+        if (Math.abs(x - r) < 0.08) return String(r);
+        return x.toFixed(1);
+    }
+
+    function fmtIntPct(x) {
+        return String(Math.round(x));
+    }
+
+    function sync() {
+        var u = read();
+        var sel = document.getElementById('raw-genre');
+        sel.disabled = u.genreUnknown;
+
+        var nInt = Math.round(u.n);
+        var linePop = 'Pop. <span class="coef">(×' + PO + ')</span> (4/(2+log₁₀(' + nInt + '))=<strong>' + fmtPctMid(u.popPct) + '%</strong>) = <strong>' + fmtIntPct(u.cPo) + '%</strong>';
+        var lineGenre = u.genreUnknown
+            ? 'Genre. <span class="coef">(×' + GE + ')</span> <strong>50%</strong> (estimé) = <strong>' + fmtIntPct(u.cGe) + '%</strong>'
+            : 'Genre. <span class="coef">(×' + GE + ')</span> <strong>' + (u.g >= 50 ? 100 : 0) + '%</strong> = <strong>' + fmtIntPct(u.cGe) + '%</strong>';
+
+        document.getElementById('boxes').innerHTML =
+            '<div class="orange-box">Parrain. <span class="coef">(×' + PA + ')</span> <strong>' + fmtPctMid(u.par) + '%</strong> = <strong>' + fmtIntPct(u.cPa) + '%</strong></div>'
+            + '<div class="orange-box">' + linePop + '</div>'
+            + '<div class="orange-box">' + lineGenre + '</div>'
+            + '<div class="orange-box score-total">Score = <strong>' + fmtIntPct(u.score) + '%</strong></div>';
+
+        var lab = document.getElementById('recap-parrain-label').value.trim() || 'Parrain';
+        document.getElementById('recap').innerHTML =
+            '◉ ' + lab + ' ≈ <strong>' + fmtPctMid(u.par) + '%</strong><br>'
+            + 'Pop (<strong>' + nInt + '</strong>) ≈ <strong>' + fmtPctMid(u.popPct) + '%</strong><br>'
+            + 'Genre <strong>' + (u.genreUnknown ? '(inconnu→50)' : String(u.g >= 50 ? 100 : 0)) + '</strong>';
+    }
+
+    document.getElementById('btn-reset').addEventListener('click', function () {
+        document.getElementById('raw-parrain').value = '68';
+        document.getElementById('pop-n').value = '276';
+        document.getElementById('raw-genre').value = '0';
+        document.getElementById('genre-unknown').checked = false;
+        document.getElementById('recap-parrain-label').value = 'Jamais parrainé (×1)';
+        sync();
+    });
+
+    document.getElementById('btn-csv').addEventListener('click', function () {
+        var u = read();
+        var gKnown = u.genreUnknown ? '' : (u.g >= 50 ? 100 : 0);
+        var row = [u.par, Math.round(u.n), u.genreUnknown ? 1 : 0, gKnown].join(',');
+        var blob = new Blob(['parrain_pct,pop_n,genre_unknown,genre_pct\n' + row + '\n'], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'score_fiche_row.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById('genre-unknown').addEventListener('change', sync);
+    ['raw-parrain', 'pop-n', 'raw-genre', 'recap-parrain-label'].forEach(function (id) {
+        var el = document.getElementById(id);
+        el.addEventListener('input', sync);
+        el.addEventListener('change', sync);
+    });
+
+    sync();
+})();
+    </script>
+</body>
+</html>

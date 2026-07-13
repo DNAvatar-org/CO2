@@ -1,12 +1,18 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.100
+// Version 1.0.106
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.106 TextureLoader — URL absolue (new URL(fonds/…)) + correctif fonds/_NNNNNNa.png si année signée < 0 (pas _002000a pour −2000).
+// Logs: v1.0.105 planetTexturePathFromAbsoluteYears — Number(y) avant isFinite (chaîne «-2000» → -002000a, pas _002025a).
+// Logs: v1.0.104 commentaire z-index grille cellule (ARROW_LABEL / Terre z — configOrganigramme v1.1.45).
+// Logs: v1.0.103 normalizeLegacyFondsMaUnderscore — fonds/_NNNNNMa.png (ancienne convention / cache) → fonds/-NNNNNMa.png.
+// Logs: v1.0.102 fonds Ma — préfixe '-' systématique (|-Ma| en temps géologique) : -05000Ma.png ; cohérent avec -002000a.png.
+// Logs: v1.0.101 fonds années |y|<1e6 : '-' si y<0, '_' si y≥0 + 6 ch + a.png (ex. -002000a vs _001800a). Ma → v1.0.102.
 // Logs: v1.0.100 texture fonds — getPlanetTexturePathFromEpoch aligné sur getTimelineCurrentYears() (plus de 00000Ma.png fin 🦣 / événements → 🛖 010000a.png).
 // Logs: v1.0.99 masse atm — fallback COMPUTE.dryAtmosphereMassKgFromComponents si plus de ⚖️🫧 en TIMELINE.
 // Logs: v1.0.98 fine_tuning_cloud_bary : aria-label mini-jauge = « Flou scientifique » (homogène avec data-tooltip).
@@ -546,25 +552,54 @@ function textureDeltaYearsToStartMa(deltaYears) {
 
 /**
  * Chemin fonds/*.png depuis une date « année » absolue (même règle que le curseur : getTimelineCurrentYears).
- * |année| ≥ 1e6 → grille Ma (5 chiffres) ; sinon → grille années 6 chiffres + a.png (ex. Holocène 10 ka → 010000a.png).
+ * |y| ≥ 1e6 : '-' + magnitude 5 chiffres + Ma.png (temps géologique négatif). Années |y|<1e6 : '_' si y≥0, '-' si y<0 + 6 ch + a.png.
  */
 function planetTexturePathFromAbsoluteYears(y) {
-  if (y == null || !Number.isFinite(y)) {
-    return "fonds/002025a.png";
+  const yN = Number(y);
+  if (y == null || y === "" || !Number.isFinite(yN)) {
+    return "fonds/_002025a.png";
   }
-  const yR = Math.round(Number(y));
+  const yR = Math.round(yN);
   const yAbs = Math.abs(yR);
   if (yAbs >= 1e6) {
     const ma = textureDeltaYearsToStartMa(yR);
     const absMa = Math.round(Math.abs(ma));
     if (absMa === 0) {
-      return "fonds/010000a.png";
+      return "fonds/-010000a.png";
     }
     const padded = String(absMa).padStart(5, "0");
-    return "fonds/" + padded + "Ma.png";
+    return "fonds/-" + padded + "Ma.png";
   }
   const padded = String(yAbs).padStart(6, "0");
-  return "fonds/" + padded + "a.png";
+  const signPref = yR < 0 ? "-" : "_";
+  return "fonds/" + signPref + padded + "a.png";
+}
+
+/** Ancienne convention erronée (ou bundle caché) : seules les textures Ma doivent être « - » + 5 chiffres, jamais « _ ». */
+function normalizeLegacyFondsMaUnderscore(path) {
+  if (typeof path !== "string") return path;
+  const m = /^fonds\/_([0-9]{5}Ma\.png)$/.exec(path);
+  if (m) return "fonds/-" + m[1];
+  return path;
+}
+
+/** Année calendaire signée négative : jamais la variante legacy fonds/_NNNNNNa.png (réservée au CE). */
+function normalizeLegacyFondsYearUnderscoreWhenNegative(path, signedYear) {
+  if (typeof path !== "string") return path;
+  if (!Number.isFinite(signedYear) || signedYear >= 0) return path;
+  const m = /^fonds\/_([0-9]{6}a\.png)$/.exec(path);
+  if (m) return "fonds/-" + m[1];
+  return path;
+}
+
+/** Résolution explicite pour Three.TextureLoader : même requête réseau que le navigateur pour ce chemin relatif. */
+function resolveFondsTextureUrlForLoader(path) {
+  if (typeof path !== "string" || path.length === 0) return path;
+  try {
+    return new URL(path, window.location.href).href;
+  } catch (e) {
+    return path;
+  }
 }
 
 /**
@@ -572,6 +607,8 @@ function planetTexturePathFromAbsoluteYears(y) {
  * Fallback : ancienne formule (startYears, infoTimeMa) si pas de contexte timeline.
  */
 function getPlanetTexturePathFromEpoch(startYears, infoTimeMa) {
+  let path;
+  let signedYearHint = NaN;
   if (
     typeof window.getTimelineCurrentYears === "function" &&
     window.DATA &&
@@ -579,25 +616,35 @@ function getPlanetTexturePathFromEpoch(startYears, infoTimeMa) {
     window.TIMELINE &&
     window.TIMELINE.length
   ) {
-    const cy = window.getTimelineCurrentYears();
-    if (cy != null && Number.isFinite(cy)) {
-      return planetTexturePathFromAbsoluteYears(cy);
+    const cyRaw = window.getTimelineCurrentYears();
+    const cy = cyRaw == null ? NaN : Number(cyRaw);
+    if (Number.isFinite(cy)) {
+      signedYearHint = cy;
+      path = planetTexturePathFromAbsoluteYears(cy);
     }
   }
-  const infoMa = Number(infoTimeMa) || 0;
-  if (startYears >= 1e6) {
-    const currentMa = -startYears / 1e6 + infoMa;
-    const absMa = Math.round(Math.abs(currentMa));
-    if (absMa === 0) {
-      return "fonds/010000a.png";
+  if (path === undefined) {
+    const infoMa = Number(infoTimeMa) || 0;
+    const sy = Number(startYears);
+    if (!Number.isFinite(sy)) {
+      path = "fonds/_002025a.png";
+    } else if (sy >= 1e6) {
+      const currentMa = -sy / 1e6 + infoMa;
+      const absMa = Math.round(Math.abs(currentMa));
+      if (absMa === 0) {
+        path = "fonds/-010000a.png";
+      } else {
+        const padded = String(absMa).padStart(5, "0");
+        path = "fonds/-" + padded + "Ma.png";
+      }
+    } else {
+      signedYearHint = Math.round(sy + infoMa * 1e6);
+      path = planetTexturePathFromAbsoluteYears(signedYearHint);
     }
-    const padded = String(absMa).padStart(5, "0");
-    return "fonds/" + padded + "Ma.png";
   }
-  const currentYear = Math.round(startYears + infoMa * 1e6);
-  const absYear = Math.round(Math.abs(currentYear));
-  const padded = String(absYear).padStart(6, "0");
-  return "fonds/" + padded + "a.png";
+  path = normalizeLegacyFondsMaUnderscore(path);
+  path = normalizeLegacyFondsYearUnderscoreWhenNegative(path, signedYearHint);
+  return path;
 }
 
 /**
@@ -751,25 +798,16 @@ function initPlanetThreeJS(
     // createPlanetSphere : après les lumières + définition de la fonction (évite TDZ sur directionalLight)
   } else {
     const textureLoader = new THREE.TextureLoader();
-    let resolvedUrl = logoPath;
-    try {
-      resolvedUrl = new URL(logoPath, window.location.href).href;
-    } catch (e) {
-      console.warn(
-        "[initPlanetThreeJS] logoPath invalide pour URL:",
-        logoPath,
-        e,
-      );
-    }
+    const resolvedUrl = resolveFondsTextureUrlForLoader(logoPath);
     textureLoader.load(
-      logoPath,
+      resolvedUrl,
       function (loadedTexture) {
         loadedTexture.wrapS = THREE.RepeatWrapping;
         loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
         texture = loadedTexture;
         window._lastPlanetTexturePath = logoPath;
         createPlanetSphere(sphereRadius);
-        console.log("🖼️ [texture] chargement OK:", textureName);
+        console.log("🖼️ [texture] chargement OK:", textureName, resolvedUrl);
         if (window._logStep) window._logStep("[2] texture Three.js (retour)");
         if (window._logStepEnd) window._logStepEnd();
         IO_LISTENER.emit("three:ready", { hasTexture: true, canvas: canvas });
@@ -2033,7 +2071,7 @@ function createCell(
       gridItem.style.gridColumn = col + 1;
       gridItem.style.gridRow = row + 1;
       gridItem.style.position = "relative";
-      gridItem.style.zIndex = Z_NODE_INTERNAL.LABEL; // Étiquettes TOUJOURS au-dessus de tout (flèches max ~26)
+      gridItem.style.zIndex = Z_NODE_INTERNAL.LABEL; // Libellés dans la cellule (relatif au maillon) ; libellés de flèches = ARROW_LABEL
 
       // [1,1] = Vide (le logo est dans le cercle en arrière-plan)
       // [1,0] = Top (haut)

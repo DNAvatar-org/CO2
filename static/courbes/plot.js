@@ -1,9 +1,10 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.95
+// Version 1.0.96
 // Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
+// - v1.0.96: marqueur Terre (spectral-eds-marker--eds) — retiré z-index 0 imposé : le logo redevient au-dessus du tracé Plotly (#plot-container z 2) comme placeSpectralMarker (1001), cohérent avec EDS.
 // - v1.0.95: bande spectrale — bas (pied, Terre) alpha=1 pleinement visible ; haut reste RGBA joint flux ; α interpole de aTop → 1 vers le bas ; repli sans flux arc-en-ciel α 0.5→1.
 // - v1.0.94: bande spectrale — haut = RGBA exacte de la dernière ligne du flux (getImageData) ; bas = même teinte, alpha→0 ; repli resize sans flux = arc-en-ciel α 0.5→0 ; dernière ligne flux toujours dessinée si yStep>1.
 // - v1.0.93: joint flux↔bande — une seule abscisse `spectrumBarTopY` (fin zone flux = début bande) ; retrait overlap/Y-offset/pont qui désynchronisaient les lignes.
@@ -1774,8 +1775,6 @@ function drawAbsorptionBandIndicators() {
         }
         const divEds = placeSpectralMarker('spectral-eds-marker--eds', 'Terre (émission vue de l’espace) — 0 km (axe droit, même bande que la graduation 0) ; Planck(sol)+(Planck(eff)−Planck(sol))/4 au pic Wien λ=' + lambdaMarkUm.toFixed(2) + ' μm (T_sol)', topEds);
         divEds.style.fontSize = edsSpectralMarkerFontPx + 'px';
-        // Terre derrière tous les autres calques (flux/courbes/indicateurs) pour respecter l'ordre d'écriture demandé.
-        divEds.style.zIndex = '0';
         divEds.style.color = edsSunColor;
         divEds.style.fontFamily = 'var(--font-emoji, \'Apple Color Emoji\', \'Noto Color Emoji\', \'Segoe UI Emoji\', sans-serif)';
         divEds.style.textShadow = '0 0 2px rgba(0,0,0,0.85)';
