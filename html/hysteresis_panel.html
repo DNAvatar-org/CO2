@@ -1,6 +1,8 @@
 <!-- File: CO2/html/hysteresis_panel.html - fragment HTML pour #hysteresis-panel -->
 <!-- Desc: host iframe standalone hysteresis_compute.html (globals isolés, bridge postMessage optionnel via shell). -->
+<!-- Version 1.0.1 -->
 <!-- Logs:
+# - v1.0.1: iframe sans title (plus d’alt0sec « simulation standalone » au survol) ; data-flux-tooltip=off ; aria-label lecteurs d’écran.
 # - v1.0.0: création. Iframe simple (similaire bench_panel.html / test_milankovitch.html).
 -->
-<iframe id="hysteresis-iframe" src="html/hysteresis_compute.html" title="Hystérésis — simulation standalone"></iframe>
+<iframe id="hysteresis-iframe" src="html/hysteresis_compute.html" title="" aria-label="Hystérésis — simulation standalone" data-flux-tooltip="off"></iframe>

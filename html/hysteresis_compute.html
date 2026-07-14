@@ -2,11 +2,18 @@
 <!--
 # File: CO2/html/hysteresis_compute.html - Hystérésis standalone (iframe index)
 # Desc: Dans l'architecture, je suis la page hôte de l'onglet Hystérésis du shell index.html. Iframe autonome : mêmes scripts que scie_compute.html, mais seul le panneau #hysteresis est visible. Globals isolés par iframe (pas de bridge parent sauf postMessage explicite ultérieurement).
-# Version 1.0.13
+# Version 1.0.14
 # Copyright 2025 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
-# Date: April 25, 2026
+# Date: July 13, 2026
 # Logs:
+# - v1.0.14: fix onglet mort depuis refactor API mai 2026 (API_BILAN 3ceeda8) : calculations_flux.js /
+#             radiative/calculations.js lisent window.SYNC_STATE.animEnabled (sync_panels.js, jamais chargé ici)
+#             → crash "reading 'animEnabled'" au 1er run. Contrat host standalone ajouté (comme epoch_bench.html) :
+#             SYNC_STATE proxy getter/setter sur DATA['🔘']['🔘🎞'] (source unique) + isVisuPanelActive()=false.
+#             Retour du bouton ▶️/⏹ #run-stop-btn (supprimé du header scie_ avant la création de cette page ;
+#             setRunStopButtonRunning/toggleRunStop l'attendaient) — toggleRunStop standalone : relance l'époque
+#             hyst sélectionnée, ⏹ = ABORT_COMPUTE. Bloc <details> « Ce que cet onglet cherche » (doc physique + algo).
 # - v1.0.13: retrait formatJSONCompact mort (source unique : scie_convergence.js / scieFormatJSONCompact, notation e)
 # - v1.0.12: bouton « Bloc config TIMELINE ⛄ » + textarea (hystClickExportPleinSnowTimeline) — ^C^V vers configTimeline.js
 # - v1.0.11: fillDataTuningFromBary — aligner tuning.js : ne pas interpoler RADIATIVE.factorTropopause (pas de baryByGroup.RADIATIVE) ;
@@ -89,6 +96,23 @@
         // En scie_, le calcul est délégué au parent (CO2/index.html où ../API_BILAN/ est valide) donc le bug n'apparait pas.
         // En hyst standalone, le calcul tourne dans l'iframe → il faut 2 niveaux de remontée depuis CO2/html/.
         window.__SPECTRAL_WORKER_SCRIPT__ = '../../API_BILAN/workers/spectral_slice_worker.js';
+        // v1.0.14: STANDALONE — contrat host (sync_panels.js / loader_panels.js absents dans l'iframe).
+        // Depuis le refactor API (mai 2026, API_BILAN 3ceeda8), calculations_flux.js et
+        // radiative/calculations.js lisent window.SYNC_STATE.animEnabled et window.isVisuPanelActive()
+        // → crash "Cannot read properties of undefined (reading 'animEnabled')" au 1er run hyst.
+        // Source unique anim = DATA['🔘']['🔘🎞'] (posée par scieEnableAnimForHystSync / initializeGlobals) :
+        // proxy getter/setter, pas de 2e état à synchroniser.
+        window.SYNC_STATE = {
+            epochId: '⚫', ticTime: 0, calculationInProgress: false,
+            get animEnabled() { return !!(window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞']); },
+            set animEnabled(v) {
+                if (!window.DATA) return;
+                if (!window.DATA['🔘']) window.DATA['🔘'] = {};
+                window.DATA['🔘']['🔘🎞'] = !!v;
+            }
+        };
+        // Pas de panneau visu dans cette page : jamais de bridge plot anim (chemin léger scie_ dans le flux).
+        window.isVisuPanelActive = function () { return false; };
     </script>
     <div class="container">
         <div id="config" class="results replied divGlass">
@@ -107,6 +131,20 @@
         </div>
 
         <div id="hysteresis" class="results replied divGlass">
+            <!-- v1.0.14: doc intégrée — objectif physique + algo de l'onglet (source : en-tête scie_hysteresis_search.js + hysteresis_algo.txt) -->
+            <details class="hyst-doc" style="font-size:11.5px;line-height:1.5;opacity:0.9;margin:0 0 10px 0;">
+                <summary style="cursor:pointer;font-weight:600;">❓ Ce que cet onglet cherche — bistabilité climatique &amp; seuils CO₂</summary>
+                <div style="padding:6px 2px 2px 2px;">
+                    <p style="margin:4px 0;"><strong>Physique.</strong> À cause de la rétroaction glace-albédo, le modèle (0D type Budyko-Sellers) a <strong>deux branches stables</strong> pour un même forçage : une branche chaude (océans liquides) et une branche froide (Snowball). L'<strong>hystérésis</strong> = le seuil de CO₂ pour <em>entrer</em> en glaciation (en baissant le CO₂) est très différent du seuil pour en <em>sortir</em> (en remontant le CO₂). L'onglet sert à <strong>trouver ces seuils de bifurcation</strong> (masse CO₂ atmosphérique ⚖️🏭) et à vérifier qu'ils tombent dans les fourchettes de la littérature.</p>
+                    <p style="margin:4px 0;"><strong>Algo</strong> (window.HYSTERESIS, scie_hysteresis_search.js) : depuis la baseline de l'époque, <em>scan</em> CO₂ ×0,5 par pas (signe négatif) ou ×2 (positif) avec convergence radiative complète à chaque pas et <strong>continuité de T entre les pas</strong> (pas de reset — c'est ce qui permet de rester sur la branche courante), jusqu'à basculer sous coldBranchT_C / au-dessus de warmBranchT_C ; puis <em>dichotomie</em> 0,5 entre [min, max] pour affiner le seuil. <code>SUCCESS</code> = seuil trouvé (journal ci-dessous) ; <code>FAILED</code> = déjà sur la branche cible au CO₂ initial (pas de bifurcation à chercher) ou plancher/plafond de plage atteint.</p>
+                    <ul style="margin:4px 0 2px 18px;padding:0;">
+                        <li><strong>☃⛄ hysteresis 1a — Entrée Sturtienne</strong> (repère −735 Ma) : baseline chaude ~18 °C, CO₂↓ (signe négatif) jusqu'au gel global. Cible littérature : 100–300 ppm (GCM), 100–800 ppm acceptable en 0D. Dernier calage : bifurcation trouvée à ~242 ppm.</li>
+                        <li><strong>⛄🪼 hysteresis 1b — Sortie Marinoen</strong> (repère −645 Ma) : depuis la branche froide, CO₂↑ (signe positif, forcé) jusqu'à la déglaciation. Cible littérature : ~0,01–0,12 bar soit ~10 000–120 000 ppm.</li>
+                        <li><strong>🐊🏔 hysteresis 2 — Éocène–Oligocène</strong> (repère −34 Ma) : englacement de l'Antarctique, bascule plus douce (calotte, pas Snowball).</li>
+                    </ul>
+                    <p style="margin:4px 0;opacity:0.8;">Réfs : Budyko 1969 ; Sellers 1969 ; Pierrehumbert 2004 ; Abbot &amp; Pierrehumbert 2010 ; Voigt &amp; Abbot 2012 ; Hoffman 2017. Détail + biblio complète en tête de <code>scie_hysteresis_search.js</code>.</p>
+                </div>
+            </details>
             <div class="hyst-grid-line1">
                 <div class="hyst-col-epochs">
                     <div class="hyst-title-line">
@@ -114,6 +152,8 @@
                         <button type="button" class="toggle-button" id="hysteresis-toggle" onclick="toggleHysteresisPanel()" title="Afficher / masquer les jauges">Jauges +</button>
                         <button type="button" class="icon-button hyst-sign-swap" id="hyst-search-sign-btn" aria-label="Basculer signe hystérésis negative ou positive" onclick="if (window.HYSTERESIS) window.HYSTERESIS.toggleSearchSign(); return false;"><span aria-hidden="true">↑↓</span></button>
                         <button type="button" class="toggle-button" id="hyst-literature-preset" onclick="applyHysteresisLiteraturePreset(); return false;" title="Applique HYSTERESIS_LITERATURE_PRESET (FINE_TUNING_BOUNDS groupe HYSTERESIS + TUNING_BIBLIO)">Preset lit. +</button>
+                        <!-- v1.0.14: retour du bouton ▶️/⏹ (setRunStopButtonRunning / toggleRunStop l'attendaient déjà) -->
+                        <button type="button" class="icon-button" id="run-stop-btn" onclick="toggleRunStop()" title="Exécuter (relance l'époque hyst sélectionnée) / ⏹ arrêter la recherche en cours">▶️</button>
                     </div>
                     <div class="hyst-epoch-row hyst-epoch-row--tight">
                         <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1a" title="Repère visuel ☃ −735 Ma. Calcul : hysteresis 1a — Entrée Sturtienne (début ▶ −750 Ma), baseline chaude (~18 °C) → baisser le CO₂ pour franchir le seuil et geler." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1a')">
@@ -908,8 +948,12 @@
                 window.ABORT_COMPUTE = true;
                 return;
             }
-            if (window !== window.top) {
-                emitSyncToParent();
+            // v1.0.14: STANDALONE — pas de délégation parent (postMessage muté en tête de body ;
+            // l'ancienne branche emitSyncToParent() était morte). ▶️ relance la recherche hyst sur
+            // l'époque sélectionnée avec les mêmes flags que le clic bouton, sinon runTest simple.
+            var id = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
+            if (id === 'hysteresis 1a' || id === 'hysteresis 1b' || id === 'hysteresis 2' || id === '⛄') {
+                scieRunEpochLikeVisuTimeline(id);
                 return;
             }
             runTest();

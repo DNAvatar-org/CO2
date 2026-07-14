@@ -1,12 +1,18 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.106
+// Version 1.0.112
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.112 getFineTuningDetailAlt — retrait suffixe #biblio_ref dans les lignes alt2sec.
+// Logs: v1.0.111 getFineTuningDetailAlt — périmètre jauge ATM uniquement (CLOUD_SW + H2O_EDS_SCALE) ; hors HYSTERESIS / factorTropopause / CONFIG scie ; note H₂O sans MT_CKD ; ref # = biblio_ref.
+// Logs: v1.0.110 getFineTuningDetailAlt — fourchette [min , max] (0 %→100 % jauge) après chaque picto, avant la valeur live.
+// Logs: v1.0.109 syncFineTuningSlotTooltips — infobulles alt0/alt2 sur #title-flou-scientifique-slot ; badge data-flux-tooltip=off.
+// Logs: v1.0.108 syncFineTuningBadgeTooltips — data-alt2sec (détail live) ; slot titre sans title/aria (plus d’alt2sec « Flou scientifique » parasite).
+// Logs: v1.0.107 getFineTuningDetailAlt — valeurs live (DATA/CONFIG) ligne par ligne : CLOUD_SW, RADIATIVE, HYSTERESIS + ⚽/CO₂ océan/albédo glace (alt2sec jauge flou scientifique).
 // Logs: v1.0.106 TextureLoader — URL absolue (new URL(fonds/…)) + correctif fonds/_NNNNNNa.png si année signée < 0 (pas _002000a pour −2000).
 // Logs: v1.0.105 planetTexturePathFromAbsoluteYears — Number(y) avant isFinite (chaîne «-2000» → -002000a, pas _002025a).
 // Logs: v1.0.104 commentaire z-index grille cellule (ARROW_LABEL / Terre z — configOrganigramme v1.1.45).
@@ -2148,8 +2154,11 @@ function createCell(
           }
           if (dataId) label.setAttribute("data-id", dataId);
           if (dataId === "fine_tuning_cloud_bary") {
-            label.setAttribute("aria-label", getFineTuningDetailAlt(null, true));
-            label.setAttribute("data-tooltip", getFineTuningShortTooltip("100"));
+            label.setAttribute("data-flux-tooltip", "off");
+            label.removeAttribute("data-tooltip");
+            label.removeAttribute("data-alt2sec");
+            label.removeAttribute("aria-label");
+            label.removeAttribute("title");
             label.style.marginTop = "6px";
           }
 
@@ -2169,7 +2178,9 @@ function createCell(
           label.style.position = "relative"; // Créer un stacking context
           label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
           labelContainer.appendChild(label);
-          if ((dataId === "fine_tuning_cloud_bary") && !label.hasAttribute("data-tooltip-initialized")) {
+          if ((dataId === "fine_tuning_cloud_bary")) {
+            syncFineTuningSlotTooltips(null, null);
+          } else if (!label.hasAttribute("data-tooltip-initialized")) {
             window.addTooltipFromAttribute(label);
             label.setAttribute("data-tooltip-initialized", "true");
           }
@@ -4568,8 +4579,8 @@ var _finetuningAltPicto = {
   CLOUD_FRACTION_INDEX_GAIN: "☁️",
   OPTICAL_EFF_BASE: "🧪",
   OPTICAL_EFF_CCN_GAIN: "🧪",
-  SULFATE_BOOST_SCALE: "✈",
-  SULFATE_BOOST_MAX: "✈"
+  SULFATE_BOOST_SCALE: "SO₄",
+  SULFATE_BOOST_MAX: "SO₄"
   // TEMP_FACTOR_REF_K retiré : partition Hu & Stamnes (1993) maintenant codée en dur.
 };
 
@@ -4579,47 +4590,267 @@ var _finetuningRadiativeSciencePicto = {
   factorTropopause: "🛩"
 };
 
-// Alt détaillé (paramètres CLOUD_SW + bornes) pour fine_tuning_cloud_bary. SOLVER = autre jauge, exclu.
-// detailOnly=true = uniquement le détail. Avec retours à la ligne pour un texte lisible.
-// Fallback fixe quand FINE_TUNING_BOUNDS non chargé (visu ne charge pas fine_tuning_bounds.js).
-var _finetuningAltFallback = "☁️ [0.17 , 0.23] — base couverture nuageuse SW #CERES EBAF + MODIS (2000-2025), calibration interne pour SW effectif moderne\n☁️ [0.08 , 0.14] — gain index nuageux #Sundqvist (1989) + ajustement interne cloud_index -> fraction optique\n🧪 [1 , 1.2] — efficacité optique de base #Twomey + AR6 aerosols, centrage moderne\n🧪 [0.3 , 0.6] — sensibilité optique au ratio CCN #Twomey effect (sensibilite de l albedo nuageux aux CCN)\n✈ [300 , 700] — gain sulfate proxy -> CCN #Proxy sulfate interne SO4(2-) pour microphysique nuageuse\n✈ [0.2 , 0.45] — plafond du boost sulfate #Borne numerique de securite (evite emballement du proxy)\n💧 [1 , 0.6] — multiplicateur global κ_H₂O EDS #Schmidt 2010\n🛩 1,0261 (fixe, hors bary) — extension hauteur tropopause radiative (× RT/Mg) #FACTOR_TROPOPAUSE_RT";
+// Picto groupe HYSTERESIS (mer gelée, glace, CO₂ océan).
+var _finetuningHystPicto = {
+  seaIceTransitionRangeK: "🌊❄",
+  seaIceStrength01: "🌊❄",
+  iceImpactFactor01: "🧊",
+  co2OceanEffPump01: "🌊🏭"
+};
+
+// Alt détaillé (valeurs live, jauge ATM) — alt2sec #title-flou-scientifique-slot. HYSTERESIS = jauges scie séparées.
+var _finetuningAltFallback =
+  "☁️ [0.17 , 0.23] CLOUD_FRACTION_BASE=0.19 — base couverture nuageuse SW\n" +
+  "🧪 [1.00 , 1.20] OPTICAL_EFF_BASE=1.10 — efficacité optique de base\n" +
+  "SO₄ [300 , 700] SULFATE_BOOST_SCALE=500 — gain sulfate proxy → CCN\n" +
+  "☁️ [0.08 , 0.14] CLOUD_FRACTION_INDEX_GAIN=0.11 — gain index nuageux\n" +
+  "💧 [1.00 , 0.60] H2O_EDS_SCALE=0.80 — multiplicateur global κ_H₂O EDS";
+
+function _finetuningDisplayNote(t) {
+  if (!t) return "";
+  if (t.key === "H2O_EDS_SCALE") {
+    return "multiplicateur global κ_H₂O EDS (overlap CO₂/H₂O, profil HR)";
+  }
+  return t.note || "";
+}
+
+/** Cible interpolée par la jauge ATM (flou scientifique titre) — pas HYSTERESIS ni factorTropopause fixe. */
+function _finetuningIsAtmTarget(t) {
+  if (!t || !t.group || !t.key) return false;
+  if (t.group === "CLOUD_SW") return true;
+  if (t.group === "RADIATIVE" && t.baryGroup === "SCIENCE" && t.key === "H2O_EDS_SCALE") {
+    return true;
+  }
+  return false;
+}
+
+function _finetuningFormatRangeEndpoint(key, val) {
+  if (key === "SULFATE_BOOST_SCALE") return String(Math.round(Number(val)));
+  if (key === "seaIceTransitionRangeK") return String(Math.round(Number(val) * 1000));
+  if (key === "co2OceanRatioRef") return Number(val).toFixed(1);
+  if (key === "factorTropopause") return Number(val).toFixed(4);
+  return Number(val).toFixed(2);
+}
+
+function _finetuningRangePair(minVal, maxVal, formatKey) {
+  var fk = formatKey || "generic";
+  return (
+    "[" +
+    _finetuningFormatRangeEndpoint(fk, minVal) +
+    " , " +
+    _finetuningFormatRangeEndpoint(fk, maxVal) +
+    "]"
+  );
+}
+
+function _finetuningRangeStrFromTarget(t) {
+  if (!t || t.min === undefined || t.max === undefined) return "";
+  return _finetuningRangePair(t.min, t.max, t.key);
+}
+
+function _finetuningRangeFromDefaultHyst(boundKey, formatKey) {
+  var H =
+    window.DEFAULT && window.DEFAULT.BOUNDS && window.DEFAULT.BOUNDS.HYSTERESIS;
+  if (!H || !H[boundKey]) return "";
+  var b = H[boundKey];
+  return _finetuningRangePair(b.min, b.max, formatKey || boundKey);
+}
+
+function _finetuningLiveLine(picto, rangeStr, keyLabel, liveStr, note) {
+  return (
+    picto +
+    " " +
+    (rangeStr ? rangeStr + " " : "") +
+    keyLabel +
+    "=" +
+    liveStr +
+    " — " +
+    note
+  );
+}
+
+function _finetuningLiveLineFromTarget(t, picto, keyLabelOverride) {
+  var liveStr = _finetuningLiveFromTarget(t);
+  if (liveStr == null) return null;
+  var keyLabel =
+    keyLabelOverride ||
+    (t.key === "iceImpactFactor01" ? "iceImpact" : t.key);
+  return _finetuningLiveLine(
+    picto,
+    _finetuningRangeStrFromTarget(t),
+    keyLabel,
+    liveStr,
+    _finetuningDisplayNote(t)
+  );
+}
+
+function _finetuningFormatLiveValue(key, rawVal) {
+  if (key === "SULFATE_BOOST_SCALE") return String(Math.round(Number(rawVal)));
+  if (key === "seaIceTransitionRangeK") {
+    var k = Number(rawVal);
+    var ui = Math.round(k * 1000);
+    return ui + " (moteur " + k.toFixed(2) + " K)";
+  }
+  if (key === "co2OceanRatioRef") return Number(rawVal).toFixed(1);
+  if (key === "factorTropopause") return Number(rawVal).toFixed(4);
+  return Number(rawVal).toFixed(2);
+}
+
+function _finetuningLiveFromTarget(t) {
+  var T = window.DATA["🎚️"];
+  if (!T || !T[t.group]) return null;
+  var raw = T[t.group][t.key];
+  if (raw === undefined) return null;
+  return _finetuningFormatLiveValue(t.key, raw);
+}
+
+function _finetuningAppendHysteresisConfigLines(parts) {
+  var C = window.CONFIG_COMPUTE;
+  var E = window.EARTH;
+  if (C) {
+    var veilX = Number(C.hystStratosphericVeilExtra01);
+    parts.push(
+      _finetuningLiveLine(
+        "⚽",
+        _finetuningRangePair(0, 0.95, "generic"),
+        "⚽",
+        Number.isFinite(veilX) ? veilX.toFixed(2) : "0.00",
+        "voile stratosphérique extra (obliquité / P_atm)"
+      )
+    );
+    var scale01 = Number(C.co2OceanScale01);
+    parts.push(
+      _finetuningLiveLine(
+        "🌊🏭",
+        _finetuningRangeFromDefaultHyst("co2OceanScale01"),
+        "co2OceanScale01",
+        Number.isFinite(scale01) ? scale01.toFixed(2) : "0.10",
+        "échelle vitesse pompe CO₂ atm↔océan (Henry)"
+      )
+    );
+    var pump01 = Number(C.co2OceanPumpOverride01);
+    parts.push(
+      _finetuningLiveLine(
+        "🌊🏭",
+        _finetuningRangeFromDefaultHyst("co2OceanPumpOverride01"),
+        "co2OceanPumpOverride01",
+        Number.isFinite(pump01) ? pump01.toFixed(2) : "1.00",
+        "override multiplicateur pompe océanique"
+      )
+    );
+    var ratioRef = Number(C.co2OceanRatioRef);
+    parts.push(
+      _finetuningLiveLine(
+        "🌊🏭",
+        _finetuningRangePair(5, 80, "co2OceanRatioRef"),
+        "co2OceanRatioRef",
+        Number.isFinite(ratioRef) ? ratioRef.toFixed(1) : "50.0",
+        "ratio stock océan / atmosphère CO₂ de référence"
+      )
+    );
+  }
+  if (E && E["🪩🍰"]) {
+    var iceA = Number(E["🪩🍰"]["🪩🍰🧊"]);
+    parts.push(
+      _finetuningLiveLine(
+        "🧊",
+        _finetuningRangeFromDefaultHyst("iceAlbedoCoeff", "iceAlbedo"),
+        "iceAlbedo",
+        Number.isFinite(iceA) ? iceA.toFixed(2) : "n/a",
+        "albédo glace / neige (couche albédo)"
+      )
+    );
+  }
+}
 
 function getFineTuningShortTooltip(pctStr) {
   return "Flou scientifique";
 }
 
-function getFineTuningDetailAlt(pctStr, detailOnly) {
-  const pct = pctStr != null ? pctStr + "%" : "100%";
-  const bounds = window.FINE_TUNING_BOUNDS;
-  if (!bounds || !bounds.targets || !Array.isArray(bounds.targets)) {
-    const intro = "Flou scientifique (nuages SW + radiatif / jauge Science). " + pct + ".";
-    return detailOnly ? _finetuningAltFallback : intro + " " + _finetuningAltFallback;
+/** Désactive les infobulles sur le badge (territoire = #title-flou-scientifique-slot). */
+function clearFineTuningBadgeTooltips(badgeEl) {
+  if (!badgeEl) return;
+  badgeEl.setAttribute("data-flux-tooltip", "off");
+  badgeEl.removeAttribute("data-tooltip");
+  badgeEl.removeAttribute("data-alt2sec");
+  badgeEl.removeAttribute("aria-label");
+  badgeEl.removeAttribute("title");
+  badgeEl.removeAttribute("data-tooltip-initialized");
+  var slider = badgeEl.querySelector(".organigram-bary-mini-slider");
+  if (slider) slider.removeAttribute("aria-label");
+}
+
+/** alt0sec = data-tooltip ; alt2sec = data-alt2sec sur #title-flou-scientifique-slot. pctStr = % jauge ATM (optionnel). */
+function syncFineTuningSlotTooltips(slotEl, pctStr) {
+  var slot =
+    slotEl ||
+    (typeof document !== "undefined"
+      ? document.getElementById("title-flou-scientifique-slot")
+      : null);
+  if (!slot) return;
+  var shortTip = getFineTuningShortTooltip(pctStr);
+  var detail = getFineTuningDetailAlt(pctStr != null ? pctStr : null, true);
+  slot.removeAttribute("data-flux-tooltip");
+  slot.setAttribute("data-tooltip", shortTip);
+  slot.setAttribute("data-alt2sec", detail);
+  slot.setAttribute("aria-label", detail);
+  slot.removeAttribute("title");
+  if (
+    typeof window.addTooltipFromAttribute === "function" &&
+    !slot.hasAttribute("data-tooltip-initialized")
+  ) {
+    window.addTooltipFromAttribute(slot);
+    slot.setAttribute("data-tooltip-initialized", "true");
   }
+  if (typeof document !== "undefined") {
+    document
+      .querySelectorAll('[data-id="fine_tuning_cloud_bary"]')
+      .forEach(clearFineTuningBadgeTooltips);
+  }
+}
+
+/** @deprecated alias — préférer syncFineTuningSlotTooltips */
+function syncFineTuningBadgeTooltips(labelEl, pctStr) {
+  clearFineTuningBadgeTooltips(labelEl);
+  syncFineTuningSlotTooltips(null, pctStr);
+}
+
+function getFineTuningDetailAlt(pctStr, detailOnly) {
+  const pctAtm = pctStr != null ? pctStr + "%" : null;
+  const T = window.DATA && window.DATA["🎚️"];
+  const bounds = window.FINE_TUNING_BOUNDS;
+  const bg = T && T.baryByGroup;
+  const introHead =
+    "Flou scientifique — jauge ATM " +
+    (pctAtm ||
+      (bg && Number.isFinite(Number(bg.ATM))
+        ? Math.round(Number(bg.ATM)) + "%"
+        : "100%")) +
+    " (nuages SW + κ_H₂O ; hystérésis = jauges scie séparées)";
+
+  if (!bounds || !bounds.targets || !Array.isArray(bounds.targets) || !T) {
+    return detailOnly ? _finetuningAltFallback : introHead + "\n" + _finetuningAltFallback;
+  }
+
   const parts = [];
+
   bounds.targets.forEach(function (t) {
-    if (t.group !== "CLOUD_SW") return;
-    const picto = _finetuningAltPicto[t.key] || "☁️";
-    const minStr = (typeof t.min === "number") ? t.min : String(t.min);
-    const maxStr = (typeof t.max === "number") ? t.max : String(t.max);
-    const note = t.note || "";
-    const ref = t.source || t.biblio_ref || "";
-    parts.push(picto + " [" + minStr + " , " + maxStr + "] — " + note + (ref ? " #" + ref : ""));
+    if (!_finetuningIsAtmTarget(t)) return;
+    var picto =
+      t.group === "RADIATIVE"
+        ? _finetuningRadiativeSciencePicto[t.key] || "🔬"
+        : _finetuningAltPicto[t.key] || "☁️";
+    var line = _finetuningLiveLineFromTarget(t, picto);
+    if (line) parts.push(line);
   });
-  bounds.targets.forEach(function (t) {
-    if (t.baryGroup !== "SCIENCE" || t.group === "CLOUD_SW") return;
-    const picto = _finetuningRadiativeSciencePicto[t.key] || "🔬";
-    const minStr = (typeof t.min === "number") ? t.min : String(t.min);
-    const maxStr = (typeof t.max === "number") ? t.max : String(t.max);
-    const note = t.note || "";
-    const ref = t.source || t.biblio_ref || "";
-    parts.push(picto + " [" + minStr + " , " + maxStr + "] — " + note + (ref ? " #" + ref : ""));
-  });
+
   const detail = parts.length ? parts.join("\n") : _finetuningAltFallback;
-  const intro = "Flou scientifique (nuages SW + radiatif / jauge Science). " + pct + ".";
-  return detailOnly ? detail : intro + "\n" + detail;
+  return detailOnly ? detail : introHead + "\n" + detail;
 }
 
 window.getFineTuningDetailAlt = getFineTuningDetailAlt;
+window.syncFineTuningSlotTooltips = syncFineTuningSlotTooltips;
+window.syncFineTuningBadgeTooltips = syncFineTuningBadgeTooltips;
 
 // Helpers de formatage/écriture labels extraits au scope du module : ORG.updateLabel doit être disponible dès le chargement pour FluxManager (setSolarIntensity, setGeothermalFlux...), avant le premier cycle de calcul (ProcessFinished). Ils ne dépendent que des arguments et de globals window.* (configOrganigramme, etc.) — pas du closure de updateFluxLabels.
 const detectValueType = (text) => {
@@ -4900,13 +5131,11 @@ const updateLabel = (dataId, value, format = "auto") => {
         pctStr = m ? String(Math.round(parseFloat(m[1], 10))) : "100";
       }
       formattedValue = pctStr + "%";
-      const detail = getFineTuningDetailAlt(pctStr, true);
       const existingSlider = label.querySelector(".organigram-bary-mini-slider");
       const pctEl = label.querySelector(".organigram-bary-pct");
       if (existingSlider && pctEl) {
         pctEl.textContent = pctStr + "%";
         existingSlider.value = pctStr;
-        existingSlider.setAttribute("aria-label", "Flou scientifique");
       } else {
         label.innerHTML =
           '<div class="organigram-bary-face organigram-bary-face--two-cols">' +
@@ -4915,7 +5144,7 @@ const updateLabel = (dataId, value, format = "auto") => {
           '<div class="organigram-bary-line-slider">' +
           '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' +
           pctStr +
-          '" aria-label="Flou scientifique">' +
+          '">' +
           "</div></div>" +
           '<div class="organigram-bary-col organigram-bary-col-right">' +
           '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +
@@ -4923,8 +5152,8 @@ const updateLabel = (dataId, value, format = "auto") => {
           pctStr +
           "%</span></div></div>";
       }
-      label.setAttribute("data-tooltip", getFineTuningShortTooltip(pctStr));
-      label.setAttribute("aria-label", detail || FINE_TUNING_TOOLTIP_SHORT);
+      syncFineTuningSlotTooltips(null, pctStr);
+      clearFineTuningBadgeTooltips(label);
       label.removeAttribute("title");
     } else {
       if (format === "text" && typeof value === "string") {

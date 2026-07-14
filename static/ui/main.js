@@ -1,9 +1,12 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.84
+// Version 1.1.87
 // Date: [May 07, 2026]
 //
+// - v1.1.87: infobulles flou scientifique sur #title-flou-scientifique-slot (badge data-flux-tooltip=off).
+// - v1.1.86: flou scientifique — syncFineTuningBadgeTooltips (data-alt2sec) ; slot titre sans tooltip parasite.
+// - v1.1.85: mini-slider flou scientifique — refresh aria-label (alt2sec) via getFineTuningDetailAlt à chaque input.
 // - v1.1.84: setEpoch / logs — masse atm sèche via COMPUTE.dryAtmosphereMassKgFromComponents (TIMELINE sans ⚖️🫧).
 // - v1.1.83: updateLegend — libellés 3 courbes via PLOT.LEGEND_* (plot.js, source unique).
 // - v1.1.82: updateLegend — dash = Corps noir au sol (T_surf) ; dot = Corps noir haute atmosphère (T_eff) ; solid = Rayonnement vers l'espace (T_eff) ; aligné plot.js.
@@ -3106,7 +3109,7 @@ function runMainInit() {
                             '<div class="organigram-bary-col organigram-bary-col-left">' +
                             '<div class="organigram-bary-icons">🔺🌡️🔻</div>' +
                             '<div class="organigram-bary-line-slider">' +
-                            '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' + pct + '" aria-label="Flou scientifique">' +
+                            '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' + pct + '">' +
                             '</div></div>' +
                             '<div class="organigram-bary-col organigram-bary-col-right">' +
                             '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +
@@ -3117,7 +3120,7 @@ function runMainInit() {
                         baryFt = document.createElement('div');
                         baryFt.className = 'flux-label buttonData percent-label organigram-fine-tuning-bary-badge';
                         baryFt.setAttribute('data-id', 'fine_tuning_cloud_bary');
-                        baryFt.setAttribute('data-tooltip', 'Flou scientifique');
+                        baryFt.setAttribute('data-flux-tooltip', 'off');
                         baryFt.innerHTML = htmlFlouBaryBadge(pctFromData);
                     } else if (
                         !baryFt.querySelector('.organigram-bary-face--two-cols') ||
@@ -3128,6 +3131,9 @@ function runMainInit() {
                         var pvLegacy = (slLegacy && Number.isFinite(Number(slLegacy.value))) ? Math.max(0, Math.min(100, Math.round(Number(slLegacy.value)))) : pctFromData;
                         baryFt.innerHTML = htmlFlouBaryBadge(pvLegacy);
                         baryFt.removeAttribute('data-tooltip-initialized');
+                        baryFt.setAttribute('data-flux-tooltip', 'off');
+                        baryFt.removeAttribute('data-tooltip');
+                        baryFt.removeAttribute('data-alt2sec');
                     } else {
                         baryFt.querySelectorAll('.organigram-bary-pct').forEach(function (nodePct) {
                             nodePct.textContent = pctFromData + '%';
@@ -3135,17 +3141,23 @@ function runMainInit() {
                         var slSync = baryFt.querySelector('.organigram-bary-mini-slider');
                         if (slSync) {
                             slSync.value = String(pctFromData);
-                            slSync.setAttribute('aria-label', 'Flou scientifique');
                         }
                     }
-                    if (typeof window.getFineTuningDetailAlt === 'function') {
-                        baryFt.setAttribute('aria-label', window.getFineTuningDetailAlt(null, true));
-                    } else {
-                        baryFt.setAttribute('aria-label', 'Réglage barycentre nuages (albédo).');
-                    }
-                    if (typeof window.addTooltipFromAttribute === 'function' && !baryFt.hasAttribute('data-tooltip-initialized')) {
-                        window.addTooltipFromAttribute(baryFt);
-                        baryFt.setAttribute('data-tooltip-initialized', 'true');
+                    baryFt.setAttribute('data-flux-tooltip', 'off');
+                    baryFt.removeAttribute('data-tooltip');
+                    baryFt.removeAttribute('data-alt2sec');
+                    baryFt.removeAttribute('aria-label');
+                    baryFt.removeAttribute('title');
+                    if (typeof window.syncFineTuningSlotTooltips === 'function') {
+                        window.syncFineTuningSlotTooltips(flouSlot, String(pctFromData));
+                    } else if (typeof window.getFineTuningDetailAlt === 'function' && flouSlot) {
+                        flouSlot.setAttribute('data-tooltip', 'Flou scientifique');
+                        flouSlot.setAttribute('data-alt2sec', window.getFineTuningDetailAlt(null, true));
+                        flouSlot.setAttribute('aria-label', window.getFineTuningDetailAlt(null, true));
+                        if (typeof window.addTooltipFromAttribute === 'function' && !flouSlot.hasAttribute('data-tooltip-initialized')) {
+                            window.addTooltipFromAttribute(flouSlot);
+                            flouSlot.setAttribute('data-tooltip-initialized', 'true');
+                        }
                     }
 
                     cfgRow.appendChild(el);
@@ -3328,6 +3340,10 @@ function runMainInit() {
                         document.querySelectorAll('[data-id="fine_tuning_cloud_bary"] .organigram-bary-pct').forEach(function (el) {
                             el.textContent = pct + '%';
                         });
+                        if (typeof window.syncFineTuningSlotTooltips === 'function') {
+                            var flouSlotSync = document.getElementById('title-flou-scientifique-slot');
+                            window.syncFineTuningSlotTooltips(flouSlotSync, String(pct));
+                        }
                     });
                     document.body.addEventListener('change', function (e) {
                         var el = e.target;

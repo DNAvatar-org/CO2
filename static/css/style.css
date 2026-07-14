@@ -19,6 +19,15 @@
 }
 
 /*
+ * Infobulles (site/_interfaces/tooltips.js) — glyphes dingbat / emoji (ex. SO₄, ✈).
+ * emoji-fonts.css définit --font-emoji (cf. utf8-display).
+ */
+.alt0sec,
+.alt2sec {
+    font-family: var(--font-emoji), Tahoma, Roboto, Verdana, sans-serif;
+}
+
+/*
  * Aide au survol : curseur ? pour tout élément porteur d’infobulle (alt / title / aria-label),
  * hors vrais contrôles cliquables (bouton, lien, image-submit, .icon-button).
  * CH₄/H₂O/CO₂ en emoji sur le plot : span[role="img"][aria-label] — même traitement que img[alt].

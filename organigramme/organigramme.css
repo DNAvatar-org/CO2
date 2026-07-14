@@ -382,9 +382,10 @@
     gap: 8px;
     box-sizing: border-box;
 }
-/* Emplacement Flou scientifique (🧩) — rempli par main.js ; colonne gauche */
+/* Emplacement Flou scientifique (🧩) — rempli par main.js ; infobulles sur ce conteneur (#title-flou-scientifique-slot) */
 .title-flou-scientifique-slot {
     padding: 8px 0 0 0;
+    cursor: help;
 }
 .title-content-row.title-content-row--flou-et-resultat .synthese_Temp.synthese_Temp-two-cols {
     flex: 1 1 auto;
@@ -404,7 +405,7 @@
     display: flex;
     gap: 6px;
     pointer-events: auto;
-    cursor: help;
+    cursor: default;
     user-select: none;
 }
 /* Colonne gauche : icônes + jauge alignées à gauche (badge hors grille 2 col) */
