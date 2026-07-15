@@ -1,8 +1,9 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.10
+// Version 1.0.11
 // Date: [May 06, 2026]
 // logs :
+// - v1.0.11: EPOCH_ALT2SEC — alt2sec tooltips frise (ex. hysteresis 1a / Sturtienne, analogie surfusion).
 // - v1.0.10: CHARS_DESC ⚫ « Corps Noir » (N majuscule) — même libellé que syncEpochFromTimelinePointer / terre.epoch / GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName).
 // - v1.0.9: CHARS.SULFATE + CHARS_DESC — U+2708 U+FE0F (emoji ✈️, police emoji) ; aligné configsAll
 // - v1.0.8: timeline étendue (19 époques) — renames 🥟→🪸, ❄️→🦣, 🦣→🦤, scission 🌿→🪼/🍄/💀 ; nouveaux ⛈ 🐧 🛖 ; hysteresis 1→1a + ajout 1b
@@ -232,6 +233,15 @@ const CHARS_DESC = {
     '⚗': 'Alembic (chimie / science)'
 };
 
+/** alt2sec (tooltips.js, ~2 s) par id époque TIMELINE — clé = 📅 (ex. hysteresis 1a). */
+const EPOCH_ALT2SEC = {
+    'hysteresis 1a':
+        'Surfusion climatique\n\n' +
+        'Comme en surfusion, le climat peut rester bloqué dans un état (ici chaud, pré-Sturtien) alors que les forçages — CO₂ en baisse, albédo — orientent déjà vers la glaciation.\n\n' +
+        'Hystérésis : le système garde une mémoire de son chemin. Il faut souvent un forçage fort ou un choc pour sortir du puits actuel et franchir le seuil (bascule Snowball).\n\n' +
+        'Ce n\'est pas l\'équilibre instantané : tant que la bascule n\'est pas passée, l\'état métastable tient — résistance au changement, pas absence de forçage.'
+};
+
 // ============================================================================
 // FONCTION : CRÉER L'ALPHABET (LEXIQUE)
 // ============================================================================
@@ -384,6 +394,7 @@ function getDisplayForPicto(picto) {
 window.CHARS = CHARS;
 window.LOGOS = CHARS; // Alias pour compatibilité (configOrganigramme, organigramme)
 window.CHARS_DESC = CHARS_DESC;
+window.EPOCH_ALT2SEC = EPOCH_ALT2SEC;
 // Source unique pour mapper id époque (emoji ou 'hysteresis Xy') → nom français.
 // Remplace les anciennes tables idToName dispersées (events.js, etc.).
 window.epochName = function (id) {

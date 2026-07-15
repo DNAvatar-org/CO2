@@ -132,7 +132,11 @@
     'use strict';
 
     var X_ABS_MIN = 1e10;
-    var X_ABS_MAX = 5e17;
+    // v-2026-07-14 : 5e17 → 1e19. L'ancien plafond (5e17 ≈ 0.08 bar) rabotait le CO₂ du scan POSITIF
+    // (déglaciation 1b) : la config 1b (7.0e17) était déjà clampée à 5e17, et le scan CO₂↑ (jusqu'à
+    // ~10·x₀ pour trouver le seuil de fonte snowball, ~0.1–0.3 bar) restait bloqué → boucle infinie,
+    // FAILED jamais atteint. 1e19 (~1.3 bar) laisse la marge. N'affecte pas le scan négatif (CO₂↓).
+    var X_ABS_MAX = 1e19;
     /** Garde-fou nombre total d’appels API (scan + dicho) */
     var MAX_OUTER = 200;
     /** Marge haut de plage CO₂ (R&D, onglet hyst) pour hysteresis 1a — TIMELINE / configTimeline inchangés. */
@@ -454,6 +458,15 @@
 
         deactivate: function () {
             this.active = false;
+            // v-2026-07-14 : restaurer la graine 🌡️🧮 config (override froid du scan positif) pour ne pas
+            // laisser fuiter le froid vers un clic direct / la visu de l'époque après le scan.
+            if (window._hystSeedTOrigByEpoch && this.epochId != null
+                && window._hystSeedTOrigByEpoch[this.epochId] != null) {
+                var idxR = timelineIndexForEpoch(this.epochId);
+                if (idxR >= 0 && window.TIMELINE[idxR]) {
+                    window.TIMELINE[idxR]['🌡️🧮'] = window._hystSeedTOrigByEpoch[this.epochId];
+                }
+            }
             postHysteresisActiveToParent(false);
         },
 
@@ -467,10 +480,14 @@
             var H = window.DATA['🎚️'].HYSTERESIS;
             this.active = true;
             this.epochId = epochId;
-            // v2.1.15 : préfère BaryAdapter si HYSTERESIS_BARY disponible et époque avec bornes '🔒'.
-            // BaryAdapter co-évolue CH₄, N₂, O₂, H₂O, sulfates à chaque pas scan (via bary déduit du CO₂).
-            // Fallback : defaultCo2Adapter (CO₂ seul, comportement pré-v2.1.15).
-            if (window.HYSTERESIS_BARY && window.HYSTERESIS_BARY.hasBounds(epochId)) {
+            // v-2026-07-14 : SYNCHRO test↔visu. Par DÉFAUT, scan CO₂ SIMPLE sur les masses racine :
+            // defaultCo2Adapter lit ⚖️🏭 depuis la TIMELINE (la config) et ne co-varie RIEN → le test
+            // calcule sur EXACTEMENT le même vecteur de masses que la visu (pas de 🔒 dupliqué, pas de
+            // co-variation CH₄/O₂/sulfates, pas de marge co2MaxFactor). Le tip trouvé = le tip de la visu.
+            // Le BaryAdapter (co-variation via 🔒 + co2MaxFactor) reste dispo pour la R&D uniquement si
+            // DATA['🎚️'].HYSTERESIS.useBaryAdapter === true.
+            // v2.1.15 (legacy) : BaryAdapter par défaut si bornes '🔒' — désactivé ici.
+            if (H.useBaryAdapter === true && window.HYSTERESIS_BARY && window.HYSTERESIS_BARY.hasBounds(epochId)) {
                 var baryOpt = (epochId === 'hysteresis 1a')
                     ? { co2MaxFactor: HYST_RND_WARM_CO2_FACTOR_1A }
                     : undefined;
@@ -510,9 +527,31 @@
                 // Clics suivants : restaurer TIMELINE → readXFromTimeline() lira la valeur originale.
                 window.TIMELINE[idxEp]['⚖️🏭'] = window._hystCo2OrigByEpoch[epochId];
             }
+            // ── Graine T° (🌡️🧮) : override FROID pour le scan POSITIF (déglaciation 1b) ───────────
+            // v-2026-07-14 : le compute repart TOUJOURS de EPOCH['🌡️🧮'] (compute.js:206 réécrit
+            // DATA['📅']['🌡️🧮'] à chaque pas → les resets T sync_panels/api et le t0_config de
+            // simulateRadiativeTransfer lisent la config). Poser DATA['🧮🌡️'] en onEpochButton ne
+            // suffit pas : le 1er compute l'écrase avec la config. Pour la SORTIE de snowball, la graine
+            // config doit donc être FROIDE, sinon 1b (config 35 °C) démarre déjà déglacé (→ FAILED / 25 °C).
+            // On override la 🌡️🧮 de l'époque le temps du scan positif (mémorisée/restaurée comme le CO₂).
+            // Le scan négatif (1a) garde sa graine chaude config (déjà correcte).
+            if (!window._hystSeedTOrigByEpoch) window._hystSeedTOrigByEpoch = {};
+            if (window._hystSeedTOrigByEpoch[epochId] == null) {
+                window._hystSeedTOrigByEpoch[epochId] = Number(window.TIMELINE[idxEp]['🌡️🧮']);
+            } else {
+                window.TIMELINE[idxEp]['🌡️🧮'] = window._hystSeedTOrigByEpoch[epochId];
+            }
+            if (this.runSearchSign === 'positive') {
+                var coldSeedCfgTK = window.CONST.KELVIN_TO_CELSIUS + (this.coldBranchT_C - 20);
+                if (Number.isFinite(coldSeedCfgTK) && coldSeedCfgTK > 0) {
+                    window.TIMELINE[idxEp]['🌡️🧮'] = coldSeedCfgTK;
+                }
+            }
             // ─────────────────────────────────────────────────────────────────────────────────────
             var x0 = clampX(this.adapter.readXFromTimeline());
-            if (epochId === 'hysteresis 1a') {
+            // Marge R&D ×1,1 sur x0 : uniquement en mode BaryAdapter. En scan simple (synchro visu),
+            // x0 = valeur config racine exacte (pas d'inflation) → départ identique à la visu.
+            if (epochId === 'hysteresis 1a' && H.useBaryAdapter === true) {
                 x0 = clampX(x0 * HYST_RND_WARM_CO2_FACTOR_1A);
             }
             this.xBaselineKg = x0;
@@ -524,14 +563,18 @@
             this.valueMax = NaN;
             this.tWarmRef = NaN;
             this.dichoIter = 0;
-            this.seedT_C = Number(EPOCH['🌡️🧮']) - window.CONST.KELVIN_TO_CELSIUS;
+            // Init T° obligatoire (les boutons hyst forcent 🔘🎞=true → pas de reset T dans runTest ;
+            // sans init explicite, le scan démarre depuis T résiduelle / fallback corps noir → branche indéterminée).
+            // v-2026-07-14 : GRAINE selon le SENS du scan (fix 1b déglaciation).
+            //   négatif (entrée 1a) : graine CHAUDE = EPOCH['🌡️🧮'] → part branche chaude, CO₂↓ jusqu'au gel.
+            //   positif (sortie 1b) : graine FROIDE (snowball ≈ coldBranchT_C−20 ≈ −40 °C) → part branche froide,
+            //     CO₂↑ jusqu'à la fonte. Sans ça, 1b seedé chaud (35 °C) était DÉJÀ déglacé au 1er pas
+            //     ("branche chaude déjà atteinte" → FAILED) → seuil de déglaciation introuvable.
+            var warmSeedTK = Number(EPOCH['🌡️🧮']);
+            var coldSeedTK = window.CONST.KELVIN_TO_CELSIUS + (this.coldBranchT_C - 20);
+            var seedTK = (this.runSearchSign === 'positive' && Number.isFinite(coldSeedTK) && coldSeedTK > 0) ? coldSeedTK : warmSeedTK;
+            this.seedT_C = seedTK - window.CONST.KELVIN_TO_CELSIUS;
             this.tRef_C = this.seedT_C;
-            // Init T° depuis graine époque (EPOCH.🌡️🧮) — obligatoire pour l'hystérésis :
-            // les 3 boutons hyst forcent 🔘🎞=true (continuité T inter-ticks du scan), ce qui
-            // désactive le reset T de runTest(). Sans init explicite ici, le scan démarre depuis
-            // T résiduelle (ou fallback corps noir ~254 K / -18.5 °C) → branche indéterminée.
-            // Chaque epoch hyst pose sa graine de branche (1a/1b=chaude ~290-312 K, ⛄=290 K, 2=298 K).
-            var seedTK = Number(EPOCH['🌡️🧮']);
             if (Number.isFinite(seedTK) && seedTK > 0) {
                 window.DATA['🧮']['🧮🌡️'] = seedTK;
                 window.DATA['🧮']['🧮🌡️⏮'] = seedTK;
@@ -768,6 +811,18 @@
                         window.DATA['🧮']['🧮🌡️⏮'] = gT;
                         window.DATA['🧮']['🧮🌡️🚩'] = gT;
                         self.appendLog('  (dicho−) CO₂↑ : T ← EPOCH[🌡️🧮] = ' + (gT - window.CONST.KELVIN_TO_CELSIUS).toFixed(2) + ' °C (évite reprise depuis attracteur froid)');
+                    }
+                }
+                // v-2026-07-14 : symétrique scan POSITIF (déglaciation 1b). Quand la dicho BAISSE le CO₂
+                // (retour côté froid), re-seed FROID pour rester sur la branche snowball et ne pas sauter
+                // à l'attracteur chaud (le bloc négatif ci-dessus re-seed chaud sur CO₂↑).
+                if (self.phase === 'dicho' && isPos && xNew < xBefore) {
+                    var cT = window.CONST.KELVIN_TO_CELSIUS + (self.coldBranchT_C - 20);
+                    if (Number.isFinite(cT) && cT > 0 && window.DATA && window.DATA['🧮']) {
+                        window.DATA['🧮']['🧮🌡️'] = cT;
+                        window.DATA['🧮']['🧮🌡️⏮'] = cT;
+                        window.DATA['🧮']['🧮🌡️🚩'] = cT;
+                        self.appendLog('  (dicho+) CO₂↓ : T ← froid ' + (cT - window.CONST.KELVIN_TO_CELSIUS).toFixed(2) + ' °C (évite reprise depuis attracteur chaud)');
                     }
                 }
                 self.appendLog('  → prochain ⚖️🏭=' + self.x.toExponential(3) + ' kg');
