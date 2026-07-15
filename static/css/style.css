@@ -110,9 +110,24 @@ a [role="img"][aria-label]:not([aria-label=""]),
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
 }
 
+/* Fond plein écran : skysphère galaxie (static/galaxy_background.js) posée dans #galaxy-bg.
+   html = deep-space de secours (avant chargement THREE/texture ou si absent).
+   body transparent pour laisser voir le canvas. Ancien fond : url('../img/fond.png') cover fixed. */
+html {
+    background: #05060a;
+}
+#galaxy-bg {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;          /* derrière tout le contenu de l'app */
+    display: block;
+    pointer-events: none; /* non interactif : n'intercepte aucun clic */
+}
 body {
     font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;
-    background: url('../img/fond.png') center center / cover no-repeat fixed;
+    background: transparent;
     min-height: 100vh;
     padding: 20px 10px 0 10px;
     color: var(--base-color);

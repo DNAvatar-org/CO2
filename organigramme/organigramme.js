@@ -1,12 +1,13 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.112
+// Version 1.0.113
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.113 addCustomTooltip — data-alt2sec depuis window.EPOCH_ALT2SEC[data-epoch] (ex. Sturtienne / hysteresis 1a).
 // Logs: v1.0.112 getFineTuningDetailAlt — retrait suffixe #biblio_ref dans les lignes alt2sec.
 // Logs: v1.0.111 getFineTuningDetailAlt — périmètre jauge ATM uniquement (CLOUD_SW + H2O_EDS_SCALE) ; hors HYSTERESIS / factorTropopause / CONFIG scie ; note H₂O sans MT_CKD ; ref # = biblio_ref.
 // Logs: v1.0.110 getFineTuningDetailAlt — fourchette [min , max] (0 %→100 % jauge) après chaque picto, avant la valeur live.
@@ -261,7 +262,22 @@ if (typeof window.interpretConfigValue === "undefined") {
 
 // Fonction pour ajouter un tooltip personnalisé avec délai de 0.5s
 // 🔒 Utiliser le système centralisé de tooltips (tooltips.js)
-function addCustomTooltip(element, text) {
+function addCustomTooltip(element, text, longText) {
+  var alt2 =
+    longText != null
+      ? longText
+      : element && element.getAttribute && window.EPOCH_ALT2SEC
+        ? window.EPOCH_ALT2SEC[element.getAttribute("data-epoch")]
+        : undefined;
+  if (alt2) {
+    element.setAttribute("data-tooltip", text);
+    element.setAttribute("data-alt2sec", alt2);
+    if (typeof window.addTooltipFromAttribute === "function") {
+      window.addTooltipFromAttribute(element);
+      element.setAttribute("data-tooltip-initialized", "true");
+      return;
+    }
+  }
   window.addTooltip(element, text);
 }
 
@@ -1122,6 +1138,9 @@ function initPlanetThreeJS(
     sphere.rotation.x = (tiltAngle * Math.PI) / 180;
     sphere.rotation.y = rotationY;
     window.savedPlanetRotationY = rotationY;
+    // Fond galaxie : orbit-camera piloté par le drag (dx→azimut, dy→élévation), regarde le centre.
+    // Appelé UNIQUEMENT ici (pointermove) → le fond ne bouge qu'au drag, jamais à l'auto-rotation.
+    if (window.GALAXY_BG && window.GALAXY_BG.orbit) window.GALAXY_BG.orbit(dxEff, dy);
 
     if (dt > 0 && dt < 120) {
       _dragOmegaRadPerSec =
