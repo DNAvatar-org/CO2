@@ -150,6 +150,14 @@
                         Où albédo du type \(i\) : \(A_i \in \{0{,}08,\ 0{,}17,\ 0{,}30,\ 0{,}70,\ 0{,}50\}\) pour 🌊 Océan, 🌳 Forêt, 🏜️ Désert, 🧊 Glace, ⛅ Nuages ; et \(C_i\) = couverture de surface du type \(i\).<br>
                         <span style="color: rgba(255,255,255,0.6);">Albédo moyen Terre actuelle : \(\bar{A} \approx 0{,}31\) (31 %)</span>
                     </div>
+                    <div class="formula-item" style="font-size: 0.9em; margin-top: 0.8em;">
+                        <strong>🧊 Albédo de la glace selon la fraction couverte</strong> (snowball) :
+                        $$A_{\text{glace}}(f) = A_{\text{neige}} - (A_{\text{neige}} - A_{\text{nue}})\cdot\max\!\left(0,\ \frac{f - f_0}{1 - f_0}\right)$$
+                        <span style="color: rgba(255,255,255,0.6);">
+                        \(f\) = fraction de glace ; \(f_0 = 0{,}5\) = seuil (la glace nue tropicale n'apparaît que lorsque la ligne de glace atteint ~30° de latitude, \(f = 1 - \sin\varphi\)). \(A_{\text{neige}} \approx 0{,}85\) (neige propre polaire, Gardner-Sharp 2010) ; \(A_{\text{nue}} = 0{,}60\) (glace nue tropicale sublimée + poussière — Pierrehumbert 2005 ; « dark ice » Abbot &amp; Pierrehumbert 2010 → 0,50).<br>
+                        Sous le seuil (\(f \le f_0\)) : neige polaire propre (0,85), la branche chaude d'entrée est préservée. Au-dessus, quand la banquise gagne l'équateur (\(f \to 1\)) : les tropiques subliment → glace nue sombre → albédo → 0,60, ce qui rend la <strong>déglaciation</strong> possible. Réf. glace nue = 0,50 (indép. de \(\lambda\), Pierrehumbert 2005).
+                        </span>
+                    </div>
                 </div>
             </div>
             
