@@ -137,6 +137,10 @@
     // ~10·x₀ pour trouver le seuil de fonte snowball, ~0.1–0.3 bar) restait bloqué → boucle infinie,
     // FAILED jamais atteint. 1e19 (~1.3 bar) laisse la marge. N'affecte pas le scan négatif (CO₂↓).
     var X_ABS_MAX = 1e19;
+    // [CO₂ SCAN-CEIL v-2026-07-16] Plafond du scan CO₂ (kg) piloté par la CONFIG d'époque (⚖️🏭🔝), lu
+    // génériquement par clampX — aucun if(epoch==) dans le calcul. Défaut = X_ABS_MAX (aucun plafond
+    // spécifique). Posé par onEpochButton depuis la config. Voir configTimeline.js ⚖️🏭🔝 (déglaciation 1b).
+    var X_ceilCurrent = X_ABS_MAX;
     /** Garde-fou nombre total d’appels API (scan + dicho) */
     var MAX_OUTER = 200;
     /** Marge haut de plage CO₂ (R&D, onglet hyst) pour hysteresis 1a — TIMELINE / configTimeline inchangés. */
@@ -150,7 +154,7 @@
     window.HYSTERESIS_REF_EPOCH_ID = HYSTERESIS_REF_EPOCH_ID;
 
     function clampX(x) {
-        return Math.max(X_ABS_MIN, Math.min(X_ABS_MAX, Math.max(X_ABS_MIN, x)));
+        return Math.max(X_ABS_MIN, Math.min(X_ceilCurrent, Math.max(X_ABS_MIN, x)));
     }
 
     function timelineIndexForEpoch(epochId) {
@@ -363,14 +367,20 @@
             var epId = (D['📜'] && D['📜']['🗿'] != null) ? String(D['📜']['🗿']) : '—';
             var edsTot = (D['📛'] && D['📛']['🧲📛'] != null) ? fx(D['📛']['🧲📛'], 2) : '—';
             var edsCo2 = (D['📛'] && D['📛']['🧲📛🏭'] != null) ? fx(D['📛']['🧲📛🏭'], 2) : '—';
+            var edsH2o = (D['📛'] && D['📛']['🧲📛💧'] != null) ? fx(D['📛']['🧲📛💧'], 2) : '—';
             var edsCh4 = (D['📛'] && D['📛']['🧲📛🐄'] != null) ? fx(D['📛']['🧲📛🐄'], 2) : '—';
+            var pc = function (k) { return (D['📛'] && D['📛'][k] != null && isFinite(D['📛'][k])) ? (D['📛'][k] * 100).toFixed(1) : '—'; };
+            var pctCo2 = pc('🍰📛🏭'), pctH2o = pc('🍰📛💧'), pctCh4 = pc('🍰📛🐄');
+            var edsCia = (D['📛'] && D['📛']['🧲📛🌫️'] != null) ? fx(D['📛']['🧲📛🌫️'], 2) : '—';
+            var ratCia = (D['📛'] && D['📛']['🍰📛🌫️'] != null && isFinite(D['📛']['🍰📛🌫️'])) ? (D['📛']['🍰📛🌫️'] * 100).toFixed(0) : '—';
             out.push('  🔬[diag bilan] ep=' + epId
                 + ' |🧮⚧=' + phase
                 + ' | Δ=' + (typeof dFlux === 'number' && isFinite(dFlux) ? dFlux.toFixed(2) : '—') + ' W/m²'
                 + ' | entr=' + (typeof sAbs === 'number' && isFinite(sAbs) && typeof g === 'number' && isFinite(g) ? (sAbs + g).toFixed(1) : '—')
                 + ' (Sabs=' + (typeof sAbs === 'number' && isFinite(sAbs) ? sAbs.toFixed(1) : '—') + ' +🌕=' + (typeof g === 'number' && isFinite(g) ? g.toFixed(1) : '—') + ')'
                 + ' | OLR=' + (typeof olr === 'number' && isFinite(olr) ? olr.toFixed(1) : '—')
-                + ' | EDS=' + edsTot + ' (CO₂=' + edsCo2 + ' CH₄=' + edsCh4 + ') W/m²');
+                + ' | EDS=' + edsTot + ' W/m² [CO₂ ' + edsCo2 + ' (' + pctCo2 + '%) · H₂O ' + edsH2o + ' (' + pctH2o + '%) · CH₄ ' + edsCh4 + ' (' + pctCh4 + '%)]'
+                + ' | 🌫️CIA=' + edsCia + ' W/m² (' + ratCia + '% des raies CO₂)');
             return out;
         },
 
@@ -513,6 +523,11 @@
                     this.searchSign = 'negative';
                     break;
             }
+            // [CO₂ SCAN-CEIL v-2026-07-16] Plafond du scan lu depuis la config d'époque (⚖️🏭🔝), pas d'if(epoch==) :
+            // c'est le régime imposé par la config (déglaciation 1b = poussière volcanique) qui pose le plafond au
+            // minimum d'OLR. Époque sans le champ → X_ABS_MAX (aucun plafond spécifique).
+            var _epochRowCeil = window.TIMELINE[timelineIndexForEpoch(epochId)];
+            X_ceilCurrent = (_epochRowCeil && Number.isFinite(_epochRowCeil['⚖️🏭🔝'])) ? _epochRowCeil['⚖️🏭🔝'] : X_ABS_MAX;
             this.runSearchSign = this.searchSign === 'positive' ? 'positive' : 'negative';
             this.syncSearchSignButtonUI();
             // ── CO₂ TIMELINE : restauration valeur de config initiale ─────────────────────────────
@@ -549,10 +564,18 @@
             }
             // ─────────────────────────────────────────────────────────────────────────────────────
             var x0 = clampX(this.adapter.readXFromTimeline());
-            // Marge R&D ×1,1 sur x0 : uniquement en mode BaryAdapter. En scan simple (synchro visu),
-            // x0 = valeur config racine exacte (pas d'inflation) → départ identique à la visu.
-            if (epochId === 'hysteresis 1a' && H.useBaryAdapter === true) {
-                x0 = clampX(x0 * HYST_RND_WARM_CO2_FACTOR_1A);
+            // [WARM-START v-2026-07-16] Le scan de RECHERCHE (entrée, signe négatif) démarre AU-DESSUS de la
+            // fenêtre bistable — facteur lu depuis la config d'époque (⚖️🏭🔺), générique, pas d'if(epoch==).
+            // Époque sans le champ → 1 (départ = baseline, identique à la visu). Requis pour 1a : au baseline
+            // (~100 ppm) sous voile 2 %, on est déjà SOUS le tip (~112 ppm) → branche chaude absente → le scan
+            // ×0.5 (CO₂↓) ne peut pas amorcer (« branche froide déjà atteinte »). Partir à ×facteur de CO₂ pose
+            // le départ sur la branche chaude ; le scan redescend et trouve proprement la bifurcation. La visu
+            // n'exécute pas ce scan (elle reste au baseline) → pas de déssynchro. N'affecte pas le scan positif.
+            var _epochRowWarm = window.TIMELINE[idxEp];
+            var _warmFac = (_epochRowWarm && Number.isFinite(_epochRowWarm['⚖️🏭🔺']) && _epochRowWarm['⚖️🏭🔺'] > 0)
+                ? _epochRowWarm['⚖️🏭🔺'] : 1;
+            if (this.runSearchSign !== 'positive' && _warmFac > 1) {
+                x0 = clampX(x0 * _warmFac);
             }
             this.xBaselineKg = x0;
             this.x = x0;
@@ -885,7 +908,9 @@
                             }
                             var xNextP = xBefore / fac;
                             switch (true) {
-                                case xNextP > (1 / this.scanFailRatio) * x0:
+                                // FAILED aussi si le CO₂ est coincé au plafond X_ABS_MAX (clamp ne progresse plus) :
+                                // sinon boucle infinie quand X_ABS_MAX < (1/scanFailRatio)·x0 (v-2026-07-16).
+                                case xNextP > (1 / this.scanFailRatio) * x0 || clampX(xNextP) <= xBefore:
                                     return failHalf();
                                 default:
                             }
@@ -923,7 +948,8 @@
                             }
                             var xNext = xBefore * fac;
                             switch (true) {
-                                case xNext < this.scanFailRatio * x0:
+                                // FAILED aussi si le CO₂ est coincé au plancher X_ABS_MIN (clamp ne progresse plus) (v-2026-07-16).
+                                case xNext < this.scanFailRatio * x0 || clampX(xNext) >= xBefore:
                                     return failHalf();
                                 default:
                             }

@@ -2,11 +2,12 @@
 <!--
 # File: CO2/html/hysteresis_compute.html - Hystérésis standalone (iframe index)
 # Desc: Dans l'architecture, je suis la page hôte de l'onglet Hystérésis du shell index.html. Iframe autonome : mêmes scripts que scie_compute.html, mais seul le panneau #hysteresis est visible. Globals isolés par iframe (pas de bridge parent sauf postMessage explicite ultérieurement).
-# Version 1.0.14
+# Version 1.0.15
 # Copyright 2025 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
-# Date: July 13, 2026
+# Date: July 15, 2026
 # Logs:
+# - v1.0.15: panneau hyst — iceAlbedoEff dynamique (_hystDiag) + 🧊 matériau établi ; slider inchangé (EARTH.🪩🍰🧊).
 # - v1.0.14: fix onglet mort depuis refactor API mai 2026 (API_BILAN 3ceeda8) : calculations_flux.js /
 #             radiative/calculations.js lisent window.SYNC_STATE.animEnabled (sync_panels.js, jamais chargé ici)
 #             → crash "reading 'animEnabled'" au 1er run. Contrat host standalone ajouté (comme epoch_bench.html) :
@@ -175,7 +176,7 @@
                 <p class="small" style="font-size:11px;opacity:0.8;margin:0 0 8px 0;">Réglages moteur (CONFIG_COMPUTE / EARTH) — prochain ▶️ les appliquera. Curseur à droite : sens typique T°↓ CO₂↓ sauf GREY seaIce (T°↑).</p>
                 <p style="font-size:10px;opacity:0.55;margin:8px 0 2px 0;text-transform:uppercase;letter-spacing:0.08em;">— Rétroaction cryosphère (ACTIVE) —</p>
                 <div class="hyst-row">
-                    <label for="hyst-threshold" title="Interpole EARTH['🪩🍰']['🪩🍰🧊'] (albédo glace cold/dry, base Briegleb 2004) sur DEFAULT.BOUNDS.HYSTERESIS.iceAlbedoCoeff. ACTIF. 100 % = condition snowball max (α_cold élevé).">🧊 iceAlbedoCoeff — albédo glace froide (EARTH.🪩🍰🧊)<span class="hyst-sens">T°↓ CO₂↓ · ACTIF</span></label>
+                    <label for="hyst-threshold" title="Affichage : iceAlbedoEff calculé (moyenne zonale Briegleb, _hystDiag). Slider : interpole EARTH['🪩🍰']['🪩🍰🧊'] — albédo glace nue/saisonnière une fois snowball établi (plateau tropical Briegleb). ACTIF.">🧊 iceAlbedoCoeff — glace nue établie (🪩🍰🧊)<span class="hyst-sens">T°↓ CO₂↓ · ACTIF</span></label>
                     <input id="hyst-threshold" type="range" min="0" max="100" step="1" value="100" />
                     <span id="hyst-threshold-val" style="font-family:monospace;font-size:12px;">100%</span>
                 </div>
@@ -557,7 +558,9 @@
                 return;
             }
 
-            window.DATA['🔘']['🔘🎞'] = false;
+            window.DATA['🔘']['🔘🎞'] = true;  // [EXPÉRIENCE v-2026-07-16] ex-false → true : forcer le scan test à
+            //   tourner en 🔘🎞=true comme le visu, pour vérifier si ça change qqch (pari user : test1a reste -46°C).
+            //   RESTAURER à false après le test.
             window.infoTimeMa = 0;
             window._timelineEpochEndSkipLatch = false;
             var _plotAnimCb = document.getElementById('plot-anim-toggle-checkbox');
@@ -2121,7 +2124,9 @@
                 return Number.isFinite(n) ? n.toFixed(2) : '0.10';
             }
             function buildHystInfoLine() {
-                const iceA = (window.EARTH && window.EARTH['🪩🍰']) ? Number(window.EARTH['🪩🍰']['🪩🍰🧊']).toFixed(2) : 'n/a';
+                const iceEff = (window._hystDiag && Number.isFinite(Number(window._hystDiag.iceAlbedoEff)))
+                    ? Number(window._hystDiag.iceAlbedoEff).toFixed(3) : 'n/a';
+                const iceBare = (window.EARTH && window.EARTH['🪩🍰']) ? Number(window.EARTH['🪩🍰']['🪩🍰🧊']).toFixed(2) : 'n/a';
                 const veilX = Number.isFinite(Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01)) ? Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01).toFixed(2) : '0';
                 return 'seaIceTransitionRangeK=' + effSeaIceRangeUi() + ' (moteur ' + effSeaIceRangeK().toFixed(2) + ' K)'
                     + ' | seaIceStrength01=' + Number(window.DATA['🎚️'].HYSTERESIS.seaIceStrength01).toFixed(2)
@@ -2131,7 +2136,7 @@
                     + ' | co2OceanPumpOverride01=' + fmtPump()
                     + ' | co2OceanEffPump01=' + fmtEffPump()
                     + ' | co2OceanRatioRef=' + (Number.isFinite(Number(window.CONFIG_COMPUTE.co2OceanRatioRef)) ? Number(window.CONFIG_COMPUTE.co2OceanRatioRef).toFixed(1) : '50')
-                    + ' | iceAlbedo=' + iceA;
+                    + ' | iceAlbedoEff=' + iceEff + ' (🧊=' + iceBare + ')';
             }
             function clamp01(x) { return Math.max(0, Math.min(1, x)); }
             function interp(min, max, pct) {
@@ -2162,7 +2167,21 @@
             function applyHystThreshold(pct) {
                 const H = ensureHystTuning();
                 if (window.EARTH && window.EARTH['🪩🍰']) {
-                    window.EARTH['🪩🍰']['🪩🍰🧊'] = interpSens(H.iceAlbedoCoeff.min, H.iceAlbedoCoeff.max, pct, H.iceAlbedoCoeff.sens_threshold);
+                    // [FIX 1a v-2026-07-16] Cette écriture est GLOBALE et NON gatée → elle fuit dans 1a.
+                    // La descente sous ~0.50 (glace nue physique) doit passer UNIQUEMENT par le scalaire mudball
+                    // (iceMudballAlbedo, gaté 1b l.725) qui assombrit déjà 🧊 ET ❄️. Sans ce plancher, le scan 1a
+                    // tombait à 0.35 → glace nue tropicale trop sombre → runaway froid tué → coincé ~-1,2°C au lieu
+                    // de diverger <-40°C. Plancher physique 0.50 = bare ice / neige sale (Briegleb 2004), jamais mudball.
+                    const _iceNuePhys = Math.max(0.50, interpSens(H.iceAlbedoCoeff.min, H.iceAlbedoCoeff.max, pct, H.iceAlbedoCoeff.sens_threshold));
+                    window.EARTH['🪩🍰']['🪩🍰🧊'] = _iceNuePhys;
+                }
+                // [MUDBALL v-2026-07-16] La jauge pilote AUSSI la neige profonde (🪩🍰❄️) via le scalaire partagé
+                // CONFIG_COMPUTE.iceMudballAlbedo (lu par calculations_albedo.js). Sans ça, seule la glace nue
+                // tropicale s'assombrissait → weighted plafonné à ~0.70 même jauge à 0%. Assombrit TOUTE la glace
+                // (poussière mudball, Abbot & Pierrehumbert 2010) → permet Sabs→~190 → franchir 0°C → déglaciation.
+                // Même valeur = même cible que la config 1b en visu (source unique, pas de divergence scan/visu).
+                if (window.CONFIG_COMPUTE) {
+                    window.CONFIG_COMPUTE.iceMudballAlbedo = interpSens(H.iceAlbedoCoeff.min, H.iceAlbedoCoeff.max, pct, H.iceAlbedoCoeff.sens_threshold);
                 }
                 // Borne max 80 : proche du rapport stock océan/atmosphère CO₂ moderne ~50 (Henry, Zeebe & Wolf-Gladrow 2001).
                 // Ancien 200 = 4× trop haut → pompage trop fort, bloque le rebond chaud.

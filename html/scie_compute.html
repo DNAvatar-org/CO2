@@ -2080,7 +2080,12 @@
             function applyHystThreshold(pct) {
                 const H = ensureHystTuning();
                 if (window.EARTH && window.EARTH['🪩🍰']) {
-                    window.EARTH['🪩🍰']['🪩🍰🧊'] = interpSens(H.iceAlbedoCoeff.min, H.iceAlbedoCoeff.max, pct, H.iceAlbedoCoeff.sens_threshold);
+                    // [FIX visu v-2026-07-16] MÊME plancher physique 0.50 que l'iframe test (hysteresis_compute.html) :
+                    // sans lui, la jauge posait la glace nue à 0.35 (mudball sombre) → albédo trop bas → la visu ⛄
+                    // restait chaude (-1.2°C) là où le test tombait à -46°C. C'était LA divergence test/visu (même
+                    // fonction calculateAlbedo, mais EARTH['🪩🍰🧊'] posé plus sombre en visu). Le 0.35 ne doit passer
+                    // que par le scalaire mudball gaté 1b, jamais par cette écriture globale (cf. fix test tour 1).
+                    window.EARTH['🪩🍰']['🪩🍰🧊'] = Math.max(0.50, interpSens(H.iceAlbedoCoeff.min, H.iceAlbedoCoeff.max, pct, H.iceAlbedoCoeff.sens_threshold));
                 }
                 // Borne max 80 : proche du rapport stock océan/atmosphère CO₂ moderne ~50 (Henry, Zeebe & Wolf-Gladrow 2001).
                 // Ancien 200 = 4× trop haut → pompage trop fort, bloque le rebond chaud.

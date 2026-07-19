@@ -1,8 +1,10 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.11
-// Date: [May 06, 2026]
+// Version 1.0.13
+// Date: [July 16, 2026]
 // logs :
+// - v1.0.13: CHARS_DESC ⚗ → « Affiche les concentrations » (bouton DETAILS organigramme)
+// - v1.0.12: retrait BOOLEAN 🔘 « Calculé (Boolean) » de l'alphabet (obsolète)
 // - v1.0.11: EPOCH_ALT2SEC — alt2sec tooltips frise (ex. hysteresis 1a / Sturtienne, analogie surfusion).
 // - v1.0.10: CHARS_DESC ⚫ « Corps Noir » (N majuscule) — même libellé que syncEpochFromTimelinePointer / terre.epoch / GEOLOGY.getGeologicalPeriodByName(window.RUNTIME_STATE.currentEpochName).
 // - v1.0.9: CHARS.SULFATE + CHARS_DESC — U+2708 U+FE0F (emoji ✈️, police emoji) ; aligné configsAll
@@ -59,7 +61,8 @@ const CHARS = {
     FLUX_CN: '🌑', // Flux sortant : lune noire (rayonnement corps noir sortant)
     TOLERANCE: '🔬', // Tolérance : précision pour le test d'arrêt
     DESERT: '🏜️',   // Désert : plage (utilisé dans albedo breakdown)
-    VOLCANO: '🌋',  // Volcan : magma (utilisé dans albedo breakdown)
+    VOLCANO_VEIL: '🗻', // Volcan (action-1a) : voile atmosphérique — assombrit le Soleil (événement)
+    VOLCANO: '🌋',  // Volcan (action-1b) : +CO₂ + noircissement glace (événement)
     OCEAN: '🌊',    // Océan : vagues (utilisé dans albedo breakdown)
     FOREST: '🌳',   // Forêt : arbre (utilisé dans albedo breakdown)
     ICE: '🧊',      // Glace : glaçon (utilisé dans albedo breakdown)
@@ -67,7 +70,6 @@ const CHARS = {
     CLOUD_FORMATION: '☁️', // Potentiel de condensation nuageuse
     COMPUTE: '🧮',  // Compute : sablier (pour les valeurs de convergence)
     GREENHOUSE_FORCING_ALT: '🌴',  // Greenhouse forcing alternatif : palmier
-    BOOLEAN: '🔘',  // Boolean : bouton
     CARDINAL: '📿', // Cardinal : 🎓
     DELTA: '🔺',    // Delta : triangle
     METER: '📏',    // Mètre : règle
@@ -140,7 +142,6 @@ const CHARS_DESC = {
     // Unités
     '📿': 'Cardinal (#)',
     '🍰': 'Proportion ([0,1])',
-    '🔘': 'Calculé (Boolean)',
     '📏': 'Longueur (km)',
     '⚖️': 'Masse (kg)',
     '🎈': 'Pression (atm)',
@@ -163,7 +164,6 @@ const CHARS_DESC = {
     '🧊': 'Glace',
     '⛅': 'Nuages',
     '🌊': 'Océan',
-    '🌋': 'Volcan (événement)',
     '🎾': 'Lave',
     '⚽': 'Voile SW stratosphérique',
     '🏜️': 'Désert',
@@ -188,6 +188,8 @@ const CHARS_DESC = {
     '💫': 'TicTime',
     '🛢': 'Scénario émissions',
     '☄️': 'Météorite de glace',
+    '🗻': 'Volcan — voile atmosphérique',
+    '🌋': 'Volcan — CO₂ + noircissement de la glace',
     '🛰': 'Satellite',
     '🌧': 'Saturation H₂O',
     '🎇': 'Big impact',
@@ -230,7 +232,7 @@ const CHARS_DESC = {
     '📐': 'Rayon planète',
     '🍎': 'Gravité (m/s²)',
     '┴': 'Point triple (🎈,🌡️)',
-    '⚗': 'Alembic (chimie / science)'
+    '⚗': 'Affiche les concentrations'
 };
 
 /** alt2sec (tooltips.js, ~2 s) par id époque TIMELINE — clé = 📅 (ex. hysteresis 1a). */
@@ -250,12 +252,12 @@ function createAlphabetHtml() {
     if (typeof CHARS === 'undefined') console.error('[createAlphabet] CHARS non défini');
     // Colonne 1 : Unités
     const charsCol1 = [
-        'CARDINAL', 'PROPORTION', 'BOOLEAN', 'METER', 'WEIGHT', 'PRESSURE', 'TEMP', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'GRAVITY', 'ENERGY_FLUX', 'MOLAR_MASS_AIR', 'ALEMBIC', 'TRIPLE_POINT'
+        'CARDINAL', 'PROPORTION', 'METER', 'WEIGHT', 'PRESSURE', 'TEMP', 'POWER', 'FLUX_IN', 'FLUX_OUT', 'GRAVITY', 'ENERGY_FLUX', 'MOLAR_MASS_AIR', 'ALEMBIC', 'TRIPLE_POINT'
     ];
     
     // Colonne 2 : Éléments
     const charsCol2 = [
-        'H2O', 'CH4', 'CO2', 'O2', 'N2', 'SULFATE', 'ICE', 'CLOUD', 'OCEAN', 'VOLCANO', 'DESERT', 'FOREST', 'ATMOSPHERE', 'SUN_ORIGIN', 'SPECTRAL'
+        'H2O', 'CH4', 'CO2', 'O2', 'N2', 'SULFATE', 'ICE', 'CLOUD', 'OCEAN', 'DESERT', 'FOREST', 'ATMOSPHERE', 'SUN_ORIGIN', 'SPECTRAL'
     ];
     
     // Colonne 3 : Calculs
@@ -265,7 +267,7 @@ function createAlphabetHtml() {
     
     // Colonne 4 : Événements
     const charsCol4 = [
-        'DATE', 'TIC_TIME', 'EVENTS', 'TRANSITION', 'BIG_IMPACT', 'METEORITE_COUNT', 'FLUX_START', 'FLUX_END', 'PLANET_RADIUS', 'TROPOPAUSE', 'ALTITUDE', 'SATELLITE', 'INDEX_EPOCH'
+        'DATE', 'TIC_TIME', 'EVENTS', 'TRANSITION', 'BIG_IMPACT', 'METEORITE_COUNT', 'VOLCANO_VEIL', 'VOLCANO', 'FLUX_START', 'FLUX_END', 'PLANET_RADIUS', 'TROPOPAUSE', 'ALTITUDE', 'SATELLITE', 'INDEX_EPOCH'
     ];
     
     // Colonne 5 : Époques et autres logos

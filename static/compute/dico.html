@@ -14,40 +14,54 @@
         </div>
     </div>
     
-    <script src="https://dnavatar.org/pages/API_BILAN/data/alphabet.js"></script>
-    <script src="https://dnavatar.org/pages/API_BILAN/data/dico.js"></script>
-    <script src="https://dnavatar.org/pages/API_BILAN/data/initDATA.js"></script>
+    <script src="../site_paths.js"></script>
+    <script src="alphabet.js"></script>
+    <script src="dico.js"></script>
+    <script src="../../../API_BILAN/data/initDATA.js"></script>
     <script src="../../organigramme/configOrganigramme.js"></script>
     <script>
-        // Générer le dictionnaire au chargement
-        window.addEventListener('DOMContentLoaded', function() {
-            const dicoContent = document.getElementById('dico-content');
-            if (dicoContent && typeof window !== 'undefined' && window.createDicoHtml) {
-                dicoContent.innerHTML = window.createDicoHtml();
-                
-                // Ajuster la hauteur de l'iframe au contenu
-                setTimeout(() => {
-                    const height = document.body.scrollHeight;
-                    const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
-                    if (window.parent && window.parent !== window) {
-                        window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'dico' }, '*');
-                    }
-                }, 100);
-            } else {
-                dicoContent.innerHTML = '<p style="color: #ff6b6b;">Erreur : Impossible de générer le dictionnaire. Vérifiez que alphabet.js et dico.js sont chargés.</p>';
-            }
-        });
-        
-        // Réajuster si le contenu change
-        window.addEventListener('resize', function() {
-            setTimeout(() => {
+        (function () {
+            function resizeIframe() {
                 const height = document.body.scrollHeight;
-                const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
+                const heightWithMargin = Math.ceil(height * 1.05);
                 if (window.parent && window.parent !== window) {
                     window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'dico' }, '*');
                 }
-            }, 100);
-        });
+            }
+
+            function bindAlt0sec(root) {
+                if (typeof window.addTooltipFromAttribute !== 'function') return;
+                root.querySelectorAll('[data-tooltip]').forEach(function (el) {
+                    window.addTooltipFromAttribute(el);
+                    el.setAttribute('data-tooltip-initialized', 'true');
+                });
+            }
+
+            function renderDico() {
+                const dicoContent = document.getElementById('dico-content');
+                if (dicoContent && window.createDicoHtml) {
+                    dicoContent.innerHTML = window.createDicoHtml();
+                    bindAlt0sec(dicoContent);
+                    setTimeout(resizeIframe, 100);
+                } else if (dicoContent) {
+                    dicoContent.innerHTML = '<p style="color: #ff6b6b;">Erreur : Impossible de générer le dictionnaire. Vérifiez que alphabet.js et dico.js sont chargés.</p>';
+                }
+            }
+
+            function loadTooltipsThenRender() {
+                var tip = document.createElement('script');
+                var base = (window.SITE_PATHS && window.SITE_PATHS.INTERFACES)
+                    ? window.SITE_PATHS.INTERFACES
+                    : '../../../../_interfaces/';
+                tip.src = base + 'tooltips.js';
+                tip.onload = renderDico;
+                tip.onerror = renderDico;
+                document.head.appendChild(tip);
+            }
+
+            window.addEventListener('DOMContentLoaded', loadTooltipsThenRender);
+            window.addEventListener('resize', function () { setTimeout(resizeIframe, 100); });
+        })();
     </script>
 </body>
 </html>

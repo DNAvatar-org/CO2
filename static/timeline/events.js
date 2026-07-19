@@ -104,7 +104,7 @@ window.updateEpochActions = function () {
         const _hasEmissions = Object.keys(whRoot).some(function(k) { return !isNaN(Number(k)); });
         const orderArr = Array.isArray(whRoot.order) ? whRoot.order : null;
         const orderedActionCount = orderArr !== null ? orderArr.length : null;
-        const directActionCount = ['☄️', '🎇', '🌋', '💫', '🏔', '⛰'].filter(function(k) { return whRoot[k] != null; }).length;
+        const directActionCount = ['☄️', '🎇', '🗻', '🌋', '💫', '🏔', '⛰'].filter(function(k) { return whRoot[k] != null; }).length;
         const actionCount = orderedActionCount !== null ? orderedActionCount : directActionCount;
         const hideSkip = _hasEmissions || actionCount <= 1;
         animToggleBtn.classList.toggle('plot-anim-toggle--scenario-hidden', hideSkip);
@@ -396,21 +396,35 @@ window.updateEpochActions = function () {
                     }
                 });
                 eventsLogos.appendChild(bigImpactBtn);
-            } else if (act === '🌋') {
-                const stepVeil = cfg['🔺🍰⚽'];
+            } else if (act === '🗻' || act === '🌋') {
+                // [ACTIONS VOLCAN config-driven v-2026-07-16] DEUX logos distincts, sens OPPOSÉS, chacun décrit par
+                // sa DESC dans l'Alphabet (CHARS_DESC) — plus aucun tooltip hardcodé :
+                //   🗻 = action-1a : voile SW (🔺🍰⚽, assombrit le Soleil → ENTRÉE snowball) ;
+                //   🌋 = action-1b : +CO₂ (🔺⚖️🏭) + noircissement glace (🌫️❄️ → iceMudballAlbedo, mudball → SORTIE).
+                // Effets appliqués selon les clés déclarées dans la config de l'event (générique, pas d'if(epoch==)).
+                const stepVeil = cfg['🔺🍰⚽'];        // action-1a : voile SW (fraction)
+                const iceMud = cfg['🌫️❄️'];          // action-1b : albédo cible glace (mudball)
+                const stepCo2 = cfg['🔺⚖️🏭'];        // action-1b : ajout CO₂ (kg) — HOOK, câblage DATA à confirmer
                 const stepMaVolc = cfg['🔺⏳'];
                 const volcBtn = document.createElement('button');
                 volcBtn.type = 'button';
                 volcBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
-                volcBtn.textContent = '🌋';
-                const pctStr = (stepVeil * 100).toFixed(1);
-                volcBtn.alt = "Hiver volcanique : l'écran de poussière bloque 2% du rayonnement solaire. (+30 Ma)";
-                window.addCustomTooltip(volcBtn, "Hiver volcanique : l'écran de poussière bloque 2% du rayonnement solaire. (+30 Ma)");
+                volcBtn.textContent = act;
+                // Tooltip = DESC du logo dans l'Alphabet (source unique), pas de texte hardcodé par action.
+                const tip = (window.CHARS_DESC && window.CHARS_DESC[act]) ? window.CHARS_DESC[act] : act;
+                volcBtn.alt = tip;
+                window.addCustomTooltip(volcBtn, tip);
                 volcBtn.addEventListener('click', () => {
                     window.hideTooltip();
                     const D = window.DATA;
-                    D['📜']['🔺🍰⚽'] = Math.min(0.95, D['📜']['🔺🍰⚽'] + stepVeil);
-                    advanceGeologicTicOrder(D, stepMaVolc, '🌋');
+                    if (Number.isFinite(stepVeil)) {
+                        D['📜']['🔺🍰⚽'] = Math.min(0.95, (D['📜']['🔺🍰⚽'] || 0) + stepVeil);
+                    }
+                    if (Number.isFinite(iceMud) && window.CONFIG_COMPUTE) {
+                        window.CONFIG_COMPUTE.iceMudballAlbedo = iceMud; // noircissement glace (mudball, sortie 1b)
+                    }
+                    // TODO 1b : appliquer stepCo2 (🔺⚖️🏭) sur le CO₂ DATA — chemin à confirmer avant câblage.
+                    advanceGeologicTicOrder(D, stepMaVolc, act);
                 });
                 eventsLogos.appendChild(volcBtn);
             } else if (act === '💫') {
@@ -648,9 +662,10 @@ window.updateEpochActions = function () {
         });
         eventsLogos.appendChild(bigImpactBtn);
     } else {
-            // Géologique (repli ACTION_BY_DATE) : 🌋 + tic temps 💫 / 🏔 / ⛰ (config)
+            // Géologique (repli ACTION_BY_DATE) : action volcan 🗻/🌋 + tic temps 💫 / 🏔 / ⛰ (config)
             const wh = whRoot;
-            const volcCfg = wh['🌋'];
+            const volcAct = (wh['🗻'] && wh['🗻']['🔺🍰⚽'] != null) ? '🗻' : (wh['🌋'] != null ? '🌋' : null);
+            const volcCfg = volcAct ? wh[volcAct] : null;
             const ticResolved = resolveGeologicTicFromWh(wh);
             const ticKey = ticResolved.ticKey;
             const ticCfg = ticResolved.ticCfg;
@@ -676,19 +691,22 @@ window.updateEpochActions = function () {
 
             if (volcCfg) {
                 const stepVeil = volcCfg['🔺🍰⚽'];
+                const iceMud = volcCfg['🌫️❄️'];
                 const stepMaVolc = volcCfg['🔺⏳'];
                 const volcBtn = document.createElement('button');
                 volcBtn.type = 'button';
                 volcBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
-                volcBtn.textContent = '🌋';
-                const pctStr = (stepVeil * 100).toFixed(1);
-                volcBtn.alt = "Hiver volcanique : l'écran de poussière bloque 2% du rayonnement solaire. (+30 Ma)";
-                window.addCustomTooltip(volcBtn, "Hiver volcanique : l'écran de poussière bloque 2% du rayonnement solaire. (+30 Ma)");
+                volcBtn.textContent = volcAct;
+                // Tooltip = DESC du logo (Alphabet CHARS_DESC), pas de texte hardcodé (cf. handler order-based).
+                const tip = (window.CHARS_DESC && window.CHARS_DESC[volcAct]) ? window.CHARS_DESC[volcAct] : volcAct;
+                volcBtn.alt = tip;
+                window.addCustomTooltip(volcBtn, tip);
                 volcBtn.addEventListener('click', () => {
                     window.hideTooltip();
                     const D = window.DATA;
-                    D['📜']['🔺🍰⚽'] = Math.min(0.95, D['📜']['🔺🍰⚽'] + stepVeil);
-                    advanceGeologicTic(D, stepMaVolc, '🌋');
+                    if (Number.isFinite(stepVeil)) D['📜']['🔺🍰⚽'] = Math.min(0.95, (D['📜']['🔺🍰⚽'] || 0) + stepVeil);
+                    if (Number.isFinite(iceMud) && window.CONFIG_COMPUTE) window.CONFIG_COMPUTE.iceMudballAlbedo = iceMud;
+                    advanceGeologicTic(D, stepMaVolc, volcAct);
                 });
                 eventsLogos.appendChild(volcBtn);
             }

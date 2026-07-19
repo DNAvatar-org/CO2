@@ -1,8 +1,12 @@
 // File: API_BILAN/data/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
-// Version 1.0.10
-// Date: [April 02, 2026] [20:00 UTC+1]
+// Version 1.0.14
+// Date: [July 16, 2026]
 // logs :
+// - v1.0.14: retrait catégorie 🔘 États activés (boutons on/off obsolètes)
+// - v1.0.13: alt0sec (data-tooltip) sur TOUTES les lignes dico — priorité KEYS_ALT0SEC → FORM → DESC
+// - v1.0.12: 🪩🍰 section « Albédo matériau » — ❄️/🧊/🏊 ; DESC courte ; alt0sec (data-tooltip) = description complète
+// - v1.0.11: catégorie 🪩🍰 — 🪩🍰❄️ plateau neige profonde (Briegleb/EARTH, entrée snowball + mudball 1b)
 // - v1.0.10: 🍰🪩📿 albédo effectif (voile inclus) ; 🧲☀️🔽 = 🧲☀️🎱×(1−🍰🪩📿)
 // - v1.0.7: KEYS/DESC/FORM 🍰🪩🌋→🍰🪩🎾, CONST 🪩🍰🌋→🪩🍰🎾 (lave / surface magmatique)
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -22,8 +26,6 @@
 // OBJET KEYS (toutes les clés regroupées) - Utilise directement les emojis
 // ============================================================================
 const KEYS = {
-    // États activés
-    '🔘': ['🔘💧📛', '🔘🐄📛', '🔘🏭📛', '🔘🪩', '🔘🎞'],
     // Configuration de date / Événements
     '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔘🕰', '🧲🔬'],
     // Date Époque
@@ -49,7 +51,9 @@ const KEYS = {
     // Géologie (Surfaces géologiques - Couche A)
     '🗻': ['🍰🗻🌊', '🍰🗻🏔', '🍰🗻🌍'],
     // Constantes physiques
-    '💎': ['🎈┴💧', '🌡️┴💧']
+    '💎': ['🎈┴💧', '🌡️┴💧'],
+    // Albédo matériau (EARTH['🪩🍰'], override EPOCH['🪩🍰'])
+    '🪩🍰': ['🪩🍰❄️', '🪩🍰🧊', '🪩🍰🏊']
 };
 
 // ============================================================================
@@ -57,13 +61,6 @@ const KEYS = {
 // Utilise directement les emojis
 // ============================================================================
 const DESC = {
-    '🔘': {
-        '🔘💧📛': 'H₂O EDS on/off',
-        '🔘🐄📛': 'CH₄ EDS on/off',
-        '🔘🏭📛': 'CO₂ EDS on/off',
-        '🔘🪩': 'Albedo on/off',
-        '🔘🎞': 'Animation on/off',
-    },
     '📜': {
         '🌡️🧮': 't° attendu (t° config)',
         '📿☄️': 'Nombre de météore',
@@ -177,6 +174,11 @@ const DESC = {
         '🍰🗻🌊': 'Surface océanique potentielle (bassin océanique, géologie)',
         '🍰🗻🏔': 'Surface hautes terres (zones de glace potentielles, géologie)',
         '🍰🗻🌍': 'Surface terres basses (zones de forêts/continents, géologie)',
+    },
+    '🪩🍰': {
+        '🪩🍰❄️': 'Neige profonde propre',
+        '🪩🍰🧊': 'Glace nue / saisonnière',
+        '🪩🍰🏊': 'Melt pond / bare ice',
     }
 };
 
@@ -281,7 +283,28 @@ const FORM = {
         '⚖️❀': 'Masse ❀ - ∀ ❀ ∈ {🏭, 🐄, 🫁, 💨} (+ ⚖️✈ proxy sulfate)',
         '⚖️💧': 'Masse H2O totale',
         '⚖️🫧': 'Masse atmosphère sec = ⚖️🏭 + ⚖️🐄 + ⚖️🫁 + ⚖️💨 (sans vapeur d\'eau ; ⚖️✈ = proxy CCN séparé)'
+    },
+    '🪩🍰': {
+        '🪩🍰❄️': 'α_snow_deep pol/mi-lat — plateau T≤−10°C (Gardner & Sharp 2010) ; EARTH défaut 0.85',
+        '🪩🍰🧊': 'α_cold Briegleb / plateau tropical établi — EARTH défaut 0.70 (CCSM3 sea ice)',
+        '🪩🍰🏊': 'α_melt Briegleb T≥0°C — EARTH défaut 0.50 (Perovich SHEBA ; NCAR/TN-463)'
     }
+};
+
+
+/** alt0sec (data-tooltip, immédiat) — description complète des clés dico. */
+const KEYS_ALT0SEC = {
+    '🪩🍰❄️':
+        'Albédo plateau neige profonde propre (EARTH[\'🪩🍰\'][\'🪩🍰❄️\'], défaut 0.85 — Warren & Wiscombe 1980 ; Warren 1982).\n\n' +
+        'Paramètre α_snow_deep Briegleb pour zones polaire et mi-latitude : glace neuve brillante à l\'entrée snowball (1a).\n\n' +
+        'Sortie snowball (1b, mudball) : plafonné par min(🪩🍰❄️, CONFIG_COMPUTE.iceMudballAlbedo) quand la poussière volcanique assombrit la neige (Abbot & Pierrehumbert 2010).',
+    '🪩🍰🧊':
+        'Albédo glace nue / saisonnière froide (EARTH[\'🪩🍰\'][\'🪩🍰🧊\'], défaut 0.70 — CCSM3 / Briegleb cold ice).\n\n' +
+        'Segment aging Briegleb (−10 → −5 °C) et plateau α_snow_deep tropical une fois le snowball établi (sublimation, pas de neige pristine — Pierrehumbert 2005).\n\n' +
+        'Mudball 1b : aussi plafonné par iceMudballAlbedo (poussière sur toute la surface gelée).',
+    '🪩🍰🏊':
+        'Albédo bare ice + melt ponds (EARTH[\'🪩🍰\'][\'🪩🍰🏊\'], défaut 0.50 — Perovich SHEBA 2002 ; Briegleb et al. NCAR/TN-463 §5).\n\n' +
+        'Segment haut de la courbe Briegleb : T_local ≥ 0 °C → α_melt. Paramètre matériau de l\'équation, pas un réglage d\'époque.'
 };
 
 
@@ -299,17 +322,20 @@ function createDicoHtml() {
     const DESC = window.DESC;
     // KEYS est défini localement dans ce fichier
     
-    // Fonction helper pour créer une entrée
-    const createDicoEntry = (key, desc) => {
-        return `<div class="legend-item"><span class="logo">${key}</span><span class="description">${desc}</span></div>`;
+    // Fonction helper : DESC visible ; alt0sec = KEYS_ALT0SEC → FORM → DESC
+    const createDicoEntry = (key, desc, categoryLogo) => {
+        const formCat = (typeof FORM !== 'undefined' && FORM[categoryLogo]) ? FORM[categoryLogo] : null;
+        const formText = (formCat && formCat[key]) ? String(formCat[key]) : '';
+        const alt0Explicit = (typeof KEYS_ALT0SEC !== 'undefined' && KEYS_ALT0SEC[key]) ? KEYS_ALT0SEC[key] : '';
+        const alt0 = alt0Explicit || formText || desc || '';
+        const tipAttr = alt0
+            ? ' data-tooltip="' + String(alt0).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"'
+            : '';
+        return `<div class="legend-item"${tipAttr}><span class="logo">${key}</span><span class="description">${desc}</span></div>`;
     };
     
     // Catégories avec leurs logos et noms (utilise directement les emojis)
     const categories = [
-        {
-            logo: '🔘',
-            name: 'États activés'
-        },
         {
             logo: '📜',
             name: 'Config Événements'
@@ -349,6 +375,10 @@ function createDicoHtml() {
         {
             logo: '🧲',
             name: 'Flux (W/m²)'
+        },
+        {
+            logo: '🪩🍰',
+            name: 'Albédo matériau'
         }
     ];
     
@@ -366,7 +396,7 @@ function createDicoHtml() {
                 const desc = DESC[category.logo][fullKey];
                 // Ignorer les variables dont la description commence par "!" (variables internes aux calculs)
                 if (!desc || desc.startsWith('!')) return '';
-                return createDicoEntry(fullKey, desc);
+                return createDicoEntry(fullKey, desc, category.logo);
             })
             .filter(item => item !== '') // Retirer les entrées vides
             .join('');
@@ -377,13 +407,12 @@ function createDicoHtml() {
         `;
     });
     
-    // Organiser en colonnes (répartir les 11 catégories en 5 colonnes)
-    // Répartition équilibrée : 3, 2, 2, 2, 2 (total = 11)
+    // Organiser en colonnes (11 catégories → 5 colonnes : 3, 2, 2, 2, 2)
     const col1 = categoryHTMLs.slice(0, 3).join('');
-    const col2 = categoryHTMLs.slice(3, 6).join('');
-    const col3 = categoryHTMLs.slice(6, 8).join('');
-    const col4 = categoryHTMLs.slice(8, 10).join('');
-    const col5 = categoryHTMLs.slice(10, 11).join('');
+    const col2 = categoryHTMLs.slice(3, 5).join('');
+    const col3 = categoryHTMLs.slice(5, 7).join('');
+    const col4 = categoryHTMLs.slice(7, 9).join('');
+    const col5 = categoryHTMLs.slice(9, 11).join('');
     
     return `
         <div class="legend-grid">
@@ -412,4 +441,5 @@ function createDicoHtml() {
 window.KEYS = KEYS;
 window.DESC = DESC;
 window.FORM = FORM;
+window.KEYS_ALT0SEC = KEYS_ALT0SEC;
 window.createDicoHtml = createDicoHtml;

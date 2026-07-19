@@ -796,8 +796,9 @@ h1 {
     visibility: visible !important;
     opacity: 1 !important;
     display: block !important;
-    white-space: nowrap !important;
-    /* Titre sur une seule ligne */
+    white-space: normal !important;
+    line-height: 1.25;
+    /* Titre sur 2 lignes (visu_radiatif.html : <br>) */
     color: var(--base-color);
     /* color: #667eea (bleu) en réserve */
 }
