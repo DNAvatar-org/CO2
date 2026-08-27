@@ -1,5 +1,5 @@
 {
-  "endpoint": "https://dnavatar.org/deploy.php",
+  "_endpoint": "Hors dépôt : DEPLOY_ENDPOINT, .private/deploy.endpoint ou ~/.dnavatar/deploy.endpoint",
   "_layout": "CO2 → www/pages/bilan_radiatif/CO2/. cd CO2 && publish [--full]",
   "_generated": "tools/generate_deploy_config.py — références runtime, fichiers existants uniquement",
   "git_root": ".",
@@ -290,6 +290,10 @@
       "dest": "pages/bilan_radiatif/CO2/static/fonts/ProggyDotted Regular.ttf"
     },
     {
+      "src": "static/galaxy_background.js",
+      "dest": "pages/bilan_radiatif/CO2/static/galaxy_background.js"
+    },
+    {
       "src": "static/img/fond.png",
       "dest": "pages/bilan_radiatif/CO2/static/img/fond.png"
     },
@@ -304,10 +308,6 @@
     {
       "src": "static/lib/three.min.js",
       "dest": "pages/bilan_radiatif/CO2/static/lib/three.min.js"
-    },
-    {
-      "src": "static/logs_to_server.js",
-      "dest": "pages/bilan_radiatif/CO2/static/logs_to_server.js"
     },
     {
       "src": "static/shell.js",

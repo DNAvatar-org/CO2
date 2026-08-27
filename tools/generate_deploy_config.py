@@ -17,7 +17,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DEST_PREFIX = "pages/bilan_radiatif/CO2"
-ENDPOINT = "https://dnavatar.org/deploy.php"
+# L'adresse de déploiement ne va PAS dans le manifeste : ce dépôt est public.
+# publish.php la lit depuis DEPLOY_ENDPOINT, .private/deploy.endpoint ou
+# ~/.dnavatar/deploy.endpoint — la clé JSON n'est qu'un dernier recours, et
+# la réinjecter ici annulerait l'expurgation à chaque régénération.
 
 EXCLUDE_PREFIXES = (
     "doc/",
@@ -272,7 +275,7 @@ def main() -> int:
         except json.JSONDecodeError:
             old_count = 0
     out = {
-        "endpoint": ENDPOINT,
+        "_endpoint": "Hors dépôt : DEPLOY_ENDPOINT, .private/deploy.endpoint ou ~/.dnavatar/deploy.endpoint",
         "_layout": "CO2 → www/pages/bilan_radiatif/CO2/. cd CO2 && publish [--full]",
         "_generated": "tools/generate_deploy_config.py — références runtime, fichiers existants uniquement",
         "git_root": ".",

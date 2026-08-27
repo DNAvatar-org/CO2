@@ -41,3 +41,4 @@ Thumbs.db
 /static/textures
 .~lock.paleoclimat_complet_750Ma_0Ma.ods\#
 *.ods
+.private/
