@@ -1,8 +1,14 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.26
- * Date: 2026-05-07
+ * Version 1.0.29
+ * Date: 2026-09-17
 * logs :
+ * - v1.0.29: timelineYearsToMa(years, isForward) remplace timelineDeltaYearsToStartMa — années calendaires (🛖🚂📱, libellés
+ *   −10000/1800/2000/2100) → +y/1e6 : échelle monotone. Avant, 1800/2000 CE étaient lus « avant présent » → Holocène +8000 ans
+ *   (an −2000) affiché sur 2000, puis curseur qui remontait à 1800 au passage 🚂.
+ * - v1.0.28: updateTimeline — fin d'époque : appel direct tryEpochEndSkipAfterEvent (verrou déplacé dans events.js, relâché par setEpoch).
+ * - v1.0.27: animateTimelineCursorToEpoch — callback direct si le curseur est déjà sur la cible (fin d'époque atteinte par événements,
+ *   ex. ☄️ Hadéen → −4000 Ma : updateTimeline a déjà placé le curseur sur ▶ Archéen → pas de transitionend → SKIP bloqué) + filet setTimeout.
  * - v1.0.26: getTimelineCurrentYears — Number(▶/◀/infoTimeMa) avant arithmétique (évite concat chaîne « -10000 »+8000 → an 2000 CE / mauvais fonds).
  * - v1.0.25: curseur frise = getTimelineCurrentMa() (aligné getTimelineCurrentYears / texture). L’ancien
  *   startMa ± infoTimeMa pour forward est faux si ▶ < 0 (🛖 Holocène −10⁴ a) → barre figée en haut, PNG suit pourtant la date.
@@ -59,10 +65,19 @@ let currentEpochStartYears = null; // Stocker le début de l'époque actuelle po
 // Variable globale pour le temps écoulé dans l'époque (commence toujours à 0 Ma)
 window.infoTimeMa = 0; // Temps écoulé depuis le début de l'époque (en millions d'années, Ma)
 
-/** ▶ en années : valeurs positives = magnitude géologique (−|▶|/1e6 Ma) ; valeurs négatives = offset Ma déjà signé (ex. Holocène −10⁴ a → −0,01 Ma). */
-function timelineDeltaYearsToStartMa(deltaYears) {
-    if (deltaYears == null || !Number.isFinite(deltaYears)) return NaN;
-    return deltaYears < 0 ? deltaYears / 1e6 : -(deltaYears / 1e6);
+/**
+ * Années config → Ma frise (échelle MONOTONE). Deux conventions selon le sens de l'époque :
+ *  - géologique (▶ > ◀) : années AVANT présent (positives) → −y/1e6 (ex. 🦣 ◀ 10 000 → −0,01 Ma) ;
+ *  - forward (▶ < ◀, 🛖 🚂 📱) : années CALENDAIRES signées → +y/1e6 (−10000 → −0,01 ; 1800 → +0,0018 ; 2100 → +0,0021).
+ * Avant : le signe seul décidait → 1800/2000 CE lus « avant présent » (−0,0018/−0,002) : échelle non monotone et
+ * l'an −2000 (Holocène +8000 ans) tombait sur la position de 2000 CE.
+ */
+function timelineYearsToMa(years, isForward) {
+    if (years == null || !Number.isFinite(years)) return NaN;
+    return isForward ? years / 1e6 : -(years / 1e6);
+}
+function timelineEpochIsForward(epoch) {
+    return Number(epoch['▶']) < Number(epoch['◀']);
 }
 // textureIndex = infoTimeMa / 50 (calculé automatiquement, chaque texture = 50Ma)
 // Accessible via window.textureIndex ou via epochConfig.lightDistance pour Hadéen
@@ -130,7 +145,7 @@ window.getTimelineCurrentYears = getTimelineCurrentYears;
 function getTimelineCurrentMa() {
     const currentYears = getTimelineCurrentYears();
     if (currentYears == null || !Number.isFinite(currentYears)) return null;
-    return timelineDeltaYearsToStartMa(currentYears);
+    return timelineYearsToMa(currentYears, timelineEpochIsForward(getEpochAtTimelineIndex()));
 }
 
 /** Tolérance Ma max : géologique long ; pour durées courtes (CE) voir effectiveTimelineEndSlackMa. */
@@ -160,9 +175,9 @@ function refreshTimelineEpochBounds() {
     }
     window.TIMELINE_EPOCH_BOUNDS = TIMELINE.map(function (row, idx) {
         if (!row || row['📅'] == null || row['▶'] == null || row['◀'] == null) return null;
-        const startMa = timelineDeltaYearsToStartMa(row['▶']);
-        const endMa = timelineDeltaYearsToStartMa(row['◀']);
-        const forward = row['▶'] < row['◀'];
+        const forward = timelineEpochIsForward(row);
+        const startMa = timelineYearsToMa(row['▶'], forward);
+        const endMa = timelineYearsToMa(row['◀'], forward);
         return { idx: idx, id: row['📅'], startMa: startMa, endMa: endMa, forward: forward };
     }).filter(Boolean);
 }
@@ -236,11 +251,10 @@ function parseTimelineDateText(text) {
     if (trimmed.endsWith('Ma')) {
         return Number(trimmed.replace('Ma', '').trim());
     }
-    // Années CE positives → −n/1e6 Ma ; années BP signées négatives (ex. −10000) → n/1e6 Ma
+    // Libellé sans « Ma » = année calendaire signée (−10000, 1800, 2000, 2100) → même règle que timelineYearsToMa forward
     const n = Number(trimmed);
     if (!Number.isFinite(n)) return NaN;
-    if (n > 0) return -n / 1e6;
-    return n / 1e6;
+    return timelineYearsToMa(n, true);
 }
 
 function getTimelineDateEntries(container) {
@@ -284,7 +298,7 @@ function buildEpochScale() {
 }
 
 /** Position Y (px) du centre du texte, relatif au padding-edge du conteneur. rows = .epoch-date (span).
- * Échelle : Ma négatives, fin = 2100 (-0.0021). Quand currentMa tombe sur un point (ex. 2000 = -0.002),
+ * Échelle monotone croissante, fin = 2100 (+0.0021). Quand currentMa tombe sur un point (ex. 2000 = +0.002),
  * on prend le segment le plus récent qui le contient (ex. [2000,2100]) pour que le curseur soit sur la bonne ligne. */
 function getCursorTopPx(container, rows, scaleMa, currentMa) {
     const containerRect = container.getBoundingClientRect();
@@ -294,7 +308,7 @@ function getCursorTopPx(container, rows, scaleMa, currentMa) {
         return (rect.top - containerRect.top) + rect.height / 2 - paddingTop;
     }
 
-    // Échelle : scaleMa[0] = plus ancien (-5000), scaleMa[last] = plus récent (-0.0021 = 2100). Valeurs en Ma négatifs.
+    // Échelle : scaleMa[0] = plus ancien (-5000), scaleMa[last] = plus récent (+0.0021 = 2100). Monotone croissante (timelineYearsToMa).
     if (currentMa <= scaleMa[0]) {
         return toPaddingTop(rows[0].getBoundingClientRect());
     }
@@ -347,7 +361,7 @@ function getTimelineCursorTopForEpochIndex(epochIdx) {
         scaleMa.push(entries[r].ma);
         textRows.push(entries[r].span);
     }
-    const startMa = timelineDeltaYearsToStartMa(epoch['▶']);
+    const startMa = timelineYearsToMa(epoch['▶'], timelineEpochIsForward(epoch));
     return getCursorTopPx(container, textRows, scaleMa, startMa) + TIMELINE_CURSOR_OFFSET_PX;
 }
 
@@ -359,18 +373,34 @@ window.animateTimelineCursorToEpoch = function (epochIdx, durationMs, callback) 
         if (typeof callback === 'function') callback();
         return;
     }
+    // Curseur déjà sur la cible (fin d'époque atteinte par événements : ◀ courant = ▶ suivant) :
+    // aucune transition CSS → pas de transitionend → setEpoch jamais appelé + _timelineCursorAnimating bloqué à true.
+    const currentTop = parseFloat(cursor.style.top);
+    if (Number.isFinite(currentTop) && Math.abs(currentTop - targetTop) < 0.5) {
+        cursor.style.setProperty('top', targetTop + 'px');
+        cursor.setAttribute('data-timeline-top', String(Math.round(targetTop)));
+        if (typeof callback === 'function') callback();
+        return;
+    }
     const duration = durationMs > 0 ? durationMs : 400;
     window._timelineCursorAnimating = true;
     cursor.style.transition = 'top ' + (duration / 1000) + 's ease-out';
     cursor.style.setProperty('top', targetTop + 'px');
     cursor.setAttribute('data-timeline-top', String(Math.round(targetTop)));
+    let done = false;
+    let fallbackTimer = null;
     const onEnd = function () {
+        if (done) return;
+        done = true;
+        clearTimeout(fallbackTimer);
         cursor.removeEventListener('transitionend', onEnd);
         cursor.style.transition = '';
         window._timelineCursorAnimating = false;
         if (typeof callback === 'function') callback();
     };
     cursor.addEventListener('transitionend', onEnd);
+    // transitionend non garanti (onglet masqué, curseur caché, top non animable) → filet après la durée prévue.
+    fallbackTimer = setTimeout(onEnd, duration + 150);
 };
 
 function updateTimeline() {
@@ -449,7 +479,7 @@ function updateTimeline() {
                 pdOnce('timeline-epoch-missing-cursor', 'updateTimeline', 'timeline.js',
                     'TIMELINE[' + String(idx) + '] absent ou 👉 hors plage (len=' + String(TIMELINE.length) + ')');
             } else {
-                const startMa = timelineDeltaYearsToStartMa(epoch['▶']);
+                const startMa = timelineYearsToMa(epoch['▶'], timelineEpochIsForward(epoch));
                 const currentMa = getTimelineCurrentMa();
                 if (currentMa == null || !Number.isFinite(currentMa)) {
                     pdOnce('timeline-cursor-current-ma-null', 'updateTimeline', 'timeline.js',
@@ -540,15 +570,8 @@ function updateTimeline() {
 
     // Frise à la fin d'époque (◀) : même SKIP que les événements — évite d'exiger un clic alors que l'UI affiche déjà +durée Ma.
     if (window.tryEpochEndSkipAfterEvent && window.isPastCurrentEpochEndMa) {
-        if (window.isPastCurrentEpochEndMa()) {
-            if (!window._timelineEpochEndSkipLatch) {
-                window._timelineEpochEndSkipLatch = true;
-                const ok = window.tryEpochEndSkipAfterEvent(null);
-                if (!ok) window._timelineEpochEndSkipLatch = false;
-            }
-        } else {
-            window._timelineEpochEndSkipLatch = false;
-        }
+        // Verrou « une transition par fin d'époque » géré dans tryEpochEndSkipAfterEvent (events.js v1.2.32).
+        if (window.isPastCurrentEpochEndMa()) window.tryEpochEndSkipAfterEvent(null);
     }
 
     // 🔒 DÉSACTIVÉ : Ne plus incrémenter automatiquement de +10 ans toutes les secondes

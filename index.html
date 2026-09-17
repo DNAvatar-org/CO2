@@ -83,8 +83,9 @@
 </head>
 
 <body class="no-blur">
-    <!-- Fond plein écran : skysphère galaxie (caméra à l'intérieur d'une grande sphère). Cf. static/galaxy_background.js -->
-    <canvas id="galaxy-bg" aria-hidden="true"></canvas>
+    <!-- Fond plein écran : image fixe de la galaxie img/fond.png (CSS #galaxy-bg, static/css/style.css).
+         v-2026-09-16 : remplace la skysphère Three.js (canvas + galaxy_background.js) qui faisait ramer l'appli. -->
+    <div id="galaxy-bg" aria-hidden="true"></div>
     <div id="app-loader" class="app-loader" aria-live="polite">
         <div class="app-loader-title">Chargement des modules…</div>
         <ul id="app-loader-list" class="app-loader-list"></ul>
@@ -108,8 +109,6 @@
         <iframe src="html/test_milankovitch.html" title=""></iframe>
     </div>
 
-    <!-- Fond skysphère galaxie (THREE déjà chargé dans <head>). Autonome, dégrade en fond noir CSS si absent. -->
-    <script src="static/galaxy_background.js"></script>
 
     <!-- Loader : fetch html/visu_radiatif.html + html/scie_radiatif.html, injection dans les panels, puis chargement des scripts. Placé avant le footer pour ne pas être bloqué par le script externe. -->
     <script src="static/ui/loader_panels.js"></script>

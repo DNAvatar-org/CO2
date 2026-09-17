@@ -1,8 +1,9 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.46
+// Version 1.1.47
 // Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
+// - v1.1.47: epochName 💀 « Extinction permienne » (ex « Limite P/T », aligné CHARS_DESC).
 // - v1.1.46: getCurrentDateKey — Number(startYears) avant + info×1e6 (évite concat chaîne «-10000»+8000 pour ACTION / alignement texture).
 // - v1.1.45: z-order Terre > flèches (max arc 30) ; ARROW_LABEL 50 pour lisibilité ; reemis 36 ; noyau 34 — bande spectrale (#spectral-visualization) reste au-dessus (plot après flux au DOM).
 // - v1.1.44: commentaire ACTION_BY_DATE — Ma = fonds/-NNNNNMa.png (plus _NNNNNMa.png).
@@ -307,7 +308,7 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'Limite P/T',
+                epochName: 'Extinction permienne',
                 numCircles: 2,
                 maxRadius: 52,
                 strokeSize: 0,
@@ -485,7 +486,7 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'Limite P/T',
+                epochName: 'Extinction permienne',
                 logo: LOGOS.PERMIAN_TRIASSIC,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,

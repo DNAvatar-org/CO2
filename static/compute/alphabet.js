@@ -1,8 +1,9 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.13
-// Date: [July 16, 2026]
+// Version 1.0.14
+// Date: [September 17, 2026]
 // logs :
+// - v1.0.14: 💀 « Limite P/T » → « Extinction permienne » (plus explicite, tient sur une ligne de titre).
 // - v1.0.13: CHARS_DESC ⚗ → « Affiche les concentrations » (bouton DETAILS organigramme)
 // - v1.0.12: retrait BOOLEAN 🔘 « Calculé (Boolean) » de l'alphabet (obsolète)
 // - v1.0.11: EPOCH_ALT2SEC — alt2sec tooltips frise (ex. hysteresis 1a / Sturtienne, analogie surfusion).
@@ -96,7 +97,7 @@ const CHARS = {
     SNOWBALL_EXIT: '⛈', // Sortie Marinoen (alias affichage hyst 1b) : déglaciation brutale, pluies acides
     PALEOZOIC_MARINE: '🪼', // Paléozoïque marin (600–420 Ma) : méduse (vie marine, explosion cambrienne)
     PALEOZOIC_LAND: '🍄', // Paléozoïque terrestre (420–280 Ma) : champignon (Prototaxites, forêts Dévonien)
-    PERMIAN_TRIASSIC: '💀', // Limite P/T (280–250 Ma) : extinction massive
+    PERMIAN_TRIASSIC: '💀', // Extinction permienne (280–250 Ma) : crise Permien-Trias −252 Ma, Trapps sibériens
     MESOZOIC: '🦕', // Mésozoïque (250–66 Ma) : dinosaure sauropode
     CENOZOIC: '🦤', // Cénozoïque (66–50 Ma) : dodo (recovery post-K/Pg, radiation oiseaux)
     PETM_HOUSE: '🐊', // Éocène (50–35 Ma), pic thermique type PETM
@@ -212,7 +213,7 @@ const CHARS_DESC = {
     '⛈': 'Sortie Marinoen',
     '🪼': 'Paléozoïque marin',
     '🍄': 'Paléozoïque terrestre',
-    '💀': 'Limite P/T',
+    '💀': 'Extinction permienne',
     '🦕': 'Mésozoïque',
     '🦤': 'Cénozoïque',
     '🐊': 'Éocène',

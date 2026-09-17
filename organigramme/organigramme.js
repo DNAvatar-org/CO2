@@ -566,7 +566,7 @@ function updateLabelClasses(label, nodeId = null) {
   syncFluxLabelPlainMetric(label);
 }
 
-/** Même convention que timeline.js timelineDeltaYearsToStartMa — ne pas diverger. */
+/** Textures géologiques seulement (|y| ≥ 1e6, années avant présent) : −y/1e6 — cf. timeline.js timelineYearsToMa (branche géologique). */
 function textureDeltaYearsToStartMa(deltaYears) {
   if (deltaYears == null || !Number.isFinite(deltaYears)) return NaN;
   return deltaYears < 0 ? deltaYears / 1e6 : -(deltaYears / 1e6);
@@ -1138,10 +1138,6 @@ function initPlanetThreeJS(
     sphere.rotation.x = (tiltAngle * Math.PI) / 180;
     sphere.rotation.y = rotationY;
     window.savedPlanetRotationY = rotationY;
-    // Fond galaxie : orbit-camera piloté par le drag (dx→azimut, dy→élévation), regarde le centre.
-    // Appelé UNIQUEMENT ici (pointermove) → le fond ne bouge qu'au drag, jamais à l'auto-rotation.
-    if (window.GALAXY_BG && window.GALAXY_BG.orbit) window.GALAXY_BG.orbit(dxEff, dy);
-
     if (dt > 0 && dt < 120) {
       _dragOmegaRadPerSec =
         -(dxEff / dt) * PLANET_DRAG_ROT_RAD_PER_PX * 1000;

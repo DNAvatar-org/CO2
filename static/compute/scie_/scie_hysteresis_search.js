@@ -1,6 +1,6 @@
 // File: scie_hysteresis_search.js - Recherche seuil CO₂ hystérésis scie_
 // Desc: En français, dans l'architecture, je suis window.HYSTERESIS — négatif : scan CO₂×factor chute T failed <½·x₀ ; positif : ÷factor saut T chaud failed >2·x₀ ; dicho 0,5 [min,max]
-// Version 2.2.20
+// Version 2.2.22
 //
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 // PHYSIQUE DU CYCLE SNOWBALL — référence pour hystérésis 1 (entrée Sturtien) et suite (sortie, R&D).
@@ -42,6 +42,8 @@
 // See LICENSE_HEADER.txt for full terms.
 // Date: April 25, 2026
 // Logs:
+// - v2.2.22: [REPRO] vers _logs/epoch.txt seulement si le miroir epoch est activé (sinon écriture à chaque compute:done).
+// - v2.2.21: facteur de départ ⚖️🏭🔺 appliqué dans les deux signes (<1 = départ sous le seuil en scan positif, 1b).
 // - v2.2.20: writeAndContinue — en dicho+scan négatif, si CO₂↑ (bary, retour côté chaud), reposer T sur EPOCH[🌡️🧮] (~10 °C
 //   1a) pour ne pas laisser Picard sur l’attracteur froid (−60 °C) quand on remonte le CO₂.
 // - v2.2.19: après convergence — [REPRO] (HYST_REPRO_LOG) si logReproComparableState ; logEpochCompareBlock accepte wantRepro seul (sans logEpochCompareToFile)
@@ -406,8 +408,8 @@
             var C = window.CONFIG_COMPUTE;
             var epochFile = C && C.logEpochCompareToFile === true;
             var epochUrl = window.DEBUG && window.DEBUG.topic === 'epoch';
-            var wantRepro = C && C.logReproComparableState === true;
-            if (!epochFile && !epochUrl && !wantRepro) {
+            // v2.2.22 : plus de sortie « wantRepro seul » — sans miroir epoch il n'y a rien à écrire ici.
+            if (!epochFile && !epochUrl) {
                 return;
             }
             if (!window.DEBUG || typeof window.DEBUG.logToTopic !== 'function') {
@@ -432,7 +434,11 @@
                     L('epoch', lines[j]);
                 }
             }
-            if (window.HYST_REPRO_LOG && typeof window.HYST_REPRO_LOG.emitToEpochFile === 'function') {
+            // v2.2.22 v-2026-09-16 : [REPRO] fichier UNIQUEMENT quand le miroir epoch.txt est demandé
+            // (logEpochCompareToFile ou ?debug=epoch). Avant : une ligne JSON écrite à CHAQUE compute:done
+            // de la visu, même sans miroir → epoch.txt grossissait en continu. Le [REPRO] du panneau hyst
+            // (emitToHystPanel, pilotage logReproComparableState) est inchangé.
+            if ((epochFile || epochUrl) && window.HYST_REPRO_LOG && typeof window.HYST_REPRO_LOG.emitToEpochFile === 'function') {
                 window.HYST_REPRO_LOG.emitToEpochFile(L);
             }
         },
@@ -574,9 +580,9 @@
             var _epochRowWarm = window.TIMELINE[idxEp];
             var _warmFac = (_epochRowWarm && Number.isFinite(_epochRowWarm['⚖️🏭🔺']) && _epochRowWarm['⚖️🏭🔺'] > 0)
                 ? _epochRowWarm['⚖️🏭🔺'] : 1;
-            if (this.runSearchSign !== 'positive' && _warmFac > 1) {
-                x0 = clampX(x0 * _warmFac);
-            }
+            // [v2.2.21 v-2026-09-15] Facteur GÉNÉRIQUE dans les deux sens : >1 en scan négatif (départ au-dessus du
+            // seuil d'entrée), <1 en scan positif (départ SOUS le seuil de sortie, ex. 1b 0.25 → branche froide sale).
+            x0 = clampX(x0 * _warmFac);
             this.xBaselineKg = x0;
             this.x = x0;
             this.xOld = x0;

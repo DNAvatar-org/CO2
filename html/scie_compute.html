@@ -2,6 +2,7 @@
 <!--
 # File: CO2/html/scie_compute.html
 # Logs:
+# - v2026-09-16 : encart Hystérésis RETIRÉ de l'onglet scientifique (reste de la copie e4f01d4 → onglet Hystérésis standalone hysteresis_compute.html). HTML #hysteresis + CSS + scripts scie_hyst_repro_state/scie_hysteresis_search + jauges/preset + hooks HYSTERESIS (runTest, compute:done → onParentComputeDone relançait des calculs parent).
 # - Bloc config TIMELINE ⛄ (bouton + textarea) — hystClickExportPleinSnowTimeline, même usage que hysteresis_compute v1.0.12
 # - fillDataTuningFromBary : RADIATIVE.factorTropopause — skip bary groupe (pas baryByGroup.RADIATIVE) + CONFIG fixed (aligné tuning.js, même correctif que hysteresis v1.0.11).
 # - runTest: retrait await new Promise(setTimeout) x2 (cosmétiques — le DOM n'a pas besoin de flush explicite ici ; les workers yielden déjà via postMessage).
@@ -25,34 +26,6 @@
     <link href="../static/css/emoji-fonts.css" rel="stylesheet">
     <link href="../static/css/scie_compute.css" rel="stylesheet">
     <style>
-        #hysteresis .hyst-grid-line1 { display: flex; flex-direction: row; align-items: center; gap: 16px 24px; flex-wrap: wrap; }
-        #hysteresis .hyst-col-epochs { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; padding-left: 4px; }
-        #hysteresis .hyst-title-line { display: flex; flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap; }
-        /* Annule .results h2 { justify-content: space-between } qui écarte « Hystérésis » et le badge mode */
-        #hysteresis .hyst-title-line h2 { margin: 0; display: inline-flex; align-items: baseline; justify-content: flex-start; gap: 0.35em; flex-wrap: wrap; }
-        #hysteresis .hyst-col-gauges { flex: 1 1 260px; min-width: min(100%, 220px); }
-        #hysteresis .hyst-search-log { margin: 10px 0 0 0; padding: 8px; font-size: 11px; opacity: 0.92; white-space: pre-wrap; font-family: monospace; background: rgba(0,0,0,0.15); border-radius: 6px; width: 100%; box-sizing: border-box; overflow: visible; max-height: none; }
-        #hysteresis .hyst-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
-        #hysteresis .hyst-row label { font-size: 12px; opacity: 0.9; min-width: 160px; }
-        #hysteresis .hyst-row input[type="range"] { width: 240px; max-width: 50vw; }
-        #hysteresis .hyst-sens { font-size: 11px; opacity: 0.75; margin-left: 6px; white-space: nowrap; }
-        #hysteresis #hyst-info { font-size: 11px; opacity: 0.85; margin-top: 8px; font-family: monospace; white-space: pre-wrap; }
-        #hysteresis .hyst-epoch-row { display: flex; align-items: stretch; flex-wrap: nowrap; margin: 0; }
-        #hysteresis .hyst-epoch-row--tight { gap: 6px; flex-wrap: wrap; }
-        #hysteresis .hyst-sign-swap { min-width: 2.25rem; padding: 6px 10px; font-size: 16px; line-height: 1; align-self: center; display: inline-flex; align-items: center; justify-content: center; }
-        #hysteresis #hyst-sign-mode { font-weight: 600; opacity: 0.92; margin-left: 0.15em; }
-        #hysteresis .hyst-epoch-btn {
-            display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 4px; padding: 10px 12px; min-width: 96px; min-height: 64px;
-            border-radius: 10px; cursor: pointer;
-        }
-        #hysteresis .hyst-epoch-glyphs { font-size: 22px; line-height: 1; font-family: var(--font-emoji, 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji', sans-serif); letter-spacing: 0.04em; }
-        #hysteresis .hyst-epoch-caption { font-size: 10px; line-height: 1.2; opacity: 0.72; text-align: center; max-width: 9rem; }
-        #hysteresis .hyst-epoch-caption.hyst-epoch-date { font-size: 11px; font-family: monospace; letter-spacing: 0.02em; }
-        #hysteresis .hyst-epoch-btn.selected .hyst-epoch-caption,
-        #hysteresis .hyst-epoch-btn.selected .hyst-epoch-glyphs {
-            color: var(--base-color, #00ff00); opacity: 1; font-weight: 600;
-        }
     </style>
 </head>
 <body>
@@ -72,85 +45,6 @@
             <div id="convergence-content"></div>
         </div>
 
-        <div id="hysteresis" class="results replied divGlass">
-            <div class="hyst-grid-line1">
-                <div class="hyst-col-epochs">
-                    <div class="hyst-title-line">
-                        <h2 id="hyst-section-title"><span class="hyst-title-main">🧲 Hystérésis</span> <span id="hyst-sign-mode">négatif</span></h2>
-                        <button type="button" class="toggle-button" id="hysteresis-toggle" onclick="toggleHysteresisPanel()" title="Afficher / masquer les jauges">Jauges +</button>
-                        <button type="button" class="icon-button hyst-sign-swap" id="hyst-search-sign-btn" aria-label="Basculer signe hystérésis negative ou positive" onclick="if (window.HYSTERESIS) window.HYSTERESIS.toggleSearchSign(); return false;"><span aria-hidden="true">↑↓</span></button>
-                        <button type="button" class="toggle-button" id="hyst-literature-preset" onclick="applyHysteresisLiteraturePreset(); return false;" title="Applique HYSTERESIS_LITERATURE_PRESET (FINE_TUNING_BOUNDS groupe HYSTERESIS + TUNING_BIBLIO)">Preset lit. +</button>
-                    </div>
-                    <div class="hyst-epoch-row hyst-epoch-row--tight">
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1a" title="Repère visuel ☃ −735 Ma. Calcul : hysteresis 1a — Entrée Sturtienne (début ▶ −750 Ma), baseline chaude (~18 °C) → baisser le CO₂ pour franchir le seuil et geler." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1a')">
-                            <span class="hyst-epoch-glyphs" aria-hidden="true">☃⛄</span>
-                            <span class="hyst-epoch-caption hyst-epoch-date">-735Ma</span>
-                        </button>
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1b" title="Repère visuel −645 Ma (milieu d’intervalle cible). Calcul : hysteresis 1b — Sortie Marinoen (début ▶ −690 Ma), transition vers Paléozoïque marin 🪼." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1b')">
-                            <span class="hyst-epoch-glyphs" aria-hidden="true">⛄🪼</span>
-                            <span class="hyst-epoch-caption hyst-epoch-date">-645Ma</span>
-                        </button>
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h2" title="Repère visuel −34 Ma. Calcul : hysteresis 2 — Eocène–Oligocène (début ▶ −35 Ma)." onclick="scieRunEpochLikeVisuTimeline('hysteresis 2')">
-                            <span class="hyst-epoch-glyphs" aria-hidden="true">🐊🏔</span>
-                            <span class="hyst-epoch-caption hyst-epoch-date">-34Ma</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="hyst-col-gauges">
-            <div id="hysteresis-content" style="display:none;">
-                <p class="small" style="font-size:11px;opacity:0.8;margin:0 0 8px 0;">Réglages moteur (CONFIG_COMPUTE / EARTH) — prochain ▶️ les appliquera. Curseur à droite : sens typique T°↓ CO₂↓ sauf GREY seaIce UI (T°↑).</p>
-                <div class="hyst-row">
-                    <label for="hyst-speed">HYST SPEED<span class="hyst-sens">T°↓ CO₂↓</span></label>
-                    <input id="hyst-speed" type="range" min="0" max="100" step="1" value="100" />
-                    <span id="hyst-speed-val" style="font-family:monospace;font-size:12px;">100%</span>
-                </div>
-                <div class="hyst-row">
-                    <label for="hyst-threshold">HYST THRESHOLD<span class="hyst-sens">T°↓ CO₂↓</span></label>
-                    <input id="hyst-threshold" type="range" min="0" max="100" step="1" value="100" />
-                    <span id="hyst-threshold-val" style="font-family:monospace;font-size:12px;">100%</span>
-                </div>
-                <div class="hyst-row">
-                    <label for="g-co2-eff-pump" title="Pas une fuite de carbone : relaxation atmosphère↔océan vers l’équilibre de Henry. Masse totale ⚖️🏭+🌊 conservée ; effPump01 = fraction du pas vers la masse atmosphérique d’équilibre à T courant. Hors convergence radiative / hystérésis la pompe est neutralisée (voir calculations_co2.js).">🌊 effPump01 CO₂ mer<span class="hyst-sens">T°↓ CO₂↓</span></label>
-                    <input id="g-co2-eff-pump" type="range" min="0" max="100" step="1" value="0" />
-                    <span id="g-co2-eff-pump-val" style="font-family:monospace;font-size:12px;">0.00</span>
-                </div>
-                <div class="hyst-row">
-                    <label for="g-seaice-range" title="Affichage 1000–6000, ÷1000 = largeur transition mer gelée en K (1,0–6,0 K moteur). Voir FINE_TUNING_BOUNDS.targets HYSTERESIS / HYSTERESIS_LITERATURE_PRESET.">GREY seaIce UI<span class="hyst-sens">T°↑ CO₂↑</span></label>
-                    <input id="g-seaice-range" type="range" min="1000" max="6000" step="10" value="1000" />
-                    <span id="g-seaice-range-val" style="font-family:monospace;font-size:12px;">1000</span>
-                </div>
-                <div class="hyst-row">
-                    <label for="g-seaice-strength">GREY seaIceStrength<span class="hyst-sens">T°↓ CO₂↓</span></label>
-                    <input id="g-seaice-strength" type="range" min="0" max="100" step="1" value="100" />
-                    <span id="g-seaice-strength-val" style="font-family:monospace;font-size:12px;">1.00</span>
-                </div>
-                <div class="hyst-row">
-                    <label for="g-ice-impact">GREY iceImpact<span class="hyst-sens">T°↓ CO₂↓</span></label>
-                    <input id="g-ice-impact" type="range" min="0" max="100" step="1" value="100" />
-                    <span id="g-ice-impact-val" style="font-family:monospace;font-size:12px;">1.00</span>
-                </div>
-                <div class="hyst-row">
-                    <label for="g-strat-veil" title="🍰⚽ voile SW stratosphérique (jauge) : s’ajoute au cumul événements 🌋 (📜🔺🍰⚽). Découplé de 🍰💭.">⚽ voile SW (hyst)<span class="hyst-sens">T°↓</span></label>
-                    <input id="g-strat-veil" type="range" min="0" max="100" step="1" value="0" />
-                    <span id="g-strat-veil-val" style="font-family:monospace;font-size:12px;">0%</span>
-                </div>
-                <div class="hyst-row">
-                    <label for="g-h2o-eds" title="EARTH.H2O_EDS_SCALE : multiplicateur global de κ_H₂O. Mapping inversé : 0% → 1.00 (κ max, T haute) ; 100% → 0.60 (cible Schmidt 2010 ~75 W/m² EDS H₂O, T basse). Voir FINE_TUNING_BOUNDS.RADIATIVE (baryGroup SCIENCE).">🌈 H₂O_EDS<span class="hyst-sens">T°↓ CO₂↓</span></label>
-                    <input id="g-h2o-eds" type="range" min="0" max="100" step="1" value="100" />
-                    <span id="g-h2o-eds-val" style="font-family:monospace;font-size:12px;">0.60</span>
-                </div>
-                <div id="hyst-info">
-                    <div id="hyst-info-gauges"></div>
-                </div>
-            </div>
-                </div>
-            </div>
-                <div class="hyst-row" style="flex-direction:column;align-items:stretch;max-width:100%;">
-                    <button type="button" class="toggle-button" id="hyst-btn-timeline-snow-export" title="Remplace l’objet { '📅': '⛄', … } dans configTimeline.js : fusion TIMELINE[⛄] + DATA (après un pas convergé, ex. SUCCESS hyst 1a)." onclick="if (window.hystClickExportPleinSnowTimeline) { window.hystClickExportPleinSnowTimeline(); } return false;">📋 Bloc config TIMELINE ⛄</button>
-                    <textarea id="hyst-timeline-snow-export" readonly rows="10" style="width:100%;box-sizing:border-box;font-size:10px;font-family:monospace;opacity:0.95;resize:vertical;min-height:96px;max-height:45vh;" placeholder="Clic sur le bouton : JSON 4 espaces = remplacer tout le bloc // Plein Snowball dans configTimeline.js (TIMELINE), puis recharger."></textarea>
-                </div>
-            <pre id="hyst-search-log" class="hyst-search-log"></pre>
-        </div>
         
         <div id="results" class="results divGlass" style="display: none;">
             <h2>📊 Résultats</h2>
@@ -186,8 +80,6 @@
     <script src="../../API_BILAN/co2/calculations_co2.js"></script>
     <script src="../../API_BILAN/convergence/compute.js"></script>
     <script src="../static/compute/scie_/scie_convergence.js"></script>
-    <script src="../static/compute/scie_/scie_hyst_repro_state.js"></script>
-    <script src="../static/compute/scie_/scie_hysteresis_search.js"></script>
     <!-- Stubs CONVERGE.clearConvergenceTrace / CONVERGE.appendConvergenceStep sont définis nativement par calculations_flux.js (noop par défaut, surchargés plus bas). -->
     <script src="../../API_BILAN/convergence/calculations_flux.js"></script>
     <script src="../static/FPS/FPS.js"></script>
@@ -281,57 +173,11 @@
                     updates: []
                 };
             }
-            if (window.HYSTERESIS) payload.hysteresisActive = !!window.HYSTERESIS.active;
             window.parent.postMessage({ type: 'sync:state', payload: payload }, '*');
         }
 
-        /** Comme clic époque sur timeline visu (sans anim) + ▶️ : une sync parent → config:applyThenCompute ; standalone → runTest. */
-        function scieDisableAnimLikeVisu() {
-            var animBtn = document.getElementById('anim-toggle');
-            if (animBtn) animBtn.classList.remove('selected');
-            var cb = document.getElementById('plot-anim-toggle-checkbox');
-            if (cb) cb.checked = false;
-            if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = false;
-        }
 
-        /** Hystérésis : parent doit recevoir 🔘🎞=true (continuité T, pas reset 📅🌡️🧮 à chaque pas). */
-        function scieEnableAnimForHystSync() {
-            var animBtn = document.getElementById('anim-toggle');
-            if (animBtn) animBtn.classList.add('selected');
-            var cb = document.getElementById('plot-anim-toggle-checkbox');
-            if (cb) cb.checked = true;
-            if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = true;
-        }
 
-        function scieRunEpochLikeVisuTimeline(epochId) {
-            if (!window.TIMELINE) return;
-            var isHyst = (epochId === 'hysteresis 1a' || epochId === 'hysteresis 1b' || epochId === 'hysteresis 2' || epochId === '⛄');
-            // v2.2.6 — R&D hystérésis : redirection en amont pour aligner compute + hyst sur la même row TIMELINE.
-            if (isHyst && window.HYSTERESIS_REF_EPOCH_ID && epochId !== window.HYSTERESIS_REF_EPOCH_ID) {
-                window._hystClickedEpochId = epochId;
-                epochId = window.HYSTERESIS_REF_EPOCH_ID;
-            } else {
-                window._hystClickedEpochId = null;
-            }
-            window._scieLastRunWasHystButton = isHyst;
-            if (!isHyst && window.HYSTERESIS && window.HYSTERESIS.active && typeof window.HYSTERESIS.deactivate === 'function') {
-                window.HYSTERESIS.deactivate();
-            }
-            selectEpoch(epochId);
-            if (isHyst && window.HYSTERESIS && typeof window.HYSTERESIS.onEpochButton === 'function') {
-                window.HYSTERESIS.onEpochButton(epochId);
-            }
-            if (isHyst) scieEnableAnimForHystSync();
-            else scieDisableAnimLikeVisu();
-            if (window === window.top && typeof runTest === 'function') runTest();
-        }
-
-        function syncHystEpochButtonsFromData() {
-            var id = window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿'];
-            document.getElementById('hyst-epoch-h1a').classList.toggle('selected', id === 'hysteresis 1a');
-            document.getElementById('hyst-epoch-h1b').classList.toggle('selected', id === 'hysteresis 1b');
-            document.getElementById('hyst-epoch-h2').classList.toggle('selected', id === 'hysteresis 2');
-        }
         
         // Intercepter console.log pour afficher dans la page
         const originalLog = console.log;
@@ -505,7 +351,6 @@
                 if (logEl) logEl.textContent = '';
                 updateTimelineDisplay();
             }
-            syncHystEpochButtonsFromData();
             emitSyncToParent();
         }
         window.selectEpoch = selectEpoch;
@@ -634,7 +479,7 @@
                         const co2kg = cfg['🔺⚖️🏭'] || 0;
                         const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
                         const dtYrDisp = Math.round(dtYr);
-                        const gtDisp = Math.round(co2kg / 1e9);
+                        const gtDisp = Math.round(co2kg / 1e12);
 
                         const btn = document.createElement('button');
                         btn.type = 'button';
@@ -644,8 +489,8 @@
 
                         btn.addEventListener('click', () => {
                             const D = window.DATA;
-                            // 1. CO₂ : delta pending consommé par getMasses() (pas de cumul)
-                            D['📜']['🔺⚖️🏭'] = co2kg;
+                            // 1. CO₂ : cumul injecté (racine époque + 📜🔺⚖️🏭, getMasses)
+                            D['📜']['🔺⚖️🏭'] += co2kg; // cumul lu par getMasses (compute.js v1.0.23)
                             // 2. Temps avance (📿💫 = compteur universel, barycentre + date)
                             D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
                             // 3. Physique
@@ -870,11 +715,6 @@
             window.CONFIG_INIT_SNAPSHOT = null;
             try {
                 initializeGlobals();
-                var wasHystBtn = window._scieLastRunWasHystButton;
-                window._scieLastRunWasHystButton = false;
-                if (!wasHystBtn && window.HYSTERESIS && typeof window.HYSTERESIS.deactivate === 'function') {
-                    window.HYSTERESIS.deactivate();
-                }
                 const DATA = window.DATA;
                 let result = null;
                 const dateConfig = (window.COMPUTE && window.COMPUTE.getEpochDateConfig) ? window.COMPUTE.getEpochDateConfig() : null;
@@ -890,31 +730,12 @@
                 displayResults(null);
                 if (window.ABORT_COMPUTE) { /* skip */ } else {
 
-                var firstRadiativeInit = true;
-                while (true) {
-                    if (window.ABORT_COMPUTE) break;
-                    if (!firstRadiativeInit) {
-                        if (!DATA['🔘']['🔘🎞']) {
-                            DATA['🧮']['🧮🌡️'] = DATA['📅']['🌡️🧮'];
-                        }
-                        if (window.CONVERGE && !window.CONVERGE.initForConfig()) {
-                            console.error('❌ initForConfig a échoué (boucle hystérésis)');
-                            break;
-                        }
-                    }
-                    firstRadiativeInit = false;
+                DATA['🧮']['previous'] = [];
+                DATA['🧮']['🧮🔄🌊'] = 0;
+                DATA['🧮']['🧮🔄🪩'] = 0;
 
-                    DATA['🧮']['previous'] = [];
-                    DATA['🧮']['🧮🔄🌊'] = 0;
-                    DATA['🧮']['🧮🔄🪩'] = 0;
-
-                    result = await window.CONVERGE.computeRadiativeTransfer();
-                    if (window.displayConvergence) window.displayConvergence();
-
-                    var HYST = window.HYSTERESIS;
-                    var needAnother = HYST && HYST.active && typeof HYST.afterRadiativeConverged === 'function' && HYST.afterRadiativeConverged();
-                    if (!needAnother) break;
-                }
+                result = await window.CONVERGE.computeRadiativeTransfer();
+                if (window.displayConvergence) window.displayConvergence();
 
                 }
 
@@ -939,18 +760,7 @@
                     </div>
                 `;
             } finally {
-                if (window.HYSTERESIS && typeof window.HYSTERESIS.deactivate === 'function') {
-                    if (window.ABORT_COMPUTE || window._scieHystSearchHadActivity) {
-                        window.HYSTERESIS.deactivate();
-                    }
-                }
-                if (window._scieHystSearchHadActivity && window.HYSTERESIS && typeof window.HYSTERESIS.clearHystEpochButtonsSelected === 'function') {
-                    window.HYSTERESIS.clearHystEpochButtonsSelected();
-                }
-                window._scieHystSearchHadActivity = false;
                 setRunStopButtonRunning(false);
-                // [perf] Rebuild unique après HY.deactivate (rendus gatés pendant scan).
-                try { displayResults(null); displayConvergence(); } catch(_) {}
             }
         }
 
@@ -1658,9 +1468,6 @@
         }
 
         function displayResults(result) {
-            // [perf] Skip le rebuild DOM complet pendant le scan hystérésis (chaque pas = 50+
-            // convergences internes × rebuild plein panneau → renderer Chrome à genoux).
-            if (window.HYSTERESIS && window.HYSTERESIS.active) return;
             const DATA = window.DATA;
             const CONST = window.CONST;
             const configDiv = document.getElementById('config');
@@ -1753,8 +1560,6 @@
         }
 
         function appendConvergenceStep(state) {
-            // [perf] Skip les insertAdjacentHTML par step interne pendant le scan hystérésis.
-            if (window.HYSTERESIS && window.HYSTERESIS.active) return;
             // Injection 🏭📊 au premier step (après que getEpochDateConfig a écrit _co2ProfileLog)
             if (!window._co2ProfileLogInjected && window._co2ProfileLog) {
                 const headerEl = document.getElementById('convergence-co2-header');
@@ -1773,8 +1578,6 @@
         }
         
         function displayConvergence() {
-            // [perf] Skip le rebuild panneau convergence pendant le scan hystérésis.
-            if (window.HYSTERESIS && window.HYSTERESIS.active) return;
             try {
             const DATA = window.DATA;
             const CONST = window.CONST || { KELVIN_TO_CELSIUS: 273.15 };
@@ -1946,274 +1749,6 @@
             notifyParentResize();
         }
 
-        function toggleHysteresisPanel() {
-            const content = document.getElementById('hysteresis-content');
-            const btn = document.getElementById('hysteresis-toggle');
-            if (!content) return;
-            const open = content.style.display === 'none' || content.style.display === '';
-            content.style.display = open ? 'block' : 'none';
-            if (btn) btn.textContent = open ? 'Jauges −' : 'Jauges +';
-            notifyParentResize();
-        }
-
-        window.SEAICE_UI_MIN = window.SEAICE_UI_MIN || 1000;
-        window.SEAICE_UI_MAX = window.SEAICE_UI_MAX || 6000;
-        window.SEAICE_UI_STEP = window.SEAICE_UI_STEP || 10;
-        window.SEAICE_UI_DEFAULT = window.SEAICE_UI_DEFAULT || 1000;
-        window.SEAICE_ENGINE_MIN = window.SEAICE_ENGINE_MIN || 1.0;
-        window.SEAICE_ENGINE_MAX = window.SEAICE_ENGINE_MAX || 6.0;
-        if (typeof window.normalizeSeaIceTransitionRangeKEngine !== 'function') {
-            window.normalizeSeaIceTransitionRangeKEngine = function (v) {
-                let n = Number(v);
-                if (!Number.isFinite(n)) return window.SEAICE_UI_DEFAULT / 1000;
-                if (n >= window.SEAICE_UI_MIN && n <= window.SEAICE_UI_MAX) n = n / 1000;
-                else if (n >= 3000 && n <= 7000) n = n / 1000;
-                return Math.max(window.SEAICE_ENGINE_MIN, Math.min(window.SEAICE_ENGINE_MAX, n));
-            };
-        }
-        window.HYSTERESIS_LITERATURE_PRESET = window.HYSTERESIS_LITERATURE_PRESET || {
-            label: 'HYST — expériences seuil (préréglage raisonnable, pas extrêmes)',
-            seaIceTransitionRangeUi: 2200,
-            seaIceStrength01: 1,
-            iceImpactFactor01: 0.7,
-            hystSpeedPct: 100,
-            hystThresholdPct: 100,
-            refs: 'Budyko (1969), Sellers (1969) EBM bistabilité ; Pierrehumbert (2010) Principles of Planetary Climate ; AR6 WGI cryosphere / albédo glace',
-            note: '2,2 K = transition plus nette que défaut 5,82 K sans plancher 1 K. Jauges HYST SPEED/THRESHOLD à 100 % = bornes documentées FINE_TUNING_BOUNDS + TUNING_BIBLIO.HYSTERESIS.'
-        };
-        window.ensureSearchEngineDefaults = window.ensureSearchEngineDefaults || function () {
-            window.CONFIG_COMPUTE = window.CONFIG_COMPUTE || {};
-            const C = window.CONFIG_COMPUTE;
-            function defNum(k, v) {
-                if (!Number.isFinite(Number(C[k]))) C[k] = v;
-            }
-            defNum('seaIceTransitionRangeK', Math.max(window.SEAICE_UI_MIN, window.SEAICE_UI_DEFAULT) / 1000);
-            C.seaIceTransitionRangeK = window.normalizeSeaIceTransitionRangeKEngine(C.seaIceTransitionRangeK);
-            defNum('seaIceStrength01', 1);
-            defNum('iceImpactFactor01', 1);
-            defNum('hystStratosphericVeilExtra01', 0);
-            defNum('co2OceanPumpOverride01', 1);
-            defNum('co2OceanScale01', 0.1);
-            defNum('co2OceanRatioRef', 50);
-            if (!Number.isFinite(Number(C.co2OceanEffPump01))) {
-                const p = Number(C.co2OceanPumpOverride01);
-                const s = Number(C.co2OceanScale01);
-                const pp = Number.isFinite(p) ? Math.max(0, Math.min(1, p)) : 1;
-                const ss = Number.isFinite(s) ? Math.max(0, Math.min(1, s)) : 0.1;
-                C.co2OceanEffPump01 = pp * ss;
-            }
-        };
-
-        function initScieHysteresisGauges() {
-            if (window._scieHysteresisGaugesInited) {
-                window._scieHysteresisGaugesReady = true;
-                return;
-            }
-            window._scieHysteresisGaugesInited = true;
-            window.ensureSearchEngineDefaults();
-            if (window.HYSTERESIS && typeof window.HYSTERESIS.syncSearchSignButtonUI === 'function') {
-                window.HYSTERESIS.syncSearchSignButtonUI();
-            }
-
-            function snapSeaIceUi(u) {
-                u = Math.round(Number(u));
-                u = Math.max(window.SEAICE_UI_MIN, Math.min(window.SEAICE_UI_MAX, u));
-                return Math.round((u - window.SEAICE_UI_MIN) / window.SEAICE_UI_STEP) * window.SEAICE_UI_STEP + window.SEAICE_UI_MIN;
-            }
-            function effSeaIceRangeK() {
-                // Source unique : DATA['🎚️'].HYSTERESIS (initDATA.js + FINE_TUNING_BOUNDS)
-                const v = window.DATA['🎚️'].HYSTERESIS.seaIceTransitionRangeK;
-                return window.normalizeSeaIceTransitionRangeKEngine(v);
-            }
-            function effSeaIceRangeUi() {
-                return snapSeaIceUi(Math.round(effSeaIceRangeK() * 1000));
-            }
-            function fmtPump() {
-                const C = window.CONFIG_COMPUTE;
-                const n = C ? Number(C.co2OceanPumpOverride01) : NaN;
-                return Number.isFinite(n) ? n.toFixed(2) : '1.00';
-            }
-            function fmtEffPump() {
-                const C = window.CONFIG_COMPUTE;
-                const n = C ? Number(C.co2OceanEffPump01) : NaN;
-                return Number.isFinite(n) ? n.toFixed(2) : '0.10';
-            }
-            function buildHystInfoLine() {
-                const iceA = (window.EARTH && window.EARTH['🪩🍰']) ? Number(window.EARTH['🪩🍰']['🪩🍰🧊']).toFixed(2) : 'n/a';
-                const veilX = Number.isFinite(Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01)) ? Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01).toFixed(2) : '0';
-                return 'seaIceTransitionRangeK=' + effSeaIceRangeUi() + ' (moteur ' + effSeaIceRangeK().toFixed(2) + ' K)'
-                    + ' | seaIceStrength01=' + Number(window.DATA['🎚️'].HYSTERESIS.seaIceStrength01).toFixed(2)
-                    + ' | iceImpact=' + Number(window.DATA['🎚️'].HYSTERESIS.iceImpactFactor01).toFixed(2)
-                    + ' | ⚽=' + veilX
-                    + ' | co2OceanScale01=' + (Number.isFinite(Number(window.CONFIG_COMPUTE.co2OceanScale01)) ? Number(window.CONFIG_COMPUTE.co2OceanScale01).toFixed(2) : '0.10')
-                    + ' | co2OceanPumpOverride01=' + fmtPump()
-                    + ' | co2OceanEffPump01=' + fmtEffPump()
-                    + ' | co2OceanRatioRef=' + (Number.isFinite(Number(window.CONFIG_COMPUTE.co2OceanRatioRef)) ? Number(window.CONFIG_COMPUTE.co2OceanRatioRef).toFixed(1) : '50')
-                    + ' | iceAlbedo=' + iceA;
-            }
-            function clamp01(x) { return Math.max(0, Math.min(1, x)); }
-            function interp(min, max, pct) {
-                const a = clamp01(Number(pct) / 100);
-                return Number(min) + (Number(max) - Number(min)) * a;
-            }
-            function interpSens(min, max, pct, sens) {
-                const a = clamp01(Number(pct) / 100);
-                const lo = Number(min), hi = Number(max);
-                if (sens === '➘') return hi - (hi - lo) * a;
-                return lo + (hi - lo) * a;
-            }
-            // Plages UI hystérésis : source unique window.DEFAULT.BOUNDS.HYSTERESIS (initDATA.js v1.1.0).
-            function ensureHystTuning() {
-                return window.DEFAULT.BOUNDS.HYSTERESIS;
-            }
-            function applyHystSpeed(pct) {
-                const H = ensureHystTuning();
-                window.CONFIG_COMPUTE.co2OceanScale01 = interpSens(H.co2OceanScale01.min, H.co2OceanScale01.max, pct, H.co2OceanScale01.sens_threshold);
-                window.CONFIG_COMPUTE.co2OceanPumpOverride01 = interpSens(H.co2OceanPumpOverride01.min, H.co2OceanPumpOverride01.max, pct, H.co2OceanPumpOverride01.sens_threshold);
-                const p = Number(window.CONFIG_COMPUTE.co2OceanPumpOverride01);
-                const s = Number(window.CONFIG_COMPUTE.co2OceanScale01);
-                const pp = Number.isFinite(p) ? Math.max(0, Math.min(1, p)) : 1;
-                const ss = Number.isFinite(s) ? Math.max(0, Math.min(1, s)) : 0.1;
-                window.CONFIG_COMPUTE.co2OceanEffPump01 = pp * ss;
-                if (window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].baryByGroup) window.DATA['🎚️'].baryByGroup.HYSTERESIS_SPEED = Number(pct);
-            }
-            function applyHystThreshold(pct) {
-                const H = ensureHystTuning();
-                if (window.EARTH && window.EARTH['🪩🍰']) {
-                    // [FIX visu v-2026-07-16] MÊME plancher physique 0.50 que l'iframe test (hysteresis_compute.html) :
-                    // sans lui, la jauge posait la glace nue à 0.35 (mudball sombre) → albédo trop bas → la visu ⛄
-                    // restait chaude (-1.2°C) là où le test tombait à -46°C. C'était LA divergence test/visu (même
-                    // fonction calculateAlbedo, mais EARTH['🪩🍰🧊'] posé plus sombre en visu). Le 0.35 ne doit passer
-                    // que par le scalaire mudball gaté 1b, jamais par cette écriture globale (cf. fix test tour 1).
-                    window.EARTH['🪩🍰']['🪩🍰🧊'] = Math.max(0.50, interpSens(H.iceAlbedoCoeff.min, H.iceAlbedoCoeff.max, pct, H.iceAlbedoCoeff.sens_threshold));
-                }
-                // Borne max 80 : proche du rapport stock océan/atmosphère CO₂ moderne ~50 (Henry, Zeebe & Wolf-Gladrow 2001).
-                // Ancien 200 = 4× trop haut → pompage trop fort, bloque le rebond chaud.
-                window.CONFIG_COMPUTE.co2OceanRatioRef = interp(5, 80, pct);
-                if (window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].baryByGroup) window.DATA['🎚️'].baryByGroup.HYSTERESIS_THRESHOLD = Number(pct);
-            }
-            function applyGreyControls() {
-                const elR = document.getElementById('g-seaice-range');
-                const elS = document.getElementById('g-seaice-strength');
-                const elI = document.getElementById('g-ice-impact');
-                const elV = document.getElementById('g-strat-veil');
-                const rawUi = elR && elR.value !== '' ? snapSeaIceUi(Number(elR.value)) : window.SEAICE_UI_DEFAULT;
-                const strengthPct = elS && elS.value !== '' ? Number(elS.value) : 100;
-                const iceImpactPct = elI && elI.value !== '' ? Number(elI.value) : 100;
-                const stratVeilPct = elV && elV.value !== '' ? Number(elV.value) : 0;
-                // Écritures dans la source unique DATA['🎚️'].HYSTERESIS (migration CONFIG_COMPUTE → DATA, regle-data-territoire)
-                window.DATA['🎚️'].HYSTERESIS.seaIceTransitionRangeK = window.normalizeSeaIceTransitionRangeKEngine(rawUi / 1000);
-                window.DATA['🎚️'].HYSTERESIS.seaIceStrength01 = Math.max(0, Math.min(1, strengthPct / 100));
-                window.DATA['🎚️'].HYSTERESIS.iceImpactFactor01 = Math.max(0, Math.min(1, iceImpactPct / 100));
-                window.CONFIG_COMPUTE.hystStratosphericVeilExtra01 = Math.max(0, Math.min(0.95, stratVeilPct / 100));
-            }
-
-            const sSpeed = document.getElementById('hyst-speed');
-            const sThresh = document.getElementById('hyst-threshold');
-            const vSpeed = document.getElementById('hyst-speed-val');
-            const vThresh = document.getElementById('hyst-threshold-val');
-            const gR = document.getElementById('g-seaice-range');
-            const gRv = document.getElementById('g-seaice-range-val');
-            const gS = document.getElementById('g-seaice-strength');
-            const gSv = document.getElementById('g-seaice-strength-val');
-            const gI = document.getElementById('g-ice-impact');
-            const gIv = document.getElementById('g-ice-impact-val');
-            const gV = document.getElementById('g-strat-veil');
-            const gVv = document.getElementById('g-strat-veil-val');
-            const gE = document.getElementById('g-co2-eff-pump');
-            const gEv = document.getElementById('g-co2-eff-pump-val');
-            const gH = document.getElementById('g-h2o-eds');
-            const gHv = document.getElementById('g-h2o-eds-val');
-            const infoEl = document.getElementById('hyst-info-gauges');
-            // Hydrate sliders depuis source unique DATA['🎚️'].HYSTERESIS (initDATA.js garantit initialisation synchrone avant UI)
-            if (gR) {
-                const rk = window.normalizeSeaIceTransitionRangeKEngine(window.DATA['🎚️'].HYSTERESIS.seaIceTransitionRangeK);
-                window.DATA['🎚️'].HYSTERESIS.seaIceTransitionRangeK = rk;
-                gR.value = String(snapSeaIceUi(Math.round(rk * 1000)));
-            }
-            if (gS) gS.value = String(Math.round(100 * Number(window.DATA['🎚️'].HYSTERESIS.seaIceStrength01)));
-            if (gI) gI.value = String(Math.round(100 * Number(window.DATA['🎚️'].HYSTERESIS.iceImpactFactor01)));
-            // hystStratosphericVeilExtra01 reste dans CONFIG_COMPUTE (paramètre numérique statique, pas dans DATA['🎚️'])
-            if (gV && Number.isFinite(Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01))) gV.value = String(Math.round(100 * Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01)));
-            if (gV && !Number.isFinite(Number(window.CONFIG_COMPUTE.hystStratosphericVeilExtra01))) gV.value = '0';
-            // H2O_EDS_SCALE : mapping inversé slider 0..100 → valeur 1.00..0.60 (convention projet : 100 % = T basse)
-            if (gH && window.EARTH && Number.isFinite(Number(window.EARTH.H2O_EDS_SCALE))) {
-                const vH = Number(window.EARTH.H2O_EDS_SCALE);
-                gH.value = String(Math.max(0, Math.min(100, Math.round(100 * (1.00 - vH) / 0.40))));
-            }
-
-            function refreshInfo() {
-                if (infoEl) infoEl.textContent = buildHystInfoLine();
-                if (gRv && gR) gRv.textContent = String(Number(gR.value));
-                if (gSv && gS) gSv.textContent = (Number(gS.value) / 100).toFixed(2);
-                if (gIv && gI) gIv.textContent = (Number(gI.value) / 100).toFixed(2);
-                if (gVv && gV) gVv.textContent = Number(gV.value) + '%';
-                if (gHv && gH) gHv.textContent = (1.00 - 0.40 * (Number(gH.value) / 100)).toFixed(2);
-                if (gE && window.CONFIG_COMPUTE && Number.isFinite(Number(window.CONFIG_COMPUTE.co2OceanEffPump01))) {
-                    gE.value = String(Math.round(100 * Number(window.CONFIG_COMPUTE.co2OceanEffPump01)));
-                }
-                if (gEv && window.CONFIG_COMPUTE && Number.isFinite(Number(window.CONFIG_COMPUTE.co2OceanEffPump01))) {
-                    gEv.textContent = Number(window.CONFIG_COMPUTE.co2OceanEffPump01).toFixed(2);
-                }
-            }
-            if (vSpeed && sSpeed) vSpeed.textContent = Number(sSpeed.value) + '%';
-            if (vThresh && sThresh) vThresh.textContent = Number(sThresh.value) + '%';
-            if (sSpeed) sSpeed.oninput = function () {
-                applyHystSpeed(Number(sSpeed.value));
-                if (vSpeed) vSpeed.textContent = Number(sSpeed.value) + '%';
-                refreshInfo();
-            };
-            if (sThresh) sThresh.oninput = function () {
-                applyHystThreshold(Number(sThresh.value));
-                if (vThresh) vThresh.textContent = Number(sThresh.value) + '%';
-                refreshInfo();
-            };
-            if (gR) gR.oninput = function () { applyGreyControls(); refreshInfo(); };
-            if (gS) gS.oninput = function () { applyGreyControls(); refreshInfo(); };
-            if (gI) gI.oninput = function () { applyGreyControls(); refreshInfo(); };
-            if (gV) gV.oninput = function () { applyGreyControls(); refreshInfo(); };
-            if (gE) gE.oninput = function () {
-                const v = Math.max(0, Math.min(1, Number(gE.value) / 100));
-                window.CONFIG_COMPUTE.co2OceanEffPump01 = v;
-                if (gEv) gEv.textContent = v.toFixed(2);
-                refreshInfo();
-            };
-            if (gH) gH.oninput = function () {
-                const vH = Math.max(0.60, Math.min(1.00, 1.00 - 0.40 * (Number(gH.value) / 100)));
-                if (window.EARTH) window.EARTH.H2O_EDS_SCALE = vH;
-                if (window.DATA && window.DATA['🎚️'] && window.DATA['🎚️'].RADIATIVE) window.DATA['🎚️'].RADIATIVE.H2O_EDS_SCALE = vH;
-                if (gHv) gHv.textContent = vH.toFixed(2);
-                refreshInfo();
-            };
-            applyGreyControls();
-            refreshInfo();
-            window._scieHysteresisGaugesReady = true;
-        }
-
-        window.applyHysteresisLiteraturePreset = function () {
-            var P = window.HYSTERESIS_LITERATURE_PRESET;
-            if (!P) return;
-            if (typeof window.initScieHysteresisGauges === 'function') window.initScieHysteresisGauges();
-            if (!window._scieHysteresisGaugesReady) return;
-            var gR = document.getElementById('g-seaice-range');
-            var gS = document.getElementById('g-seaice-strength');
-            var gI = document.getElementById('g-ice-impact');
-            var gV = document.getElementById('g-strat-veil');
-            var sSpeed = document.getElementById('hyst-speed');
-            var sThresh = document.getElementById('hyst-threshold');
-            if (gR) gR.value = String(P.seaIceTransitionRangeUi);
-            if (gS) gS.value = String(Math.round(100 * Number(P.seaIceStrength01)));
-            if (gI) gI.value = String(Math.round(100 * Number(P.iceImpactFactor01)));
-            if (gV) gV.value = '0';
-            if (gR && gR.oninput) gR.oninput();
-            if (gS && gS.oninput) gS.oninput();
-            if (gI && gI.oninput) gI.oninput();
-            if (gV && gV.oninput) gV.oninput();
-            if (sSpeed) sSpeed.value = String(Number(P.hystSpeedPct));
-            if (sThresh) sThresh.value = String(Number(P.hystThresholdPct));
-            if (sSpeed && sSpeed.oninput) sSpeed.oninput();
-            if (sThresh && sThresh.oninput) sThresh.oninput();
-        };
         
         function toggleLexique() {
             const lexiqueDiv = document.getElementById('lexique');
@@ -2263,7 +1798,6 @@
                         });
                         updateEpochActions();
                         updateTimelineDisplay();
-                        syncHystEpochButtonsFromData();
                     }
                 }
                 if (p.animEnabled !== undefined) {
@@ -2291,17 +1825,8 @@
                     Object.keys(DATA).forEach(function (k) { window.DATA[k] = DATA[k]; });
                     // Ne pas réinitialiser baryByGroup.SOLVER : conserver le réglage utilisateur (ex. 100%)
                     fillDataTuningFromBary();
-                    var HY = window.HYSTERESIS;
-                    if (HY && HY.active && typeof HY.syncIframeTimelineCo2FromData === 'function') {
-                        HY.syncIframeTimelineCo2FromData();
-                    }
                     displayResults(window.DATA);
                     displayConvergence();
-                    if (HY && HY.active && typeof HY.onParentComputeDone === 'function') {
-                        HY.onParentComputeDone();
-                    } else if (window.HYSTERESIS && typeof window.HYSTERESIS.logEpochCompareBlock === 'function') {
-                        window.HYSTERESIS.logEpochCompareBlock('iframe compute:done');
-                    }
                 }
             }
             if (event.data && event.data.type === 'convergence:clear') {
@@ -2368,7 +1893,6 @@
             }
             // Tuning 100 % vers parent pour 1er compute (16.4°C) sans clic
             sendInitialTuningToParent();
-            initScieHysteresisGauges();
         });
     </script>
     <script>

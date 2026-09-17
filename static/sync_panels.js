@@ -1,6 +1,8 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.1.50
+// Version 1.1.51
+// - v1.1.51: sync:state run:true — si un calcul tourne, ABORT_COMPUTE + attente de SYNC_STATE.runningCompute avant de relancer
+//   (plus de calculationInProgress=false forcé → 2 boucles solveur concurrentes sur DATA). runComputeInParent : null toléré si abandon.
 // - v1.1.50: initSyncPanels après DOM + attente window.shell (scripts loader asynchrones) — sinon registerPanelApi jamais appelé → current=null dans shell.dataInput.
 // - v1.1.49: initSyncPanels — shell.runCompute / applyStateFromScie / applyTuningFromScie = refs window.* (plus de wrappers dans shell.js).
 // - v1.1.48: sync:state / applyToVisu — syncEpochFromTimelinePointer() au lieu de configOrganigramme.timeline.find(ep.name) ; 👉 source de vérité.
@@ -470,6 +472,8 @@
             else console.log('[4] calculs (retour)');
             // Pas de _logStepEnd ici : le groupe [4] retour reste ouvert pour IO_LISTENER / updateFluxLabels / shell
             // jusqu'au prochain _logStep (ex. [4] calculs (appel) du run suivant), cf. v1.1.37
+            // null attendu seulement si un run plus récent a demandé l'abandon (sync:state run:true pendant le calcul)
+            if (result === null && window.ABORT_COMPUTE) return null;
             if (result === null) throw new Error('[runComputeInParent][sync_panels.js] computeRadiativeTransfer returned null');
             // snapInputs('POST_RUN');
             // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
@@ -497,9 +501,11 @@
             throw e;
         });
         }
-        return new Promise(function (r) {
+        var runningCompute = new Promise(function (r) {
             requestAnimationFrame(function () { requestAnimationFrame(r); });
         }).then(doCompute);
+        window.SYNC_STATE.runningCompute = runningCompute;
+        return runningCompute;
     };
 
     function initSyncPanels() {
@@ -666,11 +672,24 @@
                 if (_lastSyncRunSig === sig && (now - _lastSyncRunAt) < 250) return;
                 _lastSyncRunSig = sig;
                 _lastSyncRunAt = now;
-                // Appliquer l'état au DATA du contexte courant (parent) avant le calcul, sinon 🔬🌈/📿💫 non initialisés → NaN
-                applyStateToData(payload);
-                window.COMPUTE.getEpochDateConfig();
-                window.SYNC_STATE.calculationInProgress = false;
-                window.runComputeInParent();
+                var startRun = function () {
+                    window.ABORT_COMPUTE = false;
+                    // Appliquer l'état au DATA du contexte courant (parent) avant le calcul, sinon 🔬🌈/📿💫 non initialisés → NaN
+                    applyStateToData(payload);
+                    window.COMPUTE.getEpochDateConfig();
+                    window.SYNC_STATE.calculationInProgress = false;
+                    window.runComputeInParent();
+                };
+                // Calcul encore en cours (ex. dernier 💫 cliqué pendant le run, fin d'époque → SKIP → setEpoch) :
+                // l'abandonner et ATTENDRE sa fin. Avant : calculationInProgress forcé à false → 2 boucles solveur
+                // en parallèle sur le même DATA + pool workers partagé → Δ/EDS H₂O aberrants (saut 9 → 16 °C à −750 Ma).
+                if (window.SYNC_STATE.calculationInProgress && window.SYNC_STATE.runningCompute) {
+                    window.ABORT_COMPUTE = true;
+                    // Erreur éventuelle du run abandonné déjà loguée par son propre catch
+                    window.SYNC_STATE.runningCompute.then(startRun, startRun);
+                } else {
+                    startRun();
+                }
             }
         }, 'sync_panels');
         IO_LISTENER.on('sync:tuning', function (payload) {

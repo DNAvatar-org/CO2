@@ -632,7 +632,7 @@
                         const co2kg = cfg['🔺⚖️🏭'] || 0;
                         const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
                         const dtYrDisp = Math.round(dtYr);
-                        const gtDisp = Math.round(co2kg / 1e9);
+                        const gtDisp = Math.round(co2kg / 1e12);
 
                         const btn = document.createElement('button');
                         btn.type = 'button';
@@ -642,8 +642,8 @@
 
                         btn.addEventListener('click', () => {
                             const D = window.DATA;
-                            // 1. CO₂ : delta pending consommé par getMasses() (pas de cumul)
-                            D['📜']['🔺⚖️🏭'] = co2kg;
+                            // 1. CO₂ : cumul injecté (racine époque + 📜🔺⚖️🏭, getMasses)
+                            D['📜']['🔺⚖️🏭'] += co2kg; // cumul lu par getMasses (compute.js v1.0.23)
                             // 2. Temps avance (📿💫 = compteur universel, barycentre + date)
                             D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
                             // 3. Physique

@@ -1,9 +1,10 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.87
+// Version 1.1.88
 // Date: [May 07, 2026]
 //
+// - v1.1.88: disableButtons/enableButtons n'écrivent plus SYNC_STATE.calculationInProgress (propriétaire unique runComputeInParent) ; setEpoch relâche window._timelineEpochEndSkipLatch (verrou « une transition par fin d'époque », events.js v1.2.32).
 // - v1.1.87: infobulles flou scientifique sur #title-flou-scientifique-slot (badge data-flux-tooltip=off).
 // - v1.1.86: flou scientifique — syncFineTuningBadgeTooltips (data-alt2sec) ; slot titre sans tooltip parasite.
 // - v1.1.85: mini-slider flou scientifique — refresh aria-label (alt2sec) via getFineTuningDetailAlt à chaque input.
@@ -410,8 +411,7 @@ function getAvailableButtons(yearsAgo) {
 
 // Fonction pour désactiver tous les boutons
 function disableButtons() {
-    const SYNC_STATE = window.SYNC_STATE;
-    SYNC_STATE.calculationInProgress = true;
+    // UI seulement : SYNC_STATE.calculationInProgress appartient à runComputeInParent (sync_panels.js), source unique.
     // Réinitialiser les flags de convergence
     if (typeof window !== 'undefined') {
         window.RUNTIME_STATE.calculationConverged = false;
@@ -443,9 +443,9 @@ function disableButtons() {
 
 // Fonction pour réactiver les boutons selon l'époque géologique
 function enableButtons() {
-    const SYNC_STATE = window.SYNC_STATE;
     const YEARS_PER_FRAME = window.YEARS_PER_FRAME;
-    SYNC_STATE.calculationInProgress = false;
+    // UI seulement : ne plus écrire SYNC_STATE.calculationInProgress (le mettre à false ici libérait le verrou
+    // pendant un calcul en cours → 2e runComputeInParent concurrent au chargement et à chaque setEpoch).
     
     // Activer l'animation de la planète après la fin des calculs
     // Chercher toutes les textures de planète et retirer la classe "paused"
@@ -1980,10 +1980,13 @@ function setEpoch(epochName, options) {
     // IMPORTANT: Doit être fait AVANT l'interprétation du logo pour que ticTime = 0
     if (typeof window !== 'undefined') {
         window.infoTimeMa = 0;
+        // Arrivée sur la nouvelle époque : relâche le verrou « une transition par fin d'époque » (events.js tryEpochEndSkipAfterEvent)
+        window._timelineEpochEndSkipLatch = false;
         window._lastPlanetTexturePath = null;
         // Nouvelle époque : reset compteurs boutons et dernier bouton cliqué
         DATA['📜']['📿☄️'] = 0;
         DATA['📜']['📿💫'] = 0;
+        DATA['📜']['🔺⚖️🏭'] = 0; // cumul CO₂ événements 📱 (compute.js getMasses)
         DATA['📜']['bary'] = 0;
         DATA['📜']['🔘🕰'] = '';
     }

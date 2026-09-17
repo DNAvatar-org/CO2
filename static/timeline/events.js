@@ -1,8 +1,13 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.30
- * Date: [May 07, 2026]
+ * Version 1.2.33
+ * Date: [September 17, 2026]
 * logs :
+ *   - v1.2.33: 📱 ⛽/🛢 — cumul 📜🔺⚖️🏭 (+=) au lieu d'un delta jamais consommé ; infoTimeMa avance de 🔺⏳ (frise figée à 2000) ;
+ *     plus de boutons une fois ◀ (2100) atteint.
+ *   - v1.2.32: tryEpochEndSkipAfterEvent — verrou _timelineEpochEndSkipLatch posé ICI (plus seulement dans updateTimeline) : le handler
+ *     d'événement et updateTimeline lançaient chacun un SKIP pour la même fin d'époque → double setEpoch → 2 calculs concurrents.
+ *   - v1.2.31: actions volcan 🗻/🌋 — effets dans la config de l'époque suivante (⛄ voile, 1b CO₂ + 🌫️❄️) ; retrait écriture CONFIG_COMPUTE.iceMudballAlbedo et du hook CO₂ TODO.
  *   - v1.2.30: 🕰.⛰ — alias tic temps (comme 💫 / 🏔) pour compute + UI order / ACTION_BY_DATE.
  *   - v1.2.29: 🕰.🏔 — alias du tic temps (même rôle que 💫 pour compute / 📿💫) ; repli ACTION_BY_DATE + 🕰.order ; compteur SKIP inclut 🏔.
  *   - v1.2.28: clampInfoTimeMaToGeologicEpochDuration — aussi époques forward (▶<◀, ex. 🛖 −10⁴→1800) : |◀−▶|/1e6 + slack
@@ -77,6 +82,11 @@ function tryEpochEndSkipAfterEvent(runPopOrder) {
     const epochId = DATA['📜']['🗿'];
     const idxCur = TIMELINE.findIndex(function (e) { return e['📅'] === epochId; });
     if (idxCur < 0 || idxCur + 1 >= TIMELINE.length) return false;
+    // Une fin d'époque = UNE transition. Appelants multiples (handler d'événement + updateTimeline) pendant
+    // l'animation curseur (~400 ms, setEpoch pas encore fait) → sans verrou : 2 SKIP → 2 setEpoch → 2 calculs.
+    // Verrou posé ici (point d'entrée unique), relâché par setEpoch (main.js) à l'arrivée sur l'époque suivante.
+    if (window._timelineEpochEndSkipLatch) return true;
+    window._timelineEpochEndSkipLatch = true;
     if (runPopOrder) runPopOrder();
     goNextEpochViaSkip();
     return true;
@@ -224,15 +234,16 @@ window.updateEpochActions = function () {
                     }
                 }
             }
-            const actions = _tlEpoch['🕰'][activeYr];
+            // Fin de frise (◀ = 2100) atteinte : plus d'action (pas d'époque suivante, sinon on injecterait au-delà de ◀)
+            const actions = (curYrForBucket >= epochEnd) ? null : _tlEpoch['🕰'][activeYr];
 
             if (actions) {
                 for (const [emoji, cfg] of Object.entries(actions)) {
                     const co2kg = cfg['🔺⚖️🏭'] || 0;
                     const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
                     const dtYrDisp = Math.round(dtYr);
-                    // Gt d’affichage : co2kg/1e9 (ex. 850e9 kg → 850 Gt) — /1e12 donnait ~0 pour ces deltas
-                    const gtDisp = Math.round(co2kg / 1e9);
+                    // Gt d’affichage : kg/1e12 (config v1.4.80 en kg réels : 850e12 kg = 850 GtCO₂)
+                    const gtDisp = Math.round(co2kg / 1e12);
 
                     const btn = document.createElement('button');
                     btn.type = 'button';
@@ -245,10 +256,11 @@ window.updateEpochActions = function () {
                     btn.addEventListener('click', () => {
                         window.hideTooltip();
                         const D = window.DATA;
-                        // CO₂ : delta pending consommé par getMasses()
-                        D['📜']['🔺⚖️🏭'] = co2kg;
-                        // Temps (📿💫 = compteur universel)
-                        D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
+                        // CO₂ : CUMUL lu par getMasses() (racine époque + 📜🔺⚖️🏭)
+                        D['📜']['🔺⚖️🏭'] += co2kg;
+                        // Temps (📿💫 = compteur universel ; date = ▶ + 📿💫 × 🔺⏳, compute.js)
+                        D['📜']['📿💫'] += 1;
+                        window.infoTimeMa += dtYr / 1e6;
                         // Physique
                         window.COMPUTE.getEpochDateConfig();
                         window.COMPUTE.getNoyau();
@@ -399,12 +411,12 @@ window.updateEpochActions = function () {
             } else if (act === '🗻' || act === '🌋') {
                 // [ACTIONS VOLCAN config-driven v-2026-07-16] DEUX logos distincts, sens OPPOSÉS, chacun décrit par
                 // sa DESC dans l'Alphabet (CHARS_DESC) — plus aucun tooltip hardcodé :
-                //   🗻 = action-1a : voile SW (🔺🍰⚽, assombrit le Soleil → ENTRÉE snowball) ;
-                //   🌋 = action-1b : +CO₂ (🔺⚖️🏭) + noircissement glace (🌫️❄️ → iceMudballAlbedo, mudball → SORTIE).
-                // Effets appliqués selon les clés déclarées dans la config de l'event (générique, pas d'if(epoch==)).
-                const stepVeil = cfg['🔺🍰⚽'];        // action-1a : voile SW (fraction)
-                const iceMud = cfg['🌫️❄️'];          // action-1b : albédo cible glace (mudball)
-                const stepCo2 = cfg['🔺⚖️🏭'];        // action-1b : ajout CO₂ (kg) — HOOK, câblage DATA à confirmer
+                //   🗻 (sur 1a) = entrée : voile sulfate SW ; 🌋 (sur ⛄) = sortie : CO₂ + glace sale.
+                // [v1.2.31 v-2026-09-15] Les EFFETS physiques sont dans la config de l'époque SUIVANTE (choix ergonomique
+                // assumé) : voile = racine 🔺🍰⚽ de ⛄ ; CO₂ + glace sale = ⚖️🏭 et 🌫️❄️ de hysteresis 1b. Le clic fait
+                // avancer le temps (🔺⏳) → époque suivante en animation (T° présente conservée). Seul un voile déclaré
+                // sur l'event lui-même (🔺🍰⚽) est encore appliqué ici (générique, pas d'if(epoch==)).
+                const stepVeil = cfg['🔺🍰⚽'];        // voile SW optionnel porté par l'event (fraction)
                 const stepMaVolc = cfg['🔺⏳'];
                 const volcBtn = document.createElement('button');
                 volcBtn.type = 'button';
@@ -420,10 +432,6 @@ window.updateEpochActions = function () {
                     if (Number.isFinite(stepVeil)) {
                         D['📜']['🔺🍰⚽'] = Math.min(0.95, (D['📜']['🔺🍰⚽'] || 0) + stepVeil);
                     }
-                    if (Number.isFinite(iceMud) && window.CONFIG_COMPUTE) {
-                        window.CONFIG_COMPUTE.iceMudballAlbedo = iceMud; // noircissement glace (mudball, sortie 1b)
-                    }
-                    // TODO 1b : appliquer stepCo2 (🔺⚖️🏭) sur le CO₂ DATA — chemin à confirmer avant câblage.
                     advanceGeologicTicOrder(D, stepMaVolc, act);
                 });
                 eventsLogos.appendChild(volcBtn);
@@ -691,7 +699,6 @@ window.updateEpochActions = function () {
 
             if (volcCfg) {
                 const stepVeil = volcCfg['🔺🍰⚽'];
-                const iceMud = volcCfg['🌫️❄️'];
                 const stepMaVolc = volcCfg['🔺⏳'];
                 const volcBtn = document.createElement('button');
                 volcBtn.type = 'button';
@@ -705,7 +712,6 @@ window.updateEpochActions = function () {
                     window.hideTooltip();
                     const D = window.DATA;
                     if (Number.isFinite(stepVeil)) D['📜']['🔺🍰⚽'] = Math.min(0.95, (D['📜']['🔺🍰⚽'] || 0) + stepVeil);
-                    if (Number.isFinite(iceMud) && window.CONFIG_COMPUTE) window.CONFIG_COMPUTE.iceMudballAlbedo = iceMud;
                     advanceGeologicTic(D, stepMaVolc, volcAct);
                 });
                 eventsLogos.appendChild(volcBtn);

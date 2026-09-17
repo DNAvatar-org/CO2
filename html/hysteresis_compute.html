@@ -2,11 +2,12 @@
 <!--
 # File: CO2/html/hysteresis_compute.html - Hystérésis standalone (iframe index)
 # Desc: Dans l'architecture, je suis la page hôte de l'onglet Hystérésis du shell index.html. Iframe autonome : mêmes scripts que scie_compute.html, mais seul le panneau #hysteresis est visible. Globals isolés par iframe (pas de bridge parent sauf postMessage explicite ultérieurement).
-# Version 1.0.15
+# Version 1.0.16
 # Copyright 2025 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
-# Date: July 15, 2026
+# Date: September 15, 2026
 # Logs:
+# - v1.0.16: doc « Ce que cet onglet cherche » + tooltips 1a/1b recalés (2026-09-15) : 1a ≈ 7 °C/640 ppm, seuil ≈ 93 ppm ; 1b glace sale 0,48, seuil ≈ 0,0085 bar.
 # - v1.0.15: panneau hyst — iceAlbedoEff dynamique (_hystDiag) + 🧊 matériau établi ; slider inchangé (EARTH.🪩🍰🧊).
 # - v1.0.14: fix onglet mort depuis refactor API mai 2026 (API_BILAN 3ceeda8) : calculations_flux.js /
 #             radiative/calculations.js lisent window.SYNC_STATE.animEnabled (sync_panels.js, jamais chargé ici)
@@ -139,8 +140,8 @@
                     <p style="margin:4px 0;"><strong>Physique.</strong> À cause de la rétroaction glace-albédo, le modèle (0D type Budyko-Sellers) a <strong>deux branches stables</strong> pour un même forçage : une branche chaude (océans liquides) et une branche froide (Snowball). L'<strong>hystérésis</strong> = le seuil de CO₂ pour <em>entrer</em> en glaciation (en baissant le CO₂) est très différent du seuil pour en <em>sortir</em> (en remontant le CO₂). L'onglet sert à <strong>trouver ces seuils de bifurcation</strong> (masse CO₂ atmosphérique ⚖️🏭) et à vérifier qu'ils tombent dans les fourchettes de la littérature.</p>
                     <p style="margin:4px 0;"><strong>Algo</strong> (window.HYSTERESIS, scie_hysteresis_search.js) : depuis la baseline de l'époque, <em>scan</em> CO₂ ×0,5 par pas (signe négatif) ou ×2 (positif) avec convergence radiative complète à chaque pas et <strong>continuité de T entre les pas</strong> (pas de reset — c'est ce qui permet de rester sur la branche courante), jusqu'à basculer sous coldBranchT_C / au-dessus de warmBranchT_C ; puis <em>dichotomie</em> 0,5 entre [min, max] pour affiner le seuil. <code>SUCCESS</code> = seuil trouvé (journal ci-dessous) ; <code>FAILED</code> = déjà sur la branche cible au CO₂ initial (pas de bifurcation à chercher) ou plancher/plafond de plage atteint.</p>
                     <ul style="margin:4px 0 2px 18px;padding:0;">
-                        <li><strong>☃⛄ hysteresis 1a — Entrée Sturtienne</strong> (repère −735 Ma) : baseline chaude ~18 °C, CO₂↓ (signe négatif) jusqu'au gel global. Cible littérature : 100–300 ppm (GCM), 100–800 ppm acceptable en 0D. Dernier calage : bifurcation trouvée à ~242 ppm.</li>
-                        <li><strong>⛄🪼 hysteresis 1b — Sortie Marinoen</strong> (repère −645 Ma) : depuis la branche froide, CO₂↑ (signe positif, forcé) jusqu'à la déglaciation. Cible littérature : ~0,01–0,12 bar soit ~10 000–120 000 ppm.</li>
+                        <li><strong>☃⛄ hysteresis 1a — Entrée Sturtienne</strong> (repère −735 Ma) : baseline chaude ≈ 7 °C à ~640 ppm, CO₂↓ (signe négatif) jusqu'au gel global (≈ −55 °C). Cible littérature CO₂ seul : 95±5 ppm (Brunetti 2023, 700 Ma), 100–130 ppm (Feulner &amp; Kienert 2014), 20–700 ppm selon AOGCM. Calage 2026-09-15 : seuil trouvé à ≈ 92–93 ppm (jauge voile ⚽ = 0).</li>
+                        <li><strong>⛄🪼 hysteresis 1b — Sortie Marinoen</strong> (repère −645 Ma) : depuis la branche froide (départ ×0,25 du CO₂ config ≈ 2 500 ppm), CO₂↑ (signe positif, forcé) jusqu'à la déglaciation, avec glace SALE (config 1b 🌫️❄️ = 0,48). Cible littérature : &gt;0,1 bar sans poussière (Pierrehumbert 2004, Hu 2011), 0,01–0,1 bar avec poussière (Abbot &amp; Pierrehumbert 2010). Calage 2026-09-15 : seuil ≈ 8 500 ppm (0,0085 bar).</li>
                         <li><strong>🐊🏔 hysteresis 2 — Éocène–Oligocène</strong> (repère −34 Ma) : englacement de l'Antarctique, bascule plus douce (calotte, pas Snowball).</li>
                     </ul>
                     <p style="margin:4px 0;opacity:0.8;">Réfs : Budyko 1969 ; Sellers 1969 ; Pierrehumbert 2004 ; Abbot &amp; Pierrehumbert 2010 ; Voigt &amp; Abbot 2012 ; Hoffman 2017. Détail + biblio complète en tête de <code>scie_hysteresis_search.js</code>.</p>
@@ -157,11 +158,11 @@
                         <button type="button" class="icon-button" id="run-stop-btn" onclick="toggleRunStop()" title="Exécuter (relance l'époque hyst sélectionnée) / ⏹ arrêter la recherche en cours">▶️</button>
                     </div>
                     <div class="hyst-epoch-row hyst-epoch-row--tight">
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1a" title="Repère visuel ☃ −735 Ma. Calcul : hysteresis 1a — Entrée Sturtienne (début ▶ −750 Ma), baseline chaude (~18 °C) → baisser le CO₂ pour franchir le seuil et geler." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1a')">
+                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1a" title="Repère visuel ☃ −735 Ma. Calcul : hysteresis 1a — Entrée Sturtienne (début ▶ −750 Ma), baseline chaude (≈ 7 °C, ~640 ppm) → baisser le CO₂ pour franchir le seuil (≈ 93 ppm) et geler." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1a')">
                             <span class="hyst-epoch-glyphs" aria-hidden="true">☃⛄</span>
                             <span class="hyst-epoch-caption hyst-epoch-date">-735Ma</span>
                         </button>
-                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1b" title="Repère visuel −645 Ma (milieu d’intervalle cible). Calcul : hysteresis 1b — Sortie Marinoen (début ▶ −690 Ma), transition vers Paléozoïque marin 🪼." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1b')">
+                        <button type="button" class="icon-button hyst-epoch-btn" id="hyst-epoch-h1b" title="Repère visuel −645 Ma (milieu d’intervalle cible). Calcul : hysteresis 1b — Sortie Marinoen (début ▶ −690 Ma), glace sale 0,48 : monter le CO₂ depuis la branche froide jusqu'à la déglaciation (≈ 0,0085 bar), transition vers Paléozoïque marin 🪼." onclick="scieRunEpochLikeVisuTimeline('hysteresis 1b')">
                             <span class="hyst-epoch-glyphs" aria-hidden="true">⛄🪼</span>
                             <span class="hyst-epoch-caption hyst-epoch-date">-645Ma</span>
                         </button>
@@ -724,7 +725,7 @@
                         const co2kg = cfg['🔺⚖️🏭'] || 0;
                         const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
                         const dtYrDisp = Math.round(dtYr);
-                        const gtDisp = Math.round(co2kg / 1e9);
+                        const gtDisp = Math.round(co2kg / 1e12);
 
                         const btn = document.createElement('button');
                         btn.type = 'button';
@@ -734,8 +735,8 @@
 
                         btn.addEventListener('click', () => {
                             const D = window.DATA;
-                            // 1. CO₂ : delta pending consommé par getMasses() (pas de cumul)
-                            D['📜']['🔺⚖️🏭'] = co2kg;
+                            // 1. CO₂ : cumul injecté (racine époque + 📜🔺⚖️🏭, getMasses)
+                            D['📜']['🔺⚖️🏭'] += co2kg; // cumul lu par getMasses (compute.js v1.0.23)
                             // 2. Temps avance (📿💫 = compteur universel, barycentre + date)
                             D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
                             // 3. Physique

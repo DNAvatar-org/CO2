@@ -110,9 +110,11 @@ a [role="img"][aria-label]:not([aria-label=""]),
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
 }
 
-/* Fond plein écran : skysphère galaxie (static/galaxy_background.js) posée dans #galaxy-bg.
-   html = deep-space de secours (avant chargement THREE/texture ou si absent).
-   body transparent pour laisser voir le canvas. Ancien fond : url('../img/fond.png') cover fixed. */
+/* Fond plein écran : IMAGE FIXE de la galaxie dans #galaxy-bg (v-2026-09-16).
+   Remplace la skysphère Three.js (canvas + galaxy_background.js) : un 2e contexte WebGL plein écran
+   re-rendu au drag coûtait cher pour un fond qui ne bouge quasiment pas → appli qui rame.
+   html = deep-space de secours si l'image manque ; body transparent pour laisser voir le fond.
+   Image : ../img/fond.png (galaxie, 1024×941) — celle d'avant la skysphère, remise sur demande. */
 html {
     background: #05060a;
 }
@@ -124,6 +126,11 @@ html {
     z-index: -1;          /* derrière tout le contenu de l'app */
     display: block;
     pointer-events: none; /* non interactif : n'intercepte aucun clic */
+    background-image: url('../img/fond.png');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-color: #05060a;
 }
 body {
     font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;

@@ -1,8 +1,10 @@
 // File: API_BILAN/data/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
-// Version 1.0.14
-// Date: [July 16, 2026]
+// Version 1.0.16
+// Date: [September 17, 2026]
 // logs :
+// - v1.0.16: 📜🔺⚖️🏭 — cumul CO₂ injecté par les événements 📱 (lu par getMasses).
+// - v1.0.15: _contribution_nuages — formule d'addition 2 couches (albedo v1.2.64).
 // - v1.0.14: retrait catégorie 🔘 États activés (boutons on/off obsolètes)
 // - v1.0.13: alt0sec (data-tooltip) sur TOUTES les lignes dico — priorité KEYS_ALT0SEC → FORM → DESC
 // - v1.0.12: 🪩🍰 section « Albédo matériau » — ❄️/🧊/🏊 ; DESC courte ; alt0sec (data-tooltip) = description complète
@@ -27,7 +29,7 @@
 // ============================================================================
 const KEYS = {
     // Configuration de date / Événements
-    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔘🕰', '🧲🔬'],
+    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🔘🕰', '🧲🔬'],
     // Date Époque
     '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
@@ -69,6 +71,7 @@ const DESC = {
         '🔺🧲🌕💫': 'Delta Geoth / ticTime',
         '🔘🕰': 'Bouton cliqué (☄️ ou 💫)',
         '🔺🍰⚽': 'Cumul voile SW stratosphérique (fraction, 🌋)',
+        '🔺⚖️🏭': 'Cumul CO₂ injecté par événements 📱 ⛽/🛢 (kg)',
         '🧲🔬': 'Précision Flux',
     },
     '📅': {
@@ -262,7 +265,7 @@ const FORM = {
         '🍰⚽': 'syncStratosphericVeil01 : clamp(0, EPOCH[🍰⚽]+📜[🔺🍰⚽]+CONFIG.hystStratosphericVeilExtra01, 0.95) — obstruction',
         '🍰🪩⚽': '1 − 🍰⚽ (transmission SW après voile, écrit dans DATA[🪩] avec 🍰⚽)',
         '_contribution_glace': 'contribution_glace = (🪩🍰🧊 - albedo_base) × 🍰💧🧊 × 0.5',
-        '_contribution_nuages': 'contribution_nuages = albedo × (1 - 🍰🪩⛅) + 🪩🍰⛅ × 🍰🪩⛅'
+        '_contribution_nuages': 'contribution_nuages = albedo × (1 - 🍰🪩⛅) + α_nuageux × 🍰🪩⛅ ; α_nuageux = 🪩🍰⛅ + (1−🪩🍰⛅)²·albedo/(1 − 🪩🍰⛅·albedo)'
     },
     '🗻': {
         '🍰🗻🌊': 'Surface océanique potentielle (bassin océanique, géologie)',

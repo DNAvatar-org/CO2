@@ -290,10 +290,6 @@
       "dest": "pages/bilan_radiatif/CO2/static/fonts/ProggyDotted Regular.ttf"
     },
     {
-      "src": "static/galaxy_background.js",
-      "dest": "pages/bilan_radiatif/CO2/static/galaxy_background.js"
-    },
-    {
       "src": "static/img/fond.png",
       "dest": "pages/bilan_radiatif/CO2/static/img/fond.png"
     },
