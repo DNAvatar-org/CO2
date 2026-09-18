@@ -23,7 +23,7 @@
         (function () {
             function resizeIframe() {
                 const height = document.body.scrollHeight;
-                const heightWithMargin = Math.ceil(height * 1.05);
+                const heightWithMargin = Math.ceil(height * 1.05) + 3 * 26 /* +3 lignes : plus de barre de scroll */;
                 if (window.parent && window.parent !== window) {
                     window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'dico' }, '*');
                 }

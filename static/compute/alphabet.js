@@ -1,8 +1,9 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.14
+// Version 1.0.15
 // Date: [September 17, 2026]
 // logs :
+// - v1.0.15: createAlphabetHtml — Époques sur 2 colonnes (grille 6 colonnes, classe legend-grid--alphabet).
 // - v1.0.14: 💀 « Limite P/T » → « Extinction permienne » (plus explicite, tient sur une ligne de titre).
 // - v1.0.13: CHARS_DESC ⚗ → « Affiche les concentrations » (bouton DETAILS organigramme)
 // - v1.0.12: retrait BOOLEAN 🔘 « Calculé (Boolean) » de l'alphabet (obsolète)
@@ -302,10 +303,14 @@ function createAlphabetHtml() {
     const col2_filtered = charsCol2.map(createCharDiv).filter(div => div !== '').join('');
     const col3_filtered = charsCol3.map(createCharDiv).filter(div => div !== '').join('');
     const col4_filtered = charsCol4.map(createCharDiv).filter(div => div !== '').join('');
-    const col5_filtered = charsCol5.map(createCharDiv).filter(div => div !== '').join('');
+    // Époques sur 2 colonnes (22 lignes → 11 + 11) : plus de barre de scroll dans la popup
+    const col5_items = charsCol5.map(createCharDiv).filter(div => div !== '');
+    const col5_half = Math.ceil(col5_items.length / 2);
+    const col5a_filtered = col5_items.slice(0, col5_half).join('');
+    const col5b_filtered = col5_items.slice(col5_half).join('');
     
     return `
-        <div class="legend-grid">
+        <div class="legend-grid legend-grid--alphabet">
             <div class="legend-column">
                 <h3 class="legend-title">Unités</h3>
                 ${col1_filtered}
@@ -324,7 +329,11 @@ function createAlphabetHtml() {
             </div>
             <div class="legend-column">
                 <h3 class="legend-title">Époques</h3>
-                ${col5_filtered}
+                ${col5a_filtered}
+            </div>
+            <div class="legend-column">
+                <h3 class="legend-title">&nbsp;</h3>
+                ${col5b_filtered}
             </div>
         </div>
     `;

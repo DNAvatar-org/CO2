@@ -496,7 +496,7 @@
             if (typeof window !== 'undefined' && window.DATA) {
                 if (!window.DATA['📜']) window.DATA['📜'] = {};
                 window.DATA['📜']['📿💫'] = 0;
-                window.DATA['📜']['🔺⚖️🏭'] = 0;
+                window.DATA['📜']['🔺⚖️🏭'] = 0; window.DATA['📜']['🌊🔺⚖️🏭'] = 0; window.DATA['📜']['🌳🔺⚖️🏭'] = 0;
                 window.DATA['📜']['🔺⚖️💧'] = 0;
                 window.DATA['📜']['🔺🍰⚽'] = 0;
                 const logEl = document.getElementById('co2-action-log');
@@ -644,6 +644,7 @@
                             const D = window.DATA;
                             // 1. CO₂ : cumul injecté (racine époque + 📜🔺⚖️🏭, getMasses)
                             D['📜']['🔺⚖️🏭'] += co2kg; // cumul lu par getMasses (compute.js v1.0.23)
+                            window.CO2.advanceCarbonSinks(dtYr, co2kg); // puits océan + forêts
                             // 2. Temps avance (📿💫 = compteur universel, barycentre + date)
                             D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
                             // 3. Physique
@@ -789,7 +790,7 @@
             
             // Initialiser les valeurs dans DATA
             window.DATA['📜']['📿💫'] = 0;
-            window.DATA['📜']['🔺⚖️🏭'] = 0;
+            window.DATA['📜']['🔺⚖️🏭'] = 0; window.DATA['📜']['🌊🔺⚖️🏭'] = 0; window.DATA['📜']['🌳🔺⚖️🏭'] = 0;
             window.DATA['📜']['🔺⚖️💧'] = 0;
             window.DATA['📜']['🔺🍰⚽'] = 0;
             // IMPORTANT: Si animation activée, on NE TOUCHE PAS à DATA['🧮']['🧮🌡️']

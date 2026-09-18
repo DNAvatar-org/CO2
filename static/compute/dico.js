@@ -1,8 +1,9 @@
 // File: API_BILAN/data/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
-// Version 1.0.16
+// Version 1.0.17
 // Date: [September 17, 2026]
 // logs :
+// - v1.0.17: 📜🌊🔺⚖️🏭 / 📜🌳🔺⚖️🏭 — puits océan / forêts du CO₂ injecté.
 // - v1.0.16: 📜🔺⚖️🏭 — cumul CO₂ injecté par les événements 📱 (lu par getMasses).
 // - v1.0.15: _contribution_nuages — formule d'addition 2 couches (albedo v1.2.64).
 // - v1.0.14: retrait catégorie 🔘 États activés (boutons on/off obsolètes)
@@ -29,7 +30,7 @@
 // ============================================================================
 const KEYS = {
     // Configuration de date / Événements
-    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🔘🕰', '🧲🔬'],
+    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🌊🔺⚖️🏭', '🌳🔺⚖️🏭', '🔘🕰', '🧲🔬'],
     // Date Époque
     '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
@@ -72,6 +73,8 @@ const DESC = {
         '🔘🕰': 'Bouton cliqué (☄️ ou 💫)',
         '🔺🍰⚽': 'Cumul voile SW stratosphérique (fraction, 🌋)',
         '🔺⚖️🏭': 'Cumul CO₂ injecté par événements 📱 ⛽/🛢 (kg)',
+        '🌊🔺⚖️🏭': 'CO₂ injecté absorbé par l’océan (kg, Henry/Revelle)',
+        '🌳🔺⚖️🏭': 'CO₂ injecté stocké par les forêts (kg, fertilisation)',
         '🧲🔬': 'Précision Flux',
     },
     '📅': {

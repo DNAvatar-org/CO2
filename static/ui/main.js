@@ -1987,6 +1987,8 @@ function setEpoch(epochName, options) {
         DATA['📜']['📿☄️'] = 0;
         DATA['📜']['📿💫'] = 0;
         DATA['📜']['🔺⚖️🏭'] = 0; // cumul CO₂ événements 📱 (compute.js getMasses)
+        DATA['📜']['🌊🔺⚖️🏭'] = 0; // puits océan (CO2.advanceCarbonSinks)
+        DATA['📜']['🌳🔺⚖️🏭'] = 0; // puits forêts
         DATA['📜']['bary'] = 0;
         DATA['📜']['🔘🕰'] = '';
     }

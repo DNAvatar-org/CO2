@@ -26,7 +26,7 @@
                 // Ajuster la hauteur de l'iframe au contenu
                 setTimeout(() => {
                     const height = document.body.scrollHeight;
-                    const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
+                    const heightWithMargin = Math.ceil(height * 1.05) + 3 * 26 /* +3 lignes : plus de barre de scroll */; // Ajouter 5% pour éviter la barre de scroll
                     if (window.parent && window.parent !== window) {
                         window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'alphabet' }, '*');
                     }
@@ -40,7 +40,7 @@
         window.addEventListener('resize', function() {
             setTimeout(() => {
                 const height = document.body.scrollHeight;
-                const heightWithMargin = Math.ceil(height * 1.05); // Ajouter 5% pour éviter la barre de scroll
+                const heightWithMargin = Math.ceil(height * 1.05) + 3 * 26 /* +3 lignes : plus de barre de scroll */; // Ajouter 5% pour éviter la barre de scroll
                 if (window.parent && window.parent !== window) {
                     window.parent.postMessage({ type: 'resize-iframe', height: heightWithMargin, source: 'alphabet' }, '*');
                 }

@@ -1,6 +1,7 @@
 // File: modal.js - Système de modale/alerte personnalisée
 // Desc: Module pour afficher des alertes avec texte sélectionnable et pages HTML dans des popups
-// Version 1.1.0
+// Version 1.1.1
+// - v1.1.1: .page-modal-box.tall height 90vh (Bibliographie sans message resize restait à 460 px).
 // Date: [June 08, 2025] [HH:MM UTC+1]
 // logs :
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
@@ -145,6 +146,7 @@
         }
 
         .page-modal-box.tall {
+            height: 90vh; /* pages longues sans message resize (Bibliographie) */
             max-height: 95vh;
             width: 95%;
             max-width: 1400px;

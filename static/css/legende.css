@@ -1,6 +1,7 @@
 /* File: static/compute/legende.css - Styles pour lexique et syntaxe
    Desc: Styles CSS communs pour l'affichage des légendes (lexique et syntaxe)
-   Version 1.0.1
+   Version 1.0.2
+   - v1.0.2 : .legend-grid--alphabet (6 colonnes serrées, Époques sur 2)
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause.
    See LICENSE_HEADER.txt for full terms.
@@ -54,6 +55,12 @@ body {
     grid-template-columns: repeat(5, 1fr);
     gap: 15px;
     margin-top: 0;
+}
+
+/* Alphabet : 6 colonnes serrées (Époques sur 2) — v2026-09-17 */
+.legend-grid.legend-grid--alphabet {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
 }
 
 /* ============================================================================

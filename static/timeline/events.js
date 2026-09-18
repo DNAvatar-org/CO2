@@ -258,6 +258,8 @@ window.updateEpochActions = function () {
                         const D = window.DATA;
                         // CO₂ : CUMUL lu par getMasses() (racine époque + 📜🔺⚖️🏭)
                         D['📜']['🔺⚖️🏭'] += co2kg;
+                        // Puits océan + forêts sur la durée du clic (une fois par événement)
+                        window.CO2.advanceCarbonSinks(dtYr, co2kg);
                         // Temps (📿💫 = compteur universel ; date = ▶ + 📿💫 × 🔺⏳, compute.js)
                         D['📜']['📿💫'] += 1;
                         window.infoTimeMa += dtYr / 1e6;
