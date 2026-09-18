@@ -553,7 +553,11 @@ function updateTimeline() {
         const wh = epochAct['🕰'];
         let sig;
         if (wh && Array.isArray(wh.order) && wh.order.length) {
-            sig = (epochAct['📅'] || '') + '|' + wh.order.join(',');
+            // 🕰.order n'est plus consommé par shift() (events.js v1.2.36) : la signature suit le curseur 📿🕰,
+            // sinon plus aucun re-render entre deux actions d'une même séquence.
+            const cur = (window.DATA && window.DATA['📜'] && Number.isFinite(Number(window.DATA['📜']['📿🕰'])))
+                ? Number(window.DATA['📜']['📿🕰']) : 0;
+            sig = (epochAct['📅'] || '') + '|' + wh.order.join(',') + '|#' + cur;
         } else {
             const actionKey = cfgOrg.getActionForDate(epochAct['▶'], window.infoTimeMa) || '💫';
             sig = (epochAct['📅'] || '') + '|' + actionKey;

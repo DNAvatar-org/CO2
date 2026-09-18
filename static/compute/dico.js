@@ -1,8 +1,9 @@
 // File: API_BILAN/data/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
-// Version 1.0.20
+// Version 1.0.21
 // Date: [September 17, 2026]
 // logs :
+// - v1.0.21: 📜🌙 — carte de nuit superposée ; 📜🖼 = suite d'images par tic.
 // - v1.0.20: 📜🖼 — texture de l'état courant.
 // - v1.0.19: 📜🔁⚖️ / 📜🔁📝 — état de cycle courant (🕰.🔁).
 // - v1.0.18: 📜⚾ — obliquité courante (0 = ε de l'époque) pour les cycles de Milankovitch.
@@ -33,7 +34,7 @@
 // ============================================================================
 const KEYS = {
     // Configuration de date / Événements
-    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🌊🔺⚖️🏭', '🌳🔺⚖️🏭', '⚾', '🔁⚖️', '🔁📝', '🖼', '🔘🕰', '🧲🔬'],
+    '📜': ['🌡️🧮', '📿☄️', '📿🕰', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🌊🔺⚖️🏭', '🌳🔺⚖️🏭', '⚾', '🔁⚖️', '🔁📝', '🖼', '🌙', '🔘🕰', '🧲🔬'],
     // Date Époque
     '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
@@ -73,6 +74,7 @@ const DESC = {
         '🔺⚖️💧☄️': 'Masse H₂O / météore',
         '🔺🌡️💫': 'Delta t° / ticTime',
         '🔺🧲🌕💫': 'Delta Geoth / ticTime',
+        '📿🕰': 'Nombre d’entrées de 🕰.order déjà consommées dans l’époque (curseur ; la config n’est pas modifiée)',
         '🔘🕰': 'Bouton cliqué (☄️ ou 💫)',
         '🔺🍰⚽': 'Cumul voile SW stratosphérique (fraction, 🌋)',
         '🔺⚖️🏭': 'Cumul CO₂ injecté par événements 📱 ⛽/🛢 (kg)',
@@ -81,7 +83,8 @@ const DESC = {
         '⚾': 'Obliquité ε courante (°, 0 = celle de l’époque) — cycles de Milankovitch',
         '🔁⚖️': 'Masses imposées par l’état de cycle courant (🕰.🔁, ex. glaciaire/interglaciaire)',
         '🔁📝': 'Pourquoi de l’état de cycle courant (texte alt2sec de l’événement)',
-        '🖼': 'Texture de la planète imposée par l’état courant (🕰.🔁, sinon déduite de la date)',
+        '🖼': 'Texture de la planète imposée (suite 🕰.🖼 parcourue par les tics ; sinon déduite de la date)',
+        '🌙': 'Carte de nuit superposée (🕰.🌙) — lumières des villes côté ombre',
         '🧲🔬': 'Précision Flux',
     },
     '📅': {

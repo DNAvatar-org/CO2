@@ -329,8 +329,8 @@ function syncMiroirFluxButtonState() {
     btn.classList.toggle('selected', on);
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     const alt0 = on
-        ? "Axe altitude miroir (0 km en haut) — cliquer pour inverser"
-        : "Axe altitude normal (0 km en bas) — cliquer pour inverser";
+        ? "Axe altitude miroir — cliquer pour inverser"
+        : "Axe altitude normal — cliquer pour inverser";
     btn.setAttribute('data-tooltip', alt0);
     btn.setAttribute('aria-label', alt0);
     btn.removeAttribute('title');

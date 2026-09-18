@@ -1,8 +1,17 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.34
- * Date: [September 17, 2026]
+ * Version 1.2.36
+ * Date: [September 18, 2026]
 * logs :
+ *   - v1.2.36: 🕰.order n'est PLUS consommé par shift() — curseur 📿🕰 dans DATA['📜'] (remis à 0 par setEpoch).
+ *     Le shift amputait la config pour de bon : revenir sur une époque déjà parcourue (reclic frise) proposait
+ *     les événements décalés et la séquence ne repartait jamais entière. timeline.js : signature de rafraîchissement
+ *     sur le curseur. Titre de la cellule d'événements : « FIN DE SIMULATION » quand 📱 a atteint ◀ (2100),
+ *     « EVENEMENT » dès qu'un bouton revient.
+ *   - v1.2.35: addEventTooltip — alt2sec des boutons d'événement recomposé À CHAQUE SURVOL (il était figé à la création
+ *     du bouton, donc identique pour tous les clics d'une époque : 🦣 racontait son 1er clic 4 fois) ; 🎇 en a un aussi.
+ *     SKIP (🎞) — epochEventCount() : visible dès que l'époque demande PLUS D'UN CLIC (tics 🔺⏳ sur |◀−▶| compris,
+ *     pas seulement le nombre de boutons) → réapparaît sur 🦠 🪸 🦕 🏔 🦣 🛖 🚂 ; reste masqué sur les hystérésis (1 clic).
  *   - v1.2.34: alt2sec sur les boutons d'événements (window.buildEventAlt2sec, static/texts/epochs_alt2sec.js).
  *   - v1.2.33: 📱 ⛽/🛢 — cumul 📜🔺⚖️🏭 (+=) au lieu d'un delta jamais consommé ; infoTimeMa avance de 🔺⏳ (frise figée à 2000) ;
  *     plus de boutons une fois ◀ (2100) atteint.
@@ -93,6 +102,70 @@ function tryEpochEndSkipAfterEvent(runPopOrder) {
     return true;
 }
 
+/** Titre de la cellule d'événements (#cell-timeline-scenario-logos) : « EVENEMENT », ou « FIN DE SIMULATION »
+ *  quand 📱 a atteint ◀ (2100) et n'a plus rien à proposer. Repasse à EVENEMENT dès qu'un bouton revient
+ *  (reclic sur l'époque 📱 → setEpoch remet 📿💫/📅 à 2000). */
+function setEventsHeading(text) {
+    const h = document.querySelector('#cell-timeline-scenario-logos .flux-label.organigram-config-heading');
+    if (h && h.innerHTML !== text) h.innerHTML = text;
+}
+
+/**
+ * Curseur de 🕰.order : combien d'entrées ont déjà été jouées dans l'époque courante.
+ * Vit dans DATA['📜']['📿🕰'] (remis à 0 par setEpoch, comme 📿💫/📿☄️) et NON dans la config :
+ * un shift() sur 🕰.order amputait la séquence pour de bon, donc revenir sur une époque déjà
+ * parcourue proposait les événements décalés (⚫ : 2 clics joués → il ne restait que 3 actions).
+ */
+function orderCursor() {
+    const D = window.DATA;
+    const n = (D && D['📜']) ? Number(D['📜']['📿🕰']) : 0;
+    return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Tooltip d'un bouton d'événement, avec alt2sec VIVANT.
+ * Le récit dépend de l'état courant (📿💫, masses, date) : il ne peut pas être figé à la création du bouton,
+ * sinon une époque à plusieurs clics (🦣 : glaciaire → interglaciaire → glaciaire) raconte le premier clic
+ * pour tous les suivants. buildEventAlt2sec est donc rejoué à chaque survol, avant que tooltips.js ne lise
+ * data-alt2sec (il le lit dans son setTimeout, après le mouseenter).
+ */
+function addEventTooltip(el, epochId, eventKey, shortText) {
+    el.setAttribute('data-event-key', eventKey);
+    window.addCustomTooltip(el, shortText, window.buildEventAlt2sec(epochId, eventKey));
+    const refresh = function () {
+        const id = (window.DATA && window.DATA['📜']) ? window.DATA['📜']['🗿'] : epochId;
+        const txt = window.buildEventAlt2sec(id, eventKey);
+        if (txt) el.setAttribute('data-alt2sec', txt);
+        else el.removeAttribute('data-alt2sec');
+    };
+    el.addEventListener('mouseenter', refresh);
+    el.addEventListener('focus', refresh);
+}
+
+/**
+ * Nombre de clics que demande l'époque pour être traversée — ce qui décide de l'affichage du SKIP (🎞).
+ * 🕰.order → longueur de la file. Sinon : max(boutons d'action, tics nécessaires pour couvrir |◀−▶| au pas 🔺⏳),
+ * car une époque à un seul bouton 💫 peut demander plusieurs clics (🦠 3 × 500 Ma, 🦣 4 × 0,5 Ma, 🛖 3 × 4 ka).
+ * Les hystérésis valent 1 (un seul événement, un seul clic) : pas de SKIP.
+ */
+function epochEventCount(tlEpoch) {
+    const wh = tlEpoch ? tlEpoch['🕰'] : null;
+    if (!wh) return 0;
+    if (Array.isArray(wh.order)) return wh.order.length;
+    const directCount = ['☄️', '🎇', '🗻', '🌋', '💫', '🏔', '⛰']
+        .filter(function (k) { return wh[k] != null; }).length;
+    let ticCount = 0;
+    const ticKey = ['💫', '🏔', '⛰', '🌋'].find(function (k) {
+        return wh[k] && Number.isFinite(Number(wh[k]['🔺⏳'])) && Number(wh[k]['🔺⏳']) > 0;
+    });
+    const durMa = (Number.isFinite(Number(tlEpoch['▶'])) && Number.isFinite(Number(tlEpoch['◀'])))
+        ? Math.abs(Number(tlEpoch['◀']) - Number(tlEpoch['▶'])) / 1e6 : null;
+    if (ticKey && durMa !== null && durMa > 0) {
+        ticCount = Math.ceil(durMa / Number(wh[ticKey]['🔺⏳']) - 1e-9);
+    }
+    return Math.max(directCount, ticCount);
+}
+
 // Fonction pour mettre à jour les actions disponibles selon l'époque
 // Après 🎞 : ☄️ / 🎇 / 💫 selon 🕰.order (TIMELINE) — une seule action visible (order[0]), queue consommée au clic ; sinon ACTION_BY_DATE ; géologique sans order : 🕰.🌋 + 🕰.💫.
 window.updateEpochActions = function () {
@@ -112,12 +185,9 @@ window.updateEpochActions = function () {
     const _tlEpoch = window.TIMELINE.find((e) => e['📅'] === epochId);
     const whRoot = _tlEpoch['🕰'];
     if (animToggleBtn) {
+        // 📱 : buckets année (⛽/🛢) — pas d'époque suivante à rejoindre, SKIP sans objet.
         const _hasEmissions = Object.keys(whRoot).some(function(k) { return !isNaN(Number(k)); });
-        const orderArr = Array.isArray(whRoot.order) ? whRoot.order : null;
-        const orderedActionCount = orderArr !== null ? orderArr.length : null;
-        const directActionCount = ['☄️', '🎇', '🗻', '🌋', '💫', '🏔', '⛰'].filter(function(k) { return whRoot[k] != null; }).length;
-        const actionCount = orderedActionCount !== null ? orderedActionCount : directActionCount;
-        const hideSkip = _hasEmissions || actionCount <= 1;
+        const hideSkip = _hasEmissions || epochEventCount(_tlEpoch) <= 1;
         animToggleBtn.classList.toggle('plot-anim-toggle--scenario-hidden', hideSkip);
         animToggleBtn.style.removeProperty('visibility');
     }
@@ -125,6 +195,7 @@ window.updateEpochActions = function () {
     if (!eventsLogos) return;
 
     eventsLogos.innerHTML = '';
+    setEventsHeading('EVENEMENT');
 
     // Applique le flux géothermique Hadéen depuis la config (▶/◀ années, 🔺🧲🌕💫 flux début/fin)
     const applyHadeenFluxFromConfig = () => {
@@ -237,6 +308,7 @@ window.updateEpochActions = function () {
             }
             // Fin de frise (◀ = 2100) atteinte : plus d'action (pas d'époque suivante, sinon on injecterait au-delà de ◀)
             const actions = (curYrForBucket >= epochEnd) ? null : _tlEpoch['🕰'][activeYr];
+            if (!actions) setEventsHeading('FIN DE SIMULATION');
 
             if (actions) {
                 for (const [emoji, cfg] of Object.entries(actions)) {
@@ -253,7 +325,7 @@ window.updateEpochActions = function () {
                     const altText = '+' + dtYrDisp + 'ans +' + gtDisp + 'Gt CO2';
                     btn.alt = altText;
                     // alt2sec (bulle longue) : récit de l'événement, static/texts/epochs_alt2sec.js
-                    window.addCustomTooltip(btn, emoji + ' ' + altText, window.buildEventAlt2sec(epochId, emoji));
+                    addEventTooltip(btn, epochId, emoji, emoji + ' ' + altText);
 
                     btn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -283,16 +355,19 @@ window.updateEpochActions = function () {
         }
     }
 
-    if (_tlEpoch && whRoot && Array.isArray(whRoot.order) && whRoot.order.length) {
+    if (_tlEpoch && whRoot && Array.isArray(whRoot.order) && orderCursor() < whRoot.order.length) {
         const wh = whRoot;
         const ticRootResolved = resolveGeologicTicFromWh(wh);
         const ticCfgRoot = ticRootResolved.ticCfg;
-        /** Une entrée consommée dans 🕰.order : un seul shift si la tête correspond à l’action réellement jouée (pas de boucle sur 🔘🕰 à chaque frame). */
+        /** Une entrée consommée dans 🕰.order : le curseur 📿🕰 avance d'un cran si la tête de file correspond à
+         *  l'action réellement jouée (pas de boucle sur 🔘🕰 à chaque frame). La CONFIG n'est pas touchée : revenir
+         *  sur l'époque (clic sur la frise) remet 📿🕰 à 0 dans setEpoch et la séquence repart entière. */
         const popOrderAfterAction = (actedKey) => {
             const ord = _tlEpoch['🕰'] && _tlEpoch['🕰'].order;
-            if (!Array.isArray(ord) || ord.length === 0) return;
-            if (ord[0] !== actedKey) return;
-            ord.shift();
+            if (!Array.isArray(ord)) return;
+            const cur = orderCursor();
+            if (cur >= ord.length || ord[cur] !== actedKey) return;
+            window.DATA['📜']['📿🕰'] = cur + 1;
         };
         const advanceGeologicTicOrder = (D, stepMa, buttonKey) => {
             if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
@@ -313,7 +388,7 @@ window.updateEpochActions = function () {
             window.updateTimeline();
         };
 
-        const act = wh.order[0];
+        const act = wh.order[orderCursor()];
         {
             const cfg = wh[act];
             if (act === '☄️') {
@@ -325,7 +400,7 @@ window.updateEpochActions = function () {
                 iceMeteorBtn.className = 'btn-events organigram-logo organigram-action-logo';
                 const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
                 const iceMeteorAlt = 'Météorite de Glace (+' + stepMaM + ' Ma)';
-                window.addCustomTooltip(iceMeteorBtn, 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMaM + ' Ma par clic', window.buildEventAlt2sec(epochId, '☄️'));
+                addEventTooltip(iceMeteorBtn, epochId, '☄️', 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMaM + ' Ma par clic');
                 iceMeteorBtn.alt = iceMeteorAlt;
                 if (epochId === '⚫') {
                     iceMeteorBtn.addEventListener('click', () => {
@@ -390,7 +465,7 @@ window.updateEpochActions = function () {
                 bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
                 bigImpactBtn.alt = '';
                 bigImpactBtn.className = 'btn-events organigram-logo organigram-action-logo';
-                window.addCustomTooltip(bigImpactBtn, 'Impact majeur - Crée la lune');
+                addEventTooltip(bigImpactBtn, epochId, '🎇', 'Impact majeur - Crée la lune');
                 bigImpactBtn.addEventListener('click', () => {
                     window.hideTooltip();
                     if (targetFromConfig) {
@@ -429,7 +504,7 @@ window.updateEpochActions = function () {
                 // Tooltip = DESC du logo dans l'Alphabet (source unique), pas de texte hardcodé par action.
                 const tip = (window.CHARS_DESC && window.CHARS_DESC[act]) ? window.CHARS_DESC[act] : act;
                 volcBtn.alt = tip;
-                window.addCustomTooltip(volcBtn, tip, window.buildEventAlt2sec(epochId, act));
+                addEventTooltip(volcBtn, epochId, act, tip);
                 volcBtn.addEventListener('click', () => {
                     window.hideTooltip();
                     const D = window.DATA;
@@ -448,7 +523,7 @@ window.updateEpochActions = function () {
                 ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
                 ticBtn.textContent = '💫';
                 ticBtn.alt = stepLabel;
-                window.addCustomTooltip(ticBtn, stepLabel + ' par clic', window.buildEventAlt2sec(epochId, ticKey || '💫'));
+                addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
                 if (epochId === '🔥') {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -494,7 +569,7 @@ window.updateEpochActions = function () {
                 ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
                 ticBtn.textContent = '🏔';
                 ticBtn.alt = stepLabel;
-                window.addCustomTooltip(ticBtn, stepLabel + ' par clic', window.buildEventAlt2sec(epochId, ticKey || '💫'));
+                addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
                 if (epochId === '🔥') {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -540,7 +615,7 @@ window.updateEpochActions = function () {
                 ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
                 ticBtn.textContent = '⛰';
                 ticBtn.alt = stepLabel;
-                window.addCustomTooltip(ticBtn, stepLabel + ' par clic', window.buildEventAlt2sec(epochId, ticKey || '💫'));
+                addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
                 if (epochId === '🔥') {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -596,7 +671,7 @@ window.updateEpochActions = function () {
             const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
             const stepMa = epochConfig['🕰']['☄️']['🔺⏳'];
             const iceMeteorAlt = 'Météorite de Glace (+' + stepMa + ' Ma)';
-            window.addCustomTooltip(iceMeteorBtn, 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMa + ' Ma par clic', window.buildEventAlt2sec(epochId, '☄️'));
+            addEventTooltip(iceMeteorBtn, epochId, '☄️', 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMa + ' Ma par clic');
             iceMeteorBtn.alt = iceMeteorAlt;
             if (epochId === '⚫') {
                 iceMeteorBtn.addEventListener('click', () => {
@@ -659,7 +734,7 @@ window.updateEpochActions = function () {
         bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
         bigImpactBtn.alt = '';
         bigImpactBtn.className = 'btn-events organigram-logo organigram-action-logo';
-        window.addCustomTooltip(bigImpactBtn, 'Impact majeur - Crée la lune');
+        addEventTooltip(bigImpactBtn, epochId, '🎇', 'Impact majeur - Crée la lune');
         bigImpactBtn.addEventListener('click', () => {
             window.hideTooltip();
             const h2o_base = window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0;
@@ -714,7 +789,7 @@ window.updateEpochActions = function () {
                 // Tooltip = DESC du logo (Alphabet CHARS_DESC), pas de texte hardcodé (cf. handler order-based).
                 const tip = (window.CHARS_DESC && window.CHARS_DESC[volcAct]) ? window.CHARS_DESC[volcAct] : volcAct;
                 volcBtn.alt = tip;
-                window.addCustomTooltip(volcBtn, tip, window.buildEventAlt2sec(epochId, volcAct));
+                addEventTooltip(volcBtn, epochId, volcAct, tip);
                 volcBtn.addEventListener('click', () => {
                     window.hideTooltip();
                     const D = window.DATA;
@@ -731,7 +806,7 @@ window.updateEpochActions = function () {
                 ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
                 ticBtn.textContent = ticKey || '💫';
                 ticBtn.alt = stepLabel;
-                window.addCustomTooltip(ticBtn, stepLabel + ' par clic', window.buildEventAlt2sec(epochId, ticKey || '💫'));
+                addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
                 if (epochId === '🔥') {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -796,5 +871,6 @@ function checkDateEvents() {
 window.checkDateEvents = checkDateEvents;
 
 window.tryEpochEndSkipAfterEvent = tryEpochEndSkipAfterEvent;
+window.epochOrderCursor = orderCursor;
 
 
