@@ -1,8 +1,10 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.29
+// Version 1.1.30
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.30: static/ui/cpu_threads_notice.js dans la liste (après modal.js) — avertit une fois quand le
+//        navigateur sous-déclare navigator.hardwareConcurrency (Brave « farbling »), qui dimensionne le pool de workers.
 // Logs: v1.1.29: tooltips literal /_interfaces/tooltips.js (www racine).
 // Logs: v1.1.28: tooltips.js via window.SITE_PATHS.INTERFACES (absolu /_interfaces/, pas ../../ relatif page).
 // Logs: v1.1.27: tooltips.js → ../../_interfaces/tooltips.js (code partagé site/_interfaces).
@@ -56,6 +58,7 @@
         'static/compute/visu_/flux_manager.js',
         '/_interfaces/tooltips.js',
         'static/ui/modal.js',
+        'static/ui/cpu_threads_notice.js',
         'static/courbes/patterns.js',
         'static/compute/visu_/log_display.js',
         '../API_BILAN/data/hitran_lines_CO2.js',

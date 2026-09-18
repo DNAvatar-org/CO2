@@ -44,7 +44,7 @@ const KEYS = {
     // Cycle de l'eau
     '💧': ['🍰💧🧊', '🍰💧🌊', '🍰🧮🌧', '🍰🫧💧', '🍰🫧☔', '🍰⚖️💦', '💭☔', '⏳☔'],
     // Albédo
-    '🪩': ['🍰🪩📿', '🍰🪩🎾', '🍰🪩🏜️', '🍰🪩🌳', '🍰🪩🌊', '🍰🪩🧊', '🍰🪩⛅', '🍰🪩🌍', '🍰⚽', '🍰🪩⚽', '☁️'],
+    '🪩': ['🍰🪩📿', '🍰🪩🎾', '🍰🪩🏜️', '🍰🪩🌳', '🍰🪩🌊', '🍰🪩🧊', '🍰🪩⛅', '🍰🪩🌍', '🍰⚽', '🍰🪩⚽', '🍰🪩💧', '🪩🍰🧊', '☁️'],
     // Flux (W/m²) ; ΔF = convention affichage (climate.js), pas calcul T
     '🧲': ['🧲☀️🔽', '🧲🌕🔽', '🧲🌑🔼', '🧲🌈🔼', '🧲🪩🔼', '🔺🧲'],
     // Convergence
@@ -108,6 +108,8 @@ const DESC = {
         '🍰🪩🌍': 'Continents',
         '🍰⚽': 'Voile SW : fraction d’obstruction (0–1) du flux absorbé en surface après albédo (EPOCH+📜+CONFIG)',
         '🍰🪩⚽': 'Transmission du faisceau SW après A_geo seul = 1 − 🍰⚽ (le voile est déjà fusionné dans 🍰🪩📿)',
+        '🍰🪩💧': 'Facteur corps-noir : couche d’eau globale / 10 m, plafonné à 1 — A_geo est multiplié par lui',
+        '🪩🍰🧊': 'Albédo de glace EFFECTIF (moyenne zonale Briegleb) — celui qui entre dans A_geo, pas le coefficient de config',
     },
     '🫧': {
         '🎈': 'Pression atmosphérique',
@@ -277,6 +279,8 @@ const FORM = {
         '🍰🪩⛅': 'cloud_fraction = clamp((0.19 + 0.11×☁️) × cloud_optical_efficiency, 0, 0.75), avec cloud_optical_efficiency = (1.10 + 0.45×(ccn_ratio-1)) × pressure_factor × oxidation_soft_factor × temp_factor',
         '🍰⚽': 'syncStratosphericVeil01 : clamp(0, EPOCH[🍰⚽]+📜[🔺🍰⚽]+CONFIG.hystStratosphericVeilExtra01, 0.95) — obstruction',
         '🍰🪩⚽': '1 − 🍰⚽ (transmission SW après voile, écrit dans DATA[🪩] avec 🍰⚽)',
+        '🍰🪩💧': 'min(1, volume d’eau / volume d’une couche globale de 10 m) — A_geo × ce facteur. '
+            + 'Sur ⚫ (2 météorites = ~2 m d’eau) il vaut ~0,20 : c’est lui qui fait 15 % d’albédo là où les surfaces en donneraient 78 %.',
         '_contribution_glace': 'contribution_glace = (🪩🍰🧊 - albedo_base) × 🍰💧🧊 × 0.5',
         '_contribution_nuages': 'contribution_nuages = albedo × (1 - 🍰🪩⛅) + α_nuageux × 🍰🪩⛅ ; α_nuageux = 🪩🍰⛅ + (1−🪩🍰⛅)²·albedo/(1 − 🪩🍰⛅·albedo)'
     },

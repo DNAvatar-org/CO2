@@ -1,8 +1,11 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.36
+ * Version 1.2.37
  * Date: [September 18, 2026]
 * logs :
+ *   - v1.2.37: formatMassGT — vrais préfixes SI sur la tonne (Gt/Tt/Pt/Et). « kGT » et « MGT » empilaient deux
+ *     préfixes, ce qui ne veut rien dire : les 3,2e17 kg d'une météorite de glace s'affichaient « +320 kGT »
+ *     au lieu de « +320 Tt » (kilo × giga = téra, pas méga).
  *   - v1.2.36: 🕰.order n'est PLUS consommé par shift() — curseur 📿🕰 dans DATA['📜'] (remis à 0 par setEpoch).
  *     Le shift amputait la config pour de bon : revenir sur une époque déjà parcourue (reclic frise) proposait
  *     les événements décalés et la séquence ne repartait jamais entière. timeline.js : signature de rafraîchissement
@@ -243,24 +246,25 @@ window.updateEpochActions = function () {
         return `+${base}x10<sup>${cleanExp}</sup> kg`;
     };
     
-    // Fonction utilitaire pour formater la masse en GT (Gigatonnes)
-    // 1 GT = 1e12 kg = 10¹² kg
+    // Masse en tonnes, avec un VRAI préfixe SI — les préfixes ne s'empilent pas : « kGt » n'existe pas
+    // (kilo × giga = téra, donc l'ancien « 320 kGT » se dit 320 Tt). 1 Gt = 10⁹ t = 10¹² kg.
+    //   Gt gigatonne 10¹² kg · Tt tératonne 10¹⁵ kg · Pt pétatonne 10¹⁸ kg · Et exatonne 10²¹ kg
     const formatMassGT = (mass_kg) => {
         if (!mass_kg || mass_kg <= 0) return '';
-        const mass_GT = mass_kg / 1e12; // Conversion kg -> GT
-        if (mass_GT >= 1e6) {
-            // Millions de GT
-            const millionsGT = (mass_GT / 1e6).toFixed(1).replace(/\.?0+$/, '');
-            return `+${millionsGT} MGT`;
-        } else if (mass_GT >= 1e3) {
-            // Milliers de GT
-            const milliersGT = (mass_GT / 1e3).toFixed(1).replace(/\.?0+$/, '');
-            return `+${milliersGT} kGT`;
-        } else {
-            // GT simples
-            const gt = mass_GT.toFixed(1).replace(/\.?0+$/, '');
-            return `+${gt} GT`;
+        const paliers = [
+            { seuil: 1e21, unite: 'Et' },   // exatonne
+            { seuil: 1e18, unite: 'Pt' },   // pétatonne
+            { seuil: 1e15, unite: 'Tt' },   // tératonne
+            { seuil: 1e12, unite: 'Gt' },   // gigatonne
+        ];
+        for (const p of paliers) {
+            if (mass_kg >= p.seuil) {
+                const v = (mass_kg / p.seuil).toFixed(1).replace(/\.?0+$/, '');
+                return `+${v} ${p.unite}`;
+            }
         }
+        const mt = (mass_kg / 1e9).toFixed(1).replace(/\.?0+$/, '');
+        return `+${mt} Mt`;
     };
 
     // 📱 Buckets par année (clés numériques sous 🕰), prioritaire sur order / ACTION_BY_DATE

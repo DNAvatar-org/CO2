@@ -1,9 +1,11 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.1.0
+// Version 1.1.1
 // Date: [September 18, 2026]
 // logs :
+//   - v1.1.1: 🍄 — 4 récits (l'époque passe à 4 clics de 35 Ma, configTimeline v1.4.88) : le drawdown
+//     Dévonien-Carbonifère, la bascule du Karoo au 3e clic (−10 °C, glace 14 → 28 %), la remontée permienne.
 //   - v1.1.0: EVENT_STORY entièrement réécrit — un récit PAR CLIC (tableaux) et non par époque, et chaque
 //     récit dit ce que le clic VA faire, pas ce que l'époque EST. Calé sur un relevé T/CO₂/CH₄/albédo
 //     avant-après de chaque clic (banc epoch_bench headless, api.run par tic) : plusieurs textes annonçaient
@@ -101,8 +103,9 @@ const EPOCH_STORY = {
         'Deux conséquences climatiques majeures :\n\n' +
         '— les racines accélèrent l\'altération des silicates, qui consomme du CO₂ ;\n' +
         '— le carbone s\'enfouit massivement (c\'est le charbon d\'aujourd\'hui).\n\n' +
-        'Le CO₂ chute, la planète se refroidit, et une glaciation s\'installe (Karoo). ' +
-        'La biosphère devient un acteur du climat, pas seulement un passager.',
+        'Le CO₂ chute, la planète se refroidit, et une glaciation s\'installe (Karoo) : quatre clics ' +
+        'traversent l\'époque, et c\'est le troisième qui fait basculer. La biosphère devient un acteur ' +
+        'du climat, pas seulement un passager.',
 
     '💀':
         'Extinction permienne — la grande crise (280 → 250 Ma)\n\n' +
@@ -288,10 +291,33 @@ const EVENT_STORY = {
               'Et pourtant attendez-vous à une température quasi identique : le Soleil a gagné en puissance pendant ces 180 Ma, et les deux effets se compensent presque exactement. C\'est le thermostat carbone qui travaille — la compensation dont l\'Archéen était incapable.'
     },
     '🍄': {
-        '💫':
-            'Ce clic va RÉCHAUFFER — et ce n\'est pas le Carbonifère qu\'il montre\n\n' +
-              'Les forêts du Dévonien-Carbonifère accélèrent l\'altération et enfouissent du carbone : c\'est le charbon d\'aujourd\'hui, et cela refroidit jusqu\'à la glaciation du Karoo.\n\n' +
-              'Mais ce clic saute d\'un coup à −280 Ma, aux portes de la crise permienne : à cette date le CO₂ est déjà reparti à la hausse, et c\'est cette valeur-là qui sera appliquée. Le modèle va donc réchauffer de plusieurs degrés. Le creux du Karoo tombe au milieu du pas et n\'est pas représenté : une époque, un clic.'
+        '💫': [
+            'Les forêts s\'installent — ça va REFROIDIR\n\n' +
+            'Les premières vraies racines fracturent la roche et accélèrent l\'altération des silicates, qui ' +
+            'consomme du CO₂. Sur ce pas il est réduit d\'un tiers, et le méthane s\'effondre avec la montée ' +
+            'de l\'oxygène.\n\n' +
+            'Le refroidissement reste modeste — un degré — mais pour la première fois depuis l\'Archéen, ' +
+            'c\'est la BIOSPHÈRE qui pilote, ni le Soleil ni les volcans.',
+
+            'Le carbone s\'enfouit — ça continue de REFROIDIR\n\n' +
+            'Dévonien supérieur puis Carbonifère : les forêts marécageuses enfouissent le carbone plus vite ' +
+            'qu\'il n\'est recyclé. C\'est littéralement le charbon d\'aujourd\'hui qui se met en place.\n\n' +
+            'Le CO₂ passe sous les 400 ppm. Encore un degré et demi de moins, et la glace commence à tenir ' +
+            'aux hautes latitudes du Gondwana.',
+
+            'La glaciation du Karoo — ça va BASCULER\n\n' +
+            'Le CO₂ atteint ~280 ppm et le méthane le ppm et demi : le modèle franchit le seuil glace-albédo. ' +
+            'La glace bondit d\'environ 14 % à 28 % de la surface, et chaque mètre de glace en plus renvoie ' +
+            'plus de lumière.\n\n' +
+            'Attendez-vous à une chute d\'une dizaine de degrés d\'un seul clic. C\'est la plus longue ère ' +
+            'glaciaire du Phanérozoïque (Montañez 2007) — et elle est causée par des arbres.',
+
+            'Fin du Karoo — ça va RÉCHAUFFER, beaucoup\n\n' +
+            'Les forêts humides du Carbonifère s\'effondrent, la Pangée s\'assèche, l\'enfouissement de ' +
+            'carbone s\'arrête et le volcanisme reprend la main : le CO₂ repart vers le millier de ppm.\n\n' +
+            'Ce clic vous emmène aux portes de la crise permienne, avec une vingtaine de degrés gagnés. ' +
+            'Ce qui a mis 100 Ma à refroidir est défait en 35.'
+        ]
     },
     '💀': {
         '💫':
