@@ -1,8 +1,9 @@
 // File: API_BILAN/data/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
-// Version 1.0.19
+// Version 1.0.20
 // Date: [September 17, 2026]
 // logs :
+// - v1.0.20: 📜🖼 — texture de l'état courant.
 // - v1.0.19: 📜🔁⚖️ / 📜🔁📝 — état de cycle courant (🕰.🔁).
 // - v1.0.18: 📜⚾ — obliquité courante (0 = ε de l'époque) pour les cycles de Milankovitch.
 // - v1.0.17: 📜🌊🔺⚖️🏭 / 📜🌳🔺⚖️🏭 — puits océan / forêts du CO₂ injecté.
@@ -32,7 +33,7 @@
 // ============================================================================
 const KEYS = {
     // Configuration de date / Événements
-    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🌊🔺⚖️🏭', '🌳🔺⚖️🏭', '⚾', '🔁⚖️', '🔁📝', '🔘🕰', '🧲🔬'],
+    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🌊🔺⚖️🏭', '🌳🔺⚖️🏭', '⚾', '🔁⚖️', '🔁📝', '🖼', '🔘🕰', '🧲🔬'],
     // Date Époque
     '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
@@ -80,6 +81,7 @@ const DESC = {
         '⚾': 'Obliquité ε courante (°, 0 = celle de l’époque) — cycles de Milankovitch',
         '🔁⚖️': 'Masses imposées par l’état de cycle courant (🕰.🔁, ex. glaciaire/interglaciaire)',
         '🔁📝': 'Pourquoi de l’état de cycle courant (texte alt2sec de l’événement)',
+        '🖼': 'Texture de la planète imposée par l’état courant (🕰.🔁, sinon déduite de la date)',
         '🧲🔬': 'Précision Flux',
     },
     '📅': {

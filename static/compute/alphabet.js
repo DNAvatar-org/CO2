@@ -3,7 +3,7 @@
 // Version 1.0.17
 // Date: [September 17, 2026]
 // logs :
-// - v1.0.17: caractères 🔁 (cycles par tic) et ⚾ (obliquité) dans la colonne Événements.
+// - v1.0.17: caractères 🔁 (cycles par tic), 🖼 (texture d'état) et ⚾ (obliquité) dans la colonne Événements.
 // - v1.0.16: EPOCH_ALT2SEC retiré (récits d'époques → static/texts/epochs_alt2sec.js).
 // - v1.0.15: createAlphabetHtml — Époques sur 2 colonnes (grille 6 colonnes, classe legend-grid--alphabet).
 // - v1.0.14: 💀 « Limite P/T » → « Extinction permienne » (plus explicite, tient sur une ligne de titre).
@@ -113,6 +113,7 @@ const CHARS = {
     MODERN: '📱',   // Aujourd'hui (2000–2100) : smartphone
     EVENTS: '🕰',   // Événements : horloge
     CYCLE: '🔁',    // Cycles : états successifs appliqués par tic (🕰.🔁, ex. glaciaire/interglaciaire)
+    TEXTURE: '🖼',  // Texture de la planète pour un état (🕰.🔁 '🖼')
     OBLIQUITY: '⚾', // Obliquité ε de l'axe terrestre (degrés) — Milankovitch
     TRANSITION: '⏩', // Transition : flèche rapide
     DATE: '📅',     // Date : calendrier
@@ -234,6 +235,7 @@ const CHARS_DESC = {
     '📱': 'Aujourd\'hui',
     '🕰': 'Événements',
     '🔁': 'Cycles (états par tic)',
+    '🖼': 'Texture planète (état)',
     '⚾': 'Obliquité ε (°)',
     '⏩': 'Transition',
     '📅': 'Date (Ma)',
@@ -268,7 +270,7 @@ function createAlphabetHtml() {
     
     // Colonne 4 : Événements
     const charsCol4 = [
-        'DATE', 'TIC_TIME', 'EVENTS', 'CYCLE', 'OBLIQUITY', 'TRANSITION', 'BIG_IMPACT', 'METEORITE_COUNT', 'VOLCANO_VEIL', 'VOLCANO', 'FLUX_START', 'FLUX_END', 'PLANET_RADIUS', 'TROPOPAUSE', 'ALTITUDE', 'SATELLITE', 'INDEX_EPOCH'
+        'DATE', 'TIC_TIME', 'EVENTS', 'CYCLE', 'TEXTURE', 'OBLIQUITY', 'TRANSITION', 'BIG_IMPACT', 'METEORITE_COUNT', 'VOLCANO_VEIL', 'VOLCANO', 'FLUX_START', 'FLUX_END', 'PLANET_RADIUS', 'TROPOPAUSE', 'ALTITUDE', 'SATELLITE', 'INDEX_EPOCH'
     ];
     
     // Colonne 5 : Époques et autres logos

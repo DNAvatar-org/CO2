@@ -1,12 +1,13 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.113
+// Version 1.0.114
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.114 getPlanetTexturePathFromEpoch — texture d'ÉTAT (📜🖼, posée par 🕰.🔁) prioritaire sur la date.
 // Logs: v1.0.113 addCustomTooltip — data-alt2sec depuis window.EPOCH_ALT2SEC[data-epoch] (ex. Sturtienne / hysteresis 1a).
 // Logs: v1.0.112 getFineTuningDetailAlt — retrait suffixe #biblio_ref dans les lignes alt2sec.
 // Logs: v1.0.111 getFineTuningDetailAlt — périmètre jauge ATM uniquement (CLOUD_SW + H2O_EDS_SCALE) ; hors HYSTERESIS / factorTropopause / CONFIG scie ; note H₂O sans MT_CKD ; ref # = biblio_ref.
@@ -629,6 +630,11 @@ function resolveFondsTextureUrlForLoader(path) {
  * Fallback : ancienne formule (startYears, infoTimeMa) si pas de contexte timeline.
  */
 function getPlanetTexturePathFromEpoch(startYears, infoTimeMa) {
+  // Texture imposée par l'ÉTAT courant (configTimeline 🕰.🔁 → 📜🖼, ex. Quaternaire glaciaire / interglaciaire).
+  // Deux dates identiques peuvent correspondre à deux états stables : la date seule ne suffit alors plus.
+  // Générique : aucune époque n'est nommée ici, on lit ce que la config a posé.
+  const stateTexture = window.DATA && window.DATA["📜"] ? window.DATA["📜"]["🖼"] : "";
+  if (typeof stateTexture === "string" && stateTexture !== "") return stateTexture;
   let path;
   let signedYearHint = NaN;
   if (

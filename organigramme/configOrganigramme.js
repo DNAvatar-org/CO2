@@ -1,8 +1,9 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.47
+// Version 1.1.48
 // Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
+// - v1.1.48: TEXTURE_DATES_MA + 1 Ma (fonds/-00001Ma.png, état interglaciaire du Quaternaire).
 // - v1.1.47: epochName 💀 « Extinction permienne » (ex « Limite P/T », aligné CHARS_DESC).
 // - v1.1.46: getCurrentDateKey — Number(startYears) avant + info×1e6 (évite concat chaîne «-10000»+8000 pour ACTION / alignement texture).
 // - v1.1.45: z-order Terre > flèches (max arc 30) ; ARROW_LABEL 50 pour lisibilité ; reemis 36 ; noyau 34 — bande spectrale (#spectral-visualization) reste au-dessus (plot après flux au DOM).
@@ -81,7 +82,8 @@ function fondsTexturePathFromSignedYear(y) {
     const pref = yR < 0 ? "-" : "_";
     return "fonds/" + pref + p + "a.png";
 }
-const TEXTURE_DATES_MA = [5000, 4500, 4100, 3700, 3300, 2900, 2500, 2300, 225, 150, 100, 200, 66, 50, 35, 33, 2];
+// 2 et 1 Ma : les deux états stables du Quaternaire (glaciaire / interglaciaire), cf. 🕰.🔁 '🖼'.
+const TEXTURE_DATES_MA = [5000, 4500, 4100, 3700, 3300, 2900, 2500, 2300, 225, 150, 100, 200, 66, 50, 35, 33, 2, 1];
 /** Années signées (Holocène BP négatif, CE positif) — aligné getTimelineCurrentYears. */
 const TEXTURE_DATES_YEAR = [-10000, -6500, -3000, -2000, -1000, 1800, 2025];
 const TEXTURES_THREEJS = [
