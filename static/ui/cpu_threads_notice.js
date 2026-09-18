@@ -2,10 +2,13 @@
 // Desc: Le pool de workers spectraux dimensionne sur navigator.hardwareConcurrency (worker_pool.js : N−1).
 //       Certains navigateurs annoncent MOINS de cœurs qu'il n'y en a — Brave randomise la valeur (défense
 //       anti-empreinte dite « farbling »), d'autres la plafonnent. Le calcul tourne alors sur moins de
-//       threads sans que rien ne le signale. Ce module le dit une fois, et enrichit l'infobulle « CPU: N threads ».
-// Version 1.0.0
+//       threads sans que rien ne le signale. Ce module le dit à chaque chargement — mais UNIQUEMENT sur les
+//       navigateurs concernés : Chrome, Edge, Safari annoncent le vrai nombre de cœurs, ils ne voient jamais rien.
+// Version 1.1.0
 // Date: [September 18, 2026]
 // logs :
+//   - v1.1.0: alerte à CHAQUE chargement (plus de mémorisation localStorage) — c'est un état du navigateur,
+//     pas une nouvelle : tant qu'on reste sous Brave, l'info reste vraie et le rappel est utile.
 //   - v1.0.0: création. Détection Brave (navigator.brave.isBrave), seuil bas générique, mémorisation localStorage.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -16,7 +19,6 @@
 (function (global) {
     'use strict';
 
-    var CLE_VUE = 'dnavatar.bilan_radiatif.cpuThreadsNotice.v1';
     /** En dessous, le parallélisme est clairement bridé quelle que soit la machine. */
     var SEUIL_BAS = 4;
 
@@ -68,7 +70,6 @@
                 'qui plafonne la valeur — Chrome et Edge annoncent le nombre réel de cœurs logiques.'
             );
         }
-        lignes.push('', 'Ce message ne s\'affiche qu\'une fois.');
         return lignes.join('\n');
     }
 
@@ -91,13 +92,6 @@
         return true;
     }
 
-    function dejaVu() {
-        try { return global.localStorage.getItem(CLE_VUE) === '1'; } catch (e) { return false; }
-    }
-    function marquerVu() {
-        try { global.localStorage.setItem(CLE_VUE, '1'); } catch (e) { /* mode privé : on réaffichera */ }
-    }
-
     function demarrer() {
         var n = nbThreads();
         if (!n) return;
@@ -110,10 +104,9 @@
                 global.setTimeout(attendreIndicateur, 1000);
             })();
 
+            // Chrome, Edge, Safari… annoncent le vrai nombre de cœurs : rien à signaler, jamais.
             if (!brave && n > SEUIL_BAS) return;
-            if (dejaVu()) return;
             if (typeof global.showSelectableAlert !== 'function') return;
-            marquerVu();
             global.showSelectableAlert(texte(brave, n, nom), 'Parallélisme réduit par le navigateur');
         });
     }

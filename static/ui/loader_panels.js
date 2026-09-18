@@ -1,8 +1,10 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.30
+// Version 1.1.31
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.31: spectral_slice_worker.js chargé en <script> avant worker_pool.js — permet le repli blob: quand
+//        new Worker('file://…') est refusé (origine 'null'), donc l'app tourne aussi sans serveur.
 // Logs: v1.1.30: static/ui/cpu_threads_notice.js dans la liste (après modal.js) — avertit une fois quand le
 //        navigateur sous-déclare navigator.hardwareConcurrency (Brave « farbling »), qui dimensionne le pool de workers.
 // Logs: v1.1.29: tooltips literal /_interfaces/tooltips.js (www racine).
@@ -65,6 +67,8 @@
         '../API_BILAN/data/hitran_lines_H2O.js',
         '../API_BILAN/data/hitran_lines_CH4.js',
         '../API_BILAN/spectroscopy/hitran.js',
+        // Avant le pool : publie la source du worker pour le repli blob: (pages ouvertes en file://).
+        '../API_BILAN/workers/spectral_slice_worker.js',
         '../API_BILAN/workers/worker_pool.js',
         '../API_BILAN/physics/climate.js',
         '../API_BILAN/atmosphere/calculations_atm.js',
