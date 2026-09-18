@@ -1,4 +1,16 @@
 <!DOCTYPE html>
+<!--
+# File: CO2/html/test_milankovitch.html
+# Desc: Cycles de Milankovitch (obliquité, excentricité, précession) — courbes + explication du couplage
+#       avec le bilan radiatif (API_BILAN/physics/physics.js : redistribution méridienne de l'insolation).
+# Version 1.0.1
+# Date: [September 18, 2026]
+# Logs:
+# - v1.0.1: sous-titre « utilisé au Quaternaire » + section « Comment l'obliquité agit dans la simulation » ;
+#           signature DNAvatar et en-tête de fichier ajoutés.
+# Copyright 2026 DNAvatar.org - Arnaud Maignan
+# Licensed under Apache License 2.0 with Commons Clause. See https://commonsclause.com/ for full terms.
+-->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -52,6 +64,50 @@
     <!-- Ligne 2 : cycle (chart) pleine largeur au bord de la fenêtre -->
     <div class="cycles-row divGlass">
         <div id="chart"></div>
+    </div>
+
+    <!-- Comment l'obliquité entre dans le bilan radiatif (API_BILAN/physics/physics.js v2.0.18) -->
+    <div class="milankovitch-explain divGlass">
+        <h2>Comment l'obliquité agit dans la simulation</h2>
+        <p>
+            L'obliquité ε (l'inclinaison de l'axe terrestre, de 22,1° à 24,5° tous les 41 000 ans)
+            <strong>ne change pas d'un iota l'énergie totale reçue par la Terre</strong>. Elle change sa
+            <strong>répartition</strong> entre l'équateur et les pôles. C'est pour ça que son effet global paraît
+            négligeable (±1 °C), alors qu'il décide des glaciations.
+        </p>
+        <p>
+            Le modèle intègre l'insolation journalière sur l'année entière et sur chaque bande de latitude
+            (zones tropicale 0–30°, moyenne 30–60°, polaire 60–90°). Résultat, par degré d'obliquité en plus :
+        </p>
+        <ul>
+            <li><strong>pôles : +4,5 W/m²</strong> — des étés polaires plus chauds ;</li>
+            <li>tropiques : −1,3 W/m² ;</li>
+            <li>moyennes latitudes : ≈ 0 ;</li>
+            <li><strong>moyenne globale : exactement 0</strong>.</li>
+        </ul>
+        <p>
+            Cet écart d'énergie est converti en écart de température de zone par le bilan d'énergie de surface :
+            <code>ΔT = ΔS · (1 − α) / B</code>, avec α l'albédo (0,30) et B le coefficient de refroidissement
+            radiatif (2 W/m²/K, Budyko 1969). Les températures de zone ainsi corrigées décident si la neige de
+            l'hiver survit à l'été : c'est le seuil glace-albédo.
+        </p>
+        <p>
+            <strong>Conséquence, et c'est tout le sujet :</strong> une obliquité <em>faible</em> donne des étés
+            polaires frais, la neige survit, la glace gagne, l'albédo monte — la glaciation démarre. Une obliquité
+            <em>forte</em> fait l'inverse. Dans le modèle, au Quaternaire à 298 ppm de CO₂ :
+            <strong>22,1° → 6,2 °C, 23,44° → 12,1 °C, 24,5° → 14,5 °C</strong>. Deux états pour une même
+            composition de l'atmosphère : le CO₂ et le méthane amplifient la bascule, ils ne la déclenchent pas.
+        </p>
+        <p>
+            Ailleurs dans la frise, l'effet existe mais reste marginal : sans calotte au bord de son seuil,
+            redistribuer l'énergie ne fait pas basculer le climat. C'est pourquoi l'obliquité n'est pilotée
+            dans le temps qu'au Quaternaire (🦣).
+        </p>
+        <p class="milankovitch-refs">
+            Références : Berger 1978 (<em>J. Atmos. Sci.</em> 35:2362) · Laskar et al. 2004 (<em>A&amp;A</em> 428:261) ·
+            Budyko 1969 (<em>Tellus</em> 21:611) · Lisiecki &amp; Raymo 2005 · Lüthi et al. 2008 (EPICA).
+            Détail des entrées : popup <strong>📚 Biblio</strong> de la page principale.
+        </p>
     </div>
     
     <script>
@@ -316,6 +372,10 @@
             updateChart();
         });
     </script>
+
+    <footer class="milankovitch-footer">
+        <script src="https://dnavatar.org/pages/logo-nonA/DNAvatar_signature.js"></script>
+    </footer>
 </body>
 </html>
 

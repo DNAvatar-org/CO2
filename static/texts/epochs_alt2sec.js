@@ -1,9 +1,13 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.0.0
+// Version 1.0.3
 // Date: [September 18, 2026]
 // logs :
+//   - v1.0.3: bulles d'événement — valeurs inchangées masquées ; dernier clic d'une époque : annonce l'époque suivante.
+//   - v1.0.2: récits d'événements pour TOUTES les époques (dont ⛄ : 💫 = le voile est retombé, 🌋 = accumulation du CO₂ volcanique) ;
+//     EVENT_STORY accepte un tableau indexé par clic (états 🕰.🔁 du Quaternaire). La config ne porte que des nombres.
+//   - v1.0.1: buildEventAlt2sec — composition depuis la CONFIG : ce qui change (masses/obliquité/deltas), pourquoi (📝 de l'état 🕰.🔁 ou récit), effet attendu.
 //   - v1.0.0: création. Récits des 19 époques + événements ; les CHIFFRES ne sont pas écrits ici :
 //     buildEpochAlt2sec() les lit à l'affichage dans BENCH_LIT_BY_EPOCH_ID (fourchettes littérature),
 //     TIMELINE (valeurs appliquées) et DATA (dernier calcul). Une seule source par nombre, jamais désynchronisée.
@@ -167,27 +171,127 @@ const EPOCH_STORY = {
         'Aucun chiffre n\'est calé sur une projection : ce que vous lisez sort des équations.'
 };
 
-/** Récit par événement, clé [id époque][emoji bouton]. Optionnel — absent = pas de bulle longue. */
+/**
+ * Récit par événement : EVENT_STORY[id époque][emoji bouton].
+ * Valeur = texte, OU tableau de textes quand l'époque a des états 🕰.🔁 (index = numéro du clic à venir).
+ * Ici le POURQUOI seulement : les chiffres (ce qui change) sont lus dans la config par buildEventAlt2sec().
+ */
 const EVENT_STORY = {
+    '⚫': {
+        '☄️': 'Météorite de glace\n\nLa Terre n\'a pas eu son eau d\'un coup : elle est livrée par les impacts. ' +
+              'Chaque clic ajoute une cargaison et fait avancer le temps.',
+        '🎇': 'Impact majeur — naissance de la Lune\n\nUn corps de la taille de Mars percute la Terre. ' +
+              'L\'énergie libérée refond toute la surface : c\'est le départ de l\'Hadéen.'
+    },
     '🔥': {
         '☄️': 'Météorite de glace\n\nLe bombardement tardif apporte de l\'eau à une planète encore brûlante. ' +
-              'Chaque impact ajoute de la masse d\'eau et fait avancer le temps : l\'océan se constitue par livraisons successives.',
-        '💫': 'Refroidissement\n\nLe flux géothermique s\'effondre à mesure que la croûte se forme et que la planète rayonne. ' +
-              'C\'est le seul moteur ici : le Soleil, encore faible, ne fait presque rien.'
+              'Elle reste en vapeur : il faudra que la surface descende sous 100 °C pour qu\'un océan tienne.',
+        '💫': 'Refroidissement\n\nLe flux de chaleur interne s\'effondre à mesure que la croûte se forme et que la ' +
+              'planète rayonne. C\'est le seul moteur ici : le Soleil, encore faible, ne fait presque rien.'
+    },
+    '🦠': {
+        '💫': 'Le Soleil se renforce, le CO₂ se consomme\n\nDeux tendances opposées se compensent presque : la ' +
+              'luminosité solaire monte lentement (Gough 1981), pendant que l\'altération des roches enfouit le CO₂. ' +
+              'Le méthane, lui, tient tant qu\'il n\'y a pas d\'oxygène.'
+    },
+    '🪸': {
+        '💫': 'L\'oxygène change la donne\n\nLa photosynthèse produit de l\'oxygène, qui détruit le méthane : ' +
+              'la Terre perd un de ses deux gaz à effet de serre. Le CO₂ baisse aussi, et la planète glisse vers ' +
+              'le seuil de la première grande glaciation.'
+    },
+    'hysteresis 1a': {
+        '🗻': 'Volcanisme Franklin — le voile de sulfates\n\nDes éruptions massives injectent du soufre dans la ' +
+              'stratosphère : un voile qui renvoie la lumière avant même qu\'elle n\'atteigne le sol. ' +
+              'Sur une planète déjà à la limite, ce coup de froid suffit à faire basculer le climat (Macdonald & Wordsworth 2017).'
+    },
+    '⛄': {
+        '💫': 'Le temps passe sous la glace\n\nLe voile de sulfates qui avait déclenché la bascule est retombé : ' +
+              'la cause du basculement a disparu, et pourtant la Terre reste gelée.\n\n' +
+              'C\'est exactement ça, l\'hystérésis : enlever la cause ne défait pas l\'effet. La glace entretient ' +
+              'le froid par son propre albédo.',
+        '🌋': 'Volcanisme prolongé — la seule porte de sortie\n\nSous une banquise globale, l\'altération des roches ' +
+              's\'arrête : plus rien ne consomme le CO₂ que les volcans continuent d\'émettre. Il s\'accumule ' +
+              'pendant des millions d\'années.\n\nIl en faut une quantité ÉNORME, sans commune mesure avec celle ' +
+              'qui avait laissé la Terre basculer, pour repasser le seuil de fonte. Les poussières volcaniques ' +
+              'salissent aussi la glace, ce qui abaisse son albédo et aide la sortie.'
+    },
+    'hysteresis 1b': {
+        '💫': 'Après la déglaciation\n\nLa serre extrême hérité du Snowball s\'évacue : altération violente des roches ' +
+              'mises à nu, dépôt des carbonates de couverture. Le CO₂ redescend vers des valeurs ordinaires.'
+    },
+    '🪼': {
+        '💫': 'La mer est de nouveau libre\n\nLes océans dégelés recommencent à dissoudre le CO₂, et la vie marine ' +
+              'qui explose (Cambrien) en enfouit une partie au fond. Le thermostat carbone se remet en marche, ' +
+              'le climat redescend d\'une serre post-Snowball vers un monde chaud mais stable.'
+    },
+    '🍄': {
+        '💫': 'Les forêts s\'installent\n\nLes racines fracturent la roche et accélèrent l\'altération, qui consomme ' +
+              'du CO₂ ; le bois enfoui devient le charbon d\'aujourd\'hui. Double ponction sur le CO₂ : le climat ' +
+              'se refroidit jusqu\'à la glaciation du Karoo.'
+    },
+    '💀': {
+        '💫': 'Trapps de Sibérie\n\nDes éruptions gigantesques, pendant des centaines de milliers d\'années. ' +
+              'Le soufre refroidit quelques années, le CO₂ réchauffe pour des dizaines de milliers d\'années : ' +
+              'c\'est le second qui l\'emporte, avec l\'anoxie des océans et la plus grande extinction connue.'
+    },
+    '🦕': {
+        '💫': 'Un monde chaud et stable\n\nPas de calotte permanente, un gradient équateur-pôle faible. ' +
+              'Le CO₂ reste élevé, entretenu par une activité volcanique soutenue (ouverture de l\'Atlantique).',
+        '🎇': 'Impact de Chicxulub (66 Ma)\n\nPoussières et aérosols occultent le Soleil quelques années : ' +
+              'photosynthèse interrompue, effondrement des chaînes alimentaires. Un forçage bref, mais un monde ' +
+              'biologique différent après.'
+    },
+    '🦤': {
+        '💫': 'Reprise après la crise\n\nLe climat reste chaud, les mammifères se diversifient. ' +
+              'Le CO₂ décroît lentement : c\'est le début de la longue descente vers les glaciations.'
+    },
+    '🐊': {
+        '💫': 'L\'Himalaya se soulève\n\nLa collision Inde-Asie expose sans cesse des roches fraîches à la pluie. ' +
+              'L\'altération s\'emballe et pompe le CO₂ pendant des millions d\'années (Raymo & Ruddiman 1992) : ' +
+              'le monde le plus chaud du Cénozoïque commence à se refroidir.'
+    },
+    'hysteresis 2': {
+        '⛰': 'Au seuil de la calotte antarctique\n\nLe CO₂ approche de la valeur en dessous de laquelle une calotte ' +
+             'peut tenir sur l\'Antarctique. Comme au Sturtien, le franchissement ne sera pas progressif : ' +
+             'une fois la glace installée, il en faudra bien plus pour la faire disparaître.'
+    },
+    '🏔': {
+        '💫': 'Après la Grande Coupure\n\nL\'Antarctique est sous la glace, le niveau des mers a baissé. ' +
+              'La Terre est entrée dans son mode « avec calottes », celui qui rend possibles les cycles glaciaires.'
     },
     '🦣': {
-        '💫': 'Un pas dans les cycles glaciaires\n\nÀ cette époque, l\'obliquité de l\'axe terrestre oscille entre 22,1° et 24,5° ' +
-              'tous les 41 000 ans, et le CO₂ suit entre 180 et 280 ppm (carottes EPICA).\n\n' +
-              'Attention à ce que vous allez voir : pour une même composition, deux températures sont possibles. ' +
-              'Le passage de l\'une à l\'autre est brutal — c\'est le seuil glace-albédo, pas un réglage du modèle.'
+        // Un texte par état 🕰.🔁 (index = numéro du clic à venir). Les chiffres viennent de la config.
+        '💫': [
+            'Vers une glaciation\n\nL\'obliquité descend à son minimum : les étés polaires deviennent trop frais pour ' +
+            'faire fondre la neige tombée l\'hiver. La glace s\'étend, l\'albédo monte, l\'océan froid absorbe du CO₂ ' +
+            'et les zones humides émettent moins de méthane.\n\nLes deux gaz AMPLIFIENT le refroidissement, ils ne le ' +
+            'déclenchent pas : le déclencheur est astronomique.',
+
+            'Vers un interglaciaire\n\nL\'obliquité remonte à son maximum : étés polaires chauds, la glace de l\'année ' +
+            'ne survit pas. L\'albédo s\'effondre, l\'océan qui se réchauffe relâche son CO₂, les zones humides ' +
+            'redémarrent.\n\nC\'est l\'état dans lequel nous vivons — et il ne tient qu\'à la position de notre axe.',
+
+            'Retour au froid\n\nMême obliquité et même composition qu\'au premier clic, et le modèle retombe sur la ' +
+            'même température : ce sont bien deux états stables, pas une dérive.\n\nLe clic suivant vous amène à ' +
+            '−10 000 ans, à la sortie de la dernière glaciation : l\'Holocène, le climat de toute l\'histoire humaine.'
+        ]
+    },
+    '🛖': {
+        '💫': 'Onze mille ans de calme\n\nEnviron 280 ppm de CO₂, moins d\'un degré de variation : la fenêtre ' +
+              'climatique dans laquelle tiennent l\'agriculture et toutes les civilisations.'
+    },
+    '🚂': {
+        '💫': 'La révolution industrielle\n\nLe charbon, puis le pétrole : le carbone enfoui au Carbonifère repart ' +
+              'dans l\'atmosphère. Pour la première fois dans cette frise, le forçage ne vient ni de la géologie, ' +
+              'ni de l\'astronomie, ni de la biosphère.'
     },
     '📱': {
-        '⛽': 'Émissions d\'une tranche de 25 ans\n\nLe CO₂ ajouté ne reste pas entièrement dans l\'air : ' +
-              'l\'océan en dissout environ un quart (loi de Henry, freinée par le facteur de Revelle qui augmente avec le CO₂) ' +
-              'et les forêts en stockent environ un quart (elles poussent plus vite avec plus de CO₂, effet qui sature en logarithme).\n\n' +
-              'Les paramètres viennent de mesures (Global Carbon Budget, expériences FACE), jamais de projections.',
-        '🛢': 'Émissions doublées sur 25 ans\n\nMême mécanique que ⛽, avec un rythme d\'émissions deux fois plus fort. ' +
-              'Les puits océan et forêts ne suivent pas proportionnellement : ils saturent, donc la part qui reste dans l\'air augmente.'
+        '⛽': 'Émissions d\'une tranche de 25 ans\n\nLe CO₂ ajouté ne reste pas entièrement dans l\'air : l\'océan en ' +
+              'dissout une partie (loi de Henry, freinée par la chimie des carbonates qui sature) et les forêts en ' +
+              'stockent une autre (elles poussent plus vite avec plus de CO₂, effet qui sature aussi).\n\n' +
+              'Les paramètres viennent de mesures — Global Carbon Budget, expériences FACE — jamais de projections.',
+        '🛢': 'Émissions doublées sur 25 ans\n\nMême mécanique, rythme deux fois plus fort. Les puits océan et forêts ' +
+              'ne suivent pas proportionnellement : ils saturent, donc la part qui reste dans l\'air augmente.'
     }
 };
 
@@ -252,10 +356,120 @@ function buildEpochAlt2sec(epochId) {
     return blocks.join('\n\n');
 }
 
-/** Texte alt2sec d'un bouton d'événement (récit seul). */
+/** ppm molaires depuis une masse (kg) de gaz, avec la composition du dernier calcul. */
+function ppmFromMass(massKg, molarMassGas) {
+    const DATA = window.DATA;
+    if (!DATA || !DATA['⚖️'] || !DATA['🫧']) return null;
+    const mAir = DATA['🫧']['🧪'];
+    const mDry = DATA['⚖️']['⚖️🫧'];
+    if (!Number.isFinite(massKg) || !Number.isFinite(mAir) || !Number.isFinite(mDry) || mDry <= 0) return null;
+    return (massKg / mDry) * (mAir / molarMassGas) * 1e6;
+}
+
+function fmtPpm(v) {
+    if (!Number.isFinite(v)) return '?';
+    if (v >= 1000) return Math.round(v).toLocaleString('fr-FR');
+    return v >= 10 ? v.toFixed(0) : v.toFixed(2);
+}
+
+/** État 🔁 que le PROCHAIN clic appliquera (index = 📿💫), ou null. */
+function nextCycleState(epochId) {
+    const row = epochRowById(epochId);
+    const states = row && row['🕰'] && Array.isArray(row['🕰']['🔁']) ? row['🕰']['🔁'] : null;
+    if (!states || !states.length) return null;
+    const tic = (window.DATA && window.DATA['📜'] && Number.isFinite(Number(window.DATA['📜']['📿💫'])))
+        ? Number(window.DATA['📜']['📿💫']) : 0;
+    return states[Math.min(tic, states.length - 1)];
+}
+
+/**
+ * Texte alt2sec d'un bouton d'événement : CE QUI CHANGE (lu dans la config) + POURQUOI (📝 de l'état, sinon
+ * récit EVENT_STORY) + EFFET ATTENDU (déduit du signe des variations). Aucun if par époque.
+ */
 function buildEventAlt2sec(epochId, eventKey) {
-    const byEpoch = EVENT_STORY[epochId];
-    return byEpoch ? byEpoch[eventKey] : undefined;
+    const CONST = window.CONST;
+    const row = epochRowById(epochId);
+    const cfg = row && row['🕰'] ? row['🕰'][eventKey] : null;
+    const state = nextCycleState(epochId);
+    const changes = [];
+    let warmer = 0; // > 0 attendu plus chaud, < 0 plus froid
+
+    // Durée représentée par le clic
+    const stepMa = cfg && Number.isFinite(Number(cfg['🔺⏳'])) ? Number(cfg['🔺⏳']) : null;
+    if (stepMa !== null) {
+        changes.push(stepMa >= 1 ? '+' + stepMa + ' Ma' : '+' + Math.round(stepMa * 1e6).toLocaleString('fr-FR') + ' ans');
+    }
+
+    // Masses imposées par l'état de cycle (🔁) : on montre valeur courante → valeur visée
+    if (state) {
+        const gases = [['⚖️🏭', 'CO₂', CONST.M_CO2], ['⚖️🐄', 'CH₄', CONST.M_CH4]];
+        for (const g of gases) {
+            if (!Number.isFinite(Number(state[g[0]]))) continue;
+            const now = ppmFromMass(window.DATA['⚖️'][g[0]], g[2]);
+            const next = ppmFromMass(Number(state[g[0]]), g[2]);
+            if (next === null) continue;
+            if (now !== null && fmtPpm(now) === fmtPpm(next)) continue; // inchangé : rien à annoncer
+            changes.push(g[1] + ' ' + (now === null ? '' : fmtPpm(now) + ' → ') + fmtPpm(next) + ' ppm');
+            if (now !== null) warmer += (next > now ? 1 : (next < now ? -1 : 0));
+        }
+        if (Number(state['⚾']) > 0) {
+            const epochEps = Number.isFinite(Number(row['⚾'])) ? Number(row['⚾'])
+                : Number(window.CONFIG_COMPUTE.obliquityDeg);
+            const nowEps = Number(window.DATA['📜']['⚾']) > 0 ? Number(window.DATA['📜']['⚾']) : epochEps;
+            if (Number(state['⚾']) !== nowEps) {
+                changes.push('obliquité ' + nowEps.toFixed(2).replace('.', ',') + '° → '
+                    + Number(state['⚾']).toFixed(2).replace('.', ',') + '°');
+                warmer += (Number(state['⚾']) > nowEps ? 1 : -1);
+            }
+        }
+    }
+
+    // Deltas portés par l'événement lui-même
+    if (cfg && Number.isFinite(Number(cfg['🔺⚖️🏭']))) {
+        changes.push('+' + Math.round(Number(cfg['🔺⚖️🏭']) / 1e12).toLocaleString('fr-FR') + ' GtCO₂ émis');
+        warmer += 1;
+    }
+    if (cfg && Number.isFinite(Number(cfg['🔺🍰⚽']))) {
+        changes.push('voile SW +' + (Number(cfg['🔺🍰⚽']) * 100).toFixed(0) + ' %');
+        warmer -= 1;
+    }
+    if (cfg && Number.isFinite(Number(cfg['🌫️❄️']))) {
+        changes.push('albédo de la glace → ' + Number(cfg['🌫️❄️']).toFixed(2).replace('.', ',') + ' (glace sale)');
+        warmer += 1;
+    }
+    if (cfg && Number.isFinite(Number(cfg['🔺⚖️💧☄️']))) {
+        changes.push('+' + Number(cfg['🔺⚖️💧☄️']).toExponential(1) + ' kg d\'eau');
+    }
+
+    // Récit : texte simple, ou tableau indexé par le numéro du clic à venir (époques à états 🕰.🔁)
+    let why = EVENT_STORY[epochId] ? EVENT_STORY[epochId][eventKey] : undefined;
+    if (Array.isArray(why)) {
+        const tic = (window.DATA && window.DATA['📜'] && Number.isFinite(Number(window.DATA['📜']['📿💫'])))
+            ? Number(window.DATA['📜']['📿💫']) : 0;
+        why = why[Math.min(tic, why.length - 1)];
+    }
+    // Ce clic termine-t-il l'époque ? (durée |▶−◀| vs temps écoulé + un pas) → annoncer la suite
+    if (row && stepMa !== null && Number.isFinite(Number(row['▶'])) && Number.isFinite(Number(row['◀']))) {
+        const durMa = Math.abs(Number(row['◀']) - Number(row['▶'])) / 1e6;
+        const infoMa = Number.isFinite(Number(window.infoTimeMa)) ? Number(window.infoTimeMa) : 0;
+        if (infoMa + stepMa >= durMa - 1e-9) {
+            const idx = window.TIMELINE.findIndex(function (r) { return r && r['📅'] === epochId; });
+            const nextRow = idx >= 0 ? window.TIMELINE[idx + 1] : null;
+            const nextName = nextRow ? (window.CHARS_DESC[nextRow['📅']] || nextRow['📅']) : null;
+            const head = nextName ? 'Fin de l\'époque : ce clic vous emmène à « ' + nextName + ' ».' : 'Fin de l\'époque.';
+            return why ? head + '\n\n' + why : head;
+        }
+    }
+    if (!changes.length && !why) return undefined;
+
+    const blocks = [];
+    if (why) blocks.push(why);
+    if (changes.length) blocks.push('Ce que ça change : ' + changes.join(' · '));
+    if (warmer !== 0) {
+        blocks.push('Effet attendu : ' + (warmer > 0 ? 'réchauffement' : 'refroidissement')
+            + ' — mais c\'est le calcul qui tranche, pas cette annonce.');
+    }
+    return blocks.join('\n\n');
 }
 
 // window.EPOCH_ALT2SEC[id] : lu tel quel par organigramme.js addCustomTooltip.

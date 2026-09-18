@@ -1,8 +1,9 @@
 // File: API_BILAN/data/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
-// Version 1.0.18
+// Version 1.0.19
 // Date: [September 17, 2026]
 // logs :
+// - v1.0.19: 📜🔁⚖️ / 📜🔁📝 — état de cycle courant (🕰.🔁).
 // - v1.0.18: 📜⚾ — obliquité courante (0 = ε de l'époque) pour les cycles de Milankovitch.
 // - v1.0.17: 📜🌊🔺⚖️🏭 / 📜🌳🔺⚖️🏭 — puits océan / forêts du CO₂ injecté.
 // - v1.0.16: 📜🔺⚖️🏭 — cumul CO₂ injecté par les événements 📱 (lu par getMasses).
@@ -31,7 +32,7 @@
 // ============================================================================
 const KEYS = {
     // Configuration de date / Événements
-    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🌊🔺⚖️🏭', '🌳🔺⚖️🏭', '⚾', '🔘🕰', '🧲🔬'],
+    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🌊🔺⚖️🏭', '🌳🔺⚖️🏭', '⚾', '🔁⚖️', '🔁📝', '🔘🕰', '🧲🔬'],
     // Date Époque
     '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
@@ -77,6 +78,8 @@ const DESC = {
         '🌊🔺⚖️🏭': 'CO₂ injecté absorbé par l’océan (kg, Henry/Revelle)',
         '🌳🔺⚖️🏭': 'CO₂ injecté stocké par les forêts (kg, fertilisation)',
         '⚾': 'Obliquité ε courante (°, 0 = celle de l’époque) — cycles de Milankovitch',
+        '🔁⚖️': 'Masses imposées par l’état de cycle courant (🕰.🔁, ex. glaciaire/interglaciaire)',
+        '🔁📝': 'Pourquoi de l’état de cycle courant (texte alt2sec de l’événement)',
         '🧲🔬': 'Précision Flux',
     },
     '📅': {

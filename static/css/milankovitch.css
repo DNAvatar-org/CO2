@@ -197,3 +197,22 @@ body.page-milankovitch {
     margin-left: auto;
     margin-right: auto;
 }
+
+
+/* Explication du couplage obliquité → bilan radiatif (v2026-09-18) */
+.milankovitch-explain {
+    margin: 12px 16px 24px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    max-width: 1100px;
+    line-height: 1.5;
+    font-size: 13px;
+}
+.milankovitch-explain h2 { font-size: 15px; margin: 0 0 8px; }
+.milankovitch-explain p { margin: 8px 0; }
+.milankovitch-explain ul { margin: 6px 0 6px 22px; }
+.milankovitch-explain code { font-family: 'Courier New', monospace; padding: 0 4px; }
+.milankovitch-explain .milankovitch-refs { font-size: 11px; opacity: 0.8; }
+
+/* Pied de page : signature DNAvatar (même script que index.html) */
+.milankovitch-footer { display: flex; justify-content: center; padding: 8px 0 18px; }
