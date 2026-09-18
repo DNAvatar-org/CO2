@@ -314,6 +314,10 @@
       "dest": "pages/bilan_radiatif/CO2/static/site_paths.js"
     },
     {
+      "src": "static/texts/epochs_alt2sec.js",
+      "dest": "pages/bilan_radiatif/CO2/static/texts/epochs_alt2sec.js"
+    },
+    {
       "src": "static/sync_panels.js",
       "dest": "pages/bilan_radiatif/CO2/static/sync_panels.js"
     },

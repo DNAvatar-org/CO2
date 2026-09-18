@@ -1,8 +1,9 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.33
+ * Version 1.2.34
  * Date: [September 17, 2026]
 * logs :
+ *   - v1.2.34: alt2sec sur les boutons d'événements (window.buildEventAlt2sec, static/texts/epochs_alt2sec.js).
  *   - v1.2.33: 📱 ⛽/🛢 — cumul 📜🔺⚖️🏭 (+=) au lieu d'un delta jamais consommé ; infoTimeMa avance de 🔺⏳ (frise figée à 2000) ;
  *     plus de boutons une fois ◀ (2100) atteint.
  *   - v1.2.32: tryEpochEndSkipAfterEvent — verrou _timelineEpochEndSkipLatch posé ICI (plus seulement dans updateTimeline) : le handler
@@ -251,7 +252,8 @@ window.updateEpochActions = function () {
                     btn.textContent = emoji;
                     const altText = '+' + dtYrDisp + 'ans +' + gtDisp + 'Gt CO2';
                     btn.alt = altText;
-                    if (window.addCustomTooltip) window.addCustomTooltip(btn, emoji + ' ' + altText);
+                    // alt2sec (bulle longue) : récit de l'événement, static/texts/epochs_alt2sec.js
+                    window.addCustomTooltip(btn, emoji + ' ' + altText, window.buildEventAlt2sec(epochId, emoji));
 
                     btn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -323,7 +325,7 @@ window.updateEpochActions = function () {
                 iceMeteorBtn.className = 'btn-events organigram-logo organigram-action-logo';
                 const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
                 const iceMeteorAlt = 'Météorite de Glace (+' + stepMaM + ' Ma)';
-                window.addCustomTooltip(iceMeteorBtn, 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMaM + ' Ma par clic');
+                window.addCustomTooltip(iceMeteorBtn, 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMaM + ' Ma par clic', window.buildEventAlt2sec(epochId, '☄️'));
                 iceMeteorBtn.alt = iceMeteorAlt;
                 if (epochId === '⚫') {
                     iceMeteorBtn.addEventListener('click', () => {
@@ -427,7 +429,7 @@ window.updateEpochActions = function () {
                 // Tooltip = DESC du logo dans l'Alphabet (source unique), pas de texte hardcodé par action.
                 const tip = (window.CHARS_DESC && window.CHARS_DESC[act]) ? window.CHARS_DESC[act] : act;
                 volcBtn.alt = tip;
-                window.addCustomTooltip(volcBtn, tip);
+                window.addCustomTooltip(volcBtn, tip, window.buildEventAlt2sec(epochId, act));
                 volcBtn.addEventListener('click', () => {
                     window.hideTooltip();
                     const D = window.DATA;
@@ -438,6 +440,7 @@ window.updateEpochActions = function () {
                 });
                 eventsLogos.appendChild(volcBtn);
             } else if (act === '💫') {
+                const ticKey = act;
                 const stepMaT = (ticCfgRoot && typeof ticCfgRoot['🔺⏳'] === 'number') ? ticCfgRoot['🔺⏳'] : 100;
                 const stepLabel = formatStepLabel(stepMaT);
                 const ticBtn = document.createElement('button');
@@ -445,7 +448,7 @@ window.updateEpochActions = function () {
                 ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
                 ticBtn.textContent = '💫';
                 ticBtn.alt = stepLabel;
-                window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
+                window.addCustomTooltip(ticBtn, stepLabel + ' par clic', window.buildEventAlt2sec(epochId, ticKey || '💫'));
                 if (epochId === '🔥') {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -483,6 +486,7 @@ window.updateEpochActions = function () {
                 }
                 eventsLogos.appendChild(ticBtn);
             } else if (act === '🏔') {
+                const ticKey = act;
                 const stepMaT = (cfg && typeof cfg['🔺⏳'] === 'number') ? cfg['🔺⏳'] : 100;
                 const stepLabel = formatStepLabel(stepMaT);
                 const ticBtn = document.createElement('button');
@@ -490,7 +494,7 @@ window.updateEpochActions = function () {
                 ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
                 ticBtn.textContent = '🏔';
                 ticBtn.alt = stepLabel;
-                window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
+                window.addCustomTooltip(ticBtn, stepLabel + ' par clic', window.buildEventAlt2sec(epochId, ticKey || '💫'));
                 if (epochId === '🔥') {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -528,6 +532,7 @@ window.updateEpochActions = function () {
                 }
                 eventsLogos.appendChild(ticBtn);
             } else if (act === '⛰') {
+                const ticKey = act;
                 const stepMaT = (cfg && typeof cfg['🔺⏳'] === 'number') ? cfg['🔺⏳'] : 100;
                 const stepLabel = formatStepLabel(stepMaT);
                 const ticBtn = document.createElement('button');
@@ -535,7 +540,7 @@ window.updateEpochActions = function () {
                 ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
                 ticBtn.textContent = '⛰';
                 ticBtn.alt = stepLabel;
-                window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
+                window.addCustomTooltip(ticBtn, stepLabel + ' par clic', window.buildEventAlt2sec(epochId, ticKey || '💫'));
                 if (epochId === '🔥') {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -591,7 +596,7 @@ window.updateEpochActions = function () {
             const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
             const stepMa = epochConfig['🕰']['☄️']['🔺⏳'];
             const iceMeteorAlt = 'Météorite de Glace (+' + stepMa + ' Ma)';
-            window.addCustomTooltip(iceMeteorBtn, 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMa + ' Ma par clic');
+            window.addCustomTooltip(iceMeteorBtn, 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMa + ' Ma par clic', window.buildEventAlt2sec(epochId, '☄️'));
             iceMeteorBtn.alt = iceMeteorAlt;
             if (epochId === '⚫') {
                 iceMeteorBtn.addEventListener('click', () => {
@@ -709,7 +714,7 @@ window.updateEpochActions = function () {
                 // Tooltip = DESC du logo (Alphabet CHARS_DESC), pas de texte hardcodé (cf. handler order-based).
                 const tip = (window.CHARS_DESC && window.CHARS_DESC[volcAct]) ? window.CHARS_DESC[volcAct] : volcAct;
                 volcBtn.alt = tip;
-                window.addCustomTooltip(volcBtn, tip);
+                window.addCustomTooltip(volcBtn, tip, window.buildEventAlt2sec(epochId, volcAct));
                 volcBtn.addEventListener('click', () => {
                     window.hideTooltip();
                     const D = window.DATA;
@@ -726,7 +731,7 @@ window.updateEpochActions = function () {
                 ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
                 ticBtn.textContent = ticKey || '💫';
                 ticBtn.alt = stepLabel;
-                window.addCustomTooltip(ticBtn, stepLabel + ' par clic');
+                window.addCustomTooltip(ticBtn, stepLabel + ' par clic', window.buildEventAlt2sec(epochId, ticKey || '💫'));
                 if (epochId === '🔥') {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();

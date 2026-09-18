@@ -1,8 +1,9 @@
 // File: API_BILAN/data/dico.js - Dictionnaire des clés (combinaisons de caractères)
 // Desc: Définit toutes les clés (combinaisons de caractères) et leurs descriptions
-// Version 1.0.17
+// Version 1.0.18
 // Date: [September 17, 2026]
 // logs :
+// - v1.0.18: 📜⚾ — obliquité courante (0 = ε de l'époque) pour les cycles de Milankovitch.
 // - v1.0.17: 📜🌊🔺⚖️🏭 / 📜🌳🔺⚖️🏭 — puits océan / forêts du CO₂ injecté.
 // - v1.0.16: 📜🔺⚖️🏭 — cumul CO₂ injecté par les événements 📱 (lu par getMasses).
 // - v1.0.15: _contribution_nuages — formule d'addition 2 couches (albedo v1.2.64).
@@ -30,7 +31,7 @@
 // ============================================================================
 const KEYS = {
     // Configuration de date / Événements
-    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🌊🔺⚖️🏭', '🌳🔺⚖️🏭', '🔘🕰', '🧲🔬'],
+    '📜': ['🌡️🧮', '📿☄️', '🔺⚖️💧☄️', '🔺🌡️💫', '🔺🧲🌕💫', '🔺🍰⚽', '🔺⚖️🏭', '🌊🔺⚖️🏭', '🌳🔺⚖️🏭', '⚾', '🔘🕰', '🧲🔬'],
     // Date Époque
     '📅': ['🌡️🧮','📿💫', '🔺⏳'],
     // Masses
@@ -75,6 +76,7 @@ const DESC = {
         '🔺⚖️🏭': 'Cumul CO₂ injecté par événements 📱 ⛽/🛢 (kg)',
         '🌊🔺⚖️🏭': 'CO₂ injecté absorbé par l’océan (kg, Henry/Revelle)',
         '🌳🔺⚖️🏭': 'CO₂ injecté stocké par les forêts (kg, fertilisation)',
+        '⚾': 'Obliquité ε courante (°, 0 = celle de l’époque) — cycles de Milankovitch',
         '🧲🔬': 'Précision Flux',
     },
     '📅': {

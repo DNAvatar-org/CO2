@@ -1,8 +1,9 @@
 // File: API_BILAN/data/alphabet.js - Alphabet des caractères (logos)
 // Desc: Définit les caractères (logos) de base et leurs descriptions
-// Version 1.0.15
+// Version 1.0.16
 // Date: [September 17, 2026]
 // logs :
+// - v1.0.16: EPOCH_ALT2SEC retiré (récits d'époques → static/texts/epochs_alt2sec.js).
 // - v1.0.15: createAlphabetHtml — Époques sur 2 colonnes (grille 6 colonnes, classe legend-grid--alphabet).
 // - v1.0.14: 💀 « Limite P/T » → « Extinction permienne » (plus explicite, tient sur une ligne de titre).
 // - v1.0.13: CHARS_DESC ⚗ → « Affiche les concentrations » (bouton DETAILS organigramme)
@@ -237,14 +238,7 @@ const CHARS_DESC = {
     '⚗': 'Affiche les concentrations'
 };
 
-/** alt2sec (tooltips.js, ~2 s) par id époque TIMELINE — clé = 📅 (ex. hysteresis 1a). */
-const EPOCH_ALT2SEC = {
-    'hysteresis 1a':
-        'Surfusion climatique\n\n' +
-        'Comme en surfusion, le climat peut rester bloqué dans un état (ici chaud, pré-Sturtien) alors que les forçages — CO₂ en baisse, albédo — orientent déjà vers la glaciation.\n\n' +
-        'Hystérésis : le système garde une mémoire de son chemin. Il faut souvent un forçage fort ou un choc pour sortir du puits actuel et franchir le seuil (bascule Snowball).\n\n' +
-        'Ce n\'est pas l\'équilibre instantané : tant que la bascule n\'est pas passée, l\'état métastable tient — résistance au changement, pas absence de forçage.'
-};
+// alt2sec des époques : déplacé dans static/texts/epochs_alt2sec.js (récit + chiffres lus à la source).
 
 // ============================================================================
 // FONCTION : CRÉER L'ALPHABET (LEXIQUE)
@@ -406,7 +400,6 @@ function getDisplayForPicto(picto) {
 window.CHARS = CHARS;
 window.LOGOS = CHARS; // Alias pour compatibilité (configOrganigramme, organigramme)
 window.CHARS_DESC = CHARS_DESC;
-window.EPOCH_ALT2SEC = EPOCH_ALT2SEC;
 // Source unique pour mapper id époque (emoji ou 'hysteresis Xy') → nom français.
 // Remplace les anciennes tables idToName dispersées (events.js, etc.).
 window.epochName = function (id) {

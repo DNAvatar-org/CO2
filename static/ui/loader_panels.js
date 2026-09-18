@@ -66,6 +66,7 @@
         '../API_BILAN/physics/climate.js',
         '../API_BILAN/atmosphere/calculations_atm.js',
         '../API_BILAN/albedo/calculations_albedo.js',
+        'static/texts/epochs_alt2sec.js',
         'organigramme/organigramme.js',
         '../API_BILAN/geology/calculations_geology.js',
         '../API_BILAN/h2o/calculations_h2o.js',
