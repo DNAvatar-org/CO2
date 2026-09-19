@@ -7,6 +7,8 @@
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.117 carte de nuit : on éteint la lumière directionnelle et on remonte l'ambiante tant qu'elle est
+//       posée (📱 ≥ 2000). Le terminateur est déjà dans l'image ; le directionnel en dessinait un second, décalé.
 // Logs: v1.0.116 carte de nuit (📜🌙) en emissiveMap + masque shader (smoothstep sur N·L) : jour et nuit affichés EN MÊME TEMPS, la nuit seulement côté ombre.
 // Logs: v1.0.115 getPlanetTexturePathFromEpoch — texture DÉCLARÉE la plus proche de la date (plus de 404 sur un fichier inexistant) ; signe corrigé pour les époques géologiques.
 // Logs: v1.0.114 getPlanetTexturePathFromEpoch — texture d'ÉTAT (📜🖼, posée par 🕰.🔁) prioritaire sur la date.
@@ -709,6 +711,7 @@ function syncPlanetNightMap(sphere, canvasData) {
   const nightPath = window.DATA && window.DATA["📜"] ? window.DATA["📜"]["🌙"] : "";
   const material = sphere.material;
   if (typeof nightPath !== "string" || nightPath === "") {
+    restorePlanetDaylight(sphere, canvasData);
     if (material.emissiveMap) {
       material.emissiveMap = null;
       material.emissiveIntensity = 0;
@@ -722,8 +725,44 @@ function syncPlanetNightMap(sphere, canvasData) {
     material.emissive = new THREE.Color(0xffffff);
     material.emissiveIntensity = 1.0;
     patchMaterialForNightMap(material, sunDir);
+    flattenPlanetLightingForNightMap(sphere, canvasData);
     material.needsUpdate = true;
   });
+}
+
+/**
+ * Avec la carte de nuit, le terminateur est déjà DANS l'image : les lumières des villes s'arrêtent
+ * là où le jour commence. Y ajouter l'ombre de la lumière directionnelle en dessine un second, qui
+ * ne tombe pas au même endroit et assombrit la face éclairée. On éteint donc le directionnel et on
+ * remonte l'ambiante : la sphère est éclairée à plat, l'ombre vient de la texture, et d'elle seule.
+ * Les intensités d'origine sont gardées pour pouvoir revenir en arrière (époque sans 🌙).
+ */
+function flattenPlanetLightingForNightMap(sphere, canvasData) {
+  if (!canvasData) return;
+  const dir = canvasData.directionalLight;
+  const amb = canvasData.ambientLight;
+  if (canvasData._nightFlatApplied) return;
+  canvasData._nightFlatApplied = true;
+  if (dir) {
+    canvasData._dirIntensityAvantNuit = dir.intensity;
+    dir.intensity = 0;
+  }
+  if (amb) {
+    canvasData._ambIntensityAvantNuit = amb.intensity;
+    amb.intensity = 1.0;
+  }
+  if (sphere) sphere.castShadow = false;
+}
+
+/** Retour à l'éclairage normal quand l'époque n'a plus de carte de nuit. */
+function restorePlanetDaylight(sphere, canvasData) {
+  if (!canvasData || !canvasData._nightFlatApplied) return;
+  canvasData._nightFlatApplied = false;
+  const dir = canvasData.directionalLight;
+  const amb = canvasData.ambientLight;
+  if (dir && canvasData._dirIntensityAvantNuit != null) dir.intensity = canvasData._dirIntensityAvantNuit;
+  if (amb && canvasData._ambIntensityAvantNuit != null) amb.intensity = canvasData._ambIntensityAvantNuit;
+  if (sphere) sphere.castShadow = true;
 }
 
 /**
