@@ -1,8 +1,10 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.33
+// Version 1.1.34
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.34: configOrganigramme.timeline = window.epochIndex() (API). Le mapping TIMELINE → type/name/id/
+//        startYears/endYears vivait ici, donc la géologie de l'API dépendait du dépôt CO2 pour résoudre une époque.
 // Logs: v1.1.33: alphabet.js / dico.js → API_BILAN/data/ (définitions) + static/compute/*_render.js (rendu).
 //        Leur en-tête les plaçait dans API_BILAN depuis toujours ; le moteur en lit KEYS pour construire DATA.
 // Logs: v1.1.32: onglet Hystérésis retiré du rendu (fetch du fragment, injection, registerTab, onShow, classe
@@ -296,28 +298,10 @@
                     if (typeof window.pdTrace === 'function') window.pdTrace('initAfterLoad', 'loader_panels.js', 'TIMELINE epochs=' + dbg);
                 } catch (e) {}
             }
-            // Crash-first: toutes les époques doivent exister côté configOrganigramme.timeline.
-            // Le masquage UI se fait côté rendu (CSS/DOM), pas en supprimant des données de la source unique.
-            window.configOrganigramme.timeline = window.TIMELINE.map(function (item) {
-                if (item && item['📅']) {
-                    const epochId = item['📅'];
-                    let epochName = epochId;
-                    if (typeof window.CHARS_DESC !== 'undefined' && window.CHARS_DESC[epochId]) {
-                        epochName = window.CHARS_DESC[epochId];
-                    }
-                    // epochNameMap : fallback si CHARS_DESC absent — CHARS_DESC est la source de vérité (alphabet.js).
-                    // Entrées couvertes seulement pour les ids non-emoji (strings) et les cas sans CHARS_DESC.
-                    const epochNameMap = {
-                        'hysteresis 1a': 'Sturtienne', 'hysteresis 1b': 'Sortie Marinoen', 'hysteresis 2': 'Eocène-Oligocène'
-                    };
-                    if (epochNameMap[epochId]) epochName = epochNameMap[epochId];
-                    // ▶ = début (années), ◀ = fin → startYears, endYears pour getGeologicalPeriodByName et formatYears
-                    const startYears = item['▶'] != null ? item['▶'] : item.startYears;
-                    const endYears = item['◀'] != null ? item['◀'] : item.endYears;
-                    return { ...item, type: 'epoch', name: epochName, id: epochId, startYears, endYears };
-                }
-                return { ...item, type: 'separator' };
-            });
+            // L'index des époques est construit par l'API (configTimeline.js v1.4.89, window.epochIndex).
+            // Il était fabriqué ici, ce qui obligeait API_BILAN/geology à lire configOrganigramme.timeline.
+            // On garde la propriété : le rendu (main.js, events.js) la lit encore.
+            window.configOrganigramme.timeline = window.epochIndex();
         }
         var animButton = document.getElementById('plot-anim-toggle');
         if (animButton) {

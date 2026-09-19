@@ -1,8 +1,9 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.49
-// Date: [May 07, 2026] [12:00 UTC+1]
+// Version 1.1.50
+// Date: [September 19, 2026]
 // logs :
+// - v1.1.50: retrait du tooltip « Terre » sur le nœud terre (rollover jugé inutile sur le globe Three.js).
 // - v1.1.49: TEXTURE_DATES_MA / _YEAR alignées sur les fichiers RÉELLEMENT présents dans fonds/ (base du repli « texture la plus proche »).
 // - v1.1.48: TEXTURE_DATES_MA + 1 Ma (fonds/-00001Ma.png, état interglaciaire du Quaternaire).
 // - v1.1.47: epochName 💀 « Extinction permienne » (ex « Limite P/T », aligné CHARS_DESC).
@@ -597,7 +598,7 @@ const nodes = [
         right: [],
         top: '',
         bottom: '',
-        tooltip: 'Terre',
+        tooltip: '',
         radiation: { numCircles: 8, maxRadius: 200, openingAngle: 340, color: 'red' },
         zIndex: 32
     },

@@ -1,8 +1,10 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.37
+ * Version 1.2.38
  * Date: [September 18, 2026]
 * logs :
+ *   - v1.2.38: getEpochConfigById lit window.epochIndex() (API) au lieu de configOrganigramme.timeline — une
+ *     dépendance de moins à l'organigramme pour les pages qui n'en ont pas. getActionForDate y reste (c'est du rendu).
  *   - v1.2.37: formatMassGT — vrais préfixes SI sur la tonne (Gt/Tt/Pt/Et). « kGT » et « MGT » empilaient deux
  *     préfixes, ce qui ne veut rien dire : les 3,2e17 kg d'une météorite de glace s'affichaient « +320 kGT »
  *     au lieu de « +320 Tt » (kilo × giga = téra, pas méga).
@@ -178,7 +180,7 @@ window.updateEpochActions = function () {
 
     const currentEpochName = window.RUNTIME_STATE.currentEpochName;
     const getEpochConfigById = (id) =>
-        window.configOrganigramme.timeline.find((e) => e.type === 'epoch' && e.id === id);
+        window.epochIndex().find((e) => e.type === 'epoch' && e.id === id);
     const epochId = window.DATA['📜']['🗿'];
     const timelineEpoch = getEpochConfigById(epochId);
     const startYears = timelineEpoch['▶'];
