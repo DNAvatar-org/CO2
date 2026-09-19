@@ -94,7 +94,6 @@
         <button id="tab-visu" class="active" onclick="switchTab('visu')">Visuel</button>
         <button id="tab-scie" onclick="switchTab('scie')">Scientifique</button>
         <button id="tab-bench" onclick="switchTab('bench')">Bench</button>
-        <button id="tab-hysteresis" onclick="switchTab('hysteresis')">Hystérésis</button>
         <button id="tab-milankovitch" onclick="switchTab('milankovitch')">Milankovitch?</button>
     </div>
     <div class="fps-display collapsed" id="fps-display">
@@ -104,7 +103,8 @@
     <div id="visu-panel" class="tab-panel active"><p style="padding:20px;color:#888;">Chargement…</p></div>
     <div id="scie-panel" class="tab-panel"><p style="padding:20px;color:#888;">Chargement…</p></div>
     <div id="bench-panel" class="tab-panel"><p style="padding:20px;color:#888;">Chargement…</p></div>
-    <div id="hysteresis-panel" class="tab-panel"><p style="padding:20px;color:#888;">Chargement…</p></div>
+    <!-- Onglet Hystérésis retiré du rendu le 2026-09-19 : le calage 1a/⛄/1b est figé, la page
+         html/hysteresis_compute.html reste au dépôt comme filet en cas de régression. -->
     <div id="milankovitch-panel" class="tab-panel">
         <iframe src="html/test_milankovitch.html" title=""></iframe>
     </div>
@@ -181,8 +181,9 @@
                 </div>
             -->
             </div>
-            <div data-tipeee-footer-inject></div>
-            <script src="https://dnavatar.org/pages/logo-nonA/DNAvatar_signature.js"></script>
+            <div data-tipeee-footer-inject data-signature-compact-below="440">
+                <script src="https://dnavatar.org/pages/logo-nonA/DNAvatar_signature.js"></script>
+            </div>
 
         </div>
         <a class="credits-footer-utf8" href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>

@@ -1,8 +1,11 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.31
+// Version 1.1.32
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.32: onglet Hystérésis retiré du rendu (fetch du fragment, injection, registerTab, onShow, classe
+//        body). html/hysteresis_panel.html et html/hysteresis_compute.html restent au dépôt : filet de sécurité
+//        si un réglage casse le calage 1a/⛄/1b, pas une page de l'application.
 // Logs: v1.1.31: spectral_slice_worker.js chargé en <script> avant worker_pool.js — permet le repli blob: quand
 //        new Worker('file://…') est refusé (origine 'null'), donc l'app tourne aussi sans serveur.
 // Logs: v1.1.30: static/ui/cpu_threads_notice.js dans la liste (après modal.js) — avertit une fois quand le
@@ -163,18 +166,15 @@
     Promise.all([
         fetch('html/visu_radiatif.html').then(function (r) { return r.text(); }),
         fetch('html/scie_radiatif.html').then(function (r) { return r.text(); }),
-        fetch('html/bench_panel.html').then(function (r) { return r.text(); }),
-        fetch('html/hysteresis_panel.html').then(function (r) { return r.text(); })
+        fetch('html/bench_panel.html').then(function (r) { return r.text(); })
     ]).then(function (results) {
         setLoaded(0);
         var visuPanel = document.getElementById('visu-panel');
         var sciePanel = document.getElementById('scie-panel');
         var benchPanel = document.getElementById('bench-panel');
-        var hystPanel = document.getElementById('hysteresis-panel');
         if (visuPanel) visuPanel.innerHTML = results[0];
         if (sciePanel) sciePanel.innerHTML = results[1];
         if (benchPanel) benchPanel.innerHTML = results[2];
-        if (hystPanel) hystPanel.innerHTML = results[3];
         return loadScriptsSequentially(SCRIPTS, 1);
     }).then(function () {
         loaderDone = true;
@@ -231,7 +231,6 @@
     function onShowVisu() {
         document.body.classList.remove('scie-panel-active');
         document.body.classList.remove('bench-panel-active');
-        document.body.classList.remove('hysteresis-panel-active');
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('visu');
         if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('resize'));
         if (window.DATA && window.DATA['🧮'] && typeof window.projectToVisu === 'function') window.projectToVisu(window.DATA);
@@ -239,7 +238,6 @@
     function onShowScie() {
         document.body.classList.add('scie-panel-active');
         document.body.classList.remove('bench-panel-active');
-        document.body.classList.remove('hysteresis-panel-active');
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('scie');
         var iframe = document.getElementById('scie-iframe');
         if (iframe && iframe.contentWindow) {
@@ -262,21 +260,12 @@
         // Aligné sur l'ancien switchTab (v1.1.15-) : seul scie-panel-active était manipulé ; bench/hyst retirés pour cohérence.
         document.body.classList.remove('scie-panel-active');
         document.body.classList.remove('bench-panel-active');
-        document.body.classList.remove('hysteresis-panel-active');
     }
     // Bench = iframe standalone (epoch_bench.html) ; pas de listener shell, pas de sync DATA. body.bench-panel-active pour les règles hauteur.
     function onShowBench() {
         document.body.classList.remove('scie-panel-active');
-        document.body.classList.remove('hysteresis-panel-active');
         document.body.classList.add('bench-panel-active');
     }
-    // Hystérésis = iframe standalone (hysteresis_compute.html) ; globals isolés, calculs autonomes. Pas de listener shell par défaut (bridge postMessage possible ultérieurement).
-    function onShowHysteresis() {
-        document.body.classList.remove('scie-panel-active');
-        document.body.classList.remove('bench-panel-active');
-        document.body.classList.add('hysteresis-panel-active');
-    }
-
     window.isVisuPanelActive = function () {
         var visu = document.getElementById('visu-panel');
         return visu && visu.classList.contains('active');
@@ -291,7 +280,6 @@
         window.API_ONGLETS.registerTab({ id: 'visu', buttonId: 'tab-visu', panelId: 'visu-panel', onShow: onShowVisu });
         window.API_ONGLETS.registerTab({ id: 'scie', buttonId: 'tab-scie', panelId: 'scie-panel', onShow: onShowScie });
         window.API_ONGLETS.registerTab({ id: 'bench', buttonId: 'tab-bench', panelId: 'bench-panel', onShow: onShowBench });
-        window.API_ONGLETS.registerTab({ id: 'hysteresis', buttonId: 'tab-hysteresis', panelId: 'hysteresis-panel', onShow: onShowHysteresis });
         window.API_ONGLETS.registerTab({ id: 'milankovitch', buttonId: 'tab-milankovitch', panelId: 'milankovitch-panel', onShow: onShowMilankovitch });
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             if (window.DEBUG_TIMELINE_HIDDEN) {
