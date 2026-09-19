@@ -147,8 +147,7 @@ def parse_html_chain(paths: set[str]) -> None:
         "html/scie_compute.html",
         "html/hysteresis_compute.html",
         "html/test_milankovitch.html",
-        "html/equation.html",
-        "html/Algorithmes.html",
+        # equation.html / Algorithmes.html : partis dans API_BILAN/doc/ (ce sont des documents du modèle).
         "static/compute/alphabet.html",
         "static/compute/dico.html",
     ]

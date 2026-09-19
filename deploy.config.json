@@ -102,16 +102,8 @@
       "dest": "pages/bilan_radiatif/CO2/fonts/pics/sun.png"
     },
     {
-      "src": "html/Algorithmes.html",
-      "dest": "pages/bilan_radiatif/CO2/html/Algorithmes.html"
-    },
-    {
       "src": "html/bench_panel.html",
       "dest": "pages/bilan_radiatif/CO2/html/bench_panel.html"
-    },
-    {
-      "src": "html/equation.html",
-      "dest": "pages/bilan_radiatif/CO2/html/equation.html"
     },
     {
       "src": "html/hysteresis_compute.html",
@@ -226,20 +218,12 @@
       "dest": "pages/bilan_radiatif/CO2/static/css/FPS.css"
     },
     {
-      "src": "static/css/algorithmes.css",
-      "dest": "pages/bilan_radiatif/CO2/static/css/algorithmes.css"
-    },
-    {
       "src": "static/css/buttons.css",
       "dest": "pages/bilan_radiatif/CO2/static/css/buttons.css"
     },
     {
       "src": "static/css/emoji-fonts.css",
       "dest": "pages/bilan_radiatif/CO2/static/css/emoji-fonts.css"
-    },
-    {
-      "src": "static/css/equation.css",
-      "dest": "pages/bilan_radiatif/CO2/static/css/equation.css"
     },
     {
       "src": "static/css/ergo_button.css",
