@@ -158,22 +158,6 @@
       "dest": "pages/bilan_radiatif/CO2/static/astronomie.js"
     },
     {
-      "src": "static/compute/alphabet.html",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/alphabet.html"
-    },
-    {
-      "src": "static/compute/alphabet_render.js",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/alphabet_render.js"
-    },
-    {
-      "src": "static/compute/dico.html",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/dico.html"
-    },
-    {
-      "src": "static/compute/dico_render.js",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/dico_render.js"
-    },
-    {
       "src": "static/compute/scie_/log_display.js",
       "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/log_display.js"
     },
@@ -232,10 +216,6 @@
     {
       "src": "static/css/index-shell.css",
       "dest": "pages/bilan_radiatif/CO2/static/css/index-shell.css"
-    },
-    {
-      "src": "static/css/legende.css",
-      "dest": "pages/bilan_radiatif/CO2/static/css/legende.css"
     },
     {
       "src": "static/css/milankovitch.css",

@@ -148,8 +148,7 @@ def parse_html_chain(paths: set[str]) -> None:
         "html/hysteresis_compute.html",
         "html/test_milankovitch.html",
         # equation.html / Algorithmes.html : partis dans API_BILAN/doc/ (ce sont des documents du modèle).
-        "static/compute/alphabet.html",
-        "static/compute/dico.html",
+        # alphabet.html / dico.html : partis dans API_BILAN/demo/ (rendu des définitions de l'API).
     ]
     queue = list(seeds)
     seen_html: set[str] = set()
@@ -173,8 +172,11 @@ def parse_html_chain(paths: set[str]) -> None:
 
 
 def parse_chars_images(paths: set[str]) -> None:
-    # charsImages a suivi le rendu : les définitions (CHARS/CHARS_DESC) sont dans API_BILAN/data/alphabet.js.
-    alphabet = ROOT / "static/compute/alphabet_render.js"
+    # charsImages vit avec le rendu, parti dans API_BILAN/demo/. CO2 garde ses propres fonts/pics/ :
+    # l'app les résout par rapport au document, pas au script. On lit donc la liste là où elle est.
+    alphabet = ROOT.parent / "API_BILAN/demo/alphabet_render.js"
+    if not alphabet.exists():
+        return
     text = read_text(alphabet)
     for m in RE_CHARS_IMAGE.finditer(text):
         paths.add(m.group(1))

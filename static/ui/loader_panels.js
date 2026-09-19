@@ -1,8 +1,10 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.34
+// Version 1.1.35
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.35: alphabet_render.js / dico_render.js lus depuis API_BILAN/demo/ — dessiner l'alphabet et le
+//        dictionnaire de l'API fait partie de ce qui illustre l'API ; l'application s'y sert.
 // Logs: v1.1.34: configOrganigramme.timeline = window.epochIndex() (API). Le mapping TIMELINE → type/name/id/
 //        startYears/endYears vivait ici, donc la géologie de l'API dépendait du dépôt CO2 pour résoudre une époque.
 // Logs: v1.1.33: alphabet.js / dico.js → API_BILAN/data/ (définitions) + static/compute/*_render.js (rendu).
@@ -58,8 +60,8 @@
         // Définitions des clés : source unique côté API (v1.1.33). Le rendu suit, côté CO2.
         '../API_BILAN/data/alphabet.js',
         '../API_BILAN/data/dico.js',
-        'static/compute/alphabet_render.js',
-        'static/compute/dico_render.js',
+        '../API_BILAN/demo/alphabet_render.js',
+        '../API_BILAN/demo/dico_render.js',
         '../API_BILAN/data/initDATA.js',
         '../API_BILAN/config/fine_tuning_bounds.js',
         '../API_BILAN/physics/physics.js',
