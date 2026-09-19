@@ -113,7 +113,8 @@ const CHARS = {
     MODERN: '📱',   // Aujourd'hui (2000–2100) : smartphone
     EVENTS: '🕰',   // Événements : horloge
     CYCLE: '🔁',    // Cycles : états successifs appliqués par tic (🕰.🔁, ex. glaciaire/interglaciaire)
-    TEXTURE: '🖼',  // Texture de la planète pour un état (🕰.🔁 '🖼')
+    TEXTURE: '🖼',  // Texture de la planète imposée (suite 🕰.🖼, parcourue par les tics)
+    NIGHTMAP: '🌙', // Carte de nuit superposée (🕰.🌙) : lumières des villes côté ombre
     OBLIQUITY: '⚾', // Obliquité ε de l'axe terrestre (degrés) — Milankovitch
     TRANSITION: '⏩', // Transition : flèche rapide
     DATE: '📅',     // Date : calendrier
@@ -235,7 +236,8 @@ const CHARS_DESC = {
     '📱': 'Aujourd\'hui',
     '🕰': 'Événements',
     '🔁': 'Cycles (états par tic)',
-    '🖼': 'Texture planète (état)',
+    '🖼': 'Texture planète (suite)',
+    '🌙': 'Carte de nuit (superposée)',
     '⚾': 'Obliquité ε (°)',
     '⏩': 'Transition',
     '📅': 'Date (Ma)',
@@ -270,7 +272,7 @@ function createAlphabetHtml() {
     
     // Colonne 4 : Événements
     const charsCol4 = [
-        'DATE', 'TIC_TIME', 'EVENTS', 'CYCLE', 'TEXTURE', 'OBLIQUITY', 'TRANSITION', 'BIG_IMPACT', 'METEORITE_COUNT', 'VOLCANO_VEIL', 'VOLCANO', 'FLUX_START', 'FLUX_END', 'PLANET_RADIUS', 'TROPOPAUSE', 'ALTITUDE', 'SATELLITE', 'INDEX_EPOCH'
+        'DATE', 'TIC_TIME', 'EVENTS', 'CYCLE', 'TEXTURE', 'NIGHTMAP', 'OBLIQUITY', 'TRANSITION', 'BIG_IMPACT', 'METEORITE_COUNT', 'VOLCANO_VEIL', 'VOLCANO', 'FLUX_START', 'FLUX_END', 'PLANET_RADIUS', 'TROPOPAUSE', 'ALTITUDE', 'SATELLITE', 'INDEX_EPOCH'
     ];
     
     // Colonne 5 : Époques et autres logos

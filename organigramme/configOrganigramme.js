@@ -1,8 +1,9 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.48
+// Version 1.1.49
 // Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
+// - v1.1.49: TEXTURE_DATES_MA / _YEAR alignées sur les fichiers RÉELLEMENT présents dans fonds/ (base du repli « texture la plus proche »).
 // - v1.1.48: TEXTURE_DATES_MA + 1 Ma (fonds/-00001Ma.png, état interglaciaire du Quaternaire).
 // - v1.1.47: epochName 💀 « Extinction permienne » (ex « Limite P/T », aligné CHARS_DESC).
 // - v1.1.46: getCurrentDateKey — Number(startYears) avant + info×1e6 (évite concat chaîne «-10000»+8000 pour ACTION / alignement texture).
@@ -82,10 +83,14 @@ function fondsTexturePathFromSignedYear(y) {
     const pref = yR < 0 ? "-" : "_";
     return "fonds/" + pref + p + "a.png";
 }
+// INVENTAIRE RÉEL du dossier fonds/ (v2026-09-18) : ces listes DOIVENT correspondre aux fichiers présents.
+// La texture affichée = la plus PROCHE de la date courante dans ces listes (organigramme.js), donc jamais de 404 :
+// une date sans image exacte (ex. 2050) retombe sur l'image la plus proche (2000). Ajouter un fichier = l'ajouter ici.
 // 2 et 1 Ma : les deux états stables du Quaternaire (glaciaire / interglaciaire), cf. 🕰.🔁 '🖼'.
-const TEXTURE_DATES_MA = [5000, 4500, 4100, 3700, 3300, 2900, 2500, 2300, 225, 150, 100, 200, 66, 50, 35, 33, 2, 1];
-/** Années signées (Holocène BP négatif, CE positif) — aligné getTimelineCurrentYears. */
-const TEXTURE_DATES_YEAR = [-10000, -6500, -3000, -2000, -1000, 1800, 2025];
+const TEXTURE_DATES_MA = [5000, 4900, 4800, 4700, 4600, 4500, 4400, 4300, 4200, 4100, 4000, 3500,
+    3000, 2500, 1910, 1320, 1000, 750, 720, 690, 600, 420, 280, 250, 150, 100, 66, 50, 35, 33, 17, 2, 1];
+/** Années signées (BP négatif, CE positif) — aligné getTimelineCurrentYears. */
+const TEXTURE_DATES_YEAR = [-10000, -6000, -5000, -3000, -2000, 1800, 2000];
 const TEXTURES_THREEJS = [
     ...TEXTURE_DATES_MA.map((ma) => "fonds/-" + String(ma).padStart(5, "0") + "Ma.png"),
     ...TEXTURE_DATES_YEAR.map((y) => fondsTexturePathFromSignedYear(y)),

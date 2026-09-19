@@ -348,6 +348,10 @@
     {
       "src": "static/ui/modal.js",
       "dest": "pages/bilan_radiatif/CO2/static/ui/modal.js"
+    },
+    {
+      "src": "fonds/_002000n.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/_002000n.png"
     }
   ]
 }

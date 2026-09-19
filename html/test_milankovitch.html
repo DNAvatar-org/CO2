@@ -3,9 +3,11 @@
 # File: CO2/html/test_milankovitch.html
 # Desc: Cycles de Milankovitch (obliquité, excentricité, précession) — courbes + explication du couplage
 #       avec le bilan radiatif (API_BILAN/physics/physics.js : redistribution méridienne de l'insolation).
-# Version 1.0.1
+# Version 1.0.2
 # Date: [September 18, 2026]
 # Logs:
+# - v1.0.2: footer + signature DNAvatar retirés (page toujours chargée en iframe dans index.html, qui a
+#           déjà son propre footer avec signature sous les liens — comme les autres panneaux html/*.html).
 # - v1.0.1: sous-titre « utilisé au Quaternaire » + section « Comment l'obliquité agit dans la simulation » ;
 #           signature DNAvatar et en-tête de fichier ajoutés.
 # Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -373,9 +375,7 @@
         });
     </script>
 
-    <footer class="milankovitch-footer">
-        <script src="https://dnavatar.org/pages/logo-nonA/DNAvatar_signature.js"></script>
-    </footer>
+
 </body>
 </html>
 

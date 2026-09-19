@@ -1,12 +1,14 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.114
+// Version 1.0.116
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
+// Logs: v1.0.116 carte de nuit (📜🌙) en emissiveMap + masque shader (smoothstep sur N·L) : jour et nuit affichés EN MÊME TEMPS, la nuit seulement côté ombre.
+// Logs: v1.0.115 getPlanetTexturePathFromEpoch — texture DÉCLARÉE la plus proche de la date (plus de 404 sur un fichier inexistant) ; signe corrigé pour les époques géologiques.
 // Logs: v1.0.114 getPlanetTexturePathFromEpoch — texture d'ÉTAT (📜🖼, posée par 🕰.🔁) prioritaire sur la date.
 // Logs: v1.0.113 addCustomTooltip — data-alt2sec depuis window.EPOCH_ALT2SEC[data-epoch] (ex. Sturtienne / hysteresis 1a).
 // Logs: v1.0.112 getFineTuningDetailAlt — retrait suffixe #biblio_ref dans les lignes alt2sec.
@@ -626,6 +628,143 @@ function resolveFondsTextureUrlForLoader(path) {
 }
 
 /**
+ * MÉLANGE JOUR / NUIT (📜🌙, posé par la config 🕰.'🌙').
+ * La carte de nuit (lumières des villes) doit apparaître UNIQUEMENT sur la face non éclairée, en même temps
+ * que le jour — pas en alternance. On garde le MeshStandardMaterial (éclairage, ombres, cônes d'axe) et on
+ * pose la nuit en emissiveMap, masquée par l'orientation vers le Soleil via un patch de shader :
+ *   nuit = 1 quand la normale tourne le dos à la lumière, 0 en plein jour, dégradé doux au terminateur.
+ * Aucun matériau ni pipeline custom : la même sphère, une injection de quelques lignes.
+ */
+const _nightTextureCache = {};
+function loadNightTexture(path, onReady) {
+  if (_nightTextureCache[path]) { onReady(_nightTextureCache[path]); return; }
+  new THREE.TextureLoader().load(
+    resolveFondsTextureUrlForLoader(path),
+    function (tex) {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+      _nightTextureCache[path] = tex;
+      onReady(tex);
+    },
+    undefined,
+    function () { console.log("🌙 [texture nuit] chargement erreur:", path); }
+  );
+}
+
+/** Direction du Soleil (monde) pour le masque de nuit : position de la lumière directionnelle, normalisée. */
+function planetSunDirection(canvasData) {
+  const light = canvasData && canvasData.directionalLight;
+  const v = light && light.position
+    ? light.position.clone()
+    : new THREE.Vector3(1, 0, 1);
+  if (v.lengthSq() === 0) v.set(1, 0, 1);
+  return v.normalize();
+}
+
+/** Injecte le masque de nuit dans le shader standard (une fois par matériau). */
+function patchMaterialForNightMap(material, sunDir) {
+  if (material.userData.nightPatched) {
+    material.userData.sunDirUniform.value.copy(sunDir);
+    return;
+  }
+  material.userData.sunDirUniform = { value: sunDir.clone() };
+  material.onBeforeCompile = function (shader) {
+    shader.uniforms.uSunDirNight = material.userData.sunDirUniform;
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vWorldNormalNight;")
+      .replace(
+        "#include <begin_vertex>",
+        "#include <begin_vertex>\nvWorldNormalNight = normalize(mat3(modelMatrix) * objectNormal);"
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        "#include <common>\nuniform vec3 uSunDirNight;\nvarying vec3 vWorldNormalNight;\nfloat nightMaskDN;"
+      )
+      // Masque calculé une fois : 1 côté nuit, 0 en plein jour, dégradé au terminateur.
+      // La carte de JOUR est assombrie côté nuit (sinon la lumière ambiante la laisse dominer et les
+      // lumières des villes ne ressortent pas) ; la carte de NUIT n'est émise que côté nuit.
+      .replace(
+        "#include <map_fragment>",
+        "#include <map_fragment>\n"
+        + "nightMaskDN = smoothstep(0.12, -0.18, dot(normalize(vWorldNormalNight), normalize(uSunDirNight)));\n"
+        + "diffuseColor.rgb *= mix(1.0, 0.15, nightMaskDN);"
+      )
+      .replace(
+        "#include <emissivemap_fragment>",
+        "#include <emissivemap_fragment>\ntotalEmissiveRadiance *= nightMaskDN;"
+      );
+  };
+  material.userData.nightPatched = true;
+  material.needsUpdate = true;
+}
+
+/**
+ * Applique (ou retire) la carte de nuit sur la sphère, selon 📜🌙. Appelée à la création de la sphère
+ * et à chaque mise à jour de texture — y compris quand la texture de jour ne change pas.
+ */
+function syncPlanetNightMap(sphere, canvasData) {
+  if (!sphere || !sphere.material) return;
+  const nightPath = window.DATA && window.DATA["📜"] ? window.DATA["📜"]["🌙"] : "";
+  const material = sphere.material;
+  if (typeof nightPath !== "string" || nightPath === "") {
+    if (material.emissiveMap) {
+      material.emissiveMap = null;
+      material.emissiveIntensity = 0;
+      material.needsUpdate = true;
+    }
+    return;
+  }
+  const sunDir = planetSunDirection(canvasData);
+  loadNightTexture(nightPath, function (tex) {
+    material.emissiveMap = tex;
+    material.emissive = new THREE.Color(0xffffff);
+    material.emissiveIntensity = 1.0;
+    patchMaterialForNightMap(material, sunDir);
+    material.needsUpdate = true;
+  });
+}
+
+/**
+ * Textures DÉCLARÉES (configOrganigramme.TEXTURES_THREEJS = inventaire réel du dossier fonds/), converties en
+ * année signée : Ma → −n×1e6 ; « _NNNNNNa » → +n (ère commune) ; « -NNNNNNa » → −n (avant J.-C. / BP).
+ * Source unique : la liste de config. Ajouter un fichier = l'ajouter là-bas, rien à toucher ici.
+ */
+let _fondsTextureIndexCache = null;
+function declaredFondsTextures() {
+  if (_fondsTextureIndexCache) return _fondsTextureIndexCache;
+  const list = window.configOrganigramme.TEXTURES_THREEJS;
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i];
+    let m = /^fonds\/-([0-9]+)Ma\.png$/.exec(p);
+    if (m) { out.push({ year: -Number(m[1]) * 1e6, path: p }); continue; }
+    m = /^fonds\/([_-])([0-9]+)a\.png$/.exec(p);
+    if (m) { out.push({ year: (m[1] === "-" ? -1 : 1) * Number(m[2]), path: p }); }
+  }
+  _fondsTextureIndexCache = out;
+  return out;
+}
+
+/**
+ * Texture déclarée la plus proche d'une date (année signée). Distance RELATIVE (rapport de temps) :
+ * à −500 000 ans, 1 Ma est « plus proche » que 10 ka, ce qu'une distance absolue ne dirait pas.
+ * But : ne JAMAIS demander un fichier absent (avant : 2050 → fonds/_002050a.png → 404, texture figée).
+ */
+function nearestDeclaredFondsTexture(signedYear) {
+  const entries = declaredFondsTextures();
+  let best = null;
+  let bestScore = Infinity;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    const score = Math.abs(e.year - signedYear) / Math.max(1, Math.abs(e.year), Math.abs(signedYear));
+    if (score < bestScore) { bestScore = score; best = e; }
+  }
+  return best ? best.path : null;
+}
+
+/**
  * Chemin texture planète : préfère la date courante frise (▶/◀/infoTimeMa, forward vs géologique) comme updateTimeline.
  * Fallback : ancienne formule (startYears, infoTimeMa) si pas de contexte timeline.
  */
@@ -635,6 +774,19 @@ function getPlanetTexturePathFromEpoch(startYears, infoTimeMa) {
   // Générique : aucune époque n'est nommée ici, on lit ce que la config a posé.
   const stateTexture = window.DATA && window.DATA["📜"] ? window.DATA["📜"]["🖼"] : "";
   if (typeof stateTexture === "string" && stateTexture !== "") return stateTexture;
+
+  // Date courante en ANNÉE SIGNÉE (négatif = avant le présent) : les époques géologiques donnent des
+  // années AVANT PRÉSENT (positives en config), les époques récentes des années calendaires (🛖 🚂 📱).
+  // Sans cette distinction, 0,5 Ma avant le présent devenait « an 500000 » → fonds/_500000a.png (404).
+  const epochRow = window.getEpochAtTimelineIndex ? window.getEpochAtTimelineIndex() : null;
+  const cyRawSigned = window.getTimelineCurrentYears ? window.getTimelineCurrentYears() : null;
+  if (epochRow && cyRawSigned != null && Number.isFinite(Number(cyRawSigned))) {
+    const forward = Number(epochRow["▶"]) < Number(epochRow["◀"]);
+    const signedYear = forward ? Number(cyRawSigned) : -Number(cyRawSigned);
+    const nearest = nearestDeclaredFondsTexture(signedYear);
+    if (nearest) return nearest;
+  }
+
   let path;
   let signedYearHint = NaN;
   if (
@@ -1016,6 +1168,8 @@ function initPlanetThreeJS(
     const material = new THREE.MeshStandardMaterial(materialOptions);
 
     sphere = new THREE.Mesh(geometry, material);
+    // Carte de nuit (📜🌙) : superposée au jour, visible seulement côté nuit.
+    syncPlanetNightMap(sphere, canvas._threeJSData);
     sphere.castShadow = true;
     sphere.receiveShadow = false;
 
@@ -1450,6 +1604,8 @@ function updatePlanetTextureFromDate() {
   const startYears = epoch["▶"];
   const infoTimeMa = window.infoTimeMa;
   const path = getPlanetTexturePathFromEpoch(startYears, infoTimeMa);
+  // Carte de nuit d'abord : elle peut changer (ou disparaître) même quand la texture de jour reste la même.
+  syncPlanetNightMap(canvas._threeJSData.sphere, canvas._threeJSData);
   if (path === window._lastPlanetTexturePath) return;
   window._lastPlanetTexturePath = path;
   const sphere = canvas._threeJSData.sphere;
@@ -5612,9 +5768,16 @@ ORG.updateFluxLabels = function (eventId) {
       veilFrac > 1e-6
         ? `<span style="font-size:0.85em;opacity:0.92;" title="🍰⚽ obstruction (🍰🪩⚽ = 1−🍰⚽ transmission) — SW stratosphérique, hors CCN">⚽ ${(veilFrac * 100).toFixed(1)}% ciel voilé (SW)</span>`
         : "";
+    // Facteur corps-noir (🍰🪩💧) : A_geo est multiplié par couche_d_eau/10 m. Sans cette ligne, le détail
+    // ne se recompose pas — sur ⚫ les surfaces donnent ~78 % et le badge affiche 15 %.
+    const waterFactor = wAlb && Number.isFinite(wAlb["🍰🪩💧"]) ? wAlb["🍰🪩💧"] : 1;
+    const waterLine =
+      waterFactor < 0.999
+        ? `<span style="font-size:0.85em;opacity:0.92;" title="🍰🪩💧 facteur corps-noir : la couche d'eau globale ne fait pas 10 m, donc l'albédo des surfaces est réduit d'autant (une flaque de 2 m ne réfléchit pas comme une banquise).">💧 x${waterFactor.toFixed(2)} couche d'eau</span>`
+        : "";
     const cloudLine = cloudComp ? renderComp(cloudComp) : "";
     const cloudSection = [cloudLine, veilLine].filter(Boolean).join("<br>");
-    const groundLines = groundComps.map(renderComp).join("<br>");
+    const groundLines = [groundComps.map(renderComp).join("<br>"), waterLine].filter(Boolean).join("<br>");
     const separator =
       '<span style="display:block;border-top:1px solid rgba(255,255,255,0.35);margin:2px 0;"></span>';
     if (cloudSection && groundLines)
@@ -5634,10 +5797,12 @@ ORG.updateFluxLabels = function (eventId) {
   );
 
   if (hasNoAtmosphere) {
-    // Couvertures affichées = partition eau (🍰💧🧊), cohérente avec h2o v1.0.25 (cap ~10 %) — pas 🪩.🍰🪩🧊 (peut saturer à 100 %).
-    const ice_stock = DATA["💧"]["🍰💧🧊"];
-    const ice_cov_corps_noir = parseFloat((ice_stock * 100).toFixed(1));
-    const land_cov_corps_noir = parseFloat(((1 - ice_stock) * 100).toFixed(1));
+    // Couvertures affichées = les surfaces OPTIQUES réellement utilisées par calculateAlbedo (🪩.🍰🪩🧊 / 🍰🪩🌍).
+    // Avant (v1.0.93) on affichait la partition du STOCK d'eau (💧.🍰💧🧊) : le détail annonçait « glace 2,3 % × 0,70 »
+    // soit 1,6 %, pendant que le badge affichait 7,6 %. Les deux nombres étaient justes mais ne parlaient pas de la
+    // même chose. Le vrai chemin est : glace optique (100 %) × albédo de glace effectif × facteur corps-noir 🍰🪩💧.
+    const ice_cov_corps_noir = parseFloat((DATA["🪩"]["🍰🪩🧊"] * 100).toFixed(1));
+    const land_cov_corps_noir = parseFloat((DATA["🪩"]["🍰🪩🌍"] * 100).toFixed(1));
     const components = [
       {
         emoji: "🎾",
@@ -5660,9 +5825,12 @@ ORG.updateFluxLabels = function (eventId) {
         albedo: albedoCoeff["🪩🍰🏜️"].toFixed(2),
       },
       {
+        // Albédo de glace EFFECTIF (moyenne zonale Briegleb) si le moteur l'a publié, sinon coefficient de config.
         emoji: CHARS.ICE,
         coverage: ice_cov_corps_noir,
-        albedo: albedoCoeff["🪩🍰🧊"].toFixed(2),
+        albedo: (Number.isFinite(DATA["🪩"]["🪩🍰🧊"])
+          ? DATA["🪩"]["🪩🍰🧊"]
+          : albedoCoeff["🪩🍰🧊"]).toFixed(2),
       },
       {
         emoji: CHARS.CLOUD,
