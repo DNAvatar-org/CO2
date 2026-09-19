@@ -1,13 +1,16 @@
 // File: CO2/static/scie/scie_timeline.js - Frise des époques (horizontale ou verticale)
 // Desc: La FRISE et la sélection d'époque. État réel à la date d'extraction, à ne pas confondre avec l'intention :
 //       — createEpochButton(id, orientation, hidden) et createGraduation savent faire 'horizontal' ET 'vertical' ;
-//       — generateVerticalTimeline() construit bien le DOM, mais dans .visu_epochs-container, qui n'existe pas
-//         dans cette page : personne ne l'appelle, c'est du code dormant ;
-//       — generateHorizontalTimeline() ne dessine RIEN : il choisit l'époque par défaut et appelle selectEpoch().
-//       Autrement dit la frise horizontale est à écrire, pas à réutiliser — les briques, elles, sont là.
-// Version 1.0.0
+//       — generateHorizontalTimeline() ne dessine RIEN aujourd'hui : il choisit l'époque par défaut et appelle
+//         selectEpoch(). La frise horizontale est donc à écrire, pas à réutiliser ;
+//       — createEpochButton(id, orientation, hidden) et createGraduation savent faire 'horizontal' ET 'vertical' :
+//         ce sont les briques de cette frise à venir. Sans appelant pour l'instant, c'est assumé et temporaire.
+// Version 1.0.1
 // Date: [September 19, 2026]
 // logs :
+//   - v1.0.1: generateVerticalTimeline() retiré — il visait .visu_epochs-container, absent de cette page,
+//     et personne ne l'appelait. La frise verticale du panneau Visuel est construite ailleurs
+//     (organigramme/timeline.js + organigramme.js) : c'était un doublon dormant.
 //   - v1.0.0: extraction depuis le <script> en ligne de CO2/html/scie_compute.html (1810 lignes d'un bloc).
 //     Découpage par responsabilité, à code IDENTIQUE : seule l'indentation change. Les fichiers restent des
 //     scripts classiques chargés dans l'ordre des dépendances — la page garde son chargement synchrone.
@@ -85,30 +88,6 @@ function generateHorizontalTimeline() {
         || epochItems.find(item => !item.hidden)
         || epochItems[0];
     if (defaultEpoch) selectEpoch(defaultEpoch['📅']);
-}
-
-// ============================================================================
-// GÉNÉRATION TIMELINE VERTICALE (pour index.html)
-// ============================================================================
-function generateVerticalTimeline() {
-    const epochsContainer = document.querySelector('.visu_epochs-container') || document.querySelector('.epochs-container');
-    if (!epochsContainer || !window.TIMELINE) return;
-    
-    epochsContainer.innerHTML = '';
-    
-    window.TIMELINE.forEach(item => {
-        if (item['📅']) {
-            const el = createEpochButton(item['📅'], 'vertical', !!item.hidden);
-            if (!item.hidden && el && el.setAttribute) {
-                el.setAttribute('onclick', `selectEpoch('${item['📅'].replace(/'/g, "\\'")}')`);
-            }
-            epochsContainer.appendChild(el);
-        } else if (item.date) {
-            // Séparateur/graduation (comme dans generateTimelineFromConfig)
-            const graduation = createGraduation(item.date, 'vertical');
-            epochsContainer.appendChild(graduation);
-        }
-    });
 }
 
 // Sélectionner une époque (utilise l'index directement)
