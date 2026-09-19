@@ -170,16 +170,16 @@
       "dest": "pages/bilan_radiatif/CO2/static/compute/alphabet.html"
     },
     {
-      "src": "static/compute/alphabet.js",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/alphabet.js"
+      "src": "static/compute/alphabet_render.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/alphabet_render.js"
     },
     {
       "src": "static/compute/dico.html",
       "dest": "pages/bilan_radiatif/CO2/static/compute/dico.html"
     },
     {
-      "src": "static/compute/dico.js",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/dico.js"
+      "src": "static/compute/dico_render.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/dico_render.js"
     },
     {
       "src": "static/compute/scie_/log_display.js",

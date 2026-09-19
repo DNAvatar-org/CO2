@@ -174,7 +174,8 @@ def parse_html_chain(paths: set[str]) -> None:
 
 
 def parse_chars_images(paths: set[str]) -> None:
-    alphabet = ROOT / "static/compute/alphabet.js"
+    # charsImages a suivi le rendu : les définitions (CHARS/CHARS_DESC) sont dans API_BILAN/data/alphabet.js.
+    alphabet = ROOT / "static/compute/alphabet_render.js"
     text = read_text(alphabet)
     for m in RE_CHARS_IMAGE.finditer(text):
         paths.add(m.group(1))

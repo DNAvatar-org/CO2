@@ -1,8 +1,10 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.32
+// Version 1.1.33
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.33: alphabet.js / dico.js → API_BILAN/data/ (définitions) + static/compute/*_render.js (rendu).
+//        Leur en-tête les plaçait dans API_BILAN depuis toujours ; le moteur en lit KEYS pour construire DATA.
 // Logs: v1.1.32: onglet Hystérésis retiré du rendu (fetch du fragment, injection, registerTab, onShow, classe
 //        body). html/hysteresis_panel.html et html/hysteresis_compute.html restent au dépôt : filet de sécurité
 //        si un réglage casse le calage 1a/⛄/1b, pas une page de l'application.
@@ -51,8 +53,11 @@
         '../API_BILAN/config/model_tuning.js',
         '../API_BILAN/config/model_tuning_biblio.js',
         '../API_BILAN/config/configTimeline.js',
-        'static/compute/alphabet.js',
-        'static/compute/dico.js',
+        // Définitions des clés : source unique côté API (v1.1.33). Le rendu suit, côté CO2.
+        '../API_BILAN/data/alphabet.js',
+        '../API_BILAN/data/dico.js',
+        'static/compute/alphabet_render.js',
+        'static/compute/dico_render.js',
         '../API_BILAN/data/initDATA.js',
         '../API_BILAN/config/fine_tuning_bounds.js',
         '../API_BILAN/physics/physics.js',

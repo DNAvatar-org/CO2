@@ -59,8 +59,12 @@
     <!-- Ex-configsAll.js (bundle retiré v1.2.0) : sources séparées, ordre = dépendances. -->
     <script src="../../API_BILAN/config/model_tuning_biblio.js"></script>
     <script src="../../API_BILAN/config/configTimeline.js"></script>
-    <script src="../../CO2/static/compute/alphabet.js"></script>
-    <script src="../../CO2/static/compute/dico.js"></script>
+    <!-- Définitions des clés : côté API (une seule source pour le moteur et pour l'app). -->
+    <script src="../../API_BILAN/data/alphabet.js"></script>
+    <script src="../../API_BILAN/data/dico.js"></script>
+    <!-- Rendu (lexique, pictos, logos) : côté CO2, après les définitions. -->
+    <script src="../static/compute/alphabet_render.js"></script>
+    <script src="../static/compute/dico_render.js"></script>
     <script src="../../API_BILAN/data/initDATA.js"></script>
     <script src="../../API_BILAN/config/fine_tuning_bounds.js"></script>
     <script src="../organigramme/configOrganigramme.js"></script>
