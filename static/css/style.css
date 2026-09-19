@@ -932,7 +932,6 @@ h1 {
 */
 
 
-
 .timeline-hourglass {
     font-size: 18px;
     display: block;
@@ -1591,7 +1590,6 @@ h1 {
 }
 
 
-
 /* Curseur flèche (default) sur le graphique Plotly, pas main-bouton */
 #plot-container .plotly,
 #plot-container .js-plotly-plot,
@@ -1653,7 +1651,6 @@ h1 {
 }
 
 
-
 /* ============================================================================
    ALGORITHMES & CONVERGENCE
    ============================================================================ */
@@ -1680,111 +1677,6 @@ h1 {
     border-bottom: 1px solid #e0e0e0;
 }
 
-.algorithm-params {
-    font-size: 11px;
-}
-
-.param-item {
-    margin-bottom: 10px;
-    padding: 6px;
-    background: rgb(47, 47, 47);
-    border-radius: 4px;
-}
-
-.param-list {
-    margin: 5px 0 0 20px;
-    padding: 0;
-    list-style-type: disc;
-}
-
-.param-list li {
-    margin: 3px 0;
-}
-
-.param-list code {
-    background: rgb(47, 47, 47);
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-size: 10px;
-}
-
-.convergence-phases {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.phase-item {
-    padding: 8px;
-    background: rgb(47, 47, 47);
-    border-radius: 4px;
-    border-left: 3px solid #4ade80;
-}
-
-.phase-item strong {
-    font-size: 12px;
-}
-
-.phase-item ul {
-    margin: 5px 0 0 20px;
-    padding: 0;
-    list-style-type: disc;
-    font-size: 11px;
-}
-
-.phase-item ul ul {
-    list-style-type: circle;
-    margin-left: 15px;
-}
-
-.interactions-content {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.interaction-item {
-    padding: 8px;
-    background: rgb(47, 47, 47);
-    border-radius: 4px;
-    border-left: 3px solid #fbbf24;
-}
-
-.interaction-item strong {
-    font-size: 12px;
-}
-
-.interaction-item ul {
-    margin: 5px 0 0 20px;
-    padding: 0;
-    list-style-type: disc;
-    font-size: 11px;
-}
-
-.convergence-method {
-    padding: 8px;
-    background: rgb(47, 47, 47);
-    border-radius: 4px;
-    border-left: 3px solid #f87171;
-}
-
-.convergence-method p {
-    margin: 5px 0;
-    font-size: 11px;
-}
-
-/* .convergence-method strong hérite maintenant du body */
-
-.convergence-method ol {
-    margin: 10px 0 10px 20px;
-    padding: 0;
-    font-size: 11px;
-}
-
-.convergence-method ol ul {
-    margin: 5px 0 5px 20px;
-    list-style-type: disc;
-}
 
 .status {
     text-align: center;
