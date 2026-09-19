@@ -1,9 +1,11 @@
 // File: CO2/static/scie/scie_tuning_view.js - Panneau fine-tuning : bornes, barycentres, curseurs
 // Desc: Le FINE-TUNING : les bornes de FINE_TUNING_BOUNDS, les curseurs de barycentre par groupe, et la
 //       synchronisation avec la page parente. C'est la partie qui rend visible le flou scientifique.
-// Version 1.0.0
+// Version 1.1.0
 // Date: [September 19, 2026]
 // logs :
+//   - v1.1.0: fillDataTuningFromBary retiré — appel à window.TUNING.fillDataTuningFromBary (API).
+//     Deuxième écriture de la même interpolation, avec une sémantique de barycentre périmée.
 //   - v1.0.0: extraction depuis le <script> en ligne de CO2/html/scie_compute.html (1810 lignes d'un bloc).
 //     Découpage par responsabilité, à code IDENTIQUE : seule l'indentation change. Les fichiers restent des
 //     scripts classiques chargés dans l'ordre des dépendances — la page garde son chargement synchrone.
@@ -79,38 +81,12 @@ function getFineTuningBaryByGroupSnapshot() {
 
 // Remplissage complet DATA['🎚️'].CLOUD_SW et .SOLVER depuis baryByGroup (jauges => étape 2).
 // Aligné API_BILAN/tuning.js : RADIATIVE.factorTropopause hors bary (pas de baryByGroup.RADIATIVE).
-function fillDataTuningFromBary() {
-    var T = window.DATA['🎚️'];
-    var bg = T.baryByGroup;
-    var targets = getFineTuningTargets();
-    for (var i = 0; i < targets.length; i++) {
-        var target = targets[i];
-        if (target.group === 'RADIATIVE' && target.key === 'factorTropopause') continue;
-        var baryKey = target.baryGroup || target.group;
-        var pct = Number(bg[baryKey]);
-        if (!Number.isFinite(pct)) pct = 0;
-        var val = getFineTuningBaryValue(target, pct);
-        T[target.group][target.key] = val;
-    }
-    if (T.RADIATIVE) {
-        var cc = window.CONFIG_COMPUTE;
-        if (cc && cc.radiativeFactorTropopauseFixed != null && Number.isFinite(cc.radiativeFactorTropopauseFixed)) {
-            T.RADIATIVE.factorTropopause = cc.radiativeFactorTropopauseFixed;
-        } else {
-            var tlist = (window.FINE_TUNING_BOUNDS && window.FINE_TUNING_BOUNDS.targets) ? window.FINE_TUNING_BOUNDS.targets : [];
-            var tFt = null;
-            for (var ti = 0; ti < tlist.length; ti++) {
-                if (tlist[ti].group === 'RADIATIVE' && tlist[ti].key === 'factorTropopause') { tFt = tlist[ti]; break; }
-            }
-            if (tFt) {
-                var atmPct = Number.isFinite(Number(bg.ATM)) ? Number(bg.ATM) : 0;
-                T.RADIATIVE.factorTropopause = getFineTuningBaryValue(tFt, atmPct);
-            }
-        }
-    }
-    syncSolverConfigFromData();
-}
-
+// fillDataTuningFromBary : plus ici. C'est window.TUNING.fillDataTuningFromBary (API_BILAN/tuning.js),
+// que main.js et sync_panels.js appelaient déjà — cette page en avait une seconde écriture, avec une
+// sémantique périmée : elle lisait baryByGroup.CLOUD_SW / .SCIENCE alors que l'API impose ATM comme
+// source unique et force les deux autres à sa valeur (tuning.js v1.0.13). Tant que les trois barycentres
+// sont d'accord les deux versions donnent le même résultat au chiffre près ; dès qu'ils divergent —
+// et le mini-curseur du panneau visu écrit CLOUD_SW seul — 7 paramètres de CLOUD_SW partaient de travers.
 function applyFineTuningBaryGroup(groupKey, percentRaw, refreshPanel) {
     var targets = getFineTuningTargetsByGroup(groupKey);
     setFineTuningBaryPercent(groupKey, percentRaw);

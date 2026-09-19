@@ -89,6 +89,9 @@
     <script src="../static/compute/scie_/scie_convergence.js"></script>
     <!-- Stubs CONVERGE.clearConvergenceTrace / CONVERGE.appendConvergenceStep sont définis nativement par calculations_flux.js (noop par défaut, surchargés plus bas). -->
     <script src="../../API_BILAN/convergence/calculations_flux.js"></script>
+    <!-- Tuning : l'interpolation du barycentre est celle de l'API (une seule règle pour le moteur,
+         le banc et cette page). Après physics.js, comme l'exige tuning.js. -->
+    <script src="../../API_BILAN/tuning.js"></script>
     <script src="../static/FPS/FPS.js"></script>
     
     <!-- Code de la page, extrait le 2026-09-19 du <script> en ligne de 1810 lignes qui vivait ici.

@@ -1,9 +1,11 @@
 // File: CO2/static/scie/scie_main.js - Démarrage de la page et pont postMessage
 // Desc: Le DÉMARRAGE, en dernier : j'écoute les messages de la page parente, j'envoie le tuning initial et je
 //       monte la page au DOMContentLoaded. Tout ce dont j'ai besoin est défini par les fichiers ci-dessus.
-// Version 1.0.0
+// Version 1.0.1
 // Date: [September 19, 2026]
 // logs :
+//   - v1.0.1: les 3 appels passent par window.TUNING.fillDataTuningFromBary (API) — la copie locale
+//     de scie_tuning_view.js est supprimée.
 //   - v1.0.0: extraction depuis le <script> en ligne de CO2/html/scie_compute.html (1810 lignes d'un bloc).
 //     Découpage par responsabilité, à code IDENTIQUE : seule l'indentation change. Les fichiers restent des
 //     scripts classiques chargés dans l'ordre des dépendances — la page garde son chargement synchrone.
@@ -62,7 +64,7 @@ window.addEventListener('message', function(event) {
         if (DATA && window !== window.top) {
             Object.keys(DATA).forEach(function (k) { window.DATA[k] = DATA[k]; });
             // Ne pas réinitialiser baryByGroup.SOLVER : conserver le réglage utilisateur (ex. 100%)
-            fillDataTuningFromBary();
+            window.TUNING.fillDataTuningFromBary();
             displayResults(window.DATA);
             displayConvergence();
         }
@@ -91,7 +93,7 @@ window.addEventListener('message', function(event) {
         bg.CLOUD_SW = bg.ATM;
         bg.SCIENCE = bg.ATM;
         if (p.baryByGroup.SOLVER !== undefined) bg.SOLVER = p.baryByGroup.SOLVER;
-        fillDataTuningFromBary();
+        window.TUNING.fillDataTuningFromBary();
         if (!syncFineTuningSlidersFromBary()) {
             displayFineTuning();
         }
@@ -100,7 +102,7 @@ window.addEventListener('message', function(event) {
 
 // Au first load : appliquer 100 % (nominal), rafraîchir l’affichage, puis envoyer au parent.
 function sendInitialTuningToParent() {
-    fillDataTuningFromBary();
+    window.TUNING.fillDataTuningFromBary();
     if (window.parent === window) return;
     var T = window.DATA['🎚️'];
     window.parent.postMessage({
