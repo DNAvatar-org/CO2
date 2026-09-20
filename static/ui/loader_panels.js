@@ -60,8 +60,8 @@
         // Définitions des clés : source unique côté API (v1.1.33). Le rendu suit, côté CO2.
         '../API_BILAN/data/alphabet.js',
         '../API_BILAN/data/dico.js',
-        '../API_BILAN/demo/alphabet_render.js',
-        '../API_BILAN/demo/dico_render.js',
+        '../API_BILAN/demo/js/alphabet_render.js',
+        '../API_BILAN/demo/js/dico_render.js',
         '../API_BILAN/data/initDATA.js',
         '../API_BILAN/config/fine_tuning_bounds.js',
         '../API_BILAN/physics/physics.js',

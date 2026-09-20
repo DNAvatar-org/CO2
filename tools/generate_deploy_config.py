@@ -174,7 +174,7 @@ def parse_html_chain(paths: set[str]) -> None:
 def parse_chars_images(paths: set[str]) -> None:
     # charsImages vit avec le rendu, parti dans API_BILAN/demo/. CO2 garde ses propres fonts/pics/ :
     # l'app les résout par rapport au document, pas au script. On lit donc la liste là où elle est.
-    alphabet = ROOT.parent / "API_BILAN/demo/alphabet_render.js"
+    alphabet = ROOT.parent / "API_BILAN/demo/js/alphabet_render.js"
     if not alphabet.exists():
         return
     text = read_text(alphabet)
