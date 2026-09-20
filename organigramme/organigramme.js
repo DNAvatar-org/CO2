@@ -114,6 +114,18 @@ const TERRE_CANVAS_PX = 234;                                          // facteur
 const TERRE_ORTHO_VISIBLE_DIAMETER_RATIO = 0.44;                      // facteur #2: taille apparente de référence (0..1)
 const TERRE_RADIUS_VISUAL_GAIN = 0.05;                                // 0 = tailles époques neutralisées, 1 = effet complet
 const TERRE_MAX_RADIUS_PX = 99;                                       // référence technique (Hadéen)
+
+/* Orientation d'ouverture du globe — ce qu'on voit avant d'y toucher.
+   PLANET_DEFAULT_TILT_DEG : angle de sphere.rotation.x, en degrés. Positif penche le pôle NORD
+   vers l'observateur ; négatif montre l'Antarctique. À 45° la calotte arctique est bien dans le
+   disque, pas rasante sur le bord — c'est la vue demandée.
+   PLANET_DEFAULT_ROT_Y_DEG : longitude de départ, et rien de plus. Le globe tourne tout seul à
+   autoOmegaRadPerSec ≈ 17°/s (plus bas), donc cette valeur dit où commence la rotation, pas où
+   elle s'arrête. 105° place l'Eurasie face à nous au premier rendu.
+   Les deux sont écrasées dès que l'utilisateur fait glisser le globe (savedPlanetTiltAngle /
+   savedPlanetRotationY), et reprises telles quelles au changement d'époque. */
+const PLANET_DEFAULT_TILT_DEG = 45;
+const PLANET_DEFAULT_ROT_Y_DEG = 105;
 const NON_CHECKABLE_NODE_IDS = new Set(["co2", "methane", "h2o", "albedo-btn"]);
 
 // Source unique UI : CONFIG_COMPUTE pour la précision, window.DATA['🔘']['🔘🎞'] pour l'animation.
@@ -928,7 +940,7 @@ function initPlanetThreeJS(
   // Sauvegarder l'angle de rotation actuel si la sphère existe déjà
   // Priorité 1: Utiliser la valeur sauvegardée dans window (depuis setEpoch/updateHadeenTexture)
   // Priorité 2: Utiliser la valeur depuis canvas._threeJSData.sphere (si canvas existe encore)
-  let savedRotationY = 0;
+  let savedRotationY = (PLANET_DEFAULT_ROT_Y_DEG * Math.PI) / 180;
   // 🔒 Restaurer la rotation sauvegardée si disponible (pour éviter que la terre pivote d'un coup)
   if (window.savedPlanetRotationY !== undefined) {
     savedRotationY = window.savedPlanetRotationY;
@@ -958,7 +970,7 @@ function initPlanetThreeJS(
   const lightContrast = 1.85; // Contraste éclairci pour astre plus lisible (était 1.5)
   let tiltAngle = (window.savedPlanetTiltAngle !== undefined)
     ? window.savedPlanetTiltAngle
-    : -23.44; // Obliquité actuelle ~23,44° (signe conservé vs ancien −53° pour le rendu texture) ; persistée dans savedPlanetTiltAngle
+    : PLANET_DEFAULT_TILT_DEG; // persistée dans savedPlanetTiltAngle dès le premier glissement
 
   // Scène - fond transparent pour s'intégrer dans le diagramme
   const scene = new THREE.Scene();
