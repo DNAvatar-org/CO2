@@ -558,6 +558,24 @@ function updateTimeline() {
             const cur = (window.DATA && window.DATA['📜'] && Number.isFinite(Number(window.DATA['📜']['📿🕰'])))
                 ? Number(window.DATA['📜']['📿🕰']) : 0;
             sig = (epochAct['📅'] || '') + '|' + wh.order.join(',') + '|#' + cur;
+        } else if (wh && Object.keys(wh).some((k) => !isNaN(Number(k)))) {
+            // 📱 : les actions naissent de tranches d'années (2000, 2025, 2050, 2075), pas d'un order.
+            // La signature doit suivre la tranche courante — c'est-à-dire 📿💫 — sinon elle vaut « 📱|💫 »
+            // du début à la fin de l'époque : getActionForDate ne reçoit que ▶ (2000, fixe) et infoTimeMa
+            // (qui reste à 0, l'époque ne se compte pas en Ma). Pendant la marche 2000→2100 les boutons se
+            // redessinaient quand même, parce que events.js rappelle updateEpochActions après chaque action ;
+            // mais au reclic sur l'époque, plus personne ne le faisait, et la cellule restait sur
+            // « FIN DE SIMULATION » sans boutons alors que setEpoch avait déjà remis 📿💫 et 📅 à 2000.
+            // La signature porte AUSSI l'année courante, et pas seulement le compteur de tics : c'est
+            // elle que lit updateEpochActions pour choisir sa tranche. Les deux ne se remettent pas à
+            // zéro dans le même souffle — au reclic sur l'époque, 📿💫 repassait à 0 avant 📅, la
+            // signature changeait donc pendant cet entre-deux, le rendu se faisait encore sur 2100
+            // (« FIN DE SIMULATION », aucun bouton) et se trouvait mémorisé pour de bon. Mémoriser un
+            // rendu sous une clé qui n'englobe pas tout ce dont il dépend, c'est garder le faux.
+            const H = (window.DATA && window.DATA['📜']) ? window.DATA['📜'] : {};
+            const tic = Number.isFinite(Number(H['📿💫'])) ? Number(H['📿💫']) : 0;
+            const annee = Number.isFinite(Number(H['📅'])) ? Number(H['📅']) : '';
+            sig = (epochAct['📅'] || '') + '|an#' + tic + '@' + annee;
         } else {
             const actionKey = cfgOrg.getActionForDate(epochAct['▶'], window.infoTimeMa) || '💫';
             sig = (epochAct['📅'] || '') + '|' + actionKey;
