@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 # File: generate_deploy_config.py - Manifeste deploy CO2 depuis références runtime
 # Desc: Parse index/loader/configOrganigramme/alphabet/CSS ; ne garde que fichiers existants
-# Version 1.0.0
+# Version 1.0.1
 # Copyright 2025 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause.
 # Date: July 11, 2025
 # Logs:
+# - v1.0.1: parse_api_epoch_textures — 🌙 (carte de nuit) et 🖼 (suite d'images) sont cités dans
+#   API_BILAN/config/configTimeline.js depuis le déménagement de la config d'époques ; sans cette
+#   passe fonds/_002000n.png disparaissait du manifeste.
 # - v1.0.0: initial — TEXTURES_THREEJS, SCRIPTS loader, HTML chain, charsImages, url() CSS
 
 from __future__ import annotations
@@ -212,6 +215,26 @@ def parse_config_assets(paths: set[str]) -> None:
         paths.add(f"fonds/{pref}{padded}a.png")
 
 
+def parse_api_epoch_textures(paths: set[str]) -> None:
+    """Textures citées par la config d'époques, partie dans API_BILAN.
+
+    La carte de nuit 🌙 et la suite d'images 🖼 sont des PNG de CO2/fonds/, mais leur
+    référence vit dans API_BILAN/config/configTimeline.js depuis que la config d'époques
+    y a déménagé. Le reste du générateur ne lit que CO2 : sans cette passe, _002000n.png
+    sortait du manifeste alors que la Terre après 2000 s'en sert pour sa face nocturne.
+    """
+    config = ROOT.parent / "API_BILAN/config/configTimeline.js"
+    if not config.exists():
+        print(
+            "❌ [generate_deploy_config] API_BILAN/config/configTimeline.js introuvable",
+            file=sys.stderr,
+        )
+        return
+    text = read_text(config)
+    for m in re.finditer(r"""['"](fonds/[^'"]+\.(?:png|jpg|svg))['"]""", text):
+        paths.add(m.group(1))
+
+
 def parse_js_string_assets(paths: set[str]) -> None:
     for js in ROOT.rglob("*.js"):
         if "tools/" in js.as_posix() or "static/lib/" in js.as_posix():
@@ -247,6 +270,7 @@ def collect_runtime_paths() -> set[str]:
     parse_html_chain(paths)
     parse_chars_images(paths)
     parse_config_assets(paths)
+    parse_api_epoch_textures(paths)
     parse_js_string_assets(paths)
     parse_css_urls(paths)
     return {p for p in paths if not is_excluded(p)}

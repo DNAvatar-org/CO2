@@ -14,8 +14,16 @@
       "dest": "pages/bilan_radiatif/CO2/favicon64.png"
     },
     {
+      "src": "fonds/-00001Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00001Ma.png"
+    },
+    {
       "src": "fonds/-00002Ma.png",
       "dest": "pages/bilan_radiatif/CO2/fonds/-00002Ma.png"
+    },
+    {
+      "src": "fonds/-00017Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00017Ma.png"
     },
     {
       "src": "fonds/-00033Ma.png",
@@ -46,24 +54,112 @@
       "dest": "pages/bilan_radiatif/CO2/fonds/-002000a.png"
     },
     {
+      "src": "fonds/-00250Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00250Ma.png"
+    },
+    {
+      "src": "fonds/-00280Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00280Ma.png"
+    },
+    {
       "src": "fonds/-003000a.png",
       "dest": "pages/bilan_radiatif/CO2/fonds/-003000a.png"
+    },
+    {
+      "src": "fonds/-00420Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00420Ma.png"
+    },
+    {
+      "src": "fonds/-005000a.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-005000a.png"
+    },
+    {
+      "src": "fonds/-006000a.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-006000a.png"
+    },
+    {
+      "src": "fonds/-00600Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00600Ma.png"
+    },
+    {
+      "src": "fonds/-00690Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00690Ma.png"
+    },
+    {
+      "src": "fonds/-00720Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00720Ma.png"
+    },
+    {
+      "src": "fonds/-00750Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-00750Ma.png"
     },
     {
       "src": "fonds/-010000a.png",
       "dest": "pages/bilan_radiatif/CO2/fonds/-010000a.png"
     },
     {
+      "src": "fonds/-01000Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-01000Ma.png"
+    },
+    {
+      "src": "fonds/-01320Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-01320Ma.png"
+    },
+    {
+      "src": "fonds/-01910Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-01910Ma.png"
+    },
+    {
       "src": "fonds/-02500Ma.png",
       "dest": "pages/bilan_radiatif/CO2/fonds/-02500Ma.png"
+    },
+    {
+      "src": "fonds/-03000Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-03000Ma.png"
+    },
+    {
+      "src": "fonds/-03500Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-03500Ma.png"
+    },
+    {
+      "src": "fonds/-04000Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04000Ma.png"
     },
     {
       "src": "fonds/-04100Ma.png",
       "dest": "pages/bilan_radiatif/CO2/fonds/-04100Ma.png"
     },
     {
+      "src": "fonds/-04200Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04200Ma.png"
+    },
+    {
+      "src": "fonds/-04300Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04300Ma.png"
+    },
+    {
+      "src": "fonds/-04400Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04400Ma.png"
+    },
+    {
       "src": "fonds/-04500Ma.png",
       "dest": "pages/bilan_radiatif/CO2/fonds/-04500Ma.png"
+    },
+    {
+      "src": "fonds/-04600Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04600Ma.png"
+    },
+    {
+      "src": "fonds/-04700Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04700Ma.png"
+    },
+    {
+      "src": "fonds/-04800Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04800Ma.png"
+    },
+    {
+      "src": "fonds/-04900Ma.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/-04900Ma.png"
     },
     {
       "src": "fonds/-05000Ma.png",
@@ -72,6 +168,14 @@
     {
       "src": "fonds/_001800a.png",
       "dest": "pages/bilan_radiatif/CO2/fonds/_001800a.png"
+    },
+    {
+      "src": "fonds/_002000a.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/_002000a.png"
+    },
+    {
+      "src": "fonds/_002000n.png",
+      "dest": "pages/bilan_radiatif/CO2/fonds/_002000n.png"
     },
     {
       "src": "fonts/pics/big_impact.png",
@@ -270,6 +374,38 @@
       "dest": "pages/bilan_radiatif/CO2/static/lib/three.min.js"
     },
     {
+      "src": "static/scie/scie_actions.js",
+      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_actions.js"
+    },
+    {
+      "src": "static/scie/scie_boot.js",
+      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_boot.js"
+    },
+    {
+      "src": "static/scie/scie_config_view.js",
+      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_config_view.js"
+    },
+    {
+      "src": "static/scie/scie_debug_click.js",
+      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_debug_click.js"
+    },
+    {
+      "src": "static/scie/scie_main.js",
+      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_main.js"
+    },
+    {
+      "src": "static/scie/scie_results_view.js",
+      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_results_view.js"
+    },
+    {
+      "src": "static/scie/scie_timeline.js",
+      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_timeline.js"
+    },
+    {
+      "src": "static/scie/scie_tuning_view.js",
+      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_tuning_view.js"
+    },
+    {
       "src": "static/shell.js",
       "dest": "pages/bilan_radiatif/CO2/static/shell.js"
     },
@@ -278,12 +414,12 @@
       "dest": "pages/bilan_radiatif/CO2/static/site_paths.js"
     },
     {
-      "src": "static/texts/epochs_alt2sec.js",
-      "dest": "pages/bilan_radiatif/CO2/static/texts/epochs_alt2sec.js"
-    },
-    {
       "src": "static/sync_panels.js",
       "dest": "pages/bilan_radiatif/CO2/static/sync_panels.js"
+    },
+    {
+      "src": "static/texts/epochs_alt2sec.js",
+      "dest": "pages/bilan_radiatif/CO2/static/texts/epochs_alt2sec.js"
     },
     {
       "src": "static/timeline/events.js",
@@ -296,6 +432,10 @@
     {
       "src": "static/ui/api_onglets.js",
       "dest": "pages/bilan_radiatif/CO2/static/ui/api_onglets.js"
+    },
+    {
+      "src": "static/ui/cpu_threads_notice.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/cpu_threads_notice.js"
     },
     {
       "src": "static/ui/layout.js",
@@ -312,10 +452,6 @@
     {
       "src": "static/ui/modal.js",
       "dest": "pages/bilan_radiatif/CO2/static/ui/modal.js"
-    },
-    {
-      "src": "fonds/_002000n.png",
-      "dest": "pages/bilan_radiatif/CO2/fonds/_002000n.png"
     }
   ]
 }
