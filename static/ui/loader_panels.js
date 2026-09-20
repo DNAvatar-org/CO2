@@ -89,6 +89,8 @@
         'organigramme/organigramme.js',
         '../API_BILAN/geology/calculations_geology.js',
         '../API_BILAN/h2o/calculations_h2o.js',
+        '../API_BILAN/ocean/sinks_ocean.js',
+        '../API_BILAN/land/sinks_land.js',
         '../API_BILAN/co2/calculations_co2.js',
         '../API_BILAN/radiative/calculations.js',
         '../API_BILAN/convergence/calculations_flux.js',
