@@ -416,10 +416,10 @@ const EVENT_STORY = {
             'Émissions doublées sur 25 ans\n\n' +
               'Même mécanique, rythme deux fois plus fort. Les puits océan et forêts ne suivent pas proportionnellement : ils saturent, donc la PART qui reste dans l\'air augmente.\n\n' +
               'C\'est pourquoi doubler les émissions fait plus que doubler l\'écart de température.',
-        '🐖':
-            'Émissions qui ne freinent jamais\n\n' +
-              'Les deux autres boutons décroissent après 2050. Celui-ci part des 850 GtCO₂ réellement émis entre 2000 et 2025 et les multiplie par √2 à chaque tranche : 48, puis 68, puis 96 GtCO₂ par an, contre environ 41 aujourd\'hui.\n\n' +
-              'Cumulé sur 2025-2100, cela fait 5306 GtCO₂ — l\'ordre de grandeur du scénario le plus haut du GIEC (SSP5-8.5). C\'est l\'hypothèse « on consomme sans jamais ralentir », pas une prévision.'
+        '🪾':
+            'Le double du bidon\n\n' +
+              'À chaque clic, exactement deux fois ce que libère le bidon sur la même tranche : 144, puis 96, puis 56 GtCO₂ par an, contre environ 41 aujourd\'hui.\n\n' +
+              'Cumulé sur 2025-2100, cela fait 7400 GtCO₂. Ce n\'est pas une prévision : c\'est la borne haute mécanique du geste, pour voir jusqu\'où les équations vont quand on ne freine jamais.'
     }
 };
 

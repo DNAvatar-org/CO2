@@ -179,7 +179,8 @@
     box-sizing: border-box;
 }
 #flux-diagram #timeline-events-logos.year-indexed {
-    gap: 8px;
+    /* 3 logos (⛽ 🛢 🪾) serrés : gap nul + léger chevauchement, ils se lisent comme un seul groupe */
+    gap: 0;
     justify-content: center;
 }
 #flux-diagram #timeline-events-logos .organigram-logo {
@@ -253,7 +254,7 @@
     min-width: calc(var(--_slot-logo) * 46 / 65);
     min-height: calc(var(--_slot-logo) * 46 / 65);
     font-size: calc(var(--_slot-logo) * 26 / 65);
-    margin-left: 0;
+    margin-left: -6px;
 }
 
 /* SKIP : même lissage hover que les tuiles événements (🎞 est dans .flux-circle-bg, pas sous #timeline-events-logos) */
