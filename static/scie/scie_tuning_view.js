@@ -20,7 +20,20 @@ function getFineTuningTargets() {
     });
 }
 
+/**
+ * Une cible SORTIE du barycentre (`fixed` dans fine_tuning_bounds.js) n'a plus de min/moy/max :
+ * sa plage ne décrivait pas une incertitude scientifique et ne doit plus s'afficher comme telle.
+ * Voir API_BILAN/doc/AUDIT_TUNING_7_PARAMS.md.
+ */
+function isFineTuningFixed(target) {
+    return target && target.fixed != null && Number.isFinite(Number(target.fixed));
+}
+
 function getFineTuningThreeValues(target) {
+    if (isFineTuningFixed(target)) {
+        const f = Number(target.fixed);
+        return [{ label: 'figé', value: f }];
+    }
     const min = Number(target.min);
     const max = Number(target.max);
     const avg = (min + max) / 2;
@@ -54,6 +67,8 @@ function setFineTuningBaryPercent(groupKey, percentRaw) {
 }
 
 function getFineTuningBaryValue(target, baryPercent) {
+    // Cible sortie du barycentre : la jauge ne la touche plus (même règle que tuning.js interpolate).
+    if (isFineTuningFixed(target)) return Number(target.fixed);
     var min = Number(target.min);
     var max = Number(target.max);
     var pct = Number(baryPercent);

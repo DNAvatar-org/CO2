@@ -4837,9 +4837,17 @@ var _finetuningAltFallback =
 function _finetuningDisplayNote(t) {
   if (!t) return "";
   if (t.key === "H2O_EDS_SCALE") {
-    return "multiplicateur global κ_H₂O EDS (overlap CO₂/H₂O, profil HR)";
+    return "multiplicateur global κ_H₂O EDS — remplace trois physiques absentes (continuum MT_CKD, overlap CO₂/H₂O, profil HR). Valeur sans fondement : figée le temps de leur trouver une formule";
+  }
+  if (t.key === "SULFATE_BOOST_MAX") {
+    return "plafond anti-emballement du proxy sulfate — garde-fou numérique, pas une grandeur mesurée";
   }
   return t.note || "";
+}
+
+/** Cible sortie du barycentre (fine_tuning_bounds.js `fixed`). Voir API_BILAN/doc/AUDIT_TUNING_7_PARAMS.md. */
+function _finetuningIsFixed(t) {
+  return !!(t && t.fixed != null && Number.isFinite(Number(t.fixed)));
 }
 
 /** Cible interpolée par la jauge ATM (flou scientifique titre) — pas HYSTERESIS ni factorTropopause fixe. */
@@ -4873,6 +4881,9 @@ function _finetuningRangePair(minVal, maxVal, formatKey) {
 
 function _finetuningRangeStrFromTarget(t) {
   if (!t || t.min === undefined || t.max === undefined) return "";
+  // Une cible figée n'affiche PAS de crochet : « [a , b] » se lit « ça varie là-dedans », ce qui
+  // est précisément la confusion qu'on vient d'enlever. Sa plage d'origine reste dans la config.
+  if (_finetuningIsFixed(t)) return "";
   return _finetuningRangePair(t.min, t.max, t.key);
 }
 
@@ -4904,7 +4915,7 @@ function _finetuningLiveLineFromTarget(t, picto, keyLabelOverride) {
     keyLabelOverride ||
     (t.key === "iceImpactFactor01" ? "iceImpact" : t.key);
   return _finetuningLiveLine(
-    picto,
+    _finetuningIsFixed(t) ? "🔒" : picto,
     _finetuningRangeStrFromTarget(t),
     keyLabel,
     liveStr,
@@ -5048,19 +5059,29 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
   const T = window.DATA && window.DATA["🎚️"];
   const bounds = window.FINE_TUNING_BOUNDS;
   const bg = T && T.baryByGroup;
+  const atmTargets = (bounds && bounds.targets ? bounds.targets : []).filter(
+    _finetuningIsAtmTarget
+  );
+  const nFlous = atmTargets.filter(function (t) { return !_finetuningIsFixed(t); }).length;
+  const nFiges = atmTargets.length - nFlous;
   const introHead =
     "Flou scientifique — jauge ATM " +
     (pctAtm ||
       (bg && Number.isFinite(Number(bg.ATM))
         ? Math.round(Number(bg.ATM)) + "%"
         : "100%")) +
-    " (nuages SW + κ_H₂O ; hystérésis = jauges scie séparées)";
+    " : " + nFlous + " paramètre" + (nFlous > 1 ? "s" : "") + " réellement incertain" +
+    (nFlous > 1 ? "s" : "") + (nFiges > 0 ? ", " + nFiges + " figé" + (nFiges > 1 ? "s" : "") + " hors jauge" : "") +
+    " (nuages SW ; hystérésis = jauges scie séparées)";
 
   if (!bounds || !bounds.targets || !Array.isArray(bounds.targets) || !T) {
     return detailOnly ? _finetuningAltFallback : introHead + "\n" + _finetuningAltFallback;
   }
 
+  // Deux sections : ce que la jauge fait varier, puis ce qu'elle ne touche plus. Les figés restent
+  // affichés — ils pèsent toujours dans le calcul — mais ne doivent plus se lire comme du flou.
   const parts = [];
+  const fixedParts = [];
 
   bounds.targets.forEach(function (t) {
     if (!_finetuningIsAtmTarget(t)) return;
@@ -5069,8 +5090,15 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
         ? _finetuningRadiativeSciencePicto[t.key] || "🔬"
         : _finetuningAltPicto[t.key] || "☁️";
     var line = _finetuningLiveLineFromTarget(t, picto);
-    if (line) parts.push(line);
+    if (!line) return;
+    (_finetuningIsFixed(t) ? fixedParts : parts).push(line);
   });
+
+  if (fixedParts.length) {
+    parts.push("");
+    parts.push("🔒 Figés hors barycentre — leur plage n'était pas une incertitude scientifique :");
+    fixedParts.forEach(function (l) { parts.push(l); });
+  }
 
   const detail = parts.length ? parts.join("\n") : _finetuningAltFallback;
   return detailOnly ? detail : introHead + "\n" + detail;
