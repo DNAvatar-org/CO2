@@ -613,11 +613,14 @@
             this.outerIndex = 0;
             this._hystLoggedFirstCycle = false;
             this._hystLastCycleLines = null;
-            // Baseline sulfates au démarrage : si l'époque n'a pas de ⚖️✈ (ex. ⛄), fallback 1e12 kg
-            // (ordre de grandeur volcanique Néoprotérozoïque cohérent avec les époques voisines).
+            // Baseline sulfates au démarrage : si l'époque n'a pas de ⚖️✈, fallback 4,0e8 kg SO₄
+            // = fond naturel préindustriel (Tsigaridis et al. 2006 ACP 6:5143, Table 5), la valeur
+            // que portent désormais les époques géologiques (configTimeline v1.4.89).
+            // v-2026-09-22 : était 1e12 kg, l'ordre de grandeur de l'ancien « proxy CCN » — 2500 ×
+            // trop haut depuis que ⚖️✈ est une charge atmosphérique réelle.
             var D = window.DATA;
             this.sulfateBaselineKg = (D && D['⚖️'] && Number.isFinite(Number(D['⚖️']['⚖️✈'])) && Number(D['⚖️']['⚖️✈']) > 0)
-                ? Number(D['⚖️']['⚖️✈']) : 1e12;
+                ? Number(D['⚖️']['⚖️✈']) : 4.0e8;
             // v2.1.17 : Init de l'état AVANT le pas 1 du scan pour éliminer l'artefact de boot.
             // Sans cette init, pas 1 tourne avec les masses secondaires non-peuplées (ex. ⛄ : ⚖️✈=0
             // en config car commenté), puis pas 2 saute brutalement → faux pas de bifurcation

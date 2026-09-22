@@ -121,7 +121,7 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🍰🫧🏭  CO₂
 🍰🫧🐄  CH₄
 🍰🫧🫁  O₂
-🍰🫧✈  SO₄²⁻ (proxy CCN)
+🍰🫧✈  SO₄²⁻ (fraction massique)
 🍰🫧💨  N₂
 🍰🫧📿🌈  Σ(🍰🫧❀🌈) pour ❀∈{🏭,🐄,💧}
 🍰🫧🏭🌈  Capacité radiative IR de CO₂
@@ -256,8 +256,8 @@ PARTIE 3: FORMULES DE CALCUL
 🍰🫧💧 = Proportion radiative EDS de H₂O dans l'atmosphère
 🍰🫧❀🌈 = Capacité radiative IR de ❀ - ∀ ❀ ∈ {🏭, 🐄, 💧}
 🍰🫧📿🌈 = Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, 🐄, 💧} (pour normalisation)
-🍰🫧✈ = ⚖️✈ / ⚖️🫧 (proxy sulfate microphysique nuageuse)
-🍰💭 = clamp(0.4 + 0.5×(⚖️🫁/1.08e18 + ⚖️🐄/5.2e12) + 0.1×(⚖️✈/1e14), 0.3, 1.0) - CCN
+🍰🫧✈ = ⚖️✈ / ⚖️🫧 (fraction massique de sulfate)
+🍰💭 = clamp(0.4 + 0.5×(⚖️🫁/1.08e18 + ⚖️🐄/5.2e12) + 0.1×(⚖️✈/1.05e9), 0.3, 1.0) - CCN  ⚠️ saturé à 1.000 sur 18 époques/19
 ☁️ = (1 - (1 - min(🍰🫧☔, 1))^0.6) × 🍰💭 - Sundqvist (RH) × CCN
 
 💧 CYCLE DE L'EAU:

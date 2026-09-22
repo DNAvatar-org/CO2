@@ -76,10 +76,25 @@
   - forcing_CH4 : calculé depuis CH4 (si disponible)
 
 #### H2O
-- **top** : `{h2o_percent}%`
-  - h2o_percent : calculé depuis vapeur d'eau ou 0 si désactivé
+- **top** : `{h2o_percent}%` — **fraction MOLAIRE** depuis le 2026-09-22 (organigramme v1.0.117),
+  comme les badges CO₂ et CH₄. Avant c'était une fraction MASSIQUE, donc l'eau se lisait ~1,6×
+  trop basse et les trois voisins ne parlaient pas la même langue (📱 : 0,667 % massique =
+  1,07 % molaire). Conversion : `x_molaire = 🍰🫧💧 × 🧪 / M_H2O`, où 🧪 est la masse molaire de
+  l'air de l'époque — elle change (atmosphère de CO₂, de N₂…), donc le facteur n'est pas constant.
+  - **Bascule automatique en ppm sous 0,1 %** (`shouldConvertPercentToPpm`). Sur les 19 époques,
+    une seule bascule : ⛄ Plein Snowball, **42 ppm**. Le seuil n'est volontairement PAS l'inverse
+    exact du sens ppm → % (qui bascule à 10 000 ppm = 1 %) : la vapeur vit autour de 1 % molaire,
+    un seuil à 1 % afficherait 🚂 en « 9936 ppm » et 📱 juste à côté en « 1.1 % ».
+  - h2o_percent : calculé depuis vapeur d'eau ou 0 si désactivé. ⚠️ `RUNTIME_STATE.h2oVaporPercent`
+    reste, lui, une fraction MASSIQUE ×100 : d'autres consommateurs la lisent telle quelle
+    (main.js `calculateH2OParameters`, sync_panels, postMessage des panneaux). Le badge recalcule
+    sa propre valeur molaire — on ne change pas la sémantique d'une variable partagée pour un
+    problème d'affichage.
 - **bottom** : `{forcing_H2O} W/m²`
   - forcing_H2O : `window.calculateH2OForcing(window.UI_STATE.waterVaporEnabled, plotData.current.cloud_coverage)`
+  - ⚠️ Un EDS non nul avec un pourcentage affiché à 0,0 n'est PAS une incohérence : c'était l'arrondi.
+    À ⛄, 42 ppmv d'air saturé (RH = 1 à −56 °C) rendent ~5 W/m² — ce sont les premiers ppm d'eau
+    qui portent le plus, les centres de bande saturant ensuite.
 
 #### Albédo
 - **top** : `{forcing_albedo} W/m²`

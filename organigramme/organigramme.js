@@ -1,6 +1,12 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Version 1.0.116
+// Logs: v1.0.117 badge H₂O — passe en fraction MOLAIRE (comme CO₂/CH₄ qui viennent de co2KgToFraction) au lieu
+//   de la fraction MASSIQUE 🍰🫧💧×100, et bascule automatiquement en ppm sous 1 %. Branche au passage
+//   `shouldConvertPercentToPpm`, déclarée et lue depuis toujours mais à laquelle rien n'assignait jamais true —
+//   le sens ppm → % était câblé, le sens % → ppm ne l'avait jamais été. Révélé par ⛄ Plein Snowball : 42 ppmv
+//   d'air saturé à −56 °C s'affichaient « 0,0 % » à côté d'un EDS de ~5 W/m². Retrait aussi des deux formateurs
+//   SULFATE_BOOST_SCALE (v1.2.65 : la jauge n'existe plus).
+// Version 1.0.117
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -4807,8 +4813,9 @@ var _finetuningAltPicto = {
   CLOUD_FRACTION_INDEX_GAIN: "☁️",
   OPTICAL_EFF_BASE: "🧪",
   OPTICAL_EFF_CCN_GAIN: "🧪",
-  SULFATE_BOOST_SCALE: "SO₄",
-  SULFATE_BOOST_MAX: "SO₄"
+  SULFATE_CCN_EXPONENT: "SO₄"
+  // SULFATE_BOOST_SCALE / SULFATE_BOOST_MAX retirés (2026-09-22) : remplacés par l'exposant mesuré
+  // de la loi de puissance McCoy 2018 (calculations_albedo v1.2.65).
   // TEMP_FACTOR_REF_K retiré : partition Hu & Stamnes (1993) maintenant codée en dur.
 };
 
@@ -4830,7 +4837,7 @@ var _finetuningHystPicto = {
 var _finetuningAltFallback =
   "☁️ [0.17 , 0.23] CLOUD_FRACTION_BASE=0.19 — base couverture nuageuse SW\n" +
   "🧪 [1.00 , 1.20] OPTICAL_EFF_BASE=1.10 — efficacité optique de base\n" +
-  "SO₄ [300 , 700] SULFATE_BOOST_SCALE=500 — gain sulfate proxy → CCN\n" +
+  "SO₄ [0.11 , 0.29] SULFATE_CCN_EXPONENT=0.22 — exposant a de CDNC ∝ (masse SO₄)^a\n" +
   "☁️ [0.08 , 0.14] CLOUD_FRACTION_INDEX_GAIN=0.11 — gain index nuageux\n" +
   "💧 [1.00 , 0.60] H2O_EDS_SCALE=0.80 — multiplicateur global κ_H₂O EDS";
 
@@ -4839,8 +4846,8 @@ function _finetuningDisplayNote(t) {
   if (t.key === "H2O_EDS_SCALE") {
     return "multiplicateur global κ_H₂O EDS — remplace trois physiques absentes (continuum MT_CKD, overlap CO₂/H₂O, profil HR). Valeur sans fondement : figée le temps de leur trouver une formule";
   }
-  if (t.key === "SULFATE_BOOST_MAX") {
-    return "plafond anti-emballement du proxy sulfate — garde-fou numérique, pas une grandeur mesurée";
+  if (t.key === "SULFATE_CCN_EXPONENT") {
+    return "exposant a de la loi sulfate → gouttelettes, CDNC ∝ (masse SO₄)^a — la seule jauge dont les bornes soient MESURÉES : dispersion sur 19 régions (McCoy 2018, quartiles). Remplace deux constantes inventées, SULFATE_BOOST_SCALE et son plafond";
   }
   return t.note || "";
 }
@@ -4861,7 +4868,6 @@ function _finetuningIsAtmTarget(t) {
 }
 
 function _finetuningFormatRangeEndpoint(key, val) {
-  if (key === "SULFATE_BOOST_SCALE") return String(Math.round(Number(val)));
   if (key === "seaIceTransitionRangeK") return String(Math.round(Number(val) * 1000));
   if (key === "co2OceanRatioRef") return Number(val).toFixed(1);
   if (key === "factorTropopause") return Number(val).toFixed(4);
@@ -4924,7 +4930,6 @@ function _finetuningLiveLineFromTarget(t, picto, keyLabelOverride) {
 }
 
 function _finetuningFormatLiveValue(key, rawVal) {
-  if (key === "SULFATE_BOOST_SCALE") return String(Math.round(Number(rawVal)));
   if (key === "seaIceTransitionRangeK") {
     var k = Number(rawVal);
     var ui = Math.round(k * 1000);
@@ -5285,6 +5290,16 @@ const formatValueFromTemplate = (dataId, value) => {
       "h2o_percent",
       "passing_albedo_percent",
     ];
+    // Grandeurs déjà en % qui DOIVENT pouvoir basculer en ppm quand elles deviennent trop petites
+    // pour un affichage à une décimale. Un albédo ne bascule jamais : il ne descend pas là.
+    const percentToPpmDataIds = ["h2o_percent"];
+    // Seuil de bascule % → ppm : 0,1 %, c'est-à-dire la première décimale affichable.
+    // ⚠️ Ce n'est VOLONTAIREMENT pas l'inverse exact du sens ppm → % (qui bascule à 10 000 ppm = 1 %).
+    //    Mesuré sur les 19 époques : la vapeur d'eau vit autour de 1 % molaire, et un seuil à 1 %
+    //    couperait la frise en plein milieu — 🚂 s'afficherait « 9936 ppm » et 📱, juste à côté,
+    //    « 1.1 % ». À 0,1 % une seule époque bascule, ⛄ Plein Snowball, et c'est bien la seule
+    //    qu'un pourcentage à une décimale n'arrivait pas à dire.
+    const PERCENT_TO_PPM_THRESHOLD_PCT = 0.1;
     const isAlreadyInPercent = percentDataIds.includes(dataId);
     if (hasPercentInTemplate && !hasPpmInTemplate && !isAlreadyInPercent) {
       valueToFormat = value / 10000;
@@ -5292,6 +5307,22 @@ const formatValueFromTemplate = (dataId, value) => {
     } else if (hasPpmInTemplate && !hasPercentInTemplate && value > 10000) {
       valueToFormat = value / 10000;
       shouldConvertPpmToPercent = true;
+    } else if (
+      hasPercentInTemplate &&
+      percentToPpmDataIds.includes(dataId) &&
+      Math.abs(value) > 0 &&
+      Math.abs(value) < PERCENT_TO_PPM_THRESHOLD_PCT
+    ) {
+      // Sens % → ppm. `shouldConvertPercentToPpm` existait depuis toujours — déclarée plus haut,
+      // lue par le formateur juste en dessous ET par les deux remplacements d'unité plus bas —
+      // mais RIEN ne lui assignait jamais true : branche morte. C'est ici qu'elle s'allume.
+      //
+      // Cas qui l'a révélé : ⛄ Plein Snowball à −56 °C, air saturé (RH = 1) → 42 ppmv de vapeur,
+      // soit 0,0042 % — affiché « 0,0 % » à côté d'un EDS de ~5 W/m², ce qui se lisait comme une
+      // contradiction alors que c'est seulement l'arrondi. 42 ppmv qui rendent 5 W/m², c'est normal :
+      // ce sont les premiers ppm d'eau qui portent le plus, les centres de bande saturant ensuite.
+      valueToFormat = value * 10000;
+      shouldConvertPercentToPpm = true;
     }
     const hasBoldInTemplate =
       template.includes("<sup><b>") || template.includes("<sup> <b>");
@@ -5336,7 +5367,7 @@ const formatValueFromTemplate = (dataId, value) => {
         result = result.replace(/ppm/g, "%");
       }
       if (shouldConvertPercentToPpm) {
-        result = result.replace(/%/g, "ppm");
+        result = result.replace(/%/g, " ppm");
       }
       if (shouldConvertWattToMW) {
         result = result.replace(/W\/m²/g, "MW/m²");
@@ -5349,7 +5380,7 @@ const formatValueFromTemplate = (dataId, value) => {
         result = result + "%";
       }
       if (shouldConvertPercentToPpm) {
-        result = result + "ppm";
+        result = result + " ppm";
       }
       if (shouldConvertWattToMW) {
         if (template.includes("W/m²") || template.includes("W/m2")) {
@@ -5745,9 +5776,11 @@ ORG.updateFluxLabels = function (eventId) {
       : 0;
 
   // Paramètres H2O (vapeur + météorites) — forcing_H2O = part EDS vapeur (🧲📛💧). Nuages EDS = 🧲📛⛅ (à brancher sur nouveau nœud).
-  const h2o_vapor_percent = window.RUNTIME_STATE.h2oVaporPercent;
+  // RUNTIME_STATE.h2oVaporPercent reste une fraction MASSIQUE ×100 : d'autres consommateurs la
+  // lisent telle quelle (main.js calculateH2OParameters, sync_panels, postMessage des panneaux).
+  // Le badge, lui, recalcule sa propre valeur MOLAIRE plus bas — on ne change pas la sémantique
+  // d'une variable partagée pour un problème d'affichage.
   const h2o_from_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites;
-  const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
   // En mode corps noir, on peut avoir un forçage albedo si il y a de la glace des météorites
   const forcing_Albedo = (window.CLIMATE && window.CLIMATE.calculateAlbedoForcing)
       ? window.CLIMATE.calculateAlbedoForcing(albedo_num)
@@ -6505,16 +6538,25 @@ ORG.updateFluxLabels = function (eventId) {
 
   // H2O : afficher le pourcentage TOTAL d'eau (base + météorites)
   // Séparé de la couverture nuageuse (qui affecte l'albedo)
-  let h2o_display_value = 0;
-  if (h2o_total_percent > 0) {
-    h2o_display_value = h2o_total_percent;
-  } else if (
-    window.DATA &&
-    window.DATA["💧"] &&
-    window.DATA["💧"]["🍰🫧💧"] != null
-  ) {
-    h2o_display_value = Math.min(100, window.DATA["💧"]["🍰🫧💧"] * 100);
-  }
+  // ⚠️ UNITÉ — le badge H₂O affiche une fraction MOLAIRE, comme les badges CO₂ et CH₄ qui passent
+  // par co2KgToFraction/ch4KgToFraction. Jusqu'au 2026-09-22 il affichait une fraction MASSIQUE :
+  // les trois voisins ne parlaient pas la même langue, et l'eau se lisait ~1,6× trop basse
+  // (📱 : 0,667 % massique = 1,07 % molaire).
+  //     🍰🫧💧 est une fraction MASSIQUE  →  x_molaire = w_massique × 🧪 / M_H2O
+  // où 🧪 = masse molaire de l'air de l'époque (elle change : atmosphère de CO₂, de N₂…).
+  // NB : h2oTotalFromMeteorites est une tout autre grandeur — un pourcentage de l'eau TOTALE de la
+  // planète apportée par les impacts, pas une fraction atmosphérique. Il vaut 0 hors Hadéen/impacts
+  // et n'est donc pas converti ; l'additionner ici reste une approximation antérieure, non traitée.
+  const _h2oMolarPercent = (function () {
+    const D = window.DATA;
+    if (!D || !D["💧"] || D["💧"]["🍰🫧💧"] == null) return 0;
+    const w = D["💧"]["🍰🫧💧"];
+    const M_air = D["🫧"] && D["🫧"]["🧪"];
+    const M_H2O = window.CONST && window.CONST.M_H2O;
+    if (!Number.isFinite(w) || !Number.isFinite(M_air) || !(M_H2O > 0)) return 0;
+    return Math.min(100, w * (M_air / M_H2O) * 100);
+  })();
+  let h2o_display_value = _h2oMolarPercent + h2o_from_meteorites;
 
   // Le calcul suit uniquement la présence d'eau (h2o_enabled)
   // Passer un nombre pour que formatValueFromTemplate gère le formatage automatiquement
