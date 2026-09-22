@@ -84,6 +84,7 @@
         '../API_BILAN/workers/worker_pool.js',
         '../API_BILAN/physics/climate.js',
         '../API_BILAN/atmosphere/calculations_atm.js',
+        '../API_BILAN/aerosols/sulfate_ccn.js',
         '../API_BILAN/albedo/calculations_albedo.js',
         'static/texts/epochs_alt2sec.js',
         'organigramme/organigramme.js',
