@@ -12,7 +12,7 @@ Comparaison des variables du modèle (cycle eau, atmosphère, albédo) à **16,1
 | **🍰💧🌊** | Fraction océan (réservoir eau) | 0,972 (97,2 %) | ~97 % du réservoir eau liquide/solide | Cohérent (océan dominant) |
 | **🍰🧮🌧** | Pression vapeur saturante relative (Clausius–Clapeyron) | 0,017 | À 16°C : q_sat ≈ 10,6 g/kg (saturation) | Wallace & Hobbs; tables NWS mixing ratio |
 | **🍰🫧💧** | Fraction massique vapeur (q) | 0,008 (0,8 % ≈ 8 g/kg) | 0,25 % masse en moyenne globale; 1 % au niveau mer en air humide; 8 g/kg ≈ 75 % RH à 15°C | Wikipedia Atmosphere of Earth; saturation 15°C ≈ 10,6 g/kg |
-| **🍰🫧☔** | Humidité relative (q / q_sat) | 0,767 (76,7 %) | Global surface RH très variable; 70–80 % typique régions humides | HadISDH, Climate Data Guide |
+| **🍰🌧💧** | Humidité relative (q / q_sat) | 0,767 (76,7 %) | Global surface RH très variable; 70–80 % typique régions humides | HadISDH, Climate Data Guide |
 | **🍰⚖️💦** | Précipitation (kg/m²/s) | ~2,9×10⁻⁵ (P = W/τ) | Global mean ~2,5–3 mm/jour ≈ 2,9–3,5×10⁻⁵ kg/m²/s | GPCP, NASA GPM (~2,7 mm/jour souvent cité) |
 | **💭☔** | Seuil RH précipitations | 0,753 | Schémas type Sundqvist : seuil 0,7–0,9 | Paramètre modèle |
 | **⏳☔** | 1 / τ_global (s⁻¹) | ~1,16×10⁻⁶ | τ_vapeur ~ 8–10 j → 1/τ ~ 1×10⁻⁶ s⁻¹ (global) | Nature Rev. Earth Env. 2021; HESS 2017 |

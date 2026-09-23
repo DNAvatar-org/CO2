@@ -142,7 +142,7 @@ Ordre du pipeline. Référence littérature : COMPARAISON_LITTERATURE_16C.md, fl
 | **💧** | 🍰💧🧊 | 0,022 (2,2 %) | ~2–3 % glace (IPCC) | OK |
 | **💧** | 🍰💧🌊 | 0,978 | ~97 % océan | OK |
 | **💧** | 🍰🫧💧 | 0,009 (0,9 % ≈ 9 g/kg) | 0,25 % global ; 1 % air humide ; 8 g/kg ≈ 75 % RH (Wallace & Hobbs) | OK (air humide) |
-| **💧** | 🍰🫧☔ | 0,799 (79,9 % RH) | 70–80 % typique (HadISDH) | OK |
+| **💧** | 🍰🌧💧 | 0,799 (79,9 % RH) | 70–80 % typique (HadISDH) | OK |
 | **💧** | 🍰⚖️💦 | 2,466e-5 kg/m²/s (~2,1 mm/j) | ~2,7 mm/j (GPCP) ≈ 3,1e-5 kg/m²/s | OK (ordre 2–3 mm/j) |
 | **💧** | ⏳☔ | 1,157e-6 s⁻¹ | τ ~ 8–10 j → 1/τ ~ 1,2e-6 s⁻¹ (Nature Rev. Earth Env. 2021) | OK |
 | **🫧** | 🎈 | 0,978 | 1 atm (1013 hPa) | OK |

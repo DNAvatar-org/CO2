@@ -151,7 +151,7 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🍰💧🌊  Océan
 🍰🧪🌧  Fraction de vapeur max
 🍰🫧💧  Fraction massique vapeur
-🍰🫧☔  Humidité relative [0,1]
+🍰🌧💧  Humidité relative [0,1]
 💭☔  Seuil critique précipitations [0.7,0.9]
 ⏳☔  1/τ_global (s⁻¹), τ ~10 j
 🧲⚖️💦  Taux précipitation (kg/m²/s)
@@ -266,7 +266,7 @@ PARTIE 3: FORMULES DE CALCUL
 🍰🫧📿🌈 = Σ(🍰🫧❀🌈) - ∀ ❀ ∈ {🏭, 🐄, 💧} (pour normalisation)
 🍰🫧✈ = ⚖️✈ / ⚖️🫧 (fraction massique de sulfate)
 🍰💭 = clamp(0.4 + 0.5×(⚖️🫁/1.08e18 + ⚖️🐄/5.2e12) + 0.1×(⚖️✈/1.05e9), 0.3, 1.0) - CCN  ⚠️ saturé à 1.000 sur 18 époques/19
-☁️ = (1 - (1 - min(🍰🫧☔, 1))^0.6) × 🍰💭 - Sundqvist (RH) × CCN
+☁️ = (1 - (1 - min(🍰🌧💧, 1))^0.6) × 🍰💭 - Sundqvist (RH) × CCN
 
 💧 CYCLE DE L'EAU:
 🍰💧🧊 = Si T < ❄️ alors toute l'eau restante (après vapeur) est glace, sinon glace polaire

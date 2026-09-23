@@ -30,6 +30,19 @@ qui tournait sur l'ancien fichier.
 origine pour que `new Worker()` lève une SecurityError : `worker_pool.js` bascule alors sur son
 repli blob. Sans ça les workers se chargent en 404 silencieux et la convergence ne finit jamais.
 
+## Le tictime (depuis le 2026-09-23)
+
+Chaque époque est mesurée deux fois : à sa graine (`T`), puis après **un** tictime (`T_tic`),
+joué exactement comme le clic de l'interface (`📿💫 += 1` → `getEpochDateConfig` → `getNoyau` →
+calcul animé qui repart de l'état convergé). Pour 📱, c'est le bouton ⛽ de la tranche 2000
+(émissions + puits `advanceCarbonSinks`), donc `T_tic` est l'an 2025. Les trois `hysteresis …`
+n'en ont pas : leur unique action est l'événement de bascule lui-même.
+
+Pourquoi : c'est le tictime qui applique l'état de cycle `🔁` (🦣 glaciaire/interglaciaire). Sans
+lui, la bascule de 🦣 n'était jamais testée — seule la graine l'était.
+
+Balayage du barycentre : poser `window.__BENCH_BARYS__ = [55, 56, …]` en tête du script injecté.
+
 ## Ce que le banc NE teste pas
 
 `animEnabled:false` relance chaque époque depuis sa propre graine. **L'hystérésis n'est donc pas

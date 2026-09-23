@@ -34,7 +34,7 @@ UNITE_1 = {
     '🍎':'m/s²', '🧲':'W/m²', '🧪':'kg/mol', '🍰':'sans dimension [0,1]',
     '🔬':'# (cardinal — résolution : nombre de pas)', '🪩':'W/W (réflectance : flux réfléchi / incident)',
     '☁️':'sans dimension [0,1] (index de formation nuageuse)', '📛':'W/m²', '⏳':'s⁻¹',
-    '💭':'Pa/Pa (seuil d\'humidité relative)',
+    '💭':'q/q_sat (seuil d\'humidité relative, comparé à 🍰🌧💧)',
     # 🧮 = « calcul courant » : c'est un PRÉFIXE, l'unité est portée par le caractère suivant.
     '🔄':'# (compteur d\'itérations / de cycles)',
     '⚧':'texte — phase Init / Search / Dicho (pas une grandeur)',
@@ -56,6 +56,7 @@ NATURE_2 = {   # pour les clés 🍰… : de quoi est-ce une proportion ?
     '🫧':'massique, de l\'atmosphère (kg/kg)',
     '💧':'massique, de l\'eau totale (kg/kg)',
     '🧪':'MOLAIRE (mol/mol)',
+    '🌧':'de la SATURATION — q/q_sat, humidité relative (kg/kg ÷ kg/kg)',
     '🪩':'de surface — albédo (m²/m²)',
     '🗻':'de surface — géologie (m²/m²)',
     '📛':'d\'énergie — effet de serre (W/W)',

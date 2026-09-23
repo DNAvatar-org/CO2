@@ -341,7 +341,7 @@
                 + ' ⚖️🏭=' + fexp(xKg)
                 + ' ⚖️✈=' + fexp(masses['⚖️✈'])
                 + ' ⚖️💧vap=' + fexp(water['🍰🫧💧'])
-                + ' RH=' + fx(water['🍰🫧☔']));
+                + ' RH=' + fx(water['🍰🌧💧']));
             out.push('  🔬[diag CCN] ccn_ratio=' + fx(HD.ccnRatio)
                 + ' so4_boost=' + fx(HD.sulfateBoost)
                 + ' anthro=' + fx(HD.anthroFactor)
