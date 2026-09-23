@@ -40,6 +40,25 @@ renommée `🍰🧪🌧` le 2026-09-23. Ce contrôle est là pour qu'il n'y ait 
 
 Vérifié : remettre l'ancien nom fait bien échouer la génération.
 
+## Aucune unité inconnue (v1.1.0, 2026-09-23)
+
+Le script échoue aussi, code 1, si :
+
+- une **clé** a un 1ᵉʳ caractère que `UNITE_1` ne connaît pas. Les préfixes `🔺` (Δ), `🧮` (calcul
+  courant) et `🔁` (état de cycle) laissent l'unité au caractère suivant ; les clés d'interface
+  (📝 🖼 🌙 🔘 ⚧ ☯ 🔄) sont typées (texte, signe, compteur) — jamais « inconnues » ;
+- une **constante** n'a pas son unité entre crochets en tête du commentaire de sa définition :
+
+```js
+CONST.T_TRIPLE_WATER = 273.16;      // [K] point triple de l'eau (IAPWS)
+CLOUD_SW: { CCN_BASE: 0.15,         // [sans dimension (proxy CCN relatif)]
+```
+
+Définitions lues dans `physics/physics.js` (CONST · CONV · EARTH) et dans le bloc `CLOUD_SW` de
+`data/initDATA.js` — une constante par ligne. La valeur est **évaluée** (`10 * CONV.SECONDS_PER_DAY
+= 864000`) ; pour les CLOUD_SW pilotées par le barycentre, la page donne aussi la plage
+`fine_tuning_bounds.js` qui écrase le défaut au chargement.
+
 ## Où vit la règle
 
 `API_BILAN/data/alphabet.js`, bloc « LA RÈGLE DE L'ALPHABET ». Le script en est le gardien, pas la

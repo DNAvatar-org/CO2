@@ -8,7 +8,7 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
   for (const EP of window.TIMELINE) {
     if (!EP['📅']) continue;
     const id=EP['📅'];
-    D['📜']['🔺⚖️🏭']=0; D['📜']['🌊🔺⚖️🏭']=0; D['📜']['🌳🔺⚖️🏭']=0; D['📜']['📿💫']=0; D['📜']['📿☄️']=0;
+    D['📜']['🔺⚖️🏭']=0; D['📜']['🔺⚖️🌊🏭']=0; D['📜']['🔺⚖️🌳🏭']=0; D['📜']['📿💫']=0; D['📜']['📿☄️']=0;
     window.__PROG__='bench '+id;
     await api.run({ epochId:id, animEnabled:false });
     const s=api.snapshot(), lit=LIT[id];

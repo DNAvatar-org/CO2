@@ -4,8 +4,15 @@
 #       chaque constante nommée : son unité (déduite de l'alphabet, pas écrite à la main), sa
 #       description, sa formule, et TOUTES les lignes du modèle où elle est écrite ou lue.
 #       Refuse d'écrire si une clé 🍰 ne dit pas de quoi elle est une proportion.
-# Version 1.0.0
+# Version 1.1.0
 # Date: 2026-09-23
+# logs :
+#   - v1.1.0: plus AUCUNE unité inconnue. Les constantes (CONST · CONV · EARTH · CLOUD_SW) prennent
+#     valeur ET unité à leur définition — l'unité entre crochets en tête du commentaire, `// [K]` —
+#     et la génération échoue si une seule manque. ⚾ est un angle (°) ; 🔁 🖼 🌙 🔘 📝 sont des clés
+#     d'interface, déclarées comme telles (texte, objet) au lieu de « unité inconnue ». Avant, la
+#     valeur n'était lue que sur une ligne `X = v;` : les 20 CLOUD_SW (objet littéral d'initDATA) et
+#     les deux points triples (trouvés d'abord dans dico.js) sortaient vides.
 # Copyright 2026 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause.
 import io, os, re, sys, glob, html, json
@@ -20,9 +27,26 @@ OUT  = os.path.join(API, 'demo', 'parametres.html')
 UNITE_1 = {
     '📿':'# (cardinal)', '📏':'km', '⚖️':'kg', '🎈':'atm', '🌡️':'K', '🔋':'W',
     '🍎':'m/s²', '🧲':'W/m²', '🧪':'kg/mol', '🍰':'sans dimension [0,1]',
-    '🔺':'Δ (même unité que le scalaire)', '🔬':'tolérance', '🪩':'sans dimension [0,1]',
-    '☁️':'sans dimension [0,1]', '📛':'W/m²', '🧮':'—', '💭':'—', '⏳':'s⁻¹',
+    '🔬':'# (cardinal — résolution : nombre de pas)', '🪩':'W/W (réflectance : flux réfléchi / incident)',
+    '☁️':'sans dimension [0,1] (index de formation nuageuse)', '📛':'W/m²', '⏳':'s⁻¹',
+    '💭':'Pa/Pa (seuil d\'humidité relative)',
+    # 🧮 = « calcul courant » : c'est un PRÉFIXE, l'unité est portée par le caractère suivant.
+    '🔄':'# (compteur d\'itérations / de cycles)',
+    '⚧':'texte — phase Init / Search / Dicho (pas une grandeur)',
+    '☯':'signe −1 / 0 / +1 (sans dimension)',
+    '⚾':'° (angle : obliquité ε)',
+    # Clés d'INTERFACE : pas des grandeurs physiques, mais leur type est déclaré, jamais « inconnu ».
+    '📝':'texte (pas une grandeur)',
+    '🖼':'texte — chemin d\'image de texture (pas une grandeur)',
+    '🌙':'texte — chemin d\'image de carte de nuit (pas une grandeur)',
+    '🔘':'texte — identifiant du bouton cliqué, ☄️ ou 💫 (pas une grandeur)',
 }
+# Préfixe d'ÉTAT : 🔁 = « imposé par l'état de cycle courant » ; l'unité est portée par la suite.
+PREFIXE_ETAT = {'🔁': 'état de cycle 🕰.🔁', '🧮': 'valeur courante du calcul'}
+# Préfixe de VARIATION : 🔺 = Δ de la grandeur qui suit, dans SON unité (🔺⚖️🏭 → Δ kg).
+PREFIXE_DELTA = '🔺'
+# 🔁⚖️ n'est pas UNE masse mais un objet { ⚖️… : kg } — la suite de la clé le dit.
+CONTENEUR = {'🔁⚖️': 'objet { ⚖️… : kg } — masses imposées par l\'état de cycle'}
 NATURE_2 = {   # pour les clés 🍰… : de quoi est-ce une proportion ?
     '🫧':'massique, de l\'atmosphère (kg/kg)',
     '💧':'massique, de l\'eau totale (kg/kg)',
@@ -52,6 +76,14 @@ def paires(txt):
     return out
 
 def unite_de(cle):
+    if cle in CONTENEUR: return CONTENEUR[cle], None
+    if cle.startswith(PREFIXE_DELTA) and len(cle) > 1:
+        u, nat = unite_de(cle[1:])
+        return ('Δ ' + u) if not u.startswith('⚠️') else u, nat
+    for p, quoi in PREFIXE_ETAT.items():
+        if cle.startswith(p) and len(cle) > len(p):
+            u, nat = unite_de(cle[len(p):])
+            return u + ' — ' + quoi, nat
     for comp, u in UNITE_COMPOSEE.items():
         if cle.startswith(comp): return u, None
     c1 = cle[0]
@@ -129,12 +161,81 @@ for rel, ls in lignes.items():
 # ─── 3. le CONTRÔLE : une clé 🍰 doit dire de quoi elle est une proportion ────
 fautes = []
 toutes = sorted({k for ks in familles.values() for k in ks})
+sans_unite = [k for k in toutes if '❀' not in k and unite_de(k)[0].startswith('⚠️')]
 for k in toutes:
     if not k.startswith('🍰'): continue
     if '❀' in k: continue                      # gabarit générique, pas une clé réelle
     _, nature = unite_de(k)
     if nature is None:
         fautes.append(k)
+# ─── 3 bis. le CONTRÔLE : aucune clé, aucune constante sans unité ───────────
+# Une unité « inconnue » n'existe pas : soit le symbole la dit, soit la définition la déclare.
+DEFS = {}      # 'CONST.X' → (fichier, no, expr, unité, commentaire)
+def _defs_physics():
+    rel = os.path.relpath(os.path.join(API, 'physics', 'physics.js'), ROOT)
+    for i, l in enumerate(lignes[rel], 1):
+        m = re.match(r'^(CONST|CONV|EARTH)\.([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$', l)
+        if not m: continue
+        nom = m.group(1) + '.' + m.group(2)
+        if nom in DEFS: continue
+        reste = m.group(3)
+        expr, com = (reste.split('//', 1) + [''])[:2]
+        u = re.match(r'\s*\[([^\]]+)\]\s*(.*)', com)
+        DEFS[nom] = (rel, i, expr.strip().rstrip(';').strip(), u.group(1) if u else None,
+                     (u.group(2) if u else com).strip())
+def _defs_cloud_sw():
+    rel = os.path.relpath(os.path.join(API, 'data', 'initDATA.js'), ROOT)
+    ls = lignes[rel]
+    i0 = next(i for i, l in enumerate(ls) if re.match(r'\s*CLOUD_SW:\s*\{', l))
+    for i in range(i0 + 1, len(ls)):
+        l = ls[i]
+        if re.match(r'\s*\},?\s*$', l): break
+        m = re.match(r'\s*([A-Z_][A-Z0-9_]*)\s*:\s*([^,/]+?),?\s*(//.*)?$', l)
+        if not m: continue
+        com = (m.group(3) or '')[2:]
+        u = re.match(r'\s*\[([^\]]+)\]\s*(.*)', com)
+        DEFS['CLOUD_SW.' + m.group(1)] = (rel, i + 1, m.group(2).strip(), u.group(1) if u else None,
+                                          (u.group(2) if u else com).strip())
+_defs_physics(); _defs_cloud_sw()
+FONCTIONS = {n for n, d in DEFS.items() if d[2].startswith('function')}
+for n in list(FONCTIONS):
+    if DEFS[n][3] is None: DEFS.pop(n); FONCTIONS.discard(n)      # méthodes (EARTH.zoneAnnualInsolation…)
+for n in DEFS:
+    CONSTANTES.setdefault(n, [])   # une constante définie et jamais nommée ailleurs doit apparaître
+const_sans_unite = sorted(n for n, d in DEFS.items() if not d[3])
+const_sans_def = sorted(n for n in CONSTANTES if n not in DEFS)
+
+def valeur(nom, pile=()):
+    """Évalue l'expression de définition (littéral, ou arithmétique sur d'autres constantes)."""
+    if nom not in DEFS or nom in pile: return None
+    e = DEFS[nom][2]
+    if e in ('true', 'false'): return e
+    def sub(m):
+        v = valeur(m.group(0), pile + (nom,))
+        return repr(v) if isinstance(v, float) else 'None'
+    e2 = re.sub(r'\b(?:CONST|CONV|EARTH)\.[A-Za-z_][A-Za-z0-9_]*', sub, e)
+    e2 = e2.replace('Math.PI', repr(3.141592653589793)).replace('Math.pow', 'pow')
+    if 'None' in e2 or not re.fullmatch(r'[0-9eE+\-*/(). ,pow]+', e2): return None
+    try: return float(eval(e2, {'__builtins__': {}}, {'pow': pow}))
+    except Exception: return None
+
+BORNES = {}    # CLOUD_SW interpolées par le barycentre : clé → (min, max)
+_ftb = lire(os.path.join(API, 'config', 'fine_tuning_bounds.js'))
+for m in re.finditer(r"group:\s*'CLOUD_SW',\s*key:\s*'([A-Z_0-9]+)'(.*?)\}", _ftb, re.S):
+    mn = re.search(r'\bmin:\s*([-0-9.eE]+)', m.group(2)); mx = re.search(r'\bmax:\s*([-0-9.eE]+)', m.group(2))
+    if mn and mx: BORNES['CLOUD_SW.' + m.group(1)] = (mn.group(1), mx.group(1))
+
+if sans_unite or const_sans_unite or const_sans_def:
+    sys.stderr.write("\n❌ CONTRÔLE D'UNITÉ ÉCHOUÉ — une unité inconnue n'existe pas.\n")
+    for k in sans_unite:
+        sys.stderr.write("     clé %s : 1ᵉʳ caractère absent de UNITE_1 (alphabet.js le déclare-t-il ?)\n" % k)
+    for n in const_sans_unite:
+        d = DEFS[n]; sys.stderr.write("     %s (%s:%d) : pas de `// [unité]` en tête du commentaire\n" % (n, d[0], d[1]))
+    for n in const_sans_def:
+        sys.stderr.write("     %s : lue mais jamais définie (physics.js / initDATA.js CLOUD_SW)\n" % n)
+    sys.stderr.write("Rien n'a été écrit.\n\n")
+    sys.exit(1)
+
 if fautes:
     sys.stderr.write(
         "\n❌ CONTRÔLE D'UNITÉ ÉCHOUÉ — %d clé(s) 🍰 ne disent pas de quoi elles sont une proportion :\n"
@@ -188,18 +289,37 @@ for fam, cles in familles.items():
         parts.append('</details>')
 
 parts.append('<h2>Constantes nommées <span class="fd">CONST · CONV · EARTH · CLOUD_SW</span></h2>')
+def fmt(v):
+    if isinstance(v, str): return v
+    if v is None: return '?'
+    a = abs(v)
+    if a != 0 and (a < 1e-3 or a >= 1e6): return ('%.6g' % v).replace('e+0', 'e').replace('e+', 'e').replace('e-0', 'e-')
+    return ('%.6g' % v)
+
 for nom in sorted(CONSTANTES):
-    us = CONSTANTES[nom]
-    defs = [u for u in us if re.search(re.escape(nom) + r'\s*=[^=]', u[2])]
-    lect = [u for u in us if u not in defs]
-    val = ''
-    if defs:
-        m = re.search(re.escape(nom) + r'\s*=\s*([^;]+);', defs[0][2])
-        if m: val = m.group(1).strip()[:60]
+    d = DEFS[nom]
+    fich, no, expr, unite, com = d
+    us = [u for u in CONSTANTES[nom] if not (u[0] == fich and u[1] == no)]
+    ecr = [u for u in us if re.search(re.escape(nom) + r'\s*=[^=]', u[2])]
+    lect = [u for u in us if u not in ecr]
+    if nom in FONCTIONS:
+        val = 'fonction'
+    else:
+        v = valeur(nom)
+        val = fmt(v)
+        if v is not None and not re.fullmatch(r'[-0-9.eE+]+', expr) and expr not in ('true', 'false'):
+            val = '%s = %s' % (expr[:50], fmt(v))
     parts.append('<details class="k const"><summary><code>%s</code>'
-                 '<span class="val">%s</span><span class="cnt">%d lect.</span></summary>'
-                 % (esc(nom), esc(val), len(lect)))
-    parts.append(bloc_usages('Définie ici', defs, 'ecr'))
+                 '<span class="val">%s</span><span class="unit">%s</span>%s<span class="cnt">%d lect.</span></summary>'
+                 % (esc(nom), esc(val), esc(unite),
+                    ('<span class="nat">🎚️ barycentre : %s → %s</span>' % BORNES[nom]) if nom in BORNES else '',
+                    len(lect)))
+    if com: parts.append('<div class="d">%s</div>' % esc(com))
+    if nom in BORNES:
+        parts.append('<div class="f"><b>Valeur effective :</b> interpolée par le barycentre entre %s (0 %%) et %s (100 %%), '
+                     'depuis <code>config/fine_tuning_bounds.js</code>. La valeur ci-dessus est le défaut d\'initDATA, écrasé au chargement.</div>' % BORNES[nom])
+    parts.append(bloc_usages('Définie ici', [(fich, no, lignes[fich][no - 1].strip()[:190])], 'ecr'))
+    parts.append(bloc_usages('Réécrite ici', ecr, 'ecr'))
     parts.append(bloc_usages('Lue ici', lect, 'lec'))
     if not lect:
         parts.append('<div class="mort">⚠️ Définie mais jamais lue — code mort.</div>')

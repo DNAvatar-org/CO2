@@ -1988,8 +1988,8 @@ function setEpoch(epochName, options) {
         DATA['📜']['📿💫'] = 0;
         DATA['📜']['📿🕰'] = 0; // curseur 🕰.order (events.js) — la config n'est plus consommée par shift()
         DATA['📜']['🔺⚖️🏭'] = 0; // cumul CO₂ événements 📱 (compute.js getMasses)
-        DATA['📜']['🌊🔺⚖️🏭'] = 0; // puits océan (CO2.advanceCarbonSinks)
-        DATA['📜']['🌳🔺⚖️🏭'] = 0; // puits forêts
+        DATA['📜']['🔺⚖️🌊🏭'] = 0; // puits océan (CO2.advanceCarbonSinks)
+        DATA['📜']['🔺⚖️🌳🏭'] = 0; // puits forêts
         DATA['📜']['bary'] = 0;
         DATA['📜']['🔘🕰'] = '';
     }

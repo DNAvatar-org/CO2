@@ -128,7 +128,7 @@ function selectEpoch(epochId) {
     if (typeof window !== 'undefined' && window.DATA) {
         if (!window.DATA['📜']) window.DATA['📜'] = {};
         window.DATA['📜']['📿💫'] = 0;
-        window.DATA['📜']['🔺⚖️🏭'] = 0; window.DATA['📜']['🌊🔺⚖️🏭'] = 0; window.DATA['📜']['🌳🔺⚖️🏭'] = 0;
+        window.DATA['📜']['🔺⚖️🏭'] = 0; window.DATA['📜']['🔺⚖️🌊🏭'] = 0; window.DATA['📜']['🔺⚖️🌳🏭'] = 0;
         window.DATA['📜']['🔺⚖️💧'] = 0;
         window.DATA['📜']['🔺🍰⚽'] = 0;
         const logEl = document.getElementById('co2-action-log');
