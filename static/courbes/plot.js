@@ -1,10 +1,15 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.96
+// Version 1.0.97
 // Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
 // - v1.0.96: marqueur Terre (spectral-eds-marker--eds) — retiré z-index 0 imposé : le logo redevient au-dessus du tracé Plotly (#plot-container z 2) comme placeSpectralMarker (1001), cohérent avec EDS.
+// - v1.0.97: part d'EDS sous chaque bande d'absorption du spectre. Bandes moléculaires : grandeur EXACTE
+//   Σ_λ (flux surface − flux sortant) / EDS, sans schéma d'attribution (window.EDS_SPECTRAL, calculations
+//   v1.3.8). Nuages : ils n'ont pas de bande, leur part vient du RETRAIT (window.EDS_ATTRIBUTION,
+//   calculations v1.3.9) — sommer 4–50 µm donnerait ~98 % et recouvrirait tout le reste, d'où le « ≈ ».
+//   Les deux nombres ne s'additionnent pas entre eux : l'infobulle le dit. Nettoyage au redraw + mode fantôme.
 // - v1.0.95: bande spectrale — bas (pied, Terre) alpha=1 pleinement visible ; haut reste RGBA joint flux ; α interpole de aTop → 1 vers le bas ; repli sans flux arc-en-ciel α 0.5→1.
 // - v1.0.94: bande spectrale — haut = RGBA exacte de la dernière ligne du flux (getImageData) ; bas = même teinte, alpha→0 ; repli resize sans flux = arc-en-ciel α 0.5→0 ; dernière ligne flux toujours dessinée si yStep>1.
 // - v1.0.93: joint flux↔bande — une seule abscisse `spectrumBarTopY` (fin zone flux = début bande) ; retrait overlap/Y-offset/pont qui désynchronisaient les lignes.
@@ -1266,7 +1271,7 @@ function applySpectralIndicatorsGhostStyle(el) {
 PLOT.updateSpectralBandIndicatorsGhostOnly = function updateSpectralBandIndicatorsGhostOnly() {
     const wrap = document.querySelector('.plot-container-wrapper');
     if (!wrap) return;
-    wrap.querySelectorAll('.absorption-band-indicator, .spectral-eds-marker').forEach(applySpectralIndicatorsGhostStyle);
+    wrap.querySelectorAll('.absorption-band-indicator, .absorption-band-eds-pct, .spectral-eds-marker').forEach(applySpectralIndicatorsGhostStyle);
 };
 
 function drawAbsorptionBandIndicators() {
@@ -1274,7 +1279,7 @@ function drawAbsorptionBandIndicators() {
     if (!plotContainerWrapper2) return;
 
     // Supprimer les anciens indicateurs s'ils existent
-    const oldIndicators = plotContainerWrapper2.querySelectorAll('.absorption-band-indicator, .spectral-eds-sun-markers, .spectral-eds-marker');
+    const oldIndicators = plotContainerWrapper2.querySelectorAll('.absorption-band-indicator, .absorption-band-eds-pct, .spectral-eds-sun-markers, .spectral-eds-marker');
     oldIndicators.forEach(ind => ind.remove());
 
     const canvas = document.getElementById('spectral-visualization');
@@ -1606,6 +1611,53 @@ function drawAbsorptionBandIndicators() {
         return `${band.label} — absorption spectrale ${span}`;
     }
 
+    /**
+     * Part d'EFFET DE SERRE de la bande, en % de l'EDS total.
+     *
+     * Pour une bande moléculaire : grandeur EXACTE et sans aucun schéma d'attribution —
+     * Σ_λ∈bande (flux émis par la surface − flux sortant), rapporté à l'EDS. Sa somme sur tout
+     * le spectre vaut l'EDS par construction (vérifié : 147,49 sur 📱). Elle ne dit pas QUI
+     * absorbe dans l'intervalle, elle dit combien l'intervalle retient.
+     *
+     * Pour les nuages : ce n'est pas un intervalle de longueur d'onde mais un continuum gris sur
+     * tout le spectre. Sommer 4–50 µm donnerait ~98 % et recouvrirait toutes les autres bandes.
+     * On prend donc leur part de l'attribution par RETRAIT (window.EDS_ATTRIBUTION, méthode
+     * Schmidt 2010 / Lacis 2010), qui est la seule qui ait un sens pour un absorbeur non localisé.
+     *
+     * Les deux nombres ne se somment donc PAS entre eux — c'est dit dans l'infobulle.
+     */
+    function absorptionBandEdsPct(band, leftUm, rightUm) {
+        if (band.fullSpan) {
+            const A = window.EDS_ATTRIBUTION;
+            if (!A || !A.pct || !Number.isFinite(A.pct['⛅'])) return null;
+            return { pct: A.pct['⛅'] * 100, methode: 'retrait' };
+        }
+        const S = window.EDS_SPECTRAL;
+        if (!S || !S.surface_flux || !S.olr_flux || !S.lambda_m || !(S.EDS_Wm2 > 0)) return null;
+        const lam = S.lambda_m, sf = S.surface_flux, ol = S.olr_flux;
+        let e = 0;
+        for (let j = 0; j < lam.length; j++) {
+            const um = lam[j] * 1e6;
+            if (um >= leftUm && um < rightUm) e += sf[j] - ol[j];
+        }
+        if (!Number.isFinite(e)) return null;
+        return { pct: 100 * e / S.EDS_Wm2, Wm2: e, methode: 'exact' };
+    }
+
+    function absorptionBandEdsPctTitle(band, leftUm, rightUm, r) {
+        if (!r) return '';
+        if (r.methode === 'retrait') {
+            return 'Nuages : ' + r.pct.toFixed(1) + ' % de l\'effet de serre total.'
+                + ' Mesuré en les RETIRANT à température figée (Schmidt 2010, Lacis 2010) — les nuages'
+                + ' absorbent sur tout le spectre, ils n\'ont pas de bande. Ce % ne s\'additionne donc'
+                + ' pas à ceux des bandes moléculaires, qu\'il recouvre.';
+        }
+        return 'L\'intervalle [' + leftUm.toFixed(1) + ' – ' + rightUm.toFixed(1) + '] µm retient '
+            + r.Wm2.toFixed(1) + ' W/m², soit ' + r.pct.toFixed(1) + ' % de l\'effet de serre total.'
+            + ' Grandeur exacte : flux émis par la surface moins flux sortant, sommé sur l\'intervalle.'
+            + ' Elle ne dit pas quelle espèce absorbe là — voir doc/DIAGNOSTIC_ATTRIBUTION_EDS.md.';
+    }
+
     const spectralBandStackStepPx = 28;
     const stackTotals = Object.create(null);
     absorptionBands.forEach(band => {
@@ -1727,6 +1779,38 @@ function drawAbsorptionBandIndicators() {
 
         applySpectralIndicatorsGhostStyle(indicator);
         plotContainerWrapper2.appendChild(indicator);
+
+        // ── Part d'EDS, juste sous le crochet ───────────────────────────────────────────
+        const edsPart = absorptionBandEdsPct(band, leftUm, rightUm);
+        if (edsPart && Number.isFinite(edsPart.pct)) {
+            const pctEl = document.createElement('div');
+            pctEl.className = 'absorption-band-eds-pct';
+            pctEl.style.position = 'absolute';
+            pctEl.style.left = `${xLeft}px`;
+            pctEl.style.width = `${barWidthPx}px`;
+            pctEl.style.textAlign = 'center';
+            pctEl.style.fontSize = `${Math.max(9, Math.round(bracketFsBand * 0.52))}px`;
+            pctEl.style.fontWeight = '700';
+            pctEl.style.color = band.color;
+            pctEl.style.textShadow = '0 0 3px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.9)';
+            pctEl.style.zIndex = band.fullSpan ? '1006' : '1001';
+            pctEl.style.pointerEvents = 'auto';
+            pctEl.style.cursor = 'default';
+            pctEl.style.whiteSpace = 'nowrap';
+            pctEl.title = absorptionBandEdsPctTitle(band, leftUm, rightUm, edsPart);
+            // Les nuages n'ont pas de bande : on le marque au lieu de laisser croire à un intervalle.
+            pctEl.textContent = (band.fullSpan ? '≈ ' : '') + edsPart.pct.toFixed(1) + ' %';
+            // L'indicateur est centré sur son `top` (translateY(-50%)) : on se pose sous son bord bas.
+            if (indicator.style.top) {
+                const tc = parseFloat(indicator.style.top);
+                if (Number.isFinite(tc)) pctEl.style.top = `${tc + rowBand / 2 + 1}px`;
+            } else if (indicator.style.bottom) {
+                const bb = parseFloat(indicator.style.bottom);
+                if (Number.isFinite(bb)) pctEl.style.bottom = `${Math.max(0, bb - rowBand * 0.62)}px`;
+            }
+            applySpectralIndicatorsGhostStyle(pctEl);
+            plotContainerWrapper2.appendChild(pctEl);
+        }
     });
 
     // EDS + Terre (λ = pic Wien T_sol, ci-dessus) : Y EDS = sol + Δ/4 ; Y EDS-logo = ½·Planck(T_eff) (échelle traces, sémantique Y inversée vs « ciel »)
