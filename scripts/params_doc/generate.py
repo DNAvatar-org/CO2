@@ -4,9 +4,14 @@
 #       chaque constante nommée : son unité (déduite de l'alphabet, pas écrite à la main), sa
 #       description, sa formule, et TOUTES les lignes du modèle où elle est écrite ou lue.
 #       Refuse d'écrire si une clé 🍰 ne dit pas de quoi elle est une proportion.
-# Version 1.1.0
+# Version 1.1.1
 # Date: 2026-09-23
 # logs :
+#   - v1.1.1: trois angles morts qui fabriquaient de faux « 0 lect. » — API_BILAN/*.js à la racine
+#     (api.js, tuning.js…) et demo/js/ n'étaient pas balayés, et un accès ["clé"] entre guillemets
+#     doubles (organigramme.js) n'était pas reconnu. 🧲📛⛅ (lue par api.js), 🍰🪩⚽ et 🍰🪩💧
+#     (organigramme), 🍰🫧📿🌈 (epoch_bench_run.js) passaient pour mortes. Et les noms de constantes
+#     en minuscules (CONV.molar_mass_air_ref, lue 8 fois) n'étaient pas reconnus.
 #   - v1.1.0: plus AUCUNE unité inconnue. Les constantes (CONST · CONV · EARTH · CLOUD_SW) prennent
 #     valeur ET unité à leur définition — l'unité entre crochets en tête du commentaire, `// [K]` —
 #     et la génération échoue si une seule manque. ⚾ est un angle (°) ; 🔁 🖼 🌙 🔘 📝 sont des clés
@@ -114,8 +119,9 @@ for m in re.finditer(r"'([^']{1,6})'\s*:\s*\[([^\]]*)\]", bloc(dico, 'KEYS')):
 # Sans ça la page crie au loup — les CONST.LAMBDA_* ne sont lues que par CO2/static/courbes/plot.js.
 CO2D = os.path.join(ROOT, 'CO2')
 FICHIERS = sorted(set(
-    [f for f in glob.glob(os.path.join(API, '*', '*.js')) + glob.glob(os.path.join(API, '*', '*', '*.js'))
-     if 'hitran_lines' not in f and os.sep + 'demo' + os.sep not in f]
+    [f for f in glob.glob(os.path.join(API, '*.js')) + glob.glob(os.path.join(API, '*', '*.js'))
+     + glob.glob(os.path.join(API, '*', '*', '*.js'))
+     if 'hitran_lines' not in f]
     + [f for f in glob.glob(os.path.join(CO2D, 'static', '**', '*.js'), recursive=True)
        + glob.glob(os.path.join(CO2D, 'organigramme', '*.js'))
        + glob.glob(os.path.join(CO2D, 'scripts', '**', '*.js'), recursive=True)
@@ -153,7 +159,7 @@ for rel, ls in lignes.items():
     for i, l in enumerate(ls, 1):
         s = l.strip()
         if not s or s.startswith('//') or s.startswith('*'): continue
-        for m in re.finditer(r'\b(CONST|CONV|EARTH)\.([A-Z_][A-Z0-9_]*)\b', l):
+        for m in re.finditer(r'\b(CONST|CONV|EARTH)\.([A-Za-z_][A-Za-z0-9_]*)\b', l):
             CONSTANTES[m.group(1) + '.' + m.group(2)].append((rel, i, s[:190]))
         for m in re.finditer(r"CLOUD_SW\.([A-Z_][A-Z0-9_]*)\b", l):
             CONSTANTES['CLOUD_SW.' + m.group(1)].append((rel, i, s[:190]))
@@ -199,7 +205,8 @@ def _defs_cloud_sw():
 _defs_physics(); _defs_cloud_sw()
 FONCTIONS = {n for n, d in DEFS.items() if d[2].startswith('function')}
 for n in list(FONCTIONS):
-    if DEFS[n][3] is None: DEFS.pop(n); FONCTIONS.discard(n)      # méthodes (EARTH.zoneAnnualInsolation…)
+    if DEFS[n][3] is None:                                         # méthodes (EARTH.zoneAnnualInsolation…)
+        DEFS.pop(n); FONCTIONS.discard(n); CONSTANTES.pop(n, None)
 for n in DEFS:
     CONSTANTES.setdefault(n, [])   # une constante définie et jamais nommée ailleurs doit apparaître
 const_sans_unite = sorted(n for n, d in DEFS.items() if not d[3])
@@ -272,8 +279,8 @@ for fam, cles in familles.items():
             continue
         total_cles += 1
         unite, nature = unite_de(k)
-        ecr = usages("['%s']" % k, True)
-        lec = usages("['%s']" % k, False)
+        ecr = usages("['%s']" % k, True) + usages('["%s"]' % k, True)
+        lec = usages("['%s']" % k, False) + usages('["%s"]' % k, False)
         parts.append('<details class="k"><summary><code>%s</code>'
                      '<span class="unit">%s</span>%s'
                      '<span class="cnt">%d écr. / %d lect.</span></summary>'
