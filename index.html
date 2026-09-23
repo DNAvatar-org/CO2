@@ -95,6 +95,7 @@
         <button id="tab-scie" onclick="switchTab('scie')">Scientifique</button>
         <button id="tab-bench" onclick="switchTab('bench')">Bench</button>
         <button id="tab-milankovitch" onclick="switchTab('milankovitch')">Milankovitch?</button>
+        <button id="tab-histoire" onclick="switchTab('histoire')">Histoire</button>
     </div>
     <div class="fps-display collapsed" id="fps-display">
         <button class="fps-toggle" id="fps-toggle" title="Réduire/Agrandir"></button>
@@ -107,6 +108,11 @@
          html/hysteresis_compute.html reste au dépôt comme filet en cas de régression. -->
     <div id="milankovitch-panel" class="tab-panel">
         <iframe src="html/test_milankovitch.html" title=""></iframe>
+    </div>
+    <!-- Histoire thermique : courbe de la LITTÉRATURE (sourcée) comparée à la courbe du MODÈLE
+         (CO2/static/histoire/courbe_modele.js, engendrée par scripts/bench_headless/courbe_modele.py). -->
+    <div id="histoire-panel" class="tab-panel">
+        <iframe src="histoire.html" title="Histoire thermique de la Terre"></iframe>
     </div>
 
 

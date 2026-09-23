@@ -1,8 +1,9 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.35
+// Version 1.1.36
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Date: April 2026
+// Logs: v1.1.36: onglet Histoire (histoire.html) après Milankovitch — littérature sourcée vs courbe du modèle.
 // Logs: v1.1.35: alphabet_render.js / dico_render.js lus depuis API_BILAN/demo/ — dessiner l'alphabet et le
 //        dictionnaire de l'API fait partie de ce qui illustre l'API ; l'application s'y sert.
 // Logs: v1.1.34: configOrganigramme.timeline = window.epochIndex() (API). Le mapping TIMELINE → type/name/id/
@@ -293,6 +294,8 @@
         window.API_ONGLETS.registerTab({ id: 'scie', buttonId: 'tab-scie', panelId: 'scie-panel', onShow: onShowScie });
         window.API_ONGLETS.registerTab({ id: 'bench', buttonId: 'tab-bench', panelId: 'bench-panel', onShow: onShowBench });
         window.API_ONGLETS.registerTab({ id: 'milankovitch', buttonId: 'tab-milankovitch', panelId: 'milankovitch-panel', onShow: onShowMilankovitch });
+        // v1.1.36 : onglet Histoire (histoire.html, iframe standalone comme Milankovitch)
+        window.API_ONGLETS.registerTab({ id: 'histoire', buttonId: 'tab-histoire', panelId: 'histoire-panel', onShow: onShowMilankovitch });
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             if (window.DEBUG_TIMELINE_HIDDEN) {
                 try {

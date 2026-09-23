@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<!-- File: CO2/histoire.html
+     Desc: Histoire thermique de la Terre — squelette ; le code est dans static/histoire/.
+           Logos d'époque lus dans le TIMELINE du modèle (API_BILAN/config/configTimeline.js).
+     Version 1.2.0
+     Date: 2026-09-23
+     Copyright 2026 DNAvatar.org - Arnaud Maignan -->
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Paléoclimatologie de la Terre</title>
+    <link rel="stylesheet" href="static/histoire/histoire.css">
+</head>
+<body>
+
+<div id="ui">
+    <h1>Histoire Thermique de la Terre</h1>
+    <p>Littérature (sources au survol) comparée au modèle | Glisser : naviguer | Molette : temps | <span class="kbd">Shift</span> + Molette : température</p>
+</div>
+
+<canvas id="graph"></canvas>
+<div id="bulle" hidden></div>
+
+<script src="../API_BILAN/config/configTimeline.js"></script>
+<script src="../API_BILAN/data/alphabet.js"></script>
+<script src="static/histoire/litterature.js"></script>
+<script src="static/histoire/courbe_modele.js"></script>
+<script src="static/histoire/epoques.js"></script>
+<script src="static/histoire/vue.js"></script>
+<script src="static/histoire/rendu.js"></script>
+<script src="static/histoire/interaction.js"></script>
+<script src="static/histoire/main.js"></script>
+</body>
+</html>

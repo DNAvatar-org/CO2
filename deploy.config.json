@@ -206,6 +206,10 @@
       "dest": "pages/bilan_radiatif/CO2/fonts/pics/sun.png"
     },
     {
+      "src": "histoire.html",
+      "dest": "pages/bilan_radiatif/CO2/histoire.html"
+    },
+    {
       "src": "html/bench_panel.html",
       "dest": "pages/bilan_radiatif/CO2/html/bench_panel.html"
     },
@@ -356,6 +360,38 @@
     {
       "src": "static/fonts/ProggyDotted Regular.ttf",
       "dest": "pages/bilan_radiatif/CO2/static/fonts/ProggyDotted Regular.ttf"
+    },
+    {
+      "src": "static/histoire/courbe_modele.js",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/courbe_modele.js"
+    },
+    {
+      "src": "static/histoire/epoques.js",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/epoques.js"
+    },
+    {
+      "src": "static/histoire/histoire.css",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/histoire.css"
+    },
+    {
+      "src": "static/histoire/interaction.js",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/interaction.js"
+    },
+    {
+      "src": "static/histoire/litterature.js",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/litterature.js"
+    },
+    {
+      "src": "static/histoire/main.js",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/main.js"
+    },
+    {
+      "src": "static/histoire/rendu.js",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/rendu.js"
+    },
+    {
+      "src": "static/histoire/vue.js",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/vue.js"
     },
     {
       "src": "static/img/fond.png",

@@ -1,6 +1,6 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.0.7
+   Version 1.0.8
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
@@ -12,6 +12,7 @@
    - v1.0.4: #bench-panel / body.bench-panel-active aligné sur #milankovitch-panel (iframe simple standalone)
    - v1.0.5: .app-loader-list li.loaded background → color-mix(--base-color 35%, transparent) (au lieu de vert fluo hardcodé)
    - v1.0.7: .credits-footer-utf8 — lien utf8 coin bas-droit du footer (index.html)
+   - v1.0.8: #histoire-panel (histoire.html) aligné sur #milankovitch-panel
    - v1.0.6: réintroduction #hysteresis-panel / body.hysteresis-panel-active (iframe standalone hysteresis_compute.html) aligné sur #bench-panel / #milankovitch-panel
    ============================================================ */
 
@@ -142,6 +143,7 @@ body.milankovitch-panel-active {
         border: none;
     }
     #milankovitch-panel.active,
+    #histoire-panel.active,
     #bench-panel.active,
     #hysteresis-panel.active {
         overflow: visible;
@@ -151,6 +153,7 @@ body.milankovitch-panel-active {
         flex-direction: column;
     }
     #milankovitch-panel iframe,
+    #histoire-panel iframe,
     #bench-panel iframe,
     #hysteresis-panel iframe {
         flex: 0 0 auto;
@@ -192,6 +195,7 @@ body.scie-panel-active .credits-footer {
 }
 /* Même logique que #scie-panel : sans min-height explicite l’iframe reste ~150px → contenu Milankovitch/Bench/Hyst coincé en haut */
 #milankovitch-panel.active,
+#histoire-panel.active,
 #bench-panel.active,
 #hysteresis-panel.active {
     overflow: visible;
@@ -203,6 +207,7 @@ body.scie-panel-active .credits-footer {
     flex-direction: column;
 }
 #milankovitch-panel iframe,
+#histoire-panel iframe,
 #bench-panel iframe,
 #hysteresis-panel iframe {
     flex: 1 1 auto;
