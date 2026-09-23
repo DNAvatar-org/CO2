@@ -8,9 +8,16 @@ Date: 2025
 PARTIE 1: ALPHABET (CARACTÈRES DE BASE)
 ================================================================================
 
+LA RÈGLE : le PREMIER caractère d'une clé donne son UNITÉ. Pour 🍰 (sans dimension), le DEUXIÈME
+caractère dit de quoi c'est une proportion :
+    🍰🫧…  massique, de l'atmosphère   (kg/kg)      🍰🪩…  de surface, albédo    (m²/m²)
+    🍰💧…  massique, de l'eau totale   (kg/kg)      🍰🗻…  de surface, géologie  (m²/m²)
+    🍰🧪…  MOLAIRE                     (mol/mol)    🍰📛…  d'énergie (serre)     (W/W)
+Composés d'unités, sans emoji nouveau : 🧲⚖️ = flux de MASSE (kg/m²/s), ┴ = point triple (🎈,🌡️).
+
 UNITÉS:
 📿  Cardinal (#)
-🍰  Proportion ([0,1])
+🍰  Proportion sans dimension [0,1] — le 2ᵉ caractère dit de quoi (voir la règle ci-dessus)
 🔘  Calculé (Boolean)
 📏  Longueur (km)
 ⚖️  Masse (kg)
@@ -20,9 +27,9 @@ UNITÉS:
 🔽  Réception (+)
 🔼  Émission (-)
 🍎  Gravité (m/s²)
-🧲  Flux (W/m²)
-🧪  Masse molaire (kg/mol)
-┴   Point triple (🎈,🌡️)
+🧲  Flux surfacique (W/m²) — 🧲⚖️ = flux de MASSE (kg/m²/s)
+🧪  Molaire — seul : masse molaire (kg/mol) ; en 2ᵉ position : rapport MOLAIRE (mol/mol)
+┴   Point triple de l'eau (🎈,🌡️) = 611,657 Pa à 273,16 K (IAPWS)
 ⚧  Phase (Init/Search/Dicho)
 ☯  Direction Search (+/-)
 
@@ -57,6 +64,7 @@ CALCULS:
 ☁️  Index formation nuageuse [0,1]
 
 ÉVÉNEMENTS:
+⚗   Affiche les concentrations (action d'interface — ce n'est PAS une unité)
 💫  TicTime (+50 Ma)
 ☄️  Météorite de glace
 🛰  Satellite
@@ -141,12 +149,12 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 💧 CYCLE DE L'EAU:
 🍰💧🧊  Glace
 🍰💧🌊  Océan
-🍰🧮🌧  Fraction de vapeur max
+🍰🧪🌧  Fraction de vapeur max
 🍰🫧💧  Fraction massique vapeur
 🍰🫧☔  Humidité relative [0,1]
 💭☔  Seuil critique précipitations [0.7,0.9]
 ⏳☔  1/τ_global (s⁻¹), τ ~10 j
-🍰⚖️💦  Taux précipitation (kg/m²/s)
+🧲⚖️💦  Taux précipitation (kg/m²/s)
 
 🪩 ALBÉDO:
 🍰🪩📿  Albedo total
@@ -264,7 +272,7 @@ PARTIE 3: FORMULES DE CALCUL
 🍰💧🧊 = Si T < ❄️ alors toute l'eau restante (après vapeur) est glace, sinon glace polaire
            (10% à 0°C → 0% à 20°C) - ❄️ = 271.15K - (P-1)×1.0
 🍰💧🌊 = Océan
-🍰🧮🌧 = 🎈🌧 / 🎈
+🍰🧪🌧 = 🎈🌧 / 🎈
            🎈🌧 = 🎈┴💧 × exp(L_v/R_v × (1/🌡️┴💧 - 1/🧮🌡️)) [Clausius-Clapeyron]
            🎈┴💧 = 611.2 Pa, 🌡️┴💧 = 273.15 K,
            L_v = 2.5e6 J/kg (chaleur latente vaporisation H2O)
@@ -328,7 +336,8 @@ NOTES IMPORTANTES
 
 - Algorithme de convergence: la vue Scie (API_BILAN/convergence/calculations_flux.js) utilise
   Search puis Dicho avec cycles eau/albédo, pas seulement une dichotomie
-  classique. Voir doc/API/ALGORITHME_CALCULS.md, doc/SCIE_CONVERGENCE_DOC.txt et html/Algorithmes.html.
+  classique. Voir doc/API/ALGORITHME_CALCULS.md et doc/SCIE_CONVERGENCE_DOC.txt.
+  (html/Algorithmes.html retirée le 2026-09-23 — remplacée par demo/parametres.html, engendrée depuis le code.)
 
 ================================================================================
 FIN DU FICHIER

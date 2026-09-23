@@ -73,26 +73,26 @@ approximation. Pour plus de précision, L_v devrait être ajusté avec la tempé
 SOLUTION: Ajouter l'ajustement de L_v si nécessaire pour plus de précision.
 
 ================================================================================
-CALCUL DE 🍰🧮🌧 (max vapor fraction)
+CALCUL DE 🍰🧪🌧 (max vapor fraction)
 ================================================================================
 
 Source: static/calculations_h2o.js, ligne 146
 
 Formule:
-  🍰🧮🌧 = P_sat / P_total
+  🍰🧪🌧 = P_sat / P_total
 
 Où:
   P_sat = calculateSaturatedVaporPressure()  [ligne 142]
   P_total = DATA['🫧']['🎈'] × CONST.STANDARD_ATMOSPHERE_PA  [ligne 143]
 
-🍰🧮🌧 est une FRACTION MOLAIRE (rapport de pressions partielles).
+🍰🧪🌧 est une FRACTION MOLAIRE (rapport de pressions partielles).
 
 À 288K:
   P_sat ≈ 1700 Pa
   P_total ≈ 99000 Pa (0.98 atm × 101325 Pa)
-  🍰🧮🌧 = 1700 / 99000 ≈ 0.017 (1.7%)
+  🍰🧪🌧 = 1700 / 99000 ≈ 0.017 (1.7%)
 
-Cette valeur est ensuite stockée dans DATA['💧']['🍰🧮🌧'] à la ligne 270.
+Cette valeur est ensuite stockée dans DATA['💧']['🍰🧪🌧'] à la ligne 270.
 
 ================================================================================
 CALCUL DE 🍰🫧💧 (fraction massique de vapeur d'eau)

@@ -227,7 +227,7 @@ function logDetailPremiersCalculs(stepLabel, DATA, CONST, extra) {
     }
     if (DATA['💧']) {
         const q = DATA['💧'];
-        add('CYCLE EAU: vapor=' + (q['🍰🫧💧'] != null ? q['🍰🫧💧'].toExponential(3) : '?') + ' max_frac=' + (q['🍰🧮🌧'] != null ? q['🍰🧮🌧'].toExponential(3) : '?') + ' ice_stock=' + (q['🍰💧🧊'] != null ? q['🍰💧🧊'].toFixed(3) : '?'));
+        add('CYCLE EAU: vapor=' + (q['🍰🫧💧'] != null ? q['🍰🫧💧'].toExponential(3) : '?') + ' max_frac=' + (q['🍰🧪🌧'] != null ? q['🍰🧪🌧'].toExponential(3) : '?') + ' ice_stock=' + (q['🍰💧🧊'] != null ? q['🍰💧🧊'].toFixed(3) : '?'));
     }
     if (DATA['🫧']) {
         const p = DATA['🫧'];
