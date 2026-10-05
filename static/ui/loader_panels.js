@@ -69,6 +69,7 @@
         '../API_BILAN/tuning.js',
         'organigramme/configOrganigramme.js',
         '../API_BILAN/event_bus.js',
+        '../API_BILAN/geology/interieur.js',
         '../API_BILAN/convergence/compute.js',
         'static/compute/visu_/flux_manager.js',
         '/_interfaces/tooltips.js',

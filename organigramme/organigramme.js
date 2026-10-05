@@ -1,12 +1,16 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.119 noyau : température et flux lus dans DATA['🌕'] (API_BILAN/geology/interieur.js) au lieu d'une
+//   température inventée depuis la puissance (T ≈ 3000 + P/1e13 × 200) et des clés de config retirées.
+// Logs: v1.0.118 frise : chaque logo sur la ligne de SA date de début, alternativement à droite puis à gauche
+//   de la date (.epoch-row.logo-droite / .logo-gauche) — moitié moins de hauteur, pour accueillir de nouvelles époques.
 // Logs: v1.0.117 badge H₂O — passe en fraction MOLAIRE (comme CO₂/CH₄ qui viennent de co2KgToFraction) au lieu
 //   de la fraction MASSIQUE 🍰🫧💧×100, et bascule automatiquement en ppm sous 1 %. Branche au passage
 //   `shouldConvertPercentToPpm`, déclarée et lue depuis toujours mais à laquelle rien n'assignait jamais true —
 //   le sens ppm → % était câblé, le sens % → ppm ne l'avait jamais été. Révélé par ⛄ Plein Snowball : 42 ppmv
 //   d'air saturé à −56 °C s'affichaient « 0,0 % » à côté d'un EDS de ~5 W/m². Retrait aussi des deux formateurs
 //   SULFATE_BOOST_SCALE (v1.2.65 : la jauge n'existe plus).
-// Version 1.0.117
+// Version 1.0.119
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -4628,7 +4632,10 @@ function generateTimelineFromConfig() {
     if (years == null || !Number.isFinite(years)) return "";
     const absY = Math.abs(years);
     if (absY < 1e6) return String(Math.round(years));
-    const millions = (absY / 1e6).toFixed(0);
+    // Vraies dates (v1.0.118) : garder la décimale quand elle existe (2,58 · 33,9 · 251,9 · 635,2 Ma).
+    // L'arrondi au Ma entier faisait afficher « -3 Ma » pour le Quaternaire et deux fois « -252 Ma ».
+    const m = absY / 1e6;
+    const millions = Number.isInteger(m) ? String(m) : (m < 10 ? m.toFixed(2) : m.toFixed(1)).replace(/\.?0+$/, "");
     const sign = years > 0 ? "-" : (years < 0 ? "+" : "");
     return sign + millions + " Ma";
   }
@@ -4643,13 +4650,10 @@ function generateTimelineFromConfig() {
     return dateItem;
   }
 
-  // Début de la frise : -5000 Ma (au-dessus de ⚫)
-  const firstEpoch = timeline[0];
-  if (firstEpoch && firstEpoch["📅"]) {
-    epochsContainer.appendChild(createVerticalDateItem("-5000 Ma"));
-  }
-
-  // Générer les éléments depuis la config : boutons + entre chaque paire une date centrée (sans trait)
+  // Chaque époque tient sur UNE ligne : sa date de début, et son logo à droite puis à gauche en
+  // alternance (v1.0.118). Les dates restent des .epoch-date-item-vertical : le curseur de la frise
+  // (timeline.js) ne lit que leur position, jamais celle des boutons.
+  let rang = 0;
   timeline.forEach((item, i) => {
     if (item["📅"]) {
       const epochId = item["📅"];
@@ -4663,8 +4667,6 @@ function generateTimelineFromConfig() {
       );
       // Libellé timeline : CHARS_DESC est la source de vérité (alphabet.js)
       const epochLabel = (window.CHARS_DESC && window.CHARS_DESC[epochId]) || epochId;
-      // Ne pas utiliser title natif, utiliser addCustomTooltip à la place
-
       // getDisplayForPicto : image si dans charsImages, sinon picto (transparent si on ajoute des images)
       const display = window.getDisplayForPicto(epochId);
       if (!isHidden && display.type === "image") {
@@ -4684,25 +4686,18 @@ function generateTimelineFromConfig() {
             "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
         }
       }
-
-      epochsContainer.appendChild(el);
-
-      // Ajouter le tooltip personnalisé (epochLabel = Paléozoïque pour 🌿)
       if (epochLabel) addCustomTooltip(el, epochLabel);
 
-      // Entre deux époques : date = début de l'époque suivante (▶)
-      // Dernière paire (avant-dernière époque → 📱) : afficher 2000 entre les deux, borne finale = 2100
-      if (i < timeline.length - 1) {
-        const isLastPair = i === timeline.length - 2;
-        const boundaryYears = isLastPair ? 2000 : timeline[i + 1]["▶"];
-        const dateStr = formatDateMa(boundaryYears);
-        const dateItem = createVerticalDateItem(dateStr);
-        epochsContainer.appendChild(dateItem);
-      }
+      // Ligne = date de DÉBUT de l'époque (⚫ : -5000 Ma ; 📱 : 2000) + logo, côté alterné.
+      const debut = item["▶"];   // ⚫ : 5e9 → « -5000 Ma » ; 📱 : 2000
+      const row = createVerticalDateItem(formatDateMa(debut));
+      row.classList.add("epoch-row", rang % 2 ? "logo-gauche" : "logo-droite");
+      if (rang % 2) row.insertBefore(el, row.firstChild); else row.appendChild(el);
+      epochsContainer.appendChild(row);
+      rang++;
     } else {
       // Séparateur explicite (item sans 📅 avec .date)
-      const dateItem = createVerticalDateItem(item.date);
-      epochsContainer.appendChild(dateItem);
+      epochsContainer.appendChild(createVerticalDateItem(item.date));
     }
   });
 
@@ -6174,74 +6169,12 @@ ORG.updateFluxLabels = function (eventId) {
     throw new Error(`Époque "${window.RUNTIME_STATE.currentEpochName}" non trouvée`);
   }
 
-  // Récupérer la température du noyau depuis la config de l'époque
-  // Si core_temperature n'est pas défini, estimer à partir de core_power_watts ou utiliser une valeur par défaut
-  let coreTemp_K;
-  if (
-    currentEpoch.core_temperature !== undefined &&
-    typeof currentEpoch.core_temperature === "number"
-  ) {
-    coreTemp_K = currentEpoch.core_temperature;
-  } else if (
-    typeof currentEpoch.core_power_watts === "number" &&
-    currentEpoch.core_power_watts > 0
-  ) {
-    // Estimer la température à partir de la puissance (approximation)
-    // Plus la puissance est élevée, plus la température est élevée
-    // Archéen: 1.5e14 W → ~5500K (estimation basée sur les commentaires DEPRECATED)
-    // Hadéen: 2 MW/m² → 6000K
-    // Protérozoïque: 1.0e14 W → ~5000K
-    // Mésozoïque: 6.0e13 W → ~4500K
-    // Cénozoïque: 5.0e13 W → ~4100K
-    // Estimation: T ≈ 3000 + (power / 1e13) * 200
-    const power_ratio = currentEpoch.core_power_watts / 1e13;
-    coreTemp_K = Math.max(3000, Math.min(6000, 3000 + power_ratio * 200));
-  } else if (
-    typeof currentEpoch.geothermal_flux === "number" &&
-    currentEpoch.geothermal_flux > 0
-  ) {
-    // Estimer à partir du flux géothermique (approximation)
-    // Flux élevé = température élevée
-    const flux_ratio = currentEpoch.geothermal_flux / 0.1; // Normaliser par 0.1 W/m² (moderne)
-    coreTemp_K = Math.max(3000, Math.min(6000, 4000 + flux_ratio * 500));
-  } else {
-    // Pas de noyau actif : température = 0
-    coreTemp_K = 0;
-  }
-
-  // Calculer le flux géothermique depuis les propriétés physiques de l'époque
-  if (coreTemp_K === 0 || currentEpoch.geothermal_flux === 0) {
-    // Pas de noyau différencié : flux = 0
-    geothermie_value = 0;
-  } else if (
-    typeof currentEpoch.geothermal_flux === "number" &&
-    currentEpoch.geothermal_flux > 0
-  ) {
-    // Flux géothermique défini directement
-    geothermie_value = currentEpoch.geothermal_flux;
-  } else if (
-    typeof currentEpoch.core_power_watts === "number" &&
-    currentEpoch.core_power_watts > 0
-  ) {
-    // Calculer depuis la puissance du noyau et la surface de la planète
-    const radius = currentEpoch.planet_radius;
-    if (!radius || radius <= 0) {
-      logAlbedoUi("abort geothermie: planet_radius invalide");
-      console.error(
-        "[updateFluxLabels] ❌ ERREUR CRITIQUE : planet_radius invalide pour calculer le flux géothermique",
-      );
-      throw new Error(
-        "planet_radius requis pour calculer le flux géothermique depuis core_power_watts",
-      );
-    }
-    const surface = 4 * Math.PI * Math.pow(radius, 2);
-    geothermie_value = currentEpoch.core_power_watts / surface;
-  } else {
-    logAlbedoUi("abort geothermie: geothermal_flux/core_power_watts manquant");
-    console.error(
-      "[updateFluxLabels] ❌ ERREUR CRITIQUE : Impossible de déterminer le flux géothermique depuis l'époque",
-    );
-    throw new Error("geothermal_flux ou core_power_watts requis dans l'époque");
+  // Intérieur : température et flux = DATA['🌕'], UNE source (API_BILAN/geology/interieur.js, bilan d'énergie).
+  // (Avant 2026-09-24 : une « température du noyau » inventée depuis la puissance, T ≈ 3000 + P/1e13 × 200, sans source.)
+  const coreTemp_K = DATA["🌕"]["🌡️🌕"];   // 0 avant l'intérieur (⚫)
+  geothermie_value = DATA["🌕"]["🧲🌕"];
+  if (!Number.isFinite(coreTemp_K) || !Number.isFinite(geothermie_value)) {
+    throw new Error("[updateFluxLabels] DATA[🌕] non fini (🌡️🌕=" + coreTemp_K + ", 🧲🌕=" + geothermie_value + ") — calcul pas encore passé ?");
   }
 
   updateLabel("core_flux_wm", geothermie_value);
@@ -6360,7 +6293,7 @@ ORG.updateFluxLabels = function (eventId) {
   }
 
   // Mettre à jour le style du noyau basé sur la température (saturation/brightness)
-  // coreTemp_K a déjà été récupéré depuis la config de l'époque plus haut
+  // coreTemp_K = DATA['🌕']['🌡️🌕'] (plus haut)
 
   // Calculer saturation et brightness basés sur la température
   // Température 0K = saturation 0%, brightness 30% (gris foncé)

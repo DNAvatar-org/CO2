@@ -1,9 +1,13 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.1.1
+// Version 1.2.1
 // Date: [September 18, 2026]
 // logs :
+//   - v1.2.1 (2026-09-24): « Ce que ça change » affiche le pas de clic à 1 décimale.
+//   - v1.2.0 (2026-09-24): vraies dates (ICS 2023, Hoffman et al. 2017) dans les titres ; le Cryogénien a
+//     DEUX glaciations — ⛄ Snowball Sturtien, 🌦 1b Sortie Sturtienne + interglaciaire, 🏂 Snowball Marinoen,
+//     ⛈ 1c Sortie Marinoenne ; récits de clics recalés sur la chaîne de clics du 2026-09-24.
 //   - v1.1.1: 🍄 — 4 récits (l'époque passe à 4 clics de 35 Ma, configTimeline v1.4.88) : le drawdown
 //     Dévonien-Carbonifère, la bascule du Karoo au 3e clic (−10 °C, glace 14 → 28 %), la remontée permienne.
 //   - v1.1.0: EVENT_STORY entièrement réécrit — un récit PAR CLIC (tableaux) et non par époque, et chaque
@@ -40,7 +44,7 @@ const EPOCH_STORY = {
         'de l\'atmosphère. Sans elle, la surface serait à −18 °C.',
 
     '🔥':
-        'Hadéen — l\'océan de magma (4,5 → 4,0 Ga)\n\n' +
+        'Hadéen — l\'océan de magma (4,51 → 4,031 Ga)\n\n' +
         'Juste après l\'impact qui forme la Lune. La surface est de la roche fondue, le flux de chaleur interne ' +
         'dépasse 2 MW/m² : c\'est lui, et non le Soleil, qui fixe la température.\n\n' +
         'Une « température moyenne » n\'a ici pas grand sens (surface incandescente, écarts énormes) : c\'est la ' +
@@ -49,7 +53,7 @@ const EPOCH_STORY = {
         'à l\'échelle géologique.',
 
     '🦠':
-        'Archéen — le paradoxe du Soleil faible (4,0 → 2,5 Ga)\n\n' +
+        'Archéen — le paradoxe du Soleil faible (4,031 → 2,5 Ga)\n\n' +
         'Le Soleil ne rayonne que ~74 % de sa puissance actuelle. Sans effet de serre, la Terre serait gelée ; ' +
         'or les roches indiquent de l\'eau liquide, et la vie apparaît.\n\n' +
         'La sortie du paradoxe passe par une atmosphère très chargée en CO₂ et en méthane, sans oxygène. ' +
@@ -57,14 +61,14 @@ const EPOCH_STORY = {
         'Obliquité possiblement forte (45°), ce qui réchauffe les hautes latitudes.',
 
     '🪸':
-        'Protérozoïque — l\'oxygène arrive (2,5 Ga → 750 Ma)\n\n' +
+        'Protérozoïque — l\'oxygène arrive (2,5 Ga → 720 Ma)\n\n' +
         'La photosynthèse oxygénique transforme l\'atmosphère (Grande Oxydation). L\'oxygène détruit le méthane : ' +
         'l\'un des gaz à effet de serre disparaît largement, le CO₂ reste le pilier.\n\n' +
         'Eucaryotes puis multicellularité. La planète s\'approche lentement des conditions où la bascule glaciaire ' +
         'devient possible : c\'est ce qui va se jouer juste après, au Sturtien.',
 
     'hysteresis 1a':
-        'Surfusion climatique — entrée Sturtienne (≈ 750 Ma)\n\n' +
+        'Surfusion climatique — entrée Sturtienne (720 → 717 Ma)\n\n' +
         'Comme en surfusion, le climat peut rester bloqué dans un état (ici chaud, pré-Sturtien) alors que les ' +
         'forçages — CO₂ en baisse, albédo — orientent déjà vers la glaciation.\n\n' +
         'Hystérésis : le système garde une mémoire de son chemin. Il faut souvent un forçage fort ou un choc pour ' +
@@ -73,42 +77,60 @@ const EPOCH_STORY = {
         'résistance au changement, pas absence de forçage.',
 
     '⛄':
-        'Plein Snowball — la Terre boule de neige (≈ 720 Ma)\n\n' +
+        'Snowball Sturtien — la Terre boule de neige (717 → 659 Ma)\n\n' +
         'La bascule a eu lieu : la glace atteint les tropiques, l\'albédo dépasse 0,75, la planète se referme sur ' +
         'elle-même. Le refroidissement s\'auto-entretient — chaque mètre de glace en plus renvoie plus de lumière.\n\n' +
         'Sortir de cet état ne se fait pas en remettant le CO₂ d\'avant : il en faut BEAUCOUP plus. C\'est toute ' +
         'l\'hystérésis, et c\'est la partie la plus sensible du calage du modèle.\n\n' +
         'La glace coupe l\'altération des silicates : le CO₂ volcanique s\'accumule pendant des millions d\'années, ' +
-        'jusqu\'au seuil de sortie.',
+        'jusqu\'au seuil de sortie. Le Sturtien a duré près de 58 millions d\'années (Hoffman et al. 2017) — et ' +
+        'ce n\'est que la première des deux glaciations globales du Cryogénien.',
 
     'hysteresis 1b':
-        'Sortie Marinoenne — la déglaciation brutale (≈ 690 Ma)\n\n' +
+        'Sortie Sturtienne — la déglaciation brutale, puis l\'interglaciaire (659 → 639 Ma)\n\n' +
         'Le CO₂ accumulé sous la glace finit par franchir le seuil : l\'albédo s\'effondre, la planète passe en ' +
         'quelques milliers d\'années d\'un désert glacé à une serre extrême.\n\n' +
+        'Suit un intervalle chaud d\'une vingtaine de millions d\'années, pendant lequel l\'altération des roches ' +
+        'mises à nu repompe le CO₂ — jusqu\'au bord d\'une deuxième bascule.\n\n' +
         'La glace sale (poussières, cendres) aide la sortie en abaissant l\'albédo avant même la fonte. ' +
         'Les carbonates de couverture, déposés juste après, sont la trace de cette serre.\n\n' +
         'Le même CO₂ ne donne pas la même température selon qu\'on arrive par le chaud ou par le froid : ' +
         'c\'est la signature d\'une hystérésis, pas d\'un simple thermostat.',
 
+    '🏂':
+        'Snowball Marinoen — la deuxième boule de neige (639 → 635,2 Ma)\n\n' +
+        'Moins de vingt millions d\'années après la première, la Terre regèle entièrement. Plus courte que le ' +
+        'Sturtien — quelques millions d\'années (Hoffman et al. 2017) — mais tout aussi globale : des glaciers ' +
+        'atteignent le niveau de la mer à l\'équateur.\n\n' +
+        'Même mécanisme, même piège : une fois la glace installée, son albédo la protège, et il faut de nouveau ' +
+        'des millions d\'années de CO₂ volcanique accumulé pour en sortir.',
+
+    'hysteresis 1c':
+        'Sortie Marinoenne — la dernière déglaciation globale (635,2 Ma)\n\n' +
+        'Le seuil est franchi une seconde fois : serre extrême, pluies acides, puis dépôt des carbonates de ' +
+        'couverture, datés à 635,2 Ma — la base de l\'Édiacarien.\n\n' +
+        'Après elle, la Terre ne connaîtra plus jamais de glaciation globale. La vie multicellulaire complexe ' +
+        '(faune d\'Ediacara) apparaît dans les dizaines de millions d\'années qui suivent.',
+
     '🪼':
-        'Paléozoïque marin — explosion cambrienne (600 → 420 Ma)\n\n' +
+        'Paléozoïque marin — explosion cambrienne (538,8 → 419,2 Ma)\n\n' +
         'La vie complexe se diversifie dans l\'océan. Le climat est chaud et stable, le CO₂ reste élevé ' +
         'alors que le Soleil, lui, continue de gagner en puissance.\n\n' +
         'Les continents sont encore nus : pas de racines, donc une altération des roches lente, et un ' +
         'thermostat carbone moins réactif qu\'aujourd\'hui.',
 
     '🍄':
-        'Paléozoïque terrestre — la conquête des terres (420 → 280 Ma)\n\n' +
+        'Paléozoïque terrestre — la conquête des terres (419,2 → 252,2 Ma)\n\n' +
         'Les plantes colonisent les continents, puis viennent les forêts du Dévonien et du Carbonifère. ' +
         'Deux conséquences climatiques majeures :\n\n' +
         '— les racines accélèrent l\'altération des silicates, qui consomme du CO₂ ;\n' +
         '— le carbone s\'enfouit massivement (c\'est le charbon d\'aujourd\'hui).\n\n' +
         'Le CO₂ chute, la planète se refroidit, et une glaciation s\'installe (Karoo) : quatre clics ' +
-        'traversent l\'époque, et c\'est le troisième qui fait basculer. La biosphère devient un acteur ' +
+        'traversent l\'époque. La biosphère devient un acteur ' +
         'du climat, pas seulement un passager.',
 
     '💀':
-        'Extinction permienne — la grande crise (280 → 250 Ma)\n\n' +
+        'Extinction permienne — la grande crise (252,2 → 251,9 Ma)\n\n' +
         'Les trapps de Sibérie injectent d\'énormes quantités de CO₂ et de soufre. Réchauffement rapide, ' +
         'océans anoxiques, acidification : environ 90 % des espèces marines disparaissent.\n\n' +
         'C\'est la plus grande extinction connue — d\'où le nom, plus parlant que « limite P/T ». ' +
@@ -116,44 +138,45 @@ const EPOCH_STORY = {
         'deux échelles de temps opposées, un seul événement.',
 
     '🦕':
-        'Mésozoïque — le monde des dinosaures (252 → 66 Ma)\n\n' +
+        'Mésozoïque — le monde des dinosaures (251,9 → 66,0 Ma)\n\n' +
         'Climat chaud et remarquablement stable, sans calotte polaire permanente : des forêts poussent ' +
         'jusqu\'aux hautes latitudes.\n\n' +
         'Le gradient équateur-pôle est plus faible qu\'aujourd\'hui, ce que le modèle représente par des ' +
         'écarts de température par zone plus serrés. La crise K-Pg (astéroïde, 66 Ma) clôt la période.',
 
     '🦤':
-        'Cénozoïque — après l\'astéroïde (66 → 50 Ma)\n\n' +
+        'Cénozoïque — après l\'astéroïde (66,0 → 56,0 Ma)\n\n' +
         'Les mammifères se diversifient dans un monde encore chaud. Le CO₂ reste haut, ' +
         'les pôles sont libres de glace.\n\n' +
         'C\'est le début de la longue descente qui mènera, 60 millions d\'années plus tard, ' +
         'aux glaciations quaternaires.',
 
     '🐊':
-        'Éocène — le pic de chaleur (50 → 35 Ma)\n\n' +
+        'Éocène — le pic de chaleur (56,0 → 34,4 Ma)\n\n' +
         'Le monde le plus chaud du Cénozoïque : des crocodiliens vivent dans l\'Arctique, aucune calotte ' +
         'permanente. CO₂ élevé, méthane abondant (zones humides).\n\n' +
         'Puis la surrection de l\'Himalaya expose des roches fraîches à l\'altération : le thermostat carbone ' +
         's\'emballe dans l\'autre sens et pompe le CO₂ pendant des millions d\'années.',
 
     'hysteresis 2':
-        'Prélude glaciaire — Éocène-Oligocène (≈ 35 Ma)\n\n' +
+        'Prélude glaciaire — Éocène-Oligocène (34,4 → 33,9 Ma)\n\n' +
         'Le CO₂ approche du seuil qui permet à une calotte de tenir sur l\'Antarctique. Comme au Sturtien, ' +
         'le système peut rester « en retard » sur son forçage : le franchissement est brutal, pas progressif.\n\n' +
         'Une fois la calotte installée, il faudra bien plus de CO₂ pour la faire disparaître que pour l\'empêcher ' +
         'de se former : deuxième grande hystérésis de l\'histoire de la Terre.',
 
     '🏔':
-        'Grande Coupure — la calotte antarctique (≈ 33 Ma)\n\n' +
+        'Grande Coupure — la calotte antarctique (33,9 → 2,58 Ma)\n\n' +
         'La bascule a eu lieu : l\'Antarctique se couvre de glace, le niveau des mers chute, ' +
         'les faunes européennes sont renouvelées (d\'où le nom donné par les paléontologues).\n\n' +
         'La Terre entre dans son mode « avec calottes », celui qu\'elle n\'a plus quitté depuis. ' +
         'C\'est ce qui rend possibles les cycles glaciaires qui suivront.',
 
     '🦣':
-        'Quaternaire — les cycles glaciaires (2 Ma → 10 ka)\n\n' +
+        'Quaternaire — les cycles glaciaires (2,58 Ma → 11,7 ka)\n\n' +
         'Avec des calottes en place, le climat devient INSTABLE : deux états coexistent pour une même ' +
-        'composition d\'atmosphère. Dans le modèle, 0,02 ppm de méthane suffisent à faire passer de 12 °C à 9,5 °C.\n\n' +
+        'composition d\'atmosphère. Dans le modèle, chaque état de cycle fait basculer entre ~15 °C et ~4,6 °C — ' +
+        'deux fois l\'amplitude mesurée (Snyder 2016 : ~5 °C entre glaciaire et interglaciaire).\n\n' +
         'Ce n\'est pas un défaut : c\'est la signature du seuil glace-albédo, et c\'est exactement ce que montrent ' +
         'les carottes de glace (EPICA) — le CO₂ oscille entre 180 ppm en période glaciaire et 280 ppm entre deux glaciations.\n\n' +
         'Le déclencheur est astronomique : l\'obliquité de l\'axe terrestre varie de 22,1° à 24,5° tous les 41 000 ans. ' +
@@ -161,16 +184,16 @@ const EPOCH_STORY = {
         'C\'est la seule époque où les cycles de Milankovitch changent vraiment le résultat.',
 
     '🛖':
-        'Holocène — le climat de l\'agriculture (10 ka → 1800)\n\n' +
+        'Holocène — le climat de l\'agriculture (11,7 ka → 1750)\n\n' +
         'Onze mille ans d\'une stabilité remarquable : environ 280 ppm de CO₂, une température qui varie de moins ' +
         'd\'un degré. Toutes les civilisations humaines tiennent dans cette fenêtre.\n\n' +
         'La glaciation suivante devrait arriver, mais l\'obliquité est aujourd\'hui dans une phase peu favorable, ' +
         'et le CO₂ a pris une tout autre direction.',
 
     '🚂':
-        'Ère industrielle — le début du signal (1800 → 2000)\n\n' +
+        'Ère industrielle — le début du signal (1750 → 2000)\n\n' +
         'Charbon, puis pétrole : le carbone enfoui au Carbonifère est renvoyé dans l\'atmosphère en deux siècles. ' +
-        'Le CO₂ passe d\'environ 280 à 370 ppm.\n\n' +
+        'Le CO₂ passe de 277 ppm en 1750 à 369 ppm en 2000 (Law Dome, puis Mauna Loa).\n\n' +
         'C\'est la première fois dans cette frise qu\'un forçage vient d\'ailleurs que de la géologie, ' +
         'de l\'astronomie ou de la biosphère.',
 
@@ -236,11 +259,11 @@ const EVENT_STORY = {
         '💫': [
             'Le Soleil gagne plus vite que le CO₂ ne part — ça va RÉCHAUFFER\n\n' +
               'Deux choses bougent en sens inverse sur ce pas : l\'altération des roches enfouit du CO₂ et du méthane (ils baissent d\'environ 20 %), pendant que la luminosité solaire monte (Gough 1981).\n\n' +
-              'À plus de 100 000 ppm, l\'absorption du CO₂ est déjà saturée : en perdre le quart ne coûte presque rien en effet de serre. Le Soleil, lui, compte plein tarif. Attendez-vous à quelques degrés de PLUS.',
+              'À plus de 100 000 ppm, l\'absorption du CO₂ est déjà saturée : en perdre le quart ne coûte presque rien en effet de serre. Le Soleil, lui, compte plein tarif. Attendez-vous à un peu plus d\'un degré de PLUS.',
 
-            'Même bras de fer, même vainqueur\n\n' +
-              'Le CO₂ et le méthane continuent de descendre, toujours dans la zone saturée où la baisse ne se paie pas. Le Soleil poursuit sa montée : la Terre archéenne se réchauffe encore.\n\n' +
-              'C\'est la sortie du paradoxe du Soleil faible vue de l\'intérieur — non pas un climat stable, mais un climat qui se réchauffe malgré un effet de serre qui s\'affaiblit.',
+            'Cette fois le CO₂ l\'emporte — ça va REFROIDIR, un peu\n\n' +
+              'Le CO₂ et le méthane perdent encore un tiers : on sort peu à peu de la zone saturée, et la baisse commence à se payer. Le Soleil poursuit sa montée, mais ne suit plus.\n\n' +
+              'Attendez-vous à deux degrés de moins. C\'est la sortie du paradoxe du Soleil faible vue de l\'intérieur : un équilibre fragile entre un Soleil qui monte et un effet de serre qui s\'affaiblit.',
 
             'Ce clic casse la tendance — ça va REFROIDIR fort\n\n' +
               'Il amène à −2 500 Ma, c\'est-à-dire à la composition du Protérozoïque : le méthane s\'effondre (l\'oxygène de la Grande Oxydation le détruit) et le CO₂ perd un ordre de grandeur.\n\n' +
@@ -254,11 +277,11 @@ const EVENT_STORY = {
               'La montée de la luminosité solaire passe devant. La bascule glaciaire n\'est pas pour ce clic-ci.',
 
             'Cette fois le CO₂ pèse plus que le Soleil — ça va REFROIDIR\n\n' +
-              'Le CO₂ descend sous le millier de ppm : on quitte la zone saturée, et chaque division par deux commence à coûter des degrés. Le méthane, détruit par l\'oxygène, ne compense plus rien.\n\n' +
-              'Le refroidissement reste modéré — un à deux degrés — mais le signe a changé, et il ne changera plus.',
+              'Le CO₂ s\'effondre jusqu\'à quelques dizaines de ppm : on quitte la zone saturée, et chaque division par deux coûte des degrés. Le méthane, détruit par l\'oxygène, ne compense plus rien.\n\n' +
+              'Attendez-vous à cinq degrés de moins. Le signe a changé, et il ne changera plus.',
 
             'Dernier pas — la glace apparaît\n\n' +
-              'La composition ne bouge presque plus, et pourtant la température va chuter de plusieurs degrés : elle passe le seuil où la neige survit à l\'été aux hautes latitudes. L\'albédo grimpe d\'un coup et amplifie le refroidissement qui l\'a causé.\n\n' +
+              'La composition ne bouge presque plus, et pourtant la température va chuter d\'une dizaine de degrés, jusqu\'à 0 °C : elle passe le seuil où la neige survit à l\'été aux hautes latitudes. L\'albédo grimpe d\'un coup et amplifie le refroidissement qui l\'a causé.\n\n' +
               'Vous arriverez au pied du Sturtien, dans l\'état métastable où se joue la première grande hystérésis.'
         ]
     },
@@ -271,24 +294,48 @@ const EVENT_STORY = {
     '⛄': {
         '💫':
             'Le temps passe sous la glace — et rien ne bouge\n\n' +
-              'Le voile de sulfates qui avait déclenché la bascule est retombé : la cause a disparu. Et pourtant la température ne remontera pas d\'un dixième de degré sur ce clic.\n\n' +
-              'C\'est exactement ça, l\'hystérésis : enlever la cause ne défait pas l\'effet. La glace entretient le froid par son propre albédo. Le résultat intéressant de ce clic, c\'est qu\'il ne se passe rien.',
+              'Le voile de sulfates qui avait déclenché la bascule est retombé : la cause a disparu. Et pourtant la température ne remontera que de deux à trois degrés — la planète reste sous −60 °C.\n\n' +
+              'C\'est exactement ça, l\'hystérésis : enlever la cause ne défait pas l\'effet. La glace entretient le froid par son propre albédo.',
         '🌋':
             'Volcanisme prolongé — la seule porte de sortie\n\n' +
               'Sous une banquise globale, l\'altération des roches s\'arrête : plus rien ne consomme le CO₂ que les volcans continuent d\'émettre. Il s\'accumule pendant des millions d\'années, et les poussières salissent la glace, ce qui abaisse son albédo avant même la fonte.\n\n' +
-              'Ce clic franchit le seuil : le CO₂ est multiplié par une quinzaine, l\'albédo s\'effondre, et vous passerez du désert glacé à une serre extrême — plus de quatre-vingts degrés d\'écart. Il en faut ÉNORMÉMENT plus pour sortir qu\'il n\'en fallait pour entrer.'
+              'Ce clic franchit le seuil : le CO₂ est multiplié par plus de cent, l\'albédo s\'effondre, et vous passerez du désert glacé à une serre extrême — plus de quatre-vingt-dix degrés d\'écart. Il en faut ÉNORMÉMENT plus pour sortir qu\'il n\'en fallait pour entrer.'
     },
     'hysteresis 1b': {
-        '💫':
-            'La serre post-Snowball s\'évacue — ça va REFROIDIR\n\n' +
+        '💫': [
+            'La serre post-Sturtienne s\'évacue — ça va REFROIDIR\n\n' +
               'Les roches mises à nu par la déglaciation s\'altèrent violemment et pompent le CO₂ ; les carbonates de couverture en sont la trace.\n\n' +
-              'Ce clic fait redescendre le CO₂ d\'un ordre de grandeur, et la température d\'une petite dizaine de degrés — vers un monde chaud, mais redevenu ordinaire.'
+              'Sur ce clic le CO₂ perd plus d\'un tiers, la température deux degrés.',
+
+            'L\'interglaciaire se refroidit — encore\n\n' +
+              'L\'altération continue de pomper : le CO₂ est divisé par deux et demi, et la température perd quatre degrés. Le monde redevient ordinaire, puis frais.\n\n' +
+              'Vous arriverez au bord de la deuxième bascule : un CO₂ où il suffira d\'un coup de pouce pour regeler toute la planète.',
+
+            'Le coup de pouce — ce clic fait regeler la Terre\n\n' +
+              'Un nouveau voile volcanique assombrit le Soleil sur une planète déjà au seuil. Comme au Sturtien, l\'effet est de l\'autre côté : le clic vous emmène dans le Marinoen, plus de quatre-vingts degrés plus bas, à CO₂ inchangé.\n\n' +
+              'Deux glaciations globales en moins de cent millions d\'années : la bascule n\'était pas un accident.'
+        ]
+    },
+    '🏂': {
+        '💫':
+            'Sous la glace, une deuxième fois — presque rien ne bouge\n\n' +
+              'Le voile est retombé ; la température remonte de deux à trois degrés et reste sous −55 °C. L\'hystérésis, encore : la cause partie, l\'effet demeure.',
+        '🌋':
+            'Volcanisme accumulé — la dernière porte de sortie\n\n' +
+              'Le CO₂ volcanique s\'est de nouveau accumulé sous la banquise, et les poussières salissent la glace.\n\n' +
+              'Ce clic franchit le seuil : le CO₂ est multiplié par près de quatre, l\'albédo s\'effondre, et l\'écart atteint près de quatre-vingt-dix degrés. C\'est la dernière glaciation globale de l\'histoire de la Terre.'
+    },
+    'hysteresis 1c': {
+        '💫':
+            'La serre post-Marinoenne s\'évacue — ça va REFROIDIR\n\n' +
+              'Carbonates de couverture, altération des roches fraîches : le CO₂ est divisé par six sur l\'Édiacarien.\n\n' +
+              'Le clic vous dépose au début du Cambrien avec près de neuf degrés de moins — un monde chaud et stable, où la vie complexe va exploser.'
     },
     '🪼': {
         '💫':
-            'Le CO₂ baisse de moitié, la température ne bougera pas\n\n' +
+            'Le CO₂ baisse de moitié, la température à peine\n\n' +
               'Les océans redissolvent le CO₂ et la vie marine du Cambrien en enfouit une partie : sur ce clic, le CO₂ est divisé par deux.\n\n' +
-              'Et pourtant attendez-vous à une température quasi identique : le Soleil a gagné en puissance pendant ces 180 Ma, et les deux effets se compensent presque exactement. C\'est le thermostat carbone qui travaille — la compensation dont l\'Archéen était incapable.'
+              'Et pourtant attendez-vous à un degré de moins seulement : le Soleil a gagné en puissance pendant ces 119,6 Ma, et les deux effets se compensent presque exactement. C\'est le thermostat carbone qui travaille — la compensation dont l\'Archéen était incapable.'
     },
     '🍄': {
         '💫': [
@@ -302,56 +349,55 @@ const EVENT_STORY = {
             'Le carbone s\'enfouit — ça continue de REFROIDIR\n\n' +
             'Dévonien supérieur puis Carbonifère : les forêts marécageuses enfouissent le carbone plus vite ' +
             'qu\'il n\'est recyclé. C\'est littéralement le charbon d\'aujourd\'hui qui se met en place.\n\n' +
-            'Le CO₂ passe sous les 400 ppm. Encore un degré et demi de moins, et la glace commence à tenir ' +
-            'aux hautes latitudes du Gondwana.',
+            'Le CO₂ passe sous les 400 ppm. Encore trois quarts de degré de moins — mais dans le modèle, la ' +
+            'glace ne prend toujours pas.',
 
-            'La glaciation du Karoo — ça va BASCULER\n\n' +
-            'Le CO₂ atteint ~280 ppm et le méthane le ppm et demi : le modèle franchit le seuil glace-albédo. ' +
-            'La glace bondit d\'environ 14 % à 28 % de la surface, et chaque mètre de glace en plus renvoie ' +
-            'plus de lumière.\n\n' +
-            'Attendez-vous à une chute d\'une dizaine de degrés d\'un seul clic. C\'est la plus longue ère ' +
-            'glaciaire du Phanérozoïque (Montañez 2007) — et elle est causée par des arbres.',
+            'La glaciation du Karoo — le modèle ne bascule PAS\n\n' +
+            'Le CO₂ atteint ~280 ppm et le méthane le ppm et demi. La littérature y place la plus longue ère ' +
+            'glaciaire du Phanérozoïque (Montañez 2007) — causée par des arbres.\n\n' +
+            'Le modèle, lui, reste vers 18 °C sans glace : à peine un dixième de degré de moins. Il est trop ' +
+            'chaud ici pour franchir le seuil glace-albédo — un écart à la littérature, pas un résultat.',
 
             'Fin du Karoo — ça va RÉCHAUFFER, beaucoup\n\n' +
             'Les forêts humides du Carbonifère s\'effondrent, la Pangée s\'assèche, l\'enfouissement de ' +
             'carbone s\'arrête et le volcanisme reprend la main : le CO₂ repart vers le millier de ppm.\n\n' +
-            'Ce clic vous emmène aux portes de la crise permienne, avec une vingtaine de degrés gagnés. ' +
-            'Ce qui a mis 100 Ma à refroidir est défait en 35.'
+            'Ce clic vous emmène aux portes de la crise permienne, avec six degrés gagnés. ' +
+            'Ce qui a mis plus de 100 Ma à refroidir est défait en 42.'
         ]
     },
     '💀': {
         '💫':
             'Trapps de Sibérie — ça va RÉCHAUFFER, un peu\n\n' +
               'Des éruptions gigantesques pendant des centaines de milliers d\'années. Le soufre refroidit quelques années, le CO₂ réchauffe pour des dizaines de milliers d\'années : c\'est le second qui l\'emporte, avec l\'anoxie des océans et la plus grande extinction connue.\n\n' +
-              'Sur ce pas la composition bouge peu et le degré gagné vient surtout du Soleil. L\'extinction, elle, ne se lit pas dans une moyenne de température — c\'est la limite de l\'exercice.'
+              'Sur ce pas le CO₂ gagne encore un quart, et près de deux degrés. L\'extinction, elle, ne se lit pas dans une moyenne de température — c\'est la limite de l\'exercice.'
     },
     '🦕': {
         '💫':
             'Un monde chaud qui le reste — presque rien ne va bouger\n\n' +
               'Pas de calotte permanente, un gradient équateur-pôle faible, un CO₂ élevé entretenu par le volcanisme de l\'ouverture de l\'Atlantique.\n\n' +
-              'Ce clic laisse passer 100 Ma sans changer la composition : seul le Soleil ajoute sa fraction de degré. Sur toute la frise, c\'est l\'un des pas les plus stables.',
+              'Ce clic laisse passer 100 Ma sans changer la composition : seul le Soleil ajoute un peu plus d\'un degré. Sur toute la frise, c\'est l\'un des pas les plus stables.',
         '🎇':
             'Impact de Chicxulub — ce clic change d\'époque\n\n' +
               'Poussières et aérosols occultent le Soleil quelques années : photosynthèse interrompue, chaînes alimentaires effondrées.\n\n' +
-              'Ce que vous verrez après le clic n\'est pas le nuage d\'impact (quelques années, hors de portée d\'un pas de 100 Ma) mais le monde d\'après : un CO₂ nettement plus bas et une dizaine de degrés en moins. C\'est le Cénozoïque qui commence.'
+              'Ce que vous verrez après le clic n\'est pas le nuage d\'impact (quelques années, hors de portée d\'un pas de 100 Ma) mais le monde d\'après : un CO₂ plus bas d\'un quart et près de neuf degrés en moins. C\'est le Cénozoïque qui commence.'
     },
     '🦤': {
         '💫':
             'Vers l\'optimum éocène — ça va RÉCHAUFFER\n\n' +
-              'Après la crise K-Pg le CO₂ ne descend pas : il remonte, et fortement — il sera plus que doublé au bout de ce clic. Vous arrivez à −50 Ma, à l\'entrée du monde le plus chaud du Cénozoïque.\n\n' +
+              'Après la crise K-Pg le CO₂ ne descend pas : il remonte — multiplié par 1,4 au bout de ce clic, pour un degré et demi de plus. Vous arrivez à −56 Ma, au PETM, l\'entrée du monde le plus chaud du Cénozoïque.\n\n' +
               'La longue descente vers les glaciations viendra APRÈS, quand l\'Himalaya se soulèvera et se mettra à pomper le CO₂. Pas sur ce clic-ci.'
     },
     '🐊': {
         '💫':
             'L\'Himalaya se soulève — ça va REFROIDIR\n\n' +
               'La collision Inde-Asie expose sans cesse des roches fraîches à la pluie. L\'altération s\'emballe et pompe le CO₂ pendant des millions d\'années (Raymo & Ruddiman 1992).\n\n' +
-              'Sur ce clic le CO₂ est divisé par deux et la température perd près de quatre degrés : le monde le plus chaud du Cénozoïque commence sa descente, celle qui mène aux calottes.'
+              'Sur ce clic le CO₂ est presque divisé par deux et la température perd deux degrés : le monde le plus chaud du Cénozoïque commence sa descente, celle qui mène aux calottes.'
     },
     'hysteresis 2': {
         '⛰':
             'Au seuil de la calotte antarctique — ce clic franchit\n\n' +
               'Le CO₂ est passé sous la valeur en dessous de laquelle une calotte peut tenir sur l\'Antarctique. Comme au Sturtien, le franchissement ne sera pas progressif.\n\n' +
-              'Dans cette époque-ci rien ne bougera : l\'effet est de l\'autre côté. Le clic installe la glace — albédo en hausse, trois degrés de moins — et une fois qu\'elle est là, il en faudra bien plus pour la faire disparaître que pour l\'avoir empêchée de se former.'
+              'Dans cette époque-ci rien ne bougera : l\'effet est de l\'autre côté. Le clic fait perdre un peu plus de deux degrés, mais la glace n\'atteint qu\'un pour cent de la surface : le modèle n\'a pas de calotte continentale, et la vraie bascule Oi-1 lui échappe (DeConto & Pollard 2003).'
     },
     '🏔': {
         '💫': [
@@ -359,7 +405,7 @@ const EVENT_STORY = {
               'La composition est presque figée sur ce pas ; seul le Soleil ajoute sa fraction de degré. C\'est le mode « avec calottes » qui s\'installe pour de bon — celui que la Terre n\'a plus quitté depuis, et qui rend possibles les cycles glaciaires.',
 
             'Vers le Pliocène — ça va REFROIDIR\n\n' +
-              'Ce clic amène à −2 Ma : le CO₂ tombe de moitié et la glace gagne l\'hémisphère nord. Trois degrés de moins.\n\n' +
+              'Ce clic amène à −2,58 Ma, la base du Quaternaire : le CO₂ tombe de moitié. Un peu plus d\'un degré de moins.\n\n' +
               'Surtout, il plante le décor : avec des calottes aux deux pôles, deux états deviennent possibles pour une même atmosphère. C\'est ce que le Quaternaire va montrer, juste après.'
         ]
     },
@@ -367,7 +413,7 @@ const EVENT_STORY = {
         '💫': [
             'Vers une glaciation — ça va REFROIDIR fort\n\n' +
               'L\'obliquité descend à son minimum : les étés polaires deviennent trop frais pour faire fondre la neige tombée l\'hiver. La glace s\'étend, l\'albédo monte, l\'océan froid absorbe du CO₂ et les zones humides émettent moins de méthane.\n\n' +
-              'Les deux gaz AMPLIFIENT le refroidissement, ils ne le déclenchent pas : le déclencheur est astronomique. Attendez-vous à sept degrés de moins d\'un seul clic.',
+              'Les deux gaz AMPLIFIENT le refroidissement, ils ne le déclenchent pas : le déclencheur est astronomique. Attendez-vous à dix degrés de moins d\'un seul clic — deux fois l\'écart mesuré entre glaciaire et interglaciaire (Snyder 2016) : le modèle exagère le yoyo.',
 
             'Vers un interglaciaire — ça va RÉCHAUFFER autant\n\n' +
               'L\'obliquité remonte à son maximum : étés polaires chauds, la glace de l\'année ne survit pas. L\'albédo s\'effondre, l\'océan qui se réchauffe relâche son CO₂, les zones humides redémarrent.\n\n' +
@@ -378,32 +424,32 @@ const EVENT_STORY = {
               'C\'est le test le plus simple de l\'hystérésis glaciaire : la Terre ne garde pas de mémoire du nombre de cycles, seulement de la position de son axe.',
 
             'Sortie du Quaternaire — ça va RÉCHAUFFER\n\n' +
-              'Dernier pas : la date atteint −10 000 ans et le modèle bascule une dernière fois du côté chaud. La calotte nord-américaine a fondu, le niveau des mers est remonté de 120 m.\n\n' +
+              'Dernier pas : la date atteint −11 700 ans et le modèle bascule une dernière fois du côté chaud. La calotte nord-américaine a fondu, le niveau des mers est remonté de 120 m.\n\n' +
               'Ce qui suit n\'est pas un nouvel état : c\'est l\'Holocène, le même interglaciaire, mais tenu assez longtemps pour que l\'agriculture y tienne.'
         ]
     },
     '🛖': {
         '💫': [
-            'Quatre mille ans — et rien ne bougera\n\n' +
+            'Près de quatre mille ans — et rien ne bougera\n\n' +
               'Environ 280 ppm de CO₂, une température qui ne varie pas d\'un dixième de degré. C\'est la fenêtre climatique dans laquelle tiennent l\'agriculture et toutes les civilisations humaines.\n\n' +
               'Ici, la stabilité EST le résultat : après quatre milliards d\'années de secousses, le modèle ne trouve plus rien à dire.',
 
             'Encore quatre mille ans de calme\n\n' +
               'Même composition, même température, au dixième de degré près. Sur toute la frise, c\'est l\'époque où il se passe le moins de choses — et c\'est précisément ce qui la rend remarquable.',
 
-            'Dernier pas — 1800, le CO₂ commence à bouger\n\n' +
-              'Le méthane et le CO₂ amorcent leur remontée : quelques ppm, quelques dixièmes de degré. Rien qui saute aux yeux encore.\n\n' +
+            'Dernier pas — 1750, la veille de l\'industrie\n\n' +
+              'Le CO₂ de 1750 (277 ppm, Law Dome) est même un peu sous la moyenne holocène : deux dixièmes de degré de plus seulement, qui viennent du Soleil. Rien qui saute aux yeux.\n\n' +
               'Le clic vous dépose à l\'entrée de l\'ère industrielle, et pour la première fois le forçage ne viendra ni de la géologie, ni de l\'astronomie, ni de la biosphère.'
         ]
     },
     '🚂': {
         '💫': [
             'Premier siècle industriel — presque rien encore\n\n' +
-              '1800 → 1900 : le charbon brûle, mais les quantités restent petites devant la masse de l\'atmosphère. Attendez-vous à une composition et à une température quasi inchangées.\n\n' +
+              '1750 → 1875 : le charbon brûle, mais les quantités restent petites devant la masse de l\'atmosphère. Attendez-vous à une composition et à une température quasi inchangées.\n\n' +
               'Le signal n\'est pas encore sorti du bruit — ce qui explique qu\'on ait mis si longtemps à le voir.',
 
             'Second siècle — cette fois ça se voit\n\n' +
-              '1900 → 2000 : le pétrole s\'ajoute au charbon. Le CO₂ passe d\'environ 280 à 365 ppm et la température gagne plus d\'un degré sur ce seul clic.\n\n' +
+              '1875 → 2000 : le pétrole s\'ajoute au charbon. Le CO₂ passe de 277 à 370 ppm et la température gagne sept dixièmes de degré sur ce seul clic — la mesure en donne neuf (Copernicus) : le modèle chauffe un peu trop peu.\n\n' +
               'Le carbone enfoui au Carbonifère est renvoyé dans l\'atmosphère en deux siècles — le pas de temps le plus court de toute la frise, et le plus rapide en degrés par million d\'années.'
         ]
     },
@@ -538,7 +584,7 @@ function buildEventAlt2sec(epochId, eventKey) {
     // Durée représentée par le clic
     const stepMa = cfg && Number.isFinite(Number(cfg['🔺⏳'])) ? Number(cfg['🔺⏳']) : null;
     if (stepMa !== null) {
-        changes.push(stepMa >= 1 ? '+' + stepMa + ' Ma' : '+' + Math.round(stepMa * 1e6).toLocaleString('fr-FR') + ' ans');
+        changes.push(stepMa >= 1 ? '+' + (Math.round(stepMa * 10) / 10) + ' Ma' : '+' + Math.round(stepMa * 1e6).toLocaleString('fr-FR') + ' ans');
     }
 
     // Masses imposées par l'état de cycle (🔁) : on montre valeur courante → valeur visée

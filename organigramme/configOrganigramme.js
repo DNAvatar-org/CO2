@@ -280,7 +280,7 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'Plein Snowball',
+                epochName: 'Snowball Sturtien', // ⛄ (ex « Plein Snowball »)
                 numCircles: 3,
                 maxRadius: 68,
                 strokeSize: 0,
@@ -289,7 +289,25 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'Sortie Marinoen', // hysteresis 1b
+                epochName: 'Sortie Sturtienne', // hysteresis 1b (v-2026-09-24)
+                numCircles: 3,
+                maxRadius: 65,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Snowball Marinoen', // 🏂 (v-2026-09-24)
+                numCircles: 3,
+                maxRadius: 68,
+                strokeSize: 0,
+                openingAngle: 0,
+                rotation: 0,
+                color: '#ff9800'
+            },
+            {
+                epochName: 'Sortie Marinoen', // hysteresis 1c (v-2026-09-24)
                 numCircles: 3,
                 maxRadius: 65,
                 strokeSize: 0,
@@ -454,7 +472,7 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'Plein Snowball',
+                epochName: 'Snowball Sturtien', // ⛄ (ex « Plein Snowball »)
                 logo: LOGOS.SNOWBALL,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.05,
@@ -464,7 +482,27 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'Sortie Marinoen', // hysteresis 1b
+                epochName: 'Sortie Sturtienne', // hysteresis 1b (v-2026-09-24)
+                logo: LOGOS.CRYO_INTERLUDE,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.08,
+                fillColor: 'rgba(100, 180, 220, 0.5)',
+                strokeColor: '#5FAFD0',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Snowball Marinoen', // 🏂 (v-2026-09-24)
+                logo: LOGOS.SNOWBALL_MARINOAN,
+                radius: radiusTerre,
+                radiusExobase: radiusTerre * 1.05,
+                fillColor: 'rgba(230, 245, 255, 0.7)',
+                strokeColor: '#E0FFFF',
+                strokeSize: 0,
+                planetEffect: true
+            },
+            {
+                epochName: 'Sortie Marinoen', // hysteresis 1c (v-2026-09-24)
                 logo: LOGOS.SNOWBALL_EXIT,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.08,

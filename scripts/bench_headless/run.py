@@ -1,7 +1,13 @@
 # File: run.py - Banc headless API_BILAN (Chrome + CDP, sans interface)
 # Desc: Sert le site, lance Chrome headless sur host.html, injecte un script de mesure, attend, imprime.
 #       Sert à mesurer le modèle sans ouvrir de navigateur — bench 19 époques, sondes, balayages de jauges.
-# Version 1.0.0
+# Version 1.2.0
+# logs :
+#   - v1.2.0: --stream VAR : chaque nouvel élément de window.VAR imprimé dès qu'il existe (« § » + JSON) ;
+#     avancement sondé toutes les 0,5 s et imprimé à chaque CHANGEMENT d'étape (avant : toutes les 10 s).
+#   - v1.1.0: s'attache à l'onglet portant SON ?cb= (et non au premier « host.html » venu) : un Chrome
+#     resté ouvert par un script interrompu faisait tourner la mesure suivante dans son onglet, avec
+#     le TIMELINE qu'il avait modifié en mémoire (2026-09-24 : une courbe générée sur de fausses dates).
 # Copyright 2026 DNAvatar.org - Arnaud Maignan
 # Date: 2026-09-22
 """
@@ -34,6 +40,7 @@ def main():
     ap.add_argument('script', help='fichier .js à injecter (relatif à ce dossier si non trouvé)')
     ap.add_argument('--var', default='__R6__', help='variable window.* à lire en sortie')
     ap.add_argument('--timeout', type=int, default=1800, help='secondes')
+    ap.add_argument('--stream', default=None, help='tableau window.* dont chaque nouvel élément est imprimé AU FIL DE L\'EAU (ligne « § » + JSON)')
     a = ap.parse_args()
 
     path = a.script if os.path.exists(a.script) else os.path.join(HERE, a.script)
@@ -42,13 +49,14 @@ def main():
     srv_site = serve(SITE, 8765)
     srv_host = serve(HERE, 8766)
     profile = os.path.join(HERE, '.chrome-profile')
+    cb = '%d' % int(time.time() * 1000)
     chrome = subprocess.Popen([CHROME, '--headless=new', '--disable-gpu', '--no-first-run',
                                '--user-data-dir=' + profile, '--remote-debugging-port=9333',
-                               'http://127.0.0.1:8766/host.html?cb=%d' % int(time.time())],
+                               'http://127.0.0.1:8766/host.html?cb=' + cb],
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         time.sleep(6)
-        c = cdp.attach(url_filter='host.html', tries=60)
+        c = cdp.attach(url_filter='host.html?cb=' + cb, tries=60)
         for _ in range(120):
             if c.eval('window.__READY__'):
                 break
@@ -56,13 +64,26 @@ def main():
         if not c.eval('window.__READY__'):
             raise SystemExit('chargement incomplet : ' + str(c.eval('window.__LOAD_ERR__')))
         c.eval(js, await_promise=False)
-        t0 = time.time()
+        t0 = time.time(); dernier = None; envoyes = 0
+        def vider_flux():
+            nonlocal envoyes
+            if not a.stream:
+                return
+            n = c.eval('(window.%s || []).length' % a.stream) or 0
+            if n > envoyes:
+                for el in json.loads(c.eval('JSON.stringify(window.%s.slice(%d))' % (a.stream, envoyes))):
+                    print('§' + json.dumps(el, ensure_ascii=False), flush=True)
+                envoyes = n
         while time.time() - t0 < a.timeout:
             prog = c.eval('window.__PROG__')
+            vider_flux()
             if prog in ('done', 'error'):
                 break
-            print('…', prog, flush=True)
-            time.sleep(10)
+            if prog != dernier:   # une ligne par étape, pas une par sondage
+                print('… %4ds  %s' % (time.time() - t0, prog), flush=True)
+                dernier = prog
+            time.sleep(0.5)
+        vider_flux()
         err = c.eval('window.__ERR__')
         if err:
             print('ERREUR dans le script injecté :\n' + err[:2000])

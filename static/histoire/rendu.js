@@ -1,16 +1,20 @@
 // File: CO2/static/histoire/rendu.js
-// Desc: Dessin : grille, glaciations datées (bandes), littérature (PhanDA 5–95 % + médiane, mesures
-//       instrumentales, repères ponctuels en boîtes), courbe du MODÈLE (orange), logos d'époque en
+// Desc: Dessin : grille, glaciations datées (bandes), littérature (série continue −5000 Ma → 2025 avec sa
+//       bande d'incertitude, repères ponctuels en boîtes), courbe du MODÈLE (orange, en escalier), logos d'époque en
 //       bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.1.0
-// Date: 2026-09-23
+// Version 1.3.0
+// Date: 2026-09-24
 // logs :
+//   - v1.3.0: littérature continue jusqu'à −5000 Ma (ancres hadéennes + KT2018), raccords signalés au survol ;
+//     modèle en ESCALIER (l'état d'un clic tient jusqu'au suivant), survol = clic joué, sa durée, et l'état de
+//     l'intérieur (T potentielle, flux, puissance — API_BILAN/geology/interieur.js).
+//   - v1.2.0: Quaternaire de Snyder 2016 (cycles glaciaires mesurés) raccordé à PhanDA et à l'instrumental.
 //   - v1.1.0: littérature sourcée (litterature.js) au lieu de la courbe de Gemini ; courbe du modèle.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
     const H = window.HISTOIRE;
-    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', mod: '#ff9f43', glace: 'rgba(160, 200, 255, 0.10)',
+    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', mod: '#ff9f43', glace: 'rgba(160, 200, 255, 0.22)',
                    rep: 'rgba(102, 252, 241, 0.35)', grille: 'rgba(69, 162, 158, 0.15)', texte: 'rgba(69, 162, 158, 0.6)' };
     const px = t => (H.vue.xOffset - t) * H.vue.xScale;
     const py = T => H.vue.height / 2 - (T - H.vue.yOffset) * H.vue.yScale;
@@ -75,14 +79,41 @@
             zones.push({ x0, x1: Math.max(x1, x0 + 2), y0: 0, y1: v.height, texte: '❄ ' + g.label + ' — ' + g.src });
         }
 
-        // Littérature : PhanDA puis instrumental (même série, raccordée), bande 5–95 %.
-        serie(ctx, L.phanda.concat(L.instrumental), COUL.lit, COUL.litBande);
-        for (const r of L.phanda.concat(L.instrumental)) {
-            const x = px(r[0]);
-            if (x >= 0 && x <= v.width) zones.push({ x0: x - 4, x1: x + 4, y0: py(r[3]) - 4, y1: py(r[1]) + 4,
-                texte: r[2].toFixed(1) + ' °C [' + r[1].toFixed(1) + ' ; ' + r[3].toFixed(1) + '] — ' +
-                       (r[0] > 20000 ? 'PhanDA (Judd et al. 2024)' : 'mesures instrumentales (Copernicus, GISTEMP, Jones 1999)') });
-        }
+        // Littérature : une seule série continue de −5000 Ma à 2025, bande d'incertitude comprise.
+        // Hadéen (ancres sourcées) → KT2018 (Précambrien) → PhanDA → Snyder 2016 (Quaternaire, 1 ka) → instrumental.
+        const tSnyder = L.snyder[0][0];
+        const SEG = [
+            { rows: L.hadeen, src: r => r[4] },
+            { rows: L.kt2018, src: () => 'Krissansen-Totton, Arney & Catling 2018, PNAS 115:4105 (2,5–97,5 %) — modèle du cycle du carbone contraint par proxys' },
+            { rows: L.phanda.filter(r => r[0] > tSnyder), src: () => 'PhanDA (Judd et al. 2024)' },
+            { rows: L.snyder, src: () => 'Snyder 2016, Nature 538:226 (2,5–97,5 %)' },
+            { rows: L.instrumental, src: () => 'mesures instrumentales (Copernicus, GISTEMP, Jones 1999)' }
+        ];
+        const lit = [].concat(...SEG.map(g => g.rows));
+        serie(ctx, lit, COUL.lit, COUL.litBande);
+        const fmt = r => r[2].toFixed(1) + ' °C [' + r[1].toFixed(1) + ' ; ' + r[3].toFixed(1) + ']';
+        SEG.forEach((g, s) => {
+            const pas = Math.max(1, Math.floor(g.rows.length / 400));   // survol : pas besoin des 2000 points de Snyder
+            g.rows.forEach((r, k) => {
+                if (k % pas) return;
+                const x = px(r[0]);
+                if (x >= 0 && x <= v.width) zones.push({ x0: x - 4, x1: x + 4, y0: py(r[3]) - 4, y1: py(r[1]) + 4, texte: fmt(r) + ' — ' + g.src(r) });
+            });
+            // Raccord avec la source suivante, ou entre deux ancres hadéennes éloignées : trait droit, aucune donnée.
+            const trous = [];
+            for (let k = 1; k < g.rows.length; k++) if (g.rows[k - 1][4] !== g.rows[k][4]) trous.push([g.rows[k - 1], g.rows[k], g.src(g.rows[k - 1]), g.src(g.rows[k])]);
+            const suiv = SEG[s + 1];
+            if (suiv && g.rows.length && suiv.rows.length) {
+                const a = g.rows[g.rows.length - 1], b = suiv.rows[0];
+                trous.push([a, b, g.src(a), suiv.src(b)]);
+            }
+            for (const [a, b, sa, sb] of trous) {
+                const x0 = px(a[0]), x1 = px(b[0]);
+                if (x1 - x0 < 8 || x1 < 0 || x0 > v.width) continue;
+                zones.push({ x0: x0 + 4, x1: x1 - 4, y0: py(Math.max(a[3], b[3])), y1: py(Math.min(a[1], b[1])),
+                    texte: 'Raccord, aucune donnée entre ' + fmt(a) + ' (' + sa + ') et ' + fmt(b) + ' (' + sb + ') : trait droit' });
+            }
+        });
         // Repères ponctuels : boîte [t0 ; t1] × [lo ; hi].
         for (const r of L.reperes) {
             const x0 = px(r.t0), x1 = Math.max(px(r.t1), x0 + 3), y0 = py(r.hi), y1 = py(r.lo);
@@ -94,20 +125,30 @@
             zones.push({ x0, x1, y0, y1, texte: r.label + ' [' + r.lo + ' ; ' + r.hi + ' °C] — ' + r.src });
         }
 
-        // Modèle : chaîne de clics (courbe_modele.js), points reliés.
-        const M = H.modele;
+        // Modèle : chaîne de clics (courbe_modele.js) en ESCALIER. Un clic calcule l'état à sa date, et cet
+        // état tient jusqu'au clic suivant : palier horizontal, puis saut vertical au clic. Rien n'est
+        // interpolé entre deux clics — une pente dirait que le modèle a calculé ce qu'il n'a pas calculé.
+        const M = H.modeleFrise;   // courbe_modele.py frise : graine à chaque époque, puis ses clics
         if (M && M.points && M.points.length) {
             const pts = M.points.slice().sort((a, b) => b.t - a.t);
             ctx.strokeStyle = COUL.mod; ctx.lineWidth = 2; ctx.beginPath();
-            pts.forEach((p, i) => { const x = px(p.t), y = py(p.T); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+            pts.forEach((p, i) => {
+                const x = px(p.t), y = py(p.T);
+                if (!i) { ctx.moveTo(x, y); return; }
+                ctx.lineTo(x, py(pts[i - 1].T));   // palier du clic précédent jusqu'à ce clic
+                ctx.lineTo(x, y);                  // saut du clic
+            });
+            ctx.lineTo(px(H.T_MIN_AGO), py(pts[pts.length - 1].T));   // dernier état jusqu'à 2025
             ctx.stroke();
             ctx.fillStyle = COUL.mod;
             for (const p of pts) {
                 const x = px(p.t), y = py(p.T);
                 if (x < -5 || x > v.width + 5) continue;
                 ctx.beginPath(); ctx.arc(x, y, 3, 0, 2 * Math.PI); ctx.fill();
+                const pas = p.dt == null ? '' : ' (+' + (p.dt >= 1 ? p.dt.toFixed(p.dt % 1 ? 2 : 0) + ' Ma' : Math.round(p.dt * 1e6).toLocaleString('fr-FR') + ' ans') + ')';
                 zones.push({ x0: x - 5, x1: x + 5, y0: y - 5, y1: y + 5,
-                    texte: 'Modèle ' + p.ep + ' : ' + p.T.toFixed(1) + ' °C, glace ' + Math.round(p.glace * 100) + ' %, CO₂ ' + Math.round(p.ppm) + ' ppm' });
+                    texte: 'Modèle — ' + p.etape + pas + ' : ' + p.T.toFixed(1) + ' °C, glace ' + Math.round(p.glace * 100) + ' %, CO₂ ' + Math.round(p.ppm) + ' ppm'
+                        + (p.Tint > 0 ? ' — intérieur ' + Math.round(p.Tint) + ' °C, ' + (p.geo >= 10 ? Math.round(p.geo).toLocaleString('fr-FR') : p.geo.toFixed(3)) + ' W/m² (' + p.TW.toLocaleString('fr-FR') + ' TW)' : '') });
             }
         }
 
@@ -127,7 +168,7 @@
         ctx.textAlign = 'right'; ctx.font = '12px Tahoma';
         ctx.fillStyle = COUL.lit; ctx.fillText('— littérature (médiane, bande 5–95 %)', v.width - 15, 25);
         ctx.fillStyle = COUL.mod;
-        ctx.fillText(M ? '— modèle (chaîne de clics, bary ' + M.bary + ' %, ' + M.genere + ')' : '— modèle : courbe_modele.js absent', v.width - 15, 42);
+        ctx.fillText(M ? '— modèle (frise à chaque époque puis clics, escalier, bary ' + M.bary + ' %, ' + M.genere + ')' : '— modèle : courbe_modele_frise.js absent (python3 CO2/scripts/bench_headless/courbe_modele.py frise)', v.width - 15, 42);
     };
 
     /** Texte de la zone sous (x, y), ou null. */

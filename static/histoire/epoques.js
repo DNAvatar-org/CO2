@@ -16,7 +16,7 @@
         if (!window.CHARS) throw new Error('[histoire] window.CHARS manquant — charger API_BILAN/data/alphabet.js');
         const C = window.CHARS;
         // Les états d'hystérésis ont un id texte : leur logo d'affichage est dans l'alphabet.
-        const LOGO = { 'hysteresis 1a': C.SNOWBALL_ENTRY, 'hysteresis 1b': C.SNOWBALL_EXIT, 'hysteresis 2': C.EOCENE_OLIGOCENE };
+        const LOGO = { 'hysteresis 1a': C.SNOWBALL_ENTRY, 'hysteresis 1b': C.CRYO_INTERLUDE, 'hysteresis 1c': C.SNOWBALL_EXIT, 'hysteresis 2': C.EOCENE_OLIGOCENE };
         return window.epochIndex().filter(e => e.type === 'epoch').map(e => {
             const debut = e['▶'], fin = e['◀'];
             const ago = debut > fin ? debut : H.AN_PRESENT - debut;   // géologique : déjà « avant » ; sinon calendrier

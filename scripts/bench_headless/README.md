@@ -56,10 +56,29 @@ mais sur le **passage** qu'elle provoque en venant de l'époque précédente, T�
 | glaciation EOT | 🐊 → 2 → (⛰) 🏔 | la glace augmente |
 
 Les seuils se trouvent par dichotomie scriptée sur le CO₂, et la config se pose **sur** le seuil :
-quasi pas de changement de ppm, une T° radicalement différente. Le 2026-09-23 (bary 62 %) :
-entrée 1a = ⛄ à 3 419,5 ppm (3 425,8 → ne bascule plus) ; sortie 1b à 10 882 ppm (10 879 → reste
-à −8 °C). hysteresis 2 : aucune bascule trouvée (le modèle n'a pas de calotte continentale). Encadré complet : `API_BILAN/config/configTimeline.js`,
+quasi pas de changement de ppm, une T° radicalement différente. Le 2026-09-24 (bary 62 %, vraies
+dates, deux glaciations) : entrée Sturtien 1a = ⛄ 72,1 ppm ; sortie 1b 10 262,5 ppm ; entrée Marinoen
+🏂 2 556,7 ppm (le voile de 🏂 bascule) ; sortie 1c 9 797,1 ppm. hysteresis 2 : aucune bascule (pas
+de calotte continentale). ⚠️ Toujours mesurer sur la CHAÎNE DE CLICS complète : un chemin raccourci
+avait donné 3 419 ppm pour 1a, faux au vrai clic.
+
+**Chrome resté ouvert** : un script interrompu peut laisser un Chrome headless sur le port 9333 ; la
+mesure suivante tournait alors dans SON onglet, avec le TIMELINE qu'il avait modifié en mémoire.
+Depuis `run.py` v1.1.0, on ne s'attache qu'à l'onglet portant son propre `?cb=`. Encadré complet : `API_BILAN/config/configTimeline.js`,
 « ÉPOQUES D'HYSTÉRÉSIS ».
+
+### La dichotomie : `seuils_hysteresis.js` (depuis le 2026-09-24)
+
+```bash
+python3 scripts/bench_headless/run.py seuils_hysteresis.js --var __SEUILS__ --timeout 3000
+```
+
+Mesure les quatre frontières (F1 entrée Sturtien = CO₂ de 1a et ⛄, F2 sortie 1b, F3 entrée Marinoen
+🏂, F4 sortie 1c) sur la chaîne de clics depuis la frise 🪸, dans l'ordre, à 0,05 % près. Ne touche au
+TIMELINE qu'en mémoire : on reporte ensuite les valeurs dans la config, avec la mesure en commentaire.
+À relancer après TOUT changement de physique — le 2026-09-24, passer le flux intérieur des valeurs
+posées à la main (~0,15 W/m²) au bilan d'énergie (~0,07 W/m², `API_BILAN/geology/interieur.js`) a suffi
+à laisser la Terre en boule de neige jusqu'à aujourd'hui.
 
 ### v1.3.0 : on rejoue les clics, et frise = clic
 

@@ -969,7 +969,7 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 10px;
+    padding: 10px 2px;   /* 2px sur les côtés : logo + date tiennent sur une ligne (78px) */
     overflow: hidden;
 }
 
@@ -1030,6 +1030,18 @@ h1 {
     font-size: 10px;
     color: var(--retro-off);
     white-space: nowrap;
+}
+/* Frise (organigramme v1.0.118) : une époque = une ligne, logo sur la ligne de SA date de début,
+   alternativement à droite puis à gauche → moitié moins de hauteur. Le curseur ne lit que les dates. */
+.epoch-date-item-vertical.epoch-row {
+    flex-direction: row;
+    gap: 2px;
+}
+.epoch-row .epoch-btn,
+.epoch-row .epoch-text {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
 }
 
 .epoch-date-item .epoch-date {

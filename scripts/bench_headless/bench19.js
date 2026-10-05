@@ -10,7 +10,7 @@
 //       Voir l'encadré « ÉPOQUES D'HYSTÉRÉSIS » dans API_BILAN/config/configTimeline.js.
 //       Écrit window.__R6__ (époques) et window.__PASSAGES__ ; window.__PROG__ suit l'avancement.
 //       Balayage : poser window.__BENCH_BARYS__ = [55, 56, …] AVANT d'injecter ce script.
-// Version 1.3.0
+// Version 1.4.0
 // Date: 2026-09-23
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
@@ -48,6 +48,8 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
     return null;
   };
   // ─── PASSAGES D'HYSTÉRÉSIS : on REJOUE LES CLICS, comme l'interface ────────────────────
+  // v1.4.0 (2026-09-24) : deux glaciations cryogéniennes — ⛄ Sturtien puis 🏂 Marinoen, sorties 1b et 1c ;
+  //   « frise = clic » les vérifie toutes.
   // v1.3.0 (2026-09-23) : la v1.2 sautait les tictimes À L'INTÉRIEUR des époques (graine de 🪸 → 1a
   // directement). Or dans l'interface on clique 💫 dans 🪸 (590 Ma par clic) et 🔀 fait glisser les
   // masses vers celles de 1a : on arrive dans 1a depuis un 🪸 déjà refroidi. Même chose pour le 💫
@@ -114,7 +116,7 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
     // CRITÈRE : FRISE = CLIC. Pour chaque hystérésis (et ⛄), la T° convergée depuis la graine (frise) doit
     // égaler celle de l'ARRIVÉE par clic. Sinon la graine est sur la mauvaise branche, ou la config n'est
     // pas à la frontière que le clic traverse.
-    for (const h of ['hysteresis 1a', '⛄', 'hysteresis 1b', 'hysteresis 2']) {
+    for (const h of ['hysteresis 1a', '⛄', 'hysteresis 1b', '🏂', 'hysteresis 1c', 'hysteresis 2']) {
       const arr = window.__PASSAGES__.find(p => p.pct === D['🎚️'].baryByGroup.ATM && p.ep === h);
       const fr  = window.__R6__.find(r => r.pct === D['🎚️'].baryByGroup.ATM && r.ep === h);
       if (arr && fr) window.__PASSAGES__.push({ pct: arr.pct, chaine: 'frise = clic', etape: h,

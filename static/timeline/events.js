@@ -1,8 +1,15 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.38
- * Date: [September 18, 2026]
+ * Version 1.2.41
+ * Date: [September 24, 2026]
 * logs :
+ *   - v1.2.41: pas de clic affiché à 1 décimale (formatStepLabel partout, météorites comprises).
+ *   - v1.2.40: plus aucune écriture de flux géothermique (applyHadeenFluxFromConfig retirée) : l'intérieur a une
+ *     histoire thermique (API_BILAN/geology/interieur.js), le clic ne fait qu'avancer la date.
+ *   - v1.2.39: clic tic de 🔥 — compte 📿💫 (clicTicHadeen, un seul gestionnaire au lieu de 4 copies) : le flux du
+ *     noyau baisse linéairement ▶ → ◀ (getNoyau) et la T° de l'Hadéen redescend à chaque clic. getEpochConfigById
+ *     rend l'entrée TIMELINE (référence unique) et non plus une copie d'epochIndex() : le geothermal_flux qu'on y
+ *     écrivait se perdait (copie depuis février : { ...item } du loader, puis epochIndex). Plus d'interpolation log.
  *   - v1.2.38: getEpochConfigById lit window.epochIndex() (API) au lieu de configOrganigramme.timeline — une
  *     dépendance de moins à l'organigramme pour les pages qui n'en ont pas. getActionForDate y reste (c'est du rendu).
  *   - v1.2.37: formatMassGT — vrais préfixes SI sur la tonne (Gt/Tt/Pt/Et). « kGT » et « MGT » empilaient deux
@@ -179,8 +186,9 @@ window.updateEpochActions = function () {
     const animToggleBtn = document.getElementById('plot-anim-toggle');
 
     const currentEpochName = window.RUNTIME_STATE.currentEpochName;
-    const getEpochConfigById = (id) =>
-        window.epochIndex().find((e) => e.type === 'epoch' && e.id === id);
+    // RÉFÉRENCE UNIQUE : l'entrée TIMELINE elle-même, jamais une copie (epochIndex() en fabriquait une,
+    // où les écritures — ex. geothermal_flux de 🔥 — se perdaient).
+    const getEpochConfigById = (id) => window.TIMELINE.find((e) => e['📅'] === id);
     const epochId = window.DATA['📜']['🗿'];
     const timelineEpoch = getEpochConfigById(epochId);
     const startYears = timelineEpoch['▶'];
@@ -202,27 +210,42 @@ window.updateEpochActions = function () {
     eventsLogos.innerHTML = '';
     setEventsHeading('EVENEMENT');
 
-    // Applique le flux géothermique Hadéen depuis la config (▶/◀ années, 🔺🧲🌕💫 flux début/fin)
-    const applyHadeenFluxFromConfig = () => {
-        const ep = getEpochConfigById('🔥');
-        if (!ep || !ep['🕰'] || !ep['🕰']['💫'] || !ep['🕰']['💫']['🔺🧲🌕💫']) return;
-        const startYears = ep['▶'];
-        const endYears = ep['◀'];
-        const totalDuration = (startYears != null && endYears != null) ? startYears - endYears : 5e8;
-        const geo = ep['🕰']['💫']['🔺🧲🌕💫'];
-        const fluxStart = geo['▶'] != null ? geo['▶'] : 2000000;
-        const fluxEnd = geo['◀'] != null ? geo['◀'] : 0.3;
-        const elapsed = (window.infoTimeMa != null ? window.infoTimeMa : 0) * 1e6;
-        const progress = Math.min(1, Math.max(0, elapsed / totalDuration));
-        const logFlux = (1 - progress) * Math.log(fluxStart) + progress * Math.log(fluxEnd);
-        ep.geothermal_flux = Math.exp(logFlux);
+    /** Clic tic de 🔥 (💫, ou 🏔/⛰ si un order les y met). Compte 📿💫 comme tout tic géologique : c'est ce
+     *  compteur qui fait avancer la date (getEpochDateConfig) — donc l'intérieur, qui refroidit par bilan
+     *  d'énergie jusqu'à cette date (API_BILAN/geology/interieur.js) — et rétrécir le rayon (🔺📐).
+     *  `apres` : avance le curseur 📿🕰 quand l'époque a un order (sinon null). */
+    const clicTicHadeen = (stepMa, key, apres) => {
+        window.hideTooltip();
+        if (!window.FLUX) window.FLUX = {};
+        window.FLUX.yAxisRecalcOnNextFinish = true;
+        const cellTerre = document.getElementById('cell-terre');
+        if (cellTerre) {
+            const canvas = cellTerre.querySelector('canvas');
+            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
+                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
+            }
+        }
+        const durMa = window.getCurrentEpochDurationMa();
+        if (durMa == null || !Number.isFinite(durMa)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ' + key + ' 🔥');
+        const D = window.DATA;
+        D['📜']['📿💫'] = (Number.isFinite(D['📜']['📿💫']) ? D['📜']['📿💫'] : 0) + 1;
+        window.infoTimeMa = Math.min(durMa, (window.infoTimeMa || 0) + stepMa);
+        D['📜']['bary'] = durMa > 0 ? window.infoTimeMa / durMa : 0;
+        if (tryEpochEndSkipAfterEvent(apres)) return;
+        window.updateTimeline();
+        window.updateHadeenTexture();
+        window.COMPUTE.getEpochDateConfig();
+        window.COMPUTE.getNoyau();
+        window.IO_LISTENER.emit('config:applyThenCompute', { button: key });
+        checkDateEvents();
+        if (apres) apres();
     };
 
     // Échelle récente (1800, 2100) : afficher +N ans ; sinon +X Ma
     const formatStepLabel = (stepMa) => {
         if (stepMa == null || !Number.isFinite(stepMa)) return '';
         if (stepMa < 0.001) return '+' + Math.round(stepMa * 1e6) + ' ans';
-        return '+' + stepMa + ' Ma';
+        return '+' + (Math.round(stepMa * 10) / 10) + ' Ma';   // affichage à 1 décimale (510,333… → 510,3)
     };
 
     /** Tic temps géologique : 💫 (défaut), ou 🏔 / ⛰ (alias TIMELINE) — même 🔺⏳ / 📿💫 côté compute.js. */
@@ -405,8 +428,8 @@ window.updateEpochActions = function () {
                 iceMeteorBtn.alt = '';
                 iceMeteorBtn.className = 'btn-events organigram-logo organigram-action-logo';
                 const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
-                const iceMeteorAlt = 'Météorite de Glace (+' + stepMaM + ' Ma)';
-                addEventTooltip(iceMeteorBtn, epochId, '☄️', 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMaM + ' Ma par clic');
+                const iceMeteorAlt = 'Météorite de Glace ' + formatStepLabel(stepMaM);
+                addEventTooltip(iceMeteorBtn, epochId, '☄️', 'Météorite de glace<br>' + mass_added_txt + '<br>' + formatStepLabel(stepMaM) + ' par clic');
                 iceMeteorBtn.alt = iceMeteorAlt;
                 if (epochId === '⚫') {
                     iceMeteorBtn.addEventListener('click', () => {
@@ -452,7 +475,6 @@ window.updateEpochActions = function () {
                         const durMaM = window.getCurrentEpochDurationMa();
                         if (durMaM == null || !Number.isFinite(durMaM)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ☄️ après 🔥');
                         window.infoTimeMa = Math.min(durMaM, window.infoTimeMa + stepMaM);
-                        applyHadeenFluxFromConfig();
                         if (!window.FLUX) window.FLUX = {};
                         window.FLUX.yAxisRecalcOnNextFinish = true;
                         window.updateTimeline();
@@ -531,34 +553,7 @@ window.updateEpochActions = function () {
                 ticBtn.alt = stepLabel;
                 addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
                 if (epochId === '🔥') {
-                    ticBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        const cellTerre = document.getElementById('cell-terre');
-                        if (cellTerre) {
-                            const canvas = cellTerre.querySelector('canvas');
-                            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
-                                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
-                            }
-                        }
-                        const durMaT = window.getCurrentEpochDurationMa();
-                        if (durMaT == null || !Number.isFinite(durMaT)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour 💫 🔥');
-                        window.infoTimeMa = (window.infoTimeMa || 0) + stepMaT;
-                        if (window.infoTimeMa > durMaT) window.infoTimeMa = durMaT;
-                        window.DATA['📜']['bary'] = durMaT > 0 ? window.infoTimeMa / durMaT : 0;
-                        if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction('💫'); })) return;
-                        window.updateTimeline();
-                        window.updateHadeenTexture();
-                        applyHadeenFluxFromConfig();
-                        window.COMPUTE.getEpochDateConfig();
-                        window.COMPUTE.getNoyau();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '💫' });
-                        checkDateEvents();
-                        popOrderAfterAction('💫');
-                    });
+                    ticBtn.addEventListener('click', () => clicTicHadeen(stepMaT, '💫', function () { popOrderAfterAction('💫'); }));
                 } else {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -577,34 +572,7 @@ window.updateEpochActions = function () {
                 ticBtn.alt = stepLabel;
                 addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
                 if (epochId === '🔥') {
-                    ticBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        const cellTerre = document.getElementById('cell-terre');
-                        if (cellTerre) {
-                            const canvas = cellTerre.querySelector('canvas');
-                            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
-                                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
-                            }
-                        }
-                        const durMaT = window.getCurrentEpochDurationMa();
-                        if (durMaT == null || !Number.isFinite(durMaT)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour 🏔 🔥');
-                        window.infoTimeMa = (window.infoTimeMa || 0) + stepMaT;
-                        if (window.infoTimeMa > durMaT) window.infoTimeMa = durMaT;
-                        window.DATA['📜']['bary'] = durMaT > 0 ? window.infoTimeMa / durMaT : 0;
-                        if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction('🏔'); })) return;
-                        window.updateTimeline();
-                        window.updateHadeenTexture();
-                        applyHadeenFluxFromConfig();
-                        window.COMPUTE.getEpochDateConfig();
-                        window.COMPUTE.getNoyau();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '🏔' });
-                        checkDateEvents();
-                        popOrderAfterAction('🏔');
-                    });
+                    ticBtn.addEventListener('click', () => clicTicHadeen(stepMaT, '🏔', function () { popOrderAfterAction('🏔'); }));
                 } else {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -623,34 +591,7 @@ window.updateEpochActions = function () {
                 ticBtn.alt = stepLabel;
                 addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
                 if (epochId === '🔥') {
-                    ticBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        const cellTerre = document.getElementById('cell-terre');
-                        if (cellTerre) {
-                            const canvas = cellTerre.querySelector('canvas');
-                            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
-                                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
-                            }
-                        }
-                        const durMaT = window.getCurrentEpochDurationMa();
-                        if (durMaT == null || !Number.isFinite(durMaT)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ⛰ 🔥');
-                        window.infoTimeMa = (window.infoTimeMa || 0) + stepMaT;
-                        if (window.infoTimeMa > durMaT) window.infoTimeMa = durMaT;
-                        window.DATA['📜']['bary'] = durMaT > 0 ? window.infoTimeMa / durMaT : 0;
-                        if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction('⛰'); })) return;
-                        window.updateTimeline();
-                        window.updateHadeenTexture();
-                        applyHadeenFluxFromConfig();
-                        window.COMPUTE.getEpochDateConfig();
-                        window.COMPUTE.getNoyau();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '⛰' });
-                        checkDateEvents();
-                        popOrderAfterAction('⛰');
-                    });
+                    ticBtn.addEventListener('click', () => clicTicHadeen(stepMaT, '⛰', function () { popOrderAfterAction('⛰'); }));
                 } else {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();
@@ -676,8 +617,8 @@ window.updateEpochActions = function () {
             const mass_kg = epochConfig['🕰']['☄️']['🔺⚖️💧☄️'];
             const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
             const stepMa = epochConfig['🕰']['☄️']['🔺⏳'];
-            const iceMeteorAlt = 'Météorite de Glace (+' + stepMa + ' Ma)';
-            addEventTooltip(iceMeteorBtn, epochId, '☄️', 'Météorite de glace<br>' + mass_added_txt + '<br>+' + stepMa + ' Ma par clic');
+            const iceMeteorAlt = 'Météorite de Glace ' + formatStepLabel(stepMa);
+            addEventTooltip(iceMeteorBtn, epochId, '☄️', 'Météorite de glace<br>' + mass_added_txt + '<br>' + formatStepLabel(stepMa) + ' par clic');
             iceMeteorBtn.alt = iceMeteorAlt;
             if (epochId === '⚫') {
                 iceMeteorBtn.addEventListener('click', () => {
@@ -722,7 +663,6 @@ window.updateEpochActions = function () {
                     const durMaIce = window.getCurrentEpochDurationMa();
                     if (durMaIce == null || !Number.isFinite(durMaIce)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ☄️ 🔥 (ACTION_BY_DATE)');
                     window.infoTimeMa = Math.min(durMaIce, window.infoTimeMa + stepMa);
-                    applyHadeenFluxFromConfig();
                     if (!window.FLUX) window.FLUX = {};
                     window.FLUX.yAxisRecalcOnNextFinish = true;
                     window.updateTimeline();
@@ -814,33 +754,7 @@ window.updateEpochActions = function () {
                 ticBtn.alt = stepLabel;
                 addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
                 if (epochId === '🔥') {
-                    ticBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        const cellTerre = document.getElementById('cell-terre');
-                        if (cellTerre) {
-                            const canvas = cellTerre.querySelector('canvas');
-                            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
-                                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
-                            }
-                        }
-                        const durMaTb = window.getCurrentEpochDurationMa();
-                        if (durMaTb == null || !Number.isFinite(durMaTb)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour tic temps 🔥 (ACTION_BY_DATE)');
-                        window.infoTimeMa = (window.infoTimeMa || 0) + stepMa;
-                        if (window.infoTimeMa > durMaTb) window.infoTimeMa = durMaTb;
-                        window.DATA['📜']['bary'] = durMaTb > 0 ? window.infoTimeMa / durMaTb : 0;
-                        if (tryEpochEndSkipAfterEvent(null)) return;
-                        window.updateTimeline();
-                        window.updateHadeenTexture();
-                        applyHadeenFluxFromConfig();
-                        window.COMPUTE.getEpochDateConfig();
-                        window.COMPUTE.getNoyau();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.IO_LISTENER.emit('config:applyThenCompute', { button: ticKey || '💫' });
-                        checkDateEvents();
-                    });
+                    ticBtn.addEventListener('click', () => clicTicHadeen(stepMa, ticKey || '💫', null));
                 } else {
                     ticBtn.addEventListener('click', () => {
                         window.hideTooltip();

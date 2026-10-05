@@ -1,6 +1,7 @@
 // ============================================================================
 // File: flux_manager.js
 // Desc: Gestion centralisée des flux (valeurs et affichage)
+// Logs: 2026-09-24 — setGeothermalFlux n'écrit plus DATA['🌕'] (source unique : API_BILAN/geology/interieur.js).
 // ============================================================================
 
 (function (global) {
@@ -49,10 +50,9 @@
                 return;
             }
 
-            // Source unique : DATA['🌕']['🧲🌕']
-            if (!window.DATA['🌕']) window.DATA['🌕'] = {};
-            window.DATA['🌕']['🧲🌕'] = flux;
-
+            // Affichage SEUL : DATA['🌕'] a une seule source, l'intérieur (API_BILAN/geology/interieur.js).
+            // (Avant 2026-09-24, cette ligne réécrivait DATA['🌕']['🧲🌕'] avec la valeur de config de l'époque,
+            // entre initForConfig et le calcul : l'UI et le banc ne calculaient pas avec le même flux.)
             window.ORG.updateLabel('core_flux_wm', flux);
         },
 
@@ -79,7 +79,7 @@
         updateAllFluxes: function (epochName) {
             const epoch = window.GEOLOGY.getGeologicalPeriodByName(epochName);
             const solarIntensity = epoch.solar_intensity;
-            const geothermalFlux = epoch.core_temperature === 0 ? 0 : epoch.geothermal_flux;
+            const geothermalFlux = epoch.geothermal_flux;
             const planetRadius = epoch.planet_radius;
 
             // Appliquer les mises à jour

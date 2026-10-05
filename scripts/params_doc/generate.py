@@ -4,9 +4,10 @@
 #       chaque constante nommée : son unité (déduite de l'alphabet, pas écrite à la main), sa
 #       description, sa formule, et TOUTES les lignes du modèle où elle est écrite ou lue.
 #       Refuse d'écrire si une clé 🍰 ne dit pas de quoi elle est une proportion.
-# Version 1.1.1
+# Version 1.1.2
 # Date: 2026-09-23
 # logs :
+#   - v1.1.2: 📅 déclaré (date en années) — l'état de l'intérieur 📅🌕 / 📅🧊🌕 porte des âges.
 #   - v1.1.1: trois angles morts qui fabriquaient de faux « 0 lect. » — API_BILAN/*.js à la racine
 #     (api.js, tuning.js…) et demo/js/ n'étaient pas balayés, et un accès ["clé"] entre guillemets
 #     doubles (organigramme.js) n'était pas reconnu. 🧲📛⛅ (lue par api.js), 🍰🪩⚽ et 🍰🪩💧
@@ -35,6 +36,7 @@ UNITE_1 = {
     '🔬':'# (cardinal — résolution : nombre de pas)', '🪩':'W/W (réflectance : flux réfléchi / incident)',
     '☁️':'sans dimension [0,1] (index de formation nuageuse)', '📛':'W/m²', '⏳':'s⁻¹',
     '💭':'q/q_sat (seuil d\'humidité relative, comparé à 🍰🌧💧)',
+    '📅':'an (date : années avant 2025, ou calendaires pour 🛖 🚂 📱)',
     # 🧮 = « calcul courant » : c'est un PRÉFIXE, l'unité est portée par le caractère suivant.
     '🔄':'# (compteur d\'itérations / de cycles)',
     '⚧':'texte — phase Init / Search / Dicho (pas une grandeur)',

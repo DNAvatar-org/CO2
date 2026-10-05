@@ -523,6 +523,7 @@
             this.maxDichoSteps = (Number.isFinite(Number(H.maxDichoSteps)) && Number(H.maxDichoSteps) > 0) ? Math.floor(Number(H.maxDichoSteps)) : 30;
             switch (epochId) {
                 case 'hysteresis 1b':
+                case 'hysteresis 1c':   // v-2026-09-24 : sortie Marinoenne, même sens que 1b
                     this.searchSign = 'positive';
                     break;
                 case 'hysteresis 1a':
