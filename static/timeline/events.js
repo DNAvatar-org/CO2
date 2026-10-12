@@ -1,6 +1,8 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.3.0
+ * Version 1.3.1
+ *   - v1.3.1: jouerClic passe en animation (tictime : T conservée) — après un clic sur la frise, les clics d'événement
+ *     repartaient de la graine.
  * Date: 2026-10-12
  * Copyright 2026 DNAvatar.org - Arnaud Maignan
 * logs :
@@ -111,6 +113,7 @@ function addEventTooltip(el, eventKey, shortText) {
 /** Pas d'un clic : +N ans sur l'échelle récente, sinon +X Ma (1 décimale). */
 function formatStepLabel(stepMa) {
     if (stepMa < 0.001) return '+' + Math.round(stepMa * 1e6) + ' ans';
+    if (stepMa < 1) return '+' + Math.round(stepMa * 1e3) + ' ka';
     return '+' + (Math.round(stepMa * 10) / 10) + ' Ma';
 }
 
@@ -145,6 +148,9 @@ function formatMassGT(mass_kg) {
 function jouerClic(key) {
     window.hideTooltip();
     window.FLUX.yAxisRecalcOnNextFinish = true;
+    // Un clic d'événement est un tictime : la T présente est conservée (animation), comme au banc. Seul le clic sur
+    // la frise repart de la graine (setEpochFromEpochButton remet 🔘🎞 à false).
+    window.DATA['🔘']['🔘🎞'] = true;
     const r = window.CLICS.jouer(key);
     if (r.passage !== null) {
         // Plus de bouton pendant l'animation du curseur (~400 ms) : un second clic rejouerait sur l'époque quittée.
@@ -168,8 +174,8 @@ function boutonAction(key, cfg) {
         el.className = 'btn-events organigram-logo organigram-action-logo';
         if (key === '☄️') {
             const m = cfg['🔺⚖️💧☄️'];
-            court = 'Météorite de glace<br>' + (m >= 1e12 ? formatMassGT(m) : formatMass(m)) + '<br>' + formatStepLabel(cfg['🔺⏳']) + ' par clic';
-            el.alt = 'Météorite de Glace ' + formatStepLabel(cfg['🔺⏳']);
+            court = 'Météorite de glace<br>' + (m >= 1e12 ? formatMassGT(m) : formatMass(m)) + '<br>' + formatStepLabel(window.CLICS.pas(key)) + ' pour ce clic';
+            el.alt = 'Météorite de Glace ' + formatStepLabel(window.CLICS.pas(key));
         } else {
             court = 'Impact majeur - Crée la lune';
             el.alt = '';
@@ -180,8 +186,8 @@ function boutonAction(key, cfg) {
         el.className = 'icon-button btn-events organigram-logo organigram-action-logo';
         el.textContent = key;
         if (window.CLICS.TICS.includes(key)) {
-            el.alt = formatStepLabel(cfg['🔺⏳']);
-            court = el.alt + ' par clic';
+            el.alt = formatStepLabel(window.CLICS.pas(key));
+            court = el.alt + ' pour ce clic';
         } else {
             // 🗻 / 🌋 : bulle = DESC du logo dans l'Alphabet (source unique), pas de texte par action.
             el.alt = window.CHARS_DESC[key];

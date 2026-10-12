@@ -545,15 +545,8 @@ function interpretConfigValue(value) {
         return value;
     }
     
-    // ticTime = infoTimeMa / stepMa — stepMa lu directement depuis la config du bouton cliqué
-    // Exception init : 🔘🕰 = '' avant le premier clic → ticTime = 0
-    let ticTime = 0;
-    if (DATA['📜']['🔘🕰'] !== '') {
-        const _epochId_icv = DATA['📜']['🗿'];
-        const _epoch_icv = TIMELINE[TIMELINE.findIndex(item => item['📅'] === _epochId_icv)];
-        const stepMa = _epoch_icv['🕰'][DATA['📜']['🔘🕰']]['🔺⏳'];
-        ticTime = Math.floor(window.infoTimeMa / stepMa);
-    }
+    // ticTime = nombre de clics joués dans l'époque (📿🕰) : les clics n'ont plus tous la même durée (🔥).
+    const ticTime = DATA['📜']['📿🕰'];
 
     // Détecter si c'est un chemin d'image (pour arrondir automatiquement les résultats)
     const isImagePath = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(value);

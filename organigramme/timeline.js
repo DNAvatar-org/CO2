@@ -472,18 +472,8 @@ function updateTimeline() {
         }
     }
 
-    // textureIndex = infoTimeMa / stepMa — stepMa lu depuis la config du bouton cliqué (fallback si époque sans 🕰[ticKey], ex. Corps noir + 💫)
-    if (window.DATA['📜']['🔘🕰'] === '') {
-        window.textureIndex = 0;
-    } else {
-        const _epochId_tl = window.DATA['📜']['🗿'];
-        const _idx_tl = window.TIMELINE.findIndex(item => item['📅'] === _epochId_tl);
-        const _epoch_tl = _idx_tl >= 0 ? window.TIMELINE[_idx_tl] : null;
-        const _ticKey = window.DATA['📜']['🔘🕰'];
-        const _ticCfg = _epoch_tl && _epoch_tl['🕰'] && _epoch_tl['🕰'][_ticKey];
-        const stepMa = _ticCfg && typeof _ticCfg['🔺⏳'] === 'number' ? _ticCfg['🔺⏳'] : 100;
-        window.textureIndex = stepMa > 0 ? Math.floor(window.infoTimeMa / stepMa) : 0;
-    }
+    // textureIndex = nombre de clics joués dans l'époque (📿🕰) : les clics n'ont plus tous la même durée (🔥).
+    window.textureIndex = window.DATA['📜']['📿🕰'];
 
     const currentTicTime = window.textureIndex;
     const currentIceLevel = window.RUNTIME_STATE.h2oIceFractionFromCalculation;

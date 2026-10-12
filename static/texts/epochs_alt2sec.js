@@ -581,11 +581,9 @@ function buildEventAlt2sec(epochId, eventKey) {
     const changes = [];
     let warmer = 0; // > 0 attendu plus chaud, < 0 plus froid
 
-    // Durée représentée par le clic
-    const stepMa = cfg && Number.isFinite(Number(cfg['🔺⏳'])) ? Number(cfg['🔺⏳']) : null;
-    if (stepMa !== null) {
-        changes.push(stepMa >= 1 ? '+' + (Math.round(stepMa * 10) / 10) + ' Ma' : '+' + Math.round(stepMa * 1e6).toLocaleString('fr-FR') + ' ans');
-    }
+    // Durée de CE clic : sur l'entrée de séquence (ou l'action de la tranche, 📱) — CLICS.pas.
+    const stepMa = window.CLICS.pas(eventKey);
+    changes.push(stepMa >= 1 ? '+' + (Math.round(stepMa * 10) / 10) + ' Ma' : '+' + Math.round(stepMa * 1e6).toLocaleString('fr-FR') + ' ans');
 
     // Masses imposées par l'état de cycle (🔁) : on montre valeur courante → valeur visée
     if (state) {
