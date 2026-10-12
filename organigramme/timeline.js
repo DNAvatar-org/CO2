@@ -1,9 +1,10 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.1.0
+ * Version 1.1.1
  * Date: 2026-10-12
  * Copyright 2026 DNAvatar.org - Arnaud Maignan
 * logs :
+ * - v1.1.1: signature des boutons = 🗿 | 📿🕰 | ⏳ (plus de getActionForDate : la séquence est 🕰.order, config API).
  * - v1.1.0: la frise ne décide plus du passage d'époque (isPastCurrentEpochEndMa, marge TIMELINE_END_SLACK_MA,
  *   getCurrentEpochDurationMa retirés) : c'est le clic (CLICS.jouer), avec la règle du moteur et du banc.
  * - v1.0.29: timelineYearsToMa(years, isForward) remplace timelineDeltaYearsToStartMa — années calendaires (🛖🚂📱, libellés
@@ -504,46 +505,17 @@ function updateTimeline() {
     }
     window.updatePlanetTextureFromDate && window.updatePlanetTextureFromDate();
 
-    // Mettre à jour les boutons ACTION : 🕰.order (TIMELINE) si présent, sinon date → getActionForDate (organigramme).
+    // Boutons ACTION (events.js, CLICS) : ils ne dépendent que de l'époque, du curseur 🕰.order (📿🕰) et du
+    // temps écoulé ⏳ (tranche de 📱) — la signature porte exactement ces trois-là.
     const epochAct = getEpochAtTimelineIndex();
     const cfgOrg = window.configOrganigramme;
     // Prérequis updateEpochActions : configOrganigramme.timeline = TIMELINE.map(...) vient de loader_panels initAfterLoad (pas encore au 1er tick rAF).
     if (epochAct && cfgOrg && cfgOrg.timeline) {
-        const wh = epochAct['🕰'];
-        let sig;
-        if (wh && Array.isArray(wh.order) && wh.order.length) {
-            // 🕰.order n'est plus consommé par shift() (events.js v1.2.36) : la signature suit le curseur 📿🕰,
-            // sinon plus aucun re-render entre deux actions d'une même séquence.
-            const cur = (window.DATA && window.DATA['📜'] && Number.isFinite(Number(window.DATA['📜']['📿🕰'])))
-                ? Number(window.DATA['📜']['📿🕰']) : 0;
-            sig = (epochAct['📅'] || '') + '|' + wh.order.join(',') + '|#' + cur;
-        } else if (wh && Object.keys(wh).some((k) => !isNaN(Number(k)))) {
-            // 📱 : les actions naissent de tranches d'années (2000, 2025, 2050, 2075), pas d'un order.
-            // La signature doit suivre la tranche courante — c'est-à-dire 📿💫 — sinon elle vaut « 📱|💫 »
-            // du début à la fin de l'époque : getActionForDate ne reçoit que ▶ (2000, fixe) et infoTimeMa
-            // (qui reste à 0, l'époque ne se compte pas en Ma). Pendant la marche 2000→2100 les boutons se
-            // redessinaient quand même, parce que events.js rappelle updateEpochActions après chaque action ;
-            // mais au reclic sur l'époque, plus personne ne le faisait, et la cellule restait sur
-            // « FIN DE SIMULATION » sans boutons alors que setEpoch avait déjà remis 📿💫 et 📅 à 2000.
-            // La signature porte AUSSI l'année courante, et pas seulement le compteur de tics : c'est
-            // elle que lit updateEpochActions pour choisir sa tranche. Les deux ne se remettent pas à
-            // zéro dans le même souffle — au reclic sur l'époque, 📿💫 repassait à 0 avant 📅, la
-            // signature changeait donc pendant cet entre-deux, le rendu se faisait encore sur 2100
-            // (« FIN DE SIMULATION », aucun bouton) et se trouvait mémorisé pour de bon. Mémoriser un
-            // rendu sous une clé qui n'englobe pas tout ce dont il dépend, c'est garder le faux.
-            const H = (window.DATA && window.DATA['📜']) ? window.DATA['📜'] : {};
-            const tic = Number.isFinite(Number(H['📿💫'])) ? Number(H['📿💫']) : 0;
-            const annee = Number.isFinite(Number(H['📅'])) ? Number(H['📅']) : '';
-            sig = (epochAct['📅'] || '') + '|an#' + tic + '@' + annee;
-        } else {
-            const actionKey = cfgOrg.getActionForDate(epochAct['▶'], window.infoTimeMa) || '💫';
-            sig = (epochAct['📅'] || '') + '|' + actionKey;
-        }
+        const H = window.DATA['📜'];
+        const sig = H['🗿'] + '|' + H['📿🕰'] + '|' + H['⏳'];
         if (window._lastEpochActionKey !== sig) {
             window._lastEpochActionKey = sig;
-            if (typeof window.updateEpochActions === 'function') {
-                window.updateEpochActions();
-            }
+            window.updateEpochActions();
         }
     }
 

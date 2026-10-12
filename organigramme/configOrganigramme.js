@@ -1,8 +1,11 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.50
-// Date: [September 19, 2026]
+// Version 1.1.51
+// Date: [October 12, 2026]
+// Copyright 2026 DNAvatar.org - Arnaud Maignan
 // logs :
+// - v1.1.51: ACTION_BY_DATE / getActionForDate / getCurrentDateKey retirés : la séquence des clics est la config
+//   de l'API (🕰.order, lue par CLICS). La table ne se déclenchait d'ailleurs jamais sur 🔥 (4510 − k×100 Ma).
 // - v1.1.50: retrait du tooltip « Terre » sur le nœud terre (rollover jugé inutile sur le globe Three.js).
 // - v1.1.49: TEXTURE_DATES_MA / _YEAR alignées sur les fichiers RÉELLEMENT présents dans fonds/ (base du repli « texture la plus proche »).
 // - v1.1.48: TEXTURE_DATES_MA + 1 Ma (fonds/-00001Ma.png, état interglaciaire du Quaternaire).
@@ -829,42 +832,10 @@ function getEffectiveNodesConfig(epochName, bary) {
     return out;
 }
 
-// Deuxième bouton ACTION en haut de la timeline : entrée = date (clé = même date que les images fonds/_NNNNNa.png / fonds/-NNNNNa.png ou fonds/-NNNNNMa.png).
-// Clé = Ma (5000, 4900, … 33, 66, 150, 250, 500, …) ou année (1800, 2025). Valeur = '☄️' | '🎇' | '💫'.
-// Tu remplis les valeurs après ; défaut si clé absente = '💫'.
-const ACTION_BY_DATE = {
-    // Ma (cf. fonds/-05000Ma.png …)
-    5000: '☄️', 4900: '💫', 4800: '☄️', 4700: '💫', 4600: '🎇',
-    4500: '☄️', 4400: '💫', 4300: '☄️', 4200: '💫', 4100: '☄️',
-    4000: '💫', 3500: '💫', 3000: '💫', 2500: '💫', 2000: '💫',
-    1500: '💫', 1000: '💫', 750: '🌋', 720: '💫', 600: '💫', 500: '💫', 250: '💫', 150: '💫',
-    66: '💫', 50: '💫', 35: '💫', 33: '💫', 2: '💫',
-    // Années CE (fonds/_001800a.png, _002025a.png) ; années BP négatives en TIMELINE → fonds/-010000a.png etc.
-    1800: '💫', 2025: '💫'
-};
-
-/** Retourne la date courante (même calcul que la texture) : Ma ou année selon startYears. */
-function getCurrentDateKey(startYears, infoTimeMa) {
-    const info = Number(infoTimeMa) || 0;
-    const sy = Number(startYears);
-    if (!Number.isFinite(sy)) return NaN;
-    if (sy >= 1e6) {
-        return Math.round(sy / 1e6 - info);
-    }
-    return Math.round(sy + info * 1e6);
-}
-
-/** Retourne '☄️' | '🎇' | '💫' pour la date courante (startYears, infoTimeMa). Lookup ACTION_BY_DATE[dateKey]. */
-function getActionForDate(startYears, infoTimeMa) {
-    const key = getCurrentDateKey(startYears, infoTimeMa);
-    return window.configOrganigramme.ACTION_BY_DATE[key];
-}
-
 // Exposer la configuration globalement pour accès depuis main.js
 // Note: timeline est chargée depuis API_BILAN/config/configTimeline.js
 window.configOrganigramme = {
-    nodes, arcs, TEXTURES_THREEJS, baryEpochs, getEffectiveNodesConfig,
-    ACTION_BY_DATE, getCurrentDateKey, getActionForDate
+    nodes, arcs, TEXTURES_THREEJS, baryEpochs, getEffectiveNodesConfig
 };
 // La timeline sera ajoutée par loader_panels initAfterLoad (configOrganigramme.timeline = TIMELINE.map(...))
 // [0] organigramme : init DATA['📜'] / currentEpochName AVANT build (setEpoch ouvre seul le groupe [1] config)

@@ -4807,7 +4807,6 @@ var _finetuningAltPicto = {
   CLOUD_FRACTION_BASE: "☁️",
   CLOUD_FRACTION_INDEX_GAIN: "☁️",
   OPTICAL_EFF_BASE: "🧪",
-  OPTICAL_EFF_CCN_GAIN: "🧪",
   SULFATE_CCN_EXPONENT: "SO₄"
   // SULFATE_BOOST_SCALE / SULFATE_BOOST_MAX retirés (2026-09-22) : remplacés par l'exposant mesuré
   // de la loi de puissance McCoy 2018 (calculations_albedo v1.2.65).
@@ -4816,16 +4815,12 @@ var _finetuningAltPicto = {
 
 // Picto pour cibles groupe RADIATIVE pilotées par jauge SCIENCE (même % ATM que nuages partiels SCIENCE).
 var _finetuningRadiativeSciencePicto = {
-  H2O_EDS_SCALE: "💧",
-  factorTropopause: "🛩"
+  H2O_EDS_SCALE: "💧"
 };
 
-// Picto groupe HYSTERESIS (mer gelée, glace, CO₂ océan).
+// Picto groupe HYSTERESIS (mer gelée).
 var _finetuningHystPicto = {
-  seaIceTransitionRangeK: "🌊❄",
-  seaIceStrength01: "🌊❄",
-  iceImpactFactor01: "🧊",
-  co2OceanEffPump01: "🌊🏭"
+  seaIceTransitionRangeK: "🌊❄"
 };
 
 // Alt détaillé (valeurs live, jauge ATM) — alt2sec #title-flou-scientifique-slot. HYSTERESIS = jauges scie séparées.
@@ -4847,12 +4842,7 @@ function _finetuningDisplayNote(t) {
   return t.note || "";
 }
 
-/** Cible sortie du barycentre (fine_tuning_bounds.js `fixed`). Voir API_BILAN/doc/AUDIT_TUNING_7_PARAMS.md. */
-function _finetuningIsFixed(t) {
-  return !!(t && t.fixed != null && Number.isFinite(Number(t.fixed)));
-}
-
-/** Cible interpolée par la jauge ATM (flou scientifique titre) — pas HYSTERESIS ni factorTropopause fixe. */
+/** Cible interpolée par la jauge ATM (flou scientifique titre) — pas HYSTERESIS. */
 function _finetuningIsAtmTarget(t) {
   if (!t || !t.group || !t.key) return false;
   if (t.group === "CLOUD_SW") return true;
@@ -4865,7 +4855,6 @@ function _finetuningIsAtmTarget(t) {
 function _finetuningFormatRangeEndpoint(key, val) {
   if (key === "seaIceTransitionRangeK") return String(Math.round(Number(val) * 1000));
   if (key === "co2OceanRatioRef") return Number(val).toFixed(1);
-  if (key === "factorTropopause") return Number(val).toFixed(4);
   return Number(val).toFixed(2);
 }
 
@@ -4882,9 +4871,6 @@ function _finetuningRangePair(minVal, maxVal, formatKey) {
 
 function _finetuningRangeStrFromTarget(t) {
   if (!t || t.min === undefined || t.max === undefined) return "";
-  // Une cible figée n'affiche PAS de crochet : « [a , b] » se lit « ça varie là-dedans », ce qui
-  // est précisément la confusion qu'on vient d'enlever. Sa plage d'origine reste dans la config.
-  if (_finetuningIsFixed(t)) return "";
   return _finetuningRangePair(t.min, t.max, t.key);
 }
 
@@ -4905,10 +4891,9 @@ function _finetuningLiveLineFromTarget(t, picto, keyLabelOverride) {
   var liveStr = _finetuningLiveFromTarget(t);
   if (liveStr == null) return null;
   var keyLabel =
-    keyLabelOverride ||
-    (t.key === "iceImpactFactor01" ? "iceImpact" : t.key);
+    keyLabelOverride || t.key;
   return _finetuningLiveLine(
-    _finetuningIsFixed(t) ? "🔒" : picto,
+    picto,
     _finetuningRangeStrFromTarget(t),
     keyLabel,
     liveStr,
@@ -4923,7 +4908,6 @@ function _finetuningFormatLiveValue(key, rawVal) {
     return ui + " (moteur " + k.toFixed(2) + " K)";
   }
   if (key === "co2OceanRatioRef") return Number(rawVal).toFixed(1);
-  if (key === "factorTropopause") return Number(rawVal).toFixed(4);
   return Number(rawVal).toFixed(2);
 }
 
@@ -4995,8 +4979,7 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
   const atmTargets = (bounds && bounds.targets ? bounds.targets : []).filter(
     _finetuningIsAtmTarget
   );
-  const nFlous = atmTargets.filter(function (t) { return !_finetuningIsFixed(t); }).length;
-  const nFiges = atmTargets.length - nFlous;
+  const nFlous = atmTargets.length;
   const introHead =
     "Flou scientifique — jauge ATM " +
     (pctAtm ||
@@ -5004,17 +4987,14 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
         ? Math.round(Number(bg.ATM)) + "%"
         : "100%")) +
     " : " + nFlous + " paramètre" + (nFlous > 1 ? "s" : "") + " réellement incertain" +
-    (nFlous > 1 ? "s" : "") + (nFiges > 0 ? ", " + nFiges + " figé" + (nFiges > 1 ? "s" : "") + " hors jauge" : "") +
+    (nFlous > 1 ? "s" : "") +
     " (nuages SW ; hystérésis = jauges scie séparées)";
 
   if (!bounds || !bounds.targets || !Array.isArray(bounds.targets) || !T) {
     return detailOnly ? _finetuningAltFallback : introHead + "\n" + _finetuningAltFallback;
   }
 
-  // Deux sections : ce que la jauge fait varier, puis ce qu'elle ne touche plus. Les figés restent
-  // affichés — ils pèsent toujours dans le calcul — mais ne doivent plus se lire comme du flou.
   const parts = [];
-  const fixedParts = [];
 
   bounds.targets.forEach(function (t) {
     if (!_finetuningIsAtmTarget(t)) return;
@@ -5024,14 +5004,8 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
         : _finetuningAltPicto[t.key] || "☁️";
     var line = _finetuningLiveLineFromTarget(t, picto);
     if (!line) return;
-    (_finetuningIsFixed(t) ? fixedParts : parts).push(line);
+    parts.push(line);
   });
-
-  if (fixedParts.length) {
-    parts.push("");
-    parts.push("🔒 Figés hors barycentre — leur plage n'était pas une incertitude scientifique :");
-    fixedParts.forEach(function (l) { parts.push(l); });
-  }
 
   const detail = parts.length ? parts.join("\n") : _finetuningAltFallback;
   return detailOnly ? detail : introHead + "\n" + detail;
@@ -5485,7 +5459,7 @@ ORG.updateFluxLabels = function (eventId) {
       }
       window.RUNTIME_STATE.h2oVaporPercent = Math.min(
         100,
-        Math.max(0, DATA["💧"]["🍰🫧💧"] * 100 + window.RUNTIME_STATE.h2oTotalFromMeteorites),
+        Math.max(0, DATA["💧"]["🍰🫧💧"] * 100),
       );
       window.UI_STATE.waterVaporEnabled = window.RUNTIME_STATE.h2oVaporPercent > 0;
       // ppm CO2/CH4 = fraction molaire × 1e6 (co2KgToFraction/ch4KgToFraction), pas fraction massique × 1e6
@@ -5708,7 +5682,7 @@ ORG.updateFluxLabels = function (eventId) {
   // lisent telle quelle (main.js calculateH2OParameters, sync_panels, postMessage des panneaux).
   // Le badge, lui, recalcule sa propre valeur MOLAIRE plus bas — on ne change pas la sémantique
   // d'une variable partagée pour un problème d'affichage.
-  const h2o_from_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites;
+  // L'eau des météorites est dans la vapeur du moteur (⚖️💧 += 📿☄️ × 🔺⚖️💧☄️) : rien à ajouter ici.
   // En mode corps noir, on peut avoir un forçage albedo si il y a de la glace des météorites
   const forcing_Albedo = (window.CLIMATE && window.CLIMATE.calculateAlbedoForcing)
       ? window.CLIMATE.calculateAlbedoForcing(albedo_num)
@@ -6422,7 +6396,7 @@ ORG.updateFluxLabels = function (eventId) {
     if (!Number.isFinite(w) || !Number.isFinite(M_air) || !(M_H2O > 0)) return 0;
     return Math.min(100, w * (M_air / M_H2O) * 100);
   })();
-  let h2o_display_value = _h2oMolarPercent + h2o_from_meteorites;
+  let h2o_display_value = _h2oMolarPercent;
 
   // Le calcul suit uniquement la présence d'eau (h2o_enabled)
   // Passer un nombre pour que formatValueFromTemplate gère le formatage automatiquement

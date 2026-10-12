@@ -150,9 +150,8 @@
         var co2_ppm = window.ATM.co2KgToFraction(DATA['⚖️']['⚖️🏭'], atm_kg, M_air) * 1e6;
         var ch4_ppm = window.ATM.ch4KgToFraction(DATA['⚖️']['⚖️🐄'], atm_kg, M_air) * 1e6;
         var h2o_vapor_frac = (DATA['💧'] && DATA['💧']['🍰🫧💧'] != null) ? DATA['💧']['🍰🫧💧'] : 0;
-        var h2o_meteorites = (typeof window.RUNTIME_STATE.h2oTotalFromMeteorites !== 'undefined') ? window.RUNTIME_STATE.h2oTotalFromMeteorites : 0;
         window.plotData.ch4_ppm = ch4_ppm;
-        window.RUNTIME_STATE.h2oVaporPercent = Math.min(100, Math.max(0, h2o_vapor_frac * 100 + h2o_meteorites));
+        window.RUNTIME_STATE.h2oVaporPercent = Math.min(100, Math.max(0, h2o_vapor_frac * 100));
         window.plotData.lambda_range = spectral.lambda_range;
         window.plotData.lambda_weights = spectral.lambda_weights;
         var sigma = (CONST && CONST.STEFAN_BOLTZMANN != null) ? CONST.STEFAN_BOLTZMANN : 5.670374419e-8;
@@ -241,7 +240,7 @@
         if (event === 'convergenceRefresh') { window.shell.dataInput({ type: 'displayConvergence' }); return; }
         if (event !== 'cycleCalcul') return;   // ProcessFinished : traité après run()
         var D = window.DATA;
-        window.RUNTIME_STATE.h2oVaporPercent = Math.min(100, Math.max(0, D['💧']['🍰🫧💧'] * 100 + window.RUNTIME_STATE.h2oTotalFromMeteorites));
+        window.RUNTIME_STATE.h2oVaporPercent = Math.min(100, Math.max(0, D['💧']['🍰🫧💧'] * 100));
         if (!(D['🔘']['🔘🎞'] && window.isVisuPanelActive())) {
             IO_LISTENER.emit('compute:progress', payload);   // → loader_panels : étiquettes (cycleCalcul)
             return;

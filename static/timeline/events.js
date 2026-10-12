@@ -9,8 +9,8 @@
  *     s'accordaient pas (☄️ de 🔥 sans calcul et eau d'affichage ×10 « min 2,1 % », 🔺⚖️💧 jamais lu, voile
  *     posé par l'un et pas par l'autre). Passage d'époque = ce que rend CLICS.jouer : fin de
  *     tryEpochEndSkipAfterEvent, du clamp à « marge » TIMELINE_END_SLACK_MA (règle différente du moteur), du verrou
- *     et de checkDateEvents. 📱 : tranche = CLICS.trancheActive(). Ici ne reste que la présentation : quels
- *     boutons, leurs bulles.
+ *     et de checkDateEvents. 📱 : tranche = CLICS.trancheActive(). Ici ne reste que la présentation.
+ *     Le bouton proposé = CLICS.prochaineAction (🕰.order de la config API) : fin de ACTION_BY_DATE (CO2).
  *   - v1.2.41: pas de clic affiché à 1 décimale (formatStepLabel partout, météorites comprises).
  *   - v1.2.40: plus aucune écriture de flux géothermique (applyHadeenFluxFromConfig retirée) : l'intérieur a une
  *     histoire thermique (API_BILAN/geology/interieur.js), le clic ne fait qu'avancer la date.
@@ -106,21 +106,6 @@ function addEventTooltip(el, eventKey, shortText) {
     };
     el.addEventListener('mouseenter', refresh);
     el.addEventListener('focus', refresh);
-}
-
-/**
- * Nombre de clics que demande l'époque pour être traversée — ce qui décide de l'affichage du SKIP (🎞).
- * 🕰.order → longueur de la file. Sinon : max(boutons d'action, tics nécessaires pour couvrir |◀−▶| au pas 🔺⏳),
- * car une époque à un seul bouton 💫 peut demander plusieurs clics (🦠 3 × 500 Ma, 🦣 4 × 0,5 Ma, 🛖 3 × 4 ka).
- * Les hystérésis valent 1 (un seul événement, un seul clic) : pas de SKIP.
- */
-function epochEventCount(EP) {
-    const W = EP['🕰'];
-    if (Array.isArray(W.order)) return W.order.length;
-    const directCount = ['☄️', '🎇', '🗻', '🌋', '💫', '🏔', '⛰'].filter(function (k) { return k in W; }).length;
-    const ticKey = window.CLICS.TICS.find(function (k) { return k in W; });
-    const ticCount = ticKey ? Math.ceil(window.CLICS.duree() / W[ticKey]['🔺⏳'] - 1e-9) : 0;
-    return Math.max(directCount, ticCount);
 }
 
 /** Pas d'un clic : +N ans sur l'échelle récente, sinon +X Ma (1 décimale). */
@@ -221,22 +206,18 @@ function boutonTranche(key, cfg) {
 }
 
 /**
- * Les boutons d'action de l'époque courante (présentation ; l'effet est dans CLICS) :
+ * Les boutons d'action de l'époque courante — affichage seul, la séquence est la config de l'API :
  *  - 📱 : les actions de la tranche active (CLICS.trancheActive), « FIN DE SIMULATION » passé ◀ ;
- *  - 🕰.order : l'entrée au curseur 📿🕰 ;
- *  - sinon : l'action de la date (configOrganigramme.ACTION_BY_DATE : ☄️ / 🎇 si l'époque les a), ou le volcan
- *    (🗻 qui porte un voile, ou 🌋) et le tic (💫 / 🏔 / ⛰) de l'époque.
+ *  - sinon : l'action suivante de 🕰.order (CLICS.prochaineAction).
  */
 window.updateEpochActions = function () {
     window.refreshTimelineEpochBounds();
     const eventsLogos = document.getElementById('timeline-events-logos');
-    const H = window.DATA['📜'];
-    const EP = window.TIMELINE[H['👉']];
-    const W = EP['🕰'];
-    const parTranche = Object.keys(W).some(function (k) { return !isNaN(Number(k)); });
+    const W = window.TIMELINE[window.DATA['📜']['👉']]['🕰'];
+    const parTranche = window.CLICS.parTranche();
 
     // 🎞 SKIP : masqué sur 📱 (pas d'époque suivante) et quand l'époque se traverse en un clic.
-    document.getElementById('plot-anim-toggle').classList.toggle('plot-anim-toggle--scenario-hidden', parTranche || epochEventCount(EP) <= 1);
+    document.getElementById('plot-anim-toggle').classList.toggle('plot-anim-toggle--scenario-hidden', parTranche || W.order.length <= 1);
 
     eventsLogos.innerHTML = '';
     eventsLogos.classList.toggle('year-indexed', parTranche);
@@ -251,22 +232,6 @@ window.updateEpochActions = function () {
         Object.keys(tranche).forEach(function (k) { eventsLogos.appendChild(boutonTranche(k, tranche[k])); });
         return;
     }
-
-    if (Array.isArray(W.order)) {
-        if (H['📿🕰'] < W.order.length) {
-            const act = W.order[H['📿🕰']];
-            eventsLogos.appendChild(boutonAction(act, W[act]));
-        }
-        return;
-    }
-
-    const parDate = window.configOrganigramme.getActionForDate(EP['▶'], H['⏳']);
-    if ((parDate === '☄️' || parDate === '🎇') && (parDate in W)) {
-        eventsLogos.appendChild(boutonAction(parDate, W[parDate]));
-        return;
-    }
-    const volcan = ['🗻', '🌋'].find(function (k) { return k in W; });
-    const tic = window.CLICS.TICS.find(function (k) { return k in W; });
-    if (volcan) eventsLogos.appendChild(boutonAction(volcan, W[volcan]));
-    if (tic) eventsLogos.appendChild(boutonAction(tic, W[tic]));
+    const act = window.CLICS.prochaineAction();
+    if (act !== undefined) eventsLogos.appendChild(boutonAction(act, W[act]));
 };
