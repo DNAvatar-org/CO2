@@ -11,51 +11,28 @@
 //       le résultat s'écrit ensuite à la main dans la config, avec sa mesure en commentaire.
 //       Écrit window.__SEUILS__ ; window.__PROG__ suit l'avancement.
 // Version 1.0.0
-// Date: 2026-09-24
+// Date: 2026-10-12
+// logs : v2.0.0 — clics par CLICS (API_BILAN/convergence/clics.js), plus de copie de la mécanique ici.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.__PROG__='start'; window.__SEUILS__=null; window.__ERR__=null;
 (async () => { try {
   const api=window.getBilanRadiatifAPI(function(){}), D=window.DATA, C=window.CONST;
   const ppmCO2 = () => +(D['🫧']['🍰🫧🏭']/C.M_CO2 / (1/D['🫧']['🧪'] - D['💧']['🍰🫧💧']/C.M_H2O) * 1e6).toFixed(2);
-  const reset = () => { for (const k of ['🔺⚖️🏭','🔺⚖️🌊🏭','🔺⚖️🌳🏭','📿💫','📿☄️','📿🕰','🔺🍰⚽','🔺⚖️💧']) D['📜'][k]=0; };
   const TLid = id => window.TIMELINE.find(e => e['📅'] === id);
-  const nextId = id => { const k = window.TIMELINE.findIndex(e => e['📅'] === id); for (let n = k + 1; n < window.TIMELINE.length; n++) if (window.TIMELINE[n]['📅']) return window.TIMELINE[n]['📅']; return null; };
-  const passer = async (id) => {
-    for (const k of ['📿💫','📿☄️','📿🕰','🔺⚖️🏭','🔺⚖️🌊🏭','🔺⚖️🌳🏭']) D['📜'][k]=0;
-    D['📜']['🔘🕰']='';
-    await api.run({ epochId:id, animEnabled:true });
-  };
   const etat = (etape) => { const s=api.snapshot(); return { etape, ep:s.epochId, T:+s.T_C.toFixed(2), glace:+(+s.ice.mass_now).toFixed(3), ppm:ppmCO2() }; };
-  // Même traversée que bench19 / courbe_modele : un clic = 📿 += 1, voile éventuel, temps += 🔺⏳.
-  const traverser = async (id, notes) => {
-    const EP = TLid(id), W = EP['🕰'] || {};
-    const dur = Math.abs(EP['◀'] - EP['▶']) / 1e6;
-    const clics = Array.isArray(W.order) ? W.order.slice() : null;
-    const racine = W['💫'];
-    let t = 0, n = 0;
-    while (n < 50) {
-      const seule = Object.keys(W).filter(k => W[k] && typeof W[k]['🔺⏳'] === 'number');
-      const key = clics ? clics[n] : (racine ? '💫' : seule[0]);
-      const cfg = W[key]; if (!cfg) throw new Error('clic introuvable '+id+' '+key);
-      n++;
-      D['📜']['📿💫'] = (D['📜']['📿💫'] || 0) + 1;
-      if ((key === '💫' || key === '⛰') && racine && Object.prototype.hasOwnProperty.call(racine, '🍰⚽')) D['📜']['🔺🍰⚽'] = Number(racine['🍰⚽']);
-      if ((key === '🗻' || key === '🌋') && Number.isFinite(cfg['🔺🍰⚽'])) D['📜']['🔺🍰⚽'] = Math.min(0.95, (D['📜']['🔺🍰⚽'] || 0) + cfg['🔺🍰⚽']);
-      t += cfg['🔺⏳'];
-      if (t >= dur - 1e-9) { const nx = nextId(id); await passer(nx); notes.push(etat(id+' →'+key+' '+nx)); return nx; }
-      D['📜']['🔘🕰'] = key;
-      await api.run({ epochId:id, animEnabled:true });
-      notes.push(etat(id+' '+key+' #'+n));
-    }
-    throw new Error('traversée sans fin : '+id);
-  };
-  // Chaîne depuis la frise 🪸 jusqu'à l'ARRIVÉE dans `jusqua` (incluse). Renvoie toutes les notes.
+  // Chaîne depuis la frise 🪸 jusqu'à l'ARRIVÉE dans `jusqua` (incluse). Clics : CLICS (API_BILAN/convergence/clics.js).
   const chaine = async (jusqua) => {
-    reset(); D['📜']['🔺🍰⚽']=0;
+    window.CLICS.frise('🪸');
     await api.run({ epochId:'🪸', animEnabled:false });
     const notes=[etat('🪸 frise')];
-    let id='🪸';
-    while (id !== jusqua) id = await traverser(id, notes);
+    while (D['📜']['🗿'] !== jusqua) {
+      const depuis = D['📜']['🗿'];
+      const key = window.CLICS.prochaineAction();
+      const r = window.CLICS.jouer(key);
+      if (r.passage !== null) window.CLICS.passer(r.passage);
+      await api.run({ epochId: D['📜']['🗿'], animEnabled:true });
+      notes.push(etat(r.passage !== null ? depuis+' →'+key+' '+r.passage : depuis+' '+key));
+    }
     return notes;
   };
   const arrivee = (notes, ep) => notes.find(n => n.ep === ep);   // premier état vu dans l'époque = arrivée

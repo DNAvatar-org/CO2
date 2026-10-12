@@ -1,8 +1,16 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.2.41
- * Date: [September 24, 2026]
+ * Version 1.3.0
+ * Date: 2026-10-12
+ * Copyright 2026 DNAvatar.org - Arnaud Maignan
 * logs :
+ *   - v1.3.0: l'EFFET d'un clic vient de CLICS.jouer (API_BILAN/convergence/clics.js), la mécanique que joue aussi
+ *     le banc : un seul gestionnaire jouerClic au lieu de 9 copies (☄️ ×4, 🎇 ×2, volcans ×2, tics ×5), qui ne
+ *     s'accordaient pas (☄️ de 🔥 sans calcul et eau d'affichage ×10 « min 2,1 % », 🔺⚖️💧 jamais lu, voile
+ *     posé par l'un et pas par l'autre). Passage d'époque = ce que rend CLICS.jouer : fin de
+ *     tryEpochEndSkipAfterEvent, du clamp à « marge » TIMELINE_END_SLACK_MA (règle différente du moteur), du verrou
+ *     et de checkDateEvents. 📱 : tranche = CLICS.trancheActive(). Ici ne reste que la présentation : quels
+ *     boutons, leurs bulles.
  *   - v1.2.41: pas de clic affiché à 1 décimale (formatStepLabel partout, météorites comprises).
  *   - v1.2.40: plus aucune écriture de flux géothermique (applyHadeenFluxFromConfig retirée) : l'intérieur a une
  *     histoire thermique (API_BILAN/geology/interieur.js), le clic ne fait qu'avancer la date.
@@ -71,67 +79,14 @@
  *   - v1.2.14: clic 💫 — si 🕰.💫 définit 🍰⚽, copie dans 📜🔺🍰⚽ (ex. 0) puis _veilTimelinePulseActive=false pour ré-autoriser impulsion racine EPOCH['🔺🍰⚽'] au prochain 📿💫===0
  */
 
-// Core globals requis : addCustomTooltip, hideTooltip, togglePlotAnim (SKIP), getEpochAtTimelineIndex, getCurrentEpochDurationMa, isPastCurrentEpochEndMa, getEpochDateConfig, getNoyau, runComputeInParent, updateTimeline, updateHadeenTexture, updateH2OLevelDirect, getLogoImageSrc, configOrganigramme, DATA.
-// Module plot optionnel : géré par window.PLOT_PANEL_READY (main.js), accès en blocs if (window.PLOT_PANEL_READY) { ... window.plotData ... }.
-
-/** Transition vers l'époque suivante comme un clic SKIP (#plot-anim-toggle) — loader_panels.togglePlotAnim. */
-function goNextEpochViaSkip() {
-    window.togglePlotAnim();
-}
-
-/** Borne infoTimeMa sur la durée d’ép |◀−▶|/1e6 Ma : forward (🛖, 🚂, 📱…) et géologique (▶>◀). Snap fin dans le slack (aligné isPastCurrentEpochEndMa). */
-function clampInfoTimeMaToGeologicEpochDuration() {
-    const epoch = window.getEpochAtTimelineIndex();
-    if (!epoch || epoch['▶'] == null || epoch['◀'] == null) return;
-    const dur = Math.abs(epoch['◀'] - epoch['▶']) / 1e6;
-    if (!Number.isFinite(dur) || dur <= 0) return;
-    const slackFn = typeof window.effectiveTimelineEndSlackMa === 'function' ? window.effectiveTimelineEndSlackMa : null;
-    const slack = slackFn ? slackFn(dur) : (window.TIMELINE_END_SLACK_MA != null ? window.TIMELINE_END_SLACK_MA : 0.05);
-    if (window.infoTimeMa >= dur - slack) window.infoTimeMa = dur;
-    else if (window.infoTimeMa > dur) window.infoTimeMa = dur;
-}
-
-/**
- * Après mise à jour du temps : si la date frise (getTimelineCurrentMa) dépasse la fin d'époque, SKIP.
- * @param {function} [runPopOrder] appelé avant SKIP si fourni (ex. popOrderAfterAction('💫')).
- */
-function tryEpochEndSkipAfterEvent(runPopOrder) {
-    clampInfoTimeMaToGeologicEpochDuration();
-    if (!window.isPastCurrentEpochEndMa()) return false;
-    const TIMELINE = window.TIMELINE;
-    const DATA = window.DATA;
-    if (!TIMELINE || !TIMELINE.length || !DATA || !DATA['📜']) return false;
-    const epochId = DATA['📜']['🗿'];
-    const idxCur = TIMELINE.findIndex(function (e) { return e['📅'] === epochId; });
-    if (idxCur < 0 || idxCur + 1 >= TIMELINE.length) return false;
-    // Une fin d'époque = UNE transition. Appelants multiples (handler d'événement + updateTimeline) pendant
-    // l'animation curseur (~400 ms, setEpoch pas encore fait) → sans verrou : 2 SKIP → 2 setEpoch → 2 calculs.
-    // Verrou posé ici (point d'entrée unique), relâché par setEpoch (main.js) à l'arrivée sur l'époque suivante.
-    if (window._timelineEpochEndSkipLatch) return true;
-    window._timelineEpochEndSkipLatch = true;
-    if (runPopOrder) runPopOrder();
-    goNextEpochViaSkip();
-    return true;
-}
+// Core globals requis : addCustomTooltip, hideTooltip, togglePlotAnim (passage animé), updateTimeline,
+// updateHadeenTexture, getLogoImageSrc, configOrganigramme, CLICS, IO_LISTENER, DATA, TIMELINE.
 
 /** Titre de la cellule d'événements (#cell-timeline-scenario-logos) : « EVENEMENT », ou « FIN DE SIMULATION »
- *  quand 📱 a atteint ◀ (2100) et n'a plus rien à proposer. Repasse à EVENEMENT dès qu'un bouton revient
- *  (reclic sur l'époque 📱 → setEpoch remet 📿💫/📅 à 2000). */
+ *  quand 📱 a atteint ◀ (2100) et n'a plus rien à proposer. */
 function setEventsHeading(text) {
     const h = document.querySelector('#cell-timeline-scenario-logos .flux-label.organigram-config-heading');
-    if (h && h.innerHTML !== text) h.innerHTML = text;
-}
-
-/**
- * Curseur de 🕰.order : combien d'entrées ont déjà été jouées dans l'époque courante.
- * Vit dans DATA['📜']['📿🕰'] (remis à 0 par setEpoch, comme 📿💫/📿☄️) et NON dans la config :
- * un shift() sur 🕰.order amputait la séquence pour de bon, donc revenir sur une époque déjà
- * parcourue proposait les événements décalés (⚫ : 2 clics joués → il ne restait que 3 actions).
- */
-function orderCursor() {
-    const D = window.DATA;
-    const n = (D && D['📜']) ? Number(D['📜']['📿🕰']) : 0;
-    return Number.isFinite(n) && n > 0 ? n : 0;
+    if (h.innerHTML !== text) h.innerHTML = text;
 }
 
 /**
@@ -141,12 +96,11 @@ function orderCursor() {
  * pour tous les suivants. buildEventAlt2sec est donc rejoué à chaque survol, avant que tooltips.js ne lise
  * data-alt2sec (il le lit dans son setTimeout, après le mouseenter).
  */
-function addEventTooltip(el, epochId, eventKey, shortText) {
+function addEventTooltip(el, eventKey, shortText) {
     el.setAttribute('data-event-key', eventKey);
-    window.addCustomTooltip(el, shortText, window.buildEventAlt2sec(epochId, eventKey));
+    window.addCustomTooltip(el, shortText, window.buildEventAlt2sec(window.DATA['📜']['🗿'], eventKey));
     const refresh = function () {
-        const id = (window.DATA && window.DATA['📜']) ? window.DATA['📜']['🗿'] : epochId;
-        const txt = window.buildEventAlt2sec(id, eventKey);
+        const txt = window.buildEventAlt2sec(window.DATA['📜']['🗿'], eventKey);
         if (txt) el.setAttribute('data-alt2sec', txt);
         else el.removeAttribute('data-alt2sec');
     };
@@ -160,637 +114,159 @@ function addEventTooltip(el, epochId, eventKey, shortText) {
  * car une époque à un seul bouton 💫 peut demander plusieurs clics (🦠 3 × 500 Ma, 🦣 4 × 0,5 Ma, 🛖 3 × 4 ka).
  * Les hystérésis valent 1 (un seul événement, un seul clic) : pas de SKIP.
  */
-function epochEventCount(tlEpoch) {
-    const wh = tlEpoch ? tlEpoch['🕰'] : null;
-    if (!wh) return 0;
-    if (Array.isArray(wh.order)) return wh.order.length;
-    const directCount = ['☄️', '🎇', '🗻', '🌋', '💫', '🏔', '⛰']
-        .filter(function (k) { return wh[k] != null; }).length;
-    let ticCount = 0;
-    const ticKey = ['💫', '🏔', '⛰', '🌋'].find(function (k) {
-        return wh[k] && Number.isFinite(Number(wh[k]['🔺⏳'])) && Number(wh[k]['🔺⏳']) > 0;
-    });
-    const durMa = (Number.isFinite(Number(tlEpoch['▶'])) && Number.isFinite(Number(tlEpoch['◀'])))
-        ? Math.abs(Number(tlEpoch['◀']) - Number(tlEpoch['▶'])) / 1e6 : null;
-    if (ticKey && durMa !== null && durMa > 0) {
-        ticCount = Math.ceil(durMa / Number(wh[ticKey]['🔺⏳']) - 1e-9);
-    }
+function epochEventCount(EP) {
+    const W = EP['🕰'];
+    if (Array.isArray(W.order)) return W.order.length;
+    const directCount = ['☄️', '🎇', '🗻', '🌋', '💫', '🏔', '⛰'].filter(function (k) { return k in W; }).length;
+    const ticKey = window.CLICS.TICS.find(function (k) { return k in W; });
+    const ticCount = ticKey ? Math.ceil(window.CLICS.duree() / W[ticKey]['🔺⏳'] - 1e-9) : 0;
     return Math.max(directCount, ticCount);
 }
 
-// Fonction pour mettre à jour les actions disponibles selon l'époque
-// Après 🎞 : ☄️ / 🎇 / 💫 selon 🕰.order (TIMELINE) — une seule action visible (order[0]), queue consommée au clic ; sinon ACTION_BY_DATE ; géologique sans order : 🕰.🌋 + 🕰.💫.
+/** Pas d'un clic : +N ans sur l'échelle récente, sinon +X Ma (1 décimale). */
+function formatStepLabel(stepMa) {
+    if (stepMa < 0.001) return '+' + Math.round(stepMa * 1e6) + ' ans';
+    return '+' + (Math.round(stepMa * 10) / 10) + ' Ma';
+}
+
+/** Masse en kg, notation scientifique : +6.8x10<sup>18</sup> kg. */
+function formatMass(mass_kg) {
+    const parts = mass_kg.toExponential(1).split('e');
+    return '+' + parts[0] + 'x10<sup>' + parts[1].replace('+', '') + '</sup> kg';
+}
+
+// Masse en tonnes, avec un VRAI préfixe SI — les préfixes ne s'empilent pas : « kGt » n'existe pas
+// (kilo × giga = téra, donc l'ancien « 320 kGT » se dit 320 Tt). 1 Gt = 10⁹ t = 10¹² kg.
+//   Gt gigatonne 10¹² kg · Tt tératonne 10¹⁵ kg · Pt pétatonne 10¹⁸ kg · Et exatonne 10²¹ kg
+function formatMassGT(mass_kg) {
+    const paliers = [
+        { seuil: 1e21, unite: 'Et' },
+        { seuil: 1e18, unite: 'Pt' },
+        { seuil: 1e15, unite: 'Tt' },
+        { seuil: 1e12, unite: 'Gt' }
+    ];
+    for (const p of paliers) {
+        if (mass_kg >= p.seuil) return '+' + (mass_kg / p.seuil).toFixed(1).replace(/\.?0+$/, '') + ' ' + p.unite;
+    }
+    return '+' + (mass_kg / 1e9).toFixed(1).replace(/\.?0+$/, '') + ' Mt';
+}
+
+/**
+ * LE clic d'action de l'interface. L'effet sur l'état est celui de CLICS.jouer (le même que le banc) ;
+ * ici seulement ce qui est propre à l'écran : bulle, axe Y, frise, texture, rendu des boutons, et le calcul
+ * (config:applyThenCompute → runComputeInParent, en animation : T° présente conservée).
+ * Fin d'époque atteinte (ou ⏩ de 🎇) : passage animé (togglePlotAnim → setEpoch → CLICS.passer → calcul).
+ */
+function jouerClic(key) {
+    window.hideTooltip();
+    window.FLUX.yAxisRecalcOnNextFinish = true;
+    const r = window.CLICS.jouer(key);
+    if (r.passage !== null) {
+        // Plus de bouton pendant l'animation du curseur (~400 ms) : un second clic rejouerait sur l'époque quittée.
+        document.getElementById('timeline-events-logos').innerHTML = '';
+        window.togglePlotAnim();
+        return;
+    }
+    window.IO_LISTENER.emit('config:applyThenCompute', { button: key });
+    window.updateTimeline();
+    window.updateHadeenTexture();
+    window.updateEpochActions();
+}
+
+/** Un bouton d'action (rendu seul ; le clic va à jouerClic). */
+function boutonAction(key, cfg) {
+    let el;
+    let court;
+    if (key === '☄️' || key === '🎇') {
+        el = document.createElement('img');
+        el.src = window.getLogoImageSrc(key);
+        el.className = 'btn-events organigram-logo organigram-action-logo';
+        if (key === '☄️') {
+            const m = cfg['🔺⚖️💧☄️'];
+            court = 'Météorite de glace<br>' + (m >= 1e12 ? formatMassGT(m) : formatMass(m)) + '<br>' + formatStepLabel(cfg['🔺⏳']) + ' par clic';
+            el.alt = 'Météorite de Glace ' + formatStepLabel(cfg['🔺⏳']);
+        } else {
+            court = 'Impact majeur - Crée la lune';
+            el.alt = '';
+        }
+    } else {
+        el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'icon-button btn-events organigram-logo organigram-action-logo';
+        el.textContent = key;
+        if (window.CLICS.TICS.includes(key)) {
+            el.alt = formatStepLabel(cfg['🔺⏳']);
+            court = el.alt + ' par clic';
+        } else {
+            // 🗻 / 🌋 : bulle = DESC du logo dans l'Alphabet (source unique), pas de texte par action.
+            el.alt = window.CHARS_DESC[key];
+            court = el.alt;
+        }
+    }
+    addEventTooltip(el, key, court);
+    el.addEventListener('click', function () { jouerClic(key); });
+    return el;
+}
+
+/** Bouton d'une tranche 📱 (⛽ 🛢 🪾) : +N ans, +M Gt CO₂. */
+function boutonTranche(key, cfg) {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'icon-button btn-events organigram-logo btn-year-indexed organigram-action-logo';
+    el.textContent = key;
+    el.alt = '+' + Math.round(cfg['🔺⏳'] * 1e6) + 'ans +' + Math.round(cfg['🔺⚖️🏭'] / 1e12) + 'Gt CO2';
+    addEventTooltip(el, key, key + ' ' + el.alt);
+    el.addEventListener('click', function () { jouerClic(key); });
+    return el;
+}
+
+/**
+ * Les boutons d'action de l'époque courante (présentation ; l'effet est dans CLICS) :
+ *  - 📱 : les actions de la tranche active (CLICS.trancheActive), « FIN DE SIMULATION » passé ◀ ;
+ *  - 🕰.order : l'entrée au curseur 📿🕰 ;
+ *  - sinon : l'action de la date (configOrganigramme.ACTION_BY_DATE : ☄️ / 🎇 si l'époque les a), ou le volcan
+ *    (🗻 qui porte un voile, ou 🌋) et le tic (💫 / 🏔 / ⛰) de l'époque.
+ */
 window.updateEpochActions = function () {
     window.refreshTimelineEpochBounds();
     const eventsLogos = document.getElementById('timeline-events-logos');
-    const animToggleBtn = document.getElementById('plot-anim-toggle');
+    const H = window.DATA['📜'];
+    const EP = window.TIMELINE[H['👉']];
+    const W = EP['🕰'];
+    const parTranche = Object.keys(W).some(function (k) { return !isNaN(Number(k)); });
 
-    const currentEpochName = window.RUNTIME_STATE.currentEpochName;
-    // RÉFÉRENCE UNIQUE : l'entrée TIMELINE elle-même, jamais une copie (epochIndex() en fabriquait une,
-    // où les écritures — ex. geothermal_flux de 🔥 — se perdaient).
-    const getEpochConfigById = (id) => window.TIMELINE.find((e) => e['📅'] === id);
-    const epochId = window.DATA['📜']['🗿'];
-    const timelineEpoch = getEpochConfigById(epochId);
-    const startYears = timelineEpoch['▶'];
-    const infoTimeMa = window.infoTimeMa;
-
-    // 🎞 SKIP : masqué si 📱 (buckets année sous 🕰) ; masqué si une seule action restante dans 🕰.order (length === 1) ; affiché sinon.
-    const _tlEpoch = window.TIMELINE.find((e) => e['📅'] === epochId);
-    const whRoot = _tlEpoch['🕰'];
-    if (animToggleBtn) {
-        // 📱 : buckets année (⛽/🛢) — pas d'époque suivante à rejoindre, SKIP sans objet.
-        const _hasEmissions = Object.keys(whRoot).some(function(k) { return !isNaN(Number(k)); });
-        const hideSkip = _hasEmissions || epochEventCount(_tlEpoch) <= 1;
-        animToggleBtn.classList.toggle('plot-anim-toggle--scenario-hidden', hideSkip);
-        animToggleBtn.style.removeProperty('visibility');
-    }
-
-    if (!eventsLogos) return;
+    // 🎞 SKIP : masqué sur 📱 (pas d'époque suivante) et quand l'époque se traverse en un clic.
+    document.getElementById('plot-anim-toggle').classList.toggle('plot-anim-toggle--scenario-hidden', parTranche || epochEventCount(EP) <= 1);
 
     eventsLogos.innerHTML = '';
+    eventsLogos.classList.toggle('year-indexed', parTranche);
     setEventsHeading('EVENEMENT');
 
-    /** Clic tic de 🔥 (💫, ou 🏔/⛰ si un order les y met). Compte 📿💫 comme tout tic géologique : c'est ce
-     *  compteur qui fait avancer la date (getEpochDateConfig) — donc l'intérieur, qui refroidit par bilan
-     *  d'énergie jusqu'à cette date (API_BILAN/geology/interieur.js) — et rétrécir le rayon (🔺📐).
-     *  `apres` : avance le curseur 📿🕰 quand l'époque a un order (sinon null). */
-    const clicTicHadeen = (stepMa, key, apres) => {
-        window.hideTooltip();
-        if (!window.FLUX) window.FLUX = {};
-        window.FLUX.yAxisRecalcOnNextFinish = true;
-        const cellTerre = document.getElementById('cell-terre');
-        if (cellTerre) {
-            const canvas = cellTerre.querySelector('canvas');
-            if (canvas && canvas._threeJSData && canvas._threeJSData.sphere) {
-                window.savedPlanetRotationY = canvas._threeJSData.sphere.rotation.y;
-            }
-        }
-        const durMa = window.getCurrentEpochDurationMa();
-        if (durMa == null || !Number.isFinite(durMa)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ' + key + ' 🔥');
-        const D = window.DATA;
-        D['📜']['📿💫'] = (Number.isFinite(D['📜']['📿💫']) ? D['📜']['📿💫'] : 0) + 1;
-        window.infoTimeMa = Math.min(durMa, (window.infoTimeMa || 0) + stepMa);
-        D['📜']['bary'] = durMa > 0 ? window.infoTimeMa / durMa : 0;
-        if (tryEpochEndSkipAfterEvent(apres)) return;
-        window.updateTimeline();
-        window.updateHadeenTexture();
-        window.COMPUTE.getEpochDateConfig();
-        window.COMPUTE.getNoyau();
-        window.IO_LISTENER.emit('config:applyThenCompute', { button: key });
-        checkDateEvents();
-        if (apres) apres();
-    };
-
-    // Échelle récente (1800, 2100) : afficher +N ans ; sinon +X Ma
-    const formatStepLabel = (stepMa) => {
-        if (stepMa == null || !Number.isFinite(stepMa)) return '';
-        if (stepMa < 0.001) return '+' + Math.round(stepMa * 1e6) + ' ans';
-        return '+' + (Math.round(stepMa * 10) / 10) + ' Ma';   // affichage à 1 décimale (510,333… → 510,3)
-    };
-
-    /** Tic temps géologique : 💫 (défaut), ou 🏔 / ⛰ (alias TIMELINE) — même 🔺⏳ / 📿💫 côté compute.js. */
-    const GEologic_TIC_KEYS = ['💫', '🏔', '⛰'];
-    const resolveGeologicTicFromWh = (wh) => {
-        if (!wh || typeof wh !== 'object') return { ticKey: null, ticCfg: null };
-        for (let i = 0; i < GEologic_TIC_KEYS.length; i++) {
-            const k = GEologic_TIC_KEYS[i];
-            const c = wh[k];
-            if (c != null && typeof c === 'object') return { ticKey: k, ticCfg: c };
-        }
-        return { ticKey: null, ticCfg: null };
-    };
-
-    // Fonction utilitaire pour formater la masse
-    const formatMass = (mass_kg) => {
-        if (!mass_kg || mass_kg <= 0) return '';
-        const expStr = mass_kg.toExponential(1); // ex: 6.8e+18
-        // Remplacer e+18 par x10<sup>18</sup>
-        const [base, exp] = expStr.split('e');
-        // Nettoyer l'exposant (+18 -> 18)
-        const cleanExp = exp.replace('+', '');
-        return `+${base}x10<sup>${cleanExp}</sup> kg`;
-    };
-    
-    // Masse en tonnes, avec un VRAI préfixe SI — les préfixes ne s'empilent pas : « kGt » n'existe pas
-    // (kilo × giga = téra, donc l'ancien « 320 kGT » se dit 320 Tt). 1 Gt = 10⁹ t = 10¹² kg.
-    //   Gt gigatonne 10¹² kg · Tt tératonne 10¹⁵ kg · Pt pétatonne 10¹⁸ kg · Et exatonne 10²¹ kg
-    const formatMassGT = (mass_kg) => {
-        if (!mass_kg || mass_kg <= 0) return '';
-        const paliers = [
-            { seuil: 1e21, unite: 'Et' },   // exatonne
-            { seuil: 1e18, unite: 'Pt' },   // pétatonne
-            { seuil: 1e15, unite: 'Tt' },   // tératonne
-            { seuil: 1e12, unite: 'Gt' },   // gigatonne
-        ];
-        for (const p of paliers) {
-            if (mass_kg >= p.seuil) {
-                const v = (mass_kg / p.seuil).toFixed(1).replace(/\.?0+$/, '');
-                return `+${v} ${p.unite}`;
-            }
-        }
-        const mt = (mass_kg / 1e9).toFixed(1).replace(/\.?0+$/, '');
-        return `+${mt} Mt`;
-    };
-
-    // 📱 Buckets par année (clés numériques sous 🕰), prioritaire sur order / ACTION_BY_DATE
-    if (_tlEpoch && whRoot) {
-        const _isYearIndexed = Object.keys(whRoot).some(function(k) { return !isNaN(Number(k)); });
-        if (_isYearIndexed) {
-            // 📱 year-indexed : boutons par tranche d'année (⛽, 🛢, 🛳…)
-            // Année pour buckets : 📅 seulement s’il est dans [▶, ◀] (ère moderne) ; sinon ▶ + 📿💫×pas (comme physicsAll) puis repli ▶
-            // Sinon un 📅 géologique (≫2100) tombait dans [2075,∞) → ⛽ 350Gt + 🛢 au lieu du scénario 2000 (850Gt, ⛽ seul)
-            eventsLogos.classList.add('year-indexed');
-            const D = window.DATA;
-            const yearKeys = Object.keys(_tlEpoch['🕰'])
-                .filter(k => !isNaN(Number(k)))
-                .map(Number)
-                .sort((a, b) => a - b);
-            const epochStart = (_tlEpoch['▶'] != null && Number.isFinite(_tlEpoch['▶'])) ? _tlEpoch['▶'] : (yearKeys[0] || 2000);
-            const epochEnd = (_tlEpoch['◀'] != null && Number.isFinite(_tlEpoch['◀'])) ? _tlEpoch['◀'] : (yearKeys[yearKeys.length - 1] || 2100);
-            const winLo = epochStart - 0.5;
-            const winHi = epochEnd + 200;
-            const rawYr = (D['📜'] && D['📜']['📅'] != null && Number.isFinite(D['📜']['📅'])) ? D['📜']['📅'] : epochStart;
-            let curYrForBucket = rawYr;
-            if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) {
-                const k0 = yearKeys[0];
-                const firstActs = (k0 != null) ? (_tlEpoch['🕰'][k0] || _tlEpoch['🕰'][String(k0)]) : null;
-                const firstCfg = firstActs && typeof firstActs === 'object' ? Object.values(firstActs)[0] : null;
-                const stepYr = (firstCfg && typeof firstCfg['🔺⏳'] === 'number') ? firstCfg['🔺⏳'] * 1e6 : 25;
-                const tic = (D['📜'] && Number.isFinite(D['📜']['📿💫'])) ? D['📜']['📿💫'] : 0;
-                curYrForBucket = epochStart + tic * stepYr;
-                if (!(curYrForBucket >= winLo && curYrForBucket <= winHi)) curYrForBucket = epochStart;
-            }
-            let activeYr = yearKeys[0];
-            if (yearKeys.length && Number.isFinite(curYrForBucket)) {
-                if (curYrForBucket < yearKeys[0]) {
-                    activeYr = yearKeys[0];
-                } else {
-                    for (let i = 0; i < yearKeys.length; i++) {
-                        const yStart = yearKeys[i];
-                        const yEnd = (i + 1 < yearKeys.length) ? yearKeys[i + 1] : Infinity;
-                        if (curYrForBucket >= yStart && curYrForBucket < yEnd) {
-                            activeYr = yStart;
-                            break;
-                        }
-                    }
-                }
-            }
-            // Fin de frise (◀ = 2100) atteinte : plus d'action (pas d'époque suivante, sinon on injecterait au-delà de ◀)
-            const actions = (curYrForBucket >= epochEnd) ? null : _tlEpoch['🕰'][activeYr];
-            if (!actions) setEventsHeading('FIN DE SIMULATION');
-
-            if (actions) {
-                for (const [emoji, cfg] of Object.entries(actions)) {
-                    const co2kg = cfg['🔺⚖️🏭'] || 0;
-                    const dtYr = (cfg['🔺⏳'] || 0.000025) * 1e6;
-                    const dtYrDisp = Math.round(dtYr);
-                    // Gt d’affichage : kg/1e12 (config v1.4.80 en kg réels : 850e12 kg = 850 GtCO₂)
-                    const gtDisp = Math.round(co2kg / 1e12);
-
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'icon-button btn-events organigram-logo btn-year-indexed organigram-action-logo';
-                    btn.textContent = emoji;
-                    const altText = '+' + dtYrDisp + 'ans +' + gtDisp + 'Gt CO2';
-                    btn.alt = altText;
-                    // alt2sec (bulle longue) : récit de l'événement, static/texts/epochs_alt2sec.js
-                    addEventTooltip(btn, epochId, emoji, emoji + ' ' + altText);
-
-                    btn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        const D = window.DATA;
-                        // CO₂ : CUMUL lu par getMasses() (racine époque + 📜🔺⚖️🏭)
-                        D['📜']['🔺⚖️🏭'] += co2kg;
-                        // Puits océan + forêts sur la durée du clic (une fois par événement)
-                        window.CO2.advanceCarbonSinks(dtYr, co2kg);
-                        // Temps (📿💫 = compteur universel ; date = ▶ + 📿💫 × 🔺⏳, compute.js)
-                        D['📜']['📿💫'] += 1;
-                        window.infoTimeMa += dtYr / 1e6;
-                        // Physique
-                        window.COMPUTE.getEpochDateConfig();
-                        window.COMPUTE.getNoyau();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.IO_LISTENER.emit('config:applyThenCompute', { button: emoji });
-                        window.updateTimeline();
-                        // Re-render (nouvelle année → nouveaux boutons)
-                        window.updateEpochActions();
-                    });
-
-                    eventsLogos.appendChild(btn);
-                }
-            }
+    if (parTranche) {
+        const tranche = window.CLICS.trancheActive();
+        if (tranche === null) {
+            setEventsHeading('FIN DE SIMULATION');
             return;
         }
+        Object.keys(tranche).forEach(function (k) { eventsLogos.appendChild(boutonTranche(k, tranche[k])); });
+        return;
     }
 
-    if (_tlEpoch && whRoot && Array.isArray(whRoot.order) && orderCursor() < whRoot.order.length) {
-        const wh = whRoot;
-        const ticRootResolved = resolveGeologicTicFromWh(wh);
-        const ticCfgRoot = ticRootResolved.ticCfg;
-        /** Une entrée consommée dans 🕰.order : le curseur 📿🕰 avance d'un cran si la tête de file correspond à
-         *  l'action réellement jouée (pas de boucle sur 🔘🕰 à chaque frame). La CONFIG n'est pas touchée : revenir
-         *  sur l'époque (clic sur la frise) remet 📿🕰 à 0 dans setEpoch et la séquence repart entière. */
-        const popOrderAfterAction = (actedKey) => {
-            const ord = _tlEpoch['🕰'] && _tlEpoch['🕰'].order;
-            if (!Array.isArray(ord)) return;
-            const cur = orderCursor();
-            if (cur >= ord.length || ord[cur] !== actedKey) return;
-            window.DATA['📜']['📿🕰'] = cur + 1;
-        };
-        const advanceGeologicTicOrder = (D, stepMa, buttonKey) => {
-            if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
-            D['📜']['📿💫'] += 1;
-            if ((buttonKey === '💫' || buttonKey === '🏔' || buttonKey === '⛰') && ticCfgRoot && Object.prototype.hasOwnProperty.call(ticCfgRoot, '🍰⚽')) {
-                D['📜']['🔺🍰⚽'] = Number(ticCfgRoot['🍰⚽']);
-                D['📜']['_veilTimelinePulseActive'] = false;
-            }
-            window.infoTimeMa += stepMa;
-            clampInfoTimeMaToGeologicEpochDuration();
-            if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction(buttonKey); })) return;
-            window.COMPUTE.getEpochDateConfig();
-            window.COMPUTE.getNoyau();
-            if (!window.FLUX) window.FLUX = {};
-            window.FLUX.yAxisRecalcOnNextFinish = true;
-            window.IO_LISTENER.emit('config:applyThenCompute', { button: buttonKey });
-            popOrderAfterAction(buttonKey);
-            window.updateTimeline();
-        };
-
-        const act = wh.order[orderCursor()];
-        {
-            const cfg = wh[act];
-            if (act === '☄️') {
-                const mass_kg = cfg['🔺⚖️💧☄️'];
-                const stepMaM = cfg['🔺⏳'];
-                const iceMeteorBtn = document.createElement('img');
-                iceMeteorBtn.src = window.getLogoImageSrc('☄️') || 'fonts/pics/ice_meteorite.png';
-                iceMeteorBtn.alt = '';
-                iceMeteorBtn.className = 'btn-events organigram-logo organigram-action-logo';
-                const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
-                const iceMeteorAlt = 'Météorite de Glace ' + formatStepLabel(stepMaM);
-                addEventTooltip(iceMeteorBtn, epochId, '☄️', 'Météorite de glace<br>' + mass_added_txt + '<br>' + formatStepLabel(stepMaM) + ' par clic');
-                iceMeteorBtn.alt = iceMeteorAlt;
-                if (epochId === '⚫') {
-                    iceMeteorBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        const DATA = window.DATA;
-                        const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
-                        const currentH2O = (DATA['💧']['☄️'] != null) ? DATA['💧']['☄️'] : 0;
-                        const h2oToAdd = (mass_kg / earthTotalWaterKg) * 100;
-                        const newH2O = Math.min(100, currentH2O + h2oToAdd);
-                        DATA['💧']['☄️'] = newH2O;
-                        window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
-                        window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
-                        window.isIceChange = true;
-                        window.lastIceLevel = undefined;
-                        DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
-                        DATA['📜']['📿☄️'] = (DATA['📜']['📿☄️'] || 0) + 1;
-                        window.infoTimeMa += stepMaM;
-                        window.COMPUTE.getEpochDateConfig();
-                        window.COMPUTE.getNoyau();
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.IO_LISTENER.emit('config:applyThenCompute', { button: '☄️' });
-                        window.updateTimeline();
-                        checkDateEvents();
-                        const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
-                        window.updateH2OLevelDirect(h2o_total);
-                        popOrderAfterAction('☄️');
-                    });
-                } else {
-                    iceMeteorBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        const DATA = window.DATA;
-                        const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
-                        const currentH2O = (DATA['💧']['☄️'] != null) ? DATA['💧']['☄️'] : 0;
-                        let h2oToAdd = (mass_kg / earthTotalWaterKg) * 100;
-                        h2oToAdd = Math.max(h2oToAdd * 10, 2.1);
-                        const newH2O = Math.min(100, currentH2O + h2oToAdd);
-                        DATA['💧']['☄️'] = newH2O;
-                        window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
-                        window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
-                        DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
-                        DATA['📜']['📿☄️'] = (DATA['📜']['📿☄️'] || 0) + 1;
-                        const durMaM = window.getCurrentEpochDurationMa();
-                        if (durMaM == null || !Number.isFinite(durMaM)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ☄️ après 🔥');
-                        window.infoTimeMa = Math.min(durMaM, window.infoTimeMa + stepMaM);
-                        if (!window.FLUX) window.FLUX = {};
-                        window.FLUX.yAxisRecalcOnNextFinish = true;
-                        window.updateTimeline();
-                        window.updateHadeenTexture();
-                        checkDateEvents();
-                        if (tryEpochEndSkipAfterEvent(function () { popOrderAfterAction('☄️'); })) return;
-                        const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
-                        window.updateH2OLevelDirect(h2o_total);
-                        popOrderAfterAction('☄️');
-                    });
-                }
-                eventsLogos.appendChild(iceMeteorBtn);
-            } else if (act === '🎇') {
-                const targetFromConfig = cfg['⏩'];
-                const bigImpactBtn = document.createElement('img');
-                bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
-                bigImpactBtn.alt = '';
-                bigImpactBtn.className = 'btn-events organigram-logo organigram-action-logo';
-                addEventTooltip(bigImpactBtn, epochId, '🎇', 'Impact majeur - Crée la lune');
-                bigImpactBtn.addEventListener('click', () => {
-                    window.hideTooltip();
-                    if (targetFromConfig) {
-                        const h2o_base = window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0;
-                        const h2o_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites != null ? window.RUNTIME_STATE.h2oTotalFromMeteorites : 0;
-                        window.UI_STATE.savedH2O = h2o_base + h2o_meteorites;
-                        if (window.PLOT_PANEL_READY) {
-                            window.UI_STATE.savedCO2 = window.plotData.co2_ppm;
-                            window.UI_STATE.savedCH4 = window.plotData.ch4_ppm;
-                        } else {
-                            window.UI_STATE.savedCO2 = 0;
-                            window.UI_STATE.savedCH4 = 0;
-                        }
-                        window.UI_STATE.maximiseData = true;
-                        popOrderAfterAction('🎇');
-                        goNextEpochViaSkip();
-                    } else {
-                        advanceGeologicTicOrder(window.DATA, cfg['🔺⏳'], '🎇');
-                    }
-                });
-                eventsLogos.appendChild(bigImpactBtn);
-            } else if (act === '🗻' || act === '🌋') {
-                // [ACTIONS VOLCAN config-driven v-2026-07-16] DEUX logos distincts, sens OPPOSÉS, chacun décrit par
-                // sa DESC dans l'Alphabet (CHARS_DESC) — plus aucun tooltip hardcodé :
-                //   🗻 (sur 1a) = entrée : voile sulfate SW ; 🌋 (sur ⛄) = sortie : CO₂ + glace sale.
-                // [v1.2.31 v-2026-09-15] Les EFFETS physiques sont dans la config de l'époque SUIVANTE (choix ergonomique
-                // assumé) : voile = racine 🔺🍰⚽ de ⛄ ; CO₂ + glace sale = ⚖️🏭 et 🌫️❄️ de hysteresis 1b. Le clic fait
-                // avancer le temps (🔺⏳) → époque suivante en animation (T° présente conservée). Seul un voile déclaré
-                // sur l'event lui-même (🔺🍰⚽) est encore appliqué ici (générique, pas d'if(epoch==)).
-                const stepVeil = cfg['🔺🍰⚽'];        // voile SW optionnel porté par l'event (fraction)
-                const stepMaVolc = cfg['🔺⏳'];
-                const volcBtn = document.createElement('button');
-                volcBtn.type = 'button';
-                volcBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
-                volcBtn.textContent = act;
-                // Tooltip = DESC du logo dans l'Alphabet (source unique), pas de texte hardcodé par action.
-                const tip = (window.CHARS_DESC && window.CHARS_DESC[act]) ? window.CHARS_DESC[act] : act;
-                volcBtn.alt = tip;
-                addEventTooltip(volcBtn, epochId, act, tip);
-                volcBtn.addEventListener('click', () => {
-                    window.hideTooltip();
-                    const D = window.DATA;
-                    if (Number.isFinite(stepVeil)) {
-                        D['📜']['🔺🍰⚽'] = Math.min(0.95, (D['📜']['🔺🍰⚽'] || 0) + stepVeil);
-                    }
-                    advanceGeologicTicOrder(D, stepMaVolc, act);
-                });
-                eventsLogos.appendChild(volcBtn);
-            } else if (act === '💫') {
-                const ticKey = act;
-                const stepMaT = (ticCfgRoot && typeof ticCfgRoot['🔺⏳'] === 'number') ? ticCfgRoot['🔺⏳'] : 100;
-                const stepLabel = formatStepLabel(stepMaT);
-                const ticBtn = document.createElement('button');
-                ticBtn.type = 'button';
-                ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
-                ticBtn.textContent = '💫';
-                ticBtn.alt = stepLabel;
-                addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
-                if (epochId === '🔥') {
-                    ticBtn.addEventListener('click', () => clicTicHadeen(stepMaT, '💫', function () { popOrderAfterAction('💫'); }));
-                } else {
-                    ticBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        advanceGeologicTicOrder(window.DATA, stepMaT, '💫');
-                    });
-                }
-                eventsLogos.appendChild(ticBtn);
-            } else if (act === '🏔') {
-                const ticKey = act;
-                const stepMaT = (cfg && typeof cfg['🔺⏳'] === 'number') ? cfg['🔺⏳'] : 100;
-                const stepLabel = formatStepLabel(stepMaT);
-                const ticBtn = document.createElement('button');
-                ticBtn.type = 'button';
-                ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
-                ticBtn.textContent = '🏔';
-                ticBtn.alt = stepLabel;
-                addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
-                if (epochId === '🔥') {
-                    ticBtn.addEventListener('click', () => clicTicHadeen(stepMaT, '🏔', function () { popOrderAfterAction('🏔'); }));
-                } else {
-                    ticBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        advanceGeologicTicOrder(window.DATA, stepMaT, '🏔');
-                    });
-                }
-                eventsLogos.appendChild(ticBtn);
-            } else if (act === '⛰') {
-                const ticKey = act;
-                const stepMaT = (cfg && typeof cfg['🔺⏳'] === 'number') ? cfg['🔺⏳'] : 100;
-                const stepLabel = formatStepLabel(stepMaT);
-                const ticBtn = document.createElement('button');
-                ticBtn.type = 'button';
-                ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
-                ticBtn.textContent = '⛰';
-                ticBtn.alt = stepLabel;
-                addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
-                if (epochId === '🔥') {
-                    ticBtn.addEventListener('click', () => clicTicHadeen(stepMaT, '⛰', function () { popOrderAfterAction('⛰'); }));
-                } else {
-                    ticBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        advanceGeologicTicOrder(window.DATA, stepMaT, '⛰');
-                    });
-                }
-                eventsLogos.appendChild(ticBtn);
-            }
+    if (Array.isArray(W.order)) {
+        if (H['📿🕰'] < W.order.length) {
+            const act = W.order[H['📿🕰']];
+            eventsLogos.appendChild(boutonAction(act, W[act]));
         }
         return;
     }
 
-    const getActionForDate = (window.configOrganigramme && window.configOrganigramme.getActionForDate) || (function() { return '💫'; });
-    const actionId = getActionForDate(startYears, infoTimeMa) || '💫';
-
-    if (actionId === '☄️') {
-        const epochConfig = getEpochConfigById(epochId);
-        if (epochConfig && epochConfig['🕰'] && epochConfig['🕰']['☄️']) {
-            const iceMeteorBtn = document.createElement('img');
-            iceMeteorBtn.src = window.getLogoImageSrc('☄️') || 'fonts/pics/ice_meteorite.png';
-            iceMeteorBtn.alt = '';
-            iceMeteorBtn.className = 'btn-events organigram-logo organigram-action-logo';
-            const mass_kg = epochConfig['🕰']['☄️']['🔺⚖️💧☄️'];
-            const mass_added_txt = mass_kg >= 1e12 ? formatMassGT(mass_kg) : formatMass(mass_kg);
-            const stepMa = epochConfig['🕰']['☄️']['🔺⏳'];
-            const iceMeteorAlt = 'Météorite de Glace ' + formatStepLabel(stepMa);
-            addEventTooltip(iceMeteorBtn, epochId, '☄️', 'Météorite de glace<br>' + mass_added_txt + '<br>' + formatStepLabel(stepMa) + ' par clic');
-            iceMeteorBtn.alt = iceMeteorAlt;
-            if (epochId === '⚫') {
-                iceMeteorBtn.addEventListener('click', () => {
-                window.hideTooltip();
-                const DATA = window.DATA;
-                const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
-                const currentH2O = (DATA['💧']['☄️'] != null) ? DATA['💧']['☄️'] : 0;
-                const h2oToAdd = (mass_kg / earthTotalWaterKg) * 100;
-                const newH2O = Math.min(100, currentH2O + h2oToAdd);
-                DATA['💧']['☄️'] = newH2O;
-                window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
-                window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
-                window.isIceChange = true;
-                window.lastIceLevel = undefined;
-                DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
-                DATA['📜']['📿☄️'] = (DATA['📜']['📿☄️'] || 0) + 1;
-                window.infoTimeMa += stepMa;
-                window.COMPUTE.getEpochDateConfig();
-                window.COMPUTE.getNoyau();
-                if (!window.FLUX) window.FLUX = {};
-                window.FLUX.yAxisRecalcOnNextFinish = true;
-                window.IO_LISTENER.emit('config:applyThenCompute', { button: '☄️' });
-                window.updateTimeline();
-                checkDateEvents();
-                const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
-                window.updateH2OLevelDirect(h2o_total);
-                });
-            } else {
-                iceMeteorBtn.addEventListener('click', () => {
-                    window.hideTooltip();
-                    const DATA = window.DATA;
-                    const earthTotalWaterKg = window.CONFIG_COMPUTE.earthTotalWaterMassKg;
-                    const currentH2O = (DATA['💧']['☄️'] != null) ? DATA['💧']['☄️'] : 0;
-                    let h2oToAdd = (mass_kg / earthTotalWaterKg) * 100;
-                    h2oToAdd = Math.max(h2oToAdd * 10, 2.1);
-                    const newH2O = Math.min(100, currentH2O + h2oToAdd);
-                    DATA['💧']['☄️'] = newH2O;
-                    window.RUNTIME_STATE.h2oTotalFromMeteorites = newH2O;
-                    window.RUNTIME_STATE.h2oIceFractionFromCalculation = undefined;
-                    DATA['📜']['🔺⚖️💧'] = (DATA['📜']['🔺⚖️💧'] || 0) + mass_kg;
-                    DATA['📜']['📿☄️'] = (DATA['📜']['📿☄️'] || 0) + 1;
-                    const durMaIce = window.getCurrentEpochDurationMa();
-                    if (durMaIce == null || !Number.isFinite(durMaIce)) throw new Error('[events.js] getCurrentEpochDurationMa requis pour ☄️ 🔥 (ACTION_BY_DATE)');
-                    window.infoTimeMa = Math.min(durMaIce, window.infoTimeMa + stepMa);
-                    if (!window.FLUX) window.FLUX = {};
-                    window.FLUX.yAxisRecalcOnNextFinish = true;
-                    window.updateTimeline();
-                    window.updateHadeenTexture();
-                    checkDateEvents();
-                    if (tryEpochEndSkipAfterEvent(null)) return;
-                    const h2o_total = newH2O + (window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0);
-                    window.updateH2OLevelDirect(h2o_total);
-                });
-            }
-            eventsLogos.appendChild(iceMeteorBtn);
-        }
-    } else if (actionId === '🎇') {
-        const bigImpactBtn = document.createElement('img');
-        bigImpactBtn.src = window.getLogoImageSrc('🎇') || 'fonts/pics/big_impact.png';
-        bigImpactBtn.alt = '';
-        bigImpactBtn.className = 'btn-events organigram-logo organigram-action-logo';
-        addEventTooltip(bigImpactBtn, epochId, '🎇', 'Impact majeur - Crée la lune');
-        bigImpactBtn.addEventListener('click', () => {
-            window.hideTooltip();
-            const h2o_base = window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0;
-            const h2o_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites != null ? window.RUNTIME_STATE.h2oTotalFromMeteorites : 0;
-            window.UI_STATE.savedH2O = h2o_base + h2o_meteorites;
-            if (window.PLOT_PANEL_READY) {
-                window.UI_STATE.savedCO2 = window.plotData.co2_ppm;
-                window.UI_STATE.savedCH4 = window.plotData.ch4_ppm;
-            } else {
-                window.UI_STATE.savedCO2 = 0;
-                window.UI_STATE.savedCH4 = 0;
-            }
-            window.UI_STATE.maximiseData = true;
-            goNextEpochViaSkip();
-        });
-        eventsLogos.appendChild(bigImpactBtn);
-    } else {
-            // Géologique (repli ACTION_BY_DATE) : action volcan 🗻/🌋 + tic temps 💫 / 🏔 / ⛰ (config)
-            const wh = whRoot;
-            const volcAct = (wh['🗻'] && wh['🗻']['🔺🍰⚽'] != null) ? '🗻' : (wh['🌋'] != null ? '🌋' : null);
-            const volcCfg = volcAct ? wh[volcAct] : null;
-            const ticResolved = resolveGeologicTicFromWh(wh);
-            const ticKey = ticResolved.ticKey;
-            const ticCfg = ticResolved.ticCfg;
-            const showTicBtn = (volcCfg == null) || (ticCfg != null);
-
-            const advanceGeologicTic = (D, stepMa, buttonKey) => {
-                if (D['📜']['📿💫'] == null || !Number.isFinite(D['📜']['📿💫'])) D['📜']['📿💫'] = 0;
-                D['📜']['📿💫'] += 1;
-                if ((buttonKey === '💫' || buttonKey === '🏔' || buttonKey === '⛰') && ticCfg && Object.prototype.hasOwnProperty.call(ticCfg, '🍰⚽')) {
-                    D['📜']['🔺🍰⚽'] = Number(ticCfg['🍰⚽']);
-                    D['📜']['_veilTimelinePulseActive'] = false;
-                }
-                window.infoTimeMa += stepMa;
-                clampInfoTimeMaToGeologicEpochDuration();
-                if (tryEpochEndSkipAfterEvent(null)) return;
-                window.COMPUTE.getEpochDateConfig();
-                window.COMPUTE.getNoyau();
-                if (!window.FLUX) window.FLUX = {};
-                window.FLUX.yAxisRecalcOnNextFinish = true;
-                window.IO_LISTENER.emit('config:applyThenCompute', { button: buttonKey });
-                window.updateTimeline();
-            };
-
-            if (volcCfg) {
-                const stepVeil = volcCfg['🔺🍰⚽'];
-                const stepMaVolc = volcCfg['🔺⏳'];
-                const volcBtn = document.createElement('button');
-                volcBtn.type = 'button';
-                volcBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
-                volcBtn.textContent = volcAct;
-                // Tooltip = DESC du logo (Alphabet CHARS_DESC), pas de texte hardcodé (cf. handler order-based).
-                const tip = (window.CHARS_DESC && window.CHARS_DESC[volcAct]) ? window.CHARS_DESC[volcAct] : volcAct;
-                volcBtn.alt = tip;
-                addEventTooltip(volcBtn, epochId, volcAct, tip);
-                volcBtn.addEventListener('click', () => {
-                    window.hideTooltip();
-                    const D = window.DATA;
-                    if (Number.isFinite(stepVeil)) D['📜']['🔺🍰⚽'] = Math.min(0.95, (D['📜']['🔺🍰⚽'] || 0) + stepVeil);
-                    advanceGeologicTic(D, stepMaVolc, volcAct);
-                });
-                eventsLogos.appendChild(volcBtn);
-            }
-            if (showTicBtn) {
-                const stepMa = (ticCfg && typeof ticCfg['🔺⏳'] === 'number') ? ticCfg['🔺⏳'] : 100;
-                const stepLabel = formatStepLabel(stepMa);
-                const ticBtn = document.createElement('button');
-                ticBtn.type = 'button';
-                ticBtn.className = 'icon-button btn-events organigram-logo organigram-action-logo';
-                ticBtn.textContent = ticKey || '💫';
-                ticBtn.alt = stepLabel;
-                addEventTooltip(ticBtn, epochId, ticKey || '💫', stepLabel + ' par clic');
-                if (epochId === '🔥') {
-                    ticBtn.addEventListener('click', () => clicTicHadeen(stepMa, ticKey || '💫', null));
-                } else {
-                    ticBtn.addEventListener('click', () => {
-                        window.hideTooltip();
-                        advanceGeologicTic(window.DATA, stepMa, ticKey || '💫');
-                    });
-                }
-                eventsLogos.appendChild(ticBtn);
-            }
+    const parDate = window.configOrganigramme.getActionForDate(EP['▶'], H['⏳']);
+    if ((parDate === '☄️' || parDate === '🎇') && (parDate in W)) {
+        eventsLogos.appendChild(boutonAction(parDate, W[parDate]));
+        return;
     }
+    const volcan = ['🗻', '🌋'].find(function (k) { return k in W; });
+    const tic = window.CLICS.TICS.find(function (k) { return k in W; });
+    if (volcan) eventsLogos.appendChild(boutonAction(volcan, W[volcan]));
+    if (tic) eventsLogos.appendChild(boutonAction(tic, W[tic]));
 };
-
-// Fonction pour vérifier les événements automatiques selon la date
-function checkDateEvents() {
-    const currentEpoch = window.RUNTIME_STATE.currentEpochName || '';
-    if (currentEpoch !== 'Corps Noir') return;
-    if (!window.isPastCurrentEpochEndMa()) return;
-
-    window.hideTooltip();
-    const h2o_base = window.RUNTIME_STATE.h2oVaporPercent != null ? window.RUNTIME_STATE.h2oVaporPercent : 0;
-    const h2o_meteorites = window.RUNTIME_STATE.h2oTotalFromMeteorites != null ? window.RUNTIME_STATE.h2oTotalFromMeteorites : 0;
-    window.UI_STATE.savedH2O = h2o_base + h2o_meteorites;
-    if (window.PLOT_PANEL_READY) {
-        window.UI_STATE.savedCO2 = window.plotData.co2_ppm;
-        window.UI_STATE.savedCH4 = window.plotData.ch4_ppm;
-    } else {
-        window.UI_STATE.savedCO2 = 0;
-        window.UI_STATE.savedCH4 = 0;
-    }
-    window.UI_STATE.maximiseData = true;
-    goNextEpochViaSkip();
-}
-
-// Exposer checkDateEvents globalement
-window.checkDateEvents = checkDateEvents;
-
-window.tryEpochEndSkipAfterEvent = tryEpochEndSkipAfterEvent;
-window.epochOrderCursor = orderCursor;
-
-

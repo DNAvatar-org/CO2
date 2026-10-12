@@ -54,61 +54,26 @@
     </div>
 
     <!-- Charger les dépendances dans l'ordre (chemins depuis doc/) -->
-    <script src="../static/debug.js"></script>
-    <script src="../static/compute/scie_/log_display.js"></script>
-    <!-- Ex-configsAll.js (bundle retiré v1.2.0) : sources séparées, ordre = dépendances. -->
-    <script src="../../API_BILAN/config/model_tuning_biblio.js"></script>
-    <script src="../../API_BILAN/config/configTimeline.js"></script>
-    <!-- Définitions des clés : côté API (une seule source pour le moteur et pour l'app). -->
-    <script src="../../API_BILAN/data/alphabet.js"></script>
-    <script src="../../API_BILAN/data/dico.js"></script>
-    <!-- Rendu (lexique, pictos, logos) : API_BILAN/demo/, après les définitions. -->
-    <script src="../../API_BILAN/demo/js/alphabet_render.js"></script>
-    <script src="../../API_BILAN/demo/js/dico_render.js"></script>
-    <script src="../../API_BILAN/data/initDATA.js"></script>
-    <script src="../../API_BILAN/config/fine_tuning_bounds.js"></script>
-    <script src="../organigramme/configOrganigramme.js"></script>
-    <script src="../organigramme/timeline.js"></script>
-    <script src="../static/timeline/events.js"></script>
-    <script src="../../API_BILAN/physics/physics.js"></script>
-    <script src="../../API_BILAN/data/hitran_lines_CO2.js"></script>
-    <script src="../../API_BILAN/data/hitran_lines_H2O.js"></script>
-    <script src="../../API_BILAN/data/hitran_lines_CH4.js"></script>
-    <script src="../../API_BILAN/spectroscopy/hitran.js"></script>
-    <script src="../../API_BILAN/physics/climate.js"></script>
-    <script src="../../API_BILAN/radiative/calculations.js"></script>
-    <!-- Avant le pool : publie la source du worker (spectral_slice_worker.js v0.6.0) pour le repli blob:,
-         seul moyen d'avoir des workers quand la page est ouverte en file:// (origine 'null'). -->
-    <script src="../../API_BILAN/workers/spectral_slice_worker.js"></script>
-    <script src="../../API_BILAN/workers/worker_pool.js"></script>
-    <script src="../../API_BILAN/h2o/calculations_h2o.js"></script>
-    <script src="../../API_BILAN/aerosols/sulfate_ccn.js"></script>
-    <script src="../../API_BILAN/albedo/calculations_albedo.js"></script>
-    <script src="../../API_BILAN/atmosphere/calculations_atm.js"></script>
-    <script src="../../API_BILAN/ocean/sinks_ocean.js"></script>
-    <script src="../../API_BILAN/land/sinks_land.js"></script>
-    <script src="../../API_BILAN/co2/calculations_co2.js"></script>
-    <script src="../../API_BILAN/geology/interieur.js"></script>
-    <script src="../../API_BILAN/convergence/compute.js"></script>
-    <script src="../static/compute/scie_/scie_convergence.js"></script>
-    <!-- Stubs CONVERGE.clearConvergenceTrace / CONVERGE.appendConvergenceStep sont définis nativement par calculations_flux.js (noop par défaut, surchargés plus bas). -->
-    <script src="../../API_BILAN/convergence/calculations_flux.js"></script>
-    <!-- Tuning : l'interpolation du barycentre est celle de l'API (une seule règle pour le moteur,
-         le banc et cette page). Après physics.js, comme l'exige tuning.js. -->
-    <script src="../../API_BILAN/tuning.js"></script>
-    <script src="../static/FPS/FPS.js"></script>
-    
-    <!-- Code de la page, extrait le 2026-09-19 du <script> en ligne de 1810 lignes qui vivait ici.
-         Scripts classiques, ordre = dépendances, exécution synchrone par le parseur : rien n'a changé
-         pour le navigateur, seulement pour qui doit relire. Détail : CO2/static/scie/*.js -->
-    <script src="../static/scie/scie_boot.js"></script>
-    <script src="../static/scie/scie_timeline.js"></script>
-    <script src="../static/scie/scie_actions.js"></script>
-    <script src="../static/scie/scie_config_view.js"></script>
-    <script src="../static/scie/scie_tuning_view.js"></script>
-    <script src="../static/scie/scie_results_view.js"></script>
-    <script src="../static/scie/scie_main.js"></script>
-    <script src="../static/scie/scie_debug_click.js"></script>
+    <!-- Loader commun : la liste du moteur (API_BILAN/loader/engine_manifest.js) ; avant lui les outils de
+         journal et les stubs hôtes, après lui la page scie (API_BILAN/demo/js/). Plus d'organigramme ni de frise
+         CO2 (timeline.js, events.js) : aucun script scie ne s'en sert, et leurs fonctions globales s'y
+         écrasaient avec celles de la scie. Les clics scie vont au parent (action:jouer / action:frise). -->
+    <script src="../../API_BILAN/loader/engine_manifest.js"></script>
+    <script src="../../API_BILAN/loader/loader.js"></script>
+    <script>
+    window.BILAN_LOADER.load({
+        apiBase: '../../API_BILAN/',
+        before: ['../static/debug.js', '../static/compute/scie_/log_display.js', '../../API_BILAN/demo/js/demo_host.js'],
+        after: ['../../API_BILAN/demo/js/alphabet_render.js', '../../API_BILAN/demo/js/dico_render.js',
+                '../../API_BILAN/demo/js/scie_convergence.js', '../static/FPS/FPS.js',
+                '../../API_BILAN/demo/js/scie_boot.js', '../../API_BILAN/demo/js/scie_timeline.js',
+                '../../API_BILAN/demo/js/scie_actions.js', '../../API_BILAN/demo/js/scie_config_view.js',
+                '../../API_BILAN/demo/js/scie_tuning_view.js', '../../API_BILAN/demo/js/scie_results_view.js',
+                '../../API_BILAN/demo/js/scie_main.js', '../static/scie/scie_debug_click.js'],
+        cacheBust: '',
+        onLoaded: function () {}
+    }).then(function () { initScieIframe(); });
+    </script>
 </body>
 </html>
 

@@ -214,14 +214,6 @@
       "dest": "pages/bilan_radiatif/CO2/html/bench_panel.html"
     },
     {
-      "src": "html/hysteresis_compute.html",
-      "dest": "pages/bilan_radiatif/CO2/html/hysteresis_compute.html"
-    },
-    {
-      "src": "html/hysteresis_panel.html",
-      "dest": "pages/bilan_radiatif/CO2/html/hysteresis_panel.html"
-    },
-    {
       "src": "html/scie_compute.html",
       "dest": "pages/bilan_radiatif/CO2/html/scie_compute.html"
     },
@@ -268,22 +260,6 @@
     {
       "src": "static/compute/scie_/log_display.js",
       "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/log_display.js"
-    },
-    {
-      "src": "static/compute/scie_/scie_convergence.js",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/scie_convergence.js"
-    },
-    {
-      "src": "static/compute/scie_/scie_hyst_repro_state.js",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/scie_hyst_repro_state.js"
-    },
-    {
-      "src": "static/compute/scie_/scie_hysteresis_bary.js",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/scie_hysteresis_bary.js"
-    },
-    {
-      "src": "static/compute/scie_/scie_hysteresis_search.js",
-      "dest": "pages/bilan_radiatif/CO2/static/compute/scie_/scie_hysteresis_search.js"
     },
     {
       "src": "static/compute/visu_/flux_manager.js",
@@ -410,36 +386,8 @@
       "dest": "pages/bilan_radiatif/CO2/static/lib/three.min.js"
     },
     {
-      "src": "static/scie/scie_actions.js",
-      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_actions.js"
-    },
-    {
-      "src": "static/scie/scie_boot.js",
-      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_boot.js"
-    },
-    {
-      "src": "static/scie/scie_config_view.js",
-      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_config_view.js"
-    },
-    {
       "src": "static/scie/scie_debug_click.js",
       "dest": "pages/bilan_radiatif/CO2/static/scie/scie_debug_click.js"
-    },
-    {
-      "src": "static/scie/scie_main.js",
-      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_main.js"
-    },
-    {
-      "src": "static/scie/scie_results_view.js",
-      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_results_view.js"
-    },
-    {
-      "src": "static/scie/scie_timeline.js",
-      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_timeline.js"
-    },
-    {
-      "src": "static/scie/scie_tuning_view.js",
-      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_tuning_view.js"
     },
     {
       "src": "static/shell.js",
@@ -488,6 +436,14 @@
     {
       "src": "static/ui/modal.js",
       "dest": "pages/bilan_radiatif/CO2/static/ui/modal.js"
+    },
+    {
+      "src": "static/compute/visu_/visu_dichotomie.js",
+      "dest": "pages/bilan_radiatif/CO2/static/compute/visu_/visu_dichotomie.js"
+    },
+    {
+      "src": "static/event_bus.js",
+      "dest": "pages/bilan_radiatif/CO2/static/event_bus.js"
     }
   ]
 }

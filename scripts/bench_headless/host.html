@@ -2,11 +2,12 @@
 <html lang="fr"><head><meta charset="utf-8"><title>banc headless API_BILAN</title></head><body>
 <!--
   Page d'accueil minimale pour faire tourner API_BILAN sans interface.
-  Tient le « contrat hôte » décrit dans API_BILAN/README.md : ORG, SYNC_STATE, ABORT_COMPUTE,
-  displayConvergence, epochName, isVisuPanelActive. Rien d'autre.
+  Charge le moteur par le loader commun (API_BILAN/loader/), avec les stubs hôtes de
+  API_BILAN/demo/js/demo_host.js — les mêmes que le banc époques et la scie démo.
+  Version 2.0.0 — 2026-10-10 : plus de liste de scripts recopiée ni de stubs inline.
 
   Deux détails qui coûtent une heure à retrouver si on les oublie :
-   - __SPECTRAL_WORKER_SCRIPT__ pointe volontairement sur une AUTRE origine (port 8765) pour que
+   - le worker (posé par le loader depuis apiBase) est sur une AUTRE origine (port 8765) pour que
      new Worker() lève une SecurityError : worker_pool.js bascule alors sur son repli blob, seul
      moyen d'avoir les workers spectraux quand la page n'est pas servie à côté d'API_BILAN ;
    - ?cacheBust : sans lui Chrome sert les JS du cache et on mesure le code d'avant sa modification.
@@ -14,35 +15,30 @@
 <script>
 'use strict';
 window.__READY__ = false;
-window.__CB__ = new URLSearchParams(location.search).get('cb') || Date.now();
-window.ORG = { updateFluxLabels: function(){}, updateLabel: function(){} };
-window.SYNC_STATE = { epochId: '📱', animEnabled: false, ticTime: 0, calculationInProgress: false };
-window.ABORT_COMPUTE = false;
-window.UI_STATE = {};
-window.displayConvergence = function(){};
-window.epochName = function(id){ return id; };
-window.isVisuPanelActive = function(){ return false; };
-window.__SPECTRAL_WORKER_SCRIPT__ = 'http://127.0.0.1:8765/bilan_radiatif/API_BILAN/workers/spectral_slice_worker.js';
-(function(){
-  var BASE = 'http://127.0.0.1:8765/bilan_radiatif/API_BILAN/';
-  var STEPS = ['config/model_tuning_biblio.js','config/configTimeline.js','data/alphabet.js','data/dico.js',
-    'data/initDATA.js','config/fine_tuning_bounds.js','physics/physics.js',
-    'data/hitran_lines_CO2.js','data/hitran_lines_H2O.js','data/hitran_lines_CH4.js',
-    'spectroscopy/hitran.js','physics/climate.js','radiative/calculations.js',
-    'workers/spectral_slice_worker.js','workers/worker_pool.js',
-    'h2o/calculations_h2o.js','aerosols/sulfate_ccn.js','albedo/calculations_albedo.js',
-    'atmosphere/calculations_atm.js','ocean/sinks_ocean.js','land/sinks_land.js',
-    'co2/calculations_co2.js','geology/interieur.js','convergence/compute.js','convergence/calculations_flux.js',
-    'tuning.js','api.js'];
-  function load(i){
-    if (i >= STEPS.length) { window.__READY__ = true; return; }
-    var s = document.createElement('script');
-    s.src = BASE + STEPS[i] + '?cacheBust=' + window.__CB__;
-    s.onload = function(){ load(i+1); };
-    s.onerror = function(){ window.__LOAD_ERR__ = STEPS[i]; };
-    document.body.appendChild(s);
-  }
-  load(0);
+window.__CB__ = new URLSearchParams(location.search).get('cb');
+window.__API__ = 'http://127.0.0.1:8765/bilan_radiatif/API_BILAN/';
+// Les deux fichiers du loader, puis le loader charge tout le reste.
+(function () {
+    const boot = ['loader/engine_manifest.js', 'loader/loader.js'];
+    function next(i) {
+        if (i === boot.length) {
+            window.BILAN_LOADER.load({
+                apiBase: window.__API__,
+                before: [window.__API__ + 'demo/js/demo_host.js'],
+                after: [],
+                cacheBust: '?cacheBust=' + window.__CB__,
+                onLoaded: function () {}
+            }).then(function () { window.__READY__ = true; },
+                    function (e) { window.__LOAD_ERR__ = e.message; });
+            return;
+        }
+        const s = document.createElement('script');
+        s.src = window.__API__ + boot[i] + '?cacheBust=' + window.__CB__;
+        s.onload = function () { next(i + 1); };
+        s.onerror = function () { window.__LOAD_ERR__ = boot[i]; };
+        document.body.appendChild(s);
+    }
+    next(0);
 })();
 </script>
 </body></html>

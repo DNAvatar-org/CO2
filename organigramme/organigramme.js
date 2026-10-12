@@ -4888,14 +4888,6 @@ function _finetuningRangeStrFromTarget(t) {
   return _finetuningRangePair(t.min, t.max, t.key);
 }
 
-function _finetuningRangeFromDefaultHyst(boundKey, formatKey) {
-  var H =
-    window.DEFAULT && window.DEFAULT.BOUNDS && window.DEFAULT.BOUNDS.HYSTERESIS;
-  if (!H || !H[boundKey]) return "";
-  var b = H[boundKey];
-  return _finetuningRangePair(b.min, b.max, formatKey || boundKey);
-}
-
 function _finetuningLiveLine(picto, rangeStr, keyLabel, liveStr, note) {
   return (
     picto +
@@ -4941,65 +4933,6 @@ function _finetuningLiveFromTarget(t) {
   var raw = T[t.group][t.key];
   if (raw === undefined) return null;
   return _finetuningFormatLiveValue(t.key, raw);
-}
-
-function _finetuningAppendHysteresisConfigLines(parts) {
-  var C = window.CONFIG_COMPUTE;
-  var E = window.EARTH;
-  if (C) {
-    var veilX = Number(C.hystStratosphericVeilExtra01);
-    parts.push(
-      _finetuningLiveLine(
-        "⚽",
-        _finetuningRangePair(0, 0.95, "generic"),
-        "⚽",
-        Number.isFinite(veilX) ? veilX.toFixed(2) : "0.00",
-        "voile stratosphérique extra (obliquité / P_atm)"
-      )
-    );
-    var scale01 = Number(C.co2OceanScale01);
-    parts.push(
-      _finetuningLiveLine(
-        "🌊🏭",
-        _finetuningRangeFromDefaultHyst("co2OceanScale01"),
-        "co2OceanScale01",
-        Number.isFinite(scale01) ? scale01.toFixed(2) : "0.10",
-        "échelle vitesse pompe CO₂ atm↔océan (Henry)"
-      )
-    );
-    var pump01 = Number(C.co2OceanPumpOverride01);
-    parts.push(
-      _finetuningLiveLine(
-        "🌊🏭",
-        _finetuningRangeFromDefaultHyst("co2OceanPumpOverride01"),
-        "co2OceanPumpOverride01",
-        Number.isFinite(pump01) ? pump01.toFixed(2) : "1.00",
-        "override multiplicateur pompe océanique"
-      )
-    );
-    var ratioRef = Number(C.co2OceanRatioRef);
-    parts.push(
-      _finetuningLiveLine(
-        "🌊🏭",
-        _finetuningRangePair(5, 80, "co2OceanRatioRef"),
-        "co2OceanRatioRef",
-        Number.isFinite(ratioRef) ? ratioRef.toFixed(1) : "50.0",
-        "ratio stock océan / atmosphère CO₂ de référence"
-      )
-    );
-  }
-  if (E && E["🪩🍰"]) {
-    var iceA = Number(E["🪩🍰"]["🪩🍰🧊"]);
-    parts.push(
-      _finetuningLiveLine(
-        "🧊",
-        _finetuningRangeFromDefaultHyst("iceAlbedoCoeff", "iceAlbedo"),
-        "iceAlbedo",
-        Number.isFinite(iceA) ? iceA.toFixed(2) : "n/a",
-        "albédo glace / neige (couche albédo)"
-      )
-    );
-  }
 }
 
 function getFineTuningShortTooltip(pctStr) {

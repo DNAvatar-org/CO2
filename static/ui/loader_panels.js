@@ -1,8 +1,11 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.1.36
-// Copyright 2025 DNAvatar.org - Arnaud Maignan
-// Date: April 2026
+// Version 1.2.0
+// Copyright 2026 DNAvatar.org - Arnaud Maignan
+// Date: 2026-10-12
+// Logs: v1.2.0: scripts chargés par le loader commun (API_BILAN/loader/loader.js, BILAN_LOADER.load) : le moteur
+//        vient de sa liste unique (engine_manifest.js, avec convergence/clics.js qui manquait ici), l'application
+//        ne liste plus que ses scripts avant/après. Fin de loadScriptsSequentially et du chemin du worker en double.
 // Logs: v1.1.36: onglet Histoire (histoire.html) après Milankovitch — littérature sourcée vs courbe du modèle.
 // Logs: v1.1.35: alphabet_render.js / dico_render.js lus depuis API_BILAN/demo/ — dessiner l'alphabet et le
 //        dictionnaire de l'API fait partie de ce qui illustre l'API ; l'application s'y sert.
@@ -52,67 +55,45 @@
 (function () {
     'use strict';
 
-    const SCRIPTS = [
-        'static/ui/api_onglets.js',
-        'static/debug.js',
-        '../API_BILAN/config/model_tuning.js',
-        '../API_BILAN/config/model_tuning_biblio.js',
-        '../API_BILAN/config/configTimeline.js',
-        // Définitions des clés : source unique côté API (v1.1.33). Le rendu suit, côté CO2.
-        '../API_BILAN/data/alphabet.js',
-        '../API_BILAN/data/dico.js',
-        '../API_BILAN/demo/js/alphabet_render.js',
-        '../API_BILAN/demo/js/dico_render.js',
-        '../API_BILAN/data/initDATA.js',
-        '../API_BILAN/config/fine_tuning_bounds.js',
-        '../API_BILAN/physics/physics.js',
-        '../API_BILAN/tuning.js',
-        'organigramme/configOrganigramme.js',
-        '../API_BILAN/event_bus.js',
-        '../API_BILAN/geology/interieur.js',
-        '../API_BILAN/convergence/compute.js',
-        'static/compute/visu_/flux_manager.js',
-        '/_interfaces/tooltips.js',
-        'static/ui/modal.js',
-        'static/ui/cpu_threads_notice.js',
-        'static/courbes/patterns.js',
-        'static/compute/visu_/log_display.js',
-        '../API_BILAN/data/hitran_lines_CO2.js',
-        '../API_BILAN/data/hitran_lines_H2O.js',
-        '../API_BILAN/data/hitran_lines_CH4.js',
-        '../API_BILAN/spectroscopy/hitran.js',
-        // Avant le pool : publie la source du worker pour le repli blob: (pages ouvertes en file://).
-        '../API_BILAN/workers/spectral_slice_worker.js',
-        '../API_BILAN/workers/worker_pool.js',
-        '../API_BILAN/physics/climate.js',
-        '../API_BILAN/atmosphere/calculations_atm.js',
-        '../API_BILAN/aerosols/sulfate_ccn.js',
-        '../API_BILAN/albedo/calculations_albedo.js',
-        'static/texts/epochs_alt2sec.js',
-        'organigramme/organigramme.js',
-        '../API_BILAN/geology/calculations_geology.js',
-        '../API_BILAN/h2o/calculations_h2o.js',
-        '../API_BILAN/ocean/sinks_ocean.js',
-        '../API_BILAN/land/sinks_land.js',
-        '../API_BILAN/co2/calculations_co2.js',
-        '../API_BILAN/radiative/calculations.js',
-        '../API_BILAN/convergence/calculations_flux.js',
-        'static/compute/scie_/scie_convergence.js',
-        'static/compute/scie_/scie_hysteresis_search.js',
-        'static/sync_panels.js',
-        '../API_BILAN/callback_stack.js',
-        '../API_BILAN/api.js',
-        '../API_BILAN/receiver.js',
-        'static/shell.js',
-        'static/FPS/FPS.js',
-        'static/courbes/plot_debug.js',
-        'static/courbes/plot.js',
-        'static/ui/layout.js',
-        'static/timeline/integrateEds.js',
-        'static/timeline/events.js',
-        'organigramme/timeline.js',
-        'static/ui/main.js'
-    ];
+    // Moteur : la liste unique (API_BILAN/loader/engine_manifest.js) chargée par BILAN_LOADER, qui pose aussi le
+    // chemin du worker spectral. Ici, seulement ce que l'application ajoute avant et après lui.
+    const LOAD = {
+        apiBase: '../API_BILAN/',
+        before: [
+            'static/ui/api_onglets.js',
+            'static/debug.js'
+        ],
+        after: [
+            // Rendu des définitions de l'API (alphabet, dico) : l'API définit, l'application dessine.
+            '../API_BILAN/demo/js/alphabet_render.js',
+            '../API_BILAN/demo/js/dico_render.js',
+            'organigramme/configOrganigramme.js',
+            'static/event_bus.js',
+            'static/compute/visu_/flux_manager.js',
+            '/_interfaces/tooltips.js',
+            'static/ui/modal.js',
+            'static/ui/cpu_threads_notice.js',
+            'static/courbes/patterns.js',
+            'static/compute/visu_/log_display.js',
+            'static/texts/epochs_alt2sec.js',
+            'organigramme/organigramme.js',
+            'static/compute/visu_/visu_dichotomie.js',
+            '../API_BILAN/demo/js/scie_convergence.js',
+            'static/sync_panels.js',
+            'static/shell.js',
+            'static/FPS/FPS.js',
+            'static/courbes/plot_debug.js',
+            'static/courbes/plot.js',
+            'static/ui/layout.js',
+            'static/timeline/integrateEds.js',
+            'static/timeline/events.js',
+            'organigramme/timeline.js',
+            'static/ui/main.js'
+        ],
+        cacheBust: '',
+        onLoaded: function (src, i) { setLoaded(i + 1); }   // 0 = phase HTML
+    };
+    const SCRIPTS = window.BILAN_LOADER.list(LOAD);
 
     var loaderListEl = document.getElementById('app-loader-list');
     var loaderOverlay = document.getElementById('app-loader');
@@ -127,7 +108,7 @@
         if (!loaderListEl) return;
         var li = document.createElement('li');
         li.setAttribute('data-phase', 'html');
-        li.textContent = 'HTML visu + scie + bench + hyst';
+        li.textContent = 'HTML visu + scie + bench';
         loaderListEl.appendChild(li);
         loaderItems.push({ el: li, phase: 'html' });
         SCRIPTS.forEach(function (src) {
@@ -145,22 +126,6 @@
 
     function hideLoader() {
         if (loaderOverlay) loaderOverlay.classList.add('hidden');
-    }
-
-    function loadScript(src, index) {
-        return new Promise(function (resolve, reject) {
-            var s = document.createElement('script');
-            s.src = src;
-            s.onload = function () { setLoaded(index); resolve(); };
-            s.onerror = reject;
-            document.body.appendChild(s);
-        });
-    }
-
-    function loadScriptsSequentially(list, startIndex) {
-        var i = startIndex || 0;
-        if (list.length === 0) return Promise.resolve();
-        return loadScript(list[0], i).then(function () { return loadScriptsSequentially(list.slice(1), i + 1); });
     }
 
     initLoaderUI();
@@ -189,7 +154,7 @@
         if (visuPanel) visuPanel.innerHTML = results[0];
         if (sciePanel) sciePanel.innerHTML = results[1];
         if (benchPanel) benchPanel.innerHTML = results[2];
-        return loadScriptsSequentially(SCRIPTS, 1);
+        return window.BILAN_LOADER.load(LOAD);
     }).then(function () {
         loaderDone = true;
         clearTimeout(timeoutId);
@@ -213,8 +178,6 @@
     // Clic sur un bouton époque = sans animation (via shell) ; ticTime remis à 0
     window.setEpochFromEpochButton = function (epochId) {
         if (window.DATA && window.DATA['🔘']) window.DATA['🔘']['🔘🎞'] = false;
-        var cb = document.getElementById('plot-anim-toggle-checkbox');
-        if (cb) cb.checked = false;
         if (window.shell && window.shell.setState) {
             window.shell.setState({ animEnabled: false, epochId: epochId, ticTime: 0 });
         } else {
@@ -312,18 +275,6 @@
             // On garde la propriété : le rendu (main.js, events.js) la lit encore.
             window.configOrganigramme.timeline = window.epochIndex();
         }
-        var animButton = document.getElementById('plot-anim-toggle');
-        if (animButton) {
-            var cb = document.getElementById('plot-anim-toggle-checkbox');
-            if (!cb) {
-                cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.id = 'plot-anim-toggle-checkbox';
-                cb.checked = false;
-                cb.style.display = 'none';
-                document.body.appendChild(cb);
-            }
-        }
         var lastComputePayload = null;
         var COMPUTE_TIC_SEGMENTS = 12;
         var _computeTicIndex = 0;
@@ -410,7 +361,7 @@
                  */
                 window.COMPUTE_LOADER.avanceTic();
                 if (window.isVisuPanelActive() && window.DATA['🔘']['🔘🎞'] && payload.result) {
-                    window.displayDichotomyStep(payload.CO2_fraction, payload.T0, payload.result, payload.iteration, payload.isInitial);
+                    window.VISU_DICHO.displayDichotomyStep(payload.CO2_fraction, payload.T0, payload.result, payload.iteration, payload.isInitial);
                     return;
                 }
                 IO_LISTENER.emit('cycleCalcul');

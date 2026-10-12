@@ -1,8 +1,12 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.1.88
-// Date: [May 07, 2026]
+// Version 1.2.0
+// Date: 2026-10-12
+// Copyright 2026 DNAvatar.org - Arnaud Maignan
+// - v1.2.0 : setEpoch pose l'époque par CLICS (passer en animation, frise sinon) — plus de remise à zéro
+//   recopiée (⏳, 📿💫, 📿☄️, 📿🕰, cumuls 📱, 🔘🕰) ; checkDateEvents, keepTimeMa et l'écoute sync:state /
+//   bary:changed de la scie retirés (la scie n'envoie plus d'état).
 //
 // - v1.1.88: disableButtons/enableButtons n'écrivent plus SYNC_STATE.calculationInProgress (propriétaire unique runComputeInParent) ; setEpoch relâche window._timelineEpochEndSkipLatch (verrou « une transition par fin d'époque », events.js v1.2.32).
 // - v1.1.87: infobulles flou scientifique sur #title-flou-scientifique-slot (badge data-flux-tooltip=off).
@@ -862,7 +866,7 @@ function updateCO2Level(state) {
         // Récupérer CH4_fraction depuis plotData (défini par setEpoch ou par défaut 0)
         const ch4_ppm = plotData.ch4_ppm || 0;
         const ch4_fraction = ch4_ppm * 1e-6;
-        const result = window.RADIATIVE.simulateRadiativeTransfer(co2_fraction, {
+        const result = window.VISU_DICHO.simulateRadiativeTransfer(co2_fraction, {
             CH4_fraction: ch4_fraction
         });
         const processResult = (data) => {
@@ -1228,7 +1232,7 @@ function updateCO2LevelDirect(co2_fraction) {
         if (_sv2) _sv2._lastDrawnBins = 0;
         const ch4_ppm = plotData.ch4_ppm || 0;
         const ch4_fraction = ch4_ppm * 1e-6;
-        const result = window.RADIATIVE.simulateRadiativeTransfer(co2_fraction, {
+        const result = window.VISU_DICHO.simulateRadiativeTransfer(co2_fraction, {
             CH4_fraction: ch4_fraction
         });
         currentCalculationPromise = result;
@@ -1943,11 +1947,6 @@ function setEpoch(epochName, options) {
         applyBaryToGraphiqueOnly();
         return;
     }
-    // Iframe scie renvoie le bary (message sync:state) → bary:changed ; ne pas refaire un setEpoch complet ni relancer un calcul.
-    if (options && options.keepTimeMa === true) {
-        applyBaryToGraphiqueOnly();
-        return;
-    }
     // data-epoch sur le DOM = id (emoji) ; résoudre tout de suite pour détecter "déjà sur cette époque"
     // Map name→id inversée depuis CHARS_DESC (source de vérité) + surcharges alias
     const _cd = window.CHARS_DESC || {};
@@ -1976,24 +1975,10 @@ function setEpoch(epochName, options) {
         window.hideTooltip();
     }
     
-    // 🔄 Remettre infoTimeMa à 0 lors du changement d'époque
-    // IMPORTANT: Doit être fait AVANT l'interprétation du logo pour que ticTime = 0
-    if (typeof window !== 'undefined') {
-        window.infoTimeMa = 0;
-        // Arrivée sur la nouvelle époque : relâche le verrou « une transition par fin d'époque » (events.js tryEpochEndSkipAfterEvent)
-        window._timelineEpochEndSkipLatch = false;
-        window._lastPlanetTexturePath = null;
-        // Nouvelle époque : reset compteurs boutons et dernier bouton cliqué
-        DATA['📜']['📿☄️'] = 0;
-        DATA['📜']['📿💫'] = 0;
-        DATA['📜']['📿🕰'] = 0; // curseur 🕰.order (events.js) — la config n'est plus consommée par shift()
-        DATA['📜']['🔺⚖️🏭'] = 0; // cumul CO₂ événements 📱 (compute.js getMasses)
-        DATA['📜']['🔺⚖️🌊🏭'] = 0; // puits océan (CO2.advanceCarbonSinks)
-        DATA['📜']['🔺⚖️🌳🏭'] = 0; // puits forêts
-        DATA['📜']['bary'] = 0;
-        DATA['📜']['🔘🕰'] = '';
-    }
-    
+    // Nouvelle texture de planète à choisir. L'état de l'époque (⏳, compteurs, curseur 🕰.order, 🔘🕰) est remis
+    // à zéro par CLICS plus bas, quand l'époque est posée — plus de copie ici.
+    window._lastPlanetTexturePath = null;
+
     if (window._logStep) window._logStep('[2] reset epoch (infoTimeMa→0, tics→0)');
     else console.log('[2] reset epoch');
     if (window._logStepEnd) window._logStepEnd();
@@ -2030,44 +2015,11 @@ function setEpoch(epochName, options) {
     // 🔒 Stocker l'ancienne époque AVANT de la changer
     const previousEpoch = window.RUNTIME_STATE.currentEpochName;
 
-    // 🔒 INITIALISER DATA['📜']['👉'] et DATA['📜']['🗿'] pour que calculations_albedo.js puisse accéder à l'époque
-    // DATA existe toujours (dico.js, ordre synchrone).
-    // Nom UI (RUNTIME_STATE.currentEpochName) : syncEpochFromTimelinePointer après 👉 — pas epochName brut (ex. bouton → id ⚫ vs « Corps Noir » en config terre.epoch).
-    if (typeof TIMELINE !== 'undefined') {
-        if (!DATA['📜']) {
-            DATA['📜'] = {};
-        }
-        // Trouver l'index de l'époque par son emoji (id) ou son nom
-        // Map name→id depuis CHARS_DESC (source de vérité) + alias
-        const _cdInv = Object.entries(window.CHARS_DESC || {}).reduce(function(m, e) { m[e[1]] = e[0]; return m; }, {
-            'Hyperthermie éocène': '🐊', 'Prélude glaciaire': 'hysteresis 2', 'EOT (33,9 Ma)': '🏔'
-        });
-        // epoch.id devrait être défini depuis getGeologicalPeriodByName (timeline transformée)
-        // Sinon, utiliser le mapping ou le nom directement
-        const epochId = epoch.id || _cdInv[epochName] || epochName;
-        const epochIndex = TIMELINE.findIndex(item => {
-            if (item['📅']) {
-                return item['📅'] === epochId;
-            }
-            // Si la timeline a été transformée, chercher par id ou name
-            return (item.id === epochId || item.name === epochName);
-        });
-        
-        if (epochIndex >= 0) {
-            DATA['📜']['👉'] = epochIndex;
-            DATA['📜']['🗿'] = epochId;
-            // Initialiser aussi DATA['📅'] avec l'objet epoch complet
-            DATA['📅'] = TIMELINE[epochIndex];
-            if (typeof window.syncEpochFromTimelinePointer !== 'function') {
-                throw new Error('[setEpoch] syncEpochFromTimelinePointer manquant (charger organigramme.js avant main.js)');
-            }
-            window.syncEpochFromTimelinePointer();
-        } else {
-            throw new Error(`[setEpoch] Époque ${epochName} (${epochId}) non trouvée dans TIMELINE`);
-        }
-    } else {
-        throw new Error('[setEpoch] TIMELINE indéfini');
-    }
+    // Poser l'époque : CLICS, la mécanique que joue aussi le banc. En animation (🔘🎞, passage par SKIP ou fin
+    // d'époque) l'état est conservé (T°, glace, voile) ; sinon c'est un clic sur la frise : on repart de la graine.
+    if (DATA['🔘']['🔘🎞']) window.CLICS.passer(epoch.id);
+    else window.CLICS.frise(epoch.id);
+    window.syncEpochFromTimelinePointer();
     
     // Source unique de précision UI : CONFIG_COMPUTE.convergencePrecisionK
     if (typeof epoch.precision === 'number' && epoch.precision > 0) {
@@ -2315,11 +2267,6 @@ function setEpoch(epochName, options) {
 
     // Note: infoTimeMa a déjà été remis à 0 au début de setEpoch (avant l'interprétation du logo)
     
-    // Vérifier les événements automatiques après le changement d'époque
-    if (typeof checkDateEvents === 'function') {
-        checkDateEvents();
-    }
-
     updateTimeline();
 
     // 🔒 Mettre à jour DATA['⚖️'] (masses) AVANT updateFluxLabels pour que calculateAlbedo ait les bonnes valeurs (océan, etc.)
@@ -2562,7 +2509,7 @@ function setEpoch(epochName, options) {
     // sinon on lance 2 runs (updateCO2LevelDirect → runComputeInParent, puis sync:state → runComputeInParent).
 
     // Synchroniser l'état avec l'iframe scie (epoch, anim, ticTime, bary pour graphique)
-    const epochId = (DATA && DATA['📜'] && DATA['📜']['🗿']) || epoch.id || epochName;
+    const epochId = DATA['📜']['🗿'];
     const ticTime = (DATA && DATA['📜'] && DATA['📜']['📿💫'] != null) ? DATA['📜']['📿💫'] : 0;
     const animEnabled = DATA['🔘']['🔘🎞'];
     const barySync = (DATA && DATA['📜'] && DATA['📜']['bary'] != null && Number.isFinite(DATA['📜']['bary'])) ? DATA['📜']['bary'] : undefined;
@@ -2632,7 +2579,7 @@ function updateH2OLevelDirect(h2o_total_percent) {
             return;
         }
         
-        const result = window.RADIATIVE.simulateRadiativeTransfer(co2_fraction, {
+        const result = window.VISU_DICHO.simulateRadiativeTransfer(co2_fraction, {
             CH4_fraction: ch4_fraction
         });
         currentCalculationPromise = result;
@@ -2927,23 +2874,6 @@ function runMainInit() {
         console.log('[main.js][flux:lastDrawn] Three.js play');
     }, 'main.js:threePlay');
 
-    // Recevoir sync:state depuis l'iframe scie (bary → appliquer au graphique via configOrganigramme.getEffectiveNodesConfig)
-    window.addEventListener('message', function (e) {
-        if (!e.data || e.data.type !== 'sync:state' || !e.data.payload) return;
-        const p = e.data.payload;
-        if (!window.DATA) return;
-        if (!window.DATA['📜']) window.DATA['📜'] = {};
-        // NE PAS écraser DATA['📿💫'] depuis la réponse scie : le parent est seul source de vérité
-        // (sinon race condition : scie envoie ticTime:0 → reset du compteur parent → "un nextEpoch en trop")
-        if (p.bary !== undefined && Number.isFinite(p.bary)) {
-            window.DATA['📜']['bary'] = p.bary;
-            if (window.IO_LISTENER) window.IO_LISTENER.emit('bary:changed', { bary: p.bary, epochId: p.epochId });
-        }
-    });
-    window.IO_LISTENER.on('bary:changed', function (arg) {
-        // keepTimeMa:true → early-return ne réinitialise pas infoTimeMa (le bary ne change pas la position temporelle)
-        if (window.RUNTIME_STATE.currentEpochName && typeof window.setEpoch === 'function') window.setEpoch(window.RUNTIME_STATE.currentEpochName, { keepTimeMa: true });
-    }, 'main.js:baryGraphique');
     // Après compute:done : appliquer bary au graphique (visu) + log 🎨
     window.IO_LISTENER.on('compute:done', function () {
         if (window === window.top && window.RUNTIME_STATE.currentEpochName && typeof window.setEpoch === 'function') {
@@ -3187,12 +3117,6 @@ function runMainInit() {
                         el.dataset.boundClick = '1';
                     }
                 };
-                const animCb = document.getElementById('plot-anim-toggle-checkbox');
-                if (animCb) {
-                    animCb.addEventListener('change', (e) => {
-                        DATA['🔘']['🔘🎞'] = e.target.checked;
-                    });
-                }
                 window.updateThreePlayIndicator();
                 window.updateObservationIndicator();
                 if (document.body && document.body.dataset.ftBarySliderBound !== '1') {

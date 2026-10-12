@@ -1,8 +1,11 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.0.29
- * Date: 2026-09-17
+ * Version 1.1.0
+ * Date: 2026-10-12
+ * Copyright 2026 DNAvatar.org - Arnaud Maignan
 * logs :
+ * - v1.1.0: la frise ne décide plus du passage d'époque (isPastCurrentEpochEndMa, marge TIMELINE_END_SLACK_MA,
+ *   getCurrentEpochDurationMa retirés) : c'est le clic (CLICS.jouer), avec la règle du moteur et du banc.
  * - v1.0.29: timelineYearsToMa(years, isForward) remplace timelineDeltaYearsToStartMa — années calendaires (🛖🚂📱, libellés
  *   −10000/1800/2000/2100) → +y/1e6 : échelle monotone. Avant, 1800/2000 CE étaient lus « avant présent » → Holocène +8000 ans
  *   (an −2000) affiché sur 2000, puis curseur qui remontait à 1800 au passage 🚂.
@@ -63,7 +66,7 @@ const TIMELINE_UPDATE_INTERVAL = 1000; // Mise à jour toutes les 1000ms (1 seco
 let currentEpochStartYears = null; // Stocker le début de l'époque actuelle pour calculer le delta
 
 // Variable globale pour le temps écoulé dans l'époque (commence toujours à 0 Ma)
-window.infoTimeMa = 0; // Temps écoulé depuis le début de l'époque (en millions d'années, Ma)
+// window.infoTimeMa : temps écoulé dans l'époque (Ma) = accesseur sur DATA['📜']['⏳'] (API_BILAN/convergence/clics.js).
 
 /**
  * Années config → Ma frise (échelle MONOTONE). Deux conventions selon le sens de l'époque :
@@ -148,24 +151,6 @@ function getTimelineCurrentMa() {
     return timelineYearsToMa(currentYears, timelineEpochIsForward(getEpochAtTimelineIndex()));
 }
 
-/** Tolérance Ma max : géologique long ; pour durées courtes (CE) voir effectiveTimelineEndSlackMa. */
-const TIMELINE_END_SLACK_MA = 0.05;
-
-/**
- * Slack comparé à la durée d'époque : 0,05 Ma OK si dur ≫ 0,05 ; sinon cap à 1 % de dur (évite « fin d'époque » toujours vraie sur 🚂/📱).
- */
-function effectiveTimelineEndSlackMa(durMa) {
-    if (durMa == null || !Number.isFinite(durMa) || durMa <= 0) return TIMELINE_END_SLACK_MA;
-    return Math.min(TIMELINE_END_SLACK_MA, durMa * 0.01);
-}
-
-/** Durée |▶−◀| en Ma pour l'époque sous 👉 (toutes conventions ▶/◀). */
-function getCurrentEpochDurationMa() {
-    const epoch = getEpochAtTimelineIndex();
-    if (!epoch || epoch['▶'] == null || epoch['◀'] == null) return null;
-    return Math.abs(epoch['◀'] - epoch['▶']) / 1e6;
-}
-
 /** Liste des bornes par entrée TIMELINE (chargement / chaque updateTimeline) — comparaison avec getTimelineCurrentMa(). */
 function refreshTimelineEpochBounds() {
     const TIMELINE = window.TIMELINE;
@@ -180,32 +165,6 @@ function refreshTimelineEpochBounds() {
         const endMa = timelineYearsToMa(row['◀'], forward);
         return { idx: idx, id: row['📅'], startMa: startMa, endMa: endMa, forward: forward };
     }).filter(Boolean);
-}
-
-/**
- * Date courante frise au-delà de la fin d'époque (◀) : même règle que le curseur (forward vs géologique).
- * Géologique : test aussi infoTimeMa ≥ dur − slack (sinon « +500 Ma » à l’écran mais pas encore fin au test Ma strict).
- */
-function isPastCurrentEpochEndMa() {
-    const epoch = getEpochAtTimelineIndex();
-    if (!epoch || epoch['▶'] == null || epoch['◀'] == null) {
-        return false;
-    }
-    const forward = epoch['▶'] < epoch['◀'];
-    const dur = getCurrentEpochDurationMa();
-    const slack = effectiveTimelineEndSlackMa(dur != null && Number.isFinite(dur) ? dur : null);
-    const infoTimeMa = typeof window.infoTimeMa === 'number' ? window.infoTimeMa : 0;
-    if (!forward && dur != null && Number.isFinite(dur) && infoTimeMa >= dur - slack) {
-        return true;
-    }
-    const currentYears = getTimelineCurrentYears();
-    if (currentYears == null || !Number.isFinite(currentYears)) {
-        return false;
-    }
-    if (forward) {
-        return currentYears >= epoch['◀'] - (slack * 1e6);
-    }
-    return currentYears <= epoch['◀'] + (slack * 1e6);
 }
 
 const PALEOMAP_CREDITS_MIN_MA = -750;
@@ -590,11 +549,7 @@ function updateTimeline() {
 
     updatePaleomapCreditsVisibility();
 
-    // Frise à la fin d'époque (◀) : même SKIP que les événements — évite d'exiger un clic alors que l'UI affiche déjà +durée Ma.
-    if (window.tryEpochEndSkipAfterEvent && window.isPastCurrentEpochEndMa) {
-        // Verrou « une transition par fin d'époque » géré dans tryEpochEndSkipAfterEvent (events.js v1.2.32).
-        if (window.isPastCurrentEpochEndMa()) window.tryEpochEndSkipAfterEvent(null);
-    }
+    // Passage d'époque : décidé par le clic lui-même (CLICS.jouer, events.js jouerClic), pas par la frise.
 
     // 🔒 DÉSACTIVÉ : Ne plus incrémenter automatiquement de +10 ans toutes les secondes
     // L'incrémentation se fait uniquement lors des clics sur boutons (météorite glace, etc.)
@@ -699,11 +654,7 @@ if (typeof window !== 'undefined') {
     window.formatYears = formatYears;
     window.getTimelineCurrentMa = getTimelineCurrentMa;
     window.getEpochAtTimelineIndex = getEpochAtTimelineIndex;
-    window.getCurrentEpochDurationMa = getCurrentEpochDurationMa;
     window.refreshTimelineEpochBounds = refreshTimelineEpochBounds;
-    window.isPastCurrentEpochEndMa = isPastCurrentEpochEndMa;
-    window.TIMELINE_END_SLACK_MA = TIMELINE_END_SLACK_MA;
-    window.effectiveTimelineEndSlackMa = effectiveTimelineEndSlackMa;
     window.updatePaleomapCreditsVisibility = updatePaleomapCreditsVisibility;
 
     /** Nom display pour setEpoch / shell (CHARS_DESC / epochName). */
@@ -718,8 +669,6 @@ if (typeof window !== 'undefined') {
     window.togglePlotAnim = function () {
         if (typeof window.hideTooltip === 'function') window.hideTooltip();
         window.DATA['🔘']['🔘🎞'] = true;
-        var cb = document.getElementById('plot-anim-toggle-checkbox');
-        if (cb) cb.checked = true;
 
         var applyNextEpoch = function (idx, nextName, useShell) {
             var TIMELINE = window.TIMELINE;
