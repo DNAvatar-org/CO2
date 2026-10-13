@@ -1,5 +1,7 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.120 nuages : réflectance affichée = DATA['🪩']['🪩🍰⛅'] (calculée, deux-flux) au lieu du coefficient de config
+//   retiré ; fine-tuning CDNC_OCEAN_CM3 à la place de CLOUD_FRACTION_BASE / _INDEX_GAIN / OPTICAL_EFF_BASE.
 // Logs: v1.0.119 noyau : température et flux lus dans DATA['🌕'] (API_BILAN/geology/interieur.js) au lieu d'une
 //   température inventée depuis la puissance (T ≈ 3000 + P/1e13 × 200) et des clés de config retirées.
 // Logs: v1.0.118 frise : chaque logo sur la ligne de SA date de début, alternativement à droite puis à gauche
@@ -4797,9 +4799,9 @@ function computeAtmosphericHaloRgb(D) {
 
 // Picto par clé CLOUD_SW pour alt finetuning (une entrée par target)
 var _finetuningAltPicto = {
-  CLOUD_FRACTION_BASE: "☁️",
-  CLOUD_FRACTION_INDEX_GAIN: "☁️",
-  OPTICAL_EFF_BASE: "🧪",
+  CDNC_OCEAN_CM3: "💧",
+  R_EFF_PLUIE: "☔",
+  // CLOUD_FRACTION_BASE / _INDEX_GAIN / OPTICAL_EFF_BASE retirés (2026-10-12) : fraction mesurée, réflectance calculée.
   SULFATE_CCN_EXPONENT: "SO₄"
   // SULFATE_BOOST_SCALE / SULFATE_BOOST_MAX retirés (2026-09-22) : remplacés par l'exposant mesuré
   // de la loi de puissance McCoy 2018 (calculations_albedo v1.2.65).
@@ -4818,10 +4820,8 @@ var _finetuningHystPicto = {
 
 // Alt détaillé (valeurs live, jauge ATM) — alt2sec #title-flou-scientifique-slot. HYSTERESIS = jauges scie séparées.
 var _finetuningAltFallback =
-  "☁️ [0.17 , 0.23] CLOUD_FRACTION_BASE=0.19 — base couverture nuageuse SW\n" +
-  "🧪 [1.00 , 1.20] OPTICAL_EFF_BASE=1.10 — efficacité optique de base\n" +
+  "💧 [40 , 89] CDNC_OCEAN_CM3=64.5 — nombre de gouttes des nuages bas marins (cm⁻³)\n" +
   "SO₄ [0.11 , 0.29] SULFATE_CCN_EXPONENT=0.22 — exposant a de CDNC ∝ (masse SO₄)^a\n" +
-  "☁️ [0.08 , 0.14] CLOUD_FRACTION_INDEX_GAIN=0.11 — gain index nuageux\n" +
   "💧 [1.00 , 0.60] H2O_EDS_SCALE=0.80 — multiplicateur global κ_H₂O EDS";
 
 function _finetuningDisplayNote(t) {
@@ -5842,7 +5842,7 @@ ORG.updateFluxLabels = function (eventId) {
       {
         emoji: CHARS.CLOUD,
         coverage: 0,
-        albedo: albedoCoeff["🪩🍰⛅"].toFixed(2),
+        albedo: DATA["🪩"]["🪩🍰⛅"].toFixed(2),
       },
       { emoji: "🌍", coverage: land_cov_corps_noir, albedo: albedoCoeff["🪩🍰🌍"].toFixed(2) },
     ];
@@ -5874,7 +5874,7 @@ ORG.updateFluxLabels = function (eventId) {
       const forest_alb = albedoCoeff["🪩🍰🌳"].toFixed(2);
       const desert_alb = albedoCoeff["🪩🍰🏜️"].toFixed(2);
       const ice_alb = albedoCoeff["🪩🍰🧊"].toFixed(2);
-      const cloud_alb = albedoCoeff["🪩🍰⛅"].toFixed(2);
+      const cloud_alb = DATA["🪩"]["🪩🍰⛅"].toFixed(2);
 
       const components = [
         { emoji: "🎾", coverage: magma_cov, albedo: magma_alb },
@@ -5926,7 +5926,7 @@ ORG.updateFluxLabels = function (eventId) {
         {
           emoji: CHARS.CLOUD,
           coverage: final_cloud_percent,
-          albedo: albedoCoeff["🪩🍰⛅"].toFixed(2),
+          albedo: DATA["🪩"]["🪩🍰⛅"].toFixed(2),
         },
         { emoji: "🌍", coverage: land_cov, albedo: albedoCoeff["🪩🍰🌍"].toFixed(2) },
       ];
@@ -5964,7 +5964,7 @@ ORG.updateFluxLabels = function (eventId) {
       {
         emoji: CHARS.CLOUD,
         coverage: final_cloud_percent,
-        albedo: albedoCoeff["🪩🍰⛅"].toFixed(2),
+        albedo: DATA["🪩"]["🪩🍰⛅"].toFixed(2),
       },
       { emoji: "🌍", coverage: land_cov, albedo: albedoCoeff["🪩🍰🌍"].toFixed(2) },
     ];

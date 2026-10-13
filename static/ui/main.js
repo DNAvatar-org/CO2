@@ -1,7 +1,8 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.2.0
+// Version 1.2.1
+// - v1.2.1 (2026-10-12): trace / affectation directe de CLOUD_FRACTION_BASE retirées (clé supprimée : fraction nuageuse mesurée).
 // Date: 2026-10-12
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // - v1.2.0 : setEpoch pose l'époque par CLICS (passer en animation, frise sinon) — plus de remise à zéro
@@ -2853,22 +2854,6 @@ function runMainInit() {
                         } catch (e) {
                             console.warn('[DBG SET] install baryByGroup.CLOUD_SW failed', e);
                         }
-                        try {
-                            var cloudBaseVal = T.CLOUD_SW.CLOUD_FRACTION_BASE;
-                            Object.defineProperty(T.CLOUD_SW, 'CLOUD_FRACTION_BASE', {
-                                configurable: true,
-                                enumerable: true,
-                                get: function () { return cloudBaseVal; },
-                                set: function (v) {
-                                    cloudBaseVal = v;
-                                    console.log('[DBG SET][DATA.🎚️.CLOUD_SW.CLOUD_FRACTION_BASE] <=', v, 'bary=', T.baryByGroup && T.baryByGroup.CLOUD_SW);
-                                    console.trace('[DBG TRACE][SET CLOUD_FRACTION_BASE]');
-                                    if (typeof window.pdTrace === 'function') window.pdTrace('set:CLOUD_FRACTION_BASE', 'main.js', 'value=' + v + ' bary=' + (T.baryByGroup && T.baryByGroup.CLOUD_SW));
-                                }
-                            });
-                        } catch (e2) {
-                            console.warn('[DBG SET] install CLOUD_FRACTION_BASE failed', e2);
-                        }
                         document.body.dataset.ftBarySetTraceInstalled = '1';
                         console.log('[DBG main] setters trace installés pour DATA[🎚️]');
                     }
@@ -2886,24 +2871,6 @@ function runMainInit() {
                         var bounds = window.FINE_TUNING_BOUNDS && Array.isArray(window.FINE_TUNING_BOUNDS.targets)
                             ? window.FINE_TUNING_BOUNDS.targets
                             : [];
-                        var cloudBaseTarget = null;
-                        for (var bi = 0; bi < bounds.length; bi++) {
-                            var bt = bounds[bi];
-                            if (bt && bt.group === 'CLOUD_SW' && bt.key === 'CLOUD_FRACTION_BASE') {
-                                cloudBaseTarget = bt;
-                                break;
-                            }
-                        }
-                        if (cloudBaseTarget && T.CLOUD_SW) {
-                            var min0 = Number(cloudBaseTarget.min);
-                            var max0 = Number(cloudBaseTarget.max);
-                            if (Number.isFinite(min0) && Number.isFinite(max0)) {
-                                var alpha0 = pct / 100;
-                                T.CLOUD_SW.CLOUD_FRACTION_BASE = min0 + (max0 - min0) * alpha0;
-                                console.log('[DBG main] forceApplyCloudSwBary direct-set CLOUD_FRACTION_BASE=' + T.CLOUD_SW.CLOUD_FRACTION_BASE + ' (min=' + min0 + ', max=' + max0 + ', pct=' + pct + ')');
-                                if (typeof window.pdTrace === 'function') window.pdTrace('forceApplyCloudSwBary', 'main.js', 'CLOUD_FRACTION_BASE=' + T.CLOUD_SW.CLOUD_FRACTION_BASE + ' pct=' + pct);
-                            }
-                        }
                         if (window.TUNING && window.TUNING.fillDataTuningFromBary) {
                             window.TUNING.fillDataTuningFromBary();
                         } else {
@@ -2972,8 +2939,8 @@ function runMainInit() {
                         console.log('[DBG main] visu mini-slider change pct=' + pct + ' run=true');
                         if (typeof window.pdTrace === 'function') window.pdTrace('miniSliderChange', 'main.js', 'pct=' + pct + ' run=true');
                         if (payload) {
-                            console.log('[DBG main] visu mini-slider payload bary=' + payload.baryByGroup.CLOUD_SW + ' CLOUD_FRACTION_BASE=' + payload.CLOUD_SW.CLOUD_FRACTION_BASE);
-                            if (typeof window.pdTrace === 'function') window.pdTrace('miniSliderChange', 'main.js', 'payload.bary=' + payload.baryByGroup.CLOUD_SW + ' CLOUD_FRACTION_BASE=' + payload.CLOUD_SW.CLOUD_FRACTION_BASE);
+                            console.log('[DBG main] visu mini-slider payload bary=' + payload.baryByGroup.CLOUD_SW + ' CDNC_OCEAN_CM3=' + payload.CLOUD_SW.CDNC_OCEAN_CM3);
+                            if (typeof window.pdTrace === 'function') window.pdTrace('miniSliderChange', 'main.js', 'payload.bary=' + payload.baryByGroup.CLOUD_SW + ' CDNC_OCEAN_CM3=' + payload.CLOUD_SW.CDNC_OCEAN_CM3);
                         }
                         if (payload && typeof window.applyTuningFromScie === 'function') {
                             if (window.SYNC_STATE) window.SYNC_STATE.lastRunRequestSource = 'visu:mini-slider:change';

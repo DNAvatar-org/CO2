@@ -1,7 +1,8 @@
 // ============================================================================
 // File: debug.js - Interface de debug pour le style
 // Desc: En français, dans l'architecture, je suis le module d'interface de debug
-// Version 1.0.8
+// Version 1.0.9
+// - v1.0.9 (2026-10-13): ligne H2O_VAPOR_EDS_SCALE retirée (multiplicateur supprimé du moteur).
 // Date: [April 02, 2026] [21:15 UTC+1]
 // logs :
 // - v1.0.8: _logStep même libellé que groupe courant → return (pas de groupEnd+reopen ; évite double [0] / faux « groupe jamais fermé »)
@@ -245,9 +246,6 @@ function logDetailPremiersCalculs(stepLabel, DATA, CONST, extra) {
         const ch4W = b['🍰📛🐄'] != null ? (eds * b['🍰📛🐄']).toFixed(2) : '?';
         const cloudW = b['🍰📛⛅'] != null ? (eds * b['🍰📛⛅']).toFixed(2) : '?';
         add('EDS W/m²: total=' + (eds > 0 ? eds.toFixed(2) : '?') + ' CO2=' + co2W + ' H2O=' + h2oW + ' CH4=' + ch4W + ' Nuages=' + cloudW + ' (%=part EDS)');
-    }
-    if (EARTH && EARTH.H2O_EDS_SCALE != null) {
-        add('H2O_VAPOR_EDS_SCALE=' + Number(EARTH.H2O_EDS_SCALE).toFixed(3));
     }
     if (DATA['☀️']) add('SOLAIRE: flux_top=' + (DATA['☀️']['🧲☀️🎱'] != null ? DATA['☀️']['🧲☀️🎱'].toFixed(2) : '?') + ' W/m²');
     if (DATA['🌕']) add('GEO: flux=' + (DATA['🌕']['🧲🌕'] != null ? DATA['🌕']['🧲🌕'].toFixed(2) : '?') + ' W/m²');
