@@ -1,7 +1,9 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.2.1
+// Version 1.3.0
+// - v1.3.0 (2026-10-13): jauges de fine-tuning séparées dans la visu (une rangée par jauge, data-jauge) ; plus de
+//   jauge unique ATM, plus de trace de débogage des setters.
 // - v1.2.1 (2026-10-12): trace / affectation directe de CLOUD_FRACTION_BASE retirées (clé supprimée : fraction nuageuse mesurée).
 // Date: 2026-10-12
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -2724,67 +2726,23 @@ function runMainInit() {
                     if (!baryFt) {
                         baryFt = flux.querySelector('.organigram-fine-tuning-bary-badge');
                     }
-                    var pctFromData = 100;
-                    var TftBary = window.DATA && window.DATA['🎚️'];
-                    if (TftBary && TftBary.baryByGroup) {
-                        var rawBB = Number(TftBary.baryByGroup.ATM);
-                        pctFromData = Number.isFinite(rawBB) ? Math.max(0, Math.min(100, Math.round(rawBB))) : 0;
-                    }
-                    function htmlFlouBaryBadge(pct) {
-                        return '<div class="organigram-bary-face organigram-bary-face--two-cols">' +
-                            '<div class="organigram-bary-col organigram-bary-col-left">' +
-                            '<div class="organigram-bary-icons">🔺🌡️🔻</div>' +
-                            '<div class="organigram-bary-line-slider">' +
-                            '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' + pct + '">' +
-                            '</div></div>' +
-                            '<div class="organigram-bary-col organigram-bary-col-right">' +
-                            '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +
-                            '<span class="organigram-bary-pct">' + pct + '%</span></div>' +
-                            '</div>';
-                    }
+                    // Jauges séparées (FINE_TUNING_BOUNDS.jauges) : une rangée par jauge, HTML de l'organigramme.
                     if (!baryFt) {
                         baryFt = document.createElement('div');
                         baryFt.className = 'flux-label buttonData percent-label organigram-fine-tuning-bary-badge';
                         baryFt.setAttribute('data-id', 'fine_tuning_cloud_bary');
-                        baryFt.setAttribute('data-flux-tooltip', 'off');
-                        baryFt.innerHTML = htmlFlouBaryBadge(pctFromData);
-                    } else if (
-                        !baryFt.querySelector('.organigram-bary-face--two-cols') ||
-                        baryFt.querySelector('.organigram-bary-dash') ||
-                        !baryFt.querySelector('.organigram-bary-col-left .organigram-bary-mini-slider')
-                    ) {
-                        var slLegacy = baryFt.querySelector('.organigram-bary-mini-slider');
-                        var pvLegacy = (slLegacy && Number.isFinite(Number(slLegacy.value))) ? Math.max(0, Math.min(100, Math.round(Number(slLegacy.value)))) : pctFromData;
-                        baryFt.innerHTML = htmlFlouBaryBadge(pvLegacy);
-                        baryFt.removeAttribute('data-tooltip-initialized');
-                        baryFt.setAttribute('data-flux-tooltip', 'off');
-                        baryFt.removeAttribute('data-tooltip');
-                        baryFt.removeAttribute('data-alt2sec');
+                        baryFt.innerHTML = window.htmlJaugesFineTuning();
+                    } else if (!baryFt.querySelector('.organigram-bary-jauges')) {
+                        baryFt.innerHTML = window.htmlJaugesFineTuning();
                     } else {
-                        baryFt.querySelectorAll('.organigram-bary-pct').forEach(function (nodePct) {
-                            nodePct.textContent = pctFromData + '%';
-                        });
-                        var slSync = baryFt.querySelector('.organigram-bary-mini-slider');
-                        if (slSync) {
-                            slSync.value = String(pctFromData);
-                        }
+                        window.syncJaugesFineTuning(baryFt);
                     }
                     baryFt.setAttribute('data-flux-tooltip', 'off');
                     baryFt.removeAttribute('data-tooltip');
                     baryFt.removeAttribute('data-alt2sec');
                     baryFt.removeAttribute('aria-label');
                     baryFt.removeAttribute('title');
-                    if (typeof window.syncFineTuningSlotTooltips === 'function') {
-                        window.syncFineTuningSlotTooltips(flouSlot, String(pctFromData));
-                    } else if (typeof window.getFineTuningDetailAlt === 'function' && flouSlot) {
-                        flouSlot.setAttribute('data-tooltip', 'Flou scientifique');
-                        flouSlot.setAttribute('data-alt2sec', window.getFineTuningDetailAlt(null, true));
-                        flouSlot.setAttribute('aria-label', window.getFineTuningDetailAlt(null, true));
-                        if (typeof window.addTooltipFromAttribute === 'function' && !flouSlot.hasAttribute('data-tooltip-initialized')) {
-                            window.addTooltipFromAttribute(flouSlot);
-                            flouSlot.setAttribute('data-tooltip-initialized', 'true');
-                        }
-                    }
+                    window.syncFineTuningSlotTooltips(flouSlot, null);
 
                     cfgRow.appendChild(el);
                     if (flouSlot) {
@@ -2809,147 +2767,26 @@ function runMainInit() {
                 };
                 window.updateThreePlayIndicator();
                 window.updateObservationIndicator();
-                if (document.body && document.body.dataset.ftBarySliderBound !== '1') {
-                    function interpolateFromBaryToSnapshot() {
-                        var T = window.DATA && window.DATA['🎚️'] ? window.DATA['🎚️'] : null;
-                        var bounds = window.FINE_TUNING_BOUNDS && Array.isArray(window.FINE_TUNING_BOUNDS.targets)
-                            ? window.FINE_TUNING_BOUNDS.targets
-                            : [];
-                        if (!T || !T.baryByGroup) return null;
-                        var cloudSw = Object.assign({}, T.CLOUD_SW || {});
-                        var solver = Object.assign({}, T.SOLVER || {});
-                        for (var i = 0; i < bounds.length; i++) {
-                            var target = bounds[i];
-                            if (!target || !target.group || !target.key) continue;
-                            var baryKey = target.baryGroup || target.group;
-                            var p = Number(T.baryByGroup[baryKey]);
-                            var alpha = Number.isFinite(p) ? Math.max(0, Math.min(1, p / 100)) : 1;
-                            var min = Number(target.min);
-                            var max = Number(target.max);
-                            if (!Number.isFinite(min) || !Number.isFinite(max)) continue;
-                            var v = min + (max - min) * alpha;
-                            if (target.group === 'CLOUD_SW') cloudSw[target.key] = v;
-                            if (target.group === 'SOLVER') solver[target.key] = v;
-                        }
-                        return { CLOUD_SW: cloudSw, SOLVER: solver };
-                    }
-
-                    function installFineTuningSetTrace() {
-                        if (document.body.dataset.ftBarySetTraceInstalled === '1') return;
-                        var T = window.DATA && window.DATA['🎚️'] ? window.DATA['🎚️'] : null;
-                        if (!T || !T.baryByGroup || !T.CLOUD_SW) return;
-                        try {
-                            var baryVal = T.baryByGroup.CLOUD_SW;
-                            Object.defineProperty(T.baryByGroup, 'CLOUD_SW', {
-                                configurable: true,
-                                enumerable: true,
-                                get: function () { return baryVal; },
-                                set: function (v) {
-                                    baryVal = v;
-                                    console.log('[DBG SET][DATA.🎚️.baryByGroup.CLOUD_SW] <=', v);
-                                    console.trace('[DBG TRACE][SET baryByGroup.CLOUD_SW]');
-                                    if (typeof window.pdTrace === 'function') window.pdTrace('set:baryByGroup.CLOUD_SW', 'main.js', 'value=' + v);
-                                }
-                            });
-                        } catch (e) {
-                            console.warn('[DBG SET] install baryByGroup.CLOUD_SW failed', e);
-                        }
-                        document.body.dataset.ftBarySetTraceInstalled = '1';
-                        console.log('[DBG main] setters trace installés pour DATA[🎚️]');
-                    }
-
-                    installFineTuningSetTrace();
-
-                    function forceApplyCloudSwBary(percentRaw) {
-                        var T = window.DATA && window.DATA['🎚️'] ? window.DATA['🎚️'] : null;
-                        var raw = Number(percentRaw);
-                        var pct = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : 100;
-                        if (!T || !T.baryByGroup) return pct;
-                        T.baryByGroup.ATM = pct;
-                        T.baryByGroup.CLOUD_SW = pct;
-                        T.baryByGroup.SCIENCE = pct;
-                        var bounds = window.FINE_TUNING_BOUNDS && Array.isArray(window.FINE_TUNING_BOUNDS.targets)
-                            ? window.FINE_TUNING_BOUNDS.targets
-                            : [];
-                        if (window.TUNING && window.TUNING.fillDataTuningFromBary) {
-                            window.TUNING.fillDataTuningFromBary();
-                        } else {
-                            // Fallback local: reproduit la logique d'interpolation depuis FINE_TUNING_BOUNDS.
-                            for (var i = 0; i < bounds.length; i++) {
-                                var target = bounds[i];
-                                if (!target || !target.group || !target.key) continue;
-                                if (!T[target.group]) continue;
-                                var baryKey = target.baryGroup || target.group;
-                                var p = Number(T.baryByGroup[baryKey]);
-                                var alpha = Number.isFinite(p) ? Math.max(0, Math.min(1, p / 100)) : 1;
-                                var min = Number(target.min);
-                                var max = Number(target.max);
-                                if (!Number.isFinite(min) || !Number.isFinite(max)) continue;
-                                T[target.group][target.key] = min + (max - min) * alpha;
-                            }
-                            // v1.2.0 : SOLVER n'est plus dans DATA. Source unique = window.CONFIG_COMPUTE (configTimeline.js v1.4.13).
-                        }
-                        return pct;
-                    }
-                    function buildCloudSwTuningPayload(runFlag) {
-                        var T = window.DATA && window.DATA['🎚️'] ? window.DATA['🎚️'] : null;
-                        if (!T || !T.baryByGroup) return null;
-                        var snap = interpolateFromBaryToSnapshot();
-                        if (snap) {
-                            T.CLOUD_SW = Object.assign({}, snap.CLOUD_SW);
-                        }
-                        return {
-                            baryByGroup: {
-                                ATM: T.baryByGroup.ATM,
-                                CLOUD_SW: T.baryByGroup.ATM,
-                                SCIENCE: T.baryByGroup.ATM,
-                                HYSTERESIS: T.baryByGroup.HYSTERESIS
-                            },
-                            CLOUD_SW: Object.assign({}, T.CLOUD_SW),
-                            updates: [],
-                            run: runFlag === true
-                        };
+                if (document.body.dataset.ftBarySliderBound !== '1') {
+                    // Jauges de fine-tuning : chaque curseur porte sa jauge (data-jauge). `input` met à jour le réglage sans
+                    // calcul ; `change` (relâché) relance le calcul. Propagation : applyTuningFromScie (sync_panels.js).
+                    function jaugeDepuisCurseur(el, run) {
+                        var j = el.dataset.jauge;
+                        var pct = Math.max(0, Math.min(100, Math.round(Number(el.value))));
+                        var bary = {};
+                        bary[j] = pct;
+                        if (window.SYNC_STATE) window.SYNC_STATE.lastRunRequestSource = 'visu:jauge:' + j + (run ? ':change' : ':input');
+                        window.applyTuningFromScie({ baryByGroup: bary, run: run });
+                        document.querySelectorAll('.organigram-bary-pct[data-jauge="' + j + '"]').forEach(function (n) {
+                            n.textContent = pct + '%';
+                        });
+                        window.syncFineTuningSlotTooltips(document.getElementById('title-flou-scientifique-slot'), null);
                     }
                     document.body.addEventListener('input', function (e) {
-                        var el = e.target;
-                        if (!el || !el.classList || !el.classList.contains('organigram-bary-mini-slider')) return;
-                        var pct = forceApplyCloudSwBary(el.value);
-                        var payload = buildCloudSwTuningPayload(false);
-                        console.log('[DBG main] visu mini-slider input pct=' + pct + ' run=false');
-                        if (typeof window.pdTrace === 'function') window.pdTrace('miniSliderInput', 'main.js', 'pct=' + pct + ' run=false');
-                        if (payload && typeof window.applyTuningFromScie === 'function') {
-                            if (window.SYNC_STATE) window.SYNC_STATE.lastRunRequestSource = 'visu:mini-slider:input';
-                            window.applyTuningFromScie(payload);
-                        }
-                        // Mise à jour directe du texte % dans le badge (sans updateFluxLabels/updateLabel
-                        // qui remplacerait innerHTML et détacherait le slider — cassant les events suivants)
-                        document.querySelectorAll('[data-id="fine_tuning_cloud_bary"] .organigram-bary-pct').forEach(function (el) {
-                            el.textContent = pct + '%';
-                        });
-                        if (typeof window.syncFineTuningSlotTooltips === 'function') {
-                            var flouSlotSync = document.getElementById('title-flou-scientifique-slot');
-                            window.syncFineTuningSlotTooltips(flouSlotSync, String(pct));
-                        }
+                        if (e.target.classList.contains('organigram-bary-mini-slider')) jaugeDepuisCurseur(e.target, false);
                     });
                     document.body.addEventListener('change', function (e) {
-                        var el = e.target;
-                        if (!el || !el.classList || !el.classList.contains('organigram-bary-mini-slider')) return;
-                        var pct = forceApplyCloudSwBary(el.value);
-                        var payload = buildCloudSwTuningPayload(true);
-                        console.log('[DBG main] visu mini-slider change pct=' + pct + ' run=true');
-                        if (typeof window.pdTrace === 'function') window.pdTrace('miniSliderChange', 'main.js', 'pct=' + pct + ' run=true');
-                        if (payload) {
-                            console.log('[DBG main] visu mini-slider payload bary=' + payload.baryByGroup.CLOUD_SW + ' CDNC_OCEAN_CM3=' + payload.CLOUD_SW.CDNC_OCEAN_CM3);
-                            if (typeof window.pdTrace === 'function') window.pdTrace('miniSliderChange', 'main.js', 'payload.bary=' + payload.baryByGroup.CLOUD_SW + ' CDNC_OCEAN_CM3=' + payload.CLOUD_SW.CDNC_OCEAN_CM3);
-                        }
-                        if (payload && typeof window.applyTuningFromScie === 'function') {
-                            if (window.SYNC_STATE) window.SYNC_STATE.lastRunRequestSource = 'visu:mini-slider:change';
-                            window.applyTuningFromScie(payload);
-                        } else if (typeof window.runComputeInParent === 'function' && document.getElementById('scie-iframe')) {
-                            window.runComputeInParent();
-                        } else if (typeof calculateInitialData === 'function') {
-                            calculateInitialData();
-                        }
+                        if (e.target.classList.contains('organigram-bary-mini-slider')) jaugeDepuisCurseur(e.target, true);
                     });
                     document.body.dataset.ftBarySliderBound = '1';
                 }

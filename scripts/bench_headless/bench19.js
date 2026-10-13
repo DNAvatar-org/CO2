@@ -9,10 +9,12 @@
 //       jugée sur la bascule qu'elle provoque en venant de l'époque précédente — jamais sur sa graine.
 //       Voir l'encadré « ÉPOQUES D'HYSTÉRÉSIS » dans API_BILAN/config/configTimeline.js.
 //       Écrit window.__R6__ (époques) et window.__PASSAGES__ ; window.__PROG__ suit l'avancement.
-//       Balayage : poser window.__BENCH_BARYS__ = [55, 56, …] AVANT d'injecter ce script.
-// Version 2.0.0
+//       Balayage : poser window.__BENCH_BARYS__ = [{ FROID: 35, CHAUD: 50 }, …] AVANT d'injecter ce script
+//       (jeux de jauges partiels, appliqués par TUNING.applyTuningPayload ; voir FINE_TUNING_BOUNDS.jauges).
+// Version 2.1.0
 // Date: 2026-10-12
 // logs :
+//   - v2.1.0 (2026-10-13): jauges séparées FROID / CHAUD / SUBTIL / HYSTERESIS ; `pct` = étiquette des jauges.
 //   - v2.0.0: clics par CLICS (API_BILAN/convergence/clics.js), plus de copie de la mécanique ici.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
@@ -20,8 +22,10 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
  try {
   const api=window.getBilanRadiatifAPI(function(){}), D=window.DATA, C=window.CONST;
   const LIT=window.BENCH_LIT_BY_EPOCH_ID;
-  // Balayage du barycentre : window.__BENCH_BARYS__ = [55, 56, …] posé avant l'injection ; sinon réglage courant.
+  // Balayage des jauges : window.__BENCH_BARYS__ = [{ FROID: 35, … }, …] posé avant l'injection ; sinon réglage courant.
   const barys = ('__BENCH_BARYS__' in window) ? window.__BENCH_BARYS__ : [null];
+  // Étiquette du réglage courant, ex. « FROID 35 · CHAUD 50 · SUBTIL 50 · HYSTERESIS 100 ».
+  const etiquette = () => Object.keys(window.FINE_TUNING_BOUNDS.jauges).map(k => k + ' ' + D['🎚️'].baryByGroup[k]).join(' · ');
   // ppm en AIR SEC, comme les mesures (NOAA, carottes) : x = (w/M_CO₂) / (1/M_air − w_H₂O/M_H₂O)
   const ppmCO2 = () => +(D['🫧']['🍰🫧🏭']/C.M_CO2 / (1/D['🫧']['🧪'] - D['💧']['🍰🫧💧']/C.M_H2O) * 1e6).toFixed(1);
   // Un tictime, tel que le joue l'interface : le premier clic de la séquence de l'époque (🕰.order de la config ;
@@ -36,7 +40,7 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
   window.__PASSAGES__ = [];
   const note = (chaine, etape) => {
     const s=api.snapshot();
-    const r={ pct: D['🎚️'].baryByGroup.ATM, chaine, etape, ep:s.epochId, T:+s.T_C.toFixed(2),
+    const r={ pct: etiquette(), chaine, etape, ep:s.epochId, T:+s.T_C.toFixed(2),
       glace:+(+s.ice.mass_now).toFixed(3), ppm:ppmCO2() };
     window.__PASSAGES__.push(r); return r;
   };
@@ -65,25 +69,25 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
     // égaler celle de l'ARRIVÉE par clic. Sinon la graine est sur la mauvaise branche, ou la config n'est
     // pas à la frontière que le clic traverse.
     for (const h of ['hysteresis 1a', '⛄', 'hysteresis 1b', '🏂', 'hysteresis 1c', 'hysteresis 2']) {
-      const arr = window.__PASSAGES__.find(p => p.pct === D['🎚️'].baryByGroup.ATM && p.ep === h);
-      const fr  = window.__R6__.find(r => r.pct === D['🎚️'].baryByGroup.ATM && r.ep === h);
+      const arr = window.__PASSAGES__.find(p => p.pct === etiquette() && p.ep === h);
+      const fr  = window.__R6__.find(r => r.pct === etiquette() && r.ep === h);
       if (arr && fr) window.__PASSAGES__.push({ pct: arr.pct, chaine: 'frise = clic', etape: h,
         T_frise: fr.T, T_clic: arr.T, ecart: +(fr.T - arr.T).toFixed(2), ok: Math.abs(fr.T - arr.T) < 0.5 });
     }
   };
   for (const pct of barys) {
-    if (pct !== null) window.TUNING.applyTuningPayload({ baryByGroup: { ATM: pct } });
+    if (pct !== null) window.TUNING.applyTuningPayload({ baryByGroup: pct });
     for (const EP of window.TIMELINE) {
       const id=EP['📅'], lit=LIT[id];
       window.CLICS.frise(id);
-      window.__PROG__='bench '+(pct!==null?pct+' ':'')+id;
+      window.__PROG__='bench '+(pct!==null?etiquette()+' ':'')+id;
       await api.run({ epochId:id, animEnabled:false });
       let s=api.snapshot();
-      const row = { pct: D['🎚️'].baryByGroup.ATM, ep:id, T:+s.T_C.toFixed(3), litT: lit.tC,
+      const row = { pct: etiquette(), ep:id, T:+s.T_C.toFixed(3), litT: lit.tC,
         dansFourchette: s.T_C>=lit.tC[0] && s.T_C<=lit.tC[1], ppm:ppmCO2(), st:s.status };
       if (!/^hysteresis/.test(id)) {
         const t = tic();
-        window.__PROG__='tic '+(pct!==null?pct+' ':'')+id;
+        window.__PROG__='tic '+(pct!==null?etiquette()+' ':'')+id;
         if (t.r.passage !== null) { row.tic = t.key; row.ticErr = 'transition vers '+t.r.passage; }
         else {
           await api.run({ epochId:id, animEnabled:true });

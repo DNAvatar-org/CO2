@@ -1,6 +1,7 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.83
+// Version 1.0.84
+// - v1.0.84 (2026-10-13): rangées de jauges de fine-tuning séparées (.organigram-bary-jauges / -rangee).
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
@@ -471,6 +472,25 @@
     margin: 0;
     flex-shrink: 0;
     align-self: center;
+}
+/* Jauges de fine-tuning séparées (2026-10-13) : une rangée par jauge — logo, curseur, %. */
+.organigram-bary-jauges {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.organigram-bary-rangee {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.organigram-fine-tuning-bary-badge .organigram-bary-rangee .organigram-bary-mini-slider {
+    width: 7ch;
+    min-width: 56px;
+}
+.organigram-bary-rangee .organigram-bary-pct {
+    min-width: 4ch;
+    text-align: right;
 }
 /* Mini-jauge : visible uniquement dans le badge */
 .organigram-bary-mini-slider {

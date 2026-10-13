@@ -1,5 +1,7 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.121 jauges de fine-tuning séparées (FROID / CHAUD / SUBTIL / HYSTERESIS) : htmlJaugesFineTuning,
+//   syncJaugesFineTuning, infobulle regroupée par jauge ; plus de jauge unique ATM.
 // Logs: v1.0.120 nuages : réflectance affichée = DATA['🪩']['🪩🍰⛅'] (calculée, deux-flux) au lieu du coefficient de config
 //   retiré ; fine-tuning CDNC_OCEAN_CM3 à la place de CLOUD_FRACTION_BASE / _INDEX_GAIN / OPTICAL_EFF_BASE.
 // Logs: v1.0.119 noyau : température et flux lus dans DATA['🌕'] (API_BILAN/geology/interieur.js) au lieu d'une
@@ -4797,56 +4799,25 @@ function computeAtmosphericHaloRgb(D) {
   return [Math.round(r), Math.round(g), Math.round(b)];
 }
 
-// Picto par clé CLOUD_SW pour alt finetuning (une entrée par target)
+// Picto par cible de fine-tuning (FINE_TUNING_BOUNDS.targets) — une entrée par clé.
 var _finetuningAltPicto = {
   CDNC_OCEAN_CM3: "💧",
   R_EFF_PLUIE: "☔",
-  // CLOUD_FRACTION_BASE / _INDEX_GAIN / OPTICAL_EFF_BASE retirés (2026-10-12) : fraction mesurée, réflectance calculée.
-  SULFATE_CCN_EXPONENT: "SO₄"
-  // SULFATE_BOOST_SCALE / SULFATE_BOOST_MAX retirés (2026-09-22) : remplacés par l'exposant mesuré
-  // de la loi de puissance McCoy 2018 (calculations_albedo v1.2.65).
-  // TEMP_FACTOR_REF_K retiré : partition Hu & Stamnes (1993) maintenant codée en dur.
-};
-
-// Picto pour cibles groupe RADIATIVE pilotées par jauge SCIENCE (même % ATM que nuages partiels SCIENCE).
-var _finetuningRadiativeSciencePicto = {
-  H2O_EDS_SCALE: "💧"
-};
-
-// Picto groupe HYSTERESIS (mer gelée).
-var _finetuningHystPicto = {
+  F_BAS: "☁️",
+  F_HAUT: "🌥",
+  SULFATE_CCN_EXPONENT: "SO₄",
+  H2O_SURFACE_RH_01: "💦",
   seaIceTransitionRangeK: "🌊❄"
 };
 
-// Alt détaillé (valeurs live, jauge ATM) — alt2sec #title-flou-scientifique-slot. HYSTERESIS = jauges scie séparées.
-var _finetuningAltFallback =
-  "💧 [40 , 89] CDNC_OCEAN_CM3=64.5 — nombre de gouttes des nuages bas marins (cm⁻³)\n" +
-  "SO₄ [0.11 , 0.29] SULFATE_CCN_EXPONENT=0.22 — exposant a de CDNC ∝ (masse SO₄)^a\n" +
-  "💧 [1.00 , 0.60] H2O_EDS_SCALE=0.80 — multiplicateur global κ_H₂O EDS";
-
 function _finetuningDisplayNote(t) {
-  if (!t) return "";
-  if (t.key === "H2O_EDS_SCALE") {
-    return "multiplicateur global κ_H₂O EDS — remplace trois physiques absentes (continuum MT_CKD, overlap CO₂/H₂O, profil HR). Valeur sans fondement : figée le temps de leur trouver une formule";
-  }
-  if (t.key === "SULFATE_CCN_EXPONENT") {
-    return "exposant a de la loi sulfate → gouttelettes, CDNC ∝ (masse SO₄)^a — la seule jauge dont les bornes soient MESURÉES : dispersion sur 19 régions (McCoy 2018, quartiles). Remplace deux constantes inventées, SULFATE_BOOST_SCALE et son plafond";
-  }
-  return t.note || "";
-}
-
-/** Cible interpolée par la jauge ATM (flou scientifique titre) — pas HYSTERESIS. */
-function _finetuningIsAtmTarget(t) {
-  if (!t || !t.group || !t.key) return false;
-  if (t.group === "CLOUD_SW") return true;
-  if (t.group === "RADIATIVE" && t.baryGroup === "SCIENCE" && t.key === "H2O_EDS_SCALE") {
-    return true;
-  }
-  return false;
+  return t.note;
 }
 
 function _finetuningFormatRangeEndpoint(key, val) {
   if (key === "seaIceTransitionRangeK") return String(Math.round(Number(val) * 1000));
+  if (key === "R_EFF_PLUIE") return (Number(val) * 1e6).toFixed(1) + " µm";
+  if (key === "CDNC_OCEAN_CM3") return Number(val).toFixed(0);
   if (key === "co2OceanRatioRef") return Number(val).toFixed(1);
   return Number(val).toFixed(2);
 }
@@ -4895,6 +4866,8 @@ function _finetuningLiveLineFromTarget(t, picto, keyLabelOverride) {
 }
 
 function _finetuningFormatLiveValue(key, rawVal) {
+  if (key === "R_EFF_PLUIE") return (Number(rawVal) * 1e6).toFixed(2) + " µm";
+  if (key === "CDNC_OCEAN_CM3") return Number(rawVal).toFixed(0) + " cm⁻³";
   if (key === "seaIceTransitionRangeK") {
     var k = Number(rawVal);
     var ui = Math.round(k * 1000);
@@ -4964,45 +4937,46 @@ function syncFineTuningBadgeTooltips(labelEl, pctStr) {
   syncFineTuningSlotTooltips(null, pctStr);
 }
 
+/** Détail des jauges (alt2sec du titre « Flou scientifique ») : une ligne par jauge, puis ses cibles en valeurs live. */
 function getFineTuningDetailAlt(pctStr, detailOnly) {
-  const pctAtm = pctStr != null ? pctStr + "%" : null;
-  const T = window.DATA && window.DATA["🎚️"];
-  const bounds = window.FINE_TUNING_BOUNDS;
-  const bg = T && T.baryByGroup;
-  const atmTargets = (bounds && bounds.targets ? bounds.targets : []).filter(
-    _finetuningIsAtmTarget
-  );
-  const nFlous = atmTargets.length;
-  const introHead =
-    "Flou scientifique — jauge ATM " +
-    (pctAtm ||
-      (bg && Number.isFinite(Number(bg.ATM))
-        ? Math.round(Number(bg.ATM)) + "%"
-        : "100%")) +
-    " : " + nFlous + " paramètre" + (nFlous > 1 ? "s" : "") + " réellement incertain" +
-    (nFlous > 1 ? "s" : "") +
-    " (nuages SW ; hystérésis = jauges scie séparées)";
-
-  if (!bounds || !bounds.targets || !Array.isArray(bounds.targets) || !T) {
-    return detailOnly ? _finetuningAltFallback : introHead + "\n" + _finetuningAltFallback;
-  }
-
+  const T = window.DATA["🎚️"];
+  const F = window.FINE_TUNING_BOUNDS;
   const parts = [];
-
-  bounds.targets.forEach(function (t) {
-    if (!_finetuningIsAtmTarget(t)) return;
-    var picto =
-      t.group === "RADIATIVE"
-        ? _finetuningRadiativeSciencePicto[t.key] || "🔬"
-        : _finetuningAltPicto[t.key] || "☁️";
-    var line = _finetuningLiveLineFromTarget(t, picto);
-    if (!line) return;
-    parts.push(line);
+  Object.keys(F.jauges).forEach(function (j) {
+    parts.push(F.jauges[j].logo + " " + T.baryByGroup[j] + " % — " + F.jauges[j].titre);
+    F.targets.forEach(function (t) {
+      if (t.baryGroup !== j) return;
+      parts.push("   " + _finetuningLiveLineFromTarget(t, _finetuningAltPicto[t.key]));
+    });
   });
-
-  const detail = parts.length ? parts.join("\n") : _finetuningAltFallback;
-  return detailOnly ? detail : introHead + "\n" + detail;
+  return parts.join("\n");
 }
+
+/** HTML des jauges du titre « Flou scientifique » : une rangée par jauge (logo, curseur, %), sans explication. */
+function htmlJaugesFineTuning() {
+  const T = window.DATA["🎚️"];
+  const F = window.FINE_TUNING_BOUNDS;
+  return '<div class="organigram-bary-jauges">' + Object.keys(F.jauges).map(function (j) {
+    const pct = Math.round(T.baryByGroup[j]);
+    return '<div class="organigram-bary-rangee">' +
+      '<span class="organigram-bary-icons">' + F.jauges[j].logo + '</span>' +
+      '<input class="organigram-bary-mini-slider" data-jauge="' + j + '" type="range" min="0" max="100" step="1" value="' + pct + '">' +
+      '<span class="organigram-bary-pct" data-jauge="' + j + '">' + pct + '%</span></div>';
+  }).join("") + "</div>";
+}
+window.htmlJaugesFineTuning = htmlJaugesFineTuning;
+
+/** Recale curseurs et % sur DATA['🎚️'].baryByGroup (sans recréer le HTML : un curseur saisi reste attaché). */
+function syncJaugesFineTuning(conteneur) {
+  const bg = window.DATA["🎚️"].baryByGroup;
+  conteneur.querySelectorAll(".organigram-bary-mini-slider[data-jauge]").forEach(function (sl) {
+    sl.value = String(Math.round(bg[sl.dataset.jauge]));
+  });
+  conteneur.querySelectorAll(".organigram-bary-pct[data-jauge]").forEach(function (el) {
+    el.textContent = Math.round(bg[el.dataset.jauge]) + "%";
+  });
+}
+window.syncJaugesFineTuning = syncJaugesFineTuning;
 
 window.getFineTuningDetailAlt = getFineTuningDetailAlt;
 window.syncFineTuningSlotTooltips = syncFineTuningSlotTooltips;
@@ -5298,43 +5272,11 @@ const updateLabel = (dataId, value, format = "auto") => {
   labels.forEach((label) => {
     let formattedValue;
     if (dataId === "fine_tuning_cloud_bary") {
-      let pctStr;
-      if (typeof value === "number" && Number.isFinite(value)) {
-        pctStr = String(Math.round(Math.max(0, Math.min(100, value))));
-      } else if (format === "text" && typeof value === "string") {
-        const m = value.replace(/<[^>]*>/g, " ").match(/(\d+(?:\.\d+)?)\s*%/);
-        pctStr = m ? String(Math.round(parseFloat(m[1], 10))) : "100";
-      } else {
-        const tmp =
-          format === "text" && typeof value === "string"
-            ? value
-            : formatValueFromTemplate(dataId, value);
-        const m = String(tmp).replace(/<[^>]*>/g, " ").match(/(\d+(?:\.\d+)?)\s*%/);
-        pctStr = m ? String(Math.round(parseFloat(m[1], 10))) : "100";
-      }
-      formattedValue = pctStr + "%";
-      const existingSlider = label.querySelector(".organigram-bary-mini-slider");
-      const pctEl = label.querySelector(".organigram-bary-pct");
-      if (existingSlider && pctEl) {
-        pctEl.textContent = pctStr + "%";
-        existingSlider.value = pctStr;
-      } else {
-        label.innerHTML =
-          '<div class="organigram-bary-face organigram-bary-face--two-cols">' +
-          '<div class="organigram-bary-col organigram-bary-col-left">' +
-          '<div class="organigram-bary-icons">🔺🌡️🔻</div>' +
-          '<div class="organigram-bary-line-slider">' +
-          '<input class="organigram-bary-mini-slider" type="range" min="0" max="100" step="1" value="' +
-          pctStr +
-          '">' +
-          "</div></div>" +
-          '<div class="organigram-bary-col organigram-bary-col-right">' +
-          '<div class="organigram-bary-icons organigram-bary-icons-puzzle">🧩</div>' +
-          '<span class="organigram-bary-pct">' +
-          pctStr +
-          "%</span></div></div>";
-      }
-      syncFineTuningSlotTooltips(null, pctStr);
+      // Jauges séparées (FINE_TUNING_BOUNDS.jauges) : la valeur passée est ignorée, DATA['🎚️'].baryByGroup fait foi.
+      if (label.querySelector(".organigram-bary-jauges")) syncJaugesFineTuning(label);
+      else label.innerHTML = htmlJaugesFineTuning();
+      formattedValue = "";
+      syncFineTuningSlotTooltips(null, null);
       clearFineTuningBadgeTooltips(label);
       label.removeAttribute("title");
     } else {
@@ -6415,10 +6357,8 @@ ORG.updateFluxLabels = function (eventId) {
   // S'assurer que le résultat est correct (0% si albedo = 1, 100% si albedo = 0)
   updateLabel("passing_albedo_percent", passing_albedo_percent);
 
-  // Afficher le barycentre fine-tuning CLOUD_SW sous le bouton 🪩 (source: window.DATA['🎚️'].baryByGroup)
-  const cloudBaryRaw = Number(window.DATA['🎚️'].baryByGroup.CLOUD_SW);
-  const cloudBary = Number.isFinite(cloudBaryRaw) ? Math.max(0, Math.min(100, cloudBaryRaw)) : 0;
-  updateLabel("fine_tuning_cloud_bary", cloudBary);
+  // Jauges de fine-tuning (FINE_TUNING_BOUNDS.jauges) : recalées sur DATA['🎚️'].baryByGroup.
+  updateLabel("fine_tuning_cloud_bary", null);
 
   // Ne plus forcer automatiquement le bouton albedo en off/gris
   // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%

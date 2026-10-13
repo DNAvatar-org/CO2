@@ -1,6 +1,7 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.2.0
+// Version 1.2.1
+// - v1.2.1 (2026-10-13): journaux sync:tuning affichent tout baryByGroup (jauges séparées).
 // - v1.2.0: (2026-10-12) l'état d'époque n'a qu'un écrivain, CLICS (via setEpoch / events.js jouerClic) :
 //   applyStateToData et applyToVisu, qui reposaient l'époque et refaisaient ⏳ = ticTime × pas (repli 50 Ma !),
 //   sont retirés ; plus d'écoute de sync:state / action:nextEpoch venant de la scie (elle n'en envoie plus) ;
@@ -360,8 +361,8 @@
             if (event.data.type !== 'sync:tuning') return;
             var p = event.data.payload;
             window.SYNC_STATE.lastRunRequestSource = 'scie:message:sync:tuning';
-            if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] message sync:tuning run=' + p.run + ' bary.CLOUD_SW=' + (p && p.baryByGroup ? p.baryByGroup.CLOUD_SW : 'n/a'));
-            if (typeof window.pdTrace === 'function') window.pdTrace('onMessageSyncTuning', 'sync_panels.js', 'run=' + p.run + ' bary.CLOUD_SW=' + (p && p.baryByGroup ? p.baryByGroup.CLOUD_SW : 'n/a'));
+            if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] message sync:tuning run=' + p.run + ' bary=' + JSON.stringify(p.baryByGroup));
+            if (typeof window.pdTrace === 'function') window.pdTrace('onMessageSyncTuning', 'sync_panels.js', 'run=' + p.run + ' bary=' + JSON.stringify(p.baryByGroup));
             if (window.shell && window.shell.applyTuningFromScie) window.shell.applyTuningFromScie(p);
             else { applyTuningPayload(p); broadcastTuningToIframes(p); if (p.run === true) window.runComputeInParent(); }
         });
@@ -400,8 +401,8 @@
         }, 'sync_panels');
         IO_LISTENER.on('sync:tuning', function (payload) {
             window.SYNC_STATE.lastRunRequestSource = 'visu:IO_LISTENER:sync:tuning';
-            if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] IO sync:tuning run=' + payload.run + ' bary.CLOUD_SW=' + (payload && payload.baryByGroup ? payload.baryByGroup.CLOUD_SW : 'n/a'));
-            if (typeof window.pdTrace === 'function') window.pdTrace('onSyncTuning', 'sync_panels.js', 'run=' + payload.run + ' bary.CLOUD_SW=' + (payload && payload.baryByGroup ? payload.baryByGroup.CLOUD_SW : 'n/a'));
+            if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] IO sync:tuning run=' + payload.run + ' bary=' + JSON.stringify(payload.baryByGroup));
+            if (typeof window.pdTrace === 'function') window.pdTrace('onSyncTuning', 'sync_panels.js', 'run=' + payload.run + ' bary=' + JSON.stringify(payload.baryByGroup));
             applyTuningPayload(payload);
             broadcastTuningToIframes(payload); // v1.1.44 : scie + bench + hysteresis
             if (payload.run === true) window.runComputeInParent();

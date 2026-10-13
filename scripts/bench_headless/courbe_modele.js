@@ -8,7 +8,8 @@
 //         · 'clics' : UNE frise (⚫), puis que des clics — l'état arrive d'une époque à l'autre ;
 //         · 'frise' : à CHAQUE nouvelle époque, clic sur la frise (graine de l'époque), puis ses tictimes.
 //       Écrit window.__COURBE__ (points dans l'ordre chronologique). Lancé par courbe_modele.py.
-// Version 2.0.0
+// Version 2.0.1
+// - v2.0.1 (2026-10-13): jauges séparées — `pct` et `bary` portent tout baryByGroup.
 // Date: 2026-10-12
 // logs :
 //   - v2.0.0: clics par CLICS (API_BILAN/convergence/clics.js), plus de copie de la mécanique ici.
@@ -34,7 +35,7 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
       TW: +(N['🔋🌕'] / 1e12).toFixed(2), solidif: N['📅🧊🌕'] > 0 ? Math.round(N['📅🧊🌕']) : null }; };
   const note = (chaine, etape, cle, dt, mode) => {
     const s=api.snapshot();
-    const r={ pct: D['🎚️'].baryByGroup.ATM, chaine, etape, cle, dt, mode: mode || 'clic', ep:s.epochId, T:+s.T_C.toFixed(2),
+    const r={ pct: JSON.stringify(D['🎚️'].baryByGroup), chaine, etape, cle, dt, mode: mode || 'clic', ep:s.epochId, T:+s.T_C.toFixed(2),
       glace:+(+s.ice.mass_now).toFixed(3), ppm:ppmCO2(), ...interieur() };
     const E = TLid(s.epochId), dt0 = D['📜']['📅'];
     r.t = Math.round(E['▶'] > E['◀'] ? dt0 : 2025 - dt0);   // années avant 2025
@@ -63,6 +64,6 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
     note(MODE, r.passage !== null ? depuis+' →'+key+' '+r.passage : depuis+' '+key+' ('+(+D['📜']['⏳'].toFixed(4))+' Ma écoulés)', key, dt);
   }
   const pts = window.__PASSAGES__.map(({ pct, chaine, ...p }) => p);
-  window.__COURBE__ = { mode: MODE, bary: D['🎚️'].baryByGroup.ATM, points: pts };
+  window.__COURBE__ = { mode: MODE, bary: JSON.parse(JSON.stringify(D['🎚️'].baryByGroup)), points: pts };
   window.__PROG__='done';
 } catch(e){ window.__ERR__=String(e&&e.stack||e); window.__PROG__='error'; } })(); 'x'
