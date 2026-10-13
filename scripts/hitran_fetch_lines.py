@@ -1,10 +1,12 @@
 # File: hitran_fetch_lines.py - Fetch HITRAN lines (CO2, H2O, CH4) et export JSON
 # Desc: Utilise HAPI (hitran-api) pour télécharger les lignes dans les bandes LW, export pour hitran.js.
-# Version 1.0.0
+# Version 1.1.0
 # Copyright 2025 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause.
 # Date: 2025-02-06
 # Logs:
+# - v1.1.0 (2026-10-13): H2O 850–1200 cm⁻¹ (raies faibles de la fenêtre, qui la referment au chaud) et CO2 850–2500 cm⁻¹
+#   (bandes de 10 µm et 4,3 µm) ajoutés ; fusionnés dans API_BILAN/data/hitran_lines_*.js (HAPI 1.3, isotopologue 1).
 # - Initial: fetch CO2 (100-850), H2O (100-850, 1200-2000), CH4 (900-1600, 2600-3400) cm-1, export JSON.
 
 """
@@ -29,8 +31,8 @@ except ImportError:
 
 # Bandes wavenumber (cm-1) pour LW / bandes clés (doc/PLAN_HITRAN_CROSS_SECTIONS.md)
 BANDS = {
-    "CO2": [(100, 850)],                                    # 15 µm
-    "H2O": [(100, 850), (1200, 2000)],                      # 17 µm, 6.3 µm
+    "CO2": [(100, 850), (850, 2500)],                       # 15 µm ; 10,4 / 9,4 µm (fenêtre) et 4,3 µm (2026-10-13)
+    "H2O": [(100, 850), (850, 1200), (1200, 2000)],         # 17 µm ; FENÊTRE 8–12 µm (2026-10-13) ; 6,3 µm
     "CH4": [(900, 1600), (2600, 3400)],                     # 7.7 µm, 3.3 µm
 }
 # HITRAN molecule ID: 1=H2O, 2=CO2, 6=CH4. Isotopologue 1 = principal.
