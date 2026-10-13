@@ -4943,12 +4943,14 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
   const T = window.DATA["🎚️"];
   const F = window.FINE_TUNING_BOUNDS;
   const parts = [];
-  Object.keys(F.jauges).forEach(function (j) {
+  Object.keys(F.jauges).forEach(function (j, k) {
     const sens = window.TUNING.sensJauge(j);
+    if (k > 0) parts.push("");   // une ligne vide entre deux jauges
     parts.push(F.jauges[j].logo + " " + T.baryByGroup[j] + " % " + sens.logo + " — " + F.jauges[j].titre + " (" + sens.titre + ")");
     F.targets.forEach(function (t) {
       if (t.baryGroup !== j) return;
-      parts.push("   " + window.TUNING.sensCible(t).logo + " " + _finetuningLiveLineFromTarget(t, _finetuningAltPicto[t.key]));
+      // Cibles de la jauge en retrait : espaces cadratins (U+2003), que le rendu de l'infobulle ne fusionne pas.
+      parts.push("\u2003\u2003" + window.TUNING.sensCible(t).logo + " " + _finetuningLiveLineFromTarget(t, _finetuningAltPicto[t.key]));
     });
   });
   return parts.join("\n");
