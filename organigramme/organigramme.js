@@ -1,5 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.123 « ✈ CCN » = ALBEDO.rapportCCN() sur le DATA de la page (même fonction que le moteur) au lieu de min(0,35 ; sulfate × 500) inventé.
 // Logs: v1.0.122 sens de chaque jauge (TUNING.sensJauge : 🔺 monter réchauffe, 🔻 refroidit, ↕️ ambigu) dans les rangées et l'infobulle.
 // Logs: v1.0.121 jauges de fine-tuning séparées (FROID / CHAUD / SUBTIL / HYSTERESIS) : htmlJaugesFineTuning,
 //   syncJaugesFineTuning, infobulle regroupée par jauge ; plus de jauge unique ATM.
@@ -5671,9 +5672,11 @@ ORG.updateFluxLabels = function (eventId) {
   const createAlbedoComponents = (components) => {
     const sulfate_frac = DATA["🫧"]["🍰🫧✈"];
     const sulfate_pct = (sulfate_frac * 100).toFixed(2);
-    const sulfate_ccn_boost_pct = (
-      Math.min(0.35, sulfate_frac * 500) * 100
-    ).toFixed(1);
+    // Rapport de CCN RÉELLEMENT utilisé par le moteur : la même fonction (albedo/calculations_albedo.js → rapportCCN, loi
+    // sulfate de McCoy 2018 ; 1 sur 📱 par construction), appelée sur le DATA de cette page. Remplace min(0,35 ; 🍰🫧✈ × 500),
+    // formule inventée qui affichait toujours +0,0 %. (Lire window._hystDiag ne marche pas ici : seul le calcul le remplit.)
+    const ccnRatio = window.ALBEDO.rapportCCN();
+    const sulfate_ccn_boost_pct = ((ccnRatio - 1) * 100 >= 0 ? "+" : "") + ((ccnRatio - 1) * 100).toFixed(1);
     components.forEach((comp) => {
       comp.weight = (comp.coverage / 100) * parseFloat(comp.albedo);
     });
@@ -5701,8 +5704,8 @@ ORG.updateFluxLabels = function (eventId) {
         return `<span ${titleAttr} style="cursor: help;"><img src="${comp.emoji}" alt="${label}"> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
       } else {
         if (comp.emoji === CHARS.CLOUD) {
-          const cloudTitle = `title="Nuages : ${coverage_display}% couverture × albedo ${comp.albedo}. Proxy sulfate: ${sulfate_pct}% masse atm, impact CCN +${sulfate_ccn_boost_pct}%."`;
-          return `<span ${cloudTitle} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span><br><span style="font-size: 0.8em;">↳ <span class="logo">✈</span> CCN +${sulfate_ccn_boost_pct}%</span></span>`;
+          const cloudTitle = `title="Nuages : ${coverage_display}% couverture × albedo ${comp.albedo}. Proxy sulfate: ${sulfate_pct}% masse atm, noyaux de condensation ×${ccnRatio.toFixed(2)} (${sulfate_ccn_boost_pct} % par rapport à 2000, loi sulfate McCoy 2018)."`;
+          return `<span ${cloudTitle} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span><br><span style="font-size: 0.8em;">↳ <span class="logo">✈</span> CCN ${sulfate_ccn_boost_pct}%</span></span>`;
         }
         return `<span ${titleAttr} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
       }
