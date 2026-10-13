@@ -1,5 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.122 sens de chaque jauge (TUNING.sensJauge : 🔺 monter réchauffe, 🔻 refroidit, ↕️ ambigu) dans les rangées et l'infobulle.
 // Logs: v1.0.121 jauges de fine-tuning séparées (FROID / CHAUD / SUBTIL / HYSTERESIS) : htmlJaugesFineTuning,
 //   syncJaugesFineTuning, infobulle regroupée par jauge ; plus de jauge unique ATM.
 // Logs: v1.0.120 nuages : réflectance affichée = DATA['🪩']['🪩🍰⛅'] (calculée, deux-flux) au lieu du coefficient de config
@@ -4943,10 +4944,11 @@ function getFineTuningDetailAlt(pctStr, detailOnly) {
   const F = window.FINE_TUNING_BOUNDS;
   const parts = [];
   Object.keys(F.jauges).forEach(function (j) {
-    parts.push(F.jauges[j].logo + " " + T.baryByGroup[j] + " % — " + F.jauges[j].titre);
+    const sens = window.TUNING.sensJauge(j);
+    parts.push(F.jauges[j].logo + " " + T.baryByGroup[j] + " % " + sens.logo + " — " + F.jauges[j].titre + " (" + sens.titre + ")");
     F.targets.forEach(function (t) {
       if (t.baryGroup !== j) return;
-      parts.push("   " + _finetuningLiveLineFromTarget(t, _finetuningAltPicto[t.key]));
+      parts.push("   " + window.TUNING.sensCible(t).logo + " " + _finetuningLiveLineFromTarget(t, _finetuningAltPicto[t.key]));
     });
   });
   return parts.join("\n");
@@ -4961,7 +4963,8 @@ function htmlJaugesFineTuning() {
     return '<div class="organigram-bary-rangee">' +
       '<span class="organigram-bary-icons">' + F.jauges[j].logo + '</span>' +
       '<input class="organigram-bary-mini-slider" data-jauge="' + j + '" type="range" min="0" max="100" step="1" value="' + pct + '">' +
-      '<span class="organigram-bary-pct" data-jauge="' + j + '">' + pct + '%</span></div>';
+      '<span class="organigram-bary-pct" data-jauge="' + j + '">' + pct + '%</span>' +
+      '<span class="organigram-bary-sens" title="' + window.TUNING.sensJauge(j).titre + '">' + window.TUNING.sensJauge(j).logo + '</span></div>';
   }).join("") + "</div>";
 }
 window.htmlJaugesFineTuning = htmlJaugesFineTuning;

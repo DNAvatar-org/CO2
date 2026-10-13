@@ -492,6 +492,13 @@
     min-width: 4ch;
     text-align: right;
 }
+/* Sens de la jauge (TUNING.sensJauge) : 🔺 monter réchauffe, 🔻 refroidit, ↕️ ambigu. */
+.organigram-bary-sens {
+    font-size: 10px;
+    line-height: 1;
+    flex-shrink: 0;
+    cursor: help;
+}
 /* Mini-jauge : visible uniquement dans le badge */
 .organigram-bary-mini-slider {
     display: none;
