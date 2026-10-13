@@ -1,6 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
-// Logs: v1.0.124 nuages : nombre de gouttes affiché (ALBEDO.nombreGouttesCm3) avec l'écart de CCN à 2000.
+// Logs: v1.0.124 nuages : nombre de gouttes affiché (ALBEDO.nombreGouttesCm3), « ✈ N /cm³ » ; écart de CCN à 2000 en infobulle.
 // Logs: v1.0.123 « ✈ CCN » = ALBEDO.rapportCCN() sur le DATA de la page (même fonction que le moteur) au lieu de min(0,35 ; sulfate × 500) inventé.
 // Logs: v1.0.122 sens de chaque jauge (TUNING.sensJauge : 🔺 monter réchauffe, 🔻 refroidit, ↕️ ambigu) dans les rangées et l'infobulle.
 // Logs: v1.0.121 jauges de fine-tuning séparées (FROID / CHAUD / SUBTIL / HYSTERESIS) : htmlJaugesFineTuning,
@@ -5708,7 +5708,7 @@ ORG.updateFluxLabels = function (eventId) {
       } else {
         if (comp.emoji === CHARS.CLOUD) {
           const cloudTitle = `title="Nuages : ${coverage_display}% couverture × albedo ${comp.albedo}. Proxy sulfate: ${sulfate_pct}% masse atm, nuages bas : ${gouttes_cm3} gouttes/cm³ ; noyaux de condensation ×${ccnRatio.toFixed(2)} (${sulfate_ccn_boost_pct} % par rapport à 2000 — 0 % en 2000 par définition : la loi sulfate de McCoy 2018 prend 2000 pour référence)."`;
-          return `<span ${cloudTitle} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span><br><span style="font-size: 0.8em;">↳ <span class="logo">✈</span> ${gouttes_cm3} gouttes/cm³ (CCN ${sulfate_ccn_boost_pct} % vs 2000)</span></span>`;
+          return `<span ${cloudTitle} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span><br><span style="font-size: 0.8em;">↳ <span class="logo">✈</span> ${gouttes_cm3} /cm³</span></span>`;
         }
         return `<span ${titleAttr} style="cursor: help;"><span style="font-size: 1.5em;">${comp.emoji}</span> ${coverage_display}% <span style="font-size: 0.8em;">x${comp.albedo}</span></span>`;
       }
