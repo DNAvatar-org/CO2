@@ -1,6 +1,8 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.2.0
+// Version 1.3.0
+// Logs: v1.3.0: Spectrale (ex-Visuel) toujours visible ; les autres onglets dans la zone du graphe (onglets_graphe.js),
+//   plus de body.scie-panel-active / bench-panel-active.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // Date: 2026-10-12
 // Logs: v1.2.0: scripts chargés par le loader commun (API_BILAN/loader/loader.js, BILAN_LOADER.load) : le moteur
@@ -23,6 +25,7 @@
         apiBase: '../API_BILAN/',
         before: [
             'static/ui/api_onglets.js',
+            'static/ui/onglets_graphe.js',
             'static/debug.js'
         ],
         after: [
@@ -168,15 +171,11 @@
 
     // onShow spécifiques aux tabs (factorisation de l'ancien switchTab). Appelés par API_ONGLETS après .active + shell.setCurrentPanel.
     function onShowVisu() {
-        document.body.classList.remove('scie-panel-active');
-        document.body.classList.remove('bench-panel-active');
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('visu');
         if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('resize'));
         if (window.DATA && window.DATA['🧮'] && typeof window.projectToVisu === 'function') window.projectToVisu(window.DATA);
     }
     function onShowScie() {
-        document.body.classList.add('scie-panel-active');
-        document.body.classList.remove('bench-panel-active');
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('scie');
         var iframe = document.getElementById('scie-iframe');
         if (iframe && iframe.contentWindow) {
@@ -195,16 +194,9 @@
             window.resizeScieIframe();
         }
     }
-    function onShowMilankovitch() {
-        // Aligné sur l'ancien switchTab (v1.1.15-) : seul scie-panel-active était manipulé ; bench/hyst retirés pour cohérence.
-        document.body.classList.remove('scie-panel-active');
-        document.body.classList.remove('bench-panel-active');
-    }
-    // Bench = iframe standalone (epoch_bench.html) ; pas de listener shell, pas de sync DATA. body.bench-panel-active pour les règles hauteur.
-    function onShowBench() {
-        document.body.classList.remove('scie-panel-active');
-        document.body.classList.add('bench-panel-active');
-    }
+    // Milankovitch, Histoire, Bench : iframes autonomes dans la zone du graphe ; rien à synchroniser.
+    function onShowMilankovitch() {}
+    function onShowBench() {}
     window.isVisuPanelActive = function () {
         var visu = document.getElementById('visu-panel');
         return visu && visu.classList.contains('active');
@@ -216,6 +208,8 @@
         window.installFunctionTraces();
         // Enregistrement des onglets (v1.1.15). registerTab est idempotent ; showTab s'appuie dessus.
         // Crash-first : API_ONGLETS doit exister (chargé en tête de SCRIPTS).
+        // Zone du graphe spectral : les panneaux des autres onglets s'y posent (visu est injecté à ce stade).
+        window.ONGLETS_GRAPHE.brancher();
         window.API_ONGLETS.registerTab({ id: 'visu', buttonId: 'tab-visu', panelId: 'visu-panel', onShow: onShowVisu });
         window.API_ONGLETS.registerTab({ id: 'scie', buttonId: 'tab-scie', panelId: 'scie-panel', onShow: onShowScie });
         window.API_ONGLETS.registerTab({ id: 'bench', buttonId: 'tab-bench', panelId: 'bench-panel', onShow: onShowBench });

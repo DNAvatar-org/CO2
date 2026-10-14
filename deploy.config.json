@@ -418,6 +418,10 @@
       "dest": "pages/bilan_radiatif/CO2/static/ui/api_onglets.js"
     },
     {
+      "src": "static/ui/onglets_graphe.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/onglets_graphe.js"
+    },
+    {
       "src": "static/ui/cpu_threads_notice.js",
       "dest": "pages/bilan_radiatif/CO2/static/ui/cpu_threads_notice.js"
     },

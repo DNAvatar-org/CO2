@@ -91,7 +91,7 @@
         <ul id="app-loader-list" class="app-loader-list"></ul>
     </div>
     <div class="tabs-bar">
-        <button id="tab-visu" class="active" onclick="switchTab('visu')">Visuel</button>
+        <button id="tab-visu" class="active" onclick="switchTab('visu')">Spectrale</button>
         <button id="tab-scie" onclick="switchTab('scie')">Scientifique</button>
         <button id="tab-bench" onclick="switchTab('bench')">Bench</button>
         <button id="tab-milankovitch" onclick="switchTab('milankovitch')">Milankovitch?</button>
@@ -102,16 +102,18 @@
         <div id="fps-chart"></div>
     </div>
     <div id="visu-panel" class="tab-panel active"><p style="padding:20px;color:#888;">Chargement…</p></div>
-    <div id="scie-panel" class="tab-panel"><p style="padding:20px;color:#888;">Chargement…</p></div>
-    <div id="bench-panel" class="tab-panel"><p style="padding:20px;color:#888;">Chargement…</p></div>
+    <div id="scie-panel" class="tab-panel onglet-graphe"><p style="padding:20px;color:#888;">Chargement…</p></div>
+    <div id="bench-panel" class="tab-panel onglet-graphe"><p style="padding:20px;color:#888;">Chargement…</p></div>
     <!-- Onglet Hystérésis retiré du rendu le 2026-09-19 : le calage 1a/⛄/1b est figé, la page
          html/hysteresis_compute.html reste au dépôt comme filet en cas de régression. -->
-    <div id="milankovitch-panel" class="tab-panel">
+    <!-- Onglets dans la zone du graphe spectral (.onglet-graphe, static/ui/onglets_graphe.js) : la page Spectrale (#visu-panel)
+         reste toujours visible. -->
+    <div id="milankovitch-panel" class="tab-panel onglet-graphe">
         <iframe src="html/test_milankovitch.html" title=""></iframe>
     </div>
     <!-- Histoire thermique : courbe de la LITTÉRATURE (sourcée) comparée à la courbe du MODÈLE
          (CO2/static/histoire/courbe_modele.js, engendrée par scripts/bench_headless/courbe_modele.py). -->
-    <div id="histoire-panel" class="tab-panel">
+    <div id="histoire-panel" class="tab-panel onglet-graphe">
         <iframe src="histoire.html"></iframe>
     </div>
 

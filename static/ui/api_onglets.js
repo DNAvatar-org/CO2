@@ -3,12 +3,13 @@
 //       showTab(id) : applique .active sur bouton+panel cibles, retire des autres, appelle onHide(prev) puis onShow(next).
 //       Synchrone : ordre = registerTab → showTab (pas de setTimeout, listeners attachés via onShow).
 //       Source unique : pas de duplication de state interne, on ne stocke que l'id courant + le registre.
-// Version 1.0.0
+// Version 1.1.0
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // Date: [April 18, 2026] [18:45 UTC+1]
 // Logs:
+// - v1.1.0: Spectrale (visu) toujours visible ; showTab ne bascule que les panneaux .onglet-graphe (zone du graphe spectral).
 // - v1.0.0: extraction de loader_panels.switchTab → API_ONGLETS.{registerTab, showTab, getCurrentTab} ; loader_panels.switchTab devient proxy
 
 (function () {
@@ -36,8 +37,9 @@
         // Crash-first : tab non enregistré = appel illégal, on laisse échouer à l'accès plus bas.
         var prev = current ? TABS[current] : null;
 
-        // .active OFF partout (aligné switchTab actuel : querySelectorAll sur .tab-panel + .tabs-bar button)
-        document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+        // .active OFF sur les onglets de la zone du graphe (.onglet-graphe) et les boutons ; #visu-panel (Spectrale) reste
+        // toujours affiché — son onglet ne fait que retirer les autres.
+        document.querySelectorAll('.onglet-graphe').forEach(function (p) { p.classList.remove('active'); });
         document.querySelectorAll('.tabs-bar button').forEach(function (b) { b.classList.remove('active'); });
 
         // onHide du précédent (si différent du nouveau)

@@ -1,5 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.125 frise des époques : les époques hidden (hystérésis 1a, 1b, 1c, 2) n'ont plus de ligne.
 // Logs: v1.0.124 nuages : nombre de gouttes affiché (ALBEDO.nombreGouttesCm3), « ✈ N /cm³ » ; écart de CCN à 2000 en infobulle.
 // Logs: v1.0.123 « ✈ CCN » = ALBEDO.rapportCCN() sur le DATA de la page (même fonction que le moteur) au lieu de min(0,35 ; sulfate × 500) inventé.
 // Logs: v1.0.122 sens de chaque jauge (TUNING.sensJauge : 🔺 monter réchauffe, 🔻 refroidit, ↕️ ambigu) dans les rangées et l'infobulle.
@@ -4549,13 +4550,14 @@ function generateTimelineFromConfig() {
   // Chaque époque tient sur UNE ligne : sa date de début, et son logo à droite puis à gauche en
   // alternance (v1.0.118). Les dates restent des .epoch-date-item-vertical : le curseur de la frise
   // (timeline.js) ne lit que leur position, jamais celle des boutons.
+  // Les époques hidden (hystérésis : 1a, 1b, 1c, 2) n'ont pas de ligne : on y arrive par les clics, pas par la frise.
+  // Le curseur se place par interpolation des dates entre les lignes restantes (timeline.js, getCursorTopPx).
   let rang = 0;
-  timeline.forEach((item, i) => {
+  timeline.filter((item) => !item.hidden).forEach((item) => {
     if (item["📅"]) {
       const epochId = item["📅"];
-      const isHidden = !!item.hidden;
       const el = document.createElement("button");
-      el.className = isHidden ? "epoch-text" : "epoch-btn";
+      el.className = "epoch-btn";
       el.setAttribute("data-epoch", epochId);
       el.setAttribute(
         "onclick",
@@ -4565,7 +4567,7 @@ function generateTimelineFromConfig() {
       const epochLabel = (window.CHARS_DESC && window.CHARS_DESC[epochId]) || epochId;
       // getDisplayForPicto : image si dans charsImages, sinon picto (transparent si on ajoute des images)
       const display = window.getDisplayForPicto(epochId);
-      if (!isHidden && display.type === "image") {
+      if (display.type === "image") {
         const img = document.createElement("img");
         img.src = display.value;
         img.alt = epochId === "📱" ? "2000" : "";
@@ -4577,10 +4579,8 @@ function generateTimelineFromConfig() {
         el.appendChild(img);
       } else {
         el.textContent = display.value;
-        if (!isHidden) {
-          el.style.fontFamily =
-            "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
-        }
+        el.style.fontFamily =
+          "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
       }
       if (epochLabel) addCustomTooltip(el, epochLabel);
 

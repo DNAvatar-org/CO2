@@ -1,12 +1,14 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.0.8
+   Version 1.1.0
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
    Logs:
    - Extracted from index.html inline <style>.
    - v1.0.7: .credits-footer-utf8 — lien utf8 coin bas-droit du footer (index.html)
+   - v1.1.0: onglets dans la zone du graphe spectral (.onglet-graphe, position fixe) ; règles pleine page des panneaux
+     scie / bench / milankovitch / histoire retirées (body.*-panel-active n'est plus posé).
    - v1.0.8: #histoire-panel (histoire.html) aligné sur #milankovitch-panel
    ============================================================ */
 
@@ -64,14 +66,6 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
 }
-/* Panel scie / bench / hyst / milankovitch actif : la page prend la taille du contenu (body peut grandir, scroll = body) */
-body.scie-panel-active,
-body.bench-panel-active,
-body.hysteresis-panel-active,
-body.milankovitch-panel-active {
-    height: auto;
-    min-height: 100vh;
-}
 .tab-panel {
     flex: 0 1 var(--visu-panel-max-h, 670px);
     min-height: 0;
@@ -122,91 +116,26 @@ body.milankovitch-panel-active {
         overflow: hidden;
         overflow-y: hidden;
     }
-    /* Scie : même méthode qu’en horizontal (iframe hauteur contenu, scroll = body) */
-    #scie-panel.active {
-        overflow: visible;
-        min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
-        max-height: none;
-        display: flex;
-        flex-direction: column;
-    }
-    #scie-panel iframe {
-        flex: 0 0 auto;
-        min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
-        width: 100%;
-        border: none;
-    }
-    #milankovitch-panel.active,
-    #histoire-panel.active,
-    #bench-panel.active,
-    #hysteresis-panel.active {
-        overflow: visible;
-        min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
-        max-height: none;
-        display: flex;
-        flex-direction: column;
-    }
-    #milankovitch-panel iframe,
-    #histoire-panel iframe,
-    #bench-panel iframe,
-    #hysteresis-panel iframe {
-        flex: 0 0 auto;
-        min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
-        width: 100%;
-        border: none;
-    }
 }
 
-/* Panel Scientifique : même méthode en horizontal et vertical (hauteur = contenu, scroll = body, footer en bas du flux) */
-#scie-panel.active {
-    overflow: visible;
-    flex: 0 0 auto;
-    height: auto;
-    min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
-    max-height: none;
+/* Onglets de la zone du graphe spectral (Scientifique, Bench, Milankovitch, Histoire) : par-dessus le graphe, la page
+   Spectrale (#visu-panel) restant visible. top / left / width / height posés par static/ui/onglets_graphe.js. */
+.onglet-graphe.active {
+    position: fixed;
+    z-index: 900;
     display: flex;
     flex-direction: column;
-}
-#scie-panel iframe {
-    flex: 0 0 auto;
-    min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
-    width: 100%;
-    border: none;
-}
-
-/* En horizontal : scie ne suit pas la méthode visu (max 670px), même comportement que scie en vertical */
-@media (min-width: 1000px) {
-    body.scie-panel-active #scie-panel.active {
-        flex: 0 0 auto;
-        height: auto;
-        max-height: none;
-    }
-}
-
-/* Panel scie actif : footer toujours déplié (hauteur max) */
-body.scie-panel-active .credits-footer {
-    height: var(--visu-footer-max-h);
-}
-/* Même logique que #scie-panel : sans min-height explicite l’iframe reste ~150px → contenu Milankovitch/Bench/Hyst coincé en haut */
-#milankovitch-panel.active,
-#histoire-panel.active,
-#bench-panel.active,
-#hysteresis-panel.active {
-    overflow: visible;
-    flex: 0 0 auto;
-    height: auto;
-    min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
+    min-height: 0;
     max-height: none;
-    display: flex;
-    flex-direction: column;
+    overflow: auto;
+    box-sizing: border-box;
+    background: rgba(12, 12, 14, 0.96);
+    border-radius: 10px;
 }
-#milankovitch-panel iframe,
-#histoire-panel iframe,
-#bench-panel iframe,
-#hysteresis-panel iframe {
+.onglet-graphe iframe {
     flex: 1 1 auto;
-    min-height: calc(100vh - 20px - var(--visu-footer-min-h, 50px));
     width: 100%;
+    min-height: 0;
     border: none;
 }
 
