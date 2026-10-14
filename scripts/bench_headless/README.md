@@ -80,6 +80,10 @@ TIMELINE qu'en mémoire : on reporte ensuite les valeurs dans la config, avec la
 posées à la main (~0,15 W/m²) au bilan d'énergie (~0,07 W/m², `API_BILAN/geology/interieur.js`) a suffi
 à laisser la Terre en boule de neige jusqu'à aujourd'hui.
 
+**2026-10-14** : F1 remesurée avec CO₂ ET CH₄ descendus ensemble dans leurs fourchettes, critère frise ☃ ET chaîne
+chauds → 1 267,9 ppm / 30,48 ppm (la chaîne seule donnait 1 130,6 ppm, une tangente que le clic frise ne tenait pas).
+F2 à F4 périmées. État et mises en garde : `API_BILAN/doc/HYSTERESIS_FRONTIERES.md`.
+
 ### v1.3.0 : on rejoue les clics, et frise = clic
 
 Les passages rejouent **tous** les tictimes, comme l'interface : frise sur l'époque d'avant, puis chaque
