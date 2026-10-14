@@ -28,7 +28,7 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
     const s=api.snapshot();
     const r={ pct: JSON.stringify(D['🎚️'].baryByGroup), chaine, etape, cle, dt, mode: mode || 'clic', ep:s.epochId, T:+s.T_C.toFixed(2),
       glace:+(+s.ice.mass_now).toFixed(3), ppm:ppmCO2(), ...interieur() };
-    const E = TLid(s.epochId), dt0 = D['📜']['📅'];
+    const E = TLid(s.epochId), dt0 = window.CLICS.date();
     r.t = Math.round(E['▶'] > E['◀'] ? dt0 : 2025 - dt0);   // années avant 2025
     r.st = s.status;
     window.__PASSAGES__.push(r); return r;
