@@ -227,7 +227,7 @@ const nodes = [
                 color: '#ff9800'
             },
             {
-                epochName: 'Sturtienne', // hysteresis 1a
+                epochName: 'Pré-sturtienne', // hysteresis 1a
                 numCircles: 3,
                 maxRadius: 70,
                 strokeSize: 0,
@@ -418,7 +418,7 @@ const nodes = [
                 planetEffect: true
             },
             {
-                epochName: 'Sturtienne', // hysteresis 1a (entrée Snowball)
+                epochName: 'Pré-sturtienne', // hysteresis 1a (entrée Snowball)
                 logo: LOGOS.SNOWBALL_ENTRY,
                 radius: radiusTerre,
                 radiusExobase: radiusTerre * 1.06,

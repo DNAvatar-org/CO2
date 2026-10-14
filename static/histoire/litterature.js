@@ -31,9 +31,11 @@
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
 //                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
 //                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
-// Version 1.7.0
+// Version 1.8.0
 // Date: 2026-10-14
 // logs :
+//   - v1.8.0: bornes extrêmes resserrées : Hadéen 4,49–4,41 Ga borne basse 0 °C (eau libre, Zahnle 2010 ; Wilde 2001) au lieu
+//     de −53 ; snowball paléoprotérozoïque sur 2 460–2 426 Ma seulement (Gumsley 2017), plus sur toute l'instabilité.
 //   - v1.7.0: ⚫ = corps noir + glace des ☄️ (équation sur la séquence de ⚫), bond vertical à la collision ; ancre
 //     d'accrétion fondue retirée (citée dans la source du corps noir).
 //   - v1.6.0: bande = ± 1σ là où la source donne une distribution : KT2018 recalculé à 16–84 % (mêmes tirages,
@@ -56,8 +58,8 @@ window.HISTOIRE.litterature = {
         [4.508e9,      1227, 1764, 2300, "Océan de magma sous atmosphère de vapeur : surface > 1 500 K, gelé en surface en ~2 Ma (Zahnle et al. 2010) ; borne haute = vapeur de roche"],
         [4.508e9,      177, 227, 277, "Océan d'eau chaud (~500 K) sous ~100 bar de CO₂, dès que le manteau est solide (Zahnle et al. 2010, fig. 3) — ±50 K : largeur NON publiée (❔)"],
         [4.49e9,       177, 227, 277, "Océan d'eau chaud (~500 K) sous ~100 bar de CO₂, dès que le manteau est solide (Zahnle et al. 2010, fig. 3) — ±50 K : largeur NON publiée (❔)"],
-        [4.49e9,       -53, 112, 277, "Retrait du CO₂ dans le manteau en 20 ou 100 Ma, selon le scénario (Zahnle et al. 2010, fig. 3) : jusqu'à ~220 K et des océans glacés si le CO₂ part vite, encore ~500 K s'il part lentement — fourchette des deux scénarios, milieu sans signification"],
-        [4.41e9,       -53, 112, 277, "Retrait du CO₂ dans le manteau en 20 ou 100 Ma, selon le scénario (Zahnle et al. 2010, fig. 3) : jusqu'à ~220 K et des océans glacés si le CO₂ part vite, encore ~500 K s'il part lentement — fourchette des deux scénarios, milieu sans signification"],
+        [4.49e9,       0, 138.5, 277, "Retrait du CO₂ dans le manteau en 20 ou 100 Ma, selon le scénario (Zahnle et al. 2010, fig. 3). Borne haute = ~500 K encore s'il part lentement ; borne basse = 0 °C, de l'eau libre : le CO₂ se régule pour que son effet de serre garde de l'eau libre (rétroaction négative, Zahnle et al. 2010), eau liquide attestée à 4,4 Ga (Wilde et al. 2001). L'extrême de Zahnle, ~220 K sous des océans glacés si presque tout le CO₂ devient carbonate, n'est pas retenu comme borne — milieu sans signification"],
+        [4.41e9,       0, 138.5, 277, "Retrait du CO₂ dans le manteau en 20 ou 100 Ma, selon le scénario (Zahnle et al. 2010, fig. 3). Borne haute = ~500 K encore s'il part lentement ; borne basse = 0 °C, de l'eau libre : le CO₂ se régule pour que son effet de serre garde de l'eau libre (rétroaction négative, Zahnle et al. 2010), eau liquide attestée à 4,4 Ga (Wilde et al. 2001). L'extrême de Zahnle, ~220 K sous des océans glacés si presque tout le CO₂ devient carbonate, n'est pas retenu comme borne — milieu sans signification"],
         [4.4e9,   0, 50, 100, 'Eau liquide — zircons de Jack Hills dès 4,4 Ga (Wilde et al. 2001, Nature 409:175) → 0 < T < 100 °C ; 50 = milieu de la fourchette']
     ],
     // [t, T 16 %, T 50 %, T 84 %] (± 1σ) — CO2/scripts/histoire/kt2018_temperature.py v1.1 (10 000 tirages ; la figure publiée trace 2,5–97,5 %)
@@ -2293,7 +2295,7 @@ window.HISTOIRE.litterature.unSigma = (rows, z) => rows.map((r) => [r[0], r[2] -
 // trois FENÊTRES sourcées qui le remplacent. Des FOURCHETTES, pas des valeurs. Le fond, aux bords des fenêtres et entre deux
 // paliers, est KT2018 interpolé (la série elle-même, pas une copie de ses valeurs).
 //   · Archéen 3,5 → 3,2 Ga : océan 26–35 °C, δ¹⁸O des phosphates (Blake 2010), compatible avec ≤ 40 °C (Hren 2009) ;
-//   · Paléoprotérozoïque 2,46 → 2,24 Ga : glaciations, au moins une globale (Hoffman 2017), mal datées (Gumsley 2017) ;
+//   · Paléoprotérozoïque 2,46 → 2,426 Ga : la glaciation globale, datée dans cet intervalle (Gumsley 2017, Hoffman 2017) ;
 //   · Cryogénien 717,5 → 632,2 Ma : deux snowballs datés, séparés par un intervalle de 9 à 19 Ma (Hoffman 2017). Chacun
 //     finit en « serre torride » : le CO₂ volcanique, accumulé sans pluie pour le lessiver, atteint 0,01–0,1 en fraction
 //     de volume (10² PAL à la sortie Marinoenne, Bao et al. 2008), puis l'altération le ramène au fond en quelques Ma
@@ -2318,14 +2320,13 @@ window.HISTOIRE.litterature.unSigma = (rows, z) => rows.map((r) => [r[0], r[2] -
         fond(3.19e9, 'après les phosphates de Barberton')
     ];
 
-    const SID = 'Glaciations du Paléoprotérozoïque, au moins une globale (Hoffman et al. 2017) : première glaciation globale entre '
-        + '2 460 et 2 426 Ma, instabilité climatique jusqu\'à ~2 250–2 240 Ma (Gumsley et al. 2017, PNAS 114:1811). Épisodes '
-        + 'mal datés : borne basse = snowball (−73 °C, Pierrehumbert 2005 — sous un Soleil plus faible qu\'au Cryogénien, sans doute '
-        + 'plus froid ❔), médiane et borne haute = KT2018';
+    const SID = 'Première glaciation globale du Paléoprotérozoïque, quelque part entre 2 460 et 2 426 Ma (Gumsley et al. 2017, PNAS '
+        + '114:1811 ; Hoffman et al. 2017), durée inconnue : borne basse = snowball (−73 °C, Pierrehumbert 2005 — sous un Soleil plus '
+        + 'faible qu\'au Cryogénien, sans doute plus froid ❔), médiane et borne haute = KT2018. Après, instabilité climatique jusqu\'à '
+        + '~2 250–2 240 Ma (Gumsley 2017) sans température publiée : KT2018';
     const sid = (t) => { const f = fond(t, ''); return [t, -73, f[2], f[3], SID]; };
-    const paleoproterozoique = [fond(2.461e9, 'avant les glaciations du Paléoprotérozoïque'), sid(2.46e9)]
-        .concat(K.filter((r) => r[0] < 2.46e9 && r[0] > 2.24e9).map((r) => sid(r[0])),
-            [sid(2.24e9), fond(2.239e9, 'après les glaciations du Paléoprotérozoïque')]);
+    const paleoproterozoique = [fond(2.461e9, 'avant la glaciation globale du Paléoprotérozoïque'), sid(2.46e9), sid(2.426e9),
+        fond(2.425e9, 'instabilité climatique jusqu\'à ~2 250–2 240 Ma (Gumsley et al. 2017), sans température publiée')];
 
     const SNOW = 'Snowball : la moyenne globale est entre la moyenne annuelle des hautes latitudes (~200 K) et celle des '
         + 'tropiques (~250 K) du GCM de Pierrehumbert 2005 (JGR 110:D01111, 100 ppm de CO₂) — aucun proxy de température '
