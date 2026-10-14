@@ -2,9 +2,10 @@
 // Desc: Dessin : grille, glaciations datées (bandes), littérature (série continue −5000 Ma → 2025 avec sa
 //       bande d'incertitude, repères ponctuels en boîtes), courbe du MODÈLE (orange, en escalier), logos d'époque en
 //       bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.3.0
-// Date: 2026-09-24
+// Version 1.3.1
+// Date: 2026-10-14
 // logs :
+//   - v1.3.1: Cryogénien (L.cryogenien, fourchettes publiées des snowballs) à la place de KT2018 sur 717,5 → 632,2 Ma.
 //   - v1.3.0: littérature continue jusqu'à −5000 Ma (ancres hadéennes + KT2018), raccords signalés au survol ;
 //     modèle en ESCALIER (l'état d'un clic tient jusqu'au suivant), survol = clic joué, sa durée, et l'état de
 //     l'intérieur (T potentielle, flux, puissance — API_BILAN/geology/interieur.js).
@@ -78,11 +79,16 @@
         }
 
         // Littérature : une seule série continue de −5000 Ma à 2025, bande d'incertitude comprise.
-        // Hadéen (ancres sourcées) → KT2018 (Précambrien) → PhanDA → Snyder 2016 (Quaternaire, 1 ka) → instrumental.
+        // Hadéen (ancres sourcées) → KT2018 (Précambrien) ⟂ Cryogénien → PhanDA → Snyder 2016 (Quaternaire, 1 ka) → instrumental.
+        // Le Cryogénien (série à part, ses propres sources) prend la place de KT2018 entre sa première et sa dernière date.
         const tSnyder = L.snyder[0][0];
+        const tCryo0 = L.cryogenien[0][0], tCryo1 = L.cryogenien[L.cryogenien.length - 1][0];
+        const KT = () => 'Krissansen-Totton, Arney & Catling 2018, PNAS 115:4105 (2,5–97,5 %) — modèle du cycle du carbone contraint par proxys';
         const SEG = [
             { rows: L.hadeen, src: r => r[4] },
-            { rows: L.kt2018, src: () => 'Krissansen-Totton, Arney & Catling 2018, PNAS 115:4105 (2,5–97,5 %) — modèle du cycle du carbone contraint par proxys' },
+            { rows: L.kt2018.filter(r => r[0] > tCryo0), src: KT },
+            { rows: L.cryogenien, src: r => r[4] },
+            { rows: L.kt2018.filter(r => r[0] < tCryo1), src: KT },
             { rows: L.phanda.filter(r => r[0] > tSnyder), src: () => 'PhanDA (Judd et al. 2024)' },
             { rows: L.snyder, src: () => 'Snyder 2016, Nature 538:226 (2,5–97,5 %)' },
             { rows: L.instrumental, src: () => 'mesures instrumentales (Copernicus, GISTEMP, Jones 1999)' }

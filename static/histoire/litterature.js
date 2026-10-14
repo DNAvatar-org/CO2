@@ -26,9 +26,12 @@
 //         · reperes     : valeurs ponctuelles publiées, avec leur fourchette
 //         · glaciations : intervalles DATÉS des glaciations globales ; aucune température (pas de proxy
 //                         pendant un Snowball, Hoffman et al. 2017)
-// Version 1.2.0
-// Date: 2026-09-24
+//         · cryogenien  : 717,5 → 632,2 Ma, remplace KT2018 : fourchettes des modèles pendant les snowballs (Pierrehumbert
+//                         2005) et à leur sortie (Hoffman 2017 / Yang 2017), fond KT2018 interpolé entre les deux
+// Version 1.3.0
+// Date: 2026-10-14
 // logs :
+//   - v1.3.0: Cryogénien en fourchettes publiées (deux snowballs, serre de sortie, intervalle) au lieu de KT2018.
 //   - v1.2.0: courbe prolongée jusqu'à −5000 Ma : ancres hadéennes (ex-repères en boîtes) + KT2018 sur le
 //     Précambrien (4,0 Ga → 525 Ma, 95 %), au lieu d'un trou avant PhanDA.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -2237,3 +2240,41 @@ window.HISTOIRE.litterature = {
         { t0: 639e6, t1: 635.2e6, label: 'Marinoen', src: 'Hoffman et al. 2017 (début 649,9–639,0 Ma ; fin 635,2 Ma)' }
     ]
 };
+
+// CRYOGÉNIEN (717,5 → 632,2 Ma) : remplace KT2018, qui ignore les glaciations globales. Des FOURCHETTES, pas des valeurs —
+// aucun proxy de température n'existe pendant un snowball (Hoffman et al. 2017) : ce sont les bornes des modèles publiés.
+// Deux glaciations globales datées (U-Pb, Re-Os), séparées par un intervalle non glaciaire de 9 à 19 Ma (Hoffman 2017) :
+//   Sturtien 717 → 659 Ma (58 Ma), Marinoen 639 → 635,2 Ma (≥ 5 Ma). Chacune finit en « serre torride » : le CO₂ volcanique,
+//   accumulé sans pluie pour le lessiver, atteint 0,01–0,1 en fraction de volume (10² PAL à la sortie Marinoenne, Bao et al.
+//   2008), puis l'altération des silicates le ramène au fond en quelques Ma (Le Hir et al. 2009).
+(function () {
+    const L = window.HISTOIRE.litterature, K = L.kt2018;
+    // Fond hors glaciation : KT2018 interpolé à t (la série elle-même, pas une copie de ses valeurs).
+    const fond = (t, quoi) => {
+        let i = 0;
+        while (K[i + 1][0] > t) i++;
+        const a = K[i], b = K[i + 1], w = (a[0] - t) / (a[0] - b[0]);
+        return [t, a[1] + w * (b[1] - a[1]), a[2] + w * (b[2] - a[2]), a[3] + w * (b[3] - a[3]),
+            'Krissansen-Totton et al. 2018 interpolé — ' + quoi];
+    };
+    const SNOW = 'Snowball : la moyenne globale est entre la moyenne annuelle des hautes latitudes (~200 K) et celle des '
+        + 'tropiques (~250 K) du GCM de Pierrehumbert 2005 (JGR 110:D01111, 100 ppm de CO₂) — aucun proxy de température '
+        + 'pendant un snowball (Hoffman et al. 2017, Sci. Adv. 3:e1600983)';
+    const APRES = 'Sortie de snowball : surface de la lentille d\'eau de fonte prédite à 40 °C aux pôles et 60 °C à l\'équateur '
+        + 'sous le CO₂ accumulé (Hoffman et al. 2017, d\'après Yang et al. 2017, Geology 45:615)';
+    const INTER = 'intervalle non glaciaire (9 à 19 Ma, Hoffman et al. 2017) : refroidissement depuis la serre de sortie, '
+        + 'aucune courbe publiée';
+    L.cryogenien = [
+        fond(717.5e6, 'climat froid d\'avant le Sturtien (rupture de Rodinia, Hoffman et al. 2017)'),
+        [717e6, -73, -48, -23, SNOW + ' — Sturtien 717 → 659 Ma'],
+        [659e6, -73, -48, -23, SNOW + ' — Sturtien 717 → 659 Ma'],
+        [659e6, 40, 50, 60, APRES + ' — Sturtien'],
+        fond(656e6, 'retour au fond : l\'altération ramène le CO₂ en quelques Ma (Le Hir et al. 2009, EPSL, '
+            + 'doi:10.1016/j.epsl.2008.11.010) — durée = ordre de grandeur'),
+        fond(639.5e6, INTER),
+        [639e6, -73, -48, -23, SNOW + ' — Marinoen 639 → 635,2 Ma'],
+        [635.2e6, -73, -48, -23, SNOW + ' — Marinoen 639 → 635,2 Ma'],
+        [635.2e6, 40, 50, 60, APRES + ' — Marinoen ; CO₂ ~10² PAL (Δ¹⁷O, Bao et al. 2008, cités par Hoffman 2017)'],
+        fond(632.2e6, 'retour au fond en quelques Ma (Le Hir et al. 2009) — durée = ordre de grandeur')
+    ];
+})();
