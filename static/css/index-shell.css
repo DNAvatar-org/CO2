@@ -1,12 +1,13 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.1.0
+   Version 1.1.1
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
    Logs:
    - Extracted from index.html inline <style>.
    - v1.0.7: .credits-footer-utf8 — lien utf8 coin bas-droit du footer (index.html)
+   - v1.1.1: barre d'onglets pleine largeur (souris traversante), Milankovitch aligné à droite.
    - v1.1.0: onglets dans la zone du graphe spectral (.onglet-graphe, position fixe) ; règles pleine page des panneaux
      scie / bench / milankovitch / histoire retirées (body.*-panel-active n'est plus posé).
    - v1.0.8: #histoire-panel (histoire.html) aligné sur #milankovitch-panel
@@ -17,6 +18,8 @@
     position: fixed;
     top: 0;
     left: 0;
+    right: 0;                /* toute la largeur : Milankovitch à droite toute */
+    pointer-events: none;    /* la barre laisse passer la souris, seuls ses boutons la captent */
     z-index: 1000;
     display: flex;
     gap: 2px;
@@ -26,6 +29,7 @@
     margin: 0;
 }
 .tabs-bar button {
+    pointer-events: auto;
     padding: 4px 14px 6px;
     height: 18px;
     line-height: 1;
@@ -44,6 +48,10 @@
     border-bottom: 1px solid rgb(0, 0, 0);
     border-right: 1px solid rgb(0, 0, 0);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+#tab-milankovitch {
+    margin-left: auto;
+    margin-right: 10px;
 }
 .tabs-bar button:not(.active) {
     color: var(--retro-off, #999);
@@ -131,6 +139,10 @@ body {
     box-sizing: border-box;
     background: rgba(12, 12, 14, 0.96);
     border-radius: 10px;
+}
+/* Graphe spectral sous un autre onglet : invisible et sans survol (onglets_graphe.js, spectreVisible). */
+#visu-panel .plot-container-wrapper.spectre-cache > * {
+    visibility: hidden;
 }
 .onglet-graphe iframe {
     flex: 1 1 auto;

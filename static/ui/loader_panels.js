@@ -171,11 +171,13 @@
 
     // onShow spécifiques aux tabs (factorisation de l'ancien switchTab). Appelés par API_ONGLETS après .active + shell.setCurrentPanel.
     function onShowVisu() {
+        window.ONGLETS_GRAPHE.spectreVisible(true);
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('visu');
         if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('resize'));
         if (window.DATA && window.DATA['🧮'] && typeof window.projectToVisu === 'function') window.projectToVisu(window.DATA);
     }
     function onShowScie() {
+        window.ONGLETS_GRAPHE.spectreVisible(false);
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('scie');
         var iframe = document.getElementById('scie-iframe');
         if (iframe && iframe.contentWindow) {
@@ -195,8 +197,8 @@
         }
     }
     // Milankovitch, Histoire, Bench : iframes autonomes dans la zone du graphe ; rien à synchroniser.
-    function onShowMilankovitch() {}
-    function onShowBench() {}
+    function onShowMilankovitch() { window.ONGLETS_GRAPHE.spectreVisible(false); }
+    function onShowBench() { window.ONGLETS_GRAPHE.spectreVisible(false); }
     window.isVisuPanelActive = function () {
         var visu = document.getElementById('visu-panel');
         return visu && visu.classList.contains('active');

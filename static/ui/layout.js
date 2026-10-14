@@ -1,7 +1,8 @@
 // File: layout.js - Gestion automatique du layout en deux colonnes
 // Desc: Réorganise les divs dans left-column et right-column selon la largeur d'écran
-// Version 1.0.2
-// Date: [June 08, 2025] [HH:MM UTC+1]
+// Version 1.0.3
+// Date: [October 14, 2026]
+// - v1.0.3: plus de maxWidth 900px sur right-column (le graphe prend la place libre).
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -39,13 +40,11 @@
             // Changer la direction du container en colonne
             container.style.flexDirection = 'column';
             rightColumn.style.width = '100%';
-            rightColumn.style.maxWidth = '900px';
         } else {
             // Direction normale en ligne
             container.style.flexDirection = 'row';
             // Réinitialiser la largeur de right-column
             rightColumn.style.width = '';
-            rightColumn.style.maxWidth = '';
         }
         
         // Récupérer toutes les divs AVANT de vider les colonnes

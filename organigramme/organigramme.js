@@ -1,5 +1,7 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.127 frise : date au-dessus du logo ; 🔮 futur 2100 (non cliquable, TIMELINE_FUTUR), borne 2200.
+// Logs: v1.0.126 frise des époques : logo centré, date dessous (plus d'alternance gauche / droite).
 // Logs: v1.0.125 frise des époques : les époques hidden (hystérésis 1a, 1b, 1c, 2) n'ont plus de ligne.
 // Logs: v1.0.124 nuages : nombre de gouttes affiché (ALBEDO.nombreGouttesCm3), « ✈ N /cm³ » ; écart de CCN à 2000 en infobulle.
 // Logs: v1.0.123 « ✈ CCN » = ALBEDO.rapportCCN() sur le DATA de la page (même fonction que le moteur) au lieu de min(0,35 ; sulfate × 500) inventé.
@@ -4547,12 +4549,11 @@ function generateTimelineFromConfig() {
     return dateItem;
   }
 
-  // Chaque époque tient sur UNE ligne : sa date de début, et son logo à droite puis à gauche en
-  // alternance (v1.0.118). Les dates restent des .epoch-date-item-vertical : le curseur de la frise
-  // (timeline.js) ne lit que leur position, jamais celle des boutons.
+  // Chaque époque : sa date de début, son logo centré dessous (v1.0.127 ; avant : logo à droite puis à gauche en
+  // alternance). Les dates restent des .epoch-date-item-vertical : le curseur de la frise (timeline.js) ne lit que leur
+  // position, jamais celle des boutons.
   // Les époques hidden (hystérésis : 1a, 1b, 1c, 2) n'ont pas de ligne : on y arrive par les clics, pas par la frise.
   // Le curseur se place par interpolation des dates entre les lignes restantes (timeline.js, getCursorTopPx).
-  let rang = 0;
   timeline.filter((item) => !item.hidden).forEach((item) => {
     if (item["📅"]) {
       const epochId = item["📅"];
@@ -4584,24 +4585,30 @@ function generateTimelineFromConfig() {
       }
       if (epochLabel) addCustomTooltip(el, epochLabel);
 
-      // Ligne = date de DÉBUT de l'époque (⚫ : -5000 Ma ; 📱 : 2000) + logo, côté alterné.
+      // La date de DÉBUT de l'époque (⚫ : -5000 Ma ; 📱 : 2000), puis son logo dessous.
       const debut = item["▶"];   // ⚫ : 5e9 → « -5000 Ma » ; 📱 : 2000
       const row = createVerticalDateItem(formatDateMa(debut));
-      row.classList.add("epoch-row", rang % 2 ? "logo-gauche" : "logo-droite");
-      if (rang % 2) row.insertBefore(el, row.firstChild); else row.appendChild(el);
+      row.classList.add("epoch-row");
+      row.appendChild(el);
       epochsContainer.appendChild(row);
-      rang++;
     } else {
       // Séparateur explicite (item sans 📅 avec .date)
       epochsContainer.appendChild(createVerticalDateItem(item.date));
     }
   });
 
-  // Borne finale de la frise : toujours 2100 (📱 a ▶=2000, on affiche 2000 entre l’époque précédente et 📱 puis 2100 en bas)
-  if (timeline.length > 0) {
-    const lastScaleYear = 2100;
-    epochsContainer.appendChild(createVerticalDateItem(formatDateMa(lastScaleYear)));
-  }
+  // Futur (window.TIMELINE_FUTUR, configTimeline.js) : sa date (2100) et son logo, NON cliquable (hors modèle), puis la
+  // borne finale de la frise (2200).
+  const F = window.TIMELINE_FUTUR;
+  const futur = document.createElement("span");
+  futur.className = "epoch-btn epoch-futur";
+  futur.textContent = window.getDisplayForPicto(F["📅"]).value;
+  addCustomTooltip(futur, window.CHARS_DESC[F["📅"]]);
+  const rowFutur = createVerticalDateItem(formatDateMa(F["▶"]));
+  rowFutur.classList.add("epoch-row");
+  rowFutur.appendChild(futur);
+  epochsContainer.appendChild(rowFutur);
+  epochsContainer.appendChild(createVerticalDateItem(formatDateMa(F["◀"])));
 }
 
 // Fonction helper pour déterminer si l'époque actuelle est un "corps noir"

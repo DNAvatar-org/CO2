@@ -406,9 +406,8 @@ sup {
     flex: 1 1 auto;
     max-height: var(--visu-panel-max-h);
     width: 100%;
-    min-width: 0; /* Permet de shrink en dessous de 900px quand l'espace manque */
-    max-width: 900px;
-    height: var(--visu-h);
+    min-width: 0; /* Permet de shrink quand l'espace manque */
+    height: var(--visu-h);   /* v-2026-10-14 : plus de max-width 900px — le graphe (et les onglets posés dessus) prend la place libre */
 }
 
 .left-panels {
@@ -552,7 +551,6 @@ h1 {
     gap: 0px;
     width: 100%;
     min-width: 0; /* Indispensable : permet au flex child de shrink pour que le plot resize */
-    max-width: 900px;
     font-family: 'ProggyDotted', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
 }
 
@@ -969,8 +967,11 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 10px 2px;   /* 2px sur les côtés : logo + date tiennent sur une ligne (78px) */
+    padding: 10px 2px;
     overflow: hidden;
+    height: 100%;                       /* lignes réparties sur toute la hauteur de la frise */
+    box-sizing: border-box;
+    justify-content: space-between;
 }
 
 /* Ligne de l’échelle d’époque (date en Ma) — même div que les curseurs pour alignement y0 */
@@ -1031,11 +1032,10 @@ h1 {
     color: var(--retro-off);
     white-space: nowrap;
 }
-/* Frise (organigramme v1.0.118) : une époque = une ligne, logo sur la ligne de SA date de début,
-   alternativement à droite puis à gauche → moitié moins de hauteur. Le curseur ne lit que les dates. */
+/* Frise (organigramme v1.0.127) : une époque = sa date de début, son logo centré dessous. Le curseur ne lit que les dates. */
 .epoch-date-item-vertical.epoch-row {
-    flex-direction: row;
-    gap: 2px;
+    flex-direction: column;
+    gap: 0;
 }
 .epoch-row .epoch-btn,
 .epoch-row .epoch-text {
@@ -1100,6 +1100,15 @@ h1 {
     text-shadow: 0 0 2px rgba(255, 255, 255, 0.9),
         0 0 4px rgba(255, 255, 255, 0.7),
         0 0 6px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 🔮 futur (2100 → 2200) : logo de la frise NON cliquable — ni main, ni lueur au survol ; l'infobulle reste. */
+.epoch-btn.epoch-futur,
+.epoch-btn.epoch-futur:hover,
+.epoch-btn.epoch-futur:not(.selected):hover {
+    cursor: help !important;
+    text-shadow: none !important;
+    filter: grayscale(100%);
 }
 
 /* Pour les images dans les boutons (PNG) : utiliser drop-shadow car text-shadow ne marche pas */
