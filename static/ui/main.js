@@ -1,7 +1,9 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.3.0
+// Version 1.3.2
+// - v1.3.2 (2026-10-15): jauges de fine-tuning retirées de l'organigramme (elles vivent dans le bench).
+// - v1.3.1 (2026-10-15): 🛰 OBSERVATIONS doublé sous le satellite DSCOVR (bas droite, aligné sur DETAILS), état commun.
 // - v1.3.0 (2026-10-13): jauges de fine-tuning séparées dans la visu (une rangée par jauge, data-jauge) ; plus de
 //   jauge unique ATM, plus de trace de débogage des setters.
 // - v1.2.1 (2026-10-12): trace / affectation directe de CLOUD_FRACTION_BASE retirées (clé supprimée : fraction nuageuse mesurée).
@@ -1952,7 +1954,7 @@ function setEpoch(epochName, options) {
     if (legendEquilibre) legendEquilibre.style.color = color_anticipated;
 
     var currentPlotData = window.plotData || plotData;
-    if (currentPlotData) {
+    if (currentPlotData && window.spectreAffiche()) {   // spectre caché (autre onglet) : pas d'anticipation sur le plot
         var tempPlotData = Object.assign({}, currentPlotData, {
             temp_surface: T0_anticipated,
             temp_surface_c: tempC_anticipated
@@ -2543,57 +2545,61 @@ function runMainInit() {
                         window.PLOT.updateSpectralBandIndicatorsGhostOnly();
                     }
                 };
+                /** 🛰 OBSERVATIONS : deux boutons jumeaux, un par satellite — haut (CERES, titre dessus) et bas (DSCOVR,
+                 *  titre dessous, aligné sur DETAILS). Un seul état : window.organigramObservationMetricsVisible. */
                 window.updateObservationIndicator = function () {
                     var fluxObs = document.getElementById('flux-diagram');
                     if (!fluxObs) return;
-                    var wrapObs = document.getElementById('observation-config-wrap');
-                    if (!wrapObs) {
-                        wrapObs = document.createElement('div');
-                        wrapObs.id = 'observation-config-wrap';
-                        wrapObs.className = 'organigram-buttons';
-                        fluxObs.appendChild(wrapObs);
-                    }
-                    wrapObs.classList.add('organigram-buttons');
-                    var obsTitle = wrapObs.querySelector('.organigram-config-heading');
-                    if (!obsTitle) {
-                        obsTitle = document.createElement('span');
-                        obsTitle.className = 'organigram-config-heading organigram-unified-title';
-                        wrapObs.appendChild(obsTitle);
-                    }
-                    obsTitle.classList.add('organigram-unified-title');
-                    obsTitle.textContent = 'OBSERVATIONS';
-                    var obsRow = wrapObs.querySelector('.organigram-config-row');
-                    if (!obsRow) {
-                        obsRow = document.createElement('div');
-                        obsRow.className = 'organigram-config-row';
-                        wrapObs.appendChild(obsRow);
-                    }
-                    var obsBtn = document.getElementById('observation-metrics-toggle');
-                    if (!obsBtn) {
-                        obsBtn = document.createElement('button');
-                        obsBtn.id = 'observation-metrics-toggle';
-                        obsBtn.type = 'button';
-                        obsRow.appendChild(obsBtn);
-                    }
-                    obsBtn.className = 'icon-button organigram-logo' + (window.organigramObservationMetricsVisible ? ' selected' : '');
-                    obsBtn.setAttribute('data-tooltip', 'On/Off données chiffrées');
-                    obsBtn.removeAttribute('aria-label');
-                    obsBtn.removeAttribute('title');
-                    obsBtn.textContent = '🛰';
+                    var obsBtns = [
+                        { wrapId: 'observation-config-wrap', btnId: 'observation-metrics-toggle', titreDessous: false },
+                        { wrapId: 'observation-config-wrap-bas', btnId: 'observation-metrics-toggle-bas', titreDessous: true }
+                    ].map(function (o) {
+                        var wrapObs = document.getElementById(o.wrapId);
+                        if (!wrapObs) {
+                            wrapObs = document.createElement('div');
+                            wrapObs.id = o.wrapId;
+                            wrapObs.className = 'organigram-buttons';
+                            fluxObs.appendChild(wrapObs);
+                        }
+                        var obsTitle = wrapObs.querySelector('.organigram-config-heading');
+                        if (!obsTitle) {
+                            obsTitle = document.createElement('span');
+                            obsTitle.className = 'organigram-config-heading organigram-unified-title';
+                            obsTitle.textContent = 'OBSERVATIONS';
+                        }
+                        var obsRow = wrapObs.querySelector('.organigram-config-row');
+                        if (!obsRow) {
+                            obsRow = document.createElement('div');
+                            obsRow.className = 'organigram-config-row';
+                        }
+                        if (o.titreDessous) wrapObs.append(obsRow, obsTitle);
+                        else wrapObs.append(obsTitle, obsRow);
+                        var obsBtn = document.getElementById(o.btnId);
+                        if (!obsBtn) {
+                            obsBtn = document.createElement('button');
+                            obsBtn.id = o.btnId;
+                            obsBtn.type = 'button';
+                            obsRow.appendChild(obsBtn);
+                        }
+                        obsBtn.className = 'icon-button organigram-logo' + (window.organigramObservationMetricsVisible ? ' selected' : '');
+                        obsBtn.setAttribute('data-tooltip', 'On/Off données chiffrées');
+                        obsBtn.textContent = '🛰';
+                        return obsBtn;
+                    });
                     fluxObs.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
                     window.syncOrganigramObservationPictoHiddenFlags();
                     window.syncPlotContainerOrganigramHideClasses();
-                    if (obsBtn.dataset.boundClick !== '1') {
+                    obsBtns.forEach(function (obsBtn) {
+                        if (obsBtn.dataset.boundClick === '1') return;
                         obsBtn.addEventListener('click', function () {
                             window.organigramObservationMetricsVisible = !window.organigramObservationMetricsVisible;
-                            var fd = document.getElementById('flux-diagram');
-                            if (fd) fd.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
-                            obsBtn.classList.toggle('selected', window.organigramObservationMetricsVisible);
+                            fluxObs.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
+                            obsBtns.forEach(function (b) { b.classList.toggle('selected', window.organigramObservationMetricsVisible); });
                             window.syncOrganigramObservationPictoHiddenFlags();
                             window.syncPlotContainerOrganigramHideClasses();
                         });
                         obsBtn.dataset.boundClick = '1';
-                    }
+                    });
                 };
                 window.updateThreePlayIndicator = function () {
                     var flux = document.getElementById('flux-diagram');
@@ -2637,35 +2643,7 @@ function runMainInit() {
                     var staleAlb = cfgRow.querySelector('.organigram-albedo-percent-badge');
                     if (staleAlb) staleAlb.remove();
 
-                    var flouSlot = document.getElementById('title-flou-scientifique-slot');
-                    var baryFt = flouSlot && flouSlot.querySelector('.organigram-fine-tuning-bary-badge');
-                    if (!baryFt) {
-                        baryFt = flux.querySelector('.organigram-fine-tuning-bary-badge');
-                    }
-                    // Jauges séparées (FINE_TUNING_BOUNDS.jauges) : une rangée par jauge, HTML de l'organigramme.
-                    if (!baryFt) {
-                        baryFt = document.createElement('div');
-                        baryFt.className = 'flux-label buttonData percent-label organigram-fine-tuning-bary-badge';
-                        baryFt.setAttribute('data-id', 'fine_tuning_cloud_bary');
-                        baryFt.innerHTML = window.htmlJaugesFineTuning();
-                    } else if (!baryFt.querySelector('.organigram-bary-jauges')) {
-                        baryFt.innerHTML = window.htmlJaugesFineTuning();
-                    } else {
-                        window.syncJaugesFineTuning(baryFt);
-                    }
-                    baryFt.setAttribute('data-flux-tooltip', 'off');
-                    baryFt.removeAttribute('data-tooltip');
-                    baryFt.removeAttribute('data-alt2sec');
-                    baryFt.removeAttribute('aria-label');
-                    baryFt.removeAttribute('title');
-                    window.syncFineTuningSlotTooltips(flouSlot, null);
-
                     cfgRow.appendChild(el);
-                    if (flouSlot) {
-                        flouSlot.appendChild(baryFt);
-                    } else {
-                        flux.appendChild(baryFt);
-                    }
 
                     var diagram = document.getElementById('flux-diagram');
                     if (diagram) diagram.classList.toggle('hide-organigram-arrows', !window.organigramArrowsVisible);
@@ -2683,29 +2661,6 @@ function runMainInit() {
                 };
                 window.updateThreePlayIndicator();
                 window.updateObservationIndicator();
-                if (document.body.dataset.ftBarySliderBound !== '1') {
-                    // Jauges de fine-tuning : chaque curseur porte sa jauge (data-jauge). `input` met à jour le réglage sans
-                    // calcul ; `change` (relâché) relance le calcul. Propagation : applyTuningFromScie (sync_panels.js).
-                    function jaugeDepuisCurseur(el, run) {
-                        var j = el.dataset.jauge;
-                        var pct = Math.max(0, Math.min(100, Math.round(Number(el.value))));
-                        var bary = {};
-                        bary[j] = pct;
-                        if (window.SYNC_STATE) window.SYNC_STATE.lastRunRequestSource = 'visu:jauge:' + j + (run ? ':change' : ':input');
-                        window.applyTuningFromScie({ baryByGroup: bary, run: run });
-                        document.querySelectorAll('.organigram-bary-pct[data-jauge="' + j + '"]').forEach(function (n) {
-                            n.textContent = pct + '%';
-                        });
-                        window.syncFineTuningSlotTooltips(document.getElementById('title-flou-scientifique-slot'), null);
-                    }
-                    document.body.addEventListener('input', function (e) {
-                        if (e.target.classList.contains('organigram-bary-mini-slider')) jaugeDepuisCurseur(e.target, false);
-                    });
-                    document.body.addEventListener('change', function (e) {
-                        if (e.target.classList.contains('organigram-bary-mini-slider')) jaugeDepuisCurseur(e.target, true);
-                    });
-                    document.body.dataset.ftBarySliderBound = '1';
-                }
 
                 // 🔒 Initialiser la précision de convergence depuis les radio buttons (variable globale unique)
                 const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');

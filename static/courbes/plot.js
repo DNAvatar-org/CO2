@@ -1,7 +1,8 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.97
+// Version 1.0.98
+// - v1.0.98 (2026-10-15): resize de fenêtre ignoré quand le spectre est caché sous un autre onglet (erreur Plotly).
 // Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
 // - v1.0.96: marqueur Terre (spectral-eds-marker--eds) — retiré z-index 0 imposé : le logo redevient au-dessus du tracé Plotly (#plot-container z 2) comme placeSpectralMarker (1001), cohérent avec EDS.
@@ -812,7 +813,10 @@ function debouncedResizeCanvas() {
     resizeTimeout = setTimeout(function resizeEvent() {
         resizeTimeout = null;
         const plotEl = document.getElementById('plot-container');
-        if (plotEl && typeof Plotly !== 'undefined') {
+        // Spectre caché sous un autre onglet (display: none, onglets_graphe.js) : rien à redimensionner ni à redessiner ;
+        // le retour à l'onglet Spectrale redimensionne (onShowVisu).
+        if (plotEl.offsetParent === null) return;
+        if (typeof Plotly !== 'undefined') {
             Plotly.Plots.resize(plotEl);
             // Forcer le relayout des axes en verticale (position/marges recalculées)
             const w = plotEl.offsetWidth;

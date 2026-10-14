@@ -1,6 +1,7 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.84
+// Version 1.0.85
+// - v1.0.85 (2026-10-15): titre visu compact — séparateur retiré ; époque sur 3 lignes à gauche, T/P à droite ; 🛰 jumeau bas (#observation-config-wrap-bas) ; jauges de fine-tuning retirées.
 // - v1.0.84 (2026-10-13): rangées de jauges de fine-tuning séparées (.organigram-bary-jauges / -rangee).
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -201,7 +202,8 @@
 
 /* Panneaux ⚗ DETAILS / 🛰 OBS — mise en page sur les wrappers (#plot-anim-toggle hors de ce jeu de classes) */
 .flux-diagram > #organigram-config-wrap.organigram-buttons,
-.flux-diagram > #observation-config-wrap.organigram-buttons {
+.flux-diagram > #observation-config-wrap.organigram-buttons,
+.flux-diagram > #observation-config-wrap-bas.organigram-buttons {
     z-index: 9999;
     display: flex;
     flex-direction: column;
@@ -227,8 +229,16 @@
     bottom: auto;
     align-items: flex-end;
 }
+/* Jumeau bas (satellite DSCOVR) : même bord bas que DETAILS, même colonne que le 🛰 du haut, titre dessous */
+#observation-config-wrap-bas.organigram-buttons {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    align-items: flex-end;
+}
 #organigram-config-wrap.organigram-buttons .organigram-config-row,
-#observation-config-wrap.organigram-buttons .organigram-config-row {
+#observation-config-wrap.organigram-buttons .organigram-config-row,
+#observation-config-wrap-bas.organigram-buttons .organigram-config-row {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -238,16 +248,19 @@
     justify-content: flex-start;
     gap: 10px;
 }
-#observation-config-wrap.organigram-buttons .organigram-config-heading {
+#observation-config-wrap.organigram-buttons .organigram-config-heading,
+#observation-config-wrap-bas.organigram-buttons .organigram-config-heading {
     text-align: right;
     align-self: flex-end;
 }
-#observation-config-wrap.organigram-buttons .organigram-config-row {
+#observation-config-wrap.organigram-buttons .organigram-config-row,
+#observation-config-wrap-bas.organigram-buttons .organigram-config-row {
     justify-content: flex-end;
     margin-right: 25px;
 }
 #organigram-config-wrap.organigram-buttons #three-play-indicator,
-#observation-config-wrap.organigram-buttons #observation-metrics-toggle {
+#observation-config-wrap.organigram-buttons #observation-metrics-toggle,
+#observation-config-wrap-bas.organigram-buttons #observation-metrics-toggle-bas {
     position: static;
     flex-shrink: 0;
     font-size: 45px;
@@ -313,207 +326,11 @@
     gap: 8px;
     box-sizing: border-box;
 }
-/* Emplacement Flou scientifique (🧩) — rempli par main.js ; infobulles sur ce conteneur (#title-flou-scientifique-slot) */
-.title-flou-scientifique-slot {
-    padding: 8px 0 0 0;
-    cursor: help;
-}
 .title-content-row.title-content-row--flou-et-resultat .synthese_Temp.synthese_Temp-two-cols {
     flex: 1 1 auto;
-    margin-left: auto;
-    width: auto;
+    width: 100%;
     left: 0;
     top: 0;
-    justify-content: flex-end;
-}
-/* Badge barycentre nuages (Flou scientifique) — sans bordure (.flux-label impose 1px ; surcharge ici) ; 2 colonnes : [icônes+jauge] | [%] */
-.flux-label.organigram-fine-tuning-bary-badge {
-    border: none !important;
-    outline: none;
-    box-shadow: none;
-}
-.organigram-fine-tuning-bary-badge {
-    display: flex;
-    gap: 6px;
-    pointer-events: auto;
-    cursor: default;
-    user-select: none;
-}
-/* Colonne gauche : icônes + jauge alignées à gauche (badge hors grille 2 col) */
-.organigram-bary-face {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-}
-/* Flou scientifique : 2 colonnes — jauge sous 🔺🌡️🔻 ; % sous 🧩 ; icônes en justify sur toute la largeur */
-.organigram-bary-face.organigram-bary-face--two-cols {
-    display: grid;
-    grid-template-columns: min-content max-content;
-    align-items: start;
-    column-gap: 6px;
-    width: 100%;
-    max-width: 28ch;
-}
-.organigram-bary-face--two-cols .organigram-bary-col-left {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 2px;
-    min-width: 0;
-}
-.organigram-bary-face--two-cols .organigram-bary-col-left > .organigram-bary-icons {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    box-sizing: border-box;
-}
-.organigram-bary-face--two-cols .organigram-bary-icons-puzzle {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    box-sizing: border-box;
-}
-.organigram-bary-face--two-cols .organigram-bary-line-slider {
-    width: 100%;
-    align-self: stretch;
-}
-.organigram-bary-face--two-cols .organigram-bary-col-right {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-}
-.organigram-bary-icons {
-    font-size: 16px;
-    line-height: 1;
-}
-/* Colonne droite : % seul — clicable (jauge interactive) */
-.organigram-fine-tuning-bary-badge .organigram-bary-pct {
-    color: var(--retro-clicable);
-}
-.organigram-bary-pct {
-    white-space: nowrap;
-    font-size: 11px;
-    line-height: 1;
-    margin: 0;
-    flex-shrink: 0;
-    align-self: center;
-}
-/* Jauges de fine-tuning séparées (2026-10-13) : une rangée par jauge — logo, curseur, %. */
-.organigram-bary-jauges {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.organigram-bary-rangee {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.organigram-fine-tuning-bary-badge .organigram-bary-rangee .organigram-bary-mini-slider {
-    width: 7ch;
-    min-width: 56px;
-}
-.organigram-bary-rangee .organigram-bary-pct {
-    min-width: 4ch;
-    text-align: right;
-}
-/* Sens de la jauge (TUNING.sensJauge) : 🔺 monter réchauffe, 🔻 refroidit, ↕️ ambigu. */
-.organigram-bary-sens {
-    font-size: 10px;
-    line-height: 1;
-    flex-shrink: 0;
-    cursor: help;
-}
-/* Mini-jauge : visible uniquement dans le badge */
-.organigram-bary-mini-slider {
-    display: none;
-}
-.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider {
-    display: block;
-    width: 6ch;
-    min-width: 48px;
-    height: 14px;
-    margin: 0;
-    padding: 0;
-    flex-shrink: 0;
-    pointer-events: auto;
-    cursor: ew-resize;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    box-sizing: border-box;
-}
-/* Jauge dans colonne gauche : pleine largeur de la ligne 🔺🌡️🔻. (fin alignée sous 🔻) */
-.organigram-fine-tuning-bary-badge .organigram-bary-face--two-cols .organigram-bary-mini-slider {
-    width: 100%;
-    min-width: 48px;
-    flex-shrink: 0;
-}
-/* Piste (--retro-clicable) */
-.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-webkit-slider-runnable-track {
-    height: 4px;
-    background: color-mix(in srgb, var(--retro-clicable) 38%, transparent);
-    border-radius: 0;
-}
-.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-moz-range-track {
-    height: 4px;
-    background: color-mix(in srgb, var(--retro-clicable) 38%, transparent);
-    border-radius: 0;
-}
-.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-moz-range-progress {
-    height: 4px;
-    background: color-mix(in srgb, var(--retro-clicable) 72%, transparent);
-    border-radius: 0;
-}
-/* Curseur : losange (carré 45° via clip-path), pas un rond */
-.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 10px;
-    height: 10px;
-    margin-top: -3px;
-    box-sizing: border-box;
-    background: var(--retro-clicable);
-    border: none;
-    border-radius: 0;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    box-shadow: 0 0 2px color-mix(in srgb, var(--retro-clicable) 65%, transparent);
-}
-.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-moz-range-thumb {
-    width: 10px;
-    height: 10px;
-    box-sizing: border-box;
-    background: var(--retro-clicable);
-    border: none;
-    border-radius: 0;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    box-shadow: 0 0 2px color-mix(in srgb, var(--retro-clicable) 65%, transparent);
-}
-.organigram-fine-tuning-bary-badge .organigram-bary-mini-slider::-moz-focus-outer {
-    border: 0;
-}
-/* Panneau alt détaillé nuages : append sur body, position fixed (getBoundingClientRect) */
-.organigram-fine-tuning-alt-panel--fixed {
-    position: fixed;
-    min-width: 180px;
-    max-height: 42vh;
-    overflow-y: auto;
-    padding: 8px 10px;
-    text-align: left;
-    font-size: 10px;
-    line-height: 1.4;
-    color: rgb(220, 235, 255);
-    background: rgba(8, 12, 28, 0.97);
-    border: 1px solid rgb(135, 206, 250);
-    border-radius: 8px;
-    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
-    z-index: 100050;
-    pointer-events: none;
-    box-sizing: border-box;
 }
 .flux-cell {
     position: absolute;
@@ -579,11 +396,9 @@
     cursor: default;
     pointer-events: auto;
 }
-/* Albédo / bary nuages : même avec data-tooltip-initialized, pas d’interaction si ⚗ masque le détail (hide-organigram-arrows) */
+/* Albédo : même avec data-tooltip-initialized, pas d’interaction si ⚗ masque le détail (hide-organigram-arrows) */
 #flux-diagram.hide-organigram-arrows .flux-label[data-id="albedo_percents"][data-tooltip-initialized="true"],
-#flux-diagram.hide-organigram-arrows .flux-label[data-id="fine_tuning_cloud_bary"][data-tooltip-initialized="true"],
-#flux-diagram.hide-organigram-arrows .flux-label[data-id="albedo_percents"][data-tooltip]:not([data-tooltip=""]),
-#flux-diagram.hide-organigram-arrows .flux-label[data-id="fine_tuning_cloud_bary"][data-tooltip]:not([data-tooltip=""]) {
+#flux-diagram.hide-organigram-arrows .flux-label[data-id="albedo_percents"][data-tooltip]:not([data-tooltip=""]) {
     pointer-events: none;
     cursor: default;
 }
@@ -882,15 +697,12 @@
 /* Exceptions : labels interactifs (tooltip) — uniquement si détail PILOTAGE visible (⚗ ON : pas hide-organigram-arrows).
    Sinon visibility:hidden sur .buttonData laisse les hits actifs (spec CSS) + curseur help fantôme. */
 #flux-diagram:not(.hide-organigram-arrows) .flux-label[data-id="albedo_percents"],
-#flux-diagram:not(.hide-organigram-arrows) .flux-label[data-id="fine_tuning_cloud_bary"],
-#flux-diagram:not(.hide-organigram-arrows) .flux-grid-item:has(.flux-label[data-id="albedo_percents"]),
-#flux-diagram:not(.hide-organigram-arrows) .flux-grid-item:has(.flux-label[data-id="fine_tuning_cloud_bary"]) {
+#flux-diagram:not(.hide-organigram-arrows) .flux-grid-item:has(.flux-label[data-id="albedo_percents"]) {
     pointer-events: auto;
     cursor: help;
     user-select: none;
 }
-#flux-diagram:not(.hide-organigram-arrows) .flux-label-container:has(.flux-label[data-id="albedo_percents"]),
-#flux-diagram:not(.hide-organigram-arrows) .flux-label-container:has(.flux-label[data-id="fine_tuning_cloud_bary"]) {
+#flux-diagram:not(.hide-organigram-arrows) .flux-label-container:has(.flux-label[data-id="albedo_percents"]) {
     pointer-events: auto;
     cursor: help;
     user-select: none;
@@ -1073,9 +885,11 @@
     font-family: 'ProggyDotted';
     font-style: italic;
     position: relative;
-    top: 4px;
-    left: 20px;
+    top: 0;
+    left: 0;
     width: 100%;
+    justify-content: flex-start;
+    align-items: flex-start;
     display: flex;
     flex-direction: row;
     gap: 0;
@@ -1085,21 +899,16 @@
     display: flex;
     align-items: flex-start;
     justify-content: flex-start;
-}
-.synthese_Temp-two-cols .synthese_Temp-sep {
-    width: 1px;
-    min-height: 48px;
-    align-self: stretch;
-    background: rgba(255, 255, 255, 0.25);
-    flex-shrink: 0;
+    flex: 0 1 auto;
 }
 .synthese_Temp-two-cols .synthese_Temp-col-right {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-end;
+    justify-content: flex-start;
     gap: 4px;
     padding-left: 10px;
+    margin-left: auto;
 }
 .synthese_Temp .visu_timeline-epoch-section {
     min-height: 0;
@@ -1108,8 +917,7 @@
     width: 100%;
 }
 .synthese_Temp .visu_timeline-epoch-name-wrap {
-    text-align: right;
-    margin-right: 10px;
+    text-align: left;
 }
 
 .visu_epoch-name {
@@ -1117,8 +925,6 @@
     line-height: 1.3;
     display: block;
     margin-top: 0;
-    width: 100%;
-    max-width: 100%;
     /*white-space: nowrap;*/
 }
 
@@ -1127,19 +933,17 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
 }
 .synthese_epoch-start {
     font-size: 10px;
     display: block;
-    margin-top: 2px;
-    width: 100%;
+    margin-top: 1px;
 }
 .synthese_epoch-info {
     font-size: 10px;
     display: block;
-    margin-top: 2px;
-    width: 100%;
+    margin-top: 1px;
 }
 
 /* Bloc actions scénario (visu) : par défaut colonne ; variante .timeline-action-bar-compact = une ligne */

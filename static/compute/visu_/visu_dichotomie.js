@@ -313,7 +313,7 @@ async function simulateRadiativeTransfer() {
         }
     }
 
-    const shouldDisplaySteps = window.showDichotomySteps && window.isVisuPanelActive();
+    const shouldDisplaySteps = window.showDichotomySteps && window.spectreAffiche();
 
     if (shouldDisplaySteps) {
         // Créer un lambda_range temporaire pour afficher les courbes Planck avant la dichotomie
@@ -435,7 +435,7 @@ async function simulateRadiativeTransfer() {
                         return;
                     }
 
-                    const shouldDisplaySteps = window.showDichotomySteps && window.isVisuPanelActive();
+                    const shouldDisplaySteps = window.showDichotomySteps && window.spectreAffiche();
                     DATA['🧮']['🧮🌡️'] = T0_current;
                     window.H2O.calculateH2OParameters();
                     // Toujours recalculer pour avoir les valeurs à jour (le delta doit changer avec T0_current)
@@ -789,7 +789,7 @@ async function simulateRadiativeTransfer() {
                     
                     // Afficher chaque étape de la dichotomie seulement si demandé
                     // 🔒 Vérifier shouldDisplaySteps à chaque itération (peut changer via bouton anim)
-                    const shouldDisplayStepsIter = window.showDichotomySteps && window.isVisuPanelActive();
+                    const shouldDisplayStepsIter = window.showDichotomySteps && window.spectreAffiche();
                     
                     // 🔒 Vérifier conditions de sortie AVANT de dessiner (pour éviter de dessiner inutilement)
                     // 🔒 IMPORTANT : tolerance_current est pour la convergence (delta_equilibre), pas pour delta_aire

@@ -73,8 +73,8 @@ a [role="img"][aria-label]:not([aria-label=""]),
     --visu-top-total: calc(20px + var(--visu-tabs-h) + 5px);
     /* Footer par défaut ; paliers interm/max quand 100vh >= 808/848 (écart 5px) */
     --visu-footer-h: var(--visu-footer-min-h);
-    /* Un peu plus haut : noms d’époque longs (ex. Paléozoïque) sur 2 lignes à 17px */
-    --visu-title-h: 120px;
+    /* Titre compact : h1 puis 2 colonnes (époque 3 lignes à gauche | T/P à droite) — l'organigramme récupère le reste */
+    --visu-title-h: 100px;
     --visu-gap: 5px;
     --visu-reserve: calc(var(--visu-top-total) + var(--visu-footer-h));
     /* Hauteur max du panel visu (pour laisser place au footer) */
@@ -376,8 +376,16 @@ sup {
 
 /* Desktop (min-width 1000px) : container = 670px, titre + flux + timeline/plot */
 @media (min-width: 1000px) {
+    #visu-panel.active {
+        flex: 1 1 auto;
+        max-height: none;
+    }
     #visu-panel .container {
-        height: var(--visu-panel-max-h);
+        height: 100%;
+    }
+    #visu-panel .left-column,
+    #visu-panel .right-column {
+        max-height: none;
     }
     #visu-panel .title-container {
         flex: 0 0 var(--visu-title-h);
@@ -847,7 +855,7 @@ h1 {
     flex-direction: row;
     align-items: flex-start;
     flex-wrap: nowrap;
-    margin-bottom: 20px;
+    margin-bottom: 2px;
 }
 /* Rangée seule dans visu_radiatif : compacter pour laisser la place au bloc époque + données */
 .title-container .title-header-row h1 {

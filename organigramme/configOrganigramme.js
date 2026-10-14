@@ -1,9 +1,10 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.51
-// Date: [October 12, 2026]
+// Version 1.1.52
+// Date: [October 15, 2026]
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // logs :
+// - v1.1.52: espace2 = trou sous le 🛰 jumeau bas (comme espace1 sous le 🛰 haut). Terre et satellites recentrés sur la hauteur réelle de l'organigramme ; Soleil, EVENEMENT, SKIP fixes.
 // - v1.1.51: ACTION_BY_DATE / getActionForDate / getCurrentDateKey retirés : la séquence des clics est la config
 //   de l'API (🕰.order, lue par CLICS). La table ne se déclenchait d'ailleurs jamais sur 🔥 (4510 − k×100 Ma).
 // - v1.1.50: retrait du tooltip « Terre » sur le nœud terre (rollover jugé inutile sur le globe Three.js).
@@ -57,7 +58,16 @@ const TEXTURES_THREEJS = [
 const radius = 40; // Cercles plus petits (par défaut)
 const centerX = 183; // Centre horizontal du diagramme (328px / 2)
 const centerY = 215; // Centre vertical du diagramme (640px / 2)
-const earthCenterY = centerY + 100; // Centre vertical de la Terre et éléments concentriques
+// Terre recentrée dans la hauteur réelle de l'organigramme (panel visu − titre − gap), lue à la construction.
+// Conçu pour 545 px (ancien panel 670 − titre 120 − 5) : Terre à 315, centrée sur [85, H]. Jamais plus haut
+// que 315 (au-dessus, l'atmosphère mord le Soleil). SOLEIL / EVENEMENT / SKIP restent sur earthCenterY0.
+const earthCenterY0 = centerY + 100;
+const EARTH_BAND_TOP = 85;
+const fluxDiagramH = document.getElementById('visu-panel').clientHeight
+    - document.querySelector('#visu-panel .title-container').offsetHeight
+    - parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--visu-gap'));
+const earthCenterY = Math.max(earthCenterY0, (EARTH_BAND_TOP + fluxDiagramH) / 2); // Centre vertical de la Terre et éléments concentriques
+const earthShiftY = earthCenterY - earthCenterY0; // Décalage des éléments liés à la Terre posés sur centerY
 const arrowMarginTop = 10; // Marge en haut des flèches
 const arrowMarginBottom = 15; // Marge en bas des flèches
 // --- nœud.radiation (organigramme.js, setArcClipPath / resolveRadiationArcParams) :
@@ -598,7 +608,7 @@ const nodes = [
     },
 
     {//espace2
-     id: 'espace2', logo: LOGOS.SATELLITE, logoScale: 1.2, x: centerX + 140, y: centerY + 280, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: '', right: [], top: '', bottom: '', tooltip: 'DSCOVR au L1', radiation: null, zIndex: 14 
+     id: 'espace2', logo: '', logoScale: 1.2, x: centerX + 150, y: fluxDiagramH - 49, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: '', right: [], top: '', bottom: '', tooltip: 'DSCOVR au L1', radiation: null, zIndex: 14 
     },
     // EDS : angleInit anime l’ouverture masquée 210→340 (secteur visible 150°→20°), pas la direction. Orienter le faisceau → rotation (explicite ou auto depuis l’arc reemis→terre si rotation omis).
     {//📛 reemis
@@ -624,7 +634,7 @@ const nodes = [
         appendParentSelector: '#flux-diagram',
         top: [{ text: 'EVENEMENT', className: 'organigram-config-heading organigram-unified-title' }],
         x: centerX + circleMiddleRadius*1.5 * Math.cos(Math.PI*5/4),
-        y: earthCenterY + circleMiddleRadius*1.6 * Math.sin(Math.PI*5/4),
+        y: earthCenterY0 + circleMiddleRadius*1.6 * Math.sin(Math.PI*5/4),
         zIndex: 220,
         slotMinWidth: 500,
         slotEventLogoPx: 100,
@@ -639,7 +649,7 @@ const nodes = [
         //x: centerX - 100,
         //y: earthCenterY + circleMiddleRadius * 1.8,
         x: centerX + circleMiddleRadius*1.5 * Math.cos(Math.PI*5/4+0.3),
-        y: earthCenterY + circleMiddleRadius*1.45 * Math.sin(Math.PI*5/4),
+        y: earthCenterY0 + circleMiddleRadius*1.45 * Math.sin(Math.PI*5/4),
         zIndex: 221,
         radius: 15,
         logoScale: 0.8,
@@ -657,7 +667,7 @@ const nodes = [
     },
 
     {//credits-paleomap
-     id: 'credits-paleomap', type: 'button', readOnly: false, logo: '🗺',  x: centerX + 170, y: centerY + 180, radius: 18, logoScale: 1.1, fillColor: 'rgba(30,30,30,0.55)', strokeColor: 'rgba(180,180,180,0.4)', strokeSize: 1, left: [], right: [], top: [{ text: 'PALEOMAP'}], bottom: [{ text: 'C.R. Scotese'}], tooltip: 'Crédits cartographiques', zIndex: 200 
+     id: 'credits-paleomap', type: 'button', readOnly: false, logo: '🗺',  x: centerX + 170, y: centerY + 180 + earthShiftY, radius: 18, logoScale: 1.1, fillColor: 'rgba(30,30,30,0.55)', strokeColor: 'rgba(180,180,180,0.4)', strokeSize: 1, left: [], right: [], top: [{ text: 'PALEOMAP'}], bottom: [{ text: 'C.R. Scotese'}], tooltip: 'Crédits cartographiques', zIndex: 200 
     }
 ];
 

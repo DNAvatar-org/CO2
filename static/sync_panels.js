@@ -1,6 +1,10 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.2.1
+// Version 1.2.2
+// - v1.2.2 (2026-10-15): spectre caché (autre onglet) = aucun appel au plot, bandeau titre seul (projectSynthese).
+// - v1.2.2 (2026-10-15): window.BENCH branché (debutCalcul / surPas / apresCalcul) — onglet Bench piloté par l'index.
+// - v1.2.2 (2026-10-15): run:true de l'iframe scie ignoré tant que l'hôte n'a pas fini son init (SYNC_STATE.hotePret) —
+//   il plantait sur COMPUTE_LOADER et laissait calculationInProgress bloqué ; le 1er calcul de l'init s'en charge.
 // - v1.2.1 (2026-10-13): journaux sync:tuning affichent tout baryByGroup (jauges séparées).
 // - v1.2.0: (2026-10-12) l'état d'époque n'a qu'un écrivain, CLICS (via setEpoch / events.js jouerClic) :
 //   applyStateToData et applyToVisu, qui reposaient l'époque et refaisaient ⏳ = ticTime × pas (repli 50 Ma !),
@@ -81,7 +85,23 @@
         window.TUNING.applyTuningPayload(payload);
     }
 
+    /** Bandeau titre (T°, pression, couleur de la T°) : à chaque calcul, que le spectre soit affiché ou non. */
+    function projectSynthese(DATA) {
+        var tempC = DATA['🧮']['🧮🌡️'] - window.CONST.KELVIN_TO_CELSIUS;
+        document.getElementById('temp-surface-synthese').textContent = tempC.toFixed(1);
+        var P_atm = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
+        var pressureValEl = document.getElementById('pressure-surface-synthese');
+        if (pressureValEl) pressureValEl.textContent = (P_atm != null && Number.isFinite(P_atm)) ? '🎈 ' + P_atm.toFixed(2) + ' atm' : '🎈 -- atm';
+        // - updateBlackBodyColor : met à jour la couleur globale des corps noirs.
+        // - .synthese_Temp : couleur T° sol (sinon reste bloqué sur anticipation ou fallback cyan).
+        var newColor = window.PLOT.tempSurfaceToColor(tempC);
+        window.updateBlackBodyColor(newColor);
+        document.querySelector('.synthese_Temp').style.setProperty('color', newColor, 'important');
+    }
+
+    /** Spectre (plot + canvas + légende) : seulement s'il est affiché (spectreAffiche) ; sinon aucun appel au plot. */
     function projectToVisu(DATA) {
+        projectSynthese(DATA);
         if (!window.plotData) {
             window.plotData = { lambda_range: null, current: null, co2_ppm: 0, ch4_ppm: 0, temp_surface: 0 };
         }
@@ -89,10 +109,6 @@
         var spectral = window.RADIATIVE.getSpectralResultFromDATA();
         var T0 = DATA['🧮']['🧮🌡️'];
         var tempC = T0 - CONST.KELVIN_TO_CELSIUS;
-        document.getElementById('temp-surface-synthese').textContent = tempC.toFixed(1);
-        var P_atm = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
-        var pressureValEl = document.getElementById('pressure-surface-synthese');
-        if (pressureValEl) pressureValEl.textContent = (P_atm != null && Number.isFinite(P_atm)) ? '🎈 ' + P_atm.toFixed(2) + ' atm' : '🎈 -- atm';
         // ppm CO2/CH4 = fraction molaire × 1e6 (co2KgToFraction/ch4KgToFraction), pas fraction massique × 1e6
         var atm_kg = DATA['⚖️']['⚖️🫧'];
         var M_air = DATA['🫧']['🧪'];
@@ -125,14 +141,7 @@
         window.PLOT.invalidateSpectralYLuminanceCache();
         window.RUNTIME_STATE.spectralConverged = true;
         window.RUNTIME_STATE.spectralPrecisionTarget = 'max';
-        // v1.1.40: resync couleur T° courante (hors chemin setEpoch anticipé).
-        // - updateBlackBodyColor : met à jour la couleur globale des corps noirs (plot).
-        // - .synthese_Temp : title col-left/right → couleur T° sol (sinon reste bloqué sur anticipation ou fallback cyan).
-        // - updateLegend : regénère SVG strokes + textes équilibre avec la nouvelle couleur (sinon timeClic → plot recolore mais légende reste figée).
-        var newColor = window.PLOT.tempSurfaceToColor(tempC);
-        window.updateBlackBodyColor(newColor);
-        var syntheseTempEl = document.querySelector('.synthese_Temp');
-        if (syntheseTempEl) syntheseTempEl.style.setProperty('color', newColor, 'important');
+        // updateLegend : regénère SVG strokes + textes équilibre avec la nouvelle couleur (projectSynthese).
         // Dernier cycle : toujours mettre à jour plot + spectre (pas de garde FPS)
         window.PLOT.updatePlot(window.plotData);
         window.updateLegend(window.plotData);
@@ -185,12 +194,16 @@
      */
     function onEngineEvent(event, payload) {
         if (event === 'convergenceStart') { window.shell.dataInput({ type: 'clearConvergenceTrace' }); return; }
-        if (event === 'convergenceStep') { window.shell.dataInput({ type: 'convergenceStep', data: payload }); return; }
+        if (event === 'convergenceStep') {
+            window.BENCH.surPas(payload);   // onglet Bench : chemin de convergence de la ligne (bench_pilote.js)
+            window.shell.dataInput({ type: 'convergenceStep', data: payload });
+            return;
+        }
         if (event === 'convergenceRefresh') { window.shell.dataInput({ type: 'displayConvergence' }); return; }
         if (event !== 'cycleCalcul') return;   // ProcessFinished : traité après run()
         var D = window.DATA;
         window.RUNTIME_STATE.h2oVaporPercent = Math.min(100, Math.max(0, D['💧']['🍰🫧💧'] * 100));
-        if (!(D['🔘']['🔘🎞'] && window.isVisuPanelActive())) {
+        if (!(D['🔘']['🔘🎞'] && window.spectreAffiche())) {
             IO_LISTENER.emit('compute:progress', payload);   // → loader_panels : étiquettes (cycleCalcul)
             return;
         }
@@ -204,6 +217,8 @@
             IO_LISTENER.emit('compute:progress', payload);
         });
     }
+
+    window.projectToVisu = projectToVisu;   // retour à l'onglet Spectrale : redessin (loader_panels.onShowVisu)
 
     window.runComputeInParent = function () {
         if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] runComputeInParent epoch=' + window.DATA['📜']['🗿'] + ' 📿💫=' + window.DATA['📜']['📿💫'] + ' locked=' + window.SYNC_STATE.calculationInProgress);
@@ -219,6 +234,7 @@
         // Rendre 📜 cohérent en premier (📿☄️, 🔺⚖️💧, passage d'époque) avant le calcul.
         window.COMPUTE.getEpochDateConfig();
         var epochId = DATA['📜']['🗿'];
+        window.BENCH.debutCalcul();   // onglet Bench : ligne « en cours » (rien hors banc)
         window.COMPUTE_LOADER.show();
         function doCompute() {
             window._logStep('[4] calculs (effectif)');
@@ -228,22 +244,23 @@
             _sv._lastDrawnBins = 0;
             _sv._lastFinalSig = null;
             // Projection UI : dépend du panel actif, pas du calcul.
-            var shouldProjectToVisu = window.isVisuPanelActive();
+            var shouldProjectToVisu = window.spectreAffiche();
             // UN point d'entrée moteur (API_BILAN/api.js) : époque, mode, masses, T initiale, init, convergence.
             return window.getBilanRadiatifAPI(onEngineEvent).run({ epochId: epochId, animEnabled: DATA['🔘']['🔘🎞'] }).then(function (result) {
             window.SYNC_STATE.calculationInProgress = false;
             window._logStepEnd(); // ferme groupe [4] effectif
             window._logStep('[4] calculs (retour)');
             // null = interrompu (ABORT_COMPUTE : un run plus récent a demandé l'abandon).
-            if (result === null) return null;
+            if (result === null) { window.BENCH.apresCalcul(null); return null; }
             // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
             IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: result });
             if (shouldProjectToVisu) projectToVisu(window.DATA);
-            // Sans dessin visu, émettre l'ack de fin pour libérer l'UI (loader rouge « calcul en cours », Three.js).
-            if (!shouldProjectToVisu) IO_LISTENER.emit('flux:lastDrawn');
+            // Spectre caché (autre onglet) : le bandeau titre seulement ; ack de fin pour libérer l'UI (loader, Three.js).
+            if (!shouldProjectToVisu) { projectSynthese(window.DATA); IO_LISTENER.emit('flux:lastDrawn'); }
             window.ORG.updateFluxLabels('ProcessFinished');
             window.updateTimeline();
             window.shell.dataInput({ type: 'compute:done', DATA: window.DATA });
+            window.BENCH.apresCalcul(result);   // onglet Bench : ligne envoyée, puis clic suivant selon le flag
             return result;
         }, function (e) {
             window.SYNC_STATE.calculationInProgress = false;
@@ -297,7 +314,9 @@
         window.applyTuningFromScie = function (p) {
             applyTuningPayload(p);
             broadcastTuningToIframes(p); // v1.1.44 : scie + bench + hysteresis
-            if (p.run === true) window.runComputeInParent();
+            // L'iframe scie demande le 1er calcul dès qu'elle est chargée, parfois avant la fin de l'init de l'index :
+            // le réglage est pris, et c'est le 1er calcul de l'init (loader_panels.scheduleInitialCompute) qui calcule.
+            if (p.run === true && window.SYNC_STATE.hotePret) window.runComputeInParent();
         };
 
         if (window.shell) {
@@ -311,8 +330,7 @@
             window.SYNC_STATE.lastRunRequestSource = 'scie:message:sync:tuning';
             if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] message sync:tuning run=' + p.run + ' bary=' + JSON.stringify(p.baryByGroup));
             if (typeof window.pdTrace === 'function') window.pdTrace('onMessageSyncTuning', 'sync_panels.js', 'run=' + p.run + ' bary=' + JSON.stringify(p.baryByGroup));
-            if (window.shell && window.shell.applyTuningFromScie) window.shell.applyTuningFromScie(p);
-            else { applyTuningPayload(p); broadcastTuningToIframes(p); if (p.run === true) window.runComputeInParent(); }
+            window.applyTuningFromScie(p);
         });
 
         var _lastSyncRunSig = null;

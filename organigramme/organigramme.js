@@ -2264,17 +2264,11 @@ function createCell(
       // [1,2] = Bottom (bas)
       if (col === 1 && row === 2 && bottom && bottom.length > 0) {
         const labelContainer = document.createElement("div");
-        const hasFineTuningBary = bottom.some(
-          (labelData) => getLabelDataId(labelData) === "fine_tuning_cloud_bary",
-        );
-        // fine_tuning_cloud_bary: flux-label-container-top pour aligner le % en haut de la case
         labelContainer.className =
-          hasFineTuningBary
-            ? "flux-label-container flux-label-container-top"
-            : "flux-label-container " +
-              (bottom.length === 2
-                ? "flux-label-container-top"
-                : "flux-label-container-center");
+          "flux-label-container " +
+          (bottom.length === 2
+            ? "flux-label-container-top"
+            : "flux-label-container-center");
 
         bottom.forEach((labelData) => {
           const text = getLabelText(labelData);
@@ -2290,14 +2284,6 @@ function createCell(
             label.classList.add(...labelData.className.trim().split(/\s+/));
           }
           if (dataId) label.setAttribute("data-id", dataId);
-          if (dataId === "fine_tuning_cloud_bary") {
-            label.setAttribute("data-flux-tooltip", "off");
-            label.removeAttribute("data-tooltip");
-            label.removeAttribute("data-alt2sec");
-            label.removeAttribute("aria-label");
-            label.removeAttribute("title");
-            label.style.marginTop = "6px";
-          }
 
           // Si c'est un bouton, ajouter la classe buttonData
           if (nodeId) {
@@ -2315,9 +2301,7 @@ function createCell(
           label.style.position = "relative"; // Créer un stacking context
           label.style.zIndex = Z_NODE_INTERNAL.LABEL + 1; // Encore plus haut que le container
           labelContainer.appendChild(label);
-          if ((dataId === "fine_tuning_cloud_bary")) {
-            syncFineTuningSlotTooltips(null, null);
-          } else if (!label.hasAttribute("data-tooltip-initialized")) {
+          if (!label.hasAttribute("data-tooltip-initialized")) {
             window.addTooltipFromAttribute(label);
             label.setAttribute("data-tooltip-initialized", "true");
           }
@@ -4705,192 +4689,6 @@ function computeAtmosphericHaloRgb(D) {
   return [Math.round(r), Math.round(g), Math.round(b)];
 }
 
-// Picto par cible de fine-tuning (FINE_TUNING_BOUNDS.targets) — une entrée par clé.
-var _finetuningAltPicto = {
-  CDNC_OCEAN_CM3: "💧",
-  R_EFF_PLUIE: "☔",
-  F_BAS: "☁️",
-  F_HAUT: "🌥",
-  SULFATE_CCN_EXPONENT: "SO₄",
-  H2O_SURFACE_RH_01: "💦",
-  seaIceTransitionRangeK: "🌊❄"
-};
-
-function _finetuningDisplayNote(t) {
-  return t.note;
-}
-
-function _finetuningFormatRangeEndpoint(key, val) {
-  if (key === "seaIceTransitionRangeK") return String(Math.round(Number(val) * 1000));
-  if (key === "R_EFF_PLUIE") return (Number(val) * 1e6).toFixed(1) + " µm";
-  if (key === "CDNC_OCEAN_CM3") return Number(val).toFixed(0);
-  if (key === "co2OceanRatioRef") return Number(val).toFixed(1);
-  return Number(val).toFixed(2);
-}
-
-function _finetuningRangePair(minVal, maxVal, formatKey) {
-  var fk = formatKey || "generic";
-  return (
-    "[" +
-    _finetuningFormatRangeEndpoint(fk, minVal) +
-    " , " +
-    _finetuningFormatRangeEndpoint(fk, maxVal) +
-    "]"
-  );
-}
-
-function _finetuningRangeStrFromTarget(t) {
-  if (!t || t.min === undefined || t.max === undefined) return "";
-  return _finetuningRangePair(t.min, t.max, t.key);
-}
-
-function _finetuningLiveLine(picto, rangeStr, keyLabel, liveStr, note) {
-  return (
-    picto +
-    " " +
-    (rangeStr ? rangeStr + " " : "") +
-    keyLabel +
-    "=" +
-    liveStr +
-    " — " +
-    note
-  );
-}
-
-function _finetuningLiveLineFromTarget(t, picto, keyLabelOverride) {
-  var liveStr = _finetuningLiveFromTarget(t);
-  if (liveStr == null) return null;
-  var keyLabel =
-    keyLabelOverride || t.key;
-  return _finetuningLiveLine(
-    picto,
-    _finetuningRangeStrFromTarget(t),
-    keyLabel,
-    liveStr,
-    _finetuningDisplayNote(t)
-  );
-}
-
-function _finetuningFormatLiveValue(key, rawVal) {
-  if (key === "R_EFF_PLUIE") return (Number(rawVal) * 1e6).toFixed(2) + " µm";
-  if (key === "CDNC_OCEAN_CM3") return Number(rawVal).toFixed(0) + " cm⁻³";
-  if (key === "seaIceTransitionRangeK") {
-    var k = Number(rawVal);
-    var ui = Math.round(k * 1000);
-    return ui + " (moteur " + k.toFixed(2) + " K)";
-  }
-  if (key === "co2OceanRatioRef") return Number(rawVal).toFixed(1);
-  return Number(rawVal).toFixed(2);
-}
-
-function _finetuningLiveFromTarget(t) {
-  var T = window.DATA["🎚️"];
-  if (!T || !T[t.group]) return null;
-  var raw = T[t.group][t.key];
-  if (raw === undefined) return null;
-  return _finetuningFormatLiveValue(t.key, raw);
-}
-
-function getFineTuningShortTooltip(pctStr) {
-  return "Flou scientifique";
-}
-
-/** Désactive les infobulles sur le badge (territoire = #title-flou-scientifique-slot). */
-function clearFineTuningBadgeTooltips(badgeEl) {
-  if (!badgeEl) return;
-  badgeEl.setAttribute("data-flux-tooltip", "off");
-  badgeEl.removeAttribute("data-tooltip");
-  badgeEl.removeAttribute("data-alt2sec");
-  badgeEl.removeAttribute("aria-label");
-  badgeEl.removeAttribute("title");
-  badgeEl.removeAttribute("data-tooltip-initialized");
-  var slider = badgeEl.querySelector(".organigram-bary-mini-slider");
-  if (slider) slider.removeAttribute("aria-label");
-}
-
-/** alt0sec = data-tooltip ; alt2sec = data-alt2sec sur #title-flou-scientifique-slot. pctStr = % jauge ATM (optionnel). */
-function syncFineTuningSlotTooltips(slotEl, pctStr) {
-  var slot =
-    slotEl ||
-    (typeof document !== "undefined"
-      ? document.getElementById("title-flou-scientifique-slot")
-      : null);
-  if (!slot) return;
-  var shortTip = getFineTuningShortTooltip(pctStr);
-  var detail = getFineTuningDetailAlt(pctStr != null ? pctStr : null, true);
-  slot.removeAttribute("data-flux-tooltip");
-  slot.setAttribute("data-tooltip", shortTip);
-  slot.setAttribute("data-alt2sec", detail);
-  slot.setAttribute("aria-label", detail);
-  slot.removeAttribute("title");
-  if (
-    typeof window.addTooltipFromAttribute === "function" &&
-    !slot.hasAttribute("data-tooltip-initialized")
-  ) {
-    window.addTooltipFromAttribute(slot);
-    slot.setAttribute("data-tooltip-initialized", "true");
-  }
-  if (typeof document !== "undefined") {
-    document
-      .querySelectorAll('[data-id="fine_tuning_cloud_bary"]')
-      .forEach(clearFineTuningBadgeTooltips);
-  }
-}
-
-/** @deprecated alias — préférer syncFineTuningSlotTooltips */
-function syncFineTuningBadgeTooltips(labelEl, pctStr) {
-  clearFineTuningBadgeTooltips(labelEl);
-  syncFineTuningSlotTooltips(null, pctStr);
-}
-
-/** Détail des jauges (alt2sec du titre « Flou scientifique ») : une ligne par jauge, puis ses cibles en valeurs live. */
-function getFineTuningDetailAlt(pctStr, detailOnly) {
-  const T = window.DATA["🎚️"];
-  const F = window.FINE_TUNING_BOUNDS;
-  const parts = [];
-  Object.keys(F.jauges).forEach(function (j, k) {
-    const sens = window.TUNING.sensJauge(j);
-    if (k > 0) parts.push("");   // une ligne vide entre deux jauges
-    parts.push(F.jauges[j].logo + " " + T.baryByGroup[j] + " % " + sens.logo + " — " + F.jauges[j].titre + " (" + sens.titre + ")");
-    F.targets.forEach(function (t) {
-      if (t.baryGroup !== j) return;
-      // Cibles de la jauge en retrait : espaces cadratins (U+2003), que le rendu de l'infobulle ne fusionne pas.
-      parts.push("\u2003\u2003" + window.TUNING.sensCible(t).logo + " " + _finetuningLiveLineFromTarget(t, _finetuningAltPicto[t.key]));
-    });
-  });
-  return parts.join("\n");
-}
-
-/** HTML des jauges du titre « Flou scientifique » : une rangée par jauge (logo, curseur, %), sans explication. */
-function htmlJaugesFineTuning() {
-  const T = window.DATA["🎚️"];
-  const F = window.FINE_TUNING_BOUNDS;
-  return '<div class="organigram-bary-jauges">' + Object.keys(F.jauges).map(function (j) {
-    const pct = Math.round(T.baryByGroup[j]);
-    return '<div class="organigram-bary-rangee">' +
-      '<span class="organigram-bary-icons">' + F.jauges[j].logo + '</span>' +
-      '<input class="organigram-bary-mini-slider" data-jauge="' + j + '" type="range" min="0" max="100" step="1" value="' + pct + '">' +
-      '<span class="organigram-bary-pct" data-jauge="' + j + '">' + pct + '%</span>' +
-      '<span class="organigram-bary-sens" title="' + window.TUNING.sensJauge(j).titre + '">' + window.TUNING.sensJauge(j).logo + '</span></div>';
-  }).join("") + "</div>";
-}
-window.htmlJaugesFineTuning = htmlJaugesFineTuning;
-
-/** Recale curseurs et % sur DATA['🎚️'].baryByGroup (sans recréer le HTML : un curseur saisi reste attaché). */
-function syncJaugesFineTuning(conteneur) {
-  const bg = window.DATA["🎚️"].baryByGroup;
-  conteneur.querySelectorAll(".organigram-bary-mini-slider[data-jauge]").forEach(function (sl) {
-    sl.value = String(Math.round(bg[sl.dataset.jauge]));
-  });
-  conteneur.querySelectorAll(".organigram-bary-pct[data-jauge]").forEach(function (el) {
-    el.textContent = Math.round(bg[el.dataset.jauge]) + "%";
-  });
-}
-window.syncJaugesFineTuning = syncJaugesFineTuning;
-
-window.getFineTuningDetailAlt = getFineTuningDetailAlt;
-window.syncFineTuningSlotTooltips = syncFineTuningSlotTooltips;
-window.syncFineTuningBadgeTooltips = syncFineTuningBadgeTooltips;
 
 // Helpers de formatage/écriture labels extraits au scope du module : ORG.updateLabel doit être disponible dès le chargement pour FluxManager (setSolarIntensity, setGeothermalFlux...), avant le premier cycle de calcul (ProcessFinished). Ils ne dépendent que des arguments et de globals window.* (configOrganigramme, etc.) — pas du closure de updateFluxLabels.
 const detectValueType = (text) => {
@@ -5175,28 +4973,16 @@ const formatValueFromTemplate = (dataId, value) => {
   return result;
 };
 
-const FINE_TUNING_TOOLTIP_SHORT = getFineTuningShortTooltip("100");
-
 const updateLabel = (dataId, value, format = "auto") => {
   const labels = document.querySelectorAll(`[data-id="${dataId}"]`);
   labels.forEach((label) => {
     let formattedValue;
-    if (dataId === "fine_tuning_cloud_bary") {
-      // Jauges séparées (FINE_TUNING_BOUNDS.jauges) : la valeur passée est ignorée, DATA['🎚️'].baryByGroup fait foi.
-      if (label.querySelector(".organigram-bary-jauges")) syncJaugesFineTuning(label);
-      else label.innerHTML = htmlJaugesFineTuning();
-      formattedValue = "";
-      syncFineTuningSlotTooltips(null, null);
-      clearFineTuningBadgeTooltips(label);
-      label.removeAttribute("title");
+    if (format === "text" && typeof value === "string") {
+      formattedValue = value;
     } else {
-      if (format === "text" && typeof value === "string") {
-        formattedValue = value;
-      } else {
-        formattedValue = formatValueFromTemplate(dataId, value);
-      }
-      label.innerHTML = formattedValue;
+      formattedValue = formatValueFromTemplate(dataId, value);
     }
+    label.innerHTML = formattedValue;
     const valueType = detectValueType(formattedValue);
     label.classList.remove(
       "watt-per-m2",
@@ -5337,7 +5123,7 @@ ORG.updateFluxLabels = function (eventId) {
     default:
       return;
   }
-  // Helpers detectValueType / formatNumberWithScientific / formatValueFromTemplate / FINE_TUNING_TOOLTIP_SHORT / updateLabel définis au scope du module (cf. au-dessus de ORG.updateFluxLabels) pour être disponibles dès le chargement (FluxManager.updateAllFluxes peut être appelé avant le premier ProcessFinished).
+  // Helpers detectValueType / formatNumberWithScientific / formatValueFromTemplate / updateLabel définis au scope du module (cf. au-dessus de ORG.updateFluxLabels) pour être disponibles dès le chargement (FluxManager.updateAllFluxes peut être appelé avant le premier ProcessFinished).
 
 
   // Déléguer la mise à jour des flux d'entrée (Soleil, Noyau) au FluxManager
@@ -6200,7 +5986,8 @@ ORG.updateFluxLabels = function (eventId) {
 
   // Mettre à jour l'axe altitude du plot UNIQUEMENT à la fin (ProcessFinished).
   // Pendant la convergence (cycleCalcul), ne pas toucher pour éviter que la barre bouge.
-  if (eventId === "ProcessFinished") {
+  // Spectre caché (autre onglet) : pas d'appel au plot, onShowVisu redessine au retour.
+  if (eventId === "ProcessFinished" && window.spectreAffiche()) {
     window.PLOT.updatePlotAltitudeAxis(atm_height_km);
   }
 
@@ -6270,9 +6057,6 @@ ORG.updateFluxLabels = function (eventId) {
   const passing_albedo_percent = (1 - albedo_num) * 100;
   // S'assurer que le résultat est correct (0% si albedo = 1, 100% si albedo = 0)
   updateLabel("passing_albedo_percent", passing_albedo_percent);
-
-  // Jauges de fine-tuning (FINE_TUNING_BOUNDS.jauges) : recalées sur DATA['🎚️'].baryByGroup.
-  updateLabel("fine_tuning_cloud_bary", null);
 
   // Ne plus forcer automatiquement le bouton albedo en off/gris
   // L'utilisateur contrôle l'état du bouton manuellement, même si la valeur est à 0%

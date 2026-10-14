@@ -1,6 +1,8 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.3.0
+// Version 1.3.1
+// Logs: v1.3.1: spectreAffiche() remplace isVisuPanelActive (spectre caché = pas de plot).
+// Logs: v1.3.1: bench_pilote.js chargé (onglet Bench piloté par l'index). SYNC_STATE.hotePret posé avant le 1er calcul (sync_panels n'accepte un run de la scie qu'après).
 // Logs: v1.3.0: Spectrale (ex-Visuel) toujours visible ; les autres onglets dans la zone du graphe (onglets_graphe.js),
 //   plus de body.scie-panel-active / bench-panel-active.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -26,6 +28,7 @@
         before: [
             'static/ui/api_onglets.js',
             'static/ui/onglets_graphe.js',
+            'static/ui/bench_pilote.js',   // window.BENCH : lu sans test par sync_panels (runComputeInParent)
             'static/debug.js'
         ],
         after: [
@@ -174,7 +177,7 @@
         window.ONGLETS_GRAPHE.spectreVisible(true);
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('visu');
         if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('resize'));
-        if (window.DATA && window.DATA['🧮'] && typeof window.projectToVisu === 'function') window.projectToVisu(window.DATA);
+        if (window.DATA['🧮']['🧮🌡️'] !== undefined) window.projectToVisu(window.DATA);
     }
     function onShowScie() {
         window.ONGLETS_GRAPHE.spectreVisible(false);
@@ -199,9 +202,10 @@
     // Milankovitch, Histoire, Bench : iframes autonomes dans la zone du graphe ; rien à synchroniser.
     function onShowMilankovitch() { window.ONGLETS_GRAPHE.spectreVisible(false); }
     function onShowBench() { window.ONGLETS_GRAPHE.spectreVisible(false); }
-    window.isVisuPanelActive = function () {
-        var visu = document.getElementById('visu-panel');
-        return visu && visu.classList.contains('active');
+    /** Le spectre est-il à l'écran ? Non sous un autre onglet (spectre-cache, onglets_graphe.js) : alors aucun appel
+     *  au plot (courbes, canvas, dégradé, légende) — onShowVisu redessine au retour. */
+    window.spectreAffiche = function () {
+        return !document.querySelector('#visu-panel .plot-container-wrapper').classList.contains('spectre-cache');
     };
 
     function initAfterLoad() {
@@ -318,7 +322,7 @@
                  * ============================================================
                  */
                 window.COMPUTE_LOADER.avanceTic();
-                if (window.isVisuPanelActive() && window.DATA['🔘']['🔘🎞'] && payload.result) {
+                if (window.spectreAffiche() && window.DATA['🔘']['🔘🎞'] && payload.result) {
                     window.VISU_DICHO.displayDichotomyStep(payload.CO2_fraction, payload.T0, payload.result, payload.iteration, payload.isInitial);
                     return;
                 }
@@ -402,6 +406,7 @@
             scheduleInitialCompute();
         }
         // Garantir [4] après [3] : déclencher le 1er calcul même si l'iframe n'a pas encore émis load (évite de le rater)
+        window.SYNC_STATE.hotePret = true;
         scheduleInitialCompute();
         initTipeeeRollover();
         // Forcer resize au chargement : layout, plot et flux se calibrent correctement
