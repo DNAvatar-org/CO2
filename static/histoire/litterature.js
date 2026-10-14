@@ -31,9 +31,11 @@
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
 //                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
 //                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
-// Version 1.8.0
-// Date: 2026-10-14
+// Version 1.9.0
+// Date: 2026-10-15
 // logs :
+//   - v1.9.0: L.segments / L.serie / L.a(t) : la courbe cyan en un seul endroit — Histoire la trace, le moteur y lit la
+//     graine 🌡️🧮 et la fourchette tC du banc.
 //   - v1.8.0: bornes extrêmes resserrées : Hadéen 4,49–4,41 Ga borne basse 0 °C (eau libre, Zahnle 2010 ; Wilde 2001) au lieu
 //     de −53 ; snowball paléoprotérozoïque sur 2 460–2 426 Ma seulement (Gumsley 2017), plus sur toute l'instabilité.
 //   - v1.7.0: ⚫ = corps noir + glace des ☄️ (équation sur la séquence de ⚫), bond vertical à la collision ; ancre
@@ -2355,4 +2357,40 @@ window.HISTOIRE.litterature.unSigma = (rows, z) => rows.map((r) => [r[0], r[2] -
     const dans = (t) => fenetres.some((w) => t <= w[0][0] && t >= w[w.length - 1][0]);
     L.precambrien = K.filter((r) => !dans(r[0])).map((r) => [r[0], r[1], r[2], r[3], KT])
         .concat(...fenetres).sort((a, b) => b[0] - a[0]);
+})();
+
+// LA COURBE CYAN, une seule fois : les sources dans l'ordre, puis une série (âge décroissant), puis L.a(t). Histoire la trace
+// (rendu.js), le moteur en tire la graine 🌡️🧮 et la fourchette tC du banc (API_BILAN/config/configTimeline.js) : le banc
+// juge le modèle sur la bande que la page dessine, rien d'autre.
+(function () {
+    const L = window.HISTOIRE.litterature;
+    L.AN = 2025;   // t = années avant L.AN
+    const tSnyder = L.snyder[0][0];
+    // Hadéen (ancres sourcées) → Précambrien (KT2018 + fenêtres) → PhanDA → Snyder 2016 (Quaternaire, 1 ka) → instrumental.
+    L.segments = [
+        { rows: L.hadeen, src: (r) => r[4] },
+        { rows: L.precambrien, src: (r) => r[4] },
+        { rows: L.unSigma(L.phanda.filter((r) => r[0] > tSnyder), 1.645), src: () => 'PhanDA (Judd et al. 2024) — ± 1σ interpolé de 5–95 % (loi normale)' },
+        { rows: L.unSigma(L.snyder, 1.96), src: () => 'Snyder 2016, Nature 538:226 — ± 1σ interpolé de 2,5–97,5 % (loi normale)' },
+        { rows: L.instrumental, src: () => 'mesures instrumentales (Copernicus, GISTEMP, Jones 1999)' }
+    ];
+    // [t, bas, médiane, haut, source]
+    L.serie = [].concat(...L.segments.map((g) => g.rows.map((r) => [r[0], r[1], r[2], r[3], g.src(r)])));
+
+    /**
+     * La courbe à t (années avant L.AN) : [t, bas, médiane, haut, source]. Sur un saut vertical (deux lignes à la même
+     * date), la valeur d'APRÈS le saut : une époque qui commence à ▶ part de ce qui vient après (sortie de snowball :
+     * la serre, pas la glace). Entre deux lignes : interpolation linéaire, comme le trait de la page.
+     */
+    L.a = function (t) {
+        const S = L.serie;
+        if (t > S[0][0] || t < S[S.length - 1][0]) throw new Error('[litterature] t = ' + t + ' ans hors de la courbe [' + S[S.length - 1][0] + ' ; ' + S[0][0] + ']');
+        let k = 0;
+        while (k + 1 < S.length && S[k + 1][0] >= t) k++;
+        const a = S[k];
+        if (a[0] === t) return a;
+        const b = S[k + 1], w = (a[0] - t) / (a[0] - b[0]);
+        return [t, a[1] + w * (b[1] - a[1]), a[2] + w * (b[2] - a[2]), a[3] + w * (b[3] - a[3]),
+            a[4] === b[4] ? a[4] : 'raccord, aucune donnée : trait droit entre « ' + a[4] + ' » et « ' + b[4] + ' »'];
+    };
 })();

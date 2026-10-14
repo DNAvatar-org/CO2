@@ -2,9 +2,10 @@
 // Desc: État de la vue (échelles, décalages) et ses BORNES : rien avant −5000 Ma, rien après 2200.
 //       Le temps t est en années avant 2025 ; le bord gauche de l'écran est t = xOffset, le bord droit
 //       t = xOffset − largeur / xScale.
-// Version 1.1.0
+// Version 1.2.0
+// - v1.2.0: départ = toute la durée (−5000 Ma → 2200), de −150 à 400 °C.
 // - v1.1.0: bord droit 2200 (était 2025).
-// Date: 2026-09-23
+// Date: 2026-10-15
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -13,7 +14,8 @@
     H.AN_FIN = 2200;                              // bord droit le plus récent : 2200 (axe seulement, aucune donnée après 2024)
     H.T_MIN_AGO = H.AN_PRESENT - H.AN_FIN;       // en années avant 2025 : −175
     H.SPAN_MIN = 10;       // zoom maximal : 10 ans sur toute la largeur
-    H.vue = { width: 0, height: 0, xScale: 0, xOffset: 800e6, yScale: 8, yOffset: 15 };
+    H.DEPART_T = [-150, 400];   // vue de départ : toute la durée, de −150 à 400 °C
+    H.vue = { width: 0, height: 0, xScale: 0, xOffset: H.T_MAX_AGO, yScale: 0, yOffset: (H.DEPART_T[0] + H.DEPART_T[1]) / 2 };
 
     /** Ramène la vue dans ses bornes : pas de dézoom au-delà de [−5000 Ma ; 2200], pas de glissement hors. */
     H.borner = function () {

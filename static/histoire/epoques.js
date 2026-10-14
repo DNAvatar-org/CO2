@@ -13,7 +13,7 @@
 (function () {
     'use strict';
     const H = window.HISTOIRE;
-    H.AN_PRESENT = 2025;
+    H.AN_PRESENT = H.litterature.AN;   // l'axe de la littérature (années avant 2025)
     H.epoques = function () {
         if (!Array.isArray(window.TIMELINE)) throw new Error('[histoire] window.TIMELINE manquant — charger API_BILAN/config/configTimeline.js');
         if (!window.CHARS) throw new Error('[histoire] window.CHARS manquant — charger API_BILAN/data/alphabet.js');

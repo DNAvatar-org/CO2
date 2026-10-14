@@ -3,9 +3,10 @@
 //       bande d'incertitude, médiane en pointillés par-dessus), deux courbes du MODÈLE en segments de point à point —
 //       graine t° continue (chaîne de clics, orange, pleine) et graine t° imposée (frise de chaque époque, violette,
 //       tirets) —, logos d'époque en bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.6.0
-// Date: 2026-10-14
+// Version 1.6.1
+// Date: 2026-10-15
 // logs :
+//   - v1.6.1: sources et série lues dans litterature.js (L.segments, L.serie), plus construites ici.
 //   - v1.6.0: modèles en segments de biais d'un point au suivant (plus d'escalier).
 //   - v1.5.1: légende réduite à trois lignes (littérature, graine t° continue, graine t° imposée).
 //   - v1.5.0: les deux modèles (clics orange plein, frise violette en tirets) ; médiane de la littérature en pointillés,
@@ -114,18 +115,9 @@
             zones.push({ x0, x1: Math.max(x1, x0 + 2), y0: yBande, y1: yBande + hBande, texte: '❄ ' + g.label + ' — ' + g.src });
         }
 
-        // Littérature : une seule série continue de −5000 Ma à 2025, bande d'incertitude comprise.
-        // Hadéen (ancres sourcées) → Précambrien (KT2018 + fenêtres) → PhanDA → Snyder 2016 (Quaternaire, 1 ka) → instrumental.
-        // Précambrien : KT2018 et ses fenêtres sourcées (Archéen, Paléoprotérozoïque, Cryogénien) — L.precambrien, une série.
-        const tSnyder = L.snyder[0][0];
-        const SEG = [
-            { rows: L.hadeen, src: r => r[4] },
-            { rows: L.precambrien, src: r => r[4] },
-            { rows: L.unSigma(L.phanda.filter(r => r[0] > tSnyder), 1.645), src: () => 'PhanDA (Judd et al. 2024) — ± 1σ interpolé de 5–95 % (loi normale)' },
-            { rows: L.unSigma(L.snyder, 1.96), src: () => 'Snyder 2016, Nature 538:226 — ± 1σ interpolé de 2,5–97,5 % (loi normale)' },
-            { rows: L.instrumental, src: () => 'mesures instrumentales (Copernicus, GISTEMP, Jones 1999)' }
-        ];
-        const lit = [].concat(...SEG.map(g => g.rows));
+        // Littérature : la courbe cyan (litterature.js, L.segments → L.serie), celle-là même où le banc lit sa graine et sa
+        // fourchette.
+        const SEG = L.segments, lit = L.serie;
         bande(ctx, lit, COUL.litBande);
         const fmt = r => r[2].toFixed(1) + ' °C [' + r[1].toFixed(1) + ' ; ' + r[3].toFixed(1) + ']';
         SEG.forEach((g, s) => {

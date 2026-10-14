@@ -1,7 +1,8 @@
 // File: CO2/static/histoire/main.js
 // Desc: Point d'entrée de CO2/histoire.html : canvas, époques du TIMELINE, redimensionnement, interactions.
-// Version 1.0.1
-// Date: 2026-09-24
+// Version 1.0.2
+// Date: 2026-10-15
+// - v1.0.2: départ dézoomé (toute la durée, −150 → 400 °C).
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -18,7 +19,10 @@
         if (window.innerWidth === 0 || window.innerHeight === 0) return;
         v.width = canvas.width = window.innerWidth;
         v.height = canvas.height = window.innerHeight;
-        if (v.xScale === 0) v.xScale = v.width / 800e6;   // départ : les 800 derniers millions d'années
+        if (v.xScale === 0) {   // départ (vue.js, H.DEPART_T) : toute la durée, de −150 à 400 °C
+            v.xScale = v.width / (H.T_MAX_AGO - H.T_MIN_AGO);
+            v.yScale = v.height / (H.DEPART_T[1] - H.DEPART_T[0]);
+        }
         H.borner();
         redessiner();
     }
