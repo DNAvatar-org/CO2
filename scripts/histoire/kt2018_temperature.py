@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # File: CO2/scripts/histoire/kt2018_temperature.py
 # Desc: Reproduit la Fig. 3 de Krissansen-Totton, Arney & Catling 2018 (PNAS 115:4105) — température
-#       moyenne de surface de 4,0 Ga à aujourd'hui, percentiles 2,5 / 50 / 97,5 % — avec LEUR code
+#       moyenne de surface de 4,0 Ga à aujourd'hui, percentiles 16 / 50 / 84 % (± 1 écart-type ; la figure publiée
+#       trace 2,5–97,5 %, mêmes tirages) — avec LEUR code
 #       (github.com/joshuakt/early-earth-carbon-cycle), et imprime les lignes `kt2018` de
 #       CO2/static/histoire/litterature.js (âges > 485 Ma : après, c'est PhanDA).
 #       Paramètres et plages = main_code_parallel.py par défaut (10 000 tirages, chimie du carbone
@@ -10,8 +11,9 @@
 #       `print` de model_functions_reformate.py. Pré-requis : numpy, scipy (un venv suffit).
 #         python3 -m venv /tmp/kt && /tmp/kt/bin/pip install numpy scipy
 #         /tmp/kt/bin/python CO2/scripts/histoire/kt2018_temperature.py [N=10000]
-# Version 1.0.0
-# Date: 2026-09-24
+# Version 1.1.0
+# Date: 2026-10-14
+# - v1.1.0: bande ± 1σ (16–84 %) au lieu de 2,5–97,5 % (≈ ± 2σ : borne basse sous 0 °C de 4,0 à 3,2 Ga).
 # Copyright 2026 DNAvatar.org - Arnaud Maignan
 import os, sys, subprocess, tempfile
 from concurrent.futures import ProcessPoolExecutor
@@ -67,7 +69,7 @@ if __name__ == '__main__':
     with ProcessPoolExecutor(8) as ex:
         res = [r for r in ex.map(tirage, range(1, N + 1)) if r is not None]
     age = res[0][0]
-    p = numpy.percentile(numpy.array([r[1] for r in res]), [2.5, 50, 97.5], axis=0) - 273.15
+    p = numpy.percentile(numpy.array([r[1] for r in res]), [16, 50, 84], axis=0) - 273.15
     print('// %d tirages retenus sur %d' % (len(res), N))
     for i in range(len(age) - 1, -1, -1):
         if age[i] > T_PHANDA:

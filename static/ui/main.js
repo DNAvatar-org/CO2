@@ -765,9 +765,9 @@ function updateCO2Level(state) {
     }
     plotData.co2_ppm = co2_fraction * 1e6;
     
-    // H2O : vapeur (window) + météorites dérivé de TIMELINE (🔺⚖️💧☄️ = water_added_kg dans config)
+    // H2O : vapeur (window) + météorites (📜🔺⚖️💧 = eau cumulée des ☄️ de l'époque, CLICS.jouer)
     const h2o_percent = (typeof window !== 'undefined' && window.RUNTIME_STATE.h2oVaporPercent !== undefined) ? window.RUNTIME_STATE.h2oVaporPercent : 0;
-    const h2o_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
+    const h2o_meteorites = (DATA['📜']['🔺⚖️💧'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
     const h2o_total = h2o_percent + h2o_meteorites;
     const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
 
@@ -833,7 +833,7 @@ function updateCO2Level(state) {
                 h2o_vapor_percent = (typeof window.RUNTIME_STATE.h2oVaporPercent !== 'undefined') ? window.RUNTIME_STATE.h2oVaporPercent : 0;
 
                 // Ajouter l'eau totale des météorites
-                const h2o_from_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
+                const h2o_from_meteorites = (DATA['📜']['🔺⚖️💧'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
                 const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
 
                 // Calculer la répartition vapeur/glace selon la température
@@ -1118,7 +1118,7 @@ function updateCO2LevelDirect(co2_fraction) {
     
     // H2O : vapeur (window) + météorites depuis TIMELINE (DATA['📜'])
     const h2o_percent = (typeof window !== 'undefined' && window.RUNTIME_STATE.h2oVaporPercent !== undefined) ? window.RUNTIME_STATE.h2oVaporPercent : 0;
-    const h2o_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
+    const h2o_meteorites = (DATA['📜']['🔺⚖️💧'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
     const h2o_total = h2o_percent + h2o_meteorites;
     const ch4_ppm = (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
     
@@ -1244,7 +1244,7 @@ function updateCO2LevelDirect(co2_fraction) {
                 h2o_vapor_percent = (typeof window.RUNTIME_STATE.h2oVaporPercent !== 'undefined') ? window.RUNTIME_STATE.h2oVaporPercent : 0;
 
                 // Ajouter l'eau totale des météorites
-                const h2o_from_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
+                const h2o_from_meteorites = (DATA['📜']['🔺⚖️💧'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
                 const h2o_total_percent = h2o_vapor_percent + h2o_from_meteorites;
 
                 // Calculer la répartition vapeur/glace selon la température
@@ -1340,7 +1340,7 @@ window.updateDisplay = function updateDisplay(data) {
     // Récupérer les valeurs pour le log
     const co2_ppm = (data && data.co2_ppm !== undefined) ? data.co2_ppm : 0;
     const h2o_percent = (typeof window !== 'undefined' && window.RUNTIME_STATE.h2oVaporPercent !== undefined) ? window.RUNTIME_STATE.h2oVaporPercent : 0;
-    const h2o_meteorites = (DATA['📜']['🔺⚖️💧☄️'] * DATA['📜']['📿☄️'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
+    const h2o_meteorites = (DATA['📜']['🔺⚖️💧'] / CONFIG_COMPUTE.earthTotalWaterMassKg) * 100;
     const h2o_total = h2o_percent + h2o_meteorites;
     const ch4_ppm = (data && data.ch4_ppm !== undefined) ? data.ch4_ppm : (plotData && plotData.ch4_ppm !== undefined) ? plotData.ch4_ppm : 0;
     

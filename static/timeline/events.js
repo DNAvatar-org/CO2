@@ -1,9 +1,10 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.3.1
+ * Version 1.3.2
+ *   - v1.3.2: masse d'un ☄️ lue sur son entrée de séquence (CLICS.eauDuClic), elle change d'un clic à l'autre.
  *   - v1.3.1: jouerClic passe en animation (tictime : T conservée) — après un clic sur la frise, les clics d'événement
  *     repartaient de la graine.
- * Date: 2026-10-12
+ * Date: 2026-10-14
  * Copyright 2026 DNAvatar.org - Arnaud Maignan
 * logs :
  *   - v1.3.0: l'EFFET d'un clic vient de CLICS.jouer (API_BILAN/convergence/clics.js), la mécanique que joue aussi
@@ -19,7 +20,7 @@
 * See https://commonsclause.com/ for full terms.
 
  *   - Initial version: extraction de updateEpochActions depuis main.js
- *   - Corps noir météorite: config via 🕰.☄️, id époque DATA['📜']['🗿'], getEpochDateConfig + runComputeInParent + 📿☄️
+ *   - Corps noir météorite: masse via CLICS.eauDuClic (entrée de 🕰.order), id époque DATA['📜']['🗿'], getEpochDateConfig + runComputeInParent + 📿☄️
  *   - switch(epochId) ⚫/🔥/default; config unique ▶/◀/🔺🧲🌕💫; getEpochConfigById; applyHadeenFluxFromConfig; plus de corps-noir/hadeen
  *   - TicTime logo comme action pour toutes les époques; météorite de glace uniquement Corps noir (⚫) et Hadéen (🔥)
  *   - ⚫ sans TicTime (Météorite + Impact uniquement); default (Archéen+) TicTime affiché sans condition 🕰.💫
@@ -117,7 +118,7 @@ function boutonAction(key, cfg) {
         el.src = window.getLogoImageSrc(key);
         el.className = 'btn-events organigram-logo organigram-action-logo';
         if (key === '☄️') {
-            const m = cfg['🔺⚖️💧☄️'];
+            const m = window.CLICS.eauDuClic();
             court = 'Météorite de glace<br>' + (m >= 1e12 ? formatMassGT(m) : formatMass(m)) + '<br>' + formatStepLabel(window.CLICS.pas(key)) + ' pour ce clic';
             el.alt = 'Météorite de Glace ' + formatStepLabel(window.CLICS.pas(key));
         } else {

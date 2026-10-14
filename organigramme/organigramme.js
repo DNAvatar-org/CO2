@@ -5520,7 +5520,7 @@ ORG.updateFluxLabels = function (eventId) {
   // lisent telle quelle (main.js calculateH2OParameters, sync_panels, postMessage des panneaux).
   // Le badge, lui, recalcule sa propre valeur MOLAIRE plus bas — on ne change pas la sémantique
   // d'une variable partagée pour un problème d'affichage.
-  // L'eau des météorites est dans la vapeur du moteur (⚖️💧 += 📿☄️ × 🔺⚖️💧☄️) : rien à ajouter ici.
+  // L'eau des météorites est dans la vapeur du moteur (⚖️💧 += 📜🔺⚖️💧, cumul des ☄️) : rien à ajouter ici.
   // En mode corps noir, on peut avoir un forçage albedo si il y a de la glace des météorites
   const forcing_Albedo = (window.CLIMATE && window.CLIMATE.calculateAlbedoForcing)
       ? window.CLIMATE.calculateAlbedoForcing(albedo_num)
@@ -5837,7 +5837,7 @@ ORG.updateFluxLabels = function (eventId) {
         atm: DATA["⚖️"]["⚖️🫧"],
         h2o: DATA["⚖️"]["⚖️💧"],
         meteorTics: DATA["📜"]["📿☄️"],
-        meteorDeltaKg: DATA["📜"]["🔺⚖️💧☄️"],
+        meteorWaterKg: DATA["📜"]["🔺⚖️💧"],
       },
       partition: {
         vapor: DATA["💧"]["🍰🫧💧"],

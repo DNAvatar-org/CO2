@@ -216,7 +216,7 @@
         window.SYNC_STATE.calculationInProgress = true;
         window._logStep('[4] calculs (appel)');
         var DATA = window.DATA;
-        // Rendre 📜 cohérent en premier (📿☄️, 🔺⚖️💧☄️, passage d'époque) avant le calcul.
+        // Rendre 📜 cohérent en premier (📿☄️, 🔺⚖️💧, passage d'époque) avant le calcul.
         window.COMPUTE.getEpochDateConfig();
         var epochId = DATA['📜']['🗿'];
         window.COMPUTE_LOADER.show();

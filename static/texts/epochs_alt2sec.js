@@ -1,9 +1,10 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.2.1
-// Date: [September 18, 2026]
+// Version 1.2.2
+// Date: [October 14, 2026]
 // logs :
+//   - v1.2.2 (2026-10-14): ⚫ = quatre ☄️ de masse croissante (eau lue sur l'entrée de séquence, CLICS.eauDuClic).
 //   - v1.2.1 (2026-09-24): « Ce que ça change » affiche le pas de clic à 1 décimale.
 //   - v1.2.0 (2026-09-24): vraies dates (ICS 2023, Hoffman et al. 2017) dans les titres ; le Cryogénien a
 //     DEUX glaciations — ⛄ Snowball Sturtien, 🌦 1b Sortie Sturtienne + interglaciaire, 🏂 Snowball Marinoen,
@@ -194,27 +195,29 @@ const EPOCH_STORY = {
  */
 const EVENT_STORY = {
     '⚫': {
+        // Un ☄️ à chaque tic de 100 Ma, de plus en plus lourds (configTimeline : EAU_CUMUL_KG) : ~0,3 m → 7,4 m → 178 m →
+        // 4,3 km d'eau globale (un océan). L'albédo de l'eau sature à 10 m (🍰🪩💧) : 3 % → 74 % → 100 % → 100 % de son effet.
         '☄️': [
-            'Météorite de glace — ce clic va REFROIDIR\n\n' +
-              'La cargaison arrive gelée et se pose sur une roche noire qui absorbait tout. L\'albédo passe de 0 à quelques pour cent : une part du Soleil est désormais renvoyée sans avoir chauffé quoi que ce soit.\n\n' +
-              'Et cette eau-là ne fait aucun effet de serre pour compenser : sans atmosphère, elle reste de la glace. Moins d\'énergie absorbée, donc une surface plus froide au prochain équilibre — de l\'ordre de deux degrés.',
+            'Premières poussières de glace — un peu plus froid\n\n' +
+              'L\'eau n\'arrive pas d\'un coup : la Terre l\'accrète tout du long, mais très peu au début. Ce premier apport ne ferait qu\'une pellicule de 30 cm s\'il était étalé partout : il ne couvre qu\'une petite part de la roche noire.\n\n' +
+              'Sans atmosphère, cette eau reste de la glace et renvoie un peu de Soleil sans rien chauffer. Attendez-vous à quelques degrés de moins, pas davantage.',
 
-            'Deuxième cargaison — encore plus froid\n\n' +
-              'La couverture de glace s\'étend, l\'albédo double à peu près, la Terre nue renvoie d\'autant plus. C\'est la boucle glace-albédo à l\'état pur, sans air ni nuages pour l\'amortir.\n\n' +
-              'Retenez le signe : ici l\'eau refroidit. Ce n\'est qu\'avec une atmosphère, et sous forme de vapeur, qu\'elle deviendra le premier gaz à effet de serre de la planète.'
-        ],
-        '💫': [
-            'Le temps passe — seul le Soleil travaille\n\n' +
-              'Rien d\'autre ne bouge ici : pas d\'air, pas de volcans, pas de vie. La seule chose qui change en 100 Ma, c\'est la luminosité solaire, qui monte lentement (Gough 1981).\n\n' +
-              'Attendez-vous donc à quelques DIXIÈMES de degré en plus — minuscule à côté des deux degrés que coûte une météorite de glace.',
+            'Vingt-quatre fois plus d\'eau — nettement plus froid\n\n' +
+              'L\'apport grossit à chaque tic (les gros corps riches en eau viennent tard, Morbidelli et al. 2000). Sept mètres d\'eau globale : la glace couvre maintenant les trois quarts de la bille.\n\n' +
+              'C\'est la boucle glace-albédo à l\'état pur, sans air ni nuages pour l\'amortir. Attendez-vous à plusieurs dizaines de degrés en moins.',
 
-            'Encore 100 Ma — même mécanisme\n\n' +
-              'Toujours le seul Soleil. Comparez les deux boutons : la date réchauffe à peine, la glace refroidit franchement. C\'est l\'albédo qui pilote le Corps noir, pas l\'âge de l\'Univers.'
+            'Près de deux cents mètres d\'eau — la glace couvre tout\n\n' +
+              'Au-delà d\'une dizaine de mètres, la surface est entièrement blanche : l\'albédo ne peut plus monter. La planète descend vers son équilibre de boule de glace, autour de −100 °C.\n\n' +
+              'Retenez le signe : ici l\'eau refroidit. Ce n\'est qu\'avec une atmosphère, et sous forme de vapeur, qu\'elle deviendra le premier gaz à effet de serre.',
+
+            'Le gros de l\'eau arrive — et plus rien ne change\n\n' +
+              'Ce dernier apport est presque toute l\'eau de la Terre primitive, un océan : 4,3 km de glace globale sur cette petite bille. Mais la surface était déjà blanche : la température ne bouge presque plus, seul le Soleil, qui monte lentement (Gough 1981), la fait varier d\'une fraction de degré.\n\n' +
+              'Toute cette eau attend l\'impact géant pour passer en vapeur.'
         ],
         '🎇':
             'Impact majeur — ce clic change de monde\n\n' +
               'Un corps de la taille de Mars percute la Terre : l\'énergie libérée refond toute la surface et arrache la matière dont se formera la Lune.\n\n' +
-              'Vous ne gagnerez pas quelques degrés, vous en gagnerez plusieurs milliers : la bille à −22 °C devient un océan de magma au-delà de 2 500 °C, avec l\'atmosphère de vapeur et de CO₂ qui va avec. C\'est l\'entrée dans l\'Hadéen.'
+              'Vous ne gagnerez pas quelques degrés, vous en gagnerez plusieurs milliers : la bille de glace devient un océan de magma au-delà de 2 500 °C, avec l\'atmosphère de vapeur et de CO₂ qui va avec. C\'est l\'entrée dans l\'Hadéen.'
     },
     '🔥': {
         '💫': [
@@ -602,8 +605,8 @@ function buildEventAlt2sec(epochId, eventKey) {
         changes.push('albédo de la glace → ' + Number(cfg['🌫️❄️']).toFixed(2).replace('.', ',') + ' (glace sale)');
         warmer += 1;
     }
-    if (cfg && Number.isFinite(Number(cfg['🔺⚖️💧☄️']))) {
-        changes.push('+' + Number(cfg['🔺⚖️💧☄️']).toExponential(1) + ' kg d\'eau');
+    if (eventKey === '☄️') {
+        changes.push('+' + window.CLICS.eauDuClic().toExponential(1) + ' kg d\'eau');   // masse portée par l'entrée de 🕰.order
     }
 
     // Récit : texte simple, ou tableau indexé par le numéro du clic à venir (époques à états 🕰.🔁)

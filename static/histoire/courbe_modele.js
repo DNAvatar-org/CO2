@@ -34,8 +34,8 @@ window.HISTOIRE.modele = {
    "dt": 100,
    "mode": "clic",
    "ep": "⚫",
-   "T": -96.89,
-   "glace": 0.1,
+   "T": -19.55,
+   "glace": 0.007,
    "ppm": 0,
    "Tint": null,
    "geo": 0,
@@ -45,12 +45,12 @@ window.HISTOIRE.modele = {
    "st": "converged"
   },
   {
-   "etape": "⚫ 💫 (200 Ma écoulés)",
-   "cle": "💫",
+   "etape": "⚫ ☄️ (200 Ma écoulés)",
+   "cle": "☄️",
    "dt": 100,
    "mode": "clic",
    "ep": "⚫",
-   "T": -96.65,
+   "T": -66.21,
    "glace": 0.1,
    "ppm": 0,
    "Tint": null,
@@ -66,7 +66,7 @@ window.HISTOIRE.modele = {
    "dt": 100,
    "mode": "clic",
    "ep": "⚫",
-   "T": -96.38,
+   "T": -96.32,
    "glace": 0.1,
    "ppm": 0,
    "Tint": null,
@@ -77,8 +77,8 @@ window.HISTOIRE.modele = {
    "st": "converged"
   },
   {
-   "etape": "⚫ 💫 (400 Ma écoulés)",
-   "cle": "💫",
+   "etape": "⚫ ☄️ (400 Ma écoulés)",
+   "cle": "☄️",
    "dt": 100,
    "mode": "clic",
    "ep": "⚫",
@@ -102,8 +102,8 @@ window.HISTOIRE.modele = {
    "glace": 0,
    "ppm": 296103.1,
    "Tint": 2550,
-   "geo": 1848000,
-   "TW": 980217070.52,
+   "geo": 1878000,
+   "TW": 995874145.56,
    "solidif": null,
    "t": 4510000000,
    "st": "converged"
@@ -114,12 +114,12 @@ window.HISTOIRE.modele = {
    "dt": 0.001,
    "mode": "clic",
    "ep": "🔥",
-   "T": 1454.21,
+   "T": 1433.38,
    "glace": 0,
    "ppm": 296103.1,
-   "Tint": 1454.2,
-   "geo": 210200,
-   "TW": 108682329.22,
+   "Tint": 1433.4,
+   "geo": 256200,
+   "TW": 132361880.26,
    "solidif": null,
    "t": 4509999000,
    "st": "converged"
@@ -130,13 +130,13 @@ window.HISTOIRE.modele = {
    "dt": 0.1,
    "mode": "clic",
    "ep": "🔥",
-   "T": 176.64,
+   "T": 172.49,
    "glace": 0,
    "ppm": 296103.1,
    "Tint": 1363.4,
    "geo": 0.09711,
    "TW": 49.54,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 4509899000,
    "st": "converged"
   },
@@ -146,13 +146,13 @@ window.HISTOIRE.modele = {
    "dt": 100,
    "mode": "clic",
    "ep": "🔥",
-   "T": 175.29,
+   "T": 172.67,
    "glace": 0,
    "ppm": 296103.1,
    "Tint": 1377.7,
    "geo": 0.1049,
    "TW": 53.52,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 4409899000,
    "st": "converged"
   },
@@ -162,13 +162,13 @@ window.HISTOIRE.modele = {
    "dt": 378.899,
    "mode": "clic",
    "ep": "🦠",
-   "T": 15.07,
+   "T": 14.37,
    "glace": 0,
    "ppm": 104641.3,
    "Tint": 1408.6,
    "geo": 0.1235,
    "TW": 63.05,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 4031000000,
    "st": "converged"
   },
@@ -178,13 +178,13 @@ window.HISTOIRE.modele = {
    "dt": 510.3333333333333,
    "mode": "clic",
    "ep": "🦠",
-   "T": 14.28,
+   "T": 14.31,
    "glace": 0,
    "ppm": 74093,
    "Tint": 1413.3,
    "geo": 0.1266,
    "TW": 64.61,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 3520666667,
    "st": "converged"
   },
@@ -194,13 +194,13 @@ window.HISTOIRE.modele = {
    "dt": 510.3333333333333,
    "mode": "clic",
    "ep": "🦠",
-   "T": 10.52,
+   "T": 10.48,
    "glace": 0,
    "ppm": 41232.7,
    "Tint": 1398.5,
    "geo": 0.1172,
    "TW": 59.82,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 3010333333,
    "st": "converged"
   },
@@ -210,15 +210,15 @@ window.HISTOIRE.modele = {
    "dt": 510.33333333333337,
    "mode": "clic",
    "ep": "🪸",
-   "T": 12.55,
+   "T": 12.54,
    "glace": 0,
    "ppm": 68283.4,
    "Tint": 1377,
    "geo": 0.1045,
    "TW": 53.33,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 2500000000,
-   "st": "oscillation"
+   "st": "converged"
   },
   {
    "etape": "🪸 💫 (600 Ma écoulés)",
@@ -232,7 +232,7 @@ window.HISTOIRE.modele = {
    "Tint": 1350.1,
    "geo": 0.09025,
    "TW": 46.03,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 1900000000,
    "st": "converged"
   },
@@ -248,7 +248,7 @@ window.HISTOIRE.modele = {
    "Tint": 1324.6,
    "geo": 0.07817,
    "TW": 39.86,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 1300000000,
    "st": "converged"
   },
@@ -264,7 +264,7 @@ window.HISTOIRE.modele = {
    "Tint": 1302.2,
    "geo": 0.06863,
    "TW": 34.99,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 720000000,
    "st": "converged"
   },
@@ -280,7 +280,7 @@ window.HISTOIRE.modele = {
    "Tint": 1302,
    "geo": 0.06859,
    "TW": 34.96,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 717000000,
    "st": "converged"
   },
@@ -296,7 +296,7 @@ window.HISTOIRE.modele = {
    "Tint": 1301,
    "geo": 0.06816,
    "TW": 34.74,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 688000000,
    "st": "converged"
   },
@@ -312,7 +312,7 @@ window.HISTOIRE.modele = {
    "Tint": 1299.9,
    "geo": 0.06774,
    "TW": 34.53,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 659000000,
    "st": "oscillation"
   },
@@ -328,7 +328,7 @@ window.HISTOIRE.modele = {
    "Tint": 1299.7,
    "geo": 0.06764,
    "TW": 34.48,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 652000000,
    "st": "converged"
   },
@@ -344,7 +344,7 @@ window.HISTOIRE.modele = {
    "Tint": 1299.4,
    "geo": 0.06754,
    "TW": 34.43,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 645000000,
    "st": "oscillation"
   },
@@ -360,7 +360,7 @@ window.HISTOIRE.modele = {
    "Tint": 1299.2,
    "geo": 0.06745,
    "TW": 34.38,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 639000000,
    "st": "converged"
   },
@@ -376,7 +376,7 @@ window.HISTOIRE.modele = {
    "Tint": 1299.1,
    "geo": 0.06742,
    "TW": 34.37,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 637100000,
    "st": "converged"
   },
@@ -392,7 +392,7 @@ window.HISTOIRE.modele = {
    "Tint": 1299.1,
    "geo": 0.0674,
    "TW": 34.35,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 635200000,
    "st": "oscillation"
   },
@@ -408,7 +408,7 @@ window.HISTOIRE.modele = {
    "Tint": 1295.6,
    "geo": 0.06604,
    "TW": 33.66,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 538800000,
    "st": "converged"
   },
@@ -424,7 +424,7 @@ window.HISTOIRE.modele = {
    "Tint": 1291.4,
    "geo": 0.06441,
    "TW": 32.83,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 419200000,
    "st": "converged"
   },
@@ -440,7 +440,7 @@ window.HISTOIRE.modele = {
    "Tint": 1290,
    "geo": 0.06386,
    "TW": 32.55,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 377450000,
    "st": "oscillation"
   },
@@ -456,7 +456,7 @@ window.HISTOIRE.modele = {
    "Tint": 1288.5,
    "geo": 0.06332,
    "TW": 32.27,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 335700000,
    "st": "converged"
   },
@@ -472,7 +472,7 @@ window.HISTOIRE.modele = {
    "Tint": 1287.1,
    "geo": 0.06278,
    "TW": 32,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 293950000,
    "st": "converged"
   },
@@ -488,7 +488,7 @@ window.HISTOIRE.modele = {
    "Tint": 1285.7,
    "geo": 0.06225,
    "TW": 31.73,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 252200000,
    "st": "converged"
   },
@@ -504,7 +504,7 @@ window.HISTOIRE.modele = {
    "Tint": 1285.7,
    "geo": 0.06225,
    "TW": 31.72,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 251902000,
    "st": "converged"
   },
@@ -520,7 +520,7 @@ window.HISTOIRE.modele = {
    "Tint": 1282.3,
    "geo": 0.06102,
    "TW": 31.09,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 151902000,
    "st": "converged"
   },
@@ -536,7 +536,7 @@ window.HISTOIRE.modele = {
    "Tint": 1279.5,
    "geo": 0.05999,
    "TW": 30.57,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 66000000,
    "st": "converged"
   },
@@ -552,7 +552,7 @@ window.HISTOIRE.modele = {
    "Tint": 1279.2,
    "geo": 0.05988,
    "TW": 30.51,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 56000000,
    "st": "converged"
   },
@@ -568,7 +568,7 @@ window.HISTOIRE.modele = {
    "Tint": 1278.5,
    "geo": 0.05962,
    "TW": 30.38,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 34400000,
    "st": "converged"
   },
@@ -584,7 +584,7 @@ window.HISTOIRE.modele = {
    "Tint": 1278.5,
    "geo": 0.05962,
    "TW": 30.38,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 33900000,
    "st": "converged"
   },
@@ -600,7 +600,7 @@ window.HISTOIRE.modele = {
    "Tint": 1278,
    "geo": 0.05943,
    "TW": 30.29,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 17900000,
    "st": "converged"
   },
@@ -616,7 +616,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.5,
    "geo": 0.05926,
    "TW": 30.19,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 2580000,
    "st": "converged"
   },
@@ -632,7 +632,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.5,
    "geo": 0.05925,
    "TW": 30.19,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 1937900,
    "st": "converged"
   },
@@ -648,7 +648,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.4,
    "geo": 0.05924,
    "TW": 30.19,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 1295800,
    "st": "converged"
   },
@@ -664,7 +664,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 653700,
    "st": "converged"
   },
@@ -680,7 +680,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 11725,
    "st": "converged"
   },
@@ -696,7 +696,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 7825,
    "st": "converged"
   },
@@ -712,7 +712,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 3925,
    "st": "converged"
   },
@@ -728,7 +728,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 275,
    "st": "converged"
   },
@@ -744,7 +744,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 150,
    "st": "converged"
   },
@@ -760,7 +760,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 25,
    "st": "converged"
   },
@@ -776,7 +776,7 @@ window.HISTOIRE.modele = {
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
-   "solidif": 4509998765,
+   "solidif": 4509998816,
    "t": 0,
    "st": "converged"
   }

@@ -1,10 +1,14 @@
 // File: CO2/static/histoire/rendu.js
 // Desc: Dessin : grille, glaciations datées (bandes), littérature (série continue −5000 Ma → 2025 avec sa
-//       bande d'incertitude), courbe du MODÈLE (orange, en escalier), logos d'époque en
-//       bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.4.0
+//       bande d'incertitude, médiane en pointillés par-dessus), deux courbes du MODÈLE en escalier — chaîne de clics
+//       (orange, pleine) et frise à chaque époque (violette, tirets) —, logos d'époque en bandeau au début de leur
+//       époque. H.survol() donne la source de ce qui est sous le curseur.
+// Version 1.5.0
 // Date: 2026-10-14
 // logs :
+//   - v1.5.0: les deux modèles (clics orange plein, frise violette en tirets) ; médiane de la littérature en pointillés,
+//     tracée en dernier pour laisser voir les modèles derrière.
+//   - v1.4.1: bande ± 1σ (PhanDA et Snyder interpolés par L.unSigma ; KT2018 recalculé à 16–84 %).
 //   - v1.4.0: série précambrienne unique (L.precambrien).
 //   - v1.3.2: repères ponctuels en boîtes retirés (illisibles) ; glaciations en fine bande sous les logos, plus pleine hauteur.
 //   - v1.3.1: Cryogénien (L.cryogenien, fourchettes publiées des snowballs) à la place de KT2018 sur 717,5 → 632,2 Ma.
@@ -15,7 +19,7 @@
 (function () {
     'use strict';
     const H = window.HISTOIRE;
-    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', mod: '#ff9f43', glace: 'rgba(160, 200, 255, 0.45)',
+    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', mod: '#ff9f43', frise: '#d980fa', glace: 'rgba(160, 200, 255, 0.45)',
                    grille: 'rgba(69, 162, 158, 0.15)', texte: 'rgba(69, 162, 158, 0.6)' };
     const px = t => (H.vue.xOffset - t) * H.vue.xScale;
     const py = T => H.vue.height / 2 - (T - H.vue.yOffset) * H.vue.yScale;
@@ -52,16 +56,48 @@
         }
     }
 
-    /** Série [t, lo, mid, hi] : bande lo–hi + médiane. */
-    function serie(ctx, rows, couleur, bande) {
-        if (rows.length < 2) return;
+    /** Série [t, lo, mid, hi] : bande lo–hi. */
+    function bande(ctx, rows, couleur) {
         ctx.beginPath();
         rows.forEach((r, i) => { const x = px(r[0]), y = py(r[3]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
         for (let i = rows.length - 1; i >= 0; i--) ctx.lineTo(px(rows[i][0]), py(rows[i][1]));
-        ctx.closePath(); ctx.fillStyle = bande; ctx.fill();
-        ctx.beginPath(); ctx.strokeStyle = couleur; ctx.lineWidth = 2;
+        ctx.closePath(); ctx.fillStyle = couleur; ctx.fill();
+    }
+
+    /** Série [t, lo, mid, hi] : médiane en pointillés (les modèles restent visibles dessous). */
+    function mediane(ctx, rows, couleur) {
+        ctx.beginPath(); ctx.strokeStyle = couleur; ctx.lineWidth = 2; ctx.setLineDash([2, 4]); ctx.lineCap = 'round';
         rows.forEach((r, i) => { const x = px(r[0]), y = py(r[2]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-        ctx.stroke();
+        ctx.stroke(); ctx.setLineDash([]); ctx.lineCap = 'butt';
+    }
+
+    /**
+     * Un modèle en ESCALIER. Un clic calcule l'état à sa date, et cet état tient jusqu'au clic suivant : palier
+     * horizontal, puis saut vertical au clic. Rien n'est interpolé entre deux clics — une pente dirait que le modèle a
+     * calculé ce qu'il n'a pas calculé. `tirets` : motif de ctx.setLineDash ([] = trait plein).
+     */
+    function escalier(ctx, M, couleur, tirets, nom) {
+        const v = H.vue;
+        const pts = M.points.slice().sort((a, b) => b.t - a.t);
+        ctx.strokeStyle = couleur; ctx.lineWidth = 2; ctx.setLineDash(tirets); ctx.beginPath();
+        pts.forEach((p, i) => {
+            const x = px(p.t), y = py(p.T);
+            if (!i) { ctx.moveTo(x, y); return; }
+            ctx.lineTo(x, py(pts[i - 1].T));   // palier du clic précédent jusqu'à ce clic
+            ctx.lineTo(x, y);                  // saut du clic
+        });
+        ctx.lineTo(px(H.T_MIN_AGO), py(pts[pts.length - 1].T));   // dernier état jusqu'à 2025
+        ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = couleur;
+        for (const p of pts) {
+            const x = px(p.t), y = py(p.T);
+            if (x < -5 || x > v.width + 5) continue;
+            ctx.beginPath(); ctx.arc(x, y, 3, 0, 2 * Math.PI); ctx.fill();
+            const pas = p.dt == null ? '' : ' (+' + (p.dt >= 1 ? p.dt.toFixed(p.dt % 1 ? 2 : 0) + ' Ma' : Math.round(p.dt * 1e6).toLocaleString('fr-FR') + ' ans') + ')';
+            zones.push({ x0: x - 5, x1: x + 5, y0: y - 5, y1: y + 5,
+                texte: nom + ' — ' + p.etape + pas + ' : ' + p.T.toFixed(1) + ' °C, glace ' + Math.round(p.glace * 100) + ' %, CO₂ ' + Math.round(p.ppm) + ' ppm'
+                    + (p.Tint > 0 ? ' — intérieur ' + Math.round(p.Tint) + ' °C, ' + (p.geo >= 10 ? Math.round(p.geo).toLocaleString('fr-FR') : p.geo.toFixed(3)) + ' W/m² (' + p.TW.toLocaleString('fr-FR') + ' TW)' : '') });
+        }
     }
 
     H.render = function (ctx) {
@@ -90,12 +126,12 @@
         const SEG = [
             { rows: L.hadeen, src: r => r[4] },
             { rows: L.precambrien, src: r => r[4] },
-            { rows: L.phanda.filter(r => r[0] > tSnyder), src: () => 'PhanDA (Judd et al. 2024)' },
-            { rows: L.snyder, src: () => 'Snyder 2016, Nature 538:226 (2,5–97,5 %)' },
+            { rows: L.unSigma(L.phanda.filter(r => r[0] > tSnyder), 1.645), src: () => 'PhanDA (Judd et al. 2024) — ± 1σ interpolé de 5–95 % (loi normale)' },
+            { rows: L.unSigma(L.snyder, 1.96), src: () => 'Snyder 2016, Nature 538:226 — ± 1σ interpolé de 2,5–97,5 % (loi normale)' },
             { rows: L.instrumental, src: () => 'mesures instrumentales (Copernicus, GISTEMP, Jones 1999)' }
         ];
         const lit = [].concat(...SEG.map(g => g.rows));
-        serie(ctx, lit, COUL.lit, COUL.litBande);
+        bande(ctx, lit, COUL.litBande);
         const fmt = r => r[2].toFixed(1) + ' °C [' + r[1].toFixed(1) + ' ; ' + r[3].toFixed(1) + ']';
         SEG.forEach((g, s) => {
             const pas = Math.max(1, Math.floor(g.rows.length / 400));   // survol : pas besoin des 2000 points de Snyder
@@ -119,32 +155,12 @@
                     texte: 'Raccord, aucune donnée entre ' + fmt(a) + ' (' + sa + ') et ' + fmt(b) + ' (' + sb + ') : trait droit' });
             }
         });
-        // Modèle : chaîne de clics (courbe_modele.js) en ESCALIER. Un clic calcule l'état à sa date, et cet
-        // état tient jusqu'au clic suivant : palier horizontal, puis saut vertical au clic. Rien n'est
-        // interpolé entre deux clics — une pente dirait que le modèle a calculé ce qu'il n'a pas calculé.
-        const M = H.modeleFrise;   // courbe_modele.py frise : graine à chaque époque, puis ses clics
-        if (M && M.points && M.points.length) {
-            const pts = M.points.slice().sort((a, b) => b.t - a.t);
-            ctx.strokeStyle = COUL.mod; ctx.lineWidth = 2; ctx.beginPath();
-            pts.forEach((p, i) => {
-                const x = px(p.t), y = py(p.T);
-                if (!i) { ctx.moveTo(x, y); return; }
-                ctx.lineTo(x, py(pts[i - 1].T));   // palier du clic précédent jusqu'à ce clic
-                ctx.lineTo(x, y);                  // saut du clic
-            });
-            ctx.lineTo(px(H.T_MIN_AGO), py(pts[pts.length - 1].T));   // dernier état jusqu'à 2025
-            ctx.stroke();
-            ctx.fillStyle = COUL.mod;
-            for (const p of pts) {
-                const x = px(p.t), y = py(p.T);
-                if (x < -5 || x > v.width + 5) continue;
-                ctx.beginPath(); ctx.arc(x, y, 3, 0, 2 * Math.PI); ctx.fill();
-                const pas = p.dt == null ? '' : ' (+' + (p.dt >= 1 ? p.dt.toFixed(p.dt % 1 ? 2 : 0) + ' Ma' : Math.round(p.dt * 1e6).toLocaleString('fr-FR') + ' ans') + ')';
-                zones.push({ x0: x - 5, x1: x + 5, y0: y - 5, y1: y + 5,
-                    texte: 'Modèle — ' + p.etape + pas + ' : ' + p.T.toFixed(1) + ' °C, glace ' + Math.round(p.glace * 100) + ' %, CO₂ ' + Math.round(p.ppm) + ' ppm'
-                        + (p.Tint > 0 ? ' — intérieur ' + Math.round(p.Tint) + ' °C, ' + (p.geo >= 10 ? Math.round(p.geo).toLocaleString('fr-FR') : p.geo.toFixed(3)) + ' W/m² (' + p.TW.toLocaleString('fr-FR') + ' TW)' : '') });
-            }
-        }
+        // Modèles : chaîne de clics (courbe_modele.py, orange plein) puis frise à chaque époque (courbe_modele.py frise,
+        // violette en tirets : l'orange se voit entre les tirets). La médiane de la littérature, en pointillés, passe
+        // par-dessus les deux.
+        escalier(ctx, H.modele, COUL.mod, [], 'Modèle, chaîne de clics');
+        escalier(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Modèle, frise à chaque époque');
+        mediane(ctx, lit, COUL.lit);
 
         // Logos : bandeau en haut, au DÉBUT de leur époque (▶ du TIMELINE).
         ctx.textAlign = 'center';
@@ -160,9 +176,12 @@
 
         // Légende
         ctx.textAlign = 'right'; ctx.font = '12px Tahoma';
-        ctx.fillStyle = COUL.lit; ctx.fillText('— littérature (médiane, bande 5–95 %)', v.width - 15, 25);
+        const bary = M => Object.values(M.bary).join(' / ') + ' %';
+        ctx.fillStyle = COUL.lit; ctx.fillText('··· littérature (médiane, bande ± 1σ ; fourchette publiée hors distribution)', v.width - 15, 25);
         ctx.fillStyle = COUL.mod;
-        ctx.fillText(M ? '— modèle (frise à chaque époque puis clics, escalier, bary ' + M.bary + ' %, ' + M.genere + ')' : '— modèle : courbe_modele_frise.js absent (python3 CO2/scripts/bench_headless/courbe_modele.py frise)', v.width - 15, 42);
+        ctx.fillText('— modèle, chaîne de clics depuis ⚫ (escalier, bary ' + bary(H.modele) + ', ' + H.modele.genere + ')', v.width - 15, 42);
+        ctx.fillStyle = COUL.frise;
+        ctx.fillText('- - modèle, frise à chaque époque puis ses clics (escalier, bary ' + bary(H.modeleFrise) + ', ' + H.modeleFrise.genere + ')', v.width - 15, 59);
     };
 
     /** Texte de la zone sous (x, y), ou null. */

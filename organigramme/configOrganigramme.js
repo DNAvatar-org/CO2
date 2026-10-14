@@ -801,7 +801,7 @@ if (window.DATA && window.TIMELINE && window.TIMELINE.length) {
     window.DATA['📜']['🔘🕰'] = '';
     window.DATA['📜']['📿☄️'] = 0;    // compteur dédié bouton ☄️ (init à 0)
     window.DATA['📜']['📿💫'] = 0;    // compteur dédié bouton 💫 (init à 0)
-    window.DATA['📜']['🔺⚖️💧☄️'] = 0; // masse H₂O par météorite (init à 0, rempli par getEpochDateConfig)
+    window.DATA['📜']['🔺⚖️💧'] = 0;   // eau cumulée des météorites de l'époque (CLICS.jouer)
     window.RUNTIME_STATE.currentEpochName = firstId === '⚫' ? 'Corps Noir' : (window.CHARS_DESC && window.CHARS_DESC[firstId]) || firstId;
     // [0] = init DATA['📜'] ; fermer le groupe tout de suite (sinon tout console.log jusqu'au setEpoch s'affiche dans [0])
     if (window._logStep) {

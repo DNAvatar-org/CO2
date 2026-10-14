@@ -4,12 +4,14 @@
 //       (c'est à lui qu'on compare la courbe simulée, courbe_modele.js). La courbe est CONTINUE de
 //       −5000 Ma à 2025 : entre deux sources qui ne se touchent pas (4,45 → 4,4 Ga, 4,4 → 4,0 Ga,
 //       525 → 482 Ma), c'est un trait droit, et le survol le dit (« raccord, aucune donnée »).
-//         · hadeen      : ancres de l'Hadéen, chacune avec sa source (5e colonne) : corps noir (équation), vapeur de
+//         · hadeen      : ancres de l'Hadéen, chacune avec sa source (5e colonne) : avant 4,567 Ga pas de Terre (corps noir
+//                         ⚫, équation), accrétion 4,567 → 4,51 Ga surface fondue (Abe & Matsui 1985), vapeur de
 //                         roche puis océan de magma (~2 Ma), océan chaud sous CO₂, retrait du CO₂ en 20–100 Ma
 //                         (Zahnle et al. 2010, fig. 3 ; Sleep et al. 2001), eau liquide des zircons de Jack Hills
 //                         (Wilde et al. 2001 : 0–100 °C, médiane = milieu de la fourchette)
 //         · kt2018      : Krissansen-Totton, Arney & Catling 2018 (PNAS 115:4105), T moyenne de surface
-//                         4,0 Ga → 525 Ma, percentiles 2,5 / 50 / 97,5 % sur 10 000 tirages. C'est un
+//                         4,0 Ga → 525 Ma, percentiles 16 / 50 / 84 % (± 1σ) sur 10 000 tirages (la figure publiée
+//                         trace 2,5–97,5 %, ≈ ± 2σ, dont la borne basse passe sous 0 °C de 4,0 à 3,2 Ga). C'est un
 //                         MODÈLE du cycle du carbone contraint par des proxys (pas une mesure directe) : le
 //                         seul continu publié avec incertitude sur le Précambrien. Reproduit avec le code
 //                         des auteurs par CO2/scripts/histoire/kt2018_temperature.py (Fig. 3, sans CH₄).
@@ -29,9 +31,13 @@
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
 //                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
 //                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
-// Version 1.4.0
+// Version 1.6.0
 // Date: 2026-10-14
 // logs :
+//   - v1.6.0: bande = ± 1σ là où la source donne une distribution : KT2018 recalculé à 16–84 % (mêmes tirages,
+//     mêmes médianes) ; PhanDA (5–95 %) et Snyder (2,5–97,5 %) interpolés à ± 1σ (L.unSigma). Fenêtres = fourchettes.
+//   - v1.5.0: avant l'Hadéen : corps noir jusqu'aux CAI (4,567 Ga, Connelly 2012) seulement, puis accrétion surface fondue
+//     [solidus ; vapeur de roche] (Abe & Matsui 1985, Matsui & Abe 1986) — plus un corps noir à −18,5 °C jusqu'à 4,51 Ga.
 //   - v1.4.0: L.precambrien — Archéen (Blake 2010) et Paléoprotérozoïque (Gumsley 2017) en plus du Cryogénien.
 //   - v1.3.1: Hadéen daté (Zahnle 2010) : chute rapide en ~2 Ma au lieu d'un plateau de 60 Ma et d'une pente droite.
 //   - v1.3.0: Cryogénien en fourchettes publiées (deux snowballs, serre de sortie, intervalle) au lieu de KT2018.
@@ -42,8 +48,10 @@ window.HISTOIRE = window.HISTOIRE || {};
 window.HISTOIRE.litterature = {
     // [t, T bas, T milieu, T haut, source] — une ancre qui dure occupe deux lignes (son début, sa fin).
     hadeen: [
-        [5.0e9,   -19, -18.5, -17, 'Corps noir — équation : T_eq = [S(1−A)/4σ]^¼ ≈ −18,5 °C (S = 1361 W/m², A = 0,29)'],
-        [4.51e9,  -19, -18.5, -17, 'Corps noir — équation : T_eq = [S(1−A)/4σ]^¼ ≈ −18,5 °C (S = 1361 W/m², A = 0,29)'],
+        [5.0e9,     -19, -18.5, -17, "Pas encore de Terre : les premiers solides du Système solaire datent de 4 567,30 ± 0,16 Ma (CAI, Connelly et al. 2012, Science 338:651) — aucune donnée possible. Repère = l'équation du corps noir ⚫ du modèle : T_eq = [S(1−A)/4σ]^¼ ≈ −19 à −17 °C (A = 0, S de Gough 1981 à 5,0 puis 4,567 Ga) — pédagogique"],
+        [4.5673e9,  -19, -18.5, -17, "Pas encore de Terre : les premiers solides du Système solaire datent de 4 567,30 ± 0,16 Ma (CAI, Connelly et al. 2012, Science 338:651) — aucune donnée possible. Repère = l'équation du corps noir ⚫ du modèle : T_eq = [S(1−A)/4σ]^¼ ≈ −19 à −17 °C (A = 0, S de Gough 1981 à 5,0 puis 4,567 Ga) — pédagogique"],
+        [4.5673e9,  952, 1626, 2300, "Proto-Terre en accrétion : surface FONDUE sous l'atmosphère de vapeur que dégazent les impacts, en emballement de serre « la plupart du temps » (Abe & Matsui 1985, JGR 90:C545 ; Matsui & Abe 1986, Nature 319:303 ; Zahnle et al. 2010) ; borne basse = solidus chondritique ~1 225 K (Zahnle et al. 2010), borne haute = vapeur de roche des impacts géants entre embryons (même physique que l'impact lunaire, ci-après) — aucune température moyenne publiée, milieu sans signification. Début flou : la Terre grossit sur ~10 Ma (Hf-W, τ ≈ 11 Ma, Yin et al. 2002, Nature 418:949) et ne retient son atmosphère d'impact qu'une fois assez massive"],
+        [4.510001e9, 952, 1626, 2300, "Proto-Terre en accrétion : surface FONDUE sous l'atmosphère de vapeur que dégazent les impacts, en emballement de serre « la plupart du temps » (Abe & Matsui 1985, JGR 90:C545 ; Matsui & Abe 1986, Nature 319:303 ; Zahnle et al. 2010) ; borne basse = solidus chondritique ~1 225 K (Zahnle et al. 2010), borne haute = vapeur de roche des impacts géants entre embryons (même physique que l'impact lunaire, ci-après) — aucune température moyenne publiée, milieu sans signification. Début flou : la Terre grossit sur ~10 Ma (Hf-W, τ ≈ 11 Ma, Yin et al. 2002, Nature 418:949) et ne retient son atmosphère d'impact qu'une fois assez massive"],
         [4.51e9,       2300, 2550, 2800, "Vapeur de roche, 100 à 1 000 ans après l'impact géant (Zahnle, Schaefer & Fegley 2010, Cold Spring Harb. Perspect. Biol. 2:a004895, fig. 3 ; Sleep, Zahnle & Neuhoff 2001, PNAS 98:3666) — ordre de grandeur"],
         [4.509999e9,   2300, 2550, 2800, "Vapeur de roche, 100 à 1 000 ans après l'impact géant (Zahnle, Schaefer & Fegley 2010, Cold Spring Harb. Perspect. Biol. 2:a004895, fig. 3 ; Sleep, Zahnle & Neuhoff 2001, PNAS 98:3666) — ordre de grandeur"],
         [4.509999e9,   1227, 1764, 2300, "Océan de magma sous atmosphère de vapeur : surface > 1 500 K, gelé en surface en ~2 Ma (Zahnle et al. 2010) ; borne haute = vapeur de roche"],
@@ -54,95 +62,95 @@ window.HISTOIRE.litterature = {
         [4.41e9,       -53, 112, 277, "Retrait du CO₂ dans le manteau en 20 ou 100 Ma, selon le scénario (Zahnle et al. 2010, fig. 3) : jusqu'à ~220 K et des océans glacés si le CO₂ part vite, encore ~500 K s'il part lentement — fourchette des deux scénarios, milieu sans signification"],
         [4.4e9,   0, 50, 100, 'Eau liquide — zircons de Jack Hills dès 4,4 Ga (Wilde et al. 2001, Nature 409:175) → 0 < T < 100 °C ; 50 = milieu de la fourchette']
     ],
-    // [t, T 2,5 %, T 50 %, T 97,5 %] — CO2/scripts/histoire/kt2018_temperature.py (10 000 tirages)
+    // [t, T 16 %, T 50 %, T 84 %] (± 1σ) — CO2/scripts/histoire/kt2018_temperature.py v1.1 (10 000 tirages ; la figure publiée trace 2,5–97,5 %)
     kt2018: [
-        [4.0000e+09, -2.99, 18.62, 43.41],
-        [3.9596e+09, -2.81, 18.45, 42.33],
-        [3.9192e+09, -2.69, 18.34, 41.73],
-        [3.8788e+09, -2.61, 18.24, 40.98],
-        [3.8384e+09, -2.51, 18.13, 40.50],
-        [3.7980e+09, -2.40, 18.05, 40.04],
-        [3.7576e+09, -2.28, 17.99, 39.51],
-        [3.7172e+09, -2.16, 17.93, 39.11],
-        [3.6768e+09, -2.02, 17.83, 38.71],
-        [3.6364e+09, -1.88, 17.74, 38.38],
-        [3.5960e+09, -1.73, 17.67, 38.15],
-        [3.5556e+09, -1.57, 17.62, 37.88],
-        [3.5152e+09, -1.41, 17.58, 37.70],
-        [3.4747e+09, -1.25, 17.49, 37.38],
-        [3.4343e+09, -1.09, 17.44, 37.19],
-        [3.3939e+09, -0.92, 17.39, 36.94],
-        [3.3535e+09, -0.74, 17.31, 36.78],
-        [3.3131e+09, -0.56, 17.26, 36.63],
-        [3.2727e+09, -0.39, 17.21, 36.44],
-        [3.2323e+09, -0.20, 17.13, 36.24],
-        [3.1919e+09, -0.02, 17.05, 36.09],
-        [3.1515e+09, 0.14, 16.97, 35.96],
-        [3.1111e+09, 0.25, 16.86, 35.79],
-        [3.0707e+09, 0.39, 16.72, 35.66],
-        [3.0303e+09, 0.48, 16.57, 35.34],
-        [2.9899e+09, 0.57, 16.37, 35.08],
-        [2.9495e+09, 0.62, 16.21, 34.76],
-        [2.9091e+09, 0.63, 16.00, 34.44],
-        [2.8687e+09, 0.58, 15.72, 34.19],
-        [2.8283e+09, 0.55, 15.45, 33.89],
-        [2.7879e+09, 0.48, 15.19, 33.60],
-        [2.7475e+09, 0.41, 14.94, 33.27],
-        [2.7071e+09, 0.36, 14.67, 33.01],
-        [2.6667e+09, 0.26, 14.34, 32.64],
-        [2.6263e+09, 0.25, 14.02, 32.29],
-        [2.5859e+09, 0.29, 13.73, 31.82],
-        [2.5455e+09, 0.23, 13.38, 31.44],
-        [2.5051e+09, 0.27, 13.10, 31.18],
-        [2.4646e+09, 0.28, 12.80, 30.72],
-        [2.4242e+09, 0.33, 12.55, 30.42],
-        [2.3838e+09, 0.37, 12.31, 29.95],
-        [2.3434e+09, 0.43, 12.05, 29.58],
-        [2.3030e+09, 0.51, 11.83, 29.22],
-        [2.2626e+09, 0.58, 11.62, 28.79],
-        [2.2222e+09, 0.65, 11.40, 28.32],
-        [2.1818e+09, 0.74, 11.23, 27.93],
-        [2.1414e+09, 0.89, 11.12, 27.59],
-        [2.1010e+09, 1.02, 11.02, 27.23],
-        [2.0606e+09, 1.14, 10.90, 26.97],
-        [2.0202e+09, 1.34, 10.83, 26.60],
-        [1.9798e+09, 1.52, 10.80, 26.41],
-        [1.9394e+09, 1.69, 10.82, 26.19],
-        [1.8990e+09, 1.81, 10.86, 26.17],
-        [1.8586e+09, 2.00, 10.93, 26.11],
-        [1.8182e+09, 2.20, 11.03, 26.05],
-        [1.7778e+09, 2.39, 11.13, 26.02],
-        [1.7374e+09, 2.61, 11.24, 25.98],
-        [1.6970e+09, 2.82, 11.36, 25.95],
-        [1.6566e+09, 3.04, 11.50, 25.94],
-        [1.6162e+09, 3.28, 11.64, 25.96],
-        [1.5758e+09, 3.49, 11.78, 25.97],
-        [1.5354e+09, 3.72, 11.92, 26.00],
-        [1.4949e+09, 3.96, 12.07, 26.03],
-        [1.4545e+09, 4.18, 12.20, 26.07],
-        [1.4141e+09, 4.41, 12.36, 26.09],
-        [1.3737e+09, 4.66, 12.50, 26.11],
-        [1.3333e+09, 4.89, 12.64, 26.13],
-        [1.2929e+09, 5.13, 12.79, 26.18],
-        [1.2525e+09, 5.36, 12.94, 26.22],
-        [1.2121e+09, 5.60, 13.09, 26.24],
-        [1.1717e+09, 5.83, 13.24, 26.29],
-        [1.1313e+09, 6.09, 13.39, 26.29],
-        [1.0909e+09, 6.32, 13.53, 26.27],
-        [1.0505e+09, 6.57, 13.68, 26.24],
-        [1.0101e+09, 6.82, 13.82, 26.21],
-        [9.6970e+08, 7.08, 13.94, 26.09],
-        [9.2929e+08, 7.34, 14.07, 25.87],
-        [8.8889e+08, 7.60, 14.18, 25.56],
-        [8.4848e+08, 7.86, 14.26, 25.10],
-        [8.0808e+08, 8.11, 14.30, 24.54],
-        [7.6768e+08, 8.36, 14.28, 23.76],
-        [7.2727e+08, 8.63, 14.21, 22.78],
-        [6.8687e+08, 8.89, 14.04, 21.60],
-        [6.4646e+08, 9.15, 13.79, 20.37],
-        [6.0606e+08, 9.42, 13.45, 19.07],
-        [5.6566e+08, 9.68, 13.04, 17.78],
-        [5.2525e+08, 9.94, 12.68, 16.62],
+        [4.0000e+09, 7.04, 18.62, 29.75],
+        [3.9596e+09, 6.95, 18.45, 29.38],
+        [3.9192e+09, 6.88, 18.34, 29.07],
+        [3.8788e+09, 6.84, 18.24, 28.80],
+        [3.8384e+09, 6.80, 18.13, 28.56],
+        [3.7980e+09, 6.79, 18.05, 28.37],
+        [3.7576e+09, 6.78, 17.99, 28.12],
+        [3.7172e+09, 6.76, 17.93, 28.00],
+        [3.6768e+09, 6.73, 17.83, 27.85],
+        [3.6364e+09, 6.72, 17.74, 27.68],
+        [3.5960e+09, 6.68, 17.67, 27.50],
+        [3.5556e+09, 6.72, 17.62, 27.37],
+        [3.5152e+09, 6.74, 17.58, 27.22],
+        [3.4747e+09, 6.74, 17.49, 27.07],
+        [3.4343e+09, 6.75, 17.44, 26.98],
+        [3.3939e+09, 6.81, 17.39, 26.86],
+        [3.3535e+09, 6.88, 17.31, 26.76],
+        [3.3131e+09, 6.94, 17.26, 26.64],
+        [3.2727e+09, 6.99, 17.21, 26.53],
+        [3.2323e+09, 7.03, 17.13, 26.41],
+        [3.1919e+09, 7.05, 17.05, 26.27],
+        [3.1515e+09, 7.07, 16.97, 26.16],
+        [3.1111e+09, 7.07, 16.86, 26.00],
+        [3.0707e+09, 7.02, 16.72, 25.83],
+        [3.0303e+09, 6.95, 16.57, 25.64],
+        [2.9899e+09, 6.90, 16.37, 25.49],
+        [2.9495e+09, 6.78, 16.21, 25.32],
+        [2.9091e+09, 6.63, 16.00, 25.08],
+        [2.8687e+09, 6.50, 15.72, 24.82],
+        [2.8283e+09, 6.31, 15.45, 24.60],
+        [2.7879e+09, 6.12, 15.19, 24.32],
+        [2.7475e+09, 5.95, 14.94, 24.09],
+        [2.7071e+09, 5.77, 14.67, 23.78],
+        [2.6667e+09, 5.64, 14.34, 23.51],
+        [2.6263e+09, 5.49, 14.02, 23.20],
+        [2.5859e+09, 5.37, 13.73, 22.94],
+        [2.5455e+09, 5.23, 13.38, 22.67],
+        [2.5051e+09, 5.15, 13.10, 22.38],
+        [2.4646e+09, 5.06, 12.80, 22.03],
+        [2.4242e+09, 5.00, 12.55, 21.68],
+        [2.3838e+09, 4.96, 12.31, 21.25],
+        [2.3434e+09, 4.94, 12.05, 20.87],
+        [2.3030e+09, 4.88, 11.83, 20.55],
+        [2.2626e+09, 4.91, 11.62, 20.18],
+        [2.2222e+09, 4.90, 11.40, 19.84],
+        [2.1818e+09, 4.92, 11.23, 19.47],
+        [2.1414e+09, 4.95, 11.12, 19.16],
+        [2.1010e+09, 4.98, 11.02, 18.91],
+        [2.0606e+09, 4.99, 10.90, 18.71],
+        [2.0202e+09, 5.05, 10.83, 18.55],
+        [1.9798e+09, 5.13, 10.80, 18.40],
+        [1.9394e+09, 5.22, 10.82, 18.32],
+        [1.8990e+09, 5.33, 10.86, 18.25],
+        [1.8586e+09, 5.45, 10.93, 18.19],
+        [1.8182e+09, 5.60, 11.03, 18.19],
+        [1.7778e+09, 5.76, 11.13, 18.22],
+        [1.7374e+09, 5.94, 11.24, 18.28],
+        [1.6970e+09, 6.10, 11.36, 18.35],
+        [1.6566e+09, 6.27, 11.50, 18.43],
+        [1.6162e+09, 6.46, 11.64, 18.51],
+        [1.5758e+09, 6.64, 11.78, 18.61],
+        [1.5354e+09, 6.85, 11.92, 18.70],
+        [1.4949e+09, 7.05, 12.07, 18.80],
+        [1.4545e+09, 7.24, 12.20, 18.91],
+        [1.4141e+09, 7.43, 12.36, 19.05],
+        [1.3737e+09, 7.63, 12.50, 19.16],
+        [1.3333e+09, 7.83, 12.64, 19.28],
+        [1.2929e+09, 8.03, 12.79, 19.42],
+        [1.2525e+09, 8.23, 12.94, 19.53],
+        [1.2121e+09, 8.43, 13.09, 19.64],
+        [1.1717e+09, 8.63, 13.24, 19.77],
+        [1.1313e+09, 8.84, 13.39, 19.87],
+        [1.0909e+09, 9.04, 13.53, 19.96],
+        [1.0505e+09, 9.24, 13.68, 20.05],
+        [1.0101e+09, 9.45, 13.82, 20.09],
+        [9.6970e+08, 9.66, 13.94, 20.11],
+        [9.2929e+08, 9.85, 14.07, 20.09],
+        [8.8889e+08, 10.05, 14.18, 20.01],
+        [8.4848e+08, 10.24, 14.26, 19.79],
+        [8.0808e+08, 10.43, 14.30, 19.50],
+        [7.6768e+08, 10.61, 14.28, 19.03],
+        [7.2727e+08, 10.78, 14.21, 18.46],
+        [6.8687e+08, 10.94, 14.04, 17.75],
+        [6.4646e+08, 11.07, 13.79, 16.96],
+        [6.0606e+08, 11.17, 13.45, 16.12],
+        [5.6566e+08, 11.24, 13.04, 15.34],
+        [5.2525e+08, 11.26, 12.68, 14.64],
     ],
     // [t (années avant 2025), T 5 %, T 50 %, T 95 %]
     phanda: [
@@ -2246,6 +2254,11 @@ window.HISTOIRE.litterature = {
     ]
 };
 
+// BANDE ± 1σ (16–84 %) partout où la source donne une distribution. PhanDA (5–95 %) et Snyder (2,5–97,5 %) ne publient pas
+// 16–84 % : interpolé, loi normale de part et d'autre de la médiane (chaque côté garde son asymétrie) — σ = écart / z,
+// z = 1,645 pour 5–95 %, 1,96 pour 2,5–97,5 %. Les données publiées restent telles quelles ci-dessus.
+window.HISTOIRE.litterature.unSigma = (rows, z) => rows.map((r) => [r[0], r[2] - (r[2] - r[1]) / z, r[2], r[2] + (r[3] - r[2]) / z]);
+
 // PRÉCAMBRIEN (4,0 Ga → 525 Ma) : L.precambrien = KT2018 (modèle lisse, qui ignore les glaciations et les proxys) hors de
 // trois FENÊTRES sourcées qui le remplacent. Des FOURCHETTES, pas des valeurs. Le fond, aux bords des fenêtres et entre deux
 // paliers, est KT2018 interpolé (la série elle-même, pas une copie de ses valeurs).
@@ -2257,7 +2270,7 @@ window.HISTOIRE.litterature = {
 //     (Le Hir et al. 2009). Aucun proxy de température pendant un snowball : bornes des modèles publiés.
 (function () {
     const L = window.HISTOIRE.litterature, K = L.kt2018;
-    const KT = 'Krissansen-Totton, Arney & Catling 2018, PNAS 115:4105 (2,5–97,5 %) — modèle du cycle du carbone contraint par proxys';
+    const KT = 'Krissansen-Totton, Arney & Catling 2018, PNAS 115:4105 (± 1σ, 16–84 % de 10 000 tirages) — modèle du cycle du carbone contraint par proxys';
     const fond = (t, quoi) => {
         let i = 0;
         while (K[i + 1][0] > t) i++;
