@@ -1,11 +1,13 @@
 // File: CO2/static/histoire/rendu.js
 // Desc: Dessin : grille, glaciations datées (bandes), littérature (série continue −5000 Ma → 2025 avec sa
-//       bande d'incertitude, médiane en pointillés par-dessus), deux courbes du MODÈLE en escalier — chaîne de clics
-//       (orange, pleine) et frise à chaque époque (violette, tirets) —, logos d'époque en bandeau au début de leur
-//       époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.5.0
+//       bande d'incertitude, médiane en pointillés par-dessus), deux courbes du MODÈLE en segments de point à point —
+//       graine t° continue (chaîne de clics, orange, pleine) et graine t° imposée (frise de chaque époque, violette,
+//       tirets) —, logos d'époque en bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
+// Version 1.6.0
 // Date: 2026-10-14
 // logs :
+//   - v1.6.0: modèles en segments de biais d'un point au suivant (plus d'escalier).
+//   - v1.5.1: légende réduite à trois lignes (littérature, graine t° continue, graine t° imposée).
 //   - v1.5.0: les deux modèles (clics orange plein, frise violette en tirets) ; médiane de la littérature en pointillés,
 //     tracée en dernier pour laisser voir les modèles derrière.
 //   - v1.4.1: bande ± 1σ (PhanDA et Snyder interpolés par L.unSigma ; KT2018 recalculé à 16–84 %).
@@ -72,21 +74,14 @@
     }
 
     /**
-     * Un modèle en ESCALIER. Un clic calcule l'état à sa date, et cet état tient jusqu'au clic suivant : palier
-     * horizontal, puis saut vertical au clic. Rien n'est interpolé entre deux clics — une pente dirait que le modèle a
-     * calculé ce qu'il n'a pas calculé. `tirets` : motif de ctx.setLineDash ([] = trait plein).
+     * Un modèle : un segment de biais d'un point calculé au suivant (deux points à la même date = saut vertical).
+     * `tirets` : motif de ctx.setLineDash ([] = trait plein).
      */
-    function escalier(ctx, M, couleur, tirets, nom) {
+    function courbe(ctx, M, couleur, tirets, nom) {
         const v = H.vue;
         const pts = M.points.slice().sort((a, b) => b.t - a.t);
         ctx.strokeStyle = couleur; ctx.lineWidth = 2; ctx.setLineDash(tirets); ctx.beginPath();
-        pts.forEach((p, i) => {
-            const x = px(p.t), y = py(p.T);
-            if (!i) { ctx.moveTo(x, y); return; }
-            ctx.lineTo(x, py(pts[i - 1].T));   // palier du clic précédent jusqu'à ce clic
-            ctx.lineTo(x, y);                  // saut du clic
-        });
-        ctx.lineTo(px(H.T_MIN_AGO), py(pts[pts.length - 1].T));   // dernier état jusqu'à 2025
+        pts.forEach((p, i) => { const x = px(p.t), y = py(p.T); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
         ctx.stroke(); ctx.setLineDash([]);
         ctx.fillStyle = couleur;
         for (const p of pts) {
@@ -158,8 +153,8 @@
         // Modèles : chaîne de clics (courbe_modele.py, orange plein) puis frise à chaque époque (courbe_modele.py frise,
         // violette en tirets : l'orange se voit entre les tirets). La médiane de la littérature, en pointillés, passe
         // par-dessus les deux.
-        escalier(ctx, H.modele, COUL.mod, [], 'Modèle, chaîne de clics');
-        escalier(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Modèle, frise à chaque époque');
+        courbe(ctx, H.modele, COUL.mod, [], 'Graine t° continue');
+        courbe(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Graine t° imposée');
         mediane(ctx, lit, COUL.lit);
 
         // Logos : bandeau en haut, au DÉBUT de leur époque (▶ du TIMELINE).
@@ -176,12 +171,9 @@
 
         // Légende
         ctx.textAlign = 'right'; ctx.font = '12px Tahoma';
-        const bary = M => Object.values(M.bary).join(' / ') + ' %';
-        ctx.fillStyle = COUL.lit; ctx.fillText('··· littérature (médiane, bande ± 1σ ; fourchette publiée hors distribution)', v.width - 15, 25);
-        ctx.fillStyle = COUL.mod;
-        ctx.fillText('— modèle, chaîne de clics depuis ⚫ (escalier, bary ' + bary(H.modele) + ', ' + H.modele.genere + ')', v.width - 15, 42);
-        ctx.fillStyle = COUL.frise;
-        ctx.fillText('- - modèle, frise à chaque époque puis ses clics (escalier, bary ' + bary(H.modeleFrise) + ', ' + H.modeleFrise.genere + ')', v.width - 15, 59);
+        ctx.fillStyle = COUL.lit; ctx.fillText('··· littérature', v.width - 15, 25);
+        ctx.fillStyle = COUL.mod; ctx.fillText('— graine t° continue', v.width - 15, 42);
+        ctx.fillStyle = COUL.frise; ctx.fillText('- - graine t° imposée', v.width - 15, 59);
     };
 
     /** Texte de la zone sous (x, y), ou null. */

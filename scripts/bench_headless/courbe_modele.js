@@ -2,13 +2,13 @@
 // Desc: Courbe de température DU MODÈLE pour CO2/histoire.html : frise sur ⚫, puis la chaîne de CLICS
 //       complète ⚫ → 🔥 → 🦠 → … → 2025 (mêmes tictimes que l'interface, T° conservée d'une époque à
 //       l'autre, aucune remise à zéro entre époques). Chaque convergence donne un point (années avant 2025,
-//       T °C, glace, époque, clic joué, durée 🔺⏳ du clic). La page trace un ESCALIER : l'état d'un clic
-//       tient jusqu'au clic suivant, rien n'est interpolé entre deux clics.
+//       T °C, glace, époque, clic joué, durée 🔺⏳ du clic). La page relie les points par des segments.
 //       Deux modes (window.__MODE__, posé par courbe_modele.py) :
-//         · 'clics' : UNE frise (⚫), puis que des clics — l'état arrive d'une époque à l'autre ;
-//         · 'frise' : à CHAQUE nouvelle époque, clic sur la frise (graine de l'époque), puis ses tictimes.
+//         · 'clics' : UNE frise (⚫), puis que des clics — l'état arrive d'une époque à l'autre (graine t° continue) ;
+//         · 'frise' : le clic sur la frise de CHAQUE époque du TIMELINE, et rien d'autre (graine t° imposée).
 //       Écrit window.__COURBE__ (points dans l'ordre chronologique). Lancé par courbe_modele.py.
-// Version 2.0.1
+// Version 2.1.0
+// - v2.1.0 (2026-10-14): mode frise = la graine de chaque époque seulement (plus ses tictimes).
 // - v2.0.1 (2026-10-13): jauges séparées — `pct` et `bary` portent tout baryByGroup.
 // Date: 2026-10-12
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -39,20 +39,22 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
     window.__PROG__='frise '+id; await api.run({ epochId:id, animEnabled:false });
     note(MODE, 'frise '+id, null, null, 'frise');
   };
-  await frise('⚫');
-  // Que des clics (mécanique : CLICS, API_BILAN/convergence/clics.js) jusqu'au ⛽ 2000 → 2025 de 📱.
-  // Mode 'frise' : à chaque nouvelle époque, clic sur la frise au lieu d'y arriver avec l'état.
-  while (!(D['📜']['🗿'] === '📱' && D['📜']['📿💫'] === 1)) {
-    const depuis = D['📜']['🗿'];
-    const key = window.CLICS.prochaineAction();
-    const t0 = D['📜']['⏳'];
-    const r = window.CLICS.jouer(key);
-    const dt = D['📜']['⏳'] - t0;   // durée du clic (Ma)
-    if (r.passage !== null && MODE === 'frise') { await frise(r.passage); continue; }
-    if (r.passage !== null) window.CLICS.passer(r.passage);
-    window.__PROG__ = 'clic '+depuis+' '+key+(r.passage !== null ? ' → '+r.passage : '');
-    await api.run({ epochId: D['📜']['🗿'], animEnabled:true });
-    note(MODE, r.passage !== null ? depuis+' →'+key+' '+r.passage : depuis+' '+key+' ('+(+D['📜']['⏳'].toFixed(4))+' Ma écoulés)', key, dt);
+  if (MODE === 'frise') {
+    for (const E of window.TIMELINE) await frise(E['📅']);
+  } else {
+    await frise('⚫');
+    // Que des clics (mécanique : CLICS, API_BILAN/convergence/clics.js) jusqu'au ⛽ 2000 → 2025 de 📱.
+    while (!(D['📜']['🗿'] === '📱' && D['📜']['📿💫'] === 1)) {
+      const depuis = D['📜']['🗿'];
+      const key = window.CLICS.prochaineAction();
+      const t0 = D['📜']['⏳'];
+      const r = window.CLICS.jouer(key);
+      const dt = D['📜']['⏳'] - t0;   // durée du clic (Ma)
+      if (r.passage !== null) window.CLICS.passer(r.passage);
+      window.__PROG__ = 'clic '+depuis+' '+key+(r.passage !== null ? ' → '+r.passage : '');
+      await api.run({ epochId: D['📜']['🗿'], animEnabled:true });
+      note(MODE, r.passage !== null ? depuis+' →'+key+' '+r.passage : depuis+' '+key+' ('+(+D['📜']['⏳'].toFixed(4))+' Ma écoulés)', key, dt);
+    }
   }
   const pts = window.__PASSAGES__.map(({ pct, chaine, ...p }) => p);
   window.__COURBE__ = { mode: MODE, bary: JSON.parse(JSON.stringify(D['🎚️'].baryByGroup)), points: pts };

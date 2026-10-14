@@ -7,7 +7,7 @@
 #             → CO2/static/histoire/courbe_modele.js        (window.HISTOIRE.modele)
 #             → _logs/courbe_clics.tsv (au fil de l'eau)
 #         python3 CO2/scripts/bench_headless/courbe_modele.py frise
-#             à chaque époque : clic sur la frise (graine), puis ses tictimes
+#             le clic sur la frise de chaque époque, rien d'autre (graine t° imposée)
 #             → CO2/static/histoire/courbe_modele_frise.js  (window.HISTOIRE.modeleFrise)
 #             → _logs/courbe_frise.tsv (au fil de l'eau)
 #       Le journal _logs/courbe_<mode>.tsv est supprimé au début de chaque lancement (nouvelle session), puis

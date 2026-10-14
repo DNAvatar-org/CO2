@@ -4,8 +4,8 @@
 //       (c'est à lui qu'on compare la courbe simulée, courbe_modele.js). La courbe est CONTINUE de
 //       −5000 Ma à 2025 : entre deux sources qui ne se touchent pas (4,45 → 4,4 Ga, 4,4 → 4,0 Ga,
 //       525 → 482 Ma), c'est un trait droit, et le survol le dit (« raccord, aucune donnée »).
-//         · hadeen      : ancres de l'Hadéen, chacune avec sa source (5e colonne) : avant 4,567 Ga pas de Terre (corps noir
-//                         ⚫, équation), accrétion 4,567 → 4,51 Ga surface fondue (Abe & Matsui 1985), vapeur de
+//         · hadeen      : ancres de l'Hadéen, chacune avec sa source (5e colonne) : ⚫ = équation du corps noir + glace des
+//                         météorites (calculée plus bas depuis le TIMELINE), bond vertical à la collision, vapeur de
 //                         roche puis océan de magma (~2 Ma), océan chaud sous CO₂, retrait du CO₂ en 20–100 Ma
 //                         (Zahnle et al. 2010, fig. 3 ; Sleep et al. 2001), eau liquide des zircons de Jack Hills
 //                         (Wilde et al. 2001 : 0–100 °C, médiane = milieu de la fourchette)
@@ -31,9 +31,11 @@
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
 //                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
 //                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
-// Version 1.6.0
+// Version 1.7.0
 // Date: 2026-10-14
 // logs :
+//   - v1.7.0: ⚫ = corps noir + glace des ☄️ (équation sur la séquence de ⚫), bond vertical à la collision ; ancre
+//     d'accrétion fondue retirée (citée dans la source du corps noir).
 //   - v1.6.0: bande = ± 1σ là où la source donne une distribution : KT2018 recalculé à 16–84 % (mêmes tirages,
 //     mêmes médianes) ; PhanDA (5–95 %) et Snyder (2,5–97,5 %) interpolés à ± 1σ (L.unSigma). Fenêtres = fourchettes.
 //   - v1.5.0: avant l'Hadéen : corps noir jusqu'aux CAI (4,567 Ga, Connelly 2012) seulement, puis accrétion surface fondue
@@ -48,10 +50,6 @@ window.HISTOIRE = window.HISTOIRE || {};
 window.HISTOIRE.litterature = {
     // [t, T bas, T milieu, T haut, source] — une ancre qui dure occupe deux lignes (son début, sa fin).
     hadeen: [
-        [5.0e9,     -19, -18.5, -17, "Pas encore de Terre : les premiers solides du Système solaire datent de 4 567,30 ± 0,16 Ma (CAI, Connelly et al. 2012, Science 338:651) — aucune donnée possible. Repère = l'équation du corps noir ⚫ du modèle : T_eq = [S(1−A)/4σ]^¼ ≈ −19 à −17 °C (A = 0, S de Gough 1981 à 5,0 puis 4,567 Ga) — pédagogique"],
-        [4.5673e9,  -19, -18.5, -17, "Pas encore de Terre : les premiers solides du Système solaire datent de 4 567,30 ± 0,16 Ma (CAI, Connelly et al. 2012, Science 338:651) — aucune donnée possible. Repère = l'équation du corps noir ⚫ du modèle : T_eq = [S(1−A)/4σ]^¼ ≈ −19 à −17 °C (A = 0, S de Gough 1981 à 5,0 puis 4,567 Ga) — pédagogique"],
-        [4.5673e9,  952, 1626, 2300, "Proto-Terre en accrétion : surface FONDUE sous l'atmosphère de vapeur que dégazent les impacts, en emballement de serre « la plupart du temps » (Abe & Matsui 1985, JGR 90:C545 ; Matsui & Abe 1986, Nature 319:303 ; Zahnle et al. 2010) ; borne basse = solidus chondritique ~1 225 K (Zahnle et al. 2010), borne haute = vapeur de roche des impacts géants entre embryons (même physique que l'impact lunaire, ci-après) — aucune température moyenne publiée, milieu sans signification. Début flou : la Terre grossit sur ~10 Ma (Hf-W, τ ≈ 11 Ma, Yin et al. 2002, Nature 418:949) et ne retient son atmosphère d'impact qu'une fois assez massive"],
-        [4.510001e9, 952, 1626, 2300, "Proto-Terre en accrétion : surface FONDUE sous l'atmosphère de vapeur que dégazent les impacts, en emballement de serre « la plupart du temps » (Abe & Matsui 1985, JGR 90:C545 ; Matsui & Abe 1986, Nature 319:303 ; Zahnle et al. 2010) ; borne basse = solidus chondritique ~1 225 K (Zahnle et al. 2010), borne haute = vapeur de roche des impacts géants entre embryons (même physique que l'impact lunaire, ci-après) — aucune température moyenne publiée, milieu sans signification. Début flou : la Terre grossit sur ~10 Ma (Hf-W, τ ≈ 11 Ma, Yin et al. 2002, Nature 418:949) et ne retient son atmosphère d'impact qu'une fois assez massive"],
         [4.51e9,       2300, 2550, 2800, "Vapeur de roche, 100 à 1 000 ans après l'impact géant (Zahnle, Schaefer & Fegley 2010, Cold Spring Harb. Perspect. Biol. 2:a004895, fig. 3 ; Sleep, Zahnle & Neuhoff 2001, PNAS 98:3666) — ordre de grandeur"],
         [4.509999e9,   2300, 2550, 2800, "Vapeur de roche, 100 à 1 000 ans après l'impact géant (Zahnle, Schaefer & Fegley 2010, Cold Spring Harb. Perspect. Biol. 2:a004895, fig. 3 ; Sleep, Zahnle & Neuhoff 2001, PNAS 98:3666) — ordre de grandeur"],
         [4.509999e9,   1227, 1764, 2300, "Océan de magma sous atmosphère de vapeur : surface > 1 500 K, gelé en surface en ~2 Ma (Zahnle et al. 2010) ; borne haute = vapeur de roche"],
@@ -2253,6 +2251,38 @@ window.HISTOIRE.litterature = {
         { t0: 639e6, t1: 635.2e6, label: 'Marinoen', src: 'Hoffman et al. 2017 (début 649,9–639,0 Ma ; fin 635,2 Ma)' }
     ]
 };
+
+// ⚫ (5,0 → 4,51 Ga) : le corps noir PÉDAGOGIQUE du modèle — une bille de roche nue (albédo 0) sans atmosphère, que ses
+// météorites couvrent de glace — et non la vraie proto-Terre : celle-ci n'existe qu'à partir des premiers solides, 4 567,30 Ma
+// (Connelly et al. 2012, Science 338:651), et sa surface en accrétion était fondue (Abe & Matsui 1985, JGR 90:C545). Repère =
+// L'ÉQUATION du corps noir appliquée à la séquence de ⚫ (dates et masses d'eau des ☄️ lues dans window.TIMELINE) :
+//   T_eq = [S (1 − f·A) / 4σ]^¼ ; S = L / 4π UA², L = L☉ / (1 + 0,4 t/4,57) (Gough 1981, Solar Phys. 74:21) ;
+//   f = min(1, h / 10 m), h = eau ÷ (ρ 4πR²) — couverture : convention du modèle (calculations_albedo.js), ❔ sans source ;
+//   A = albédo de la glace, de 0,34 (glace propre) à 0,98 (neige fraîche sèche) (Cuffey & Paterson 2010, The Physics of
+//   Glaciers, tab. 5.2) → bande ; médiane à A = 0,66 (milieu). Puis bond vertical à la collision (◀ de ⚫ = impact géant).
+(function () {
+    const L = window.HISTOIRE.litterature;
+    const SIGMA = 5.670374419e-8, L_SOLEIL = 3.828e26, UA = 1.495978707e11, RHO_EAU = 1000;   // CODATA 2018 ; IAU 2015 B3 ; IAU 2012 B2
+    const E = window.TIMELINE.find((e) => e['📅'] === '⚫');
+    const aire = 4 * Math.PI * Math.pow(E['📐'] * 1e3, 2);
+    const S = (t) => L_SOLEIL / (1 + 0.4 * t / 1e9 / 4.57) / (4 * Math.PI * UA * UA);
+    const T = (t, f, A) => Math.pow(S(t) * (1 - f * A) / (4 * SIGMA), 0.25) - 273.15;
+    const SRC = 'Corps noir ⚫ (pédagogique, pas la vraie proto-Terre — fondue en accrétion dès 4,567 Ga : Connelly 2012, Abe & Matsui 1985) : '
+        + 'T = [S(1 − f·A)/4σ]^¼, S de Gough 1981, A glace 0,34–0,98 (Cuffey & Paterson 2010), f = couverture de glace des ☄️ (h / 10 m)';
+    const ligne = (t, eau) => {
+        const h = eau / RHO_EAU / aire, f = Math.min(1, h / 10);
+        return [t, T(t, f, 0.98), T(t, f, 0.66), T(t, f, 0.34), SRC + ' — ' + (eau ? eau.toExponential(1) + ' kg d\'eau, ' + (h < 10 ? h.toFixed(1) + ' m' : Math.round(h) + ' m') + ', f = ' + f.toFixed(2) : 'sans eau')];
+    };
+    const rows = [ligne(E['▶'], 0)];
+    let t = E['▶'], eau = 0;
+    for (const e of E['🕰'].order) {
+        if (e['🕰'] !== '☄️') continue;
+        t -= e['🔺⏳'] * 1e6; eau += e['🔺⚖️💧☄️'];
+        rows.push(ligne(t, eau));
+    }
+    rows.push(ligne(E['◀'] + 1000, eau));   // jusqu'à la collision, puis le saut vertical (vapeur de roche, ligne suivante)
+    L.hadeen = rows.concat(L.hadeen);
+})();
 
 // BANDE ± 1σ (16–84 %) partout où la source donne une distribution. PhanDA (5–95 %) et Snyder (2,5–97,5 %) ne publient pas
 // 16–84 % : interpolé, loi normale de part et d'autre de la médiane (chaque côté garde son asymétrie) — σ = écart / z,
