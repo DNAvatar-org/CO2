@@ -8,24 +8,6 @@
 //   de l'API (🕰.order, lue par CLICS). La table ne se déclenchait d'ailleurs jamais sur 🔥 (4510 − k×100 Ma).
 // - v1.1.50: retrait du tooltip « Terre » sur le nœud terre (rollover jugé inutile sur le globe Three.js).
 // - v1.1.49: TEXTURE_DATES_MA / _YEAR alignées sur les fichiers RÉELLEMENT présents dans fonds/ (base du repli « texture la plus proche »).
-// - v1.1.48: TEXTURE_DATES_MA + 1 Ma (fonds/-00001Ma.png, état interglaciaire du Quaternaire).
-// - v1.1.47: epochName 💀 « Extinction permienne » (ex « Limite P/T », aligné CHARS_DESC).
-// - v1.1.46: getCurrentDateKey — Number(startYears) avant + info×1e6 (évite concat chaîne «-10000»+8000 pour ACTION / alignement texture).
-// - v1.1.45: z-order Terre > flèches (max arc 30) ; ARROW_LABEL 50 pour lisibilité ; reemis 36 ; noyau 34 — bande spectrale (#spectral-visualization) reste au-dessus (plot après flux au DOM).
-// - v1.1.44: commentaire ACTION_BY_DATE — Ma = fonds/-NNNNNMa.png (plus _NNNNNMa.png).
-// - v1.1.43: TEXTURES_THREEJS — Ma en '-' + 5 ch + Ma.png (même convention organigramme v1.0.102).
-// - v1.1.42: TEXTURES_THREEJS — années signées « _ »/« - » + 6 ch + a.png (préfixe Ma corrigé en v1.1.43).
-// - v1.1.40: timeline-scenario-anim — fillColor transparent (plus de disque blanc derrière 🎞 SKIP)
-// - v1.1.39: doc timeline-scenario-anim — cellule #plot-anim-toggle = flux-cell + .organigram-logo sur le span 🎞 (plus icon-button / flux-button-cell sur la cellule ; voir organigramme.js v1.0.81)
-// - v1.1.38: terre.epoch + noyau.radiation — nouvelles époques v1.4.0 timeline : ☃ Sturtienne (hyst 1a), ⛄ Plein Snowball, ⛈ Sortie Marinoen (hyst 1b),
-//            🪼 Paléozoïque marin, 🍄 Paléozoïque terrestre, 💀 Limite P/T, 🛖 Holocène ; renommages 🦤 Cénozoïque, 🐧 Eocène-Oligocène (hyst 2),
-//            🦣 Quaternaire ; Paléozoïque supprimé (scindé) ; hysteresis 1 renommé Sturtienne (CHARS_DESC).
-// - v1.1.37: SKIP + EVENEMENT — className organigram-config-heading (typo 04B_03 sans cadre, blanc cassé, comme DETAILS/OBSERVATIONS)
-// - v1.1.36: SKIP — classe organigram-config-heading (même typo/cadre que DETAILS) ; domSlot centre = hauteur dérivée de slotEventLogoPx (plus slotMinWidth−200)
-// - v1.1.35: SKIP — dataId plot_anim_skip (classes flux via updateLabelClasses) ; domSlot logos = coque flux 3×3 (plus #timeline-action-block)
-// - v1.1.34: timeline-scenario-anim — logo ['🎞',{text:SKIP}] (ordre DOM : SKIP au-dessus) ; id #plot-anim-toggle + icon-button ; ACTION au-dessus du domSlot logos
-// - v1.1.33: doc radiation — openingAngle = secteur masqué (px linéaires, pas log) ; angleInit ≠ orientation ; astuce albedo = centre (x,y)
-// - v1.1.32: terre.epoch + noyau.radiation — epochName « hysteresis 1 » (TIMELINE hidden) ; sinon setEpoch ne recrée pas #cell-terre (rayon bloqué sur Corps noir)
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -34,35 +16,6 @@
 // UTF8 est la sémantique pour CODE & UI
 //   - Initial version: extraction des données de configuration depuis organigramme.js
 //   - Added dataId mapping for dynamic label updates
-//   - v1.1.1: albedo-btn affiche le barycentre fine-tuning cloud sous 🪩 (🧩🔺n%🔻)
-//   - v1.1.2: [1] config (époque initiale) avant build organigramme pour ordre synchrone 1 → 2 texture
-//   - v1.1.19: [0] organigramme 📜 init (+ _logStepEnd) — [1] config uniquement dans setEpoch ; _logStep depuis debug.js
-//   - v1.1.3: [1] log via _logStep (console.groupCollapsed) si défini
-//   - v1.1.4: baryEpochs + getEffectiveNodesConfig(epochName, bary) pour interpolation graphique (appliqué via IO_LISTENER côté CO2)
-//   - v1.1.5: bary=1 → config époque suivante (bary=0 d'après) ; interpolation fillColor/strokeColor (parseRgba/parseHex/interpolateColor)
-//   - v1.1.6: baryEpochs Hadeen end-state = Archeen start (bary in [0,1[ ; frontiere coherente)
-//   - v1.1.7: LABEL_POSITIONS txtDD (avant début flèche) et txtFF (après bout flèche) pour arcs
-//   - v1.1.8: TEXTURES_THREEJS dérivé des dates (TEXTURE_DATES_MA / TEXTURE_DATES_YEAR) ; epochTextures supprimé (chemin = getPlanetTexturePathFromEpoch)
-//   - v1.1.9: ACTION_BY_EPOCH (date → 2e bouton ☄️|🎇|💫) pour barre ACTION en haut de la timeline
-//   - v1.1.10: ACTION_BY_DATE (plages fromMa/toMa, fromYear/toYear) + getActionForDate(startYears, infoTimeMa) — entrée = date, pas epoch
-//   - v1.1.11: albedo_percent retiré du bouton albedo — affiché dans #organigram-config-wrap (main.js)
-//   - v1.1.12: fine_tuning_cloud_bary retiré du bouton albedo — même bandeau (main.js)
-//   - v1.1.14: EOT / 🏔 dans terre.epoch et noyau.radiation ; v1.1.15: 🐊 ⛰ + libellé « Grande Coupure »
-//   - v1.1.16: ❄️ Quaternaire (2 Ma) — terre + noyau + TEXTURE_DATES_MA / ACTION_BY_DATE
-//   - v1.1.17: espace1 — titre OBSERVATIONS déplacé vers main.js (wrap comme PILOTAGE), plus de top sur le nœud satellite
-//   - v1.1.20: 🐊 epochName « Éocène » (titre court)
-//   - v1.1.22: retrait domSlot timeline — logos + 🎞 dans visu_radiatif.html (.title-scenario-row)
-//   - v1.1.23: nœud domSlot timeline-scenario-logos seul (#timeline-events-logos créé/déplacé par organigramme, plus dans visu_radiatif)
-//   - v1.1.24: nœud domSlot timeline-scenario-anim (#plot-anim-toggle button créé par organigramme, plus dans visu_radiatif)
-//   - v1.1.25: domSlot logos + 🎞 dans #flux-diagram (x/y directs, pas de wrapper ; hors title-container)
-//   - v1.1.26: domSlot timeline-scenario-logos : slotEventLogoPx (côté picto px) + slotMinWidth (zone min)
-//   - v1.1.31: [0] organigramme 📜 init — _logStepEnd() tout de suite (sinon tout le chargement s’empile dans le groupe [0])
-//   - v1.1.30: commentaire radiation — angleInit n’altère pas l’état final (= openingAngle)
-//   - v1.1.29: commentaire radiation — openingAngle seul toujours OK (ex. reemis)
-//   - v1.1.28: radiation — angleInit / angleFinal (ouverture découpée, même unité que openingAngle), radius alias maxRadius, angleAnimMs (organigramme.js)
-//   - v1.1.27: methane logoOffsetY 2 + logoScale 0.4 (createCell applique le scale au PNG charsImages)
-//   - v1.1.18: 🐊 epochName « Hyperthermie éocène » (remplace Terre étouffe (PETM))
-//   - v1.1.13: albedo_percent de retour en top du bouton albédo (grille [1,2])
 
 // ============================================================================
 // RÉFÉRENCE DES LOGOS (déplacée vers alphabet.js)

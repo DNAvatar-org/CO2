@@ -14,49 +14,6 @@
  *     et de checkDateEvents. 📱 : tranche = CLICS.trancheActive(). Ici ne reste que la présentation.
  *     Le bouton proposé = CLICS.prochaineAction (🕰.order de la config API) : fin de ACTION_BY_DATE (CO2).
  *   - v1.2.41: pas de clic affiché à 1 décimale (formatStepLabel partout, météorites comprises).
- *   - v1.2.40: plus aucune écriture de flux géothermique (applyHadeenFluxFromConfig retirée) : l'intérieur a une
- *     histoire thermique (API_BILAN/geology/interieur.js), le clic ne fait qu'avancer la date.
- *   - v1.2.39: clic tic de 🔥 — compte 📿💫 (clicTicHadeen, un seul gestionnaire au lieu de 4 copies) : le flux du
- *     noyau baisse linéairement ▶ → ◀ (getNoyau) et la T° de l'Hadéen redescend à chaque clic. getEpochConfigById
- *     rend l'entrée TIMELINE (référence unique) et non plus une copie d'epochIndex() : le geothermal_flux qu'on y
- *     écrivait se perdait (copie depuis février : { ...item } du loader, puis epochIndex). Plus d'interpolation log.
- *   - v1.2.38: getEpochConfigById lit window.epochIndex() (API) au lieu de configOrganigramme.timeline — une
- *     dépendance de moins à l'organigramme pour les pages qui n'en ont pas. getActionForDate y reste (c'est du rendu).
- *   - v1.2.37: formatMassGT — vrais préfixes SI sur la tonne (Gt/Tt/Pt/Et). « kGT » et « MGT » empilaient deux
- *     préfixes, ce qui ne veut rien dire : les 3,2e17 kg d'une météorite de glace s'affichaient « +320 kGT »
- *     au lieu de « +320 Tt » (kilo × giga = téra, pas méga).
- *   - v1.2.36: 🕰.order n'est PLUS consommé par shift() — curseur 📿🕰 dans DATA['📜'] (remis à 0 par setEpoch).
- *     Le shift amputait la config pour de bon : revenir sur une époque déjà parcourue (reclic frise) proposait
- *     les événements décalés et la séquence ne repartait jamais entière. timeline.js : signature de rafraîchissement
- *     sur le curseur. Titre de la cellule d'événements : « FIN DE SIMULATION » quand 📱 a atteint ◀ (2100),
- *     « EVENEMENT » dès qu'un bouton revient.
- *   - v1.2.35: addEventTooltip — alt2sec des boutons d'événement recomposé À CHAQUE SURVOL (il était figé à la création
- *     du bouton, donc identique pour tous les clics d'une époque : 🦣 racontait son 1er clic 4 fois) ; 🎇 en a un aussi.
- *     SKIP (🎞) — epochEventCount() : visible dès que l'époque demande PLUS D'UN CLIC (tics 🔺⏳ sur |◀−▶| compris,
- *     pas seulement le nombre de boutons) → réapparaît sur 🦠 🪸 🦕 🏔 🦣 🛖 🚂 ; reste masqué sur les hystérésis (1 clic).
- *   - v1.2.34: alt2sec sur les boutons d'événements (window.buildEventAlt2sec, static/texts/epochs_alt2sec.js).
- *   - v1.2.33: 📱 ⛽/🛢 — cumul 📜🔺⚖️🏭 (+=) au lieu d'un delta jamais consommé ; infoTimeMa avance de 🔺⏳ (frise figée à 2000) ;
- *     plus de boutons une fois ◀ (2100) atteint.
- *   - v1.2.32: tryEpochEndSkipAfterEvent — verrou _timelineEpochEndSkipLatch posé ICI (plus seulement dans updateTimeline) : le handler
- *     d'événement et updateTimeline lançaient chacun un SKIP pour la même fin d'époque → double setEpoch → 2 calculs concurrents.
- *   - v1.2.31: actions volcan 🗻/🌋 — effets dans la config de l'époque suivante (⛄ voile, 1b CO₂ + 🌫️❄️) ; retrait écriture CONFIG_COMPUTE.iceMudballAlbedo et du hook CO₂ TODO.
- *   - v1.2.30: 🕰.⛰ — alias tic temps (comme 💫 / 🏔) pour compute + UI order / ACTION_BY_DATE.
- *   - v1.2.29: 🕰.🏔 — alias du tic temps (même rôle que 💫 pour compute / 📿💫) ; repli ACTION_BY_DATE + 🕰.order ; compteur SKIP inclut 🏔.
- *   - v1.2.28: clampInfoTimeMaToGeologicEpochDuration — aussi époques forward (▶<◀, ex. 🛖 −10⁴→1800) : |◀−▶|/1e6 + slack
- *     aligné effectiveTimelineEndSlackMa ; sinon 💫 dépassait 1800 (000500a.png puis années incohérentes sans SKIP anim).
- *   - v1.2.27: updateEpochActions — lectures directes DATA/configOrganigramme/TIMELINE ; SKIP toggle sans garde whRoot&& redondante sur 🕰.
- *   - v1.2.26: export tryEpochEndSkipAfterEvent pour timeline.js ; clamp infoTimeMa avec TIMELINE_END_SLACK_MA (timeline.js v1.0.19).
- *   - v1.2.25: retrait gardes typeof window.* sur helpers timeline (contrat de chargement : timeline.js avant events.js).
- *   - v1.2.24: Fin d'époque — isPastCurrentEpochEndMa (timeline.js) + TIMELINE_EPOCH_BOUNDS ; clamp infoTimeMa sur |▶−◀|/1e6 ; plus de seuil 500 Ma codé en dur pour 🔥/⚫.
- *   - v1.2.23: Toute transition d'époque après action événementielle → goNextEpochViaSkip() (togglePlotAnim), plus de setEpoch direct dans ces chemins ; helper centralisé.
- *   - v1.2.22: Corps Noir fin de temps (≥500 Ma) — même effet que SKIP (togglePlotAnim) au lieu de setEpoch('Hadéen') direct (curseur timeline + 🔘🎞 + époque suivante TIMELINE).
- *   - v1.2.21: 💫 Hadéen (🔥) — toujours config:applyThenCompute après tic (plus de garde PLOT_PANEL_READY : chaque événement = un run).
- *   - v1.2.20: clic ☄️ — incrémenter 📿☄️ (pas 📿💫) pour que getMasses fasse ⚖️💧 += 🔺⚖️💧☄️×📿☄️ (albédo glace ⚫).
- *   - v1.2.19: boutons scénario #timeline-events-logos — classe unique organigram-logo (retrait timeline-event-logo + organigram-unified-logo) ; styles organigramme.css.
- *   - v1.2.18: SKIP — classe plot-anim-toggle--scenario-hidden (display:none !important) si 📱 ou 🕰.order.length===1 ; retire visibility inline.
- *   - v1.2.17: SKIP (#plot-anim-toggle) — visibility avant guard eventsLogos ; masqué si 🕰.order.length===1 (sinon visible) ; 📱 year-indexed inchangé.
- *   - v1.2.16: organigramme 🕰.order — un seul bouton (tête de file) ; shift après action si clé === order[0] ; repli si order vide.
- *   - v1.2.15: 🕰.order sur TIMELINE — plusieurs boutons dans l’ordre ; SKIP (#plot-anim-toggle) masqué si order.length===1 ; compute ignore la clé order.
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.
@@ -66,19 +23,6 @@
  *   - switch(epochId) ⚫/🔥/default; config unique ▶/◀/🔺🧲🌕💫; getEpochConfigById; applyHadeenFluxFromConfig; plus de corps-noir/hadeen
  *   - TicTime logo comme action pour toutes les époques; météorite de glace uniquement Corps noir (⚫) et Hadéen (🔥)
  *   - ⚫ sans TicTime (Météorite + Impact uniquement); default (Archéen+) TicTime affiché sans condition 🕰.💫
- *   - v1.2.3: 💫 alt/tooltip = vraie valeur (formatStepLabel), tooltip une seule ligne (plus de <br>)
- *   - v1.2.3: Hadeen ticTime handler : check transition (infoTimeMa>=500) AVANT updateHadeenTexture/updateCO2Level
- *   - v1.2.4: DATA[📜][bary] = infoTimeMa/500 après chaque tic Hadéen (interpolation visuelle radius/exobase/noyau)
- *   - v1.2.5: 2 boutons uniquement (🎞 + un selon date) ; ACTION_BY_DATE + getActionForDate(startYears, infoTimeMa) ; bloc ACTION en haut timeline
- *   - v1.2.6: 📱 year-indexed — bucket UI par intervalle [y, y_next) sur 📅 brut (sans Math.round) pour éviter ⛽+🛢 alors qu’on est encore < 2025
- *   - v1.2.7: 📱 tooltips year-indexed depuis 🔺⏳/🔺⚖️🏭 (+Nans +MGt CO2, co2kg/1e9) — plus de yr0→yr1 depuis 📅 (échelle géologique hors 📱)
- *   - v1.2.8: 📱 bucket scénario — 📅 hors [▶,◀] (résidu géologique) → année via ▶+📿💫×pas, sinon repli ▶ ; évite bucket 2075 (350Gt+🛢) au lieu de 2000 (850Gt)
- *   - v1.2.11: idToName 🐊 « Éocène »
- *   - v1.2.9: idToName 🐊 « Hyperthermie éocène »
- *   - v1.2.10: idToName 🥟 Protérozoïque ; check fin d'époque dans handler 💫 → setEpoch(suivant) auto
- *   - v1.2.12: géologique — 🕰.🌋 (voile SW 📜🔺🍰⚽) même si ACTION_BY_DATE reste 💫 ; tic 💫 seulement si 🕰.💫 ou pas seulement 🌋
- *   - v1.2.13: 🌋 + 🔺⏳ (Ma) même chemin temps/fin d’époque que 💫 ; TIMELINE[epochId]['🕰'] accès direct (contrat) ; 📜🔺🍰⚽ non reset par setEpoch → voile survit au changement d’époque
- *   - v1.2.14: clic 💫 — si 🕰.💫 définit 🍰⚽, copie dans 📜🔺🍰⚽ (ex. 0) puis _veilTimelinePulseActive=false pour ré-autoriser impulsion racine EPOCH['🔺🍰⚽'] au prochain 📿💫===0
  */
 
 // Core globals requis : addCustomTooltip, hideTooltip, togglePlotAnim (passage animé), updateTimeline,

@@ -15,7 +15,6 @@
 // Date: 2026-10-12
 // logs :
 //   - v2.1.0 (2026-10-13): jauges séparées FROID / CHAUD / SUBTIL / HYSTERESIS ; `pct` = étiquette des jauges.
-//   - v2.0.0: clics par CLICS (API_BILAN/convergence/clics.js), plus de copie de la mécanique ici.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
 (async () => {

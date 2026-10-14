@@ -6,18 +6,12 @@
 // Date: [April 02, 2026] [21:15 UTC+1]
 // logs :
 // - v1.0.8: _logStep même libellé que groupe courant → return (pas de groupEnd+reopen ; évite double [0] / faux « groupe jamais fermé »)
-// - v1.0.7: pd() = erreurs uniquement (❌) ; pdTrace() = trace/diagnostic/appel (🔍) ; _logStep avertit si libellé déjà ouvert
-// - v1.0.6: _logStep / _logStepEnd / _openLogGroup (avant configOrganigramme.js) — [1] config en groupCollapsed partout
-// - v1.0.5: log surfaces 🍰🪩🎾 (ex-🍰🪩🌋)
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
-// - v1.0.2: pd() PrintDebug global
-// - v1.0.3: pd() format ❌ + répétitions (x n) sur même ligne
-// - v1.0.4: pd() log immédiat + répétitions compactées au prochain message
 // ============================================================================
 
 // pd() = erreurs / anomalies uniquement. Format: ❌ [fonction][fichier] message

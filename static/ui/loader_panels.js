@@ -9,46 +9,8 @@
 // Logs: v1.1.36: onglet Histoire (histoire.html) après Milankovitch — littérature sourcée vs courbe du modèle.
 // Logs: v1.1.35: alphabet_render.js / dico_render.js lus depuis API_BILAN/demo/ — dessiner l'alphabet et le
 //        dictionnaire de l'API fait partie de ce qui illustre l'API ; l'application s'y sert.
-// Logs: v1.1.34: configOrganigramme.timeline = window.epochIndex() (API). Le mapping TIMELINE → type/name/id/
-//        startYears/endYears vivait ici, donc la géologie de l'API dépendait du dépôt CO2 pour résoudre une époque.
 // Logs: v1.1.33: alphabet.js / dico.js → API_BILAN/data/ (définitions) + static/compute/*_render.js (rendu).
 //        Leur en-tête les plaçait dans API_BILAN depuis toujours ; le moteur en lit KEYS pour construire DATA.
-// Logs: v1.1.32: onglet Hystérésis retiré du rendu (fetch du fragment, injection, registerTab, onShow, classe
-//        body). html/hysteresis_panel.html et html/hysteresis_compute.html restent au dépôt : filet de sécurité
-//        si un réglage casse le calage 1a/⛄/1b, pas une page de l'application.
-// Logs: v1.1.31: spectral_slice_worker.js chargé en <script> avant worker_pool.js — permet le repli blob: quand
-//        new Worker('file://…') est refusé (origine 'null'), donc l'app tourne aussi sans serveur.
-// Logs: v1.1.30: static/ui/cpu_threads_notice.js dans la liste (après modal.js) — avertit une fois quand le
-//        navigateur sous-déclare navigator.hardwareConcurrency (Brave « farbling »), qui dimensionne le pool de workers.
-// Logs: v1.1.29: tooltips literal /_interfaces/tooltips.js (www racine).
-// Logs: v1.1.28: tooltips.js via window.SITE_PATHS.INTERFACES (absolu /_interfaces/, pas ../../ relatif page).
-// Logs: v1.1.27: tooltips.js → ../../_interfaces/tooltips.js (code partagé site/_interfaces).
-// Logs: v1.1.26: version bandeau — source window.BILAN_VISU_APP_VERSION dans API_BILAN/api.js (plus d’assignation loader).
-// Logs: v1.1.25: window.BILAN_VISU_APP_VERSION = 1.0.8 + synchro span #title-app-version après injection visu_radiatif.html.
-// Logs: v1.1.24: togglePlotAnim déplacé vers timeline.js (visu inchangé ; scie_compute / html sans loader ont SKIP).
-// Logs: v1.1.23: cycleCalcul iframe — syncEpochFromTimelinePointer() après merge 📜 (👉 fait foi, évite 🗿 stale / atmosphère erronée).
-// Logs: v1.1.22: COMPUTE_LOADER — append #organigram-calculation-overlay dans #flux-diagram au show (z au-dessus des cellules) ; replacer dans .flux-diagram-wrapper au hide
-// Logs: v1.1.21: static/courbes/plot_debug.js avant plot.js (?debugPlot=1 → _logs/plot.txt + DEBUG_PLOT_LOG)
-// Logs: v1.1.20 migration window.updateFluxLabels → window.ORG.updateFluxLabels + lectures UI_STATE.FPSalert / RUNTIME_STATE (fps, currentEpochName, h2oVaporPercent). Retrait typeof defensive check sur updateFluxLabels (crash-first : organigramme.js chargé avant).
-// Logs: v1.1.19 workers/worker_pool.js ajouté après hitran.js → scie/visu utilisent les workers (parallèle) comme bench. Retire divergence 0.115 W/m² sur 🧲🌈🔼 (ordre addition float série vs parallèle) → 15.28°C → 15.35°C aligné 📱.
-// Logs: v1.1.18 physics.js avant tuning.js → EARTH dispo pour syncRadiativeConfig au boot (corrige EARTH.H2O_EDS_SCALE resté à 0.6 au lieu de 0.74 côté scie/visu).
-// Logs: v1.1.17 onglet Hystérésis (iframe standalone hysteresis_compute.html) + fetch html/hysteresis_panel.html + registerTab hysteresis (onShow minimal, body.hysteresis-panel-active)
-// Logs: v1.1.16 onglet Bench (iframe standalone epoch_bench.html) + fetch html/bench_panel.html + registerTab bench (onShow minimal)
-// Logs: v1.1.15 switchTab → proxy API_ONGLETS ; registerTab visu/scie/milankovitch après chargement SCRIPTS
-// Logs: v1.1.14 EPOCH_ID_TO_NAME 🐊 « Éocène »
-// Logs: v1.1.13 DEBUG_TIMELINE_HIDDEN → pdTrace (TIMELINE epochs)
-// Logs: v1.1.12 scie_hysteresis_search.js avant sync_panels (window.HYSTERESIS parent pour hystUnlockIce)
-// Logs: v1.0.2 délai 250ms avant 1er compute ; v1.1.0 loader graphique ; v1.1.1 ordre script avant footer + timeout 30s
-// - v1.1.2: IO_LISTENER.compute:progress: supprime log debug + double receive (compute:progress n'arrive que depuis scie_/non-anim)
-// - v1.1.3: visu_+anim : compute:progress déclenche displayDichotomyStep puis plot:drawn ; scie_/non-anim garde cycleCalcul léger
-// - v1.1.4: non-anim : avanceTic() sur chaque tic (disque creux en cases) ; show/hideComputeLoader
-// - v1.1.5: clic direct = overlay (texte rouge) + body cursor wait uniquement ; anim = idem + disque creux
-// - v1.1.6: curseur wait via class compute-loading (html+body) pour résister en anim
-// - v1.1.7: scheduleInitialCompute() appelé systématiquement en fin initAfterLoad pour garantir [4] après [3]
-// - v1.1.8: garde updateEpochActions si events.js pas encore chargé
-// - v1.1.10: EPOCH_ID_TO_NAME 🐊 « Éocène »
-// - v1.1.11: retrait onglet Hysteresis (switchTab ne gère plus hysteresis-panel-active)
-// - v1.1.9: fine_tuning_bounds.js + tuning.js après initDATA (FINE_TUNING_BOUNDS + fillDataTuningFromBary côté visu_)
 // Ordre: index.html charge plotly + three.min.js ; puis ce loader injecte HTML et charge SCRIPTS ci-dessous.
 // Fin Three.js (texture + sphère) : window.IO_LISTENER.on('three:ready', fn) (payload: { hasTexture, canvas }).
 

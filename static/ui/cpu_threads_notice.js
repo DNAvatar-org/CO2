@@ -9,7 +9,6 @@
 // logs :
 //   - v1.1.0: alerte à CHAQUE chargement (plus de mémorisation localStorage) — c'est un état du navigateur,
 //     pas une nouvelle : tant qu'on reste sous Brave, l'info reste vraie et le rappel est utile.
-//   - v1.0.0: création. Détection Brave (navigator.brave.isBrave), seuil bas générique, mémorisation localStorage.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.

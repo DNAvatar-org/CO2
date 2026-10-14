@@ -4,9 +4,6 @@
 // Version 1.2.3
 // Date: [March 08, 2026]
 // logs :
-// - v1.2.0 : remplacement courbe Précision par Mémoire Mo (performance.memory, Chromium) ; retrait getPrecisionFactorFromFPS
-// - v1.2.1 : yaxis2.range adaptatif (max mémoire) pour que la courbe RAM soit visible et défile avec les FPS
-// - v1.2.2 : label "Mo (heap onglet)" — on n'a pas accès à la RAM libre/totale machine, seulement heap JS de l'onglet (Chromium)
 // - v1.2.3 : trace "limite heap" (jsHeapSizeLimit) + annotation valeur en orange (ex. "33 Go") ; "0 (indisponible)" si pas performance.memory
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause. 

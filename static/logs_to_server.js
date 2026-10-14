@@ -11,13 +11,6 @@
 // Logs:
 // - v1.1.8: Badge « DEBUG · wipe _logs/ » uniquement si window === top — évite doublon dans iframes (scie_, bench,
 //   hyst, etc.) ; l’onglet Visuel utilise déjà le document parent (pas de 2e badge).
-// - v1.1.7: CONFIG_LOG_FILE_TOPIC.logAlbedoUiDiagnostic → topic albedoUi (fichier logs/albedoUi.txt via POST /_log + tools/server.py).
-// - v1.1.6: logToTopic(topic,msg) + debugMirrorConfigLogToFile — chaque clé CONFIG_COMPUTE.log* → _logs/<fichier>.txt
-//   indépendant ; hyst + epoch (et autres) peuvent être true en même temps. Erreurs → errors.txt (serveur).
-//   Retrait applyFileTopicFromConfig (un seul activeTopic) pour hyst/epoch.
-// - v1.1.5: CONFIG_COMPUTE.logHystPanelToFile / logEpochCompareToFile (configTimeline) → même fichiers _logs/ sans ?debug= ; setTopic(…, { reset:false }) pour ne pas vider le fichier au F5
-// - v1.0.0: error + unhandledrejection (capture=true pour 404 assets) + patch console.error/warn.
-//           Buffer + flush (sendBeacon prioritaire, fetch fallback) avec retry simple.
 
 (function () {
     const ENDPOINT = '/_log';

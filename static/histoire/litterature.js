@@ -31,9 +31,6 @@
 // logs :
 //   - v1.2.0: courbe prolongée jusqu'à −5000 Ma : ancres hadéennes (ex-repères en boîtes) + KT2018 sur le
 //     Précambrien (4,0 Ga → 525 Ma, 95 %), au lieu d'un trou avant PhanDA.
-//   - v1.1.0: Quaternaire = Snyder 2016 (2000 points, 1 ka) : le « yoyo » glaciaire revient, mesuré.
-//   - v1.0.0: remplace courbe_points.js / courbe_temperature.js (points et formules générés par Gemini,
-//     sans source réelle, dont une sinusoïde « Milankovitch » inventée et un seul épisode Snowball mal daté).
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.HISTOIRE = window.HISTOIRE || {};
 window.HISTOIRE.litterature = {

@@ -6,14 +6,6 @@
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-03-08
-// Logs:
-// - v1.1: events par ID, handlers lisent DATA
-// - v1.2.0: déplacé dans API_BILAN (contrat émis par l'API)
-// - v1.2.1: log emit (nom, nb listeners, clés payload) ; appels 100 % synchrones (forEach)
-// - v1.2.2: log liste des listeners (f.name ou anon#i)
-// - v1.3.0: PAS DE GARDES — plus de try/catch autour des listeners (une erreur de listener crashe, visible) ;
-//   label obligatoire-ou-vide sans test null. Un événement sans abonné reste une vraie branche (rien à faire).
-// - v1.2.3: on(name, fn, label) optionnel ; stockage { fn, label } ; log affiche label ou fn.name ou anon#i
 //
 // Events émis par l'API (payload minimal ou vide, handlers lisent window.DATA) :
 // - configLoaded  : config chargée

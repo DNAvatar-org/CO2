@@ -13,19 +13,6 @@
 // Logs: v1.0.15 runCompute / apply* — corps retirés ; shell.* = refs sync_panels (initSyncPanels).
 // Logs: v1.0.14 setState — clés présentes via hasOwn (!== undefined retiré) ; plus de forceResetTics (non traité par setEpoch@main).
 // Logs: v1.0.13 setState — plus de checkbox (#plot-anim-toggle-checkbox) ni doublon SYNC_STATE ; syncToScie fait SYNC_STATE.
-// Logs: v1.0.12 setState animEnabled — accès direct DATA['🔘'] (plus de garde && window.DATA).
-// Logs: v1.0.11 setState — applique animEnabled à DATA['🔘']['🔘🎞'] + checkbox (aligné applyToVisu ; clic frise via shell).
-// Logs: v1.0.10 epochNameToId 🐊 « Éocène »
-// Logs: v1.0.8 resolveEpochIdForTimeline — syncToScie/setState utilisent 📅 (emoji), pas le nom français (fix 🎞 Hadéen)
-// Logs: v1.0.7 setState → setEpoch(payload.epochId, { forceResetTics }) si payload.forceResetTics (bouton époque)
-// Logs:
-// - v1.0.6: convergence:clear et convergence:append toujours envoyés à scie (cycles à jour même quand current=visu)
-// - v1.0.5: logs [shell] setCurrentPanel, dataInput (convergenceStep/clear/compute:done), restoreConvergenceToScie, switchTab(visu/scie) pour tracer A/R
-// - v1.0.4: compute:done toujours envoyé à l'iframe scie pour mise à jour convergence sans aller-retour onglet
-// - v1.0.3: buffer convergence = HTML (buildStepHtmlForConvergence), restore stepsHtml ; dépend de scie_convergence.js
-// - v1.0.2: buffer convergence (steps) pour restauration scie au switch ; getConvergenceTrace, restoreConvergenceToScie
-// - v1.0.1: façade shell vs sync_panels (setEpoch, calcul, apply depuis scie)
-// - v1.0.0: current + dataInput(payload), registerPanelApi, setCurrentPanel ; doc dispatch + standalone
 
 (function () {
     'use strict';

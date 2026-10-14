@@ -11,108 +11,12 @@
 //   calculations v1.3.9) — sommer 4–50 µm donnerait ~98 % et recouvrirait tout le reste, d'où le « ≈ ».
 //   Les deux nombres ne s'additionnent pas entre eux : l'infobulle le dit. Nettoyage au redraw + mode fantôme.
 // - v1.0.95: bande spectrale — bas (pied, Terre) alpha=1 pleinement visible ; haut reste RGBA joint flux ; α interpole de aTop → 1 vers le bas ; repli sans flux arc-en-ciel α 0.5→1.
-// - v1.0.94: bande spectrale — haut = RGBA exacte de la dernière ligne du flux (getImageData) ; bas = même teinte, alpha→0 ; repli resize sans flux = arc-en-ciel α 0.5→0 ; dernière ligne flux toujours dessinée si yStep>1.
-// - v1.0.93: joint flux↔bande — une seule abscisse `spectrumBarTopY` (fin zone flux = début bande) ; retrait overlap/Y-offset/pont qui désynchronisaient les lignes.
-// - v1.0.92: pont de raccord flux↔bande (1px) juste au-dessus du spectre pour supprimer le trou même quand le flux local est transparent (seuil alpha).
-// - v1.0.91: raccord flux↔bande spectral sans trou horizontal : overlap vertical explicite 2px (SEAM_OVERLAP_PX) sur les deux chemins de rendu.
-// - v1.0.90: fix gradient bande arc-en-ciel (haut 50% -> bas 100%) + suppression rupture 1px au raccord bande/zone plot (spectrumBarY sans -1).
-// - v1.0.89: bande arc-en-ciel en gradient vertical (bas=alpha 100%, haut=alpha 50%) ; rayonnement spectral avec alpha plancher 50%.
-// - v1.0.88: inversion logique demandée — courbes/axe Y gauche et ancrage logo Terre sur y2=0 pilotés par !miroir_flux (au lieu de miroir_flux).
-// - v1.0.87: synchro miroir stricte : tout relayout yaxis2 inclut yaxis (sinon 0 opposés) ; padding 1 graduation sur yaxis en mode miroir pour aligner 0 gauche/droite.
-// - v1.0.86: debug miroir_flux (pd/console) + swap aussi l’axe Y gauche (intensité) via relayout yaxis.range.
-// - v1.0.85: swap 🔃 robuste — relayout yaxis2 seul (plus de redraw complet qui vidait les courbes) ; logo Terre lié à y2=0 seulement en mode miroir ; bouton déplacé bas-gauche + data-tooltip immédiat.
-// - v1.0.84: annule v1.0.83 (recalage canvas spectral) + axe altitude droite piloté par if (miroir_flux) ; PLOT.toggleMiroirFlux() pour swap runtime.
-// - v1.0.83: canvas spectral — top += décalage yaxis2.c2p(0) vs .nsewdrag ; hauteur − même valeur : haut de la carte arc-en-ciel aligné sur le trait 0 km (Terre), bord bas inchangé.
-// - v1.0.82: axe altitude yaxis2 — marge haute une graduation : range [z_max, −step], tickvals ≥ 0 seuls ; « 0 km » et logo 🌍 sur la même bande (plus au bord du haut).
-// - v1.0.81: marqueur 🌍 Terre — aligné sur le 1er cran sous 0 km (dtick ou écart tickvals yaxis2), pas sur 0 (un cran plus bas visuellement).
-// - v1.0.80: axe altitude yaxis2 inversé [z_max, 0] (0 km en haut = sol / logo Terre) ; marqueur 🌍 à altitudeKmToWrapperTopPx(0) ; updatePlotAltitudeAxis cohérent.
-// - v1.0.79: plages spectrales CO₂ (~15 μm) vs H₂O (~17 μm) — coupure à 15 μm (min/max) pour ne plus superposer le même bin LW [12–17].
-// - v1.0.78: marqueurs Terre/EDS — abscisse λ = pic Wien (2898/T_sol) μm, aligné Planck sol (échelle Y max) ; repli spectralEdsSunLambdaUm si T_sol absent.
-// - v1.0.77: masse atm sèche — COMPUTE.dryAtmosphereMassKgFromComponents(epoch) (⚖️🫧 retiré config TIMELINE).
-// - v1.0.76: swap marqueurs spectraux Terre/EDS (logos + libellés alt/title) sur le graphe.
-// - v1.0.75: PLOT_LEGEND_CORPS_NOIR_* + PLOT_LEGEND_RAYONNEMENT_ESPACE (source unique légende / hovers 3 courbes) ; hovers alignés sur ces libellés + T°.
-// - v1.0.74: plus de title « Graphique spectral » sur .plot-container-wrapper (rebuts infobulle) ; dlg PALEOMAP inchangé côté plot.
-// - v1.0.72: axe Y texte « Intensité du rayonnement » seul ; alt0 « Luminance spectrale » ; alt1 jaune « (W·m⁻²·μm⁻¹·sr⁻¹) ×10ⁿ » ; #spectral-tooltip-hit = button + mouseleave wrapper → hideTooltip (rollout).
-// - v1.0.71: carte spectrale — alt0 = « Carte spectrale » (data-tooltip, comme « Flou scientifique ») ; alt1 jaune = détail luminance + échelle ×10ⁿ + λ (plotSpectralCanvasAriaLabel).
-// - v1.0.70: carte spectrale — même schéma que tooltips.js (data-tooltip court + aria-label détail après 2 s) ; calque #spectral-tooltip-hit (pointer-events) ; canvas garde aria-label détail pour lecteurs d’écran.
-// - v1.0.69: titres a11y spectre — `window.RUNTIME_STATE.currentEpochName` direct (plus de chaînage && sur RUNTIME_STATE).
-// - v1.0.68: PLOT_Y_AXIS_LUMINANCE_TITLE_BASE + plotYAxisLuminanceTitleText / plotSpectralCanvasAriaLabel — titre axe Y et aria-label canvas alignés ; retrait updateLayout mort dans drawSpectralVisualization.
-// - v1.0.67: absorptionBandAltText — alts [ ] par bande (H₂O/CO₂/CH₄ ×2, nuages) alignées physique ; plus « captation » ambigu.
-// - v1.0.66: resolvePlotTimelineEpoch — 👉 / 🗿 avant nom UI (fix « Corps Noir » vs CHARS_DESC « Corps noir » dans configOrganigramme.timeline).
-// - v1.0.65: nettoyage crash-first — retrait des gardes `typeof window/...` défensifs autour des APIs UI contractuelles (fonts, logos, sync classes, listeners, état spectral).
-// - v1.0.64: retrait readouts T sol. / T eff. (K °C °F) sur le graphe — températures restent dans le bandeau titre ; légende courbes = main.js updateLegend
-// - v1.0.63: alt zones captation spectre — sans Min/Max ni λ/bin ; molécules « Label captation [a - b] μm » ; nuages « Nuages (corps gris) absorption sur tout le spectre [4 - 50] μm » ; retrait propriété minMax des bandes
-// - v1.0.62: FLUX.plotMaxYScienceTraces / plotMaxYPlanckSurfaceSol (snapshot échelle) ; PLOT.logPlotScaleAfterCompute → DEBUG.log si DEBUG_PLOT_LOG (plot_debug.js)
-// - v1.0.61: callback post-react — drawSpectralVisualization seulement si canvas._lastData défini (évite TypeError upward_flux quand aucun flux encore mis en cache)
-// - v1.0.60: window.FLUX initialisé une fois avec PLOT ; accès directs FLUX dans updatePlot/callback (plus de if (!FLUX) / && FLUX)
-// - v1.0.59: indicateurs EDS / bandes après Plotly.react (Y réel) ; FLUX.plotYMaxLuminance ; invalidateSpectralYLuminanceCache ; callback resize — drawSpectral saut si FLUX.skipSpectralFluxRedrawOnce (flux refait par updateSpectralVisualization)
-// - v1.0.58: échelle Y spectre — pic Planck(T sol) tirets ≈ 90% hauteur (Y_AXIS_PEAK_FRACTION_SOL 0.9) ; max Y auto sans courbes Planck ref. blanches ; plancher y_max ≥ max(planck sol)/0.9
-// - v1.0.57: namespace PLOT (source unique) : updatePlot, updateSpectralVisualization, updatePlotAltitudeAxis, tempToColor, tempSurfaceToColor, debugZIndex, debugPlotlyStructure, updateSpectralBandIndicatorsGhostOnly. Migration lectures/écritures UI_STATE/RUNTIME_STATE (fps, showSpectralBackground, spectralConverged, spectralPrecisionTarget, currentEpochName).
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
-// - v1.0.1: H2O 17μm borne ajoutée (fallback si CONST absent), bornes repositionnées sous axe
-// - v1.0.2: Bornes et spectre collés juste sous l'axe (bottom 65px, canvas étendu marge 75px)
-// - v1.0.3: Resize artificiel après Plotly.react, spectre +1px, bornes -5px
-// - v1.0.4: displaylogo: false, showLink: false pour masquer branding Plotly
-// - v1.0.5: drawSpectralVisualization return early si rect invalide (panel masqué) ; switchTab visu → resize
-// - v1.0.6: Bornes H2O/CH4/CO2 alignées via Plotly.c2p (plus de décalage selon largeur div)
-// - v1.0.7: lastGoodYMaxLuminance pendant dichotomie ; width/height explicites pour éviter dezoom
-// - v1.0.8: exponentformat power (pas SI/T) ; pas de resize pendant calcul ; guard targetRect invalide
-// - v1.0.9: échelle ×10¹²/×10¹³/k par époque ; Planck(T_config) à 30% ; valeurs entières ; fixe jusqu'à convergence
-// - v1.0.10: courbe colorée à 65% (dépasse milieu) ; tickformat 1.25 max 5 chars ; séparateur .
-// - v1.0.11: Pendant dichotomie, garder width/height du canvas (pas rect) pour éviter saut barre spectre
-// - v1.0.11: Pendant dichotomie, réappliquer top/left depuis _lastTop/_lastLeft (éviter saut Y si échelle change)
-// - v1.0.11: Toujours resizeCanvasToPlot après Plotly.react (relayout peut bouger même si échelle fixe)
-// - v1.0.12: MutationObserver sur plot-container appelle resizeCanvasToPlot quand Plotly modifie le DOM
-// - v1.0.13: updatePlotAltitudeAxis(atm_height_km) pour mettre à jour yaxis2 à chaque cycle
-// - v1.0.14: updatePlotAltitudeAxis uniquement en ProcessFinished ; tickvals 0-200km pour échelle >500
-// - v1.0.23: Courbe pointillée corps noir à T effective (pas T surface) pour même fenêtre que courbe pleine
-// - v1.0.24: rendu spectral séquencé: non-anim=FINAL seul, anim=chaque cycle; suppression redraw différé doublon depuis updatePlot
-// - v1.0.56: échelle Y spectre — sommet courbe T sol ≈ 3/4 hauteur plot (facteur 0.75 au lieu de 0.65)
-// - v1.0.55: paire H₂O (6.3 / 17 μm) — écart vertical entre marqueurs > taille police (spectralPairGroup + pairGapPx)
-// - v1.0.54: bandes partageant le même bin grille (ex. H₂O 17 μm + CO₂15 μm → [12,17]) — décalage vertical empilé pour voir les deux pictos
-// - v1.0.53: fond alpha entre [ ] = même couleur que crochets (band.color hex/rgb) ; repli Hz2RGB si color vide
-// - v1.0.52: spectralIndicatorsGhostActive — fantôme marqueurs spectraux UNIQUEMENT si époque « Corps Noir » (ne pas réintroduire hide-* : grisait Hadéen/Archéen/etc.)
-// - v1.0.51: annule v1.0.50 — (historique) Corps Noir OU hide-* ; supplanté par v1.0.52 pour logos [ ] / EDS / Terre sur le graphe
-// - v1.0.49: fond entre crochets des plages spectrales = Hz2RGB (wavelengthToColorReal au λ centre) ; band.color reste crochets/texte
-// - v1.0.48: fantôme spectre via classe .organigram-picto-inactived (organigramme.css) ; retrait inline filter/opacity
-// - v1.0.47: fantôme spectre en inline (Corps Noir OU hide-organigram-* sur #flux-diagram) + updateSpectralBandIndicatorsGhostOnly (main.js)
-// - v1.0.46: fin drawAbsorptionBandIndicators : syncPlotContainerOrganigramHideClasses (classes hide-* sur .plot-container-wrapper alignées #flux-diagram)
-// - v1.0.45: époque Corps Noir : indicateurs spectraux [ ] + marqueurs EDS/Terre en grayscale + opacity 0.3 (traitement « invisibles » provisoire)
-// - v1.0.44: bandes CH₄ : couleur crochets + fond alpha rgb(0,118,114) #007672
-// - v1.0.43: bandes [ ] : crochets derrière le picto (z-index) ; tailles défaut img/emoji 18 px (comme avant grossissement)
-// - v1.0.42: bandes [ ] : PNG (charsImages) plus grands que UTF‑8 ; tailles via CONFIG_COMPUTE spectralBandLogoImgPx / EmojiPx / ImgPxByEmoji
-// - v1.0.41: bande Nuages EDS (fullSpan) : Y juste au-dessus du marqueur spectral EDS (même λ CONFIG) ; repli haut graphe si pas de Y EDS
-// - v1.0.40: visu_ bandes spectrales : si image définie (charsImages), rendu image partout (CH4/CO2/H2O/nuages), sinon emoji
-// - v1.0.39: marqueur espace = Terre (logo continents 🌍) pas Soleil ; EDS Δ/4 ; nuages en haut du graphe + z-index au-dessus d’EDS
-// - v1.0.38: Soleil Y = ½·Planck(T_eff) à λ (milieu y=0 et courbe espace) ; EDS Y = Y_sol + (Y_eff−Y_sol)/3 sur l’axe luminance
-// - v1.0.37: marqueurs EDS/Soleil ×2 ; EDS à 2/3 entre Planck(sol) et Planck(T_eff) ; Soleil à mi-intervalle (y/2) entre les deux
-// - v1.0.36: bandes spectrales : logos ×1,5 (18px) ; fond rgba entre [ ] à la couleur des crochets
-// - v1.0.35: indicateurs [ ] : Y = moyenne Planck(T sol) et Planck(T_eff espace) au λ centre (milieu des 2 courbes) ; repli si incomplet
-// - v1.0.34: indicateurs [ ] bandes H₂O/CH₄/CO₂/nuages : Y = Planck(T sol) au λ centre de la bande (fallback bottom si axe pas prêt)
-// - v1.0.33: EDS/Soleil à λ configurable (défaut 10 μm) ; Y = Planck(T sol) et Planck(T_eff) à cette λ (coords axe Plotly)
-// - v1.0.32: EDS + Soleil (image ☀️ charsImages) sur l’axe ~12 μm ; CONFIG_COMPUTE spectralBandIndicatorLiftPx pour monter les [ ]
-// - v1.0.31: encadrés T sol / T eff avec logos 📛 (EDS) et ☀️ sous les valeurs (style .plot-temp-readouts)
-// - v1.0.30: corps noir Planck à T_surface (tirets), couleur = même logique que courbe spectrale (tempSurfaceToColor / currentBlackBodyColor)
-// - v1.0.29: tooltip OLR (courbe pleine) = T_eff comme corps noir pointillé (∫ cohérent), pas T_surface (évite ~4°C vs ~−29°C)
-// - v1.0.28: hidden epoch support (ex: hysteresis 1) fallback to window.TIMELINE when configOrganigramme.timeline is filtered
-// - v1.0.25: bridge draw ack: publie plot:drawn + met à jour _lastDrawnCycleToken après draw (sync API visu_)
-// - v1.0.26: bridge draw ack branché sur window.VISUALWAIT.markDrawn (fonctions window rangées)
-// - v1.0.27: supprime VISUALWAIT.markDrawn + IO_LISTENER.emit('plot:drawn') — appel direct, pas de pile
-// - v1.0.16: Indicateur nuages EDS (corps gris) sur barre spectre : fullSpan 4–50 μm, LOGOS.CLOUDS
-// - v1.0.15: remove misleading pd() [BUG] traces in updatePlotAltitudeAxis and resizeCanvasToPlot
-// - v1.0.17: lissage gaussien visuel du flux (createFluxTrace) ; ne touche pas aux intégrales/OLR
-// - v1.0.18: retrait garde CONFIG_COMPUTE défensive sur lissage (règle crash, pas fallback silencieux)
-// - v1.0.19: plotSmoothSigmaBins obligatoire (accès direct, pas de garde/fallback)
-// - v1.0.20: lissage visuel par moyenne glissante centrée (fenêtre en bins via plotSmoothSigmaBins, ex 20)
-// - v1.0.21: indicateurs d'absorption en crochets colorés [ ] (plus de bande transparente arrondie)
-// - v1.0.22: nuages full-span (logo + crochets) décalés au-dessus de l'axe spectral
-// - v1.0.23: [ ] sur la même ligne que le picto ( [ logo ] )
-// - v1.0.24: [ ] alignés sur les bornes de bins (SPECTRAL_GRID_BOUNDS_UM) = bandes code bar du fond
 // ============================================================================
 
 // ============================================================================

@@ -13,28 +13,6 @@
 //   h2oTotalFromMeteorites (ni maximiseData / savedH2O, ni updateH2OLevelDirect sans appelant) — elle est dans
 //   la vapeur du moteur, l'ajouter à l'affichage la comptait deux fois.
 //
-// - v1.1.88: disableButtons/enableButtons n'écrivent plus SYNC_STATE.calculationInProgress (propriétaire unique runComputeInParent) ; setEpoch relâche window._timelineEpochEndSkipLatch (verrou « une transition par fin d'époque », events.js v1.2.32).
-// - v1.1.87: infobulles flou scientifique sur #title-flou-scientifique-slot (badge data-flux-tooltip=off).
-// - v1.1.86: flou scientifique — syncFineTuningBadgeTooltips (data-alt2sec) ; slot titre sans tooltip parasite.
-// - v1.1.85: mini-slider flou scientifique — refresh aria-label (alt2sec) via getFineTuningDetailAlt à chaque input.
-// - v1.1.84: setEpoch / logs — masse atm sèche via COMPUTE.dryAtmosphereMassKgFromComponents (TIMELINE sans ⚖️🫧).
-// - v1.1.83: updateLegend — libellés 3 courbes via PLOT.LEGEND_* (plot.js, source unique).
-// - v1.1.82: updateLegend — dash = Corps noir au sol (T_surf) ; dot = Corps noir haute atmosphère (T_eff) ; solid = Rayonnement vers l'espace (T_eff) ; aligné plot.js.
-// - v1.1.80: Bandeau titre — plus de clic/curseur « bouton » sur tout .synthese_Temp (époque + dates + pression) ; cycle °C/°F/K uniquement sur .synthese_Temp-temp-line.
-// - v1.1.79: updateLegend — ordre tirets/pointillés aligné sur plot.js (dash=sol, dot=T_eff) ; libellés « (t°) » ; °C OLR = T_eff ; title/aria sur items.
-// - v1.1.78: updateHadeenTexture — retrait if(typeof window) / if(oldCell) superflus ; window.ORG.createCell direct.
-// - v1.1.77: updateHadeenTexture — window.ORG.createCell (FUNCS_ORGANIGRAMME n’existe que dans setEpoch ; crash hors scope).
-// - v1.1.76: updateLegend albedoComponents — sans atm : ice_coverage depuis 💧.🍰💧🧊 avant RUNTIME.h2oIceFractionFromCalculation (aligné organigramme.js v1.0.94).
-// - v1.1.75: setEpoch — après DATA['📜']['👉']/🗿, syncEpochFromTimelinePointer() (bouton époque passe id ⚫ ; terre.epoch attend « Corps Noir »).
-// - v1.1.74: légende plot — libellés explicites (.../---/___) + °C en petit au-dessus de chaque style de trait.
-// - v1.1.73: updateLegend — 3 lignes (pointillés / tirets / plein) + libellé texte à droite uniquement ; plus de °C/°F/K ni T sol·eff sur les items ; toujours 3 courbes affichées.
-// - v1.1.72: doc organigram-buttons — wraps DETAILS/OBS uniquement ; SKIP #plot-anim-toggle n'embarque plus cette classe (organigramme.js v1.0.81).
-// - v1.1.71: wraps DETAILS/OBS — classe organigram-buttons (même jeton que #plot-anim-toggle, organigramme.js).
-// - v1.1.68: toggles ⚗/🛰 — classe unique organigram-logo (homogénéité avec événements timeline, organigramme.css).
-// - v1.1.67: updateLegend — HTML visu_radiatif sans bloc Puissance dissipée / ∫ ; retrait injection SVG + sélecteur couleur allégé (style.css sans .legend-line-*).
-// - v1.1.66: setEpoch — reset 📜._timelineVeilPulse01 / 📜._veilTimelinePulseActive (impulsion voile TIMELINE lue dans compute.js v1.0.14).
-// - v1.1.65 : fix ReferenceError updatePlot — tous les appels directs updatePlot(...) → window.PLOT.updatePlot(...) (plot.js n’expose plus de global homonyme ; ordre loader plot avant main).
-// - v1.1.64 : migration namespaces (PLOT.updatePlot, PLOT.updateSpectralVisualization, PLOT.tempSurfaceToColor, ORG.updateFluxLabels, ORG.createCell…) + UI_STATE (waterVaporEnabled, methaneEnabled, maximiseData, savedCO2/CH4/H2O) + RUNTIME_STATE (calculationConverged, calculationTimeouts, spectralConverged, spectralPrecisionTarget, showSpectralBackground, h2oVaporPercent, h2oTotalFromMeteorites, h2oIceFractionFromCalculation, currentEpochName, fps, volcanoH2OBonus). Retrait typeof===function défensifs (crash-first).
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -42,68 +20,6 @@
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
 //
-// - v1.1.63 : badge flou — icônes 🔺🌡️🔻 + 🧩 (sans points) ; grille 1fr + justify space-between sur les lignes d’icônes
-// - v1.1.62 : badge flou — grille 2 colonnes : gauche 🔺🌡️🔻. + jauge (largeur = ligne icônes) ; droite 🧩 . + % sous puzzle
-// - v1.1.61 : badge flou titre — mini-jauge (range) sur la ligne % à la place des tirets « ------ »
-// - v1.1.60 : #title-flou-scientifique-slot — libellé 🔺🌡️🔻. 🧩 . + ligne ------ % (badge flou scientifique)
-// - v1.1.59 : resolveOrganigramTerreEpochName — switch (true) + in ; applyBary : accès direct DATA['📜']['🗿'] ; retrait if window.top (regle-branchement-crash-first)
-// - v1.1.58 : setEpoch / applyBaryToGraphiqueOnly — alias terre.epoch / noyau.radiation : Boule de neige (TIMELINE) -> Protérozoïque (config organigramme), sinon pas de recréation Three.js
-// - v1.1.57 : log [visu pictos] — marqueurs spectraux graphe = .organigram-picto-inactived seulement Corps Noir (plot.js v1.0.52) ; Géométrie = CSS hide-*
-// - v1.1.54 : runMainInit — garde si #plot-anim-toggle-checkbox absent (addEventListener sur null)
-// - v1.1.53 : [1] config — console.log visibilité pictos (hide-organigram-* + .organigram-picto-inactived)
-// - v1.1.52 : setEpoch fin — syncPlotContainerOrganigramHideClasses (retrait .organigram-picto-inactived sur [ ] plot hors Corps Noir)
-// - v1.1.51 : syncPlotContainerOrganigramHideClasses appelle updateSpectralBandIndicatorsGhostOnly (fantôme spectre hors Corps Noir)
-// - v1.1.50 : syncPlotContainerOrganigramHideClasses — memes hide-organigram-* sur .plot-container-wrapper que #flux-diagram (spectre plot.js)
-// - v1.1.49 : badge Flou scientifique (🧩) dans #title-flou-scientifique-slot (.title-container), plus dans #flux-diagram
-// - v1.1.48 : légende équilibre — ligne « Corps noir (sol) » tirets (Planck T_surface, plot.js v1.0.30)
-// - v1.1.47 : légende équilibre — Corps noir (pointillé) = T_eff ; Courbe réelle (pleine) = T_surface (cohérence ∫ / plot.js tooltip)
-// - v1.1.1 : retrait precisionFactor/fpsPrecisionFactor (FPS.js v1.2.0 remplace Précision par Mémoire)
-// - v1.1.2 : updateHadeenTexture : nouvelle cellule insérée derrière l'ancienne, retrait ancienne au three:ready (évite disparition texture)
-// - v1.1.3 : setEpoch : même pattern insertBefore+three:ready si planetEffect ; _logStep helper console.groupCollapsed
-// - v1.1.4 : const MAJUSCULE = window.MAJUSCULE en entrée de chaque fonction (données vivantes, comme imports)
-// - v1.1.5 : updateDisplay bloc albedo : logosOrEmpty au lieu de const LOGOS = LOGOS (TDZ) ; pas de window.MAJUSCULE hors init
-// - v1.1.6 : Three.js pause avant changement texture (setEpoch/updateHadeenTexture), play au compute:done (loader_panels)
-// - v1.1.7 : debug logs setEpoch (trace appelant [3]) + log début appel
-// - v1.1.8 : fix "un nextEpoch en trop" — message scie ne réécrit plus DATA[📿💫] du parent ; bary:changed passe keepTimeMa:true ; setEpoch early-return respecte keepTimeMa
-// - v1.1.39 : selection timeline supports epoch-text (hidden epochs) like epoch-btn
-// - v1.1.44 : setEpoch(..., { keepTimeMa: true }) — applyBaryToGraphiqueOnly + return (évite 2e sync:state run + 2e [4] après bary iframe)
-// - v1.1.43 : traces runMainInit / mini-slider / bary → pdTrace (pd = erreurs uniquement)
-// - v1.1.42 : _logStep / _logStepEnd déplacés vers debug.js v1.0.6 (ordre avant configOrganigramme — [1] config = groupe dès le load)
-// - v1.1.41 : applyBaryToGraphiqueOnly — retrait groupe 🎨 vide (groupCollapsed+End) ; log ligne unique si DEBUG_SYNC_PANELS
-// - v1.1.40 : setEpoch fallback resolves hidden epochs from TIMELINE when geology lookup fails
-// - v1.1.9 : applyBaryToGraphiqueOnly : early-return ne bloque plus sur !baryEpochs[epoch] ; +generateArrows +cellAlbedo (parité avec setEpoch full body)
-// - v1.1.10 : setEpoch : restauration log [2] (supprimé) ; events.js Hadéen handler réordonné (voir events.js v1.2.3)
-// - v1.1.11 : setEpoch stocke _lastPlanetTexturePath=logoPath ; applyBaryToGraphiqueOnly skip si même path (fix double Three.js)
-// - v1.1.12 : updateHadeenTexture utilise getEffectiveNodesConfig(bary) pour radius/exobase/colors interpolés + stocke _lastPlanetTexturePath
-// - v1.1.13 : setEpoch "même époque" seulement si currentEpochName===epochName (fix transition ticTime → [1][2][4] exécutés)
-// - v1.1.14 : suppression court-circuit "même époque" — rechargement complet à chaque setEpoch
-// - v1.1.15 : titre CONFIGURATION (styles SCENARIO/EPOQUES) au-dessus du bouton organigramme
-// - v1.1.16 : classe organigram-config-heading (font timeline 04B_03, marge bas, sans trait)
-// - v1.1.17 : libellé organigramme « CONFIG. » (plus court)
-// - v1.1.18 : libellé organigramme « PILOTAGE » (remplace CONFIG.)
-// - v1.1.19 : badge albedo_percent (#organigram-config-wrap, à droite de ⚗)
-// - v1.1.20 : badge fine_tuning_cloud_bary (🧩 nuages) dans la même ligne — retiré du bouton albédo
-// - v1.1.21 : updateThreePlayIndicator idempotent — recrée wrap/⚗/%/🧩 si partiellement absents
-// - v1.1.22 : garde updateEpochActions si events.js pas encore chargé
-// - v1.1.23 : albedo_percent retiré du PILOTAGE — de retour sur le bouton albédo (configOrganigramme)
-// - v1.1.24 : bouton ⚗ sans title natif ni alt détaillé distinct (évite 2e tooltip après 2s)
-// - v1.1.25 : bouton ⚗ garde tooltip court + alt détaillé après 2s via aria-label long (sans title natif)
-// - v1.1.26 : badge 🧩 compact sur 3 lignes + mini-slider 4ch ; réglage CLOUD_SW en visu_ (compute au relâchement)
-// - v1.1.27 : badge 🧩 court = "Flou scientifique" ; détail uniquement dans l'alt déplié
-// - v1.1.28 : mini-slider visu_ envoie le même payload sync:tuning complet que scie_ (état commun + compute cohérent)
-// - v1.1.28 : badge 🧩 sorti de #organigram-config-wrap — enfant direct de #flux-diagram (sibling du wrap)
-// - v1.1.29 : input slider bary — mise à jour directe .organigram-bary-pct (plus d'updateFluxLabels qui détache le slider)
-// - v1.1.30 : mini-slider visu_ force DATA['🎚️'].baryByGroup.CLOUD_SW + fillDataTuningFromBary avant sync/run (évite reset implicite à 100%)
-// - v1.1.31 : logs debug mini-slider (input/change) + payload tuning juste avant appel run
-// - v1.1.32 : mini-slider visu_ interpole localement FINE_TUNING_BOUNDS -> DATA['🎚️'] (fallback robuste si fillDataTuningFromBary indisponible)
-// - v1.1.33 : trace setters DATA['🎚️'] (bary CLOUD_SW + CLOUD_FRACTION_BASE) + set explicite CLOUD_FRACTION_BASE au slider
-// - v1.1.34 : payload mini-slider reconstruit depuis bary+FINE_TUNING_BOUNDS (source DATA), puis réinjecté avant run
-// - v1.1.35 : création badge 🧩 — % et slider alignés sur DATA['🎚️'].baryByGroup.CLOUD_SW (plus de 100% figé jusqu'à updateFluxLabels)
-// - v1.1.36 : wrap OBSERVATIONS (titre + 🛰) comme PILOTAGE ; toggle hide-organigram-observation-metrics sur #flux-diagram
-// - v1.1.37 : booléens window.organigramObservation*PictoHidden (géométrie, EDS/reemis, albédo-btn) synchronisés au 🛰
-// - v1.1.46 : organigramme titre « DETAILS » (ex PILOTAGE) ; OBSERVATIONS fermées par défaut (🛰 off → surtout Terre visible)
-// - v1.1.45 : libellé 🐊 → « Éocène » (titre court)
-// - v1.1.38 : libellé d’époque 🐊 → « Hyperthermie éocène » (plus « Terre étouffe (PETM) »)
 //
 // NOTE ASYNC (v1.1.0) — exceptions à la règle sync :
 //   1. requestAnimationFrame dans processResult (×3) : différer d'1 frame pour que le DOM

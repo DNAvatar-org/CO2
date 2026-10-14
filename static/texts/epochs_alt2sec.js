@@ -8,26 +8,6 @@
 //   - v1.2.0 (2026-09-24): vraies dates (ICS 2023, Hoffman et al. 2017) dans les titres ; le Cryogénien a
 //     DEUX glaciations — ⛄ Snowball Sturtien, 🌦 1b Sortie Sturtienne + interglaciaire, 🏂 Snowball Marinoen,
 //     ⛈ 1c Sortie Marinoenne ; récits de clics recalés sur la chaîne de clics du 2026-09-24.
-//   - v1.1.1: 🍄 — 4 récits (l'époque passe à 4 clics de 35 Ma, configTimeline v1.4.88) : le drawdown
-//     Dévonien-Carbonifère, la bascule du Karoo au 3e clic (−10 °C, glace 14 → 28 %), la remontée permienne.
-//   - v1.1.0: EVENT_STORY entièrement réécrit — un récit PAR CLIC (tableaux) et non par époque, et chaque
-//     récit dit ce que le clic VA faire, pas ce que l'époque EST. Calé sur un relevé T/CO₂/CH₄/albédo
-//     avant-après de chaque clic (banc epoch_bench headless, api.run par tic) : plusieurs textes annonçaient
-//     l'inverse du calcul — 🦠 « stable » alors que ça monte de +3 puis +2 °C, 🪸 « vers la glaciation » alors
-//     que le 1er clic réchauffe de +2 °C, 🦤 « le CO₂ décroît » alors qu'il double vers l'optimum éocène,
-//     🍄 « le climat se refroidit » alors que le pas saute au Permien et réchauffe de +7 °C.
-//     eventClickIndex : l'index du récit suit le compteur DE L'ÉVÉNEMENT (📿☄️ pour ☄️, 📿💫 pour les tics),
-//     sinon sur ⚫ la 2e météorite racontait le mauvais texte après un clic de temps.
-//   - v1.0.4: 🦣 — 4e récit 💫 (le clic qui sort du Quaternaire) : la suite avait 3 textes pour 4 clics,
-//     le dernier clic rejouait donc le texte du 3e.
-//   - v1.0.3: bulles d'événement — valeurs inchangées masquées ; dernier clic d'une époque : annonce l'époque suivante.
-//   - v1.0.2: récits d'événements pour TOUTES les époques (dont ⛄ : 💫 = le voile est retombé, 🌋 = accumulation du CO₂ volcanique) ;
-//     EVENT_STORY accepte un tableau indexé par clic (états 🕰.🔁 du Quaternaire). La config ne porte que des nombres.
-//   - v1.0.1: buildEventAlt2sec — composition depuis la CONFIG : ce qui change (masses/obliquité/deltas), pourquoi (📝 de l'état 🕰.🔁 ou récit), effet attendu.
-//   - v1.0.0: création. Récits des 19 époques + événements ; les CHIFFRES ne sont pas écrits ici :
-//     buildEpochAlt2sec() les lit à l'affichage dans BENCH_LIT_BY_EPOCH_ID (fourchettes littérature),
-//     TIMELINE (valeurs appliquées) et DATA (dernier calcul). Une seule source par nombre, jamais désynchronisée.
-//     Reprise du texte 'hysteresis 1a' qui vivait dans alphabet.js (données de l'alphabet, pas sa place).
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.

@@ -6,14 +6,8 @@
    Date: 2025-03-08
    Logs:
    - Extracted from index.html inline <style>.
-   - v1.0.1: #milankovitch-panel aligné sur #scie-panel (max-height:none, min-height viewport, iframe min-height) — iframe n’était pas dimensionnée (≈150px), body/graph bloqués en haut
-   - v1.0.2: retrait onglet Hysteresis (#hysteresis-panel, body.hysteresis-panel-active)
-   - v1.0.3: .tabs-bar button text-transform:uppercase (lisibilité police pixel 04B_03)
-   - v1.0.4: #bench-panel / body.bench-panel-active aligné sur #milankovitch-panel (iframe simple standalone)
-   - v1.0.5: .app-loader-list li.loaded background → color-mix(--base-color 35%, transparent) (au lieu de vert fluo hardcodé)
    - v1.0.7: .credits-footer-utf8 — lien utf8 coin bas-droit du footer (index.html)
    - v1.0.8: #histoire-panel (histoire.html) aligné sur #milankovitch-panel
-   - v1.0.6: réintroduction #hysteresis-panel / body.hysteresis-panel-active (iframe standalone hysteresis_compute.html) aligné sur #bench-panel / #milankovitch-panel
    ============================================================ */
 
 /* --- Onglets (tabs-bar) : Visuel / Scientifique --- */

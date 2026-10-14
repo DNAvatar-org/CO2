@@ -5,8 +5,6 @@
 // Date: 2026-09-23
 // logs :
 //   - v1.1.0: survol → bulle avec la SOURCE de ce qui est sous le curseur (H.survol, rendu.js).
-//   - v1.0.0: Shift + molette ne zoomait que dans un sens. Avec Shift, macOS convertit la molette
-//     verticale en HORIZONTALE : deltaY vaut 0 et le sens passe dans deltaX. On lit l'un ou l'autre.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';

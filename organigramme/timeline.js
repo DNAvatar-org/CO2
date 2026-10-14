@@ -10,36 +10,6 @@
  * - v1.0.29: timelineYearsToMa(years, isForward) remplace timelineDeltaYearsToStartMa — années calendaires (🛖🚂📱, libellés
  *   −10000/1800/2000/2100) → +y/1e6 : échelle monotone. Avant, 1800/2000 CE étaient lus « avant présent » → Holocène +8000 ans
  *   (an −2000) affiché sur 2000, puis curseur qui remontait à 1800 au passage 🚂.
- * - v1.0.28: updateTimeline — fin d'époque : appel direct tryEpochEndSkipAfterEvent (verrou déplacé dans events.js, relâché par setEpoch).
- * - v1.0.27: animateTimelineCursorToEpoch — callback direct si le curseur est déjà sur la cible (fin d'époque atteinte par événements,
- *   ex. ☄️ Hadéen → −4000 Ma : updateTimeline a déjà placé le curseur sur ▶ Archéen → pas de transitionend → SKIP bloqué) + filet setTimeout.
- * - v1.0.26: getTimelineCurrentYears — Number(▶/◀/infoTimeMa) avant arithmétique (évite concat chaîne « -10000 »+8000 → an 2000 CE / mauvais fonds).
- * - v1.0.25: curseur frise = getTimelineCurrentMa() (aligné getTimelineCurrentYears / texture). L’ancien
- *   startMa ± infoTimeMa pour forward est faux si ▶ < 0 (🛖 Holocène −10⁴ a) → barre figée en haut, PNG suit pourtant la date.
- * - v1.0.24: window.getTimelineCurrentYears — même date que le curseur pour getPlanetTexturePathFromEpoch (évite 00000Ma.png en fin 🦣 / 🛖 via event).
- * - v1.0.23: effectiveTimelineEndSlackMa — slack 0,05 Ma trop grand pour époques CE (dur ~1e−4 Ma) → faux SKIP immédiat vers 📱 ; min(0,05, dur×1%).
- * - v1.0.22: window.togglePlotAnim défini ici (source unique) — pages sans loader_panels (ex. scie_compute.html) ; fallback setEpoch / window.selectEpoch.
- * - v1.0.21: ▶ négatif (🛖 −10⁴ a BP) — timelineDeltaYearsToStartMa ; parseTimelineDateText accepte libellés « −10000 » (Ma curseur).
- * - v1.0.20: updateEpochActions depuis updateTimeline seulement si configOrganigramme.timeline est déjà fusionné (initAfterLoad) — évite race rAF avant loader_panels.
- * - v1.0.19: fin d'époque — slack TIMELINE_END_SLACK_MA (arrondi + float) ; SKIP via tryEpochEndSkipAfterEvent dans updateTimeline (latch) si date ≥ fin sans clic.
- * - v1.0.18: TIMELINE_EPOCH_BOUNDS + getCurrentEpochDurationMa + isPastCurrentEpochEndMa (date frise vs ◀) ; refresh au début de updateTimeline ; export getEpochAtTimelineIndex.
- * - v1.0.17: updateEpochActions — clé de rafraîchissement inclut 🕰.order (TIMELINE) quand défini, sinon getActionForDate.
- * - v1.0.16: getEpochAtTimelineIndex — évite crash epoch undefined (▶) si 👉 hors TIMELINE ou état transitoire (scie_compute)
- * - v1.0.1: synthèse température = nom époque + info-time (ex. Hadéen +0 Ma)
- * - v1.0.2: dates négatives avec signe - (info-time et epoch-start en -X Ma)
- * - v1.0.3: échelle d’époque construite depuis TIMELINE ; curseurs > .. < positionnés par calcul (alignés y0 sur zone texte)
- * - v1.0.4: calcul Y des curseurs via getBoundingClientRect ; conteneur d’échelle étiré sur toute la frise
- * - v1.0.5: logs de géométrie pour -5000 Ma, 2050 et curseurs ; retour à un espacement fixe du conteneur
- * - v1.0.6: logs de diagnostic ajoutés avant calcul pour identifier l’étape qui bloque la frise
- * - v1.0.7: lecture des dates réelles de la frise sans effacer les boutons epoch-btn
- * - v1.0.8: padding 10px conteneur ; curseurs alignés sur centre du texte (.epoch-date) au lieu de la div
- * - v1.0.9: const DATA = DATA, const TIMELINE = TIMELINE en tête des fonctions (cf window_MAJUSCULE_creater_filler.txt)
- * - v1.0.10: fix crash _ticCfg undefined (findIndex=-1 ou clé 🔘🕰 absente de 🕰)
- * - v1.0.11: info-time en (+N ans) pour époques récentes (▶<1e6), sinon (+X Ma)
- * - v1.0.12: animation curseur timeline vers époque suivante (main action 🎞) : getTimelineCursorTopForEpochIndex, animateTimelineCursorToEpoch
- * - v1.0.13: garde updateEpochActions si events.js pas encore chargé
- * - v1.0.14: pdOnce → pdTrace(fn,file,msg) ; diagnostic timeline sans erreur factice (scie sans .visu_epochs-container)
- * - v1.0.15: PALEOMAP (#cell-credits-paleomap) visible seulement si date courante ∈ [−750, −2] Ma (0 Ma exclu)
  * Copyright 2025 DNAvatar.org - Arnaud Maignan
  * Licensed under Apache License 2.0 with Commons Clause.
 * See https://commonsclause.com/ for full terms.

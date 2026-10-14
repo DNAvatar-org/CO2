@@ -3,20 +3,6 @@
 // Logs: v1.0.124 nuages : nombre de gouttes affiché (ALBEDO.nombreGouttesCm3), « ✈ N /cm³ » ; écart de CCN à 2000 en infobulle.
 // Logs: v1.0.123 « ✈ CCN » = ALBEDO.rapportCCN() sur le DATA de la page (même fonction que le moteur) au lieu de min(0,35 ; sulfate × 500) inventé.
 // Logs: v1.0.122 sens de chaque jauge (TUNING.sensJauge : 🔺 monter réchauffe, 🔻 refroidit, ↕️ ambigu) dans les rangées et l'infobulle.
-// Logs: v1.0.121 jauges de fine-tuning séparées (FROID / CHAUD / SUBTIL / HYSTERESIS) : htmlJaugesFineTuning,
-//   syncJaugesFineTuning, infobulle regroupée par jauge ; plus de jauge unique ATM.
-// Logs: v1.0.120 nuages : réflectance affichée = DATA['🪩']['🪩🍰⛅'] (calculée, deux-flux) au lieu du coefficient de config
-//   retiré ; fine-tuning CDNC_OCEAN_CM3 à la place de CLOUD_FRACTION_BASE / _INDEX_GAIN / OPTICAL_EFF_BASE.
-// Logs: v1.0.119 noyau : température et flux lus dans DATA['🌕'] (API_BILAN/geology/interieur.js) au lieu d'une
-//   température inventée depuis la puissance (T ≈ 3000 + P/1e13 × 200) et des clés de config retirées.
-// Logs: v1.0.118 frise : chaque logo sur la ligne de SA date de début, alternativement à droite puis à gauche
-//   de la date (.epoch-row.logo-droite / .logo-gauche) — moitié moins de hauteur, pour accueillir de nouvelles époques.
-// Logs: v1.0.117 badge H₂O — passe en fraction MOLAIRE (comme CO₂/CH₄ qui viennent de co2KgToFraction) au lieu
-//   de la fraction MASSIQUE 🍰🫧💧×100, et bascule automatiquement en ppm sous 1 %. Branche au passage
-//   `shouldConvertPercentToPpm`, déclarée et lue depuis toujours mais à laquelle rien n'assignait jamais true —
-//   le sens ppm → % était câblé, le sens % → ppm ne l'avait jamais été. Révélé par ⛄ Plein Snowball : 42 ppmv
-//   d'air saturé à −56 °C s'affichaient « 0,0 % » à côté d'un EDS de ~5 W/m². Retrait aussi des deux formateurs
-//   SULFATE_BOOST_SCALE (v1.2.65 : la jauge n'existe plus).
 // Version 1.0.119
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -24,96 +10,6 @@
 // ¬Ā (/nʌl nʌl eɪ/) (/nɔ̃ a ma.kʁɔ̃/) : ¬¬Aristotelicisme via UTF8.
 // "La carte c'est le territoire, le territoire c'est le code."
 // UTF8 est la sémantique pour CODE & UI
-// Logs: v1.0.117 carte de nuit : on éteint la lumière directionnelle et on remonte l'ambiante tant qu'elle est
-//       posée (📱 ≥ 2000). Le terminateur est déjà dans l'image ; le directionnel en dessinait un second, décalé.
-// Logs: v1.0.116 carte de nuit (📜🌙) en emissiveMap + masque shader (smoothstep sur N·L) : jour et nuit affichés EN MÊME TEMPS, la nuit seulement côté ombre.
-// Logs: v1.0.115 getPlanetTexturePathFromEpoch — texture DÉCLARÉE la plus proche de la date (plus de 404 sur un fichier inexistant) ; signe corrigé pour les époques géologiques.
-// Logs: v1.0.114 getPlanetTexturePathFromEpoch — texture d'ÉTAT (📜🖼, posée par 🕰.🔁) prioritaire sur la date.
-// Logs: v1.0.113 addCustomTooltip — data-alt2sec depuis window.EPOCH_ALT2SEC[data-epoch] (ex. Sturtienne / hysteresis 1a).
-// Logs: v1.0.112 getFineTuningDetailAlt — retrait suffixe #biblio_ref dans les lignes alt2sec.
-// Logs: v1.0.111 getFineTuningDetailAlt — périmètre jauge ATM uniquement (CLOUD_SW + H2O_EDS_SCALE) ; hors HYSTERESIS / factorTropopause / CONFIG scie ; note H₂O sans MT_CKD ; ref # = biblio_ref.
-// Logs: v1.0.110 getFineTuningDetailAlt — fourchette [min , max] (0 %→100 % jauge) après chaque picto, avant la valeur live.
-// Logs: v1.0.109 syncFineTuningSlotTooltips — infobulles alt0/alt2 sur #title-flou-scientifique-slot ; badge data-flux-tooltip=off.
-// Logs: v1.0.108 syncFineTuningBadgeTooltips — data-alt2sec (détail live) ; slot titre sans title/aria (plus d’alt2sec « Flou scientifique » parasite).
-// Logs: v1.0.107 getFineTuningDetailAlt — valeurs live (DATA/CONFIG) ligne par ligne : CLOUD_SW, RADIATIVE, HYSTERESIS + ⚽/CO₂ océan/albédo glace (alt2sec jauge flou scientifique).
-// Logs: v1.0.106 TextureLoader — URL absolue (new URL(fonds/…)) + correctif fonds/_NNNNNNa.png si année signée < 0 (pas _002000a pour −2000).
-// Logs: v1.0.105 planetTexturePathFromAbsoluteYears — Number(y) avant isFinite (chaîne «-2000» → -002000a, pas _002025a).
-// Logs: v1.0.104 commentaire z-index grille cellule (ARROW_LABEL / Terre z — configOrganigramme v1.1.45).
-// Logs: v1.0.103 normalizeLegacyFondsMaUnderscore — fonds/_NNNNNMa.png (ancienne convention / cache) → fonds/-NNNNNMa.png.
-// Logs: v1.0.102 fonds Ma — préfixe '-' systématique (|-Ma| en temps géologique) : -05000Ma.png ; cohérent avec -002000a.png.
-// Logs: v1.0.101 fonds années |y|<1e6 : '-' si y<0, '_' si y≥0 + 6 ch + a.png (ex. -002000a vs _001800a). Ma → v1.0.102.
-// Logs: v1.0.100 texture fonds — getPlanetTexturePathFromEpoch aligné sur getTimelineCurrentYears() (plus de 00000Ma.png fin 🦣 / événements → 🛖 010000a.png).
-// Logs: v1.0.99 masse atm — fallback COMPUTE.dryAtmosphereMassKgFromComponents si plus de ⚖️🫧 en TIMELINE.
-// Logs: v1.0.98 fine_tuning_cloud_bary : aria-label mini-jauge = « Flou scientifique » (homogène avec data-tooltip).
-// Logs: v1.0.97 Terre Three.js : curseur move (croix 4 directions) au survol du canvas ; grabbing pendant press/drag (+ body si sortie du canvas).
-// Logs: v1.0.96 sync img.alt sur cercles tooltips (CH₄/Soleil/EDS…) ; même alt plat que aria-label.
-// Logs: v1.0.95 logAlbedoUiDiagnostic : snapshot JSON (💧/⚖️/🪩/hasNoAtmosphere) → logs/albedoUi.txt ou window.__ALBEDO_UI_LOG.
-// Logs: v1.0.94 ice_coverage sans atm : 💧.🍰💧🧊 avant RUNTIME.h2oIceFractionFromCalculation (évite ~74 % glace à l’init ⚫ sans eau).
-// Logs: v1.0.93 détail albedo_percents sans atm (⚫) : 🧊/🌍 depuis 💧.🍰💧🧊 (stock eau) pas 🪩.🍰🪩🧊 (cap géométrique 100%).
-// Logs: v1.0.92 syncEpochFromTimelinePointer : 👉 source de vérité (réconcilie 🗿 + currentEpochName) ; retrait fallback epoch Hadéen silencieux sur terre/albedo.
-// Logs: v1.0.91 Terre Three.js : drag horizontal inversé au-dessus du pôle sud projeté (clientY < ySud écran).
-// Logs: v1.0.90 Terre Three.js : drag X/Y + inertie ω·dt ; reprise auto-rotation au release (singleton rAF) ; clic Terre sans toggle après drag.
-// Logs: v1.0.89 Terre Three.js : ombre de la sphère sur les cônes (DirectionalLight shadowMap) ; cônes ne projettent pas.
-// Logs: v1.0.88 Terre Three.js : cônes cuivre moins métalliques + HemisphereLight atténué pour cohérence visuelle avec le terminateur du globe.
-// Logs: v1.0.87 Terre Three.js : HemisphereLight.position = direction soleil (comme DirectionalLight), évite cônes éclairés par le « ciel » Y+ par défaut.
-// Logs: v1.0.86 createCell : pas de préfixe on/off dans aria-label / data-tooltip pour CO₂ CH₄ H₂O Albédo (logos non togglables).
-// Logs: v1.0.85 Terre Three.js : cônes d'axe cuivre (StandardMaterial), nord pointe vers la Terre, HemisphereLight pour relief.
-// Logs: v1.0.84 Terre Three.js : retrait du vecteur d'axe nord (complexité/clip canvas), retour à la sphère seule.
-// Logs: v1.0.83 Terre Three.js : vecteur axe nord en volume (cylindre + chapeau conique), plus de simple trait plaqué.
-// Logs: v1.0.82 Terre Three.js : ajout d'un vecteur d'axe sortant du pôle nord (toujours visible, suit tilt+rotation)
-// Logs: v1.0.81 timeline-scenario-anim : sans flux-button-cell ni icon-button (grayscale sur toute la cellule dans style.css) ; classe organigram-buttons retirée ; clic via nodeId
-// Logs: v1.0.77 timeline-scenario-anim placeholder span : classe organigram-logo (unique, alignée events.js / organigramme.css v1.0.73)
-// Logs: v1.0.76 alt 🛩 : fixe 1,0261 (config radiativeFactorTropopauseFixed, hors bary)
-// Logs: v1.0.75 alt fallback 🛩 factorTropopause [1,03 , 1,00] (FINE_TUNING v1.3.9)
-// Logs: v1.0.74 getFineTuningDetailAlt : cibles RADIATIVE (SCIENCE) — κ_H₂O + factorTropopause 🛩 [1,05 , 1] ; intro flou scientifique nuages+radiatif
-// Logs: v1.0.73 fix crash FluxManager.setSolarIntensity : extraction des helpers (detectValueType, formatNumberWithScientific, formatValueFromTemplate, FINE_TUNING_TOOLTIP_SHORT, updateLabel) du closure ORG.updateFluxLabels vers le scope du module ; ORG.updateLabel lié dès le chargement, avant le premier ProcessFinished (sync_panels.doCompute peut appeler FluxManager.updateAllFluxes avant que updateFluxLabels ait lié le closure).
-// Logs: v1.0.72 namespace ORG (source unique) : createCell, recreateNoyauRadiation, recreateTerreRadiation, generateArrows, initFluxButtonListeners, updateFluxLabels, updateFields. Suppression duplicats window.foo. Migration lectures RUNTIME_STATE (currentEpochName, fps, h2oVaporPercent, h2oTotalFromMeteorites, h2oIceFractionFromCalculation, T0_num).
-// Logs: v1.0.71 createCell : gridItem appendé seulement si children.length > 0 (coins + centre vides jamais créés)
-// Logs: v1.0.70 mountOrganigramDomSlots : slotMinWidth sur el (#timeline-events-logos), pas sur shell — shell taille naturelle, logos overflow:visible
-// Logs: v1.0.69 domSlot coque : centre hauteur ~slotEventLogoPx (côtés élargis si slotMinWidth) ; ACTION/SKIP = organigram-config-heading ; pas buttonData sur titres ; syncFluxLabelPlainMetric exempte ce heading
-// Logs: v1.0.68 domSlot timeline-events-logos : coque flux-cell 3×3 (#cell-timeline-scenario-logos) ; retrait #timeline-action-block ; transform centrage comme createCell
-// Logs: v1.0.67 createCell : updateLabelClasses sur span logo { text, dataId } (ex. SKIP plot_anim_skip)
-// Logs: v1.0.66 fine_tuning_cloud_bary fallback innerHTML : même grille 2 colonnes que main.js (🔺🌡️🔻. + jauge | 🧩 . + %)
-// Logs: v1.0.26 albedo: \\bar{A} dans le footer (entre tasse et speech), plus dans [1,1]
-// Logs: v1.0.27 animate(): retrait auto-resume FPS (ne pas écraser threeJSAnimationPaused=true géré par main.js)
-// Logs: v1.0.28 fin chargement Three.js : IO_LISTENER.emit('three:ready', { hasTexture, canvas }) après texture load ou erreur
-// Logs: v1.0.29 Terre : drag souris (rotation), inertie au release (vitesse), smooth barycentre vers rotation par défaut
-// Logs: v1.0.30 Drag Terre désactivé (pointerEvents=none), logs [texture] chargement lancé/OK/erreur
-// Logs: v1.0.31 updatePlanetTextureFromDate : pause Three.js avant load texture ; play au compute:done (loader_panels)
-// Logs: v1.0.32 albedoBreakdown : figé pendant cycleCalcul/cycleAlbedo/cycleH2O, mis à jour uniquement à ProcessFinished (cohérence badge vs détail)
-// Logs: v1.0.33 getFineTuningDetailAlt exposé sur window (badge nuages dans organigram-config-wrap)
-// Logs: v1.0.34 fine_tuning_cloud_bary : 🧩 ligne + 🔺%🔻 ; panneau alt détaillé après 2s en haut-droite du badge
-// Logs: v1.0.35 pas de panneau si alt détail = tooltip court ; panneau fixed body + reposition scroll/resize
-// Logs: v1.0.36 badge 🧩 : retour au système central tooltips.js (court + alt après 2s), sans 3e panneau custom
-// Logs: v1.0.37 fine_tuning_cloud_bary : tooltip court explicite (instantané %) + détail multi-lignes lisible
-// Logs: v1.0.38 badge 🧩 en 2 lignes compactes (🔺🧩🔻 / %), mini-slider intégré pour réglage visu_
-// Logs: v1.0.39 tooltip instantané simplifié : "Flou scientifique" (le détail reste uniquement dans l'alt déplié)
-// Logs: v1.0.40 fine_tuning_cloud_bary : mise à jour douce (pct + slider) sans innerHTML si mini-slider déjà présent
-// Logs: v1.0.41 Three.js planet : logs pointerdown/pointermove/pointerup sur le container (pour debug drag futur)
-// Logs: v1.0.42 bouton époque 📱 (image) : alt accessibilité = "2000"
-// Logs: v1.0.43 flux-label-plain-metric + updateLabelClasses sur grille ; toggle OBSERVATIONS (hide-organigram-observation-metrics) dans main.js
-// Logs: v1.0.44 timeline hidden epoch rendered as epoch-text (date-like font/height), not epoch-btn
-// Logs: v1.0.45 updateFluxLabels: fallback epoch resolve for hidden epochs (avoid null.total_atmosphere_mass_kg)
-// Logs: v1.0.46 updateFluxLabels: albedoCoeff fallback epoch resolve for hidden epochs (avoid null['🪩🍰'])
-// Logs: v1.0.47 updateFluxLabels: define logAlbedoUi helper (fix ReferenceError)
-// Logs: v1.0.48 🗺 credits-paleomap : clic sur le cercle ouvre dlg-credits (pas toggle / runCompute comme les boutons EDS)
-// Logs: v1.0.49 détail albédo : 🎾 + libellé lave (surface) ; ligne ⚽ 🍰⚽ voile SW stratosphérique
-// Logs: v1.0.50 DATA/CONST 🍰🪩🎾 🪩🍰🎾 (ex-🍰🪩🌋 / 🪩🍰🌋) pour cohérence clés lave
-// Logs: v1.0.51 détail voile : lecture 🍰🪩⚽ (fallback 🍰⚽), titre 🍰🪩⚽
-// Logs: v1.0.52 voile : 🍰⚽ = obstruction (affichage %) ; 🍰🪩⚽ = 1−🍰⚽
-// Logs: v1.0.53 updateFluxLabels : pdTrace au lieu de pd (plus de ❌ factice sur traces UI)
-// Logs: v1.0.54 Terre Three.js : inclinaison par défaut ≈ obliquité actuelle −23,44° (ex −53°) si savedPlanetTiltAngle absent
-// Logs: v1.0.55 var nodes/arcs avant calculatePositions ; nœuds type domSlot (montage #timeline-events-logos + #plot-anim-toggle dans le flux)
-// Logs: v1.0.56 organigramNodes/organigramArcs + cfgNodes/cfgArcs dans calculatePositions (fix Identifier nodes already declared) ; pas de remplacement sur .nodes.find
-// Logs: v1.0.57 retrait branche domSlot — logos + 🎞 statiques dans visu_radiatif (.title-scenario-row)
-// Logs: v1.0.58 domSlot timeline-scenario-logos : mountOrganigramDomSlots (crée #timeline-events-logos, parent depuis config appendParentSelector)
-// Logs: v1.0.59 mountOrganigramDomSlots : domTag/domClass/domAttrs/domInnerHTML/domOnclick ; nœud timeline-scenario-anim (plot-anim-toggle, hors visu_radiatif)
-// Logs: v1.0.65 🎞 SKIP + clignotement + id #plot-anim-toggle ; domSlot logos dans #timeline-action-block + titre ACTION
-// Logs: v1.0.64 runRadiationOpeningAnimation :1er rAF avant t0 pour laisser le navigateur peindre angleInit (lerp ne démarre qu’au frame suivant)
-// Logs: v1.0.63 radiation : angleInit / angleFinal / radius (alias maxRadius) + angleAnimMs ; openingAngle reste synonyme de angleFinal si angleFinal absent
-// Logs: v1.0.62 createCell : logoScale sur span raster (charsImages / chemin img) ; logoOffsetY en px CSS pour raster, × logoScale pour emoji
-// Logs: v1.0.61 mountOrganigramDomSlots : slotEventLogoPx → CSS --slot-event-logo-px (taille tuiles .timeline-event-logo sous #mountId)
-// Logs: v1.0.60 mountOrganigramDomSlots : x/y/zIndex/slotMinWidth appliqués directement sur l'élément (pas de wrapper) ; domSlots dans #flux-diagram
 
 // ============================================================================
 // PICTO (boutons) vs TEXTURES Three.js - Objets distincts

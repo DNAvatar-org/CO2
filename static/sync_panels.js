@@ -8,61 +8,9 @@
 //   config:applyThenCompute ne guette plus de changement d'époque (getEpochDateConfig n'en fait plus).
 // - v1.1.51: sync:state run:true — si un calcul tourne, ABORT_COMPUTE + attente de SYNC_STATE.runningCompute avant de relancer
 //   (plus de calculationInProgress=false forcé → 2 boucles solveur concurrentes sur DATA). runComputeInParent : null toléré si abandon.
-// - v1.1.50: initSyncPanels après DOM + attente window.shell (scripts loader asynchrones) — sinon registerPanelApi jamais appelé → current=null dans shell.dataInput.
-// - v1.1.49: initSyncPanels — shell.runCompute / applyStateFromScie / applyTuningFromScie = refs window.* (plus de wrappers dans shell.js).
-// - v1.1.48: sync:state / applyToVisu — syncEpochFromTimelinePointer() au lieu de configOrganigramme.timeline.find(ep.name) ; 👉 source de vérité.
-// - v1.1.47: projectToVisu — après draw flux, rAF → PLOT.logPlotScaleAfterCompute (DEBUG_PLOT_LOG + _logs/plot.txt)
-// - v1.1.46: projectToVisu — appels directs PLOT.invalidateSpectralYLuminanceCache / FLUX.skipSpectralFluxRedrawOnce (pas de typeof === 'function')
-// - v1.1.45: projectToVisu — invalidateSpectralYLuminanceCache avant 1er updatePlot ; 2e rAF: skipSpectralFluxRedrawOnce + invalidate puis updatePlot (échelle Y finale + overlays sans double draw flux dans le callback ; updateSpectralVisualization assure le canvas flux).
-// - v1.1.44: broadcastTuningToIframes — factorise propagation sync:tuning vers scie + bench + hysteresis (#hysteresis-iframe). Utilisé dans applyTuningFromScie (mini-slider visu_), message listener sync:tuning (écho scie) et IO_LISTENER. Bench & hysteresis reçoivent désormais les changements venant de visu_ et scie_ (hysteresis = écoute seule, postMessage sortant mute v1.0.1).
-// - v1.1.43: syncTuningToBench — IO_LISTENER 'sync:tuning' propage aussi vers l'iframe bench (#bench-iframe). Bench reçoit le payload via postMessage et rafraîchit ses jauges via message listener (epoch_bench.html v1.0.16).
-// - v1.1.42: migration namespaces — window.PLOT.updatePlot / updateSpectralVisualization / tempSurfaceToColor + window.ORG.updateFluxLabels + RUNTIME_STATE (currentEpochName, spectralConverged, spectralPrecisionTarget, showSpectralBackground, h2oVaporPercent, h2oTotalFromMeteorites). Retrait stubs updateFluxLabels / updateLabel (ordre chargement contractuel, crash-first).
-// - v1.1.41: retrait recopie DATA → window.TUNING (syncTuningFromData). DATA['🎚️'] = source unique live (initDATA v1.1.0). Miroirs CONFIG_COMPUTE conservés pour legacy.
 // Copyright 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // Date: 2025-02-06
-// Logs:
-// - v1.1.1: passage global _REGLE_JS_CRASH (pas de if abusifs, pas de fallbacks)
-// - v1.1.2: T0 init quand anim+T<=0 ; displayConvergence no-op parent ; _lastCycleRef guard
-// - v1.1.3: Guards null pour plot-anim-toggle, plot-anim-toggle-checkbox, info-time, visuPanel, DATA
-// - v1.1.4: runComputeInParent init DATA[📅]/[📜] si race avec setEpoch ; guard initForConfig false
-// - v1.1.5: runComputeInParent appelle getEnabledStates() avant calcul (source de vérité anim = bouton visu)
-// - v1.1.5: appel direct getEnabledStates() sans typeof (règle _REGLE_JS_CRASH)
-// - v1.1.6: event sync:tuning (bary + updates) pour appliquer tuning sur parent/visu puis run unique
-// - v1.1.7: support baryByGroup (CLOUD_SW/SOLVER) pour jauges séparées
-// - v1.1.13: runComputeInParent normalise entrée (getMasses + h2oTotalFromMeteorites=0) pour même résultat visu vs scie
-// - v1.1.14: projectToVisu fix draw: showSpectralBackground forcé true dans RAF2, RAF3 unpause threeJS, retrait guards abusifs
-// - v1.1.15: reset _lastFinalSig au démarrage d'un calcul pour autoriser 1 FINAL par run (anti-doublon cross-run)
-// - v1.1.16: runComputeInParent passe renderMode (visu_/scie_) à computeRadiativeTransfer; pas de projectToVisu en scie_
-// - v1.1.17: ajout namespace window.VISUALWAIT (computeRenderMode, shouldAwaitDraw, resetDrawAck, markDrawn, isDrawn)
-// - v1.1.18: runComputeInParent force showDichotomySteps depuis DATA['🔘']['🔘🎞'] (visu anim = draws par cycle)
-// - v1.1.19: VISUALWAIT simplifié
-// - v1.1.20: un seul calcul (config:applyThenCompute) ; refresh visu = updateFluxLabels après compute:done (visu ou scie)
-// - v1.1.22: [4]/[X] logs utilisent _logStep/_logStepEnd (console.groupCollapsed) si définis
-// - v1.1.23: debug logs config:applyThenCompute + runComputeInParent (trace appelant [X])
-// - v1.1.24: fix "un nextEpoch en trop" — applyToVisu(fromScie) ne réécrit pas 📿💫/infoTimeMa ; config:applyThenCompute appelle setEpoch si transition
-// - v1.1.25: log [4] calculs (effectif) dans doCompute (après rAF) pour tracer le vrai début de calcul vs le scheduling
-// - v1.1.27: action:nextEpoch depuis scie → togglePlotAnim() dans parent (🎞 = prochaine époque, pas toggle on/off)
-// - v1.1.28: run scie_ émet flux:lastDrawn après compute:done (débloque fin de calcul rouge côté visu)
-// - v1.1.29: debug run complet: source d'appel + payload tuning + état DATA avant runComputeInParent
-// - v1.1.40: projectToVisu recolorise .synthese_Temp (setProperty color !important) + appelle updateLegend(plotData) → fix bug Hadéen title cyan persistant + légende figée au timeClic (setEpoch n'étant pas rappelé hors SKIP époque)
-// - v1.1.30: applyTuningPayload appelle fillDataTuningFromBary si dispo (interpolation depuis bary + FINE_TUNING_BOUNDS)
-// - v1.1.31: _epochIdToName 🐊 « Éocène »
-// - v1.1.26: [4] effectif groupe reste ouvert jusqu'à [4] retour (suppr _logStepEnd prématuré)
-// - v1.1.21: guard calculationInProgress en tête de runComputeInParent (évite double appel sendComputeToScie + config:applyThenCompute) (retire markDrawn/isDrawn/resetDrawAck/awaitVisuDraw — while mort); appel direct RAF dans calculations_flux
-// - v1.1.39: _epochIdToName 🐊 « Éocène »
-// - v1.1.38: diagnostics run/tuning/inputs → pdTrace (pd réservé aux erreurs)
-// - v1.1.37: groupe 📡 sync:state (DEBUG_SYNC_PANELS) ; [4] retour sans _logStepEnd immédiat (logs post-run dans le groupe) ; fermetures [4] sur erreurs idx/init
-// - v1.1.36: message sync:hysteresis {active} + payload.hysteresisActive (sync:state) → window.HYSTERESIS.active parent (même bundle que scie_)
-// - v1.1.35: payload.hysteresisTimelineCo2Kg + epochId → patch TIMELINE[⚖️🏭] avant config:applyThenCompute (boucle HYSTERESIS iframe)
-// - v1.1.12: sync:state inclut tuning (🎚️) depuis scie ; applyStateFromScie applique p.tuning pour reproductibilité run scie/visu
-// - v1.1.11: applyStateFromScie/applyTuningFromScie exposés ; messages sync:state/sync:tuning passent par shell
-// - v1.1.10: displayConvergence/clearConvergenceTrace/appendConvergenceStep passent par shell.dataInput ; compute:done aussi
-// - v1.1.32: logs pdTrace pre/post initForConfig et post-run (inputs réels) pour diagnostiquer divergence UI vs solveur
-// - v1.1.33: add huge TRACE_VISU banner + trace at runComputeInParent entry
-// - v1.1.34: remove TRACE_VISU + dedupe sync:state run
-// - v1.1.9: shell.registerPanelApi visu/scie + setCurrentPanel(active) dans initSyncPanels ; dispatch prêt pour dataInput
-// - v1.1.8: source unique tuning dans DATA[🎚️]; applyTuningPayload écrit DATA[🎚️]; runComputeInParent sync TUNING depuis DATA[🎚️]
 
 (function () {
     'use strict';

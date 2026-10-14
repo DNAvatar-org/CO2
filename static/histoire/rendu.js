@@ -8,8 +8,6 @@
 //   - v1.3.0: littérature continue jusqu'à −5000 Ma (ancres hadéennes + KT2018), raccords signalés au survol ;
 //     modèle en ESCALIER (l'état d'un clic tient jusqu'au suivant), survol = clic joué, sa durée, et l'état de
 //     l'intérieur (T potentielle, flux, puissance — API_BILAN/geology/interieur.js).
-//   - v1.2.0: Quaternaire de Snyder 2016 (cycles glaciaires mesurés) raccordé à PhanDA et à l'instrumental.
-//   - v1.1.0: littérature sourcée (litterature.js) au lieu de la courbe de Gemini ; courbe du modèle.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';

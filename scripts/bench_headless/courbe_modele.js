@@ -11,15 +11,6 @@
 // Version 2.0.1
 // - v2.0.1 (2026-10-13): jauges séparées — `pct` et `bary` portent tout baryByGroup.
 // Date: 2026-10-12
-// logs :
-//   - v2.0.0: clics par CLICS (API_BILAN/convergence/clics.js), plus de copie de la mécanique ici.
-// logs :
-//   - v1.2.0: mode 'frise' (graine à chaque époque, puis ses tictimes) à côté du mode 'clics' ; un seul
-//     journal chronologique (note), chaque point porte son mode ('frise' | 'clic').
-//   - v1.1.0: ⚫ et 🔥 joués au CLIC (order ☄️ 💫 ☄️ 💫 🎇 ; 💫 de 🔥 compte 📿💫 comme tout tic, ce qui
-//     fait baisser le flux du noyau — events.js v1.2.39) au lieu d'une frise isolée chacun ; plus de reset entre ⚫, 🔥 et 🦠 ; chaque point
-//     porte son clic (cle, etape) et sa durée (dt, Ma) ; et l'état de l'intérieur (Tint °C, geo W/m², TW,
-//     solidif = âge de solidification de l'océan de magma — geology/interieur.js).
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
 (async () => { try {
