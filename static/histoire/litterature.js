@@ -4,8 +4,9 @@
 //       (c'est à lui qu'on compare la courbe simulée, courbe_modele.js). La courbe est CONTINUE de
 //       −5000 Ma à 2025 : entre deux sources qui ne se touchent pas (4,45 → 4,4 Ga, 4,4 → 4,0 Ga,
 //       525 → 482 Ma), c'est un trait droit, et le survol le dit (« raccord, aucune donnée »).
-//         · hadeen      : ancres de l'Hadéen, chacune avec sa source (5e colonne) : corps noir (équation),
-//                         océan de magma (Sleep et al. 2001), eau liquide des zircons de Jack Hills
+//         · hadeen      : ancres de l'Hadéen, chacune avec sa source (5e colonne) : corps noir (équation), vapeur de
+//                         roche puis océan de magma (~2 Ma), océan chaud sous CO₂, retrait du CO₂ en 20–100 Ma
+//                         (Zahnle et al. 2010, fig. 3 ; Sleep et al. 2001), eau liquide des zircons de Jack Hills
 //                         (Wilde et al. 2001 : 0–100 °C, médiane = milieu de la fourchette)
 //         · kt2018      : Krissansen-Totton, Arney & Catling 2018 (PNAS 115:4105), T moyenne de surface
 //                         4,0 Ga → 525 Ma, percentiles 2,5 / 50 / 97,5 % sur 10 000 tirages. C'est un
@@ -23,14 +24,16 @@
 //         · instrumental: 1850–1900 = 13,5 °C (Copernicus ESOTC 2024) ; 2000 = 14,4 °C (GISTEMP v4
 //                         +0,39 sur 14,0 de Jones et al. 1999) ; 2024 = 13,5 + 1,60 = 15,1 °C (Copernicus) ;
 //                         incertitude ±0,5 °C sur l'ABSOLU (Jones et al. 1999)
-//         · reperes     : valeurs ponctuelles publiées, avec leur fourchette
 //         · glaciations : intervalles DATÉS des glaciations globales ; aucune température (pas de proxy
 //                         pendant un Snowball, Hoffman et al. 2017)
-//         · cryogenien  : 717,5 → 632,2 Ma, remplace KT2018 : fourchettes des modèles pendant les snowballs (Pierrehumbert
-//                         2005) et à leur sortie (Hoffman 2017 / Yang 2017), fond KT2018 interpolé entre les deux
-// Version 1.3.0
+//         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
+//                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
+//                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
+// Version 1.4.0
 // Date: 2026-10-14
 // logs :
+//   - v1.4.0: L.precambrien — Archéen (Blake 2010) et Paléoprotérozoïque (Gumsley 2017) en plus du Cryogénien.
+//   - v1.3.1: Hadéen daté (Zahnle 2010) : chute rapide en ~2 Ma au lieu d'un plateau de 60 Ma et d'une pente droite.
 //   - v1.3.0: Cryogénien en fourchettes publiées (deux snowballs, serre de sortie, intervalle) au lieu de KT2018.
 //   - v1.2.0: courbe prolongée jusqu'à −5000 Ma : ancres hadéennes (ex-repères en boîtes) + KT2018 sur le
 //     Précambrien (4,0 Ga → 525 Ma, 95 %), au lieu d'un trou avant PhanDA.
@@ -41,8 +44,14 @@ window.HISTOIRE.litterature = {
     hadeen: [
         [5.0e9,   -19, -18.5, -17, 'Corps noir — équation : T_eq = [S(1−A)/4σ]^¼ ≈ −18,5 °C (S = 1361 W/m², A = 0,29)'],
         [4.51e9,  -19, -18.5, -17, 'Corps noir — équation : T_eq = [S(1−A)/4σ]^¼ ≈ −18,5 °C (S = 1361 W/m², A = 0,29)'],
-        [4.51e9,  2300, 2550, 2800, "Océan de magma après l'impact géant (Sleep, Zahnle & Neuhoff 2001, PNAS 98:3666 ; Zahnle et al. 2010) — ordre de grandeur"],
-        [4.45e9,  2300, 2550, 2800, "Océan de magma après l'impact géant (Sleep, Zahnle & Neuhoff 2001, PNAS 98:3666 ; Zahnle et al. 2010) — ordre de grandeur"],
+        [4.51e9,       2300, 2550, 2800, "Vapeur de roche, 100 à 1 000 ans après l'impact géant (Zahnle, Schaefer & Fegley 2010, Cold Spring Harb. Perspect. Biol. 2:a004895, fig. 3 ; Sleep, Zahnle & Neuhoff 2001, PNAS 98:3666) — ordre de grandeur"],
+        [4.509999e9,   2300, 2550, 2800, "Vapeur de roche, 100 à 1 000 ans après l'impact géant (Zahnle, Schaefer & Fegley 2010, Cold Spring Harb. Perspect. Biol. 2:a004895, fig. 3 ; Sleep, Zahnle & Neuhoff 2001, PNAS 98:3666) — ordre de grandeur"],
+        [4.509999e9,   1227, 1764, 2300, "Océan de magma sous atmosphère de vapeur : surface > 1 500 K, gelé en surface en ~2 Ma (Zahnle et al. 2010) ; borne haute = vapeur de roche"],
+        [4.508e9,      1227, 1764, 2300, "Océan de magma sous atmosphère de vapeur : surface > 1 500 K, gelé en surface en ~2 Ma (Zahnle et al. 2010) ; borne haute = vapeur de roche"],
+        [4.508e9,      177, 227, 277, "Océan d'eau chaud (~500 K) sous ~100 bar de CO₂, dès que le manteau est solide (Zahnle et al. 2010, fig. 3) — ±50 K : largeur NON publiée (❔)"],
+        [4.49e9,       177, 227, 277, "Océan d'eau chaud (~500 K) sous ~100 bar de CO₂, dès que le manteau est solide (Zahnle et al. 2010, fig. 3) — ±50 K : largeur NON publiée (❔)"],
+        [4.49e9,       -53, 112, 277, "Retrait du CO₂ dans le manteau en 20 ou 100 Ma, selon le scénario (Zahnle et al. 2010, fig. 3) : jusqu'à ~220 K et des océans glacés si le CO₂ part vite, encore ~500 K s'il part lentement — fourchette des deux scénarios, milieu sans signification"],
+        [4.41e9,       -53, 112, 277, "Retrait du CO₂ dans le manteau en 20 ou 100 Ma, selon le scénario (Zahnle et al. 2010, fig. 3) : jusqu'à ~220 K et des océans glacés si le CO₂ part vite, encore ~500 K s'il part lentement — fourchette des deux scénarios, milieu sans signification"],
         [4.4e9,   0, 50, 100, 'Eau liquide — zircons de Jack Hills dès 4,4 Ga (Wilde et al. 2001, Nature 409:175) → 0 < T < 100 °C ; 50 = milieu de la fourchette']
     ],
     // [t, T 2,5 %, T 50 %, T 97,5 %] — CO2/scripts/histoire/kt2018_temperature.py (10 000 tirages)
@@ -2231,32 +2240,50 @@ window.HISTOIRE.litterature = {
         [25,  13.9, 14.4, 14.9],   // 2000 (GISTEMP v4 + Jones 1999)
         [1,   14.6, 15.1, 15.6]    // 2024 : +1,60 °C sur 1850–1900 (Copernicus)
     ],
-    reperes: [
-        { t0: 3.5e9, t1: 3.2e9, lo: 26, hi: 35, label: 'Océan archéen', src: 'δ18O des phosphates, Barberton (Blake, Chang & Lepland 2010, Nature 464:1029)' },
-        { t0: 3.42e9, t1: 3.42e9, lo: 0, hi: 40, label: '≤ 40 °C', src: 'δ18O–δD des cherts de Buck Reef (Hren, Tice & Chamberlain 2009, Nature 462:205)' }
-    ],
     glaciations: [
         { t0: 717e6, t1: 659e6, label: 'Sturtien', src: 'Hoffman et al. 2017, Sci. Adv. 3:e1600983 (U-Pb : 717 → 659,3–658,5 Ma)' },
         { t0: 639e6, t1: 635.2e6, label: 'Marinoen', src: 'Hoffman et al. 2017 (début 649,9–639,0 Ma ; fin 635,2 Ma)' }
     ]
 };
 
-// CRYOGÉNIEN (717,5 → 632,2 Ma) : remplace KT2018, qui ignore les glaciations globales. Des FOURCHETTES, pas des valeurs —
-// aucun proxy de température n'existe pendant un snowball (Hoffman et al. 2017) : ce sont les bornes des modèles publiés.
-// Deux glaciations globales datées (U-Pb, Re-Os), séparées par un intervalle non glaciaire de 9 à 19 Ma (Hoffman 2017) :
-//   Sturtien 717 → 659 Ma (58 Ma), Marinoen 639 → 635,2 Ma (≥ 5 Ma). Chacune finit en « serre torride » : le CO₂ volcanique,
-//   accumulé sans pluie pour le lessiver, atteint 0,01–0,1 en fraction de volume (10² PAL à la sortie Marinoenne, Bao et al.
-//   2008), puis l'altération des silicates le ramène au fond en quelques Ma (Le Hir et al. 2009).
+// PRÉCAMBRIEN (4,0 Ga → 525 Ma) : L.precambrien = KT2018 (modèle lisse, qui ignore les glaciations et les proxys) hors de
+// trois FENÊTRES sourcées qui le remplacent. Des FOURCHETTES, pas des valeurs. Le fond, aux bords des fenêtres et entre deux
+// paliers, est KT2018 interpolé (la série elle-même, pas une copie de ses valeurs).
+//   · Archéen 3,5 → 3,2 Ga : océan 26–35 °C, δ¹⁸O des phosphates (Blake 2010), compatible avec ≤ 40 °C (Hren 2009) ;
+//   · Paléoprotérozoïque 2,46 → 2,24 Ga : glaciations, au moins une globale (Hoffman 2017), mal datées (Gumsley 2017) ;
+//   · Cryogénien 717,5 → 632,2 Ma : deux snowballs datés, séparés par un intervalle de 9 à 19 Ma (Hoffman 2017). Chacun
+//     finit en « serre torride » : le CO₂ volcanique, accumulé sans pluie pour le lessiver, atteint 0,01–0,1 en fraction
+//     de volume (10² PAL à la sortie Marinoenne, Bao et al. 2008), puis l'altération le ramène au fond en quelques Ma
+//     (Le Hir et al. 2009). Aucun proxy de température pendant un snowball : bornes des modèles publiés.
 (function () {
     const L = window.HISTOIRE.litterature, K = L.kt2018;
-    // Fond hors glaciation : KT2018 interpolé à t (la série elle-même, pas une copie de ses valeurs).
+    const KT = 'Krissansen-Totton, Arney & Catling 2018, PNAS 115:4105 (2,5–97,5 %) — modèle du cycle du carbone contraint par proxys';
     const fond = (t, quoi) => {
         let i = 0;
         while (K[i + 1][0] > t) i++;
         const a = K[i], b = K[i + 1], w = (a[0] - t) / (a[0] - b[0]);
-        return [t, a[1] + w * (b[1] - a[1]), a[2] + w * (b[2] - a[2]), a[3] + w * (b[3] - a[3]),
-            'Krissansen-Totton et al. 2018 interpolé — ' + quoi];
+        return [t, a[1] + w * (b[1] - a[1]), a[2] + w * (b[2] - a[2]), a[3] + w * (b[3] - a[3]), KT + ' — interpolé : ' + quoi];
     };
+
+    const BLAKE = 'Océan archéen 26–35 °C : δ¹⁸O des phosphates de Barberton (Blake, Chang & Lepland 2010, Nature 464:1029), '
+        + 'compatible avec ≤ 40 °C des cherts de Buck Reef (Hren, Tice & Chamberlain 2009, Nature 462:205) — reconstruction ; '
+        + 'le δ¹⁸O de l\'eau de mer archéenne, qui fixe l\'échelle, reste débattu';
+    const archeen = [
+        fond(3.51e9, 'avant les phosphates de Barberton'),
+        [3.5e9, 26, 30.5, 35, BLAKE],
+        [3.2e9, 26, 30.5, 35, BLAKE],
+        fond(3.19e9, 'après les phosphates de Barberton')
+    ];
+
+    const SID = 'Glaciations du Paléoprotérozoïque, au moins une globale (Hoffman et al. 2017) : première glaciation globale entre '
+        + '2 460 et 2 426 Ma, instabilité climatique jusqu\'à ~2 250–2 240 Ma (Gumsley et al. 2017, PNAS 114:1811). Épisodes '
+        + 'mal datés : borne basse = snowball (−73 °C, Pierrehumbert 2005 — sous un Soleil plus faible qu\'au Cryogénien, sans doute '
+        + 'plus froid ❔), médiane et borne haute = KT2018';
+    const sid = (t) => { const f = fond(t, ''); return [t, -73, f[2], f[3], SID]; };
+    const paleoproterozoique = [fond(2.461e9, 'avant les glaciations du Paléoprotérozoïque'), sid(2.46e9)]
+        .concat(K.filter((r) => r[0] < 2.46e9 && r[0] > 2.24e9).map((r) => sid(r[0])),
+            [sid(2.24e9), fond(2.239e9, 'après les glaciations du Paléoprotérozoïque')]);
+
     const SNOW = 'Snowball : la moyenne globale est entre la moyenne annuelle des hautes latitudes (~200 K) et celle des '
         + 'tropiques (~250 K) du GCM de Pierrehumbert 2005 (JGR 110:D01111, 100 ppm de CO₂) — aucun proxy de température '
         + 'pendant un snowball (Hoffman et al. 2017, Sci. Adv. 3:e1600983)';
@@ -2277,4 +2304,11 @@ window.HISTOIRE.litterature = {
         [635.2e6, 40, 50, 60, APRES + ' — Marinoen ; CO₂ ~10² PAL (Δ¹⁷O, Bao et al. 2008, cités par Hoffman 2017)'],
         fond(632.2e6, 'retour au fond en quelques Ma (Le Hir et al. 2009) — durée = ordre de grandeur')
     ];
+
+    // Une série : KT2018 hors des fenêtres, puis les fenêtres ; tri par âge décroissant (stable : l'ordre des paliers de même
+    // date, saut vertical compris, est gardé).
+    const fenetres = [archeen, paleoproterozoique, L.cryogenien];
+    const dans = (t) => fenetres.some((w) => t <= w[0][0] && t >= w[w.length - 1][0]);
+    L.precambrien = K.filter((r) => !dans(r[0])).map((r) => [r[0], r[1], r[2], r[3], KT])
+        .concat(...fenetres).sort((a, b) => b[0] - a[0]);
 })();

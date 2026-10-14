@@ -1,10 +1,12 @@
 // File: CO2/static/histoire/rendu.js
 // Desc: Dessin : grille, glaciations datées (bandes), littérature (série continue −5000 Ma → 2025 avec sa
-//       bande d'incertitude, repères ponctuels en boîtes), courbe du MODÈLE (orange, en escalier), logos d'époque en
+//       bande d'incertitude), courbe du MODÈLE (orange, en escalier), logos d'époque en
 //       bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.3.1
+// Version 1.4.0
 // Date: 2026-10-14
 // logs :
+//   - v1.4.0: série précambrienne unique (L.precambrien).
+//   - v1.3.2: repères ponctuels en boîtes retirés (illisibles) ; glaciations en fine bande sous les logos, plus pleine hauteur.
 //   - v1.3.1: Cryogénien (L.cryogenien, fourchettes publiées des snowballs) à la place de KT2018 sur 717,5 → 632,2 Ma.
 //   - v1.3.0: littérature continue jusqu'à −5000 Ma (ancres hadéennes + KT2018), raccords signalés au survol ;
 //     modèle en ESCALIER (l'état d'un clic tient jusqu'au suivant), survol = clic joué, sa durée, et l'état de
@@ -13,8 +15,8 @@
 (function () {
     'use strict';
     const H = window.HISTOIRE;
-    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', mod: '#ff9f43', glace: 'rgba(160, 200, 255, 0.22)',
-                   rep: 'rgba(102, 252, 241, 0.35)', grille: 'rgba(69, 162, 158, 0.15)', texte: 'rgba(69, 162, 158, 0.6)' };
+    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', mod: '#ff9f43', glace: 'rgba(160, 200, 255, 0.45)',
+                   grille: 'rgba(69, 162, 158, 0.15)', texte: 'rgba(69, 162, 158, 0.6)' };
     const px = t => (H.vue.xOffset - t) * H.vue.xScale;
     const py = T => H.vue.height / 2 - (T - H.vue.yOffset) * H.vue.yScale;
     let zones = [];   // zones survolables : { x0, x1, y0, y1, texte }
@@ -68,27 +70,26 @@
         ctx.clearRect(0, 0, v.width, v.height);
         drawGrid(ctx);
 
-        // Glaciations globales datées : bandes verticales, sans température.
+        // Glaciations globales datées : une fine bande sous les noms d'époque du bandeau (y 110 / 124), dates seulement. Leur
+        // température est portée par la courbe de la littérature (L.cryogenien) ; pleine hauteur, elle se lisait comme une
+        // incertitude infinie.
+        const hBande = 13, yBande = 130;
         for (const g of L.glaciations) {
             const x0 = px(g.t0), x1 = px(g.t1);
             if (x1 < 0 || x0 > v.width) continue;
-            ctx.fillStyle = COUL.glace; ctx.fillRect(x0, 0, Math.max(x1 - x0, 2), v.height);
-            ctx.fillStyle = 'rgba(160,200,255,0.7)'; ctx.font = '11px Tahoma'; ctx.textAlign = 'left';
-            ctx.fillText('❄ ' + g.label, x0 + 4, v.height - 40);
-            zones.push({ x0, x1: Math.max(x1, x0 + 2), y0: 0, y1: v.height, texte: '❄ ' + g.label + ' — ' + g.src });
+            ctx.fillStyle = COUL.glace; ctx.fillRect(x0, yBande, Math.max(x1 - x0, 2), hBande);
+            ctx.fillStyle = 'rgba(220,235,255,0.95)'; ctx.font = '10px Tahoma'; ctx.textAlign = 'left';
+            ctx.fillText('❄ ' + g.label, x0 + 3, yBande + 10);
+            zones.push({ x0, x1: Math.max(x1, x0 + 2), y0: yBande, y1: yBande + hBande, texte: '❄ ' + g.label + ' — ' + g.src });
         }
 
         // Littérature : une seule série continue de −5000 Ma à 2025, bande d'incertitude comprise.
-        // Hadéen (ancres sourcées) → KT2018 (Précambrien) ⟂ Cryogénien → PhanDA → Snyder 2016 (Quaternaire, 1 ka) → instrumental.
-        // Le Cryogénien (série à part, ses propres sources) prend la place de KT2018 entre sa première et sa dernière date.
+        // Hadéen (ancres sourcées) → Précambrien (KT2018 + fenêtres) → PhanDA → Snyder 2016 (Quaternaire, 1 ka) → instrumental.
+        // Précambrien : KT2018 et ses fenêtres sourcées (Archéen, Paléoprotérozoïque, Cryogénien) — L.precambrien, une série.
         const tSnyder = L.snyder[0][0];
-        const tCryo0 = L.cryogenien[0][0], tCryo1 = L.cryogenien[L.cryogenien.length - 1][0];
-        const KT = () => 'Krissansen-Totton, Arney & Catling 2018, PNAS 115:4105 (2,5–97,5 %) — modèle du cycle du carbone contraint par proxys';
         const SEG = [
             { rows: L.hadeen, src: r => r[4] },
-            { rows: L.kt2018.filter(r => r[0] > tCryo0), src: KT },
-            { rows: L.cryogenien, src: r => r[4] },
-            { rows: L.kt2018.filter(r => r[0] < tCryo1), src: KT },
+            { rows: L.precambrien, src: r => r[4] },
             { rows: L.phanda.filter(r => r[0] > tSnyder), src: () => 'PhanDA (Judd et al. 2024)' },
             { rows: L.snyder, src: () => 'Snyder 2016, Nature 538:226 (2,5–97,5 %)' },
             { rows: L.instrumental, src: () => 'mesures instrumentales (Copernicus, GISTEMP, Jones 1999)' }
@@ -118,17 +119,6 @@
                     texte: 'Raccord, aucune donnée entre ' + fmt(a) + ' (' + sa + ') et ' + fmt(b) + ' (' + sb + ') : trait droit' });
             }
         });
-        // Repères ponctuels : boîte [t0 ; t1] × [lo ; hi].
-        for (const r of L.reperes) {
-            const x0 = px(r.t0), x1 = Math.max(px(r.t1), x0 + 3), y0 = py(r.hi), y1 = py(r.lo);
-            if (x1 < 0 || x0 > v.width) continue;
-            ctx.fillStyle = COUL.rep; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-            ctx.strokeStyle = COUL.lit; ctx.lineWidth = 1; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-            ctx.fillStyle = COUL.lit; ctx.font = '11px Tahoma'; ctx.textAlign = 'left';
-            ctx.fillText(r.label, x1 + 4, Math.max(12, y0 + 10));
-            zones.push({ x0, x1, y0, y1, texte: r.label + ' [' + r.lo + ' ; ' + r.hi + ' °C] — ' + r.src });
-        }
-
         // Modèle : chaîne de clics (courbe_modele.js) en ESCALIER. Un clic calcule l'état à sa date, et cet
         // état tient jusqu'au clic suivant : palier horizontal, puis saut vertical au clic. Rien n'est
         // interpolé entre deux clics — une pente dirait que le modèle a calculé ce qu'il n'a pas calculé.

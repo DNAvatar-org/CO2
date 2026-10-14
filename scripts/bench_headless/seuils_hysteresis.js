@@ -2,7 +2,7 @@
 // Desc: MESURE des frontières du Cryogénien par dichotomie, CO₂ ET CH₄ descendus ENSEMBLE dans leurs fourchettes de la
 //       littérature (window.BENCH_LIT_BY_EPOCH_ID : x = min + s (max − min), s ∈ [0, 1], ppm d'air sec), critère
 //       « frise = clic » : l'état attendu doit tenir au CLIC FRISE sur l'époque ET à l'arrivée par la CHAÎNE DE CLICS
-//       (frise 🪸 puis tous les clics, T° et glace conservées). Dans l'ordre de la chaîne (chacune dépend des précédentes) :
+//       (frise ⚫ puis tous les clics, T° et glace conservées — la chaîne du bench tictime). Dans l'ordre de la chaîne (chacune dépend des précédentes) :
 //         F1 ☃ = ⛄ : s le plus BAS où ☃ est chaud ; vérification 🗻 → ⛄ gelé, puis ⛄ encore gelé après 💫 (voile retiré)
 //         F2 1b     : s le plus BAS où 1b est sorti (T > 0, glace < 0,1), depuis ⛄ gelé
 //         F3 🏂     : s le plus HAUT où 🏂 est gelé (T < −30, glace > 0,8)
@@ -14,7 +14,8 @@
 //       posée EN MÉMOIRE avant la suivante ; le fichier de config n'est jamais modifié — reporter ensuite à la main dans
 //       configTimeline.js, mesure en commentaire. Résultats : window.__SEUILS__ ; chaque essai : window.__ESSAIS__ (--stream).
 //       Doc : API_BILAN/doc/HYSTERESIS_FRONTIERES.md.
-// Version 2.0.0
+// Version 2.1.0
+// - v2.1.0 (2026-10-14): chaîne depuis ⚫ (comme le bench tictime), et non plus depuis 🪸.
 // - v2.0.0 (2026-10-14): CO₂ + CH₄ dans les fourchettes, critère frise = clic, s borné à [0, 1] (v1 : CO₂ seul, chaîne seule,
 //   encadrement jusqu'à 40 pas ×1,3 hors fourchette).
 // Date: 2026-10-14
@@ -43,10 +44,12 @@ window.__PROG__='start'; window.__SEUILS__=null; window.__ESSAIS__=[]; window.__
     await api.run({ epochId: D['📜']['🗿'], animEnabled:true }); return key; };
   // Clic frise sur `id` : la graine de l'époque, un calcul.
   const frise = async (id) => { window.CLICS.frise(id); await api.run({ epochId:id, animEnabled:false }); return etat('frise '+id); };
-  // Chaîne depuis la frise 🪸 jusqu'à l'ARRIVÉE dans `jusqua` (incluse) ; arrivee(ep) = premier état vu dans ep.
+  // Chaîne depuis la frise ⚫ — la même que le bench tictime et l'interface — jusqu'à l'ARRIVÉE dans `jusqua` (incluse) ;
+  // arrivee(ep) = premier état vu dans ep. (v2.0 partait de 🪸 : l'état transporté différait assez pour qu'une frontière à
+  // 0,02 % près tienne ici et pas dans le bench.)
   const chaine = async (jusqua) => {
-    window.CLICS.frise('🪸'); await api.run({ epochId:'🪸', animEnabled:false });
-    const notes=[etat('frise 🪸')];
+    window.CLICS.frise('⚫'); await api.run({ epochId:'⚫', animEnabled:false });
+    const notes=[etat('frise ⚫')];
     while (D['📜']['🗿'] !== jusqua) { const depuis=D['📜']['🗿'], key=await clic(); notes.push(etat(depuis+' '+key)); }
     return notes;
   };
