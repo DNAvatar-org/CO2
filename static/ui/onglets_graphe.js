@@ -4,7 +4,8 @@
 //       sont pas déplacés dans le DOM (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont
 //       en position fixe, recalés sur la zone quand elle change de taille, au redimensionnement et au défilement (c'est le
 //       body qui défile, index-shell.css).
-// Version 1.1.0
+// Version 1.2.0
+// - v1.2.0: spectre caché en display: none + canvas effacé.
 // - v1.1.0: spectreVisible — le graphe spectral est caché (visibility) sous les autres onglets.
 // Date: 2026-10-14
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -28,10 +29,14 @@
         });
     }
 
-    /** Spectre caché sous un autre onglet : ses éléments ne se dessinent plus et ne captent plus la souris (boutons,
-     *  légende) ; la zone garde sa taille, le panneau s'y pose. Rendu à l'onglet Spectrale (onShowVisu redessine). */
+    /** Spectre caché sous un autre onglet : son contenu sort du rendu (display: none, index-shell.css) et le canvas est
+     *  effacé ; la zone garde sa taille, le panneau s'y pose. À l'onglet Spectrale, onShowVisu redimensionne (resize) et
+     *  redessine (projectToVisu). */
     function spectreVisible(oui) {
         zone().classList.toggle('spectre-cache', !oui);
+        if (oui) return;
+        const canvas = document.getElementById('spectral-visualization');
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     }
 
     /** Après l'injection de visu (loader_panels.initAfterLoad) : la zone existe. */

@@ -3,9 +3,10 @@
 # File: CO2/html/test_milankovitch.html
 # Desc: Cycles de Milankovitch (obliquité, excentricité, précession) — courbes + explication du couplage
 #       avec le bilan radiatif (API_BILAN/physics/physics.js : redistribution méridienne de l'insolation).
-# Version 1.0.2
-# Date: [September 18, 2026]
+# Version 1.0.3
+# Date: [October 15, 2026]
 # Logs:
+# - v1.0.3: « Comment l'obliquité agit » replié par défaut (<details>, bouton + / −).
 # - v1.0.2: footer + signature DNAvatar retirés (page toujours chargée en iframe dans index.html, qui a
 #           déjà son propre footer avec signature sous les liens — comme les autres panneaux html/*.html).
 # - v1.0.1: sous-titre « utilisé au Quaternaire » + section « Comment l'obliquité agit dans la simulation » ;
@@ -69,8 +70,9 @@
     </div>
 
     <!-- Comment l'obliquité entre dans le bilan radiatif (API_BILAN/physics/physics.js v2.0.18) -->
-    <div class="milankovitch-explain divGlass">
-        <h2>Comment l'obliquité agit dans la simulation</h2>
+    <!-- Replié par défaut : le bouton + du titre le déplie (<details>, sans script). -->
+    <details class="milankovitch-explain divGlass">
+        <summary><h2>Comment l'obliquité agit dans la simulation</h2></summary>
         <p>
             L'obliquité ε (l'inclinaison de l'axe terrestre, de 22,1° à 24,5° tous les 41 000 ans)
             <strong>ne change pas d'un iota l'énergie totale reçue par la Terre</strong>. Elle change sa
@@ -110,7 +112,7 @@
             Budyko 1969 (<em>Tellus</em> 21:611) · Lisiecki &amp; Raymo 2005 · Lüthi et al. 2008 (EPICA).
             Détail des entrées : popup <strong>📚 Biblio</strong> de la page principale.
         </p>
-    </div>
+    </details>
     
     <script>
         // 0 = an 0 (J.-C.), ANNEE_AUJOURDHUI = 2026. Pour le calcul Milankovitch : années avant aujourd'hui = ANNEE_AUJOURDHUI - année calendaire.

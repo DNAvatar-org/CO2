@@ -5,6 +5,7 @@
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
    Logs:
+   - 2026-10-15 : .milankovitch-explain repliable (summary + / −).
    - Extracted from html/test_milankovitch.html inline <style>. .divGlass = style.css (source unique).
    ============================================================ */
 
@@ -208,7 +209,18 @@ body.page-milankovitch {
     line-height: 1.5;
     font-size: 13px;
 }
-.milankovitch-explain h2 { font-size: 15px; margin: 0 0 8px; }
+.milankovitch-explain h2 { font-size: 15px; margin: 0; display: inline; }
+/* Replié par défaut : le titre est le bouton, précédé de + (déplier) / − (replier). */
+.milankovitch-explain summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+.milankovitch-explain summary::-webkit-details-marker { display: none; }
+.milankovitch-explain summary::before {
+    content: '+';
+    flex: 0 0 22px; height: 22px; line-height: 20px; text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 50%;
+    font-size: 16px; font-weight: bold;
+}
+.milankovitch-explain[open] summary::before { content: '−'; }
+.milankovitch-explain[open] summary { margin-bottom: 8px; }
 .milankovitch-explain p { margin: 8px 0; }
 .milankovitch-explain ul { margin: 6px 0 6px 22px; }
 .milankovitch-explain code { font-family: 'Courier New', monospace; padding: 0 4px; }

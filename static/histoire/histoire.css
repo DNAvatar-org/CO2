@@ -1,10 +1,11 @@
 /* File: CO2/static/histoire/histoire.css
  * Desc: Styles de la page « Histoire thermique de la Terre » (CO2/histoire.html).
- * Version 1.0.0
- * Date: 2026-09-23
+ * Version 1.0.1
+ * Date: 2026-10-15
+ * - v1.0.1: fond transparent (étoiles de l'index visibles, comme Milankovitch).
  * Copyright 2026 DNAvatar.org - Arnaud Maignan
  */
-body { margin: 0; overflow: hidden; background-color: #0b0c10; color: #c5c6c7; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { margin: 0; overflow: hidden; background-color: transparent;   /* étoiles de l'index à travers l'iframe */ color: #c5c6c7; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 canvas { display: block; cursor: grab; }
 canvas:active { cursor: grabbing; }
 #ui { position: absolute; top: 15px; left: 15px; pointer-events: none; text-shadow: 1px 1px 2px black; }

@@ -1,12 +1,14 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.1.1
+   Version 1.1.3
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
    Logs:
    - Extracted from index.html inline <style>.
    - v1.0.7: .credits-footer-utf8 — lien utf8 coin bas-droit du footer (index.html)
+   - v1.1.3: spectre caché en display: none (plus visibility).
+   - v1.1.2: onglets de la zone du graphe sur fond transparent.
    - v1.1.1: barre d'onglets pleine largeur (souris traversante), Milankovitch aligné à droite.
    - v1.1.0: onglets dans la zone du graphe spectral (.onglet-graphe, position fixe) ; règles pleine page des panneaux
      scie / bench / milankovitch / histoire retirées (body.*-panel-active n'est plus posé).
@@ -137,12 +139,14 @@ body {
     max-height: none;
     overflow: auto;
     box-sizing: border-box;
-    background: rgba(12, 12, 14, 0.96);
+    background: transparent;   /* les étoiles passent : dessous, la zone du graphe garde son verre (.divGlass) */
     border-radius: 10px;
 }
-/* Graphe spectral sous un autre onglet : invisible et sans survol (onglets_graphe.js, spectreVisible). */
+/* Graphe spectral sous un autre onglet : RETIRÉ du rendu (display, qu'aucun descendant ne peut annuler — visibility,
+   Plotly pouvait la reposer) ; le canvas est en plus effacé (onglets_graphe.js, spectreVisible). La zone garde sa taille
+   (flex + height 100 %, indépendants de son contenu). */
 #visu-panel .plot-container-wrapper.spectre-cache > * {
-    visibility: hidden;
+    display: none !important;
 }
 .onglet-graphe iframe {
     flex: 1 1 auto;
