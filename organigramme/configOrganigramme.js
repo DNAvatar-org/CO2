@@ -1,9 +1,10 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.52
+// Version 1.1.53
 // Date: [October 15, 2026]
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // logs :
+// - v1.1.53: textures PALEOMAP 540, 380, 340, 295, 55, 20 Ma ajoutées ; 33 et 17 Ma retirées (copies d'autres dates).
 // - v1.1.52: espace2 = trou sous le 🛰 jumeau bas (comme espace1 sous le 🛰 haut). Terre et satellites recentrés sur la hauteur réelle de l'organigramme ; Soleil, EVENEMENT, SKIP fixes.
 // - v1.1.51: ACTION_BY_DATE / getActionForDate / getCurrentDateKey retirés : la séquence des clics est la config
 //   de l'API (🕰.order, lue par CLICS). La table ne se déclenchait d'ailleurs jamais sur 🔥 (4510 − k×100 Ma).
@@ -45,8 +46,11 @@ function fondsTexturePathFromSignedYear(y) {
 // La texture affichée = la plus PROCHE de la date courante dans ces listes (organigramme.js), donc jamais de 404 :
 // une date sans image exacte (ex. 2050) retombe sur l'image la plus proche (2000). Ajouter un fichier = l'ajouter ici.
 // 2 et 1 Ma : les deux états stables du Quaternaire (glaciaire / interglaciaire), cf. 🕰.🔁 '🖼'.
+// Phanérozoïque : cartes PALEOMAP (Scotese) nettoyées (cartes_work/PALEOMAP_clean), nommées à LEUR date de
+// reconstruction ; chaque clic de 🕰.order tombe à moins de 5 Ma de l'une d'elles.
 const TEXTURE_DATES_MA = [5000, 4900, 4800, 4700, 4600, 4500, 4400, 4300, 4200, 4100, 4000, 3500,
-    3000, 2500, 1910, 1320, 1000, 750, 720, 690, 600, 420, 280, 250, 150, 100, 66, 50, 35, 33, 17, 2, 1];
+    3000, 2500, 1910, 1320, 1000, 750, 720, 690, 600, 540, 420, 380, 340, 295, 280, 250, 150, 100, 66, 55, 50,
+    35, 20, 2, 1];
 /** Années signées (BP négatif, CE positif) — aligné getTimelineCurrentYears. */
 const TEXTURE_DATES_YEAR = [-10000, -6000, -5000, -3000, -2000, 1800, 2000];
 const TEXTURES_THREEJS = [
