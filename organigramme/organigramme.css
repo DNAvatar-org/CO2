@@ -1,6 +1,7 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.85
+// Version 1.0.86
+// - v1.0.86 (2026-10-15): quatre scénarios (🌈 ⛽ 🛢 🪾) : logos réduits pour tenir dans la largeur de trois.
 // - v1.0.85 (2026-10-15): titre visu compact — séparateur retiré ; époque sur 3 lignes à gauche, T/P à droite ; 🛰 jumeau bas (#observation-config-wrap-bas) ; jauges de fine-tuning retirées.
 // - v1.0.84 (2026-10-13): rangées de jauges de fine-tuning séparées (.organigram-bary-jauges / -rangee).
 // © 2025 DNAvatar.org - Arnaud Maignan
@@ -110,7 +111,7 @@
     box-sizing: border-box;
 }
 #flux-diagram #timeline-events-logos.year-indexed {
-    /* 3 logos (⛽ 🛢 🪾) serrés : gap nul + léger chevauchement, ils se lisent comme un seul groupe */
+    /* 3 ou 4 logos (🌈 ⛽ 🛢 🪾) serrés : gap nul + léger chevauchement, ils se lisent comme un seul groupe */
     gap: 0;
     justify-content: center;
 }
@@ -186,6 +187,17 @@
     min-height: calc(var(--_slot-logo) * 46 / 65);
     font-size: calc(var(--_slot-logo) * 26 / 65);
     margin-left: -6px;
+}
+/* Quatre scénarios (tranche 2100 : 🌈 ⛽ 🛢 🪾) : logos réduits pour tenir dans la largeur de trois — sinon la rangée
+   centrée déborde des deux côtés et le cercle coupe le premier. */
+#flux-diagram #timeline-events-logos .btn-year-indexed:first-child:nth-last-child(4),
+#flux-diagram #timeline-events-logos .btn-year-indexed:first-child:nth-last-child(4) ~ .btn-year-indexed {
+    width: calc(var(--_slot-logo) * 37 / 65);
+    height: calc(var(--_slot-logo) * 37 / 65);
+    min-width: calc(var(--_slot-logo) * 37 / 65);
+    min-height: calc(var(--_slot-logo) * 37 / 65);
+    font-size: calc(var(--_slot-logo) * 21 / 65);
+    margin-left: -5px;
 }
 
 /* SKIP : même lissage hover que les tuiles événements (🎞 est dans .flux-circle-bg, pas sous #timeline-events-logos) */

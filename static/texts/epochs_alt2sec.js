@@ -1,9 +1,10 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.2.2
-// Date: [October 14, 2026]
+// Version 1.2.3
+// Date: [October 15, 2026]
 // logs :
+//   - v1.2.3 (2026-10-15): 📱 🌈 (zéro émission, tranche 2100 → 2300).
 //   - v1.2.2 (2026-10-14): ⚫ = quatre ☄️ de masse croissante (eau lue sur l'entrée de séquence, CLICS.eauDuClic).
 //   - v1.2.1 (2026-09-24): « Ce que ça change » affiche le pas de clic à 1 décimale.
 //   - v1.2.0 (2026-09-24): vraies dates (ICS 2023, Hoffman et al. 2017) dans les titres ; le Cryogénien a
@@ -437,6 +438,10 @@ const EVENT_STORY = {
         ]
     },
     '📱': {
+        '🌈':
+            'Plus une tonne de CO₂ pendant 25 ans\n\n' +
+              'Rien n\'est injecté : seuls les puits travaillent. L\'océan continue de dissoudre le CO₂ en trop, les forêts de le stocker — de moins en moins vite à mesure que l\'écart se réduit.\n\n' +
+              'Le CO₂ redescend, mais lentement, et la température presque pas : ce qui a été émis reste dans l\'air pour des siècles.',
         '⛽':
             'Émissions d\'une tranche de 25 ans\n\n' +
               'Le CO₂ ajouté ne reste pas entièrement dans l\'air : l\'océan en dissout une partie (loi de Henry, freinée par la chimie des carbonates qui sature) et les forêts en stockent une autre (elles poussent plus vite avec plus de CO₂, effet qui sature aussi).\n\n' +

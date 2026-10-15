@@ -32,7 +32,7 @@
                 if ('📅' in c) liste.push({ t: ago(an), logo: c['📅'], nom: C_DESC[c['📅']] });
             });
         });
-        const F = window.TIMELINE_FUTUR;   // 🔮 2100 → 2200 : affiché, hors modèle
+        const F = window.TIMELINE_FUTUR;   // 🔮 2100 → 2300 : repère affiché, hors TIMELINE
         liste.push({ t: H.AN_PRESENT - F['▶'], logo: F['📅'], nom: window.CHARS_DESC[F['📅']] });
         return liste;
     };

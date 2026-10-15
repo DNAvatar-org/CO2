@@ -4581,8 +4581,8 @@ function generateTimelineFromConfig() {
     }
   });
 
-  // Futur (window.TIMELINE_FUTUR, configTimeline.js) : sa date (2100) et son logo, NON cliquable (hors modèle), puis la
-  // borne finale de la frise (2200).
+  // Futur (window.TIMELINE_FUTUR, configTimeline.js) : sa date (2100) et son logo, NON cliquable (repère), puis la
+  // borne finale de la frise (2300, jusqu'où les clics de 📱 continuent).
   const F = window.TIMELINE_FUTUR;
   const futur = document.createElement("span");
   futur.className = "epoch-btn epoch-futur";

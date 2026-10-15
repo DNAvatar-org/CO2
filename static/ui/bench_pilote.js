@@ -7,7 +7,8 @@
 //       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
 //       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ni courbe d'Histoire.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.3.0
+// Version 1.3.1
+// - v1.3.1: étape d'un tictime = sa durée de config (📜🔺⏳ : « ⛽ (+25 a) »), plus le temps écoulé en Ma.
 // - v1.3.0: hors run aussi, chaque calcul ajoute sa ligne au tableau (et garde son état) ; les courbes d'Histoire,
 //   seulement pendant un run.
 // - v1.2.0: la courbe du modèle de l'onglet Histoire est vidée au lancement puis retracée à chaque calcul
@@ -43,6 +44,13 @@
         return { phase: p.phase, delta_equilibre: p.delta_equilibre, temperature_C: p.temperature_C };
     }
 
+    /** Durée d'un clic (Ma, 📜🔺⏳ — celle de la config) dans l'unité qui la rend lisible : 25 a, 10 ka, 16 Ma. */
+    function duree(ma) {
+        if (ma >= 1) return (+ma.toFixed(2)) + ' Ma';
+        if (ma >= 1e-3) return (+(ma * 1e3).toFixed(2)) + ' ka';
+        return Math.round(ma * 1e6) + ' a';
+    }
+
     /** Une ligne de tableau : de quoi faire createRow / updateRow dans l'iframe (époque relue dans son TIMELINE). */
     function ligneCourante() {
         const D = window.DATA, H = D['📜'];
@@ -51,7 +59,7 @@
         return {
             rowKey: 'clic' + BENCH.n,
             epochId: EP['📅'],
-            etape: !anim ? 'frise' : H['🔘🕰'] === '' ? 'arrivée' : H['🔘🕰'] + ' (' + (+H['⏳'].toFixed(4)) + ' Ma)',   // '' : passage d'époque
+            etape: !anim ? 'frise' : H['🔘🕰'] === '' ? 'arrivée' : H['🔘🕰'] + ' (+' + duree(H['🔺⏳']) + ')',   // '' : passage d'époque
             tInitC: anim ? BENCH.tPrecC : EP['🌡️🧮'] - 273.15
         };
     }
