@@ -10,6 +10,7 @@
 // Logs: v1.2.0: scripts chargés par le loader commun (API_BILAN/loader/loader.js, BILAN_LOADER.load) : le moteur
 //        vient de sa liste unique (engine_manifest.js, avec convergence/clics.js qui manquait ici), l'application
 //        ne liste plus que ses scripts avant/après. Fin de loadScriptsSequentially et du chemin du worker en double.
+// Logs: v1.1.37: onglet ISS (dnavatar.org/pages/ISS, vue pôle) dans la zone du graphe.
 // Logs: v1.1.36: onglet Histoire (histoire.html) après Milankovitch — littérature sourcée vs courbe du modèle.
 // Logs: v1.1.35: alphabet_render.js / dico_render.js lus depuis API_BILAN/demo/ — dessiner l'alphabet et le
 //        dictionnaire de l'API fait partie de ce qui illustre l'API ; l'application s'y sert.
@@ -222,6 +223,8 @@
         window.API_ONGLETS.registerTab({ id: 'milankovitch', buttonId: 'tab-milankovitch', panelId: 'milankovitch-panel', onShow: onShowMilankovitch });
         // v1.1.36 : onglet Histoire (histoire.html, iframe standalone comme Milankovitch)
         window.API_ONGLETS.registerTab({ id: 'histoire', buttonId: 'tab-histoire', panelId: 'histoire-panel', onShow: onShowMilankovitch });
+        // Onglet ISS : dnavatar.org/pages/ISS en iframe, même zone et même effet (spectre caché) que Milankovitch.
+        window.API_ONGLETS.registerTab({ id: 'iss', buttonId: 'tab-iss', panelId: 'iss-panel', onShow: onShowMilankovitch });
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             if (window.DEBUG_TIMELINE_HIDDEN) {
                 try {

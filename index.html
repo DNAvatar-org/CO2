@@ -96,6 +96,7 @@
         <button id="tab-bench" onclick="switchTab('bench')">Bench</button>
         <button id="tab-scie" onclick="switchTab('scie')">Science</button>
         <button id="tab-milankovitch" onclick="switchTab('milankovitch')">Milankovitch?</button>
+        <button id="tab-iss" onclick="switchTab('iss')">ISS</button>
     </div>
     <div class="fps-display collapsed" id="fps-display">
         <button class="fps-toggle" id="fps-toggle" title="Réduire/Agrandir"></button>
@@ -115,6 +116,10 @@
          (CO2/static/histoire/courbe_modele.js, engendrée par scripts/bench_headless/courbe_modele.py). -->
     <div id="histoire-panel" class="tab-panel onglet-graphe">
         <iframe id="histoire-iframe" src="histoire.html"></iframe>
+    </div>
+    <!-- ISS : la page dnavatar.org/pages/ISS (vue depuis le pôle), dans la zone du graphe comme les autres onglets. -->
+    <div id="iss-panel" class="tab-panel onglet-graphe">
+        <iframe id="iss-iframe" src="https://dnavatar.org/pages/ISS/?vue=pole&amp;focale=20.78" title="ISS"></iframe>
     </div>
 
 
