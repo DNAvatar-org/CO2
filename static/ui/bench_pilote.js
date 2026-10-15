@@ -7,7 +7,8 @@
 //       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
 //       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ni courbe d'Histoire.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.3.1
+// Version 1.3.2
+// - v1.3.2: la ligne porte la date de l'état calculé (CLICS.date()) : elle avance à chaque tictime.
 // - v1.3.1: étape d'un tictime = sa durée de config (📜🔺⏳ : « ⛽ (+25 a) »), plus le temps écoulé en Ma.
 // - v1.3.0: hors run aussi, chaque calcul ajoute sa ligne au tableau (et garde son état) ; les courbes d'Histoire,
 //   seulement pendant un run.
@@ -60,7 +61,8 @@
             rowKey: 'clic' + BENCH.n,
             epochId: EP['📅'],
             etape: !anim ? 'frise' : H['🔘🕰'] === '' ? 'arrivée' : H['🔘🕰'] + ' (+' + duree(H['🔺⏳']) + ')',   // '' : passage d'époque
-            tInitC: anim ? BENCH.tPrecC : EP['🌡️🧮'] - 273.15
+            tInitC: anim ? BENCH.tPrecC : EP['🌡️🧮'] - 273.15,
+            date: window.CLICS.date()   // date de l'état calculé (2025, 2050… sur 📱)
         };
     }
 
