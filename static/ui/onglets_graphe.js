@@ -4,7 +4,8 @@
 //       sont pas déplacés dans le DOM (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont
 //       en position fixe, recalés sur la zone quand elle change de taille, au redimensionnement et au défilement (c'est le
 //       body qui défile, index-shell.css).
-// Version 1.2.2
+// Version 1.2.3
+// - v1.2.3: bouton ⛶ du panneau ISS : zen / pas zen de la page ISS (message iss:zen).
 // - v1.2.2: onglet ISS (iss-panel).
 // - v1.2.1: un logo d'époque cliqué dans Histoire (histoire:epoque) lance l'époque comme la frise.
 // - v1.2.0: spectre caché en display: none + canvas effacé.
@@ -15,9 +16,19 @@
     'use strict';
     const PANNEAUX = ['scie-panel', 'bench-panel', 'milankovitch-panel', 'histoire-panel', 'iss-panel'];
 
-    // Onglet Histoire : un clic sur le logo d'une époque est un clic sur la frise.
+    // Onglet ISS : la page démarre en zen (?zen dans l'URL de l'iframe) ; le bouton ⛶ du panneau la bascule par message,
+    // sans recharger la page (pages/ISS, js/ui.js, écoute 'iss:zen').
+    let zenISS = true;
+    function basculerZenISS() {
+        zenISS = !zenISS;
+        document.getElementById('iss-iframe').contentWindow.postMessage({ type: 'iss:zen', zen: zenISS }, '*');
+    }
+
+    // Onglet Histoire : un clic sur le logo d'une époque est un clic sur la frise. Onglet ISS : la page a basculé elle-même
+    // (toucher, son bouton ⛶) — le bouton du panneau repart de son état.
     window.addEventListener('message', function (e) {
         if (e.data.type === 'histoire:epoque') window.setEpochFromEpochButton(e.data.id);
+        if (e.data.type === 'iss:zenEtat') zenISS = e.data.zen;
     });
 
     function zone() {
@@ -54,5 +65,5 @@
         placer();
     }
 
-    window.ONGLETS_GRAPHE = { PANNEAUX: PANNEAUX, placer: placer, brancher: brancher, spectreVisible: spectreVisible };
+    window.ONGLETS_GRAPHE = { PANNEAUX: PANNEAUX, placer: placer, brancher: brancher, spectreVisible: spectreVisible, basculerZenISS: basculerZenISS };
 })();
