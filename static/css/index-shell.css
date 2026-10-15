@@ -1,12 +1,13 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.1.4
+   Version 1.1.5
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
    Logs:
    - Extracted from index.html inline <style>.
    - v1.0.7: .credits-footer-utf8 — lien utf8 coin bas-droit du footer (index.html)
+   - v1.1.5: ⛶ du panneau ISS à la place exacte du ⛶ de la page ISS (masqué en ?onglet).
    - v1.1.4: bouton ⛶ du panneau ISS (.iss-zen-btn).
    - v1.1.3: spectre caché en display: none (plus visibility).
    - v1.1.2: onglets de la zone du graphe sur fond transparent.
@@ -155,25 +156,27 @@ body {
     min-height: 0;
     border: none;
 }
-/* Onglet ISS : bouton ⛶ en haut à droite, par-dessus l'iframe — bascule zen / pas zen de la page ISS (onglets_graphe.js). */
+/* Onglet ISS : bouton ⛶ par-dessus l'iframe, à la place EXACTE du ⛶ de la page ISS (pages/ISS css #bZen : 34 px, 12 px du coin
+   bas droit), qu'elle masque en ?onglet — bascule zen / pas zen de la page ISS (onglets_graphe.js). */
 .iss-zen-btn {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    right: 12px;
+    bottom: 12px;
     z-index: 1;
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     padding: 0;
-    font-size: 18px;
+    font-size: 17px;
     line-height: 1;
-    color: var(--retro-clicable);
-    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    background: rgba(13, 17, 26, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 6px;
+    border-radius: 8px;
+    opacity: 0.55;
     cursor: pointer;
 }
 .iss-zen-btn:hover {
-    background: rgba(0, 0, 0, 0.7);
+    opacity: 1;
 }
 
 /* --- Footer index (credits + lien Milankovitch) --- */

@@ -117,10 +117,11 @@
     <div id="histoire-panel" class="tab-panel onglet-graphe">
         <iframe id="histoire-iframe" src="histoire.html"></iframe>
     </div>
-    <!-- ISS : la page dnavatar.org/pages/ISS (vue depuis le pôle), dans la zone du graphe comme les autres onglets. -->
+    <!-- ISS : la page dnavatar.org/pages/ISS (vue depuis le pôle), dans la zone du graphe comme les autres onglets. Son src est
+         posé à l'ouverture de l'onglet, avec les cartes de l'époque (static/ui/onglets_graphe.js, chargerISS). -->
     <div id="iss-panel" class="tab-panel onglet-graphe">
         <button type="button" id="iss-zen-btn" class="iss-zen-btn" onclick="window.ONGLETS_GRAPHE.basculerZenISS()" title="Plein écran : masque / remet les fenêtres de la page ISS">⛶</button>
-        <iframe id="iss-iframe" src="https://dnavatar.org/pages/ISS/?vue=pole&amp;focale=20.78&amp;zen" title="ISS" allow="fullscreen"></iframe>
+        <iframe id="iss-iframe" title="ISS" allow="fullscreen"></iframe>
     </div>
 
 

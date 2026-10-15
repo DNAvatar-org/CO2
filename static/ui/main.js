@@ -2592,6 +2592,7 @@ function runMainInit() {
                     obsBtns.forEach(function (obsBtn) {
                         if (obsBtn.dataset.boundClick === '1') return;
                         obsBtn.addEventListener('click', function () {
+                            window.switchTab('iss');   // les satellites mènent à l'onglet ISS (vue depuis l'orbite)
                             window.organigramObservationMetricsVisible = !window.organigramObservationMetricsVisible;
                             fluxObs.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
                             obsBtns.forEach(function (b) { b.classList.toggle('selected', window.organigramObservationMetricsVisible); });

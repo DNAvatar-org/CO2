@@ -7,7 +7,8 @@
 //       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
 //       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ni courbe d'Histoire.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.3.5
+// Version 1.3.6
+// - v1.3.6: bench:vider (bouton clear de l'iframe) — les états gardés sont oubliés.
 // - v1.3.5: tranches de 📱 hors run : courbe d'Histoire à part (scenario), repartie à l'arrivée en 2000, plus l'orange.
 // - v1.3.4: étape d'un tictime = temps écoulé dans l'époque (📜⏳ : « 🛢 (+75 a) »), cumulé clic après clic.
 // - v1.3.3: hors run, chaque tranche de 25 ans jouée sur 📱 prolonge la courbe orange d'Histoire (histoire:prolonger).
@@ -173,6 +174,7 @@
         if (e.data.type === 'bench:passer') window.ABORT_COMPUTE = true;
         if (e.data.type === 'bench:arreter') BENCH.arreter();
         if (e.data.type === 'bench:voir') BENCH.voir(e.data.rowKey);
+        if (e.data.type === 'bench:vider') BENCH.etats = {};
     });
 
     window.BENCH = BENCH;
