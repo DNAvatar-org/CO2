@@ -3,9 +3,11 @@
 //       bande d'incertitude, médiane en pointillés par-dessus), deux courbes du MODÈLE en segments de point à point —
 //       graine t° continue (chaîne de clics, orange, pleine) et graine t° imposée (frise de chaque époque, violette,
 //       tirets) —, logos d'époque en bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.6.1
+// Version 1.6.3
 // Date: 2026-10-15
 // logs :
+//   - v1.6.3 (2026-10-15): courbe verte = tes calculs sur 📱 (H.scenario), légende à quatre lignes.
+//   - v1.6.2 (2026-10-15): survol d'un point du modèle = « T calculée », statut si non convergé ; noms des courbes = d'où vient la graine.
 //   - v1.6.1: sources et série lues dans litterature.js (L.segments, L.serie), plus construites ici.
 //   - v1.6.0: modèles en segments de biais d'un point au suivant (plus d'escalier).
 //   - v1.5.1: légende réduite à trois lignes (littérature, graine t° continue, graine t° imposée).
@@ -22,7 +24,7 @@
 (function () {
     'use strict';
     const H = window.HISTOIRE;
-    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', mod: '#ff9f43', frise: '#d980fa', glace: 'rgba(160, 200, 255, 0.45)',
+    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', mod: '#ff9f43', frise: '#d980fa', scen: '#7bed9f', glace: 'rgba(160, 200, 255, 0.45)',
                    grille: 'rgba(69, 162, 158, 0.15)', texte: 'rgba(69, 162, 158, 0.6)' };
     const px = t => (H.vue.xOffset - t) * H.vue.xScale;
     const py = T => H.vue.height / 2 - (T - H.vue.yOffset) * H.vue.yScale;
@@ -92,7 +94,8 @@
             ctx.beginPath(); ctx.arc(x, y, 3, 0, 2 * Math.PI); ctx.fill();
             const pas = p.dt == null ? '' : ' (+' + (p.dt >= 1 ? p.dt.toFixed(p.dt % 1 ? 2 : 0) + ' Ma' : Math.round(p.dt * 1e6).toLocaleString('fr-FR') + ' ans') + ')';
             zones.push({ x0: x - 5, x1: x + 5, y0: y - 5, y1: y + 5,
-                texte: nom + ' — ' + p.etape + pas + ' : ' + p.T.toFixed(1) + ' °C, glace ' + Math.round(p.glace * 100) + ' %, CO₂ ' + Math.round(p.ppm) + ' ppm'
+                texte: nom + ' — ' + p.etape + pas + ' : T calculée ' + p.T.toFixed(1) + ' °C'
+                    + (p.st === 'converged' ? '' : ' (⚠️ non convergé : ' + p.st + ', dernière valeur)') + ', glace ' + Math.round(p.glace * 100) + ' %, CO₂ ' + Math.round(p.ppm) + ' ppm'
                     + (p.Tint > 0 ? ' — intérieur ' + Math.round(p.Tint) + ' °C, ' + (p.geo >= 10 ? Math.round(p.geo).toLocaleString('fr-FR') : p.geo.toFixed(3)) + ' W/m² (' + p.TW.toLocaleString('fr-FR') + ' TW)' : '') });
         }
     }
@@ -147,8 +150,9 @@
         // Modèles : chaîne de clics (courbe_modele.py, orange plein) puis frise à chaque époque (courbe_modele.py frise,
         // violette en tirets : l'orange se voit entre les tirets). La médiane de la littérature, en pointillés, passe
         // par-dessus les deux.
-        courbe(ctx, H.modele, COUL.mod, [], 'Graine t° continue');
-        courbe(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Graine t° imposée');
+        courbe(ctx, H.modele, COUL.mod, [], 'Chaîne de clics (graine = T du calcul précédent)');
+        courbe(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Frise (graine = courbe cyan à ▶)');
+        courbe(ctx, H.scenario, COUL.scen, [], 'Tes clics sur 📱 (graine = T du calcul précédent)');
         mediane(ctx, lit, COUL.lit);
 
         // Logos : bandeau en haut, au DÉBUT de leur époque (▶ du TIMELINE).
@@ -169,6 +173,7 @@
         ctx.fillStyle = COUL.lit; ctx.fillText('··· littérature', v.width - 15, 25);
         ctx.fillStyle = COUL.mod; ctx.fillText('— graine t° continue', v.width - 15, 42);
         ctx.fillStyle = COUL.frise; ctx.fillText('- - graine t° imposée', v.width - 15, 59);
+        ctx.fillStyle = COUL.scen; ctx.fillText('— tes clics sur 📱', v.width - 15, 76);
     };
 
     /** Époque dont le logo est sous (x, y), ou null. */

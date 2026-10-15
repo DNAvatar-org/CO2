@@ -1,6 +1,7 @@
 // File: CO2/static/histoire/main.js
 // Desc: Point d'entrée de CO2/histoire.html : canvas, époques du TIMELINE, redimensionnement, interactions.
-// Version 1.1.1
+// Version 1.1.2
+// - v1.1.2: courbe à part pour les calculs de l'utilisateur sur 📱 (H.scenario, histoire:scenario).
 // - v1.1.1: histoire:prolonger — les tranches de 25 ans de 📱 jouées hors run prolongent la courbe orange.
 // - v1.1.0: courbe du modèle retracée en direct par le banc de l'index (messages histoire:courbe / histoire:point).
 // Date: 2026-10-15
@@ -13,6 +14,7 @@
     const ctx = canvas.getContext('2d');
     const v = H.vue;
     H.listeEpoques = H.epoques();
+    H.scenario = { mode: 'clics', points: [] };   // tes calculs sur 📱 (bench_pilote.js, hors run)
     const redessiner = () => H.render(ctx);
     function resize() {
         // Iframe cachée (onglet inactif) : taille nulle. On ne dessine pas, et
@@ -48,8 +50,10 @@
     window.addEventListener('message', function (e) {
         if (e.data.type === 'histoire:courbe') H[e.data.courbe] = { mode: e.data.mode, bary: e.data.bary, points: [] };
         else if (e.data.type === 'histoire:point') H[e.data.courbe].points.push(e.data.point);
-        // Tranche de 25 ans jouée sur 📱 hors run : le point remplace ceux de même date ou plus tardifs (t = années avant
-        // L.AN, il décroît vers le futur), pour qu'un autre scénario rejoué depuis une tranche reparte de là.
+        // Calculs de l'utilisateur sur 📱 (H.scenario) : l'arrivée en 2000 la fait repartir ; une tranche de 25 ans
+        // remplace les points de même date ou plus tardifs (t = années avant L.AN, il décroît vers le futur), pour qu'un
+        // autre scénario rejoué depuis une tranche reparte de là.
+        else if (e.data.type === 'histoire:scenario') H.scenario.points = [e.data.point];
         else if (e.data.type === 'histoire:prolonger') {
             const M = H[e.data.courbe], p = e.data.point;
             M.points = M.points.filter((q) => q.t > p.t);

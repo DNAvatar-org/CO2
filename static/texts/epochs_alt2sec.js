@@ -1,9 +1,10 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.2.5
+// Version 1.2.6
 // Date: [October 15, 2026]
 // logs :
+//   - v1.2.6 (2026-10-15): repère tCRepere avec son statut (✅ 🧮 ⚠️ 🔀) et sa source, plus « sources » pour des valeurs non sourcées.
 //   - v1.2.5 (2026-10-15): epochSeedLabel (survol frise) ; écarts ± 1σ et fourchette des sources dans l'alt2sec.
 //   - v1.2.4 (2026-10-15): 📱 ⛽ 🛢 🪾 = optimiste ×0,5 / comme maintenant / pire ×1,5 par tranche.
 //   - v1.2.3 (2026-10-15): 📱 🌈 (zéro émission, tranche 2100 → 2300).
@@ -484,8 +485,8 @@ function litBlock(epochId) {
     const t = fmtRange(lit.tC.map(function (v) { return Number(v.toFixed(1)); }), '°C');
     const co2 = fmtRange(lit.co2, 'ppm');
     const ch4 = fmtRange(lit.ch4, 'ppm');
-    lines.push('T ' + t + ' (± 1σ)');
-    lines.push('sources ' + fmtRange(lit.tCRepere, '°C'));
+    lines.push('T ' + t + ' (courbe cyan ± 1σ)');
+    lines.push('repère ' + fmtRange(lit.tCRepere, '°C') + ' — ' + lit.src.tCRepere);   // statut ✅ 🧮 ⚠️ 🔀 + source
     if (co2) lines.push('CO₂ ' + co2);
     if (ch4) lines.push('CH₄ ' + ch4);
     return lines.length ? 'Littérature : ' + lines.join(' · ') : null;
@@ -511,11 +512,13 @@ function appliedBlock(epochId) {
     return lines.length ? 'Appliqué : ' + lines.join(' · ') : null;
 }
 
-/** Survol court d'une époque de la frise : « graine init [graine littéraire] », sans les écarts (ils sont dans
- *  l'alt2sec). Graine = 🌡️🧮 de la config (courbe cyan à ▶) ; littéraire = centre de la fourchette des sources. */
+/** Survol court d'une époque de la frise : « graine init [repère] », sans les écarts (ils sont dans l'alt2sec).
+ *  Graine = 🌡️🧮 de la config (courbe cyan à ▶) ; repère = centre de tCRepere, avec son statut (✅ mesure, 🧮 équation,
+ *  ⚠️ non sourcé, 🔀 repère d'hystérésis) : un repère non sourcé ne se donne pas pour de la littérature. */
 window.epochSeedLabel = function (epochId) {
-    const r = window.BENCH_LIT_BY_EPOCH_ID[epochId].tCRepere;
-    return 'graine ' + (epochRowById(epochId)['🌡️🧮'] - 273.15).toFixed(1) + ' °C [' + ((r[0] + r[1]) / 2).toFixed(1) + ' °C]';
+    const B = window.BENCH_LIT_BY_EPOCH_ID[epochId], r = B.tCRepere;
+    return 'graine ' + (epochRowById(epochId)['🌡️🧮'] - 273.15).toFixed(1) + ' °C [' + ((r[0] + r[1]) / 2).toFixed(1) + ' °C '
+        + B.src.tCRepere.split(' ')[0] + ']';
 };
 
 /** Texte alt2sec complet d'une époque : récit + littérature + valeurs appliquées. */

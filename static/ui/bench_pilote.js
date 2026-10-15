@@ -7,7 +7,8 @@
 //       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
 //       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ni courbe d'Histoire.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.3.4
+// Version 1.3.5
+// - v1.3.5: tranches de 📱 hors run : courbe d'Histoire à part (scenario), repartie à l'arrivée en 2000, plus l'orange.
 // - v1.3.4: étape d'un tictime = temps écoulé dans l'époque (📜⏳ : « 🛢 (+75 a) »), cumulé clic après clic.
 // - v1.3.3: hors run, chaque tranche de 25 ans jouée sur 📱 prolonge la courbe orange d'Histoire (histoire:prolonger).
 // - v1.3.2: la ligne porte la date de l'état calculé (CLICS.date()) : elle avance à chaque tictime.
@@ -121,13 +122,16 @@
         poster({ type: 'bench:ligne', ligne: ligne });
         BENCH.etats[ligne.rowKey] = { DATA: structuredClone(D), result: result };
         BENCH.tPrecC = D['🧮']['🧮🌡️'] - 273.15;
-        // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état. Les courbes d'Histoire ne sont
-        // retracées que par un run — sauf les tranches de 25 ans de 📱 : chaque clic de l'utilisateur prolonge la courbe
-        // orange à sa date (Histoire retire les points de même date ou plus tardifs : rejouer une tranche la remplace).
+        // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état. Les courbes du modèle d'Histoire
+        // ne sont retracées que par un run. Sur 📱, les calculs de l'utilisateur ont LEUR courbe (H.scenario) : l'arrivée
+        // en 2000 (frise ou passage, ⏳ = 0) la fait repartir, chaque tranche de 25 ans la prolonge (Histoire retire les
+        // points de même date ou plus tardifs : rejouer une tranche la remplace). Jamais mêlée à l'orange, autre histoire.
         if (BENCH.suite === 'no') {
-            if (result !== null && window.CLICS.parTranche() && H['🔺⏳'] > 0) {
-                posterHistoire({ type: 'histoire:prolonger', courbe: 'modele',
-                    point: window.HISTOIRE.pointModele(H['🗿'] + ' ' + H['🔘🕰'], H['🔘🕰'], H['🔺⏳'], 'clic') });
+            if (result !== null && window.CLICS.parTranche()) {
+                const debut = H['⏳'] === 0;
+                posterHistoire({ type: debut ? 'histoire:scenario' : 'histoire:prolonger', courbe: 'scenario',
+                    point: debut ? window.HISTOIRE.pointModele('arrivée ' + H['🗿'], null, null, 'frise')
+                                 : window.HISTOIRE.pointModele(H['🗿'] + ' ' + H['🔘🕰'], H['🔘🕰'], H['🔺⏳'], 'clic') });
             }
             return;
         }
