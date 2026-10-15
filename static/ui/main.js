@@ -1,10 +1,10 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.3.3
+// Version 1.3.4
+// - v1.3.4 (2026-10-15): détails ⚗ et watts 🛰 de l'organigramme affichés au départ ; 🛰 sans titre ni action, glissables.
 // - v1.3.3 (2026-10-15): bouton = onglet : ⚗ DETAILS ouvre Science, 🛰 OBSERVATIONS ouvre ISS ; chaque bouton inverse
 //   son affichage (détails / watts), l'onglet ouvert seul l'impose à true (afficherDetailsOrganigramme / afficherWattsOrganigramme).
-//   🛰 ouvre l'ISS sur l'horizon de la Lune.
 // - v1.3.2 (2026-10-15): jauges de fine-tuning retirées de l'organigramme (elles vivent dans le bench).
 // - v1.3.1 (2026-10-15): 🛰 OBSERVATIONS doublé sous le satellite DSCOVR (bas droite, aligné sur DETAILS), état commun.
 // - v1.3.0 (2026-10-13): jauges de fine-tuning séparées dans la visu (une rangée par jauge, data-jauge) ; plus de
@@ -2522,27 +2522,25 @@ function runMainInit() {
                 window.fpsLevel = 'rapide';
                 window.RUNTIME_STATE.showSpectralBackground = true;
                 
-                // ⚗ DETAILS : détails (flèches, textes) et boutons d'action de l'organigramme — off au départ (onglet Spectrale) ;
-                // l'onglet Science les impose à true (loader_panels onShowScie), le bouton ⚗ les inverse et ouvre Science.
-                window.organigramArrowsVisible = false;
+                // ⚗ DETAILS : détails (flèches, textes) et boutons d'action de l'organigramme — affichés au départ ; l'onglet
+                // Science les impose à true (loader_panels onShowScie), le bouton ⚗ les inverse et ouvre Science.
+                window.organigramArrowsVisible = true;
                 window.afficherDetailsOrganigramme = function (oui) {
                     window.organigramArrowsVisible = oui;
                     document.getElementById('flux-diagram').classList.toggle('hide-organigram-arrows', !oui);
                     document.getElementById('three-play-indicator').classList.toggle('selected', oui);
                     window.syncPlotContainerOrganigramHideClasses();
                 };
-                /** Métriques / libellés verts : par défaut masqués (🛰 off) pour ne montrer que la Terre ; ON = hide-organigram-observation-metrics retirée */
-                window.organigramObservationMetricsVisible = false;
-                /** true = pictogramme masqué (🛰 OFF) — #cell-geometrie, #cell-reemis (EDS), #cell-albedo-btn */
-                window.organigramObservationGeometriePictoHidden = true;
-                window.organigramObservationEdsPictoHidden = true;
-                window.organigramObservationAlbedoBtnPictoHidden = true;
+                /** Watts, métriques et libellés verts (🛰) : affichés au départ ; OFF = hide-organigram-observation-metrics posée */
+                window.organigramObservationMetricsVisible = true;
+                /** true = pictogramme masqué (🛰 OFF) — #cell-geometrie, #cell-reemis (EDS), #cell-albedo-btn : suit les watts */
+                window.organigramObservationGeometriePictoHidden = !window.organigramObservationMetricsVisible;
+                window.organigramObservationEdsPictoHidden = !window.organigramObservationMetricsVisible;
+                window.organigramObservationAlbedoBtnPictoHidden = !window.organigramObservationMetricsVisible;
                 /** 🛰 = watts de l'organigramme : l'onglet ISS les impose à true (loader_panels onShowISS), le bouton 🛰 les inverse. */
                 window.afficherWattsOrganigramme = function (oui) {
                     window.organigramObservationMetricsVisible = oui;
                     document.getElementById('flux-diagram').classList.toggle('hide-organigram-observation-metrics', !oui);
-                    document.getElementById('observation-metrics-toggle').classList.toggle('selected', oui);
-                    document.getElementById('observation-metrics-toggle-bas').classList.toggle('selected', oui);
                     window.syncOrganigramObservationPictoHiddenFlags();
                     window.syncPlotContainerOrganigramHideClasses();
                 };
@@ -2569,9 +2567,10 @@ function runMainInit() {
                 window.updateObservationIndicator = function () {
                     var fluxObs = document.getElementById('flux-diagram');
                     if (!fluxObs) return;
+                    // 🛰 satellites (CERES, DSCOVR) : sans titre, sans action au clic ; on les glisse autour de la Terre (zoom_terre.js)
                     var obsBtns = [
-                        { wrapId: 'observation-config-wrap', btnId: 'observation-metrics-toggle', titreDessous: false },
-                        { wrapId: 'observation-config-wrap-bas', btnId: 'observation-metrics-toggle-bas', titreDessous: true }
+                        { wrapId: 'observation-config-wrap', btnId: 'observation-metrics-toggle', noeud: 'espace1', nom: 'CERES' },
+                        { wrapId: 'observation-config-wrap-bas', btnId: 'observation-metrics-toggle-bas', noeud: 'espace2', nom: 'DSCOVR au L1' }
                     ].map(function (o) {
                         var wrapObs = document.getElementById(o.wrapId);
                         if (!wrapObs) {
@@ -2579,20 +2578,14 @@ function runMainInit() {
                             wrapObs.id = o.wrapId;
                             wrapObs.className = 'organigram-buttons';
                             fluxObs.appendChild(wrapObs);
-                        }
-                        var obsTitle = wrapObs.querySelector('.organigram-config-heading');
-                        if (!obsTitle) {
-                            obsTitle = document.createElement('span');
-                            obsTitle.className = 'organigram-config-heading organigram-unified-title';
-                            obsTitle.textContent = 'OBSERVATIONS';
+                            window.ZOOM_TERRE.rendreGlissable(wrapObs, o.noeud);
                         }
                         var obsRow = wrapObs.querySelector('.organigram-config-row');
                         if (!obsRow) {
                             obsRow = document.createElement('div');
                             obsRow.className = 'organigram-config-row';
                         }
-                        if (o.titreDessous) wrapObs.append(obsRow, obsTitle);
-                        else wrapObs.append(obsTitle, obsRow);
+                        wrapObs.append(obsRow);
                         var obsBtn = document.getElementById(o.btnId);
                         if (!obsBtn) {
                             obsBtn = document.createElement('button');
@@ -2600,24 +2593,14 @@ function runMainInit() {
                             obsBtn.type = 'button';
                             obsRow.appendChild(obsBtn);
                         }
-                        obsBtn.className = 'icon-button organigram-logo' + (window.organigramObservationMetricsVisible ? ' selected' : '');
-                        obsBtn.setAttribute('data-tooltip', 'On/Off données chiffrées');
+                        obsBtn.className = 'icon-button organigram-logo satellite';   // pas d'état sélectionné (halo vert)
+                        obsBtn.setAttribute('data-tooltip', o.nom + ' : glisser pour le déplacer');
                         obsBtn.textContent = '🛰';
                         return obsBtn;
                     });
                     fluxObs.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
                     window.syncOrganigramObservationPictoHiddenFlags();
                     window.syncPlotContainerOrganigramHideClasses();
-                    obsBtns.forEach(function (obsBtn) {
-                        if (obsBtn.dataset.boundClick === '1') return;
-                        obsBtn.addEventListener('click', function () {
-                            const oui = !window.organigramObservationMetricsVisible;   // lu AVANT : l'onglet ISS impose true
-                            window.ONGLETS_GRAPHE.choisirVueISS('lune');   // les satellites mènent à l'ISS : l'horizon de la Lune
-                            window.switchTab('iss');
-                            window.afficherWattsOrganigramme(oui);
-                        });
-                        obsBtn.dataset.boundClick = '1';
-                    });
                 };
                 window.updateThreePlayIndicator = function () {
                     var flux = document.getElementById('flux-diagram');

@@ -1,7 +1,9 @@
 // File: layout.js - Gestion automatique du layout en deux colonnes
 // Desc: Réorganise les divs dans left-column et right-column selon la largeur d'écran
-// Version 1.0.3
-// Date: [October 14, 2026]
+// Version 1.0.5
+// - v1.0.5: la colonne de la frise passe tout à gauche (avant left-column), sur toute la hauteur.
+// Date: [October 15, 2026]
+// - v1.0.4: la frise dans sa colonne à droite (#timeline-column, après right-column), dans tous les onglets.
 // - v1.0.3: plus de maxWidth 900px sur right-column (le graphe prend la place libre).
 // logs :
 // © 2025 DNAvatar.org - Arnaud Maignan
@@ -58,17 +60,17 @@
             }
         });
         
-        // Récupérer les sous-colonnes de left
+        // Récupérer la sous-colonne de left et la colonne de la frise (tout à gauche)
         const leftLeft = document.getElementById('left-left');
-        const leftTimeline = document.getElementById('left-timeline');
+        const colonneFrise = document.getElementById('timeline-column');
         
-        if (!leftLeft || !leftTimeline) {
+        if (!leftLeft || !colonneFrise) {
             return;
         }
         
         // Vider les colonnes APRÈS avoir récupéré les références
         leftLeft.innerHTML = '';
-        leftTimeline.innerHTML = '';
+        colonneFrise.innerHTML = '';
         rightColumn.innerHTML = '';
         
         // LEFT COLUMN - Structure en 2 colonnes
@@ -80,9 +82,9 @@
             leftLeft.appendChild(divs['flux-diagram-wrapper']);
         }
         
-        // leftTimeline : timeline
+        // colonne de la frise, tout à gauche
         if (divs['timeline-display']) {
-            leftTimeline.appendChild(divs['timeline-display']);
+            colonneFrise.appendChild(divs['timeline-display']);
         }
         
         // RIGHT COLUMN
@@ -114,10 +116,10 @@
         const leftColumn = document.getElementById('left-column');
         const rightColumn = document.getElementById('right-column');
         const leftLeft = document.getElementById('left-left');
-        const leftTimeline = document.getElementById('left-timeline');
+        const colonneFrise = document.getElementById('timeline-column');
         const titleContainer = document.querySelector('.title-container');
         
-        if (leftColumn && rightColumn && leftLeft && leftTimeline && titleContainer) {
+        if (leftColumn && rightColumn && leftLeft && colonneFrise && titleContainer) {
             reorganizeLayout();
         } else {
             // Réessayer au prochain frame si les éléments ne sont pas encore là (synchrone via requestAnimationFrame)
@@ -131,7 +133,7 @@
     } else {
         // DOM déjà chargé, essayer directement, sinon au prochain frame
         if (document.getElementById('left-column') && document.getElementById('right-column') && 
-            document.getElementById('left-left') && document.getElementById('left-timeline') && 
+            document.getElementById('left-left') && document.getElementById('timeline-column') && 
             document.querySelector('.title-container')) {
             initLayout();
         } else {

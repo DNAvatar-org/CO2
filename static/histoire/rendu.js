@@ -3,9 +3,10 @@
 //       bande d'incertitude, médiane en pointillés par-dessus), deux courbes du MODÈLE en segments de point à point —
 //       graine t° continue (chaîne de clics, orange, pleine) et graine t° imposée (frise de chaque époque, violette,
 //       tirets) —, logos d'époque en bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.6.3
+// Version 1.6.4
 // Date: 2026-10-15
 // logs :
+//   - v1.6.4 (2026-10-15): légende sur une ligne, centrée en X, en bas (au-dessus des dates de l'axe).
 //   - v1.6.3 (2026-10-15): courbe verte = tes calculs sur 📱 (H.scenario), légende à quatre lignes.
 //   - v1.6.2 (2026-10-15): survol d'un point du modèle = « T calculée », statut si non convergé ; noms des courbes = d'où vient la graine.
 //   - v1.6.1: sources et série lues dans litterature.js (L.segments, L.serie), plus construites ici.
@@ -168,12 +169,16 @@
             ctx.fillText(e.nom, x, i % 2 ? 124 : 110);   // noms alternés : les époques proches ne se chevauchent pas
         });
 
-        // Légende
-        ctx.textAlign = 'right'; ctx.font = '12px Tahoma';
-        ctx.fillStyle = COUL.lit; ctx.fillText('··· littérature', v.width - 15, 25);
-        ctx.fillStyle = COUL.mod; ctx.fillText('— graine t° continue', v.width - 15, 42);
-        ctx.fillStyle = COUL.frise; ctx.fillText('- - graine t° imposée', v.width - 15, 59);
-        ctx.fillStyle = COUL.scen; ctx.fillText('— tes clics sur 📱', v.width - 15, 76);
+        // Légende : une ligne, centrée en X, en bas (au-dessus des dates de l'axe, à v.height − 20)
+        ctx.textAlign = 'left'; ctx.font = '12px Tahoma';
+        const legende = [[COUL.lit, '··· littérature'], [COUL.mod, '— graine t° continue'],
+            [COUL.frise, '- - graine t° imposée'], [COUL.scen, '— tes clics sur 📱']];
+        const ecart = 24, largeurs = legende.map((l) => ctx.measureText(l[1]).width);
+        let xLeg = (v.width - largeurs.reduce((a, b) => a + b, 0) - ecart * (legende.length - 1)) / 2;
+        legende.forEach((l, i) => {
+            ctx.fillStyle = l[0]; ctx.fillText(l[1], xLeg, v.height - 40);
+            xLeg += largeurs[i] + ecart;
+        });
     };
 
     /** Époque dont le logo est sous (x, y), ou null. */

@@ -1,10 +1,18 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.1.7
+   Version 1.1.13
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
    Logs:
+   - v1.1.13: ISS : seuls les boutons et le Soleil captent la souris (le cercle d'atmosphère couvrait la Terre ISS).
+   - v1.1.12: frise tout à gauche, sur toute la hauteur ; les panneaux commencent après elle.
+   - v1.1.11: Histoire : titre et organigramme cachés ; ✕ du Bench et de Milankovitch ; Milankovitch recollé après Science.
+   - v1.1.10: sélecteurs préfixés #visu-panel (l'organigramme en plein restait position: relative, donc décalé).
+   - v1.1.9: frise à droite partout ; organigramme en plein (ISS : Terre ISS, titre par-dessus ; Histoire : globe au
+     centre, titre masqué) ; 🛰 près du cercle (plus collés à droite).
+   - v1.1.8: tous les onglets en pleine page (body.onglet-plein), frise collée à droite, 🛰 au bord droit du panneau ;
+     Terre ISS : body.terre-iss.
    - v1.1.7: ✕ de l'onglet Science (.onglet-fermer) : retour à l'onglet ISS.
    - v1.1.6: onglet en pleine page (body.onglet-plein, ISS) : titre, organigramme et frise par-dessus.
    - Extracted from index.html inline <style>.
@@ -54,10 +62,6 @@
     border-bottom: 1px solid rgb(0, 0, 0);
     border-right: 1px solid rgb(0, 0, 0);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
-}
-#tab-milankovitch {
-    margin-left: auto;
-    margin-right: 10px;
 }
 .tabs-bar button:not(.active) {
     color: var(--retro-off, #999);
@@ -146,30 +150,66 @@ body {
     background: transparent;   /* les étoiles passent : dessous, la zone du graphe garde son verre (.divGlass) */
     border-radius: 10px;
 }
-/* Onglet en pleine page (body.onglet-plein : ISS, onglets_graphe.js) : le panneau couvre toute la page Spectrale ; titre,
-   organigramme et frise restent des cadres séparés, posés PAR-DESSUS. Le graphe spectral et le globe Three.js de
-   l'organigramme sont retirés : la Terre est celle de la page ISS, et les boutons posés autour d'elle sortent du cadre de
-   l'organigramme. Hors des cercles des boutons, la souris traverse jusqu'à la page ISS (cellules, flèches, radiations). */
-body.onglet-plein .title-container,
-body.onglet-plein .flux-diagram-wrapper,
-body.onglet-plein .timeline-display {
+/* Onglet en pleine page (body.onglet-plein : tout onglet autre que Spectrale, onglets_graphe.js spectreVisible) : son
+   panneau couvre la page Spectrale à droite de la frise (tout à gauche dans tous les onglets, html/visu_radiatif.html), le
+   contenu en grand ; titre et organigramme passent PAR-DESSUS, chacun dans son cadre. Le graphe spectral est retiré. */
+/* #visu-panel dans les sélecteurs : style.css pose « #visu-panel .flux-diagram-wrapper { position: relative } », qu'un
+   sélecteur de classes seul ne battrait pas. */
+body.onglet-plein #visu-panel .title-container,
+body.onglet-plein #visu-panel .flux-diagram-wrapper,
+body.onglet-plein #visu-panel .timeline-column {
     position: relative;
-    z-index: 950;
+    z-index: 950;   /* frise toujours visible, à droite, par-dessus tout panneau */
 }
-body.onglet-plein .plot-container-wrapper,
-body.onglet-plein #cell-terre {
+body.onglet-plein .plot-container-wrapper {
     visibility: hidden;
 }
-body.onglet-plein #flux-diagram {
-    overflow: visible;
-}
-body.onglet-plein #flux-diagram .flux-cell,
-body.onglet-plein #flux-diagram .flux-arrow,
-body.onglet-plein #flux-diagram .flux-radiation-container {
+/* Organigramme en plein (body.organigramme-plein : onglet ISS, onglets_graphe.js) : il a la taille et la place du panneau de
+   l'onglet (bords posés par placer) — la Terre au centre de ce repère est celle de la page ISS —, sans cadre ni fond (il
+   recouvre tout). Hors des cercles des boutons et du Soleil, la souris traverse jusqu'à la Terre ISS (cellules,
+   flèches, radiations, cercle d'atmosphère) : elle tourne sous la souris. */
+body.organigramme-plein #visu-panel .flux-diagram-wrapper {
+    position: fixed;
+    top: var(--onglet-haut);
+    left: var(--onglet-gauche);
+    width: var(--onglet-largeur);
+    height: var(--onglet-hauteur);
     pointer-events: none;
 }
-body.onglet-plein #flux-diagram .flux-cell .flux-circle-bg {
+body.organigramme-plein #flux-diagram {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+body.organigramme-plein #flux-diagram .flux-cell,
+body.organigramme-plein #flux-diagram .flux-arrow,
+body.organigramme-plein #flux-diagram .flux-radiation-container {
+    pointer-events: none;
+}
+/* Seuls les boutons et le Soleil (qui se glisse) captent la souris : le cercle d'atmosphère (cell-albedo), le globe, le
+   noyau et les satellites couvrent la Terre ISS et l'empêcheraient de tourner sous la souris. */
+body.organigramme-plein #flux-diagram :is(#cell-co2, #cell-methane, #cell-h2o, #cell-albedo-btn, #cell-reemis, #cell-soleil) .flux-circle-bg {
     pointer-events: auto;
+}
+/* Onglet ISS (body.terre-iss) : la Terre est celle de la page ISS — le globe Three.js de l'organigramme est retiré ; le
+   titre reste par-dessus. */
+body.terre-iss #cell-terre {
+    visibility: hidden;
+}
+body.terre-iss #visu-panel .title-container {
+    z-index: 960;
+}
+/* Onglet Histoire (body.histoire) : titre et organigramme cachés, la courbe seule sur toute la largeur. L'organigramme sort
+   du rendu (display) : des règles forcent « visibility: visible !important » sur certains de ses éléments. */
+body.histoire #visu-panel .title-container {
+    visibility: hidden;
+}
+body.histoire #visu-panel .flux-diagram-wrapper {
+    display: none;
 }
 /* Graphe spectral sous un autre onglet : RETIRÉ du rendu (display, qu'aucun descendant ne peut annuler — visibility,
    Plotly pouvait la reposer) ; le canvas est en plus effacé (onglets_graphe.js, spectreVisible). La zone garde sa taille
@@ -205,7 +245,9 @@ body.onglet-plein #flux-diagram .flux-cell .flux-circle-bg {
 .iss-zen-btn:hover {
     opacity: 1;
 }
-/* ✕ d'un onglet (Science, html/scie_radiatif.html) : par-dessus son iframe, coin haut droit ; retour à l'onglet ISS. */
+/* ✕ d'un onglet (Science, Bench, Milankovitch : html/scie_radiatif.html, html/bench_panel.html, index.html) : par-dessus
+   son iframe, coin haut droit ;
+   retour à l'onglet ISS. */
 .onglet-fermer {
     position: absolute;
     top: 8px;

@@ -1,6 +1,8 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.87
+// Version 1.0.89
+// - v1.0.89 (2026-10-15): logo Géométrie tourné de −90° (au-dessus du Soleil) ; 🛰 satellites éclaircis, glissables.
+// - v1.0.88 (2026-10-15): ⚗ DETAILS invisible ; 🛰 OBSERVATIONS inactifs (icône en couleur, titre blanc) ; nœud 🗺 crédits retiré.
 // - v1.0.87 (2026-10-15): logos de scénario centrés (pas de marge négative sur le premier).
 // - v1.0.86 (2026-10-15): quatre scénarios (🌈 ⛽ 🛢 🪾) : logos réduits pour tenir dans la largeur de trois.
 // - v1.0.85 (2026-10-15): titre visu compact — séparateur retiré ; époque sur 3 lignes à gauche, T/P à droite ; 🛰 jumeau bas (#observation-config-wrap-bas) ; jauges de fine-tuning retirées.
@@ -242,6 +244,24 @@
     bottom: 10px;
     left: 10px;
     align-items: flex-start;
+}
+/* ⚗ DETAILS invisible (les détails restent affichés ; l'onglet Science les impose) */
+.flux-diagram > #organigram-config-wrap.organigram-buttons {
+    display: none;
+}
+/* 🛰 satellites : plus des boutons — l'icône en couleur, éclaircie avec un léger halo blanc (sans lui, ils se perdent sur le
+   fond), sans pulsation ni effet au survol ; on les glisse (zoom_terre.js) */
+.flux-diagram .organigram-buttons .satellite {
+    cursor: grab !important;
+    filter: brightness(1.5) drop-shadow(0 0 3px rgba(255, 255, 255, 0.6)) !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transform: none !important;
+}
+/* Géométrie au-dessus du Soleil (configOrganigramme.js) : face éclairée du logo vers le bas, vers lui ; « rotate » s'ajoute au
+   transform de décalage de l'image */
+#cell-geometrie img {
+    rotate: -90deg;
 }
 #observation-config-wrap.organigram-buttons {
     position: absolute;
@@ -609,24 +629,6 @@
     visibility: hidden;
 }
 /* 🧩 Flou scientifique : toujours visible (pas de .flou-scientifique--hidden) */
-
-/* 🗺 Crédits — toujours visible quelles que soient les classes du flux-diagram */
-#cell-credits-paleomap {
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* Libellés PALEOMAP / Scotese : même style que les ppm (cyan / bordure claire) */
-#cell-credits-paleomap .flux-label {
-    color: rgb(135, 206, 250) !important;
-    border-color: rgb(173, 216, 230) !important;
-}
-
-/* Reste visible si ⚗ masque les autres .buttonData / .flux-label-plain-metric */
-#flux-diagram.hide-organigram-arrows #cell-credits-paleomap .flux-label,
-#flux-diagram.hide-organigram-observation-metrics #cell-credits-paleomap .flux-label {
-    visibility: visible !important;
-}
 
 /* 🛰 OFF : masquer W/m², MW/W/K, zéros, libellés verts (.flux-label-plain-metric) — pas le bandeau OBSERVATIONS */
 #flux-diagram.hide-organigram-observation-metrics .flux-label.watt-per-m2,

@@ -1,12 +1,13 @@
 <!-- Fragment HTML pour injection dans #visu-panel — infobulles title/aria (curseur aide global style.css) -->
 <div class="container">
+    <!-- Frise tout à gauche, sur toute la hauteur, dans tous les onglets : elle repousse le reste (layout.js y pose .timeline-display) -->
+    <div class="timeline-column" id="timeline-column"></div>
     <div class="left-column" id="left-column">
         <div class="left-left" id="left-left"></div>
-        <div class="left-timeline" id="left-timeline"></div>
     </div>
     <div class="right-column" id="right-column"></div>
 
-    <div class="title-container divGlass">
+    <div class="title-container divGlass" id="titre-bilan">
         <div class="title-header-row">
             <h1 title="Bilan radiatif : flux solaires et terrestres, équilibre énergétique de surface">Bilan Radiatif Terrestre</h1>
             <span id="title-app-version" class="title-app-version" aria-label="Version"></span>

@@ -91,12 +91,12 @@
         <ul id="app-loader-list" class="app-loader-list"></ul>
     </div>
     <div class="tabs-bar">
+        <button id="tab-iss" onclick="switchTab('iss')">ISS</button>
         <button id="tab-visu" class="active" onclick="switchTab('visu')">Spectrale</button>
         <button id="tab-histoire" onclick="switchTab('histoire')">Histoire</button>
         <button id="tab-bench" onclick="switchTab('bench')">Bench</button>
         <button id="tab-scie" onclick="switchTab('scie')">Science</button>
-        <button id="tab-milankovitch" onclick="switchTab('milankovitch')">Milankovitch?</button>
-        <button id="tab-iss" onclick="ONGLETS_GRAPHE.choisirVueISS('terre'); switchTab('iss')">ISS</button>
+        <button id="tab-milankovitch" onclick="switchTab('milankovitch')">Milankovitch</button>
     </div>
     <div class="fps-display collapsed" id="fps-display">
         <button class="fps-toggle" id="fps-toggle" title="Réduire/Agrandir"></button>
@@ -110,6 +110,7 @@
     <!-- Onglets dans la zone du graphe spectral (.onglet-graphe, static/ui/onglets_graphe.js) : la page Spectrale (#visu-panel)
          reste toujours visible. -->
     <div id="milankovitch-panel" class="tab-panel onglet-graphe">
+        <button type="button" class="onglet-fermer" onclick="switchTab('iss')" title="Fermer : retour à la Terre (onglet ISS)">✕</button>
         <iframe src="html/test_milankovitch.html" title=""></iframe>
     </div>
     <!-- Histoire thermique : courbe de la LITTÉRATURE (sourcée) comparée à la courbe du MODÈLE
@@ -133,9 +134,6 @@
     <div class="bottom-info">
         <!-- Les liens ont été déplacés dans le footer -->
     </div>
-
-    <!-- Bouton caché : déclenché par le nœud 🗺 de l'organigramme -->
-    <button id="credits-paleomap" style="display:none" onclick="document.getElementById('dlg-credits').showModal()"></button>
 
     <!-- Dialog crédits — synchrone, pas d'iframe -->
     <dialog id="dlg-credits" style="
@@ -177,7 +175,7 @@
             <div class="credits-links">
                 <div class="credits-row">
                     <span class="credits-doc-label">GitHub :</span> <a href="https://github.com/DNAvatar-org/API_BILAN" target="_blank" rel="noopener noreferrer">API_BILAN</a>&nbsp;|&nbsp;<a href="https://commonsclause.com/" target="_blank" rel="noopener noreferrer"
-                        id="license-link">Apache License 2.0</a>
+                        id="license-link">Apache License 2.0</a><span id="credits-paleomap">&nbsp;|&nbsp;<a href="#" onclick="event.preventDefault(); document.getElementById('dlg-credits').showModal();">Cartes : PALEOMAP / C.R. Scotese</a></span>
                 </div>
                 <div class="credits-row">
                     <span class="credits-doc-label">Doc :</span>

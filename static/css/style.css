@@ -266,12 +266,14 @@ sup {
     height: 100%;
     min-height: 0;
 }
-#visu-panel .left-timeline {
-    flex: 1 1 0;
+/* Frise tout à gauche, dans tous les onglets : sa largeur propre (80 px), jamais écrasée par le spectre (overflow: hidden lève le
+   minimum de contenu d'un élément flex : avec une base 0, elle tombait à 0). */
+#visu-panel .timeline-column {
+    flex: 0 0 auto;
     min-height: 0;
     height: 100%;
 }
-#visu-panel .left-timeline .timeline-display,
+#visu-panel .timeline-column .timeline-display,
 #visu-panel .timeline-display {
     height: 100%;
     min-height: 0;
@@ -343,7 +345,7 @@ sup {
         flex: 0 0 auto;
         height: var(--visu-panel-content-h);
     }
-    #visu-panel .left-timeline {
+    #visu-panel .timeline-column {
         flex: 1 1 0;
         min-height: var(--visu-panel-content-h);
         height: 100%;
@@ -396,10 +398,10 @@ sup {
     #visu-panel .timeline-display {
         flex: 0 0 var(--visu-panel-content-h);
     }
-    /* plot-container-wrapper : pas de flex 0 0, garde flex: 1 1 0 + height 100% (comme left-timeline) */
+    /* plot-container-wrapper : pas de flex 0 0, garde flex: 1 1 0 + height 100% (comme timeline-column) */
 }
 
-.left-timeline {
+.timeline-column {
     display: flex;
     flex-direction: column;
     flex: 0 0 auto;
@@ -546,7 +548,7 @@ h1 {
     margin-bottom: 15px;
 }
 
-/* Même logique que #visu-panel .left-timeline : flex + height 100% pour remplir le conteneur */
+/* Même logique que #visu-panel .timeline-column : flex + height 100% pour remplir le conteneur */
 .plot-container-wrapper {
     padding: 0 0 0 0;
     flex: 1 1 0;
@@ -1951,8 +1953,8 @@ html.compute-loading, body.compute-loading { cursor: wait !important; }
 
 /* #calculation-dots supprimé car plus de style spécifique nécessaire */
 
-/* left-timeline : 100% du parent partout (déjà #visu-panel .left-timeline plus haut) */
-.left-timeline {
+/* timeline-column : 100% du parent partout (déjà #visu-panel .timeline-column plus haut) */
+.timeline-column {
     display: flex;
     flex-direction: column;
     position: relative;

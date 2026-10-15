@@ -1,6 +1,8 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.3.3
+// Version 1.3.4
+// Logs: v1.3.4: onglet ISS ouvert par défaut, au premier calcul (il lit l'atmosphère calculée) ; onglet Histoire :
+//   titre et organigramme cachés (entrée / sortie, onglets_graphe.js).
 // Logs: v1.3.3: organigramme/zoom_terre.js chargé après organigramme.js (molette = rayon de la Terre) ; onglet ISS en pleine
 //   page (entrée / sortie, onglets_graphe.js).
 // Logs: v1.3.2: onglets Science / ISS : imposent à true les détails ⚗ / les watts 🛰 de l'organigramme.
@@ -209,6 +211,11 @@
     // Milankovitch, Histoire, Bench : iframes autonomes dans la zone du graphe ; rien à synchroniser.
     function onShowMilankovitch() { window.ONGLETS_GRAPHE.spectreVisible(false); }
     function onShowBench() { window.ONGLETS_GRAPHE.spectreVisible(false); }
+    function onShowHistoire() {
+        window.ONGLETS_GRAPHE.spectreVisible(false);
+        window.ONGLETS_GRAPHE.entrerHistoire();   // titre et organigramme cachés (onglets_graphe.js)
+    }
+    function onHideHistoire() { window.ONGLETS_GRAPHE.sortirHistoire(); }
     function onShowISS() {
         window.ONGLETS_GRAPHE.spectreVisible(false);
         window.afficherWattsOrganigramme(true);   // onglet ISS = 🛰 OBSERVATIONS (main.js)
@@ -235,9 +242,15 @@
         window.API_ONGLETS.registerTab({ id: 'bench', buttonId: 'tab-bench', panelId: 'bench-panel', onShow: onShowBench });
         window.API_ONGLETS.registerTab({ id: 'milankovitch', buttonId: 'tab-milankovitch', panelId: 'milankovitch-panel', onShow: onShowMilankovitch });
         // v1.1.36 : onglet Histoire (histoire.html, iframe standalone comme Milankovitch)
-        window.API_ONGLETS.registerTab({ id: 'histoire', buttonId: 'tab-histoire', panelId: 'histoire-panel', onShow: onShowMilankovitch });
+        window.API_ONGLETS.registerTab({ id: 'histoire', buttonId: 'tab-histoire', panelId: 'histoire-panel', onShow: onShowHistoire, onHide: onHideHistoire });
         // Onglet ISS : dnavatar.org/pages/ISS en iframe, même zone et même effet (spectre caché) que Milankovitch.
         window.API_ONGLETS.registerTab({ id: 'iss', buttonId: 'tab-iss', panelId: 'iss-panel', onShow: onShowISS, onHide: onHideISS });
+        // Onglet ISS par défaut : ouvert au premier calcul — il lit l'atmosphère calculée (onglets_graphe.js, atmISS).
+        var ouvrirISSAuDepart = function () {
+            window.IO_LISTENER.off('compute:done', ouvrirISSAuDepart);
+            window.switchTab('iss');
+        };
+        window.IO_LISTENER.on('compute:done', ouvrirISSAuDepart, 'loader_panels:issParDefaut');
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             if (window.DEBUG_TIMELINE_HIDDEN) {
                 try {

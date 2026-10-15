@@ -2,11 +2,14 @@
 // Desc: La Terre de l'organigramme à l'écran — TERRE_ECRAN, centre et rayon (configOrganigramme.js), paramètres des
 //       placements autour d'elle : la molette change le rayon ; ZOOM_TERRE.poser({ cx, cy, R }) pose centre et rayon
 //       (onglet ISS : la Terre de la page ISS, onglets_graphe.js). Puis on redessine ce qui en dépend : globe, noyau et
-//       cercle d'atmosphère, boutons autour (EDS, CO₂, CH₄, H₂O, albédo), radiations, flèches.
+//       cercle d'atmosphère, boutons autour (EDS, CO₂, CH₄, H₂O, albédo), bloc Soleil + Géométrie (en haut à gauche du
+//       cercle), satellites (sous les 🛰), radiations, flèches.
 //       Le zoom n'est pas limité par le cadre : seuls les boutons butent sur ses bords et sur les éléments de leur
 //       bornesPar (emprise : cercle + textes non vides des cases autour), et les flèches gardent leur longueur minimale
-//       (organigramme.js, generateArrows).
-// Version 1.0.0
+//       (organigramme.js, generateArrows). Soleil, albédo, satellites et l'éventail CO₂ / H₂O / CH₄ se glissent à la souris
+//       (leur angle et leur distance autour de la Terre) ; la Géométrie suit le Soleil, au bord de son rayonnement ; les ondes
+//       suivent leurs flèches.
+// Version 1.1.0
 // Date: 2026-10-15
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
@@ -16,8 +19,11 @@
     const R_MIN = R0 * 0.25;
     const R_MAX = R0 * 4;   // borne technique (taille du canvas WebGL), pas le cadre
     const PAS = 1.1;   // un cran de molette = ×1,1 sur le rayon
-    const AUTOUR = ['reemis', 'co2', 'methane', 'h2o', 'albedo-btn'];   // cellules posées autour de la Terre
-    const CENTRES = ['terre', 'noyau', 'albedo'];                         // cellules centrées sur la Terre
+    // cellules posées autour de la Terre (boutons et satellites) ; les 🛰 OBSERVATIONS centrés sur leur satellite
+    const AUTOUR = ['reemis', 'co2', 'methane', 'h2o', 'albedo-btn', 'espace1', 'espace2', 'soleil'];
+    const SATELLITES = { espace1: 'observation-config-wrap', espace2: 'observation-config-wrap-bas' };
+    // cellules posées sans emprise : centrées sur la Terre, et la Géométrie (au bord du rayonnement du Soleil)
+    const POSEES = ['terre', 'noyau', 'albedo', 'geometrie'];
     const flux = document.getElementById('flux-diagram');
     const noeud = (id) => window.configOrganigramme.nodes.find((n) => n.id === id);
 
@@ -81,14 +87,15 @@
 
     /** Boîte de ce qui est VISIBLE dans un élément, bords { g, d, h, b } en px de #flux-diagram. Cellule : son cercle et
      *  l'encre des textes NON VIDES des 8 cases autour (une case vide, si large soit-elle, ne compte pas) ; textes masqués
-     *  par ⚗ / 🛰 compris (visibility : ils gardent leur place). Autre élément (DETAILS, OBSERVATIONS) : ses boutons et
-     *  l'encre de son titre. Un morceau sans boîte (display: none) ne compte pas. */
+     *  par ⚗ / 🛰 compris (visibility : ils gardent leur place). Bloc de boutons (🛰 OBSERVATIONS) : ses boutons et l'encre
+     *  de son titre. Cadre simple (le titre « Bilan Radiatif ») : tout entier. Un morceau sans boîte (display: none) ne
+     *  compte pas. */
     function boiteVisible(el) {
-        const cercle = el.querySelector('.flux-circle-bg');
+        const cercle = el.querySelector('.flux-circle-bg'), boutons = el.classList.contains('organigram-buttons');
         const textes = cercle
             ? [...el.querySelectorAll('.flux-label')].filter((l) => l.textContent.trim() !== '')
-            : [...el.querySelectorAll('.organigram-config-heading')];
-        const boites = cercle ? [cercle] : [...el.querySelectorAll('button')];
+            : boutons ? [...el.querySelectorAll('.organigram-config-heading')] : [];
+        const boites = cercle ? [cercle] : boutons ? [...el.querySelectorAll('button')] : [el];
         const rects = [...boites.map((m) => m.getBoundingClientRect()), ...textes.map(encre)];
         const o = origine(), b = { g: Infinity, d: -Infinity, h: Infinity, b: -Infinity };
         rects.forEach((r) => {
@@ -102,14 +109,29 @@
     }
 
     /** Emprise d'un bouton autour de son centre (= centre du cercle, posé en x, y) et boîtes de ses obstacles (bornesPar),
-     *  mesurées dans la page : un texte qui change de longueur change l'emprise. */
+     *  mesurées dans la page : un texte qui change de longueur change l'emprise. Satellite : son 🛰 OBSERVATIONS, centré sur
+     *  lui (appliquer) — l'emprise est la demi-boîte visible du 🛰 (bouton et titre). */
     function mesurer(id) {
-        const n = noeud(id), cell = document.getElementById('cell-' + id);
-        const c = cell.querySelector('.flux-circle-bg').getBoundingClientRect(), o = origine();
-        const cx = c.left + c.width / 2 - o.x, cy = c.top + c.height / 2 - o.y;
-        const b = boiteVisible(cell);
-        n.emprise = { g: cx - b.g, d: b.d - cx, h: cy - b.h, b: b.b - cy };
+        const n = noeud(id);
+        if (id in SATELLITES) {
+            const b = boiteVisible(document.getElementById(SATELLITES[id]));
+            n.emprise = { g: (b.d - b.g) / 2, d: (b.d - b.g) / 2, h: (b.b - b.h) / 2, b: (b.b - b.h) / 2 };
+        } else {
+            const cell = document.getElementById('cell-' + id);
+            const c = cell.querySelector('.flux-circle-bg').getBoundingClientRect(), o = origine();
+            const cx = c.left + c.width / 2 - o.x, cy = c.top + c.height / 2 - o.y;
+            const b = boiteVisible(cell);
+            n.emprise = { g: cx - b.g, d: b.d - cx, h: cy - b.h, b: b.b - cy };
+        }
         n.obstacles = n.bornesPar.map((idObstacle) => boiteVisible(document.getElementById(idObstacle)));
+    }
+
+    /** Les 🛰 OBSERVATIONS centrés sur leur satellite (au lieu des coins de l'organigramme, organigramme.css). */
+    function poserSatellites() {
+        Object.keys(SATELLITES).forEach((id) => {
+            const n = noeud(id), s = document.getElementById(SATELLITES[id]).style;
+            s.left = n.x + 'px'; s.top = n.y + 'px'; s.right = 'auto'; s.bottom = 'auto'; s.transform = 'translate(-50%, -50%)';
+        });
     }
 
     function appliquer(avant) {
@@ -118,7 +140,7 @@
         // canvas agrandi par CSS : sa résolution suit, la Terre reste nette
         terre.querySelector('canvas')._threeJSData.renderer.setPixelRatio(window.devicePixelRatio * s);
         aLEchelle(document.getElementById('cell-albedo'), avant.albedo, maintenant.albedo);
-        CENTRES.forEach((id) => {
+        POSEES.forEach((id) => {
             const n = noeud(id), cell = document.getElementById('cell-' + id);
             cell.style.left = n.x + 'px';
             cell.style.top = n.y + 'px';
@@ -129,10 +151,12 @@
             cell.style.left = n.x + 'px';
             cell.style.top = n.y + 'px';
         });
+        poserSatellites();
         window.ORG.recreateTerreRadiation();
         window.ORG.recreateNoyauRadiation();
         redessinerRadiation(noeud('albedo'));
         redessinerRadiation(noeud('reemis'));
+        redessinerRadiation(noeud('soleil'));
         fleches();
     }
 
@@ -141,10 +165,9 @@
     window.IO_LISTENER.on('compute:done', function () {
         requestAnimationFrame(function () {
             AUTOUR.forEach(mesurer);
-            const bouge = AUTOUR.some((id) => {
-                const n = noeud(id), cell = document.getElementById('cell-' + id);
-                return parseFloat(cell.style.left) !== n.x || parseFloat(cell.style.top) !== n.y;
-            });
+            const pas = (el, n) => parseFloat(el.style.left) !== n.x || parseFloat(el.style.top) !== n.y;
+            const bouge = AUTOUR.some((id) => pas(document.getElementById('cell-' + id), noeud(id)))
+                || Object.keys(SATELLITES).some((id) => pas(document.getElementById(SATELLITES[id]), noeud(id)));
             if (bouge) appliquer(tailles());
         });
     }, 'zoom_terre');
@@ -156,8 +179,9 @@
         if (avantTrame === null) {
             avantTrame = tailles();
             requestAnimationFrame(function () {
-                appliquer(avantTrame);
-                avantTrame = null;
+                const avant = avantTrame;
+                avantTrame = null;   // AVANT appliquer : une erreur dans ce redessin ne bloque pas les suivants
+                appliquer(avant);
             });
         }
         modifier();
@@ -173,8 +197,52 @@
         changer(() => { RT.R = Math.min(R_MAX, Math.max(R_MIN, RT.R * (e.deltaY < 0 ? PAS : 1 / PAS))); });
     }, { passive: false });
 
-    /** Centre et rayon de la Terre à l'écran, dans le repère de #flux-diagram [px] (onglet ISS : sa Terre). */
+    /** Glisser à la souris (Soleil, albédo, satellites 🛰, gaz) : la position donne l'angle et la distance autour de la Terre (theta,
+     *  rayonPct en % du cercle d'atmosphère, jamais dedans) ; ce qui en dépend suit (Géométrie, flèches). Le mouvement n'est
+     *  écouté que pendant le glisser. */
+    function rendreGlissable(poignee, id) {
+        const n = noeud(id);
+        poignee.style.cursor = 'grab';
+        const glisser = (e) => {
+            const o = origine(), x = e.clientX - o.x - RT.cx, y = e.clientY - o.y - RT.cy;
+            changer(() => {
+                n.theta = Math.atan2(y, x);
+                n.rayonPct = 100 * Math.hypot(x, y) / noeud('albedo').radius;
+            });
+        };
+        const lacher = () => {
+            poignee.removeEventListener('pointermove', glisser);
+            poignee.style.cursor = 'grab';
+        };
+        poignee.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            poignee.setPointerCapture(e.pointerId);
+            poignee.style.cursor = 'grabbing';
+            poignee.addEventListener('pointermove', glisser);
+        });
+        poignee.addEventListener('pointerup', lacher);
+        poignee.addEventListener('pointercancel', lacher);
+    }
+    rendreGlissable(document.querySelector('#cell-soleil .flux-circle-bg'), 'soleil');
+    rendreGlissable(document.querySelector('#cell-albedo-btn .flux-circle-bg'), 'albedo-btn');
+    // l'éventail CO₂ / H₂O / CH₄ (configOrganigramme.js) : CO₂ ou H₂O l'ouvrent, CH₄ le tourne
+    ['co2', 'h2o', 'methane'].forEach((id) => rendreGlissable(document.querySelector('#cell-' + id + ' .flux-circle-bg'), id));
+
+    /** poser : centre et rayon de la Terre à l'écran, dans le repère de #flux-diagram [px], et angle du vrai Soleil à l'écran
+     *  (onglet ISS : sa Terre et son Soleil ; null : le Soleil garde son angle propre). redessiner : la mise en page a changé (pleine page, redimensionnement). */
     window.ZOOM_TERRE = {
-        poser(p) { changer(() => { RT.cx = p.cx; RT.cy = p.cy; RT.R = p.R; }); }
+        poser(p) { changer(() => { RT.cx = p.cx; RT.cy = p.cy; RT.R = p.R; RT.soleilTheta = p.soleilTheta; }); },
+        redessiner() { changer(() => {}); },
+        /** Place que la disposition demande à gauche du centre de la Terre [px] : le plus grand débord à gauche des boutons,
+         *  satellites et Soleil posés à leur angle et leur distance (sans les bords du cadre, qui les repoussent), plus une
+         *  marge. La page ISS décale sa Terre vers la droite pour la laisser (onglets_graphe.js, message iss:marges). */
+        placeAGauche() {
+            const atm = noeud('albedo').radius;
+            return 16 + Math.max(...AUTOUR.map((id) => {
+                const n = noeud(id);
+                return -Math.max(n.rayonPct, 100) / 100 * atm * Math.cos(n.theta) + n.emprise.g;
+            }));
+        },
+        rendreGlissable: rendreGlissable   // les 🛰, créés plus tard par main.js
     };
 })();

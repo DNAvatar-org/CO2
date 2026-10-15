@@ -5,13 +5,15 @@
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
    Logs:
-   - 2026-10-15 : .milankovitch-explain repliable (summary + / −).
+   - 2026-10-15 : fond transparent (html : style.css le peint en #05060a) ; .milankovitch-explain repliable (+ / −).
    - Extracted from html/test_milankovitch.html inline <style>. .divGlass = style.css (source unique).
    ============================================================ */
 
-/* Contexte page Milankovitch (iframe ou standalone) — hauteur définie pour que .cycles-row puisse grandir */
+/* Contexte page Milankovitch (iframe ou standalone) — hauteur définie pour que .cycles-row puisse grandir ; fond
+   transparent comme les autres onglets (style.css peint html en #05060a) : les étoiles de l'index passent. */
 html {
     height: 100%;
+    background: transparent;
 }
 body.page-milankovitch {
     font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;

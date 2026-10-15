@@ -1,5 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.130 nœud 🗺 crédits PALEOMAP retiré (texte du pied de page).
 // Logs: v1.0.129 canvas Three.js de la Terre ∝ TERRE_ECRAN (terreCanvasPx) : une Terre recréée naît au zoom courant ;
 //   flèche plus courte que LONGUEUR_MIN_FLECHE (ou retournée) : dessinée à cette longueur, dans sa direction.
 // Logs: v1.0.128 frise : survol des époques = nom · graine init [graine littéraire] (epochSeedLabel).
@@ -2129,17 +2130,6 @@ function createCell(
       const parentCell = circleBg.closest(".flux-button-cell");
       if (parentCell) {
         if (parentCell.classList.contains("flux-display-only")) return; // display-only, pas de toggle
-        // 🗺 Crédits PALEOMAP : le cercle déclenchait runCompute (toggle « fantôme ») ; même action que le bouton HTML #credits-paleomap
-        if (parentCell.id === "cell-credits-paleomap" || nodeId === "credits-paleomap") {
-          const creditsBtn = document.getElementById("credits-paleomap");
-          if (creditsBtn) {
-            creditsBtn.click();
-          } else {
-            const dlg = document.getElementById("dlg-credits");
-            if (dlg && typeof dlg.showModal === "function") dlg.showModal();
-          }
-          return;
-        }
         // C'est un bouton : toggle la classe checked directement sur la cellule
         const isChecked = parentCell.classList.contains("checked");
         if (isChecked) {

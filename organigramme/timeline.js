@@ -141,16 +141,16 @@ function refreshTimelineEpochBounds() {
 const PALEOMAP_CREDITS_MIN_MA = -750;
 const PALEOMAP_CREDITS_MAX_MA = -2;
 
+/** Crédit PALEOMAP du pied de page (index.html) : affiché quand les cartes PALEOMAP sont à l'écran (−750 → −2 Ma). */
 function updatePaleomapCreditsVisibility() {
-    const cell = document.getElementById('cell-credits-paleomap');
-    if (!cell) return;
+    const credit = document.getElementById('credits-paleomap');
     const ma = getTimelineCurrentMa();
     if (ma == null || !Number.isFinite(ma)) {
-        cell.style.display = 'none';
+        credit.style.display = 'none';
         return;
     }
     const show = ma >= PALEOMAP_CREDITS_MIN_MA && ma <= PALEOMAP_CREDITS_MAX_MA;
-    cell.style.display = show ? '' : 'none';
+    credit.style.display = show ? '' : 'none';
 }
 
 /** Libellé d’une date de l’échelle : "-5000 Ma" ou "2025", "2050" pour les années récentes */
