@@ -1,6 +1,8 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.3.2
+// Version 1.3.3
+// Logs: v1.3.3: organigramme/zoom_terre.js chargé après organigramme.js (molette = rayon de la Terre) ; onglet ISS en pleine
+//   page (entrée / sortie, onglets_graphe.js).
 // Logs: v1.3.2: onglets Science / ISS : imposent à true les détails ⚗ / les watts 🛰 de l'organigramme.
 // Logs: v1.3.1: spectreAffiche() remplace isVisuPanelActive (spectre caché = pas de plot).
 // Logs: v1.3.1: bench_pilote.js chargé (onglet Bench piloté par l'index). SYNC_STATE.hotePret posé avant le 1er calcul (sync_panels n'accepte un run de la scie qu'après).
@@ -48,6 +50,7 @@
             'static/compute/visu_/log_display.js',
             'static/texts/epochs_alt2sec.js',
             'organigramme/organigramme.js',
+            'organigramme/zoom_terre.js',   // molette sur la Terre : TERRE_ECRAN (après la construction de l'organigramme)
             'static/compute/visu_/visu_dichotomie.js',
             '../API_BILAN/demo/js/scie_convergence.js',
             'static/sync_panels.js',
@@ -209,8 +212,10 @@
     function onShowISS() {
         window.ONGLETS_GRAPHE.spectreVisible(false);
         window.afficherWattsOrganigramme(true);   // onglet ISS = 🛰 OBSERVATIONS (main.js)
+        window.ONGLETS_GRAPHE.entrerPleinePageISS();
         window.ONGLETS_GRAPHE.chargerISS();
     }
+    function onHideISS() { window.ONGLETS_GRAPHE.sortirPleinePageISS(); }
     /** Le spectre est-il à l'écran ? Non sous un autre onglet (spectre-cache, onglets_graphe.js) : alors aucun appel
      *  au plot (courbes, canvas, dégradé, légende) — onShowVisu redessine au retour. */
     window.spectreAffiche = function () {
@@ -232,7 +237,7 @@
         // v1.1.36 : onglet Histoire (histoire.html, iframe standalone comme Milankovitch)
         window.API_ONGLETS.registerTab({ id: 'histoire', buttonId: 'tab-histoire', panelId: 'histoire-panel', onShow: onShowMilankovitch });
         // Onglet ISS : dnavatar.org/pages/ISS en iframe, même zone et même effet (spectre caché) que Milankovitch.
-        window.API_ONGLETS.registerTab({ id: 'iss', buttonId: 'tab-iss', panelId: 'iss-panel', onShow: onShowISS });
+        window.API_ONGLETS.registerTab({ id: 'iss', buttonId: 'tab-iss', panelId: 'iss-panel', onShow: onShowISS, onHide: onHideISS });
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             if (window.DEBUG_TIMELINE_HIDDEN) {
                 try {

@@ -1,9 +1,13 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.53
+// Version 1.1.54
 // Date: [October 15, 2026]
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // logs :
+// - v1.1.54: TERRE_ECRAN (centre cx, cy et rayon R de la Terre à l'écran) = paramètres des placements autour d'elle
+//   (accesseurs parametrerParLeRayon) ; molette : zoom_terre.js ; onglet ISS : la Terre de la page ISS.
+//   Les boutons autour de la Terre (cercle + textes des cases autour) butent sur les bords de #flux-diagram et sur les
+//   éléments de leur bornesPar (DETAILS, DSCOVR, Géométrie, OBSERVATIONS) ; LONGUEUR_MIN_FLECHE.
 // - v1.1.53: textures PALEOMAP 540, 380, 340, 295, 55, 20 Ma ajoutées ; 33 et 17 Ma retirées (copies d'autres dates).
 // - v1.1.52: espace2 = trou sous le 🛰 jumeau bas (comme espace1 sous le 🛰 haut). Terre et satellites recentrés sur la hauteur réelle de l'organigramme ; Soleil, EVENEMENT, SKIP fixes.
 // - v1.1.51: ACTION_BY_DATE / getActionForDate / getCurrentDateKey retirés : la séquence des clics est la config
@@ -85,6 +89,27 @@ const cellHeight = 110;
 const cellHalfHeight = cellHeight / 2; // 55px
 
 const radiusTerre = 90;
+// La Terre à l'écran, dans le repère de #flux-diagram (coin intérieur) : centre (cx, cy) et rayon R [px] — LES paramètres
+// des placements autour d'elle. Molette : R (organigramme/zoom_terre.js) ; onglet ISS : centre et rayon de la Terre de la
+// page ISS (message iss:terre, static/ui/onglets_graphe.js). Les longueurs écrites dans nodes et baryEpochs sont le dessin à
+// R = radiusTerre, centre (centerX, earthCenterY) ; parametrerParLeRayon (plus bas) en fait des fonctions de TERRE_ECRAN.
+// Cercle d'atmosphère (albedo) et sa radiation : dr = dR / 5 (le globe gagne 5 px, eux 1 px) — sans jamais passer sous le
+// globe : la flèche Terre → atmosphère garde LONGUEUR_MIN_FLECHE (+ 8 px de marge à l'arrivée, generateArrows).
+// Les boutons autour butent sur les bords de cadreEl : #flux-diagram, ou la zone de l'onglet en pleine page.
+const TERRE_ECRAN = window.TERRE_ECRAN = {
+    R: radiusTerre,
+    cx: centerX,
+    cy: earthCenterY,
+    cadreEl: document.getElementById('flux-diagram'),
+    k() { return this.R / radiusTerre; },
+    drCercle() { return Math.max(radiusTerre * (this.k() - 1) / 5, this.R + LONGUEUR_MIN_FLECHE + 8 - radiusAtmosphere); },
+    /** Bords de cadreEl { g, d, h, b } dans le repère de #flux-diagram [px]. */
+    cadre() {
+        const f = document.getElementById('flux-diagram'), fr = f.getBoundingClientRect(), r = this.cadreEl.getBoundingClientRect();
+        const ox = fr.left + f.clientLeft, oy = fr.top + f.clientTop;
+        return { g: r.left - ox, d: r.right - ox, h: r.top - oy, b: r.bottom - oy };
+    }
+};
 const radiusAtmosphere = 175;
 const circleMiddleRadius = (radiusTerre*2 + radiusAtmosphere) / 3;
 // 4 tailles d'espacement pour les flèches
@@ -94,6 +119,9 @@ const spacingSizes = {
     long: 100,     // Long
     extraLong: 120 // Très long
 };
+// Longueur minimale d'une flèche [px], pointe (8 px) comprise : une flèche que le zoom de la Terre raccourcit ou retourne
+// est dessinée à cette longueur, dans sa direction (organigramme.js, generateArrows).
+const LONGUEUR_MIN_FLECHE = 20;
 
 // Constantes de Z-Index pour l'architecture en couches
 const Z_LAYERS = {
@@ -616,19 +644,19 @@ const nodes = [
     },
     // EDS : angleInit anime l’ouverture masquée 210→340 (secteur visible 150°→20°), pas la direction. Orienter le faisceau → rotation (explicite ou auto depuis l’arc reemis→terre si rotation omis).
     {//📛 reemis
-     id: 'reemis', logo: LOGOS.EDS, zIndex: 36, x: centerX+ circleMiddleRadius*1.5 * Math.cos(Math.PI/2-0.25), y: earthCenterY + circleMiddleRadius*1.5 * Math.sin(Math.PI/2-0.25), radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } 
+     id: 'reemis', bornesPar: ['cell-espace2'], logo: LOGOS.EDS, zIndex: 36, theta: Math.PI/2-0.25, rayonPct: 101.4, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } 
     },
 
     {//co2
-    id: 'co2', type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI+0.3), left: [], right: [], top: [{ text: '0 ppm', dataId: 'co2_percent' }], bottom: [{ text: '0 W/m²', dataId: 'co2_forcing_wm' }], tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'co2', bornesPar: [], type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, theta: Math.PI+0.3, rayonPct: 74.4, left: [], right: [], top: [{ text: '0 ppm', dataId: 'co2_percent' }], bottom: [{ text: '0 W/m²', dataId: 'co2_forcing_wm' }], tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//methane
-    id: 'methane', type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI/2+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI/2+0.3), left: [{ text: '0 ppm', dataId: 'ch4_percent' }], right: [], top: '', bottom: [{ text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'methane', bornesPar: ['organigram-config-wrap'], type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, theta: Math.PI/2+0.3, rayonPct: 74.4, left: [{ text: '0 ppm', dataId: 'ch4_percent' }], right: [], top: '', bottom: [{ text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//h2o
-    id: 'h2o', type: 'button', readOnly: true, logo: LOGOS.H2O, x: centerX + circleMiddleRadius*1.1 * Math.cos(Math.PI*3/4+0.3), y: earthCenterY + circleMiddleRadius*1.1 * Math.sin(Math.PI*3/4+0.3), left: [{ text: '0%', dataId: 'h2o_percent' }], right: [], top: '', bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'h2o', bornesPar: [], type: 'button', readOnly: true, logo: LOGOS.H2O, theta: Math.PI*3/4+0.3, rayonPct: 74.4, left: [{ text: '0%', dataId: 'h2o_percent' }], right: [], top: '', bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },//end h2o
 
     {//domSlot action
@@ -667,7 +695,7 @@ const nodes = [
     },
 
     {//albedo-btn
-     id: 'albedo-btn', type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, x: centerX + circleMiddleRadius * 0.62, y: earthCenterY - circleMiddleRadius * 1.15, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
+     id: 'albedo-btn', bornesPar: ['cell-geometrie', 'observation-config-wrap'], type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, theta: Math.atan2(-1.15, 0.62), rayonPct: 88.3, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//credits-paleomap
@@ -705,6 +733,85 @@ const baryEpochs = {
         noyau: { radiation: { numCircles: 4, maxRadius: 60 } }
     }
 };
+
+/** Placements autour de la Terre = fonctions de TERRE_ECRAN (centre cx, cy et rayon R) : accesseurs posés sur les objets
+ *  mêmes (la valeur écrite plus haut, à R = radiusTerre et au centre (centerX, earthCenterY), reste dans la fermeture ;
+ *  aucune copie). Soleil, Géométrie, satellites, EVENEMENT, SKIP et crédits ne dépendent pas de la Terre.
+ *  - terre, noyau, albedo : centrés sur (cx, cy) (noyau et albedo gardent leur décalage < 1 px, pour la direction des
+ *    flèches) ; rayons du globe, de son exobase et des radiations × R / radiusTerre ; cercle d'atmosphère : drCercle.
+ *  - boutons autour (reemis, co2, methane, h2o, albedo-btn) : en polaire autour du globe, theta [rad, y vers le bas] et
+ *    rayonPct = distance en % du rayon du cercle d'atmosphère. Leur EMPRISE (cercle et textes non vides des cases autour,
+ *    n.emprise = { g, d, h, b } : débord du centre [px], mesurée par zoom_terre.js) bute sur les bords de
+ *    TERRE_ECRAN.cadre(), et ne touche pas leurs obstacles (n.obstacles : boîtes visibles des éléments de bornesPar,
+ *    mesurées par zoom_terre.js) : le bouton glisse sur son cercle jusqu'à l'angle libre le plus proche (à défaut, il
+ *    s'arrête sur son rayon avant l'obstacle). Les flèches suivent : elles lisent les mêmes x, y. */
+(function parametrerParLeRayon() {
+    const longueur = (o, cle) => {
+        const v = o[cle];
+        Object.defineProperty(o, cle, { enumerable: true, get: () => v * TERRE_ECRAN.k() });
+    };
+    const longueurDuCercle = (o, cle) => {
+        const v = o[cle];
+        Object.defineProperty(o, cle, { enumerable: true, get: () => v + TERRE_ECRAN.drCercle() });
+    };
+    const surLeCentre = (n) => {
+        const dx = n.x - centerX, dy = n.y - earthCenterY;
+        Object.defineProperty(n, 'x', { enumerable: true, get: () => TERRE_ECRAN.cx + dx });
+        Object.defineProperty(n, 'y', { enumerable: true, get: () => TERRE_ECRAN.cy + dy });
+    };
+    const borne = (v, min, max) => Math.min(max, Math.max(min, v));
+    // Valeurs de t où c + v·t est entre min et max (v = 0 : toujours ou jamais).
+    const intervalle = (c, v, min, max) => v === 0
+        ? (c >= min && c <= max ? [-Infinity, Infinity] : [Infinity, -Infinity])
+        : [Math.min((min - c) / v, (max - c) / v), Math.max((min - c) / v, (max - c) / v)];
+    const autourDeLaTerre = (n) => {
+        n.emprise = { g: n.radius, d: n.radius, h: n.radius, b: n.radius };
+        n.obstacles = [];
+        const rayon = () => n.rayonPct / 100 * N.albedo.radius;   // distance au centre du globe [px]
+        const vx = Math.cos(n.theta), vy = Math.sin(n.theta);
+        // Centre du bouton hors de chaque obstacle grossi de son emprise = son emprise ne touche pas l'obstacle.
+        const libre = (x, y) => n.obstacles.every((o) =>
+            x <= o.g - n.emprise.d || x >= o.d + n.emprise.g || y <= o.h - n.emprise.b || y >= o.b + n.emprise.h);
+        // Sur son cercle : son angle s'il est libre, sinon l'angle libre le plus proche, degré par degré, jusqu'à 90° de
+        // chaque côté (CH₄ se pousse en x et descend à côté de DETAILS), position calée aux bords du cadre d'abord — un
+        // bord ne doit pas le repousser dans l'obstacle. Aucun angle libre : il s'arrête sur son rayon, avant l'obstacle.
+        const centre = () => {
+            const e = n.emprise, rho = rayon(), c = TERRE_ECRAN.cadre(), T = TERRE_ECRAN;
+            const dansLeCadre = (x, y) => ({ x: borne(x, c.g + e.g, c.d - e.d), y: borne(y, c.h + e.h, c.b - e.b) });
+            for (let d = 0; d <= 90; d++) {
+                for (const sens of (d === 0 ? [0] : [1, -1])) {
+                    const a = n.theta + sens * d * Math.PI / 180;
+                    const p = dansLeCadre(T.cx + rho * Math.cos(a), T.cy + rho * Math.sin(a));
+                    if (libre(p.x, p.y)) return p;
+                }
+            }
+            let t = rho;
+            n.obstacles.forEach((o) => {
+                const [x1, x2] = intervalle(T.cx, vx, o.g - e.d, o.d + e.g);
+                const [y1, y2] = intervalle(T.cy, vy, o.h - e.b, o.b + e.h);
+                const entree = Math.max(x1, y1), sortie = Math.min(x2, y2);
+                if (entree < sortie && entree >= 0) t = Math.min(t, entree);
+            });
+            return dansLeCadre(T.cx + vx * t, T.cy + vy * t);
+        };
+        Object.defineProperty(n, 'x', { enumerable: true, get: () => centre().x });
+        Object.defineProperty(n, 'y', { enumerable: true, get: () => centre().y });
+    };
+    const N = Object.fromEntries(nodes.map((n) => [n.id, n]));
+    N.terre.epoch.forEach((e) => { longueur(e, 'radius'); longueur(e, 'radiusExobase'); });
+    longueur(N.terre.radiation, 'maxRadius');
+    longueurDuCercle(N.albedo, 'radius');
+    longueurDuCercle(N.albedo.radiation, 'maxRadius');
+    N.noyau.radiation.forEach((r) => longueur(r, 'maxRadius'));
+    longueur(N.reemis.radiation, 'maxRadius');
+    ['terre', 'noyau', 'albedo'].forEach((id) => surLeCentre(N[id]));
+    ['reemis', 'co2', 'methane', 'h2o', 'albedo-btn'].forEach((id) => autourDeLaTerre(N[id]));
+    Object.values(baryEpochs).forEach((b) => {
+        longueur(b.terre, 'radius');
+        longueur(b.terre, 'radiusExobase');
+        longueur(b.noyau.radiation, 'maxRadius');
+    });
+})();
 
 function interpolateNum(startVal, endVal, bary) {
     if (typeof endVal !== 'number' || !Number.isFinite(endVal)) return startVal;

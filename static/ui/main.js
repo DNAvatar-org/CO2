@@ -4,6 +4,7 @@
 // Version 1.3.3
 // - v1.3.3 (2026-10-15): bouton = onglet : ⚗ DETAILS ouvre Science, 🛰 OBSERVATIONS ouvre ISS ; chaque bouton inverse
 //   son affichage (détails / watts), l'onglet ouvert seul l'impose à true (afficherDetailsOrganigramme / afficherWattsOrganigramme).
+//   🛰 ouvre l'ISS sur l'horizon de la Lune.
 // - v1.3.2 (2026-10-15): jauges de fine-tuning retirées de l'organigramme (elles vivent dans le bench).
 // - v1.3.1 (2026-10-15): 🛰 OBSERVATIONS doublé sous le satellite DSCOVR (bas droite, aligné sur DETAILS), état commun.
 // - v1.3.0 (2026-10-13): jauges de fine-tuning séparées dans la visu (une rangée par jauge, data-jauge) ; plus de
@@ -2611,7 +2612,8 @@ function runMainInit() {
                         if (obsBtn.dataset.boundClick === '1') return;
                         obsBtn.addEventListener('click', function () {
                             const oui = !window.organigramObservationMetricsVisible;   // lu AVANT : l'onglet ISS impose true
-                            window.switchTab('iss');   // les satellites mènent à l'onglet ISS (vue depuis l'orbite)
+                            window.ONGLETS_GRAPHE.choisirVueISS('lune');   // les satellites mènent à l'ISS : l'horizon de la Lune
+                            window.switchTab('iss');
                             window.afficherWattsOrganigramme(oui);
                         });
                         obsBtn.dataset.boundClick = '1';

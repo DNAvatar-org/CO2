@@ -1,5 +1,7 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.129 canvas Three.js de la Terre ∝ TERRE_ECRAN (terreCanvasPx) : une Terre recréée naît au zoom courant ;
+//   flèche plus courte que LONGUEUR_MIN_FLECHE (ou retournée) : dessinée à cette longueur, dans sa direction.
 // Logs: v1.0.128 frise : survol des époques = nom · graine init [graine littéraire] (epochSeedLabel).
 // Logs: v1.0.127 frise : date au-dessus du logo ; 🔮 futur 2100 (non cliquable, TIMELINE_FUTUR), borne 2200.
 // Logs: v1.0.126 frise des époques : logo centré, date dessous (plus d'alternance gauche / droite).
@@ -27,7 +29,10 @@
 // -------- Constantes Three.js terre : canvas + caméra fixés sur le cas le plus gros (Hadéen) --------
 // L'époque la plus volumineuse fixe la taille du canvas et la distance caméra.
 // Pour les autres époques, seul le rayon de la sphère (en unités monde) varie.
-const TERRE_CANVAS_PX = 234;                                          // facteur #1: taille canvas Three.js
+const TERRE_CANVAS_PX = 234;                                          // facteur #1: taille canvas Three.js (à R = 90 px)
+/** Canvas de la Terre au rayon courant (configOrganigramme TERRE_ECRAN, molette zoom_terre.js) : caméra et sphère fixes,
+ *  le canvas grandit avec R, donc la Terre aussi. */
+const terreCanvasPx = () => TERRE_CANVAS_PX * window.TERRE_ECRAN.k();
 const TERRE_ORTHO_VISIBLE_DIAMETER_RATIO = 0.44;                      // facteur #2: taille apparente de référence (0..1)
 const TERRE_RADIUS_VISUAL_GAIN = 0.05;                                // 0 = tailles époques neutralisées, 1 = effet complet
 const TERRE_MAX_RADIUS_PX = 99;                                       // référence technique (Hadéen)
@@ -839,8 +844,8 @@ function initPlanetThreeJS(
   // -------- Calibrage Three.js terre : canvas + distance FIXES (calibrés sur Hadéen, le plus gros) --------
   // Le canvas est dimensionné une fois pour toutes pour accueillir la plus grosse Terre + la marge du cône.
   // Pour les autres époques, seul le rayon de la sphère (monde) change ; la caméra et le canvas ne bougent pas.
-  const width = TERRE_CANVAS_PX;
-  const height = TERRE_CANVAS_PX;
+  const width = terreCanvasPx();
+  const height = terreCanvasPx();
 
   // Stocker les références dans le canvas pour pouvoir les mettre à jour plus tard
   if (!canvas._threeJSData) {
@@ -873,7 +878,9 @@ function initPlanetThreeJS(
   // Mais cette formule donne un rayon trop petit. Il faut ajuster.
   // Conversion interne px -> unités monde (constante locale, non exposée en réglage).
   const sphereScaleWorld = 0.01;
-  const sphereRadius = planetSize * sphereScaleWorld;
+  // Monde dessiné au rayon de référence (R = 90 px) : le zoom (TERRE_ECRAN) est porté par le canvas seul (terreCanvasPx),
+  // sinon la sphère grandirait deux fois.
+  const sphereRadius = (planetSize / window.TERRE_ECRAN.k()) * sphereScaleWorld;
   const maxSphereRadius = TERRE_MAX_RADIUS_PX * sphereScaleWorld;
 
   const sphereSegments = 32; // Précision comme dans planet-test.html
@@ -1940,8 +1947,8 @@ function createCell(
         canvas.style.left = "50%";
         canvas.style.top = "50%";
         canvas.style.transform = "translate(-50%, -50%)";
-        canvas.style.width = TERRE_CANVAS_PX + "px";
-        canvas.style.height = TERRE_CANVAS_PX + "px";
+        canvas.style.width = terreCanvasPx() + "px";
+        canvas.style.height = terreCanvasPx() + "px";
         canvas.style.display = "block";
         canvas.style.pointerEvents = "none";
         planetContainer.appendChild(canvas);
@@ -3528,8 +3535,13 @@ function generateArrows() {
     const finalY1 = y1 + realUnitY * 0;
     // Pour reculer depuis le bord du cercle, on doit aller dans la direction opposée au vecteur
     // Donc on soustrait la marge : x2 - realUnitX * marginEnd (car realUnitX pointe vers le cercle)
-    const finalX2 = x2 - realUnitX * marginEnd;
-    const finalY2 = y2 - realUnitY * marginEnd;
+    // Longueur minimale (LONGUEUR_MIN_FLECHE, configOrganigramme.js) : une flèche que le zoom de la Terre raccourcit, ou
+    // retourne (longueur signée < 0), garde sa direction centre → centre et cette longueur depuis son départ.
+    const finalX2Bord = x2 - realUnitX * marginEnd;
+    const finalY2Bord = y2 - realUnitY * marginEnd;
+    const courte = (finalX2Bord - finalX1) * unitX + (finalY2Bord - finalY1) * unitY < LONGUEUR_MIN_FLECHE;
+    const finalX2 = courte ? finalX1 + unitX * LONGUEUR_MIN_FLECHE : finalX2Bord;
+    const finalY2 = courte ? finalY1 + unitY * LONGUEUR_MIN_FLECHE : finalY2Bord;
 
     // Les flèches utilisent le z-index de l'arc si défini, sinon Z_LAYERS.ARROW par défaut
     const arrowZIndex = arc.zIndex !== undefined ? arc.zIndex : Z_LAYERS.ARROW;

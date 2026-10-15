@@ -262,6 +262,10 @@
       "dest": "pages/bilan_radiatif/CO2/organigramme/organigramme.js"
     },
     {
+      "src": "organigramme/zoom_terre.js",
+      "dest": "pages/bilan_radiatif/CO2/organigramme/zoom_terre.js"
+    },
+    {
       "src": "organigramme/timeline.js",
       "dest": "pages/bilan_radiatif/CO2/organigramme/timeline.js"
     },
