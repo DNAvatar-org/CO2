@@ -6,7 +6,8 @@
 //       Chaque calcul envoie sa ligne au tableau de l'iframe Bench (API_BILAN/demo/epoch_bench.html, mode encart :
 //       js/epoch_bench_encart.js). 'no' par défaut : l'usage normal de l'interface n'est pas touché.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.0.0
+// Version 1.1.0
+// - v1.1.0: l'état de fin de chaque calcul est gardé (BENCH.etats) ; clic sur une ligne → BENCH.voir le recharge.
 // Date: 2026-10-15
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
@@ -17,7 +18,8 @@
         n: 0,             // calculs du run
         t0: 0,
         tPrecC: null,     // T° convergée du calcul précédent : T° initiale d'un tictime
-        pas: { init: null, last: null, path: [] }
+        pas: { init: null, last: null, path: [] },
+        etats: {}         // rowKey → { DATA (copie), result } : l'état de fin de chaque calcul, que BENCH.voir recharge
     };
 
     function poster(msg) {
@@ -48,6 +50,7 @@
         BENCH.n = 0;
         BENCH.t0 = Date.now();
         BENCH.tPrecC = null;
+        BENCH.etats = {};
         window.setEpochFromEpochButton(window.TIMELINE[0]['📅']);
     };
 
@@ -90,6 +93,7 @@
             Mair: D['🫧']['🧪'], capCO2IR: D['🫧']['🍰🫧🏭🌈'], capH2OIR: D['🫧']['🍰🫧💧🌈'], capSumIR: D['🫧']['🍰🫧📿🌈']
         };
         poster({ type: 'bench:ligne', ligne: ligne });
+        BENCH.etats[ligne.rowKey] = { DATA: structuredClone(D), result: result };
         BENCH.tPrecC = D['🧮']['🧮🌡️'] - 273.15;
 
         if (BENCH.suite === 'epoque') {
@@ -103,11 +107,22 @@
         window.jouerClic(window.CLICS.prochaineAction());
     };
 
-    // L'iframe Bench (mode encart) parle : lancer, passer le calcul en cours (⏭), arrêter.
+    /** Clic sur une ligne du tableau : l'interface (organigramme, frise, spectre) reprend l'état de fin de ce calcul,
+     *  sans recalcul. DATA garde son identité : ses groupes sont remplacés par une copie de ceux de la ligne. */
+    BENCH.voir = function (rowKey) {
+        if (window.SYNC_STATE.calculationInProgress) throw new Error('[BENCH.voir] ' + rowKey + ' : un calcul tourne, l\'état ne peut pas être rechargé');
+        const E = BENCH.etats[rowKey];
+        const copie = structuredClone(E.DATA);
+        for (const k of Object.keys(copie)) window.DATA[k] = copie[k];
+        window.afficherCalcul(E.result);
+    };
+
+    // L'iframe Bench (mode encart) parle : lancer, passer le calcul en cours (⏭), arrêter, voir une ligne.
     window.addEventListener('message', function (e) {
         if (e.data.type === 'bench:lancer') BENCH.lancer(e.data.mode);
         if (e.data.type === 'bench:passer') window.ABORT_COMPUTE = true;
         if (e.data.type === 'bench:arreter') BENCH.arreter();
+        if (e.data.type === 'bench:voir') BENCH.voir(e.data.rowKey);
     });
 
     window.BENCH = BENCH;

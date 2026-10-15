@@ -1,6 +1,7 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.2.2
+// Version 1.2.3
+// - v1.2.3 (2026-10-15): window.afficherCalcul(result) — l'affichage de fin de calcul, réutilisé par le banc (BENCH.voir).
 // - v1.2.2 (2026-10-15): spectre caché (autre onglet) = aucun appel au plot, bandeau titre seul (projectSynthese).
 // - v1.2.2 (2026-10-15): window.BENCH branché (debutCalcul / surPas / apresCalcul) — onglet Bench piloté par l'index.
 // - v1.2.2 (2026-10-15): run:true de l'iframe scie ignoré tant que l'hôte n'a pas fini son init (SYNC_STATE.hotePret) —
@@ -220,6 +221,20 @@
 
     window.projectToVisu = projectToVisu;   // retour à l'onglet Spectrale : redessin (loader_panels.onShowVisu)
 
+    /** L'interface montre l'état de window.DATA : fin d'un calcul (runComputeInParent), ou état d'une ligne du banc
+     *  rechargé sans recalcul (BENCH.voir, bench_pilote.js). */
+    window.afficherCalcul = function (result) {
+        // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
+        IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: result });
+        // Projection UI : dépend du panel actif, pas du calcul.
+        if (window.spectreAffiche()) projectToVisu(window.DATA);
+        // Spectre caché (autre onglet) : le bandeau titre seulement ; ack de fin pour libérer l'UI (loader, Three.js).
+        else { projectSynthese(window.DATA); IO_LISTENER.emit('flux:lastDrawn'); }
+        window.ORG.updateFluxLabels('ProcessFinished');
+        window.updateTimeline();
+        window.shell.dataInput({ type: 'compute:done', DATA: window.DATA });
+    };
+
     window.runComputeInParent = function () {
         if (window.DEBUG_SYNC_PANELS === true) console.log('[DBG sync_panels] runComputeInParent epoch=' + window.DATA['📜']['🗿'] + ' 📿💫=' + window.DATA['📜']['📿💫'] + ' locked=' + window.SYNC_STATE.calculationInProgress);
         // Un calcul à la fois : un second appel pendant le premier (scie + visu) est ignoré.
@@ -243,8 +258,6 @@
             var _sv = document.getElementById('spectral-visualization');
             _sv._lastDrawnBins = 0;
             _sv._lastFinalSig = null;
-            // Projection UI : dépend du panel actif, pas du calcul.
-            var shouldProjectToVisu = window.spectreAffiche();
             // UN point d'entrée moteur (API_BILAN/api.js) : époque, mode, masses, T initiale, init, convergence.
             return window.getBilanRadiatifAPI(onEngineEvent).run({ epochId: epochId, animEnabled: DATA['🔘']['🔘🎞'] }).then(function (result) {
             window.SYNC_STATE.calculationInProgress = false;
@@ -252,14 +265,7 @@
             window._logStep('[4] calculs (retour)');
             // null = interrompu (ABORT_COMPUTE : un run plus récent a demandé l'abandon).
             if (result === null) { window.BENCH.apresCalcul(null); return null; }
-            // emit = abonnés in-page (ex. loader_panels stocke lastComputePayload pour envoi différé à l'iframe scie à l'ouverture de l'onglet)
-            IO_LISTENER.emit('compute:done', { DATA: window.DATA, result: result });
-            if (shouldProjectToVisu) projectToVisu(window.DATA);
-            // Spectre caché (autre onglet) : le bandeau titre seulement ; ack de fin pour libérer l'UI (loader, Three.js).
-            if (!shouldProjectToVisu) { projectSynthese(window.DATA); IO_LISTENER.emit('flux:lastDrawn'); }
-            window.ORG.updateFluxLabels('ProcessFinished');
-            window.updateTimeline();
-            window.shell.dataInput({ type: 'compute:done', DATA: window.DATA });
+            window.afficherCalcul(result);
             window.BENCH.apresCalcul(result);   // onglet Bench : ligne envoyée, puis clic suivant selon le flag
             return result;
         }, function (e) {
