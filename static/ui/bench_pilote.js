@@ -7,7 +7,9 @@
 //       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
 //       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ni courbe d'Histoire.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.3.2
+// Version 1.3.4
+// - v1.3.4: étape d'un tictime = temps écoulé dans l'époque (📜⏳ : « 🛢 (+75 a) »), cumulé clic après clic.
+// - v1.3.3: hors run, chaque tranche de 25 ans jouée sur 📱 prolonge la courbe orange d'Histoire (histoire:prolonger).
 // - v1.3.2: la ligne porte la date de l'état calculé (CLICS.date()) : elle avance à chaque tictime.
 // - v1.3.1: étape d'un tictime = sa durée de config (📜🔺⏳ : « ⛽ (+25 a) »), plus le temps écoulé en Ma.
 // - v1.3.0: hors run aussi, chaque calcul ajoute sa ligne au tableau (et garde son état) ; les courbes d'Histoire,
@@ -60,7 +62,7 @@
         return {
             rowKey: 'clic' + BENCH.n,
             epochId: EP['📅'],
-            etape: !anim ? 'frise' : H['🔘🕰'] === '' ? 'arrivée' : H['🔘🕰'] + ' (+' + duree(H['🔺⏳']) + ')',   // '' : passage d'époque
+            etape: !anim ? 'frise' : H['🔘🕰'] === '' ? 'arrivée' : H['🔘🕰'] + ' (+' + duree(H['⏳']) + ')',   // '' : passage d'époque ; durée cumulée dans l'époque (📜⏳)
             tInitC: anim ? BENCH.tPrecC : EP['🌡️🧮'] - 273.15,
             date: window.CLICS.date()   // date de l'état calculé (2025, 2050… sur 📱)
         };
@@ -119,9 +121,16 @@
         poster({ type: 'bench:ligne', ligne: ligne });
         BENCH.etats[ligne.rowKey] = { DATA: structuredClone(D), result: result };
         BENCH.tPrecC = D['🧮']['🧮🌡️'] - 273.15;
-        // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état, rien d'autre — les courbes
-        // d'Histoire ne sont retracées que par un run.
-        if (BENCH.suite === 'no') return;
+        // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état. Les courbes d'Histoire ne sont
+        // retracées que par un run — sauf les tranches de 25 ans de 📱 : chaque clic de l'utilisateur prolonge la courbe
+        // orange à sa date (Histoire retire les points de même date ou plus tardifs : rejouer une tranche la remplace).
+        if (BENCH.suite === 'no') {
+            if (result !== null && window.CLICS.parTranche() && H['🔺⏳'] > 0) {
+                posterHistoire({ type: 'histoire:prolonger', courbe: 'modele',
+                    point: window.HISTOIRE.pointModele(H['🗿'] + ' ' + H['🔘🕰'], H['🔘🕰'], H['🔺⏳'], 'clic') });
+            }
+            return;
+        }
         // Point de la courbe d'Histoire (calcul interrompu : pas de point, sa T° n'est pas un état convergé).
         if (result !== null) {
             const C = BENCH.clic;

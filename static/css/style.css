@@ -947,6 +947,18 @@ h1 {
 
 /* Styles de boutons déplacés dans buttons.css */
 
+/* Titre de la frise : même police que le h1 du panneau (Verdana du body, couleur --retro-base), pas le 04B_03 de la frise */
+.visu_timeline-title {
+    flex: 0 0 auto;
+    padding: 8px 2px 0;
+    font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 1.1;
+    white-space: nowrap;   /* 80 px de large : sur deux lignes, « Time » passait sous le haut du panneau */
+    color: var(--retro-base);
+}
+
 /* 3. Frise verticale - visu_ ; pas de scrollbar ; curseurs ⏴ ⏵ à la hauteur de la date */
 .visu_timeline-frise {
     flex: 1;

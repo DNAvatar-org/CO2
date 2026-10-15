@@ -1,5 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.128 frise : survol des époques = nom · graine init [graine littéraire] (epochSeedLabel).
 // Logs: v1.0.127 frise : date au-dessus du logo ; 🔮 futur 2100 (non cliquable, TIMELINE_FUTUR), borne 2200.
 // Logs: v1.0.126 frise des époques : logo centré, date dessous (plus d'alternance gauche / droite).
 // Logs: v1.0.125 frise des époques : les époques hidden (hystérésis 1a, 1b, 1c, 2) n'ont plus de ligne.
@@ -4567,7 +4568,7 @@ function generateTimelineFromConfig() {
         el.style.fontFamily =
           "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
       }
-      if (epochLabel) addCustomTooltip(el, epochLabel);
+      addCustomTooltip(el, epochLabel + ' · ' + window.epochSeedLabel(epochId));
 
       // La date de DÉBUT de l'époque (⚫ : -5000 Ma ; 📱 : 2000), puis son logo dessous.
       const debut = item["▶"];   // ⚫ : 5e9 → « -5000 Ma » ; 📱 : 2000

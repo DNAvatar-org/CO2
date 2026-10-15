@@ -1,9 +1,10 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.2.4
+// Version 1.2.5
 // Date: [October 15, 2026]
 // logs :
+//   - v1.2.5 (2026-10-15): epochSeedLabel (survol frise) ; écarts ± 1σ et fourchette des sources dans l'alt2sec.
 //   - v1.2.4 (2026-10-15): 📱 ⛽ 🛢 🪾 = optimiste ×0,5 / comme maintenant / pire ×1,5 par tranche.
 //   - v1.2.3 (2026-10-15): 📱 🌈 (zéro émission, tranche 2100 → 2300).
 //   - v1.2.2 (2026-10-14): ⚫ = quatre ☄️ de masse croissante (eau lue sur l'entrée de séquence, CLICS.eauDuClic).
@@ -452,9 +453,9 @@ const EVENT_STORY = {
               'Le rythme actuel, environ 41 GtCO₂ par an (Global Carbon Budget 2024), tenu tel quel : 1040 GtCO₂ par tranche de 25 ans.\n\n' +
               'Les puits océan et forêts ne suivent pas : ils saturent, donc la PART qui reste dans l\'air augmente d\'une tranche à l\'autre, même à émissions constantes.',
         '🪾':
-            'Le pire : une fois et demie plus tous les 25 ans\n\n' +
-              'Chaque tranche émet 1,5 fois la précédente : 62 GtCO₂ par an en 2025-2050, 94 ensuite, 140 en 2075-2100, et ça continue de grimper jusqu\'en 2300.\n\n' +
-              'Ce n\'est pas une prévision : cumulé jusqu\'en 2300, c\'est plus que tout le carbone fossile connu. C\'est la borne mécanique du geste, pour voir jusqu\'où les équations vont quand on ne freine jamais.'
+            'Le pire : on ne freine jamais\n\n' +
+              'D\'emblée une fois et demie le bidon, 62 GtCO₂ par an en 2025-2050, puis 10 % de plus à chaque tranche de 25 ans : 69, 76, 83… jusqu\'à 162 GtCO₂ par an en 2275-2300.\n\n' +
+              'Ce n\'est pas une prévision : c\'est la borne mécanique du geste, pour voir jusqu\'où les équations vont quand les émissions ne cessent jamais de croître.'
     }
 };
 
@@ -478,10 +479,13 @@ function litBlock(epochId) {
     const lit = window.BENCH_LIT_BY_EPOCH_ID ? window.BENCH_LIT_BY_EPOCH_ID[epochId] : null;
     if (!lit) return null;
     const lines = [];
-    const t = fmtRange(lit.tC, '°C');
+    // Les écarts : ± 1σ de la courbe cyan (tC) et fourchette des sources de l'époque (tCRepere). Le survol court
+    // n'en montre que les centres (epochSeedLabel).
+    const t = fmtRange(lit.tC.map(function (v) { return Number(v.toFixed(1)); }), '°C');
     const co2 = fmtRange(lit.co2, 'ppm');
     const ch4 = fmtRange(lit.ch4, 'ppm');
-    if (t) lines.push('T ' + t);
+    lines.push('T ' + t + ' (± 1σ)');
+    lines.push('sources ' + fmtRange(lit.tCRepere, '°C'));
     if (co2) lines.push('CO₂ ' + co2);
     if (ch4) lines.push('CH₄ ' + ch4);
     return lines.length ? 'Littérature : ' + lines.join(' · ') : null;
@@ -506,6 +510,13 @@ function appliedBlock(epochId) {
     }
     return lines.length ? 'Appliqué : ' + lines.join(' · ') : null;
 }
+
+/** Survol court d'une époque de la frise : « graine init [graine littéraire] », sans les écarts (ils sont dans
+ *  l'alt2sec). Graine = 🌡️🧮 de la config (courbe cyan à ▶) ; littéraire = centre de la fourchette des sources. */
+window.epochSeedLabel = function (epochId) {
+    const r = window.BENCH_LIT_BY_EPOCH_ID[epochId].tCRepere;
+    return 'graine ' + (epochRowById(epochId)['🌡️🧮'] - 273.15).toFixed(1) + ' °C [' + ((r[0] + r[1]) / 2).toFixed(1) + ' °C]';
+};
 
 /** Texte alt2sec complet d'une époque : récit + littérature + valeurs appliquées. */
 function buildEpochAlt2sec(epochId) {

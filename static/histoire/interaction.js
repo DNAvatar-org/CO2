@@ -1,9 +1,10 @@
 // File: CO2/static/histoire/interaction.js
 // Desc: Glisser pour naviguer ; molette = zoom du temps (X) ; Shift + molette = zoom de la température (Y).
 //       Chaque geste est suivi de H.borner() : on ne voit jamais avant −5000 Ma ni après 2025.
-// Version 1.1.0
-// Date: 2026-09-23
+// Version 1.2.0
+// Date: 2026-10-15
 // logs :
+//   - v1.2.0: clic (sans glisser) sur un logo d'époque → l'index lance l'époque, comme la frise (histoire:epoque).
 //   - v1.1.0: survol → bulle avec la SOURCE de ce qui est sous le curseur (H.survol, rendu.js).
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
@@ -11,12 +12,19 @@
     const H = window.HISTOIRE;
     H.brancherInteractions = function (canvas, redessiner) {
         const v = H.vue;
-        let isDragging = false, lastX = 0, lastY = 0;
-        canvas.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
+        let isDragging = false, lastX = 0, lastY = 0, downX = 0, downY = 0;
+        canvas.addEventListener('mousedown', e => { isDragging = true; lastX = downX = e.clientX; lastY = downY = e.clientY; });
+        // Clic sur un logo d'époque, sans avoir glissé : l'index (static/ui/onglets_graphe.js) le joue comme un clic de frise.
+        canvas.addEventListener('click', e => {
+            if (Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY) > 4) return;
+            const id = H.cible(e.clientX, e.clientY);
+            if (id !== null) window.parent.postMessage({ type: 'histoire:epoque', id: id }, '*');
+        });
         window.addEventListener('mouseup', () => { isDragging = false; });
         const bulle = document.getElementById('bulle');
         canvas.addEventListener('mousemove', e => {
             if (isDragging || !bulle) return;
+            canvas.style.cursor = H.cible(e.clientX, e.clientY) === null ? '' : 'pointer';
             const t = H.survol(e.clientX, e.clientY);
             bulle.hidden = !t;
             if (t) { bulle.textContent = t; bulle.style.left = (e.clientX + 14) + 'px'; bulle.style.top = (e.clientY + 14) + 'px'; }

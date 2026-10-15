@@ -27,6 +27,7 @@
     const px = t => (H.vue.xOffset - t) * H.vue.xScale;
     const py = T => H.vue.height / 2 - (T - H.vue.yOffset) * H.vue.yScale;
     let zones = [];   // zones survolables : { x0, x1, y0, y1, texte }
+    let cibles = [];  // logos cliquables : { x0, x1, y0, y1, id } — l'époque à lancer, comme la frise
 
     function drawGrid(ctx) {
         const v = H.vue;
@@ -99,6 +100,7 @@
     H.render = function (ctx) {
         const v = H.vue, L = H.litterature;
         zones = [];
+        cibles = [];
         ctx.clearRect(0, 0, v.width, v.height);
         drawGrid(ctx);
 
@@ -157,6 +159,7 @@
             ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.setLineDash([2, 4]);
             ctx.beginPath(); ctx.moveTo(x, 70); ctx.lineTo(x, v.height - 50); ctx.stroke(); ctx.setLineDash([]);
             ctx.font = '22px sans-serif'; ctx.fillText(e.logo, x, 95);
+            if (e.clic !== null) cibles.push({ x0: x - 14, x1: x + 14, y0: 70, y1: 100, id: e.clic });
             ctx.font = '10px Tahoma'; ctx.fillStyle = '#c5c6c7';
             ctx.fillText(e.nom, x, i % 2 ? 124 : 110);   // noms alternés : les époques proches ne se chevauchent pas
         });
@@ -166,6 +169,12 @@
         ctx.fillStyle = COUL.lit; ctx.fillText('··· littérature', v.width - 15, 25);
         ctx.fillStyle = COUL.mod; ctx.fillText('— graine t° continue', v.width - 15, 42);
         ctx.fillStyle = COUL.frise; ctx.fillText('- - graine t° imposée', v.width - 15, 59);
+    };
+
+    /** Époque dont le logo est sous (x, y), ou null. */
+    H.cible = function (x, y) {
+        const c = cibles.find((z) => x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1);
+        return c === undefined ? null : c.id;
     };
 
     /** Texte de la zone sous (x, y), ou null. */

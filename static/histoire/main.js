@@ -1,6 +1,7 @@
 // File: CO2/static/histoire/main.js
 // Desc: Point d'entrée de CO2/histoire.html : canvas, époques du TIMELINE, redimensionnement, interactions.
-// Version 1.1.0
+// Version 1.1.1
+// - v1.1.1: histoire:prolonger — les tranches de 25 ans de 📱 jouées hors run prolongent la courbe orange.
 // - v1.1.0: courbe du modèle retracée en direct par le banc de l'index (messages histoire:courbe / histoire:point).
 // Date: 2026-10-15
 // - v1.0.2: départ dézoomé (toute la durée, −150 → 400 °C).
@@ -47,6 +48,13 @@
     window.addEventListener('message', function (e) {
         if (e.data.type === 'histoire:courbe') H[e.data.courbe] = { mode: e.data.mode, bary: e.data.bary, points: [] };
         else if (e.data.type === 'histoire:point') H[e.data.courbe].points.push(e.data.point);
+        // Tranche de 25 ans jouée sur 📱 hors run : le point remplace ceux de même date ou plus tardifs (t = années avant
+        // L.AN, il décroît vers le futur), pour qu'un autre scénario rejoué depuis une tranche reparte de là.
+        else if (e.data.type === 'histoire:prolonger') {
+            const M = H[e.data.courbe], p = e.data.point;
+            M.points = M.points.filter((q) => q.t > p.t);
+            M.points.push(p);
+        }
         else return;
         if (v.width > 0) redessiner();
     });

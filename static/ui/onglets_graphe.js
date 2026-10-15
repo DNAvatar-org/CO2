@@ -4,7 +4,8 @@
 //       sont pas déplacés dans le DOM (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont
 //       en position fixe, recalés sur la zone quand elle change de taille, au redimensionnement et au défilement (c'est le
 //       body qui défile, index-shell.css).
-// Version 1.2.0
+// Version 1.2.1
+// - v1.2.1: un logo d'époque cliqué dans Histoire (histoire:epoque) lance l'époque comme la frise.
 // - v1.2.0: spectre caché en display: none + canvas effacé.
 // - v1.1.0: spectreVisible — le graphe spectral est caché (visibility) sous les autres onglets.
 // Date: 2026-10-14
@@ -12,6 +13,11 @@
 (function () {
     'use strict';
     const PANNEAUX = ['scie-panel', 'bench-panel', 'milankovitch-panel', 'histoire-panel'];
+
+    // Onglet Histoire : un clic sur le logo d'une époque est un clic sur la frise.
+    window.addEventListener('message', function (e) {
+        if (e.data.type === 'histoire:epoque') window.setEpochFromEpochButton(e.data.id);
+    });
 
     function zone() {
         return document.querySelector('#visu-panel .plot-container-wrapper');
