@@ -7,7 +7,8 @@
 //         · 'clics' : UNE frise (⚫), puis que des clics — l'état arrive d'une époque à l'autre (graine t° continue) ;
 //         · 'frise' : le clic sur la frise de CHAQUE époque du TIMELINE, et rien d'autre (graine t° imposée).
 //       Écrit window.__COURBE__ (points dans l'ordre chronologique). Lancé par courbe_modele.py.
-// Version 2.1.0
+// Version 2.2.0
+// - v2.2.0 (2026-10-15): points fabriqués par CO2/static/histoire/point_modele.js (partagé avec le banc de l'index).
 // - v2.1.0 (2026-10-14): mode frise = la graine de chaque époque seulement (plus ses tictimes).
 // - v2.0.1 (2026-10-13): jauges séparées — `pct` et `bary` portent tout baryByGroup.
 // Date: 2026-10-12
@@ -16,28 +17,15 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
 (async () => { try {
   const MODE = window.__MODE__ || 'clics';
   if (MODE !== 'clics' && MODE !== 'frise') throw new Error('__MODE__ inconnu : ' + MODE);
-  const api=window.getBilanRadiatifAPI(function(){}), D=window.DATA, C=window.CONST;
-  const ppmCO2 = () => +(D['🫧']['🍰🫧🏭']/C.M_CO2 / (1/D['🫧']['🧪'] - D['💧']['🍰🫧💧']/C.M_H2O) * 1e6).toFixed(1);
+  const api=window.getBilanRadiatifAPI(function(){}), D=window.DATA;
   window.__PASSAGES__ = [];
-  const TLid = id => window.TIMELINE.find(e => e['📅'] === id);
-  // État de l'intérieur (geology/interieur.js) : T potentielle °C, flux W/m², puissance TW, date de solidification.
-  const interieur = () => { const N = D['🌕']; return { Tint: N['🌡️🌕'] > 0 ? +(N['🌡️🌕'] - 273.15).toFixed(1) : null,   // null avant l'intérieur (⚫)
-      geo: +(+N['🧲🌕']).toPrecision(4),
-      TW: +(N['🔋🌕'] / 1e12).toFixed(2), solidif: N['📅🧊🌕'] > 0 ? Math.round(N['📅🧊🌕']) : null }; };
-  const note = (chaine, etape, cle, dt, mode) => {
-    const s=api.snapshot();
-    const r={ pct: JSON.stringify(D['🎚️'].baryByGroup), chaine, etape, cle, dt, mode: mode || 'clic', ep:s.epochId, T:+s.T_C.toFixed(2),
-      glace:+(+s.ice.mass_now).toFixed(3), ppm:ppmCO2(), ...interieur() };
-    const E = TLid(s.epochId), dt0 = window.CLICS.date();
-    r.t = Math.round(E['▶'] > E['◀'] ? dt0 : 2025 - dt0);   // années avant 2025
-    r.st = s.status;
-    window.__PASSAGES__.push(r); return r;
-  };
+  // Un point : CO2/static/histoire/point_modele.js (la même fabrique que le banc de l'index).
+  const note = (etape, cle, dt, mode) => window.__PASSAGES__.push(window.HISTOIRE.pointModele(etape, cle, dt, mode || 'clic'));
   // Clic sur la frise : graine de l'époque, compteurs à zéro (CLICS.frise, comme setEpoch).
   const frise = async (id) => {
     window.CLICS.frise(id);
     window.__PROG__='frise '+id; await api.run({ epochId:id, animEnabled:false });
-    note(MODE, 'frise '+id, null, null, 'frise');
+    note('frise '+id, null, null, 'frise');
   };
   if (MODE === 'frise') {
     for (const E of window.TIMELINE) await frise(E['📅']);
@@ -53,10 +41,9 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
       if (r.passage !== null) window.CLICS.passer(r.passage);
       window.__PROG__ = 'clic '+depuis+' '+key+(r.passage !== null ? ' → '+r.passage : '');
       await api.run({ epochId: D['📜']['🗿'], animEnabled:true });
-      note(MODE, r.passage !== null ? depuis+' →'+key+' '+r.passage : depuis+' '+key+' ('+(+D['📜']['⏳'].toFixed(4))+' Ma écoulés)', key, dt);
+      note(r.passage !== null ? depuis+' →'+key+' '+r.passage : depuis+' '+key+' ('+(+D['📜']['⏳'].toFixed(4))+' Ma écoulés)', key, dt);
     }
   }
-  const pts = window.__PASSAGES__.map(({ pct, chaine, ...p }) => p);
-  window.__COURBE__ = { mode: MODE, bary: JSON.parse(JSON.stringify(D['🎚️'].baryByGroup)), points: pts };
+  window.__COURBE__ = { mode: MODE, bary: JSON.parse(JSON.stringify(D['🎚️'].baryByGroup)), points: window.__PASSAGES__ };
   window.__PROG__='done';
 } catch(e){ window.__ERR__=String(e&&e.stack||e); window.__PROG__='error'; } })(); 'x'

@@ -358,6 +358,10 @@
       "dest": "pages/bilan_radiatif/CO2/static/histoire/litterature.js"
     },
     {
+      "src": "static/histoire/point_modele.js",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/point_modele.js"
+    },
+    {
       "src": "static/histoire/main.js",
       "dest": "pages/bilan_radiatif/CO2/static/histoire/main.js"
     },

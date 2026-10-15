@@ -4,9 +4,14 @@
 //       suivante, ou un vrai clic sur l'action suivante (jouerClic, passages compris). L'interface bouge donc comme sous
 //       la souris (organigramme, frise, curseur) ; seule la vue spectrale est absente (onglet Bench par-dessus).
 //       Chaque calcul envoie sa ligne au tableau de l'iframe Bench (API_BILAN/demo/epoch_bench.html, mode encart :
-//       js/epoch_bench_encart.js). 'no' par défaut : l'usage normal de l'interface n'est pas touché.
+//       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
+//       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ni courbe d'Histoire.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.1.0
+// Version 1.3.0
+// - v1.3.0: hors run aussi, chaque calcul ajoute sa ligne au tableau (et garde son état) ; les courbes d'Histoire,
+//   seulement pendant un run.
+// - v1.2.0: la courbe du modèle de l'onglet Histoire est vidée au lancement puis retracée à chaque calcul
+//   (HISTOIRE.pointModele, static/histoire/point_modele.js) — Époques : violette, Tictimes : orange.
 // - v1.1.0: l'état de fin de chaque calcul est gardé (BENCH.etats) ; clic sur une ligne → BENCH.voir le recharge.
 // Date: 2026-10-15
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -19,8 +24,15 @@
         t0: 0,
         tPrecC: null,     // T° convergée du calcul précédent : T° initiale d'un tictime
         pas: { init: null, last: null, path: [] },
-        etats: {}         // rowKey → { DATA (copie), result } : l'état de fin de chaque calcul, que BENCH.voir recharge
+        etats: {},        // rowKey → { DATA (copie), result } : l'état de fin de chaque calcul, que BENCH.voir recharge
+        courbe: null,     // courbe d'Histoire retracée par le run : 'modeleFrise' (Époques, violette) | 'modele' (Tictimes, orange)
+        clic: null        // { depuis, cle, dt } : le clic d'action qui a lancé le calcul (null = clic sur la frise)
     };
+
+    /** L'onglet Histoire (iframe) : sa courbe du modèle est retracée point par point pendant le run. */
+    function posterHistoire(msg) {
+        document.getElementById('histoire-iframe').contentWindow.postMessage(msg, '*');
+    }
 
     function poster(msg) {
         document.getElementById('bench-iframe').contentWindow.postMessage(msg, '*');
@@ -51,6 +63,10 @@
         BENCH.t0 = Date.now();
         BENCH.tPrecC = null;
         BENCH.etats = {};
+        BENCH.clic = null;
+        BENCH.courbe = mode === 'epoque' ? 'modeleFrise' : 'modele';
+        posterHistoire({ type: 'histoire:courbe', courbe: BENCH.courbe, mode: mode === 'epoque' ? 'frise' : 'clics',
+            bary: structuredClone(window.DATA['🎚️'].baryByGroup) });
         window.setEpochFromEpochButton(window.TIMELINE[0]['📅']);
     };
 
@@ -62,7 +78,6 @@
     /** Début d'un calcul (runComputeInParent) : pas remis à zéro ; en banc, la ligne « en cours » dans l'iframe. */
     BENCH.debutCalcul = function () {
         BENCH.pas = { init: null, last: null, path: [] };
-        if (BENCH.suite === 'no') return;
         BENCH.n++;
         poster({ type: 'bench:debut', ligne: ligneCourante(), avance: window.DATA['📜']['👉'] / window.TIMELINE.length });
     };
@@ -80,7 +95,6 @@
     /** Fin d'un calcul (runComputeInParent, après la mise à jour de l'interface ; result null = interrompu) : la ligne
      *  part vers l'iframe, puis le flag décide du clic suivant. */
     BENCH.apresCalcul = function (result) {
-        if (BENCH.suite === 'no') return;
         const D = window.DATA, H = D['📜'], P = BENCH.pas;
         window.RADIATIVE.calculateRadiativeCapacities();
         const ligne = ligneCourante();
@@ -95,6 +109,17 @@
         poster({ type: 'bench:ligne', ligne: ligne });
         BENCH.etats[ligne.rowKey] = { DATA: structuredClone(D), result: result };
         BENCH.tPrecC = D['🧮']['🧮🌡️'] - 273.15;
+        // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état, rien d'autre — les courbes
+        // d'Histoire ne sont retracées que par un run.
+        if (BENCH.suite === 'no') return;
+        // Point de la courbe d'Histoire (calcul interrompu : pas de point, sa T° n'est pas un état convergé).
+        if (result !== null) {
+            const C = BENCH.clic;
+            const point = C === null
+                ? window.HISTOIRE.pointModele('frise ' + H['🗿'], null, null, 'frise')
+                : window.HISTOIRE.pointModele(C.depuis !== H['🗿'] ? C.depuis + ' →' + C.cle + ' ' + H['🗿'] : C.depuis + ' ' + C.cle, C.cle, C.dt, 'clic');
+            posterHistoire({ type: 'histoire:point', courbe: BENCH.courbe, point: point });
+        }
 
         if (BENCH.suite === 'epoque') {
             const i = H['👉'] + 1;
@@ -104,7 +129,9 @@
         }
         // 'tictime' : jusqu'au ⛽ 2000 → 2025 de 📱, comme le banc autonome (epoch_bench_chain.js).
         if (H['🗿'] === '📱' && H['📿💫'] === 1) { BENCH.arreter(); return; }
-        window.jouerClic(window.CLICS.prochaineAction());
+        const cle = window.CLICS.prochaineAction();
+        BENCH.clic = { depuis: H['🗿'], cle: cle, dt: window.CLICS.pas(cle) };
+        window.jouerClic(cle);
     };
 
     /** Clic sur une ligne du tableau : l'interface (organigramme, frise, spectre) reprend l'état de fin de ce calcul,
