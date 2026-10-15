@@ -31,9 +31,11 @@
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
 //                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
 //                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
-// Version 1.9.0
+// Version 1.10.0
 // Date: 2026-10-15
 // logs :
+//   - v1.10.0: Archéen 3,5 → 3,2 Ga : enveloppe KT2018 + Blake 2010 aux points de KT2018 (médiane = milieu des deux), plus
+//     de créneau à bords verticaux.
 //   - v1.9.0: L.segments / L.serie / L.a(t) : la courbe cyan en un seul endroit — Histoire la trace, le moteur y lit la
 //     graine 🌡️🧮 et la fourchette tC du banc.
 //   - v1.8.0: bornes extrêmes resserrées : Hadéen 4,49–4,41 Ga borne basse 0 °C (eau libre, Zahnle 2010 ; Wilde 2001) au lieu
@@ -2294,9 +2296,10 @@ window.HISTOIRE.litterature = {
 window.HISTOIRE.litterature.unSigma = (rows, z) => rows.map((r) => [r[0], r[2] - (r[2] - r[1]) / z, r[2], r[2] + (r[3] - r[2]) / z]);
 
 // PRÉCAMBRIEN (4,0 Ga → 525 Ma) : L.precambrien = KT2018 (modèle lisse, qui ignore les glaciations et les proxys) hors de
-// trois FENÊTRES sourcées qui le remplacent. Des FOURCHETTES, pas des valeurs. Le fond, aux bords des fenêtres et entre deux
+// deux FENÊTRES sourcées qui le remplacent, et combiné à un proxy sur une troisième (Archéen). Des FOURCHETTES, pas des valeurs. Le fond, aux bords des fenêtres et entre deux
 // paliers, est KT2018 interpolé (la série elle-même, pas une copie de ses valeurs).
-//   · Archéen 3,5 → 3,2 Ga : océan 26–35 °C, δ¹⁸O des phosphates (Blake 2010), compatible avec ≤ 40 °C (Hren 2009) ;
+//   · Archéen 3,5 → 3,2 Ga : océan 26–35 °C, δ¹⁸O des phosphates de Barberton (Blake 2010), compatible avec ≤ 40 °C
+//     (Hren 2009) — en désaccord avec KT2018 (~17 °C) : il ne le remplace pas, les deux sont combinés (voir plus bas) ;
 //   · Paléoprotérozoïque 2,46 → 2,426 Ga : la glaciation globale, datée dans cet intervalle (Gumsley 2017, Hoffman 2017) ;
 //   · Cryogénien 717,5 → 632,2 Ma : deux snowballs datés, séparés par un intervalle de 9 à 19 Ma (Hoffman 2017). Chacun
 //     finit en « serre torride » : le CO₂ volcanique, accumulé sans pluie pour le lessiver, atteint 0,01–0,1 en fraction
@@ -2315,12 +2318,14 @@ window.HISTOIRE.litterature.unSigma = (rows, z) => rows.map((r) => [r[0], r[2] -
     const BLAKE = 'Océan archéen 26–35 °C : δ¹⁸O des phosphates de Barberton (Blake, Chang & Lepland 2010, Nature 464:1029), '
         + 'compatible avec ≤ 40 °C des cherts de Buck Reef (Hren, Tice & Chamberlain 2009, Nature 462:205) — reconstruction ; '
         + 'le δ¹⁸O de l\'eau de mer archéenne, qui fixe l\'échelle, reste débattu';
-    const archeen = [
-        fond(3.51e9, 'avant les phosphates de Barberton'),
-        [3.5e9, 26, 30.5, 35, BLAKE],
-        [3.2e9, 26, 30.5, 35, BLAKE],
-        fond(3.19e9, 'après les phosphates de Barberton')
-    ];
+    // Le proxy et le modèle se contredisent (KT2018 ≈ 17 °C ici) : aucun ne remplace l'autre. Aux points de KT2018 de la
+    // fenêtre, bande = leur ENVELOPPE, médiane = le milieu des deux médianes (convention, pas une mesure) ; on y entre et on
+    // en sort par le pas de KT2018 (~40 Ma), pas par un saut vertical que personne n'a publié.
+    const BLAKE_T = [26, 30.5, 35];
+    const DESACCORD = 'Désaccord modèle / proxy — ' + BLAKE + ' ; ' + KT + ' — bande = enveloppe des deux, médiane = milieu des '
+        + 'deux médianes (convention)';
+    const archeen = (r) => [r[0], Math.min(r[1], BLAKE_T[0]), (r[2] + BLAKE_T[1]) / 2, Math.max(r[3], BLAKE_T[2]), DESACCORD];
+    const dansArcheen = (t) => t <= 3.5e9 && t >= 3.2e9;
 
     const SID = 'Première glaciation globale du Paléoprotérozoïque, quelque part entre 2 460 et 2 426 Ma (Gumsley et al. 2017, PNAS '
         + '114:1811 ; Hoffman et al. 2017), durée inconnue : borne basse = snowball (−73 °C, Pierrehumbert 2005 — sous un Soleil plus '
@@ -2353,9 +2358,9 @@ window.HISTOIRE.litterature.unSigma = (rows, z) => rows.map((r) => [r[0], r[2] -
 
     // Une série : KT2018 hors des fenêtres, puis les fenêtres ; tri par âge décroissant (stable : l'ordre des paliers de même
     // date, saut vertical compris, est gardé).
-    const fenetres = [archeen, paleoproterozoique, L.cryogenien];
+    const fenetres = [paleoproterozoique, L.cryogenien];
     const dans = (t) => fenetres.some((w) => t <= w[0][0] && t >= w[w.length - 1][0]);
-    L.precambrien = K.filter((r) => !dans(r[0])).map((r) => [r[0], r[1], r[2], r[3], KT])
+    L.precambrien = K.filter((r) => !dans(r[0])).map((r) => dansArcheen(r[0]) ? archeen(r) : [r[0], r[1], r[2], r[3], KT])
         .concat(...fenetres).sort((a, b) => b[0] - a[0]);
 })();
 
