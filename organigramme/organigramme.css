@@ -1,6 +1,7 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.86
+// Version 1.0.87
+// - v1.0.87 (2026-10-15): logos de scénario centrés (pas de marge négative sur le premier).
 // - v1.0.86 (2026-10-15): quatre scénarios (🌈 ⛽ 🛢 🪾) : logos réduits pour tenir dans la largeur de trois.
 // - v1.0.85 (2026-10-15): titre visu compact — séparateur retiré ; époque sur 3 lignes à gauche, T/P à droite ; 🛰 jumeau bas (#observation-config-wrap-bas) ; jauges de fine-tuning retirées.
 // - v1.0.84 (2026-10-13): rangées de jauges de fine-tuning séparées (.organigram-bary-jauges / -rangee).
@@ -198,6 +199,11 @@
     min-height: calc(var(--_slot-logo) * 37 / 65);
     font-size: calc(var(--_slot-logo) * 21 / 65);
     margin-left: -5px;
+}
+/* Le chevauchement est ENTRE les logos : le premier n'a pas de marge négative, sinon toute la rangée part à gauche. */
+#flux-diagram #timeline-events-logos .organigram-logo:first-child,
+#flux-diagram #timeline-events-logos .btn-year-indexed:first-child:nth-last-child(4) {
+    margin-left: 0;
 }
 
 /* SKIP : même lissage hover que les tuiles événements (🎞 est dans .flux-circle-bg, pas sous #timeline-events-logos) */

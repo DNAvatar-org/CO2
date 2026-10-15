@@ -1,9 +1,10 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.2.3
+// Version 1.2.4
 // Date: [October 15, 2026]
 // logs :
+//   - v1.2.4 (2026-10-15): 📱 ⛽ 🛢 🪾 = optimiste ×0,5 / comme maintenant / pire ×1,5 par tranche.
 //   - v1.2.3 (2026-10-15): 📱 🌈 (zéro émission, tranche 2100 → 2300).
 //   - v1.2.2 (2026-10-14): ⚫ = quatre ☄️ de masse croissante (eau lue sur l'entrée de séquence, CLICS.eauDuClic).
 //   - v1.2.1 (2026-09-24): « Ce que ça change » affiche le pas de clic à 1 décimale.
@@ -180,9 +181,9 @@ const EPOCH_STORY = {
         'de l\'astronomie ou de la biosphère.',
 
     '📱':
-        'Aujourd\'hui — de 2000 à 2100 (à vous de jouer)\n\n' +
-        'Point de départ : l\'an 2000, mesuré à 369 ppm. Chaque clic ⛽ ou 🛢 ajoute les émissions d\'une tranche ' +
-        'de 25 ans et calcule ce que ça donne — c\'est tout l\'objet de l\'application.\n\n' +
+        'Aujourd\'hui — de 2000 à 2300 (à vous de jouer)\n\n' +
+        'Point de départ : l\'an 2000, mesuré à 369 ppm. Chaque clic ⛽ (optimiste), 🛢 (comme maintenant) ou 🪾 (le pire) ajoute ' +
+        'les émissions d\'une tranche de 25 ans et calcule ce que ça donne — c\'est tout l\'objet de l\'application.\n\n' +
         'Le CO₂ émis n\'est pas entièrement dans l\'air : l\'océan en dissout une partie (loi de Henry, freinée par ' +
         'la chimie des carbonates) et les forêts en stockent une autre (elles poussent plus vite quand il y a plus ' +
         'de CO₂). Les deux puits saturent progressivement.\n\n' +
@@ -443,17 +444,17 @@ const EVENT_STORY = {
               'Rien n\'est injecté : seuls les puits travaillent. L\'océan continue de dissoudre le CO₂ en trop, les forêts de le stocker — de moins en moins vite à mesure que l\'écart se réduit.\n\n' +
               'Le CO₂ redescend, mais lentement, et la température presque pas : ce qui a été émis reste dans l\'air pour des siècles.',
         '⛽':
-            'Émissions d\'une tranche de 25 ans\n\n' +
-              'Le CO₂ ajouté ne reste pas entièrement dans l\'air : l\'océan en dissout une partie (loi de Henry, freinée par la chimie des carbonates qui sature) et les forêts en stockent une autre (elles poussent plus vite avec plus de CO₂, effet qui sature aussi).\n\n' +
-              'Les paramètres viennent de mesures — Global Carbon Budget, expériences FACE — jamais de projections. Ce que vous lirez après le clic sort des équations, pas d\'un scénario.',
+            'La voie optimiste : moitié moins tous les 25 ans\n\n' +
+              'Après les émissions mesurées de 2000-2025, chaque tranche émet la moitié de la précédente : 21 GtCO₂ par an en 2025-2050, 10 ensuite, puis 5… le rythme tend vers zéro sans jamais l\'atteindre.\n\n' +
+              'Le CO₂ ajouté ne reste pas entièrement dans l\'air : l\'océan en dissout une partie (loi de Henry, freinée par la chimie des carbonates qui sature) et les forêts en stockent une autre (elles poussent plus vite avec plus de CO₂, effet qui sature aussi). Ce que vous lirez après le clic sort des équations.',
         '🛢':
-            'Émissions doublées sur 25 ans\n\n' +
-              'Même mécanique, rythme deux fois plus fort. Les puits océan et forêts ne suivent pas proportionnellement : ils saturent, donc la PART qui reste dans l\'air augmente.\n\n' +
-              'C\'est pourquoi doubler les émissions fait plus que doubler l\'écart de température.',
+            'Comme maintenant, sans fin\n\n' +
+              'Le rythme actuel, environ 41 GtCO₂ par an (Global Carbon Budget 2024), tenu tel quel : 1040 GtCO₂ par tranche de 25 ans.\n\n' +
+              'Les puits océan et forêts ne suivent pas : ils saturent, donc la PART qui reste dans l\'air augmente d\'une tranche à l\'autre, même à émissions constantes.',
         '🪾':
-            'Le double du bidon\n\n' +
-              'À chaque clic, exactement deux fois ce que libère le bidon sur la même tranche : 144, puis 96, puis 56 GtCO₂ par an, contre environ 41 aujourd\'hui.\n\n' +
-              'Cumulé sur 2025-2100, cela fait 7400 GtCO₂. Ce n\'est pas une prévision : c\'est la borne haute mécanique du geste, pour voir jusqu\'où les équations vont quand on ne freine jamais.'
+            'Le pire : une fois et demie plus tous les 25 ans\n\n' +
+              'Chaque tranche émet 1,5 fois la précédente : 62 GtCO₂ par an en 2025-2050, 94 ensuite, 140 en 2075-2100, et ça continue de grimper jusqu\'en 2300.\n\n' +
+              'Ce n\'est pas une prévision : cumulé jusqu\'en 2300, c\'est plus que tout le carbone fossile connu. C\'est la borne mécanique du geste, pour voir jusqu\'où les équations vont quand on ne freine jamais.'
     }
 };
 
