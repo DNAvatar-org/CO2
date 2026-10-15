@@ -1,6 +1,7 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.3.1
+// Version 1.3.2
+// Logs: v1.3.2: onglets Science / ISS : imposent à true les détails ⚗ / les watts 🛰 de l'organigramme.
 // Logs: v1.3.1: spectreAffiche() remplace isVisuPanelActive (spectre caché = pas de plot).
 // Logs: v1.3.1: bench_pilote.js chargé (onglet Bench piloté par l'index). SYNC_STATE.hotePret posé avant le 1er calcul (sync_panels n'accepte un run de la scie qu'après).
 // Logs: v1.3.0: Spectrale (ex-Visuel) toujours visible ; les autres onglets dans la zone du graphe (onglets_graphe.js),
@@ -183,6 +184,7 @@
     }
     function onShowScie() {
         window.ONGLETS_GRAPHE.spectreVisible(false);
+        window.afficherDetailsOrganigramme(true);   // onglet Science = ⚗ DETAILS (main.js)
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('scie');
         var iframe = document.getElementById('scie-iframe');
         if (iframe && iframe.contentWindow) {
@@ -204,7 +206,11 @@
     // Milankovitch, Histoire, Bench : iframes autonomes dans la zone du graphe ; rien à synchroniser.
     function onShowMilankovitch() { window.ONGLETS_GRAPHE.spectreVisible(false); }
     function onShowBench() { window.ONGLETS_GRAPHE.spectreVisible(false); }
-    function onShowISS() { window.ONGLETS_GRAPHE.spectreVisible(false); window.ONGLETS_GRAPHE.chargerISS(); }
+    function onShowISS() {
+        window.ONGLETS_GRAPHE.spectreVisible(false);
+        window.afficherWattsOrganigramme(true);   // onglet ISS = 🛰 OBSERVATIONS (main.js)
+        window.ONGLETS_GRAPHE.chargerISS();
+    }
     /** Le spectre est-il à l'écran ? Non sous un autre onglet (spectre-cache, onglets_graphe.js) : alors aucun appel
      *  au plot (courbes, canvas, dégradé, légende) — onShowVisu redessine au retour. */
     window.spectreAffiche = function () {

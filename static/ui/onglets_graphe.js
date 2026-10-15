@@ -4,7 +4,9 @@
 //       sont pas déplacés dans le DOM (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont
 //       en position fixe, recalés sur la zone quand elle change de taille, au redimensionnement et au défilement (c'est le
 //       body qui défile, index-shell.css).
-// Version 1.2.5
+// Version 1.2.7
+// - v1.2.7: dès l'an 2000, l'ISS montre sa propre Terre (NASA geoview / steamNight + tuiles GIBS, Sentinel-2 au zoom) : ni ?jour ni ?nuit.
+// - v1.2.6: onglet ISS ouvert : rechargé à chaque compute:done (carte et atmosphère de l'époque suivent les clics).
 // - v1.2.5: l'iframe ISS reçoit aussi l'atmosphère du dernier calcul (?atm= : pression, hauteur d'échelle, luminescence).
 // - v1.2.4: chargerISS — l'iframe ISS reçoit les cartes de l'époque (?jour= / ?nuit=) et ?onglet ; 🛰 de l'organigramme → onglet ISS.
 // - v1.2.3: bouton ⛶ du panneau ISS : zen / pas zen de la page ISS (message iss:zen).
@@ -12,7 +14,7 @@
 // - v1.2.1: un logo d'époque cliqué dans Histoire (histoire:epoque) lance l'époque comme la frise.
 // - v1.2.0: spectre caché en display: none + canvas effacé.
 // - v1.1.0: spectreVisible — le graphe spectral est caché (visibility) sous les autres onglets.
-// Date: 2026-10-14
+// Date: 2026-10-15
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -20,8 +22,11 @@
 
     // Onglet ISS : la page publiée (pages/ISS), en onglet (?onglet : ni signature ni ⛶ à elle), démarrée en zen ; le bouton ⛶
     // du panneau la bascule par message, sans recharger (pages/ISS, js/ui.js, écoute 'iss:zen').
-    // Ses cartes de la Terre sont celles du globe de l'organigramme (texture de jour window._lastPlanetTexturePath, carte de
-    // nuit 📜🌙), prises dans la copie PUBLIÉE de CO2 : même site que la page ISS, donc lisibles par son WebGL.
+    // Avant l'an 2000, ses cartes de la Terre sont celles du globe de l'organigramme (texture de jour
+    // window._lastPlanetTexturePath, carte de nuit 📜🌙), prises dans la copie PUBLIÉE de CO2 : même site que la page ISS,
+    // donc lisibles par son WebGL. Dès 2000 : aucune carte passée, la page ISS garde ses vraies textures et ses tuiles de
+    // détail au zoom (pages/ISS js/url.js : TUILES_ACTIVES = pas de ?jour). Le globe de l'organigramme reste inchangé.
+    const AN_TERRE_REELLE = 2000;
     const ISS_PAGE = 'https://dnavatar.org/pages/ISS/';
     const CO2_PUBLIE = 'https://dnavatar.org/pages/bilan_radiatif/CO2/';
     const O2_MASSIQUE_ACTUEL = 0.2314;   // part massique de l'O₂ de l'air d'aujourd'hui (référence de la luminescence)
@@ -34,11 +39,19 @@
         const H_km = window.CONST.R_GAS * D['🧮']['🧮🌡️'] / (D['🫧']['🧪'] * D['📅']['🍎']) / 1000;
         return 'p:' + D['🫧']['🎈'].toFixed(3) + ',H:' + H_km.toFixed(2) + ',lum:' + (D['🫧']['🍰🫧🫁'] / O2_MASSIQUE_ACTUEL).toFixed(3);
     }
-    function chargerISS() {
+    /** Année de la frise, signée (négative avant notre ère) : géologique = années avant le présent, sinon calendrier. */
+    function anneeFrise() {
+        const ans = window.getTimelineCurrentYears();
+        return window.timelineEpochIsForward(window.getEpochAtTimelineIndex()) ? ans : -ans;
+    }
+    function cartesISS() {
+        if (anneeFrise() >= AN_TERRE_REELLE) return '';
         const nuit = window.DATA['📜']['🌙'];
-        const src = ISS_PAGE + '?vue=pole&focale=20.78&onglet' + (zenISS ? '&zen' : '') + '&atm=' + atmISS()
-            + '&jour=' + encodeURIComponent(new URL(window._lastPlanetTexturePath, CO2_PUBLIE).href)
+        return '&jour=' + encodeURIComponent(new URL(window._lastPlanetTexturePath, CO2_PUBLIE).href)
             + (nuit === '' ? '' : '&nuit=' + encodeURIComponent(new URL(nuit, CO2_PUBLIE).href));
+    }
+    function chargerISS() {
+        const src = ISS_PAGE + '?vue=pole&focale=20.78&onglet' + (zenISS ? '&zen' : '') + '&atm=' + atmISS() + cartesISS();
         const iframe = document.getElementById('iss-iframe');
         if (iframe.src !== src) iframe.src = src;   // même époque : la page garde sa vue (pas de rechargement)
     }
@@ -80,12 +93,16 @@
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    /** Après l'injection de visu (loader_panels.initAfterLoad) : la zone existe. */
+    /** Après l'injection de visu (loader_panels.initAfterLoad) : la zone existe. Onglet ISS ouvert : chaque calcul
+     *  lui repasse la carte (posée au clic, organigramme updatePlanetTextureFromDate) et l'atmosphère du calcul. */
     function brancher() {
         new ResizeObserver(placer).observe(zone());
         window.addEventListener('resize', placer);
         document.addEventListener('scroll', placer, true);
         placer();
+        window.IO_LISTENER.on('compute:done', function () {
+            if (window.API_ONGLETS.getCurrentTab() === 'iss') chargerISS();
+        }, 'onglets_graphe');
     }
 
     window.ONGLETS_GRAPHE = { PANNEAUX: PANNEAUX, placer: placer, brancher: brancher, spectreVisible: spectreVisible, basculerZenISS: basculerZenISS,

@@ -1,7 +1,9 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.3.2
+// Version 1.3.3
+// - v1.3.3 (2026-10-15): bouton = onglet : ⚗ DETAILS ouvre Science, 🛰 OBSERVATIONS ouvre ISS ; chaque bouton inverse
+//   son affichage (détails / watts), l'onglet ouvert seul l'impose à true (afficherDetailsOrganigramme / afficherWattsOrganigramme).
 // - v1.3.2 (2026-10-15): jauges de fine-tuning retirées de l'organigramme (elles vivent dans le bench).
 // - v1.3.1 (2026-10-15): 🛰 OBSERVATIONS doublé sous le satellite DSCOVR (bas droite, aligné sur DETAILS), état commun.
 // - v1.3.0 (2026-10-13): jauges de fine-tuning séparées dans la visu (une rangée par jauge, data-jauge) ; plus de
@@ -2519,14 +2521,30 @@ function runMainInit() {
                 window.fpsLevel = 'rapide';
                 window.RUNTIME_STATE.showSpectralBackground = true;
                 
-                // Bouton ⚗ : afficher/masquer détails (flèches, textes) et boutons d'action de l'organigramme — off par défaut
+                // ⚗ DETAILS : détails (flèches, textes) et boutons d'action de l'organigramme — off au départ (onglet Spectrale) ;
+                // l'onglet Science les impose à true (loader_panels onShowScie), le bouton ⚗ les inverse et ouvre Science.
                 window.organigramArrowsVisible = false;
+                window.afficherDetailsOrganigramme = function (oui) {
+                    window.organigramArrowsVisible = oui;
+                    document.getElementById('flux-diagram').classList.toggle('hide-organigram-arrows', !oui);
+                    document.getElementById('three-play-indicator').classList.toggle('selected', oui);
+                    window.syncPlotContainerOrganigramHideClasses();
+                };
                 /** Métriques / libellés verts : par défaut masqués (🛰 off) pour ne montrer que la Terre ; ON = hide-organigram-observation-metrics retirée */
                 window.organigramObservationMetricsVisible = false;
                 /** true = pictogramme masqué (🛰 OFF) — #cell-geometrie, #cell-reemis (EDS), #cell-albedo-btn */
                 window.organigramObservationGeometriePictoHidden = true;
                 window.organigramObservationEdsPictoHidden = true;
                 window.organigramObservationAlbedoBtnPictoHidden = true;
+                /** 🛰 = watts de l'organigramme : l'onglet ISS les impose à true (loader_panels onShowISS), le bouton 🛰 les inverse. */
+                window.afficherWattsOrganigramme = function (oui) {
+                    window.organigramObservationMetricsVisible = oui;
+                    document.getElementById('flux-diagram').classList.toggle('hide-organigram-observation-metrics', !oui);
+                    document.getElementById('observation-metrics-toggle').classList.toggle('selected', oui);
+                    document.getElementById('observation-metrics-toggle-bas').classList.toggle('selected', oui);
+                    window.syncOrganigramObservationPictoHiddenFlags();
+                    window.syncPlotContainerOrganigramHideClasses();
+                };
                 window.syncOrganigramObservationPictoHiddenFlags = function () {
                     var h = !window.organigramObservationMetricsVisible;
                     window.organigramObservationGeometriePictoHidden = h;
@@ -2592,12 +2610,9 @@ function runMainInit() {
                     obsBtns.forEach(function (obsBtn) {
                         if (obsBtn.dataset.boundClick === '1') return;
                         obsBtn.addEventListener('click', function () {
+                            const oui = !window.organigramObservationMetricsVisible;   // lu AVANT : l'onglet ISS impose true
                             window.switchTab('iss');   // les satellites mènent à l'onglet ISS (vue depuis l'orbite)
-                            window.organigramObservationMetricsVisible = !window.organigramObservationMetricsVisible;
-                            fluxObs.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
-                            obsBtns.forEach(function (b) { b.classList.toggle('selected', window.organigramObservationMetricsVisible); });
-                            window.syncOrganigramObservationPictoHiddenFlags();
-                            window.syncPlotContainerOrganigramHideClasses();
+                            window.afficherWattsOrganigramme(oui);
                         });
                         obsBtn.dataset.boundClick = '1';
                     });
@@ -2636,7 +2651,7 @@ function runMainInit() {
                     }
                     el.type = 'button';
                     el.className = 'icon-button organigram-logo' + (window.organigramArrowsVisible ? ' selected' : '');
-                    el.setAttribute('data-tooltip', 'On/Off détails Effet de Serre et Albédo');
+                    el.setAttribute('data-tooltip', 'Science : détails Effet de Serre et Albédo');
                     el.removeAttribute('aria-label');
                     el.removeAttribute('title');
                     el.textContent = '⚗';
@@ -2651,11 +2666,9 @@ function runMainInit() {
                     window.syncPlotContainerOrganigramHideClasses();
                     if (el.dataset.boundClick !== '1') {
                         el.addEventListener('click', function () {
-                            window.organigramArrowsVisible = !window.organigramArrowsVisible;
-                            var diagramEl = document.getElementById('flux-diagram');
-                            if (diagramEl) diagramEl.classList.toggle('hide-organigram-arrows', !window.organigramArrowsVisible);
-                            el.classList.toggle('selected', window.organigramArrowsVisible);
-                            window.syncPlotContainerOrganigramHideClasses();
+                            const oui = !window.organigramArrowsVisible;   // lu AVANT : l'onglet Science impose true
+                            window.switchTab('scie');
+                            window.afficherDetailsOrganigramme(oui);
                         });
                         el.dataset.boundClick = '1';
                     }
