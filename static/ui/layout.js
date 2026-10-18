@@ -1,7 +1,7 @@
 // File: layout.js - Gestion automatique du layout en deux colonnes
-// Desc: Réorganise les divs dans left-column et right-column selon la largeur d'écran
-// Version 1.0.5
-// - v1.0.5: la colonne de la frise passe tout à gauche (avant left-column), sur toute la hauteur.
+// Desc: Range les divs dans left-column et right-column — une seule mise en page, quelle que soit la largeur
+// Version 1.1.0
+// - v1.1.0: plus de mode vertical sous 1000 px (colonnes empilées) ; sur téléphone, la page fait 1000 px, réduite.
 // Date: [October 15, 2026]
 // - v1.0.4: la frise dans sa colonne à droite (#timeline-column, après right-column), dans tous les onglets.
 // - v1.0.3: plus de maxWidth 900px sur right-column (le graphe prend la place libre).
@@ -28,27 +28,8 @@
     
     // Fonction pour réorganiser les divs selon la largeur d'écran
     function reorganizeLayout() {
-        const screenWidth = window.innerWidth;
-        const leftColumn = document.getElementById('left-column');
         const rightColumn = document.getElementById('right-column');
-        const container = document.querySelector('.container');
-        
-        if (!leftColumn || !rightColumn || !container) {
-            return;
-        }
-        
-        // Si widthScreen < 1000, passer la colonne right sous la colonne left
-        if (screenWidth < 1000) {
-            // Changer la direction du container en colonne
-            container.style.flexDirection = 'column';
-            rightColumn.style.width = '100%';
-        } else {
-            // Direction normale en ligne
-            container.style.flexDirection = 'row';
-            // Réinitialiser la largeur de right-column
-            rightColumn.style.width = '';
-        }
-        
+
         // Récupérer toutes les divs AVANT de vider les colonnes
         // (important : les récupérer avant de les déplacer)
         const divs = {};

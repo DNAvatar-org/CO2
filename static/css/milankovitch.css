@@ -5,6 +5,8 @@
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
    Logs:
+   - 2026-10-18 : sans barre de scroll (page = hauteur de la fenêtre, graphe en reste) ; légende sur une ligne, … si
+     trop longue ; explication en popup (<dialog>) au clic sur le dessin.
    - 2026-10-15 : fond transparent (html : style.css le peint en #05060a) ; .milankovitch-explain repliable (+ / −).
    - Extracted from html/test_milankovitch.html inline <style>. .divGlass = style.css (source unique).
    ============================================================ */
@@ -20,8 +22,8 @@ body.page-milankovitch {
     max-width: 1200px;
     background: transparent;
     padding: 0;
-    height: 100%;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;   /* pas de barre de scroll : le graphe prend le reste de la hauteur (.cycles-row) */
     display: flex;
     flex-direction: column;
     margin: 0 auto;
@@ -57,6 +59,9 @@ body.page-milankovitch {
     position: static;
     display: block;
     margin: 0 0 0 auto;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .page-milankovitch h1 {
@@ -117,10 +122,10 @@ body.page-milankovitch {
     background: #3a8eef;
 }
 
-/* Ligne 2 : chart — hauteur restante (footer déplié), min 400px */
+/* Ligne 2 : chart — hauteur restante de la fenêtre */
 .page-milankovitch .cycles-row {
     flex: 1 1 0;
-    min-height: 400px;
+    min-height: 0;
     margin-left: 10px;
     margin-right: 10px;
     display: flex;
@@ -165,6 +170,13 @@ body.page-milankovitch {
     border-radius: 4px;
 }
 
+.page-milankovitch .floating-legend .legend-item .legend-nom {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;   /* pas assez de place : … plutôt qu'un retour à la ligne (nom entier au survol) */
+}
+
 .page-milankovitch .floating-legend .legend-item .legend-color {
     width: 16px;
     height: 4px;
@@ -202,27 +214,36 @@ body.page-milankovitch {
 }
 
 
-/* Explication du couplage obliquité → bilan radiatif (v2026-09-18) */
+/* Le dessin ouvre l'explication du couplage obliquité → bilan radiatif, en popup (<dialog>, static/milankovitch/entrees.js) */
+.page-milankovitch #milankovitch-dessin { cursor: pointer; }
 .milankovitch-explain {
-    margin: 12px 16px 24px;
-    padding: 14px 18px;
+    position: fixed;
+    width: min(760px, calc(100vw - 40px));
+    max-height: calc(100vh - 40px);
+    overflow: auto;
+    box-sizing: border-box;
+    margin: auto;
+    padding: 14px 40px 14px 18px;
     border-radius: 8px;
-    max-width: 1100px;
     line-height: 1.5;
     font-size: 13px;
+    color: #e0e0e0;
+    background: rgba(13, 17, 26, 0.95);
 }
-.milankovitch-explain h2 { font-size: 15px; margin: 0; display: inline; }
-/* Replié par défaut : le titre est le bouton, précédé de + (déplier) / − (replier). */
-.milankovitch-explain summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; }
-.milankovitch-explain summary::-webkit-details-marker { display: none; }
-.milankovitch-explain summary::before {
-    content: '+';
-    flex: 0 0 22px; height: 22px; line-height: 20px; text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 50%;
-    font-size: 16px; font-weight: bold;
+.milankovitch-explain::backdrop { background: rgba(0, 0, 0, 0.55); }
+.milankovitch-explain h2 { font-size: 15px; margin: 0 0 8px; color: #fff; }
+.page-milankovitch .milankovitch-explain .milankovitch-fermer {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.25);
 }
-.milankovitch-explain[open] summary::before { content: '−'; }
-.milankovitch-explain[open] summary { margin-bottom: 8px; }
+.page-milankovitch .milankovitch-explain .milankovitch-fermer:hover { background: rgba(255, 255, 255, 0.18); }
 .milankovitch-explain p { margin: 8px 0; }
 .milankovitch-explain ul { margin: 6px 0 6px 22px; }
 .milankovitch-explain code { font-family: 'Courier New', monospace; padding: 0 4px; }

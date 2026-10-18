@@ -3,9 +3,12 @@
 //       bande d'incertitude, médiane en pointillés par-dessus), deux courbes du MODÈLE en segments de point à point —
 //       graine t° continue (chaîne de clics, orange, pleine) et graine t° imposée (frise de chaque époque, violette,
 //       tirets) —, logos d'époque en bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.6.4
-// Date: 2026-10-15
+// Version 1.9.0
+// Date: 2026-10-16
 // logs :
+//   - v1.9.0 (2026-10-16): effet orbital direct sur la température moyenne du globe (°C, tirets or, astronomie.js) ;
+//     légende sur plusieurs lignes si elle ne tient pas.
+//   - v1.6.5 (2026-10-16): point vert = le dernier calcul de l'interface (H.dernier), dans la légende.
 //   - v1.6.4 (2026-10-15): légende sur une ligne, centrée en X, en bas (au-dessus des dates de l'axe).
 //   - v1.6.3 (2026-10-15): courbe verte = tes calculs sur 📱 (H.scenario), légende à quatre lignes.
 //   - v1.6.2 (2026-10-15): survol d'un point du modèle = « T calculée », statut si non convergé ; noms des courbes = d'où vient la graine.
@@ -30,6 +33,7 @@
     const px = t => (H.vue.xOffset - t) * H.vue.xScale;
     const py = T => H.vue.height / 2 - (T - H.vue.yOffset) * H.vue.yScale;
     let zones = [];   // zones survolables : { x0, x1, y0, y1, texte }
+    const A = window.astronomie;   // effet orbital direct (effetOrbital)
     let cibles = [];  // logos cliquables : { x0, x1, y0, y1, id } — l'époque à lancer, comme la frise
 
     function drawGrid(ctx) {
@@ -101,6 +105,27 @@
         }
     }
 
+    /** Effet orbital direct sur la température moyenne du globe (astronomie.js effetOrbitalGlobalK : excentricité, Planck
+     *  sans rétroaction), sur l'axe des °C, autour de la médiane de la littérature en 1950 (année de référence de l'écart),
+     *  tirets or ; un point tous les 2 px (80 termes : pas besoin de série). */
+    function effetOrbital(ctx) {
+        const v = H.vue, L = H.litterature, AN = L.AN;
+        const debut = Math.max(AN - v.xOffset, A.AN_REFERENCE - A.VALIDITE_ANS);
+        const fin = Math.min(AN - (v.xOffset - v.width / v.xScale), A.AN_REFERENCE + A.VALIDITE_ANS, AN);   // pas après la littérature
+        if (debut >= fin) return;
+        const T1950 = L.a(AN - A.AN_REFERENCE)[2];
+        const n = Math.max(2, Math.ceil((px(AN - fin) - px(AN - debut)) / 2));
+        ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 1.6; ctx.setLineDash([5, 3]); ctx.beginPath();
+        for (let k = 0; k <= n; k++) {
+            const an = debut + (fin - debut) * k / n, dT = A.effetOrbitalGlobalK(an), x = px(AN - an), y = py(T1950 + dT);
+            if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            if (k % 6 === 0) zones.push({ x0: x - 6, x1: x + 6, y0: y - 6, y1: y + 6,
+                texte: 'Effet orbital direct : ' + (dT >= 0 ? '+' : '') + dT.toFixed(3) + ' °C par rapport à 1950 (excentricité seule, Planck sans rétroaction ; '
+                    + A.SOLUTION_NOM + ') — an ' + Math.round(an).toLocaleString('fr-FR') });
+        }
+        ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+    }
+
     H.render = function (ctx) {
         const v = H.vue, L = H.litterature;
         zones = [];
@@ -151,10 +176,20 @@
         // Modèles : chaîne de clics (courbe_modele.py, orange plein) puis frise à chaque époque (courbe_modele.py frise,
         // violette en tirets : l'orange se voit entre les tirets). La médiane de la littérature, en pointillés, passe
         // par-dessus les deux.
+        effetOrbital(ctx);
         courbe(ctx, H.modele, COUL.mod, [], 'Chaîne de clics (graine = T du calcul précédent)');
         courbe(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Frise (graine = courbe cyan à ▶)');
         courbe(ctx, H.scenario, COUL.scen, [], 'Tes clics sur 📱 (graine = T du calcul précédent)');
         mediane(ctx, lit, COUL.lit);
+        // Le dernier calcul de l'interface (main.js, histoire:calcul) : gros point vert cerclé, par-dessus tout.
+        if (H.dernier !== null) {
+            const p = H.dernier, x = px(p.t), y = py(p.T);
+            ctx.fillStyle = COUL.scen; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(x, y, 6, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.lineWidth = 1;
+            zones.push({ x0: x - 8, x1: x + 8, y0: y - 8, y1: y + 8,
+                texte: 'Dernier calcul — ' + p.etape + ' : T calculée ' + p.T.toFixed(1) + ' °C'
+                    + (p.st === 'converged' ? '' : ' (⚠️ non convergé : ' + p.st + ')') + ', glace ' + Math.round(p.glace * 100) + ' %, CO₂ ' + Math.round(p.ppm) + ' ppm' });
+        }
 
         // Logos : bandeau en haut, au DÉBUT de leur époque (▶ du TIMELINE).
         ctx.textAlign = 'center';
@@ -169,15 +204,25 @@
             ctx.fillText(e.nom, x, i % 2 ? 124 : 110);   // noms alternés : les époques proches ne se chevauchent pas
         });
 
-        // Légende : une ligne, centrée en X, en bas (au-dessus des dates de l'axe, à v.height − 20)
+        // Légende : centrée en X, en bas (au-dessus des dates de l'axe, à v.height − 20) ; en autant de lignes qu'il faut
+        // pour tenir dans la largeur, la dernière juste au-dessus des dates, les autres au-dessus d'elle.
         ctx.textAlign = 'left'; ctx.font = '12px Tahoma';
         const legende = [[COUL.lit, '··· littérature'], [COUL.mod, '— graine t° continue'],
-            [COUL.frise, '- - graine t° imposée'], [COUL.scen, '— tes clics sur 📱']];
-        const ecart = 24, largeurs = legende.map((l) => ctx.measureText(l[1]).width);
-        let xLeg = (v.width - largeurs.reduce((a, b) => a + b, 0) - ecart * (legende.length - 1)) / 2;
+            [COUL.frise, '- - graine t° imposée'], [COUL.scen, '— tes clics sur 📱'], [COUL.scen, '● dernier calcul'], ['#f1c40f', '- - effet orbital direct (°C)']];
+        const ecart = 24, largeurs = legende.map((l) => ctx.measureText(l[1]).width), place = v.width - 2 * ecart;
+        const lignes = [[]];
         legende.forEach((l, i) => {
-            ctx.fillStyle = l[0]; ctx.fillText(l[1], xLeg, v.height - 40);
-            xLeg += largeurs[i] + ecart;
+            const ligne = lignes[lignes.length - 1];
+            const largeur = ligne.reduce((a, k) => a + largeurs[k] + ecart, 0) + largeurs[i];
+            if (ligne.length > 0 && largeur > place) lignes.push([i]); else ligne.push(i);
+        });
+        lignes.forEach((ligne, r) => {
+            let xLeg = (v.width - ligne.reduce((a, k) => a + largeurs[k], 0) - ecart * (ligne.length - 1)) / 2;
+            const yLeg = v.height - 40 - 16 * (lignes.length - 1 - r);
+            ligne.forEach((k) => {
+                ctx.fillStyle = legende[k][0]; ctx.fillText(legende[k][1], xLeg, yLeg);
+                xLeg += largeurs[k] + ecart;
+            });
         });
     };
 

@@ -3,7 +3,17 @@
 //       (#visu-panel), son interface (titre, organigramme, frise) par-dessus. Les panneaux ne sont pas déplacés dans le DOM
 //       (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont en position fixe, recalés quand
 //       la zone change de taille, au redimensionnement et au défilement (c'est le body qui défile, index-shell.css).
-// Version 1.3.10
+// Version 1.6.2
+// - v1.6.2: Entrée relayée à la fenêtre Milankovitch ouverte (milankovitch:valider).
+// - v1.6.1: histoire:vue relayé à la fenêtre Milankovitch (milankovitch:periode).
+// - v1.6.0: la fenêtre Spectre passe à fenetres.js (toutes les fenêtres de l'onglet ISS) ; Temps et Point de vue sous leur pile.
+// - v1.5.1: iss:terre — vrai Soleil à l'écran et orbite de la Lune passés à l'organigramme ; fenêtre Spectre collée en haut, de
+//   la Terre au bord droit.
+// - v1.5.0: onglet ISS : le spectre dans une fenêtre repliable au-dessus de Temps (basculerSpectreISS) ; dépliée, Temps et
+//   Point de vue descendent dessous.
+// - v1.4.1: page ISS en caméra de l'ISS (iss:terre vue 'iss') : organigramme invisible (body.iss-horizon).
+// - v1.4.0: page ISS chargée une fois, puis cartes / atmosphère / côté nuit lumineux envoyés par message (iss:cartes) : sa vue
+//   et son Soleil restent d'une époque à l'autre ; lave (surface > point de Draper) : notIR = 70 ; pays seulement depuis 1750.
 // - v1.3.9: onglet ISS : le Soleil de l'organigramme prend l'angle du vrai Soleil à l'écran (iss:terre).
 // - v1.3.8: frise tout à gauche : les panneaux vont de la frise (ISS, Histoire) ou de l'organigramme (les autres) au bord droit.
 // - v1.3.7: Histoire : titre et organigramme cachés (body.histoire), la courbe sur toute la largeur.
@@ -56,27 +66,51 @@
     /** Atmosphère du dernier calcul pour la page ISS (?atm=, pages/ISS js/url.js) : pression de surface 🎈 [atm] ; hauteur
      *  d'échelle H = R T / (M g) à la température de surface [km] ; luminescence nocturne (airglow : O, OH, Na, O₂ — toutes
      *  issues de l'oxygène) ∝ part massique d'O₂ rapportée à aujourd'hui (approximation déclarée). Sans air : p:0. */
-    function atmISS() {
+    function atmEpoque() {
         const D = window.DATA;
-        const H_km = window.CONST.R_GAS * D['🧮']['🧮🌡️'] / (D['🫧']['🧪'] * D['📅']['🍎']) / 1000;
-        return 'p:' + D['🫧']['🎈'].toFixed(3) + ',H:' + H_km.toFixed(2) + ',lum:' + (D['🫧']['🍰🫧🫁'] / O2_MASSIQUE_ACTUEL).toFixed(3);
+        return { p: D['🫧']['🎈'], H: window.CONST.R_GAS * D['🧮']['🧮🌡️'] / (D['🫧']['🧪'] * D['📅']['🍎']) / 1000,
+            lum: D['🫧']['🍰🫧🫁'] / O2_MASSIQUE_ACTUEL };
+    }
+    function atmISS() {
+        const a = atmEpoque();
+        return 'p:' + a.p.toFixed(3) + ',H:' + a.H.toFixed(2) + ',lum:' + a.lum.toFixed(3);
     }
     /** Année de la frise, signée (négative avant notre ère) : géologique = années avant le présent, sinon calendrier. */
     function anneeFrise() {
         const ans = window.getTimelineCurrentYears();
         return window.timelineEpochIsForward(window.getEpochAtTimelineIndex()) ? ans : -ans;
     }
-    function cartesISS() {
-        if (anneeFrise() >= AN_TERRE_REELLE) return '';
+    /** Cartes de l'époque pour la page ISS : { jour, nuit } en URL absolues, jour = null dès l'an 2000 (ses vraies textures),
+     *  nuit = null sans carte de nuit (pas de lumières). */
+    function cartesEpoque() {
+        if (anneeFrise() >= AN_TERRE_REELLE) return { jour: null, nuit: null };
         const nuit = window.DATA['📜']['🌙'];
-        return '&jour=' + encodeURIComponent(new URL(window._lastPlanetTexturePath, CO2_PUBLIE).href)
-            + (nuit === '' ? '' : '&nuit=' + encodeURIComponent(new URL(nuit, CO2_PUBLIE).href));
+        return { jour: new URL(window._lastPlanetTexturePath, CO2_PUBLIE).href, nuit: nuit === '' ? null : new URL(nuit, CO2_PUBLIE).href };
     }
+    function cartesISS() {
+        const c = cartesEpoque();
+        return (c.jour === null ? '' : '&jour=' + encodeURIComponent(c.jour)) + (c.nuit === null ? '' : '&nuit=' + encodeURIComponent(c.nuit));
+    }
+    // Côté nuit LUMINEUX (pages/ISS ?notIR=) : une surface au-dessus du point de Draper (798 K, début de l'incandescence
+    // visible) brille d'elle-même — la lave de l'Hadéen ; la nuit montre alors sa carte de jour à NOT_IR_LAVE %. Sinon 0.
+    // Pays (pages/ISS ?pays=) : seulement depuis 1750 — avant, une Terre sans frontières.
+    const AN_PAYS = 1750;
+    const T_DRAPER_K = 798;
+    const NOT_IR_LAVE = 70;
+    const notIRISS = () => (window.DATA['🧮']['🧮🌡️'] >= T_DRAPER_K ? NOT_IR_LAVE : 0);
     function chargerISS() {
         // la Terre vue de loin, depuis Iridium, en mode bilan radiatif
-        const src = ISS_PAGE + '?provenance=CO2&sat=iridium&vue=terre&onglet' + (zenISS ? '&zen' : '') + '&atm=' + atmISS() + cartesISS();
         const iframe = document.getElementById('iss-iframe');
-        if (iframe.src !== src) iframe.src = src;   // même époque : la page garde sa vue (pas de rechargement)
+        // Première ouverture : la page, avec les cartes de l'époque. Ensuite, jamais rechargée : les cartes de l'époque lui
+        // sont envoyées (pages/ISS js/hote.js, iss:cartes) — sa vue, sa date et son Soleil, donc l'organigramme, restent.
+        if (iframe.getAttribute('src') === null) {
+            iframe.src = ISS_PAGE + '?provenance=CO2&sat=iridium&vue=terre&onglet' + (zenISS ? '&zen' : '') + '&atm=' + atmISS()
+                + cartesISS() + '&notIR=' + notIRISS() + '&pays=' + (anneeFrise() >= AN_PAYS);
+            return;
+        }
+        const c = cartesEpoque();
+        iframe.contentWindow.postMessage({ type: 'iss:cartes', jour: c.jour, nuit: c.nuit, notIR: notIRISS(), atm: atmEpoque(),
+            pays: anneeFrise() >= AN_PAYS }, '*');
     }
     function basculerZenISS() {
         zenISS = !zenISS;
@@ -87,8 +121,23 @@
     // (toucher, son bouton ⛶) — le bouton du panneau repart de son état.
     window.addEventListener('message', function (e) {
         if (e.data.type === 'histoire:epoque') window.setEpochFromEpochButton(e.data.id);
+        // période visible d'Histoire → la fenêtre Milankovitch la prend (html/test_milankovitch.html)
+        if (e.data.type === 'histoire:vue') document.querySelector('#milankovitch-panel iframe').contentWindow.postMessage(
+            { type: 'milankovitch:periode', debut: e.data.debut, fin: e.data.fin }, '*');
         if (e.data.type === 'iss:zenEtat') zenISS = e.data.zen;
-        if (e.data.type === 'iss:terre' && window.API_ONGLETS.getCurrentTab() === 'iss') poserTerreISS(e.data);
+        if (e.data.type === 'iss:terre' && window.API_ONGLETS.getCurrentTab() === 'iss') {
+            // caméra de l'ISS (l'horizon) : pas de Terre entière autour de laquelle poser l'organigramme — il disparaît
+            document.body.classList.toggle('iss-horizon', e.data.vue === 'iss');
+            poserTerreISS(e.data);
+        }
+    });
+
+    // Entrée, fenêtre Milankovitch ouverte (dépliée sur l'onglet ISS, ou onglet courant) : son bouton VALIDER. Tapée dans
+    // la page Milankovitch elle-même, la touche y reste (static/milankovitch/entrees.js).
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        if (window.FENETRES.ouverte() !== 'milankovitch' && window.API_ONGLETS.getCurrentTab() !== 'milankovitch') return;
+        document.querySelector('#milankovitch-panel iframe').contentWindow.postMessage({ type: 'milankovitch:valider' }, '*');
     });
 
     /** Organigramme en plein (onglet ISS) : il prend la taille et la place du panneau de l'onglet (index-shell.css,
@@ -98,7 +147,7 @@
     function entrerOrganigrammePlein(panneau, classe) {
         if (document.body.classList.contains('organigramme-plein')) return;   // onglet re-cliqué (onglet, 🛰) : on y est déjà
         const T = window.TERRE_ECRAN;
-        terreAvantPlein = { cx: T.cx, cy: T.cy, R: T.R, soleilTheta: T.soleilTheta };
+        terreAvantPlein = { cx: T.cx, cy: T.cy, R: T.R, soleilVrai: null, orbite: null };
         T.cadreEl = document.getElementById(panneau);
         document.body.classList.add('organigramme-plein', classe);
     }
@@ -108,8 +157,17 @@
         window.ZOOM_TERRE.poser(terreAvantPlein);
     }
     // ISS : la Terre est une vraie boule — cercle d'atmosphère et globe de l'organigramme sur son bord (TERRE_ECRAN.boule)
-    function entrerPleinePageISS() { entrerOrganigrammePlein('iss-panel', 'terre-iss'); window.TERRE_ECRAN.boule = true; }
-    function sortirPleinePageISS() { window.TERRE_ECRAN.boule = false; sortirOrganigrammePlein('terre-iss'); }
+    function entrerPleinePageISS() { entrerOrganigrammePlein('iss-panel', 'terre-iss'); window.TERRE_ECRAN.boule = true; window.FENETRES.poser(); }
+    function sortirPleinePageISS() {
+        window.TERRE_ECRAN.boule = false; sortirOrganigrammePlein('terre-iss');
+        document.body.classList.remove('iss-horizon');   // hors de l'onglet ISS, l'organigramme est toujours visible
+        document.body.classList.remove('iss-lune');
+        window.FENETRES.montrer(null);   // le spectre retrouve sa place (Spectrale) ou se cache (autres onglets)
+    }
+    function effacerSpectre() {
+        const canvas = document.getElementById('spectral-visualization');
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    }
     // Histoire : titre et organigramme cachés, la courbe seule sur toute la largeur (index-shell.css, body.histoire)
     function entrerHistoire() { document.body.classList.add('histoire'); }
     function sortirHistoire() { document.body.classList.remove('histoire'); }
@@ -118,8 +176,11 @@
     function poserTerreISS(t) {
         const i = document.getElementById('iss-iframe').getBoundingClientRect();
         const f = document.getElementById('flux-diagram'), fr = f.getBoundingClientRect();
-        window.ZOOM_TERRE.poser({ cx: i.left + t.cx - fr.left - f.clientLeft, cy: i.top + t.cy - fr.top - f.clientTop, R: t.r,
-            soleilTheta: t.soleil });   // le Soleil de l'organigramme du côté du vrai, il suit la caméra
+        const ox = i.left - fr.left - f.clientLeft, oy = i.top - fr.top - f.clientTop;
+        // le Soleil de l'organigramme sur le vrai quand il est à l'écran ; vue Terre–Lune : l'orbite de la Lune pour cercle
+        window.ZOOM_TERRE.poser({ cx: t.cx + ox, cy: t.cy + oy, R: t.r,
+            soleilVrai: t.soleilEcran === null ? null : { x: t.soleilEcran.x + ox, y: t.soleilEcran.y + oy }, orbite: t.orbite });
+        document.body.classList.toggle('iss-lune', t.orbite !== null);   // le cercle d'atmosphère s'efface (index-shell.css)
         envoyerMargesISS();   // rayon ou Soleil changés : la place à gauche aussi
     }
 
@@ -149,16 +210,21 @@
         b.setProperty('--onglet-gauche', apresFrise + 'px');
         b.setProperty('--onglet-largeur', (droite - apresFrise) + 'px');
         b.setProperty('--onglet-hauteur', page.height + 'px');
+        window.FENETRES.poser();   // la pile des fenêtres suit le panneau
         envoyerMargesISS();
     }
-    /** Bas du titre « Bilan Radiatif », en px de la page ISS : ses fenêtres Temps et Point de vue commencent dessous (pages/ISS
-     *  js/url.js, ?provenance=CO2) ; et la place que l'organigramme demande à gauche de la Terre : la page ISS la décale vers
-     *  la droite pour la laisser (pages/ISS js/hote.js). Envoyé quand le panneau bouge, à chaque chargement de la page ISS,
-     *  quand sa Terre bouge et après un glisser dans l'organigramme. */
+    /** Bas du titre « Bilan Radiatif », ou de la pile des fenêtres si elle est plus bas, en px de la page ISS : ses
+     *  fenêtres Temps et Point de vue commencent dessous (pages/ISS js/url.js, ?provenance=CO2) ; et la place que
+     *  l'organigramme demande à gauche de la Terre : la page ISS y pose le centre de sa Terre (pages/ISS js/hote.js).
+     *  Envoyé quand le panneau bouge, à chaque chargement de la page ISS, quand sa Terre bouge, après un glisser dans
+     *  l'organigramme et quand une fenêtre se plie ou se déplie. */
     function envoyerMargesISS() {
         const iframe = document.getElementById('iss-iframe');
-        const haut = document.querySelector('#visu-panel .title-container').getBoundingClientRect().bottom - iframe.getBoundingClientRect().top;
-        iframe.contentWindow.postMessage({ type: 'iss:marges', haut: haut, gauche: window.ZOOM_TERRE.placeAGauche() }, '*');
+        const haut = Math.max(document.querySelector('#visu-panel .title-container').getBoundingClientRect().bottom,
+            window.FENETRES.bas()) - iframe.getBoundingClientRect().top;   // sous la pile des fenêtres (fenetres.js)
+        // vue Terre–Lune : pas de place à faire, la page ISS garde son cadrage (la Terre au milieu de l'image)
+        const gauche = window.TERRE_ECRAN.orbite === null ? window.ZOOM_TERRE.placeAGauche() : iframe.clientWidth / 2;
+        iframe.contentWindow.postMessage({ type: 'iss:marges', haut: haut, gauche: gauche }, '*');
     }
 
     /** Spectre caché sous un autre onglet : son contenu sort du rendu (display: none, index-shell.css) et le canvas est
@@ -171,8 +237,7 @@
         window.ZOOM_TERRE.redessiner();   // mise en page changée : boutons, satellites et flèches suivent
         zone().classList.toggle('spectre-cache', !oui);
         if (oui) return;
-        const canvas = document.getElementById('spectral-visualization');
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        effacerSpectre();
     }
 
     /** Après l'injection de visu (loader_panels.initAfterLoad) : la zone existe. Onglet ISS ouvert : chaque calcul
@@ -191,6 +256,6 @@
     }
 
     window.ONGLETS_GRAPHE = { PANNEAUX: PANNEAUX, placer: placer, brancher: brancher, spectreVisible: spectreVisible, basculerZenISS: basculerZenISS,
-        chargerISS: chargerISS, entrerPleinePageISS: entrerPleinePageISS, sortirPleinePageISS: sortirPleinePageISS,
+        chargerISS: chargerISS, effacerSpectre: effacerSpectre, envoyerMargesISS: envoyerMargesISS, entrerPleinePageISS: entrerPleinePageISS, sortirPleinePageISS: sortirPleinePageISS,
         entrerHistoire: entrerHistoire, sortirHistoire: sortirHistoire };
 })();

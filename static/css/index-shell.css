@@ -1,6 +1,14 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.1.13
+   Version 1.2.3
+   - v1.2.3: barre d'onglets cachée ; titres de fenêtres en 04B_03 italique ; Energies / Atmosphère sous l'époque ; en ISS, T° et
+     pression dans un rond posé sur la Terre, titre traversé par la souris ; organigramme coupé à son bord.
+   - v1.2.2: pied de page, liens GitHub avec logo (.credits-git).
+   - v1.2.1: poignée coin bas gauche de la fenêtre dépliée (.fenetre-poignee) ; --fenetre-gauche.
+   - v1.2.0: onglet ISS en fond, les autres onglets en fenêtres empilées en haut à droite (.fenetre-tete, .fenetre-ouverte).
+   - v1.1.17: fenêtre Spectre collée en haut, de la Terre au bord droit, bouton dans son coin ; vue Terre–Lune : cercle d'atmosphère effacé.
+   - v1.1.16: onglet ISS, fenêtre Spectre repliable au-dessus de Temps (.iss-spectre-tete, body.spectre-deplie).
+   - v1.1.15: body.iss-horizon (page ISS en caméra de l'ISS) : organigramme invisible.
    Copyright 2025 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    Date: 2025-03-08
@@ -28,19 +36,10 @@
    ============================================================ */
 
 /* --- Onglets (tabs-bar) : Visuel / Scientifique --- */
+/* Barre retirée de l'affichage : les fenêtres (.fenetre-tete) et l'onglet ISS en fond la remplacent ; ses boutons restent
+   dans la page, API_ONGLETS les tient (registerTab buttonId). */
 .tabs-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;                /* toute la largeur : Milankovitch à droite toute */
-    pointer-events: none;    /* la barre laisse passer la souris, seuls ses boutons la captent */
-    z-index: 1000;
-    display: flex;
-    gap: 2px;
-    padding: 0 0 0 10px;
-    align-items: flex-start;
-    min-height: 20px;
-    margin: 0;
+    display: none;
 }
 .tabs-bar button {
     pointer-events: auto;
@@ -111,31 +110,6 @@ body {
     overflow-y: hidden;
 }
 
-/* Position verticale / télé : une seule barre de scroll (body), pas de scroll interne au visu-panel */
-@media (max-width: 999px) {
-    body {
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-    }
-    .tab-panel.active {
-        flex: 0 0 auto;
-        max-height: none;
-        height: auto;
-    }
-    #visu-panel.active {
-        overflow: hidden;
-        overflow-x: hidden;
-        overflow-y: hidden;
-    }
-    #visu-panel.active > * {
-        flex: 0 0 auto;
-        min-height: min-content;
-        overflow: hidden;
-        overflow-y: hidden;
-    }
-}
-
 /* Onglets de la zone du graphe spectral (Scientifique, Bench, Milankovitch, Histoire) : par-dessus le graphe, la page
    Spectrale (#visu-panel) restant visible. top / left / width / height posés par static/ui/onglets_graphe.js. */
 .onglet-graphe.active {
@@ -179,7 +153,7 @@ body.organigramme-plein #visu-panel .flux-diagram-wrapper {
 body.organigramme-plein #flux-diagram {
     width: 100%;
     height: 100%;
-    overflow: visible;
+    overflow: clip;   /* les rayons du Soleil s'arrêtent à son bord, sans passer sur la frise */
     pointer-events: none;
     background: transparent;
     border-color: transparent;
@@ -192,7 +166,7 @@ body.organigramme-plein #flux-diagram .flux-radiation-container {
 }
 /* Seuls les boutons et le Soleil (qui se glisse) captent la souris : le cercle d'atmosphère (cell-albedo), le globe, le
    noyau et les satellites couvrent la Terre ISS et l'empêcheraient de tourner sous la souris. */
-body.organigramme-plein #flux-diagram :is(#cell-co2, #cell-methane, #cell-h2o, #cell-albedo-btn, #cell-reemis, #cell-soleil) .flux-circle-bg {
+body.organigramme-plein #flux-diagram :is(#cell-co2, #cell-methane, #cell-h2o, #cell-albedo-btn, #cell-reemis, #cell-soleil, #cell-geometrie) .flux-circle-bg {
     pointer-events: auto;
 }
 /* Onglet ISS (body.terre-iss) : la Terre est celle de la page ISS — le globe Three.js de l'organigramme est retiré ; le
@@ -202,6 +176,43 @@ body.terre-iss #cell-terre {
 }
 body.terre-iss #visu-panel .title-container {
     z-index: 960;
+}
+/* Le titre ne prend pas la souris (le 🛰 DSCOVR, glissé dessous, la perdait) : seuls ses boutons et la T° la prennent. Sa
+   hauteur suit son contenu (époque, Energies, Atmosphère) : le Soleil, qui l'évite (bornesPar), le voit en entier. */
+body.terre-iss #visu-panel .title-container {
+    pointer-events: none;
+    flex: 0 0 auto;
+    height: auto;
+}
+body.terre-iss #visu-panel .title-container :is(.titre-affichage, .synthese_Temp-temp-line) {
+    pointer-events: auto;
+}
+/* Energies / Atmosphère : collés à gauche de la zone, à mi-hauteur (--onglet-*, onglets_graphe.js placer) ; le Soleil et
+   CERES les évitent (bornesPar, configOrganigramme.js) */
+body.terre-iss #visu-panel .titre-affichages {
+    position: fixed;
+    left: calc(var(--onglet-gauche) + 10px);
+    top: calc(var(--onglet-haut) + var(--onglet-hauteur) / 2);
+    transform: translateY(-50%);
+    margin: 0;
+}
+/* T° et pression posées sur la Terre ISS (configOrganigramme.js SYNTHESE_SUR_TERRE, zoom_terre.js) : un rond noir
+   transparent, bordé de la couleur du texte ; le bloc reste dans le titre, dont il prend la couleur (T° de surface). */
+body.terre-iss #visu-panel .synthese_Temp-col-right {
+    position: fixed;
+    left: var(--synthese-x);
+    top: var(--synthese-y);
+    transform: translate(-50%, -50%);
+    width: 130px;
+    height: 130px;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    background: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
 }
 /* Onglet Histoire (body.histoire) : titre et organigramme cachés, la courbe seule sur toute la largeur. L'organigramme sort
    du rendu (display) : des règles forcent « visibility: visible !important » sur certains de ses éléments. */
@@ -245,6 +256,119 @@ body.histoire #visu-panel .flux-diagram-wrapper {
 .iss-zen-btn:hover {
     opacity: 1;
 }
+/* Onglet ISS en fond : fenêtres empilées en haut à droite (static/ui/fenetres.js), au-dessus de Temps et Point de vue de la
+   page ISS (qui descendent sous la pile, iss:marges). Titres au style des fenêtres de la page ISS (pages/ISS css/pesquet.css :
+   .b-plier, #temps h2), alignés à droite ; leur hauteur (top) est posée par fenetres.js et glisse. Repliée : le titre et +.
+   Dépliée : la fenêtre en haut, jusqu'au bord droit (--fenetre-haut, --fenetre-gauche, --fenetre-hauteur : la Terre frôlée,
+   ou la taille choisie à la poignée) ; son titre devient un − dans son coin, sans le mot. */
+.fenetre-tete {
+    display: none;
+    position: fixed;
+    left: calc(var(--onglet-gauche) + var(--onglet-largeur) - 16px);
+    transform: translateX(-100%);
+    z-index: 970;
+    align-items: center;
+    gap: 6px;
+    font: italic normal 12px/1.5 '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;   /* celle d'EVENEMENT, en italique */
+    text-transform: uppercase;
+    color: #9aa3b5;
+    cursor: pointer;
+    transition: top 0.4s ease;
+}
+body.terre-iss .fenetre-tete { display: flex; }
+.fenetre-tete.deplie span { visibility: hidden; }
+/* « Energies » / « Atmosphère » sous l'époque (html/visu_radiatif.html) : le + / − et la police des titres de fenêtres */
+.titre-affichages {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+}
+.titre-affichage {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font: italic normal 12px/1.5 '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;
+    text-transform: uppercase;
+    color: #9aa3b5;
+    cursor: pointer;
+}
+.fenetre-tete button,
+.titre-affichage button {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    font: 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    color: #e8eaf0;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    cursor: pointer;
+}
+.fenetre-tete button:hover,
+.titre-affichage button:hover { background: rgba(255, 255, 255, 0.14); }
+.fenetre-tete button::after,
+.titre-affichage button::after { content: '+'; }
+.fenetre-tete.deplie button::after,
+.titre-affichage.deplie button::after { content: '−'; }
+/* la fenêtre dépliée : zone du graphe spectral, ou panneau d'un onglet (les !important battent les bords posés en ligne par
+   onglets_graphe.js placer et le display: none des onglets inactifs) */
+body.terre-iss #visu-panel .plot-container-wrapper.fenetre-ouverte,
+body.terre-iss .onglet-graphe.fenetre-ouverte {
+    visibility: visible;
+    display: flex !important;
+    position: fixed !important;   /* la zone du spectre porte style="position: relative" (html/visu_radiatif.html) */
+    z-index: 960;
+    top: var(--fenetre-haut) !important;
+    left: var(--fenetre-gauche) !important;
+    width: calc(var(--onglet-gauche) + var(--onglet-largeur) - 8px - var(--fenetre-gauche)) !important;
+    height: var(--fenetre-hauteur) !important;
+    max-height: none !important;   /* hors .active : .tab-panel et la zone du spectre restent plafonnés à --visu-panel-max-h */
+    flex: none;
+    animation: fenetre-entree 0.4s ease;
+}
+body.terre-iss .onglet-graphe.fenetre-ouverte {
+    flex-direction: column;
+    overflow: hidden;
+    background: rgba(13, 17, 26, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+}
+/* Poignée, coin bas gauche de la fenêtre dépliée (fenetres.js) : la glisser l'agrandit ou la réduit. */
+.fenetre-poignee {
+    display: none;
+    position: fixed;
+    z-index: 970;
+    left: var(--fenetre-gauche);
+    top: calc(var(--fenetre-haut) + var(--fenetre-hauteur) - 18px);
+    width: 18px;
+    height: 18px;
+    cursor: nesw-resize;
+    touch-action: none;
+    background: linear-gradient(45deg, rgba(255, 255, 255, 0.55) 0 2px, transparent 2px 5px,
+        rgba(255, 255, 255, 0.55) 5px 7px, transparent 7px 10px, rgba(255, 255, 255, 0.55) 10px 12px, transparent 12px);
+    clip-path: polygon(0 0, 0 100%, 100% 100%);
+    border-bottom-left-radius: 12px;
+}
+body.terre-iss.fenetre-deplie .fenetre-poignee { display: block; }
+/* le − de la fenêtre la replie : pas de ✕ en plus (Bench, Science, Milankovitch) */
+body.terre-iss .fenetre-ouverte .onglet-fermer { display: none; }
+@keyframes fenetre-entree {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* Pied de page : liens GitHub (API_BILAN, ISS) précédés du logo GitHub, comme la page ISS seule (pages/ISS #pied .git). */
+.credits-git {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.credits-git svg {
+    width: 13px;
+    height: 13px;
+}
+
 /* ✕ d'un onglet (Science, Bench, Milankovitch : html/scie_radiatif.html, html/bench_panel.html, index.html) : par-dessus
    son iframe, coin haut droit ;
    retour à l'onglet ISS. */
@@ -271,8 +395,7 @@ body.histoire #visu-panel .flux-diagram-wrapper {
 
 /* --- Footer index (credits + lien Milankovitch) --- */
 /* Mouvement du footer : 100 % CSS, aucun calcul JS.
- * - Écran horizontal (≥1000px) : --visu-footer-min-h = 50px, footer min 50px, peut grandir jusqu'à 110px.
- * - Écran vertical (≤999px) : footer min 50px, hauteur auto pour contenu ; visible en bas du scroll. */
+ * --visu-footer-min-h = 50px, footer min 50px, peut grandir jusqu'à 110px (paliers de hauteur, style.css). */
 .credits-footer {
     /* Hauteur dynamique : footer se réduit (110→50px) avant que le panel visu rétrécisse */
     height: var(--visu-footer-h);
@@ -298,13 +421,6 @@ body.histoire #visu-panel .flux-diagram-wrapper {
 }
 .credits-footer > .credits-footer-utf8:hover {
     text-decoration: underline;
-}
-@media (max-width: 999px) {
-    .credits-footer {
-        height: auto;
-        min-height: var(--visu-footer-min-h);
-        max-height: none;
-    }
 }
 /* Lien Milankovitch : même rendu que les lignes credits (CO2, etc.), sans faire baisser la signature */
 .credits-milankovitch {
@@ -365,3 +481,10 @@ body.histoire #visu-panel .flux-diagram-wrapper {
     background: color-mix(in srgb, var(--base-color) 35%, transparent);
     color: var(--base-color, #0a0);
 }
+
+/* Onglet ISS, page en caméra de l'ISS (l'horizon, onglets_graphe.js : iss:terre vue 'iss') : pas de Terre entière autour de
+   laquelle poser l'organigramme — il disparaît, sans quitter la mise en page (il revient tel quel en vue Terre). */
+body.iss-horizon #flux-diagram { visibility: hidden; }
+/* Vue Terre–Lune (iss:terre orbite) : le « cercle » de l'organigramme est l'orbite de la Lune, dessinée par la page ISS ; le
+   cercle d'atmosphère, minuscule autour de la Terre, s'efface. */
+body.iss-lune #cell-albedo .flux-circle-bg { visibility: hidden; }

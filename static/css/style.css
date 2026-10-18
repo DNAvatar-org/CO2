@@ -63,14 +63,14 @@ a [role="img"][aria-label]:not([aria-label=""]),
     /* Alias historique (ne pas briser l'existant) */
     --base-color: var(--retro-base);
     /* Hauteur visu : titre + marge + zone commune (timeline = plot = organigramme) */
-    --visu-tabs-h: 28px;
+    --visu-tabs-h: 0px;   /* barre d'onglets retirée de l'affichage (index-shell.css) */
     /* Footer : 3 tailles. Déclencheur = divs à 5px près (top + panel 670 + footer + 5 = 100vh). */
     --visu-footer-min-h: 40px;
     --visu-footer-interm: 80px;
     --visu-footer-max-h: 120px;
     --visu-margin: 8px;
-    /* Au-dessus du panel : body padding 20px + tabs 28px + margin panel 5px */
-    --visu-top-total: calc(20px + var(--visu-tabs-h) + 5px);
+    /* Au-dessus du panel : body padding 5px + tabs + margin panel 5px */
+    --visu-top-total: calc(5px + var(--visu-tabs-h) + 5px);
     /* Footer par défaut ; paliers interm/max quand 100vh >= 808/848 (écart 5px) */
     --visu-footer-h: var(--visu-footer-min-h);
     /* Titre compact : h1 puis 2 colonnes (époque 3 lignes à gauche | T/P à droite) — l'organigramme récupère le reste */
@@ -79,9 +79,6 @@ a [role="img"][aria-label]:not([aria-label=""]),
     --visu-reserve: calc(var(--visu-top-total) + var(--visu-footer-h));
     /* Hauteur max du panel visu (pour laisser place au footer) */
     --visu-panel-max-h: 670px;
-    /* Container : horizontal = 670px, vertical = 670*2 + marge */
-    --visu-container-marge: 80px;
-    --visu-container-h-vertical: calc(var(--visu-panel-max-h) * 2 + var(--visu-container-marge));
     /* Hauteur max de la zone visu (c’est cette variable qui aligne les 3 divs ; max pour laisser place au footer) */
     --visu-h-max: 580px;
     --visu-h: min(var(--visu-h-max), calc(100vh - var(--visu-reserve)));
@@ -90,10 +87,10 @@ a [role="img"][aria-label]:not([aria-label=""]),
 }
 
 /* Paliers footer horizontal : déclencheur = panel et footer à 5px près (53 + 670 + footer + 5 = 100vh) */
-@media (min-width: 1000px) and (min-height: 780px) {
+@media (min-height: 780px) {
     :root { --visu-footer-h: var(--visu-footer-interm); }
 }
-@media (min-width: 1000px) and (min-height: 808px) {
+@media (min-height: 808px) {
     :root { --visu-footer-h: var(--visu-footer-max-h); }
 }
 
@@ -136,7 +133,7 @@ body {
     font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;
     background: transparent;
     min-height: 100vh;
-    padding: 20px 10px 0 10px;
+    padding: 5px 10px 0 10px;   /* plus de barre d'onglets au-dessus */
     color: var(--base-color);
     position: relative;
     display: flex;
@@ -286,13 +283,11 @@ sup {
     height: 100%;
 }
 
-/* Desktop (width >= 1000) : uniquement ce qui change (right-column colonne, hauteurs explicites) */
-@media (min-width: 1000px) {
-    #visu-panel .right-column {
-        min-height: var(--visu-h);
-        flex-direction: column;
-        align-items: stretch;
-    }
+/* right-column en colonne, hauteurs explicites */
+#visu-panel .right-column {
+    min-height: var(--visu-h);
+    flex-direction: column;
+    align-items: stretch;
 }
 
 .left-column {
@@ -308,52 +303,6 @@ sup {
     flex-direction: column;
     gap: 5px;
     flex: 0 0 auto;
-}
-
-/* Vertical (max-width 999px) : container = 670*2+marge, colonnes majorées 670px */
-/* En vertical le footer garde une hauteur min pour rester visible en bas du scroll (body scroll). */
-@media (max-width: 999px) {
-    :root {
-        --visu-footer-min-h: 120px;
-        --visu-footer-interm: 120px;
-        --visu-footer-h: 80px;
-    }
-    /* Plafond hauteur container = viewport − tabs − footer, pour réduire le gap en bas */
-    #visu-panel .container {
-        height: var(--visu-container-h-vertical);
-        max-height: calc(100vh - var(--visu-top-total) - var(--visu-footer-min-h) - 20px);
-        min-height: 0;
-        overflow: visible;
-    }
-    #visu-panel .left-column {
-        flex: 0 0 auto;
-        height: var(--visu-panel-max-h);
-        min-height: 0;
-        max-height: var(--visu-panel-max-h);
-        overflow: visible;
-    }
-    #visu-panel .right-column {
-        flex: 0 0 auto;
-        min-height: var(--visu-panel-content-h);
-        max-height: var(--visu-panel-max-h);
-    }
-    #visu-panel .plot-container-wrapper {
-        min-height: 0;
-        max-height: var(--visu-panel-max-h);
-    }
-    #visu-panel .flux-diagram-wrapper {
-        flex: 0 0 auto;
-        height: var(--visu-panel-content-h);
-    }
-    #visu-panel .timeline-column {
-        flex: 1 1 0;
-        min-height: var(--visu-panel-content-h);
-        height: 100%;
-    }
-    #visu-panel .left-left {
-        flex: 0 1 auto;
-        min-height: 0;
-    }
 }
 
 /* Titre visu : colonne (titre, sous-titre, synthese_Temp empilés), texte à gauche */
@@ -376,30 +325,29 @@ sup {
     align-items: stretch;
 }
 
-/* Desktop (min-width 1000px) : container = 670px, titre + flux + timeline/plot */
-@media (min-width: 1000px) {
-    #visu-panel.active {
-        flex: 1 1 auto;
-        max-height: none;
-    }
-    #visu-panel .container {
-        height: 100%;
-    }
-    #visu-panel .left-column,
-    #visu-panel .right-column {
-        max-height: none;
-    }
-    #visu-panel .title-container {
-        flex: 0 0 var(--visu-title-h);
-    }
-    #visu-panel .flux-diagram-wrapper {
-        flex: 0 0 var(--visu-panel-content-h);
-    }
-    #visu-panel .timeline-display {
-        flex: 0 0 var(--visu-panel-content-h);
-    }
-    /* plot-container-wrapper : pas de flex 0 0, garde flex: 1 1 0 + height 100% (comme timeline-column) */
+/* Une seule mise en page, quelle que soit la largeur : titre + organigramme, frise, graphe (plus étroit, le globe
+   de l'onglet ISS dépasse par la droite ; sur téléphone, la page fait 1000 px de large, réduite : index.html viewport). */
+#visu-panel.active {
+    flex: 1 1 auto;
+    max-height: none;
 }
+#visu-panel .container {
+    height: 100%;
+}
+#visu-panel .left-column,
+#visu-panel .right-column {
+    max-height: none;
+}
+#visu-panel .title-container {
+    flex: 0 0 var(--visu-title-h);
+}
+#visu-panel .flux-diagram-wrapper {
+    flex: 0 0 var(--visu-panel-content-h);
+}
+#visu-panel .timeline-display {
+    flex: 0 0 var(--visu-panel-content-h);
+}
+/* plot-container-wrapper : pas de flex 0 0, garde flex: 1 1 0 + height 100% (comme timeline-column) */
 
 .timeline-column {
     display: flex;
@@ -953,9 +901,9 @@ h1 {
 .visu_timeline-title {
     flex: 0 0 auto;
     padding: 8px 2px 0;
-    font-family: 'Verdana', 'Tahoma', 'Roboto', sans-serif;
+    font-family: '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;   /* celle du titre et de DETAILS */
     font-size: 12px;
-    font-weight: bold;
+    font-weight: normal;
     line-height: 1.1;
     white-space: nowrap;   /* 80 px de large : sur deux lignes, « Time » passait sous le haut du panneau */
     color: var(--retro-base);

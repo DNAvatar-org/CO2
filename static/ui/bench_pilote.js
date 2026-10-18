@@ -7,7 +7,8 @@
 //       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
 //       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ni courbe d'Histoire.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.3.6
+// Version 1.4.0
+// - v1.4.0: hors run, chaque calcul va dans Histoire (histoire:calcul) : point vert, et point de sa date sur sa courbe.
 // - v1.3.6: bench:vider (bouton clear de l'iframe) — les états gardés sont oubliés.
 // - v1.3.5: tranches de 📱 hors run : courbe d'Histoire à part (scenario), repartie à l'arrivée en 2000, plus l'orange.
 // - v1.3.4: étape d'un tictime = temps écoulé dans l'époque (📜⏳ : « 🛢 (+75 a) »), cumulé clic après clic.
@@ -123,12 +124,20 @@
         poster({ type: 'bench:ligne', ligne: ligne });
         BENCH.etats[ligne.rowKey] = { DATA: structuredClone(D), result: result };
         BENCH.tPrecC = D['🧮']['🧮🌡️'] - 273.15;
-        // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état. Les courbes du modèle d'Histoire
-        // ne sont retracées que par un run. Sur 📱, les calculs de l'utilisateur ont LEUR courbe (H.scenario) : l'arrivée
-        // en 2000 (frise ou passage, ⏳ = 0) la fait repartir, chaque tranche de 25 ans la prolonge (Histoire retire les
-        // points de même date ou plus tardifs : rejouer une tranche la remplace). Jamais mêlée à l'orange, autre histoire.
+        // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état, et le calcul dans Histoire —
+        // son point vert (le dernier calcul), qui devient le point de sa date sur sa courbe : clic sur la frise → violette
+        // (graine imposée), tictime → orange (graine = calcul précédent). Chaque calcul refait ainsi la courbe là où il tombe.
+        // Sur 📱, les tranches de 25 ans ont LEUR courbe (H.scenario), jamais mêlée à l'orange : l'arrivée en 2000 (frise
+        // ou passage, ⏳ = 0) la fait repartir, chaque tranche la prolonge (Histoire retire les points de même date ou plus
+        // tardifs : rejouer une tranche la remplace).
         if (BENCH.suite === 'no') {
-            if (result !== null && window.CLICS.parTranche()) {
+            if (result === null) return;   // interrompu : pas d'état convergé à montrer
+            const frise = !D['🔘']['🔘🎞'];
+            posterHistoire({ type: 'histoire:calcul',
+                courbe: frise ? 'modeleFrise' : window.CLICS.parTranche() ? null : 'modele',
+                point: frise ? window.HISTOIRE.pointModele('frise ' + H['🗿'], null, null, 'frise')
+                             : window.HISTOIRE.pointModele(H['🗿'] + ' ' + H['🔘🕰'], H['🔘🕰'], H['🔺⏳'], 'clic') });
+            if (window.CLICS.parTranche()) {
                 const debut = H['⏳'] === 0;
                 posterHistoire({ type: debut ? 'histoire:scenario' : 'histoire:prolonger', courbe: 'scenario',
                     point: debut ? window.HISTOIRE.pointModele('arrivée ' + H['🗿'], null, null, 'frise')

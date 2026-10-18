@@ -1,7 +1,11 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.3.4
+// Version 1.3.6
+// - v1.3.6 (2026-10-17): « Energies » (watts) et « Atmosphère » (détails) sous l'époque, à la place du 🛰 et de ⚗ (invisible) ;
+//   les 🛰 seulement glissables.
+// - v1.3.5 (2026-10-16): bandeau du bas — ⚗ DETAILS, EVENEMENT, SKIP ; ⚗ DETAILS visible ; 🛰 du satellite IR (DSCOVR) = bouton OBSERVATIONS ; les deux basculent leurs
+//   graphes de l'organigramme sans changer d'onglet.
 // - v1.3.4 (2026-10-15): détails ⚗ et watts 🛰 de l'organigramme affichés au départ ; 🛰 sans titre ni action, glissables.
 // - v1.3.3 (2026-10-15): bouton = onglet : ⚗ DETAILS ouvre Science, 🛰 OBSERVATIONS ouvre ISS ; chaque bouton inverse
 //   son affichage (détails / watts), l'onglet ouvert seul l'impose à true (afficherDetailsOrganigramme / afficherWattsOrganigramme).
@@ -10,7 +14,7 @@
 // - v1.3.0 (2026-10-13): jauges de fine-tuning séparées dans la visu (une rangée par jauge, data-jauge) ; plus de
 //   jauge unique ATM, plus de trace de débogage des setters.
 // - v1.2.1 (2026-10-12): trace / affectation directe de CLOUD_FRACTION_BASE retirées (clé supprimée : fraction nuageuse mesurée).
-// Date: 2026-10-12
+// Date: 2026-10-16
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // - v1.2.0 : setEpoch pose l'époque par CLICS (passer en animation, frise sinon) — plus de remise à zéro
 //   recopiée (⏳, 📿💫, 📿☄️, 📿🕰, cumuls 📱, 🔘🕰) ; checkDateEvents, keepTimeMa et l'écoute sync:state /
@@ -2523,12 +2527,13 @@ function runMainInit() {
                 window.RUNTIME_STATE.showSpectralBackground = true;
                 
                 // ⚗ DETAILS : détails (flèches, textes) et boutons d'action de l'organigramme — affichés au départ ; l'onglet
-                // Science les impose à true (loader_panels onShowScie), le bouton ⚗ les inverse et ouvre Science.
+                // Science les impose à true (loader_panels onShowScie), le bouton ⚗ les inverse.
                 window.organigramArrowsVisible = true;
                 window.afficherDetailsOrganigramme = function (oui) {
                     window.organigramArrowsVisible = oui;
                     document.getElementById('flux-diagram').classList.toggle('hide-organigram-arrows', !oui);
                     document.getElementById('three-play-indicator').classList.toggle('selected', oui);
+                    document.getElementById('affichage-atmosphere').classList.toggle('deplie', oui);   // − quand affiché
                     window.syncPlotContainerOrganigramHideClasses();
                 };
                 /** Watts, métriques et libellés verts (🛰) : affichés au départ ; OFF = hide-organigram-observation-metrics posée */
@@ -2537,10 +2542,11 @@ function runMainInit() {
                 window.organigramObservationGeometriePictoHidden = !window.organigramObservationMetricsVisible;
                 window.organigramObservationEdsPictoHidden = !window.organigramObservationMetricsVisible;
                 window.organigramObservationAlbedoBtnPictoHidden = !window.organigramObservationMetricsVisible;
-                /** 🛰 = watts de l'organigramme : l'onglet ISS les impose à true (loader_panels onShowISS), le bouton 🛰 les inverse. */
+                /** Watts de l'organigramme : l'onglet ISS les impose à true (loader_panels onShowISS), « Energies » les inverse. */
                 window.afficherWattsOrganigramme = function (oui) {
                     window.organigramObservationMetricsVisible = oui;
                     document.getElementById('flux-diagram').classList.toggle('hide-organigram-observation-metrics', !oui);
+                    document.getElementById('affichage-energies').classList.toggle('deplie', oui);   // − quand affichés
                     window.syncOrganigramObservationPictoHiddenFlags();
                     window.syncPlotContainerOrganigramHideClasses();
                 };
@@ -2562,16 +2568,15 @@ function runMainInit() {
                         window.PLOT.updateSpectralBandIndicatorsGhostOnly();
                     }
                 };
-                /** 🛰 OBSERVATIONS : deux boutons jumeaux, un par satellite — haut (CERES, titre dessus) et bas (DSCOVR,
-                 *  titre dessous, aligné sur DETAILS). Un seul état : window.organigramObservationMetricsVisible. */
+                /** 🛰 satellites CERES (réfléchi) et DSCOVR (IR), sans titre ni action : on les glisse autour de la Terre (zoom_terre.js).
+                 *  Les watts : « Energies » sous l'époque (html/visu_radiatif.html). */
                 window.updateObservationIndicator = function () {
                     var fluxObs = document.getElementById('flux-diagram');
                     if (!fluxObs) return;
-                    // 🛰 satellites (CERES, DSCOVR) : sans titre, sans action au clic ; on les glisse autour de la Terre (zoom_terre.js)
-                    var obsBtns = [
+                    [
                         { wrapId: 'observation-config-wrap', btnId: 'observation-metrics-toggle', noeud: 'espace1', nom: 'CERES' },
                         { wrapId: 'observation-config-wrap-bas', btnId: 'observation-metrics-toggle-bas', noeud: 'espace2', nom: 'DSCOVR au L1' }
-                    ].map(function (o) {
+                    ].forEach(function (o) {
                         var wrapObs = document.getElementById(o.wrapId);
                         if (!wrapObs) {
                             wrapObs = document.createElement('div');
@@ -2596,7 +2601,6 @@ function runMainInit() {
                         obsBtn.className = 'icon-button organigram-logo satellite';   // pas d'état sélectionné (halo vert)
                         obsBtn.setAttribute('data-tooltip', o.nom + ' : glisser pour le déplacer');
                         obsBtn.textContent = '🛰';
-                        return obsBtn;
                     });
                     fluxObs.classList.toggle('hide-organigram-observation-metrics', !window.organigramObservationMetricsVisible);
                     window.syncOrganigramObservationPictoHiddenFlags();
@@ -2610,7 +2614,7 @@ function runMainInit() {
                         wrap = document.createElement('div');
                         wrap.id = 'organigram-config-wrap';
                         wrap.className = 'organigram-buttons';
-                        flux.appendChild(wrap);
+                        document.getElementById('bandeau-bas-ligne').prepend(wrap);   // bandeau du bas : en tête de rangée
                     }
                     wrap.classList.add('organigram-buttons');
                     var cfgTitle = wrap.querySelector('.organigram-config-heading');
@@ -2651,15 +2655,23 @@ function runMainInit() {
                     window.syncPlotContainerOrganigramHideClasses();
                     if (el.dataset.boundClick !== '1') {
                         el.addEventListener('click', function () {
-                            const oui = !window.organigramArrowsVisible;   // lu AVANT : l'onglet Science impose true
-                            window.switchTab('scie');
-                            window.afficherDetailsOrganigramme(oui);
+                            window.afficherDetailsOrganigramme(!window.organigramArrowsVisible);
                         });
                         el.dataset.boundClick = '1';
                     }
                 };
+                /** Bandeau du bas (html/visu_radiatif.html) : EVENEMENT et SKIP, cellules de l'organigramme, rangés après ⚗ DETAILS
+                 *  (EVENEMENT y est monté par son appendParentSelector ; append le remet à sa place s'il y est déjà). */
+                window.poserBandeauBas = function () {
+                    document.getElementById('bandeau-bas-ligne').append(
+                        document.getElementById('cell-timeline-scenario-logos'),
+                        document.getElementById('plot-anim-toggle'));
+                };
                 window.updateThreePlayIndicator();
                 window.updateObservationIndicator();
+                window.poserBandeauBas();
+                window.afficherDetailsOrganigramme(window.organigramArrowsVisible);           // « Atmosphère » : son + / −
+                window.afficherWattsOrganigramme(window.organigramObservationMetricsVisible);  // « Energies » : son + / −
 
                 // 🔒 Initialiser la précision de convergence depuis les radio buttons (variable globale unique)
                 const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');

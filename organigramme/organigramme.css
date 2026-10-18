@@ -1,6 +1,8 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.89
+// Version 1.0.91
+// - v1.0.91 (2026-10-17): Atmosphère off cache aussi la boule à facettes ; ⚗ DETAILS invisible (Energies / Atmosphère sous l'époque) ; 🛰 sans titre ; logo Géométrie tourné par zoom_terre.js.
+// - v1.0.90 (2026-10-16): bandeau du bas (⚗ DETAILS, EVENEMENT, SKIP) ; Géométrie à 45° du Soleil (logo −45°) ; ⚗ DETAILS visible ; 🛰 du satellite IR = bouton OBSERVATIONS, titre sous l'icône, centrée sur le satellite.
 // - v1.0.89 (2026-10-15): logo Géométrie tourné de −90° (au-dessus du Soleil) ; 🛰 satellites éclaircis, glissables.
 // - v1.0.88 (2026-10-15): ⚗ DETAILS invisible ; 🛰 OBSERVATIONS inactifs (icône en couleur, titre blanc) ; nœud 🗺 crédits retiré.
 // - v1.0.87 (2026-10-15): logos de scénario centrés (pas de marge négative sur le premier).
@@ -224,8 +226,43 @@
     opacity: 1;
 }
 
+/* Bandeau du bas (html/visu_radiatif.html) : une rangée ⚗ DETAILS · EVENEMENT · SKIP (main.js y range DETAILS et les deux
+   cellules). La souris le traverse, sauf sur ses éléments. */
+.flux-diagram > #bandeau-bas {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 9999;
+    pointer-events: none;
+}
+#bandeau-bas-ligne > * {
+    pointer-events: auto;
+}
+/* alignée en haut : DETAILS, EVENEMENT et SKIP ont leur titre à la même hauteur */
+#bandeau-bas-ligne {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    pointer-events: none;
+}
+/* Cellules d'organigramme dans la rangée : dans le flux, plus posées en x, y ; leurs colonnes de libellés vides (100 px de
+   chaque côté) et leur rangée du bas vide (40 px, organigramme.js createCell) rentrées : leur logo touche DETAILS et le bas
+   de la rangée. EVENEMENT : ses logos sans la largeur mini du cercle. */
+#bandeau-bas-ligne > .flux-cell {
+    position: relative;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin: 0 -90px -40px;
+    pointer-events: none;
+}
+#bandeau-bas-ligne #timeline-events-logos {
+    min-width: 0 !important;
+}
+
 /* Panneaux ⚗ DETAILS / 🛰 OBS — mise en page sur les wrappers (#plot-anim-toggle hors de ce jeu de classes) */
-.flux-diagram > #organigram-config-wrap.organigram-buttons,
+#bandeau-bas-ligne > #organigram-config-wrap.organigram-buttons,
 .flux-diagram > #observation-config-wrap.organigram-buttons,
 .flux-diagram > #observation-config-wrap-bas.organigram-buttons {
     z-index: 9999;
@@ -239,15 +276,13 @@
     overflow: visible;
     pointer-events: auto;
 }
+/* ⚗ DETAILS invisible : « Atmosphère », sous l'époque, le remplace (html/visu_radiatif.html) */
 #organigram-config-wrap.organigram-buttons {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    align-items: flex-start;
+    display: none !important;
 }
-/* ⚗ DETAILS invisible (les détails restent affichés ; l'onglet Science les impose) */
-.flux-diagram > #organigram-config-wrap.organigram-buttons {
-    display: none;
+/* ⚗ sans interligne : la case DETAILS a la hauteur du titre et de l'icône */
+#organigram-config-wrap.organigram-buttons #three-play-indicator {
+    line-height: 1;
 }
 /* 🛰 satellites : plus des boutons — l'icône en couleur, éclaircie avec un léger halo blanc (sans lui, ils se perdent sur le
    fond), sans pulsation ni effet au survol ; on les glisse (zoom_terre.js) */
@@ -257,11 +292,6 @@
     text-shadow: none !important;
     animation: none !important;
     transform: none !important;
-}
-/* Géométrie au-dessus du Soleil (configOrganigramme.js) : face éclairée du logo vers le bas, vers lui ; « rotate » s'ajoute au
-   transform de décalage de l'image */
-#cell-geometrie img {
-    rotate: -90deg;
 }
 #observation-config-wrap.organigram-buttons {
     position: absolute;
@@ -297,8 +327,7 @@
 }
 #observation-config-wrap.organigram-buttons .organigram-config-row,
 #observation-config-wrap-bas.organigram-buttons .organigram-config-row {
-    justify-content: flex-end;
-    margin-right: 25px;
+    justify-content: center;
 }
 #organigram-config-wrap.organigram-buttons #three-play-indicator,
 #observation-config-wrap.organigram-buttons #observation-metrics-toggle,
@@ -616,7 +645,8 @@
     filter: drop-shadow(0 0 2px #667eea);
 }
 
-/* ⚗ unselected : masquer textes (flux-label) et logos CO2 / H2O / CH4 ; garder les flèches */
+/* ⚗ unselected (Atmosphère off) : masquer textes (flux-label) et logos CO2 / H2O / CH4 et la boule à facettes de l'albédo ;
+   garder les flèches */
 /* Garder visibles : W/m² (orange), W/K (rouge), et labels sans unité connue (vert) */
 #flux-diagram.hide-organigram-arrows .flux-label.percent-label,
 #flux-diagram.hide-organigram-arrows .flux-label.ppm-label,
@@ -625,7 +655,8 @@
 #flux-diagram.hide-organigram-arrows .flux-label.buttonData,
 #flux-diagram.hide-organigram-arrows #cell-co2,
 #flux-diagram.hide-organigram-arrows #cell-methane,
-#flux-diagram.hide-organigram-arrows #cell-h2o {
+#flux-diagram.hide-organigram-arrows #cell-h2o,
+#flux-diagram.hide-organigram-arrows #cell-albedo-btn {
     visibility: hidden;
 }
 /* 🧩 Flou scientifique : toujours visible (pas de .flou-scientifique--hidden) */

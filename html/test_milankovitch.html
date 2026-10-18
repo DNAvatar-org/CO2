@@ -3,9 +3,13 @@
 # File: CO2/html/test_milankovitch.html
 # Desc: Cycles de Milankovitch (obliquité, excentricité, précession) — courbes + explication du couplage
 #       avec le bilan radiatif (API_BILAN/physics/physics.js : redistribution méridienne de l'insolation).
-# Version 1.0.3
-# Date: [October 15, 2026]
+# Version 1.2.0
+# Date: [October 18, 2026]
 # Logs:
+# - v1.2.0: explication en popup au clic sur le dessin ; Entrée = VALIDER (static/milankovitch/entrees.js) ; sans scroll.
+# - v1.1.1: solution de Berger & Loutre 1991 (± 3 Ma).
+# - v1.1.0: orbite de Berger 1978 (astronomie.js) ; courbe = insolation 65° N au solstice (W/m²), plus le « ΔT » obtenu par
+#           un coefficient ; période bornée à la validité (± 1 Ma) ; message milankovitch:periode (dates d'Histoire).
 # - v1.0.3: « Comment l'obliquité agit » replié par défaut (<details>, bouton + / −).
 # - v1.0.2: footer + signature DNAvatar retirés (page toujours chargée en iframe dans index.html, qui a
 #           déjà son propre footer avec signature sous les liens — comme les autres panneaux html/*.html).
@@ -21,6 +25,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cycles de Milankovitch</title>
     <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <script src="../static/astronomie_ber78.js"></script>
+    <script src="../static/astronomie_ber90.js"></script>
     <script src="../static/astronomie.js"></script>
     <link rel="stylesheet" href="../static/css/style.css">
     <link rel="stylesheet" href="../static/css/milankovitch.css">
@@ -31,7 +37,7 @@
         
         <div class="title-params">
             <h1>Cycles de Milankovitch</h1>
-            <p class="page-subtitle">Utilisé au Quaternaire (🦣 −2 Ma → −10 ka) : l'obliquité ε pilote la bascule glaciaire — ailleurs, effet global négligeable (±1 °C)</p>
+            <p class="page-subtitle">Utilisé au Quaternaire (🦣 −2 Ma → −10 ka) : l'obliquité ε pilote la bascule glaciaire — ailleurs, effet global négligeable. Orbite : Berger &amp; Loutre (1991).</p>
             <div class="controls divGlass">
                 <div style="display: flex; gap: 20px; align-items: flex-end;">
                     <div class="control-group">
@@ -52,6 +58,7 @@
                     <button onclick="updateChart()">VALIDER</button>
                 </div>
             </div>
+            <p class="page-subtitle" id="validite"></p>
         </div>
         
         <div class="legend-cell">
@@ -61,7 +68,7 @@
             </div>
         </div>
         <figure class="milankovitch-figure">
-            <img src="../static/img/milankovitch.png" alt="">
+            <img id="milankovitch-dessin" src="../static/img/milankovitch.png" alt="" title="Comment l'obliquité agit dans la simulation">
         </figure>
     </div>
     <!-- Ligne 2 : cycle (chart) pleine largeur au bord de la fenêtre -->
@@ -70,9 +77,10 @@
     </div>
 
     <!-- Comment l'obliquité entre dans le bilan radiatif (API_BILAN/physics/physics.js v2.0.18) -->
-    <!-- Replié par défaut : le bouton + du titre le déplie (<details>, sans script). -->
-    <details class="milankovitch-explain divGlass">
-        <summary><h2>Comment l'obliquité agit dans la simulation</h2></summary>
+    <!-- Popup : s'ouvre au clic sur le dessin (static/milankovitch/entrees.js), se ferme par ✕, Échap ou clic à côté. -->
+    <dialog id="milankovitch-explication" class="milankovitch-explain divGlass">
+        <button type="button" class="milankovitch-fermer" title="Fermer">✕</button>
+        <h2>Comment l'obliquité agit dans la simulation</h2>
         <p>
             L'obliquité ε (l'inclinaison de l'axe terrestre, de 22,1° à 24,5° tous les 41 000 ans)
             <strong>ne change pas d'un iota l'énergie totale reçue par la Terre</strong>. Elle change sa
@@ -112,56 +120,48 @@
             Budyko 1969 (<em>Tellus</em> 21:611) · Lisiecki &amp; Raymo 2005 · Lüthi et al. 2008 (EPICA).
             Détail des entrées : popup <strong>📚 Biblio</strong> de la page principale.
         </p>
-    </details>
+    </dialog>
     
     <script>
-        // 0 = an 0 (J.-C.), ANNEE_AUJOURDHUI = 2026. Pour le calcul Milankovitch : années avant aujourd'hui = ANNEE_AUJOURDHUI - année calendaire.
-            const ANNEE_AUJOURDHUI = 2026;
-            const INSOLATION_TO_DELTA_T = 0.012;
-            
-            function generateData(startYear, endYear, resolution) {
-            const years = [];
-            const eccentricity = [];
-            const obliquity = [];
-            const precession = [];
-            const perihelion = [];
-            const aphelion = [];
-            const insolation65NSummer = [];
-            
+        // Éléments orbitaux et insolation : solution astronomique de static/astronomie.js (Berger & Loutre 1991), en années
+        // calendaires, valide à ± 3 Ma autour de 1950 — la période demandée y est ramenée (avis sous les réglages).
+        function generateData(startYear, endYear, resolution) {
+            const A = window.astronomie;
+            const years = [], eccentricity = [], obliquity = [], precession = [], perihelion = [], aphelion = [], insolation = [];
             for (let year = startYear; year <= endYear; year += resolution) {
+                const p = A.parametresMilankovitch(year);
                 years.push(year);
-                var yearsFromNow = ANNEE_AUJOURDHUI - year;
-                const params = window.astronomie.calculateMilankovitchParameters(yearsFromNow);
-                eccentricity.push(params.eccentricity);
-                obliquity.push(params.obliquity);
-                precession.push(params.precession);
-                perihelion.push(params.distancePerihelion);
-                aphelion.push(params.distanceAphelion);
-                // Insolation 65°N solstice d'été (proxy classique pour glaciations)
-                const ins = window.astronomie.calculateInsolation(params.eccentricity, params.obliquity, params.precession, 65, 90);
-                insolation65NSummer.push(ins);
+                eccentricity.push(p.excentricite);
+                obliquity.push(p.obliquiteDeg);
+                precession.push(p.varpiDeg);   // longitude du périhélie ϖ
+                perihelion.push(p.perihelieUA);
+                aphelion.push(p.aphelieUA);
+                insolation.push(p.insolation65N);   // solstice d'été, 65° N : l'indicateur classique des glaciations
             }
-            
-            const meanInsolation = insolation65NSummer.reduce(function(a, b) { return a + b; }, 0) / insolation65NSummer.length;
-            const deltaT_C = insolation65NSummer.map(function(i) { return INSOLATION_TO_DELTA_T * (i - meanInsolation); });
-            
-            return {
-                years,
-                eccentricity,
-                obliquity,
-                precession,
-                perihelion,
-                aphelion,
-                insolation65NSummer,
-                deltaT_C
-            };
+            return { years, eccentricity, obliquity, precession, perihelion, aphelion, insolation };
         }
-        
+        /** Période ramenée au domaine de validité de la solution ; l'avis dit ce qui a été rogné. */
+        function borner(startYear, endYear) {
+            const A = window.astronomie, min = A.AN_REFERENCE - A.VALIDITE_ANS, max = A.AN_REFERENCE + A.VALIDITE_ANS;
+            const debut = Math.max(startYear, min), fin = Math.min(endYear, max);
+            document.getElementById('validite').textContent = debut === startYear && fin === endYear ? ''
+                : A.SOLUTION_NOM + ' n\u2019est valide que de ' + min + ' à ' + max + ' : affiché de ' + debut + ' à ' + fin + '.';
+            return { debut: debut, fin: fin };
+        }
+        // Onglet Histoire (index.html → milankovitch:periode) : la période visible de son graphe, en années calendaires ;
+        // environ 800 points sur la période.
+        window.addEventListener('message', function (e) {
+            if (e.data.type !== 'milankovitch:periode') return;
+            document.getElementById('startYear').value = Math.round(e.data.debut);
+            document.getElementById('endYear').value = Math.round(e.data.fin);
+            document.getElementById('resolution').value = Math.max(1, Math.round((e.data.fin - e.data.debut) / 800));
+            updateChart();
+        });
         var selectedRightIndex = 2;
         function getVisibleState() {
             return [true, selectedRightIndex === 0, selectedRightIndex === 1, selectedRightIndex === 2, selectedRightIndex === 2];
         }
-        var RIGHT_AXES_TITLES = ['Obliquité (°)', 'Précession (°)', 'Distance (UA)'];
+        var RIGHT_AXES_TITLES = ['Obliquité (°)', 'Périhélie ϖ (°)', 'Distance (UA)'];
         var RIGHT_AXES_COLORS = ['#1abc9c', '#9b59b6', '#f1c40f'];
         var RIGHT_AXES_POSITIONS = [0.95, 0.80, 0.55];
         
@@ -234,20 +234,21 @@
                 return;
             }
             
-            const data = generateData(startYear, endYear, resolution);
+            const periode = borner(startYear, endYear);
+            const data = generateData(periode.debut, periode.fin, resolution);
             const yearsKa = data.years.map(function(y) { return y / 1000; });
             
             const traces = [
                 {
                     x: yearsKa,
-                    y: data.deltaT_C,
-                    name: 'Incidence T° (ΔT °C)',
+                    y: data.insolation,
+                    name: 'Insolation 65° N, solstice (W/m²)',
                     type: 'scatter',
                     mode: 'lines',
                     line: { color: '#e74c3c', width: 2 },
                     yaxis: 'y',
-                    hovertemplate: 'Année: %{x:.1f} Ka<br>ΔT: %{y:.2f} °C<extra></extra>',
-                    legendgroup: 'deltaT'
+                    hovertemplate: 'Année: %{x:.1f} Ka<br>Insolation: %{y:.1f} W/m²<extra></extra>',
+                    legendgroup: 'insolation'
                 },
                 {
                     x: yearsKa,
@@ -263,12 +264,12 @@
                 {
                     x: yearsKa,
                     y: data.precession,
-                    name: 'Précession (°)',
+                    name: 'Longitude du périhélie ϖ (°)',
                     type: 'scatter',
                     mode: 'lines',
                     line: { color: '#9b59b6', width: 2, dash: 'dot' },
                     yaxis: 'y3',
-                    hovertemplate: 'Année: %{x:.1f} Ka<br>Précession: %{y:.1f}°<extra></extra>',
+                    hovertemplate: 'Année: %{x:.1f} Ka<br>ϖ: %{y:.1f}°<extra></extra>',
                     visible: selectedRightIndex === 1
                 },
                 {
@@ -318,12 +319,11 @@
                     font: { color: '#e0e0e0', size: 12 }
                 }],
                 yaxis: {
-                    title: 'Incidence T° (ΔT °C)',
+                    title: 'Insolation 65° N (W/m²)',
                     side: 'left',
                     anchor: 'x',
                     gridcolor: '#444',
-                    zeroline: true,
-                    zerolinecolor: '#666',
+                    zeroline: false,
                     color: '#e74c3c',
                     tickfont: { color: '#e74c3c' }
                 },
@@ -353,7 +353,7 @@
                 var isVisible = item.traces.every(function(t) { return visibleState[t]; });
                 div.className = 'legend-item' + (isVisible ? '' : ' dimmed');
                 div.setAttribute('data-legend-idx', idx);
-                div.innerHTML = '<span class="legend-color" style="background:' + item.color + ';"></span><span>' + item.name + '</span>';
+                div.innerHTML = '<span class="legend-color" style="background:' + item.color + ';"></span><span class="legend-nom" title="' + item.name + '">' + item.name + '</span>';
                 div.addEventListener('click', function() {
                     if (item.radio === false) return;
                     selectedRightIndex = item.radio;
@@ -376,8 +376,7 @@
             updateChart();
         });
     </script>
-
-
+    <script src="../static/milankovitch/entrees.js"></script>
 </body>
 </html>
 

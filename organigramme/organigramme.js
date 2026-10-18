@@ -1,5 +1,7 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.132 label.name en tableau : empilés au milieu de la flèche (18 px entre eux).
+// Logs: v1.0.131 arc.trace (configuration) : tracé imposé d'une flèche (émission de la surface depuis le point de liaison).
 // Logs: v1.0.130 nœud 🗺 crédits PALEOMAP retiré (texte du pied de page).
 // Logs: v1.0.129 canvas Three.js de la Terre ∝ TERRE_ECRAN (terreCanvasPx) : une Terre recréée naît au zoom courant ;
 //   flèche plus courte que LONGUEUR_MIN_FLECHE (ou retournée) : dessinée à cette longueur, dans sa direction.
@@ -2146,24 +2148,8 @@ function createCell(
 
         // Mettre à jour le tooltip du bouton
         updateButtonTooltip(parentCell, circleBg);
-      } else {
-        // Ce n'est pas un bouton : copier le logo (comportement original)
-        navigator.clipboard
-          .writeText(logo)
-          .then(() => {
-            // Feedback visuel temporaire (agrandissement)
-            // Animation supprimée pour éviter setTimeout - utiliser CSS transition si nécessaire
-            // const originalTransform = circleBg.style.transform;
-            // circleBg.style.transform = 'translate(-50%, -50%) scale(1.5)';
-            // setTimeout(() => {
-            //     circleBg.style.transform = originalTransform;
-            // }, 200);
-          })
-          .catch((err) => {
-            console.error("[organigramme] Erreur lors de la mise à jour:", err);
-            throw err; // Propager l'erreur au lieu de la masquer
-          });
       }
+      // Ce n'est pas un bouton : rien (pas de copie du logo dans le presse-papiers, refusée hors d'un onglet au premier plan).
     });
 
     // Ajouter tooltip personnalisé sur le cercle/logo si présent (au lieu de la cellule entière)
@@ -2570,17 +2556,17 @@ function createArrowLabel(x1, y1, x2, y2, labels) {
     createLabel(labelObj.txtD, pos1X, pos1Y, false, labelSize, "txtD");
   }
 
-  // name : au milieu de la flèche (50%)
+  // name : au milieu de la flèche (50%) ; un tableau : empilés là, le premier sur la flèche, les suivants dessous (18 px)
   // Créer le label même si name est un objet avec dataId (même si text est vide)
   if (labelObj.name) {
     const midX = (x1 + x2) / 2;
     const midY = (y1 + y2) / 2;
-    // Si name est un objet avec dataId, créer le label même si text est vide
-    const nameDataId =
-      typeof labelObj.name === "object" ? labelObj.name.dataId : null;
-    if (nameDataId || getLabelText(labelObj.name)) {
-      createLabel(labelObj.name, midX, midY, true, labelSize, "name");
-    }
+    const noms = Array.isArray(labelObj.name) ? labelObj.name : [labelObj.name];
+    noms.forEach((nom, index) => {
+      if (getLabelDataId(nom) || getLabelText(nom)) {
+        createLabel(nom, midX, midY + index * 18, true, labelSize, "name");
+      }
+    });
   }
 
   // txtF : à la fin de la flèche (90% du chemin)
@@ -3501,6 +3487,10 @@ function generateArrows() {
         }
       }
     }
+
+    // Tracé donné par la configuration (arc.trace() → { x1, y1, x2, y2 }) : l'émission de la surface part du point de liaison
+    // avec la flèche du noyau et va droit au satellite.
+    if (arc.trace) ({ x1, y1, x2, y2 } = arc.trace());
 
     // Recalculer la distance réelle entre les points de départ et d'arrivée
     const realDx = x2 - x1;
@@ -4734,12 +4724,10 @@ const formatValueFromTemplate = (dataId, value) => {
   let labelPath = null;
   for (const arc of window.configOrganigramme.arcs) {
     if (!arc.label) continue;
-    if (
-      arc.label.name &&
-      typeof arc.label.name === "object" &&
-      arc.label.name.dataId === dataId
-    ) {
-      template = arc.label.name.text;
+    const nom = (Array.isArray(arc.label.name) ? arc.label.name : [arc.label.name])
+      .find((n) => n && typeof n === "object" && n.dataId === dataId);
+    if (nom) {
+      template = nom.text;
       labelPath = "name";
       break;
     }

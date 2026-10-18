@@ -1,7 +1,20 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.56
-// Date: [October 15, 2026]
+// Version 1.1.62
+// - v1.1.62: Géométrie à 45° en haut à droite du Soleil ; albédo sans obstacles (ni 🛰 CERES ni Géométrie). Disposition par
+//   défaut relevée sur la mise en page voulue (onglet ISS) : Soleil et CERES à gauche, DSCOVR (OBSERVATIONS) en haut à
+//   gauche, EDS en bas à gauche, albédo entre le Soleil et la Terre, éventail des gaz en bas. EVENEMENT et SKIP : dans
+//   le bandeau du bas, après ⚗ DETAILS (plus de x, y). DSCOVR glissé (−2,404 rad, 151 %) ; hauteur de l'atmosphère sous la
+//   puissance éjectée (milieu de albedo → espace2) ; puissance émise par la surface au début de la flèche du noyau. Géométrie : angle autour du Soleil, glissable ;
+//   SYNTHESE_SUR_TERRE (T° et pression sur la Terre). Soleil et CERES évitent Energies / Atmosphère (à gauche, mi-hauteur).
+//   Disposition par défaut relevée sur la mise en page voulue (2026-10-17) : Soleil, Géométrie à sa droite, satellites,
+//   EDS, albédo, éventail des gaz à 120 %, T° et pression.
+// - v1.1.61: Soleil par défaut 2,68 rad / 198 % ; EDS par défaut à gauche, sous l'atmosphère (2,584 rad, 149 %) ; point de liaison à +20° de l'axe Terre → DSCOVR.
+// - v1.1.60: onglet ISS — le Soleil sur le vrai Soleil quand il est à l'écran ; vue Terre–Lune : boutons, satellites et Soleil
+//   autour de l'orbite de la Lune à l'écran (TERRE_ECRAN.orbite, rayonVers).
+// - v1.1.59: point de liaison noyau / émission à la surface décalé de 20° de l'axe Terre → DSCOVR ; l'émission en part droit au satellite.
+// - v1.1.58: disposition par défaut autour de la Terre (Soleil, albédo, satellites, éventail des gaz) relevée sur la mise en page voulue de l'onglet ISS.
+// Date: [October 16, 2026]
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // logs :
 // - v1.1.55: nœud 🗺 crédits PALEOMAP retiré (texte du pied de page, index.html) ; Soleil déplaçable (zoom_terre.js),
@@ -71,7 +84,7 @@ const centerX = 183; // Centre horizontal du diagramme (328px / 2)
 const centerY = 215; // Centre vertical du diagramme (640px / 2)
 // Terre recentrée dans la hauteur réelle de l'organigramme (panel visu − titre − gap), lue à la construction.
 // Conçu pour 545 px (ancien panel 670 − titre 120 − 5) : Terre à 315, centrée sur [85, H]. Jamais plus haut
-// que 315 (au-dessus, l'atmosphère mord le Soleil). SOLEIL / EVENEMENT / SKIP restent sur earthCenterY0.
+// que 315 (au-dessus, l'atmosphère mord le Soleil).
 const earthCenterY0 = centerY + 100;
 const EARTH_BAND_TOP = 85;
 const fluxDiagramH = document.getElementById('visu-panel').clientHeight
@@ -101,17 +114,24 @@ const radiusTerre = 90;
 // Cercle d'atmosphère (albedo) et sa radiation : dr = dR / 5 (le globe gagne 5 px, eux 1 px) — sans jamais passer sous le
 // globe : la flèche Terre → atmosphère garde LONGUEUR_MIN_FLECHE (+ 8 px de marge à l'arrivée, generateArrows).
 // Les boutons autour butent sur les bords de cadreEl : #flux-diagram, ou la zone de l'onglet en pleine page.
-// soleilTheta : angle du vrai Soleil à l'écran (onglet ISS, message iss:terre) — le Soleil de l'organigramme le prend et
-// suit la caméra ; null : son angle propre (dessiné, puis glissé à la souris).
+// soleilVrai : le Soleil de la page ISS à l'écran, { x, y } dans le repère de #flux-diagram, ou null (hors de l'image, caché par
+// la Terre, hors onglet ISS) : le Soleil de l'organigramme s'y pose ; sinon il garde sa place (dessinée, glissée à la souris,
+// retenue en cookie). orbite : vue Terre–Lune de la page ISS, l'orbite de la Lune à l'écran (demi-diamètres conjugués
+// { ax, ay, bx, by } [px]) — le « cercle » autour duquel se posent boutons, satellites et Soleil ; sinon null (rayonVers).
+
 // boule : la Terre est une vraie boule 3D (onglet ISS) — le globe de l'organigramme vaut R à toute époque (exobase
 // comprise) ; le cercle d'atmosphère la dépasse un peu, R + la flèche Terre → atmosphère la plus courte
 // (LONGUEUR_MIN_FLECHE + 8 px de marge d'arrivée), sa radiation garde son écart au cercle.
+// T° et pression de surface posées SUR la Terre (onglet ISS, zoom_terre.js) : angle theta [rad, y vers le bas] et distance
+// au centre k [fraction du rayon R] — relevés sur le point de lumière de la Terre ISS à sa vue de départ.
+window.SYNTHESE_SUR_TERRE = { theta: 2.568, k: 0.56 };
 const TERRE_ECRAN = window.TERRE_ECRAN = {
     R: radiusTerre,
     cx: centerX,
     cy: earthCenterY,
     cadreEl: document.getElementById('flux-diagram'),
-    soleilTheta: null,
+    soleilVrai: null,
+    orbite: null,
     boule: false,
     k() { return this.R / radiusTerre; },
     drCercle() { return Math.max(radiusTerre * (this.k() - 1) / 5, this.R + LONGUEUR_MIN_FLECHE + 8 - radiusAtmosphere); },
@@ -199,15 +219,16 @@ const ARROW_Z_INDEX = {
 // Mais la surface totale de la Terre est 4πR². En moyenne : 1361 × (πR²) / (4πR²) = 1361/4
 const nodes = [
     {//soleil
-     id: 'soleil', bornesPar: ['titre-bilan'], logo: [LOGOS.SUN_ORIGIN, { text: '3.8×10<sup><b>26</b></sup> W ', dataId: 'solar_power_total' }], align: 'zorder', x: centerX - 140, y: centerY - 155, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, strokeStyle: 'solid', left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, zIndex: 12, logoScale: 1.0, logoOffsetY: 1 
+     id: 'soleil', bornesPar: ['titre-bilan', 'titre-affichages'], logo: [LOGOS.SUN_ORIGIN, { text: '3.8×10<sup><b>26</b></sup> W ', dataId: 'solar_power_total' }], align: 'zorder', theta: -2.765, rayonPct: 197, radius, fillColor: 'rgba(255, 193, 7, 0)', strokeColor: 'yellow', strokeSize: 1, strokeStyle: 'solid', left: [], right: [{ text: '62.4<br>MW/m²', dataId: 'solar_surface_mw' }], top: [], bottom: [], tooltip: 'Soleil', radiation: { numCircles: 8, maxRadius: 170, openingAngle: 0, color: 'yellow' }, zIndex: 12, logoScale: 1.0, logoOffsetY: 1 
     },
 
     {//geometrie
-     id: 'geometrie', logo: 'fonts/pics/geometrie.png', x: centerX + 65, y: centerY - 155, radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 0, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: ['Géométrie'], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 13, logoScale: 0.8 
+     // angle : autour du Soleil [rad, y vers le bas : −π/4 = haut droite]
+     id: 'geometrie', angle: 0.041, logo: 'fonts/pics/geometrie.png', radius: 20, fillColor: 'rgba(255, 255, 0, 0)', strokeColor: 'yellow', strokeSize: 0, left: [{ text: '1361<br>W/m²', dataId: 'solar_1UA_mw' }], right: [], top: ['Géométrie'], bottom: [], tooltip: 'Geometrie', radiation: null, zIndex: 13, logoScale: 0.8 
     },
 
     {//espace1
-     id: 'espace1', bornesPar: [], logo: '', logoScale: 1.2, x: centerX + 150, y: centerY - 170, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: [], bottom: '', tooltip: 'CERES', radiation: null, zIndex: 14 
+     id: 'espace1', bornesPar: ['titre-affichages'], logo: '', logoScale: 1.2, theta: -2.970, rayonPct: 149, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: [], right: [], top: [], bottom: '', tooltip: 'CERES', radiation: null, zIndex: 14 
     },
 
     {//albedo cellule — cercle extérieur toujours blanc alpha 0.5, sans fill
@@ -634,48 +655,43 @@ const nodes = [
     },
 
     {//espace2
-     id: 'espace2', bornesPar: [], logo: '', logoScale: 1.2, x: centerX + 150, y: fluxDiagramH - 49, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: '', right: [], top: '', bottom: '', tooltip: 'DSCOVR au L1', radiation: null, zIndex: 14 
+     id: 'espace2', bornesPar: [], logo: '', logoScale: 1.2, theta: -2.382, rayonPct: 147, radius: 20, fillColor: 'rgba(255, 255, 255, 0)', strokeColor: '', left: '', right: [], top: '', bottom: '', tooltip: 'DSCOVR au L1', radiation: null, zIndex: 14 
     },
     // EDS : angleInit anime l’ouverture masquée 210→340 (secteur visible 150°→20°), pas la direction. Le faisceau vise la Terre (rotation : parametrerParLeRayon).
     {//📛 reemis
-     id: 'reemis', bornesPar: ['observation-config-wrap-bas'], logo: LOGOS.EDS, zIndex: 36, theta: Math.PI/2-0.25, rayonPct: 101.4, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } 
+     id: 'reemis', bornesPar: ['observation-config-wrap-bas'], logo: LOGOS.EDS, zIndex: 36, theta: 2.701, rayonPct: 148, radius: 20, logoScale: 0.7, fillColor: 'rgba(255, 0, 0, 0)', strokeColor: 'rgba(255, 0, 0, 0)', strokeSize: 1, left: [], right: '', top: '', bottom: { text: 'Effet de<br>Serre', dataId: 'forcing_label' }, tooltip: 'Effet de Serre', radiation: { numCircles: 8, maxRadius: 100, angleInit: 210, openingAngle: 340, color: 'red', strokeSize: 2 } 
     },
 
     {//co2
-    id: 'co2', bornesPar: [], type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, theta: Math.PI+0.3, rayonPct: 74.4, left: [], right: [], top: [{ text: '0 ppm', dataId: 'co2_percent' }], bottom: [{ text: '0 W/m²', dataId: 'co2_forcing_wm' }], tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'co2', bornesPar: [], type: 'button', readOnly: true, logo: LOGOS.CO2, logoOffsetY: 0, theta: 2.943, rayonPct: 120, left: [], right: [], top: [{ text: '0 ppm', dataId: 'co2_percent' }], bottom: [{ text: '0 W/m²', dataId: 'co2_forcing_wm' }], tooltip: 'CO₂', radius: 25, logoScale: 0.7, zIndex: 200, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//methane
-    id: 'methane', bornesPar: [], type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, theta: Math.PI/2+0.3, rayonPct: 74.4, left: [{ text: '0 ppm', dataId: 'ch4_percent' }], right: [], top: '', bottom: [{ text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'methane', bornesPar: [], type: 'button', readOnly: true, logo: LOGOS.CH4, logoOffsetY: 2, theta: 2.147, rayonPct: 120, left: [{ text: '0 ppm', dataId: 'ch4_percent' }], right: [], top: '', bottom: [{ text: '0<br>W/m²', dataId: 'ch4_forcing_wm' }], tooltip: 'CH₄', zIndex: 200, radius: 35, logoScale: 0.7, logoOffsetY: 2, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },
 
     {//h2o
-    id: 'h2o', bornesPar: [], type: 'button', readOnly: true, logo: LOGOS.H2O, theta: Math.PI*3/4+0.3, rayonPct: 74.4, left: [{ text: '0%', dataId: 'h2o_percent' }], right: [], top: '', bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
+    id: 'h2o', bornesPar: [], type: 'button', readOnly: true, logo: LOGOS.H2O, theta: 2.545, rayonPct: 120, left: [{ text: '0%', dataId: 'h2o_percent' }], right: [], top: '', bottom: [{ text: '0 W/m²', dataId: 'h2o_forcing_wm' }], tooltip: 'H₂O', zIndex: 200, radius: 20, logoScale: 0.8, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     },//end h2o
 
     {//domSlot action
         id: 'timeline-scenario-logos',
         type: 'domSlot',
         mountId: 'timeline-events-logos',
-        appendParentSelector: '#flux-diagram',
+        appendParentSelector: '#bandeau-bas-ligne',   // rangée du bas, après ⚗ DETAILS (html/visu_radiatif.html)
         top: [{ text: 'EVENEMENT', className: 'organigram-config-heading organigram-unified-title' }],
-        x: centerX + circleMiddleRadius*1.5 * Math.cos(Math.PI*5/4),
-        y: earthCenterY0 + circleMiddleRadius*1.6 * Math.sin(Math.PI*5/4),
         zIndex: 220,
         slotMinWidth: 500,
         slotEventLogoPx: 100,
         domClass: 'timeline-events-logos'
     },
 
-    { // 🎞 + SKIP (cellule id #plot-anim-toggle, flux-cell + span .organigram-logo — organigramme.js)
+    { // 🎞 + SKIP (cellule id #plot-anim-toggle, flux-cell + span .organigram-logo — organigramme.js) : rangée du bas, après
+      // EVENEMENT (main.js poserBandeauBas)
         id: 'timeline-scenario-anim',
         type: 'button',
         readOnly: true,
         logo: '🎞',
-        //x: centerX - 100,
-        //y: earthCenterY + circleMiddleRadius * 1.8,
-        x: centerX + circleMiddleRadius*1.5 * Math.cos(Math.PI*5/4+0.3),
-        y: earthCenterY0 + circleMiddleRadius*1.45 * Math.sin(Math.PI*5/4),
         zIndex: 221,
         radius: 15,
         logoScale: 0.8,
@@ -689,7 +705,7 @@ const nodes = [
     },
 
     {//albedo-btn
-     id: 'albedo-btn', bornesPar: ['cell-geometrie', 'observation-config-wrap'], type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, theta: -Math.PI/4, rayonPct: 88.3, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
+     id: 'albedo-btn', bornesPar: [], type: 'button', readOnly: true, logo: LOGOS.ALBEDO, logoOffsetY: 5, theta: -2.955, rayonPct: 105, left: [], right: [{ text: '🌊5%<br>🌳5%<br>🏜️30%<br>🧊40%<br>⛅30%', dataId: 'albedo_percents' }], top: [{ text: '0%', dataId: 'albedo_percent' }], bottom: [], tooltip: 'Albédo', zIndex: 200, radius: 25, logoScale: 0.7, fillColor: 'transparent', strokeColor: 'rgba(0, 0, 0, 0)' 
     }
 ];
 
@@ -702,10 +718,12 @@ const arcs = [
     
     // Flèche grise (réfléchi → CERES) : direction = vecteur albedo → espace1 ; le faisceau blanc de l'albedo la suit.
     { from: 'albedo', to: 'espace1', zIndex: 10, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'solar_flux_reflected_wm' }, txtD: '', txtF: '' }, color: '#bbbb99' },
-    { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'core_flux_wm' }, txtF: '' }, color: '#ff0000' },
+    // txtD : la puissance émise par la surface, au début de la flèche qui part du centre de la Terre
+    { from: 'noyau', to: 'terre', zIndex: 30, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'core_flux_wm' }, txtD: { text: '0×10<sup><b>17</b></sup> W', dataId: 'surface_flux_emitted_watts' }, txtF: '' }, color: '#ff0000' },
     // Flèche ROUGE terre→albedo : direction = décalage du centre de l'albedo, vers DSCOVR (parametrerParLeRayon).
-    { from: 'terre', to: 'albedo', zIndex: 22, label: { name: '', txtDD: { text: '0×10<sup><b>17</b></sup> W', dataId: 'surface_flux_emitted_watts' }, txtF: { text: '0 km', dataId: 'atm_height_km' }, txtD: { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'surface_flux_emitted_wm' } }, color: 'red' },
-    { from: 'albedo', to: 'espace2', zIndex: 22, label: { name: { text: '0×10<sup><b>17</b></sup> W', dataId: 'flux_ejected_watts' } }, color: '#ff0000' },
+    { from: 'terre', to: 'albedo', zIndex: 22, label: { name: '', txtD: { text: '0×10<sup><b>17</b></sup> W/m²', dataId: 'surface_flux_emitted_wm' } }, color: 'red' },
+    // name en tableau : empilés au milieu de la flèche, la hauteur de l'atmosphère sous la puissance éjectée
+    { from: 'albedo', to: 'espace2', zIndex: 22, label: { name: [{ text: '0×10<sup><b>17</b></sup> W', dataId: 'flux_ejected_watts' }, { text: '0 km', dataId: 'atm_height_km' }] }, color: '#ff0000' },
     { from: 'reemis', to: 'terre', zIndex: 26, label: { name: { text: '0×10<sup><b>17</b></sup><br>W/m²', dataId: 'forcing_total' }, txtD: '' }, color: '#ff0000' },
 ];
 
@@ -766,7 +784,7 @@ const baryEpochs = {
         n.emprise = { g: n.radius, d: n.radius, h: n.radius, b: n.radius };
         n.obstacles = [];
         // distance au centre du globe [px] : sur le cercle d'atmosphère ou au-delà, jamais dedans
-        const rayon = () => Math.max(n.rayonPct, 100) / 100 * N.albedo.radius;
+        const rayon = (a) => TERRE_ECRAN.distanceAutour(a, n.rayonPct);
         // Centre du bouton hors de chaque obstacle grossi de son emprise = son emprise ne touche pas l'obstacle.
         const libre = (x, y) => n.obstacles.every((o) =>
             x <= o.g - n.emprise.d || x >= o.d + n.emprise.g || y <= o.h - n.emprise.b || y >= o.b + n.emprise.h);
@@ -774,13 +792,13 @@ const baryEpochs = {
         // chaque côté (un bouton contre un 🛰 se pousse de côté), position calée aux bords du cadre d'abord — un
         // bord ne doit pas le repousser dans l'obstacle. Aucun angle libre : il s'arrête sur son rayon, avant l'obstacle.
         const centre = () => {
-            const e = n.emprise, rho = rayon(), c = TERRE_ECRAN.cadre(), T = TERRE_ECRAN;
+            const e = n.emprise, rho = rayon(n.theta), c = TERRE_ECRAN.cadre(), T = TERRE_ECRAN;
             const vx = Math.cos(n.theta), vy = Math.sin(n.theta);   // theta lu à chaque fois : le Soleil se déplace
             const dansLeCadre = (x, y) => ({ x: borne(x, c.g + e.g, c.d - e.d), y: borne(y, c.h + e.h, c.b - e.b) });
             for (let d = 0; d <= 90; d++) {
                 for (const sens of (d === 0 ? [0] : [1, -1])) {
                     const a = n.theta + sens * d * Math.PI / 180;
-                    const p = dansLeCadre(T.cx + rho * Math.cos(a), T.cy + rho * Math.sin(a));
+                    const p = dansLeCadre(T.cx + rayon(a) * Math.cos(a), T.cy + rayon(a) * Math.sin(a));
                     if (libre(p.x, p.y)) return p;
                 }
             }
@@ -793,10 +811,24 @@ const baryEpochs = {
             });
             return dansLeCadre(T.cx + vx * t, T.cy + vy * t);
         };
-        Object.defineProperty(n, 'x', { enumerable: true, get: () => centre().x });
-        Object.defineProperty(n, 'y', { enumerable: true, get: () => centre().y });
+        Object.defineProperty(n, 'x', { enumerable: true, configurable: true, get: () => centre().x });
+        Object.defineProperty(n, 'y', { enumerable: true, configurable: true, get: () => centre().y });
     };
     const N = Object.fromEntries(nodes.map((n) => [n.id, n]));
+    // Rayon du « cercle » autour duquel se posent boutons, satellites et Soleil, dans la direction theta [px] : le cercle
+    // d'atmosphère, ou (vue Terre–Lune de la page ISS) l'ellipse de l'orbite de la Lune à l'écran — de demi-diamètres
+    // conjugués a, b, son point dans la direction d = (cos theta, sin theta) est à 1 / |[a b]⁻¹ d| du centre.
+    TERRE_ECRAN.rayonVers = (theta) => {
+        const o = TERRE_ECRAN.orbite;
+        if (o === null) return N.albedo.radius;
+        const c = Math.cos(theta), s = Math.sin(theta);
+        return Math.abs(o.ax * o.by - o.bx * o.ay) / Math.hypot(o.by * c - o.bx * s, o.ax * s - o.ay * c);
+    };
+    // Distance au centre d'un bouton à rayonPct dans la direction theta [px], jamais dans le cercle : au-delà du « cercle »,
+    // l'écart que rayonPct donne au-delà du cercle d'atmosphère (identique à rayonPct % du cercle d'atmosphère hors vue
+    // Terre–Lune). rayonPctDe : l'inverse (glisser à la souris).
+    TERRE_ECRAN.distanceAutour = (theta, rayonPct) => TERRE_ECRAN.rayonVers(theta) + (Math.max(rayonPct, 100) / 100 - 1) * N.albedo.radius;
+    TERRE_ECRAN.rayonPctDe = (theta, distance) => 100 * (1 + (distance - TERRE_ECRAN.rayonVers(theta)) / N.albedo.radius);
     N.terre.epoch.forEach((e) => { rayonDuGlobe(e, 'radius'); rayonDuGlobe(e, 'radiusExobase'); });
     // Ondes rouges de la Terre (émission, orientées vers l'atmosphère, côté DSCOVR) : elles s'arrêtent au satellite.
     Object.defineProperty(N.terre.radiation, 'maxRadius', { enumerable: true,
@@ -806,28 +838,39 @@ const baryEpochs = {
     N.noyau.radiation.forEach((r) => longueur(r, 'maxRadius'));
     longueur(N.reemis.radiation, 'maxRadius');
     surLeCentre(N.terre);
-    // Axe Terre → DSCOVR : noyau un demi-pixel avant le centre, albedo un pixel après — direction des flèches noyau → terre →
-    // albedo, alignées sur albedo → espace2 (une seule ligne, du noyau au satellite).
-    const surLAxeDeDSCOVR = (n, d) => {
-        const u = () => {
-            const dx = N.espace2.x - TERRE_ECRAN.cx, dy = N.espace2.y - TERRE_ECRAN.cy, l = Math.hypot(dx, dy);
-            return { x: dx / l, y: dy / l };
-        };
+    // Point de liaison à la surface (fin de la flèche noyau → terre, départ de l'émission terre → albedo → espace2) : décalé
+    // le long de la surface de DECALAGE_LIAISON depuis l'axe Terre → DSCOVR (sens horaire à l'écran) ; le noyau y monte en
+    // rayon, l'émission en part tout droit vers le satellite et passe le cercle d'atmosphère en Q.
+    const DECALAGE_LIAISON = 20 * Math.PI / 180;   // [rad, y vers le bas : positif = sens horaire à l'écran]
+    const liaison = () => {
+        const T = TERRE_ECRAN, R = getNodeProperty(N.terre, 'radius'), Ra = getNodeProperty(N.albedo, 'radius');
+        const phi = Math.atan2(N.espace2.y - T.cy, N.espace2.x - T.cx) + DECALAGE_LIAISON;
+        const P = { x: T.cx + R * Math.cos(phi), y: T.cy + R * Math.sin(phi) };
+        const l = Math.hypot(N.espace2.x - P.x, N.espace2.y - P.y);
+        const w = { x: (N.espace2.x - P.x) / l, y: (N.espace2.y - P.y) / l };
+        // |P + t w − centre| = Ra, racine positive (P est dans le cercle d'atmosphère)
+        const dw = (P.x - T.cx) * w.x + (P.y - T.cy) * w.y;
+        const t = -dw + Math.sqrt(dw * dw - R * R + Ra * Ra);
+        return { phi, P, w, Q: { x: P.x + t * w.x, y: P.y + t * w.y } };
+    };
+    // Centres décalés de moins d'un pixel, qui donnent la direction des flèches entre cercles concentriques : noyau un
+    // demi-pixel avant le centre, vers le point de liaison ; albedo un pixel après, sur la ligne liaison → DSCOVR.
+    const decale = (n, d, u) => {
         Object.defineProperty(n, 'x', { enumerable: true, get: () => TERRE_ECRAN.cx + d * u().x });
         Object.defineProperty(n, 'y', { enumerable: true, get: () => TERRE_ECRAN.cy + d * u().y });
     };
-    surLAxeDeDSCOVR(N.noyau, -0.5);
-    surLAxeDeDSCOVR(N.albedo, 1);
-    // Satellites (espace1 : CERES, espace2 : DSCOVR, sous les 🛰 OBSERVATIONS) et Soleil (en haut à gauche du cercle) : autour
-    // du cercle d'atmosphère, comme les boutons — leur angle et leur distance (en % du cercle) viennent de leur place
-    // dessinée, à R = radiusTerre ; le Soleil se déplace à la souris (zoom_terre.js : il change son theta et son rayonPct) et
-    // évite le titre, posé par-dessus en mode ISS (bornesPar).
-    ['espace1', 'espace2', 'soleil'].forEach((id) => {
-        const n = N[id];
-        n.theta = Math.atan2(n.y - earthCenterY, n.x - centerX);
-        n.rayonPct = 100 * Math.hypot(n.x - centerX, n.y - earthCenterY) / radiusAtmosphere;
-        autourDeLaTerre(n);
-    });
+    decale(N.noyau, -0.5, () => { const { phi } = liaison(); return { x: Math.cos(phi), y: Math.sin(phi) }; });
+    decale(N.albedo, 1, () => liaison().w);
+    const arc = (de, vers) => arcs.find((a) => a.from === de && a.to === vers);
+    arc('terre', 'albedo').trace = () => { const { P, Q } = liaison(); return { x1: P.x, y1: P.y, x2: Q.x, y2: Q.y }; };
+    arc('albedo', 'espace2').trace = () => {
+        const { Q, w } = liaison();
+        return { x1: Q.x, y1: Q.y, x2: N.espace2.x - N.espace2.radius * w.x, y2: N.espace2.y - N.espace2.radius * w.y };
+    };
+    // Satellites (espace1 : CERES, espace2 : DSCOVR, sous les 🛰 OBSERVATIONS) et Soleil : autour du cercle d'atmosphère,
+    // comme les boutons, tous à gauche de la Terre (la page ISS laisse cette place, iss:marges) ; glissés à la souris
+    // (zoom_terre.js) ; le Soleil évite le titre, posé par-dessus (bornesPar).
+    ['espace1', 'espace2', 'soleil'].forEach((id) => autourDeLaTerre(N[id]));
     // CO₂, H₂O, CH₄ : un éventail. CH₄ en est le pied (son angle : glisser CH₄ tourne l'éventail), H₂O à un écart, CO₂ à deux
     // (glisser l'un ou l'autre ouvre ou referme l'éventail) ; une seule distance pour les trois. theta et rayonPct sont des
     // accesseurs sur l'éventail : le glisser générique (zoom_terre.js) les écrit comme pour les autres boutons.
@@ -847,17 +890,18 @@ const baryEpochs = {
     orienter(N.terre.radiation, N.terre, N.espace2);    // émission de la surface → DSCOVR
     orienter(N.albedo.radiation, N.albedo, N.espace1);  // réfléchi → CERES
     orienter(N.reemis.radiation, N.reemis, N.terre);    // effet de serre → surface
-    N.noyau.radiation.forEach((r) => orienter(r, N.noyau, N.terre));   // géothermie → surface, sur l'axe de DSCOVR
-    // Angle du Soleil : le sien (dessiné, glissé à la souris), ou celui du vrai Soleil (onglet ISS) — glissé, il vaut aussi
-    // en ISS, jusqu'au prochain mouvement de caméra (message iss:terre).
-    const soleilPropre = { theta: N.soleil.theta };
-    Object.defineProperty(N.soleil, 'theta', { enumerable: true,
-        get: () => TERRE_ECRAN.soleilTheta === null ? soleilPropre.theta : TERRE_ECRAN.soleilTheta,
-        set: (v) => { soleilPropre.theta = v; TERRE_ECRAN.soleilTheta = TERRE_ECRAN.soleilTheta === null ? null : v; } });
-    // Géométrie juste au-dessus du Soleil, à la limite de son rayonnement (son dernier cercle) ; son logo tourné de −90°, la
-    // face éclairée vers le Soleil (organigramme.css).
-    Object.defineProperty(N.geometrie, 'x', { enumerable: true, get: () => N.soleil.x });
-    Object.defineProperty(N.geometrie, 'y', { enumerable: true, get: () => N.soleil.y - N.soleil.radiation.maxRadius });
+    N.noyau.radiation.forEach((r) => orienter(r, N.noyau, N.terre));   // géothermie → surface, vers le point de liaison
+    // Le Soleil : sur le vrai Soleil quand la page ISS le montre (TERRE_ECRAN.soleilVrai, onglet ISS), sinon à sa place
+    // (theta, rayonPct : dessinée, glissée à la souris, retenue en cookie).
+    const placePropre = { x: Object.getOwnPropertyDescriptor(N.soleil, 'x').get, y: Object.getOwnPropertyDescriptor(N.soleil, 'y').get };
+    Object.defineProperty(N.soleil, 'x', { enumerable: true,
+        get: () => TERRE_ECRAN.soleilVrai === null ? placePropre.x() : TERRE_ECRAN.soleilVrai.x });
+    Object.defineProperty(N.soleil, 'y', { enumerable: true,
+        get: () => TERRE_ECRAN.soleilVrai === null ? placePropre.y() : TERRE_ECRAN.soleilVrai.y });
+    // Géométrie autour du Soleil, à son angle (N.geometrie.angle, glissé à la souris), à la limite de son rayonnement (son
+    // dernier cercle) ; son logo tourné du même angle, la face éclairée vers le Soleil (zoom_terre.js).
+    Object.defineProperty(N.geometrie, 'x', { enumerable: true, get: () => N.soleil.x + N.soleil.radiation.maxRadius * Math.cos(N.geometrie.angle) });
+    Object.defineProperty(N.geometrie, 'y', { enumerable: true, get: () => N.soleil.y + N.soleil.radiation.maxRadius * Math.sin(N.geometrie.angle) });
     Object.values(baryEpochs).forEach((b) => {
         rayonDuGlobe(b.terre, 'radius');
         rayonDuGlobe(b.terre, 'radiusExobase');

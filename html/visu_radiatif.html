@@ -7,11 +7,10 @@
     </div>
     <div class="right-column" id="right-column"></div>
 
-    <div class="title-container divGlass" id="titre-bilan">
+    <div class="title-container" id="titre-bilan">
         <div class="title-header-row">
             <h1 title="Bilan radiatif : flux solaires et terrestres, équilibre énergétique de surface">Bilan Radiatif Terrestre</h1>
             <span id="title-app-version" class="title-app-version" aria-label="Version"></span>
-            <span class="title-subtitle" title="Le bilan radiatif terrestre conditionne la circulation générale et la météorologie">Base de la météorologie</span>
         </div>
 
         <div class="title-content-row title-content-row--flou-et-resultat">
@@ -24,6 +23,12 @@
                             <span class="synthese_epoch-info" id="info-time" title="Écart temporel par rapport au présent (Ma)">+0 Ma</span>
                         </div>
                     </div>
+                    <!-- Affichages de l'organigramme (main.js) : Energies = les watts, Atmosphère = les détails (gaz, albédo, flèches) ;
+                         + / − comme les titres de fenêtres -->
+                    <div id="titre-affichages" class="titre-affichages">
+                        <div id="affichage-energies" class="titre-affichage" onclick="window.afficherWattsOrganigramme(!window.organigramObservationMetricsVisible)"><button type="button"></button><span>Energies</span></div>
+                        <div id="affichage-atmosphere" class="titre-affichage" onclick="window.afficherDetailsOrganigramme(!window.organigramArrowsVisible)"><button type="button"></button><span>Atmosphère</span></div>
+                    </div>
                 </div>
                 <div class="synthese_Temp-col synthese_Temp-col-right">
                     <div class="synthese_Temp-temp-line" title="Synthèse : température de surface">
@@ -35,7 +40,13 @@
     </div>
 
     <div class="flux-diagram-wrapper">
-        <div class="flux-diagram divGlass" id="flux-diagram"></div>
+        <div class="flux-diagram divGlass" id="flux-diagram">
+            <!-- Bandeau du bas (organigramme.css) : ⚗ DETAILS, EVENEMENT et SKIP (main.js poserBandeauBas les y range). -->
+            <div id="bandeau-bas" class="bandeau-bas">
+                <div id="bandeau-bas-ligne" class="bandeau-bas-ligne">
+                </div>
+            </div>
+        </div>
         <div id="organigram-calculation-overlay" class="organigram-calculation-overlay" style="display: none;" aria-hidden="true">
             <div class="organigram-calculation-overlay__text compute-calcul-overlay-text">Calculs d'équilibre radiatifs en cours</div>
         </div>

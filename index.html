@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <script src="static/site_paths.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Une seule mise en page (static/css/style.css) : un téléphone ou une tablette étroite affiche la page à 1000 px de
+         large, réduite à son écran ; un ordinateur ignore cette balise. -->
+    <meta name="viewport" content="width=1000">
     <title>Bilan Radiatif Terrestre</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="64x64" href="favicon64.png">
@@ -122,8 +124,17 @@
          posé à l'ouverture de l'onglet, avec les cartes de l'époque (static/ui/onglets_graphe.js, chargerISS). -->
     <div id="iss-panel" class="tab-panel onglet-graphe">
         <button type="button" id="iss-zen-btn" class="iss-zen-btn" onclick="window.ONGLETS_GRAPHE.basculerZenISS()" title="Plein écran : masque / remet les fenêtres de la page ISS">⛶</button>
-        <iframe id="iss-iframe" title="ISS" allow="fullscreen"></iframe>
+        <iframe id="iss-iframe" title="" allow="fullscreen"></iframe>
     </div>
+    <!-- Onglet ISS en fond : titres des fenêtres empilées en haut à droite, au-dessus de Temps de la page ISS ; une seule
+         dépliée, le bouton dans son coin (static/ui/fenetres.js, static/css/index-shell.css). Hors des panneaux : par-dessus
+         la fenêtre dépliée. -->
+    <div class="fenetre-tete" data-fenetre="visu" onclick="window.FENETRES.basculer('visu')"><span>Spectrale</span><button type="button"></button></div>
+    <div class="fenetre-tete" data-fenetre="histoire" onclick="window.FENETRES.basculer('histoire')"><span>Histoire</span><button type="button"></button></div>
+    <div class="fenetre-tete" data-fenetre="bench" onclick="window.FENETRES.basculer('bench')"><span>Bench</span><button type="button"></button></div>
+    <div class="fenetre-tete" data-fenetre="scie" onclick="window.FENETRES.basculer('scie')"><span>Science</span><button type="button"></button></div>
+    <div id="fenetre-poignee" class="fenetre-poignee" title="Agrandir / réduire la fenêtre"></div>
+    <div class="fenetre-tete" data-fenetre="milankovitch" onclick="window.FENETRES.basculer('milankovitch')"><span>Milankovitch</span><button type="button"></button></div>
 
 
     <!-- Loader : fetch html/visu_radiatif.html + html/scie_radiatif.html, injection dans les panels, puis chargement des scripts. Placé avant le footer pour ne pas être bloqué par le script externe. -->
@@ -174,7 +185,7 @@
         <div class="credits-content">
             <div class="credits-links">
                 <div class="credits-row">
-                    <span class="credits-doc-label">GitHub :</span> <a href="https://github.com/DNAvatar-org/API_BILAN" target="_blank" rel="noopener noreferrer">API_BILAN</a>&nbsp;|&nbsp;<a href="https://commonsclause.com/" target="_blank" rel="noopener noreferrer"
+                    <span class="credits-doc-label">GitHub :</span> <a class="credits-git" href="https://github.com/DNAvatar-org/API_BILAN" target="_blank" rel="noopener noreferrer" title="Code source du moteur sur GitHub"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>API_BILAN</a>&nbsp;|&nbsp;<a class="credits-git" href="https://github.com/DNAvatar-org/ISS" target="_blank" rel="noopener noreferrer" title="Code source de la page ISS sur GitHub"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>ISS</a>&nbsp;|&nbsp;<a href="https://commonsclause.com/" target="_blank" rel="noopener noreferrer"
                         id="license-link">Apache License 2.0</a><span id="credits-paleomap">&nbsp;|&nbsp;<a href="#" onclick="event.preventDefault(); document.getElementById('dlg-credits').showModal();">Cartes : PALEOMAP / C.R. Scotese</a></span>
                 </div>
                 <div class="credits-row">

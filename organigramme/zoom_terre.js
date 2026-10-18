@@ -6,11 +6,22 @@
 //       cercle), satellites (sous les 🛰), radiations, flèches.
 //       Le zoom n'est pas limité par le cadre : seuls les boutons butent sur ses bords et sur les éléments de leur
 //       bornesPar (emprise : cercle + textes non vides des cases autour), et les flèches gardent leur longueur minimale
-//       (organigramme.js, generateArrows). Soleil, albédo, satellites et l'éventail CO₂ / H₂O / CH₄ se glissent à la souris
+//       (organigramme.js, generateArrows). Soleil, albédo, EDS, satellites et l'éventail CO₂ / H₂O / CH₄ se glissent à la souris
 //       (leur angle et leur distance autour de la Terre) ; la Géométrie suit le Soleil, au bord de son rayonnement ; les ondes
 //       suivent leurs flèches.
-// Version 1.1.0
-// Date: 2026-10-15
+// Version 1.1.9
+// - v1.1.9: la Géométrie se glisse autour du Soleil (son angle) ; T° et pression posées sur la Terre (SYNTHESE_SUR_TERRE) ;
+//   les 🛰 n'ont plus d'action au clic.
+// - v1.1.8: place à gauche bornée par le Soleil lui-même (son emprise), plus par son rayonnement.
+// - v1.1.7: relâché sans bouger = clic (auClic) : le 🛰 du satellite IR reste glissable et bascule OBSERVATIONS.
+// - v1.1.6: poser reçoit le vrai Soleil à l'écran et l'orbite de la Lune ; glisser et place à gauche suivent l'ellipse.
+// - v1.1.5: onglet ISS, place à gauche : le rayonnement du Soleil touche le bord gauche (Terre et organigramme décalés à gauche).
+// - v1.1.4: l'effet de serre (EDS) se glisse aussi ; au relâcher, angle et distance du bouton écrits en console.
+// - v1.1.3: poser n'impose plus l'angle du vrai Soleil : celui de l'organigramme reste où on l'a mis.
+// - v1.1.2: Soleil glissé : son angle et sa distance retenus en cookie au relâcher, repris au chargement.
+// - v1.1.1: rien n'est mesuré ni redessiné avant le premier dessin de l'organigramme (flux:lastDrawn : les blocs 🛰
+//   OBSERVATIONS, obstacles des boutons, existent alors) ; les changements d'avant s'appliquent d'un coup.
+// Date: 2026-10-16
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -145,6 +156,13 @@
             cell.style.left = n.x + 'px';
             cell.style.top = n.y + 'px';
         });
+        // logo de la Géométrie tourné de son angle : sa face éclairée vers le Soleil (vers la gauche à angle 0)
+        document.querySelector('#cell-geometrie img').style.rotate = noeud('geometrie').angle + 'rad';
+        // T° et pression sur la Terre (SYNTHESE_SUR_TERRE), en px de la fenêtre : leur bloc reste dans le titre, en
+        // position fixe (index-shell.css)
+        const o = origine(), st = window.SYNTHESE_SUR_TERRE, b = document.body.style;
+        b.setProperty('--synthese-x', (o.x + RT.cx + st.k * RT.R * Math.cos(st.theta)) + 'px');
+        b.setProperty('--synthese-y', (o.y + RT.cy + st.k * RT.R * Math.sin(st.theta)) + 'px');
         AUTOUR.forEach((id) => {
             mesurer(id);
             const n = noeud(id), cell = document.getElementById('cell-' + id);
@@ -163,6 +181,7 @@
     /** Les textes changent à chaque calcul (valeurs, tableau de l'albédo) : emprises remesurées après le rendu des
      *  libellés ; un bouton que ses bords repoussent ailleurs → redessin au même rayon. */
     window.IO_LISTENER.on('compute:done', function () {
+        if (!pret) return;                                  // le premier dessin mesure tout (flux:lastDrawn ci-dessous)
         requestAnimationFrame(function () {
             AUTOUR.forEach(mesurer);
             const pas = (el, n) => parseFloat(el.style.left) !== n.x || parseFloat(el.style.top) !== n.y;
@@ -175,7 +194,19 @@
     /** Un redessin par trame : les changements d'une même trame (crans de molette, messages de la page ISS)
      *  s'additionnent ; les tailles d'avant sont celles du début de la trame. */
     let avantTrame = null;
+    // L'organigramme est-il dessiné (flux:lastDrawn) ? Avant, main.js n'a pas encore créé les blocs 🛰 OBSERVATIONS, obstacles des
+    // boutons et place des satellites : on note les changements (centre, rayon, Soleil) sans mesurer ni redessiner ; le premier
+    // dessin les applique tous.
+    let pret = false;
+    // Emprises à zéro jusqu'à la première mesure (placeAGauche les lit dès le chargement de la page ISS).
+    AUTOUR.forEach((id) => { noeud(id).emprise = { g: 0, d: 0, h: 0, b: 0 }; });
+    window.IO_LISTENER.on('flux:lastDrawn', function () {
+        if (pret) return;
+        // après les autres écouteurs du même événement (main.js crée les blocs 🛰 dans le sien)
+        requestAnimationFrame(function () { pret = true; appliquer(tailles()); });
+    }, 'zoom_terre:pret');
     function changer(modifier) {
+        if (!pret) { modifier(); return; }
         if (avantTrame === null) {
             avantTrame = tailles();
             requestAnimationFrame(function () {
@@ -197,25 +228,39 @@
         changer(() => { RT.R = Math.min(R_MAX, Math.max(R_MIN, RT.R * (e.deltaY < 0 ? PAS : 1 / PAS))); });
     }, { passive: false });
 
-    /** Glisser à la souris (Soleil, albédo, satellites 🛰, gaz) : la position donne l'angle et la distance autour de la Terre (theta,
+    /** Glisser à la souris (Soleil, albédo, EDS, satellites 🛰, gaz) : la position donne l'angle et la distance autour de la Terre (theta,
      *  rayonPct en % du cercle d'atmosphère, jamais dedans) ; ce qui en dépend suit (Géométrie, flèches). Le mouvement n'est
      *  écouté que pendant le glisser. */
-    function rendreGlissable(poignee, id) {
+    /** Glisser à la souris : angle et distance du nœud autour de la Terre. Relâché sans avoir bougé de plus de 3 px : un
+     *  clic (auClic). placer(n, x, y) pose le nœud sous la souris (x, y : repère de #flux-diagram [px]) et rend ce qu'il
+     *  faut recopier dans configOrganigramme.js : par défaut, angle et distance autour de la Terre. */
+    const autourDeLaTerre = (n, x, y) => {
+        n.theta = Math.atan2(y - RT.cy, x - RT.cx);
+        n.rayonPct = RT.rayonPctDe(n.theta, Math.hypot(x - RT.cx, y - RT.cy));
+        return 'theta: ' + n.theta.toFixed(3) + ', rayonPct: ' + Math.round(n.rayonPct);
+    };
+    function rendreGlissable(poignee, id, auLacher = () => {}, auClic = () => {}, placer = autourDeLaTerre) {
         const n = noeud(id);
         poignee.style.cursor = 'grab';
+        let depart = { x: 0, y: 0 }, bouge = false, releve = '';
         const glisser = (e) => {
-            const o = origine(), x = e.clientX - o.x - RT.cx, y = e.clientY - o.y - RT.cy;
-            changer(() => {
-                n.theta = Math.atan2(y, x);
-                n.rayonPct = 100 * Math.hypot(x, y) / noeud('albedo').radius;
-            });
+            bouge = bouge || Math.hypot(e.clientX - depart.x, e.clientY - depart.y) > 3;
+            if (!bouge) return;
+            const o = origine();
+            changer(() => { releve = placer(n, e.clientX - o.x, e.clientY - o.y); });
         };
-        const lacher = () => {
+        const lacher = (e) => {
             poignee.removeEventListener('pointermove', glisser);
             poignee.style.cursor = 'grab';
+            if (bouge) {
+                console.info('[zoom_terre] ' + id + ' : ' + releve);   // à recopier dans configOrganigramme.js
+                auLacher(n);
+            } else if (e.type === 'pointerup') auClic();
         };
         poignee.addEventListener('pointerdown', (e) => {
             e.preventDefault();
+            depart = { x: e.clientX, y: e.clientY };
+            bouge = false;
             poignee.setPointerCapture(e.pointerId);
             poignee.style.cursor = 'grabbing';
             poignee.addEventListener('pointermove', glisser);
@@ -223,25 +268,43 @@
         poignee.addEventListener('pointerup', lacher);
         poignee.addEventListener('pointercancel', lacher);
     }
-    rendreGlissable(document.querySelector('#cell-soleil .flux-circle-bg'), 'soleil');
+    // Le Soleil garde la place où on l'a glissé, d'une visite à l'autre : angle et distance (theta, rayonPct) en cookie, écrits
+    // au relâcher, repris ici au chargement (avant le premier dessin).
+    const COOKIE_SOLEIL = 'bilan_radiatif_soleil';
+    const souvenirSoleil = document.cookie.split('; ').find((c) => c.startsWith(COOKIE_SOLEIL + '='));
+    if (souvenirSoleil !== undefined) {
+        const [theta, rayonPct] = souvenirSoleil.split('=')[1].split(',').map(Number);
+        noeud('soleil').theta = theta;
+        noeud('soleil').rayonPct = rayonPct;
+    }
+    rendreGlissable(document.querySelector('#cell-soleil .flux-circle-bg'), 'soleil', (n) => {
+        document.cookie = COOKIE_SOLEIL + '=' + n.theta.toFixed(4) + ',' + n.rayonPct.toFixed(2) + '; max-age=31536000; path=/; SameSite=Lax';
+    });
     rendreGlissable(document.querySelector('#cell-albedo-btn .flux-circle-bg'), 'albedo-btn');
+    rendreGlissable(document.querySelector('#cell-reemis .flux-circle-bg'), 'reemis');
     // l'éventail CO₂ / H₂O / CH₄ (configOrganigramme.js) : CO₂ ou H₂O l'ouvrent, CH₄ le tourne
     ['co2', 'h2o', 'methane'].forEach((id) => rendreGlissable(document.querySelector('#cell-' + id + ' .flux-circle-bg'), id));
+    // la Géométrie tourne autour du Soleil, au bord de son rayonnement : son angle (configOrganigramme.js)
+    rendreGlissable(document.querySelector('#cell-geometrie .flux-circle-bg'), 'geometrie', undefined, undefined, (n, x, y) => {
+        const soleil = noeud('soleil');
+        n.angle = Math.atan2(y - soleil.y, x - soleil.x);
+        return 'angle: ' + n.angle.toFixed(3);
+    });
 
-    /** poser : centre et rayon de la Terre à l'écran, dans le repère de #flux-diagram [px], et angle du vrai Soleil à l'écran
-     *  (onglet ISS : sa Terre et son Soleil ; null : le Soleil garde son angle propre). redessiner : la mise en page a changé (pleine page, redimensionnement). */
+    /** poser : centre et rayon de la Terre à l'écran, dans le repère de #flux-diagram [px], vrai Soleil à l'écran et orbite de
+     *  la Lune (onglet ISS : soleilVrai, orbite, configOrganigramme.js TERRE_ECRAN ; null : le Soleil garde sa place, le
+     *  cercle d'atmosphère). redessiner : la mise en page a changé (pleine page, redimensionnement). */
     window.ZOOM_TERRE = {
-        poser(p) { changer(() => { RT.cx = p.cx; RT.cy = p.cy; RT.R = p.R; RT.soleilTheta = p.soleilTheta; }); },
+        poser(p) { changer(() => { RT.cx = p.cx; RT.cy = p.cy; RT.R = p.R; RT.soleilVrai = p.soleilVrai; RT.orbite = p.orbite; }); },
         redessiner() { changer(() => {}); },
-        /** Place que la disposition demande à gauche du centre de la Terre [px] : le plus grand débord à gauche des boutons,
-         *  satellites et Soleil posés à leur angle et leur distance (sans les bords du cadre, qui les repoussent), plus une
-         *  marge. La page ISS décale sa Terre vers la droite pour la laisser (onglets_graphe.js, message iss:marges). */
+        /** Place que la disposition demande à gauche du centre de la Terre [px], posés à leur angle et leur distance (sans
+         *  les bords du cadre, qui les repoussent) : boutons, satellites et Soleil lui-même (pas son rayonnement, qui peut
+         *  sortir du cadre) gardent une marge. La page ISS pose le centre de sa Terre là (onglets_graphe.js, message
+         *  iss:marges ; pages/ISS js/hote.js). */
         placeAGauche() {
-            const atm = noeud('albedo').radius;
-            return 16 + Math.max(...AUTOUR.map((id) => {
-                const n = noeud(id);
-                return -Math.max(n.rayonPct, 100) / 100 * atm * Math.cos(n.theta) + n.emprise.g;
-            }));
+            const debord = (n) => -RT.distanceAutour(n.theta, n.rayonPct) * Math.cos(n.theta);
+            const debordSoleil = RT.soleilVrai === null ? debord(noeud('soleil')) : RT.cx - RT.soleilVrai.x;   // le vrai Soleil, s'il est à l'écran
+            return 16 + Math.max(...AUTOUR.map((id) => (id === 'soleil' ? debordSoleil : debord(noeud(id))) + noeud(id).emprise.g));
         },
         rendreGlissable: rendreGlissable   // les 🛰, créés plus tard par main.js
     };

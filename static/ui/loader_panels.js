@@ -1,6 +1,8 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.3.4
+// Version 1.4.1
+// - v1.4.1: au premier calcul, l'ISS s'ouvre avec sa fenêtre Spectrale dépliée.
+// - v1.4.0: onglet ISS en fond, les autres onglets en fenêtres (fenetres.js) ; synchroniserScie.
 // Logs: v1.3.4: onglet ISS ouvert par défaut, au premier calcul (il lit l'atmosphère calculée) ; onglet Histoire :
 //   titre et organigramme cachés (entrée / sortie, onglets_graphe.js).
 // Logs: v1.3.3: organigramme/zoom_terre.js chargé après organigramme.js (molette = rayon de la Terre) ; onglet ISS en pleine
@@ -35,6 +37,7 @@
         before: [
             'static/ui/api_onglets.js',
             'static/ui/onglets_graphe.js',
+            'static/ui/fenetres.js',       // fenêtres de l'onglet ISS (Spectrale, Histoire, Bench, Science, Milankovitch)
             'static/ui/bench_pilote.js',   // window.BENCH : lu sans test par sync_panels (runComputeInParent)
             'static/debug.js'
         ],
@@ -174,10 +177,11 @@
     };
 
     // switchTab = proxy vers API_ONGLETS (v1.1.15). Mécanique (classList, body, shell, postMessage) externalisée en onShow/onHide des tabs (enregistrées plus bas, dans initAfterLoad).
+    // Une fois l'ISS ouverte (premier calcul), elle reste le fond avec l'organigramme : les autres onglets déplient leur fenêtre,
+    // ISS les replie toutes (fenetres.js).
     window.switchTab = function (name) {
-        if (window.API_ONGLETS && window.API_ONGLETS.showTab) {
-            window.API_ONGLETS.showTab(name);
-        }
+        if (window.API_ONGLETS.getCurrentTab() === 'iss') { window.FENETRES.montrer(name === 'iss' ? null : name); return; }
+        window.API_ONGLETS.showTab(name);
     };
 
     // onShow spécifiques aux tabs (factorisation de l'ancien switchTab). Appelés par API_ONGLETS après .active + shell.setCurrentPanel.
@@ -191,6 +195,10 @@
         window.ONGLETS_GRAPHE.spectreVisible(false);
         window.afficherDetailsOrganigramme(true);   // onglet Science = ⚗ DETAILS (main.js)
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('scie');
+        window.synchroniserScie();
+    }
+    /** Page Science (iframe) : état de la frise et dernier calcul, convergence, hauteur (onglet Science, fenêtre Science). */
+    window.synchroniserScie = function () {
         var iframe = document.getElementById('scie-iframe');
         if (iframe && iframe.contentWindow) {
             var epochId = (window.DATA && window.DATA['📜'] && window.DATA['📜']['🗿']) || (window.SYNC_STATE && window.SYNC_STATE.epochId) || '⚫';
@@ -207,7 +215,7 @@
             // Synchrone: éviter setTimeout (debug/trace plus lisible, pas d'effet de bord timing).
             window.resizeScieIframe();
         }
-    }
+    };
     // Milankovitch, Histoire, Bench : iframes autonomes dans la zone du graphe ; rien à synchroniser.
     function onShowMilankovitch() { window.ONGLETS_GRAPHE.spectreVisible(false); }
     function onShowBench() { window.ONGLETS_GRAPHE.spectreVisible(false); }
@@ -245,10 +253,12 @@
         window.API_ONGLETS.registerTab({ id: 'histoire', buttonId: 'tab-histoire', panelId: 'histoire-panel', onShow: onShowHistoire, onHide: onHideHistoire });
         // Onglet ISS : dnavatar.org/pages/ISS en iframe, même zone et même effet (spectre caché) que Milankovitch.
         window.API_ONGLETS.registerTab({ id: 'iss', buttonId: 'tab-iss', panelId: 'iss-panel', onShow: onShowISS, onHide: onHideISS });
-        // Onglet ISS par défaut : ouvert au premier calcul — il lit l'atmosphère calculée (onglets_graphe.js, atmISS).
+        // Onglet ISS par défaut : ouvert au premier calcul — il lit l'atmosphère calculée (onglets_graphe.js, atmISS) —, avec
+        // sa fenêtre Spectrale dépliée (fenetres.js).
         var ouvrirISSAuDepart = function () {
             window.IO_LISTENER.off('compute:done', ouvrirISSAuDepart);
             window.switchTab('iss');
+            window.switchTab('visu');
         };
         window.IO_LISTENER.on('compute:done', ouvrirISSAuDepart, 'loader_panels:issParDefaut');
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
