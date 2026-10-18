@@ -2807,7 +2807,10 @@ function resolveRadiationArcParams(radiationOptions, legacyDefaults = {}) {
   const color = radiationOptions.color ?? legacyDefaults.color ?? "#ff9800";
   const strokeSize =
     radiationOptions.strokeSize ?? legacyDefaults.strokeSize ?? 2;
+  // premier cercle : le bord du nœud, ou rayonDepart (ondes réfléchies de l'albedo : la surface, configOrganigramme.js)
+  const rayonDepart = radiationOptions.rayonDepart ?? legacyDefaults.rayonDepart;
   return {
+    rayonDepart,
     numCircles,
     maxRadius: maxR,
     openingInit,
@@ -4277,8 +4280,10 @@ cellOrder.forEach((nodeId) => {
   const radParams = resolveRadiationArcParams(radiationOptions, {
     openingAngle: 270,
     rotation: 270,
+    rayonDepart: node.radius,
   });
   const {
+    rayonDepart,
     numCircles,
     maxRadius,
     openingInit,
@@ -4299,7 +4304,7 @@ cellOrder.forEach((nodeId) => {
 
     for (let i = 1; i <= numCircles; i++) {
       const progress = i / numCircles;
-      const arcRadius = node.radius + (maxRadius - node.radius) * progress;
+      const arcRadius = rayonDepart + (maxRadius - rayonDepart) * progress;
       const arc = createArc(
         node.x,
         node.y,

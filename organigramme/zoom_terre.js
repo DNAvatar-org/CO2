@@ -59,10 +59,10 @@
     function redessinerRadiation(node) {
         const groupe = flux.querySelector('.flux-radiation-group[data-node="' + node.id + '"]');
         groupe.replaceChildren();
-        const P = resolveRadiationArcParams(node.radiation, { openingAngle: 270, rotation: 270 });
+        const P = resolveRadiationArcParams(node.radiation, { openingAngle: 270, rotation: 270, rayonDepart: node.radius });
         for (let i = 1; i <= P.numCircles; i++) {
             const t = i / P.numCircles;
-            const r = node.radius + (P.maxRadius - node.radius) * t;
+            const r = P.rayonDepart + (P.maxRadius - P.rayonDepart) * t;
             const arc = createArc(node.x, node.y, r, 0.3 + t * 0.2, P.openingFinal, P.rotation, groupe);
             arc.style.border = P.strokeSize + 'px dashed ' + P.color;
         }

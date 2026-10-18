@@ -3,7 +3,9 @@
 //       (#visu-panel), son interface (titre, organigramme, frise) par-dessus. Les panneaux ne sont pas déplacés dans le DOM
 //       (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont en position fixe, recalés quand
 //       la zone change de taille, au redimensionnement et au défilement (c'est le body qui défile, index-shell.css).
-// Version 1.6.2
+// Version 1.6.4
+// - v1.6.4: iss:fenetres — l'organigramme troué à la place de Temps et Point de vue : ils passent par-dessus.
+// - v1.6.3: iss:marges fenetres { gauche, haut } — Temps et Point de vue de la page ISS à gauche, sous Atmosphère.
 // - v1.6.2: Entrée relayée à la fenêtre Milankovitch ouverte (milankovitch:valider).
 // - v1.6.1: histoire:vue relayé à la fenêtre Milankovitch (milankovitch:periode).
 // - v1.6.0: la fenêtre Spectre passe à fenetres.js (toutes les fenêtres de l'onglet ISS) ; Temps et Point de vue sous leur pile.
@@ -63,6 +65,7 @@
     const CO2_PUBLIE = EN_LOCAL ? new URL('./', location.href).href : 'https://dnavatar.org/pages/bilan_radiatif/CO2/';
     const O2_MASSIQUE_ACTUEL = 0.2314;   // part massique de l'O₂ de l'air d'aujourd'hui (référence de la luminescence)
     let zenISS = false;   // fenêtres Temps et Point de vue visibles, repliées (?provenance=CO2) ; ⛶ les masque
+    let fenetresISS = [];   // rectangles de Temps et Point de vue dans la page ISS (iss:fenetres) : trous de l'organigramme
     /** Atmosphère du dernier calcul pour la page ISS (?atm=, pages/ISS js/url.js) : pression de surface 🎈 [atm] ; hauteur
      *  d'échelle H = R T / (M g) à la température de surface [km] ; luminescence nocturne (airglow : O, OH, Na, O₂ — toutes
      *  issues de l'oxygène) ∝ part massique d'O₂ rapportée à aujourd'hui (approximation déclarée). Sans air : p:0. */
@@ -125,6 +128,7 @@
         if (e.data.type === 'histoire:vue') document.querySelector('#milankovitch-panel iframe').contentWindow.postMessage(
             { type: 'milankovitch:periode', debut: e.data.debut, fin: e.data.fin }, '*');
         if (e.data.type === 'iss:zenEtat') zenISS = e.data.zen;
+        if (e.data.type === 'iss:fenetres') { fenetresISS = e.data.rects; trouerOrganigramme(); }
         if (e.data.type === 'iss:terre' && window.API_ONGLETS.getCurrentTab() === 'iss') {
             // caméra de l'ISS (l'horizon) : pas de Terre entière autour de laquelle poser l'organigramme — il disparaît
             document.body.classList.toggle('iss-horizon', e.data.vue === 'iss');
@@ -163,6 +167,7 @@
         document.body.classList.remove('iss-horizon');   // hors de l'onglet ISS, l'organigramme est toujours visible
         document.body.classList.remove('iss-lune');
         window.FENETRES.montrer(null);   // le spectre retrouve sa place (Spectrale) ou se cache (autres onglets)
+        trouerOrganigramme();   // hors de l'onglet ISS : plus de trous
     }
     function effacerSpectre() {
         const canvas = document.getElementById('spectral-visualization');
@@ -212,19 +217,31 @@
         b.setProperty('--onglet-hauteur', page.height + 'px');
         window.FENETRES.poser();   // la pile des fenêtres suit le panneau
         envoyerMargesISS();
+        trouerOrganigramme();
     }
-    /** Bas du titre « Bilan Radiatif », ou de la pile des fenêtres si elle est plus bas, en px de la page ISS : ses
-     *  fenêtres Temps et Point de vue commencent dessous (pages/ISS js/url.js, ?provenance=CO2) ; et la place que
-     *  l'organigramme demande à gauche de la Terre : la page ISS y pose le centre de sa Terre (pages/ISS js/hote.js).
+    /** Temps et Point de vue de la page ISS (rectangles en px de sa page, iss:fenetres) : l'organigramme, posé par-dessus
+     *  l'iframe, est troué à leur place (clip-path evenodd) — on les lit et on les clique au travers. Hors de l'onglet ISS,
+     *  aucun trou. */
+    function trouerOrganigramme() {
+        const f = document.getElementById('flux-diagram');
+        if (!document.body.classList.contains('terre-iss')) { f.style.clipPath = ''; return; }
+        const i = document.getElementById('iss-iframe').getBoundingClientRect(), fr = f.getBoundingClientRect();
+        const ox = i.left - fr.left, oy = i.top - fr.top;
+        const trous = fenetresISS.map((r) => 'M' + (r.x + ox) + ' ' + (r.y + oy) + 'h' + r.w + 'v' + r.h + 'h' + (-r.w) + 'Z').join('');
+        f.style.clipPath = "path(evenodd, 'M0 0H" + fr.width + 'V' + fr.height + 'H0Z' + trous + "')";
+    }
+    /** Bord gauche d'Energies / Atmosphère et 10 px sous eux, en px de la page ISS : ses fenêtres Temps et Point de vue
+     *  s'empilent là, à gauche, et s'ouvrent vers le bas (pages/ISS js/url.js, ?provenance=CO2) ; et la place que l'organigramme demande à
+     *  gauche de la Terre : la page ISS y pose le centre de sa Terre (pages/ISS js/hote.js).
      *  Envoyé quand le panneau bouge, à chaque chargement de la page ISS, quand sa Terre bouge, après un glisser dans
      *  l'organigramme et quand une fenêtre se plie ou se déplie. */
     function envoyerMargesISS() {
-        const iframe = document.getElementById('iss-iframe');
-        const haut = Math.max(document.querySelector('#visu-panel .title-container').getBoundingClientRect().bottom,
-            window.FENETRES.bas()) - iframe.getBoundingClientRect().top;   // sous la pile des fenêtres (fenetres.js)
+        const iframe = document.getElementById('iss-iframe'), cadre = iframe.getBoundingClientRect();
+        const boutons = document.getElementById('titre-affichages').getBoundingClientRect();   // Energies, Atmosphère
+        const fenetres = { gauche: boutons.left - cadre.left, haut: boutons.bottom - cadre.top + 10 };
         // vue Terre–Lune : pas de place à faire, la page ISS garde son cadrage (la Terre au milieu de l'image)
         const gauche = window.TERRE_ECRAN.orbite === null ? window.ZOOM_TERRE.placeAGauche() : iframe.clientWidth / 2;
-        iframe.contentWindow.postMessage({ type: 'iss:marges', haut: haut, gauche: gauche }, '*');
+        iframe.contentWindow.postMessage({ type: 'iss:marges', gauche: gauche, fenetres: fenetres }, '*');
     }
 
     /** Spectre caché sous un autre onglet : son contenu sort du rendu (display: none, index-shell.css) et le canvas est

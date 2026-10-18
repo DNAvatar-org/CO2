@@ -214,6 +214,9 @@
         </div>
         <a class="credits-footer-utf8" href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>
     </footer>
+    <!-- Plein écran (à la place du lien utf8, invisible) : hors du pied de page, que le plein écran retire (index-shell.css). -->
+    <button type="button" id="plein-ecran" class="plein-ecran-btn" title="Plein écran"
+        onclick="document.fullscreenElement === null ? document.documentElement.requestFullscreen() : document.exitFullscreen()">⛶</button>
     <script>
     /* DEBUG TEMPORAIRE — pile Z complète au clic (elementsFromPoint inclut pointer-events:none) */
     document.addEventListener('click', function(e) {

@@ -2,11 +2,12 @@
 // Desc: Onglet ISS en fond (la Terre et l'organigramme toujours ouverts) : Spectrale, Histoire, Bench, Science et Milankovitch
 //       sont des fenêtres empilées en haut à droite, au-dessus de Temps et Point de vue de la page ISS. Repliées : leur titre
 //       et un +. Une seule dépliée à la fois : elle monte tout en haut, contre le bord droit, son − dans son coin, les
-//       titres repliés se rangent dessous, puis Temps et Point de vue (iss:marges, onglets_graphe.js). Mouvements en
+//       titres repliés se rangent dessous. Mouvements en
 //       transition (index-shell.css). Un onglet cliqué déplie sa fenêtre, ISS les replie toutes (switchTab, loader_panels.js).
 //       Taille commune à toutes les fenêtres, bornée au panneau : TAILLE_DEFAUT, ou celle choisie à la poignée (coin bas
 //       gauche), retenue en cookie. Au premier chargement, Spectrale est ouverte (loader_panels.js).
-// Version 1.2.1
+// Version 1.2.2
+// - v1.2.2: plus de bas de pile : Temps et Point de vue de la page ISS vont à gauche, sous Atmosphère (onglets_graphe.js).
 // - v1.2.1: FENETRES.ouverte() (Entrée relayée à Milankovitch, onglets_graphe.js).
 // - v1.2.0: taille par défaut 1000 × 555 px (la fenêtre ne suit plus le bord de la Terre).
 // - v1.1.0: poignée coin bas gauche (largeur, hauteur) ; taille en cookie.
@@ -41,7 +42,6 @@
     const MARGE = 8;        // [px] du bord du panneau ISS, et entre la fenêtre et les titres repliés
     const PAS_TITRE = 30;   // [px] un titre replié
     let ouverte = null;     // id de la fenêtre dépliée, ou null
-    let bas = 0;            // bas de la pile [px, fenêtre du navigateur] : Temps et Point de vue commencent dessous
     // Taille { largeur, hauteur } [px] : par défaut, ou choisie à la poignée et retenue en cookie.
     const COOKIE_TAILLE = 'bilan_radiatif_fenetre';
     const TAILLE_DEFAUT = { largeur: 1000, hauteur: 555 };
@@ -73,7 +73,6 @@
         let y = haut;
         if (ouverte !== null) { titre(ouverte).style.top = (y + 6) + 'px'; y += hauteur + MARGE; }
         ORDRE.filter((id) => id !== ouverte).forEach((id) => { titre(id).style.top = y + 'px'; y += PAS_TITRE; });
-        bas = y;
     }
 
     /** Déplie la fenêtre id (null : toutes repliées) ; celle qui l'était se replie. */
@@ -127,7 +126,6 @@
         montrer: montrer,
         poser: poser,
         basculer(id) { montrer(ouverte === id ? null : id); },
-        ouverte: () => ouverte,
-        bas: () => bas
+        ouverte: () => ouverte
     };
 })();

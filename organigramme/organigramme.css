@@ -259,6 +259,20 @@
 }
 #bandeau-bas-ligne #timeline-events-logos {
     min-width: 0 !important;
+    flex-wrap: nowrap;   /* les logos sur une ligne */
+    margin-left: 0;
+}
+/* EVENEMENT : son cercle (absolu, largeur fixe, organigramme.js createCell) revient dans la case centrale de la grille, à la
+   largeur de ses logos ; la colonne et la cellule suivent, SKIP se range après. */
+#bandeau-bas-ligne > .flux-cell--scenario-logos-shell {
+    width: auto !important;
+    grid-template-columns: 100px max-content 100px !important;
+}
+#bandeau-bas-ligne > .flux-cell--scenario-logos-shell .flux-circle-bg {
+    position: static;
+    grid-area: 2 / 2;
+    width: max-content !important;
+    transform: none !important;
 }
 
 /* Panneaux ⚗ DETAILS / 🛰 OBS — mise en page sur les wrappers (#plot-anim-toggle hors de ce jeu de classes) */
@@ -671,11 +685,14 @@
 #flux-diagram.hide-organigram-observation-metrics .flux-arrow {
     visibility: hidden;
 }
-/* Picto Géométrie atténué si 🛰 OFF (gris+alpha, visible) ; EDS + albédo inchangés */
-.organigram-picto-inactived,
-#flux-diagram.hide-organigram-observation-metrics #cell-geometrie .flux-circle-bg > span {
+/* Picto inactif : gris + alpha */
+.organigram-picto-inactived {
     filter: grayscale(1);
     opacity: 0.3;
+}
+/* Energies masquées : la Géométrie disparaît avec les watts ; EDS + albédo inchangés */
+#flux-diagram.hide-organigram-observation-metrics #cell-geometrie {
+    visibility: hidden;
 }
 
 .flux-rectangle {

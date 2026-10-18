@@ -214,6 +214,23 @@ body.terre-iss #visu-panel .synthese_Temp-col-right {
     justify-content: center;
     align-items: center;
 }
+/* Vue Terre–Lune (body.iss-lune) : la Terre est trop petite pour porter T° et pression ; elles reviennent dans le titre,
+   sous l'époque, sa date et son écart. */
+body.terre-iss.iss-lune #visu-panel .synthese_Temp.synthese_Temp-two-cols {
+    flex-direction: column;
+}
+body.terre-iss.iss-lune #visu-panel .synthese_Temp-col-right {
+    position: static;
+    transform: none;
+    width: auto;
+    height: auto;
+    margin: 6px 0 0;
+    padding: 0;
+    align-items: flex-start;
+    border: none;
+    border-radius: 0;
+    background: none;
+}
 /* Onglet Histoire (body.histoire) : titre et organigramme cachés, la courbe seule sur toute la largeur. L'organigramme sort
    du rendu (display) : des règles forcent « visibility: visible !important » sur certains de ses éléments. */
 body.histoire #visu-panel .title-container {
@@ -421,6 +438,29 @@ body.terre-iss .fenetre-ouverte .onglet-fermer { display: none; }
 }
 .credits-footer > .credits-footer-utf8:hover {
     text-decoration: underline;
+}
+/* utf8 invisible : le bouton plein écran prend sa place (index.html) ; en plein écran, pas de pied de page */
+.credits-footer > .credits-footer-utf8 {
+    display: none;
+}
+.plein-ecran-btn {
+    position: fixed;
+    bottom: 3px;
+    right: 10px;
+    z-index: 1000;
+    padding: 0;
+    font-size: 14px;
+    line-height: 16px;
+    color: color-mix(in srgb, var(--base-color, #0a0) 65%, #888 35%);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+.plein-ecran-btn:hover {
+    color: #fff;
+}
+html:fullscreen .credits-footer {
+    display: none;
 }
 /* Lien Milankovitch : même rendu que les lignes credits (CO2, etc.), sans faire baisser la signature */
 .credits-milankovitch {

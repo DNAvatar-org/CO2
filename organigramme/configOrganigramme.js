@@ -244,7 +244,8 @@ const nodes = [
         strokeSize: 1, 
         strokeStyle: [10, 5, 2, 5, 2, 5],
         left: [], right: [], top: [], bottom: [], tooltip: '',
-        // Radiation « large » en rayon : maxRadius grand + 8 cercles ; en angle le clip ne laisse que 360−345 = 15° visibles (faisceau étroit).
+        // 8 cercles, de la surface jusqu'à CERES (rayonDepart, maxRadius : parametrerParLeRayon) ; en angle le clip ne laisse
+        // que 360−345 = 15° visibles (faisceau étroit).
         radiation: { numCircles: 8, maxRadius: 270, openingAngle: 345, color: 'white' },
         zIndex: 10,
         logoScale: 0.1
@@ -834,7 +835,10 @@ const baryEpochs = {
     Object.defineProperty(N.terre.radiation, 'maxRadius', { enumerable: true,
         get: () => Math.hypot(N.espace2.x - N.terre.x, N.espace2.y - N.terre.y) });
     longueurDuCercle(N.albedo, 'radius');
-    longueurDuCercle(N.albedo.radiation, 'maxRadius');
+    // Ondes blanches (réfléchi, vers CERES) : comme les rouges, de la surface jusqu'au satellite.
+    Object.defineProperty(N.albedo.radiation, 'rayonDepart', { enumerable: true, get: () => getNodeProperty(N.terre, 'radius') });
+    Object.defineProperty(N.albedo.radiation, 'maxRadius', { enumerable: true,
+        get: () => Math.hypot(N.espace1.x - N.albedo.x, N.espace1.y - N.albedo.y) });
     N.noyau.radiation.forEach((r) => longueur(r, 'maxRadius'));
     longueur(N.reemis.radiation, 'maxRadius');
     surLeCentre(N.terre);
