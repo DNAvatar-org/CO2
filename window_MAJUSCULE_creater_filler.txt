@@ -395,3 +395,15 @@ SOLVER (bloc dans DATA / DEFAULT)
 configsAll.js (bundle)
  STATUT: RETIRÉ v1.2.0 (stub). Les HTML chargent les 6 sources séparément
  (model_tuning_biblio, configTimeline, alphabet, dico, initDATA, fine_tuning_bounds).
+
+EMBARQUE
+ + creater: CO2/static/ui/embarque.js (?hote=, ?miroir — page embarquée dans un hôte, ex. DNA Tamagoshi)
+ ++ filler: organigramme/configOrganigramme.js — TERRE_ECRAN.miroir ← EMBARQUE.miroir
+ ++ filler: static/ui/onglets_graphe.js — EMBARQUE.hote : pas de page ISS, Terre de l'hôte (iss:terre relayé), cartes à l'hôte (co2:cartes)
+ ++ filler: static/ui/embarque.js — message co2:hote : --hote-haut, disposition des boutons (configOrganigramme nodes, TERRE_ECRAN.depuisEcran)
+ ++ filler: static/ui/cpu_threads_notice.js — EMBARQUE.hote : l'avis threads en console, pas en fenêtre
+ ++ filler: static/ui/loader_panels.js — premier calcul : Atmosphère dépliée, EMBARQUE.pret() (message co2:pret à l'hôte)
+
+SCENARIO_HOTE
+ + creater: CO2/static/ui/scenario_hote.js (page embarquée avec émissions ?emis : 📱 aujourd'hui → 2300, CLICS.emettre)
+ ++ filler: static/ui/loader_panels.js — demarrer au premier calcul ; static/ui/embarque.js — emettre (message co2:emissions)

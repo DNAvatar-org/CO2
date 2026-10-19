@@ -3,7 +3,14 @@
 //       (#visu-panel), son interface (titre, organigramme, frise) par-dessus. Les panneaux ne sont pas déplacés dans le DOM
 //       (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont en position fixe, recalés quand
 //       la zone change de taille, au redimensionnement et au défilement (c'est le body qui défile, index-shell.css).
-// Version 1.6.4
+// Version 1.9.0
+// - v1.9.0: page embarquée (static/ui/embarque.js) : pas de page ISS — la Terre est celle de l'hôte (iss:terre relayé, en
+//   coordonnées de cette page), les cartes de l'époque lui vont (co2:cartes) ; miroir : le centre de la Terre à placeDuCote du
+//   bord DROIT, l'horizon pris à droite.
+// - v1.8.0: l'organigramme posé une fois pour toutes autour de la Terre de référence (iss:terre terreRef, zoom ×1) : il ne suit
+//   plus le zoom, la vue ni le vrai Soleil ; la page ISS zoome sur un point d'horizon fixe.
+// - v1.7.0: caméra de l'ISS : le cercle de l'organigramme est l'horizon de la haute atmosphère (iss:terre horizon), ses
+//   boutons resserrés sur l'arc visible, autour du point sous le Soleil.
 // - v1.6.4: iss:fenetres — l'organigramme troué à la place de Temps et Point de vue : ils passent par-dessus.
 // - v1.6.3: iss:marges fenetres { gauche, haut } — Temps et Point de vue de la page ISS à gauche, sous Atmosphère.
 // - v1.6.2: Entrée relayée à la fenêtre Milankovitch ouverte (milankovitch:valider).
@@ -101,7 +108,18 @@
     const T_DRAPER_K = 798;
     const NOT_IR_LAVE = 70;
     const notIRISS = () => (window.DATA['🧮']['🧮🌡️'] >= T_DRAPER_K ? NOT_IR_LAVE : 0);
+    /** Page embarquée (static/ui/embarque.js) : les cartes de l'époque à l'hôte, qui les pose sur SA Terre (pas de page ISS) */
+    function cartesHote() {
+        const c = cartesEpoque();
+        window.parent.postMessage({ type: 'co2:cartes', jour: c.jour, nuit: c.nuit, notIR: notIRISS(), atm: atmEpoque(),
+            pays: anneeFrise() >= AN_PAYS }, '*');
+    }
+    /** Onglet ISS ouvert, ou nouveau calcul : les cartes de l'époque à la Terre — celle de l'hôte (embarquée), ou la page ISS */
     function chargerISS() {
+        if (window.EMBARQUE.hote !== null) cartesHote();
+        else chargerPageISS();
+    }
+    function chargerPageISS() {
         // la Terre vue de loin, depuis Iridium, en mode bilan radiatif
         const iframe = document.getElementById('iss-iframe');
         // Première ouverture : la page, avec les cartes de l'époque. Ensuite, jamais rechargée : les cartes de l'époque lui
@@ -130,7 +148,7 @@
         if (e.data.type === 'iss:zenEtat') zenISS = e.data.zen;
         if (e.data.type === 'iss:fenetres') { fenetresISS = e.data.rects; trouerOrganigramme(); }
         if (e.data.type === 'iss:terre' && window.API_ONGLETS.getCurrentTab() === 'iss') {
-            // caméra de l'ISS (l'horizon) : pas de Terre entière autour de laquelle poser l'organigramme — il disparaît
+            // caméra de l'ISS : pas de Terre entière — l'organigramme se répartit le long de l'horizon (poserTerreISS)
             document.body.classList.toggle('iss-horizon', e.data.vue === 'iss');
             poserTerreISS(e.data);
         }
@@ -151,7 +169,7 @@
     function entrerOrganigrammePlein(panneau, classe) {
         if (document.body.classList.contains('organigramme-plein')) return;   // onglet re-cliqué (onglet, 🛰) : on y est déjà
         const T = window.TERRE_ECRAN;
-        terreAvantPlein = { cx: T.cx, cy: T.cy, R: T.R, soleilVrai: null, orbite: null };
+        terreAvantPlein = { cx: T.cx, cy: T.cy, R: T.R, soleilVrai: null, orbite: null, horizon: null, ref: { cx: T.cx, cy: T.cy, R: T.R } };
         T.cadreEl = document.getElementById(panneau);
         document.body.classList.add('organigramme-plein', classe);
     }
@@ -177,15 +195,25 @@
     function entrerHistoire() { document.body.classList.add('histoire'); }
     function sortirHistoire() { document.body.classList.remove('histoire'); }
     /** Coordonnées de la page ISS → repère de #flux-diagram (coin intérieur) : l'iframe et l'organigramme sont dans la même
-     *  fenêtre. */
+     *  fenêtre. Embarquée : l'hôte a déjà ramené sa Terre aux coordonnées de cette page (origine : son coin). */
     function poserTerreISS(t) {
-        const i = document.getElementById('iss-iframe').getBoundingClientRect();
+        const i = window.EMBARQUE.hote === null ? document.getElementById('iss-iframe').getBoundingClientRect() : { left: 0, top: 0 };
         const f = document.getElementById('flux-diagram'), fr = f.getBoundingClientRect();
         const ox = i.left - fr.left - f.clientLeft, oy = i.top - fr.top - f.clientTop;
-        // le Soleil de l'organigramme sur le vrai quand il est à l'écran ; vue Terre–Lune : l'orbite de la Lune pour cercle
-        window.ZOOM_TERRE.poser({ cx: t.cx + ox, cy: t.cy + oy, R: t.r,
-            soleilVrai: t.soleilEcran === null ? null : { x: t.soleilEcran.x + ox, y: t.soleilEcran.y + oy }, orbite: t.orbite });
-        document.body.classList.toggle('iss-lune', t.orbite !== null);   // le cercle d'atmosphère s'efface (index-shell.css)
+        // Le cercle d'atmosphère suit la vraie Terre (vue Terre) ou l'horizon (caméra de l'ISS) : concentrique, de rayon
+        // très grand quand on zoome sur le point d'horizon fixe (pages/ISS js/hote.js decalerTerre). Les pictos s'y posent
+        // comme autour de la Terre ×1 (ref), angles resserrés dans le rapport des rayons (configOrganigramme.js versEcran :
+        // même étendue le long du limbe, la répartition s'aplatit), écarts à l'échelle de la Terre ×1, le point d'horizon à
+        // la gauche de la Terre (θ = π). Vue Terre–Lune : autour de la Terre ×1. Le Soleil à sa place.
+        const ref = { cx: t.terreRef.cx + ox, cy: t.terreRef.cy + oy, R: t.terreRef.r };
+        const c = t.vue === 'iss' ? { cx: t.horizon.cx, cy: t.horizon.cy, r: t.horizon.r }
+            : t.orbite === null ? { cx: t.cx, cy: t.cy, r: t.r } : { cx: t.terreRef.cx, cy: t.terreRef.cy, r: t.terreRef.r };
+        // point d'horizon fixe : le bord gauche de la Terre ×1 (pages/ISS js/hote.js pointHorizon) ; le droit en miroir (embarquée :
+        // l'hôte donne sa Terre telle quelle comme référence, k = 1)
+        const bord = window.TERRE_ECRAN.miroir ? ref.R : -ref.R;
+        window.ZOOM_TERRE.poser({ cx: c.cx + ox, cy: c.cy + oy, R: c.r, soleilVrai: null, orbite: null, ref: ref,
+            horizon: { haut: Math.atan2(ref.cy - c.cy - oy, ref.cx + bord - c.cx - ox), k: ref.R / c.r, rTerre: ref.R } });
+        document.body.classList.toggle('iss-lune', t.vue === 'ext' && t.orbite !== null);   // T° dans le titre, cercle effacé (index-shell.css)
         envoyerMargesISS();   // rayon ou Soleil changés : la place à gauche aussi
     }
 
@@ -239,8 +267,11 @@
         const iframe = document.getElementById('iss-iframe'), cadre = iframe.getBoundingClientRect();
         const boutons = document.getElementById('titre-affichages').getBoundingClientRect();   // Energies, Atmosphère
         const fenetres = { gauche: boutons.left - cadre.left, haut: boutons.bottom - cadre.top + 10 };
-        // vue Terre–Lune : pas de place à faire, la page ISS garde son cadrage (la Terre au milieu de l'image)
-        const gauche = window.TERRE_ECRAN.orbite === null ? window.ZOOM_TERRE.placeAGauche() : iframe.clientWidth / 2;
+        // vue Terre–Lune : pas de place à faire, la page ISS garde son cadrage (la Terre au milieu de l'image) ; miroir : la
+        // place est à droite, le centre de la Terre à cette distance du bord droit
+        const place = window.ZOOM_TERRE.placeDuCote();
+        const gauche = window.TERRE_ECRAN.orbite !== null ? iframe.clientWidth / 2
+            : window.TERRE_ECRAN.miroir ? iframe.clientWidth - place : place;
         iframe.contentWindow.postMessage({ type: 'iss:marges', gauche: gauche, fenetres: fenetres }, '*');
     }
 

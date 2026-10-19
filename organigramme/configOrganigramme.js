@@ -1,6 +1,12 @@
 // File: configOrganigramme.js - Configuration du diagramme de flux énergétique
 // Desc: Données de configuration (nœuds et arcs) pour le diagramme de flux énergétique
-// Version 1.1.62
+// Version 1.1.67
+// - v1.1.67: la Géométrie peut se rapprocher du Soleil (N.geometrie.distPct, glissé : zoom_terre.js).
+// - v1.1.66: TERRE_ECRAN.miroir (page embarquée ?miroir, static/ui/embarque.js) : l'organigramme en symétrie d'axe vertical,
+//   à droite de la Terre — angles à l'écran θ → π − θ (versEcran, depuisEcran, angleEcran pour la Géométrie).
+// - v1.1.65: ondes de l'effet de serre : du bouton EDS jusqu'à la surface.
+// - v1.1.64: ondes de la surface (émission, réfléchi) : secteur resserré au zoom, elles gardent leur taille de ×1.
+// - v1.1.63: TERRE_ECRAN.horizon (caméra de l'ISS) : le cercle est l'horizon, angles resserrés sur l'arc visible (versEcran).
 // - v1.1.62: Géométrie à 45° en haut à droite du Soleil ; albédo sans obstacles (ni 🛰 CERES ni Géométrie). Disposition par
 //   défaut relevée sur la mise en page voulue (onglet ISS) : Soleil et CERES à gauche, DSCOVR (OBSERVATIONS) en haut à
 //   gauche, EDS en bas à gauche, albédo entre le Soleil et la Terre, éventail des gaz en bas. EVENEMENT et SKIP : dans
@@ -118,13 +124,22 @@ const radiusTerre = 90;
 // la Terre, hors onglet ISS) : le Soleil de l'organigramme s'y pose ; sinon il garde sa place (dessinée, glissée à la souris,
 // retenue en cookie). orbite : vue Terre–Lune de la page ISS, l'orbite de la Lune à l'écran (demi-diamètres conjugués
 // { ax, ay, bx, by } [px]) — le « cercle » autour duquel se posent boutons, satellites et Soleil ; sinon null (rayonVers).
+// horizon : caméra de l'ISS — le cercle est l'horizon de la haute atmosphère (centre et R : le sien, loin à droite de l'écran,
+// caméra tournée, la Terre à droite), dont seul un arc se voit : { haut, k, rTerre } — les angles des boutons (theta, vue
+// Terre) sont resserrés sur cet arc autour de haut (l'angle du point sous le Soleil) : la gauche de la Terre (θ = π) va à haut,
+// sa droite (θ = 0) aux bouts de l'arc, le haut en haut et le bas en bas (versEcran ; depuisEcran,
+// l'inverse) ; rTerre : rayon d'une Terre ordinaire [px], l'échelle des écarts au cercle et des longueurs (k, ecart).
+// Sinon null.
+// miroir : l'organigramme en symétrie d'axe vertical (page embarquée ?miroir, static/ui/embarque.js) — tout ce qui est à gauche
+// de la Terre passe à sa droite : les angles des boutons (theta), lus dans la disposition d'origine, sont retournés à l'écran
+// (θ → π − θ) ; le point d'horizon de la caméra de l'ISS est à droite de la Terre (θ = 0 à l'écran).
 
 // boule : la Terre est une vraie boule 3D (onglet ISS) — le globe de l'organigramme vaut R à toute époque (exobase
 // comprise) ; le cercle d'atmosphère la dépasse un peu, R + la flèche Terre → atmosphère la plus courte
 // (LONGUEUR_MIN_FLECHE + 8 px de marge d'arrivée), sa radiation garde son écart au cercle.
 // T° et pression de surface posées SUR la Terre (onglet ISS, zoom_terre.js) : angle theta [rad, y vers le bas] et distance
 // au centre k [fraction du rayon R] — relevés sur le point de lumière de la Terre ISS à sa vue de départ.
-window.SYNTHESE_SUR_TERRE = { theta: 2.568, k: 0.56 };
+window.SYNTHESE_SUR_TERRE = { theta: 2.300, k: 0.54 };
 const TERRE_ECRAN = window.TERRE_ECRAN = {
     R: radiusTerre,
     cx: centerX,
@@ -132,8 +147,25 @@ const TERRE_ECRAN = window.TERRE_ECRAN = {
     cadreEl: document.getElementById('flux-diagram'),
     soleilVrai: null,
     orbite: null,
+    horizon: null,
+    // Terre de référence { cx, cy, R } : onglet ISS, la Terre au zoom ×1 (T° et pression, place à gauche : zoom_terre.js) ;
+    // ailleurs, la Terre elle-même
+    ref: { cx: centerX, cy: earthCenterY, R: radiusTerre },
     boule: false,
-    k() { return this.R / radiusTerre; },
+    miroir: window.EMBARQUE.miroir,
+    k() { return (this.horizon === null ? this.R : this.horizon.rTerre) / radiusTerre; },
+    /** Angle d'un bouton (theta, autour de la Terre) → angle à l'écran autour du centre : le même, ou resserré sur l'arc
+     *  d'horizon visible (caméra de l'ISS). depuisEcran : l'inverse (glisser à la souris). */
+    versEcran(theta) {
+        const h = this.horizon, t = this.angleEcran(theta), pivot = this.miroir ? 0 : Math.PI;   // la gauche de la Terre, retournée
+        return h === null ? t : h.haut + h.k * Math.atan2(Math.sin(t - pivot), Math.cos(t - pivot));
+    },
+    depuisEcran(a) {
+        const h = this.horizon, pivot = this.miroir ? 0 : Math.PI;
+        return this.angleEcran(h === null ? a : pivot + Math.atan2(Math.sin(a - h.haut), Math.cos(a - h.haut)) / h.k);
+    },
+    /** Un angle de la disposition → à l'écran : le même, ou retourné par le miroir (π − a) ; sa propre inverse. */
+    angleEcran(a) { return this.miroir ? Math.PI - a : a; },
     drCercle() { return Math.max(radiusTerre * (this.k() - 1) / 5, this.R + LONGUEUR_MIN_FLECHE + 8 - radiusAtmosphere); },
     /** Bords de cadreEl { g, d, h, b } dans le repère de #flux-diagram [px]. */
     cadre() {
@@ -794,12 +826,13 @@ const baryEpochs = {
         // bord ne doit pas le repousser dans l'obstacle. Aucun angle libre : il s'arrête sur son rayon, avant l'obstacle.
         const centre = () => {
             const e = n.emprise, rho = rayon(n.theta), c = TERRE_ECRAN.cadre(), T = TERRE_ECRAN;
-            const vx = Math.cos(n.theta), vy = Math.sin(n.theta);   // theta lu à chaque fois : le Soleil se déplace
+            const vx = Math.cos(T.versEcran(n.theta)), vy = Math.sin(T.versEcran(n.theta));   // theta lu à chaque fois : le Soleil se déplace
             const dansLeCadre = (x, y) => ({ x: borne(x, c.g + e.g, c.d - e.d), y: borne(y, c.h + e.h, c.b - e.b) });
             for (let d = 0; d <= 90; d++) {
                 for (const sens of (d === 0 ? [0] : [1, -1])) {
                     const a = n.theta + sens * d * Math.PI / 180;
-                    const p = dansLeCadre(T.cx + rayon(a) * Math.cos(a), T.cy + rayon(a) * Math.sin(a));
+                    const e = T.versEcran(a);
+                    const p = dansLeCadre(T.cx + rayon(a) * Math.cos(e), T.cy + rayon(a) * Math.sin(e));
                     if (libre(p.x, p.y)) return p;
                 }
             }
@@ -828,8 +861,11 @@ const baryEpochs = {
     // Distance au centre d'un bouton à rayonPct dans la direction theta [px], jamais dans le cercle : au-delà du « cercle »,
     // l'écart que rayonPct donne au-delà du cercle d'atmosphère (identique à rayonPct % du cercle d'atmosphère hors vue
     // Terre–Lune). rayonPctDe : l'inverse (glisser à la souris).
-    TERRE_ECRAN.distanceAutour = (theta, rayonPct) => TERRE_ECRAN.rayonVers(theta) + (Math.max(rayonPct, 100) / 100 - 1) * N.albedo.radius;
-    TERRE_ECRAN.rayonPctDe = (theta, distance) => 100 * (1 + (distance - TERRE_ECRAN.rayonVers(theta)) / N.albedo.radius);
+    // Échelle de l'écart : le cercle d'atmosphère ; caméra de l'ISS, celui d'une Terre ordinaire (l'horizon fait des milliers
+    // de pixels de rayon).
+    TERRE_ECRAN.ecart = () => TERRE_ECRAN.horizon === null ? N.albedo.radius : TERRE_ECRAN.horizon.rTerre + LONGUEUR_MIN_FLECHE + 8;
+    TERRE_ECRAN.distanceAutour = (theta, rayonPct) => TERRE_ECRAN.rayonVers(theta) + (Math.max(rayonPct, 100) / 100 - 1) * TERRE_ECRAN.ecart();
+    TERRE_ECRAN.rayonPctDe = (theta, distance) => 100 * (1 + (distance - TERRE_ECRAN.rayonVers(theta)) / TERRE_ECRAN.ecart());
     N.terre.epoch.forEach((e) => { rayonDuGlobe(e, 'radius'); rayonDuGlobe(e, 'radiusExobase'); });
     // Ondes rouges de la Terre (émission, orientées vers l'atmosphère, côté DSCOVR) : elles s'arrêtent au satellite.
     Object.defineProperty(N.terre.radiation, 'maxRadius', { enumerable: true,
@@ -840,7 +876,9 @@ const baryEpochs = {
     Object.defineProperty(N.albedo.radiation, 'maxRadius', { enumerable: true,
         get: () => Math.hypot(N.espace1.x - N.albedo.x, N.espace1.y - N.albedo.y) });
     N.noyau.radiation.forEach((r) => longueur(r, 'maxRadius'));
-    longueur(N.reemis.radiation, 'maxRadius');
+    // Ondes de l'effet de serre (renvoi vers la surface) : du bouton EDS jusqu'à la surface, pas au-delà.
+    Object.defineProperty(N.reemis.radiation, 'maxRadius', { enumerable: true,
+        get: () => Math.hypot(N.reemis.x - N.terre.x, N.reemis.y - N.terre.y) - getNodeProperty(N.terre, 'radius') });
     surLeCentre(N.terre);
     // Point de liaison à la surface (fin de la flèche noyau → terre, départ de l'émission terre → albedo → espace2) : décalé
     // le long de la surface de DECALAGE_LIAISON depuis l'axe Terre → DSCOVR (sens horaire à l'écran) ; le noyau y monte en
@@ -848,7 +886,8 @@ const baryEpochs = {
     const DECALAGE_LIAISON = 20 * Math.PI / 180;   // [rad, y vers le bas : positif = sens horaire à l'écran]
     const liaison = () => {
         const T = TERRE_ECRAN, R = getNodeProperty(N.terre, 'radius'), Ra = getNodeProperty(N.albedo, 'radius');
-        const phi = Math.atan2(N.espace2.y - T.cy, N.espace2.x - T.cx) + DECALAGE_LIAISON;
+        // décalage compté comme les angles des boutons (resserré sur l'arc visible en caméra de l'ISS, TERRE_ECRAN.versEcran)
+        const phi = T.versEcran(T.depuisEcran(Math.atan2(N.espace2.y - T.cy, N.espace2.x - T.cx)) + DECALAGE_LIAISON);
         const P = { x: T.cx + R * Math.cos(phi), y: T.cy + R * Math.sin(phi) };
         const l = Math.hypot(N.espace2.x - P.x, N.espace2.y - P.y);
         const w = { x: (N.espace2.x - P.x) / l, y: (N.espace2.y - P.y) / l };
@@ -893,6 +932,15 @@ const baryEpochs = {
     const orienter = (rad, de, vers) => Object.defineProperty(rad, 'rotation', { enumerable: true, get: () => angleVers(de, vers) });
     orienter(N.terre.radiation, N.terre, N.espace2);    // émission de la surface → DSCOVR
     orienter(N.albedo.radiation, N.albedo, N.espace1);  // réfléchi → CERES
+    // Ondes de la surface (émission, réfléchi), concentriques à la vraie Terre : quand on zoome (onglet ISS), le cercle devient
+    // immense — leur secteur visible se resserre comme les angles des pictos (TERRE_ECRAN.horizon.k), l'onde garde son arc de ×1.
+    const secteurDeZoomUn = (rad) => {
+        const v = rad.openingAngle;   // angle masqué [°] : secteur visible = 360 − v
+        Object.defineProperty(rad, 'openingAngle', { enumerable: true,
+            get: () => 360 - (360 - v) * (TERRE_ECRAN.horizon === null ? 1 : TERRE_ECRAN.horizon.k) });
+    };
+    secteurDeZoomUn(N.terre.radiation);
+    secteurDeZoomUn(N.albedo.radiation);
     orienter(N.reemis.radiation, N.reemis, N.terre);    // effet de serre → surface
     N.noyau.radiation.forEach((r) => orienter(r, N.noyau, N.terre));   // géothermie → surface, vers le point de liaison
     // Le Soleil : sur le vrai Soleil quand la page ISS le montre (TERRE_ECRAN.soleilVrai, onglet ISS), sinon à sa place
@@ -903,9 +951,13 @@ const baryEpochs = {
     Object.defineProperty(N.soleil, 'y', { enumerable: true,
         get: () => TERRE_ECRAN.soleilVrai === null ? placePropre.y() : TERRE_ECRAN.soleilVrai.y });
     // Géométrie autour du Soleil, à son angle (N.geometrie.angle, glissé à la souris), à la limite de son rayonnement (son
-    // dernier cercle) ; son logo tourné du même angle, la face éclairée vers le Soleil (zoom_terre.js).
-    Object.defineProperty(N.geometrie, 'x', { enumerable: true, get: () => N.soleil.x + N.soleil.radiation.maxRadius * Math.cos(N.geometrie.angle) });
-    Object.defineProperty(N.geometrie, 'y', { enumerable: true, get: () => N.soleil.y + N.soleil.radiation.maxRadius * Math.sin(N.geometrie.angle) });
+    // dernier cercle) ou plus près (N.geometrie.distPct : % de ce rayon, 100 par défaut, glissé lui aussi) ; son logo tourné
+    // du même angle, la face éclairée vers le Soleil (zoom_terre.js).
+    const distGeometrie = () => N.soleil.radiation.maxRadius * (N.geometrie.distPct ?? 100) / 100;
+    Object.defineProperty(N.geometrie, 'x', { enumerable: true,
+        get: () => N.soleil.x + distGeometrie() * Math.cos(TERRE_ECRAN.angleEcran(N.geometrie.angle)) });
+    Object.defineProperty(N.geometrie, 'y', { enumerable: true,
+        get: () => N.soleil.y + distGeometrie() * Math.sin(TERRE_ECRAN.angleEcran(N.geometrie.angle)) });
     Object.values(baryEpochs).forEach((b) => {
         rayonDuGlobe(b.terre, 'radius');
         rayonDuGlobe(b.terre, 'radiusExobase');

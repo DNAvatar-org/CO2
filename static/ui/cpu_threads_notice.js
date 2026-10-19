@@ -4,9 +4,11 @@
 //       anti-empreinte dite « farbling »), d'autres la plafonnent. Le calcul tourne alors sur moins de
 //       threads sans que rien ne le signale. Ce module le dit à chaque chargement — mais UNIQUEMENT sur les
 //       navigateurs concernés : Chrome, Edge, Safari annoncent le vrai nombre de cœurs, ils ne voient jamais rien.
-// Version 1.1.0
-// Date: [September 18, 2026]
+// Version 1.2.0
+// Date: [October 19, 2026]
 // logs :
+//   - v1.2.0: page embarquée dans un hôte (static/ui/embarque.js, ex. DNA Tamagoshi) : l'avis va à la console, pas en
+//     fenêtre — il couvrirait le jeu de l'hôte, sur une page que la souris traverse.
 //   - v1.1.0: alerte à CHAQUE chargement (plus de mémorisation localStorage) — c'est un état du navigateur,
 //     pas une nouvelle : tant qu'on reste sous Brave, l'info reste vraie et le rappel est utile.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -106,7 +108,8 @@
             // Chrome, Edge, Safari… annoncent le vrai nombre de cœurs : rien à signaler, jamais.
             if (!brave && n > SEUIL_BAS) return;
             if (typeof global.showSelectableAlert !== 'function') return;
-            global.showSelectableAlert(texte(brave, n, nom), 'Parallélisme réduit par le navigateur');
+            if (global.EMBARQUE.hote !== null) console.warn('[cpu_threads_notice] Parallélisme réduit par le navigateur\n' + texte(brave, n, nom));
+            else global.showSelectableAlert(texte(brave, n, nom), 'Parallélisme réduit par le navigateur');
         });
     }
 

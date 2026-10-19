@@ -9,7 +9,12 @@
 //       (organigramme.js, generateArrows). Soleil, albédo, EDS, satellites et l'éventail CO₂ / H₂O / CH₄ se glissent à la souris
 //       (leur angle et leur distance autour de la Terre) ; la Géométrie suit le Soleil, au bord de son rayonnement ; les ondes
 //       suivent leurs flèches.
-// Version 1.1.9
+// Version 1.1.13
+// - v1.1.13: la Géométrie se rapproche du Soleil (distPct, de 45 à 100 % du bord de son rayonnement).
+// - v1.1.12: miroir (page embarquée, configOrganigramme.js TERRE_ECRAN.miroir) : placeDuCote remplace placeAGauche — la place
+//   que l'organigramme demande de son côté de la Terre (à droite en miroir) ; la Géométrie glissée garde son angle de disposition.
+// - v1.1.11: poser reçoit ref (la Terre au zoom ×1) : T° et pression, place à gauche s'y rapportent.
+// - v1.1.10: poser reçoit horizon (caméra de l'ISS) ; glisser et place à gauche passent par versEcran / depuisEcran.
 // - v1.1.9: la Géométrie se glisse autour du Soleil (son angle) ; T° et pression posées sur la Terre (SYNTHESE_SUR_TERRE) ;
 //   les 🛰 n'ont plus d'action au clic.
 // - v1.1.8: place à gauche bornée par le Soleil lui-même (son emprise), plus par son rayonnement.
@@ -33,6 +38,8 @@
     // cellules posées autour de la Terre (boutons et satellites) ; les 🛰 OBSERVATIONS centrés sur leur satellite
     const AUTOUR = ['reemis', 'co2', 'methane', 'h2o', 'albedo-btn', 'espace1', 'espace2', 'soleil'];
     const SATELLITES = { espace1: 'observation-config-wrap', espace2: 'observation-config-wrap-bas' };
+    /** La Géométrie au plus près du Soleil : % du bord de son rayonnement */
+    const GEOMETRIE_MIN_PCT = 45;
     // cellules posées sans emprise : centrées sur la Terre, et la Géométrie (au bord du rayonnement du Soleil)
     const POSEES = ['terre', 'noyau', 'albedo', 'geometrie'];
     const flux = document.getElementById('flux-diagram');
@@ -161,8 +168,8 @@
         // T° et pression sur la Terre (SYNTHESE_SUR_TERRE), en px de la fenêtre : leur bloc reste dans le titre, en
         // position fixe (index-shell.css)
         const o = origine(), st = window.SYNTHESE_SUR_TERRE, b = document.body.style;
-        b.setProperty('--synthese-x', (o.x + RT.cx + st.k * RT.R * Math.cos(st.theta)) + 'px');
-        b.setProperty('--synthese-y', (o.y + RT.cy + st.k * RT.R * Math.sin(st.theta)) + 'px');
+        b.setProperty('--synthese-x', (o.x + RT.ref.cx + st.k * RT.ref.R * Math.cos(st.theta)) + 'px');   // sur la Terre ×1
+        b.setProperty('--synthese-y', (o.y + RT.ref.cy + st.k * RT.ref.R * Math.sin(st.theta)) + 'px');
         AUTOUR.forEach((id) => {
             mesurer(id);
             const n = noeud(id), cell = document.getElementById('cell-' + id);
@@ -198,7 +205,7 @@
     // boutons et place des satellites : on note les changements (centre, rayon, Soleil) sans mesurer ni redessiner ; le premier
     // dessin les applique tous.
     let pret = false;
-    // Emprises à zéro jusqu'à la première mesure (placeAGauche les lit dès le chargement de la page ISS).
+    // Emprises à zéro jusqu'à la première mesure (placeDuCote les lit dès le chargement de la page ISS).
     AUTOUR.forEach((id) => { noeud(id).emprise = { g: 0, d: 0, h: 0, b: 0 }; });
     window.IO_LISTENER.on('flux:lastDrawn', function () {
         if (pret) return;
@@ -235,7 +242,7 @@
      *  clic (auClic). placer(n, x, y) pose le nœud sous la souris (x, y : repère de #flux-diagram [px]) et rend ce qu'il
      *  faut recopier dans configOrganigramme.js : par défaut, angle et distance autour de la Terre. */
     const autourDeLaTerre = (n, x, y) => {
-        n.theta = Math.atan2(y - RT.cy, x - RT.cx);
+        n.theta = RT.depuisEcran(Math.atan2(y - RT.cy, x - RT.cx));
         n.rayonPct = RT.rayonPctDe(n.theta, Math.hypot(x - RT.cx, y - RT.cy));
         return 'theta: ' + n.theta.toFixed(3) + ', rayonPct: ' + Math.round(n.rayonPct);
     };
@@ -284,27 +291,33 @@
     rendreGlissable(document.querySelector('#cell-reemis .flux-circle-bg'), 'reemis');
     // l'éventail CO₂ / H₂O / CH₄ (configOrganigramme.js) : CO₂ ou H₂O l'ouvrent, CH₄ le tourne
     ['co2', 'h2o', 'methane'].forEach((id) => rendreGlissable(document.querySelector('#cell-' + id + ' .flux-circle-bg'), id));
-    // la Géométrie tourne autour du Soleil, au bord de son rayonnement : son angle (configOrganigramme.js)
+    // la Géométrie tourne autour du Soleil et s'en rapproche : son angle, sa distance en % du bord du rayonnement (de
+    // GEOMETRIE_MIN_PCT à 100 : jamais dans le Soleil, jamais au-delà de ses ondes)
     rendreGlissable(document.querySelector('#cell-geometrie .flux-circle-bg'), 'geometrie', undefined, undefined, (n, x, y) => {
         const soleil = noeud('soleil');
-        n.angle = Math.atan2(y - soleil.y, x - soleil.x);
-        return 'angle: ' + n.angle.toFixed(3);
+        n.angle = RT.angleEcran(Math.atan2(y - soleil.y, x - soleil.x));   // angle de la disposition (miroir retourné)
+        const d = Math.hypot(x - soleil.x, y - soleil.y) / soleil.radiation.maxRadius * 100;
+        n.distPct = Math.min(100, Math.max(GEOMETRIE_MIN_PCT, d));
+        return 'angle: ' + n.angle.toFixed(3) + ', distPct: ' + Math.round(n.distPct);
     });
 
     /** poser : centre et rayon de la Terre à l'écran, dans le repère de #flux-diagram [px], vrai Soleil à l'écran et orbite de
      *  la Lune (onglet ISS : soleilVrai, orbite, configOrganigramme.js TERRE_ECRAN ; null : le Soleil garde sa place, le
      *  cercle d'atmosphère). redessiner : la mise en page a changé (pleine page, redimensionnement). */
     window.ZOOM_TERRE = {
-        poser(p) { changer(() => { RT.cx = p.cx; RT.cy = p.cy; RT.R = p.R; RT.soleilVrai = p.soleilVrai; RT.orbite = p.orbite; }); },
+        poser(p) { changer(() => { RT.cx = p.cx; RT.cy = p.cy; RT.R = p.R; RT.soleilVrai = p.soleilVrai; RT.orbite = p.orbite; RT.horizon = p.horizon; RT.ref = p.ref; }); },
         redessiner() { changer(() => {}); },
-        /** Place que la disposition demande à gauche du centre de la Terre [px], posés à leur angle et leur distance (sans
-         *  les bords du cadre, qui les repoussent) : boutons, satellites et Soleil lui-même (pas son rayonnement, qui peut
-         *  sortir du cadre) gardent une marge. La page ISS pose le centre de sa Terre là (onglets_graphe.js, message
-         *  iss:marges ; pages/ISS js/hote.js). */
-        placeAGauche() {
-            const debord = (n) => -RT.distanceAutour(n.theta, n.rayonPct) * Math.cos(n.theta);
-            const debordSoleil = RT.soleilVrai === null ? debord(noeud('soleil')) : RT.cx - RT.soleilVrai.x;   // le vrai Soleil, s'il est à l'écran
-            return 16 + Math.max(...AUTOUR.map((id) => (id === 'soleil' ? debordSoleil : debord(noeud(id))) + noeud(id).emprise.g));
+        /** Place que la disposition demande du côté de l'organigramme [px] — à gauche du centre de la Terre, à droite en
+         *  miroir —, posés à leur angle et leur distance (sans les bords du cadre, qui les repoussent) : boutons, satellites
+         *  et Soleil lui-même (pas son rayonnement, qui peut sortir du cadre) gardent une marge. La page ISS pose le centre
+         *  de sa Terre à cette distance du bord (onglets_graphe.js, message iss:marges ; pages/ISS js/hote.js). */
+        placeDuCote() {
+            const s = RT.miroir ? -1 : 1;   // vers le côté de l'organigramme : −x (gauche), +x en miroir
+            const debord = (n) => -s * RT.distanceAutour(n.theta, n.rayonPct) * Math.cos(RT.versEcran(n.theta));
+            const debordSoleil = RT.soleilVrai === null ? debord(noeud('soleil')) : s * (RT.cx - RT.soleilVrai.x);   // le vrai Soleil, s'il est à l'écran
+            const emprise = (n) => (RT.miroir ? n.emprise.d : n.emprise.g);
+            // depuis le centre de la Terre ×1 (ref) : la page ISS pose là le centre de sa Terre au zoom ×1
+            return 16 - s * (RT.cx - RT.ref.cx) + Math.max(...AUTOUR.map((id) => (id === 'soleil' ? debordSoleil : debord(noeud(id))) + emprise(noeud(id))));
         },
         rendreGlissable: rendreGlissable   // les 🛰, créés plus tard par main.js
     };

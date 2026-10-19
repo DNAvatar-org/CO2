@@ -5,9 +5,10 @@
 //       la souris (organigramme, frise, curseur) ; seule la vue spectrale est absente (onglet Bench par-dessus).
 //       Chaque calcul envoie sa ligne au tableau de l'iframe Bench (API_BILAN/demo/epoch_bench.html, mode encart :
 //       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
-//       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ni courbe d'Histoire.
+//       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ; dans Histoire, il va sur la courbe verte.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.4.0
+// Version 1.5.0
+// - v1.5.0: hors run, chaque calcul va sur la courbe verte d'Histoire (frise : départ, tictime : prolongement), plus sur l'orange ni la violette.
 // - v1.4.0: hors run, chaque calcul va dans Histoire (histoire:calcul) : point vert, et point de sa date sur sa courbe.
 // - v1.3.6: bench:vider (bouton clear de l'iframe) — les états gardés sont oubliés.
 // - v1.3.5: tranches de 📱 hors run : courbe d'Histoire à part (scenario), repartie à l'arrivée en 2000, plus l'orange.
@@ -125,24 +126,15 @@
         BENCH.etats[ligne.rowKey] = { DATA: structuredClone(D), result: result };
         BENCH.tPrecC = D['🧮']['🧮🌡️'] - 273.15;
         // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état, et le calcul dans Histoire —
-        // son point vert (le dernier calcul), qui devient le point de sa date sur sa courbe : clic sur la frise → violette
-        // (graine imposée), tictime → orange (graine = calcul précédent). Chaque calcul refait ainsi la courbe là où il tombe.
-        // Sur 📱, les tranches de 25 ans ont LEUR courbe (H.scenario), jamais mêlée à l'orange : l'arrivée en 2000 (frise
-        // ou passage, ⏳ = 0) la fait repartir, chaque tranche la prolonge (Histoire retire les points de même date ou plus
-        // tardifs : rejouer une tranche la remplace).
+        // son point vert (le dernier calcul) et la courbe verte de tes clics, jamais mêlée aux courbes des runs (orange,
+        // violette) : un clic sur la frise la fait repartir de lui (graine imposée), un tictime la prolonge (graine = calcul
+        // précédent ; Histoire retire les points de même date ou plus tardifs : rejouer un pas le remplace).
         if (BENCH.suite === 'no') {
             if (result === null) return;   // interrompu : pas d'état convergé à montrer
             const frise = !D['🔘']['🔘🎞'];
-            posterHistoire({ type: 'histoire:calcul',
-                courbe: frise ? 'modeleFrise' : window.CLICS.parTranche() ? null : 'modele',
+            posterHistoire({ type: 'histoire:calcul', depart: frise,
                 point: frise ? window.HISTOIRE.pointModele('frise ' + H['🗿'], null, null, 'frise')
                              : window.HISTOIRE.pointModele(H['🗿'] + ' ' + H['🔘🕰'], H['🔘🕰'], H['🔺⏳'], 'clic') });
-            if (window.CLICS.parTranche()) {
-                const debut = H['⏳'] === 0;
-                posterHistoire({ type: debut ? 'histoire:scenario' : 'histoire:prolonger', courbe: 'scenario',
-                    point: debut ? window.HISTOIRE.pointModele('arrivée ' + H['🗿'], null, null, 'frise')
-                                 : window.HISTOIRE.pointModele(H['🗿'] + ' ' + H['🔘🕰'], H['🔘🕰'], H['🔺⏳'], 'clic') });
-            }
             return;
         }
         // Point de la courbe d'Histoire (calcul interrompu : pas de point, sa T° n'est pas un état convergé).

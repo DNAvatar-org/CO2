@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="static/site_paths.js"></script>
+    <script src="static/ui/embarque.js"></script>
     <!-- Une seule mise en page (static/css/style.css) : un téléphone ou une tablette étroite affiche la page à 1000 px de
          large, réduite à son écran ; un ordinateur ignore cette balise. -->
     <meta name="viewport" content="width=1000">
@@ -134,6 +135,7 @@
     <div class="fenetre-tete" data-fenetre="bench" onclick="window.FENETRES.basculer('bench')"><span>Bench</span><button type="button"></button></div>
     <div class="fenetre-tete" data-fenetre="scie" onclick="window.FENETRES.basculer('scie')"><span>Science</span><button type="button"></button></div>
     <div id="fenetre-poignee" class="fenetre-poignee" title="Agrandir / réduire la fenêtre"></div>
+    <button type="button" class="fenetre-replier" title="Replier la fenêtre" onclick="window.FENETRES.montrer(null)"></button>
     <div class="fenetre-tete" data-fenetre="milankovitch" onclick="window.FENETRES.basculer('milankovitch')"><span>Milankovitch</span><button type="button"></button></div>
 
 
@@ -217,20 +219,6 @@
     <!-- Plein écran (à la place du lien utf8, invisible) : hors du pied de page, que le plein écran retire (index-shell.css). -->
     <button type="button" id="plein-ecran" class="plein-ecran-btn" title="Plein écran"
         onclick="document.fullscreenElement === null ? document.documentElement.requestFullscreen() : document.exitFullscreen()">⛶</button>
-    <script>
-    /* DEBUG TEMPORAIRE — pile Z complète au clic (elementsFromPoint inclut pointer-events:none) */
-    document.addEventListener('click', function(e) {
-        var all = document.elementsFromPoint(e.clientX, e.clientY);
-        console.group('🖱 CLICK @ ' + e.clientX + ',' + e.clientY);
-        all.forEach(function(el, i) {
-            var pe = window.getComputedStyle(el).pointerEvents;
-            console.log(i + ' pe=' + pe + ' ' + el.tagName.toLowerCase() +
-                (el.id ? '#' + el.id : '') + ' [' +
-                (typeof el.className === 'string' ? el.className.trim() : '') + ']');
-        });
-        console.groupEnd();
-    }, true);
-    </script>
 </body>
 
 </html>

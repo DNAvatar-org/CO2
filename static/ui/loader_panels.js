@@ -1,6 +1,8 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.4.1
+// Version 1.4.3
+// - v1.4.3: page embarquée avec émissions (?emis) : scenario_hote.js, lancé au premier calcul.
+// - v1.4.2: page embarquée (static/ui/embarque.js) : au premier calcul, l'ISS sans fenêtre, Atmosphère dépliée, l'hôte prévenu.
 // - v1.4.1: au premier calcul, l'ISS s'ouvre avec sa fenêtre Spectrale dépliée.
 // - v1.4.0: onglet ISS en fond, les autres onglets en fenêtres (fenetres.js) ; synchroniserScie.
 // Logs: v1.3.4: onglet ISS ouvert par défaut, au premier calcul (il lit l'atmosphère calculée) ; onglet Histoire :
@@ -67,7 +69,9 @@
             'static/timeline/integrateEds.js',
             'static/timeline/events.js',
             'organigramme/timeline.js',
-            'static/ui/main.js'
+            'static/ui/apercu_epoque.js',  // survol d'une époque de la frise : config + graine, sans calcul
+            'static/ui/main.js',
+            'static/ui/scenario_hote.js'   // page embarquée avec émissions (?emis) : aujourd'hui → 2300, sans frise
         ],
         cacheBust: '',
         onLoaded: function (src, i) { setLoaded(i + 1); }   // 0 = phase HTML
@@ -255,10 +259,16 @@
         window.API_ONGLETS.registerTab({ id: 'iss', buttonId: 'tab-iss', panelId: 'iss-panel', onShow: onShowISS, onHide: onHideISS });
         // Onglet ISS par défaut : ouvert au premier calcul — il lit l'atmosphère calculée (onglets_graphe.js, atmISS) —, avec
         // sa fenêtre Spectrale dépliée (fenetres.js).
+        // Embarquée (static/ui/embarque.js) : pas de fenêtre, Atmosphère dépliée (Energies : onShowISS), l'hôte prévenu.
         var ouvrirISSAuDepart = function () {
             window.IO_LISTENER.off('compute:done', ouvrirISSAuDepart);
             window.switchTab('iss');
-            window.switchTab('visu');
+            if (window.EMBARQUE.hote === null) window.switchTab('visu');   // page seule : la fenêtre Spectrale dépliée
+            else {
+                window.afficherDetailsOrganigramme(true);
+                if (window.EMBARQUE.emissions === null) window.EMBARQUE.pret();
+                else window.SCENARIO_HOTE.demarrer();   // aujourd'hui → 2300, ses émissions (prête au bout)
+            }
         };
         window.IO_LISTENER.on('compute:done', ouvrirISSAuDepart, 'loader_panels:issParDefaut');
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {

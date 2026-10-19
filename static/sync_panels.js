@@ -220,6 +220,7 @@
     }
 
     window.projectToVisu = projectToVisu;   // retour à l'onglet Spectrale : redessin (loader_panels.onShowVisu)
+    window.projectSynthese = projectSynthese;   // survol d'une époque de la frise (apercu_epoque.js)
 
     /** L'interface montre l'état de window.DATA : fin d'un calcul (runComputeInParent), ou état d'une ligne du banc
      *  rechargé sans recalcul (BENCH.voir, bench_pilote.js). */

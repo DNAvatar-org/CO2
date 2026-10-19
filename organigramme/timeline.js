@@ -1,7 +1,7 @@
 /* File: timeline.js - Gestion de la timeline et de l'horloge
  * Desc: En français, dans l'architecture, je suis le module de gestion de la timeline
- * Version 1.1.1
- * Date: 2026-10-12
+ * Version 1.1.2
+ * Date: 2026-10-18
  * Copyright 2026 DNAvatar.org - Arnaud Maignan
 * logs :
  * - v1.1.1: signature des boutons = 🗿 | 📿🕰 | ⏳ (plus de getActionForDate : la séquence est 🕰.order, config API).
@@ -234,8 +234,10 @@ function getCursorTopPx(container, rows, scaleMa, currentMa) {
     const containerRect = container.getBoundingClientRect();
     const paddingTop = parseFloat(getComputedStyle(container).paddingTop) || 0;
 
+    // + scrollTop : le curseur (absolu) défile avec les dates ; sans lui, une frise défilée (focus d'un bouton dans une
+    // fenêtre trop courte) le décalait deux fois de son défilement.
     function toPaddingTop(rect) {
-        return (rect.top - containerRect.top) + rect.height / 2 - paddingTop;
+        return (rect.top - containerRect.top) + container.scrollTop + rect.height / 2 - paddingTop;
     }
 
     // Échelle : scaleMa[0] = plus ancien (-5000), scaleMa[last] = plus récent (+0.0021 = 2100). Monotone croissante (timelineYearsToMa).

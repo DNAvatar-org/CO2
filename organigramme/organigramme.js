@@ -4566,6 +4566,10 @@ function generateTimelineFromConfig() {
           "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
       }
       addCustomTooltip(el, epochLabel + ' · ' + window.epochSeedLabel(epochId));
+      // Survol : config de l'époque et sa graine, sans calcul ; rendu au rollout, ou au clic avant le vrai calcul.
+      el.addEventListener("mouseenter", () => window.APERCU_EPOQUE.montrer(epochId));
+      el.addEventListener("mouseleave", () => window.APERCU_EPOQUE.cacher());
+      el.addEventListener("pointerdown", () => window.APERCU_EPOQUE.cacher());
 
       // La date de DÉBUT de l'époque (⚫ : -5000 Ma ; 📱 : 2000), puis son logo dessous.
       const debut = item["▶"];   // ⚫ : 5e9 → « -5000 Ma » ; 📱 : 2000

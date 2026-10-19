@@ -3,12 +3,13 @@
 //       au serveur (serve_site.py) les crashes (window.error, unhandledrejection, 404 assets)
 //       et les console.error/console.warn. A charger EN PREMIER dans <head> de chaque HTML
 //       (avant tout autre script) pour capturer les erreurs d'init.
-// Version 1.1.8
+// Version 1.1.9
 // Copyright 2025-2026 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See LICENSE_HEADER.txt for full terms.
 // Date: May 07, 2026
 // Logs:
+// - v1.1.9: plus de badge « DEBUG · wipe _logs/ » à l'écran (le wipe au chargement reste).
 // - v1.1.8: Badge « DEBUG · wipe _logs/ » uniquement si window === top — évite doublon dans iframes (scie_, bench,
 //   hyst, etc.) ; l’onglet Visuel utilise déjà le document parent (pas de 2e badge).
 
@@ -145,7 +146,7 @@
     };
     // L'attente est PURE : pas de timeout, pas de fallback. Soit le serveur répond (204 → wipe ok),
     // soit il erreur réseau (rejet → on libère quand même, mode dégradé sans logs persistés). Pas
-    // d'état flottant. Indicateur footer (localhost only) reflète l'issue.
+    // d'état flottant.
     fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -153,82 +154,10 @@
     }).then(function (r) {
         wipeDone = true;
         flush();
-        _setLogServerBadge(r && r.ok ? 'on' : 'off');
     }).catch(function () {
         wipeDone = true;
         flush();
-        _setLogServerBadge('off');
     });
-
-    /**
-     * Bouton/indicateur d'état du serveur de logs en bas-gauche (localhost only).
-     * - 'on'  : serveur OK → bouton rouge "🔴 DEBUG · wipe _logs/" cliquable. Click → re-wipe.
-     * - 'off' : serveur absent → message d'aide "⚠️ logs OFF · python3 serve_site.py" non-cliquable.
-     * Si <body> pas encore présent (script en <head>), state mémorisé et rejoué sur DOMContentLoaded.
-     * Pas d’affichage dans les iframes : même script est chargé dans scie_compute / bench / hyst — sinon 2e bouton
-     * en bas à gauche du cadre (le parent index.html garde le seul badge utile).
-     */
-    var _pendingBadgeState = null;
-    function _setLogServerBadge(state) {
-        _pendingBadgeState = state;
-        try {
-            if (window.self !== window.top) return;
-            var h = (location && location.hostname) || '';
-            if (h !== 'localhost' && h !== '127.0.0.1' && h !== '0.0.0.0') return;
-            if (!document.body) return; // sera rejoué via DOMContentLoaded
-            var id = '__log_server_badge';
-            var el = document.getElementById(id);
-            if (!el) {
-                el = document.createElement('button');
-                el.id = id;
-                el.type = 'button';
-                el.style.cssText = [
-                    'position:fixed', 'bottom:4px', 'left:6px',
-                    'font:11px/1.3 system-ui,sans-serif',
-                    'padding:3px 7px', 'border:none', 'border-radius:3px',
-                    'z-index:99999', 'opacity:0.85', 'user-select:none'
-                ].join(';');
-                document.body.appendChild(el);
-            }
-            if (state === 'on') {
-                el.textContent = '🔴 DEBUG · wipe _logs/';
-                el.style.color = '#fff';
-                el.style.background = '#c0392b';
-                el.style.cursor = 'pointer';
-                el.style.pointerEvents = 'auto';
-                el.disabled = false;
-                el.onclick = function () {
-                    el.textContent = '… wiping';
-                    fetch(ENDPOINT, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ wipeAll: true })
-                    }).then(function (r) {
-                        el.textContent = (r && r.ok) ? '✓ _logs/ wipé' : '✗ wipe failed';
-                        el.style.background = (r && r.ok) ? '#27ae60' : '#7f8c8d';
-                        setTimeout(function () { _setLogServerBadge('on'); }, 1200);
-                    }).catch(function () {
-                        el.textContent = '✗ serveur perdu';
-                        el.style.background = '#7f8c8d';
-                        setTimeout(function () { _setLogServerBadge('off'); }, 1500);
-                    });
-                };
-            } else {
-                el.textContent = '⚠️ logs OFF · python3 serve_site.py';
-                el.style.color = '#000';
-                el.style.background = '#f1c40f';
-                el.style.cursor = 'default';
-                el.style.pointerEvents = 'none';
-                el.disabled = true;
-                el.onclick = null;
-            }
-        } catch (_) { /* badge non critique */ }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
-            if (_pendingBadgeState !== null) _setLogServerBadge(_pendingBadgeState);
-        });
-    }
 
     enqueue('session', 'page loaded: ' + PAGE, document.referrer || '', '');
 

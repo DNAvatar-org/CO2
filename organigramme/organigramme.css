@@ -670,8 +670,10 @@
 #flux-diagram.hide-organigram-arrows #cell-co2,
 #flux-diagram.hide-organigram-arrows #cell-methane,
 #flux-diagram.hide-organigram-arrows #cell-h2o,
-#flux-diagram.hide-organigram-arrows #cell-albedo-btn {
-    visibility: hidden;
+#flux-diagram.hide-organigram-arrows #cell-albedo-btn,
+#flux-diagram.hide-organigram-arrows #cell-reemis,
+#flux-diagram.hide-organigram-arrows .flux-radiation-group[data-node="reemis"] {
+    visibility: hidden;   /* l'effet de serre (logo EDS et ses ondes de retour) est de l'atmosphère */
 }
 /* 🧩 Flou scientifique : toujours visible (pas de .flou-scientifique--hidden) */
 
@@ -691,8 +693,9 @@
     opacity: 0.3;
 }
 /* Energies masquées : la Géométrie disparaît avec les watts ; EDS + albédo inchangés */
-#flux-diagram.hide-organigram-observation-metrics #cell-geometrie {
-    visibility: hidden;
+#flux-diagram.hide-organigram-observation-metrics #cell-geometrie,
+#flux-diagram.hide-organigram-observation-metrics .flux-radiation-container {
+    visibility: hidden;   /* Energies masquées : la Géométrie et tous les rayonnements (ondes) disparaissent avec les watts */
 }
 
 .flux-rectangle {

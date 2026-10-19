@@ -1044,6 +1044,9 @@ h1 {
     text-shadow: none;
 }
 
+/* Pas d'anneau de focus du navigateur : la sélection a sa lueur (.selected) */
+.epoch-btn:focus { outline: none; }
+
 /* Bouton sélectionné : contour --retro-clicable */
 .epoch-btn.selected {
     filter: grayscale(0%) drop-shadow(0 0 3px color-mix(in srgb, var(--retro-clicable) 80%, transparent)) drop-shadow(0 0 6px color-mix(in srgb, var(--retro-clicable) 50%, transparent)) !important;

@@ -1,6 +1,7 @@
 // File: CO2/static/histoire/main.js
 // Desc: Point d'entrée de CO2/histoire.html : canvas, époques du TIMELINE, redimensionnement, interactions.
-// Version 1.3.0
+// Version 1.4.0
+// - v1.4.0: histoire:calcul seul message hors run — courbe verte (départ à la frise, prolongée par les tictimes).
 // - v1.3.0: histoire:vue — la période visible, pour la fenêtre Milankovitch.
 // - v1.2.0: histoire:calcul — chaque calcul de l'interface : point vert (H.dernier) et point de sa date sur sa courbe.
 // - v1.1.2: courbe à part pour les calculs de l'utilisateur sur 📱 (H.scenario, histoire:scenario).
@@ -16,7 +17,7 @@
     const ctx = canvas.getContext('2d');
     const v = H.vue;
     H.listeEpoques = H.epoques();
-    H.scenario = { mode: 'clics', points: [] };   // tes calculs sur 📱 (bench_pilote.js, hors run)
+    H.scenario = { mode: 'clics', points: [] };   // tes calculs hors run (bench_pilote.js) : frise puis tictimes
     H.dernier = null;                              // le dernier calcul de l'interface (point vert), ou null avant le premier
     // Période visible (années calendaires) envoyée à la page hôte, qui la passe à la fenêtre Milankovitch
     // (onglets_graphe.js → milankovitch:periode) : au plus un envoi par quart de seconde, le dernier état d'un glisser.
@@ -66,27 +67,14 @@
     window.addEventListener('message', function (e) {
         if (e.data.type === 'histoire:courbe') H[e.data.courbe] = { mode: e.data.mode, bary: e.data.bary, points: [] };
         else if (e.data.type === 'histoire:point') H[e.data.courbe].points.push(e.data.point);
-        // Calculs de l'utilisateur sur 📱 (H.scenario) : l'arrivée en 2000 la fait repartir ; une tranche de 25 ans
-        // remplace les points de même date ou plus tardifs (t = années avant L.AN, il décroît vers le futur), pour qu'un
-        // autre scénario rejoué depuis une tranche reparte de là.
-        else if (e.data.type === 'histoire:scenario') H.scenario.points = [e.data.point];
-        // Un calcul de l'interface, hors run (bench_pilote.js) : il devient le point vert, et le point de sa date sur sa
-        // courbe (null : aucune, tranche de 📱) — il remplace celui de même date (t), sinon s'insère à la sienne (points
-        // dans l'ordre chronologique : t décroissant).
+        // Un calcul de l'interface, hors run (bench_pilote.js) : il devient le point vert, et le point de sa date sur la
+        // courbe verte de tes clics (H.scenario) — un clic sur la frise (depart) la fait repartir de lui ; un tictime la
+        // prolonge et remplace les points de même date ou plus tardifs (t = années avant L.AN, il décroît vers le futur),
+        // pour qu'un pas rejoué reparte de là. Les courbes des runs (orange, violette) n'en reçoivent rien.
         else if (e.data.type === 'histoire:calcul') {
             const p = e.data.point;
             H.dernier = p;
-            if (e.data.courbe !== null) {
-                const M = H[e.data.courbe];
-                M.points = M.points.filter((q) => q.t !== p.t);
-                const i = M.points.findIndex((q) => q.t < p.t);
-                M.points.splice(i < 0 ? M.points.length : i, 0, p);
-            }
-        }
-        else if (e.data.type === 'histoire:prolonger') {
-            const M = H[e.data.courbe], p = e.data.point;
-            M.points = M.points.filter((q) => q.t > p.t);
-            M.points.push(p);
+            H.scenario.points = e.data.depart ? [p] : H.scenario.points.filter((q) => q.t > p.t).concat([p]);
         }
         else return;
         if (v.width > 0) redessiner();

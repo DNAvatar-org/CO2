@@ -470,8 +470,20 @@
       "dest": "pages/bilan_radiatif/CO2/static/ui/layout.js"
     },
     {
+      "src": "static/ui/embarque.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/embarque.js"
+    },
+    {
+      "src": "static/ui/scenario_hote.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/scenario_hote.js"
+    },
+    {
       "src": "static/ui/loader_panels.js",
       "dest": "pages/bilan_radiatif/CO2/static/ui/loader_panels.js"
+    },
+    {
+      "src": "static/ui/apercu_epoque.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/apercu_epoque.js"
     },
     {
       "src": "static/ui/bench_pilote.js",

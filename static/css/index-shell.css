@@ -1,6 +1,10 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.2.3
+   Version 1.2.5
+   - v1.2.5: page embarquée (html.embarque, static/ui/embarque.js) : ni onglets, ni fenêtres, ni pied de page, ni fond étoilé,
+     ni page ISS, la souris seulement sur ce qui se clique (et les fenêtres modales), le panneau sur toute la hauteur ; miroir (html.miroir) : Energies / Atmosphère et le bandeau du bas à droite.
+   - v1.2.4: le − de la fenêtre dépliée aussi dans son coin haut gauche (.fenetre-replier) ; bande de 32 px en haut des
+     fenêtres d'onglet, le contenu (Science : Configuration) ne passe plus sous les −.
    - v1.2.3: barre d'onglets cachée ; titres de fenêtres en 04B_03 italique ; Energies / Atmosphère sous l'époque ; en ISS, T° et
      pression dans un rond posé sur la Terre, titre traversé par la souris ; organigramme coupé à son bord.
    - v1.2.2: pied de page, liens GitHub avec logo (.credits-git).
@@ -214,12 +218,13 @@ body.terre-iss #visu-panel .synthese_Temp-col-right {
     justify-content: center;
     align-items: center;
 }
-/* Vue Terre–Lune (body.iss-lune) : la Terre est trop petite pour porter T° et pression ; elles reviennent dans le titre,
+/* Vue Terre–Lune (body.iss-lune) et caméra de l'ISS (body.iss-horizon) : pas de disque de Terre pour porter T° et pression ;
+   elles reviennent dans le titre,
    sous l'époque, sa date et son écart. */
-body.terre-iss.iss-lune #visu-panel .synthese_Temp.synthese_Temp-two-cols {
+body.terre-iss:is(.iss-lune, .iss-horizon) #visu-panel .synthese_Temp.synthese_Temp-two-cols {
     flex-direction: column;
 }
-body.terre-iss.iss-lune #visu-panel .synthese_Temp-col-right {
+body.terre-iss:is(.iss-lune, .iss-horizon) #visu-panel .synthese_Temp-col-right {
     position: static;
     transform: none;
     width: auto;
@@ -311,7 +316,8 @@ body.terre-iss .fenetre-tete { display: flex; }
     cursor: pointer;
 }
 .fenetre-tete button,
-.titre-affichage button {
+.titre-affichage button,
+.fenetre-replier {
     width: 20px;
     height: 20px;
     padding: 0;
@@ -323,11 +329,22 @@ body.terre-iss .fenetre-tete { display: flex; }
     cursor: pointer;
 }
 .fenetre-tete button:hover,
-.titre-affichage button:hover { background: rgba(255, 255, 255, 0.14); }
+.titre-affichage button:hover,
+.fenetre-replier:hover { background: rgba(255, 255, 255, 0.14); }
 .fenetre-tete button::after,
 .titre-affichage button::after { content: '+'; }
 .fenetre-tete.deplie button::after,
-.titre-affichage.deplie button::after { content: '−'; }
+.titre-affichage.deplie button::after,
+.fenetre-replier::after { content: '−'; }
+/* Le − de la fenêtre dépliée, en double dans son coin haut gauche (celui de son titre est au coin haut droit). */
+.fenetre-replier {
+    display: none;
+    position: fixed;
+    z-index: 970;
+    left: calc(var(--fenetre-gauche) + 8px);
+    top: calc(var(--fenetre-haut) + 6px);
+}
+body.terre-iss.fenetre-deplie .fenetre-replier { display: block; }
 /* la fenêtre dépliée : zone du graphe spectral, ou panneau d'un onglet (les !important battent les bords posés en ligne par
    onglets_graphe.js placer et le display: none des onglets inactifs) */
 body.terre-iss #visu-panel .plot-container-wrapper.fenetre-ouverte,
@@ -344,8 +361,11 @@ body.terre-iss .onglet-graphe.fenetre-ouverte {
     flex: none;
     animation: fenetre-entree 0.4s ease;
 }
+/* padding-top : bande des deux − (coins haut gauche et droit, 6 + 20 px) ; le contenu commence dessous. */
 body.terre-iss .onglet-graphe.fenetre-ouverte {
     flex-direction: column;
+    box-sizing: border-box;
+    padding-top: 32px;
     overflow: hidden;
     background: rgba(13, 17, 26, 0.88);
     border: 1px solid rgba(255, 255, 255, 0.14);
@@ -522,9 +542,81 @@ html:fullscreen .credits-footer {
     color: var(--base-color, #0a0);
 }
 
-/* Onglet ISS, page en caméra de l'ISS (l'horizon, onglets_graphe.js : iss:terre vue 'iss') : pas de Terre entière autour de
-   laquelle poser l'organigramme — il disparaît, sans quitter la mise en page (il revient tel quel en vue Terre). */
-body.iss-horizon #flux-diagram { visibility: hidden; }
-/* Vue Terre–Lune (iss:terre orbite) : le « cercle » de l'organigramme est l'orbite de la Lune, dessinée par la page ISS ; le
-   cercle d'atmosphère, minuscule autour de la Terre, s'efface. */
-body.iss-lune #cell-albedo .flux-circle-bg { visibility: hidden; }
+/* Vue Terre–Lune (iss:terre orbite) : le « cercle » de l'organigramme est l'orbite de la Lune, dessinée par la page ISS ; caméra
+   de l'ISS (body.iss-horizon) : une ellipse couchée sur l'horizon (onglets_graphe.js poserTerreISS). Le cercle d'atmosphère,
+   minuscule ou sans objet, s'efface. */
+body:is(.iss-lune, .iss-horizon) #cell-albedo .flux-circle-bg { visibility: hidden; }
+
+/* Page embarquée (html.embarque, static/ui/embarque.js : ?hote=, ex. DNA Tamagoshi) : l'onglet ISS seul — Terre, frise et
+   organigramme. Ni onglets, ni fenêtres des autres onglets, ni pied de page, ni fond étoilé (l'hôte a le sien) ; le spectre
+   jamais montré (même avant le premier calcul) ; le panneau sur toute la hauteur de la page. */
+html.embarque,
+html.embarque body {
+    background: transparent;
+}
+html.embarque {
+    --visu-footer-h: 0px;
+    --visu-panel-max-h: calc(100vh - 10px);
+}
+html.embarque :is(#galaxy-bg, .tabs-bar, .credits-footer, .fenetre-tete, .fenetre-poignee, .fenetre-replier, #plein-ecran,
+    .fps-display, #iss-zen-btn, .title-header-row) {
+    display: none !important;
+}
+html.embarque :is(.plot-container-wrapper, #iss-panel) {
+    visibility: hidden;   /* pas de page ISS : la Terre est celle de l'hôte, dessous */
+}
+/* La souris traverse la page (l'hôte, dessous, garde sa Terre) sauf sur ce qui se clique : la frise, Energies / Atmosphère et
+   T° (terre-iss), les boutons de l'organigramme (organigramme-plein), le bandeau du bas. L'hôte bascule l'iframe sur ce qui
+   est sous la souris ici (elementFromPoint : autre chose que <html>). */
+html.embarque body {
+    pointer-events: none;
+}
+html.embarque .timeline-column {
+    pointer-events: auto;
+}
+/* Le haut à gauche laissé libre pour l'hôte (son titre : --hote-haut, message co2:hote, embarque.js) : la frise et le nom
+   d'époque y descendent ; l'organigramme garde toute la hauteur. */
+html.embarque #visu-panel .timeline-column {
+    margin-top: var(--hote-haut, 0px);
+    height: calc(100% - var(--hote-haut, 0px));
+}
+html.embarque #visu-panel .title-container {
+    margin-top: var(--hote-haut, 0px);
+}
+/* Une fenêtre modale (static/ui/modal.js) reste modale : son voile prend la souris sur toute la page, l'hôte la lui rend */
+html.embarque :is(.custom-alert-overlay, .page-modal-overlay) {
+    pointer-events: auto;
+}
+/* Miroir (html.miroir) : l'organigramme à droite de la Terre (configOrganigramme.js TERRE_ECRAN.miroir) — Energies / Atmosphère
+   collés à droite de la zone, à mi-hauteur ; le bandeau du bas (EVENEMENT, SKIP) en bas à droite. */
+html.miroir body.terre-iss #visu-panel .titre-affichages {
+    left: calc(var(--onglet-gauche) + var(--onglet-largeur) - 10px);
+    transform: translate(-100%, -50%);
+}
+html.miroir .flux-diagram > #bandeau-bas {
+    left: auto;
+    right: 10px;
+}
+/* Embarquée : Energies / Atmosphère côte à côte en bas de la page, sous la Terre de l'hôte (--terre-cx, embarque.js) */
+html.embarque body.terre-iss #visu-panel .titre-affichages {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    left: var(--terre-cx, 50%);
+    top: auto;
+    bottom: 8px;
+    transform: translateX(-50%);
+}
+/* Embarquée (?hote) : plus de balade dans les époques — ni frise, ni ÉVÉNEMENT / SKIP. Cachés sans quitter la mise en page
+   (visibility, pas display) : le premier calcul passe par le clic de la frise sur ⚫ (CLICS.frise, calottes datées). */
+html.embarque #visu-panel .timeline-column,
+html.embarque #bandeau-bas {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+/* Embarquée : ni le nom d'époque (« Aujourd'hui », 2000, +300 ans : il n'y a qu'aujourd'hui → 2300), ni le cercle d'atmosphère
+   en pointillés sur lequel l'organigramme est disposé (l'hôte a sa Terre et son ciel) */
+html.embarque .synthese_Temp-col-left,
+html.embarque #cell-albedo .flux-circle-bg {
+    visibility: hidden !important;
+}
