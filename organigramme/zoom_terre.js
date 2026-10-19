@@ -10,7 +10,8 @@
 //       (leur angle et leur distance autour de la Terre) ; la Géométrie suit le Soleil, au bord de son rayonnement ; les ondes
 //       suivent leurs flèches.
 // Version 1.1.13
-// - v1.1.13: la Géométrie se rapproche du Soleil (distPct, de 45 à 100 % du bord de son rayonnement).
+// - v1.1.13: la Géométrie se rapproche du Soleil (distPct, de 45 à 100 % du bord de son rayonnement) ; embarquée, un
+//   nœud glissé est dit à l'hôte (co2:place) qui le garde dans sa disposition.
 // - v1.1.12: miroir (page embarquée, configOrganigramme.js TERRE_ECRAN.miroir) : placeDuCote remplace placeAGauche — la place
 //   que l'organigramme demande de son côté de la Terre (à droite en miroir) ; la Géométrie glissée garde son angle de disposition.
 // - v1.1.11: poser reçoit ref (la Terre au zoom ×1) : T° et pression, place à gauche s'y rapportent.
@@ -246,6 +247,13 @@
         n.rayonPct = RT.rayonPctDe(n.theta, Math.hypot(x - RT.cx, y - RT.cy));
         return 'theta: ' + n.theta.toFixed(3) + ', rayonPct: ' + Math.round(n.rayonPct);
     };
+    /** Page embarquée (static/ui/embarque.js) : un nœud posé autour de la Terre (theta, rayonPct) et glissé est dit à l'hôte
+     *  (message co2:place, angle à l'écran [°, y vers le bas]) — il le garde et le redonne dans sa disposition (co2:hote) :
+     *  la place choisie survit aux remises en page et aux visites. La Géométrie (angle autour du Soleil) n'en est pas. */
+    function garderChezLHote(id, n) {
+        if (window.EMBARQUE === undefined || window.EMBARQUE.hote === null || id === 'geometrie') return;
+        window.parent.postMessage({ type: 'co2:place', id: id, angle: RT.versEcran(n.theta) * 180 / Math.PI, rayonPct: n.rayonPct }, '*');
+    }
     function rendreGlissable(poignee, id, auLacher = () => {}, auClic = () => {}, placer = autourDeLaTerre) {
         const n = noeud(id);
         poignee.style.cursor = 'grab';
@@ -262,6 +270,7 @@
             if (bouge) {
                 console.info('[zoom_terre] ' + id + ' : ' + releve);   // à recopier dans configOrganigramme.js
                 auLacher(n);
+                garderChezLHote(id, n);
             } else if (e.type === 'pointerup') auClic();
         };
         poignee.addEventListener('pointerdown', (e) => {
