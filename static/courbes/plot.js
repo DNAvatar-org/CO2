@@ -1,7 +1,8 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.98
+// Version 1.0.99
+// - v1.0.99 (2026-10-20): page embarquée (?hote) — resize ignoré : le spectre n'y est jamais tracé (erreur Plotly _guiEditing).
 // - v1.0.98 (2026-10-15): resize de fenêtre ignoré quand le spectre est caché sous un autre onglet (erreur Plotly).
 // Date: [May 07, 2026] [12:00 UTC+1]
 // logs :
@@ -814,8 +815,9 @@ function debouncedResizeCanvas() {
         resizeTimeout = null;
         const plotEl = document.getElementById('plot-container');
         // Spectre caché sous un autre onglet (display: none, onglets_graphe.js) : rien à redimensionner ni à redessiner ;
-        // le retour à l'onglet Spectrale redimensionne (onShowVisu).
-        if (plotEl.offsetParent === null) return;
+        // le retour à l'onglet Spectrale redimensionne (onShowVisu). Page embarquée (?hote, embarque.js) : le spectre n'est
+        // jamais tracé (son panneau caché, index-shell.css) — Plotly.relayout planterait sur un graphe vide.
+        if (plotEl.offsetParent === null || window.EMBARQUE.hote !== null) return;
         if (typeof Plotly !== 'undefined') {
             Plotly.Plots.resize(plotEl);
             // Forcer le relayout des axes en verticale (position/marges recalculées)
