@@ -1,6 +1,7 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.2.5
+   Version 1.2.6
+   - v1.2.6: embarquée — Energies / Atmosphère visibles (leur bloc, le nom d'époque, est caché : visibility: visible).
    - v1.2.5: page embarquée (html.embarque, static/ui/embarque.js) : ni onglets, ni fenêtres, ni pied de page, ni fond étoilé,
      ni page ISS, la souris seulement sur ce qui se clique (et les fenêtres modales), le panneau sur toute la hauteur ; miroir (html.miroir) : Energies / Atmosphère et le bandeau du bas à droite.
    - v1.2.4: le − de la fenêtre dépliée aussi dans son coin haut gauche (.fenetre-replier) ; bande de 32 px en haut des
@@ -597,8 +598,10 @@ html.miroir .flux-diagram > #bandeau-bas {
     left: auto;
     right: 10px;
 }
-/* Embarquée : Energies / Atmosphère côte à côte en bas de la page, sous la Terre de l'hôte (--terre-cx, embarque.js) */
+/* Embarquée : Energies / Atmosphère côte à côte en bas de la page, sous la Terre de l'hôte (--terre-cx, embarque.js). Visibles
+   alors que leur bloc (.synthese_Temp-col-left, le nom d'époque) est caché plus bas : un enfant reprend sa visibilité. */
 html.embarque body.terre-iss #visu-panel .titre-affichages {
+    visibility: visible;
     display: flex;
     flex-direction: row;
     gap: 16px;

@@ -8,14 +8,16 @@
 //       (co2:pret). ?miroir : l'organigramme en symétrie d'axe vertical, à DROITE de la Terre (configOrganigramme.js
 //       TERRE_ECRAN.miroir, html.miroir). Chargé dans <head>, avant tout le reste : la config de l'organigramme le lit à sa
 //       construction.
-// Version 1.2.0
+// Version 1.3.0
+// - 1.3.0: co2:pose — la disposition de l'hôte appliquée ET redessinée (le redessin passe à la trame suivante, zoom_terre.js
+//   changer), la page le dit à l'hôte : il ne la montre qu'alors (flèches et rayonnements déjà autour de SA Terre).
 // - 1.2.0: ?emis=<kg> — les émissions de l'hôte (EMBARQUE.emissions) : static/ui/scenario_hote.js, plus de frise ; message
 //   co2:emissions pour les mettre à jour.
 // - 1.1.0: message co2:hote de l'hôte { haut, disposition } — la hauteur à laisser libre en haut à gauche (sous son titre :
 //   la frise et le nom d'époque y descendent, --hote-haut) et la place des boutons autour de SA Terre (angle à l'écran en
 //   degrés, y vers le bas, et rayonPct : configOrganigramme.js) ; l'hôte l'envoie une fois la page prête, puis à chaque mise en page.
 //   Energies / Atmosphère en bas, sous la Terre de l'hôte (--terre-cx, de son iss:terre).
-// Date: 2026-10-19
+// Date: 2026-10-20
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -45,6 +47,10 @@
         });
         window.ONGLETS_GRAPHE.placer();
         window.ZOOM_TERRE.redessiner();
+        // le redessin se fait à la trame suivante (zoom_terre.js changer) : posée une trame après, l'hôte peut la montrer
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () { window.parent.postMessage({ type: 'co2:pose' }, '*'); });
+        });
     }
     // la Terre de l'hôte (iss:terre relayé) : son abscisse pour Energies / Atmosphère, posés dessous (--terre-cx, index-shell.css)
     window.addEventListener('message', function (e) {
