@@ -5,9 +5,12 @@
 //       + ~300 ans) avec, pour seul CO₂ ajouté, celui de l'hôte (CLICS.emettre, puits compris) : pour DNA Tamagoshi, les
 //       déplacements du joueur, qu'il calibre lui-même. Deux calculs : l'époque (sa graine de 2000), puis l'émission.
 //       Prête au bout du premier scénario (EMBARQUE.pret) ; de nouvelles émissions (message co2:emissions) le rejouent,
-//       à la fin du calcul en cours s'il y en a un.
-// Version 1.0.0
-// Date: 2026-10-19
+//       à la fin du calcul en cours s'il y en a un. Chaque scénario fini, son résultat va à l'hôte (message co2:bilan :
+//       ppm de CO₂ — le chiffre de l'organigramme, sync_panels.js projectToVisu —, °C de surface, année atteinte) :
+//       l'hôte écrit le même chiffre que l'organigramme.
+// Version 1.1.0
+// - 1.1.0 : co2:bilan { ppm, tC, annee } à l'hôte, à la fin de chaque scénario
+// Date: 2026-10-21
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.SCENARIO_HOTE = (function () {
     'use strict';
@@ -34,11 +37,18 @@ window.SCENARIO_HOTE = (function () {
                 etape = 'emission';
                 window.IO_LISTENER.emit('config:applyThenCompute', { button: '⛽' });
                 break;
-            case 'emission':
+            case 'emission': {
                 etape = 'fait';
+                // le résultat, comme l'organigramme l'écrit (sync_panels.js projectToVisu : fraction molaire × 1e6)
+                const D = window.DATA;
+                window.parent.postMessage({ type: 'co2:bilan',
+                    ppm: window.ATM.co2KgToFraction(D['⚖️']['⚖️🏭'], D['⚖️']['⚖️🫧'], D['🫧']['🧪']) * 1e6,
+                    tC: D['🧮']['🧮🌡️'] - window.CONST.KELVIN_TO_CELSIUS,
+                    annee: window.CLICS.date() }, '*');
                 if (premier) { premier = false; window.EMBARQUE.pret(); }
                 if (rejouer) lancer();
                 break;
+            }
         }
     }, 'scenario_hote');
 

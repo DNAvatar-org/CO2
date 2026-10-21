@@ -8,7 +8,8 @@
 //       (co2:pret). ?miroir : l'organigramme en symétrie d'axe vertical, à DROITE de la Terre (configOrganigramme.js
 //       TERRE_ECRAN.miroir, html.miroir). Chargé dans <head>, avant tout le reste : la config de l'organigramme le lit à sa
 //       construction.
-// Version 1.3.0
+// Version 1.3.1
+// - 1.3.1: (scenario_hote.js) co2:bilan { ppm, tC, annee } à l'hôte à la fin de chaque scénario — le chiffre de l'organigramme.
 // - 1.3.0: co2:pose — la disposition de l'hôte appliquée ET redessinée (le redessin passe à la trame suivante, zoom_terre.js
 //   changer), la page le dit à l'hôte : il ne la montre qu'alors (flèches et rayonnements déjà autour de SA Terre).
 // - 1.2.0: ?emis=<kg> — les émissions de l'hôte (EMBARQUE.emissions) : static/ui/scenario_hote.js, plus de frise ; message
