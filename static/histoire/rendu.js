@@ -3,9 +3,10 @@
 //       bande d'incertitude, médiane en pointillés par-dessus), deux courbes du MODÈLE en segments de point à point —
 //       graine t° continue (chaîne de clics, orange, pleine) et graine t° imposée (frise de chaque époque, violette,
 //       tirets) —, logos d'époque en bandeau au début de leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.9.1
+// Version 1.9.2
 // Date: 2026-10-16
 // logs :
+//   - v1.9.2 (2026-10-22): légende — histoire, clictimes, époques + graine, mesures de la session.
 //   - v1.9.1 (2026-10-18): courbe verte = tous tes clics hors run (frise puis tictimes).
 //   - v1.9.0 (2026-10-16): effet orbital direct sur la température moyenne du globe (°C, tirets or, astronomie.js) ;
 //     légende sur plusieurs lignes si elle ne tient pas.
@@ -178,9 +179,9 @@
         // violette en tirets : l'orange se voit entre les tirets). La médiane de la littérature, en pointillés, passe
         // par-dessus les deux.
         effetOrbital(ctx);
-        courbe(ctx, H.modele, COUL.mod, [], 'Chaîne de clics (graine = T du calcul précédent)');
-        courbe(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Frise (graine = courbe cyan à ▶)');
-        courbe(ctx, H.scenario, COUL.scen, [], 'Tes clics (graine : courbe cyan à la frise, puis T du calcul précédent)');
+        courbe(ctx, H.modele, COUL.mod, [], 'Clictimes (graine = T du calcul précédent)');
+        courbe(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Époques + graine (graine = courbe cyan à ▶)');
+        courbe(ctx, H.scenario, COUL.scen, [], 'Mesure de la session (graine : courbe cyan à la frise, puis T du calcul précédent)');
         mediane(ctx, lit, COUL.lit);
         // Le dernier calcul de l'interface (main.js, histoire:calcul) : gros point vert cerclé, par-dessus tout.
         if (H.dernier !== null) {
@@ -208,8 +209,8 @@
         // Légende : centrée en X, en bas (au-dessus des dates de l'axe, à v.height − 20) ; en autant de lignes qu'il faut
         // pour tenir dans la largeur, la dernière juste au-dessus des dates, les autres au-dessus d'elle.
         ctx.textAlign = 'left'; ctx.font = '12px Tahoma';
-        const legende = [[COUL.lit, '··· littérature'], [COUL.mod, '— graine t° continue'],
-            [COUL.frise, '- - graine t° imposée'], [COUL.scen, '— tes clics'], [COUL.scen, '● dernier calcul'], ['#f1c40f', '- - effet orbital direct (°C)']];
+        const legende = [[COUL.lit, '··· histoire'], [COUL.mod, '— clictimes'],
+            [COUL.frise, '- - époques + graine'], [COUL.scen, '— mesures de la session'], [COUL.scen, '● dernier calcul'], ['#f1c40f', '- - effet orbital direct (°C)']];
         const ecart = 24, largeurs = legende.map((l) => ctx.measureText(l[1]).width), place = v.width - 2 * ecart;
         const lignes = [[]];
         legende.forEach((l, i) => {

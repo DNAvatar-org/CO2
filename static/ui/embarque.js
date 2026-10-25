@@ -8,7 +8,13 @@
 //       (co2:pret). ?miroir : l'organigramme en symétrie d'axe vertical, à DROITE de la Terre (configOrganigramme.js
 //       TERRE_ECRAN.miroir, html.miroir). Chargé dans <head>, avant tout le reste : la config de l'organigramme le lit à sa
 //       construction.
-// Version 1.3.1
+// Version 1.5.0
+// - 1.5.0: l'état de l'organigramme gardé (localStorage ETAT_CLE : DATA à la fin du scénario, et les émissions qui l'ont
+//   donné) — au chargement suivant, mêmes émissions (pas de voyage) : remis tel quel, sans calcul (EMBARQUE.etatGarde,
+//   scenario_hote.js restaurer) ; ETAT_VERSION à monter quand le moteur change ses résultats.
+// - 1.4.0: ?energies=0, ?atmosphere=0 — Energies (watts) et Atmosphère (détails) de l'organigramme repliés au départ (dépliés
+//   sinon) ; message co2:affichage { energies, atmosphere } de l'hôte pour les basculer ; après la disposition de l'hôte
+//   (co2:hote) et chaque bascule, un resize : l'organigramme se remet en page (onglets_graphe.js placer, redessin).
 // - 1.3.1: (scenario_hote.js) co2:bilan { ppm, tC, annee } à l'hôte à la fin de chaque scénario — le chiffre de l'organigramme.
 // - 1.3.0: co2:pose — la disposition de l'hôte appliquée ET redessinée (le redessin passe à la trame suivante, zoom_terre.js
 //   changer), la page le dit à l'hôte : il ne la montre qu'alors (flèches et rayonnements déjà autour de SA Terre).
@@ -23,15 +29,31 @@
 (function () {
     'use strict';
     const p = new URLSearchParams(location.search);
+    /** L'état de l'organigramme gardé d'un chargement à l'autre (garderEtat) ; sa version : à monter si le moteur change */
+    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 1;
     /** EMBARQUE.hote : le nom de la page hôte, ou null (page seule) ; EMBARQUE.miroir : organigramme à droite de la Terre */
     window.EMBARQUE = {
         hote: p.get('hote'),
         miroir: p.has('miroir'),
         /** Émissions de l'hôte [kg CO₂] (?emis) : le scénario aujourd'hui → 2300 (scenario_hote.js) ; null : pas de scénario */
         emissions: p.has('emis') ? Number(p.get('emis')) : null,
+        /** Energies (watts) et Atmosphère (détails) de l'organigramme, dépliés au départ (?energies=0, ?atmosphere=0 : repliés) */
+        energies: p.get('energies') !== '0',
+        atmosphere: p.get('atmosphere') !== '0',
+        /** L'état gardé de l'organigramme pour ces émissions { kg, v, DATA } (garderEtat), ou null : à recalculer */
+        etatGarde: null,
+        /** Garde l'état de l'organigramme (DATA, fin du scénario) pour les émissions kg : le prochain chargement le remet */
+        garderEtat: function (kg, DATA) {
+            localStorage.setItem(ETAT_CLE, JSON.stringify({ kg: kg, v: ETAT_VERSION, DATA: DATA }));
+        },
         /** La page est prête (onglet ISS ouvert, scénario fait s'il y en a un) : l'hôte peut la montrer */
         pret: function () { window.parent.postMessage({ type: 'co2:pret' }, '*'); }
     };
+    // l'état gardé, s'il est celui de mes émissions (pas de voyage depuis) et de ce moteur
+    if (window.EMBARQUE.emissions !== null) {
+        const s = localStorage.getItem(ETAT_CLE), e = s === null ? null : JSON.parse(s);
+        if (e !== null && e.kg === window.EMBARQUE.emissions && e.v === ETAT_VERSION) window.EMBARQUE.etatGarde = e;
+    }
     document.documentElement.classList.toggle('embarque', window.EMBARQUE.hote !== null);
     document.documentElement.classList.toggle('miroir', window.EMBARQUE.miroir);
 
@@ -48,14 +70,23 @@
         });
         window.ONGLETS_GRAPHE.placer();
         window.ZOOM_TERRE.redessiner();
+        window.dispatchEvent(new Event('resize'));   // la disposition validée : tout ce qui suit le cadre se remet en page
         // le redessin se fait à la trame suivante (zoom_terre.js changer) : posée une trame après, l'hôte peut la montrer
         requestAnimationFrame(function () {
             requestAnimationFrame(function () { window.parent.postMessage({ type: 'co2:pose' }, '*'); });
         });
     }
+    /** co2:affichage { energies, atmosphere } : Energies (watts) et Atmosphère (détails) dépliés ou repliés (main.js), puis
+     *  l'organigramme remis en page */
+    function affichage(m) {
+        window.afficherWattsOrganigramme(m.energies);
+        window.afficherDetailsOrganigramme(m.atmosphere);
+        window.dispatchEvent(new Event('resize'));
+    }
     // la Terre de l'hôte (iss:terre relayé) : son abscisse pour Energies / Atmosphère, posés dessous (--terre-cx, index-shell.css)
     window.addEventListener('message', function (e) {
         if (e.source === window.parent && e.data.type === 'co2:hote') appliquerHote(e.data);
+        if (e.source === window.parent && e.data.type === 'co2:affichage') affichage(e.data);
         if (e.source === window.parent && e.data.type === 'co2:emissions') window.SCENARIO_HOTE.emettre(e.data.kg);
         if (e.source === window.parent && e.data.type === 'iss:terre') document.documentElement.style.setProperty('--terre-cx', e.data.cx + 'px');
     });

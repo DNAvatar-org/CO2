@@ -1,6 +1,7 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.91
+// Version 1.0.92
+// - v1.0.92 (2026-10-22): Atmosphère off garde EDS (logo et nom) ; Energies off cache aussi le Soleil et les deux 🛰.
 // - v1.0.91 (2026-10-17): Atmosphère off cache aussi la boule à facettes ; ⚗ DETAILS invisible (Energies / Atmosphère sous l'époque) ; 🛰 sans titre ; logo Géométrie tourné par zoom_terre.js.
 // - v1.0.90 (2026-10-16): bandeau du bas (⚗ DETAILS, EVENEMENT, SKIP) ; Géométrie à 45° du Soleil (logo −45°) ; ⚗ DETAILS visible ; 🛰 du satellite IR = bouton OBSERVATIONS, titre sous l'icône, centrée sur le satellite.
 // - v1.0.89 (2026-10-15): logo Géométrie tourné de −90° (au-dessus du Soleil) ; 🛰 satellites éclaircis, glissables.
@@ -671,9 +672,8 @@
 #flux-diagram.hide-organigram-arrows #cell-methane,
 #flux-diagram.hide-organigram-arrows #cell-h2o,
 #flux-diagram.hide-organigram-arrows #cell-albedo-btn,
-#flux-diagram.hide-organigram-arrows #cell-reemis,
 #flux-diagram.hide-organigram-arrows .flux-radiation-group[data-node="reemis"] {
-    visibility: hidden;   /* l'effet de serre (logo EDS et ses ondes de retour) est de l'atmosphère */
+    visibility: hidden;   /* les ondes de retour de l'effet de serre ; son logo EDS et son nom restent (#cell-reemis) */
 }
 /* 🧩 Flou scientifique : toujours visible (pas de .flou-scientifique--hidden) */
 
@@ -692,10 +692,14 @@
     filter: grayscale(1);
     opacity: 0.3;
 }
-/* Energies masquées : la Géométrie disparaît avec les watts ; EDS + albédo inchangés */
+/* Energies masquées : la Géométrie, le Soleil, les deux 🛰 (CERES, DSCOVR) et tous les rayonnements (ondes) disparaissent
+   avec les watts ; EDS + albédo inchangés */
 #flux-diagram.hide-organigram-observation-metrics #cell-geometrie,
+#flux-diagram.hide-organigram-observation-metrics #cell-soleil,
+#flux-diagram.hide-organigram-observation-metrics #observation-config-wrap,
+#flux-diagram.hide-organigram-observation-metrics #observation-config-wrap-bas,
 #flux-diagram.hide-organigram-observation-metrics .flux-radiation-container {
-    visibility: hidden;   /* Energies masquées : la Géométrie et tous les rayonnements (ondes) disparaissent avec les watts */
+    visibility: hidden;
 }
 
 .flux-rectangle {

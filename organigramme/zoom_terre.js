@@ -9,7 +9,8 @@
 //       (organigramme.js, generateArrows). Soleil, albédo, EDS, satellites et l'éventail CO₂ / H₂O / CH₄ se glissent à la souris
 //       (leur angle et leur distance autour de la Terre) ; la Géométrie suit le Soleil, au bord de son rayonnement ; les ondes
 //       suivent leurs flèches.
-// Version 1.1.13
+// Version 1.1.14
+// - v1.1.14: double-clic sur le Soleil : retour à sa place par défaut (configOrganigramme.js), cookie effacé.
 // - v1.1.13: la Géométrie se rapproche du Soleil (distPct, de 45 à 100 % du bord de son rayonnement) ; embarquée, un
 //   nœud glissé est dit à l'hôte (co2:place) qui le garde dans sa disposition.
 // - v1.1.12: miroir (page embarquée, configOrganigramme.js TERRE_ECRAN.miroir) : placeDuCote remplace placeAGauche — la place
@@ -285,8 +286,10 @@
         poignee.addEventListener('pointercancel', lacher);
     }
     // Le Soleil garde la place où on l'a glissé, d'une visite à l'autre : angle et distance (theta, rayonPct) en cookie, écrits
-    // au relâcher, repris ici au chargement (avant le premier dessin).
+    // au relâcher, repris ici au chargement (avant le premier dessin). Double-clic : retour à sa place par défaut
+    // (configOrganigramme.js), cookie effacé.
     const COOKIE_SOLEIL = 'bilan_radiatif_soleil';
+    const SOLEIL_DEFAUT = { theta: noeud('soleil').theta, rayonPct: noeud('soleil').rayonPct };
     const souvenirSoleil = document.cookie.split('; ').find((c) => c.startsWith(COOKIE_SOLEIL + '='));
     if (souvenirSoleil !== undefined) {
         const [theta, rayonPct] = souvenirSoleil.split('=')[1].split(',').map(Number);
@@ -295,6 +298,12 @@
     }
     rendreGlissable(document.querySelector('#cell-soleil .flux-circle-bg'), 'soleil', (n) => {
         document.cookie = COOKIE_SOLEIL + '=' + n.theta.toFixed(4) + ',' + n.rayonPct.toFixed(2) + '; max-age=31536000; path=/; SameSite=Lax';
+    });
+    document.querySelector('#cell-soleil .flux-circle-bg').addEventListener('dblclick', () => {
+        const n = noeud('soleil');
+        changer(() => { n.theta = SOLEIL_DEFAUT.theta; n.rayonPct = SOLEIL_DEFAUT.rayonPct; });
+        document.cookie = COOKIE_SOLEIL + '=; max-age=0; path=/; SameSite=Lax';
+        garderChezLHote('soleil', n);
     });
     rendreGlissable(document.querySelector('#cell-albedo-btn .flux-circle-bg'), 'albedo-btn');
     rendreGlissable(document.querySelector('#cell-reemis .flux-circle-bg'), 'reemis');

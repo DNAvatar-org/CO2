@@ -1,12 +1,13 @@
 // File: CO2/static/ui/fenetres.js
 // Desc: Onglet ISS en fond (la Terre et l'organigramme toujours ouverts) : Spectrale, Histoire, Bench, Science et Milankovitch
-//       sont des fenêtres empilées en haut à droite, au-dessus de Temps et Point de vue de la page ISS. Repliées : leur titre
-//       et un +. Une seule dépliée à la fois : elle monte tout en haut, contre le bord droit, son − dans son coin, les
-//       titres repliés se rangent dessous. Mouvements en
-//       transition (index-shell.css). Un onglet cliqué déplie sa fenêtre, ISS les replie toutes (switchTab, loader_panels.js).
-//       Taille commune à toutes les fenêtres, bornée au panneau : TAILLE_DEFAUT, ou celle choisie à la poignée (coin bas
-//       gauche), retenue en cookie. Au premier chargement, Spectrale est ouverte (loader_panels.js).
-// Version 1.2.2
+//       sont des fenêtres dont les titres (titre et +) forment une rangée tout en haut, alignée à droite, par-dessus la
+//       scène. Une seule dépliée à la fois : sous la rangée, contre le bord droit, son titre éclairé avec un −. Un onglet
+//       cliqué déplie sa fenêtre, ISS les replie toutes (switchTab, loader_panels.js).
+//       Taille commune à toutes les fenêtres, bornée au panneau : par défaut LARGEUR_DEFAUT et jusqu'au-dessus des boutons
+//       ⓒ et ⛶ du coin bas droit, ou celle choisie à la poignée (coin bas gauche), retenue en cookie. Au premier
+//       chargement, Spectrale est ouverte (loader_panels.js).
+// Version 1.3.0
+// - v1.3.0: titres en rangée horizontale en haut ; hauteur par défaut jusqu'au-dessus de ⓒ et ⛶.
 // - v1.2.2: plus de bas de pile : Temps et Point de vue de la page ISS vont à gauche, sous Atmosphère (onglets_graphe.js).
 // - v1.2.1: FENETRES.ouverte() (Entrée relayée à Milankovitch, onglets_graphe.js).
 // - v1.2.0: taille par défaut 1000 × 555 px (la fenêtre ne suit plus le bord de la Terre).
@@ -39,40 +40,46 @@
         visu() { CONTENU.visu().classList.add('spectre-cache'); window.ONGLETS_GRAPHE.effacerSpectre(); },
         histoire() {}, bench() {}, scie() {}, milankovitch() {}
     };
-    const MARGE = 8;        // [px] du bord du panneau ISS, et entre la fenêtre et les titres repliés
-    const PAS_TITRE = 30;   // [px] un titre replié
+    const MARGE = 8;            // [px] du bord du panneau ISS, et entre la rangée des titres et la fenêtre
+    const HAUTEUR_RANGEE = 20;  // [px] la rangée des titres (bouton + / − de 20 px, index-shell.css)
+    const BOUTONS_BAS = 46;     // [px] haut de ⓒ et ⛶ depuis le bas du panneau (12 + 34 : pages/ISS #bCredits, .iss-zen-btn)
+    const FROLE = 4;            // [px] entre le bas de la fenêtre et ⓒ, ⛶
     let ouverte = null;     // id de la fenêtre dépliée, ou null
-    // Taille { largeur, hauteur } [px] : par défaut, ou choisie à la poignée et retenue en cookie.
+    // Taille { largeur, hauteur } [px] choisie à la poignée et retenue en cookie, ou null : la taille par défaut
+    // (LARGEUR_DEFAUT, et la hauteur jusqu'au-dessus de ⓒ et ⛶, qui suit le panneau).
     const COOKIE_TAILLE = 'bilan_radiatif_fenetre';
-    const TAILLE_DEFAUT = { largeur: 1000, hauteur: 555 };
+    const LARGEUR_DEFAUT = 1000;
     const TAILLE_MIN = { largeur: 260, hauteur: 160 };
     const souvenir = document.cookie.split('; ').find((c) => c.startsWith(COOKIE_TAILLE + '='));
-    let taille = TAILLE_DEFAUT;
+    let taille = null;
     if (souvenir !== undefined) {
         const [largeur, hauteur] = souvenir.split('=')[1].split(',').map(Number);
         taille = { largeur: largeur, hauteur: hauteur };
     }
-    /** Une taille bornée au panneau ISS (page : son rectangle) : jamais sous TAILLE_MIN, jamais hors du panneau. */
+    /** Haut de la fenêtre dépliée : sous la rangée des titres (page : le rectangle du panneau ISS). */
+    const hautFenetre = (page) => page.top + MARGE + HAUTEUR_RANGEE + MARGE;
+    /** Une taille bornée au panneau ISS : jamais sous TAILLE_MIN, jamais hors du panneau. */
     const bornee = (t, page) => ({
         largeur: Math.min(Math.max(t.largeur, TAILLE_MIN.largeur), page.width - 2 * MARGE),
-        hauteur: Math.min(Math.max(t.hauteur, TAILLE_MIN.hauteur), page.height - 2 * MARGE)
+        hauteur: Math.min(Math.max(t.hauteur, TAILLE_MIN.hauteur), page.bottom - MARGE - hautFenetre(page))
     });
 
     const titre = (id) => document.querySelector('.fenetre-tete[data-fenetre="' + id + '"]');
     const bouton = (id) => document.getElementById('tab-' + id);
 
-    /** Range la pile : la fenêtre dépliée en haut (hauteur commune --fenetre-hauteur), son titre dans son coin ; les titres
-     *  repliés dessous, dans l'ordre des onglets. */
+    /** Pose la rangée des titres en haut à droite du panneau ISS, et la fenêtre dépliée dessous (--fenetre-haut,
+     *  --fenetre-gauche, --fenetre-hauteur) : à sa taille choisie, sinon jusqu'au-dessus de ⓒ et ⛶. */
     function poser() {
         const page = document.getElementById('iss-panel').getBoundingClientRect();
-        const haut = page.top + MARGE, droite = page.right - MARGE, t = bornee(taille, page), hauteur = t.hauteur;
+        const haut = hautFenetre(page), droite = page.right - MARGE;
+        const t = bornee(taille === null ? { largeur: LARGEUR_DEFAUT, hauteur: page.bottom - BOUTONS_BAS - FROLE - haut } : taille, page);
+        const rangee = document.getElementById('fenetres-titres').style;
+        rangee.top = (page.top + MARGE) + 'px';
+        rangee.right = (document.documentElement.clientWidth - droite) + 'px';
         const s = document.body.style;
         s.setProperty('--fenetre-haut', haut + 'px');
-        s.setProperty('--fenetre-hauteur', hauteur + 'px');
+        s.setProperty('--fenetre-hauteur', t.hauteur + 'px');
         s.setProperty('--fenetre-gauche', (droite - t.largeur) + 'px');
-        let y = haut;
-        if (ouverte !== null) { titre(ouverte).style.top = (y + 6) + 'px'; y += hauteur + MARGE; }
-        ORDRE.filter((id) => id !== ouverte).forEach((id) => { titre(id).style.top = y + 'px'; y += PAS_TITRE; });
     }
 
     /** Déplie la fenêtre id (null : toutes repliées) ; celle qui l'était se replie. */
@@ -101,8 +108,7 @@
         const poignee = document.getElementById('fenetre-poignee');
         const glisser = (e) => {
             const page = document.getElementById('iss-panel').getBoundingClientRect();
-            const droite = page.right - MARGE, haut = page.top + MARGE;
-            taille = bornee({ largeur: droite - e.clientX, hauteur: e.clientY - haut }, page);
+            taille = bornee({ largeur: page.right - MARGE - e.clientX, hauteur: e.clientY - hautFenetre(page) }, page);
             poser();
             window.ONGLETS_GRAPHE.envoyerMargesISS();
         };

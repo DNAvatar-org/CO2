@@ -1,6 +1,11 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.4.3
+// Version 1.4.6
+// - v1.4.6: l'état gardé remis APRÈS le premier calcul (⚫, main.js le clique au démarrage : il était déjà parti, et
+//   tournait ensuite sur l'état remis — calottes de 2300 à la date de ⚫ : erreur CALOTTES), dans SCENARIO_HOTE.demarrer.
+// - v1.4.5: page embarquée, état gardé pour mes émissions (embarque.js etatGarde) : pas de premier calcul — l'état remis
+//   (scenario_hote.js restaurer).
+// - v1.4.4: page embarquée : Atmosphère et Energies selon ?atmosphere / ?energies (embarque.js), dépliées par défaut.
 // - v1.4.3: page embarquée avec émissions (?emis) : scenario_hote.js, lancé au premier calcul.
 // - v1.4.2: page embarquée (static/ui/embarque.js) : au premier calcul, l'ISS sans fenêtre, Atmosphère dépliée, l'hôte prévenu.
 // - v1.4.1: au premier calcul, l'ISS s'ouvre avec sa fenêtre Spectrale dépliée.
@@ -265,7 +270,8 @@
             window.switchTab('iss');
             if (window.EMBARQUE.hote === null) window.switchTab('visu');   // page seule : la fenêtre Spectrale dépliée
             else {
-                window.afficherDetailsOrganigramme(true);
+                window.afficherDetailsOrganigramme(window.EMBARQUE.atmosphere);   // ?atmosphere=0 : repliée
+                window.afficherWattsOrganigramme(window.EMBARQUE.energies);       // ?energies=0 : repliés (onShowISS les dépliait)
                 if (window.EMBARQUE.emissions === null) window.EMBARQUE.pret();
                 else window.SCENARIO_HOTE.demarrer();   // aujourd'hui → 2300, ses émissions (prête au bout)
             }

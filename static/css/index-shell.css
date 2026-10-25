@@ -1,6 +1,9 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.2.6
+   Version 1.3.1
+   - v1.3.1: embarquée réduite (Energies et Atmosphère repliés : le survol de la feuille du tamagoshi) — plus de logo EDS
+     (#cell-reemis), la t° seule.
+   - v1.3.0: titres des fenêtres en rangée horizontale en haut, par-dessus la scène (.fenetres-titres).
    - v1.2.6: embarquée — Energies / Atmosphère visibles (leur bloc, le nom d'époque, est caché : visibility: visible).
    - v1.2.5: page embarquée (html.embarque, static/ui/embarque.js) : ni onglets, ni fenêtres, ni pied de page, ni fond étoilé,
      ni page ISS, la souris seulement sur ce qui se clique (et les fenêtres modales), le panneau sur toute la hauteur ; miroir (html.miroir) : Energies / Atmosphère et le bandeau du bas à droite.
@@ -279,27 +282,29 @@ body.histoire #visu-panel .flux-diagram-wrapper {
 .iss-zen-btn:hover {
     opacity: 1;
 }
-/* Onglet ISS en fond : fenêtres empilées en haut à droite (static/ui/fenetres.js), au-dessus de Temps et Point de vue de la
-   page ISS (qui descendent sous la pile, iss:marges). Titres au style des fenêtres de la page ISS (pages/ISS css/pesquet.css :
-   .b-plier, #temps h2), alignés à droite ; leur hauteur (top) est posée par fenetres.js et glisse. Repliée : le titre et +.
-   Dépliée : la fenêtre en haut, jusqu'au bord droit (--fenetre-haut, --fenetre-gauche, --fenetre-hauteur : la Terre frôlée,
-   ou la taille choisie à la poignée) ; son titre devient un − dans son coin, sans le mot. */
-.fenetre-tete {
+/* Onglet ISS en fond : les titres des fenêtres en une rangée tout en haut, alignée à droite, par-dessus la scène (position
+   fixe, aucune place réservée ; top et right posés par static/ui/fenetres.js). Titres au style des fenêtres de la page ISS
+   (pages/ISS css/pesquet.css : .b-plier, #temps h2). Repliée : le titre et + ; dépliée : le titre éclairé et −, la fenêtre
+   sous la rangée, jusqu'au bord droit (--fenetre-haut, --fenetre-gauche, --fenetre-hauteur : par défaut jusqu'au-dessus
+   de ⓒ et ⛶, ou la taille choisie à la poignée). */
+.fenetres-titres {
     display: none;
     position: fixed;
-    left: calc(var(--onglet-gauche) + var(--onglet-largeur) - 16px);
-    transform: translateX(-100%);
     z-index: 970;
+    align-items: center;
+    gap: 18px;
+}
+body.terre-iss .fenetres-titres { display: flex; }
+.fenetre-tete {
+    display: flex;
     align-items: center;
     gap: 6px;
     font: italic normal 12px/1.5 '04B_03', 'Tahoma', 'Roboto', 'Verdana', sans-serif;   /* celle d'EVENEMENT, en italique */
     text-transform: uppercase;
     color: #9aa3b5;
     cursor: pointer;
-    transition: top 0.4s ease;
 }
-body.terre-iss .fenetre-tete { display: flex; }
-.fenetre-tete.deplie span { visibility: hidden; }
+.fenetre-tete.deplie { color: #e8eaf0; }
 /* « Energies » / « Atmosphère » sous l'époque (html/visu_radiatif.html) : le + / − et la police des titres de fenêtres */
 .titre-affichages {
     display: flex;
@@ -337,7 +342,7 @@ body.terre-iss .fenetre-tete { display: flex; }
 .fenetre-tete.deplie button::after,
 .titre-affichage.deplie button::after,
 .fenetre-replier::after { content: '−'; }
-/* Le − de la fenêtre dépliée, en double dans son coin haut gauche (celui de son titre est au coin haut droit). */
+/* Le − de la fenêtre dépliée, en double dans son coin haut gauche (celui de son titre est dans la rangée du haut). */
 .fenetre-replier {
     display: none;
     position: fixed;
@@ -559,7 +564,7 @@ html.embarque {
     --visu-footer-h: 0px;
     --visu-panel-max-h: calc(100vh - 10px);
 }
-html.embarque :is(#galaxy-bg, .tabs-bar, .credits-footer, .fenetre-tete, .fenetre-poignee, .fenetre-replier, #plein-ecran,
+html.embarque :is(#galaxy-bg, .tabs-bar, .credits-footer, .fenetres-titres, .fenetre-poignee, .fenetre-replier, #plein-ecran,
     .fps-display, #iss-zen-btn, .title-header-row) {
     display: none !important;
 }
@@ -622,4 +627,11 @@ html.embarque #bandeau-bas {
 html.embarque .synthese_Temp-col-left,
 html.embarque #cell-albedo .flux-circle-bg {
     visibility: hidden !important;
+}
+/* Embarquée réduite (Energies et Atmosphère repliés : le survol de la feuille CO2 de l'hôte) : la t° seule, pas le logo EDS
+   que la page seule garde Atmosphère repliée (organigramme.css) */
+html.embarque #flux-diagram.hide-organigram-arrows.hide-organigram-observation-metrics #cell-reemis,
+html.embarque #flux-diagram.hide-organigram-arrows.hide-organigram-observation-metrics #cell-reemis * {
+    visibility: hidden !important;
+    pointer-events: none !important;
 }

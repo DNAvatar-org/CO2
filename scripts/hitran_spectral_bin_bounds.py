@@ -1,12 +1,13 @@
 # File: hitran_spectral_bin_bounds.py - Bornes bins spectaux depuis HITRAN (une fois, puis en dur)
 # Desc: Calcule stepMax_m et nMin à partir des largeurs de raie (γ_L, γ_D) pour la plage LW.
 #       Même logique que hitran.js getSpectralBinBoundsFromHITRAN. Exécuter une fois, copier les bornes dans config.
-# Version 1.0.0
+# Version 1.0.1
 # Copyright 2025 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause.
-# Date: 2025-02-06
+# Date: 2026-10-24
 # Logs:
 # - Initial: lecture hitran_lines_*.json, formules γ_L/γ_D (HITRAN.txt), sortie stepMax_m et nMin.
+# - v1.0.1 (2026-10-24): γ_D = (ν/c)√(2RT/M) comme hitran.js (3,58e-7 attend M en g/mol, M était en kg/mol : ×31,6).
 
 """
 Usage (depuis la racine du projet CO2):
@@ -53,7 +54,8 @@ def gamma_lorentz_total(P_atm, gamma_air_T, gamma_self_T, x_self, x_air):
 
 
 def gamma_doppler(nu_cm, T_k, M_kg_mol):
-    return 3.58e-7 * nu_cm * math.sqrt(T_k / M_kg_mol)
+    # Demi-largeur à 1/e, comme hitran.js gammaDoppler : (ν/c)·√(2RT/M), M en kg/mol (c et R de physics.js).
+    return nu_cm / 2.998e8 * math.sqrt(2 * 8.314 * T_k / M_kg_mol)
 
 
 def main():

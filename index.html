@@ -127,16 +127,18 @@
         <button type="button" id="iss-zen-btn" class="iss-zen-btn" onclick="window.ONGLETS_GRAPHE.basculerZenISS()" title="Plein écran : masque / remet les fenêtres de la page ISS">⛶</button>
         <iframe id="iss-iframe" title="" allow="fullscreen"></iframe>
     </div>
-    <!-- Onglet ISS en fond : titres des fenêtres empilées en haut à droite, au-dessus de Temps de la page ISS ; une seule
-         dépliée, le bouton dans son coin (static/ui/fenetres.js, static/css/index-shell.css). Hors des panneaux : par-dessus
-         la fenêtre dépliée. -->
-    <div class="fenetre-tete" data-fenetre="visu" onclick="window.FENETRES.basculer('visu')"><span>Spectrale</span><button type="button"></button></div>
-    <div class="fenetre-tete" data-fenetre="histoire" onclick="window.FENETRES.basculer('histoire')"><span>Histoire</span><button type="button"></button></div>
-    <div class="fenetre-tete" data-fenetre="bench" onclick="window.FENETRES.basculer('bench')"><span>Bench</span><button type="button"></button></div>
-    <div class="fenetre-tete" data-fenetre="scie" onclick="window.FENETRES.basculer('scie')"><span>Science</span><button type="button"></button></div>
+    <!-- Onglet ISS en fond : titres des fenêtres en une rangée tout en haut, par-dessus la scène (position fixe, sans place
+         réservée) ; une seule dépliée, sous la rangée (static/ui/fenetres.js, static/css/index-shell.css). Hors des panneaux :
+         par-dessus la fenêtre dépliée. -->
+    <div id="fenetres-titres" class="fenetres-titres">
+        <div class="fenetre-tete" data-fenetre="visu" onclick="window.FENETRES.basculer('visu')"><span>Spectrale</span><button type="button"></button></div>
+        <div class="fenetre-tete" data-fenetre="histoire" onclick="window.FENETRES.basculer('histoire')"><span>Histoire</span><button type="button"></button></div>
+        <div class="fenetre-tete" data-fenetre="bench" onclick="window.FENETRES.basculer('bench')"><span>Bench</span><button type="button"></button></div>
+        <div class="fenetre-tete" data-fenetre="scie" onclick="window.FENETRES.basculer('scie')"><span>Science</span><button type="button"></button></div>
+        <div class="fenetre-tete" data-fenetre="milankovitch" onclick="window.FENETRES.basculer('milankovitch')"><span>Milankovitch</span><button type="button"></button></div>
+    </div>
     <div id="fenetre-poignee" class="fenetre-poignee" title="Agrandir / réduire la fenêtre"></div>
     <button type="button" class="fenetre-replier" title="Replier la fenêtre" onclick="window.FENETRES.montrer(null)"></button>
-    <div class="fenetre-tete" data-fenetre="milankovitch" onclick="window.FENETRES.basculer('milankovitch')"><span>Milankovitch</span><button type="button"></button></div>
 
 
     <!-- Loader : fetch html/visu_radiatif.html + html/scie_radiatif.html, injection dans les panels, puis chargement des scripts. Placé avant le footer pour ne pas être bloqué par le script externe. -->
