@@ -197,7 +197,7 @@ const EPOCH_STORY = {
  */
 const EVENT_STORY = {
     '⚫': {
-        // Un ☄️ à chaque tic de 100 Ma, de plus en plus lourds (configTimeline : EAU_CUMUL_KG) : ~0,3 m → 7,4 m → 178 m →
+        // Quatre ☄️ (trois tics de 100 Ma, le 4ᵉ jusqu'à 1 000 ans avant l'impact), de plus en plus lourds (configTimeline : EAU_CUMUL_KG) : ~0,3 m → 7,4 m → 178 m →
         // 4,3 km d'eau globale (un océan). L'albédo de l'eau sature à 10 m (🍰🪩💧) : 3 % → 74 % → 100 % → 100 % de son effet.
         '☄️': [
             'Premières poussières de glace — un peu plus froid\n\n' +
