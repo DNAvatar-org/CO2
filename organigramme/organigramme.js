@@ -12,7 +12,8 @@
 // Logs: v1.0.124 nuages : nombre de gouttes affiché (ALBEDO.nombreGouttesCm3), « ✈ N /cm³ » ; écart de CCN à 2000 en infobulle.
 // Logs: v1.0.123 « ✈ CCN » = ALBEDO.rapportCCN() sur le DATA de la page (même fonction que le moteur) au lieu de min(0,35 ; sulfate × 500) inventé.
 // Logs: v1.0.122 sens de chaque jauge (TUNING.sensJauge : 🔺 monter réchauffe, 🔻 refroidit, ↕️ ambigu) dans les rangées et l'infobulle.
-// Version 1.0.119
+// Version 1.0.120
+// - v1.0.120: survol d'une époque de la frise = sa bulle seule (l'aperçu de config et de graine dans DATA est retiré).
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -4565,11 +4566,7 @@ function generateTimelineFromConfig() {
         el.style.fontFamily =
           "'Apple Color Emoji', 'Noto Color Emoji', 'EmojiFont', 'Segoe UI Emoji', sans-serif";
       }
-      addCustomTooltip(el, epochLabel + ' · ' + window.epochSeedLabel(epochId));
-      // Survol : config de l'époque et sa graine, sans calcul ; rendu au rollout, ou au clic avant le vrai calcul.
-      el.addEventListener("mouseenter", () => window.APERCU_EPOQUE.montrer(epochId));
-      el.addEventListener("mouseleave", () => window.APERCU_EPOQUE.cacher());
-      el.addEventListener("pointerdown", () => window.APERCU_EPOQUE.cacher());
+      addCustomTooltip(el, epochLabel + ' · ' + window.epochSeedLabel(epochId));   // le survol dit où l'on va, sans toucher à DATA
 
       // La date de DÉBUT de l'époque (⚫ : -5000 Ma ; 📱 : 2000), puis son logo dessous.
       const debut = item["▶"];   // ⚫ : 5e9 → « -5000 Ma » ; 📱 : 2000

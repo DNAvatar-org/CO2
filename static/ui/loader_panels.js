@@ -74,7 +74,6 @@
             'static/timeline/integrateEds.js',
             'static/timeline/events.js',
             'organigramme/timeline.js',
-            'static/ui/apercu_epoque.js',  // survol d'une époque de la frise : config + graine, sans calcul
             'static/ui/main.js',
             'static/ui/scenario_hote.js'   // page embarquée avec émissions (?emis) : aujourd'hui → 2300, sans frise
         ],

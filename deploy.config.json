@@ -486,10 +486,6 @@
       "dest": "pages/bilan_radiatif/CO2/static/ui/loader_panels.js"
     },
     {
-      "src": "static/ui/apercu_epoque.js",
-      "dest": "pages/bilan_radiatif/CO2/static/ui/apercu_epoque.js"
-    },
-    {
       "src": "static/ui/bench_pilote.js",
       "dest": "pages/bilan_radiatif/CO2/static/ui/bench_pilote.js"
     },
