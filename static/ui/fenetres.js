@@ -42,7 +42,7 @@
     };
     const MARGE = 8;            // [px] du bord du panneau ISS, et entre la rangée des titres et la fenêtre
     const HAUTEUR_RANGEE = 20;  // [px] la rangée des titres (bouton + / − de 20 px, index-shell.css)
-    const BOUTONS_BAS = 46;     // [px] haut de ⓒ et ⛶ depuis le bas du panneau (12 + 34 : pages/ISS #bCredits, .iss-zen-btn)
+    const BOUTONS_BAS = 46;     // [px] haut de ⓒ depuis le bas du panneau (12 + 34 : pages/ISS #bCredits, seul dans le coin)
     const FROLE = 4;            // [px] entre le bas de la fenêtre et ⓒ, ⛶
     let ouverte = null;     // id de la fenêtre dépliée, ou null
     // Taille { largeur, hauteur } [px] choisie à la poignée et retenue en cookie, ou null : la taille par défaut

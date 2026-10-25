@@ -124,7 +124,6 @@
     <!-- ISS : la page dnavatar.org/pages/ISS (vue depuis le pôle), dans la zone du graphe comme les autres onglets. Son src est
          posé à l'ouverture de l'onglet, avec les cartes de l'époque (static/ui/onglets_graphe.js, chargerISS). -->
     <div id="iss-panel" class="tab-panel onglet-graphe">
-        <button type="button" id="iss-zen-btn" class="iss-zen-btn" onclick="window.ONGLETS_GRAPHE.basculerZenISS()" title="Plein écran : masque / remet les fenêtres de la page ISS">⛶</button>
         <iframe id="iss-iframe" title="" allow="fullscreen"></iframe>
     </div>
     <!-- Onglet ISS en fond : titres des fenêtres en une rangée tout en haut, par-dessus la scène (position fixe, sans place
@@ -218,7 +217,7 @@
         </div>
         <a class="credits-footer-utf8" href="https://dnavatar.org/pages/utf8/_utf8-display.html" target="_blank" rel="noopener noreferrer">🌼 utf8</a>
     </footer>
-    <!-- Plein écran (à la place du lien utf8, invisible) : hors du pied de page, que le plein écran retire (index-shell.css). -->
+    <!-- Plein écran, le seul de la page, coin bas droit (index-shell.css) : hors du pied de page, que le plein écran retire. -->
     <button type="button" id="plein-ecran" class="plein-ecran-btn" title="Plein écran"
         onclick="document.fullscreenElement === null ? document.documentElement.requestFullscreen() : document.exitFullscreen()">⛶</button>
 </body>

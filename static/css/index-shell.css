@@ -1,6 +1,7 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.3.1
+   Version 1.4.0
+   - v1.4.0: un seul plein écran, en bas à droite, au graphisme des boutons de la page ISS (.iss-zen-btn retiré).
    - v1.3.1: embarquée réduite (Energies et Atmosphère repliés : le survol de la feuille du tamagoshi) — plus de logo EDS
      (#cell-reemis), la t° seule.
    - v1.3.0: titres des fenêtres en rangée horizontale en haut, par-dessus la scène (.fenetres-titres).
@@ -260,33 +261,11 @@ body.histoire #visu-panel .flux-diagram-wrapper {
     min-height: 0;
     border: none;
 }
-/* Onglet ISS : bouton ⛶ par-dessus l'iframe, à la place EXACTE du ⛶ de la page ISS (pages/ISS css #bZen : 34 px, 12 px du coin
-   bas droit), qu'elle masque en ?onglet — bascule zen / pas zen de la page ISS (onglets_graphe.js). */
-.iss-zen-btn {
-    position: absolute;
-    right: 12px;
-    bottom: 12px;
-    z-index: 1;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    font-size: 17px;
-    line-height: 1;
-    color: #fff;
-    background: rgba(13, 17, 26, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 8px;
-    opacity: 0.55;
-    cursor: pointer;
-}
-.iss-zen-btn:hover {
-    opacity: 1;
-}
 /* Onglet ISS en fond : les titres des fenêtres en une rangée tout en haut, alignée à droite, par-dessus la scène (position
    fixe, aucune place réservée ; top et right posés par static/ui/fenetres.js). Titres au style des fenêtres de la page ISS
    (pages/ISS css/pesquet.css : .b-plier, #temps h2). Repliée : le titre et + ; dépliée : le titre éclairé et −, la fenêtre
    sous la rangée, jusqu'au bord droit (--fenetre-haut, --fenetre-gauche, --fenetre-hauteur : par défaut jusqu'au-dessus
-   de ⓒ et ⛶, ou la taille choisie à la poignée). */
+   de ⓒ, ou la taille choisie à la poignée). */
 .fenetres-titres {
     display: none;
     position: fixed;
@@ -469,21 +448,26 @@ body.terre-iss .fenetre-ouverte .onglet-fermer { display: none; }
 .credits-footer > .credits-footer-utf8 {
     display: none;
 }
+/* Le seul plein écran de la page, coin bas droit : le graphisme des boutons de la page ISS (34 px, fond sombre, ⓒ au-dessus). */
 .plein-ecran-btn {
     position: fixed;
-    bottom: 3px;
-    right: 10px;
+    bottom: 8px;
+    right: 12px;
     z-index: 1000;
+    width: 34px;
+    height: 34px;
     padding: 0;
-    font-size: 14px;
-    line-height: 16px;
-    color: color-mix(in srgb, var(--base-color, #0a0) 65%, #888 35%);
-    background: none;
-    border: none;
+    font-size: 17px;
+    line-height: 1;
+    color: #fff;
+    background: rgba(13, 17, 26, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    opacity: 0.55;
     cursor: pointer;
 }
 .plein-ecran-btn:hover {
-    color: #fff;
+    opacity: 1;
 }
 html:fullscreen .credits-footer {
     display: none;
@@ -565,7 +549,7 @@ html.embarque {
     --visu-panel-max-h: calc(100vh - 10px);
 }
 html.embarque :is(#galaxy-bg, .tabs-bar, .credits-footer, .fenetres-titres, .fenetre-poignee, .fenetre-replier, #plein-ecran,
-    .fps-display, #iss-zen-btn, .title-header-row) {
+    .fps-display, .title-header-row) {
     display: none !important;
 }
 html.embarque :is(.plot-container-wrapper, #iss-panel) {
