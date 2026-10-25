@@ -370,6 +370,10 @@
       "dest": "pages/bilan_radiatif/CO2/static/histoire/courbe_modele.js"
     },
     {
+      "src": "static/histoire/courbe_modele_frise.js",
+      "dest": "pages/bilan_radiatif/CO2/static/histoire/courbe_modele_frise.js"
+    },
+    {
       "src": "static/histoire/epoques.js",
       "dest": "pages/bilan_radiatif/CO2/static/histoire/epoques.js"
     },
