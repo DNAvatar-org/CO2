@@ -95,6 +95,17 @@ Critère final **frise = clic** : pour 1a, ⛄, 1b et hysteresis 2, la T° depui
 T° d'arrivée par clic (écart < 0,5 °C). La graine d'une hystérésis est la T° d'ARRIVÉE du clic (1a :
 10,4 °C, l'état de 🪸 après ses 💫), pas la T° convergée : à la frontière, c'est elle qui choisit la branche.
 
+## Les calottes le long d'une chaîne : `quaternaire_chaine.js`
+
+```bash
+(echo "window.__FRISES__=['🚂','📱']; window.__DEPARTS__=['🏔']; window.__FIN__='📱';"; cat scripts/bench_headless/quaternaire_chaine.js) > /tmp/q.js
+python3 scripts/bench_headless/run.py /tmp/q.js --var __Q__ --timeout 4000 --stream __Q__
+```
+
+Un point par clic : T, gaz, obliquité de l'orbite, aire de glace par hémisphère, et par bande la calotte portée avant le
+clic, celle du calcul, son équilibre, son temps de réaction et sa marge. C'est ce qui montre si une calotte est bornée
+(équilibre sous le continent de la bande), si elle suit les cycles du Quaternaire ou si le climat s'emballe.
+
 ## Ce que le banc NE teste pas
 
 La section « époques » relance chaque époque depuis sa graine (`animEnabled:false`) : elle ne dit rien

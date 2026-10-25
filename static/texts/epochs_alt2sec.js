@@ -159,14 +159,12 @@ const EPOCH_STORY = {
 
     '🦣':
         'Quaternaire — les cycles glaciaires (2,58 Ma → 11,7 ka)\n\n' +
-        'Avec des calottes en place, le climat devient INSTABLE : deux états coexistent pour une même ' +
-        'composition d\'atmosphère. Dans le modèle, chaque état de cycle fait basculer entre ~15 °C et ~4,6 °C — ' +
-        'deux fois l\'amplitude mesurée (Snyder 2016 : ~5 °C entre glaciaire et interglaciaire).\n\n' +
-        'Ce n\'est pas un défaut : c\'est la signature du seuil glace-albédo, et c\'est exactement ce que montrent ' +
-        'les carottes de glace (EPICA) — le CO₂ oscille entre 180 ppm en période glaciaire et 280 ppm entre deux glaciations.\n\n' +
-        'Le déclencheur est astronomique : l\'obliquité de l\'axe terrestre varie de 22,1° à 24,5° tous les 41 000 ans. ' +
-        'Une faible obliquité refroidit les étés polaires, la neige survit à l\'été, la glace gagne. ' +
-        'C\'est la seule époque où les cycles de Milankovitch changent vraiment le résultat.',
+        'L\'orbite de la Terre oscille : l\'obliquité tous les 41 000 ans, la précession tous les 23 000, l\'excentricité ' +
+        'tous les 100 000. Elle ne change presque rien au Soleil reçu par le globe, mais elle déplace l\'été boréal : quand il ' +
+        'faiblit, la neige des terres arctiques survit, une calotte naît et grandit ; quand il revient, sa marge fond.\n\n' +
+        'Les clics suivent les deux derniers cycles glaciaires, aux dates des stades isotopiques marins ; le CO₂ et le ' +
+        'méthane de chaque clic sont ceux des carottes de glace antarctiques à cette date. Les calottes n\'ont que le temps ' +
+        'du clic pour suivre : elles grandissent lentement et fondent vite.',
 
     '🛖':
         'Holocène — le climat de l\'agriculture (11,7 ka → 1750)\n\n' +
@@ -388,31 +386,73 @@ const EVENT_STORY = {
     },
     '🏔': {
         '💫': [
-            'La calotte tient, le climat ne bouge guère\n\n' +
-              'La composition est presque figée sur ce pas ; seul le Soleil ajoute sa fraction de degré. C\'est le mode « avec calottes » qui s\'installe pour de bon — celui que la Terre n\'a plus quitté depuis, et qui rend possibles les cycles glaciaires.',
+            'La calotte antarctique recule\n\n' +
+              'La composition est presque figée sur ce pas ; seul le Soleil ajoute un peu. Mais la calotte de l\'Oligocène basal est plus grande que ce que le climat calculé peut nourrir : son bord fond, elle recule vers le pôle.\n\n' +
+              'Attendez-vous à un climat à peine plus chaud.',
 
-            'Vers le Pliocène — ça va REFROIDIR\n\n' +
-              'Ce clic amène à −2,58 Ma, la base du Quaternaire : le CO₂ tombe de moitié. Un peu plus d\'un degré de moins.\n\n' +
-              'Surtout, il plante le décor : avec des calottes aux deux pôles, deux états deviennent possibles pour une même atmosphère. C\'est ce que le Quaternaire va montrer, juste après.'
+            'Vers le Quaternaire — ça va REFROIDIR un peu\n\n' +
+              'Ce clic amène à la base du Quaternaire : le CO₂ tombe de moitié, mais la calotte antarctique, qui continue de reculer, compense une partie du refroidissement.\n\n' +
+              'Surtout, l\'orbite de la Terre entre dans le calcul : c\'est elle qui, au Quaternaire, fera naître puis fondre les calottes du nord.'
         ]
     },
     '🦣': {
+        // Un récit par clic (index = clic à venir), relevé sur la chaîne de clics ; les chiffres sont lus à l'affichage.
         '💫': [
-            'Vers une glaciation — ça va REFROIDIR fort\n\n' +
-              'L\'obliquité descend à son minimum : les étés polaires deviennent trop frais pour faire fondre la neige tombée l\'hiver. La glace s\'étend, l\'albédo monte, l\'océan froid absorbe du CO₂ et les zones humides émettent moins de méthane.\n\n' +
-              'Les deux gaz AMPLIFIENT le refroidissement, ils ne le déclenchent pas : le déclencheur est astronomique. Attendez-vous à dix degrés de moins d\'un seul clic — deux fois l\'écart mesuré entre glaciaire et interglaciaire (Snyder 2016) : le modèle exagère le yoyo.',
+            'Le grand saut — jusqu\'à l\'avant-dernier interglaciaire\n\n' +
+              'Ce clic franchit d\'un coup le début du Quaternaire et ses dizaines de petits cycles, pour arriver au stade isotopique 7, un interglaciaire. Le CO₂ prend la valeur des carottes antarctiques à cette date, l\'orbite celle de la date.\n\n' +
+              'Les calottes ont tout ce temps pour s\'ajuster à ce climat : c\'est le seul clic où elles ne sont pas en retard sur lui.',
 
-            'Vers un interglaciaire — ça va RÉCHAUFFER autant\n\n' +
-              'L\'obliquité remonte à son maximum : étés polaires chauds, la glace de l\'année ne survit pas. L\'albédo s\'effondre, l\'océan qui se réchauffe relâche son CO₂, les zones humides redémarrent.\n\n' +
-              'Vous retrouverez la température d\'avant la glaciation, à l\'identique. C\'est l\'état dans lequel nous vivons — et il ne tient qu\'à la position de notre axe.',
+            'Encore un interglaciaire (stade 7c)\n\n' +
+              'L\'été boréal est très ensoleillé : la neige des terres arctiques fond chaque été, aucune calotte nouvelle ne peut naître. Le CO₂ bouge peu.\n\n' +
+              'Attendez-vous à presque rien : c\'est le calme avant l\'avant-dernier âge glaciaire.',
 
-            'Retour au froid — même clic, même résultat\n\n' +
-              'Même obliquité et même composition qu\'au premier clic, et le modèle va retomber exactement sur la même température : ce sont bien deux états stables, pas une dérive.\n\n' +
-              'C\'est le test le plus simple de l\'hystérésis glaciaire : la Terre ne garde pas de mémoire du nombre de cycles, seulement de la position de son axe.',
+            'Entrée dans l\'avant-dernier âge glaciaire (stade 6)\n\n' +
+              'L\'insolation d\'été au nord tombe à un creux : sur les terres arctiques, la neige de l\'hiver peut survivre à l\'été. S\'il fait assez froid, une calotte y naît, et sa blancheur refroidit à son tour.\n\n' +
+              'Le refroidissement commence par l\'orbite ; le CO₂ qui baisse le prolonge.',
 
-            'Sortie du Quaternaire — ça va RÉCHAUFFER\n\n' +
-              'Dernier pas : la date atteint −11 700 ans et le modèle bascule une dernière fois du côté chaud. La calotte nord-américaine a fondu, le niveau des mers est remonté de 120 m.\n\n' +
-              'Ce qui suit n\'est pas un nouvel état : c\'est l\'Holocène, le même interglaciaire, mais tenu assez longtemps pour que l\'agriculture y tienne.'
+            'Le froid s\'installe\n\n' +
+              'Le CO₂ descend au plus bas des carottes. Une calotte au nord avance vers le sud, lentement : sur un dôme froid il neige peu, et la glace s\'empile à quelques millimètres par an.\n\n' +
+              'Attendez-vous à plus froid encore.',
+
+            'Le maximum de l\'avant-dernière glaciation\n\n' +
+              'Peu de changement dans les gaz : une calotte continue sur sa lancée, en retard sur le climat qui la porte.\n\n' +
+              'C\'est le creux du cycle : le froid le plus profond de l\'avant-dernier âge glaciaire.',
+
+            'Terminaison : l\'été boréal le plus ensoleillé (stade 5e)\n\n' +
+              'L\'insolation d\'été au nord grimpe à un maximum, et le CO₂ remonte d\'un coup. Le bord bas d\'une calotte, tourné vers le sud, fond plus vite que son dôme ne reçoit de neige ; son sommet froid, lui, résiste.\n\n' +
+              'Réchauffement net : le dernier interglaciaire commence.',
+
+            'Entrée glaciaire : l\'été boréal s\'effondre\n\n' +
+              'Le test classique de Milankovitch : le CO₂ est encore celui d\'un interglaciaire, mais l\'insolation d\'été au nord tombe au plus bas. La neige peut survivre à l\'été, une calotte repartir.\n\n' +
+              'Ici, c\'est l\'orbite seule qui fait le premier pas.',
+
+            'Une pause dans la glaciation (stade 5c)\n\n' +
+              'L\'été boréal redevient ensoleillé ; le CO₂ a commencé à baisser. Les deux se compensent à peu près.\n\n' +
+              'Une calotte hésite : elle ne fond pas, elle grandit à peine.',
+
+            'Le froid reprend (stade 5b)\n\n' +
+              'Le CO₂ continue de descendre. Une calotte reprend sa croissance, lente comme toujours.\n\n' +
+              'Attendez-vous à un peu plus froid.',
+
+            'Vers le stade 4\n\n' +
+              'L\'été boréal faiblit de nouveau. Une calotte avance vers le sud, l\'albédo du nord monte.\n\n' +
+              'C\'est la première vraie poussée glaciaire du dernier cycle.',
+
+            'Le maximum du stade 4\n\n' +
+              'Le CO₂ chute vers les valeurs glaciaires. Un pas court : une calotte n\'a que quelques millénaires pour suivre.\n\n' +
+              'Attendez-vous à plus froid.',
+
+            'Le stade 3 : un répit relatif\n\n' +
+              'L\'obliquité est haute et l\'été boréal un peu plus doux ; le CO₂ reste bas. Une calotte continue pourtant de s\'épaissir : elle est en retard sur le climat.\n\n' +
+              'Attendez-vous à presque rien.',
+
+            'Vers le dernier maximum glaciaire\n\n' +
+              'Le CO₂ touche le plus bas du cycle : une calotte au nord atteint ici sa plus grande taille.\n\n' +
+              'C\'est le moment le plus froid du Quaternaire calculé — moins froid pourtant que celui que reconstruisent les proxys.',
+
+            'La déglaciation — vers l\'Holocène\n\n' +
+              'L\'insolation d\'été au nord est forte et le CO₂ remonte : une calotte fond par sa marge sud.\n\n' +
+              'Ce qui reste de glace au nord passe dans l\'Holocène, et le refroidit d\'autant.'
         ]
     },
     '🛖': {
@@ -600,15 +640,20 @@ function buildEventAlt2sec(epochId, eventKey) {
             changes.push(g[1] + ' ' + (now === null ? '' : fmtPpm(now) + ' → ') + fmtPpm(next) + ' ppm');
             if (now !== null) warmer += (next > now ? 1 : (next < now ? -1 : 0));
         }
-        if (Number(state['⚾']) > 0) {
-            const epochEps = Number.isFinite(Number(row['⚾'])) ? Number(row['⚾'])
-                : Number(window.CONFIG_COMPUTE.obliquityDeg);
-            const nowEps = Number(window.DATA['📜']['⚾']) > 0 ? Number(window.DATA['📜']['⚾']) : epochEps;
-            if (Number(state['⚾']) !== nowEps) {
-                changes.push('obliquité ' + nowEps.toFixed(2).replace('.', ',') + '° → '
-                    + Number(state['⚾']).toFixed(2).replace('.', ',') + '°');
-                warmer += (Number(state['⚾']) > nowEps ? 1 : -1);
-            }
+    }
+
+    // Orbite à la date où le clic arrive (Berger & Loutre 1991, API_BILAN/physics/orbite.js) : obliquité et insolation du
+    // solstice d'été à 65° N, dans la validité de la solution (± 3 Ma) seulement.
+    const ageAvant = window.INTERIEUR.ageCourant(window.DATA), ageApres = ageAvant - stepMa * 1e6;
+    if (window.ORBITE.valide(ageAvant) && window.ORBITE.valide(ageApres)) {
+        const eps = [window.ORBITE.obliquiteDeg(ageAvant), window.ORBITE.obliquiteDeg(ageApres)];
+        const q65 = [window.ORBITE.insolation65N(ageAvant), window.ORBITE.insolation65N(ageApres)];
+        if (eps[0].toFixed(2) !== eps[1].toFixed(2)) {
+            changes.push('obliquité ' + eps[0].toFixed(2).replace('.', ',') + '° → ' + eps[1].toFixed(2).replace('.', ',') + '°');
+        }
+        if (Math.round(q65[0]) !== Math.round(q65[1])) {
+            changes.push('insolation d\'été à 65° N ' + Math.round(q65[0]) + ' → ' + Math.round(q65[1]) + ' W/m²');
+            warmer += (q65[1] > q65[0] ? 1 : -1);
         }
     }
 
