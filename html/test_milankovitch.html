@@ -3,9 +3,11 @@
 # File: CO2/html/test_milankovitch.html
 # Desc: Cycles de Milankovitch (obliquité, excentricité, précession) — courbes + explication du couplage
 #       avec le bilan radiatif (API_BILAN/physics/physics.js : redistribution méridienne de l'insolation).
-# Version 1.2.0
-# Date: [October 18, 2026]
+# Version 1.3.1
+# Date: [October 28, 2026]
 # Logs:
+# - v1.3.1: vue d'Histoire hors de la solution (après 2000) ignorée, sans alerte.
+# - v1.3.0: solution La2004 (Laskar et al. 2004), de −51 Ma à l'an 2000 ; popup « Comment l'orbite agit » au présent ; pas ≤ 1 ka.
 # - v1.2.0: explication en popup au clic sur le dessin ; Entrée = VALIDER (static/milankovitch/entrees.js) ; sans scroll.
 # - v1.1.1: solution de Berger & Loutre 1991 (± 3 Ma).
 # - v1.1.0: orbite de Berger 1978 (astronomie.js) ; courbe = insolation 65° N au solstice (W/m²), plus le « ΔT » obtenu par
@@ -25,8 +27,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cycles de Milankovitch</title>
     <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
-    <script src="../static/astronomie_ber78.js"></script>
-    <script src="../static/astronomie_ber90.js"></script>
+    <script src="../static/astronomie_la04.js"></script>
     <script src="../static/astronomie.js"></script>
     <link rel="stylesheet" href="../static/css/style.css">
     <link rel="stylesheet" href="../static/css/milankovitch.css">
@@ -37,7 +38,7 @@
         
         <div class="title-params">
             <h1>Cycles de Milankovitch</h1>
-            <p class="page-subtitle">Utilisé au Quaternaire (🦣 −2 Ma → −10 ka) : l'obliquité ε pilote la bascule glaciaire — ailleurs, effet global négligeable. Orbite : Berger &amp; Loutre (1991).</p>
+            <p class="page-subtitle">Dans la simulation de −51 Ma à aujourd'hui : l'insolation d'été des hautes latitudes fond ou épargne les calottes, l'obliquité ε règle le gradient pôle-équateur — l'effet sur l'énergie annuelle du globe est négligeable. Orbite : Laskar et al. (2004).</p>
             <div class="controls divGlass">
                 <div style="display: flex; gap: 20px; align-items: flex-end;">
                     <div class="control-group">
@@ -46,7 +47,7 @@
                     </div>
                     <div class="control-group">
                         <label>Date de fin</label>
-                        <input type="number" id="endYear" value="2026" step="1">
+                        <input type="number" id="endYear" value="2000" step="1">
                     </div>
                 </div>
                 <div class="control-group">
@@ -68,7 +69,7 @@
             </div>
         </div>
         <figure class="milankovitch-figure">
-            <img id="milankovitch-dessin" src="../static/img/milankovitch.png" alt="" title="Comment l'obliquité agit dans la simulation">
+            <img id="milankovitch-dessin" src="../static/img/milankovitch.png" alt="" title="Comment l'orbite agit dans la simulation">
         </figure>
     </div>
     <!-- Ligne 2 : cycle (chart) pleine largeur au bord de la fenêtre -->
@@ -80,51 +81,40 @@
     <!-- Popup : s'ouvre au clic sur le dessin (static/milankovitch/entrees.js), se ferme par ✕, Échap ou clic à côté. -->
     <dialog id="milankovitch-explication" class="milankovitch-explain divGlass">
         <button type="button" class="milankovitch-fermer" title="Fermer">✕</button>
-        <h2>Comment l'obliquité agit dans la simulation</h2>
+        <h2>Comment l'orbite agit dans la simulation</h2>
         <p>
-            L'obliquité ε (l'inclinaison de l'axe terrestre, de 22,1° à 24,5° tous les 41 000 ans)
-            <strong>ne change pas d'un iota l'énergie totale reçue par la Terre</strong>. Elle change sa
-            <strong>répartition</strong> entre l'équateur et les pôles. C'est pour ça que son effet global paraît
-            négligeable (±1 °C), alors qu'il décide des glaciations.
-        </p>
-        <p>
-            Le modèle intègre l'insolation journalière sur l'année entière et sur chaque bande de latitude
-            (zones tropicale 0–30°, moyenne 30–60°, polaire 60–90°). Résultat, par degré d'obliquité en plus :
+            L'orbite de la Terre — obliquité ε (22,1° à 24,5° tous les 41 000 ans), précession (19 000 à 23 000 ans),
+            excentricité (100 000 et 405 000 ans) — <strong>ne change presque rien à l'énergie annuelle reçue par le
+            globe</strong>. Elle change sa <strong>répartition</strong> entre l'équateur et les pôles, et entre les saisons.
+            Le modèle la prend à la date de chaque calcul, de −51 Ma à aujourd'hui (solution La2004) ; avant, l'obliquité est
+            celle de l'époque et l'orbite celle de 1950.
         </p>
         <ul>
-            <li><strong>pôles : +4,5 W/m²</strong> — des étés polaires plus chauds ;</li>
-            <li>tropiques : −1,3 W/m² ;</li>
-            <li>moyennes latitudes : ≈ 0 ;</li>
-            <li><strong>moyenne globale : exactement 0</strong>.</li>
+            <li><strong>Obliquité → gradient pôle-équateur.</strong> L'insolation annuelle de chaque bande de latitude
+                (intégrée jour par jour) entre dans le bilan méridien de North : par degré d'obliquité en plus, environ
+                +4,5 W/m² sur les pôles, −1,3 W/m² sur les tropiques, exactement 0 sur le globe. L'amplitude des saisons
+                suit sin ε.</li>
+            <li><strong>Été des hautes latitudes → calottes.</strong> L'écart d'insolation jour par jour à l'orbite de
+                1950, absorbé les jours de fonte, fond la glace en plus des degrés-jours (Robinson &amp; Goelzer 2014) :
+                c'est par lui qu'entrent la précession et l'excentricité. Un été froid laisse survivre la neige, une calotte
+                naît ; un été chaud fond sa marge.</li>
+            <li><strong>Excentricité → Soleil moyen de l'année</strong>, S / √(1 − e²) : au plus 0,2 %.</li>
         </ul>
         <p>
-            Cet écart d'énergie est converti en écart de température de zone par le bilan d'énergie de surface :
-            <code>ΔT = ΔS · (1 − α) / B</code>, avec α l'albédo (0,30) et B le coefficient de refroidissement
-            radiatif (2 W/m²/K, Budyko 1969). Les températures de zone ainsi corrigées décident si la neige de
-            l'hiver survit à l'été : c'est le seuil glace-albédo.
-        </p>
-        <p>
-            <strong>Conséquence, et c'est tout le sujet :</strong> une obliquité <em>faible</em> donne des étés
-            polaires frais, la neige survit, la glace gagne, l'albédo monte — la glaciation démarre. Une obliquité
-            <em>forte</em> fait l'inverse. Dans le modèle, au Quaternaire à 298 ppm de CO₂ :
-            <strong>22,1° → 6,2 °C, 23,44° → 12,1 °C, 24,5° → 14,5 °C</strong>. Deux états pour une même
-            composition de l'atmosphère : le CO₂ et le méthane amplifient la bascule, ils ne la déclenchent pas.
-        </p>
-        <p>
-            Ailleurs dans la frise, l'effet existe mais reste marginal : sans calotte au bord de son seuil,
-            redistribuer l'énergie ne fait pas basculer le climat. C'est pourquoi l'obliquité n'est pilotée
-            dans le temps qu'au Quaternaire (🦣).
+            C'est pour ça que la courbe d'insolation d'été à 65° N de l'onglet Histoire n'est pas une température : elle
+            agit par les calottes, que le CO₂ et le méthane amplifient.
         </p>
         <p class="milankovitch-refs">
-            Références : Berger 1978 (<em>J. Atmos. Sci.</em> 35:2362) · Laskar et al. 2004 (<em>A&amp;A</em> 428:261) ·
-            Budyko 1969 (<em>Tellus</em> 21:611) · Lisiecki &amp; Raymo 2005 · Lüthi et al. 2008 (EPICA).
+            Références : Laskar et al. 2004 (<em>A&amp;A</em> 428:261) · Berger 1978 (<em>J. Atmos. Sci.</em> 35:2362) ·
+            North 1981 (<em>Rev. Geophys.</em> 19:91) · Robinson &amp; Goelzer 2014 (<em>The Cryosphere</em> 8:1419) ·
+            Bereiter et al. 2015 et Loulergue et al. 2008 (carottes EPICA).
             Détail des entrées : popup <strong>📚 Biblio</strong> de la page principale.
         </p>
     </dialog>
     
     <script>
-        // Éléments orbitaux et insolation : solution astronomique de static/astronomie.js (Berger & Loutre 1991), en années
-        // calendaires, valide à ± 3 Ma autour de 1950 — la période demandée y est ramenée (avis sous les réglages).
+        // Éléments orbitaux et insolation : solution astronomique de static/astronomie.js (Laskar et al. 2004), en années
+        // calendaires, de −51 Ma à l'an 2000 — la période demandée y est ramenée (avis sous les réglages).
         function generateData(startYear, endYear, resolution) {
             const A = window.astronomie;
             const years = [], eccentricity = [], obliquity = [], precession = [], perihelion = [], aphelion = [], insolation = [];
@@ -142,7 +132,7 @@
         }
         /** Période ramenée au domaine de validité de la solution ; l'avis dit ce qui a été rogné. */
         function borner(startYear, endYear) {
-            const A = window.astronomie, min = A.AN_REFERENCE - A.VALIDITE_ANS, max = A.AN_REFERENCE + A.VALIDITE_ANS;
+            const A = window.astronomie, min = A.DEBUT_AN, max = A.FIN_TABLE_AN;
             const debut = Math.max(startYear, min), fin = Math.min(endYear, max);
             document.getElementById('validite').textContent = debut === startYear && fin === endYear ? ''
                 : A.SOLUTION_NOM + ' n\u2019est valide que de ' + min + ' à ' + max + ' : affiché de ' + debut + ' à ' + fin + '.';
@@ -152,9 +142,13 @@
         // environ 800 points sur la période.
         window.addEventListener('message', function (e) {
             if (e.data.type !== 'milankovitch:periode') return;
-            document.getElementById('startYear').value = Math.round(e.data.debut);
-            document.getElementById('endYear').value = Math.round(e.data.fin);
-            document.getElementById('resolution').value = Math.max(1, Math.round((e.data.fin - e.data.debut) / 800));
+            const A = window.astronomie;
+            const debut = Math.max(e.data.debut, A.DEBUT_AN), fin = Math.min(e.data.fin, A.FIN_TABLE_AN);
+            if (debut >= fin) return;   // vue d'Histoire hors de la solution (après l'an 2000) : rien à suivre, pas d'alerte
+            document.getElementById('startYear').value = Math.round(debut);
+            document.getElementById('endYear').value = Math.round(fin);
+            // ~800 points, mais jamais plus d'un nœud de table (1 ka) entre deux : la précession (19–23 ka) serait repliée.
+            document.getElementById('resolution').value = Math.max(1, Math.min(1000, Math.round((fin - debut) / 800)));
             updateChart();
         });
         var selectedRightIndex = 2;

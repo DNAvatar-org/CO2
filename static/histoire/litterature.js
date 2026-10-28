@@ -31,9 +31,10 @@
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
 //                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
 //                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
-// Version 1.11.0
-// Date: 2026-10-25
+// Version 1.12.0
+// Date: 2026-10-26
 // logs :
+//   - v1.12.0: bande PhanDA élargie du désaccord entre méthodes (Inglis et al. 2020, en quadrature) ; médiane inchangée.
 //   - v1.11.0: Hadéen continu — surface de Zahnle 2010 fig. 3 numérisée, fin de l'océan de magma entre ~1 Ma (Lebrun 2013) et
 //     ~4 Ma (Hamano 2013) ; corps noir jusqu'au dernier ☄️ (1 000 ans avant la collision).
 //   - v1.10.0: Archéen 3,5 → 3,2 Ga : enveloppe KT2018 + Blake 2010 aux points de KT2018 (médiane = milieu des deux), plus
@@ -2315,6 +2316,26 @@ window.HISTOIRE.litterature = {
 // z = 1,645 pour 5–95 %, 1,96 pour 2,5–97,5 %. Les données publiées restent telles quelles ci-dessus.
 window.HISTOIRE.litterature.unSigma = (rows, z) => rows.map((r) => [r[0], r[2] - (r[2] - r[1]) / z, r[2], r[2] + (r[3] - r[2]) / z]);
 
+// DÉSACCORD ENTRE MÉTHODES (incertitude structurelle). La bande de PhanDA est la précision d'UNE méthode : un seul a priori
+// (le modèle HadCM3L), des températures de mer seules, 420 assimilations qui partagent ces hypothèses (Judd et al. 2024). Là
+// où plusieurs méthodes indépendantes ont été confrontées sur les mêmes intervalles, l'écart est plus grand : Inglis et al.
+// 2020 (Clim. Past 16:1953, tableau 3 ; six méthodes mises en commun à poids égaux, intervalle à 66 % ≈ ± 1σ) — Paléocène
+// terminal 26,3 (22,3–28,3), PETM 31,6 (27,2–34,5), EECO 27,0 (23,2–29,7) °C, avec jusqu'à 5 °C d'une méthode à l'autre.
+// Leurs demi-largeurs moyennes, de chaque côté, s'ajoutent EN QUADRATURE au σ de PhanDA, sur tout le Phanérozoïque :
+// ⚠️ c'est la seule mesure publiée de ce désaccord (au Paléogène) ; rien n'indique qu'il soit plus petit ailleurs (borne
+// basse). L'intervalle d'Inglis contient aussi l'incertitude propre à chaque méthode : la somme la compte deux fois (bande
+// un peu large, du côté prudent). La médiane ne change pas.
+window.HISTOIRE.litterature.inglis2020 = [   // [médiane, bas, haut] °C, intervalle à 66 %
+    [26.3, 22.3, 28.3],   // Paléocène terminal
+    [31.6, 27.2, 34.5],   // PETM
+    [27.0, 23.2, 29.7]    // EECO
+];
+window.HISTOIRE.litterature.avecMethodes = (rows) => {
+    const I = window.HISTOIRE.litterature.inglis2020;
+    const bas = I.reduce((a, r) => a + r[0] - r[1], 0) / I.length, haut = I.reduce((a, r) => a + r[2] - r[0], 0) / I.length;
+    return rows.map((r) => [r[0], r[2] - Math.hypot(r[2] - r[1], bas), r[2], r[2] + Math.hypot(r[3] - r[2], haut)]);
+};
+
 // PRÉCAMBRIEN (4,0 Ga → 525 Ma) : L.precambrien = KT2018 (modèle lisse, qui ignore les glaciations et les proxys) hors de
 // deux FENÊTRES sourcées qui le remplacent, et combiné à un proxy sur une troisième (Archéen). Des FOURCHETTES, pas des valeurs. Le fond, aux bords des fenêtres et entre deux
 // paliers, est KT2018 interpolé (la série elle-même, pas une copie de ses valeurs).
@@ -2395,7 +2416,8 @@ window.HISTOIRE.litterature.unSigma = (rows, z) => rows.map((r) => [r[0], r[2] -
     L.segments = [
         { rows: L.hadeen, src: (r) => r[4] },
         { rows: L.precambrien, src: (r) => r[4] },
-        { rows: L.unSigma(L.phanda.filter((r) => r[0] > tSnyder), 1.645), src: () => 'PhanDA (Judd et al. 2024) — ± 1σ interpolé de 5–95 % (loi normale)' },
+        { rows: L.avecMethodes(L.unSigma(L.phanda.filter((r) => r[0] > tSnyder), 1.645)),
+          src: () => 'PhanDA (Judd et al. 2024) — ± 1σ interpolé de 5–95 % (loi normale), élargi du désaccord entre méthodes mesuré par Inglis et al. 2020' },
         { rows: L.unSigma(L.snyder, 1.96), src: () => 'Snyder 2016, Nature 538:226 — ± 1σ interpolé de 2,5–97,5 % (loi normale)' },
         { rows: L.instrumental, src: () => 'mesures instrumentales (Copernicus, GISTEMP, Jones 1999)' }
     ];

@@ -1,9 +1,11 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.2.6
-// Date: [October 15, 2026]
+// Version 1.3.0
+// Date: [October 26, 2026]
 // logs :
+//   - v1.3.0 (2026-10-26): 🦣 en deux chemins (🐾 pas à pas, 🦘 le saut), un récit par chemin ; orbite La2004 (arrivée bornée à ◀,
+//     pas de vote de l'insolation au-delà de l'horizon de phase).
 //   - v1.2.6 (2026-10-15): repère tCRepere avec son statut (✅ 🧮 ⚠️ 🔀) et sa source, plus « sources » pour des valeurs non sourcées.
 //   - v1.2.5 (2026-10-15): epochSeedLabel (survol frise) ; écarts ± 1σ et fourchette des sources dans l'alt2sec.
 //   - v1.2.4 (2026-10-15): 📱 ⛽ 🛢 🪾 = optimiste ×0,5 / comme maintenant / pire ×1,5 par tranche.
@@ -162,9 +164,10 @@ const EPOCH_STORY = {
         'L\'orbite de la Terre oscille : l\'obliquité tous les 41 000 ans, la précession tous les 23 000, l\'excentricité ' +
         'tous les 100 000. Elle ne change presque rien au Soleil reçu par le globe, mais elle déplace l\'été boréal : quand il ' +
         'faiblit, la neige des terres arctiques survit, une calotte naît et grandit ; quand il revient, sa marge fond.\n\n' +
-        'Les clics suivent les deux derniers cycles glaciaires, aux dates des stades isotopiques marins ; le CO₂ et le ' +
-        'méthane de chaque clic sont ceux des carottes de glace antarctiques à cette date. Les calottes n\'ont que le temps ' +
-        'du clic pour suivre : elles grandissent lentement et fondent vite.',
+        'Deux chemins au premier clic : 🐾 pas à pas, 20 000 ans par clic le long des carottes de glace antarctiques (41 clics, ' +
+        'la courbe orange de l\'onglet Histoire) ; 🦘 le saut, jusqu\'au dernier maximum glaciaire puis l\'Holocène (2 clics). Le ' +
+        'CO₂ et le méthane de chaque clic sont ceux des carottes à cette date. Les calottes n\'ont que le temps du clic pour ' +
+        'suivre : elles grandissent lentement et fondent vite.',
 
     '🛖':
         'Holocène — le climat de l\'agriculture (11,7 ka → 1750)\n\n' +
@@ -396,63 +399,31 @@ const EVENT_STORY = {
         ]
     },
     '🦣': {
-        // Un récit par clic (index = clic à venir), relevé sur la chaîne de clics ; les chiffres sont lus à l'affichage.
-        '💫': [
-            'Le grand saut — jusqu\'à l\'avant-dernier interglaciaire\n\n' +
-              'Ce clic franchit d\'un coup le début du Quaternaire et ses dizaines de petits cycles, pour arriver au stade isotopique 7, un interglaciaire. Le CO₂ prend la valeur des carottes antarctiques à cette date, l\'orbite celle de la date.\n\n' +
-              'Les calottes ont tout ce temps pour s\'ajuster à ce climat : c\'est le seul clic où elles ne sont pas en retard sur lui.',
-
-            'Encore un interglaciaire (stade 7c)\n\n' +
-              'L\'été boréal est très ensoleillé : la neige des terres arctiques fond chaque été, aucune calotte nouvelle ne peut naître. Le CO₂ bouge peu.\n\n' +
-              'Attendez-vous à presque rien : c\'est le calme avant l\'avant-dernier âge glaciaire.',
-
-            'Entrée dans l\'avant-dernier âge glaciaire (stade 6)\n\n' +
-              'L\'insolation d\'été au nord tombe à un creux : sur les terres arctiques, la neige de l\'hiver peut survivre à l\'été. S\'il fait assez froid, une calotte y naît, et sa blancheur refroidit à son tour.\n\n' +
-              'Le refroidissement commence par l\'orbite ; le CO₂ qui baisse le prolonge.',
-
-            'Le froid s\'installe\n\n' +
-              'Le CO₂ descend au plus bas des carottes. Une calotte au nord avance vers le sud, lentement : sur un dôme froid il neige peu, et la glace s\'empile à quelques millimètres par an.\n\n' +
-              'Attendez-vous à plus froid encore.',
-
-            'Le maximum de l\'avant-dernière glaciation\n\n' +
-              'Peu de changement dans les gaz : une calotte continue sur sa lancée, en retard sur le climat qui la porte.\n\n' +
-              'C\'est le creux du cycle : le froid le plus profond de l\'avant-dernier âge glaciaire.',
-
-            'Terminaison : l\'été boréal le plus ensoleillé (stade 5e)\n\n' +
-              'L\'insolation d\'été au nord grimpe à un maximum, et le CO₂ remonte d\'un coup. Le bord bas d\'une calotte, tourné vers le sud, fond plus vite que son dôme ne reçoit de neige ; son sommet froid, lui, résiste.\n\n' +
-              'Réchauffement net : le dernier interglaciaire commence.',
-
-            'Entrée glaciaire : l\'été boréal s\'effondre\n\n' +
-              'Le test classique de Milankovitch : le CO₂ est encore celui d\'un interglaciaire, mais l\'insolation d\'été au nord tombe au plus bas. La neige peut survivre à l\'été, une calotte repartir.\n\n' +
-              'Ici, c\'est l\'orbite seule qui fait le premier pas.',
-
-            'Une pause dans la glaciation (stade 5c)\n\n' +
-              'L\'été boréal redevient ensoleillé ; le CO₂ a commencé à baisser. Les deux se compensent à peu près.\n\n' +
-              'Une calotte hésite : elle ne fond pas, elle grandit à peine.',
-
-            'Le froid reprend (stade 5b)\n\n' +
-              'Le CO₂ continue de descendre. Une calotte reprend sa croissance, lente comme toujours.\n\n' +
-              'Attendez-vous à un peu plus froid.',
-
-            'Vers le stade 4\n\n' +
-              'L\'été boréal faiblit de nouveau. Une calotte avance vers le sud, l\'albédo du nord monte.\n\n' +
-              'C\'est la première vraie poussée glaciaire du dernier cycle.',
-
-            'Le maximum du stade 4\n\n' +
-              'Le CO₂ chute vers les valeurs glaciaires. Un pas court : une calotte n\'a que quelques millénaires pour suivre.\n\n' +
-              'Attendez-vous à plus froid.',
-
-            'Le stade 3 : un répit relatif\n\n' +
-              'L\'obliquité est haute et l\'été boréal un peu plus doux ; le CO₂ reste bas. Une calotte continue pourtant de s\'épaissir : elle est en retard sur le climat.\n\n' +
-              'Attendez-vous à presque rien.',
-
-            'Vers le dernier maximum glaciaire\n\n' +
-              'Le CO₂ touche le plus bas du cycle : une calotte au nord atteint ici sa plus grande taille.\n\n' +
-              'C\'est le moment le plus froid du Quaternaire calculé — moins froid pourtant que celui que reconstruisent les proxys.',
+        // Un récit par clic et par chemin (index = clic à venir) ; les chiffres sont lus à l'affichage.
+        '🐾': ['Pas à pas — d\'abord le saut jusqu\'aux plus vieilles carottes de glace\n\n' +
+              'Avant 800 000 ans, aucune carotte : le CO₂ n\'est pas connu cycle par cycle. Ce premier clic franchit donc d\'un coup ' +
+              '1,8 million d\'années, jusqu\'au plus vieil air piégé dans la glace antarctique.\n\n' +
+              'Ensuite, chaque clic avance de 20 000 ans — un cycle de précession, une demi-oscillation de l\'obliquité — avec le CO₂ ' +
+              'et le méthane mesurés à cette date.']
+            .concat(Array(39).fill('Pas à pas — 20 000 ans de plus\n\n' +
+              'Le CO₂ et le méthane sont ceux des carottes à la date où le clic arrive, l\'orbite celle de cette date. Quand l\'été ' +
+              'boréal faiblit et que le CO₂ baisse, la neige des terres arctiques survit à l\'été : une calotte peut naître, puis ' +
+              's\'épaissir de quelques centimètres de glace par an. Quand l\'été revient, sa marge fond.\n\n' +
+              'Comparez la courbe orange à la cyan dans l\'onglet Histoire : c\'est ce chemin qu\'elles partagent.'),
+            ['La déglaciation — vers l\'Holocène\n\n' +
+              'L\'été boréal est fort et le CO₂ remonte vers 280 ppm : les calottes du nord fondent par leur marge.\n\n' +
+              'Ce qui reste de glace au nord passe dans l\'Holocène, et le refroidit d\'autant.']),
+        '🦘': [
+            'Le saut — jusqu\'au dernier maximum glaciaire\n\n' +
+              'Un seul clic franchit le Quaternaire entier : 2,56 millions d\'années et des dizaines de cycles glaciaires. Il arrive ' +
+              'au plus froid du dernier cycle, il y a 21 000 ans, avec le CO₂ et le méthane des carottes à cette date. Les calottes ' +
+              'ont tout ce temps pour se mettre en équilibre avec ce climat.\n\n' +
+              'C\'est le raccourci : la courbe n\'est pas suivie, mais l\'état d\'arrivée est celui d\'un âge glaciaire.',
 
             'La déglaciation — vers l\'Holocène\n\n' +
-              'L\'insolation d\'été au nord est forte et le CO₂ remonte : une calotte fond par sa marge sud.\n\n' +
-              'Ce qui reste de glace au nord passe dans l\'Holocène, et le refroidit d\'autant.'
+              'L\'été boréal est fort et le CO₂ remonte : les calottes du nord fondent par leur marge, l\'Antarctique reste.\n\n' +
+              'L\'Holocène commence avec la glace que ce clic n\'a pas eu le temps de fondre : les calculs suivants partent de cet ' +
+              'état, pas d\'une graine posée.'
         ]
     },
     '🛖': {
@@ -602,10 +573,12 @@ function eventClickIndex(eventKey) {
     return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-/** État 🔁 que le PROCHAIN clic appliquera (index = 📿💫), ou null. */
-function nextCycleState(epochId) {
+/** État 🔁 que le PROCHAIN clic sur `eventKey` appliquera (index = 📿💫), ou null ; sur une époque à chemins (🕰.🛤), celui du
+ *  chemin de ce bouton. */
+function nextCycleState(epochId, eventKey) {
     const row = epochRowById(epochId);
-    const states = row && row['🕰'] && Array.isArray(row['🕰']['🔁']) ? row['🕰']['🔁'] : null;
+    const W = row['🕰'];
+    const states = ('🛤' in W && eventKey in W['🛤']) ? W['🛤'][eventKey]['🔁'] : (Array.isArray(W['🔁']) ? W['🔁'] : null);
     if (!states || !states.length) return null;
     const tic = (window.DATA && window.DATA['📜'] && Number.isFinite(Number(window.DATA['📜']['📿💫'])))
         ? Number(window.DATA['📜']['📿💫']) : 0;
@@ -620,7 +593,7 @@ function buildEventAlt2sec(epochId, eventKey) {
     const CONST = window.CONST;
     const row = epochRowById(epochId);
     const cfg = row && row['🕰'] ? row['🕰'][eventKey] : null;
-    const state = nextCycleState(epochId);
+    const state = nextCycleState(epochId, eventKey);
     const changes = [];
     let warmer = 0; // > 0 attendu plus chaud, < 0 plus froid
 
@@ -642,9 +615,14 @@ function buildEventAlt2sec(epochId, eventKey) {
         }
     }
 
-    // Orbite à la date où le clic arrive (Berger & Loutre 1991, API_BILAN/physics/orbite.js) : obliquité et insolation du
-    // solstice d'été à 65° N, dans la validité de la solution (± 3 Ma) seulement.
-    const ageAvant = window.INTERIEUR.ageCourant(window.DATA), ageApres = ageAvant - stepMa * 1e6;
+    // Orbite à la date où le clic arrive (La2004, API_BILAN/physics/orbite.js) : obliquité et insolation du solstice d'été à
+    // 65° N, dans la validité de la solution (−51 Ma → aujourd'hui). Le clic qui termine l'époque arrive à son ◀ (le moteur
+    // calcule là), pas au-delà. L'insolation ne vote pour l'effet attendu que dans l'horizon de phase de la solution : au-delà
+    // de ~20 Ma, la phase de la précession et de l'obliquité est incertaine (CO2/static/astronomie.js), sa valeur à une date
+    // n'annonce rien — elle reste affichée.
+    const HORIZON_PHASE_ANS = 20e6;
+    const ageAvant = window.INTERIEUR.ageCourant(window.DATA);
+    const ageApres = Math.max(ageAvant - stepMa * 1e6, window.INTERIEUR.ageDe(row, row['◀']));
     if (window.ORBITE.valide(ageAvant) && window.ORBITE.valide(ageApres)) {
         const eps = [window.ORBITE.obliquiteDeg(ageAvant), window.ORBITE.obliquiteDeg(ageApres)];
         const q65 = [window.ORBITE.insolation65N(ageAvant), window.ORBITE.insolation65N(ageApres)];
@@ -653,7 +631,7 @@ function buildEventAlt2sec(epochId, eventKey) {
         }
         if (Math.round(q65[0]) !== Math.round(q65[1])) {
             changes.push('insolation d\'été à 65° N ' + Math.round(q65[0]) + ' → ' + Math.round(q65[1]) + ' W/m²');
-            warmer += (q65[1] > q65[0] ? 1 : -1);
+            if (ageAvant <= HORIZON_PHASE_ANS) warmer += (q65[1] > q65[0] ? 1 : -1);
         }
     }
 

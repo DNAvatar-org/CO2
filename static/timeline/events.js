@@ -1,10 +1,11 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.3.2
+ * Version 1.4.0
+ *   - v1.4.0: époque à chemins (🦣) : un bouton par chemin au premier clic (🐾, 🦘), bulle = nom du chemin + durée.
  *   - v1.3.2: masse d'un ☄️ lue sur son entrée de séquence (CLICS.eauDuClic), elle change d'un clic à l'autre.
  *   - v1.3.1: jouerClic passe en animation (tictime : T conservée) — après un clic sur la frise, les clics d'événement
  *     repartaient de la graine.
- * Date: 2026-10-14
+ * Date: 2026-10-26
  * Copyright 2026 DNAvatar.org - Arnaud Maignan
 * logs :
  *   - v1.3.0: l'EFFET d'un clic vient de CLICS.jouer (API_BILAN/convergence/clics.js), la mécanique que joue aussi
@@ -133,6 +134,9 @@ function boutonAction(key, cfg) {
         if (window.CLICS.TICS.includes(key)) {
             el.alt = formatStepLabel(window.CLICS.pas(key));
             court = el.alt + ' pour ce clic';
+            // Chemin d'une époque qui en offre (🐾, 🦘) : son nom d'abord (Alphabet), puis la durée de ce clic.
+            const W = window.TIMELINE[window.DATA['📜']['👉']]['🕰'];
+            if ('🛤' in W && key in W['🛤']) court = window.CHARS_DESC[key] + '<br>' + court;
         } else {
             // 🗻 / 🌋 : bulle = DESC du logo dans l'Alphabet (source unique), pas de texte par action.
             el.alt = window.CHARS_DESC[key];
@@ -181,6 +185,11 @@ window.updateEpochActions = function () {
             return;
         }
         Object.keys(tranche).forEach(function (k) { eventsLogos.appendChild(boutonTranche(k, tranche[k])); });
+        return;
+    }
+    // Époque à chemins (🕰.🛤, 🦣) : au premier clic, un bouton par chemin ; ensuite, la suite du chemin choisi.
+    if ('🛤' in W && window.DATA['📜']['📿🕰'] === 0) {
+        Object.keys(W['🛤']).forEach(function (k) { eventsLogos.appendChild(boutonAction(k, W[k])); });
         return;
     }
     const act = window.CLICS.prochaineAction();

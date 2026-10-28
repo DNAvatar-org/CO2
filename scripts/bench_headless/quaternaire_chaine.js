@@ -2,11 +2,13 @@
 // Desc: Sonde des calottes le long d'une chaîne de clics : frises de contrôle (window.__FRISES__), puis pour chaque départ
 //       (window.__DEPARTS__) frise et clics jusqu'à l'arrivée sur window.__FIN__. Un point par calcul : T, CO₂, CH₄, obliquité de
 //       l'orbite, glace, albédo, T₂, aire de glace par hémisphère (millions de km²) et, par bande, la calotte portée avant le clic,
-//       celle du calcul, son équilibre, son temps de réaction, sa marge (°). Écrit window.__Q__ (à lire avec --stream __Q__).
+//       celle du calcul, son équilibre, son temps de réaction, sa marge (°), et son socle : temps de rebond τ_b (ka), sous-pas
+//       intégrés, écart maximal à l'équilibre d'Airy (m). Écrit window.__Q__ (à lire avec --stream __Q__).
 //       Usage : (echo "window.__FRISES__=['🚂']; window.__DEPARTS__=['🏔']; window.__FIN__='📱';"; cat quaternaire_chaine.js) > /tmp/q.js
 //               python3 run.py /tmp/q.js --var __Q__ --timeout 4000 --stream __Q__
-// Version 1.0.0
-// Date: [October 22, 2026]
+// Version 1.1.0
+// - v1.1.0 (2026-10-28): socle des calottes par bande (tauSocle_ka, sousPas, ecart_m).
+// Date: [October 28, 2026]
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.__PROG__='start'; window.__Q__=[]; window.__ERR__=null;
 (async () => { try {
@@ -21,7 +23,8 @@ window.__PROG__='start'; window.__Q__=[]; window.__ERR__=null;
     for (const b of window.CALOTTES.BANDES) {
       const c = m.calottes[b.cle];
       cal[b.cle] = { avant: r(avant[b.cle], 4), a: r(c.a, 4), aEq: r(c.aEq, 4), tau_ka: r(c.tau / 1e3, 1), Ts: r(c.Ts - 273.15, 1),
-        acc: r(c.accumulation, 0), fonte: r(c.fonte, 0), H: r(c.H, 0), z: r(c.z, 0), marge: r(c.marge, 1) };
+        acc: r(c.accumulation, 0), fonte: r(c.fonte, 0), H: r(c.H, 0), z: r(c.z, 0), marge: r(c.marge, 1),
+        tauSocle_ka: r(c.tauSocle / 1e3, 2), sousPas: c.sousPas, ecart_m: r(c.ecart_m, 0) };
       if (b.h > 0) nord += c.a * aireBande[b.zone]; else sud += c.a * aireBande[b.zone];
     }
     window.__Q__.push({ chaine, etape, ep, age: Math.round(window.INTERIEUR.ageCourant(D)), s: Math.round((Date.now() - t0) / 1000),
