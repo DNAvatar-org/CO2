@@ -39,7 +39,7 @@
 // - v1.3.0: tous les onglets en pleine page (body.onglet-plein, posé par spectreVisible) ; la Terre de l'ISS : body.terre-iss.
 // - v1.2.9: onglet ISS en pleine page (body.onglet-plein) : titre, organigramme et frise par-dessus ; ses boutons se
 //   posent autour de la Terre de la page ISS (message iss:terre → ZOOM_TERRE.poser).
-// - v1.2.8: l'ISS s'ouvre en mode bilan radiatif (?provenance=CO2 : ×1000, fenêtres repliées, pas de Check Photo) :
+// - v1.2.8: l'ISS s'ouvre en mode bilan radiatif (drapeaux noISS_mode, fenetresHote, zoomEnchaine, vueBiais, atmGrossie, vitesse=1000) :
 //   satellite Iridium, vue Terre (de l'extérieur), aucune case cochée ; plus de zen au démarrage.
 // - v1.2.7: dès l'an 2000, l'ISS montre sa propre Terre (NASA geoview / steamNight + tuiles GIBS, Sentinel-2 au zoom) : ni ?jour ni ?nuit.
 // - v1.2.6: onglet ISS ouvert : rechargé à chaque compute:done (carte et atmosphère de l'époque suivent les clics).
@@ -124,7 +124,7 @@
         // Première ouverture : la page, avec les cartes de l'époque. Ensuite, jamais rechargée : les cartes de l'époque lui
         // sont envoyées (pages/ISS js/hote.js, iss:cartes) — sa vue, sa date et son Soleil, donc l'organigramme, restent.
         if (iframe.getAttribute('src') === null) {
-            iframe.src = ISS_PAGE + '?provenance=CO2&sat=iridium&vue=terre&onglet&atm=' + atmISS()
+            iframe.src = ISS_PAGE + '?noISS_mode=true&fenetresHote=true&zoomEnchaine=true&vuesAuZoom=1&vueBiais=true&atmGrossie=true&vitesse=1000&sat=iridium&vue=terre&onglet&atm=' + atmISS()
                 + cartesISS() + '&notIR=' + notIRISS() + '&pays=' + (anneeFrise() >= AN_PAYS);
             return;
         }
@@ -252,7 +252,7 @@
         f.style.clipPath = "path(evenodd, 'M0 0H" + fr.width + 'V' + fr.height + 'H0Z' + trous + "')";
     }
     /** Bord gauche d'Energies / Atmosphère et 10 px sous eux, en px de la page ISS : ses fenêtres Temps et Point de vue
-     *  s'empilent là, à gauche, et s'ouvrent vers le bas (pages/ISS js/url.js, ?provenance=CO2) ; et la place que l'organigramme demande à
+     *  s'empilent là, à gauche, et s'ouvrent vers le bas (pages/ISS js/url.js, ?fenetresHote) ; et la place que l'organigramme demande à
      *  gauche de la Terre : la page ISS y pose le centre de sa Terre (pages/ISS js/hote.js).
      *  Envoyé quand le panneau bouge, à chaque chargement de la page ISS, quand sa Terre bouge, après un glisser dans
      *  l'organigramme et quand une fenêtre se plie ou se déplie. */

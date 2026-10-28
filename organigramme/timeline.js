@@ -140,17 +140,19 @@ function refreshTimelineEpochBounds() {
 
 const PALEOMAP_CREDITS_MIN_MA = -750;
 const PALEOMAP_CREDITS_MAX_MA = -2;
+const IMAGERIE_CREDITS_MIN_YEAR = 2000;   // dès l'an 2000 la Terre de l'onglet ISS est la vraie (NASA GIBS, Sentinel-2)
 
-/** Crédit PALEOMAP du pied de page (index.html) : affiché quand les cartes PALEOMAP sont à l'écran (−750 → −2 Ma). */
-function updatePaleomapCreditsVisibility() {
-    const credit = document.getElementById('credits-paleomap');
+/** Crédits du pied de page (index.html) : chacun n'apparaît que lorsque ses images sont à l'écran —
+ *  PALEOMAP de −750 à −2 Ma, NASA GIBS / Sentinel-2 dès l'an 2000. */
+function updateCreditsVisibility() {
+    const years = getTimelineCurrentYears();
     const ma = getTimelineCurrentMa();
-    if (ma == null || !Number.isFinite(ma)) {
-        credit.style.display = 'none';
-        return;
-    }
-    const show = ma >= PALEOMAP_CREDITS_MIN_MA && ma <= PALEOMAP_CREDITS_MAX_MA;
-    credit.style.display = show ? '' : 'none';
+    const year = timelineEpochIsForward(getEpochAtTimelineIndex()) ? years : -years;
+    const paleomap = ma >= PALEOMAP_CREDITS_MIN_MA && ma <= PALEOMAP_CREDITS_MAX_MA;
+    const imagerie = year >= IMAGERIE_CREDITS_MIN_YEAR;
+    document.getElementById('credits-paleomap').style.display = paleomap ? '' : 'none';
+    document.getElementById('credits-imagerie').style.display = imagerie ? '' : 'none';
+    document.getElementById('credits-cartes').style.display = paleomap || imagerie ? '' : 'none';
 }
 
 /** Libellé d’une date de l’échelle : "-5000 Ma" ou "2025", "2050" pour les années récentes */
@@ -481,7 +483,7 @@ function updateTimeline() {
         }
     }
 
-    updatePaleomapCreditsVisibility();
+    updateCreditsVisibility();
 
     // Passage d'époque : décidé par le clic lui-même (CLICS.jouer, events.js jouerClic), pas par la frise.
 
@@ -589,7 +591,7 @@ if (typeof window !== 'undefined') {
     window.getTimelineCurrentMa = getTimelineCurrentMa;
     window.getEpochAtTimelineIndex = getEpochAtTimelineIndex;
     window.refreshTimelineEpochBounds = refreshTimelineEpochBounds;
-    window.updatePaleomapCreditsVisibility = updatePaleomapCreditsVisibility;
+    window.updateCreditsVisibility = updateCreditsVisibility;
 
     /** Nom display pour setEpoch / shell (CHARS_DESC / epochName). */
     function timelineNextEpochDisplayName(nextItem, nextId) {
