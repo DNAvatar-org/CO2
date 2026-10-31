@@ -90,9 +90,6 @@
     function projectSynthese(DATA) {
         var tempC = DATA['🧮']['🧮🌡️'] - window.CONST.KELVIN_TO_CELSIUS;
         document.getElementById('temp-surface-synthese').textContent = tempC.toFixed(1);
-        var P_atm = (DATA['🫧'] && DATA['🫧']['🎈'] != null) ? DATA['🫧']['🎈'] : null;
-        var pressureValEl = document.getElementById('pressure-surface-synthese');
-        if (pressureValEl) pressureValEl.textContent = (P_atm != null && Number.isFinite(P_atm)) ? '🎈 ' + P_atm.toFixed(2) + ' atm' : '🎈 -- atm';
         // - updateBlackBodyColor : met à jour la couleur globale des corps noirs.
         // - .synthese_Temp : couleur T° sol (sinon reste bloqué sur anticipation ou fallback cyan).
         var newColor = window.PLOT.tempSurfaceToColor(tempC);

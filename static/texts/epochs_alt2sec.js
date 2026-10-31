@@ -1,20 +1,11 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.3.0
-// Date: [October 26, 2026]
+// Version 1.3.1
+// Date: [October 30, 2026]
 // logs :
-//   - v1.3.0 (2026-10-26): 🦣 en deux chemins (🐾 pas à pas, 🦘 le saut), un récit par chemin ; orbite La2004 (arrivée bornée à ◀,
-//     pas de vote de l'insolation au-delà de l'horizon de phase).
-//   - v1.2.6 (2026-10-15): repère tCRepere avec son statut (✅ 🧮 ⚠️ 🔀) et sa source, plus « sources » pour des valeurs non sourcées.
-//   - v1.2.5 (2026-10-15): epochSeedLabel (survol frise) ; écarts ± 1σ et fourchette des sources dans l'alt2sec.
-//   - v1.2.4 (2026-10-15): 📱 ⛽ 🛢 🪾 = optimiste ×0,5 / comme maintenant / pire ×1,5 par tranche.
-//   - v1.2.3 (2026-10-15): 📱 🌈 (zéro émission, tranche 2100 → 2300).
-//   - v1.2.2 (2026-10-14): ⚫ = quatre ☄️ de masse croissante (eau lue sur l'entrée de séquence, CLICS.eauDuClic).
-//   - v1.2.1 (2026-09-24): « Ce que ça change » affiche le pas de clic à 1 décimale.
-//   - v1.2.0 (2026-09-24): vraies dates (ICS 2023, Hoffman et al. 2017) dans les titres ; le Cryogénien a
-//     DEUX glaciations — ⛄ Snowball Sturtien, 🌦 1b Sortie Sturtienne + interglaciaire, 🏂 Snowball Marinoen,
-//     ⛈ 1c Sortie Marinoenne ; récits de clics recalés sur la chaîne de clics du 2026-09-24.
+//   - v1.3.1 (2026-10-30): 🐾 en clics de 5 000 ans ; récit de séquence (premier, courant, dernier) choisi par le rang du clic dans
+//     la séquence de la config, sans compte écrit ici.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -164,8 +155,8 @@ const EPOCH_STORY = {
         'L\'orbite de la Terre oscille : l\'obliquité tous les 41 000 ans, la précession tous les 23 000, l\'excentricité ' +
         'tous les 100 000. Elle ne change presque rien au Soleil reçu par le globe, mais elle déplace l\'été boréal : quand il ' +
         'faiblit, la neige des terres arctiques survit, une calotte naît et grandit ; quand il revient, sa marge fond.\n\n' +
-        'Deux chemins au premier clic : 🐾 pas à pas, 20 000 ans par clic le long des carottes de glace antarctiques (41 clics, ' +
-        'la courbe orange de l\'onglet Histoire) ; 🦘 le saut, jusqu\'au dernier maximum glaciaire puis l\'Holocène (2 clics). Le ' +
+        'Deux chemins au premier clic : 🐾 pas à pas, 5 000 ans par clic le long des carottes de glace antarctiques (la courbe ' +
+        'orange de l\'onglet Histoire) ; 🦘 le saut, jusqu\'au dernier maximum glaciaire puis l\'Holocène (2 clics). Le ' +
         'CO₂ et le méthane de chaque clic sont ceux des carottes à cette date. Les calottes n\'ont que le temps du clic pour ' +
         'suivre : elles grandissent lentement et fondent vite.',
 
@@ -193,9 +184,13 @@ const EPOCH_STORY = {
         'Aucun chiffre n\'est calé sur une projection : ce que vous lisez sort des équations.'
 };
 
+/** Récit d'une séquence de clics de longueur lue dans la config : { premier, courant, dernier }. */
+function RecitSequence(t) { this.premier = t.premier; this.courant = t.courant; this.dernier = t.dernier; }
+
 /**
  * Récit par événement : EVENT_STORY[id époque][emoji bouton].
- * Valeur = texte, OU tableau de textes quand l'époque a des états 🕰.🔁 (index = numéro du clic à venir).
+ * Valeur = texte, OU tableau de textes quand l'époque a des états 🕰.🔁 (index = numéro du clic à venir), OU RecitSequence (premier
+ * clic, clics courants, dernier clic de la séquence de la config).
  * Ici le POURQUOI seulement : les chiffres (ce qui change) sont lus dans la config par buildEventAlt2sec().
  */
 const EVENT_STORY = {
@@ -399,20 +394,23 @@ const EVENT_STORY = {
         ]
     },
     '🦣': {
-        // Un récit par clic et par chemin (index = clic à venir) ; les chiffres sont lus à l'affichage.
-        '🐾': ['Pas à pas — d\'abord le saut jusqu\'aux plus vieilles carottes de glace\n\n' +
+        // Récit d'une séquence (premier clic, clics courants, dernier clic), choisi par le rang du clic à venir dans la séquence du
+        // chemin (config) ; les chiffres sont lus à l'affichage.
+        '🐾': new RecitSequence({
+            premier: 'Pas à pas — d\'abord le saut jusqu\'aux plus vieilles carottes de glace\n\n' +
               'Avant 800 000 ans, aucune carotte : le CO₂ n\'est pas connu cycle par cycle. Ce premier clic franchit donc d\'un coup ' +
               '1,8 million d\'années, jusqu\'au plus vieil air piégé dans la glace antarctique.\n\n' +
-              'Ensuite, chaque clic avance de 20 000 ans — un cycle de précession, une demi-oscillation de l\'obliquité — avec le CO₂ ' +
-              'et le méthane mesurés à cette date.']
-            .concat(Array(39).fill('Pas à pas — 20 000 ans de plus\n\n' +
+              'Ensuite, chaque clic avance de 5 000 ans — un quart de cycle de précession, un huitième d\'oscillation de ' +
+              'l\'obliquité — avec le CO₂ et le méthane mesurés à cette date.',
+            courant: 'Pas à pas — 5 000 ans de plus\n\n' +
               'Le CO₂ et le méthane sont ceux des carottes à la date où le clic arrive, l\'orbite celle de cette date. Quand l\'été ' +
               'boréal faiblit et que le CO₂ baisse, la neige des terres arctiques survit à l\'été : une calotte peut naître, puis ' +
               's\'épaissir de quelques centimètres de glace par an. Quand l\'été revient, sa marge fond.\n\n' +
-              'Comparez la courbe orange à la cyan dans l\'onglet Histoire : c\'est ce chemin qu\'elles partagent.'),
-            ['La déglaciation — vers l\'Holocène\n\n' +
+              'Comparez la courbe orange à la cyan dans l\'onglet Histoire : c\'est ce chemin qu\'elles partagent.',
+            dernier: 'La déglaciation — vers l\'Holocène\n\n' +
               'L\'été boréal est fort et le CO₂ remonte vers 280 ppm : les calottes du nord fondent par leur marge.\n\n' +
-              'Ce qui reste de glace au nord passe dans l\'Holocène, et le refroidit d\'autant.']),
+              'Ce qui reste de glace au nord passe dans l\'Holocène, et le refroidit d\'autant.'
+        }),
         '🦘': [
             'Le saut — jusqu\'au dernier maximum glaciaire\n\n' +
               'Un seul clic franchit le Quaternaire entier : 2,56 millions d\'années et des dizaines de cycles glaciaires. Il arrive ' +
@@ -573,12 +571,16 @@ function eventClickIndex(eventKey) {
     return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/** États 🔁 de la séquence que joue `eventKey` (sur une époque à chemins, 🕰.🛤, celle du chemin de ce bouton), ou null. */
+function cycleStates(epochId, eventKey) {
+    const W = epochRowById(epochId)['🕰'];
+    return ('🛤' in W && eventKey in W['🛤']) ? W['🛤'][eventKey]['🔁'] : (Array.isArray(W['🔁']) ? W['🔁'] : null);
+}
+
 /** État 🔁 que le PROCHAIN clic sur `eventKey` appliquera (index = 📿💫), ou null ; sur une époque à chemins (🕰.🛤), celui du
  *  chemin de ce bouton. */
 function nextCycleState(epochId, eventKey) {
-    const row = epochRowById(epochId);
-    const W = row['🕰'];
-    const states = ('🛤' in W && eventKey in W['🛤']) ? W['🛤'][eventKey]['🔁'] : (Array.isArray(W['🔁']) ? W['🔁'] : null);
+    const states = cycleStates(epochId, eventKey);
     if (!states || !states.length) return null;
     const tic = (window.DATA && window.DATA['📜'] && Number.isFinite(Number(window.DATA['📜']['📿💫'])))
         ? Number(window.DATA['📜']['📿💫']) : 0;
@@ -652,10 +654,14 @@ function buildEventAlt2sec(epochId, eventKey) {
         changes.push('+' + window.CLICS.eauDuClic().toExponential(1) + ' kg d\'eau');   // masse portée par l'entrée de 🕰.order
     }
 
-    // Récit : texte simple, ou tableau indexé par le numéro du clic à venir (époques à états 🕰.🔁)
+    // Récit : texte simple, tableau indexé par le numéro du clic à venir (époques à états 🕰.🔁), ou récit de séquence
+    // { premier, courant, dernier } choisi par le rang du clic à venir dans la séquence de la config (sans compte écrit ici)
     let why = EVENT_STORY[epochId] ? EVENT_STORY[epochId][eventKey] : undefined;
     if (Array.isArray(why)) {
         why = why[Math.min(eventClickIndex(eventKey), why.length - 1)];
+    } else if (why instanceof RecitSequence) {
+        const i = eventClickIndex(eventKey), n = cycleStates(epochId, eventKey).length;
+        why = i === 0 ? why.premier : (i >= n - 1 ? why.dernier : why.courant);
     }
     // Ce clic termine-t-il l'époque ? (durée |▶−◀| vs temps écoulé + un pas) → annoncer la suite
     if (row && stepMa !== null && Number.isFinite(Number(row['▶'])) && Number.isFinite(Number(row['◀']))) {

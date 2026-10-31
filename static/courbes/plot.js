@@ -1,10 +1,11 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.99
+// Version 1.0.100
+// - v1.0.100 (2026-10-31): bandes du spectre à leur largeur propre : la pression élargit les raies dans les sections efficaces de
+//   chaque couche (moteur), pas l'étendue affichée d'une bande.
 // - v1.0.99 (2026-10-20): page embarquée (?hote) — resize ignoré : le spectre n'y est jamais tracé (erreur Plotly _guiEditing).
-// - v1.0.98 (2026-10-15): resize de fenêtre ignoré quand le spectre est caché sous un autre onglet (erreur Plotly).
-// Date: [May 07, 2026] [12:00 UTC+1]
+// Date: [October 31, 2026]
 // logs :
 // - v1.0.96: marqueur Terre (spectral-eds-marker--eds) — retiré z-index 0 imposé : le logo redevient au-dessus du tracé Plotly (#plot-container z 2) comme placeSpectralMarker (1001), cohérent avec EDS.
 // - v1.0.97: part d'EDS sous chaque bande d'absorption du spectre. Bandes moléculaires : grandeur EXACTE
@@ -1273,9 +1274,6 @@ function drawAbsorptionBandIndicators() {
         { lambda: 27, halfWidthUm: 23, logo: LOGOS.CLOUDS, logoImg: resolveLogoImg(LOGOS.CLOUDS), label: 'Nuages', color: 'rgb(185, 185, 205)', fullSpan: true }
     ];
 
-    const P_atm = (window.DATA && window.DATA['🫧'] && window.DATA['🫧']['🎈'] != null) ? window.DATA['🫧']['🎈'] : 1;
-    const widthFactor = window.CONFIG_COMPUTE.pressureBroadening ? Math.min(2, Math.sqrt(Math.max(0.1, P_atm))) : 1;
-
     const PHYS = window.PHYS;
     const pdPlot = window.plotData;
     let TSurf = null;
@@ -1476,7 +1474,9 @@ function drawAbsorptionBandIndicators() {
                 leftUm = segment[0];
                 rightUm = segment[1];
             } else {
-                const halfW = (band.halfWidthUm != null ? band.halfWidthUm : 1) * widthFactor;
+                // Largeur propre de la bande : la pression élargit les raies dans les sections efficaces de chaque couche, à sa
+                // (T, P) (radiative/calculations.js), pas l'étendue affichée d'une bande.
+                const halfW = band.halfWidthUm;
                 leftUm = Math.max(0.1, band.lambda - halfW);
                 rightUm = Math.min(50, band.lambda + halfW);
             }

@@ -96,6 +96,7 @@ CALCULS:
 
 AUTRES:
 💨  N₂
+🧫  Biosphère marine (part de la boucle CLAW moderne [0,1], 1 = 📱)
 
 ================================================================================
 PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
@@ -115,6 +116,7 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🔺🌡️💫  Delta t° / ticTime
 🔺🧲🌕💫  Delta Geoth / ticTime
 🧲🔬  Précision Flux
+🧫  Biosphère marine du clic (part de la boucle CLAW moderne, 1 = 📱)
 
 📅 DATE ÉPOQUE:
 🌡️🧮  t° attendue
@@ -207,6 +209,10 @@ PARTIE 2: DICO (CLÉS ET DESCRIPTIONS)
 🍰🗻🌊  Surface océanique potentielle (bassin océanique, géologie)
 🍰🗻🏔  Surface hautes terres (zones de glace potentielles, géologie)
 🍰🗻🌍  Surface terres basses (zones de forêts/continents, géologie)
+🍰🗻🧊  Calottes : part de chaque bande sous calotte permanente (état porté d'un clic à l'autre)
+📿🗻🧊  Sommet de chaque calotte : indice de sa cellule (tranche · 8 + classe), porté avec 🍰🗻🧊
+🧮📿🗻🧊  Sommets des calottes du pas de calcul courant, engagés en fin de convergence
+🍰🗻🌳  Forêt de chaque bande : part de sa terre émergée sous la forêt préagricole (ligne des arbres de ses latitudes)
 
 💎 CONSTANTES PHYSIQUES:
 🎈┴💧  Pression au point triple de l'eau (611.2 Pa)
@@ -228,6 +234,9 @@ PARTIE 3: FORMULES DE CALCUL
            (émission au sommet atmosphère, après transfert radiatif couche par couche avec concentrations atmosphériques)
            Calculé via transfert radiatif spectral: pour chaque couche z et chaque λ, calcul de l'épaisseur optique τ_λ(z)
            avec concentrations CO₂, CH₄, H₂O, O₂, N₂, puis transmission exp(-τ) et émission (1-exp(-τ))×π×B_λ(T)
+           τ_λ(z) = D [Σ_gaz σ_gaz(λ, T_z, P_z) n_gaz + κ_continuum + κ_CIA] Δz + D τ_nuages (D = 1,66, diffusivité) ;
+           σ des raies HITRAN à la (T, P) de la couche (tables σ(λ, T, P), ln σ linéaire en ln P ; vapeur à sa pression
+           d'auto-élargissement)
            Intégration finale au sommet: 🧲🌈🔼 = Σ[λ] upward_flux[z_max][λ] × Δλ
            En équilibre: 🧲🌈🔼 ≈ 🧲☀️🔽+🧲🌕🔽
 🧲🪩🔼 = 🧲☀️🎱 - 🧲☀️🔽 = 🧲☀️🎱 × 🍰🪩📿 = Flux réfléchi par albedo
@@ -282,13 +291,14 @@ PARTIE 3: FORMULES DE CALCUL
 🪩 ALBÉDO:
 🍰🪩📿 = Σ(🍰🪩❀ × 🪩🍰❀) pour ❀ ∈ {🌋,🌊,🌳,🌍,🏜️,🧊} + contribution_glace + contribution_nuages
 🍰🪩🎾 = volcano_coverage = f(T, flux_geo) : Hadéen=1.0, sinon min(1.0, flux_geo/10000)
-🍰🪩🌊 = ocean_coverage = (ocean_volume_m3 / (📏🌊 × 1000)) × 🐚 / (4π × 📐²)
-           où ocean_volume_m3 = (⚖️💧 × 🍰💧🌊) / 1000
-🍰🪩🌳 = forest_coverage = L × clamp((H - 0.5) / 0.7, 0, 1) où H = indice d'humidité climatique, L = terre libre de glace
-           Forêts apparaissent si H > 0.5
-🍰🪩🏜️ = desert_coverage = L × clamp((0.6 - H) / 0.6, 0, 1) où H = indice d'humidité climatique
-           Déserts apparaissent si H < 0.6 (zones arides, albedo ~0.30)
-🍰🪩🌍 = land_coverage = L - 🍰🪩🌳 - 🍰🪩🏜️ où L = terre libre de glace
+🍰🪩🌊 = ocean_coverage = 🗻.🍰🗻🌊 × (1 − 🍰🪩🎾) dans un monde à océan (0 hors de lui : bassin à sec)
+           🍰🗻🌊 = la mer de la carte (sous le niveau de la mer de la reconstruction PaleoDEM ; avant 540 Ma, posée par l'époque)
+🍰🪩🌳 = forest_coverage = Σ_bandes L_b × 🗻.🍰🗻🌳 (forêt de la bande : 0,458 × part de ses latitudes sous la ligne des
+           arbres de leur saison de croissance, Paulsen & Körner 2014, pondérée par leur part de terre), hors de la neige de la bande ;
+           L_b = terres libres de la bande. La neige des terres est masquée par la forêt sous la neige (ALBEDO.foretSousNeige)
+🍰🪩🏜️ = desert_coverage = Σ_bandes min(L_b − forêt_b, aride × L_b) où aride = part aride des terres (précipitations, humidité
+           relative), la même dans toutes les bandes. Déserts : au plus ce que laisse la forêt (zones arides, albedo ~0.30)
+🍰🪩🌍 = land_coverage = Σ_bandes (L_b − forêt_b − désert_b) où L_b = terres libres de la bande (sans lave, mer ni calottes)
            Absorbe automatiquement : steppes, prairies, toundras, montagnes (albedo ~0.18)
 🍰🪩🧊 = ice_coverage = min(0.9, 🍰💧🧊 × 0.9)
 🍰🪩⛅ = clamp((0.19 + 0.11×☁️) × cloud_optical_efficiency, 0, 0.75)
@@ -296,8 +306,7 @@ PARTIE 3: FORMULES DE CALCUL
            Fraction optique moyenne vue par le Soleil (voir doc SCIE_CONVERGENCE_DOC.txt § fine-tuning nuages)
 
 🗻 GÉOLOGIE:
-🍰🗻🌊 = Surface océanique potentielle (bassin océanique) = f(époque)
-           Hadéen=1.0, Archéen=0.80, Moderne=0.71
+🍰🗻🌊 = Bassin océanique = 1 − terre émergée des bandes (PaleoDEM à la date) ; avant 540 Ma, la valeur de l'époque
 🍰🗻🏔 = Surface hautes terres (zones de glace potentielles) = f(époque)
            Hadéen=0.0, Archéen=0.05, Moderne=0.09
 🍰🗻🌍 = Surface terres basses (zones de forêts/continents) = f(époque)

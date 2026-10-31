@@ -7,11 +7,11 @@
 //         · 'clics' : UNE frise (⚫), puis que des clics — l'état arrive d'une époque à l'autre (graine t° continue) ;
 //         · 'frise' : le clic sur la frise de CHAQUE époque du TIMELINE, et rien d'autre (graine t° imposée).
 //       Écrit window.__COURBE__ (points dans l'ordre chronologique). Lancé par courbe_modele.py.
-// Version 2.2.0
+// Version 2.2.1
+// - v2.2.1 (2026-10-30): l'avancement porte le numéro du clic dans l'époque (📿🕰) : les 159 clics 🐾 de 🦣 s'y distinguent.
 // - v2.2.0 (2026-10-15): points fabriqués par CO2/static/histoire/point_modele.js (partagé avec le banc de l'index).
 // - v2.1.0 (2026-10-14): mode frise = la graine de chaque époque seulement (plus ses tictimes).
-// - v2.0.1 (2026-10-13): jauges séparées — `pct` et `bary` portent tout baryByGroup.
-// Date: 2026-10-12
+// Date: [October 30, 2026]
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
 (async () => { try {
@@ -39,7 +39,7 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
       const r = window.CLICS.jouer(key);
       const dt = D['📜']['⏳'] - t0;   // durée du clic (Ma)
       if (r.passage !== null) window.CLICS.passer(r.passage);
-      window.__PROG__ = 'clic '+depuis+' '+key+(r.passage !== null ? ' → '+r.passage : '');
+      window.__PROG__ = 'clic '+depuis+' '+key+(r.passage !== null ? ' → '+r.passage : ' '+D['📜']['📿🕰']);
       await api.run({ epochId: D['📜']['🗿'], animEnabled:true });
       note(r.passage !== null ? depuis+' →'+key+' '+r.passage : depuis+' '+key+' ('+(+D['📜']['⏳'].toFixed(4))+' Ma écoulés)', key, dt);
     }

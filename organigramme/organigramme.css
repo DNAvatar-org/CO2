@@ -693,9 +693,10 @@
     opacity: 0.3;
 }
 /* Energies masquées : la Géométrie, le Soleil, les deux 🛰 (CERES, DSCOVR) et tous les rayonnements (ondes) disparaissent
-   avec les watts ; EDS + albédo inchangés */
+   avec les watts, ainsi que le logo EDS ; albédo inchangé */
 #flux-diagram.hide-organigram-observation-metrics #cell-geometrie,
 #flux-diagram.hide-organigram-observation-metrics #cell-soleil,
+#flux-diagram.hide-organigram-observation-metrics #cell-reemis,
 #flux-diagram.hide-organigram-observation-metrics #observation-config-wrap,
 #flux-diagram.hide-organigram-observation-metrics #observation-config-wrap-bas,
 #flux-diagram.hide-organigram-observation-metrics .flux-radiation-container {
@@ -951,7 +952,7 @@
     font-size: 18px;
 }
 
-.synthese_Temp-pressure {
+.synthese_Temp-date {
     font-size: 14px;
     line-height: 1.2;
 }

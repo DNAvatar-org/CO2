@@ -4,21 +4,13 @@
 #       chaque constante nommée : son unité (déduite de l'alphabet, pas écrite à la main), sa
 #       description, sa formule, et TOUTES les lignes du modèle où elle est écrite ou lue.
 #       Refuse d'écrire si une clé 🍰 ne dit pas de quoi elle est une proportion.
-# Version 1.1.2
-# Date: 2026-09-23
+# Version 1.1.4
+# Date: 2026-10-31
 # logs :
-#   - v1.1.2: 📅 déclaré (date en années) — l'état de l'intérieur 📅🌕 / 📅🧊🌕 porte des âges.
-#   - v1.1.1: trois angles morts qui fabriquaient de faux « 0 lect. » — API_BILAN/*.js à la racine
-#     (api.js, tuning.js…) et demo/js/ n'étaient pas balayés, et un accès ["clé"] entre guillemets
-#     doubles (organigramme.js) n'était pas reconnu. 🧲📛⛅ (lue par api.js), 🍰🪩⚽ et 🍰🪩💧
-#     (organigramme), 🍰🫧📿🌈 (epoch_bench_run.js) passaient pour mortes. Et les noms de constantes
-#     en minuscules (CONV.molar_mass_air_ref, lue 8 fois) n'étaient pas reconnus.
-#   - v1.1.0: plus AUCUNE unité inconnue. Les constantes (CONST · CONV · EARTH · CLOUD_SW) prennent
-#     valeur ET unité à leur définition — l'unité entre crochets en tête du commentaire, `// [K]` —
-#     et la génération échoue si une seule manque. ⚾ est un angle (°) ; 🔁 🖼 🌙 🔘 📝 sont des clés
-#     d'interface, déclarées comme telles (texte, objet) au lieu de « unité inconnue ». Avant, la
-#     valeur n'était lue que sur une ligne `X = v;` : les 20 CLOUD_SW (objet littéral d'initDATA) et
-#     les deux points triples (trouvés d'abord dans dico.js) sortaient vides.
+#   - v1.1.4: UNITE_1 apprend 🧫 (part de la boucle CLAW moderne, sans dimension), 1ᵉʳ caractère de 📜🧫.
+#   - v1.1.3: NATURE_2 apprend 📅 (part du TEMPS, de l'année) et ☀️ (part de l'énergie solaire reçue), seconds
+#     caractères de 🍰 de l'alphabet (🍰📅🧊, 🍰☀️🧊, 🍰☀️🪩🧊) ; relevé des constantes sans INTERIEUR.CONST.X ni famille
+#     CONST.M_* ; tables nommées (EARTH.ZONES) déclarées dans STRUCTURES.
 # Copyright 2026 DNAvatar.org - Arnaud Maignan
 # Licensed under Apache License 2.0 with Commons Clause.
 import io, os, re, sys, glob, html, json
@@ -42,6 +34,7 @@ UNITE_1 = {
     '⚧':'texte — phase Init / Search / Dicho (pas une grandeur)',
     '☯':'signe −1 / 0 / +1 (sans dimension)',
     '⚾':'° (angle : obliquité ε)',
+    '🧫':'sans dimension [0,1] (part de la boucle CLAW moderne, 1 = 📱)',
     # Clés d'INTERFACE : pas des grandeurs physiques, mais leur type est déclaré, jamais « inconnu ».
     '📝':'texte (pas une grandeur)',
     '🖼':'texte — chemin d\'image de texture (pas une grandeur)',
@@ -63,6 +56,8 @@ NATURE_2 = {   # pour les clés 🍰… : de quoi est-ce une proportion ?
     '🗻':'de surface — géologie (m²/m²)',
     '📛':'d\'énergie — effet de serre (W/W)',
     '⚽':'obstruction du voile SW (sans dimension)',
+    '📅':'du TEMPS — part de l\'année (s/s)',
+    '☀️':'d\'énergie — part de l\'insolation reçue (J/J)',
 }
 # Composés d'unités, sans emoji nouveau
 UNITE_COMPOSEE = {'🧲⚖️':'kg/m²/s (flux de MASSE)'}
@@ -162,7 +157,8 @@ for rel, ls in lignes.items():
     for i, l in enumerate(ls, 1):
         s = l.strip()
         if not s or s.startswith('//') or s.startswith('*'): continue
-        for m in re.finditer(r'\b(CONST|CONV|EARTH)\.([A-Za-z_][A-Za-z0-9_]*)\b', l):
+        # Pas INTERIEUR.CONST.X (un autre objet) ni une famille citée CONST.M_* : seulement CONST.X ou window.CONST.X.
+        for m in re.finditer(r'(?:(?<=window\.)|(?<![\w.$]))(CONST|CONV|EARTH)\.([A-Za-z_][A-Za-z0-9_]*)\b(?!\*)', l):
             CONSTANTES[m.group(1) + '.' + m.group(2)].append((rel, i, s[:190]))
         for m in re.finditer(r"CLOUD_SW\.([A-Z_][A-Z0-9_]*)\b", l):
             CONSTANTES['CLOUD_SW.' + m.group(1)].append((rel, i, s[:190]))
@@ -206,6 +202,10 @@ def _defs_cloud_sw():
         DEFS['CLOUD_SW.' + m.group(1)] = (rel, i + 1, m.group(2).strip(), u.group(1) if u else None,
                                           (u.group(2) if u else com).strip())
 _defs_physics(); _defs_cloud_sw()
+# Tables nommées (littéral tableau sur plusieurs lignes) : pas une grandeur scalaire ; leur contenu est déclaré ici, comme CONTENEUR.
+STRUCTURES = {'EARTH.ZONES': 'table [{ cle, x0, x1, f }] — bornes en x = sin φ (sans dimension), f part de la surface du globe (m²/m²)'}
+for n, u in STRUCTURES.items():
+    DEFS[n] = DEFS[n][:3] + (u,) + DEFS[n][4:]
 FONCTIONS = {n for n, d in DEFS.items() if d[2].startswith('function')}
 for n in list(FONCTIONS):
     if DEFS[n][3] is None:                                         # méthodes (EARTH.zoneAnnualInsolation…)

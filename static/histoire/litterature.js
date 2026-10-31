@@ -31,29 +31,13 @@
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
 //                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
 //                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
-// Version 1.12.0
-// Date: 2026-10-26
+// Version 1.13.0
+// Date: [October 29, 2026]
 // logs :
+//   - v1.13.0: L.AN = window.AN_PRESENT, l'origine des âges du moteur (config/configTimeline.js), plus un second 2025.
 //   - v1.12.0: bande PhanDA élargie du désaccord entre méthodes (Inglis et al. 2020, en quadrature) ; médiane inchangée.
 //   - v1.11.0: Hadéen continu — surface de Zahnle 2010 fig. 3 numérisée, fin de l'océan de magma entre ~1 Ma (Lebrun 2013) et
 //     ~4 Ma (Hamano 2013) ; corps noir jusqu'au dernier ☄️ (1 000 ans avant la collision).
-//   - v1.10.0: Archéen 3,5 → 3,2 Ga : enveloppe KT2018 + Blake 2010 aux points de KT2018 (médiane = milieu des deux), plus
-//     de créneau à bords verticaux.
-//   - v1.9.0: L.segments / L.serie / L.a(t) : la courbe cyan en un seul endroit — Histoire la trace, le moteur y lit la
-//     graine 🌡️🧮 et la fourchette tC du banc.
-//   - v1.8.0: bornes extrêmes resserrées : Hadéen 4,49–4,41 Ga borne basse 0 °C (eau libre, Zahnle 2010 ; Wilde 2001) au lieu
-//     de −53 ; snowball paléoprotérozoïque sur 2 460–2 426 Ma seulement (Gumsley 2017), plus sur toute l'instabilité.
-//   - v1.7.0: ⚫ = corps noir + glace des ☄️ (équation sur la séquence de ⚫), bond vertical à la collision ; ancre
-//     d'accrétion fondue retirée (citée dans la source du corps noir).
-//   - v1.6.0: bande = ± 1σ là où la source donne une distribution : KT2018 recalculé à 16–84 % (mêmes tirages,
-//     mêmes médianes) ; PhanDA (5–95 %) et Snyder (2,5–97,5 %) interpolés à ± 1σ (L.unSigma). Fenêtres = fourchettes.
-//   - v1.5.0: avant l'Hadéen : corps noir jusqu'aux CAI (4,567 Ga, Connelly 2012) seulement, puis accrétion surface fondue
-//     [solidus ; vapeur de roche] (Abe & Matsui 1985, Matsui & Abe 1986) — plus un corps noir à −18,5 °C jusqu'à 4,51 Ga.
-//   - v1.4.0: L.precambrien — Archéen (Blake 2010) et Paléoprotérozoïque (Gumsley 2017) en plus du Cryogénien.
-//   - v1.3.1: Hadéen daté (Zahnle 2010) : chute rapide en ~2 Ma au lieu d'un plateau de 60 Ma et d'une pente droite.
-//   - v1.3.0: Cryogénien en fourchettes publiées (deux snowballs, serre de sortie, intervalle) au lieu de KT2018.
-//   - v1.2.0: courbe prolongée jusqu'à −5000 Ma : ancres hadéennes (ex-repères en boîtes) + KT2018 sur le
-//     Précambrien (4,0 Ga → 525 Ma, 95 %), au lieu d'un trou avant PhanDA.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.HISTOIRE = window.HISTOIRE || {};
 window.HISTOIRE.litterature = {
@@ -2410,7 +2394,7 @@ window.HISTOIRE.litterature.avecMethodes = (rows) => {
 // juge le modèle sur la bande que la page dessine, rien d'autre.
 (function () {
     const L = window.HISTOIRE.litterature;
-    L.AN = 2025;   // t = années avant L.AN
+    L.AN = window.AN_PRESENT;   // t = années avant L.AN, l'origine des âges du moteur (config/configTimeline.js, chargé avant)
     const tSnyder = L.snyder[0][0];
     // Hadéen (ancres sourcées) → Précambrien (KT2018 + fenêtres) → PhanDA → Snyder 2016 (Quaternaire, 1 ka) → instrumental.
     L.segments = [

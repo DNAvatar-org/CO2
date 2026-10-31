@@ -13,9 +13,10 @@
 #       Le journal _logs/courbe_<mode>.tsv est supprimé au début de chaque lancement (nouvelle session), puis
 #       écrit UNE LIGNE PAR CLIC dès qu'il est calculé ; recréé (avec son en-tête) s'il disparaît en route.
 #       À relancer après tout changement de physique ou de config (le code n'est pas figé).
-# Version 1.2.0
-# Date: 2026-09-24
+# Version 1.2.1
+# Date: [October 30, 2026]
 # logs :
+#   - v1.2.1: délai de 10 800 s, pour les 159 clics 🐾 de 🦣 (5 ka par clic).
 #   - v1.2.0: avancement affiché en direct ; journal TSV dans _logs/, écrit ligne à ligne pendant le calcul.
 #   - v1.1.0: mode frise ; journal TSV lisible (un clic par ligne, ordre chronologique).
 # Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -56,7 +57,7 @@ with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-
 lignes = []
 try:
     p = subprocess.Popen([sys.executable, '-u', os.path.join(HERE, 'run.py'), tmp, '--var', '__COURBE__',
-                          '--timeout', '5000', '--stream', '__PASSAGES__'],
+                          '--timeout', '10800', '--stream', '__PASSAGES__'],   # 🦣 : 159 clics 🐾, de 25 à 40 min
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=os.path.join(HERE, '..', '..'))
     for l in p.stdout:
         if l.startswith('…'):

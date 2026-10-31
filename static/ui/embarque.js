@@ -8,15 +8,17 @@
 //       (co2:pret). ?miroir : l'organigramme en symétrie d'axe vertical, à DROITE de la Terre (configOrganigramme.js
 //       TERRE_ECRAN.miroir, html.miroir). Chargé dans <head>, avant tout le reste : la config de l'organigramme le lit à sa
 //       construction.
-// Version 1.5.1
-// - 1.5.1 (2026-10-28): ETAT_VERSION 2 — DATA porte le socle des calottes (🔺📏🗻🧊) : un état gardé sans lui est recalculé.
-// Date: 2026-10-28
+// Version 1.5.8
+// - 1.5.8 (2026-10-31): ETAT_VERSION 9 — calottes à trois boîtes (calotte, terre libre, mer libre).
+// - 1.5.7 (2026-10-31): ETAT_VERSION 8 — marge des calottes par le haut du relief (physics/calottes.js 1.16.0).
+// - 1.5.6 (2026-10-31): ETAT_VERSION 7 — forêt portée, terre des latitudes, CH₄ des époques, sections efficaces σ(T, P).
+// Date: 2026-10-31
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
     const p = new URLSearchParams(location.search);
     /** L'état de l'organigramme gardé d'un chargement à l'autre (garderEtat) ; sa version : à monter si le moteur change */
-    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 2;
+    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 9;
     /** EMBARQUE.hote : le nom de la page hôte, ou null (page seule) ; EMBARQUE.miroir : organigramme à droite de la Terre */
     window.EMBARQUE = {
         hote: p.get('hote'),

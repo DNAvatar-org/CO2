@@ -99,12 +99,17 @@ T° d'arrivée par clic (écart < 0,5 °C). La graine d'une hystérésis est la 
 
 ```bash
 (echo "window.__FRISES__=['🚂','📱']; window.__DEPARTS__=['🏔']; window.__FIN__='📱';"; cat scripts/bench_headless/quaternaire_chaine.js) > /tmp/q.js
-python3 scripts/bench_headless/run.py /tmp/q.js --var __Q__ --timeout 4000 --stream __Q__
+python3 scripts/bench_headless/run.py /tmp/q.js --var __Q__ --timeout 7200 --stream __Q__
 ```
 
 Un point par clic : T, gaz, obliquité de l'orbite, aire de glace par hémisphère, et par bande la calotte portée avant le
 clic, celle du calcul, son équilibre, son temps de réaction et sa marge. C'est ce qui montre si une calotte est bornée
 (équilibre sous le continent de la bande), si elle suit les cycles du Quaternaire ou si le climat s'emballe.
+
+Une chaîne qui traverse 🦣 suit son premier chemin, 🐾 : 159 clics (2,58 Ma → 800 ka, puis 5 ka par clic jusqu'à 15 ka,
+puis la base de l'Holocène). Un clic de 5 ka coûte 18 à 27 s au harnais node (3 CPU, machine chargée), et à peu près la
+moitié au banc navigateur. Le rapport vient de la même chaîne de 41 clics : 4,6 s par clic au navigateur, 8,4 s sous node.
+Au navigateur, la traversée de 🦣 demande donc de 25 à 40 min, d'où les délais : 7 200 s ici, 10 800 s pour `courbe_modele.py`.
 
 ## Ce que le banc NE teste pas
 

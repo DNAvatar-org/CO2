@@ -2,10 +2,11 @@
 // Desc: Éléments orbitaux de la Terre — excentricité, obliquité, longitude du périhélie — selon la solution La2004 (Laskar et
 //       al. 2004), de −51 Ma à l'an 2000, et insolation journalière moyenne (Berger 1978) à une latitude et une longitude
 //       solaire données.
-// Version 4.0.0
+// Version 4.1.0
+// - v4.1.0 (2026-10-29): constante solaire = L☉ / (4π UA²), celle du moteur (plus 1 361 écrit).
 // - v4.0.0 (2026-10-26): solution La2004 en table (astronomie_la04.js) à la place des séries de Berger & Loutre 1991 et
 //   Berger 1978 ; effet orbital direct en °C retiré (l'onglet Histoire trace l'insolation d'été à 65° N).
-// Date: [October 26, 2026]
+// Date: [October 29, 2026]
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
 // See https://commonsclause.com/ for full terms.
@@ -21,7 +22,12 @@
    longitude solaire vraie, π/2 = solstice d'été boréal). Contrôle : en 2000, e 0,016702, ε 23,439°, ϖ 282,9° ; insolation au
    solstice d'été à 65° N à 0,5 W/m² de Berger & Loutre 1991 (477,9 contre 477,4), dont l'excentricité dérivait déjà (0,0172). */
 
-const SOLAR_CONSTANT = 1361;          // W/m², TSI mesurée (Kopp & Lean 2011)
+// Soleil actuel : luminosité nominale de l'UAI et unité astronomique — les nombres de CONST.L_SOLEIL_W et CONV.AU_M (physics.js,
+// chargé APRÈS moi dans le moteur, absent d'histoire.html et de test_milankovitch.html) ; constante solaire = flux à 1 UA,
+// L☉ / (4π UA²) = 1 361,13 W/m², la même que CONST.SOLAR_CONSTANT (TSI mesurée 1 360,8 ± 0,5, Kopp & Lean 2011 : 🎯).
+const L_SOLEIL_W = 3.828e26;          // [W] IAU 2015, résolution B3 (L☉ nominale)
+const UA_M = 1.496e11;                // [m]
+const SOLAR_CONSTANT = L_SOLEIL_W / (4 * Math.PI * UA_M * UA_M);   // [W/m²]
 const AN_REFERENCE = 1950;            // t = années après 1950.0 ; orbite de référence des anomalies (physics/orbite.js)
 const DEG_RAD = Math.PI / 180;
 const L04 = window.LA2004;
@@ -99,6 +105,8 @@ function parametresMilankovitch(anCalendaire) {
 }
 
 window.astronomie = {
+    L_SOLEIL_W,
+    UA_M,
     SOLAR_CONSTANT,
     AN_REFERENCE,
     DEBUT_AN,

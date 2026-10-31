@@ -1,5 +1,6 @@
 // File: organigramme/organigramme.js - Génération automatique du diagramme de flux énergétique
 // Desc: Module JavaScript pour créer automatiquement un diagramme de flux énergétique à partir d'un graphe (nœuds et arcs)
+// Logs: v1.0.133 CONST.SOLAR_CONSTANT n'est plus réécrite par le Soleil de l'époque ; albédo de glace « — » sans glace saisonnière.
 // Logs: v1.0.132 label.name en tableau : empilés au milieu de la flèche (18 px entre eux).
 // Logs: v1.0.131 arc.trace (configuration) : tracé imposé d'une flèche (émission de la surface depuis le point de liaison).
 // Logs: v1.0.130 nœud 🗺 crédits PALEOMAP retiré (texte du pied de page).
@@ -5147,7 +5148,6 @@ ORG.updateFluxLabels = function (eventId) {
   if (soleilData) {
     if (Number.isFinite(soleilData["🧲☀️"])) {
       updateLabel("solar_1UA_mw", soleilData["🧲☀️"]);
-      if (window.CONST) window.CONST.SOLAR_CONSTANT = soleilData["🧲☀️"];
     }
     if (Number.isFinite(soleilData["🔋☀️"])) {
       updateLabel("solar_power_total", soleilData["🔋☀️"]);
@@ -5471,12 +5471,10 @@ ORG.updateFluxLabels = function (eventId) {
         albedo: albedoCoeff["🪩🍰🏜️"].toFixed(2),
       },
       {
-        // Albédo de glace EFFECTIF (moyenne zonale Briegleb) si le moteur l'a publié, sinon coefficient de config.
+        // Albédo effectif de la glace saisonnière (moyenne pondérée par l'insolation) ; « — » sans glace saisonnière.
         emoji: CHARS.ICE,
         coverage: ice_cov_corps_noir,
-        albedo: (Number.isFinite(DATA["🪩"]["🪩🍰🧊"])
-          ? DATA["🪩"]["🪩🍰🧊"]
-          : albedoCoeff["🪩🍰🧊"]).toFixed(2),
+        albedo: DATA["🪩"]["🧮🪩🍰🧊"] === null ? "—" : DATA["🪩"]["🧮🪩🍰🧊"].toFixed(2),
       },
       {
         emoji: CHARS.CLOUD,

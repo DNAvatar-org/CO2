@@ -8,13 +8,13 @@
 //       à la fin du calcul en cours s'il y en a un. Chaque scénario fini, son résultat va à l'hôte (message co2:bilan :
 //       ppm de CO₂ — le chiffre de l'organigramme, sync_panels.js projectToVisu —, °C de surface, année atteinte) :
 //       l'hôte écrit le même chiffre que l'organigramme.
-// Version 1.2.1
+// Version 1.2.2
+// - 1.2.2 : l'époque remise par 📜👉 seul (DATA['📅'] en est l'accesseur)
 // - 1.2.1 : l'état gardé remis au premier calcul fait (demarrer), plus à sa place (loader_panels.js) : ce calcul, le ⚫
 //   que main.js clique au démarrage, était déjà parti et tournait ensuite sur l'état remis (calottes de 2300 à −5 Ga)
 // - 1.2.0 : l'état de fin gardé (EMBARQUE.garderEtat) ; restaurer — au chargement, mêmes émissions : DATA remis sans calcul,
 //   l'organigramme redessiné, co2:bilan et co2:pret tout de suite
-// - 1.1.0 : co2:bilan { ppm, tC, annee } à l'hôte, à la fin de chaque scénario
-// Date: 2026-10-21
+// Date: 2026-10-29
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.SCENARIO_HOTE = (function () {
     'use strict';
@@ -60,14 +60,13 @@ window.SCENARIO_HOTE = (function () {
         }
     }, 'scenario_hote');
 
-    /** L'état gardé de mes émissions (EMBARQUE.etatGarde) remis dans DATA (ses groupes, comme BENCH.voir), l'époque relue
-     *  de la frise, l'organigramme redessiné, puis l'interface comme à la fin d'un calcul (afficherCalcul). Seulement
-     *  quand aucun calcul n'est en cours : un calcul qui tournerait après repartirait de son époque (api.js prepare) sur
-     *  ces calottes, datées de la borne de la frise. */
+    /** L'état gardé de mes émissions (EMBARQUE.etatGarde) remis dans DATA (ses groupes, comme BENCH.voir ; l'époque
+     *  DATA['📅'] suit 📜👉), son nom relu de la frise, l'organigramme redessiné, puis l'interface comme à la fin d'un calcul
+     *  (afficherCalcul). Seulement quand aucun calcul n'est en cours : un calcul qui tournerait après repartirait de son
+     *  époque (api.js prepare) sur ces calottes, datées de la borne de la frise. */
     function restaurer() {
         const E = window.EMBARQUE.etatGarde, D = window.DATA;
         for (const k of Object.keys(E.DATA)) D[k] = E.DATA[k];
-        D['📅'] = window.TIMELINE[D['📜']['👉']];
         window.syncEpochFromTimelinePointer();   // 🗿 et le nom de l'époque (RUNTIME_STATE.currentEpochName) depuis 👉
         window.ORG.recreateNoyauRadiation();
         window.ORG.recreateTerreRadiation();

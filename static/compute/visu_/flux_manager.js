@@ -1,32 +1,31 @@
 // ============================================================================
 // File: flux_manager.js
 // Desc: Gestion centralisée des flux (valeurs et affichage)
-// Logs: 2026-09-24 — setGeothermalFlux n'écrit plus DATA['🌕'] (source unique : API_BILAN/geology/interieur.js).
+// Version 1.1.0
+// - v1.1.0 (2026-10-29): Soleil de l'époque = CONST.SOLAR_CONSTANT et CONST.L_SOLEIL_W × intensité, en variables locales
+//   (CONST n'est plus réécrite).
+// - 2026-09-24 : setGeothermalFlux n'écrit plus DATA['🌕'] (source unique : API_BILAN/geology/interieur.js).
+// Date: [October 29, 2026]
+// Copyright 2026 DNAvatar.org - Arnaud Maignan
 // ============================================================================
 
 (function (global) {
     const FluxManager = {
-        // Constantes de référence
-        SOLAR_CONSTANT_REF: 1361, // W/m² (valeur actuelle)
+        // Surface du Soleil (affichage du flux à sa surface) ; le Soleil actuel est celui du moteur (CONST, physics.js)
         SOLAR_SURFACE_AREA: 6.09e18, // m²
-        SOLAR_POWER_REF: 3.828e26, // W
 
         /**
-         * Met à jour l'intensité solaire et les affichages associés
+         * Met à jour l'intensité solaire et les affichages associés (affichage seul : CONST n'est pas réécrite)
          * @param {number} intensity - Facteur d'intensité (ex: 1.0 pour aujourd'hui, 0.7 pour Hadéen)
          */
         setSolarIntensity: function (intensity) {
-            if (typeof intensity !== 'number') {
-                console.warn('[FluxManager] Solar intensity is not a number:', intensity);
-                return;
-            }
+            if (!Number.isFinite(intensity)) throw new Error('[FluxManager] solar_intensity de l\'époque : ' + intensity + ' (pas un nombre fini)');
 
-            // 1. Source unique : CONST (physics.js)
-            const solarConstant = this.SOLAR_CONSTANT_REF * intensity;
-            window.CONST.SOLAR_CONSTANT = solarConstant;
+            // 1. Soleil de l'époque : le Soleil actuel du moteur (CONST, physics.js) × intensité
+            const solarConstant = window.CONST.SOLAR_CONSTANT * intensity;
 
             // 2. Calculs dérivés pour l'affichage
-            const solarPowerTotal = this.SOLAR_POWER_REF * intensity;
+            const solarPowerTotal = window.CONST.L_SOLEIL_W * intensity;
             const solarSurfaceFluxMW = (solarPowerTotal / this.SOLAR_SURFACE_AREA) / 1e6; // MW/m²
 
             // 3. Mise à jour du DOM (Flux Diagram)
