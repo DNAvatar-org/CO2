@@ -1,9 +1,10 @@
 // File: CO2/static/texts/epochs_alt2sec.js - Récits alt2sec des époques et des événements
 // Desc: En français, dans l'architecture, je suis le TEXTE (histoire de la Terre) affiché en bulle longue (~2 s)
 //       sur les boutons d'époque de la frise et sur les boutons d'événement.
-// Version 1.3.1
-// Date: [October 30, 2026]
+// Version 1.3.2
+// Date: [November 1, 2026]
 // logs :
+//   - v1.3.2 (2026-11-01): premier clic 🐾 jusqu'à 805 ka, aux masses du début du Quaternaire.
 //   - v1.3.1 (2026-10-30): 🐾 en clics de 5 000 ans ; récit de séquence (premier, courant, dernier) choisi par le rang du clic dans
 //     la séquence de la config, sans compte écrit ici.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -399,7 +400,8 @@ const EVENT_STORY = {
         '🐾': new RecitSequence({
             premier: 'Pas à pas — d\'abord le saut jusqu\'aux plus vieilles carottes de glace\n\n' +
               'Avant 800 000 ans, aucune carotte : le CO₂ n\'est pas connu cycle par cycle. Ce premier clic franchit donc d\'un coup ' +
-              '1,8 million d\'années, jusqu\'au plus vieil air piégé dans la glace antarctique.\n\n' +
+              '1,8 million d\'années avec le CO₂ et le méthane du début du Quaternaire, jusqu\'à 5 000 ans du plus vieil air piégé ' +
+              'dans la glace antarctique ; le clic suivant y entre.\n\n' +
               'Ensuite, chaque clic avance de 5 000 ans — un quart de cycle de précession, un huitième d\'oscillation de ' +
               'l\'obliquité — avec le CO₂ et le méthane mesurés à cette date.',
             courant: 'Pas à pas — 5 000 ans de plus\n\n' +

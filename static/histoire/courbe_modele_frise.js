@@ -289,7 +289,7 @@ window.HISTOIRE.modeleFrise = {
    "dt": null,
    "mode": "frise",
    "ep": "🦣",
-   "T": 14.13,
+   "T": 14.12,
    "glace": 0.019,
    "ppm": 281.7,
    "Tint": 1277.5,
@@ -348,5 +348,5 @@ window.HISTOIRE.modeleFrise = {
    "st": "converged"
   }
  ],
- "genere": "2026-10-31"
+ "genere": "2026-11-01"
 };
