@@ -13,7 +13,7 @@
     'use strict';
     const H = window.HISTOIRE;
     H.T_MAX_AGO = 5.0e9;   // bord gauche le plus ancien : −5000 Ma
-    H.AN_FIN = window.TIMELINE_FUTUR['◀'];       // bord droit le plus récent : la borne de la frise (axe ; aucune donnée après 2024)
+    H.AN_FIN = window.TIMELINE_FUTUR['◀'];       // bord droit le plus récent : la borne de la frise (axe ; aucune donnée après 2025)
     H.T_MIN_AGO = H.AN_PRESENT - H.AN_FIN;       // en années avant 2025 (négatif)
     H.SPAN_MIN = 10;       // zoom maximal : 10 ans sur toute la largeur
     H.MARGE_PX = 120;      // vide à droite de 2300, en pixels quel que soit le zoom : la pointe reste lisible

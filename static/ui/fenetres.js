@@ -4,15 +4,12 @@
 //       scène. Une seule dépliée à la fois : sous la rangée, contre le bord droit, son titre éclairé avec un −. Un onglet
 //       cliqué déplie sa fenêtre, ISS les replie toutes (switchTab, loader_panels.js).
 //       Taille commune à toutes les fenêtres, bornée au panneau : par défaut LARGEUR_DEFAUT et jusqu'au-dessus des boutons
-//       ⓒ et ⛶ du coin bas droit, ou celle choisie à la poignée (coin bas gauche), retenue en cookie. Au premier
-//       chargement, Spectrale est ouverte (loader_panels.js).
-// Version 1.3.0
+//       ⓒ et ⛶ du coin bas droit, ou celle choisie à la poignée (coin bas gauche) ou au bord gauche (largeur seule),
+//       retenue en cookie. Au premier chargement, Spectrale est ouverte (loader_panels.js).
+// Version 1.4.0
+// - v1.4.0: bord gauche saisissable (largeur seule).
 // - v1.3.0: titres en rangée horizontale en haut ; hauteur par défaut jusqu'au-dessus de ⓒ et ⛶.
-// - v1.2.2: plus de bas de pile : Temps et Point de vue de la page ISS vont à gauche, sous Atmosphère (onglets_graphe.js).
-// - v1.2.1: FENETRES.ouverte() (Entrée relayée à Milankovitch, onglets_graphe.js).
-// - v1.2.0: taille par défaut 1000 × 555 px (la fenêtre ne suit plus le bord de la Terre).
-// - v1.1.0: poignée coin bas gauche (largeur, hauteur) ; taille en cookie.
-// Date: 2026-10-16
+// Date: 2026-11-02
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -45,15 +42,16 @@
     const BOUTONS_BAS = 46;     // [px] haut de ⓒ depuis le bas du panneau (12 + 34 : pages/ISS #bCredits, seul dans le coin)
     const FROLE = 4;            // [px] entre le bas de la fenêtre et ⓒ, ⛶
     let ouverte = null;     // id de la fenêtre dépliée, ou null
-    // Taille { largeur, hauteur } [px] choisie à la poignée et retenue en cookie, ou null : la taille par défaut
-    // (LARGEUR_DEFAUT, et la hauteur jusqu'au-dessus de ⓒ et ⛶, qui suit le panneau).
+    // Taille choisie { largeur, hauteur } [px], retenue en cookie (« auto » pour null) : chacune null tant qu'on ne l'a pas
+    // choisie (la poignée choisit les deux, le bord gauche la largeur seule) — la taille par défaut, LARGEUR_DEFAUT et la hauteur
+    // jusqu'au-dessus de ⓒ et ⛶, qui suit le panneau.
     const COOKIE_TAILLE = 'bilan_radiatif_fenetre';
     const LARGEUR_DEFAUT = 1000;
     const TAILLE_MIN = { largeur: 260, hauteur: 160 };
     const souvenir = document.cookie.split('; ').find((c) => c.startsWith(COOKIE_TAILLE + '='));
-    let taille = null;
+    let taille = { largeur: null, hauteur: null };
     if (souvenir !== undefined) {
-        const [largeur, hauteur] = souvenir.split('=')[1].split(',').map(Number);
+        const [largeur, hauteur] = souvenir.split('=')[1].split(',').map((v) => (v === 'auto' ? null : Number(v)));
         taille = { largeur: largeur, hauteur: hauteur };
     }
     /** Haut de la fenêtre dépliée : sous la rangée des titres (page : le rectangle du panneau ISS). */
@@ -63,6 +61,12 @@
         largeur: Math.min(Math.max(t.largeur, TAILLE_MIN.largeur), page.width - 2 * MARGE),
         hauteur: Math.min(Math.max(t.hauteur, TAILLE_MIN.hauteur), page.bottom - MARGE - hautFenetre(page))
     });
+    /** La taille de la fenêtre dépliée, bornée au panneau : chaque dimension choisie, sinon LARGEUR_DEFAUT et jusqu'au-dessus de
+     *  ⓒ et ⛶. */
+    const tailleCourante = (page) => bornee({
+        largeur: taille.largeur === null ? LARGEUR_DEFAUT : taille.largeur,
+        hauteur: taille.hauteur === null ? page.bottom - BOUTONS_BAS - FROLE - hautFenetre(page) : taille.hauteur
+    }, page);
 
     const titre = (id) => document.querySelector('.fenetre-tete[data-fenetre="' + id + '"]');
     const bouton = (id) => document.getElementById('tab-' + id);
@@ -72,7 +76,7 @@
     function poser() {
         const page = document.getElementById('iss-panel').getBoundingClientRect();
         const haut = hautFenetre(page), droite = page.right - MARGE;
-        const t = bornee(taille === null ? { largeur: LARGEUR_DEFAUT, hauteur: page.bottom - BOUTONS_BAS - FROLE - haut } : taille, page);
+        const t = tailleCourante(page);
         const rangee = document.getElementById('fenetres-titres').style;
         rangee.top = (page.top + MARGE) + 'px';
         rangee.right = (document.documentElement.clientWidth - droite) + 'px';
@@ -102,31 +106,41 @@
         window.ONGLETS_GRAPHE.envoyerMargesISS();
     }
 
-    /** Poignée (coin bas gauche de la fenêtre dépliée) : le bord droit reste, la souris donne la largeur et la hauteur,
-     *  bornées au panneau ; Temps et Point de vue suivent. Au relâcher : taille en cookie, spectre redimensionné. */
-    function brancherPoignee() {
-        const poignee = document.getElementById('fenetre-poignee');
+    /** Glisser un élément de la fenêtre dépliée : le bord droit reste, voulue(e, page) donne les dimensions que la souris choisit
+     *  (les autres gardent leur choix ou leur défaut), bornées au panneau ; Temps et Point de vue suivent. Au relâcher : taille en
+     *  cookie, spectre redimensionné. */
+    function brancherGlisser(element, voulue) {
+        const page = () => document.getElementById('iss-panel').getBoundingClientRect();
         const glisser = (e) => {
-            const page = document.getElementById('iss-panel').getBoundingClientRect();
-            taille = bornee({ largeur: page.right - MARGE - e.clientX, hauteur: e.clientY - hautFenetre(page) }, page);
+            const p = page(), v = voulue(e, p), t = bornee(Object.assign(tailleCourante(p), v), p);
+            for (const k of Object.keys(v)) taille[k] = t[k];
             poser();
             window.ONGLETS_GRAPHE.envoyerMargesISS();
         };
         const lacher = () => {
-            poignee.removeEventListener('pointermove', glisser);
-            document.cookie = COOKIE_TAILLE + '=' + Math.round(taille.largeur) + ',' + Math.round(taille.hauteur)
+            element.removeEventListener('pointermove', glisser);
+            element.removeEventListener('pointerup', lacher);
+            element.removeEventListener('pointercancel', lacher);
+            element.classList.remove('glisse');
+            const ecrire = (v) => (v === null ? 'auto' : Math.round(v));
+            document.cookie = COOKIE_TAILLE + '=' + ecrire(taille.largeur) + ',' + ecrire(taille.hauteur)
                 + '; max-age=31536000; path=/; SameSite=Lax';
             window.dispatchEvent(new Event('resize'));   // Plotly et canvas du spectre à la nouvelle taille (plot.js)
         };
-        poignee.addEventListener('pointerdown', (e) => {
+        element.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            poignee.setPointerCapture(e.pointerId);
-            poignee.addEventListener('pointermove', glisser);
+            element.setPointerCapture(e.pointerId);
+            element.classList.add('glisse');
+            element.addEventListener('pointermove', glisser);
+            element.addEventListener('pointerup', lacher);
+            element.addEventListener('pointercancel', lacher);
         });
-        poignee.addEventListener('pointerup', lacher);
-        poignee.addEventListener('pointercancel', lacher);
     }
-    brancherPoignee();
+    // Poignée (coin bas gauche) : largeur et hauteur ; bord gauche : la largeur seule.
+    brancherGlisser(document.getElementById('fenetre-poignee'),
+        (e, p) => ({ largeur: p.right - MARGE - e.clientX, hauteur: e.clientY - hautFenetre(p) }));
+    brancherGlisser(document.getElementById('fenetre-bord'),
+        (e, p) => ({ largeur: p.right - MARGE - e.clientX }));
 
     window.FENETRES = {
         montrer: montrer,

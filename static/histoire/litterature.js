@@ -24,20 +24,19 @@
 //                         PhanDA de l'Holocène, 14,0 °C. Remplace les 4 étages PhanDA du Quaternaire.
 //                         Fichier « Snyder 2016-Nature-Temperature reconstruction.xlsx » (carolynsnyder.com)
 //         · instrumental: 1850–1900 = 13,5 °C (Copernicus ESOTC 2024) ; 2000 = 14,4 °C (GISTEMP v4
-//                         +0,39 sur 14,0 de Jones et al. 1999) ; 2024 = 13,5 + 1,60 = 15,1 °C (Copernicus) ;
+//                         +0,39 sur 14,0 de Jones et al. 1999) ; 2024 = 13,5 + 1,60 = 15,1 °C et 2025 = 13,5 + 1,47 = 14,97 °C (Copernicus) ;
 //                         incertitude ±0,5 °C sur l'ABSOLU (Jones et al. 1999)
 //         · glaciations : intervalles DATÉS des glaciations globales ; aucune température (pas de proxy
 //                         pendant un Snowball, Hoffman et al. 2017)
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
 //                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
 //                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
-// Version 1.13.0
-// Date: [October 29, 2026]
+// Version 1.14.0
+// Date: [November 2, 2026]
 // logs :
+//   - v1.14.0: 2025 mesuré (Copernicus, +1,47 °C sur 1850–1900) : la courbe va jusqu'à L.AN.
 //   - v1.13.0: L.AN = window.AN_PRESENT, l'origine des âges du moteur (config/configTimeline.js), plus un second 2025.
 //   - v1.12.0: bande PhanDA élargie du désaccord entre méthodes (Inglis et al. 2020, en quadrature) ; médiane inchangée.
-//   - v1.11.0: Hadéen continu — surface de Zahnle 2010 fig. 3 numérisée, fin de l'océan de magma entre ~1 Ma (Lebrun 2013) et
-//     ~4 Ma (Hamano 2013) ; corps noir jusqu'au dernier ☄️ (1 000 ans avant la collision).
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.HISTOIRE = window.HISTOIRE || {};
 window.HISTOIRE.litterature = {
@@ -2255,7 +2254,8 @@ window.HISTOIRE.litterature = {
     instrumental: [
         [150, 13.0, 13.5, 14.0],   // 1850–1900 (Copernicus ESOTC 2024)
         [25,  13.9, 14.4, 14.9],   // 2000 (GISTEMP v4 + Jones 1999)
-        [1,   14.6, 15.1, 15.6]    // 2024 : +1,60 °C sur 1850–1900 (Copernicus)
+        [1,   14.6, 15.1, 15.6],   // 2024 : +1,60 °C sur 1850–1900 (Copernicus)
+        [0,   14.47, 14.97, 15.47] // 2025 : +1,47 °C sur 1850–1900 (Copernicus, Global Climate Highlights 2025)
     ],
     glaciations: [
         { t0: 717e6, t1: 659e6, label: 'Sturtien', src: 'Hoffman et al. 2017, Sci. Adv. 3:e1600983 (U-Pb : 717 → 659,3–658,5 Ma)' },

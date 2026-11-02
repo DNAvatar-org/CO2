@@ -1,47 +1,13 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.4.0
+   Version 1.5.0
+   - v1.5.0: bord gauche saisissable de la fenêtre dépliée (.fenetre-bord, largeur seule).
    - v1.4.0: un seul plein écran, en bas à droite, au graphisme des boutons de la page ISS (.iss-zen-btn retiré).
    - v1.3.1: embarquée réduite (Energies et Atmosphère repliés : le survol de la feuille du tamagoshi) — plus de logo EDS
      (#cell-reemis), la t° seule.
-   - v1.3.0: titres des fenêtres en rangée horizontale en haut, par-dessus la scène (.fenetres-titres).
-   - v1.2.6: embarquée — Energies / Atmosphère visibles (leur bloc, le nom d'époque, est caché : visibility: visible).
-   - v1.2.5: page embarquée (html.embarque, static/ui/embarque.js) : ni onglets, ni fenêtres, ni pied de page, ni fond étoilé,
-     ni page ISS, la souris seulement sur ce qui se clique (et les fenêtres modales), le panneau sur toute la hauteur ; miroir (html.miroir) : Energies / Atmosphère et le bandeau du bas à droite.
-   - v1.2.4: le − de la fenêtre dépliée aussi dans son coin haut gauche (.fenetre-replier) ; bande de 32 px en haut des
-     fenêtres d'onglet, le contenu (Science : Configuration) ne passe plus sous les −.
-   - v1.2.3: barre d'onglets cachée ; titres de fenêtres en 04B_03 italique ; Energies / Atmosphère sous l'époque ; en ISS, T° et
-     pression dans un rond posé sur la Terre, titre traversé par la souris ; organigramme coupé à son bord.
-   - v1.2.2: pied de page, liens GitHub avec logo (.credits-git).
-   - v1.2.1: poignée coin bas gauche de la fenêtre dépliée (.fenetre-poignee) ; --fenetre-gauche.
-   - v1.2.0: onglet ISS en fond, les autres onglets en fenêtres empilées en haut à droite (.fenetre-tete, .fenetre-ouverte).
-   - v1.1.17: fenêtre Spectre collée en haut, de la Terre au bord droit, bouton dans son coin ; vue Terre–Lune : cercle d'atmosphère effacé.
-   - v1.1.16: onglet ISS, fenêtre Spectre repliable au-dessus de Temps (.iss-spectre-tete, body.spectre-deplie).
-   - v1.1.15: body.iss-horizon (page ISS en caméra de l'ISS) : organigramme invisible.
-   Copyright 2025 DNAvatar.org - Arnaud Maignan
+   Date: 2026-11-02
+   Copyright 2026 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
-   Date: 2025-03-08
-   Logs:
-   - v1.1.13: ISS : seuls les boutons et le Soleil captent la souris (le cercle d'atmosphère couvrait la Terre ISS).
-   - v1.1.12: frise tout à gauche, sur toute la hauteur ; les panneaux commencent après elle.
-   - v1.1.11: Histoire : titre et organigramme cachés ; ✕ du Bench et de Milankovitch ; Milankovitch recollé après Science.
-   - v1.1.10: sélecteurs préfixés #visu-panel (l'organigramme en plein restait position: relative, donc décalé).
-   - v1.1.9: frise à droite partout ; organigramme en plein (ISS : Terre ISS, titre par-dessus ; Histoire : globe au
-     centre, titre masqué) ; 🛰 près du cercle (plus collés à droite).
-   - v1.1.8: tous les onglets en pleine page (body.onglet-plein), frise collée à droite, 🛰 au bord droit du panneau ;
-     Terre ISS : body.terre-iss.
-   - v1.1.7: ✕ de l'onglet Science (.onglet-fermer) : retour à l'onglet ISS.
-   - v1.1.6: onglet en pleine page (body.onglet-plein, ISS) : titre, organigramme et frise par-dessus.
-   - Extracted from index.html inline <style>.
-   - v1.0.7: .credits-footer-utf8 — lien utf8 coin bas-droit du footer (index.html)
-   - v1.1.5: ⛶ du panneau ISS à la place exacte du ⛶ de la page ISS (masqué en ?onglet).
-   - v1.1.4: bouton ⛶ du panneau ISS (.iss-zen-btn).
-   - v1.1.3: spectre caché en display: none (plus visibility).
-   - v1.1.2: onglets de la zone du graphe sur fond transparent.
-   - v1.1.1: barre d'onglets pleine largeur (souris traversante), Milankovitch aligné à droite.
-   - v1.1.0: onglets dans la zone du graphe spectral (.onglet-graphe, position fixe) ; règles pleine page des panneaux
-     scie / bench / milankovitch / histoire retirées (body.*-panel-active n'est plus posé).
-   - v1.0.8: #histoire-panel (histoire.html) aligné sur #milankovitch-panel
    ============================================================ */
 
 /* --- Onglets (tabs-bar) : Visuel / Scientifique --- */
@@ -373,6 +339,43 @@ body.terre-iss .onglet-graphe.fenetre-ouverte {
     border-bottom-left-radius: 12px;
 }
 body.terre-iss.fenetre-deplie .fenetre-poignee { display: block; }
+/* Bord gauche de la fenêtre dépliée (fenetres.js) : le glisser l'élargit ou la rétrécit. Bande de 10 px à cheval sur le bord,
+   entre l'arrondi du haut et la poignée ; au milieu, deux traits du blanc des rayures de la poignée ; le bord s'éclaire au
+   survol et pendant qu'on le glisse. */
+.fenetre-bord {
+    display: none;
+    position: fixed;
+    z-index: 970;
+    left: calc(var(--fenetre-gauche) - 5px);
+    top: calc(var(--fenetre-haut) + 12px);
+    width: 10px;
+    height: calc(var(--fenetre-hauteur) - 30px);
+    cursor: ew-resize;
+    touch-action: none;
+}
+.fenetre-bord::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: transparent;
+    transition: background 0.15s;
+}
+.fenetre-bord:hover::before,
+.fenetre-bord.glisse::before { background: rgba(255, 255, 255, 0.3); }
+.fenetre-bord::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    width: 6px;
+    height: 28px;
+    margin-top: -14px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.55) 0 2px, transparent 2px 4px, rgba(255, 255, 255, 0.55) 4px 6px);
+}
+body.terre-iss.fenetre-deplie .fenetre-bord { display: block; }
 /* le − de la fenêtre la replie : pas de ✕ en plus (Bench, Science, Milankovitch) */
 body.terre-iss .fenetre-ouverte .onglet-fermer { display: none; }
 @keyframes fenetre-entree {
@@ -548,7 +551,7 @@ html.embarque {
     --visu-footer-h: 0px;
     --visu-panel-max-h: calc(100vh - 10px);
 }
-html.embarque :is(#galaxy-bg, .tabs-bar, .credits-footer, .fenetres-titres, .fenetre-poignee, .fenetre-replier, #plein-ecran,
+html.embarque :is(#galaxy-bg, .tabs-bar, .credits-footer, .fenetres-titres, .fenetre-poignee, .fenetre-bord, .fenetre-replier, #plein-ecran,
     .fps-display, .title-header-row) {
     display: none !important;
 }
