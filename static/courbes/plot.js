@@ -30,64 +30,36 @@
 // va avec .plot-container-wrapper { padding: 0; !!! Important ne pas changer !!!
 const PLOT_MARGINS = { l: 70, r: 75, t: 0, b: 75 }; // Marges ajustées pour éviter le débordement
 
-/** Axe altitude droite « miroir on » : bande vide au-dessus de 0 km (step = pas de graduation). */
-function yaxis2RangeMirrorOnKm(zMaxKm, stepKm) {
-    const zMax = Number(zMaxKm);
-    const step = Number(stepKm);
-    if (!Number.isFinite(zMax) || zMax <= 0 || !Number.isFinite(step) || step <= 0) {
-        return [Math.max(zMax, 0), 0];
-    }
-    return [zMax, -step];
-}
-
-/** Axe altitude droite « miroir off » : sens normal (0 en bas, z_max en haut). */
-function yaxis2RangeMirrorOffKm(zMaxKm) {
+/** Axe altitude droite : toujours dans le sens normal (0 en bas : Terre et nuages en bas) ; le bouton 🔃 n'inverse que la courbe. */
+function yaxis2RangeKm(zMaxKm) {
     const zMax = Number(zMaxKm);
     if (!Number.isFinite(zMax) || zMax <= 0) return [0, 1];
     return [0, zMax];
 }
 
-/** Source unique du sens d'axe altitude droite (swap runtime via bouton). */
-function yaxis2RangeByMirrorKm(zMaxKm, stepKm) {
-    if (window.RUNTIME_STATE.miroir_flux === true) {
-        return yaxis2RangeMirrorOnKm(zMaxKm, stepKm);
-    }
-    return yaxis2RangeMirrorOffKm(zMaxKm);
-}
-
 /** Axe intensité gauche : miroir_flux=false => inversé ; miroir_flux=true => normal. */
 function yaxisLuminanceRangeByMirror(yMax, stepY) {
     const yHi = Number(yMax);
-    const step = Number(stepY);
-    // NOTE INTENTIONNELLE (pas un bug) :
-    // Le bouton 🔃 pilote l’inversion via miroir_flux. En mode non-miroir (false),
-    // on affiche l’axe gauche en [max, -step] pour garder la cohérence visuelle
-    // avec l’axe altitude droit et la bande de raccord en bas.
+    // Mode non-miroir (false, défaut) : axe gauche inversé, 0 collé au bord haut.
     if (window.RUNTIME_STATE.miroir_flux !== true) {
-        // Bande vide au-dessus de 0 (comme yaxis2: [z_max, -step]) pour que les 0 ne soient pas au bord
-        // et restent alignables visuellement (même “bande”).
-        if (Number.isFinite(yHi) && yHi > 0 && Number.isFinite(step) && step > 0) {
-            return [yHi, -step];
-        }
         return [yHi, 0];
     }
     return [0, yHi];
 }
 
-/** Graduations affichées ≥ 0 (pas d’étiquettes négatives malgré borne haute −step). */
-function yaxis2TickValsFrom0(zMaxKm, stepKm) {
-    const zMax = Number(zMaxKm);
-    const step = Number(stepKm);
-    if (!Number.isFinite(zMax) || zMax < 0 || !Number.isFinite(step) || step <= 0) return [0];
-    const out = [];
-    for (let i = 0; i * step <= zMax + 1e-9; i++) {
-        out.push(i * step);
-    }
-    const last = out[out.length - 1];
-    if (last < zMax - 1e-6) {
-        out.push(zMax);
-    }
-    return out;
+/** Graduations d'altitude (axe droit) : plus elles montent, plus elles s'estompent et glissent vers la droite, en courbe
+ *  (décalage ∝ fraction², l'air qui se raréfie). Relu après chaque tracé Plotly (plotly_afterplot). */
+const ALTITUDE_TICK_DX_MAX_PX = 20;
+const ALTITUDE_TICK_OPACITE_HAUT = 0.2;
+function courberGraduationsAltitude() {
+    const textes = Array.from(document.querySelectorAll('#plot-container g.y2tick > text'));
+    const valeurs = textes.map((t) => parseFloat(t.textContent));
+    const haut = Math.max(...valeurs);
+    textes.forEach((t, i) => {
+        const f = valeurs[i] / haut;
+        t.setAttribute('dx', String(ALTITUDE_TICK_DX_MAX_PX * f * f));
+        t.style.opacity = String(1 - (1 - ALTITUDE_TICK_OPACITE_HAUT) * f);
+    });
 }
 
 /** Pic cible sur l’axe Y (luminance) : Planck(T sol) en tirets colorés ≈ cette fraction de la hauteur utile [0, y_max]. */
@@ -218,7 +190,7 @@ window.FLUX = window.FLUX || {};
 
 function ensureMiroirFluxState() {
     if (window.RUNTIME_STATE.miroir_flux !== true && window.RUNTIME_STATE.miroir_flux !== false) {
-        window.RUNTIME_STATE.miroir_flux = true; // défaut = axe miroir (comportement actuel)
+        window.RUNTIME_STATE.miroir_flux = true; // défaut = courbe normale, 0 de l'intensité en bas (bouton allumé)
     }
     return window.RUNTIME_STATE.miroir_flux === true;
 }
@@ -238,11 +210,11 @@ function syncMiroirFluxButtonState() {
     const btn = document.getElementById('plot-miroir-flux-btn');
     if (!btn) return;
     const on = ensureMiroirFluxState();
-    btn.classList.toggle('selected', on);
+    btn.classList.toggle('selected', on);   // allumé = courbe normale, celle par défaut
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     const alt0 = on
-        ? "Axe altitude miroir — cliquer pour inverser"
-        : "Axe altitude normal — cliquer pour inverser";
+        ? "Courbe normale — cliquer pour inverser"
+        : "Courbe inversée — cliquer pour inverser";
     btn.setAttribute('data-tooltip', alt0);
     btn.setAttribute('aria-label', alt0);
     btn.removeAttribute('title');
@@ -250,18 +222,6 @@ function syncMiroirFluxButtonState() {
         window.addTooltipFromAttribute(btn);
         btn.setAttribute('data-tooltip-initialized', 'true');
     }
-}
-
-function yaxis2StepKmFromFullLayout(ya2, rangeMax) {
-    if (ya2 && ya2.tickmode === 'array' && Array.isArray(ya2.tickvals) && ya2.tickvals.length >= 2) {
-        const vals = ya2.tickvals.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
-        if (vals.length >= 2) {
-            const d = vals[1] - vals[0];
-            if (d > 0) return d;
-        }
-    }
-    if (ya2 && Number.isFinite(ya2.dtick) && ya2.dtick > 0) return ya2.dtick;
-    return Math.max(1, rangeMax / 8);
 }
 
 function yaxis2RangeMaxKmFromFullLayout(ya2) {
@@ -325,31 +285,15 @@ PLOT.toggleMiroirFlux = function toggleMiroirFlux() {
     const plotContainer = document.getElementById('plot-container');
     if (!plotContainer || typeof Plotly === 'undefined' || !plotContainer._fullLayout) return;
     const ya = plotContainer._fullLayout.yaxis;
-    const ya2 = plotContainer._fullLayout.yaxis2;
     const yMaxLum = yaxisLuminanceMaxFromFullLayout(ya);
     const yStepLum = yaxisLuminanceStepFromFullLayout(ya, yMaxLum);
-    const rangeMax = yaxis2RangeMaxKmFromFullLayout(ya2);
-    const stepKm = yaxis2StepKmFromFullLayout(ya2, rangeMax);
-    const mirrorOn = ensureMiroirFluxState();
     const relayout = {
         'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
-        'yaxis.ticklabelposition': 'outside',
-        'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, stepKm),
-        'yaxis2.tickmode': mirrorOn ? 'array' : 'linear',
-        'yaxis2.ticklabelposition': 'outside'
+        'yaxis.ticklabelposition': 'outside'
     };
-    if (mirrorOn) {
-        relayout['yaxis2.tickvals'] = yaxis2TickValsFrom0(rangeMax, stepKm);
-        relayout['yaxis2.dtick'] = null;
-    } else {
-        relayout['yaxis2.dtick'] = stepKm;
-        relayout['yaxis2.tickvals'] = null;
-    }
     debugMiroirFluxLog('toggleMiroirFlux', {
-        miroir_flux: mirrorOn,
-        yaxisRange: relayout['yaxis.range'],
-        yaxis2Range: relayout['yaxis2.range'],
-        yaxis2Tickmode: relayout['yaxis2.tickmode']
+        miroir_flux: ensureMiroirFluxState(),
+        yaxisRange: relayout['yaxis.range']
     });
     Plotly.relayout(plotContainer, relayout).then(function () {
         drawAbsorptionBandIndicators();
@@ -673,7 +617,6 @@ function initPlot() {
     const yaxisInitStep = 5;
     const yInitTicks = buildLuminanceTicks(40);
     const yaxis2InitStepKm = 15;
-    const yaxis2InitMirrorOn = ensureMiroirFluxState();
     const layout = {
         autosize: true, // Éviter reset width/height à chaque Plotly.react (cycle)
         xaxis: {
@@ -721,17 +664,15 @@ function initPlot() {
             title: {
                 text: "Altitude (km)",
                 font: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
-                standoff: 10
+                standoff: 10 + ALTITUDE_TICK_DX_MAX_PX   // place des graduations décalées (courberGraduationsAltitude)
             },
             overlaying: 'y',
             side: 'right', // Altitude à droite
-            range: yaxis2RangeByMirrorKm(120, yaxis2InitStepKm),
+            range: yaxis2RangeKm(120),
             fixedrange: true, // Désactiver le zoom
             position: 1, // Position à 1 (droite)
-            tickmode: yaxis2InitMirrorOn ? 'array' : 'linear',
-            ...(yaxis2InitMirrorOn
-                ? { tickvals: yaxis2TickValsFrom0(120, yaxis2InitStepKm) }
-                : { dtick: yaxis2InitStepKm }),
+            tickmode: 'linear',
+            dtick: yaxis2InitStepKm,
             tickfont: getPlotlyFont(12, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             titlefont: getPlotlyFont(14, getDefaultTextColor()), // color: '#667eea' (bleu) en réserve
             showticklabels: true,
@@ -791,6 +732,7 @@ function initPlot() {
     }).then(() => {
         // Redimensionner le graphique Plotly à la bonne taille SI visible
         const plotEl = document.getElementById('plot-container');
+        plotEl.on('plotly_afterplot', courberGraduationsAltitude);
         // offsetParent est null si l'élément (ou un parent) est en display: none
         if (plotEl && plotEl.offsetParent !== null) {
             Plotly.Plots.resize(plotEl);
@@ -999,59 +941,32 @@ PLOT.updatePlotAltitudeAxis = function (atm_height_km) {
     const ya = plotContainer._fullLayout.yaxis;
     const yMaxLum = yaxisLuminanceMaxFromFullLayout(ya);
     const yStepLum = yaxisLuminanceStepFromFullLayout(ya, yMaxLum);
-    const mirrorOn = ensureMiroirFluxState();
     let relayout;
     if (rangeMax > 500) {
-        const tickvals = [0, 50, 100, 200, 400, 600, 800, 1000, 1200, 1500, 1800].filter(v => v <= rangeMax);
-        if (tickvals[tickvals.length - 1] < rangeMax) tickvals.push(Math.round(rangeMax));
-        const stepPad = tickvals.length >= 2 ? tickvals[1] - tickvals[0] : rangeMax / 8;
-        if (mirrorOn) {
-            relayout = {
-                'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
-                'yaxis.ticklabelposition': 'outside',
-                'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, stepPad),
-                'yaxis2.tickmode': 'array',
-                'yaxis2.tickvals': tickvals,
-                'yaxis2.dtick': null,
-                'yaxis2.ticklabelposition': 'outside'
-            };
-        } else {
-            relayout = {
-                'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
-                'yaxis.ticklabelposition': 'outside',
-                'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, stepPad),
-                'yaxis2.tickmode': 'linear',
-                'yaxis2.dtick': stepPad,
-                'yaxis2.tickvals': null,
-                'yaxis2.ticklabelposition': 'outside'
-            };
-        }
+        const stepPad = 50;
+        relayout = {
+            'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
+            'yaxis.ticklabelposition': 'outside',
+            'yaxis2.range': yaxis2RangeKm(rangeMax),
+            'yaxis2.tickmode': 'linear',
+            'yaxis2.dtick': stepPad,
+            'yaxis2.tickvals': null,
+            'yaxis2.ticklabelposition': 'outside'
+        };
     } else {
         const dt = rangeMax / 8;
-        if (mirrorOn) {
-            relayout = {
-                'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
-                'yaxis.ticklabelposition': 'outside',
-                'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, dt),
-                'yaxis2.tickmode': 'array',
-                'yaxis2.tickvals': yaxis2TickValsFrom0(rangeMax, dt),
-                'yaxis2.dtick': null,
-                'yaxis2.ticklabelposition': 'outside'
-            };
-        } else {
-            relayout = {
-                'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
-                'yaxis.ticklabelposition': 'outside',
-                'yaxis2.range': yaxis2RangeByMirrorKm(rangeMax, dt),
-                'yaxis2.tickmode': 'linear',
-                'yaxis2.dtick': dt,
-                'yaxis2.tickvals': null,
-                'yaxis2.ticklabelposition': 'outside'
-            };
-        }
+        relayout = {
+            'yaxis.range': yaxisLuminanceRangeByMirror(yMaxLum, yStepLum),
+            'yaxis.ticklabelposition': 'outside',
+            'yaxis2.range': yaxis2RangeKm(rangeMax),
+            'yaxis2.tickmode': 'linear',
+            'yaxis2.dtick': dt,
+            'yaxis2.tickvals': null,
+            'yaxis2.ticklabelposition': 'outside'
+        };
     }
     debugMiroirFluxLog('updatePlotAltitudeAxis', {
-        miroir_flux: mirrorOn,
+        miroir_flux: ensureMiroirFluxState(),
         yaxisRange: relayout['yaxis.range'],
         yaxis2Range: relayout['yaxis2.range']
     });
@@ -2338,28 +2253,26 @@ PLOT.updatePlot = function updatePlot(data) {
 
     // Construire la config yaxis2 séparément pour être sûr
     const yaxis2StepKm = has_atmosphere ? (z_max_km / 8) : (z_max_km / 4);
-    const yaxis2MirrorOn = ensureMiroirFluxState();
     debugMiroirFluxLog('updatePlot', {
-        miroir_flux: yaxis2MirrorOn,
+        miroir_flux: ensureMiroirFluxState(),
         y_max_luminance: y_max_luminance,
         yaxisRange: yaxisLuminanceRangeByMirror(y_max_luminance, dtick_luminance),
         z_max_km: z_max_km,
-        yaxis2Range: yaxis2RangeByMirrorKm(z_max_km, yaxis2StepKm)
+        yaxis2Range: yaxis2RangeKm(z_max_km)
     });
     const yaxis2Config = {
         title: {
             text: has_atmosphere ? "Altitude (km)" : "Pas d'atmosphère",
-            font: getPlotlyFont(14, getDefaultTextColor())
+            font: getPlotlyFont(14, getDefaultTextColor()),
+            standoff: 10 + ALTITUDE_TICK_DX_MAX_PX   // place des graduations décalées (courberGraduationsAltitude)
         },
         overlaying: 'y',
         side: 'right', // Altitude à droite
-        range: yaxis2RangeByMirrorKm(z_max_km, yaxis2StepKm),
+        range: yaxis2RangeKm(z_max_km),
         fixedrange: true, // Désactiver le zoom
         position: 1, // Position à 1 (droite)
-        tickmode: yaxis2MirrorOn ? 'array' : 'linear',
-        ...(yaxis2MirrorOn
-            ? { tickvals: yaxis2TickValsFrom0(z_max_km, yaxis2StepKm) }
-            : { dtick: yaxis2StepKm }),
+        tickmode: 'linear',
+        dtick: yaxis2StepKm,
         tickfont: getPlotlyFont(12, getDefaultTextColor()),
         titlefont: getPlotlyFont(14, getDefaultTextColor()),
         showline: true,

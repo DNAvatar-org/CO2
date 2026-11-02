@@ -17,7 +17,8 @@
 #       Écrit API_BILAN/data/paleogeo_zones.js.
 #       Usage : python3 -I paleodem_zones.py <dossier des CSV PaleoDEM> <sortie .js>
 #       Données : https://www.earthbyte.org/paleodem-resource-scotese-and-wright-2018/ (PaleoDEMS_long_lat_elev_csv_v2.zip)
-# Version 1.7.0
+# Version 1.8.0
+# - v1.8.0 (2026-11-02): n_morceaux, nombre effectif de dômes (morceaux connexes de la calotte, union-find).
 # - v1.7.0 (2026-11-01): r_libre, distance de la terre libre à la côte selon la part de terre couverte par une calotte.
 # - v1.6.2 (2026-10-31): maille des trapèzes jusqu'au pôle (poids nul au pôle) ; seuil du continent écrit dans la table
 #   (socle_continent_m).
@@ -418,8 +419,41 @@ def distance_libre(zu, w0, n):
         out.append(round(float((libre * D.ravel()).sum() / libre.sum() / d0[0]), 3))
     return out
 
+# Nombre effectif de dômes (n_morceaux) : une calotte est d'un seul tenant ; quand elle couvre la part f du CONTINENT de la bande,
+# la plus froide d'abord (même classement ⚠️ que r_libre), ses cellules forment des morceaux connexes (voisins par les côtés, le
+# méridien ±180 raccordé, sans sortir de la bande) d'aires A_i ; nombre effectif N = (Σ A_i)² / Σ A_i² (N dômes égaux de même
+# Σ A_i², la moyenne des aires pondérée par l'aire). Union-find incrémental : les cellules entrent dans l'ordre du classement.
+# Lu par physics/calottes.js (N dômes de rayon √(S/(N π))) et physics/saisons.js (l'air traverse un dôme de ce rayon).
+def morceaux(zu, w0, n, continent):
+    lignes = LIGNES[n][:, 0] > 0
+    w = (w0 * LIGNES[n])[:, :360] * continent[:, :360] * lignes[:, None]
+    tot = w.sum()
+    if tot == 0: return [1.0] * len(FRACTIONS_LIBRE)
+    x = np.sin(np.radians(LAT))[:, None] * np.ones((1, 360))
+    froid = T2_CLASSEMENT_K * (3 * x ** 2 - 1) / 2 - GAMMA_CLASSEMENT_K_M * np.nan_to_num(zu[:, :360])
+    ordre = [int(q) for q in np.argsort(np.where(w > 0, froid, np.inf), axis=None) if w.ravel()[q] > 0]
+    parent, A = {}, {}
+    def racine(q):
+        while parent[q] != q: parent[q] = parent[parent[q]]; q = parent[q]
+        return q
+    somme = carres = 0.0; out = []; k = 0
+    for q in ordre:
+        i, j = divmod(q, 360); a = float(w[i, j])
+        parent[q] = q; A[q] = a; somme += a; carres += a * a
+        for v in ((i - 1, j), (i + 1, j), (i, (j - 1) % 360), (i, (j + 1) % 360)):
+            vq = v[0] * 360 + v[1]
+            if 0 <= v[0] < w.shape[0] and vq in parent:
+                ra, rb = racine(q), racine(vq)
+                if ra != rb:
+                    carres -= A[ra] ** 2 + A[rb] ** 2; parent[rb] = ra; A[ra] += A[rb]; carres += A[ra] ** 2
+        while k < len(FRACTIONS_LIBRE) and FRACTIONS_LIBRE[k] * tot <= somme:
+            out.append(round(somme * somme / carres, 3)); k += 1
+    while len(out) < len(FRACTIONS_LIBRE): out.append(round(somme * somme / carres, 3))
+    return out
+
 tables = {}
 libres = {}
+morceaux_ = {}
 for age, (z, present) in CARTES.items():
     zu = np.where(EMPREINTE[age], SOCLE_U[age], z)
     continent = ~np.isnan(zu) & ((zu > SEUIL_CONTINENT_M) | EMPREINTE[age])
@@ -427,6 +461,7 @@ for age, (z, present) in CARTES.items():
     w0 = poids(present)
     tables[age] = {n: cellules(zu, continent, w0, n) for n, _, _ in BANDES}
     libres[age] = {n: distance_libre(zu, w0, n) for n, _, _ in BANDES}
+    morceaux_[age] = {n: morceaux(zu, w0, n, continent) for n, _, _ in BANDES}
 
 # Contrôle de lecture, carte de 0 Ma : aire [Mkm²], socle moyen [m] et part du Groenland (sa terre, inlandsis compris) de chaque
 # cellule des bandes polaires — la place de la calotte nord, c'est le moteur qui la choisit par le bilan.
@@ -471,6 +506,7 @@ ages = sorted(tables)
 sortie = {'ages_Ma': ages, 'tau_Pa': round(TAU_PA), 'tranches': TRANCHES, 'socle_continent_m': SEUIL_CONTINENT_M,
           'socle_bornes_m': SOCLE_BORNES_M,
           'fractions_libre': FRACTIONS_LIBRE, 'r_libre': {n: [libres[a][n] for a in ages] for n, _, _ in BANDES},
+          'n_morceaux': {n: [morceaux_[a][n] for a in ages] for n, _, _ in BANDES},
           'aire': {}, 'lat_deg': {}, 'socle_m': {}}
 for n, _, _ in BANDES:
     t = [tables[a][n] for a in ages]
@@ -480,7 +516,7 @@ for n, _, _ in BANDES:
                             for (A, X, Z, tot), E in zip(t, sortie['aire'][n])]
     sortie['socle_m'][n] = [[round(z / a) if e > 0 else 0 for a, z, e in zip(A, Z, E)] for (A, X, Z, tot), E in zip(t, sortie['aire'][n])]
 sortie['avant'] = {'part': repartir(AVANT['part']), 'socle_m': [round(v) for v in AVANT['socle_m']],
-                   'r_libre': [1.0] * len(FRACTIONS_LIBRE)}   # ❔ sans carte, pas de géographie : la terre libre garde la distance de la terre
+                   'r_libre': [1.0] * len(FRACTIONS_LIBRE), 'n_morceaux': [1.0] * len(FRACTIONS_LIBRE)}   # ❔ sans carte, pas de géographie : la terre libre garde la distance de la terre
 assert sum(round(v * UNITE) for v in sortie['avant']['part']) == UNITE, 'terre d’avant : somme ≠ 1'
 
 liste = lambda L: ', '.join(str(a) for a in L)
@@ -497,7 +533,8 @@ entete = f"""// File: API_BILAN/data/paleogeo_zones.js
 //       latitude [°] et socle [m] moyens (cellule vide : 0, 0, 0). Continent et terre émergée d'une bande sont les sommes de ses
 //       cellules. r_libre : distance à la côte (le long de la latitude, la glace comptée comme terre) de la terre émergée LIBRE
 //       quand une calotte couvre la part fractions_libre de la terre émergée de la bande, la plus froide d'abord (⚠️ classement
-//       T₂ P₂(sin φ) − Γ z), rapportée à celle de toute la terre émergée. Avant {AGE_MAX} Ma (avant) : la terre émergée de toutes les bandes de la carte de {AGE_MAX} Ma, part (somme 1) et socle
+//       T₂ P₂(sin φ) − Γ z), rapportée à celle de toute la terre émergée. n_morceaux : nombre effectif de dômes (Σ A)²/Σ A² des
+//       morceaux connexes que forme une calotte couvrant la part fractions_libre du continent de la bande, le plus froid d'abord. Avant {AGE_MAX} Ma (avant) : la terre émergée de toutes les bandes de la carte de {AGE_MAX} Ma, part (somme 1) et socle
 //       moyen de chaque classe.
 //       tau_Pa : seuil de la loi plastique sur socle d'Airy des calottes, dôme de rayon R = √(S/π), V = (8π/15) C R^(5/2),
 //       C = √(2 τ / (ρ_i g (1 − ρ_i/ρ_m))), fermé sur le volume et l'aire posés de l'Antarctique (Bedmap2 ; ⚠️ l'aire est une
@@ -509,7 +546,8 @@ entete = f"""// File: API_BILAN/data/paleogeo_zones.js
 //       (recalage en rotation), l'empreinte transportée de la calotte reçoit ce socle déchargé (⚠️ relief de la carte remplacé) :
 //       Antarctique {liste(CHARGEES)} Ma ; Groenland (socle chargé uniforme fermé sur BedMachine v3, ⚠️) {liste(GROENLAND_SURFACE_MA)} Ma.
 //       Lu par physics/calottes.js. Ne pas éditer à la main : régénérer.
-// Version 1.6.0
+// Version 1.7.0
+// - v1.7.0 (2026-11-02): n_morceaux, nombre effectif de dômes d'une calotte (morceaux connexes sur la carte).
 // - v1.6.0 (2026-11-01): r_libre, distance à la côte de la terre libre selon la part couverte par une calotte.
 // - v1.5.2 (2026-10-31): maille des trapèzes jusqu'au pôle (tranche 85–90° à son aire) ; seuil du continent (socle_continent_m).
 // - v1.5.1 (2026-10-30): parts en cent-millièmes par plus grands restes (terre d'avant de somme 1, continent ≤ 1).

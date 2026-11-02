@@ -4,9 +4,10 @@
 //       graine t° continue (chaîne de clics, orange, pleine) et graine t° imposée (frise de chaque époque, violette,
 //       tirets) —, insolation d'été à 65° N sur son axe à droite, logos d'époque en bandeau au début de leur époque.
 //       H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.10.1
+// Version 1.11.0
 // Date: 2026-10-28
 // logs :
+//   - v1.11.0 (2026-11-02): courbe du chemin 🦘 (courbe_modele_saut.js, rose, tirets-points) ; insolation sur au plus 1/3 de la hauteur, centrée sur l'orange.
 //   - v1.10.1 (2026-10-28): insolation d'été à 65° N jusqu'à la base de l'Holocène seulement.
 //   - v1.10.0 (2026-10-26): insolation d'été à 65° N (La2004, 2 derniers Ma, tirets or, échelle propre centrée sur la courbe
 //     violette, axe à droite et bouton afficher / masquer) à la place de l'effet orbital direct en °C.
@@ -34,15 +35,18 @@
 (function () {
     'use strict';
     const H = window.HISTOIRE;
-    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', mod: '#ff9f43', frise: '#d980fa', scen: '#7bed9f', glace: 'rgba(160, 200, 255, 0.45)',
+    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', litBandeTexte: 'rgba(102, 252, 241, 0.55)', mod: '#ff9f43', frise: '#d980fa', saut: '#ff6b81', scen: '#7bed9f', glace: 'rgba(160, 200, 255, 0.45)',
                    grille: 'rgba(69, 162, 158, 0.15)', texte: 'rgba(69, 162, 158, 0.6)', insol: '#f1c40f' };
     const px = t => (H.vue.xOffset - t) * H.vue.xScale;
     const py = T => H.vue.height / 2 - (T - H.vue.yOffset) * H.vue.yScale;
     let zones = [];   // zones survolables : { x0, x1, y0, y1, texte }
     const A = window.astronomie;   // insolation d'été à 65° N (table INSOL, courbe insolation65N)
     let cibles = [];  // logos cliquables : { x0, x1, y0, y1, id } — l'époque à lancer, comme la frise
-    const LEGENDE = [[COUL.lit, '··· histoire'], [COUL.mod, '— clictimes'], [COUL.frise, '- - époques + graine'],
-        [COUL.scen, '— mesures de la session'], [COUL.scen, '● dernier calcul'], [COUL.insol, '- - insolation d\'été 65° N (W/m², à droite)']];
+    // [couleur, symbole, texte, fond] : fond = la bande d'incertitude sous le symbole, comme sous la médiane cyan
+    const LEGENDE = [[COUL.lit, '···', 'Littérature', COUL.litBande], [COUL.litBandeTexte, '      ', 'incertitude', COUL.litBande],
+        [COUL.mod, '—', 'en continu'], [COUL.saut, '·-', 'saut 🦘 au DMG'], [COUL.frise, '- -', 'par époque'],
+        [COUL.scen, '—', 'mesures de la session'], [COUL.scen, '●', 'dernier calcul'], [COUL.insol, '- -', 'insolation d\'été 65° N (W/m², à droite)']].map(
+        ([couleur, symbole, texte, fond]) => ({ couleur, symbole, texte: symbole + ' ' + texte, fond }));
     const LEG_ECART = 24;   // px entre deux entrées de la légende
     // Formats du survol de l'insolation, créés une fois : toLocaleString avec options en recrée un à chaque appel
     // (≈ 40 µs la paire, ≈ 20 ms par image pour les ≈ 500 zones d'une vue large ; ≈ 1 µs ainsi).
@@ -175,8 +179,9 @@
         if (debut >= fin) return;
         if (INSOL === null) INSOL = tableInsol();
         let somme = 0;
-        for (let k = 0; k <= 32; k++) somme += valeurModele(H.modeleFrise, AN - (debut + (fin - debut) * k / 32));
-        const yc = py(somme / 33), k = (bas - haut) / (INSOL.max - INSOL.min);
+        for (let k = 0; k <= 32; k++) somme += valeurModele(H.modele, AN - (debut + (fin - debut) * k / 32));   // centrée sur l'orange
+        // Échelle propre (sans rapport avec les °C) : l'écart min–max de l'insolation occupe au plus le tiers de la hauteur.
+        const yc = py(somme / 33), k = Math.min(bas - haut, v.height / 3) / (INSOL.max - INSOL.min);
         const y = (w) => yc - (w - INSOL.moyenne) * k;
         const xAxe = v.width - 10;
         // Bouton afficher / masquer, sous la graduation la plus basse (gardé au-dessus de la légende).
@@ -225,7 +230,7 @@
     /** Légende rangée en autant de lignes qu'il faut pour tenir dans la largeur : { lignes: [[indices de LEGENDE]], largeurs }. */
     function rangerLegende(ctx) {
         ctx.font = '12px Tahoma';
-        const largeurs = LEGENDE.map((l) => ctx.measureText(l[1]).width), place = H.vue.width - 2 * LEG_ECART;
+        const largeurs = LEGENDE.map((l) => ctx.measureText(l.texte).width), place = H.vue.width - 2 * LEG_ECART;
         const lignes = [[]];
         LEGENDE.forEach((l, i) => {
             const ligne = lignes[lignes.length - 1];
@@ -293,6 +298,7 @@
         // violette en tirets : l'orange se voit entre les tirets). La médiane de la littérature, en pointillés, passe
         // par-dessus les deux.
         courbe(ctx, H.modele, COUL.mod, [], 'Clictimes (graine = T du calcul précédent)');
+        courbe(ctx, H.modeleSaut, COUL.saut, [10, 4, 2, 4], 'Clictimes, chemin 🦘 : saut au dernier maximum glaciaire puis déglaciation');
         courbe(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Époques + graine (graine = courbe cyan à ▶)');
         courbe(ctx, H.scenario, COUL.scen, [], 'Mesure de la session (graine : courbe cyan à la frise, puis T du calcul précédent)');
         mediane(ctx, lit, COUL.lit);
@@ -326,7 +332,9 @@
             let xLeg = (v.width - ligne.reduce((a, k) => a + leg.largeurs[k], 0) - LEG_ECART * (ligne.length - 1)) / 2;
             const yLeg = yLegende(r, leg.lignes.length);
             ligne.forEach((k) => {
-                ctx.fillStyle = LEGENDE[k][0]; ctx.fillText(LEGENDE[k][1], xLeg, yLeg);
+                const l = LEGENDE[k];
+                if (l.fond !== undefined) { ctx.fillStyle = l.fond; ctx.fillRect(xLeg - 2, yLeg - 11, ctx.measureText(l.symbole).width + 4, 15); }
+                ctx.fillStyle = l.couleur; ctx.fillText(l.texte, xLeg, yLeg);
                 xLeg += leg.largeurs[k] + LEG_ECART;
             });
         });

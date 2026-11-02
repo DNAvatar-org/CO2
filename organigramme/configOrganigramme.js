@@ -719,6 +719,12 @@ const nodes = [
         domClass: 'timeline-events-logos'
     },
 
+    { // 🗺 crédits des cartes : au-dessus d'EVENEMENT (main.js poserBandeauBas), visible quand les cartes PALEOMAP sont à l'écran
+        id: 'credits-paleomap-btn', type: 'button', readOnly: false, logo: '🗺', zIndex: 222, radius: 18, logoScale: 1.1,
+        left: [], right: [], top: [{ text: 'PALEOMAP' }], bottom: [{ text: 'C.R. Scotese' }],
+        tooltip: 'Crédits cartographiques', fillColor: 'rgba(30,30,30,0.55)', strokeColor: 'rgba(180,180,180,0.4)', strokeSize: 1
+    },
+
     { // 🎞 + SKIP (cellule id #plot-anim-toggle, flux-cell + span .organigram-logo — organigramme.js) : rangée du bas, après
       // EVENEMENT (main.js poserBandeauBas)
         id: 'timeline-scenario-anim',

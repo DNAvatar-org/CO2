@@ -276,6 +276,38 @@
     transform: none !important;
 }
 
+/* Colonne EVENEMENT : le 🗺 crédits PALEOMAP posé au-dessus, hors flux (n'abaisse pas EVENEMENT) */
+#bandeau-bas-evenement {
+    position: relative;
+    display: flex;
+    pointer-events: none;
+}
+#bandeau-bas-evenement > #cell-credits-paleomap-btn {
+    position: absolute !important;
+    left: 0 !important;
+    top: auto !important;
+    bottom: 100%;
+    transform: none !important;
+    margin: 0 -90px -40px;
+    pointer-events: none;
+}
+#bandeau-bas-evenement > .flux-cell {
+    position: relative;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin: 0 -90px -40px;
+    pointer-events: none;
+}
+/* Libellés PALEOMAP / Scotese : cyan des ppm, visibles même si ⚗ / 🛰 masquent les autres libellés */
+#cell-credits-paleomap-btn .flux-label,
+#flux-diagram.hide-organigram-arrows #cell-credits-paleomap-btn .flux-label,
+#flux-diagram.hide-organigram-observation-metrics #cell-credits-paleomap-btn .flux-label {
+    visibility: inherit !important;
+    color: rgb(135, 206, 250) !important;
+    border-color: rgb(173, 216, 230) !important;
+}
+
 /* Panneaux ⚗ DETAILS / 🛰 OBS — mise en page sur les wrappers (#plot-anim-toggle hors de ce jeu de classes) */
 #bandeau-bas-ligne > #organigram-config-wrap.organigram-buttons,
 .flux-diagram > #observation-config-wrap.organigram-buttons,

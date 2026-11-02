@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 # File: CO2/scripts/bench_headless/courbe_modele.py
 # Desc: Joue la chaîne de clics du modèle dans le banc headless et en garde l'historique, pour que
-#       CO2/histoire.html n'ait RIEN à recalculer au chargement. Deux modes :
+#       CO2/histoire.html n'ait RIEN à recalculer au chargement. Trois modes :
 #         python3 CO2/scripts/bench_headless/courbe_modele.py          (= clics)
 #             frise ⚫ puis que des tictimes, l'état arrive d'une époque à l'autre
 #             → CO2/static/histoire/courbe_modele.js        (window.HISTOIRE.modele)
 #             → _logs/courbe_clics.tsv (au fil de l'eau)
+#         python3 CO2/scripts/bench_headless/courbe_modele.py saut
+#             la même chaîne de clics, chemin 🦘 (le saut au dernier maximum glaciaire) au premier clic de 🦣 ; points gardés
+#             depuis l'entrée dans 🦣 → CO2/static/histoire/courbe_modele_saut.js (window.HISTOIRE.modeleSaut)
 #         python3 CO2/scripts/bench_headless/courbe_modele.py frise
 #             le clic sur la frise de chaque époque, rien d'autre (graine t° imposée)
 #             → CO2/static/histoire/courbe_modele_frise.js  (window.HISTOIRE.modeleFrise)
@@ -13,9 +16,10 @@
 #       Le journal _logs/courbe_<mode>.tsv est supprimé au début de chaque lancement (nouvelle session), puis
 #       écrit UNE LIGNE PAR CLIC dès qu'il est calculé ; recréé (avec son en-tête) s'il disparaît en route.
 #       À relancer après tout changement de physique ou de config (le code n'est pas figé).
-# Version 1.2.1
+# Version 1.3.0
 # Date: [October 30, 2026]
 # logs :
+#   - v1.3.0: mode saut (chemin 🦘 de 🦣), écrit à part.
 #   - v1.2.1: délai de 10 800 s, pour les 159 clics 🐾 de 🦣 (5 ka par clic).
 #   - v1.2.0: avancement affiché en direct ; journal TSV dans _logs/, écrit ligne à ligne pendant le calcul.
 #   - v1.1.0: mode frise ; journal TSV lisible (un clic par ligne, ordre chronologique).
@@ -23,11 +27,11 @@
 import json, os, subprocess, sys, datetime, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODE = sys.argv[1] if len(sys.argv) > 1 else 'clics'
-if MODE not in ('clics', 'frise'):
-    sys.exit('mode inconnu : ' + MODE + ' (clics | frise)')
+if MODE not in ('clics', 'frise', 'saut'):
+    sys.exit('mode inconnu : ' + MODE + ' (clics | frise | saut)')
 HIST = os.path.abspath(os.path.join(HERE, '..', '..', 'static', 'histoire'))
-OUT_JS = os.path.join(HIST, 'courbe_modele.js' if MODE == 'clics' else 'courbe_modele_frise.js')
-VAR = 'modele' if MODE == 'clics' else 'modeleFrise'
+OUT_JS = os.path.join(HIST, {'clics': 'courbe_modele.js', 'frise': 'courbe_modele_frise.js', 'saut': 'courbe_modele_saut.js'}[MODE])
+VAR = {'clics': 'modele', 'frise': 'modeleFrise', 'saut': 'modeleSaut'}[MODE]
 OUT_TSV = os.path.abspath(os.path.join(HERE, '..', '..', '..', '_logs', 'courbe_' + MODE + '.tsv'))
 
 COLS = [('t_Ma', lambda p: '%.6g' % (p['t'] / 1e6)), ('epoque', lambda p: p['ep']), ('mode', lambda p: p['mode']),
@@ -78,7 +82,7 @@ data['genere'] = datetime.date.today().isoformat()
 with open(OUT_JS, 'w', encoding='utf-8') as f:
     f.write('// File: CO2/static/histoire/' + os.path.basename(OUT_JS) + '\n'
             '// Desc: COURBE DU MODÈLE (mode ' + MODE + ') — ENGENDRÉE par CO2/scripts/bench_headless/courbe_modele.py'
-            + ('' if MODE == 'clics' else ' frise') + ', ne pas éditer.\n'
+            + ('' if MODE == 'clics' else ' ' + MODE) + ', ne pas éditer.\n'
             '//       t en années avant 2025 ; un point par clic, dans l\'ordre chronologique.\n'
             '// Copyright 2026 DNAvatar.org - Arnaud Maignan\n'
             'window.HISTOIRE = window.HISTOIRE || {};\n'

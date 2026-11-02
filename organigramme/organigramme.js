@@ -2126,6 +2126,11 @@ function createCell(
         return;
       }
 
+      if (nodeId === "credits-paleomap-btn") {
+        document.getElementById("dlg-credits").showModal();
+        return;
+      }
+
       if (NON_CHECKABLE_NODE_IDS.has(nodeId)) {
         return;
       }

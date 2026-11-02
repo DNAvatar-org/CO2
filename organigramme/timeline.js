@@ -153,6 +153,7 @@ function updateCreditsVisibility() {
     document.getElementById('credits-paleomap').style.display = paleomap ? '' : 'none';
     document.getElementById('credits-imagerie').style.display = imagerie ? '' : 'none';
     document.getElementById('credits-cartes').style.display = paleomap || imagerie ? '' : 'none';
+    document.getElementById('cell-credits-paleomap-btn').style.visibility = paleomap ? 'visible' : 'hidden';
 }
 
 /** Libellé d’une date de l’échelle : "-5000 Ma" ou "2025", "2050" pour les années récentes */
@@ -378,16 +379,16 @@ function updateTimeline() {
         }
     }
 
-    // Date calculée sous la T° : début de l'époque + temps écoulé (2000+300=2300 ; −5000+12=−4988 Ma)
+    // Date calculée sous la T° : début de l'époque + temps écoulé, le résultat seul (2300 ; −4988 Ma ; −770 ka)
     const epoch = getEpochAtTimelineIndex();
     const debut = epoch['▶'], ecoule = window.infoTimeMa;
     const dateEl = document.getElementById('date-synthese');
     if (debut < 1e6) {
-        const ans = Math.round(ecoule * 1e6);
-        dateEl.textContent = ans === 0 ? String(debut) : debut + '+' + ans + '=' + (debut + ans);
+        dateEl.textContent = String(debut + Math.round(ecoule * 1e6));
     } else {
-        const ma = (x) => String(+x.toFixed(1));
-        dateEl.textContent = ecoule === 0 ? ma(-debut / 1e6) + ' Ma' : ma(-debut / 1e6) + '+' + ma(ecoule) + '=' + ma(-debut / 1e6 + ecoule) + ' Ma';
+        // Arrivée à moins de 1 Ma (🦣 : 21 ka, pas de 5 ka) : en ka, le dixième de Ma rendait 0
+        const age = debut - ecoule * 1e6, f = age < 1e6 ? 1e3 : 1e6;
+        dateEl.textContent = String(+(-age / f).toFixed(1)) + (f === 1e3 ? ' ka' : ' Ma');
     }
 
     // Curseurs ⏴ ⏵ : même div que les dates d’époque, positionnement par calcul (y0 aligné sur la zone texte)
