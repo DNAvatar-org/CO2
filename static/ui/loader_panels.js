@@ -1,6 +1,7 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.4.6
+// Version 1.4.7
+// - v1.4.7: onglet ISS, températures mesurées (static/mesures/ : données HadCRUT5, carte, boîte de commande).
 // - v1.4.6: l'état gardé remis APRÈS le premier calcul (⚫, main.js le clique au démarrage : il était déjà parti, et
 //   tournait ensuite sur l'état remis — calottes de 2300 à la date de ⚫ : erreur CALOTTES), dans SCENARIO_HOTE.demarrer.
 // - v1.4.5: page embarquée, état gardé pour mes émissions (embarque.js etatGarde) : pas de premier calcul — l'état remis
@@ -63,6 +64,9 @@
             'static/texts/epochs_alt2sec.js',
             'organigramme/organigramme.js',
             'organigramme/zoom_terre.js',   // molette sur la Terre : TERRE_ECRAN (après la construction de l'organigramme)
+            'static/mesures/anomalies_hadcrut5.js',   // onglet ISS : anomalies de température mesurées (window.HADCRUT5)
+            'static/mesures/carte_anomalies.js',      // leur texture de globe (après configOrganigramme.js : fonds/)
+            'static/mesures/controle_anomalies.js',   // boîte « Températures mesurées » (index.html), lue par onglets_graphe.js
             'static/compute/visu_/visu_dichotomie.js',
             '../API_BILAN/demo/js/scie_convergence.js',
             'static/sync_panels.js',

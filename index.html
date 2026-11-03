@@ -72,6 +72,7 @@
     <link rel="stylesheet" href="organigramme/organigramme.css">
     <link rel="stylesheet" href="static/css/planet-effect.css">
     <link rel="stylesheet" href="static/css/index-shell.css">
+    <link rel="stylesheet" href="static/mesures/mesures.css">
     <script>
         (function () {
             var host = window.location.hostname || '';
@@ -242,6 +243,75 @@
     <!-- Plein écran, le seul de la page, coin bas droit (index-shell.css) : hors du pied de page, que le plein écran retire. -->
     <button type="button" id="plein-ecran" class="plein-ecran-btn" title="Plein écran"
         onclick="document.fullscreenElement === null ? document.documentElement.requestFullscreen() : document.exitFullscreen()">⛶</button>
+    <!-- Terre en fond : températures MESURÉES (HadCRUT5) de l'année de la frise, plaquées sur la Terre à la place de la carte de
+         l'époque, sous Temps de la page ISS, de 1850 à 2025 seulement (static/mesures/ ; message iss:cartes de
+         static/ui/onglets_graphe.js). Les [data-hadcrut] sont remplis depuis les données (window.HADCRUT5). -->
+    <div id="anomalies-mesures" class="anomalies-mesures">
+        <div id="anomalies-bascule" class="titre-affichage" title="Plaquer sur la Terre les températures mesurées de l'année de la frise"><button type="button"></button><span>Temperatures mesurees</span></div>
+        <div class="anomalies-corps">
+            <div class="anomalies-jauge" title="Opacité des températures sur la Terre">
+                <span>α</span>
+                <input type="range" id="anomalies-opacite" min="0" max="100" step="5" value="50" aria-label="Opacité des températures sur la Terre">
+                <span id="anomalies-opacite-valeur"></span>
+            </div>
+            <div class="anomalies-contenu">
+                <div class="anomalies-ligne">
+                    <span id="anomalies-annee" class="anomalies-annee"></span>
+                    <label><input type="radio" name="anomalies-version" value="analyse" checked> interpolé</label>
+                    <label><input type="radio" name="anomalies-version" value="mesure"> mesuré seul</label>
+                    <button type="button" id="anomalies-info" class="anomalies-info" title="Comment se mesure cette carte">i</button>
+                </div>
+                <div id="anomalies-legende"></div>
+                <div id="anomalies-bilan" class="anomalies-bilan"></div>
+            </div>
+        </div>
+        <div id="anomalies-popup" class="anomalies-popup" hidden>
+            <button type="button" id="anomalies-popup-fermer" class="anomalies-popup-fermer" title="Fermer">✕</button>
+            <h3>Comment se mesure cette carte</h3>
+            <p>Chaque case de 5° × 5° montre l'écart de sa température, pour l'année de la frise, à sa propre moyenne de
+                <span data-hadcrut="reference"></span>.</p>
+            <h4>Sur les terres : l'air à 2 m</h4>
+            <p>Des thermomètres sous abri, à environ 2 m du sol, relevés chaque jour dans les stations météo : 10 639 stations
+                rassemblées, dont 7 983 assez longues pour entrer dans la grille.</p>
+            <h4>En mer : l'eau de surface</h4>
+            <p>Des navires, d'abord par un seau hissé à bord puis par l'eau aspirée pour refroidir le moteur, et de plus en plus
+                des bouées, dérivantes ou ancrées. Chaque mesure est ramenée à la température de l'eau à 20 cm de profondeur.</p>
+            <h4>Des écarts, pas des températures</h4>
+            <p>Une station de vallée et une station de crête voisines diffèrent de plusieurs degrés, mais leurs écarts à leur propre
+                moyenne montent et descendent ensemble sur des centaines de kilomètres. On moyenne donc les écarts. La température
+                absolue de la Terre, vers 14 °C, n'est connue qu'à ±0,5 °C près : bien moins précisément que ses variations.</p>
+            <h4>Homogénéisation</h4>
+            <p>Une station déplacée, un abri ou un thermomètre changé, une heure de relevé modifiée, une ville qui grandit autour ;
+                en mer, le seau de toile remplacé par un seau isolé, puis par la prise d'eau du moteur : chacun crée un saut qui
+                n'est pas du climat. On le repère en comparant chaque série à ses voisines, et on le corrige avant de moyenner.</p>
+            <h4>Interpolation</h4>
+            <p>« Mesuré seul » ne colore que les cases qui contiennent des mesures ; les autres restent grises. « Interpolé »
+                remplit aussi les cases vides que les mesures voisines permettent d'estimer, d'après la façon dont les températures
+                varient ensemble. Chaque version est la moyenne de 200 tirages qui représentent l'incertitude.</p>
+            <h4>Réanalyse</h4>
+            <p>ERA5 (Copernicus, depuis 1940) n'est pas une mesure de plus : un modèle de prévision météo assimile toutes les
+                observations (stations, navires, ballons-sondes, avions, satellites) et calcule l'air à 2 m partout, heure par
+                heure. Les chiffres annuels de Copernicus en viennent : 15,10 °C en 2024, 14,97 °C en 2025.</p>
+            <h4>El Niño</h4>
+            <p>Une année El Niño, comme 2024, est chaude en surface parce que le Pacifique tropical remonte vers la surface une
+                chaleur qu'il stockait plus bas : il la déplace, il ne la crée pas. La carte mesure la surface, pas la chaleur de
+                l'océan entier.</p>
+            <h4>Et les satellites ?</h4>
+            <p><b>MSU / AMSU (UAH, RSS), depuis 1979</b> : un radiomètre micro-ondes capte l'émission thermique de l'oxygène de
+                l'air (O₂, vers 50–60 GHz). Il donne la température moyenne d'une couche de troposphère épaisse de plusieurs
+                kilomètres, pas l'air à 2 m. Les satellites se relaient et leur orbite dérive : les raccords et les corrections font
+                l'écart entre UAH et RSS.</p>
+            <p><b>MODIS, depuis 2000</b> : l'infrarouge thermique donne la température de « peau » des terres (sol, roches, toits,
+                feuillage), par ciel clair et à l'heure du passage seulement ; en plein jour, elle dépasse souvent l'air à 2 m de
+                plusieurs degrés.</p>
+            <p>Trois grandeurs différentes : l'air à 2 m et l'eau de surface (cette carte), une couche de troposphère (MSU), la peau
+                du sol (MODIS). Leurs évolutions se ressemblent, leurs valeurs ne se comparent pas.</p>
+            <p class="anomalies-source">Données : <span data-hadcrut="version"></span>, Met Office Hadley Centre et Climatic
+                Research Unit (université d'East Anglia), Morice et al. 2021 ; stations CRUTEM5 (Osborn et al. 2021) ; mer HadSST4
+                (Kennedy et al. 2019) ; Open Government Licence v3.0. Une année d'une case : moyenne de ses mois présents (au moins
+                <span data-hadcrut="moisMin"></span>). Absolu : Jones et al. 1999.</p>
+        </div>
+    </div>
 </body>
 
 </html>

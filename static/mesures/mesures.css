@@ -1,0 +1,144 @@
+/* File: CO2/static/mesures/mesures.css
+   Desc: Terre en fond — « Températures mesurées » (static/mesures/controle_anomalies.js) : sous Temps de la page ISS (left et
+         top posés depuis iss:fenetres), titre et + comme Energies / Atmosphère / Temps ; dépliée, le corps sous le titre (jauge
+         d'opacité verticale à gauche) ; la popup à droite. Visible seulement quand l'année de la frise a des mesures (.dans-mesures).
+   Version 1.0.0
+   Date: [November 03, 2026]
+   Copyright 2026 DNAvatar.org - Arnaud Maignan */
+
+.anomalies-mesures {
+    display: none;
+    position: fixed;
+    z-index: 980;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    color: #e8eaf0;
+    font: 11px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+}
+body.terre-iss .anomalies-mesures.dans-mesures { display: flex; }
+html.embarque body.terre-iss .anomalies-mesures { display: none; }
+
+/* dépliée : au style des fenêtres de la page ISS (pages/ISS css/pesquet.css --panel, --stroke) */
+.anomalies-corps {
+    display: none;
+    gap: 10px;
+    width: 310px;
+    padding: 8px 10px;
+    background: rgba(13, 17, 26, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+}
+.anomalies-mesures.allumee .anomalies-corps { display: flex; }
+.anomalies-contenu {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 5px;
+}
+/* Jauge d'opacité : verticale, 0 en bas */
+.anomalies-jauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 9px;
+    color: #9aa3b5;
+    font-variant-numeric: tabular-nums;
+}
+.anomalies-jauge input {
+    flex: 1;
+    width: 16px;
+    min-height: 60px;
+    margin: 0;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    cursor: pointer;
+}
+.anomalies-ligne {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.anomalies-annee {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.anomalies-ligne label { white-space: nowrap; cursor: pointer; }
+.anomalies-info {
+    margin-left: auto;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    font: italic 600 12px/1 Georgia, serif;
+    color: #e8eaf0;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 50%;
+    cursor: pointer;
+}
+.anomalies-info:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* Légende : 11 classes égales en largeur, bornes aux jointures */
+.anomalies-classes { display: flex; height: 10px; }
+.anomalies-classes span { flex: 1; }
+.anomalies-bornes {
+    position: relative;
+    height: 13px;
+    font-size: 9px;
+    color: #9aa3b5;
+}
+.anomalies-bornes span {
+    position: absolute;
+    transform: translateX(-50%);
+}
+.anomalies-unite { font-size: 10px; color: #9aa3b5; }
+.anomalies-vide {
+    display: inline-block;
+    width: 10px;
+    height: 8px;
+    vertical-align: -1px;
+    background: #3c3c3c;   /* la Terre grise assombrie (carte_anomalies.js VIDE) */
+}
+.anomalies-bilan { font-size: 10px; color: #c6ccd8; }
+
+/* Popup : à droite de la boîte, son haut à celui du titre */
+.anomalies-popup {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 0;
+    width: 440px;
+    max-width: calc(100vw - 340px);
+    max-height: 75vh;
+    overflow-y: auto;
+    padding: 10px 14px 12px;
+    font-size: 12px;
+    line-height: 1.45;
+    background: rgba(13, 17, 26, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+}
+.anomalies-popup[hidden] { display: none; }
+.anomalies-popup h3 {
+    margin: 0 24px 6px 0;
+    font-size: 13px;
+}
+.anomalies-popup h4 {
+    margin: 10px 0 2px;
+    font-size: 12px;
+    color: #f4a582;
+}
+.anomalies-popup p { margin: 0 0 4px; }
+.anomalies-popup .anomalies-source { margin-top: 10px; font-size: 10px; color: #9aa3b5; }
+.anomalies-popup-fermer {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    padding: 0 4px;
+    font-size: 14px;
+    color: #e8eaf0;
+    background: none;
+    border: none;
+    cursor: pointer;
+}

@@ -3,7 +3,9 @@
 //       (#visu-panel), son interface (titre, organigramme, frise) par-dessus. Les panneaux ne sont pas déplacés dans le DOM
 //       (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont en position fixe, recalés quand
 //       la zone change de taille, au redimensionnement et au défilement (c'est le body qui défile, index-shell.css).
-// Version 1.10.0
+// Version 1.11.0
+// - v1.11.0: températures mesurées sur la Terre (static/mesures/) : leur carte de l'année de la frise à la place de celle de
+//   l'époque, lisible de nuit ; anneeFrise exportée.
 // - v1.10.0: plus de bouton ⛶ du panneau ISS (zen de la page ISS) : le plein écran de la page, en bas, est le seul.
 // - v1.9.0: page embarquée (static/ui/embarque.js) : pas de page ISS — la Terre est celle de l'hôte (iss:terre relayé, en
 //   coordonnées de cette page), les cartes de l'époque lui vont (co2:cartes) ; miroir : le centre de la Terre à placeDuCote du
@@ -92,6 +94,8 @@
     /** Cartes de l'époque pour la page ISS : { jour, nuit } en URL absolues, jour = null dès l'an 2000 (ses vraies textures),
      *  nuit = null sans carte de nuit (pas de lumières). */
     function cartesEpoque() {
+        // Températures mesurées sur la Terre (static/mesures/controle_anomalies.js) : leur carte, sans lumières de nuit.
+        if (window.ANOMALIES_MESUREES.montree()) return { jour: window.ANOMALIES_MESUREES.url(), nuit: null };
         if (anneeFrise() >= AN_TERRE_REELLE) return { jour: null, nuit: null };
         const nuit = window.DATA['📜']['🌙'];
         return { jour: new URL(window._lastPlanetTexturePath, CO2_PUBLIE).href, nuit: nuit === '' ? null : new URL(nuit, CO2_PUBLIE).href };
@@ -106,7 +110,10 @@
     const AN_PAYS = 1750;
     const T_DRAPER_K = 798;
     const NOT_IR_LAVE = 70;
-    const notIRISS = () => (window.DATA['🧮']['🧮🌡️'] >= T_DRAPER_K ? NOT_IR_LAVE : 0);
+    // Températures mesurées sur la Terre : la nuit montre la carte entière, qui se lit tout autour du globe.
+    const NOT_IR_MESURES = 100;
+    const notIRISS = () => (window.ANOMALIES_MESUREES.montree() ? NOT_IR_MESURES
+        : window.DATA['🧮']['🧮🌡️'] >= T_DRAPER_K ? NOT_IR_LAVE : 0);
     /** Page embarquée (static/ui/embarque.js) : les cartes de l'époque à l'hôte, qui les pose sur SA Terre (pas de page ISS) */
     function cartesHote() {
         const c = cartesEpoque();
@@ -298,5 +305,5 @@
 
     window.ONGLETS_GRAPHE = { PANNEAUX: PANNEAUX, placer: placer, brancher: brancher, spectreVisible: spectreVisible,
         chargerISS: chargerISS, effacerSpectre: effacerSpectre, envoyerMargesISS: envoyerMargesISS, entrerPleinePageISS: entrerPleinePageISS, sortirPleinePageISS: sortirPleinePageISS,
-        entrerHistoire: entrerHistoire, sortirHistoire: sortirHistoire };
+        entrerHistoire: entrerHistoire, sortirHistoire: sortirHistoire, anneeFrise: anneeFrise };
 })();

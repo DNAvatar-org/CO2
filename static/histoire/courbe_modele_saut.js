@@ -129,7 +129,7 @@ window.HISTOIRE.modeleSaut = {
    "dt": 0.000125,
    "mode": "clic",
    "ep": "📱",
-   "T": 14.01,
+   "T": 14.13,
    "glace": 0.025,
    "ppm": 369.9,
    "Tint": 1277.4,
@@ -145,7 +145,7 @@ window.HISTOIRE.modeleSaut = {
    "dt": 2.5e-05,
    "mode": "clic",
    "ep": "📱",
-   "T": 14.6,
+   "T": 14.57,
    "glace": 0.025,
    "ppm": 430.1,
    "Tint": 1277.4,
@@ -156,5 +156,5 @@ window.HISTOIRE.modeleSaut = {
    "st": "converged"
   }
  ],
- "genere": "2026-11-02"
+ "genere": "2026-11-03"
 };

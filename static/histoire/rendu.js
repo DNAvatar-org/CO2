@@ -1,41 +1,20 @@
 // File: CO2/static/histoire/rendu.js
 // Desc: Dessin : grille, glaciations datées (bandes), littérature (série continue −5000 Ma → 2025 avec sa
-//       bande d'incertitude, médiane en pointillés par-dessus), deux courbes du MODÈLE en segments de point à point —
-//       graine t° continue (chaîne de clics, orange, pleine) et graine t° imposée (frise de chaque époque, violette,
-//       tirets) —, insolation d'été à 65° N sur son axe à droite, logos d'époque en bandeau au début de leur époque.
-//       H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.11.0
-// Date: 2026-10-28
+//       bande d'incertitude, médiane en pointillés par-dessus), années mesurées par Copernicus (bleu, points reliés),
+//       courbes du MODÈLE en segments de point à point — chaîne de clics (orange, pleine), chemin 🦘 (rose), frise de chaque
+//       époque (violette, tirets) —, insolation d'été à 65° N sur son axe à droite, logos d'époque en bandeau au début de
+//       leur époque. H.survol() donne la source de ce qui est sous le curseur.
+// Version 1.12.0
+// Date: [November 3, 2026]
 // logs :
-//   - v1.11.0 (2026-11-02): courbe du chemin 🦘 (courbe_modele_saut.js, rose, tirets-points) ; insolation sur au plus 1/3 de la hauteur, centrée sur l'orange.
-//   - v1.10.1 (2026-10-28): insolation d'été à 65° N jusqu'à la base de l'Holocène seulement.
-//   - v1.10.0 (2026-10-26): insolation d'été à 65° N (La2004, 2 derniers Ma, tirets or, échelle propre centrée sur la courbe
-//     violette, axe à droite et bouton afficher / masquer) à la place de l'effet orbital direct en °C.
-//   - v1.9.2 (2026-10-22): légende — histoire, clictimes, époques + graine, mesures de la session.
-//   - v1.9.1 (2026-10-18): courbe verte = tous tes clics hors run (frise puis tictimes).
-//   - v1.9.0 (2026-10-16): effet orbital direct sur la température moyenne du globe (°C, tirets or, astronomie.js) ;
-//     légende sur plusieurs lignes si elle ne tient pas.
-//   - v1.6.5 (2026-10-16): point vert = le dernier calcul de l'interface (H.dernier), dans la légende.
-//   - v1.6.4 (2026-10-15): légende sur une ligne, centrée en X, en bas (au-dessus des dates de l'axe).
-//   - v1.6.3 (2026-10-15): courbe verte = tes calculs sur 📱 (H.scenario), légende à quatre lignes.
-//   - v1.6.2 (2026-10-15): survol d'un point du modèle = « T calculée », statut si non convergé ; noms des courbes = d'où vient la graine.
-//   - v1.6.1: sources et série lues dans litterature.js (L.segments, L.serie), plus construites ici.
-//   - v1.6.0: modèles en segments de biais d'un point au suivant (plus d'escalier).
-//   - v1.5.1: légende réduite à trois lignes (littérature, graine t° continue, graine t° imposée).
-//   - v1.5.0: les deux modèles (clics orange plein, frise violette en tirets) ; médiane de la littérature en pointillés,
-//     tracée en dernier pour laisser voir les modèles derrière.
-//   - v1.4.1: bande ± 1σ (PhanDA et Snyder interpolés par L.unSigma ; KT2018 recalculé à 16–84 %).
-//   - v1.4.0: série précambrienne unique (L.precambrien).
-//   - v1.3.2: repères ponctuels en boîtes retirés (illisibles) ; glaciations en fine bande sous les logos, plus pleine hauteur.
-//   - v1.3.1: Cryogénien (L.cryogenien, fourchettes publiées des snowballs) à la place de KT2018 sur 717,5 → 632,2 Ma.
-//   - v1.3.0: littérature continue jusqu'à −5000 Ma (ancres hadéennes + KT2018), raccords signalés au survol ;
-//     modèle en ESCALIER (l'état d'un clic tient jusqu'au suivant), survol = clic joué, sa durée, et l'état de
-//     l'intérieur (T potentielle, flux, puissance — API_BILAN/geology/interieur.js).
+//   - v1.12.0: années mesurées par Copernicus (L.copernicus), en bleu, hors de la cyan.
+//   - v1.11.0: courbe du chemin 🦘 (courbe_modele_saut.js, rose, tirets-points) ; insolation sur au plus 1/3 de la hauteur.
+//   - v1.10.1: insolation d'été à 65° N jusqu'à la base de l'Holocène seulement.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
     const H = window.HISTOIRE;
-    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', litBandeTexte: 'rgba(102, 252, 241, 0.55)', mod: '#ff9f43', frise: '#d980fa', saut: '#ff6b81', scen: '#7bed9f', glace: 'rgba(160, 200, 255, 0.45)',
+    const COUL = { lit: '#66fcf1', litBande: 'rgba(102, 252, 241, 0.15)', litBandeTexte: 'rgba(102, 252, 241, 0.55)', mod: '#ff9f43', frise: '#d980fa', saut: '#ff6b81', cop: '#4f8dff', scen: '#7bed9f', glace: 'rgba(160, 200, 255, 0.45)',
                    grille: 'rgba(69, 162, 158, 0.15)', texte: 'rgba(69, 162, 158, 0.6)', insol: '#f1c40f' };
     const px = t => (H.vue.xOffset - t) * H.vue.xScale;
     const py = T => H.vue.height / 2 - (T - H.vue.yOffset) * H.vue.yScale;
@@ -44,6 +23,7 @@
     let cibles = [];  // logos cliquables : { x0, x1, y0, y1, id } — l'époque à lancer, comme la frise
     // [couleur, symbole, texte, fond] : fond = la bande d'incertitude sous le symbole, comme sous la médiane cyan
     const LEGENDE = [[COUL.lit, '···', 'Littérature', COUL.litBande], [COUL.litBandeTexte, '      ', 'incertitude', COUL.litBande],
+        [COUL.cop, '●', 'années Copernicus (ERA5)'],
         [COUL.mod, '—', 'en continu'], [COUL.saut, '·-', 'saut 🦘 au DMG'], [COUL.frise, '- -', 'par époque'],
         [COUL.scen, '—', 'mesures de la session'], [COUL.scen, '●', 'dernier calcul'], [COUL.insol, '- -', 'insolation d\'été 65° N (W/m², à droite)']].map(
         ([couleur, symbole, texte, fond]) => ({ couleur, symbole, texte: symbole + ' ' + texte, fond }));
@@ -151,6 +131,21 @@
                 texte: nom + ' — ' + p.etape + pas + ' : T calculée ' + p.T.toFixed(1) + ' °C'
                     + (p.st === 'converged' ? '' : ' (⚠️ non convergé : ' + p.st + ', dernière valeur)') + ', glace ' + Math.round(p.glace * 100) + ' %, CO₂ ' + Math.round(p.ppm) + ' ppm'
                     + (p.Tint > 0 ? ' — intérieur ' + Math.round(p.Tint) + ' °C, ' + (p.geo >= 10 ? Math.round(p.geo).toLocaleString('fr-FR') : p.geo.toFixed(3)) + ' W/m² (' + p.TW.toLocaleString('fr-FR') + ' TW)' : '') });
+        }
+    }
+
+    /** Années mesurées par Copernicus (L.copernicus, [année, T, source]) : points reliés, la source au survol. */
+    function annees(ctx, rows, couleur) {
+        const v = H.vue, AN = H.litterature.AN;
+        ctx.strokeStyle = couleur; ctx.fillStyle = couleur; ctx.lineWidth = 1.5; ctx.beginPath();
+        rows.forEach((r, i) => { const x = px(AN - r[0]), y = py(r[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+        ctx.stroke(); ctx.lineWidth = 1;
+        for (const r of rows) {
+            const x = px(AN - r[0]), y = py(r[1]);
+            if (x < -5 || x > v.width + 5) continue;
+            ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 2 * Math.PI); ctx.fill();
+            zones.push({ x0: x - 6, x1: x + 6, y0: y - 6, y1: y + 6,
+                texte: r[2] + ' — réanalyse ERA5 : air à 2 m, une année mesurée' });
         }
     }
 
@@ -301,6 +296,7 @@
         courbe(ctx, H.modeleSaut, COUL.saut, [10, 4, 2, 4], 'Clictimes, chemin 🦘 : saut au dernier maximum glaciaire puis déglaciation');
         courbe(ctx, H.modeleFrise, COUL.frise, [8, 6], 'Époques + graine (graine = courbe cyan à ▶)');
         courbe(ctx, H.scenario, COUL.scen, [], 'Mesure de la session (graine : courbe cyan à la frise, puis T du calcul précédent)');
+        annees(ctx, L.copernicus, COUL.cop);
         mediane(ctx, lit, COUL.lit);
         // Le dernier calcul de l'interface (main.js, histoire:calcul) : gros point vert cerclé, par-dessus tout.
         if (H.dernier !== null) {

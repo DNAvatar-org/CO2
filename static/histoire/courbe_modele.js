@@ -3297,7 +3297,7 @@ window.HISTOIRE.modele = {
    "dt": 0.000125,
    "mode": "clic",
    "ep": "📱",
-   "T": 14.17,
+   "T": 14.14,
    "glace": 0.025,
    "ppm": 369.9,
    "Tint": 1277.4,
@@ -3313,7 +3313,7 @@ window.HISTOIRE.modele = {
    "dt": 2.5e-05,
    "mode": "clic",
    "ep": "📱",
-   "T": 14.57,
+   "T": 14.58,
    "glace": 0.025,
    "ppm": 430.1,
    "Tint": 1277.4,
@@ -3324,5 +3324,5 @@ window.HISTOIRE.modele = {
    "st": "converged"
   }
  ],
- "genere": "2026-11-02"
+ "genere": "2026-11-03"
 };

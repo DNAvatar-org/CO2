@@ -462,6 +462,22 @@
       "dest": "pages/bilan_radiatif/CO2/static/ui/fenetres.js"
     },
     {
+      "src": "static/mesures/anomalies_hadcrut5.js",
+      "dest": "pages/bilan_radiatif/CO2/static/mesures/anomalies_hadcrut5.js"
+    },
+    {
+      "src": "static/mesures/carte_anomalies.js",
+      "dest": "pages/bilan_radiatif/CO2/static/mesures/carte_anomalies.js"
+    },
+    {
+      "src": "static/mesures/controle_anomalies.js",
+      "dest": "pages/bilan_radiatif/CO2/static/mesures/controle_anomalies.js"
+    },
+    {
+      "src": "static/mesures/mesures.css",
+      "dest": "pages/bilan_radiatif/CO2/static/mesures/mesures.css"
+    },
+    {
       "src": "static/milankovitch/entrees.js",
       "dest": "pages/bilan_radiatif/CO2/static/milankovitch/entrees.js"
     },
