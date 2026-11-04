@@ -142,8 +142,8 @@ const PALEOMAP_CREDITS_MIN_MA = -750;
 const PALEOMAP_CREDITS_MAX_MA = -2;
 const IMAGERIE_CREDITS_MIN_YEAR = 2000;   // dès l'an 2000 la Terre de l'onglet ISS est la vraie (NASA GIBS, Sentinel-2)
 
-/** Crédits du pied de page (index.html) : chacun n'apparaît que lorsque ses images sont à l'écran —
- *  PALEOMAP de −750 à −2 Ma, NASA GIBS / Sentinel-2 dès l'an 2000. */
+/** Crédits des images, chacun seulement quand ses images sont à l'écran : PALEOMAP de −750 à −2 Ma (pied de page et
+ *  bouton 🗺), NASA GIBS / Sentinel-2 dès l'an 2000 (bouton 🌍 seul, pas dans le pied de page). */
 function updateCreditsVisibility() {
     const years = getTimelineCurrentYears();
     const ma = getTimelineCurrentMa();
@@ -151,9 +151,9 @@ function updateCreditsVisibility() {
     const paleomap = ma >= PALEOMAP_CREDITS_MIN_MA && ma <= PALEOMAP_CREDITS_MAX_MA;
     const imagerie = year >= IMAGERIE_CREDITS_MIN_YEAR;
     document.getElementById('credits-paleomap').style.display = paleomap ? '' : 'none';
-    document.getElementById('credits-imagerie').style.display = imagerie ? '' : 'none';
-    document.getElementById('credits-cartes').style.display = paleomap || imagerie ? '' : 'none';
+    document.getElementById('credits-cartes').style.display = paleomap ? '' : 'none';
     document.getElementById('cell-credits-paleomap-btn').style.visibility = paleomap ? 'visible' : 'hidden';
+    document.getElementById('cell-credits-imagerie-btn').style.visibility = imagerie ? 'visible' : 'hidden';
 }
 
 /** Libellé d’une date de l’échelle : "-5000 Ma" ou "2025", "2050" pour les années récentes */

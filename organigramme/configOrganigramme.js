@@ -725,6 +725,12 @@ const nodes = [
         tooltip: 'Crédits cartographiques', fillColor: 'rgba(30,30,30,0.55)', strokeColor: 'rgba(180,180,180,0.4)', strokeSize: 1
     },
 
+    { // 🌍 crédits de l'imagerie de la Terre (NASA GIBS, Sentinel-2) : à la place du 🗺, visible dès l'an 2000 (timeline.js)
+        id: 'credits-imagerie-btn', type: 'button', readOnly: false, logo: '🌍', zIndex: 222, radius: 18, logoScale: 1.1,
+        left: [], right: [], top: [{ text: 'NASA GIBS' }], bottom: [{ text: 'Sentinel-2' }],
+        tooltip: "Crédits de l'imagerie de la Terre", fillColor: 'rgba(30,30,30,0.55)', strokeColor: 'rgba(180,180,180,0.4)', strokeSize: 1
+    },
+
     { // 🎞 + SKIP (cellule id #plot-anim-toggle, flux-cell + span .organigram-logo — organigramme.js) : rangée du bas, après
       // EVENEMENT (main.js poserBandeauBas)
         id: 'timeline-scenario-anim',

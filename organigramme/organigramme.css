@@ -282,7 +282,8 @@
     display: flex;
     pointer-events: none;
 }
-#bandeau-bas-evenement > #cell-credits-paleomap-btn {
+#bandeau-bas-evenement > #cell-credits-paleomap-btn,
+#bandeau-bas-evenement > #cell-credits-imagerie-btn {
     position: absolute !important;
     left: 0 !important;
     top: auto !important;
@@ -299,10 +300,13 @@
     margin: 0 -90px -40px;
     pointer-events: none;
 }
-/* Libellés PALEOMAP / Scotese : cyan des ppm, visibles même si ⚗ / 🛰 masquent les autres libellés */
+/* Libellés PALEOMAP / Scotese et NASA GIBS / Sentinel-2 : cyan des ppm, visibles même si ⚗ / 🛰 masquent les autres libellés */
 #cell-credits-paleomap-btn .flux-label,
 #flux-diagram.hide-organigram-arrows #cell-credits-paleomap-btn .flux-label,
-#flux-diagram.hide-organigram-observation-metrics #cell-credits-paleomap-btn .flux-label {
+#flux-diagram.hide-organigram-observation-metrics #cell-credits-paleomap-btn .flux-label,
+#cell-credits-imagerie-btn .flux-label,
+#flux-diagram.hide-organigram-arrows #cell-credits-imagerie-btn .flux-label,
+#flux-diagram.hide-organigram-observation-metrics #cell-credits-imagerie-btn .flux-label {
     visibility: inherit !important;
     color: rgb(135, 206, 250) !important;
     border-color: rgb(173, 216, 230) !important;

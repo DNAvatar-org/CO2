@@ -2636,10 +2636,11 @@ function runMainInit() {
                 /** Bandeau du bas (html/visu_radiatif.html) : EVENEMENT et SKIP, cellules de l'organigramme, rangés après ⚗ DETAILS
                  *  (EVENEMENT y est monté par son appendParentSelector ; append le remet à sa place s'il y est déjà). */
                 window.poserBandeauBas = function () {
-                    // EVENEMENT dans une colonne : 🗺 crédits posé au-dessus, hors flux (titres de la rangée alignés)
+                    // EVENEMENT dans une colonne : 🗺 / 🌍 crédits posés au-dessus, hors flux (titres de la rangée alignés)
                     const colonne = document.createElement('div');
                     colonne.id = 'bandeau-bas-evenement';
                     colonne.append(document.getElementById('cell-credits-paleomap-btn'),
+                        document.getElementById('cell-credits-imagerie-btn'),
                         document.getElementById('cell-timeline-scenario-logos'));
                     document.getElementById('bandeau-bas-ligne').append(colonne,
                         document.getElementById('plot-anim-toggle'));

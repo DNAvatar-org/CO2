@@ -2131,6 +2131,11 @@ function createCell(
         return;
       }
 
+      if (nodeId === "credits-imagerie-btn") {
+        document.getElementById("dlg-imagerie").showModal();
+        return;
+      }
+
       if (NON_CHECKABLE_NODE_IDS.has(nodeId)) {
         return;
       }
