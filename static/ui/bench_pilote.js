@@ -7,21 +7,11 @@
 //       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
 //       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ; dans Histoire, il va sur la courbe verte.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.5.0
+// Version 1.6.0
+// - v1.6.0: hors run, chaque calcul gardé pour le prochain chargement (PROGRESSION.calcul, progression.js).
 // - v1.5.0: hors run, chaque calcul va sur la courbe verte d'Histoire (frise : départ, tictime : prolongement), plus sur l'orange ni la violette.
 // - v1.4.0: hors run, chaque calcul va dans Histoire (histoire:calcul) : point vert, et point de sa date sur sa courbe.
-// - v1.3.6: bench:vider (bouton clear de l'iframe) — les états gardés sont oubliés.
-// - v1.3.5: tranches de 📱 hors run : courbe d'Histoire à part (scenario), repartie à l'arrivée en 2000, plus l'orange.
-// - v1.3.4: étape d'un tictime = temps écoulé dans l'époque (📜⏳ : « 🛢 (+75 a) »), cumulé clic après clic.
-// - v1.3.3: hors run, chaque tranche de 25 ans jouée sur 📱 prolonge la courbe orange d'Histoire (histoire:prolonger).
-// - v1.3.2: la ligne porte la date de l'état calculé (CLICS.date()) : elle avance à chaque tictime.
-// - v1.3.1: étape d'un tictime = sa durée de config (📜🔺⏳ : « ⛽ (+25 a) »), plus le temps écoulé en Ma.
-// - v1.3.0: hors run aussi, chaque calcul ajoute sa ligne au tableau (et garde son état) ; les courbes d'Histoire,
-//   seulement pendant un run.
-// - v1.2.0: la courbe du modèle de l'onglet Histoire est vidée au lancement puis retracée à chaque calcul
-//   (HISTOIRE.pointModele, static/histoire/point_modele.js) — Époques : violette, Tictimes : orange.
-// - v1.1.0: l'état de fin de chaque calcul est gardé (BENCH.etats) ; clic sur une ligne → BENCH.voir le recharge.
-// Date: 2026-10-15
+// Date: 2026-11-03
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -124,19 +114,22 @@
         };
         poster({ type: 'bench:ligne', ligne: ligne });
         BENCH.etats[ligne.rowKey] = { DATA: structuredClone(D), result: result };
-        BENCH.tPrecC = D['🧮']['🧮🌡️'] - 273.15;
         // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état, et le calcul dans Histoire —
         // son point vert (le dernier calcul) et la courbe verte de tes clics, jamais mêlée aux courbes des runs (orange,
         // violette) : un clic sur la frise la fait repartir de lui (graine imposée), un tictime la prolonge (graine = calcul
-        // précédent ; Histoire retire les points de même date ou plus tardifs : rejouer un pas le remplace).
-        if (BENCH.suite === 'no') {
-            if (result === null) return;   // interrompu : pas d'état convergé à montrer
+        // précédent ; Histoire retire les points de même date ou plus tardifs : rejouer un pas le remplace). Interrompu :
+        // pas d'état convergé à montrer. La progression le garde pour le prochain chargement ; au premier calcul de la
+        // page, elle met à sa place celle du chargement précédent (progression.js), dont la T° est la graine du clic suivant.
+        if (BENCH.suite === 'no' && result !== null) {
             const frise = !D['🔘']['🔘🎞'];
-            posterHistoire({ type: 'histoire:calcul', depart: frise,
+            const msg = { type: 'histoire:calcul', depart: frise,
                 point: frise ? window.HISTOIRE.pointModele('frise ' + H['🗿'], null, null, 'frise')
-                             : window.HISTOIRE.pointModele(H['🗿'] + ' ' + H['🔘🕰'], H['🔘🕰'], H['🔺⏳'], 'clic') });
-            return;
+                             : window.HISTOIRE.pointModele(H['🗿'] + ' ' + H['🔘🕰'], H['🔘🕰'], H['🔺⏳'], 'clic') };
+            posterHistoire(msg);
+            window.PROGRESSION.calcul(msg);
         }
+        BENCH.tPrecC = D['🧮']['🧮🌡️'] - 273.15;
+        if (BENCH.suite === 'no') return;
         // Point de la courbe d'Histoire (calcul interrompu : pas de point, sa T° n'est pas un état convergé).
         if (result !== null) {
             const C = BENCH.clic;

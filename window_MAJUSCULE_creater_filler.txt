@@ -75,7 +75,7 @@ TIMELINE
 
 CONFIG_COMPUTE
  + creater: API_BILAN/config/configTimeline.js (752)
- ++ filler: configTimeline.js — baryByGroupDefault, spectral bins, spin-up, SOLVER (tolMinWm2, maxSearchStepK,
+ ++ filler: configTimeline.js — baryByGroupDefault, spectral bins, spin-up, SOLVER (maxSearchStepK,
                                   maxSearchStepLargeK, largeDeltaFactor, deltaTAccelerationDays, firstSearchStepCapK,
                                   bornesMinK, bornesMaxK, searchStepScaleMax), logs, earthTotalWaterMassKg (1.4e21 kg),
                                   co2OceanPartitionInRadiativeConvergence (défaut false)
@@ -389,7 +389,7 @@ TUNING
 
 SOLVER (bloc dans DATA / DEFAULT)
  STATUT: RETIRÉ v1.2.0. Source unique = window.CONFIG_COMPUTE dans configTimeline.js (clés
- tolMinWm2, maxSearchStepK, maxSearchStepLargeK, largeDeltaFactor, deltaTAccelerationDays,
+ maxSearchStepK, maxSearchStepLargeK, largeDeltaFactor, deltaTAccelerationDays,
  firstSearchStepCapK). Plus dans DATA['🎚️'] ni DEFAULT.TUNING.
 
 configsAll.js (bundle)
@@ -403,6 +403,12 @@ EMBARQUE
  ++ filler: static/ui/embarque.js — message co2:hote : --hote-haut, disposition des boutons (configOrganigramme nodes, TERRE_ECRAN.depuisEcran)
  ++ filler: static/ui/cpu_threads_notice.js — EMBARQUE.hote : l'avis threads en console, pas en fenêtre
  ++ filler: static/ui/loader_panels.js — premier calcul : Atmosphère dépliée, EMBARQUE.pret() (message co2:pret à l'hôte)
+ ++ filler: static/ui/progression.js — EMBARQUE.etatVersion (version de la progression gardée), EMBARQUE.hote (page seule seulement)
+
+PROGRESSION
+ + creater: CO2/static/ui/progression.js (la progression calculée gardée au F5 dans localStorage : DATA + messages histoire:calcul)
+ ++ filler: static/ui/bench_pilote.js — calcul(msg) à chaque calcul hors run ; au premier de la page, la progression gardée remise
+ ++ filler: static/ui/scenario_hote.js — poser(DATA) : l'état gardé de l'hôte remis sans calcul
 
 SCENARIO_HOTE
  + creater: CO2/static/ui/scenario_hote.js (page embarquée avec émissions ?emis : 📱 aujourd'hui → 2300, CLICS.emettre)

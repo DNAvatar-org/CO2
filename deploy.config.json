@@ -494,6 +494,10 @@
       "dest": "pages/bilan_radiatif/CO2/static/ui/embarque.js"
     },
     {
+      "src": "static/ui/progression.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/progression.js"
+    },
+    {
       "src": "static/ui/scenario_hote.js",
       "dest": "pages/bilan_radiatif/CO2/static/ui/scenario_hote.js"
     },

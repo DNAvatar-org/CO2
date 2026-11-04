@@ -1,6 +1,7 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.4.7
+// Version 1.4.8
+// - v1.4.8: static/ui/progression.js — la progression calculée gardée d'un chargement à l'autre (F5).
 // - v1.4.7: onglet ISS, températures mesurées (static/mesures/ : données HadCRUT5, carte, boîte de commande).
 // - v1.4.6: l'état gardé remis APRÈS le premier calcul (⚫, main.js le clique au démarrage : il était déjà parti, et
 //   tournait ensuite sur l'état remis — calottes de 2300 à la date de ⚫ : erreur CALOTTES), dans SCENARIO_HOTE.demarrer.
@@ -79,6 +80,7 @@
             'static/timeline/events.js',
             'organigramme/timeline.js',
             'static/ui/main.js',
+            'static/ui/progression.js',    // la progression gardée au F5 (localStorage), et l'état remis sans calcul
             'static/ui/scenario_hote.js'   // page embarquée avec émissions (?emis) : aujourd'hui → 2300, sans frise
         ],
         cacheBust: '',
