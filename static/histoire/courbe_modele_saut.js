@@ -20,6 +20,7 @@ window.HISTOIRE.modeleSaut = {
    "T": 13.8,
    "glace": 0.023,
    "ppm": 281.7,
+   "emis": 0,
    "Tint": 1277.5,
    "geo": 0.05926,
    "TW": 30.19,
@@ -36,6 +37,7 @@ window.HISTOIRE.modeleSaut = {
    "T": 11.48,
    "glace": 0.027,
    "ppm": 189.9,
+   "emis": 0,
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
@@ -52,6 +54,7 @@ window.HISTOIRE.modeleSaut = {
    "T": 13.61,
    "glace": 0.025,
    "ppm": 256.3,
+   "emis": 0,
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
@@ -68,6 +71,7 @@ window.HISTOIRE.modeleSaut = {
    "T": 13.58,
    "glace": 0.025,
    "ppm": 256.3,
+   "emis": 0,
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
@@ -84,6 +88,7 @@ window.HISTOIRE.modeleSaut = {
    "T": 13.5,
    "glace": 0.025,
    "ppm": 256.3,
+   "emis": 0,
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
@@ -100,6 +105,7 @@ window.HISTOIRE.modeleSaut = {
    "T": 13.69,
    "glace": 0.025,
    "ppm": 276.8,
+   "emis": 0,
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
@@ -116,6 +122,7 @@ window.HISTOIRE.modeleSaut = {
    "T": 13.69,
    "glace": 0.025,
    "ppm": 276.8,
+   "emis": 0,
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
@@ -132,6 +139,7 @@ window.HISTOIRE.modeleSaut = {
    "T": 14.13,
    "glace": 0.025,
    "ppm": 369.9,
+   "emis": 0,
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
@@ -140,14 +148,15 @@ window.HISTOIRE.modeleSaut = {
    "st": "converged"
   },
   {
-   "etape": "📱 ⛽ (0 Ma écoulés)",
-   "cle": "⛽",
+   "etape": "📱 🛢 (0 Ma écoulés)",
+   "cle": "🛢",
    "dt": 2.5e-05,
    "mode": "clic",
    "ep": "📱",
    "T": 14.57,
    "glace": 0.025,
    "ppm": 430.1,
+   "emis": 973000000000000,
    "Tint": 1277.4,
    "geo": 0.05923,
    "TW": 30.18,
@@ -156,5 +165,5 @@ window.HISTOIRE.modeleSaut = {
    "st": "converged"
   }
  ],
- "genere": "2026-11-03"
+ "genere": "2026-11-04"
 };
