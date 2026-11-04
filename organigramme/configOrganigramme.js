@@ -1085,7 +1085,6 @@ if (window.DATA && window.TIMELINE && window.TIMELINE.length) {
     // [0] = init DATA['📜'] ; fermer le groupe tout de suite (sinon tout console.log jusqu'au setEpoch s'affiche dans [0])
     if (window._logStep) {
         window._logStep('[0] organigramme 📜 init ' + firstId);
-        console.log('[0] currentEpochName=', window.RUNTIME_STATE.currentEpochName);
         if (window._logStepEnd) window._logStepEnd();
     } else if (typeof console !== 'undefined' && console.debug) {
         console.debug('[configOrganigramme] 📜 init', firstId);

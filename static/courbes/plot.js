@@ -214,7 +214,7 @@ function syncMiroirFluxButtonState() {
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     const alt0 = on
         ? "Courbe normale — cliquer pour inverser"
-        : "Courbe inversée — cliquer pour inverser";
+        : "Courbe inversée — cliquer pour rétablir";
     btn.setAttribute('data-tooltip', alt0);
     btn.setAttribute('aria-label', alt0);
     btn.removeAttribute('title');
@@ -1814,7 +1814,7 @@ PLOT.updatePlot = function updatePlot(data) {
             hoverText = PLOT_LEGEND_RAYONNEMENT_ESPACE;
         } else if (temp_eff) {
             const tempC = (temp_eff - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-            hoverText = `${PLOT_LEGEND_RAYONNEMENT_ESPACE} — ${temp_eff.toFixed(1)} K (${tempC}°C)`;
+            hoverText = `${PLOT_LEGEND_RAYONNEMENT_ESPACE} — ${temp_eff.toFixed(1)} K (${tempC} °C)`;
         } else {
             hoverText = PLOT_LEGEND_RAYONNEMENT_ESPACE;
         }
@@ -1844,7 +1844,7 @@ PLOT.updatePlot = function updatePlot(data) {
 
         // Tooltip : "Courbe d'émission du corps noir" avec température (le corps noir est par définition à l'équilibre)
         const tempC = (T - CONST.KELVIN_TO_CELSIUS).toFixed(1);
-        const hoverText = `Courbe d'émission du corps noir à ${T.toFixed(1)} K (${tempC}°C)`;
+        const hoverText = `Courbe d'émission du corps noir à ${T.toFixed(1)} K (${tempC} °C)`;
 
         return {
             x: lambda_planck,

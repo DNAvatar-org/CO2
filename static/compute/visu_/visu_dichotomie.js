@@ -538,8 +538,6 @@ async function simulateRadiativeTransfer() {
                         console.warn(`⚠️ [calculations.js] Delta équilibre anormalement grand: ${delta_equilibre.toFixed(2)} W/m² (flux_sortant=${final_result.total_flux.toFixed(2)} W/m², flux_entrant=${total_flux_in.toFixed(2)} W/m²)`);
                     }
                     
-                    // Fonction pour log Delta équilibre
-                    window.logDeltaEquilibre();
                     
                     // Afficher le calcul direct seulement si l'ajustement est raisonnable (T0 > 50K et ajustement < 100K)
                     // ⚠️ Cette formule linéaire n'est valide que pour de petits ajustements (ΔT << T)

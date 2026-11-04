@@ -121,9 +121,9 @@ function boutonAction(key, cfg) {
         if (key === '☄️') {
             const m = window.CLICS.eauDuClic();
             court = 'Météorite de glace<br>' + (m >= 1e12 ? formatMassGT(m) : formatMass(m)) + '<br>' + formatStepLabel(window.CLICS.pas(key)) + ' pour ce clic';
-            el.alt = 'Météorite de Glace ' + formatStepLabel(window.CLICS.pas(key));
+            el.alt = 'Météorite de glace ' + formatStepLabel(window.CLICS.pas(key));
         } else {
-            court = 'Impact majeur - Crée la lune';
+            court = 'Impact majeur — crée la Lune';
             el.alt = '';
         }
     } else {
@@ -154,7 +154,7 @@ function boutonTranche(key, cfg) {
     el.type = 'button';
     el.className = 'icon-button btn-events organigram-logo btn-year-indexed organigram-action-logo';
     el.textContent = key;
-    el.alt = '+' + Math.round(cfg['🔺⏳'] * 1e6) + 'ans +' + Math.round(cfg['🔺⚖️🏭'] / 1e12) + 'Gt CO2';
+    el.alt = '+' + Math.round(cfg['🔺⏳'] * 1e6) + ' ans +' + Math.round(cfg['🔺⚖️🏭'] / 1e12) + ' Gt CO₂';
     addEventTooltip(el, key, key + ' ' + el.alt);
     el.addEventListener('click', function () { jouerClic(key); });
     return el;

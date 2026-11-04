@@ -422,10 +422,6 @@
       "dest": "pages/bilan_radiatif/CO2/static/lib/three.min.js"
     },
     {
-      "src": "static/scie/scie_debug_click.js",
-      "dest": "pages/bilan_radiatif/CO2/static/scie/scie_debug_click.js"
-    },
-    {
       "src": "static/shell.js",
       "dest": "pages/bilan_radiatif/CO2/static/shell.js"
     },

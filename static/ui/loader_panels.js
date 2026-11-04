@@ -351,10 +351,8 @@
         IO_LISTENER.on('cycleCalcul', function () {
                 var D = window.DATA;
                 var albedoIn = (D && D['🪩']) ? D['🪩']['🍰🪩📿'] : null;
-                console.log('[loader_panels] cycleCalcul input albedo=', albedoIn);
                 try { window.ORG.updateFluxLabels('cycleCalcul'); } catch (e) { console.error('[cycleCalcul] updateFluxLabels', e); }
                 var el = document.querySelector('[data-id="albedo_percent"]');
-                console.log('[loader_panels] cycleCalcul DOM albedo_percent=', el ? el.textContent : '(élément absent)');
             }, 'loader_panels');
         IO_LISTENER.on('compute:progress', function (payload) {
                 /*
@@ -390,7 +388,6 @@
             }, 'loader_panels');
         IO_LISTENER.on('compute:done', function (payload) {
                 var albedoIn = (payload && payload.DATA && payload.DATA['🪩']) ? payload.DATA['🪩']['🍰🪩📿'] : null;
-                console.log('[loader_panels] compute:done input albedo=', albedoIn);
                 if (payload && payload.DATA) {
                     lastComputePayload = payload;
                     window._lastComputePayloadForScie = payload;

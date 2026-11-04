@@ -1869,21 +1869,8 @@ function setEpoch(epochName, options) {
         'Hyperthermie éocène': '🐊', 'Prélude glaciaire': 'hysteresis 2', 'EOT (33,9 Ma)': '🏔'
     });
     const epochIdForButton = epochNameToEmojiForButton[epochName] || epochName;
-    console.log('[DBG setEpoch] appelé avec=' + epochName + ' (id=' + epochIdForButton + ') DATA[🗿]=' + (DATA['📜'] && DATA['📜']['🗿']) + ' 📿💫=' + (DATA['📜'] && DATA['📜']['📿💫']) + ' currentEpochName=' + window.RUNTIME_STATE.currentEpochName);
     if (window._logStep) window._logStep('[1] config ' + epochName);
     else console.log('[1] config', epochName);
-    {
-        const flux = document.getElementById('flux-diagram');
-        const hideArrows = flux && flux.classList.contains('hide-organigram-arrows');
-        const hideObs = flux && flux.classList.contains('hide-organigram-observation-metrics');
-        const corpsNoir = epochName === 'Corps Noir';
-        console.log(
-            '[visu pictos] Pour afficher pictos et mesures : retirer sur #flux-diagram hide-organigram-arrows (DETAILS ON, bouton ⚗) et hide-organigram-observation-metrics (OBSERVATIONS ON, bouton 🛰).',
-            'Etat courant : hide-organigram-arrows=' + hideArrows + ', hide-organigram-observation-metrics=' + hideObs + '.',
-            'Graphe [ ] / EDS / Terre : .organigram-picto-inactived seulement si Corps Noir (pas hide-*). Picto Géométrie organigramme : gris si hide-organigram-observation-metrics (CSS). Corps Noir=' + corpsNoir + '.',
-            'Masquage visibility:hidden des cellules #cell-co2, #cell-methane, #cell-h2o : règles CSS #flux-diagram.hide-organigram-arrows.',
-        );
-    }
     // 🔒 Cacher le tooltip immédiatement lors du changement d'époque
     // Empêche le tooltip de rester affiché après le changement
     if (typeof window !== 'undefined' && typeof window.hideTooltip === 'function') {
@@ -1984,10 +1971,6 @@ function setEpoch(epochName, options) {
             terre: terreEpochEntry ? { radius: terreEpochEntry.radius, radiusExobase: terreEpochEntry.radiusExobase, fillColor: terreEpochEntry.fillColor, strokeColor: terreEpochEntry.strokeColor, strokeSize: terreEpochEntry.strokeSize, planetEffect: terreEpochEntry.planetEffect } : null,
             noyau: noyauRadEntry ? { numCircles: noyauRadEntry.numCircles, maxRadius: noyauRadEntry.maxRadius, openingAngle: noyauRadEntry.openingAngle, color: noyauRadEntry.color } : null
         };
-        console.groupCollapsed('🎨 Graphique (visu) — bary + valeurs effectives');
-        console.log('bary', bary);
-        console.log('valeurs effectives', graphiqueValues);
-        console.groupEnd();
     }
     if (terreNode && terreNode.epoch && Array.isArray(terreNode.epoch)) {
         const epochConfig = terreNode.epoch.find(e => e.epochName === terreOrganigramKey);
@@ -2480,13 +2463,11 @@ function runMainInit() {
         window.threeJSAnimationPaused = false;
         window.updateThreePlayIndicator();
         if (typeof window.updateObservationIndicator === 'function') window.updateObservationIndicator();
-        console.log('[main.js][flux:lastDrawn] Three.js play');
     }, 'main.js:threePlay');
 
     // Après compute:done : appliquer bary au graphique (visu) + log 🎨
     window.IO_LISTENER.on('compute:done', function () {
         if (window === window.top && window.RUNTIME_STATE.currentEpochName && typeof window.setEpoch === 'function') {
-            console.log('[main.js] 🎨 bary:apply (après compute:done)');
             window.setEpoch(window.RUNTIME_STATE.currentEpochName, { applyBaryOnly: true });
         }
     }, 'main.js:baryAfterCompute');
@@ -2818,7 +2799,6 @@ function updateHadeenTexture() {
     // on insère la nouvelle derrière l'ancienne, on attend three:ready, puis on retire l'ancienne
     // pour éviter que la texture disparaisse (flash noir) pendant le chargement.
     const oldCell = document.getElementById('cell-terre');
-    console.log('[recreateTerre] three:runStart (sans canvas) — caller: ' + (new Error().stack.split('\n')[2] || '?').trim());
     window.threeJSAnimationPaused = true;
     IO_LISTENER.emit('three:runStart');
     const canvas = oldCell.querySelector('canvas');
