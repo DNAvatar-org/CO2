@@ -7,7 +7,8 @@
 //       js/epoch_bench_encart.js) — run ou pas : hors run ('no', défaut), chaque calcul de l'utilisateur (frise,
 //       tictime) y ajoute aussi sa ligne et son état, sans clic suivant ; dans Histoire, il va sur la courbe verte.
 //       Chargé AVANT le moteur et sync_panels (loader_panels.js, before) : ceux-ci l'appellent sans test.
-// Version 1.6.0
+// Version 1.6.1
+// - v1.6.1: PROGRESSION.debut / interrompu (le ⚫ du chargement écarté, la progression refaite) ; T° de départ lue au début du calcul.
 // - v1.6.0: hors run, chaque calcul gardé pour le prochain chargement (PROGRESSION.calcul, progression.js).
 // - v1.5.0: hors run, chaque calcul va sur la courbe verte d'Histoire (frise : départ, tictime : prolongement), plus sur l'orange ni la violette.
 // - v1.4.0: hors run, chaque calcul va dans Histoire (histoire:calcul) : point vert, et point de sa date sur sa courbe.
@@ -20,7 +21,7 @@
         suite: 'no',      // 'no' | 'epoque' | 'tictime'
         n: 0,             // calculs du run
         t0: 0,
-        tPrecC: null,     // T° convergée du calcul précédent : T° initiale d'un tictime
+        tPrecC: null,     // T° au départ du calcul (debutCalcul), la convergée du précédent : T° initiale d'un tictime
         pas: { init: null, last: null, path: [] },
         etats: {},        // rowKey → { DATA (copie), result } : l'état de fin de chaque calcul, que BENCH.voir recharge
         courbe: null,     // courbe d'Histoire retracée par le run : 'modeleFrise' (Époques, violette) | 'modele' (Tictimes, orange)
@@ -81,8 +82,12 @@
         poster({ type: 'bench:fin', resume: BENCH.n + ' calculs', t0: BENCH.t0 });
     };
 
-    /** Début d'un calcul (runComputeInParent) : pas remis à zéro ; en banc, la ligne « en cours » dans l'iframe. */
+    /** Début d'un calcul (runComputeInParent) : son état de départ à la progression — au chargement, elle écarte le ⚫ du
+     *  démarrage (progression.js), qui n'est pas une ligne du banc —, sa T° de départ, pas remis à zéro ; en banc, la ligne
+     *  « en cours » dans l'iframe. */
     BENCH.debutCalcul = function () {
+        if (window.PROGRESSION.debut()) return;
+        BENCH.tPrecC = window.DATA['🧮']['🧮🌡️'] - 273.15;
         BENCH.pas = { init: null, last: null, path: [] };
         BENCH.n++;
         poster({ type: 'bench:debut', ligne: ligneCourante(), avance: window.DATA['📜']['👉'] / window.TIMELINE.length });
@@ -101,6 +106,9 @@
     /** Fin d'un calcul (runComputeInParent, après la mise à jour de l'interface ; result null = interrompu) : la ligne
      *  part vers l'iframe, puis le flag décide du clic suivant. */
     BENCH.apresCalcul = function (result) {
+        // Le ⚫ du chargement, écarté avant son premier pas (progression.js) : rien de calculé — la progression gardée est
+        // refaite à sa place.
+        if (result === null && window.PROGRESSION.interrompu()) return;
         const D = window.DATA, H = D['📜'], P = BENCH.pas;
         window.RADIATIVE.calculateRadiativeCapacities();
         const ligne = ligneCourante();
@@ -117,9 +125,8 @@
         // Hors run (clic de l'utilisateur sur la frise, un tictime…) : la ligne et son état, et le calcul dans Histoire —
         // son point vert (le dernier calcul) et la courbe verte de tes clics, jamais mêlée aux courbes des runs (orange,
         // violette) : un clic sur la frise la fait repartir de lui (graine imposée), un tictime la prolonge (graine = calcul
-        // précédent ; Histoire retire les points de même date ou plus tardifs : rejouer un pas le remplace). Interrompu :
-        // pas d'état convergé à montrer. La progression le garde pour le prochain chargement ; au premier calcul de la
-        // page, elle met à sa place celle du chargement précédent (progression.js), dont la T° est la graine du clic suivant.
+        // précédent ; Histoire retire les points de même date ou plus tardifs : rejouer un pas le remplace). La progression
+        // le garde pour le prochain chargement (progression.js). Interrompu : pas d'état convergé à montrer.
         if (BENCH.suite === 'no' && result !== null) {
             const frise = !D['🔘']['🔘🎞'];
             const msg = { type: 'histoire:calcul', depart: frise,
@@ -128,7 +135,6 @@
             posterHistoire(msg);
             window.PROGRESSION.calcul(msg);
         }
-        BENCH.tPrecC = D['🧮']['🧮🌡️'] - 273.15;
         if (BENCH.suite === 'no') return;
         // Point de la courbe d'Histoire (calcul interrompu : pas de point, sa T° n'est pas un état convergé).
         if (result !== null) {
@@ -145,7 +151,7 @@
             window.setEpochFromEpochButton(window.TIMELINE[i]['📅']);
             return;
         }
-        // 'tictime' : jusqu'au ⛽ 2000 → 2025 de 📱, comme le banc autonome (epoch_bench_chain.js).
+        // 'tictime' : jusqu'au 🛢 2000 → 2025 de 📱, comme le banc autonome (epoch_bench_chain.js).
         if (H['🗿'] === '📱' && H['📿💫'] === 1) { BENCH.arreter(); return; }
         const cle = window.CLICS.prochaineAction();
         BENCH.clic = { depuis: H['🗿'], cle: cle, dt: window.CLICS.pas(cle) };

@@ -1,14 +1,10 @@
 // File: CO2/static/histoire/main.js
 // Desc: Point d'entrée de CO2/histoire.html : canvas, époques du TIMELINE, redimensionnement, interactions.
-// Version 1.4.0
+// Version 1.4.1
+// - v1.4.1: départ au dézoom maximal (H.borner) : la marge vide à droite se voit, la molette y zoome sur 2025.
 // - v1.4.0: histoire:calcul seul message hors run — courbe verte (départ à la frise, prolongée par les tictimes).
 // - v1.3.0: histoire:vue — la période visible, pour la fenêtre Milankovitch.
-// - v1.2.0: histoire:calcul — chaque calcul de l'interface : point vert (H.dernier) et point de sa date sur sa courbe.
-// - v1.1.2: courbe à part pour les calculs de l'utilisateur sur 📱 (H.scenario, histoire:scenario).
-// - v1.1.1: histoire:prolonger — les tranches de 25 ans de 📱 jouées hors run prolongent la courbe orange.
-// - v1.1.0: courbe du modèle retracée en direct par le banc de l'index (messages histoire:courbe / histoire:point).
-// Date: 2026-10-15
-// - v1.0.2: départ dézoomé (toute la durée, −150 → 400 °C).
+// Date: 2026-11-03
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -40,11 +36,8 @@
         if (window.innerWidth === 0 || window.innerHeight === 0) return;
         v.width = canvas.width = window.innerWidth;
         v.height = canvas.height = window.innerHeight;
-        if (v.xScale === 0) {   // départ (vue.js, H.DEPART_T) : toute la durée, de −150 à 400 °C
-            v.xScale = v.width / (H.T_MAX_AGO - H.T_MIN_AGO);
-            v.yScale = v.height / (H.DEPART_T[1] - H.DEPART_T[0]);
-        }
-        H.borner();
+        if (v.yScale === 0) v.yScale = v.height / (H.DEPART_T[1] - H.DEPART_T[0]);   // départ (vue.js) : de −150 à 400 °C
+        H.borner();   // au départ (xScale = 0), le dézoom maximal : toute la durée, et la marge vide à droite de 2300 en vue
         redessiner();
     }
     window.addEventListener('resize', resize);

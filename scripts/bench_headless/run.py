@@ -1,8 +1,11 @@
 # File: run.py - Banc headless API_BILAN (Chrome + CDP, sans interface)
-# Desc: Sert le site, lance Chrome headless sur host.html, injecte un script de mesure, attend, imprime.
-#       Sert à mesurer le modèle sans ouvrir de navigateur — bench 19 époques, sondes, balayages de jauges.
-# Version 1.2.0
+# Desc: Lance Chrome headless sur host.html servi par le serveur local permanent (8001), injecte un script de mesure,
+#       attend, imprime. Sert à mesurer le modèle sans ouvrir de navigateur — bench 19 époques, sondes, balayages de jauges.
+# Version 1.3.0
 # logs :
+#   - v1.3.0: plus aucun serveur ouvert ici : host.html et API_BILAN viennent de _outward/start_local.sh (port 8001) ;
+#     Chrome sur un port de débogage libre (0, lu dans DevToolsActivePort) avec un profil neuf par run : deux sessions
+#     peuvent lancer le banc en même temps sans s'attacher l'une à l'autre.
 #   - v1.2.0: --stream VAR : chaque nouvel élément de window.VAR imprimé dès qu'il existe (« § » + JSON) ;
 #     avancement sondé toutes les 0,5 s et imprimé à chaque CHANGEMENT d'étape (avant : toutes les 10 s).
 #   - v1.1.0: s'attache à l'onglet portant SON ?cb= (et non au premier « host.html » venu) : un Chrome
@@ -21,18 +24,28 @@ son résultat dans une variable window.__XXX__ que --var nomme (défaut : __R6__
 
 Pré-requis : Google Chrome installé, python3. Aucune dépendance pip (client CDP maison, cdp.py).
 """
-import argparse, json, os, subprocess, sys, time
+import argparse, json, os, shutil, subprocess, sys, tempfile, time, urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cdp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..'))   # …/site
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+# Serveur local permanent (_outward/start_local.sh, racine = site/). host.html y est lu sur 127.0.0.1, l'API sur localhost :
+# deux origines, ce qu'exige le repli blob des workers spectraux (voir host.html).
+HOST_URL = 'http://127.0.0.1:8001/' + os.path.relpath(os.path.join(HERE, 'host.html'), SITE)
 
 
-def serve(directory, port):
-    return subprocess.Popen([sys.executable, '-m', 'http.server', str(port)],
-                            cwd=directory, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def port_devtools(profile):
+    """Port de débogage choisi par Chrome (--remote-debugging-port=0), écrit dans DevToolsActivePort du profil."""
+    fichier = os.path.join(profile, 'DevToolsActivePort')
+    for _ in range(60):
+        if os.path.exists(fichier):
+            lignes = open(fichier).read().split()
+            if lignes:
+                return int(lignes[0])
+        time.sleep(0.5)
+    raise SystemExit('Chrome n\'a pas ouvert de port de débogage (' + fichier + ')')
 
 
 def main():
@@ -46,17 +59,18 @@ def main():
     path = a.script if os.path.exists(a.script) else os.path.join(HERE, a.script)
     js = open(path, encoding='utf-8').read()
 
-    srv_site = serve(SITE, 8765)
-    srv_host = serve(HERE, 8766)
-    profile = os.path.join(HERE, '.chrome-profile')
+    try:
+        urllib.request.urlopen(HOST_URL, timeout=5)
+    except OSError as e:
+        raise SystemExit('serveur local 8001 injoignable (' + str(e) + ') : _outward/start_local.sh doit tourner')
+    profile = tempfile.mkdtemp(prefix='banc-chrome-')
     cb = '%d' % int(time.time() * 1000)
     chrome = subprocess.Popen([CHROME, '--headless=new', '--disable-gpu', '--no-first-run',
-                               '--user-data-dir=' + profile, '--remote-debugging-port=9333',
-                               'http://127.0.0.1:8766/host.html?cb=' + cb],
+                               '--user-data-dir=' + profile, '--remote-debugging-port=0',
+                               HOST_URL + '?cb=' + cb],
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        time.sleep(6)
-        c = cdp.attach(url_filter='host.html?cb=' + cb, tries=60)
+        c = cdp.attach(port=port_devtools(profile), url_filter='host.html?cb=' + cb, tries=60)
         for _ in range(120):
             if c.eval('window.__READY__'):
                 break
@@ -91,7 +105,7 @@ def main():
         print(json.dumps(c.eval('window.' + a.var), ensure_ascii=False, indent=1))
         return 0
     finally:
-        chrome.terminate(); srv_site.terminate(); srv_host.terminate()
+        chrome.terminate(); chrome.wait(); shutil.rmtree(profile, ignore_errors=True)
 
 
 if __name__ == '__main__':

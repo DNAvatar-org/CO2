@@ -3,8 +3,9 @@
 //       window.DATA à la fin d'un calcul. Seule fabrique : le banc headless (scripts/bench_headless/courbe_modele.js, qui
 //       écrit courbe_modele*.js) et le banc de l'index (static/ui/bench_pilote.js, qui trace en direct dans l'onglet
 //       Histoire). Chargé avec le moteur (API_BILAN/loader/engine_manifest.js).
-// Version 1.0.0
-// Date: 2026-10-15
+// Version 1.1.0
+// - 1.1.0 : emis, le CO₂ injecté par les événements de l'époque (📜🔺⚖️🏭) — les étiquettes de la courbe verte (rendu.js).
+// Date: 2026-11-04
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.HISTOIRE = window.HISTOIRE || {};
 
@@ -24,6 +25,8 @@ window.HISTOIRE.pointModele = function (etape, cle, dt, mode) {
         glace: +(+D['💧']['🍰💧🧊']).toFixed(3),
         // ppm d'air SEC (comme le banc, epoch_bench_format.js)
         ppm: +(D['🫧']['🍰🫧🏭'] / C.M_CO2 / (1 / D['🫧']['🧪'] - D['💧']['🍰🫧💧'] / C.M_H2O) * 1e6).toFixed(1),
+        // CO₂ injecté par les événements de l'époque, cumulé (📜🔺⚖️🏭, kg ; ⛽ 🛢 de 📱) : d'un point au suivant, ce qu'a émis le clic
+        emis: D['📜']['🔺⚖️🏭'],
         // Intérieur (geology/interieur.js) : T potentielle °C (null avant l'intérieur, ⚫), flux W/m², puissance TW
         Tint: N['🌡️🌕'] > 0 ? +(N['🌡️🌕'] - 273.15).toFixed(1) : null,
         geo: +(+N['🧲🌕']).toPrecision(4),

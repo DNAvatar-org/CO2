@@ -23,13 +23,12 @@
 //                         Donnée d'origine : écart à la moyenne 0–5 ka ; ramenée en absolu avec la médiane
 //                         PhanDA de l'Holocène, 14,0 °C. Remplace les 4 étages PhanDA du Quaternaire.
 //                         Fichier « Snyder 2016-Nature-Temperature reconstruction.xlsx » (carolynsnyder.com)
-//         · instrumental: 1850–1900 = 13,5 °C (Copernicus ESOTC 2024) ; 2000 = 14,4 °C (GISTEMP v4
-//                         +0,39 sur 14,0 de Jones et al. 1999) ; incertitude ±0,5 °C sur l'ABSOLU (Jones et al. 1999)
-//         · satellites  : après 2000, le réchauffement MESURÉ PAR SATELLITE (température de peau de la surface, ciel clair) :
-//                         0,021 °C/an (MODIS, Sobrino et al. 2020 ; AIRS, DeSouza-Machado et al. 2025), bande 0,015–0,024
-//                         entre produits (AIRS v7 ; AIRS v6, Susskind et al. 2019), posé sur 2000. Aucun satellite ne donne le
-//                         NIVEAU absolu moyen par tout temps : il vient de 2000, la pente des satellites
-//         · copernicus  : années mesurées par Copernicus (réanalyse ERA5, air à 2 m), hors de la cyan — la courbe bleue
+//         · instrumental: sur l'échelle absolue de Copernicus : 1850–1900 = 13,5 °C (C3S) ; après 2000, la moyenne 1991–2020
+//                         de la réanalyse ERA5 (14,38 °C, posée en 2005,5) et le réchauffement MESURÉ PAR SATELLITE, 0,021 ±
+//                         0,0075 °C/an (1σ ; ± 0,015 à 2σ) (AIRS, DeSouza-Machado et al. 2025 ; MODIS, Sobrino et al. 2020). Les satellites donnent
+//                         la pente, pas le niveau (peau de la surface, par ciel clair ou dégagée des nuages par calcul). Bande :
+//                         l'absolu (± 0,5 °C, Jones et al. 1999 ; Jones & Harpham 2013) et la pente, en quadrature
+//         · copernicus  : années de la réanalyse ERA5 publiées par Copernicus (air à 2 m), hors de la cyan — la courbe bleue
 //         · glaciations : intervalles DATÉS des glaciations globales ; aucune température (pas de proxy
 //                         pendant un Snowball, Hoffman et al. 2017)
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
@@ -38,8 +37,8 @@
 // Version 1.15.0
 // Date: [November 3, 2026]
 // logs :
-//   - v1.15.0: après 2000, la pente mesurée par satellite ; années Copernicus à part (L.copernicus, courbe bleue).
-//   - v1.14.0: 2025 mesuré (Copernicus) : la courbe va jusqu'à L.AN ; points instrumentaux avec leur source (El Niño en 2024).
+//   - v1.15.0: instrumental sur l'échelle de Copernicus, pente mesurée par satellite après 2000 ; années ERA5 à part (L.copernicus).
+//   - v1.14.0: 2025 mesuré (Copernicus, +1,47 °C sur 1850–1900) : la courbe va jusqu'à L.AN.
 //   - v1.13.0: L.AN = window.AN_PRESENT, l'origine des âges du moteur (config/configTimeline.js), plus un second 2025.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.HISTOIRE = window.HISTOIRE || {};
@@ -2255,23 +2254,22 @@ window.HISTOIRE.litterature = {
         [2000, 12.81, 13.91, 14.97],
         [1000, 12.52, 13.83, 15.01],
     ],
-    instrumental: [
-        [150, 13.0, 13.5, 14.0, "1850–1900 = 13,5 °C (Copernicus ESOTC 2024), ± 0,5 °C sur l’absolu (Jones et al. 1999)"],
-        [25,  13.9, 14.4, 14.9, "an 2000 = 14,0 + 0,39 = 14,4 °C (GISTEMP v4 sur l’absolu 1951–1980 de Jones et al. 1999), ± 0,5 °C"]
-    ],
-    // Après 2000 : 2000 (ligne ci-dessus) prolongé de la pente mesurée par satellite, [t, bas, milieu, haut] — une droite, la
-    // pente ne donnant pas les années une à une. Milieu 0,021 °C/an ; bas 13,9 + 0,015 × 25 ans ; haut 14,9 + 0,024 × 25 ans.
-    satellites: [
-        [25, 13.9,   14.4,   14.9],
-        [0,  14.275, 14.925, 15.5]
-    ],
-    // Années mesurées par Copernicus (C3S, réanalyse ERA5 : air à 2 m, des stations, navires et bouées assimilés dans un
-    // modèle), [année, T °C, source] — valeurs absolues publiées. Une année n'est pas un climat : El Niño la monte ou la
-    // descend de quelques dixièmes et s'annule en moyenne. La cyan, à laquelle le modèle se compare, n'en contient aucune.
+    // Instrumental, sur UNE échelle absolue, celle de Copernicus : la cyan et la courbe bleue se lisent l'une contre l'autre.
+    // Les lignes [t, bas, milieu, haut] en sont tirées plus bas (L.segments).
+    instrumental: {
+        preindustriel: [1875, 13.5],   // [an, °C] 1850–1900 : 14,38 − 0,88 (ERA5 1991–2020, moins l'écart mesuré par les stations)
+        era5: [2005.5, 14.38],         // [an, °C] moyenne 1991–2020 d'ERA5 (15,10 − 0,72 = 14,97 − 0,59 = 14,98 − 0,60), au milieu
+        pente: [0.021, 0.0075],        // [°C/an] réchauffement mesuré par satellite ± 1σ : DeSouza-Machado et al. 2025, Table 3, ± 0,015 à 2σ
+        satellites: [2000, 2025],      // [an] la pente tracée sur ces années (mesurée de 2002 à 2022)
+        absolu: 0.5                    // [°C] ± sur la température absolue moyenne
+    },
+    // Années de la réanalyse ERA5 (C3S : observations des stations, navires et bouées assimilées dans un modèle, air à 2 m),
+    // [année, T °C, écart à 1850–1900 °C, source, ce que fut l'année] — valeurs publiées. Une année n'est pas un climat :
+    // El Niño et La Niña la déplacent d'un à deux dixièmes. La cyan, à laquelle le modèle se compare, n'en contient aucune.
     copernicus: [
-        [2023, 14.98, "2023 = 14,98 °C, +1,48 °C sur 1850–1900 (Copernicus, Global Climate Highlights 2023)"],
-        [2024, 15.10, "2024 = 15,10 °C, +1,60 °C sur 1850–1900 (Copernicus, Global Climate Highlights 2024) : année El Niño, la chaleur stockée dans l’océan remonte en surface, sans en créer"],
-        [2025, 14.97, "2025 = 14,97 °C, +1,47 °C sur 1850–1900 (Copernicus, Global Climate Highlights 2025) : El Niño passé, la surface redescend. Le modèle calcule l’équilibre du bilan radiatif, sans El Niño : un climat, pas une année"]
+        [2023, 14.98, 1.48, "Global Climate Highlights 2023", "début de l’El Niño 2023–24"],
+        [2024, 15.10, 1.60, "Global Climate Highlights 2024", "fin de l’El Niño 2023–24 : il remonte en surface de la chaleur de l’océan, sans en créer ; d’autres océans que le Pacifique tropical et la baisse des aérosols y contribuent aussi"],
+        [2025, 14.97, 1.47, "Global Climate Highlights 2025", "année neutre ou faible La Niña, pourtant à 0,01 °C de 2023. Le modèle calcule un équilibre ; la Terre n’y est pas encore : elle absorbe environ 1 W/m² de plus qu’elle n’émet (Loeb et al. 2021)"]
     ],
     glaciations: [
         { t0: 717e6, t1: 659e6, label: 'Sturtien', src: 'Hoffman et al. 2017, Sci. Adv. 3:e1600983 (U-Pb : 717 → 659,3–658,5 Ma)' },
@@ -2412,6 +2410,14 @@ window.HISTOIRE.litterature.avecMethodes = (rows) => {
     const L = window.HISTOIRE.litterature;
     L.AN = window.AN_PRESENT;   // t = années avant L.AN, l'origine des âges du moteur (config/configTimeline.js, chargé avant)
     const tSnyder = L.snyder[0][0];
+    /** Lignes [t, bas, milieu, haut] de L.instrumental : 1850–1900, puis la pente des satellites posée sur ERA5, aux années de
+     *  L.instrumental.satellites et en 2005,5 (le bord de la bande y change de pente) ; bande = absolu et pente, en quadrature. */
+    L.lignesInstrumentales = function () {
+        const I = L.instrumental, [an0, T0] = I.era5, [p, dp] = I.pente, [a, b] = I.satellites;
+        const ligne = (an, T, ecart) => [L.AN - an, T - ecart, T, T + ecart];
+        return [ligne(I.preindustriel[0], I.preindustriel[1], I.absolu)].concat([a, an0, b].map((an) =>
+            ligne(an, T0 + p * (an - an0), Math.hypot(I.absolu, dp * (an - an0)))));
+    };
     // Hadéen (ancres sourcées) → Précambrien (KT2018 + fenêtres) → PhanDA → Snyder 2016 (Quaternaire, 1 ka) → instrumental
     // → pente des satellites après 2000.
     L.segments = [
@@ -2420,11 +2426,13 @@ window.HISTOIRE.litterature.avecMethodes = (rows) => {
         { rows: L.avecMethodes(L.unSigma(L.phanda.filter((r) => r[0] > tSnyder), 1.645)),
           src: () => 'PhanDA (Judd et al. 2024) — ± 1σ interpolé de 5–95 % (loi normale), élargi du désaccord entre méthodes mesuré par Inglis et al. 2020' },
         { rows: L.unSigma(L.snyder, 1.96), src: () => 'Snyder 2016, Nature 538:226 — ± 1σ interpolé de 2,5–97,5 % (loi normale)' },
-        { rows: L.instrumental, src: (r) => r[4] },
-        { rows: L.satellites, src: () => 'Après 2000 : 14,4 °C en 2000 (GISTEMP), plus le réchauffement mesuré par satellite, 0,021 °C/an (MODIS Terra + Aqua, '
-            + 'Sobrino et al. 2020 ; AIRS, DeSouza-Machado et al. 2025) — bande 0,015 à 0,024 °C/an entre produits (AIRS v7 ; AIRS v6, Susskind '
-            + 'et al. 2019), plus ± 0,5 °C sur l’absolu. Les satellites mesurent la peau de la surface par ciel clair : la pente, pas le '
-            + 'niveau. Mesuré de 2003 à 2022, prolongé avant et après' }
+        { rows: L.lignesInstrumentales(), src: () => 'Instrumental, à l’échelle de Copernicus : 1850–1900 = 13,5 °C (C3S) ; après 2000, la moyenne '
+            + '1991–2020 de la réanalyse ERA5 (14,38 °C, en 2005,5) et le réchauffement mesuré par satellite, 0,021 ± 0,0075 °C/an à 1σ (± 0,015 à 2σ ; AIRS, '
+            + 'DeSouza-Machado et al. 2025 ; MODIS, Sobrino et al. 2020 ; les stations de GISTEMP donnent la même pente). Les satellites '
+            + 'mesurent la peau de la surface, par ciel clair ou dégagée des nuages par calcul : leur pente, pas leur niveau. Mesuré de '
+            + '2002 à 2022, prolongé jusqu’en 2000 et 2025 ; trait droit de 1850–1900 à 2000. Bande : ± 0,5 °C sur l’absolu (Jones et al. 1999, '
+            + 'redonné par Jones & Harpham 2013) et '
+            + 'l’incertitude de la pente, en quadrature' }
     ];
     // [t, bas, médiane, haut, source]
     L.serie = [].concat(...L.segments.map((g) => g.rows.map((r) => [r[0], r[1], r[2], r[3], g.src(r)])));

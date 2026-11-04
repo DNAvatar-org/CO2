@@ -4,10 +4,11 @@
   Page d'accueil minimale pour faire tourner API_BILAN sans interface.
   Charge le moteur par le loader commun (API_BILAN/loader/), avec les stubs hôtes de
   API_BILAN/demo/js/demo_host.js — les mêmes que le banc époques et la scie démo.
-  Version 2.0.0 — 2026-10-10 : plus de liste de scripts recopiée ni de stubs inline.
+  Version 2.1.0 — page et API lues sur le serveur local permanent (8001).
 
   Deux détails qui coûtent une heure à retrouver si on les oublie :
-   - le worker (posé par le loader depuis apiBase) est sur une AUTRE origine (port 8765) pour que
+   - le worker (posé par le loader depuis apiBase) est sur une AUTRE origine (localhost, la page étant lue sur
+     127.0.0.1, toutes deux servies par le serveur local permanent 8001) pour que
      new Worker() lève une SecurityError : worker_pool.js bascule alors sur son repli blob, seul
      moyen d'avoir les workers spectraux quand la page n'est pas servie à côté d'API_BILAN ;
    - ?cacheBust : sans lui Chrome sert les JS du cache et on mesure le code d'avant sa modification.
@@ -16,7 +17,7 @@
 'use strict';
 window.__READY__ = false;
 window.__CB__ = new URLSearchParams(location.search).get('cb');
-window.__API__ = 'http://127.0.0.1:8765/bilan_radiatif/API_BILAN/';
+window.__API__ = 'http://localhost:8001/bilan_radiatif/API_BILAN/';
 // Les deux fichiers du loader, puis le loader charge tout le reste.
 (function () {
     const boot = ['loader/engine_manifest.js', 'loader/loader.js'];

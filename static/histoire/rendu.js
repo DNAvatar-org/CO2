@@ -1,13 +1,15 @@
 // File: CO2/static/histoire/rendu.js
 // Desc: Dessin : grille, glaciations datées (bandes), littérature (série continue −5000 Ma → 2025 avec sa
-//       bande d'incertitude, médiane en pointillés par-dessus), années mesurées par Copernicus (bleu, points reliés),
+//       bande d'incertitude, médiane en pointillés par-dessus), années ERA5 publiées par Copernicus (bleu, points reliés),
 //       courbes du MODÈLE en segments de point à point — chaîne de clics (orange, pleine), chemin 🦘 (rose), frise de chaque
 //       époque (violette, tirets) —, insolation d'été à 65° N sur son axe à droite, logos d'époque en bandeau au début de
 //       leur époque. H.survol() donne la source de ce qui est sous le curseur.
-// Version 1.12.0
-// Date: [November 3, 2026]
+// Version 1.14.0
+// Date: [November 4, 2026]
 // logs :
-//   - v1.12.0: années mesurées par Copernicus (L.copernicus), en bleu, hors de la cyan.
+//   - v1.14.0: bulles de la courbe verte : ligne 🫧 ppm de CO₂ de l'air (sec) obtenus par le calcul.
+//   - v1.13.0: étiquettes de la courbe verte dès 2000 (📱) : bulle verticale, une ligne et son logo par grandeur — bouton et année, 🏭 CO₂ du clic, 🌡️ T°.
+//   - v1.12.0: années ERA5 publiées par Copernicus (L.copernicus), en bleu, hors de la cyan.
 //   - v1.11.0: courbe du chemin 🦘 (courbe_modele_saut.js, rose, tirets-points) ; insolation sur au plus 1/3 de la hauteur.
 //   - v1.10.1: insolation d'été à 65° N jusqu'à la base de l'Holocène seulement.
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
@@ -134,7 +136,9 @@
         }
     }
 
-    /** Années mesurées par Copernicus (L.copernicus, [année, T, source]) : points reliés, la source au survol. */
+    /** Années de la réanalyse ERA5 publiées par Copernicus (L.copernicus, [année, T, écart à 1850–1900, source, ce que fut
+     *  l'année]) : points reliés, le tout au survol. */
+    const FMT_C = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     function annees(ctx, rows, couleur) {
         const v = H.vue, AN = H.litterature.AN;
         ctx.strokeStyle = couleur; ctx.fillStyle = couleur; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -145,8 +149,53 @@
             if (x < -5 || x > v.width + 5) continue;
             ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 2 * Math.PI); ctx.fill();
             zones.push({ x0: x - 6, x1: x + 6, y0: y - 6, y1: y + 6,
-                texte: r[2] + ' — réanalyse ERA5 : air à 2 m, une année mesurée' });
+                texte: r[0] + ' = ' + FMT_C.format(r[1]) + ' °C, +' + FMT_C.format(r[2]) + ' °C sur 1850–1900 (Copernicus, ' + r[3] + ') : ' + r[4]
+                    + ' — une année de la réanalyse ERA5 (observations assimilées dans un modèle, air à 2 m), pas un climat' });
         }
+    }
+
+    /**
+     * Étiquettes de la courbe verte sur l'époque d'aujourd'hui (📱, dès 2000) : une bulle verticale au-dessus du point, sa
+     * pointe sur lui, une ligne par grandeur, son logo en tête — le bouton joué et l'année, 🏭 le CO₂ qu'il a émis (écart
+     * du cumul 📜🔺⚖️🏭 au point précédent, de la même époque), 🫧 les ppm de CO₂ de l'air sec, 🌡️ la T° obtenue. La frise et l'arrivée dans l'époque n'ont
+     * pas de CO₂ émis : le logo de l'époque, l'année, les ppm et la T°. De gauche à droite, une bulle ne se pose que si elle ne
+     * chevauche pas la précédente : vue large, les points de 2000 à 2300 tiennent en quelques pixels. Au survol : le cumul
+     * émis depuis 2000.
+     */
+    const FMT_GT = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+    const FMT_DEG = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const FMT_PPM = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+    const BULLE = { ligne: 13, marge: 4, pointe: 6, ecart: 4 };   // px : hauteur d'une ligne, marge intérieure, pointe, écart entre bulles
+    function etiquettes(ctx, M, couleur) {
+        const v = H.vue, AN = H.litterature.AN, MODERNE = window.CHARS.MODERN, B = BULLE;
+        const pts = M.points.slice().sort((a, b) => b.t - a.t);
+        ctx.font = '10px Tahoma'; ctx.textAlign = 'left'; ctx.lineWidth = 1;
+        let xLibre = -Infinity;   // bord droit de la dernière bulle posée
+        pts.forEach((p, i) => {
+            if (p.ep !== MODERNE) return;
+            const clic = p.cle !== null && p.cle !== '';   // null : frise ; '' : arrivée dans l'époque (passage)
+            const gt = clic ? (p.emis - pts[i - 1].emis) / 1e12 : null;
+            const lignes = [(clic ? p.cle : p.ep) + ' ' + (AN - p.t)];
+            if (clic) lignes.push('🏭 +' + FMT_GT.format(gt) + ' Gt CO₂');
+            lignes.push('🫧 ' + FMT_PPM.format(p.ppm) + ' ppm CO₂');
+            lignes.push('🌡️ ' + FMT_DEG.format(p.T) + ' °C');
+            const l = Math.max(...lignes.map((t) => ctx.measureText(t).width)) + 2 * B.marge;
+            const h = lignes.length * B.ligne + B.marge;
+            const x = px(p.t), yPointe = py(p.T) - 5, y0 = yPointe - B.pointe - h, x0 = x - l / 2;
+            if (x0 < xLibre + B.ecart || x0 + l < 0 || x0 > v.width) return;
+            xLibre = x0 + l;
+            ctx.fillStyle = 'rgba(11, 12, 16, 0.85)'; ctx.strokeStyle = couleur;
+            ctx.beginPath(); ctx.roundRect(x0, y0, l, h, 4); ctx.fill(); ctx.stroke();
+            // la pointe : son fond recouvre le bord du bas sous elle, puis ses deux côtés seuls
+            ctx.beginPath(); ctx.moveTo(x - B.pointe / 2, y0 + h - 1); ctx.lineTo(x, yPointe); ctx.lineTo(x + B.pointe / 2, y0 + h - 1); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(x - B.pointe / 2, y0 + h); ctx.lineTo(x, yPointe); ctx.lineTo(x + B.pointe / 2, y0 + h); ctx.stroke();
+            ctx.fillStyle = couleur;
+            lignes.forEach((t, k) => ctx.fillText(t, x0 + B.marge, y0 + B.marge / 2 + (k + 1) * B.ligne - 3));
+            zones.push({ x0, x1: x0 + l, y0, y1: yPointe,
+                texte: (AN - p.t) + ' — ' + (clic ? p.cle + ' : ' + FMT_GT.format(gt) + ' Gt de CO₂ émis par ce clic, ' : p.etape + ' : ')
+                    + FMT_GT.format(p.emis / 1e12) + ' Gt émis depuis 2000, ' + FMT_PPM.format(p.ppm) + ' ppm de CO₂ dans l\'air sec, T calculée '
+                    + FMT_DEG.format(p.T) + ' °C' });
+        });
     }
 
     /** Valeur à t (années avant L.AN) d'une courbe du modèle, en segments de point à point comme courbe() ; sur un saut
@@ -307,6 +356,7 @@
                 texte: 'Dernier calcul — ' + p.etape + ' : T calculée ' + p.T.toFixed(1) + ' °C'
                     + (p.st === 'converged' ? '' : ' (⚠️ non convergé : ' + p.st + ')') + ', glace ' + Math.round(p.glace * 100) + ' %, CO₂ ' + Math.round(p.ppm) + ' ppm' });
         }
+        etiquettes(ctx, H.scenario, COUL.scen);   // dès 2000 : événement, CO₂ émis, T° — par-dessus le gros point
 
         // Logos : bandeau en haut, au DÉBUT de leur époque (▶ du TIMELINE).
         ctx.textAlign = 'center';

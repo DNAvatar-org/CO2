@@ -409,6 +409,7 @@ PROGRESSION
  + creater: CO2/static/ui/progression.js (la progression calculée gardée au F5 dans localStorage : DATA + messages histoire:calcul)
  ++ filler: static/ui/bench_pilote.js — calcul(msg) à chaque calcul hors run ; au premier de la page, la progression gardée remise
  ++ filler: static/ui/scenario_hote.js — poser(DATA) : l'état gardé de l'hôte remis sans calcul
+ lit / remet : OCEAN_SINK.boxesKg / poserBoxesKg (API_BILAN/ocean/sinks_ocean.js), LAND_SINK.etat / poser (land/sinks_land.js) — les puits hors DATA
 
 SCENARIO_HOTE
  + creater: CO2/static/ui/scenario_hote.js (page embarquée avec émissions ?emis : 📱 aujourd'hui → 2300, CLICS.emettre)

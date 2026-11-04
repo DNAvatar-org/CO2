@@ -10,7 +10,7 @@
 
 - **🔺🧲** : déséquilibre radiatif (W/m²) = flux entrant − flux sortant. À l’équilibre physique on veut **🔺🧲 ≈ 0**.
 - **🧲🔬** : tolérance en W/m², **pas** une précision en K. Elle est calculée par `computeToleranceWm2(T, precision_K)` :
-  - **tol = max(4 σ T³ × precision_K, tolMinWm2)**
+  - **tol = max(penteDePlanck(OLR) × precision_K, 🧲🔬⌊)** — `🧲🔬⌊` : plancher en W/m² déclaré par chaque époque (`configTimeline.js`)
   - `precision_K` vient de l’époque (ex. 0.01 K → tol ≈ 0,055 W/m² à 288 K).
 
 Donc **`'converged'` = "on a considéré que le bilan était assez proche de zéro"** (|Δ| ≤ tol). Ce n’est pas "équilibre parfait" (Δ = 0).

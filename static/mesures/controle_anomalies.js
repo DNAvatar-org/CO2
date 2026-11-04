@@ -18,7 +18,6 @@
     const popup = document.getElementById('anomalies-popup');
     const jauge = document.getElementById('anomalies-opacite');
     const jaugeValeur = document.getElementById('anomalies-opacite-valeur');
-    const ECART_PILE = 10;   // [px] sous Temps, comme Temps sous Atmosphère (un titre tous les 30 px)
 
     /** Année de la frise, arrondie à la plus proche : celle des mesures montrées. */
     const anneeMesures = () => Math.round(window.ONGLETS_GRAPHE.anneeFrise());
@@ -82,13 +81,13 @@
     });
     // Chaque calcul (clic sur la frise) : l'année a pu changer ; la carte suit par chargerISS (onglets_graphe.js).
     window.IO_LISTENER.on('compute:done', majBoite, 'controle_anomalies');
-    // Sous Temps : son rectangle en px de la page ISS (iss:fenetres, rects[0]), ramené à cette page ; il bouge quand Temps se
-    // déplie ou que la pile glisse.
+    // Sous Temps, au pas de la pile Energies / Atmosphère / Temps (gap de .titre-affichages, index-shell.css) : son rectangle en
+    // px de la page ISS (iss:fenetres, rects[0]), ramené à cette page ; il bouge quand Temps se déplie ou que la pile glisse.
     window.addEventListener('message', (e) => {
         if (e.data.type !== 'iss:fenetres') return;
         const i = document.getElementById('iss-iframe').getBoundingClientRect(), t = e.data.rects[0];
         boite.style.left = (i.left + t.x) + 'px';
-        boite.style.top = (i.top + t.y + t.h + ECART_PILE) + 'px';
+        boite.style.top = (i.top + t.y + t.h + parseFloat(getComputedStyle(document.getElementById('titre-affichages')).rowGap)) + 'px';
     });
     document.getElementById('anomalies-info').addEventListener('click', () => { popup.hidden = !popup.hidden; });
     document.getElementById('anomalies-popup-fermer').addEventListener('click', () => { popup.hidden = true; });

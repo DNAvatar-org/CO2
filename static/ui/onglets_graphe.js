@@ -5,7 +5,7 @@
 //       la zone change de taille, au redimensionnement et au défilement (c'est le body qui défile, index-shell.css).
 // Version 1.11.0
 // - v1.11.0: températures mesurées sur la Terre (static/mesures/) : leur carte de l'année de la frise à la place de celle de
-//   l'époque, lisible de nuit ; anneeFrise exportée.
+//   l'époque, lisible de nuit ; anneeFrise exportée ; Temps sous Atmosphère au pas de leur pile (gap de .titre-affichages).
 // - v1.10.0: plus de bouton ⛶ du panneau ISS (zen de la page ISS) : le plein écran de la page, en bas, est le seul.
 // - v1.9.0: page embarquée (static/ui/embarque.js) : pas de page ISS — la Terre est celle de l'hôte (iss:terre relayé, en
 //   coordonnées de cette page), les cartes de l'époque lui vont (co2:cartes) ; miroir : le centre de la Terre à placeDuCote du
@@ -258,15 +258,16 @@
         const trous = fenetresISS.map((r) => 'M' + (r.x + ox) + ' ' + (r.y + oy) + 'h' + r.w + 'v' + r.h + 'h' + (-r.w) + 'Z').join('');
         f.style.clipPath = "path(evenodd, 'M0 0H" + fr.width + 'V' + fr.height + 'H0Z' + trous + "')";
     }
-    /** Bord gauche d'Energies / Atmosphère et 10 px sous eux, en px de la page ISS : ses fenêtres Temps et Point de vue
+    /** Bord gauche d'Energies / Atmosphère et, sous eux, l'écart de leur pile (gap de .titre-affichages, index-shell.css), en
+     *  px de la page ISS : un titre de plus dans la pile. Ses fenêtres Temps et Point de vue
      *  s'empilent là, à gauche, et s'ouvrent vers le bas (pages/ISS js/url.js, ?fenetresHote) ; et la place que l'organigramme demande à
      *  gauche de la Terre : la page ISS y pose le centre de sa Terre (pages/ISS js/hote.js).
      *  Envoyé quand le panneau bouge, à chaque chargement de la page ISS, quand sa Terre bouge, après un glisser dans
      *  l'organigramme et quand une fenêtre se plie ou se déplie. */
     function envoyerMargesISS() {
         const iframe = document.getElementById('iss-iframe'), cadre = iframe.getBoundingClientRect();
-        const boutons = document.getElementById('titre-affichages').getBoundingClientRect();   // Energies, Atmosphère
-        const fenetres = { gauche: boutons.left - cadre.left, haut: boutons.bottom - cadre.top + 10 };
+        const pile = document.getElementById('titre-affichages'), boutons = pile.getBoundingClientRect();   // Energies, Atmosphère
+        const fenetres = { gauche: boutons.left - cadre.left, haut: boutons.bottom - cadre.top + parseFloat(getComputedStyle(pile).rowGap) };
         // vue Terre–Lune : pas de place à faire, la page ISS garde son cadrage (la Terre au milieu de l'image) ; miroir : la
         // place est à droite, le centre de la Terre à cette distance du bord droit
         const place = window.ZOOM_TERRE.placeDuCote();

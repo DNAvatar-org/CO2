@@ -11,6 +11,11 @@ python3 scripts/bench_headless/run.py bench19.js
 Écrit un JSON sur la sortie standard. Aucune dépendance pip : `cdp.py` est un client
 Chrome DevTools minimal (WebSocket brut).
 
+**Le serveur local doit tourner** : `_outward/start_local.sh` (port 8001, racine `site/`) sert `host.html`
+(lu sur `127.0.0.1:8001`) et `API_BILAN` (lu sur `localhost:8001`). `run.py` n'ouvre aucun serveur et
+s'arrête net si le 8001 ne répond pas. Chaque run prend un profil Chrome neuf et un port de débogage
+libre : deux bancs peuvent tourner en même temps (sessions parallèles).
+
 ## Écrire une mesure
 
 Un script injecté doit :
@@ -27,7 +32,7 @@ mesure le code d'AVANT sa modification. C'est déjà arrivé — un bench annonc
 qui tournait sur l'ancien fichier.
 
 **Les workers spectraux.** `__SPECTRAL_WORKER_SCRIPT__` pointe volontairement sur une autre
-origine pour que `new Worker()` lève une SecurityError : `worker_pool.js` bascule alors sur son
+origine (`localhost` contre `127.0.0.1`) pour que `new Worker()` lève une SecurityError : `worker_pool.js` bascule alors sur son
 repli blob. Sans ça les workers se chargent en 404 silencieux et la convergence ne finit jamais.
 
 ## Le tictime (depuis le 2026-09-23)
@@ -62,9 +67,9 @@ dates, deux glaciations) : entrée Sturtien 1a = ⛄ 72,1 ppm ; sortie 1b 10 262
 de calotte continentale). ⚠️ Toujours mesurer sur la CHAÎNE DE CLICS complète : un chemin raccourci
 avait donné 3 419 ppm pour 1a, faux au vrai clic.
 
-**Chrome resté ouvert** : un script interrompu peut laisser un Chrome headless sur le port 9333 ; la
-mesure suivante tournait alors dans SON onglet, avec le TIMELINE qu'il avait modifié en mémoire.
-Depuis `run.py` v1.1.0, on ne s'attache qu'à l'onglet portant son propre `?cb=`. Encadré complet : `API_BILAN/config/configTimeline.js`,
+**Chrome resté ouvert** : un script interrompu peut laisser un Chrome headless ; une mesure qui
+s'y attachait tournait dans SON onglet, avec le TIMELINE qu'il avait modifié en mémoire. `run.py` ne
+s'attache qu'à l'onglet portant son propre `?cb=`, sur le port que SON Chrome a choisi. Encadré complet : `API_BILAN/config/configTimeline.js`,
 « ÉPOQUES D'HYSTÉRÉSIS ».
 
 ### La dichotomie : `seuils_hysteresis.js` (depuis le 2026-09-24)

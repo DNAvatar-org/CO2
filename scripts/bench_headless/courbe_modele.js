@@ -33,7 +33,7 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
   } else {
     await frise('⚫');
     if (MODE === 'saut') window.__PASSAGES__.length = 0;   // saut : la courbe commence à l'entrée dans 🦣, pas à ⚫
-    // Que des clics (mécanique : CLICS, API_BILAN/convergence/clics.js) jusqu'au ⛽ 2000 → 2025 de 📱.
+    // Que des clics (mécanique : CLICS, API_BILAN/convergence/clics.js) jusqu'au 🛢 2000 → 2025 de 📱.
     while (!(D['📜']['🗿'] === '📱' && D['📜']['📿💫'] === 1)) {
       const depuis = D['📜']['🗿'];
       // Mode saut : chemin 🦘 au premier clic de 🦣 (le chemin se choisit à ce clic, CLICS : 🕰.🛤).

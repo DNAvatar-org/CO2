@@ -28,7 +28,7 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
   // ppm en AIR SEC, comme les mesures (NOAA, carottes) : x = (w/M_CO₂) / (1/M_air − w_H₂O/M_H₂O)
   const ppmCO2 = () => +(D['🫧']['🍰🫧🏭']/C.M_CO2 / (1/D['🫧']['🧪'] - D['💧']['🍰🫧💧']/C.M_H2O) * 1e6).toFixed(1);
   // Un tictime, tel que le joue l'interface : le premier clic de la séquence de l'époque (🕰.order de la config ;
-  // 📱 : ⛽ de la tranche 2000). Mécanique : CLICS (API_BILAN/convergence/clics.js).
+  // 📱 : 🛢 de la tranche 2000). Mécanique : CLICS (API_BILAN/convergence/clics.js).
   const tic = () => {
     const key = window.CLICS.prochaineAction();
     return { key, r: window.CLICS.jouer(key) };

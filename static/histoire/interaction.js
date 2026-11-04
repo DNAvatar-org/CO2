@@ -1,13 +1,14 @@
 // File: CO2/static/histoire/interaction.js
-// Desc: Glisser pour naviguer ; molette = zoom du temps (X) ; Shift + molette = zoom de la température (Y).
-//       Chaque geste est suivi de H.borner() : on ne voit jamais avant −5000 Ma ni après 2025.
-// Version 1.3.0
-// Date: 2026-10-26
+// Desc: Glisser pour naviguer ; molette = zoom du temps (X), centré sur le curseur, ou sur 2025 quand le curseur est à
+//       sa droite (le futur, la marge vide : au départ dézoomé, la molette y mène à la dernière année) ; Shift + molette =
+//       zoom de la température (Y). Chaque geste est suivi de H.borner() : on ne voit jamais avant −5000 Ma ni après 2300
+//       et sa marge.
+// Version 1.4.0
+// Date: 2026-11-03
 // logs :
+//   - v1.4.0: molette à droite de 2025 : zoom centré sur 2025 ; en butée de zoom, le point fixe ne glisse plus.
 //   - v1.3.0: clic sur le bouton « 65° N » : affiche ou masque l'insolation d'été (H.insolVisible, rendu.js).
-//     Bulle retournée à gauche / au-dessus du curseur quand elle déborderait de la page.
 //   - v1.2.0: clic (sans glisser) sur un logo d'époque → l'index lance l'époque, comme la frise (histoire:epoque).
-//   - v1.1.0: survol → bulle avec la SOURCE de ce qui est sous le curseur (H.survol, rendu.js).
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -56,10 +57,12 @@
                 const mouseTemp = v.yOffset + (v.height / 2 - e.clientY) / v.yScale;
                 v.yScale *= zoomFactor;
                 v.yOffset = mouseTemp - (v.height / 2 - e.clientY) / v.yScale;
-            } else {                     // temps (X), centré sur le curseur
-                const mouseTime = v.xOffset - e.clientX / v.xScale;
+            } else {                     // temps (X), centré sur le curseur ; à droite de 2025 (le futur, la marge vide), sur 2025
+                const x = Math.min(e.clientX, v.xOffset * v.xScale);   // pixel de 2025 (t = 0) quand le curseur est au-delà
+                const mouseTime = v.xOffset - x / v.xScale;
                 v.xScale *= zoomFactor;
-                v.xOffset = mouseTime + e.clientX / v.xScale;
+                H.borner();                               // l'échelle bornée d'abord (zoom et dézoom maximaux)…
+                v.xOffset = mouseTime + x / v.xScale;     // …puis le point fixe reste sous son pixel, même en butée
             }
             H.borner(); redessiner();
         }, { passive: false });

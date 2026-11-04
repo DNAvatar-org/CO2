@@ -8,17 +8,17 @@
 //       (co2:pret). ?miroir : l'organigramme en symétrie d'axe vertical, à DROITE de la Terre (configOrganigramme.js
 //       TERRE_ECRAN.miroir, html.miroir). Chargé dans <head>, avant tout le reste : la config de l'organigramme le lit à sa
 //       construction.
-// Version 1.6.0
-// - 1.6.0 (2026-11-03): EMBARQUE.etatVersion — la même version pour la progression de la page seule (progression.js).
-// - 1.5.9 (2026-11-03): ETAT_VERSION 10 — tolérance de 📱 resserrée (plancher 0,01 W/m²).
-// - 1.5.8 (2026-10-31): ETAT_VERSION 9 — calottes à trois boîtes (calotte, terre libre, mer libre).
-// Date: 2026-11-03
+// Version 1.6.3
+// - 1.6.3 (2026-11-04): ETAT_VERSION 13 — 📜🔺⚖️🏭⏮, l'émission de la tranche précédente de 📱 (clics.js 1.5.0).
+// - 1.6.2 (2026-11-04): ETAT_VERSION 12 — la progression garde l'état au départ du dernier calcul (progression.js 1.3.0).
+// - 1.6.1 (2026-11-04): ETAT_VERSION 11 — la progression garde aussi les puits de carbone (progression.js).
+// Date: 2026-11-04
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
     const p = new URLSearchParams(location.search);
     /** L'état de l'organigramme gardé d'un chargement à l'autre (garderEtat) ; sa version : à monter si le moteur change */
-    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 10;
+    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 13;
     /** EMBARQUE.hote : le nom de la page hôte, ou null (page seule) ; EMBARQUE.miroir : organigramme à droite de la Terre */
     window.EMBARQUE = {
         hote: p.get('hote'),

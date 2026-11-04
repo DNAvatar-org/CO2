@@ -1,7 +1,8 @@
 /* File: CO2/static/mesures/mesures.css
    Desc: Terre en fond — « Températures mesurées » (static/mesures/controle_anomalies.js) : sous Temps de la page ISS (left et
          top posés depuis iss:fenetres), titre et + comme Energies / Atmosphère / Temps ; dépliée, le corps sous le titre (jauge
-         d'opacité verticale à gauche) ; la popup à droite. Visible seulement quand l'année de la frise a des mesures (.dans-mesures).
+         d'opacité verticale à gauche) ; la popup à droite. Sous les fenêtres dépliées (960), comme Energies / Atmosphère / Temps,
+         au-dessus de l'organigramme et de la frise (950). Visible seulement quand l'année de la frise a des mesures (.dans-mesures).
    Version 1.0.0
    Date: [November 03, 2026]
    Copyright 2026 DNAvatar.org - Arnaud Maignan */
@@ -9,7 +10,7 @@
 .anomalies-mesures {
     display: none;
     position: fixed;
-    z-index: 980;
+    z-index: 959;
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;

@@ -1,11 +1,10 @@
 /* File: events.js - Gestion des événements de la timeline
  * Desc: Logique pour créer et gérer les boutons d'événements selon l'époque géologique
- * Version 1.4.0
+ * Version 1.4.1
+ *   - v1.4.1: « FIN DE SIMULATION » sur deux lignes : sur une, le bord de #flux-diagram en coupait le F.
  *   - v1.4.0: époque à chemins (🦣) : un bouton par chemin au premier clic (🐾, 🦘), bulle = nom du chemin + durée.
  *   - v1.3.2: masse d'un ☄️ lue sur son entrée de séquence (CLICS.eauDuClic), elle change d'un clic à l'autre.
- *   - v1.3.1: jouerClic passe en animation (tictime : T conservée) — après un clic sur la frise, les clics d'événement
- *     repartaient de la graine.
- * Date: 2026-10-26
+ * Date: 2026-11-04
  * Copyright 2026 DNAvatar.org - Arnaud Maignan
 * logs :
  *   - v1.3.0: l'EFFET d'un clic vient de CLICS.jouer (API_BILAN/convergence/clics.js), la mécanique que joue aussi
@@ -30,8 +29,9 @@
 // Core globals requis : addCustomTooltip, hideTooltip, togglePlotAnim (passage animé), updateTimeline,
 // updateHadeenTexture, getLogoImageSrc, configOrganigramme, CLICS, IO_LISTENER, DATA, TIMELINE.
 
-/** Titre de la cellule d'événements (#cell-timeline-scenario-logos) : « EVENEMENT », ou « FIN DE SIMULATION »
- *  quand 📱 a atteint ◀ (2100) et n'a plus rien à proposer. */
+/** Titre de la cellule d'événements (#cell-timeline-scenario-logos) : « EVENEMENT », ou « FIN DE SIMULATION » sur
+ *  deux lignes quand 📱 a atteint la borne de la frise (2300) et n'a plus rien à proposer — sur une, centrée sur la
+ *  cellule, elle dépassait du bord gauche de #flux-diagram (overflow: clip), qui coupait le F. */
 function setEventsHeading(text) {
     const h = document.querySelector('#cell-timeline-scenario-logos .flux-label.organigram-config-heading');
     if (h.innerHTML !== text) h.innerHTML = text;
@@ -181,7 +181,7 @@ window.updateEpochActions = function () {
     if (parTranche) {
         const tranche = window.CLICS.trancheActive();
         if (tranche === null) {
-            setEventsHeading('FIN DE SIMULATION');
+            setEventsHeading('FIN DE<br>SIMULATION');
             return;
         }
         Object.keys(tranche).forEach(function (k) { eventsLogos.appendChild(boutonTranche(k, tranche[k])); });

@@ -1,19 +1,18 @@
 // File: CO2/static/ui/scenario_hote.js
 // Desc: Page embarquée avec les émissions de son hôte (?emis=<kg>, static/ui/embarque.js) : plus de balade dans les
 //       époques (ni frise ni ÉVÉNEMENT / SKIP, index-shell.css). On est aujourd'hui — 📱, plus les émissions MESURÉES
-//       2000–2025 (le ⛽ de sa tranche 2000) — puis jusqu'à la borne de la frise (TIMELINE_FUTUR ◀ = 2300, aujourd'hui
+//       2000–2025 (le 🛢 de sa tranche 2000) — puis jusqu'à la borne de la frise (TIMELINE_FUTUR ◀ = 2300, aujourd'hui
 //       + ~300 ans) avec, pour seul CO₂ ajouté, celui de l'hôte (CLICS.emettre, puits compris) : pour DNA Tamagoshi, les
 //       déplacements du joueur, qu'il calibre lui-même. Deux calculs : l'époque (sa graine de 2000), puis l'émission.
 //       Prête au bout du premier scénario (EMBARQUE.pret) ; de nouvelles émissions (message co2:emissions) le rejouent,
 //       à la fin du calcul en cours s'il y en a un. Chaque scénario fini, son résultat va à l'hôte (message co2:bilan :
 //       ppm de CO₂ — le chiffre de l'organigramme, sync_panels.js projectToVisu —, °C de surface, année atteinte) :
 //       l'hôte écrit le même chiffre que l'organigramme.
-// Version 1.2.3
+// Version 1.2.4
+// - 1.2.4 : la tranche mesurée de 2000 est le bouton 🛢
 // - 1.2.3 : l'état gardé remis par PROGRESSION.poser (progression.js), le même que la progression de la page seule
 // - 1.2.2 : l'époque remise par 📜👉 seul (DATA['📅'] en est l'accesseur)
-// - 1.2.1 : l'état gardé remis au premier calcul fait (demarrer), plus à sa place (loader_panels.js) : ce calcul, le ⚫
-//   que main.js clique au démarrage, était déjà parti et tournait ensuite sur l'état remis (calottes de 2300 à −5 Ga)
-// Date: 2026-11-03
+// Date: 2026-11-04
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.SCENARIO_HOTE = (function () {
     'use strict';
@@ -44,10 +43,10 @@ window.SCENARIO_HOTE = (function () {
             case 'epoque':
                 // un clic d'événement : la T° présente est gardée (events.js jouerClic)
                 window.DATA['🔘']['🔘🎞'] = true;
-                window.CLICS.jouer('⛽');   // 2000 → 2025 : les émissions mesurées (GCB), aujourd'hui
+                window.CLICS.jouer('🛢');   // 2000 → 2025 : les émissions mesurées (GCB), aujourd'hui
                 window.CLICS.emettre(kg, window.TIMELINE_FUTUR['◀'] - window.CLICS.date());
                 etape = 'emission';
-                window.IO_LISTENER.emit('config:applyThenCompute', { button: '⛽' });
+                window.IO_LISTENER.emit('config:applyThenCompute', { button: '🛢' });
                 break;
             case 'emission':
                 etape = 'fait';
