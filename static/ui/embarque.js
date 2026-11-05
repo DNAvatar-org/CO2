@@ -8,11 +8,13 @@
 //       (co2:pret). ?miroir : l'organigramme en symétrie d'axe vertical, à DROITE de la Terre (configOrganigramme.js
 //       TERRE_ECRAN.miroir, html.miroir). Chargé dans <head>, avant tout le reste : la config de l'organigramme le lit à sa
 //       construction.
-// Version 1.6.3
+// Version 1.7.0
+// - 1.7.0 (2026-11-05): l'état gardé dans IndexedDB (etats_gardes.js), plus localStorage — partagé par tout le site, plein, il
+//   lançait QuotaExceededError ; relu par relireEtat (loader_panels.js, la base lue avec ses fetch).
 // - 1.6.3 (2026-11-04): ETAT_VERSION 13 — 📜🔺⚖️🏭⏮, l'émission de la tranche précédente de 📱 (clics.js 1.5.0).
 // - 1.6.2 (2026-11-04): ETAT_VERSION 12 — la progression garde l'état au départ du dernier calcul (progression.js 1.3.0).
 // - 1.6.1 (2026-11-04): ETAT_VERSION 11 — la progression garde aussi les puits de carbone (progression.js).
-// Date: 2026-11-04
+// Date: 2026-11-05
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -33,18 +35,21 @@
         etatVersion: ETAT_VERSION,
         /** L'état gardé de l'organigramme pour ces émissions { kg, v, DATA } (garderEtat), ou null : à recalculer */
         etatGarde: null,
-        /** Garde l'état de l'organigramme (DATA, fin du scénario) pour les émissions kg : le prochain chargement le remet */
+        /** Garde l'état de l'organigramme (DATA, fin du scénario) pour les émissions kg : le prochain chargement le remet
+         *  (IndexedDB : etats_gardes.js) */
         garderEtat: function (kg, DATA) {
-            localStorage.setItem(ETAT_CLE, JSON.stringify({ kg: kg, v: ETAT_VERSION, DATA: DATA }));
+            window.ETATS_GARDES.put(ETAT_CLE, JSON.stringify({ kg: kg, v: ETAT_VERSION, DATA: DATA }));
+        },
+        /** L'état gardé, s'il est celui de mes émissions (pas de voyage depuis) et de ce moteur → etatGarde ; une fois la
+         *  base lue (loader_panels.js, ETATS_GARDES.lire avec ses fetch), avant le premier calcul */
+        relireEtat: function () {
+            // sans émissions (page seule, ou hôte sans scénario) : pas d'état de l'hôte (la page seule : progression.js)
+            const s = window.EMBARQUE.emissions === null ? null : window.ETATS_GARDES.get(ETAT_CLE), e = s === null ? null : JSON.parse(s);
+            if (e !== null && e.kg === window.EMBARQUE.emissions && e.v === ETAT_VERSION) window.EMBARQUE.etatGarde = e;
         },
         /** La page est prête (onglet ISS ouvert, scénario fait s'il y en a un) : l'hôte peut la montrer */
         pret: function () { window.parent.postMessage({ type: 'co2:pret' }, '*'); }
     };
-    // l'état gardé, s'il est celui de mes émissions (pas de voyage depuis) et de ce moteur
-    if (window.EMBARQUE.emissions !== null) {
-        const s = localStorage.getItem(ETAT_CLE), e = s === null ? null : JSON.parse(s);
-        if (e !== null && e.kg === window.EMBARQUE.emissions && e.v === ETAT_VERSION) window.EMBARQUE.etatGarde = e;
-    }
     document.documentElement.classList.toggle('embarque', window.EMBARQUE.hote !== null);
     document.documentElement.classList.toggle('miroir', window.EMBARQUE.miroir);
 

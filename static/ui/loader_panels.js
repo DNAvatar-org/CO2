@@ -1,6 +1,8 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.4.8
+// Version 1.4.9
+// - v1.4.9: les états gardés lus dans IndexedDB (ETATS_GARDES.lire, etats_gardes.js) avec les fetch des panneaux ; l'état de
+//   l'hôte relu ensuite (EMBARQUE.relireEtat), avant les scripts et le premier calcul.
 // - v1.4.8: static/ui/progression.js — la progression calculée gardée d'un chargement à l'autre (F5).
 // - v1.4.7: onglet ISS, températures mesurées (static/mesures/ : données HadCRUT5, carte, boîte de commande).
 // - v1.4.6: l'état gardé remis APRÈS le premier calcul (⚫, main.js le clique au démarrage : il était déjà parti, et
@@ -80,7 +82,7 @@
             'static/timeline/events.js',
             'organigramme/timeline.js',
             'static/ui/main.js',
-            'static/ui/progression.js',    // la progression gardée au F5 (localStorage), et l'état remis sans calcul
+            'static/ui/progression.js',    // la progression gardée au F5 (IndexedDB : etats_gardes.js), et l'état remis sans calcul
             'static/ui/scenario_hote.js'   // page embarquée avec émissions (?emis) : aujourd'hui → 2300, sans frise
         ],
         cacheBust: '',
@@ -138,9 +140,11 @@
     Promise.all([
         fetch('html/visu_radiatif.html').then(function (r) { return r.text(); }),
         fetch('html/scie_radiatif.html').then(function (r) { return r.text(); }),
-        fetch('html/bench_panel.html').then(function (r) { return r.text(); })
+        fetch('html/bench_panel.html').then(function (r) { return r.text(); }),
+        window.ETATS_GARDES.lire()   // les états gardés (IndexedDB : asynchrone), lus avec les panneaux
     ]).then(function (results) {
         setLoaded(0);
+        window.EMBARQUE.relireEtat();   // l'état gardé de l'hôte, la base lue
         var visuPanel = document.getElementById('visu-panel');
         var sciePanel = document.getElementById('scie-panel');
         var benchPanel = document.getElementById('bench-panel');

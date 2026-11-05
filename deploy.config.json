@@ -490,6 +490,10 @@
       "dest": "pages/bilan_radiatif/CO2/static/ui/embarque.js"
     },
     {
+      "src": "static/ui/etats_gardes.js",
+      "dest": "pages/bilan_radiatif/CO2/static/ui/etats_gardes.js"
+    },
+    {
       "src": "static/ui/progression.js",
       "dest": "pages/bilan_radiatif/CO2/static/ui/progression.js"
     },

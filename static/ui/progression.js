@@ -2,16 +2,18 @@
 // Desc: La progression calculée, gardée d'un chargement à l'autre (F5) : l'état au DÉPART du dernier calcul de
 //       l'interface hors run — DATA entier (📜 y porte l'époque, l'horloge, le curseur des clics, et le clic déjà joué),
 //       et les puits de carbone, hors DATA — puis la courbe verte d'Histoire, les messages histoire:calcul depuis le
-//       dernier clic sur la frise (bench_pilote.js). Dans localStorage : DATA pèse ~235 Ko en JSON, loin des 4 Ko d'un
-//       cookie. Au chargement, le ⚫ que main.js clique est écarté avant son premier pas (ABORT_COMPUTE) ; à sa place, le
+//       dernier clic sur la frise (bench_pilote.js). Dans IndexedDB (etats_gardes.js) : DATA pèse ~235 Ko en JSON, loin des
+//       4 Ko d'un cookie, et localStorage, partagé par tout le site, n'avait plus la place. Au chargement, le ⚫ que main.js clique est écarté avant son premier pas (ABORT_COMPUTE) ; à sa place, le
 //       dernier calcul est refait depuis son état de départ : Science, le spectre, l'organigramme montrent ce calcul-là.
 //       Le curseur de la frise suit 📜 (organigramme/timeline.js updateTimeline). Un clic sur la frise ⚫, l'état du
 //       démarrage, efface la progression. Page seule : embarquée, l'hôte a son état gardé (embarque.js garderEtat), remis
 //       par poser (scenario_hote.js).
-// Version 1.3.0
+// Version 1.4.0
+// - 1.4.0 : gardée dans IndexedDB (ETATS_GARDES, etats_gardes.js), plus localStorage — plein (tout le site s'y partage
+//           ~5 millions de caractères), setItem lançait QuotaExceededError.
 // - 1.3.0 : au chargement, le ⚫ écarté et le dernier calcul refait depuis son état de départ (plus l'état d'arrivée remis).
 // - 1.2.0 : les puits de carbone gardés avec DATA (réservoirs, stocks) : le calcul refait absorbe le même CO₂.
-// Date: 2026-11-04
+// Date: 2026-11-05
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.PROGRESSION = (function () {
     'use strict';
@@ -27,10 +29,8 @@ window.PROGRESSION = (function () {
     /** La progression gardée par le chargement précédent { v, depart, calculs }, ou null : aucune, ou gardée par un autre
      *  moteur (EMBARQUE.etatVersion, la version de l'état gardé) */
     function gardee() {
-        const s = localStorage.getItem(CLE);
-        if (s === null) return null;
-        const g = JSON.parse(s);
-        return g.v === window.EMBARQUE.etatVersion ? g : null;
+        const s = window.ETATS_GARDES.get(CLE), g = s === null ? null : JSON.parse(s);
+        return g !== null && g.v === window.EMBARQUE.etatVersion ? g : null;
     }
 
     /** L'état des puits de carbone, hors DATA (leur découpage en réservoirs et stocks, que DATA ne porte qu'en totaux :
@@ -115,8 +115,8 @@ window.PROGRESSION = (function () {
         calcul: function (msg) {
             if (window.EMBARQUE.hote !== null) return;
             calculs = msg.depart ? [msg] : calculs.concat([msg]);
-            if (msg.depart && msg.point.ep === window.TIMELINE[0]['📅']) { localStorage.removeItem(CLE); return; }
-            localStorage.setItem(CLE, JSON.stringify({ v: window.EMBARQUE.etatVersion, depart: depart, calculs: calculs }));
+            if (msg.depart && msg.point.ep === window.TIMELINE[0]['📅']) { window.ETATS_GARDES.effacer(CLE); return; }
+            window.ETATS_GARDES.put(CLE, JSON.stringify({ v: window.EMBARQUE.etatVersion, depart: depart, calculs: calculs }));
         }
     };
 })();

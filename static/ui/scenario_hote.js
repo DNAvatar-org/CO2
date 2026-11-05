@@ -8,11 +8,13 @@
 //       à la fin du calcul en cours s'il y en a un. Chaque scénario fini, son résultat va à l'hôte (message co2:bilan :
 //       ppm de CO₂ — le chiffre de l'organigramme, sync_panels.js projectToVisu —, °C de surface, année atteinte) :
 //       l'hôte écrit le même chiffre que l'organigramme.
-// Version 1.2.4
+// Version 1.2.5
+// - 1.2.5 : l'état gardé sous les émissions calculées (kgCalcul), pas sous celles arrivées pendant le calcul (co2:emissions
+//           au milieu de l'émission : l'état d'avant était gardé sous le nouveau kg, et remis tel quel au chargement suivant)
 // - 1.2.4 : la tranche mesurée de 2000 est le bouton 🛢
 // - 1.2.3 : l'état gardé remis par PROGRESSION.poser (progression.js), le même que la progression de la page seule
 // - 1.2.2 : l'époque remise par 📜👉 seul (DATA['📅'] en est l'accesseur)
-// Date: 2026-11-04
+// Date: 2026-11-05
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.SCENARIO_HOTE = (function () {
     'use strict';
@@ -20,6 +22,7 @@ window.SCENARIO_HOTE = (function () {
     /** attente (avant le premier calcul de la page) → epoque (calcul de 📱) → emission (calcul de l'émission) → fait */
     let etape = 'attente';
     let kg = window.EMBARQUE.emissions;   // [kg CO₂] de l'hôte, émis d'aujourd'hui à la borne de la frise
+    let kgCalcul = null;                  // [kg CO₂] celles du calcul de l'émission en cours (kg peut changer pendant)
     let rejouer = false, premier = true;
 
     /** Clic sur la frise : 📱, sa graine (2000), sans rien hériter — puis le calcul */
@@ -44,13 +47,14 @@ window.SCENARIO_HOTE = (function () {
                 // un clic d'événement : la T° présente est gardée (events.js jouerClic)
                 window.DATA['🔘']['🔘🎞'] = true;
                 window.CLICS.jouer('🛢');   // 2000 → 2025 : les émissions mesurées (GCB), aujourd'hui
-                window.CLICS.emettre(kg, window.TIMELINE_FUTUR['◀'] - window.CLICS.date());
+                kgCalcul = kg;
+                window.CLICS.emettre(kgCalcul, window.TIMELINE_FUTUR['◀'] - window.CLICS.date());
                 etape = 'emission';
                 window.IO_LISTENER.emit('config:applyThenCompute', { button: '🛢' });
                 break;
             case 'emission':
                 etape = 'fait';
-                window.EMBARQUE.garderEtat(kg, window.DATA);   // le prochain chargement, mêmes émissions : sans calcul
+                window.EMBARQUE.garderEtat(kgCalcul, window.DATA);   // le prochain chargement, mêmes émissions : sans calcul
                 bilan();
                 if (premier) { premier = false; window.EMBARQUE.pret(); }
                 if (rejouer) lancer();
