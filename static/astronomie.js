@@ -42,6 +42,7 @@ const SOLUTION_NOM = 'Laskar et al. 2004';
  * @returns {{obliquite:number, excentricite:number, varpi:number}} obliquité ε (rad), excentricité e, longitude vraie du
  *   périhélie ϖ (rad, convention géocentrique, voir en tête). Interpolation linéaire entre les deux lignes de la table qui
  *   encadrent la date ; ϖ, qui tourne de ≈ 0,3 rad par ka, sur l'écart ramené à ]−π, π].
+ * Réf : Laskar et al. 2004, A&A 428:261 — API_BILAN/doc/equation.html#eq-orbite-date
  */
 function orbite(t) {
     const u = Math.max(0, (AN_TABLE - AN_REFERENCE - t) / L04.pasAns);   // lignes avant 2000 ; après 2000 : la ligne 0
@@ -64,6 +65,7 @@ function orbite(t) {
  * @param {{obliquite:number, excentricite:number, varpi:number}} orbite  orbite(t)
  * @param {number} lambda    longitude solaire vraie (rad) — π/2 : solstice d'été boréal
  * @param {number} latitude  rad
+ * Réf : Berger 1978, J. Atmos. Sci. 35:2362 — API_BILAN/doc/equation.html#eq-orbite-date
  */
 function insolationJournaliere(orbite, lambda, latitude) {
     const e = orbite.excentricite;
@@ -75,6 +77,7 @@ function insolationJournaliere(orbite, lambda, latitude) {
     return SOLAR_CONSTANT / (Math.PI * rho * rho) * (H0 * a + b * Math.sin(H0));
 }
 
+// Réf : Berger 1978, J. Atmos. Sci. 35:2362 ; Berger & Loutre 1991, Quat. Sci. Rev. 10:297 (contrôle en 2000) — API_BILAN/doc/equation.html#eq-orbite-date
 /** Insolation du solstice d'été à 65° N (W/m²), l'indicateur classique des glaciations, en année calendaire. */
 function insolation65N(anCalendaire) {
     return insolationJournaliere(orbite(anCalendaire - AN_REFERENCE), Math.PI / 2, 65 * DEG_RAD);

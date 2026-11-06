@@ -289,7 +289,7 @@
     top: auto !important;
     bottom: 100%;
     transform: none !important;
-    margin: 0 -90px -40px;
+    margin: 0 -90px -18px;
     pointer-events: none;
 }
 #bandeau-bas-evenement > .flux-cell {
