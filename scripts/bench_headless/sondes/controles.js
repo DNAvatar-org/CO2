@@ -7,7 +7,8 @@
 //       Ciel clair « modèle » : nuages retirés de toutes les colonnes (fractions F_BAS, F_MOYEN, F_HAUT à 0, albédo et transfert
 //       refaits), à comparer à CERES + correction de Kato et al. 2013 (CONTROLES_MESURES.cielClairModele).
 //       Usage : python3 scripts/bench_headless/run.py scripts/bench_headless/sondes/controles.js --timeout 1800
-// Version 1.0.0
+// Version 1.0.1
+// - v1.0.1 (2026-11-06): nuages vus d'en haut recalculés à chaque état (🪩👁 était celui de l'état convergé de départ).
 // Date: [November 6, 2026]
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.__PROG__ = 'start'; window.__R6__ = []; window.__ERR__ = null;
@@ -28,7 +29,7 @@ window.__PROG__ = 'start'; window.__R6__ = []; window.__ERR__ = null;
         const S = D['☀️']['🧲☀️🎱'], A = D['🪩']['🍰🪩📿'], olr = D['📊'].total_flux;
         const pr = window.RADIATIVE.profilAtmosphere(D['📊'].z_range);
         let pwv = 0; for (const c of pr.couches) pwv += c.n_H2O * c.delta_z_real * C.M_H2O * C.BOLTZMANN_KB / C.R_GAS;
-        const vu = D['🪩']['🪩👁'];
+        const vu = window.NUAGES_ISCCP.vusDenHaut(window.RADIATIVE.colonneNuageuse());   // vue ISCCP de CET état (🪩👁 n'est posé qu'en fin de calcul)
         const f0 = { b: CS.F_BAS, m: N.F_MOYEN, h: CS.F_HAUT };
         CS.F_BAS = 0; N.F_MOYEN = 0; CS.F_HAUT = 0;
         await evaluer(T, true);                                        // ciel clair « modèle », même stratosphère
