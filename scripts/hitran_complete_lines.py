@@ -2,7 +2,7 @@
 # Desc: Complète les raies HITRAN du moteur (API_BILAN/data/hitran_lines_*.js) sur toute la grille 0–10 000 cm⁻¹ et écrit les
 #       fonctions de partition TIPS (API_BILAN/data/hitran_tips.js). Lit des fichiers .par (format HITRAN 160 caractères) déjà
 #       téléchargés, un par tranche, nommés <MOL>_<numin>_<numax>.par, et les tables q<id>.txt.
-# Version 1.0.0
+# Version 1.1.0
 # Date: [November 6, 2026]
 # Copyright 2026 DNAvatar.org - Arnaud Maignan
 """
@@ -15,7 +15,8 @@ CH₄ 0–900, 1600–2600, 3400–10 000 ; gardées jusqu'à NU_MAX. Les raies 
 Seuil : par tranche de 100 cm⁻¹, les raies NOUVELLES sont gardées par intensité décroissante jusqu'à 99,5 % de l'intensité de la
 tranche à 296 K (les plus faibles, qui portent le dernier 0,5 %, sont laissées : le poids des fichiers lus par le navigateur).
 
-Usage : python3 scripts/hitran_complete_lines.py <dossier des .par et q*.txt>
+Usage : python3 scripts/hitran_complete_lines.py <dossier des .par et q*.txt> [molécules…]  (sans liste : H2O CO2 O3 CH4 ;
+       N2O ajouté le 2026-11-06 par « … N2O » : 0–3500 cm⁻¹). Une molécule déjà fusionnée ne doit pas être repassée.
 """
 
 import glob
@@ -27,9 +28,9 @@ PART = 0.995
 # [cm⁻¹] Borne haute des raies NOUVELLES par molécule. O₃ ne vit que dans la stratosphère (200–300 K) : au-delà de 2500 cm⁻¹ son
 # émission est négligeable et le flux montant de la surface aussi (< 1 % à 288 K). CH₄ : ses trous comblés jusqu'à 3400 cm⁻¹ ; au-delà
 # ses bandes ne comptent qu'au-dessus de ~1000 K, où il ne survit pas (pyrolyse). H₂O et CO₂ : toute la grille thermique.
-NU_MAX = {"H2O": 10000, "CO2": 10000, "O3": 2500, "CH4": 3400}
+NU_MAX = {"H2O": 10000, "CO2": 10000, "O3": 2500, "CH4": 3400, "N2O": 3500}   # N₂O : bandes de 17, 7,8 et 4,5 µm
 CHAMPS = ["nu", "sw", "elower", "gamma_air", "gamma_self", "n_air", "delta_air"]
-TIPS = {"H2O": 1, "CO2": 7, "O3": 16, "CH4": 32}
+TIPS = {"H2O": 1, "CO2": 7, "O3": 16, "N2O": 21, "CH4": 32}
 
 
 def lire_par(fichier):
@@ -65,7 +66,7 @@ def main():
     src = sys.argv[1]
     racine = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     data = os.path.join(racine, "API_BILAN", "data")
-    for mol in ["H2O", "CO2", "O3", "CH4"]:
+    for mol in (sys.argv[2:] or ["H2O", "CO2", "O3", "CH4"]):
         nouvelles = [r for f in sorted(glob.glob(os.path.join(src, mol + "_*.par"))) for r in lire_par(f) if r["nu"] <= NU_MAX[mol]]
         gardees, s_min = seuil(nouvelles)
         chemin = os.path.join(data, "hitran_lines_" + mol + ".js")
