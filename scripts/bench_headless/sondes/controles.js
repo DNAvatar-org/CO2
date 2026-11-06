@@ -51,7 +51,7 @@ window.__PROG__ = 'start'; window.__R6__ = []; window.__ERR__ = null;
             ['nuages vus hauts', vu.niveaux.H.a, IS.niveaux.H.a],
             ['τ vus hauts', vu.niveaux.H.tau, IS.niveaux.H.tau]
         ];
-        window.__R6__.push({ etat: nom, T_C: r(T - C.T0_WATER), S: r(S), Tstrato: r(D['🫧']['🌡️🫧🛩']),
+        window.__R6__.push({ etat: nom, T_C: r(T - C.T0_WATER), S: r(S), Tstrato: D['🫧']['🌡️🫧🛩'].map(r),
             controles: lignes.map(([q, mod, mes]) => ({ q, modele: r(mod), mesure: r(mes), ecart: r(mod - mes) })) });
     };
     await etat('T mesurée', T_mes);
