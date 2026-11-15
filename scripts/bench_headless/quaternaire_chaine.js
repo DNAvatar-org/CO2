@@ -5,13 +5,14 @@
 //       celle du calcul, son équilibre, son temps de réaction, Ts [K] tel que le rend CALOTTES.calculer (null hors d'un monde à
 //       océan), le recul de sa marge depuis la mer d₀ (km), et son socle : temps de rebond τ_b (ka), sous-pas intégrés, écart
 //       maximal à l'équilibre d'Airy (m). Écrit window.__Q__ (à lire avec --stream __Q__).
-//       Usage : (echo "window.__FRISES__=['🚂']; window.__DEPARTS__=['🏔']; window.__FIN__='📱';"; cat quaternaire_chaine.js) > /tmp/q.js
-//               python3 run.py /tmp/q.js --var __Q__ --timeout 7200 --stream __Q__   (🦣 : 159 clics 🐾 de 25 à 40 min)
-// Version 1.1.3
-// - v1.1.3 (2026-10-30): Ts lu tel quel [K] ; délai de l'usage pour les 159 clics 🐾 de 🦣.
-// - v1.1.2 (2026-10-29): obliquité lue dans DATA['📜']['⚾'] ; aire des bandes : CALOTTES.aireBande ; 0 °C = CONST.T0_WATER.
-// - v1.1.1 (2026-10-29): marge = recul d₀ de la marge depuis la mer (km).
-// Date: [October 30, 2026]
+//       REPRISE : l'état au départ de chaque clic (DATA entier et puits de carbone, comme la progression du F5,
+//       static/ui/progression.js) est écrit dans le flux ({ reprise }) tous les REPRISE_PAS clics et quand une erreur arrête la
+//       chaîne ; reprise.py en refait une sonde qui repart de là (window.__REPRISE__ : un seul départ, pas de frise).
+//       Usage : (echo "window.__FRISES__=['🚂']; window.__DEPARTS__=['🏔']; window.__FIN__='📱';"; cat quaternaire_chaine.js) > q.js
+//               python3 run.py q.js --var __PROG__ --stream __Q__ --timeout 7200 > q.out   (🦣 : 159 clics 🐾 de 25 à 40 min)
+//               python3 reprise.py q.out q.js > q2.js   (après un arrêt : repart du dernier état gardé)
+// Version 1.2.0
+// Date: [November 15, 2026]
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.__PROG__='start'; window.__Q__=[]; window.__ERR__=null;
 (async () => { try {
@@ -36,6 +37,21 @@ window.__PROG__='start'; window.__Q__=[]; window.__ERR__=null;
       abs: { pol: [r(m.absorbe.pol.neige, 3), r(m.absorbe.pol.glace, 3)], mid: [r(m.absorbe.mid.neige, 3), r(m.absorbe.mid.glace, 3)] },
       cal, st: D['🧮']['🧮🛑'] });
   };
+  const REPRISE_PAS = 20;
+  /** L'état au départ d'un clic : DATA entier et les puits de carbone, hors DATA (static/ui/progression.js). */
+  const etat = () => ({ DATA: structuredClone(D), puits: { ocean: window.OCEAN_SINK.boxesKg(), terre: window.LAND_SINK.etat() } });
+  let reprise = null, nClics = 0;
+  const garder = (chaine) => { reprise = Object.assign({ chaine: chaine }, etat()); };
+  try {
+  if (window.__REPRISE__ !== undefined) {
+    // Reprise : l'état gardé remis (comme PROGRESSION.poser), puis les clics continuent depuis son 📜.
+    const R = window.__REPRISE__;
+    window.OCEAN_SINK.poserBoxesKg(R.puits.ocean);
+    window.LAND_SINK.poser(R.puits.terre);
+    for (const k of Object.keys(R.DATA)) D[k] = R.DATA[k];   // 📜 porte l'époque et le curseur des clics ; api.run la prépare
+    window.__FRISES__ = []; window.__DEPARTS__ = [];
+    await clics(R.chaine);
+  }
   for (const f of (window.__FRISES__ || [])) {
     const t0 = Date.now();
     window.CLICS.frise(f);
@@ -51,7 +67,14 @@ window.__PROG__='start'; window.__Q__=[]; window.__ERR__=null;
     window.__PROG__ = dep + ' frise';
     await api.run({ epochId: dep, animEnabled: false });
     note(dep, 'frise ' + dep, avant, t0);
+    await clics(dep);
+  }
+  } catch (e) { if (reprise !== null) window.__Q__.push({ reprise: reprise }); throw e; }
+  async function clics(dep) {
+    let t0, avant;
     while (D['📜']['🗿'] !== window.__FIN__) {
+      garder(dep);
+      if (++nClics % REPRISE_PAS === 0) window.__Q__.push({ reprise: reprise });
       t0 = Date.now();
       const depuis = D['📜']['🗿'];
       const key = window.CLICS.prochaineAction();

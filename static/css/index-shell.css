@@ -1,11 +1,12 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.5.0
+   Version 1.5.1
+   - v1.5.1: liste du chargement sur 3 colonnes (2 puis 1 sur écran étroit).
    - v1.5.0: bord gauche saisissable de la fenêtre dépliée (.fenetre-bord, largeur seule).
    - v1.4.0: un seul plein écran, en bas à droite, au graphisme des boutons de la page ISS (.iss-zen-btn retiré).
    - v1.3.1: embarquée réduite (Energies et Atmosphère repliés : le survol de la feuille du tamagoshi) — plus de logo EDS
      (#cell-reemis), la t° seule.
-   Date: 2026-11-02
+   Date: 2026-11-15
    Copyright 2026 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    ============================================================ */
@@ -515,14 +516,16 @@ html:fullscreen .credits-footer {
     list-style: none;
     margin: 0;
     padding: 0;
-    max-width: 640px;
+    max-width: 960px;
     width: 100%;
     font-family: monospace;
     font-size: 11px;
     color: #888;
-    column-count: 2;
+    column-count: 3;
     column-gap: 24px;
 }
+@media (max-width: 720px) { .app-loader-list { column-count: 2; } }
+@media (max-width: 440px) { .app-loader-list { column-count: 1; } }
 .app-loader-list li {
     padding: 4px 8px;
     margin: 2px 0;

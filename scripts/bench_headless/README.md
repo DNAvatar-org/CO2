@@ -104,8 +104,18 @@ T° d'arrivée par clic (écart < 0,5 °C). La graine d'une hystérésis est la 
 
 ```bash
 (echo "window.__FRISES__=['🚂','📱']; window.__DEPARTS__=['🏔']; window.__FIN__='📱';"; cat scripts/bench_headless/quaternaire_chaine.js) > /tmp/q.js
-python3 scripts/bench_headless/run.py /tmp/q.js --var __Q__ --timeout 7200 --stream __Q__
+python3 scripts/bench_headless/run.py /tmp/q.js --var __PROG__ --stream __Q__ --timeout 7200 > /tmp/q.out
 ```
+
+**Reprise après un arrêt.** L'état au départ d'un clic (DATA entier et puits de carbone, comme la progression du F5) est écrit
+dans le flux tous les 20 clics et au moment d'une erreur. `reprise.py` en refait une sonde qui repart de ce clic :
+
+```bash
+python3 scripts/bench_headless/reprise.py /tmp/q.out /tmp/q.js > /tmp/q2.js
+python3 scripts/bench_headless/run.py /tmp/q2.js --var __PROG__ --stream __Q__ --timeout 7200 > /tmp/q2.out
+```
+
+Vérifié sur une panne simulée au 2ᵉ clic (🏔 → 🦣) : la reprise redonne le même point, calottes comprises.
 
 Un point par clic : T, gaz, obliquité de l'orbite, aire de glace par hémisphère, et par bande la calotte portée avant le
 clic, celle du calcul, son équilibre, son temps de réaction et sa marge. C'est ce qui montre si une calotte est bornée
