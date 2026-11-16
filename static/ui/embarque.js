@@ -8,7 +8,8 @@
 //       (co2:pret). ?miroir : l'organigramme en symétrie d'axe vertical, à DROITE de la Terre (configOrganigramme.js
 //       TERRE_ECRAN.miroir, html.miroir). Chargé dans <head>, avant tout le reste : la config de l'organigramme le lit à sa
 //       construction.
-// Version 1.8.0
+// Version 1.8.1
+// - 1.8.1 (2026-11-16): ETAT_VERSION 17 — moteur changé (océan profond 🧮.🌡️🌊, C34–C37) : les états gardés sont recalculés.
 // - 1.8.0 (2026-11-16): co2:calcul à chaque respiration du calcul (compteur de cycles chez l'hôte).
 // - 1.7.3 (2026-11-15): ETAT_VERSION 16 — moteur changé (concentration de la banquise, seuil de la stratosphère à l'Init).
 // - 1.7.2 (2026-11-07): ETAT_VERSION 15 — moteur changé (nuages hauts et bas mesurés, stratosphère, Init du solveur).
@@ -23,7 +24,7 @@
     'use strict';
     const p = new URLSearchParams(location.search);
     /** L'état de l'organigramme gardé d'un chargement à l'autre (garderEtat) ; sa version : à monter si le moteur change */
-    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 16;
+    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 17;
     /** EMBARQUE.hote : le nom de la page hôte, ou null (page seule) ; EMBARQUE.miroir : organigramme à droite de la Terre */
     window.EMBARQUE = {
         hote: p.get('hote'),
