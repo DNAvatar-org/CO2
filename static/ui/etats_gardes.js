@@ -11,14 +11,15 @@
 //       Les états d'avant (localStorage co2_embarque_etat, co2_progression) passent dans la base et sont effacés de
 //       localStorage : la place rendue aux autres pages.
 //       Valeurs : des chaînes JSON, comme dans localStorage (mêmes règles : Infinity → null, undefined omis).
-// Version 1.0.0
-// Date: 2026-11-05
+// Version 1.0.1
+// - 1.0.1 : la clé co2_affiche (le dernier affichage, demarrage.js) relue au démarrage.
+// Date: 2026-11-16
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 window.ETATS_GARDES = (function () {
     'use strict';
     const BASE = 'co2_etats', MAGASIN = 'etats';
     /** Les clés gardées (et celles de localStorage d'avant, du même nom) */
-    const CLES = ['co2_embarque_etat', 'co2_progression'];
+    const CLES = ['co2_embarque_etat', 'co2_progression', 'co2_affiche'];   // co2_affiche : le dernier affichage (demarrage.js)
     /** cle → chaîne JSON, ou absente ; rempli par lire() */
     const valeurs = {};
     /** La base ouverte, ou null : pas d'IndexedDB (refusée, navigation privée) — les états vivent alors le temps de la page */

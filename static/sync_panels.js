@@ -1,6 +1,7 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.3.1
+// Version 1.3.2
+// - v1.3.2 (2026-11-16): fin de calcul montrée : DATA gardé (DEMARRAGE.garder) pour le prochain chargement.
 // - v1.3.1 (2026-11-16): la 3D de l'ISS dort pendant le calcul (ONGLETS_GRAPHE.dormirISS).
 // - v1.3.0 (2026-11-16): respirations du moteur → compteur de cycles et hôte (co2:calcul) ; vue spectrale : courbe de chaque cycle.
 // - v1.2.3 (2026-10-15): window.afficherCalcul(result) — l'affichage de fin de calcul, réutilisé par le banc (BENCH.voir).
@@ -235,6 +236,7 @@
         window.ORG.updateFluxLabels('ProcessFinished');
         window.updateTimeline();
         window.shell.dataInput({ type: 'compute:done', DATA: window.DATA });
+        window.DEMARRAGE.garder();   // le dernier affichage, redessiné dès le prochain chargement
     };
 
     window.runComputeInParent = function () {

@@ -1,6 +1,7 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.5.1
+   Version 1.5.2
+   - v1.5.2: body.attente-terre — organigramme caché et page ISS transparente au démarrage, jusqu'à la Terre posée (demarrage.js).
    - v1.5.1: liste du chargement sur 3 colonnes (2 puis 1 sur écran étroit).
    - v1.5.0: bord gauche saisissable de la fenêtre dépliée (.fenetre-bord, largeur seule).
    - v1.4.0: un seul plein écran, en bas à droite, au graphisme des boutons de la page ISS (.iss-zen-btn retiré).
@@ -624,4 +625,15 @@ html.embarque #flux-diagram.hide-organigram-arrows.hide-organigram-observation-m
 html.embarque #flux-diagram.hide-organigram-arrows.hide-organigram-observation-metrics #cell-reemis * {
     visibility: hidden !important;
     pointer-events: none !important;
+}
+
+/* Démarrage de la page seule (static/ui/demarrage.js) : l'organigramme ne se montre qu'une fois posé autour de la Terre de
+   l'ISS — caché, pas retiré : sa mise en page reste, ses emprises se mesurent. */
+body.attente-terre #flux-diagram {
+    visibility: hidden;
+}
+/* La page ISS aussi, le temps qu'elle se monte (ses propres panneaux passent avant le mode de l'hôte) : transparente, pas
+   cachée — cachée, sa boucle (requestAnimationFrame) pourrait être bridée et sa Terre ne serait jamais envoyée. */
+body.attente-terre #iss-iframe {
+    opacity: 0;
 }

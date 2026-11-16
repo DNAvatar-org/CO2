@@ -1,7 +1,8 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.3.6
+// Version 1.3.7
+// - v1.3.7: le clic ⚫ du démarrage passe par DEMARRAGE.lancer (page seule : après l'ISS et sa Terre posée).
 // - v1.3.6 (2026-10-17): « Energies » (watts) et « Atmosphère » (détails) sous l'époque, à la place du 🛰 et de ⚗ (invisible) ;
 //   les 🛰 seulement glissables.
 // - v1.3.5 (2026-10-16): bandeau du bas — ⚗ DETAILS, EVENEMENT, SKIP ; ⚗ DETAILS visible ; 🛰 du satellite IR (DSCOVR) = bouton OBSERVATIONS ; les deux basculent leurs
@@ -2673,8 +2674,9 @@ function runMainInit() {
                     });
                 }
                 
+                // Le premier calcul : page seule, après l'ISS, la fenêtre Spectrale et la Terre posée (demarrage.js)
                 const corpsNoirBtn = document.querySelector('.epoch-btn[data-epoch="⚫"]');
-                if (corpsNoirBtn) corpsNoirBtn.click();
+                window.DEMARRAGE.lancer(function () { corpsNoirBtn.click(); });
                 
                 window.addEventListener('calculationConverged', () => {
                     const planetTextures = document.querySelectorAll('.planet-texture[data-planet-texture="true"]');

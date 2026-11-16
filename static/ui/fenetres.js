@@ -6,7 +6,8 @@
 //       Taille commune à toutes les fenêtres, bornée au panneau : par défaut LARGEUR_DEFAUT et jusqu'au-dessus des boutons
 //       ⓒ et ⛶ du coin bas droit, ou celle choisie à la poignée (coin bas gauche) ou au bord gauche (largeur seule),
 //       retenue en cookie. Au premier chargement, Spectrale est ouverte (loader_panels.js).
-// Version 1.4.0
+// Version 1.4.1
+// - v1.4.1: le spectre se dessine à l'ouverture s'il y en a un, calculé ou remis (DATA['📊'], demarrage.js).
 // - v1.4.0: bord gauche saisissable (largeur seule).
 // - v1.3.0: titres en rangée horizontale en haut ; hauteur par défaut jusqu'au-dessus de ⓒ et ⛶.
 // Date: 2026-11-02
@@ -28,7 +29,7 @@
         visu() {
             CONTENU.visu().classList.remove('spectre-cache');
             window.dispatchEvent(new Event('resize'));   // Plotly et canvas à la taille de la fenêtre (plot.js)
-            if (window.DATA['🧮']['🧮🌡️'] !== undefined) window.projectToVisu(window.DATA);
+            if (window.DATA['📊'] !== undefined) window.projectToVisu(window.DATA);   // un spectre calculé ou remis (demarrage.js)
         },
         histoire() {}, bench() {}, milankovitch() {},
         scie() { window.synchroniserScie(); }

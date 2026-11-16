@@ -1,6 +1,8 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.5.0
+// Version 1.6.0
+// - v1.6.0: page seule, l'ISS et sa fenêtre Spectrale ouvertes avant le premier calcul (demarrage.js) ; embarquée inchangée ;
+//   Science chargée ne lance plus de calcul ⚫ (il doublait celui du démarrage et partait avant la Terre de l'ISS).
 // - v1.5.0: COMPUTE_LOADER.respiration — anneau et compteur de cycles à chaque respiration du moteur, anneau toujours visible.
 // - v1.4.9: les états gardés lus dans IndexedDB (ETATS_GARDES.lire, etats_gardes.js) avec les fetch des panneaux ; l'état de
 //   l'hôte relu ensuite (EMBARQUE.relireEtat), avant les scripts et le premier calcul.
@@ -82,6 +84,7 @@
             'static/timeline/integrateEds.js',
             'static/timeline/events.js',
             'organigramme/timeline.js',
+            'static/ui/demarrage.js',      // l'ordre du démarrage (page seule) : ISS, Spectrale, dernier affichage, Terre, puis calcul
             'static/ui/main.js',
             'static/ui/progression.js',    // la progression gardée au F5 (IndexedDB : etats_gardes.js), et l'état remis sans calcul
             'static/ui/scenario_hote.js'   // page embarquée avec émissions (?emis) : aujourd'hui → 2300, sans frise
@@ -208,7 +211,7 @@
         window.ONGLETS_GRAPHE.spectreVisible(true);
         if (window.shell && window.shell.setCurrentPanel) window.shell.setCurrentPanel('visu');
         if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('resize'));
-        if (window.DATA['🧮']['🧮🌡️'] !== undefined) window.projectToVisu(window.DATA);
+        if (window.DATA['📊'] !== undefined) window.projectToVisu(window.DATA);   // un spectre calculé ou remis (demarrage.js)
     }
     function onShowScie() {
         window.ONGLETS_GRAPHE.spectreVisible(false);
@@ -272,21 +275,20 @@
         window.API_ONGLETS.registerTab({ id: 'histoire', buttonId: 'tab-histoire', panelId: 'histoire-panel', onShow: onShowHistoire, onHide: onHideHistoire });
         // Onglet ISS : dnavatar.org/pages/ISS en iframe, même zone et même effet (spectre caché) que Milankovitch.
         window.API_ONGLETS.registerTab({ id: 'iss', buttonId: 'tab-iss', panelId: 'iss-panel', onShow: onShowISS, onHide: onHideISS });
-        // Onglet ISS par défaut : ouvert au premier calcul — il lit l'atmosphère calculée (onglets_graphe.js, atmISS) —, avec
-        // sa fenêtre Spectrale dépliée (fenetres.js).
-        // Embarquée (static/ui/embarque.js) : pas de fenêtre, Atmosphère dépliée (Energies : onShowISS), l'hôte prévenu.
-        var ouvrirISSAuDepart = function () {
-            window.IO_LISTENER.off('compute:done', ouvrirISSAuDepart);
-            window.switchTab('iss');
-            if (window.EMBARQUE.hote === null) window.switchTab('visu');   // page seule : la fenêtre Spectrale dépliée
-            else {
+        // Onglet ISS par défaut. Page seule : ouvert AVANT le premier calcul, avec sa fenêtre Spectrale (demarrage.js).
+        // Embarquée (static/ui/embarque.js) : au premier calcul — pas de fenêtre, Atmosphère dépliée (Energies : onShowISS),
+        // l'hôte prévenu.
+        if (window.EMBARQUE.hote !== null) {
+            var ouvrirISSAuDepart = function () {
+                window.IO_LISTENER.off('compute:done', ouvrirISSAuDepart);
+                window.switchTab('iss');
                 window.afficherDetailsOrganigramme(window.EMBARQUE.atmosphere);   // ?atmosphere=0 : repliée
                 window.afficherWattsOrganigramme(window.EMBARQUE.energies);       // ?energies=0 : repliés (onShowISS les dépliait)
                 if (window.EMBARQUE.emissions === null) window.EMBARQUE.pret();
                 else window.SCENARIO_HOTE.demarrer();   // aujourd'hui → 2300, ses émissions (prête au bout)
-            }
-        };
-        window.IO_LISTENER.on('compute:done', ouvrirISSAuDepart, 'loader_panels:issParDefaut');
+            };
+            window.IO_LISTENER.on('compute:done', ouvrirISSAuDepart, 'loader_panels:issParDefaut');
+        }
         if (typeof window.configOrganigramme !== 'undefined' && typeof window.TIMELINE !== 'undefined') {
             if (window.DEBUG_TIMELINE_HIDDEN) {
                 try {
@@ -450,11 +452,11 @@
                 }
             }
         });
+        // Science chargée : le dernier calcul, s'il y en a un. Le premier calcul n'est pas lancé d'ici : c'est le clic ⚫ du
+        // démarrage (demarrage.js), qui attend l'ISS et sa Terre.
         function sendComputeToScie() {
             if (lastComputePayload && lastComputePayload.DATA && scieIframe.contentWindow) {
                 try { scieIframe.contentWindow.postMessage({ type: 'compute:done', DATA: lastComputePayload.DATA }, '*'); } catch (e) {}
-            } else if (window.runComputeInParent) {
-                window.runComputeInParent();
             }
         }
         var initialComputeScheduled = false;

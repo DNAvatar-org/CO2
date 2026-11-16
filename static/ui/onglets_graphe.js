@@ -3,7 +3,8 @@
 //       (#visu-panel), son interface (titre, organigramme, frise) par-dessus. Les panneaux ne sont pas déplacés dans le DOM
 //       (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont en position fixe, recalés quand
 //       la zone change de taille, au redimensionnement et au défilement (c'est le body qui défile, index-shell.css).
-// Version 1.12.0
+// Version 1.13.0
+// - v1.13.0: page ISS ouverte avant le premier calcul, sur sa propre Terre ; sa Terre posée lance le calcul (demarrage.js).
 // - v1.12.0: dormirISS — la Terre 3D de la page ISS figée sur sa dernière image pendant un calcul (iss:dormir).
 // - v1.11.0: températures mesurées sur la Terre (static/mesures/) : leur carte de l'année de la frise à la place de celle de
 //   l'époque, lisible de nuit ; anneeFrise exportée ; Temps sous Atmosphère au pas de leur pile (gap de .titre-affichages).
@@ -131,9 +132,11 @@
         const iframe = document.getElementById('iss-iframe');
         // Première ouverture : la page, avec les cartes de l'époque. Ensuite, jamais rechargée : les cartes de l'époque lui
         // sont envoyées (pages/ISS js/hote.js, iss:cartes) — sa vue, sa date et son Soleil, donc l'organigramme, restent.
+        // Ouverte avant le premier calcul (demarrage.js), elle n'a pas encore d'époque : sa propre Terre, sans cartes ni
+        // atmosphère ; le premier calcul les lui envoie (iss:cartes).
         if (iframe.getAttribute('src') === null) {
-            iframe.src = ISS_PAGE + '?noISS_mode=true&fenetresHote=true&zoomEnchaine=true&vuesAuZoom=1&vueBiais=true&atmGrossie=true&vitesse=1000&sat=iridium&vue=terre&onglet&atm=' + atmISS()
-                + cartesISS() + '&notIR=' + notIRISS() + '&pays=' + (anneeFrise() >= AN_PAYS);
+            iframe.src = ISS_PAGE + '?noISS_mode=true&fenetresHote=true&zoomEnchaine=true&vuesAuZoom=1&vueBiais=true&atmGrossie=true&vitesse=1000&sat=iridium&vue=terre&onglet'
+                + (window.DEMARRAGE.lance() ? '&atm=' + atmISS() + cartesISS() + '&notIR=' + notIRISS() + '&pays=' + (anneeFrise() >= AN_PAYS) : '');
             return;
         }
         const c = cartesEpoque();
@@ -216,6 +219,7 @@
             horizon: { haut: Math.atan2(ref.cy - c.cy - oy, ref.cx + bord - c.cx - ox), k: ref.R / c.r, rTerre: ref.R } });
         document.body.classList.toggle('iss-lune', t.vue === 'ext' && t.orbite !== null);   // T° dans le titre, cercle effacé (index-shell.css)
         envoyerMargesISS();   // rayon ou Soleil changés : la place à gauche aussi
+        window.DEMARRAGE.terre();   // la première fois : l'organigramme est posé, le premier calcul peut partir
     }
 
     function zone() {
