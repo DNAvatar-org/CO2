@@ -3,7 +3,8 @@
 //       (#visu-panel), son interface (titre, organigramme, frise) par-dessus. Les panneaux ne sont pas déplacés dans le DOM
 //       (une iframe déplacée se recharge, et l'iframe scie perdrait sa synchro) : ils sont en position fixe, recalés quand
 //       la zone change de taille, au redimensionnement et au défilement (c'est le body qui défile, index-shell.css).
-// Version 1.11.0
+// Version 1.12.0
+// - v1.12.0: dormirISS — la Terre 3D de la page ISS figée sur sa dernière image pendant un calcul (iss:dormir).
 // - v1.11.0: températures mesurées sur la Terre (static/mesures/) : leur carte de l'année de la frise à la place de celle de
 //   l'époque, lisible de nuit ; anneeFrise exportée ; Temps sous Atmosphère au pas de leur pile (gap de .titre-affichages).
 // - v1.10.0: plus de bouton ⛶ du panneau ISS (zen de la page ISS) : le plein écran de la page, en bas, est le seul.
@@ -304,7 +305,15 @@
         }, 'onglets_graphe');
     }
 
+    /** Pendant un calcul, la Terre 3D de la page ISS dort (iss:dormir, pages/ISS js/hote.js) : sa boucle ne dessine plus, le
+     *  canevas garde sa dernière image, et le fil principal — partagé avec elle, même site — reste au calcul et à ses dessins.
+     *  Page ISS pas encore ouverte (avant le premier calcul) : rien à endormir. */
+    function dormirISS(oui) {
+        const iframe = document.getElementById('iss-iframe');
+        if (iframe.getAttribute('src') !== null) iframe.contentWindow.postMessage({ type: 'iss:dormir', oui: oui }, '*');
+    }
+
     window.ONGLETS_GRAPHE = { PANNEAUX: PANNEAUX, placer: placer, brancher: brancher, spectreVisible: spectreVisible,
-        chargerISS: chargerISS, effacerSpectre: effacerSpectre, envoyerMargesISS: envoyerMargesISS, entrerPleinePageISS: entrerPleinePageISS, sortirPleinePageISS: sortirPleinePageISS,
+        chargerISS: chargerISS, dormirISS: dormirISS, effacerSpectre: effacerSpectre, envoyerMargesISS: envoyerMargesISS, entrerPleinePageISS: entrerPleinePageISS, sortirPleinePageISS: sortirPleinePageISS,
         entrerHistoire: entrerHistoire, sortirHistoire: sortirHistoire, anneeFrise: anneeFrise };
 })();

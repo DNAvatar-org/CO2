@@ -1,7 +1,8 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.101
+// Version 1.0.102
+// - v1.0.102 (2026-11-16): canevas spectral à sa taille affichée aussi pendant le calcul, marges ramenées à sa résolution.
 // - v1.0.101 (2026-11-16): spectre dessiné à chaque cycle du calcul, frise comme tictime.
 // - v1.0.100 (2026-10-31): bandes du spectre à leur largeur propre : la pression élargit les raies dans les sections efficaces de
 //   chaque couche (moteur), pas l'étendue affichée d'une bande.
@@ -852,8 +853,9 @@ function resizeCanvasToPlot(callback) {
                 topPx = Math.round(targetRect.top - plotRect.top); // Même Y
             } 
             // Pendant la dichotomie : ne pas modifier top/left (targetRect change à chaque cycle).
-            // Garder _lastTop/_lastLeft pour éviter que le spectre bouge.
-            const skipReposition = window.SYNC_STATE.calculationInProgress;
+            // Garder _lastTop/_lastLeft pour éviter que le spectre bouge — sauf s'il n'a jamais été posé (premier calcul de la
+            // page : il est posé une fois, sinon il reste à sa taille d'origine, 333 × 400, dans le coin).
+            const skipReposition = window.SYNC_STATE.calculationInProgress && canvas._lastTop != null;
             if (!skipReposition) {
                 canvas.style.setProperty('left', leftPx + 'px', 'important');
                 canvas.style.setProperty('top', topPx + 'px', 'important');
@@ -999,8 +1001,8 @@ function drawSpectrumBarOnlyWithSize(width, height, resolutionFactor = 1, seamRo
     // Le canvas interne est réduit, puis agrandi par CSS avec resolutionFactor
     // Donc on doit diviser par resolutionFactor pour obtenir 20px d'affichage final
     const spectrumBarHeight = Math.max(1, Math.floor(20 / resolutionFactor)); // 20px d'affichage
-    const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
-    const axisMarginB = 75; // PLOT_MARGINS.b - spectre collé juste sous l'axe
+    const charWidth = 5 / resolutionFactor; // 5px d'affichage de chaque côté pour être derrière le 0 et le 50 μm
+    const axisMarginB = Math.round(75 / resolutionFactor); // PLOT_MARGINS.b (px d'affichage) - spectre collé juste sous l'axe
     // Une seule règle avec drawSpectralVisualization : lignes [0, spectrumBarY) = flux, [spectrumBarY, …) = bande
     const spectrumBarY = height - axisMarginB;
     ctx.clearRect(0, spectrumBarY, width, spectrumBarHeight);
@@ -2912,19 +2914,13 @@ function drawSpectralVisualization(canvas, data) {
     const isDichotomy = typeof window !== 'undefined' && window.SYNC_STATE.calculationInProgress;
     let width;
     let height;
-    if (isDichotomy) {
-        if (canvas._lastTop != null && canvas._lastLeft != null) {
-            canvas.style.setProperty('top', canvas._lastTop, 'important');
-            canvas.style.setProperty('left', canvas._lastLeft, 'important');
-        }
-        if (canvas.width > 0 && canvas.height > 0) {
-            width = canvas.width;
-            height = canvas.height;
-        } else {
-            canvas._lastData = data;
-            return;
-        }
-    } else if (!rect.width || !rect.height) {
+    // Pendant le calcul, la position du dernier dessin final est gardée ; la taille, elle, est toujours celle affichée (au tout
+    // premier calcul il n'y a pas eu de dessin final : la taille interne d'origine, 333 × 400, posait le fond de travers).
+    if (isDichotomy && canvas._lastTop != null && canvas._lastLeft != null) {
+        canvas.style.setProperty('top', canvas._lastTop, 'important');
+        canvas.style.setProperty('left', canvas._lastLeft, 'important');
+    }
+    if (!rect.width || !rect.height) {
         canvas._lastData = data;
         return;
     } else {
@@ -2972,31 +2968,27 @@ function drawSpectralVisualization(canvas, data) {
         resolutionFactor = devicePixelRatio > 1 ? 2 : 1; // Haute précision (retina/2 ou 1)
     }
 
-    if (!isDichotomy) {
-        // Réduire la résolution pour améliorer les performances (hors anim)
-        width = Math.floor(width / resolutionFactor);
-        height = Math.floor(height / resolutionFactor);
+    // Résolution réduite (×4 pendant le calcul), le style remet le canvas à sa taille affichée
+    width = Math.floor(width / resolutionFactor);
+    height = Math.floor(height / resolutionFactor);
 
-        // Ajuster la taille interne du canvas si nécessaire
-        if (canvas.width !== width || canvas.height !== height) {
-            canvas.width = width;
-            canvas.height = height;
-        }
-
-        // Ajuster le style pour que le canvas s'affiche à la bonne taille (upscale si nécessaire)
-        canvas.style.width = (width * resolutionFactor) + 'px';
-        canvas.style.height = (height * resolutionFactor) + 'px';
-    } else {
-        width = canvas.width;
-        height = canvas.height;
+    // Ajuster la taille interne du canvas si nécessaire
+    if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
     }
+
+    // Ajuster le style pour que le canvas s'affiche à la bonne taille (upscale si nécessaire)
+    canvas.style.width = (width * resolutionFactor) + 'px';
+    canvas.style.height = (height * resolutionFactor) + 'px';
 
     // La barre doit toujours faire 20px en pixels d'affichage
     // Le canvas interne est réduit, puis agrandi par CSS avec resolutionFactor
     // Donc on doit diviser par resolutionFactor pour obtenir 20px d'affichage final
     const spectrumBarHeight = Math.max(1, Math.floor(20 / resolutionFactor)); // 20px d'affichage
-    const charWidth = 5; // 5px de chaque côté pour être derrière le 0 et le 50 μm
-    const axisMarginB = 75; // PLOT_MARGINS.b - zone sous l'axe (spectre + bornes)
+    // Marges en pixels d'AFFICHAGE, ramenées aux pixels du canvas (réduit de resolutionFactor : ×4 pendant le calcul)
+    const charWidth = 5 / resolutionFactor; // 5px de chaque côté pour être derrière le 0 et le 50 μm
+    const axisMarginB = Math.round(75 / resolutionFactor); // PLOT_MARGINS.b - zone sous l'axe (spectre + bornes)
     // Joint unique : dernière ligne du flux = spectrumBarTopY - 1, première ligne de la bande = spectrumBarTopY
     const spectrumBarTopY = height - axisMarginB;
     const visualizationHeight = spectrumBarTopY;

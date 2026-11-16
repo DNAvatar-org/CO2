@@ -1,6 +1,7 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.3.0
+// Version 1.3.1
+// - v1.3.1 (2026-11-16): la 3D de l'ISS dort pendant le calcul (ONGLETS_GRAPHE.dormirISS).
 // - v1.3.0 (2026-11-16): respirations du moteur → compteur de cycles et hôte (co2:calcul) ; vue spectrale : courbe de chaque cycle.
 // - v1.2.3 (2026-10-15): window.afficherCalcul(result) — l'affichage de fin de calcul, réutilisé par le banc (BENCH.voir).
 // - v1.2.2 (2026-10-15): spectre caché (autre onglet) = aucun appel au plot, bandeau titre seul (projectSynthese).
@@ -252,6 +253,7 @@
         var epochId = DATA['📜']['🗿'];
         window.BENCH.debutCalcul();   // onglet Bench : ligne « en cours » (rien hors banc)
         window.COMPUTE_LOADER.show();
+        window.ONGLETS_GRAPHE.dormirISS(true);   // la 3D de l'ISS figée le temps du calcul, réveillée à la fin (réussi ou non)
         function doCompute() {
             window._logStep('[4] calculs (effectif)');
             window.RUNTIME_STATE.currentEpochName = window.RUNTIME_STATE.currentEpochName || epochId;
@@ -262,6 +264,7 @@
             // UN point d'entrée moteur (API_BILAN/api.js) : époque, mode, masses, T initiale, init, convergence.
             return window.getBilanRadiatifAPI(onEngineEvent).run({ epochId: epochId, animEnabled: DATA['🔘']['🔘🎞'] }).then(function (result) {
             window.SYNC_STATE.calculationInProgress = false;
+            window.ONGLETS_GRAPHE.dormirISS(false);
             window._logStepEnd(); // ferme groupe [4] effectif
             window._logStep('[4] calculs (retour)');
             // null = interrompu (ABORT_COMPUTE : un run plus récent a demandé l'abandon).
@@ -271,6 +274,7 @@
             return result;
         }, function (e) {
             window.SYNC_STATE.calculationInProgress = false;
+            window.ONGLETS_GRAPHE.dormirISS(false);
             window._logStepEnd();
             console.error('[runComputeInParent]', e);
             throw e;
