@@ -1876,7 +1876,15 @@ html.compute-loading, body.compute-loading { cursor: wait !important; }
     transform-origin: center center;
 }
 
-/* Loader tic : disque creux en cases (anim) */
+/* Compteur de cycles du calcul (COMPUTE_LOADER.respiration) */
+.compute-compteur {
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Loader tic : disque creux en cases, une case par respiration du calcul */
 .compute-tic-loader {
     display: flex;
     align-items: center;

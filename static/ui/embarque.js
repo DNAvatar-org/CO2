@@ -8,7 +8,8 @@
 //       (co2:pret). ?miroir : l'organigramme en symétrie d'axe vertical, à DROITE de la Terre (configOrganigramme.js
 //       TERRE_ECRAN.miroir, html.miroir). Chargé dans <head>, avant tout le reste : la config de l'organigramme le lit à sa
 //       construction.
-// Version 1.7.3
+// Version 1.8.0
+// - 1.8.0 (2026-11-16): co2:calcul à chaque respiration du calcul (compteur de cycles chez l'hôte).
 // - 1.7.3 (2026-11-15): ETAT_VERSION 16 — moteur changé (concentration de la banquise, seuil de la stratosphère à l'Init).
 // - 1.7.2 (2026-11-07): ETAT_VERSION 15 — moteur changé (nuages hauts et bas mesurés, stratosphère, Init du solveur).
 // - 1.7.1 (2026-11-06): ETAT_VERSION 14 — moteur changé (stratosphère, O₃, N₂O, MT_CKD) : les états gardés sont recalculés.
@@ -16,7 +17,7 @@
 //   lançait QuotaExceededError ; relu par relireEtat (loader_panels.js, la base lue avec ses fetch).
 // - 1.6.3 (2026-11-04): ETAT_VERSION 13 — 📜🔺⚖️🏭⏮, l'émission de la tranche précédente de 📱 (clics.js 1.5.0).
 // - 1.6.2 (2026-11-04): ETAT_VERSION 12 — la progression garde l'état au départ du dernier calcul (progression.js 1.3.0).
-// Date: 2026-11-07
+// Date: 2026-11-16
 // Copyright 2026 DNAvatar.org - Arnaud Maignan
 (function () {
     'use strict';
@@ -50,7 +51,12 @@
             if (e !== null && e.kg === window.EMBARQUE.emissions && e.v === ETAT_VERSION) window.EMBARQUE.etatGarde = e;
         },
         /** La page est prête (onglet ISS ouvert, scénario fait s'il y en a un) : l'hôte peut la montrer */
-        pret: function () { window.parent.postMessage({ type: 'co2:pret' }, '*'); }
+        pret: function () { window.parent.postMessage({ type: 'co2:pret' }, '*'); },
+        /** Une respiration du calcul (sync_panels.js) : l'hôte reçoit co2:calcul { n, cycle, phase, etape, T_C } — de quoi tenir
+         *  un compteur pendant qu'il attend co2:bilan. Page seule : rien. */
+        calcul: function (p) {
+            if (window.EMBARQUE.hote !== null) window.parent.postMessage({ type: 'co2:calcul', n: p.n, cycle: p.cycle, phase: p.phase, etape: p.etape, T_C: p.T_C }, '*');
+        }
     };
     document.documentElement.classList.toggle('embarque', window.EMBARQUE.hote !== null);
     document.documentElement.classList.toggle('miroir', window.EMBARQUE.miroir);

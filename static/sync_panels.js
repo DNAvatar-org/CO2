@@ -1,6 +1,7 @@
 // File: sync_panels.js - Synchronisation état visu ↔ scie (iframe)
 // Desc: État partagé epoch, anim, ticTime + exécution centralisée index.html → projection visu + scie
-// Version 1.2.3
+// Version 1.3.0
+// - v1.3.0 (2026-11-16): respirations du moteur → compteur de cycles et hôte (co2:calcul) ; vue spectrale : courbe de chaque cycle.
 // - v1.2.3 (2026-10-15): window.afficherCalcul(result) — l'affichage de fin de calcul, réutilisé par le banc (BENCH.voir).
 // - v1.2.2 (2026-10-15): spectre caché (autre onglet) = aucun appel au plot, bandeau titre seul (projectSynthese).
 // - v1.2.2 (2026-10-15): window.BENCH branché (debutCalcul / surPas / apresCalcul) — onglet Bench piloté par l'index.
@@ -198,10 +199,13 @@
             return;
         }
         if (event === 'convergenceRefresh') { window.shell.dataInput({ type: 'displayConvergence' }); return; }
+        // Respiration du moteur (il rend la main juste après) : le compteur de cycles, ici et chez l'hôte qui m'embarque.
+        if (event === 'respiration') { window.COMPUTE_LOADER.respiration(payload); window.EMBARQUE.calcul(payload); return; }
         if (event !== 'cycleCalcul') return;   // ProcessFinished : traité après run()
         var D = window.DATA;
         window.RUNTIME_STATE.h2oVaporPercent = Math.min(100, Math.max(0, D['💧']['🍰🫧💧'] * 100));
-        if (!(D['🔘']['🔘🎞'] && window.spectreAffiche())) {
+        // Vue spectrale : la courbe de chaque cycle est dessinée, le moteur attend l'accusé plot:drawn ; ailleurs, les étiquettes.
+        if (!window.spectreAffiche()) {
             IO_LISTENER.emit('compute:progress', payload);   // → loader_panels : étiquettes (cycleCalcul)
             return;
         }

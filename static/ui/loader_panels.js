@@ -1,6 +1,7 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.4.9
+// Version 1.5.0
+// - v1.5.0: COMPUTE_LOADER.respiration — anneau et compteur de cycles à chaque respiration du moteur, anneau toujours visible.
 // - v1.4.9: les états gardés lus dans IndexedDB (ETATS_GARDES.lire, etats_gardes.js) avec les fetch des panneaux ; l'état de
 //   l'hôte relu ensuite (EMBARQUE.relireEtat), avant les scripts et le premier calcul.
 // - v1.4.8: static/ui/progression.js — la progression calculée gardée d'un chargement à l'autre (F5).
@@ -313,8 +314,16 @@
                 ring.style.background = 'conic-gradient(#22c55e 0deg, #22c55e ' + filledDeg + 'deg, #888 ' + filledDeg + 'deg, #888 360deg)';
                 ring.offsetHeight;
             },
+            /** Une respiration du moteur ('respiration' { n, cycle, phase, etape }) : l'anneau avance d'une case, le compteur dit le
+             *  cycle (« Init » avant le premier pas radiatif). */
+            respiration: function (p) {
+                window.COMPUTE_LOADER.avanceTic();
+                const texte = (p.phase === 'Init' ? 'Init' : 'cycle ' + p.cycle) + ' · ' + p.etape;
+                document.querySelectorAll('.compute-compteur').forEach(function (el) { el.textContent = texte; });
+            },
             show: function () {
                 _computeTicIndex = 0;
+                document.querySelectorAll('.compute-compteur').forEach(function (el) { el.textContent = ''; });
                 var overlay = document.getElementById('calculation-overlay');
                 var orgOverlay = document.getElementById('organigram-calculation-overlay');
                 var fluxDiagram = document.getElementById('flux-diagram');
@@ -331,8 +340,7 @@
                 }
                 document.body.classList.add('compute-loading');
                 document.documentElement.classList.add('compute-loading');
-                var anim = window.DATA && window.DATA['🔘'] && window.DATA['🔘']['🔘🎞'];
-                if (loaderEl) loaderEl.style.display = anim ? 'flex' : 'none';
+                loaderEl.style.display = 'flex';
                 if (ring) ring.style.background = 'conic-gradient(#888 0deg, #888 360deg)';
             },
             hide: function () {
@@ -383,8 +391,7 @@
                  * - on garde le chemin léger emit('cycleCalcul')
                  * ============================================================
                  */
-                window.COMPUTE_LOADER.avanceTic();
-                if (window.spectreAffiche() && window.DATA['🔘']['🔘🎞'] && payload.result) {
+                if (window.spectreAffiche()) {
                     window.VISU_DICHO.displayDichotomyStep(payload.CO2_fraction, payload.T0, payload.result, payload.iteration, payload.isInitial);
                     return;
                 }

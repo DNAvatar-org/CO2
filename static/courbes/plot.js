@@ -1,7 +1,8 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.100
+// Version 1.0.101
+// - v1.0.101 (2026-11-16): spectre dessiné à chaque cycle du calcul, frise comme tictime.
 // - v1.0.100 (2026-10-31): bandes du spectre à leur largeur propre : la pression élargit les raies dans les sections efficaces de
 //   chaque couche (moteur), pas l'étendue affichée d'une bande.
 // - v1.0.99 (2026-10-20): page embarquée (?hote) — resize ignoré : le spectre n'y est jamais tracé (erreur Plotly _guiEditing).
@@ -2782,24 +2783,8 @@ PLOT.updateSpectralVisualization = function (data) {
     const maxBins = window.CONFIG_COMPUTE.maxSpectralBinsConvergence;
     const currentBins = data.lambda_range.length;
     const isFinal = (currentBins >= maxBins);
-    const isAnimMode = window.DATA['🔘']['🔘🎞'];
-    if (!isAnimMode && !isFinal) {
-        return; // hors animation: n'afficher que le flux final
-    }
-    if (!isAnimMode && isFinal) {
-        const finalSig = String(currentBins) + ':' + String(data.upward_flux.length);
-        if (canvas._lastFinalSig === finalSig) {
-            return; // éviter les FINAL doublons
-        }
-        canvas._lastFinalSig = finalSig;
-    }
-    if (isAnimMode && !isFinal) {
-        // En mode animation, afficher chaque cycle intermédiaire, y compris répétitions bins=100.
-        canvas._lastFinalSig = null;
-    }
-    if (isAnimMode && isFinal) {
-        canvas._lastFinalSig = null;
-    }
+    // Chaque cycle du calcul est dessiné (pendant ses respirations), frise comme tictime, répétitions à même résolution comprises.
+    canvas._lastFinalSig = null;
 
     // Fonction pour forcer le z-index à 1 (au-dessus du fond mais en dessous des courbes)
     const forceZIndex = (silent = false, source = 'unknown') => {
