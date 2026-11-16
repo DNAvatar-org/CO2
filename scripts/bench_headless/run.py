@@ -1,7 +1,8 @@
 # File: run.py - Banc headless API_BILAN (Chrome + CDP, sans interface)
 # Desc: Lance Chrome headless sur host.html servi par le serveur local permanent (8001), injecte un script de mesure,
 #       attend, imprime. Sert à mesurer le modèle sans ouvrir de navigateur — bench 19 époques, sondes, balayages de jauges.
-# Version 1.3.0
+# Version 1.4.0
+# - 1.4.0 : --api, un autre moteur (chemin sous site/) — l'avant / après d'une modification du moteur.
 # logs :
 #   - v1.3.0: plus aucun serveur ouvert ici : host.html et API_BILAN viennent de _outward/start_local.sh (port 8001) ;
 #     Chrome sur un port de débogage libre (0, lu dans DevToolsActivePort) avec un profil neuf par run : deux sessions
@@ -53,6 +54,7 @@ def main():
     ap.add_argument('script', help='fichier .js à injecter (relatif à ce dossier si non trouvé)')
     ap.add_argument('--var', default='__R6__', help='variable window.* à lire en sortie')
     ap.add_argument('--timeout', type=int, default=1800, help='secondes')
+    ap.add_argument('--api', default=None, help='autre moteur : chemin sous site/ terminé par /, ex. bilan_radiatif/_api_avant/ (avant / après)')
     ap.add_argument('--stream', default=None, help='tableau window.* dont chaque nouvel élément est imprimé AU FIL DE L\'EAU (ligne « § » + JSON)')
     a = ap.parse_args()
 
@@ -67,7 +69,7 @@ def main():
     cb = '%d' % int(time.time() * 1000)
     chrome = subprocess.Popen([CHROME, '--headless=new', '--disable-gpu', '--no-first-run',
                                '--user-data-dir=' + profile, '--remote-debugging-port=0',
-                               HOST_URL + '?cb=' + cb],
+                               HOST_URL + '?cb=' + cb + ('' if a.api is None else '&api=' + a.api)],
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         c = cdp.attach(port=port_devtools(profile), url_filter='host.html?cb=' + cb, tries=60)

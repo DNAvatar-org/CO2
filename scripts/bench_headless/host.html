@@ -17,7 +17,9 @@
 'use strict';
 window.__READY__ = false;
 window.__CB__ = new URLSearchParams(location.search).get('cb');
-window.__API__ = 'http://localhost:8001/bilan_radiatif/API_BILAN/';
+// ?api=<chemin sous site/> : un autre moteur (run.py --api), par ex. la version commitée exportée pour un avant / après.
+const API_DEMANDEE = new URLSearchParams(location.search).get('api');
+window.__API__ = 'http://localhost:8001/' + (API_DEMANDEE === null ? 'bilan_radiatif/API_BILAN/' : API_DEMANDEE);
 // Les deux fichiers du loader, puis le loader charge tout le reste.
 (function () {
     const boot = ['loader/engine_manifest.js', 'loader/loader.js'];
