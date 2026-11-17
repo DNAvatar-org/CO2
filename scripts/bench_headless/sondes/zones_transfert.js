@@ -10,7 +10,7 @@
 window.__PROG__ = 'start'; window.__R6__ = []; window.__ERR__ = null;
 (async () => { try {
     const api = window.getBilanRadiatifAPI(function () {}), D = window.DATA, C = window.CONST, M = window.CONTROLES_MESURES;
-    window.CLICS.frise('📱'); await api.run({ epochId: '📱', animEnabled: false });
+    window.CLICS.frise('📱'); await api.run({ epochId: '📱', animEnabled: false, precisionK: 0 });
     const T0 = D['📜']['🌡️🧮'], N = window.EARTH.NUAGES, CS = D['🎚️'].CLOUD_SW, f0 = { b: CS.F_BAS, m: N.F_MOYEN, h: CS.F_HAUT };
     const pin = (T) => { D['🧮']['🧮🌡️'] = T; D['🧮']['🧮🌡️⏮'] = T; D['🧮']['🧮🌡️🚩'] = T; };
     const preparer = (T) => { pin(T); window.ATM.calculateAtmosphereComposition(); window.ATM.updateAtmosphereHeightFromCurrentT();

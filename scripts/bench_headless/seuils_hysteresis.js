@@ -41,14 +41,14 @@ window.__PROG__='start'; window.__SEUILS__=null; window.__ESSAIS__=[]; window.__
     return { co2_ppm: +(xc*1e6).toFixed(2), ch4_ppm: +(xm*1e6).toFixed(3), co2_kg: TLid(ids[0])['⚖️🏭'], ch4_kg: TLid(ids[0])['⚖️🐄'] };
   };
   const clic = async () => { const key=window.CLICS.prochaineAction(), r=window.CLICS.jouer(key); if (r.passage!==null) window.CLICS.passer(r.passage);
-    await api.run({ epochId: D['📜']['🗿'], animEnabled:true }); return key; };
+    await api.run({ epochId: D['📜']['🗿'], animEnabled:true, precisionK: 0 }); return key; };
   // Clic frise sur `id` : la graine de l'époque, un calcul.
-  const frise = async (id) => { window.CLICS.frise(id); await api.run({ epochId:id, animEnabled:false }); return etat('frise '+id); };
+  const frise = async (id) => { window.CLICS.frise(id); await api.run({ epochId:id, animEnabled:false, precisionK: 0 }); return etat('frise '+id); };
   // Chaîne depuis la frise ⚫ — la même que le bench tictime et l'interface — jusqu'à l'ARRIVÉE dans `jusqua` (incluse) ;
   // arrivee(ep) = premier état vu dans ep. (v2.0 partait de 🪸 : l'état transporté différait assez pour qu'une frontière à
   // 0,02 % près tienne ici et pas dans le bench.)
   const chaine = async (jusqua) => {
-    window.CLICS.frise('⚫'); await api.run({ epochId:'⚫', animEnabled:false });
+    window.CLICS.frise('⚫'); await api.run({ epochId:'⚫', animEnabled:false, precisionK: 0 });
     const notes=[etat('frise ⚫')];
     while (D['📜']['🗿'] !== jusqua) { const depuis=D['📜']['🗿'], key=await clic(); notes.push(etat(depuis+' '+key)); }
     return notes;

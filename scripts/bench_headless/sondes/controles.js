@@ -16,7 +16,7 @@ window.__PROG__ = 'start'; window.__R6__ = []; window.__ERR__ = null;
     const api = window.getBilanRadiatifAPI(function () {}), D = window.DATA, C = window.CONST;
     const M = window.CONTROLES_MESURES, CE = M.ceres, KC = M.cielClairModele, IS = window.ISCCP_H_2010;
     const N = window.EARTH.NUAGES, CS = D['🎚️'].CLOUD_SW;
-    window.CLICS.frise('📱'); await api.run({ epochId: '📱', animEnabled: false });
+    window.CLICS.frise('📱'); await api.run({ epochId: '📱', animEnabled: false, precisionK: 0 });
     const T_eq = D['🧮']['🧮🌡️'], T_mes = D['📜']['🌡️🧮'];
     const pin = (T) => { D['🧮']['🧮🌡️'] = T; D['🧮']['🧮🌡️⏮'] = T; D['🧮']['🧮🌡️🚩'] = T; };
     const evaluer = async (T, figer) => {

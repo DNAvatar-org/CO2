@@ -1,6 +1,7 @@
 /* File: organigramme/organigramme.css - Styles pour le diagramme de flux énergétique
 // Desc: Feuille de style CSS pour l'organigramme de flux énergétique
-// Version 1.0.92
+// Version 1.0.93
+// - v1.0.93 (2026-11-17): réglage « Précision » du bandeau du bas.
 // - v1.0.92 (2026-10-22): Atmosphère off garde EDS (logo et nom) ; Energies off cache aussi le Soleil et les deux 🛰.
 // - v1.0.91 (2026-10-17): Atmosphère off cache aussi la boule à facettes ; ⚗ DETAILS invisible (Energies / Atmosphère sous l'époque) ; 🛰 sans titre ; logo Géométrie tourné par zoom_terre.js.
 // - v1.0.90 (2026-10-16): bandeau du bas (⚗ DETAILS, EVENEMENT, SKIP) ; Géométrie à 45° du Soleil (logo −45°) ; ⚗ DETAILS visible ; 🛰 du satellite IR = bouton OBSERVATIONS, titre sous l'icône, centrée sur le satellite.
@@ -274,6 +275,25 @@
     grid-area: 2 / 2;
     width: max-content !important;
     transform: none !important;
+}
+
+/* Précision (ui/precision.js) : un titre et une liste, à droite de SKIP */
+.bandeau-bas-precision {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-color, #ddd);
+}
+.bandeau-bas-precision__liste {
+    font: inherit;
+    color: inherit;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+    padding: 2px 4px;
+    cursor: pointer;
 }
 
 /* Colonne EVENEMENT : le 🗺 crédits PALEOMAP posé au-dessus, hors flux (n'abaisse pas EVENEMENT) */

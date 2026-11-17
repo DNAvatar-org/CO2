@@ -1,7 +1,8 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.3.7
+// Version 1.3.8
+// - v1.3.8: réglage « Précision » posé dans le bandeau du bas (ui/precision.js) ; boutons radio morts retirés.
 // - v1.3.7: le clic ⚫ du démarrage passe par DEMARRAGE.lancer (page seule : après l'ISS et sa Terre posée).
 // - v1.3.6 (2026-10-17): « Energies » (watts) et « Atmosphère » (détails) sous l'époque, à la place du 🛰 et de ⚗ (invisible) ;
 //   les 🛰 seulement glissables.
@@ -1913,24 +1914,6 @@ function setEpoch(epochName, options) {
     else window.CLICS.frise(epoch.id);
     window.syncEpochFromTimelinePointer();
     
-    // Source unique de précision UI : CONFIG_COMPUTE.convergencePrecisionK
-    if (typeof epoch.precision === 'number' && epoch.precision > 0) {
-        CONFIG_COMPUTE.convergencePrecisionK = epoch.precision;
-        const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
-        let found = false;
-        precisionRadios.forEach(radio => {
-            if (Math.abs(parseFloat(radio.value) - epoch.precision) < 0.01) {
-                radio.checked = true;
-                found = true;
-            } else {
-                radio.checked = false;
-            }
-        });
-        if (!found) {
-            console.warn(`${logoEpoch} 🛠 ⚠️ [setEpoch@main.js] 🎚=${CONFIG_COMPUTE.convergencePrecisionK}° => Aucun bouton radio`);
-        }
-    }
-
     // Anticiper la couleur avec 🌡️🧮 dès le clic sur l'époque (AVANT les calculs)
     var T0_anticipated = epoch['🌡️🧮'];
     var tempC_anticipated = T0_anticipated - CONST.KELVIN_TO_CELSIUS;
@@ -2644,7 +2627,7 @@ function runMainInit() {
                         document.getElementById('cell-credits-imagerie-btn'),
                         document.getElementById('cell-timeline-scenario-logos'));
                     document.getElementById('bandeau-bas-ligne').append(colonne,
-                        document.getElementById('plot-anim-toggle'));
+                        document.getElementById('plot-anim-toggle'), window.PRECISION.cellule());
                     window.updateCreditsVisibility();
                 };
                 window.updateThreePlayIndicator();
@@ -2653,27 +2636,6 @@ function runMainInit() {
                 window.afficherDetailsOrganigramme(window.organigramArrowsVisible);           // « Atmosphère » : son + / −
                 window.afficherWattsOrganigramme(window.organigramObservationMetricsVisible);  // « Energies » : son + / −
 
-                // 🔒 Initialiser la précision de convergence depuis les radio buttons (variable globale unique)
-                const precisionRadios = document.querySelectorAll('input[name="precision-convergence"]');
-                if (precisionRadios.length > 0) {
-                    // Trouver le bouton radio checked
-                    const checkedRadio = Array.from(precisionRadios).find(r => r.checked);
-                    if (checkedRadio && checkedRadio.value) {
-                        CONFIG_COMPUTE.convergencePrecisionK = parseFloat(checkedRadio.value);
-                    }
-                    
-                    // Écouter les changements pour mettre à jour la variable globale unique
-                    precisionRadios.forEach(radio => {
-                        radio.addEventListener('change', (e) => {
-                            if (e.target.checked) {
-                                // 🔒 Mettre à jour la variable globale unique (seule référence)
-                                // Si l'utilisateur change la précision, la config ne doit plus être prise en compte
-                                CONFIG_COMPUTE.convergencePrecisionK = parseFloat(e.target.value);
-                            }
-                        });
-                    });
-                }
-                
                 // Le premier calcul : page seule, après l'ISS, la fenêtre Spectrale et la Terre posée (demarrage.js)
                 const corpsNoirBtn = document.querySelector('.epoch-btn[data-epoch="⚫"]');
                 window.DEMARRAGE.lancer(function () { corpsNoirBtn.click(); });

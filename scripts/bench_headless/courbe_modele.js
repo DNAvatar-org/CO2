@@ -25,7 +25,7 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
   // Clic sur la frise : graine de l'époque, compteurs à zéro (CLICS.frise, comme setEpoch).
   const frise = async (id) => {
     window.CLICS.frise(id);
-    window.__PROG__='frise '+id; await api.run({ epochId:id, animEnabled:false });
+    window.__PROG__='frise '+id; await api.run({ epochId:id, animEnabled:false, precisionK: 0 });
     note('frise '+id, null, null, 'frise');
   };
   if (MODE === 'frise') {
@@ -43,7 +43,7 @@ window.__PROG__='start'; window.__COURBE__=null; window.__ERR__=null;
       const dt = D['📜']['⏳'] - t0;   // durée du clic (Ma)
       if (r.passage !== null) window.CLICS.passer(r.passage);
       window.__PROG__ = 'clic '+depuis+' '+key+(r.passage !== null ? ' → '+r.passage : ' '+D['📜']['📿🕰']);
-      await api.run({ epochId: D['📜']['🗿'], animEnabled:true });
+      await api.run({ epochId: D['📜']['🗿'], animEnabled:true, precisionK: 0 });
       // Mode saut : seulement depuis l'entrée dans 🦣 (avant, la chaîne est celle de l'orange).
       if (MODE !== 'saut' || ['🦣', '🛖', '🚂', '📱'].includes(D['📜']['🗿']))
         note(r.passage !== null ? depuis+' →'+key+' '+r.passage : depuis+' '+key+' ('+(+D['📜']['⏳'].toFixed(4))+' Ma écoulés)', key, dt);

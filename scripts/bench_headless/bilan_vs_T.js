@@ -11,7 +11,7 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
 (async () => { try {
   const api=window.getBilanRadiatifAPI(function(){}), D=window.DATA, K=window.CONST.T0_WATER;
   const id=window.__EP__; window.CLICS.frise(id);
-  await api.run({ epochId:id, animEnabled:false });
+  await api.run({ epochId:id, animEnabled:false, precisionK: 0 });
   const pin=(T)=>{ D['🧮']['🧮🌡️']=T; D['🧮']['🧮🌡️⏮']=T; D['🧮']['🧮🌡️🚩']=T; };
   for (const TC of window.__TS__) {
     window.__PROG__='T '+TC;

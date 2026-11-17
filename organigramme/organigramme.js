@@ -13,7 +13,8 @@
 // Logs: v1.0.124 nuages : nombre de gouttes affiché (ALBEDO.nombreGouttesCm3), « ✈ N /cm³ » ; écart de CCN à 2000 en infobulle.
 // Logs: v1.0.123 « ✈ CCN » = ALBEDO.rapportCCN() sur le DATA de la page (même fonction que le moteur) au lieu de min(0,35 ; sulfate × 500) inventé.
 // Logs: v1.0.122 sens de chaque jauge (TUNING.sensJauge : 🔺 monter réchauffe, 🔻 refroidit, ↕️ ambigu) dans les rangées et l'infobulle.
-// Version 1.0.120
+// Version 1.0.121
+// - v1.0.121: plus de CONFIG_COMPUTE.convergencePrecisionK (le moteur ne la lisait pas) : DATA 🔘🔬.
 // - v1.0.120: survol d'une époque de la frise = sa bulle seule (l'aperçu de config et de graine dans DATA est retiré).
 // © 2025 DNAvatar.org - Arnaud Maignan
 // Licensed under Apache License 2.0 with Commons Clause.
@@ -55,8 +56,7 @@ const PLANET_DEFAULT_TILT_DEG = 45;
 const PLANET_DEFAULT_ROT_Y_DEG = 105;
 const NON_CHECKABLE_NODE_IDS = new Set(["co2", "methane", "h2o", "albedo-btn"]);
 
-// Source unique UI : CONFIG_COMPUTE pour la précision, window.DATA['🔘']['🔘🎞'] pour l'animation.
-window.CONFIG_COMPUTE.convergencePrecisionK = 0.1;
+// Source unique UI : window.DATA['🔘']['🔘🔬'] pour la précision (ui/precision.js), window.DATA['🔘']['🔘🎞'] pour l'animation.
 // Variable globale pour contrôler l'animation Three.js (false = animée, true = pause)
 window.threeJSAnimationPaused = false;
 /** Après un drag sur le globe, évite un clic Terre qui ferait toggle pause immédiatement. */

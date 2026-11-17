@@ -57,7 +57,7 @@ window.__PROG__='start'; window.__Q__=[]; window.__ERR__=null;
     window.CLICS.frise(f);
     const avant = Object.assign({}, D['🗻']['🍰🗻🧊']);
     window.__PROG__ = 'frise ' + f;
-    await api.run({ epochId: f, animEnabled: false });
+    await api.run({ epochId: f, animEnabled: false, precisionK: 0 });
     note('frise', 'frise ' + f, avant, t0);
   }
   for (const dep of (window.__DEPARTS__ || [])) {
@@ -65,7 +65,7 @@ window.__PROG__='start'; window.__Q__=[]; window.__ERR__=null;
     window.CLICS.frise(dep);
     let avant = Object.assign({}, D['🗻']['🍰🗻🧊']);
     window.__PROG__ = dep + ' frise';
-    await api.run({ epochId: dep, animEnabled: false });
+    await api.run({ epochId: dep, animEnabled: false, precisionK: 0 });
     note(dep, 'frise ' + dep, avant, t0);
     await clics(dep);
   }
@@ -82,7 +82,7 @@ window.__PROG__='start'; window.__Q__=[]; window.__ERR__=null;
       if (res.passage !== null) window.CLICS.passer(res.passage);
       avant = Object.assign({}, D['🗻']['🍰🗻🧊']);
       window.__PROG__ = dep + ' : ' + depuis + ' ' + key + (res.passage !== null ? ' → ' + res.passage : '') + ' ' + D['📜']['📿💫'];
-      await api.run({ epochId: D['📜']['🗿'], animEnabled: true });
+      await api.run({ epochId: D['📜']['🗿'], animEnabled: true, precisionK: 0 });
       note(dep, depuis + ' ' + key + (res.passage !== null ? ' → ' + res.passage : '') + ' (📿💫 ' + D['📜']['📿💫'] + ')', avant, t0);
     }
   }

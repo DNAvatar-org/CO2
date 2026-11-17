@@ -51,18 +51,18 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
       const r = window.CLICS.jouer(key);
       if (r.passage !== null) window.CLICS.passer(r.passage);
       window.__PROG__ = 'clic '+depuis+' '+key+(r.passage !== null ? ' → '+r.passage : '');
-      await api.run({ epochId: D['📜']['🗿'], animEnabled:true });
+      await api.run({ epochId: D['📜']['🗿'], animEnabled:true, precisionK: 0 });
       note(chaine, r.passage !== null ? depuis+' →'+key+' '+r.passage : depuis+' '+key+' ('+(+D['📜']['⏳'].toFixed(4))+' Ma écoulés)');
     }
   };
   const passages = async (pct) => {
     // Chaîne Snowball : frise sur 🪸, puis on clique jusqu'à 🍄.
     window.CLICS.frise('🪸');
-    window.__PROG__='chaîne 🪸'; await api.run({ epochId:'🪸', animEnabled:false }); note('Snowball', '🪸 frise');
+    window.__PROG__='chaîne 🪸'; await api.run({ epochId:'🪸', animEnabled:false, precisionK: 0 }); note('Snowball', '🪸 frise');
     await cliquerJusqua('Snowball', '🍄');
     // Chaîne EOT : frise sur 🐊, puis clics jusqu'à 🦣.
     window.CLICS.frise('🐊');
-    window.__PROG__='chaîne 🐊'; await api.run({ epochId:'🐊', animEnabled:false }); note('EOT', '🐊 frise');
+    window.__PROG__='chaîne 🐊'; await api.run({ epochId:'🐊', animEnabled:false, precisionK: 0 }); note('EOT', '🐊 frise');
     await cliquerJusqua('EOT', '🦣');
     // CRITÈRE : FRISE = CLIC. Pour chaque hystérésis (et ⛄), la T° convergée depuis la graine (frise) doit
     // égaler celle de l'ARRIVÉE par clic. Sinon la graine est sur la mauvaise branche, ou la config n'est
@@ -80,7 +80,7 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
       const id=EP['📅'], lit=LIT[id];
       window.CLICS.frise(id);
       window.__PROG__='bench '+(pct!==null?etiquette()+' ':'')+id;
-      await api.run({ epochId:id, animEnabled:false });
+      await api.run({ epochId:id, animEnabled:false, precisionK: 0 });
       let s=api.snapshot();
       const row = { pct: etiquette(), ep:id, T:+s.T_C.toFixed(3), litT: lit.tC,
         dansFourchette: s.T_C>=lit.tC[0] && s.T_C<=lit.tC[1], ppm:ppmCO2(), st:s.status };
@@ -89,7 +89,7 @@ window.__PROG__='start'; window.__R6__=[]; window.__ERR__=null;
         window.__PROG__='tic '+(pct!==null?etiquette()+' ':'')+id;
         if (t.r.passage !== null) { row.tic = t.key; row.ticErr = 'transition vers '+t.r.passage; }
         else {
-          await api.run({ epochId:id, animEnabled:true });
+          await api.run({ epochId:id, animEnabled:true, precisionK: 0 });
           s=api.snapshot();
           Object.assign(row, { tic:t.key, T_tic:+s.T_C.toFixed(3), ppm_tic:ppmCO2(), st_tic:s.status,
             dansFourchette_tic: s.T_C>=lit.tC[0] && s.T_C<=lit.tC[1] });

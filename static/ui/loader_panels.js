@@ -1,6 +1,7 @@
 // File: static/ui/loader_panels.js - Charge html/visu_radiatif.html et html/scie_radiatif.html dans les panels
 // Desc: Fetch + injection avant chargement des scripts ; loader graphique listing modules (vert = chargé)
-// Version 1.6.0
+// Version 1.6.1
+// - v1.6.1: ui/precision.js.
 // - v1.6.0: page seule, l'ISS et sa fenêtre Spectrale ouvertes avant le premier calcul (demarrage.js) ; embarquée inchangée ;
 //   Science chargée ne lance plus de calcul ⚫ (il doublait celui du démarrage et partait avant la Terre de l'ISS).
 // - v1.5.0: COMPUTE_LOADER.respiration — anneau et compteur de cycles à chaque respiration du moteur, anneau toujours visible.
@@ -84,6 +85,7 @@
             'static/timeline/integrateEds.js',
             'static/timeline/events.js',
             'organigramme/timeline.js',
+            'static/ui/precision.js',      // le réglage « Précision » du bandeau du bas (DATA 🔘🔬, lu par sync_panels)
             'static/ui/demarrage.js',      // l'ordre du démarrage (page seule) : ISS, Spectrale, dernier affichage, Terre, puis calcul
             'static/ui/main.js',
             'static/ui/progression.js',    // la progression gardée au F5 (IndexedDB : etats_gardes.js), et l'état remis sans calcul
