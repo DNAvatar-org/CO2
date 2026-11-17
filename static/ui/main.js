@@ -1,7 +1,8 @@
 // ============================================================================
 // File: main.js - Logique principale de la simulation
 // Desc: En français, dans l'architecture, je suis le module principal de simulation
-// Version 1.3.8
+// Version 1.3.9
+// - v1.3.9: ZOOM_TERRE.commencer à l'initialisation (organigramme posé avant le premier calcul).
 // - v1.3.8: réglage « Précision » posé dans le bandeau du bas (ui/precision.js) ; boutons radio morts retirés.
 // - v1.3.7: le clic ⚫ du démarrage passe par DEMARRAGE.lancer (page seule : après l'ISS et sa Terre posée).
 // - v1.3.6 (2026-10-17): « Energies » (watts) et « Atmosphère » (détails) sous l'époque, à la place du 🛰 et de ⚗ (invisible) ;
@@ -2633,6 +2634,7 @@ function runMainInit() {
                 window.updateThreePlayIndicator();
                 window.updateObservationIndicator();
                 window.poserBandeauBas();
+                window.ZOOM_TERRE.commencer();   // blocs 🛰 et bandeau posés : l'organigramme se mesure, la Terre de l'ISS se place
                 window.afficherDetailsOrganigramme(window.organigramArrowsVisible);           // « Atmosphère » : son + / −
                 window.afficherWattsOrganigramme(window.organigramObservationMetricsVisible);  // « Energies » : son + / −
 

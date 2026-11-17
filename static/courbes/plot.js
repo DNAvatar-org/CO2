@@ -1,7 +1,8 @@
 // ============================================================================
 // File: plot.js - Gestion du graphique avec Plotly.js
 // Desc: En français, dans l'architecture, je suis le module de visualisation graphique
-// Version 1.0.102
+// Version 1.0.103
+// - v1.0.103 (2026-11-17): resize différé ignoré tant que le spectre n'est pas tracé (erreur Plotly _guiEditing au premier chargement).
 // - v1.0.102 (2026-11-16): canevas spectral à sa taille affichée aussi pendant le calcul, marges ramenées à sa résolution.
 // - v1.0.101 (2026-11-16): spectre dessiné à chaque cycle du calcul, frise comme tictime.
 // - v1.0.100 (2026-10-31): bandes du spectre à leur largeur propre : la pression élargit les raies dans les sections efficaces de
@@ -761,8 +762,10 @@ function debouncedResizeCanvas() {
         const plotEl = document.getElementById('plot-container');
         // Spectre caché sous un autre onglet (display: none, onglets_graphe.js) : rien à redimensionner ni à redessiner ;
         // le retour à l'onglet Spectrale redimensionne (onShowVisu). Page embarquée (?hote, embarque.js) : le spectre n'est
-        // jamais tracé (son panneau caché, index-shell.css) — Plotly.relayout planterait sur un graphe vide.
-        if (plotEl.offsetParent === null || window.EMBARQUE.hote !== null) return;
+        // jamais tracé (son panneau caché, index-shell.css) — Plotly.relayout planterait sur un graphe vide. Pas encore de graphe
+        // (premier chargement sans affichage gardé, avant le premier tracé : Plotly n'a pas posé gd.data) : le premier tracé prend
+        // la taille du moment.
+        if (plotEl.offsetParent === null || window.EMBARQUE.hote !== null || plotEl.data === undefined) return;
         if (typeof Plotly !== 'undefined') {
             Plotly.Plots.resize(plotEl);
             // Forcer le relayout des axes en verticale (position/marges recalculées)

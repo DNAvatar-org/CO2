@@ -9,7 +9,9 @@
 //       (organigramme.js, generateArrows). Soleil, albédo, EDS, satellites et l'éventail CO₂ / H₂O / CH₄ se glissent à la souris
 //       (leur angle et leur distance autour de la Terre) ; la Géométrie suit le Soleil, au bord de son rayonnement ; les ondes
 //       suivent leurs flèches.
-// Version 1.1.14
+// Version 1.1.15
+// - v1.1.15: mesuré et posé dès l'initialisation (ZOOM_TERRE.commencer, main.js), plus au premier dessin du calcul : avant, la
+//   page ISS posait sa Terre sur des emprises nulles jusqu'à la fin du premier calcul ; les marges lui sont renvoyées aussitôt.
 // - v1.1.14: double-clic sur le Soleil : retour à sa place par défaut (configOrganigramme.js), cookie effacé.
 // - v1.1.13: la Géométrie se rapproche du Soleil (distPct, de 45 à 100 % du bord de son rayonnement) ; embarquée, un
 //   nœud glissé est dit à l'hôte (co2:place) qui le garde dans sa disposition.
@@ -203,17 +205,11 @@
     /** Un redessin par trame : les changements d'une même trame (crans de molette, messages de la page ISS)
      *  s'additionnent ; les tailles d'avant sont celles du début de la trame. */
     let avantTrame = null;
-    // L'organigramme est-il dessiné (flux:lastDrawn) ? Avant, main.js n'a pas encore créé les blocs 🛰 OBSERVATIONS, obstacles des
-    // boutons et place des satellites : on note les changements (centre, rayon, Soleil) sans mesurer ni redessiner ; le premier
-    // dessin les applique tous.
+    // Les blocs 🛰 OBSERVATIONS (obstacles des boutons, place des satellites) existent-ils ? main.js les crée à son initialisation,
+    // puis appelle ZOOM_TERRE.commencer. Avant : on note les changements (centre, rayon, Soleil) sans mesurer ni redessiner.
     let pret = false;
     // Emprises à zéro jusqu'à la première mesure (placeDuCote les lit dès le chargement de la page ISS).
     AUTOUR.forEach((id) => { noeud(id).emprise = { g: 0, d: 0, h: 0, b: 0 }; });
-    window.IO_LISTENER.on('flux:lastDrawn', function () {
-        if (pret) return;
-        // après les autres écouteurs du même événement (main.js crée les blocs 🛰 dans le sien)
-        requestAnimationFrame(function () { pret = true; appliquer(tailles()); });
-    }, 'zoom_terre:pret');
     function changer(modifier) {
         if (!pret) { modifier(); return; }
         if (avantTrame === null) {
@@ -325,6 +321,16 @@
     window.ZOOM_TERRE = {
         poser(p) { changer(() => { RT.cx = p.cx; RT.cy = p.cy; RT.R = p.R; RT.soleilVrai = p.soleilVrai; RT.orbite = p.orbite; RT.horizon = p.horizon; RT.ref = p.ref; }); },
         redessiner() { changer(() => {}); },
+        /** Blocs 🛰 créés (main.js) : première mesure et première pose, puis les marges à la page ISS, qui replace sa Terre sur
+         *  les vraies emprises — avant tout calcul. */
+        commencer() {
+            requestAnimationFrame(function () {
+                pret = true;
+                appliquer(tailles());
+                window.ONGLETS_GRAPHE.envoyerMargesISS();
+                window.DEMARRAGE.marges();   // le premier calcul attend la Terre reposée sur ces marges
+            });
+        },
         /** Place que la disposition demande du côté de l'organigramme [px] — à gauche du centre de la Terre, à droite en
          *  miroir —, posés à leur angle et leur distance (sans les bords du cadre, qui les repoussent) : boutons, satellites
          *  et Soleil lui-même (pas son rayonnement, qui peut sortir du cadre) gardent une marge. La page ISS pose le centre
