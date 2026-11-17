@@ -1,6 +1,7 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.5.2
+   Version 1.5.3
+   - v1.5.3: plus de cercle d'atmosphère en pointillés autour de l'organigramme.
    - v1.5.2: body.attente-terre — organigramme caché et page ISS transparente au démarrage, jusqu'à la Terre posée (demarrage.js).
    - v1.5.1: liste du chargement sur 3 colonnes (2 puis 1 sur écran étroit).
    - v1.5.0: bord gauche saisissable de la fenêtre dépliée (.fenetre-bord, largeur seule).
@@ -539,10 +540,9 @@ html:fullscreen .credits-footer {
     color: var(--base-color, #0a0);
 }
 
-/* Vue Terre–Lune (iss:terre orbite) : le « cercle » de l'organigramme est l'orbite de la Lune, dessinée par la page ISS ; caméra
-   de l'ISS (body.iss-horizon) : une ellipse couchée sur l'horizon (onglets_graphe.js poserTerreISS). Le cercle d'atmosphère,
-   minuscule ou sans objet, s'efface. */
-body:is(.iss-lune, .iss-horizon) #cell-albedo .flux-circle-bg { visibility: hidden; }
+/* Le cercle d'atmosphère en pointillés sur lequel l'organigramme est disposé n'est jamais montré : il garde sa place (les
+   boutons s'y posent), sans trait. */
+#cell-albedo .flux-circle-bg { visibility: hidden; }
 
 /* Page embarquée (html.embarque, static/ui/embarque.js : ?hote=, ex. DNA Tamagoshi) : l'onglet ISS seul — Terre, frise et
    organigramme. Ni onglets, ni fenêtres des autres onglets, ni pied de page, ni fond étoilé (l'hôte a le sien) ; le spectre
@@ -613,10 +613,8 @@ html.embarque #bandeau-bas {
     visibility: hidden !important;
     pointer-events: none !important;
 }
-/* Embarquée : ni le nom d'époque (« Aujourd'hui », 2000, +300 ans : il n'y a qu'aujourd'hui → 2300), ni le cercle d'atmosphère
-   en pointillés sur lequel l'organigramme est disposé (l'hôte a sa Terre et son ciel) */
-html.embarque .synthese_Temp-col-left,
-html.embarque #cell-albedo .flux-circle-bg {
+/* Embarquée : pas le nom d'époque (« Aujourd'hui », 2000, +300 ans : il n'y a qu'aujourd'hui → 2300) */
+html.embarque .synthese_Temp-col-left {
     visibility: hidden !important;
 }
 /* Embarquée réduite (Energies et Atmosphère repliés : le survol de la feuille CO2 de l'hôte) : la t° seule, pas le logo EDS
