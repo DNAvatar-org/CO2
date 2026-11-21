@@ -1,6 +1,7 @@
 /* File: index-shell.css - Coque index (tabs, panels visu/scie, footer, loader)
    Desc: Styles propres à index.html : barre d’onglets, conteneurs #visu-panel / #scie-panel, credits-footer, app-loader.
-   Version 1.5.3
+   Version 1.5.4
+   - v1.5.4: embarquée, plus de date au-dessus de la t° (#date-synthese : « retirer la date 2300 »).
    - v1.5.3: plus de cercle d'atmosphère en pointillés autour de l'organigramme.
    - v1.5.2: body.attente-terre — organigramme caché et page ISS transparente au démarrage, jusqu'à la Terre posée (demarrage.js).
    - v1.5.1: liste du chargement sur 3 colonnes (2 puis 1 sur écran étroit).
@@ -8,7 +9,7 @@
    - v1.4.0: un seul plein écran, en bas à droite, au graphisme des boutons de la page ISS (.iss-zen-btn retiré).
    - v1.3.1: embarquée réduite (Energies et Atmosphère repliés : le survol de la feuille du tamagoshi) — plus de logo EDS
      (#cell-reemis), la t° seule.
-   Date: 2026-11-15
+   Date: 2026-11-21
    Copyright 2026 DNAvatar.org - Arnaud Maignan
    Licensed under Apache License 2.0 with Commons Clause. See LICENSE_HEADER.txt for full terms.
    ============================================================ */
@@ -616,6 +617,10 @@ html.embarque #bandeau-bas {
 /* Embarquée : pas le nom d'époque (« Aujourd'hui », 2000, +300 ans : il n'y a qu'aujourd'hui → 2300) */
 html.embarque .synthese_Temp-col-left {
     visibility: hidden !important;
+}
+/* Embarquée : pas la date non plus (2300, la borne du scénario : l'hôte dit « le bilan », pas une année) */
+html.embarque #date-synthese {
+    display: none !important;
 }
 /* Embarquée réduite (Energies et Atmosphère repliés : le survol de la feuille CO2 de l'hôte) : la t° seule, pas le logo EDS
    que la page seule garde Atmosphère repliée (organigramme.css) */
