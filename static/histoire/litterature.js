@@ -34,9 +34,10 @@
 //         · precambrien : KT2018 + trois fenêtres sourcées qui le remplacent (Archéen : Blake 2010 / Hren 2009 ;
 //                         Paléoprotérozoïque : Hoffman 2017 / Gumsley 2017 ; cryogenien : snowballs Pierrehumbert 2005,
 //                         sorties Hoffman 2017 / Yang 2017) — c'est elle que la page trace
-// Version 1.15.0
-// Date: [November 3, 2026]
+// Version 1.16.0
+// Date: [November 24, 2026]
 // logs :
+//   - v1.16.0: Archéen 3,5 → 3,2 Ga = KT2018, Blake 2010 et Hren 2009 cités (plus de bosse là où les roches sont mesurées).
 //   - v1.15.0: instrumental sur l'échelle de Copernicus, pente mesurée par satellite après 2000 ; années ERA5 à part (L.copernicus).
 //   - v1.14.0: 2025 mesuré (Copernicus, +1,47 °C sur 1850–1900) : la courbe va jusqu'à L.AN.
 //   - v1.13.0: L.AN = window.AN_PRESENT, l'origine des âges du moteur (config/configTimeline.js), plus un second 2025.
@@ -2334,11 +2335,12 @@ window.HISTOIRE.litterature.avecMethodes = (rows) => {
     return rows.map((r) => [r[0], r[2] - Math.hypot(r[2] - r[1], bas), r[2], r[2] + Math.hypot(r[3] - r[2], haut)]);
 };
 
-// PRÉCAMBRIEN (4,0 Ga → 525 Ma) : L.precambrien = KT2018 (modèle lisse, qui ignore les glaciations et les proxys) hors de
-// deux FENÊTRES sourcées qui le remplacent, et combiné à un proxy sur une troisième (Archéen). Des FOURCHETTES, pas des valeurs. Le fond, aux bords des fenêtres et entre deux
+// PRÉCAMBRIEN (4,0 Ga → 525 Ma) : L.precambrien = KT2018 (modèle lisse, qui ignore les glaciations) hors de deux FENÊTRES
+// sourcées qui le remplacent. Des FOURCHETTES, pas des valeurs. Le fond, aux bords des fenêtres et entre deux
 // paliers, est KT2018 interpolé (la série elle-même, pas une copie de ses valeurs).
-//   · Archéen 3,5 → 3,2 Ga : océan 26–35 °C, δ¹⁸O des phosphates de Barberton (Blake 2010), compatible avec ≤ 40 °C
-//     (Hren 2009) — en désaccord avec KT2018 (~17 °C) : il ne le remplace pas, les deux sont combinés (voir plus bas) ;
+//   · Archéen : les deux proxys de température (Blake 2010, 26–35 °C ; Hren 2009, ≤ 40 °C) ne couvrent que 3,5 → 3,2 Ga,
+//     là où les roches ont été mesurées, pas un épisode chaud daté. Leur bas (26 °C) est dans la bande ±1σ de KT2018
+//     (7–27 °C), dont ils montrent l'ampleur : la courbe reste KT2018 et la note les cite, sans bosse à cet endroit ;
 //   · Paléoprotérozoïque 2,46 → 2,426 Ga : la glaciation globale, datée dans cet intervalle (Gumsley 2017, Hoffman 2017) ;
 //   · Cryogénien 717,5 → 632,2 Ma : deux snowballs datés, séparés par un intervalle de 9 à 19 Ma (Hoffman 2017). Chacun
 //     finit en « serre torride » : le CO₂ volcanique, accumulé sans pluie pour le lessiver, atteint 0,01–0,1 en fraction
@@ -2357,13 +2359,10 @@ window.HISTOIRE.litterature.avecMethodes = (rows) => {
     const BLAKE = 'Océan archéen 26–35 °C : δ¹⁸O des phosphates de Barberton (Blake, Chang & Lepland 2010, Nature 464:1029), '
         + 'compatible avec ≤ 40 °C des cherts de Buck Reef (Hren, Tice & Chamberlain 2009, Nature 462:205) — reconstruction ; '
         + 'le δ¹⁸O de l\'eau de mer archéenne, qui fixe l\'échelle, reste débattu';
-    // Le proxy et le modèle se contredisent (KT2018 ≈ 17 °C ici) : aucun ne remplace l'autre. Aux points de KT2018 de la
-    // fenêtre, bande = leur ENVELOPPE, médiane = le milieu des deux médianes (convention, pas une mesure) ; on y entre et on
-    // en sort par le pas de KT2018 (~40 Ma), pas par un saut vertical que personne n'a publié.
-    const BLAKE_T = [26, 30.5, 35];
-    const DESACCORD = 'Désaccord modèle / proxy — ' + BLAKE + ' ; ' + KT + ' — bande = enveloppe des deux, médiane = milieu des '
-        + 'deux médianes (convention)';
-    const archeen = (r) => [r[0], Math.min(r[1], BLAKE_T[0]), (r[2] + BLAKE_T[1]) / 2, Math.max(r[3], BLAKE_T[2]), DESACCORD];
+    // Les proxys ne sont mesurés que sur les roches de 3,5 à 3,2 Ga : y changer la courbe dessinerait un épisode chaud que
+    // personne n'a daté. Ils y sont cités : leur bas touche le haut de la bande de KT2018.
+    const archeen = (r) => [r[0], r[1], r[2], r[3], KT + ' — mesuré ici seulement : ' + BLAKE + ' ; son bas (26 °C) touche le haut '
+        + 'de la bande, qui porte l\'incertitude des trois'];
     const dansArcheen = (t) => t <= 3.5e9 && t >= 3.2e9;
 
     const SID = 'Première glaciation globale du Paléoprotérozoïque, quelque part entre 2 460 et 2 426 Ma (Gumsley et al. 2017, PNAS '
