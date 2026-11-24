@@ -8,7 +8,8 @@
 //       (co2:pret). ?miroir : l'organigramme en symétrie d'axe vertical, à DROITE de la Terre (configOrganigramme.js
 //       TERRE_ECRAN.miroir, html.miroir). Chargé dans <head>, avant tout le reste : la config de l'organigramme le lit à sa
 //       construction.
-// Version 1.8.6
+// Version 1.8.7
+// - 1.8.7 (2026-11-24): ETAT_VERSION 23 — CO₂ et CH₄ interpolés en log (C47).
 // - 1.8.6 (2026-11-18): ETAT_VERSION 22 — effet direct des aérosols, nuages moyens WBF, FROID 60 (C44–C46).
 // - 1.8.5 (2026-11-18): ETAT_VERSION 21 — nuages bas selon T (C43).
 // - 1.8.4 (2026-11-17): ETAT_VERSION 20 — phase mesurée (Hu 2010, C40).
@@ -29,7 +30,7 @@
     'use strict';
     const p = new URLSearchParams(location.search);
     /** L'état de l'organigramme gardé d'un chargement à l'autre (garderEtat) ; sa version : à monter si le moteur change */
-    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 22;
+    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 23;
     /** EMBARQUE.hote : le nom de la page hôte, ou null (page seule) ; EMBARQUE.miroir : organigramme à droite de la Terre */
     window.EMBARQUE = {
         hote: p.get('hote'),
