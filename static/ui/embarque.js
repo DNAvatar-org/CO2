@@ -30,7 +30,7 @@
     'use strict';
     const p = new URLSearchParams(location.search);
     /** L'état de l'organigramme gardé d'un chargement à l'autre (garderEtat) ; sa version : à monter si le moteur change */
-    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 23;
+    const ETAT_CLE = 'co2_embarque_etat', ETAT_VERSION = 24;
     /** EMBARQUE.hote : le nom de la page hôte, ou null (page seule) ; EMBARQUE.miroir : organigramme à droite de la Terre */
     window.EMBARQUE = {
         hote: p.get('hote'),
